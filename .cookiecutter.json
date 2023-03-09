@@ -1,0 +1,14 @@
+{
+  "_output_dir": "/Volumes/Media/src/pjs",
+  "_template": "gh:cjolowicz/cookiecutter-hypermodern-python",
+  "author": "Nyimbi Odero",
+  "copyright_year": "2022",
+  "development_status": "Development Status :: 3 - Alpha",
+  "email": "nyimbi@gmail.com",
+  "friendly_name": "Appgen",
+  "github_user": "nyimbi",
+  "license": "MIT",
+  "package_name": "pyAppGen",
+  "project_name": "appgen",
+  "version": "0.0.1"
+}
