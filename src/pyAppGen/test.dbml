@@ -1,0 +1,32 @@
+
+
+Table "industry" {
+  "id" SERIAL [pk, increment]
+  "industry_code" TEXT [not null]
+  job_id integer [ref: <> job.id]
+  task_id integer[ref: < task.id]
+}
+
+Table "job" {
+  "id" SERIAL [pk, increment]
+  name varchar(30)
+  "company_profile" TEXT [not null]
+  "about_job" TEXT [not null]
+  "responsibilities" TEXT [not null]
+  "salary" TEXT [not null]
+  "equity" TEXT [not null]
+    "task_id" integer [ref: < task.id]
+
+}
+
+Table "task" {
+ "id" SERIAL [pk, increment]
+ task_name varchar(50)
+
+
+
+}
+
+
+
+

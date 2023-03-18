@@ -1,0 +1,4512 @@
+Table "userx" {
+  "id" SERIAL [pk, increment]
+}
+
+
+Table "industry" {
+  "id" SERIAL [pk, increment]
+  "industry_code" TEXT [not null]
+}
+
+Table "job" {
+  "id" SERIAL [pk, increment]
+  "company_profile" TEXT [not null]
+  "about_job" TEXT [not null]
+  "responsibilities" TEXT [not null]
+  "salary" TEXT [not null]
+  "equity" TEXT [not null]
+  "offers_healthcare" BOOLEAN
+  "offers_vision" BOOLEAN
+  "offers_401k" BOOLEAN
+  "offers_dental" BOOLEAN
+  "paid_time_off" INTEGER
+  "vacation_days" INTEGER
+  "location" TEXT [not null]
+  "is_remote" BOOLEAN
+  "applicant_count" INTEGER
+  "job_filled" BOOLEAN
+}
+
+Table "industry_job" {
+  "industry" INTEGER [not null]
+  "job" INTEGER [not null]
+
+Indexes {
+  (industry, job) [pk]
+  job [name: "idx_industry_job"]
+}
+}
+
+Table "product_category" {
+  "id" SERIAL [pk, increment]
+}
+
+
+Table "profilesource" {
+  "id" SERIAL [pk, increment]
+  "import_script" TEXT [not null]
+}
+
+Table "skill" {
+  "id" SERIAL [pk, increment]
+  "skill_value" INTEGER
+}
+
+Table "job_skill" {
+  "skills" INTEGER [not null]
+  "jobs" INTEGER [not null]
+
+Indexes {
+  (skills, jobs) [pk]
+  jobs [name: "idx_job_skill__jobs"]
+}
+}
+
+
+
+Table "job_individual" {
+  "job" INTEGER [not null]
+  "individual" INTEGER [not null]
+
+Indexes {
+  (job, individual) [pk]
+  individual [name: "idx_job_individual"]
+}
+}
+
+Table "location" {
+  "id" SERIAL [pk, increment]
+  "individual" INTEGER [not null]
+
+Indexes {
+  individual [name: "idx_location__individual"]
+}
+}
+
+Table "portal" {
+  "id" SERIAL [pk, increment]
+  "portal_url" TEXT [not null]
+  "is_primary" TEXT [not null]
+  "portal_state" TEXT [not null]
+  "individual" INTEGER
+  "has_custom_domain" BOOLEAN
+  "domain" TEXT [not null]
+  "header_text" TEXT [not null]
+  "slug" TEXT [not null]
+  "automatic_fulfillment_digital_products" BOOLEAN
+  "default_digital_max_downloads" INTEGER
+  "default_digital_url_valid_days" INTEGER
+  "default_mail_sender_name" TEXT [not null]
+  "default_mail_sender_addr" TEXT [not null]
+  "fulfillment_auto_approve" BOOLEAN
+  "fulfillment_allow_unpaid" BOOLEAN
+  "reserve_stock_duration_anonymous_user" INTEGER
+  "reserve_stock_duration_authenticated_user" INTEGER
+  "limit_quantity_per_checkout" INTEGER
+  "gift_card_expiry_type" TEXT [not null]
+  "gift_card_expiry_period_type" TEXT [not null]
+  "gift_card_expiry_period" INTEGER
+  "charge_taxes_on_shipping" BOOLEAN
+  "include_taxes_in_prices" BOOLEAN
+  "display_gros_prices" BOOLEAN
+  "language" TEXT [not null]
+
+    Indexes {
+      individual [name: "idx_portal__individual"]
+    }
+}
+
+Table "page" {
+  "id" SERIAL [pk, increment]
+  "portal" INTEGER [not null]
+  "header" TEXT [not null]
+  "slug" TEXT [not null]
+  "page_type" TEXT [not null]
+
+Indexes {
+  portal [name: "idx_page__portal"]
+}
+}
+
+Table "profile" {
+  "id" SERIAL [pk, increment]
+  "individual" INTEGER [not null]
+  "import_addr" TEXT [not null]
+  "profile_username" TEXT [not null]
+  "profile_pasword" TEXT [not null]
+  "has_been_imported" BOOLEAN
+  "import_data" text [not null]
+  "import_date" timestamp
+  "profilesource" INTEGER
+
+Indexes {
+  profilesource [name: "idx_profile__profilesource"]
+  individual [name: "idx_profile__individual"]
+}
+}
+
+Table "resume" {
+  "id" SERIAL [pk, increment]
+  "individual" INTEGER [not null]
+  "template" TEXT [not null]
+  "header" TEXT [not null]
+  "color" TEXT [not null]
+  "location" INTEGER [not null]
+  "summary_text" TEXT [not null]
+  "has_been_generated" BOOLEAN
+  "preferred" BOOLEAN
+
+Indexes {
+  location [name: "idx_resume__location"]
+  individual [name: "idx_resume__individual"]
+}
+}
+
+Table "swarm" {
+  "id" SERIAL [pk, increment]
+  "portal" INTEGER [not null]
+
+Indexes {
+  portal [name: "idx_swarm__portal"]
+}
+}
+
+Table "swarm_individual" {
+  "swarm" INTEGER [not null]
+  "individual" INTEGER [not null]
+
+Indexes {
+  (swarm, individual) [pk]
+  individual [name: "idx_swarm_individual"]
+}
+}
+
+Table "user_skill" {
+  "skills" INTEGER [not null]
+  "user_details" INTEGER [not null]
+
+Indexes {
+  (skills, user_details) [pk]
+  user_details [name: "idx_user_skill__user_details"]
+}
+}
+
+
+Table "billing_frequency" {
+  "id" SERIAL [pk, increment]
+  "billing_frequency_name" varchar(500) [not null]
+}
+
+Table "account_contact_role" {
+  "id" SERIAL [pk, increment]
+  "account_contact_role_type" varchar(500)
+}
+
+Table "account_contact" {
+  "id" SERIAL [pk, increment]
+  "title" varchar(500)
+  "department_name" varchar(500)
+  "asistant_name" varchar(500)
+  "asistant_phone" varchar(500)
+  "last_activity_date" date
+}
+
+Table "account_partner" {
+  "id" SERIAL [pk, increment]
+}
+
+Table "account" {
+  "id" SERIAL [pk, increment]
+  "account_type" varchar(500)
+  "general_ledger_account" varchar(500)
+  "use_as_service_account" boolean [not null]
+  "use_as_billing_account" boolean [not null]
+  "use_as_sales_account" boolean [not null]
+  "use_as_shipping_account" boolean [not null]
+  "asign_territory_flag" boolean
+  "sla_expiration_date" date
+  "hold_state_reason" varchar(500)
+  "sla_type" varchar(500)
+  "bill_delivery_method" varchar(500)
+  "auto_pay_enabled_flag" boolean
+  "auto_payment_amount" integer
+  "payment_term" varchar(500) [not null]
+  "balance_amount" integer
+  "balance_amount_limit" integer
+  "thirty_day_balance_amount" integer
+  "sixty_day_balance_amount" integer
+  "ninety_day_balance_amount" integer
+  "default_freight_terms" varchar(500)
+}
+
+Table "contact_point_type" {
+  "id" SERIAL [pk, increment]
+  "opt_in_priority" integer [not null]
+}
+
+
+
+
+
+Table "contact_point_addr" {
+  "id" SERIAL [pk, increment]
+  "is_used_for_shipping" boolean
+  "state_province_name" varchar(500)
+  "addr_line3" varchar(500)
+  "country_name" varchar(500)
+  "postal_code_text" varchar(500)
+  "geo_latitude" integer
+  "addr_line2" varchar(500)
+  "addr_line4" varchar(500)
+  "geo_accuracy" integer
+  "geo_longitude" integer
+  "addr_line1" varchar(500)
+  "city_name" varchar(500)
+  "is_used_for_billing" boolean
+  "primary_flag" boolean
+  "profile_last_updated_date" timestamp
+  "profile_occurrence_count" integer
+  "for_busines_use" boolean [not null]
+  "for_personal_use" boolean [not null]
+}
+
+Table "party_web_addr" {
+  "id" SERIAL [pk, increment]
+  "web_site_ur_l" varchar(500) [not null]
+  "primary_flag" boolean
+  "profile_last_updated_date" timestamp
+  "profile_occurrence_count" integer
+  "profile_first_created_date" timestamp
+  "for_busines_use" boolean [not null]
+  "for_personal_use" boolean [not null]
+}
+
+
+
+
+
+Table "contact_point_phone" {
+  "id" SERIAL [pk, increment]
+  "extension_number" varchar(500)
+  "phone_country_code" varchar(500)
+  "country_name" varchar(500)
+  "area_code" varchar(500)
+  "is_sm_scapable" boolean [not null]
+  "short_code" integer
+  "formatted_international_phone_number" varchar(500) [not null]
+  "primary_phone_type" varchar(500) [not null]
+  "is_fax_capable" boolean [not null]
+  "formatted_e164_phone_number" varchar(500)
+  "formatted_national_phone_number" varchar(500) [not null]
+  "telephone_number" varchar(500) [not null]
+  "primary_flag" boolean
+  "profile_occurrence_count" integer
+  "for_busines_use" boolean [not null]
+  "for_personal_use" boolean [not null]
+}
+
+
+
+Table "uncategorized_party" {
+  "id" SERIAL [pk, increment]
+  "creation_reason" varchar(500)
+  "uncategorized_party_label" varchar(500) [not null]
+  "original_source_record" varchar(500)
+  "original_source_system" varchar(500)
+  "party_type" varchar(500) [not null]
+  "global_party" varchar(500)
+  "no_merge_reason" varchar(500)
+}
+
+Table "person_language" {
+  "id" SERIAL [pk, increment]
+  "spoken_proficiency_level" varchar(500)
+  "written_proficiency_level" varchar(500)
+}
+
+
+Table "education" {
+  "id" SERIAL [pk, increment]
+  "individual" INTEGER [not null]
+  "qualification" TEXT [not null]
+  "qual_clas" TEXT [not null]
+  "verified" BOOLEAN
+  "verification_code" TEXT [not null]
+  "verified_by" TEXT [not null]
+  "verification_date" timestamp
+  "verification_doc" TEXT [not null]
+
+Indexes {
+  individual [name: "idx_education__individual"]
+}
+}
+
+Table "individual" {
+
+  "id" SERIAL [pk, increment]
+  "is_institution" BOOLEAN
+  "is_company" BOOLEAN
+  "is_online" BOOLEAN
+  "userx" INTEGER [not null]
+
+
+  "photo_url" varchar(500)
+  "do_extract_my_data_update_date" date
+  "should_forget" boolean
+  "web_site_url" varchar(500)
+  "ordering_name" varchar(500)
+  "over_age_number" integer
+
+  "send_individual_data" boolean
+
+  "mothers_maiden_name" varchar(500)
+
+  "residence_country_name" varchar(500)
+  "party_type" varchar(500) [not null]
+  "global_party" varchar(500)
+
+  Indexes {
+  userx [name: "idx_individual__userx"]
+}
+}
+
+Table "work_history" {
+  "id" SERIAL [pk, increment]
+  "employment_state" varchar(500) [not null]
+  "position_text" varchar(500) [not null]
+  "employer_addr_line3" varchar(500)
+  "occupation_text" varchar(500) [not null]
+  "employer_name" varchar(500) [not null]
+  "employer_addr_line4" varchar(500)
+  "employer_addr_line1" varchar(500) [not null]
+  "annual_income" integer [not null]
+  "employer_city_name" varchar(500)
+  "employer_addr_line2" varchar(500)
+  "employer_postal_code_text" varchar(500)
+  "employer_phone_number" varchar(500) [not null]
+   "resume" INTEGER
+   "individual" INTEGER
+
+   Indexes {
+      resume [name: "idx_work_history__resume"]
+      individual [name: "idx_work_history__individual"]
+    }
+}
+
+Table "party_identification" {
+  "id" SERIAL [pk, increment]
+  "expiry_date" date
+  "party_identification_type" varchar(500) [not null]
+  "verified_date" date
+  "isued_by_authority" varchar(500)
+  "isued_at_location" varchar(500)
+  "isued_date" date
+  "identification_number" varchar(500) [not null]
+}
+
+Table "party_related_party" {
+  "id" SERIAL [pk, increment]
+  "related_from_date" date [not null]
+  "related_to_date" date [not null]
+}
+
+Table "party_additional_name" {
+  "id" SERIAL [pk, increment]
+  "additional_name_type" varchar(500) [not null]
+}
+
+Table "party_relationship_type" {
+  "id" SERIAL [pk, increment]
+  "is_bidirectional" boolean [not null]
+  "party_role" varchar(500) [not null]
+  "related_party_role" varchar(500) [not null]
+}
+
+Table "household" {
+  "id" SERIAL [pk, increment]
+  "household_member_count" integer
+  "household_formed_date" date
+  "household_disolved_date" date
+  "party_type" varchar(500) [not null]
+  "global_party" varchar(500)
+  "no_merge_reason" varchar(500)
+}
+
+Table "person_life_event" {
+  "id" SERIAL [pk, increment]
+  "person_life_event_date_time"  timestamp [not null]
+  "person_life_event_type" varchar(500) [not null]
+}
+
+Table "party" {
+  "id" SERIAL [pk, increment]
+  "party_type" varchar(500) [not null]
+  "global_party" varchar(500)
+  "no_merge_reason" varchar(500)
+}
+
+Table "internal_busines_unit" {
+  "id" SERIAL [pk, increment]
+  "busines_unit_type" varchar(500) [not null]
+  "party_type" varchar(500) [not null]
+  "global_party" varchar(500)
+  "no_merge_reason" varchar(500)
+}
+
+Table "supplier" {
+  "id" SERIAL [pk, increment]
+  "satisfaction_ethics_rank" integer
+  "contract_invoice_accuracy_rate" integer
+  "satisfaction_weight_percent" integer
+  "contract_on_time_delivery_rate" integer
+  "competitive_warranty_rank" integer
+  "competitive_marketing_rank" integer
+  "contract_delivery_correctnes_rate" integer
+  "competitive_weight_score" integer
+  "contract_sl_aisue_rate" integer
+  "competitive_weight_percent" integer
+  "supplier_score" integer
+  "competitive_product_price_rank" integer
+  "contract_weight_percent" integer
+  "supplier_spend" integer
+  "satisfaction_technical_support_rank" integer
+  "contract_weight_score" integer
+  "satisfaction_customer_service_rank" integer
+  "satisfaction_weight_score" integer
+  "contract_sourcing_cycle_days" integer
+  "supplier_type" varchar(500)
+  "is_carrier" boolean
+  "contract_product_return_rate" integer
+  "competitive_cost_avoidance_rank" integer
+  "contract_product_quality_rate" integer
+  "contract_budget_cost_rate" integer
+}
+
+Table "customer_state_history" {
+  "id" SERIAL [pk, increment]
+  "start_date_time"  timestamp [not null]
+  "party_role_state" varchar(500) [not null]
+  "end_date_time"  timestamp [not null]
+}
+
+Table "competitor" {
+  "id" SERIAL [pk, increment]
+  "competitor_strengths" varchar(500)
+  "competitor_from_date" date [not null]
+  "social_media_post_rate" integer
+  "competitor_threats" varchar(500)
+  "current_ratio" integer
+  "cash_flow_growth" integer
+  "competitor_objectives" varchar(500)
+  "net_profit_margin" integer
+  "competitor_weakneses" varchar(500)
+  "pres_mentions_rate" integer
+  "aset_turnover_ratio" integer
+  "competitor_to_date" date
+  "competitor_leverage_opportunities" varchar(500)
+  "aset_return_ratio" integer
+  "pto_enumber" integer
+  "ad_keywords" varchar(500)
+  "ad_reach_rate" integer
+}
+
+Table "seller" {
+  "id" SERIAL [pk, increment]
+  "community_participation_count" integer
+  "demonstrations_given_count" integer
+  "event_participation_count" integer
+  "customer_satisfaction_score" integer
+  "training_certification_count" integer
+  "opportunity_involvement_count" integer
+  "marketing_development_amount" integer
+  "seller_type" varchar(500)
+  "documentation_download_count" integer
+  "trial_participation_count" integer
+  "credit_rating" integer
+  "satisfaction_score" integer
+  "sales_amount" integer
+  "opportunity_win_rate" integer
+  "product_return_rate" integer
+  "lead_generation_count" integer
+  "inventory_value_amount" integer
+  "major_post_sale_support_needed" boolean
+  "training_participation_count" integer
+  "new_customer_acquisition_count" integer
+  "succes_story_count" integer
+  "system_login_count" integer
+  "joint_busines_plan_exist" boolean
+  "average_converted_lead_amount" integer
+  "estimated_partner_gros_margin" integer
+}
+
+Table "customer" {
+  "id" SERIAL [pk, increment]
+  "customer_state" varchar(500) [not null]
+  "prospect_rating" varchar(500)
+  "net_promoter_score" integer
+  "customer_satisfaction_score" integer
+  "marketing_email_response_rate" integer
+  "total_contracted_amount" integer
+  "total_profit_contribution_amount" integer
+  "customer_number" varchar(500)
+  "churn_score" integer
+  "originating_customer_source" varchar(500)
+  "total_life_time_value" integer
+  "total_bookings_amount" integer
+  "last24_months_new_revenue_amount" integer
+  "last12_months_new_revenue_amount" integer
+  "last12_months_support_call_count" integer
+}
+
+Table "party_role" {
+  "id" SERIAL [pk, increment]
+}
+
+Table "lead" {
+  "id" SERIAL [pk, increment]
+  "state_province_name" varchar(500)
+  "lead_state" varchar(500)
+  "photo_ur_l" varchar(500)
+  "country_name" varchar(500)
+  "converted_date" date
+  "company_name" varchar(500)
+  "street_name" varchar(500)
+  "lead_score" integer
+  "lead_rating" varchar(500)
+  "geo_code_latitude" integer
+  "geo_code_longitude" integer
+  "geo_code_accuracy" integer
+  "email_bounced_date" timestamp
+  "lead_source" varchar(500) [not null]
+  "last_activity_date" date
+  "annual_revenue" integer
+  "email_bounced_reason" varchar(500)
+  "website" varchar(500)
+  "is_converted" boolean
+}
+
+Table "credit_tender" {
+  "id" SERIAL [pk, increment]
+  "payment_method_state" varchar(500) [not null]
+}
+
+Table "payment_card" {
+  "id" SERIAL [pk, increment]
+  "payment_card_type" varchar(500) [not null]
+  "card_holder_name" varchar(500) [not null]
+  "bill_to_first_name" varchar(500)
+  "bill_to_last_name" varchar(500)
+  "company_name" varchar(500)
+  "derived_card_type_code" varchar(500)
+  "expiration_month" varchar(500) [not null]
+  "expiration_year" varchar(500) [not null]
+  "isue_number" varchar(500) [not null]
+  "masked_number" varchar(500) [not null]
+  "number_last_digits" varchar(500) [not null]
+  "credit_card_expired" boolean [not null]
+  "card_token" varchar(500) [not null]
+  "bill_to_street" varchar(500)
+  "bill_to_street2" varchar(500)
+  "bill_to_city" varchar(500)
+  "payment_method_state" varchar(500) [not null]
+}
+
+Table "payment_method_type" {
+  "id" SERIAL [pk, increment]
+  "type_description" varchar(500)
+  "media_type" varchar(500)
+  "max_per_period_amount" integer
+  "type_required_identification" varchar(500)
+  "use_minimum_age_year" integer
+  "max_transaction_amount" integer
+  "max_per_period_transaction_count" integer
+}
+
+Table "coupon" {
+  "id" SERIAL [pk, increment]
+  "primary_scan_code_label" varchar(500)
+  "is_return_coupon" boolean
+  "expiration_date" date
+  "secondary_scan_code_label" varchar(500)
+  "scan_code" varchar(500)
+  "coupon_code" varchar(500)
+  "return_coupon_reason" varchar(500)
+  "discount_amount" integer
+  "is_valid" boolean
+  "coupon_state" varchar(500)
+  "discount_percentage" integer
+  "coupon_count" integer
+  "payment_method_state" varchar(500) [not null]
+}
+
+Table "payment_method" {
+  "id" integer [unique, not null]
+  "payment_method_state" varchar(500) [not null]
+  indexes {
+   (id, payment_method_state)[pk]
+  }
+}
+
+Table "payment_gateway_result_code" {
+  "id" SERIAL [pk, increment]
+}
+
+Table "payment_credit_memo_application" {
+  "id" SERIAL [pk, increment]
+  "effective_date" date [not null]
+  "payment_application_type" varchar(500) [not null]
+  "comment_text" varchar(500)
+  "has_been_unapplied" boolean
+  "applied_amount" integer [not null]
+  "payment_balance_amount" integer [not null]
+  "applied_date" date [not null]
+  "external_created_date" date [not null]
+  "unapplied_date" date [not null]
+}
+
+Table "payment_gateway_auth_reversal_log" {
+  "id" SERIAL [pk, increment]
+  "payment_gateway_reference_number" varchar(500) [not null]
+  "payment_gateway_mesage_text" varchar(500)
+  "payment_gateway_authorization_code" varchar(500) [not null]
+  "internal_result_code" varchar(500) [not null]
+  "payment_gateway_av_scode" varchar(500) [not null]
+  "internal_reference_number" varchar(500) [not null]
+  "payment_gateway_interaction_log_name" varchar(500) [not null]
+  "payment_gateway_interaction_state" varchar(500) [not null]
+  "payment_gateway_date" date [not null]
+}
+
+Table "payment_authorization_reversal" {
+  "id" SERIAL [pk, increment]
+  "payment_gateway_reference_number" varchar(500) [not null]
+  "authorization_reversal_amount" integer [not null]
+  "customer_authorization_reversal_phone" varchar(500)
+  "i_paddr" varchar(500)
+  "payment_authorization_reversal_state" varchar(500) [not null]
+  "payment_authorization_procesing_mode" varchar(500) [not null]
+  "payment_gateway_internal_reference_number" varchar(500) [not null]
+  "payment_authorization_reversal_name" varchar(500)
+  "external_created_date" date [not null]
+  "request_date"  timestamp [not null]
+  "payment_authorization_reversal_comment_text" varchar(500)
+  "mac_addr" varchar(500)
+  "customer_authorization_reversal_email" varchar(500)
+  "payment_gateway_date"  timestamp [not null]
+}
+
+Table "payment_allocation" {
+  "id" SERIAL [pk, increment]
+  "external_created_date" date [not null]
+  "payment_allocation_name" varchar(500)
+}
+
+Table "payment_application" {
+  "id" SERIAL [pk, increment]
+  "effective_date" date [not null]
+  "payment_application_type" varchar(500) [not null]
+  "comment_text" varchar(500)
+  "has_been_unapplied" boolean
+  "applied_amount" integer [not null]
+  "payment_balance_amount" integer [not null]
+  "applied_date" date [not null]
+  "external_created_date" date [not null]
+  "unapplied_date" date [not null]
+}
+
+Table "payment_gateway_provider" {
+  "id" SERIAL [pk, increment]
+  "apex_adapter_clas_name" varchar(500) [not null]
+  "payment_gateway_provider_comment_text" varchar(500)
+  "payment_gateway_provider_name" varchar(500) [not null]
+  "developer_name" varchar(500) [not null]
+  "namespace_prefix_text" varchar(500) [not null]
+}
+
+Table "payment_policy" {
+  "id" SERIAL [pk, increment]
+  "payment_policy_state" varchar(500) [not null]
+  "payment_policy_treatment_selection" varchar(500) [not null]
+}
+
+Table "payment_treatment_method" {
+  "id" SERIAL [pk, increment]
+  "payment_treatment_method_name" varchar(500) [not null]
+  "payment_treatment_method_code" varchar(500) [not null]
+  "payment_treatment_method_description" varchar(500) [not null]
+}
+
+Table "payment_invoice_application" {
+  "id" SERIAL [pk, increment]
+  "payment_invoice_application_name" varchar(500)
+  "invoice_balance_amount" integer [not null]
+  "payment_invoice_application_type" varchar(500)
+  "effective_date" date [not null]
+  "payment_application_type" varchar(500) [not null]
+  "comment_text" varchar(500)
+  "has_been_unapplied" boolean
+  "applied_amount" integer [not null]
+  "payment_balance_amount" integer [not null]
+  "applied_date" date [not null]
+  "external_created_date" date [not null]
+  "unapplied_date" date [not null]
+}
+
+Table "payment_gateway_interaction_type" {
+  "id" SERIAL [pk, increment]
+}
+
+Table "payment_group" {
+  "id" SERIAL [pk, increment]
+  "total_reversal_amount" integer [not null]
+  "total_authorization_amount" integer [not null]
+  "total_payment_amount" integer [not null]
+  "payment_group_number" varchar(500) [not null]
+}
+
+Table "refund_credit_memo_allocation" {
+  "id" SERIAL [pk, increment]
+  "effective_date" date [not null]
+  "has_been_unapplied" boolean
+  "refund_allocation_type" varchar(500) [not null]
+  "allocated_amount" integer [not null]
+  "refund_balance_amount" integer [not null]
+  "refund_allocation_name" varchar(500)
+  "applied_date" date [not null]
+  "external_created_date" date [not null]
+  "unapplied_date" date [not null]
+}
+
+Table "payment_gateway_payment_log" {
+  "id" SERIAL [pk, increment]
+  "payment_gateway_reference_number" varchar(500) [not null]
+  "payment_gateway_mesage_text" varchar(500)
+  "payment_gateway_authorization_code" varchar(500) [not null]
+  "internal_result_code" varchar(500) [not null]
+  "payment_gateway_av_scode" varchar(500) [not null]
+  "internal_reference_number" varchar(500) [not null]
+  "payment_gateway_interaction_log_name" varchar(500) [not null]
+  "payment_gateway_interaction_state" varchar(500) [not null]
+  "payment_gateway_date" date [not null]
+}
+
+Table "refund_allocation" {
+  "id" SERIAL [pk, increment]
+  "effective_date" date [not null]
+  "has_been_unapplied" boolean
+  "refund_allocation_type" varchar(500) [not null]
+  "allocated_amount" integer [not null]
+  "refund_balance_amount" integer [not null]
+  "refund_allocation_name" varchar(500)
+  "applied_date" date [not null]
+  "external_created_date" date [not null]
+  "unapplied_date" date [not null]
+}
+
+Table "payment_gateway_authorization_log" {
+  "id" SERIAL [pk, increment]
+  "payment_gateway_reference_number" varchar(500) [not null]
+  "payment_gateway_mesage_text" varchar(500)
+  "payment_gateway_authorization_code" varchar(500) [not null]
+  "internal_result_code" varchar(500) [not null]
+  "payment_gateway_av_scode" varchar(500) [not null]
+  "internal_reference_number" varchar(500) [not null]
+  "payment_gateway_interaction_log_name" varchar(500) [not null]
+  "payment_gateway_interaction_state" varchar(500) [not null]
+  "payment_gateway_date" date [not null]
+}
+
+Table "payment_invoice_allocation" {
+  "id" SERIAL [pk, increment]
+  "payment_invoice_allocation_name" varchar(500)
+  "applied_amount" integer [not null]
+  "invoice_balance_amount" integer [not null]
+  "external_created_date" date [not null]
+  "payment_allocation_name" varchar(500)
+}
+
+Table "payment" {
+  "id" SERIAL [pk, increment]
+  "payment_state" varchar(500) [not null]
+  "authorization_procesing_mode" varchar(500) [not null]
+  "i_paddr" varchar(500)
+  "comment_text" varchar(500) [not null]
+  "payment_number" varchar(500) [not null]
+  "payment_amount" integer [not null]
+  "latest_gateway_internal_result" varchar(500) [not null]
+  "customer_email_addr" varchar(500)
+  "latest_gateway_reference_number" varchar(500) [not null]
+  "latest_gateway_date" date [not null]
+  "balance_amount" integer [not null]
+  "payment_type" varchar(500) [not null]
+  "customer_phone_number" varchar(500)
+  "latest_payment_gateway_mesage_text" varchar(500)
+  "payment_effective_date" date [not null]
+  "external_created_date" date [not null]
+  "payment_cancellation_date" date [not null]
+  "mac_addr" varchar(500)
+  "total_applied_amount" integer [not null]
+  "net_applied_amount" integer [not null]
+  "total_unapplied_amount" integer [not null]
+  "latest_gateway_internal_reference_number" varchar(500) [not null]
+}
+
+Table "payment_credit_memo_allocation" {
+  "id" SERIAL [pk, increment]
+  "applied_amount" integer [not null]
+  "external_created_date" date [not null]
+  "payment_allocation_name" varchar(500)
+}
+
+Table "payment_treatment" {
+  "id" SERIAL [pk, increment]
+  "payment_application_level" varchar(500)
+  "should_auto_invoice" boolean
+  "payment_treatment_state" varchar(500) [not null]
+  "payment_treatment_name" varchar(500)
+}
+
+Table "payment_authorization" {
+  "id" SERIAL [pk, increment]
+  "payment_gateway_reference_number" varchar(500) [not null]
+  "i_paddr" varchar(500)
+  "total_payment_capture_amount" integer [not null]
+  "payment_authorization_procesing_mode" varchar(500) [not null]
+  "authorization_amount" integer [not null]
+  "expiration_date" date [not null]
+  "payment_gateway_internal_reference_number" varchar(500) [not null]
+  "gateway_reference_details_text" varchar(500) [not null]
+  "total_authorization_reversal_amount" integer [not null]
+  "payment_authorization_comment_text" varchar(500)
+  "external_created_date" date [not null]
+  "payment_authorization_number" varchar(500) [not null]
+  "request_date"  timestamp [not null]
+  "available_balance_amount" integer [not null]
+  "gateway_result_code_description" varchar(500)
+  "mac_addr" varchar(500)
+  "gateway_authorization_code" varchar(500) [not null]
+  "payment_gateway_date"  timestamp [not null]
+  "payment_authorization_state" varchar(500) [not null]
+}
+
+Table "refund_payment_allocation" {
+  "id" SERIAL [pk, increment]
+  "refund_allocation_comments_date" date [not null]
+  "payment_balance_amount" integer [not null]
+  "refund_allocation_comment_text" varchar(500)
+  "credit_memo_balance_amount" integer [not null]
+  "refund_payment_allocation_name" varchar(500)
+  "effective_date" date [not null]
+  "has_been_unapplied" boolean
+  "refund_allocation_type" varchar(500) [not null]
+  "allocated_amount" integer [not null]
+  "refund_balance_amount" integer [not null]
+  "refund_allocation_name" varchar(500)
+  "applied_date" date [not null]
+  "external_created_date" date [not null]
+  "unapplied_date" date [not null]
+}
+
+Table "refund_payment" {
+  "id" SERIAL [pk, increment]
+  "external_created_date" date [not null]
+  "payment_state" varchar(500) [not null]
+  "authorization_procesing_mode" varchar(500) [not null]
+  "i_paddr" varchar(500)
+  "comment_text" varchar(500) [not null]
+  "payment_number" varchar(500) [not null]
+  "payment_amount" integer [not null]
+  "latest_gateway_internal_result" varchar(500) [not null]
+  "customer_email_addr" varchar(500)
+  "latest_gateway_reference_number" varchar(500) [not null]
+  "latest_gateway_date" date [not null]
+  "balance_amount" integer [not null]
+  "payment_type" varchar(500) [not null]
+  "customer_phone_number" varchar(500)
+  "latest_payment_gateway_mesage_text" varchar(500)
+  "payment_effective_date" date [not null]
+  "payment_cancellation_date" date [not null]
+  "mac_addr" varchar(500)
+  "total_applied_amount" integer [not null]
+  "net_applied_amount" integer [not null]
+  "total_unapplied_amount" integer [not null]
+  "latest_gateway_internal_reference_number" varchar(500) [not null]
+}
+
+Table "payment_gateway" {
+  "id" SERIAL [pk, increment]
+  "payment_gateway_state" varchar(500) [not null]
+  "payment_gateway_comment_text" varchar(500)
+  "system_credential" varchar(500)
+}
+
+Table "capture_payment" {
+  "id" SERIAL [pk, not null, increment]
+  "capture_payment_id" integer [unique, not null]
+  "capture_payment_type" varchar(500) [not null]
+  "handling_fee_amount" integer
+  "is_final_capture" boolean
+  "payment_state" varchar(500) [not null]
+  "authorization_procesing_mode" varchar(500) [not null]
+  "i_paddr" varchar(500)
+  "comment_text" varchar(500) [not null]
+  "payment_number" varchar(500) [not null]
+  "payment_amount" integer [not null]
+  "latest_gateway_internal_result" varchar(500) [not null]
+  "customer_email_addr" varchar(500)
+  "latest_gateway_reference_number" varchar(500) [not null]
+  "latest_gateway_date" date [not null]
+  "balance_amount" integer [not null]
+  "payment_type" varchar(500) [not null]
+  "customer_phone_number" varchar(500)
+  "latest_payment_gateway_mesage_text" varchar(500)
+  "payment_effective_date" date [not null]
+  "external_created_date" date [not null]
+  "payment_cancellation_date" date [not null]
+  "mac_addr" varchar(500)
+  "total_applied_amount" integer [not null]
+  "net_applied_amount" integer [not null]
+  "total_unapplied_amount" integer [not null]
+  "latest_gateway_internal_reference_number" varchar(500) [not null]
+}
+
+Table "payment_gateway_interaction_log" {
+  "id" SERIAL [pk, increment]
+  "payment_gateway_reference_number" varchar(500) [not null]
+  "payment_gateway_mesage_text" varchar(500)
+  "payment_gateway_authorization_code" varchar(500) [not null]
+  "internal_result_code" varchar(500) [not null]
+  "payment_gateway_av_scode" varchar(500) [not null]
+  "internal_reference_number" varchar(500) [not null]
+  "payment_gateway_interaction_log_name" varchar(500) [not null]
+  "payment_gateway_interaction_state" varchar(500) [not null]
+  "payment_gateway_date" date [not null]
+}
+
+Table "shipment_product_price_adjustment_tax" {
+  "id" SERIAL [pk, increment]
+}
+
+Table "shipment_state" {
+  "id" SERIAL [pk, not null, increment]
+}
+
+Table "shipment_product_price_adjustment" {
+  "id" SERIAL [pk, increment]
+  "adjustment_amount" integer [not null]
+  "shipment_product_price_adjustment_amount" integer
+  "adjustment_tax_amount" integer
+}
+
+Table "shipment" {
+  "id" SERIAL [pk, increment]
+  "gift_mesage_text" varchar(500)
+  "shipment_number" varchar(500)
+  "is_gift" boolean
+  "actual_delivery_date_time" timestamp
+  "special_instructions_text" varchar(500)
+  "carrier_tracking_number" varchar(500)
+  "estimated_delivery_date_time" timestamp
+  "scheduled_delivery_date_time" timestamp
+  "shipment_date" date [not null]
+}
+
+Table "shipment_package" {
+  "id" SERIAL [pk, increment]
+  "shipment_product_count" integer [not null]
+  "shipment_product_description" varchar(500) [not null]
+}
+
+Table "shipment_document" {
+  "id" SERIAL [pk, not null, increment]
+}
+
+Table "shipping_method" {
+  "id" SERIAL [pk, increment]
+}
+
+Table "shipment_product" {
+  "id" SERIAL [pk, increment]
+  "shipment_product_count" integer [not null]
+}
+
+Table "attribute_value" {
+  "id" SERIAL [pk, not null, increment]
+  "attribute_value" varchar(500) [not null]
+}
+
+Table "device_user_sesion" {
+  "id" SERIAL [pk, not null, increment]
+}
+
+Table "product_collateral" {
+  "id" SERIAL [pk, increment]
+  "url" varchar(500) [not null]
+}
+
+Table "attribute_translation" {
+  "id" SERIAL [pk, increment]
+  "translated_name" varchar(500) [not null]
+}
+
+Table "product_validity_time_period_uo_m" {
+  "id" SERIAL [pk, increment]
+  "plural_name" varchar(500) [not null]
+}
+
+Table "product_attribute_set" {
+  "id" SERIAL [pk, increment]
+  "attribute_set" varchar(500) [not null]
+}
+
+Table "product_attribute_value" {
+  "id" SERIAL [pk, increment]
+  "custom_attribute_value" varchar(500)
+  "attribute_set" varchar(500) [not null]
+}
+
+Table "attribute_set_translation" {
+  "id" SERIAL [pk, increment]
+  "translated_name" varchar(500) [not null]
+  "attribute_set" varchar(500) [not null]
+}
+
+Table "price_book_entry" {
+  "id" SERIAL [pk, increment]
+  "unit_list_price" integer
+  "min_required_quantity" integer
+  "min_required_order_value" integer
+  "max_required_order_value" integer
+  "use_standard_price" boolean
+  "service_period_count" integer
+  "is_active" boolean
+}
+
+Table "attribute_value_translation" {
+  "id" SERIAL [pk, increment]
+  "translated_attribute_value" varchar(500) [not null]
+  "translated_attribute_value_description" varchar(500)
+}
+
+Table "product_category_attribute_set" {
+  "id" SERIAL [pk, increment]
+  "attribute_set" varchar(500) [not null]
+}
+
+Table "product_catalog" {
+  "id" SERIAL [pk, increment]
+}
+
+Table "product_category_translation" {
+  "id" SERIAL [pk, increment]
+  "translated_name" varchar(500) [not null]
+
+}
+
+
+Table "product_catalog_translation" {
+  "id" SERIAL [pk, increment]
+  "translated_name" varchar(500) [not null]
+}
+
+Table "product_category_product" {
+  "id" SERIAL [pk, increment]
+}
+
+Table "sales_order_delivery_state" {
+  "id" SERIAL [pk, increment]
+}
+
+Table "sales_order_product_reason_category" {
+  "id" SERIAL [pk, increment]
+}
+
+Table "renewal_term" {
+  "id" SERIAL [pk, increment]
+}
+
+Table "sales_channel_type" {
+  "id" SERIAL [pk, increment]
+}
+
+Table "sales_order" {
+  "id" SERIAL [pk, increment]
+  "total_pending_billing_amount" integer
+  "checkout_date" date
+  "price_calculation_state_mesage_text" varchar(500)
+  "confirmation_recipient_email_text" varchar(500) [not null]
+  "order_end_date" date
+  "is_tax_exempt" boolean
+  "total_product_tax_amount" integer
+  "is_alerted" boolean
+  "is_anonymous" boolean
+  "is_closed" boolean
+  "activated_date" date
+  "requested_start_date" date [not null]
+  "company_authorized_date" date
+  "order_insurance_amount" integer
+  "total_delivery_amount" integer
+  "customer_authorized_date" date
+  "total_cancelled_billing_amount" integer
+  "total_adjusted_delivery_tax_amount" integer
+  "total_adjustment_amount" integer
+  "renewal_uplift_rate" integer
+  "total_product_amount" integer
+  "total_adjustment_tax_amount" integer
+  "is_gift_order" boolean
+  "promise_fulfillment_date" date
+  "filed_date" date
+  "i_so_culture" varchar(500)
+  "purchase_order_number" varchar(500)
+  "total_delivery_fee_amount" integer
+  "total_delivery_tax_amount" integer
+  "total_tax_amount" integer
+  "order_number" varchar(500) [not null]
+  "can_bill_now" boolean
+  "promise_date" date
+  "paid_date" date
+  "packed_date" date
+  "fulfilled_date" date
+  "total_booking_amount" integer
+  "adjusted_product_tax_amount" integer
+  "is_historical_only" boolean
+  "grand_total_amount" integer
+  "is_contracted" boolean
+  "adjusted_total_product_amount" integer
+  "order_discount" integer
+  "order_start_date" date
+  "cancel_date_type" varchar(500)
+  "is_reduction_order" boolean
+  "sales_order_system_state" varchar(500)
+  "is_suspended" boolean
+  "purchase_order_date" date
+  "billing_day_of_the_month" integer
+  "cancel_date" date
+  "tax_rate" integer
+  "developer_state_code" varchar(500) [not null]
+}
+
+Table "sales_order_payment_summary" {
+  "id" SERIAL [pk, increment]
+  "authorization_reversal_amount" integer
+  "authorization_amount" integer
+  "unapplied_amount" integer
+  "payment_amount" integer
+  "applied_amount" integer
+  "available_to_apply_balance_amount" integer
+  "captured_amount" integer
+}
+
+Table "sales_order_type" {
+  "id" SERIAL [pk, increment]
+}
+
+Table "sales_order_price_adjustment_type" {
+  "id" SERIAL [pk, increment]
+}
+
+Table "sales_order_tax" {
+  "id" SERIAL [pk, increment]
+  "sales_order_tax_amount" integer
+  "tax_addr_city_name" varchar(500)
+  "tax_error_mesage_text" varchar(500)
+  "tax_addr_street1_text" varchar(500)
+  "tax_rate_percent" integer [not null]
+  "tax_addr_street2_text" varchar(500)
+}
+
+Table "sales_order_product_note" {
+  "id" SERIAL [pk, increment]
+  "note_text" varchar(500) [not null]
+}
+
+Table "sales_order_product" {
+  "id" SERIAL [pk, increment]
+  "total_recurring_price_amount" integer
+  "total_line_adjustment_amount" integer
+  "total_price_amount" integer [not null]
+  "provisioning_date" date
+  "fulfilled_quantity" integer
+  "total_line_amount" integer
+  "promised_date" date
+  "recurring_price_amount" integer
+  "end_date" date
+  "gift_order_mesage_text" varchar(500)
+  "quantity_ordered_uo_m" varchar(500) [not null]
+  "total_product_tax_amount" integer
+  "line_adjustment_sub_total_amount" integer
+  "comment_text" varchar(500)
+  "order_product_number" varchar(500) [not null]
+  "ordered_quantity" integer [not null]
+  "unit_price_amount" integer
+  "requested_start_date" date
+  "subscription_renewal_month_quantity" integer
+  "order_manual_adjustment_sub_total_amount" integer
+  "allocated_quantity" integer
+  "allocation_partition_name" varchar(500)
+  "is_gift" boolean
+  "unit_tax_amount" integer
+  "delivery_tax_amount" integer
+  "is_bonus_product" boolean
+  "sales_order_product_adjusted_tax_amount" integer
+  "total_adjustment_amount" integer
+  "shipping_tax_amount" integer
+  "total_list_price_amount" integer
+  "total_adjustment_tax_amount" integer
+  "order_adjustment_sub_total_amount" integer
+  "subscription_term_quantity" integer
+  "total_distributed_adjustment_tax_amount" integer
+  "total_distributed_tax_amount" integer
+  "total_tax_amount" integer
+  "adjusted_delivery_tax_amount" integer
+  "list_price_amount" integer
+  "segment_index" integer
+  "shipping_cost_amount" integer
+  "is_bundle_root" boolean
+  "discount_amount" integer
+  "cancelled_quantity" integer
+  "list_price_quantity_uo_m" varchar(500) [not null]
+  "total_distributed_adjustment_amount" integer
+  "segment_index_number" integer
+  "total_unit_price_amount" integer
+  "available_quantity" integer
+  "requested_end_date" date
+  "allocation_group_name" varchar(500)
+  "gift_recipient_telephone_number" varchar(500)
+  "is_automatically_renewed" boolean
+  "discount_percent" integer
+  "total_manual_adjustment_amount" integer
+  "handling_cost_amount" integer
+}
+
+Table "sales_order_price_adjustment" {
+  "id" SERIAL [pk, increment]
+  "total_adjustment_tax_amount" integer
+}
+
+Table "sales_order_state" {
+  "id" SERIAL [pk, increment]
+}
+
+Table "sales_order_product_group" {
+  "id" SERIAL [pk, increment]
+}
+
+Table "sales_order_product_group_type" {
+  "id" SERIAL [pk, increment]
+}
+
+Table "sales_order_confirmation_state" {
+  "id" SERIAL [pk, increment]
+}
+
+Table "sales_order_change_type" {
+  "id" SERIAL [pk, increment]
+  "sales_order_change_type_name" varchar(500) [not null]
+}
+
+Table "price_adjustment_method" {
+  "id" SERIAL [pk, increment]
+}
+
+Table "sales_order_product_reason" {
+  "id" SERIAL [pk, increment]
+}
+
+Table "order_delivery_method" {
+  "id" SERIAL [pk, increment]
+  "external_record" varchar(500) [not null]
+}
+
+Table "sales_order_change_log" {
+  "id" SERIAL [pk, increment]
+}
+
+Table "sales_order_product_tax" {
+  "id" SERIAL [pk, increment]
+  "tax_effective_date" date
+  "tax_amount" integer [not null]
+  "sales_order_tax_amount" integer
+  "tax_addr_city_name" varchar(500)
+  "tax_error_mesage_text" varchar(500)
+  "tax_addr_street1_text" varchar(500)
+  "tax_rate_percent" integer [not null]
+  "tax_addr_street2_text" varchar(500)
+}
+
+Table "price_adjustment_group" {
+  "price_adjustment_group_id" integer [pk, unique, not null]
+}
+
+Table "sales_order_delivery_group" {
+  "id" SERIAL [pk, increment]
+  "promised_date" date
+  "is_gift" boolean
+  "gift_mesage_text" varchar(500)
+  "desired_delivery_date" date
+  "delivery_instructions_text" varchar(500)
+  "total_unit_price_amount" integer [not null]
+  "total_delivery_charge_amount" integer
+  "total_delivery_adjustment_amount" integer
+  "total_delivery_tax_amount" integer
+  "total_delivery_charge_tax_amount" integer
+  "total_delivery_adjustment_tax_amount" integer
+  "total_tax_amount" integer
+  "total_product_tax_amount" integer
+  "total_price_amount" integer [not null]
+  "grand_total_delivery_amount" integer
+  "sales_order_delivery_group_number" varchar(500) [not null]
+}
+
+Table "sales_order_product_state" {
+  "id" SERIAL [pk, not null, increment]
+}
+
+Table "sales_order_segment" {
+  "id" SERIAL [pk, increment]
+}
+
+Table "sales_channel" {
+  "id" SERIAL [pk, increment]
+  "external_record" varchar(500) [not null]
+  "sales_channel_number" varchar(500) [not null]
+}
+
+Table "product_related_product" {
+  "id" SERIAL [pk, increment]
+  "is_default_option" boolean [not null]
+}
+
+Table "product_translation" {
+  "id" SERIAL [pk, increment]
+}
+
+Table "product_image" {
+  "id" SERIAL [pk, increment]
+  "is_default_image" boolean [not null]
+  "image_view_type" varchar(500)
+}
+
+Table "product_relationship_type" {
+  "id" SERIAL [pk, increment]
+  "parent_product_role" varchar(500) [not null]
+  "child_product_role" varchar(500) [not null]
+}
+
+Table "product_image_translation" {
+  "id" SERIAL [pk, increment]
+  "translated_name" varchar(500) [not null]
+}
+
+Table "goods_product" {
+  "id" SERIAL [pk, increment]
+  "product_security_requirement" varchar(500)
+  "season" varchar(500)
+  "color" varchar(500)
+  "style" varchar(500)
+  "is_made_to_order" boolean [not null]
+  "height" integer
+  "fabric" varchar(500)
+  "required_temperature_uo_m" varchar(500)
+  "shelf_facing_unit_count" integer
+  "required_humidity_percentage" integer
+  "required_temperature_lowest_number" integer
+  "gender" varchar(500)
+  "max_holding_day_count" integer
+  "diameter" integer
+  "is_perishable" boolean [not null]
+  "required_cleanup_proces" varchar(500)
+  "pattern" varchar(500)
+  "required_temperature_highest_number" integer
+  "environment_requirement" varchar(500)
+  "drained_weight" integer
+  "net_weight" integer
+  "age" varchar(500)
+  "gros_weight" integer
+  "tare_weight" integer
+  "depth" integer
+  "width" integer
+  "size_uo_m" varchar(500)
+  "weight_uo_m" varchar(500)
+  "requires_unit_price_label" boolean [not null]
+  "product_may_expand" boolean [not null]
+  "quantity_schedule_type" varchar(500)
+  "disposal_type" varchar(500)
+  "minimum_advertisement_amount" integer
+  "is_back_ordered" boolean [not null]
+  "valid_for_period_count" integer
+  "is_worker_discount_allowed" boolean [not null]
+  "allow_partial_refund" boolean
+  "is_weight_entry_required" boolean [not null]
+  "is_quantity_entry_required" boolean [not null]
+  "is_serialized" boolean [not null]
+  "reward_program_points_count" integer
+  "revenue_installment_period" varchar(500)
+  "is_auto_provisionable" boolean [not null]
+  "is_coupon_redemption_allowed" boolean [not null]
+  "is_sellable_independently" boolean [not null]
+  "can_use_revenue_schedule" boolean [not null]
+  "manufacturer_name" varchar(500)
+  "is_intellectual_property_protected" boolean
+  "model_year" integer
+  "is_customer_discount_allowed" boolean [not null]
+  "product_state" varchar(500) [not null]
+  "brand_grade" varchar(500)
+  "quantity_installment_count" integer
+  "required_deposit_amount" integer
+  "revenue_schedule_type" varchar(500)
+  "is_pre_orderable" boolean [not null]
+  "requires_invididual_unit_pricing" boolean [not null]
+  "standard_warranty_length_month" integer
+  "can_use_quantity_schedule" boolean [not null]
+  "is_installable" boolean [not null]
+  "is_rain_check_allowed" boolean [not null]
+  "minimum_advertisement_amount_start_date" integer
+  "maximum_order_quantity_count" integer
+  "is_multiple_coupons_allowed" boolean [not null]
+  "allow_customer_return" boolean
+  "model_number" varchar(500)
+  "msr_pamount" integer
+  "external_source_record" varchar(500)
+  "is_sellable" boolean
+  "valid_to_date" date
+  "price_charge_type" varchar(500) [not null]
+  "is_partner_discount_allowed" boolean [not null]
+  "revenue_installment_count" integer
+  "product_sku" varchar(500) [not null]
+  "quantity_installment_period" varchar(500)
+  "is_manual_price_entry_required" boolean [not null]
+  "is_sellable_without_price" boolean [not null]
+  "gl_account_code" varchar(500)
+  "is_returnable" boolean [not null]
+  "display_url" varchar(500)
+  "version_number" varchar(500)
+  "lot_identifier" varchar(500)
+  "valid_from_date" date
+  "stock_ledger_valuation_amount" integer
+  "is_dynamic_bundle" boolean [not null]
+  "is_quality_verification_required" boolean [not null]
+  "required_deposit_percentage" integer
+  "is_foodstamp_payment_allowed" boolean [not null]
+  "minimum_order_quantity_count" integer
+}
+
+Table "service_product" {
+  "id" SERIAL [pk, increment]
+  "rental_term_violation_penalty_amount" integer
+  "evergreen_contract_estimated_month_count" integer
+  "evergreen_contract_estimated_charge_amount" integer
+  "service_period_uo_m" varchar(500)
+  "service_period_count" integer
+  "rental_cleanup_fee_amount" integer
+  "service_type" varchar(500) [not null]
+  "quantity_schedule_type" varchar(500)
+  "disposal_type" varchar(500)
+  "long_description" varchar(500) [not null]
+  "minimum_advertisement_amount" integer
+  "is_back_ordered" boolean [not null]
+  "valid_for_period_count" integer
+  "is_worker_discount_allowed" boolean [not null]
+  "allow_partial_refund" boolean
+  "is_weight_entry_required" boolean [not null]
+  "is_quantity_entry_required" boolean [not null]
+  "is_serialized" boolean [not null]
+  "reward_program_points_count" integer
+  "revenue_installment_period" varchar(500)
+  "is_auto_provisionable" boolean [not null]
+  "is_coupon_redemption_allowed" boolean [not null]
+  "is_sellable_independently" boolean [not null]
+  "can_use_revenue_schedule" boolean [not null]
+  "manufacturer_name" varchar(500)
+  "is_intellectual_property_protected" boolean
+  "model_year" integer
+  "is_customer_discount_allowed" boolean [not null]
+  "product_state" varchar(500) [not null]
+  "brand_grade" varchar(500)
+  "quantity_installment_count" integer
+  "required_deposit_amount" integer
+  "revenue_schedule_type" varchar(500)
+  "is_pre_orderable" boolean [not null]
+  "requires_invididual_unit_pricing" boolean [not null]
+  "standard_warranty_length_month" integer
+  "can_use_quantity_schedule" boolean [not null]
+  "is_installable" boolean [not null]
+  "is_rain_check_allowed" boolean [not null]
+  "minimum_advertisement_amount_start_date" integer
+  "maximum_order_quantity_count" integer
+  "is_multiple_coupons_allowed" boolean [not null]
+  "allow_customer_return" boolean
+  "model_number" varchar(500)
+  "m_sr_pamount" integer
+  "external_source_record" varchar(500)
+  "is_sellable" boolean
+  "valid_to_date" date
+  "price_charge_type" varchar(500) [not null]
+  "is_partner_discount_allowed" boolean [not null]
+  "revenue_installment_count" integer
+  "product_sk_u" varchar(500) [not null]
+  "quantity_installment_period" varchar(500)
+  "is_manual_price_entry_required" boolean [not null]
+  "is_sellable_without_price" boolean [not null]
+  "gl_account_code" varchar(500)
+  "is_returnable" boolean [not null]
+  "display_url" varchar(500)
+  "version_number" varchar(500)
+  "lot_identifier" varchar(500)
+  "valid_from_date" date
+  "stock_ledger_valuation_amount" integer
+  "is_dynamic_bundle" boolean [not null]
+  "is_quality_verification_required" boolean [not null]
+  "required_deposit_percentage" integer
+  "is_foodstamp_payment_allowed" boolean [not null]
+  "minimum_order_quantity_count" integer
+}
+
+Table "product" {
+  "id" SERIAL [pk, increment]
+  "product_category" INTEGER
+  "rating" float
+  "default_variant" TEXT [not null]
+  "charge_taxes" BOOLEAN
+  "tax_clas" TEXT [not null]
+
+  "manufacturer_name" varchar(500)
+  "model_year" integer
+  "model_number" varchar(500)
+  "quantity_schedule_type" varchar(500)
+  "disposal_type" varchar(500)
+  "minimum_advertisement_amount" integer
+  "is_back_ordered" boolean [not null]
+  "valid_for_period_count" integer
+  "is_worker_discount_allowed" boolean [not null]
+  "allow_partial_refund" boolean
+  "is_weight_entry_required" boolean [not null]
+  "is_quantity_entry_required" boolean [not null]
+  "is_serialized" boolean [not null]
+  "reward_program_points_count" integer
+  "revenue_installment_period" varchar(500)
+  "is_auto_provisionable" boolean [not null]
+  "is_coupon_redemption_allowed" boolean [not null]
+  "is_sellable_independently" boolean [not null]
+  "can_use_revenue_schedule" boolean [not null]
+  "is_intellectual_property_protected" boolean
+  "is_customer_discount_allowed" boolean [not null]
+  "product_state" varchar(500) [not null]
+  "brand_grade" varchar(500)
+  "quantity_installment_count" integer
+  "required_deposit_amount" integer
+  "revenue_schedule_type" varchar(500)
+  "is_pre_orderable" boolean [not null]
+  "requires_invididual_unit_pricing" boolean [not null]
+  "standard_warranty_length_month" integer
+  "can_use_quantity_schedule" boolean [not null]
+  "is_installable" boolean [not null]
+  "is_rain_check_allowed" boolean [not null]
+  "minimum_advertisement_amount_start_date" integer
+  "maximum_order_quantity_count" integer
+  "is_multiple_coupons_allowed" boolean [not null]
+  "allow_customer_return" boolean
+  "m_sr_pamount" integer
+  "external_source_record" varchar(500)
+  "is_sellable" boolean
+  "valid_to_date" date
+  "price_charge_type" varchar(500) [not null]
+  "is_partner_discount_allowed" boolean [not null]
+  "revenue_installment_count" integer
+  "product_sku" varchar(500) [not null]
+  "quantity_installment_period" varchar(500)
+  "is_manual_price_entry_required" boolean [not null]
+  "is_sellable_without_price" boolean [not null]
+  "gl_account_code" varchar(500)
+  "is_returnable" boolean [not null]
+  "display_url" varchar(500)
+  "version_number" varchar(500)
+  "lot_identifier" varchar(500)
+  "valid_from_date" date
+  "stock_ledger_valuation_amount" integer
+  "is_dynamic_bundle" boolean [not null]
+  "is_quality_verification_required" boolean [not null]
+  "required_deposit_percentage" integer
+  "is_foodstamp_payment_allowed" boolean [not null]
+  "minimum_order_quantity_count" integer
+
+  Indexes {
+        product_category [name: "idx_product__product_category"]
+    }
+}
+
+Table "brand" {
+  "id" SERIAL [pk, increment]
+  "brand_grade" varchar(500) [not null]
+}
+
+Table "bundle_product" {
+  "id" SERIAL [pk, increment]
+  "expected_waste_count" integer
+  "quantity_count" integer
+  "tare_weight" integer
+  "bundled_products_substitutional" boolean [not null]
+  "bundled_products_decided_at_use" boolean
+  "bundled_products_decides_availability" boolean
+  "bundled_products_sold_together" boolean [not null]
+  "weight_uo_m" varchar(500)
+  "quantity_unit_of_measure" varchar(500)
+  "quantity_schedule_type" varchar(500)
+  "disposal_type" varchar(500)
+  "long_description" varchar(500) [not null]
+  "minimum_advertisement_amount" integer
+  "is_back_ordered" boolean [not null]
+  "valid_for_period_count" integer
+  "is_worker_discount_allowed" boolean [not null]
+  "allow_partial_refund" boolean
+  "is_weight_entry_required" boolean [not null]
+  "is_quantity_entry_required" boolean [not null]
+  "is_serialized" boolean [not null]
+  "reward_program_points_count" integer
+  "revenue_installment_period" varchar(500)
+  "is_auto_provisionable" boolean [not null]
+  "is_coupon_redemption_allowed" boolean [not null]
+  "is_sellable_independently" boolean [not null]
+  "can_use_revenue_schedule" boolean [not null]
+  "manufacturer_name" varchar(500)
+  "is_intellectual_property_protected" boolean
+  "model_year" integer
+  "is_customer_discount_allowed" boolean [not null]
+  "product_state" varchar(500) [not null]
+  "brand_grade" varchar(500)
+  "quantity_installment_count" integer
+  "required_deposit_amount" integer
+  "revenue_schedule_type" varchar(500)
+  "is_pre_orderable" boolean [not null]
+  "requires_invididual_unit_pricing" boolean [not null]
+  "standard_warranty_length_month" integer
+  "can_use_quantity_schedule" boolean [not null]
+  "is_installable" boolean [not null]
+  "is_rain_check_allowed" boolean [not null]
+  "minimum_advertisement_amount_start_date" integer
+  "maximum_order_quantity_count" integer
+  "is_multiple_coupons_allowed" boolean [not null]
+  "allow_customer_return" boolean
+  "model_number" varchar(500)
+  "msr_pamount" integer
+  "external_source_record" varchar(500)
+  "is_sellable" boolean
+  "valid_to_date" date
+  "price_charge_type" varchar(500) [not null]
+  "is_partner_discount_allowed" boolean [not null]
+  "revenue_installment_count" integer
+  "product_sku" varchar(500) [not null]
+  "quantity_installment_period" varchar(500)
+  "is_manual_price_entry_required" boolean [not null]
+  "is_sellable_without_price" boolean [not null]
+  "gl_account_code" varchar(500)
+  "is_returnable" boolean [not null]
+  "display_url" varchar(500)
+  "version_number" varchar(500)
+  "lot_identifier" varchar(500)
+  "valid_from_date" date
+  "stock_ledger_valuation_amount" integer
+  "is_dynamic_bundle" boolean [not null]
+  "is_quality_verification_required" boolean [not null]
+  "required_deposit_percentage" integer
+  "is_foodstamp_payment_allowed" boolean [not null]
+  "minimum_order_quantity_count" integer
+}
+
+Table "uncategorized_party_primary_account_join" {
+  "account_id" integer [not null]
+  "uncategorized_party_id" integer [not null]
+  indexes {
+   (account_id, uncategorized_party_id) [pk]
+  }
+}
+
+Table "person_language_individual_join" {
+  "individual_id" integer [not null]
+  "person_language_id" integer [not null]
+  indexes {
+   (individual_id, person_language_id) [pk]
+  }
+}
+
+Table "education_individual_join" {
+  "individual_id" integer [not null]
+  "education_id" integer [not null]
+  indexes {
+   (individual_id, education_id) [pk]
+  }
+}
+
+Table "individual_primary_household_join" {
+  "individual_id" integer [not null]
+  "household_id" integer [not null]
+  indexes {
+   (individual_id, household_id) [pk]
+  }
+}
+
+Table "individual_primary_account_join" {
+  "individual_id" integer [not null]
+  "account_id" integer [not null]
+  indexes {
+   (individual_id, account_id) [pk]
+  }
+}
+
+
+Table "work_history_individual_join" {
+  "individual_id" integer [not null]
+  "work_history_id" integer [not null]
+
+  indexes {
+   (individual_id, work_history_id) [pk]
+  }
+}
+
+Table "party_identification_party_role_join" {
+  "party_identification_id" integer [not null]
+  "party_role_id" integer [not null]
+
+  indexes {
+   (party_identification_id, party_role_id) [pk]
+  }
+}
+
+Table "party_identification_party_join" {
+  "party_identification_id" integer [not null]
+  "party_id" integer [not null]
+
+  indexes {
+   (party_identification_id, party_id) [pk]
+  }
+}
+
+Table "party_related_party_party_relationship_type_join" {
+  "party_related_party_id" integer [not null]
+  "party_relationship_type_id" integer [not null]
+
+   indexes {
+   (party_related_party_id, party_relationship_type_id) [pk]
+  }
+}
+
+Table "party_related_party_related_party_join" {
+  "party_related_party_id" integer [not null]
+  "party_id" integer [not null]
+  indexes {
+   (party_related_party_id, party_id) [pk]
+  }
+}
+
+Table "party_related_party_party_join" {
+  "party_related_party_id" integer [not null]
+  "party_id" integer [not null]
+
+  indexes {
+   (party_related_party_id, party_id) [unique]
+  }
+}
+
+Table "party_additional_name_party_join" {
+  "party_additional_name_id" integer [not null]
+  "party_id" integer [not null]
+
+  indexes {
+   (party_additional_name_id, party_id) [pk]
+  }
+}
+
+Table "household_primary_account_join" {
+  "household_id" integer [not null]
+  "account_id" integer [not null]
+   indexes {
+   (household_id, account_id) [pk]
+  }
+}
+
+Table "person_life_event_individual_join" {
+  "person_life_event_id" integer [not null]
+  "individual_id" integer [not null]
+  indexes {
+   (person_life_event_id, individual_id) [pk]
+  }
+}
+
+Table "party_primary_account_join" {
+  "party_id" integer [not null]
+  "account_id" integer [not null]
+   indexes {
+   (party_id, account_id) [pk]
+  }
+}
+
+Table "internal_busines_unit_parent_internal_busines_unit_join" {
+  "internal_busines_unit_id_left" integer [not null]
+  "internal_busines_unit_id_right" integer [not null]
+  indexes {
+   (internal_busines_unit_id_left, internal_busines_unit_id_right) [pk]
+  }
+}
+
+Table "internal_busines_unit_primary_account_join" {
+  "internal_busines_unit_id" integer [not null]
+  "account_id" integer [not null]
+  indexes {
+   (internal_busines_unit_id, account_id) [pk]
+  }
+}
+
+
+
+
+
+Table "party_web_addr_party_join" {
+  "party_web_addr_id" integer [not null]
+  "party_id" integer [not null]
+
+  indexes {
+   (party_web_addr_id, party_id) [pk]
+  }
+}
+
+Table "party_web_addr_party_role_join" {
+  "party_web_addr_id" integer [not null]
+  "party_role_id" integer [not null]
+
+  indexes {
+   (party_web_addr_id, party_role_id) [pk]
+  }
+}
+
+
+
+Table "account_contact_role_account_contact_join" {
+  "account_contact_role_id" integer [not null]
+  "account_contact_id" integer [not null]
+
+  indexes {
+   (account_contact_role_id, account_contact_id) [pk]
+  }
+}
+
+Table "account_contact_reports_to_account_contact_join" {
+  "account_contact_id_left" integer [not null]
+  "account_contact_id_right" integer [not null]
+
+  indexes {
+   (account_contact_id_left, account_contact_id_right) [pk]
+  }
+}
+
+
+
+Table "account_contact_account_join" {
+  "account_contact_id" integer [not null]
+  "account_id" integer [not null]
+
+  indexes {
+  (account_contact_id, account_id)[pk]
+  }
+}
+
+
+
+
+
+
+Table "account_contact_indirect_relation_account_contact_join" {
+  "account_contact_id_left" integer [not null]
+  "account_contact_id_right" integer [not null]
+
+  indexes {
+  (account_contact_id_left, account_contact_id_right)[pk]
+  }
+}
+
+Table "account_contact_individual_join" {
+  "account_contact_id" integer [not null]
+  "individual_id" integer [not null]
+
+  indexes {
+  (account_contact_id, individual_id)[pk]
+  }
+}
+
+
+Table "account_partner_account_join" {
+  "account_partner_id" integer [not null]
+  "account_id" integer [not null]
+
+   indexes {
+  (account_partner_id, account_id)[pk]
+  }
+}
+
+Table "account_partner_partner_account_join" {
+  "account_partner_id" integer [not null]
+  "account_id" integer [not null]
+
+  indexes {
+  (account_partner_id, account_id)[pk]
+  }
+}
+
+
+
+Table "account_bill_frequency_join" {
+  "account_id" integer [not null]
+  "billing_frequency_id" integer [not null]
+
+  indexes {
+  (account_id, billing_frequency_id)[pk]
+  }
+}
+
+Table "account_party_role_join" {
+  "account_id" integer [not null]
+  "party_role_id" integer [not null]
+
+  indexes {
+  (account_id, party_role_id)[pk]
+  }
+}
+
+
+
+Table "account_auto_payment_method_join" {
+  "account_id" integer [not null]
+  "payment_method_id" integer [not null]
+
+  indexes {
+  (account_id, payment_method_id)[pk]
+  }
+}
+
+
+
+Table "account_party_join" {
+  "account_id" integer [not null]
+  "party_id" integer [not null]
+
+  indexes {
+  (account_id, party_id)[pk]
+  }
+}
+
+Table "account_parent_account_join" {
+  "account_id_left" integer [not null]
+  "account_id_right" integer [not null]
+
+  indexes {
+  (account_id_left, account_id_right)[pk]
+  }
+}
+
+Table "account_shipping_contact_join" {
+  "account_id" integer [not null]
+  "account_contact_id" integer [not null]
+
+  indexes {
+  (account_id, account_contact_id)[pk]
+  }
+}
+
+Table "account_shipping_phoneid_join" {
+  "account_id" integer [not null]
+  "contact_point_phone_id" integer [not null]
+
+  indexes {
+  (account_id, contact_point_phone_id)[pk]
+  }
+}
+
+Table "account_shipping_email_join" {
+  "account_id" integer [not null]
+  "contact_point_email_id" integer [not null]
+
+  indexes {
+  (account_id, contact_point_email_id)[pk]
+  }
+}
+
+Table "account_order_delivery_method_join" {
+  "account_id" integer [not null]
+  "order_delivery_method_id" integer [not null]
+
+  indexes {
+  (account_id, order_delivery_method_id)[pk]
+  }
+}
+
+Table "account_primary_sales_contact_point_join" {
+  "account_id" integer [not null]
+  "contact_point_id" integer [not null]
+
+  indexes {
+  (account_id, contact_point_id)[pk]
+  }
+}
+
+Table "supplier_party_join" {
+  "supplier_id" integer [not null]
+  "party_id" integer [not null]
+
+  indexes {
+  (supplier_id, party_id)[pk]
+  }
+}
+
+Table "customer_state_history_party_role_join" {
+  "customer_state_history_id" integer [not null]
+  "party_role_id" integer [not null]
+
+   indexes {
+  (customer_state_history_id, party_role_id)[pk]
+  }
+}
+
+Table "competitor_party_join" {
+  "competitor_id" integer [not null]
+  "party_id" integer [not null]
+
+   indexes {
+  (competitor_id, party_id)[pk]
+  }
+}
+
+Table "seller_party_join" {
+  "seller_id" integer [not null]
+  "party_id" integer [not null]
+
+   indexes {
+  (seller_id, party_id)[pk]
+  }
+}
+
+Table "customer_party_join" {
+  "customer_id" integer [not null]
+  "party_id" integer [not null]
+
+  indexes {
+  (customer_id, party_id)[pk]
+  }
+}
+
+Table "party_role_party_join" {
+  "party_role_id" integer [not null]
+  "party_id" integer [not null]
+
+  indexes {
+  (party_role_id, party_id)[pk]
+  }
+}
+
+Table "lead_fax_contact_phone_join" {
+  "lead_id" integer [not null]
+  "contact_point_phone_id" integer [not null]
+
+  indexes {
+  (lead_id, contact_point_phone_id)[pk]
+  }
+}
+
+Table "lead_party_role_join" {
+  "lead_id" integer [not null]
+  "party_role_id" integer [not null]
+
+   indexes {
+  (lead_id, party_role_id)[pk]
+  }
+}
+
+
+
+Table "lead_mobile_contact_phone_join" {
+  "lead_id" integer [not null]
+  "contact_point_phone_id" integer [not null]
+
+  indexes {
+  (lead_id, contact_point_phone_id)[pk]
+  }
+}
+
+
+Table "lead_converted_to_account_join" {
+  "lead_id" integer [not null]
+  "account_id" integer [not null]
+
+  indexes {
+  (lead_id, account_id)[pk]
+  }
+}
+
+Table "lead_converted_to_account_contact_join" {
+  "lead_id" integer [not null]
+  "account_contact_id" integer [not null]
+
+  indexes {
+  (lead_id, account_contact_id)[pk]
+  }
+}
+
+
+
+Table "lead_partner_account_join" {
+  "lead_id" integer [not null]
+  "account_id" integer [not null]
+
+  indexes {
+  (lead_id, account_id)[pk]
+  }
+}
+
+Table "credit_tender_account_join" {
+  "credit_tender_id" integer [not null]
+  "account_id" integer [not null]
+
+  indexes {
+  (credit_tender_id, account_id)[pk]
+  }
+}
+
+Table "credit_tender_payment_method_type_join" {
+  "credit_tender_id" integer [not null]
+  "payment_method_type_id" integer [not null]
+
+  indexes {
+  (credit_tender_id, payment_method_type_id)[pk]
+  }
+}
+
+Table "payment_card_payment_method_type_join" {
+  "payment_card_id" integer [not null]
+  "payment_method_type_id" integer [not null]
+
+  indexes {
+  (payment_card_id, payment_method_type_id)[pk]
+  }
+}
+
+Table "coupon_manufacturer_join" {
+  "coupon_id" integer [not null]
+  "party_id" integer [not null]
+
+  indexes {
+  (coupon_id, party_id)[pk]
+  }
+}
+
+Table "coupon_payment_method_type_join" {
+  "coupon_id" integer [not null]
+  "payment_method_type_id" integer [not null]
+
+  indexes {
+  (coupon_id, payment_method_type_id)[pk]
+  }
+}
+
+Table "payment_method_payment_method_type_join" {
+  "payment_method_id" integer [not null]
+  "payment_method_type_id" integer [not null]
+
+  indexes {
+  (payment_method_id, payment_method_type_id)[pk]
+  }
+}
+
+Table "payment_credit_memo_application_payment_join" {
+  "payment_credit_memo_application_id" integer [not null]
+  "payment_id" integer [not null]
+
+  indexes {
+  (payment_credit_memo_application_id, payment_id)[pk]
+  }
+}
+
+Table "pay_gat_aut_rev_log_pay_aut_rev_join" {
+  "payment_gateway_auth_reversal_log_id" integer [not null]
+  "payment_authorization_reversal_id" integer [not null]
+
+  indexes {
+  (payment_gateway_auth_reversal_log_id, payment_authorization_reversal_id)[pk]
+  }
+}
+
+Table "pay_gat_aut_rev_log_pay_gat_int_typ_join" {
+  "payment_gateway_auth_reversal_log_id" integer [not null]
+  "payment_gateway_interaction_type_id" integer [not null]
+
+  indexes {
+  (payment_gateway_auth_reversal_log_id, payment_gateway_interaction_type_id)[pk]
+  }
+}
+
+Table "payment_gateway_auth_reversal_log_payment_gateway_result_join" {
+  "payment_gateway_auth_reversal_log_id" integer [not null]
+  "payment_gateway_result_code_id" integer [not null]
+   indexes {
+  (payment_gateway_auth_reversal_log_id, payment_gateway_result_code_id)[pk]
+  }
+}
+
+Table "payment_authorization_reversal_capture_payment_join" {
+  "payment_authorization_reversal_id" integer [not null]
+  "capture_payment_capture_payment_id" integer [not null]
+
+  indexes {
+  (payment_authorization_reversal_id, capture_payment_capture_payment_id)[pk]
+  }
+}
+
+Table "payment_authorization_reversal_payment_gateway_result_join" {
+  "payment_authorization_reversal_id" integer [not null]
+  "payment_gateway_result_code_id" integer [not null]
+  indexes {
+  (payment_authorization_reversal_id, payment_gateway_result_code_id)[pk]
+  }
+}
+
+Table "payment_authorization_reversal_payment_authorization_join" {
+  "payment_authorization_reversal_id" integer [not null]
+  "payment_authorization_id" integer [not null]
+  indexes {
+  (payment_authorization_reversal_id, payment_authorization_id)[pk]
+  }
+}
+
+Table "payment_allocation_related_payment_allocation_join" {
+  "payment_allocation_id_left" integer [not null]
+  "payment_allocation_id_right" integer [not null]
+
+  indexes {
+  (payment_allocation_id_left, payment_allocation_id_right)[pk]
+  }
+}
+
+Table "payment_application_payment_join" {
+  "payment_application_id" integer [not null]
+  "payment_id" integer [not null]
+
+  indexes {
+  (payment_application_id, payment_id)[pk]
+  }
+}
+
+Table "payment_invoice_application_payment_join" {
+  "payment_invoice_application_id" integer [not null]
+  "payment_id" integer [not null]
+
+  indexes {
+  (payment_invoice_application_id, payment_id)[pk]
+  }
+}
+
+Table "refund_credit_memo_allocation_related_refund_allocation_join" {
+  "refund_credit_memo_allocation_id" integer [not null]
+  "refund_allocation_id" integer [not null]
+
+  indexes {
+  (refund_credit_memo_allocation_id, refund_allocation_id)[pk]
+  }
+}
+
+Table "refund_credit_memo_allocation_refund_payment_join" {
+  "refund_credit_memo_allocation_id" integer [not null]
+  "refund_payment_id" integer [not null]
+
+   indexes {
+  (refund_credit_memo_allocation_id, refund_payment_id)[pk]
+  }
+}
+
+Table "payment_gateway_payment_log_payment_join" {
+  "payment_gateway_payment_log_id" integer [not null]
+  "payment_id" integer [not null]
+
+   indexes {
+  (payment_gateway_payment_log_id, payment_id)[pk]
+  }
+}
+
+Table "pay_gat_pay_log_pay_gat_int_typ_join" {
+  "payment_gateway_payment_log_id" integer [not null]
+  "payment_gateway_interaction_type_id" integer [not null]
+
+  indexes {
+  (payment_gateway_payment_log_id, payment_gateway_interaction_type_id)[pk]
+  }
+}
+
+Table "payment_gateway_payment_log_payment_gateway_result_join" {
+  "payment_gateway_payment_log_id" integer [not null]
+  "payment_gateway_result_code_id" integer [not null]
+
+  indexes {
+  (payment_gateway_payment_log_id, payment_gateway_result_code_id)[pk]
+  }
+}
+
+Table "refund_allocation_related_refund_allocation_join" {
+  "refund_allocation_id_left" integer [not null]
+  "refund_allocation_id_right" integer [not null]
+  indexes {
+  (refund_allocation_id_left, refund_allocation_id_right)[pk]
+  }
+}
+
+Table "refund_allocation_refund_payment_join" {
+  "refund_allocation_id" integer [not null]
+  "refund_payment_id" integer [not null]
+
+  indexes {
+  (refund_allocation_id, refund_payment_id)[pk]
+  }
+}
+
+Table "payment_gateway_authorization_log_payment_authorization_join" {
+  "payment_gateway_authorization_log_id" integer [not null]
+  "payment_authorization_id" integer [not null]
+
+  indexes {
+  (payment_gateway_authorization_log_id, payment_authorization_id)[pk]
+  }
+}
+
+Table "pay_gat_aut_log_pay_gat_int_typ_join" {
+  "payment_gateway_authorization_log_id" integer [not null]
+  "payment_gateway_interaction_type_id" integer [not null]
+
+  indexes {
+  (payment_gateway_authorization_log_id, payment_gateway_interaction_type_id)[pk]
+  }
+}
+
+Table "payment_gateway_authorization_log_payment_gateway_result_join" {
+  "payment_gateway_authorization_log_id" integer [not null]
+  "payment_gateway_result_code_id" integer [not null]
+
+  indexes {
+  (payment_gateway_authorization_log_id, payment_gateway_result_code_id)[pk]
+  }
+}
+
+Table "payment_invoice_allocation_payment_invoice_application_join" {
+  "payment_invoice_allocation_id" integer [not null]
+  "payment_invoice_application_id" integer [not null]
+
+  indexes {
+  (payment_invoice_allocation_id, payment_invoice_application_id)[pk]
+  }
+}
+
+Table "payment_invoice_allocation_related_payment_allocation_join" {
+  "payment_invoice_allocation_id" integer [not null]
+  "payment_allocation_id" integer [not null]
+
+  indexes {
+  (payment_invoice_allocation_id, payment_allocation_id)[pk]
+  }
+}
+
+Table "payment_account_join" {
+  "payment_id" integer [not null]
+  "account_id" integer [not null]
+
+   indexes {
+  (payment_id, account_id)[pk]
+  }
+}
+
+Table "payment_sales_order_payment_summary_join" {
+  "payment_id" integer [not null]
+  "sales_order_payment_summary_id" integer [not null]
+   indexes {
+  (payment_id, sales_order_payment_summary_id)[pk]
+  }
+}
+
+Table "payment_latest_gateway_result_code_join" {
+  "payment_id" integer [not null]
+  "payment_gateway_result_code_id" integer [not null]
+   indexes {
+  (payment_id, payment_gateway_result_code_id)[pk]
+  }
+}
+
+Table "payment_payment_group_join" {
+  "payment_id" integer [not null]
+  "payment_group_id" integer [not null]
+   indexes {
+  (payment_id, payment_group_id)[pk]
+  }
+}
+
+Table "payment_payment_method_join" {
+  "payment_id" integer [not null]
+  "payment_method_id" integer [not null]
+
+  indexes {
+  (payment_id, payment_method_id)[pk]
+  }
+}
+
+Table "payment_payment_gateway_join" {
+  "payment_id" integer [not null]
+  "payment_gateway_id" integer [not null]
+
+   indexes {
+  (payment_id, payment_gateway_id)[pk]
+  }
+}
+
+Table "payment_payment_treatment_join" {
+  "payment_id" integer [not null]
+  "payment_treatment_id" integer [not null]
+
+  indexes {
+  (payment_id, payment_treatment_id)[pk]
+  }
+}
+
+Table "payment_internal_busines_unit_join" {
+  "payment_id" integer [not null]
+  "internal_busines_unit_id" integer [not null]
+
+   indexes {
+  (payment_id, internal_busines_unit_id)[pk]
+  }
+}
+
+Table "payment_credit_memo_allocation_related_payment_allocation_join" {
+  "payment_credit_memo_allocation_id" integer [not null]
+  "payment_allocation_id" integer [not null]
+
+   indexes {
+  (payment_credit_memo_allocation_id, payment_allocation_id)[pk]
+  }
+}
+
+Table "payment_treatment_payment_treatment_method_join" {
+  "payment_treatment_id" integer [not null]
+  "payment_treatment_method_id" integer [not null]
+
+   indexes {
+  (payment_treatment_id, payment_treatment_method_id)[pk]
+  }
+}
+
+Table "payment_treatment_payment_policy_join" {
+  "payment_treatment_id" integer [not null]
+  "payment_policy_id" integer [not null]
+
+  indexes {
+  (payment_treatment_id, payment_policy_id)[pk]
+  }
+}
+
+Table "payment_authorization_sales_order_payment_summary_join" {
+  "payment_authorization_id" integer [not null]
+  "sales_order_payment_summary_id" integer [not null]
+
+  indexes {
+  (payment_authorization_id, sales_order_payment_summary_id)[pk]
+  }
+}
+
+Table "payment_authorization_payment_group_join" {
+  "payment_authorization_id" integer [not null]
+  "payment_group_id" integer [not null]
+
+  indexes {
+  (payment_authorization_id, payment_group_id)[pk]
+  }
+}
+
+Table "payment_authorization_payment_gateway_join" {
+  "payment_authorization_id" integer [not null]
+  "payment_gateway_id" integer [not null]
+
+  indexes {
+  (payment_authorization_id, payment_gateway_id)[pk]
+  }
+}
+
+Table "payment_authorization_payment_gateway_result_join" {
+  "payment_authorization_id" integer [not null]
+  "payment_gateway_result_code_id" integer [not null]
+
+  indexes {
+  (payment_authorization_id, payment_gateway_result_code_id)[pk]
+  }
+}
+
+Table "payment_authorization_payment_method_join" {
+  "payment_authorization_id" integer [not null]
+  "payment_method_id" integer [not null]
+
+  indexes {
+  (payment_authorization_id, payment_method_id)[pk]
+  }
+}
+
+Table "refund_payment_allocation_capture_payment_join" {
+  "refund_payment_allocation_id" integer [not null]
+  "capture_payment_capture_payment_id" integer [not null]
+
+  indexes {
+  (refund_payment_allocation_id, capture_payment_capture_payment_id)[pk]
+  }
+}
+
+Table "refund_payment_allocation_related_refund_allocation_join" {
+  "refund_payment_allocation_id" integer [not null]
+  "refund_allocation_id" integer [not null]
+
+  indexes {
+  (refund_payment_allocation_id, refund_allocation_id)[pk]
+  }
+}
+
+Table "refund_payment_allocation_refund_payment_join" {
+  "refund_payment_allocation_id" integer [not null]
+  "refund_payment_id" integer [not null]
+
+   indexes {
+  (refund_payment_allocation_id, refund_payment_id)[pk]
+  }
+}
+
+Table "refund_payment_account_join" {
+  "refund_payment_id" integer [not null]
+  "account_id" integer [not null]
+
+  indexes {
+  (refund_payment_id, account_id)[pk]
+  }
+}
+
+Table "refund_payment_sales_order_payment_summary_join" {
+  "refund_payment_id" integer [not null]
+  "sales_order_payment_summary_id" integer [not null]
+
+  indexes {
+  (refund_payment_id, sales_order_payment_summary_id)[pk]
+  }
+}
+
+Table "refund_payment_latest_gateway_result_code_join" {
+  "refund_payment_id" integer [not null]
+  "payment_gateway_result_code_id" integer [not null]
+
+  indexes {
+  (refund_payment_id, payment_gateway_result_code_id)[pk]
+  }
+}
+
+Table "refund_payment_payment_group_join" {
+  "refund_payment_id" integer [not null]
+  "payment_group_id" integer [not null]
+
+  indexes {
+  (refund_payment_id, payment_group_id)[pk]
+  }
+}
+
+Table "refund_payment_payment_method_join" {
+  "refund_payment_id" integer [not null]
+  "payment_method_id" integer [not null]
+
+  indexes {
+  (refund_payment_id, payment_method_id)[pk]
+  }
+}
+
+Table "refund_payment_payment_gateway_join" {
+  "refund_payment_id" integer [not null]
+  "payment_gateway_id" integer [not null]
+
+  indexes {
+  (refund_payment_id, payment_gateway_id)[pk]
+  }
+}
+
+Table "refund_payment_payment_treatment_join" {
+  "refund_payment_id" integer [not null]
+  "payment_treatment_id" integer [not null]
+
+  indexes {
+  (refund_payment_id, payment_treatment_id)[pk]
+  }
+}
+
+Table "refund_payment_internal_busines_unit_join" {
+  "refund_payment_id" integer [not null]
+  "internal_busines_unit_id" integer [not null]
+
+  indexes {
+  (refund_payment_id, internal_busines_unit_id)[pk]
+  }
+}
+
+Table "payment_gateway_payment_gateway_provider_join" {
+  "payment_gateway_id" integer [not null]
+  "payment_gateway_provider_id" integer [not null]
+
+  indexes {
+  (payment_gateway_id, payment_gateway_provider_id)[pk]
+  }
+}
+
+Table "capture_payment_payment_authorization_join" {
+  "capture_payment_capture_payment_id" integer [not null]
+  "payment_authorization_id" integer [not null]
+
+  indexes {
+  (capture_payment_capture_payment_id, payment_authorization_id)[pk]
+  }
+}
+
+Table "capture_payment_account_join" {
+  "capture_payment_capture_payment_id" integer [not null]
+  "account_id" integer [not null]
+  indexes {
+  (capture_payment_capture_payment_id, account_id)[pk]
+  }
+}
+
+Table "capture_payment_sales_order_payment_summary_join" {
+  "capture_payment_capture_payment_id" integer [not null]
+  "sales_order_payment_summary_id" integer [not null]
+
+  indexes {
+  (capture_payment_capture_payment_id, sales_order_payment_summary_id)[pk]
+  }
+}
+
+Table "capture_payment_latest_gateway_result_code_join" {
+  "capture_payment_capture_payment_id" integer [not null]
+  "payment_gateway_result_code_id" integer [not null]
+  indexes {
+  (capture_payment_capture_payment_id, payment_gateway_result_code_id)[pk]
+  }
+}
+
+Table "capture_payment_payment_group_join" {
+  "capture_payment_capture_payment_id" integer [not null]
+  "payment_group_id" integer [not null]
+  indexes {
+  (capture_payment_capture_payment_id, payment_group_id)[pk]
+  }
+}
+
+Table "capture_payment_payment_method_join" {
+  "capture_payment_capture_payment_id" integer [not null]
+  "payment_method_id" integer [not null]
+
+  indexes {
+  (capture_payment_capture_payment_id, payment_method_id)[pk]
+  }
+}
+
+Table "capture_payment_payment_gateway_join" {
+  "capture_payment_capture_payment_id" integer [not null]
+  "payment_gateway_id" integer [not null]
+  indexes {
+  (capture_payment_capture_payment_id, payment_gateway_id)[pk]
+  }
+}
+
+Table "capture_payment_payment_treatment_join" {
+  "capture_payment_capture_payment_id" integer [not null]
+  "payment_treatment_id" integer [not null]
+
+  indexes {
+  (capture_payment_capture_payment_id, payment_treatment_id)[pk]
+  }
+}
+
+Table "capture_payment_internal_busines_unit_join" {
+  "capture_payment_capture_payment_id" integer [not null]
+  "internal_busines_unit_id" integer [not null]
+
+  indexes {
+  (capture_payment_capture_payment_id, internal_busines_unit_id)[pk]
+  }
+}
+
+Table "pay_gat_int_log_pay_gat_int_typ_join" {
+  "payment_gateway_interaction_log_id" integer [not null]
+  "payment_gateway_interaction_type_id" integer [not null]
+
+  indexes {
+  (payment_gateway_interaction_log_id, payment_gateway_interaction_type_id)[pk]
+  }
+}
+
+Table "payment_gateway_interaction_log_payment_gateway_result_join" {
+  "payment_gateway_interaction_log_id" integer [not null]
+  "payment_gateway_result_code_id" integer [not null]
+
+  indexes {
+  (payment_gateway_interaction_log_id, payment_gateway_result_code_id)[pk]
+  }
+}
+
+Table "shi_pro_pri_adj_tax_shi_pro_pri_adj_join" {
+  "shipment_product_price_adjustment_tax_id" integer [not null]
+  "shipment_product_price_adjustment_id" integer [not null]
+
+  indexes {
+  (shipment_product_price_adjustment_tax_id, shipment_product_price_adjustment_id)[pk]
+  }
+}
+
+Table "shipment_product_price_adjustment_shipment_product_join" {
+  "shipment_product_price_adjustment_id" integer [not null]
+  "shipment_product_id" integer [not null]
+
+  indexes {
+  (shipment_product_price_adjustment_id, shipment_product_id)[pk]
+  }
+}
+
+Table "shipment_shipment_state_join" {
+  "shipment_id" integer [not null]
+  "shipment_state_id" integer [not null]
+  indexes {
+  (shipment_id, shipment_state_id)[pk]
+  }
+}
+
+Table "shipment_sales_order_join" {
+  "shipment_id" integer [not null]
+  "sales_order_id" integer [not null]
+
+  indexes {
+  (shipment_id, sales_order_id)[pk]
+  }
+}
+
+Table "shipment_ship_to_addr_join" {
+  "shipment_id" integer [not null]
+  "contact_point_addr_id" integer [not null]
+
+   indexes {
+  (shipment_id, contact_point_addr_id)[pk]
+  }
+}
+
+Table "shipment_sales_order_delivery_group_join" {
+  "shipment_id" integer [not null]
+  "sales_order_delivery_group_id" integer [not null]
+
+  indexes {
+  (shipment_id, sales_order_delivery_group_id)[pk]
+  }
+}
+
+Table "shipment_package_shipment_join" {
+  "shipment_package_id" integer [not null]
+  "shipment_id" integer [not null]
+
+  indexes {
+  (shipment_package_id, shipment_id)[pk]
+  }
+}
+
+Table "shipment_document_shipment_join" {
+  "shipment_document_id" integer [not null]
+  "shipment_id" integer [not null]
+
+  indexes {
+  (shipment_document_id, shipment_id)[pk]
+  }
+}
+
+Table "shipping_method_product_join" {
+  "shipping_method_id" integer [not null]
+  "product_id" integer [not null]
+
+  indexes {
+  (shipping_method_id, product_id)[pk]
+  }
+}
+
+Table "shipment_product_product_join" {
+  "shipment_product_id" integer [not null]
+  "product_id" integer [not null]
+
+  indexes {
+  (shipment_product_id, product_id)[pk]
+  }
+}
+
+Table "shipment_product_shipment_join" {
+  "shipment_product_id" integer [not null]
+  "shipment_id" integer [not null]
+
+  indexes {
+  (shipment_product_id, shipment_id)[pk]
+  }
+}
+
+Table "shipment_product_shipment_package_join" {
+  "shipment_product_id" integer [not null]
+  "shipment_package_id" integer [not null]
+
+  indexes {
+  (shipment_product_id, shipment_package_id)[pk]
+  }
+}
+
+Table "shipment_product_sales_order_product_join" {
+  "shipment_product_id" integer [not null]
+  "sales_order_product_id" integer [not null]
+
+  indexes {
+  (shipment_product_id, sales_order_product_id)[pk]
+  }
+}
+
+Table "product_collateral_product_join" {
+  "product_collateral_id" integer [not null]
+  "product_id" integer [not null]
+
+  indexes {
+  (product_collateral_id, product_id)[pk]
+  }
+}
+
+Table "product_attribute_set_product_join" {
+  "product_attribute_set_id" integer [not null]
+  "product_id" integer [not null]
+
+  indexes {
+  (product_attribute_set_id, product_id)[pk]
+  }
+}
+
+Table "product_attribute_value_product_join" {
+  "product_attribute_value_id" integer [not null]
+  "product_id" integer [not null]
+
+  indexes {
+  (product_attribute_value_id, product_id)[pk]
+  }
+}
+
+Table "product_attribute_value_attribute_value_join" {
+  "product_attribute_value_id" integer [not null]
+  "attribute_value_id" integer [not null]
+
+  indexes {
+  (product_attribute_value_id, attribute_value_id)[pk]
+  }
+}
+
+Table "price_book_entry_product_join" {
+  "price_book_entry_id" integer [not null]
+  "product_id" integer [not null]
+
+  indexes {
+  (price_book_entry_id, product_id)[pk]
+  }
+}
+
+Table "attribute_value_translation_attribute_value_join" {
+  "attribute_value_translation_id" integer [not null]
+  "attribute_value_id" integer [not null]
+
+  indexes {
+  (attribute_value_translation_id, attribute_value_id)[pk]
+  }
+}
+
+Table "product_category_attribute_set_product_category_join" {
+  "product_category_attribute_set_id" integer [not null]
+  "product_category_id" integer [not null]
+
+  indexes {
+  (product_category_attribute_set_id, product_category_id)[pk]
+  }
+}
+
+Table "product_category_translation_product_category_join" {
+  "product_category_translation_id" integer [not null]
+  "product_category_id" integer [not null]
+
+   indexes {
+  (product_category_translation_id, product_category_id)[pk]
+  }
+}
+
+Table "product_category_product_catalog_join" {
+  "product_category_id" integer [not null]
+  "product_catalog_id" integer [not null]
+
+  indexes {
+  (product_category_id, product_catalog_id)[pk]
+  }
+}
+
+Table "product_category_parent_category_join" {
+  "product_category_id_left" integer [not null]
+  "product_category_id_right" integer [not null]
+
+  indexes {
+  (product_category_id_left, product_category_id_right)[pk]
+  }
+}
+
+Table "product_catalog_translation_product_catalog_join" {
+  "product_catalog_translation_id" integer [not null]
+  "product_catalog_id" integer [not null]
+
+  indexes {
+  (product_catalog_translation_id, product_catalog_id)[pk]
+  }
+}
+
+Table "product_category_product_product_join" {
+  "product_category_product_id" integer [not null]
+  "product_id" integer [not null]
+
+  indexes {
+  (product_category_product_id, product_id)[pk]
+  }
+}
+
+Table "product_category_product_product_category_join" {
+  "product_category_product_id" integer [not null]
+  "product_category_id" integer [not null]
+
+  indexes {
+  (product_category_product_id, product_category_id)[pk]
+  }
+}
+
+Table "sales_order_bill_to_email_join" {
+  "sales_order_id" integer [not null]
+  "contact_point_email_id" integer [not null]
+
+  indexes {
+  (sales_order_id, contact_point_email_id)[pk]
+  }
+}
+
+Table "sales_order_ship_to_email_join" {
+  "sales_order_id" integer [not null]
+  "contact_point_email_id" integer [not null]
+  indexes {
+  (sales_order_id, contact_point_email_id)[pk]
+  }
+}
+
+Table "sales_order_sales_order_confirmation_state_join" {
+  "sales_order_id" integer [not null]
+  "sales_order_confirmation_state_id" integer [not null]
+  indexes {
+  (sales_order_id, sales_order_confirmation_state_id)[pk]
+  }
+}
+
+Table "sales_order_sales_order_type_join" {
+  "sales_order_id" integer [not null]
+  "sales_order_type_id" integer [not null]
+  indexes {
+  (sales_order_id, sales_order_type_id)[pk]
+  }
+}
+
+Table "sales_order_payment_method_join" {
+  "sales_order_id" integer [not null]
+  "payment_method_id" integer [not null]
+
+  indexes {
+  (sales_order_id, payment_method_id)[pk]
+  }
+}
+
+Table "sales_order_sales_order_state_join" {
+  "sales_order_id" integer [not null]
+  "sales_order_state_id" integer [not null]
+   indexes {
+  (sales_order_id, sales_order_state_id)[pk]
+  }
+}
+
+Table "sales_order_renewal_term_join" {
+  "sales_order_id" integer [not null]
+  "renewal_term_id" integer [not null]
+   indexes {
+  (sales_order_id, renewal_term_id)[pk]
+  }
+}
+
+Table "sales_order_original_order_join" {
+  "sales_order_id_left" integer [not null]
+  "sales_order_id_right" integer [not null]
+  indexes {
+  (sales_order_id_left, sales_order_id_right)[pk]
+  }
+}
+
+Table "sales_order_bill_to_account_join" {
+  "sales_order_id" integer [not null]
+  "account_id" integer [not null]
+}
+
+Table "sales_order_user_device_sesion_join" {
+  "sales_order_id" integer [not null]
+  "device_user_sesion_id" integer [not null]
+}
+
+Table "sales_order_seller_join" {
+  "sales_order_id" integer [not null]
+  "seller_id" integer [not null]
+}
+
+Table "sales_order_bill_to_addr_join" {
+  "sales_order_id" integer [not null]
+  "contact_point_addr_id" integer [not null]
+}
+
+Table "sales_order_ship_to_addr_join" {
+  "sales_order_id" integer [not null]
+  "contact_point_addr_id" integer [not null]
+}
+
+Table "sales_order_bill_to_contact_join" {
+  "sales_order_id" integer [not null]
+  "account_contact_id" integer [not null]
+}
+
+Table "sales_order_internal_busines_unit_join" {
+  "sales_order_id" integer [not null]
+  "internal_busines_unit_id" integer [not null]
+}
+
+Table "sales_order_sales_channel_join" {
+  "sales_order_id" integer [not null]
+  "sales_channel_id" integer [not null]
+}
+
+Table "sales_order_bill_to_phone_number_join" {
+  "sales_order_id" integer [not null]
+  "contact_point_phone_id" integer [not null]
+}
+
+Table "sales_order_sold_to_customer_join" {
+  "sales_order_id" integer [not null]
+  "customer_id" integer [not null]
+}
+
+Table "sales_order_ship_to_contact_join" {
+  "sales_order_id" integer [not null]
+  "account_contact_id" integer [not null]
+}
+
+Table "sales_order_payment_summary_sales_order_join" {
+  "sales_order_payment_summary_id" integer [not null]
+  "sales_order_id" integer [not null]
+}
+
+Table "sales_order_payment_summary_payment_method_join" {
+  "sales_order_payment_summary_id" integer [not null]
+  "payment_method_id" integer [not null]
+
+  indexes {
+  (sales_order_payment_summary_id, payment_method_id)[pk]
+  }
+}
+
+Table "sales_order_product_shipping_phone_join" {
+  "sales_order_product_id" integer [not null]
+  "contact_point_phone_id" integer [not null]
+
+  indexes {
+  (sales_order_product_id, contact_point_phone_id)[pk]
+  }
+}
+
+Table "sales_order_product_sales_order_product_reason_join" {
+  "sales_order_product_id" integer [not null]
+  "sales_order_product_reason_id" integer [not null]
+  indexes {
+  (sales_order_product_id, sales_order_product_reason_id)[pk]
+  }
+}
+
+Table "sales_order_product_product_join" {
+  "sales_order_product_id" integer [not null]
+  "product_id" integer [not null]
+  indexes {
+  (sales_order_product_id, product_id)[pk]
+  }
+
+}
+
+Table "sales_order_product_sales_order_product_state_join" {
+  "sales_order_product_id" integer [not null]
+  "sales_order_product_state_id" integer [not null]
+  indexes {
+  (sales_order_product_id, sales_order_product_state_id)[pk]
+  }
+}
+
+Table "sales_order_product_sales_order_join" {
+  "sales_order_product_id" integer [not null]
+  "sales_order_id" integer [not null]
+  indexes {
+  (sales_order_product_id, sales_order_id)[pk]
+  }
+}
+
+Table "sales_order_product_shipping_addr_join" {
+  "sales_order_product_id" integer [not null]
+  "contact_point_addr_id" integer [not null]
+  indexes {
+  (sales_order_product_id, contact_point_addr_id)[pk]
+  }
+}
+
+Table "sales_order_product_price_book_entry_join" {
+  "sales_order_product_id" integer [not null]
+  "price_book_entry_id" integer [not null]
+  indexes {
+  (sales_order_product_id, price_book_entry_id)[pk]
+  }
+}
+
+Table "sales_order_product_shipping_email_join" {
+  "sales_order_product_id" integer [not null]
+  "contact_point_email_id" integer [not null]
+  indexes {
+  (sales_order_product_id, contact_point_email_id)[pk]
+  }
+}
+
+Table "sales_order_product_subscription_term_unit_join" {
+  "sales_order_product_id" integer [not null]
+  "product_validity_time_period_uo_m_id" integer [not null]
+  indexes {
+  (sales_order_product_id, product_validity_time_period_uo_m_id)[pk]
+  }
+}
+
+Table "sales_order_product_list_price_term_uo_m_join" {
+  "sales_order_product_id" integer [not null]
+  "product_validity_time_period_uo_m_id" integer [not null]
+  indexes {
+  (sales_order_product_id, product_validity_time_period_uo_m_id)[pk]
+  }
+}
+
+Table "sales_order_product_sales_order_delivery_group_join" {
+  "sales_order_product_id" integer [not null]
+  "sales_order_delivery_group_id" integer [not null]
+  indexes {
+  (sales_order_product_id, sales_order_delivery_group_id)[pk]
+  }
+}
+
+Table "sales_order_product_original_order_product_join" {
+  "sales_order_product_id_left" integer [not null]
+  "sales_order_product_id_right" integer [not null]
+  indexes {
+  (sales_order_product_id_left, sales_order_product_id_right)[pk]
+  }
+}
+
+Table "sales_order_product_seller_account_join" {
+  "sales_order_product_id" integer [not null]
+  "account_id" integer [not null]
+  indexes {
+  (sales_order_product_id, account_id)[pk]
+  }
+}
+
+Table "sales_order_price_adjustment_sales_order_join" {
+  "sales_order_price_adjustment_id" integer [not null]
+  "sales_order_id" integer [not null]
+  indexes {
+  (sales_order_price_adjustment_id, sales_order_id)[pk]
+  }
+}
+
+Table "sales_order_product_group_sales_order_product_group_type_join" {
+  "sales_order_product_group_id" integer [not null]
+  "sales_order_product_group_type_id" integer [not null]
+  indexes {
+  (sales_order_product_group_id, sales_order_product_group_type_id)[pk]
+  }
+}
+
+Table "sal_ord_pro_rea_sal_ord_pro_rea_cat_join" {
+  "sales_order_product_reason_id" integer [not null]
+  "sales_order_product_reason_category_id" integer [not null]
+  indexes {
+  (sales_order_product_reason_id, sales_order_product_reason_category_id)[pk]
+  }
+}
+
+Table "order_delivery_method_product_join" {
+  "order_delivery_method_id" integer [not null]
+  "product_id" integer [not null]
+  indexes {
+  (order_delivery_method_id, product_id)[pk]
+  }
+}
+
+Table "sales_order_change_log_change_sales_order_join" {
+  "sales_order_change_log_id" integer [not null]
+  "sales_order_id" integer [not null]
+  indexes {
+  (sales_order_change_log_id, sales_order_id)[pk]
+  }
+}
+
+Table "sales_order_change_log_related_sales_order_product_join" {
+  "sales_order_change_log_id" integer [not null]
+  "sales_order_product_id" integer [not null]
+  indexes {
+  (sales_order_change_log_id, sales_order_product_id)[pk]
+  }
+}
+
+Table "sales_order_change_log_change_sales_order_product_join" {
+  "sales_order_change_log_id" integer [not null]
+  "sales_order_product_id" integer [not null]
+  indexes {
+  (sales_order_change_log_id, sales_order_product_id)[pk]
+  }
+}
+
+Table "sales_order_change_log_related_sales_order_join" {
+  "sales_order_change_log_id" integer [not null]
+  "sales_order_id" integer [not null]
+  indexes {
+  (sales_order_change_log_id, sales_order_id)[pk]
+  }
+}
+
+Table "sales_order_product_tax_original_sales_order_product_tax_join" {
+  "sales_order_product_tax_id_left" integer [not null]
+  "sales_order_product_tax_id_right" integer [not null]
+  indexes {
+  (sales_order_product_tax_id_left, sales_order_product_tax_id_right)[pk]
+  }
+}
+
+Table "sales_order_product_tax_sales_order_product_join" {
+  "sales_order_product_tax_id" integer [not null]
+  "sales_order_product_id" integer [not null]
+  indexes {
+  (sales_order_product_tax_id, sales_order_product_id)[pk]
+  }
+}
+
+Table "sales_order_delivery_group_contact_point_addr_join" {
+  "sales_order_delivery_group_id" integer [not null]
+  "contact_point_addr_id" integer [not null]
+  indexes {
+  (sales_order_delivery_group_id, contact_point_addr_id)[pk]
+  }
+}
+
+Table "sales_order_delivery_group_sales_order_join" {
+  "sales_order_delivery_group_id" integer [not null]
+  "sales_order_id" integer [not null]
+  indexes {
+  (sales_order_delivery_group_id, sales_order_id)[pk]
+  }
+}
+
+Table "sales_order_delivery_group_sales_order_delivery_state_join" {
+  "sales_order_delivery_group_id" integer [not null]
+  "sales_order_delivery_state_id" integer [not null]
+  indexes {
+  (sales_order_delivery_group_id, sales_order_delivery_state_id)[pk]
+  }
+}
+
+Table "sales_order_delivery_group_original_delivery_group_join" {
+  "sales_order_delivery_group_id_left" integer [not null]
+  "sales_order_delivery_group_id_right" integer [not null]
+  indexes {
+  (sales_order_delivery_group_id_left, sales_order_delivery_group_id_right)[pk]
+  }
+}
+
+Table "sales_order_delivery_group_order_delivery_method_join" {
+  "sales_order_delivery_group_id" integer [not null]
+  "order_delivery_method_id" integer [not null]
+  indexes {
+  (sales_order_delivery_group_id, order_delivery_method_id)[pk]
+  }
+}
+
+Table "sales_order_delivery_group_account_contact_join" {
+  "sales_order_delivery_group_id" integer [not null]
+  "account_contact_id" integer [not null]
+  indexes {
+  (sales_order_delivery_group_id, account_contact_id)[pk]
+  }
+}
+
+Table "sales_channel_sales_channel_type_join" {
+  "sales_channel_id" integer [not null]
+  "sales_channel_type_id" integer [not null]
+  indexes {
+  (sales_channel_id, sales_channel_type_id)[pk]
+  }
+}
+
+Table "product_related_product_sales_order_product1_join" {
+  "product_related_product_id" integer [not null]
+  "sales_order_product_id" integer [not null]
+  indexes {
+  (product_related_product_id, sales_order_product_id)[pk]
+  }
+}
+
+Table "product_related_product_parent_product_join" {
+  "product_related_product_id" integer [not null]
+  "product_id" integer [not null]
+  indexes {
+  (product_related_product_id, product_id)[pk]
+  }
+}
+
+Table "product_related_product_child_product_join" {
+  "product_related_product_id" integer [not null]
+  "product_id" integer [not null]
+  indexes {
+  (product_related_product_id, product_id)[pk]
+  }
+}
+
+Table "product_related_product_product_relationship_type_join" {
+  "product_related_product_id" integer [not null]
+  "product_relationship_type_id" integer [not null]
+  indexes {
+  (product_related_product_id, product_relationship_type_id)[pk]
+  }
+}
+
+Table "product_related_product_sales_order_product2_join" {
+  "product_related_product_id" integer [not null]
+  "sales_order_product_id" integer [not null]
+  indexes {
+  (product_related_product_id, sales_order_product_id)[pk]
+  }
+}
+
+Table "product_translation_product_join" {
+  "product_translation_id" integer [not null]
+  "product_id" integer [not null]
+  indexes {
+  (product_translation_id, product_id)[pk]
+  }
+}
+
+Table "product_image_product_join" {
+  "product_image_id" integer [not null]
+  "product_id" integer [not null]
+  indexes {
+  (product_image_id, product_id)[pk]
+  }
+}
+
+Table "product_image_translation_product_image_join" {
+  "product_image_translation_id" integer [not null]
+  "product_image_id" integer [not null]
+  indexes {
+  (product_image_translation_id, product_image_id)[pk]
+  }
+
+}
+
+Table "goods_product_primary_product_category_join" {
+  "goods_product_id" integer [not null]
+  "product_category_id" integer [not null]
+  indexes {
+  (goods_product_id, product_category_id)[pk]
+  }
+}
+
+Table "goods_product_master_product_join" {
+  "goods_product_id" integer [not null]
+  "product_id" integer [not null]
+  indexes {
+  (goods_product_id, product_id)[pk]
+  }
+}
+
+Table "goods_product_primary_sales_channel_join" {
+  "goods_product_id" integer [not null]
+  "sales_channel_id" integer [not null]
+  indexes {
+  (goods_product_id, sales_channel_id)[pk]
+  }
+}
+
+Table "goods_product_valid_for_period_uo_m_join" {
+  "goods_product_id" integer [not null]
+  "product_validity_time_period_uo_m_id" integer [not null]
+  indexes {
+  (goods_product_id, product_validity_time_period_uo_m_id)[pk]
+  }
+}
+
+Table "goods_product_brand_join" {
+  "goods_product_id" integer [not null]
+  "brand_id" integer [not null]
+  indexes {
+  (  "goods_product_id", brand_id)[pk]
+  }
+}
+
+Table "service_product_service_provider_account_join" {
+  "service_product_id" integer [not null]
+  "account_id" integer [not null]
+  indexes {
+  (service_product_id, account_id)[pk]
+  }
+}
+
+Table "service_product_primary_product_category_join" {
+  "service_product_id" integer [not null]
+  "product_category_id" integer [not null]
+  indexes {
+  (service_product_id, product_category_id)[pk]
+  }
+}
+
+Table "service_product_master_product_join" {
+  "service_product_id" integer [not null]
+  "product_id" integer [not null]
+  indexes {
+  (service_product_id, product_id)[pk]
+  }
+}
+
+Table "service_product_primary_sales_channel_join" {
+  "service_product_id" integer [not null]
+  "sales_channel_id" integer [not null]
+  indexes {
+  (service_product_id, sales_channel_id)[pk]
+  }
+}
+
+Table "service_product_valid_for_period_uo_m_join" {
+  "service_product_id" integer [not null]
+  "product_validity_time_period_uo_m_id" integer [not null]
+  indexes {
+  (service_product_id, product_validity_time_period_uo_m_id)[pk]
+  }
+
+}
+
+Table "service_product_brand_join" {
+  "service_product_id" integer [not null]
+  "brand_id" integer [not null]
+  indexes {
+  (service_product_id, brand_id)[pk]
+  }
+}
+
+Table "product_primary_product_category_join" {
+  "product_id" integer [not null]
+  "product_category_id" integer [not null]
+  indexes {
+  (product_id, product_category_id)[pk]
+  }
+}
+
+Table "product_master_product_join" {
+  "product_id_left" integer [not null]
+  "product_id_right" integer [not null]
+  indexes {
+  (product_id_left, product_id_right)[pk]
+  }
+}
+
+Table "product_primary_sales_channel_join" {
+  "product_id" integer [not null]
+  "sales_channel_id" integer [not null]
+  indexes {
+  (product_id, sales_channel_id)[pk]
+  }
+}
+
+Table "product_valid_for_period_uo_m_join" {
+  "product_id" integer [not null]
+  "product_validity_time_period_uo_m_id" integer [not null]
+  indexes {
+  (product_id, product_validity_time_period_uo_m_id)[pk]
+  }
+}
+
+Table "product_brand_join" {
+  "product_id" integer [not null]
+  "brand_id" integer [not null]
+  indexes {
+  (product_id, brand_id)[pk]
+  }
+}
+
+Table "bundle_product_primary_product_category_join" {
+  "bundle_product_id" integer [not null]
+  "product_category_id" integer [not null]
+  indexes {
+  (bundle_product_id, product_category_id)[pk]
+  }
+}
+
+Table "bundle_product_master_product_join" {
+  "bundle_product_id" integer [not null]
+  "product_id" integer [not null]
+  indexes {
+  (bundle_product_id, product_id)[pk]
+  }
+}
+
+Table "bundle_product_primary_sales_channel_join" {
+  "bundle_product_id" integer [not null]
+  "sales_channel_id" integer [not null]
+  indexes {
+  (bundle_product_id, sales_channel_id)[pk]
+  }
+}
+
+Table "bundle_product_valid_for_period_uo_m_join" {
+  "bundle_product_id" integer [not null]
+  "product_validity_time_period_uo_m_id" integer [not null]
+  indexes {
+  (bundle_product_id, product_validity_time_period_uo_m_id)[pk]
+  }
+
+}
+
+Table "bundle_product_brand_join" {
+  "bundle_product_id" integer [not null]
+  "brand_id" integer [not null]
+  indexes {
+  (bundle_product_id, brand_id)[pk]
+  }
+}
+
+Ref account_uncategorized:"account"."id" < "uncategorized_party_primary_account_join"."account_id"
+
+Ref:"uncategorized_party"."id" < "uncategorized_party_primary_account_join"."uncategorized_party_id"
+
+Ref:"individual"."id" < "person_language_individual_join"."individual_id"
+
+Ref:"person_language"."id" < "person_language_individual_join"."person_language_id"
+
+Ref:"individual"."id" < "education_individual_join"."individual_id"
+
+Ref:"education"."id" < "education_individual_join"."education_id"
+
+Ref:"individual"."id" < "individual_primary_household_join"."individual_id"
+
+Ref:"household"."id" < "individual_primary_household_join"."household_id"
+
+Ref:"individual"."id" < "individual_primary_account_join"."individual_id"
+
+Ref account_individual:"account"."id" < "individual_primary_account_join"."account_id"
+
+Ref:"individual"."id" < "work_history_individual_join"."individual_id"
+
+Ref:"work_history"."id" < "work_history_individual_join"."work_history_id"
+
+Ref:"party_identification"."id" < "party_identification_party_role_join"."party_identification_id"
+
+Ref:"party_role"."id" < "party_identification_party_role_join"."party_role_id"
+
+Ref:"party_identification"."id" < "party_identification_party_join"."party_identification_id"
+
+Ref:"party"."id" < "party_identification_party_join"."party_id"
+
+Ref:"party_related_party"."id" < "party_related_party_party_relationship_type_join"."party_related_party_id"
+
+Ref:"party_relationship_type"."id" < "party_related_party_party_relationship_type_join"."party_relationship_type_id"
+
+Ref:"party_related_party"."id" < "party_related_party_related_party_join"."party_related_party_id"
+
+Ref:"party"."id" < "party_related_party_related_party_join"."party_id"
+
+Ref:"party_related_party"."id" < "party_related_party_party_join"."party_related_party_id"
+
+Ref:"party"."id" < "party_related_party_party_join"."party_id"
+
+Ref:"party_additional_name"."id" < "party_additional_name_party_join"."party_additional_name_id"
+
+Ref:"party"."id" < "party_additional_name_party_join"."party_id"
+
+Ref:"household"."id" < "household_primary_account_join"."household_id"
+
+Ref account_household:"account"."id" < "household_primary_account_join"."account_id"
+
+Ref:"person_life_event"."id" < "person_life_event_individual_join"."person_life_event_id"
+
+Ref:"individual"."id" < "person_life_event_individual_join"."individual_id"
+
+Ref:"party"."id" < "party_primary_account_join"."party_id"
+
+Ref account_party:"account"."id" < "party_primary_account_join"."account_id"
+
+Ref:"internal_busines_unit"."id" < "internal_busines_unit_parent_internal_busines_unit_join"."internal_busines_unit_id_left"
+
+Ref:"internal_busines_unit"."id" < "internal_busines_unit_parent_internal_busines_unit_join"."internal_busines_unit_id_right"
+
+Ref:"internal_busines_unit"."id" < "internal_busines_unit_primary_account_join"."internal_busines_unit_id"
+
+Ref account_internal:"account"."id" < "internal_busines_unit_primary_account_join"."account_id"
+
+Ref:"party"."id" < "party_web_addr_party_join"."party_id"
+
+Ref:"party_role"."id" < "party_web_addr_party_role_join"."party_role_id"
+
+Ref:"account_contact_role"."id" < "account_contact_role_account_contact_join"."account_contact_role_id"
+
+Ref:"account_contact"."id" < "account_contact_role_account_contact_join"."account_contact_id"
+
+Ref:"account_contact"."id" < "account_contact_reports_to_account_contact_join"."account_contact_id_left"
+
+Ref:"account_contact"."id" < "account_contact_reports_to_account_contact_join"."account_contact_id_right"
+
+Ref:"account_contact"."id" < "account_contact_account_join"."account_contact_id"
+
+Ref account_contact:"account"."id" < "account_contact_account_join"."account_id"
+
+Ref:"account_contact"."id" < "account_contact_indirect_relation_account_contact_join"."account_contact_id_left"
+
+Ref:"account_contact"."id" < "account_contact_indirect_relation_account_contact_join"."account_contact_id_right"
+
+Ref:"account_contact"."id" < "account_contact_individual_join"."account_contact_id"
+
+Ref:"individual"."id" < "account_contact_individual_join"."individual_id"
+
+Ref:"account_partner"."id" < "account_partner_account_join"."account_partner_id"
+
+Ref acc_partner:"account"."id" < "account_partner_account_join"."account_id"
+
+Ref:"account_partner"."id" < "account_partner_partner_account_join"."account_partner_id"
+
+Ref acc_partner_j:"account"."id" < "account_partner_partner_account_join"."account_id"
+
+Ref acc_bill_freq:"account"."id" < "account_bill_frequency_join"."account_id"
+
+Ref:"billing_frequency"."id" < "account_bill_frequency_join"."billing_frequency_id"
+
+Ref acc_party_role_j:"account"."id" < "account_party_role_join"."account_id"
+
+Ref:"party_role"."id" < "account_party_role_join"."party_role_id"
+
+Ref acc_auto_pay:"account"."id" < "account_auto_payment_method_join"."account_id"
+
+Ref:"payment_method"."id" < "account_auto_payment_method_join"."payment_method_id"
+
+Ref acc_party_j:"account"."id" < "account_party_join"."account_id"
+
+Ref:"party"."id" < "account_party_join"."party_id"
+
+Ref acc_left:"account"."id" < "account_parent_account_join"."account_id_left"
+
+Ref acc_right:"account"."id" < "account_parent_account_join"."account_id_right"
+
+Ref acc_shipping_contact:"account"."id" < "account_shipping_contact_join"."account_id"
+
+Ref acc_shipping_contact_j:"account_contact"."id" < "account_shipping_contact_join"."account_contact_id"
+
+Ref acc_shipping_phone_j:"account"."id" < "account_shipping_phoneid_join"."account_id"
+
+Ref contacts_shipping_phone_j:"contact_point_phone"."id" < "account_shipping_phoneid_join"."contact_point_phone_id"
+
+Ref acc_shipping_email_j:"account"."id" < "account_shipping_email_join"."account_id"
+
+Ref acc_order_delivery_method_j:"account"."id" < "account_order_delivery_method_join"."account_id"
+
+Ref:"order_delivery_method"."id" < "account_order_delivery_method_join"."order_delivery_method_id"
+
+Ref acc_sales_contact_point_j:"account"."id" < "account_primary_sales_contact_point_join"."account_id"
+
+
+
+Ref:"supplier"."id" < "supplier_party_join"."supplier_id"
+
+Ref:"party"."id" < "supplier_party_join"."party_id"
+
+Ref:"customer_state_history"."id" < "customer_state_history_party_role_join"."customer_state_history_id"
+
+Ref:"party_role"."id" < "customer_state_history_party_role_join"."party_role_id"
+
+Ref:"competitor"."id" < "competitor_party_join"."competitor_id"
+
+Ref:"party"."id" < "competitor_party_join"."party_id"
+
+Ref:"seller"."id" < "seller_party_join"."seller_id"
+
+Ref:"party"."id" < "seller_party_join"."party_id"
+
+Ref:"customer"."id" < "customer_party_join"."customer_id"
+
+Ref:"party"."id" < "customer_party_join"."party_id"
+
+Ref:"party_role"."id" < "party_role_party_join"."party_role_id"
+
+Ref:"party"."id" < "party_role_party_join"."party_id"
+
+Ref lead_fax:"lead"."id" < "lead_fax_contact_phone_join"."lead_id"
+
+Ref contact_fax_j:"contact_point_phone"."id" < "lead_fax_contact_phone_join"."contact_point_phone_id"
+
+Ref lead_party:"lead"."id" < "lead_party_role_join"."lead_id"
+
+Ref:"party_role"."id" < "lead_party_role_join"."party_role_id"
+
+Ref contact_mobile_j:"contact_point_phone"."id" < "lead_mobile_contact_phone_join"."contact_point_phone_id"
+
+Ref lead_acount:"lead"."id" < "lead_converted_to_account_join"."lead_id"
+
+Ref acc_converted_lead_j:"account"."id" < "lead_converted_to_account_join"."account_id"
+
+Ref lead_account_conversion:"lead"."id" < "lead_converted_to_account_contact_join"."lead_id"
+
+Ref:"account_contact"."id" < "lead_converted_to_account_contact_join"."account_contact_id"
+
+Ref account_partner:"account"."id" < "lead_partner_account_join"."account_id"
+
+Ref:"credit_tender"."id" < "credit_tender_account_join"."credit_tender_id"
+
+Ref account_tender:"account"."id" < "credit_tender_account_join"."account_id"
+
+Ref:"credit_tender"."id" < "credit_tender_payment_method_type_join"."credit_tender_id"
+
+Ref:"payment_method_type"."id" < "credit_tender_payment_method_type_join"."payment_method_type_id"
+
+Ref:"payment_card"."id" < "payment_card_payment_method_type_join"."payment_card_id"
+
+Ref:"payment_method_type"."id" < "payment_card_payment_method_type_join"."payment_method_type_id"
+
+Ref:"coupon"."id" < "coupon_manufacturer_join"."coupon_id"
+
+Ref:"party"."id" < "coupon_manufacturer_join"."party_id"
+
+Ref:"coupon"."id" < "coupon_payment_method_type_join"."coupon_id"
+
+Ref:"payment_method_type"."id" < "coupon_payment_method_type_join"."payment_method_type_id"
+
+Ref:"payment_method"."id" < "payment_method_payment_method_type_join"."payment_method_id"
+
+Ref:"payment_method_type"."id" < "payment_method_payment_method_type_join"."payment_method_type_id"
+
+Ref:"payment_credit_memo_application"."id" < "payment_credit_memo_application_payment_join"."payment_credit_memo_application_id"
+
+Ref:"payment"."id" < "payment_credit_memo_application_payment_join"."payment_id"
+
+Ref:"payment_gateway_auth_reversal_log"."id" < "pay_gat_aut_rev_log_pay_aut_rev_join"."payment_gateway_auth_reversal_log_id"
+
+Ref:"payment_authorization_reversal"."id" < "pay_gat_aut_rev_log_pay_aut_rev_join"."payment_authorization_reversal_id"
+
+Ref:"payment_gateway_auth_reversal_log"."id" < "pay_gat_aut_rev_log_pay_gat_int_typ_join"."payment_gateway_auth_reversal_log_id"
+
+Ref:"payment_gateway_interaction_type"."id" < "pay_gat_aut_rev_log_pay_gat_int_typ_join"."payment_gateway_interaction_type_id"
+
+Ref:"payment_gateway_auth_reversal_log"."id" < "payment_gateway_auth_reversal_log_payment_gateway_result_join"."payment_gateway_auth_reversal_log_id"
+
+Ref:"payment_gateway_result_code"."id" < "payment_gateway_auth_reversal_log_payment_gateway_result_join"."payment_gateway_result_code_id"
+
+Ref:"payment_authorization_reversal"."id" < "payment_authorization_reversal_capture_payment_join"."payment_authorization_reversal_id"
+
+Ref:"capture_payment"."capture_payment_id" < "payment_authorization_reversal_capture_payment_join"."capture_payment_capture_payment_id"
+
+Ref:"payment_authorization_reversal"."id" < "payment_authorization_reversal_payment_gateway_result_join"."payment_authorization_reversal_id"
+
+Ref:"payment_gateway_result_code"."id" < "payment_authorization_reversal_payment_gateway_result_join"."payment_gateway_result_code_id"
+
+Ref:"payment_authorization_reversal"."id" < "payment_authorization_reversal_payment_authorization_join"."payment_authorization_reversal_id"
+
+Ref:"payment_authorization"."id" < "payment_authorization_reversal_payment_authorization_join"."payment_authorization_id"
+
+Ref:"payment_allocation"."id" < "payment_allocation_related_payment_allocation_join"."payment_allocation_id_left"
+
+Ref:"payment_allocation"."id" < "payment_allocation_related_payment_allocation_join"."payment_allocation_id_right"
+
+Ref:"payment_application"."id" < "payment_application_payment_join"."payment_application_id"
+
+Ref:"payment"."id" < "payment_application_payment_join"."payment_id"
+
+Ref:"payment_invoice_application"."id" < "payment_invoice_application_payment_join"."payment_invoice_application_id"
+
+Ref:"payment"."id" < "payment_invoice_application_payment_join"."payment_id"
+
+Ref:"refund_credit_memo_allocation"."id" < "refund_credit_memo_allocation_related_refund_allocation_join"."refund_credit_memo_allocation_id"
+
+Ref:"refund_allocation"."id" < "refund_credit_memo_allocation_related_refund_allocation_join"."refund_allocation_id"
+
+Ref:"refund_credit_memo_allocation"."id" < "refund_credit_memo_allocation_refund_payment_join"."refund_credit_memo_allocation_id"
+
+Ref:"refund_payment"."id" < "refund_credit_memo_allocation_refund_payment_join"."refund_payment_id"
+
+Ref:"payment_gateway_payment_log"."id" < "payment_gateway_payment_log_payment_join"."payment_gateway_payment_log_id"
+
+Ref:"payment"."id" < "payment_gateway_payment_log_payment_join"."payment_id"
+
+Ref:"payment_gateway_payment_log"."id" < "pay_gat_pay_log_pay_gat_int_typ_join"."payment_gateway_payment_log_id"
+
+Ref:"payment_gateway_interaction_type"."id" < "pay_gat_pay_log_pay_gat_int_typ_join"."payment_gateway_interaction_type_id"
+
+Ref:"payment_gateway_payment_log"."id" < "payment_gateway_payment_log_payment_gateway_result_join"."payment_gateway_payment_log_id"
+
+Ref:"payment_gateway_result_code"."id" < "payment_gateway_payment_log_payment_gateway_result_join"."payment_gateway_result_code_id"
+
+Ref:"refund_allocation"."id" < "refund_allocation_related_refund_allocation_join"."refund_allocation_id_left"
+
+Ref:"refund_allocation"."id" < "refund_allocation_related_refund_allocation_join"."refund_allocation_id_right"
+
+Ref:"refund_allocation"."id" < "refund_allocation_refund_payment_join"."refund_allocation_id"
+
+Ref:"refund_payment"."id" < "refund_allocation_refund_payment_join"."refund_payment_id"
+
+Ref:"payment_gateway_authorization_log"."id" < "payment_gateway_authorization_log_payment_authorization_join"."payment_gateway_authorization_log_id"
+
+Ref:"payment_authorization"."id" < "payment_gateway_authorization_log_payment_authorization_join"."payment_authorization_id"
+
+Ref:"payment_gateway_authorization_log"."id" < "pay_gat_aut_log_pay_gat_int_typ_join"."payment_gateway_authorization_log_id"
+
+Ref:"payment_gateway_interaction_type"."id" < "pay_gat_aut_log_pay_gat_int_typ_join"."payment_gateway_interaction_type_id"
+
+Ref:"payment_gateway_authorization_log"."id" < "payment_gateway_authorization_log_payment_gateway_result_join"."payment_gateway_authorization_log_id"
+
+Ref:"payment_gateway_result_code"."id" < "payment_gateway_authorization_log_payment_gateway_result_join"."payment_gateway_result_code_id"
+
+Ref:"payment_invoice_allocation"."id" < "payment_invoice_allocation_payment_invoice_application_join"."payment_invoice_allocation_id"
+
+Ref:"payment_invoice_application"."id" < "payment_invoice_allocation_payment_invoice_application_join"."payment_invoice_application_id"
+
+Ref:"payment_invoice_allocation"."id" < "payment_invoice_allocation_related_payment_allocation_join"."payment_invoice_allocation_id"
+
+Ref:"payment_allocation"."id" < "payment_invoice_allocation_related_payment_allocation_join"."payment_allocation_id"
+
+Ref:"payment"."id" < "payment_account_join"."payment_id"
+
+Ref:"account"."id" < "payment_account_join"."account_id"
+
+Ref:"payment"."id" < "payment_sales_order_payment_summary_join"."payment_id"
+
+Ref:"sales_order_payment_summary"."id" < "payment_sales_order_payment_summary_join"."sales_order_payment_summary_id"
+
+Ref:"payment"."id" < "payment_latest_gateway_result_code_join"."payment_id"
+
+Ref:"payment_gateway_result_code"."id" < "payment_latest_gateway_result_code_join"."payment_gateway_result_code_id"
+
+Ref:"payment"."id" < "payment_payment_group_join"."payment_id"
+
+Ref:"payment_group"."id" < "payment_payment_group_join"."payment_group_id"
+
+Ref:"payment"."id" < "payment_payment_method_join"."payment_id"
+
+Ref:"payment_method"."id" < "payment_payment_method_join"."payment_method_id"
+
+Ref:"payment"."id" < "payment_payment_gateway_join"."payment_id"
+
+Ref:"payment_gateway"."id" < "payment_payment_gateway_join"."payment_gateway_id"
+
+Ref:"payment"."id" < "payment_payment_treatment_join"."payment_id"
+
+Ref:"payment_treatment"."id" < "payment_payment_treatment_join"."payment_treatment_id"
+
+Ref:"payment"."id" < "payment_internal_busines_unit_join"."payment_id"
+
+Ref:"internal_busines_unit"."id" < "payment_internal_busines_unit_join"."internal_busines_unit_id"
+
+Ref:"payment_credit_memo_allocation"."id" < "payment_credit_memo_allocation_related_payment_allocation_join"."payment_credit_memo_allocation_id"
+
+Ref:"payment_allocation"."id" < "payment_credit_memo_allocation_related_payment_allocation_join"."payment_allocation_id"
+
+Ref:"payment_treatment"."id" < "payment_treatment_payment_treatment_method_join"."payment_treatment_id"
+
+Ref:"payment_treatment_method"."id" < "payment_treatment_payment_treatment_method_join"."payment_treatment_method_id"
+
+Ref:"payment_treatment"."id" < "payment_treatment_payment_policy_join"."payment_treatment_id"
+
+Ref:"payment_policy"."id" < "payment_treatment_payment_policy_join"."payment_policy_id"
+
+Ref:"payment_authorization"."id" < "payment_authorization_sales_order_payment_summary_join"."payment_authorization_id"
+
+Ref:"sales_order_payment_summary"."id" < "payment_authorization_sales_order_payment_summary_join"."sales_order_payment_summary_id"
+
+Ref:"payment_authorization"."id" < "payment_authorization_payment_group_join"."payment_authorization_id"
+
+Ref:"payment_group"."id" < "payment_authorization_payment_group_join"."payment_group_id"
+
+Ref:"payment_authorization"."id" < "payment_authorization_payment_gateway_join"."payment_authorization_id"
+
+Ref:"payment_gateway"."id" < "payment_authorization_payment_gateway_join"."payment_gateway_id"
+
+Ref:"payment_authorization"."id" < "payment_authorization_payment_gateway_result_join"."payment_authorization_id"
+
+Ref:"payment_gateway_result_code"."id" < "payment_authorization_payment_gateway_result_join"."payment_gateway_result_code_id"
+
+Ref:"payment_authorization"."id" < "payment_authorization_payment_method_join"."payment_authorization_id"
+
+Ref:"payment_method"."id" < "payment_authorization_payment_method_join"."payment_method_id"
+
+Ref:"refund_payment_allocation"."id" < "refund_payment_allocation_capture_payment_join"."refund_payment_allocation_id"
+
+Ref:"capture_payment"."capture_payment_id" < "refund_payment_allocation_capture_payment_join"."capture_payment_capture_payment_id"
+
+Ref:"refund_payment_allocation"."id" < "refund_payment_allocation_related_refund_allocation_join"."refund_payment_allocation_id"
+
+Ref:"refund_allocation"."id" < "refund_payment_allocation_related_refund_allocation_join"."refund_allocation_id"
+
+Ref:"refund_payment_allocation"."id" < "refund_payment_allocation_refund_payment_join"."refund_payment_allocation_id"
+
+Ref:"refund_payment"."id" < "refund_payment_allocation_refund_payment_join"."refund_payment_id"
+
+Ref:"refund_payment"."id" < "refund_payment_account_join"."refund_payment_id"
+
+Ref account_refund:"account"."id" < "refund_payment_account_join"."account_id"
+
+Ref:"refund_payment"."id" < "refund_payment_sales_order_payment_summary_join"."refund_payment_id"
+
+Ref:"sales_order_payment_summary"."id" < "refund_payment_sales_order_payment_summary_join"."sales_order_payment_summary_id"
+
+Ref:"refund_payment"."id" < "refund_payment_latest_gateway_result_code_join"."refund_payment_id"
+
+Ref:"payment_gateway_result_code"."id" < "refund_payment_latest_gateway_result_code_join"."payment_gateway_result_code_id"
+
+Ref:"refund_payment"."id" < "refund_payment_payment_group_join"."refund_payment_id"
+
+Ref:"payment_group"."id" < "refund_payment_payment_group_join"."payment_group_id"
+
+Ref:"refund_payment"."id" < "refund_payment_payment_method_join"."refund_payment_id"
+
+Ref:"payment_method"."id" < "refund_payment_payment_method_join"."payment_method_id"
+
+Ref:"refund_payment"."id" < "refund_payment_payment_gateway_join"."refund_payment_id"
+
+Ref:"payment_gateway"."id" < "refund_payment_payment_gateway_join"."payment_gateway_id"
+
+Ref:"refund_payment"."id" < "refund_payment_payment_treatment_join"."refund_payment_id"
+
+Ref:"payment_treatment"."id" < "refund_payment_payment_treatment_join"."payment_treatment_id"
+
+Ref:"refund_payment"."id" < "refund_payment_internal_busines_unit_join"."refund_payment_id"
+
+Ref:"internal_busines_unit"."id" < "refund_payment_internal_busines_unit_join"."internal_busines_unit_id"
+
+Ref:"payment_gateway"."id" < "payment_gateway_payment_gateway_provider_join"."payment_gateway_id"
+
+Ref:"payment_gateway_provider"."id" < "payment_gateway_payment_gateway_provider_join"."payment_gateway_provider_id"
+
+Ref:"capture_payment"."capture_payment_id" < "capture_payment_payment_authorization_join"."capture_payment_capture_payment_id"
+
+Ref:"payment_authorization"."id" < "capture_payment_payment_authorization_join"."payment_authorization_id"
+
+Ref:"capture_payment"."capture_payment_id" < "capture_payment_account_join"."capture_payment_capture_payment_id"
+
+Ref acc_payment_account_j:"account"."id" < "capture_payment_account_join"."account_id"
+
+Ref:"capture_payment"."capture_payment_id" < "capture_payment_sales_order_payment_summary_join"."capture_payment_capture_payment_id"
+
+Ref:"sales_order_payment_summary"."id" < "capture_payment_sales_order_payment_summary_join"."sales_order_payment_summary_id"
+
+Ref:"capture_payment"."capture_payment_id" < "capture_payment_latest_gateway_result_code_join"."capture_payment_capture_payment_id"
+
+Ref:"payment_gateway_result_code"."id" < "capture_payment_latest_gateway_result_code_join"."payment_gateway_result_code_id"
+
+Ref:"capture_payment"."capture_payment_id" < "capture_payment_payment_group_join"."capture_payment_capture_payment_id"
+
+Ref:"payment_group"."id" < "capture_payment_payment_group_join"."payment_group_id"
+
+Ref:"capture_payment"."capture_payment_id" < "capture_payment_payment_method_join"."capture_payment_capture_payment_id"
+
+Ref:"payment_method"."id" < "capture_payment_payment_method_join"."payment_method_id"
+
+Ref:"capture_payment"."capture_payment_id" < "capture_payment_payment_gateway_join"."capture_payment_capture_payment_id"
+
+Ref:"payment_gateway"."id" < "capture_payment_payment_gateway_join"."payment_gateway_id"
+
+Ref:"capture_payment"."capture_payment_id" < "capture_payment_payment_treatment_join"."capture_payment_capture_payment_id"
+
+Ref:"payment_treatment"."id" < "capture_payment_payment_treatment_join"."payment_treatment_id"
+
+Ref:"capture_payment"."capture_payment_id" < "capture_payment_internal_busines_unit_join"."capture_payment_capture_payment_id"
+
+Ref:"internal_busines_unit"."id" < "capture_payment_internal_busines_unit_join"."internal_busines_unit_id"
+
+Ref:"payment_gateway_interaction_log"."id" < "pay_gat_int_log_pay_gat_int_typ_join"."payment_gateway_interaction_log_id"
+
+Ref:"payment_gateway_interaction_type"."id" < "pay_gat_int_log_pay_gat_int_typ_join"."payment_gateway_interaction_type_id"
+
+Ref:"payment_gateway_interaction_log"."id" < "payment_gateway_interaction_log_payment_gateway_result_join"."payment_gateway_interaction_log_id"
+
+Ref:"payment_gateway_result_code"."id" < "payment_gateway_interaction_log_payment_gateway_result_join"."payment_gateway_result_code_id"
+
+Ref:"shipment_product_price_adjustment_tax"."id" < "shi_pro_pri_adj_tax_shi_pro_pri_adj_join"."shipment_product_price_adjustment_tax_id"
+
+Ref:"shipment_product_price_adjustment"."id" < "shi_pro_pri_adj_tax_shi_pro_pri_adj_join"."shipment_product_price_adjustment_id"
+
+Ref:"shipment_product_price_adjustment"."id" < "shipment_product_price_adjustment_shipment_product_join"."shipment_product_price_adjustment_id"
+
+Ref:"shipment_product"."id" < "shipment_product_price_adjustment_shipment_product_join"."shipment_product_id"
+
+Ref:"shipment"."id" < "shipment_shipment_state_join"."shipment_id"
+
+Ref:"shipment_state"."id" < "shipment_shipment_state_join"."shipment_state_id"
+
+Ref:"shipment"."id" < "shipment_sales_order_join"."shipment_id"
+
+Ref:"sales_order"."id" < "shipment_sales_order_join"."sales_order_id"
+
+Ref:"shipment"."id" < "shipment_ship_to_addr_join"."shipment_id"
+
+Ref:"contact_point_addr"."id" < "shipment_ship_to_addr_join"."contact_point_addr_id"
+
+Ref:"shipment"."id" < "shipment_sales_order_delivery_group_join"."shipment_id"
+
+Ref:"sales_order_delivery_group"."id" < "shipment_sales_order_delivery_group_join"."sales_order_delivery_group_id"
+
+Ref:"shipment_package"."id" < "shipment_package_shipment_join"."shipment_package_id"
+
+Ref:"shipment"."id" < "shipment_package_shipment_join"."shipment_id"
+
+Ref:"shipment_document"."id" < "shipment_document_shipment_join"."shipment_document_id"
+
+Ref:"shipment"."id" < "shipment_document_shipment_join"."shipment_id"
+
+Ref:"shipping_method"."id" < "shipping_method_product_join"."shipping_method_id"
+
+Ref:"product"."id" < "shipping_method_product_join"."product_id"
+
+Ref:"shipment_product"."id" < "shipment_product_product_join"."shipment_product_id"
+
+Ref:"product"."id" < "shipment_product_product_join"."product_id"
+
+Ref:"shipment_product"."id" < "shipment_product_shipment_join"."shipment_product_id"
+
+Ref:"shipment"."id" < "shipment_product_shipment_join"."shipment_id"
+
+Ref:"shipment_product"."id" < "shipment_product_shipment_package_join"."shipment_product_id"
+
+Ref:"shipment_package"."id" < "shipment_product_shipment_package_join"."shipment_package_id"
+
+Ref:"shipment_product"."id" < "shipment_product_sales_order_product_join"."shipment_product_id"
+
+Ref:"sales_order_product"."id" < "shipment_product_sales_order_product_join"."sales_order_product_id"
+
+Ref:"product_collateral"."id" < "product_collateral_product_join"."product_collateral_id"
+
+Ref:"product"."id" < "product_collateral_product_join"."product_id"
+
+Ref:"product_attribute_set"."id" < "product_attribute_set_product_join"."product_attribute_set_id"
+
+Ref:"product"."id" < "product_attribute_set_product_join"."product_id"
+
+Ref:"product_attribute_value"."id" < "product_attribute_value_product_join"."product_attribute_value_id"
+
+Ref:"product"."id" < "product_attribute_value_product_join"."product_id"
+
+Ref:"product_attribute_value"."id" < "product_attribute_value_attribute_value_join"."product_attribute_value_id"
+
+Ref:"attribute_value"."id" < "product_attribute_value_attribute_value_join"."attribute_value_id"
+
+Ref:"price_book_entry"."id" < "price_book_entry_product_join"."price_book_entry_id"
+
+Ref:"product"."id" < "price_book_entry_product_join"."product_id"
+
+Ref:"attribute_value_translation"."id" < "attribute_value_translation_attribute_value_join"."attribute_value_translation_id"
+
+Ref:"attribute_value"."id" < "attribute_value_translation_attribute_value_join"."attribute_value_id"
+
+Ref:"product_category_attribute_set"."id" < "product_category_attribute_set_product_category_join"."product_category_attribute_set_id"
+
+Ref:"product_category"."id" < "product_category_attribute_set_product_category_join"."product_category_id"
+
+Ref:"product_category_translation"."id" < "product_category_translation_product_category_join"."product_category_translation_id"
+
+Ref:"product_category"."id" < "product_category_translation_product_category_join"."product_category_id"
+
+Ref:"product_category"."id" < "product_category_product_catalog_join"."product_category_id"
+
+Ref:"product_catalog"."id" < "product_category_product_catalog_join"."product_catalog_id"
+
+Ref:"product_category"."id" < "product_category_parent_category_join"."product_category_id_left"
+
+Ref:"product_category"."id" < "product_category_parent_category_join"."product_category_id_right"
+
+Ref:"product_catalog_translation"."id" < "product_catalog_translation_product_catalog_join"."product_catalog_translation_id"
+
+Ref:"product_catalog"."id" < "product_catalog_translation_product_catalog_join"."product_catalog_id"
+
+Ref:"product_category_product"."id" < "product_category_product_product_join"."product_category_product_id"
+
+Ref:"product"."id" < "product_category_product_product_join"."product_id"
+
+Ref:"product_category_product"."id" < "product_category_product_product_category_join"."product_category_product_id"
+
+Ref:"product_category"."id" < "product_category_product_product_category_join"."product_category_id"
+
+Ref:"sales_order"."id" < "sales_order_bill_to_email_join"."sales_order_id"
+
+Ref:"sales_order"."id" < "sales_order_ship_to_email_join"."sales_order_id"
+
+Ref:"sales_order"."id" < "sales_order_sales_order_confirmation_state_join"."sales_order_id"
+
+Ref:"sales_order_confirmation_state"."id" < "sales_order_sales_order_confirmation_state_join"."sales_order_confirmation_state_id"
+
+Ref:"sales_order"."id" < "sales_order_sales_order_type_join"."sales_order_id"
+
+Ref:"sales_order_type"."id" < "sales_order_sales_order_type_join"."sales_order_type_id"
+
+Ref:"sales_order"."id" < "sales_order_payment_method_join"."sales_order_id"
+
+Ref:"payment_method"."id" < "sales_order_payment_method_join"."payment_method_id"
+
+Ref:"sales_order"."id" < "sales_order_sales_order_state_join"."sales_order_id"
+
+Ref:"sales_order_state"."id" < "sales_order_sales_order_state_join"."sales_order_state_id"
+
+Ref:"sales_order"."id" < "sales_order_renewal_term_join"."sales_order_id"
+
+Ref:"renewal_term"."id" < "sales_order_renewal_term_join"."renewal_term_id"
+
+Ref:"sales_order"."id" < "sales_order_original_order_join"."sales_order_id_left"
+
+Ref:"sales_order"."id" < "sales_order_original_order_join"."sales_order_id_right"
+
+Ref:"sales_order"."id" < "sales_order_bill_to_account_join"."sales_order_id"
+
+Ref acc_bill_to_account_j:"account"."id" < "sales_order_bill_to_account_join"."account_id"
+
+Ref:"sales_order"."id" < "sales_order_user_device_sesion_join"."sales_order_id"
+
+Ref:"device_user_sesion"."id" < "sales_order_user_device_sesion_join"."device_user_sesion_id"
+
+Ref:"sales_order"."id" < "sales_order_seller_join"."sales_order_id"
+
+Ref:"seller"."id" < "sales_order_seller_join"."seller_id"
+
+Ref:"sales_order"."id" < "sales_order_bill_to_addr_join"."sales_order_id"
+
+Ref:"contact_point_addr"."id" < "sales_order_bill_to_addr_join"."contact_point_addr_id"
+
+Ref:"sales_order"."id" < "sales_order_ship_to_addr_join"."sales_order_id"
+
+Ref:"contact_point_addr"."id" < "sales_order_ship_to_addr_join"."contact_point_addr_id"
+
+Ref:"sales_order"."id" < "sales_order_bill_to_contact_join"."sales_order_id"
+
+Ref:"account_contact"."id" < "sales_order_bill_to_contact_join"."account_contact_id"
+
+Ref:"sales_order"."id" < "sales_order_internal_busines_unit_join"."sales_order_id"
+
+Ref:"internal_busines_unit"."id" < "sales_order_internal_busines_unit_join"."internal_busines_unit_id"
+
+Ref:"sales_order"."id" < "sales_order_sales_channel_join"."sales_order_id"
+
+Ref:"sales_channel"."id" < "sales_order_sales_channel_join"."sales_channel_id"
+
+Ref:"sales_order"."id" < "sales_order_bill_to_phone_number_join"."sales_order_id"
+
+Ref sales_order_contact:"contact_point_phone"."id" < "sales_order_bill_to_phone_number_join"."contact_point_phone_id"
+
+Ref:"sales_order"."id" < "sales_order_sold_to_customer_join"."sales_order_id"
+
+Ref:"customer"."id" < "sales_order_sold_to_customer_join"."customer_id"
+
+Ref:"sales_order"."id" < "sales_order_ship_to_contact_join"."sales_order_id"
+
+Ref:"account_contact"."id" < "sales_order_ship_to_contact_join"."account_contact_id"
+
+Ref:"sales_order_payment_summary"."id" < "sales_order_payment_summary_sales_order_join"."sales_order_payment_summary_id"
+
+Ref:"sales_order"."id" < "sales_order_payment_summary_sales_order_join"."sales_order_id"
+
+Ref:"sales_order_payment_summary"."id" < "sales_order_payment_summary_payment_method_join"."sales_order_payment_summary_id"
+
+Ref:"payment_method"."id" < "sales_order_payment_summary_payment_method_join"."payment_method_id"
+
+Ref:"sales_order_product"."id" < "sales_order_product_shipping_phone_join"."sales_order_product_id"
+
+Ref shipping_contact_j:"contact_point_phone"."id" < "sales_order_product_shipping_phone_join"."contact_point_phone_id"
+
+Ref:"sales_order_product"."id" < "sales_order_product_sales_order_product_reason_join"."sales_order_product_id"
+
+Ref:"sales_order_product_reason"."id" < "sales_order_product_sales_order_product_reason_join"."sales_order_product_reason_id"
+
+Ref:"sales_order_product"."id" < "sales_order_product_product_join"."sales_order_product_id"
+
+Ref:"product"."id" < "sales_order_product_product_join"."product_id"
+
+Ref:"sales_order_product"."id" < "sales_order_product_sales_order_product_state_join"."sales_order_product_id"
+
+Ref:"sales_order_product_state"."id" < "sales_order_product_sales_order_product_state_join"."sales_order_product_state_id"
+
+Ref:"sales_order_product"."id" < "sales_order_product_sales_order_join"."sales_order_product_id"
+
+Ref:"sales_order"."id" < "sales_order_product_sales_order_join"."sales_order_id"
+
+Ref:"sales_order_product"."id" < "sales_order_product_shipping_addr_join"."sales_order_product_id"
+
+Ref:"contact_point_addr"."id" < "sales_order_product_shipping_addr_join"."contact_point_addr_id"
+
+Ref:"sales_order_product"."id" < "sales_order_product_price_book_entry_join"."sales_order_product_id"
+
+Ref:"price_book_entry"."id" < "sales_order_product_price_book_entry_join"."price_book_entry_id"
+
+Ref:"sales_order_product"."id" < "sales_order_product_shipping_email_join"."sales_order_product_id"
+
+Ref:"product_validity_time_period_uo_m"."id" < "sales_order_product_subscription_term_unit_join"."product_validity_time_period_uo_m_id"
+
+Ref:"sales_order_product"."id" < "sales_order_product_list_price_term_uo_m_join"."sales_order_product_id"
+
+Ref:"product_validity_time_period_uo_m"."id" < "sales_order_product_list_price_term_uo_m_join"."product_validity_time_period_uo_m_id"
+
+Ref:"sales_order_product"."id" < "sales_order_product_sales_order_delivery_group_join"."sales_order_product_id"
+
+Ref:"sales_order_delivery_group"."id" < "sales_order_product_sales_order_delivery_group_join"."sales_order_delivery_group_id"
+
+Ref:"sales_order_product"."id" < "sales_order_product_original_order_product_join"."sales_order_product_id_left"
+
+Ref:"sales_order_product"."id" < "sales_order_product_original_order_product_join"."sales_order_product_id_right"
+
+Ref:"sales_order_product"."id" < "sales_order_product_seller_account_join"."sales_order_product_id"
+
+Ref acc_product_seller_account_j:"account"."id" < "sales_order_product_seller_account_join"."account_id"
+
+Ref:"sales_order_price_adjustment"."id" < "sales_order_price_adjustment_sales_order_join"."sales_order_price_adjustment_id"
+
+Ref:"sales_order"."id" < "sales_order_price_adjustment_sales_order_join"."sales_order_id"
+
+Ref:"sales_order_product_group"."id" < "sales_order_product_group_sales_order_product_group_type_join"."sales_order_product_group_id"
+
+Ref:"sales_order_product_group_type"."id" < "sales_order_product_group_sales_order_product_group_type_join"."sales_order_product_group_type_id"
+
+Ref:"sales_order_product_reason"."id" < "sal_ord_pro_rea_sal_ord_pro_rea_cat_join"."sales_order_product_reason_id"
+
+Ref:"sales_order_product_reason_category"."id" < "sal_ord_pro_rea_sal_ord_pro_rea_cat_join"."sales_order_product_reason_category_id"
+
+Ref:"order_delivery_method"."id" < "order_delivery_method_product_join"."order_delivery_method_id"
+
+Ref:"product"."id" < "order_delivery_method_product_join"."product_id"
+
+Ref:"sales_order_change_log"."id" < "sales_order_change_log_change_sales_order_join"."sales_order_change_log_id"
+
+Ref:"sales_order"."id" < "sales_order_change_log_change_sales_order_join"."sales_order_id"
+
+Ref:"sales_order_change_log"."id" < "sales_order_change_log_related_sales_order_product_join"."sales_order_change_log_id"
+
+Ref:"sales_order_product"."id" < "sales_order_change_log_related_sales_order_product_join"."sales_order_product_id"
+
+Ref:"sales_order_change_log"."id" < "sales_order_change_log_change_sales_order_product_join"."sales_order_change_log_id"
+
+Ref:"sales_order_product"."id" < "sales_order_change_log_change_sales_order_product_join"."sales_order_product_id"
+
+Ref:"sales_order_change_log"."id" < "sales_order_change_log_related_sales_order_join"."sales_order_change_log_id"
+
+Ref:"sales_order"."id" < "sales_order_change_log_related_sales_order_join"."sales_order_id"
+
+Ref:"sales_order_product_tax"."id" < "sales_order_product_tax_original_sales_order_product_tax_join"."sales_order_product_tax_id_left"
+
+Ref:"sales_order_product_tax"."id" < "sales_order_product_tax_original_sales_order_product_tax_join"."sales_order_product_tax_id_right"
+
+Ref:"sales_order_product_tax"."id" < "sales_order_product_tax_sales_order_product_join"."sales_order_product_tax_id"
+
+Ref:"sales_order_product"."id" < "sales_order_product_tax_sales_order_product_join"."sales_order_product_id"
+
+Ref:"sales_order_delivery_group"."id" < "sales_order_delivery_group_contact_point_addr_join"."sales_order_delivery_group_id"
+
+Ref:"contact_point_addr"."id" < "sales_order_delivery_group_contact_point_addr_join"."contact_point_addr_id"
+
+Ref:"sales_order_delivery_group"."id" < "sales_order_delivery_group_sales_order_join"."sales_order_delivery_group_id"
+
+Ref:"sales_order"."id" < "sales_order_delivery_group_sales_order_join"."sales_order_id"
+
+Ref:"sales_order_delivery_group"."id" < "sales_order_delivery_group_sales_order_delivery_state_join"."sales_order_delivery_group_id"
+
+Ref:"sales_order_delivery_state"."id" < "sales_order_delivery_group_sales_order_delivery_state_join"."sales_order_delivery_state_id"
+
+Ref:"sales_order_delivery_group"."id" < "sales_order_delivery_group_original_delivery_group_join"."sales_order_delivery_group_id_left"
+
+Ref:"sales_order_delivery_group"."id" < "sales_order_delivery_group_original_delivery_group_join"."sales_order_delivery_group_id_right"
+
+Ref:"sales_order_delivery_group"."id" < "sales_order_delivery_group_order_delivery_method_join"."sales_order_delivery_group_id"
+
+Ref:"order_delivery_method"."id" < "sales_order_delivery_group_order_delivery_method_join"."order_delivery_method_id"
+
+Ref:"sales_order_delivery_group"."id" < "sales_order_delivery_group_account_contact_join"."sales_order_delivery_group_id"
+
+Ref:"account_contact"."id" < "sales_order_delivery_group_account_contact_join"."account_contact_id"
+
+Ref:"sales_channel"."id" < "sales_channel_sales_channel_type_join"."sales_channel_id"
+
+Ref:"sales_channel_type"."id" < "sales_channel_sales_channel_type_join"."sales_channel_type_id"
+
+Ref:"product_related_product"."id" < "product_related_product_sales_order_product1_join"."product_related_product_id"
+
+Ref:"sales_order_product"."id" < "product_related_product_sales_order_product1_join"."sales_order_product_id"
+
+Ref:"product_related_product"."id" < "product_related_product_parent_product_join"."product_related_product_id"
+
+Ref:"product"."id" < "product_related_product_parent_product_join"."product_id"
+
+Ref:"product_related_product"."id" < "product_related_product_child_product_join"."product_related_product_id"
+
+Ref:"product"."id" < "product_related_product_child_product_join"."product_id"
+
+Ref:"product_related_product"."id" < "product_related_product_product_relationship_type_join"."product_related_product_id"
+
+Ref:"product_relationship_type"."id" < "product_related_product_product_relationship_type_join"."product_relationship_type_id"
+
+Ref:"product_related_product"."id" < "product_related_product_sales_order_product2_join"."product_related_product_id"
+
+Ref:"sales_order_product"."id" < "product_related_product_sales_order_product2_join"."sales_order_product_id"
+
+Ref:"product_translation"."id" < "product_translation_product_join"."product_translation_id"
+
+Ref:"product"."id" < "product_translation_product_join"."product_id"
+
+Ref:"product_image"."id" < "product_image_product_join"."product_image_id"
+
+Ref:"product"."id" < "product_image_product_join"."product_id"
+
+Ref:"product_image_translation"."id" < "product_image_translation_product_image_join"."product_image_translation_id"
+
+Ref:"product_image"."id" < "product_image_translation_product_image_join"."product_image_id"
+
+Ref:"goods_product"."id" < "goods_product_primary_product_category_join"."goods_product_id"
+
+Ref:"product_category"."id" < "goods_product_primary_product_category_join"."product_category_id"
+
+Ref:"goods_product"."id" < "goods_product_master_product_join"."goods_product_id"
+
+Ref:"product"."id" < "goods_product_master_product_join"."product_id"
+
+Ref:"goods_product"."id" < "goods_product_primary_sales_channel_join"."goods_product_id"
+
+Ref:"sales_channel"."id" < "goods_product_primary_sales_channel_join"."sales_channel_id"
+
+Ref:"goods_product"."id" < "goods_product_valid_for_period_uo_m_join"."goods_product_id"
+
+Ref:"product_validity_time_period_uo_m"."id" < "goods_product_valid_for_period_uo_m_join"."product_validity_time_period_uo_m_id"
+
+Ref:"goods_product"."id" < "goods_product_brand_join"."goods_product_id"
+
+Ref:"brand"."id" < "goods_product_brand_join"."brand_id"
+
+Ref:"service_product"."id" < "service_product_service_provider_account_join"."service_product_id"
+
+Ref acc_service_provider_account_j:"account"."id" < "service_product_service_provider_account_join"."account_id"
+
+Ref:"service_product"."id" < "service_product_primary_product_category_join"."service_product_id"
+
+Ref:"product_category"."id" < "service_product_primary_product_category_join"."product_category_id"
+
+Ref:"service_product"."id" < "service_product_master_product_join"."service_product_id"
+
+Ref:"product"."id" < "service_product_master_product_join"."product_id"
+
+Ref:"service_product"."id" < "service_product_primary_sales_channel_join"."service_product_id"
+
+Ref:"sales_channel"."id" < "service_product_primary_sales_channel_join"."sales_channel_id"
+
+Ref:"service_product"."id" < "service_product_valid_for_period_uo_m_join"."service_product_id"
+
+Ref:"product_validity_time_period_uo_m"."id" < "service_product_valid_for_period_uo_m_join"."product_validity_time_period_uo_m_id"
+
+Ref:"service_product"."id" < "service_product_brand_join"."service_product_id"
+
+Ref:"brand"."id" < "service_product_brand_join"."brand_id"
+
+Ref:"product"."id" < "product_primary_product_category_join"."product_id"
+
+Ref:"product_category"."id" < "product_primary_product_category_join"."product_category_id"
+
+Ref:"product"."id" < "product_master_product_join"."product_id_left"
+
+Ref:"product"."id" < "product_master_product_join"."product_id_right"
+
+Ref:"product"."id" < "product_primary_sales_channel_join"."product_id"
+
+Ref:"sales_channel"."id" < "product_primary_sales_channel_join"."sales_channel_id"
+
+Ref:"product"."id" < "product_valid_for_period_uo_m_join"."product_id"
+
+Ref:"product_validity_time_period_uo_m"."id" < "product_valid_for_period_uo_m_join"."product_validity_time_period_uo_m_id"
+
+Ref:"product"."id" < "product_brand_join"."product_id"
+
+Ref:"brand"."id" < "product_brand_join"."brand_id"
+
+Ref:"bundle_product"."id" < "bundle_product_primary_product_category_join"."bundle_product_id"
+
+Ref:"product_category"."id" < "bundle_product_primary_product_category_join"."product_category_id"
+
+Ref:"bundle_product"."id" < "bundle_product_master_product_join"."bundle_product_id"
+
+Ref:"product"."id" < "bundle_product_master_product_join"."product_id"
+
+Ref:"bundle_product"."id" < "bundle_product_primary_sales_channel_join"."bundle_product_id"
+
+Ref:"sales_channel"."id" < "bundle_product_primary_sales_channel_join"."sales_channel_id"
+
+Ref:"bundle_product"."id" < "bundle_product_valid_for_period_uo_m_join"."bundle_product_id"
+
+Ref:"product_validity_time_period_uo_m"."id" < "bundle_product_valid_for_period_uo_m_join"."product_validity_time_period_uo_m_id"
+
+Ref:"bundle_product"."id" < "bundle_product_brand_join"."bundle_product_id"
+
+Ref:"brand"."id" < "bundle_product_brand_join"."brand_id"
+
+
+Ref "fk_industry_job__industry":"industry"."id" < "industry_job"."industry"
+
+Ref "fk_industry_job__job":"job"."id" < "industry_job"."job"
+
+Ref "fk_product__product_category":"product_category"."id" < "product"."product_category" [delete: set null]
+
+Ref "fk_job_skill__jobs":"job"."id" < "job_skill"."jobs" [delete: cascade]
+
+Ref "fk_job_skill__skills":"skill"."id" < "job_skill"."skills" [delete: cascade]
+
+Ref "fk_individual__userx":"userx"."id" < "individual"."userx"
+
+Ref "fk_education__individual":"individual"."id" < "education"."individual" [delete: cascade]
+
+Ref "fk_job_individual__job":"job"."id" < "job_individual"."job"
+
+Ref "fk_job_individual__individual":"individual"."id" < "job_individual"."individual"
+
+Ref "fk_location__individual":"individual"."id" < "location"."individual" [delete: cascade]
+
+Ref "fk_portal__individual":"individual"."id" < "portal"."individual" [delete: set null]
+
+Ref "fk_page__portal":"portal"."id" < "page"."portal" [delete: cascade]
+
+Ref "fk_profile__profilesource":"profilesource"."id" < "profile"."profilesource" [delete: set null]
+
+Ref "fk_profile__individual":"individual"."id" < "profile"."individual" [delete: cascade]
+
+Ref "fk_resume__location":"location"."id" < "resume"."location"
+
+Ref "fk_resume__individual":"individual"."id" < "resume"."individual" [delete: cascade]
+
+Ref "fk_swarm__portal":"portal"."id" < "swarm"."portal"
+
+Ref "fk_swarm_individual__swarm":"swarm"."id" < "swarm_individual"."swarm"
+
+Ref "fk_swarm_individual__individual":"individual"."id" < "swarm_individual"."individual"
+
+Ref "fk_user_skill__skills":"skill"."id" < "user_skill"."skills" [delete: cascade]
+
+Ref "fk_user_skill__user_details":"individual"."id" < "user_skill"."user_details" [delete: cascade]
+
+Ref "fk_work_history__resume":"resume"."id" < "work_history"."resume" [delete: set null]
+
+Ref "fk_work_history__individual":"individual"."id" < "work_history"."individual" [delete: cascade]
+
