@@ -1,0 +1,9 @@
+<!-- templates/print_button.html -->
+
+{% extends "appbuilder/general/model/show_cascade.html" %}
+{% block tail %}
+    {{ super() }}
+    <a href="javascript:window.print()" class="btn btn-default">
+        <i class="fa fa-print"></i> {{ _("Print") }}
+    </a>
+{% endblock %}

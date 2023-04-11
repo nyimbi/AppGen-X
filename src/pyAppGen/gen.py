@@ -3,452 +3,285 @@
 #vi: set ai sta et ts=8 sts=4 sw=4 tw=79 wm=0 cc=+1 lbr fo=croq :
 # Copyright (C) Nyimbi Odero,2023
 
-""" This generates Views and Models for a flask builder app by
-
+"""A one line summary of the gen1
 
 """
-import sqlalchemy
-from sqlalchemy import Column
-from sqlalchemy import ForeignKey
-from sqlalchemy import Integer
-from sqlalchemy import String
-from sqlalchemy import Table
-from sqlalchemy.orm import Mapped
-# from sqlalchemy.orm import mapped_column
-from sqlalchemy.orm import relationship
-from sqlalchemy.ext.associationproxy import association_proxy
-from sqlalchemy.ext.associationproxy import AssociationProxy
-from sqlalchemy import create_engine, MetaData, Table, Column, Integer, ForeignKey, String
-from sqlalchemy.orm import mapper, class_mapper
-from sqlalchemy.schema import PrimaryKeyConstraint
+
+import os, sys, shutil, click, glob
+from flask import flash
+from sqlalchemy import create_engine, inspect, MetaData, ForeignKey
 from sqlalchemy.ext.declarative import declarative_base
-from flask_appbuilder import Model
-from flask_appbuilder import ModelView, MasterDetailView, MultipleView, ModelRestApi
-from flask_appbuilder.models.sqla.interface import SQLAInterface
-import graphene
-from sqlalchemy.ext.automap import automap_base
+from sqlalchemy.schema import ForeignKeyConstraint
+from sqlalchemy import create_engine, inspect, MetaData
+from inflection import underscore, camelize
+from utils import *
+from headers import  *
+from model_mixins import *
+from view_mixins import *
+from datetime import datetime
 
-import graphene
-import click, shutil
-import urllib.parse
-# from graphene_sqlalchemy import SQLAlchemyObjectType
+# Global Variable
+metadata =''
+Base = ''
+engine = ''
 
-from utils import snake_to_pascal, pg_to_fabtypes
-from headers import MODEL_HEADER, MODEL_FOOTER, MODEL_EXT, VIEW_HEADER, VIEW_FOOTER, API_HEADER
 
-generated_views_set = set()
-detail_views_set = set()
-master_views_set = set()
+def generate_view_code():
+    global metadata, engine
+    output = []
 
-def gen_models(metadata):
-    Base = declarative_base()
-    model_code = ''
-    model_code += MODEL_HEADER
+    def generate_chart_view_code():
+        global metadata, engine
+        s = f"{[(table.name, snake_to_label(table.name)) for table in metadata.tables.values()]}"
+        print(s)
+        return CHART_VIEW_BODY.format(tbls=s)
+
+    def get_foreign_keys(table):
+        return [fk for fk in table.foreign_keys]
+
+    def generate_view(table_name, table):
+        class_name = snake_to_pascal(table_name)
+        snk_table_name = snake_to_pascal(table_name)
+        tbl_columns = [column_name for column_name in table.columns.keys() if column_name != 'id']
+        rt_cols = str(RefTypeMixin.mixin_fields())
+        rt_fld_set = str(RefTypeMixin.mixin_fieldset())
+        lbl_cols = f"{{" + ', '.join([f'"{column.name}": "{column.name}"' for column in table.columns if not column.name.startswith('id') ]) + "}"
+        output.append(VIEW_BODY.format(
+                                   class_name = class_name,
+                                   snk_table_name = snk_table_name,
+                                   tbl_columns = tbl_columns,
+                                   rt_cols = rt_cols,
+                                   rt_fld_set = rt_fld_set,
+                                   lbl_cols = lbl_cols))
+
+    def generate_master_detail_view(table_name, table, foreign_key):
+        related_table_name = foreign_key.column.table.name
+        related_class_name = snake_to_pascal(related_table_name)
+        class_name = snake_to_pascal(table_name)
+        output.append(VIEW_MASTER_DETAIL.format(
+            related_table_name  = related_table_name,
+            related_class_name = related_class_name,
+            class_name = class_name
+        ))
+
+
+    def generate_multiple_view(table_name, table):
+        class_name = snake_to_pascal(table_name)
+        output.append(f"class {class_name}MultipleModelView(MultipleView):")
+        output.append(
+            f"    views = [{class_name}ModelView, " + ', '.join(
+                [f"{class_name}{snake_to_pascal(related_class)}ModelView" for related_class in related_classes]) + "]"
+        )
+        output.append("\n")
 
     for table_name, table in metadata.tables.items():
-        if table_name.startswith('ab_') or table_name.endswith('join'):
-            continue
-        table_code = f"""
-class {snake_to_pascal(table_name)}(Model, AuditMixin): # RefTypeMixin, TransientMixin, PlaceMixin, DocMixin, PersonMixin
-    __tablename__ = '{table_name}'  """ + "\n\n"
-        # TODO Spacing of 2+ columns
-        column_code = ''
-        for column in table.columns:
-            column_code = "{} = Column({}".format(column.name, pg_to_fabtypes(str(column.type)))
-            if column.foreign_keys:
-                if len(column.foreign_keys) == 1:
-                    column_code += f", ForeignKey('{list(column.foreign_keys)[0].column.table.name}.{list(column.foreign_keys)[0].column.name}')"
-                elif len(column.foreign_keys) == 2:
-                    assoc_table_name = f"{table_name}_{column.name}_join"
-                    assoc_table = Table(assoc_table_name, metadata,
-                                        Column(f"{table_name}_id", Integer, ForeignKey(f"{table_name}.id"), primary_key=True),
-                                        Column(f"{column.foreign_keys[0].column.table.name}_id", Integer, ForeignKey(f"{column.foreign_keys[0].column.table.name}.id"), primary_key=True)
-                                        )
-                    assoc_name = f"{snake_to_pascal(table_name)}{snake_to_pascal(column.foreign_keys[0].column.table.name)}Association"
-                    assoc_object = association_proxy(f"{column.name}_assoc", f"{column.foreign_keys[0].column.name}")
-                    table_code += f"    {column.name}_assoc = relationship('{assoc_name}', back_populates='{column.name}_cols')\n"
-                    table_code += f"    {column.name}_cols = association_proxy('{column.name}_assoc', '{column.foreign_keys[0].column.name}')\n"
-                    assoc_code = f"""
-    class {assoc_name}(Base):
-        __tablename__ = '{assoc_table_name}'
-        {table_name}_id = Column(Integer, ForeignKey(f'{table_name}.id'), primary_key=True)
-        {column.foreign_keys[0].column.table.name}_id = Column(Integer, ForeignKey(f'{column.foreign_keys[0].column.table.name}.id'), primary_key=True)
-        {column.foreign_keys[0].column.name} = relationship('{column.foreign_keys[0].column.table.name}')
-        {table_name} = relationship('{table_name}')\n\n"""
-                    model_code += assoc_code
-            if column.primary_key:
-                column_code += ", primary_key=True"
-            column_code += ")\n"
-            column_code = '    ' + column_code
-            table_code += column_code
-        table_code += MODEL_EXT
-        model_code += table_code
-    model_code += MODEL_FOOTER
-    return(model_code)
+        foreign_keys = get_foreign_keys(table)
+        generate_view(table_name, table)
+
+        if len(foreign_keys) == 1:
+            generate_master_detail_view(
+                table_name, table, foreign_keys[0]
+            )
+        elif len(foreign_keys) > 1:
+            related_classes = [
+                fk.column.table.name for fk in foreign_keys
+            ]
+            for fk in foreign_keys:
+                generate_master_detail_view(table_name, table, fk)
+
+            generate_multiple_view(table_name, table)
+
+    # Now append chart form code
+    output.append(generate_chart_view_code())
+    output.append("\n")
+    output.append(VIEW_SCHEMA_CODE)
+
+    # Now register the views generated
+    output.append("def init_views(appbuilder):")
+    for table_name, table in metadata.tables.items():
+        class_name = snake_to_pascal(table_name)
+        view_name = f"{class_name}ModelView"
+        output.append(f"    appbuilder.add_view({view_name}, '{class_name}', icon='fa-table', category='Tables')")
+
+        foreign_keys = get_foreign_keys(table)
+        if len(foreign_keys) == 1:
+            related_class_name = snake_to_pascal(foreign_keys[0].column.table.name)
+            view_name = f"{class_name}{related_class_name}ModelView"
+            output.append(
+                f"    appbuilder.add_view({view_name}, '{class_name} {related_class_name} Master Detail', icon='fa-table', category='Master Detail')")
+
+        elif len(foreign_keys) > 1:
+            view_name = f"{class_name}MultipleModelView"
+            output.append(
+                f"    appbuilder.add_view({view_name}, '{class_name} Multiple', icon='fa-table', category='Multiple')")
+
+    output.append("    appbuilder.add_separator('Tables')")
+    output.append("    appbuilder.add_view(ChartView, 'Draw Chart', icon='fa-bar-chart', category='Charts')")
+    output.append('    appbuilder.add_view(SchemaView, "Schema View", category="Database")')
 
 
-def generate_field_sets(table_name, metadata):
-    # Get the table object from the metadata
-    table = metadata.tables[table_name]
-
-    # Initialize empty field sets
-    edit_fields = []
-    show_fields = []
-    list_fields = []
-    add_fields = []
-
-    # Loop over the columns in the table and add them to the field sets
-    for column in table.columns:
-        # Determine the appropriate field type based on the column type
-        # You can customize this based on your own requirements
-        field_type = 'TextField' if isinstance(column.type, String) else 'IntegerField'
-
-        # Create a field object with the appropriate attributes
-        field = {
-            'name': column.name,
-            'label': column.name.capitalize(),
-            'type': field_type,
-            'required': not column.nullable
-        }
-
-        # Add the field to the appropriate field set
-        edit_fields.append(field)
-        show_fields.append(field)
-        list_fields.append(field)
-        add_fields.append(field)
-
-    # Return a dictionary of the field sets
-    return {
-        'edit': edit_fields,
-        'show': show_fields,
-        'list': list_fields,
-        'add': add_fields
-    }
+    return "\n".join(output)
 
 
+def generate_model_code():
+    output = []
 
-def gen_views3(metadata):
-    global generated_views_set, detail_views_set, master_views_set
-    dv_str =''
-    mv_str =''
+    def get_foreign_keys(table):
+        return [fk for fk in table.foreign_keys]
 
+    def is_association_table(table):
+        foreign_keys = [c for c in table.columns if c.foreign_keys]
+        return len(foreign_keys) == 2 and all([fk.primary_key for fk in foreign_keys])
 
-    def gen_master_detail_views(table_name, table):
-        global generated_views_set, detail_views_set, master_views_set
-        nonlocal mv_str, dv_str
-        s =''
-        ref_tbls =set()
+    def get_relationship_type(table, column):
+        for constraint in table.constraints:
+            if isinstance(constraint, ForeignKeyConstraint) and column.name in constraint.columns.keys():
+                foreign_table = constraint.elements[0].column.table
+                if is_association_table(table):
+                    return "Many-to-Many", foreign_table.name
+                return (
+                    "One-to-Many" if foreign_table != table else "One-to-One",
+                    foreign_table.name,
+                )
+        return None, None
 
+    def render_column(column):
+        column_type = column.type.compile(engine.dialect)
+        fab_column_type = map_pgsql_datatypes(column_type.lower())
+        fk, remote_table = get_relationship_type(column.table, column)
 
-        if table_name.startswith('ab_') or table_name.endswith('join'):
-            return ''
-        fkeys = []
-        for column in table.columns:
-            if column.foreign_keys:
-                fkeys.append(column)
-                ref_tbls.add(list(column.foreign_keys)[0].column.table.name)
-        fkey_count = len(fkeys)
-
-        # Logic:
-        # For every ref_tbl -> generate a DetailView
-        # if len(fkeys) > 0 -> generate a masterView:
-        # then if len(fkeys) > 1 generate a MultiView
-        mview_count = 0
-        dvt_lst =set()
-        if fkey_count == 0:
-            return s
-        if fkey_count > 0:
-            # Generate a MasterView & DetailView for every ref_tbl
-            for d_tbl in ref_tbls:
-                dvt_name = f"{snake_to_pascal(d_tbl)}DetailView"
-                mview_name = f"{snake_to_pascal(table_name)}MasterView"
-                tbd_name = f"{snake_to_pascal(table_name)}DetailView"
-
-
-                if  (dvt_name not in generated_views_set):
-                    dv_str += gen_simple_view(d_tbl, table, suffix='DetailView')
-                    dv_str += gen_simple_view(table_name, table, suffix='DetailView')
-                    generated_views_set.add(dvt_name)
-                    generated_views_set.add(tbd_name)
-                    detail_views_set.add(dvt_name)
-                    detail_views_set.add(tbd_name)
-                    dvt_lst.add(dvt_name)
-                    print(table_name, tbd_name, dvt_name, d_tbl)
-
-
-                if  (mview_name not in generated_views_set):
-                    mv_str += gen_simple_view(table_name, table, suffix='MasterView', mclass='MasterDetailView',
-                                              rel_name='related_views', rel_list=dvt_name)
-                    generated_views_set.add(mview_name)
-                    master_views_set.add(mview_name)
-
-
-            if fkey_count > 1:
-                mltv_name = f"{snake_to_pascal(table_name)}MultiView"
-                if (mltv_name not in generated_views_set):
-                    mv_str += gen_simple_view(table_name, table, suffix='MultiView', mclass='MultipleView',
-                                              rel_name='views', rel_list=", ".join(dvt_lst))
-                    generated_views_set.add(mltv_name)
-                    master_views_set.add(mltv_name)
-
-        s = dv_str + mv_str
-        return s
-
-
-    def gen_simple_view(table_name, table, mclass='ModelView', suffix ='View',rel_name='related_views', rel_list='', cls_name=''):
-        global generated_views_set, detail_views_set, master_views_set
-        code = []
-        s = ''
-        if table_name.startswith('ab_') or table_name.endswith('join'):
-            return ''
-        if cls_name == '':
-            class_name = f"{snake_to_pascal(table_name)}{suffix}"
+        if fk == "One-to-Many":
+            return f"Column({fab_column_type}, ForeignKey('{remote_table}.id'), nullable={column.nullable})", f"{remote_table}"
+        elif fk == "One-to-One":
+            return f"Column({fab_column_type}, ForeignKey('{remote_table}.id'), nullable={column.nullable}, unique=True)", f"{remote_table}"
+        elif fk == "Many-to-Many":
+            return f"Column({fab_column_type}, ForeignKey('{remote_table}.id'), primary_key=True, nullable={column.nullable})", f"{remote_table}"
+        elif column.primary_key:
+            return f"Column({fab_column_type}, primary_key=True, nullable={column.nullable}, autoincrement=True)", None
         else:
-            class_name = cls_name
+            return f"Column({fab_column_type}, nullable={column.nullable})", None
 
-        if class_name not in generated_views_set:
-            generated_views_set.add(class_name)
-            s += f"class {class_name}({mclass}):\n" +\
-                f"    datamodel=SQLAInterface({snake_to_pascal(table_name)}, db.session)\n" +\
-                f"    {rel_name} = [{rel_list}]\n" +\
-                f"    show_title='{snake_to_pascal(table_name)} Detail'\n" +\
-                f"    show_columns = {[column.name for column in table.columns]}\n" +\
-                f"    show_exclude_columns = [] #= {[column.name for column in table.columns]}\n#\n" +\
-                f"    add_title ='Add {snake_to_pascal(table_name)}'\n" + \
-                f"    add_columns = {[column.name for column in table.columns]}\n" + \
-                f"    add_exclude_columns = [] #{[column.name for column in table.columns]}\n#\n" +\
-                f"    edit_title = 'Edit {snake_to_pascal(table_name)}'\n" + \
-                f"    edit_columns = {[column.name for column in table.columns]}\n" +\
-                f"    edit_exclude_columns =[] # {[column.name for column in table.columns]}\n#\n" +\
-                f"    list_title= '{snake_to_pascal(table_name)} List'\n" + \
-                f"    list_columns = {[column.name for column in table.columns]}\n" + \
-                f"    list_exclude_columns = [] # {[column.name for column in table.columns]}\n#\n" + \
-                f"    search_columns = {[column.name for column in table.columns]}\n" +\
-                f"    search_exclude_columns= [] # {[column.name for column in table.columns]} \n#\n" +\
-                f"    list_columns = {[column.name for column in table.columns]}\n" +\
-                f"    list_exclude_columns =[] # {[column.name for column in table.columns]}\n"
-                # f"    default_sort = [('id', True)]\n" +\
-                # f"    label_columns=   [('{column.name}', '{column.name}') for column in table.columns]\n"
-                # f"    base_permissions = ['can_list', 'can_show', 'can_edit', 'can_delete', 'can_add']\n" +\
-                # f"    label_columns=   [('{column.name}', '{column.name}') for column in table.columns]\n"
-                # f"#    label_columns=   [{{column.name: column.name for column in table.columns}} ]\n" +\
-                # f"    description_columns = [{ {column.name: column.name} for column in table.columns}]\n" + \
-                # f"    description_columns_editable = [{ {column.name: False} for column in table.columns}]\n" + \
-                # f"    show_template =  'appbuilder/general/model/show_cascade.html'\n" +\
-                # f"    list_template = 'appbuilder/general/model/list.html'\n" +\
-                # f"    add_template = 'appbuilder/general/model/add.html'\n" +\
-                # f"    edit_template = 'appbuilder/general/model/edit.html'\n" +\
-                # f"    add_widget = (FormVerticalWidget|FormInlineWidget)\n" + \
-                # f"    show_widget = ShowBlockWidget\n" + \
-                # f"    list_widget = (ListThumbnail|ListWidget)\n" + \
-                # f"    base_order = ('name', 'asc')\n" + \
-                # f"    list_widget= 'list_widget'\n" +\
-                # f"    show_fieldsets= [('{{table_name.capitalize()}} Details', {'fields': [column.name for column in table.columns]})]\n" +\
-                # f"    edit_fieldsets = [('Edit {table_name.capitalize()}', {'fields': [column.name for column in table.columns]})]\n" +\
-                # f"    add_fieldsets = [('Add {table_name.capitalize()}', {'fields': [column.name for column in table.columns]})]\n" +\
-
-        return s + "\n\n"
-
-
-
-    def gen_view_registrations():
-        global generated_views_set, detail_views_set, master_views_set
-        code = []
-
-        # Register DetailViews first
-        for detail_view_name in detail_views_set:
-            code.append(f"appbuilder.add_view_no_menu({detail_view_name}, '{detail_view_name}')")
-
-        # Register MasterViews
-        for master_view_name in master_views_set:
-            code.append(
-                f"appbuilder.add_view({master_view_name}, '{master_view_name}', category='Overview')")
-
-        # Register remaining views
-        for view_name in generated_views_set:
-            if (view_name not in detail_views_set) and (view_name not in master_views_set):
-                code.append(f"appbuilder.add_view({view_name}, '{view_name}', category='Setup')")
-
-        code.append("")
-        s = "\n".join(code)
-        return '# REGVIEWS\n' +s
-
-
-## Generate all views
-    views_code = ''
-    views_code += VIEW_HEADER
     for table_name, table in metadata.tables.items():
-        if table_name.startswith('ab_') or table_name.endswith('join'):
-            continue
-        views_code += gen_simple_view(table_name, table)
-        views_code += gen_master_detail_views(table_name, table)
+        class_name = snake_to_pascal(table_name)
 
+        output.append(f"class {class_name}(RefTypeMixin, Model):  # RefTypeMixin, TransientMixin, PlaceMixin, DocMixin, PersonMixin")
+        output.append(f"    __tablename__ = '{table_name}'")
 
-    views_code += gen_view_registrations()
-    views_code +=  VIEW_FOOTER
-    # print(views_code)
-    return views_code
+        primary_key_exists = any(column.primary_key for column in table.columns)
+        if not primary_key_exists:
+            print(table_name, 'NO PRIMARY KEY')
+            output.append("    id = Column(Integer, primary_key=True, nullable=False, autoincrement=True)")
 
-
-
-
-
-def gen_rest_code(metadata):
-    Base = declarative_base()
-    # Define the Flask-AppBuilder REST APIs for each SQLAlchemy model
-    rest_code = []
-    for table_name, table in metadata.tables.items():
-        if table_name.startswith('ab_') or table_name.endswith('join'):
-            continue
-        class_name = f"{snake_to_pascal(table_name)}RestApi"
-        table_class = type(table_name, (Base,), {'__tablename__': table_name, '__table__': table})
-        if not class_mapper(table_class, False).primary_mapper:
-            mapper(table_class, table)
-        api_class_attributes = {
-            "datamodel": f'SQLAInterface({snake_to_pascal(table_name)})',
-            "include_columns": [column.name for column in table.columns],
-            "exclude_columns": [],
-            "allowed_filters": []
-        }
-        api_class = type(class_name, (ModelRestApi,), api_class_attributes)
-        globals()[class_name] = api_class
-        rest_code.append(f"class {api_class.__name__}({api_class.__bases__[0].__name__}):")
-        for key, value in api_class_attributes.items():
-            if value:
-                rest_code.append(f"    {key} = {value}")
-        rest_code.append("\n")
-        rest_code.append(f'appbuilder.add_api({class_name})')
-        rest_code.append("\n")
-    full_code =API_HEADER
-    full_code += "\n".join(rest_code)
-
-    # print(full_code)
-    return full_code
-
-
-
-
-import graphene
-# from graphene_sqlalchemy import SQLAlchemyObjectType
-from sqlalchemy.orm import class_mapper
-from sqlalchemy.ext.declarative import declarative_base
-
-
-def gen_graphql_code(metadata):
-    Base = declarative_base()
-
-    # Define the GraphQL schema for each SQLAlchemy model
-    graphql_code = []
-    for table_name, table in metadata.tables.items():
-        if table_name.startswith('ab_') or table_name.endswith('join'):
-            continue
-        class_name = f"{snake_to_pascal(table_name)}GraphQL"
-        table_class = type(table_name, (Base,), {'__tablename__': table_name, '__table__': table})
-        if not class_mapper(table_class, False).primary_mapper:
-            mapper(table_class, table)
-        graphql_fields = {}
         for column in table.columns:
-            column_name = column.name
-            column_type = column.type
-            if isinstance(column_type, sqlalchemy.types.Integer):
-                graphql_fields[column_name] = graphene.Int()
-            elif isinstance(column_type, sqlalchemy.types.Float):
-                graphql_fields[column_name] = graphene.Float()
-            elif isinstance(column_type, sqlalchemy.types.String):
-                graphql_fields[column_name] = graphene.String()
-            elif isinstance(column_type, sqlalchemy.types.Boolean):
-                graphql_fields[column_name] = graphene.Boolean()
-            elif isinstance(column_type, sqlalchemy.types.DateTime):
-                graphql_fields[column_name] = graphene.DateTime()
-            elif isinstance(column_type, sqlalchemy.types.Date):
-                graphql_fields[column_name] = graphene.Date()
-            elif isinstance(column_type, sqlalchemy.types.Time):
-                graphql_fields[column_name] = graphene.Time()
-            else:
-                graphql_fields[column_name] = graphene.String()
+            column_name = underscore(column.name)
+            column_def, col_type = render_column(column)
+            if col_type is not None:
+                column_name = col_type
+            output.append(f"    {column_name} = {column_def}")
 
-        graphql_object = type(f"{table_name}ObjectType", (graphene.ObjectType,), graphql_fields)
-        graphql_object_name = f"{snake_to_pascal(table_name)}Object"
-        globals()[graphql_object_name] = graphql_object
-        graphql_code.append(f"class {snake_to_pascal(class_name)}(graphene.ObjectType):")
-        graphql_code.append(f"    {table_name.lower()} = graphene.List({graphql_object_name})")
-        graphql_code.append("")
+        m2m_relationships = [
+            fk for fk in table.foreign_keys if fk.column.table != table
+        ]
 
-    # Define the root query type for the GraphQL schema
-    root_query_code = []
-    root_query_code.append("class Query(graphene.ObjectType):")
-    for table_name, table in metadata.tables.items():
-        root_query_code.append(f"    {table_name.lower()} = graphene.List({table_name}Object)")
-    root_query_code.append("")
+        if len(m2m_relationships) == 2:
+            related_table = m2m_relationships[1].column.table.name
+            related_class = snake_to_pascal(related_table)
+            output.append(
+                f"    {related_class.lower()}_assoc = association_proxy('{snake_to_pascal(m2m_relationships[0].parent.name)}', '{related_class}')"
+            )
 
-    # Add resolvers to the GraphQL schema
-    resolvers_code = []
-    for table_name, table in metadata.tables.items():
-        resolvers_code.append(f"    def resolve_{table_name.lower()}(self, info):")
-        resolvers_code.append(f"        return {table_name}.query.all()")
-        resolvers_code.append("")
+        output.append("\n")
 
-    # Build the full GraphQL schema code
-    full_code = "\n".join(graphql_code + root_query_code + resolvers_code)
-    return full_code
+    return "\n".join(output)
 
+def write_model_file(dir):
+    model_code = generate_model_code()   # TODO change this to a template
+    with open(f"{dir}/models.py", "w") as f:
+        f.write("from sqlalchemy import (Column, Integer, String, ForeignKey, DateTime, Boolean, Float, Text, Date, Numeric, Interval, Enum)\n")
+        f.write("from sqlalchemy.orm import relationship, backref\n")
+        f.write("from sqlalchemy.ext.associationproxy import association_proxy\n")
+        f.write("from flask_appbuilder import Model\n\n")
+        f.write("from app.model_mixins import *\n")
+        f.write("Base = Model\n\n")
+        f.write(model_code)
 
-def gen_code(metadata):
-    # First we generate model code
-    model_code = gen_models(metadata)
-    view_code = gen_views3(metadata)
-    graphql_code = gen_graphql_code(metadata)
-    rest_code = gen_rest_code(metadata)
+def write_view_file(dir):
+    view_code = generate_view_code() # TODO change this to a template
+    with open(f"{dir}/views.py", "w") as f:
+        f.write("import sys, os\n")
+        f.write("from flask_appbuilder import (ModelView, MultipleView, MasterDetailView, SimpleFormView, BaseView, expose)\n")
+        f.write("from flask_appbuilder.models.sqla.interface import SQLAInterface\n")
+        f.write("from sqlalchemy import create_engine, inspect, MetaData, ForeignKeyConstraint\n")
+        f.write("from wtforms import Form, SelectField, SubmitField\n")
+        f.write("from wtforms.validators import DataRequired\n")
+        f.write("from flask import current_app, flash\n")
+        f.write("from app.models import *\n")
+        f.write("from app.model_mixins import *\n")
+        f.write("from app.view_mixins import *\n")
+        f.write("from app import appbuilder\n")
+        f.write("# For the chart drawing module\n")
+        f.write("engine = create_engine(appbuilder.app.config['SQLALCHEMY_DATABASE_URI'])\n")
+        f.write("metadata = MetaData(bind=engine)\n")
+        f.write("metadata.reflect()\n\n\n")
+        f.write(view_code)
 
-    ## Ideally we have taken the output directory from the command line
+def get_metadata(idb):
+    global metadata, Base, engine
 
+    engine = create_engine(idb)
+    metadata = MetaData(bind=engine)
+    metadata.reflect()
+    Base = declarative_base()
+    return metadata, Base, engine
 
 
 
 
 @click.command()
-@click.option("-w", "--dir", default="./", help="your flask-appbuilder 'app' directory to write the files to")
-@click.option("-f", "--filename", default="myfile.txt", help="the name of the file to write")
-# @click.option("-h", "--host", default="localhost", help="the database host IP address or name")
-# @click.option("-p","--port", default=5432, help="The port on whihc the db server is listening")
-# @click.option("-U","--user", default="", help="the database user name to connect to the server")
-# @click.option("-pw","--pass", default="", help="password for the database server")
-@click.option("-db","--database", default="plat", help="The name of the database to introspect")
-# @click.option("--dbengine", default="postgresql", help="The name of the database engine, defaults to postgresql")
-def main(dir, filename, database):
+@click.option("-w", "--writedir", default="./",help="your flask-appbuilder 'app' directory to write the files to",)
+@click.option( "-i", "--idatabase", default="tt", help="The name of the database to introspect")
+@click.option( "-c", "--wdatabase", default="plat", help="The name of the database to create")
+def main(writedir, idatabase, wdatabase):
     # First we create a connection string with the commandline parameters
-    # conn_str = f'{dbengine}://{user}:{urllib.parse.quote_plus("pass")}@{host}:{port}/{database}'
-    conn_str = f'postgresql:///{database}'
-    print(conn_str)
-    print(f"{dir}")
+    # conn_str = f'{dbengine}://{user}:{urllib.parse.quote_plus("pass")}@{host}:{port}/{database}'idatabase
+    idb = f"{idatabase}"
+    wdb = f"{wdatabase}"
+    print(idb, wdb)
 
-    # Define the SQLAlchemy engine and metadata
-    engine = create_engine(conn_str)
-    metadata = MetaData(bind=engine)
-    # Reflect the database schema
-    metadata.reflect()
+    # Not cool, we are setting a global variable
+    print(f"{writedir}")
+    get_metadata(f"postgresql:///{idatabase}")
+    write_model_file(f"{writedir}")
+    write_view_file(f"{writedir}")
+    shutil.copyfile("model_mixins.py", f"{writedir}/model_mixins.py")
+    shutil.copyfile("view_mixins.py", f"{writedir}/view_mixins.py")
+    shutil.copyfile("index.py", f"{writedir}/index.py")
+    shutil.copyfile("utils.py", f"{writedir}/utils.py")
+    shutil.copyfile("my_index.html", f"{writedir}/templates/my_index.html")
+    shutil.copyfile("search_template.html", f"{writedir}/templates/search_template.html")
+    shutil.copyfile("tabbed_edit.html", f"{writedir}/templates/tabbed_edit.html")
+    shutil.copyfile("with_print_button.html", f"{writedir}/templates/with_print_button.html")
+    shutil.copyfile("schema_view.html", f"{writedir}/templates/schema_view.html")
+    shutil.copyfile("init.py", f"{writedir}/__init__.py")  # we are overwriting the init file
 
-    model_code = gen_models(metadata)
-    view_code = gen_views3(metadata)
-    rest_code = gen_rest_code(metadata)
-    graphql_code = gen_graphql_code(metadata)
+    # Create the destination directory if it doesn't exist
+    tmplt_dir = f"{dir}/templates"
+    if not os.path.exists(tmplt_dir):
+        os.makedirs(tmplt_dir)
+    # Iterate through all HTML files in the source directory
+    for html_file in glob.glob(os.path.join('./', '*.html')):
+        # Copy each HTML file to the destination directory
+        shutil.copy2(html_file, tmplt_dir+'/')
 
-    with open(f"{dir}/models.py", "w") as f:
-        f.write(model_code)
+    update_config_setting(f"{writedir}/../config.py", "SQLALCHEMY_DATABASE_URI", f"postgresql:///{wdb}")
+    # update_config_setting(f"{writedir}/../config.py", "LANGUAGES", AFRICAN_LANGS)
 
-    with open(f"{dir}/views.py", "w") as f:
-        f.write(view_code)
-
-    with open(f"{dir}/api.py", "w") as f:
-        f.write(rest_code)
-
-    with open(f"{dir}/gql.py", "w") as f:
-        f.write(graphql_code)
-
-    shutil.copyfile('mixins.py',f"{dir}/mixins.py" )
-    shutil.copyfile('custom_types.py',f"{dir}/custom_types.py")
-    shutil.copyfile('index.py',f"{dir}/index.py")
-    shutil.copyfile('push_to_linode.sh',f"{dir}/../push_to_linode.sh")
+    print('Generated at: ' + str(datetime.now()))
 
 if __name__ == "__main__":
     main()
+
+
+
+
+

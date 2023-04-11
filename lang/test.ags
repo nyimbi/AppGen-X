@@ -1,0 +1,26 @@
+#include test  another
+
+mixin mxtest {
+    id integer [pk, not null, ++],
+    name string,
+    file_name file,
+    pic image,
+    docs document
+}
+
+table table1 (mxtest, mxtet) {
+    name string [pk],
+    email string,
+    pic image,
+    bc file
+}
+
+table table2 (mxtet) {
+    id int [pk, not null, ++, max = 1000, min = 10],
+    name string [ref: < table1.name],
+    description string [unique, enum = {'red', 'blue', 'green'}, max = 3 ],
+    indexes [
+        namedx {name},
+        descdx {name, description}
+    ]
+}

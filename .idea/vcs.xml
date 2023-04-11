@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="VcsDirectoryMappings">
+    <mapping directory="" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/refs/PyDBML" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/refs/enferno" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/refs/erdiagram" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/refs/fab-admin" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/refs/fab-oidc2" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/refs/fab-quick-start" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/refs/fab_addon_audit" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/refs/fab_addon_geoalchemy" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/refs/flask-base" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/refs/flask-bones" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/refs/full-stack-fastapi-postgresql" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/refs/generator-jhipster" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/refs/sqlacodegen" vcs="Git" />
+  </component>
+</project>

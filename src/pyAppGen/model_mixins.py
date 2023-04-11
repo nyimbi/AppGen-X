@@ -1,7 +1,7 @@
 from flask_appbuilder.models.mixins import AuditMixin, FileColumn, ImageColumn
 from flask_appbuilder.models.decorators import renders
 from flask_appbuilder import Model
-from sqlalchemy_searchable import SearchQueryMixin
+# from sqlalchemy_searchable import SearchQueryMixin
 from sqlalchemy import (
     Boolean, CheckConstraint, Column, Date, DateTime, Float, ForeignKey, Integer, Numeric, String,
     Text, Interval
@@ -15,7 +15,6 @@ from sqlalchemy.ext.declarative import declared_attr
 from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import relationship, validates
 from sqlalchemy.sql import func, text
-from sqlalchemy_searchable import SearchQueryMixin
 from sqlalchemy_utils import observes
 from sqlalchemy_utils.types import TSVectorType
 from geopy import Point, distance
@@ -94,9 +93,9 @@ class AuditMixinNullable(AuditMixin):
 class RefTypeMixin(object):
     # id = Column(Integer, autoincrement=True, primary_key=True)
     name = Column(String(100), unique=True, nullable=False, index=True)
-    code = Column(String(20), default="0000", index=True)
+    # code = Column(String(20), default="0000", index=True)
     description = Column(String(100))
-    # notes = Column(Text, default='')
+    notes = Column(Text, default='')
 
     def __repr__(self):
         return self.name
@@ -690,6 +689,55 @@ class WebMixin(object):
 
 
 # TODO Expand the DocumentMixin to make it searchable
+# mixins.py
+
+from sqlalchemy import Column, String, text
+from sqlalchemy.ext.declarative import declared_attr
+from sqlalchemy_utils import TSVectorType
+
+
+class DocMixin(object):
+    @declared_attr
+    def title(cls):
+        return Column(String(255), nullable=False)
+
+    @declared_attr
+    def content(cls):
+        return Column(String, nullable=False)
+
+    @declared_attr
+    def search_vector(cls):
+        return Column(
+            TSVectorType("title", "content", weights={"title": "A", "content": "B"}),
+            nullable=False,
+            index=True,
+        )
+
+    @classmethod
+    def search(cls, session, query, *, limit=None, offset=None):
+        """
+        Perform a full-text search on the title and content fields.
+
+        :param session: A SQLAlchemy session object.
+        :param query: The search query.
+        :param limit: The maximum number of results to return.
+        :param offset: The starting index of the results.
+        :return: A list of matching objects.
+        """
+        search_query = text("plainto_tsquery(:query)").params(query=query)
+        results = (
+            session.query(cls)
+            .filter(cls.search_vector.match(search_query))
+            .order_by(cls.search_vector.match(search_query).desc())
+        )
+
+        if limit is not None:
+            results = results.limit(limit)
+        if offset is not None:
+            results = results.offset(offset)
+
+        return results.all()
+
 class DocMixin(object):
     # query_class = DocQuery
     mime_type = Column(String(60), default="application/pdf")
@@ -736,7 +784,15 @@ class DocMixin(object):
     audio_frame_rate = Column(Integer)
     audio_channels = Column(Integer)
 
-    search_vector = Column(TSVectorType("doc_text", "doc_title"))
+    # search_vector = Column(TSVectorType("doc_text", "doc_title"))
+
+    @declared_attr
+    def search_vector(cls):
+        return Column(
+            TSVectorType("doc_title", "doc_content","comments", weights={"title": "A", "content": "B"}),
+            nullable=False,
+            index=True,
+        )
 
     @validates('doc_text')
     def update_doc_info(self, key, value):
@@ -749,4 +805,27 @@ class DocMixin(object):
 
         return value
 
+    @classmethod
+    def search(cls, session, query, *, limit=None, offset=None):
+        """
+        Perform a full-text search on the doc_title, doc_content and comment fields.
 
+        :param session: A SQLAlchemy session object.
+        :param query: The search query.
+        :param limit: The maximum number of results to return.
+        :param offset: The starting index of the results.
+        :return: A list of matching objects.
+        """
+        search_query = text("plainto_tsquery(:query)").params(query=query)
+        results = (
+            session.query(cls)
+            .filter(cls.search_vector.match(search_query))
+            .order_by(cls.search_vector.match(search_query).desc())
+        )
+
+        if limit is not None:
+            results = results.limit(limit)
+        if offset is not None:
+            results = results.offset(offset)
+
+        return results.all()
