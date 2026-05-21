@@ -235,6 +235,7 @@ class {class_name}ModelView(ModelView):
     label_columns = {lbl_cols}
     appgen_view_sections = {view_sections}
     appgen_tabs = {view_tabs}
+    appgen_lookup_fields = {lookup_fields}
 #    label_columns=   [{{column.name: column.name for column in table.columns}} ]
 #    show_template =  'appbuilder/general/model/show_cascade.html'
 #    list_template = 'appbuilder/general/model/list.html'
@@ -269,6 +270,19 @@ class {class_name}ModelView(ModelView):
 
     def post_update(self, item):
         after_save_row('{table_name}', _appgen_model_row(item, self.edit_columns))
+
+    def lookup_metadata(self):
+        return self.appgen_lookup_fields
+
+    def lookup_options(self, field_name, rows=()):
+        spec = self.appgen_lookup_fields[field_name]
+        options = []
+        for row in rows:
+            value = getattr(row, spec['target_column'], None)
+            label_parts = [str(getattr(row, field, '')) for field in spec['label_fields']]
+            label = ' '.join(part for part in label_parts if part).strip() or str(value)
+            options.append({{'value': value, 'label': label}})
+        return tuple(options)
 
 #     def prefill_form(self, form, pk):
 #        form = super({class_name}ModelView, self).prefill_form(form, pk)

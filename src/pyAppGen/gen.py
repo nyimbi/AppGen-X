@@ -81,6 +81,41 @@ def generate_view_code(schema: AppSchema | None = None):
                 return view
         return None
 
+    def lookup_label_fields(table_name):
+        table_schema = schema_table(table_name)
+        if table_schema is None:
+            return ("id",)
+        visible = [
+            column
+            for column in table_schema.columns
+            if not column.hidden and not column.derived and not column.primary_key
+        ]
+        preferred = [
+            _model_attribute_name(column)
+            for column in visible
+            if column.searchable or column.name.lower() in {"name", "title", "code", "email"}
+        ]
+        fallback = [_model_attribute_name(column) for column in visible[:2]]
+        return tuple(dict.fromkeys(preferred or fallback or ["id"]))
+
+    def lookup_fields(table_schema):
+        if table_schema is None:
+            return {}
+        lookups = {}
+        for column in table_schema.columns:
+            if column.hidden or column.derived or column.references is None:
+                continue
+            target_table, target_column = column.references
+            lookups[_model_attribute_name(column)] = {
+                "field": _model_attribute_name(column),
+                "source_column": column.name,
+                "target_table": target_table,
+                "target_column": target_column,
+                "label_fields": lookup_label_fields(target_table),
+                "required": not column.nullable and not column.primary_key,
+            }
+        return lookups
+
     def column_attr(column):
         if isinstance(column, ColumnSchema):
             return _model_attribute_name(column)
@@ -195,6 +230,7 @@ def generate_view_code(schema: AppSchema | None = None):
                 search_columns=search_columns,
                 view_sections=sections,
                 view_tabs=tabs,
+                lookup_fields=lookup_fields(table_schema),
                 rt_cols=rt_cols,
                 rt_fld_set=rt_fld_set,
                 lbl_cols=lbl_cols,
@@ -21844,6 +21880,23 @@ def _components_text(schema: AppSchema) -> str:
             "time-input": "HH:mm",
         }.get(widget, "")
 
+    def lookup_label_fields(table_name: str) -> tuple[str, ...]:
+        target = next((item for item in schema.tables if item.name == table_name), None)
+        if target is None:
+            return ("id",)
+        visible = [
+            column
+            for column in target.columns
+            if not column.hidden and not column.derived and not column.primary_key
+        ]
+        preferred = [
+            _model_attribute_name(column)
+            for column in visible
+            if column.searchable or column.name.lower() in {"name", "title", "code", "email"}
+        ]
+        fallback = [_model_attribute_name(column) for column in visible[:2]]
+        return tuple(dict.fromkeys(preferred or fallback or ["id"]))
+
     tables = {}
     for table in schema.tables:
         fields = []
@@ -21867,6 +21920,14 @@ def _components_text(schema: AppSchema) -> str:
                     "searchable": column.searchable,
                     "primary_key": column.primary_key,
                     "reference": column.references,
+                    "lookup": {
+                        "target_table": column.references[0],
+                        "target_column": column.references[1],
+                        "label_fields": lookup_label_fields(column.references[0]),
+                        "value_field": column.references[1],
+                    }
+                    if column.references
+                    else None,
                 }
             )
         field_by_name = {field["field"]: field for field in fields}
@@ -21933,6 +21994,32 @@ def field_widget(table_name, field_name):
         if field["field"] == field_name:
             return field
     raise KeyError(f"Unknown component field: {{table_name}}.{{field_name}}")
+
+
+def lookup_fields(table_name):
+    """Return relationship fields that should render as lookup pickers."""
+    return tuple(field for field in field_widgets(table_name) if field.get("lookup"))
+
+
+def lookup_contract(table_name, field_name):
+    """Return target/value/label metadata for one lookup field."""
+    field = field_widget(table_name, field_name)
+    if not field.get("lookup"):
+        raise KeyError(f"Field is not a lookup: {{table_name}}.{{field_name}}")
+    return dict(field["lookup"], field=field["field"], source_column=field["source_column"])
+
+
+def lookup_options(table_name, field_name, rows=()):
+    """Return UI-ready lookup choices from related rows or dictionaries."""
+    contract = lookup_contract(table_name, field_name)
+    options = []
+    for row in rows:
+        getter = row.get if isinstance(row, dict) else lambda key, default=None: getattr(row, key, default)
+        value = getter(contract["value_field"])
+        label_parts = [str(getter(field, "")) for field in contract["label_fields"]]
+        label = " ".join(part for part in label_parts if part).strip() or str(value)
+        options.append({{"value": value, "label": label}})
+    return tuple(options)
 
 
 def calendar_fields(table_name):

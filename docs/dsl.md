@@ -150,7 +150,9 @@ SQLAlchemy enum metadata when the dialect exposes it.
   input fields.
 - `enum` names a domain vocabulary. Fields typed with an enum generate
   SQLAlchemy `Enum` columns, manifest lookup metadata, select widgets, wizard
-  choices, and designer graph choice edges.
+  choices, and designer graph choice edges. Reference fields generate
+  relationship-picker contracts with target tables, value columns, display
+  label fields, and UI-ready lookup choices.
 - `view` records the user-facing fields for generated screens. A bare row such
   as `title, status` defines the list order; a labeled row such as
   `Overview: title, status` defines a generated section/tab without adding a

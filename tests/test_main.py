@@ -1369,6 +1369,10 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     ) in views_text
     assert "appgen_view_sections = [{'name': 'overview'" in views_text
     assert "'fields': ['cover_image', 'manuscript_file']" in views_text
+    assert "appgen_lookup_fields = {'author':" in views_text
+    assert "'source_column': 'author_id'" in views_text
+    assert "'target_table': 'Author'" in views_text
+    assert "'label_fields': ('name', 'email')" in views_text
     assert "search_columns = ['name', 'code', 'description', 'notes'] + ['title']" in views_text
     assert "def pre_add(self, item):" in views_text
     assert "before_save_row('Book'" in views_text
@@ -2860,6 +2864,12 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert any(item["widget"] == "calendar-datetime" for item in components.widget_registry())
     assert any(item["type"] == "DateTimePicker" for item in components.component_palette())
     assert components.field_widget("Book", "author")["widget"] == "relationship-picker"
+    assert components.lookup_contract("Book", "author")["target_table"] == "Author"
+    assert components.lookup_contract("Book", "author")["source_column"] == "author_id"
+    assert components.lookup_contract("Book", "author")["label_fields"] == ("name", "email")
+    assert components.lookup_options("Book", "author", [{"id": 1, "name": "Ada", "email": "ada@example.test"}]) == (
+        {"value": 1, "label": "Ada ada@example.test"},
+    )
     assert components.field_widget("Book", "status")["widget"] == "select"
     assert components.field_widget("Book", "status")["choices"] == ("draft", "published", "archived")
     assert components.field_widget("Book", "summary")["widget"] == "textarea"
