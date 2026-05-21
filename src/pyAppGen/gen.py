@@ -5935,6 +5935,8 @@ def write_studio_template(output_dir):
       <a class="btn btn-default" href="{{ url_for('StudioView.sql_workbench_json') }}">SQL Workbench JSON</a>
       <a class="btn btn-default" href="{{ url_for('StudioView.generation_jobs_json') }}">Generation Jobs JSON</a>
       <a class="btn btn-default" href="{{ url_for('StudioView.generation_artifacts_json') }}">Generation Artifacts JSON</a>
+      <a class="btn btn-default" href="{{ url_for('StudioView.applications_json') }}">Applications JSON</a>
+      <a class="btn btn-default" href="{{ url_for('StudioView.application_create_json') }}">Create App JSON</a>
       <a class="btn btn-default" href="{{ url_for('StudioView.schema_erd_route') }}">ERD</a>
       <a class="btn btn-default" href="{{ url_for('StudioView.schema_dbml_route') }}">DBML</a>
       <a class="btn btn-default" href="{{ url_for('StudioView.schema_sql_route') }}">SQL DDL</a>
@@ -5999,6 +6001,13 @@ def write_studio_template(output_dir):
       <h3>Management Plan</h3>
       <div class="ags-muted">{{ workspace.management.app_name }}</div>
       {% for operation in workspace.management.operations %}
+      <span class="ags-pill">{{ operation }}</span>
+      {% endfor %}
+    </article>
+    <article class="ags-card">
+      <h3>Application Registry</h3>
+      <div class="ags-muted">{{ workspace.applications.apps|length }} managed app</div>
+      {% for operation in workspace.applications.operations %}
       <span class="ags-pill">{{ operation }}</span>
       {% endfor %}
     </article>
@@ -25253,6 +25262,16 @@ def _studio_text(schema: AppSchema, app_name: str) -> str:
         for table in schema.tables
     )
     platform_targets, _unknown_targets = normalize_platform_targets(schema.app_options.get("targets"))
+    application_registry = (
+        {
+            "name": app_name,
+            "source_kind": schema.source_profile()["source_kind"],
+            "source": schema.source or "appgen.dsl",
+            "targets": platform_targets,
+            "status": "active",
+            "paths": ("app", "frontends", "native", "docs", "deploy"),
+        },
+    )
     dsl_documents = (
         {
             "path": "appgen.dsl",
@@ -25319,6 +25338,7 @@ DSL_DOCUMENTS = {dsl_documents!r}
 PROJECT_TREE = {project_tree!r}
 PLATFORM_TARGETS = {platform_targets!r}
 IDE_ACTIONS = {ide_actions!r}
+APPLICATION_REGISTRY = {application_registry!r}
 SECRET_MARKERS = ("SECRET", "TOKEN", "PASSWORD", "API_KEY")
 DSL_KEYWORDS = (
     "app",
@@ -25369,6 +25389,7 @@ def ide_workspace():
         "command_palette": ide_command_palette(),
         "generation": app_generation_plan(),
         "generation_jobs": generation_job_queue(),
+        "applications": application_registry(),
         "management": app_management_plan("status"),
         "debug": tuple(debug_session(item["name"]) for item in DEBUG_SESSIONS),
     }}
@@ -25949,6 +25970,114 @@ def app_generation_plan(targets=None, source="dsl"):
     }}
 
 
+def application_registry(apps=None):
+    """Return generated multi-application workspace inventory for the IDE."""
+    items = tuple(apps or APPLICATION_REGISTRY)
+    return {{
+        "format": "appgen.application-registry.v1",
+        "active": APP_NAME,
+        "apps": items,
+        "operations": ("create", "import", "open", "clone", "package", "archive"),
+        "source_kinds": ("dsl", "dbml", "sql", "ponyorm", "database"),
+        "targets": PLATFORM_TARGETS or ("web",),
+    }}
+
+
+def _source_flag(source_kind):
+    kind = str(source_kind or "dsl").lower()
+    if kind == "database":
+        return "--database-url"
+    if kind == "ponyorm":
+        return "--pony"
+    if kind in {{"dsl", "dbml", "sql"}}:
+        return f"--{{kind}}"
+    raise KeyError(kind)
+
+
+def application_creation_plan(app_name, source_kind="dsl", source_path="appgen.dsl", targets=None):
+    """Return a reviewable plan for creating or regenerating an application."""
+    selected_targets = tuple(targets or PLATFORM_TARGETS or ("web",))
+    flag = _source_flag(source_kind)
+    output_dir = "apps/" + re.sub(r"[^A-Za-z0-9_.-]+", "-", str(app_name)).strip("-").lower()
+    return {{
+        "format": "appgen.application-creation-plan.v1",
+        "app_name": app_name,
+        "source_kind": str(source_kind).lower(),
+        "source_path": source_path,
+        "targets": selected_targets,
+        "command": f"appgen {{flag}} {{source_path}} --writedir {{output_dir}}",
+        "outputs": (output_dir + "/app", output_dir + "/frontends", output_dir + "/native", output_dir + "/docs"),
+        "stages": ("source_fidelity", "dsl_lint", "schema_diff", "generate", "quality", "register"),
+        "checks": ("source_fidelity", "manifest_readiness", "py_compile", "pytest", "appgen_quality"),
+        "requires_review": True,
+    }}
+
+
+def application_import_plan(source_kind, source_path, app_name=None, targets=None):
+    """Return a multi-source import plan that can create a managed Studio app."""
+    name = app_name or APP_NAME
+    plan = application_creation_plan(name, source_kind=source_kind, source_path=source_path, targets=targets)
+    return {{
+        "format": "appgen.application-import-plan.v1",
+        "creation": plan,
+        "source_kind": plan["source_kind"],
+        "source_path": source_path,
+        "review_gates": (
+            "inspect source_fidelity_report",
+            "review schema_roundtrip_diff",
+            "approve generated application path",
+            "run generation quality checks",
+        ),
+        "can_register": True,
+    }}
+
+
+def application_open_plan(app_name=None):
+    """Return an IDE open/switch plan for one managed generated application."""
+    name = app_name or APP_NAME
+    app = next((item for item in application_registry()["apps"] if item["name"] == name), None)
+    if app is None:
+        raise KeyError(name)
+    return {{
+        "format": "appgen.application-open-plan.v1",
+        "app": app,
+        "workspace": ("project_tree", "dsl_authoring", "database_workbench", "generation_jobs", "diagnostics"),
+        "checks": ("manifest_readiness", "source_fidelity", "studio_check"),
+    }}
+
+
+def application_export_package(app_name=None, include_data=False):
+    """Return a package manifest for moving a generated application between workspaces."""
+    name = app_name or APP_NAME
+    open_plan = application_open_plan(name)
+    return {{
+        "format": "appgen.application-export-package.v1",
+        "app_name": name,
+        "include_data": bool(include_data),
+        "manifest": "app/appgen.json",
+        "bundle": tuple(open_plan["app"].get("paths", ())),
+        "checks": ("manifest_readiness", "secret_scan", "backup_manifest", "quality_gate"),
+        "requires_review": bool(include_data),
+    }}
+
+
+def application_portfolio_check(apps=None):
+    """Return readiness for generated multi-application IDE management."""
+    registry = application_registry(apps)
+    creation = application_creation_plan(APP_NAME)
+    return {{
+        "format": "appgen.application-portfolio-check.v1",
+        "ok": bool(registry["apps"])
+        and {{"dsl", "dbml", "sql", "ponyorm", "database"}} <= set(registry["source_kinds"])
+        and bool(creation["command"])
+        and {{"web", "mobile", "desktop"}} <= set(registry["targets"]),
+        "apps": len(registry["apps"]),
+        "active": registry["active"],
+        "operations": registry["operations"],
+        "targets": registry["targets"],
+    }}
+
+
 def generation_job_plan(command="generate", targets=None, changed_paths=()):
     """Return a staged IDE job plan for generation and validation."""
     selected = tuple(targets or PLATFORM_TARGETS or ("web",))
@@ -26192,6 +26321,7 @@ def studio_catalog():
         "dependencies": dependency_inventory(),
         "generation_jobs": generation_job_queue(),
         "generation_artifacts": generation_artifact_manifest(),
+        "applications": application_registry(),
         "clone": clone_plan(f"{{APP_NAME}}Copy"),
     }}
 
@@ -26229,13 +26359,14 @@ def studio_check(existing_paths=()):
     required = {{"app/studio.py", "app/templates/appgen_studio.html"}}
     missing = tuple(sorted(required - existing))
     return {{
-        "ok": not missing and bool(editable_files()) and bool(component_repository()) and bool(database_design_catalog()) and bool(generation_job_queue()["jobs"]),
+        "ok": not missing and bool(editable_files()) and bool(component_repository()) and bool(database_design_catalog()) and bool(generation_job_queue()["jobs"]) and application_portfolio_check()["ok"],
         "missing": missing,
         "files": len(EDITABLE_FILES),
         "components": len(COMPONENTS),
         "tables": len(DATABASE_DESIGN),
         "commands": tuple(item["command"] for item in IDE_ACTIONS),
         "generation_jobs": len(generation_job_queue()["jobs"]),
+        "applications": len(application_registry()["apps"]),
     }}
 
 
@@ -26281,6 +26412,18 @@ class StudioView(BaseView):
     @expose("/generation-artifacts.json")
     def generation_artifacts_json(self):
         return jsonify(generation_artifact_manifest())
+
+    @expose("/applications.json")
+    def applications_json(self):
+        return jsonify(application_registry())
+
+    @expose("/application-create.json")
+    def application_create_json(self):
+        return jsonify(application_creation_plan(APP_NAME))
+
+    @expose("/application-portfolio-check.json")
+    def application_portfolio_check_json(self):
+        return jsonify(application_portfolio_check())
 
     @expose("/schema-workbench.json")
     def schema_workbench_json(self):
@@ -29574,6 +29717,12 @@ def validate_studio_artifacts() -> None:
         "generation_job_queue",
         "generation_job_status",
         "generation_job_log",
+        "application_registry",
+        "application_creation_plan",
+        "application_import_plan",
+        "application_open_plan",
+        "application_export_package",
+        "application_portfolio_check",
         "app_management_plan",
         "studio_catalog",
         "ide_diagnostics",
@@ -29589,7 +29738,7 @@ def validate_studio_artifacts() -> None:
         "studio_check",
     )
     if not all(item in contract for item in required):
-        fail("developer studio contract must expose IDE workspace, DSL, database design, generation, management, editing, debugging, dependencies, components, and cloning")
+        fail("developer studio contract must expose IDE workspace, DSL, database design, generation, multi-application management, editing, debugging, dependencies, components, and cloning")
     template = (ROOT / "app" / "templates" / "appgen_studio.html").read_text()
     if (
         "Developer Studio" not in template
@@ -29605,11 +29754,14 @@ def validate_studio_artifacts() -> None:
         or "SQL Workbench JSON" not in template
         or "Generation Jobs JSON" not in template
         or "Generation Artifacts JSON" not in template
+        or "Applications JSON" not in template
+        or "Create App JSON" not in template
         or "DBML" not in template
         or "SQL DDL" not in template
         or "Generation Plan" not in template
+        or "Application Registry" not in template
     ):
-        fail("developer studio cockpit must expose IDE workspace, DSL editor, database designer exports, generation jobs, and generation plan")
+        fail("developer studio cockpit must expose IDE workspace, DSL editor, database designer exports, generation jobs, application registry, and generation plan")
 
 
 def validate_ci() -> None:
@@ -31500,6 +31652,13 @@ def test_generated_runtime_helpers():
     assert studio.generation_job_log(generated_job)["entries"][0]["stage"] == "lint_dsl"
     assert studio.generation_job_queue((generated_job,))["jobs"][0]["job_id"] == generated_job["job_id"]
     assert studio.generation_artifact_manifest(("web", "desktop"))["format"] == "appgen.generation-artifacts.v1"
+    assert studio.application_registry()["format"] == "appgen.application-registry.v1"
+    assert {"dsl", "dbml", "sql", "ponyorm", "database"} <= set(studio.application_registry()["source_kinds"])
+    assert studio.application_creation_plan("InvoiceApp", source_kind="sql", source_path="schema.sql")["command"] == "appgen --sql schema.sql --writedir apps/invoiceapp"
+    assert studio.application_import_plan("database", "sqlite:///legacy.db")["source_kind"] == "database"
+    assert studio.application_open_plan(APP_NAME)["format"] == "appgen.application-open-plan.v1"
+    assert studio.application_export_package(APP_NAME)["bundle"]
+    assert studio.application_portfolio_check()["ok"] is True
     assert studio.app_management_plan("deploy")["requires_review"] is True
     assert studio.debug_session()["breakpoints"]
     assert studio.breakpoint_plan("app/views.py", symbol="init_views")["symbol"] == "init_views"

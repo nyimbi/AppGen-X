@@ -247,6 +247,12 @@ DBML, SQL, PonyORM, or live database source was normalized, lists the command
 that generated the app, records the canonical fingerprint, and calls out
 source-specific review areas before generated files are overwritten.
 
+The generated Studio also manages a portfolio of generated applications through
+`/studio/applications.json`. Use its create/import/open/export plans to build
+new apps from DSL, DBML, SQL, PonyORM, or existing database URLs while keeping
+source fidelity, linting, schema diffs, generation jobs, and quality gates in
+one review flow.
+
 ## Design-System QA
 
 Generated apps include `branding.py`, `appgen_branding.html`, and

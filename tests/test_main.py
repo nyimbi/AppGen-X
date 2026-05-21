@@ -3215,6 +3215,19 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     artifacts = studio.generation_artifact_manifest(("web", "mobile"))
     assert artifacts["format"] == "appgen.generation-artifacts.v1"
     assert {item["target"] for item in artifacts["artifacts"]} == {"web", "mobile"}
+    applications = studio.application_registry()
+    assert applications["format"] == "appgen.application-registry.v1"
+    assert applications["active"] == "Library"
+    assert {"dsl", "dbml", "sql", "ponyorm", "database"} <= set(applications["source_kinds"])
+    creation = studio.application_creation_plan(
+        "InvoiceApp", source_kind="dbml", source_path="invoice.dbml", targets=("web", "mobile")
+    )
+    assert creation["command"] == "appgen --dbml invoice.dbml --writedir apps/invoiceapp"
+    assert creation["stages"][0] == "source_fidelity"
+    assert studio.application_import_plan("database", "sqlite:///legacy.db")["source_kind"] == "database"
+    assert studio.application_open_plan("Library")["format"] == "appgen.application-open-plan.v1"
+    assert studio.application_export_package("Library")["bundle"]
+    assert studio.application_portfolio_check()["ok"] is True
     assert studio.app_management_plan("deploy")["requires_review"] is True
     assert studio.file_edit_plan("app/models.py", "add comment")["requires_review"] is True
     debug = studio.debug_session()
