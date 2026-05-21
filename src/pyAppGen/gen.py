@@ -5786,6 +5786,7 @@ def write_low_code_features_template(output_dir):
       <a class="btn btn-default" href="{{ url_for('LowCodeFeaturesView.jhipster_superiority_tiers_json') }}">Superiority Tiers JSON</a>
       <a class="btn btn-default" href="{{ url_for('LowCodeFeaturesView.composition_json') }}">Composition JSON</a>
       <a class="btn btn-default" href="{{ url_for('LowCodeFeaturesView.composition_readiness_json') }}">Composition Readiness JSON</a>
+      <a class="btn btn-default" href="{{ url_for('LowCodeFeaturesView.composition_release_gate_json') }}">Composition Release Gate JSON</a>
     </div>
   </div>
   <p class="aglf-note">
@@ -21100,6 +21101,67 @@ def composition_dependency_graph():
     }}
 
 
+def composition_dependency_audit():
+    """Return topology evidence for safe reusable block installation."""
+    keys = tuple(block["key"] for block in COMPOSITION_BLOCKS)
+    key_set = set(keys)
+    duplicate_keys = tuple(key for key in keys if keys.count(key) > 1)
+    unknown_dependencies = tuple(
+        {{"block": block["key"], "dependency": dependency}}
+        for block in COMPOSITION_BLOCKS
+        for dependency in block["depends_on"]
+        if dependency not in key_set
+    )
+    self_dependencies = tuple(
+        {{"block": block["key"], "dependency": dependency}}
+        for block in COMPOSITION_BLOCKS
+        for dependency in block["depends_on"]
+        if dependency == block["key"]
+    )
+    temporary = set()
+    permanent = set()
+    order = []
+    cycles = []
+
+    def visit(block_key, stack):
+        if block_key in permanent:
+            return
+        if block_key in temporary:
+            cycles.append(stack + (block_key,))
+            return
+        temporary.add(block_key)
+        block = _composition_block(block_key)
+        for dependency in block["depends_on"]:
+            if dependency in key_set:
+                visit(dependency, stack + (block_key,))
+        temporary.remove(block_key)
+        permanent.add(block_key)
+        order.append(block_key)
+
+    for key in keys:
+        visit(key, ())
+    blocking_gaps = ()
+    if duplicate_keys:
+        blocking_gaps += ("duplicate_blocks",)
+    if unknown_dependencies:
+        blocking_gaps += ("unknown_dependencies",)
+    if self_dependencies:
+        blocking_gaps += ("self_dependencies",)
+    if cycles:
+        blocking_gaps += ("dependency_cycles",)
+    return {{
+        "format": "appgen.composition-dependency-audit.v1",
+        "nodes": keys,
+        "installation_order": tuple(dict.fromkeys(order)),
+        "duplicate_blocks": duplicate_keys,
+        "unknown_dependencies": unknown_dependencies,
+        "self_dependencies": self_dependencies,
+        "cycles": tuple(cycles),
+        "blocking_gaps": blocking_gaps,
+        "ok": not blocking_gaps and set(order) == key_set,
+    }}
+
+
 def _composition_block(block_key):
     for block in COMPOSITION_BLOCKS:
         if block["key"] == block_key:
@@ -21169,12 +21231,44 @@ def composition_marketplace_readiness(existing_paths=()):
     required = {{"app/low_code_features.py", "app/templates/appgen_low_code_features.html", "app/appgen.json"}}
     missing = tuple(sorted(required - existing))
     graph = composition_dependency_graph()
+    audit = composition_dependency_audit()
     return {{
-        "ok": not missing and len(COMPOSITION_BLOCKS) >= 7 and bool(graph["edges"]),
+        "ok": not missing and len(COMPOSITION_BLOCKS) >= 7 and bool(graph["edges"]) and audit["ok"],
         "missing": missing,
         "blocks": tuple(block["key"] for block in COMPOSITION_BLOCKS),
         "publish_targets": ("studio", "entando", "invenio", "cookiecutter"),
         "graph": graph,
+        "dependency_audit": audit,
+    }}
+
+
+def composition_release_gate(existing_paths=()):
+    """Return release evidence for AppGen's reusable application-composition layer."""
+    block_keys = tuple(block["key"] for block in COMPOSITION_BLOCKS)
+    readiness = composition_marketplace_readiness(existing_paths)
+    audit = composition_dependency_audit()
+    install = composition_install_plan(block_keys)
+    package = composition_package("appgen-marketplace-release", block_keys)
+    preview = composition_preview(block_keys)
+    expected_targets = ("studio", "entando", "invenio", "cookiecutter")
+    gates = (
+        {{"gate": "catalog_size", "ok": len(block_keys) >= 7, "value": len(block_keys)}},
+        {{"gate": "dependency_topology", "ok": audit["ok"] and len(audit["installation_order"]) == len(block_keys), "evidence": audit}},
+        {{"gate": "install_order", "ok": install["blocks"][0] == "schema-core" and set(install["blocks"]) == set(block_keys), "evidence": install}},
+        {{"gate": "review_controls", "ok": install["requires_review"] and install["sandbox_preview"] and len(install["checks"]) >= len(block_keys), "evidence": install["checks"]}},
+        {{"gate": "package_publication", "ok": all(target in package["publish_targets"] for target in expected_targets), "evidence": package}},
+        {{"gate": "non_destructive_preview", "ok": preview["destructive"] is False and preview["new_artifacts"] == install["artifacts"], "evidence": preview}},
+        {{"gate": "artifact_evidence", "ok": readiness["ok"], "missing": readiness["missing"]}},
+    )
+    return {{
+        "format": "appgen.composition-release-gate.v1",
+        "position": "appgen-application-composition-is-a-jhipster-superiority-advantage",
+        "ok": all(gate["ok"] for gate in gates),
+        "gates": gates,
+        "blocking_gaps": tuple(gate["gate"] for gate in gates if not gate["ok"]),
+        "blocks": block_keys,
+        "installation_order": audit["installation_order"],
+        "publish_targets": package["publish_targets"],
     }}
 
 
@@ -21795,6 +21889,10 @@ class LowCodeFeaturesView(BaseView):
     @expose("/composition-readiness.json")
     def composition_readiness_json(self):
         return jsonify(composition_marketplace_readiness())
+
+    @expose("/composition-release-gate.json")
+    def composition_release_gate_json(self):
+        return jsonify(composition_release_gate())
 
 
 def register_low_code_features(appbuilder):
@@ -31561,9 +31659,11 @@ def validate_low_code_features_artifacts() -> None:
         "jhipster_superiority_tiers",
         "jhipster_capability_depth_index",
         "application_composition_catalog",
+        "composition_dependency_audit",
         "composition_install_plan",
         "composition_package",
         "composition_marketplace_readiness",
+        "composition_release_gate",
         "low_code_features_check",
         "docs/Lo-code features.md",
         "docs/ideas.md",
@@ -31574,7 +31674,7 @@ def validate_low_code_features_artifacts() -> None:
     if "jhipster_competitive_report" not in contract or "broader-than-jhipster" not in contract or "appgen-more-capable-than-jhipster" not in contract or "appgen_only_capabilities" not in contract or "application_composition" not in contract:
         fail("low-code feature matrix must make AppGen's broader-than-JHipster position explicit")
     template = (ROOT / "app" / "templates" / "appgen_low_code_features.html").read_text()
-    if "Low-Code Feature Matrix" not in template or "Feature Matrix JSON" not in template or "Readiness JSON" not in template or "Roadmap Sources JSON" not in template or "JHipster Comparison JSON" not in template or "Benchmark JSON" not in template or "Superset Scorecard JSON" not in template or "Superset Evidence JSON" not in template or "Superset Certification JSON" not in template or "Superset Blueprint JSON" not in template or "Capability Depth JSON" not in template or "Superiority Tiers JSON" not in template or "Composition JSON" not in template:
+    if "Low-Code Feature Matrix" not in template or "Feature Matrix JSON" not in template or "Readiness JSON" not in template or "Roadmap Sources JSON" not in template or "JHipster Comparison JSON" not in template or "Benchmark JSON" not in template or "Superset Scorecard JSON" not in template or "Superset Evidence JSON" not in template or "Superset Certification JSON" not in template or "Superset Blueprint JSON" not in template or "Capability Depth JSON" not in template or "Superiority Tiers JSON" not in template or "Composition JSON" not in template or "Composition Release Gate JSON" not in template:
         fail("low-code feature cockpit must expose matrix and readiness links")
 
 
@@ -33536,7 +33636,15 @@ def test_generated_runtime_helpers():
     assert "schema-core" in composition_plan["blocks"]
     assert low_code_features.composition_package("builder-suite", ("visual-builder",))["publish_targets"] == ("studio", "entando", "invenio", "cookiecutter")
     assert low_code_features.composition_preview(("native-targets",))["destructive"] is False
+    assert low_code_features.composition_dependency_audit()["format"] == "appgen.composition-dependency-audit.v1"
+    assert low_code_features.composition_dependency_audit()["ok"] is True
     assert low_code_features.composition_marketplace_readiness(
+        {"app/low_code_features.py", "app/templates/appgen_low_code_features.html", "app/appgen.json"}
+    )["ok"] is True
+    assert low_code_features.composition_release_gate(
+        {"app/low_code_features.py", "app/templates/appgen_low_code_features.html", "app/appgen.json"}
+    )["format"] == "appgen.composition-release-gate.v1"
+    assert low_code_features.composition_release_gate(
         {"app/low_code_features.py", "app/templates/appgen_low_code_features.html", "app/appgen.json"}
     )["ok"] is True
     assert low_code_features.low_code_features_check(

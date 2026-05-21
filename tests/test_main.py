@@ -2258,6 +2258,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert "Feature Matrix JSON" in (output_dir / "templates" / "appgen_low_code_features.html").read_text()
     assert "Roadmap Sources JSON" in (output_dir / "templates" / "appgen_low_code_features.html").read_text()
     assert "JHipster Comparison JSON" in (output_dir / "templates" / "appgen_low_code_features.html").read_text()
+    assert "Composition Release Gate JSON" in (output_dir / "templates" / "appgen_low_code_features.html").read_text()
     assert "Superset Certification JSON" in (output_dir / "templates" / "appgen_low_code_features.html").read_text()
     assert "Superset Scorecard JSON" in (output_dir / "templates" / "appgen_low_code_features.html").read_text()
     assert "Superset Evidence JSON" in (output_dir / "templates" / "appgen_low_code_features.html").read_text()
@@ -2668,9 +2669,22 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "cookiecutter",
     )
     assert low_code_features.composition_preview(("native-targets",))["destructive"] is False
+    dependency_audit = low_code_features.composition_dependency_audit()
+    assert dependency_audit["format"] == "appgen.composition-dependency-audit.v1"
+    assert dependency_audit["ok"] is True
+    assert dependency_audit["installation_order"][0] == "schema-core"
     assert low_code_features.composition_marketplace_readiness(
         {"app/low_code_features.py", "app/templates/appgen_low_code_features.html", "app/appgen.json"}
     )["ok"] is True
+    composition_gate = low_code_features.composition_release_gate(
+        {"app/low_code_features.py", "app/templates/appgen_low_code_features.html", "app/appgen.json"}
+    )
+    assert composition_gate["format"] == "appgen.composition-release-gate.v1"
+    assert composition_gate["ok"] is True
+    assert {"dependency_topology", "install_order", "package_publication", "artifact_evidence"} <= {
+        gate["gate"] for gate in composition_gate["gates"]
+    }
+    assert low_code_features.composition_release_gate({"app/low_code_features.py"})["ok"] is False
     assert low_code_features.low_code_features_check(
         {"app/low_code_features.py", "app/templates/appgen_low_code_features.html", "app/appgen.json"}
     )["ok"] is True

@@ -350,6 +350,10 @@ Use `/low-code-features/jhipster-capability-depth.json` to inspect the depth
 index behind the claim. Each AppGen-only advantage must show design-time,
 generation-time, runtime, and governance evidence rather than only naming a
 feature.
+Use `/low-code-features/composition-release-gate.json` to prove the reusable
+application-composition layer itself: block catalog depth, dependency topology,
+reviewable install order, sandbox controls, package publication targets, and
+artifact evidence.
 
 ERP templates are generated as deployable starter packages, not only example
 tables. Use `/erp-templates/roadmap.json` for the phased implementation plan

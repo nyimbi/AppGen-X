@@ -432,7 +432,10 @@ apps include:
   parity, at least ten AppGen-only advantages, and generated IDE/workbench
   routes before a release can claim to be more capable than JHipster. A
   generated capability-depth index also requires design-time, generation-time,
-  runtime, and governance evidence for every AppGen-only advantage.
+  runtime, and governance evidence for every AppGen-only advantage. The
+  application-composition release gate proves reusable block catalog depth,
+  dependency topology, reviewable install order, sandbox controls, package
+  publication targets, and artifact evidence.
 - `prototyping.py` and `appgen_prototyping.html` with rapid mock screens,
   realistic sample data, preview packages, experiment hypotheses, and backlog
   promotion plans for fast stakeholder iteration.
