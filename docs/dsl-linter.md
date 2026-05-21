@@ -24,6 +24,16 @@ appgen --fix-dsl appgen.appgen
 report without echoing the full before/after source text, then exits with `0`
 only when the fixed file passes the linter.
 
+To normalize spacing and indentation without applying semantic quick fixes, run:
+
+```bash
+appgen --format-dsl appgen.appgen
+```
+
+`--format-dsl` rewrites only the explicit file you pass. It prints an
+`appgen.dsl-format-result.v1` JSON report without echoing the full before/after
+source text, then exits with `0` only when the formatted file passes the linter.
+
 Example output:
 
 ```json

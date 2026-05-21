@@ -35,6 +35,12 @@ Lint without generating:
 appgen --lint-dsl library.appgen
 ```
 
+Format in place before review:
+
+```bash
+appgen --format-dsl library.appgen
+```
+
 Format DSL text through `pyAppGen.dsl.format_dsl` or the generated
 `dsl_reference.format_dsl` helper when builders need stable indentation and
 spacing before review. Formatting returns before/after lint reports and does not

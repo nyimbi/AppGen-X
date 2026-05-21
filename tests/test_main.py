@@ -186,6 +186,27 @@ def test_dsl_linter_reports_semantic_feedback(runner: CliRunner, tmp_path) -> No
     assert fix_payload["changed"] is True
     assert "toaster" not in fix_path.read_text()
     assert "title: string -> Author.id" in fix_path.read_text()
+    format_path = tmp_path / "format.appgen"
+    format_path.write_text("app Library{targets:web,mobile} table Author{id:int pk} table Book{id:int pk; author_id:int -> Author.id}")
+    format_result = runner.invoke(__main__.main, ["--format-dsl", str(format_path)])
+    format_payload = json.loads(format_result.output)
+    assert format_result.exit_code == 0
+    assert format_payload["format"] == "appgen.dsl-format-result.v1"
+    assert format_payload["changed"] is True
+    assert format_path.read_text() == (
+        "app Library {\n"
+        "  targets: web, mobile\n"
+        "}\n"
+        "\n"
+        "table Author {\n"
+        "  id: int pk\n"
+        "}\n"
+        "\n"
+        "table Book {\n"
+        "  id: int pk\n"
+        "  author_id: int -> Author.id\n"
+        "}\n"
+    )
 
 
 def test_dsl_documentation_suite_exists() -> None:

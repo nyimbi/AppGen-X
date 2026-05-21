@@ -31761,6 +31761,10 @@ def test_generated_runtime_helpers():
     assert generated_dsl_fix["format"] == "appgen.dsl-fix-result.v1"
     assert "replace_ref_with_arrow" in generated_dsl_fix["applied"]
     assert "normalize_targets" in generated_dsl_fix["applied"]
+    generated_dsl_format = dsl_reference.format_dsl("app Library{targets:web} table Book{id:int pk}")
+    assert generated_dsl_format["format"] == "appgen.dsl-format-result.v1"
+    assert generated_dsl_format["after"]["ok"] is True
+    assert "table Book" in generated_dsl_format["formatted"]
     assert dsl_reference.dsl_reference_check(
         {"app/dsl_reference.py", "app/templates/appgen_dsl_reference.html"}
     )["ok"] is True
@@ -32468,6 +32472,12 @@ def get_metadata(idb):
     type=click.Path(exists=True, dir_okay=False, path_type=Path),
     help="Apply safe DSL linter quick fixes to an AppGen DSL file and print JSON feedback.",
 )
+@click.option(
+    "--format-dsl",
+    "format_dsl_path",
+    type=click.Path(exists=True, dir_okay=False, path_type=Path),
+    help="Format an AppGen DSL file in place and print JSON feedback.",
+)
 @click.pass_context
 def main(
     ctx,
@@ -32481,17 +32491,18 @@ def main(
     dsl_path,
     lint_dsl_path,
     fix_dsl_path,
+    format_dsl_path,
 ):
     """Generate a Flask-AppBuilder app package from a database schema."""
     schema_sources = [
         path for path in (dbml_path, sql_path, pony_path, dsl_path) if path is not None
     ]
-    if not any([writedir, database_url, idatabase, wdatabase, lint_dsl_path, fix_dsl_path, *schema_sources]):
+    if not any([writedir, database_url, idatabase, wdatabase, lint_dsl_path, fix_dsl_path, format_dsl_path, *schema_sources]):
         click.echo(ctx.get_help())
         ctx.exit(0)
 
     if lint_dsl_path is not None:
-        if any([writedir, database_url, idatabase, wdatabase, fix_dsl_path, *schema_sources]):
+        if any([writedir, database_url, idatabase, wdatabase, fix_dsl_path, format_dsl_path, *schema_sources]):
             raise click.UsageError("--lint-dsl cannot be combined with generation options.")
         from .dsl import lint_dsl_file
 
@@ -32500,7 +32511,7 @@ def main(
         ctx.exit(0 if result["ok"] else 1)
 
     if fix_dsl_path is not None:
-        if any([writedir, database_url, idatabase, wdatabase, *schema_sources]):
+        if any([writedir, database_url, idatabase, wdatabase, format_dsl_path, *schema_sources]):
             raise click.UsageError("--fix-dsl cannot be combined with generation options.")
         from .dsl import fix_dsl_file
 
@@ -32509,6 +32520,20 @@ def main(
             key: value
             for key, value in result.items()
             if key not in {"original", "fixed"}
+        }
+        click.echo(json.dumps(printable, indent=2, sort_keys=True))
+        ctx.exit(0 if result["after"]["ok"] else 1)
+
+    if format_dsl_path is not None:
+        if any([writedir, database_url, idatabase, wdatabase, *schema_sources]):
+            raise click.UsageError("--format-dsl cannot be combined with generation options.")
+        from .dsl import format_dsl_file
+
+        result = format_dsl_file(format_dsl_path)
+        printable = {
+            key: value
+            for key, value in result.items()
+            if key not in {"original", "formatted"}
         }
         click.echo(json.dumps(printable, indent=2, sort_keys=True))
         ctx.exit(0 if result["after"]["ok"] else 1)

@@ -72,6 +72,15 @@ def fix_dsl_file(path: str | Path, *, fix_ids: Iterable[str] | None = None) -> d
     return result
 
 
+def format_dsl_file(path: str | Path) -> dict:
+    """Format an AppGen DSL file in place and return before/after metadata."""
+    path = Path(path)
+    result = format_dsl(path.read_text(), source_name=str(path))
+    if result["changed"]:
+        path.write_text(result["formatted"])
+    return result
+
+
 def lint_dsl(text: str, *, source_name: str | None = None) -> dict:
     """Return syntax, semantic, and style feedback for AppGen DSL source."""
     source = text or ""
