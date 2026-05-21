@@ -2030,6 +2030,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert "Superset Certification JSON" in (output_dir / "templates" / "appgen_low_code_features.html").read_text()
     assert "Superset Scorecard JSON" in (output_dir / "templates" / "appgen_low_code_features.html").read_text()
     assert "Superset Evidence JSON" in (output_dir / "templates" / "appgen_low_code_features.html").read_text()
+    assert "Superset Blueprint JSON" in (output_dir / "templates" / "appgen_low_code_features.html").read_text()
     assert "Prototype JSON" in (output_dir / "templates" / "appgen_prototyping.html").read_text()
     assert "Generated sequential user-input" in (output_dir / "templates" / "appgen_wizards.html").read_text()
     branding_template = (output_dir / "templates" / "appgen_branding.html").read_text()
@@ -2356,6 +2357,16 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert "jhipster/app.jdl" in certification["generated_contracts"]
     assert "app/form_designer.py" in certification["generated_contracts"]
     assert low_code_features.jhipster_superset_certification({"app/designer.py"})["ok"] is False
+    blueprint = low_code_features.jhipster_superset_blueprint()
+    assert blueprint["format"] == "appgen.jhipster-superset-blueprint.v1"
+    assert blueprint["ok"] is True
+    assert "/form-designer/" in {item["route"] for item in blueprint["route_map"]}
+    assert {"design", "generate", "operate", "evolve", "compose"} == {item["pillar"] for item in blueprint["pillars"]}
+    assert low_code_features.readiness_report()["jhipster_superset_blueprint_ok"] is True
+    assert low_code_features.low_code_features_check(
+        {"app/low_code_features.py", "app/templates/appgen_low_code_features.html", "app/appgen.json"}
+    )["jhipster_superset_blueprint_ok"] is True
+    assert low_code_features.jhipster_superset_blueprint({"app/form_designer.py"})["ok"] is False
     assert {
         gate["area"] for gate in low_code_features.jhipster_superset_scorecard()["required_gates"]
     } >= {"visual_builders", "schema_import", "native_targets", "agentic_systems", "erp_templates", "runtime_assurance"}

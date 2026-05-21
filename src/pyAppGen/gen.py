@@ -5762,6 +5762,7 @@ def write_low_code_features_template(output_dir):
       <a class="btn btn-default" href="{{ url_for('LowCodeFeaturesView.jhipster_superset_json') }}">Superset Scorecard JSON</a>
       <a class="btn btn-default" href="{{ url_for('LowCodeFeaturesView.jhipster_superset_evidence_json') }}">Superset Evidence JSON</a>
       <a class="btn btn-default" href="{{ url_for('LowCodeFeaturesView.jhipster_superset_certification_json') }}">Superset Certification JSON</a>
+      <a class="btn btn-default" href="{{ url_for('LowCodeFeaturesView.jhipster_superset_blueprint_json') }}">Superset Blueprint JSON</a>
       <a class="btn btn-default" href="{{ url_for('LowCodeFeaturesView.composition_json') }}">Composition JSON</a>
       <a class="btn btn-default" href="{{ url_for('LowCodeFeaturesView.composition_readiness_json') }}">Composition Readiness JSON</a>
     </div>
@@ -5776,7 +5777,8 @@ def write_low_code_features_template(output_dir):
     JHipster JDL interoperability while adding visual builders, Python-native
     targets, schema imports, ERP templates, agentic systems, and operational
     workbenches. It also exposes generated application-composition packages for
-    reusable blocks, reviewed installs, and portal or repository publication.
+    reusable blocks, reviewed installs, portal or repository publication, and
+    a generated superset blueprint for design-build-operate-evolve workflows.
   </p>
   <div class="aglf-grid">
     {% for group, items in grouped.items() %}
@@ -20593,6 +20595,121 @@ def jhipster_superset_certification(existing_paths=None):
     }}
 
 
+def jhipster_superset_route_map():
+    """Return generated workbench routes that make the JHipster superset usable."""
+    routes = (
+        {{
+            "route": "/studio/",
+            "area": "runtime_studio",
+            "workflow": "manage generated applications, DSL, database designs, and generation jobs",
+            "artifacts": ("app/studio.py", "app/templates/appgen_studio.html"),
+        }},
+        {{
+            "route": "/schema-import/",
+            "area": "schema_import",
+            "workflow": "import and round-trip DBML, SQL, PonyORM, live databases, and generated DSL",
+            "artifacts": ("app/schema_import.py", "docs/schema.md"),
+        }},
+        {{
+            "route": "/designer/",
+            "area": "visual_builders",
+            "workflow": "model tables, fields, relationships, diagrams, and reviewed DSL changes visually",
+            "artifacts": ("app/designer.py", "app/templates/appgen_designer.html"),
+        }},
+        {{
+            "route": "/form-designer/",
+            "area": "visual_builders",
+            "workflow": "drop Delphi-style components onto generated forms and preview layout changes",
+            "artifacts": ("app/form_designer.py", "app/templates/appgen_form_designer.html"),
+        }},
+        {{
+            "route": "/nl-evolution/",
+            "area": "natural_language_evolution",
+            "workflow": "turn natural-language requests into reviewed tables, fields, forms, agents, and DSL patches",
+            "artifacts": ("app/nl_evolution.py", "app/templates/appgen_nl_evolution.html"),
+        }},
+        {{
+            "route": "/agents/",
+            "area": "agentic_systems",
+            "workflow": "design local and API-key LLM providers, tools, generated agents, and execution plans",
+            "artifacts": ("app/agents.py", "app/templates/appgen_agents.html"),
+        }},
+        {{
+            "route": "/erp-templates/",
+            "area": "erp_templates",
+            "workflow": "compose ledger, AP, AR, invoicing, HR, inventory, manufacturing, and report modules",
+            "artifacts": ("app/erp_templates.py", "app/templates/appgen_erp_templates.html"),
+        }},
+        {{
+            "route": "/runtime-assurance/",
+            "area": "runtime_assurance",
+            "workflow": "prove release readiness across security, operations, experience, and delivery gates",
+            "artifacts": ("app/runtime_assurance.py", "app/templates/appgen_runtime_assurance.html"),
+        }},
+        {{
+            "route": "/low-code-features/",
+            "area": "application_composition",
+            "workflow": "package reusable blocks, prove JHipster-superset status, and publish composition contracts",
+            "artifacts": ("app/low_code_features.py", "app/templates/appgen_low_code_features.html"),
+        }},
+    )
+    return routes
+
+
+def jhipster_superset_blueprint(existing_paths=None):
+    """Return the user-facing blueprint for exceeding JHipster capability."""
+    route_map = jhipster_superset_route_map()
+    certification = jhipster_superset_certification(existing_paths)
+    expected = tuple(dict.fromkeys(path for route in route_map for path in route["artifacts"]))
+    existing = set(expected if existing_paths is None else existing_paths)
+    route_rows = tuple(
+        {{
+            **route,
+            "missing_artifacts": tuple(path for path in route["artifacts"] if path not in existing),
+            "ok": not tuple(path for path in route["artifacts"] if path not in existing),
+        }}
+        for route in route_map
+    )
+    pillars = (
+        {{
+            "pillar": "design",
+            "routes": ("/designer/", "/form-designer/", "/view-composition/"),
+            "outcome": "no-code database, form, relationship, and screen design instead of entity-file editing only",
+        }},
+        {{
+            "pillar": "generate",
+            "routes": ("/schema-import/", "/studio/", "/platforms/"),
+            "outcome": "web, mobile, desktop, chatbot, frontend, API, SDK, and deployment targets from one schema",
+        }},
+        {{
+            "pillar": "operate",
+            "routes": ("/runtime-assurance/", "/monitoring/", "/resilience/", "/performance/", "/backup/"),
+            "outcome": "generated runbooks and release gates for production operations",
+        }},
+        {{
+            "pillar": "evolve",
+            "routes": ("/nl-evolution/", "/dsl-reference/", "/agents/"),
+            "outcome": "natural-language and agent-assisted evolution with reviewed deterministic DSL patches",
+        }},
+        {{
+            "pillar": "compose",
+            "routes": ("/low-code-features/", "/erp-templates/", "/integrations/"),
+            "outcome": "ERP packs, application-composition packages, and portal/repository integration handoffs",
+        }},
+    )
+    return {{
+        "format": "appgen.jhipster-superset-blueprint.v1",
+        "baseline": dict(JHIPSTER_BASELINE),
+        "position": "appgen-is-a-generated-application-platform-not-only-a-crud-scaffolder",
+        "route_map": route_rows,
+        "pillars": pillars,
+        "certification": certification,
+        "expected_artifacts": expected,
+        "blocking_gaps": tuple(row for row in route_rows if not row["ok"]) + certification["blocking_gaps"],
+        "ok": certification["ok"] and all(row["ok"] for row in route_rows),
+    }}
+
+
 def readiness_report():
     """Summarize low-code platform coverage and remaining partial areas."""
     counts = Counter(item["status"] for item in CAPABILITIES)
@@ -20600,6 +20717,7 @@ def readiness_report():
     competitive = jhipster_competitive_report()
     superset = jhipster_superset_scorecard()
     certification = jhipster_superset_certification()
+    blueprint = jhipster_superset_blueprint()
     roadmap_sources = roadmap_source_report()
     return {{
         "source": dict(FEATURE_SOURCE),
@@ -20620,6 +20738,8 @@ def readiness_report():
         "jhipster_superset_ok": superset["ok"],
         "jhipster_certification": certification,
         "jhipster_certification_ok": certification["ok"],
+        "jhipster_superset_blueprint": blueprint,
+        "jhipster_superset_blueprint_ok": blueprint["ok"],
     }}
 
 
@@ -20655,7 +20775,7 @@ def low_code_features_check(existing_paths):
     missing = tuple(path for path in required if path not in existing)
     report = readiness_report()
     return {{
-        "ok": not missing and report["alignment_complete"] and report["roadmap_sources_ok"] and report["total"] >= 80 and jhipster_competitive_report()["ok"] and report["jhipster_superset_ok"] and report["jhipster_certification_ok"],
+        "ok": not missing and report["alignment_complete"] and report["roadmap_sources_ok"] and report["total"] >= 80 and jhipster_competitive_report()["ok"] and report["jhipster_superset_ok"] and report["jhipster_certification_ok"] and report["jhipster_superset_blueprint_ok"],
         "missing": missing,
         "source": dict(FEATURE_SOURCE),
         "sources": report["sources"],
@@ -20666,6 +20786,7 @@ def low_code_features_check(existing_paths):
         "competitive_advantage_count": report["competitive_advantage_count"],
         "jhipster_superset_ok": report["jhipster_superset_ok"],
         "jhipster_certification_ok": report["jhipster_certification_ok"],
+        "jhipster_superset_blueprint_ok": report["jhipster_superset_blueprint_ok"],
     }}
 
 
@@ -20717,6 +20838,10 @@ class LowCodeFeaturesView(BaseView):
     @expose("/jhipster-superset-certification.json")
     def jhipster_superset_certification_json(self):
         return jsonify(jhipster_superset_certification())
+
+    @expose("/jhipster-superset-blueprint.json")
+    def jhipster_superset_blueprint_json(self):
+        return jsonify(jhipster_superset_blueprint())
 
     @expose("/composition.json")
     def composition_json(self):
@@ -30047,6 +30172,8 @@ def validate_low_code_features_artifacts() -> None:
         "jhipster_superset_scorecard",
         "jhipster_superset_evidence",
         "jhipster_superset_certification",
+        "jhipster_superset_route_map",
+        "jhipster_superset_blueprint",
         "application_composition_catalog",
         "composition_install_plan",
         "composition_package",
@@ -30061,7 +30188,7 @@ def validate_low_code_features_artifacts() -> None:
     if "jhipster_competitive_report" not in contract or "broader-than-jhipster" not in contract or "appgen-more-capable-than-jhipster" not in contract or "appgen_only_capabilities" not in contract or "application_composition" not in contract:
         fail("low-code feature matrix must make AppGen's broader-than-JHipster position explicit")
     template = (ROOT / "app" / "templates" / "appgen_low_code_features.html").read_text()
-    if "Low-Code Feature Matrix" not in template or "Feature Matrix JSON" not in template or "Readiness JSON" not in template or "Roadmap Sources JSON" not in template or "JHipster Comparison JSON" not in template or "Benchmark JSON" not in template or "Superset Scorecard JSON" not in template or "Superset Evidence JSON" not in template or "Superset Certification JSON" not in template or "Composition JSON" not in template:
+    if "Low-Code Feature Matrix" not in template or "Feature Matrix JSON" not in template or "Readiness JSON" not in template or "Roadmap Sources JSON" not in template or "JHipster Comparison JSON" not in template or "Benchmark JSON" not in template or "Superset Scorecard JSON" not in template or "Superset Evidence JSON" not in template or "Superset Certification JSON" not in template or "Superset Blueprint JSON" not in template or "Composition JSON" not in template:
         fail("low-code feature cockpit must expose matrix and readiness links")
 
 
@@ -31960,6 +32087,9 @@ def test_generated_runtime_helpers():
     assert low_code_features.jhipster_superset_evidence()["ok"] is True
     assert low_code_features.jhipster_superset_certification()["ok"] is True
     assert low_code_features.jhipster_superset_certification()["certification"] == "appgen-more-capable-than-jhipster"
+    assert low_code_features.jhipster_superset_blueprint()["ok"] is True
+    assert low_code_features.jhipster_superset_blueprint()["format"] == "appgen.jhipster-superset-blueprint.v1"
+    assert low_code_features.readiness_report()["jhipster_superset_blueprint_ok"] is True
     assert low_code_features.jhipster_superset_scorecard()["blocking_gaps"] == ()
     assert "agentic_systems" in {item["area"] for item in low_code_features.jhipster_competitive_report()["appgen_only_capabilities"]}
     assert "runtime_assurance" in {item["area"] for item in low_code_features.jhipster_competitive_report()["appgen_only_capabilities"]}

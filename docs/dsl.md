@@ -404,7 +404,10 @@ apps include:
   low-code/no-code platform surface, and an explicit broader-than-JHipster
   benchmark with overlap/AppGen-only rows that keeps JDL interoperability while
   tracking AppGen-only capabilities, superset scorecard gates, and artifact
-  evidence proving each required advantage is generated.
+  evidence proving each required advantage is generated. The same contract now
+  emits a JHipster-superset blueprint with concrete generated workbench routes
+  for design, generation, operations, evolution, and composition workflows so
+  the comparison is tied to usable in-app surfaces rather than a static claim.
 - `prototyping.py` and `appgen_prototyping.html` with rapid mock screens,
   realistic sample data, preview packages, experiment hypotheses, and backlog
   promotion plans for fast stakeholder iteration.
