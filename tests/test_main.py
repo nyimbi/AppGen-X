@@ -442,6 +442,16 @@ def test_generate_app_from_sqlite_schema_compiles(tmp_path) -> None:
     assert deployment.artifact_plan("aws") == ("deploy/terraform-aws.tf",)
     assert deployment.artifact_plan("https") == ("deploy/Caddyfile", "deploy/appgen_https.py")
     assert deployment.environment_status({"SECRET_KEY": "s", "SQLALCHEMY_DATABASE_URI": "sqlite://"})["configured"] is True
+    assert deployment.secret_plan("aws")["cloud_secret_store"] == "AWS Secrets Manager"
+    runbook = deployment.deployment_runbook("kubernetes", image_tag="app:v1", base_url="https://app.example")
+    assert runbook["review_required"] is True
+    assert runbook["image_tag"] == "app:v1"
+    assert runbook["smoke_checks"][0]["url"] == "https://app.example/health"
+    rollback_plan = deployment.rollback_plan("kubernetes", previous_image_tag="app:v0")
+    assert rollback_plan["previous_image_tag"] == "app:v0"
+    assert rollback_plan["review_required"] is True
+    readiness = deployment.cloud_readiness_matrix({"SECRET_KEY": "s", "SQLALCHEMY_DATABASE_URI": "sqlite://"})
+    assert {item["target"] for item in readiness} >= {"kubernetes", "aws", "gcp", "azure"}
     all_artifacts = {
         "Dockerfile",
         "docker-compose.yml",

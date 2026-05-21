@@ -424,8 +424,9 @@ apps include:
   generated CI quality gate for syntax, manifest, PWA, docs, and test-surface
   checks.
 - `deploy/` with Docker/Compose-adjacent Kubernetes manifests, Terraform
-  starter contracts for AWS, GCP, and Azure, and a generated deployment
-  readiness helper.
+  starter contracts for AWS, GCP, and Azure, generated deployment runbooks,
+  secret-injection plans, smoke checks, rollback plans, and cloud readiness
+  helpers.
 - `deploy/Caddyfile` and `deploy/appgen_https.py` with generated automatic
   HTTPS reverse proxy configuration and TLS readiness checks.
 - `appgen.json`, a manifest containing tables, relations, views, workflows,

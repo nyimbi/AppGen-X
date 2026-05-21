@@ -21702,6 +21702,89 @@ def environment_status(environ):
     return {{"configured": not missing, "missing": missing}}
 
 
+def secret_plan(target="kubernetes"):
+    """Return generated secret names and target-specific injection guidance."""
+    if target not in DEPLOYMENT["targets"]:
+        raise KeyError(f"Unknown deployment target: {{target}}")
+    return {{
+        "target": target,
+        "required": DEPLOYMENT["required_env"],
+        "kubernetes_secret": "appgen-secrets",
+        "env_file": ".env.example",
+        "cloud_secret_store": {{
+            "aws": "AWS Secrets Manager",
+            "gcp": "Secret Manager",
+            "azure": "Key Vault",
+        }}.get(target, "environment variables"),
+        "review_required": True,
+    }}
+
+
+def smoke_check_plan(base_url="http://localhost:8080"):
+    """Return deployment smoke checks for generated health, UI, and API routes."""
+    base = str(base_url).rstrip("/")
+    checks = [
+        {{"name": "health", "method": "GET", "url": f"{{base}}/health", "expected": (200,)}},
+        {{"name": "home", "method": "GET", "url": f"{{base}}/", "expected": (200, 302)}},
+    ]
+    for table in DEPLOYMENT["tables"]:
+        checks.append({{"name": f"api_{{table.lower()}}", "method": "GET", "url": f"{{base}}/api/v1/{{table.lower()}}/", "expected": (200, 401, 403)}})
+    return tuple(checks)
+
+
+def deployment_runbook(target, *, image_tag="latest", base_url="http://localhost:8080"):
+    """Return an ordered, review-gated deployment runbook."""
+    artifacts = artifact_plan(target)
+    return {{
+        "target": target,
+        "image_tag": image_tag,
+        "artifacts": artifacts,
+        "secrets": secret_plan(target),
+        "steps": (
+            "run python scripts/appgen_quality.py",
+            "build container image",
+            "apply target artifacts",
+            "verify secrets and database connectivity",
+            "run smoke_check_plan",
+            "record deployment evidence",
+        ),
+        "smoke_checks": smoke_check_plan(base_url),
+        "review_required": target in {{"kubernetes", "aws", "gcp", "azure", "https"}},
+    }}
+
+
+def rollback_plan(target, *, previous_image_tag="previous"):
+    """Return a reviewed rollback plan for generated deployment targets."""
+    return {{
+        "target": target,
+        "artifacts": artifact_plan(target),
+        "previous_image_tag": previous_image_tag,
+        "steps": (
+            "stop new rollout",
+            "restore previous image or release revision",
+            "restore backup if migrations were applied",
+            "run smoke_check_plan",
+            "capture incident notes",
+        ),
+        "review_required": True,
+    }}
+
+
+def cloud_readiness_matrix(environ):
+    """Return readiness for every generated deployment target."""
+    env = environment_status(environ)
+    return tuple(
+        {{
+            "target": target,
+            "artifacts": artifact_plan(target),
+            "environment_configured": env["configured"],
+            "secrets": secret_plan(target),
+            "runbook": deployment_runbook(target),
+        }}
+        for target in deployment_targets()
+    )
+
+
 def deployment_check(environ, existing_paths):
     """Return generated deployment readiness checks."""
     existing = set(existing_paths)
@@ -21716,6 +21799,7 @@ def deployment_check(environ, existing_paths):
         "ok": not missing_artifacts and env["configured"],
         "missing_artifacts": missing_artifacts,
         "environment": env,
+        "targets": cloud_readiness_matrix(environ),
     }}
 '''
 
@@ -24079,6 +24163,8 @@ def validate_deployment_artifacts() -> None:
     contract = (ROOT / "deploy" / "appgen_deploy.py").read_text()
     if '"kubernetes"' not in contract or '"aws"' not in contract or '"https"' not in contract:
         fail("deployment contract must include Kubernetes and cloud targets")
+    if "deployment_runbook" not in contract or "rollback_plan" not in contract or "cloud_readiness_matrix" not in contract:
+        fail("deployment contract must expose runbooks, rollback, and cloud readiness matrix")
     caddyfile = (ROOT / "deploy" / "Caddyfile").read_text()
     if "reverse_proxy web:8080" not in caddyfile or "APPGEN_DOMAIN" not in caddyfile:
         fail("Caddyfile must configure automatic HTTPS reverse proxy")
