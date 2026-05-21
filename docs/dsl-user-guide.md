@@ -262,6 +262,11 @@ systems, natural-language evolution, ERP templates, runtime Studio tooling, and
 application composition. Use `/low-code-features/jhipster-superset.json` to
 check whether a generated app is still more capable than the JHipster baseline.
 
+The same module also exposes `/low-code-features/roadmap-sources.json`, which
+maps `docs/ideas.md`, `docs/base_features.md`, and `docs/Lo-code features.md`
+to generated capabilities and artifacts. Treat that endpoint as the source
+traceability gate before claiming roadmap coverage.
+
 ## Linting Workflow
 
 Run the linter before code generation and before committing DSL changes:

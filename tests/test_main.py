@@ -1679,6 +1679,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert "Tutorials JSON" in (output_dir / "templates" / "appgen_support_center.html").read_text()
     assert "Low-Code Feature Matrix" in (output_dir / "templates" / "appgen_low_code_features.html").read_text()
     assert "Feature Matrix JSON" in (output_dir / "templates" / "appgen_low_code_features.html").read_text()
+    assert "Roadmap Sources JSON" in (output_dir / "templates" / "appgen_low_code_features.html").read_text()
     assert "JHipster Comparison JSON" in (output_dir / "templates" / "appgen_low_code_features.html").read_text()
     assert "Superset Scorecard JSON" in (output_dir / "templates" / "appgen_low_code_features.html").read_text()
     assert "Prototype JSON" in (output_dir / "templates" / "appgen_prototyping.html").read_text()
@@ -1951,7 +1952,17 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         {"app/branding.py", "app/static/appgen-theme.css", "app/templates/appgen_branding.html"}
     )["visual_regression"]["format"] == "appgen.visual-regression.v1"
     assert low_code_features.readiness_report()["source"]["document"] == "docs/Lo-code features.md"
+    assert {"docs/ideas.md", "docs/base_features.md", "docs/Lo-code features.md"} == {
+        item["document"] for item in low_code_features.source_document_contracts()
+    }
+    assert low_code_features.roadmap_source_report()["format"] == "appgen.roadmap-source-report.v1"
+    assert low_code_features.roadmap_source_report()["ok"] is True
+    assert low_code_features.roadmap_source_report()["base_features_complete"] is True
+    assert low_code_features.roadmap_source_report()["ideas_roadmap_complete"] is True
+    assert "schema-sources" in {item["id"] for item in low_code_features.ideas_roadmap_alignment()}
+    assert "deployment" in {item["id"] for item in low_code_features.base_feature_alignment()}
     assert low_code_features.readiness_report()["alignment_complete"] is True
+    assert low_code_features.readiness_report()["roadmap_sources_ok"] is True
     assert low_code_features.readiness_report()["competitive_position"] == "broader-than-jhipster"
     assert low_code_features.readiness_report()["competitive_advantage_count"] >= 7
     assert low_code_features.readiness_report()["jhipster_superset_ok"] is True
@@ -1992,6 +2003,9 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert low_code_features.low_code_features_check(
         {"app/low_code_features.py", "app/templates/appgen_low_code_features.html", "app/appgen.json"}
     )["jhipster_superset_ok"] is True
+    assert low_code_features.low_code_features_check(
+        {"app/low_code_features.py", "app/templates/appgen_low_code_features.html", "app/appgen.json"}
+    )["roadmap_sources_ok"] is True
     hook_names = {hook["hook"] for hook in extensions.extension_points()}
     assert {"startup", "validate_book", "before_save_book", "after_save_book"} <= hook_names
     assert extensions.dispatch("missing_hook", {"ok": True}) == {"ok": True}

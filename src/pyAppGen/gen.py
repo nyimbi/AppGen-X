@@ -5579,6 +5579,7 @@ def write_low_code_features_template(output_dir):
     <div class="aglf-actions">
       <a class="btn btn-default" href="{{ url_for('LowCodeFeaturesView.matrix_json') }}">Feature Matrix JSON</a>
       <a class="btn btn-default" href="{{ url_for('LowCodeFeaturesView.readiness_json') }}">Readiness JSON</a>
+      <a class="btn btn-default" href="{{ url_for('LowCodeFeaturesView.roadmap_sources_json') }}">Roadmap Sources JSON</a>
       <a class="btn btn-default" href="{{ url_for('LowCodeFeaturesView.jhipster_comparison_json') }}">JHipster Comparison JSON</a>
       <a class="btn btn-default" href="{{ url_for('LowCodeFeaturesView.jhipster_benchmark_json') }}">Benchmark JSON</a>
       <a class="btn btn-default" href="{{ url_for('LowCodeFeaturesView.jhipster_superset_json') }}">Superset Scorecard JSON</a>
@@ -5590,6 +5591,7 @@ def write_low_code_features_template(output_dir):
     Competitive position: {{ readiness.competitive_position }} with
     {{ readiness.competitive_advantage_count }} AppGen-only benchmark advantages.
     Superset gate: {{ readiness.jhipster_superset_ok }}.
+    Roadmap source gate: {{ readiness.roadmap_sources_ok }}.
     AppGen keeps
     JHipster JDL interoperability while adding visual builders, Python-native
     targets, schema imports, ERP templates, agentic systems, and operational
@@ -19333,6 +19335,11 @@ FEATURE_SOURCE = {{
     "document": "docs/Lo-code features.md",
     "purpose": "Low-code/no-code platform capability checklist",
 }}
+ROADMAP_SOURCES = (
+    {{"document": "docs/ideas.md", "purpose": "Original implementation roadmap and integration backlog"}},
+    {{"document": "docs/base_features.md", "purpose": "Canonical base feature contract referenced by the goal"}},
+    dict(FEATURE_SOURCE),
+)
 APP_TABLES = {table_names!r}
 APP_TARGETS = {targets!r}
 CAPABILITIES = {capabilities!r}
@@ -19415,6 +19422,44 @@ ROADMAP_AREAS = (
         "label": "Databases, APIs, enterprise systems, productivity suites, IoT, and blockchain",
         "capabilities": ("schema.import", "api.rest", "api.openapi", "integration.enterprise", "integration.productivity", "integration.emerging", "data.database-ops"),
     }},
+)
+BASE_FEATURE_REQUIREMENTS = (
+    {{"id": "data-modeling", "label": "Data Modeling", "capabilities": ("schema.import", "data.database-ops", "data.migrations"), "artifacts": ("app/models.py", "app/appgen.json", "docs/schema.md")}},
+    {{"id": "ui-design", "label": "User Interface Design", "capabilities": ("ui.visual-modeling", "ui.form-designer", "ui.layout", "ui.branding"), "artifacts": ("app/designer.py", "app/form_designer.py", "app/branding.py")}},
+    {{"id": "data-access", "label": "Data Access", "capabilities": ("data.access", "api.rest", "api.graphql"), "artifacts": ("app/data_access.py", "app/api.py", "app/gql.py")}},
+    {{"id": "security", "label": "Security", "capabilities": ("security.rbac", "security.session", "security.rls", "security.sso", "security.compliance"), "artifacts": ("app/security.py", "app/runtime_security.py", "app/rls.py", "app/identity.py", "app/compliance.py")}},
+    {{"id": "workflow", "label": "Workflow", "capabilities": ("workflow.automation", "workflow.statecharts", "logic.business-rules"), "artifacts": ("app/workflow.py", "app/rules.py")}},
+    {{"id": "wizards", "label": "Wizards", "capabilities": ("ui.wizards",), "artifacts": ("app/wizards.py", "app/templates/appgen_wizards.html")}},
+    {{"id": "customization", "label": "Customization", "capabilities": ("platform.extensibility", "ops.configuration", "components.application-composition"), "artifacts": ("app/extensions.py", "app/config_admin.py", "app_custom/extensions.py")}},
+    {{"id": "reporting", "label": "Reporting", "capabilities": ("reports.analytics", "reports.usage-analytics"), "artifacts": ("app/reports.py", "app/report_delivery.py", "app/dashboards.py")}},
+    {{"id": "integration", "label": "Integration", "capabilities": ("integration.enterprise", "integration.productivity", "integration.emerging", "api.openapi"), "artifacts": ("app/integrations.py", "app/emerging.py", "docs/openapi.json")}},
+    {{"id": "data-visualization", "label": "Data Visualization", "capabilities": ("data.visualization", "reports.analytics"), "artifacts": ("app/dashboards.py", "app/templates/appgen_dashboards.html")}},
+    {{"id": "automation", "label": "Automation", "capabilities": ("automation.node-red", "automation.cep", "automation.rpa-bpa", "workflow.automation"), "artifacts": ("automation/node-red/flows.json", "app/events.py", "app/rpa.py")}},
+    {{"id": "extensibility", "label": "Extensibility", "capabilities": ("platform.extensibility", "devops.packaging", "components.templates"), "artifacts": ("app/extensions.py", "appgen_package.py", "cookiecutter/cookiecutter.json")}},
+    {{"id": "debugging", "label": "Debugging", "capabilities": ("quality.diagnostics", "devops.studio"), "artifacts": ("app/diagnostics.py", "app/studio.py")}},
+    {{"id": "testing", "label": "Testing", "capabilities": ("quality.test-coverage", "quality.api-testing", "devops.cicd"), "artifacts": ("tests/test_generated_coverage.py", "app/api_testing.py", ".github/workflows/appgen-quality.yml")}},
+    {{"id": "deployment", "label": "Deployment", "capabilities": ("deployment.cloud", "security.https", "ops.lifecycle"), "artifacts": ("deploy/Dockerfile", "deploy/k8s/deployment.yaml", "deploy/appgen_https.py")}},
+)
+IDEAS_ROADMAP_REQUIREMENTS = (
+    {{"id": "full-stack-reference", "label": "Full-stack FastAPI/PostgreSQL inspiration", "capabilities": ("api.rest", "api.openapi", "deployment.cloud"), "artifacts": ("app/api.py", "docs/openapi.json", "deploy/docker-compose.yml")}},
+    {{"id": "search-stack", "label": "ZomboDB, Elasticsearch, and Whoosh search", "capabilities": ("data.search", "data.database-ops"), "artifacts": ("app/search.py", "app/database_ops.py")}},
+    {{"id": "postgraphile-patroni", "label": "PostGraphile and Patroni database operations", "capabilities": ("data.database-ops", "platform.microservices"), "artifacts": ("app/database_ops.py", "app/microservices.py")}},
+    {{"id": "jhipster", "label": "JHipster JDL export and interoperability", "capabilities": ("platform.jhipster", "platform.competitive-benchmark"), "artifacts": ("jhipster/app.jdl", "jhipster/appgen_jhipster.py")}},
+    {{"id": "entando-invenio", "label": "Entando portal and Invenio repository integration contracts", "capabilities": ("integration.enterprise", "components.application-composition"), "artifacts": ("app/integrations.py", "app/low_code_features.py")}},
+    {{"id": "node-red", "label": "Node-RED default automation runtime", "capabilities": ("automation.node-red",), "artifacts": ("automation/node-red/flows.json", "automation/docker-compose.yml")}},
+    {{"id": "automatic-https", "label": "Automatic HTTPS deployment", "capabilities": ("security.https", "deployment.cloud"), "artifacts": ("deploy/Caddyfile", "deploy/appgen_https.py")}},
+    {{"id": "config-editor", "label": "FAB config flags and config.py editor view", "capabilities": ("ops.configuration",), "artifacts": ("config.py", "app/config_admin.py")}},
+    {{"id": "master-detail-chart-reports", "label": "Master-detail views, chart views, and reports", "capabilities": ("ui.view-composition", "data.visualization", "reports.analytics"), "artifacts": ("app/view_composition.py", "app/dashboards.py", "app/reports.py")}},
+    {{"id": "schema-sources", "label": "Generate from DBML, SQL, PonyORM scripts, and existing databases", "capabilities": ("schema.import", "data.database-ops"), "artifacts": ("app/schema_import.py", "app/database_ops.py")}},
+    {{"id": "multi-frontends", "label": "React, Vue, Angular, Express, Svelte, and HTMX front ends", "capabilities": ("platform.frontends",), "artifacts": ("frontends/appgen_frontends.py",)}},
+    {{"id": "sso-cognito", "label": "AWS Cognito and enterprise SSO", "capabilities": ("security.sso",), "artifacts": ("app/identity.py",)}},
+    {{"id": "mobile-desktop", "label": "Mobile and desktop app generation", "capabilities": ("platform.native", "platform.targets"), "artifacts": ("native/mobile/app.py", "native/desktop/app.py")}},
+    {{"id": "documentation-seed-tests", "label": "Seed data, documentation, and generated test coverage", "capabilities": ("data.seed", "api.documentation", "quality.test-coverage"), "artifacts": ("seed.py", "docs/data-dictionary.md", "tests/test_generated_coverage.py")}},
+    {{"id": "erp-library", "label": "ERP data model library", "capabilities": ("components.erp-templates", "operations.finance", "operations.inventory-traceability"), "artifacts": ("app/erp_templates.py", "app/finance_ops.py", "app/inventory_ops.py")}},
+    {{"id": "docker-cloud", "label": "Docker, Kubernetes, AWS, GCP, Azure, PostgreSQL, and MySQL deployment", "capabilities": ("deployment.cloud", "data.database-ops"), "artifacts": ("deploy/Dockerfile", "deploy/k8s/deployment.yaml", "deploy/terraform/aws/main.tf", "deploy/terraform/gcp/main.tf", "deploy/terraform/azure/main.tf")}},
+    {{"id": "dsl-extensions", "label": "Field groups, arrays, RLS, derived fields, hidden fields, and ER diagrams", "capabilities": ("dsl.language-design", "security.rls", "ui.visual-modeling"), "artifacts": ("app/dsl_reference.py", "app/rls.py", "app/designer.py")}},
+    {{"id": "chatbot-statecharts-rls-session", "label": "Chatbot, state charts, RLS, and auto logout", "capabilities": ("ai.guided-chatbot", "workflow.statecharts", "security.rls", "security.session"), "artifacts": ("app/chatbot.py", "app/workflow.py", "app/rls.py", "app/runtime_security.py")}},
+    {{"id": "autobackup", "label": "Management autobackup", "capabilities": ("ops.backup",), "artifacts": ("app/backup.py",)}},
 )
 
 
@@ -19556,6 +19601,61 @@ def roadmap_alignment():
     return tuple(alignment)
 
 
+def source_document_contracts():
+    """Return the roadmap documents that generated readiness must trace to."""
+    return tuple(dict(item) for item in ROADMAP_SOURCES)
+
+
+def _requirement_alignment(requirements):
+    capabilities = {{item["key"]: item for item in CAPABILITIES}}
+    rows = []
+    for requirement in requirements:
+        present = tuple(key for key in requirement["capabilities"] if key in capabilities)
+        missing = tuple(key for key in requirement["capabilities"] if key not in capabilities)
+        rows.append(
+            {{
+                "id": requirement["id"],
+                "label": requirement["label"],
+                "capabilities": tuple(dict(capabilities[key]) for key in present),
+                "capability_keys": present,
+                "missing_capabilities": missing,
+                "artifacts": requirement["artifacts"],
+                "covered": not missing,
+            }}
+        )
+    return tuple(rows)
+
+
+def base_feature_alignment():
+    """Map docs/base_features.md requirements to generated capabilities."""
+    return _requirement_alignment(BASE_FEATURE_REQUIREMENTS)
+
+
+def ideas_roadmap_alignment():
+    """Map docs/ideas.md roadmap items to generated capabilities."""
+    return _requirement_alignment(IDEAS_ROADMAP_REQUIREMENTS)
+
+
+def roadmap_source_report():
+    """Return combined readiness for docs/ideas.md, docs/base_features.md, and low-code features."""
+    base = base_feature_alignment()
+    ideas = ideas_roadmap_alignment()
+    low_code = roadmap_alignment()
+    documents = source_document_contracts()
+    return {{
+        "format": "appgen.roadmap-source-report.v1",
+        "documents": documents,
+        "document_count": len(documents),
+        "base_features": base,
+        "ideas_roadmap": ideas,
+        "low_code_features": low_code,
+        "base_features_complete": all(item["covered"] for item in base),
+        "ideas_roadmap_complete": all(item["covered"] for item in ideas),
+        "low_code_features_complete": all(item["covered"] for item in low_code),
+        "ok": all(item["covered"] for item in base) and all(item["covered"] for item in ideas) and all(item["covered"] for item in low_code),
+    }}
+
+
 def jhipster_capability_benchmark():
     """Return overlap and AppGen-only capability rows for JHipster comparison."""
     rows = tuple(dict(item) for item in COMPETITIVE_BENCHMARK)
@@ -19648,14 +19748,18 @@ def readiness_report():
     partial = tuple(item["key"] for item in CAPABILITIES if item["status"] != "implemented")
     competitive = jhipster_competitive_report()
     superset = jhipster_superset_scorecard()
+    roadmap_sources = roadmap_source_report()
     return {{
         "source": dict(FEATURE_SOURCE),
+        "sources": roadmap_sources["documents"],
         "targets": APP_TARGETS,
         "tables": APP_TABLES,
         "counts": dict(counts),
         "total": len(CAPABILITIES),
         "partial": partial,
         "alignment_complete": all(item["covered"] for item in roadmap_alignment()),
+        "roadmap_sources": roadmap_sources,
+        "roadmap_sources_ok": roadmap_sources["ok"],
         "competitive_position": competitive["position"],
         "competitive_advantage_count": competitive["appgen_only_capability_count"],
         "jhipster_overlap_count": competitive["jhipster_overlap_count"],
@@ -19697,11 +19801,13 @@ def low_code_features_check(existing_paths):
     missing = tuple(path for path in required if path not in existing)
     report = readiness_report()
     return {{
-        "ok": not missing and report["alignment_complete"] and report["total"] >= 80 and jhipster_competitive_report()["ok"] and report["jhipster_superset_ok"],
+        "ok": not missing and report["alignment_complete"] and report["roadmap_sources_ok"] and report["total"] >= 80 and jhipster_competitive_report()["ok"] and report["jhipster_superset_ok"],
         "missing": missing,
         "source": dict(FEATURE_SOURCE),
+        "sources": report["sources"],
         "total": report["total"],
         "areas": tuple(item["area"] for item in roadmap_alignment()),
+        "roadmap_sources_ok": report["roadmap_sources_ok"],
         "competitive_position": report["competitive_position"],
         "competitive_advantage_count": report["competitive_advantage_count"],
         "jhipster_superset_ok": report["jhipster_superset_ok"],
@@ -19732,6 +19838,10 @@ class LowCodeFeaturesView(BaseView):
     @expose("/alignment.json")
     def alignment_json(self):
         return jsonify(list(roadmap_alignment()))
+
+    @expose("/roadmap-sources.json")
+    def roadmap_sources_json(self):
+        return jsonify(roadmap_source_report())
 
     @expose("/jhipster-comparison.json")
     def jhipster_comparison_json(self):
@@ -28704,6 +28814,10 @@ def validate_low_code_features_artifacts() -> None:
         "capability_matrix",
         "grouped_capabilities",
         "roadmap_alignment",
+        "source_document_contracts",
+        "base_feature_alignment",
+        "ideas_roadmap_alignment",
+        "roadmap_source_report",
         "readiness_report",
         "jhipster_capability_benchmark",
         "jhipster_superset_scorecard",
@@ -28713,13 +28827,15 @@ def validate_low_code_features_artifacts() -> None:
         "composition_marketplace_readiness",
         "low_code_features_check",
         "docs/Lo-code features.md",
+        "docs/ideas.md",
+        "docs/base_features.md",
     )
     if not all(item in contract for item in required):
         fail("low-code feature matrix must expose capability, roadmap, readiness, and source-document contracts")
     if "jhipster_competitive_report" not in contract or "broader-than-jhipster" not in contract or "more-capable-than-jhipster" not in contract or "appgen_only_capabilities" not in contract or "application_composition" not in contract:
         fail("low-code feature matrix must make AppGen's broader-than-JHipster position explicit")
     template = (ROOT / "app" / "templates" / "appgen_low_code_features.html").read_text()
-    if "Low-Code Feature Matrix" not in template or "Feature Matrix JSON" not in template or "Readiness JSON" not in template or "JHipster Comparison JSON" not in template or "Benchmark JSON" not in template or "Superset Scorecard JSON" not in template or "Composition JSON" not in template:
+    if "Low-Code Feature Matrix" not in template or "Feature Matrix JSON" not in template or "Readiness JSON" not in template or "Roadmap Sources JSON" not in template or "JHipster Comparison JSON" not in template or "Benchmark JSON" not in template or "Superset Scorecard JSON" not in template or "Composition JSON" not in template:
         fail("low-code feature cockpit must expose matrix and readiness links")
 
 
@@ -30525,6 +30641,10 @@ def test_generated_runtime_helpers():
     )["ok"] is True
     assert low_code_features.readiness_report()["source"]["document"] == "docs/Lo-code features.md"
     assert low_code_features.readiness_report()["alignment_complete"] is True
+    assert low_code_features.readiness_report()["roadmap_sources_ok"] is True
+    assert low_code_features.roadmap_source_report()["ok"] is True
+    assert "docs/base_features.md" in {item["document"] for item in low_code_features.source_document_contracts()}
+    assert "schema-sources" in {item["id"] for item in low_code_features.ideas_roadmap_alignment()}
     assert low_code_features.readiness_report()["competitive_advantage_count"] >= 7
     assert low_code_features.readiness_report()["jhipster_superset_ok"] is True
     assert "ui.form-designer" in {item["key"] for item in low_code_features.capability_matrix()}
