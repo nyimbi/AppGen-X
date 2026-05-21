@@ -307,6 +307,9 @@ apps include:
 - `support_center.py` and `appgen_support_center.html` with generated
   knowledge-base topics, tutorials, onboarding checklists, searchable support
   entries, support-ticket payloads, and sample DSL applications.
+- `low_code_features.py` and `appgen_low_code_features.html` with a generated
+  capability matrix grounded in `docs/Lo-code features.md`, roadmap alignment,
+  and readiness reporting for the low-code/no-code platform surface.
 - `prototyping.py` and `appgen_prototyping.html` with rapid mock screens,
   realistic sample data, preview packages, experiment hypotheses, and backlog
   promotion plans for fast stakeholder iteration.

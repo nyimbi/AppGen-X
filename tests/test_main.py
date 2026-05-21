@@ -120,6 +120,7 @@ def test_generate_app_from_sqlite_schema_compiles(tmp_path) -> None:
         output_dir / "dsl_reference.py",
         output_dir / "view_experience.py",
         output_dir / "support_center.py",
+        output_dir / "low_code_features.py",
         output_dir / "config_admin.py",
         output_dir / "integrations.py",
         output_dir / "productivity.py",
@@ -179,6 +180,7 @@ def test_generate_app_from_sqlite_schema_compiles(tmp_path) -> None:
     assert (output_dir / "templates" / "appgen_dsl_reference.html").exists()
     assert (output_dir / "templates" / "appgen_view_experience.html").exists()
     assert (output_dir / "templates" / "appgen_support_center.html").exists()
+    assert (output_dir / "templates" / "appgen_low_code_features.html").exists()
     assert (output_dir / "templates" / "appgen_monitoring.html").exists()
     assert (output_dir / "templates" / "appgen_resilience.html").exists()
     assert (output_dir / "templates" / "appgen_rules.html").exists()
@@ -1406,6 +1408,8 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert "data-appgen-time-on-page" in (output_dir / "static" / "appgen-view-experience.js").read_text()
     assert "Support Center" in (output_dir / "templates" / "appgen_support_center.html").read_text()
     assert "Tutorials JSON" in (output_dir / "templates" / "appgen_support_center.html").read_text()
+    assert "Low-Code Feature Matrix" in (output_dir / "templates" / "appgen_low_code_features.html").read_text()
+    assert "Feature Matrix JSON" in (output_dir / "templates" / "appgen_low_code_features.html").read_text()
     assert "Prototype JSON" in (output_dir / "templates" / "appgen_prototyping.html").read_text()
     assert "Generated sequential user-input" in (output_dir / "templates" / "appgen_wizards.html").read_text()
     branding_template = (output_dir / "templates" / "appgen_branding.html").read_text()
@@ -1511,6 +1515,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     studio = _load_module(output_dir / "studio.py", "generated_studio")
     wizards = _load_module(output_dir / "wizards.py", "generated_wizards")
     branding = _load_module(output_dir / "branding.py", "generated_branding")
+    low_code_features = _load_module(output_dir / "low_code_features.py", "generated_low_code_features")
     extensions = _load_module(output_dir / "extensions.py", "generated_extensions")
     appgen_package = _load_module(tmp_path / "appgen_package.py", "generated_appgen_package")
     generated_coverage = _load_module(tmp_path / "tests" / "test_generated_coverage.py", "generated_test_coverage")
@@ -1573,6 +1578,13 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert branding.accessibility_theme_check()["ok"] is True
     assert branding.asset_check(
         {"app/branding.py", "app/static/appgen-theme.css", "app/templates/appgen_branding.html"}
+    )["ok"] is True
+    assert low_code_features.readiness_report()["source"]["document"] == "docs/Lo-code features.md"
+    assert low_code_features.readiness_report()["alignment_complete"] is True
+    assert "ui.form-designer" in {item["key"] for item in low_code_features.capability_matrix()}
+    assert "ai.agentic-systems" in {item["key"] for item in low_code_features.grouped_capabilities()["ai"]}
+    assert low_code_features.low_code_features_check(
+        {"app/low_code_features.py", "app/templates/appgen_low_code_features.html", "app/appgen.json"}
     )["ok"] is True
     hook_names = {hook["hook"] for hook in extensions.extension_points()}
     assert {"startup", "validate_book", "before_save_book", "after_save_book"} <= hook_names

@@ -38,7 +38,7 @@ def set_sqlite_pragma(dbapi_connection, connection_record):
     cursor.close()
 """
 
-from . import models, views, api, openapi, workflow, rules, designer, view_composition, tabbed_views, form_designer, nl_evolution, dsl_reference, view_experience, support_center, prototyping, config_admin, integrations, productivity, lifecycle, emerging, tenancy, rls, identity, compliance, assistant, intelligence, chatbot, voice, agents, text_quality, notifications, platforms, microservices, collaboration, version_control, realtime, events, rpa, diagnostics, api_testing, components, erp_templates, project_management, devtools, studio, wizards, branding, extensions, reports, report_delivery, dashboards, usage_analytics, search, media, documents, inventory_ops, finance_ops, manufacturing_ops, data_access, data_exchange, database_ops, runtime_security, backup, monitoring, resilience, performance  # , gql_schema
+from . import models, views, api, openapi, workflow, rules, designer, view_composition, tabbed_views, form_designer, nl_evolution, dsl_reference, view_experience, support_center, low_code_features, prototyping, config_admin, integrations, productivity, lifecycle, emerging, tenancy, rls, identity, compliance, assistant, intelligence, chatbot, voice, agents, text_quality, notifications, platforms, microservices, collaboration, version_control, realtime, events, rpa, diagnostics, api_testing, components, erp_templates, project_management, devtools, studio, wizards, branding, extensions, reports, report_delivery, dashboards, usage_analytics, search, media, documents, inventory_ops, finance_ops, manufacturing_ops, data_access, data_exchange, database_ops, runtime_security, backup, monitoring, resilience, performance  # , gql_schema
 
 from app.views import init_views
 from app.security import seed_roles
@@ -52,6 +52,7 @@ from app.nl_evolution import register_nl_evolution
 from app.dsl_reference import register_dsl_reference
 from app.view_experience import register_view_experience
 from app.support_center import register_support_center
+from app.low_code_features import register_low_code_features
 from app.prototyping import register_prototyping
 from app.config_admin import register_config_admin
 from app.integrations import register_integrations
@@ -137,6 +138,7 @@ register_nl_evolution(appbuilder)
 register_dsl_reference(appbuilder)
 register_view_experience(appbuilder)
 register_support_center(appbuilder)
+register_low_code_features(appbuilder)
 register_prototyping(appbuilder)
 register_config_admin(appbuilder)
 register_integrations(appbuilder)

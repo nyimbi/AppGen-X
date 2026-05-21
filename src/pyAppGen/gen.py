@@ -22,6 +22,7 @@ from inflection import pluralize
 from inflection import underscore
 from sqlalchemy.schema import ForeignKeyConstraint
 
+from .capabilities import DEFAULT_CAPABILITIES
 from .capabilities import write_manifest
 from .headers import CHART_VIEW_BODY
 from .headers import VIEW_BODY
@@ -1115,6 +1116,13 @@ def write_support_center_file(output_dir, schema: AppSchema):
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
     (output_dir / "support_center.py").write_text(_support_center_text(schema, _app_name(schema)))
+
+
+def write_low_code_features_file(output_dir, schema: AppSchema):
+    """Write generated low-code feature coverage helpers."""
+    output_dir = Path(output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    (output_dir / "low_code_features.py").write_text(_low_code_features_text(schema))
 
 
 def write_prototyping_file(output_dir, schema: AppSchema):
@@ -4855,6 +4863,56 @@ def write_support_center_template(output_dir):
     )
 
 
+def write_low_code_features_template(output_dir):
+    """Write the generated low-code feature matrix cockpit template."""
+    templates_dir = Path(output_dir) / "templates"
+    templates_dir.mkdir(parents=True, exist_ok=True)
+    (templates_dir / "appgen_low_code_features.html").write_text(
+        """{% extends "appbuilder/base.html" %}
+{% block content %}
+<style>
+  .aglf-wrap { margin: 18px 0 32px; }
+  .aglf-head { display: flex; justify-content: space-between; gap: 16px; align-items: flex-start; margin-bottom: 18px; }
+  .aglf-title { margin: 0; font-size: 28px; font-weight: 700; color: #14213d; }
+  .aglf-note { color: #52616b; max-width: 840px; line-height: 1.5; }
+  .aglf-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; }
+  .aglf-card { border: 1px solid #d9e2ec; background: #fff; padding: 16px; }
+  .aglf-card h3 { margin: 0 0 8px; font-size: 17px; color: #14213d; }
+  .aglf-status { display: inline-block; border: 1px solid #cbd5e1; padding: 3px 7px; margin: 3px 4px 0 0; background: #f8fafc; font-size: 12px; }
+  .aglf-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+  @media (max-width: 760px) { .aglf-head { display: block; } }
+</style>
+<section class="aglf-wrap">
+  <div class="aglf-head">
+    <div>
+      <h1 class="aglf-title">Low-Code Feature Matrix</h1>
+      <p class="aglf-note">
+        Generated coverage of the low-code/no-code platform checklist, grounded
+        in <code>docs/Lo-code features.md</code> and this app's manifest.
+      </p>
+    </div>
+    <div class="aglf-actions">
+      <a class="btn btn-default" href="{{ url_for('LowCodeFeaturesView.matrix_json') }}">Feature Matrix JSON</a>
+      <a class="btn btn-default" href="{{ url_for('LowCodeFeaturesView.readiness_json') }}">Readiness JSON</a>
+    </div>
+  </div>
+  <div class="aglf-grid">
+    {% for group, items in grouped.items() %}
+    <article class="aglf-card">
+      <h3>{{ group }}</h3>
+      <p class="aglf-note">{{ items|length }} generated capabilities</p>
+      {% for item in items[:6] %}
+      <span class="aglf-status">{{ item.status }} · {{ item.label }}</span>
+      {% endfor %}
+    </article>
+    {% endfor %}
+  </div>
+</section>
+{% endblock %}
+"""
+    )
+
+
 def write_prototyping_template(output_dir):
     """Write the generated rapid prototyping cockpit template."""
     templates_dir = Path(output_dir) / "templates"
@@ -5382,6 +5440,7 @@ def generate_app_from_database(database_url, output_dir, *, config_database_url=
     write_dsl_reference_file(output_dir, app_schema)
     write_view_experience_file(output_dir, app_schema)
     write_support_center_file(output_dir, app_schema)
+    write_low_code_features_file(output_dir, app_schema)
     write_prototyping_file(output_dir, app_schema)
     write_erp_templates_file(output_dir, app_schema)
     write_project_management_file(output_dir, app_schema)
@@ -5451,6 +5510,7 @@ def generate_app_from_database(database_url, output_dir, *, config_database_url=
     write_view_experience_template(output_dir)
     write_view_experience_static(output_dir)
     write_support_center_template(output_dir)
+    write_low_code_features_template(output_dir)
     write_prototyping_template(output_dir)
     write_erp_templates_template(output_dir)
     write_project_management_template(output_dir)
@@ -5539,6 +5599,7 @@ def generate_app_from_schema(schema: AppSchema, output_dir, *, config_database_u
     write_dsl_reference_file(output_dir, schema)
     write_view_experience_file(output_dir, schema)
     write_support_center_file(output_dir, schema)
+    write_low_code_features_file(output_dir, schema)
     write_prototyping_file(output_dir, schema)
     write_erp_templates_file(output_dir, schema)
     write_project_management_file(output_dir, schema)
@@ -5608,6 +5669,7 @@ def generate_app_from_schema(schema: AppSchema, output_dir, *, config_database_u
     write_view_experience_template(output_dir)
     write_view_experience_static(output_dir)
     write_support_center_template(output_dir)
+    write_low_code_features_template(output_dir)
     write_prototyping_template(output_dir)
     write_erp_templates_template(output_dir)
     write_project_management_template(output_dir)
@@ -15976,6 +16038,186 @@ def register_support_center(appbuilder):
 '''
 
 
+def _low_code_features_text(schema: AppSchema) -> str:
+    capabilities = tuple(
+        {
+            "key": capability.key,
+            "label": capability.label,
+            "status": capability.status,
+            "evidence": capability.evidence,
+        }
+        for capability in DEFAULT_CAPABILITIES
+    )
+    table_names = tuple(table.name for table in schema.tables)
+    targets, _unknown = normalize_platform_targets(schema.app_options.get("targets"))
+    return f'''"""Generated low-code/no-code feature matrix for AppGen apps."""
+
+from __future__ import annotations
+
+from collections import Counter
+from collections import defaultdict
+
+from flask import jsonify
+from flask_appbuilder import BaseView
+from flask_appbuilder import expose
+
+
+FEATURE_SOURCE = {{
+    "document": "docs/Lo-code features.md",
+    "purpose": "Low-code/no-code platform capability checklist",
+}}
+APP_TABLES = {table_names!r}
+APP_TARGETS = {targets!r}
+CAPABILITIES = {capabilities!r}
+ROADMAP_AREAS = (
+    {{
+        "area": "visual_building",
+        "label": "Visual builders and Delphi-style form design",
+        "capabilities": ("ui.visual-modeling", "ui.form-designer", "ui.view-composition", "components.templates"),
+    }},
+    {{
+        "area": "cross_platform",
+        "label": "Web, mobile, desktop, PWA, chatbot, and native generation",
+        "capabilities": ("platform.targets", "platform.frontends", "platform.native", "ui.pwa", "platform.chatbots"),
+    }},
+    {{
+        "area": "enterprise_modules",
+        "label": "ERP, CRM-style, document, inventory, finance, and manufacturing modules",
+        "capabilities": ("components.erp-templates", "content.document-management", "operations.inventory-traceability", "operations.finance", "operations.manufacturing"),
+    }},
+    {{
+        "area": "automation",
+        "label": "Workflows, decision trees, events, RPA/BPA, and Node-RED",
+        "capabilities": ("workflow.automation", "logic.business-rules", "automation.node-red", "automation.cep", "automation.rpa-bpa"),
+    }},
+    {{
+        "area": "ai",
+        "label": "AI, ML, chatbots, voice assistants, and agentic systems",
+        "capabilities": ("ai.assistance", "ai.intelligence", "ai.agentic-systems", "ai.guided-chatbot", "ai.voice-assistant"),
+    }},
+    {{
+        "area": "operations",
+        "label": "Deployment, CI/CD, monitoring, resilience, performance, and backup",
+        "capabilities": ("deployment.cloud", "devops.cicd", "ops.monitoring", "ops.resilience", "ops.performance", "ops.backup"),
+    }},
+    {{
+        "area": "governance",
+        "label": "Security, SSO, compliance, accessibility, localization, collaboration, and versioning",
+        "capabilities": ("security.rbac", "security.sso", "security.compliance", "a11y.compliance", "i18n.localization", "team.collaboration", "team.version-control"),
+    }},
+    {{
+        "area": "integration",
+        "label": "Databases, APIs, enterprise systems, productivity suites, IoT, and blockchain",
+        "capabilities": ("schema.import", "api.rest", "api.openapi", "integration.enterprise", "integration.productivity", "integration.emerging", "data.database-ops"),
+    }},
+)
+
+
+def capability_matrix():
+    """Return the generated low-code feature matrix."""
+    return tuple(dict(item) for item in CAPABILITIES)
+
+
+def capability_lookup(key):
+    """Return one generated capability by key."""
+    for capability in CAPABILITIES:
+        if capability["key"] == key:
+            return dict(capability)
+    raise KeyError(f"Unknown low-code capability: {{key}}")
+
+
+def grouped_capabilities():
+    """Group capabilities by their top-level area."""
+    grouped = defaultdict(list)
+    for capability in CAPABILITIES:
+        group = capability["key"].split(".", 1)[0]
+        grouped[group].append(dict(capability))
+    return {{group: tuple(items) for group, items in sorted(grouped.items())}}
+
+
+def roadmap_alignment():
+    """Map docs/Lo-code features.md themes to generated capability evidence."""
+    capabilities = {{item["key"]: item for item in CAPABILITIES}}
+    alignment = []
+    for area in ROADMAP_AREAS:
+        items = tuple(dict(capabilities[key]) for key in area["capabilities"] if key in capabilities)
+        alignment.append(
+            {{
+                "area": area["area"],
+                "label": area["label"],
+                "capabilities": items,
+                "covered": len(items) == len(area["capabilities"]),
+            }}
+        )
+    return tuple(alignment)
+
+
+def readiness_report():
+    """Summarize low-code platform coverage and remaining partial areas."""
+    counts = Counter(item["status"] for item in CAPABILITIES)
+    partial = tuple(item["key"] for item in CAPABILITIES if item["status"] != "implemented")
+    return {{
+        "source": dict(FEATURE_SOURCE),
+        "targets": APP_TARGETS,
+        "tables": APP_TABLES,
+        "counts": dict(counts),
+        "total": len(CAPABILITIES),
+        "partial": partial,
+        "alignment_complete": all(item["covered"] for item in roadmap_alignment()),
+    }}
+
+
+def low_code_features_check(existing_paths):
+    """Return readiness for generated low-code feature matrix artifacts."""
+    existing = set(existing_paths)
+    required = ("app/low_code_features.py", "app/templates/appgen_low_code_features.html", "app/appgen.json")
+    missing = tuple(path for path in required if path not in existing)
+    report = readiness_report()
+    return {{
+        "ok": not missing and report["alignment_complete"] and report["total"] >= 80,
+        "missing": missing,
+        "source": dict(FEATURE_SOURCE),
+        "total": report["total"],
+        "areas": tuple(item["area"] for item in roadmap_alignment()),
+    }}
+
+
+class LowCodeFeaturesView(BaseView):
+    route_base = "/low-code-features"
+    default_view = "index"
+
+    @expose("/")
+    def index(self):
+        return self.render_template(
+            "appgen_low_code_features.html",
+            grouped=grouped_capabilities(),
+            readiness=readiness_report(),
+            source=FEATURE_SOURCE,
+        )
+
+    @expose("/matrix.json")
+    def matrix_json(self):
+        return jsonify(list(capability_matrix()))
+
+    @expose("/readiness.json")
+    def readiness_json(self):
+        return jsonify(readiness_report())
+
+    @expose("/alignment.json")
+    def alignment_json(self):
+        return jsonify(list(roadmap_alignment()))
+
+
+def register_low_code_features(appbuilder):
+    appbuilder.add_view(
+        LowCodeFeaturesView,
+        "Low-Code Features",
+        icon="fa-th-large",
+        category="AppGen",
+    )
+'''
+
+
 def _prototyping_text(schema: AppSchema, app_name: str) -> str:
     def sample_value(column: ColumnSchema):
         type_name = column.type_name.lower().split("(", 1)[0]
@@ -22244,6 +22486,7 @@ REQUIRED_PATHS = (
     "app/dsl_reference.py",
     "app/view_experience.py",
     "app/support_center.py",
+    "app/low_code_features.py",
     "app/config_admin.py",
     "app/integrations.py",
     "app/productivity.py",
@@ -22296,6 +22539,7 @@ REQUIRED_PATHS = (
     "app/templates/appgen_dsl_reference.html",
     "app/templates/appgen_view_experience.html",
     "app/templates/appgen_support_center.html",
+    "app/templates/appgen_low_code_features.html",
     "app/templates/appgen_resilience.html",
     "app/templates/appgen_integrations.html",
     "app/templates/appgen_productivity.html",
@@ -22702,6 +22946,23 @@ def validate_support_center_artifacts() -> None:
     template = (ROOT / "app" / "templates" / "appgen_support_center.html").read_text()
     if "Support Center" not in template or "Topics JSON" not in template or "Tutorials JSON" not in template:
         fail("support center cockpit must expose support topics and tutorials")
+
+
+def validate_low_code_features_artifacts() -> None:
+    contract = (ROOT / "app" / "low_code_features.py").read_text()
+    required = (
+        "capability_matrix",
+        "grouped_capabilities",
+        "roadmap_alignment",
+        "readiness_report",
+        "low_code_features_check",
+        "docs/Lo-code features.md",
+    )
+    if not all(item in contract for item in required):
+        fail("low-code feature matrix must expose capability, roadmap, readiness, and source-document contracts")
+    template = (ROOT / "app" / "templates" / "appgen_low_code_features.html").read_text()
+    if "Low-Code Feature Matrix" not in template or "Feature Matrix JSON" not in template or "Readiness JSON" not in template:
+        fail("low-code feature cockpit must expose matrix and readiness links")
 
 
 def validate_prototyping_artifacts() -> None:
@@ -23538,6 +23799,7 @@ def main() -> int:
     validate_dsl_reference_artifacts()
     validate_view_experience_artifacts()
     validate_support_center_artifacts()
+    validate_low_code_features_artifacts()
     validate_prototyping_artifacts()
     validate_agentic_artifacts()
     validate_intelligence_artifacts()
@@ -23971,6 +24233,7 @@ def test_generated_manifest_contract():
     assert (ROOT / "app" / "templates" / "appgen_dsl_reference.html").exists()
     assert (ROOT / "app" / "templates" / "appgen_view_experience.html").exists()
     assert (ROOT / "app" / "templates" / "appgen_support_center.html").exists()
+    assert (ROOT / "app" / "templates" / "appgen_low_code_features.html").exists()
     assert (ROOT / "app" / "templates" / "appgen_prototyping.html").exists()
     assert (ROOT / "app" / "templates" / "appgen_resilience.html").exists()
     assert (ROOT / "app" / "templates" / "appgen_productivity.html").exists()
@@ -24049,6 +24312,7 @@ def test_generated_runtime_helpers():
     dsl_reference = load_module(ROOT / "app" / "dsl_reference.py", "generated_dsl_reference")
     view_experience = load_module(ROOT / "app" / "view_experience.py", "generated_view_experience")
     support_center = load_module(ROOT / "app" / "support_center.py", "generated_support_center")
+    low_code_features = load_module(ROOT / "app" / "low_code_features.py", "generated_low_code_features")
     prototyping = load_module(ROOT / "app" / "prototyping.py", "generated_prototyping")
     integrations = load_module(ROOT / "app" / "integrations.py", "generated_integrations")
     productivity = load_module(ROOT / "app" / "productivity.py", "generated_productivity")
@@ -24212,6 +24476,12 @@ def test_generated_runtime_helpers():
     assert support_center.support_ticket_payload("security setup", user="ada")["id"].startswith("support-")
     assert support_center.support_center_check(
         {"app/support_center.py", "app/templates/appgen_support_center.html"}
+    )["ok"] is True
+    assert low_code_features.readiness_report()["source"]["document"] == "docs/Lo-code features.md"
+    assert low_code_features.readiness_report()["alignment_complete"] is True
+    assert "ui.form-designer" in {item["key"] for item in low_code_features.capability_matrix()}
+    assert low_code_features.low_code_features_check(
+        {"app/low_code_features.py", "app/templates/appgen_low_code_features.html", "app/appgen.json"}
     )["ok"] is True
     first_prototype = prototyping.prototype_catalog()[0]["resource"]
     assert prototyping.sample_row(first_prototype)
