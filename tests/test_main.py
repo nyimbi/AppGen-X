@@ -1626,6 +1626,19 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     seed = _load_module(tmp_path / "seed.py", "generated_seed")
     assert security.can("Editor", "Book", "update") is True
     assert security.can("Editor", "Book", "delete") is False
+    principal = security.normalize_principal({"sub": "u1", "roles": ["Editor"], "tenant_id": "acme"})
+    assert principal["id"] == "u1"
+    assert principal["roles"] == ("Editor",)
+    assert security.principal_allowed_actions(principal, "Book") == ("read", "create", "update")
+    allow_decision = security.authorize(principal, "Book", "update")
+    assert allow_decision["ok"] is True
+    deny_decision = security.authorize(principal, "Book", "delete")
+    assert deny_decision["reason"] == "missing_permission"
+    assert security.authorization_audit_event(deny_decision, request_id="req-1")["event"] == "security.authorization.denied"
+    assert any(row["role"] == "Editor" and row["resource"] == "Book" for row in security.policy_matrix())
+    proposal = security.access_change_proposal("Editor", "Book", ("read", "delete"), actor="ada")
+    assert proposal["review_required"] is True
+    assert proposal["dsl"] == "role Editor {\n  Book: read, delete;\n}\n"
     assert runtime_security.security_policy()["idle_timeout_seconds"] == 1800
     assert runtime_security.is_public_path("/static/app.css") is True
     assert runtime_security.is_public_path("/book/list/") is False

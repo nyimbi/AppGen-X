@@ -74,7 +74,7 @@ DEFAULT_CAPABILITIES: tuple[Capability, ...] = (
     Capability("automation.node-red", "Node-RED automation flow export", "partial", "generated Node-RED flow export and webhook contracts"),
     Capability("automation.cep", "Complex event processing and alerting", "partial", "generated event catalog, CEP rule matching, alerting, retry, and dead-letter contracts"),
     Capability("automation.rpa-bpa", "Robotic process automation and business-process analysis", "partial", "generated RPA task plans, credential readiness, BPMN/UML process models, simulations, UiPath/Blue Prism/Automation Anywhere export contracts, bottleneck analysis, process observations, and audit events"),
-    Capability("security.rbac", "Role-based access control", "partial", "generated role policy helpers"),
+    Capability("security.rbac", "Role-based access control", "partial", "generated role policy helpers, principal normalization, authorization decisions, audit events, policy matrices, and reviewed RBAC change proposals"),
     Capability("security.session", "Session timeout and runtime hardening", "partial", "generated inactivity timeout and security-header hooks"),
     Capability("security.https", "Automatic HTTPS deployment", "partial", "generated Caddy reverse proxy and TLS readiness checks"),
     Capability("security.rls", "Tenant-aware row-level security", "partial", "generated Python RLS helpers and PostgreSQL policy SQL"),
