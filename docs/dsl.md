@@ -431,7 +431,9 @@ apps include:
 - `components.py` and `appgen_components.html` with generated reusable form,
   list, detail, and card component contracts plus field widget descriptors for
   visual builders. Date, datetime, and time fields produce calendar-aware
-  widget contracts with web, mobile, and desktop renderer hints.
+  widget contracts with web, mobile, and desktop renderer hints. Custom widgets
+  produce reviewable registration plans, renderer mappings, palette entries,
+  preview payloads, and accessibility contracts before they are installed.
 - `view_composition.py` and `appgen_view_composition.html` with generated
   MasterDetailView, MultipleView, and ChartView contracts derived from schema
   relationships and visible fields.

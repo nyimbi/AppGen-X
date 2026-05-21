@@ -5111,7 +5111,10 @@ def write_components_template(output_dir):
         detail panels, reusable cards, and downstream visual builders.
       </p>
     </div>
-    <a class="btn btn-default" href="{{ url_for('ComponentView.catalog_json') }}">Catalog JSON</a>
+    <div>
+      <a class="btn btn-default" href="{{ url_for('ComponentView.catalog_json') }}">Catalog JSON</a>
+      <a class="btn btn-default" href="{{ url_for('ComponentView.custom_widget_json') }}">Custom Widget JSON</a>
+    </div>
   </div>
   <div class="agx-grid">
     {% for item in components %}
@@ -22987,6 +22990,15 @@ from flask_appbuilder import expose
 
 
 COMPONENT_TABLES = {tables!r}
+CUSTOM_WIDGET_EXTENSION_POINTS = (
+    "component_registry",
+    "form_designer_palette",
+    "web_renderer",
+    "mobile_renderer",
+    "desktop_renderer",
+    "validation_schema",
+    "theme_tokens",
+)
 
 
 def component_catalog():
@@ -23094,6 +23106,80 @@ def component_palette():
     )
 
 
+def custom_widget_contract(name, *, renderer=None, props=None, events=None, targets=("web", "mobile", "desktop")):
+    """Return a provider-neutral custom widget contract for generated apps."""
+    widget_name = str(name).strip()
+    if not widget_name:
+        raise ValueError("Custom widget name is required")
+    safe_name = "".join(character if character.isalnum() else "-" for character in widget_name.lower()).strip("-")
+    component_name = "".join(part[:1].upper() + part[1:] for part in safe_name.replace("_", "-").split("-") if part)
+    renderer = renderer or {{}}
+    return {{
+        "format": "appgen.custom-widget.v1",
+        "id": f"custom-{{safe_name}}",
+        "name": widget_name,
+        "component": component_name or "CustomWidget",
+        "props": tuple(props or ("value", "disabled", "required")),
+        "events": tuple(events or ("change", "focus", "blur")),
+        "targets": tuple(targets),
+        "renderer": {{
+            "web": renderer.get("web", f"web-custom-{{safe_name}}"),
+            "mobile": renderer.get("mobile", f"mobile-custom-{{safe_name}}"),
+            "desktop": renderer.get("desktop", f"desktop-custom-{{safe_name}}"),
+        }},
+        "extension_points": CUSTOM_WIDGET_EXTENSION_POINTS,
+        "requires_review": True,
+    }}
+
+
+def custom_widget_registration_plan(widget, *, package=None, owner=None):
+    """Return a reviewed plan for installing a custom widget/component."""
+    contract = widget if isinstance(widget, dict) else custom_widget_contract(widget)
+    return {{
+        "format": "appgen.custom-widget-registration.v1",
+        "widget": contract,
+        "package": package or f"app_custom/widgets/{{contract['id']}}",
+        "owner": owner or "studio-user",
+        "steps": (
+            {{"order": 1, "action": "validate_contract", "checks": ("props", "events", "targets")}},
+            {{"order": 2, "action": "register_palette_component", "target": "app/components.py"}},
+            {{"order": 3, "action": "wire_renderers", "targets": contract["targets"]}},
+            {{"order": 4, "action": "run_quality_gates", "checks": ("accessibility", "visual_preview", "unit_tests")}},
+        ),
+        "side_effects": (),
+        "requires_review": True,
+    }}
+
+
+def custom_widget_preview(widget, sample_props=None):
+    """Return a renderer-ready preview payload for a custom widget."""
+    contract = widget if isinstance(widget, dict) else custom_widget_contract(widget)
+    props = {{name: (sample_props or {{}}).get(name, f"sample_{{name}}") for name in contract["props"]}}
+    return {{
+        "format": "appgen.custom-widget-preview.v1",
+        "widget": contract,
+        "props": props,
+        "renderers": contract["renderer"],
+        "accessibility": {{
+            "requires_label": True,
+            "keyboard_focus": "tab",
+            "announces_events": contract["events"],
+        }},
+    }}
+
+
+def custom_widget_palette_entry(widget):
+    """Return a visual-builder palette entry for a custom widget."""
+    contract = widget if isinstance(widget, dict) else custom_widget_contract(widget)
+    return {{
+        "type": contract["component"],
+        "widget": contract["id"],
+        "custom": True,
+        "targets": contract["targets"],
+        "requires_review": contract["requires_review"],
+    }}
+
+
 def form_layout(table_name):
     """Return a low-code form layout split into primary and optional sections."""
     declared_sections = COMPONENT_TABLES[table_name].get("sections", ())
@@ -23178,6 +23264,7 @@ def visual_builder_payload():
         "tables": tuple(component_contract(table_name) for table_name in COMPONENT_TABLES),
         "widgets": widget_registry(),
         "palette": component_palette(),
+        "custom_widget_extension_points": CUSTOM_WIDGET_EXTENSION_POINTS,
     }}
 
 
@@ -23196,6 +23283,10 @@ class ComponentView(BaseView):
     @expose("/<table_name>.json")
     def table_json(self, table_name):
         return jsonify(component_contract(table_name))
+
+    @expose("/custom-widget.json")
+    def custom_widget_json(self):
+        return jsonify(custom_widget_registration_plan("Custom Widget"))
 
 
 def register_components(appbuilder):
@@ -28809,9 +28900,11 @@ def validate_component_artifacts() -> None:
         fail("component contract must expose field widgets and lookup choices")
     if "calendar_fields" not in contract or "platform_widget" not in contract or "widget_registry" not in contract:
         fail("component contract must expose calendar-aware, platform-specific widget contracts")
+    if "custom_widget_contract" not in contract or "custom_widget_registration_plan" not in contract or "custom_widget_preview" not in contract:
+        fail("component contract must expose reviewable custom widget registration and preview helpers")
     template = (ROOT / "app" / "templates" / "appgen_components.html").read_text()
-    if "Generated component and widget contracts" not in template:
-        fail("component template must expose generated component contracts")
+    if "Generated component and widget contracts" not in template or "Custom Widget JSON" not in template:
+        fail("component template must expose generated and custom component contracts")
 
 
 def validate_view_composition_artifacts() -> None:
@@ -29955,6 +30048,9 @@ def test_generated_runtime_helpers():
     assert isinstance(components.component_catalog(), tuple)
     assert isinstance(components.widget_registry(), tuple)
     assert isinstance(components.component_palette(), tuple)
+    custom_widget = components.custom_widget_contract("Signature Pad")
+    assert components.custom_widget_registration_plan(custom_widget)["requires_review"] is True
+    assert components.custom_widget_preview(custom_widget)["format"] == "appgen.custom-widget-preview.v1"
     assert view_composition.chart_view_catalog()
     assert view_composition.view_composition_check(
         {"app/views.py", "app/view_composition.py", "app/templates/appgen_view_composition.html"}

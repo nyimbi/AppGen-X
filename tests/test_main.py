@@ -3052,6 +3052,16 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     contract = components.component_contract("Book")
     assert contract["table"] == "Book"
     assert "detail" in contract
+    custom_widget = components.custom_widget_contract("Signature Pad", props=("value", "penColor"))
+    assert custom_widget["format"] == "appgen.custom-widget.v1"
+    assert custom_widget["renderer"]["mobile"] == "mobile-custom-signature-pad"
+    custom_plan = components.custom_widget_registration_plan(custom_widget, package="app_custom/widgets/signature")
+    assert custom_plan["format"] == "appgen.custom-widget-registration.v1"
+    assert custom_plan["side_effects"] == ()
+    custom_preview = components.custom_widget_preview(custom_widget, {"penColor": "#111111"})
+    assert custom_preview["props"]["penColor"] == "#111111"
+    assert components.custom_widget_palette_entry(custom_widget)["custom"] is True
+    assert "custom_widget_extension_points" in components.visual_builder_payload()
     assert any(item["master"] == "Book" and item["detail"] == "Author" for item in view_composition.master_detail_catalog())
     assert view_composition.chart_view_catalog()
     assert view_composition.view_composition_check(

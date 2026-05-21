@@ -50,7 +50,7 @@ DEFAULT_CAPABILITIES: tuple[Capability, ...] = (
     Capability("platform.chatbots", "Dialogflow and Bot Framework chatbot exports", "partial", "generated chatbot intents, prompts, and provider manifests"),
     Capability("ai.guided-chatbot", "In-app guided chatbot creation flows", "partial", "generated chatbot view, schema prompts, conversation state, and create payloads"),
     Capability("ai.voice-assistant", "Voice assistant and speech interface generation", "partial", "generated speech prompts, utterances, slots, SSML responses, and Alexa/Google/Web Speech exports"),
-    Capability("components.templates", "Reusable templates and modules", "partial", "generated component registry, widget descriptors, and layout contracts"),
+    Capability("components.templates", "Reusable templates and modules", "partial", "generated component registry, widget descriptors, custom widget registration plans, previews, and layout contracts"),
     Capability("components.lookups", "Relationship and enum lookup fields", "partial", "DSL references and enums generate manifest metadata, SQLAlchemy relationship columns, select widgets, lookup picker contracts, label fields, and UI-ready lookup choices"),
     Capability("components.media", "Image and file upload fields", "partial", "generated media field validation and storage contracts"),
     Capability("components.text-quality", "Textarea spell, grammar, and character counts", "partial", "generated text quality descriptors and validation helpers"),
