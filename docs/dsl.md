@@ -137,7 +137,8 @@ single-column unique constraints, literal defaults, schema-qualified
 references, PostgreSQL `CREATE TYPE ... AS ENUM` declarations, post-create
 `ALTER TABLE ... ADD CONSTRAINT` primary-key/unique/foreign-key constraints,
 composite foreign-key column pairings, implicit primary-key references such as
-`REFERENCES publisher`, and enum-like `CHECK (field IN (...))` domains.
+`REFERENCES publisher`, SQL comments, identity columns, generated columns as
+derived fields, and enum-like `CHECK (field IN (...))` domains.
 Live database introspection accepts SQLAlchemy database URLs with or without
 driver suffixes, such as `sqlite:///existing.db`,
 `postgresql+psycopg2://...`, and `mysql+pymysql://...`. It preserves reflected

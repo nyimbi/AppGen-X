@@ -609,7 +609,7 @@ def schema_from_dbml(path: str | Path) -> AppSchema:
 
 
 def schema_from_sql(path: str | Path) -> AppSchema:
-    sql = Path(path).read_text()
+    sql = _strip_sql_comments(Path(path).read_text())
     tables: list[TableSchema] = []
     relations: list[RelationSchema] = []
     named_enums = _sql_named_enums(sql)
@@ -1050,8 +1050,23 @@ def _split_sql_list(body: str) -> list[str]:
     parts: list[str] = []
     current: list[str] = []
     depth = 0
-    for char in body:
-        if char == "(":
+    quote: str | None = None
+    index = 0
+    while index < len(body):
+        char = body[index]
+        if quote:
+            current.append(char)
+            if char == quote:
+                if index + 1 < len(body) and body[index + 1] == quote:
+                    current.append(body[index + 1])
+                    index += 2
+                    continue
+                quote = None
+            index += 1
+            continue
+        if char in {"'", '"', "`"}:
+            quote = char
+        elif char == "(":
             depth += 1
         elif char == ")":
             depth -= 1
@@ -1062,10 +1077,52 @@ def _split_sql_list(body: str) -> list[str]:
             current = []
         else:
             current.append(char)
+        index += 1
     part = "".join(current).strip()
     if part:
         parts.append(part)
     return parts
+
+
+def _strip_sql_comments(sql: str) -> str:
+    """Remove SQL comments without touching quoted literals or identifiers."""
+    output: list[str] = []
+    quote: str | None = None
+    index = 0
+    while index < len(sql):
+        char = sql[index]
+        next_char = sql[index + 1] if index + 1 < len(sql) else ""
+        if quote:
+            output.append(char)
+            if char == quote:
+                if index + 1 < len(sql) and sql[index + 1] == quote:
+                    output.append(sql[index + 1])
+                    index += 2
+                    continue
+                quote = None
+            index += 1
+            continue
+        if char in {"'", '"', "`"}:
+            quote = char
+            output.append(char)
+            index += 1
+            continue
+        if char == "-" and next_char == "-":
+            index += 2
+            while index < len(sql) and sql[index] not in "\r\n":
+                index += 1
+            output.append("\n")
+            continue
+        if char == "/" and next_char == "*":
+            index += 2
+            while index + 1 < len(sql) and not (sql[index] == "*" and sql[index + 1] == "/"):
+                index += 1
+            index += 2 if index + 1 < len(sql) else 0
+            output.append(" ")
+            continue
+        output.append(char)
+        index += 1
+    return "".join(output)
 
 
 def _parse_sql_column(part: str) -> ColumnSchema | None:
@@ -1079,6 +1136,7 @@ def _parse_sql_column(part: str) -> ColumnSchema | None:
     nullable = "not null" not in lowered and not primary_key
     unique = " unique" in f" {lowered}"
     default = _sql_default(part)
+    generated_expression = _sql_generated_expression(part)
     references = None
     ref = _sql_reference_target(part)
     if ref:
@@ -1091,6 +1149,8 @@ def _parse_sql_column(part: str) -> ColumnSchema | None:
         unique=unique,
         default=default,
         references=references,
+        derived=generated_expression is not None,
+        expression=generated_expression,
     )
 
 
@@ -1102,7 +1162,7 @@ def _sql_column_type_name(part: str) -> str:
         return "string"
     rest = match.group("rest").strip()
     boundary = re.search(
-        r"\s+(not\s+null|null|primary\s+key|unique|default|check|references|constraint)\b",
+        r"\s+(generated|identity|not\s+null|null|primary\s+key|unique|default|check|references|constraint|collate)\b",
         rest,
         flags=re.IGNORECASE,
     )
@@ -1309,6 +1369,18 @@ def _sql_default(part: str) -> str | None:
     if not match:
         return None
     return _clean_default_text(match.group("value").strip())
+
+
+def _sql_generated_expression(part: str) -> str | None:
+    match = re.search(
+        r"\bgenerated\s+always\s+as\s*\((?P<expr>.*?)\)\s*(?:stored|virtual)?\b",
+        part,
+        flags=re.IGNORECASE | re.DOTALL,
+    )
+    if not match:
+        return None
+    expression = " ".join(match.group("expr").split())
+    return expression or None
 
 
 def _sql_check_enum(table_name: str, part: str) -> EnumSchema | None:
