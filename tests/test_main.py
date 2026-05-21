@@ -2180,6 +2180,13 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         backup.validate_backup_payload(bad_payload)
     assert seed.SEED_DATA["Book"][0]["title"] == "Sample Title"
     assert "internal_code" not in seed.SEED_DATA["Book"][0]
+    seed_plan = seed.seed_plan()
+    assert seed_plan["format"] == "appgen.seed-plan.v1"
+    assert seed.validate_seed_data()["ok"] is True
+    assert seed.validate_seed_data({"Book": [{"status": "draft"}]})["errors"][0]["missing"] == ("title",)
+    assert seed.anonymized_seed_data({"User": [{"email": "ada@example.test", "name": "Ada"}]})["User"][0]["email"] == "[redacted]"
+    assert '"format": "appgen.seed.v1"' in seed.seed_json()
+    assert 'INSERT INTO "Book"' in seed.seed_sql()
     catalog = integrations.integration_catalog({})
     assert {item["name"] for item in catalog} == {
         "rest",

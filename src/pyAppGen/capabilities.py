@@ -100,7 +100,7 @@ DEFAULT_CAPABILITIES: tuple[Capability, ...] = (
     Capability("quality.code-review", "Automated code review", "partial", "generated schema and artifact review findings"),
     Capability("quality.test-coverage", "Generated test coverage", "partial", "generated per-table pytest coverage matrix for schema, API, UI, reports, security, and data flows"),
     Capability("data.migrations", "Database migrations", "partial", "generated Alembic scaffold"),
-    Capability("data.seed", "Database seed data", "partial", "generated deterministic seed script"),
+    Capability("data.seed", "Database seed data", "partial", "generated deterministic seed script with seed plans, validation, anonymized fixture exports, and SQL previews"),
     Capability("ops.notifications", "Notifications and alert delivery", "partial", "generated in-app, email, webhook, and push notification payloads"),
     Capability("ops.monitoring", "Monitoring, alerting, and error handling", "partial", "generated monitoring endpoints and error envelopes"),
     Capability("ops.resilience", "Automatic error handling and exception management", "partial", "generated safe error responses, recovery actions, retry plans, circuit breakers, and incident reports"),

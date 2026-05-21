@@ -423,7 +423,8 @@ apps include:
   boundaries, gateway routes, event routes, health probes, and scaling plans.
 - `usage_analytics.py` and `appgen_usage_analytics.html` with generated
   adoption, funnel, retention, and real-time app-usage analytics.
-- `seed.py` with deterministic demo data, `docs/schema.md` with table,
+- `seed.py` with deterministic demo data, seed plans, validation, anonymized
+  fixture exports, and SQL previews; `docs/schema.md` with table,
   field, relationship, and Mermaid ERD documentation, and
   `docs/data-dictionary.json` / `docs/data-dictionary.md` with
   machine-readable structure, content-kind, sample-value, display-field, and

@@ -7942,6 +7942,18 @@ def template_context(context):
 
 
 def _seed_text(schema: AppSchema) -> str:
+    required_fields = {
+        table.name: tuple(
+            _model_attribute_name(column)
+            for column in table.columns
+            if not column.nullable
+            and not column.primary_key
+            and column.references is None
+            and not column.hidden
+            and not column.derived
+        )
+        for table in schema.tables
+    }
     seed_data = {
         table.name: [
             {
@@ -7956,12 +7968,98 @@ def _seed_text(schema: AppSchema) -> str:
 
 from __future__ import annotations
 
+import json
+
 
 SEED_DATA = {seed_data!r}
+REQUIRED_SEED_FIELDS = {required_fields!r}
+
+
+def seed_plan():
+    """Return a reviewable deterministic seed plan."""
+    return {{
+        "format": "appgen.seed-plan.v1",
+        "tables": tuple(
+            {{
+                "table": table_name,
+                "row_count": len(rows),
+                "required_fields": tuple(REQUIRED_SEED_FIELDS.get(table_name, ())),
+                "fields": tuple(rows[0]) if rows else (),
+            }}
+            for table_name, rows in SEED_DATA.items()
+        ),
+        "requires_review": True,
+    }}
+
+
+def validate_seed_data(seed_data=None):
+    """Validate generated seed rows before inserting them."""
+    data = SEED_DATA if seed_data is None else seed_data
+    errors = []
+    for table_name, rows in data.items():
+        required = tuple(REQUIRED_SEED_FIELDS.get(table_name, ()))
+        for index, row in enumerate(rows):
+            missing = tuple(field for field in required if row.get(field) in (None, ""))
+            if missing:
+                errors.append({{"table": table_name, "row": index, "missing": missing}})
+    return {{"ok": not errors, "errors": tuple(errors), "tables": tuple(data)}}
+
+
+def anonymized_seed_data(seed_data=None):
+    """Return generated seed rows with likely sensitive values redacted."""
+    data = SEED_DATA if seed_data is None else seed_data
+    sensitive_markers = ("email", "phone", "password", "secret", "token", "ssn", "national_id")
+    result = {{}}
+    for table_name, rows in data.items():
+        result[table_name] = []
+        for row in rows:
+            clean = {{}}
+            for field, value in row.items():
+                clean[field] = "[redacted]" if any(marker in field.lower() for marker in sensitive_markers) else value
+            result[table_name].append(clean)
+    return result
+
+
+def seed_json(*, anonymize=False):
+    """Return generated seed data as stable JSON for review or import."""
+    data = anonymized_seed_data() if anonymize else SEED_DATA
+    payload = {{
+        "format": "appgen.seed.v1",
+        "plan": seed_plan(),
+        "data": data,
+    }}
+    return json.dumps(payload, indent=2, sort_keys=True, default=str)
+
+
+def _sql_literal(value):
+    if value is None:
+        return "NULL"
+    if isinstance(value, bool):
+        return "TRUE" if value else "FALSE"
+    if isinstance(value, (int, float)):
+        return str(value)
+    return "'" + str(value).replace("'", "''") + "'"
+
+
+def seed_sql(seed_data=None):
+    """Return SQL INSERT statements for generated seed rows without executing them."""
+    data = SEED_DATA if seed_data is None else seed_data
+    statements = []
+    for table_name, rows in data.items():
+        for row in rows:
+            columns = tuple(row)
+            quoted_columns = ", ".join('"' + column.replace('"', '""') + '"' for column in columns)
+            values = ", ".join(_sql_literal(row[column]) for column in columns)
+            quoted_table = '"' + table_name.replace('"', '""') + '"'
+            statements.append(f"INSERT INTO {{quoted_table}} ({{quoted_columns}}) VALUES ({{values}});")
+    return "\\n".join(statements)
 
 
 def seed_database(db, models):
     """Insert generated demo rows when a target table is empty."""
+    validation = validate_seed_data()
+    if not validation["ok"]:
+        raise ValueError(f"Invalid generated seed data: {{validation['errors']}}")
     inserted = {{}}
     for table_name, rows in SEED_DATA.items():
         model_name = "".join(part.capitalize() for part in table_name.split("_"))
@@ -26325,6 +26423,10 @@ def test_generated_runtime_helpers():
     assert backup.backup_schedule_plan("2026-01-01T03:00:00+00:00")["job_id"] == "appgen.autobackup.daily"
     assert backup.recovery_runbook(backup.backup_json({}), manifest_record)["can_restore"] is True
     assert isinstance(seed.SEED_DATA, dict)
+    assert seed.seed_plan()["format"] == "appgen.seed-plan.v1"
+    assert seed.validate_seed_data()["ok"] is True
+    assert seed.seed_json().startswith("{")
+    assert "INSERT INTO" in seed.seed_sql()
 '''
 
 
