@@ -195,6 +195,7 @@ def test_generate_app_from_sqlite_schema_compiles(tmp_path) -> None:
         output_dir / "data_access.py",
         output_dir / "data_exchange.py",
         output_dir / "database_ops.py",
+        output_dir / "schema_import.py",
         output_dir / "designer.py",
         output_dir / "form_designer.py",
         output_dir / "nl_evolution.py",
@@ -282,6 +283,7 @@ def test_generate_app_from_sqlite_schema_compiles(tmp_path) -> None:
     assert (output_dir / "templates" / "appgen_backup.html").exists()
     assert (output_dir / "templates" / "appgen_data_exchange.html").exists()
     assert (output_dir / "templates" / "appgen_database_ops.html").exists()
+    assert (output_dir / "templates" / "appgen_schema_import.html").exists()
     assert (output_dir / "templates" / "appgen_config.html").exists()
     assert (output_dir / "templates" / "appgen_integrations.html").exists()
     assert (output_dir / "templates" / "appgen_productivity.html").exists()
@@ -1313,6 +1315,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     py_compile.compile(str(output_dir / "data_access.py"), doraise=True)
     py_compile.compile(str(output_dir / "data_exchange.py"), doraise=True)
     py_compile.compile(str(output_dir / "database_ops.py"), doraise=True)
+    py_compile.compile(str(output_dir / "schema_import.py"), doraise=True)
     py_compile.compile(str(tmp_path / "config.py"), doraise=True)
     py_compile.compile(str(tmp_path / "seed.py"), doraise=True)
     py_compile.compile(str(tmp_path / "app_custom" / "extensions.py"), doraise=True)
@@ -1469,6 +1472,10 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert "Database Operations" in (
         output_dir / "templates" / "appgen_database_ops.html"
     ).read_text()
+    schema_import_template = (output_dir / "templates" / "appgen_schema_import.html").read_text()
+    assert "Schema Import" in schema_import_template
+    assert "Normalization JSON" in schema_import_template
+    assert "Commands JSON" in schema_import_template
     assert "Export all JSON" in (output_dir / "templates" / "appgen_backup.html").read_text()
     assert "Autobackup Schedule JSON" in (output_dir / "templates" / "appgen_backup.html").read_text()
     assert "Configuration" in (output_dir / "templates" / "appgen_config.html").read_text()
@@ -1590,6 +1597,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     data_access = _load_module(output_dir / "data_access.py", "generated_data_access")
     data_exchange = _load_module(output_dir / "data_exchange.py", "generated_data_exchange")
     database_ops = _load_module(output_dir / "database_ops.py", "generated_database_ops")
+    schema_import = _load_module(output_dir / "schema_import.py", "generated_schema_import")
     backup = _load_module(output_dir / "backup.py", "generated_backup")
     designer = _load_module(output_dir / "designer.py", "generated_designer")
     form_designer = _load_module(output_dir / "form_designer.py", "generated_form_designer")
@@ -2154,6 +2162,22 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
             "docker-compose.yml",
             "deploy/k8s.yaml",
         }
+    )["ok"] is True
+    assert {item["kind"] for item in schema_import.schema_source_catalog()} == {
+        "dbml",
+        "sql",
+        "ponyorm",
+        "database",
+    }
+    assert schema_import.schema_source_profile()["tables"] == 2
+    normalization = schema_import.normalization_report()
+    assert normalization["format"] == "appgen.schema-normalization.v1"
+    assert normalization["canonical_contract"] == "AppSchema"
+    assert schema_import.import_command_plan("dbml", "schema.dbml")["command"] == "appgen --dbml schema.dbml --writedir app"
+    assert schema_import.import_command_plan("ponyorm", "entities.py")["command"] == "appgen --pony entities.py --writedir app"
+    assert schema_import.source_roundtrip_plan("sql")["to"] == "sql"
+    assert schema_import.schema_import_check(
+        {"app/schema_import.py", "app/templates/appgen_schema_import.html", "app/appgen.json"}
     )["ok"] is True
     assert backup.BACKUP_TABLES["Book"]["columns"] == [
         "id",

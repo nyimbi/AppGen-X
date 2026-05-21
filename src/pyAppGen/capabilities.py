@@ -26,7 +26,7 @@ class Capability:
 
 
 DEFAULT_CAPABILITIES: tuple[Capability, ...] = (
-    Capability("schema.import", "DBML, SQL, PonyORM, and database import", "implemented", "canonical schema adapters with DBML/live unique indexes, SQL enum/ALTER TABLE support, and static PonyORM enum/type normalization"),
+    Capability("schema.import", "DBML, SQL, PonyORM, and database import", "implemented", "canonical schema adapters with DBML/live unique indexes, SQL enum/ALTER TABLE support, static PonyORM enum/type normalization, and generated import provenance cockpit"),
     Capability("dsl.language-design", "ANTLR DSL reference, keyword budget, examples, and linting", "partial", "generated DSL reference cockpit, keyword budget checks, examples, and readability lint helpers"),
     Capability("codegen.fab", "Flask-AppBuilder app generation", "implemented", "models, views, templates, support files"),
     Capability("ui.visual-modeling", "Visual data, form, and workflow modeling", "partial", "generated designer graph, edit proposals, schema diffs, migration previews, and DSL regeneration helpers"),

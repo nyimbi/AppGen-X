@@ -1018,6 +1018,13 @@ def write_database_ops_file(output_dir, schema: AppSchema):
     (output_dir / "database_ops.py").write_text(_database_ops_text(schema))
 
 
+def write_schema_import_file(output_dir, schema: AppSchema):
+    """Write generated schema import provenance and normalization helpers."""
+    output_dir = Path(output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    (output_dir / "schema_import.py").write_text(_schema_import_text(schema))
+
+
 def write_data_exchange_file(output_dir, schema: AppSchema):
     """Write generated CSV/JSON data exchange helpers."""
     output_dir = Path(output_dir)
@@ -3324,6 +3331,67 @@ def write_database_ops_template(output_dir):
       </div>
     </article>
     {% endfor %}
+  </div>
+</section>
+{% endblock %}
+"""
+    )
+
+
+def write_schema_import_template(output_dir):
+    """Write the generated schema import cockpit template."""
+    templates_dir = Path(output_dir) / "templates"
+    templates_dir.mkdir(parents=True, exist_ok=True)
+    (templates_dir / "appgen_schema_import.html").write_text(
+        """{% extends "appbuilder/base.html" %}
+{% block content %}
+<style>
+  .agsi-wrap { margin: 18px 0 32px; }
+  .agsi-head { display: flex; justify-content: space-between; gap: 16px; align-items: flex-start; margin-bottom: 18px; }
+  .agsi-title { margin: 0; font-size: 28px; font-weight: 700; color: #14213d; }
+  .agsi-note { color: #52616b; max-width: 860px; line-height: 1.5; }
+  .agsi-actions { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; }
+  .agsi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; }
+  .agsi-card { border: 1px solid #d9e2ec; background: #fff; padding: 16px; }
+  .agsi-card h3 { margin: 0 0 8px; font-size: 17px; color: #14213d; }
+  .agsi-muted { color: #64748b; font-size: 12px; }
+  .agsi-pill { display: inline-block; border: 1px solid #cbd5e1; padding: 3px 7px; margin: 3px 4px 0 0; font-size: 12px; background: #f8fafc; }
+  @media (max-width: 760px) { .agsi-head { display: block; } .agsi-actions { justify-content: flex-start; margin-top: 12px; } }
+</style>
+<section class="agsi-wrap">
+  <div class="agsi-head">
+    <div>
+      <h1 class="agsi-title">Schema Import</h1>
+      <p class="agsi-note">
+        Generated import workbench for DBML, SQL DDL, PonyORM scripts, and live
+        database introspection, with normalization evidence and reviewable
+        generation commands.
+      </p>
+    </div>
+    <div class="agsi-actions">
+      <a class="btn btn-default" href="{{ url_for('SchemaImportView.catalog_json') }}">Catalog JSON</a>
+      <a class="btn btn-default" href="{{ url_for('SchemaImportView.profile_json') }}">Profile JSON</a>
+      <a class="btn btn-default" href="{{ url_for('SchemaImportView.normalization_json') }}">Normalization JSON</a>
+      <a class="btn btn-default" href="{{ url_for('SchemaImportView.commands_json') }}">Commands JSON</a>
+    </div>
+  </div>
+  <div class="agsi-grid">
+    {% for source in sources %}
+    <article class="agsi-card">
+      <h3>{{ source.label }}</h3>
+      <div class="agsi-muted">{{ source.kind }}</div>
+      {% for feature in source.normalizes %}
+      <span class="agsi-pill">{{ feature }}</span>
+      {% endfor %}
+    </article>
+    {% endfor %}
+    <article class="agsi-card">
+      <h3>Current Source</h3>
+      <div class="agsi-muted">{{ profile.source_kind }}</div>
+      <span class="agsi-pill">{{ profile.tables }} tables</span>
+      <span class="agsi-pill">{{ profile.fields }} fields</span>
+      <span class="agsi-pill">{{ profile.relations }} relations</span>
+    </article>
   </div>
 </section>
 {% endblock %}
@@ -5775,6 +5843,7 @@ def generate_app_from_database(database_url, output_dir, *, config_database_url=
     write_data_access_file(output_dir, app_schema)
     write_data_exchange_file(output_dir, app_schema)
     write_database_ops_file(output_dir, app_schema)
+    write_schema_import_file(output_dir, app_schema)
     write_config_admin_file(output_dir)
     write_integrations_file(output_dir)
     write_productivity_file(output_dir, app_schema)
@@ -5844,6 +5913,7 @@ def generate_app_from_database(database_url, output_dir, *, config_database_url=
     write_data_access_template(output_dir)
     write_data_exchange_template(output_dir)
     write_database_ops_template(output_dir)
+    write_schema_import_template(output_dir)
     write_config_admin_template(output_dir)
     write_integrations_template(output_dir)
     write_productivity_template(output_dir)
@@ -5936,6 +6006,7 @@ def generate_app_from_schema(schema: AppSchema, output_dir, *, config_database_u
     write_data_access_file(output_dir, schema)
     write_data_exchange_file(output_dir, schema)
     write_database_ops_file(output_dir, schema)
+    write_schema_import_file(output_dir, schema)
     write_config_admin_file(output_dir)
     write_integrations_file(output_dir)
     write_productivity_file(output_dir, schema)
@@ -6005,6 +6076,7 @@ def generate_app_from_schema(schema: AppSchema, output_dir, *, config_database_u
     write_data_access_template(output_dir)
     write_data_exchange_template(output_dir)
     write_database_ops_template(output_dir)
+    write_schema_import_template(output_dir)
     write_config_admin_template(output_dir)
     write_integrations_template(output_dir)
     write_productivity_template(output_dir)
@@ -11616,6 +11688,198 @@ def register_data_access(appbuilder):
         DataAccessView,
         "Data Access",
         icon="fa-database",
+        category="AppGen",
+    )
+'''
+
+
+def _schema_import_text(schema: AppSchema) -> str:
+    tables = tuple(table.name for table in schema.tables)
+    field_count = sum(len(table.columns) for table in schema.tables)
+    relation_count = len(schema.relations)
+    enum_count = len(schema.enums)
+    source = schema.source or ""
+    lowered = source.lower()
+    if source.startswith(("sqlite://", "postgresql://", "mysql://", "mssql://", "oracle://")):
+        source_kind = "database"
+    elif lowered.endswith(".dbml"):
+        source_kind = "dbml"
+    elif lowered.endswith((".sql", ".ddl")):
+        source_kind = "sql"
+    elif lowered.endswith(".py"):
+        source_kind = "ponyorm"
+    elif lowered.endswith((".ags", ".ag", ".appgen")):
+        source_kind = "dsl"
+    else:
+        source_kind = "canonical"
+    source_profile = {
+        "source": source,
+        "source_kind": source_kind,
+        "tables": len(tables),
+        "fields": field_count,
+        "relations": relation_count,
+        "enums": enum_count,
+    }
+    sources = (
+        {
+            "kind": "dbml",
+            "label": "DBML",
+            "extensions": (".dbml",),
+            "command": "appgen --dbml schema.dbml --writedir app",
+            "normalizes": ("tables", "relations", "enums", "primary keys", "unique indexes", "defaults"),
+        },
+        {
+            "kind": "sql",
+            "label": "SQL DDL",
+            "extensions": (".sql", ".ddl"),
+            "command": "appgen --sql schema.sql --writedir app",
+            "normalizes": ("primary keys", "foreign keys", "unique constraints", "check enums", "ALTER TABLE constraints"),
+        },
+        {
+            "kind": "ponyorm",
+            "label": "PonyORM",
+            "extensions": (".py",),
+            "command": "appgen --pony entities.py --writedir app",
+            "normalizes": ("entities", "Required/Optional fields", "entity references", "Set associations", "composite keys", "Python enums"),
+        },
+        {
+            "kind": "database",
+            "label": "Existing Database",
+            "extensions": (),
+            "command": "appgen --database-url sqlite:///existing.db --writedir app",
+            "normalizes": ("reflected tables", "primary keys", "foreign keys", "unique indexes", "server defaults", "SQLAlchemy enums"),
+        },
+    )
+    return f'''"""Generated schema import provenance and normalization contracts for AppGen apps."""
+
+from __future__ import annotations
+
+from flask import jsonify
+from flask_appbuilder import BaseView
+from flask_appbuilder import expose
+
+
+SOURCE_PROFILE = {source_profile!r}
+SOURCE_TABLES = {tables!r}
+SCHEMA_SOURCES = {sources!r}
+
+
+def schema_source_catalog():
+    """Return supported source formats for generating this app."""
+    return tuple(SCHEMA_SOURCES)
+
+
+def schema_source_profile():
+    """Return provenance and normalized size for the current generated schema."""
+    return dict(SOURCE_PROFILE)
+
+
+def normalization_report():
+    """Return what was normalized into the canonical AppSchema contract."""
+    profile = schema_source_profile()
+    return {{
+        "format": "appgen.schema-normalization.v1",
+        "source_kind": profile["source_kind"],
+        "tables": SOURCE_TABLES,
+        "counts": {{
+            "tables": profile["tables"],
+            "fields": profile["fields"],
+            "relations": profile["relations"],
+            "enums": profile["enums"],
+        }},
+        "canonical_contract": "AppSchema",
+        "preserved": ("tables", "fields", "relations", "primary_keys", "unique_fields", "defaults", "enums"),
+    }}
+
+
+def import_command_plan(source_kind=None, path=None, writedir="app"):
+    """Return reviewable generator commands for an import source."""
+    kind = source_kind or SOURCE_PROFILE["source_kind"]
+    source = next((item for item in SCHEMA_SOURCES if item["kind"] == kind), None)
+    if source is None:
+        raise KeyError(kind)
+    example = path or {{
+        "dbml": "schema.dbml",
+        "sql": "schema.sql",
+        "ponyorm": "entities.py",
+        "database": "sqlite:///existing.db",
+    }}[kind]
+    flag = "--database-url" if kind == "database" else f"--{{kind if kind != 'ponyorm' else 'pony'}}"
+    return {{
+        "source_kind": kind,
+        "path": example,
+        "command": f"appgen {{flag}} {{example}} --writedir {{writedir}}",
+        "checks": ("schema_normalization", "migration_preview", "py_compile", "appgen_quality"),
+        "requires_review": True,
+    }}
+
+
+def source_roundtrip_plan(target_kind="dbml"):
+    """Return a plan for exporting the canonical schema to another source view."""
+    if target_kind not in {{"dbml", "sql", "ponyorm", "dsl"}}:
+        raise KeyError(target_kind)
+    return {{
+        "from": SOURCE_PROFILE["source_kind"],
+        "to": target_kind,
+        "tables": SOURCE_TABLES,
+        "artifacts": {{
+            "dbml": "studio.schema_dbml()",
+            "sql": "studio.schema_sql_ddl()",
+            "ponyorm": "studio.schema_ponyorm()",
+            "dsl": "app/dsl_reference.py",
+        }},
+        "checks": ("field_count_match", "relation_count_match", "manual_review"),
+    }}
+
+
+def schema_import_check(existing_paths=()):
+    """Return readiness for generated schema import artifacts."""
+    existing = set(existing_paths)
+    required = {{"app/schema_import.py", "app/templates/appgen_schema_import.html", "app/appgen.json"}}
+    missing = tuple(sorted(required - existing))
+    return {{
+        "ok": not missing and bool(SCHEMA_SOURCES),
+        "missing": missing,
+        "sources": tuple(item["kind"] for item in SCHEMA_SOURCES),
+        "source_kind": SOURCE_PROFILE["source_kind"],
+    }}
+
+
+class SchemaImportView(BaseView):
+    route_base = "/schema-import"
+    default_view = "index"
+
+    @expose("/")
+    def index(self):
+        return self.render_template(
+            "appgen_schema_import.html",
+            sources=schema_source_catalog(),
+            profile=schema_source_profile(),
+            normalization=normalization_report(),
+        )
+
+    @expose("/catalog.json")
+    def catalog_json(self):
+        return jsonify(list(schema_source_catalog()))
+
+    @expose("/profile.json")
+    def profile_json(self):
+        return jsonify(schema_source_profile())
+
+    @expose("/normalization.json")
+    def normalization_json(self):
+        return jsonify(normalization_report())
+
+    @expose("/commands.json")
+    def commands_json(self):
+        return jsonify([import_command_plan(item["kind"]) for item in SCHEMA_SOURCES])
+
+
+def register_schema_import(appbuilder):
+    appbuilder.add_view(
+        SchemaImportView,
+        "Schema Import",
+        icon="fa-upload",
         category="AppGen",
     )
 '''
@@ -24728,6 +24992,7 @@ REQUIRED_PATHS = (
     "app/data_access.py",
     "app/data_exchange.py",
     "app/database_ops.py",
+    "app/schema_import.py",
     "app/designer.py",
     "app/form_designer.py",
     "app/nl_evolution.py",
@@ -24830,6 +25095,7 @@ REQUIRED_PATHS = (
     "app/templates/appgen_extensions.html",
     "app/templates/appgen_data_exchange.html",
     "app/templates/appgen_database_ops.html",
+    "app/templates/appgen_schema_import.html",
     "app/templates/appgen_performance.html",
     "app/templates/appgen_dashboards.html",
     "app/templates/appgen_usage_analytics.html",
@@ -24900,6 +25166,7 @@ PYTHON_PATHS = (
     "app/data_access.py",
     "app/data_exchange.py",
     "app/database_ops.py",
+    "app/schema_import.py",
     "app/designer.py",
     "app/form_designer.py",
     "app/nl_evolution.py",
@@ -26129,6 +26396,26 @@ def validate_database_ops_artifacts() -> None:
         fail("database operations template must expose provider, NoSQL, schema inventory, and migration links")
 
 
+def validate_schema_import_artifacts() -> None:
+    contract = (ROOT / "app" / "schema_import.py").read_text()
+    required = (
+        "schema_source_catalog",
+        "schema_source_profile",
+        "normalization_report",
+        "import_command_plan",
+        "source_roundtrip_plan",
+        "schema_import_check",
+    )
+    if not all(item in contract for item in required):
+        fail("schema import contract must expose source catalog, normalization, command plans, roundtrip plans, and readiness checks")
+    for source in ("dbml", "sql", "ponyorm", "database"):
+        if source not in contract:
+            fail("schema import contract must cover DBML, SQL, PonyORM, and database sources")
+    template = (ROOT / "app" / "templates" / "appgen_schema_import.html").read_text()
+    if "Schema Import" not in template or "Catalog JSON" not in template or "Normalization JSON" not in template or "Commands JSON" not in template:
+        fail("schema import cockpit must expose source catalog, normalization, and commands")
+
+
 def validate_performance_artifacts() -> None:
     contract = (ROOT / "app" / "performance.py").read_text()
     if "autoscale_plan" not in contract or "slo_report" not in contract or "load_profile_plan" not in contract:
@@ -26211,6 +26498,7 @@ def main() -> int:
     validate_data_access_artifacts()
     validate_data_exchange_artifacts()
     validate_database_ops_artifacts()
+    validate_schema_import_artifacts()
     validate_performance_artifacts()
     validate_usage_analytics_artifacts()
     print("appgen quality passed")
@@ -26641,6 +26929,7 @@ def test_generated_manifest_contract():
     assert (ROOT / "app" / "templates" / "appgen_extensions.html").exists()
     assert (ROOT / "app" / "templates" / "appgen_data_exchange.html").exists()
     assert (ROOT / "app" / "templates" / "appgen_database_ops.html").exists()
+    assert (ROOT / "app" / "templates" / "appgen_schema_import.html").exists()
     assert (ROOT / "app" / "templates" / "appgen_performance.html").exists()
     assert (ROOT / "app" / "templates" / "appgen_usage_analytics.html").exists()
     assert (ROOT / "app_custom" / "extensions.py").exists()
@@ -26669,6 +26958,7 @@ def test_generated_runtime_helpers():
     manufacturing_ops = load_module(ROOT / "app" / "manufacturing_ops.py", "generated_manufacturing_ops")
     data_exchange = load_module(ROOT / "app" / "data_exchange.py", "generated_data_exchange")
     database_ops = load_module(ROOT / "app" / "database_ops.py", "generated_database_ops")
+    schema_import = load_module(ROOT / "app" / "schema_import.py", "generated_schema_import")
     performance = load_module(ROOT / "app" / "performance.py", "generated_performance")
     usage_analytics = load_module(ROOT / "app" / "usage_analytics.py", "generated_usage_analytics")
     designer = load_module(ROOT / "app" / "designer.py", "generated_designer")
@@ -27295,6 +27585,13 @@ def test_generated_runtime_helpers():
             "docker-compose.yml",
             "deploy/k8s.yaml",
         }
+    )["ok"] is True
+    assert {item["kind"] for item in schema_import.schema_source_catalog()} == {"dbml", "sql", "ponyorm", "database"}
+    assert schema_import.normalization_report()["format"] == "appgen.schema-normalization.v1"
+    assert schema_import.import_command_plan("ponyorm", "entities.py")["command"] == "appgen --pony entities.py --writedir app"
+    assert schema_import.source_roundtrip_plan("dbml")["to"] == "dbml"
+    assert schema_import.schema_import_check(
+        {"app/schema_import.py", "app/templates/appgen_schema_import.html", "app/appgen.json"}
     )["ok"] is True
     assert performance.slo_report({"p95_ms": 250, "error_rate": 0})["ok"] is True
     assert performance.autoscale_plan({"cpu_percent": 90, "p95_ms": 700}, current_replicas=2)["desired_replicas"] == 3
