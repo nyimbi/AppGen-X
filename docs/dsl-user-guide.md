@@ -251,6 +251,9 @@ For imported sources, check `appgen.json.source_fidelity` or
 DBML, SQL, PonyORM, or live database source was normalized, lists the command
 that generated the app, records the canonical fingerprint, and calls out
 source-specific review areas before generated files are overwritten.
+Use `/schema-import/release-gate.json` for the stricter proof that every source
+family has validation, round-trip diff, import command, reviewed apply-plan,
+fidelity, and database URL dialect evidence.
 
 The generated Studio also manages a portfolio of generated applications through
 `/studio/applications.json`. Use its create/import/open/export plans to build

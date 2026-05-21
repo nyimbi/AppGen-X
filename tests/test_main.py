@@ -1705,6 +1705,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert "Normalization JSON" in schema_import_template
     assert "Validation JSON" in schema_import_template
     assert "Commands JSON" in schema_import_template
+    assert "Release Gate JSON" in schema_import_template
     assert "Export all JSON" in (output_dir / "templates" / "appgen_backup.html").read_text()
     assert "Autobackup Schedule JSON" in (output_dir / "templates" / "appgen_backup.html").read_text()
     assert "Configuration" in (output_dir / "templates" / "appgen_config.html").read_text()
@@ -2641,6 +2642,14 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert schema_import.schema_import_check(
         {"app/schema_import.py", "app/templates/appgen_schema_import.html", "app/appgen.json"}
     )["ok"] is True
+    import_gate = schema_import.schema_import_release_gate(
+        {"app/schema_import.py", "app/templates/appgen_schema_import.html", "app/appgen.json"}
+    )
+    assert import_gate["format"] == "appgen.schema-import-release-gate.v1"
+    assert import_gate["ok"] is True
+    assert import_gate["blocking_gaps"] == ()
+    assert {item["source_kind"] for item in import_gate["sources"]} == {"dbml", "sql", "ponyorm", "database"}
+    assert schema_import.schema_import_release_gate({"app/schema_import.py"})["ok"] is False
     assert backup.BACKUP_TABLES["Book"]["columns"] == [
         "id",
         "title",

@@ -3825,6 +3825,7 @@ def write_schema_import_template(output_dir):
       <a class="btn btn-default" href="{{ url_for('SchemaImportView.commands_json') }}">Commands JSON</a>
       <a class="btn btn-default" href="{{ url_for('SchemaImportView.roundtrip_diff_json') }}">Round-trip Diff JSON</a>
       <a class="btn btn-default" href="{{ url_for('SchemaImportView.apply_plans_json') }}">Apply Plans JSON</a>
+      <a class="btn btn-default" href="{{ url_for('SchemaImportView.release_gate_json') }}">Release Gate JSON</a>
     </div>
   </div>
   <div class="agsi-grid">
@@ -3852,6 +3853,7 @@ def write_schema_import_template(output_dir):
       <span class="agsi-pill">Migration preview</span>
       <span class="agsi-pill">Quality gate</span>
       <span class="agsi-pill">Explicit destructive review</span>
+      <span class="agsi-pill">Release gate</span>
     </article>
     <article class="agsi-card">
       <h3>Current Source</h3>
@@ -13594,6 +13596,53 @@ def schema_import_check(existing_paths=()):
     }}
 
 
+def schema_import_release_gate(existing_paths=()):
+    """Return one release gate for DBML, SQL, PonyORM, and database generation sources."""
+    existing = set(existing_paths) or {{"app/schema_import.py", "app/templates/appgen_schema_import.html", "app/appgen.json"}}
+    readiness = schema_import_check(existing)
+    source_kinds = tuple(item["kind"] for item in SCHEMA_SOURCES)
+    validations = {{item["source_kind"]: item for item in all_source_validation_plans()}}
+    diffs = {{item["source_kind"]: item for item in all_schema_roundtrip_diffs()}}
+    apply_plans = {{item["source_kind"]: item for item in all_import_apply_plans()}}
+    commands = {{kind: import_command_plan(kind) for kind in source_kinds}}
+    fidelity = source_fidelity_report()
+    required = ("dbml", "sql", "ponyorm", "database")
+    source_rows = tuple(
+        {{
+            "source_kind": kind,
+            "ok": kind in validations
+            and kind in diffs
+            and kind in apply_plans
+            and kind in commands
+            and commands[kind]["requires_review"]
+            and apply_plans[kind]["requires_review"]
+            and diffs[kind]["format"] == "appgen.schema-roundtrip-diff.v1",
+            "validation_checks": validations.get(kind, {{}}).get("checks", ()),
+            "command": commands.get(kind, {{}}).get("command"),
+            "diff_destructive": diffs.get(kind, {{}}).get("destructive"),
+            "can_auto_apply": apply_plans.get(kind, {{}}).get("can_auto_apply"),
+        }}
+        for kind in required
+    )
+    gates = (
+        {{"gate": "artifact_readiness", "ok": readiness["ok"], "details": readiness["missing"]}},
+        {{"gate": "source_family_coverage", "ok": set(required) <= set(source_kinds), "details": source_kinds}},
+        {{"gate": "source_validation", "ok": all(row["ok"] for row in source_rows), "details": source_rows}},
+        {{"gate": "source_fidelity", "ok": fidelity["ok"] and fidelity["source_contract"]["ok"], "details": fidelity}},
+        {{"gate": "roundtrip_targets", "ok": {{"dsl", "dbml", "sql", "ponyorm"}} <= set(fidelity["roundtrip_targets"]), "details": fidelity["roundtrip_targets"]}},
+        {{"gate": "database_url_dialects", "ok": "postgresql" in schema_source_contract()["database_url_dialects"] and schema_source_contract()["sqlalchemy_driver_urls"], "details": schema_source_contract()["database_url_dialects"]}},
+    )
+    return {{
+        "format": "appgen.schema-import-release-gate.v1",
+        "ok": all(gate["ok"] for gate in gates),
+        "source_kind": SOURCE_PROFILE["source_kind"],
+        "fingerprint": SOURCE_PROFILE["fingerprint"],
+        "sources": source_rows,
+        "gates": gates,
+        "blocking_gaps": tuple(gate for gate in gates if not gate["ok"]),
+    }}
+
+
 class SchemaImportView(BaseView):
     route_base = "/schema-import"
     default_view = "index"
@@ -13639,6 +13688,10 @@ class SchemaImportView(BaseView):
     @expose("/apply-plans.json")
     def apply_plans_json(self):
         return jsonify(list(all_import_apply_plans()))
+
+    @expose("/release-gate.json")
+    def release_gate_json(self):
+        return jsonify(schema_import_release_gate())
 
 
 def register_schema_import(appbuilder):
@@ -30850,6 +30903,7 @@ def validate_schema_import_artifacts() -> None:
         "import_apply_plan",
         "all_import_apply_plans",
         "schema_import_check",
+        "schema_import_release_gate",
     )
     if not all(item in contract for item in required):
         fail("schema import contract must expose source catalog, fidelity, normalization, validation, command plans, roundtrip diffs, apply plans, and readiness checks")
@@ -30859,7 +30913,7 @@ def validate_schema_import_artifacts() -> None:
     if "postgresql+psycopg2" not in contract or "sqlalchemy_driver_urls" not in contract:
         fail("schema import contract must document SQLAlchemy driver-suffixed database URLs")
     template = (ROOT / "app" / "templates" / "appgen_schema_import.html").read_text()
-    if "Schema Import" not in template or "Catalog JSON" not in template or "Fidelity JSON" not in template or "Normalization JSON" not in template or "Validation JSON" not in template or "Commands JSON" not in template or "Round-trip Diff JSON" not in template or "Apply Plans JSON" not in template:
+    if "Schema Import" not in template or "Catalog JSON" not in template or "Fidelity JSON" not in template or "Normalization JSON" not in template or "Validation JSON" not in template or "Commands JSON" not in template or "Round-trip Diff JSON" not in template or "Apply Plans JSON" not in template or "Release Gate JSON" not in template:
         fail("schema import cockpit must expose source catalog, fidelity, normalization, validation, commands, round-trip diffs, and apply plans")
 
 
@@ -32206,6 +32260,10 @@ def test_generated_runtime_helpers():
     assert schema_apply["requires_review"] is True
     assert schema_apply["diff"]["source_kind"] == "sql"
     assert len(schema_import.all_import_apply_plans()) == 4
+    import_gate = schema_import.schema_import_release_gate({"app/schema_import.py", "app/templates/appgen_schema_import.html", "app/appgen.json"})
+    assert import_gate["format"] == "appgen.schema-import-release-gate.v1"
+    assert import_gate["ok"] is True
+    assert {item["source_kind"] for item in import_gate["sources"]} == {"dbml", "sql", "ponyorm", "database"}
     assert schema_import.schema_import_check(
         {"app/schema_import.py", "app/templates/appgen_schema_import.html", "app/appgen.json"}
     )["ok"] is True
