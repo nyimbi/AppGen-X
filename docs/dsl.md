@@ -377,7 +377,8 @@ apps include:
   `docs/Lo-code features.md`, roadmap alignment, readiness reporting for the
   low-code/no-code platform surface, and an explicit broader-than-JHipster
   benchmark with overlap/AppGen-only rows that keeps JDL interoperability while
-  tracking AppGen-only capabilities and superset scorecard gates.
+  tracking AppGen-only capabilities, superset scorecard gates, and artifact
+  evidence proving each required advantage is generated.
 - `prototyping.py` and `appgen_prototyping.html` with rapid mock screens,
   realistic sample data, preview packages, experiment hypotheses, and backlog
   promotion plans for fast stakeholder iteration.
@@ -404,8 +405,8 @@ apps include:
   `ManyToMany` blocks. The contract also emits gap analysis and a reviewable
   adoption plan so JHipster remains an interoperability target while AppGen
   provides the broader platform: Python-native web/mobile/desktop starters,
-  visual builders, agentic systems, ERP templates, schema round trips, and
-  operational workbenches.
+  visual builders, agentic systems, ERP templates, schema round trips,
+  operational workbenches, and runtime assurance evidence.
 - `chatbots/dialogflow/intents.json`,
   `chatbots/botframework/manifest.json`, and `chatbots/appgen_chatbots.py`
   with generated provider intents, field prompts, and conversation checks.

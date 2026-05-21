@@ -1708,6 +1708,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert "Roadmap Sources JSON" in (output_dir / "templates" / "appgen_low_code_features.html").read_text()
     assert "JHipster Comparison JSON" in (output_dir / "templates" / "appgen_low_code_features.html").read_text()
     assert "Superset Scorecard JSON" in (output_dir / "templates" / "appgen_low_code_features.html").read_text()
+    assert "Superset Evidence JSON" in (output_dir / "templates" / "appgen_low_code_features.html").read_text()
     assert "Prototype JSON" in (output_dir / "templates" / "appgen_prototyping.html").read_text()
     assert "Generated sequential user-input" in (output_dir / "templates" / "appgen_wizards.html").read_text()
     branding_template = (output_dir / "templates" / "appgen_branding.html").read_text()
@@ -1996,13 +1997,16 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert low_code_features.jhipster_competitive_report()["superset_scorecard"]["ok"] is True
     assert low_code_features.jhipster_capability_benchmark()["ok"] is True
     assert low_code_features.jhipster_superset_scorecard()["position"] == "more-capable-than-jhipster"
-    assert low_code_features.jhipster_superset_scorecard()["minimum_appgen_only_advantages"] == 8
+    assert low_code_features.jhipster_superset_scorecard()["minimum_appgen_only_advantages"] == 9
     assert low_code_features.jhipster_superset_scorecard()["blocking_gaps"] == ()
+    assert low_code_features.jhipster_superset_evidence()["ok"] is True
+    assert low_code_features.jhipster_superset_evidence({"app/designer.py"})["ok"] is False
     assert {
         gate["area"] for gate in low_code_features.jhipster_superset_scorecard()["required_gates"]
-    } >= {"visual_builders", "schema_import", "native_targets", "agentic_systems", "erp_templates"}
+    } >= {"visual_builders", "schema_import", "native_targets", "agentic_systems", "erp_templates", "runtime_assurance"}
     assert len(low_code_features.jhipster_competitive_report()["appgen_differentiators"]) >= 7
     assert "agentic_systems" in {item["area"] for item in low_code_features.jhipster_competitive_report()["appgen_only_capabilities"]}
+    assert "runtime_assurance" in {item["area"] for item in low_code_features.jhipster_competitive_report()["appgen_only_capabilities"]}
     assert "database_ide" in {item["area"] for item in low_code_features.jhipster_competitive_report()["appgen_only_capabilities"]}
     assert "application_composition" in {
         item["area"] for item in low_code_features.jhipster_competitive_report()["appgen_only_capabilities"]

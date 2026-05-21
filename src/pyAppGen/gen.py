@@ -5652,6 +5652,7 @@ def write_low_code_features_template(output_dir):
       <a class="btn btn-default" href="{{ url_for('LowCodeFeaturesView.jhipster_comparison_json') }}">JHipster Comparison JSON</a>
       <a class="btn btn-default" href="{{ url_for('LowCodeFeaturesView.jhipster_benchmark_json') }}">Benchmark JSON</a>
       <a class="btn btn-default" href="{{ url_for('LowCodeFeaturesView.jhipster_superset_json') }}">Superset Scorecard JSON</a>
+      <a class="btn btn-default" href="{{ url_for('LowCodeFeaturesView.jhipster_superset_evidence_json') }}">Superset Evidence JSON</a>
       <a class="btn btn-default" href="{{ url_for('LowCodeFeaturesView.composition_json') }}">Composition JSON</a>
       <a class="btn btn-default" href="{{ url_for('LowCodeFeaturesView.composition_readiness_json') }}">Composition Readiness JSON</a>
     </div>
@@ -19639,6 +19640,7 @@ COMPETITIVE_BENCHMARK = (
     {{"area": "natural_language_evolution", "label": "Natural-language application evolution", "jhipster": False, "appgen": True, "evidence": "NL proposals for tables, fields, forms, chatbots, agents, and reviewable DSL patches"}},
     {{"area": "erp_templates", "label": "ERP module template library", "jhipster": False, "appgen": True, "evidence": "Ledger, AP, AR, invoicing, HR, payroll, inventory, manufacturing, CRM, warehouse, and reports"}},
     {{"area": "runtime_studio", "label": "Generated in-app IDE and operations studio", "jhipster": False, "appgen": True, "evidence": "Studio, devtools, diagnostics, config editor, backup, monitoring, resilience, and performance workbenches"}},
+    {{"area": "runtime_assurance", "label": "Auditable generated runtime readiness", "jhipster": False, "appgen": True, "evidence": "Generated assurance matrix tying security, monitoring, resilience, SLOs, backup, recovery, and quality gates together"}},
     {{"area": "database_ide", "label": "In-app database IDE and safe SQL workbench", "jhipster": False, "appgen": True, "evidence": "Visual database designer, ERD/DBML/SQL/PonyORM previews, read-only SQL guard, and deterministic explain-plan contracts"}},
     {{"area": "schema_import", "label": "Multi-source schema import", "jhipster": False, "appgen": True, "evidence": "DBML, SQL DDL, static PonyORM scripts, live database introspection, round-trip diffs, and reviewed apply plans"}},
     {{"area": "application_composition", "label": "Application composition marketplace", "jhipster": False, "appgen": True, "evidence": "Generated installable blocks, dependency graph, review gates, composition packages, and portal/repository handoff metadata"}},
@@ -19651,6 +19653,7 @@ APPGEN_DIFFERENTIATORS = (
     {{"capability": "Agentic systems", "evidence": "Local and API-key LLM providers, generated agents, chatbots, voice, and AI analytics contracts"}},
     {{"capability": "ERP-ready modules", "evidence": "Ledger, AP, AR, invoicing, HR, inventory, manufacturing, reports, and operational templates"}},
     {{"capability": "Application composition marketplace", "evidence": "Reusable generated blocks with dependencies, reviewed install plans, sandbox previews, Entando portal publication, and Invenio repository deposit handoffs"}},
+    {{"capability": "Runtime assurance", "evidence": "Generated readiness matrix and JSON contract for security, monitoring, resilience, performance, backup, and quality gates"}},
     {{"capability": "Operational workbenches", "evidence": "Config editor, diagnostics, backup, monitoring, resilience, performance, migration, and deployment contracts"}},
     {{"capability": "Database IDE", "evidence": "Visual database design plus safe SQL scratchpad, read-only guards, and explain-plan previews"}},
     {{"capability": "JHipster interoperability", "evidence": "JDL export remains available without limiting AppGen's broader feature set"}},
@@ -19684,7 +19687,7 @@ ROADMAP_AREAS = (
     {{
         "area": "operations",
         "label": "Deployment, CI/CD, monitoring, resilience, performance, and backup",
-        "capabilities": ("deployment.cloud", "devops.cicd", "ops.monitoring", "ops.resilience", "ops.performance", "ops.backup"),
+        "capabilities": ("deployment.cloud", "devops.cicd", "ops.monitoring", "ops.resilience", "ops.performance", "ops.assurance", "ops.backup"),
     }},
     {{
         "area": "governance",
@@ -19713,6 +19716,7 @@ BASE_FEATURE_REQUIREMENTS = (
     {{"id": "debugging", "label": "Debugging", "capabilities": ("quality.diagnostics", "devops.studio"), "artifacts": ("app/diagnostics.py", "app/studio.py")}},
     {{"id": "testing", "label": "Testing", "capabilities": ("quality.test-coverage", "quality.api-testing", "devops.cicd"), "artifacts": ("tests/test_generated_coverage.py", "app/api_testing.py", ".github/workflows/appgen-quality.yml")}},
     {{"id": "deployment", "label": "Deployment", "capabilities": ("deployment.cloud", "security.https", "ops.lifecycle"), "artifacts": ("deploy/Dockerfile", "deploy/k8s/deployment.yaml", "deploy/appgen_https.py")}},
+    {{"id": "runtime-assurance", "label": "Runtime Assurance", "capabilities": ("ops.assurance", "ops.monitoring", "ops.resilience", "ops.performance", "ops.backup"), "artifacts": ("app/runtime_assurance.py", "app/monitoring.py", "app/resilience.py", "app/performance.py", "app/backup.py")}},
 )
 IDEAS_ROADMAP_REQUIREMENTS = (
     {{"id": "full-stack-reference", "label": "Full-stack FastAPI/PostgreSQL inspiration", "capabilities": ("api.rest", "api.openapi", "deployment.cloud"), "artifacts": ("app/api.py", "docs/openapi.json", "deploy/docker-compose.yml")}},
@@ -19983,8 +19987,13 @@ def jhipster_superset_scorecard():
         }},
         {{
             "area": "runtime_studio",
-            "required": ("devops.studio", "ops.monitoring", "ops.resilience", "ops.performance"),
-            "artifacts": ("app/studio.py", "app/monitoring.py", "app/resilience.py", "app/performance.py"),
+            "required": ("devops.studio", "ops.monitoring", "ops.resilience", "ops.performance", "ops.assurance"),
+            "artifacts": ("app/studio.py", "app/monitoring.py", "app/resilience.py", "app/performance.py", "app/runtime_assurance.py"),
+        }},
+        {{
+            "area": "runtime_assurance",
+            "required": ("ops.assurance", "quality.diagnostics", "ops.backup"),
+            "artifacts": ("app/runtime_assurance.py", "app/templates/appgen_runtime_assurance.html", "app/backup.py", "scripts/appgen_quality.py"),
         }},
         {{
             "area": "application_composition",
@@ -20007,12 +20016,38 @@ def jhipster_superset_scorecard():
         "format": "appgen.jhipster-superset-scorecard.v1",
         "baseline": dict(JHIPSTER_BASELINE),
         "position": "more-capable-than-jhipster",
-        "minimum_appgen_only_advantages": 8,
+        "minimum_appgen_only_advantages": 9,
         "actual_appgen_only_advantages": benchmark["appgen_only_count"],
         "required_gates": gates,
         "blocking_gaps": tuple(gate for gate in gates if not gate["ok"]),
         "interop_preserved": "platform.jhipster" in capability_keys,
-        "ok": benchmark["appgen_only_count"] >= 8 and all(gate["ok"] for gate in gates) and "platform.jhipster" in capability_keys,
+        "ok": benchmark["appgen_only_count"] >= 9 and all(gate["ok"] for gate in gates) and "platform.jhipster" in capability_keys,
+    }}
+
+
+def jhipster_superset_evidence(existing_paths=None):
+    """Return artifact evidence that AppGen's JHipster-superset gates are generated."""
+    scorecard = jhipster_superset_scorecard()
+    expected = tuple(dict.fromkeys(path for gate in scorecard["required_gates"] for path in gate["artifacts"]))
+    existing = set(expected if existing_paths is None else existing_paths)
+    rows = tuple(
+        {{
+            "area": gate["area"],
+            "ok": gate["ok"] and not tuple(path for path in gate["artifacts"] if path not in existing),
+            "capabilities": gate["required"],
+            "artifacts": gate["artifacts"],
+            "missing_artifacts": tuple(path for path in gate["artifacts"] if path not in existing),
+        }}
+        for gate in scorecard["required_gates"]
+    )
+    return {{
+        "format": "appgen.jhipster-superset-evidence.v1",
+        "position": scorecard["position"],
+        "scorecard_ok": scorecard["ok"],
+        "expected_artifacts": expected,
+        "artifact_evidence_ok": all(row["ok"] for row in rows),
+        "rows": rows,
+        "ok": scorecard["ok"] and all(row["ok"] for row in rows),
     }}
 
 
@@ -20128,6 +20163,10 @@ class LowCodeFeaturesView(BaseView):
     @expose("/jhipster-superset.json")
     def jhipster_superset_json(self):
         return jsonify(jhipster_superset_scorecard())
+
+    @expose("/jhipster-superset-evidence.json")
+    def jhipster_superset_evidence_json(self):
+        return jsonify(jhipster_superset_evidence())
 
     @expose("/composition.json")
     def composition_json(self):
@@ -29102,6 +29141,7 @@ def validate_low_code_features_artifacts() -> None:
         "readiness_report",
         "jhipster_capability_benchmark",
         "jhipster_superset_scorecard",
+        "jhipster_superset_evidence",
         "application_composition_catalog",
         "composition_install_plan",
         "composition_package",
@@ -29116,7 +29156,7 @@ def validate_low_code_features_artifacts() -> None:
     if "jhipster_competitive_report" not in contract or "broader-than-jhipster" not in contract or "more-capable-than-jhipster" not in contract or "appgen_only_capabilities" not in contract or "application_composition" not in contract:
         fail("low-code feature matrix must make AppGen's broader-than-JHipster position explicit")
     template = (ROOT / "app" / "templates" / "appgen_low_code_features.html").read_text()
-    if "Low-Code Feature Matrix" not in template or "Feature Matrix JSON" not in template or "Readiness JSON" not in template or "Roadmap Sources JSON" not in template or "JHipster Comparison JSON" not in template or "Benchmark JSON" not in template or "Superset Scorecard JSON" not in template or "Composition JSON" not in template:
+    if "Low-Code Feature Matrix" not in template or "Feature Matrix JSON" not in template or "Readiness JSON" not in template or "Roadmap Sources JSON" not in template or "JHipster Comparison JSON" not in template or "Benchmark JSON" not in template or "Superset Scorecard JSON" not in template or "Superset Evidence JSON" not in template or "Composition JSON" not in template:
         fail("low-code feature cockpit must expose matrix and readiness links")
 
 
@@ -30943,8 +30983,11 @@ def test_generated_runtime_helpers():
     assert "components.application-composition" in {item["key"] for item in low_code_features.capability_matrix()}
     assert low_code_features.jhipster_capability_benchmark()["ok"] is True
     assert low_code_features.jhipster_superset_scorecard()["ok"] is True
+    assert low_code_features.jhipster_superset_scorecard()["minimum_appgen_only_advantages"] == 9
+    assert low_code_features.jhipster_superset_evidence()["ok"] is True
     assert low_code_features.jhipster_superset_scorecard()["blocking_gaps"] == ()
     assert "agentic_systems" in {item["area"] for item in low_code_features.jhipster_competitive_report()["appgen_only_capabilities"]}
+    assert "runtime_assurance" in {item["area"] for item in low_code_features.jhipster_competitive_report()["appgen_only_capabilities"]}
     assert "database_ide" in {item["area"] for item in low_code_features.jhipster_competitive_report()["appgen_only_capabilities"]}
     assert "application_composition" in {item["area"] for item in low_code_features.jhipster_competitive_report()["appgen_only_capabilities"]}
     composition_plan = low_code_features.composition_install_plan(("agentic-suite", "erp-suite"))
