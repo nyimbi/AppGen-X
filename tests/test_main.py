@@ -3057,6 +3057,21 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert inventory_ops.reconcile_count("Book", expected=2, counted=3)["requires_review"] is True
     assert inventory_ops.traceability_chain("Book", ("Dune", "copy-1"))["events"][1]["identifier"] == "copy-1"
     assert inventory_ops.inventory_ops_check({"app/inventory_ops.py", "app/templates/appgen_inventory_ops.html"})["ok"] is True
+    inventory_gate = inventory_ops.inventory_release_gate(
+        {"app/inventory_ops.py", "app/templates/appgen_inventory_ops.html"}
+    )
+    assert inventory_gate["format"] == "appgen.inventory-release-gate.v1"
+    assert inventory_gate["ok"] is True
+    assert {
+        "inventory_catalog",
+        "scan_targets",
+        "barcode_rfid",
+        "movement_and_counts",
+        "traceability",
+        "mobile_offline_capabilities",
+        "artifact_coverage",
+    } <= {gate["gate"] for gate in inventory_gate["gates"]}
+    assert inventory_ops.inventory_release_gate({"app/inventory_ops.py"})["ok"] is False
     assert finance_ops.tax_calculation(100, category="standard")["tax_amount"] == 16.0
     assert finance_ops.tax_calculation(116, inclusive=True)["taxable_amount"] == 100.0
     assert finance_ops.exchange_rate_plan("USD", "KES")["rate"] == 129.0

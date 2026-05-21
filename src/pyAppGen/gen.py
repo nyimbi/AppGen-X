@@ -3024,8 +3024,11 @@ def write_inventory_ops_template(output_dir):
         and reconciliation contracts for mobile inventory and warehouse work.
       </p>
     </div>
-    <a class="btn btn-default" href="{{ url_for('InventoryOpsView.catalog_json') }}">Inventory JSON</a>
-    <a class="btn btn-default" href="{{ url_for('InventoryOpsView.scan_targets_json') }}">Scan Targets</a>
+    <div>
+      <a class="btn btn-default" href="{{ url_for('InventoryOpsView.catalog_json') }}">Inventory JSON</a>
+      <a class="btn btn-default" href="{{ url_for('InventoryOpsView.scan_targets_json') }}">Scan Targets</a>
+      <a class="btn btn-default" href="{{ url_for('InventoryOpsView.release_gate_json') }}">Release Gate JSON</a>
+    </div>
   </div>
   <div class="agio-grid">
     {% for item in resources %}
@@ -12988,6 +12991,72 @@ def inventory_ops_check(existing_paths=()):
     }}
 
 
+def inventory_release_gate(existing_paths=()):
+    """Return an auditable release gate for generated inventory traceability."""
+    artifacts = set(existing_paths or ())
+    required_artifacts = ("app/inventory_ops.py", "app/templates/appgen_inventory_ops.html")
+    first_values = {{
+        resource["table"]: {{
+            (resource["identifiers"][0] if resource["identifiers"] else "id"): "SAMPLE"
+        }}
+        for resource in inventory_catalog()
+    }}
+    gates = (
+        {{
+            "gate": "inventory_catalog",
+            "ok": bool(inventory_catalog()) and all(resource["identifiers"] and resource["scan_modes"] for resource in inventory_catalog()),
+            "evidence": tuple(resource["table"] for resource in inventory_catalog()),
+        }},
+        {{
+            "gate": "scan_targets",
+            "ok": all(set(SCAN_MODES) <= set(target["modes"]) and target["offline"] for target in scan_targets()),
+            "evidence": tuple((target["table"], target["field"]) for target in scan_targets()),
+        }},
+        {{
+            "gate": "barcode_rfid",
+            "ok": all(
+                barcode_label(resource["table"], first_values[resource["table"]])["value"].startswith(resource["table"] + ":")
+                and rfid_tag_payload(resource["table"], first_values[resource["table"]])["epc"].startswith("urn:epc:id:sgtin:")
+                for resource in inventory_catalog()
+            ),
+            "evidence": "barcode_label/rfid_tag_payload",
+        }},
+        {{
+            "gate": "movement_and_counts",
+            "ok": all(
+                stock_movement(resource["table"], sku="SAMPLE", quantity=1)["quantity"] == 1.0
+                and cycle_count_plan(resource["table"])[0]["requires_reconciliation"]
+                and reconcile_count(resource["table"], expected=1, counted=2)["requires_review"]
+                for resource in inventory_catalog()
+            ),
+            "evidence": "stock_movement/cycle_count/reconcile_count",
+        }},
+        {{
+            "gate": "traceability",
+            "ok": all(traceability_chain(resource["table"], ("SAMPLE",))["events"] for resource in inventory_catalog()),
+            "evidence": "traceability_chain",
+        }},
+        {{
+            "gate": "mobile_offline_capabilities",
+            "ok": all({{"camera_scan", "rfid_reader", "offline_queue"}} <= set(resource["mobile_capabilities"]) for resource in inventory_catalog()),
+            "evidence": tuple(resource["mobile_capabilities"] for resource in inventory_catalog()),
+        }},
+        {{
+            "gate": "artifact_coverage",
+            "ok": set(required_artifacts) <= artifacts,
+            "missing": tuple(item for item in required_artifacts if item not in artifacts),
+        }},
+    )
+    ok = all(gate["ok"] for gate in gates)
+    return {{
+        "format": "appgen.inventory-release-gate.v1",
+        "ok": ok,
+        "decision": "approved" if ok else "blocked",
+        "gates": gates,
+        "required_artifacts": required_artifacts,
+    }}
+
+
 class InventoryOpsView(BaseView):
     route_base = "/inventory-ops"
     default_view = "index"
@@ -13007,6 +13076,10 @@ class InventoryOpsView(BaseView):
     @expose("/scan-targets.json")
     def scan_targets_json(self):
         return jsonify(list(scan_targets()))
+
+    @expose("/release-gate.json")
+    def release_gate_json(self):
+        return jsonify(inventory_release_gate({{"app/inventory_ops.py", "app/templates/appgen_inventory_ops.html"}}))
 
 
 def register_inventory_ops(appbuilder):
@@ -32488,12 +32561,13 @@ def validate_inventory_ops_artifacts() -> None:
         "reconcile_count",
         "traceability_chain",
         "inventory_ops_check",
+        "inventory_release_gate",
     )
     if not all(item in contract for item in required):
-        fail("inventory traceability contract must expose barcode, RFID, scan, movement, cycle-count, reconciliation, and traceability helpers")
+        fail("inventory traceability contract must expose barcode, RFID, scan, movement, cycle-count, reconciliation, traceability, and release-gate helpers")
     template = (ROOT / "app" / "templates" / "appgen_inventory_ops.html").read_text()
-    if "Inventory Traceability" not in template or "RFID" not in template or "Scan Targets" not in template:
-        fail("inventory traceability cockpit must expose barcode/RFID scan targets")
+    if "Inventory Traceability" not in template or "RFID" not in template or "Scan Targets" not in template or "Release Gate JSON" not in template:
+        fail("inventory traceability cockpit must expose barcode/RFID scan targets and release gate")
 
 
 def validate_finance_ops_artifacts() -> None:
@@ -34206,6 +34280,8 @@ def test_generated_runtime_helpers():
     assert inventory_ops.reconcile_count(first_inventory_table, expected=2, counted=3)["variance"] == 1.0
     assert inventory_ops.traceability_chain(first_inventory_table, ("Dune",))["events"][0]["identifier"] == "Dune"
     assert inventory_ops.inventory_ops_check({"app/inventory_ops.py", "app/templates/appgen_inventory_ops.html"})["ok"] is True
+    assert inventory_ops.inventory_release_gate({"app/inventory_ops.py", "app/templates/appgen_inventory_ops.html"})["ok"] is True
+    assert inventory_ops.inventory_release_gate({"app/inventory_ops.py"})["ok"] is False
     first_finance_table = finance_ops.finance_catalog()[0]["table"]
     assert finance_ops.tax_calculation(100)["tax_amount"] == 16.0
     assert finance_ops.exchange_rate_plan("USD", "KES")["ready"] is True
