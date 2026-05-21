@@ -2045,6 +2045,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert "Superset Scorecard JSON" in (output_dir / "templates" / "appgen_low_code_features.html").read_text()
     assert "Superset Evidence JSON" in (output_dir / "templates" / "appgen_low_code_features.html").read_text()
     assert "Superset Blueprint JSON" in (output_dir / "templates" / "appgen_low_code_features.html").read_text()
+    assert "Superiority Tiers JSON" in (output_dir / "templates" / "appgen_low_code_features.html").read_text()
     assert "Prototype JSON" in (output_dir / "templates" / "appgen_prototyping.html").read_text()
     assert "Generated sequential user-input" in (output_dir / "templates" / "appgen_wizards.html").read_text()
     branding_template = (output_dir / "templates" / "appgen_branding.html").read_text()
@@ -2376,7 +2377,19 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert blueprint["ok"] is True
     assert "/form-designer/" in {item["route"] for item in blueprint["route_map"]}
     assert {"design", "generate", "operate", "evolve", "compose"} == {item["pillar"] for item in blueprint["pillars"]}
+    superiority = low_code_features.jhipster_superiority_tiers()
+    assert superiority["format"] == "appgen.jhipster-superiority-tiers.v1"
+    assert superiority["ok"] is True
+    assert superiority["minimum_appgen_only_advantages"] == 10
+    assert superiority["stop_condition"] == "do-not-claim-jhipster-superiority-unless-ok-is-true"
+    assert {"preserve-baseline", "outperform-baseline", "product-platform"} == {
+        item["tier"] for item in superiority["tiers"]
+    }
+    assert "/studio/" in next(item for item in superiority["tiers"] if item["tier"] == "product-platform")[
+        "present_routes"
+    ]
     assert low_code_features.readiness_report()["jhipster_superset_blueprint_ok"] is True
+    assert low_code_features.readiness_report()["jhipster_superiority_ok"] is True
     assert low_code_features.low_code_features_check(
         {"app/low_code_features.py", "app/templates/appgen_low_code_features.html", "app/appgen.json"}
     )["jhipster_superset_blueprint_ok"] is True
@@ -2416,6 +2429,9 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert low_code_features.low_code_features_check(
         {"app/low_code_features.py", "app/templates/appgen_low_code_features.html", "app/appgen.json"}
     )["jhipster_certification_ok"] is True
+    assert low_code_features.low_code_features_check(
+        {"app/low_code_features.py", "app/templates/appgen_low_code_features.html", "app/appgen.json"}
+    )["jhipster_superiority_ok"] is True
     assert low_code_features.low_code_features_check(
         {"app/low_code_features.py", "app/templates/appgen_low_code_features.html", "app/appgen.json"}
     )["roadmap_sources_ok"] is True

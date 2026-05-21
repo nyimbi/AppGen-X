@@ -408,6 +408,9 @@ apps include:
   emits a JHipster-superset blueprint with concrete generated workbench routes
   for design, generation, operations, evolution, and composition workflows so
   the comparison is tied to usable in-app surfaces rather than a static claim.
+  A generated superiority-tier gate separately proves preserved baseline
+  parity, at least ten AppGen-only advantages, and generated IDE/workbench
+  routes before a release can claim to be more capable than JHipster.
 - `prototyping.py` and `appgen_prototyping.html` with rapid mock screens,
   realistic sample data, preview packages, experiment hypotheses, and backlog
   promotion plans for fast stakeholder iteration.

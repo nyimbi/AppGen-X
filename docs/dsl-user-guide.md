@@ -315,6 +315,10 @@ check whether a generated app is still more capable than the JHipster baseline.
 Use `/low-code-features/jhipster-superset-certification.json` for the release
 gate that combines preserved JHipster overlap, AppGen-only advantage thresholds,
 roadmap traceability, composition readiness, and generated artifact evidence.
+Use `/low-code-features/jhipster-superiority-tiers.json` when you need the
+stricter product-positioning gate: it separates preserved JHipster parity,
+AppGen-only outperformance, and generated workbench routes, and it blocks
+claims of superiority unless all three tiers pass.
 
 The same module also exposes `/low-code-features/roadmap-sources.json`, which
 maps `docs/ideas.md`, `docs/base_features.md`, and `docs/Lo-code features.md`
