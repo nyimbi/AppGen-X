@@ -1710,6 +1710,11 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert branding.component_style_contract("button")["min_height"] == "44px"
     assert branding.component_style_contract("dashboard-card")["accent_border"] == "4px"
     assert branding.accessibility_theme_check()["ok"] is True
+    assert any(item["wcag"] == "2.4.1" for item in branding.accessibility_checklist())
+    assert branding.accessibility_audit_plan()["format"] == "appgen.accessibility-audit.v1"
+    assert branding.accessibility_audit_plan("home")["ok"] is True
+    assert branding.keyboard_navigation_plan("home")[0]["escape_hatch"] == "skip_to_content"
+    assert branding.aria_landmark_contract("home")[0]["requires_main"] is True
     assert branding.asset_check(
         {"app/branding.py", "app/static/appgen-theme.css", "app/templates/appgen_branding.html"}
     )["ok"] is True

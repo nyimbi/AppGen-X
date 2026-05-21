@@ -7540,6 +7540,38 @@ def _theme_css_text(branding: dict) -> str:
 def _branding_text(schema: AppSchema) -> str:
     branding = _branding_contract(schema)
     focus_ring = _focus_ring_value(branding["palette"]["primary"])
+    accessibility_pages = (
+        {
+            "page": "home",
+            "path": "/",
+            "landmarks": ("main", "navigation", "region"),
+            "keyboard_paths": ("skip_to_content", "primary_navigation", "dashboard_panels"),
+        },
+        *(
+            {
+                "page": f"{underscore(table.name)}_list",
+                "path": f"/{snake_to_pascal(table.name)}ModelView/list/",
+                "landmarks": ("main", "table", "toolbar"),
+                "keyboard_paths": ("search", "table_rows", "pagination", "row_actions"),
+            }
+            for table in schema.tables
+        ),
+        *(
+            {
+                "page": f"{underscore(table.name)}_form",
+                "path": f"/{snake_to_pascal(table.name)}ModelView/add/",
+                "landmarks": ("main", "form"),
+                "keyboard_paths": ("first_field", "validation_summary", "submit", "cancel"),
+            }
+            for table in schema.tables
+        ),
+        {
+            "page": "reports",
+            "path": "/reports/",
+            "landmarks": ("main", "region", "table"),
+            "keyboard_paths": ("report_selector", "export_buttons", "data_table"),
+        },
+    )
     return f'''"""Generated branding and theming contract for AppGen apps."""
 
 from __future__ import annotations
@@ -7550,6 +7582,7 @@ from flask_appbuilder import expose
 
 
 BRANDING = {branding!r}
+ACCESSIBILITY_PAGES = {accessibility_pages!r}
 
 
 def theme_contract():
@@ -7661,6 +7694,80 @@ def accessibility_theme_check():
     }}
 
 
+def accessibility_checklist():
+    """Return generated WCAG-oriented accessibility checks for generated screens."""
+    return (
+        {{"id": "skip-link", "wcag": "2.4.1", "level": "A", "check": "Skip-to-content link is present before navigation."}},
+        {{"id": "keyboard", "wcag": "2.1.1", "level": "A", "check": "All generated controls are reachable and operable by keyboard."}},
+        {{"id": "focus-visible", "wcag": "2.4.7", "level": "AA", "check": "Generated controls expose a visible focus indicator."}},
+        {{"id": "contrast", "wcag": "1.4.3", "level": "AA", "check": "Text and key UI states use sufficient color contrast."}},
+        {{"id": "labels", "wcag": "3.3.2", "level": "A", "check": "Generated forms expose labels and validation guidance."}},
+        {{"id": "landmarks", "wcag": "1.3.1", "level": "A", "check": "Generated pages expose semantic landmarks and table structure."}},
+        {{"id": "target-size", "wcag": "2.5.8", "level": "AA", "check": "Primary generated controls use 44px minimum touch targets."}},
+    )
+
+
+def accessibility_page_catalog():
+    """Return generated pages that should be included in accessibility review."""
+    return tuple(ACCESSIBILITY_PAGES)
+
+
+def keyboard_navigation_plan(page=None):
+    """Return keyboard traversal expectations for generated pages."""
+    pages = accessibility_page_catalog()
+    if page is not None:
+        pages = tuple(item for item in pages if item["page"] == page)
+        if not pages:
+            raise KeyError(f"Unknown accessibility page: {{page}}")
+    return tuple(
+        {{
+            "page": item["page"],
+            "path": item["path"],
+            "sequence": item["keyboard_paths"],
+            "requires_visible_focus": True,
+            "escape_hatch": "skip_to_content",
+        }}
+        for item in pages
+    )
+
+
+def aria_landmark_contract(page=None):
+    """Return generated ARIA/semantic landmark expectations."""
+    pages = accessibility_page_catalog()
+    if page is not None:
+        pages = tuple(item for item in pages if item["page"] == page)
+        if not pages:
+            raise KeyError(f"Unknown accessibility page: {{page}}")
+    return tuple(
+        {{
+            "page": item["page"],
+            "path": item["path"],
+            "landmarks": item["landmarks"],
+            "requires_main": "main" in item["landmarks"],
+            "requires_labelled_regions": "region" in item["landmarks"],
+        }}
+        for item in pages
+    )
+
+
+def accessibility_audit_plan(page=None):
+    """Return a reviewable accessibility audit plan for generated screens."""
+    theme = accessibility_theme_check()
+    checklist = accessibility_checklist()
+    keyboard = keyboard_navigation_plan(page)
+    landmarks = aria_landmark_contract(page)
+    return {{
+        "format": "appgen.accessibility-audit.v1",
+        "ok": theme["ok"] and bool(checklist) and bool(keyboard) and all(item["requires_main"] for item in landmarks),
+        "theme": theme,
+        "checklist": checklist,
+        "keyboard": keyboard,
+        "landmarks": landmarks,
+        "requires_manual_screen_reader_pass": True,
+        "requires_automated_wcag_scan": True,
+    }}
+
+
 def asset_check(existing_paths):
     """Return readiness for generated branding assets."""
     existing = set(existing_paths)
@@ -7673,6 +7780,7 @@ def asset_check(existing_paths):
         "assets": dict(BRANDING["assets"]),
         "design_system": design_tokens(),
         "accessibility": accessibility_theme_check(),
+        "audit": accessibility_audit_plan(),
     }}
 
 
@@ -7691,6 +7799,10 @@ class BrandingView(BaseView):
     @expose("/design-system.json")
     def design_system_json(self):
         return jsonify({{"tokens": design_tokens(), "components": component_style_contract()}})
+
+    @expose("/accessibility.json")
+    def accessibility_json(self):
+        return jsonify(accessibility_audit_plan())
 
 
 def register_branding(appbuilder):
@@ -8343,6 +8455,8 @@ Generated by AppGen as a starting point for accessibility review.
 - Region labels for generated dashboard panels.
 - High-contrast default colors in generated AppGen screens.
 - Schema-derived labels for generated model views and reports.
+- `branding.accessibility_audit_plan()` with WCAG checks, keyboard paths, and
+  ARIA landmark contracts for generated pages.
 
 ## Review Checklist
 
@@ -25109,8 +25223,10 @@ def validate_branding_artifacts() -> None:
         or "design_tokens" not in contract
         or "component_style_contract" not in contract
         or "accessibility_theme_check" not in contract
+        or "accessibility_audit_plan" not in contract
+        or "keyboard_navigation_plan" not in contract
     ):
-        fail("branding contract must expose theme, design-system, and accessibility checks")
+        fail("branding contract must expose theme, design-system, and accessibility audit checks")
     template = (ROOT / "app" / "templates" / "appgen_branding.html").read_text()
     if "Theme JSON" not in template or "Design System JSON" not in template or "branding.palette" not in template:
         fail("branding template must expose theme preview, design-system export, and palette")
@@ -26317,6 +26433,9 @@ def test_generated_runtime_helpers():
     assert branding.design_tokens()["interaction"]["touch_target"] == "44px"
     assert "button" in branding.component_style_contract()
     assert branding.accessibility_theme_check()["ok"] is True
+    assert branding.accessibility_audit_plan()["format"] == "appgen.accessibility-audit.v1"
+    assert branding.keyboard_navigation_plan("home")[0]["escape_hatch"] == "skip_to_content"
+    assert branding.aria_landmark_contract("home")[0]["requires_main"] is True
     assert branding.asset_check(
         {"app/branding.py", "app/static/appgen-theme.css", "app/templates/appgen_branding.html"}
     )["ok"] is True
