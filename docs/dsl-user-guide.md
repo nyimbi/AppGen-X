@@ -412,6 +412,9 @@ and required report-delivery artifacts before wiring production email.
 Use `media_release_gate()` to prove generated image/file uploads have MIME and
 extension validation, oversized upload rejection, sanitized storage paths,
 preview contracts, and required media cockpit artifacts.
+Use `dashboard_release_gate()` to verify chart catalogs, Vega-Lite render
+contracts, accessibility summaries, and web/mobile/desktop renderer targets for
+generated analytics dashboards.
 Use `search_release_gate()` to verify generated searchable-field coverage,
 provider readiness for memory/PostgreSQL/Whoosh/Elasticsearch, reindex plans,
 and the search cockpit artifacts before switching providers in production.

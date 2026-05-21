@@ -2725,7 +2725,10 @@ def write_dashboards_template(output_dir):
         Chart.js, ECharts, BI tools, or custom frontend adapters.
       </p>
     </div>
-    <a class="btn btn-default" href="{{ url_for('DashboardView.catalog_json') }}">Catalog JSON</a>
+    <div>
+      <a class="btn btn-default" href="{{ url_for('DashboardView.catalog_json') }}">Catalog JSON</a>
+      <a class="btn btn-default" href="{{ url_for('DashboardView.release_gate_json') }}">Release Gate JSON</a>
+    </div>
   </div>
   <div class="agv-grid">
     {% for dashboard in dashboards %}
@@ -11560,6 +11563,75 @@ def analytics_payload(row_map):
     }}
 
 
+def dashboard_sample_rows():
+    """Return deterministic rows for validating generated dashboards."""
+    return {{
+        table_name: [
+            {{
+                chart["field"]: "Sample" if chart["metric"] != "sum" else 1
+                for chart in dashboard["charts"]
+                if chart["field"]
+            }}
+        ]
+        for table_name, dashboard in DASHBOARDS.items()
+    }}
+
+
+def dashboard_release_gate(existing_paths=()):
+    """Return an auditable release gate for generated dashboards."""
+    artifacts = set(existing_paths or ())
+    required_artifacts = ("app/dashboards.py", "app/templates/appgen_dashboards.html")
+    samples = dashboard_sample_rows()
+    workbenches = tuple(
+        dashboard_workbench(table_name, samples.get(table_name, ()))
+        for table_name in DASHBOARDS
+    )
+    required_targets = ("web:vega-lite", "mobile:native-chart", "desktop:native-chart")
+    gates = (
+        {{
+            "gate": "dashboard_catalog",
+            "ok": bool(dashboard_catalog()) and all(dashboard["charts"] for dashboard in dashboard_catalog()),
+            "evidence": tuple(dashboard["table"] for dashboard in dashboard_catalog()),
+        }},
+        {{
+            "gate": "chart_rendering",
+            "ok": all(
+                chart_render_contract(chart, samples.get(dashboard["table"], ()))["vega_lite"].get("$schema", "").endswith("/vega-lite/v5.json")
+                for dashboard in dashboard_catalog()
+                for chart in dashboard["charts"]
+            ),
+            "evidence": tuple(chart["name"] for chart in chart_catalog()),
+        }},
+        {{
+            "gate": "accessibility_summaries",
+            "ok": all(
+                bool(chart_accessibility_summary(chart, samples.get(dashboard["table"], ())))
+                for dashboard in dashboard_catalog()
+                for chart in dashboard["charts"]
+            ),
+            "evidence": "chart_accessibility_summary",
+        }},
+        {{
+            "gate": "renderer_targets",
+            "ok": all(set(required_targets) <= set(workbench["renderer_targets"]) for workbench in workbenches),
+            "evidence": tuple(workbench["renderer_targets"] for workbench in workbenches),
+        }},
+        {{
+            "gate": "artifact_coverage",
+            "ok": set(required_artifacts) <= artifacts,
+            "missing": tuple(item for item in required_artifacts if item not in artifacts),
+        }},
+    )
+    ok = all(gate["ok"] for gate in gates)
+    return {{
+        "format": "appgen.dashboard-release-gate.v1",
+        "ok": ok,
+        "decision": "approved" if ok else "blocked",
+        "gates": gates,
+        "required_artifacts": required_artifacts,
+    }}
+
+
 class DashboardView(BaseView):
     route_base = "/dashboards"
     default_view = "index"
@@ -11583,6 +11655,10 @@ class DashboardView(BaseView):
     @expose("/chart/<chart_name>/vega.json")
     def chart_vega_json(self, chart_name):
         return jsonify(vega_lite_spec(chart_spec(chart_name)))
+
+    @expose("/release-gate.json")
+    def release_gate_json(self):
+        return jsonify(dashboard_release_gate({{"app/dashboards.py", "app/templates/appgen_dashboards.html"}}))
 
 
 def register_dashboards(appbuilder):
@@ -33087,6 +33163,23 @@ def validate_media_artifacts() -> None:
         fail("media template must expose generated media catalog and release gate")
 
 
+def validate_dashboard_artifacts() -> None:
+    contract = (ROOT / "app" / "dashboards.py").read_text()
+    required = (
+        "dashboard_catalog",
+        "chart_render_contract",
+        "chart_accessibility_summary",
+        "dashboard_workbench",
+        "dashboard_sample_rows",
+        "dashboard_release_gate",
+    )
+    if not all(item in contract for item in required):
+        fail("dashboard contract must expose catalogs, render contracts, accessibility summaries, workbenches, sample rows, and release gates")
+    template = (ROOT / "app" / "templates" / "appgen_dashboards.html").read_text()
+    if "Dashboards" not in template or "Workbench JSON" not in template or "Release Gate JSON" not in template:
+        fail("dashboard template must expose generated dashboard workbench and release gate")
+
+
 def validate_branding_artifacts() -> None:
     css = (ROOT / "app" / "static" / "appgen-theme.css").read_text()
     if (
@@ -33389,6 +33482,7 @@ def main() -> int:
     validate_report_delivery_artifacts()
     validate_search_artifacts()
     validate_media_artifacts()
+    validate_dashboard_artifacts()
     validate_branding_artifacts()
     validate_extension_artifacts()
     validate_packaging_artifacts()
@@ -33995,6 +34089,8 @@ def test_generated_runtime_helpers():
     assert report_delivery.report_delivery_release_gate({"app/report_delivery.py", "app/templates/appgen_report_delivery.html"})["ok"] is True
     assert report_delivery.report_delivery_release_gate({"app/report_delivery.py"})["ok"] is False
     assert isinstance(dashboards.dashboard_catalog(), tuple)
+    assert dashboards.dashboard_release_gate({"app/dashboards.py", "app/templates/appgen_dashboards.html"})["ok"] is True
+    assert dashboards.dashboard_release_gate({"app/dashboards.py"})["ok"] is False
     usage_resource = next(iter(usage_analytics.USAGE_RESOURCES))
     usage_event = usage_analytics.usage_event(usage_resource, "viewed", actor="ada")
     assert usage_analytics.activity_summary((usage_event,))["active_users"] == 1

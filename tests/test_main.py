@@ -2915,6 +2915,13 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "mobile:native-chart",
         "desktop:native-chart",
     )
+    dashboard_gate = dashboards.dashboard_release_gate({"app/dashboards.py", "app/templates/appgen_dashboards.html"})
+    assert dashboard_gate["format"] == "appgen.dashboard-release-gate.v1"
+    assert dashboard_gate["ok"] is True
+    assert {"dashboard_catalog", "chart_rendering", "accessibility_summaries", "renderer_targets", "artifact_coverage"} <= {
+        gate["gate"] for gate in dashboard_gate["gates"]
+    }
+    assert dashboards.dashboard_release_gate({"app/dashboards.py"})["ok"] is False
     usage_events = (
         usage_analytics.usage_event("Book", "viewed", actor="ada", occurred_at="2026-01-01T10:00:00Z"),
         usage_analytics.usage_event("Book", "created", actor="ada", occurred_at="2026-01-01T10:01:00Z"),

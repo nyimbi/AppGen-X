@@ -287,7 +287,10 @@ apps include:
 - `dashboards.py` and `appgen_dashboards.html` with generated KPI, bar, line,
   and numeric chart contracts, Vega-Lite visualization specs, renderer-ready
   datasets, accessibility summaries, and web/mobile/desktop dashboard
-  workbench payloads for schema-aware data visualization.
+  workbench payloads for schema-aware data visualization. A generated dashboard
+  release gate proves dashboard/catalog coverage, Vega-Lite rendering contracts,
+  accessibility summaries, web/mobile/desktop renderer targets, and required
+  dashboard artifacts.
 - `search.py` and `appgen_search.html` with generated searchable-field indexes
   and provider plans for in-memory, PostgreSQL, Whoosh, and Elasticsearch search,
   including Elasticsearch mappings, Whoosh schema descriptors, and reviewed
