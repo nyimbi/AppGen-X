@@ -2216,6 +2216,8 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert "DSL Editor" in studio_template
     assert "Database Designer" in studio_template
     assert "DBML" in studio_template
+    assert "SQL Builder JSON" in studio_template
+    assert "parameterized query builder" in studio_template
     assert "SQL DDL" in studio_template
     assert "Workspace JSON" in studio_template
     assert "event-stream contracts" in (output_dir / "templates" / "appgen_realtime.html").read_text()
@@ -3801,6 +3803,22 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert sql_session["guard"]["read_only"] is True
     assert sql_session["side_effects"] == ()
     assert sql_session["explain"]["tables"] == ("Book",)
+    assert sql_session["builder"]["format"] == "appgen.sql-select-builder.v1"
+    assert "build_select" in sql_session["commands"]
+    assert any(item["label"] == "Book.title" for item in studio.sql_completion_items("Book.", table_name="Book"))
+    query = studio.sql_select_builder(
+        "Book",
+        fields=("title",),
+        filters=({"field": "title", "operator": "like", "parameter": "title", "value": "D%"},),
+        limit=25,
+        order_by="title",
+    )
+    assert query["ok"] is True
+    assert query["statement"] == "SELECT title FROM Book WHERE title LIKE :title ORDER BY title LIMIT 25"
+    assert query["params"] == {"title": "D%"}
+    assert query["guard"]["read_only"] is True
+    assert studio.sql_filter_plan("Book", ({"field": "missing", "operator": "="},))["ok"] is False
+    assert studio.sql_select_builder("Book", fields=("missing",))["ok"] is False
     assert studio.schema_erd_mermaid().startswith("erDiagram\n")
     assert "Ref: Book.author_id > Author.id" in studio.schema_dbml()
     assert "author_id INTEGER REFERENCES Author(id)" in studio.schema_sql_ddl()
@@ -3875,7 +3893,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert studio_gate["blocking_gaps"] == ()
     assert {
         gate["gate"] for gate in studio_gate["gates"]
-    } >= {"dsl_lint", "database_workbench", "safe_sql", "generation_pipeline", "component_sharing"}
+    } >= {"dsl_lint", "database_workbench", "safe_sql", "query_builder", "generation_pipeline", "component_sharing"}
     assert studio.studio_release_gate({"app/studio.py"})["ok"] is False
     book_tabs = tabbed_views.tabbed_view("BookList")
     assert [tab["id"] for tab in book_tabs["tabs"]] == ["overview", "assets"]

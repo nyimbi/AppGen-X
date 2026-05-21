@@ -262,6 +262,8 @@ It exposes:
 - DBML export for external schema tools;
 - SQL DDL preview for migration review;
 - PonyORM entity preview for Python model comparison;
+- a parameterized SQL SELECT builder with generated table/field completions and
+  read-only guards;
 - migration previews for proposed schema changes.
 
 Use this workbench to round-trip between visual design and source-controlled
@@ -283,8 +285,9 @@ source fidelity, linting, schema diffs, generation jobs, and quality gates in
 one review flow.
 Use `/studio/release-gate.json` before treating the Studio as release-ready;
 it combines diagnostics, DSL linting, database workbench exports, safe SQL
-guards, generation jobs, app portfolio management, reviewed edits, debug
-redaction, dependency review, and component sharing.
+guards, the parameterized query builder, generation jobs, app portfolio
+management, reviewed edits, debug redaction, dependency review, and component
+sharing.
 
 ## Design-System QA
 

@@ -6040,6 +6040,7 @@ def write_studio_template(output_dir):
       <a class="btn btn-default" href="{{ url_for('StudioView.release_gate_json') }}">Release Gate JSON</a>
       <a class="btn btn-default" href="{{ url_for('StudioView.database_design_json') }}">Database Design JSON</a>
       <a class="btn btn-default" href="{{ url_for('StudioView.sql_workbench_json') }}">SQL Workbench JSON</a>
+      <a class="btn btn-default" href="{{ url_for('StudioView.sql_builder_json') }}">SQL Builder JSON</a>
       <a class="btn btn-default" href="{{ url_for('StudioView.generation_jobs_json') }}">Generation Jobs JSON</a>
       <a class="btn btn-default" href="{{ url_for('StudioView.generation_artifacts_json') }}">Generation Artifacts JSON</a>
       <a class="btn btn-default" href="{{ url_for('StudioView.applications_json') }}">Applications JSON</a>
@@ -6094,6 +6095,8 @@ def write_studio_template(output_dir):
       <span class="ags-pill">DBML export</span>
       <span class="ags-pill">SQL DDL export</span>
       <span class="ags-pill">PonyORM preview</span>
+      <span class="ags-pill">parameterized query builder</span>
+      <span class="ags-pill">SQL completions</span>
       <span class="ags-pill">migration preview</span>
       <span class="ags-pill">relationship check</span>
     </article>
@@ -26584,6 +26587,10 @@ def field_design(table_name, field_name):
     raise KeyError(f"{{table_name}}.{{field_name}}")
 
 
+def _field_names(table_name):
+    return tuple(field["name"] for field in table_design(table_name)["fields"])
+
+
 def _sql_type(type_name):
     normalized = str(type_name).lower().split("(", 1)[0]
     mapping = {{
@@ -26688,6 +26695,110 @@ def sql_referenced_tables(statement):
     return tuple(names.values())
 
 
+def sql_completion_items(prefix="", table_name=None):
+    """Return SQL workbench completions for generated tables, fields, and clauses."""
+    needle = str(prefix or "").strip().lower()
+    items = [
+        {{"label": table["table"], "insert": table["table"], "kind": "table"}}
+        for table in DATABASE_DESIGN
+    ]
+    selected_tables = tuple(
+        table for table in DATABASE_DESIGN if table_name is None or table["table"] == table_name
+    )
+    for table in selected_tables:
+        for field in table["fields"]:
+            items.append({{
+                "label": f"{{table['table']}}.{{field['name']}}",
+                "insert": field["name"],
+                "kind": "field",
+                "table": table["table"],
+            }})
+    items.extend(
+        {{"label": clause, "insert": clause, "kind": "clause"}}
+        for clause in ("SELECT", "FROM", "WHERE", "ORDER BY", "LIMIT")
+    )
+    if not needle:
+        return tuple(items)
+    return tuple(item for item in items if item["label"].lower().startswith(needle))
+
+
+def sql_filter_plan(table_name, filters=()):
+    """Validate SQL builder filters against generated table metadata."""
+    allowed_operators = {{"=", "!=", "<", "<=", ">", ">=", "like", "ilike", "in"}}
+    fields = set(_field_names(table_name))
+    rows = []
+    for index, raw_filter in enumerate(tuple(filters or ())):
+        item = dict(raw_filter)
+        field = str(item.get("field") or "")
+        operator = str(item.get("operator") or "=").lower()
+        parameter = item.get("parameter") or f"p{{index + 1}}"
+        rows.append({{
+            "field": field,
+            "operator": operator,
+            "parameter": parameter,
+            "value": item.get("value"),
+            "ok": field in fields and operator in allowed_operators,
+            "errors": tuple(
+                message
+                for message in (
+                    None if field in fields else f"Unknown field: {{field}}",
+                    None if operator in allowed_operators else f"Unsupported operator: {{operator}}",
+                )
+                if message
+            ),
+        }})
+    return {{
+        "format": "appgen.sql-filter-plan.v1",
+        "table": table_name,
+        "filters": tuple(rows),
+        "ok": all(row["ok"] for row in rows),
+        "allowed_operators": tuple(sorted(allowed_operators)),
+    }}
+
+
+def sql_select_builder(table_name, fields=None, filters=(), limit=50, order_by=None):
+    """Build a safe parameterized SELECT statement from visual workbench choices."""
+    table = table_design(table_name)
+    available_fields = _field_names(table_name)
+    selected = tuple(fields or available_fields)
+    unknown_fields = tuple(field for field in selected if field not in available_fields)
+    filter_plan = sql_filter_plan(table_name, filters)
+    bounded_limit = max(1, min(int(limit or 50), 500))
+    select_fields = selected if selected and not unknown_fields else available_fields
+    clauses = [f"SELECT {{', '.join(select_fields)}} FROM {{table['table']}}"]
+    params = {{}}
+    where_parts = []
+    for row in filter_plan["filters"]:
+        if not row["ok"]:
+            continue
+        if row["operator"] == "in":
+            where_parts.append(f"{{row['field']}} IN :{{row['parameter']}}")
+        else:
+            where_parts.append(f"{{row['field']}} {{row['operator'].upper()}} :{{row['parameter']}}")
+        params[row["parameter"]] = row["value"]
+    if where_parts:
+        clauses.append("WHERE " + " AND ".join(where_parts))
+    if order_by in available_fields:
+        clauses.append(f"ORDER BY {{order_by}}")
+    clauses.append(f"LIMIT {{bounded_limit}}")
+    statement = " ".join(clauses)
+    guard = sql_statement_guard(statement)
+    return {{
+        "format": "appgen.sql-select-builder.v1",
+        "table": table["table"],
+        "fields": select_fields,
+        "filters": filter_plan,
+        "unknown_fields": unknown_fields,
+        "statement": statement,
+        "params": params,
+        "limit": bounded_limit,
+        "guard": guard,
+        "explain": sql_explain_plan(statement),
+        "ok": not unknown_fields and filter_plan["ok"] and guard["ok"],
+        "requires_review": False,
+    }}
+
+
 def sql_statement_guard(statement):
     """Return a read-only safety review for the generated SQL workbench."""
     source = str(statement or "").strip()
@@ -26743,6 +26854,7 @@ def sql_explain_plan(statement, *, dialect="postgresql"):
 def sql_workbench_session(statement="", *, dialect="postgresql"):
     """Return a safe generated SQL scratchpad for database designers."""
     statement = statement or "SELECT * FROM " + (DATABASE_DESIGN[0]["table"] if DATABASE_DESIGN else "example") + " LIMIT 20"
+    default_table = DATABASE_DESIGN[0]["table"] if DATABASE_DESIGN else "example"
     guard = sql_statement_guard(statement)
     return {{
         "format": "appgen.sql-workbench.v1",
@@ -26752,7 +26864,9 @@ def sql_workbench_session(statement="", *, dialect="postgresql"):
         "explain": sql_explain_plan(statement, dialect=dialect),
         "schema": database_design_catalog(),
         "exports": {{"ddl": schema_sql_ddl(), "dbml": schema_dbml()}},
-        "commands": ("format_sql", "explain", "copy_select", "open_table_design"),
+        "builder": sql_select_builder(default_table) if DATABASE_DESIGN else None,
+        "completions": sql_completion_items(table_name=default_table) if DATABASE_DESIGN else (),
+        "commands": ("format_sql", "explain", "build_select", "copy_select", "open_table_design"),
         "side_effects": (),
     }}
 
@@ -26794,8 +26908,9 @@ def database_design_workspace():
             "ponyorm": schema_ponyorm(),
         }},
         "sql_workbench": sql_workbench_session(),
+        "query_builder": sql_select_builder(DATABASE_DESIGN[0]["table"]) if DATABASE_DESIGN else None,
         "checks": ("duplicate_names", "references", "migration_preview", "data_loss_check"),
-        "proposal_kinds": ("table", "field", "relationship"),
+        "proposal_kinds": ("table", "field", "relationship", "query"),
     }}
 
 
@@ -27298,6 +27413,7 @@ def studio_release_gate(existing_paths=(), environment=None):
     dsl = dsl_lint_plan("app Gate {{ targets: web, mobile, desktop }} table GateThing {{ id: int pk }}")
     database = database_design_workspace()
     sql = sql_workbench_session("select * from " + (DATABASE_DESIGN[0]["table"] if DATABASE_DESIGN else "example"))
+    query = sql_select_builder(DATABASE_DESIGN[0]["table"]) if DATABASE_DESIGN else {{"ok": False}}
     destructive_sql = sql_statement_guard("delete from " + (DATABASE_DESIGN[0]["table"] if DATABASE_DESIGN else "example"))
     generation = generation_job_manifest(targets=PLATFORM_TARGETS or ("web",), changed_paths=("appgen.dsl",))
     edit = file_edit_plan("app/models.py", "reviewed patch")
@@ -27311,6 +27427,7 @@ def studio_release_gate(existing_paths=(), environment=None):
         {{"gate": "dsl_lint", "ok": dsl["ok"] and dsl["keyword_budget"]["ok"], "details": dsl}},
         {{"gate": "database_workbench", "ok": bool(database["tables"]) and {{"dbml", "sql", "ponyorm"}} <= set(database["exports"]), "details": database["checks"]}},
         {{"gate": "safe_sql", "ok": sql["guard"]["ok"] and not destructive_sql["ok"] and not sql["side_effects"], "details": sql["guard"]}},
+        {{"gate": "query_builder", "ok": query["ok"] and query["guard"]["read_only"] and bool(sql_completion_items(table_name=query["table"])), "details": query}},
         {{"gate": "generation_pipeline", "ok": generation["format"] == "appgen.generation-job.v1" and generation_job_status(generation)["remaining_stages"], "details": generation["plan"]["stages"]}},
         {{"gate": "application_portfolio", "ok": application_portfolio_check()["ok"], "details": application_registry()["operations"]}},
         {{"gate": "reviewed_edits", "ok": edit["requires_review"] and "appgen_quality" in edit["checks"], "details": edit["checks"]}},
@@ -27395,6 +27512,11 @@ class StudioView(BaseView):
     @expose("/sql-workbench.json")
     def sql_workbench_json(self):
         return jsonify(sql_workbench_session())
+
+    @expose("/sql-builder.json")
+    def sql_builder_json(self):
+        table_name = DATABASE_DESIGN[0]["table"] if DATABASE_DESIGN else "example"
+        return jsonify(sql_select_builder(table_name) if DATABASE_DESIGN else {{"ok": False}})
 
     @expose("/schema.erd.mmd")
     def schema_erd_route(self):
@@ -30838,6 +30960,9 @@ def validate_studio_artifacts() -> None:
         "schema_erd_mermaid",
         "schema_dbml",
         "schema_sql_ddl",
+        "sql_completion_items",
+        "sql_filter_plan",
+        "sql_select_builder",
         "sql_statement_guard",
         "sql_explain_plan",
         "sql_workbench_session",
@@ -30889,6 +31014,8 @@ def validate_studio_artifacts() -> None:
         or "Database Designer" not in template
         or "Generation Jobs" not in template
         or "SQL Workbench JSON" not in template
+        or "SQL Builder JSON" not in template
+        or "parameterized query builder" not in template
         or "Generation Jobs JSON" not in template
         or "Generation Artifacts JSON" not in template
         or "Applications JSON" not in template
@@ -32847,7 +32974,24 @@ def test_generated_runtime_helpers():
     assert studio.database_relationship_proposal("Child", "parent_id", "Parent")["migration"]["change"]["action"] == "add_relationship"
     assert "CREATE TABLE" in studio.schema_sql_ddl()
     assert studio.sql_statement_guard("delete from " + next(iter(studio.database_design_catalog()))["table"])["ok"] is False
-    assert studio.sql_workbench_session("select * from " + next(iter(studio.database_design_catalog()))["table"])["explain"]["tables"]
+    first_table = next(iter(studio.database_design_catalog()))["table"]
+    first_field = next(iter(studio.database_design_catalog()))["fields"][0]["name"]
+    sql_session = studio.sql_workbench_session("select * from " + first_table)
+    assert sql_session["explain"]["tables"]
+    assert sql_session["builder"]["format"] == "appgen.sql-select-builder.v1"
+    assert "build_select" in sql_session["commands"]
+    assert any(item["label"] == first_table + "." + first_field for item in studio.sql_completion_items(first_table + ".", table_name=first_table))
+    query = studio.sql_select_builder(
+        first_table,
+        fields=(first_field,),
+        filters=({{"field": first_field, "operator": "=", "parameter": "value", "value": 1}},),
+        limit=25,
+        order_by=first_field,
+    )
+    assert query["ok"] is True
+    assert ":" in query["statement"]
+    assert query["params"] == {{"value": 1}}
+    assert studio.sql_filter_plan(first_table, ({{"field": "missing", "operator": "="}},))["ok"] is False
     assert "db.Entity" in studio.schema_ponyorm()
     assert studio.schema_change_preview({"add_field": "Book.edition"})["review_required"] is True
     assert studio.database_migration_plan({"add_field": "Book.edition"})["requires_review"] is True
@@ -32889,7 +33033,7 @@ def test_generated_runtime_helpers():
     assert studio_gate["format"] == "appgen.studio-release-gate.v1"
     assert studio_gate["ok"] is True
     assert studio_gate["blocking_gaps"] == ()
-    assert "safe_sql" in {gate["gate"] for gate in studio_gate["gates"]}
+    assert {{"safe_sql", "query_builder"}} <= {gate["gate"] for gate in studio_gate["gates"]}
     assert isinstance(wizards.wizard_catalog(), tuple)
     assert "--appgen-primary" in branding.css_variables()
     assert branding.design_tokens()["interaction"]["touch_target"] == "44px"
