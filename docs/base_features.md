@@ -34,3 +34,6 @@ including:
 - Custom components and widgets for web, desktop, and mobile applications.
 - Version control and collaboration.
 - Testing and debugging.
+- Application composition packages that let builders reuse generated schema,
+  visual-builder, workflow, ERP, agentic, integration, and native-target blocks
+  with reviewed install plans and portal or repository publication handoffs.

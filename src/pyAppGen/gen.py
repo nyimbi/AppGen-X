@@ -5469,6 +5469,8 @@ def write_low_code_features_template(output_dir):
       <a class="btn btn-default" href="{{ url_for('LowCodeFeaturesView.readiness_json') }}">Readiness JSON</a>
       <a class="btn btn-default" href="{{ url_for('LowCodeFeaturesView.jhipster_comparison_json') }}">JHipster Comparison JSON</a>
       <a class="btn btn-default" href="{{ url_for('LowCodeFeaturesView.jhipster_benchmark_json') }}">Benchmark JSON</a>
+      <a class="btn btn-default" href="{{ url_for('LowCodeFeaturesView.composition_json') }}">Composition JSON</a>
+      <a class="btn btn-default" href="{{ url_for('LowCodeFeaturesView.composition_readiness_json') }}">Composition Readiness JSON</a>
     </div>
   </div>
   <p class="aglf-note">
@@ -5477,7 +5479,8 @@ def write_low_code_features_template(output_dir):
     AppGen keeps
     JHipster JDL interoperability while adding visual builders, Python-native
     targets, schema imports, ERP templates, agentic systems, and operational
-    workbenches.
+    workbenches. It also exposes generated application-composition packages for
+    reusable blocks, reviewed installs, and portal or repository publication.
   </p>
   <div class="aglf-grid">
     {% for group, items in grouped.items() %}
@@ -18488,6 +18491,78 @@ def _low_code_features_text(schema: AppSchema) -> str:
     )
     table_names = tuple(table.name for table in schema.tables)
     targets, _unknown = normalize_platform_targets(schema.app_options.get("targets"))
+    composition_blocks = (
+        {
+            "key": "schema-core",
+            "label": "Schema Core",
+            "kind": "schema",
+            "resources": table_names,
+            "depends_on": (),
+            "artifacts": ("app/models.py", "app/appgen.json", "docs/data-dictionary.json"),
+            "review_checks": ("schema.import", "data.migrations", "quality.test-coverage"),
+        },
+        {
+            "key": "visual-builder",
+            "label": "Visual Builder",
+            "kind": "designer",
+            "resources": table_names,
+            "depends_on": ("schema-core",),
+            "artifacts": ("app/designer.py", "app/form_designer.py", "app/studio.py"),
+            "review_checks": ("ui.visual-modeling", "ui.form-designer", "devops.studio"),
+        },
+        {
+            "key": "workflow-automation",
+            "label": "Workflow Automation",
+            "kind": "automation",
+            "resources": tuple(flow.name for flow in schema.flows) or ("default-review",),
+            "depends_on": ("schema-core",),
+            "artifacts": ("app/workflow.py", "automation/appgen_node_red.py", "automation/node-red/flows.json"),
+            "review_checks": ("workflow.automation", "workflow.statecharts", "automation.node-red"),
+        },
+        {
+            "key": "erp-suite",
+            "label": "ERP Suite",
+            "kind": "template-pack",
+            "resources": (
+                "general_ledger",
+                "accounts_receivable",
+                "accounts_payable",
+                "invoicing",
+                "inventory",
+                "human_resources",
+            ),
+            "depends_on": ("schema-core", "workflow-automation"),
+            "artifacts": ("app/erp_templates.py", "app/finance_ops.py", "app/inventory_ops.py"),
+            "review_checks": ("components.erp-templates", "operations.finance", "operations.inventory-traceability"),
+        },
+        {
+            "key": "agentic-suite",
+            "label": "Agentic Suite",
+            "kind": "ai-pack",
+            "resources": tuple(agent.name for agent in schema.agents) or ("schema-assistant",),
+            "depends_on": ("schema-core", "visual-builder"),
+            "artifacts": ("app/agents.py", "app/chatbot.py", "app/voice.py", "app/intelligence.py"),
+            "review_checks": ("ai.agentic-systems", "ai.guided-chatbot", "ai.voice-assistant"),
+        },
+        {
+            "key": "enterprise-integrations",
+            "label": "Enterprise Integrations",
+            "kind": "integration-pack",
+            "resources": ("rest", "webhook", "salesforce", "sap", "entando", "invenio"),
+            "depends_on": ("schema-core",),
+            "artifacts": ("app/integrations.py", "app/events.py", "app/microservices.py"),
+            "review_checks": ("integration.enterprise", "api.openapi", "automation.cep"),
+        },
+        {
+            "key": "native-targets",
+            "label": "Native Targets",
+            "kind": "target-pack",
+            "resources": targets,
+            "depends_on": ("schema-core", "visual-builder"),
+            "artifacts": ("native/appgen_native.py", "native/mobile/app.py", "native/desktop/app.py"),
+            "review_checks": ("platform.targets", "platform.native", "ui.pwa"),
+        },
+    )
     return f'''"""Generated low-code/no-code feature matrix for AppGen apps."""
 
 from __future__ import annotations
@@ -18507,6 +18582,7 @@ FEATURE_SOURCE = {{
 APP_TABLES = {table_names!r}
 APP_TARGETS = {targets!r}
 CAPABILITIES = {capabilities!r}
+COMPOSITION_BLOCKS = {composition_blocks!r}
 JHIPSTER_BASELINE = {{
     "platform": "JHipster",
     "strengths": (
@@ -18529,6 +18605,7 @@ COMPETITIVE_BENCHMARK = (
     {{"area": "erp_templates", "label": "ERP module template library", "jhipster": False, "appgen": True, "evidence": "Ledger, AP, AR, invoicing, HR, payroll, inventory, manufacturing, CRM, warehouse, and reports"}},
     {{"area": "runtime_studio", "label": "Generated in-app IDE and operations studio", "jhipster": False, "appgen": True, "evidence": "Studio, devtools, diagnostics, config editor, backup, monitoring, resilience, and performance workbenches"}},
     {{"area": "schema_import", "label": "Multi-source schema import", "jhipster": False, "appgen": True, "evidence": "DBML, SQL DDL, static PonyORM scripts, and live database introspection"}},
+    {{"area": "application_composition", "label": "Application composition marketplace", "jhipster": False, "appgen": True, "evidence": "Generated installable blocks, dependency graph, review gates, composition packages, and portal/repository handoff metadata"}},
 )
 APPGEN_DIFFERENTIATORS = (
     {{"capability": "ANTLR low-code DSL", "evidence": "Compact keyword budget, linter, tutorials, and generated DSL reference"}},
@@ -18537,6 +18614,7 @@ APPGEN_DIFFERENTIATORS = (
     {{"capability": "Python-native targets", "evidence": "Flask-AppBuilder web app plus Kivy mobile and BeeWare desktop starters"}},
     {{"capability": "Agentic systems", "evidence": "Local and API-key LLM providers, generated agents, chatbots, voice, and AI analytics contracts"}},
     {{"capability": "ERP-ready modules", "evidence": "Ledger, AP, AR, invoicing, HR, inventory, manufacturing, reports, and operational templates"}},
+    {{"capability": "Application composition marketplace", "evidence": "Reusable generated blocks with dependencies, reviewed install plans, sandbox previews, Entando portal publication, and Invenio repository deposit handoffs"}},
     {{"capability": "Operational workbenches", "evidence": "Config editor, diagnostics, backup, monitoring, resilience, performance, migration, and deployment contracts"}},
     {{"capability": "JHipster interoperability", "evidence": "JDL export remains available without limiting AppGen's broader feature set"}},
 )
@@ -18595,6 +18673,105 @@ def capability_lookup(key):
         if capability["key"] == key:
             return dict(capability)
     raise KeyError(f"Unknown low-code capability: {{key}}")
+
+
+def application_composition_catalog(kind=None):
+    """Return reusable application-composition blocks for no-code assembly."""
+    blocks = tuple(dict(item) for item in COMPOSITION_BLOCKS)
+    if kind is None:
+        return blocks
+    return tuple(block for block in blocks if block["kind"] == kind)
+
+
+def composition_dependency_graph():
+    """Return a dependency graph for generated composition blocks."""
+    return {{
+        "format": "appgen.composition-graph.v1",
+        "nodes": tuple(block["key"] for block in COMPOSITION_BLOCKS),
+        "edges": tuple(
+            {{"from": dependency, "to": block["key"]}}
+            for block in COMPOSITION_BLOCKS
+            for dependency in block["depends_on"]
+        ),
+    }}
+
+
+def _composition_block(block_key):
+    for block in COMPOSITION_BLOCKS:
+        if block["key"] == block_key:
+            return block
+    raise KeyError(f"Unknown composition block: {{block_key}}")
+
+
+def composition_install_plan(block_keys, target="studio"):
+    """Return an approval-ready install plan for reusable app blocks."""
+    selected = []
+    visited = set()
+
+    def add_block(block_key):
+        if block_key in visited:
+            return
+        block = _composition_block(block_key)
+        for dependency in block["depends_on"]:
+            add_block(dependency)
+        visited.add(block_key)
+        selected.append(block)
+
+    for block_key in tuple(block_keys):
+        add_block(block_key)
+    artifacts = tuple(dict.fromkeys(path for block in selected for path in block["artifacts"]))
+    checks = tuple(dict.fromkeys(check for block in selected for check in block["review_checks"]))
+    return {{
+        "format": "appgen.composition-install-plan.v1",
+        "target": target,
+        "blocks": tuple(block["key"] for block in selected),
+        "artifacts": artifacts,
+        "checks": checks,
+        "requires_review": True,
+        "sandbox_preview": True,
+    }}
+
+
+def composition_package(name, block_keys):
+    """Return a portable package descriptor for sharing composed app features."""
+    plan = composition_install_plan(block_keys)
+    return {{
+        "format": "appgen.composition-package.v1",
+        "name": name,
+        "blocks": plan["blocks"],
+        "artifacts": plan["artifacts"],
+        "checks": plan["checks"],
+        "publish_targets": ("studio", "entando", "invenio", "cookiecutter"),
+        "version": "0.1.0",
+    }}
+
+
+def composition_preview(block_keys):
+    """Return a no-side-effect preview for app composition before generation."""
+    plan = composition_install_plan(block_keys)
+    return {{
+        "format": "appgen.composition-preview.v1",
+        "summary": f"Install {{len(plan['blocks'])}} blocks into {{plan['target']}}",
+        "blocks": plan["blocks"],
+        "new_artifacts": plan["artifacts"],
+        "review_checks": plan["checks"],
+        "destructive": False,
+    }}
+
+
+def composition_marketplace_readiness(existing_paths=()):
+    """Return readiness for composition marketplace contracts."""
+    existing = set(existing_paths)
+    required = {{"app/low_code_features.py", "app/templates/appgen_low_code_features.html", "app/appgen.json"}}
+    missing = tuple(sorted(required - existing))
+    graph = composition_dependency_graph()
+    return {{
+        "ok": not missing and len(COMPOSITION_BLOCKS) >= 7 and bool(graph["edges"]),
+        "missing": missing,
+        "blocks": tuple(block["key"] for block in COMPOSITION_BLOCKS),
+        "publish_targets": ("studio", "entando", "invenio", "cookiecutter"),
+        "graph": graph,
+    }}
 
 
 def grouped_capabilities():
@@ -18732,6 +18909,14 @@ class LowCodeFeaturesView(BaseView):
     @expose("/jhipster-benchmark.json")
     def jhipster_benchmark_json(self):
         return jsonify(jhipster_capability_benchmark())
+
+    @expose("/composition.json")
+    def composition_json(self):
+        return jsonify(list(application_composition_catalog()))
+
+    @expose("/composition-readiness.json")
+    def composition_readiness_json(self):
+        return jsonify(composition_marketplace_readiness())
 
 
 def register_low_code_features(appbuilder):
@@ -26823,15 +27008,19 @@ def validate_low_code_features_artifacts() -> None:
         "roadmap_alignment",
         "readiness_report",
         "jhipster_capability_benchmark",
+        "application_composition_catalog",
+        "composition_install_plan",
+        "composition_package",
+        "composition_marketplace_readiness",
         "low_code_features_check",
         "docs/Lo-code features.md",
     )
     if not all(item in contract for item in required):
         fail("low-code feature matrix must expose capability, roadmap, readiness, and source-document contracts")
-    if "jhipster_competitive_report" not in contract or "broader-than-jhipster" not in contract or "appgen_only_capabilities" not in contract:
+    if "jhipster_competitive_report" not in contract or "broader-than-jhipster" not in contract or "appgen_only_capabilities" not in contract or "application_composition" not in contract:
         fail("low-code feature matrix must make AppGen's broader-than-JHipster position explicit")
     template = (ROOT / "app" / "templates" / "appgen_low_code_features.html").read_text()
-    if "Low-Code Feature Matrix" not in template or "Feature Matrix JSON" not in template or "Readiness JSON" not in template or "JHipster Comparison JSON" not in template or "Benchmark JSON" not in template:
+    if "Low-Code Feature Matrix" not in template or "Feature Matrix JSON" not in template or "Readiness JSON" not in template or "JHipster Comparison JSON" not in template or "Benchmark JSON" not in template or "Composition JSON" not in template:
         fail("low-code feature cockpit must expose matrix and readiness links")
 
 
@@ -28551,8 +28740,18 @@ def test_generated_runtime_helpers():
     assert low_code_features.readiness_report()["alignment_complete"] is True
     assert low_code_features.readiness_report()["competitive_advantage_count"] >= 7
     assert "ui.form-designer" in {item["key"] for item in low_code_features.capability_matrix()}
+    assert "components.application-composition" in {item["key"] for item in low_code_features.capability_matrix()}
     assert low_code_features.jhipster_capability_benchmark()["ok"] is True
     assert "agentic_systems" in {item["area"] for item in low_code_features.jhipster_competitive_report()["appgen_only_capabilities"]}
+    assert "application_composition" in {item["area"] for item in low_code_features.jhipster_competitive_report()["appgen_only_capabilities"]}
+    composition_plan = low_code_features.composition_install_plan(("agentic-suite", "erp-suite"))
+    assert composition_plan["format"] == "appgen.composition-install-plan.v1"
+    assert "schema-core" in composition_plan["blocks"]
+    assert low_code_features.composition_package("builder-suite", ("visual-builder",))["publish_targets"] == ("studio", "entando", "invenio", "cookiecutter")
+    assert low_code_features.composition_preview(("native-targets",))["destructive"] is False
+    assert low_code_features.composition_marketplace_readiness(
+        {"app/low_code_features.py", "app/templates/appgen_low_code_features.html", "app/appgen.json"}
+    )["ok"] is True
     assert low_code_features.low_code_features_check(
         {"app/low_code_features.py", "app/templates/appgen_low_code_features.html", "app/appgen.json"}
     )["ok"] is True

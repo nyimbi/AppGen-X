@@ -1803,8 +1803,25 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert low_code_features.jhipster_capability_benchmark()["ok"] is True
     assert len(low_code_features.jhipster_competitive_report()["appgen_differentiators"]) >= 7
     assert "agentic_systems" in {item["area"] for item in low_code_features.jhipster_competitive_report()["appgen_only_capabilities"]}
+    assert "application_composition" in {
+        item["area"] for item in low_code_features.jhipster_competitive_report()["appgen_only_capabilities"]
+    }
     assert "ui.form-designer" in {item["key"] for item in low_code_features.capability_matrix()}
+    assert "components.application-composition" in {item["key"] for item in low_code_features.capability_matrix()}
     assert "ai.agentic-systems" in {item["key"] for item in low_code_features.grouped_capabilities()["ai"]}
+    composition_plan = low_code_features.composition_install_plan(("agentic-suite", "erp-suite"))
+    assert composition_plan["format"] == "appgen.composition-install-plan.v1"
+    assert "schema-core" in composition_plan["blocks"]
+    assert low_code_features.composition_package("builder-suite", ("visual-builder",))["publish_targets"] == (
+        "studio",
+        "entando",
+        "invenio",
+        "cookiecutter",
+    )
+    assert low_code_features.composition_preview(("native-targets",))["destructive"] is False
+    assert low_code_features.composition_marketplace_readiness(
+        {"app/low_code_features.py", "app/templates/appgen_low_code_features.html", "app/appgen.json"}
+    )["ok"] is True
     assert low_code_features.low_code_features_check(
         {"app/low_code_features.py", "app/templates/appgen_low_code_features.html", "app/appgen.json"}
     )["ok"] is True
