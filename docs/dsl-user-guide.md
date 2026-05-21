@@ -305,13 +305,16 @@ Generated apps include `branding.py`, `appgen_branding.html`, and
   touch readiness, viewport coverage, component-state coverage, and no-overlap
   review evidence;
 - a visual regression plan that lists screenshot targets and state coverage;
+- a visual test matrix for home, list, form, and dashboard surfaces across
+  mobile, tablet, desktop, and wide viewports;
 - accessibility audit plans for focus order, landmarks, touch targets, and
   WCAG-oriented checks.
 
 Use the generated `/branding/visual-quality.json` endpoint as the machine gate
-and `/branding/visual-regression.json` as the screenshot checklist when
-validating that generated applications are polished across web, mobile, and
-desktop-sized viewports.
+and `/branding/ui-release-gate.json` as the aggregate ship gate when validating
+that generated applications are polished across web, mobile, and desktop-sized
+viewports. `/branding/visual-regression.json` remains the screenshot checklist
+for browser-driven visual QA.
 
 ## JHipster-Plus Readiness
 

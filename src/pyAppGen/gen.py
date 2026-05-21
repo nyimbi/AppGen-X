@@ -6235,6 +6235,7 @@ def write_branding_template(output_dir):
       <a class="btn btn-default" href="{{ url_for('BrandingView.quality_json') }}">Quality JSON</a>
       <a class="btn btn-default" href="{{ url_for('BrandingView.visual_quality_json') }}">Visual Quality JSON</a>
       <a class="btn btn-default" href="{{ url_for('BrandingView.visual_regression_json') }}">Visual Regression JSON</a>
+      <a class="btn btn-default" href="{{ url_for('BrandingView.ui_release_gate_json') }}">UI Release Gate JSON</a>
     </div>
   </div>
   <div class="agb-preview">
@@ -6275,6 +6276,10 @@ def write_branding_template(output_dir):
     <article class="agb-chip">
       <strong>Visual Quality</strong>
       <div class="agb-note">contrast, palette balance, no-overlap, viewport coverage</div>
+    </article>
+    <article class="agb-chip">
+      <strong>UI Release Gate</strong>
+      <div class="agb-note">theme, accessibility, screenshots, states, assets</div>
     </article>
   </div>
 </section>
@@ -9531,6 +9536,42 @@ def visual_regression_plan(page=None):
     }}
 
 
+def visual_test_matrix(surface=None):
+    """Return deterministic visual QA rows for generated web, mobile, and desktop surfaces."""
+    surfaces = {{
+        "home": ("default", "focus", "empty"),
+        "record-list": ("default", "hover", "focus", "selected", "empty", "bulk-action"),
+        "record-form": ("default", "focus", "invalid", "disabled", "readonly"),
+        "dashboard": ("default", "hover", "focus", "empty", "error"),
+    }}
+    viewports = viewport_contract()
+    rows = tuple(
+        {{
+            "surface": surface_name,
+            "viewport": viewport_name,
+            "width": viewport["width"],
+            "density": viewport["density"],
+            "states": states,
+            "assertions": viewport["assertions"],
+        }}
+        for surface_name, states in surfaces.items()
+        for viewport_name, viewport in viewports.items()
+    )
+    if surface is not None:
+        if surface not in surfaces:
+            raise KeyError(f"Unknown visual test surface: {{surface}}")
+        rows = tuple(item for item in rows if item["surface"] == surface)
+    return {{
+        "format": "appgen.visual-test-matrix.v1",
+        "ok": bool(rows) and {{"mobile", "tablet", "desktop"}} <= {{item["viewport"] for item in rows}},
+        "surfaces": tuple(surfaces),
+        "viewports": tuple(viewports),
+        "states": tuple(dict.fromkeys(state for states in surfaces.values() for state in states)),
+        "rows": rows,
+        "required_tools": ("playwright", "axe-core", "screenshot diff"),
+    }}
+
+
 def _hex_to_rgb(value):
     value = str(value or "").strip().lstrip("#")
     if len(value) == 3:
@@ -9618,6 +9659,7 @@ def theme_quality_report():
 def visual_experience_quality_report():
     """Return generated evidence that UI output is polished, responsive, and reviewable."""
     regression = visual_regression_plan()
+    matrix = visual_test_matrix()
     quality = theme_quality_report()
     palette = palette_balance_report()
     checks = (
@@ -9627,6 +9669,7 @@ def visual_experience_quality_report():
         {{"check": "all_viewports", "ok": set(regression["viewports"]) == {{"mobile", "tablet", "desktop", "wide"}}, "value": tuple(regression["viewports"])}},
         {{"check": "component_states", "ok": {{"button", "form-control", "table-row", "dashboard-card"}} <= set(regression["states"]), "value": tuple(regression["states"])}},
         {{"check": "no_overlap_review", "ok": any("overlap" in check for check in regression["checks"]), "value": regression["checks"]}},
+        {{"check": "visual_test_matrix", "ok": matrix["ok"], "value": len(matrix["rows"])}},
         {{"check": "touch_ready", "ok": design_tokens()["interaction"]["touch_target"] == "44px", "value": design_tokens()["interaction"]["touch_target"]}},
     )
     return {{
@@ -9635,6 +9678,7 @@ def visual_experience_quality_report():
         "theme": BRANDING["theme"],
         "checks": checks,
         "visual_regression": regression,
+        "visual_test_matrix": matrix,
         "design_system": design_system_report(),
     }}
 
@@ -9733,6 +9777,38 @@ def accessibility_audit_plan(page=None):
     }}
 
 
+def ui_experience_release_gate(existing_paths=None):
+    """Return an aggregate release gate for polished, accessible generated UI."""
+    existing = set(existing_paths or ())
+    required_assets = ("app/branding.py", "app/static/appgen-theme.css", "app/templates/appgen_branding.html")
+    missing_assets = tuple(path for path in required_assets if path not in existing) if existing_paths is not None else ()
+    theme = theme_quality_report()
+    visual = visual_experience_quality_report()
+    accessibility = accessibility_audit_plan()
+    regression = visual_regression_plan()
+    matrix = visual_test_matrix()
+    gates = (
+        {{"gate": "theme_quality", "ok": theme["ok"], "evidence": "theme_quality_report"}},
+        {{"gate": "visual_quality", "ok": visual["ok"], "evidence": "visual_experience_quality_report"}},
+        {{"gate": "accessibility", "ok": accessibility["ok"], "evidence": "accessibility_audit_plan"}},
+        {{"gate": "visual_regression", "ok": bool(regression["pages"]) and bool(regression["checks"]), "evidence": "visual_regression_plan"}},
+        {{"gate": "visual_test_matrix", "ok": matrix["ok"], "evidence": "visual_test_matrix"}},
+        {{"gate": "responsive_coverage", "ok": {{"mobile", "tablet", "desktop"}} <= set(regression["viewports"]), "evidence": tuple(regression["viewports"])}},
+        {{"gate": "component_states", "ok": {{"button", "form-control", "table-row", "dashboard-card"}} <= set(regression["states"]), "evidence": tuple(regression["states"])}},
+        {{"gate": "assets", "ok": not missing_assets, "evidence": required_assets, "missing": missing_assets}},
+    )
+    return {{
+        "format": "appgen.ui-experience-release-gate.v1",
+        "ok": all(item["ok"] for item in gates),
+        "gates": gates,
+        "blocking_gaps": tuple(item["gate"] for item in gates if not item["ok"]),
+        "theme": BRANDING["theme"],
+        "visual_test_matrix": matrix,
+        "visual_regression": regression,
+        "accessibility": accessibility,
+    }}
+
+
 def asset_check(existing_paths):
     """Return readiness for generated branding assets."""
     existing = set(existing_paths)
@@ -9749,6 +9825,7 @@ def asset_check(existing_paths):
         "accessibility": accessibility_theme_check(),
         "audit": accessibility_audit_plan(),
         "visual_regression": visual_regression_plan(),
+        "ui_release_gate": ui_experience_release_gate(existing),
     }}
 
 
@@ -9783,6 +9860,10 @@ class BrandingView(BaseView):
     @expose("/visual-quality.json")
     def visual_quality_json(self):
         return jsonify(visual_experience_quality_report())
+
+    @expose("/ui-release-gate.json")
+    def ui_release_gate_json(self):
+        return jsonify(ui_experience_release_gate())
 
 
 def register_branding(appbuilder):
@@ -31645,6 +31726,8 @@ def validate_branding_artifacts() -> None:
         or "palette_balance_report" not in contract
         or "contrast_ratio" not in contract
         or "visual_experience_quality_report" not in contract
+        or "visual_test_matrix" not in contract
+        or "ui_experience_release_gate" not in contract
         or "accessibility_theme_check" not in contract
         or "accessibility_audit_plan" not in contract
         or "keyboard_navigation_plan" not in contract
@@ -31660,6 +31743,7 @@ def validate_branding_artifacts() -> None:
         or "Quality JSON" not in template
         or "Visual Quality JSON" not in template
         or "Visual Regression JSON" not in template
+        or "UI Release Gate JSON" not in template
         or "Viewport Contracts" not in template
         or "Component States" not in template
         or "branding.palette" not in template
@@ -33116,6 +33200,8 @@ def test_generated_runtime_helpers():
     assert branding.viewport_contract("mobile")["density"] == "touch"
     assert branding.component_state_matrix("form-control")["invalid"]["message_required"] is True
     assert branding.visual_regression_plan()["format"] == "appgen.visual-regression.v1"
+    assert branding.visual_test_matrix()["format"] == "appgen.visual-test-matrix.v1"
+    assert "invalid" in branding.visual_test_matrix("record-form")["states"]
     assert branding.contrast_ratio("#14213d", "#f8fafc") >= 4.5
     assert branding.palette_balance_report()["ok"] is True
     assert branding.visual_experience_quality_report()["format"] == "appgen.visual-experience-quality.v1"
@@ -33126,6 +33212,9 @@ def test_generated_runtime_helpers():
     assert branding.keyboard_navigation_plan("home")[0]["escape_hatch"] == "skip_to_content"
     assert branding.aria_landmark_contract("home")[0]["requires_main"] is True
     assert branding.asset_check(
+        {"app/branding.py", "app/static/appgen-theme.css", "app/templates/appgen_branding.html"}
+    )["ok"] is True
+    assert branding.ui_experience_release_gate(
         {"app/branding.py", "app/static/appgen-theme.css", "app/templates/appgen_branding.html"}
     )["ok"] is True
     assert isinstance(extensions.extension_points(), tuple)
