@@ -421,6 +421,9 @@ payloads, audit events, and required document cockpit artifacts.
 Use `inventory_release_gate()` to prove generated inventory traceability covers
 barcode/RFID scan targets, stock movement, cycle counting, reconciliation,
 traceability chains, mobile/offline capabilities, and required artifacts.
+Use `finance_release_gate()` to verify generated ERP finance operations cover
+tax profiles, currency conversion, budget forecasts, revenue recognition, batch
+processing, and required finance cockpit artifacts.
 Use `search_release_gate()` to verify generated searchable-field coverage,
 provider readiness for memory/PostgreSQL/Whoosh/Elasticsearch, reindex plans,
 and the search cockpit artifacts before switching providers in production.

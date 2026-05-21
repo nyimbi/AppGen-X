@@ -3086,6 +3086,19 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     batch = finance_ops.batch_process(first_finance_table, ({"title": "Dune"},), action="post", actor="ada")
     assert batch["row_count"] == 1
     assert finance_ops.finance_ops_check({"app/finance_ops.py", "app/templates/appgen_finance_ops.html"})["ok"] is True
+    finance_gate = finance_ops.finance_release_gate({"app/finance_ops.py", "app/templates/appgen_finance_ops.html"})
+    assert finance_gate["format"] == "appgen.finance-release-gate.v1"
+    assert finance_gate["ok"] is True
+    assert {
+        "finance_catalog",
+        "tax_profiles",
+        "currency_conversion",
+        "budget_forecast",
+        "revenue_recognition",
+        "batch_processing",
+        "artifact_coverage",
+    } <= {gate["gate"] for gate in finance_gate["gates"]}
+    assert finance_ops.finance_release_gate({"app/finance_ops.py"})["ok"] is False
     first_manufacturing_table = manufacturing_ops.manufacturing_catalog()[0]["table"]
     bom = manufacturing_ops.bill_of_material_plan(
         first_manufacturing_table,

@@ -3084,7 +3084,10 @@ def write_finance_ops_template(output_dir):
         revenue recognition, and batch processing contracts for ERP-grade apps.
       </p>
     </div>
-    <a class="btn btn-default" href="{{ url_for('FinanceOpsView.catalog_json') }}">Finance JSON</a>
+    <div>
+      <a class="btn btn-default" href="{{ url_for('FinanceOpsView.catalog_json') }}">Finance JSON</a>
+      <a class="btn btn-default" href="{{ url_for('FinanceOpsView.release_gate_json') }}">Release Gate JSON</a>
+    </div>
   </div>
   <div class="agfo-grid">
     {% for item in resources %}
@@ -13319,6 +13322,58 @@ def finance_ops_check(existing_paths=()):
     }}
 
 
+def finance_release_gate(existing_paths=()):
+    """Return an auditable release gate for generated finance operations."""
+    artifacts = set(existing_paths or ())
+    required_artifacts = ("app/finance_ops.py", "app/templates/appgen_finance_ops.html")
+    sample_table = next(iter(FINANCE_RESOURCES), None)
+    gates = (
+        {{
+            "gate": "finance_catalog",
+            "ok": bool(finance_catalog()) and all(resource["batch_actions"] for resource in finance_catalog()),
+            "evidence": tuple(resource["table"] for resource in finance_catalog()),
+        }},
+        {{
+            "gate": "tax_profiles",
+            "ok": tax_calculation(100, category="standard")["tax_amount"] >= 0 and tax_calculation(116, inclusive=True)["total_amount"] == 116.0,
+            "evidence": tuple(DEFAULT_TAX_RATES),
+        }},
+        {{
+            "gate": "currency_conversion",
+            "ok": exchange_rate_plan("USD", "KES")["ready"] and convert_amount(2, base="USD", target="KES")["converted"] > 0,
+            "evidence": tuple(DEFAULT_EXCHANGE_RATES),
+        }},
+        {{
+            "gate": "budget_forecast",
+            "ok": bool(sample_table) and bool(budget_forecast(sample_table, (100, 200), periods=2)["forecast"]),
+            "evidence": sample_table,
+        }},
+        {{
+            "gate": "revenue_recognition",
+            "ok": revenue_recognition_schedule(120, periods=3)["schedule"][0]["amount"] == 40.0,
+            "evidence": "straight_line",
+        }},
+        {{
+            "gate": "batch_processing",
+            "ok": bool(sample_table) and batch_process(sample_table, ({{"amount": 100}},), action="post", actor="system")["row_count"] == 1,
+            "evidence": tuple(resource["batch_actions"] for resource in finance_catalog()),
+        }},
+        {{
+            "gate": "artifact_coverage",
+            "ok": set(required_artifacts) <= artifacts,
+            "missing": tuple(item for item in required_artifacts if item not in artifacts),
+        }},
+    )
+    ok = all(gate["ok"] for gate in gates)
+    return {{
+        "format": "appgen.finance-release-gate.v1",
+        "ok": ok,
+        "decision": "approved" if ok else "blocked",
+        "gates": gates,
+        "required_artifacts": required_artifacts,
+    }}
+
+
 class FinanceOpsView(BaseView):
     route_base = "/finance-ops"
     default_view = "index"
@@ -13339,6 +13394,10 @@ class FinanceOpsView(BaseView):
             "tax_rates": DEFAULT_TAX_RATES,
             "currencies": DEFAULT_EXCHANGE_RATES,
         }})
+
+    @expose("/release-gate.json")
+    def release_gate_json(self):
+        return jsonify(finance_release_gate({{"app/finance_ops.py", "app/templates/appgen_finance_ops.html"}}))
 
 
 def register_finance_ops(appbuilder):
@@ -32582,12 +32641,13 @@ def validate_finance_ops_artifacts() -> None:
         "revenue_recognition_schedule",
         "batch_process",
         "finance_ops_check",
+        "finance_release_gate",
     )
     if not all(item in contract for item in required):
-        fail("finance operations contract must expose tax, currency, forecast, revenue, and batch helpers")
+        fail("finance operations contract must expose tax, currency, forecast, revenue, batch, and release-gate helpers")
     template = (ROOT / "app" / "templates" / "appgen_finance_ops.html").read_text()
-    if "Finance Operations" not in template or "multicurrency" not in template or "batch processing" not in template:
-        fail("finance operations cockpit must expose tax, multicurrency, forecast, and batch contracts")
+    if "Finance Operations" not in template or "multicurrency" not in template or "batch processing" not in template or "Release Gate JSON" not in template:
+        fail("finance operations cockpit must expose tax, multicurrency, forecast, batch contracts, and release gate")
 
 
 def validate_manufacturing_ops_artifacts() -> None:
@@ -34290,6 +34350,8 @@ def test_generated_runtime_helpers():
     assert finance_ops.revenue_recognition_schedule(120, periods=3)["schedule"][0]["amount"] == 40.0
     assert finance_ops.batch_process(first_finance_table, ({{"total": 10}},), action="post")["row_count"] == 1
     assert finance_ops.finance_ops_check({"app/finance_ops.py", "app/templates/appgen_finance_ops.html"})["ok"] is True
+    assert finance_ops.finance_release_gate({"app/finance_ops.py", "app/templates/appgen_finance_ops.html"})["ok"] is True
+    assert finance_ops.finance_release_gate({"app/finance_ops.py"})["ok"] is False
     first_manufacturing_table = manufacturing_ops.manufacturing_catalog()[0]["table"]
     bom = manufacturing_ops.bill_of_material_plan(first_manufacturing_table, "FG-1", ({{"component": "COMP-1", "quantity_per": 2}},))
     requirements = manufacturing_ops.material_requirements(3, bom["components"], on_hand={{"COMP-1": 1}})
