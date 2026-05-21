@@ -3,6 +3,10 @@
 AppGen's DSL is the primary low-code language for describing an application in
 one readable file.  It intentionally keeps the core vocabulary small:
 
+For deeper documentation, see the grammar reference (`docs/dsl-grammar.md`),
+user guide (`docs/dsl-user-guide.md`), tutorial (`docs/dsl-tutorial.md`), and
+linter guide (`docs/dsl-linter.md`).
+
 `app`, `table`, `enum`, `view`, `for`, `flow`, `role`, `rule`, `pk`,
 `required`, `unique`, `hidden`, `search`, `default`, `in`, `llm`, and `agent`.
 
@@ -350,9 +354,11 @@ apps include:
   `appgen_devtools.html` with generated Visual Studio Code, JetBrains
   IDEA/PyCharm, and Eclipse/PyDev launch, task, extension, source-map, and
   readiness contracts.
-- `studio.py` and `appgen_studio.html` with generated in-app code editing,
-  breakpoint/debug plans, dependency update plans, app cloning, and reusable
-  component repository exports.
+- `studio.py` and `appgen_studio.html` with a generated IDE/workbench for DSL
+  authoring, DSL linting, visual database design, migration previews,
+  application generation plans, app management, code editing, breakpoint/debug
+  plans, dependency update plans, app cloning, and reusable component
+  repository exports.
 - `realtime.py` and `appgen_realtime.html` with generated event topics,
   Server-Sent Events frames, collaboration messages, and reconnect replay plans.
 - `diagnostics.py` and `appgen_diagnostics.html` with generated schema

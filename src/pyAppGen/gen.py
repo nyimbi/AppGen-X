@@ -2220,6 +2220,7 @@ def write_search_template(output_dir):
   .ags-card h3 { margin: 0 0 8px; font-size: 17px; color: #14213d; }
   .ags-muted { color: #64748b; font-size: 12px; }
   .ags-pill { display: inline-block; border: 1px solid #cbd5e1; padding: 3px 7px; margin: 3px 4px 0 0; font-size: 12px; background: #f8fafc; }
+  .ags-actions { display: flex; gap: 8px; flex-wrap: wrap; }
   @media (max-width: 760px) { .ags-head { display: block; } }
 </style>
 <section class="ags-wrap">
@@ -5137,13 +5138,54 @@ def write_studio_template(output_dir):
     <div>
       <h1 class="ags-title">Developer Studio</h1>
       <p class="ags-note">
-        Generated code-editing, debugging, dependency, cloning, and reusable
-        component-repository contracts for generated AppGen applications.
+        Generated IDE for DSL authoring, database design, application
+        generation, debugging, dependency management, cloning, and reusable
+        component repositories.
       </p>
     </div>
-    <a class="btn btn-default" href="{{ url_for('StudioView.catalog_json') }}">Studio JSON</a>
+    <div class="ags-actions">
+      <a class="btn btn-default" href="{{ url_for('StudioView.catalog_json') }}">Studio JSON</a>
+      <a class="btn btn-default" href="{{ url_for('StudioView.workspace_json') }}">Workspace JSON</a>
+      <a class="btn btn-default" href="{{ url_for('StudioView.database_design_json') }}">Database Design JSON</a>
+    </div>
   </div>
   <div class="ags-grid">
+    {% for action in workspace.command_palette %}
+    <article class="ags-card">
+      <h3>{{ action.label }}</h3>
+      <div class="ags-muted">{{ action.scope }}</div>
+      {% for check in action.checks %}
+      <span class="ags-pill">{{ check }}</span>
+      {% endfor %}
+    </article>
+    {% endfor %}
+    <article class="ags-card">
+      <h3>DSL Editor</h3>
+      <div class="ags-muted">grammar, linter, schema preview, natural-language evolution</div>
+      {% for doc in workspace.dsl_documents %}
+      <span class="ags-pill">{{ doc.path }}</span>
+      {% endfor %}
+    </article>
+    <article class="ags-card">
+      <h3>Database Designer</h3>
+      <div class="ags-muted">{{ workspace.database_design|length }} generated tables</div>
+      <span class="ags-pill">migration preview</span>
+      <span class="ags-pill">relationship check</span>
+    </article>
+    <article class="ags-card">
+      <h3>Generation Plan</h3>
+      <div class="ags-muted">{{ workspace.generation.source }}</div>
+      {% for target in workspace.generation.targets %}
+      <span class="ags-pill">{{ target }}</span>
+      {% endfor %}
+    </article>
+    <article class="ags-card">
+      <h3>Management Plan</h3>
+      <div class="ags-muted">{{ workspace.management.app_name }}</div>
+      {% for operation in workspace.management.operations %}
+      <span class="ags-pill">{{ operation }}</span>
+      {% endfor %}
+    </article>
     {% for file in editable_files %}
     <article class="ags-card">
       <h3>{{ file.label }}</h3>
@@ -20466,6 +20508,50 @@ def _studio_text(schema: AppSchema, app_name: str) -> str:
             "commands": ("continue", "step_over", "inspect_variables"),
         },
     )
+    database_design = tuple(
+        {
+            "table": table.name,
+            "model": snake_to_pascal(table.name),
+            "label": snake_to_label(table.name),
+            "fields": tuple(
+                {
+                    "name": _model_attribute_name(column),
+                    "label": snake_to_label(column.name),
+                    "type": column.type_name,
+                    "required": not column.nullable,
+                    "primary_key": column.primary_key,
+                    "reference": column.references,
+                    "hidden": column.hidden,
+                    "searchable": column.searchable,
+                    "derived": column.derived,
+                }
+                for column in table.columns
+            ),
+        }
+        for table in schema.tables
+    )
+    platform_targets, _unknown_targets = normalize_platform_targets(schema.app_options.get("targets"))
+    dsl_documents = (
+        {
+            "path": "appgen.dsl",
+            "language": "appgen-dsl",
+            "purpose": "Primary low-code application model",
+            "helpers": ("keyword budget", "schema preview", "generation plan", "natural-language evolution"),
+        },
+        {
+            "path": "docs/schema.md",
+            "language": "markdown",
+            "purpose": "Generated schema documentation",
+            "helpers": ("data dictionary", "mermaid ERD", "field catalog"),
+        },
+    )
+    ide_actions = (
+        {"command": "open_dsl", "label": "Open DSL", "scope": "authoring", "checks": ("dsl_lint", "keyword_budget")},
+        {"command": "design_database", "label": "Design Database", "scope": "schema", "checks": ("relationship_check", "migration_preview")},
+        {"command": "generate_application", "label": "Generate Application", "scope": "codegen", "checks": ("py_compile", "appgen_quality")},
+        {"command": "manage_application", "label": "Manage Application", "scope": "operations", "checks": ("readiness", "deployment_plan")},
+        {"command": "debug_application", "label": "Debug Application", "scope": "runtime", "checks": ("breakpoints", "variable_redaction")},
+    )
     return f'''"""Generated in-app developer studio helpers for AppGen apps."""
 
 from __future__ import annotations
@@ -20480,12 +20566,133 @@ EDITABLE_FILES = {editable_files!r}
 COMPONENTS = {tuple(components)!r}
 DEPENDENCIES = {dependencies!r}
 DEBUG_SESSIONS = {debug_sessions!r}
+DATABASE_DESIGN = {database_design!r}
+DSL_DOCUMENTS = {dsl_documents!r}
+PLATFORM_TARGETS = {platform_targets!r}
+IDE_ACTIONS = {ide_actions!r}
 SECRET_MARKERS = ("SECRET", "TOKEN", "PASSWORD", "API_KEY")
 
 
 def editable_files():
     """Return files that the in-app studio may edit through reviewed plans."""
     return tuple(EDITABLE_FILES)
+
+
+def ide_workspace():
+    """Return the complete generated IDE workspace contract."""
+    return {{
+        "app_name": APP_NAME,
+        "dsl_documents": tuple(DSL_DOCUMENTS),
+        "database_design": database_design_catalog(),
+        "editable_files": editable_files(),
+        "command_palette": ide_command_palette(),
+        "generation": app_generation_plan(),
+        "management": app_management_plan("status"),
+        "debug": tuple(debug_session(item["name"]) for item in DEBUG_SESSIONS),
+    }}
+
+
+def ide_command_palette():
+    """Return high-level IDE commands for builders."""
+    return tuple(IDE_ACTIONS)
+
+
+def dsl_editor_state(source="appgen.dsl", text=""):
+    """Return DSL editor state with panels for linting, schema, and generation."""
+    return {{
+        "source": source,
+        "language": "appgen-dsl",
+        "text": text,
+        "panels": ("outline", "schema_preview", "database_designer", "generation_plan", "natural_language_changes"),
+        "commands": ("format", "lint", "preview_schema", "generate", "apply_natural_language_change"),
+        "lint": dsl_lint_plan(text),
+    }}
+
+
+def dsl_lint_plan(text):
+    """Return lightweight DSL authoring feedback for the IDE."""
+    source = str(text or "")
+    errors = []
+    warnings = []
+    if source and "app " not in source:
+        errors.append("DSL should declare an app block.")
+    if source and "table " not in source:
+        warnings.append("No table declaration found; generated apps normally need at least one table.")
+    return {{
+        "ok": not errors,
+        "errors": tuple(errors),
+        "warnings": tuple(warnings),
+        "checks": ("keyword_budget", "references", "field_types", "targets"),
+    }}
+
+
+def dsl_change_plan(prompt, current_dsl="", author=None):
+    """Return a reviewed natural-language-to-DSL change plan."""
+    return {{
+        "prompt": prompt,
+        "author": author or "studio-user",
+        "current_dsl": current_dsl,
+        "uses": "app/nl_evolution.py",
+        "preview_required": True,
+        "can_create": ("tables", "fields", "forms", "chatbots", "agents", "platform_targets"),
+        "checks": ("dsl_lint", "schema_diff", "migration_preview", "appgen_quality"),
+    }}
+
+
+def database_design_catalog():
+    """Return schema tables and fields for the visual database designer."""
+    return tuple(DATABASE_DESIGN)
+
+
+def table_design(table_name):
+    """Return one visual table-design contract."""
+    for table in DATABASE_DESIGN:
+        if table["table"] == table_name:
+            return dict(table)
+    raise KeyError(table_name)
+
+
+def field_design(table_name, field_name):
+    """Return one field-design contract from the visual database designer."""
+    table = table_design(table_name)
+    for field in table["fields"]:
+        if field["name"] == field_name:
+            return dict(field)
+    raise KeyError(f"{{table_name}}.{{field_name}}")
+
+
+def database_migration_plan(change, target="alembic"):
+    """Return a reviewed database migration plan for schema-designer changes."""
+    return {{
+        "change": change,
+        "target": target,
+        "artifacts": ("migrations/env.py", "migrations/versions", "docs/schema.md", "app/models.py"),
+        "requires_review": True,
+        "checks": ("schema_diff", "data_loss_check", "alembic_revision", "appgen_quality"),
+    }}
+
+
+def app_generation_plan(targets=None, source="dsl"):
+    """Return an application generation plan for selected targets."""
+    selected = tuple(targets or PLATFORM_TARGETS or ("web",))
+    return {{
+        "source": source,
+        "targets": selected,
+        "artifacts": ("app", "frontends", "native", "sdks", "deploy", "docs"),
+        "commands": ("generate", "quality", "test", "package"),
+        "checks": ("py_compile", "pytest", "appgen_quality", "manifest_readiness"),
+    }}
+
+
+def app_management_plan(action, app_name=None):
+    """Return a reviewed app lifecycle-management plan."""
+    return {{
+        "action": action,
+        "app_name": app_name or APP_NAME,
+        "operations": ("clone", "package", "deploy", "backup", "restore", "rollback", "inspect"),
+        "requires_review": action in {{"deploy", "restore", "rollback"}},
+        "checks": ("config_readiness", "security_readiness", "backup_state", "quality_gate"),
+    }}
 
 
 def file_edit_plan(path, patch, author=None):
@@ -20595,7 +20802,11 @@ def clone_plan(new_app_name, include_data=False):
 def studio_catalog():
     """Return the generated studio catalog."""
     return {{
+        "workspace": ide_workspace(),
         "files": editable_files(),
+        "dsl_documents": tuple(DSL_DOCUMENTS),
+        "database_design": database_design_catalog(),
+        "command_palette": ide_command_palette(),
         "debug_sessions": tuple(debug_session(item["name"]) for item in DEBUG_SESSIONS),
         "components": component_repository(),
         "dependencies": dependency_inventory(),
@@ -20609,10 +20820,12 @@ def studio_check(existing_paths=()):
     required = {{"app/studio.py", "app/templates/appgen_studio.html"}}
     missing = tuple(sorted(required - existing))
     return {{
-        "ok": not missing and bool(editable_files()) and bool(component_repository()),
+        "ok": not missing and bool(editable_files()) and bool(component_repository()) and bool(database_design_catalog()),
         "missing": missing,
         "files": len(EDITABLE_FILES),
         "components": len(COMPONENTS),
+        "tables": len(DATABASE_DESIGN),
+        "commands": tuple(item["command"] for item in IDE_ACTIONS),
     }}
 
 
@@ -20628,11 +20841,20 @@ class StudioView(BaseView):
             editable_files=editable_files(),
             components=component_repository(),
             dependencies=dependency_inventory(),
+            workspace=ide_workspace(),
         )
 
     @expose("/catalog.json")
     def catalog_json(self):
         return jsonify(studio_catalog())
+
+    @expose("/workspace.json")
+    def workspace_json(self):
+        return jsonify(ide_workspace())
+
+    @expose("/database-design.json")
+    def database_design_json(self):
+        return jsonify(list(database_design_catalog()))
 
 
 def register_studio(appbuilder):
@@ -23192,6 +23414,17 @@ def validate_devtools_artifacts() -> None:
 def validate_studio_artifacts() -> None:
     contract = (ROOT / "app" / "studio.py").read_text()
     required = (
+        "ide_workspace",
+        "ide_command_palette",
+        "dsl_editor_state",
+        "dsl_lint_plan",
+        "dsl_change_plan",
+        "database_design_catalog",
+        "table_design",
+        "field_design",
+        "database_migration_plan",
+        "app_generation_plan",
+        "app_management_plan",
         "studio_catalog",
         "file_edit_plan",
         "debug_session",
@@ -23205,10 +23438,17 @@ def validate_studio_artifacts() -> None:
         "studio_check",
     )
     if not all(item in contract for item in required):
-        fail("developer studio contract must expose editing, debugging, dependencies, components, and cloning")
+        fail("developer studio contract must expose IDE workspace, DSL, database design, generation, management, editing, debugging, dependencies, components, and cloning")
     template = (ROOT / "app" / "templates" / "appgen_studio.html").read_text()
-    if "Developer Studio" not in template or "Studio JSON" not in template:
-        fail("developer studio cockpit must expose the generated studio catalog")
+    if (
+        "Developer Studio" not in template
+        or "Studio JSON" not in template
+        or "Workspace JSON" not in template
+        or "DSL Editor" not in template
+        or "Database Designer" not in template
+        or "Generation Plan" not in template
+    ):
+        fail("developer studio cockpit must expose IDE workspace, DSL editor, database designer, and generation plan")
 
 
 def validate_ci() -> None:
@@ -24779,6 +25019,14 @@ def test_generated_runtime_helpers():
     )["ok"] is True
     assert studio.editable_files()
     assert studio.file_edit_plan("app/models.py", "patch")["requires_review"] is True
+    assert "open_dsl" in {item["command"] for item in studio.ide_command_palette()}
+    assert studio.dsl_editor_state(text="app CopyApp")["lint"]["warnings"]
+    assert studio.dsl_change_plan("add table Invoice")["preview_required"] is True
+    assert studio.database_design_catalog()
+    assert studio.table_design(next(iter(studio.database_design_catalog()))["table"])
+    assert studio.database_migration_plan({"add_field": "Book.edition"})["requires_review"] is True
+    assert studio.app_generation_plan()["artifacts"]
+    assert studio.app_management_plan("deploy")["requires_review"] is True
     assert studio.debug_session()["breakpoints"]
     assert studio.breakpoint_plan("app/views.py", symbol="init_views")["symbol"] == "init_views"
     inspected = studio.variable_inspection("request", {"SECRET_KEY": "x", "row": {"title": "Dune"}})
@@ -24957,17 +25205,41 @@ def get_metadata(idb):
     type=click.Path(exists=True, dir_okay=False, path_type=Path),
     help="AppGen DSL file to generate from.",
 )
+@click.option(
+    "--lint-dsl",
+    "lint_dsl_path",
+    type=click.Path(exists=True, dir_okay=False, path_type=Path),
+    help="Lint an AppGen DSL file and print JSON feedback without generating an app.",
+)
 @click.pass_context
 def main(
-    ctx, writedir, database_url, idatabase, wdatabase, dbml_path, sql_path, pony_path, dsl_path
+    ctx,
+    writedir,
+    database_url,
+    idatabase,
+    wdatabase,
+    dbml_path,
+    sql_path,
+    pony_path,
+    dsl_path,
+    lint_dsl_path,
 ):
     """Generate a Flask-AppBuilder app package from a database schema."""
     schema_sources = [
         path for path in (dbml_path, sql_path, pony_path, dsl_path) if path is not None
     ]
-    if not any([writedir, database_url, idatabase, wdatabase, *schema_sources]):
+    if not any([writedir, database_url, idatabase, wdatabase, lint_dsl_path, *schema_sources]):
         click.echo(ctx.get_help())
         ctx.exit(0)
+
+    if lint_dsl_path is not None:
+        if any([writedir, database_url, idatabase, wdatabase, *schema_sources]):
+            raise click.UsageError("--lint-dsl cannot be combined with generation options.")
+        from .dsl import lint_dsl_file
+
+        result = lint_dsl_file(lint_dsl_path)
+        click.echo(json.dumps(result, indent=2, sort_keys=True))
+        ctx.exit(0 if result["ok"] else 1)
 
     if writedir is None:
         raise click.UsageError("Provide --writedir.")

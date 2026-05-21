@@ -16,6 +16,10 @@ maxdepth: 1
 
 usage
 dsl
+dsl-grammar
+dsl-user-guide
+dsl-tutorial
+dsl-linter
 reference
 contributing
 Code of Conduct <codeofconduct>

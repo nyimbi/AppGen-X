@@ -56,6 +56,59 @@ def schema_from_dsl_file(path: str | Path) -> AppSchema:
     return schema_from_dsl(path.read_text(), source_name=str(path))
 
 
+def lint_dsl_file(path: str | Path) -> dict:
+    """Lint an AppGen DSL file without generating an application."""
+    path = Path(path)
+    return lint_dsl(path.read_text(), source_name=str(path))
+
+
+def lint_dsl(text: str, *, source_name: str | None = None) -> dict:
+    """Return syntax, semantic, and style feedback for AppGen DSL source."""
+    source = text or ""
+    errors: list[str] = []
+    warnings: list[str] = []
+    suggestions: list[str] = []
+    schema: AppSchema | None = None
+
+    if not source.strip():
+        errors.append("DSL source is empty.")
+    if source.count("{") != source.count("}"):
+        errors.append("Unbalanced braces: every block opened with { must close with }.")
+    if re.search(r"\bref\b", source):
+        warnings.append("Prefer arrow references, for example author_id: int -> Author.id.")
+    if re.search(r"api_key\s*:\s*['\"]", source):
+        warnings.append("Use an environment variable name for api_key, not a literal secret.")
+    if re.search(r"\brelationship\b|\bentity\b|\bcomponent\b", source, re.I):
+        suggestions.append(
+            "Use compact DSL constructs such as table, view, flow, rule, llm, and agent."
+        )
+
+    if not errors:
+        try:
+            schema = schema_from_dsl(source, source_name=source_name)
+        except AppGenSyntaxError as exc:
+            errors.extend(part.strip() for part in str(exc).split(";") if part.strip())
+
+    if schema is not None:
+        if not schema.tables:
+            errors.append("Add at least one table block so the generator has a data model.")
+        if not schema.app_name:
+            warnings.append("Add an app declaration to name generated applications and targets.")
+        if not schema.views:
+            suggestions.append("Add view blocks to design forms and Delphi-style component layouts.")
+        if not schema.llm_providers and not schema.agents:
+            suggestions.append("Add llm and agent blocks when the app needs agentic behavior.")
+
+    return {
+        "ok": not errors,
+        "source": source_name,
+        "errors": tuple(errors),
+        "warnings": tuple(warnings),
+        "suggestions": tuple(suggestions),
+        "summary": _lint_summary(schema),
+    }
+
+
 def schema_from_dsl(text: str, *, source_name: str | None = None) -> AppSchema:
     """Parse AppGen DSL source into the canonical app schema."""
     text = _normalize_reference_sugar(text)
@@ -119,6 +172,35 @@ def schema_from_dsl(text: str, *, source_name: str | None = None) -> AppSchema:
     )
     _validate_schema(schema)
     return schema
+
+
+def _lint_summary(schema: AppSchema | None) -> dict:
+    if schema is None:
+        return {
+            "tables": 0,
+            "fields": 0,
+            "views": 0,
+            "flows": 0,
+            "roles": 0,
+            "rules": 0,
+            "llm_providers": 0,
+            "agents": 0,
+            "targets": (),
+        }
+    targets, unknown = normalize_platform_targets(schema.app_options.get("targets"))
+    return {
+        "app": schema.app_name,
+        "tables": len(schema.tables),
+        "fields": sum(len(table.columns) for table in schema.tables),
+        "views": len(schema.views),
+        "flows": len(schema.flows),
+        "roles": len(schema.roles),
+        "rules": len(schema.rules),
+        "llm_providers": len(schema.llm_providers),
+        "agents": len(schema.agents),
+        "targets": targets,
+        "unknown_targets": unknown,
+    }
 
 
 def _parse(source: str):

@@ -25,6 +25,7 @@ from sqlalchemy import text
 from pyAppGen import __main__
 from pyAppGen.gen import generate_app_from_database
 from pyAppGen.gen import generate_app_from_schema
+from pyAppGen.dsl import lint_dsl
 from pyAppGen.schema import load_schema
 from pyAppGen.schema import RelationSchema
 from pyAppGen.schema import schema_from_metadata
@@ -40,6 +41,49 @@ def test_main_succeeds(runner: CliRunner) -> None:
     """It exits with a status code of zero."""
     result = runner.invoke(__main__.main)
     assert result.exit_code == 0
+
+
+def test_dsl_linter_reports_semantic_feedback(runner: CliRunner, tmp_path) -> None:
+    """The DSL linter validates syntax, semantics, and CLI JSON output."""
+    source = """
+    app LintDemo { targets: web, mobile }
+    table Author { id: int pk; name: string required; }
+    table Book { id: int pk; title: string required; author_id: int -> Author.id [many-to-one]; }
+    view BookForm for Book { Main: title, author_id; @ title TextBox 0 0 6 1; }
+    """
+    report = lint_dsl(source, source_name="inline")
+    assert report["ok"] is True
+    assert report["summary"]["tables"] == 2
+    assert report["summary"]["targets"] == ("web", "mobile")
+    broken = lint_dsl("app Bad { targets: web, toaster } table Book { title: string }")
+    assert broken["ok"] is False
+    assert any("Unknown app targets" in error for error in broken["errors"])
+
+    dsl_path = tmp_path / "lint.appgen"
+    dsl_path.write_text(source)
+    result = runner.invoke(__main__.main, ["--lint-dsl", str(dsl_path)])
+    payload = json.loads(result.output)
+    assert result.exit_code == 0
+    assert payload["ok"] is True
+    assert payload["summary"]["tables"] == 2
+
+
+def test_dsl_documentation_suite_exists() -> None:
+    """The DSL has grammar, guide, tutorial, and linter documentation."""
+    docs_dir = Path(__file__).resolve().parents[1] / "docs"
+    expected = {
+        "dsl.md": "AppGen DSL",
+        "dsl-grammar.md": "AppGen DSL Grammar",
+        "dsl-user-guide.md": "AppGen DSL User Guide",
+        "dsl-tutorial.md": "AppGen DSL Tutorial",
+        "dsl-linter.md": "AppGen DSL Linter",
+    }
+    for filename, heading in expected.items():
+        text = (docs_dir / filename).read_text()
+        assert heading in text
+    index_text = (docs_dir / "index.md").read_text()
+    assert "dsl-grammar" in index_text
+    assert "dsl-linter" in index_text
 
 
 def test_generate_app_from_sqlite_schema_compiles(tmp_path) -> None:
@@ -1388,7 +1432,11 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert "rollback" in (output_dir / "templates" / "appgen_version_control.html").read_text()
     assert "Visual Studio Code" in (output_dir / "templates" / "appgen_devtools.html").read_text()
     assert "JetBrains" in (output_dir / "templates" / "appgen_devtools.html").read_text()
-    assert "Developer Studio" in (output_dir / "templates" / "appgen_studio.html").read_text()
+    studio_template = (output_dir / "templates" / "appgen_studio.html").read_text()
+    assert "Developer Studio" in studio_template
+    assert "DSL Editor" in studio_template
+    assert "Database Designer" in studio_template
+    assert "Workspace JSON" in studio_template
     assert "event-stream contracts" in (output_dir / "templates" / "appgen_realtime.html").read_text()
     assert "permissions per tab" in (output_dir / "templates" / "appgen_tabbed_views.html").read_text()
     assert "complex event processing" in (output_dir / "templates" / "appgen_events.html").read_text()
@@ -2401,6 +2449,23 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         }
     )["ok"] is True
     assert studio.editable_files()
+    assert {"web", "mobile", "desktop"} <= set(studio.ide_workspace()["generation"]["targets"])
+    assert "open_dsl" in {item["command"] for item in studio.ide_command_palette()}
+    assert studio.dsl_editor_state(text="app Library")["lint"]["warnings"]
+    assert studio.dsl_change_plan("add invoice table")["can_create"] == (
+        "tables",
+        "fields",
+        "forms",
+        "chatbots",
+        "agents",
+        "platform_targets",
+    )
+    assert studio.database_design_catalog()[1]["table"] == "Book"
+    assert studio.table_design("Book")["model"] == "Book"
+    assert studio.field_design("Book", "title")["required"] is True
+    assert studio.database_migration_plan({"add_field": "Book.edition"})["requires_review"] is True
+    assert studio.app_generation_plan(targets=("web", "desktop"))["targets"] == ("web", "desktop")
+    assert studio.app_management_plan("deploy")["requires_review"] is True
     assert studio.file_edit_plan("app/models.py", "add comment")["requires_review"] is True
     debug = studio.debug_session()
     assert debug["breakpoints"]
@@ -2411,7 +2476,9 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     component = studio.component_repository()[0]
     assert studio.component_share_package(component["id"])["component"]["id"] == component["id"]
     assert studio.clone_plan("LibraryCopy")["new_app_name"] == "LibraryCopy"
-    assert studio.studio_check({"app/studio.py", "app/templates/appgen_studio.html"})["ok"] is True
+    studio_ready = studio.studio_check({"app/studio.py", "app/templates/appgen_studio.html"})
+    assert studio_ready["ok"] is True
+    assert "design_database" in studio_ready["commands"]
     book_tabs = tabbed_views.tabbed_view("BookList")
     assert [tab["id"] for tab in book_tabs["tabs"]] == ["overview", "assets"]
     overview_policy = tabbed_views.tab_policy("BookList", "overview")
