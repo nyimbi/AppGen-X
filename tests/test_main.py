@@ -1167,6 +1167,51 @@ def test_dbml_source_preserves_ref_direction_and_cardinality(tmp_path) -> None:
     py_compile.compile(str(output_dir / "api.py"), doraise=True)
 
 
+def test_dbml_source_preserves_table_group_metadata(tmp_path) -> None:
+    """DBML TableGroup membership is retained for designer/source fidelity."""
+    dbml_path = tmp_path / "operations.dbml"
+    dbml_path.write_text(
+        """
+        Table customer {
+          id int [pk]
+          email varchar [not null]
+        }
+
+        Table invoice {
+          id int [pk]
+          customer_id int [ref: > customer.id]
+          total decimal
+        }
+
+        TableGroup Revenue {
+          customer
+          invoice
+        }
+        """
+    )
+
+    schema = load_schema(dbml_path, source_type="dbml")
+    customer_columns = {column.name: column for column in schema.table("customer").columns}
+    invoice_columns = {column.name: column for column in schema.table("invoice").columns}
+
+    assert customer_columns["id"].source_group == "Revenue"
+    assert customer_columns["email"].source_group == "Revenue"
+    assert invoice_columns["customer_id"].source_group == "Revenue"
+    assert schema.source_fidelity_report()["lossy_features"] == (
+        "DBML notes, colors, and project metadata require review outside AppSchema",
+    )
+
+    output_dir = tmp_path / "app"
+    generate_app_from_schema(schema, output_dir)
+    manifest = json.loads((output_dir / "appgen.json").read_text())
+    invoice_manifest = next(table for table in manifest["tables"] if table["name"] == "invoice")
+    manifest_columns = {column["name"]: column for column in invoice_manifest["columns"]}
+    assert manifest_columns["customer_id"]["source_group"] == "Revenue"
+    assert manifest_columns["customer_id"]["references"] == ["customer", "id"]
+    py_compile.compile(str(output_dir / "models.py"), doraise=True)
+    py_compile.compile(str(output_dir / "api.py"), doraise=True)
+
+
 def test_sql_source_normalizes_relationships(tmp_path) -> None:
     """SQL DDL imports capture columns, defaults, constraints, domains, and FKs."""
     sql_path = tmp_path / "library.sql"

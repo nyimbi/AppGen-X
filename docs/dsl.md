@@ -133,7 +133,8 @@ such as `LongStr` and `Json`, `Decimal`, and Python `Enum` field types are
 normalized into the canonical schema without importing or executing the script.
 DBML imports preserve tables, relations, enums, primary keys, direct unique
 flags, single-column unique `indexes` entries, composite `Ref` column
-pairings, `Ref` direction, one-to-one `-` cardinality, and literal defaults.
+pairings, `Ref` direction, one-to-one `-` cardinality, `TableGroup`
+membership as source grouping metadata, and literal defaults.
 SQL imports preserve primary keys, foreign keys,
 single-column unique constraints, literal defaults, schema-qualified
 references, PostgreSQL `CREATE TYPE ... AS ENUM` declarations, post-create

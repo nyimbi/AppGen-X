@@ -369,7 +369,7 @@ class AppSchema:
         lossy_features = {
             "canonical": (),
             "dsl": ("semantic validations are enforced by generated lint and quality gates",),
-            "dbml": ("DBML notes, colors, project metadata, and table groups require review outside AppSchema",),
+            "dbml": ("DBML notes, colors, and project metadata require review outside AppSchema",),
             "sql": (
                 "vendor-specific procedures, triggers, views, indexes, generated columns, and permissions require review",
             ),
@@ -568,11 +568,13 @@ def schema_from_dbml(path: str | Path) -> AppSchema:
         )
         for enum in getattr(parsed, "enums", ())
     )
+    table_groups = _dbml_table_groups(parsed)
 
     for table in parsed.tables:
         columns: list[ColumnSchema] = []
         refs = _dbml_refs_for_table(table, getattr(parsed, "refs", ()))
         unique_index_columns = _dbml_single_column_unique_indexes(table)
+        source_group = table_groups.get(table.name)
         for column in table.columns:
             ref = refs.get(column.name)
             references = (ref[0], ref[1]) if ref is not None else None
@@ -586,6 +588,7 @@ def schema_from_dbml(path: str | Path) -> AppSchema:
                     unique=bool(getattr(column, "unique", False)) or column.name in unique_index_columns,
                     default=_dbml_default(column),
                     references=references,
+                    source_group=source_group,
                 )
             )
             if ref is not None:
@@ -967,6 +970,22 @@ def _dbml_single_column_unique_indexes(table) -> set[str]:
         if len(subject_names) == 1:
             unique_columns.add(str(subject_names[0]))
     return unique_columns
+
+
+def _dbml_table_groups(parsed) -> dict[str, str]:
+    table_groups: dict[str, list[str]] = {}
+    for group in getattr(parsed, "table_groups", ()) or ():
+        group_name = str(getattr(group, "name", "") or "").strip()
+        if not group_name:
+            continue
+        for item in getattr(group, "items", ()) or ():
+            table_name = getattr(item, "name", str(item))
+            table_groups.setdefault(str(table_name), []).append(group_name)
+    return {
+        table_name: ",".join(dict.fromkeys(groups))
+        for table_name, groups in table_groups.items()
+        if groups
+    }
 
 
 def _metadata_unique_columns(table) -> set[str]:
