@@ -2673,6 +2673,12 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert api_testing.validate_response("create_book", 201)["ok"] is True
     assert api_testing.synthetic_check_results({"list_book": 200})["ok"] is True
     assert api_testing.synthetic_monitor_plan(interval_seconds=1)["interval_seconds"] == 15
+    pytest_cases = api_testing.pytest_case_matrix()
+    assert pytest_cases[0]["id"] == api_requests[0]["name"]
+    rendered_pytest = api_testing.render_pytest_module()
+    assert "@pytest.mark.parametrize" in rendered_pytest
+    assert "def test_generated_api_contracts(client, case):" in rendered_pytest
+    assert api_testing.test_execution_plan()["case_count"] == len(pytest_cases)
     assert api_testing.contract_coverage(openapi.openapi_spec()["paths"].keys())["ok"] is True
     assert api_testing.api_testing_check(
         {"app/api_testing.py", "app/templates/appgen_api_testing.html", "docs/openapi.json"}

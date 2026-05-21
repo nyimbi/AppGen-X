@@ -19733,6 +19733,53 @@ def synthetic_check_results(responses):
     }}
 
 
+def pytest_case_matrix():
+    """Return generated pytest-ready API case metadata."""
+    return tuple(
+        {{
+            "id": request["name"],
+            "method": request["method"].lower(),
+            "path": request["path"],
+            "json": request["json"],
+            "expected_status": request["expected_status"],
+            "requires_fixture": request["requires_fixture"],
+        }}
+        for request in request_plan()
+    )
+
+
+def render_pytest_module(client_fixture="client"):
+    """Render a pytest module that can exercise generated API endpoints."""
+    lines = [
+        '"""Generated AppGen API contract tests."""',
+        "",
+        "import pytest",
+        "",
+        f"API_CASES = {{pytest_case_matrix()!r}}",
+        "",
+        "",
+        "@pytest.mark.parametrize('case', API_CASES, ids=lambda case: case['id'])",
+        f"def test_generated_api_contracts({{client_fixture}}, case):",
+        "    kwargs = {{}}",
+        "    if case['json'] is not None:",
+        "        kwargs['json'] = case['json']",
+        f"    response = getattr({{client_fixture}}, case['method'])(case['path'], **kwargs)",
+        "    assert response.status_code in case['expected_status']",
+    ]
+    return "\\n".join(lines) + "\\n"
+
+
+def test_execution_plan(client_fixture="client"):
+    """Return how generated API tests should be executed in CI."""
+    return {{
+        "module": "tests/test_generated_api_contracts.py",
+        "client_fixture": client_fixture,
+        "case_count": len(pytest_case_matrix()),
+        "command": "pytest tests/test_generated_api_contracts.py",
+        "requires_fixture_cases": tuple(case["id"] for case in pytest_case_matrix() if case["requires_fixture"]),
+    }}
+
+
 def contract_coverage(openapi_paths=()):
     """Compare generated API test paths with an OpenAPI path set."""
     tested = {{request["path_template"] for request in request_plan()}}
@@ -24762,8 +24809,8 @@ def validate_api_testing_artifacts() -> None:
     contract = (ROOT / "app" / "api_testing.py").read_text()
     if "request_plan" not in contract or "validate_response" not in contract or "synthetic_monitor_plan" not in contract:
         fail("API testing contract must expose request plans, response validation, and synthetic monitoring")
-    if "contract_coverage" not in contract or "api_testing_check" not in contract:
-        fail("API testing contract must expose OpenAPI coverage and readiness helpers")
+    if "contract_coverage" not in contract or "api_testing_check" not in contract or "render_pytest_module" not in contract or "test_execution_plan" not in contract:
+        fail("API testing contract must expose OpenAPI coverage, pytest rendering, execution plans, and readiness helpers")
     template = (ROOT / "app" / "templates" / "appgen_api_testing.html").read_text()
     if "API Testing" not in template or "Test Catalog JSON" not in template or "Monitor JSON" not in template:
         fail("API testing template must expose generated test and monitor catalogs")
@@ -26027,6 +26074,9 @@ def test_generated_runtime_helpers():
     first_request = api_testing.request_plan()[0]
     assert api_testing.validate_response(first_request["name"], first_request["expected_status"][0])["ok"] is True
     assert api_testing.synthetic_monitor_plan()["probes"]
+    assert api_testing.pytest_case_matrix()[0]["id"] == first_request["name"]
+    assert "def test_generated_api_contracts" in api_testing.render_pytest_module()
+    assert api_testing.test_execution_plan()["case_count"] == len(api_testing.pytest_case_matrix())
     assert api_testing.api_testing_check(
         {"app/api_testing.py", "app/templates/appgen_api_testing.html", "docs/openapi.json"}
     )["ok"] is True
