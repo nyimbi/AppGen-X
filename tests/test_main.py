@@ -2211,6 +2211,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     studio_template = (output_dir / "templates" / "appgen_studio.html").read_text()
     assert "Developer Studio" in studio_template
     assert "Project Tree JSON" in studio_template
+    assert "Capability Matrix JSON" in studio_template
     assert "Diagnostics JSON" in studio_template
     assert "Release Gate JSON" in studio_template
     assert "DSL Editor" in studio_template
@@ -3766,6 +3767,19 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert studio.editable_files()
     assert {"web", "mobile", "desktop"} <= set(studio.ide_workspace()["generation"]["targets"])
     assert "open_dsl" in {item["command"] for item in studio.ide_command_palette()}
+    capability_matrix = studio.ide_capability_matrix()
+    assert capability_matrix["format"] == "appgen.ide-capability-matrix.v1"
+    assert capability_matrix["ok"] is True
+    assert {
+        "dsl_authoring",
+        "database_design",
+        "application_generation",
+        "application_management",
+        "natural_language_evolution",
+    } <= {item["capability"] for item in capability_matrix["capabilities"]}
+    workflow_blueprint = studio.ide_workflow_blueprint()
+    assert workflow_blueprint["format"] == "appgen.ide-workflow-blueprint.v1"
+    assert studio.ide_workflow_blueprint("design_database")["steps"][0] == "edit table/field design"
     assert "Application" in {item["name"] for item in studio.project_tree()}
     assert {item["command"] for item in studio.command_palette_search("database")} >= {"design_database"}
     editor_state = studio.dsl_editor_state(text="app Library")
@@ -3909,7 +3923,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert studio_gate["blocking_gaps"] == ()
     assert {
         gate["gate"] for gate in studio_gate["gates"]
-    } >= {"dsl_lint", "database_workbench", "safe_sql", "query_builder", "generation_pipeline", "component_sharing"}
+    } >= {"capability_matrix", "dsl_lint", "database_workbench", "safe_sql", "query_builder", "generation_pipeline", "component_sharing"}
     assert studio.studio_release_gate({"app/studio.py"})["ok"] is False
     book_tabs = tabbed_views.tabbed_view("BookList")
     assert [tab["id"] for tab in book_tabs["tabs"]] == ["overview", "assets"]

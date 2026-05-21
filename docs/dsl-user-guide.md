@@ -289,8 +289,11 @@ one review flow.
 Use `/studio/release-gate.json` before treating the Studio as release-ready;
 it combines diagnostics, DSL linting, database workbench exports, safe SQL
 guards, the parameterized query builder, generation jobs, app portfolio
-management, reviewed edits, debug redaction, dependency review, and component
-sharing.
+management, capability coverage, reviewed edits, debug redaction, dependency
+review, and component sharing. Use `/studio/capability-matrix.json` when you
+need a compact proof that the generated IDE covers DSL authoring, database
+design, application generation, application management, debugging, dependency
+review, reusable components, and natural-language evolution.
 
 ## Design-System QA
 

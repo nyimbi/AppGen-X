@@ -6038,6 +6038,7 @@ def write_studio_template(output_dir):
       <a class="btn btn-default" href="{{ url_for('StudioView.catalog_json') }}">Studio JSON</a>
       <a class="btn btn-default" href="{{ url_for('StudioView.workspace_json') }}">Workspace JSON</a>
       <a class="btn btn-default" href="{{ url_for('StudioView.project_tree_json') }}">Project Tree JSON</a>
+      <a class="btn btn-default" href="{{ url_for('StudioView.capability_matrix_json') }}">Capability Matrix JSON</a>
       <a class="btn btn-default" href="{{ url_for('StudioView.diagnostics_json') }}">Diagnostics JSON</a>
       <a class="btn btn-default" href="{{ url_for('StudioView.release_gate_json') }}">Release Gate JSON</a>
       <a class="btn btn-default" href="{{ url_for('StudioView.database_design_json') }}">Database Design JSON</a>
@@ -6082,6 +6083,12 @@ def write_studio_template(output_dir):
       <span class="ags-pill">lint</span>
       <span class="ags-pill">schema diff</span>
       <span class="ags-pill">quality gate</span>
+    </article>
+    <article class="ags-card">
+      <h3>Capability Matrix</h3>
+      <div class="ags-muted">authoring, database, generation, management, debugging, dependencies, components</div>
+      <span class="ags-pill">coverage gate</span>
+      <span class="ags-pill">workflow blueprint</span>
     </article>
     <article class="ags-card">
       <h3>Generation Jobs</h3>
@@ -26511,6 +26518,46 @@ def ide_command_palette():
     return tuple(IDE_ACTIONS)
 
 
+def ide_capability_matrix():
+    """Return a compact capability matrix for the generated IDE workbench."""
+    commands = {{item["command"] for item in IDE_ACTIONS}}
+    matrix = (
+        {{"capability": "dsl_authoring", "commands": ("open_dsl", "lint_dsl"), "evidence": ("dsl_editor_state", "dsl_lint_plan", "dsl_code_actions"), "ok": "open_dsl" in commands}},
+        {{"capability": "database_design", "commands": ("design_database",), "evidence": ("database_design_workspace", "schema_dbml", "schema_sql_ddl", "schema_ponyorm"), "ok": "design_database" in commands and bool(database_design_catalog())}},
+        {{"capability": "application_generation", "commands": ("generate_application",), "evidence": ("app_generation_plan", "generation_job_queue", "generation_artifact_manifest"), "ok": "generate_application" in commands and bool(generation_job_queue()["jobs"])}},
+        {{"capability": "application_management", "commands": ("manage_application",), "evidence": ("application_registry", "application_creation_plan", "application_import_plan", "application_export_package"), "ok": "manage_application" in commands and application_portfolio_check()["ok"]}},
+        {{"capability": "debugging", "commands": ("debug_application",), "evidence": ("debug_session", "breakpoint_plan", "variable_inspection"), "ok": "debug_application" in commands and bool(DEBUG_SESSIONS)}},
+        {{"capability": "dependency_review", "commands": (), "evidence": ("dependency_inventory", "dependency_update_plan"), "ok": bool(dependency_inventory())}},
+        {{"capability": "component_repository", "commands": (), "evidence": ("component_repository", "component_share_package"), "ok": bool(component_repository())}},
+        {{"capability": "natural_language_evolution", "commands": ("apply_natural_language_change",), "evidence": ("dsl_change_plan", "app/nl_evolution.py"), "ok": "apply_natural_language_change" in dsl_editor_state()["commands"]}},
+    )
+    return {{
+        "format": "appgen.ide-capability-matrix.v1",
+        "ok": all(item["ok"] for item in matrix),
+        "capabilities": matrix,
+        "targets": PLATFORM_TARGETS or ("web",),
+        "source_kinds": application_registry()["source_kinds"],
+    }}
+
+
+def ide_workflow_blueprint(workflow=None):
+    """Return end-to-end IDE workflows for generated app builders."""
+    workflows = {{
+        "create_application": ("choose source", "inspect source fidelity", "lint DSL", "generate targets", "register application"),
+        "evolve_with_natural_language": ("capture prompt", "preview DSL change", "review schema diff", "approve migration", "run quality gate"),
+        "design_database": ("edit table/field design", "preview ERD/DBML/SQL/PonyORM", "review migration", "generate app"),
+        "manage_application": ("open app", "inspect diagnostics", "package/export", "deploy or rollback with review"),
+    }}
+    if workflow is not None:
+        if workflow not in workflows:
+            raise KeyError(workflow)
+        return {{"workflow": workflow, "steps": workflows[workflow]}}
+    return {{
+        "format": "appgen.ide-workflow-blueprint.v1",
+        "workflows": tuple({{"workflow": name, "steps": steps}} for name, steps in workflows.items()),
+    }}
+
+
 def project_tree():
     """Return a generated IDE project tree grouped by builder concern."""
     return tuple(PROJECT_TREE)
@@ -27590,6 +27637,8 @@ def studio_catalog():
         "dsl_documents": tuple(DSL_DOCUMENTS),
         "database_design": database_design_catalog(),
         "command_palette": ide_command_palette(),
+        "capability_matrix": ide_capability_matrix(),
+        "workflow_blueprint": ide_workflow_blueprint(),
         "debug_sessions": tuple(debug_session(item["name"]) for item in DEBUG_SESSIONS),
         "components": component_repository(),
         "dependencies": dependency_inventory(),
@@ -27671,6 +27720,7 @@ def studio_release_gate(existing_paths=(), environment=None):
         {{"gate": "diagnostics", "ok": diagnostics["ok"], "details": diagnostics}},
         {{"gate": "studio_artifacts", "ok": studio["ok"], "details": studio}},
         {{"gate": "workspace_sections", "ok": {{"dsl_authoring", "database_workbench", "generation_jobs", "applications"}} <= set(workspace), "details": tuple(workspace)}},
+        {{"gate": "capability_matrix", "ok": ide_capability_matrix()["ok"], "details": ide_capability_matrix()}},
         {{"gate": "dsl_lint", "ok": dsl["ok"] and dsl["keyword_budget"]["ok"], "details": dsl}},
         {{"gate": "database_workbench", "ok": bool(database["tables"]) and {{"dbml", "sql", "ponyorm"}} <= set(database["exports"]), "details": database["checks"]}},
         {{"gate": "safe_sql", "ok": sql["guard"]["ok"] and not destructive_sql["ok"] and not sql["side_effects"], "details": sql["guard"]}},
@@ -27719,6 +27769,10 @@ class StudioView(BaseView):
     @expose("/project-tree.json")
     def project_tree_json(self):
         return jsonify(list(project_tree()))
+
+    @expose("/capability-matrix.json")
+    def capability_matrix_json(self):
+        return jsonify(ide_capability_matrix())
 
     @expose("/diagnostics.json")
     def diagnostics_json(self):
@@ -31201,6 +31255,8 @@ def validate_studio_artifacts() -> None:
     required = (
         "ide_workspace",
         "ide_command_palette",
+        "ide_capability_matrix",
+        "ide_workflow_blueprint",
         "project_tree",
         "command_palette_search",
         "dsl_editor_state",
@@ -31263,11 +31319,13 @@ def validate_studio_artifacts() -> None:
         or "Studio JSON" not in template
         or "Workspace JSON" not in template
         or "Project Tree JSON" not in template
+        or "Capability Matrix JSON" not in template
         or "Diagnostics JSON" not in template
         or "Release Gate JSON" not in template
         or "DSL Editor" not in template
         or "Project Tree" not in template
         or "Diagnostics" not in template
+        or "Capability Matrix" not in template
         or "Database Designer" not in template
         or "Generation Jobs" not in template
         or "SQL Workbench JSON" not in template
@@ -33224,6 +33282,9 @@ def test_generated_runtime_helpers():
     assert studio.editable_files()
     assert studio.file_edit_plan("app/models.py", "patch")["requires_review"] is True
     assert "open_dsl" in {item["command"] for item in studio.ide_command_palette()}
+    assert studio.ide_capability_matrix()["format"] == "appgen.ide-capability-matrix.v1"
+    assert studio.ide_capability_matrix()["ok"] is True
+    assert studio.ide_workflow_blueprint("design_database")["steps"][0] == "edit table/field design"
     editor_state = studio.dsl_editor_state(text="app CopyApp")
     assert editor_state["lint"]["warnings"]
     assert "code_actions" in editor_state["panels"]
@@ -33299,7 +33360,7 @@ def test_generated_runtime_helpers():
     assert studio_gate["format"] == "appgen.studio-release-gate.v1"
     assert studio_gate["ok"] is True
     assert studio_gate["blocking_gaps"] == ()
-    assert {{"safe_sql", "query_builder"}} <= {gate["gate"] for gate in studio_gate["gates"]}
+    assert {{"capability_matrix", "safe_sql", "query_builder"}} <= {gate["gate"] for gate in studio_gate["gates"]}
     assert isinstance(wizards.wizard_catalog(), tuple)
     assert "--appgen-primary" in branding.css_variables()
     assert branding.design_tokens()["interaction"]["touch_target"] == "44px"
