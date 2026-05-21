@@ -1447,6 +1447,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         output_dir / "templates" / "appgen_database_ops.html"
     ).read_text()
     assert "Export all JSON" in (output_dir / "templates" / "appgen_backup.html").read_text()
+    assert "Autobackup Schedule JSON" in (output_dir / "templates" / "appgen_backup.html").read_text()
     assert "Configuration" in (output_dir / "templates" / "appgen_config.html").read_text()
     assert "Salesforce" in (output_dir / "templates" / "appgen_integrations.html").read_text()
     assert "Entando" in (output_dir / "templates" / "appgen_integrations.html").read_text()
@@ -2124,6 +2125,22 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert '"internal_code": "B-1"' in backup_json
     assert backup.restore_plan(backup_json)["Book"] == 1
     assert backup.load_backup_payload(backup_json)["format"] == "appgen.backup.v1"
+    manifest_record = backup.backup_manifest(backup_json, created_at="2026-01-01T02:00:00+00:00", actor="ada")
+    assert manifest_record["format"] == "appgen.backup.manifest.v1"
+    assert manifest_record["tables"]["Book"] == 1
+    assert backup.backup_integrity_check(backup_json, manifest_record)["ok"] is True
+    tampered = backup.load_backup_payload(backup_json)
+    tampered["tables"][1]["rows"][0]["title"] = "Changed"
+    assert backup.backup_integrity_check(tampered, manifest_record)["ok"] is False
+    schedule = backup.backup_schedule_plan("2026-01-01T03:00:00+00:00")
+    assert schedule["job_id"] == "appgen.autobackup.daily"
+    assert schedule["next_run"].startswith("2026-01-02T02:00:00")
+    retention = backup.retention_plan((manifest_record,) * 30)
+    assert retention["review_required"] is True
+    runbook = backup.recovery_runbook(backup_json, manifest_record)
+    assert runbook["review_required"] is True
+    assert runbook["can_restore"] is True
+    assert runbook["steps"][0] == "verify backup manifest and SHA-256 digest"
     bad_payload = {
         "format": "appgen.backup.v1",
         "tables": [{"table": "Book", "columns": ["id"], "rows": []}],

@@ -2905,11 +2905,14 @@ def write_backup_template(output_dir):
       <h1 class="agb-title">Backups</h1>
       <p class="agb-note">
         Export generated application data as JSON. The generated backup module
-        also includes validation and restore helpers for reviewed recovery
-        scripts.
+        also includes validation, autobackup scheduling, integrity manifests,
+        retention planning, and restore helpers for reviewed recovery scripts.
       </p>
     </div>
-    <a class="btn btn-primary" href="{{ url_for('BackupView.export_all') }}">Export all JSON</a>
+    <div class="agb-actions">
+      <a class="btn btn-primary" href="{{ url_for('BackupView.export_all') }}">Export all JSON</a>
+      <a class="btn btn-default" href="{{ url_for('BackupView.schedule_json') }}">Autobackup Schedule JSON</a>
+    </div>
   </div>
   <div class="agb-grid">
     {% for item in tables %}
@@ -8284,6 +8287,7 @@ import csv
 import io
 
 from flask import Response
+from flask import jsonify
 from flask_appbuilder import BaseView, expose
 
 
@@ -10412,6 +10416,7 @@ def _backup_text(schema: AppSchema) -> str:
 from __future__ import annotations
 
 import datetime as _dt
+import hashlib
 import json
 
 from flask import Response
@@ -10471,6 +10476,109 @@ def backup_payload(table_rows):
 def backup_json(table_rows):
     """Serialize a full app backup payload to stable JSON."""
     return json.dumps(backup_payload(table_rows), indent=2, sort_keys=True) + "\\n"
+
+
+def payload_digest(payload):
+    """Return a stable SHA-256 digest for a backup payload."""
+    value = load_backup_payload(payload) if isinstance(payload, str) else payload
+    encoded = json.dumps(value, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    return hashlib.sha256(encoded).hexdigest()
+
+
+def backup_manifest(payload, *, created_at=None, actor=None):
+    """Return an integrity manifest for a reviewed backup payload."""
+    value = load_backup_payload(payload)
+    created_at = created_at or _dt.datetime.now(_dt.timezone.utc).isoformat()
+    table_counts = restore_plan(value)
+    return {{
+        "format": "appgen.backup.manifest.v1",
+        "backup_format": value["format"],
+        "created_at": created_at,
+        "actor": actor,
+        "sha256": payload_digest(value),
+        "tables": table_counts,
+        "row_count": sum(table_counts.values()),
+    }}
+
+
+def backup_integrity_check(payload, manifest):
+    """Verify a backup payload against a generated integrity manifest."""
+    value = load_backup_payload(payload)
+    manifest = dict(manifest or {{}})
+    current_digest = payload_digest(value)
+    current_counts = restore_plan(value)
+    return {{
+        "ok": manifest.get("sha256") == current_digest and dict(manifest.get("tables", {{}})) == current_counts,
+        "expected_sha256": manifest.get("sha256"),
+        "actual_sha256": current_digest,
+        "expected_tables": dict(manifest.get("tables", {{}})),
+        "actual_tables": current_counts,
+    }}
+
+
+def autobackup_policy():
+    """Return the generated autobackup policy for schedulers and operators."""
+    return {{
+        "enabled": True,
+        "frequency": "daily",
+        "time_utc": "02:00",
+        "retention": {{"daily": 7, "weekly": 4, "monthly": 12}},
+        "integrity": ("sha256", "table_counts", "format_validation"),
+        "requires_review_before_restore": True,
+    }}
+
+
+def backup_schedule_plan(now=None):
+    """Return a deterministic autobackup schedule plan without scheduling jobs."""
+    now = now or _dt.datetime.now(_dt.timezone.utc)
+    if isinstance(now, str):
+        now = _dt.datetime.fromisoformat(now.replace("Z", "+00:00"))
+    policy = autobackup_policy()
+    next_run = now.replace(hour=2, minute=0, second=0, microsecond=0)
+    if next_run <= now:
+        next_run = next_run + _dt.timedelta(days=1)
+    return {{
+        "policy": policy,
+        "next_run": next_run.isoformat(),
+        "job_id": "appgen.autobackup.daily",
+        "artifacts": ("backup_json", "backup_manifest"),
+    }}
+
+
+def retention_plan(manifests):
+    """Classify backup manifests into keep/review/delete buckets."""
+    manifests = tuple(manifests or ())
+    policy = autobackup_policy()["retention"]
+    ordered = sorted(manifests, key=lambda item: item.get("created_at", ""), reverse=True)
+    keep_limit = policy["daily"] + policy["weekly"] + policy["monthly"]
+    keep = tuple(ordered[:keep_limit])
+    delete = tuple(ordered[keep_limit:])
+    return {{
+        "keep": keep,
+        "delete": delete,
+        "review_required": bool(delete),
+        "policy": dict(policy),
+    }}
+
+
+def recovery_runbook(payload, manifest=None):
+    """Return a reviewed disaster-recovery runbook for a backup payload."""
+    value = load_backup_payload(payload)
+    manifest = backup_manifest(value) if manifest is None else manifest
+    integrity = backup_integrity_check(value, manifest)
+    return {{
+        "review_required": True,
+        "integrity": integrity,
+        "restore_counts": restore_plan(value),
+        "steps": (
+            "verify backup manifest and SHA-256 digest",
+            "provision or select an empty target database",
+            "run restore_payload(..., dry_run=True)",
+            "run generated app quality and smoke checks",
+            "restore with explicit operator approval",
+        ),
+        "can_restore": integrity["ok"],
+    }}
 
 
 def load_backup_payload(value):
@@ -10568,6 +10676,10 @@ class BackupView(BaseView):
         content = json.dumps(payload, indent=2, sort_keys=True) + "\\n"
         headers = {{"Content-Disposition": f"attachment; filename={{table_name}}.json"}}
         return Response(content, headers=headers, mimetype="application/json")
+
+    @expose("/schedule.json")
+    def schedule_json(self):
+        return jsonify(backup_schedule_plan())
 
 
 def register_backup(appbuilder):
@@ -25659,6 +25771,10 @@ def test_generated_runtime_helpers():
     assert node_red.validate_flow_export(flow_export)["ok"] is True
     assert backup.backup_payload({})["format"] == "appgen.backup.v1"
     assert isinstance(backup.restore_plan(backup.backup_json({})), dict)
+    manifest_record = backup.backup_manifest(backup.backup_json({}), created_at="2026-01-01T02:00:00+00:00")
+    assert backup.backup_integrity_check(backup.backup_json({}), manifest_record)["ok"] is True
+    assert backup.backup_schedule_plan("2026-01-01T03:00:00+00:00")["job_id"] == "appgen.autobackup.daily"
+    assert backup.recovery_runbook(backup.backup_json({}), manifest_record)["can_restore"] is True
     assert isinstance(seed.SEED_DATA, dict)
 '''
 

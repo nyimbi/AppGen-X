@@ -236,8 +236,9 @@ apps include:
 - `manufacturing_ops.py` and `appgen_manufacturing_ops.html` with generated
   bill-of-material, material-requirements planning, capacity, production
   scheduling, purchase requisition, and lean replenishment contracts.
-- `backup.py` with generated JSON backup exports, payload validation, and
-  restore helpers for reviewed data recovery workflows.
+- `backup.py` with generated JSON backup exports, payload validation,
+  SHA-256 integrity manifests, autobackup schedule plans, retention planning,
+  recovery runbooks, and restore helpers for reviewed data recovery workflows.
 - `data_access.py` and `appgen_data_access.html` with generated low-code
   query/update contracts for table reads, filter validation, sorting, paging,
   field projection, saved queries, portable query exports, create/update

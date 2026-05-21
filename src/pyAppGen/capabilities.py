@@ -107,7 +107,7 @@ DEFAULT_CAPABILITIES: tuple[Capability, ...] = (
     Capability("ops.performance", "Performance budgets and scaling plans", "partial", "generated SLO budgets, pagination/cache plans, and autoscale recommendations"),
     Capability("ops.configuration", "Runtime configuration management", "partial", "generated config.py setup editor, readiness checks, checklist, and .env export"),
     Capability("ops.lifecycle", "Environment, release, feedback, and lifecycle management", "partial", "generated environment readiness, custom-domain plans, release gates, maintenance windows, feedback, and issue reports"),
-    Capability("ops.backup", "Backup and disaster recovery", "partial", "generated JSON backup exports and restore helpers"),
+    Capability("ops.backup", "Backup and disaster recovery", "partial", "generated JSON backup exports, integrity manifests, autobackup schedules, retention plans, recovery runbooks, and restore helpers"),
     Capability("scale.multi-tenancy", "Multi-tenancy and scaling", "partial", "generated tenant-scope registry and filter helpers"),
     Capability("integration.enterprise", "Enterprise service integrations", "partial", "generated REST, webhook, Salesforce, SAP, Entando, Invenio, payment gateway, SMS gateway, and transactional email registry"),
     Capability("integration.productivity", "Microsoft 365 and Google Workspace productivity integrations", "partial", "generated document, spreadsheet, calendar, and task-sync payload contracts"),
