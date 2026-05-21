@@ -5692,6 +5692,7 @@ def write_branding_template(output_dir):
     <div class="agb-actions">
       <a class="btn btn-default" href="{{ url_for('BrandingView.theme_json') }}">Theme JSON</a>
       <a class="btn btn-default" href="{{ url_for('BrandingView.design_system_json') }}">Design System JSON</a>
+      <a class="btn btn-default" href="{{ url_for('BrandingView.quality_json') }}">Quality JSON</a>
     </div>
   </div>
   <div class="agb-preview">
@@ -5709,6 +5710,18 @@ def write_branding_template(output_dir):
       <div class="agb-note">{{ value }}</div>
     </article>
     {% endfor %}
+    <article class="agb-chip">
+      <strong>Responsive Layouts</strong>
+      <div class="agb-note">workspace, record-list, record-form, dashboard</div>
+    </article>
+    <article class="agb-chip">
+      <strong>Density Modes</strong>
+      <div class="agb-note">comfortable, compact, touch</div>
+    </article>
+    <article class="agb-chip">
+      <strong>Typography Scale</strong>
+      <div class="agb-note">caption, body, section, page, hero</div>
+    </article>
   </div>
 </section>
 {% endblock %}
@@ -7847,6 +7860,19 @@ def _theme_css_text(branding: dict) -> str:
   --appgen-space-5: 24px;
   --appgen-shadow-panel: 0 10px 24px rgba(15, 23, 42, 0.08);
   --appgen-touch-target: 44px;
+  --appgen-font-body: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --appgen-font-size-sm: 0.875rem;
+  --appgen-font-size-md: 1rem;
+  --appgen-font-size-lg: 1.125rem;
+  --appgen-font-size-xl: 1.5rem;
+  --appgen-content-max: 1180px;
+  --appgen-density-row: 48px;
+}}
+
+body {{
+  color: var(--appgen-text);
+  font-family: var(--appgen-font-body);
+  line-height: 1.5;
 }}
 
 .navbar, .navbar-inverse {{
@@ -7890,6 +7916,27 @@ def _theme_css_text(branding: dict) -> str:
   box-shadow: var(--appgen-shadow-panel);
 }}
 
+.appgen-page {{
+  max-width: var(--appgen-content-max);
+  margin-inline: auto;
+  padding: var(--appgen-space-4);
+}}
+
+.appgen-page-header {{
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--appgen-space-4);
+  margin-bottom: var(--appgen-space-5);
+}}
+
+.appgen-page-title {{
+  margin: 0;
+  font-size: var(--appgen-font-size-xl);
+  font-weight: 700;
+  letter-spacing: 0;
+}}
+
 .appgen-kpi {{
   display: grid;
   gap: var(--appgen-space-2);
@@ -7909,7 +7956,17 @@ def _theme_css_text(branding: dict) -> str:
   background: #ffffff;
 }}
 
+.table > tbody > tr > td,
+.table > tbody > tr > th {{
+  min-height: var(--appgen-density-row);
+  vertical-align: middle;
+}}
+
 @media (max-width: 760px) {{
+  .appgen-page-header {{
+    display: block;
+  }}
+
   .table-responsive,
   .appgen-responsive-table {{
     overflow-x: auto;
@@ -7985,6 +8042,42 @@ def css_variables():
         "--appgen-radius-sm": "4px",
         "--appgen-radius-md": "8px",
         "--appgen-touch-target": "44px",
+        "--appgen-font-body": "system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+        "--appgen-content-max": "1180px",
+        "--appgen-density-row": "48px",
+    }}
+
+
+def typography_scale():
+    """Return generated typography scale for sophisticated, scan-friendly UIs."""
+    return {{
+        "family": "system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+        "sizes": {{
+            "caption": "0.75rem",
+            "body": "1rem",
+            "section": "1.125rem",
+            "page": "1.5rem",
+            "hero": "2rem",
+        }},
+        "weights": {{
+            "regular": 400,
+            "medium": 600,
+            "bold": 700,
+        }},
+        "line_height": {{
+            "compact": 1.35,
+            "body": 1.5,
+            "display": 1.15,
+        }},
+    }}
+
+
+def density_modes():
+    """Return responsive density modes for repeated operational workflows."""
+    return {{
+        "comfortable": {{"row_height": "52px", "control_height": "44px", "panel_padding": "16px"}},
+        "compact": {{"row_height": "44px", "control_height": "40px", "panel_padding": "12px"}},
+        "touch": {{"row_height": "56px", "control_height": "48px", "panel_padding": "18px"}},
     }}
 
 
@@ -8004,7 +8097,7 @@ def design_tokens():
             "xl": "24px",
         }},
         "typography": {{
-            "body": "system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+            **typography_scale(),
             "heading_weight": 700,
             "body_line_height": 1.5,
         }},
@@ -8012,11 +8105,46 @@ def design_tokens():
             "focus_ring": {focus_ring!r},
             "touch_target": "44px",
         }},
+        "density": density_modes(),
         "breakpoints": {{
             "mobile": "760px",
+            "tablet": "960px",
             "desktop": "1024px",
+            "wide": "1280px",
         }},
     }}
+
+
+def layout_contract(layout=None):
+    """Return layout recipes used by generated screens and Studio previews."""
+    tokens = design_tokens()
+    layouts = {{
+        "workspace": {{
+            "max_width": "1180px",
+            "grid": "minmax(240px, 320px) 1fr",
+            "gap": tokens["spacing"]["lg"],
+            "collapses_at": tokens["breakpoints"]["tablet"],
+        }},
+        "record-list": {{
+            "header": "toolbar + saved filters",
+            "body": "responsive table",
+            "row_height": tokens["density"]["comfortable"]["row_height"],
+            "empty_state": "actionable",
+        }},
+        "record-form": {{
+            "grid": "repeat(auto-fit, minmax(260px, 1fr))",
+            "section_gap": tokens["spacing"]["xl"],
+            "validation": "summary + field messages",
+        }},
+        "dashboard": {{
+            "grid": "repeat(auto-fit, minmax(220px, 1fr))",
+            "card": component_style_contract("dashboard-card"),
+            "chart_summary_required": True,
+        }},
+    }}
+    if layout is None:
+        return layouts
+    return layouts[layout]
 
 
 def component_style_contract(component=None):
@@ -8050,10 +8178,48 @@ def component_style_contract(component=None):
             "accent_border": "4px",
             "padding": tokens["spacing"]["lg"],
         }},
+        "page-header": {{
+            "layout": "title + actions",
+            "gap": tokens["spacing"]["lg"],
+            "title_size": typography_scale()["sizes"]["page"],
+            "responsive_behavior": "actions wrap below title on mobile",
+        }},
     }}
     if component is None:
         return contracts
     return contracts[component]
+
+
+def design_system_report():
+    """Return the full generated design-system contract for review and tooling."""
+    return {{
+        "format": "appgen.design-system.v1",
+        "theme": BRANDING["theme"],
+        "tokens": design_tokens(),
+        "typography": typography_scale(),
+        "density": density_modes(),
+        "layouts": layout_contract(),
+        "components": component_style_contract(),
+        "css_variables": css_variables(),
+    }}
+
+
+def theme_quality_report():
+    """Return generated visual-quality checks for theme and layout consistency."""
+    variables = css_variables()
+    tokens = design_tokens()
+    checks = (
+        {{"check": "touch_target", "ok": variables["--appgen-touch-target"] == "44px", "value": variables["--appgen-touch-target"]}},
+        {{"check": "panel_radius", "ok": tokens["radius"]["panel"] == "8px", "value": tokens["radius"]["panel"]}},
+        {{"check": "content_width", "ok": variables["--appgen-content-max"] == "1180px", "value": variables["--appgen-content-max"]}},
+        {{"check": "density_modes", "ok": {{"comfortable", "compact", "touch"}} <= set(density_modes()), "value": tuple(density_modes())}},
+        {{"check": "layout_recipes", "ok": {{"workspace", "record-list", "record-form", "dashboard"}} <= set(layout_contract()), "value": tuple(layout_contract())}},
+    )
+    return {{
+        "format": "appgen.theme-quality.v1",
+        "ok": all(item["ok"] for item in checks),
+        "checks": checks,
+    }}
 
 
 def accessibility_theme_check():
@@ -8161,6 +8327,7 @@ def asset_check(existing_paths):
         "theme": BRANDING["theme"],
         "assets": dict(BRANDING["assets"]),
         "design_system": design_tokens(),
+        "quality": theme_quality_report(),
         "accessibility": accessibility_theme_check(),
         "audit": accessibility_audit_plan(),
     }}
@@ -8180,7 +8347,11 @@ class BrandingView(BaseView):
 
     @expose("/design-system.json")
     def design_system_json(self):
-        return jsonify({{"tokens": design_tokens(), "components": component_style_contract()}})
+        return jsonify(design_system_report())
+
+    @expose("/quality.json")
+    def quality_json(self):
+        return jsonify(theme_quality_report())
 
     @expose("/accessibility.json")
     def accessibility_json(self):
@@ -26247,22 +26418,29 @@ def validate_branding_artifacts() -> None:
         or "--appgen-accent" not in css
         or "--appgen-focus-ring" not in css
         or "--appgen-touch-target" not in css
+        or "--appgen-content-max" not in css
+        or ".appgen-page-header" not in css
     ):
-        fail("theme CSS must expose generated brand, focus, and touch variables")
+        fail("theme CSS must expose generated brand, focus, touch, and layout variables")
     contract = (ROOT / "app" / "branding.py").read_text()
     if (
         "theme_contract" not in contract
         or "asset_check" not in contract
         or "design_tokens" not in contract
         or "component_style_contract" not in contract
+        or "layout_contract" not in contract
+        or "density_modes" not in contract
+        or "typography_scale" not in contract
+        or "design_system_report" not in contract
+        or "theme_quality_report" not in contract
         or "accessibility_theme_check" not in contract
         or "accessibility_audit_plan" not in contract
         or "keyboard_navigation_plan" not in contract
     ):
-        fail("branding contract must expose theme, design-system, and accessibility audit checks")
+        fail("branding contract must expose theme, design-system, layout, density, quality, and accessibility audit checks")
     template = (ROOT / "app" / "templates" / "appgen_branding.html").read_text()
-    if "Theme JSON" not in template or "Design System JSON" not in template or "branding.palette" not in template:
-        fail("branding template must expose theme preview, design-system export, and palette")
+    if "Theme JSON" not in template or "Design System JSON" not in template or "Quality JSON" not in template or "branding.palette" not in template:
+        fail("branding template must expose theme preview, design-system export, quality report, and palette")
 
 
 def validate_extension_artifacts() -> None:

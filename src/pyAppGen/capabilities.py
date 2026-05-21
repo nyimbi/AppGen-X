@@ -38,7 +38,7 @@ DEFAULT_CAPABILITIES: tuple[Capability, ...] = (
     Capability("ui.view-experience", "Shared generated view experience", "partial", "generated offline field state, active viewers, help/chatbot actions, access logs, version footer, time-on-page, and current-user context"),
     Capability("ui.layout", "Declarative screen sections and tabs", "partial", "view sections feed generated FAB metadata and component form layouts"),
     Capability("ui.responsive", "Responsive customizable generated UI", "partial", "FAB templates and view mixins"),
-    Capability("ui.branding", "Customizable branding and theming", "partial", "generated theme CSS, branding contract, and preview cockpit"),
+    Capability("ui.branding", "Customizable branding and theming", "partial", "generated theme CSS, branding contract, design-system report, layout recipes, typography scale, density modes, quality report, and preview cockpit"),
     Capability("ui.wizards", "Sequential input and process wizards", "partial", "generated table creation and workflow wizard contracts"),
     Capability("ui.pwa", "Progressive web app and offline shell", "partial", "generated web manifest and service worker"),
     Capability("platform.targets", "Web, PWA, mobile, desktop, and chatbot target contracts", "partial", "generated platform descriptors, generation artifacts, and export contracts"),

@@ -1540,6 +1540,8 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     branding_template = (output_dir / "templates" / "appgen_branding.html").read_text()
     assert "Generated branding contract" in branding_template
     assert "Design System JSON" in branding_template
+    assert "Quality JSON" in branding_template
+    assert "Responsive Layouts" in branding_template
     assert "app_custom/extensions.py" in (output_dir / "templates" / "appgen_extensions.html").read_text()
     assert "Library" in (tmp_path / "README.md").read_text()
     accessibility_text = (tmp_path / "docs" / "accessibility.md").read_text()
@@ -1561,6 +1563,8 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert "--appgen-accent: #9a6b2f;" in theme_css
     assert "--appgen-focus-ring:" in theme_css
     assert "--appgen-touch-target: 44px;" in theme_css
+    assert "--appgen-content-max: 1180px;" in theme_css
+    assert ".appgen-page-header" in theme_css
     assert "fill=\"#2f6f5e\"" in (output_dir / "static" / "appgen-icon.svg").read_text()
     assert "Library is offline" in (output_dir / "static" / "appgen-offline.html").read_text()
     assert "Book Schema" not in (tmp_path / "docs" / "schema.md").read_text()
@@ -1722,8 +1726,15 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert rules.rules_check({"app/rules.py", "app/templates/appgen_rules.html"})["ok"] is True
     assert branding.theme_contract()["theme"] == "sage"
     assert branding.css_variables()["--appgen-primary"] == "#2f6f5e"
+    assert branding.css_variables()["--appgen-content-max"] == "1180px"
+    assert branding.typography_scale()["sizes"]["page"] == "1.5rem"
+    assert branding.density_modes()["touch"]["control_height"] == "48px"
     assert branding.design_tokens()["radius"]["panel"] == "8px"
+    assert branding.layout_contract("record-form")["validation"] == "summary + field messages"
+    assert branding.design_system_report()["format"] == "appgen.design-system.v1"
+    assert branding.theme_quality_report()["ok"] is True
     assert branding.component_style_contract("button")["min_height"] == "44px"
+    assert branding.component_style_contract("page-header")["responsive_behavior"] == "actions wrap below title on mobile"
     assert branding.component_style_contract("dashboard-card")["accent_border"] == "4px"
     assert branding.accessibility_theme_check()["ok"] is True
     assert any(item["wcag"] == "2.4.1" for item in branding.accessibility_checklist())
@@ -1734,6 +1745,9 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert branding.asset_check(
         {"app/branding.py", "app/static/appgen-theme.css", "app/templates/appgen_branding.html"}
     )["ok"] is True
+    assert branding.asset_check(
+        {"app/branding.py", "app/static/appgen-theme.css", "app/templates/appgen_branding.html"}
+    )["quality"]["format"] == "appgen.theme-quality.v1"
     assert low_code_features.readiness_report()["source"]["document"] == "docs/Lo-code features.md"
     assert low_code_features.readiness_report()["alignment_complete"] is True
     assert low_code_features.readiness_report()["competitive_position"] == "broader-than-jhipster"
