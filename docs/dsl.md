@@ -424,7 +424,9 @@ apps include:
   the comparison is tied to usable in-app surfaces rather than a static claim.
   A generated superiority-tier gate separately proves preserved baseline
   parity, at least ten AppGen-only advantages, and generated IDE/workbench
-  routes before a release can claim to be more capable than JHipster.
+  routes before a release can claim to be more capable than JHipster. A
+  generated capability-depth index also requires design-time, generation-time,
+  runtime, and governance evidence for every AppGen-only advantage.
 - `prototyping.py` and `appgen_prototyping.html` with rapid mock screens,
   realistic sample data, preview packages, experiment hypotheses, and backlog
   promotion plans for fast stakeholder iteration.

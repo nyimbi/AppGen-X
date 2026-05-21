@@ -5772,6 +5772,7 @@ def write_low_code_features_template(output_dir):
       <a class="btn btn-default" href="{{ url_for('LowCodeFeaturesView.jhipster_superset_evidence_json') }}">Superset Evidence JSON</a>
       <a class="btn btn-default" href="{{ url_for('LowCodeFeaturesView.jhipster_superset_certification_json') }}">Superset Certification JSON</a>
       <a class="btn btn-default" href="{{ url_for('LowCodeFeaturesView.jhipster_superset_blueprint_json') }}">Superset Blueprint JSON</a>
+      <a class="btn btn-default" href="{{ url_for('LowCodeFeaturesView.jhipster_capability_depth_json') }}">Capability Depth JSON</a>
       <a class="btn btn-default" href="{{ url_for('LowCodeFeaturesView.jhipster_superiority_tiers_json') }}">Superiority Tiers JSON</a>
       <a class="btn btn-default" href="{{ url_for('LowCodeFeaturesView.composition_json') }}">Composition JSON</a>
       <a class="btn btn-default" href="{{ url_for('LowCodeFeaturesView.composition_readiness_json') }}">Composition Readiness JSON</a>
@@ -20703,6 +20704,108 @@ JHIPSTER_SUPERIORITY_TIERS = (
         "decision": "Differentiators must map to generated IDE/workbench surfaces, not only documentation rows.",
     }},
 )
+JHIPSTER_DEPTH_REQUIREMENTS = (
+    {{
+        "area": "visual_builders",
+        "minimum_dimensions": 4,
+        "dimensions": (
+            {{"dimension": "design_time", "evidence": "database designer, Delphi-style form canvas, workflow/statechart workbench"}},
+            {{"dimension": "generation_time", "evidence": "reviewed DSL regeneration and artifact manifests"}},
+            {{"dimension": "runtime", "evidence": "generated designer, form-designer, and Studio routes"}},
+            {{"dimension": "governance", "evidence": "lint feedback, preview diffs, reviewed proposals, and release checks"}},
+        ),
+    }},
+    {{
+        "area": "schema_import",
+        "minimum_dimensions": 4,
+        "dimensions": (
+            {{"dimension": "design_time", "evidence": "DBML, SQL DDL, PonyORM, and live database source catalog"}},
+            {{"dimension": "generation_time", "evidence": "normalization reports, round-trip diffs, and apply plans"}},
+            {{"dimension": "runtime", "evidence": "schema import cockpit and command-plan JSON routes"}},
+            {{"dimension": "governance", "evidence": "source-fidelity report, validation plans, destructive-change review"}},
+        ),
+    }},
+    {{
+        "area": "native_targets",
+        "minimum_dimensions": 4,
+        "dimensions": (
+            {{"dimension": "design_time", "evidence": "web, PWA, mobile, desktop, and chatbot target selection"}},
+            {{"dimension": "generation_time", "evidence": "Kivy mobile and BeeWare desktop starter packages"}},
+            {{"dimension": "runtime", "evidence": "offline queues, push, camera, location, cache, and local-file contracts"}},
+            {{"dimension": "governance", "evidence": "platform release gate and target package matrix"}},
+        ),
+    }},
+    {{
+        "area": "agentic_systems",
+        "minimum_dimensions": 4,
+        "dimensions": (
+            {{"dimension": "design_time", "evidence": "DSL llm and agent blocks with provider, goal, tool, and memory metadata"}},
+            {{"dimension": "generation_time", "evidence": "local/API-key provider contracts, chatbots, voice, and intelligence helpers"}},
+            {{"dimension": "runtime", "evidence": "agent execution matrix, tool policies, and provider connection matrix"}},
+            {{"dimension": "governance", "evidence": "secret policy, allowlists, and agentic release gate"}},
+        ),
+    }},
+    {{
+        "area": "natural_language_evolution",
+        "minimum_dimensions": 4,
+        "dimensions": (
+            {{"dimension": "design_time", "evidence": "plain-language proposals for tables, fields, forms, chatbots, agents, targets, and ERP modules"}},
+            {{"dimension": "generation_time", "evidence": "reviewable DSL patches and deterministic change sets"}},
+            {{"dimension": "runtime", "evidence": "NL evolution cockpit and generated proposal JSON"}},
+            {{"dimension": "governance", "evidence": "destructive-intent reports, migration impact, tests, rollback plans, and approval workflow"}},
+        ),
+    }},
+    {{
+        "area": "erp_templates",
+        "minimum_dimensions": 4,
+        "dimensions": (
+            {{"dimension": "design_time", "evidence": "ledger, AP, AR, invoicing, inventory, HR, payroll, manufacturing, CRM, and reporting templates"}},
+            {{"dimension": "generation_time", "evidence": "composite ERP DSL, starter manifests, generation plans, and migration plans"}},
+            {{"dimension": "runtime", "evidence": "ERP template cockpit plus finance, inventory, manufacturing, and document contracts"}},
+            {{"dimension": "governance", "evidence": "domain coverage, implementation roadmap, release gate, and report/workflow checks"}},
+        ),
+    }},
+    {{
+        "area": "runtime_studio",
+        "minimum_dimensions": 4,
+        "dimensions": (
+            {{"dimension": "design_time", "evidence": "DSL editor state, database workbench, app registry, and workflow blueprint"}},
+            {{"dimension": "generation_time", "evidence": "generation job logs, artifact manifests, and source-fidelity checks"}},
+            {{"dimension": "runtime", "evidence": "Studio route for DSL, database design, generation jobs, quality gates, and app management"}},
+            {{"dimension": "governance", "evidence": "Studio release gate, diagnostics, linting, safe SQL, and capability matrix"}},
+        ),
+    }},
+    {{
+        "area": "runtime_assurance",
+        "minimum_dimensions": 4,
+        "dimensions": (
+            {{"dimension": "design_time", "evidence": "release policy tying security, operations, quality, backup, and UX"}},
+            {{"dimension": "generation_time", "evidence": "generated assurance matrix and CI quality scripts"}},
+            {{"dimension": "runtime", "evidence": "health, resilience, performance, backup, monitoring, and HTTPS workbenches"}},
+            {{"dimension": "governance", "evidence": "application release gate, DR release gate, audit evidence, and blocking gaps"}},
+        ),
+    }},
+    {{
+        "area": "database_ide",
+        "minimum_dimensions": 4,
+        "dimensions": (
+            {{"dimension": "design_time", "evidence": "visual table/field modeling, ERD, DBML, SQL DDL, PonyORM, and query builder"}},
+            {{"dimension": "generation_time", "evidence": "schema diffs, migration previews, manifest proposals, and DSL regeneration"}},
+            {{"dimension": "runtime", "evidence": "database workbench, safe SQL scratchpad, and read-only query execution plans"}},
+            {{"dimension": "governance", "evidence": "SQL guardrails, explain plans, data-loss checks, and release diagnostics"}},
+        ),
+    }},
+    {{
+        "area": "application_composition",
+        "minimum_dimensions": 4,
+        "dimensions": (
+            {{"dimension": "design_time", "evidence": "schema, visual-builder, workflow, ERP, agentic, integration, and native-target blocks"}},
+            {{"dimension": "generation_time", "evidence": "dependency graph, install plans, composition packages, and previews"}},
+            {{"dimension": "runtime", "evidence": "low-code feature cockpit, composition JSON, Entando, Invenio, and cookiecutter handoffs"}},
+            {{"dimension": "governance", "evidence": "marketplace readiness, review checks, sandbox previews, and JHipster certification gates"}},
+        ),
+    }},
+)
 ROADMAP_AREAS = (
     {{
         "area": "visual_building",
@@ -20995,6 +21098,45 @@ def jhipster_capability_benchmark():
     }}
 
 
+def jhipster_capability_depth_index(existing_paths=None):
+    """Return depth evidence for every AppGen-only JHipster differentiator."""
+    scorecard = jhipster_superset_scorecard()
+    evidence = jhipster_superset_evidence(existing_paths)
+    artifact_rows = {{row["area"]: row for row in evidence["rows"]}}
+    scorecard_rows = {{gate["area"]: gate for gate in scorecard["required_gates"]}}
+    rows = []
+    for requirement in JHIPSTER_DEPTH_REQUIREMENTS:
+        dimensions = tuple(requirement["dimensions"])
+        present_dimensions = tuple(item["dimension"] for item in dimensions if item["evidence"])
+        artifact_row = artifact_rows.get(requirement["area"], {{"ok": False, "missing_artifacts": ()}})
+        scorecard_row = scorecard_rows.get(requirement["area"], {{"ok": False, "missing_capabilities": ()}})
+        rows.append({{
+            "area": requirement["area"],
+            "minimum_dimensions": requirement["minimum_dimensions"],
+            "dimensions": dimensions,
+            "present_dimensions": present_dimensions,
+            "missing_dimensions": tuple(
+                item["dimension"]
+                for item in dimensions
+                if item["dimension"] not in present_dimensions
+            ),
+            "artifact_evidence_ok": artifact_row["ok"],
+            "missing_artifacts": artifact_row.get("missing_artifacts", ()),
+            "capabilities_ok": scorecard_row["ok"],
+            "missing_capabilities": scorecard_row.get("missing_capabilities", ()),
+            "ok": len(present_dimensions) >= requirement["minimum_dimensions"] and artifact_row["ok"] and scorecard_row["ok"],
+        }})
+    return {{
+        "format": "appgen.jhipster-capability-depth-index.v1",
+        "baseline": dict(JHIPSTER_BASELINE),
+        "minimum_areas": len(JHIPSTER_DEPTH_REQUIREMENTS),
+        "minimum_dimensions_per_area": 4,
+        "areas": tuple(rows),
+        "blocking_gaps": tuple(row for row in rows if not row["ok"]),
+        "ok": len(rows) >= 10 and all(row["ok"] for row in rows),
+    }}
+
+
 def jhipster_superset_scorecard():
     """Return the non-negotiable gates for being more capable than JHipster."""
     benchmark = jhipster_capability_benchmark()
@@ -21106,6 +21248,7 @@ def jhipster_superset_certification(existing_paths=None):
     benchmark = jhipster_capability_benchmark()
     scorecard = jhipster_superset_scorecard()
     evidence = jhipster_superset_evidence(existing_paths)
+    depth = jhipster_capability_depth_index(existing_paths)
     roadmap = roadmap_source_report()
     composition_paths = set(evidence["expected_artifacts"] if existing_paths is None else existing_paths)
     composition_paths.update({{"app/low_code_features.py", "app/templates/appgen_low_code_features.html", "app/appgen.json"}})
@@ -21131,6 +21274,7 @@ def jhipster_superset_certification(existing_paths=None):
         {{"gate": "advantage_ratio", "ok": advantage_ratio >= 2.0, "value": advantage_ratio}},
         {{"gate": "scorecard", "ok": scorecard["ok"], "blocking_gaps": scorecard["blocking_gaps"]}},
         {{"gate": "artifact_evidence", "ok": evidence["ok"], "missing_rows": tuple(row for row in evidence["rows"] if not row["ok"])}},
+        {{"gate": "capability_depth", "ok": depth["ok"], "blocking_gaps": depth["blocking_gaps"]}},
         {{"gate": "roadmap_traceability", "ok": roadmap["ok"], "documents": roadmap["documents"]}},
         {{"gate": "composition_readiness", "ok": composition["ok"], "missing": composition["missing"]}},
     )
@@ -21144,6 +21288,7 @@ def jhipster_superset_certification(existing_paths=None):
         "minimum_appgen_only_advantages": 10,
         "actual_appgen_only_advantages": benchmark["appgen_only_count"],
         "advantage_ratio": advantage_ratio,
+        "capability_depth": depth,
         "generated_contracts": generated_contracts,
         "gates": gates,
         "blocking_gaps": tuple(gate for gate in gates if not gate["ok"]),
@@ -21326,6 +21471,7 @@ def readiness_report():
     certification = jhipster_superset_certification()
     blueprint = jhipster_superset_blueprint()
     superiority = jhipster_superiority_tiers()
+    depth = jhipster_capability_depth_index()
     roadmap_sources = roadmap_source_report()
     return {{
         "source": dict(FEATURE_SOURCE),
@@ -21350,6 +21496,8 @@ def readiness_report():
         "jhipster_superset_blueprint_ok": blueprint["ok"],
         "jhipster_superiority": superiority,
         "jhipster_superiority_ok": superiority["ok"],
+        "jhipster_capability_depth": depth,
+        "jhipster_capability_depth_ok": depth["ok"],
     }}
 
 
@@ -21385,7 +21533,7 @@ def low_code_features_check(existing_paths):
     missing = tuple(path for path in required if path not in existing)
     report = readiness_report()
     return {{
-        "ok": not missing and report["alignment_complete"] and report["roadmap_sources_ok"] and report["total"] >= 80 and jhipster_competitive_report()["ok"] and report["jhipster_superset_ok"] and report["jhipster_certification_ok"] and report["jhipster_superset_blueprint_ok"] and report["jhipster_superiority_ok"],
+        "ok": not missing and report["alignment_complete"] and report["roadmap_sources_ok"] and report["total"] >= 80 and jhipster_competitive_report()["ok"] and report["jhipster_superset_ok"] and report["jhipster_certification_ok"] and report["jhipster_superset_blueprint_ok"] and report["jhipster_superiority_ok"] and report["jhipster_capability_depth_ok"],
         "missing": missing,
         "source": dict(FEATURE_SOURCE),
         "sources": report["sources"],
@@ -21398,6 +21546,7 @@ def low_code_features_check(existing_paths):
         "jhipster_certification_ok": report["jhipster_certification_ok"],
         "jhipster_superset_blueprint_ok": report["jhipster_superset_blueprint_ok"],
         "jhipster_superiority_ok": report["jhipster_superiority_ok"],
+        "jhipster_capability_depth_ok": report["jhipster_capability_depth_ok"],
     }}
 
 
@@ -21453,6 +21602,10 @@ class LowCodeFeaturesView(BaseView):
     @expose("/jhipster-superset-blueprint.json")
     def jhipster_superset_blueprint_json(self):
         return jsonify(jhipster_superset_blueprint())
+
+    @expose("/jhipster-capability-depth.json")
+    def jhipster_capability_depth_json(self):
+        return jsonify(jhipster_capability_depth_index())
 
     @expose("/jhipster-superiority-tiers.json")
     def jhipster_superiority_tiers_json(self):
@@ -31191,6 +31344,7 @@ def validate_low_code_features_artifacts() -> None:
         "jhipster_superset_route_map",
         "jhipster_superset_blueprint",
         "jhipster_superiority_tiers",
+        "jhipster_capability_depth_index",
         "application_composition_catalog",
         "composition_install_plan",
         "composition_package",
@@ -31205,7 +31359,7 @@ def validate_low_code_features_artifacts() -> None:
     if "jhipster_competitive_report" not in contract or "broader-than-jhipster" not in contract or "appgen-more-capable-than-jhipster" not in contract or "appgen_only_capabilities" not in contract or "application_composition" not in contract:
         fail("low-code feature matrix must make AppGen's broader-than-JHipster position explicit")
     template = (ROOT / "app" / "templates" / "appgen_low_code_features.html").read_text()
-    if "Low-Code Feature Matrix" not in template or "Feature Matrix JSON" not in template or "Readiness JSON" not in template or "Roadmap Sources JSON" not in template or "JHipster Comparison JSON" not in template or "Benchmark JSON" not in template or "Superset Scorecard JSON" not in template or "Superset Evidence JSON" not in template or "Superset Certification JSON" not in template or "Superset Blueprint JSON" not in template or "Superiority Tiers JSON" not in template or "Composition JSON" not in template:
+    if "Low-Code Feature Matrix" not in template or "Feature Matrix JSON" not in template or "Readiness JSON" not in template or "Roadmap Sources JSON" not in template or "JHipster Comparison JSON" not in template or "Benchmark JSON" not in template or "Superset Scorecard JSON" not in template or "Superset Evidence JSON" not in template or "Superset Certification JSON" not in template or "Superset Blueprint JSON" not in template or "Capability Depth JSON" not in template or "Superiority Tiers JSON" not in template or "Composition JSON" not in template:
         fail("low-code feature cockpit must expose matrix and readiness links")
 
 
@@ -33137,6 +33291,9 @@ def test_generated_runtime_helpers():
     assert low_code_features.jhipster_superset_evidence()["ok"] is True
     assert low_code_features.jhipster_superset_certification()["ok"] is True
     assert low_code_features.jhipster_superset_certification()["certification"] == "appgen-more-capable-than-jhipster"
+    assert low_code_features.jhipster_capability_depth_index()["format"] == "appgen.jhipster-capability-depth-index.v1"
+    assert low_code_features.jhipster_capability_depth_index()["ok"] is True
+    assert low_code_features.jhipster_superset_certification()["capability_depth"]["ok"] is True
     assert low_code_features.jhipster_superset_blueprint()["ok"] is True
     assert low_code_features.jhipster_superset_blueprint()["format"] == "appgen.jhipster-superset-blueprint.v1"
     assert low_code_features.readiness_report()["jhipster_superset_blueprint_ok"] is True

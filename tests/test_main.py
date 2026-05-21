@@ -2255,6 +2255,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert "Superset Scorecard JSON" in (output_dir / "templates" / "appgen_low_code_features.html").read_text()
     assert "Superset Evidence JSON" in (output_dir / "templates" / "appgen_low_code_features.html").read_text()
     assert "Superset Blueprint JSON" in (output_dir / "templates" / "appgen_low_code_features.html").read_text()
+    assert "Capability Depth JSON" in (output_dir / "templates" / "appgen_low_code_features.html").read_text()
     assert "Superiority Tiers JSON" in (output_dir / "templates" / "appgen_low_code_features.html").read_text()
     erp_template_text = (output_dir / "templates" / "appgen_erp_templates.html").read_text()
     assert "Roadmap JSON" in erp_template_text
@@ -2589,12 +2590,19 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert low_code_features.jhipster_superset_scorecard()["blocking_gaps"] == ()
     assert low_code_features.jhipster_superset_evidence()["ok"] is True
     assert low_code_features.jhipster_superset_evidence({"app/designer.py"})["ok"] is False
+    depth = low_code_features.jhipster_capability_depth_index()
+    assert depth["format"] == "appgen.jhipster-capability-depth-index.v1"
+    assert depth["ok"] is True
+    assert depth["minimum_dimensions_per_area"] == 4
+    assert {item["area"] for item in depth["areas"]} >= {"visual_builders", "agentic_systems", "database_ide"}
+    assert low_code_features.jhipster_capability_depth_index({"app/designer.py"})["ok"] is False
     certification = low_code_features.jhipster_superset_certification()
     assert certification["format"] == "appgen.jhipster-superset-certification.v1"
     assert certification["certification"] == "appgen-more-capable-than-jhipster"
     assert certification["ok"] is True
     assert certification["blocking_gaps"] == ()
     assert certification["advantage_ratio"] >= 2.0
+    assert certification["capability_depth"]["ok"] is True
     assert "jhipster/app.jdl" in certification["generated_contracts"]
     assert "app/form_designer.py" in certification["generated_contracts"]
     assert low_code_features.jhipster_superset_certification({"app/designer.py"})["ok"] is False
@@ -2616,6 +2624,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     ]
     assert low_code_features.readiness_report()["jhipster_superset_blueprint_ok"] is True
     assert low_code_features.readiness_report()["jhipster_superiority_ok"] is True
+    assert low_code_features.readiness_report()["jhipster_capability_depth_ok"] is True
     assert low_code_features.low_code_features_check(
         {"app/low_code_features.py", "app/templates/appgen_low_code_features.html", "app/appgen.json"}
     )["jhipster_superset_blueprint_ok"] is True
@@ -2667,6 +2676,9 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert low_code_features.low_code_features_check(
         {"app/low_code_features.py", "app/templates/appgen_low_code_features.html", "app/appgen.json"}
     )["jhipster_superiority_ok"] is True
+    assert low_code_features.low_code_features_check(
+        {"app/low_code_features.py", "app/templates/appgen_low_code_features.html", "app/appgen.json"}
+    )["jhipster_capability_depth_ok"] is True
     assert low_code_features.low_code_features_check(
         {"app/low_code_features.py", "app/templates/appgen_low_code_features.html", "app/appgen.json"}
     )["roadmap_sources_ok"] is True
