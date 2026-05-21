@@ -1873,6 +1873,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert low_code_features.jhipster_capability_benchmark()["ok"] is True
     assert len(low_code_features.jhipster_competitive_report()["appgen_differentiators"]) >= 7
     assert "agentic_systems" in {item["area"] for item in low_code_features.jhipster_competitive_report()["appgen_only_capabilities"]}
+    assert "database_ide" in {item["area"] for item in low_code_features.jhipster_competitive_report()["appgen_only_capabilities"]}
     assert "application_composition" in {
         item["area"] for item in low_code_features.jhipster_competitive_report()["appgen_only_capabilities"]
     }

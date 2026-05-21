@@ -19057,6 +19057,7 @@ COMPETITIVE_BENCHMARK = (
     {{"area": "natural_language_evolution", "label": "Natural-language application evolution", "jhipster": False, "appgen": True, "evidence": "NL proposals for tables, fields, forms, chatbots, agents, and reviewable DSL patches"}},
     {{"area": "erp_templates", "label": "ERP module template library", "jhipster": False, "appgen": True, "evidence": "Ledger, AP, AR, invoicing, HR, payroll, inventory, manufacturing, CRM, warehouse, and reports"}},
     {{"area": "runtime_studio", "label": "Generated in-app IDE and operations studio", "jhipster": False, "appgen": True, "evidence": "Studio, devtools, diagnostics, config editor, backup, monitoring, resilience, and performance workbenches"}},
+    {{"area": "database_ide", "label": "In-app database IDE and safe SQL workbench", "jhipster": False, "appgen": True, "evidence": "Visual database designer, ERD/DBML/SQL/PonyORM previews, read-only SQL guard, and deterministic explain-plan contracts"}},
     {{"area": "schema_import", "label": "Multi-source schema import", "jhipster": False, "appgen": True, "evidence": "DBML, SQL DDL, static PonyORM scripts, live database introspection, round-trip diffs, and reviewed apply plans"}},
     {{"area": "application_composition", "label": "Application composition marketplace", "jhipster": False, "appgen": True, "evidence": "Generated installable blocks, dependency graph, review gates, composition packages, and portal/repository handoff metadata"}},
 )
@@ -19069,6 +19070,7 @@ APPGEN_DIFFERENTIATORS = (
     {{"capability": "ERP-ready modules", "evidence": "Ledger, AP, AR, invoicing, HR, inventory, manufacturing, reports, and operational templates"}},
     {{"capability": "Application composition marketplace", "evidence": "Reusable generated blocks with dependencies, reviewed install plans, sandbox previews, Entando portal publication, and Invenio repository deposit handoffs"}},
     {{"capability": "Operational workbenches", "evidence": "Config editor, diagnostics, backup, monitoring, resilience, performance, migration, and deployment contracts"}},
+    {{"capability": "Database IDE", "evidence": "Visual database design plus safe SQL scratchpad, read-only guards, and explain-plan previews"}},
     {{"capability": "JHipster interoperability", "evidence": "JDL export remains available without limiting AppGen's broader feature set"}},
 )
 ROADMAP_AREAS = (
@@ -29690,6 +29692,7 @@ def test_generated_runtime_helpers():
     assert "components.application-composition" in {item["key"] for item in low_code_features.capability_matrix()}
     assert low_code_features.jhipster_capability_benchmark()["ok"] is True
     assert "agentic_systems" in {item["area"] for item in low_code_features.jhipster_competitive_report()["appgen_only_capabilities"]}
+    assert "database_ide" in {item["area"] for item in low_code_features.jhipster_competitive_report()["appgen_only_capabilities"]}
     assert "application_composition" in {item["area"] for item in low_code_features.jhipster_competitive_report()["appgen_only_capabilities"]}
     composition_plan = low_code_features.composition_install_plan(("agentic-suite", "erp-suite"))
     assert composition_plan["format"] == "appgen.composition-install-plan.v1"
