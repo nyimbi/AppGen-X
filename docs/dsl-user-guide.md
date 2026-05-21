@@ -236,6 +236,23 @@ It exposes:
 Use this workbench to round-trip between visual design and source-controlled
 DSL. The DSL remains the durable source of truth.
 
+## Design-System QA
+
+Generated apps include `branding.py`, `appgen_branding.html`, and
+`static/appgen-theme.css` for design-system review. The contract exposes:
+
+- CSS custom properties for palette, spacing, density, focus, and UI states;
+- viewport contracts for mobile, tablet, desktop, and wide layouts;
+- component state matrices for hover, focus, disabled, invalid, selected,
+  empty, and error states;
+- a visual regression plan that lists screenshot targets and state coverage;
+- accessibility audit plans for focus order, landmarks, touch targets, and
+  WCAG-oriented checks.
+
+Use the generated `/branding/visual-regression.json` endpoint as a review
+checklist when validating that generated applications are polished across web,
+mobile, and desktop-sized viewports.
+
 ## Linting Workflow
 
 Run the linter before code generation and before committing DSL changes:

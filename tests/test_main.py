@@ -1687,6 +1687,9 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert "Design System JSON" in branding_template
     assert "Quality JSON" in branding_template
     assert "Responsive Layouts" in branding_template
+    assert "Visual Regression JSON" in branding_template
+    assert "Viewport Contracts" in branding_template
+    assert "Component States" in branding_template
     assert "app_custom/extensions.py" in (output_dir / "templates" / "appgen_extensions.html").read_text()
     assert "Library" in (tmp_path / "README.md").read_text()
     accessibility_text = (tmp_path / "docs" / "accessibility.md").read_text()
@@ -1707,6 +1710,9 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert "--appgen-primary: #2f6f5e;" in theme_css
     assert "--appgen-accent: #9a6b2f;" in theme_css
     assert "--appgen-focus-ring:" in theme_css
+    assert "--appgen-state-hover:" in theme_css
+    assert "--appgen-state-selected:" in theme_css
+    assert "--appgen-state-invalid:" in theme_css
     assert "--appgen-touch-target: 44px;" in theme_css
     assert "--appgen-content-max: 1180px;" in theme_css
     assert ".appgen-page-header" in theme_css
@@ -1919,6 +1925,12 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert branding.layout_contract("record-form")["validation"] == "summary + field messages"
     assert branding.design_system_report()["format"] == "appgen.design-system.v1"
     assert branding.theme_quality_report()["ok"] is True
+    assert branding.viewport_contract("mobile")["density"] == "touch"
+    assert branding.viewport_contract("desktop")["page_header"] == "title + actions"
+    assert branding.component_state_matrix("form-control")["invalid"]["message_required"] is True
+    assert branding.component_state_matrix("table-row")["selected"]["aria_selected"] is True
+    assert branding.visual_regression_plan()["format"] == "appgen.visual-regression.v1"
+    assert "mobile" in branding.design_system_report()["viewports"]
     assert branding.component_style_contract("button")["min_height"] == "44px"
     assert branding.component_style_contract("page-header")["responsive_behavior"] == "actions wrap below title on mobile"
     assert branding.component_style_contract("dashboard-card")["accent_border"] == "4px"
@@ -1934,6 +1946,9 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert branding.asset_check(
         {"app/branding.py", "app/static/appgen-theme.css", "app/templates/appgen_branding.html"}
     )["quality"]["format"] == "appgen.theme-quality.v1"
+    assert branding.asset_check(
+        {"app/branding.py", "app/static/appgen-theme.css", "app/templates/appgen_branding.html"}
+    )["visual_regression"]["format"] == "appgen.visual-regression.v1"
     assert low_code_features.readiness_report()["source"]["document"] == "docs/Lo-code features.md"
     assert low_code_features.readiness_report()["alignment_complete"] is True
     assert low_code_features.readiness_report()["competitive_position"] == "broader-than-jhipster"

@@ -6032,6 +6032,7 @@ def write_branding_template(output_dir):
       <a class="btn btn-default" href="{{ url_for('BrandingView.theme_json') }}">Theme JSON</a>
       <a class="btn btn-default" href="{{ url_for('BrandingView.design_system_json') }}">Design System JSON</a>
       <a class="btn btn-default" href="{{ url_for('BrandingView.quality_json') }}">Quality JSON</a>
+      <a class="btn btn-default" href="{{ url_for('BrandingView.visual_regression_json') }}">Visual Regression JSON</a>
     </div>
   </div>
   <div class="agb-preview">
@@ -6060,6 +6061,14 @@ def write_branding_template(output_dir):
     <article class="agb-chip">
       <strong>Typography Scale</strong>
       <div class="agb-note">caption, body, section, page, hero</div>
+    </article>
+    <article class="agb-chip">
+      <strong>Viewport Contracts</strong>
+      <div class="agb-note">mobile, tablet, desktop, wide</div>
+    </article>
+    <article class="agb-chip">
+      <strong>Component States</strong>
+      <div class="agb-note">hover, focus, disabled, invalid, selected, empty, error</div>
     </article>
   </div>
 </section>
@@ -8556,6 +8565,9 @@ def _theme_css_text(branding: dict) -> str:
   --appgen-space-4: 16px;
   --appgen-space-5: 24px;
   --appgen-shadow-panel: 0 10px 24px rgba(15, 23, 42, 0.08);
+  --appgen-state-hover: rgba(47, 111, 94, 0.08);
+  --appgen-state-selected: rgba(154, 107, 47, 0.14);
+  --appgen-state-invalid: #b42318;
   --appgen-touch-target: 44px;
   --appgen-font-body: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   --appgen-font-size-sm: 0.875rem;
@@ -8591,6 +8603,12 @@ body {{
 .btn-primary:focus {{
   background-color: var(--appgen-accent);
   border-color: var(--appgen-accent);
+}}
+
+.btn[disabled],
+.form-control[disabled] {{
+  cursor: not-allowed;
+  opacity: 0.62;
 }}
 
 .btn,
@@ -8649,8 +8667,21 @@ body {{
   margin-bottom: var(--appgen-space-4);
 }}
 
+.appgen-form-field.is-invalid .form-control,
+.form-control.is-invalid {{
+  border-color: var(--appgen-state-invalid);
+}}
+
 .table {{
   background: #ffffff;
+}}
+
+.table > tbody > tr:hover {{
+  background: var(--appgen-state-hover);
+}}
+
+.table > tbody > tr.is-selected {{
+  background: var(--appgen-state-selected);
 }}
 
 .table > tbody > tr > td,
@@ -8738,6 +8769,9 @@ def css_variables():
         "--appgen-focus-ring": {focus_ring!r},
         "--appgen-radius-sm": "4px",
         "--appgen-radius-md": "8px",
+        "--appgen-state-hover": "rgba(47, 111, 94, 0.08)",
+        "--appgen-state-selected": "rgba(154, 107, 47, 0.14)",
+        "--appgen-state-invalid": "#b42318",
         "--appgen-touch-target": "44px",
         "--appgen-font-body": "system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
         "--appgen-content-max": "1180px",
@@ -8801,6 +8835,9 @@ def design_tokens():
         "interaction": {{
             "focus_ring": {focus_ring!r},
             "touch_target": "44px",
+            "state_hover": "rgba(47, 111, 94, 0.08)",
+            "state_selected": "rgba(154, 107, 47, 0.14)",
+            "state_invalid": "#b42318",
         }},
         "density": density_modes(),
         "breakpoints": {{
@@ -8842,6 +8879,56 @@ def layout_contract(layout=None):
     if layout is None:
         return layouts
     return layouts[layout]
+
+
+def viewport_contract(viewport=None):
+    """Return generated responsive viewport contracts for visual QA and previews."""
+    tokens = design_tokens()
+    viewports = {{
+        "mobile": {{
+            "width": 390,
+            "max_width": tokens["breakpoints"]["mobile"],
+            "density": "touch",
+            "navigation": "collapsed",
+            "page_header": "stacked",
+            "table": "horizontal-scroll",
+            "form": "single-column",
+            "assertions": ("no horizontal page overflow", "primary actions remain visible", "touch targets >= 44px"),
+        }},
+        "tablet": {{
+            "width": 820,
+            "max_width": tokens["breakpoints"]["tablet"],
+            "density": "comfortable",
+            "navigation": "compact",
+            "page_header": "wrapped actions",
+            "table": "responsive",
+            "form": "two-column where space allows",
+            "assertions": ("toolbar wraps without overlap", "forms preserve labels", "tables keep row actions reachable"),
+        }},
+        "desktop": {{
+            "width": 1280,
+            "max_width": tokens["breakpoints"]["wide"],
+            "density": "comfortable",
+            "navigation": "expanded",
+            "page_header": "title + actions",
+            "table": "full",
+            "form": "section grid",
+            "assertions": ("content max width respected", "scan lines stay readable", "dashboard cards align"),
+        }},
+        "wide": {{
+            "width": 1440,
+            "max_width": tokens["breakpoints"]["wide"],
+            "density": "comfortable",
+            "navigation": "expanded",
+            "page_header": "title + actions",
+            "table": "full",
+            "form": "section grid",
+            "assertions": ("content remains constrained", "empty space does not split workflows", "actions stay near context"),
+        }},
+    }}
+    if viewport is None:
+        return viewports
+    return viewports[viewport]
 
 
 def component_style_contract(component=None):
@@ -8887,6 +8974,69 @@ def component_style_contract(component=None):
     return contracts[component]
 
 
+def component_state_matrix(component=None):
+    """Return generated visual states expected for generated components."""
+    tokens = design_tokens()
+    matrix = {{
+        "button": {{
+            "states": ("default", "hover", "focus", "disabled", "loading"),
+            "default": {{"background": tokens["color"]["primary"], "contrast": "AA"}},
+            "hover": {{"background": tokens["color"]["accent"], "must_not_shift_layout": True}},
+            "focus": {{"ring": tokens["interaction"]["focus_ring"], "wcag": "2.4.7"}},
+            "disabled": {{"opacity": 0.62, "cursor": "not-allowed"}},
+            "loading": {{"aria_busy": True, "min_height": tokens["interaction"]["touch_target"]}},
+        }},
+        "form-control": {{
+            "states": ("default", "focus", "invalid", "disabled", "readonly"),
+            "default": {{"min_height": tokens["interaction"]["touch_target"], "label_required": True}},
+            "focus": {{"ring": tokens["interaction"]["focus_ring"], "wcag": "2.4.7"}},
+            "invalid": {{"border": tokens["interaction"]["state_invalid"], "message_required": True}},
+            "disabled": {{"opacity": 0.62, "cursor": "not-allowed"}},
+            "readonly": {{"preserve_contrast": True}},
+        }},
+        "table-row": {{
+            "states": ("default", "hover", "focus", "selected", "bulk-action"),
+            "default": {{"row_height": tokens["density"]["comfortable"]["row_height"]}},
+            "hover": {{"background": tokens["interaction"]["state_hover"]}},
+            "focus": {{"ring": tokens["interaction"]["focus_ring"]}},
+            "selected": {{"background": tokens["interaction"]["state_selected"], "aria_selected": True}},
+            "bulk-action": {{"checkbox_target": tokens["interaction"]["touch_target"]}},
+        }},
+        "dashboard-card": {{
+            "states": ("default", "hover", "focus", "empty", "error"),
+            "default": component_style_contract("dashboard-card"),
+            "hover": {{"shadow": component_style_contract("panel")["shadow"], "must_not_shift_layout": True}},
+            "focus": {{"ring": tokens["interaction"]["focus_ring"]}},
+            "empty": {{"empty_state": "actionable"}},
+            "error": {{"status_tone": tokens["interaction"]["state_invalid"], "recovery_action_required": True}},
+        }},
+    }}
+    if component is None:
+        return matrix
+    return matrix[component]
+
+
+def visual_regression_plan(page=None):
+    """Return screenshot and state coverage expected before shipping generated UI."""
+    pages = accessibility_page_catalog()
+    if page is not None:
+        pages = tuple(item for item in pages if item["page"] == page)
+        if not pages:
+            raise KeyError(f"Unknown visual regression page: {{page}}")
+    return {{
+        "format": "appgen.visual-regression.v1",
+        "viewports": viewport_contract(),
+        "states": component_state_matrix(),
+        "pages": tuple({{"page": item["page"], "path": item["path"]}} for item in pages),
+        "checks": (
+            "capture mobile, tablet, desktop, and wide screenshots",
+            "verify no text overlap, clipped controls, or horizontal page overflow",
+            "verify hover, focus, disabled, invalid, selected, empty, and error states",
+            "verify keyboard focus order matches keyboard_navigation_plan",
+        ),
+    }}
+
+
 def design_system_report():
     """Return the full generated design-system contract for review and tooling."""
     return {{
@@ -8897,6 +9047,9 @@ def design_system_report():
         "density": density_modes(),
         "layouts": layout_contract(),
         "components": component_style_contract(),
+        "component_states": component_state_matrix(),
+        "viewports": viewport_contract(),
+        "visual_regression": visual_regression_plan(),
         "css_variables": css_variables(),
     }}
 
@@ -8911,6 +9064,8 @@ def theme_quality_report():
         {{"check": "content_width", "ok": variables["--appgen-content-max"] == "1180px", "value": variables["--appgen-content-max"]}},
         {{"check": "density_modes", "ok": {{"comfortable", "compact", "touch"}} <= set(density_modes()), "value": tuple(density_modes())}},
         {{"check": "layout_recipes", "ok": {{"workspace", "record-list", "record-form", "dashboard"}} <= set(layout_contract()), "value": tuple(layout_contract())}},
+        {{"check": "viewport_contracts", "ok": {{"mobile", "tablet", "desktop", "wide"}} <= set(viewport_contract()), "value": tuple(viewport_contract())}},
+        {{"check": "component_state_matrix", "ok": {{"button", "form-control", "table-row", "dashboard-card"}} <= set(component_state_matrix()), "value": tuple(component_state_matrix())}},
     )
     return {{
         "format": "appgen.theme-quality.v1",
@@ -9027,6 +9182,7 @@ def asset_check(existing_paths):
         "quality": theme_quality_report(),
         "accessibility": accessibility_theme_check(),
         "audit": accessibility_audit_plan(),
+        "visual_regression": visual_regression_plan(),
     }}
 
 
@@ -9053,6 +9209,10 @@ class BrandingView(BaseView):
     @expose("/accessibility.json")
     def accessibility_json(self):
         return jsonify(accessibility_audit_plan())
+
+    @expose("/visual-regression.json")
+    def visual_regression_json(self):
+        return jsonify(visual_regression_plan())
 
 
 def register_branding(appbuilder):
@@ -29326,6 +29486,9 @@ def validate_branding_artifacts() -> None:
         "--appgen-primary" not in css
         or "--appgen-accent" not in css
         or "--appgen-focus-ring" not in css
+        or "--appgen-state-hover" not in css
+        or "--appgen-state-selected" not in css
+        or "--appgen-state-invalid" not in css
         or "--appgen-touch-target" not in css
         or "--appgen-content-max" not in css
         or ".appgen-page-header" not in css
@@ -29345,11 +29508,22 @@ def validate_branding_artifacts() -> None:
         or "accessibility_theme_check" not in contract
         or "accessibility_audit_plan" not in contract
         or "keyboard_navigation_plan" not in contract
+        or "viewport_contract" not in contract
+        or "component_state_matrix" not in contract
+        or "visual_regression_plan" not in contract
     ):
-        fail("branding contract must expose theme, design-system, layout, density, quality, and accessibility audit checks")
+        fail("branding contract must expose theme, design-system, layout, state, viewport, quality, and accessibility audit checks")
     template = (ROOT / "app" / "templates" / "appgen_branding.html").read_text()
-    if "Theme JSON" not in template or "Design System JSON" not in template or "Quality JSON" not in template or "branding.palette" not in template:
-        fail("branding template must expose theme preview, design-system export, quality report, and palette")
+    if (
+        "Theme JSON" not in template
+        or "Design System JSON" not in template
+        or "Quality JSON" not in template
+        or "Visual Regression JSON" not in template
+        or "Viewport Contracts" not in template
+        or "Component States" not in template
+        or "branding.palette" not in template
+    ):
+        fail("branding template must expose theme preview, design-system export, quality report, visual QA report, and palette")
 
 
 def validate_extension_artifacts() -> None:
@@ -30692,6 +30866,9 @@ def test_generated_runtime_helpers():
     assert "--appgen-primary" in branding.css_variables()
     assert branding.design_tokens()["interaction"]["touch_target"] == "44px"
     assert "button" in branding.component_style_contract()
+    assert branding.viewport_contract("mobile")["density"] == "touch"
+    assert branding.component_state_matrix("form-control")["invalid"]["message_required"] is True
+    assert branding.visual_regression_plan()["format"] == "appgen.visual-regression.v1"
     assert branding.accessibility_theme_check()["ok"] is True
     assert branding.accessibility_audit_plan()["format"] == "appgen.accessibility-audit.v1"
     assert branding.keyboard_navigation_plan("home")[0]["escape_hatch"] == "skip_to_content"
