@@ -77,6 +77,10 @@ def test_dsl_linter_reports_semantic_feedback(runner: CliRunner, tmp_path) -> No
     )
     assert any("Prefer arrow references" in warning for warning in style["warnings"])
     assert any("environment variable" in warning for warning in style["warnings"])
+    assert {"replace_ref_with_arrow", "use_api_key_env"}.issubset(
+        {fix["id"] for fix in style["fixes"]}
+    )
+    assert any(fix["id"] == "normalize_targets" for fix in broken["fixes"])
 
     dsl_path = tmp_path / "lint.appgen"
     dsl_path.write_text(source)
@@ -120,6 +124,7 @@ def test_dsl_documentation_suite_exists() -> None:
     assert "Natural Language Evolution" in guide
     assert "9. Add API-Backed LLM Provider" in tutorial
     assert "Output Contract" in linter
+    assert "structured quick fixes" in linter
     assert "CI Gate" in linter
 
 
@@ -2759,6 +2764,8 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     )
     assert authoring["outline"]["tables"] == ("Book",)
     assert any("Unknown app targets: toaster" in error for error in authoring["lint"]["errors"])
+    assert any(fix["id"] == "normalize_targets" for fix in authoring["lint"]["fixes"])
+    assert studio.dsl_quick_fixes("table Book { id: int pk }")[0]["id"] == "add_app_declaration"
     assert any(item["label"] == "Delphi Component" for item in studio.dsl_completion_items("Delphi"))
     assert studio.dsl_schema_preview("table Book { id: int pk }")["exports"] == ("dbml", "sql", "ponyorm")
     dsl_editor = studio.editor_session("appgen.dsl", "app Library { targets: web }")
@@ -3013,6 +3020,10 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "table Book { author_id: int -> Author.id [one2one] }"
     )["errors"]
     assert dsl_reference.dsl_lint("table Book { author_id: int ref Author.id }")["warnings"]
+    ref_lint = dsl_reference.dsl_lint("table Book { author_id: int ref Author.id }")
+    assert {"add_app_declaration", "replace_ref_with_arrow"}.issubset(
+        {fix["id"] for fix in ref_lint["fixes"]}
+    )
     assert dsl_reference.dsl_lint("app Bad { targets: web, toaster } table Book { title: string }")["errors"]
     assert dsl_reference.dsl_lint(
         "table Book { title: string title: text } table Book { title: string }"

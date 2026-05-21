@@ -17611,6 +17611,51 @@ def _lint_relation_cardinality(source):
     return tuple(errors)
 
 
+def dsl_quick_fixes(source, errors=(), warnings=()):
+    """Return structured quick fixes for common generated DSL authoring issues."""
+    text = source or ""
+    fixes = []
+    if text.strip() and not re.search(r"\\bapp\\s+", text):
+        fixes.append({{
+            "id": "add_app_declaration",
+            "title": "Add an app declaration",
+            "kind": "insert",
+            "insert": "app Generated {{ targets: web }}\\n\\n",
+            "position": "start",
+        }})
+    if not text.strip():
+        fixes.append({{
+            "id": "insert_minimal_app",
+            "title": "Insert a minimal app and table",
+            "kind": "replace_all",
+            "replacement": "app Generated {{ targets: web }}\\n\\ntable Thing {{\\n  id: int pk\\n  name: string required search\\n}}\\n",
+        }})
+    if re.search(r"\\bref\\s+[A-Za-z_][A-Za-z0-9_]*\\.[A-Za-z_][A-Za-z0-9_]*", text):
+        fixes.append({{
+            "id": "replace_ref_with_arrow",
+            "title": "Use arrow reference syntax",
+            "kind": "regex_replace",
+            "pattern": r"\\bref\\s+([A-Za-z_][A-Za-z0-9_]*)\\.([A-Za-z_][A-Za-z0-9_]*)",
+            "replacement": r"-> \\1.\\2",
+        }})
+    if re.search(r"api_key\\s*:\\s*['\\\"]", text):
+        fixes.append({{
+            "id": "use_api_key_env",
+            "title": "Use an environment variable for api_key",
+            "kind": "regex_replace",
+            "pattern": r"api_key\\s*:\\s*['\\\"][^'\\\"]+['\\\"]",
+            "replacement": "api_key: OPENAI_API_KEY",
+        }})
+    if any(str(error).startswith("Unknown app targets") for error in errors):
+        fixes.append({{
+            "id": "normalize_targets",
+            "title": "Keep only supported app targets",
+            "kind": "replace_targets",
+            "supported": PLATFORM_TARGETS,
+        }})
+    return tuple(fixes)
+
+
 def dsl_lint(source):
     """Return lightweight DSL readability and keyword-budget feedback."""
     text = source or ""
@@ -17645,11 +17690,13 @@ def dsl_lint(source):
     errors.extend(_lint_view_references(text))
     errors.extend(_lint_agent_providers(text))
     errors.extend(_lint_relation_cardinality(text))
+    fixes = dsl_quick_fixes(text, errors, warnings)
     return {{
         "ok": not errors and dsl_keyword_budget()["ok"],
         "errors": tuple(errors),
         "warnings": tuple(warnings),
         "suggestions": tuple(suggestions),
+        "fixes": fixes,
         "keyword_budget": dsl_keyword_budget(),
     }}
 
@@ -23298,15 +23345,62 @@ def dsl_lint_plan(text):
         suggestions.append("Add view blocks or Delphi-style component placements for form design.")
     if not outline["llms"] and not outline["agents"]:
         suggestions.append("Add llm and agent blocks when the app needs agentic behavior.")
+    fixes = dsl_quick_fixes(source, errors, warnings)
     return {{
         "ok": not errors,
         "errors": tuple(errors),
         "warnings": tuple(warnings),
         "suggestions": tuple(suggestions),
+        "fixes": fixes,
         "outline": outline,
         "keyword_budget": dsl_keyword_budget(),
         "checks": ("keyword_budget", "references", "field_types", "targets"),
     }}
+
+
+def dsl_quick_fixes(source, errors=(), warnings=()):
+    """Return structured quick fixes for generated Studio DSL authoring."""
+    text = str(source or "")
+    fixes = []
+    if text.strip() and not re.search(r"\\bapp\\s+", text):
+        fixes.append({{
+            "id": "add_app_declaration",
+            "title": "Add an app declaration",
+            "kind": "insert",
+            "insert": "app Generated {{ targets: web }}\\n\\n",
+            "position": "start",
+        }})
+    if not text.strip():
+        fixes.append({{
+            "id": "insert_minimal_app",
+            "title": "Insert a minimal app and table",
+            "kind": "replace_all",
+            "replacement": "app Generated {{ targets: web }}\\n\\ntable Thing {{\\n  id: int pk\\n  name: string required search\\n}}\\n",
+        }})
+    if re.search(r"\\bref\\s+[A-Za-z_][A-Za-z0-9_]*\\.[A-Za-z_][A-Za-z0-9_]*", text):
+        fixes.append({{
+            "id": "replace_ref_with_arrow",
+            "title": "Use arrow reference syntax",
+            "kind": "regex_replace",
+            "pattern": r"\\bref\\s+([A-Za-z_][A-Za-z0-9_]*)\\.([A-Za-z_][A-Za-z0-9_]*)",
+            "replacement": r"-> \\1.\\2",
+        }})
+    if re.search(r"api_key\\s*:\\s*['\\\"]", text):
+        fixes.append({{
+            "id": "use_api_key_env",
+            "title": "Use an environment variable for api_key",
+            "kind": "regex_replace",
+            "pattern": r"api_key\\s*:\\s*['\\\"][^'\\\"]+['\\\"]",
+            "replacement": "api_key: OPENAI_API_KEY",
+        }})
+    if any(str(error).startswith("Unknown app targets") for error in errors):
+        fixes.append({{
+            "id": "normalize_targets",
+            "title": "Keep only supported app targets",
+            "kind": "replace_targets",
+            "supported": SUPPORTED_TARGETS,
+        }})
+    return tuple(fixes)
 
 
 def dsl_keyword_budget():
@@ -26477,6 +26571,7 @@ def validate_dsl_reference_artifacts() -> None:
         "dsl_construct_catalog",
         "dsl_example",
         "dsl_lint",
+        "dsl_quick_fixes",
         "dsl_learning_path",
         "dsl_reference_check",
     )
@@ -26815,6 +26910,7 @@ def validate_studio_artifacts() -> None:
         "dsl_editor_state",
         "editor_session",
         "dsl_lint_plan",
+        "dsl_quick_fixes",
         "dsl_change_plan",
         "database_design_catalog",
         "table_design",

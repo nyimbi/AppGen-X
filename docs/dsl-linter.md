@@ -24,6 +24,13 @@ Example output:
   "suggestions": [
     "Add view blocks to design forms and Delphi-style component layouts."
   ],
+  "fixes": [
+    {
+      "id": "add_app_declaration",
+      "title": "Add an app declaration",
+      "kind": "insert"
+    }
+  ],
   "summary": {
     "tables": 2,
     "views": 1,
@@ -52,6 +59,13 @@ Both the CLI and Python API return the same JSON-serializable structure:
   "errors": ["Unknown view field: InvoiceForm.missing"],
   "warnings": ["Use an environment variable name for api_key, not a literal secret."],
   "suggestions": ["Add llm and agent blocks when the app needs agentic behavior."],
+  "fixes": [
+    {
+      "id": "use_api_key_env",
+      "title": "Use an environment variable for api_key",
+      "kind": "regex_replace"
+    }
+  ],
   "summary": {
     "app": "InvoiceDesk",
     "tables": 3,
@@ -69,7 +83,10 @@ Both the CLI and Python API return the same JSON-serializable structure:
 ```
 
 Use `ok` as the machine gate. Use `errors` for blocking fixes, `warnings` for
-risky but parseable source, and `suggestions` for authoring guidance.
+risky but parseable source, `suggestions` for authoring guidance, and `fixes`
+for structured IDE/CI actions such as adding an app declaration, replacing
+legacy `ref` syntax with `->`, normalizing targets, or moving literal API keys
+to environment-variable references.
 
 ## Checks
 
@@ -93,6 +110,14 @@ It also adds style feedback:
 - Add an `app` declaration for generated naming and targets.
 - Add `view` blocks for form design.
 - Add `llm` and `agent` blocks when agentic behavior is needed.
+
+It also returns structured quick fixes for common authoring feedback:
+
+- `add_app_declaration`
+- `insert_minimal_app`
+- `replace_ref_with_arrow`
+- `use_api_key_env`
+- `normalize_targets`
 
 ## CI Gate
 
@@ -118,7 +143,9 @@ the exact syntax, semantic, and style feedback that shaped the generated app.
 
 Generated apps also include `app/dsl_reference.py` with `dsl_lint(source)`.
 That helper powers the generated DSL reference cockpit and the in-app Developer
-Studio DSL editor.
+Studio DSL editor. Generated lint reports include the same `fixes` shape so the
+Studio can present deterministic quick actions without adding new language
+keywords.
 
 The generated linter is intentionally lightweight for in-app authoring. The
 package-level `pyAppGen.dsl.lint_dsl` remains the authoritative gate because it

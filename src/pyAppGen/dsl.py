@@ -105,8 +105,65 @@ def lint_dsl(text: str, *, source_name: str | None = None) -> dict:
         "errors": tuple(errors),
         "warnings": tuple(warnings),
         "suggestions": tuple(suggestions),
+        "fixes": _lint_quick_fixes(source, errors, warnings),
         "summary": _lint_summary(schema),
     }
+
+
+def _lint_quick_fixes(source: str, errors: Iterable[str], warnings: Iterable[str]) -> tuple[dict, ...]:
+    """Return deterministic quick fixes for common DSL authoring feedback."""
+    fixes: list[dict] = []
+    if source.strip() and not re.search(r"\bapp\s+", source):
+        fixes.append(
+            {
+                "id": "add_app_declaration",
+                "title": "Add an app declaration",
+                "kind": "insert",
+                "insert": "app Generated { targets: web }\n\n",
+                "position": "start",
+            }
+        )
+    if "DSL source is empty." in errors:
+        fixes.append(
+            {
+                "id": "insert_minimal_app",
+                "title": "Insert a minimal app and table",
+                "kind": "replace_all",
+                "replacement": "app Generated { targets: web }\n\ntable Thing {\n  id: int pk\n  name: string required search\n}\n",
+            }
+        )
+    if re.search(r"\bref\s+([A-Za-z_][A-Za-z0-9_]*)\.([A-Za-z_][A-Za-z0-9_]*)", source):
+        fixes.append(
+            {
+                "id": "replace_ref_with_arrow",
+                "title": "Use arrow reference syntax",
+                "kind": "regex_replace",
+                "pattern": r"\bref\s+([A-Za-z_][A-Za-z0-9_]*)\.([A-Za-z_][A-Za-z0-9_]*)",
+                "replacement": r"-> \1.\2",
+            }
+        )
+    if re.search(r"api_key\s*:\s*['\"]", source):
+        fixes.append(
+            {
+                "id": "use_api_key_env",
+                "title": "Use an environment variable for api_key",
+                "kind": "regex_replace",
+                "pattern": r"api_key\s*:\s*['\"][^'\"]+['\"]",
+                "replacement": "api_key: OPENAI_API_KEY",
+            }
+        )
+    for error in errors:
+        if error.startswith("Unknown app targets"):
+            fixes.append(
+                {
+                    "id": "normalize_targets",
+                    "title": "Keep only supported app targets",
+                    "kind": "replace_targets",
+                    "supported": ("web", "pwa", "mobile", "desktop", "chatbot"),
+                }
+            )
+            break
+    return tuple(fixes)
 
 
 def schema_from_dsl(text: str, *, source_name: str | None = None) -> AppSchema:

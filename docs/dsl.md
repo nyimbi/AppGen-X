@@ -337,8 +337,8 @@ apps include:
   summaries, and existing-DSL patch previews.
 - `dsl_reference.py` and `appgen_dsl_reference.html` with generated DSL
   keyword-budget checks, compact construct cards, examples, a learning path,
-  and lightweight lint feedback so every generated app carries an approachable
-  reference for the ANTLR language.
+  lightweight lint feedback, and structured quick fixes so every generated app
+  carries an approachable reference for the ANTLR language.
 - `view_experience.py`, `appgen_view_experience.html`, and
   `appgen-view-experience.js` with generated base-view contracts for offline
   field state, active viewers on the same page, chatbot/help actions, access log
@@ -398,7 +398,7 @@ apps include:
   readiness contracts.
 - `studio.py` and `appgen_studio.html` with a generated IDE/workbench for DSL
   authoring, DSL linting, outline extraction, keyword-budget checks,
-  completions/snippets, searchable command palettes, project trees, editor
+  quick fixes, completions/snippets, searchable command palettes, project trees, editor
   sessions, visual database design, Mermaid ERD export, DBML export, SQL DDL
   preview, PonyORM preview, table proposals, migration previews, staged
   generation jobs, IDE diagnostics, app management, code editing,

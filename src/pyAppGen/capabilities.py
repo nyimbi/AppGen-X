@@ -27,7 +27,7 @@ class Capability:
 
 DEFAULT_CAPABILITIES: tuple[Capability, ...] = (
     Capability("schema.import", "DBML, SQL, PonyORM, and database import", "implemented", "canonical schema adapters with DBML/live unique indexes, SQL enum/ALTER TABLE support, static PonyORM enum/type normalization, and generated import provenance, validation, and review cockpit"),
-    Capability("dsl.language-design", "ANTLR DSL reference, keyword budget, examples, and linting", "partial", "generated DSL reference cockpit, keyword budget checks, examples, and readability lint helpers"),
+    Capability("dsl.language-design", "ANTLR DSL reference, keyword budget, examples, linting, and quick fixes", "partial", "generated DSL reference cockpit, keyword budget checks, examples, readability lint helpers, and structured quick fixes"),
     Capability("codegen.fab", "Flask-AppBuilder app generation", "implemented", "models, views, templates, support files"),
     Capability("ui.visual-modeling", "Visual data, form, and workflow modeling", "partial", "generated designer graph, table/field/relationship edit proposals, schema diffs, migration previews, and DSL regeneration helpers"),
     Capability("ui.view-composition", "Master-detail, multiple-view, and chart view composition", "partial", "generated relationship-driven view composition contracts and cockpit"),
@@ -90,7 +90,7 @@ DEFAULT_CAPABILITIES: tuple[Capability, ...] = (
     Capability("devops.cicd", "CI/CD and automated review gates", "partial", "generated CI workflow and quality gate"),
     Capability("devops.packaging", "Publishable package and reusable templates", "partial", "generated pyproject, MANIFEST, package contract, FAB extension metadata, and Cookiecutter scaffold"),
     Capability("devops.ide-integration", "Visual Studio Code, JetBrains, and Eclipse workspace integration", "partial", "generated VS Code launch/tasks/extensions, JetBrains IDEA/PyCharm run configs, and Eclipse PyDev project files"),
-    Capability("devops.studio", "In-app developer studio", "partial", "generated project tree, searchable command palette, DSL outline/lint/completions, database table proposals, generation jobs, diagnostics, code-edit plans, debug sessions, dependency update plans, app cloning, and component sharing"),
+    Capability("devops.studio", "In-app developer studio", "partial", "generated project tree, searchable command palette, DSL outline/lint/quick-fix/completions, database table proposals, generation jobs, diagnostics, code-edit plans, debug sessions, dependency update plans, app cloning, and component sharing"),
     Capability("devops.project-management", "Agile project and DevOps tool integration", "partial", "generated backlog, sprint, release, traceability, and Jira/GitHub/Azure Boards/GitLab export contracts"),
     Capability("support.training", "Generated training, support, tutorials, and sample apps", "partial", "generated support center, knowledge-base topics, onboarding checklists, tutorials, sample DSL apps, search, and support-ticket payloads"),
     Capability("team.collaboration", "Collaboration and version-control workflows", "partial", "generated change proposals, revision IDs, and review decisions"),
