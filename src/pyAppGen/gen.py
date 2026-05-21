@@ -6106,6 +6106,7 @@ def write_branding_template(output_dir):
       <a class="btn btn-default" href="{{ url_for('BrandingView.theme_json') }}">Theme JSON</a>
       <a class="btn btn-default" href="{{ url_for('BrandingView.design_system_json') }}">Design System JSON</a>
       <a class="btn btn-default" href="{{ url_for('BrandingView.quality_json') }}">Quality JSON</a>
+      <a class="btn btn-default" href="{{ url_for('BrandingView.visual_quality_json') }}">Visual Quality JSON</a>
       <a class="btn btn-default" href="{{ url_for('BrandingView.visual_regression_json') }}">Visual Regression JSON</a>
     </div>
   </div>
@@ -6143,6 +6144,10 @@ def write_branding_template(output_dir):
     <article class="agb-chip">
       <strong>Component States</strong>
       <div class="agb-note">hover, focus, disabled, invalid, selected, empty, error</div>
+    </article>
+    <article class="agb-chip">
+      <strong>Visual Quality</strong>
+      <div class="agb-note">contrast, palette balance, no-overlap, viewport coverage</div>
     </article>
   </div>
 </section>
@@ -9276,6 +9281,51 @@ def visual_regression_plan(page=None):
     }}
 
 
+def _hex_to_rgb(value):
+    value = str(value or "").strip().lstrip("#")
+    if len(value) == 3:
+        value = "".join(part * 2 for part in value)
+    if len(value) != 6:
+        raise ValueError(f"Expected 6-digit hex color, got {{value!r}}")
+    return tuple(int(value[index:index + 2], 16) / 255 for index in (0, 2, 4))
+
+
+def _linear_channel(value):
+    return value / 12.92 if value <= 0.03928 else ((value + 0.055) / 1.055) ** 2.4
+
+
+def _relative_luminance(hex_color):
+    red, green, blue = (_linear_channel(channel) for channel in _hex_to_rgb(hex_color))
+    return 0.2126 * red + 0.7152 * green + 0.0722 * blue
+
+
+def contrast_ratio(foreground, background):
+    """Return WCAG contrast ratio for two generated theme colors."""
+    first = _relative_luminance(foreground)
+    second = _relative_luminance(background)
+    lighter = max(first, second)
+    darker = min(first, second)
+    return round((lighter + 0.05) / (darker + 0.05), 2)
+
+
+def palette_balance_report():
+    """Return palette quality checks that avoid one-note generated UIs."""
+    palette = BRANDING["palette"]
+    unique_colors = tuple(dict.fromkeys(palette.values()))
+    checks = (
+        {{"check": "distinct_roles", "ok": len(unique_colors) >= 4, "value": unique_colors}},
+        {{"check": "primary_accent_distinct", "ok": palette["primary"].lower() != palette["accent"].lower(), "value": (palette["primary"], palette["accent"])}},
+        {{"check": "body_text_contrast", "ok": contrast_ratio(palette["text"], palette["surface"]) >= 4.5, "value": contrast_ratio(palette["text"], palette["surface"])}},
+        {{"check": "muted_text_contrast", "ok": contrast_ratio(palette["muted"], palette["surface"]) >= 3.0, "value": contrast_ratio(palette["muted"], palette["surface"])}},
+    )
+    return {{
+        "format": "appgen.palette-balance.v1",
+        "ok": all(item["ok"] for item in checks),
+        "palette": palette,
+        "checks": checks,
+    }}
+
+
 def design_system_report():
     """Return the full generated design-system contract for review and tooling."""
     return {{
@@ -9289,6 +9339,7 @@ def design_system_report():
         "component_states": component_state_matrix(),
         "viewports": viewport_contract(),
         "visual_regression": visual_regression_plan(),
+        "palette_balance": palette_balance_report(),
         "css_variables": css_variables(),
     }}
 
@@ -9305,11 +9356,36 @@ def theme_quality_report():
         {{"check": "layout_recipes", "ok": {{"workspace", "record-list", "record-form", "dashboard"}} <= set(layout_contract()), "value": tuple(layout_contract())}},
         {{"check": "viewport_contracts", "ok": {{"mobile", "tablet", "desktop", "wide"}} <= set(viewport_contract()), "value": tuple(viewport_contract())}},
         {{"check": "component_state_matrix", "ok": {{"button", "form-control", "table-row", "dashboard-card"}} <= set(component_state_matrix()), "value": tuple(component_state_matrix())}},
+        {{"check": "palette_balance", "ok": palette_balance_report()["ok"], "value": palette_balance_report()["checks"]}},
     )
     return {{
         "format": "appgen.theme-quality.v1",
         "ok": all(item["ok"] for item in checks),
         "checks": checks,
+    }}
+
+
+def visual_experience_quality_report():
+    """Return generated evidence that UI output is polished, responsive, and reviewable."""
+    regression = visual_regression_plan()
+    quality = theme_quality_report()
+    palette = palette_balance_report()
+    checks = (
+        {{"check": "theme_quality", "ok": quality["ok"], "evidence": "theme_quality_report"}},
+        {{"check": "palette_balance", "ok": palette["ok"], "evidence": "palette_balance_report"}},
+        {{"check": "wcag_text_contrast", "ok": palette["checks"][2]["ok"], "value": palette["checks"][2]["value"]}},
+        {{"check": "all_viewports", "ok": set(regression["viewports"]) == {{"mobile", "tablet", "desktop", "wide"}}, "value": tuple(regression["viewports"])}},
+        {{"check": "component_states", "ok": {{"button", "form-control", "table-row", "dashboard-card"}} <= set(regression["states"]), "value": tuple(regression["states"])}},
+        {{"check": "no_overlap_review", "ok": any("overlap" in check for check in regression["checks"]), "value": regression["checks"]}},
+        {{"check": "touch_ready", "ok": design_tokens()["interaction"]["touch_target"] == "44px", "value": design_tokens()["interaction"]["touch_target"]}},
+    )
+    return {{
+        "format": "appgen.visual-experience-quality.v1",
+        "ok": all(item["ok"] for item in checks),
+        "theme": BRANDING["theme"],
+        "checks": checks,
+        "visual_regression": regression,
+        "design_system": design_system_report(),
     }}
 
 
@@ -9419,6 +9495,7 @@ def asset_check(existing_paths):
         "assets": dict(BRANDING["assets"]),
         "design_system": design_tokens(),
         "quality": theme_quality_report(),
+        "visual_quality": visual_experience_quality_report(),
         "accessibility": accessibility_theme_check(),
         "audit": accessibility_audit_plan(),
         "visual_regression": visual_regression_plan(),
@@ -9452,6 +9529,10 @@ class BrandingView(BaseView):
     @expose("/visual-regression.json")
     def visual_regression_json(self):
         return jsonify(visual_regression_plan())
+
+    @expose("/visual-quality.json")
+    def visual_quality_json(self):
+        return jsonify(visual_experience_quality_report())
 
 
 def register_branding(appbuilder):
@@ -30024,6 +30105,9 @@ def validate_branding_artifacts() -> None:
         or "typography_scale" not in contract
         or "design_system_report" not in contract
         or "theme_quality_report" not in contract
+        or "palette_balance_report" not in contract
+        or "contrast_ratio" not in contract
+        or "visual_experience_quality_report" not in contract
         or "accessibility_theme_check" not in contract
         or "accessibility_audit_plan" not in contract
         or "keyboard_navigation_plan" not in contract
@@ -30037,12 +30121,13 @@ def validate_branding_artifacts() -> None:
         "Theme JSON" not in template
         or "Design System JSON" not in template
         or "Quality JSON" not in template
+        or "Visual Quality JSON" not in template
         or "Visual Regression JSON" not in template
         or "Viewport Contracts" not in template
         or "Component States" not in template
         or "branding.palette" not in template
     ):
-        fail("branding template must expose theme preview, design-system export, quality report, visual QA report, and palette")
+        fail("branding template must expose theme preview, design-system export, visual quality report, visual QA report, and palette")
 
 
 def validate_extension_artifacts() -> None:
@@ -31409,6 +31494,11 @@ def test_generated_runtime_helpers():
     assert branding.viewport_contract("mobile")["density"] == "touch"
     assert branding.component_state_matrix("form-control")["invalid"]["message_required"] is True
     assert branding.visual_regression_plan()["format"] == "appgen.visual-regression.v1"
+    assert branding.contrast_ratio("#14213d", "#f8fafc") >= 4.5
+    assert branding.palette_balance_report()["ok"] is True
+    assert branding.visual_experience_quality_report()["format"] == "appgen.visual-experience-quality.v1"
+    assert branding.visual_experience_quality_report()["ok"] is True
+    assert any(item["check"] == "no_overlap_review" for item in branding.visual_experience_quality_report()["checks"])
     assert branding.accessibility_theme_check()["ok"] is True
     assert branding.accessibility_audit_plan()["format"] == "appgen.accessibility-audit.v1"
     assert branding.keyboard_navigation_plan("home")[0]["escape_hatch"] == "skip_to_content"

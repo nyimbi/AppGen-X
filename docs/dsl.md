@@ -234,8 +234,10 @@ apps include:
   generated brand contract, theme preview, design tokens, component style
   contracts, responsive layout recipes, typography scale, density modes,
   viewport contracts, component state matrices, visual regression plans, visual
-  quality reports, WCAG-oriented accessibility audit plans, keyboard navigation
-  plans, ARIA landmark contracts, focus/touch checks, and CSS custom properties.
+  quality reports for contrast, palette balance, no-overlap review, and
+  viewport coverage, WCAG-oriented accessibility audit plans, keyboard
+  navigation plans, ARIA landmark contracts, focus/touch checks, and CSS custom
+  properties.
 - `extensions.py`, `appgen_extensions.html`, and `app_custom/extensions.py`
   with stable custom-code hooks that survive regeneration.
 - `pyproject.toml`, `MANIFEST.in`, `appgen_package.py`, and `cookiecutter/`

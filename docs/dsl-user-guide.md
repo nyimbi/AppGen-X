@@ -250,13 +250,17 @@ Generated apps include `branding.py`, `appgen_branding.html`, and
 - viewport contracts for mobile, tablet, desktop, and wide layouts;
 - component state matrices for hover, focus, disabled, invalid, selected,
   empty, and error states;
+- a visual experience quality report with palette balance, WCAG contrast ratios,
+  touch readiness, viewport coverage, component-state coverage, and no-overlap
+  review evidence;
 - a visual regression plan that lists screenshot targets and state coverage;
 - accessibility audit plans for focus order, landmarks, touch targets, and
   WCAG-oriented checks.
 
-Use the generated `/branding/visual-regression.json` endpoint as a review
-checklist when validating that generated applications are polished across web,
-mobile, and desktop-sized viewports.
+Use the generated `/branding/visual-quality.json` endpoint as the machine gate
+and `/branding/visual-regression.json` as the screenshot checklist when
+validating that generated applications are polished across web, mobile, and
+desktop-sized viewports.
 
 ## JHipster-Plus Readiness
 

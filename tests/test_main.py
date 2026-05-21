@@ -1733,9 +1733,11 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert "Generated branding contract" in branding_template
     assert "Design System JSON" in branding_template
     assert "Quality JSON" in branding_template
+    assert "Visual Quality JSON" in branding_template
     assert "Responsive Layouts" in branding_template
     assert "Visual Regression JSON" in branding_template
     assert "Viewport Contracts" in branding_template
+    assert "contrast, palette balance, no-overlap" in branding_template
     assert "Component States" in branding_template
     assert "app_custom/extensions.py" in (output_dir / "templates" / "appgen_extensions.html").read_text()
     assert "Library" in (tmp_path / "README.md").read_text()
@@ -1977,6 +1979,11 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert branding.component_state_matrix("form-control")["invalid"]["message_required"] is True
     assert branding.component_state_matrix("table-row")["selected"]["aria_selected"] is True
     assert branding.visual_regression_plan()["format"] == "appgen.visual-regression.v1"
+    assert branding.contrast_ratio("#14213d", "#f8fafc") >= 4.5
+    assert branding.palette_balance_report()["ok"] is True
+    assert branding.visual_experience_quality_report()["format"] == "appgen.visual-experience-quality.v1"
+    assert branding.visual_experience_quality_report()["ok"] is True
+    assert any(item["check"] == "no_overlap_review" for item in branding.visual_experience_quality_report()["checks"])
     assert "mobile" in branding.design_system_report()["viewports"]
     assert branding.component_style_contract("button")["min_height"] == "44px"
     assert branding.component_style_contract("page-header")["responsive_behavior"] == "actions wrap below title on mobile"
