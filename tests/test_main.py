@@ -1415,6 +1415,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert "Generated dashboard, KPI, and chart contracts" in (
         output_dir / "templates" / "appgen_dashboards.html"
     ).read_text()
+    assert "Workbench JSON" in (output_dir / "templates" / "appgen_dashboards.html").read_text()
     assert "app usage analytics" in (output_dir / "templates" / "appgen_usage_analytics.html").read_text()
     assert "Generated search indexes" in (output_dir / "templates" / "appgen_search.html").read_text()
     assert "Generated image and upload field contracts" in (
@@ -1499,6 +1500,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert "Tutorials JSON" in (output_dir / "templates" / "appgen_support_center.html").read_text()
     assert "Low-Code Feature Matrix" in (output_dir / "templates" / "appgen_low_code_features.html").read_text()
     assert "Feature Matrix JSON" in (output_dir / "templates" / "appgen_low_code_features.html").read_text()
+    assert "JHipster Comparison JSON" in (output_dir / "templates" / "appgen_low_code_features.html").read_text()
     assert "Prototype JSON" in (output_dir / "templates" / "appgen_prototyping.html").read_text()
     assert "Generated sequential user-input" in (output_dir / "templates" / "appgen_wizards.html").read_text()
     branding_template = (output_dir / "templates" / "appgen_branding.html").read_text()
@@ -1680,6 +1682,9 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     )["ok"] is True
     assert low_code_features.readiness_report()["source"]["document"] == "docs/Lo-code features.md"
     assert low_code_features.readiness_report()["alignment_complete"] is True
+    assert low_code_features.readiness_report()["competitive_position"] == "broader-than-jhipster"
+    assert low_code_features.jhipster_competitive_report()["ok"] is True
+    assert len(low_code_features.jhipster_competitive_report()["appgen_differentiators"]) >= 7
     assert "ui.form-designer" in {item["key"] for item in low_code_features.capability_matrix()}
     assert "ai.agentic-systems" in {item["key"] for item in low_code_features.grouped_capabilities()["ai"]}
     assert low_code_features.low_code_features_check(
@@ -1791,7 +1796,19 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     bar_data = dashboards.chart_data(bar_chart, [{"title": "Dune"}, {"title": "Dune"}, {"title": "Foundation"}])
     assert bar_data["labels"] == ("Dune", "Foundation")
     assert bar_data["values"] == (2, 1)
-    assert dashboards.dashboard_payload("Book", [{"title": "Dune"}])["charts"][0]["data"]["values"] == (1,)
+    bar_dataset = dashboards.chart_dataset(bar_chart, [{"title": "Dune"}, {"title": "Dune"}, {"title": "Foundation"}])
+    assert bar_dataset == ({"label": "Dune", "value": 2}, {"label": "Foundation", "value": 1})
+    assert dashboards.vega_lite_spec(bar_chart)["$schema"].endswith("/vega-lite/v5.json")
+    assert dashboards.chart_render_contract(bar_chart, [{"title": "Dune"}])["vega_lite"]["mark"] == "bar"
+    assert "highest Dune at 1" in dashboards.chart_accessibility_summary(bar_chart, [{"title": "Dune"}])
+    dashboard_payload = dashboards.dashboard_payload("Book", [{"title": "Dune"}])
+    assert dashboard_payload["charts"][0]["data"]["values"] == (1,)
+    assert dashboard_payload["charts"][0]["render"]["dataset"] == ({"label": "records", "value": 1},)
+    assert dashboards.dashboard_workbench("Book", [{"title": "Dune"}])["renderer_targets"] == (
+        "web:vega-lite",
+        "mobile:native-chart",
+        "desktop:native-chart",
+    )
     usage_events = (
         usage_analytics.usage_event("Book", "viewed", actor="ada", occurred_at="2026-01-01T10:00:00Z"),
         usage_analytics.usage_event("Book", "created", actor="ada", occurred_at="2026-01-01T10:01:00Z"),

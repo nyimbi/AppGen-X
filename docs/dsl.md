@@ -216,7 +216,9 @@ apps include:
 - `report_delivery.py` and `appgen_report_delivery.html` with generated PDF
   exports and email delivery payloads for reports.
 - `dashboards.py` and `appgen_dashboards.html` with generated KPI, bar, line,
-  and numeric chart contracts for schema-aware data visualization.
+  and numeric chart contracts, Vega-Lite visualization specs, renderer-ready
+  datasets, accessibility summaries, and web/mobile/desktop dashboard
+  workbench payloads for schema-aware data visualization.
 - `search.py` and `appgen_search.html` with generated searchable-field indexes
   and provider plans for in-memory, PostgreSQL, Whoosh, and Elasticsearch search.
 - `media.py` and `appgen_media.html` with generated image and file upload
@@ -314,7 +316,9 @@ apps include:
   entries, support-ticket payloads, and sample DSL applications.
 - `low_code_features.py` and `appgen_low_code_features.html` with a generated
   capability matrix grounded in `docs/Lo-code features.md`, roadmap alignment,
-  and readiness reporting for the low-code/no-code platform surface.
+  readiness reporting for the low-code/no-code platform surface, and an
+  explicit broader-than-JHipster comparison that keeps JDL interoperability
+  while tracking AppGen-only capabilities.
 - `prototyping.py` and `appgen_prototyping.html` with rapid mock screens,
   realistic sample data, preview packages, experiment hypotheses, and backlog
   promotion plans for fast stakeholder iteration.
@@ -334,7 +338,9 @@ apps include:
 - `jhipster/app.jdl` and `jhipster/appgen_jhipster.py` with generated
   JHipster JDL exports for Java/TypeScript application generation, preserving
   relation cardinality as JDL `ManyToOne`, `OneToOne`, `OneToMany`, and
-  `ManyToMany` blocks.
+  `ManyToMany` blocks. JHipster is treated as an interoperability target; AppGen
+  also generates Python-native web/mobile/desktop starters, visual builders,
+  agentic systems, ERP templates, and operational workbenches.
 - `chatbots/dialogflow/intents.json`,
   `chatbots/botframework/manifest.json`, and `chatbots/appgen_chatbots.py`
   with generated provider intents, field prompts, and conversation checks.

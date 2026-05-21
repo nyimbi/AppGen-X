@@ -2216,6 +2216,7 @@ def write_dashboards_template(output_dir):
       {% endfor %}
       <div style="margin-top: 12px;">
         <a class="btn btn-xs btn-default" href="{{ url_for('DashboardView.dashboard_json', table_name=dashboard.table) }}">JSON</a>
+        <a class="btn btn-xs btn-default" href="{{ url_for('DashboardView.dashboard_workbench_json', table_name=dashboard.table) }}">Workbench JSON</a>
       </div>
     </article>
     {% else %}
@@ -4972,8 +4973,15 @@ def write_low_code_features_template(output_dir):
     <div class="aglf-actions">
       <a class="btn btn-default" href="{{ url_for('LowCodeFeaturesView.matrix_json') }}">Feature Matrix JSON</a>
       <a class="btn btn-default" href="{{ url_for('LowCodeFeaturesView.readiness_json') }}">Readiness JSON</a>
+      <a class="btn btn-default" href="{{ url_for('LowCodeFeaturesView.jhipster_comparison_json') }}">JHipster Comparison JSON</a>
     </div>
   </div>
+  <p class="aglf-note">
+    Competitive position: {{ readiness.competitive_position }}. AppGen keeps
+    JHipster JDL interoperability while adding visual builders, Python-native
+    targets, schema imports, ERP templates, agentic systems, and operational
+    workbenches.
+  </p>
   <div class="aglf-grid">
     {% for group, items in grouped.items() %}
     <article class="aglf-card">
@@ -8764,6 +8772,73 @@ def chart_data(chart, rows):
     raise ValueError(f"Unsupported chart metric: {{metric}}")
 
 
+def chart_dataset(chart, rows):
+    """Return chart rows as label/value dictionaries for renderer adapters."""
+    data = chart_data(chart, rows)
+    return tuple(
+        {{"label": label, "value": value}}
+        for label, value in zip(data["labels"], data["values"])
+    )
+
+
+def vega_lite_spec(chart):
+    """Return a Vega-Lite-compatible visualization contract for a chart."""
+    mark = {{
+        "kpi": "text",
+        "number": "text",
+        "bar": "bar",
+        "line": "line",
+    }}.get(chart["kind"], "bar")
+    x_type = "temporal" if chart["metric"] == "count_over_time" else "nominal"
+    encoding = {{
+        "x": {{"field": "label", "type": x_type, "title": chart["field"] or "Metric"}},
+        "y": {{"field": "value", "type": "quantitative", "title": chart["label"]}},
+        "tooltip": (
+            {{"field": "label", "type": x_type}},
+            {{"field": "value", "type": "quantitative"}},
+        ),
+    }}
+    if mark == "text":
+        encoding = {{
+            "text": {{"field": "value", "type": "quantitative"}},
+            "tooltip": (
+                {{"field": "label", "type": "nominal"}},
+                {{"field": "value", "type": "quantitative"}},
+            ),
+        }}
+    return {{
+        "$schema": "https://vega.github.io/schema/vega-lite/v5.json",
+        "title": chart["label"],
+        "description": f"Generated {{chart['kind']}} chart for {{chart['name']}}.",
+        "data": {{"name": chart["name"]}},
+        "mark": mark,
+        "encoding": encoding,
+    }}
+
+
+def chart_accessibility_summary(chart, rows):
+    """Return readable chart text for screen readers, exports, and tests."""
+    dataset = chart_dataset(chart, rows)
+    if not dataset:
+        return f"{{chart['label']}} has no data."
+    total = sum(item["value"] for item in dataset)
+    peak = max(dataset, key=lambda item: item["value"])
+    return (
+        f"{{chart['label']}} has {{len(dataset)}} data point(s), "
+        f"total {{total}}, highest {{peak['label']}} at {{peak['value']}}."
+    )
+
+
+def chart_render_contract(chart, rows=()):
+    """Return data, visualization spec, and accessible text for one chart."""
+    return {{
+        "chart": chart,
+        "dataset": chart_dataset(chart, rows),
+        "vega_lite": vega_lite_spec(chart),
+        "accessibility": chart_accessibility_summary(chart, rows),
+    }}
+
+
 def dashboard_payload(table_name, rows):
     """Return one dashboard with computed data for supplied rows."""
     dashboard = dashboard_spec(table_name)
@@ -8771,9 +8846,19 @@ def dashboard_payload(table_name, rows):
         "table": table_name,
         "label": dashboard["label"],
         "charts": tuple(
-            dict(chart, data=chart_data(chart, rows))
+            dict(chart, data=chart_data(chart, rows), render=chart_render_contract(chart, rows))
             for chart in dashboard["charts"]
         ),
+    }}
+
+
+def dashboard_workbench(table_name, rows=()):
+    """Return a renderer-ready dashboard workspace for web, mobile, and desktop."""
+    dashboard = dashboard_spec(table_name)
+    return {{
+        "dashboard": dashboard,
+        "charts": tuple(chart_render_contract(chart, rows) for chart in dashboard["charts"]),
+        "renderer_targets": ("web:vega-lite", "mobile:native-chart", "desktop:native-chart"),
     }}
 
 
@@ -8802,6 +8887,14 @@ class DashboardView(BaseView):
     @expose("/<table_name>.json")
     def dashboard_json(self, table_name):
         return jsonify(dashboard_spec(table_name))
+
+    @expose("/<table_name>/workbench.json")
+    def dashboard_workbench_json(self, table_name):
+        return jsonify(dashboard_workbench(table_name))
+
+    @expose("/chart/<chart_name>/vega.json")
+    def chart_vega_json(self, chart_name):
+        return jsonify(vega_lite_spec(chart_spec(chart_name)))
 
 
 def register_dashboards(appbuilder):
@@ -16195,6 +16288,26 @@ FEATURE_SOURCE = {{
 APP_TABLES = {table_names!r}
 APP_TARGETS = {targets!r}
 CAPABILITIES = {capabilities!r}
+JHIPSTER_BASELINE = {{
+    "platform": "JHipster",
+    "strengths": (
+        "JDL entity modeling",
+        "Spring Boot application generation",
+        "Angular/React/Vue front ends",
+        "Docker and Kubernetes deployment helpers",
+        "security and CI/CD conventions",
+    ),
+}}
+APPGEN_DIFFERENTIATORS = (
+    {{"capability": "ANTLR low-code DSL", "evidence": "Compact keyword budget, linter, tutorials, and generated DSL reference"}},
+    {{"capability": "Multi-source schema import", "evidence": "DBML, SQL DDL, static PonyORM scripts, and live database introspection"}},
+    {{"capability": "Visual no-code builders", "evidence": "Database workbench, Delphi-style form designer, workflow/statechart workbench, and DSL regeneration"}},
+    {{"capability": "Python-native targets", "evidence": "Flask-AppBuilder web app plus Kivy mobile and BeeWare desktop starters"}},
+    {{"capability": "Agentic systems", "evidence": "Local and API-key LLM providers, generated agents, chatbots, voice, and AI analytics contracts"}},
+    {{"capability": "ERP-ready modules", "evidence": "Ledger, AP, AR, invoicing, HR, inventory, manufacturing, reports, and operational templates"}},
+    {{"capability": "Operational workbenches", "evidence": "Config editor, diagnostics, backup, monitoring, resilience, performance, migration, and deployment contracts"}},
+    {{"capability": "JHipster interoperability", "evidence": "JDL export remains available without limiting AppGen's broader feature set"}},
+)
 ROADMAP_AREAS = (
     {{
         "area": "visual_building",
@@ -16282,6 +16395,7 @@ def readiness_report():
     """Summarize low-code platform coverage and remaining partial areas."""
     counts = Counter(item["status"] for item in CAPABILITIES)
     partial = tuple(item["key"] for item in CAPABILITIES if item["status"] != "implemented")
+    competitive = jhipster_competitive_report()
     return {{
         "source": dict(FEATURE_SOURCE),
         "targets": APP_TARGETS,
@@ -16290,6 +16404,26 @@ def readiness_report():
         "total": len(CAPABILITIES),
         "partial": partial,
         "alignment_complete": all(item["covered"] for item in roadmap_alignment()),
+        "competitive_position": competitive["position"],
+        "jhipster_differentiators": competitive["appgen_differentiators"],
+    }}
+
+
+def jhipster_competitive_report():
+    """Return why this generated app platform is broader than JHipster."""
+    capability_keys = {{item["key"] for item in CAPABILITIES}}
+    appgen_only = tuple(
+        item
+        for item in APPGEN_DIFFERENTIATORS
+        if item["capability"] != "JHipster interoperability" or "platform.jhipster" in capability_keys
+    )
+    return {{
+        "baseline": dict(JHIPSTER_BASELINE),
+        "position": "broader-than-jhipster",
+        "appgen_differentiators": appgen_only,
+        "interop": capability_lookup("platform.jhipster"),
+        "minimum_differentiator_count": 7,
+        "ok": len(appgen_only) >= 7 and "platform.jhipster" in capability_keys,
     }}
 
 
@@ -16300,11 +16434,12 @@ def low_code_features_check(existing_paths):
     missing = tuple(path for path in required if path not in existing)
     report = readiness_report()
     return {{
-        "ok": not missing and report["alignment_complete"] and report["total"] >= 80,
+        "ok": not missing and report["alignment_complete"] and report["total"] >= 80 and jhipster_competitive_report()["ok"],
         "missing": missing,
         "source": dict(FEATURE_SOURCE),
         "total": report["total"],
         "areas": tuple(item["area"] for item in roadmap_alignment()),
+        "competitive_position": report["competitive_position"],
     }}
 
 
@@ -16332,6 +16467,10 @@ class LowCodeFeaturesView(BaseView):
     @expose("/alignment.json")
     def alignment_json(self):
         return jsonify(list(roadmap_alignment()))
+
+    @expose("/jhipster-comparison.json")
+    def jhipster_comparison_json(self):
+        return jsonify(jhipster_competitive_report())
 
 
 def register_low_code_features(appbuilder):
@@ -23430,8 +23569,10 @@ def validate_low_code_features_artifacts() -> None:
     )
     if not all(item in contract for item in required):
         fail("low-code feature matrix must expose capability, roadmap, readiness, and source-document contracts")
+    if "jhipster_competitive_report" not in contract or "broader-than-jhipster" not in contract:
+        fail("low-code feature matrix must make AppGen's broader-than-JHipster position explicit")
     template = (ROOT / "app" / "templates" / "appgen_low_code_features.html").read_text()
-    if "Low-Code Feature Matrix" not in template or "Feature Matrix JSON" not in template or "Readiness JSON" not in template:
+    if "Low-Code Feature Matrix" not in template or "Feature Matrix JSON" not in template or "Readiness JSON" not in template or "JHipster Comparison JSON" not in template:
         fail("low-code feature cockpit must expose matrix and readiness links")
 
 
