@@ -1408,7 +1408,9 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert "Tutorials JSON" in (output_dir / "templates" / "appgen_support_center.html").read_text()
     assert "Prototype JSON" in (output_dir / "templates" / "appgen_prototyping.html").read_text()
     assert "Generated sequential user-input" in (output_dir / "templates" / "appgen_wizards.html").read_text()
-    assert "Generated branding contract" in (output_dir / "templates" / "appgen_branding.html").read_text()
+    branding_template = (output_dir / "templates" / "appgen_branding.html").read_text()
+    assert "Generated branding contract" in branding_template
+    assert "Design System JSON" in branding_template
     assert "app_custom/extensions.py" in (output_dir / "templates" / "appgen_extensions.html").read_text()
     assert "Library" in (tmp_path / "README.md").read_text()
     accessibility_text = (tmp_path / "docs" / "accessibility.md").read_text()
@@ -1428,6 +1430,8 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     theme_css = (output_dir / "static" / "appgen-theme.css").read_text()
     assert "--appgen-primary: #2f6f5e;" in theme_css
     assert "--appgen-accent: #9a6b2f;" in theme_css
+    assert "--appgen-focus-ring:" in theme_css
+    assert "--appgen-touch-target: 44px;" in theme_css
     assert "fill=\"#2f6f5e\"" in (output_dir / "static" / "appgen-icon.svg").read_text()
     assert "Library is offline" in (output_dir / "static" / "appgen-offline.html").read_text()
     assert "Book Schema" not in (tmp_path / "docs" / "schema.md").read_text()
@@ -1563,6 +1567,10 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert rules.rules_check({"app/rules.py", "app/templates/appgen_rules.html"})["ok"] is True
     assert branding.theme_contract()["theme"] == "sage"
     assert branding.css_variables()["--appgen-primary"] == "#2f6f5e"
+    assert branding.design_tokens()["radius"]["panel"] == "8px"
+    assert branding.component_style_contract("button")["min_height"] == "44px"
+    assert branding.component_style_contract("dashboard-card")["accent_border"] == "4px"
+    assert branding.accessibility_theme_check()["ok"] is True
     assert branding.asset_check(
         {"app/branding.py", "app/static/appgen-theme.css", "app/templates/appgen_branding.html"}
     )["ok"] is True

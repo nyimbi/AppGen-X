@@ -196,7 +196,8 @@ apps include:
 - `static/appgen.webmanifest`, `static/appgen-sw.js`, and an offline shell for
   progressive web app behavior.
 - `branding.py`, `appgen_branding.html`, and `static/appgen-theme.css` with a
-  generated brand contract, theme preview, and CSS custom properties.
+  generated brand contract, theme preview, design tokens, component style
+  contracts, focus/touch accessibility checks, and CSS custom properties.
 - `extensions.py`, `appgen_extensions.html`, and `app_custom/extensions.py`
   with stable custom-code hooks that survive regeneration.
 - `pyproject.toml`, `MANIFEST.in`, `appgen_package.py`, and `cookiecutter/`

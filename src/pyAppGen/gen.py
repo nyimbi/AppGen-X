@@ -5182,6 +5182,7 @@ def write_branding_template(output_dir):
   .agb-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px; }
   .agb-chip { border: 1px solid #d9e2ec; background: #fff; padding: 12px; }
   .agb-swatch { height: 36px; border: 1px solid #cbd5e1; margin-bottom: 8px; }
+  .agb-actions { display: flex; gap: 8px; flex-wrap: wrap; }
   @media (max-width: 760px) { .agb-head { display: block; } }
 </style>
 <section class="agb-wrap">
@@ -5193,7 +5194,10 @@ def write_branding_template(output_dir):
         derived from the low-code app declaration.
       </p>
     </div>
-    <a class="btn btn-default" href="{{ url_for('BrandingView.theme_json') }}">Theme JSON</a>
+    <div class="agb-actions">
+      <a class="btn btn-default" href="{{ url_for('BrandingView.theme_json') }}">Theme JSON</a>
+      <a class="btn btn-default" href="{{ url_for('BrandingView.design_system_json') }}">Design System JSON</a>
+    </div>
   </div>
   <div class="agb-preview">
     <span class="agb-mark">{{ branding.logo_text }}</span>
@@ -5201,6 +5205,7 @@ def write_branding_template(output_dir):
     <p class="agb-note">{{ branding.tagline }}</p>
     <a class="btn btn-primary" href="/">Primary action</a>
   </div>
+  <h2>Design tokens</h2>
   <div class="agb-grid">
     {% for name, value in branding.palette.items() %}
     <article class="agb-chip">
@@ -7153,14 +7158,38 @@ def _pwa_icon_text(app_name: str, branding: dict) -> str:
 """
 
 
+def _focus_ring_value(primary: str) -> str:
+    color = primary.lstrip("#")
+    if len(color) == 6:
+        try:
+            red = int(color[0:2], 16)
+            green = int(color[2:4], 16)
+            blue = int(color[4:6], 16)
+            return f"0 0 0 3px rgba({red}, {green}, {blue}, 0.28)"
+        except ValueError:
+            pass
+    return "0 0 0 3px rgba(47, 111, 94, 0.28)"
+
+
 def _theme_css_text(branding: dict) -> str:
     palette = branding["palette"]
+    focus_ring = _focus_ring_value(palette["primary"])
     return f""":root {{
   --appgen-primary: {palette["primary"]};
   --appgen-accent: {palette["accent"]};
   --appgen-surface: {palette["surface"]};
   --appgen-text: {palette["text"]};
   --appgen-muted: {palette["muted"]};
+  --appgen-focus-ring: {focus_ring};
+  --appgen-radius-sm: 4px;
+  --appgen-radius-md: 8px;
+  --appgen-space-1: 4px;
+  --appgen-space-2: 8px;
+  --appgen-space-3: 12px;
+  --appgen-space-4: 16px;
+  --appgen-space-5: 24px;
+  --appgen-shadow-panel: 0 10px 24px rgba(15, 23, 42, 0.08);
+  --appgen-touch-target: 44px;
 }}
 
 .navbar, .navbar-inverse {{
@@ -7183,11 +7212,59 @@ def _theme_css_text(branding: dict) -> str:
   background-color: var(--appgen-accent);
   border-color: var(--appgen-accent);
 }}
+
+.btn,
+.form-control {{
+  min-height: var(--appgen-touch-target);
+  border-radius: var(--appgen-radius-sm);
+}}
+
+.btn:focus-visible,
+.form-control:focus-visible,
+.appgen-focusable:focus-visible {{
+  box-shadow: var(--appgen-focus-ring);
+  outline: 2px solid transparent;
+  outline-offset: 2px;
+}}
+
+.appgen-panel,
+.panel {{
+  border-radius: var(--appgen-radius-md);
+  box-shadow: var(--appgen-shadow-panel);
+}}
+
+.appgen-kpi {{
+  display: grid;
+  gap: var(--appgen-space-2);
+  min-height: 112px;
+  padding: var(--appgen-space-4);
+  border-left: 4px solid var(--appgen-accent);
+  background: var(--appgen-surface);
+}}
+
+.appgen-form-field {{
+  display: grid;
+  gap: var(--appgen-space-2);
+  margin-bottom: var(--appgen-space-4);
+}}
+
+.table {{
+  background: #ffffff;
+}}
+
+@media (max-width: 760px) {{
+  .table-responsive,
+  .appgen-responsive-table {{
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }}
+}}
 """
 
 
 def _branding_text(schema: AppSchema) -> str:
     branding = _branding_contract(schema)
+    focus_ring = _focus_ring_value(branding["palette"]["primary"])
     return f'''"""Generated branding and theming contract for AppGen apps."""
 
 from __future__ import annotations
@@ -7214,6 +7291,98 @@ def css_variables():
         "--appgen-surface": palette["surface"],
         "--appgen-text": palette["text"],
         "--appgen-muted": palette["muted"],
+        "--appgen-focus-ring": {focus_ring!r},
+        "--appgen-radius-sm": "4px",
+        "--appgen-radius-md": "8px",
+        "--appgen-touch-target": "44px",
+    }}
+
+
+def design_tokens():
+    """Return the generated design-system tokens shared by all generated UI."""
+    return {{
+        "color": dict(BRANDING["palette"]),
+        "radius": {{
+            "control": "4px",
+            "panel": "8px",
+        }},
+        "spacing": {{
+            "xs": "4px",
+            "sm": "8px",
+            "md": "12px",
+            "lg": "16px",
+            "xl": "24px",
+        }},
+        "typography": {{
+            "body": "system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+            "heading_weight": 700,
+            "body_line_height": 1.5,
+        }},
+        "interaction": {{
+            "focus_ring": {focus_ring!r},
+            "touch_target": "44px",
+        }},
+        "breakpoints": {{
+            "mobile": "760px",
+            "desktop": "1024px",
+        }},
+    }}
+
+
+def component_style_contract(component=None):
+    """Return generated component style contracts for app builders and extensions."""
+    tokens = design_tokens()
+    contracts = {{
+        "button": {{
+            "radius": tokens["radius"]["control"],
+            "min_height": tokens["interaction"]["touch_target"],
+            "focus": tokens["interaction"]["focus_ring"],
+            "primary_background": tokens["color"]["primary"],
+        }},
+        "panel": {{
+            "radius": tokens["radius"]["panel"],
+            "padding": tokens["spacing"]["lg"],
+            "shadow": "0 10px 24px rgba(15, 23, 42, 0.08)",
+            "background": tokens["color"]["surface"],
+        }},
+        "form-field": {{
+            "gap": tokens["spacing"]["sm"],
+            "margin_bottom": tokens["spacing"]["lg"],
+            "control_min_height": tokens["interaction"]["touch_target"],
+        }},
+        "table": {{
+            "responsive_breakpoint": tokens["breakpoints"]["mobile"],
+            "row_focus": tokens["interaction"]["focus_ring"],
+            "header_weight": 700,
+        }},
+        "dashboard-card": {{
+            "min_height": "112px",
+            "accent_border": "4px",
+            "padding": tokens["spacing"]["lg"],
+        }},
+    }}
+    if component is None:
+        return contracts
+    return contracts[component]
+
+
+def accessibility_theme_check():
+    """Return readiness checks for focus, touch, and generated color tokens."""
+    variables = css_variables()
+    required = (
+        "--appgen-primary",
+        "--appgen-accent",
+        "--appgen-surface",
+        "--appgen-text",
+        "--appgen-focus-ring",
+        "--appgen-touch-target",
+    )
+    missing = tuple(name for name in required if not variables.get(name))
+    return {{
+        "ok": not missing and variables["--appgen-touch-target"] == "44px",
+        "missing": missing,
+        "focus_visible": variables["--appgen-focus-ring"],
+        "touch_target": variables["--appgen-touch-target"],
     }}
 
 
@@ -7227,6 +7396,8 @@ def asset_check(existing_paths):
         "missing": missing,
         "theme": BRANDING["theme"],
         "assets": dict(BRANDING["assets"]),
+        "design_system": design_tokens(),
+        "accessibility": accessibility_theme_check(),
     }}
 
 
@@ -7241,6 +7412,10 @@ class BrandingView(BaseView):
     @expose("/theme.json")
     def theme_json(self):
         return jsonify(theme_contract())
+
+    @expose("/design-system.json")
+    def design_system_json(self):
+        return jsonify({{"tokens": design_tokens(), "components": component_style_contract()}})
 
 
 def register_branding(appbuilder):
@@ -23183,14 +23358,25 @@ def validate_report_delivery_artifacts() -> None:
 
 def validate_branding_artifacts() -> None:
     css = (ROOT / "app" / "static" / "appgen-theme.css").read_text()
-    if "--appgen-primary" not in css or "--appgen-accent" not in css:
-        fail("theme CSS must expose generated brand variables")
+    if (
+        "--appgen-primary" not in css
+        or "--appgen-accent" not in css
+        or "--appgen-focus-ring" not in css
+        or "--appgen-touch-target" not in css
+    ):
+        fail("theme CSS must expose generated brand, focus, and touch variables")
     contract = (ROOT / "app" / "branding.py").read_text()
-    if "theme_contract" not in contract or "asset_check" not in contract:
-        fail("branding contract must expose theme and asset checks")
+    if (
+        "theme_contract" not in contract
+        or "asset_check" not in contract
+        or "design_tokens" not in contract
+        or "component_style_contract" not in contract
+        or "accessibility_theme_check" not in contract
+    ):
+        fail("branding contract must expose theme, design-system, and accessibility checks")
     template = (ROOT / "app" / "templates" / "appgen_branding.html").read_text()
-    if "Theme JSON" not in template or "branding.palette" not in template:
-        fail("branding template must expose theme preview and palette")
+    if "Theme JSON" not in template or "Design System JSON" not in template or "branding.palette" not in template:
+        fail("branding template must expose theme preview, design-system export, and palette")
 
 
 def validate_extension_artifacts() -> None:
@@ -24336,6 +24522,9 @@ def test_generated_runtime_helpers():
     assert studio.studio_check({"app/studio.py", "app/templates/appgen_studio.html"})["ok"] is True
     assert isinstance(wizards.wizard_catalog(), tuple)
     assert "--appgen-primary" in branding.css_variables()
+    assert branding.design_tokens()["interaction"]["touch_target"] == "44px"
+    assert "button" in branding.component_style_contract()
+    assert branding.accessibility_theme_check()["ok"] is True
     assert branding.asset_check(
         {"app/branding.py", "app/static/appgen-theme.css", "app/templates/appgen_branding.html"}
     )["ok"] is True
