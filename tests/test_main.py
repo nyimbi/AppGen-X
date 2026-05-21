@@ -601,6 +601,7 @@ def test_generate_app_from_sqlite_schema_compiles(tmp_path) -> None:
     assert "platform.microservices" in {item["key"] for item in manifest["capabilities"]}
     assert "platform.native" in {item["key"] for item in manifest["capabilities"]}
     assert "platform.jhipster" in {item["key"] for item in manifest["capabilities"]}
+    assert "platform.competitive-benchmark" in {item["key"] for item in manifest["capabilities"]}
     assert "platform.chatbots" in {item["key"] for item in manifest["capabilities"]}
     assert "ai.guided-chatbot" in {item["key"] for item in manifest["capabilities"]}
     assert "automation.node-red" in {item["key"] for item in manifest["capabilities"]}
@@ -1721,8 +1722,11 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert low_code_features.readiness_report()["source"]["document"] == "docs/Lo-code features.md"
     assert low_code_features.readiness_report()["alignment_complete"] is True
     assert low_code_features.readiness_report()["competitive_position"] == "broader-than-jhipster"
+    assert low_code_features.readiness_report()["competitive_advantage_count"] >= 7
     assert low_code_features.jhipster_competitive_report()["ok"] is True
+    assert low_code_features.jhipster_capability_benchmark()["ok"] is True
     assert len(low_code_features.jhipster_competitive_report()["appgen_differentiators"]) >= 7
+    assert "agentic_systems" in {item["area"] for item in low_code_features.jhipster_competitive_report()["appgen_only_capabilities"]}
     assert "ui.form-designer" in {item["key"] for item in low_code_features.capability_matrix()}
     assert "ai.agentic-systems" in {item["key"] for item in low_code_features.grouped_capabilities()["ai"]}
     assert low_code_features.low_code_features_check(

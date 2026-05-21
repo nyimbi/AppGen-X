@@ -328,8 +328,8 @@ apps include:
 - `low_code_features.py` and `appgen_low_code_features.html` with a generated
   capability matrix grounded in `docs/Lo-code features.md`, roadmap alignment,
   readiness reporting for the low-code/no-code platform surface, and an
-  explicit broader-than-JHipster comparison that keeps JDL interoperability
-  while tracking AppGen-only capabilities.
+  explicit broader-than-JHipster benchmark with overlap/AppGen-only rows that
+  keeps JDL interoperability while tracking AppGen-only capabilities.
 - `prototyping.py` and `appgen_prototyping.html` with rapid mock screens,
   realistic sample data, preview packages, experiment hypotheses, and backlog
   promotion plans for fast stakeholder iteration.

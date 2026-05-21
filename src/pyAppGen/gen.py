@@ -5053,10 +5053,13 @@ def write_low_code_features_template(output_dir):
       <a class="btn btn-default" href="{{ url_for('LowCodeFeaturesView.matrix_json') }}">Feature Matrix JSON</a>
       <a class="btn btn-default" href="{{ url_for('LowCodeFeaturesView.readiness_json') }}">Readiness JSON</a>
       <a class="btn btn-default" href="{{ url_for('LowCodeFeaturesView.jhipster_comparison_json') }}">JHipster Comparison JSON</a>
+      <a class="btn btn-default" href="{{ url_for('LowCodeFeaturesView.jhipster_benchmark_json') }}">Benchmark JSON</a>
     </div>
   </div>
   <p class="aglf-note">
-    Competitive position: {{ readiness.competitive_position }}. AppGen keeps
+    Competitive position: {{ readiness.competitive_position }} with
+    {{ readiness.competitive_advantage_count }} AppGen-only benchmark advantages.
+    AppGen keeps
     JHipster JDL interoperability while adding visual builders, Python-native
     targets, schema imports, ERP templates, agentic systems, and operational
     workbenches.
@@ -16989,6 +16992,19 @@ JHIPSTER_BASELINE = {{
         "security and CI/CD conventions",
     ),
 }}
+COMPETITIVE_BENCHMARK = (
+    {{"area": "entity_modeling", "label": "Entity and relationship modeling", "jhipster": True, "appgen": True, "evidence": "JDL export plus AppGen DSL tables, enums, relations, imports, and linter"}},
+    {{"area": "full_stack_web", "label": "Generated web applications", "jhipster": True, "appgen": True, "evidence": "Flask-AppBuilder app generation with REST, GraphQL, OpenAPI, dashboards, reports, and security"}},
+    {{"area": "frontends", "label": "Multiple generated front-end targets", "jhipster": True, "appgen": True, "evidence": "React, Vue, Angular, and Express starter exports"}},
+    {{"area": "devops", "label": "Docker/Kubernetes/CI/CD conventions", "jhipster": True, "appgen": True, "evidence": "Generated cloud deployment, CI/CD, HTTPS, smoke checks, and release gates"}},
+    {{"area": "visual_builders", "label": "No-code visual builders and Delphi-style forms", "jhipster": False, "appgen": True, "evidence": "Database designer, form canvas, component drops, workflow/statechart workbench, and DSL regeneration"}},
+    {{"area": "native_targets", "label": "Python-native mobile and desktop generation", "jhipster": False, "appgen": True, "evidence": "Kivy mobile and BeeWare desktop contracts with permissions, offline queues, and device features"}},
+    {{"area": "agentic_systems", "label": "Agentic systems and LLM provider design", "jhipster": False, "appgen": True, "evidence": "DSL llm/agent blocks, local/API-key provider readiness, agents, chatbots, voice, and AI contracts"}},
+    {{"area": "natural_language_evolution", "label": "Natural-language application evolution", "jhipster": False, "appgen": True, "evidence": "NL proposals for tables, fields, forms, chatbots, agents, and reviewable DSL patches"}},
+    {{"area": "erp_templates", "label": "ERP module template library", "jhipster": False, "appgen": True, "evidence": "Ledger, AP, AR, invoicing, HR, payroll, inventory, manufacturing, CRM, warehouse, and reports"}},
+    {{"area": "runtime_studio", "label": "Generated in-app IDE and operations studio", "jhipster": False, "appgen": True, "evidence": "Studio, devtools, diagnostics, config editor, backup, monitoring, resilience, and performance workbenches"}},
+    {{"area": "schema_import", "label": "Multi-source schema import", "jhipster": False, "appgen": True, "evidence": "DBML, SQL DDL, static PonyORM scripts, and live database introspection"}},
+)
 APPGEN_DIFFERENTIATORS = (
     {{"capability": "ANTLR low-code DSL", "evidence": "Compact keyword budget, linter, tutorials, and generated DSL reference"}},
     {{"capability": "Multi-source schema import", "evidence": "DBML, SQL DDL, static PonyORM scripts, and live database introspection"}},
@@ -17082,6 +17098,22 @@ def roadmap_alignment():
     return tuple(alignment)
 
 
+def jhipster_capability_benchmark():
+    """Return overlap and AppGen-only capability rows for JHipster comparison."""
+    rows = tuple(dict(item) for item in COMPETITIVE_BENCHMARK)
+    appgen_only = tuple(item for item in rows if item["appgen"] and not item["jhipster"])
+    overlap = tuple(item for item in rows if item["appgen"] and item["jhipster"])
+    return {{
+        "baseline": dict(JHIPSTER_BASELINE),
+        "rows": rows,
+        "overlap": overlap,
+        "appgen_only": appgen_only,
+        "appgen_only_count": len(appgen_only),
+        "overlap_count": len(overlap),
+        "ok": len(appgen_only) >= 7 and len(overlap) >= 4,
+    }}
+
+
 def readiness_report():
     """Summarize low-code platform coverage and remaining partial areas."""
     counts = Counter(item["status"] for item in CAPABILITIES)
@@ -17096,6 +17128,8 @@ def readiness_report():
         "partial": partial,
         "alignment_complete": all(item["covered"] for item in roadmap_alignment()),
         "competitive_position": competitive["position"],
+        "competitive_advantage_count": competitive["appgen_only_capability_count"],
+        "jhipster_overlap_count": competitive["jhipster_overlap_count"],
         "jhipster_differentiators": competitive["appgen_differentiators"],
     }}
 
@@ -17103,6 +17137,7 @@ def readiness_report():
 def jhipster_competitive_report():
     """Return why this generated app platform is broader than JHipster."""
     capability_keys = {{item["key"] for item in CAPABILITIES}}
+    benchmark = jhipster_capability_benchmark()
     appgen_only = tuple(
         item
         for item in APPGEN_DIFFERENTIATORS
@@ -17111,10 +17146,15 @@ def jhipster_competitive_report():
     return {{
         "baseline": dict(JHIPSTER_BASELINE),
         "position": "broader-than-jhipster",
+        "benchmark": benchmark,
         "appgen_differentiators": appgen_only,
+        "appgen_only_capabilities": benchmark["appgen_only"],
+        "jhipster_overlap_capabilities": benchmark["overlap"],
+        "appgen_only_capability_count": benchmark["appgen_only_count"],
+        "jhipster_overlap_count": benchmark["overlap_count"],
         "interop": capability_lookup("platform.jhipster"),
         "minimum_differentiator_count": 7,
-        "ok": len(appgen_only) >= 7 and "platform.jhipster" in capability_keys,
+        "ok": len(appgen_only) >= 7 and benchmark["ok"] and "platform.jhipster" in capability_keys,
     }}
 
 
@@ -17131,6 +17171,7 @@ def low_code_features_check(existing_paths):
         "total": report["total"],
         "areas": tuple(item["area"] for item in roadmap_alignment()),
         "competitive_position": report["competitive_position"],
+        "competitive_advantage_count": report["competitive_advantage_count"],
     }}
 
 
@@ -17162,6 +17203,10 @@ class LowCodeFeaturesView(BaseView):
     @expose("/jhipster-comparison.json")
     def jhipster_comparison_json(self):
         return jsonify(jhipster_competitive_report())
+
+    @expose("/jhipster-benchmark.json")
+    def jhipster_benchmark_json(self):
+        return jsonify(jhipster_capability_benchmark())
 
 
 def register_low_code_features(appbuilder):
@@ -24500,15 +24545,16 @@ def validate_low_code_features_artifacts() -> None:
         "grouped_capabilities",
         "roadmap_alignment",
         "readiness_report",
+        "jhipster_capability_benchmark",
         "low_code_features_check",
         "docs/Lo-code features.md",
     )
     if not all(item in contract for item in required):
         fail("low-code feature matrix must expose capability, roadmap, readiness, and source-document contracts")
-    if "jhipster_competitive_report" not in contract or "broader-than-jhipster" not in contract:
+    if "jhipster_competitive_report" not in contract or "broader-than-jhipster" not in contract or "appgen_only_capabilities" not in contract:
         fail("low-code feature matrix must make AppGen's broader-than-JHipster position explicit")
     template = (ROOT / "app" / "templates" / "appgen_low_code_features.html").read_text()
-    if "Low-Code Feature Matrix" not in template or "Feature Matrix JSON" not in template or "Readiness JSON" not in template or "JHipster Comparison JSON" not in template:
+    if "Low-Code Feature Matrix" not in template or "Feature Matrix JSON" not in template or "Readiness JSON" not in template or "JHipster Comparison JSON" not in template or "Benchmark JSON" not in template:
         fail("low-code feature cockpit must expose matrix and readiness links")
 
 
@@ -26084,7 +26130,10 @@ def test_generated_runtime_helpers():
     )["ok"] is True
     assert low_code_features.readiness_report()["source"]["document"] == "docs/Lo-code features.md"
     assert low_code_features.readiness_report()["alignment_complete"] is True
+    assert low_code_features.readiness_report()["competitive_advantage_count"] >= 7
     assert "ui.form-designer" in {item["key"] for item in low_code_features.capability_matrix()}
+    assert low_code_features.jhipster_capability_benchmark()["ok"] is True
+    assert "agentic_systems" in {item["area"] for item in low_code_features.jhipster_competitive_report()["appgen_only_capabilities"]}
     assert low_code_features.low_code_features_check(
         {"app/low_code_features.py", "app/templates/appgen_low_code_features.html", "app/appgen.json"}
     )["ok"] is True
