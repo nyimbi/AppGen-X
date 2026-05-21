@@ -1640,6 +1640,50 @@ def test_ponyorm_source_preserves_composite_primary_keys(tmp_path) -> None:
     py_compile.compile(str(output_dir / "api.py"), doraise=True)
 
 
+def test_ponyorm_source_preserves_indexes_and_alternate_keys(tmp_path) -> None:
+    """PonyORM index metadata becomes canonical unique/searchable hints."""
+    pony_path = tmp_path / "crm.py"
+    pony_path.write_text(
+        """
+        from pony.orm import Database, PrimaryKey, Required, Optional, composite_key, composite_index
+
+        db = Database()
+
+        class Contact(db.Entity):
+            id = PrimaryKey(int)
+            email = Required(str)
+            tenant_id = Required(int)
+            external_id = Required(str)
+            display_name = Required(str, index=True)
+            phone = Optional(str)
+            composite_key(email)
+            composite_key(tenant_id, external_id)
+            composite_index(display_name, phone)
+        """
+    )
+
+    schema = load_schema(pony_path, source_type="pony")
+    columns = {column.name: column for column in schema.table("Contact").columns}
+
+    assert columns["email"].unique is True
+    assert columns["tenant_id"].unique is False
+    assert columns["external_id"].unique is False
+    assert columns["display_name"].searchable is True
+    assert columns["phone"].searchable is True
+
+    output_dir = tmp_path / "app"
+    generate_app_from_schema(schema, output_dir)
+
+    manifest = json.loads((output_dir / "appgen.json").read_text())
+    contact = next(table for table in manifest["tables"] if table["name"] == "Contact")
+    manifest_columns = {column["name"]: column for column in contact["columns"]}
+    assert manifest_columns["email"]["unique"] is True
+    assert manifest_columns["display_name"]["searchable"] is True
+    assert manifest_columns["phone"]["searchable"] is True
+    py_compile.compile(str(output_dir / "models.py"), doraise=True)
+    py_compile.compile(str(output_dir / "api.py"), doraise=True)
+
+
 def test_appgen_cli_generates_from_ponyorm(tmp_path, runner: CliRunner) -> None:
     """The public CLI accepts PonyORM entity scripts as a first-class source."""
     pony_path = tmp_path / "entities.py"

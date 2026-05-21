@@ -124,8 +124,10 @@ PonyORM imports are parsed statically rather than executed. `PrimaryKey`,
 `Required`, and `Optional` become fields, direct entity references become
 foreign keys, reciprocal `Set(...)` declarations become association tables,
 class-level composite `PrimaryKey(...)` calls become composite primary keys,
-declared non-`id` primary keys remain relation targets, and literal `default=`
-plus `unique=True` metadata is preserved.
+declared non-`id` primary keys remain relation targets, single-column
+`composite_key(...)` calls become unique fields, `index=True` and
+`composite_index(...)` become searchable hints, and literal `default=` plus
+`unique=True` metadata is preserved.
 Module-qualified Python types such as `datetime.datetime`, common Pony aliases
 such as `LongStr` and `Json`, `Decimal`, and Python `Enum` field types are
 normalized into the canonical schema without importing or executing the script.

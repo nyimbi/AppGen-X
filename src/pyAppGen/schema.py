@@ -761,6 +761,8 @@ def schema_from_ponyorm(path: str | Path) -> AppSchema:
         if not isinstance(node, ast.ClassDef) or node.name not in entity_names:
             continue
         composite_primary_key = set(entity_primary_keys.get(node.name, ()))
+        single_column_unique_keys = _pony_single_column_class_constraint_fields(node, "composite_key")
+        indexed_fields = _pony_class_constraint_fields(node, "composite_index")
         columns: list[ColumnSchema] = []
         for statement in node.body:
             if not isinstance(statement, ast.Assign) or len(statement.targets) != 1:
@@ -790,7 +792,9 @@ def schema_from_ponyorm(path: str | Path) -> AppSchema:
                         type_name=_pony_primary_key_type(entity_primary_key_types, target_entity, target_primary_key),
                         nullable=call_name == "Optional",
                         primary_key=target.id in composite_primary_key,
+                        unique=target.id in single_column_unique_keys,
                         references=(target_entity, target_primary_key),
+                        searchable=target.id in indexed_fields or _pony_kw_bool(statement.value, "index"),
                     )
                 )
                 relations.append(
@@ -808,8 +812,9 @@ def schema_from_ponyorm(path: str | Path) -> AppSchema:
                     type_name=type_name,
                     nullable=call_name == "Optional",
                     primary_key=call_name == "PrimaryKey" or target.id in composite_primary_key,
-                    unique=_pony_kw_bool(statement.value, "unique"),
+                    unique=_pony_kw_bool(statement.value, "unique") or target.id in single_column_unique_keys,
                     default=_pony_kw_value(statement.value, "default"),
+                    searchable=target.id in indexed_fields or _pony_kw_bool(statement.value, "index"),
                 )
             )
         if not any(column.primary_key for column in columns):
@@ -1560,16 +1565,37 @@ def _pony_set_target(call: ast.Call, entity_names: Iterable[str]) -> str | None:
 
 
 def _pony_composite_key_fields(node: ast.ClassDef) -> set[str]:
+    return _pony_class_constraint_fields(node, "PrimaryKey")
+
+
+def _pony_class_constraint_fields(node: ast.ClassDef, call_name: str) -> set[str]:
     fields: set[str] = set()
     for statement in node.body:
         if not isinstance(statement, ast.Expr) or not isinstance(statement.value, ast.Call):
             continue
-        if _call_name(statement.value.func) != "PrimaryKey":
+        if _call_name(statement.value.func) != call_name:
             continue
         for arg in statement.value.args:
             name = _pony_attribute_name(arg)
             if name is not None:
                 fields.add(name)
+    return fields
+
+
+def _pony_single_column_class_constraint_fields(node: ast.ClassDef, call_name: str) -> set[str]:
+    fields: set[str] = set()
+    for statement in node.body:
+        if not isinstance(statement, ast.Expr) or not isinstance(statement.value, ast.Call):
+            continue
+        if _call_name(statement.value.func) != call_name:
+            continue
+        names = tuple(
+            name
+            for arg in statement.value.args
+            if (name := _pony_attribute_name(arg)) is not None
+        )
+        if len(names) == 1:
+            fields.add(names[0])
     return fields
 
 
