@@ -2964,7 +2964,10 @@ def write_documents_template(output_dir):
         records and attachments.
       </p>
     </div>
-    <a class="btn btn-default" href="{{ url_for('DocumentManagementView.catalog_json') }}">Documents JSON</a>
+    <div>
+      <a class="btn btn-default" href="{{ url_for('DocumentManagementView.catalog_json') }}">Documents JSON</a>
+      <a class="btn btn-default" href="{{ url_for('DocumentManagementView.release_gate_json') }}">Release Gate JSON</a>
+    </div>
   </div>
   <div class="agd-grid">
     {% for item in documents %}
@@ -12660,6 +12663,71 @@ def document_management_check(existing_paths=()):
     }}
 
 
+def document_release_gate(existing_paths=()):
+    """Return an auditable release gate for generated document management."""
+    artifacts = set(existing_paths or ())
+    required_artifacts = ("app/documents.py", "app/templates/appgen_documents.html")
+    sample_versions = tuple(
+        document_version(document_type_id, record_id=1, filename=f"{{document_type_id.replace('.', '-')}}.pdf")
+        for document_type_id in DOCUMENT_TYPES
+    )
+    workflows = tuple(approval_workflow(document_type_id) for document_type_id in DOCUMENT_TYPES)
+    retention = tuple(retention_policy(document_type_id) for document_type_id in DOCUMENT_TYPES)
+    signatures = tuple(
+        esignature_payload(document_type_id, signer="review@example.test", record_id=1)
+        for document_type_id in DOCUMENT_TYPES
+    )
+    audit = tuple(
+        document_audit_event(document_type_id, "reviewed", actor="system", record_id=1)
+        for document_type_id in DOCUMENT_TYPES
+    )
+    gates = (
+        {{
+            "gate": "document_catalog",
+            "ok": bool(document_catalog()) and all(doc["library"] and doc["tags"] for doc in document_catalog()),
+            "evidence": tuple(doc["id"] for doc in document_catalog()),
+        }},
+        {{
+            "gate": "version_envelopes",
+            "ok": all(version["id"] and version["status"] == "draft" and version["version"] >= 1 for version in sample_versions),
+            "evidence": tuple(version["document_type"] for version in sample_versions),
+        }},
+        {{
+            "gate": "approval_workflows",
+            "ok": all(workflow["steps"] and workflow["steps"][1]["target"] == "approved" for workflow in workflows),
+            "evidence": tuple(workflow["document_type"] for workflow in workflows),
+        }},
+        {{
+            "gate": "retention_policy",
+            "ok": all(policy["retention_days"] > 0 and policy["legal_hold_supported"] and policy["delete_requires_approval"] for policy in retention),
+            "evidence": tuple((policy["document_type"], policy["retention_days"]) for policy in retention),
+        }},
+        {{
+            "gate": "esignature_payloads",
+            "ok": all(signature["id"] and signature["signer"] == "review@example.test" for signature in signatures),
+            "evidence": tuple(signature["document_type"] for signature in signatures),
+        }},
+        {{
+            "gate": "audit_events",
+            "ok": all(event["id"] and event["action"] == "reviewed" for event in audit),
+            "evidence": tuple(event["document_type"] for event in audit),
+        }},
+        {{
+            "gate": "artifact_coverage",
+            "ok": set(required_artifacts) <= artifacts,
+            "missing": tuple(item for item in required_artifacts if item not in artifacts),
+        }},
+    )
+    ok = all(gate["ok"] for gate in gates)
+    return {{
+        "format": "appgen.document-release-gate.v1",
+        "ok": ok,
+        "decision": "approved" if ok else "blocked",
+        "gates": gates,
+        "required_artifacts": required_artifacts,
+    }}
+
+
 class DocumentManagementView(BaseView):
     route_base = "/documents"
     default_view = "index"
@@ -12679,6 +12747,10 @@ class DocumentManagementView(BaseView):
     @expose("/<path:document_type_id>.json")
     def document_json(self, document_type_id):
         return jsonify(document_type(document_type_id))
+
+    @expose("/release-gate.json")
+    def release_gate_json(self):
+        return jsonify(document_release_gate({{"app/documents.py", "app/templates/appgen_documents.html"}}))
 
 
 def register_documents(appbuilder):
@@ -32394,12 +32466,13 @@ def validate_document_management_artifacts() -> None:
         "esignature_payload",
         "document_audit_event",
         "document_management_check",
+        "document_release_gate",
     )
     if not all(item in contract for item in required):
-        fail("document-management contract must expose libraries, versions, approvals, retention, e-signature, and audit helpers")
+        fail("document-management contract must expose libraries, versions, approvals, retention, e-signature, audit, and release-gate helpers")
     template = (ROOT / "app" / "templates" / "appgen_documents.html").read_text()
-    if "Document Management" not in template or "Documents JSON" not in template or "e-signature" not in template:
-        fail("document-management cockpit must expose document catalog and e-signature readiness")
+    if "Document Management" not in template or "Documents JSON" not in template or "Release Gate JSON" not in template or "e-signature" not in template:
+        fail("document-management cockpit must expose document catalog, e-signature readiness, and release gate")
 
 
 def validate_inventory_ops_artifacts() -> None:
@@ -34121,6 +34194,8 @@ def test_generated_runtime_helpers():
     assert documents.esignature_payload(first_document_type, signer="ada")["signer"] == "ada"
     assert documents.document_audit_event(first_document_type, "view", actor="ada")["action"] == "view"
     assert documents.document_management_check({"app/documents.py", "app/templates/appgen_documents.html"})["ok"] is True
+    assert documents.document_release_gate({"app/documents.py", "app/templates/appgen_documents.html"})["ok"] is True
+    assert documents.document_release_gate({"app/documents.py"})["ok"] is False
     first_inventory_table = inventory_ops.inventory_catalog()[0]["table"]
     assert inventory_ops.scan_targets(first_inventory_table)
     assert inventory_ops.barcode_label(first_inventory_table, {"title": "Dune"})["symbology"] == "code128"

@@ -415,6 +415,9 @@ preview contracts, and required media cockpit artifacts.
 Use `dashboard_release_gate()` to verify chart catalogs, Vega-Lite render
 contracts, accessibility summaries, and web/mobile/desktop renderer targets for
 generated analytics dashboards.
+Use `document_release_gate()` to prove generated document libraries have version
+envelopes, approval workflows, retention/legal-hold policy, e-signature
+payloads, audit events, and required document cockpit artifacts.
 Use `search_release_gate()` to verify generated searchable-field coverage,
 provider readiness for memory/PostgreSQL/Whoosh/Elasticsearch, reindex plans,
 and the search cockpit artifacts before switching providers in production.

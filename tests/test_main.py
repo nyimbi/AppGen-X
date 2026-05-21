@@ -3031,6 +3031,19 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     audit = documents.document_audit_event("book.manuscript_file", "approved", actor="grace", record_id=1)
     assert audit["action"] == "approved"
     assert documents.document_management_check({"app/documents.py", "app/templates/appgen_documents.html"})["ok"] is True
+    document_gate = documents.document_release_gate({"app/documents.py", "app/templates/appgen_documents.html"})
+    assert document_gate["format"] == "appgen.document-release-gate.v1"
+    assert document_gate["ok"] is True
+    assert {
+        "document_catalog",
+        "version_envelopes",
+        "approval_workflows",
+        "retention_policy",
+        "esignature_payloads",
+        "audit_events",
+        "artifact_coverage",
+    } <= {gate["gate"] for gate in document_gate["gates"]}
+    assert documents.document_release_gate({"app/documents.py"})["ok"] is False
     inventory_catalog = inventory_ops.inventory_catalog()
     assert any(item["table"] == "Book" and "title" in item["identifiers"] for item in inventory_catalog)
     barcode = inventory_ops.barcode_label("Book", {"title": "Dune"})

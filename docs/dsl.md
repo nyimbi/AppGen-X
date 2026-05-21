@@ -303,7 +303,10 @@ apps include:
   contracts, and required media artifacts.
 - `documents.py` and `appgen_documents.html` with generated document libraries,
   version envelopes, approval workflows, retention policies, e-signature
-  payloads, and audit events for ERP-style document management.
+  payloads, and audit events for ERP-style document management. A generated
+  document release gate proves document catalogs, version envelopes, approval
+  workflows, retention/legal-hold policy, e-signature payloads, audit events,
+  and required document artifacts.
 - `inventory_ops.py` and `appgen_inventory_ops.html` with generated barcode,
   RFID, scan-event, stock-movement, cycle-count, and reconciliation contracts
   for inventory and warehouse traceability.
