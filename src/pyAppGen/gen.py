@@ -3543,7 +3543,8 @@ def write_rls_template(output_dir):
       <h1 class="agrls-title">Row-Level Security</h1>
       <p class="agrls-note">
         Generated tenant-aware row-level security contracts, Python access
-        checks, and PostgreSQL policy SQL for scoped tables.
+        checks, PostgreSQL policy SQL, tenant setting SQL, and database
+        role/user sync plans for scoped tables.
       </p>
     </div>
     <a class="btn btn-default" href="{{ url_for('RowLevelSecurityView.catalog_json') }}">Catalog JSON</a>
@@ -12991,9 +12992,13 @@ def _rls_text(schema: AppSchema) -> str:
             "bypass_roles": ("Admin", "SecurityManager"),
         }
 
+    role_names = tuple(role.name for role in schema.roles) or ("Admin", "User")
+
     return f'''"""Generated row-level security contracts for AppGen apps."""
 
 from __future__ import annotations
+
+import re
 
 from flask import jsonify
 from flask_appbuilder import BaseView
@@ -13001,6 +13006,7 @@ from flask_appbuilder import expose
 
 
 RLS_POLICIES = {policies!r}
+APPGEN_ROLES = {role_names!r}
 
 
 def rls_catalog():
@@ -13065,6 +13071,99 @@ def can_access_row(table_name, row, principal):
 def filter_rows(table_name, rows, principal):
     """Filter dictionaries or model rows using the generated RLS policy."""
     return tuple(row for row in rows if can_access_row(table_name, row, principal))
+
+
+def _quote_ident(value):
+    return '"' + str(value).replace('"', '""') + '"'
+
+
+def _quote_literal(value):
+    return "'" + str(value).replace("'", "''") + "'"
+
+
+def postgres_role_name(role_name, *, prefix="appgen"):
+    """Return a stable PostgreSQL role name for a generated application role."""
+    slug = re.sub(r"[^a-z0-9_]+", "_", str(role_name).strip().lower()).strip("_")
+    if not slug:
+        raise ValueError("Role name is required")
+    return f"{{prefix}}_{{slug}}"
+
+
+def postgres_set_tenant_sql(tenant_id, *, app_setting="appgen.tenant_id"):
+    """Return SQL that binds the current transaction to one generated tenant."""
+    if tenant_id in (None, ""):
+        raise ValueError("Tenant id is required")
+    return f"SELECT set_config({{_quote_literal(app_setting)}}, {{_quote_literal(tenant_id)}}, true);"
+
+
+def postgres_role_sync_plan(principals=(), *, role_prefix="appgen"):
+    """Return a reviewable PostgreSQL user/role sync plan for generated RLS."""
+    generated_roles = tuple(
+        {{"app_role": role, "database_role": postgres_role_name(role, prefix=role_prefix), "login": False}}
+        for role in APPGEN_ROLES
+    )
+    users = []
+    for principal in principals or ():
+        principal = principal or {{}}
+        username = principal.get("username") or principal.get("email") or principal.get("id") or principal.get("sub")
+        if not username:
+            continue
+        roles = tuple(
+            postgres_role_name(role, prefix=role_prefix)
+            for role in principal_roles(principal)
+            if role in APPGEN_ROLES
+        )
+        users.append(
+            {{
+                "username": str(username),
+                "database_role": str(username),
+                "grants": roles,
+                "tenant_id": principal_tenant(principal),
+                "login": True,
+            }}
+        )
+    return {{
+        "roles": generated_roles,
+        "users": tuple(users),
+        "scoped_tables": tuple(name for name, policy in RLS_POLICIES.items() if policy["scoped"]),
+        "review_required": True,
+    }}
+
+
+def postgres_role_sync_sql(principals=(), *, role_prefix="appgen", create_login_roles=False):
+    """Return PostgreSQL SQL for generated app roles and optional user grants."""
+    plan = postgres_role_sync_plan(principals, role_prefix=role_prefix)
+    statements = []
+    for role in plan["roles"]:
+        db_role = role["database_role"]
+        statements.append(
+            "\\n".join((
+                "DO $$",
+                "BEGIN",
+                f"  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = {{_quote_literal(db_role)}}) THEN",
+                f"    CREATE ROLE {{_quote_ident(db_role)}} NOLOGIN;",
+                "  END IF;",
+                "END",
+                "$$;",
+            ))
+        )
+    for user in plan["users"]:
+        if create_login_roles:
+            db_user = user["database_role"]
+            statements.append(
+                "\\n".join((
+                    "DO $$",
+                    "BEGIN",
+                    f"  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = {{_quote_literal(db_user)}}) THEN",
+                    f"    CREATE ROLE {{_quote_ident(db_user)}} LOGIN;",
+                    "  END IF;",
+                    "END",
+                    "$$;",
+                ))
+            )
+        for grant in user["grants"]:
+            statements.append(f"GRANT {{_quote_ident(grant)}} TO {{_quote_ident(user['database_role'])}};")
+    return "\\n\\n".join(statements)
 
 
 def postgres_policy_sql(table_name, *, app_setting="appgen.tenant_id"):
@@ -25674,6 +25773,8 @@ def test_generated_runtime_helpers():
     assert lifecycle.lifecycle_check({"app/lifecycle.py", "app/templates/appgen_lifecycle.html"})["ok"] is True
     assert isinstance(tenancy.tenant_catalog(), tuple)
     assert isinstance(rls.rls_catalog(), tuple)
+    assert rls.postgres_role_sync_plan()["review_required"] is True
+    assert "CREATE ROLE" in rls.postgres_role_sync_sql()
     assert isinstance(identity.provider_catalog({}), tuple)
     assert "cognito" in {item["name"] for item in identity.provider_catalog({})}
     assert {"ldap", "active_directory"} <= {item["name"] for item in identity.provider_catalog({})}

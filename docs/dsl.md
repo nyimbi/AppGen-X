@@ -281,7 +281,8 @@ apps include:
 - `tenancy.py` and `appgen_tenancy.html` with generated tenant-column
   detection, tenant context extraction, and filter helpers for row isolation.
 - `rls.py` and `appgen_rls.html` with generated tenant-aware row-level
-  security helpers plus PostgreSQL `CREATE POLICY` SQL for scoped tables.
+  security helpers plus PostgreSQL `CREATE POLICY` SQL, tenant session-setting
+  SQL, and reviewable database role/user sync SQL for scoped tables.
 - `identity.py` and `appgen_identity.html` with generated OIDC, SAML, LDAP,
   Active Directory, AWS Cognito, and trusted-header SSO provider configuration
   checks plus reviewed LDAP bind/search plans.

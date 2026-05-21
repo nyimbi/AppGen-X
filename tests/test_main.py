@@ -3556,6 +3556,10 @@ def test_generated_tenancy_helpers_detect_tenant_columns(tmp_path) -> None:
           tenant_id: string required search
           name: string required
         }
+
+        role ProjectManager {
+          Project: read, update;
+        }
         """
     )
     schema = load_schema(dsl_path, source_type="dsl")
@@ -3587,10 +3591,26 @@ def test_generated_tenancy_helpers_detect_tenant_columns(tmp_path) -> None:
     assert "ALTER TABLE \"Project\" ENABLE ROW LEVEL SECURITY;" in sql
     assert "current_setting('appgen.tenant_id', true)" in sql
     assert "Project" in rls.postgres_all_policy_sql()
+    assert rls.postgres_role_name("ProjectManager") == "appgen_projectmanager"
+    assert rls.postgres_set_tenant_sql("acme") == "SELECT set_config('appgen.tenant_id', 'acme', true);"
+    sync_plan = rls.postgres_role_sync_plan(
+        ({"username": "ada", "roles": ["ProjectManager"], "tenant_id": "acme"},)
+    )
+    assert sync_plan["roles"][0]["database_role"] == "appgen_projectmanager"
+    assert sync_plan["users"][0]["grants"] == ("appgen_projectmanager",)
+    sync_sql = rls.postgres_role_sync_sql(
+        ({"username": "ada", "roles": ["ProjectManager"], "tenant_id": "acme"},),
+        create_login_roles=True,
+    )
+    assert 'CREATE ROLE "appgen_projectmanager" NOLOGIN;' in sync_sql
+    assert 'CREATE ROLE "ada" LOGIN;' in sync_sql
+    assert 'GRANT "appgen_projectmanager" TO "ada";' in sync_sql
     with pytest.raises(PermissionError, match="Tenant context required"):
         tenancy.require_tenant("Project", None)
     with pytest.raises(PermissionError, match="Tenant context required"):
         rls.rls_filter_kwargs("Project", {})
+    with pytest.raises(ValueError, match="Tenant id is required"):
+        rls.postgres_set_tenant_sql("")
 
 
 def _load_module(path, module_name):
