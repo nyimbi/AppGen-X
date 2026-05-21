@@ -360,8 +360,8 @@ apps include:
 - `platforms.py` and `appgen_platforms.html` with generated web, PWA, mobile,
   desktop, and chatbot target contracts plus a web/mobile/desktop generation
   matrix for downstream adapters.
-- `frontends/` with generated React, Vue, Angular, and Express starter
-  contracts wired to the generated REST API routes.
+- `frontends/` with generated React, Vue, Angular, Svelte, HTMX, and Express
+  starter contracts wired to the generated REST API routes.
 - `sdks/` with generated Python, JavaScript, Java, and C# API client
   scaffolds derived from the same REST table contracts.
 - `native/` with generated Kivy mobile and BeeWare desktop Python starter

@@ -350,6 +350,8 @@ def test_generate_app_from_sqlite_schema_compiles(tmp_path) -> None:
     assert (tmp_path / "frontends" / "react" / "src" / "App.jsx").exists()
     assert (tmp_path / "frontends" / "vue" / "src" / "App.vue").exists()
     assert (tmp_path / "frontends" / "angular" / "src" / "app.component.ts").exists()
+    assert (tmp_path / "frontends" / "svelte" / "src" / "App.svelte").exists()
+    assert (tmp_path / "frontends" / "htmx" / "src" / "server.js").exists()
     assert (tmp_path / "frontends" / "express" / "src" / "server.js").exists()
     assert (tmp_path / "sdks" / "appgen_sdks.py").exists()
     assert (tmp_path / "sdks" / "python" / "client.py").exists()
@@ -480,7 +482,7 @@ def test_generate_app_from_sqlite_schema_compiles(tmp_path) -> None:
     )["ok"] is True
     assert https.public_base_url({"APPGEN_DOMAIN": "example.test"}) == "https://example.test"
     frontends = _load_module(tmp_path / "frontends" / "appgen_frontends.py", "generated_frontends")
-    assert set(frontends.frontend_targets()) == {"react", "vue", "angular", "express"}
+    assert set(frontends.frontend_targets()) == {"react", "vue", "angular", "svelte", "htmx", "express"}
     assert frontends.frontend_plan("react")["entry"] == "src/App.jsx"
     assert ("book", "/api/v1/book/") in frontends.api_routes()
     frontend_artifacts = {
@@ -490,6 +492,10 @@ def test_generate_app_from_sqlite_schema_compiles(tmp_path) -> None:
         "frontends/vue/src/App.vue",
         "frontends/angular/package.json",
         "frontends/angular/src/app.component.ts",
+        "frontends/svelte/package.json",
+        "frontends/svelte/src/App.svelte",
+        "frontends/htmx/package.json",
+        "frontends/htmx/src/server.js",
         "frontends/express/package.json",
         "frontends/express/src/server.js",
     }
@@ -497,6 +503,8 @@ def test_generate_app_from_sqlite_schema_compiles(tmp_path) -> None:
     assert "/api/v1/book/" in (tmp_path / "frontends" / "react" / "src" / "App.jsx").read_text()
     assert "<template>" in (tmp_path / "frontends" / "vue" / "src" / "App.vue").read_text()
     assert "AppComponent" in (tmp_path / "frontends" / "angular" / "src" / "app.component.ts").read_text()
+    assert "{#each tables as table}" in (tmp_path / "frontends" / "svelte" / "src" / "App.svelte").read_text()
+    assert "hx-get" in (tmp_path / "frontends" / "htmx" / "src" / "server.js").read_text()
     assert "http.createServer" in (tmp_path / "frontends" / "express" / "src" / "server.js").read_text()
     native = _load_module(tmp_path / "native" / "appgen_native.py", "generated_native")
     mobile = _load_module(tmp_path / "native" / "mobile" / "app.py", "generated_mobile")
@@ -3627,7 +3635,7 @@ def test_appgen_dsl_targets_select_generated_platform_contracts(tmp_path) -> Non
     assert {item["target"] for item in platforms.platform_catalog()} == {"web", "mobile", "desktop"}
     assert set(platforms.generation_matrix()) == {"web", "mobile", "desktop"}
     assert platforms.platform_contract("pwa")["selected"] is False
-    assert set(frontends.frontend_targets()) == {"react", "vue", "angular", "express"}
+    assert set(frontends.frontend_targets()) == {"react", "vue", "angular", "svelte", "htmx", "express"}
     assert frontends.frontend_plan("react")["selected"] is True
     assert set(native.native_targets()) == {"mobile", "desktop"}
     assert native.native_plan("mobile")["selected"] is True
