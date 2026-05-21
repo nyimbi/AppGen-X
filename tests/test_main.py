@@ -2997,6 +2997,16 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         content_type="application/octet-stream",
         size=99 * 1024 * 1024,
     )["errors"] == ("extension", "content_type", "size")
+    media_matrix = media.media_validation_matrix()
+    assert any(item["field"] == "cover_image" and item["preview"]["preview"] == "thumbnail" for item in media_matrix)
+    assert all(item["valid_ok"] for item in media_matrix)
+    media_gate = media.media_release_gate({"app/media.py", "app/templates/appgen_media.html"})
+    assert media_gate["format"] == "appgen.media-release-gate.v1"
+    assert media_gate["ok"] is True
+    assert {"media_catalog", "validation_policy", "storage_safety", "preview_contracts", "artifact_coverage"} <= {
+        gate["gate"] for gate in media_gate["gates"]
+    }
+    assert media.media_release_gate({"app/media.py"})["ok"] is False
     document_catalog = documents.document_catalog()
     assert any(item["id"] == "book.manuscript_file" and item["approval_required"] for item in document_catalog)
     version = documents.document_version(

@@ -409,6 +409,9 @@ by SQL previews, and connected to generated coverage plus quality artifacts.
 Use `report_delivery_release_gate()` to prove generated report delivery has
 CSV/PDF formats, download/email channels, printable previews, PDF attachments,
 and required report-delivery artifacts before wiring production email.
+Use `media_release_gate()` to prove generated image/file uploads have MIME and
+extension validation, oversized upload rejection, sanitized storage paths,
+preview contracts, and required media cockpit artifacts.
 Use `search_release_gate()` to verify generated searchable-field coverage,
 provider readiness for memory/PostgreSQL/Whoosh/Elasticsearch, reindex plans,
 and the search cockpit artifacts before switching providers in production.

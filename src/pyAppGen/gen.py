@@ -2902,7 +2902,10 @@ def write_media_template(output_dir):
         size, storage, and validation plans. Hidden fields are excluded.
       </p>
     </div>
-    <a class="btn btn-default" href="{{ url_for('MediaView.catalog_json') }}">Catalog JSON</a>
+    <div>
+      <a class="btn btn-default" href="{{ url_for('MediaView.catalog_json') }}">Catalog JSON</a>
+      <a class="btn btn-default" href="{{ url_for('MediaView.release_gate_json') }}">Release Gate JSON</a>
+    </div>
   </div>
   <div class="agm-grid">
     {% for item in fields %}
@@ -12271,6 +12274,83 @@ def preview_contract(table_name, field_name):
     return {{"preview": "filename", "accept": ",".join(field["allowed_mime_types"])}}
 
 
+def media_validation_matrix():
+    """Return deterministic validation evidence for generated upload fields."""
+    rows = []
+    for field in media_catalog():
+        filename = "sample" + field["allowed_extensions"][0]
+        valid = validate_upload(
+            field["table"],
+            field["field"],
+            filename=filename,
+            content_type=field["allowed_mime_types"][0],
+            size=min(1024, field["max_bytes"]),
+        )
+        invalid = validate_upload(
+            field["table"],
+            field["field"],
+            filename="blocked.exe",
+            content_type="application/octet-stream",
+            size=field["max_bytes"] + 1,
+        )
+        storage = storage_plan(field["table"], field["field"], filename="../" + filename)
+        rows.append(
+            {{
+                "table": field["table"],
+                "field": field["field"],
+                "kind": field["kind"],
+                "valid_ok": valid["ok"],
+                "invalid_errors": invalid["errors"],
+                "storage_path": storage["path"],
+                "preview": preview_contract(field["table"], field["field"]),
+            }}
+        )
+    return tuple(rows)
+
+
+def media_release_gate(existing_paths=()):
+    """Return an auditable release gate for generated media/upload handling."""
+    artifacts = set(existing_paths or ())
+    required_artifacts = ("app/media.py", "app/templates/appgen_media.html")
+    matrix = media_validation_matrix()
+    gates = (
+        {{
+            "gate": "media_catalog",
+            "ok": bool(media_catalog()) and all(field["allowed_mime_types"] and field["allowed_extensions"] for field in media_catalog()),
+            "evidence": tuple(f"{{field['table']}}.{{field['field']}}" for field in media_catalog()),
+        }},
+        {{
+            "gate": "validation_policy",
+            "ok": all(item["valid_ok"] and {{"extension", "content_type", "size"}} <= set(item["invalid_errors"]) for item in matrix),
+            "evidence": matrix,
+        }},
+        {{
+            "gate": "storage_safety",
+            "ok": all(".." not in item["storage_path"].split("/") and item["storage_path"].startswith("uploads/") for item in matrix),
+            "evidence": tuple(item["storage_path"] for item in matrix),
+        }},
+        {{
+            "gate": "preview_contracts",
+            "ok": all(item["preview"]["preview"] in {{"thumbnail", "filename"}} and item["preview"]["accept"] for item in matrix),
+            "evidence": tuple((item["field"], item["preview"]["preview"]) for item in matrix),
+        }},
+        {{
+            "gate": "artifact_coverage",
+            "ok": set(required_artifacts) <= artifacts,
+            "missing": tuple(item for item in required_artifacts if item not in artifacts),
+        }},
+    )
+    ok = all(gate["ok"] for gate in gates)
+    return {{
+        "format": "appgen.media-release-gate.v1",
+        "ok": ok,
+        "decision": "approved" if ok else "blocked",
+        "gates": gates,
+        "required_artifacts": required_artifacts,
+        "validation_matrix": matrix,
+    }}
+
+
 class MediaView(BaseView):
     route_base = "/media"
     default_view = "index"
@@ -12286,6 +12366,10 @@ class MediaView(BaseView):
     @expose("/<table_name>/<field_name>.json")
     def field_json(self, table_name, field_name):
         return jsonify(media_field(table_name, field_name))
+
+    @expose("/release-gate.json")
+    def release_gate_json(self):
+        return jsonify(media_release_gate({{"app/media.py", "app/templates/appgen_media.html"}}))
 
 
 def register_media(appbuilder):
@@ -32986,6 +33070,23 @@ def validate_search_artifacts() -> None:
         fail("search template must expose generated search catalog and release gate")
 
 
+def validate_media_artifacts() -> None:
+    contract = (ROOT / "app" / "media.py").read_text()
+    required = (
+        "media_catalog",
+        "validate_upload",
+        "storage_plan",
+        "preview_contract",
+        "media_validation_matrix",
+        "media_release_gate",
+    )
+    if not all(item in contract for item in required):
+        fail("media contract must expose upload validation, storage, preview, matrix, and release-gate helpers")
+    template = (ROOT / "app" / "templates" / "appgen_media.html").read_text()
+    if "Media" not in template or "Catalog JSON" not in template or "Release Gate JSON" not in template:
+        fail("media template must expose generated media catalog and release gate")
+
+
 def validate_branding_artifacts() -> None:
     css = (ROOT / "app" / "static" / "appgen-theme.css").read_text()
     if (
@@ -33287,6 +33388,7 @@ def main() -> int:
     validate_report_artifacts()
     validate_report_delivery_artifacts()
     validate_search_artifacts()
+    validate_media_artifacts()
     validate_branding_artifacts()
     validate_extension_artifacts()
     validate_packaging_artifacts()
@@ -33914,6 +34016,8 @@ def test_generated_runtime_helpers():
     assert search.search_release_gate({}, {"app/search.py", "app/templates/appgen_search.html"})["ok"] is True
     assert search.search_release_gate({}, {"app/search.py"}, required_provider="elasticsearch")["ok"] is False
     assert isinstance(media.media_catalog(), tuple)
+    assert media.media_release_gate({"app/media.py", "app/templates/appgen_media.html"})["ok"] is True
+    assert media.media_release_gate({"app/media.py"})["ok"] is False
     first_document_type = documents.document_catalog()[0]["id"]
     assert documents.document_version(first_document_type, record_id=1, filename="sample.pdf")["version"] == 1
     assert documents.approval_workflow(first_document_type)["steps"][1]["target"] == "approved"

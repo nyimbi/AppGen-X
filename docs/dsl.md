@@ -295,7 +295,9 @@ apps include:
   provider coverage/readiness, reindex planning, and search artifact coverage.
 - `media.py` and `appgen_media.html` with generated image and file upload
   validation, preview, and storage contracts for fields typed as image, file,
-  upload, blob, or binary.
+  upload, blob, or binary. A generated media release gate proves MIME/extension
+  validation, unsafe-upload rejection, sanitized storage paths, preview
+  contracts, and required media artifacts.
 - `documents.py` and `appgen_documents.html` with generated document libraries,
   version envelopes, approval workflows, retention policies, e-signature
   payloads, and audit events for ERP-style document management.
