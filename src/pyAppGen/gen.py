@@ -20703,6 +20703,11 @@ def jhipster_superset_scorecard():
             "required": ("components.application-composition", "platform.jhipster"),
             "artifacts": ("app/low_code_features.py", "jhipster/app.jdl", "cookiecutter/cookiecutter.json"),
         }},
+        {{
+            "area": "database_ide",
+            "required": ("devops.studio", "data.database-ops", "ui.visual-modeling"),
+            "artifacts": ("app/studio.py", "app/database_ops.py", "app/designer.py"),
+        }},
     )
     capability_keys = {{item["key"] for item in CAPABILITIES}}
     gates = tuple(
@@ -20719,12 +20724,12 @@ def jhipster_superset_scorecard():
         "format": "appgen.jhipster-superset-scorecard.v1",
         "baseline": dict(JHIPSTER_BASELINE),
         "position": "more-capable-than-jhipster",
-        "minimum_appgen_only_advantages": 9,
+        "minimum_appgen_only_advantages": 10,
         "actual_appgen_only_advantages": benchmark["appgen_only_count"],
         "required_gates": gates,
         "blocking_gaps": tuple(gate for gate in gates if not gate["ok"]),
         "interop_preserved": "platform.jhipster" in capability_keys,
-        "ok": benchmark["appgen_only_count"] >= 9 and all(gate["ok"] for gate in gates) and "platform.jhipster" in capability_keys,
+        "ok": benchmark["appgen_only_count"] >= 10 and all(gate["ok"] for gate in gates) and "platform.jhipster" in capability_keys,
     }}
 
 
@@ -20780,7 +20785,7 @@ def jhipster_superset_certification(existing_paths=None):
     )
     gates = (
         {{"gate": "jhipster_overlap_preserved", "ok": not missing_overlap, "missing": missing_overlap}},
-        {{"gate": "appgen_only_advantage_threshold", "ok": benchmark["appgen_only_count"] >= 9, "value": benchmark["appgen_only_count"]}},
+        {{"gate": "appgen_only_advantage_threshold", "ok": benchmark["appgen_only_count"] >= 10, "value": benchmark["appgen_only_count"]}},
         {{"gate": "advantage_ratio", "ok": advantage_ratio >= 2.0, "value": advantage_ratio}},
         {{"gate": "scorecard", "ok": scorecard["ok"], "blocking_gaps": scorecard["blocking_gaps"]}},
         {{"gate": "artifact_evidence", "ok": evidence["ok"], "missing_rows": tuple(row for row in evidence["rows"] if not row["ok"])}},
@@ -20794,7 +20799,7 @@ def jhipster_superset_certification(existing_paths=None):
         "position": scorecard["position"],
         "minimum_overlap_count": len(overlap_required),
         "actual_overlap_count": benchmark["overlap_count"],
-        "minimum_appgen_only_advantages": 9,
+        "minimum_appgen_only_advantages": 10,
         "actual_appgen_only_advantages": benchmark["appgen_only_count"],
         "advantage_ratio": advantage_ratio,
         "generated_contracts": generated_contracts,
@@ -32431,7 +32436,7 @@ def test_generated_runtime_helpers():
     assert "components.application-composition" in {item["key"] for item in low_code_features.capability_matrix()}
     assert low_code_features.jhipster_capability_benchmark()["ok"] is True
     assert low_code_features.jhipster_superset_scorecard()["ok"] is True
-    assert low_code_features.jhipster_superset_scorecard()["minimum_appgen_only_advantages"] == 9
+    assert low_code_features.jhipster_superset_scorecard()["minimum_appgen_only_advantages"] == 10
     assert low_code_features.jhipster_superset_evidence()["ok"] is True
     assert low_code_features.jhipster_superset_certification()["ok"] is True
     assert low_code_features.jhipster_superset_certification()["certification"] == "appgen-more-capable-than-jhipster"
