@@ -833,6 +833,7 @@ def test_generate_app_from_sqlite_schema_compiles(tmp_path) -> None:
     assert "platform.native" in {item["key"] for item in manifest["capabilities"]}
     assert "platform.jhipster" in {item["key"] for item in manifest["capabilities"]}
     assert "platform.competitive-benchmark" in {item["key"] for item in manifest["capabilities"]}
+    assert "platform.jhipster-superiority" in {item["key"] for item in manifest["capabilities"]}
     assert "platform.chatbots" in {item["key"] for item in manifest["capabilities"]}
     assert "ai.guided-chatbot" in {item["key"] for item in manifest["capabilities"]}
     assert "automation.node-red" in {item["key"] for item in manifest["capabilities"]}
@@ -2406,6 +2407,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     }
     assert "ui.form-designer" in {item["key"] for item in low_code_features.capability_matrix()}
     assert "components.application-composition" in {item["key"] for item in low_code_features.capability_matrix()}
+    assert "platform.jhipster-superiority" in {item["key"] for item in low_code_features.capability_matrix()}
     assert "ai.agentic-systems" in {item["key"] for item in low_code_features.grouped_capabilities()["ai"]}
     composition_plan = low_code_features.composition_install_plan(("agentic-suite", "erp-suite"))
     assert composition_plan["format"] == "appgen.composition-install-plan.v1"
