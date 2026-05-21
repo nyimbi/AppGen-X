@@ -250,7 +250,10 @@ and target web mobile desktop.
 ```
 
 The generated change set must still be reviewed. AppGen treats natural language
-as an authoring assistant, not as an unreviewed mutation path.
+as an authoring assistant, not as an unreviewed mutation path. Destructive
+requests such as dropping fields or tables are captured as explicit proposals
+with data-loss review, backup requirements, generated test plans, and rollback
+steps instead of being silently applied.
 
 ## Database Design Workbench
 

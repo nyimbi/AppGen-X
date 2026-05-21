@@ -5525,7 +5525,7 @@ def write_nl_evolution_template(output_dir):
 </style>
 <section class="agnl-wrap">
   <h1 class="agnl-title">Natural Language Evolution</h1>
-  <p class="agnl-note">Generate auditable proposals for database tables, fields, forms, chatbots, and agents from plain language.</p>
+  <p class="agnl-note">Generate auditable proposals for database tables, fields, forms, chatbots, and agents from plain language, with destructive-intent review, generated checks, and rollback plans.</p>
   {% for capability in capabilities %}
   <span class="agnl-pill">{{ capability }}</span>
   {% endfor %}
@@ -18591,6 +18591,27 @@ def evolution_capabilities():
     return ("tables", "fields", "forms", "workflows", "rules", "chatbots", "agents", "targets", "erp_modules")
 
 
+def destructive_intent_report(prompt):
+    """Return explicit destructive-change requests detected in a natural-language prompt."""
+    text = str(prompt or "")
+    removals = []
+    for match in re.finditer(r"\\b(?:delete|drop|remove)\\s+(?:the\\s+)?table\\s+([A-Za-z_][A-Za-z0-9_]*)", text, re.I):
+        removals.append({{"kind": "remove_table", "table": match.group(1), "destructive": True}})
+    for match in re.finditer(
+        r"\\b(?:delete|drop|remove)\\s+(?:the\\s+)?(?:field|column)\\s+([A-Za-z_][A-Za-z0-9_]*)(?:\\s+(?:from|on|in)\\s+([A-Za-z_][A-Za-z0-9_]*))?",
+        text,
+        re.I,
+    ):
+        removals.append({{"kind": "remove_field", "field": match.group(1), "table": match.group(2) or None, "destructive": True}})
+    return {{
+        "format": "appgen.nl-destructive-intent.v1",
+        "destructive": bool(removals),
+        "items": tuple(removals),
+        "requires_backup": bool(removals),
+        "requires_data_loss_review": bool(removals),
+    }}
+
+
 def _field_type(name, context):
     """Infer a practical DSL field type from a field name and nearby words."""
     text = f"{{name}} {{context}}".lower()
@@ -18726,6 +18747,7 @@ def evolution_plan(prompt):
     text = prompt.strip()
     lowered = text.lower()
     proposals = []
+    destructive = destructive_intent_report(text)
     table_match = re.search(r"(?:table|entity)\\s+([A-Za-z_][A-Za-z0-9_]*)", text, re.I)
     field_specs = _field_specs(text)
     form_match = re.search(r"form\\s+([A-Za-z_][A-Za-z0-9_]*)", text, re.I)
@@ -18739,6 +18761,11 @@ def evolution_plan(prompt):
     target_table = table_match.group(1) if table_match else (KNOWN_TABLES[0] if KNOWN_TABLES else "Generated")
     if table_match and any(word in lowered for word in ("create", "add", "generate", "build")):
         proposals.append({{"kind": "add_table", "name": target_table, "source": "natural_language"}})
+    for item in destructive["items"]:
+        if item["kind"] == "remove_table":
+            proposals.append({{"kind": "remove_table", "name": item["table"], "destructive": True, "source": "natural_language"}})
+        elif item["kind"] == "remove_field":
+            proposals.append({{"kind": "remove_field", "table": item["table"] or target_table, "name": item["field"], "destructive": True, "source": "natural_language"}})
     for field_spec in field_specs:
         proposals.append({{"kind": "add_field", "table": target_table, "name": field_spec["name"], "type": field_spec["type"], "modifiers": field_spec["modifiers"], "references": field_spec["references"], "cardinality": field_spec["cardinality"], "source": "natural_language"}})
     if form_match or "form" in lowered:
@@ -18758,7 +18785,7 @@ def evolution_plan(prompt):
     if "target" in lowered or "platform" in lowered or "generate" in lowered:
         selected_targets = target_matches or ("web", "mobile", "desktop")
         proposals.append({{"kind": "set_targets", "targets": selected_targets, "source": "natural_language"}})
-    return {{"prompt": text, "capabilities": evolution_capabilities(), "proposals": tuple(proposals)}}
+    return {{"prompt": text, "capabilities": evolution_capabilities(), "destructive_intent": destructive, "proposals": tuple(proposals)}}
 
 
 def _field_dsl_line(proposal):
@@ -18807,6 +18834,10 @@ def proposals_to_dsl(plan):
             lines.append(f"view {{proposal['name']}} for {{proposal['table']}} {{{{\\n}}}}")
         elif proposal["kind"] == "add_erp_module":
             lines.append(f"// add ERP module {{proposal['module']}} with erp_templates.erp_module_dsl('{{proposal['module']}}')")
+        elif proposal["kind"] == "remove_table":
+            lines.append(f"// destructive: remove table {{proposal['name']}} after backup and data-loss review")
+        elif proposal["kind"] == "remove_field":
+            lines.append(f"// destructive: remove field {{proposal['table']}}.{{proposal['name']}} after backup and data-loss review")
         elif proposal["kind"] == "set_targets":
             lines.append("app Generated {{ targets: " + ", ".join(proposal["targets"]) + " }}")
     return "\\n\\n".join(lines)
@@ -18851,6 +18882,12 @@ def migration_impact(plan):
             review.append({{"action": kind, "destructive": False}})
         elif kind == "add_erp_module":
             review.append({{"action": "add_erp_module", "module": proposal["module"], "destructive": False, "requires_migration_preview": True}})
+        elif kind == "remove_table":
+            ddl.append({{"action": "drop_table", "table": proposal["name"], "destructive": True, "requires_backup": True}})
+            data.append({{"action": "export_table_backup", "table": proposal["name"], "destructive": False}})
+        elif kind == "remove_field":
+            ddl.append({{"action": "drop_column", "table": proposal["table"], "field": proposal["name"], "destructive": True, "requires_backup": True}})
+            data.append({{"action": "export_column_backup", "table": proposal["table"], "field": proposal["name"], "destructive": False}})
     return {{
         "format": "appgen.nl-migration-impact.v1",
         "ddl": tuple(ddl),
@@ -18887,6 +18924,40 @@ def _apply_target_patch(base_dsl, targets):
     return text[:match.start()] + replacement + text[match.end():]
 
 
+def evolution_test_plan(plan):
+    """Return generated checks for a natural-language evolution plan."""
+    kinds = tuple(proposal.get("kind") for proposal in plan.get("proposals", ()))
+    checks = ["dsl_lint", "migration_impact", "generated_tests"]
+    if any(kind in {{"add_table", "add_field", "remove_table", "remove_field"}} for kind in kinds):
+        checks.extend(("schema_diff", "migration_preview", "data_backup_review"))
+    if any(kind in {{"add_form", "add_chatbot", "add_agent"}} for kind in kinds):
+        checks.extend(("ui_smoke", "chatbot_conversation_preview", "agent_provider_readiness"))
+    if "set_targets" in kinds:
+        checks.append("platform_target_generation")
+    return {{
+        "format": "appgen.nl-test-plan.v1",
+        "checks": tuple(dict.fromkeys(checks)),
+        "requires_runtime_tests": bool(kinds),
+        "destructive": any(kind in {{"remove_table", "remove_field"}} for kind in kinds),
+    }}
+
+
+def rollback_plan(changeset):
+    """Return a rollback plan for an approved natural-language change set."""
+    destructive = changeset.get("migration_impact", {{}}).get("destructive", False)
+    return {{
+        "format": "appgen.nl-rollback-plan.v1",
+        "changeset": changeset.get("id"),
+        "steps": (
+            "restore_previous_dsl_snapshot",
+            "restore_database_backup" if destructive else "revert_generated_migration",
+            "rerun_generated_tests",
+        ),
+        "requires_backup": bool(destructive),
+        "review_required": True,
+    }}
+
+
 def evolution_changeset(prompt, base_dsl=""):
     """Return an approval-ready natural-language application change set."""
     plan = evolution_plan(prompt)
@@ -18900,18 +18971,21 @@ def evolution_changeset(prompt, base_dsl=""):
     targets = target_proposals[-1]["targets"] if target_proposals else ()
     digest_material = "\\n".join((prompt.strip(), base_dsl.strip(), repr(proposals)))
     impact = migration_impact(plan)
-    return {{
+    changeset = {{
         "format": "appgen.nl-changeset.v1",
         "id": "nlchg-" + sha1(digest_material.encode("utf-8")).hexdigest()[:12],
         "prompt": plan["prompt"],
         "summary": proposal_summary(plan),
         "proposals": proposals,
+        "destructive_intent": plan["destructive_intent"],
         "dsl_blocks": dsl_blocks,
         "app_patch": {{"targets": targets}} if targets else None,
         "migration_impact": impact,
-        "requires_approval": impact["requires_review"],
+        "test_plan": evolution_test_plan(plan),
+        "requires_approval": impact["requires_review"] or plan["destructive_intent"]["destructive"],
         "applied_preview": apply_changeset(base_dsl, {{"dsl_blocks": dsl_blocks, "app_patch": {{"targets": targets}} if targets else None}}),
     }}
+    return dict(changeset, rollback=rollback_plan(changeset))
 
 
 def apply_changeset(base_dsl, changeset):
@@ -18932,7 +19006,7 @@ def approval_workflow(changeset, actor="builder"):
         "actor": actor,
         "states": ("draft", "review", "approved", "applied"),
         "current": "review" if changeset.get("requires_approval") else "approved",
-        "required_checks": ("dsl_lint", "migration_impact", "generated_tests"),
+        "required_checks": tuple(dict.fromkeys(("dsl_lint", "migration_impact", *changeset.get("test_plan", {{}}).get("checks", ()), "rollback_plan"))),
         "destructive": changeset.get("migration_impact", {{}}).get("destructive", False),
     }}
 
@@ -18945,7 +19019,8 @@ def nl_evolution_check(existing_paths):
     sample = evolution_plan("create table Ticket with field title and form TicketForm workflow Triage from open to closed rule TicketPolicy chatbot SupportBot agent SupportAgent add ERP accounts payable targets web mobile desktop")
     kinds = tuple(item["kind"] for item in sample["proposals"])
     changeset = evolution_changeset("create table Ticket with field title and form TicketForm chatbot SupportBot agent SupportAgent targets web mobile desktop")
-    return {{"ok": not missing and "add_table" in kinds and "add_agent" in kinds and "add_workflow" in kinds and "add_erp_module" in kinds and "set_targets" in kinds and changeset["requires_approval"], "missing": missing, "sample_kinds": kinds}}
+    destructive = evolution_changeset("remove field title from Ticket", "app Demo {{ targets: web }}\\n\\ntable Ticket {{\\n  id: int pk\\n  title: string\\n}}")
+    return {{"ok": not missing and "add_table" in kinds and "add_agent" in kinds and "add_workflow" in kinds and "add_erp_module" in kinds and "set_targets" in kinds and changeset["requires_approval"] and destructive["migration_impact"]["destructive"] and destructive["rollback"]["requires_backup"], "missing": missing, "sample_kinds": kinds}}
 
 
 class NaturalLanguageEvolutionView(BaseView):
@@ -30548,8 +30623,8 @@ def validate_nl_evolution_artifacts() -> None:
     contract = (ROOT / "app" / "nl_evolution.py").read_text()
     if "evolution_plan" not in contract or "proposals_to_dsl" not in contract or "add_agent" not in contract or "add_workflow" not in contract or "set_targets" not in contract or "_field_reference" not in contract:
         fail("natural-language evolution must expose proposal and DSL helpers")
-    if "evolution_changeset" not in contract or "apply_changeset" not in contract or "migration_impact" not in contract or "approval_workflow" not in contract:
-        fail("natural-language evolution must expose approval-ready changesets and migration impact")
+    if "evolution_changeset" not in contract or "apply_changeset" not in contract or "migration_impact" not in contract or "approval_workflow" not in contract or "destructive_intent_report" not in contract or "evolution_test_plan" not in contract or "rollback_plan" not in contract:
+        fail("natural-language evolution must expose approval-ready changesets, destructive-intent review, test plans, rollback, and migration impact")
     template = (ROOT / "app" / "templates" / "appgen_nl_evolution.html").read_text()
     if "Natural Language Evolution" not in template or "Plan Changes" not in template:
         fail("natural-language evolution template must expose planning UI")

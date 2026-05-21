@@ -4102,6 +4102,10 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert changeset["summary"]["kinds"]["add_table"] == 1
     assert changeset["migration_impact"]["format"] == "appgen.nl-migration-impact.v1"
     assert {"action": "create_table", "table": "Ticket", "destructive": False} in changeset["migration_impact"]["ddl"]
+    assert changeset["test_plan"]["format"] == "appgen.nl-test-plan.v1"
+    assert {"dsl_lint", "schema_diff", "ui_smoke", "agent_provider_readiness"} <= set(changeset["test_plan"]["checks"])
+    assert changeset["rollback"]["format"] == "appgen.nl-rollback-plan.v1"
+    assert changeset["rollback"]["review_required"] is True
     assert changeset["requires_approval"] is True
     assert changeset["app_patch"] == {"targets": ("web", "mobile", "desktop")}
     assert "app Library { targets: web, mobile, desktop }" in changeset["applied_preview"]
@@ -4109,9 +4113,23 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     approval = nl_evolution.approval_workflow(changeset, actor="ada")
     assert approval["current"] == "review"
     assert approval["actor"] == "ada"
+    assert "rollback_plan" in approval["required_checks"]
     patched_dsl = nl_evolution.apply_changeset("app Existing { theme: sage }\n", changeset)
     assert "app Existing { theme: sage; targets: web, mobile, desktop }" in patched_dsl
     assert "agent SupportAgent" in patched_dsl
+    destructive_report = nl_evolution.destructive_intent_report("remove field title from Ticket and drop table OldTicket")
+    assert destructive_report["destructive"] is True
+    destructive_changeset = nl_evolution.evolution_changeset(
+        "remove field title from Ticket and drop table OldTicket",
+        "app Library { targets: web }\n\ntable Ticket {\n  id: int pk\n  title: string\n}\n",
+    )
+    assert destructive_changeset["migration_impact"]["destructive"] is True
+    assert {"action": "drop_column", "table": "Ticket", "field": "title", "destructive": True, "requires_backup": True} in destructive_changeset["migration_impact"]["ddl"]
+    assert {"action": "drop_table", "table": "OldTicket", "destructive": True, "requires_backup": True} in destructive_changeset["migration_impact"]["ddl"]
+    assert destructive_changeset["rollback"]["requires_backup"] is True
+    assert destructive_changeset["test_plan"]["destructive"] is True
+    assert "data_backup_review" in destructive_changeset["test_plan"]["checks"]
+    assert "// destructive: remove field Ticket.title" in destructive_changeset["applied_preview"]
     assert dsl_reference.dsl_keyword_budget()["count"] <= dsl_reference.dsl_keyword_budget()["limit"]
     assert dsl_reference.dsl_keyword_budget()["format"] == "appgen.dsl-keyword-budget.v1"
     assert dsl_reference.dsl_keyword_budget()["legacy_contextual_tokens"] == ("ref",)
