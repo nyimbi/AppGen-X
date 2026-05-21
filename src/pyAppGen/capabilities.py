@@ -64,7 +64,7 @@ DEFAULT_CAPABILITIES: tuple[Capability, ...] = (
     Capability("api.openapi", "OpenAPI contract generation", "partial", "generated OpenAPI 3.1 spec, docs/openapi.json, and API docs view"),
     Capability("api.sdks", "Multi-language API SDK exports", "partial", "generated Python, JavaScript, Java, and C# client scaffolds"),
     Capability("data.exchange", "Schema-aware CSV and JSON data exchange", "partial", "generated import templates, row validation, and export helpers"),
-    Capability("data.search", "Schema-aware full-text search", "partial", "generated search indexes and provider adapter plans"),
+    Capability("data.search", "Schema-aware full-text search", "partial", "generated search indexes, provider adapter plans, Elasticsearch mappings, Whoosh schemas, and reviewed reindex runbooks"),
     Capability("data.database-ops", "Database provider and operations contracts", "partial", "generated PostgreSQL, MySQL, SQLite, MongoDB, DynamoDB, Cassandra, Redis, Patroni, PostGraphile, ZomboDB, and Elasticsearch readiness plans"),
     Capability("operations.inventory-traceability", "Barcode, RFID, and inventory traceability operations", "partial", "generated scan targets, barcode labels, RFID payloads, stock movements, cycle counts, and reconciliation helpers"),
     Capability("operations.finance", "Tax, multicurrency, forecasting, and batch finance operations", "partial", "generated tax calculations, exchange-rate conversion plans, budget forecasts, revenue schedules, and batch processing helpers"),

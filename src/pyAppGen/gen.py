@@ -2461,7 +2461,8 @@ def write_search_template(output_dir):
       <p class="ags-note">
         Generated search indexes and provider plans for in-memory, PostgreSQL,
         Whoosh, and Elasticsearch adapters. Hidden fields are excluded from
-        every generated index contract.
+        every generated index contract, and provider setup plans include
+        Elasticsearch mappings, Whoosh schemas, and reviewed reindex runbooks.
       </p>
     </div>
     <a class="btn btn-default" href="{{ url_for('SearchView.catalog_json') }}">Catalog JSON</a>
@@ -2476,6 +2477,21 @@ def write_search_template(output_dir):
       {% endfor %}
       <div style="margin-top: 12px;">
         <a class="btn btn-xs btn-default" href="{{ url_for('SearchView.index_json', table_name=item.table) }}">JSON</a>
+      </div>
+    </article>
+    {% endfor %}
+  </div>
+  <h2 class="ags-title" style="font-size: 20px; margin-top: 22px;">Provider plans</h2>
+  <div class="ags-grid">
+    {% for provider in providers %}
+    <article class="ags-card">
+      <h3>{{ provider.label }}</h3>
+      <div class="ags-muted">{{ provider.name }}</div>
+      {% for capability in provider.capabilities %}
+      <span class="ags-pill">{{ capability }}</span>
+      {% endfor %}
+      <div style="margin-top: 12px;">
+        <a class="btn btn-xs btn-default" href="{{ url_for('SearchView.provider_json', provider=provider.name) }}">Readiness JSON</a>
       </div>
     </article>
     {% endfor %}
@@ -10021,6 +10037,83 @@ def provider_plan(provider, env=None):
     return dict(spec, name=provider, configured=not missing, missing=missing)
 
 
+def elasticsearch_mapping(table_name):
+    """Return an Elasticsearch mapping for one generated search index."""
+    index = search_index(table_name)
+    properties = {{
+        "id": {{"type": "keyword"}},
+    }}
+    for field in index["fields"]:
+        properties[field] = {{
+            "type": "text",
+            "fields": {{"keyword": {{"type": "keyword", "ignore_above": 256}}}},
+        }}
+    return {{
+        "index": index["table"].lower() + "-search",
+        "mappings": {{
+            "dynamic": "strict",
+            "properties": properties,
+        }},
+    }}
+
+
+def whoosh_schema(table_name):
+    """Return a dependency-free Whoosh schema descriptor for one generated index."""
+    index = search_index(table_name)
+    fields = [{{"name": "id", "type": "ID", "stored": True, "unique": True}}]
+    fields.extend(
+        {{"name": field, "type": "TEXT", "stored": True, "sortable": False}}
+        for field in index["fields"]
+    )
+    return {{
+        "index": index["table"].lower(),
+        "fields": tuple(fields),
+        "index_dir": f"whoosh/{{index['table'].lower()}}",
+    }}
+
+
+def provider_index_plan(provider, table_name):
+    """Return the concrete index setup contract for one provider and table."""
+    provider_plan(provider)
+    index = search_index(table_name)
+    base = {{
+        "provider": provider,
+        "table": index["table"],
+        "fields": index["fields"],
+        "primary_key": index["primary_key"],
+    }}
+    if provider == "elasticsearch":
+        return dict(base, kind="distributed", mapping=elasticsearch_mapping(table_name), bulk_endpoint="/_bulk")
+    if provider == "whoosh":
+        return dict(base, kind="local", schema=whoosh_schema(table_name), writer="whoosh.index.open_dir")
+    if provider == "postgres":
+        return dict(base, kind="database", vector=" || ' ' || ".join(index["fields"]), migration="add generated tsvector index")
+    if provider == "memory":
+        return dict(base, kind="in-process", document=search_document(table_name, {{index["primary_key"]: None}}))
+    raise KeyError(f"Unknown search provider: {{provider}}")
+
+
+def reindex_plan(provider, table_names=None):
+    """Return an ordered, reviewable reindex plan for generated search providers."""
+    if provider not in SEARCH_PROVIDERS:
+        raise KeyError(f"Unknown search provider: {{provider}}")
+    selected = tuple(table_names or SEARCH_INDEXES)
+    plans = tuple(provider_index_plan(provider, table_name) for table_name in selected)
+    return {{
+        "provider": provider,
+        "tables": selected,
+        "requires_review": provider != "memory",
+        "steps": (
+            "verify provider configuration",
+            "create or migrate generated indexes",
+            "bulk load searchable documents",
+            "compare indexed counts against source tables",
+            "activate provider routing",
+        ),
+        "indexes": plans,
+    }}
+
+
 def _row_value(row, field):
     if isinstance(row, dict):
         return row.get(field)
@@ -10094,6 +10187,14 @@ class SearchView(BaseView):
     @expose("/providers/<provider>.json")
     def provider_json(self, provider):
         return jsonify(provider_plan(provider, request.environ))
+
+    @expose("/providers/<provider>/<table_name>.json")
+    def provider_index_json(self, provider, table_name):
+        return jsonify(provider_index_plan(provider, table_name))
+
+    @expose("/providers/<provider>/reindex.json")
+    def reindex_json(self, provider):
+        return jsonify(reindex_plan(provider))
 
 
 def register_search(appbuilder):
@@ -27303,6 +27404,11 @@ def test_generated_runtime_helpers():
         {"app/usage_analytics.py", "app/templates/appgen_usage_analytics.html"}
     )["ok"] is True
     assert isinstance(search.search_catalog(), tuple)
+    first_search_table = search.search_catalog()[0]["table"]
+    assert search.elasticsearch_mapping(first_search_table)["mappings"]["properties"]
+    assert search.whoosh_schema(first_search_table)["fields"]
+    assert search.provider_index_plan("elasticsearch", first_search_table)["bulk_endpoint"] == "/_bulk"
+    assert search.reindex_plan("whoosh", (first_search_table,))["requires_review"] is True
     assert isinstance(media.media_catalog(), tuple)
     first_document_type = documents.document_catalog()[0]["id"]
     assert documents.document_version(first_document_type, record_id=1, filename="sample.pdf")["version"] == 1

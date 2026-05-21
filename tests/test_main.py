@@ -1907,6 +1907,13 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert search.search_index("Author")["fields"] == ("name",)
     assert search.provider_plan("elasticsearch", {})["missing"] == ("ELASTICSEARCH_URL",)
     assert search.provider_plan("whoosh", {"WHOOSH_INDEX_DIR": "/tmp/index"})["configured"] is True
+    assert search.elasticsearch_mapping("Book")["mappings"]["properties"]["title"]["type"] == "text"
+    assert search.whoosh_schema("Book")["fields"][1]["name"] == "title"
+    assert search.provider_index_plan("elasticsearch", "Book")["mapping"]["index"] == "book-search"
+    assert search.provider_index_plan("whoosh", "Book")["schema"]["index_dir"] == "whoosh/book"
+    reindex = search.reindex_plan("elasticsearch", ("Book",))
+    assert reindex["requires_review"] is True
+    assert reindex["indexes"][0]["bulk_endpoint"] == "/_bulk"
     assert search.row_matches("Book", {"id": 1, "title": "Dune", "internal_code": "B-1"}, "dune") is True
     assert search.search_document("Book", {"id": 1, "title": "Dune", "internal_code": "B-1"})["fields"] == {
         "title": "Dune"
