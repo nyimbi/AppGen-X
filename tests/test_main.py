@@ -433,6 +433,8 @@ def test_generate_app_from_sqlite_schema_compiles(tmp_path) -> None:
     compose_text = (tmp_path / "docker-compose.yml").read_text()
     assert "caddy:2" in compose_text
     assert "443:443" in compose_text
+    assert "nodered/node-red:3.1" in compose_text
+    assert "1880:1880" in compose_text
     caddy_text = (tmp_path / "deploy" / "Caddyfile").read_text()
     assert "reverse_proxy web:8080" in caddy_text
     assert "Strict-Transport-Security" in caddy_text
@@ -445,6 +447,7 @@ def test_generate_app_from_sqlite_schema_compiles(tmp_path) -> None:
     assert "https" in deployment.deployment_targets()
     assert deployment.artifact_plan("aws") == ("deploy/terraform-aws.tf",)
     assert deployment.artifact_plan("https") == ("deploy/Caddyfile", "deploy/appgen_https.py")
+    assert "automation/node-red/flows.json" in deployment.artifact_plan("compose")
     assert deployment.environment_status({"SECRET_KEY": "s", "SQLALCHEMY_DATABASE_URI": "sqlite://"})["configured"] is True
     assert deployment.secret_plan("aws")["cloud_secret_store"] == "AWS Secrets Manager"
     runbook = deployment.deployment_runbook("kubernetes", image_tag="app:v1", base_url="https://app.example")
@@ -465,6 +468,7 @@ def test_generate_app_from_sqlite_schema_compiles(tmp_path) -> None:
         "deploy/terraform-aws.tf",
         "deploy/terraform-gcp.tf",
         "deploy/terraform-azure.tf",
+        "automation/node-red/flows.json",
     }
     assert deployment.deployment_check(
         {"SECRET_KEY": "s", "SQLALCHEMY_DATABASE_URI": "sqlite://"},
@@ -550,8 +554,12 @@ def test_generate_app_from_sqlite_schema_compiles(tmp_path) -> None:
     assert "book.created" in {event["topic"] for event in node_red.node_red_events()}
     assert node_red.event_topic("book", "created") == "book.created"
     assert node_red.webhook_plan("book", "created")["path"] == "/appgen/book/created"
+    assert node_red.node_red_runtime_service()["service"] == "node-red"
+    assert node_red.compose_service_plan()["image"] == "nodered/node-red:3.1"
+    assert node_red.runtime_readiness({"automation/node-red/flows.json", "docker-compose.yml"})["ok"] is True
     flow_export = json.loads((tmp_path / "automation" / "node-red" / "flows.json").read_text())
     assert node_red.validate_flow_export(flow_export)["ok"] is True
+    assert node_red.validate_flow_export(flow_export)["runtime"]["port"] == 1880
     assert node_red.workflow_events() == ()
     assert any(node.get("type") == "http in" and node.get("name") == "book.created" for node in flow_export)
     manifest = json.loads((output_dir / "appgen.json").read_text())
@@ -3074,6 +3082,11 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     )
     validation = node_red.validate_flow_export(flow_export)
     assert validation["http_inputs"] == 8
+    assert validation["runtime"]["service"] == "node-red"
+    assert node_red.compose_service_plan()["ports"] == ("1880:1880",)
+    assert node_red.runtime_readiness({"automation/node-red/flows.json", "docker-compose.yml"})["run"] == (
+        "docker compose up node-red"
+    )
     assert validation["workflow_events"] == (
         "workflow.Publish.draft.published",
         "workflow.Publish.published.archived",

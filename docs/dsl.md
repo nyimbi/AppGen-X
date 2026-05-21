@@ -368,7 +368,8 @@ apps include:
   with generated provider intents, field prompts, and conversation checks.
 - `automation/node-red/flows.json` and `automation/appgen_node_red.py` with
   generated Node-RED webhook flows for table events, declared workflow
-  transitions, webhook endpoint plans, and a validation contract.
+  transitions, webhook endpoint plans, a default Docker Compose Node-RED
+  service, runtime readiness checks, and a validation contract.
 - `rpa.py` and `appgen_rpa.html` with generated robotic-process automation
   task plans, credential readiness checks, BPMN/UML process models, process
   validation, simulation, UiPath/Blue Prism/Automation Anywhere export

@@ -72,7 +72,7 @@ DEFAULT_CAPABILITIES: tuple[Capability, ...] = (
     Capability("workflow.automation", "Low-code workflow and decision trees", "partial", "generated transition runtime and workflow cockpit"),
     Capability("workflow.statecharts", "FSM and state-chart workflow exports", "partial", "generated Mermaid state diagrams, FSM JSON, and workflow graph validation"),
     Capability("logic.business-rules", "Low-code business rules and decisions", "partial", "generated rule validation and decision helpers"),
-    Capability("automation.node-red", "Node-RED automation flow export", "partial", "generated Node-RED flow export and webhook contracts"),
+    Capability("automation.node-red", "Node-RED automation runtime", "partial", "generated Node-RED flow export, webhook contracts, default Docker Compose service, runtime descriptor, and readiness checks"),
     Capability("automation.cep", "Complex event processing and alerting", "partial", "generated event catalog, CEP rule matching, alerting, retry, and dead-letter contracts"),
     Capability("automation.rpa-bpa", "Robotic process automation and business-process analysis", "partial", "generated RPA task plans, credential readiness, BPMN/UML process models, simulations, UiPath/Blue Prism/Automation Anywhere export contracts, bottleneck analysis, process observations, and audit events"),
     Capability("security.rbac", "Role-based access control", "partial", "generated role policy helpers, principal normalization, authorization decisions, audit events, policy matrices, and reviewed RBAC change proposals"),
