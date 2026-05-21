@@ -137,6 +137,10 @@ flow Publish {
 }
 ```
 
+Generated workflow artifacts include transition helpers, Mermaid state diagrams,
+provider-neutral FSM JSON, SCXML export for state-chart tools, graph diagnostics,
+and reviewed transition proposals that can be turned back into DSL.
+
 Use `rule` for validation and decisions:
 
 ```appgen

@@ -1406,6 +1406,8 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     ).read_text()
     assert "Generated transition cockpit" in (output_dir / "templates" / "appgen_workflows.html").read_text()
     assert "FSM JSON" in (output_dir / "templates" / "appgen_workflows.html").read_text()
+    assert "SCXML" in (output_dir / "templates" / "appgen_workflows.html").read_text()
+    assert "Workbench JSON" in (output_dir / "templates" / "appgen_workflows.html").read_text()
     assert "Export CSV" in (output_dir / "templates" / "appgen_reports.html").read_text()
     assert "Generated PDF export and email delivery contracts" in (
         output_dir / "templates" / "appgen_report_delivery.html"
@@ -1652,6 +1654,16 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert fsm["final"] == ("archived",)
     assert fsm["transitions"][0]["event"] == "draft_to_published"
     assert workflow.workflow_graph_check("Publish")["ok"] is True
+    scxml = workflow.scxml_export("Publish")
+    assert scxml.startswith("<scxml")
+    assert '<transition event="draft_to_published" target="published" />' in scxml
+    workbench = workflow.statechart_workbench("Publish")
+    assert workbench["exports"]["scxml"].startswith("<scxml")
+    assert workbench["diagnostics"]["ok"] is True
+    proposal = workflow.transition_proposal("Publish", "review", "approved", actor="ada")
+    assert proposal["requires_review"] is True
+    assert proposal["dsl"] == "flow Publish {\n  review -> approved;\n}\n"
+    assert "New source state: review" in proposal["warnings"]
     assert rules.rules_for_table("Book")[0]["name"] == "PublishPolicy"
     assert rules.validate_row("Book", {"status": "draft"})["errors"][0]["message"] == "Title is required"
     assert rules.validate_row("Book", {"title": "Dune", "status": "draft"})["ok"] is True

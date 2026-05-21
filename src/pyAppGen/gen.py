@@ -682,6 +682,68 @@ def write_workflow_file(output_dir, schema: AppSchema):
         f.write("        'graph': transition_graph(flow_name),\n")
         f.write("        'mermaid': statechart_mermaid(flow_name),\n")
         f.write("    }\n\n")
+        f.write("def _xml_escape(value):\n")
+        f.write("    \"\"\"Escape a value for generated SCXML previews without extra dependencies.\"\"\"\n")
+        f.write("    return str(value).replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;').replace('\"', '&quot;')\n\n")
+        f.write("def scxml_export(flow_name):\n")
+        f.write("    \"\"\"Return a compact SCXML preview for external state-chart tools.\"\"\"\n")
+        f.write("    initials = start_states(flow_name) or states(flow_name)[:1]\n")
+        f.write("    initial = initials[0] if initials else ''\n")
+        f.write("    lines = [f'<scxml version=\"1.0\" initial=\"{_xml_escape(initial)}\" name=\"{_xml_escape(flow_name)}\">']\n")
+        f.write("    finals = set(terminal_states(flow_name))\n")
+        f.write("    for state in states(flow_name):\n")
+        f.write("        tag = 'final' if state in finals else 'state'\n")
+        f.write("        outgoing = next_states(flow_name, state)\n")
+        f.write("        if not outgoing:\n")
+        f.write("            lines.append(f'  <{tag} id=\"{_xml_escape(state)}\" />')\n")
+        f.write("            continue\n")
+        f.write("        lines.append(f'  <{tag} id=\"{_xml_escape(state)}\">')\n")
+        f.write("        for target in outgoing:\n")
+        f.write("            event = f'{state}_to_{target}'\n")
+        f.write("            lines.append(f'    <transition event=\"{_xml_escape(event)}\" target=\"{_xml_escape(target)}\" />')\n")
+        f.write("        lines.append(f'  </{tag}>')\n")
+        f.write("    lines.append('</scxml>')\n")
+        f.write("    return '\\n'.join(lines) + '\\n'\n\n")
+        f.write("def transition_proposal(flow_name, source, target, actor=None):\n")
+        f.write("    \"\"\"Return a reviewed state-chart edit proposal that can regenerate DSL.\"\"\"\n")
+        f.write("    source = str(source).strip()\n")
+        f.write("    target = str(target).strip()\n")
+        f.write("    duplicate = can_transition(flow_name, source, target)\n")
+        f.write("    known_states = set(states(flow_name))\n")
+        f.write("    warnings = []\n")
+        f.write("    if duplicate:\n")
+        f.write("        warnings.append('Transition already exists.')\n")
+        f.write("    if source and source not in known_states:\n")
+        f.write("        warnings.append(f'New source state: {source}')\n")
+        f.write("    if target and target not in known_states:\n")
+        f.write("        warnings.append(f'New target state: {target}')\n")
+        f.write("    dsl = f'flow {flow_name} {{\\n  {source} -> {target};\\n}}\\n'\n")
+        f.write("    return {\n")
+        f.write("        'kind': 'add_transition',\n")
+        f.write("        'flow': flow_name,\n")
+        f.write("        'source': source,\n")
+        f.write("        'target': target,\n")
+        f.write("        'actor': actor,\n")
+        f.write("        'duplicate': duplicate,\n")
+        f.write("        'warnings': tuple(warnings),\n")
+        f.write("        'requires_review': True,\n")
+        f.write("        'dsl': dsl,\n")
+        f.write("    }\n\n")
+        f.write("def statechart_workbench(flow_name):\n")
+        f.write("    \"\"\"Return the generated state-chart designer workspace for one workflow.\"\"\"\n")
+        f.write("    return {\n")
+        f.write("        'flow': flow_name,\n")
+        f.write("        'fsm': fsm_export(flow_name),\n")
+        f.write("        'exports': {\n")
+        f.write("            'mermaid': statechart_mermaid(flow_name),\n")
+        f.write("            'scxml': scxml_export(flow_name),\n")
+        f.write("        },\n")
+        f.write("        'diagnostics': workflow_graph_check(flow_name),\n")
+        f.write("        'commands': ('add_transition', 'export_mermaid', 'export_scxml', 'validate_graph'),\n")
+        f.write("    }\n\n")
+        f.write("def statechart_designer_catalog():\n")
+        f.write("    \"\"\"Return every workflow prepared for visual state-chart editing.\"\"\"\n")
+        f.write("    return tuple(statechart_workbench(flow_name) for flow_name in sorted(WORKFLOWS))\n\n")
         f.write("def workflow_graph_check(flow_name):\n")
         f.write("    \"\"\"Return reachability and dead-end diagnostics for a generated workflow.\"\"\"\n")
         f.write("    all_states = states(flow_name)\n")
@@ -719,6 +781,19 @@ def write_workflow_file(output_dir, schema: AppSchema):
         f.write("    @expose('/<flow_name>/statechart.mmd')\n")
         f.write("    def statechart_mermaid_route(self, flow_name):\n")
         f.write("        return statechart_mermaid(flow_name), 200, {'Content-Type': 'text/plain; charset=utf-8'}\n\n")
+        f.write("    @expose('/<flow_name>/statechart.scxml')\n")
+        f.write("    def statechart_scxml_route(self, flow_name):\n")
+        f.write("        return scxml_export(flow_name), 200, {'Content-Type': 'application/xml; charset=utf-8'}\n\n")
+        f.write("    @expose('/<flow_name>/workbench.json')\n")
+        f.write("    def statechart_workbench_json(self, flow_name):\n")
+        f.write("        return jsonify(statechart_workbench(flow_name))\n\n")
+        f.write("    @expose('/statecharts.json')\n")
+        f.write("    def statechart_catalog_json(self):\n")
+        f.write("        return jsonify(statechart_designer_catalog())\n\n")
+        f.write("    @expose('/<flow_name>/proposal', methods=('POST',))\n")
+        f.write("    def transition_proposal_json(self, flow_name):\n")
+        f.write("        payload = request.get_json(silent=True) or {}\n")
+        f.write("        return jsonify(transition_proposal(flow_name, payload.get('source', ''), payload.get('target', ''), actor=payload.get('actor')))\n\n")
         f.write("def register_workflows(appbuilder):\n")
         f.write("    appbuilder.add_view(\n")
         f.write("        WorkflowView,\n")
@@ -2766,8 +2841,8 @@ def write_workflows_template(output_dir):
   <div class="agw-head">
     <h1 class="agw-title">Workflows</h1>
     <p class="agw-note">
-      Generated transition cockpit for low-code flows. Start and terminal
-      states are inferred from the declared transition graph.
+      Generated transition cockpit and statechart designer for low-code flows.
+      Start and terminal states are inferred from the declared transition graph.
     </p>
   </div>
   <div class="agw-grid">
@@ -2785,6 +2860,8 @@ def write_workflows_template(output_dir):
       <div class="agw-actions">
         <a class="btn btn-default" href="{{ url_for('WorkflowView.statechart_json', flow_name=workflow.name) }}">FSM JSON</a>
         <a class="btn btn-default" href="{{ url_for('WorkflowView.statechart_mermaid_route', flow_name=workflow.name) }}">Mermaid</a>
+        <a class="btn btn-default" href="{{ url_for('WorkflowView.statechart_scxml_route', flow_name=workflow.name) }}">SCXML</a>
+        <a class="btn btn-default" href="{{ url_for('WorkflowView.statechart_workbench_json', flow_name=workflow.name) }}">Workbench JSON</a>
       </div>
     </article>
     {% else %}
@@ -23923,8 +24000,10 @@ def validate_workflow_artifacts() -> None:
     contract = (ROOT / "app" / "workflow.py").read_text()
     if "statechart_mermaid" not in contract or "fsm_export" not in contract or "workflow_graph_check" not in contract:
         fail("workflow contract must expose FSM and state-chart exports")
+    if "scxml_export" not in contract or "statechart_workbench" not in contract or "transition_proposal" not in contract:
+        fail("workflow contract must expose SCXML, statechart workbench, and reviewed edit proposals")
     template = (ROOT / "app" / "templates" / "appgen_workflows.html").read_text()
-    if "FSM JSON" not in template or "Mermaid" not in template:
+    if "FSM JSON" not in template or "Mermaid" not in template or "SCXML" not in template or "Workbench JSON" not in template:
         fail("workflow template must expose state-chart export links")
 
 
@@ -24800,8 +24879,11 @@ def test_generated_runtime_helpers():
     assert isinstance(workflow.workflow_catalog(), tuple)
     if workflow.WORKFLOWS:
         first_flow = next(iter(workflow.WORKFLOWS))
-        assert "stateDiagram-v2" in workflow.statechart_mermaid(first_flow)
-        assert workflow.fsm_export(first_flow)["name"] == first_flow
+    assert "stateDiagram-v2" in workflow.statechart_mermaid(first_flow)
+    assert workflow.fsm_export(first_flow)["name"] == first_flow
+    assert workflow.scxml_export(first_flow).startswith("<scxml")
+    assert workflow.statechart_workbench(first_flow)["exports"]["scxml"].startswith("<scxml")
+    assert workflow.transition_proposal(first_flow, "review", "approved")["requires_review"] is True
     assert isinstance(rules.rules_catalog(), tuple)
     assert rules.rules_check({"app/rules.py", "app/templates/appgen_rules.html"})["ok"] is True
     assert report_delivery.rows_to_pdf_bytes(next(iter(report_delivery.REPORT_DELIVERY)), ()).startswith(b"%PDF")
