@@ -2761,9 +2761,23 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert microservices.deployment_units()[0]["name"] == "api-gateway"
     assert microservices.health_check_plan()[0]["liveness"].endswith("/live")
     assert microservices.scaling_policy("book-service", cpu_percent=90)["desired_replicas"] == 3
-    assert microservices.microservice_check(
+    relationships = microservices.cross_service_relationships()
+    assert relationships[0]["source_table"] == "Book"
+    assert relationships[0]["source_column"] == "author_id"
+    assert relationships[0]["target_table"] == "Author"
+    assert relationships[0]["cross_service"] is True
+    resolver = microservices.relationship_resolver_plan("Book", "author_id", 1)
+    assert resolver["format"] == "appgen.cross-service-relationship-resolver.v1"
+    assert resolver["request"]["upstream"].endswith("/api/v1/author/1")
+    consistency = microservices.relationship_consistency_plan()
+    assert consistency[0]["requires_review"] is True
+    event_contracts = microservices.relationship_event_contracts()
+    assert event_contracts[0]["publisher"] == "author-service"
+    check = microservices.microservice_check(
         {"app/microservices.py", "app/templates/appgen_microservices.html", "deploy/k8s.yaml"}
-    )["ok"] is True
+    )
+    assert check["ok"] is True
+    assert check["cross_service_relationships"]
     intents = platforms.chatbot_intents()
     assert any(intent["intent"] == "create_book" for intent in intents)
     assert set(sdks.sdk_targets()) == {"python", "javascript", "java", "csharp"}

@@ -4587,10 +4587,12 @@ def write_microservices_template(output_dir):
       <h1 class="agm-title">Microservices</h1>
       <p class="agm-note">
         Generated microservices architecture contract for service boundaries,
-        API gateway routes, event routes, dependencies, health checks, and scaling.
+        API gateway routes, event routes, cross-service relationships,
+        dependencies, health checks, and scaling.
       </p>
     </div>
     <a class="btn btn-default" href="{{ url_for('MicroserviceView.catalog_json') }}">Service Catalog JSON</a>
+    <a class="btn btn-default" href="{{ url_for('MicroserviceView.relationships_json') }}">Relationships JSON</a>
   </div>
   <div class="agm-grid">
     {% for service in services %}
@@ -20760,8 +20762,10 @@ def register_platforms(appbuilder):
 def _microservices_text(schema: AppSchema, app_name: str) -> str:
     service_name = underscore(app_name).replace("_", "-").lower()
     domain_services = {}
+    table_services = {}
     for table in schema.tables:
         name = f"{underscore(table.name).replace('_', '-')}-service"
+        table_services[table.name] = name
         route = f"/api/v1/{underscore(table.name)}/"
         domain_services[name] = {
             "label": f"{snake_to_label(table.name)} Service",
@@ -20778,6 +20782,38 @@ def _microservices_text(schema: AppSchema, app_name: str) -> str:
             "database": f"{underscore(table.name)}_db",
             "replicas": 2,
         }
+
+    relationship_specs = []
+    for table in schema.tables:
+        source_service = table_services[table.name]
+        for column in table.columns:
+            if not column.references:
+                continue
+            target_table, target_field = column.references
+            target_service = table_services.get(
+                target_table,
+                f"{underscore(target_table).replace('_', '-')}-service",
+            )
+            source_field = _model_attribute_name(column)
+            relationship_specs.append(
+                {
+                    "name": f"{table.name}.{source_field}->{target_table}.{target_field}",
+                    "source_table": table.name,
+                    "source_column": column.name,
+                    "source_field": source_field,
+                    "target_table": target_table,
+                    "target_field": target_field,
+                    "source_service": source_service,
+                    "target_service": target_service,
+                    "cross_service": source_service != target_service,
+                    "lookup_route": f"/api/v1/{underscore(target_table)}/{{id}}",
+                    "events": (
+                        f"{target_table}.updated",
+                        f"{target_table}.deleted",
+                    ),
+                    "consistency": "reference-by-id-with-read-through-lookup",
+                }
+            )
 
     platform_services = {
         "api-gateway": {
@@ -20846,6 +20882,7 @@ from flask_appbuilder import expose
 APP_NAME = {app_name!r}
 SERVICE_NAME = {service_name!r}
 SERVICES = {services!r}
+RELATIONSHIPS = {tuple(relationship_specs)!r}
 
 
 def service_catalog():
@@ -20901,6 +20938,83 @@ def event_routes():
         for topic in service["events"]:
             routes.append({{"topic": topic, "service": service["name"]}})
     return tuple(routes)
+
+
+def cross_service_relationships():
+    """Return generated relationship contracts between independently deployed services."""
+    return tuple(
+        dict(relationship)
+        for relationship in RELATIONSHIPS
+        if relationship["cross_service"]
+    )
+
+
+def relationship_resolver_plan(source_table, field_name, record_id, *, cache_ttl_seconds=300):
+    """Return a gateway-safe plan for resolving a cross-service foreign key."""
+    for relationship in RELATIONSHIPS:
+        if relationship["source_table"] == source_table and field_name in {{
+            relationship["source_field"],
+            relationship["source_column"],
+        }}:
+            lookup_route = relationship["lookup_route"].replace("{{id}}", str(record_id))
+            return {{
+                "format": "appgen.cross-service-relationship-resolver.v1",
+                "relationship": relationship["name"],
+                "source_service": relationship["source_service"],
+                "target_service": relationship["target_service"],
+                "request": {{
+                    "method": "GET",
+                    "path": lookup_route,
+                    "upstream": f"http://{{relationship['target_service']}}:8080{{lookup_route}}",
+                }},
+                "cache": {{
+                    "enabled": True,
+                    "ttl_seconds": cache_ttl_seconds,
+                    "invalidate_on": tuple(relationship["events"]),
+                }},
+                "fallback": "return_reference_stub",
+            }}
+    raise KeyError(f"No generated relationship for {{source_table}}.{{field_name}}")
+
+
+def relationship_consistency_plan():
+    """Return consistency checks for cross-service relationships."""
+    return tuple(
+        {{
+            "format": "appgen.cross-service-relationship-consistency.v1",
+            "relationship": relationship["name"],
+            "source_service": relationship["source_service"],
+            "target_service": relationship["target_service"],
+            "checks": (
+                "target_lookup_before_write",
+                "idempotent_reference_events",
+                "read_model_reconciliation",
+            ),
+            "events": tuple(relationship["events"]),
+            "consistency": relationship["consistency"],
+            "requires_review": True,
+        }}
+        for relationship in cross_service_relationships()
+    )
+
+
+def relationship_event_contracts():
+    """Return event contracts used to keep cross-service relationship read models fresh."""
+    contracts = []
+    for relationship in cross_service_relationships():
+        for topic in relationship["events"]:
+            contracts.append({{
+                "topic": topic,
+                "publisher": relationship["target_service"],
+                "subscribers": (relationship["source_service"], "event-service"),
+                "relationship": relationship["name"],
+                "payload_fields": (
+                    relationship["target_field"],
+                    "version",
+                    "occurred_at",
+                ),
+            }})
+    return tuple(contracts)
 
 
 def dependency_graph():
@@ -20964,6 +21078,7 @@ def microservice_check(existing_paths=()):
         "missing": missing,
         "services": service_names(),
         "routes": api_gateway_routes(),
+        "cross_service_relationships": cross_service_relationships(),
     }}
 
 
@@ -20985,6 +21100,16 @@ class MicroserviceView(BaseView):
             "routes": list(api_gateway_routes()),
             "events": list(event_routes()),
             "dependencies": dependency_graph(),
+            "relationships": list(cross_service_relationships()),
+            "relationship_events": list(relationship_event_contracts()),
+        }})
+
+    @expose("/relationships.json")
+    def relationships_json(self):
+        return jsonify({{
+            "relationships": list(cross_service_relationships()),
+            "consistency": list(relationship_consistency_plan()),
+            "events": list(relationship_event_contracts()),
         }})
 
 
@@ -28729,9 +28854,11 @@ def validate_microservice_artifacts() -> None:
         fail("microservices contract must expose service catalog, gateway routes, and dependency graph")
     if "deployment_units" not in contract or "health_check_plan" not in contract or "scaling_policy" not in contract:
         fail("microservices contract must expose deployment, health, and scaling plans")
+    if "cross_service_relationships" not in contract or "relationship_resolver_plan" not in contract or "relationship_consistency_plan" not in contract:
+        fail("microservices contract must expose cross-service relationship resolver and consistency plans")
     template = (ROOT / "app" / "templates" / "appgen_microservices.html").read_text()
-    if "Microservices" not in template or "Service Catalog JSON" not in template:
-        fail("microservices template must expose generated service catalog")
+    if "Microservices" not in template or "Service Catalog JSON" not in template or "Relationships JSON" not in template:
+        fail("microservices template must expose generated service and relationship catalogs")
 
 
 def validate_integration_artifacts() -> None:
@@ -30296,6 +30423,16 @@ def test_generated_runtime_helpers():
     assert isinstance(platforms.platform_catalog(), tuple)
     assert "api-gateway" in microservices.service_names()
     assert microservices.api_gateway_routes()
+    assert isinstance(microservices.cross_service_relationships(), tuple)
+    if microservices.cross_service_relationships():
+        first_relationship = microservices.cross_service_relationships()[0]
+        resolver = microservices.relationship_resolver_plan(
+            first_relationship["source_table"],
+            first_relationship["source_field"],
+            1,
+        )
+        assert resolver["format"] == "appgen.cross-service-relationship-resolver.v1"
+        assert microservices.relationship_consistency_plan()[0]["requires_review"] is True
     assert microservices.microservice_check(
         {"app/microservices.py", "app/templates/appgen_microservices.html", "deploy/k8s.yaml"}
     )["ok"] is True

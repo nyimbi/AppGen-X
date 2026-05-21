@@ -467,7 +467,8 @@ apps include:
 - `openapi.py`, `appgen_openapi.html`, and `docs/openapi.json` with generated
   OpenAPI 3.1 API documentation.
 - `microservices.py` and `appgen_microservices.html` with generated service
-  boundaries, gateway routes, event routes, health probes, and scaling plans.
+  boundaries, gateway routes, event routes, cross-service relationship
+  resolvers, consistency reviews, health probes, and scaling plans.
 - `usage_analytics.py` and `appgen_usage_analytics.html` with generated
   adoption, funnel, retention, and real-time app-usage analytics.
 - `seed.py` with relationship-aware deterministic demo data, dependency-ordered
