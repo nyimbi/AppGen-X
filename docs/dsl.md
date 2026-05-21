@@ -277,9 +277,12 @@ apps include:
   migration-target readiness contracts.
 - `schema_import.py` and `appgen_schema_import.html` with generated DBML, SQL
   DDL, PonyORM, and live database source catalogs, source provenance profiles,
-  normalization reports, source validation plans, import command plans,
-  round-trip export plans, source-to-generated diff plans, and reviewed import
-  apply plans before generated files are overwritten.
+  stable source fingerprints, normalization reports, source validation plans,
+  import command plans, round-trip export plans, source-to-generated diff plans,
+  and reviewed import apply plans before generated files are overwritten. The
+  generated `appgen.json` manifest carries the same `source_profile` so an app
+  can prove which source family was normalized and which tables, relationships,
+  enums, and counts were preserved.
 - `integrations.py` and `appgen_integrations.html` with generated REST,
   webhook, Salesforce, SAP, Entando portal, Invenio repository, payment
   gateway, SMS gateway, and transactional email service contracts. Outbound

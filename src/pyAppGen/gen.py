@@ -12708,31 +12708,7 @@ def register_data_access(appbuilder):
 
 def _schema_import_text(schema: AppSchema) -> str:
     tables = tuple(table.name for table in schema.tables)
-    field_count = sum(len(table.columns) for table in schema.tables)
-    relation_count = len(schema.relations)
-    enum_count = len(schema.enums)
-    source = schema.source or ""
-    lowered = source.lower()
-    if source.startswith(("sqlite://", "postgresql://", "mysql://", "mssql://", "oracle://")):
-        source_kind = "database"
-    elif lowered.endswith(".dbml"):
-        source_kind = "dbml"
-    elif lowered.endswith((".sql", ".ddl")):
-        source_kind = "sql"
-    elif lowered.endswith(".py"):
-        source_kind = "ponyorm"
-    elif lowered.endswith((".ags", ".ag", ".appgen")):
-        source_kind = "dsl"
-    else:
-        source_kind = "canonical"
-    source_profile = {
-        "source": source,
-        "source_kind": source_kind,
-        "tables": len(tables),
-        "fields": field_count,
-        "relations": relation_count,
-        "enums": enum_count,
-    }
+    source_profile = schema.source_profile()
     sources = (
         {
             "kind": "dbml",
@@ -12797,13 +12773,11 @@ def normalization_report():
     return {{
         "format": "appgen.schema-normalization.v1",
         "source_kind": profile["source_kind"],
+        "fingerprint": profile["fingerprint"],
         "tables": SOURCE_TABLES,
-        "counts": {{
-            "tables": profile["tables"],
-            "fields": profile["fields"],
-            "relations": profile["relations"],
-            "enums": profile["enums"],
-        }},
+        "counts": dict(profile["counts"]),
+        "table_signatures": tuple(profile["table_signatures"]),
+        "relation_signatures": tuple(profile["relation_signatures"]),
         "canonical_contract": "AppSchema",
         "preserved": ("tables", "fields", "relations", "primary_keys", "unique_fields", "defaults", "enums"),
     }}
@@ -12995,6 +12969,7 @@ def schema_import_check(existing_paths=()):
         "missing": missing,
         "sources": tuple(item["kind"] for item in SCHEMA_SOURCES),
         "source_kind": SOURCE_PROFILE["source_kind"],
+        "fingerprint": SOURCE_PROFILE["fingerprint"],
         "validation": all_source_validation_plans(),
         "roundtrip_diffs": all_schema_roundtrip_diffs(),
         "apply_plans": all_import_apply_plans(),

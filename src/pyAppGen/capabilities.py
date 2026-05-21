@@ -132,6 +132,7 @@ def build_manifest(schema: AppSchema) -> dict:
         "platform_targets": list(platform_targets),
         "unknown_platform_targets": list(unknown_platform_targets),
         "source": schema.source,
+        "source_profile": schema.source_profile(),
         "tables": [
             {
                 "name": table.name,

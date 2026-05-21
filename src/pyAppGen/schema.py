@@ -8,6 +8,8 @@ that stable intermediate representation.
 from __future__ import annotations
 
 import ast
+import hashlib
+import json
 import re
 import textwrap
 from dataclasses import dataclass
@@ -250,6 +252,62 @@ class AppSchema:
                 return table
         raise KeyError(name)
 
+    def source_profile(self) -> dict:
+        """Return stable source provenance and normalized schema fingerprints."""
+        table_signatures = tuple(
+            {
+                "table": table.name,
+                "fields": tuple(column.name for column in table.columns),
+                "primary_keys": tuple(column.name for column in table.columns if column.primary_key),
+                "required_fields": tuple(
+                    column.name for column in table.columns if not column.nullable and not column.primary_key
+                ),
+                "unique_fields": tuple(column.name for column in table.columns if column.unique),
+            }
+            for table in self.tables
+        )
+        relation_signatures = tuple(
+            {
+                "source": f"{relation.source_table}.{relation.source_column}",
+                "target": f"{relation.target_table}.{relation.target_column}",
+                "cardinality": relation.cardinality,
+            }
+            for relation in self.relations
+        )
+        enum_signatures = tuple(
+            {
+                "enum": enum.name,
+                "values": tuple(enum.values),
+            }
+            for enum in self.enums
+        )
+        profile = {
+            "format": "appgen.schema-source-profile.v1",
+            "source": self.source,
+            "source_kind": schema_source_kind(self.source),
+            "counts": {
+                "tables": len(self.tables),
+                "fields": sum(len(table.columns) for table in self.tables),
+                "relations": len(self.relations),
+                "enums": len(self.enums),
+            },
+            "table_signatures": table_signatures,
+            "relation_signatures": relation_signatures,
+            "enum_signatures": enum_signatures,
+            "canonical_contract": "AppSchema",
+        }
+        fingerprint_payload = {
+            "source_kind": profile["source_kind"],
+            "counts": profile["counts"],
+            "table_signatures": table_signatures,
+            "relation_signatures": relation_signatures,
+            "enum_signatures": enum_signatures,
+        }
+        profile["fingerprint"] = hashlib.sha256(
+            json.dumps(fingerprint_payload, sort_keys=True, default=list).encode("utf-8")
+        ).hexdigest()[:16]
+        return profile
+
     def to_metadata(self) -> MetaData:
         metadata = MetaData()
         table_names = {table.name for table in self.tables}
@@ -289,6 +347,24 @@ class AppSchema:
                 )
             Table(table.name, metadata, *columns)
         return metadata
+
+
+def schema_source_kind(source: str | None) -> str:
+    """Return the supported source family for a schema origin."""
+    if not source:
+        return "canonical"
+    lowered = source.lower()
+    if lowered.startswith(("sqlite://", "postgresql://", "mysql://", "mssql://", "oracle://")):
+        return "database"
+    if lowered.endswith(".dbml"):
+        return "dbml"
+    if lowered.endswith((".sql", ".ddl")):
+        return "sql"
+    if lowered.endswith(".py"):
+        return "ponyorm"
+    if lowered.endswith((".ags", ".ag", ".appgen")):
+        return "dsl"
+    return "canonical"
 
 
 def schema_from_database_url(database_url: str) -> AppSchema:

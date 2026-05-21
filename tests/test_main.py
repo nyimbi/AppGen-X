@@ -30,6 +30,7 @@ from pyAppGen.dsl import lint_dsl
 from pyAppGen.schema import load_schema
 from pyAppGen.schema import RelationSchema
 from pyAppGen.schema import schema_from_metadata
+from pyAppGen.schema import schema_source_kind
 
 
 @pytest.fixture
@@ -189,6 +190,9 @@ def test_generate_app_from_sqlite_schema_compiles(tmp_path) -> None:
     manifest_book = next(table for table in manifest["tables"] if table["name"] == "book")
     author_columns = {column["name"]: column for column in manifest_author["columns"]}
     book_columns = {column["name"]: column for column in manifest_book["columns"]}
+    assert manifest["source_profile"]["source_kind"] == "database"
+    assert manifest["source_profile"]["counts"]["relations"] == 1
+    assert manifest["source_profile"]["fingerprint"]
     assert author_columns["email"]["unique"] is True
     assert author_columns["status"]["default"] == "active"
     assert book_columns["title"]["default"] == "Untitled"
@@ -732,6 +736,48 @@ def test_metadata_defaults_are_portable() -> None:
     assert columns["created_at"].default == "CURRENT_TIMESTAMP"
 
 
+def test_schema_source_profile_fingerprints_imports(tmp_path) -> None:
+    """Every supported schema source reports stable provenance for generated manifests."""
+    dbml_path = tmp_path / "library.dbml"
+    dbml_path.write_text(
+        """
+        Table author {
+          id int [pk]
+          name varchar [not null]
+        }
+        """
+    )
+    dbml_schema = load_schema(dbml_path, source_type="dbml")
+    dbml_profile = dbml_schema.source_profile()
+    assert dbml_profile["format"] == "appgen.schema-source-profile.v1"
+    assert dbml_profile["source_kind"] == "dbml"
+    assert dbml_profile["counts"]["tables"] == 1
+    assert dbml_profile["table_signatures"][0]["primary_keys"] == ("id",)
+    assert len(dbml_profile["fingerprint"]) == 16
+    assert schema_source_kind(str(dbml_path)) == "dbml"
+
+    sql_path = tmp_path / "library.sql"
+    sql_path.write_text("CREATE TABLE book (id INTEGER PRIMARY KEY, title TEXT NOT NULL);")
+    assert load_schema(sql_path, source_type="sql").source_profile()["source_kind"] == "sql"
+
+    pony_path = tmp_path / "entities.py"
+    pony_path.write_text(
+        """
+        from pony.orm import Database, PrimaryKey, Required
+        db = Database()
+        class Book(db.Entity):
+            id = PrimaryKey(int)
+            title = Required(str)
+        """
+    )
+    assert load_schema(pony_path, source_type="pony").source_profile()["source_kind"] == "ponyorm"
+
+    metadata = MetaData()
+    Table("live_book", metadata, Column("id", Integer, primary_key=True))
+    database_schema = schema_from_metadata(metadata, source="sqlite:///live.db")
+    assert database_schema.source_profile()["source_kind"] == "database"
+
+
 def test_dbml_source_normalizes_and_generates(tmp_path) -> None:
     """DBML imports feed the canonical schema and existing generator."""
     dbml_path = tmp_path / "library.dbml"
@@ -805,6 +851,9 @@ def test_dbml_source_normalizes_and_generates(tmp_path) -> None:
     manifest = json.loads((output_dir / "appgen.json").read_text())
     manifest_book = next(table for table in manifest["tables"] if table["name"] == "book")
     manifest_book_columns = {column["name"]: column for column in manifest_book["columns"]}
+    assert manifest["source_profile"]["source_kind"] == "dbml"
+    assert manifest["source_profile"]["counts"]["enums"] == 1
+    assert manifest["source_profile"]["fingerprint"] == schema.source_profile()["fingerprint"]
     assert manifest["enums"][0]["name"] == "Status"
     assert manifest_book_columns["title"]["default"] == "Untitled"
     assert manifest_book_columns["isbn"]["unique"] is True
@@ -919,6 +968,8 @@ def test_sql_source_normalizes_relationships(tmp_path) -> None:
     manifest_author = next(table for table in manifest["tables"] if table["name"] == "author")
     manifest_status = next(column for column in manifest_author["columns"] if column["name"] == "status")
     manifest_enums = {enum["name"]: enum["values"] for enum in manifest["enums"]}
+    assert manifest["source_profile"]["source_kind"] == "sql"
+    assert manifest["source_profile"]["counts"]["relations"] == 1
     assert manifest_enums["AuthorStatus"] == ["active", "blocked"]
     assert manifest_enums["book_kind"] == ["paperback", "ebook"]
     assert manifest_status["type"] == "AuthorStatus"
@@ -1063,6 +1114,8 @@ def test_ponyorm_source_normalizes_entities(tmp_path) -> None:
     generate_app_from_schema(schema, output_dir)
     manifest = json.loads((output_dir / "appgen.json").read_text())
     manifest_enums = {enum["name"]: enum["values"] for enum in manifest["enums"]}
+    assert manifest["source_profile"]["source_kind"] == "ponyorm"
+    assert manifest["source_profile"]["counts"]["relations"] == 1
     assert manifest_enums["Status"] == ["draft", "published"]
     py_compile.compile(str(output_dir / "models.py"), doraise=True)
     py_compile.compile(str(output_dir / "api.py"), doraise=True)
@@ -2336,10 +2389,13 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "ponyorm",
         "database",
     }
-    assert schema_import.schema_source_profile()["tables"] == 2
+    assert schema_import.schema_source_profile()["counts"]["tables"] == 2
+    assert schema_import.schema_source_profile()["fingerprint"] == manifest["source_profile"]["fingerprint"]
     normalization = schema_import.normalization_report()
     assert normalization["format"] == "appgen.schema-normalization.v1"
     assert normalization["canonical_contract"] == "AppSchema"
+    assert normalization["fingerprint"] == manifest["source_profile"]["fingerprint"]
+    assert normalization["table_signatures"][0]["table"] == "Author"
     sql_validation = schema_import.source_validation_plan("sql")
     assert sql_validation["format"] == "appgen.schema-source-validation.v1"
     assert "preserve_composite_foreign_keys" in sql_validation["checks"]
