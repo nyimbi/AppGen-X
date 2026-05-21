@@ -381,8 +381,9 @@ apps include:
 - `voice.py` and `appgen_voice.html` with generated speech prompts, utterance
   training phrases, slot-filling plans, SSML responses, and Alexa, Google
   Assistant, and Web Speech export contracts.
-- `agents.py` and `appgen_agents.html` with generated agent plans plus local
-  and API-key LLM provider readiness checks.
+- `agents.py` and `appgen_agents.html` with generated agent plans, local and
+  API-key LLM provider readiness checks, provider connection matrices, agent
+  tool policies, execution matrices, and agentic release gates.
 - `designer.py` and `appgen_designer.html` with visual schema graphs, ERD
   exports, reviewable table/field/relationship/workflow proposals, schema-diff
   contracts, migration previews, and regenerated DSL for database design

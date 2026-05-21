@@ -241,6 +241,10 @@ agent InvoiceAssistant {
 }
 ```
 
+Generated apps expose `/agents/release-gate.json` to verify local/API-key
+provider coverage, environment-variable secret policy, agent/provider links,
+tool allowlists, and execution-plan readiness without making live LLM calls.
+
 ## Natural Language Evolution
 
 Generated apps include natural-language evolution contracts. A builder can ask

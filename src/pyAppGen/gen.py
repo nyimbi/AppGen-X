@@ -4508,7 +4508,10 @@ def write_agents_template(output_dir):
         API-key providers. Secrets remain environment variable references.
       </p>
     </div>
-    <a class="btn btn-default" href="{{ url_for('AgenticView.catalog_json') }}">Agent Catalog JSON</a>
+    <div>
+      <a class="btn btn-default" href="{{ url_for('AgenticView.catalog_json') }}">Agent Catalog JSON</a>
+      <a class="btn btn-default" href="{{ url_for('AgenticView.release_gate_json') }}">Release Gate JSON</a>
+    </div>
   </div>
   <div class="agai-grid">
     {% for provider in providers %}
@@ -17965,6 +17968,63 @@ def agent_catalog():
     return tuple(dict(agent) for agent in AGENTS)
 
 
+def provider_connection_matrix(environ=None):
+    """Return local/API-key LLM connectivity evidence without calling providers."""
+    providers = provider_catalog(environ)
+    rows = []
+    for provider in providers:
+        rows.append({{
+            "provider": provider["name"],
+            "mode": provider["mode"],
+            "driver": provider["provider"],
+            "model": provider["model"],
+            "endpoint": provider["endpoint"],
+            "required_env": provider["required_env"],
+            "configured": provider["configured"],
+            "connection_plan": "http health check" if provider["mode"] == "local" else "api key smoke request",
+            "secret_safe": provider["mode"] == "local" or all(str(name).isupper() and "KEY" in str(name) for name in provider["required_env"]),
+        }})
+    return {{
+        "format": "appgen.agent-provider-matrix.v1",
+        "ok": bool(rows) and all(row["secret_safe"] for row in rows),
+        "providers": tuple(rows),
+        "modes": tuple(sorted({{row["mode"] for row in rows}})),
+    }}
+
+
+def agent_tool_policy(agent_name=None):
+    """Return allowed tool contracts for generated agentic systems."""
+    allowed = {{
+        "schema": ("read schema metadata", "propose table and field changes"),
+        "forms": ("inspect generated forms", "propose form layout updates"),
+        "chatbots": ("inspect intents", "draft conversation payloads"),
+        "workflows": ("inspect state transitions", "propose workflow actions"),
+        "reports": ("inspect report catalogs", "draft report filters"),
+        "agents": ("inspect peer agent plans",),
+    }}
+    selected = agent_catalog()
+    if agent_name is not None:
+        selected = tuple(agent for agent in selected if agent["name"] == agent_name)
+        if not selected:
+            raise KeyError(agent_name)
+    policies = []
+    for agent in selected:
+        unknown = tuple(tool for tool in agent["tools"] if tool not in allowed)
+        policies.append({{
+            "agent": agent["name"],
+            "tools": tuple(agent["tools"]),
+            "unknown_tools": unknown,
+            "allowed_actions": tuple({{"tool": tool, "actions": allowed[tool]}} for tool in agent["tools"] if tool in allowed),
+            "requires_review": True,
+            "ok": not unknown,
+        }})
+    return {{
+        "format": "appgen.agent-tool-policy.v1",
+        "ok": all(policy["ok"] for policy in policies),
+        "policies": tuple(policies),
+    }}
+
+
 def provider_for_agent(agent_name, environ=None):
     """Return provider readiness for an agent."""
     agent = next(item for item in AGENTS if item["name"] == agent_name)
@@ -17988,12 +18048,57 @@ def agent_plan(agent_name, task, environ=None):
     }}
 
 
+def agent_execution_matrix(task="inspect", environ=None):
+    """Return execution readiness for every generated agent and provider."""
+    plans = tuple(agent_plan(agent["name"], task, environ=environ) for agent in agent_catalog())
+    provider_names = {{provider["name"] for provider in provider_catalog(environ)}}
+    return {{
+        "format": "appgen.agent-execution-matrix.v1",
+        "ok": bool(plans) and all(plan["provider"] in provider_names for plan in plans),
+        "plans": plans,
+    }}
+
+
+def agentic_release_gate(existing_paths=(), environ=None):
+    """Return readiness for local/API-key LLM providers and generated agents."""
+    existing = set(existing_paths)
+    required = ("app/agents.py", "app/templates/appgen_agents.html")
+    missing = tuple(path for path in required if existing and path not in existing)
+    providers = provider_connection_matrix(environ)
+    tools = agent_tool_policy()
+    execution = agent_execution_matrix(environ=environ)
+    provider_names = {{provider["name"] for provider in provider_catalog(environ)}}
+    gates = (
+        {{"gate": "artifacts", "ok": not missing, "evidence": required, "missing": missing}},
+        {{"gate": "provider_modes", "ok": {{"local", "api"}} <= set(providers["modes"]), "evidence": providers["modes"]}},
+        {{"gate": "provider_secret_policy", "ok": providers["ok"], "evidence": providers["providers"]}},
+        {{"gate": "agent_provider_links", "ok": all(agent["provider"] in provider_names for agent in agent_catalog()), "evidence": tuple((agent["name"], agent["provider"]) for agent in agent_catalog())}},
+        {{"gate": "tool_policy", "ok": tools["ok"], "evidence": tools["policies"]}},
+        {{"gate": "execution_plans", "ok": execution["ok"], "evidence": execution["plans"]}},
+    )
+    return {{
+        "format": "appgen.agentic-release-gate.v1",
+        "ok": all(gate["ok"] for gate in gates),
+        "providers": providers,
+        "tools": tools,
+        "execution": execution,
+        "gates": gates,
+        "blocking_gaps": tuple(gate["gate"] for gate in gates if not gate["ok"]),
+    }}
+
+
 def agents_check(existing_paths):
     """Return readiness for generated agentic artifacts."""
     existing = set(existing_paths)
     required = ("app/agents.py", "app/templates/appgen_agents.html")
     missing = tuple(path for path in required if path not in existing)
-    return {{"ok": not missing, "missing": missing, "providers": tuple(p["name"] for p in LLM_PROVIDERS)}}
+    return {{
+        "ok": not missing and provider_connection_matrix()["ok"] and agent_tool_policy()["ok"],
+        "missing": missing,
+        "providers": tuple(p["name"] for p in LLM_PROVIDERS),
+        "provider_matrix": provider_connection_matrix(),
+        "tool_policy": agent_tool_policy(),
+    }}
 
 
 class AgenticView(BaseView):
@@ -18011,6 +18116,10 @@ class AgenticView(BaseView):
     @expose("/catalog.json")
     def catalog_json(self):
         return jsonify({{"providers": list(provider_catalog()), "agents": list(agent_catalog())}})
+
+    @expose("/release-gate.json")
+    def release_gate_json(self):
+        return jsonify(agentic_release_gate())
 
     @expose("/<agent_name>.json")
     def agent_json(self, agent_name):
@@ -31060,11 +31169,19 @@ def validate_prototyping_artifacts() -> None:
 
 def validate_agentic_artifacts() -> None:
     contract = (ROOT / "app" / "agents.py").read_text()
-    if "provider_catalog" not in contract or "agent_plan" not in contract or "api_key" not in contract:
-        fail("agentic contract must expose providers, agents, and API-key readiness")
+    if (
+        "provider_catalog" not in contract
+        or "provider_connection_matrix" not in contract
+        or "agent_tool_policy" not in contract
+        or "agent_execution_matrix" not in contract
+        or "agentic_release_gate" not in contract
+        or "agent_plan" not in contract
+        or "api_key" not in contract
+    ):
+        fail("agentic contract must expose providers, agents, tool policies, execution matrices, release gates, and API-key readiness")
     template = (ROOT / "app" / "templates" / "appgen_agents.html").read_text()
-    if "Agentic Systems" not in template or "local models" not in template:
-        fail("agentic template must expose local and API-key provider readiness")
+    if "Agentic Systems" not in template or "local models" not in template or "Release Gate JSON" not in template:
+        fail("agentic template must expose local/API-key provider readiness and release gate")
 
 
 def validate_i18n_artifacts() -> None:
@@ -33126,6 +33243,13 @@ def test_generated_runtime_helpers():
     assert i18n.i18n_check({{"babel.cfg", "app/i18n.py", "app/templates/appgen_i18n.html", "app/translations/en/LC_MESSAGES/messages.po"}})["ok"] is True
     assert isinstance(agents.provider_catalog({}), tuple)
     assert agents.agent_plan(agents.agent_catalog()[0]["name"], "inspect")["ready"] in {True, False}
+    assert agents.provider_connection_matrix({"OPENAI_API_KEY": "test"})["format"] == "appgen.agent-provider-matrix.v1"
+    assert agents.agent_tool_policy()["format"] == "appgen.agent-tool-policy.v1"
+    assert agents.agent_execution_matrix(environ={"OPENAI_API_KEY": "test"})["format"] == "appgen.agent-execution-matrix.v1"
+    assert agents.agentic_release_gate(
+        {"app/agents.py", "app/templates/appgen_agents.html"},
+        environ={"OPENAI_API_KEY": "test"},
+    )["ok"] is True
     assert isinstance(text_quality.text_quality_catalog(), tuple)
     assert isinstance(notifications.channel_catalog(), tuple)
     assert isinstance(platforms.platform_catalog(), tuple)

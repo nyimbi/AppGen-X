@@ -3589,6 +3589,26 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     agent_providers = agents.provider_catalog({})
     assert {provider["mode"] for provider in agent_providers} == {"local", "api"}
     assert agents.agent_plan(agents.agent_catalog()[0]["name"], "inspect")["model"]
+    provider_matrix = agents.provider_connection_matrix({"OPENAI_API_KEY": "test"})
+    assert provider_matrix["format"] == "appgen.agent-provider-matrix.v1"
+    assert provider_matrix["ok"] is True
+    assert {"local", "api"} <= set(provider_matrix["modes"])
+    tool_policy = agents.agent_tool_policy("Publisher")
+    assert tool_policy["format"] == "appgen.agent-tool-policy.v1"
+    assert tool_policy["ok"] is True
+    execution_matrix = agents.agent_execution_matrix(environ={"OPENAI_API_KEY": "test"})
+    assert execution_matrix["format"] == "appgen.agent-execution-matrix.v1"
+    assert execution_matrix["ok"] is True
+    agent_gate = agents.agentic_release_gate(
+        {"app/agents.py", "app/templates/appgen_agents.html"},
+        environ={"OPENAI_API_KEY": "test"},
+    )
+    assert agent_gate["format"] == "appgen.agentic-release-gate.v1"
+    assert agent_gate["ok"] is True
+    assert {"provider_modes", "provider_secret_policy", "agent_provider_links", "tool_policy"} <= {
+        gate["gate"] for gate in agent_gate["gates"]
+    }
+    assert agents.agentic_release_gate({"app/agents.py"}, environ={"OPENAI_API_KEY": "test"})["ok"] is False
     assert {item["target"] for item in platforms.platform_catalog()} == {"web", "pwa", "mobile", "desktop", "chatbot"}
     mobile_contract = platforms.platform_contract("mobile")
     assert "camera" in mobile_contract["capabilities"]
