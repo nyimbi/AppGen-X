@@ -280,7 +280,10 @@ apps include:
   exports for every table plus relationship-aware join reports and three-way
   table-set reports derived from the schema relation graph.
 - `report_delivery.py` and `appgen_report_delivery.html` with generated PDF
-  exports and email delivery payloads for reports.
+  exports and email delivery payloads for reports, plus a release gate proving
+  delivery catalog coverage, CSV/PDF format coverage, download/email channel
+  coverage, HTML/PDF rendering previews, email attachment payloads, and required
+  artifacts.
 - `dashboards.py` and `appgen_dashboards.html` with generated KPI, bar, line,
   and numeric chart contracts, Vega-Lite visualization specs, renderer-ready
   datasets, accessibility summaries, and web/mobile/desktop dashboard

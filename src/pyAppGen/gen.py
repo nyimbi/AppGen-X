@@ -2671,7 +2671,10 @@ def write_report_delivery_template(output_dir):
         before connecting SMTP or a document renderer.
       </p>
     </div>
-    <a class="btn btn-default" href="{{ url_for('ReportDeliveryView.catalog_json') }}">Catalog JSON</a>
+    <div>
+      <a class="btn btn-default" href="{{ url_for('ReportDeliveryView.catalog_json') }}">Catalog JSON</a>
+      <a class="btn btn-default" href="{{ url_for('ReportDeliveryView.release_gate_json') }}">Release Gate JSON</a>
+    </div>
   </div>
   <div class="agrd-grid">
     {% for item in reports %}
@@ -11190,6 +11193,70 @@ def delivery_plan(table_name, *, channels=("download",), formats=("csv", "pdf"))
     }}
 
 
+def delivery_sample_rows():
+    """Return deterministic rows for validating generated delivery outputs."""
+    return {{
+        table_name: [
+            {{column: f"Sample {{column}}" for column in report["columns"]}}
+        ]
+        for table_name, report in REPORT_DELIVERY.items()
+    }}
+
+
+def report_delivery_release_gate(existing_paths=()):
+    """Return an auditable release gate for generated report delivery."""
+    artifacts = set(existing_paths or ())
+    required_artifacts = ("app/report_delivery.py", "app/templates/appgen_report_delivery.html")
+    samples = delivery_sample_rows()
+    gates = (
+        {{
+            "gate": "delivery_catalog",
+            "ok": bool(delivery_catalog()) and all(report["columns"] for report in delivery_catalog()),
+            "evidence": tuple(report["table"] for report in delivery_catalog()),
+        }},
+        {{
+            "gate": "format_coverage",
+            "ok": all({{"csv", "pdf"}} <= set(report["formats"]) for report in delivery_catalog()),
+            "evidence": tuple((report["table"], report["formats"]) for report in delivery_catalog()),
+        }},
+        {{
+            "gate": "channel_coverage",
+            "ok": all({{"download", "email"}} <= set(report["channels"]) for report in delivery_catalog()),
+            "evidence": tuple((report["table"], report["channels"]) for report in delivery_catalog()),
+        }},
+        {{
+            "gate": "rendering_preview",
+            "ok": all(
+                rows_to_html(table_name, samples[table_name]).startswith("<!doctype html>")
+                and rows_to_pdf_bytes(table_name, samples[table_name]).startswith(b"%PDF")
+                for table_name in REPORT_DELIVERY
+            ),
+            "evidence": ("html", "pdf"),
+        }},
+        {{
+            "gate": "email_payload",
+            "ok": all(
+                email_report_payload(table_name, samples[table_name], recipients=("review@example.test",))["attachments"][0]["content_type"] == "application/pdf"
+                for table_name in REPORT_DELIVERY
+            ),
+            "evidence": "email_report_payload",
+        }},
+        {{
+            "gate": "artifact_coverage",
+            "ok": set(required_artifacts) <= artifacts,
+            "missing": tuple(item for item in required_artifacts if item not in artifacts),
+        }},
+    )
+    ok = all(gate["ok"] for gate in gates)
+    return {{
+        "format": "appgen.report-delivery-release-gate.v1",
+        "ok": ok,
+        "decision": "approved" if ok else "blocked",
+        "gates": gates,
+        "required_artifacts": required_artifacts,
+    }}
+
+
 class ReportDeliveryView(BaseView):
     route_base = "/report-delivery"
     default_view = "index"
@@ -11205,6 +11272,10 @@ class ReportDeliveryView(BaseView):
     @expose("/<table_name>.json")
     def report_json(self, table_name):
         return jsonify(delivery_report(table_name))
+
+    @expose("/release-gate.json")
+    def release_gate_json(self):
+        return jsonify(report_delivery_release_gate({{"app/report_delivery.py", "app/templates/appgen_report_delivery.html"}}))
 
     @expose("/<table_name>.pdf")
     def export_pdf(self, table_name):
@@ -32884,11 +32955,18 @@ def validate_report_artifacts() -> None:
 
 def validate_report_delivery_artifacts() -> None:
     contract = (ROOT / "app" / "report_delivery.py").read_text()
-    if "rows_to_pdf_bytes" not in contract or "email_report_payload" not in contract:
-        fail("report delivery contract must expose PDF and email helpers")
+    required = (
+        "rows_to_pdf_bytes",
+        "email_report_payload",
+        "delivery_plan",
+        "delivery_sample_rows",
+        "report_delivery_release_gate",
+    )
+    if not all(item in contract for item in required):
+        fail("report delivery contract must expose PDF, email, delivery-plan, sample-row, and release-gate helpers")
     template = (ROOT / "app" / "templates" / "appgen_report_delivery.html").read_text()
-    if "Report Delivery" not in template or "PDF" not in template:
-        fail("report delivery template must expose PDF delivery")
+    if "Report Delivery" not in template or "PDF" not in template or "Release Gate JSON" not in template:
+        fail("report delivery template must expose PDF delivery and release-gate evidence")
 
 
 def validate_search_artifacts() -> None:
@@ -33812,6 +33890,8 @@ def test_generated_runtime_helpers():
     assert rules.rules_check({"app/rules.py", "app/templates/appgen_rules.html"})["ok"] is True
     assert report_delivery.rows_to_pdf_bytes(next(iter(report_delivery.REPORT_DELIVERY)), ()).startswith(b"%PDF")
     assert report_delivery.delivery_plan(next(iter(report_delivery.REPORT_DELIVERY)))["ok"] is True
+    assert report_delivery.report_delivery_release_gate({"app/report_delivery.py", "app/templates/appgen_report_delivery.html"})["ok"] is True
+    assert report_delivery.report_delivery_release_gate({"app/report_delivery.py"})["ok"] is False
     assert isinstance(dashboards.dashboard_catalog(), tuple)
     usage_resource = next(iter(usage_analytics.USAGE_RESOURCES))
     usage_event = usage_analytics.usage_event(usage_resource, "viewed", actor="ada")

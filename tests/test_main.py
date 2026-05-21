@@ -2881,6 +2881,16 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     )
     assert email_report["channel"] == "email"
     assert email_report["attachments"][0]["content_type"] == "application/pdf"
+    assert "Book" in report_delivery.delivery_sample_rows()
+    delivery_gate = report_delivery.report_delivery_release_gate(
+        {"app/report_delivery.py", "app/templates/appgen_report_delivery.html"}
+    )
+    assert delivery_gate["format"] == "appgen.report-delivery-release-gate.v1"
+    assert delivery_gate["ok"] is True
+    assert {"delivery_catalog", "format_coverage", "channel_coverage", "rendering_preview", "email_payload"} <= {
+        gate["gate"] for gate in delivery_gate["gates"]
+    }
+    assert report_delivery.report_delivery_release_gate({"app/report_delivery.py"})["ok"] is False
     dashboard_catalog = dashboards.dashboard_catalog()
     assert any(item["table"] == "Book" for item in dashboard_catalog)
     book_dashboard = dashboards.dashboard_spec("Book")
