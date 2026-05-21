@@ -238,7 +238,8 @@ apps include:
   and migration-friendly UI guidance.
 - `database_ops.py` and `appgen_database_ops.html` with generated PostgreSQL,
   MySQL, SQLite, MongoDB, DynamoDB, Cassandra, Redis, Patroni, PostGraphile,
-  ZomboDB, Elasticsearch, Compose, Kubernetes, NoSQL document projections, and
+  ZomboDB, Elasticsearch, Compose, Kubernetes, NoSQL document projections,
+  schema inventory, legacy migration risk assessment, cutover plans, and
   migration-target readiness contracts.
 - `integrations.py` and `appgen_integrations.html` with generated REST,
   webhook, Salesforce, SAP, Entando portal, Invenio repository, payment

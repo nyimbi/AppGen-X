@@ -1918,6 +1918,23 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "cassandra",
         "redis",
     }
+    inventory = {item["table"]: item for item in database_ops.schema_inventory()}
+    assert inventory["Book"]["required_fields"] == ("title",)
+    assert inventory["Book"]["references"][0]["target_table"] == "Author"
+    profile = database_ops.migration_source_profile(
+        {"provider": "postgresql", "tables": ("Author",), "row_counts": {"Author": 2}}
+    )
+    assert profile["missing_tables"] == ("Book",)
+    risk = database_ops.migration_risk_assessment(
+        {"provider": "postgresql", "tables": ("Author",), "row_counts": {"Author": 2}}
+    )
+    assert risk["format"] == "appgen.database-migration-risk.v1"
+    assert risk["risk_level"] == "high"
+    assert any(item["kind"] == "missing_tables" for item in risk["risks"])
+    cutover = database_ops.migration_cutover_plan({"provider": "postgresql", "tables": ("Author",)}, "postgresql")
+    assert cutover["format"] == "appgen.database-cutover-plan.v1"
+    assert cutover["requires_review"] is True
+    assert "remediate" in [step["name"] for step in cutover["steps"]]
     assert database_ops.document_projection("Book")["collection"] == "book"
     assert {item["table"] for item in database_ops.document_projection_matrix()} >= {"Book", "Author"}
     assert database_ops.database_ops_check(

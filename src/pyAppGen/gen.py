@@ -3050,6 +3050,8 @@ def write_database_ops_template(output_dir):
       <a class="btn btn-default" href="{{ url_for('DatabaseOpsView.providers_json') }}">Providers JSON</a>
       <a class="btn btn-default" href="{{ url_for('DatabaseOpsView.addons_json') }}">Add-ons JSON</a>
       <a class="btn btn-default" href="{{ url_for('DatabaseOpsView.migration_targets_json') }}">Migration Targets JSON</a>
+      <a class="btn btn-default" href="{{ url_for('DatabaseOpsView.schema_inventory_json') }}">Schema Inventory JSON</a>
+      <a class="btn btn-default" href="{{ url_for('DatabaseOpsView.migration_cutover_json') }}">Cutover Plan JSON</a>
       <a class="btn btn-default" href="{{ url_for('DatabaseOpsView.nosql_projections_json') }}">NoSQL Projections JSON</a>
     </div>
   </div>
@@ -10355,6 +10357,40 @@ def register_data_access(appbuilder):
 
 def _database_ops_text(schema: AppSchema) -> str:
     tables = tuple(table.name for table in schema.tables)
+    table_inventory = {
+        table.name: {
+            "columns": tuple(
+                {
+                    "name": _model_attribute_name(column),
+                    "source_column": column.name,
+                    "type": column.type_name,
+                    "required": not column.nullable and not column.primary_key,
+                    "primary_key": column.primary_key,
+                    "unique": column.unique,
+                    "reference": column.references,
+                    "hidden": column.hidden,
+                    "derived": column.derived,
+                }
+                for column in table.columns
+            ),
+            "primary_keys": tuple(_model_attribute_name(column) for column in table.columns if column.primary_key),
+            "required_fields": tuple(
+                _model_attribute_name(column)
+                for column in table.columns
+                if not column.nullable and not column.primary_key and not column.derived
+            ),
+            "references": tuple(
+                {
+                    "field": _model_attribute_name(column),
+                    "target_table": column.references[0],
+                    "target_column": column.references[1],
+                }
+                for column in table.columns
+                if column.references is not None
+            ),
+        }
+        for table in schema.tables
+    }
     return f'''"""Generated database provider and operations contracts for AppGen apps."""
 
 from __future__ import annotations
@@ -10365,6 +10401,7 @@ from flask_appbuilder import expose
 
 
 DATABASE_TABLES = {tables!r}
+SCHEMA_INVENTORY = {table_inventory!r}
 DATABASE_PROVIDERS = {{
     "sqlite": {{
         "label": "SQLite",
@@ -10575,6 +10612,83 @@ def migration_target_matrix():
     )
 
 
+def schema_inventory():
+    """Return generated table, key, and relationship inventory for migration planning."""
+    return tuple(dict(spec, table=table_name) for table_name, spec in SCHEMA_INVENTORY.items())
+
+
+def migration_source_profile(source=None):
+    """Return normalized legacy-source metadata for import/introspection reviews."""
+    source = dict(source or {{}})
+    provider = str(source.get("provider") or source.get("engine") or "unknown").lower()
+    tables = tuple(source.get("tables") or DATABASE_TABLES)
+    row_counts = dict(source.get("row_counts") or {{}})
+    missing_tables = tuple(table for table in DATABASE_TABLES if table not in tables)
+    extra_tables = tuple(table for table in tables if table not in DATABASE_TABLES)
+    return {{
+        "provider": provider,
+        "tables": tables,
+        "row_counts": row_counts,
+        "missing_tables": missing_tables,
+        "extra_tables": extra_tables,
+        "known_provider": provider in DATABASE_PROVIDERS,
+    }}
+
+
+def migration_risk_assessment(source=None):
+    """Return a deterministic risk assessment for migrating legacy data."""
+    profile = migration_source_profile(source)
+    risks = []
+    if profile["missing_tables"]:
+        risks.append({{"level": "high", "kind": "missing_tables", "tables": profile["missing_tables"]}})
+    if profile["extra_tables"]:
+        risks.append({{"level": "medium", "kind": "extra_tables", "tables": profile["extra_tables"]}})
+    if not profile["known_provider"] and profile["provider"] != "unknown":
+        risks.append({{"level": "medium", "kind": "unknown_provider", "provider": profile["provider"]}})
+    for table_name, spec in SCHEMA_INVENTORY.items():
+        required = tuple(field for field in spec["required_fields"] if field not in spec["primary_keys"])
+        references = tuple(spec["references"])
+        if required:
+            risks.append({{"level": "medium", "kind": "required_fields", "table": table_name, "fields": required}})
+        if references:
+            risks.append({{"level": "low", "kind": "foreign_keys", "table": table_name, "references": references}})
+    high_count = sum(1 for item in risks if item["level"] == "high")
+    medium_count = sum(1 for item in risks if item["level"] == "medium")
+    return {{
+        "format": "appgen.database-migration-risk.v1",
+        "provider": profile["provider"],
+        "risk_level": "high" if high_count else ("medium" if medium_count else "low"),
+        "risks": tuple(risks),
+        "table_count": len(DATABASE_TABLES),
+        "estimated_rows": sum(int(value or 0) for value in profile["row_counts"].values()),
+    }}
+
+
+def migration_cutover_plan(source=None, target_provider="postgresql"):
+    """Return reviewable steps for migrating a legacy database into the generated app."""
+    assessment = migration_risk_assessment(source)
+    target = provider_plan(target_provider, {{}})
+    steps = [
+        {{"name": "inventory", "action": "export_schema_inventory", "tables": DATABASE_TABLES}},
+        {{"name": "profile", "action": "profile_legacy_source", "provider": assessment["provider"]}},
+        {{"name": "dry_run", "action": "run_data_exchange_validation", "risk_level": assessment["risk_level"]}},
+        {{"name": "backup", "action": "create_source_and_target_backups", "required": True}},
+        {{"name": "load", "action": "apply_reviewed_batches", "target_provider": target_provider}},
+        {{"name": "verify", "action": "compare_counts_and_foreign_keys", "tables": DATABASE_TABLES}},
+    ]
+    if assessment["risk_level"] in {{"high", "medium"}}:
+        steps.insert(3, {{"name": "remediate", "action": "resolve_required_field_and_relationship_risks", "required": True}})
+    return {{
+        "format": "appgen.database-cutover-plan.v1",
+        "target_provider": target_provider,
+        "target_kind": target["kind"],
+        "risk_level": assessment["risk_level"],
+        "requires_review": True,
+        "steps": tuple(steps),
+        "rollback": ("restore_target_backup", "replay_previous_app_release"),
+    }}
+
+
 def document_projection(table_name):
     """Return a generated NoSQL document projection for one table."""
     if table_name not in DATABASE_TABLES:
@@ -10599,11 +10713,12 @@ def database_ops_check(existing_paths):
     required = ("app/database_ops.py", "app/templates/appgen_database_ops.html", "docker-compose.yml", "deploy/k8s.yaml")
     missing = tuple(path for path in required if path not in existing)
     return {{
-        "ok": not missing and {{"postgresql", "mysql", "sqlite", "mongodb", "dynamodb", "cassandra", "redis"}} <= set(DATABASE_PROVIDERS) and {{"patroni", "postgraphile", "zombodb", "elasticsearch"}} <= set(DATABASE_ADDONS),
+        "ok": not missing and {{"postgresql", "mysql", "sqlite", "mongodb", "dynamodb", "cassandra", "redis"}} <= set(DATABASE_PROVIDERS) and {{"patroni", "postgraphile", "zombodb", "elasticsearch"}} <= set(DATABASE_ADDONS) and bool(schema_inventory()),
         "missing": missing,
         "providers": tuple(DATABASE_PROVIDERS),
         "addons": tuple(DATABASE_ADDONS),
         "nosql": tuple(item["provider"] for item in nosql_provider_catalog()),
+        "inventory": tuple(SCHEMA_INVENTORY),
     }}
 
 
@@ -10630,6 +10745,14 @@ class DatabaseOpsView(BaseView):
     @expose("/migration-targets.json")
     def migration_targets_json(self):
         return jsonify(list(migration_target_matrix()))
+
+    @expose("/schema-inventory.json")
+    def schema_inventory_json(self):
+        return jsonify(list(schema_inventory()))
+
+    @expose("/migration-cutover.json")
+    def migration_cutover_json(self):
+        return jsonify(migration_cutover_plan())
 
     @expose("/nosql-projections.json")
     def nosql_projections_json(self):
@@ -23174,6 +23297,10 @@ def validate_database_ops_artifacts() -> None:
         "compose_service_plan",
         "kubernetes_statefulset_plan",
         "migration_target_matrix",
+        "schema_inventory",
+        "migration_source_profile",
+        "migration_risk_assessment",
+        "migration_cutover_plan",
         "nosql_provider_catalog",
         "nosql_provider_plan",
         "document_projection_matrix",
@@ -23187,10 +23314,10 @@ def validate_database_ops_artifacts() -> None:
         "redis",
     )
     if not all(term in contract for term in required_terms):
-        fail("database operations contract must expose relational, NoSQL, add-on, and deployment plans")
+        fail("database operations contract must expose relational, NoSQL, add-on, deployment, and legacy migration plans")
     template = (ROOT / "app" / "templates" / "appgen_database_ops.html").read_text()
-    if "Database Operations" not in template or "Providers JSON" not in template or "Add-ons JSON" not in template or "Migration Targets JSON" not in template or "NoSQL" not in template:
-        fail("database operations template must expose provider, NoSQL, and migration links")
+    if "Database Operations" not in template or "Providers JSON" not in template or "Add-ons JSON" not in template or "Migration Targets JSON" not in template or "Schema Inventory JSON" not in template or "Cutover Plan JSON" not in template or "NoSQL" not in template:
+        fail("database operations template must expose provider, NoSQL, schema inventory, and migration links")
 
 
 def validate_performance_artifacts() -> None:
