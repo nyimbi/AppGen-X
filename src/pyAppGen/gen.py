@@ -3093,6 +3093,10 @@ def write_data_access_template(output_dir):
       {% for field in item.writable_fields %}
       <span class="agda-pill">{{ field }}</span>
       {% endfor %}
+      <div style="margin-top: 12px;">
+        <a class="btn btn-default btn-xs" href="{{ url_for('DataAccessView.resource_json', table_name=item.table) }}">Contract JSON</a>
+        <a class="btn btn-default btn-xs" href="{{ url_for('DataAccessView.workbench_json', table_name=item.table) }}">Workbench JSON</a>
+      </div>
     </article>
     {% endfor %}
   </div>
@@ -10727,6 +10731,92 @@ def query_rows(table_name, rows, *, filters=None, sort=None, limit=50, offset=0,
     }}
 
 
+def saved_query(table_name, name, *, filters=None, sort=None, limit=50, offset=0, fields=None, actor=None):
+    """Return a reusable low-code query definition for UI/API sharing."""
+    spec = normalize_query(table_name, filters=filters, sort=sort, limit=limit, offset=offset, fields=fields)
+    key = f"{{table_name}}:{{str(name).strip().lower().replace(' ', '_')}}"
+    return {{
+        "key": key,
+        "name": str(name).strip(),
+        "actor": actor,
+        "query": spec,
+        "shareable": True,
+        "version": 1,
+    }}
+
+
+def query_export(saved):
+    """Return portable query exports for API, UI, and automation adapters."""
+    query = dict(saved["query"])
+    return {{
+        "key": saved["key"],
+        "json": query,
+        "url_params": tuple(
+            (key, value)
+            for key, value in (
+                ("sort", ("-" if query["direction"] == "desc" else "") + str(query["sort"] or "")),
+                ("limit", query["limit"]),
+                ("offset", query["offset"]),
+                ("fields", ",".join(query["fields"])),
+            )
+            if value not in ("", None)
+        ),
+        "automation_payload": {{"table": query["table"], "filters": query["filters"], "fields": query["fields"]}},
+    }}
+
+
+def bulk_mutation_plan(table_name, action, rows, *, actor=None):
+    """Return reviewed plans for many create/update/delete mutations."""
+    plans = tuple(mutation_plan(table_name, action, row, actor=actor) for row in tuple(rows or ()))
+    return {{
+        "table": table_name,
+        "action": action,
+        "actor": actor,
+        "plans": plans,
+        "ok": all(plan["ok"] for plan in plans),
+        "review_required": action == "delete" or len(plans) > 1,
+        "count": len(plans),
+    }}
+
+
+def mutation_audit_event(plan, *, request_id=None):
+    """Return an audit event for a reviewed low-code mutation plan."""
+    return {{
+        "event": f"data_access.{{plan['table']}}.{{plan['action']}}",
+        "table": plan["table"],
+        "action": plan["action"],
+        "actor": plan.get("actor"),
+        "identity": dict(plan.get("identity", {{}})),
+        "payload_fields": tuple(sorted(plan.get("payload", {{}}))),
+        "ok": bool(plan.get("ok")),
+        "review_required": bool(plan.get("review_required")),
+        "request_id": request_id,
+    }}
+
+
+def data_access_workbench(table_name):
+    """Return UI-builder metadata for query, saved-query, and mutation tools."""
+    resource = resource_contract(table_name)
+    return {{
+        "resource": resource,
+        "query_builder": {{
+            "filter_fields": resource["filterable_fields"],
+            "operators": ("eq", "contains", "startswith", "in", "gte", "lte"),
+            "sort_fields": resource["sortable_fields"],
+            "projection_fields": resource["readable_fields"],
+            "max_limit": MAX_LIMIT,
+        }},
+        "mutations": {{
+            "operations": tuple(action for action in resource["operations"] if action != "query"),
+            "writable_fields": resource["writable_fields"],
+            "required_fields": resource["required_fields"],
+            "primary_keys": resource["primary_keys"],
+            "bulk_supported": True,
+            "audit_events": True,
+        }},
+    }}
+
+
 def sanitize_write_payload(table_name, values, *, partial=False):
     """Return a writable payload plus validation diagnostics."""
     resource = resource_contract(table_name)
@@ -10799,6 +10889,20 @@ class DataAccessView(BaseView):
     def query_plan_json(self, table_name):
         payload = request.get_json(silent=True) or {{}}
         return jsonify(normalize_query(table_name, **payload))
+
+    @expose("/<table_name>/workbench.json")
+    def workbench_json(self, table_name):
+        return jsonify(data_access_workbench(table_name))
+
+    @expose("/<table_name>/saved-query", methods=("POST",))
+    def saved_query_json(self, table_name):
+        payload = request.get_json(silent=True) or {{}}
+        return jsonify(saved_query(table_name, payload.get("name", "Untitled query"), **payload.get("query", {{}}), actor=payload.get("actor")))
+
+    @expose("/<table_name>/bulk-plan", methods=("POST",))
+    def bulk_plan_json(self, table_name):
+        payload = request.get_json(silent=True) or {{}}
+        return jsonify(bulk_mutation_plan(table_name, payload.get("action", "update"), payload.get("rows", ()), actor=payload.get("actor")))
 
 
 def register_data_access(appbuilder):
@@ -24350,12 +24454,16 @@ def validate_data_access_artifacts() -> None:
         "query_rows",
         "sanitize_write_payload",
         "mutation_plan",
+        "saved_query",
+        "bulk_mutation_plan",
+        "mutation_audit_event",
+        "data_access_workbench",
         "data_access_check",
     )
     if not all(term in contract for term in required_terms):
         fail("data access contract must expose query, projection, mutation, and readiness helpers")
     template = (ROOT / "app" / "templates" / "appgen_data_access.html").read_text()
-    if "Data Access" not in template or "Access JSON" not in template or "Writable fields" not in template:
+    if "Data Access" not in template or "Access JSON" not in template or "Writable fields" not in template or "Workbench JSON" not in template:
         fail("data access template must expose generated read/write contracts")
 
 

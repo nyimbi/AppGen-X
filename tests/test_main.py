@@ -1436,6 +1436,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert "Data Access" in (
         output_dir / "templates" / "appgen_data_access.html"
     ).read_text()
+    assert "Workbench JSON" in (output_dir / "templates" / "appgen_data_access.html").read_text()
     assert "Schema-aware CSV and JSON import/export" in (
         output_dir / "templates" / "appgen_data_exchange.html"
     ).read_text()
@@ -1948,6 +1949,17 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     )
     assert query_result["total"] == 1
     assert query_result["rows"] == ({"title": "Dune"},)
+    saved = data_access.saved_query(
+        "Book",
+        "Published Books",
+        filters={"title": {"contains": "dun"}},
+        fields=("title",),
+        actor="ada",
+    )
+    assert saved["key"] == "Book:published_books"
+    export = data_access.query_export(saved)
+    assert ("fields", "title") in export["url_params"]
+    assert export["automation_payload"]["filters"] == {"title": {"contains": "dun"}}
     assert data_access.sanitize_write_payload("Book", {"title": "Dune"})["ok"] is True
     blocked_payload = data_access.sanitize_write_payload("Book", {"title": "Dune", "internal_code": "B-1"})
     assert blocked_payload["ok"] is False
@@ -1955,6 +1967,20 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     update_plan = data_access.mutation_plan("Book", "update", {"id": 1, "title": "Dune Messiah"}, actor="ada")
     assert update_plan["ok"] is True
     assert update_plan["identity"] == {"id": 1}
+    bulk_plan = data_access.bulk_mutation_plan(
+        "Book",
+        "update",
+        ({"id": 1, "title": "Dune"}, {"id": 2, "title": "Foundation"}),
+        actor="ada",
+    )
+    assert bulk_plan["count"] == 2
+    assert bulk_plan["review_required"] is True
+    audit_event = data_access.mutation_audit_event(update_plan, request_id="req-1")
+    assert audit_event["event"] == "data_access.Book.update"
+    assert audit_event["payload_fields"] == ("title",)
+    workbench = data_access.data_access_workbench("Book")
+    assert workbench["query_builder"]["operators"] == ("eq", "contains", "startswith", "in", "gte", "lte")
+    assert workbench["mutations"]["bulk_supported"] is True
     delete_plan = data_access.mutation_plan("Book", "delete", {"id": 1})
     assert delete_plan["review_required"] is True
     assert data_access.data_access_check({"app/data_access.py", "app/templates/appgen_data_access.html"})["ok"] is True

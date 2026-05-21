@@ -240,7 +240,9 @@ apps include:
   restore helpers for reviewed data recovery workflows.
 - `data_access.py` and `appgen_data_access.html` with generated low-code
   query/update contracts for table reads, filter validation, sorting, paging,
-  field projection, create/update payload checks, and reviewed delete plans.
+  field projection, saved queries, portable query exports, create/update
+  payload checks, reviewed bulk mutations, mutation audit events, and reviewed
+  delete plans.
 - `data_exchange.py` and `appgen_data_exchange.html` with schema-aware CSV and
   JSON import/export templates, row validation, reviewed migration batch plans,
   and migration-friendly UI guidance.
