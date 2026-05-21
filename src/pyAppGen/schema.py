@@ -739,6 +739,16 @@ def schema_from_ponyorm(path: str | Path) -> AppSchema:
         for name, values in enum_values.items()
         if values
     )
+    entity_primary_keys = {
+        node.name: _pony_primary_key_fields(node)
+        for node in ast.walk(tree)
+        if isinstance(node, ast.ClassDef) and node.name in entity_names
+    }
+    entity_primary_key_types = {
+        node.name: _pony_primary_key_field_types(node, entity_names, enum_values)
+        for node in ast.walk(tree)
+        if isinstance(node, ast.ClassDef) and node.name in entity_names
+    }
     tables: list[TableSchema] = []
     relations: list[RelationSchema] = []
     set_relations: dict[tuple[str, str], str] = {}
@@ -746,7 +756,7 @@ def schema_from_ponyorm(path: str | Path) -> AppSchema:
     for node in ast.walk(tree):
         if not isinstance(node, ast.ClassDef) or node.name not in entity_names:
             continue
-        composite_primary_key = _pony_composite_key_fields(node)
+        composite_primary_key = set(entity_primary_keys.get(node.name, ()))
         columns: list[ColumnSchema] = []
         for statement in node.body:
             if not isinstance(statement, ast.Assign) or len(statement.targets) != 1:
@@ -764,14 +774,19 @@ def schema_from_ponyorm(path: str | Path) -> AppSchema:
                 continue
             type_name, target_entity = _pony_call_type(statement.value, entity_names, enum_values)
             if target_entity is not None:
-                column_name = f"{target.id}_id"
+                target_primary_key = _pony_single_primary_key(entity_primary_keys, target_entity)
+                column_name = (
+                    f"{target.id}_{target_primary_key}"
+                    if target_primary_key != "id"
+                    else f"{target.id}_id"
+                )
                 columns.append(
                     ColumnSchema(
                         name=column_name,
-                        type_name="int",
+                        type_name=_pony_primary_key_type(entity_primary_key_types, target_entity, target_primary_key),
                         nullable=call_name == "Optional",
                         primary_key=target.id in composite_primary_key,
-                        references=(target_entity, "id"),
+                        references=(target_entity, target_primary_key),
                     )
                 )
                 relations.append(
@@ -779,6 +794,7 @@ def schema_from_ponyorm(path: str | Path) -> AppSchema:
                         source_table=node.name,
                         source_column=column_name,
                         target_table=target_entity,
+                        target_column=target_primary_key,
                     )
                 )
                 continue
@@ -813,25 +829,35 @@ def schema_from_ponyorm(path: str | Path) -> AppSchema:
 
     for left, right in sorted(association_pairs):
         table_name = f"{_snake_name(left)}_{_snake_name(right)}"
-        left_column = f"{_snake_name(left)}_id"
-        right_column = f"{_snake_name(right)}_id"
+        left_primary_key = _pony_single_primary_key(entity_primary_keys, left)
+        right_primary_key = _pony_single_primary_key(entity_primary_keys, right)
+        left_column = (
+            f"{_snake_name(left)}_{left_primary_key}"
+            if left_primary_key != "id"
+            else f"{_snake_name(left)}_id"
+        )
+        right_column = (
+            f"{_snake_name(right)}_{right_primary_key}"
+            if right_primary_key != "id"
+            else f"{_snake_name(right)}_id"
+        )
         tables.append(
             TableSchema(
                 table_name,
                 (
                     ColumnSchema(
                         left_column,
-                        "int",
+                        _pony_primary_key_type(entity_primary_key_types, left, left_primary_key),
                         nullable=False,
                         primary_key=True,
-                        references=(left, "id"),
+                        references=(left, left_primary_key),
                     ),
                     ColumnSchema(
                         right_column,
-                        "int",
+                        _pony_primary_key_type(entity_primary_key_types, right, right_primary_key),
                         nullable=False,
                         primary_key=True,
-                        references=(right, "id"),
+                        references=(right, right_primary_key),
                     ),
                 ),
             )
@@ -842,12 +868,14 @@ def schema_from_ponyorm(path: str | Path) -> AppSchema:
                     source_table=table_name,
                     source_column=left_column,
                     target_table=left,
+                    target_column=left_primary_key,
                     cardinality="many-to-many",
                 ),
                 RelationSchema(
                     source_table=table_name,
                     source_column=right_column,
                     target_table=right,
+                    target_column=right_primary_key,
                     cardinality="many-to-many",
                 ),
             )
@@ -1415,6 +1443,61 @@ def _pony_composite_key_fields(node: ast.ClassDef) -> set[str]:
             if name is not None:
                 fields.add(name)
     return fields
+
+
+def _pony_primary_key_fields(node: ast.ClassDef) -> tuple[str, ...]:
+    fields: list[str] = []
+    for statement in node.body:
+        if isinstance(statement, ast.Assign) and len(statement.targets) == 1:
+            target = statement.targets[0]
+            if (
+                isinstance(target, ast.Name)
+                and isinstance(statement.value, ast.Call)
+                and _call_name(statement.value.func) == "PrimaryKey"
+            ):
+                fields.append(target.id)
+        elif isinstance(statement, ast.Expr) and isinstance(statement.value, ast.Call):
+            if _call_name(statement.value.func) != "PrimaryKey":
+                continue
+            for arg in statement.value.args:
+                name = _pony_attribute_name(arg)
+                if name is not None:
+                    fields.append(name)
+    return tuple(dict.fromkeys(fields)) or ("id",)
+
+
+def _pony_primary_key_field_types(
+    node: ast.ClassDef,
+    entity_names: Iterable[str],
+    enum_values: dict[str, tuple[str, ...]],
+) -> dict[str, str]:
+    field_types: dict[str, str] = {}
+    for statement in node.body:
+        if not isinstance(statement, ast.Assign) or len(statement.targets) != 1:
+            continue
+        target = statement.targets[0]
+        if not (
+            isinstance(target, ast.Name)
+            and isinstance(statement.value, ast.Call)
+            and _call_name(statement.value.func) == "PrimaryKey"
+        ):
+            continue
+        type_name, target_entity = _pony_call_type(statement.value, entity_names, enum_values)
+        field_types[target.id] = "int" if target_entity is not None else type_name
+    return field_types
+
+
+def _pony_single_primary_key(primary_keys: dict[str, tuple[str, ...]], entity_name: str) -> str:
+    fields = primary_keys.get(entity_name, ("id",))
+    return fields[0] if len(fields) == 1 else "id"
+
+
+def _pony_primary_key_type(
+    primary_key_types: dict[str, dict[str, str]],
+    entity_name: str,
+    field_name: str,
+) -> str:
+    return primary_key_types.get(entity_name, {}).get(field_name, "int")
 
 
 def _pony_attribute_name(node: ast.AST) -> str | None:

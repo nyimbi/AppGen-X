@@ -1334,6 +1334,62 @@ def test_ponyorm_source_preserves_many_to_many_sets(tmp_path) -> None:
     py_compile.compile(str(output_dir / "api.py"), doraise=True)
 
 
+def test_ponyorm_source_preserves_non_id_primary_key_relationships(tmp_path) -> None:
+    """PonyORM imports point relations at the target entity's declared primary key."""
+    pony_path = tmp_path / "catalog.py"
+    pony_path.write_text(
+        """
+        from pony.orm import Database, PrimaryKey, Required, Set
+
+        db = Database()
+
+        class Publisher(db.Entity):
+            code = PrimaryKey(str)
+            name = Required(str)
+            books = Set("Book")
+
+        class Book(db.Entity):
+            isbn = PrimaryKey(str)
+            title = Required(str)
+            publisher = Required(Publisher, reverse="books")
+            categories = Set("Category")
+
+        class Category(db.Entity):
+            slug = PrimaryKey(str)
+            title = Required(str)
+            books = Set(Book)
+        """
+    )
+
+    schema = load_schema(pony_path, source_type="pony")
+    book_columns = {column.name: column for column in schema.table("Book").columns}
+    association = schema.table("book_category")
+    association_columns = {column.name: column for column in association.columns}
+
+    assert "publisher_id" not in book_columns
+    assert book_columns["publisher_code"].type_name == "string"
+    assert book_columns["publisher_code"].references == ("Publisher", "code")
+    assert association_columns["book_isbn"].type_name == "string"
+    assert association_columns["book_isbn"].references == ("Book", "isbn")
+    assert association_columns["category_slug"].type_name == "string"
+    assert association_columns["category_slug"].references == ("Category", "slug")
+    assert {relation.target_column for relation in schema.relations if relation.source_table == "book_category"} == {
+        "isbn",
+        "slug",
+    }
+
+    output_dir = tmp_path / "app"
+    generate_app_from_schema(schema, output_dir)
+
+    manifest = json.loads((output_dir / "appgen.json").read_text())
+    book_manifest = next(table for table in manifest["tables"] if table["name"] == "Book")
+    manifest_columns = {column["name"]: column for column in book_manifest["columns"]}
+    assert manifest_columns["publisher_code"]["references"] == ["Publisher", "code"]
+    py_compile.compile(str(output_dir / "models.py"), doraise=True)
+    py_compile.compile(str(output_dir / "views.py"), doraise=True)
+    py_compile.compile(str(output_dir / "api.py"), doraise=True)
+
+
 def test_ponyorm_source_preserves_composite_primary_keys(tmp_path) -> None:
     """Class-level PonyORM PrimaryKey calls map to canonical composite keys."""
     pony_path = tmp_path / "orders.py"
