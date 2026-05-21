@@ -105,7 +105,40 @@ agent InvoiceReviewer {
 }
 ```
 
-## 8. Lint And Generate
+## 8. Add Desktop And Mobile-Friendly Layout Hints
+
+The same view can drive web, mobile, and desktop renderers. Keep the field
+sections readable, and use grid coordinates only where exact placement matters.
+
+```appgen
+view CustomerForm for Customer {
+  Identity: name, email;
+  @ name TextBox 0 0 6 1;
+  @ email EmailBox 0 1 6 1;
+}
+```
+
+## 9. Add API-Backed LLM Provider
+
+Local providers are useful for private development. API-backed providers should
+reference an environment variable rather than a literal secret.
+
+```appgen
+llm CloudAssistant {
+  provider: openai
+  mode: api
+  model: gpt-4.1-mini
+  api_key: OPENAI_API_KEY
+}
+
+agent InvoiceCopilot {
+  provider: CloudAssistant
+  goal: "Help users draft invoices and explain overdue balances"
+  tools: schema, forms, reports, chatbots
+}
+```
+
+## 10. Lint And Generate
 
 ```bash
 appgen --lint-dsl invoice.appgen
@@ -120,3 +153,15 @@ After generation, inspect:
 - `app/platforms.py` and `native/` for web, mobile, and desktop targets.
 - `app/agents.py` for local/API LLM readiness and agent plans.
 
+## 11. Review The Generated Studio
+
+Open the generated Studio contracts when integrating with a visual builder:
+
+- DSL editor state and lint feedback;
+- visual database catalog;
+- Mermaid ERD, DBML, SQL DDL, and PonyORM previews;
+- generation plans for web, PWA, mobile, desktop, and chatbot targets;
+- reviewed natural-language change proposals.
+
+Keep edits flowing back into `invoice.appgen` so generated artifacts remain
+reproducible.

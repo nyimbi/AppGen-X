@@ -51,6 +51,43 @@ Prefer arrow references:
 customer_id: int required -> Customer.id [many-to-one]
 ```
 
+### Schema Design Checklist
+
+Before generating, check that the DSL answers these questions:
+
+- Which table is the source of truth for each business object?
+- Which fields are identifiers, natural keys, required inputs, or searchable
+  text?
+- Which foreign keys need explicit cardinality metadata?
+- Which fields are generated or internal and should be marked `hidden`?
+- Which repeated field sets belong in a reusable group?
+- Which derived fields should be calculated instead of stored?
+- Which app targets are needed now: `web`, `pwa`, `mobile`, `desktop`, or
+  `chatbot`?
+
+### Reusable Groups And Derived Fields
+
+Use groups when multiple tables share audit, tenancy, status, or import fields.
+
+```appgen
+AuditFields {
+  created_at: datetime required
+  updated_at: datetime
+  tenant_id: int hidden
+}
+
+table Invoice {
+  id: int pk
+  ...AuditFields
+  subtotal: decimal default 0
+  tax: decimal default 0
+  total: decimal = subtotal + tax
+}
+```
+
+The linter validates that derived-field expressions refer to fields available
+on the same table.
+
 ## Designing Forms
 
 Basic form sections:
@@ -72,6 +109,10 @@ view BookForm for Book {
 
 The generated form designer can use these placements for drag/drop previews,
 snap-to-grid placement, overlap detection, and property sheets.
+
+Use section rows for readable forms and component placements when the exact
+canvas layout matters. Component coordinates are grid values, not pixels, so
+the same DSL can be adapted to web, mobile, and desktop renderers.
 
 ## Choosing Targets
 
@@ -153,3 +194,42 @@ and target web mobile desktop.
 The generated change set must still be reviewed. AppGen treats natural language
 as an authoring assistant, not as an unreviewed mutation path.
 
+## Database Design Workbench
+
+Generated apps include a Studio database workbench derived from the same DSL.
+It exposes:
+
+- table and field metadata for visual database design;
+- Mermaid ERD output for diagrams;
+- DBML export for external schema tools;
+- SQL DDL preview for migration review;
+- PonyORM entity preview for Python model comparison;
+- migration previews for proposed schema changes.
+
+Use this workbench to round-trip between visual design and source-controlled
+DSL. The DSL remains the durable source of truth.
+
+## Linting Workflow
+
+Run the linter before code generation and before committing DSL changes:
+
+```bash
+appgen --lint-dsl library.appgen
+```
+
+Treat errors as blockers. Warnings identify risky authoring patterns such as
+literal API keys or legacy `ref` syntax. Suggestions identify missing design
+surfaces such as views or agent declarations.
+
+## CI Workflow
+
+A simple CI gate can fail builds when the DSL is not valid:
+
+```bash
+appgen --lint-dsl appgen.appgen
+appgen --dsl appgen.appgen --writedir build/generated-app
+python -m py_compile build/generated-app/app/models.py
+```
+
+For larger projects, add generated quality checks after compilation so schema,
+API, PWA, documentation, and generated test surfaces stay aligned.

@@ -58,6 +58,25 @@ def test_dsl_linter_reports_semantic_feedback(runner: CliRunner, tmp_path) -> No
     broken = lint_dsl("app Bad { targets: web, toaster } table Book { title: string }")
     assert broken["ok"] is False
     assert any("Unknown app targets" in error for error in broken["errors"])
+    semantic = lint_dsl(
+        """
+        app Broken { targets: web }
+        table Book { id: int pk; title: string; }
+        view BookForm for Book { Main: missing; @ other TextBox 0 0 6 1; }
+        llm Local { provider: ollama; mode: local; model: llama3; }
+        agent Helper { provider: MissingProvider; goal: "Help"; }
+        """
+    )
+    assert semantic["ok"] is False
+    assert any("Unknown view field: BookForm.missing" in error for error in semantic["errors"])
+    assert any("Unknown component field: BookForm.other" in error for error in semantic["errors"])
+    assert any("Unknown agent provider: Helper.MissingProvider" in error for error in semantic["errors"])
+    style = lint_dsl(
+        "app Style { targets: web } table Book { id: int pk; author_id: int ref Author.id } "
+        "llm Cloud { provider: openai; mode: api; model: gpt; api_key: \"secret\" }"
+    )
+    assert any("Prefer arrow references" in warning for warning in style["warnings"])
+    assert any("environment variable" in warning for warning in style["warnings"])
 
     dsl_path = tmp_path / "lint.appgen"
     dsl_path.write_text(source)
@@ -66,6 +85,12 @@ def test_dsl_linter_reports_semantic_feedback(runner: CliRunner, tmp_path) -> No
     assert result.exit_code == 0
     assert payload["ok"] is True
     assert payload["summary"]["tables"] == 2
+    bad_path = tmp_path / "bad.appgen"
+    bad_path.write_text("app Bad { targets: web, toaster } table Book { title: string }")
+    bad_result = runner.invoke(__main__.main, ["--lint-dsl", str(bad_path)])
+    bad_payload = json.loads(bad_result.output)
+    assert bad_result.exit_code == 1
+    assert bad_payload["ok"] is False
 
 
 def test_dsl_documentation_suite_exists() -> None:
@@ -84,6 +109,18 @@ def test_dsl_documentation_suite_exists() -> None:
     index_text = (docs_dir / "index.md").read_text()
     assert "dsl-grammar" in index_text
     assert "dsl-linter" in index_text
+    grammar = (docs_dir / "dsl-grammar.md").read_text()
+    guide = (docs_dir / "dsl-user-guide.md").read_text()
+    tutorial = (docs_dir / "dsl-tutorial.md").read_text()
+    linter = (docs_dir / "dsl-linter.md").read_text()
+    assert "Complete Grammar" in grammar
+    assert "Lexical Rules" in grammar
+    assert "Delphi-style component placement" in grammar
+    assert "Schema Design Checklist" in guide
+    assert "Natural Language Evolution" in guide
+    assert "9. Add API-Backed LLM Provider" in tutorial
+    assert "Output Contract" in linter
+    assert "CI Gate" in linter
 
 
 def test_generate_app_from_sqlite_schema_compiles(tmp_path) -> None:

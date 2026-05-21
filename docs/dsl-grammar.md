@@ -2,12 +2,17 @@
 
 The AppGen DSL is an ANTLR-backed language for describing data models, forms,
 workflows, roles, rules, LLM providers, agents, and target platforms with a
-small keyword budget.
+small keyword budget. The canonical grammar lives in `lang/appgen.g4`; this
+document is the human reference for that grammar and the validation semantics
+enforced by `pyAppGen.dsl`.
 
-The canonical grammar lives in `lang/appgen.g4`. This document explains the
-supported surface in user-facing terms.
+## Complete Grammar
 
-## Top Level
+This is the supported language surface, grouped by construct. Semicolons are
+accepted in most declaration bodies, but newlines are enough because whitespace
+is skipped by the lexer.
+
+### Top Level
 
 ```antlr
 schema  : appDecl? element* EOF ;
@@ -29,10 +34,21 @@ A file may start with an `app` block and then any number of declarations.
 app Library { theme: sage; targets: web, mobile, desktop }
 ```
 
+Application options use generic `key: value` pairs so the language can grow
+without adding new reserved words.
+
+```antlr
+appDecl   : APP (IDENT | STRING)? appBlock? ;
+appBlock  : LBRACE appOption* RBRACE ;
+appOption : IDENT COLON literal (COMMA literal)* SEMI? ;
+```
+
 ## Tables And Fields
 
 ```antlr
 tableDecl : TABLE IDENT tableBody ;
+tableBody : LBRACE tableItem* RBRACE ;
+tableItem : fieldDecl | spreadDecl | relationDecl ;
 fieldDecl : IDENT COLON typeRef derivedExpr? modifier* SEMI? ;
 typeRef   : IDENT (LPAREN INT RPAREN)? (LBRACK RBRACK)? ;
 ```
@@ -48,6 +64,27 @@ table Book {
 
 Field modifiers are `pk`, `required`, `unique`, `hidden`, `search`,
 `default`, and references.
+
+```antlr
+modifier : PK
+         | REQUIRED
+         | UNIQUE
+         | HIDE
+         | SEARCH
+         | DEFAULT literal
+         | REF target relationCardinality?
+         | ARROW target relationCardinality? ;
+```
+
+Derived fields use infix expressions over literals, fields, and qualified
+targets.
+
+```antlr
+derivedExpr    : EQ expression ;
+expression     : expressionAtom (operator expressionAtom)* ;
+expressionAtom : target | literal | LPAREN expression RPAREN ;
+operator       : PLUS | MINUS | STAR | SLASH ;
+```
 
 ## References
 
@@ -69,6 +106,12 @@ Book.author_id -> Author.id [many-to-one]
 Allowed cardinalities are `many-to-one`, `one-to-one`, `one-to-many`, and
 `many-to-many`.
 
+```antlr
+relationDecl        : REF? target ARROW target relationCardinality? SEMI? ;
+relationCardinality : LBRACK agenticValue RBRACK ;
+target              : IDENT DOT IDENT ;
+```
+
 ## Reusable Groups
 
 Groups are named field blocks. Use `...Name` to spread them into tables.
@@ -85,6 +128,11 @@ table Invoice {
 }
 ```
 
+```antlr
+groupDecl  : IDENT tableBody ;
+spreadDecl : ELLIPSIS IDENT SEMI? ;
+```
+
 ## Enums
 
 ```appgen
@@ -93,10 +141,16 @@ enum Status { draft published archived }
 
 Use enum names as field types.
 
+```antlr
+enumDecl : ENUM IDENT LBRACE IDENT* RBRACE ;
+```
+
 ## Views And Delphi-Style Components
 
 ```antlr
 viewDecl           : VIEW IDENT FOR IDENT LBRACE viewItem* RBRACE ;
+viewItem           : componentPlacement
+                   | IDENT (COLON IDENT (COMMA IDENT)* | (COMMA IDENT)*) SEMI? ;
 componentPlacement : AT IDENT IDENT INT INT INT INT SEMI? ;
 ```
 
@@ -114,6 +168,11 @@ The component placement format is:
 @ field Component x y w h
 ```
 
+This is the Delphi-style component placement form: a component is dropped on a
+named form field with grid coordinates and dimensions. The generated form
+designer uses those coordinates for canvas placement, overlap checks, and
+property-inspector metadata.
+
 ## Workflows
 
 ```appgen
@@ -123,12 +182,22 @@ flow Publish {
 }
 ```
 
+```antlr
+flowDecl : FLOW IDENT LBRACE flowStep* RBRACE ;
+flowStep : IDENT ARROW IDENT SEMI? ;
+```
+
 ## Roles
 
 ```appgen
 role Editor {
   Book: read, create, update
 }
+```
+
+```antlr
+roleDecl   : ROLE IDENT LBRACE permission* RBRACE ;
+permission : IDENT COLON IDENT (COMMA IDENT)* SEMI? ;
 ```
 
 ## Rules
@@ -141,6 +210,14 @@ rule PublishPolicy for Book {
 ```
 
 Supported operators are `==`, `!=`, `>=`, `<=`, `>`, `<`, and `in`.
+
+```antlr
+ruleDecl     : RULE IDENT FOR IDENT LBRACE ruleItem* RBRACE ;
+ruleItem     : IDENT REQUIRED STRING? SEMI?
+             | IDENT ruleOperator ruleValue (ARROW IDENT)? SEMI? ;
+ruleValue    : literal (COMMA literal)* ;
+ruleOperator : EQEQ | NEQ | GTE | LTE | GT | LT | IN ;
+```
 
 ## LLMs And Agents
 
@@ -167,6 +244,37 @@ agent Reviewer {
 
 API keys should be environment variable names, not literal secrets.
 
+```antlr
+llmDecl       : LLM IDENT LBRACE agenticOption* RBRACE ;
+agentDecl     : AGENT IDENT LBRACE agenticOption* RBRACE ;
+agenticOption : IDENT COLON agenticValue (COMMA agenticValue)* SEMI? ;
+agenticValue  : literal ((DOT | MINUS) literal)* ;
+```
+
+The grammar intentionally does not reserve provider-specific option names.
+Common options include `provider`, `mode`, `endpoint`, `model`, `api_key`,
+`goal`, `tools`, `memory`, and `max_steps`.
+
+## Lexical Rules
+
+Identifiers start with a letter or underscore and may contain letters, digits,
+and underscores. Strings may be single-quoted or double-quoted. Integers and
+decimals are separate token types.
+
+```antlr
+literal : STRING | DECIMAL | INT | BOOL | IDENT ;
+BOOL    : 'true' | 'false' ;
+DECIMAL : [0-9]+ '.' [0-9]+ ;
+INT     : [0-9]+ ;
+IDENT   : [A-Za-z_][A-Za-z0-9_]* ;
+STRING  : '"' ( '\\' . | ~["\\] )* '"'
+        | '\'' ( '\\' . | ~['\\] )* '\'' ;
+```
+
+Reserved words are: `app`, `table`, `ref`, `enum`, `view`, `for`, `flow`,
+`role`, `rule`, `llm`, `agent`, `pk`, `required`, `unique`, `hidden`,
+`search`, `default`, and `in`.
+
 ## Comments
 
 ```appgen
@@ -175,3 +283,17 @@ API keys should be environment variable names, not literal secrets.
 /* block comment */
 ```
 
+## Semantic Validation
+
+Parsing is only the first gate. The package linter also validates:
+
+- supported app targets: `web`, `pwa`, `mobile`, `desktop`, and `chatbot`;
+- duplicate table, enum, view, flow, role, rule, LLM provider, and agent names;
+- duplicate fields after group spreads are expanded;
+- relation source and target tables/fields;
+- field-level reference targets;
+- derived-field references;
+- view section fields and Delphi-style component fields;
+- role resources and rule table/field references;
+- agent provider names when LLM providers are declared;
+- relation cardinality values.
