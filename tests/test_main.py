@@ -1436,6 +1436,8 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert "Developer Studio" in studio_template
     assert "DSL Editor" in studio_template
     assert "Database Designer" in studio_template
+    assert "DBML" in studio_template
+    assert "SQL DDL" in studio_template
     assert "Workspace JSON" in studio_template
     assert "event-stream contracts" in (output_dir / "templates" / "appgen_realtime.html").read_text()
     assert "permissions per tab" in (output_dir / "templates" / "appgen_tabbed_views.html").read_text()
@@ -2463,6 +2465,16 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert studio.database_design_catalog()[1]["table"] == "Book"
     assert studio.table_design("Book")["model"] == "Book"
     assert studio.field_design("Book", "title")["required"] is True
+    workbench = studio.database_design_workspace()
+    assert workbench["erd"].startswith("erDiagram\n")
+    assert "Table Book" in workbench["exports"]["dbml"]
+    assert "CREATE TABLE Book" in workbench["exports"]["sql"]
+    assert "class Book(db.Entity)" in workbench["exports"]["ponyorm"]
+    assert studio.schema_erd_mermaid().startswith("erDiagram\n")
+    assert "Ref: Book.author_id > Author.id" in studio.schema_dbml()
+    assert "author_id INTEGER REFERENCES Author(id)" in studio.schema_sql_ddl()
+    assert "author_id = Optional('Author')" in studio.schema_ponyorm()
+    assert studio.schema_change_preview({"add_field": "Book.edition"})["review_required"] is True
     assert studio.database_migration_plan({"add_field": "Book.edition"})["requires_review"] is True
     assert studio.app_generation_plan(targets=("web", "desktop"))["targets"] == ("web", "desktop")
     assert studio.app_management_plan("deploy")["requires_review"] is True

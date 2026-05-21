@@ -5147,6 +5147,9 @@ def write_studio_template(output_dir):
       <a class="btn btn-default" href="{{ url_for('StudioView.catalog_json') }}">Studio JSON</a>
       <a class="btn btn-default" href="{{ url_for('StudioView.workspace_json') }}">Workspace JSON</a>
       <a class="btn btn-default" href="{{ url_for('StudioView.database_design_json') }}">Database Design JSON</a>
+      <a class="btn btn-default" href="{{ url_for('StudioView.schema_erd_route') }}">ERD</a>
+      <a class="btn btn-default" href="{{ url_for('StudioView.schema_dbml_route') }}">DBML</a>
+      <a class="btn btn-default" href="{{ url_for('StudioView.schema_sql_route') }}">SQL DDL</a>
     </div>
   </div>
   <div class="ags-grid">
@@ -5169,6 +5172,10 @@ def write_studio_template(output_dir):
     <article class="ags-card">
       <h3>Database Designer</h3>
       <div class="ags-muted">{{ workspace.database_design|length }} generated tables</div>
+      <span class="ags-pill">Mermaid ERD</span>
+      <span class="ags-pill">DBML export</span>
+      <span class="ags-pill">SQL DDL export</span>
+      <span class="ags-pill">PonyORM preview</span>
       <span class="ags-pill">migration preview</span>
       <span class="ags-pill">relationship check</span>
     </article>
@@ -20515,7 +20522,8 @@ def _studio_text(schema: AppSchema, app_name: str) -> str:
             "label": snake_to_label(table.name),
             "fields": tuple(
                 {
-                    "name": _model_attribute_name(column),
+                    "name": column.name,
+                    "attribute": _model_attribute_name(column),
                     "label": snake_to_label(column.name),
                     "type": column.type_name,
                     "required": not column.nullable,
@@ -20584,6 +20592,7 @@ def ide_workspace():
         "app_name": APP_NAME,
         "dsl_documents": tuple(DSL_DOCUMENTS),
         "database_design": database_design_catalog(),
+        "database_workbench": database_design_workspace(),
         "editable_files": editable_files(),
         "command_palette": ide_command_palette(),
         "generation": app_generation_plan(),
@@ -20659,6 +20668,148 @@ def field_design(table_name, field_name):
         if field["name"] == field_name:
             return dict(field)
     raise KeyError(f"{{table_name}}.{{field_name}}")
+
+
+def _sql_type(type_name):
+    normalized = str(type_name).lower().split("(", 1)[0]
+    mapping = {{
+        "string": "VARCHAR(255)",
+        "email": "VARCHAR(255)",
+        "text": "TEXT",
+        "int": "INTEGER",
+        "integer": "INTEGER",
+        "bigint": "BIGINT",
+        "decimal": "NUMERIC",
+        "numeric": "NUMERIC",
+        "float": "FLOAT",
+        "bool": "BOOLEAN",
+        "boolean": "BOOLEAN",
+        "date": "DATE",
+        "datetime": "TIMESTAMP",
+        "time": "TIME",
+        "image": "VARCHAR(512)",
+        "file": "VARCHAR(512)",
+    }}
+    return mapping.get(normalized, "VARCHAR(255)")
+
+
+def schema_erd_mermaid():
+    """Return a Mermaid ERD for the current database design."""
+    lines = ["erDiagram"]
+    for table in DATABASE_DESIGN:
+        lines.append(f"  {{table['table']}} {{{{")
+        for field in table["fields"]:
+            markers = []
+            if field["primary_key"]:
+                markers.append("PK")
+            if field["reference"]:
+                markers.append("FK")
+            marker = " " + " ".join(markers) if markers else ""
+            lines.append(f"    {{field['type']}} {{field['name']}}{{marker}}")
+        lines.append("  }}")
+    for table in DATABASE_DESIGN:
+        for field in table["fields"]:
+            if field["reference"]:
+                target_table, _target_field = field["reference"]
+                lines.append(f"  {{target_table}} ||--o{{{{ {{table['table']}} : {{field['name']}}")
+    return "\\n".join(lines) + "\\n"
+
+
+def schema_dbml():
+    """Return a DBML preview for the current database design."""
+    lines = []
+    references = []
+    for table in DATABASE_DESIGN:
+        lines.append(f"Table {{table['table']}} {{{{")
+        for field in table["fields"]:
+            modifiers = []
+            if field["primary_key"]:
+                modifiers.append("pk")
+            if field["required"] and not field["primary_key"]:
+                modifiers.append("not null")
+            if field["reference"]:
+                target_table, target_field = field["reference"]
+                modifiers.append(f"ref: > {{target_table}}.{{target_field}}")
+                references.append((table["table"], field["name"], target_table, target_field))
+            suffix = " [" + ", ".join(modifiers) + "]" if modifiers else ""
+            lines.append(f"  {{field['name']}} {{field['type']}}{{suffix}}")
+        lines.append("}}")
+        lines.append("")
+    for source_table, source_field, target_table, target_field in references:
+        lines.append(f"Ref: {{source_table}}.{{source_field}} > {{target_table}}.{{target_field}}")
+    return "\\n".join(lines).rstrip() + "\\n"
+
+
+def schema_sql_ddl():
+    """Return a portable SQL DDL preview for the current database design."""
+    statements = []
+    for table in DATABASE_DESIGN:
+        lines = [f"CREATE TABLE {{table['table']}} ("]
+        column_lines = []
+        for field in table["fields"]:
+            parts = [field["name"], _sql_type(field["type"])]
+            if field["primary_key"]:
+                parts.append("PRIMARY KEY")
+            elif field["required"]:
+                parts.append("NOT NULL")
+            if field["reference"]:
+                target_table, target_field = field["reference"]
+                parts.append(f"REFERENCES {{target_table}}({{target_field}})")
+            column_lines.append("  " + " ".join(parts))
+        lines.append(",\\n".join(column_lines))
+        lines.append(");")
+        statements.append("\\n".join(lines))
+    return "\\n\\n".join(statements) + "\\n"
+
+
+def schema_ponyorm():
+    """Return a PonyORM entity preview for the current database design."""
+    lines = ["from pony.orm import Database, PrimaryKey, Required, Optional", "", "db = Database()", ""]
+    for table in DATABASE_DESIGN:
+        lines.append(f"class {{table['model']}}(db.Entity):")
+        body = []
+        for field in table["fields"]:
+            if field["primary_key"]:
+                body.append(f"    {{field['name']}} = PrimaryKey(int)")
+            elif field["reference"]:
+                target_table, _target_field = field["reference"]
+                target_model = next(
+                    (item["model"] for item in DATABASE_DESIGN if item["table"] == target_table),
+                    target_table,
+                )
+                required = "Required" if field["required"] else "Optional"
+                body.append(f"    {{field['name']}} = {{required}}('{{target_model}}')")
+            else:
+                required = "Required" if field["required"] else "Optional"
+                py_type = "int" if _sql_type(field["type"]) in {{"INTEGER", "BIGINT"}} else "str"
+                body.append(f"    {{field['name']}} = {{required}}({{py_type}})")
+        lines.extend(body or ["    pass"])
+        lines.append("")
+    return "\\n".join(lines).rstrip() + "\\n"
+
+
+def database_design_workspace():
+    """Return the full schema workbench with diagrams and source exports."""
+    return {{
+        "tables": database_design_catalog(),
+        "erd": schema_erd_mermaid(),
+        "exports": {{
+            "dbml": schema_dbml(),
+            "sql": schema_sql_ddl(),
+            "ponyorm": schema_ponyorm(),
+        }},
+        "checks": ("duplicate_names", "references", "migration_preview", "data_loss_check"),
+    }}
+
+
+def schema_change_preview(change):
+    """Return design-time previews after a proposed schema change."""
+    return {{
+        "change": change,
+        "migration": database_migration_plan(change),
+        "current": database_design_workspace(),
+        "review_required": True,
+    }}
 
 
 def database_migration_plan(change, target="alembic"):
@@ -20855,6 +21006,26 @@ class StudioView(BaseView):
     @expose("/database-design.json")
     def database_design_json(self):
         return jsonify(list(database_design_catalog()))
+
+    @expose("/schema-workbench.json")
+    def schema_workbench_json(self):
+        return jsonify(database_design_workspace())
+
+    @expose("/schema.erd.mmd")
+    def schema_erd_route(self):
+        return schema_erd_mermaid(), 200, {{"Content-Type": "text/plain; charset=utf-8"}}
+
+    @expose("/schema.dbml")
+    def schema_dbml_route(self):
+        return schema_dbml(), 200, {{"Content-Type": "text/plain; charset=utf-8"}}
+
+    @expose("/schema.sql")
+    def schema_sql_route(self):
+        return schema_sql_ddl(), 200, {{"Content-Type": "text/plain; charset=utf-8"}}
+
+    @expose("/schema.pony.py")
+    def schema_pony_route(self):
+        return schema_ponyorm(), 200, {{"Content-Type": "text/plain; charset=utf-8"}}
 
 
 def register_studio(appbuilder):
@@ -23422,6 +23593,12 @@ def validate_studio_artifacts() -> None:
         "database_design_catalog",
         "table_design",
         "field_design",
+        "database_design_workspace",
+        "schema_erd_mermaid",
+        "schema_dbml",
+        "schema_sql_ddl",
+        "schema_ponyorm",
+        "schema_change_preview",
         "database_migration_plan",
         "app_generation_plan",
         "app_management_plan",
@@ -23446,9 +23623,11 @@ def validate_studio_artifacts() -> None:
         or "Workspace JSON" not in template
         or "DSL Editor" not in template
         or "Database Designer" not in template
+        or "DBML" not in template
+        or "SQL DDL" not in template
         or "Generation Plan" not in template
     ):
-        fail("developer studio cockpit must expose IDE workspace, DSL editor, database designer, and generation plan")
+        fail("developer studio cockpit must expose IDE workspace, DSL editor, database designer exports, and generation plan")
 
 
 def validate_ci() -> None:
@@ -25024,6 +25203,11 @@ def test_generated_runtime_helpers():
     assert studio.dsl_change_plan("add table Invoice")["preview_required"] is True
     assert studio.database_design_catalog()
     assert studio.table_design(next(iter(studio.database_design_catalog()))["table"])
+    assert studio.database_design_workspace()["erd"].startswith("erDiagram\\n")
+    assert "Table" in studio.schema_dbml()
+    assert "CREATE TABLE" in studio.schema_sql_ddl()
+    assert "db.Entity" in studio.schema_ponyorm()
+    assert studio.schema_change_preview({"add_field": "Book.edition"})["review_required"] is True
     assert studio.database_migration_plan({"add_field": "Book.edition"})["requires_review"] is True
     assert studio.app_generation_plan()["artifacts"]
     assert studio.app_management_plan("deploy")["requires_review"] is True
