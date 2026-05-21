@@ -291,7 +291,9 @@ apps include:
 - `nl_evolution.py` and `appgen_nl_evolution.html` with natural-language
   proposal planning for tables, fields, forms, workflows, rules, chatbots,
   agents, and platform targets, including executable table DSL for new-table
-  prompts with inferred fields and known-table relationship references.
+  prompts with inferred fields and known-table relationship references,
+  approval-ready change sets, migration impact summaries, and existing-DSL
+  patch previews.
 - `dsl_reference.py` and `appgen_dsl_reference.html` with generated DSL
   keyword-budget checks, compact construct cards, examples, a learning path,
   and lightweight lint feedback so every generated app carries an approachable

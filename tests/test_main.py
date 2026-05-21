@@ -2513,6 +2513,25 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert "open -> closed" in nl_dsl
     assert "rule TicketPolicy for Ticket" in nl_dsl
     assert "targets: web, mobile, desktop" in nl_dsl
+    changeset = nl_evolution.evolution_changeset(
+        "create table Ticket with fields title and form TicketForm chatbot SupportBot agent SupportAgent targets web mobile desktop",
+        "app Library\n\ntable Author {\n  id: int pk\n  name: string\n}\n",
+    )
+    assert changeset["format"] == "appgen.nl-changeset.v1"
+    assert changeset["id"].startswith("nlchg-")
+    assert changeset["summary"]["kinds"]["add_table"] == 1
+    assert changeset["migration_impact"]["format"] == "appgen.nl-migration-impact.v1"
+    assert {"action": "create_table", "table": "Ticket", "destructive": False} in changeset["migration_impact"]["ddl"]
+    assert changeset["requires_approval"] is True
+    assert changeset["app_patch"] == {"targets": ("web", "mobile", "desktop")}
+    assert "app Library { targets: web, mobile, desktop }" in changeset["applied_preview"]
+    assert "table Ticket {" in changeset["applied_preview"]
+    approval = nl_evolution.approval_workflow(changeset, actor="ada")
+    assert approval["current"] == "review"
+    assert approval["actor"] == "ada"
+    patched_dsl = nl_evolution.apply_changeset("app Existing { theme: sage }\n", changeset)
+    assert "app Existing { theme: sage; targets: web, mobile, desktop }" in patched_dsl
+    assert "agent SupportAgent" in patched_dsl
     assert dsl_reference.dsl_keyword_budget()["count"] <= dsl_reference.dsl_keyword_budget()["limit"]
     assert "[cardinality] relation metadata" in dsl_reference.dsl_keyword_budget()["keyword_free_syntax"]
     assert "Reference" in {item["name"] for item in dsl_reference.dsl_construct_catalog()}

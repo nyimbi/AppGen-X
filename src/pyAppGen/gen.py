@@ -13462,6 +13462,7 @@ def _text_quality_text(schema: AppSchema) -> str:
 
 from __future__ import annotations
 
+from hashlib import sha1
 import re
 
 from flask import jsonify
@@ -14450,6 +14451,7 @@ def _nl_evolution_text(schema: AppSchema) -> str:
 
 from __future__ import annotations
 
+from hashlib import sha1
 import re
 
 from flask import jsonify
@@ -14566,6 +14568,19 @@ def _field_specs(text):
     return tuple(unique_specs)
 
 
+def _target_specs(text):
+    """Extract platform targets from explicit target/platform phrases only."""
+    match = re.search(r"\\b(?:targets?|platforms?)\\s+([^.;]+)", text, re.I)
+    if not match:
+        return ()
+    segment = match.group(1).lower()
+    return tuple(
+        target
+        for target in ("web", "pwa", "mobile", "desktop", "chatbot")
+        if re.search(rf"\\b{{target}}\\b", segment)
+    )
+
+
 def evolution_plan(prompt):
     """Convert natural language into auditable low-code change proposals."""
     text = prompt.strip()
@@ -14579,11 +14594,7 @@ def evolution_plan(prompt):
     rule_match = re.search(r"(?:rule|policy)\\s+([A-Za-z_][A-Za-z0-9_]*)", text, re.I)
     chatbot_match = re.search(r"chatbot\\s+([A-Za-z_][A-Za-z0-9_]*)", text, re.I)
     agent_match = re.search(r"agent\\s+([A-Za-z_][A-Za-z0-9_]*)", text, re.I)
-    target_matches = tuple(
-        target
-        for target in ("web", "pwa", "mobile", "desktop", "chatbot")
-        if re.search(rf"\\b{{target}}\\b", lowered)
-    )
+    target_matches = _target_specs(text)
     target_table = table_match.group(1) if table_match else (KNOWN_TABLES[0] if KNOWN_TABLES else "Generated")
     if table_match and any(word in lowered for word in ("create", "add", "generate", "build")):
         proposals.append({{"kind": "add_table", "name": target_table, "source": "natural_language"}})
@@ -14656,6 +14667,129 @@ def proposals_to_dsl(plan):
     return "\\n\\n".join(lines)
 
 
+def proposal_summary(plan):
+    """Return deterministic proposal counts by generated change kind."""
+    counts = {{}}
+    for proposal in plan.get("proposals", ()):
+        kind = proposal.get("kind", "unknown")
+        counts[kind] = counts.get(kind, 0) + 1
+    return {{
+        "proposal_count": sum(counts.values()),
+        "kinds": counts,
+        "tables": tuple(
+            proposal.get("name") or proposal.get("table")
+            for proposal in plan.get("proposals", ())
+            if proposal.get("kind") in {{"add_table", "add_field", "add_form"}}
+        ),
+    }}
+
+
+def migration_impact(plan):
+    """Return review metadata for database-impacting natural-language changes."""
+    ddl = []
+    data = []
+    review = []
+    for proposal in plan.get("proposals", ()):
+        kind = proposal.get("kind")
+        if kind == "add_table":
+            ddl.append({{"action": "create_table", "table": proposal["name"], "destructive": False}})
+        elif kind == "add_field":
+            ddl.append({{
+                "action": "add_column",
+                "table": proposal["table"],
+                "field": proposal["name"],
+                "type": proposal["type"],
+                "destructive": False,
+                "requires_backfill": "required" in proposal.get("modifiers", ()) and proposal.get("table") in KNOWN_TABLES,
+            }})
+        elif kind in {{"add_form", "add_chatbot", "add_agent", "set_targets"}}:
+            review.append({{"action": kind, "destructive": False}})
+    return {{
+        "format": "appgen.nl-migration-impact.v1",
+        "ddl": tuple(ddl),
+        "data": tuple(data),
+        "review": tuple(review),
+        "requires_review": bool(ddl or review),
+        "destructive": any(item.get("destructive") for item in (*ddl, *data, *review)),
+    }}
+
+
+def _app_target_patch(targets):
+    return "targets: " + ", ".join(targets)
+
+
+def _apply_target_patch(base_dsl, targets):
+    """Apply target metadata to an existing app declaration when possible."""
+    text = base_dsl.strip()
+    if not text:
+        return "app Generated {{ " + _app_target_patch(targets) + " }}"
+    pattern = re.compile(r"\\bapp\\s+([A-Za-z_][A-Za-z0-9_]*)\\s*(?:\\{{(?P<body>[^}}]*)\\}})?", re.S)
+    match = pattern.search(text)
+    if not match:
+        return "app Generated {{ " + _app_target_patch(targets) + " }}\\n\\n" + text
+    app_name = match.group(1)
+    body = match.group("body")
+    if body is None:
+        replacement = f"app {{app_name}} {{{{ {{_app_target_patch(targets)}} }}}}"
+    elif re.search(r"\\btargets\\s*:", body):
+        replacement_body = re.sub(r"\\btargets\\s*:\\s*[^;}}\\n]+", _app_target_patch(targets), body)
+        replacement = f"app {{app_name}} {{{{ {{replacement_body.strip()}} }}}}"
+    else:
+        separator = "; " if body.strip() else ""
+        replacement = f"app {{app_name}} {{{{ {{body.strip()}}{{separator}}{{_app_target_patch(targets)}} }}}}"
+    return text[:match.start()] + replacement + text[match.end():]
+
+
+def evolution_changeset(prompt, base_dsl=""):
+    """Return an approval-ready natural-language application change set."""
+    plan = evolution_plan(prompt)
+    proposals = tuple(plan.get("proposals", ()))
+    target_proposals = tuple(proposal for proposal in proposals if proposal.get("kind") == "set_targets")
+    dsl_blocks = tuple(
+        block
+        for block in proposals_to_dsl({{"proposals": tuple(proposal for proposal in proposals if proposal.get("kind") != "set_targets")}}).split("\\n\\n")
+        if block.strip()
+    )
+    targets = target_proposals[-1]["targets"] if target_proposals else ()
+    digest_material = "\\n".join((prompt.strip(), base_dsl.strip(), repr(proposals)))
+    impact = migration_impact(plan)
+    return {{
+        "format": "appgen.nl-changeset.v1",
+        "id": "nlchg-" + sha1(digest_material.encode("utf-8")).hexdigest()[:12],
+        "prompt": plan["prompt"],
+        "summary": proposal_summary(plan),
+        "proposals": proposals,
+        "dsl_blocks": dsl_blocks,
+        "app_patch": {{"targets": targets}} if targets else None,
+        "migration_impact": impact,
+        "requires_approval": impact["requires_review"],
+        "applied_preview": apply_changeset(base_dsl, {{"dsl_blocks": dsl_blocks, "app_patch": {{"targets": targets}} if targets else None}}),
+    }}
+
+
+def apply_changeset(base_dsl, changeset):
+    """Apply an approved generated change set to an AppGen DSL document."""
+    result = (base_dsl or "").strip()
+    app_patch = changeset.get("app_patch") or {{}}
+    targets = tuple(app_patch.get("targets") or ())
+    if targets:
+        result = _apply_target_patch(result, targets)
+    blocks = tuple(block.strip() for block in changeset.get("dsl_blocks", ()) if str(block).strip())
+    return "\\n\\n".join(part for part in (result, *blocks) if part).strip() + ("\\n" if result or blocks else "")
+
+
+def approval_workflow(changeset, actor="builder"):
+    """Return a deterministic approval workflow for generated app evolution."""
+    return {{
+        "changeset": changeset["id"],
+        "actor": actor,
+        "states": ("draft", "review", "approved", "applied"),
+        "current": "review" if changeset.get("requires_approval") else "approved",
+        "required_checks": ("dsl_lint", "migration_impact", "generated_tests"),
+        "destructive": changeset.get("migration_impact", {{}}).get("destructive", False),
+    }}
+
+
 def nl_evolution_check(existing_paths):
     """Return readiness for natural-language evolution artifacts."""
     existing = set(existing_paths)
@@ -14663,7 +14797,8 @@ def nl_evolution_check(existing_paths):
     missing = tuple(path for path in required if path not in existing)
     sample = evolution_plan("create table Ticket with field title and form TicketForm workflow Triage from open to closed rule TicketPolicy chatbot SupportBot agent SupportAgent targets web mobile desktop")
     kinds = tuple(item["kind"] for item in sample["proposals"])
-    return {{"ok": not missing and "add_table" in kinds and "add_agent" in kinds and "add_workflow" in kinds and "set_targets" in kinds, "missing": missing, "sample_kinds": kinds}}
+    changeset = evolution_changeset("create table Ticket with field title and form TicketForm chatbot SupportBot agent SupportAgent targets web mobile desktop")
+    return {{"ok": not missing and "add_table" in kinds and "add_agent" in kinds and "add_workflow" in kinds and "set_targets" in kinds and changeset["requires_approval"], "missing": missing, "sample_kinds": kinds}}
 
 
 class NaturalLanguageEvolutionView(BaseView):
@@ -14678,7 +14813,13 @@ class NaturalLanguageEvolutionView(BaseView):
     def plan_json(self):
         payload = request.get_json(force=True) or {{}}
         plan = evolution_plan(payload.get("prompt", ""))
-        return jsonify(dict(plan, dsl=proposals_to_dsl(plan)))
+        return jsonify(dict(plan, dsl=proposals_to_dsl(plan), changeset=evolution_changeset(payload.get("prompt", ""), payload.get("base_dsl", ""))))
+
+    @expose("/changeset", methods=("POST",))
+    def changeset_json(self):
+        payload = request.get_json(force=True) or {{}}
+        changeset = evolution_changeset(payload.get("prompt", ""), payload.get("base_dsl", ""))
+        return jsonify(dict(changeset, approval=approval_workflow(changeset, payload.get("actor", "builder"))))
 
     @expose("/capabilities.json")
     def capabilities_json(self):
@@ -22196,6 +22337,8 @@ def validate_nl_evolution_artifacts() -> None:
     contract = (ROOT / "app" / "nl_evolution.py").read_text()
     if "evolution_plan" not in contract or "proposals_to_dsl" not in contract or "add_agent" not in contract or "add_workflow" not in contract or "set_targets" not in contract or "_field_reference" not in contract:
         fail("natural-language evolution must expose proposal and DSL helpers")
+    if "evolution_changeset" not in contract or "apply_changeset" not in contract or "migration_impact" not in contract or "approval_workflow" not in contract:
+        fail("natural-language evolution must expose approval-ready changesets and migration impact")
     template = (ROOT / "app" / "templates" / "appgen_nl_evolution.html").read_text()
     if "Natural Language Evolution" not in template or "Plan Changes" not in template:
         fail("natural-language evolution template must expose planning UI")
