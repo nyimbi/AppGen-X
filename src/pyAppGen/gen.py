@@ -22769,6 +22769,39 @@ def native_feature_matrix():
     )
 
 
+def native_permission_manifest(target):
+    """Return platform permission and entitlement declarations for native builds."""
+    if target == "mobile":
+        return {{
+            "android": (
+                "android.permission.CAMERA",
+                "android.permission.ACCESS_FINE_LOCATION",
+                "android.permission.POST_NOTIFICATIONS",
+            ),
+            "ios": {{
+                "NSCameraUsageDescription": "Capture images for generated AppGen records.",
+                "NSLocationWhenInUseUsageDescription": "Attach location context to generated AppGen records.",
+                "NSUserNotificationUsageDescription": "Notify users about generated AppGen workflow updates.",
+            }},
+        }}
+    if target == "desktop":
+        return {{
+            "macos": ("com.apple.security.files.user-selected.read-write",),
+            "linux": ("xdg-documents",),
+            "windows": ("documentsLibrary",),
+        }}
+    raise KeyError(f"Unknown native target: {{target}}")
+
+
+def native_capability_plan(target):
+    """Return generated device/native feature wiring for one target."""
+    plan = native_plan(target)
+    plan["permissions"] = native_permission_manifest(target)
+    plan["offline_storage"] = "json-cache" if target == "desktop" else "queued-mutations"
+    plan["sync"] = native_api_routes()
+    return plan
+
+
 def scaffold_check(existing_paths):
     """Return readiness for generated native scaffold files."""
     existing = set(existing_paths)
@@ -22806,11 +22839,23 @@ from __future__ import annotations
 
 APP_NAME = {app_name!r}
 TABLES = {tables!r}
+MOBILE_PERMISSIONS = {{
+    "android": (
+        "android.permission.CAMERA",
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.POST_NOTIFICATIONS",
+    ),
+    "ios": {{
+        "NSCameraUsageDescription": "Capture images for generated AppGen records.",
+        "NSLocationWhenInUseUsageDescription": "Attach location context to generated AppGen records.",
+        "NSUserNotificationUsageDescription": "Notify users about generated AppGen workflow updates.",
+    }},
+}}
 
 
 def mobile_contract():
     """Return generated mobile table and API descriptors."""
-    return {{"app_name": APP_NAME, "framework": "kivy", "tables": TABLES}}
+    return {{"app_name": APP_NAME, "framework": "kivy", "tables": TABLES, "permissions": MOBILE_PERMISSIONS}}
 
 
 def offline_record(table_name, values):
@@ -22824,6 +22869,50 @@ def sync_plan(api_base):
         {{"table": table["name"], "url": api_base.rstrip("/") + table["endpoint"]}}
         for table in TABLES
     )
+
+
+def permission_manifest():
+    """Return generated mobile permission declarations for Android and iOS."""
+    return MOBILE_PERMISSIONS
+
+
+def camera_capture_plan(table_name, field=None, *, quality="balanced"):
+    """Return a camera capture plan without opening device hardware."""
+    table = next((item for item in TABLES if item["name"] == table_name), None)
+    if table is None:
+        raise KeyError(f"Unknown mobile table: {{table_name}}")
+    return {{
+        "table": table_name,
+        "field": field,
+        "quality": quality,
+        "permission": "android.permission.CAMERA",
+        "status": "planned",
+    }}
+
+
+def location_capture_plan(table_name, *, accuracy="balanced"):
+    """Return a location capture plan without reading device sensors."""
+    table = next((item for item in TABLES if item["name"] == table_name), None)
+    if table is None:
+        raise KeyError(f"Unknown mobile table: {{table_name}}")
+    return {{
+        "table": table_name,
+        "accuracy": accuracy,
+        "permission": "android.permission.ACCESS_FINE_LOCATION",
+        "status": "planned",
+    }}
+
+
+def push_notification_payload(title, body, data=None):
+    """Return a generated mobile push-notification payload."""
+    if not str(title).strip() or not str(body).strip():
+        raise ValueError("Push title and body are required")
+    return {{
+        "title": str(title),
+        "body": str(body),
+        "data": dict(data or {{}}),
+        "permission": "android.permission.POST_NOTIFICATIONS",
+    }}
 
 
 try:
@@ -22860,11 +22949,16 @@ from __future__ import annotations
 
 APP_NAME = {app_name!r}
 TABLES = {tables!r}
+DESKTOP_ENTITLEMENTS = {{
+    "macos": ("com.apple.security.files.user-selected.read-write",),
+    "linux": ("xdg-documents",),
+    "windows": ("documentsLibrary",),
+}}
 
 
 def desktop_contract():
     """Return generated desktop table and API descriptors."""
-    return {{"app_name": APP_NAME, "framework": "beeware", "tables": TABLES}}
+    return {{"app_name": APP_NAME, "framework": "beeware", "tables": TABLES, "entitlements": DESKTOP_ENTITLEMENTS}}
 
 
 def menu_actions():
@@ -22881,6 +22975,26 @@ def local_cache_plan(cache_dir):
         {{"table": table["name"], "path": f"{{cache_dir}}/{{table['name'].lower()}}.json"}}
         for table in TABLES
     )
+
+
+def desktop_file_action(path, *, action="open", table_name=None):
+    """Return a reviewed desktop local-file action without touching the file system."""
+    if not str(path).strip():
+        raise ValueError("Desktop file path is required")
+    return {{
+        "action": action,
+        "path": str(path),
+        "table": table_name,
+        "entitlement": "com.apple.security.files.user-selected.read-write",
+        "review_required": True,
+    }}
+
+
+def desktop_notification_payload(title, body, data=None):
+    """Return a generated desktop notification payload."""
+    if not str(title).strip() or not str(body).strip():
+        raise ValueError("Notification title and body are required")
+    return {{"title": str(title), "body": str(body), "data": dict(data or {{}})}}
 
 
 try:
@@ -24680,14 +24794,14 @@ def validate_test_coverage_artifacts() -> None:
 
 def validate_native_artifacts() -> None:
     contract = (ROOT / "native" / "appgen_native.py").read_text()
-    if "native_targets" not in contract or "scaffold_check" not in contract:
-        fail("native contract must expose target and scaffold checks")
+    if "native_targets" not in contract or "scaffold_check" not in contract or "native_permission_manifest" not in contract or "native_capability_plan" not in contract:
+        fail("native contract must expose target, permissions, capability, and scaffold checks")
     mobile = (ROOT / "native" / "mobile" / "app.py").read_text()
-    if "AppGenMobileApp" not in mobile or "offline_record" not in mobile:
-        fail("mobile starter must expose Kivy app and offline queue helpers")
+    if "AppGenMobileApp" not in mobile or "offline_record" not in mobile or "camera_capture_plan" not in mobile or "push_notification_payload" not in mobile:
+        fail("mobile starter must expose Kivy app, device capability, push, and offline queue helpers")
     desktop = (ROOT / "native" / "desktop" / "app.py").read_text()
-    if "AppGenDesktopApp" not in desktop or "local_cache_plan" not in desktop:
-        fail("desktop starter must expose BeeWare app and local cache helpers")
+    if "AppGenDesktopApp" not in desktop or "local_cache_plan" not in desktop or "desktop_file_action" not in desktop:
+        fail("desktop starter must expose BeeWare app, local file, notification, and cache helpers")
 
 
 def validate_jhipster_artifacts() -> None:
@@ -25889,8 +26003,15 @@ def test_generated_runtime_helpers():
     assert native_targets <= {"mobile", "desktop"}
     if "mobile" in native_targets:
         assert mobile.mobile_contract()["framework"] == "kivy"
+        assert "android.permission.CAMERA" in native.native_permission_manifest("mobile")["android"]
+        assert mobile.camera_capture_plan(mobile.mobile_contract()["tables"][0]["name"])["status"] == "planned"
+        assert mobile.location_capture_plan(mobile.mobile_contract()["tables"][0]["name"])["permission"] == "android.permission.ACCESS_FINE_LOCATION"
+        assert mobile.push_notification_payload("Ready", "Sync complete")["permission"] == "android.permission.POST_NOTIFICATIONS"
     if "desktop" in native_targets:
         assert desktop.desktop_contract()["framework"] == "beeware"
+        assert native.native_capability_plan("desktop")["offline_storage"] == "json-cache"
+        assert desktop.desktop_file_action("/tmp/appgen.json")["review_required"] is True
+        assert desktop.desktop_notification_payload("Ready", "Sync complete")["title"] == "Ready"
     assert native.scaffold_check(
         {
             "native/appgen_native.py",

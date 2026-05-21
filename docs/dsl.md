@@ -343,7 +343,9 @@ apps include:
 - `sdks/` with generated Python, JavaScript, Java, and C# API client
   scaffolds derived from the same REST table contracts.
 - `native/` with generated Kivy mobile and BeeWare desktop Python starter
-  apps, offline queue/cache plans, and API route contracts.
+  apps, mobile permission manifests, camera/location capture plans, push
+  notification payloads, desktop local-file actions, offline queue/cache plans,
+  and API route contracts.
 - `jhipster/app.jdl` and `jhipster/appgen_jhipster.py` with generated
   JHipster JDL exports for Java/TypeScript application generation, preserving
   relation cardinality as JDL `ManyToOne`, `OneToOne`, `OneToMany`, and

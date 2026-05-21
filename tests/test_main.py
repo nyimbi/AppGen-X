@@ -504,9 +504,17 @@ def test_generate_app_from_sqlite_schema_compiles(tmp_path) -> None:
         "native/desktop/app.py",
     }
     assert native.scaffold_check(native_artifacts)["ok"] is True
+    assert "android.permission.CAMERA" in native.native_permission_manifest("mobile")["android"]
+    assert native.native_capability_plan("desktop")["offline_storage"] == "json-cache"
     assert mobile.mobile_contract()["framework"] == "kivy"
+    assert "android.permission.ACCESS_FINE_LOCATION" in mobile.permission_manifest()["android"]
+    assert mobile.camera_capture_plan("book", "cover_image")["permission"] == "android.permission.CAMERA"
+    assert mobile.location_capture_plan("book")["status"] == "planned"
+    assert mobile.push_notification_payload("Ready", "Book synced")["permission"] == "android.permission.POST_NOTIFICATIONS"
     assert mobile.offline_record("Book", {"title": "Dune"})["status"] == "queued"
     assert desktop.desktop_contract()["framework"] == "beeware"
+    assert desktop.desktop_file_action("/tmp/book.json", table_name="Book")["review_required"] is True
+    assert desktop.desktop_notification_payload("Ready", "Book synced")["title"] == "Ready"
     assert desktop.local_cache_plan("/tmp/cache")[1]["path"].endswith("/book.json")
     jhipster = _load_module(tmp_path / "jhipster" / "appgen_jhipster.py", "generated_jhipster")
     assert jhipster.jhipster_import_command() == ("jhipster", "jdl", "jhipster/app.jdl")
