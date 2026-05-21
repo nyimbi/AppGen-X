@@ -394,7 +394,8 @@ apps include:
   IDEA/PyCharm, and Eclipse/PyDev launch, task, extension, source-map, and
   readiness contracts.
 - `studio.py` and `appgen_studio.html` with a generated IDE/workbench for DSL
-  authoring, DSL linting, searchable command palettes, project trees, editor
+  authoring, DSL linting, outline extraction, keyword-budget checks,
+  completions/snippets, searchable command palettes, project trees, editor
   sessions, visual database design, Mermaid ERD export, DBML export, SQL DDL
   preview, PonyORM preview, table proposals, migration previews, staged
   generation jobs, IDE diagnostics, app management, code editing,

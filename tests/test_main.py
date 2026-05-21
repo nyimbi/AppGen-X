@@ -2722,6 +2722,14 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert "Application" in {item["name"] for item in studio.project_tree()}
     assert {item["command"] for item in studio.command_palette_search("database")} >= {"design_database"}
     assert studio.dsl_editor_state(text="app Library")["lint"]["warnings"]
+    assert studio.dsl_keyword_budget()["ok"] is True
+    authoring = studio.dsl_authoring_surface(
+        "app Library { targets: web, mobile, toaster } table Book { id: int pk }"
+    )
+    assert authoring["outline"]["tables"] == ("Book",)
+    assert any("Unknown app targets: toaster" in error for error in authoring["lint"]["errors"])
+    assert any(item["label"] == "Delphi Component" for item in studio.dsl_completion_items("Delphi"))
+    assert studio.dsl_schema_preview("table Book { id: int pk }")["exports"] == ("dbml", "sql", "ponyorm")
     dsl_editor = studio.editor_session("appgen.dsl", "app Library { targets: web }")
     assert dsl_editor["language"] == "appgen-dsl"
     assert "schema_preview" in dsl_editor["checks"]

@@ -22756,6 +22756,8 @@ def _studio_text(schema: AppSchema, app_name: str) -> str:
 
 from __future__ import annotations
 
+import re
+
 from flask import jsonify
 from flask_appbuilder import BaseView
 from flask_appbuilder import expose
@@ -22772,6 +22774,34 @@ PROJECT_TREE = {project_tree!r}
 PLATFORM_TARGETS = {platform_targets!r}
 IDE_ACTIONS = {ide_actions!r}
 SECRET_MARKERS = ("SECRET", "TOKEN", "PASSWORD", "API_KEY")
+DSL_KEYWORDS = (
+    "app",
+    "table",
+    "enum",
+    "view",
+    "for",
+    "flow",
+    "role",
+    "rule",
+    "pk",
+    "required",
+    "unique",
+    "hidden",
+    "search",
+    "default",
+    "in",
+    "llm",
+    "agent",
+)
+DSL_SNIPPETS = (
+    {{"label": "Application", "insert": "app MyApp {{ targets: web, mobile, desktop }}", "kind": "app"}},
+    {{"label": "Table", "insert": "table Customer {{\\n  id: int pk\\n  name: string required search\\n}}", "kind": "schema"}},
+    {{"label": "Form", "insert": "view CustomerForm for Customer {{\\n  Main: name;\\n}}", "kind": "ui"}},
+    {{"label": "Delphi Component", "insert": "@ name TextBox 0 0 6 1", "kind": "ui"}},
+    {{"label": "Local LLM", "insert": "llm LocalModel {{\\n  provider: ollama\\n  mode: local\\n  model: llama3\\n}}", "kind": "ai"}},
+    {{"label": "Agent", "insert": "agent Assistant {{\\n  provider: LocalModel\\n  goal: \\"Help users finish work\\"\\n  tools: schema, forms, reports\\n}}", "kind": "ai"}},
+)
+SUPPORTED_TARGETS = ("web", "pwa", "mobile", "desktop", "chatbot")
 
 
 def editable_files():
@@ -22785,6 +22815,7 @@ def ide_workspace():
         "app_name": APP_NAME,
         "project_tree": project_tree(),
         "dsl_documents": tuple(DSL_DOCUMENTS),
+        "dsl_authoring": dsl_authoring_surface(),
         "database_design": database_design_catalog(),
         "database_workbench": database_design_workspace(),
         "editable_files": editable_files(),
@@ -22827,13 +22858,17 @@ def command_palette_search(query=""):
 
 def dsl_editor_state(source="appgen.dsl", text=""):
     """Return DSL editor state with panels for linting, schema, and generation."""
+    lint = dsl_lint_plan(text)
     return {{
         "source": source,
         "language": "appgen-dsl",
         "text": text,
         "panels": ("outline", "schema_preview", "database_designer", "generation_plan", "natural_language_changes"),
-        "commands": ("format", "lint", "preview_schema", "generate", "apply_natural_language_change"),
-        "lint": dsl_lint_plan(text),
+        "commands": ("format", "lint", "preview_schema", "generate", "apply_natural_language_change", "quick_fix"),
+        "lint": lint,
+        "outline": lint["outline"],
+        "schema_preview": dsl_schema_preview(text),
+        "completions": dsl_completion_items(),
     }}
 
 
@@ -22870,19 +22905,119 @@ def editor_session(path="appgen.dsl", text="", cursor=None):
 
 
 def dsl_lint_plan(text):
-    """Return lightweight DSL authoring feedback for the IDE."""
+    """Return DSL authoring feedback for the generated IDE."""
     source = str(text or "")
     errors = []
     warnings = []
+    suggestions = []
     if source and "app " not in source:
         errors.append("DSL should declare an app block.")
+    if source and source.count("{{") != source.count("}}"):
+        errors.append("Unbalanced braces: every block opened with {{ must close with }}.")
     if source and "table " not in source:
         warnings.append("No table declaration found; generated apps normally need at least one table.")
+    if re.search(r"\\bref\\b", source):
+        warnings.append("Prefer arrow references, for example customer_id: int -> Customer.id.")
+    if re.search(r"api_key\\s*:\\s*['\\\"]", source):
+        warnings.append("Use an environment variable name for api_key, not a literal secret.")
+    targets_match = re.search(r"\\btargets\\s*:\\s*([^;\\n}}]+)", source)
+    if targets_match:
+        selected = tuple(
+            item.strip().strip("'\\\"")
+            for item in targets_match.group(1).split(",")
+            if item.strip()
+        )
+        unknown = tuple(target for target in selected if target not in SUPPORTED_TARGETS)
+        if unknown:
+            errors.append("Unknown app targets: " + ", ".join(unknown))
+    outline = dsl_outline(source)
+    for kind in ("tables", "views", "flows", "roles", "rules", "llms", "agents"):
+        duplicates = tuple(name for name in outline[kind] if outline[kind].count(name) > 1)
+        if duplicates:
+            errors.append("Duplicate " + kind[:-1] + " declaration: " + ", ".join(sorted(set(duplicates))))
+    if not outline["views"]:
+        suggestions.append("Add view blocks or Delphi-style component placements for form design.")
+    if not outline["llms"] and not outline["agents"]:
+        suggestions.append("Add llm and agent blocks when the app needs agentic behavior.")
     return {{
         "ok": not errors,
         "errors": tuple(errors),
         "warnings": tuple(warnings),
+        "suggestions": tuple(suggestions),
+        "outline": outline,
+        "keyword_budget": dsl_keyword_budget(),
         "checks": ("keyword_budget", "references", "field_types", "targets"),
+    }}
+
+
+def dsl_keyword_budget():
+    """Return the generated DSL keyword budget contract."""
+    return {{
+        "keywords": DSL_KEYWORDS,
+        "count": len(DSL_KEYWORDS),
+        "limit": 17,
+        "ok": len(DSL_KEYWORDS) <= 17,
+    }}
+
+
+def _dsl_names(kind, source):
+    pattern = r"\\b" + re.escape(kind) + r"\\s+([A-Za-z_][A-Za-z0-9_]*)"
+    return tuple(match.group(1) for match in re.finditer(pattern, source))
+
+
+def dsl_outline(text):
+    """Return a generated outline for app, schema, UI, workflow, security, and AI blocks."""
+    source = str(text or "")
+    app_match = re.search(r"\\bapp\\s+(\\"[^\\"]+\\"|'[^']+'|[A-Za-z_][A-Za-z0-9_]*)?", source)
+    app_name = None
+    if app_match and app_match.group(1):
+        app_name = app_match.group(1).strip("'\\\"")
+    return {{
+        "app": app_name,
+        "tables": _dsl_names("table", source),
+        "views": _dsl_names("view", source),
+        "flows": _dsl_names("flow", source),
+        "roles": _dsl_names("role", source),
+        "rules": _dsl_names("rule", source),
+        "llms": _dsl_names("llm", source),
+        "agents": _dsl_names("agent", source),
+    }}
+
+
+def dsl_completion_items(prefix=""):
+    """Return keyword and snippet completions for the generated DSL editor."""
+    needle = str(prefix or "").strip().lower()
+    keywords = tuple({{"label": keyword, "insert": keyword, "kind": "keyword"}} for keyword in DSL_KEYWORDS)
+    items = keywords + tuple(DSL_SNIPPETS)
+    if not needle:
+        return items
+    return tuple(item for item in items if item["label"].lower().startswith(needle))
+
+
+def dsl_schema_preview(text):
+    """Return a schema preview that links current DSL text to the database workbench."""
+    outline = dsl_outline(text)
+    declared_tables = set(outline["tables"])
+    designed_tables = tuple(table for table in DATABASE_DESIGN if not declared_tables or table["table"] in declared_tables)
+    return {{
+        "outline": outline,
+        "tables": designed_tables,
+        "erd": schema_erd_mermaid(),
+        "exports": ("dbml", "sql", "ponyorm"),
+        "generation_targets": PLATFORM_TARGETS or ("web",),
+    }}
+
+
+def dsl_authoring_surface(text=""):
+    """Return the generated DSL IDE surface: outline, lint, completions, and previews."""
+    return {{
+        "editor": dsl_editor_state(text=text),
+        "outline": dsl_outline(text),
+        "lint": dsl_lint_plan(text),
+        "keyword_budget": dsl_keyword_budget(),
+        "completions": dsl_completion_items(),
+        "snippets": DSL_SNIPPETS,
+        "schema_preview": dsl_schema_preview(text),
     }}
 
 
