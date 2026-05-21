@@ -368,7 +368,10 @@ apps include:
   token-exchange, logout, and group-role mapping contracts.
 - `compliance.py` and `appgen_compliance.html` with generated audit event,
   retention, protected-field redaction, privacy request, subject export,
-  erasure planning, and retention-disposition review helpers.
+  erasure planning, and retention-disposition review helpers. A generated
+  compliance release gate proves privacy request coverage, redaction, erasure
+  review, retention disposition, audit events, and required compliance
+  artifacts.
 - `assistant.py` and `appgen_assistant.html` with generated prompt context,
   chatbot field questions, deterministic recommendations, prediction feature
   extraction, and human-review task payloads.

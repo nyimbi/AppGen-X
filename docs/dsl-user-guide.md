@@ -392,3 +392,6 @@ monitors, OpenAPI coverage, and rendered pytest/Playwright modules.
 Use `/usage-analytics/release-gate.json` to prove generated app-usage
 analytics cover event catalogs, adoption, funnels, retention, real-time
 snapshots, and dashboard payloads.
+Use `/compliance/release-gate.json` to verify privacy request envelopes,
+protected-field redaction, erasure review, retention disposition, audit events,
+and compliance artifacts before a generated app is released.

@@ -2196,7 +2196,9 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert "tenant_id" in (output_dir / "templates" / "appgen_tenancy.html").read_text()
     assert "row-level security contracts" in (output_dir / "templates" / "appgen_rls.html").read_text()
     assert "OpenID Connect" in (output_dir / "templates" / "appgen_identity.html").read_text()
-    assert "protected-field" in (output_dir / "templates" / "appgen_compliance.html").read_text()
+    compliance_template = (output_dir / "templates" / "appgen_compliance.html").read_text()
+    assert "protected-field" in compliance_template
+    assert "Release Gate JSON" in compliance_template
     assert "prediction features" in (output_dir / "templates" / "appgen_assistant.html").read_text()
     assert "Intelligence JSON" in (output_dir / "templates" / "appgen_intelligence.html").read_text()
     assert "Guided Chatbot" in (output_dir / "templates" / "appgen_chatbot.html").read_text()
@@ -3532,6 +3534,18 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     disposition = compliance.retention_disposition_review("Book", [record])
     assert disposition["requires_review"] is True
     assert disposition["due"][0]["action"] == "archive_or_delete_review"
+    compliance_gate = compliance.compliance_release_gate(
+        {"app/compliance.py", "app/templates/appgen_compliance.html"},
+        {"Book": [{"id": 1, "internal_code": "B-1", "age_days": 400}]},
+    )
+    assert compliance_gate["format"] == "appgen.compliance-release-gate.v1"
+    assert compliance_gate["ok"] is True
+    assert {"redaction", "privacy_requests", "erasure_review", "retention_disposition", "audit_events"} <= {
+        gate["gate"] for gate in compliance_gate["gates"]
+    }
+    assert compliance.compliance_release_gate({"app/compliance.py"}, {"Book": [{"id": 1, "age_days": 400}]})[
+        "ok"
+    ] is False
     context = assistant.prompt_context("Book", {"title": "Dune", "internal_code": "B-1"})
     assert context["values"] == {"title": "Dune"}
     assert "internal_code" not in context["fields"]
