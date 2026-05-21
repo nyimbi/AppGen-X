@@ -194,9 +194,9 @@ apps include:
   inactivity logout and security-header hardening hooks.
 - `workflow.py` with transition helpers such as `next_states`,
   `can_transition`, `transition`, `advance_plan`, Mermaid state-chart exports,
-  provider-neutral FSM JSON, SCXML export, graph diagnostics, reviewed
-  transition proposals that regenerate DSL, and a generated workflow/statechart
-  cockpit.
+  provider-neutral FSM JSON, SCXML export, graph diagnostics, role-aware
+  workflow authorization flows derived from declared roles, reviewed transition
+  proposals that regenerate DSL, and a generated workflow/statechart cockpit.
 - `rules.py` and `appgen_rules.html` with generated business-rule validation,
   row checks, and decision-tree action plans.
 - `monitoring.py` with liveness/readiness endpoints and generated JSON error

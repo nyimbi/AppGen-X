@@ -1711,6 +1711,13 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert workflow.terminal_states("Publish") == ("archived",)
     assert workflow.advance_plan("Publish", "draft") == ("draft", "published", "archived")
     assert workflow.workflow_catalog()[0]["name"] == "Publish"
+    assert workflow.workflow_catalog()[0]["authorization"]["format"] == "appgen.workflow-authorization.v1"
+    assert workflow.workflow_authorization_policy("Publish")["roles"] == ("Editor",)
+    assert workflow.can_transition_as("Publish", "draft", "published", {"roles": ["Editor"]}) is True
+    assert workflow.can_transition_as("Publish", "draft", "published", {"roles": ["Viewer"]}) is False
+    auth_plan = workflow.transition_authorization_plan("Publish", "draft", "published", {"role": "Editor"})
+    assert auth_plan["allowed"] is True
+    assert auth_plan["required_roles"] == ("Editor",)
     assert workflow.transition_graph("Publish") == {
         "draft": ("published",),
         "published": ("archived",),
@@ -1722,11 +1729,15 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert fsm["final"] == ("archived",)
     assert fsm["transitions"][0]["event"] == "draft_to_published"
     assert workflow.workflow_graph_check("Publish")["ok"] is True
+    auth_flow = workflow.authorization_flow("Publish")
+    assert auth_flow["format"] == "appgen.workflow-authorization-flow.v1"
+    assert auth_flow["transitions"][0]["roles"] == ("Editor",)
     scxml = workflow.scxml_export("Publish")
     assert scxml.startswith("<scxml")
     assert '<transition event="draft_to_published" target="published" />' in scxml
     workbench = workflow.statechart_workbench("Publish")
     assert workbench["exports"]["scxml"].startswith("<scxml")
+    assert workbench["authorization"]["roles"] == ("Editor",)
     assert workbench["diagnostics"]["ok"] is True
     proposal = workflow.transition_proposal("Publish", "review", "approved", actor="ada")
     assert proposal["requires_review"] is True

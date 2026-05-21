@@ -685,6 +685,35 @@ def write_workflow_file(output_dir, schema: AppSchema):
     """Write executable workflow transition helpers for DSL flows."""
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
+    workflow_actions = {"*", "admin", "approve", "create", "review", "transition", "update"}
+    workflow_role_policies = []
+    for role in schema.roles:
+        resources = []
+        actions = set()
+        for permission in role.permissions:
+            allowed = {action.lower() for action in permission.actions}
+            if allowed & workflow_actions:
+                resources.append(permission.resource)
+                actions.update(allowed)
+        if resources:
+            workflow_role_policies.append(
+                {
+                    "role": role.name,
+                    "resources": tuple(resources),
+                    "actions": tuple(sorted(actions)),
+                }
+            )
+    workflow_authorization = {
+        flow.name: {
+            "format": "appgen.workflow-authorization.v1",
+            "workflow": flow.name,
+            "authorization_required": bool(workflow_role_policies),
+            "roles": tuple(policy["role"] for policy in workflow_role_policies),
+            "role_policies": tuple(workflow_role_policies),
+            "bypass_roles": ("Admin", "SecurityManager"),
+        }
+        for flow in schema.flows
+    }
     with open(output_dir / "workflow.py", "w") as f:
         f.write('"""Generated workflow transition helpers for AppGen apps."""\n\n')
         f.write("from __future__ import annotations\n\n")
@@ -697,6 +726,7 @@ def write_workflow_file(output_dir, schema: AppSchema):
                 f.write(f"        ({step.source!r}, {step.target!r}),\n")
             f.write("    ),\n")
         f.write("}\n\n")
+        f.write(f"WORKFLOW_AUTHORIZATION = {workflow_authorization!r}\n\n")
         f.write("def transitions(flow_name):\n")
         f.write("    \"\"\"Return all declared transitions for a workflow.\"\"\"\n")
         f.write("    return tuple(WORKFLOWS.get(flow_name, ()))\n\n")
@@ -739,9 +769,84 @@ def write_workflow_file(output_dir, schema: AppSchema):
         f.write("            'states': states(flow_name),\n")
         f.write("            'start_states': start_states(flow_name),\n")
         f.write("            'terminal_states': terminal_states(flow_name),\n")
+        f.write("            'authorization': workflow_authorization_policy(flow_name),\n")
         f.write("        }\n")
         f.write("        for flow_name in sorted(WORKFLOWS)\n")
         f.write("    )\n\n")
+        f.write("def _principal_roles(principal):\n")
+        f.write("    \"\"\"Return normalized role names from a generated auth principal.\"\"\"\n")
+        f.write("    if principal is None:\n")
+        f.write("        return ()\n")
+        f.write("    if isinstance(principal, str):\n")
+        f.write("        return (principal,)\n")
+        f.write("    if not hasattr(principal, 'get'):\n")
+        f.write("        roles = getattr(principal, 'roles', ()) or ()\n")
+        f.write("        if isinstance(roles, str):\n")
+        f.write("            return (roles,)\n")
+        f.write("        return tuple(roles)\n")
+        f.write("    roles = principal.get('roles') or principal.get('role') or ()\n")
+        f.write("    if isinstance(roles, str):\n")
+        f.write("        return (roles,)\n")
+        f.write("    return tuple(roles)\n\n")
+        f.write("def workflow_authorization_policy(flow_name):\n")
+        f.write("    \"\"\"Return role-aware authorization metadata for one workflow.\"\"\"\n")
+        f.write("    return WORKFLOW_AUTHORIZATION.get(flow_name, {\n")
+        f.write("        'format': 'appgen.workflow-authorization.v1',\n")
+        f.write("        'workflow': flow_name,\n")
+        f.write("        'authorization_required': False,\n")
+        f.write("        'roles': (),\n")
+        f.write("        'role_policies': (),\n")
+        f.write("        'bypass_roles': ('Admin', 'SecurityManager'),\n")
+        f.write("    })\n\n")
+        f.write("def can_transition_as(flow_name, source, target, principal=None):\n")
+        f.write("    \"\"\"Return whether a principal may execute a valid workflow transition.\"\"\"\n")
+        f.write("    if not can_transition(flow_name, source, target):\n")
+        f.write("        return False\n")
+        f.write("    policy = workflow_authorization_policy(flow_name)\n")
+        f.write("    if not policy['authorization_required']:\n")
+        f.write("        return True\n")
+        f.write("    principal_roles = set(_principal_roles(principal))\n")
+        f.write("    allowed_roles = set(policy['roles']) | set(policy['bypass_roles'])\n")
+        f.write("    return bool(principal_roles & allowed_roles)\n\n")
+        f.write("def transition_authorization_plan(flow_name, source, target, principal=None):\n")
+        f.write("    \"\"\"Return an explainable workflow authorization decision.\"\"\"\n")
+        f.write("    policy = workflow_authorization_policy(flow_name)\n")
+        f.write("    principal_roles = _principal_roles(principal)\n")
+        f.write("    valid_transition = can_transition(flow_name, source, target)\n")
+        f.write("    return {\n")
+        f.write("        'format': 'appgen.workflow-transition-authorization.v1',\n")
+        f.write("        'workflow': flow_name,\n")
+        f.write("        'source': source,\n")
+        f.write("        'target': target,\n")
+        f.write("        'valid_transition': valid_transition,\n")
+        f.write("        'allowed': valid_transition and can_transition_as(flow_name, source, target, principal),\n")
+        f.write("        'authorization_required': policy['authorization_required'],\n")
+        f.write("        'principal_roles': principal_roles,\n")
+        f.write("        'required_roles': policy['roles'],\n")
+        f.write("        'bypass_roles': policy['bypass_roles'],\n")
+        f.write("        'role_policies': policy['role_policies'],\n")
+        f.write("    }\n\n")
+        f.write("def authorization_flow(flow_name):\n")
+        f.write("    \"\"\"Return an FSM authorization graph for workflow designer UIs.\"\"\"\n")
+        f.write("    policy = workflow_authorization_policy(flow_name)\n")
+        f.write("    return {\n")
+        f.write("        'format': 'appgen.workflow-authorization-flow.v1',\n")
+        f.write("        'workflow': flow_name,\n")
+        f.write("        'authorization_required': policy['authorization_required'],\n")
+        f.write("        'roles': policy['roles'],\n")
+        f.write("        'bypass_roles': policy['bypass_roles'],\n")
+        f.write("        'role_policies': policy['role_policies'],\n")
+        f.write("        'transitions': tuple(\n")
+        f.write("            {\n")
+        f.write("                'source': source,\n")
+        f.write("                'target': target,\n")
+        f.write("                'event': f'{source}_to_{target}',\n")
+        f.write("                'roles': policy['roles'],\n")
+        f.write("                'bypass_roles': policy['bypass_roles'],\n")
+        f.write("            }\n")
+        f.write("            for source, target in transitions(flow_name)\n")
+        f.write("        ),\n")
+        f.write("    }\n\n")
         f.write("def advance_plan(flow_name, start_state):\n")
         f.write("    \"\"\"Return a deterministic wizard path following first valid transitions.\"\"\"\n")
         f.write("    if start_state not in states(flow_name):\n")
@@ -844,8 +949,9 @@ def write_workflow_file(output_dir, schema: AppSchema):
         f.write("            'mermaid': statechart_mermaid(flow_name),\n")
         f.write("            'scxml': scxml_export(flow_name),\n")
         f.write("        },\n")
+        f.write("        'authorization': authorization_flow(flow_name),\n")
         f.write("        'diagnostics': workflow_graph_check(flow_name),\n")
-        f.write("        'commands': ('add_transition', 'export_mermaid', 'export_scxml', 'validate_graph'),\n")
+        f.write("        'commands': ('add_transition', 'export_mermaid', 'export_scxml', 'inspect_authorization', 'validate_graph'),\n")
         f.write("    }\n\n")
         f.write("def statechart_designer_catalog():\n")
         f.write("    \"\"\"Return every workflow prepared for visual state-chart editing.\"\"\"\n")
@@ -893,6 +999,9 @@ def write_workflow_file(output_dir, schema: AppSchema):
         f.write("    @expose('/<flow_name>/workbench.json')\n")
         f.write("    def statechart_workbench_json(self, flow_name):\n")
         f.write("        return jsonify(statechart_workbench(flow_name))\n\n")
+        f.write("    @expose('/<flow_name>/authorization.json')\n")
+        f.write("    def authorization_json(self, flow_name):\n")
+        f.write("        return jsonify(authorization_flow(flow_name))\n\n")
         f.write("    @expose('/statecharts.json')\n")
         f.write("    def statechart_catalog_json(self):\n")
         f.write("        return jsonify(statechart_designer_catalog())\n\n")
@@ -3070,6 +3179,7 @@ def write_workflows_template(output_dir):
         <a class="btn btn-default" href="{{ url_for('WorkflowView.statechart_mermaid_route', flow_name=workflow.name) }}">Mermaid</a>
         <a class="btn btn-default" href="{{ url_for('WorkflowView.statechart_scxml_route', flow_name=workflow.name) }}">SCXML</a>
         <a class="btn btn-default" href="{{ url_for('WorkflowView.statechart_workbench_json', flow_name=workflow.name) }}">Workbench JSON</a>
+        <a class="btn btn-default" href="{{ url_for('WorkflowView.authorization_json', flow_name=workflow.name) }}">Authorization JSON</a>
       </div>
     </article>
     {% else %}
@@ -26957,9 +27067,11 @@ def validate_workflow_artifacts() -> None:
         fail("workflow contract must expose FSM and state-chart exports")
     if "scxml_export" not in contract or "statechart_workbench" not in contract or "transition_proposal" not in contract:
         fail("workflow contract must expose SCXML, statechart workbench, and reviewed edit proposals")
+    if "authorization_flow" not in contract or "can_transition_as" not in contract or "transition_authorization_plan" not in contract:
+        fail("workflow contract must expose role-aware authorization flows and transition checks")
     template = (ROOT / "app" / "templates" / "appgen_workflows.html").read_text()
-    if "FSM JSON" not in template or "Mermaid" not in template or "SCXML" not in template or "Workbench JSON" not in template:
-        fail("workflow template must expose state-chart export links")
+    if "FSM JSON" not in template or "Mermaid" not in template or "SCXML" not in template or "Workbench JSON" not in template or "Authorization JSON" not in template:
+        fail("workflow template must expose state-chart and authorization export links")
 
 
 def validate_rules_artifacts() -> None:
@@ -27886,6 +27998,8 @@ def test_generated_runtime_helpers():
     assert workflow.fsm_export(first_flow)["name"] == first_flow
     assert workflow.scxml_export(first_flow).startswith("<scxml")
     assert workflow.statechart_workbench(first_flow)["exports"]["scxml"].startswith("<scxml")
+    assert workflow.authorization_flow(first_flow)["format"] == "appgen.workflow-authorization-flow.v1"
+    assert workflow.transition_authorization_plan(first_flow, workflow.WORKFLOWS[first_flow][0][0], workflow.WORKFLOWS[first_flow][0][1])["valid_transition"] is True
     assert workflow.transition_proposal(first_flow, "review", "approved")["requires_review"] is True
     assert isinstance(rules.rules_catalog(), tuple)
     assert rules.rules_check({"app/rules.py", "app/templates/appgen_rules.html"})["ok"] is True
