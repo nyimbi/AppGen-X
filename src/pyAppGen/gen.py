@@ -34,6 +34,7 @@ from .schema import ViewSectionSchema
 from .schema import load_schema
 from .schema import normalize_platform_targets
 from .schema import schema_from_metadata
+from .schema import schema_source_contract
 from .utils import map_pgsql_datatypes
 from .utils import snake_to_label
 from .utils import snake_to_pascal
@@ -12876,6 +12877,7 @@ def register_data_access(appbuilder):
 def _schema_import_text(schema: AppSchema) -> str:
     tables = tuple(table.name for table in schema.tables)
     source_profile = schema.source_profile()
+    source_contract = schema_source_contract()
     sources = (
         {
             "kind": "dbml",
@@ -12905,9 +12907,11 @@ def _schema_import_text(schema: AppSchema) -> str:
             "kind": "database",
             "label": "Existing Database",
             "extensions": (),
-            "command": "appgen --database-url sqlite:///existing.db --writedir app",
+            "command": "appgen --database-url postgresql+psycopg2://user@host/db --writedir app",
             "normalizes": ("reflected tables", "primary keys", "foreign keys", "unique indexes", "server defaults", "SQLAlchemy enums"),
             "validation": ("reflect_metadata", "inspect_foreign_keys", "preserve_server_defaults", "profile_source_counts"),
+            "url_dialects": source_contract["database_url_dialects"],
+            "sqlalchemy_driver_urls": True,
         },
     )
     return f'''"""Generated schema import provenance and normalization contracts for AppGen apps."""
@@ -12920,6 +12924,7 @@ from flask_appbuilder import expose
 
 
 SOURCE_PROFILE = {source_profile!r}
+SOURCE_CONTRACT = {source_contract!r}
 SOURCE_TABLES = {tables!r}
 SCHEMA_SOURCES = {sources!r}
 
@@ -12934,6 +12939,11 @@ def schema_source_profile():
     return dict(SOURCE_PROFILE)
 
 
+def schema_source_contract():
+    """Return canonical source families and URL dialects supported by AppGen."""
+    return dict(SOURCE_CONTRACT)
+
+
 def normalization_report():
     """Return what was normalized into the canonical AppSchema contract."""
     profile = schema_source_profile()
@@ -12946,6 +12956,7 @@ def normalization_report():
         "table_signatures": tuple(profile["table_signatures"]),
         "relation_signatures": tuple(profile["relation_signatures"]),
         "canonical_contract": "AppSchema",
+        "source_contract": schema_source_contract(),
         "preserved": ("tables", "fields", "relations", "primary_keys", "unique_fields", "defaults", "enums"),
     }}
 
@@ -13135,6 +13146,7 @@ def schema_import_check(existing_paths=()):
         and len(all_import_apply_plans()) == len(SCHEMA_SOURCES),
         "missing": missing,
         "sources": tuple(item["kind"] for item in SCHEMA_SOURCES),
+        "source_contract": schema_source_contract(),
         "source_kind": SOURCE_PROFILE["source_kind"],
         "fingerprint": SOURCE_PROFILE["fingerprint"],
         "validation": all_source_validation_plans(),
@@ -29897,6 +29909,7 @@ def validate_schema_import_artifacts() -> None:
     required = (
         "schema_source_catalog",
         "schema_source_profile",
+        "schema_source_contract",
         "normalization_report",
         "source_validation_plan",
         "all_source_validation_plans",
@@ -29913,6 +29926,8 @@ def validate_schema_import_artifacts() -> None:
     for source in ("dbml", "sql", "ponyorm", "database"):
         if source not in contract:
             fail("schema import contract must cover DBML, SQL, PonyORM, and database sources")
+    if "postgresql+psycopg2" not in contract or "sqlalchemy_driver_urls" not in contract:
+        fail("schema import contract must document SQLAlchemy driver-suffixed database URLs")
     template = (ROOT / "app" / "templates" / "appgen_schema_import.html").read_text()
     if "Schema Import" not in template or "Catalog JSON" not in template or "Normalization JSON" not in template or "Validation JSON" not in template or "Commands JSON" not in template or "Round-trip Diff JSON" not in template or "Apply Plans JSON" not in template:
         fail("schema import cockpit must expose source catalog, normalization, validation, commands, round-trip diffs, and apply plans")
@@ -31193,7 +31208,10 @@ def test_generated_runtime_helpers():
         }
     )["ok"] is True
     assert {item["kind"] for item in schema_import.schema_source_catalog()} == {"dbml", "sql", "ponyorm", "database"}
+    assert schema_import.schema_source_contract()["format"] == "appgen.schema-source-contract.v1"
+    assert schema_import.schema_source_contract()["sqlalchemy_driver_urls"] is True
     assert schema_import.normalization_report()["format"] == "appgen.schema-normalization.v1"
+    assert schema_import.normalization_report()["source_contract"]["ok"] is True
     assert schema_import.source_validation_plan("sql")["format"] == "appgen.schema-source-validation.v1"
     assert len(schema_import.all_source_validation_plans()) == 4
     assert schema_import.import_command_plan("ponyorm", "entities.py")["command"] == "appgen --pony entities.py --writedir app"

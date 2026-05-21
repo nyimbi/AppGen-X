@@ -45,6 +45,49 @@ PLATFORM_TARGET_ALIASES = {
     "bot": "chatbot",
     "bots": "chatbot",
 }
+SUPPORTED_DATABASE_DIALECTS = (
+    "sqlite",
+    "postgresql",
+    "mysql",
+    "mariadb",
+    "mssql",
+    "oracle",
+    "cockroachdb",
+)
+SUPPORTED_SCHEMA_SOURCES = (
+    {
+        "kind": "dbml",
+        "extensions": (".dbml",),
+        "entrypoint": "schema_from_dbml",
+        "command": "appgen --dbml schema.dbml --writedir app",
+    },
+    {
+        "kind": "sql",
+        "extensions": (".sql", ".ddl"),
+        "entrypoint": "schema_from_sql",
+        "command": "appgen --sql schema.sql --writedir app",
+    },
+    {
+        "kind": "ponyorm",
+        "extensions": (".py",),
+        "entrypoint": "schema_from_ponyorm",
+        "command": "appgen --pony entities.py --writedir app",
+    },
+    {
+        "kind": "database",
+        "extensions": (),
+        "entrypoint": "schema_from_database_url",
+        "command": "appgen --database-url postgresql+psycopg2://user@host/db --writedir app",
+        "url_dialects": SUPPORTED_DATABASE_DIALECTS,
+        "sqlalchemy_driver_urls": True,
+    },
+    {
+        "kind": "dsl",
+        "extensions": (".ag", ".ags", ".appgen"),
+        "entrypoint": "schema_from_dsl_file",
+        "command": "appgen --dsl app.appgen --writedir app",
+    },
+)
 
 
 def normalize_platform_targets(
@@ -354,8 +397,11 @@ def schema_source_kind(source: str | None) -> str:
     if not source:
         return "canonical"
     lowered = source.lower()
-    if lowered.startswith(("sqlite://", "postgresql://", "mysql://", "mssql://", "oracle://")):
-        return "database"
+    scheme_match = re.match(r"^(?P<dialect>[a-z][a-z0-9_+.-]*):\/\/", lowered)
+    if scheme_match:
+        dialect = scheme_match.group("dialect").split("+", 1)[0]
+        if dialect in SUPPORTED_DATABASE_DIALECTS:
+            return "database"
     if lowered.endswith(".dbml"):
         return "dbml"
     if lowered.endswith((".sql", ".ddl")):
@@ -365,6 +411,24 @@ def schema_source_kind(source: str | None) -> str:
     if lowered.endswith((".ags", ".ag", ".appgen")):
         return "dsl"
     return "canonical"
+
+
+def schema_source_contract() -> dict:
+    """Return the canonical schema source families AppGen can generate from."""
+    sources = tuple(
+        dict(source, url_dialects=tuple(source.get("url_dialects", ())))
+        for source in SUPPORTED_SCHEMA_SOURCES
+    )
+    source_kinds = tuple(source["kind"] for source in sources)
+    return {
+        "format": "appgen.schema-source-contract.v1",
+        "canonical_contract": "AppSchema",
+        "sources": sources,
+        "source_kinds": source_kinds,
+        "database_url_dialects": SUPPORTED_DATABASE_DIALECTS,
+        "sqlalchemy_driver_urls": True,
+        "ok": {"dbml", "sql", "ponyorm", "database"} <= set(source_kinds),
+    }
 
 
 def schema_from_database_url(database_url: str) -> AppSchema:

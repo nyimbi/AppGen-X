@@ -32,6 +32,7 @@ from pyAppGen.dsl import lint_dsl
 from pyAppGen.schema import load_schema
 from pyAppGen.schema import RelationSchema
 from pyAppGen.schema import schema_from_metadata
+from pyAppGen.schema import schema_source_contract
 from pyAppGen.schema import schema_source_kind
 
 
@@ -801,6 +802,12 @@ def test_schema_source_profile_fingerprints_imports(tmp_path) -> None:
     Table("live_book", metadata, Column("id", Integer, primary_key=True))
     database_schema = schema_from_metadata(metadata, source="sqlite:///live.db")
     assert database_schema.source_profile()["source_kind"] == "database"
+    assert schema_source_kind("postgresql+psycopg2://user@host/db") == "database"
+    assert schema_source_kind("mysql+pymysql://user@host/db") == "database"
+    source_contract = schema_source_contract()
+    assert source_contract["format"] == "appgen.schema-source-contract.v1"
+    assert {"dbml", "sql", "ponyorm", "database"} <= set(source_contract["source_kinds"])
+    assert source_contract["sqlalchemy_driver_urls"] is True
 
 
 def test_dbml_source_normalizes_and_generates(tmp_path) -> None:
@@ -2458,9 +2465,14 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     }
     assert schema_import.schema_source_profile()["counts"]["tables"] == 2
     assert schema_import.schema_source_profile()["fingerprint"] == manifest["source_profile"]["fingerprint"]
+    generated_source_contract = schema_import.schema_source_contract()
+    assert generated_source_contract["format"] == "appgen.schema-source-contract.v1"
+    assert generated_source_contract["sqlalchemy_driver_urls"] is True
+    assert "postgresql" in generated_source_contract["database_url_dialects"]
     normalization = schema_import.normalization_report()
     assert normalization["format"] == "appgen.schema-normalization.v1"
     assert normalization["canonical_contract"] == "AppSchema"
+    assert normalization["source_contract"]["ok"] is True
     assert normalization["fingerprint"] == manifest["source_profile"]["fingerprint"]
     assert normalization["table_signatures"][0]["table"] == "Author"
     sql_validation = schema_import.source_validation_plan("sql")

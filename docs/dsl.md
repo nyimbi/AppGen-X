@@ -114,6 +114,7 @@ appgen --dbml schema.dbml --writedir app
 appgen --sql schema.sql --writedir app
 appgen --pony entities.py --writedir app
 appgen --database-url sqlite:///existing.db --writedir app
+appgen --database-url postgresql+psycopg2://user@host/db --writedir app
 ```
 
 PonyORM imports are parsed statically rather than executed. `PrimaryKey`,
@@ -132,9 +133,11 @@ references, PostgreSQL `CREATE TYPE ... AS ENUM` declarations, post-create
 `ALTER TABLE ... ADD CONSTRAINT` primary-key/unique/foreign-key constraints,
 composite foreign-key column pairings, and enum-like `CHECK (field IN (...))`
 domains.
-Live database introspection preserves reflected primary keys, foreign keys,
-single-column unique constraints and unique indexes, server defaults, and
-SQLAlchemy enum metadata when the dialect exposes it.
+Live database introspection accepts SQLAlchemy database URLs with or without
+driver suffixes, such as `sqlite:///existing.db`,
+`postgresql+psycopg2://...`, and `mysql+pymysql://...`. It preserves reflected
+primary keys, foreign keys, single-column unique constraints and unique indexes,
+server defaults, and SQLAlchemy enum metadata when the dialect exposes it.
 
 ## Shape
 
