@@ -253,6 +253,15 @@ Use the generated `/branding/visual-regression.json` endpoint as a review
 checklist when validating that generated applications are polished across web,
 mobile, and desktop-sized viewports.
 
+## JHipster-Plus Readiness
+
+Generated apps keep JHipster JDL interoperability while exposing a stricter
+low-code capability scorecard in `low_code_features.py`. The scorecard requires
+AppGen-only gates for visual builders, schema import, native targets, agentic
+systems, natural-language evolution, ERP templates, runtime Studio tooling, and
+application composition. Use `/low-code-features/jhipster-superset.json` to
+check whether a generated app is still more capable than the JHipster baseline.
+
 ## Linting Workflow
 
 Run the linter before code generation and before committing DSL changes:

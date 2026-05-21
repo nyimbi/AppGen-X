@@ -1680,6 +1680,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert "Low-Code Feature Matrix" in (output_dir / "templates" / "appgen_low_code_features.html").read_text()
     assert "Feature Matrix JSON" in (output_dir / "templates" / "appgen_low_code_features.html").read_text()
     assert "JHipster Comparison JSON" in (output_dir / "templates" / "appgen_low_code_features.html").read_text()
+    assert "Superset Scorecard JSON" in (output_dir / "templates" / "appgen_low_code_features.html").read_text()
     assert "Prototype JSON" in (output_dir / "templates" / "appgen_prototyping.html").read_text()
     assert "Generated sequential user-input" in (output_dir / "templates" / "appgen_wizards.html").read_text()
     branding_template = (output_dir / "templates" / "appgen_branding.html").read_text()
@@ -1953,8 +1954,16 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert low_code_features.readiness_report()["alignment_complete"] is True
     assert low_code_features.readiness_report()["competitive_position"] == "broader-than-jhipster"
     assert low_code_features.readiness_report()["competitive_advantage_count"] >= 7
+    assert low_code_features.readiness_report()["jhipster_superset_ok"] is True
     assert low_code_features.jhipster_competitive_report()["ok"] is True
+    assert low_code_features.jhipster_competitive_report()["superset_scorecard"]["ok"] is True
     assert low_code_features.jhipster_capability_benchmark()["ok"] is True
+    assert low_code_features.jhipster_superset_scorecard()["position"] == "more-capable-than-jhipster"
+    assert low_code_features.jhipster_superset_scorecard()["minimum_appgen_only_advantages"] == 8
+    assert low_code_features.jhipster_superset_scorecard()["blocking_gaps"] == ()
+    assert {
+        gate["area"] for gate in low_code_features.jhipster_superset_scorecard()["required_gates"]
+    } >= {"visual_builders", "schema_import", "native_targets", "agentic_systems", "erp_templates"}
     assert len(low_code_features.jhipster_competitive_report()["appgen_differentiators"]) >= 7
     assert "agentic_systems" in {item["area"] for item in low_code_features.jhipster_competitive_report()["appgen_only_capabilities"]}
     assert "database_ide" in {item["area"] for item in low_code_features.jhipster_competitive_report()["appgen_only_capabilities"]}
@@ -1980,6 +1989,9 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert low_code_features.low_code_features_check(
         {"app/low_code_features.py", "app/templates/appgen_low_code_features.html", "app/appgen.json"}
     )["ok"] is True
+    assert low_code_features.low_code_features_check(
+        {"app/low_code_features.py", "app/templates/appgen_low_code_features.html", "app/appgen.json"}
+    )["jhipster_superset_ok"] is True
     hook_names = {hook["hook"] for hook in extensions.extension_points()}
     assert {"startup", "validate_book", "before_save_book", "after_save_book"} <= hook_names
     assert extensions.dispatch("missing_hook", {"ok": True}) == {"ok": True}
