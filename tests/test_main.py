@@ -2226,6 +2226,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert "Capability Matrix JSON" in studio_template
     assert "Diagnostics JSON" in studio_template
     assert "Release Gate JSON" in studio_template
+    assert "IDE Superiority JSON" in studio_template
     assert "DSL Editor" in studio_template
     assert "Database Designer" in studio_template
     assert "DBML" in studio_template
@@ -3916,6 +3917,9 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     workflow_blueprint = studio.ide_workflow_blueprint()
     assert workflow_blueprint["format"] == "appgen.ide-workflow-blueprint.v1"
     assert studio.ide_workflow_blueprint("design_database")["steps"][0] == "edit table/field design"
+    assert {"author_dsl", "generate_application", "debug_application", "share_component"} <= {
+        item["workflow"] for item in workflow_blueprint["workflows"]
+    }
     assert "Application" in {item["name"] for item in studio.project_tree()}
     assert {item["command"] for item in studio.command_palette_search("database")} >= {"design_database"}
     editor_state = studio.dsl_editor_state(text="app Library")
@@ -4060,6 +4064,22 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert {
         gate["gate"] for gate in studio_gate["gates"]
     } >= {"capability_matrix", "dsl_lint", "database_workbench", "safe_sql", "query_builder", "generation_pipeline", "component_sharing"}
+    superiority_profile = studio.ide_superiority_profile(
+        {
+            "app/studio.py",
+            "app/templates/appgen_studio.html",
+            "app/dsl_reference.py",
+            "app/models.py",
+            "migrations/README.md",
+            "scripts/appgen_quality.py",
+        }
+    )
+    assert superiority_profile["format"] == "appgen.ide-superiority-profile.v1"
+    assert superiority_profile["ok"] is True
+    assert {"workflow_coverage", "capability_coverage", "database_ide", "reviewable_generation"} <= {
+        gate["gate"] for gate in superiority_profile["gates"]
+    }
+    assert studio.ide_superiority_profile({"app/studio.py"})["ok"] is False
     assert studio.studio_release_gate({"app/studio.py"})["ok"] is False
     book_tabs = tabbed_views.tabbed_view("BookList")
     assert [tab["id"] for tab in book_tabs["tabs"]] == ["overview", "assets"]

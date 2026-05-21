@@ -305,6 +305,10 @@ review, and component sharing. Use `/studio/capability-matrix.json` when you
 need a compact proof that the generated IDE covers DSL authoring, database
 design, application generation, application management, debugging, dependency
 review, reusable components, and natural-language evolution.
+Use `/studio/superiority-profile.json` to show why the generated IDE goes
+beyond a scaffolding CLI: it ties authoring, database design, generation,
+portfolio management, diagnostics, and component sharing to commands,
+workflows, and release evidence.
 
 ## Design-System QA
 

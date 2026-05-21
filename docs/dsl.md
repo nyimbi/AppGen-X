@@ -505,7 +505,10 @@ apps include:
   checks DSL linting, database workbench exports, safe SQL, query-builder
   validation, capability coverage, generation jobs, app portfolio management,
   reviewed edits, debug redaction, dependency review, and component sharing
-  before IDE readiness is claimed.
+  before IDE readiness is claimed. A separate IDE superiority profile proves
+  that the Studio is an integrated low-code IDE for authoring, database design,
+  generation, portfolio management, diagnostics, and component sharing rather
+  than only a scaffolding command runner.
 - `realtime.py` and `appgen_realtime.html` with generated event topics,
   Server-Sent Events frames, collaboration messages, and reconnect replay plans.
 - `diagnostics.py` and `appgen_diagnostics.html` with generated schema

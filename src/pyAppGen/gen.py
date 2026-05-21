@@ -6062,6 +6062,7 @@ def write_studio_template(output_dir):
       <a class="btn btn-default" href="{{ url_for('StudioView.capability_matrix_json') }}">Capability Matrix JSON</a>
       <a class="btn btn-default" href="{{ url_for('StudioView.diagnostics_json') }}">Diagnostics JSON</a>
       <a class="btn btn-default" href="{{ url_for('StudioView.release_gate_json') }}">Release Gate JSON</a>
+      <a class="btn btn-default" href="{{ url_for('StudioView.superiority_profile_json') }}">IDE Superiority JSON</a>
       <a class="btn btn-default" href="{{ url_for('StudioView.database_design_json') }}">Database Design JSON</a>
       <a class="btn btn-default" href="{{ url_for('StudioView.sql_workbench_json') }}">SQL Workbench JSON</a>
       <a class="btn btn-default" href="{{ url_for('StudioView.sql_builder_json') }}">SQL Builder JSON</a>
@@ -27253,10 +27254,14 @@ def ide_capability_matrix():
 def ide_workflow_blueprint(workflow=None):
     """Return end-to-end IDE workflows for generated app builders."""
     workflows = {{
+        "author_dsl": ("open DSL", "lint syntax and semantics", "apply quick fixes", "preview schema exports"),
         "create_application": ("choose source", "inspect source fidelity", "lint DSL", "generate targets", "register application"),
         "evolve_with_natural_language": ("capture prompt", "preview DSL change", "review schema diff", "approve migration", "run quality gate"),
         "design_database": ("edit table/field design", "preview ERD/DBML/SQL/PonyORM", "review migration", "generate app"),
+        "generate_application": ("select targets", "queue generation job", "run lint and schema diff", "publish artifact manifest"),
         "manage_application": ("open app", "inspect diagnostics", "package/export", "deploy or rollback with review"),
+        "debug_application": ("start debug profile", "set breakpoints", "inspect redacted variables", "capture remediation plan"),
+        "share_component": ("select reusable component", "package files", "review dependencies", "publish to composition catalog"),
     }}
     if workflow is not None:
         if workflow not in workflows:
@@ -28453,6 +28458,50 @@ def studio_release_gate(existing_paths=(), environment=None):
     }}
 
 
+def ide_superiority_profile(existing_paths=(), environment=None):
+    """Return evidence that Studio is an integrated low-code IDE, not only a scaffold runner."""
+    release = studio_release_gate(existing_paths, environment=environment)
+    matrix = ide_capability_matrix()
+    workflows = ide_workflow_blueprint()
+    workflow_keys = {{item["workflow"] for item in workflows["workflows"]}}
+    capability_keys = {{item["capability"] for item in matrix["capabilities"] if item["ok"]}}
+    command_keys = {{item["command"] for item in IDE_ACTIONS}}
+    required_workflows = (
+        "author_dsl",
+        "design_database",
+        "generate_application",
+        "manage_application",
+        "debug_application",
+        "share_component",
+    )
+    required_capabilities = (
+        "dsl_authoring",
+        "database_design",
+        "application_generation",
+        "application_management",
+        "debugging",
+        "component_repository",
+    )
+    gates = (
+        {{"gate": "studio_release", "ok": release["ok"], "evidence": release["format"]}},
+        {{"gate": "workflow_coverage", "ok": set(required_workflows) <= workflow_keys, "missing": tuple(item for item in required_workflows if item not in workflow_keys)}},
+        {{"gate": "capability_coverage", "ok": set(required_capabilities) <= capability_keys, "missing": tuple(item for item in required_capabilities if item not in capability_keys)}},
+        {{"gate": "command_surface", "ok": {{"open_dsl", "design_database", "generate_application", "manage_application", "debug_application"}} <= command_keys, "commands": tuple(sorted(command_keys))}},
+        {{"gate": "database_ide", "ok": bool(database_design_workspace()["tables"]) and sql_workbench_session()["guard"]["read_only"], "evidence": ("database_design_workspace", "sql_workbench_session", "sql_select_builder")}},
+        {{"gate": "reviewable_generation", "ok": generation_job_status()["remaining_stages"] == ("lint_dsl", "schema_diff", "generate", "quality"), "evidence": generation_job_manifest()["job_id"]}},
+        {{"gate": "portfolio_management", "ok": application_portfolio_check()["ok"], "evidence": application_registry()["operations"]}},
+    )
+    return {{
+        "format": "appgen.ide-superiority-profile.v1",
+        "position": "integrated-low-code-ide-beyond-jhipster-scaffolding",
+        "ok": all(gate["ok"] for gate in gates),
+        "gates": gates,
+        "blocking_gaps": tuple(gate for gate in gates if not gate["ok"]),
+        "workflows": workflows["workflows"],
+        "capabilities": matrix["capabilities"],
+    }}
+
+
 class StudioView(BaseView):
     route_base = "/studio"
     default_view = "index"
@@ -28491,6 +28540,10 @@ class StudioView(BaseView):
     @expose("/release-gate.json")
     def release_gate_json(self):
         return jsonify(studio_release_gate())
+
+    @expose("/superiority-profile.json")
+    def superiority_profile_json(self):
+        return jsonify(ide_superiority_profile())
 
     @expose("/database-design.json")
     def database_design_json(self):
@@ -32024,6 +32077,7 @@ def validate_studio_artifacts() -> None:
         "studio_catalog",
         "ide_diagnostics",
         "studio_release_gate",
+        "ide_superiority_profile",
         "file_edit_plan",
         "debug_session",
         "breakpoint_plan",
@@ -32046,6 +32100,7 @@ def validate_studio_artifacts() -> None:
         or "Capability Matrix JSON" not in template
         or "Diagnostics JSON" not in template
         or "Release Gate JSON" not in template
+        or "IDE Superiority JSON" not in template
         or "DSL Editor" not in template
         or "Project Tree" not in template
         or "Diagnostics" not in template
@@ -34134,6 +34189,22 @@ def test_generated_runtime_helpers():
     assert studio_gate["ok"] is True
     assert studio_gate["blocking_gaps"] == ()
     assert {{"capability_matrix", "safe_sql", "query_builder"}} <= {gate["gate"] for gate in studio_gate["gates"]}
+    assert studio.ide_superiority_profile({{
+        "app/studio.py",
+        "app/templates/appgen_studio.html",
+        "app/dsl_reference.py",
+        "app/models.py",
+        "migrations/README.md",
+        "scripts/appgen_quality.py",
+    }})["format"] == "appgen.ide-superiority-profile.v1"
+    assert studio.ide_superiority_profile({{
+        "app/studio.py",
+        "app/templates/appgen_studio.html",
+        "app/dsl_reference.py",
+        "app/models.py",
+        "migrations/README.md",
+        "scripts/appgen_quality.py",
+    }})["ok"] is True
     assert isinstance(wizards.wizard_catalog(), tuple)
     assert "--appgen-primary" in branding.css_variables()
     assert branding.design_tokens()["interaction"]["touch_target"] == "44px"
