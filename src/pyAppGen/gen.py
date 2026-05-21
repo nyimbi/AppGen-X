@@ -2778,7 +2778,10 @@ def write_usage_analytics_template(output_dir):
         retention, and real-time activity reporting.
       </p>
     </div>
-    <a class="btn btn-default" href="{{ url_for('UsageAnalyticsView.catalog_json') }}">Analytics Catalog JSON</a>
+    <div>
+      <a class="btn btn-default" href="{{ url_for('UsageAnalyticsView.catalog_json') }}">Analytics Catalog JSON</a>
+      <a class="btn btn-default" href="{{ url_for('UsageAnalyticsView.release_gate_json') }}">Release Gate JSON</a>
+    </div>
   </div>
   <div class="agu-grid">
     {% for item in catalog %}
@@ -11581,6 +11584,58 @@ def usage_dashboard(events):
     }}
 
 
+def sample_usage_events():
+    """Return deterministic usage events for release-gate smoke evidence."""
+    events = []
+    for index, table_name in enumerate(USAGE_RESOURCES, start=1):
+        events.append(
+            usage_event(
+                table_name,
+                "viewed",
+                actor=f"user-{{index}}",
+                occurred_at=f"2026-01-0{{min(index, 9)}}T10:00:00Z",
+            )
+        )
+        events.append(
+            usage_event(
+                table_name,
+                "created",
+                actor=f"user-{{index}}",
+                occurred_at=f"2026-01-0{{min(index, 9)}}T10:01:00Z",
+            )
+        )
+    return tuple(events)
+
+
+def usage_analytics_release_gate(existing_paths=(), events=None):
+    """Return release readiness for generated usage analytics and reporting."""
+    existing = set(existing_paths)
+    required = ("app/usage_analytics.py", "app/templates/appgen_usage_analytics.html")
+    missing = tuple(path for path in required if existing and path not in existing)
+    sample = tuple(sample_usage_events() if events is None else events)
+    dashboard = usage_dashboard(sample)
+    adoption = dashboard["adoption"]
+    retention = dashboard["retention"]
+    realtime = dashboard["realtime"]
+    gates = (
+        {{"gate": "artifacts", "ok": not missing, "evidence": required, "missing": missing}},
+        {{"gate": "event_catalog", "ok": bool(USAGE_RESOURCES) and all(spec["events"] for spec in USAGE_RESOURCES.values()), "evidence": usage_catalog()}},
+        {{"gate": "activity_summary", "ok": dashboard["summary"]["events"] == len(sample) and dashboard["summary"]["active_users"] > 0, "evidence": dashboard["summary"]}},
+        {{"gate": "adoption", "ok": adoption["active_resources"] == len(USAGE_RESOURCES), "evidence": adoption}},
+        {{"gate": "funnels", "ok": len(dashboard["funnels"]) == len(USAGE_RESOURCES) and all(item["steps"] for item in dashboard["funnels"]), "evidence": dashboard["funnels"]}},
+        {{"gate": "retention", "ok": retention["latest_active_users"] > 0 and bool(retention["days"]), "evidence": retention}},
+        {{"gate": "realtime", "ok": realtime["summary"]["events"] == len(sample) and bool(realtime["recent"]), "evidence": realtime}},
+    )
+    return {{
+        "format": "appgen.usage-analytics-release-gate.v1",
+        "ok": all(gate["ok"] for gate in gates),
+        "gates": gates,
+        "blocking_gaps": tuple(gate["gate"] for gate in gates if not gate["ok"]),
+        "dashboard": dashboard,
+        "sample_event_count": len(sample),
+    }}
+
+
 def usage_analytics_check(existing_paths=()):
     """Return readiness for generated usage analytics artifacts."""
     existing = set(existing_paths)
@@ -11604,6 +11659,10 @@ class UsageAnalyticsView(BaseView):
     @expose("/catalog.json")
     def catalog_json(self):
         return jsonify(list(usage_catalog()))
+
+    @expose("/release-gate.json")
+    def release_gate_json(self):
+        return jsonify(usage_analytics_release_gate())
 
 
 def register_usage_analytics(appbuilder):
@@ -32536,9 +32595,11 @@ def validate_usage_analytics_artifacts() -> None:
         fail("usage analytics contract must expose events, activity summaries, and dashboard payloads")
     if "adoption_report" not in contract or "funnel_report" not in contract or "retention_report" not in contract:
         fail("usage analytics contract must expose adoption, funnel, and retention reports")
+    if "sample_usage_events" not in contract or "usage_analytics_release_gate" not in contract:
+        fail("usage analytics contract must expose sample events and a release gate")
     template = (ROOT / "app" / "templates" / "appgen_usage_analytics.html").read_text()
-    if "Usage Analytics" not in template or "Analytics Catalog JSON" not in template:
-        fail("usage analytics template must expose generated analytics catalog")
+    if "Usage Analytics" not in template or "Analytics Catalog JSON" not in template or "Release Gate JSON" not in template:
+        fail("usage analytics template must expose generated analytics catalog and release gate")
 
 
 def main() -> int:
@@ -33207,6 +33268,12 @@ def test_generated_runtime_helpers():
     usage_event = usage_analytics.usage_event(usage_resource, "viewed", actor="ada")
     assert usage_analytics.activity_summary((usage_event,))["active_users"] == 1
     assert usage_analytics.usage_analytics_check(
+        {"app/usage_analytics.py", "app/templates/appgen_usage_analytics.html"}
+    )["ok"] is True
+    assert usage_analytics.usage_analytics_release_gate(
+        {"app/usage_analytics.py", "app/templates/appgen_usage_analytics.html"}
+    )["format"] == "appgen.usage-analytics-release-gate.v1"
+    assert usage_analytics.usage_analytics_release_gate(
         {"app/usage_analytics.py", "app/templates/appgen_usage_analytics.html"}
     )["ok"] is True
     assert isinstance(search.search_catalog(), tuple)

@@ -552,7 +552,10 @@ apps include:
   boundaries, gateway routes, event routes, cross-service relationship
   resolvers, consistency reviews, health probes, and scaling plans.
 - `usage_analytics.py` and `appgen_usage_analytics.html` with generated
-  adoption, funnel, retention, and real-time app-usage analytics.
+  adoption, funnel, retention, and real-time app-usage analytics. A generated
+  analytics release gate proves event catalog coverage, activity summaries,
+  adoption, funnels, retention, realtime snapshots, and required analytics
+  artifacts.
 - `seed.py` with relationship-aware deterministic demo data, dependency-ordered
   seed plans, demo/smoke/load fixture scenarios, table factories, pytest fixture
   modules, validation, anonymized fixture exports, and SQL previews;

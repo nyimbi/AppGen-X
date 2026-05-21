@@ -2144,7 +2144,9 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         output_dir / "templates" / "appgen_dashboards.html"
     ).read_text()
     assert "Workbench JSON" in (output_dir / "templates" / "appgen_dashboards.html").read_text()
-    assert "app usage analytics" in (output_dir / "templates" / "appgen_usage_analytics.html").read_text()
+    usage_template = (output_dir / "templates" / "appgen_usage_analytics.html").read_text()
+    assert "app usage analytics" in usage_template
+    assert "Release Gate JSON" in usage_template
     assert "Generated search indexes" in (output_dir / "templates" / "appgen_search.html").read_text()
     assert "Generated image and upload field contracts" in (
         output_dir / "templates" / "appgen_media.html"
@@ -2866,6 +2868,18 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert usage_analytics.retention_report(usage_events)["latest_active_users"] == 1
     assert usage_analytics.realtime_usage_snapshot(usage_events, limit=2)["summary"]["events"] == 3
     assert usage_analytics.usage_dashboard(usage_events)["summary"]["events"] == 3
+    sample_usage = usage_analytics.sample_usage_events()
+    assert len(sample_usage) == len(usage_analytics.USAGE_RESOURCES) * 2
+    usage_gate = usage_analytics.usage_analytics_release_gate(
+        {"app/usage_analytics.py", "app/templates/appgen_usage_analytics.html"},
+        sample_usage,
+    )
+    assert usage_gate["format"] == "appgen.usage-analytics-release-gate.v1"
+    assert usage_gate["ok"] is True
+    assert {"event_catalog", "activity_summary", "adoption", "funnels", "retention", "realtime"} <= {
+        gate["gate"] for gate in usage_gate["gates"]
+    }
+    assert usage_analytics.usage_analytics_release_gate({"app/usage_analytics.py"}, sample_usage)["ok"] is False
     assert usage_analytics.usage_analytics_check(
         {"app/usage_analytics.py", "app/templates/appgen_usage_analytics.html"}
     )["ok"] is True

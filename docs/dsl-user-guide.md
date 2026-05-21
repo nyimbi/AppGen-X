@@ -389,3 +389,6 @@ API, PWA, documentation, and generated test surfaces stay aligned.
 Use `/api-testing/release-gate.json` before release to verify API request
 matrices, response validation, smoke fixtures, UI smoke plans, synthetic
 monitors, OpenAPI coverage, and rendered pytest/Playwright modules.
+Use `/usage-analytics/release-gate.json` to prove generated app-usage
+analytics cover event catalogs, adoption, funnels, retention, real-time
+snapshots, and dashboard payloads.
