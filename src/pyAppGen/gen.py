@@ -3571,7 +3571,7 @@ def write_schema_import_template(output_dir):
       <p class="agsi-note">
         Generated import workbench for DBML, SQL DDL, PonyORM scripts, and live
         database introspection, with normalization evidence and reviewable
-        generation commands.
+        generation commands, round-trip diffs, and reviewed apply plans.
       </p>
     </div>
     <div class="agsi-actions">
@@ -3580,6 +3580,8 @@ def write_schema_import_template(output_dir):
       <a class="btn btn-default" href="{{ url_for('SchemaImportView.normalization_json') }}">Normalization JSON</a>
       <a class="btn btn-default" href="{{ url_for('SchemaImportView.validation_json') }}">Validation JSON</a>
       <a class="btn btn-default" href="{{ url_for('SchemaImportView.commands_json') }}">Commands JSON</a>
+      <a class="btn btn-default" href="{{ url_for('SchemaImportView.roundtrip_diff_json') }}">Round-trip Diff JSON</a>
+      <a class="btn btn-default" href="{{ url_for('SchemaImportView.apply_plans_json') }}">Apply Plans JSON</a>
     </div>
   </div>
   <div class="agsi-grid">
@@ -3599,6 +3601,14 @@ def write_schema_import_template(output_dir):
       <span class="agsi-pill">SQL constraints</span>
       <span class="agsi-pill">PonyORM AST</span>
       <span class="agsi-pill">Database reflection</span>
+    </article>
+    <article class="agsi-card">
+      <h3>Reviewed Apply</h3>
+      <div class="agsi-muted">Diff before writes</div>
+      <span class="agsi-pill">Round-trip diff</span>
+      <span class="agsi-pill">Migration preview</span>
+      <span class="agsi-pill">Quality gate</span>
+      <span class="agsi-pill">Explicit destructive review</span>
     </article>
     <article class="agsi-card">
       <h3>Current Source</h3>
@@ -12613,6 +12623,18 @@ def all_source_validation_plans():
     return tuple(source_validation_plan(item["kind"]) for item in SCHEMA_SOURCES)
 
 
+def _manifest_table_names(current_manifest=None):
+    """Extract table names from a manifest-like object for import diff previews."""
+    if current_manifest is None:
+        return SOURCE_TABLES
+    if isinstance(current_manifest, dict):
+        tables = current_manifest.get("tables", ())
+        if isinstance(tables, dict):
+            return tuple(tables.keys())
+        return tuple(item.get("name", item) if isinstance(item, dict) else item for item in tables)
+    return tuple(current_manifest)
+
+
 def import_command_plan(source_kind=None, path=None, writedir="app"):
     """Return reviewable generator commands for an import source."""
     kind = source_kind or SOURCE_PROFILE["source_kind"]
@@ -12653,17 +12675,108 @@ def source_roundtrip_plan(target_kind="dbml"):
     }}
 
 
+def schema_roundtrip_diff(source_kind=None, target_kind="dsl", current_manifest=None):
+    """Return an auditable source-to-generated schema diff plan."""
+    kind = source_kind or SOURCE_PROFILE["source_kind"]
+    validation = source_validation_plan(kind)
+    roundtrip = source_roundtrip_plan(target_kind)
+    current_tables = _manifest_table_names(current_manifest)
+    desired_tables = SOURCE_TABLES
+    missing = tuple(table for table in desired_tables if table not in current_tables)
+    extra = tuple(table for table in current_tables if table not in desired_tables)
+    preserved = tuple(table for table in desired_tables if table in current_tables)
+    operations = tuple({{"op": "preserve_table", "table": table}} for table in preserved)
+    operations += tuple({{"op": "create_table", "table": table}} for table in missing)
+    operations += tuple({{"op": "review_extra_table", "table": table, "destructive": True}} for table in extra)
+    return {{
+        "format": "appgen.schema-roundtrip-diff.v1",
+        "source_kind": kind,
+        "target_kind": target_kind,
+        "canonical_contract": "AppSchema",
+        "tables": {{
+            "current": current_tables,
+            "desired": desired_tables,
+            "preserved": preserved,
+            "missing": missing,
+            "extra": extra,
+        }},
+        "operations": operations,
+        "destructive": bool(extra),
+        "validation": validation,
+        "roundtrip": roundtrip,
+        "review_gates": (
+            "inspect source validation warnings",
+            "review generated migration preview",
+            "run generated quality gate",
+            "approve destructive operations explicitly",
+        ),
+    }}
+
+
+def all_schema_roundtrip_diffs(target_kind="dsl", current_manifest=None):
+    """Return round-trip diff plans for every supported import source."""
+    return tuple(
+        schema_roundtrip_diff(item["kind"], target_kind=target_kind, current_manifest=current_manifest)
+        for item in SCHEMA_SOURCES
+    )
+
+
+def import_apply_plan(source_kind=None, path=None, writedir="app", current_manifest=None, target_kind="dsl"):
+    """Return a reviewed import apply plan without mutating generated files."""
+    command = import_command_plan(source_kind, path, writedir=writedir)
+    diff = schema_roundtrip_diff(command["source_kind"], target_kind=target_kind, current_manifest=current_manifest)
+    writes = (
+        f"{{writedir}}/appgen.json",
+        f"{{writedir}}/models.py",
+        f"{{writedir}}/views.py",
+        f"{{writedir}}/api.py",
+        f"{{writedir}}/gql.py",
+        f"{{writedir}}/templates/appgen_schema_import.html",
+    )
+    return {{
+        "format": "appgen.schema-import-apply-plan.v1",
+        "source_kind": command["source_kind"],
+        "path": command["path"],
+        "command": command["command"],
+        "writes": writes,
+        "validation": source_validation_plan(command["source_kind"]),
+        "diff": diff,
+        "requires_review": True,
+        "can_auto_apply": not diff["destructive"],
+        "review_gates": (
+            "confirm source path and parser",
+            "review schema_roundtrip_diff",
+            "review migration SQL before database writes",
+            "run py_compile and appgen quality checks",
+        ),
+    }}
+
+
+def all_import_apply_plans(writedir="app", current_manifest=None, target_kind="dsl"):
+    """Return reviewed apply plans for every supported import source."""
+    return tuple(
+        import_apply_plan(item["kind"], writedir=writedir, current_manifest=current_manifest, target_kind=target_kind)
+        for item in SCHEMA_SOURCES
+    )
+
+
 def schema_import_check(existing_paths=()):
     """Return readiness for generated schema import artifacts."""
     existing = set(existing_paths)
     required = {{"app/schema_import.py", "app/templates/appgen_schema_import.html", "app/appgen.json"}}
     missing = tuple(sorted(required - existing))
     return {{
-        "ok": not missing and bool(SCHEMA_SOURCES) and len(all_source_validation_plans()) == len(SCHEMA_SOURCES),
+        "ok": not missing
+        and bool(SCHEMA_SOURCES)
+        and len(all_source_validation_plans()) == len(SCHEMA_SOURCES)
+        and len(all_schema_roundtrip_diffs()) == len(SCHEMA_SOURCES)
+        and len(all_import_apply_plans()) == len(SCHEMA_SOURCES),
         "missing": missing,
         "sources": tuple(item["kind"] for item in SCHEMA_SOURCES),
         "source_kind": SOURCE_PROFILE["source_kind"],
         "validation": all_source_validation_plans(),
+        "roundtrip_diffs": all_schema_roundtrip_diffs(),
+        "apply_plans": all_import_apply_plans(),
     }}
 
 
@@ -12699,6 +12812,14 @@ class SchemaImportView(BaseView):
     @expose("/commands.json")
     def commands_json(self):
         return jsonify([import_command_plan(item["kind"]) for item in SCHEMA_SOURCES])
+
+    @expose("/roundtrip-diff.json")
+    def roundtrip_diff_json(self):
+        return jsonify(list(all_schema_roundtrip_diffs()))
+
+    @expose("/apply-plans.json")
+    def apply_plans_json(self):
+        return jsonify(list(all_import_apply_plans()))
 
 
 def register_schema_import(appbuilder):
@@ -18732,12 +18853,12 @@ COMPETITIVE_BENCHMARK = (
     {{"area": "natural_language_evolution", "label": "Natural-language application evolution", "jhipster": False, "appgen": True, "evidence": "NL proposals for tables, fields, forms, chatbots, agents, and reviewable DSL patches"}},
     {{"area": "erp_templates", "label": "ERP module template library", "jhipster": False, "appgen": True, "evidence": "Ledger, AP, AR, invoicing, HR, payroll, inventory, manufacturing, CRM, warehouse, and reports"}},
     {{"area": "runtime_studio", "label": "Generated in-app IDE and operations studio", "jhipster": False, "appgen": True, "evidence": "Studio, devtools, diagnostics, config editor, backup, monitoring, resilience, and performance workbenches"}},
-    {{"area": "schema_import", "label": "Multi-source schema import", "jhipster": False, "appgen": True, "evidence": "DBML, SQL DDL, static PonyORM scripts, and live database introspection"}},
+    {{"area": "schema_import", "label": "Multi-source schema import", "jhipster": False, "appgen": True, "evidence": "DBML, SQL DDL, static PonyORM scripts, live database introspection, round-trip diffs, and reviewed apply plans"}},
     {{"area": "application_composition", "label": "Application composition marketplace", "jhipster": False, "appgen": True, "evidence": "Generated installable blocks, dependency graph, review gates, composition packages, and portal/repository handoff metadata"}},
 )
 APPGEN_DIFFERENTIATORS = (
     {{"capability": "ANTLR low-code DSL", "evidence": "Compact keyword budget, linter, tutorials, and generated DSL reference"}},
-    {{"capability": "Multi-source schema import", "evidence": "DBML, SQL DDL, static PonyORM scripts, and live database introspection"}},
+    {{"capability": "Multi-source schema import", "evidence": "DBML, SQL DDL, static PonyORM scripts, live database introspection, round-trip diffs, and reviewed apply plans"}},
     {{"capability": "Visual no-code builders", "evidence": "Database workbench, Delphi-style form designer, workflow/statechart workbench, and DSL regeneration"}},
     {{"capability": "Python-native targets", "evidence": "Flask-AppBuilder web app plus Kivy mobile and BeeWare desktop starters"}},
     {{"capability": "Agentic systems", "evidence": "Local and API-key LLM providers, generated agents, chatbots, voice, and AI analytics contracts"}},
@@ -28110,16 +28231,20 @@ def validate_schema_import_artifacts() -> None:
         "all_source_validation_plans",
         "import_command_plan",
         "source_roundtrip_plan",
+        "schema_roundtrip_diff",
+        "all_schema_roundtrip_diffs",
+        "import_apply_plan",
+        "all_import_apply_plans",
         "schema_import_check",
     )
     if not all(item in contract for item in required):
-        fail("schema import contract must expose source catalog, normalization, validation, command plans, roundtrip plans, and readiness checks")
+        fail("schema import contract must expose source catalog, normalization, validation, command plans, roundtrip diffs, apply plans, and readiness checks")
     for source in ("dbml", "sql", "ponyorm", "database"):
         if source not in contract:
             fail("schema import contract must cover DBML, SQL, PonyORM, and database sources")
     template = (ROOT / "app" / "templates" / "appgen_schema_import.html").read_text()
-    if "Schema Import" not in template or "Catalog JSON" not in template or "Normalization JSON" not in template or "Validation JSON" not in template or "Commands JSON" not in template:
-        fail("schema import cockpit must expose source catalog, normalization, validation, and commands")
+    if "Schema Import" not in template or "Catalog JSON" not in template or "Normalization JSON" not in template or "Validation JSON" not in template or "Commands JSON" not in template or "Round-trip Diff JSON" not in template or "Apply Plans JSON" not in template:
+        fail("schema import cockpit must expose source catalog, normalization, validation, commands, round-trip diffs, and apply plans")
 
 
 def validate_performance_artifacts() -> None:
@@ -29340,6 +29465,15 @@ def test_generated_runtime_helpers():
     assert len(schema_import.all_source_validation_plans()) == 4
     assert schema_import.import_command_plan("ponyorm", "entities.py")["command"] == "appgen --pony entities.py --writedir app"
     assert schema_import.source_roundtrip_plan("dbml")["to"] == "dbml"
+    schema_diff = schema_import.schema_roundtrip_diff("dbml", current_manifest={"tables": [first_table, "LegacyTable"]})
+    assert schema_diff["format"] == "appgen.schema-roundtrip-diff.v1"
+    assert schema_diff["destructive"] is True
+    assert len(schema_import.all_schema_roundtrip_diffs()) == 4
+    schema_apply = schema_import.import_apply_plan("sql", "schema.sql")
+    assert schema_apply["format"] == "appgen.schema-import-apply-plan.v1"
+    assert schema_apply["requires_review"] is True
+    assert schema_apply["diff"]["source_kind"] == "sql"
+    assert len(schema_import.all_import_apply_plans()) == 4
     assert schema_import.schema_import_check(
         {"app/schema_import.py", "app/templates/appgen_schema_import.html", "app/appgen.json"}
     )["ok"] is True

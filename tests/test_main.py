@@ -2299,6 +2299,17 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert schema_import.import_command_plan("dbml", "schema.dbml")["command"] == "appgen --dbml schema.dbml --writedir app"
     assert schema_import.import_command_plan("ponyorm", "entities.py")["command"] == "appgen --pony entities.py --writedir app"
     assert schema_import.source_roundtrip_plan("sql")["to"] == "sql"
+    diff = schema_import.schema_roundtrip_diff("dbml", current_manifest={"tables": ["Book", "LegacyBook"]})
+    assert diff["format"] == "appgen.schema-roundtrip-diff.v1"
+    assert diff["destructive"] is True
+    assert {"op": "review_extra_table", "table": "LegacyBook", "destructive": True} in diff["operations"]
+    assert len(schema_import.all_schema_roundtrip_diffs()) == 4
+    apply_plan = schema_import.import_apply_plan("sql", "schema.sql")
+    assert apply_plan["format"] == "appgen.schema-import-apply-plan.v1"
+    assert apply_plan["requires_review"] is True
+    assert apply_plan["diff"]["source_kind"] == "sql"
+    assert "app/models.py" in apply_plan["writes"]
+    assert len(schema_import.all_import_apply_plans()) == 4
     assert schema_import.schema_import_check(
         {"app/schema_import.py", "app/templates/appgen_schema_import.html", "app/appgen.json"}
     )["ok"] is True
