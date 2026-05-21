@@ -19866,6 +19866,49 @@ def dsl_code_actions(source):
     return dsl_lint(source).get("code_actions", ())
 
 
+def dsl_authoring_score(source):
+    """Return generated IDE guidance for making DSL source complete and approachable."""
+    text = source or ""
+    lint = dsl_lint(text)
+    formatted = _format_dsl_source(text)
+    has_app = bool(re.search(r"\\bapp\\s+", text))
+    has_view = bool(re.search(r"\\bview\\s+[A-Za-z_][A-Za-z0-9_]*\\s+for\\s+", _normalize_authoring_aliases(text)))
+    target_match = re.search(r"\\btargets\\s*:\\s*([^}};\\n]+)", text)
+    requested_targets = ()
+    if target_match:
+        requested_targets = tuple(
+            item.strip().lower().replace("-", "_")
+            for item in target_match.group(1).split(",")
+            if item.strip()
+        )
+    known_targets = tuple(
+        PLATFORM_TARGET_ALIASES.get(target, target)
+        for target in requested_targets
+        if PLATFORM_TARGET_ALIASES.get(target, target) in PLATFORM_TARGETS
+    )
+    checks = (
+        {{"check": "syntax_and_semantics", "ok": lint["ok"], "weight": 30, "next_action": "Fix parser or semantic diagnostics before generation."}},
+        {{"check": "named_application", "ok": has_app, "weight": 10, "next_action": "Add an app declaration with generation targets."}},
+        {{"check": "data_model", "ok": not any(error.startswith("Add at least one table") for error in lint["errors"]), "weight": 15, "next_action": "Add at least one table with fields."}},
+        {{"check": "form_design", "ok": has_view, "weight": 10, "next_action": "Add a view block or Delphi-style component placement."}},
+        {{"check": "target_selection", "ok": bool(known_targets) and not any(error.startswith("Unknown app targets") for error in lint["errors"]), "weight": 10, "next_action": "Choose supported targets: web, pwa, mobile, desktop, or chatbot."}},
+        {{"check": "keyword_budget", "ok": dsl_keyword_budget()["ok"], "weight": 10, "next_action": "Keep new concepts as options, aliases, or symbols instead of new keywords."}},
+        {{"check": "canonical_style", "ok": not lint["warnings"], "weight": 10, "next_action": "Apply quick fixes for aliases, legacy refs, or literal API keys."}},
+        {{"check": "formatted", "ok": text.strip() == formatted.strip(), "weight": 5, "next_action": "Run the deterministic formatter."}},
+    )
+    earned = sum(item["weight"] for item in checks if item["ok"])
+    total = sum(item["weight"] for item in checks)
+    blocking = tuple(item for item in checks if not item["ok"])
+    return {{
+        "format": "appgen.dsl-authoring-score.v1",
+        "score": round((earned / total) * 100),
+        "ok": lint["ok"] and earned >= 80,
+        "checks": checks,
+        "next_actions": tuple(item["next_action"] for item in blocking),
+        "quick_fix_ids": tuple(fix["id"] for fix in lint["fixes"]),
+    }}
+
+
 def _dsl_code_action(source, fix):
     fixed_preview = _apply_dsl_fix(source or "", fix)
     return {{
@@ -20097,12 +20140,14 @@ def dsl_reference_check(existing_paths):
     required = ("app/dsl_reference.py", "app/templates/appgen_dsl_reference.html")
     missing = tuple(path for path in required if path not in existing)
     lint = dsl_lint(dsl_example("full"))
+    score = dsl_authoring_score(dsl_example("full"))
     return {{
-        "ok": not missing and dsl_keyword_budget()["ok"] and dsl_language_quality_contract()["ok"] and lint["ok"],
+        "ok": not missing and dsl_keyword_budget()["ok"] and dsl_language_quality_contract()["ok"] and lint["ok"] and score["ok"],
         "missing": missing,
         "keyword_count": dsl_keyword_budget()["count"],
         "constructs": tuple(item["name"] for item in CONSTRUCTS),
         "language_quality": dsl_language_quality_contract(),
+        "authoring_score": score,
     }}
 
 
@@ -20131,6 +20176,11 @@ class DSLReferenceView(BaseView):
     def lint_json(self):
         payload = request.get_json(force=True) or {{}}
         return jsonify(dsl_lint(payload.get("source", "")))
+
+    @expose("/authoring-score", methods=("POST",))
+    def authoring_score_json(self):
+        payload = request.get_json(force=True) or {{}}
+        return jsonify(dsl_authoring_score(payload.get("source", "")))
 
     @expose("/fix", methods=("POST",))
     def fix_json(self):
@@ -31692,10 +31742,11 @@ def validate_dsl_reference_artifacts() -> None:
         "normalize_modifier_aliases",
         "dsl_learning_path",
         "dsl_language_quality_contract",
+        "dsl_authoring_score",
         "dsl_reference_check",
     )
     if not all(item in contract for item in required):
-        fail("DSL reference must expose keyword budget, examples, linting, and learning path helpers")
+        fail("DSL reference must expose keyword budget, examples, linting, authoring score, and learning path helpers")
     if "author_id: int -> Author.id [many-to-one]" not in contract or "Prefer arrow references" not in contract or "RELATION_CARDINALITIES" not in contract:
         fail("DSL reference must keep arrow references and cardinality metadata as compact relationship syntax")
     if "appgen.dsl-language-quality.v1" not in contract or "generated_antlr_parser" not in contract:
@@ -33679,6 +33730,8 @@ def test_generated_runtime_helpers():
     assert "Reference" in {item["name"] for item in dsl_reference.dsl_construct_catalog()}
     assert "author_id: int -> Author.id" in dsl_reference.dsl_example("relation")
     assert dsl_reference.dsl_lint(dsl_reference.dsl_example("full"))["ok"] is True
+    assert dsl_reference.dsl_authoring_score(dsl_reference.dsl_example("full"))["format"] == "appgen.dsl-authoring-score.v1"
+    assert dsl_reference.dsl_authoring_score(dsl_reference.dsl_example("full"))["ok"] is True
     generated_dsl_fix = dsl_reference.apply_dsl_fixes("app Bad { targets: web, toaster } table Book { title: string ref Author.id }")
     assert generated_dsl_fix["format"] == "appgen.dsl-fix-result.v1"
     assert "replace_ref_with_arrow" in generated_dsl_fix["applied"]

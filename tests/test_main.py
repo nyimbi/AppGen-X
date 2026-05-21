@@ -27,6 +27,7 @@ from pyAppGen import __main__
 from pyAppGen.gen import generate_app_from_database
 from pyAppGen.gen import generate_app_from_schema
 from pyAppGen.dsl import apply_lint_fixes
+from pyAppGen.dsl import dsl_authoring_score
 from pyAppGen.dsl import dsl_code_actions
 from pyAppGen.dsl import dsl_completion_items
 from pyAppGen.dsl import dsl_language_service
@@ -77,9 +78,20 @@ def test_dsl_linter_reports_semantic_feedback(runner: CliRunner, tmp_path) -> No
     assert dsl_keyword_budget()["modifier_aliases"] == {"hide": "hidden", "searchable": "search"}
     assert dsl_language_quality_contract()["grammar"] == "lang/appgen.g4"
     assert dsl_language_quality_contract()["ok"] is True
+    score = dsl_authoring_score(source, source_name="inline")
+    assert score["format"] == "appgen.dsl-authoring-score.v1"
+    assert score["ok"] is True
+    assert score["score"] >= 90
+    assert "Run the deterministic formatter." in score["next_actions"]
+    formatted_score = dsl_authoring_score(format_dsl(source)["formatted"], source_name="inline")
+    assert formatted_score["ok"] is True
+    assert formatted_score["next_actions"] == ()
     broken = lint_dsl("app Bad { targets: web, toaster } table Book { title: string }")
     assert broken["ok"] is False
     assert any("Unknown app targets" in error for error in broken["errors"])
+    broken_score = dsl_authoring_score("app Bad { targets: web, toaster } table Book { title: string }")
+    assert broken_score["ok"] is False
+    assert "Choose supported targets: web, pwa, mobile, desktop, or chatbot." in broken_score["next_actions"]
     semantic = lint_dsl(
         """
         app Broken { targets: web }
@@ -216,6 +228,7 @@ def test_dsl_linter_reports_semantic_feedback(runner: CliRunner, tmp_path) -> No
     service = dsl_language_service(source, source_name="inline", prefix="Book")
     assert service["format"] == "appgen.dsl-language-service.v1"
     assert service["lint"]["ok"] is True
+    assert service["authoring_score"]["ok"] is True
     assert service["outline"]["summary"]["tables"] == 2
     assert any(item["label"] == "Book" and item["kind"] == "table" for item in service["completions"])
     assert "code_actions" in service

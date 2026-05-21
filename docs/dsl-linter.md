@@ -230,6 +230,8 @@ agent needs the complete authoring payload in one call. The result has
   ranges, and deterministic fixed previews.
 - `formatting`: the deterministic formatter preview.
 - `language_quality`: the keyword-budget and ANTLR grammar evidence.
+- `authoring_score`: weighted readiness checks and next actions that help IDEs
+  guide users from a draft into a complete, canonical, formatted DSL source.
 
 Lower-level integrations can call `dsl_outline(source)` and
 `dsl_completion_items(prefix, source=source)` directly. These helpers are

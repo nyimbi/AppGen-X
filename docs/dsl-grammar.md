@@ -98,6 +98,9 @@ contract with the grammar path, generated parser path, keyword budget, keyword-f
 syntax list, authoring aliases, and four-step learning path. Generated apps expose
 the same evidence through `app/dsl_reference.py` and
 `/dsl-reference/language-quality.json`.
+`pyAppGen.dsl.dsl_authoring_score()` complements the quality contract with
+weighted IDE checks and next actions for complete, canonical, formatted DSL
+source without increasing the keyword budget.
 
 The canonical grammar source lives at `lang/appgen.g4`; generated parser files
 live under `src/pyAppGen/dsl_generated/lang/`.

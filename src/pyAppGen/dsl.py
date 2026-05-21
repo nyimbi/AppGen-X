@@ -310,7 +310,80 @@ def dsl_language_service(
         "completions": dsl_completion_items(prefix, source=source),
         "code_actions": dsl_code_actions(source, source_name=source_name),
         "formatting": format_dsl(source, source_name=source_name),
+        "authoring_score": dsl_authoring_score(source, source_name=source_name),
         "language_quality": dsl_language_quality_contract(),
+    }
+
+
+def dsl_authoring_score(text: str, *, source_name: str | None = None) -> dict:
+    """Return IDE-ready guidance for making a DSL source complete and approachable."""
+    source = text or ""
+    lint = lint_dsl(source, source_name=source_name)
+    outline = dsl_outline(source, source_name=source_name)
+    summary = lint["summary"]
+    formatted = _format_dsl_source(source)
+    checks = (
+        {
+            "check": "syntax_and_semantics",
+            "ok": lint["ok"],
+            "weight": 30,
+            "next_action": "Fix parser or semantic diagnostics before generation.",
+        },
+        {
+            "check": "named_application",
+            "ok": bool(outline.get("app")),
+            "weight": 10,
+            "next_action": "Add an app declaration with generation targets.",
+        },
+        {
+            "check": "data_model",
+            "ok": summary["tables"] > 0 and summary["fields"] > 0,
+            "weight": 15,
+            "next_action": "Add at least one table with fields.",
+        },
+        {
+            "check": "form_design",
+            "ok": summary["views"] > 0,
+            "weight": 10,
+            "next_action": "Add a view block or Delphi-style component placement.",
+        },
+        {
+            "check": "target_selection",
+            "ok": bool(summary["targets"]) and not summary["unknown_targets"],
+            "weight": 10,
+            "next_action": "Choose supported targets: web, pwa, mobile, desktop, or chatbot.",
+        },
+        {
+            "check": "keyword_budget",
+            "ok": dsl_keyword_budget()["ok"],
+            "weight": 10,
+            "next_action": "Keep new concepts as options, aliases, or symbols instead of new keywords.",
+        },
+        {
+            "check": "canonical_style",
+            "ok": not lint["warnings"],
+            "weight": 10,
+            "next_action": "Apply quick fixes for aliases, legacy refs, or literal API keys.",
+        },
+        {
+            "check": "formatted",
+            "ok": source.strip() == formatted.strip(),
+            "weight": 5,
+            "next_action": "Run the deterministic formatter.",
+        },
+    )
+    earned = sum(item["weight"] for item in checks if item["ok"])
+    total = sum(item["weight"] for item in checks)
+    blocking = tuple(item for item in checks if not item["ok"])
+    return {
+        "format": "appgen.dsl-authoring-score.v1",
+        "source": source_name,
+        "score": round((earned / total) * 100),
+        "ok": lint["ok"] and earned >= 80,
+        "checks": checks,
+        "next_actions": tuple(item["next_action"] for item in blocking),
+        "quick_fix_ids": tuple(fix["id"] for fix in lint["fixes"]),
+        "summary": summary,
     }
 
 

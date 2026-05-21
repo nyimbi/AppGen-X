@@ -49,9 +49,12 @@ add keywords or apply semantic quick fixes.
 IDE integrations can use `pyAppGen.dsl.dsl_language_service(source)` for a
 single authoring payload: ANTLR-backed lint, parser-backed outline,
 schema-aware completions, deterministic formatting preview, and language-quality
-evidence. The outline falls back to a partial regex outline for incomplete
-drafts, so editors can keep navigation and completions active while a builder is
-still typing.
+evidence. It also returns `authoring_score`, an IDE-friendly readiness score
+with weighted checks and next actions for naming the app, adding data models,
+designing forms, selecting targets, keeping canonical style, and formatting the
+source. The outline falls back to a partial regex outline for incomplete drafts,
+so editors can keep navigation and completions active while a builder is still
+typing.
 
 ## Modeling Guidance
 
