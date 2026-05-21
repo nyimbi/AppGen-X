@@ -146,6 +146,7 @@ Live database introspection accepts SQLAlchemy database URLs with or without
 driver suffixes, such as `sqlite:///existing.db`,
 `postgresql+psycopg2://...`, and `mysql+pymysql://...`. It preserves reflected
 primary keys, foreign keys, single-column unique constraints and unique indexes,
+ordinary indexes as searchable hints, computed columns as derived fields,
 server defaults, and SQLAlchemy enum metadata when the dialect exposes it.
 Reflected primary keys are normalized as non-null even when a dialect reports
 nullable metadata for legacy schemas.

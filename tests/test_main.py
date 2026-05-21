@@ -11,6 +11,7 @@ import pytest
 
 from click.testing import CliRunner
 from sqlalchemy import Column
+from sqlalchemy import Computed
 from sqlalchemy import Enum
 from sqlalchemy import ForeignKey
 from sqlalchemy import Index
@@ -912,6 +913,45 @@ def test_metadata_primary_keys_normalize_non_nullable() -> None:
     assert columns["sku"].nullable is True
     assert profile["source_kind"] == "database"
     assert profile["table_signatures"][0]["primary_keys"] == ("order_id", "line_no")
+
+
+def test_metadata_reflection_preserves_indexes_and_computed_columns(tmp_path) -> None:
+    """Existing database imports preserve search indexes and computed fields."""
+    metadata = MetaData()
+    Table(
+        "invoice_line",
+        metadata,
+        Column("id", Integer, primary_key=True),
+        Column("invoice_number", String(40), nullable=False),
+        Column("sku", String(40), nullable=False),
+        Column("quantity", Integer, nullable=False),
+        Column("unit_price", Integer, nullable=False),
+        Column("line_total", Integer, Computed("quantity * unit_price")),
+        Index("ix_invoice_line_invoice_number", "invoice_number"),
+        Index("ix_invoice_line_sku_quantity", "sku", "quantity"),
+    )
+
+    schema = schema_from_metadata(metadata, source="sqlite:///billing.db")
+    columns = {column.name: column for column in schema.table("invoice_line").columns}
+
+    assert columns["invoice_number"].searchable is True
+    assert columns["sku"].searchable is True
+    assert columns["quantity"].searchable is True
+    assert columns["unit_price"].searchable is False
+    assert columns["line_total"].derived is True
+    assert columns["line_total"].expression == "quantity * unit_price"
+
+    output_dir = tmp_path / "app"
+    generate_app_from_schema(schema, output_dir)
+    manifest = json.loads((output_dir / "appgen.json").read_text())
+    line_manifest = next(table for table in manifest["tables"] if table["name"] == "invoice_line")
+    manifest_columns = {column["name"]: column for column in line_manifest["columns"]}
+    assert manifest_columns["invoice_number"]["searchable"] is True
+    assert manifest_columns["sku"]["searchable"] is True
+    assert manifest_columns["line_total"]["derived"] is True
+    assert manifest_columns["line_total"]["expression"] == "quantity * unit_price"
+    py_compile.compile(str(output_dir / "models.py"), doraise=True)
+    py_compile.compile(str(output_dir / "api.py"), doraise=True)
 
 
 def test_schema_source_profile_fingerprints_imports(tmp_path) -> None:

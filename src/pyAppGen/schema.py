@@ -516,6 +516,7 @@ def schema_from_metadata(metadata: MetaData, *, source: str | None = None) -> Ap
     for table in metadata.sorted_tables:
         columns: list[ColumnSchema] = []
         unique_columns = _metadata_unique_columns(table)
+        indexed_columns = _metadata_indexed_columns(table)
         for column in table.columns:
             reference = next(iter(column.foreign_keys), None)
             references = None
@@ -534,6 +535,7 @@ def schema_from_metadata(metadata: MetaData, *, source: str | None = None) -> Ap
             if enum_values and type_name not in enum_names:
                 enums.append(EnumSchema(type_name, enum_values))
                 enum_names.add(type_name)
+            expression = _metadata_column_expression(column)
             columns.append(
                 ColumnSchema(
                     name=column.name,
@@ -543,6 +545,9 @@ def schema_from_metadata(metadata: MetaData, *, source: str | None = None) -> Ap
                     unique=bool(column.unique) or column.name in unique_columns,
                     default=_metadata_column_default(column),
                     references=references,
+                    searchable=column.name in indexed_columns,
+                    derived=expression is not None,
+                    expression=expression,
                 )
             )
         tables.append(TableSchema(name=table.name, columns=tuple(columns)))
@@ -1005,6 +1010,15 @@ def _metadata_unique_columns(table) -> set[str]:
     return unique_columns
 
 
+def _metadata_indexed_columns(table) -> set[str]:
+    indexed_columns: set[str] = set()
+    for index in getattr(table, "indexes", ()) or ():
+        columns = tuple(getattr(index, "columns", ()))
+        for column in columns:
+            indexed_columns.add(column.name)
+    return indexed_columns
+
+
 def _metadata_column_type(column, metadata: MetaData) -> str:
     enum_values = tuple(getattr(column.type, "enums", ()) or ())
     if enum_values:
@@ -1020,6 +1034,15 @@ def _metadata_column_default(column) -> str | None:
     if column.server_default is not None:
         return _clean_default_text(getattr(column.server_default, "arg", column.server_default))
     return None
+
+
+def _metadata_column_expression(column) -> str | None:
+    computed = getattr(column, "computed", None)
+    sqltext = getattr(computed, "sqltext", None)
+    if sqltext is None:
+        return None
+    expression = str(sqltext).strip()
+    return expression or None
 
 
 def _clean_default_text(value) -> str | None:
