@@ -3056,6 +3056,14 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     field_patch = designer.field_proposal("Book", "isbn", required=True, searchable=True)
     field_dsl = designer.proposal_to_dsl(manifest, field_patch)
     assert "isbn: string required search" in field_dsl
+    diff = designer.schema_diff(manifest, designer.apply_proposal(manifest, field_patch))
+    assert diff["format"] == "appgen.schema-diff.v1"
+    assert diff["added_fields"][0]["field"] == "isbn"
+    assert diff["destructive"] is False
+    preview = designer.migration_preview(manifest, field_patch)
+    assert preview["format"] == "appgen.migration-preview.v1"
+    assert preview["operations"][0]["op"] == "add_column"
+    assert "data_loss_check" in preview["checks"]
     browser_patch = designer.proposal_from_payload(
         {"kind": "add_field", "table": "Book", "name": "subtitle", "type": "string", "searchable": True}
     )
