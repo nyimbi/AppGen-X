@@ -26,7 +26,7 @@ class Capability:
 
 
 DEFAULT_CAPABILITIES: tuple[Capability, ...] = (
-    Capability("schema.import", "DBML, SQL, PonyORM, and database import", "implemented", "canonical schema adapters with DBML/live unique indexes, SQL enum/ALTER TABLE support, static PonyORM enum/type normalization, and generated import provenance, validation, and review cockpit"),
+    Capability("schema.import", "DBML, SQL, PonyORM, and database import", "implemented", "canonical schema adapters with DBML/live unique indexes, SQL enum/ALTER TABLE support, static PonyORM enum/type normalization, and generated import provenance, source fidelity, validation, and review cockpit"),
     Capability("dsl.language-design", "ANTLR DSL reference, keyword budget, examples, linting, and quick fixes", "partial", "generated DSL reference cockpit, keyword budget checks, examples, readability lint helpers, and structured quick fixes"),
     Capability("codegen.fab", "Flask-AppBuilder app generation", "implemented", "models, views, templates, support files"),
     Capability("ui.visual-modeling", "Visual data, form, and workflow modeling", "partial", "generated designer graph, table/field/relationship edit proposals, schema diffs, migration previews, and DSL regeneration helpers"),
@@ -134,6 +134,7 @@ def build_manifest(schema: AppSchema) -> dict:
         "unknown_platform_targets": list(unknown_platform_targets),
         "source": schema.source,
         "source_profile": schema.source_profile(),
+        "source_fidelity": schema.source_fidelity_report(),
         "tables": [
             {
                 "name": table.name,

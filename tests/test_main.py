@@ -801,11 +801,20 @@ def test_schema_source_profile_fingerprints_imports(tmp_path) -> None:
     assert dbml_profile["counts"]["tables"] == 1
     assert dbml_profile["table_signatures"][0]["primary_keys"] == ("id",)
     assert len(dbml_profile["fingerprint"]) == 16
+    dbml_fidelity = dbml_schema.source_fidelity_report()
+    assert dbml_fidelity["format"] == "appgen.schema-source-fidelity.v1"
+    assert dbml_fidelity["source_kind"] == "dbml"
+    assert dbml_fidelity["ok"] is True
+    assert dbml_fidelity["import_command"] == "appgen --dbml schema.dbml --writedir app"
+    assert "dbml" in dbml_fidelity["roundtrip_targets"]
+    assert dbml_fidelity["checks"]["relations_normalized"] is True
     assert schema_source_kind(str(dbml_path)) == "dbml"
 
     sql_path = tmp_path / "library.sql"
     sql_path.write_text("CREATE TABLE book (id INTEGER PRIMARY KEY, title TEXT NOT NULL);")
-    assert load_schema(sql_path, source_type="sql").source_profile()["source_kind"] == "sql"
+    sql_schema = load_schema(sql_path, source_type="sql")
+    assert sql_schema.source_profile()["source_kind"] == "sql"
+    assert sql_schema.source_fidelity_report()["import_command"] == "appgen --sql schema.sql --writedir app"
 
     pony_path = tmp_path / "entities.py"
     pony_path.write_text(
@@ -817,15 +826,20 @@ def test_schema_source_profile_fingerprints_imports(tmp_path) -> None:
             title = Required(str)
         """
     )
-    assert load_schema(pony_path, source_type="pony").source_profile()["source_kind"] == "ponyorm"
+    pony_schema = load_schema(pony_path, source_type="pony")
+    assert pony_schema.source_profile()["source_kind"] == "ponyorm"
+    assert "ponyorm" in pony_schema.source_fidelity_report()["roundtrip_targets"]
 
     metadata = MetaData()
     Table("live_book", metadata, Column("id", Integer, primary_key=True))
     database_schema = schema_from_metadata(metadata, source="sqlite:///live.db")
+    source_contract = schema_source_contract()
     assert database_schema.source_profile()["source_kind"] == "database"
+    database_fidelity = database_schema.source_fidelity_report()
+    assert database_fidelity["database_url_dialects"] == source_contract["database_url_dialects"]
+    assert database_fidelity["sqlalchemy_driver_urls"] is True
     assert schema_source_kind("postgresql+psycopg2://user@host/db") == "database"
     assert schema_source_kind("mysql+pymysql://user@host/db") == "database"
-    source_contract = schema_source_contract()
     assert source_contract["format"] == "appgen.schema-source-contract.v1"
     assert {"dbml", "sql", "ponyorm", "database"} <= set(source_contract["source_kinds"])
     assert source_contract["sqlalchemy_driver_urls"] is True
@@ -908,6 +922,9 @@ def test_dbml_source_normalizes_and_generates(tmp_path) -> None:
     assert manifest["source_profile"]["source_kind"] == "dbml"
     assert manifest["source_profile"]["counts"]["enums"] == 1
     assert manifest["source_profile"]["fingerprint"] == schema.source_profile()["fingerprint"]
+    assert manifest["source_fidelity"]["format"] == "appgen.schema-source-fidelity.v1"
+    assert manifest["source_fidelity"]["ok"] is True
+    assert manifest["source_fidelity"]["fingerprint"] == manifest["source_profile"]["fingerprint"]
     assert manifest["enums"][0]["name"] == "Status"
     assert manifest_book_columns["title"]["default"] == "Untitled"
     assert manifest_book_columns["isbn"]["unique"] is True
@@ -2537,6 +2554,11 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert normalization["source_contract"]["ok"] is True
     assert normalization["fingerprint"] == manifest["source_profile"]["fingerprint"]
     assert normalization["table_signatures"][0]["table"] == "Author"
+    fidelity = schema_import.source_fidelity_report()
+    assert fidelity["format"] == "appgen.schema-source-fidelity.v1"
+    assert fidelity["fingerprint"] == manifest["source_profile"]["fingerprint"]
+    assert fidelity["source_contract"]["ok"] is True
+    assert "dsl" in fidelity["roundtrip_targets"]
     sql_validation = schema_import.source_validation_plan("sql")
     assert sql_validation["format"] == "appgen.schema-source-validation.v1"
     assert "preserve_composite_foreign_keys" in sql_validation["checks"]

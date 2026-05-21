@@ -351,6 +351,66 @@ class AppSchema:
         ).hexdigest()[:16]
         return profile
 
+    def source_fidelity_report(self) -> dict:
+        """Return source-import fidelity evidence for generation reviews."""
+        profile = self.source_profile()
+        kind = profile["source_kind"]
+        contract = schema_source_contract()
+        source_metadata = _schema_source_metadata(kind)
+        roundtrip_targets = {
+            "canonical": ("dsl", "dbml", "sql", "ponyorm"),
+            "dbml": ("dbml", "dsl", "sql", "ponyorm"),
+            "sql": ("sql", "dsl", "dbml", "ponyorm"),
+            "ponyorm": ("ponyorm", "dsl", "dbml", "sql"),
+            "database": ("dsl", "dbml", "sql", "ponyorm"),
+            "dsl": ("dsl", "dbml", "sql", "ponyorm"),
+        }.get(kind, ("dsl",))
+        lossy_features = {
+            "canonical": (),
+            "dsl": ("semantic validations are enforced by generated lint and quality gates",),
+            "dbml": ("DBML notes, colors, project metadata, and table groups require review outside AppSchema",),
+            "sql": (
+                "vendor-specific procedures, triggers, views, indexes, generated columns, and permissions require review",
+            ),
+            "ponyorm": ("custom methods, hooks, computed properties, and runtime database bindings are not executed",),
+            "database": (
+                "views, materialized views, triggers, procedures, expression indexes, and grants require review",
+            ),
+        }.get(kind, ("unknown source family requires manual import review",))
+        checks = {
+            "supported_source": bool(source_metadata) or kind == "canonical",
+            "has_tables": bool(self.tables),
+            "fingerprint": bool(profile["fingerprint"]),
+            "relations_normalized": all(
+                bool(relation.source_table and relation.source_column and relation.target_table and relation.target_column)
+                for relation in self.relations
+            ),
+            "enums_normalized": all(isinstance(enum.values, tuple) for enum in self.enums),
+            "portable_defaults": all(
+                column.default is None or isinstance(column.default, str)
+                for table in self.tables
+                for column in table.columns
+            ),
+        }
+        return {
+            "format": "appgen.schema-source-fidelity.v1",
+            "source": self.source,
+            "source_kind": kind,
+            "canonical_contract": profile["canonical_contract"],
+            "fingerprint": profile["fingerprint"],
+            "counts": dict(profile["counts"]),
+            "source_contract": contract,
+            "supported": checks["supported_source"],
+            "import_command": source_metadata.get("command"),
+            "roundtrip_targets": roundtrip_targets,
+            "database_url_dialects": contract["database_url_dialects"] if kind == "database" else (),
+            "sqlalchemy_driver_urls": bool(kind == "database" and contract["sqlalchemy_driver_urls"]),
+            "lossy_features": lossy_features,
+            "warnings": lossy_features,
+            "checks": checks,
+            "ok": all(checks.values()),
+        }
+
     def to_metadata(self) -> MetaData:
         metadata = MetaData()
         table_names = {table.name for table in self.tables}
@@ -411,6 +471,14 @@ def schema_source_kind(source: str | None) -> str:
     if lowered.endswith((".ags", ".ag", ".appgen")):
         return "dsl"
     return "canonical"
+
+
+def _schema_source_metadata(kind: str) -> dict:
+    """Return configured metadata for a supported schema source kind."""
+    for source in SUPPORTED_SCHEMA_SOURCES:
+        if source["kind"] == kind:
+            return dict(source, url_dialects=tuple(source.get("url_dialects", ())))
+    return {}
 
 
 def schema_source_contract() -> dict:

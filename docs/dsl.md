@@ -139,6 +139,13 @@ driver suffixes, such as `sqlite:///existing.db`,
 primary keys, foreign keys, single-column unique constraints and unique indexes,
 server defaults, and SQLAlchemy enum metadata when the dialect exposes it.
 
+Every imported source also produces a source-fidelity report in the generated
+`appgen.json` manifest and `schema_import.py`. The report records the import
+command, canonical fingerprint, supported source contract, round-trip targets,
+normalization checks, SQLAlchemy database URL dialect support, and known lossy
+areas that need review, such as SQL triggers/views, DBML notes, PonyORM custom
+methods, or database grants.
+
 ## Shape
 
 - `table` defines persistent data models.
@@ -293,12 +300,13 @@ apps include:
   migration-target readiness contracts.
 - `schema_import.py` and `appgen_schema_import.html` with generated DBML, SQL
   DDL, PonyORM, and live database source catalogs, source provenance profiles,
-  stable source fingerprints, normalization reports, source validation plans,
-  import command plans, round-trip export plans, source-to-generated diff plans,
-  and reviewed import apply plans before generated files are overwritten. The
-  generated `appgen.json` manifest carries the same `source_profile` so an app
-  can prove which source family was normalized and which tables, relationships,
-  enums, and counts were preserved.
+  stable source fingerprints, source-fidelity reports, normalization reports,
+  source validation plans, import command plans, round-trip export plans,
+  source-to-generated diff plans, and reviewed import apply plans before
+  generated files are overwritten. The generated `appgen.json` manifest carries
+  the same `source_profile` and `source_fidelity` evidence so an app can prove
+  which source family was normalized, which tables, relationships, enums, and
+  counts were preserved, and which source-specific features require review.
 - `integrations.py` and `appgen_integrations.html` with generated REST,
   webhook, Salesforce, SAP, Entando portal, Invenio repository, payment
   gateway, SMS gateway, and transactional email service contracts. Outbound

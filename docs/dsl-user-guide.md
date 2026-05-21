@@ -241,6 +241,12 @@ It exposes:
 Use this workbench to round-trip between visual design and source-controlled
 DSL. The DSL remains the durable source of truth.
 
+For imported sources, check `appgen.json.source_fidelity` or
+`/schema-import/fidelity.json` before regenerating. The report proves which
+DBML, SQL, PonyORM, or live database source was normalized, lists the command
+that generated the app, records the canonical fingerprint, and calls out
+source-specific review areas before generated files are overwritten.
+
 ## Design-System QA
 
 Generated apps include `branding.py`, `appgen_branding.html`, and

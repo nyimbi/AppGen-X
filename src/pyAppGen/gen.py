@@ -3723,6 +3723,7 @@ def write_schema_import_template(output_dir):
     <div class="agsi-actions">
       <a class="btn btn-default" href="{{ url_for('SchemaImportView.catalog_json') }}">Catalog JSON</a>
       <a class="btn btn-default" href="{{ url_for('SchemaImportView.profile_json') }}">Profile JSON</a>
+      <a class="btn btn-default" href="{{ url_for('SchemaImportView.fidelity_json') }}">Fidelity JSON</a>
       <a class="btn btn-default" href="{{ url_for('SchemaImportView.normalization_json') }}">Normalization JSON</a>
       <a class="btn btn-default" href="{{ url_for('SchemaImportView.validation_json') }}">Validation JSON</a>
       <a class="btn btn-default" href="{{ url_for('SchemaImportView.commands_json') }}">Commands JSON</a>
@@ -3759,9 +3760,16 @@ def write_schema_import_template(output_dir):
     <article class="agsi-card">
       <h3>Current Source</h3>
       <div class="agsi-muted">{{ profile.source_kind }}</div>
-      <span class="agsi-pill">{{ profile.tables }} tables</span>
-      <span class="agsi-pill">{{ profile.fields }} fields</span>
-      <span class="agsi-pill">{{ profile.relations }} relations</span>
+      <span class="agsi-pill">{{ profile.counts.tables }} tables</span>
+      <span class="agsi-pill">{{ profile.counts.fields }} fields</span>
+      <span class="agsi-pill">{{ profile.counts.relations }} relations</span>
+    </article>
+    <article class="agsi-card">
+      <h3>Source Fidelity</h3>
+      <div class="agsi-muted">{{ "ready" if fidelity.ok else "review required" }}</div>
+      {% for target in fidelity.roundtrip_targets %}
+      <span class="agsi-pill">{{ target }}</span>
+      {% endfor %}
     </article>
   </div>
 </section>
@@ -13189,6 +13197,7 @@ def register_data_access(appbuilder):
 def _schema_import_text(schema: AppSchema) -> str:
     tables = tuple(table.name for table in schema.tables)
     source_profile = schema.source_profile()
+    source_fidelity = schema.source_fidelity_report()
     source_contract = schema_source_contract()
     sources = (
         {
@@ -13236,6 +13245,7 @@ from flask_appbuilder import expose
 
 
 SOURCE_PROFILE = {source_profile!r}
+SOURCE_FIDELITY = {source_fidelity!r}
 SOURCE_CONTRACT = {source_contract!r}
 SOURCE_TABLES = {tables!r}
 SCHEMA_SOURCES = {sources!r}
@@ -13254,6 +13264,14 @@ def schema_source_profile():
 def schema_source_contract():
     """Return canonical source families and URL dialects supported by AppGen."""
     return dict(SOURCE_CONTRACT)
+
+
+def source_fidelity_report():
+    """Return evidence that the imported source normalized safely into AppSchema."""
+    report = dict(SOURCE_FIDELITY)
+    report["checks"] = dict(report.get("checks", {{}}))
+    report["source_contract"] = dict(report.get("source_contract", {{}}))
+    return report
 
 
 def normalization_report():
@@ -13461,6 +13479,7 @@ def schema_import_check(existing_paths=()):
         "source_contract": schema_source_contract(),
         "source_kind": SOURCE_PROFILE["source_kind"],
         "fingerprint": SOURCE_PROFILE["fingerprint"],
+        "source_fidelity": source_fidelity_report(),
         "validation": all_source_validation_plans(),
         "roundtrip_diffs": all_schema_roundtrip_diffs(),
         "apply_plans": all_import_apply_plans(),
@@ -13477,6 +13496,7 @@ class SchemaImportView(BaseView):
             "appgen_schema_import.html",
             sources=schema_source_catalog(),
             profile=schema_source_profile(),
+            fidelity=source_fidelity_report(),
             normalization=normalization_report(),
         )
 
@@ -13487,6 +13507,10 @@ class SchemaImportView(BaseView):
     @expose("/profile.json")
     def profile_json(self):
         return jsonify(schema_source_profile())
+
+    @expose("/fidelity.json")
+    def fidelity_json(self):
+        return jsonify(source_fidelity_report())
 
     @expose("/normalization.json")
     def normalization_json(self):
@@ -30269,6 +30293,7 @@ def validate_schema_import_artifacts() -> None:
         "schema_source_catalog",
         "schema_source_profile",
         "schema_source_contract",
+        "source_fidelity_report",
         "normalization_report",
         "source_validation_plan",
         "all_source_validation_plans",
@@ -30281,15 +30306,15 @@ def validate_schema_import_artifacts() -> None:
         "schema_import_check",
     )
     if not all(item in contract for item in required):
-        fail("schema import contract must expose source catalog, normalization, validation, command plans, roundtrip diffs, apply plans, and readiness checks")
+        fail("schema import contract must expose source catalog, fidelity, normalization, validation, command plans, roundtrip diffs, apply plans, and readiness checks")
     for source in ("dbml", "sql", "ponyorm", "database"):
         if source not in contract:
             fail("schema import contract must cover DBML, SQL, PonyORM, and database sources")
     if "postgresql+psycopg2" not in contract or "sqlalchemy_driver_urls" not in contract:
         fail("schema import contract must document SQLAlchemy driver-suffixed database URLs")
     template = (ROOT / "app" / "templates" / "appgen_schema_import.html").read_text()
-    if "Schema Import" not in template or "Catalog JSON" not in template or "Normalization JSON" not in template or "Validation JSON" not in template or "Commands JSON" not in template or "Round-trip Diff JSON" not in template or "Apply Plans JSON" not in template:
-        fail("schema import cockpit must expose source catalog, normalization, validation, commands, round-trip diffs, and apply plans")
+    if "Schema Import" not in template or "Catalog JSON" not in template or "Fidelity JSON" not in template or "Normalization JSON" not in template or "Validation JSON" not in template or "Commands JSON" not in template or "Round-trip Diff JSON" not in template or "Apply Plans JSON" not in template:
+        fail("schema import cockpit must expose source catalog, fidelity, normalization, validation, commands, round-trip diffs, and apply plans")
 
 
 def validate_performance_artifacts() -> None:
@@ -31585,6 +31610,9 @@ def test_generated_runtime_helpers():
     assert schema_import.schema_source_contract()["sqlalchemy_driver_urls"] is True
     assert schema_import.normalization_report()["format"] == "appgen.schema-normalization.v1"
     assert schema_import.normalization_report()["source_contract"]["ok"] is True
+    assert schema_import.source_fidelity_report()["format"] == "appgen.schema-source-fidelity.v1"
+    assert schema_import.source_fidelity_report()["ok"] is True
+    assert "dsl" in schema_import.source_fidelity_report()["roundtrip_targets"]
     assert schema_import.source_validation_plan("sql")["format"] == "appgen.schema-source-validation.v1"
     assert len(schema_import.all_source_validation_plans()) == 4
     assert schema_import.import_command_plan("ponyorm", "entities.py")["command"] == "appgen --pony entities.py --writedir app"
