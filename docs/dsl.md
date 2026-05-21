@@ -211,8 +211,9 @@ apps include:
   handling, safe user-facing responses, recovery actions, retry plans,
   circuit-breaker state, and operator incident reports.
 - `performance.py` and `appgen_performance.html` with generated SLO budgets,
-  pagination and cache contracts, deterministic load-test profiles, and
-  autoscale recommendations.
+  pagination and cache contracts, deterministic load-test profiles, k6 script
+  export, Locust file export, reviewed load-test runbooks, and autoscale
+  recommendations.
 - `static/appgen.webmanifest`, `static/appgen-sw.js`, and an offline shell for
   progressive web app behavior.
 - `branding.py`, `appgen_branding.html`, and `static/appgen-theme.css` with a

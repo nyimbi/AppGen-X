@@ -1938,6 +1938,17 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     )
     assert performance.cache_policy("Book")["cache_key"] == "appgen:book:list"
     assert performance.load_profile_plan(users=3, duration_seconds=5)["users"] == 3
+    matrix = performance.load_test_matrix(users=3, duration_seconds=5)
+    assert matrix["format"] == "appgen.load-test-matrix.v1"
+    assert matrix["scenarios"][0]["executor"] == "constant-vus"
+    k6_script = performance.k6_script(users=3, duration_seconds=5)
+    assert "export const options" in k6_script
+    assert "http.get" in k6_script
+    locustfile = performance.locustfile_text()
+    assert "class AppGenUser" in locustfile
+    runbook = performance.load_test_runbook(users=3, duration_seconds=5)
+    assert runbook["format"] == "appgen.load-test-runbook.v1"
+    assert "k6 run performance.k6.js" in runbook["commands"][0]
     assert performance.slo_report({"p95_ms": 200, "error_rate": 0})["ok"] is True
     scale_plan = performance.autoscale_plan(
         {"cpu_percent": 90, "queue_depth": 150, "p95_ms": 700},

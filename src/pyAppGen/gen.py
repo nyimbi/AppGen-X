@@ -3221,6 +3221,10 @@ def write_performance_template(output_dir):
     <div class="agp-actions">
       <a class="btn btn-primary" href="{{ url_for('PerformanceView.catalog_json') }}">Catalog JSON</a>
       <a class="btn btn-default" href="{{ url_for('PerformanceView.load_profile_json') }}">Load Profile JSON</a>
+      <a class="btn btn-default" href="{{ url_for('PerformanceView.load_test_matrix_json') }}">Load Test Matrix JSON</a>
+      <a class="btn btn-default" href="{{ url_for('PerformanceView.load_test_runbook_json') }}">Load Test Runbook JSON</a>
+      <a class="btn btn-default" href="{{ url_for('PerformanceView.k6_script_route') }}">k6 Script</a>
+      <a class="btn btn-default" href="{{ url_for('PerformanceView.locustfile_route') }}">Locustfile</a>
     </div>
   </div>
   <div class="agp-slo">
@@ -7565,6 +7569,7 @@ def cache_policy(table_name):
 def load_profile_plan(users=25, duration_seconds=60):
     """Return a deterministic load-test profile for generated API routes."""
     return {{
+        "format": "appgen.load-profile.v1",
         "users": int(users),
         "duration_seconds": int(duration_seconds),
         "routes": tuple(
@@ -7576,6 +7581,100 @@ def load_profile_plan(users=25, duration_seconds=60):
             }}
             for table_name, budget in PERFORMANCE_TABLES.items()
         ),
+    }}
+
+
+def load_test_matrix(users=25, duration_seconds=60):
+    """Return executable load-test scenarios for generated API routes."""
+    profile = load_profile_plan(users=users, duration_seconds=duration_seconds)
+    return {{
+        "format": "appgen.load-test-matrix.v1",
+        "profile": profile,
+        "scenarios": tuple(
+            {{
+                "name": f"{{route['table'].lower()}}_list",
+                "executor": "constant-vus",
+                "vus": profile["users"],
+                "duration": f"{{profile['duration_seconds']}}s",
+                "method": route["method"],
+                "path": route["path"],
+                "thresholds": (
+                    "http_req_duration{{route:" + route["path"] + "}} < " + str(route["target_p95_ms"]),
+                    "http_req_failed < 0.01",
+                ),
+            }}
+            for route in profile["routes"]
+        ),
+    }}
+
+
+def k6_script(base_url="http://localhost:8080", users=25, duration_seconds=60):
+    """Return a generated k6 script for the current API surface."""
+    matrix = load_test_matrix(users=users, duration_seconds=duration_seconds)
+    routes = [scenario["path"] for scenario in matrix["scenarios"]]
+    route_lines = ",\\n".join(f"  {{json_route!r}}" for json_route in routes)
+    threshold_lines = ",\\n".join(
+        "    'http_req_duration{{route:" + scenario["path"] + "}}': ['p(95)<" + scenario["thresholds"][0].rsplit(" < ", 1)[1] + "'],"
+        for scenario in matrix["scenarios"]
+    )
+    return (
+        "import http from 'k6/http';\\n"
+        "import {{ check, sleep }} from 'k6';\\n\\n"
+        "export const options = {{\\n"
+        f"  vus: {{matrix['profile']['users']}},\\n"
+        f"  duration: '{{matrix['profile']['duration_seconds']}}s',\\n"
+        "  thresholds: {{\\n"
+        f"{{threshold_lines}}\\n"
+        "    http_req_failed: ['rate<0.01'],\\n"
+        "  }},\\n"
+        "}};\\n\\n"
+        f"const BASE_URL = __ENV.APPGEN_BASE_URL || {{base_url!r}};\\n"
+        f"const ROUTES = [\\n{{route_lines}}\\n];\\n\\n"
+        "export default function () {{\\n"
+        "  for (const route of ROUTES) {{\\n"
+        "    const res = http.get(`${{BASE_URL}}${{route}}`, {{ tags: {{ route }} }});\\n"
+        "    check(res, {{ 'status < 500': (r) => r.status < 500 }});\\n"
+        "  }}\\n"
+        "  sleep(1);\\n"
+        "}}\\n"
+    )
+
+
+def locustfile_text(base_url="http://localhost:8080"):
+    """Return a generated Locust file for Python load testing."""
+    routes = tuple(route["path"] for route in load_profile_plan()["routes"])
+    task_lines = "\\n".join(
+        f"        self.client.get({{route!r}}, name={{route!r}})"
+        for route in routes
+    )
+    return (
+        "from locust import HttpUser, between, task\\n\\n\\n"
+        "class AppGenUser(HttpUser):\\n"
+        f"    host = {{base_url!r}}\\n"
+        "    wait_time = between(1, 3)\\n\\n"
+        "    @task\\n"
+        "    def generated_routes(self):\\n"
+        f"{{task_lines or '        pass'}}\\n"
+    )
+
+
+def load_test_runbook(base_url="http://localhost:8080", users=25, duration_seconds=60):
+    """Return reviewed commands and artifacts for generated load tests."""
+    return {{
+        "format": "appgen.load-test-runbook.v1",
+        "base_url": base_url,
+        "profile": load_profile_plan(users=users, duration_seconds=duration_seconds),
+        "matrix": load_test_matrix(users=users, duration_seconds=duration_seconds),
+        "artifacts": {{
+            "k6": "performance.k6.js",
+            "locust": "locustfile.py",
+        }},
+        "commands": (
+            f"APPGEN_BASE_URL={{base_url}} k6 run performance.k6.js",
+            f"locust -f locustfile.py --headless -u {{int(users)}} -r {{max(1, int(users) // 5)}} -t {{int(duration_seconds)}}s --host {{base_url}}",
+        ),
+        "requires_review": True,
+        "checks": ("start test environment", "seed representative data", "run smoke tests", "run load test", "review SLO report"),
     }}
 
 
@@ -7629,9 +7728,10 @@ def performance_check(existing_paths):
     required = ("app/performance.py", "app/templates/appgen_performance.html")
     missing = tuple(path for path in required if path not in existing)
     return {{
-        "ok": not missing,
+        "ok": not missing and bool(load_test_matrix()["scenarios"]),
         "missing": missing,
         "tables": tuple(PERFORMANCE_TABLES),
+        "load_tests": len(load_test_matrix()["scenarios"]),
     }}
 
 
@@ -7650,6 +7750,22 @@ class PerformanceView(BaseView):
     @expose("/load-profile.json")
     def load_profile_json(self):
         return jsonify(load_profile_plan())
+
+    @expose("/load-test-matrix.json")
+    def load_test_matrix_json(self):
+        return jsonify(load_test_matrix())
+
+    @expose("/load-test-runbook.json")
+    def load_test_runbook_json(self):
+        return jsonify(load_test_runbook())
+
+    @expose("/k6.js")
+    def k6_script_route(self):
+        return k6_script(), 200, {{"Content-Type": "text/javascript; charset=utf-8"}}
+
+    @expose("/locustfile.py")
+    def locustfile_route(self):
+        return locustfile_text(), 200, {{"Content-Type": "text/plain; charset=utf-8"}}
 
 
 def register_performance(appbuilder):
@@ -28458,9 +28574,11 @@ def validate_performance_artifacts() -> None:
     contract = (ROOT / "app" / "performance.py").read_text()
     if "autoscale_plan" not in contract or "slo_report" not in contract or "load_profile_plan" not in contract:
         fail("performance contract must expose SLO, load-profile, and autoscale helpers")
+    if "load_test_matrix" not in contract or "k6_script" not in contract or "locustfile_text" not in contract or "load_test_runbook" not in contract:
+        fail("performance contract must expose load-test matrices, k6 scripts, Locust files, and runbooks")
     template = (ROOT / "app" / "templates" / "appgen_performance.html").read_text()
-    if "Performance" not in template or "Load Profile JSON" not in template:
-        fail("performance template must expose budgets and load profiles")
+    if "Performance" not in template or "Load Profile JSON" not in template or "Load Test Matrix JSON" not in template or "k6 Script" not in template or "Locustfile" not in template:
+        fail("performance template must expose budgets, load profiles, and executable load-test exports")
 
 
 def validate_usage_analytics_artifacts() -> None:
@@ -29695,6 +29813,10 @@ def test_generated_runtime_helpers():
         {"app/schema_import.py", "app/templates/appgen_schema_import.html", "app/appgen.json"}
     )["ok"] is True
     assert performance.slo_report({"p95_ms": 250, "error_rate": 0})["ok"] is True
+    assert performance.load_test_matrix(users=2, duration_seconds=10)["format"] == "appgen.load-test-matrix.v1"
+    assert "http.get" in performance.k6_script(users=2, duration_seconds=10)
+    assert "class AppGenUser" in performance.locustfile_text()
+    assert performance.load_test_runbook(users=2, duration_seconds=10)["requires_review"] is True
     assert performance.autoscale_plan({"cpu_percent": 90, "p95_ms": 700}, current_replicas=2)["desired_replicas"] == 3
     assert performance.performance_check(
         {"app/performance.py", "app/templates/appgen_performance.html"}
