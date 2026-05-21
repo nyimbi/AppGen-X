@@ -4717,7 +4717,11 @@ def write_platforms_template(output_dir):
         offline mode, push notifications, location, camera, and field prompts.
       </p>
     </div>
-    <a class="btn btn-default" href="{{ url_for('PlatformView.catalog_json') }}">Catalog JSON</a>
+    <div>
+      <a class="btn btn-default" href="{{ url_for('PlatformView.catalog_json') }}">Catalog JSON</a>
+      <a class="btn btn-default" href="{{ url_for('PlatformView.generation_matrix_json') }}">Generation Matrix JSON</a>
+      <a class="btn btn-default" href="{{ url_for('PlatformView.release_gate_json') }}">Release Gate JSON</a>
+    </div>
   </div>
   <div class="agp-grid">
     {% for target in targets %}
@@ -22505,6 +22509,7 @@ PLATFORM_TARGETS = {{
     "pwa": {{
         "label": "Progressive Web App",
         "adapter": "service-worker",
+        "artifacts": ("app/static/appgen.webmanifest", "app/static/appgen-sw.js", "app/static/appgen-offline.html"),
         "capabilities": ("offline", "installable", "push"),
     }},
     "mobile": {{
@@ -22584,6 +22589,67 @@ def generation_matrix():
     }}
 
 
+def target_package_matrix(targets=None):
+    """Return package, artifact, and quality evidence for selected targets."""
+    selected = tuple(targets or SELECTED_TARGETS)
+    rows = []
+    checks_by_target = {{
+        "web": ("py_compile", "route_smoke", "api_contract", "accessibility"),
+        "pwa": ("manifest", "service_worker", "offline_shell"),
+        "mobile": ("py_compile", "native_capability_plan", "offline_queue", "device_permissions"),
+        "desktop": ("py_compile", "native_capability_plan", "local_cache", "sync_replay"),
+        "chatbot": ("intent_catalog", "slot_schema", "conversation_payload"),
+    }}
+    for target in selected:
+        contract = platform_contract(target)
+        rows.append({{
+            "target": target,
+            "adapter": contract["adapter"],
+            "artifacts": contract["artifacts"],
+            "capabilities": contract["capabilities"],
+            "checks": checks_by_target.get(target, ("artifact_exists", "quality_gate")),
+            "selected": contract["selected"],
+            "ok": contract["selected"] and bool(contract["capabilities"]),
+        }})
+    return {{
+        "format": "appgen.target-package-matrix.v1",
+        "ok": bool(rows) and all(row["ok"] for row in rows),
+        "targets": selected,
+        "rows": tuple(rows),
+    }}
+
+
+def platform_release_gate(existing_paths=(), required_targets=("web", "mobile", "desktop")):
+    """Return release readiness for generated web, mobile, and desktop targets."""
+    existing = set(existing_paths)
+    selected = set(SELECTED_TARGETS)
+    matrix = target_package_matrix()
+    required = tuple(target for target in required_targets if target in PLATFORM_TARGETS)
+    artifact_rows = []
+    for target in SELECTED_TARGETS:
+        artifacts = platform_contract(target)["artifacts"]
+        missing = tuple(path for path in artifacts if existing and path not in existing)
+        artifact_rows.append({{"target": target, "artifacts": artifacts, "missing": missing, "ok": not missing}})
+    gates = (
+        {{"gate": "target_selection", "ok": set(required) <= selected, "evidence": SELECTED_TARGETS}},
+        {{"gate": "package_matrix", "ok": matrix["ok"], "evidence": matrix["rows"]}},
+        {{"gate": "web_contract", "ok": "web" not in selected or set(("rest", "graphql")) <= set(platform_contract("web")["capabilities"]), "evidence": platform_contract("web")["capabilities"]}},
+        {{"gate": "mobile_contract", "ok": "mobile" not in selected or mobile_capabilities()["selected"] and mobile_capabilities()["offline"] and mobile_capabilities()["camera"], "evidence": mobile_capabilities()}},
+        {{"gate": "desktop_contract", "ok": "desktop" not in selected or "local-files" in platform_contract("desktop")["capabilities"], "evidence": platform_contract("desktop")["capabilities"]}},
+        {{"gate": "artifacts", "ok": all(row["ok"] for row in artifact_rows), "evidence": tuple(artifact_rows)}},
+    )
+    return {{
+        "format": "appgen.platform-release-gate.v1",
+        "ok": all(gate["ok"] for gate in gates),
+        "targets": SELECTED_TARGETS,
+        "required_targets": required,
+        "generation_matrix": generation_matrix(),
+        "package_matrix": matrix,
+        "gates": gates,
+        "blocking_gaps": tuple(gate["gate"] for gate in gates if not gate["ok"]),
+    }}
+
+
 def chatbot_intents():
     """Return chatbot intent descriptors for generated table forms."""
     return tuple(
@@ -22624,6 +22690,14 @@ class PlatformView(BaseView):
     @expose("/catalog.json")
     def catalog_json(self):
         return jsonify(list(platform_catalog()))
+
+    @expose("/generation-matrix.json")
+    def generation_matrix_json(self):
+        return jsonify(generation_matrix())
+
+    @expose("/release-gate.json")
+    def release_gate_json(self):
+        return jsonify(platform_release_gate())
 
     @expose("/<target>.json")
     def target_json(self, target):
@@ -33055,6 +33129,9 @@ def test_generated_runtime_helpers():
     assert isinstance(text_quality.text_quality_catalog(), tuple)
     assert isinstance(notifications.channel_catalog(), tuple)
     assert isinstance(platforms.platform_catalog(), tuple)
+    assert platforms.target_package_matrix()["format"] == "appgen.target-package-matrix.v1"
+    assert platforms.target_package_matrix()["ok"] is True
+    assert platforms.platform_release_gate()["format"] == "appgen.platform-release-gate.v1"
     assert "api-gateway" in microservices.service_names()
     assert microservices.api_gateway_routes()
     assert isinstance(microservices.cross_service_relationships(), tuple)

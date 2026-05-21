@@ -2200,7 +2200,10 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         output_dir / "templates" / "appgen_text_quality.html"
     ).read_text()
     assert "Generated notification channels" in (output_dir / "templates" / "appgen_notifications.html").read_text()
-    assert "web, PWA, mobile, desktop, and chatbot" in (output_dir / "templates" / "appgen_platforms.html").read_text()
+    platforms_template = (output_dir / "templates" / "appgen_platforms.html").read_text()
+    assert "web, PWA, mobile, desktop, and chatbot" in platforms_template
+    assert "Generation Matrix JSON" in platforms_template
+    assert "Release Gate JSON" in platforms_template
     assert "microservices architecture contract" in (output_dir / "templates" / "appgen_microservices.html").read_text()
     assert "class AppGenClient" in (tmp_path / "sdks" / "python" / "client.py").read_text()
     assert "export class AppGenClient" in (tmp_path / "sdks" / "javascript" / "client.js").read_text()
@@ -3590,6 +3593,34 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     mobile_contract = platforms.platform_contract("mobile")
     assert "camera" in mobile_contract["capabilities"]
     assert {"web", "mobile", "desktop"} == set(platforms.generation_matrix())
+    package_matrix = platforms.target_package_matrix()
+    assert package_matrix["format"] == "appgen.target-package-matrix.v1"
+    assert package_matrix["ok"] is True
+    assert {"web", "mobile", "desktop"} <= {row["target"] for row in package_matrix["rows"]}
+    platform_gate = platforms.platform_release_gate(
+        {
+            "app/",
+            "frontends/react",
+            "frontends/vue",
+            "frontends/angular",
+            "frontends/svelte",
+            "frontends/htmx",
+            "frontends/express",
+            "app/static/appgen.webmanifest",
+            "app/static/appgen-sw.js",
+            "app/static/appgen-offline.html",
+            "native/mobile/app.py",
+            "native/mobile/pyproject.toml",
+            "native/desktop/app.py",
+            "native/desktop/pyproject.toml",
+        }
+    )
+    assert platform_gate["format"] == "appgen.platform-release-gate.v1"
+    assert platform_gate["ok"] is True
+    assert {"target_selection", "package_matrix", "web_contract", "mobile_contract", "desktop_contract"} <= {
+        gate["gate"] for gate in platform_gate["gates"]
+    }
+    assert platforms.platform_release_gate({"app/"})["ok"] is False
     assert mobile_contract["tables"][1]["table"] == "Book"
     assert "internal_code" not in mobile_contract["tables"][1]["fields"]
     assert platforms.mobile_capabilities()["location"] is True

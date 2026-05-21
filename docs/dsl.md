@@ -432,7 +432,8 @@ apps include:
   email, webhook, and push-style notification payloads for table events.
 - `platforms.py` and `appgen_platforms.html` with generated web, PWA, mobile,
   desktop, and chatbot target contracts plus a web/mobile/desktop generation
-  matrix for downstream adapters.
+  matrix, target package matrix, mobile capability contract, and platform
+  release gate for downstream adapters.
 - `frontends/` with generated React, Vue, Angular, Svelte, HTMX, and Express
   starter contracts wired to the generated REST API routes.
 - `sdks/` with generated Python, JavaScript, Java, and C# API client

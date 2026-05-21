@@ -160,7 +160,9 @@ app FieldOps { targets: web, pwa, mobile, desktop, chatbot }
 
 `mobile` generates a Kivy starter. `desktop` generates a BeeWare starter.
 `web` and `pwa` generate Flask-AppBuilder and PWA assets. `chatbot` generates
-bot contracts and provider exports.
+bot contracts and provider exports. Use `/platforms/generation-matrix.json`
+and `/platforms/release-gate.json` to verify selected target packages,
+capabilities, artifacts, and web/mobile/desktop readiness.
 
 ## Adding Behavior
 
