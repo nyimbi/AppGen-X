@@ -84,7 +84,7 @@ DEFAULT_CAPABILITIES: tuple[Capability, ...] = (
     Capability("reports.analytics", "Reports, dashboards, and analytics", "partial", "generated table, join, and three-way report catalogs plus dashboard contracts, CSV/PDF exports, and email delivery payloads"),
     Capability("reports.usage-analytics", "Application usage analytics", "partial", "generated usage events, adoption, funnels, retention, and real-time activity summaries"),
     Capability("data.visualization", "Charts, graphs, and KPI visualization", "partial", "generated dashboards, chart data contracts, Vega-Lite specs, accessible summaries, and web/mobile/desktop renderer workbenches"),
-    Capability("i18n.localization", "Internationalization and localization", "partial", "generated Babel config and translation catalog"),
+    Capability("i18n.localization", "Internationalization and localization", "partial", "generated Babel config, translation catalogs, locale negotiation, missing-key reports, and localization cockpit"),
     Capability("a11y.compliance", "Accessibility compliance", "partial", "generated WCAG checklist, skip-link baseline, keyboard navigation plans, ARIA landmark contracts, and accessibility audit plans"),
     Capability("deployment.cloud", "Cloud and on-prem deployment", "partial", "generated Docker, Compose, Kubernetes, Terraform scaffolds, secret plans, smoke checks, deployment runbooks, rollback plans, and cloud readiness matrix"),
     Capability("devops.cicd", "CI/CD and automated review gates", "partial", "generated CI workflow and quality gate"),

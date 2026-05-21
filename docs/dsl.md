@@ -212,8 +212,10 @@ apps include:
 - `pyproject.toml`, `MANIFEST.in`, `appgen_package.py`, and `cookiecutter/`
   with publishable package metadata, a quality entry point, FAB extension
   metadata, and a reusable Cookiecutter scaffold for new generated apps.
-- `babel.cfg` and `translations/en/LC_MESSAGES/messages.po` starter catalogs
-  generated from app, table, field, workflow, and role labels.
+- `babel.cfg`, `i18n.py`, `appgen_i18n.html`, and
+  `translations/en/LC_MESSAGES/messages.po` starter catalogs generated from
+  app, table, field, workflow, and role labels, plus locale negotiation,
+  fallback translation payloads, and missing-key reports.
 - `reports.py` and `appgen_reports.html` with generated report catalogs and CSV
   exports for every table plus relationship-aware join reports and three-way
   table-set reports derived from the schema relation graph.

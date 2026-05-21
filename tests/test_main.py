@@ -215,6 +215,7 @@ def test_generate_app_from_sqlite_schema_compiles(tmp_path) -> None:
         output_dir / "chatbot.py",
         output_dir / "voice.py",
         output_dir / "agents.py",
+        output_dir / "i18n.py",
         output_dir / "text_quality.py",
         output_dir / "notifications.py",
         output_dir / "platforms.py",
@@ -294,6 +295,7 @@ def test_generate_app_from_sqlite_schema_compiles(tmp_path) -> None:
     assert (output_dir / "templates" / "appgen_chatbot.html").exists()
     assert (output_dir / "templates" / "appgen_voice.html").exists()
     assert (output_dir / "templates" / "appgen_agents.html").exists()
+    assert (output_dir / "templates" / "appgen_i18n.html").exists()
     assert (output_dir / "templates" / "appgen_text_quality.html").exists()
     assert (output_dir / "templates" / "appgen_notifications.html").exists()
     assert (output_dir / "templates" / "appgen_platforms.html").exists()
@@ -1269,6 +1271,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     py_compile.compile(str(output_dir / "chatbot.py"), doraise=True)
     py_compile.compile(str(output_dir / "voice.py"), doraise=True)
     py_compile.compile(str(output_dir / "agents.py"), doraise=True)
+    py_compile.compile(str(output_dir / "i18n.py"), doraise=True)
     py_compile.compile(str(output_dir / "text_quality.py"), doraise=True)
     py_compile.compile(str(output_dir / "notifications.py"), doraise=True)
     py_compile.compile(str(output_dir / "platforms.py"), doraise=True)
@@ -1395,6 +1398,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert "AssistantView" in (output_dir / "assistant.py").read_text()
     assert "GuidedChatbotView" in (output_dir / "chatbot.py").read_text()
     assert "VoiceAssistantView" in (output_dir / "voice.py").read_text()
+    assert "LocalizationView" in (output_dir / "i18n.py").read_text()
     assert "DSLReferenceView" in (output_dir / "dsl_reference.py").read_text()
     assert "ViewExperienceView" in (output_dir / "view_experience.py").read_text()
     assert "SupportCenterView" in (output_dir / "support_center.py").read_text()
@@ -1605,6 +1609,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     chatbot = _load_module(output_dir / "chatbot.py", "generated_chatbot")
     voice = _load_module(output_dir / "voice.py", "generated_voice")
     agents = _load_module(output_dir / "agents.py", "generated_agents")
+    i18n = _load_module(output_dir / "i18n.py", "generated_i18n")
     text_quality = _load_module(output_dir / "text_quality.py", "generated_text_quality")
     notifications = _load_module(output_dir / "notifications.py", "generated_notifications")
     platforms = _load_module(output_dir / "platforms.py", "generated_platforms")
@@ -2440,6 +2445,16 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert voice.alexa_interaction_model()["interactionModel"]["languageModel"]["intents"]
     assert voice.google_actions_model()["actions"]
     assert voice.voice_check({"app/voice.py", "app/templates/appgen_voice.html"})["ok"] is True
+    assert i18n.translate("Book", locale="en") == "Book"
+    assert i18n.translate("Book", locale="es") == "Book"
+    assert i18n.negotiate_locale("fr-CA,fr;q=0.9,en;q=0.8") == "fr"
+    missing_report = i18n.missing_translation_report(("en", "es"))
+    assert missing_report["format"] == "appgen.i18n-missing.v1"
+    assert "Book" in missing_report["missing"]["es"]
+    assert i18n.translation_payload("es")["fallback_locale"] == "en"
+    assert i18n.i18n_check(
+        {"babel.cfg", "app/i18n.py", "app/templates/appgen_i18n.html", "app/translations/en/LC_MESSAGES/messages.po"}
+    )["ok"] is True
     features = assistant.prediction_features("Book", {"title": "Dune", "internal_code": "B-1"})
     assert features == {"title": "Dune"}
     text_catalog = text_quality.text_quality_catalog()
@@ -3375,6 +3390,7 @@ def test_appgen_cli_generates_from_dsl(tmp_path, runner: CliRunner) -> None:
     py_compile.compile(str(output_dir / "intelligence.py"), doraise=True)
     py_compile.compile(str(output_dir / "chatbot.py"), doraise=True)
     py_compile.compile(str(output_dir / "voice.py"), doraise=True)
+    py_compile.compile(str(output_dir / "i18n.py"), doraise=True)
     py_compile.compile(str(output_dir / "text_quality.py"), doraise=True)
     py_compile.compile(str(output_dir / "notifications.py"), doraise=True)
     py_compile.compile(str(output_dir / "platforms.py"), doraise=True)
