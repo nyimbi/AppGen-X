@@ -3940,7 +3940,10 @@ def write_integrations_template(output_dir):
         events before custom connector code sends data.
       </p>
     </div>
-    <a class="btn btn-default" href="{{ url_for('IntegrationView.catalog_json') }}">Catalog JSON</a>
+    <div>
+      <a class="btn btn-default" href="{{ url_for('IntegrationView.catalog_json') }}">Catalog JSON</a>
+      <a class="btn btn-default" href="{{ url_for('IntegrationView.release_gate_json') }}">Release Gate JSON</a>
+    </div>
   </div>
   <div class="agi-grid">
     {% for item in integrations %}
@@ -15852,6 +15855,94 @@ def integration_check(existing_paths=()):
     }
 
 
+def integration_release_gate(existing_paths=(), environ=None):
+    """Return an auditable release gate for generated integration contracts."""
+    artifacts = set(existing_paths or ())
+    required_artifacts = ("app/integrations.py", "app/templates/appgen_integrations.html")
+    required_names = {"rest", "webhook", "salesforce", "sap", "entando", "invenio", "stripe", "mpesa", "twilio_sms", "sendgrid_email"}
+    webhook_env = {
+        "APPGEN_WEBHOOK_URL": "https://hooks.example.test/appgen",
+        "APPGEN_WEBHOOK_SECRET": "secret",
+    }
+    payment_env = {"STRIPE_API_KEY": "sk_test", "STRIPE_WEBHOOK_SECRET": "whsec"}
+    sms_env = {
+        "TWILIO_ACCOUNT_SID": "sid",
+        "TWILIO_AUTH_TOKEN": "token",
+        "TWILIO_FROM_NUMBER": "+10000000000",
+    }
+    email_env = {"SENDGRID_API_KEY": "key", "APPGEN_EMAIL_FROM": "noreply@example.test"}
+    entando_env = {
+        "ENTANDO_BASE_URL": "https://portal.example.test",
+        "ENTANDO_CLIENT_ID": "client",
+        "ENTANDO_CLIENT_SECRET": "secret",
+    }
+    invenio_env = {"INVENIO_BASE_URL": "https://repo.example.test", "INVENIO_ACCESS_TOKEN": "token"}
+    webhook_plan = signed_webhook_plan("Book.created", {"id": 1}, environ=webhook_env)
+    outbox = integration_outbox_entry(webhook_plan)
+    portal_plan = low_code_portal_plan(microfrontend="book-list", route="/books", environ=entando_env)
+    deposit_plan = repository_deposit_plan(record={"title": "Dune"}, files=("dune.pdf",), environ=invenio_env)
+    payment_plan = payment_request_plan("stripe", amount=42, currency="usd", reference="INV-1", environ=payment_env)
+    sms_plan = sms_request_plan("twilio_sms", to="+15551234567", body="Ready", environ=sms_env)
+    email_plan = email_request_plan("sendgrid_email", to="ada@example.test", subject="Ready", body="Report ready.", environ=email_env)
+    gates = (
+        {
+            "gate": "connector_catalog",
+            "ok": required_names <= set(INTEGRATIONS),
+            "evidence": tuple(sorted(INTEGRATIONS)),
+        },
+        {
+            "gate": "first_class_contracts",
+            "ok": {contract["version"] for contract in generated_integration_contracts()}
+            == {"appgen.integration.entando.v1", "appgen.integration.invenio.v1"},
+            "evidence": tuple(contract["integration"] for contract in generated_integration_contracts()),
+        },
+        {
+            "gate": "reviewed_delivery",
+            "ok": (
+                validate_webhook_signature({"id": 1}, webhook_plan["signature"], "secret")
+                and outbox["id"].startswith("outbox-")
+                and delivery_audit_event(outbox, status="queued")["event"] == "integration.delivery.queued"
+            ),
+            "evidence": ("signed_webhook_plan", "integration_outbox_entry", "delivery_audit_event"),
+        },
+        {
+            "gate": "commercial_channels",
+            "ok": (
+                payment_plan["side_effect"] == "external_payment"
+                and sms_plan["side_effect"] == "external_sms"
+                and email_plan["side_effect"] == "external_email"
+                and payment_plan["review_required"]
+                and sms_plan["review_required"]
+                and email_plan["review_required"]
+            ),
+            "evidence": ("payment_request_plan", "sms_request_plan", "email_request_plan"),
+        },
+        {
+            "gate": "portal_repository_contracts",
+            "ok": (
+                portal_plan["contract"] == "appgen.integration.entando.v1"
+                and deposit_plan["contract"] == "appgen.integration.invenio.v1"
+                and portal_plan["review_required"]
+                and deposit_plan["review_required"]
+            ),
+            "evidence": ("low_code_portal_plan", "repository_deposit_plan"),
+        },
+        {
+            "gate": "artifact_coverage",
+            "ok": set(required_artifacts) <= artifacts,
+            "missing": tuple(item for item in required_artifacts if item not in artifacts),
+        },
+    )
+    ok = all(gate["ok"] for gate in gates)
+    return {
+        "format": "appgen.integration-release-gate.v1",
+        "ok": ok,
+        "decision": "approved" if ok else "blocked",
+        "gates": gates,
+        "required_artifacts": required_artifacts,
+    }
+
+
 class IntegrationView(BaseView):
     route_base = "/integrations"
     default_view = "index"
@@ -15866,6 +15957,10 @@ class IntegrationView(BaseView):
     @expose("/catalog.json")
     def catalog_json(self):
         return jsonify(list(integration_catalog()))
+
+    @expose("/release-gate.json")
+    def release_gate_json(self):
+        return jsonify(integration_release_gate({"app/integrations.py", "app/templates/appgen_integrations.html"}))
 
 
 def register_integrations(appbuilder):
@@ -32930,6 +33025,7 @@ def validate_integration_artifacts() -> None:
         "appgen.integration.entando.v1",
         "appgen.integration.invenio.v1",
         "integration_check",
+        "integration_release_gate",
         "entando",
         "invenio",
         "stripe",
@@ -32948,8 +33044,9 @@ def validate_integration_artifacts() -> None:
         or "SMS gateways" not in template
         or "idempotency keys" not in template
         or "outbox envelopes" not in template
+        or "Release Gate JSON" not in template
     ):
-        fail("integration template must expose enterprise, delivery, portal, repository, payment, and SMS gateway coverage")
+        fail("integration template must expose enterprise, delivery, portal, repository, payment, SMS gateway, and release-gate coverage")
 
 
 def validate_productivity_artifacts() -> None:
@@ -34581,6 +34678,8 @@ def test_generated_runtime_helpers():
     assert integrations.integration_outbox_entry(webhook_plan)["id"].startswith("outbox-")
     assert integrations.delivery_audit_event(integrations.integration_outbox_entry(webhook_plan), status="queued")["event"] == "integration.delivery.queued"
     assert integrations.integration_check({"app/integrations.py", "app/templates/appgen_integrations.html"})["ok"] is True
+    assert integrations.integration_release_gate({"app/integrations.py", "app/templates/appgen_integrations.html"})["ok"] is True
+    assert integrations.integration_release_gate({"app/integrations.py"})["ok"] is False
     assert {provider["provider"] for provider in productivity.provider_catalog({})} == {"microsoft365", "google_workspace"}
     first_productivity_table = productivity.productivity_templates()[0]["table"]
     assert productivity.document_merge_payload(first_productivity_table, {})["table"] == first_productivity_table

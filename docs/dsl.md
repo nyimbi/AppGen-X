@@ -359,7 +359,9 @@ apps include:
   calls are represented as reviewed request plans with signed webhook delivery,
   idempotency keys, outbox envelopes, and delivery audit events so generated
   applications do not leak credentials or send data without custom connector
-  code.
+  code. A generated integration release gate proves connector coverage,
+  first-class Entando/Invenio contracts, signed delivery, commercial channels,
+  portal/repository plans, and required integration artifacts.
 - `config.py` and `config_admin.py` with secure generated defaults, FAB API
   documentation settings, and a whitelisted setup screen for every generated
   `config.py` assignment. The setup contract includes grouped metadata,
@@ -370,7 +372,8 @@ apps include:
   and transactional email connector configuration stubs, reviewed request
   plans, signed webhook delivery, outbox envelopes, and first-class
   Entando/Invenio contract descriptors for routes, payloads, permissions, and
-  events.
+  events, plus a generated integration release gate for connector, delivery,
+  portal, repository, payment, SMS, email, and artifact coverage.
 - `productivity.py` and `appgen_productivity.html` with generated Microsoft
   365 and Google Workspace document, spreadsheet, calendar, and task-sync
   payload contracts.

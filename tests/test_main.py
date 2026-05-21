@@ -2220,6 +2220,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert "Salesforce" in (output_dir / "templates" / "appgen_integrations.html").read_text()
     assert "Entando" in (output_dir / "templates" / "appgen_integrations.html").read_text()
     assert "Invenio" in (output_dir / "templates" / "appgen_integrations.html").read_text()
+    assert "Release Gate JSON" in (output_dir / "templates" / "appgen_integrations.html").read_text()
     assert "Productivity Integrations" in (output_dir / "templates" / "appgen_productivity.html").read_text()
     assert "Lifecycle JSON" in (output_dir / "templates" / "appgen_lifecycle.html").read_text()
     assert "tenant_id" in (output_dir / "templates" / "appgen_tenancy.html").read_text()
@@ -3552,6 +3553,20 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert deposit_plan["payload"]["files"] == ("dune.pdf",)
     assert {item["integration"] for item in integrations.generated_integration_contracts()} == {"entando", "invenio"}
     assert integrations.integration_check({"app/integrations.py", "app/templates/appgen_integrations.html"})["ok"] is True
+    integration_gate = integrations.integration_release_gate(
+        {"app/integrations.py", "app/templates/appgen_integrations.html"}
+    )
+    assert integration_gate["format"] == "appgen.integration-release-gate.v1"
+    assert integration_gate["ok"] is True
+    assert {
+        "connector_catalog",
+        "first_class_contracts",
+        "reviewed_delivery",
+        "commercial_channels",
+        "portal_repository_contracts",
+        "artifact_coverage",
+    } <= {gate["gate"] for gate in integration_gate["gates"]}
+    assert integrations.integration_release_gate({"app/integrations.py"})["ok"] is False
     productivity_providers = {item["provider"]: item for item in productivity.provider_catalog({})}
     assert set(productivity_providers) == {"microsoft365", "google_workspace"}
     assert productivity_providers["microsoft365"]["configured"] is False
