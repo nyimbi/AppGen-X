@@ -1637,6 +1637,8 @@ def write_designer_file(output_dir, schema: AppSchema):
         f.write("        return table_proposal(str(payload['name']).strip())\n")
         f.write("    if kind == 'add_field':\n")
         f.write("        return field_proposal(str(payload['table']).strip(), str(payload['name']).strip(), str(payload.get('type') or 'string').strip(), required=bool(payload.get('required')), searchable=bool(payload.get('searchable')), hidden=bool(payload.get('hidden')))\n")
+        f.write("    if kind == 'add_relationship':\n")
+        f.write("        return relationship_proposal(str(payload['source_table']).strip(), str(payload['source_field']).strip(), str(payload['target_table']).strip(), str(payload.get('target_field') or 'id').strip(), cardinality=str(payload.get('cardinality') or 'many-to-one').strip())\n")
         f.write("    if kind == 'add_flow_step':\n")
         f.write("        return flow_step_proposal(str(payload['flow']).strip(), str(payload['source']).strip(), str(payload['target']).strip())\n")
         f.write("    raise ValueError(f\"Unknown designer proposal: {kind}\")\n\n\n")
@@ -1648,6 +1650,23 @@ def write_designer_file(output_dir, schema: AppSchema):
         f.write("    \"\"\"Create a manifest patch proposal for a new field.\"\"\"\n")
         f.write("    field = {'name': name, 'type': type_name, 'nullable': not bool(options.get('required')), 'primary_key': bool(options.get('primary_key', False)), 'unique': bool(options.get('unique', False)), 'references': options.get('references'), 'hidden': bool(options.get('hidden', False)), 'searchable': bool(options.get('searchable', False)), 'derived': bool(options.get('derived', False)), 'expression': options.get('expression'), 'source_group': options.get('source_group')}\n")
         f.write("    return {'kind': 'add_field', 'table': table_name, 'field': field}\n\n\n")
+        f.write("def relationship_proposal(source_table, source_field, target_table, target_field='id', *, cardinality='many-to-one'):\n")
+        f.write("    \"\"\"Create a visual ERD relationship proposal with DSL and DBML previews.\"\"\"\n")
+        f.write("    relation = {'source_table': source_table, 'source_column': source_field, 'target_table': target_table, 'target_column': target_field, 'cardinality': cardinality}\n")
+        f.write("    field = {'name': source_field, 'type': 'int', 'nullable': True, 'primary_key': False, 'unique': cardinality == 'one-to-one', 'references': (target_table, target_field), 'hidden': False, 'searchable': False, 'derived': False, 'expression': None, 'source_group': None}\n")
+        f.write("    return {\n")
+        f.write("        'kind': 'add_relationship',\n")
+        f.write("        'table': source_table,\n")
+        f.write("        'field': field,\n")
+        f.write("        'relation': relation,\n")
+        f.write("        'preview': {\n")
+        f.write("            'dsl': f'  {source_field}: int -> {target_table}.{target_field} [{cardinality}]',\n")
+        f.write("            'dbml': f'Ref: {source_table}.{source_field} > {target_table}.{target_field}',\n")
+        f.write("            'erd': f'{target_table} ||--o{{ {source_table} : {source_field}',\n")
+        f.write("        },\n")
+        f.write("        'migration': {'format': 'appgen.migration-preview.v1', 'operations': ({'op': 'add_relationship', 'table': source_table, 'field': source_field, 'target_table': target_table, 'target_field': target_field, 'destructive': False},), 'requires_review': True},\n")
+        f.write("        'requires_review': True,\n")
+        f.write("    }\n\n\n")
         f.write("def flow_step_proposal(flow_name, source, target):\n")
         f.write("    \"\"\"Create a manifest patch proposal for a workflow transition.\"\"\"\n")
         f.write("    return {'kind': 'add_flow_step', 'flow': flow_name, 'step': {'source': source, 'target': target}}\n\n\n")
@@ -1664,6 +1683,14 @@ def write_designer_file(output_dir, schema: AppSchema):
         f.write("                break\n")
         f.write("        else:\n")
         f.write("            raise KeyError(proposal['table'])\n")
+        f.write("    elif kind == 'add_relationship':\n")
+        f.write("        for table in updated.setdefault('tables', []):\n")
+        f.write("            if table.get('name') == proposal['table']:\n")
+        f.write("                table.setdefault('columns', []).append(proposal['field'])\n")
+        f.write("                break\n")
+        f.write("        else:\n")
+        f.write("            updated.setdefault('tables', []).append({'name': proposal['table'], 'columns': [proposal['field']]})\n")
+        f.write("        updated.setdefault('relations', []).append(proposal['relation'])\n")
         f.write("    elif kind == 'add_flow_step':\n")
         f.write("        for flow in updated.setdefault('flows', []):\n")
         f.write("            if flow.get('name') == proposal['flow']:\n")
@@ -1686,6 +1713,10 @@ def write_designer_file(output_dir, schema: AppSchema):
         f.write("        lines.append(f'app {app_name} {{ {options} }}')\n")
         f.write("    else:\n")
         f.write("        lines.append(f'app {app_name}')\n")
+        f.write("    relation_cardinality = {\n")
+        f.write("        (item.get('source_table'), item.get('source_column'), item.get('target_table'), item.get('target_column')): item.get('cardinality')\n")
+        f.write("        for item in manifest.get('relations', [])\n")
+        f.write("    }\n")
         f.write("    for enum in manifest.get('enums', []):\n")
         f.write("        values = ' '.join(enum.get('values', []))\n")
         f.write("        lines.append('')\n")
@@ -1708,6 +1739,9 @@ def write_designer_file(output_dir, schema: AppSchema):
         f.write("            if column.get('references'):\n")
         f.write("                target_table, target_column = column['references']\n")
         f.write("                modifiers.append(f'-> {target_table}.{target_column}')\n")
+        f.write("                cardinality = relation_cardinality.get((table['name'], column['name'], target_table, target_column))\n")
+        f.write("                if cardinality:\n")
+        f.write("                    modifiers.append(f'[{cardinality}]')\n")
         f.write("            expression = f\" = {column['expression']}\" if column.get('expression') else ''\n")
         f.write("            suffix = ' ' + ' '.join(modifiers) if modifiers else ''\n")
         f.write("            lines.append(f\"  {column['name']}: {column['type']}{expression}{suffix}\")\n")
@@ -23510,6 +23544,7 @@ def database_design_workspace():
             "ponyorm": schema_ponyorm(),
         }},
         "checks": ("duplicate_names", "references", "migration_preview", "data_loss_check"),
+        "proposal_kinds": ("table", "field", "relationship"),
     }}
 
 
@@ -23536,6 +23571,29 @@ def database_table_proposal(table_name, fields=(), action="create"):
         }},
         "migration": database_migration_plan({{"action": action, "table": table_name, "fields": tuple(normalized_fields)}}),
         "checks": ("duplicate_table", "field_names", "type_support", "data_loss_check"),
+        "requires_review": True,
+    }}
+
+
+def database_relationship_proposal(source_table, source_field, target_table, target_field="id", cardinality="many-to-one"):
+    """Return a visual ERD relationship proposal that can regenerate DSL and DBML."""
+    relation = {{
+        "source_table": source_table,
+        "source_column": source_field,
+        "target_table": target_table,
+        "target_column": target_field,
+        "cardinality": cardinality,
+    }}
+    return {{
+        "action": "connect_tables",
+        "relation": relation,
+        "preview": {{
+            "dsl": f"  {{source_field}}: int -> {{target_table}}.{{target_field}} [{{cardinality}}]",
+            "dbml": f"Ref: {{source_table}}.{{source_field}} > {{target_table}}.{{target_field}}",
+            "erd": target_table + " ||--o{{ " + source_table + " : " + source_field,
+        }},
+        "migration": database_migration_plan({{"action": "add_relationship", **relation}}),
+        "checks": ("existing_tables", "duplicate_relationship", "cardinality_review", "data_loss_check"),
         "requires_review": True,
     }}
 
@@ -26377,6 +26435,8 @@ def validate_designer_artifacts() -> None:
         fail("designer must expose ERD and relationship export helpers")
     if "schema_diff" not in contract or "migration_preview" not in contract or "@expose('/migration-preview'" not in contract:
         fail("designer must expose schema diff and migration preview contracts")
+    if "relationship_proposal" not in contract or "add_relationship" not in contract:
+        fail("designer must expose visual relationship proposals")
     if "proposal_from_payload" not in contract or "@expose('/proposal'" not in contract:
         fail("designer must expose browser proposal endpoint")
     template = (ROOT / "app" / "templates" / "appgen_designer.html").read_text()
@@ -28139,6 +28199,10 @@ def test_generated_runtime_helpers():
         assert relationships == ()
     assert designer.schema_diagram_check(manifest)["ok"] is True
     assert designer.proposal_from_payload({"kind": "add_field", "table": manifest["tables"][0]["name"], "name": "generated_note", "type": "text"})["kind"] == "add_field"
+    if len(manifest["tables"]) >= 2:
+        relationship_patch = designer.relationship_proposal(manifest["tables"][1]["name"], "generated_parent_id", manifest["tables"][0]["name"])
+        assert relationship_patch["kind"] == "add_relationship"
+        assert "->" in designer.proposal_to_dsl(manifest, relationship_patch)
     generated_check = designer.table_proposal("GeneratedCheck")
     assert "table GeneratedCheck" in designer.proposal_to_dsl(manifest, generated_check)
     assert designer.migration_preview(manifest, generated_check)["format"] == "appgen.migration-preview.v1"
@@ -28524,7 +28588,9 @@ def test_generated_runtime_helpers():
     assert studio.database_design_catalog()
     assert studio.table_design(next(iter(studio.database_design_catalog()))["table"])
     assert studio.database_design_workspace()["erd"].startswith("erDiagram\\n")
+    assert "relationship" in studio.database_design_workspace()["proposal_kinds"]
     assert "Table" in studio.schema_dbml()
+    assert studio.database_relationship_proposal("Child", "parent_id", "Parent")["migration"]["change"]["action"] == "add_relationship"
     assert "CREATE TABLE" in studio.schema_sql_ddl()
     assert "db.Entity" in studio.schema_ponyorm()
     assert studio.schema_change_preview({"add_field": "Book.edition"})["review_required"] is True

@@ -2777,6 +2777,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert studio.field_design("Book", "title")["required"] is True
     workbench = studio.database_design_workspace()
     assert workbench["erd"].startswith("erDiagram\n")
+    assert "relationship" in workbench["proposal_kinds"]
     assert "Table Book" in workbench["exports"]["dbml"]
     assert "CREATE TABLE Book" in workbench["exports"]["sql"]
     assert "class Book(db.Entity)" in workbench["exports"]["ponyorm"]
@@ -2789,6 +2790,9 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     )
     assert table_proposal["migration"]["requires_review"] is True
     assert "Table Invoice" in table_proposal["preview"]["dbml"]
+    relationship_proposal = studio.database_relationship_proposal("Book", "publisher_id", "Publisher")
+    assert relationship_proposal["preview"]["dsl"] == "  publisher_id: int -> Publisher.id [many-to-one]"
+    assert relationship_proposal["migration"]["change"]["action"] == "add_relationship"
     assert studio.schema_change_preview({"add_field": "Book.edition"})["review_required"] is True
     assert studio.database_migration_plan({"add_field": "Book.edition"})["requires_review"] is True
     assert studio.app_generation_plan(targets=("web", "desktop"))["targets"] == ("web", "desktop")
@@ -3265,10 +3269,19 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert preview["format"] == "appgen.migration-preview.v1"
     assert preview["operations"][0]["op"] == "add_column"
     assert "data_loss_check" in preview["checks"]
+    relation_patch = designer.relationship_proposal("Book", "publisher_id", "Publisher", cardinality="many-to-one")
+    assert relation_patch["preview"]["dbml"] == "Ref: Book.publisher_id > Publisher.id"
+    relation_dsl = designer.proposal_to_dsl(manifest, relation_patch)
+    assert "publisher_id: int -> Publisher.id [many-to-one]" in relation_dsl
+    assert designer.migration_preview(manifest, relation_patch)["operations"][0]["op"] == "add_column"
     browser_patch = designer.proposal_from_payload(
         {"kind": "add_field", "table": "Book", "name": "subtitle", "type": "string", "searchable": True}
     )
     assert "subtitle: string search" in designer.proposal_to_dsl(manifest, browser_patch)
+    browser_relation = designer.proposal_from_payload(
+        {"kind": "add_relationship", "source_table": "Book", "source_field": "editor_id", "target_table": "Author"}
+    )
+    assert browser_relation["relation"]["target_column"] == "id"
     flow_patch = designer.flow_step_proposal("Publish", "review", "approved")
     assert "review -> approved;" in designer.proposal_to_dsl(manifest, flow_patch)
     state = designer.designer_state(manifest)

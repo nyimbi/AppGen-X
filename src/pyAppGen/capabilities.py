@@ -29,7 +29,7 @@ DEFAULT_CAPABILITIES: tuple[Capability, ...] = (
     Capability("schema.import", "DBML, SQL, PonyORM, and database import", "implemented", "canonical schema adapters with DBML/live unique indexes, SQL enum/ALTER TABLE support, static PonyORM enum/type normalization, and generated import provenance, validation, and review cockpit"),
     Capability("dsl.language-design", "ANTLR DSL reference, keyword budget, examples, and linting", "partial", "generated DSL reference cockpit, keyword budget checks, examples, and readability lint helpers"),
     Capability("codegen.fab", "Flask-AppBuilder app generation", "implemented", "models, views, templates, support files"),
-    Capability("ui.visual-modeling", "Visual data, form, and workflow modeling", "partial", "generated designer graph, edit proposals, schema diffs, migration previews, and DSL regeneration helpers"),
+    Capability("ui.visual-modeling", "Visual data, form, and workflow modeling", "partial", "generated designer graph, table/field/relationship edit proposals, schema diffs, migration previews, and DSL regeneration helpers"),
     Capability("ui.view-composition", "Master-detail, multiple-view, and chart view composition", "partial", "generated relationship-driven view composition contracts and cockpit"),
     Capability("ui.tabbed-views", "Tabbed views with permissions per tab", "partial", "generated tab contracts and role-aware per-tab access policies"),
     Capability("ui.form-designer", "Delphi-style drag-and-drop form designer", "partial", "DSL component placements, generated component palette, form canvas contracts, and drop proposals"),
