@@ -412,7 +412,8 @@ apps include:
   authoring, DSL linting, outline extraction, keyword-budget checks,
   quick fixes, completions/snippets, searchable command palettes, project trees, editor
   sessions, visual database design, Mermaid ERD export, DBML export, SQL DDL
-  preview, PonyORM preview, table proposals, migration previews, staged
+  preview, read-only SQL workbench/explain-plan guards, PonyORM preview, table
+  proposals, migration previews, staged
   generation jobs with deterministic IDs, queue/status/log views, target
   artifact manifests, IDE diagnostics, app management, code editing,
   breakpoint/debug plans, dependency update plans, app cloning, and reusable

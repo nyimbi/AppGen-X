@@ -5831,6 +5831,7 @@ def write_studio_template(output_dir):
       <a class="btn btn-default" href="{{ url_for('StudioView.project_tree_json') }}">Project Tree JSON</a>
       <a class="btn btn-default" href="{{ url_for('StudioView.diagnostics_json') }}">Diagnostics JSON</a>
       <a class="btn btn-default" href="{{ url_for('StudioView.database_design_json') }}">Database Design JSON</a>
+      <a class="btn btn-default" href="{{ url_for('StudioView.sql_workbench_json') }}">SQL Workbench JSON</a>
       <a class="btn btn-default" href="{{ url_for('StudioView.generation_jobs_json') }}">Generation Jobs JSON</a>
       <a class="btn btn-default" href="{{ url_for('StudioView.generation_artifacts_json') }}">Generation Artifacts JSON</a>
       <a class="btn btn-default" href="{{ url_for('StudioView.schema_erd_route') }}">ERD</a>
@@ -23979,6 +23980,7 @@ def _studio_text(schema: AppSchema, app_name: str) -> str:
     ide_actions = (
         {"command": "open_dsl", "label": "Open DSL", "scope": "authoring", "checks": ("dsl_lint", "keyword_budget")},
         {"command": "design_database", "label": "Design Database", "scope": "schema", "checks": ("relationship_check", "migration_preview")},
+        {"command": "open_sql_workbench", "label": "Open SQL Workbench", "scope": "schema", "checks": ("read_only_guard", "explain_plan")},
         {"command": "generate_application", "label": "Generate Application", "scope": "codegen", "checks": ("py_compile", "appgen_quality")},
         {"command": "manage_application", "label": "Manage Application", "scope": "operations", "checks": ("readiness", "deployment_plan")},
         {"command": "debug_application", "label": "Debug Application", "scope": "runtime", "checks": ("breakpoints", "variable_redaction")},
@@ -24050,6 +24052,7 @@ def ide_workspace():
         "dsl_authoring": dsl_authoring_surface(),
         "database_design": database_design_catalog(),
         "database_workbench": database_design_workspace(),
+        "sql_workbench": sql_workbench_session(),
         "editable_files": editable_files(),
         "command_palette": ide_command_palette(),
         "generation": app_generation_plan(),
@@ -24428,6 +24431,87 @@ def schema_sql_ddl():
     return "\\n\\n".join(statements) + "\\n"
 
 
+def sql_referenced_tables(statement):
+    """Return generated schema tables referenced by a SQL scratchpad statement."""
+    source = str(statement or "")
+    names = {{}}
+    known = {{table["table"].lower(): table["table"] for table in DATABASE_DESIGN}}
+    for match in re.finditer(r"\\b(?:from|join)\\s+([A-Za-z_][A-Za-z0-9_]*)", source, flags=re.IGNORECASE):
+        table_name = match.group(1).lower()
+        if table_name in known:
+            names[known[table_name]] = known[table_name]
+    return tuple(names.values())
+
+
+def sql_statement_guard(statement):
+    """Return a read-only safety review for the generated SQL workbench."""
+    source = str(statement or "").strip()
+    lowered = source.lower()
+    destructive = tuple(
+        keyword
+        for keyword in ("insert", "update", "delete", "drop", "alter", "truncate", "create", "grant", "revoke", "merge", "call", "execute", "copy")
+        if re.search(r"\\b" + keyword + r"\\b", lowered)
+    )
+    allowed_start = lowered.startswith(("select", "with", "explain")) if lowered else True
+    warnings = []
+    if not source:
+        warnings.append("No SQL statement supplied.")
+    if not sql_referenced_tables(source) and source:
+        warnings.append("Statement does not reference a generated table.")
+    return {{
+        "statement": source,
+        "ok": bool(source) and allowed_start and not destructive,
+        "read_only": allowed_start and not destructive,
+        "allowed_start": allowed_start,
+        "blocked_keywords": destructive,
+        "referenced_tables": sql_referenced_tables(source),
+        "warnings": tuple(warnings),
+    }}
+
+
+def sql_explain_plan(statement, *, dialect="postgresql"):
+    """Return a deterministic explain-plan preview without executing SQL."""
+    guard = sql_statement_guard(statement)
+    tables = guard["referenced_tables"]
+    steps = tuple(
+        {{
+            "order": index + 1,
+            "operation": "read",
+            "table": table_name,
+            "access": "generated-index-or-sequential-scan",
+            "review": "verify filters and indexes before production use",
+        }}
+        for index, table_name in enumerate(tables)
+    )
+    return {{
+        "format": "appgen.sql-explain-plan.v1",
+        "dialect": dialect,
+        "ok": guard["ok"],
+        "read_only": guard["read_only"],
+        "statement": guard["statement"],
+        "tables": tables,
+        "steps": steps,
+        "warnings": guard["warnings"],
+    }}
+
+
+def sql_workbench_session(statement="", *, dialect="postgresql"):
+    """Return a safe generated SQL scratchpad for database designers."""
+    statement = statement or "SELECT * FROM " + (DATABASE_DESIGN[0]["table"] if DATABASE_DESIGN else "example") + " LIMIT 20"
+    guard = sql_statement_guard(statement)
+    return {{
+        "format": "appgen.sql-workbench.v1",
+        "dialect": dialect,
+        "statement": statement,
+        "guard": guard,
+        "explain": sql_explain_plan(statement, dialect=dialect),
+        "schema": database_design_catalog(),
+        "exports": {{"ddl": schema_sql_ddl(), "dbml": schema_dbml()}},
+        "commands": ("format_sql", "explain", "copy_select", "open_table_design"),
+        "side_effects": (),
+    }}
+
+
 def schema_ponyorm():
     """Return a PonyORM entity preview for the current database design."""
     lines = ["from pony.orm import Database, PrimaryKey, Required, Optional", "", "db = Database()", ""]
@@ -24464,6 +24548,7 @@ def database_design_workspace():
             "sql": schema_sql_ddl(),
             "ponyorm": schema_ponyorm(),
         }},
+        "sql_workbench": sql_workbench_session(),
         "checks": ("duplicate_names", "references", "migration_preview", "data_loss_check"),
         "proposal_kinds": ("table", "field", "relationship"),
     }}
@@ -24888,6 +24973,10 @@ class StudioView(BaseView):
     @expose("/schema-workbench.json")
     def schema_workbench_json(self):
         return jsonify(database_design_workspace())
+
+    @expose("/sql-workbench.json")
+    def sql_workbench_json(self):
+        return jsonify(sql_workbench_session())
 
     @expose("/schema.erd.mmd")
     def schema_erd_route(self):
@@ -28122,6 +28211,9 @@ def validate_studio_artifacts() -> None:
         "schema_erd_mermaid",
         "schema_dbml",
         "schema_sql_ddl",
+        "sql_statement_guard",
+        "sql_explain_plan",
+        "sql_workbench_session",
         "schema_ponyorm",
         "schema_change_preview",
         "database_migration_plan",
@@ -28161,6 +28253,7 @@ def validate_studio_artifacts() -> None:
         or "Diagnostics" not in template
         or "Database Designer" not in template
         or "Generation Jobs" not in template
+        or "SQL Workbench JSON" not in template
         or "Generation Jobs JSON" not in template
         or "Generation Artifacts JSON" not in template
         or "DBML" not in template
@@ -29958,10 +30051,13 @@ def test_generated_runtime_helpers():
     assert studio.database_design_catalog()
     assert studio.table_design(next(iter(studio.database_design_catalog()))["table"])
     assert studio.database_design_workspace()["erd"].startswith("erDiagram\\n")
+    assert studio.database_design_workspace()["sql_workbench"]["format"] == "appgen.sql-workbench.v1"
     assert "relationship" in studio.database_design_workspace()["proposal_kinds"]
     assert "Table" in studio.schema_dbml()
     assert studio.database_relationship_proposal("Child", "parent_id", "Parent")["migration"]["change"]["action"] == "add_relationship"
     assert "CREATE TABLE" in studio.schema_sql_ddl()
+    assert studio.sql_statement_guard("delete from " + next(iter(studio.database_design_catalog()))["table"])["ok"] is False
+    assert studio.sql_workbench_session("select * from " + next(iter(studio.database_design_catalog()))["table"])["explain"]["tables"]
     assert "db.Entity" in studio.schema_ponyorm()
     assert studio.schema_change_preview({"add_field": "Book.edition"})["review_required"] is True
     assert studio.database_migration_plan({"add_field": "Book.edition"})["requires_review"] is True

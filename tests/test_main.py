@@ -2907,6 +2907,16 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert "Table Book" in workbench["exports"]["dbml"]
     assert "CREATE TABLE Book" in workbench["exports"]["sql"]
     assert "class Book(db.Entity)" in workbench["exports"]["ponyorm"]
+    assert workbench["sql_workbench"]["format"] == "appgen.sql-workbench.v1"
+    assert studio.sql_referenced_tables("select * from Book join Author on Book.author_id = Author.id") == (
+        "Book",
+        "Author",
+    )
+    assert studio.sql_statement_guard("delete from Book")["ok"] is False
+    sql_session = studio.sql_workbench_session("select * from Book", dialect="sqlite")
+    assert sql_session["guard"]["read_only"] is True
+    assert sql_session["side_effects"] == ()
+    assert sql_session["explain"]["tables"] == ("Book",)
     assert studio.schema_erd_mermaid().startswith("erDiagram\n")
     assert "Ref: Book.author_id > Author.id" in studio.schema_dbml()
     assert "author_id INTEGER REFERENCES Author(id)" in studio.schema_sql_ddl()
