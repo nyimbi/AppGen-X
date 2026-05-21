@@ -4994,13 +4994,15 @@ def write_api_testing_template(output_dir):
     <div>
       <h1 class="agt-title">API Testing</h1>
       <p class="agt-note">
-        Generated automated API testing and synthetic monitoring contracts for
-        REST resources, status expectations, payload samples, and probes.
+        Generated automated API testing, UI smoke testing, and synthetic
+        monitoring contracts for REST resources, status expectations, payload
+        samples, screens, and probes.
       </p>
     </div>
     <div>
       <a class="btn btn-default" href="{{ url_for('APITestingView.catalog_json') }}">Test Catalog JSON</a>
       <a class="btn btn-default" href="{{ url_for('APITestingView.monitor_json') }}">Monitor JSON</a>
+      <a class="btn btn-default" href="{{ url_for('APITestingView.ui_smoke_json') }}">UI Smoke JSON</a>
     </div>
   </div>
   <div class="agt-grid">
@@ -5018,6 +5020,13 @@ def write_api_testing_template(output_dir):
       <div class="agt-muted">{{ monitor.interval_seconds }} second interval</div>
       {% for probe in monitor.probes %}
       <span class="agt-pill">{{ probe.method }} {{ probe.name }}</span>
+      {% endfor %}
+    </article>
+    <article class="agt-card">
+      <h3>UI Smoke</h3>
+      <div class="agt-muted">{{ ui_smoke|length }} generated screen checks</div>
+      {% for check in ui_smoke %}
+      <span class="agt-pill">{{ check.name }}</span>
       {% endfor %}
     </article>
   </div>
@@ -22187,8 +22196,44 @@ def _sample_value_for_column(column: ColumnSchema, enum_values: dict[str, tuple[
 def _api_testing_text(schema: AppSchema) -> str:
     enum_values = {enum.name: tuple(enum.values) for enum in schema.enums}
     tests = {}
+    ui_smoke = [
+        {
+            "name": "home",
+            "path": "/",
+            "expected_status": (200,),
+            "assert_text": (schema.app_name or "AppGen",),
+            "assert_selectors": ("body",),
+            "accessibility": ("has_title", "has_main_or_body"),
+        },
+        {
+            "name": "components",
+            "path": "/components/",
+            "expected_status": (200, 302, 404),
+            "assert_text": ("Components",),
+            "assert_selectors": ("body",),
+            "accessibility": ("has_title", "keyboard_reachable"),
+        },
+        {
+            "name": "monitoring",
+            "path": "/monitoring/",
+            "expected_status": (200, 302, 404),
+            "assert_text": ("Monitoring",),
+            "assert_selectors": ("body",),
+            "accessibility": ("has_title", "status_visible"),
+        },
+    ]
     for table in schema.tables:
         route = f"/api/v1/{underscore(table.name)}/"
+        ui_smoke.append(
+            {
+                "name": f"{underscore(table.name)}_list_view",
+                "path": f"/{underscore(table.name)}/list/",
+                "expected_status": (200, 302, 404),
+                "assert_text": (snake_to_label(table.name),),
+                "assert_selectors": ("body",),
+                "accessibility": ("has_title", "focus_visible"),
+            }
+        )
         payload = {}
         required = []
         for column in table.columns:
@@ -22257,6 +22302,7 @@ from flask_appbuilder import expose
 
 
 API_TESTS = {tests!r}
+UI_SMOKE_TESTS = {tuple(ui_smoke)!r}
 
 
 def api_test_catalog():
@@ -22318,6 +22364,70 @@ def synthetic_monitor_plan(interval_seconds=60, base_url=""):
         "interval_seconds": max(15, int(interval_seconds)),
         "probes": probes,
     }}
+
+
+def ui_smoke_plan(base_url=""):
+    """Return generated UI smoke tests for core generated screens."""
+    base_url = base_url.rstrip("/")
+    return tuple(
+        dict(
+            item,
+            url=f"{{base_url}}{{item['path']}}" if base_url else item["path"],
+            checks=("status", "text", "selectors", "accessibility"),
+        )
+        for item in UI_SMOKE_TESTS
+    )
+
+
+def ui_smoke_result(test_name, *, status_code, text="", selectors=(), accessibility=()):
+    """Evaluate a generated UI smoke-test result."""
+    tests_by_name = {{item["name"]: item for item in ui_smoke_plan()}}
+    if test_name not in tests_by_name:
+        raise KeyError(f"Unknown UI smoke test: {{test_name}}")
+    test = tests_by_name[test_name]
+    selector_set = set(selectors or ())
+    accessibility_set = set(accessibility or ())
+    missing_text = tuple(expected for expected in test["assert_text"] if expected and expected not in str(text or ""))
+    missing_selectors = tuple(selector for selector in test["assert_selectors"] if selector not in selector_set)
+    missing_accessibility = tuple(check for check in test["accessibility"] if check not in accessibility_set)
+    return {{
+        "test": test_name,
+        "ok": int(status_code) in test["expected_status"] and not missing_text and not missing_selectors and not missing_accessibility,
+        "status_code": int(status_code),
+        "expected_status": test["expected_status"],
+        "missing_text": missing_text,
+        "missing_selectors": missing_selectors,
+        "missing_accessibility": missing_accessibility,
+    }}
+
+
+def ui_smoke_results(results):
+    """Evaluate a mapping of UI smoke-test result payloads."""
+    evaluated = tuple(
+        ui_smoke_result(name, **payload)
+        for name, payload in dict(results).items()
+    )
+    return {{"ok": all(item["ok"] for item in evaluated), "results": evaluated}}
+
+
+def render_playwright_smoke_module(page_fixture="page", base_url=""):
+    """Render Playwright-style UI smoke tests for generated screens."""
+    lines = [
+        '"""Generated AppGen UI smoke tests."""',
+        "",
+        "import pytest",
+        "",
+        f"UI_SMOKE_CASES = {{ui_smoke_plan(base_url=base_url)!r}}",
+        "",
+        "",
+        "@pytest.mark.parametrize('case', UI_SMOKE_CASES, ids=lambda case: case['name'])",
+        f"def test_generated_ui_smoke({{page_fixture}}, case):",
+        f"    {{page_fixture}}.goto(case['url'])",
+        f"    assert {{page_fixture}}.title() is not None",
+        "    for expected in case['assert_text']:",
+        f"        assert expected in {{page_fixture}}.content()",
+    ]
+    return "\\n".join(lines) + "\\n"
 
 
 def validate_response(test_name, status_code, payload=None):
@@ -22390,6 +22500,9 @@ def test_execution_plan(client_fixture="client"):
         "client_fixture": client_fixture,
         "case_count": len(pytest_case_matrix()),
         "command": "pytest tests/test_generated_api_contracts.py",
+        "ui_module": "tests/test_generated_ui_smoke.py",
+        "ui_case_count": len(ui_smoke_plan()),
+        "ui_command": "pytest tests/test_generated_ui_smoke.py",
         "requires_fixture_cases": tuple(case["id"] for case in pytest_case_matrix() if case["requires_fixture"]),
     }}
 
@@ -22417,6 +22530,7 @@ def api_testing_check(existing_paths=()):
         "ok": not missing and bool(API_TESTS),
         "missing": missing,
         "requests": len(request_plan()),
+        "ui_smoke": len(ui_smoke_plan()),
         "resources": tuple(API_TESTS),
     }}
 
@@ -22431,6 +22545,7 @@ class APITestingView(BaseView):
             "appgen_api_testing.html",
             catalog=api_test_catalog(),
             monitor=synthetic_monitor_plan(),
+            ui_smoke=ui_smoke_plan(),
         )
 
     @expose("/catalog.json")
@@ -22440,6 +22555,10 @@ class APITestingView(BaseView):
     @expose("/monitor.json")
     def monitor_json(self):
         return jsonify(synthetic_monitor_plan())
+
+    @expose("/ui-smoke.json")
+    def ui_smoke_json(self):
+        return jsonify(list(ui_smoke_plan()))
 
 
 def register_api_testing(appbuilder):
@@ -28596,11 +28715,13 @@ def validate_api_testing_artifacts() -> None:
     contract = (ROOT / "app" / "api_testing.py").read_text()
     if "request_plan" not in contract or "validate_response" not in contract or "synthetic_monitor_plan" not in contract:
         fail("API testing contract must expose request plans, response validation, and synthetic monitoring")
+    if "ui_smoke_plan" not in contract or "render_playwright_smoke_module" not in contract or "ui_smoke_results" not in contract:
+        fail("API testing contract must expose generated UI smoke tests and result evaluation")
     if "contract_coverage" not in contract or "api_testing_check" not in contract or "render_pytest_module" not in contract or "test_execution_plan" not in contract:
         fail("API testing contract must expose OpenAPI coverage, pytest rendering, execution plans, and readiness helpers")
     template = (ROOT / "app" / "templates" / "appgen_api_testing.html").read_text()
-    if "API Testing" not in template or "Test Catalog JSON" not in template or "Monitor JSON" not in template:
-        fail("API testing template must expose generated test and monitor catalogs")
+    if "API Testing" not in template or "Test Catalog JSON" not in template or "Monitor JSON" not in template or "UI Smoke JSON" not in template:
+        fail("API testing template must expose generated test, UI smoke, and monitor catalogs")
 
 
 def validate_diagnostics_artifacts() -> None:
@@ -30025,6 +30146,8 @@ def test_generated_runtime_helpers():
     first_request = api_testing.request_plan()[0]
     assert api_testing.validate_response(first_request["name"], first_request["expected_status"][0])["ok"] is True
     assert api_testing.synthetic_monitor_plan()["probes"]
+    assert api_testing.ui_smoke_plan()
+    assert "def test_generated_ui_smoke" in api_testing.render_playwright_smoke_module()
     assert api_testing.pytest_case_matrix()[0]["id"] == first_request["name"]
     assert "def test_generated_api_contracts" in api_testing.render_pytest_module()
     assert api_testing.test_execution_plan()["case_count"] == len(api_testing.pytest_case_matrix())
