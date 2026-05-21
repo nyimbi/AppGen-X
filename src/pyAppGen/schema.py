@@ -88,6 +88,7 @@ SUPPORTED_SCHEMA_SOURCES = (
         "command": "appgen --dsl app.appgen --writedir app",
     },
 )
+_SQL_IMPLICIT_PRIMARY_KEY = "__appgen_sql_implicit_primary_key__"
 
 
 def normalize_platform_targets(
@@ -636,7 +637,7 @@ def schema_from_sql(path: str | Path) -> AppSchema:
                 if target:
                     target_table, target_columns = target
                     for index, source_column in enumerate(source_columns):
-                        target_column = target_columns[index] if index < len(target_columns) else target_columns[0]
+                        target_column = _sql_target_column(target_columns, index)
                         existing = columns.get(source_column)
                         columns[source_column] = _with_reference(
                             existing or ColumnSchema(source_column),
@@ -713,6 +714,7 @@ def schema_from_sql(path: str | Path) -> AppSchema:
     tables = _apply_sql_unique_indexes(sql, tables)
     tables, alter_relations = _apply_sql_alter_constraints(sql, tables)
     relations.extend(alter_relations)
+    tables, relations = _resolve_sql_implicit_reference_targets(tables, relations)
 
     return AppSchema(
         tables=tuple(tables),
@@ -1067,12 +1069,9 @@ def _parse_sql_column(part: str) -> ColumnSchema | None:
     unique = " unique" in f" {lowered}"
     default = _sql_default(part)
     references = None
-    ref = re.search(r"references\s+([\w\".]+)\s*\(([^)]+)\)", part, flags=re.IGNORECASE)
+    ref = _sql_reference_target(part)
     if ref:
-        references = (
-            _clean_identifier(ref.group(1).split(".")[-1]),
-            _clean_identifier(ref.group(2).split(",")[0]),
-        )
+        references = (ref[0], _sql_target_column(ref[1], 0))
     return ColumnSchema(
         name=name,
         type_name=type_name,
@@ -1155,7 +1154,7 @@ def _apply_sql_alter_constraints(
             for index, source_column in enumerate(_constraint_column_list(constraint)):
                 if source_column not in updated[table_name]:
                     continue
-                target_column = target_columns[index] if index < len(target_columns) else target_columns[0]
+                target_column = _sql_target_column(target_columns, index)
                 updated[table_name][source_column] = _with_reference(
                     updated[table_name][source_column],
                     target_table,
@@ -1212,7 +1211,7 @@ def _constraint_column_list(part: str) -> tuple[str, ...]:
 
 def _sql_reference_target(part: str) -> tuple[str, tuple[str, ...]] | None:
     match = re.search(
-        r"references\s+([\w\".]+)\s*\(([^)]+)\)",
+        r"references\s+([\w\".]+)(?:\s*\(([^)]+)\))?",
         part,
         flags=re.IGNORECASE | re.DOTALL,
     )
@@ -1220,8 +1219,54 @@ def _sql_reference_target(part: str) -> tuple[str, tuple[str, ...]] | None:
         return None
     return (
         _clean_identifier(match.group(1).split(".")[-1]),
-        tuple(_clean_identifier(value) for value in _split_sql_list(match.group(2))),
+        tuple(_clean_identifier(value) for value in _split_sql_list(match.group(2) or "")),
     )
+
+
+def _sql_target_column(target_columns: tuple[str, ...], index: int) -> str:
+    if not target_columns:
+        return _SQL_IMPLICIT_PRIMARY_KEY
+    return target_columns[index] if index < len(target_columns) else target_columns[0]
+
+
+def _resolve_sql_implicit_reference_targets(
+    tables: list[TableSchema],
+    relations: list[RelationSchema],
+) -> tuple[list[TableSchema], list[RelationSchema]]:
+    primary_keys = {
+        table.name: tuple(column.name for column in table.columns if column.primary_key)
+        for table in tables
+    }
+
+    def resolve(table_name: str, target_column: str) -> str:
+        if target_column != _SQL_IMPLICIT_PRIMARY_KEY:
+            return target_column
+        keys = primary_keys.get(table_name, ())
+        return keys[0] if len(keys) == 1 else "id"
+
+    resolved_tables: list[TableSchema] = []
+    for table in tables:
+        resolved_columns = []
+        for column in table.columns:
+            if column.references is None:
+                resolved_columns.append(column)
+                continue
+            target_table, target_column = column.references
+            resolved_columns.append(_with_reference(column, target_table, resolve(target_table, target_column)))
+        resolved_tables.append(TableSchema(table.name, tuple(resolved_columns)))
+
+    resolved_relations = [
+        RelationSchema(
+            source_table=relation.source_table,
+            source_column=relation.source_column,
+            target_table=relation.target_table,
+            target_column=resolve(relation.target_table, relation.target_column),
+            name=relation.name,
+            cardinality=relation.cardinality,
+        )
+        for relation in relations
+    ]
+    return resolved_tables, resolved_relations
 
 
 def _clean_identifier(value: str) -> str:

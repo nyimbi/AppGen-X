@@ -1209,6 +1209,62 @@ def test_sql_source_preserves_composite_foreign_key_pairs(tmp_path) -> None:
     py_compile.compile(str(output_dir / "api.py"), doraise=True)
 
 
+def test_sql_source_resolves_implicit_primary_key_references(tmp_path) -> None:
+    """SQL REFERENCES without a column list points at the target primary key."""
+    sql_path = tmp_path / "implicit_refs.sql"
+    sql_path.write_text(
+        """
+        CREATE TABLE publisher (
+          code TEXT PRIMARY KEY,
+          name TEXT NOT NULL
+        );
+
+        CREATE TABLE book (
+          isbn TEXT PRIMARY KEY,
+          publisher_code TEXT REFERENCES publisher,
+          title TEXT NOT NULL
+        );
+
+        CREATE TABLE review (
+          id INTEGER PRIMARY KEY,
+          book_isbn TEXT
+        );
+
+        ALTER TABLE review
+          ADD CONSTRAINT fk_review_book
+          FOREIGN KEY (book_isbn)
+          REFERENCES book;
+        """
+    )
+
+    schema = load_schema(sql_path, source_type="sql")
+    book_columns = {column.name: column for column in schema.table("book").columns}
+    review_columns = {column.name: column for column in schema.table("review").columns}
+
+    assert book_columns["publisher_code"].references == ("publisher", "code")
+    assert review_columns["book_isbn"].references == ("book", "isbn")
+    assert {
+        (relation.source_table, relation.source_column, relation.target_table, relation.target_column)
+        for relation in schema.relations
+    } == {
+        ("book", "publisher_code", "publisher", "code"),
+        ("review", "book_isbn", "book", "isbn"),
+    }
+
+    output_dir = tmp_path / "app"
+    generate_app_from_schema(schema, output_dir)
+
+    manifest = json.loads((output_dir / "appgen.json").read_text())
+    manifest_book = next(table for table in manifest["tables"] if table["name"] == "book")
+    manifest_review = next(table for table in manifest["tables"] if table["name"] == "review")
+    book_manifest_columns = {column["name"]: column for column in manifest_book["columns"]}
+    review_manifest_columns = {column["name"]: column for column in manifest_review["columns"]}
+    assert book_manifest_columns["publisher_code"]["references"] == ["publisher", "code"]
+    assert review_manifest_columns["book_isbn"]["references"] == ["book", "isbn"]
+    py_compile.compile(str(output_dir / "models.py"), doraise=True)
+    py_compile.compile(str(output_dir / "api.py"), doraise=True)
+
+
 def test_ponyorm_source_normalizes_entities(tmp_path) -> None:
     """PonyORM-style scripts can become the same canonical schema."""
     pony_path = tmp_path / "entities.py"
