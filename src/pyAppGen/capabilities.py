@@ -59,7 +59,7 @@ DEFAULT_CAPABILITIES: tuple[Capability, ...] = (
     Capability("platform.extensibility", "Custom code extension hooks", "partial", "generated hook registry and app_custom extension package"),
     Capability("api.rest", "REST API generation", "implemented", "schema-driven ModelRestApi files"),
     Capability("api.graphql", "GraphQL schema generation", "implemented", "schema-driven Graphene schema files"),
-    Capability("data.access", "Low-code query and mutation contracts", "partial", "generated table read/write contracts with filters, sorting, paging, projections, and mutation plans"),
+    Capability("data.access", "Low-code query, mutation, and validation contracts", "partial", "generated table read/write contracts with filters, sorting, paging, projections, mutation plans, and schema-driven payload validation"),
     Capability("api.documentation", "Automatic API and schema documentation", "partial", "generated README, schema docs, data dictionary, content guide, and Flask-AppBuilder API metadata"),
     Capability("api.openapi", "OpenAPI contract generation", "partial", "generated OpenAPI 3.1 spec, docs/openapi.json, and API docs view"),
     Capability("api.sdks", "Multi-language API SDK exports", "partial", "generated Python, JavaScript, Java, and C# client scaffolds"),

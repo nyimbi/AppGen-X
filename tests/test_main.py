@@ -182,6 +182,7 @@ def test_generate_app_from_sqlite_schema_compiles(tmp_path) -> None:
         output_dir / "runtime_security.py",
         output_dir / "workflow.py",
         output_dir / "rules.py",
+        output_dir / "validation.py",
         output_dir / "health.py",
         output_dir / "monitoring.py",
         output_dir / "resilience.py",
@@ -1610,6 +1611,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     workflow = _load_module(output_dir / "workflow.py", "generated_workflow")
     openapi = _load_module(output_dir / "openapi.py", "generated_openapi")
     rules = _load_module(output_dir / "rules.py", "generated_rules")
+    validation = _load_module(output_dir / "validation.py", "generated_validation")
     health = _load_module(output_dir / "health.py", "generated_health")
     monitoring = _load_module(output_dir / "monitoring.py", "generated_monitoring")
     resilience = _load_module(output_dir / "resilience.py", "generated_resilience")
@@ -1761,6 +1763,14 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert rules.validate_row("Book", {"title": "Dune", "status": "draft"})["ok"] is True
     assert rules.decision_plan("Book", {"title": "Dune", "status": "published"})["decisions"] == ("review",)
     assert rules.rules_check({"app/rules.py", "app/templates/appgen_rules.html"})["ok"] is True
+    assert validation.table_validation_contract("Book")["name"] == "Book"
+    assert validation.field_validation_contract("Book", "status")["enum_values"] == ("draft", "published", "archived")
+    assert validation.validate_payload("Book", {"status": "draft"})["errors"][0]["code"] == "required"
+    assert validation.validate_payload("Book", {"title": "Dune", "status": "missing"})["errors"][0]["code"] == "enum"
+    assert validation.validate_payload("Book", {"title": "Dune", "status": "draft"})["ok"] is True
+    assert validation.validate_payload("Book", {"title": "Dune"}, partial=True)["ok"] is True
+    assert validation.ui_validation_schema("Book")["format"] == "appgen.ui-validation.v1"
+    assert validation.validation_check({"app/validation.py"})["ok"] is True
     assert branding.theme_contract()["theme"] == "sage"
     assert branding.css_variables()["--appgen-primary"] == "#2f6f5e"
     assert branding.css_variables()["--appgen-content-max"] == "1180px"

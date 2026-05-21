@@ -199,6 +199,9 @@ apps include:
   proposals that regenerate DSL, and a generated workflow/statechart cockpit.
 - `rules.py` and `appgen_rules.html` with generated business-rule validation,
   row checks, and decision-tree action plans.
+- `validation.py` with schema-driven payload, field, enum, type, required-field,
+  relationship, and UI validation contracts for forms, APIs, imports, and
+  chatbots.
 - `monitoring.py` with liveness/readiness endpoints and generated JSON error
   envelopes.
 - `resilience.py` and `appgen_resilience.html` with generated automatic error
