@@ -17847,6 +17847,61 @@ def dsl_quick_fixes(source, errors=(), warnings=()):
     return tuple(fixes)
 
 
+def _apply_dsl_fix(source, fix):
+    kind = fix.get("kind")
+    if kind == "replace_all":
+        return str(fix["replacement"])
+    if kind == "insert" and fix.get("position") == "start":
+        return str(fix["insert"]) + source
+    if kind == "regex_replace":
+        return re.sub(str(fix["pattern"]), str(fix["replacement"]), source)
+    if kind == "replace_targets":
+        def repl(match):
+            prefix, raw_values = match.groups()
+            kept = []
+            for value in raw_values.split(","):
+                target = value.strip().strip("'\\\"").lower().replace("-", "_")
+                target = PLATFORM_TARGET_ALIASES.get(target, target)
+                if target in PLATFORM_TARGETS and target not in kept:
+                    kept.append(target)
+            if not kept:
+                kept.append("web")
+            return prefix + ", ".join(kept)
+
+        return re.sub(r"(\\btargets\\s*:\\s*)([^;\\n}}]+)", repl, source)
+    return source
+
+
+def apply_dsl_fixes(source, fix_ids=None):
+    """Apply generated DSL quick fixes for Studio previews."""
+    text = source or ""
+    before = dsl_lint(text)
+    selected = set(fix_ids or ())
+    fixed = text
+    applied = []
+    skipped = []
+    for fix in before["fixes"]:
+        if selected and fix["id"] not in selected:
+            skipped.append({{"id": fix["id"], "reason": "not_selected"}})
+            continue
+        updated = _apply_dsl_fix(fixed, fix)
+        if updated == fixed:
+            skipped.append({{"id": fix["id"], "reason": "no_change"}})
+            continue
+        fixed = updated
+        applied.append(fix["id"])
+    after = dsl_lint(fixed)
+    return {{
+        "format": "appgen.dsl-fix-result.v1",
+        "changed": fixed != text,
+        "applied": tuple(applied),
+        "skipped": tuple(skipped),
+        "fixed": fixed,
+        "before": before,
+        "after": after,
+    }}
+
+
 def dsl_lint(source):
     """Return lightweight DSL readability and keyword-budget feedback."""
     text = source or ""
@@ -17937,6 +17992,11 @@ class DSLReferenceView(BaseView):
     def lint_json(self):
         payload = request.get_json(force=True) or {{}}
         return jsonify(dsl_lint(payload.get("source", "")))
+
+    @expose("/fix", methods=("POST",))
+    def fix_json(self):
+        payload = request.get_json(force=True) or {{}}
+        return jsonify(apply_dsl_fixes(payload.get("source", ""), payload.get("fix_ids")))
 
 
 def register_dsl_reference(appbuilder):
@@ -26947,6 +27007,7 @@ def validate_dsl_reference_artifacts() -> None:
         "dsl_example",
         "dsl_lint",
         "dsl_quick_fixes",
+        "apply_dsl_fixes",
         "dsl_learning_path",
         "dsl_reference_check",
     )
@@ -28713,6 +28774,10 @@ def test_generated_runtime_helpers():
     assert "Reference" in {item["name"] for item in dsl_reference.dsl_construct_catalog()}
     assert "author_id: int -> Author.id" in dsl_reference.dsl_example("relation")
     assert dsl_reference.dsl_lint(dsl_reference.dsl_example("full"))["ok"] is True
+    generated_dsl_fix = dsl_reference.apply_dsl_fixes("app Bad { targets: web, toaster } table Book { title: string ref Author.id }")
+    assert generated_dsl_fix["format"] == "appgen.dsl-fix-result.v1"
+    assert "replace_ref_with_arrow" in generated_dsl_fix["applied"]
+    assert "normalize_targets" in generated_dsl_fix["applied"]
     assert dsl_reference.dsl_reference_check(
         {"app/dsl_reference.py", "app/templates/appgen_dsl_reference.html"}
     )["ok"] is True
@@ -29307,6 +29372,12 @@ def get_metadata(idb):
     type=click.Path(exists=True, dir_okay=False, path_type=Path),
     help="Lint an AppGen DSL file and print JSON feedback without generating an app.",
 )
+@click.option(
+    "--fix-dsl",
+    "fix_dsl_path",
+    type=click.Path(exists=True, dir_okay=False, path_type=Path),
+    help="Apply safe DSL linter quick fixes to an AppGen DSL file and print JSON feedback.",
+)
 @click.pass_context
 def main(
     ctx,
@@ -29319,23 +29390,38 @@ def main(
     pony_path,
     dsl_path,
     lint_dsl_path,
+    fix_dsl_path,
 ):
     """Generate a Flask-AppBuilder app package from a database schema."""
     schema_sources = [
         path for path in (dbml_path, sql_path, pony_path, dsl_path) if path is not None
     ]
-    if not any([writedir, database_url, idatabase, wdatabase, lint_dsl_path, *schema_sources]):
+    if not any([writedir, database_url, idatabase, wdatabase, lint_dsl_path, fix_dsl_path, *schema_sources]):
         click.echo(ctx.get_help())
         ctx.exit(0)
 
     if lint_dsl_path is not None:
-        if any([writedir, database_url, idatabase, wdatabase, *schema_sources]):
+        if any([writedir, database_url, idatabase, wdatabase, fix_dsl_path, *schema_sources]):
             raise click.UsageError("--lint-dsl cannot be combined with generation options.")
         from .dsl import lint_dsl_file
 
         result = lint_dsl_file(lint_dsl_path)
         click.echo(json.dumps(result, indent=2, sort_keys=True))
         ctx.exit(0 if result["ok"] else 1)
+
+    if fix_dsl_path is not None:
+        if any([writedir, database_url, idatabase, wdatabase, *schema_sources]):
+            raise click.UsageError("--fix-dsl cannot be combined with generation options.")
+        from .dsl import fix_dsl_file
+
+        result = fix_dsl_file(fix_dsl_path)
+        printable = {
+            key: value
+            for key, value in result.items()
+            if key not in {"original", "fixed"}
+        }
+        click.echo(json.dumps(printable, indent=2, sort_keys=True))
+        ctx.exit(0 if result["after"]["ok"] else 1)
 
     if writedir is None:
         raise click.UsageError("Provide --writedir.")

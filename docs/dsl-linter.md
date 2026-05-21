@@ -14,6 +14,16 @@ The command prints JSON and exits with:
 - `0` when the DSL is valid.
 - `1` when syntax or semantic errors are found.
 
+To apply safe deterministic quick fixes to a file, run:
+
+```bash
+appgen --fix-dsl appgen.appgen
+```
+
+`--fix-dsl` rewrites only the explicit file you pass. It prints a JSON fix
+report without echoing the full before/after source text, then exits with `0`
+only when the fixed file passes the linter.
+
 Example output:
 
 ```json
@@ -42,10 +52,13 @@ Example output:
 ## Python API
 
 ```python
-from pyAppGen.dsl import lint_dsl, lint_dsl_file
+from pyAppGen.dsl import apply_lint_fixes, lint_dsl, lint_dsl_file
 
 report = lint_dsl_file("invoice.appgen")
 assert report["ok"], report["errors"]
+
+result = apply_lint_fixes("table Book { title: string ref Author.id }")
+print(result["fixed"])
 ```
 
 ## Output Contract
@@ -118,6 +131,11 @@ It also returns structured quick fixes for common authoring feedback:
 - `replace_ref_with_arrow`
 - `use_api_key_env`
 - `normalize_targets`
+
+The same fixes can be applied through `pyAppGen.dsl.apply_lint_fixes`. The
+result has `format: appgen.dsl-fix-result.v1`, `applied`, `skipped`,
+`changed`, `before`, `after`, `original`, and `fixed` fields so IDEs can show a
+preview before writing.
 
 ## CI Gate
 

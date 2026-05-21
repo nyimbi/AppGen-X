@@ -62,6 +62,15 @@ def lint_dsl_file(path: str | Path) -> dict:
     return lint_dsl(path.read_text(), source_name=str(path))
 
 
+def fix_dsl_file(path: str | Path, *, fix_ids: Iterable[str] | None = None) -> dict:
+    """Apply safe linter quick fixes to an AppGen DSL file."""
+    path = Path(path)
+    result = apply_lint_fixes(path.read_text(), fix_ids=fix_ids, source_name=str(path))
+    if result["changed"]:
+        path.write_text(result["fixed"])
+    return result
+
+
 def lint_dsl(text: str, *, source_name: str | None = None) -> dict:
     """Return syntax, semantic, and style feedback for AppGen DSL source."""
     source = text or ""
@@ -108,6 +117,74 @@ def lint_dsl(text: str, *, source_name: str | None = None) -> dict:
         "fixes": _lint_quick_fixes(source, errors, warnings),
         "summary": _lint_summary(schema),
     }
+
+
+def apply_lint_fixes(
+    text: str,
+    *,
+    fix_ids: Iterable[str] | None = None,
+    source_name: str | None = None,
+) -> dict:
+    """Apply deterministic quick fixes and return before/after lint metadata."""
+    original = text or ""
+    report = lint_dsl(original, source_name=source_name)
+    selected = set(fix_ids or ())
+    fixed = original
+    applied: list[str] = []
+    skipped: list[dict] = []
+
+    for fix in report["fixes"]:
+        fix_id = fix["id"]
+        if selected and fix_id not in selected:
+            skipped.append({"id": fix_id, "reason": "not_selected"})
+            continue
+        updated = _apply_lint_fix(fixed, fix)
+        if updated == fixed:
+            skipped.append({"id": fix_id, "reason": "no_change"})
+            continue
+        fixed = updated
+        applied.append(fix_id)
+
+    after = lint_dsl(fixed, source_name=source_name)
+    return {
+        "format": "appgen.dsl-fix-result.v1",
+        "source": source_name,
+        "changed": fixed != original,
+        "applied": tuple(applied),
+        "skipped": tuple(skipped),
+        "original": original,
+        "fixed": fixed,
+        "before": report,
+        "after": after,
+    }
+
+
+def _apply_lint_fix(source: str, fix: dict) -> str:
+    kind = fix.get("kind")
+    if kind == "replace_all":
+        return str(fix["replacement"])
+    if kind == "insert" and fix.get("position") == "start":
+        return str(fix["insert"]) + source
+    if kind == "regex_replace":
+        return re.sub(str(fix["pattern"]), str(fix["replacement"]), source)
+    if kind == "replace_targets":
+        return _apply_target_normalization(source, tuple(fix["supported"]))
+    return source
+
+
+def _apply_target_normalization(source: str, supported: tuple[str, ...]) -> str:
+    def repl(match: re.Match[str]) -> str:
+        prefix, raw_values = match.groups()
+        kept = []
+        for value in raw_values.split(","):
+            target = value.strip().strip("'\"").lower().replace("-", "_")
+            if target in supported and target not in kept:
+                kept.append(target)
+        if not kept:
+            kept.append("web")
+        return prefix + ", ".join(kept)
+
+    return re.sub(r"(\btargets\s*:\s*)([^;\n}]+)", repl, source)
 
 
 def _lint_quick_fixes(source: str, errors: Iterable[str], warnings: Iterable[str]) -> tuple[dict, ...]:
@@ -584,7 +661,7 @@ def _field(table_name: str, ctx, *, source_group: str | None = None) -> tuple[Co
             searchable = True
         elif modifier.DEFAULT():
             default = _literal(modifier.literal())
-        elif modifier.REF():
+        elif modifier.REF() or modifier.ARROW():
             target = _target(modifier.target())
             references = target
             reference_cardinality = _relation_cardinality(modifier.relationCardinality())

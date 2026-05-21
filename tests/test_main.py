@@ -25,6 +25,7 @@ from sqlalchemy import text
 from pyAppGen import __main__
 from pyAppGen.gen import generate_app_from_database
 from pyAppGen.gen import generate_app_from_schema
+from pyAppGen.dsl import apply_lint_fixes
 from pyAppGen.dsl import lint_dsl
 from pyAppGen.schema import load_schema
 from pyAppGen.schema import RelationSchema
@@ -81,6 +82,19 @@ def test_dsl_linter_reports_semantic_feedback(runner: CliRunner, tmp_path) -> No
         {fix["id"] for fix in style["fixes"]}
     )
     assert any(fix["id"] == "normalize_targets" for fix in broken["fixes"])
+    fixed = apply_lint_fixes(
+        "app Bad { targets: web, toaster } table Author { id: int pk } table Book { id: int pk; author_id: int ref Author.id } "
+        "llm Cloud { provider: openai; mode: api; model: gpt; api_key: \"secret\" }"
+    )
+    assert fixed["format"] == "appgen.dsl-fix-result.v1"
+    assert fixed["changed"] is True
+    assert {"replace_ref_with_arrow", "use_api_key_env", "normalize_targets"}.issubset(
+        set(fixed["applied"])
+    )
+    assert "author_id: int -> Author.id" in fixed["fixed"]
+    assert "api_key: OPENAI_API_KEY" in fixed["fixed"]
+    assert "toaster" not in fixed["fixed"]
+    assert fixed["after"]["summary"]["targets"] == ("web",)
 
     dsl_path = tmp_path / "lint.appgen"
     dsl_path.write_text(source)
@@ -95,6 +109,14 @@ def test_dsl_linter_reports_semantic_feedback(runner: CliRunner, tmp_path) -> No
     bad_payload = json.loads(bad_result.output)
     assert bad_result.exit_code == 1
     assert bad_payload["ok"] is False
+    fix_path = tmp_path / "fix.appgen"
+    fix_path.write_text("app Bad { targets: web, toaster } table Book { title: string ref Author.id }")
+    fix_result = runner.invoke(__main__.main, ["--fix-dsl", str(fix_path)])
+    fix_payload = json.loads(fix_result.output)
+    assert fix_result.exit_code == 1
+    assert fix_payload["changed"] is True
+    assert "toaster" not in fix_path.read_text()
+    assert "title: string -> Author.id" in fix_path.read_text()
 
 
 def test_dsl_documentation_suite_exists() -> None:
@@ -3052,6 +3074,13 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         {fix["id"] for fix in ref_lint["fixes"]}
     )
     assert dsl_reference.dsl_lint("app Bad { targets: web, toaster } table Book { title: string }")["errors"]
+    generated_fix = dsl_reference.apply_dsl_fixes(
+        "app Bad { targets: web, toaster } table Book { title: string ref Author.id }"
+    )
+    assert generated_fix["format"] == "appgen.dsl-fix-result.v1"
+    assert {"replace_ref_with_arrow", "normalize_targets"} <= set(generated_fix["applied"])
+    assert "title: string -> Author.id" in generated_fix["fixed"]
+    assert "toaster" not in generated_fix["fixed"]
     assert dsl_reference.dsl_lint(
         "table Book { title: string title: text } table Book { title: string }"
     )["errors"]

@@ -340,8 +340,8 @@ apps include:
   summaries, and existing-DSL patch previews.
 - `dsl_reference.py` and `appgen_dsl_reference.html` with generated DSL
   keyword-budget checks, compact construct cards, examples, a learning path,
-  lightweight lint feedback, and structured quick fixes so every generated app
-  carries an approachable reference for the ANTLR language.
+  lightweight lint feedback, structured quick fixes, and fix-result previews so
+  every generated app carries an approachable reference for the ANTLR language.
 - `view_experience.py`, `appgen_view_experience.html`, and
   `appgen-view-experience.js` with generated base-view contracts for offline
   field state, active viewers on the same page, chatbot/help actions, access log
