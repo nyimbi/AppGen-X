@@ -62,7 +62,12 @@ def test_dsl_linter_reports_semantic_feedback(runner: CliRunner, tmp_path) -> No
     assert report["summary"]["targets"] == ("web", "mobile")
     assert report["language_quality"]["format"] == "appgen.dsl-language-quality.v1"
     assert report["language_quality"]["ok"] is True
+    assert report["language_quality"]["canonical_keyword_count"] == 17
+    assert "ref" not in report["language_quality"]["keywords"]
+    assert report["language_quality"]["legacy_contextual_tokens"] == ("ref",)
     assert dsl_keyword_budget()["count"] <= dsl_keyword_budget()["limit"]
+    assert dsl_keyword_budget()["canonical_keyword_count"] == 17
+    assert dsl_keyword_budget()["legacy_contextual_tokens"] == ("ref",)
     assert dsl_language_quality_contract()["grammar"] == "lang/appgen.g4"
     assert dsl_language_quality_contract()["ok"] is True
     broken = lint_dsl("app Bad { targets: web, toaster } table Book { title: string }")
@@ -3187,6 +3192,8 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert {item["command"] for item in studio.command_palette_search("database")} >= {"design_database"}
     assert studio.dsl_editor_state(text="app Library")["lint"]["warnings"]
     assert studio.dsl_keyword_budget()["ok"] is True
+    assert studio.dsl_keyword_budget()["canonical_keyword_count"] == 17
+    assert studio.dsl_keyword_budget()["legacy_contextual_tokens"] == ("ref",)
     authoring = studio.dsl_authoring_surface(
         "app Library { targets: web, mobile, toaster } table Book { id: int pk }"
     )
@@ -3497,8 +3504,11 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert "agent SupportAgent" in patched_dsl
     assert dsl_reference.dsl_keyword_budget()["count"] <= dsl_reference.dsl_keyword_budget()["limit"]
     assert dsl_reference.dsl_keyword_budget()["format"] == "appgen.dsl-keyword-budget.v1"
+    assert dsl_reference.dsl_keyword_budget()["legacy_contextual_tokens"] == ("ref",)
     assert dsl_reference.dsl_language_quality_contract()["format"] == "appgen.dsl-language-quality.v1"
     assert dsl_reference.dsl_language_quality_contract()["ok"] is True
+    assert dsl_reference.dsl_language_quality_contract()["canonical_keyword_count"] == 17
+    assert "ref" not in dsl_reference.dsl_language_quality_contract()["keywords"]
     assert dsl_reference.dsl_reference_check(
         {"app/dsl_reference.py", "app/templates/appgen_dsl_reference.html"}
     )["language_quality"]["ok"] is True

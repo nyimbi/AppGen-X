@@ -143,7 +143,8 @@ It also adds style feedback:
 - Normalize authoring aliases to canonical DSL words without expanding the
   keyword budget.
 - Include `language_quality` with the ANTLR grammar path, generated parser path,
-  keyword budget, keyword-free syntax, aliases, and learning path.
+  keyword budget, keyword-free syntax, aliases, legacy contextual tokens, and
+  learning path.
 
 It also returns structured quick fixes for common authoring feedback:
 

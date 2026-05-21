@@ -18762,6 +18762,7 @@ CORE_KEYWORDS = (
     "llm", "agent",
 )
 KEYWORD_LIMIT = 17
+LEGACY_CONTEXTUAL_TOKENS = ("ref",)
 RELATION_CARDINALITIES = ("many-to-one", "one-to-one", "one-to-many", "many-to-many")
 KEYWORD_FREE_SYNTAX = ("-> references", "[cardinality] relation metadata", "... field groups", "type[] arrays", "= derived fields", "@ component placements", "Name {{...}} reusable groups", "entity/model/form/screen/workflow authoring aliases")
 AUTHORING_ALIASES = {{
@@ -18800,8 +18801,11 @@ def dsl_keyword_budget():
         "format": "appgen.dsl-keyword-budget.v1",
         "limit": KEYWORD_LIMIT,
         "count": len(CORE_KEYWORDS),
+        "canonical_keyword_count": len(CORE_KEYWORDS),
         "ok": len(CORE_KEYWORDS) <= KEYWORD_LIMIT,
         "keywords": CORE_KEYWORDS,
+        "legacy_contextual_tokens": LEGACY_CONTEXTUAL_TOKENS,
+        "legacy_policy": "accepted_for_existing_sources_but_linted_to_arrow_syntax",
         "keyword_free_syntax": KEYWORD_FREE_SYNTAX,
         "authoring_aliases": dict(AUTHORING_ALIASES),
     }}
@@ -18816,6 +18820,7 @@ def dsl_language_quality_contract():
         {{"check": "keyword_budget", "ok": budget["ok"], "value": budget["count"]}},
         {{"check": "authoring_aliases_without_new_keywords", "ok": set(AUTHORING_ALIASES.values()) <= set(CORE_KEYWORDS)}},
         {{"check": "keyword_free_relationships", "ok": "-> references" in KEYWORD_FREE_SYNTAX}},
+        {{"check": "legacy_ref_not_canonical", "ok": "ref" not in CORE_KEYWORDS and "ref" in LEGACY_CONTEXTUAL_TOKENS}},
         {{"check": "progressive_learning_path", "ok": len(dsl_learning_path()) == 4}},
     )
     return {{
@@ -18824,6 +18829,13 @@ def dsl_language_quality_contract():
         "grammar": "lang/appgen.g4",
         "parser": "src/pyAppGen/dsl_generated/lang/appgenParser.py",
         "budget": budget,
+        "keywords": CORE_KEYWORDS,
+        "canonical_keyword_count": len(CORE_KEYWORDS),
+        "legacy_contextual_tokens": LEGACY_CONTEXTUAL_TOKENS,
+        "keyword_policy": {{
+            "canonical": "Only CORE_KEYWORDS count against the compact DSL budget.",
+            "legacy": "Legacy contextual tokens remain parse-compatible and receive linter quick fixes.",
+        }},
         "learning_path": dsl_learning_path(),
         "checks": checks,
     }}
@@ -25455,6 +25467,7 @@ DSL_KEYWORDS = (
     "llm",
     "agent",
 )
+DSL_LEGACY_CONTEXTUAL_TOKENS = ("ref",)
 DSL_SNIPPETS = (
     {{"label": "Application", "insert": "app MyApp {{ targets: web, mobile, desktop }}", "kind": "app"}},
     {{"label": "Table", "insert": "table Customer {{\\n  id: int pk\\n  name: string required search\\n}}", "kind": "schema"}},
@@ -25665,10 +25678,14 @@ def dsl_quick_fixes(source, errors=(), warnings=()):
 def dsl_keyword_budget():
     """Return the generated DSL keyword budget contract."""
     return {{
+        "format": "appgen.dsl-keyword-budget.v1",
         "keywords": DSL_KEYWORDS,
         "count": len(DSL_KEYWORDS),
+        "canonical_keyword_count": len(DSL_KEYWORDS),
         "limit": 17,
         "ok": len(DSL_KEYWORDS) <= 17,
+        "legacy_contextual_tokens": DSL_LEGACY_CONTEXTUAL_TOKENS,
+        "legacy_policy": "accepted_for_existing_sources_but_linted_to_arrow_syntax",
     }}
 
 

@@ -119,7 +119,9 @@ table Book {
 ```
 
 Field modifiers are `pk`, `required`, `unique`, `hidden`, `search`,
-`default`, and references.
+`default`, and references. Arrow references are the canonical form. The legacy
+`ref` token remains accepted for existing projects and is linted to the arrow
+form, but it is not counted as a canonical keyword.
 
 ```antlr
 modifier : PK
@@ -327,9 +329,13 @@ STRING  : '"' ( '\\' . | ~["\\] )* '"'
         | '\'' ( '\\' . | ~['\\] )* '\'' ;
 ```
 
-Reserved words are: `app`, `table`, `ref`, `enum`, `view`, `for`, `flow`,
+Canonical reserved words are: `app`, `table`, `enum`, `view`, `for`, `flow`,
 `role`, `rule`, `llm`, `agent`, `pk`, `required`, `unique`, `hidden`,
 `search`, `default`, and `in`.
+
+Legacy compatibility token: `ref`. It remains parse-compatible so older DSL
+files can be upgraded in place, but `dsl_language_quality_contract()` excludes
+it from the canonical keyword list and the linter offers `replace_ref_with_arrow`.
 
 ## Comments
 

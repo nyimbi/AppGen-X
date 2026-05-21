@@ -16,6 +16,9 @@ declare a bare field block, spread it with `...GroupName`, write arrays as
 the arrow form `field: type -> Other.id`. Relationship cardinality is optional
 bracket metadata on the same arrow, for example
 `profile_id: int -> Profile.id [one-to-one]`.
+The legacy `ref Other.id` form is still parsed for existing sources, but it is
+not part of the canonical keyword budget; the linter reports it and offers
+`replace_ref_with_arrow`.
 Beginner-friendly aliases are also keyword-free: `entity` and `model`
 normalize to `table`, `form` and `screen` normalize to `view`, and `workflow`
 normalizes to `flow` before ANTLR parsing. The linter reports these aliases

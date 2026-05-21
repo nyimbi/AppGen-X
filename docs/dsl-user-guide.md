@@ -61,6 +61,11 @@ Prefer arrow references:
 customer_id: int required -> Customer.id [many-to-one]
 ```
 
+Existing DSL that uses `ref Customer.id` still parses so old projects can be
+migrated, but `ref` is treated as a legacy contextual token rather than a
+canonical keyword. Run the linter or quick-fix command to rewrite it to arrow
+syntax before committing new source.
+
 ### Schema Design Checklist
 
 Before generating, check that the DSL answers these questions:
