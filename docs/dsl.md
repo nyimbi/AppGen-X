@@ -143,6 +143,8 @@ driver suffixes, such as `sqlite:///existing.db`,
 `postgresql+psycopg2://...`, and `mysql+pymysql://...`. It preserves reflected
 primary keys, foreign keys, single-column unique constraints and unique indexes,
 server defaults, and SQLAlchemy enum metadata when the dialect exposes it.
+Reflected primary keys are normalized as non-null even when a dialect reports
+nullable metadata for legacy schemas.
 
 Every imported source also produces a source-fidelity report in the generated
 `appgen.json` manifest and `schema_import.py`. The report records the import

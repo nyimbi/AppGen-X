@@ -538,7 +538,7 @@ def schema_from_metadata(metadata: MetaData, *, source: str | None = None) -> Ap
                 ColumnSchema(
                     name=column.name,
                     type_name=type_name,
-                    nullable=column.nullable,
+                    nullable=bool(column.nullable) and not bool(column.primary_key),
                     primary_key=column.primary_key,
                     unique=bool(column.unique) or column.name in unique_columns,
                     default=_metadata_column_default(column),
