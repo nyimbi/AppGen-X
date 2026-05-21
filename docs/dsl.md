@@ -542,7 +542,10 @@ apps include:
   testing, pytest module rendering, smoke/load fixture handoff plans tied to
   generated seed scenarios, UI smoke-test plans, Playwright-style smoke module
   rendering, execution plans, contract coverage, result evaluation, and
-  synthetic monitoring contracts.
+  synthetic monitoring contracts. A generated API testing release gate combines
+  artifact readiness, request matrices, response validation, fixture strategy,
+  UI smoke coverage, synthetic monitoring, OpenAPI contract coverage, and
+  rendered pytest/Playwright modules.
 - `openapi.py`, `appgen_openapi.html`, and `docs/openapi.json` with generated
   OpenAPI 3.1 API documentation.
 - `microservices.py` and `appgen_microservices.html` with generated service

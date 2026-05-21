@@ -2233,6 +2233,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert "RPA &amp; BPA" in (output_dir / "templates" / "appgen_rpa.html").read_text()
     assert "runtime self-tests" in (output_dir / "templates" / "appgen_diagnostics.html").read_text()
     assert "automated API testing" in (output_dir / "templates" / "appgen_api_testing.html").read_text()
+    assert "Release Gate JSON" in (output_dir / "templates" / "appgen_api_testing.html").read_text()
     assert "Generated automated code-review findings" in (
         output_dir / "templates" / "appgen_code_review.html"
     ).read_text()
@@ -4070,6 +4071,18 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert api_testing.test_execution_plan()["ui_case_count"] == len(api_testing.ui_smoke_plan())
     assert api_testing.test_execution_plan()["fixture_source"] == "seed.py"
     assert api_testing.contract_coverage(openapi.openapi_spec()["paths"].keys())["ok"] is True
+    api_testing_gate = api_testing.api_testing_release_gate(
+        {"app/api_testing.py", "app/templates/appgen_api_testing.html", "docs/openapi.json"},
+        openapi.openapi_spec()["paths"].keys(),
+    )
+    assert api_testing_gate["format"] == "appgen.api-testing-release-gate.v1"
+    assert api_testing_gate["ok"] is True
+    assert {"api_request_matrix", "ui_smoke", "synthetic_monitoring", "contract_coverage"} <= {
+        gate["gate"] for gate in api_testing_gate["gates"]
+    }
+    assert api_testing.api_testing_release_gate({"app/api_testing.py"}, openapi.openapi_spec()["paths"].keys())[
+        "ok"
+    ] is False
     assert api_testing.api_testing_check(
         {"app/api_testing.py", "app/templates/appgen_api_testing.html", "docs/openapi.json"}
     )["ok"] is True

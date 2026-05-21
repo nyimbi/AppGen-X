@@ -386,3 +386,6 @@ python -m py_compile build/generated-app/app/models.py
 
 For larger projects, add generated quality checks after compilation so schema,
 API, PWA, documentation, and generated test surfaces stay aligned.
+Use `/api-testing/release-gate.json` before release to verify API request
+matrices, response validation, smoke fixtures, UI smoke plans, synthetic
+monitors, OpenAPI coverage, and rendered pytest/Playwright modules.

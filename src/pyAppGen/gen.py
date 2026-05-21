@@ -5193,6 +5193,7 @@ def write_api_testing_template(output_dir):
       <a class="btn btn-default" href="{{ url_for('APITestingView.catalog_json') }}">Test Catalog JSON</a>
       <a class="btn btn-default" href="{{ url_for('APITestingView.monitor_json') }}">Monitor JSON</a>
       <a class="btn btn-default" href="{{ url_for('APITestingView.ui_smoke_json') }}">UI Smoke JSON</a>
+      <a class="btn btn-default" href="{{ url_for('APITestingView.release_gate_json') }}">Release Gate JSON</a>
     </div>
   </div>
   <div class="agt-grid">
@@ -25158,6 +25159,40 @@ def api_testing_check(existing_paths=()):
     }}
 
 
+def api_testing_release_gate(existing_paths=(), openapi_paths=()):
+    """Return release readiness for generated API, UI, fixture, and monitor tests."""
+    existing = set(existing_paths)
+    required = ("app/api_testing.py", "app/templates/appgen_api_testing.html", "docs/openapi.json")
+    missing = tuple(path for path in required if existing and path not in existing)
+    requests = request_plan()
+    ui_cases = ui_smoke_plan()
+    monitor = synthetic_monitor_plan()
+    fixtures = fixture_strategy()
+    coverage_paths = tuple(openapi_paths or (request["path_template"] for request in requests))
+    coverage = contract_coverage(coverage_paths)
+    pytest_module = render_pytest_module()
+    playwright_module = render_playwright_smoke_module()
+    gates = (
+        {{"gate": "artifacts", "ok": not missing, "evidence": required, "missing": missing}},
+        {{"gate": "api_request_matrix", "ok": bool(requests) and all(request["expected_status"] for request in requests), "evidence": tuple(request["name"] for request in requests)}},
+        {{"gate": "response_validation", "ok": all(validate_response(request["name"], request["expected_status"][0])["ok"] for request in requests), "evidence": tuple(request["name"] for request in requests)}},
+        {{"gate": "fixture_strategy", "ok": fixtures["source"] == "seed.py" and (not fixtures["required"] or fixtures["pytest_fixture"] == "appgen_seed_data"), "evidence": fixtures}},
+        {{"gate": "synthetic_monitoring", "ok": bool(monitor["probes"]) and monitor["interval_seconds"] >= 15, "evidence": monitor}},
+        {{"gate": "ui_smoke", "ok": bool(ui_cases) and all(case["checks"] for case in ui_cases), "evidence": tuple(case["name"] for case in ui_cases)}},
+        {{"gate": "contract_coverage", "ok": coverage["ok"], "evidence": coverage}},
+        {{"gate": "rendered_test_modules", "ok": "test_generated_api_contracts" in pytest_module and "test_generated_ui_smoke" in playwright_module, "evidence": ("pytest", "playwright")}},
+    )
+    return {{
+        "format": "appgen.api-testing-release-gate.v1",
+        "ok": all(gate["ok"] for gate in gates),
+        "gates": gates,
+        "blocking_gaps": tuple(gate["gate"] for gate in gates if not gate["ok"]),
+        "execution_plan": test_execution_plan(),
+        "monitor": monitor,
+        "coverage": coverage,
+    }}
+
+
 class APITestingView(BaseView):
     route_base = "/api-testing"
     default_view = "index"
@@ -25182,6 +25217,10 @@ class APITestingView(BaseView):
     @expose("/ui-smoke.json")
     def ui_smoke_json(self):
         return jsonify(list(ui_smoke_plan()))
+
+    @expose("/release-gate.json")
+    def release_gate_json(self):
+        return jsonify(api_testing_release_gate())
 
 
 def register_api_testing(appbuilder):
@@ -32007,13 +32046,13 @@ def validate_api_testing_artifacts() -> None:
         fail("API testing contract must expose request plans, response validation, and synthetic monitoring")
     if "ui_smoke_plan" not in contract or "render_playwright_smoke_module" not in contract or "ui_smoke_results" not in contract:
         fail("API testing contract must expose generated UI smoke tests and result evaluation")
-    if "contract_coverage" not in contract or "api_testing_check" not in contract or "render_pytest_module" not in contract or "test_execution_plan" not in contract:
-        fail("API testing contract must expose OpenAPI coverage, pytest rendering, execution plans, and readiness helpers")
+    if "contract_coverage" not in contract or "api_testing_check" not in contract or "api_testing_release_gate" not in contract or "render_pytest_module" not in contract or "test_execution_plan" not in contract:
+        fail("API testing contract must expose OpenAPI coverage, pytest rendering, execution plans, release gates, and readiness helpers")
     if "fixture_strategy" not in contract or "seed_fixture_export('smoke')" not in contract or "fixture_scenario" not in contract:
         fail("API testing contract must connect fixture-dependent tests to generated seed scenarios")
     template = (ROOT / "app" / "templates" / "appgen_api_testing.html").read_text()
-    if "API Testing" not in template or "Test Catalog JSON" not in template or "Monitor JSON" not in template or "UI Smoke JSON" not in template:
-        fail("API testing template must expose generated test, UI smoke, and monitor catalogs")
+    if "API Testing" not in template or "Test Catalog JSON" not in template or "Monitor JSON" not in template or "UI Smoke JSON" not in template or "Release Gate JSON" not in template:
+        fail("API testing template must expose generated test, UI smoke, monitor catalogs, and release gate")
 
 
 def validate_diagnostics_artifacts() -> None:
@@ -33579,6 +33618,12 @@ def test_generated_runtime_helpers():
     assert "appgen_seed_data" in api_testing.render_pytest_module()
     assert api_testing.test_execution_plan()["case_count"] == len(api_testing.pytest_case_matrix())
     assert api_testing.api_testing_check(
+        {"app/api_testing.py", "app/templates/appgen_api_testing.html", "docs/openapi.json"}
+    )["ok"] is True
+    assert api_testing.api_testing_release_gate(
+        {"app/api_testing.py", "app/templates/appgen_api_testing.html", "docs/openapi.json"}
+    )["format"] == "appgen.api-testing-release-gate.v1"
+    assert api_testing.api_testing_release_gate(
         {"app/api_testing.py", "app/templates/appgen_api_testing.html", "docs/openapi.json"}
     )["ok"] is True
     assert isinstance(code_review.schema_review(), tuple)
