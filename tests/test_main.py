@@ -2195,7 +2195,9 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert "Lifecycle JSON" in (output_dir / "templates" / "appgen_lifecycle.html").read_text()
     assert "tenant_id" in (output_dir / "templates" / "appgen_tenancy.html").read_text()
     assert "row-level security contracts" in (output_dir / "templates" / "appgen_rls.html").read_text()
-    assert "OpenID Connect" in (output_dir / "templates" / "appgen_identity.html").read_text()
+    identity_template = (output_dir / "templates" / "appgen_identity.html").read_text()
+    assert "OpenID Connect" in identity_template
+    assert "Release Gate JSON" in identity_template
     compliance_template = (output_dir / "templates" / "appgen_compliance.html").read_text()
     assert "protected-field" in compliance_template
     assert "Release Gate JSON" in compliance_template
@@ -3501,6 +3503,16 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "Editor",
     )
     assert identity.cognito_readiness(cognito_env)["oauth"]["userinfo_url"].endswith("/oauth2/userInfo")
+    identity_gate = identity.identity_release_gate(
+        {"app/identity.py", "app/templates/appgen_identity.html"},
+        identity.sample_identity_environment(),
+    )
+    assert identity_gate["format"] == "appgen.identity-release-gate.v1"
+    assert identity_gate["ok"] is True
+    assert {"provider_catalog", "provider_configuration", "directory_plans", "cognito_oauth", "token_exchange_review"} <= {
+        gate["gate"] for gate in identity_gate["gates"]
+    }
+    assert identity.identity_release_gate({"app/identity.py"}, identity.sample_identity_environment())["ok"] is False
     principal = identity.normalize_principal({"sub": "u1", "email": "ada@example.test", "roles": ["Editor"]})
     assert principal["username"] == "ada@example.test"
     assert principal["roles"] == ("Editor",)

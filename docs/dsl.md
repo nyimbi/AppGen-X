@@ -365,7 +365,10 @@ apps include:
 - `identity.py` and `appgen_identity.html` with generated OIDC, SAML, LDAP,
   Active Directory, AWS Cognito, and trusted-header SSO provider configuration
   checks plus reviewed LDAP bind/search plans and Cognito hosted-ui OAuth,
-  token-exchange, logout, and group-role mapping contracts.
+  token-exchange, logout, and group-role mapping contracts. A generated
+  identity release gate proves SSO provider coverage, provider configuration,
+  login planning, LDAP/Active Directory plans, Cognito OAuth metadata,
+  reviewable token exchange, and principal normalization.
 - `compliance.py` and `appgen_compliance.html` with generated audit event,
   retention, protected-field redaction, privacy request, subject export,
   erasure planning, and retention-disposition review helpers. A generated

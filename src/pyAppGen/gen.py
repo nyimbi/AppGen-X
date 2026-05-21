@@ -4225,7 +4225,10 @@ def write_identity_template(output_dir):
     includes hosted-ui OAuth metadata, token-exchange plans, logout URLs, and
     group-to-role mapping helpers without exposing client secrets.
   </p>
-  <p><a class="btn btn-default" href="{{ url_for('IdentityView.cognito_oauth_json') }}">Cognito OAuth JSON</a></p>
+  <p>
+    <a class="btn btn-default" href="{{ url_for('IdentityView.cognito_oauth_json') }}">Cognito OAuth JSON</a>
+    <a class="btn btn-default" href="{{ url_for('IdentityView.release_gate_json') }}">Release Gate JSON</a>
+  </p>
   <div class="agi2-grid">
     {% for item in providers %}
     <article class="agi2-card">
@@ -16552,6 +16555,66 @@ def normalize_principal(claims):
     }
 
 
+def sample_identity_environment():
+    """Return deterministic non-production SSO configuration for release-gate evidence."""
+    return {
+        "OIDC_ISSUER": "https://issuer.example.test",
+        "OIDC_CLIENT_ID": "client",
+        "OIDC_CLIENT_SECRET": "secret",
+        "SAML_METADATA_URL": "https://idp.example.test/metadata.xml",
+        "SAML_ENTITY_ID": "appgen-example",
+        "LDAP_URI": "ldaps://ldap.example.test",
+        "LDAP_BIND_DN": "cn=app,dc=example,dc=test",
+        "LDAP_BIND_PASSWORD": "secret",
+        "LDAP_USER_BASE_DN": "ou=people,dc=example,dc=test",
+        "AD_SERVER": "ldaps://ad.example.test",
+        "AD_DOMAIN": "example.test",
+        "AD_BIND_USER": "svc-app",
+        "AD_BIND_PASSWORD": "secret",
+        "AD_USER_BASE_DN": "dc=example,dc=test",
+        "TRUSTED_IDENTITY_HEADER": "X-Forwarded-User",
+        "COGNITO_REGION": "us-east-1",
+        "COGNITO_USER_POOL_ID": "us-east-1_abc",
+        "COGNITO_CLIENT_ID": "client",
+        "COGNITO_CLIENT_SECRET": "secret",
+        "COGNITO_DOMAIN": "https://auth.example.test",
+    }
+
+
+def identity_release_gate(existing_paths=(), environ=None):
+    """Return release readiness for generated SSO and enterprise identity contracts."""
+    existing = set(existing_paths)
+    required = ("app/identity.py", "app/templates/appgen_identity.html")
+    missing = tuple(path for path in required if existing and path not in existing)
+    env = sample_identity_environment() if environ is None else environ
+    providers = provider_catalog(env)
+    login_plan = login_request_plan("oidc", "/next", env)
+    ldap_plan = ldap_bind_plan("ldap", "ada", environ=env)
+    ad_plan = ldap_bind_plan("active_directory", "ada", environ=env)
+    directory_plan = directory_search_plan("active_directory", "ada", environ=env)
+    cognito = cognito_readiness(env)
+    token_plan = cognito_token_exchange_plan("code", "https://app.example.test/callback", environ=env)
+    principal = normalize_principal({"sub": "u1", "email": "ada@example.test", "cognito:groups": ("Editor",)})
+    gates = (
+        {"gate": "artifacts", "ok": not missing, "evidence": required, "missing": missing},
+        {"gate": "provider_catalog", "ok": {item["name"] for item in providers} == set(IDENTITY_PROVIDERS), "evidence": providers},
+        {"gate": "provider_configuration", "ok": all(item["configured"] for item in providers), "evidence": providers},
+        {"gate": "login_plan", "ok": login_plan["protocol"] == "oidc" and login_plan["next_url"] == "/next", "evidence": login_plan},
+        {"gate": "directory_plans", "ok": ldap_plan["review_required"] and ad_plan["review_required"] and directory_plan["review_required"], "evidence": (ldap_plan, ad_plan, directory_plan)},
+        {"gate": "cognito_oauth", "ok": cognito["configured"] and cognito["oauth"]["client_secret_env"] == "COGNITO_CLIENT_SECRET", "evidence": cognito},
+        {"gate": "token_exchange_review", "ok": token_plan["review_required"] and token_plan["client_secret_env"] == "COGNITO_CLIENT_SECRET" and "client_secret" not in token_plan["body"], "evidence": token_plan},
+        {"gate": "principal_normalization", "ok": principal["username"] == "ada@example.test" and principal["roles"] == ("Editor",), "evidence": principal},
+    )
+    return {
+        "format": "appgen.identity-release-gate.v1",
+        "ok": all(gate["ok"] for gate in gates),
+        "gates": gates,
+        "blocking_gaps": tuple(gate["gate"] for gate in gates if not gate["ok"]),
+        "providers": providers,
+        "cognito": cognito,
+    }
+
+
 class IdentityView(BaseView):
     route_base = "/identity"
     default_view = "index"
@@ -16567,6 +16630,10 @@ class IdentityView(BaseView):
     @expose("/cognito/oauth.json")
     def cognito_oauth_json(self):
         return jsonify(cognito_readiness())
+
+    @expose("/release-gate.json")
+    def release_gate_json(self):
+        return jsonify(identity_release_gate())
 
 
 def register_identity(appbuilder):
@@ -31608,12 +31675,14 @@ def validate_identity_artifacts() -> None:
         "ldap_bind_plan",
         "directory_search_plan",
         "sAMAccountName",
+        "sample_identity_environment",
+        "identity_release_gate",
     )
     if not all(item in contract for item in required):
         fail("identity contract must expose Cognito OAuth, LDAP, and Active Directory provider helpers")
     template = (ROOT / "app" / "templates" / "appgen_identity.html").read_text()
-    if "AWS" not in template or "Cognito OAuth JSON" not in template or "LDAP" not in template or "Active Directory" not in template:
-        fail("identity template must expose AWS Cognito OAuth, LDAP, and Active Directory provider readiness")
+    if "AWS" not in template or "Cognito OAuth JSON" not in template or "Release Gate JSON" not in template or "LDAP" not in template or "Active Directory" not in template:
+        fail("identity template must expose AWS Cognito OAuth, LDAP, Active Directory, and release readiness")
 
 
 def validate_compliance_artifacts() -> None:
@@ -33570,6 +33639,14 @@ def test_generated_runtime_helpers():
     assert identity.cognito_oauth_metadata(cognito_env)["token_url"].endswith("/oauth2/token")
     assert identity.cognito_token_exchange_plan("code", "https://app/callback", environ=cognito_env)["review_required"] is True
     assert identity.cognito_group_role_mapping({{"cognito:groups": ("appgen:Editor",)}}, prefix="appgen:") == ("Editor",)
+    assert identity.identity_release_gate(
+        {"app/identity.py", "app/templates/appgen_identity.html"},
+        identity.sample_identity_environment(),
+    )["format"] == "appgen.identity-release-gate.v1"
+    assert identity.identity_release_gate(
+        {"app/identity.py", "app/templates/appgen_identity.html"},
+        identity.sample_identity_environment(),
+    )["ok"] is True
     assert isinstance(compliance.compliance_catalog(), tuple)
     assert compliance.privacy_request("export", "subject-1")["format"] == "appgen.privacy-request.v1"
     assert compliance.subject_export_package("subject-1", {{}})["format"] == "appgen.subject-export.v1"
