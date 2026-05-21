@@ -1904,6 +1904,24 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     proposal = security.access_change_proposal("Editor", "Book", ("read", "delete"), actor="ada")
     assert proposal["review_required"] is True
     assert proposal["dsl"] == "role Editor {\n  Book: read, delete;\n}\n"
+    threat_model = security.threat_model()
+    assert threat_model["format"] == "appgen.security-threat-model.v1"
+    assert ("Book", "cover_image") in threat_model["protected_fields"]
+    assert any(item["id"] == "secret-exposure" for item in threat_model["threats"])
+    assert security.secret_exposure_scan({"SECRET_KEY": "change-me-before-deploy"})["ok"] is False
+    assert security.dependency_security_plan()["commands"][0] == "python -m pip-audit -r requirements.txt"
+    assert security.api_security_test_plan()["cases"]
+    security_gate = security.security_gate_plan(
+        {"SECRET_KEY": "x" * 32},
+        {"app/security.py", "app/runtime_security.py", "app/identity.py", "app/rls.py", "app/compliance.py"},
+    )
+    assert security_gate["format"] == "appgen.security-gate-plan.v1"
+    assert security_gate["ok"] is True
+    assert security.security_signoff(
+        {"SECRET_KEY": "x" * 32},
+        {"app/security.py", "app/runtime_security.py", "app/identity.py", "app/rls.py", "app/compliance.py"},
+        actor="ada",
+    )["decision"] == "approved"
     assert runtime_security.security_policy()["idle_timeout_seconds"] == 1800
     assert runtime_security.is_public_path("/static/app.css") is True
     assert runtime_security.is_public_path("/book/list/") is False

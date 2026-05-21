@@ -577,9 +577,23 @@ def write_security_file(output_dir, schema: AppSchema):
     """Write role and permission seed metadata for generated apps."""
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
+    security_resources = tuple(
+        {
+            "table": table.name,
+            "fields": tuple(column.name for column in table.columns),
+            "protected_fields": tuple(
+                column.name
+                for column in table.columns
+                if column.hidden or column.type_name.lower().split("(", 1)[0] in {"file", "image", "blob", "binary", "bytea"}
+            ),
+            "relationship_fields": tuple(column.name for column in table.columns if column.references),
+        }
+        for table in schema.tables
+    )
     with open(output_dir / "security.py", "w") as f:
         f.write('"""Generated RBAC seed metadata for AppGen apps."""\n\n')
         f.write("from __future__ import annotations\n\n")
+        f.write(f"SECURITY_RESOURCES = {security_resources!r}\n\n")
         f.write("ROLE_POLICIES = {\n")
         for role in schema.roles:
             f.write(f"    {role.name!r}: {{\n")
@@ -665,6 +679,87 @@ def write_security_file(output_dir, schema: AppSchema):
         f.write("        'actor': actor,\n")
         f.write("        'review_required': True,\n")
         f.write("        'dsl': f'role {role_name} {{\\n  {resource}: {\", \".join(proposed)};\\n}}\\n',\n")
+        f.write("    }\n\n")
+        f.write("def security_resource_catalog():\n")
+        f.write("    \"\"\"Return generated resources and protected fields for security review.\"\"\"\n")
+        f.write("    return tuple(SECURITY_RESOURCES)\n\n")
+        f.write("def threat_model():\n")
+        f.write("    \"\"\"Return a generated threat model for the application surface.\"\"\"\n")
+        f.write("    return {\n")
+        f.write("        'format': 'appgen.security-threat-model.v1',\n")
+        f.write("        'assets': tuple(resource['table'] for resource in SECURITY_RESOURCES),\n")
+        f.write("        'protected_fields': tuple((resource['table'], field) for resource in SECURITY_RESOURCES for field in resource['protected_fields']),\n")
+        f.write("        'trust_boundaries': ('browser_session', 'rest_api', 'graphql_api', 'database', 'background_jobs', 'external_integrations'),\n")
+        f.write("        'threats': (\n")
+        f.write("            {'id': 'authz-bypass', 'risk': 'high', 'surface': 'rest_api', 'mitigation': 'authorize every role/resource/action via ROLE_POLICIES'},\n")
+        f.write("            {'id': 'secret-exposure', 'risk': 'high', 'surface': 'config', 'mitigation': 'scan generated config and environment for literal or default secrets'},\n")
+        f.write("            {'id': 'injection', 'risk': 'medium', 'surface': 'database', 'mitigation': 'use SQLAlchemy models and reviewed SQL workbench guards'},\n")
+        f.write("            {'id': 'tenant-leakage', 'risk': 'high', 'surface': 'database', 'mitigation': 'apply generated RLS and tenant filters when tenant fields exist'},\n")
+        f.write("            {'id': 'file-upload-abuse', 'risk': 'medium', 'surface': 'media', 'mitigation': 'validate media fields, storage plans, and protected-field access'},\n")
+        f.write("            {'id': 'session-replay', 'risk': 'medium', 'surface': 'browser_session', 'mitigation': 'runtime security headers and inactivity timeout'},\n")
+        f.write("        ),\n")
+        f.write("        'required_reviews': ('rbac_matrix', 'secret_scan', 'runtime_headers', 'dependency_scan', 'rls_policy', 'api_contract_auth'),\n")
+        f.write("    }\n\n")
+        f.write("def secret_exposure_scan(values=None):\n")
+        f.write("    \"\"\"Return deterministic findings for default or literal secret exposure.\"\"\"\n")
+        f.write("    values = dict(values or {})\n")
+        f.write("    findings = []\n")
+        f.write("    secret_markers = ('SECRET', 'TOKEN', 'PASSWORD', 'API_KEY', 'PRIVATE_KEY')\n")
+        f.write("    bad_values = {'', 'change-me', 'change-me-before-deploy', 'changeme', 'password', 'secret'}\n")
+        f.write("    for key, value in values.items():\n")
+        f.write("        key_text = str(key).upper()\n")
+        f.write("        value_text = str(value or '')\n")
+        f.write("        if any(marker in key_text for marker in secret_markers):\n")
+        f.write("            normalized = value_text.strip().lower()\n")
+        f.write("            if normalized in bad_values or normalized.startswith('change-me'):\n")
+        f.write("                findings.append({'severity': 'critical', 'key': key, 'kind': 'default_secret'})\n")
+        f.write("            elif value_text and not value_text.isupper() and len(value_text) < 24:\n")
+        f.write("                findings.append({'severity': 'warning', 'key': key, 'kind': 'possible_literal_secret'})\n")
+        f.write("    return {'format': 'appgen.secret-exposure-scan.v1', 'ok': not any(item['severity'] == 'critical' for item in findings), 'findings': tuple(findings)}\n\n")
+        f.write("def dependency_security_plan(requirements=None):\n")
+        f.write("    \"\"\"Return a generated dependency vulnerability review plan.\"\"\"\n")
+        f.write("    packages = tuple(requirements or ('flask-appbuilder', 'sqlalchemy', 'flask', 'graphene'))\n")
+        f.write("    return {\n")
+        f.write("        'format': 'appgen.dependency-security-plan.v1',\n")
+        f.write("        'packages': packages,\n")
+        f.write("        'commands': ('python -m pip-audit -r requirements.txt', 'python -m pip check'),\n")
+        f.write("        'review_gates': ('no_known_critical_vulnerabilities', 'pinned_runtime_dependencies', 'license_review', 'upgrade_plan_for_findings'),\n")
+        f.write("        'requires_review': True,\n")
+        f.write("    }\n\n")
+        f.write("def api_security_test_plan():\n")
+        f.write("    \"\"\"Return generated API authorization and abuse-case tests.\"\"\"\n")
+        f.write("    cases = []\n")
+        f.write("    for resource in SECURITY_RESOURCES:\n")
+        f.write("        table = resource['table']\n")
+        f.write("        cases.append({'name': f'unauthenticated_{table.lower()}_list', 'resource': table, 'action': 'read', 'expected': (401, 403)})\n")
+        f.write("        cases.append({'name': f'forbidden_{table.lower()}_delete', 'resource': table, 'action': 'delete', 'expected': (401, 403)})\n")
+        f.write("    return {'format': 'appgen.api-security-test-plan.v1', 'cases': tuple(cases), 'checks': ('unauthenticated_denied', 'forbidden_action_denied', 'protected_fields_hidden')}\n\n")
+        f.write("def security_gate_plan(values=None, existing_paths=()):\n")
+        f.write("    \"\"\"Return the generated security gate used by CI and release reviews.\"\"\"\n")
+        f.write("    existing = set(existing_paths)\n")
+        f.write("    required = {'app/security.py', 'app/runtime_security.py', 'app/identity.py', 'app/rls.py', 'app/compliance.py'}\n")
+        f.write("    missing = tuple(sorted(required - existing))\n")
+        f.write("    secret_scan = secret_exposure_scan(values)\n")
+        f.write("    return {\n")
+        f.write("        'format': 'appgen.security-gate-plan.v1',\n")
+        f.write("        'ok': not missing and secret_scan['ok'] and bool(threat_model()['threats']) and bool(policy_matrix()),\n")
+        f.write("        'missing_artifacts': missing,\n")
+        f.write("        'threat_model': threat_model(),\n")
+        f.write("        'secret_scan': secret_scan,\n")
+        f.write("        'dependency_security': dependency_security_plan(),\n")
+        f.write("        'api_security_tests': api_security_test_plan(),\n")
+        f.write("        'review_gates': ('threat_model_reviewed', 'no_default_secrets', 'rbac_matrix_reviewed', 'api_security_tests_run', 'dependency_scan_reviewed'),\n")
+        f.write("    }\n\n")
+        f.write("def security_signoff(values=None, existing_paths=(), actor=None):\n")
+        f.write("    \"\"\"Return a release signoff envelope for generated security controls.\"\"\"\n")
+        f.write("    gate = security_gate_plan(values, existing_paths)\n")
+        f.write("    return {\n")
+        f.write("        'format': 'appgen.security-signoff.v1',\n")
+        f.write("        'actor': actor,\n")
+        f.write("        'ok': gate['ok'],\n")
+        f.write("        'gate': gate,\n")
+        f.write("        'decision': 'approved' if gate['ok'] else 'blocked',\n")
+        f.write("        'required_before_release': not gate['ok'],\n")
         f.write("    }\n\n")
         f.write("def seed_roles(appbuilder):\n")
         f.write("    \"\"\"Create declared roles if they do not already exist.\"\"\"\n")
@@ -29380,6 +29475,23 @@ def validate_manifest() -> None:
         fail("manifest missing capabilities: " + ", ".join(missing))
 
 
+def validate_security_artifacts() -> None:
+    contract = (ROOT / "app" / "security.py").read_text()
+    required = (
+        "threat_model",
+        "secret_exposure_scan",
+        "dependency_security_plan",
+        "api_security_test_plan",
+        "security_gate_plan",
+        "security_signoff",
+        "authorization_audit_event",
+    )
+    if not all(item in contract for item in required):
+        fail("security contract must expose threat modeling, secret scanning, dependency review, API security tests, gates, signoff, and audit events")
+    if "appgen.security-threat-model.v1" not in contract or "appgen.security-gate-plan.v1" not in contract:
+        fail("security contract must expose versioned threat-model and gate-plan evidence")
+
+
 def validate_documentation_artifacts() -> None:
     schema_doc = (ROOT / "docs" / "schema.md").read_text()
     dictionary = json.loads((ROOT / "docs" / "data-dictionary.json").read_text())
@@ -30645,6 +30757,7 @@ def main() -> int:
     require_paths()
     compile_python()
     validate_manifest()
+    validate_security_artifacts()
     validate_documentation_artifacts()
     validate_config_admin_artifacts()
     validate_designer_artifacts()
@@ -31248,6 +31361,18 @@ def test_generated_runtime_helpers():
         first_resource = next(iter(security.ROLE_POLICIES[first_role]), None)
         if first_resource:
             assert security.authorize({"roles": [first_role]}, first_resource, security.ROLE_POLICIES[first_role][first_resource][0])["ok"] is True
+    assert security.threat_model()["format"] == "appgen.security-threat-model.v1"
+    assert security.secret_exposure_scan({"SECRET_KEY": "change-me-before-deploy"})["ok"] is False
+    assert security.dependency_security_plan()["commands"][0] == "python -m pip-audit -r requirements.txt"
+    assert security.api_security_test_plan()["cases"]
+    assert security.security_gate_plan(
+        {"SECRET_KEY": "x" * 32},
+        {"app/security.py", "app/runtime_security.py", "app/identity.py", "app/rls.py", "app/compliance.py"},
+    )["ok"] is True
+    assert security.security_signoff(
+        {"SECRET_KEY": "x" * 32},
+        {"app/security.py", "app/runtime_security.py", "app/identity.py", "app/rls.py", "app/compliance.py"},
+    )["decision"] == "approved"
     assert runtime_security.should_logout(1, now=runtime_security.datetime.fromtimestamp(2000, runtime_security.timezone.utc)) is True
     assurance_report = runtime_assurance.runtime_assurance_report({"p95_ms": 200, "error_rate": 0})
     assert assurance_report["format"] == "appgen.runtime-assurance.v1"

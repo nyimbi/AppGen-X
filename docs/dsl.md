@@ -206,7 +206,9 @@ apps include:
 - `gql.py` with a Graphene query schema.
 - `security.py` with declared role and permission seed metadata, principal
   normalization, authorization decisions, audit events, policy matrices, and
-  reviewable RBAC change proposals that regenerate DSL.
+  reviewable RBAC change proposals that regenerate DSL, plus generated threat
+  models, secret exposure scans, dependency security plans, API security test
+  plans, release security gates, and signoff envelopes.
 - `runtime_security.py` and `appgen_runtime_security.html` with generated
   inactivity logout and security-header hardening hooks.
 - `workflow.py` with transition helpers such as `next_states`,
