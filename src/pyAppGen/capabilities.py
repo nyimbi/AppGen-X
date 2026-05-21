@@ -81,7 +81,7 @@ DEFAULT_CAPABILITIES: tuple[Capability, ...] = (
     Capability("security.https", "Automatic HTTPS deployment", "partial", "generated Caddy reverse proxy and TLS readiness checks"),
     Capability("security.rls", "Tenant-aware row-level security", "partial", "DSL-declared RLS targets, generated Python RLS helpers, PostgreSQL policy SQL, tenant session-setting SQL, and reviewable database role/user sync SQL"),
     Capability("security.sso", "SSO and enterprise authentication", "partial", "generated OIDC, SAML, LDAP, Active Directory, AWS Cognito hosted-ui OAuth/token/logout contracts, group-role mapping, and trusted-header registry"),
-    Capability("security.compliance", "Compliance-oriented data protection", "partial", "generated audit events, retention policy, and redaction helpers"),
+    Capability("security.compliance", "Compliance-oriented data protection", "partial", "generated audit events, retention policy, redaction, privacy requests, subject exports, erasure plans, and retention-disposition reviews"),
     Capability("reports.analytics", "Reports, dashboards, and analytics", "partial", "generated table, join, and three-way report catalogs plus dashboard contracts, CSV/PDF exports, and email delivery payloads"),
     Capability("reports.usage-analytics", "Application usage analytics", "partial", "generated usage events, adoption, funnels, retention, and real-time activity summaries"),
     Capability("data.visualization", "Charts, graphs, and KPI visualization", "partial", "generated dashboards, chart data contracts, Vega-Lite specs, accessible summaries, and web/mobile/desktop renderer workbenches"),

@@ -4087,9 +4087,11 @@ def write_compliance_template(output_dir):
 <section class="agc-wrap">
   <h1 class="agc-title">Compliance</h1>
   <p class="agc-note">
-    Generated audit and protected-field registry. Use these helpers to redact
-    sensitive fields from exports, logs, and integration payloads.
+    Generated audit, protected-field, privacy request, and retention-disposition
+    registry. Use these helpers to redact sensitive fields from exports, logs,
+    and integration payloads.
   </p>
+  <p><a class="btn btn-default" href="{{ url_for('ComplianceView.privacy_requests_json') }}">Privacy Requests JSON</a></p>
   <div class="agc-grid">
     {% for item in tables %}
     <article class="agc-card">
@@ -15521,6 +15523,24 @@ COMPLIANCE_TABLES = {tables!r}
 REDACTION = "[redacted]"
 
 
+def _row_mapping(row):
+    """Return dict-like values from mappings, rows, or ORM-style objects."""
+    if row is None:
+        return {{}}
+    if isinstance(row, dict):
+        return dict(row)
+    if hasattr(row, "_asdict"):
+        return dict(row._asdict())
+    if hasattr(row, "items"):
+        return dict(row.items())
+    if hasattr(row, "__dict__"):
+        return {{key: value for key, value in vars(row).items() if not key.startswith("_")}}
+    try:
+        return dict(row)
+    except (TypeError, ValueError):
+        return {{}}
+
+
 def compliance_catalog():
     """Return protected-field and retention metadata for generated tables."""
     return tuple(
@@ -15543,7 +15563,7 @@ def protected_fields(table_name):
 def redact_row(table_name, row):
     """Return a copy of a row with generated protected fields redacted."""
     protected = set(protected_fields(table_name))
-    result = dict(row)
+    result = _row_mapping(row)
     for field in protected:
         if field in result:
             result[field] = REDACTION
@@ -15570,6 +15590,89 @@ def retention_policy(table_name):
     return {{"table": table_name, "retention_days": table["retention_days"]}}
 
 
+def privacy_request(request_type, subject_id, *, tables=None, actor=None, reason=None):
+    """Return a reviewed privacy/data-protection request envelope."""
+    if request_type not in {{"access", "export", "rectify", "erase", "restrict", "object"}}:
+        raise ValueError("Unsupported privacy request type")
+    selected_tables = tuple(tables or COMPLIANCE_TABLES)
+    return {{
+        "format": "appgen.privacy-request.v1",
+        "request_type": request_type,
+        "subject_id": subject_id,
+        "actor": actor,
+        "reason": reason,
+        "tables": selected_tables,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "requires_review": request_type in {{"erase", "restrict", "object"}},
+        "checks": ("identity_verified", "authority_checked", "protected_fields_redacted", "audit_logged"),
+    }}
+
+
+def subject_export_package(subject_id, row_map, *, actor=None):
+    """Return a redacted subject export package for privacy requests."""
+    exported = {{}}
+    for table_name, rows in dict(row_map or {{}}).items():
+        exported[table_name] = tuple(redact_row(table_name, row) for row in rows)
+    return {{
+        "format": "appgen.subject-export.v1",
+        "subject_id": subject_id,
+        "actor": actor,
+        "tables": tuple(exported),
+        "data": exported,
+        "audit": audit_event("privacy.export", "subject", actor=actor, metadata={{"subject_id": subject_id}}),
+    }}
+
+
+def erasure_plan(subject_id, row_map, *, actor=None, mode="soft_delete"):
+    """Return a reviewable erasure/restriction plan without deleting data."""
+    actions = []
+    for table_name, rows in dict(row_map or {{}}).items():
+        for row in rows:
+            record_id = row.get("id") if isinstance(row, dict) else getattr(row, "id", None)
+            actions.append({{
+                "table": table_name,
+                "record_id": record_id,
+                "mode": mode,
+                "protected_fields": protected_fields(table_name),
+                "retention": retention_policy(table_name),
+            }})
+    return {{
+        "format": "appgen.erasure-plan.v1",
+        "subject_id": subject_id,
+        "actor": actor,
+        "mode": mode,
+        "actions": tuple(actions),
+        "requires_review": True,
+        "audit": audit_event("privacy.erase.plan", "subject", actor=actor, metadata={{"subject_id": subject_id, "actions": len(actions)}}),
+    }}
+
+
+def retention_disposition_review(table_name, records, *, now=None):
+    """Return records that are due for archive/delete review under retention rules."""
+    policy = retention_policy(table_name)
+    retention_days = policy.get("retention_days")
+    reviewed_at = now or datetime.now(timezone.utc).isoformat()
+    due = []
+    for row in records or ():
+        record = _row_mapping(row)
+        record_id = record.get("id", getattr(row, "id", None))
+        age_days = int(record.get("age_days", getattr(row, "age_days", 0)) or 0)
+        if retention_days is not None and age_days >= int(retention_days):
+            due.append({{
+                "record_id": record_id,
+                "age_days": age_days,
+                "retention_days": retention_days,
+                "action": "archive_or_delete_review",
+            }})
+    return {{
+        "format": "appgen.retention-disposition-review.v1",
+        "table": table_name,
+        "reviewed_at": reviewed_at,
+        "due": tuple(due),
+        "requires_review": bool(due),
+    }}
+
+
 class ComplianceView(BaseView):
     route_base = "/compliance"
     default_view = "index"
@@ -15581,6 +15684,13 @@ class ComplianceView(BaseView):
     @expose("/catalog.json")
     def catalog_json(self):
         return jsonify(list(compliance_catalog()))
+
+    @expose("/privacy-requests.json")
+    def privacy_requests_json(self):
+        return jsonify({{
+            "supported": ("access", "export", "rectify", "erase", "restrict", "object"),
+            "sample": privacy_request("export", "subject-1"),
+        }})
 
 
 def register_compliance(appbuilder):
@@ -28329,6 +28439,26 @@ def validate_identity_artifacts() -> None:
         fail("identity template must expose AWS Cognito OAuth, LDAP, and Active Directory provider readiness")
 
 
+def validate_compliance_artifacts() -> None:
+    contract = (ROOT / "app" / "compliance.py").read_text()
+    required = (
+        "compliance_catalog",
+        "protected_fields",
+        "redact_row",
+        "audit_event",
+        "retention_policy",
+        "privacy_request",
+        "subject_export_package",
+        "erasure_plan",
+        "retention_disposition_review",
+    )
+    if not all(item in contract for item in required):
+        fail("compliance contract must expose audit, redaction, privacy request, export, erasure, and retention review helpers")
+    template = (ROOT / "app" / "templates" / "appgen_compliance.html").read_text()
+    if "Compliance" not in template or "Privacy Requests JSON" not in template:
+        fail("compliance template must expose privacy request contracts")
+
+
 def validate_erp_template_artifacts() -> None:
     contract = (ROOT / "app" / "erp_templates.py").read_text()
     required_modules = (
@@ -29280,6 +29410,7 @@ def main() -> int:
     validate_i18n_artifacts()
     validate_intelligence_artifacts()
     validate_identity_artifacts()
+    validate_compliance_artifacts()
     validate_erp_template_artifacts()
     validate_document_management_artifacts()
     validate_inventory_ops_artifacts()
@@ -30113,6 +30244,9 @@ def test_generated_runtime_helpers():
     assert identity.cognito_token_exchange_plan("code", "https://app/callback", environ=cognito_env)["review_required"] is True
     assert identity.cognito_group_role_mapping({{"cognito:groups": ("appgen:Editor",)}}, prefix="appgen:") == ("Editor",)
     assert isinstance(compliance.compliance_catalog(), tuple)
+    assert compliance.privacy_request("export", "subject-1")["format"] == "appgen.privacy-request.v1"
+    assert compliance.subject_export_package("subject-1", {{}})["format"] == "appgen.subject-export.v1"
+    assert compliance.erasure_plan("subject-1", {{}})["requires_review"] is True
     assert isinstance(assistant.assistant_catalog(), tuple)
     first_intelligence_table = intelligence.intelligence_catalog()[0]["table"]
     assert intelligence.preprocess_row(first_intelligence_table, {}) is not None

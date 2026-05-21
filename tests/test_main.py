@@ -2628,6 +2628,22 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert audit["action"] == "read"
     assert audit["tenant_id"] == "acme"
     assert compliance.retention_policy("Book")["retention_days"] == 365
+    privacy = compliance.privacy_request("erase", "subject-1", tables=("Book",), actor="dpo")
+    assert privacy["format"] == "appgen.privacy-request.v1"
+    assert privacy["requires_review"] is True
+    export = compliance.subject_export_package(
+        "subject-1",
+        {"Book": [{"id": 1, "title": "Dune", "internal_code": "B-1"}]},
+        actor="dpo",
+    )
+    assert export["data"]["Book"][0]["internal_code"] == "[redacted]"
+    erasure = compliance.erasure_plan("subject-1", {"Book": [{"id": 1}]}, actor="dpo")
+    assert erasure["format"] == "appgen.erasure-plan.v1"
+    assert erasure["actions"][0]["table"] == "Book"
+    record = type("Record", (), {"id": 1, "age_days": 400})()
+    disposition = compliance.retention_disposition_review("Book", [record])
+    assert disposition["requires_review"] is True
+    assert disposition["due"][0]["action"] == "archive_or_delete_review"
     context = assistant.prompt_context("Book", {"title": "Dune", "internal_code": "B-1"})
     assert context["values"] == {"title": "Dune"}
     assert "internal_code" not in context["fields"]
