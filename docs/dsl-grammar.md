@@ -43,6 +43,17 @@ appBlock  : LBRACE appOption* RBRACE ;
 appOption : IDENT COLON literal (COMMA literal)* SEMI? ;
 ```
 
+Dotted row-level security targets are accepted in the `rls` app option as
+authoring sugar and normalized to literal option values before parsing.
+
+```appgen
+app FieldOps { rls: Project.org_id, Invoice.account_id }
+```
+
+Validation then checks that every `Table.field` target exists. Generated
+tenancy helpers and PostgreSQL RLS policy SQL use the explicit field before
+falling back to conventional tenant field names.
+
 ## Tables And Fields
 
 ```antlr

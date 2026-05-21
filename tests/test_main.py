@@ -3798,6 +3798,70 @@ def test_generated_tenancy_helpers_detect_tenant_columns(tmp_path) -> None:
         rls.postgres_set_tenant_sql("")
 
 
+def test_appgen_dsl_supports_explicit_rls_targets_without_new_keywords(tmp_path) -> None:
+    """App options can declare RLS fields even when names do not match tenant conventions."""
+    dsl_path = tmp_path / "explicit_rls.ags"
+    dsl_path.write_text(
+        """
+        app TenantApp { rls: Project.org_id; targets: web, mobile, desktop }
+
+        table Project {
+          id: int pk
+          org_id: string required search
+          name: string required
+        }
+
+        table Task {
+          id: int pk
+          project_id: int required -> Project.id
+          title: string required
+        }
+        """
+    )
+
+    lint = lint_dsl(dsl_path.read_text(), source_name=str(dsl_path))
+    assert lint["ok"] is True
+    schema = load_schema(dsl_path, source_type="dsl")
+    assert schema.app_options["rls"] == "Project.org_id"
+    output_dir = tmp_path / "app"
+
+    generate_app_from_schema(schema, output_dir)
+
+    py_compile.compile(str(output_dir / "tenancy.py"), doraise=True)
+    py_compile.compile(str(output_dir / "rls.py"), doraise=True)
+    tenancy = _load_module(output_dir / "tenancy.py", "explicit_tenant_helpers")
+    rls = _load_module(output_dir / "rls.py", "explicit_rls_helpers")
+    catalog = {item["table"]: item for item in tenancy.tenant_catalog()}
+    assert catalog["Project"]["scoped"] is True
+    assert catalog["Project"]["tenant_columns"] == ("org_id",)
+    assert catalog["Project"]["tenant_source"] == "explicit"
+    assert catalog["Task"]["scoped"] is False
+    assert rls.table_policy("Project")["tenant_column"] == "org_id"
+    assert rls.table_policy("Project")["tenant_source"] == "explicit"
+    assert rls.rls_filter_kwargs("Project", {"tenant_id": "acme"}) == {"org_id": "acme"}
+    assert rls.can_access_row("Project", {"org_id": "acme"}, {"tenant_id": "acme"}) is True
+    assert rls.can_access_row("Project", {"org_id": "other"}, {"tenant_id": "acme"}) is False
+    assert "org_id" in rls.postgres_policy_sql("Project")
+
+
+def test_appgen_dsl_rejects_unknown_explicit_rls_targets(tmp_path) -> None:
+    """Explicit RLS targets are validated against generated schema fields."""
+    dsl_path = tmp_path / "broken_rls.ags"
+    dsl_path.write_text(
+        """
+        app TenantApp { rls: Project.organization_id }
+
+        table Project {
+          id: int pk
+          org_id: string required
+        }
+        """
+    )
+
+    with pytest.raises(ValueError, match="Unknown RLS target field: Project.organization_id"):
+        load_schema(dsl_path, source_type="dsl")
+
+
 def _load_module(path, module_name):
     spec = importlib.util.spec_from_file_location(module_name, path)
     module = importlib.util.module_from_spec(spec)

@@ -158,6 +158,24 @@ role Editor {
 }
 ```
 
+Use the app option `rls` when row-level security should scope a table by a
+domain-specific field name:
+
+```appgen
+app FieldOps { rls: Project.org_id; targets: web, mobile, desktop }
+
+table Project {
+  id: int pk
+  org_id: string required search
+  name: string required
+}
+```
+
+AppGen still detects conventional tenant fields such as `tenant_id`,
+`account_id`, `workspace_id`, and `organization_id`, but explicit `rls`
+targets make the generated tenancy helpers and PostgreSQL policy SQL
+reviewable in the DSL.
+
 ## Agentic Systems
 
 Declare LLM providers separately from agents. This makes local and API-backed

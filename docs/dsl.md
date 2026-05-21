@@ -20,14 +20,15 @@ Use `#`, `//`, or `/* ... */` comments anywhere whitespace is allowed; comments
 are ignored by the parser and do not affect generated artifacts.
 
 The optional `app { ... }` block carries app-level options such as `theme`,
-`primary`, `accent`, `logo`, `tagline`, and comma-separated `targets` without
-adding keywords. Supported targets are `web`, `pwa`, `mobile`, `desktop`, and
-`chatbot`; unknown targets are reported as DSL errors instead of being ignored.
+`primary`, `accent`, `logo`, `tagline`, explicit row-level security targets,
+and comma-separated `targets` without adding keywords. Supported targets are
+`web`, `pwa`, `mobile`, `desktop`, and `chatbot`; unknown targets are reported
+as DSL errors instead of being ignored.
 
 ## Example
 
 ```appgen
-app Library { theme: "sage"; targets: web, mobile, desktop }
+app Library { theme: "sage"; targets: web, mobile, desktop; rls: Book.tenant_id }
 
 enum Status { draft published archived }
 
@@ -159,6 +160,10 @@ SQLAlchemy enum metadata when the dialect exposes it.
   example, `@ title TextBox 0 0 6 1` pins the `title` field to a text box.
 - `flow` records workflow transitions for generated automation.
 - `role` records role-to-resource permissions for generated security policy.
+- `app { rls: Table.field }` explicitly chooses tenant-scope fields for
+  generated row-level security and PostgreSQL policy SQL. This is useful when
+  the tenant field is named for the domain, such as `org_id`, rather than
+  `tenant_id`.
 - `rule` records table validation and decision branches; `->` names the action
   selected when a condition passes.
 - `llm` records local or API-key-backed LLM provider configuration. API keys are

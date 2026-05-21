@@ -13943,32 +13943,65 @@ def register_emerging(appbuilder):
 '''
 
 
-def _tenancy_text(schema: AppSchema) -> str:
-    tenant_markers = {
-        "tenant",
-        "tenant_id",
-        "account_id",
-        "workspace_id",
-        "organization_id",
-        "organisation_id",
-    }
+TENANT_MARKERS = {
+    "tenant",
+    "tenant_id",
+    "account_id",
+    "workspace_id",
+    "organization_id",
+    "organisation_id",
+}
+
+
+def _explicit_rls_targets(schema: AppSchema) -> dict[str, tuple[str, ...]]:
+    targets: dict[str, list[str]] = {}
+    for raw_target in str(schema.app_options.get("rls", "")).split(","):
+        target = raw_target.strip()
+        if not target or "." not in target:
+            continue
+        table_name, field_name = target.split(".", 1)
+        targets.setdefault(table_name, []).append(field_name)
+    return {table_name: tuple(fields) for table_name, fields in targets.items()}
+
+
+def _tenant_scope_metadata(schema: AppSchema) -> dict[str, dict]:
+    explicit_targets = _explicit_rls_targets(schema)
     tables = {}
     for table in schema.tables:
-        tenant_columns = [
+        columns = [_model_attribute_name(column) for column in table.columns if not column.derived]
+        attributes_by_field = {
+            column.name: _model_attribute_name(column)
+            for column in table.columns
+            if not column.derived
+        }
+        attributes_by_attr = {attribute: attribute for attribute in attributes_by_field.values()}
+        explicit_columns = tuple(
+            attributes_by_field.get(field_name) or attributes_by_attr.get(field_name)
+            for field_name in explicit_targets.get(table.name, ())
+            if attributes_by_field.get(field_name) or attributes_by_attr.get(field_name)
+        )
+        detected_columns = tuple(
             _model_attribute_name(column)
             for column in table.columns
             if not column.derived
             and (
-                column.name.lower() in tenant_markers
-                or _model_attribute_name(column).lower() in tenant_markers
+                column.name.lower() in TENANT_MARKERS
+                or _model_attribute_name(column).lower() in TENANT_MARKERS
             )
-        ]
+        )
+        tenant_columns = explicit_columns or detected_columns
         tables[table.name] = {
             "label": snake_to_label(table.name),
             "model": snake_to_pascal(table.name),
-            "columns": [_model_attribute_name(column) for column in table.columns if not column.derived],
+            "columns": columns,
             "tenant_columns": tenant_columns,
+            "tenant_source": "explicit" if explicit_columns else ("detected" if detected_columns else None),
         }
+    return tables
+
+
+def _tenancy_text(schema: AppSchema) -> str:
+    tables = _tenant_scope_metadata(schema)
     return f'''"""Generated multi-tenancy helpers for AppGen apps."""
 
 from __future__ import annotations
@@ -13994,6 +14027,7 @@ def tenant_catalog():
             "model": table["model"],
             "columns": tuple(table["columns"]),
             "tenant_columns": tuple(table["tenant_columns"]),
+            "tenant_source": table["tenant_source"],
             "scoped": bool(table["tenant_columns"]),
         }}
         for table_name, table in TENANT_TABLES.items()
@@ -14029,7 +14063,7 @@ def tenant_column(table_name):
 
 
 def is_tenant_scoped(table_name):
-    """Return True when the generated table contains a tenant marker column."""
+    """Return True when the generated table has a tenant-scope contract."""
     return tenant_column(table_name) is not None
 
 
@@ -14076,31 +14110,17 @@ def register_tenancy(appbuilder):
 
 
 def _rls_text(schema: AppSchema) -> str:
-    tenant_markers = {
-        "tenant",
-        "tenant_id",
-        "account_id",
-        "workspace_id",
-        "organization_id",
-        "organisation_id",
-    }
+    tenant_tables = _tenant_scope_metadata(schema)
     policies = {}
     for table in schema.tables:
-        tenant_columns = [
-            _model_attribute_name(column)
-            for column in table.columns
-            if not column.derived
-            and (
-                column.name.lower() in tenant_markers
-                or _model_attribute_name(column).lower() in tenant_markers
-            )
-        ]
+        tenant_columns = tuple(tenant_tables[table.name]["tenant_columns"])
         tenant_column = tenant_columns[0] if tenant_columns else None
         policies[table.name] = {
             "table": table.name,
             "label": snake_to_label(table.name),
             "model": snake_to_pascal(table.name),
             "tenant_column": tenant_column,
+            "tenant_source": tenant_tables[table.name]["tenant_source"],
             "scoped": tenant_column is not None,
             "bypass_roles": ("Admin", "SecurityManager"),
         }

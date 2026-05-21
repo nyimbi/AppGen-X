@@ -111,7 +111,7 @@ def lint_dsl(text: str, *, source_name: str | None = None) -> dict:
 
 def schema_from_dsl(text: str, *, source_name: str | None = None) -> AppSchema:
     """Parse AppGen DSL source into the canonical app schema."""
-    text = _normalize_reference_sugar(text)
+    text = _normalize_app_option_sugar(_normalize_reference_sugar(text))
     tree = _parse(text)
     app_decl = tree.appDecl()
     app_name = _app_name(app_decl) if app_decl else None
@@ -223,6 +223,8 @@ _FIELD_ARROW_REF_RE = re.compile(
 _EXTERNAL_ARROW_REF_RE = re.compile(
     r"^(?P<prefix>\s*)(?P<source>[A-Za-z_][A-Za-z0-9_]*\.[A-Za-z_][A-Za-z0-9_]*)\s*->\s*(?P<target>[A-Za-z_][A-Za-z0-9_]*\.[A-Za-z_][A-Za-z0-9_]*)(?P<cardinality>\s*\[[A-Za-z_][A-Za-z0-9_-]*(?:\.[A-Za-z_][A-Za-z0-9_-]*)?\])?\s*(?P<suffix>;?\s*)$"
 )
+_DOTTED_APP_OPTION_RE = re.compile(r"(\brls\s*:\s*)([^;\n}]+)")
+_DOTTED_VALUE_RE = re.compile(r"[A-Za-z_][A-Za-z0-9_]*\.[A-Za-z_][A-Za-z0-9_]*")
 
 
 def _normalize_reference_sugar(source: str) -> str:
@@ -243,6 +245,23 @@ def _normalize_reference_sugar(source: str) -> str:
             continue
         normalized_lines.append(line)
     return "\n".join(normalized_lines)
+
+
+def _normalize_app_option_sugar(source: str) -> str:
+    """Allow dotted app option values without reserving more grammar keywords."""
+
+    def repl(match: re.Match[str]) -> str:
+        prefix, raw_values = match.groups()
+        values = []
+        for value in raw_values.split(","):
+            stripped = value.strip()
+            if _DOTTED_VALUE_RE.fullmatch(stripped):
+                values.append(f'"{stripped}"')
+            else:
+                values.append(stripped)
+        return prefix + ", ".join(values)
+
+    return _DOTTED_APP_OPTION_RE.sub(repl, source)
 
 
 def _app_name(ctx) -> str | None:
@@ -359,8 +378,33 @@ def _validate_schema(schema: AppSchema) -> None:
             if agent.provider and agent.provider not in provider_names:
                 errors.append(f"Unknown agent provider: {agent.name}.{agent.provider}")
 
+    for table_name, field_name in _explicit_rls_targets(schema.app_options):
+        if table_name not in table_map:
+            errors.append(f"Unknown RLS target table: {table_name}")
+            continue
+        if field_name not in field_map[table_name]:
+            errors.append(f"Unknown RLS target field: {table_name}.{field_name}")
+
     if errors:
         raise AppGenSyntaxError("; ".join(errors))
+
+
+def _explicit_rls_targets(app_options: dict[str, str]) -> tuple[tuple[str, str], ...]:
+    raw_targets = app_options.get("rls")
+    if not raw_targets:
+        return ()
+    targets: list[tuple[str, str]] = []
+    for raw_target in raw_targets.split(","):
+        target = raw_target.strip()
+        if not target:
+            continue
+        if not _DOTTED_VALUE_RE.fullmatch(target):
+            raise AppGenSyntaxError(
+                f"Invalid RLS target: {target}. Use Table.field, for example Project.tenant_id"
+            )
+        table_name, field_name = target.split(".", 1)
+        targets.append((table_name, field_name))
+    return tuple(targets)
 
 
 def _duplicate_name_errors(kind: str, names: Iterable[str]) -> list[str]:
