@@ -406,7 +406,8 @@ apps include:
   quick fixes, completions/snippets, searchable command palettes, project trees, editor
   sessions, visual database design, Mermaid ERD export, DBML export, SQL DDL
   preview, PonyORM preview, table proposals, migration previews, staged
-  generation jobs, IDE diagnostics, app management, code editing,
+  generation jobs with deterministic IDs, queue/status/log views, target
+  artifact manifests, IDE diagnostics, app management, code editing,
   breakpoint/debug plans, dependency update plans, app cloning, and reusable
   component repository exports.
 - `realtime.py` and `appgen_realtime.html` with generated event topics,

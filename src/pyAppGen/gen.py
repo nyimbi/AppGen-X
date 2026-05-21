@@ -5751,6 +5751,8 @@ def write_studio_template(output_dir):
       <a class="btn btn-default" href="{{ url_for('StudioView.project_tree_json') }}">Project Tree JSON</a>
       <a class="btn btn-default" href="{{ url_for('StudioView.diagnostics_json') }}">Diagnostics JSON</a>
       <a class="btn btn-default" href="{{ url_for('StudioView.database_design_json') }}">Database Design JSON</a>
+      <a class="btn btn-default" href="{{ url_for('StudioView.generation_jobs_json') }}">Generation Jobs JSON</a>
+      <a class="btn btn-default" href="{{ url_for('StudioView.generation_artifacts_json') }}">Generation Artifacts JSON</a>
       <a class="btn btn-default" href="{{ url_for('StudioView.schema_erd_route') }}">ERD</a>
       <a class="btn btn-default" href="{{ url_for('StudioView.schema_dbml_route') }}">DBML</a>
       <a class="btn btn-default" href="{{ url_for('StudioView.schema_sql_route') }}">SQL DDL</a>
@@ -5786,6 +5788,13 @@ def write_studio_template(output_dir):
       <span class="ags-pill">lint</span>
       <span class="ags-pill">schema diff</span>
       <span class="ags-pill">quality gate</span>
+    </article>
+    <article class="ags-card">
+      <h3>Generation Jobs</h3>
+      <div class="ags-muted">queue, status, logs, and generated artifacts</div>
+      <span class="ags-pill">deterministic IDs</span>
+      <span class="ags-pill">stage logs</span>
+      <span class="ags-pill">target artifacts</span>
     </article>
     <article class="ags-card">
       <h3>Database Designer</h3>
@@ -14751,6 +14760,7 @@ def _rls_text(schema: AppSchema) -> str:
 
 from __future__ import annotations
 
+import hashlib
 import re
 
 from flask import jsonify
@@ -16097,6 +16107,7 @@ def _voice_text(schema: AppSchema, app_name: str) -> str:
 
 from __future__ import annotations
 
+import hashlib
 import re
 from xml.sax.saxutils import escape
 
@@ -23784,6 +23795,7 @@ def _studio_text(schema: AppSchema, app_name: str) -> str:
 
 from __future__ import annotations
 
+import hashlib
 import re
 
 from flask import jsonify
@@ -23849,6 +23861,7 @@ def ide_workspace():
         "editable_files": editable_files(),
         "command_palette": ide_command_palette(),
         "generation": app_generation_plan(),
+        "generation_jobs": generation_job_queue(),
         "management": app_management_plan("status"),
         "debug": tuple(debug_session(item["name"]) for item in DEBUG_SESSIONS),
     }}
@@ -24365,6 +24378,102 @@ def generation_job_plan(command="generate", targets=None, changed_paths=()):
     }}
 
 
+def generation_job_id(command="generate", targets=None, changed_paths=()):
+    """Return a deterministic job id for a Studio generation request."""
+    selected = tuple(targets or PLATFORM_TARGETS or ("web",))
+    changed = tuple(changed_paths or ())
+    seed = "|".join((command, ",".join(selected), ",".join(changed)))
+    return "appgen.job." + hashlib.sha1(seed.encode("utf-8")).hexdigest()[:12]
+
+
+def generation_artifact_manifest(targets=None):
+    """Return generated artifact groups for selected application targets."""
+    selected = tuple(targets or PLATFORM_TARGETS or ("web",))
+    by_target = {{
+        "web": ("app", "frontends", "openapi.json", "app/templates"),
+        "pwa": ("frontends/pwa", "frontends/manifest.webmanifest", "frontends/service-worker.js"),
+        "mobile": ("native/mobile", "native/mobile/pyproject.toml", "native/mobile/README.md"),
+        "desktop": ("native/desktop", "native/desktop/pyproject.toml", "native/desktop/README.md"),
+        "chatbot": ("chatbots", "chatbots/appgen_chatbots.py"),
+    }}
+    artifacts = []
+    for target in selected:
+        artifacts.append({{
+            "target": target,
+            "paths": by_target.get(target, (f"targets/{{target}}",)),
+            "checks": ("exists", "py_compile", "quality_gate"),
+        }})
+    return {{
+        "format": "appgen.generation-artifacts.v1",
+        "targets": selected,
+        "artifacts": tuple(artifacts),
+        "shared": ("app/appgen.json", "docs/schema.md", "scripts/appgen_quality.py"),
+    }}
+
+
+def generation_job_manifest(command="generate", targets=None, changed_paths=(), status="planned"):
+    """Return a queueable generation job manifest with logs and artifacts."""
+    plan = generation_job_plan(command=command, targets=targets, changed_paths=changed_paths)
+    job_id = generation_job_id(command=command, targets=plan["targets"], changed_paths=plan["changed_paths"])
+    return {{
+        "format": "appgen.generation-job.v1",
+        "job_id": job_id,
+        "status": status,
+        "command": command,
+        "plan": plan,
+        "artifacts": generation_artifact_manifest(plan["targets"]),
+        "log": tuple(
+            {{
+                "stage": stage["name"],
+                "status": "pending",
+                "message": f"Waiting to run {{stage['name']}}",
+            }}
+            for stage in plan["stages"]
+        ),
+        "transitions": ("planned", "queued", "running", "needs_review", "passed", "failed", "cancelled"),
+        "review_required": plan["review_required"],
+        "cancel": {{"allowed": status in {{"planned", "queued", "running"}}, "requires_review": status == "running"}},
+    }}
+
+
+def generation_job_queue(jobs=None):
+    """Return the Studio generation job queue."""
+    pending = tuple(jobs or (generation_job_manifest(),))
+    return {{
+        "format": "appgen.generation-job-queue.v1",
+        "jobs": pending,
+        "active": tuple(job for job in pending if job.get("status") in {{"queued", "running", "needs_review"}}),
+        "history": tuple(job for job in pending if job.get("status") in {{"passed", "failed", "cancelled"}}),
+        "max_parallel": 1,
+    }}
+
+
+def generation_job_status(job=None):
+    """Return a stable status envelope for a generation job."""
+    manifest = job if isinstance(job, dict) else generation_job_manifest()
+    stages = manifest["plan"]["stages"]
+    log = manifest.get("log", ())
+    completed = tuple(entry["stage"] for entry in log if entry.get("status") in {{"passed", "skipped"}})
+    return {{
+        "format": "appgen.generation-job-status.v1",
+        "job_id": manifest["job_id"],
+        "status": manifest["status"],
+        "completed_stages": completed,
+        "remaining_stages": tuple(stage["name"] for stage in stages if stage["name"] not in completed),
+        "review_required": manifest.get("review_required", False),
+    }}
+
+
+def generation_job_log(job=None):
+    """Return structured generation job logs for IDE display."""
+    manifest = job if isinstance(job, dict) else generation_job_manifest()
+    return {{
+        "format": "appgen.generation-job-log.v1",
+        "job_id": manifest["job_id"],
+        "entries": tuple(manifest.get("log", ())),
+    }}
+
+
 def app_management_plan(action, app_name=None):
     """Return a reviewed app lifecycle-management plan."""
     return {{
@@ -24492,6 +24601,8 @@ def studio_catalog():
         "debug_sessions": tuple(debug_session(item["name"]) for item in DEBUG_SESSIONS),
         "components": component_repository(),
         "dependencies": dependency_inventory(),
+        "generation_jobs": generation_job_queue(),
+        "generation_artifacts": generation_artifact_manifest(),
         "clone": clone_plan(f"{{APP_NAME}}Copy"),
     }}
 
@@ -24529,12 +24640,13 @@ def studio_check(existing_paths=()):
     required = {{"app/studio.py", "app/templates/appgen_studio.html"}}
     missing = tuple(sorted(required - existing))
     return {{
-        "ok": not missing and bool(editable_files()) and bool(component_repository()) and bool(database_design_catalog()),
+        "ok": not missing and bool(editable_files()) and bool(component_repository()) and bool(database_design_catalog()) and bool(generation_job_queue()["jobs"]),
         "missing": missing,
         "files": len(EDITABLE_FILES),
         "components": len(COMPONENTS),
         "tables": len(DATABASE_DESIGN),
         "commands": tuple(item["command"] for item in IDE_ACTIONS),
+        "generation_jobs": len(generation_job_queue()["jobs"]),
     }}
 
 
@@ -24572,6 +24684,14 @@ class StudioView(BaseView):
     @expose("/database-design.json")
     def database_design_json(self):
         return jsonify(list(database_design_catalog()))
+
+    @expose("/generation-jobs.json")
+    def generation_jobs_json(self):
+        return jsonify(generation_job_queue())
+
+    @expose("/generation-artifacts.json")
+    def generation_artifacts_json(self):
+        return jsonify(generation_artifact_manifest())
 
     @expose("/schema-workbench.json")
     def schema_workbench_json(self):
@@ -27554,6 +27674,12 @@ def validate_studio_artifacts() -> None:
         "database_migration_plan",
         "app_generation_plan",
         "generation_job_plan",
+        "generation_job_id",
+        "generation_artifact_manifest",
+        "generation_job_manifest",
+        "generation_job_queue",
+        "generation_job_status",
+        "generation_job_log",
         "app_management_plan",
         "studio_catalog",
         "ide_diagnostics",
@@ -27581,11 +27707,14 @@ def validate_studio_artifacts() -> None:
         or "Project Tree" not in template
         or "Diagnostics" not in template
         or "Database Designer" not in template
+        or "Generation Jobs" not in template
+        or "Generation Jobs JSON" not in template
+        or "Generation Artifacts JSON" not in template
         or "DBML" not in template
         or "SQL DDL" not in template
         or "Generation Plan" not in template
     ):
-        fail("developer studio cockpit must expose IDE workspace, DSL editor, database designer exports, and generation plan")
+        fail("developer studio cockpit must expose IDE workspace, DSL editor, database designer exports, generation jobs, and generation plan")
 
 
 def validate_ci() -> None:
@@ -29362,6 +29491,13 @@ def test_generated_runtime_helpers():
     assert studio.schema_change_preview({"add_field": "Book.edition"})["review_required"] is True
     assert studio.database_migration_plan({"add_field": "Book.edition"})["requires_review"] is True
     assert studio.app_generation_plan()["artifacts"]
+    generated_job = studio.generation_job_manifest(targets=("web", "desktop"), changed_paths=("appgen.dsl",))
+    assert generated_job["format"] == "appgen.generation-job.v1"
+    assert generated_job["job_id"] == studio.generation_job_id(targets=("web", "desktop"), changed_paths=("appgen.dsl",))
+    assert studio.generation_job_status(generated_job)["remaining_stages"]
+    assert studio.generation_job_log(generated_job)["entries"][0]["stage"] == "lint_dsl"
+    assert studio.generation_job_queue((generated_job,))["jobs"][0]["job_id"] == generated_job["job_id"]
+    assert studio.generation_artifact_manifest(("web", "desktop"))["format"] == "appgen.generation-artifacts.v1"
     assert studio.app_management_plan("deploy")["requires_review"] is True
     assert studio.debug_session()["breakpoints"]
     assert studio.breakpoint_plan("app/views.py", symbol="init_views")["symbol"] == "init_views"

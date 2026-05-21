@@ -2872,6 +2872,15 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert studio.app_generation_plan(targets=("web", "desktop"))["targets"] == ("web", "desktop")
     job = studio.generation_job_plan(targets=("web", "mobile"), changed_paths=("appgen.dsl",))
     assert [stage["name"] for stage in job["stages"]] == ["lint_dsl", "schema_diff", "generate", "quality"]
+    job_manifest = studio.generation_job_manifest(targets=("web", "mobile"), changed_paths=("appgen.dsl",))
+    assert job_manifest["format"] == "appgen.generation-job.v1"
+    assert job_manifest["job_id"] == studio.generation_job_id(targets=("web", "mobile"), changed_paths=("appgen.dsl",))
+    assert studio.generation_job_status(job_manifest)["remaining_stages"] == ("lint_dsl", "schema_diff", "generate", "quality")
+    assert studio.generation_job_log(job_manifest)["entries"][0]["stage"] == "lint_dsl"
+    assert studio.generation_job_queue((job_manifest,))["jobs"][0]["job_id"] == job_manifest["job_id"]
+    artifacts = studio.generation_artifact_manifest(("web", "mobile"))
+    assert artifacts["format"] == "appgen.generation-artifacts.v1"
+    assert {item["target"] for item in artifacts["artifacts"]} == {"web", "mobile"}
     assert studio.app_management_plan("deploy")["requires_review"] is True
     assert studio.file_edit_plan("app/models.py", "add comment")["requires_review"] is True
     debug = studio.debug_session()
