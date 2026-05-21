@@ -527,7 +527,8 @@ apps include:
 - `usage_analytics.py` and `appgen_usage_analytics.html` with generated
   adoption, funnel, retention, and real-time app-usage analytics.
 - `seed.py` with relationship-aware deterministic demo data, dependency-ordered
-  seed plans, validation, anonymized fixture exports, and SQL previews;
+  seed plans, demo/smoke/load fixture scenarios, table factories, pytest fixture
+  modules, validation, anonymized fixture exports, and SQL previews;
   `docs/schema.md` with table,
   field, relationship, and Mermaid ERD documentation, and
   `docs/data-dictionary.json` / `docs/data-dictionary.md` with

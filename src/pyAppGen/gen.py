@@ -10116,11 +10116,101 @@ def ordered_seed_data(seed_data=None):
     return {{table_name: deepcopy(data.get(table_name, [])) for table_name in seed_insert_order() if table_name in data}}
 
 
+def table_seed_factory(table_name, *, count=1, overrides=None):
+    """Return deterministic table fixture rows without touching the database."""
+    if table_name not in SEED_DATA:
+        raise KeyError(f"Unknown seed table: {{table_name}}")
+    base_rows = SEED_DATA[table_name] or [{{}}]
+    requested = max(1, int(count))
+    overrides = overrides or {{}}
+    rows = []
+    primary_keys = tuple(SEED_PRIMARY_KEYS.get(table_name, ()))
+    for index in range(requested):
+        row = deepcopy(base_rows[index % len(base_rows)])
+        for key in primary_keys:
+            if isinstance(row.get(key), int):
+                row[key] = index + 1
+        for field, value in tuple(row.items()):
+            if field not in primary_keys and isinstance(value, str) and value.startswith("Sample "):
+                row[field] = f"{{value}} {{index + 1}}" if requested > 1 else value
+        row.update(overrides.get(index, {{}}))
+        rows.append(row)
+    return rows
+
+
+def seed_scenarios():
+    """Return generated fixture scenarios for demo, smoke, and load testing."""
+    return (
+        {{
+            "name": "demo",
+            "label": "Demo Data",
+            "description": "One deterministic row per generated table for local demos and screenshots.",
+            "row_counts": {{table_name: len(rows) for table_name, rows in ordered_seed_data().items()}},
+            "use": ("local_demo", "manual_review", "documentation_screenshots"),
+        }},
+        {{
+            "name": "smoke",
+            "label": "Smoke Test Data",
+            "description": "Minimal dependency-complete rows for generated API, form, report, and workflow smoke tests.",
+            "row_counts": {{table_name: 1 for table_name in SEED_DATA}},
+            "use": ("pytest", "api_contracts", "ui_smoke"),
+        }},
+        {{
+            "name": "load",
+            "label": "Load Test Data",
+            "description": "Repeatable fixture rows for deterministic performance and pagination checks.",
+            "row_counts": {{table_name: 25 for table_name in SEED_DATA}},
+            "use": ("pagination", "performance", "search_indexing"),
+        }},
+    )
+
+
+def scenario_seed_data(scenario="demo"):
+    """Return dependency-ordered rows for one generated seed scenario."""
+    scenario = str(scenario or "demo")
+    rows_by_table = {{}}
+    for item in seed_scenarios():
+        if item["name"] == scenario:
+            for table_name, count in item["row_counts"].items():
+                rows_by_table[table_name] = table_seed_factory(table_name, count=count)
+            return ordered_seed_data(rows_by_table)
+    raise KeyError(f"Unknown seed scenario: {{scenario}}")
+
+
+def pytest_fixture_module(scenario="smoke"):
+    """Return a pytest fixture module for generated app tests."""
+    data_json = json.dumps(scenario_seed_data(scenario), indent=2, sort_keys=True, default=str)
+    return (
+        "import pytest\\n\\n"
+        f"SEED_SCENARIO = {{scenario!r}}\\n"
+        f"SEED_FIXTURES = {{data_json}}\\n\\n"
+        "@pytest.fixture\\n"
+        "def appgen_seed_data():\\n"
+        "    return SEED_FIXTURES\\n"
+    )
+
+
+def seed_fixture_export(scenario="smoke"):
+    """Return a reviewable seed fixture export for generated test suites."""
+    data = scenario_seed_data(scenario)
+    return {{
+        "format": "appgen.seed-fixture.v1",
+        "scenario": scenario,
+        "insert_order": seed_insert_order(),
+        "data": data,
+        "pytest": pytest_fixture_module(scenario),
+        "sql": seed_sql(data),
+        "validation": validate_seed_data(data),
+        "requires_review": True,
+    }}
+
+
 def seed_plan():
     """Return a reviewable deterministic seed plan."""
     return {{
         "format": "appgen.seed-plan.v1",
         "insert_order": seed_insert_order(),
+        "scenarios": seed_scenarios(),
         "tables": tuple(
             {{
                 "table": table_name,
@@ -32759,6 +32849,9 @@ def test_generated_runtime_helpers():
     assert backup.recovery_runbook(backup.backup_json({}), manifest_record)["can_restore"] is True
     assert isinstance(seed.SEED_DATA, dict)
     assert seed.seed_plan()["format"] == "appgen.seed-plan.v1"
+    assert {"demo", "smoke", "load"} == {scenario["name"] for scenario in seed.seed_plan()["scenarios"]}
+    assert seed.seed_fixture_export("smoke")["format"] == "appgen.seed-fixture.v1"
+    assert seed.seed_fixture_export("smoke")["validation"]["ok"] is True
     assert seed.validate_seed_data()["ok"] is True
     assert seed.seed_json().startswith("{")
     assert "INSERT INTO" in seed.seed_sql()

@@ -2996,10 +2996,19 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert "internal_code" not in seed.SEED_DATA["Book"][0]
     seed_plan = seed.seed_plan()
     assert seed_plan["format"] == "appgen.seed-plan.v1"
+    assert {"demo", "smoke", "load"} == {scenario["name"] for scenario in seed_plan["scenarios"]}
     assert seed.seed_insert_order().index("Author") < seed.seed_insert_order().index("Book")
     book_seed_plan = next(item for item in seed_plan["tables"] if item["table"] == "Book")
     assert book_seed_plan["dependencies"] == ("Author",)
     assert "author_id" in book_seed_plan["fields"]
+    assert len(seed.table_seed_factory("Book", count=3)) == 3
+    assert seed.table_seed_factory("Book", count=3)[2]["id"] == 3
+    assert len(seed.scenario_seed_data("load")["Book"]) == 25
+    fixture_export = seed.seed_fixture_export("smoke")
+    assert fixture_export["format"] == "appgen.seed-fixture.v1"
+    assert fixture_export["validation"]["ok"] is True
+    assert "def appgen_seed_data" in fixture_export["pytest"]
+    assert 'INSERT INTO "Author"' in fixture_export["sql"]
     assert seed.validate_seed_data()["ok"] is True
     assert seed.validate_seed_data({"Book": [{"status": "draft"}]})["errors"][0]["missing"] == ("title",)
     assert seed.anonymized_seed_data({"User": [{"email": "ada@example.test", "name": "Ada"}]})["User"][0]["email"] == "[redacted]"
