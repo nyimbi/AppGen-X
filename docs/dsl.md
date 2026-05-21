@@ -286,7 +286,8 @@ apps include:
 - `agents.py` and `appgen_agents.html` with generated agent plans plus local
   and API-key LLM provider readiness checks.
 - `form_designer.py` and `appgen_form_designer.html` with Delphi-style
-  drag-and-drop component palette, form canvas contracts, and drop proposals.
+  drag-and-drop component palette, snapped form canvas contracts, overlap
+  conflict detection, drop proposals, and property-inspector metadata.
 - `nl_evolution.py` and `appgen_nl_evolution.html` with natural-language
   proposal planning for tables, fields, forms, workflows, rules, chatbots,
   agents, and platform targets, including executable table DSL for new-table

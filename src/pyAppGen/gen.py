@@ -4576,6 +4576,7 @@ def write_form_designer_template(output_dir):
   .agfd-grid { min-height: 360px; background-image: linear-gradient(#edf2f7 1px, transparent 1px), linear-gradient(90deg, #edf2f7 1px, transparent 1px); background-size: 32px 32px; }
   .agfd-form { border: 1px dashed #94a3b8; min-height: 160px; margin-bottom: 12px; padding: 10px; }
   .agfd-chip { display: inline-block; border: 1px solid #cbd5e1; padding: 4px 7px; margin: 3px; background: #fff; }
+  .agfd-props { border-top: 1px solid #d9e2ec; margin-top: 12px; padding-top: 12px; }
   @media (max-width: 860px) { .agfd-head, .agfd-shell { display: block; } .agfd-panel { margin-bottom: 12px; } }
 </style>
 <section class="agfd-wrap">
@@ -4591,10 +4592,14 @@ def write_form_designer_template(output_dir):
       {% for component in palette %}
       <button class="agfd-tool" draggable="true" data-component="{{ component.type }}">{{ component.label }}</button>
       {% endfor %}
+      <div class="agfd-props">
+        <strong>Inspector</strong>
+        <pre id="afd-props"></pre>
+      </div>
     </aside>
     <main class="agfd-canvas">
       {% for form in forms %}
-      <section class="agfd-form agfd-grid" data-table="{{ form.table }}">
+      <section class="agfd-form agfd-grid" data-table="{{ form.table }}" data-cell-size="32">
         <h3>{{ form.label }}</h3>
         <span class="agfd-chip">{{ form.field_count }} fields</span>
       </section>
@@ -4613,13 +4618,19 @@ def write_form_designer_template(output_dir):
     canvas.addEventListener('drop', async (event) => {
       event.preventDefault();
       if (!draggedComponent) return;
-      const payload = { table: canvas.dataset.table, component: draggedComponent, x: 0, y: 0 };
+      const rect = canvas.getBoundingClientRect();
+      const cellSize = Number(canvas.dataset.cellSize || 32);
+      const x = Math.max(0, Math.floor((event.clientX - rect.left) / cellSize));
+      const y = Math.max(0, Math.floor((event.clientY - rect.top) / cellSize));
+      const payload = { table: canvas.dataset.table, component: draggedComponent, x, y };
       const response = await fetch('{{ url_for("FormDesignerView.drop_json") }}', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       });
-      document.getElementById('afd-output').textContent = JSON.stringify(await response.json(), null, 2);
+      const proposal = await response.json();
+      document.getElementById('afd-output').textContent = JSON.stringify(proposal, null, 2);
+      document.getElementById('afd-props').textContent = JSON.stringify(proposal.properties || [], null, 2);
     });
   });
 </script>
@@ -14197,11 +14208,19 @@ PALETTE = (
     {{"type": "Section", "label": "Section", "defaults": {{"w": 12, "h": 2}}}},
     {{"type": "Tabs", "label": "Tabs", "defaults": {{"w": 12, "h": 3}}}},
 )
+CANVAS_COLUMNS = 12
+MIN_CANVAS_ROWS = 12
+GRID_SIZE = 8
 
 
 def component_palette():
     """Return draggable Delphi-style form components."""
     return PALETTE
+
+
+def snap_to_grid(value, minimum=0):
+    """Snap browser drop coordinates to the generated form grid."""
+    return max(int(minimum), int(round(float(value or 0))))
 
 
 def form_catalog():
@@ -14247,17 +14266,82 @@ def drop_component(table_name, component_type, field=None, x=0, y=0, w=None, h=N
     """Return a dropped form component instance."""
     spec = _palette_spec(component_type)
     defaults = spec["defaults"]
+    width = max(1, int(w if w is not None else defaults["w"]))
+    height = max(1, int(h if h is not None else defaults["h"]))
+    left = min(snap_to_grid(x), max(0, CANVAS_COLUMNS - width))
+    top = snap_to_grid(y)
     return {{
-        "id": f"{{table_name}}_{{field or component_type}}_{{x}}_{{y}}".lower(),
+        "id": f"{{table_name}}_{{field or component_type}}_{{left}}_{{top}}".lower(),
         "table": table_name,
         "type": component_type,
         "field": field,
-        "x": int(x),
-        "y": int(y),
-        "w": int(w if w is not None else defaults["w"]),
-        "h": int(h if h is not None else defaults["h"]),
+        "x": left,
+        "y": top,
+        "w": width,
+        "h": height,
         "props": dict(props or {{}}),
     }}
+
+
+def component_bounds(component):
+    """Return a Delphi-style grid rectangle for one component."""
+    left = int(component.get("x", 0))
+    top = int(component.get("y", 0))
+    width = int(component.get("w", 1))
+    height = int(component.get("h", 1))
+    return {{"left": left, "top": top, "right": left + width, "bottom": top + height}}
+
+
+def components_overlap(left_component, right_component):
+    """Return whether two form components overlap on the grid."""
+    left = component_bounds(left_component)
+    right = component_bounds(right_component)
+    return not (
+        left["right"] <= right["left"]
+        or right["right"] <= left["left"]
+        or left["bottom"] <= right["top"]
+        or right["bottom"] <= left["top"]
+    )
+
+
+def layout_conflicts(components):
+    """Return deterministic overlap conflicts for a generated form design."""
+    rows = tuple(components or ())
+    conflicts = []
+    for index, component in enumerate(rows):
+        for other in rows[index + 1:]:
+            if components_overlap(component, other):
+                conflicts.append({{
+                    "component": component.get("id"),
+                    "overlaps": other.get("id"),
+                }})
+    return tuple(conflicts)
+
+
+def property_sheet(component):
+    """Return editable property descriptors for a dropped component."""
+    return (
+        {{"name": "field", "type": "field", "value": component.get("field")}},
+        {{"name": "x", "type": "number", "value": component.get("x")}},
+        {{"name": "y", "type": "number", "value": component.get("y")}},
+        {{"name": "w", "type": "number", "value": component.get("w")}},
+        {{"name": "h", "type": "number", "value": component.get("h")}},
+        {{"name": "type", "type": "component", "value": component.get("type")}},
+    )
+
+
+def placement_suggestion(design, component_type, field=None):
+    """Return the next non-overlapping placement for a new component."""
+    components = tuple(design.get("components", ()))
+    spec = _palette_spec(component_type)
+    height = spec["defaults"]["h"]
+    y = 0
+    if components:
+        y = max(int(component.get("y", 0)) + int(component.get("h", 1)) for component in components) + 1
+    component = drop_component(design["table"], component_type, field=field, x=0, y=y)
+    canvas = dict(design.get("canvas", {{}}))
+    canvas["rows"] = max(int(canvas.get("rows", MIN_CANVAS_ROWS)), y + height + 2)
+    return {{"component": component, "canvas": canvas}}
 
 
 def form_design(table_name):
@@ -14266,36 +14350,46 @@ def form_design(table_name):
     if declared:
         components = tuple(declared["components"])
         rows = max((int(component.get("y", 0)) + int(component.get("h", 1)) for component in components), default=10)
-        return {{"table": table_name, "source_view": declared["view"], "canvas": {{"columns": 12, "rows": max(12, rows + 2), "grid": 8}}, "components": components}}
+        return {{"table": table_name, "source_view": declared["view"], "canvas": {{"columns": CANVAS_COLUMNS, "rows": max(MIN_CANVAS_ROWS, rows + 2), "grid": GRID_SIZE}}, "components": components}}
     components = []
     y = 0
     for field in FORM_TABLES[table_name]["fields"]:
         mapping = field_component(table_name, field["name"])
         components.append(drop_component(table_name, mapping["type"], field=field["name"], x=0, y=y))
         y += 2
-    return {{"table": table_name, "canvas": {{"columns": 12, "rows": max(12, y + 2), "grid": 8}}, "components": tuple(components)}}
+    return {{"table": table_name, "canvas": {{"columns": CANVAS_COLUMNS, "rows": max(MIN_CANVAS_ROWS, y + 2), "grid": GRID_SIZE}}, "components": tuple(components)}}
 
 
 def validate_form_design(design):
-    """Validate component bounds and duplicate IDs."""
+    """Validate component bounds, duplicate IDs, and overlap conflicts."""
     errors = []
     seen = set()
+    canvas = design.get("canvas", {{}})
+    columns = int(canvas.get("columns", CANVAS_COLUMNS))
+    rows = int(canvas.get("rows", MIN_CANVAS_ROWS))
     for component in design.get("components", ()):
         if component.get("type") not in {{item["type"] for item in PALETTE}}:
             errors.append(f"unknown component {{component.get('type')}}")
         if component.get("id") in seen:
             errors.append(f"duplicate component {{component.get('id')}}")
         seen.add(component.get("id"))
+        bounds = component_bounds(component)
         if int(component.get("w", 0)) <= 0 or int(component.get("h", 0)) <= 0:
             errors.append(f"invalid size {{component.get('id')}}")
-    return {{"ok": not errors, "errors": tuple(errors)}}
+        if bounds["left"] < 0 or bounds["top"] < 0 or bounds["right"] > columns or bounds["bottom"] > rows:
+            errors.append(f"out of bounds {{component.get('id')}}")
+    conflicts = layout_conflicts(design.get("components", ()))
+    for conflict in conflicts:
+        errors.append(f"overlap {{conflict['component']}} {{conflict['overlaps']}}")
+    return {{"ok": not errors, "errors": tuple(errors), "conflicts": conflicts}}
 
 
 def proposal_from_drop(payload):
     """Convert a browser drag/drop payload into a stable form proposal."""
     table = payload["table"]
     component_type = payload["component"]
-    return {{"kind": "drop_component", "component": drop_component(table, component_type, payload.get("field"), payload.get("x", 0), payload.get("y", 0), payload.get("w"), payload.get("h"), payload.get("props"))}}
+    component = drop_component(table, component_type, payload.get("field"), payload.get("x", 0), payload.get("y", 0), payload.get("w"), payload.get("h"), payload.get("props"))
+    return {{"kind": "drop_component", "component": component, "properties": property_sheet(component)}}
 
 
 def apply_form_proposal(design, proposal):
@@ -22089,9 +22183,13 @@ def validate_form_designer_artifacts() -> None:
     contract = (ROOT / "app" / "form_designer.py").read_text()
     if "component_palette" not in contract or "drop_component" not in contract or "apply_form_proposal" not in contract:
         fail("form designer must expose palette, drop, and proposal helpers")
+    if "snap_to_grid" not in contract or "layout_conflicts" not in contract or "property_sheet" not in contract:
+        fail("form designer must expose snapped placement, conflict detection, and property inspection")
     template = (ROOT / "app" / "templates" / "appgen_form_designer.html").read_text()
     if "draggable" not in template or "drop" not in template or "Form Designer" not in template:
         fail("form designer template must expose drag-and-drop controls")
+    if "getBoundingClientRect" not in template or "Inspector" not in template:
+        fail("form designer template must capture drop coordinates and expose property inspector")
 
 
 def validate_nl_evolution_artifacts() -> None:

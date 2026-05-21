@@ -2460,6 +2460,23 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     proposal = form_designer.proposal_from_drop({"table": "Book", "component": "TextBox", "field": "title", "x": 1, "y": 1})
     updated_design = form_designer.apply_form_proposal(design, proposal)
     assert form_designer.validate_form_design(updated_design)["ok"] is True
+    assert proposal["component"]["x"] == 1
+    assert proposal["component"]["y"] == 1
+    assert any(item["name"] == "field" for item in proposal["properties"])
+    overflow = form_designer.drop_component("Book", "TextBox", x=99, y=2, w=4)
+    assert overflow["x"] == 8
+    assert form_designer.component_bounds(overflow)["right"] == 12
+    overlapping = form_designer.apply_form_proposal(
+        design,
+        form_designer.proposal_from_drop({"table": "Book", "component": "TextBox", "field": "title", "x": 0, "y": 0}),
+    )
+    validation = form_designer.validate_form_design(overlapping)
+    assert validation["ok"] is False
+    assert validation["conflicts"]
+    suggestion = form_designer.placement_suggestion(design, "TextBox", "title")
+    assert suggestion["component"]["y"] > max(component["y"] for component in design["components"])
+    assert "getBoundingClientRect" in (output_dir / "templates" / "appgen_form_designer.html").read_text()
+    assert "Inspector" in (output_dir / "templates" / "appgen_form_designer.html").read_text()
     nl_plan = nl_evolution.evolution_plan(
         "create table Ticket with fields title, email unique, amount decimal, author_id references Author required "
         "and form TicketForm workflow Triage "
