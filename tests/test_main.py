@@ -81,12 +81,30 @@ def test_dsl_linter_reports_semantic_feedback(runner: CliRunner, tmp_path) -> No
     assert any("Unknown view field: BookForm.missing" in error for error in semantic["errors"])
     assert any("Unknown component field: BookForm.other" in error for error in semantic["errors"])
     assert any("Unknown agent provider: Helper.MissingProvider" in error for error in semantic["errors"])
+    typo = lint_dsl(
+        """
+        app Typo { targets: web }
+        table Book { id: int pk; title: string; summary: string; }
+        view BookForm for Book { Main: titel; @ summry TextArea 0 0 6 2; }
+        llm LocalModel { provider: ollama; mode: local; }
+        agent Helper { provider: LocalModl; goal: "Help"; }
+        """
+    )
+    assert typo["ok"] is False
+    assert "diagnostics" in typo
+    assert any(item["code"] == "unknown_view_field" for item in typo["diagnostics"])
+    assert any(item.get("hint") == "title" for item in typo["diagnostics"])
+    assert any(item.get("hint") == "summary" for item in typo["diagnostics"])
+    assert any(item.get("hint") == "LocalModel" for item in typo["diagnostics"])
+    assert all("severity" in item and "message" in item for item in typo["diagnostics"])
     style = lint_dsl(
         "app Style { targets: web } table Book { id: int pk; author_id: int ref Author.id } "
         "llm Cloud { provider: openai; mode: api; model: gpt; api_key: \"secret\" }"
     )
     assert any("Prefer arrow references" in warning for warning in style["warnings"])
     assert any("environment variable" in warning for warning in style["warnings"])
+    assert any(item["code"] == "prefer_arrow_reference" for item in style["diagnostics"])
+    assert any("replace_ref_with_arrow" in item["fix_ids"] for item in style["diagnostics"])
     assert {"replace_ref_with_arrow", "use_api_key_env"}.issubset(
         {fix["id"] for fix in style["fixes"]}
     )

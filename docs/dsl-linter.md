@@ -72,6 +72,17 @@ Both the CLI and Python API return the same JSON-serializable structure:
   "errors": ["Unknown view field: InvoiceForm.missing"],
   "warnings": ["Use an environment variable name for api_key, not a literal secret."],
   "suggestions": ["Add llm and agent blocks when the app needs agentic behavior."],
+  "diagnostics": [
+    {
+      "severity": "error",
+      "code": "unknown_view_field",
+      "message": "Unknown view field: InvoiceForm.missing",
+      "line": 12,
+      "column": 8,
+      "fix_ids": [],
+      "hint": "invoice_number"
+    }
+  ],
   "fixes": [
     {
       "id": "use_api_key_env",
@@ -96,12 +107,15 @@ Both the CLI and Python API return the same JSON-serializable structure:
 ```
 
 Use `ok` as the machine gate. Use `errors` for blocking fixes, `warnings` for
-risky but parseable source, `suggestions` for authoring guidance, and `fixes`
-for structured IDE/CI actions such as adding an app declaration, replacing
-legacy `ref` syntax with `->`, normalizing targets, or moving literal API keys
-to environment-variable references. It also reports authoring aliases such as
-`entity`, `model`, `form`, `screen`, and `workflow`, which are accepted before
-ANTLR parsing but should be normalized to `table`, `view`, and `flow` in
+risky but parseable source, `suggestions` for authoring guidance,
+`diagnostics` for IDE/CI annotations, and `fixes` for structured IDE/CI actions
+such as adding an app declaration, replacing legacy `ref` syntax with `->`,
+normalizing targets, or moving literal API keys to environment-variable
+references. Diagnostics include stable `code`, `severity`, optional line/column
+location, related `fix_ids`, and typo hints for unknown view fields, component
+fields, relation targets, and agent providers. It also reports authoring aliases
+such as `entity`, `model`, `form`, `screen`, and `workflow`, which are accepted
+before ANTLR parsing but should be normalized to `table`, `view`, and `flow` in
 committed source.
 
 ## Checks

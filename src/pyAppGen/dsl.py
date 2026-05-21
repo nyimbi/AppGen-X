@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import ast
+import difflib
 import re
 import sys
 from pathlib import Path
@@ -101,6 +102,7 @@ def lint_dsl(text: str, *, source_name: str | None = None) -> dict:
             schema = schema_from_dsl(source, source_name=source_name)
         except AppGenSyntaxError as exc:
             errors.extend(part.strip() for part in str(exc).split(";") if part.strip())
+            suggestions.extend(_semantic_suggestions(source, errors))
 
     if schema is not None:
         if not schema.tables:
@@ -118,6 +120,7 @@ def lint_dsl(text: str, *, source_name: str | None = None) -> dict:
         "errors": tuple(errors),
         "warnings": tuple(warnings),
         "suggestions": tuple(suggestions),
+        "diagnostics": _lint_diagnostics(source, errors, warnings, suggestions),
         "fixes": _lint_quick_fixes(source, errors, warnings),
         "summary": _lint_summary(schema),
         "language_quality": dsl_language_quality_contract(),
@@ -257,6 +260,215 @@ def _lint_quick_fixes(source: str, errors: Iterable[str], warnings: Iterable[str
             )
             break
     return tuple(fixes)
+
+
+def _lint_diagnostics(
+    source: str,
+    errors: Iterable[str],
+    warnings: Iterable[str],
+    suggestions: Iterable[str],
+) -> tuple[dict, ...]:
+    """Return structured diagnostics suitable for IDEs and CI annotations."""
+    diagnostics = []
+    for message in errors:
+        diagnostics.append(_diagnostic(source, "error", message))
+    for message in warnings:
+        diagnostics.append(_diagnostic(source, "warning", message))
+    for message in suggestions:
+        diagnostics.append(_diagnostic(source, "suggestion", message))
+    return tuple(diagnostics)
+
+
+def _diagnostic(source: str, severity: str, message: str) -> dict:
+    code = _diagnostic_code(message)
+    token = _diagnostic_token(message)
+    line, column = _locate_token(source, token)
+    diagnostic = {
+        "severity": severity,
+        "code": code,
+        "message": message,
+        "line": line,
+        "column": column,
+        "fix_ids": _diagnostic_fix_ids(code),
+    }
+    hint = _diagnostic_hint(message)
+    if hint:
+        diagnostic["hint"] = hint
+    return diagnostic
+
+
+def _diagnostic_code(message: str) -> str:
+    if message == "DSL source is empty.":
+        return "empty_source"
+    if message.startswith("Unbalanced braces"):
+        return "unbalanced_braces"
+    if message.startswith("Unknown app targets"):
+        return "unknown_app_target"
+    if message.startswith("Unknown view field"):
+        return "unknown_view_field"
+    if message.startswith("Unknown component field"):
+        return "unknown_component_field"
+    if message.startswith("Unknown agent provider"):
+        return "unknown_agent_provider"
+    if message.startswith("Unknown relation target table"):
+        return "unknown_relation_target_table"
+    if message.startswith("Unknown relation target field"):
+        return "unknown_relation_target_field"
+    if message.startswith("Unknown reference target table"):
+        return "unknown_reference_target_table"
+    if message.startswith("Unknown reference target field"):
+        return "unknown_reference_target_field"
+    if message.startswith("Unknown derived-field reference"):
+        return "unknown_derived_field"
+    if message.startswith("Duplicate"):
+        return "duplicate_declaration"
+    if "Prefer arrow references" in message:
+        return "prefer_arrow_reference"
+    if "environment variable" in message:
+        return "literal_api_key"
+    if "canonical DSL words" in message:
+        return "authoring_alias"
+    if "Delphi-style component" in message:
+        return "missing_view_blocks"
+    if "agentic behavior" in message:
+        return "missing_agentic_blocks"
+    if "Add at least one table" in message:
+        return "missing_tables"
+    if "app declaration" in message:
+        return "missing_app_declaration"
+    return "dsl_feedback"
+
+
+def _diagnostic_token(message: str) -> str | None:
+    for pattern in (
+        r"Unknown app targets: ([^.]+)\.",
+        r"Unknown view field: [^.]+\.([A-Za-z_][A-Za-z0-9_]*)",
+        r"Unknown component field: [^.]+\.([A-Za-z_][A-Za-z0-9_]*)",
+        r"Unknown agent provider: [^.]+\.([A-Za-z_][A-Za-z0-9_]*)",
+        r"Unknown (?:relation|reference) target table: ([A-Za-z_][A-Za-z0-9_]*)",
+        r"Unknown (?:relation|reference) target field: [^.]+\.([A-Za-z_][A-Za-z0-9_]*)",
+        r"Duplicate [^:]+ declaration: ([A-Za-z_][A-Za-z0-9_]*)",
+    ):
+        match = re.search(pattern, message)
+        if match:
+            return match.group(1).split(",", 1)[0].strip()
+    return None
+
+
+def _locate_token(source: str, token: str | None) -> tuple[int | None, int | None]:
+    if not token:
+        return None, None
+    index = source.find(token)
+    if index < 0:
+        return None, None
+    line = source.count("\n", 0, index) + 1
+    previous_newline = source.rfind("\n", 0, index)
+    column = index if previous_newline < 0 else index - previous_newline - 1
+    return line, column
+
+
+def _diagnostic_fix_ids(code: str) -> tuple[str, ...]:
+    fixes = {
+        "empty_source": ("insert_minimal_app",),
+        "missing_app_declaration": ("add_app_declaration",),
+        "prefer_arrow_reference": ("replace_ref_with_arrow",),
+        "literal_api_key": ("use_api_key_env",),
+        "authoring_alias": ("normalize_authoring_aliases",),
+        "unknown_app_target": ("normalize_targets",),
+    }
+    return fixes.get(code, ())
+
+
+def _diagnostic_hint(message: str) -> str | None:
+    if "Did you mean" in message:
+        return message.rsplit("Did you mean", 1)[1].strip().rstrip("?")
+    if message.startswith("Unknown app targets"):
+        return "Run normalize_targets to keep only web, pwa, mobile, desktop, and chatbot."
+    return None
+
+
+def _semantic_suggestions(source: str, errors: Iterable[str]) -> tuple[str, ...]:
+    """Return typo-oriented suggestions for semantic linter errors."""
+    table_fields = _declared_table_fields_for_suggestions(source)
+    view_tables = _declared_view_tables_for_suggestions(source)
+    llm_names = _declared_block_names(source, "llm")
+    table_names = tuple(table_fields)
+    suggestions = []
+    for error in errors:
+        if error.startswith(("Unknown view field:", "Unknown component field:")):
+            view_name, field_name = _split_qualified_error(error)
+            table_name = view_tables.get(view_name)
+            match = _closest(field_name, table_fields.get(table_name or "", ()))
+            if match:
+                suggestions.append(f"{error} Did you mean {match}?")
+        elif error.startswith("Unknown agent provider:"):
+            _agent_name, provider_name = _split_qualified_error(error)
+            match = _closest(provider_name, llm_names)
+            if match:
+                suggestions.append(f"{error} Did you mean {match}?")
+        elif error.startswith(("Unknown relation target table:", "Unknown reference target table:")):
+            table_name = error.rsplit(":", 1)[1].strip()
+            match = _closest(table_name, table_names)
+            if match:
+                suggestions.append(f"{error} Did you mean {match}?")
+        elif error.startswith(("Unknown relation target field:", "Unknown reference target field:")):
+            table_name, field_name = _split_qualified_error(error)
+            match = _closest(field_name, table_fields.get(table_name, ()))
+            if match:
+                suggestions.append(f"{error} Did you mean {match}?")
+    return tuple(suggestions)
+
+
+def _split_qualified_error(error: str) -> tuple[str, str]:
+    qualified = error.rsplit(":", 1)[1].strip()
+    if "." not in qualified:
+        return "", qualified
+    left, right = qualified.split(".", 1)
+    return left, right
+
+
+def _closest(value: str, choices: Iterable[str]) -> str | None:
+    matches = difflib.get_close_matches(value, tuple(choices), n=1, cutoff=0.6)
+    return matches[0] if matches else None
+
+
+def _declared_block_names(source: str, kind: str) -> tuple[str, ...]:
+    normalized = _normalize_authoring_aliases(source or "")
+    return tuple(
+        match.group(1)
+        for match in re.finditer(
+            r"\b" + re.escape(kind) + r"\s+([A-Za-z_][A-Za-z0-9_]*)\b",
+            normalized,
+        )
+    )
+
+
+def _declared_view_tables_for_suggestions(source: str) -> dict[str, str]:
+    normalized = _normalize_authoring_aliases(source or "")
+    return {
+        match.group(1): match.group(2)
+        for match in re.finditer(
+            r"\bview\s+([A-Za-z_][A-Za-z0-9_]*)\s+for\s+([A-Za-z_][A-Za-z0-9_]*)\s*\{",
+            normalized,
+        )
+    }
+
+
+def _declared_table_fields_for_suggestions(source: str) -> dict[str, tuple[str, ...]]:
+    normalized = _normalize_authoring_aliases(source or "")
+    fields: dict[str, tuple[str, ...]] = {}
+    pattern = re.compile(r"\btable\s+([A-Za-z_][A-Za-z0-9_]*)\s*\{(?P<body>.*?)\}", re.S)
+    for match in pattern.finditer(normalized):
+        names = []
+        for line in re.split(r"[;\n]+", match.group("body")):
+            stripped = line.strip()
+            if not stripped or stripped.startswith("..."):
+                continue
+            field_match = re.match(r"([A-Za-z_][A-Za-z0-9_]*)\s*:", stripped)
+            if field_match:
+                names.append(field_match.group(1))
+        fields[match.group(1)] = tuple(names)
+    return fields
 
 
 def schema_from_dsl(text: str, *, source_name: str | None = None) -> AppSchema:
