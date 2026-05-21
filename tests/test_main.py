@@ -96,6 +96,22 @@ def test_dsl_linter_reports_semantic_feedback(runner: CliRunner, tmp_path) -> No
     assert "api_key: OPENAI_API_KEY" in fixed["fixed"]
     assert "toaster" not in fixed["fixed"]
     assert fixed["after"]["summary"]["targets"] == ("web",)
+    alias_source = """
+    app AliasDemo { targets: web }
+    entity Author { id: int pk; name: string required }
+    entity Book { id: int pk; author_id: int -> Author.id }
+    form BookForm for Book { Main: author_id; }
+    workflow Publish { draft -> live }
+    """
+    alias_report = lint_dsl(alias_source)
+    assert alias_report["ok"] is True
+    assert any("canonical DSL words" in warning for warning in alias_report["warnings"])
+    assert "normalize_authoring_aliases" in {fix["id"] for fix in alias_report["fixes"]}
+    alias_fixed = apply_lint_fixes(alias_source)
+    assert "table Author" in alias_fixed["fixed"]
+    assert "view BookForm for Book" in alias_fixed["fixed"]
+    assert "flow Publish" in alias_fixed["fixed"]
+    assert alias_fixed["after"]["ok"] is True
 
     dsl_path = tmp_path / "lint.appgen"
     dsl_path.write_text(source)
@@ -3284,6 +3300,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert "agent SupportAgent" in patched_dsl
     assert dsl_reference.dsl_keyword_budget()["count"] <= dsl_reference.dsl_keyword_budget()["limit"]
     assert "[cardinality] relation metadata" in dsl_reference.dsl_keyword_budget()["keyword_free_syntax"]
+    assert "entity/model/form/screen/workflow authoring aliases" in dsl_reference.dsl_keyword_budget()["keyword_free_syntax"]
     assert "Reference" in {item["name"] for item in dsl_reference.dsl_construct_catalog()}
     assert "author_id: int -> Author.id [many-to-one]" in dsl_reference.dsl_example("relation")
     assert dsl_reference.dsl_lint(dsl_reference.dsl_example("full"))["ok"] is True
@@ -3303,6 +3320,14 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert {"replace_ref_with_arrow", "normalize_targets"} <= set(generated_fix["applied"])
     assert "title: string -> Author.id" in generated_fix["fixed"]
     assert "toaster" not in generated_fix["fixed"]
+    generated_alias_lint = dsl_reference.dsl_lint("entity Book { title: string } form BookForm for Book { Main: title }")
+    assert generated_alias_lint["ok"] is True
+    assert "normalize_authoring_aliases" in {fix["id"] for fix in generated_alias_lint["fixes"]}
+    generated_alias_fix = dsl_reference.apply_dsl_fixes(
+        "entity Book { title: string } form BookForm for Book { Main: title }"
+    )
+    assert "table Book" in generated_alias_fix["fixed"]
+    assert "view BookForm for Book" in generated_alias_fix["fixed"]
     assert dsl_reference.dsl_lint(
         "table Book { title: string title: text } table Book { title: string }"
     )["errors"]
@@ -3767,6 +3792,62 @@ def test_appgen_dsl_prefers_arrow_references_and_keeps_keyword_budget(tmp_path) 
     assert "agenticOption" in grammar
     assert "IDENT COLON agenticValue" in grammar
     assert "agenticValue" in grammar
+
+
+def test_appgen_dsl_accepts_authoring_aliases_without_new_keywords(tmp_path) -> None:
+    """Beginner-friendly aliases normalize before ANTLR while the grammar stays compact."""
+    dsl_path = tmp_path / "aliases.ags"
+    dsl_path.write_text(
+        """
+        app AliasDemo { targets: web, mobile }
+
+        entity Customer {
+          id: int pk
+          name: string required search
+        }
+
+        model Invoice {
+          id: int pk
+          customer_id: int required -> Customer.id [many-to-one]
+          total: decimal required
+        }
+
+        form InvoiceForm for Invoice {
+          Main: customer_id, total;
+          @ customer_id Lookup 0 0 6 1;
+        }
+
+        workflow Collect {
+          draft -> sent
+          sent -> paid
+        }
+        """
+    )
+
+    schema = load_schema(dsl_path, source_type="dsl")
+    invoice_columns = {column.name: column for column in schema.table("Invoice").columns}
+    assert schema.table("Customer").columns[1].name == "name"
+    assert invoice_columns["customer_id"].references == ("Customer", "id")
+    assert schema.views[0].name == "InvoiceForm"
+    assert schema.flows[0].name == "Collect"
+
+    report = lint_dsl(dsl_path.read_text())
+    assert report["ok"] is True
+    assert any("canonical DSL words" in warning for warning in report["warnings"])
+    fixed = apply_lint_fixes(dsl_path.read_text())
+    assert "entity " not in fixed["fixed"]
+    assert "model " not in fixed["fixed"]
+    assert "form " not in fixed["fixed"]
+    assert "workflow " not in fixed["fixed"]
+    assert "table Customer" in fixed["fixed"]
+    assert "table Invoice" in fixed["fixed"]
+    assert "view InvoiceForm for Invoice" in fixed["fixed"]
+    assert "flow Collect" in fixed["fixed"]
+
+    grammar = (Path(__file__).resolve().parents[1] / "lang" / "appgen.g4").read_text()
+    assert "ENTITY" not in grammar
+    assert "FORM" not in grammar
+    assert "WORKFLOW" not in grammar
 
 
 def test_generated_reports_cover_join_and_three_way_table_sets(tmp_path) -> None:

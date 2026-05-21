@@ -54,6 +54,45 @@ Validation then checks that every `Table.field` target exists. Generated
 tenancy helpers and PostgreSQL RLS policy SQL use the explicit field before
 falling back to conventional tenant field names.
 
+## Keyword-Free Authoring Aliases
+
+The canonical grammar keeps only the core keywords listed below, but the
+package parser performs a pre-ANTLR normalization pass for approachable
+authoring aliases:
+
+| Alias | Canonical Form |
+| --- | --- |
+| `entity` | `table` |
+| `model` | `table` |
+| `form` | `view` |
+| `screen` | `view` |
+| `workflow` | `flow` |
+
+For example, this source parses as if the canonical words had been written:
+
+```appgen
+entity Customer {
+  id: int pk
+  name: string required
+}
+
+form CustomerForm for Customer {
+  Main: name
+}
+
+workflow Onboard {
+  draft -> active
+}
+```
+
+The linter reports aliases and can rewrite them with
+`normalize_authoring_aliases`. The grammar file does not define `ENTITY`,
+`FORM`, or `WORKFLOW` tokens, so these helpers improve learnability without
+expanding the keyword budget.
+
+The canonical grammar source lives at `lang/appgen.g4`; generated parser files
+live under `src/pyAppGen/dsl_generated/lang/`.
+
 ## Tables And Fields
 
 ```antlr

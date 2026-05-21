@@ -18143,7 +18143,14 @@ CORE_KEYWORDS = (
 )
 KEYWORD_LIMIT = 17
 RELATION_CARDINALITIES = ("many-to-one", "one-to-one", "one-to-many", "many-to-many")
-KEYWORD_FREE_SYNTAX = ("-> references", "[cardinality] relation metadata", "... field groups", "type[] arrays", "= derived fields", "@ component placements", "Name {{...}} reusable groups")
+KEYWORD_FREE_SYNTAX = ("-> references", "[cardinality] relation metadata", "... field groups", "type[] arrays", "= derived fields", "@ component placements", "Name {{...}} reusable groups", "entity/model/form/screen/workflow authoring aliases")
+AUTHORING_ALIASES = {{
+    "entity": "table",
+    "model": "table",
+    "form": "view",
+    "screen": "view",
+    "workflow": "flow",
+}}
 PLATFORM_TARGETS = ("web", "pwa", "mobile", "desktop", "chatbot")
 PLATFORM_TARGET_ALIASES = {{
     "browser": "web",
@@ -18155,6 +18162,7 @@ PLATFORM_TARGET_ALIASES = {{
 }}
 CONSTRUCTS = (
     {{"name": "Application", "syntax": "app Name {{ theme: sage }}", "purpose": "Names the generated app and carries app options without adding feature keywords."}},
+    {{"name": "Authoring Aliases", "syntax": "entity Book {{...}} -> table Book {{...}}", "purpose": "Lets builders use familiar words while persisted source stays on the compact keyword budget."}},
     {{"name": "Table", "syntax": "table Book {{ title: string required }}", "purpose": "Defines persistent data models, fields, types, and modifiers."}},
     {{"name": "Reference", "syntax": "author_id: int -> Author.id [many-to-one]", "purpose": "Connects tables with arrow syntax and optional cardinality metadata instead of a larger relationship vocabulary."}},
     {{"name": "Reusable Group", "syntax": "Audit {{ created_at: datetime }} then ...Audit", "purpose": "Reuses field blocks without adding a group keyword."}},
@@ -18211,6 +18219,23 @@ def _named_blocks(source, kind):
     return tuple(
         {{"name": match.group(1), "target": match.group(2), "body": match.group("body")}}
         for match in pattern.finditer(source)
+    )
+
+
+def _uses_authoring_aliases(source):
+    return bool(re.search(r"(^[ \\t]*|}}[ \\t]*)(entity|model|form|screen|workflow)\\b(?=\\s+[A-Za-z_][A-Za-z0-9_]*(?:\\s+for\\s+[A-Za-z_][A-Za-z0-9_]*)?\\s*\\{{)", source or "", re.I | re.M))
+
+
+def _normalize_authoring_aliases(source):
+    def repl(match):
+        alias = match.group("alias")
+        return match.group("prefix") + AUTHORING_ALIASES[alias.lower()]
+
+    return re.sub(
+        r"(?P<prefix>^[ \\t]*|}}[ \\t]*)(?P<alias>entity|model|form|screen|workflow)\\b(?=\\s+[A-Za-z_][A-Za-z0-9_]*(?:\\s+for\\s+[A-Za-z_][A-Za-z0-9_]*)?\\s*\\{{)",
+        repl,
+        source or "",
+        flags=re.I | re.M,
     )
 
 
@@ -18332,6 +18357,13 @@ def dsl_quick_fixes(source, errors=(), warnings=()):
             "pattern": r"api_key\\s*:\\s*['\\\"][^'\\\"]+['\\\"]",
             "replacement": "api_key: OPENAI_API_KEY",
         }})
+    if _uses_authoring_aliases(text):
+        fixes.append({{
+            "id": "normalize_authoring_aliases",
+            "title": "Normalize authoring aliases to canonical DSL words",
+            "kind": "normalize_aliases",
+            "aliases": dict(AUTHORING_ALIASES),
+        }})
     if any(str(error).startswith("Unknown app targets") for error in errors):
         fixes.append({{
             "id": "normalize_targets",
@@ -18364,6 +18396,8 @@ def _apply_dsl_fix(source, fix):
             return prefix + ", ".join(kept)
 
         return re.sub(r"(\\btargets\\s*:\\s*)([^;\\n}}]+)", repl, source)
+    if kind == "normalize_aliases":
+        return _normalize_authoring_aliases(source)
     return source
 
 
@@ -18400,16 +18434,19 @@ def apply_dsl_fixes(source, fix_ids=None):
 def dsl_lint(source):
     """Return lightweight DSL readability and keyword-budget feedback."""
     text = source or ""
+    analysis_text = _normalize_authoring_aliases(text)
     errors = []
     warnings = []
     suggestions = []
-    if text.count("{{") != text.count("}}"):
+    if analysis_text.count("{{") != analysis_text.count("}}"):
         errors.append("Unbalanced braces: every block opened with {{ must close with }}.")
-    if not re.search(r"\\btable\\s+[A-Za-z_][A-Za-z0-9_]*\\s*{{", text):
+    if not re.search(r"\\btable\\s+[A-Za-z_][A-Za-z0-9_]*\\s*{{", analysis_text):
         errors.append("Add at least one table block so the generator has a data model.")
+    if _uses_authoring_aliases(text):
+        warnings.append("Use canonical DSL words in committed source: table, view, and flow.")
     if re.search(r"\\bref\\b", text):
         warnings.append("Prefer arrow references, for example author_id: int -> Author.id.")
-    if re.search(r"\\brelationship\\b|\\bentity\\b|\\bcomponent\\b", text, re.I):
+    if re.search(r"\\brelationship\\b|\\bcomponent\\b", text, re.I) or (re.search(r"\\bentity\\b", text, re.I) and not _uses_authoring_aliases(text)):
         suggestions.append("Use existing compact constructs such as table, view, flow, rule, llm, and agent instead of extra keywords.")
     if re.search(r"api_key\\s*:\\s*['\\\"]", text):
         warnings.append("Use an environment variable name for api_key, not a literal secret.")
@@ -18427,10 +18464,10 @@ def dsl_lint(source):
         )
         if unknown_targets:
             errors.append("Unknown app targets: " + ", ".join(unknown_targets) + ".")
-    errors.extend(_lint_duplicate_declarations(text))
-    errors.extend(_lint_view_references(text))
-    errors.extend(_lint_agent_providers(text))
-    errors.extend(_lint_relation_cardinality(text))
+    errors.extend(_lint_duplicate_declarations(analysis_text))
+    errors.extend(_lint_view_references(analysis_text))
+    errors.extend(_lint_agent_providers(analysis_text))
+    errors.extend(_lint_relation_cardinality(analysis_text))
     fixes = dsl_quick_fixes(text, errors, warnings)
     return {{
         "ok": not errors and dsl_keyword_budget()["ok"],
@@ -28365,6 +28402,8 @@ def validate_dsl_reference_artifacts() -> None:
         "dsl_lint",
         "dsl_quick_fixes",
         "apply_dsl_fixes",
+        "AUTHORING_ALIASES",
+        "normalize_authoring_aliases",
         "dsl_learning_path",
         "dsl_reference_check",
     )

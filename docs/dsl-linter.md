@@ -99,7 +99,10 @@ Use `ok` as the machine gate. Use `errors` for blocking fixes, `warnings` for
 risky but parseable source, `suggestions` for authoring guidance, and `fixes`
 for structured IDE/CI actions such as adding an app declaration, replacing
 legacy `ref` syntax with `->`, normalizing targets, or moving literal API keys
-to environment-variable references.
+to environment-variable references. It also reports authoring aliases such as
+`entity`, `model`, `form`, `screen`, and `workflow`, which are accepted before
+ANTLR parsing but should be normalized to `table`, `view`, and `flow` in
+committed source.
 
 ## Checks
 
@@ -123,6 +126,8 @@ It also adds style feedback:
 - Add an `app` declaration for generated naming and targets.
 - Add `view` blocks for form design.
 - Add `llm` and `agent` blocks when agentic behavior is needed.
+- Normalize authoring aliases to canonical DSL words without expanding the
+  keyword budget.
 
 It also returns structured quick fixes for common authoring feedback:
 
@@ -130,6 +135,7 @@ It also returns structured quick fixes for common authoring feedback:
 - `insert_minimal_app`
 - `replace_ref_with_arrow`
 - `use_api_key_env`
+- `normalize_authoring_aliases`
 - `normalize_targets`
 
 The same fixes can be applied through `pyAppGen.dsl.apply_lint_fixes`. The

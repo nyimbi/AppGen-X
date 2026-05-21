@@ -40,6 +40,11 @@ appgen --lint-dsl library.appgen
 Use one table per business object. Use explicit `id: int pk` fields when you
 want stable identifiers, or let AppGen add one when omitted.
 
+If you are sketching quickly, you may write `entity` or `model` for `table`,
+`form` or `screen` for `view`, and `workflow` for `flow`. AppGen accepts these
+as authoring aliases before parsing, then the linter can rewrite them to the
+canonical DSL so the committed language stays small.
+
 Use `required` for fields that must be entered. Use `search` on fields that
 should appear in generated search contracts. Use `hidden` for generated or
 internal fields. Use `unique` for natural keys like invoice numbers and email

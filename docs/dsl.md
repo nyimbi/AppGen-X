@@ -16,6 +16,10 @@ declare a bare field block, spread it with `...GroupName`, write arrays as
 the arrow form `field: type -> Other.id`. Relationship cardinality is optional
 bracket metadata on the same arrow, for example
 `profile_id: int -> Profile.id [one-to-one]`.
+Beginner-friendly aliases are also keyword-free: `entity` and `model`
+normalize to `table`, `form` and `screen` normalize to `view`, and `workflow`
+normalizes to `flow` before ANTLR parsing. The linter reports these aliases
+and offers `normalize_authoring_aliases` so committed source stays canonical.
 Use `#`, `//`, or `/* ... */` comments anywhere whitespace is allowed; comments
 are ignored by the parser and do not affect generated artifacts.
 
@@ -138,6 +142,9 @@ SQLAlchemy enum metadata when the dialect exposes it.
 - `->` records references without spending a keyword: use
   `author_id: int -> Author.id` inline or `Book.author_id -> Author.id`
   externally. The older `ref` spelling is still accepted for compatibility.
+- `entity`, `model`, `form`, `screen`, and `workflow` are authoring aliases,
+  not grammar keywords. They normalize before parsing and can be rewritten by
+  the linter.
 - `hidden` removes a field from generated views, REST include columns, and the
   GraphQL object.
 - `search` marks a field for generated Flask-AppBuilder search columns.

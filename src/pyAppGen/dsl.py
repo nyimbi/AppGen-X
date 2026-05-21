@@ -87,7 +87,11 @@ def lint_dsl(text: str, *, source_name: str | None = None) -> dict:
         warnings.append("Prefer arrow references, for example author_id: int -> Author.id.")
     if re.search(r"api_key\s*:\s*['\"]", source):
         warnings.append("Use an environment variable name for api_key, not a literal secret.")
-    if re.search(r"\brelationship\b|\bentity\b|\bcomponent\b", source, re.I):
+    if _uses_authoring_aliases(source):
+        warnings.append("Use canonical DSL words in committed source: table, view, and flow.")
+    if re.search(r"\brelationship\b|\bcomponent\b", source, re.I) or (
+        re.search(r"\bentity\b", source, re.I) and not _uses_authoring_aliases(source)
+    ):
         suggestions.append(
             "Use compact DSL constructs such as table, view, flow, rule, llm, and agent."
         )
@@ -169,6 +173,8 @@ def _apply_lint_fix(source: str, fix: dict) -> str:
         return re.sub(str(fix["pattern"]), str(fix["replacement"]), source)
     if kind == "replace_targets":
         return _apply_target_normalization(source, tuple(fix["supported"]))
+    if kind == "normalize_aliases":
+        return _normalize_authoring_aliases(source)
     return source
 
 
@@ -229,6 +235,15 @@ def _lint_quick_fixes(source: str, errors: Iterable[str], warnings: Iterable[str
                 "replacement": "api_key: OPENAI_API_KEY",
             }
         )
+    if _uses_authoring_aliases(source):
+        fixes.append(
+            {
+                "id": "normalize_authoring_aliases",
+                "title": "Normalize authoring aliases to canonical DSL words",
+                "kind": "normalize_aliases",
+                "aliases": dict(AUTHORING_ALIASES),
+            }
+        )
     for error in errors:
         if error.startswith("Unknown app targets"):
             fixes.append(
@@ -245,7 +260,9 @@ def _lint_quick_fixes(source: str, errors: Iterable[str], warnings: Iterable[str
 
 def schema_from_dsl(text: str, *, source_name: str | None = None) -> AppSchema:
     """Parse AppGen DSL source into the canonical app schema."""
-    text = _normalize_app_option_sugar(_normalize_reference_sugar(text))
+    text = _normalize_app_option_sugar(
+        _normalize_reference_sugar(_normalize_authoring_aliases(text))
+    )
     tree = _parse(text)
     app_decl = tree.appDecl()
     app_name = _app_name(app_decl) if app_decl else None
@@ -359,6 +376,32 @@ _EXTERNAL_ARROW_REF_RE = re.compile(
 )
 _DOTTED_APP_OPTION_RE = re.compile(r"(\brls\s*:\s*)([^;\n}]+)")
 _DOTTED_VALUE_RE = re.compile(r"[A-Za-z_][A-Za-z0-9_]*\.[A-Za-z_][A-Za-z0-9_]*")
+AUTHORING_ALIASES = {
+    "entity": "table",
+    "model": "table",
+    "form": "view",
+    "screen": "view",
+    "workflow": "flow",
+}
+_AUTHORING_ALIAS_RE = re.compile(
+    r"(?P<prefix>^[ \t]*|\}[ \t]*)(?P<alias>entity|model|form|screen|workflow)\b(?=\s+[A-Za-z_][A-Za-z0-9_]*(?:\s+for\s+[A-Za-z_][A-Za-z0-9_]*)?\s*\{)",
+    flags=re.IGNORECASE | re.MULTILINE,
+)
+
+
+def _uses_authoring_aliases(source: str) -> bool:
+    return bool(_AUTHORING_ALIAS_RE.search(source))
+
+
+def _normalize_authoring_aliases(source: str) -> str:
+    """Normalize beginner-friendly aliases before ANTLR parsing without adding keywords."""
+
+    def repl(match: re.Match[str]) -> str:
+        alias = match.group("alias")
+        canonical = AUTHORING_ALIASES[alias.lower()]
+        return f"{match.group('prefix')}{canonical}"
+
+    return _AUTHORING_ALIAS_RE.sub(repl, source)
 
 
 def _normalize_reference_sugar(source: str) -> str:
