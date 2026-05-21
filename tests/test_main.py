@@ -239,6 +239,7 @@ def test_generate_app_from_sqlite_schema_compiles(tmp_path) -> None:
         output_dir / "monitoring.py",
         output_dir / "resilience.py",
         output_dir / "performance.py",
+        output_dir / "runtime_assurance.py",
         output_dir / "reports.py",
         output_dir / "report_delivery.py",
         output_dir / "dashboards.py",
@@ -326,6 +327,7 @@ def test_generate_app_from_sqlite_schema_compiles(tmp_path) -> None:
     assert (output_dir / "templates" / "appgen_resilience.html").exists()
     assert (output_dir / "templates" / "appgen_rules.html").exists()
     assert (output_dir / "templates" / "appgen_performance.html").exists()
+    assert (output_dir / "templates" / "appgen_runtime_assurance.html").exists()
     assert (output_dir / "templates" / "appgen_workflows.html").exists()
     assert (output_dir / "templates" / "appgen_reports.html").exists()
     assert (output_dir / "templates" / "appgen_report_delivery.html").exists()
@@ -739,6 +741,7 @@ def test_generate_app_from_sqlite_schema_compiles(tmp_path) -> None:
     assert "ops.monitoring" in {item["key"] for item in manifest["capabilities"]}
     assert "ops.resilience" in {item["key"] for item in manifest["capabilities"]}
     assert "ops.performance" in {item["key"] for item in manifest["capabilities"]}
+    assert "ops.assurance" in {item["key"] for item in manifest["capabilities"]}
     assert "ops.configuration" in {item["key"] for item in manifest["capabilities"]}
     assert "ops.lifecycle" in {item["key"] for item in manifest["capabilities"]}
     assert "ops.backup" in {item["key"] for item in manifest["capabilities"]}
@@ -869,6 +872,7 @@ def test_dbml_source_normalizes_and_generates(tmp_path) -> None:
     py_compile.compile(str(output_dir / "health.py"), doraise=True)
     py_compile.compile(str(output_dir / "monitoring.py"), doraise=True)
     py_compile.compile(str(output_dir / "resilience.py"), doraise=True)
+    py_compile.compile(str(output_dir / "runtime_assurance.py"), doraise=True)
     py_compile.compile(str(output_dir / "reports.py"), doraise=True)
     py_compile.compile(str(output_dir / "report_delivery.py"), doraise=True)
     py_compile.compile(str(output_dir / "dashboards.py"), doraise=True)
@@ -1415,6 +1419,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     py_compile.compile(str(output_dir / "health.py"), doraise=True)
     py_compile.compile(str(output_dir / "resilience.py"), doraise=True)
     py_compile.compile(str(output_dir / "performance.py"), doraise=True)
+    py_compile.compile(str(output_dir / "runtime_assurance.py"), doraise=True)
     py_compile.compile(str(output_dir / "designer.py"), doraise=True)
     py_compile.compile(str(output_dir / "config_admin.py"), doraise=True)
     py_compile.compile(str(output_dir / "integrations.py"), doraise=True)
@@ -1532,6 +1537,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert "MonitoringView" in (output_dir / "monitoring.py").read_text()
     assert "ResilienceView" in (output_dir / "resilience.py").read_text()
     assert "PerformanceView" in (output_dir / "performance.py").read_text()
+    assert "RuntimeAssuranceView" in (output_dir / "runtime_assurance.py").read_text()
     assert "ReportsView" in (output_dir / "reports.py").read_text()
     assert "DashboardView" in (output_dir / "dashboards.py").read_text()
     assert "UsageAnalyticsView" in (output_dir / "usage_analytics.py").read_text()
@@ -1589,6 +1595,9 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert "OpenAPI JSON" in (output_dir / "templates" / "appgen_openapi.html").read_text()
     assert "Generated performance budgets" in (
         output_dir / "templates" / "appgen_performance.html"
+    ).read_text()
+    assert "Generated operational assurance" in (
+        output_dir / "templates" / "appgen_runtime_assurance.html"
     ).read_text()
     assert "Generated transition cockpit" in (output_dir / "templates" / "appgen_workflows.html").read_text()
     assert "FSM JSON" in (output_dir / "templates" / "appgen_workflows.html").read_text()
@@ -2113,6 +2122,30 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert "cpu" in scale_plan["reasons"]
     assert performance.performance_check(
         {"app/performance.py", "app/templates/appgen_performance.html"}
+    )["ok"] is True
+    runtime_assurance = _load_module(output_dir / "runtime_assurance.py", "generated_runtime_assurance")
+    assurance_report = runtime_assurance.runtime_assurance_report({"p95_ms": 200, "error_rate": 0})
+    assert assurance_report["format"] == "appgen.runtime-assurance.v1"
+    assert assurance_report["ok"] is True
+    assert "performance" in {area["id"] for area in assurance_report["areas"]}
+    assert runtime_assurance.runtime_assurance_report({"p95_ms": 999})["ok"] is False
+    assert runtime_assurance.runtime_assurance_check(
+        {
+            "app/runtime_assurance.py",
+            "app/templates/appgen_runtime_assurance.html",
+            "app/runtime_security.py",
+            "app/security.py",
+            "app/monitoring.py",
+            "app/health.py",
+            "app/resilience.py",
+            "app/templates/appgen_resilience.html",
+            "app/performance.py",
+            "app/templates/appgen_performance.html",
+            "app/backup.py",
+            "app/templates/appgen_backup.html",
+            "scripts/appgen_quality.py",
+            "tests/test_generated_contract.py",
+        }
     )["ok"] is True
     assert reports.visible_columns("Book") == ("id", "title", "status", "summary", "cover_image", "manuscript_file", "author")
     assert "title,status" in reports.rows_to_csv(("title", "status"), [{"title": "Dune", "status": "draft"}])
@@ -4008,6 +4041,7 @@ def test_appgen_cli_generates_from_dsl(tmp_path, runner: CliRunner) -> None:
     py_compile.compile(str(output_dir / "monitoring.py"), doraise=True)
     py_compile.compile(str(output_dir / "resilience.py"), doraise=True)
     py_compile.compile(str(output_dir / "performance.py"), doraise=True)
+    py_compile.compile(str(output_dir / "runtime_assurance.py"), doraise=True)
     py_compile.compile(str(output_dir / "rules.py"), doraise=True)
     py_compile.compile(str(output_dir / "config_admin.py"), doraise=True)
     py_compile.compile(str(output_dir / "integrations.py"), doraise=True)

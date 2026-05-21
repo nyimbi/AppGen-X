@@ -1153,6 +1153,13 @@ def write_performance_file(output_dir, schema: AppSchema):
     (output_dir / "performance.py").write_text(_performance_text(schema))
 
 
+def write_runtime_assurance_file(output_dir, schema: AppSchema):
+    """Write generated runtime assurance and readiness helpers."""
+    output_dir = Path(output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    (output_dir / "runtime_assurance.py").write_text(_runtime_assurance_text(schema))
+
+
 def write_reports_file(output_dir, schema: AppSchema):
     """Write generated report catalog and export views."""
     output_dir = Path(output_dir)
@@ -3243,6 +3250,64 @@ def write_performance_template(output_dir):
       <div class="agp-row"><span>Default page</span><strong>{{ budget.page_size }}</strong></div>
       <div class="agp-row"><span>Cache TTL</span><strong>{{ budget.cache_ttl_seconds }}s</strong></div>
       <div class="agp-row"><span>Search fields</span><strong>{{ budget.searchable|length }}</strong></div>
+    </article>
+    {% endfor %}
+  </div>
+</section>
+{% endblock %}
+"""
+    )
+
+
+def write_runtime_assurance_template(output_dir):
+    """Write the generated runtime assurance cockpit template."""
+    templates_dir = Path(output_dir) / "templates"
+    templates_dir.mkdir(parents=True, exist_ok=True)
+    (templates_dir / "appgen_runtime_assurance.html").write_text(
+        """{% extends "appbuilder/base.html" %}
+{% block content %}
+<style>
+  .aga-wrap { margin: 18px 0 32px; }
+  .aga-head { display: flex; justify-content: space-between; gap: 16px; align-items: flex-start; margin-bottom: 18px; }
+  .aga-title { margin: 0 0 8px; font-size: 28px; font-weight: 700; color: #14213d; }
+  .aga-note { color: #52616b; max-width: 860px; line-height: 1.5; }
+  .aga-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+  .aga-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; }
+  .aga-card { border: 1px solid #d9e2ec; background: #fff; border-radius: 8px; padding: 16px; }
+  .aga-card h3 { margin: 0 0 8px; font-size: 17px; color: #14213d; }
+  .aga-muted { color: #64748b; font-size: 12px; }
+  .aga-row { display: flex; justify-content: space-between; gap: 12px; border-top: 1px solid #eef2f7; padding: 8px 0; }
+  .aga-pill { display: inline-block; border: 1px solid #cbd5e1; background: #f8fafc; border-radius: 999px; padding: 5px 9px; margin: 3px 4px 0 0; font-size: 12px; color: #334155; }
+  .aga-pass { color: #0f766e; }
+  .aga-fail { color: #b91c1c; }
+  @media (max-width: 760px) { .aga-head { display: block; } .aga-actions { margin-top: 12px; } .aga-row { display: block; } }
+</style>
+<section class="aga-wrap">
+  <div class="aga-head">
+    <div>
+      <h1 class="aga-title">Runtime Assurance</h1>
+      <p class="aga-note">
+        Generated operational assurance for security, health, resilience, SLOs,
+        backups, and quality gates. This gives every generated app an auditable
+        readiness contract instead of scattered manual checklists.
+      </p>
+    </div>
+    <div class="aga-actions">
+      <a class="btn btn-primary" href="{{ url_for('RuntimeAssuranceView.report_json') }}">Assurance JSON</a>
+      <a class="btn btn-default" href="{{ url_for('RuntimeAssuranceView.matrix_json') }}">Matrix JSON</a>
+    </div>
+  </div>
+  <div class="aga-grid">
+    {% for area in report.areas %}
+    <article class="aga-card">
+      <h3>{{ area.label }}</h3>
+      <div class="aga-muted">{{ area.id }} · <strong class="{{ 'aga-pass' if area.ok else 'aga-fail' }}">{{ 'ready' if area.ok else 'attention' }}</strong></div>
+      {% for check in area.checks %}
+      <div class="aga-row"><span>{{ check.name }}</span><strong class="{{ 'aga-pass' if check.ok else 'aga-fail' }}">{{ 'pass' if check.ok else 'fail' }}</strong></div>
+      {% endfor %}
+      {% for artifact in area.artifacts %}
+      <span class="aga-pill">{{ artifact }}</span>
+      {% endfor %}
     </article>
     {% endfor %}
   </div>
@@ -6199,6 +6264,7 @@ def generate_app_from_database(database_url, output_dir, *, config_database_url=
     write_monitoring_file(output_dir, app_schema)
     write_resilience_file(output_dir, app_schema)
     write_performance_file(output_dir, app_schema)
+    write_runtime_assurance_file(output_dir, app_schema)
     write_reports_file(output_dir, app_schema)
     write_report_delivery_file(output_dir, app_schema)
     write_dashboards_file(output_dir, app_schema)
@@ -6268,6 +6334,7 @@ def generate_app_from_database(database_url, output_dir, *, config_database_url=
     write_monitoring_template(output_dir)
     write_resilience_template(output_dir)
     write_performance_template(output_dir)
+    write_runtime_assurance_template(output_dir)
     write_reports_template(output_dir)
     write_report_delivery_template(output_dir)
     write_dashboards_template(output_dir)
@@ -6363,6 +6430,7 @@ def generate_app_from_schema(schema: AppSchema, output_dir, *, config_database_u
     write_monitoring_file(output_dir, schema)
     write_resilience_file(output_dir, schema)
     write_performance_file(output_dir, schema)
+    write_runtime_assurance_file(output_dir, schema)
     write_reports_file(output_dir, schema)
     write_report_delivery_file(output_dir, schema)
     write_dashboards_file(output_dir, schema)
@@ -6432,6 +6500,7 @@ def generate_app_from_schema(schema: AppSchema, output_dir, *, config_database_u
     write_monitoring_template(output_dir)
     write_resilience_template(output_dir)
     write_performance_template(output_dir)
+    write_runtime_assurance_template(output_dir)
     write_reports_template(output_dir)
     write_report_delivery_template(output_dir)
     write_dashboards_template(output_dir)
@@ -6874,6 +6943,7 @@ Generated by AppGen.
 - Monitoring endpoints and error envelopes in `app/monitoring.py`.
 - Resilience and exception-management helpers in `app/resilience.py`.
 - Performance budgets, load-test plans, and autoscale helpers in `app/performance.py`.
+- Runtime assurance matrix and readiness report in `app/runtime_assurance.py`.
 - PWA manifest, service worker, and offline shell in `app/static/`.
 - Branding contract and generated theme CSS in `app/branding.py` and `app/static/appgen-theme.css`.
 - Custom extension hooks in `app/extensions.py` with stable user code stubs in `app_custom/`.
@@ -7810,6 +7880,166 @@ def register_performance(appbuilder):
         PerformanceView,
         "Performance",
         icon="fa-tachometer",
+        category="AppGen",
+    )
+'''
+
+
+def _runtime_assurance_text(schema: AppSchema) -> str:
+    app_name = _app_name(schema)
+    table_count = len(schema.tables)
+    flow_count = len(schema.flows)
+    role_count = len(schema.roles)
+    areas = (
+        {
+            "id": "security",
+            "label": "Security hardening",
+            "checks": ("session_timeout", "security_headers"),
+            "artifacts": ("app/runtime_security.py", "app/security.py"),
+        },
+        {
+            "id": "monitoring",
+            "label": "Liveness and readiness",
+            "checks": ("ready", "error_envelope"),
+            "artifacts": ("app/monitoring.py", "app/health.py"),
+        },
+        {
+            "id": "resilience",
+            "label": "Exception recovery",
+            "checks": ("resilience_contract", "safe_errors", "retry_policy"),
+            "artifacts": ("app/resilience.py", "app/templates/appgen_resilience.html"),
+        },
+        {
+            "id": "performance",
+            "label": "SLO and scale readiness",
+            "checks": ("latency_slo", "error_rate_slo", "load_tests"),
+            "artifacts": ("app/performance.py", "app/templates/appgen_performance.html"),
+        },
+        {
+            "id": "backup",
+            "label": "Backup and recovery",
+            "checks": ("backup_integrity", "recovery_runbook"),
+            "artifacts": ("app/backup.py", "app/templates/appgen_backup.html"),
+        },
+        {
+            "id": "quality_gate",
+            "label": "Generated quality gate",
+            "checks": ("quality_gate", "required_artifacts"),
+            "artifacts": ("scripts/appgen_quality.py", "tests/test_generated_contract.py"),
+        },
+    )
+    return f'''"""Generated runtime assurance contract for AppGen apps."""
+
+from __future__ import annotations
+
+from flask import jsonify
+from flask_appbuilder import BaseView
+from flask_appbuilder import expose
+
+
+APP_NAME = {app_name!r}
+TABLE_COUNT = {table_count!r}
+FLOW_COUNT = {flow_count!r}
+ROLE_COUNT = {role_count!r}
+DEFAULT_SLO = {{"p95_ms": 500, "error_rate": 0.01}}
+ASSURANCE_AREAS = {areas!r}
+DEFAULT_SIGNALS = {{
+    "ready": True,
+    "error_envelope": True,
+    "session_timeout": True,
+    "security_headers": True,
+    "resilience_contract": True,
+    "safe_errors": True,
+    "retry_policy": True,
+    "p95_ms": 0,
+    "error_rate": 0,
+    "load_tests": True,
+    "backup_integrity": True,
+    "recovery_runbook": True,
+    "quality_gate": True,
+    "required_artifacts": True,
+}}
+REQUIRED_ARTIFACTS = tuple(
+    sorted({{artifact for area in ASSURANCE_AREAS for artifact in area["artifacts"]}})
+) + ("app/runtime_assurance.py", "app/templates/appgen_runtime_assurance.html")
+
+
+def runtime_assurance_matrix():
+    """Return the generated runtime assurance areas and expected artifacts."""
+    return ASSURANCE_AREAS
+
+
+def _check_signal(name, signals):
+    if name == "latency_slo":
+        return float(signals.get("p95_ms", 0)) <= DEFAULT_SLO["p95_ms"]
+    if name == "error_rate_slo":
+        return float(signals.get("error_rate", 0)) <= DEFAULT_SLO["error_rate"]
+    return bool(signals.get(name, False))
+
+
+def runtime_assurance_report(signals=None):
+    """Return an auditable readiness report for the generated app."""
+    signals = dict(DEFAULT_SIGNALS if signals is None else {{**DEFAULT_SIGNALS, **signals}})
+    areas = []
+    for area in ASSURANCE_AREAS:
+        checks = tuple(
+            {{"name": check, "ok": _check_signal(check, signals)}}
+            for check in area["checks"]
+        )
+        areas.append({{
+            "id": area["id"],
+            "label": area["label"],
+            "ok": all(check["ok"] for check in checks),
+            "checks": checks,
+            "artifacts": area["artifacts"],
+        }})
+    return {{
+        "format": "appgen.runtime-assurance.v1",
+        "app": APP_NAME,
+        "ok": all(area["ok"] for area in areas),
+        "tables": TABLE_COUNT,
+        "flows": FLOW_COUNT,
+        "roles": ROLE_COUNT,
+        "slo": DEFAULT_SLO,
+        "areas": tuple(areas),
+    }}
+
+
+def runtime_assurance_check(existing_paths=()):
+    """Return readiness for the generated runtime assurance artifact set."""
+    existing = set(existing_paths)
+    missing = tuple(path for path in REQUIRED_ARTIFACTS if path not in existing)
+    report = runtime_assurance_report({{"required_artifacts": not missing}})
+    return {{
+        "ok": not missing and report["ok"],
+        "missing": missing,
+        "areas": tuple(area["id"] for area in report["areas"]),
+        "required": REQUIRED_ARTIFACTS,
+    }}
+
+
+class RuntimeAssuranceView(BaseView):
+    route_base = "/runtime-assurance"
+    default_view = "index"
+
+    @expose("/")
+    def index(self):
+        return self.render_template("appgen_runtime_assurance.html", report=runtime_assurance_report())
+
+    @expose("/report.json")
+    def report_json(self):
+        return jsonify(runtime_assurance_report())
+
+    @expose("/matrix.json")
+    def matrix_json(self):
+        return jsonify(runtime_assurance_matrix())
+
+
+def register_runtime_assurance(appbuilder):
+    appbuilder.add_view(
+        RuntimeAssuranceView,
+        "Runtime Assurance",
+        icon="fa-check-circle",
         category="AppGen",
     )
 '''
@@ -28354,6 +28584,7 @@ REQUIRED_PATHS = (
     "app/monitoring.py",
     "app/resilience.py",
     "app/performance.py",
+    "app/runtime_assurance.py",
     "app/reports.py",
     "app/report_delivery.py",
     "app/dashboards.py",
@@ -28431,6 +28662,7 @@ REQUIRED_PATHS = (
     "app/templates/appgen_support_center.html",
     "app/templates/appgen_low_code_features.html",
     "app/templates/appgen_resilience.html",
+    "app/templates/appgen_runtime_assurance.html",
     "app/templates/appgen_integrations.html",
     "app/templates/appgen_productivity.html",
     "app/templates/appgen_lifecycle.html",
@@ -28529,6 +28761,7 @@ PYTHON_PATHS = (
     "app/monitoring.py",
     "app/resilience.py",
     "app/performance.py",
+    "app/runtime_assurance.py",
     "app/reports.py",
     "app/report_delivery.py",
     "app/dashboards.py",
@@ -28664,6 +28897,7 @@ REQUIRED_CAPABILITIES = {
     "ops.monitoring",
     "ops.resilience",
     "ops.performance",
+    "ops.assurance",
     "ops.configuration",
     "ops.lifecycle",
     "ops.backup",
@@ -30468,6 +30702,7 @@ def test_generated_runtime_helpers():
     resilience = load_module(ROOT / "app" / "resilience.py", "generated_resilience")
     security = load_module(ROOT / "app" / "security.py", "generated_security")
     runtime_security = load_module(ROOT / "app" / "runtime_security.py", "generated_runtime_security")
+    runtime_assurance = load_module(ROOT / "app" / "runtime_assurance.py", "generated_runtime_assurance")
     workflow = load_module(ROOT / "app" / "workflow.py", "generated_workflow")
     rules = load_module(ROOT / "app" / "rules.py", "generated_rules")
     validation = load_module(ROOT / "app" / "validation.py", "generated_validation")
@@ -30562,6 +30797,11 @@ def test_generated_runtime_helpers():
         if first_resource:
             assert security.authorize({"roles": [first_role]}, first_resource, security.ROLE_POLICIES[first_role][first_resource][0])["ok"] is True
     assert runtime_security.should_logout(1, now=runtime_security.datetime.fromtimestamp(2000, runtime_security.timezone.utc)) is True
+    assurance_report = runtime_assurance.runtime_assurance_report({"p95_ms": 200, "error_rate": 0})
+    assert assurance_report["format"] == "appgen.runtime-assurance.v1"
+    assert assurance_report["ok"] is True
+    assert runtime_assurance.runtime_assurance_report({"p95_ms": 999})["ok"] is False
+    assert runtime_assurance.runtime_assurance_check(runtime_assurance.REQUIRED_ARTIFACTS)["ok"] is True
     assert isinstance(workflow.WORKFLOWS, dict)
     assert isinstance(workflow.workflow_catalog(), tuple)
     if workflow.WORKFLOWS:

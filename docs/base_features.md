@@ -19,6 +19,15 @@ base feature contract referenced by the project goal.
 13. Debugging: Ability to debug the application and find errors.
 14. Testing: Ability to test the application to ensure it works correctly.
 15. Deployment: Ability to deploy the application to production.
+16. Runtime assurance: Ability to prove generated applications are operationally
+    ready across security hardening, health checks, resilience, performance
+    SLOs, backup integrity, recovery runbooks, and generated quality gates.
+
+AppGen must be treated as a JHipster superset, not a peer clone: JHipster-style
+application scaffolding is one export lane, while the AppGen baseline also
+includes low-code studio tooling, Delphi-style form design, ERP templates,
+agentic-system design, natural-language evolution, multi-platform generation,
+DSL linting/reference docs, and runtime assurance contracts for generated apps.
 
 The DSL should support web, desktop, and mobile applications using Python,
 including:

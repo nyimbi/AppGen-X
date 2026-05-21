@@ -107,6 +107,7 @@ DEFAULT_CAPABILITIES: tuple[Capability, ...] = (
     Capability("ops.monitoring", "Monitoring, alerting, and error handling", "partial", "generated monitoring endpoints and error envelopes"),
     Capability("ops.resilience", "Automatic error handling and exception management", "partial", "generated safe error responses, recovery actions, retry plans, circuit breakers, and incident reports"),
     Capability("ops.performance", "Performance budgets and scaling plans", "partial", "generated SLO budgets, pagination/cache plans, and autoscale recommendations"),
+    Capability("ops.assurance", "Runtime assurance and readiness management", "partial", "generated assurance matrix covering security, monitoring, resilience, performance, backup, and quality gates"),
     Capability("ops.configuration", "Runtime configuration management", "partial", "generated config.py setup editor, readiness checks, checklist, and .env export"),
     Capability("ops.lifecycle", "Environment, release, feedback, and lifecycle management", "partial", "generated environment readiness, custom-domain plans, release gates, maintenance windows, feedback, and issue reports"),
     Capability("ops.backup", "Backup and disaster recovery", "partial", "generated JSON backup exports, integrity manifests, autobackup schedules, retention plans, recovery runbooks, and restore helpers"),

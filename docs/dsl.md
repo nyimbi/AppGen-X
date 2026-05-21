@@ -224,6 +224,10 @@ apps include:
   pagination and cache contracts, deterministic load-test profiles, k6 script
   export, Locust file export, reviewed load-test runbooks, and autoscale
   recommendations.
+- `runtime_assurance.py` and `appgen_runtime_assurance.html` with a generated
+  readiness matrix that ties security hardening, health checks, resilience,
+  SLOs, backup integrity, recovery runbooks, and the generated quality gate into
+  one auditable operations contract.
 - `static/appgen.webmanifest`, `static/appgen-sw.js`, and an offline shell for
   progressive web app behavior.
 - `branding.py`, `appgen_branding.html`, and `static/appgen-theme.css` with a
@@ -494,8 +498,8 @@ apps include:
   writable-field metadata.
 - `docs/accessibility.md` with a generated accessibility baseline checklist.
 - `.github/workflows/appgen-ci.yml` and `scripts/appgen_quality.py` with a
-  generated CI quality gate for syntax, manifest, PWA, docs, and test-surface
-  checks.
+  generated CI quality gate for syntax, manifest, PWA, docs, runtime assurance,
+  and test-surface checks.
 - `deploy/` with Docker/Compose-adjacent Kubernetes manifests, Terraform
   starter contracts for AWS, GCP, and Azure, generated deployment runbooks,
   secret-injection plans, smoke checks, rollback plans, and cloud readiness
