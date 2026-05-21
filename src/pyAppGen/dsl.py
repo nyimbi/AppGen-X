@@ -99,6 +99,8 @@ def lint_dsl(text: str, *, source_name: str | None = None) -> dict:
         warnings.append("Use an environment variable name for api_key, not a literal secret.")
     if _uses_authoring_aliases(source):
         warnings.append("Use canonical DSL words in committed source: table, view, and flow.")
+    if _uses_modifier_aliases(source):
+        warnings.append("Use canonical DSL modifier words in committed source: hidden and search.")
     if re.search(r"\brelationship\b|\bcomponent\b", source, re.I) or (
         re.search(r"\bentity\b", source, re.I) and not _uses_authoring_aliases(source)
     ):
@@ -436,6 +438,8 @@ def _apply_lint_fix(source: str, fix: dict) -> str:
         return _apply_target_normalization(source, tuple(fix["supported"]))
     if kind == "normalize_aliases":
         return _normalize_authoring_aliases(source)
+    if kind == "normalize_modifier_aliases":
+        return _normalize_modifier_aliases(source)
     return source
 
 
@@ -494,6 +498,15 @@ def _fix_edits(source: str, fix: dict) -> tuple[dict, ...]:
                 )
     if kind == "normalize_aliases":
         fixed = _normalize_authoring_aliases(source)
+        if fixed != source:
+            return (
+                {
+                    "range": _source_range(source, 0, len(source)),
+                    "replacement": fixed,
+                },
+            )
+    if kind == "normalize_modifier_aliases":
+        fixed = _normalize_modifier_aliases(source)
         if fixed != source:
             return (
                 {
@@ -570,6 +583,15 @@ def _lint_quick_fixes(source: str, errors: Iterable[str], warnings: Iterable[str
                 "title": "Normalize authoring aliases to canonical DSL words",
                 "kind": "normalize_aliases",
                 "aliases": dict(AUTHORING_ALIASES),
+            }
+        )
+    if _uses_modifier_aliases(source):
+        fixes.append(
+            {
+                "id": "normalize_modifier_aliases",
+                "title": "Normalize modifier aliases to canonical DSL words",
+                "kind": "normalize_modifier_aliases",
+                "aliases": dict(MODIFIER_ALIASES),
             }
         )
     for error in errors:
@@ -662,6 +684,8 @@ def _diagnostic_code(message: str) -> str:
         return "prefer_arrow_reference"
     if "environment variable" in message:
         return "literal_api_key"
+    if "canonical DSL modifier words" in message:
+        return "modifier_alias"
     if "canonical DSL words" in message:
         return "authoring_alias"
     if "Delphi-style component" in message:
@@ -710,6 +734,7 @@ def _diagnostic_fix_ids(code: str) -> tuple[str, ...]:
         "prefer_arrow_reference": ("replace_ref_with_arrow",),
         "literal_api_key": ("use_api_key_env",),
         "authoring_alias": ("normalize_authoring_aliases",),
+        "modifier_alias": ("normalize_modifier_aliases",),
         "unknown_app_target": ("normalize_targets",),
     }
     return fixes.get(code, ())
@@ -769,7 +794,7 @@ def _closest(value: str, choices: Iterable[str]) -> str | None:
 
 
 def _declared_block_names(source: str, kind: str) -> tuple[str, ...]:
-    normalized = _normalize_authoring_aliases(source or "")
+    normalized = _normalize_modifier_aliases(_normalize_authoring_aliases(source or ""))
     return tuple(
         match.group(1)
         for match in re.finditer(
@@ -780,7 +805,7 @@ def _declared_block_names(source: str, kind: str) -> tuple[str, ...]:
 
 
 def _declared_view_tables_for_suggestions(source: str) -> dict[str, str]:
-    normalized = _normalize_authoring_aliases(source or "")
+    normalized = _normalize_modifier_aliases(_normalize_authoring_aliases(source or ""))
     return {
         match.group(1): match.group(2)
         for match in re.finditer(
@@ -791,7 +816,7 @@ def _declared_view_tables_for_suggestions(source: str) -> dict[str, str]:
 
 
 def _declared_table_fields_for_suggestions(source: str) -> dict[str, tuple[str, ...]]:
-    normalized = _normalize_authoring_aliases(source or "")
+    normalized = _normalize_modifier_aliases(_normalize_authoring_aliases(source or ""))
     fields: dict[str, tuple[str, ...]] = {}
     pattern = re.compile(r"\btable\s+([A-Za-z_][A-Za-z0-9_]*)\s*\{(?P<body>.*?)\}", re.S)
     for match in pattern.finditer(normalized):
@@ -810,7 +835,7 @@ def _declared_table_fields_for_suggestions(source: str) -> dict[str, tuple[str, 
 def schema_from_dsl(text: str, *, source_name: str | None = None) -> AppSchema:
     """Parse AppGen DSL source into the canonical app schema."""
     text = _normalize_app_option_sugar(
-        _normalize_reference_sugar(_normalize_authoring_aliases(text))
+        _normalize_reference_sugar(_normalize_modifier_aliases(_normalize_authoring_aliases(text)))
     )
     tree = _parse(text)
     app_decl = tree.appDecl()
@@ -963,7 +988,7 @@ def _outline_block(source: str, kind: str, name: str) -> dict:
 
 
 def _regex_outline(source: str, *, source_name: str | None = None, error: str | None = None) -> dict:
-    normalized = _normalize_authoring_aliases(source or "")
+    normalized = _normalize_modifier_aliases(_normalize_authoring_aliases(source or ""))
     app_match = re.search(r"\bapp\s+(\"[^\"]+\"|'[^']+'|[A-Za-z_][A-Za-z0-9_]*)?", normalized)
     app_name = None
     if app_match and app_match.group(1):
@@ -1039,6 +1064,10 @@ AUTHORING_ALIASES = {
     "screen": "view",
     "workflow": "flow",
 }
+MODIFIER_ALIASES = {
+    "hide": "hidden",
+    "searchable": "search",
+}
 CORE_KEYWORDS = (
     "app",
     "table",
@@ -1069,6 +1098,7 @@ KEYWORD_FREE_SYNTAX = (
     "@ component placements",
     "generic app options",
     "entity/model/form/screen/workflow authoring aliases",
+    "hide/searchable modifier aliases",
 )
 LEARNING_PATH = (
     {"step": 1, "goal": "Model data", "constructs": ("app", "table", "enum", "->")},
@@ -1079,6 +1109,10 @@ LEARNING_PATH = (
 _AUTHORING_ALIAS_RE = re.compile(
     r"(?P<prefix>^[ \t]*|\}[ \t]*)(?P<alias>entity|model|form|screen|workflow)\b(?=\s+[A-Za-z_][A-Za-z0-9_]*(?:\s+for\s+[A-Za-z_][A-Za-z0-9_]*)?\s*\{)",
     flags=re.IGNORECASE | re.MULTILINE,
+)
+_FIELD_MODIFIER_ALIAS_RE = re.compile(
+    r"(?P<prefix>(?:^|[{\n;])\s*[A-Za-z_][A-Za-z0-9_]*\s*:\s*[A-Za-z_][A-Za-z0-9_]*(?:\([0-9]+\))?(?:\[\])?(?:\s+(?:pk|required|unique|hidden|search|default\s+[^;{}\n]+|in\s+[^;{}\n]+|->\s*[A-Za-z_][A-Za-z0-9_]*\.[A-Za-z_][A-Za-z0-9_]*(?:\s*\[[^\]]+\])?))*\s+)(?P<alias>hide|searchable)\b",
+    flags=re.IGNORECASE,
 )
 
 
@@ -1095,6 +1129,7 @@ def dsl_keyword_budget() -> dict:
         "legacy_policy": "accepted_for_existing_sources_but_linted_to_arrow_syntax",
         "keyword_free_syntax": KEYWORD_FREE_SYNTAX,
         "authoring_aliases": dict(AUTHORING_ALIASES),
+        "modifier_aliases": dict(MODIFIER_ALIASES),
     }
 
 
@@ -1106,6 +1141,7 @@ def dsl_language_quality_contract() -> dict:
         {"check": "generated_antlr_parser", "ok": (_GENERATED_DIR / "appgenParser.py").exists()},
         {"check": "keyword_budget", "ok": budget["ok"], "value": budget["count"]},
         {"check": "authoring_aliases_without_new_keywords", "ok": set(AUTHORING_ALIASES.values()) <= set(CORE_KEYWORDS)},
+        {"check": "modifier_aliases_without_new_keywords", "ok": set(MODIFIER_ALIASES.values()) <= set(CORE_KEYWORDS)},
         {"check": "keyword_free_relationships", "ok": "-> references" in KEYWORD_FREE_SYNTAX},
         {"check": "legacy_ref_not_canonical", "ok": "ref" not in CORE_KEYWORDS and "ref" in LEGACY_CONTEXTUAL_TOKENS},
         {"check": "progressive_learning_path", "ok": len(LEARNING_PATH) == 4},
@@ -1141,6 +1177,26 @@ def _normalize_authoring_aliases(source: str) -> str:
         return f"{match.group('prefix')}{canonical}"
 
     return _AUTHORING_ALIAS_RE.sub(repl, source)
+
+
+def _uses_modifier_aliases(source: str) -> bool:
+    return bool(_FIELD_MODIFIER_ALIAS_RE.search(source or ""))
+
+
+def _normalize_modifier_aliases(source: str) -> str:
+    """Normalize field modifier aliases before ANTLR parsing without adding keywords."""
+
+    def repl(match: re.Match[str]) -> str:
+        alias = match.group("alias")
+        canonical = MODIFIER_ALIASES[alias.lower()]
+        return f"{match.group('prefix')}{canonical}"
+
+    previous = source or ""
+    while True:
+        current = _FIELD_MODIFIER_ALIAS_RE.sub(repl, previous)
+        if current == previous:
+            return current
+        previous = current
 
 
 def _normalize_reference_sugar(source: str) -> str:

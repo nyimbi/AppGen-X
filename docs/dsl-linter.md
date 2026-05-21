@@ -179,6 +179,8 @@ It also adds style feedback:
 - Add `llm` and `agent` blocks when agentic behavior is needed.
 - Normalize authoring aliases to canonical DSL words without expanding the
   keyword budget.
+- Normalize field modifier aliases, such as `searchable` and `hide`, to
+  canonical `search` and `hidden` without expanding the keyword budget.
 - Include `language_quality` with the ANTLR grammar path, generated parser path,
   keyword budget, keyword-free syntax, aliases, legacy contextual tokens, and
   learning path.
@@ -190,6 +192,7 @@ It also returns structured quick fixes for common authoring feedback:
 - `replace_ref_with_arrow`
 - `use_api_key_env`
 - `normalize_authoring_aliases`
+- `normalize_modifier_aliases`
 - `normalize_targets`
 
 The same fixes can be applied through `pyAppGen.dsl.apply_lint_fixes`. The

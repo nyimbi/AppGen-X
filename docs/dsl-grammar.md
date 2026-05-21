@@ -89,6 +89,9 @@ The linter reports aliases and can rewrite them with
 `normalize_authoring_aliases`. The grammar file does not define `ENTITY`,
 `FORM`, or `WORKFLOW` tokens, so these helpers improve learnability without
 expanding the keyword budget.
+Field modifier aliases are handled the same way: `searchable` becomes `search`
+and `hide` becomes `hidden` through `normalize_modifier_aliases`; the grammar
+does not add separate `SEARCHABLE` or `HIDE` tokens.
 
 `pyAppGen.dsl.dsl_language_quality_contract()` exposes this as a machine-readable
 contract with the grammar path, generated parser path, keyword budget, keyword-free

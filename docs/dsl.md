@@ -23,6 +23,9 @@ Beginner-friendly aliases are also keyword-free: `entity` and `model`
 normalize to `table`, `form` and `screen` normalize to `view`, and `workflow`
 normalizes to `flow` before ANTLR parsing. The linter reports these aliases
 and offers `normalize_authoring_aliases` so committed source stays canonical.
+Field modifier aliases follow the same rule: `searchable` normalizes to
+`search`, and `hide` normalizes to `hidden`, with a
+`normalize_modifier_aliases` quick fix.
 Use `#`, `//`, or `/* ... */` comments anywhere whitespace is allowed; comments
 are ignored by the parser and do not affect generated artifacts.
 

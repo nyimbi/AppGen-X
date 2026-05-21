@@ -74,6 +74,7 @@ def test_dsl_linter_reports_semantic_feedback(runner: CliRunner, tmp_path) -> No
     assert dsl_keyword_budget()["count"] <= dsl_keyword_budget()["limit"]
     assert dsl_keyword_budget()["canonical_keyword_count"] == 17
     assert dsl_keyword_budget()["legacy_contextual_tokens"] == ("ref",)
+    assert dsl_keyword_budget()["modifier_aliases"] == {"hide": "hidden", "searchable": "search"}
     assert dsl_language_quality_contract()["grammar"] == "lang/appgen.g4"
     assert dsl_language_quality_contract()["ok"] is True
     broken = lint_dsl("app Bad { targets: web, toaster } table Book { title: string }")
@@ -161,6 +162,20 @@ def test_dsl_linter_reports_semantic_feedback(runner: CliRunner, tmp_path) -> No
     assert "view BookForm for Book" in alias_fixed["fixed"]
     assert "flow Publish" in alias_fixed["fixed"]
     assert alias_fixed["after"]["ok"] is True
+    modifier_alias_source = """
+    app ModifierAliasDemo { targets: web }
+    table Book { id: int pk; title: string required searchable; secret: string hide }
+    """
+    modifier_alias_report = lint_dsl(modifier_alias_source)
+    assert modifier_alias_report["ok"] is True
+    assert any("canonical DSL modifier words" in warning for warning in modifier_alias_report["warnings"])
+    assert "normalize_modifier_aliases" in {fix["id"] for fix in modifier_alias_report["fixes"]}
+    modifier_alias_fixed = apply_lint_fixes(modifier_alias_source)
+    assert "title: string required search" in modifier_alias_fixed["fixed"]
+    assert "secret: string hidden" in modifier_alias_fixed["fixed"]
+    assert "searchable" not in modifier_alias_fixed["fixed"]
+    assert " hide" not in modifier_alias_fixed["fixed"]
+    assert modifier_alias_fixed["after"]["ok"] is True
     formatted = format_dsl(
         "app Library{targets:web,mobile} table Author{id:int pk} table Book{id:int pk; title:string required; author_id:int -> Author.id[many-to-one]}"
     )
@@ -4083,6 +4098,8 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     )["language_quality"]["ok"] is True
     assert "[cardinality] relation metadata" in dsl_reference.dsl_keyword_budget()["keyword_free_syntax"]
     assert "entity/model/form/screen/workflow authoring aliases" in dsl_reference.dsl_keyword_budget()["keyword_free_syntax"]
+    assert "hide/searchable modifier aliases" in dsl_reference.dsl_keyword_budget()["keyword_free_syntax"]
+    assert dsl_reference.dsl_keyword_budget()["modifier_aliases"] == {"hide": "hidden", "searchable": "search"}
     assert "Reference" in {item["name"] for item in dsl_reference.dsl_construct_catalog()}
     assert "author_id: int -> Author.id [many-to-one]" in dsl_reference.dsl_example("relation")
     assert dsl_reference.dsl_lint(dsl_reference.dsl_example("full"))["ok"] is True
@@ -4122,6 +4139,16 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     )
     assert "table Book" in generated_alias_fix["fixed"]
     assert "view BookForm for Book" in generated_alias_fix["fixed"]
+    generated_modifier_lint = dsl_reference.dsl_lint(
+        "app Alias { targets: web } table Book { title: string searchable; secret: string hide }"
+    )
+    assert generated_modifier_lint["ok"] is True
+    assert "normalize_modifier_aliases" in {fix["id"] for fix in generated_modifier_lint["fixes"]}
+    generated_modifier_fix = dsl_reference.apply_dsl_fixes(
+        "app Alias { targets: web } table Book { title: string searchable; secret: string hide }"
+    )
+    assert "title: string search" in generated_modifier_fix["fixed"]
+    assert "secret: string hidden" in generated_modifier_fix["fixed"]
     assert dsl_reference.dsl_lint(
         "table Book { title: string title: text } table Book { title: string }"
     )["errors"]
@@ -4603,7 +4630,8 @@ def test_appgen_dsl_accepts_authoring_aliases_without_new_keywords(tmp_path) -> 
         model Invoice {
           id: int pk
           customer_id: int required -> Customer.id [many-to-one]
-          total: decimal required
+          total: decimal required searchable
+          internal_note: string hide
         }
 
         form InvoiceForm for Invoice {
@@ -4622,6 +4650,8 @@ def test_appgen_dsl_accepts_authoring_aliases_without_new_keywords(tmp_path) -> 
     invoice_columns = {column.name: column for column in schema.table("Invoice").columns}
     assert schema.table("Customer").columns[1].name == "name"
     assert invoice_columns["customer_id"].references == ("Customer", "id")
+    assert invoice_columns["total"].searchable is True
+    assert invoice_columns["internal_note"].hidden is True
     assert schema.views[0].name == "InvoiceForm"
     assert schema.flows[0].name == "Collect"
 
@@ -4633,6 +4663,10 @@ def test_appgen_dsl_accepts_authoring_aliases_without_new_keywords(tmp_path) -> 
     assert "model " not in fixed["fixed"]
     assert "form " not in fixed["fixed"]
     assert "workflow " not in fixed["fixed"]
+    assert "searchable" not in fixed["fixed"]
+    assert " hide" not in fixed["fixed"]
+    assert "total: decimal required search" in fixed["fixed"]
+    assert "internal_note: string hidden" in fixed["fixed"]
     assert "table Customer" in fixed["fixed"]
     assert "table Invoice" in fixed["fixed"]
     assert "view InvoiceForm for Invoice" in fixed["fixed"]

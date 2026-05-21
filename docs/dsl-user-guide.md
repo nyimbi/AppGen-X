@@ -62,6 +62,9 @@ If you are sketching quickly, you may write `entity` or `model` for `table`,
 `form` or `screen` for `view`, and `workflow` for `flow`. AppGen accepts these
 as authoring aliases before parsing, then the linter can rewrite them to the
 canonical DSL so the committed language stays small.
+You may also write `searchable` for `search` and `hide` for `hidden` on fields;
+the parser receives the canonical modifiers, and the linter offers
+`normalize_modifier_aliases`.
 
 Use `dsl_language_quality_contract()` or the generated
 `/dsl-reference/language-quality.json` endpoint when reviewing language changes.

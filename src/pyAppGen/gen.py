@@ -19039,13 +19039,17 @@ CORE_KEYWORDS = (
 KEYWORD_LIMIT = 17
 LEGACY_CONTEXTUAL_TOKENS = ("ref",)
 RELATION_CARDINALITIES = ("many-to-one", "one-to-one", "one-to-many", "many-to-many")
-KEYWORD_FREE_SYNTAX = ("-> references", "[cardinality] relation metadata", "... field groups", "type[] arrays", "= derived fields", "@ component placements", "Name {{...}} reusable groups", "entity/model/form/screen/workflow authoring aliases")
+KEYWORD_FREE_SYNTAX = ("-> references", "[cardinality] relation metadata", "... field groups", "type[] arrays", "= derived fields", "@ component placements", "Name {{...}} reusable groups", "entity/model/form/screen/workflow authoring aliases", "hide/searchable modifier aliases")
 AUTHORING_ALIASES = {{
     "entity": "table",
     "model": "table",
     "form": "view",
     "screen": "view",
     "workflow": "flow",
+}}
+MODIFIER_ALIASES = {{
+    "hide": "hidden",
+    "searchable": "search",
 }}
 PLATFORM_TARGETS = ("web", "pwa", "mobile", "desktop", "chatbot")
 PLATFORM_TARGET_ALIASES = {{
@@ -19059,6 +19063,7 @@ PLATFORM_TARGET_ALIASES = {{
 CONSTRUCTS = (
     {{"name": "Application", "syntax": "app Name {{ theme: sage }}", "purpose": "Names the generated app and carries app options without adding feature keywords."}},
     {{"name": "Authoring Aliases", "syntax": "entity Book {{...}} -> table Book {{...}}", "purpose": "Lets builders use familiar words while persisted source stays on the compact keyword budget."}},
+    {{"name": "Modifier Aliases", "syntax": "title: string searchable -> title: string search", "purpose": "Accepts natural field modifier words while the canonical grammar keeps hidden and search as the only persisted modifiers."}},
     {{"name": "Table", "syntax": "table Book {{ title: string required }}", "purpose": "Defines persistent data models, fields, types, and modifiers."}},
     {{"name": "Reference", "syntax": "author_id: int -> Author.id [many-to-one]", "purpose": "Connects tables with arrow syntax and optional cardinality metadata instead of a larger relationship vocabulary."}},
     {{"name": "Reusable Group", "syntax": "Audit {{ created_at: datetime }} then ...Audit", "purpose": "Reuses field blocks without adding a group keyword."}},
@@ -19083,6 +19088,7 @@ def dsl_keyword_budget():
         "legacy_policy": "accepted_for_existing_sources_but_linted_to_arrow_syntax",
         "keyword_free_syntax": KEYWORD_FREE_SYNTAX,
         "authoring_aliases": dict(AUTHORING_ALIASES),
+        "modifier_aliases": dict(MODIFIER_ALIASES),
     }}
 
 
@@ -19094,6 +19100,7 @@ def dsl_language_quality_contract():
         {{"check": "generated_antlr_parser", "ok": True, "artifact": "src/pyAppGen/dsl_generated/lang/appgenParser.py"}},
         {{"check": "keyword_budget", "ok": budget["ok"], "value": budget["count"]}},
         {{"check": "authoring_aliases_without_new_keywords", "ok": set(AUTHORING_ALIASES.values()) <= set(CORE_KEYWORDS)}},
+        {{"check": "modifier_aliases_without_new_keywords", "ok": set(MODIFIER_ALIASES.values()) <= set(CORE_KEYWORDS)}},
         {{"check": "keyword_free_relationships", "ok": "-> references" in KEYWORD_FREE_SYNTAX}},
         {{"check": "legacy_ref_not_canonical", "ok": "ref" not in CORE_KEYWORDS and "ref" in LEGACY_CONTEXTUAL_TOKENS}},
         {{"check": "progressive_learning_path", "ok": len(dsl_learning_path()) == 4}},
@@ -19168,6 +19175,26 @@ def _normalize_authoring_aliases(source):
         source or "",
         flags=re.I | re.M,
     )
+
+
+def _uses_modifier_aliases(source):
+    pattern = r"(?P<prefix>(?:^|[{{\\n;])\\s*[A-Za-z_][A-Za-z0-9_]*\\s*:\\s*[A-Za-z_][A-Za-z0-9_]*(?:\\([0-9]+\\))?(?:\\[\\])?(?:\\s+(?:pk|required|unique|hidden|search|default\\s+[^;{{}}\\n]+|in\\s+[^;{{}}\\n]+|->\\s*[A-Za-z_][A-Za-z0-9_]*\\.[A-Za-z_][A-Za-z0-9_]*(?:\\s*\\[[^\\]]+\\])?))*\\s+)(?P<alias>hide|searchable)\\b"
+    return bool(re.search(pattern, source or "", re.I))
+
+
+def _normalize_modifier_aliases(source):
+    pattern = r"(?P<prefix>(?:^|[{{\\n;])\\s*[A-Za-z_][A-Za-z0-9_]*\\s*:\\s*[A-Za-z_][A-Za-z0-9_]*(?:\\([0-9]+\\))?(?:\\[\\])?(?:\\s+(?:pk|required|unique|hidden|search|default\\s+[^;{{}}\\n]+|in\\s+[^;{{}}\\n]+|->\\s*[A-Za-z_][A-Za-z0-9_]*\\.[A-Za-z_][A-Za-z0-9_]*(?:\\s*\\[[^\\]]+\\])?))*\\s+)(?P<alias>hide|searchable)\\b"
+
+    def repl(match):
+        alias = match.group("alias")
+        return match.group("prefix") + MODIFIER_ALIASES[alias.lower()]
+
+    previous = source or ""
+    while True:
+        current = re.sub(pattern, repl, previous, flags=re.I)
+        if current == previous:
+            return current
+        previous = current
 
 
 def _declared_table_fields(source):
@@ -19295,6 +19322,13 @@ def dsl_quick_fixes(source, errors=(), warnings=()):
             "kind": "normalize_aliases",
             "aliases": dict(AUTHORING_ALIASES),
         }})
+    if _uses_modifier_aliases(text):
+        fixes.append({{
+            "id": "normalize_modifier_aliases",
+            "title": "Normalize modifier aliases to canonical DSL words",
+            "kind": "normalize_modifier_aliases",
+            "aliases": dict(MODIFIER_ALIASES),
+        }})
     if any(str(error).startswith("Unknown app targets") for error in errors):
         fixes.append({{
             "id": "normalize_targets",
@@ -19350,6 +19384,8 @@ def _apply_dsl_fix(source, fix):
         return re.sub(r"(\\btargets\\s*:\\s*)([^;\\n}}]+)", repl, source)
     if kind == "normalize_aliases":
         return _normalize_authoring_aliases(source)
+    if kind == "normalize_modifier_aliases":
+        return _normalize_modifier_aliases(source)
     return source
 
 
@@ -19475,7 +19511,7 @@ def format_dsl(source):
 def dsl_lint(source):
     """Return lightweight DSL readability and keyword-budget feedback."""
     text = source or ""
-    analysis_text = _normalize_authoring_aliases(text)
+    analysis_text = _normalize_modifier_aliases(_normalize_authoring_aliases(text))
     errors = []
     warnings = []
     suggestions = []
@@ -19485,6 +19521,8 @@ def dsl_lint(source):
         errors.append("Add at least one table block so the generator has a data model.")
     if _uses_authoring_aliases(text):
         warnings.append("Use canonical DSL words in committed source: table, view, and flow.")
+    if _uses_modifier_aliases(text):
+        warnings.append("Use canonical DSL modifier words in committed source: hidden and search.")
     if re.search(r"\\bref\\b", text):
         warnings.append("Prefer arrow references, for example author_id: int -> Author.id.")
     if re.search(r"\\brelationship\\b|\\bcomponent\\b", text, re.I) or (re.search(r"\\bentity\\b", text, re.I) and not _uses_authoring_aliases(text)):
@@ -30405,6 +30443,8 @@ def validate_dsl_reference_artifacts() -> None:
         "format_dsl",
         "AUTHORING_ALIASES",
         "normalize_authoring_aliases",
+        "MODIFIER_ALIASES",
+        "normalize_modifier_aliases",
         "dsl_learning_path",
         "dsl_language_quality_contract",
         "dsl_reference_check",
