@@ -3388,6 +3388,7 @@ def write_schema_import_template(output_dir):
       <a class="btn btn-default" href="{{ url_for('SchemaImportView.catalog_json') }}">Catalog JSON</a>
       <a class="btn btn-default" href="{{ url_for('SchemaImportView.profile_json') }}">Profile JSON</a>
       <a class="btn btn-default" href="{{ url_for('SchemaImportView.normalization_json') }}">Normalization JSON</a>
+      <a class="btn btn-default" href="{{ url_for('SchemaImportView.validation_json') }}">Validation JSON</a>
       <a class="btn btn-default" href="{{ url_for('SchemaImportView.commands_json') }}">Commands JSON</a>
     </div>
   </div>
@@ -3401,6 +3402,14 @@ def write_schema_import_template(output_dir):
       {% endfor %}
     </article>
     {% endfor %}
+    <article class="agsi-card">
+      <h3>Source Validation</h3>
+      <div class="agsi-muted">Pre-generation checks</div>
+      <span class="agsi-pill">DBML refs</span>
+      <span class="agsi-pill">SQL constraints</span>
+      <span class="agsi-pill">PonyORM AST</span>
+      <span class="agsi-pill">Database reflection</span>
+    </article>
     <article class="agsi-card">
       <h3>Current Source</h3>
       <div class="agsi-muted">{{ profile.source_kind }}</div>
@@ -11999,6 +12008,7 @@ def _schema_import_text(schema: AppSchema) -> str:
             "extensions": (".dbml",),
             "command": "appgen --dbml schema.dbml --writedir app",
             "normalizes": ("tables", "relations", "enums", "primary keys", "unique indexes", "defaults"),
+            "validation": ("parse_dbml", "preserve_ref_pairs", "validate_enum_values", "verify_primary_keys"),
         },
         {
             "kind": "sql",
@@ -12006,6 +12016,7 @@ def _schema_import_text(schema: AppSchema) -> str:
             "extensions": (".sql", ".ddl"),
             "command": "appgen --sql schema.sql --writedir app",
             "normalizes": ("primary keys", "foreign keys", "unique constraints", "check enums", "ALTER TABLE constraints"),
+            "validation": ("split_create_table_blocks", "apply_alter_constraints", "preserve_composite_foreign_keys", "extract_check_enums"),
         },
         {
             "kind": "ponyorm",
@@ -12013,6 +12024,7 @@ def _schema_import_text(schema: AppSchema) -> str:
             "extensions": (".py",),
             "command": "appgen --pony entities.py --writedir app",
             "normalizes": ("entities", "Required/Optional fields", "entity references", "Set associations", "composite keys", "Python enums"),
+            "validation": ("parse_ast_without_execution", "detect_entity_classes", "preserve_required_optional", "materialize_many_to_many_sets"),
         },
         {
             "kind": "database",
@@ -12020,6 +12032,7 @@ def _schema_import_text(schema: AppSchema) -> str:
             "extensions": (),
             "command": "appgen --database-url sqlite:///existing.db --writedir app",
             "normalizes": ("reflected tables", "primary keys", "foreign keys", "unique indexes", "server defaults", "SQLAlchemy enums"),
+            "validation": ("reflect_metadata", "inspect_foreign_keys", "preserve_server_defaults", "profile_source_counts"),
         },
     )
     return f'''"""Generated schema import provenance and normalization contracts for AppGen apps."""
@@ -12062,6 +12075,41 @@ def normalization_report():
         "canonical_contract": "AppSchema",
         "preserved": ("tables", "fields", "relations", "primary_keys", "unique_fields", "defaults", "enums"),
     }}
+
+
+def source_validation_plan(source_kind=None):
+    """Return deterministic pre-generation validation checks for one source kind."""
+    kind = source_kind or SOURCE_PROFILE["source_kind"]
+    source = next((item for item in SCHEMA_SOURCES if item["kind"] == kind), None)
+    if source is None:
+        raise KeyError(kind)
+    warnings = {{
+        "dbml": ("review unsupported DBML table settings", "confirm composite refs preserve source/target order"),
+        "sql": ("review dialect-specific DDL outside CREATE/ALTER TABLE", "confirm computed/generated columns manually"),
+        "ponyorm": ("AST import never executes Python side effects", "review custom Python properties manually"),
+        "database": ("database introspection is read-only", "review views/materialized views outside table metadata"),
+    }}[kind]
+    return {{
+        "format": "appgen.schema-source-validation.v1",
+        "source_kind": kind,
+        "label": source["label"],
+        "checks": tuple(source["validation"]),
+        "normalized": tuple(source["normalizes"]),
+        "warnings": warnings,
+        "required_evidence": (
+            "canonical AppSchema table count",
+            "field count and primary-key coverage",
+            "relation count and target resolution",
+            "generated app py_compile",
+            "generated quality gate",
+        ),
+        "requires_review": True,
+    }}
+
+
+def all_source_validation_plans():
+    """Return validation plans for every supported schema import source."""
+    return tuple(source_validation_plan(item["kind"]) for item in SCHEMA_SOURCES)
 
 
 def import_command_plan(source_kind=None, path=None, writedir="app"):
@@ -12110,10 +12158,11 @@ def schema_import_check(existing_paths=()):
     required = {{"app/schema_import.py", "app/templates/appgen_schema_import.html", "app/appgen.json"}}
     missing = tuple(sorted(required - existing))
     return {{
-        "ok": not missing and bool(SCHEMA_SOURCES),
+        "ok": not missing and bool(SCHEMA_SOURCES) and len(all_source_validation_plans()) == len(SCHEMA_SOURCES),
         "missing": missing,
         "sources": tuple(item["kind"] for item in SCHEMA_SOURCES),
         "source_kind": SOURCE_PROFILE["source_kind"],
+        "validation": all_source_validation_plans(),
     }}
 
 
@@ -12141,6 +12190,10 @@ class SchemaImportView(BaseView):
     @expose("/normalization.json")
     def normalization_json(self):
         return jsonify(normalization_report())
+
+    @expose("/validation.json")
+    def validation_json(self):
+        return jsonify(list(all_source_validation_plans()))
 
     @expose("/commands.json")
     def commands_json(self):
@@ -26746,18 +26799,20 @@ def validate_schema_import_artifacts() -> None:
         "schema_source_catalog",
         "schema_source_profile",
         "normalization_report",
+        "source_validation_plan",
+        "all_source_validation_plans",
         "import_command_plan",
         "source_roundtrip_plan",
         "schema_import_check",
     )
     if not all(item in contract for item in required):
-        fail("schema import contract must expose source catalog, normalization, command plans, roundtrip plans, and readiness checks")
+        fail("schema import contract must expose source catalog, normalization, validation, command plans, roundtrip plans, and readiness checks")
     for source in ("dbml", "sql", "ponyorm", "database"):
         if source not in contract:
             fail("schema import contract must cover DBML, SQL, PonyORM, and database sources")
     template = (ROOT / "app" / "templates" / "appgen_schema_import.html").read_text()
-    if "Schema Import" not in template or "Catalog JSON" not in template or "Normalization JSON" not in template or "Commands JSON" not in template:
-        fail("schema import cockpit must expose source catalog, normalization, and commands")
+    if "Schema Import" not in template or "Catalog JSON" not in template or "Normalization JSON" not in template or "Validation JSON" not in template or "Commands JSON" not in template:
+        fail("schema import cockpit must expose source catalog, normalization, validation, and commands")
 
 
 def validate_performance_artifacts() -> None:
@@ -27937,6 +27992,8 @@ def test_generated_runtime_helpers():
     )["ok"] is True
     assert {item["kind"] for item in schema_import.schema_source_catalog()} == {"dbml", "sql", "ponyorm", "database"}
     assert schema_import.normalization_report()["format"] == "appgen.schema-normalization.v1"
+    assert schema_import.source_validation_plan("sql")["format"] == "appgen.schema-source-validation.v1"
+    assert len(schema_import.all_source_validation_plans()) == 4
     assert schema_import.import_command_plan("ponyorm", "entities.py")["command"] == "appgen --pony entities.py --writedir app"
     assert schema_import.source_roundtrip_plan("dbml")["to"] == "dbml"
     assert schema_import.schema_import_check(

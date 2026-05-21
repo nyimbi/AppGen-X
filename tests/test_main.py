@@ -1483,6 +1483,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     schema_import_template = (output_dir / "templates" / "appgen_schema_import.html").read_text()
     assert "Schema Import" in schema_import_template
     assert "Normalization JSON" in schema_import_template
+    assert "Validation JSON" in schema_import_template
     assert "Commands JSON" in schema_import_template
     assert "Export all JSON" in (output_dir / "templates" / "appgen_backup.html").read_text()
     assert "Autobackup Schedule JSON" in (output_dir / "templates" / "appgen_backup.html").read_text()
@@ -2202,6 +2203,15 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     normalization = schema_import.normalization_report()
     assert normalization["format"] == "appgen.schema-normalization.v1"
     assert normalization["canonical_contract"] == "AppSchema"
+    sql_validation = schema_import.source_validation_plan("sql")
+    assert sql_validation["format"] == "appgen.schema-source-validation.v1"
+    assert "preserve_composite_foreign_keys" in sql_validation["checks"]
+    assert {item["source_kind"] for item in schema_import.all_source_validation_plans()} == {
+        "dbml",
+        "sql",
+        "ponyorm",
+        "database",
+    }
     assert schema_import.import_command_plan("dbml", "schema.dbml")["command"] == "appgen --dbml schema.dbml --writedir app"
     assert schema_import.import_command_plan("ponyorm", "entities.py")["command"] == "appgen --pony entities.py --writedir app"
     assert schema_import.source_roundtrip_plan("sql")["to"] == "sql"
