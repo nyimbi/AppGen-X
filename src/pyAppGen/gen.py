@@ -5875,6 +5875,8 @@ def write_erp_templates_template(output_dir):
       <a class="btn btn-default" href="{{ url_for('ERPTemplateView.catalog_json') }}">Catalog JSON</a>
       <a class="btn btn-default" href="{{ url_for('ERPTemplateView.stacks_json') }}">Stacks JSON</a>
       <a class="btn btn-default" href="{{ url_for('ERPTemplateView.starter_json') }}">Starter JSON</a>
+      <a class="btn btn-default" href="{{ url_for('ERPTemplateView.roadmap_json') }}">Roadmap JSON</a>
+      <a class="btn btn-default" href="{{ url_for('ERPTemplateView.release_gate_json') }}">Release Gate JSON</a>
     </div>
   </div>
   <div class="agerp-grid">
@@ -21952,6 +21954,13 @@ ERP_MODULE_RECOMMENDATIONS = {{
     "manufacturing_core": ("inventory", "manufacturing", "quality_management", "maintenance", "warehouse_management", "reporting"),
     "full_erp": tuple(ERP_MODULES),
 }}
+ERP_DOMAIN_REQUIREMENTS = {{
+    "finance": ("chart_of_accounts", "general_ledger", "accounts_receivable", "accounts_payable", "invoicing", "reporting"),
+    "distribution": ("inventory", "purchasing", "procurement", "sales", "warehouse_management", "supply_chain", "ecommerce"),
+    "people": ("human_resources", "payroll", "projects", "document_management"),
+    "manufacturing": ("manufacturing", "quality_management", "maintenance", "inventory", "warehouse_management"),
+    "governance": ("fixed_assets", "compliance_management", "document_management", "reporting"),
+}}
 
 
 def erp_template_catalog():
@@ -22040,6 +22049,28 @@ def erp_recommended_stacks():
     )
 
 
+def erp_domain_coverage_report(modules=None):
+    """Return ERP domain coverage for selected module templates."""
+    selected = set(_normalize_erp_modules(modules or ERP_MODULE_RECOMMENDATIONS["full_erp"]))
+    domains = tuple(
+        {{
+            "domain": domain,
+            "required_modules": required,
+            "covered_modules": tuple(module for module in required if module in selected),
+            "missing_modules": tuple(module for module in required if module not in selected),
+            "ok": set(required) <= selected,
+        }}
+        for domain, required in ERP_DOMAIN_REQUIREMENTS.items()
+    )
+    return {{
+        "format": "appgen.erp-domain-coverage.v1",
+        "ok": any(item["ok"] for item in domains),
+        "selected_modules": tuple(module for module in ERP_MODULES if module in selected),
+        "covered_domains": tuple(item["domain"] for item in domains if item["ok"]),
+        "domains": domains,
+    }}
+
+
 def _normalize_erp_modules(modules=None):
     selected = tuple(modules or ERP_MODULE_RECOMMENDATIONS["finance_core"])
     unknown = tuple(module for module in selected if module not in ERP_MODULES)
@@ -22099,6 +22130,26 @@ def erp_starter_generation_plan(modules=None, app_name="ERPStarter"):
     }}
 
 
+def erp_implementation_roadmap(modules=None, app_name="ERPStarter"):
+    """Return a phased plan for turning ERP templates into a deployable app."""
+    manifest = erp_starter_manifest(modules, app_name=app_name)
+    coverage = erp_domain_coverage_report(manifest["modules"])
+    return {{
+        "format": "appgen.erp-implementation-roadmap.v1",
+        "app_name": app_name,
+        "modules": manifest["modules"],
+        "domain_coverage": coverage,
+        "phases": (
+            {{"phase": "foundation", "deliverables": ("compose DSL", "lint DSL", "review table blueprints"), "exit_gate": "all selected modules render DSL"}},
+            {{"phase": "core_records", "deliverables": manifest["tables"], "exit_gate": "required fields, references, and uniqueness constraints validate"}},
+            {{"phase": "workflow_automation", "deliverables": manifest["workflows"], "exit_gate": "approval, posting, exception, and reversal paths reviewed"}},
+            {{"phase": "reporting_controls", "deliverables": manifest["reports"], "exit_gate": "financial, operational, and audit reports mapped"}},
+            {{"phase": "migration_release", "deliverables": ("migration plan", "quality gate", "security review", "user acceptance"), "exit_gate": "erp_starter_release_gate ok"}},
+        ),
+        "cross_cutting": ("roles", "audit trail", "attachments", "notifications", "imports", "exports", "mobile", "desktop"),
+    }}
+
+
 def erp_data_migration_plan(modules=None, source="legacy_erp"):
     """Return a schema-aware migration/import plan for selected ERP modules."""
     selected = _normalize_erp_modules(modules)
@@ -22122,6 +22173,36 @@ def erp_data_migration_plan(modules=None, source="legacy_erp"):
     }}
 
 
+def erp_starter_release_gate(modules=None, app_name="ERPStarter", existing_paths=()):
+    """Return release readiness for a generated ERP starter package."""
+    selected = _normalize_erp_modules(modules)
+    manifest = erp_starter_manifest(selected, app_name=app_name)
+    coverage = erp_domain_coverage_report(selected)
+    generation = erp_starter_generation_plan(selected, app_name=app_name)
+    migration = erp_data_migration_plan(selected)
+    existing = set(existing_paths)
+    required = ("app/erp_templates.py", "app/templates/appgen_erp_templates.html")
+    missing = tuple(path for path in required if path not in existing)
+    gates = (
+        {{"gate": "modules", "ok": bool(selected), "evidence": selected}},
+        {{"gate": "table_blueprints", "ok": all(erp_table_blueprints(module) for module in selected), "evidence": manifest["tables"]}},
+        {{"gate": "workflows", "ok": bool(manifest["workflows"]), "evidence": manifest["workflows"]}},
+        {{"gate": "reports", "ok": bool(manifest["reports"]), "evidence": manifest["reports"]}},
+        {{"gate": "domain_coverage", "ok": bool(coverage["covered_domains"]), "evidence": coverage["covered_domains"]}},
+        {{"gate": "generation_plan", "ok": [step["name"] for step in generation["steps"]] == ["compose_dsl", "lint_dsl", "generate", "verify"], "evidence": generation["steps"]}},
+        {{"gate": "migration_plan", "ok": bool(migration["batches"]) and "backup" in migration["cutover_checks"], "evidence": migration["cutover_checks"]}},
+        {{"gate": "artifacts", "ok": not missing, "evidence": required, "missing": missing}},
+    )
+    return {{
+        "format": "appgen.erp-release-gate.v1",
+        "ok": all(item["ok"] for item in gates),
+        "gates": gates,
+        "blocking_gaps": tuple(item["gate"] for item in gates if not item["ok"]),
+        "manifest": manifest,
+        "roadmap": erp_implementation_roadmap(selected, app_name=app_name),
+    }}
+
+
 def erp_templates_check(existing_paths):
     """Return readiness for generated ERP template artifacts."""
     existing = set(existing_paths)
@@ -22137,10 +22218,12 @@ def erp_templates_check(existing_paths):
         "compliance_management", "projects", "reporting"
     }}
     return {{
-        "ok": not missing and essential <= set(keys) and bool(ERP_TABLE_BLUEPRINTS.get("general_ledger")) and bool(erp_recommended_stacks()),
+        "ok": not missing and essential <= set(keys) and bool(ERP_TABLE_BLUEPRINTS.get("general_ledger")) and bool(erp_recommended_stacks()) and erp_domain_coverage_report()["ok"],
         "missing": missing,
         "modules": keys,
         "stacks": tuple(item["stack"] for item in erp_recommended_stacks()),
+        "domain_coverage": erp_domain_coverage_report(),
+        "release_gate": erp_starter_release_gate(ERP_MODULE_RECOMMENDATIONS["finance_core"], existing_paths=existing),
     }}
 
 
@@ -22163,6 +22246,14 @@ class ERPTemplateView(BaseView):
     @expose("/starter.json")
     def starter_json(self):
         return jsonify(erp_starter_manifest())
+
+    @expose("/roadmap.json")
+    def roadmap_json(self):
+        return jsonify(erp_implementation_roadmap())
+
+    @expose("/release-gate.json")
+    def release_gate_json(self):
+        return jsonify(erp_starter_release_gate(existing_paths=("app/erp_templates.py", "app/templates/appgen_erp_templates.html")))
 
     @expose("/<module>.json")
     def module_json(self, module):
@@ -30974,14 +31065,24 @@ def validate_erp_template_artifacts() -> None:
         or "erp_composite_dsl" not in contract
         or "erp_starter_manifest" not in contract
         or "erp_starter_generation_plan" not in contract
+        or "erp_domain_coverage_report" not in contract
+        or "erp_implementation_roadmap" not in contract
+        or "erp_starter_release_gate" not in contract
         or "erp_data_migration_plan" not in contract
     ):
-        fail("ERP templates must expose DSL, table blueprints, packages, fit-report, starter, generation, and migration helpers")
+        fail("ERP templates must expose DSL, table blueprints, packages, fit-report, starter, generation, roadmap, release-gate, and migration helpers")
     if "journal_line_id" in contract or "_erp_field_syntax" not in contract or "invoice_line" not in contract:
         fail("ERP templates must include useful table-level fields and references")
     template = (ROOT / "app" / "templates" / "appgen_erp_templates.html").read_text()
-    if "ERP Templates" not in template or "ledgers" not in template or "Stacks JSON" not in template or "Starter JSON" not in template:
-        fail("ERP template cockpit must expose ERP module catalog, stacks, and starter package")
+    if (
+        "ERP Templates" not in template
+        or "ledgers" not in template
+        or "Stacks JSON" not in template
+        or "Starter JSON" not in template
+        or "Roadmap JSON" not in template
+        or "Release Gate JSON" not in template
+    ):
+        fail("ERP template cockpit must expose ERP module catalog, stacks, starter package, roadmap, and release gate")
 
 
 def validate_document_management_artifacts() -> None:
@@ -33086,6 +33187,12 @@ def test_generated_runtime_helpers():
     assert "employee_number: string required unique search" in hr_dsl
     assert erp_templates.erp_table_blueprints("accounts_payable")
     assert "dsl" in erp_templates.erp_module_package("accounts_receivable")
+    assert erp_templates.erp_domain_coverage_report(erp_templates.ERP_MODULE_RECOMMENDATIONS["full_erp"])["ok"] is True
+    assert erp_templates.erp_implementation_roadmap(("general_ledger", "invoicing"))["format"] == "appgen.erp-implementation-roadmap.v1"
+    assert erp_templates.erp_starter_release_gate(
+        erp_templates.ERP_MODULE_RECOMMENDATIONS["finance_core"],
+        existing_paths={"app/erp_templates.py", "app/templates/appgen_erp_templates.html"},
+    )["ok"] is True
     assert erp_templates.erp_templates_check(
         {"app/erp_templates.py", "app/templates/appgen_erp_templates.html"}
     )["ok"] is True

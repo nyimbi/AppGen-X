@@ -521,8 +521,9 @@ apps include:
   field blueprints, references, workflows, reports, and AppGen DSL export helpers
   plus recommended finance, distribution, people, manufacturing, and full-ERP
   starter stacks, composite ERP DSL, generation plans, and legacy ERP migration
-  plans so users can start from realistic ERP components rather than empty
-  placeholder tables.
+  plans. Generated ERP packages also include domain coverage reports,
+  implementation roadmaps, and ERP release gates so users can start from
+  realistic, deployable ERP components rather than empty placeholder tables.
 - `project_management.py` and `appgen_project_management.html` with generated
   agile backlog, sprint, release, traceability, and Jira/GitHub/Azure
   Boards/GitLab issue-export contracts.

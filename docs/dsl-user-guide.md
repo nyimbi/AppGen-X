@@ -333,6 +333,12 @@ stricter product-positioning gate: it separates preserved JHipster parity,
 AppGen-only outperformance, and generated workbench routes, and it blocks
 claims of superiority unless all three tiers pass.
 
+ERP templates are generated as deployable starter packages, not only example
+tables. Use `/erp-templates/roadmap.json` for the phased implementation plan
+and `/erp-templates/release-gate.json` to verify module coverage, table
+blueprints, workflows, reports, migration planning, generation steps, and
+required ERP template artifacts.
+
 The same module also exposes `/low-code-features/roadmap-sources.json`, which
 maps `docs/ideas.md`, `docs/base_features.md`, and `docs/Lo-code features.md`
 to generated capabilities and artifacts. Treat that endpoint as the source

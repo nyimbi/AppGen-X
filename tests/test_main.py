@@ -2249,6 +2249,9 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert "Superset Evidence JSON" in (output_dir / "templates" / "appgen_low_code_features.html").read_text()
     assert "Superset Blueprint JSON" in (output_dir / "templates" / "appgen_low_code_features.html").read_text()
     assert "Superiority Tiers JSON" in (output_dir / "templates" / "appgen_low_code_features.html").read_text()
+    erp_template_text = (output_dir / "templates" / "appgen_erp_templates.html").read_text()
+    assert "Roadmap JSON" in erp_template_text
+    assert "Release Gate JSON" in erp_template_text
     assert "Prototype JSON" in (output_dir / "templates" / "appgen_prototyping.html").read_text()
     assert "Generated sequential user-input" in (output_dir / "templates" / "appgen_wizards.html").read_text()
     branding_template = (output_dir / "templates" / "appgen_branding.html").read_text()
@@ -4324,6 +4327,22 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert "vendor_bill" in starter["tables"]
     generation_plan = erp_templates.erp_starter_generation_plan(("inventory",), app_name="StockDesk")
     assert [step["name"] for step in generation_plan["steps"]] == ["compose_dsl", "lint_dsl", "generate", "verify"]
+    coverage = erp_templates.erp_domain_coverage_report(erp_templates.ERP_MODULE_RECOMMENDATIONS["full_erp"])
+    assert coverage["format"] == "appgen.erp-domain-coverage.v1"
+    assert {"finance", "distribution", "people", "manufacturing", "governance"} <= set(coverage["covered_domains"])
+    roadmap = erp_templates.erp_implementation_roadmap(("general_ledger", "invoicing"), app_name="FinanceDesk")
+    assert roadmap["format"] == "appgen.erp-implementation-roadmap.v1"
+    assert roadmap["phases"][-1]["exit_gate"] == "erp_starter_release_gate ok"
+    erp_gate = erp_templates.erp_starter_release_gate(
+        erp_templates.ERP_MODULE_RECOMMENDATIONS["finance_core"],
+        existing_paths={"app/erp_templates.py", "app/templates/appgen_erp_templates.html"},
+    )
+    assert erp_gate["format"] == "appgen.erp-release-gate.v1"
+    assert erp_gate["ok"] is True
+    assert {"domain_coverage", "generation_plan", "migration_plan", "artifacts"} <= {
+        item["gate"] for item in erp_gate["gates"]
+    }
+    assert erp_templates.erp_starter_release_gate(("inventory",), existing_paths={"app/erp_templates.py"})["ok"] is False
     migration_plan = erp_templates.erp_data_migration_plan(("inventory",), source="legacy")
     assert migration_plan["format"] == "appgen.erp-migration-plan.v1"
     assert migration_plan["batches"][0]["source"].startswith("legacy.")
