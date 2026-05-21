@@ -5286,7 +5286,11 @@ def write_erp_templates_template(output_dir):
       <h1 class="agerp-title">ERP Templates</h1>
       <p class="agerp-note">Reusable ERP modules for ledgers, accounts, invoicing, AP, AR, inventory, HR, payroll, purchasing, procurement, supply chain, warehouse, manufacturing, sales, CRM, e-commerce, assets, maintenance, quality, documents, compliance, projects, and reports.</p>
     </div>
-    <a class="btn btn-default" href="{{ url_for('ERPTemplateView.catalog_json') }}">Catalog JSON</a>
+    <div>
+      <a class="btn btn-default" href="{{ url_for('ERPTemplateView.catalog_json') }}">Catalog JSON</a>
+      <a class="btn btn-default" href="{{ url_for('ERPTemplateView.stacks_json') }}">Stacks JSON</a>
+      <a class="btn btn-default" href="{{ url_for('ERPTemplateView.starter_json') }}">Starter JSON</a>
+    </div>
   </div>
   <div class="agerp-grid">
     {% for module in modules %}
@@ -18173,6 +18177,13 @@ from flask_appbuilder import expose
 EXISTING_TABLES = {tables!r}
 ERP_MODULES = {modules!r}
 ERP_TABLE_BLUEPRINTS = {blueprints!r}
+ERP_MODULE_RECOMMENDATIONS = {{
+    "finance_core": ("chart_of_accounts", "general_ledger", "accounts_receivable", "accounts_payable", "invoicing", "reporting"),
+    "distribution_core": ("inventory", "purchasing", "sales", "warehouse_management", "supply_chain", "reporting"),
+    "people_core": ("human_resources", "payroll", "projects", "document_management", "reporting"),
+    "manufacturing_core": ("inventory", "manufacturing", "quality_management", "maintenance", "warehouse_management", "reporting"),
+    "full_erp": tuple(ERP_MODULES),
+}}
 
 
 def erp_template_catalog():
@@ -18248,6 +18259,101 @@ def erp_module_package(module):
     }}
 
 
+def erp_recommended_stacks():
+    """Return opinionated ERP starter stacks assembled from reusable modules."""
+    return tuple(
+        {{
+            "stack": name,
+            "modules": tuple(module for module in modules if module in ERP_MODULES),
+            "tables": tuple(table for module in modules if module in ERP_MODULES for table in ERP_MODULES[module]["tables"]),
+            "reports": tuple(report for module in modules if module in ERP_MODULES for report in ERP_MODULES[module]["reports"]),
+        }}
+        for name, modules in ERP_MODULE_RECOMMENDATIONS.items()
+    )
+
+
+def _normalize_erp_modules(modules=None):
+    selected = tuple(modules or ERP_MODULE_RECOMMENDATIONS["finance_core"])
+    unknown = tuple(module for module in selected if module not in ERP_MODULES)
+    if unknown:
+        raise KeyError(f"Unknown ERP modules: {{', '.join(unknown)}}")
+    deduped = []
+    for module in selected:
+        if module not in deduped:
+            deduped.append(module)
+    return tuple(deduped)
+
+
+def erp_composite_dsl(modules=None, app_name="ERPStarter"):
+    """Render a complete AppGen DSL starter from selected ERP modules."""
+    selected = _normalize_erp_modules(modules)
+    blocks = [f"app {{app_name}} {{{{ targets: web, pwa, mobile, desktop }}}}"]
+    for module in selected:
+        blocks.append(f"// ERP module: {{ERP_MODULES[module]['label']}}")
+        blocks.append(erp_module_dsl(module))
+    for module in selected:
+        for workflow in ERP_MODULES[module]["workflows"]:
+            blocks.append(f"flow {{workflow}} {{{{\\n  draft -> review\\n  review -> approved\\n}}}}")
+    return "\\n\\n".join(blocks) + "\\n"
+
+
+def erp_starter_manifest(modules=None, app_name="ERPStarter"):
+    """Return a reviewable manifest for a multi-module ERP starter app."""
+    selected = _normalize_erp_modules(modules)
+    tables = tuple(table for module in selected for table in ERP_MODULES[module]["tables"])
+    workflows = tuple(workflow for module in selected for workflow in ERP_MODULES[module]["workflows"])
+    reports = tuple(report for module in selected for report in ERP_MODULES[module]["reports"])
+    return {{
+        "format": "appgen.erp-starter.v1",
+        "app_name": app_name,
+        "modules": selected,
+        "tables": tables,
+        "workflows": workflows,
+        "reports": reports,
+        "targets": ("web", "pwa", "mobile", "desktop"),
+        "dsl": erp_composite_dsl(selected, app_name=app_name),
+        "checks": ("dsl_lint", "schema_diff", "migration_preview", "security_review", "appgen_quality"),
+    }}
+
+
+def erp_starter_generation_plan(modules=None, app_name="ERPStarter"):
+    """Return generation steps for a selected ERP starter package."""
+    manifest = erp_starter_manifest(modules, app_name=app_name)
+    return {{
+        "manifest": manifest,
+        "steps": (
+            {{"name": "compose_dsl", "outputs": ("erp.appgen",), "module_count": len(manifest["modules"])}},
+            {{"name": "lint_dsl", "command": "appgen --lint-dsl erp.appgen"}},
+            {{"name": "generate", "command": "appgen --dsl erp.appgen --writedir build/erp-app"}},
+            {{"name": "verify", "command": "python scripts/appgen_quality.py && pytest -q"}},
+        ),
+        "requires_review": True,
+    }}
+
+
+def erp_data_migration_plan(modules=None, source="legacy_erp"):
+    """Return a schema-aware migration/import plan for selected ERP modules."""
+    selected = _normalize_erp_modules(modules)
+    batches = []
+    for module in selected:
+        for table in ERP_MODULES[module]["tables"]:
+            batches.append({{
+                "module": module,
+                "table": table,
+                "source": f"{{source}}.{{table}}",
+                "validate": ("required_fields", "references", "duplicates"),
+                "load_order": len(batches) + 1,
+            }})
+    return {{
+        "format": "appgen.erp-migration-plan.v1",
+        "source": source,
+        "modules": selected,
+        "batches": tuple(batches),
+        "cutover_checks": ("backup", "row_counts", "trial_balance", "open_items", "inventory_valuation"),
+        "requires_review": True,
+    }}
+
+
 def erp_templates_check(existing_paths):
     """Return readiness for generated ERP template artifacts."""
     existing = set(existing_paths)
@@ -18262,7 +18368,12 @@ def erp_templates_check(existing_paths):
         "maintenance", "quality_management", "document_management",
         "compliance_management", "projects", "reporting"
     }}
-    return {{"ok": not missing and essential <= set(keys) and bool(ERP_TABLE_BLUEPRINTS.get("general_ledger")), "missing": missing, "modules": keys}}
+    return {{
+        "ok": not missing and essential <= set(keys) and bool(ERP_TABLE_BLUEPRINTS.get("general_ledger")) and bool(erp_recommended_stacks()),
+        "missing": missing,
+        "modules": keys,
+        "stacks": tuple(item["stack"] for item in erp_recommended_stacks()),
+    }}
 
 
 class ERPTemplateView(BaseView):
@@ -18276,6 +18387,14 @@ class ERPTemplateView(BaseView):
     @expose("/catalog.json")
     def catalog_json(self):
         return jsonify(list(erp_template_catalog()))
+
+    @expose("/stacks.json")
+    def stacks_json(self):
+        return jsonify(list(erp_recommended_stacks()))
+
+    @expose("/starter.json")
+    def starter_json(self):
+        return jsonify(erp_starter_manifest())
 
     @expose("/<module>.json")
     def module_json(self, module):
@@ -25225,13 +25344,22 @@ def validate_erp_template_artifacts() -> None:
     )
     if not all(module in contract for module in required_modules):
         fail("ERP templates must include full core ERP module coverage")
-    if "erp_module_dsl" not in contract or "erp_fit_report" not in contract or "erp_table_blueprints" not in contract or "erp_module_package" not in contract:
-        fail("ERP templates must expose DSL, table blueprints, packages, and fit-report helpers")
+    if (
+        "erp_module_dsl" not in contract
+        or "erp_fit_report" not in contract
+        or "erp_table_blueprints" not in contract
+        or "erp_module_package" not in contract
+        or "erp_composite_dsl" not in contract
+        or "erp_starter_manifest" not in contract
+        or "erp_starter_generation_plan" not in contract
+        or "erp_data_migration_plan" not in contract
+    ):
+        fail("ERP templates must expose DSL, table blueprints, packages, fit-report, starter, generation, and migration helpers")
     if "journal_line_id" in contract or "_erp_field_syntax" not in contract or "invoice_line" not in contract:
         fail("ERP templates must include useful table-level fields and references")
     template = (ROOT / "app" / "templates" / "appgen_erp_templates.html").read_text()
-    if "ERP Templates" not in template or "ledgers" not in template:
-        fail("ERP template cockpit must expose ERP module catalog")
+    if "ERP Templates" not in template or "ledgers" not in template or "Stacks JSON" not in template or "Starter JSON" not in template:
+        fail("ERP template cockpit must expose ERP module catalog, stacks, and starter package")
 
 
 def validate_document_management_artifacts() -> None:

@@ -55,7 +55,7 @@ DEFAULT_CAPABILITIES: tuple[Capability, ...] = (
     Capability("components.media", "Image and file upload fields", "partial", "generated media field validation and storage contracts"),
     Capability("components.text-quality", "Textarea spell, grammar, and character counts", "partial", "generated text quality descriptors and validation helpers"),
     Capability("content.document-management", "Document management, versioning, retention, and e-signature contracts", "partial", "generated document libraries, version envelopes, approval workflows, retention policies, e-signature payloads, and audit events"),
-    Capability("components.erp-templates", "ERP component templates", "partial", "generated ledgers, accounts, invoicing, AP, AR, inventory, HR, payroll, and report templates"),
+    Capability("components.erp-templates", "ERP component templates", "partial", "generated ledgers, accounts, invoicing, AP, AR, inventory, HR, payroll, report templates, recommended ERP stacks, composite ERP DSL, starter generation plans, and legacy migration plans"),
     Capability("platform.extensibility", "Custom code extension hooks", "partial", "generated hook registry and app_custom extension package"),
     Capability("api.rest", "REST API generation", "implemented", "schema-driven ModelRestApi files"),
     Capability("api.graphql", "GraphQL schema generation", "implemented", "schema-driven Graphene schema files"),

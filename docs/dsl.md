@@ -412,8 +412,10 @@ apps include:
   sales, CRM, e-commerce, assets, maintenance, quality management, document
   management, compliance, projects, and reports. Each module includes table-level
   field blueprints, references, workflows, reports, and AppGen DSL export helpers
-  so users can start from realistic ERP components rather than empty placeholder
-  tables.
+  plus recommended finance, distribution, people, manufacturing, and full-ERP
+  starter stacks, composite ERP DSL, generation plans, and legacy ERP migration
+  plans so users can start from realistic ERP components rather than empty
+  placeholder tables.
 - `project_management.py` and `appgen_project_management.html` with generated
   agile backlog, sprint, release, traceability, and Jira/GitHub/Azure
   Boards/GitLab issue-export contracts.

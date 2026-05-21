@@ -2980,9 +2980,28 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert any(item["table"] == "vendor_bill" and "vendor_id: int required -> vendor.id" in item["fields"] for item in ap_blueprints)
     ar_package = erp_templates.erp_module_package("accounts_receivable")
     assert "dsl" in ar_package and "customer_invoice" in ar_package["dsl"]
+    stacks = {item["stack"]: item for item in erp_templates.erp_recommended_stacks()}
+    assert {"finance_core", "distribution_core", "people_core", "manufacturing_core", "full_erp"} <= set(stacks)
+    assert "general_ledger" in stacks["finance_core"]["modules"]
+    composite_dsl = erp_templates.erp_composite_dsl(("general_ledger", "invoicing"), app_name="FinanceDesk")
+    assert "app FinanceDesk" in composite_dsl
+    assert "flow journal_entry_approval" in composite_dsl
+    assert "table invoice_line" in composite_dsl
+    starter = erp_templates.erp_starter_manifest(("accounts_receivable", "accounts_payable"), app_name="BackOffice")
+    assert starter["format"] == "appgen.erp-starter.v1"
+    assert "customer_invoice" in starter["tables"]
+    assert "vendor_bill" in starter["tables"]
+    generation_plan = erp_templates.erp_starter_generation_plan(("inventory",), app_name="StockDesk")
+    assert [step["name"] for step in generation_plan["steps"]] == ["compose_dsl", "lint_dsl", "generate", "verify"]
+    migration_plan = erp_templates.erp_data_migration_plan(("inventory",), source="legacy")
+    assert migration_plan["format"] == "appgen.erp-migration-plan.v1"
+    assert migration_plan["batches"][0]["source"].startswith("legacy.")
     assert erp_templates.erp_templates_check(
         {"app/erp_templates.py", "app/templates/appgen_erp_templates.html"}
     )["ok"] is True
+    assert "finance_core" in erp_templates.erp_templates_check(
+        {"app/erp_templates.py", "app/templates/appgen_erp_templates.html"}
+    )["stacks"]
     assert {"jira", "github", "azure_boards", "gitlab"} == {item["provider"] for item in project_management.provider_catalog({})}
     assert any(item["key"] == "DATA-BOOK" for item in project_management.backlog_templates())
     assert project_management.sprint_plan(capacity=6)["items"]
