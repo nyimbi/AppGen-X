@@ -1784,6 +1784,13 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert rules.validate_row("Book", {"status": "draft"})["errors"][0]["message"] == "Title is required"
     assert rules.validate_row("Book", {"title": "Dune", "status": "draft"})["ok"] is True
     assert rules.decision_plan("Book", {"title": "Dune", "status": "published"})["decisions"] == ("review",)
+    decision_tree = rules.rule_decision_tree("PublishPolicy")
+    assert decision_tree["format"] == "appgen.decision-tree.v1"
+    assert any(node["type"] == "action" and node["action"] == "review" for node in decision_tree["nodes"])
+    assert rules.decision_tree_catalog("Book")[0]["rule"] == "PublishPolicy"
+    decision_trace = rules.decision_trace("Book", {"title": "Dune", "status": "published"})
+    assert decision_trace["format"] == "appgen.decision-trace.v1"
+    assert decision_trace["decisions"] == ("review",)
     assert rules.rules_check({"app/rules.py", "app/templates/appgen_rules.html"})["ok"] is True
     assert validation.table_validation_contract("Book")["name"] == "Book"
     assert validation.field_validation_contract("Book", "status")["enum_values"] == ("draft", "published", "archived")

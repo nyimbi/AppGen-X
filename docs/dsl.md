@@ -198,7 +198,8 @@ apps include:
   workflow authorization flows derived from declared roles, reviewed transition
   proposals that regenerate DSL, and a generated workflow/statechart cockpit.
 - `rules.py` and `appgen_rules.html` with generated business-rule validation,
-  row checks, and decision-tree action plans.
+  row checks, decision-tree exports, branch action plans, and row-level
+  decision traces.
 - `validation.py` with schema-driven payload, field, enum, type, required-field,
   relationship, and UI validation contracts for forms, APIs, imports, and
   chatbots.

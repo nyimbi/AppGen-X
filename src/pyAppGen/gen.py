@@ -3329,7 +3329,10 @@ def write_rules_template(output_dir):
         DSL conditions into deterministic row checks and branch actions.
       </p>
     </div>
-    <a class="btn btn-primary" href="{{ url_for('RulesView.catalog_json') }}">Rules JSON</a>
+    <div>
+      <a class="btn btn-primary" href="{{ url_for('RulesView.catalog_json') }}">Rules JSON</a>
+      <a class="btn btn-default" href="{{ url_for('RulesView.decision_trees_json') }}">Decision Trees JSON</a>
+    </div>
   </div>
   <div class="agrule-grid">
     {% for rule in rules %}
@@ -7611,6 +7614,42 @@ def rule_contract(rule_name):
     return BUSINESS_RULES[rule_name]
 
 
+def rule_decision_tree(rule_name):
+    """Return a portable decision-tree contract for one generated rule."""
+    rule = rule_contract(rule_name)
+    nodes = []
+    for index, condition in enumerate(rule["conditions"], start=1):
+        node_id = f"{{rule_name}}.condition.{{index}}"
+        action = condition.get("action")
+        nodes.append({{
+            "id": node_id,
+            "type": "condition",
+            "field": condition["field"],
+            "operator": condition["operator"],
+            "values": tuple(condition.get("values") or ()),
+            "message": condition.get("message"),
+            "true": f"{{rule_name}}.action.{{action}}" if action else f"{{rule_name}}.pass.{{index}}",
+            "false": f"{{rule_name}}.error.{{index}}",
+        }})
+        if action:
+            nodes.append({{"id": f"{{rule_name}}.action.{{action}}", "type": "action", "action": action}})
+        else:
+            nodes.append({{"id": f"{{rule_name}}.error.{{index}}", "type": "error", "message": condition_message(rule_name, condition)}})
+    return {{
+        "format": "appgen.decision-tree.v1",
+        "rule": rule_name,
+        "table": rule["table"],
+        "start": nodes[0]["id"] if nodes else None,
+        "nodes": tuple(nodes),
+    }}
+
+
+def decision_tree_catalog(table_name=None):
+    """Return generated decision-tree contracts for rules and automation."""
+    rules = rules_for_table(table_name) if table_name else rules_catalog()
+    return tuple(rule_decision_tree(rule["name"]) for rule in rules)
+
+
 def _blank(value):
     return value is None or value == ""
 
@@ -7716,12 +7755,37 @@ def decision_plan(table_name, row):
     return {{"table": table_name, "decisions": decisions, "results": results}}
 
 
+def decision_trace(table_name, row):
+    """Return rule-by-rule decision-tree traversal for a generated row."""
+    traces = []
+    for rule in rules_for_table(table_name):
+        steps = []
+        for condition in rule["conditions"]:
+            passed = condition_passes(condition, row)
+            action = condition.get("action")
+            steps.append({{
+                "field": condition["field"],
+                "operator": condition["operator"],
+                "passed": passed,
+                "outcome": action if passed and action else "pass" if passed else "error",
+                "message": None if passed else condition_message(rule["name"], condition),
+            }})
+        traces.append({{"rule": rule["name"], "tree": rule_decision_tree(rule["name"]), "steps": tuple(steps)}})
+    return {{
+        "format": "appgen.decision-trace.v1",
+        "table": table_name,
+        "row": dict(row),
+        "traces": tuple(traces),
+        "decisions": decision_plan(table_name, row)["decisions"],
+    }}
+
+
 def rules_check(existing_paths):
     """Return readiness for generated business-rule artifacts."""
     existing = set(existing_paths)
     required = ("app/rules.py", "app/templates/appgen_rules.html")
     missing = tuple(path for path in required if path not in existing)
-    return {{"ok": not missing, "missing": missing, "rules": tuple(BUSINESS_RULES)}}
+    return {{"ok": not missing, "missing": missing, "rules": tuple(BUSINESS_RULES), "decision_trees": len(decision_tree_catalog())}}
 
 
 class RulesView(BaseView):
@@ -7739,6 +7803,10 @@ class RulesView(BaseView):
     @expose("/table/<table_name>.json")
     def table_json(self, table_name):
         return jsonify(list(rules_for_table(table_name)))
+
+    @expose("/decision-trees.json")
+    def decision_trees_json(self):
+        return jsonify(list(decision_tree_catalog()))
 
 
 def register_rules(appbuilder):
@@ -27747,6 +27815,8 @@ def validate_rules_artifacts() -> None:
     contract = (ROOT / "app" / "rules.py").read_text()
     if "validate_row" not in contract or "decision_plan" not in contract or "rules_catalog" not in contract:
         fail("rules contract must expose validation and decision helpers")
+    if "rule_decision_tree" not in contract or "decision_tree_catalog" not in contract or "decision_trace" not in contract:
+        fail("rules contract must expose decision-tree exports and traces")
     api = (ROOT / "app" / "api.py").read_text()
     views = (ROOT / "app" / "views.py").read_text()
     if "def pre_add" not in api or "before_save_row" not in api or "after_save_row" not in api:
@@ -27754,8 +27824,8 @@ def validate_rules_artifacts() -> None:
     if "def pre_add" not in views or "before_save_row" not in views or "after_save_row" not in views:
         fail("CRUD views must enforce rules through generated write hooks")
     template = (ROOT / "app" / "templates" / "appgen_rules.html").read_text()
-    if "Business Rules" not in template or "Rules JSON" not in template:
-        fail("rules template must expose generated rule contracts")
+    if "Business Rules" not in template or "Rules JSON" not in template or "Decision Trees JSON" not in template:
+        fail("rules template must expose generated rule and decision-tree contracts")
 
 
 def validate_validation_artifacts() -> None:
