@@ -21,7 +21,8 @@ base feature contract referenced by the project goal.
 15. Deployment: Ability to deploy the application to production.
 16. Runtime assurance: Ability to prove generated applications are operationally
     ready across security hardening, health checks, resilience, performance
-    SLOs, backup integrity, recovery runbooks, and generated quality gates.
+    SLOs, backup integrity, recovery runbooks, visual/accessibility quality, and
+    generated aggregate release gates.
 
 AppGen must be treated as a JHipster superset, not a peer clone: JHipster-style
 application scaffolding is one export lane, while the AppGen baseline also

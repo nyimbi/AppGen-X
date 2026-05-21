@@ -238,8 +238,11 @@ apps include:
   recommendations.
 - `runtime_assurance.py` and `appgen_runtime_assurance.html` with a generated
   readiness matrix that ties security hardening, health checks, resilience,
-  SLOs, backup integrity, recovery runbooks, and the generated quality gate into
-  one auditable operations contract.
+  SLOs, backup integrity, recovery runbooks, visual/accessibility quality, and
+  the generated quality gate into one auditable operations contract. It also
+  emits `application_release_gate()`, an aggregate release decision over
+  security signoff, operations readiness, polished generated UI, tests, docs,
+  manifests, and required artifacts.
 - `static/appgen.webmanifest`, `static/appgen-sw.js`, and an offline shell for
   progressive web app behavior.
 - `branding.py`, `appgen_branding.html`, and `static/appgen-theme.css` with a

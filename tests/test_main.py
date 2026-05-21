@@ -2288,10 +2288,28 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
             "app/templates/appgen_performance.html",
             "app/backup.py",
             "app/templates/appgen_backup.html",
+            "app/branding.py",
+            "app/static/appgen-theme.css",
+            "app/templates/appgen_branding.html",
             "scripts/appgen_quality.py",
             "tests/test_generated_contract.py",
         }
     )["ok"] is True
+    release_gate = runtime_assurance.application_release_gate(
+        {"p95_ms": 200, "error_rate": 0},
+        runtime_assurance.REQUIRED_RELEASE_ARTIFACTS,
+    )
+    assert release_gate["format"] == "appgen.application-release-gate.v1"
+    assert release_gate["ok"] is True
+    assert release_gate["decision"] == "approved"
+    assert {"security", "operations", "experience", "delivery"} == {area["id"] for area in release_gate["areas"]}
+    assert runtime_assurance.application_release_gate(
+        {"visual_quality": False},
+        runtime_assurance.REQUIRED_RELEASE_ARTIFACTS,
+    )["decision"] == "blocked"
+    assert runtime_assurance.application_release_gate(
+        existing_paths={"app/runtime_assurance.py"}
+    )["ok"] is False
     assert reports.visible_columns("Book") == ("id", "title", "status", "summary", "cover_image", "manuscript_file", "author")
     assert "title,status" in reports.rows_to_csv(("title", "status"), [{"title": "Dune", "status": "draft"}])
     assert reports.join_report_catalog()

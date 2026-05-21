@@ -3384,12 +3384,14 @@ def write_runtime_assurance_template(output_dir):
       <h1 class="aga-title">Runtime Assurance</h1>
       <p class="aga-note">
         Generated operational assurance for security, health, resilience, SLOs,
-        backups, and quality gates. This gives every generated app an auditable
-        readiness contract instead of scattered manual checklists.
+        backups, visual quality, accessibility, and quality gates. This gives
+        every generated app an auditable readiness contract instead of scattered
+        manual checklists.
       </p>
     </div>
     <div class="aga-actions">
       <a class="btn btn-primary" href="{{ url_for('RuntimeAssuranceView.report_json') }}">Assurance JSON</a>
+      <a class="btn btn-default" href="{{ url_for('RuntimeAssuranceView.release_gate_json') }}">Release Gate JSON</a>
       <a class="btn btn-default" href="{{ url_for('RuntimeAssuranceView.matrix_json') }}">Matrix JSON</a>
     </div>
   </div>
@@ -8051,6 +8053,12 @@ def _runtime_assurance_text(schema: AppSchema) -> str:
             "checks": ("quality_gate", "required_artifacts"),
             "artifacts": ("scripts/appgen_quality.py", "tests/test_generated_contract.py"),
         },
+        {
+            "id": "visual_experience",
+            "label": "Visual and accessibility quality",
+            "checks": ("design_system", "visual_quality", "accessibility", "responsive_viewports", "no_overlap_review"),
+            "artifacts": ("app/branding.py", "app/static/appgen-theme.css", "app/templates/appgen_branding.html"),
+        },
     )
     return f'''"""Generated runtime assurance contract for AppGen apps."""
 
@@ -8082,10 +8090,69 @@ DEFAULT_SIGNALS = {{
     "recovery_runbook": True,
     "quality_gate": True,
     "required_artifacts": True,
+    "design_system": True,
+    "visual_quality": True,
+    "accessibility": True,
+    "responsive_viewports": True,
+    "no_overlap_review": True,
 }}
 REQUIRED_ARTIFACTS = tuple(
     sorted({{artifact for area in ASSURANCE_AREAS for artifact in area["artifacts"]}})
 ) + ("app/runtime_assurance.py", "app/templates/appgen_runtime_assurance.html")
+RELEASE_GATE_AREAS = (
+    {{
+        "id": "security",
+        "label": "Security and trust",
+        "checks": ("security_signoff", "secret_scan", "threat_model", "rbac_matrix", "api_security_tests"),
+        "artifacts": ("app/security.py", "app/runtime_security.py", "app/identity.py", "app/rls.py", "app/compliance.py"),
+    }},
+    {{
+        "id": "operations",
+        "label": "Reliable operations",
+        "checks": ("readiness", "runtime_assurance", "resilience", "performance_slo", "load_tests", "backup_integrity", "recovery_runbook"),
+        "artifacts": ("app/monitoring.py", "app/resilience.py", "app/performance.py", "app/runtime_assurance.py", "app/backup.py"),
+    }},
+    {{
+        "id": "experience",
+        "label": "Polished generated UI",
+        "checks": ("design_system", "visual_quality", "accessibility", "responsive_viewports", "component_states", "no_overlap_review"),
+        "artifacts": ("app/branding.py", "app/static/appgen-theme.css", "app/templates/appgen_branding.html"),
+    }},
+    {{
+        "id": "delivery",
+        "label": "Repeatable delivery",
+        "checks": ("quality_gate", "py_compile", "pytest", "manifest", "documentation"),
+        "artifacts": ("scripts/appgen_quality.py", "tests/test_generated_contract.py", "app/appgen.json", "docs/schema.md"),
+    }},
+)
+REQUIRED_RELEASE_ARTIFACTS = tuple(
+    sorted({{artifact for area in RELEASE_GATE_AREAS for artifact in area["artifacts"]}})
+) + ("app/templates/appgen_runtime_assurance.html",)
+DEFAULT_RELEASE_SIGNALS = {{
+    "security_signoff": True,
+    "secret_scan": True,
+    "threat_model": True,
+    "rbac_matrix": True,
+    "api_security_tests": True,
+    "readiness": True,
+    "runtime_assurance": True,
+    "resilience": True,
+    "performance_slo": True,
+    "load_tests": True,
+    "backup_integrity": True,
+    "recovery_runbook": True,
+    "design_system": True,
+    "visual_quality": True,
+    "accessibility": True,
+    "responsive_viewports": True,
+    "component_states": True,
+    "no_overlap_review": True,
+    "quality_gate": True,
+    "py_compile": True,
+    "pytest": True,
+    "manifest": True,
+    "documentation": True,
+}}
 
 
 def runtime_assurance_matrix():
@@ -8142,6 +8209,60 @@ def runtime_assurance_check(existing_paths=()):
     }}
 
 
+def _release_check_signal(name, signals):
+    if name == "performance_slo":
+        return bool(signals.get(name, False)) and _check_signal("latency_slo", signals) and _check_signal("error_rate_slo", signals)
+    return bool(signals.get(name, False))
+
+
+def application_release_gate(signals=None, existing_paths=()):
+    """Return the generated release gate for a complete, shippable app."""
+    signals = dict(DEFAULT_RELEASE_SIGNALS if signals is None else {{**DEFAULT_RELEASE_SIGNALS, **signals}})
+    existing = set(existing_paths)
+    missing = tuple(path for path in REQUIRED_RELEASE_ARTIFACTS if path not in existing)
+    areas = []
+    for area in RELEASE_GATE_AREAS:
+        checks = tuple(
+            {{"name": check, "ok": _release_check_signal(check, signals)}}
+            for check in area["checks"]
+        )
+        area_missing = tuple(path for path in area["artifacts"] if path in missing)
+        areas.append({{
+            "id": area["id"],
+            "label": area["label"],
+            "ok": all(check["ok"] for check in checks) and not area_missing,
+            "checks": checks,
+            "artifacts": area["artifacts"],
+            "missing_artifacts": area_missing,
+        }})
+    blockers = tuple(
+        {{"area": area["id"], "kind": "check", "check": check["name"]}}
+        for area in areas
+        for check in area["checks"]
+        if not check["ok"]
+    ) + tuple({{"area": "artifacts", "kind": "missing", "path": path}} for path in missing)
+    assurance = runtime_assurance_report({{
+        "p95_ms": signals.get("p95_ms", 0),
+        "error_rate": signals.get("error_rate", 0),
+        "required_artifacts": not missing,
+        "quality_gate": signals.get("quality_gate", True),
+    }})
+    return {{
+        "format": "appgen.application-release-gate.v1",
+        "app": APP_NAME,
+        "ok": all(area["ok"] for area in areas) and assurance["ok"] and not blockers,
+        "decision": "approved" if all(area["ok"] for area in areas) and assurance["ok"] and not blockers else "blocked",
+        "tables": TABLE_COUNT,
+        "flows": FLOW_COUNT,
+        "roles": ROLE_COUNT,
+        "areas": tuple(areas),
+        "runtime_assurance": assurance,
+        "required_artifacts": REQUIRED_RELEASE_ARTIFACTS,
+        "missing_artifacts": missing,
+        "blockers": blockers,
+    }}
+
+
 class RuntimeAssuranceView(BaseView):
     route_base = "/runtime-assurance"
     default_view = "index"
@@ -8157,6 +8278,10 @@ class RuntimeAssuranceView(BaseView):
     @expose("/matrix.json")
     def matrix_json(self):
         return jsonify(runtime_assurance_matrix())
+
+    @expose("/release-gate.json")
+    def release_gate_json(self):
+        return jsonify(application_release_gate(existing_paths=REQUIRED_RELEASE_ARTIFACTS))
 
 
 def register_runtime_assurance(appbuilder):
@@ -30719,6 +30844,23 @@ def validate_resilience_artifacts() -> None:
         fail("resilience cockpit must expose generated error-handling catalog")
 
 
+def validate_runtime_assurance_artifacts() -> None:
+    contract = (ROOT / "app" / "runtime_assurance.py").read_text()
+    if (
+        "runtime_assurance_report" not in contract
+        or "runtime_assurance_check" not in contract
+        or "application_release_gate" not in contract
+        or "RELEASE_GATE_AREAS" not in contract
+        or "REQUIRED_RELEASE_ARTIFACTS" not in contract
+        or "visual_quality" not in contract
+        or "security_signoff" not in contract
+    ):
+        fail("runtime assurance contract must expose operations readiness and aggregate application release gate")
+    template = (ROOT / "app" / "templates" / "appgen_runtime_assurance.html").read_text()
+    if "Release Gate JSON" not in template or "visual quality" not in template.lower() or "accessibility" not in template.lower():
+        fail("runtime assurance cockpit must expose aggregate release-gate and generated UI quality evidence")
+
+
 def validate_chatbot_artifacts() -> None:
     dialogflow = json.loads((ROOT / "chatbots" / "dialogflow" / "intents.json").read_text())
     intents = dialogflow.get("intents")
@@ -31084,6 +31226,7 @@ def main() -> int:
     validate_rules_artifacts()
     validate_validation_artifacts()
     validate_resilience_artifacts()
+    validate_runtime_assurance_artifacts()
     validate_report_artifacts()
     validate_report_delivery_artifacts()
     validate_branding_artifacts()
@@ -31655,6 +31798,19 @@ def test_generated_runtime_helpers():
     assert assurance_report["ok"] is True
     assert runtime_assurance.runtime_assurance_report({"p95_ms": 999})["ok"] is False
     assert runtime_assurance.runtime_assurance_check(runtime_assurance.REQUIRED_ARTIFACTS)["ok"] is True
+    release_gate = runtime_assurance.application_release_gate(
+        {"p95_ms": 200, "error_rate": 0},
+        runtime_assurance.REQUIRED_RELEASE_ARTIFACTS,
+    )
+    assert release_gate["format"] == "appgen.application-release-gate.v1"
+    assert release_gate["ok"] is True
+    assert release_gate["decision"] == "approved"
+    assert "experience" in {area["id"] for area in release_gate["areas"]}
+    assert runtime_assurance.application_release_gate(
+        {"visual_quality": False},
+        runtime_assurance.REQUIRED_RELEASE_ARTIFACTS,
+    )["decision"] == "blocked"
+    assert runtime_assurance.application_release_gate(existing_paths={"app/runtime_assurance.py"})["ok"] is False
     assert isinstance(workflow.WORKFLOWS, dict)
     assert isinstance(workflow.workflow_catalog(), tuple)
     if workflow.WORKFLOWS:
