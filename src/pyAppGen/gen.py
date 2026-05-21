@@ -16716,11 +16716,55 @@ from flask_appbuilder import expose
 
 
 KNOWN_TABLES = {tables!r}
+ERP_MODULE_ALIASES = {{
+    "ledger": "general_ledger",
+    "general ledger": "general_ledger",
+    "chart of accounts": "chart_of_accounts",
+    "accounts receivable": "accounts_receivable",
+    "receivables": "accounts_receivable",
+    "ar": "accounts_receivable",
+    "accounts payable": "accounts_payable",
+    "payables": "accounts_payable",
+    "ap": "accounts_payable",
+    "invoicing": "invoicing",
+    "invoice": "invoicing",
+    "inventory": "inventory",
+    "stock": "inventory",
+    "hr": "human_resources",
+    "human resources": "human_resources",
+    "payroll": "payroll",
+    "purchasing": "purchasing",
+    "procurement": "procurement",
+    "supply chain": "supply_chain",
+    "warehouse": "warehouse_management",
+    "warehouse management": "warehouse_management",
+    "manufacturing": "manufacturing",
+    "sales": "sales",
+    "crm": "crm",
+    "ecommerce": "ecommerce",
+    "e-commerce": "ecommerce",
+    "fixed assets": "fixed_assets",
+    "assets": "fixed_assets",
+    "maintenance": "maintenance",
+    "quality": "quality_management",
+    "quality management": "quality_management",
+    "documents": "document_management",
+    "document management": "document_management",
+    "compliance": "compliance_management",
+    "projects": "projects",
+    "reporting": "reporting",
+}}
+ERP_STACKS = {{
+    "finance core": ("general_ledger", "accounts_receivable", "accounts_payable", "invoicing"),
+    "distribution": ("inventory", "purchasing", "warehouse_management", "sales"),
+    "people": ("human_resources", "payroll"),
+    "full erp": tuple(sorted(set(ERP_MODULE_ALIASES.values()))),
+}}
 
 
 def evolution_capabilities():
     """Return app areas that natural language can evolve."""
-    return ("tables", "fields", "forms", "workflows", "rules", "chatbots", "agents", "targets")
+    return ("tables", "fields", "forms", "workflows", "rules", "chatbots", "agents", "targets", "erp_modules")
 
 
 def _field_type(name, context):
@@ -16836,6 +16880,23 @@ def _target_specs(text):
     )
 
 
+def _erp_module_specs(text):
+    """Extract ERP module requests from natural-language prompts."""
+    lowered = text.lower()
+    selected = []
+    for stack, modules in ERP_STACKS.items():
+        if re.search(rf"\\b{{re.escape(stack)}}\\b", lowered):
+            selected.extend(modules)
+    for alias, module in ERP_MODULE_ALIASES.items():
+        if re.search(rf"\\b{{re.escape(alias)}}\\b", lowered):
+            selected.append(module)
+    ordered = []
+    for module in selected:
+        if module not in ordered:
+            ordered.append(module)
+    return tuple(ordered)
+
+
 def evolution_plan(prompt):
     """Convert natural language into auditable low-code change proposals."""
     text = prompt.strip()
@@ -16850,6 +16911,7 @@ def evolution_plan(prompt):
     chatbot_match = re.search(r"chatbot\\s+([A-Za-z_][A-Za-z0-9_]*)", text, re.I)
     agent_match = re.search(r"agent\\s+([A-Za-z_][A-Za-z0-9_]*)", text, re.I)
     target_matches = _target_specs(text)
+    erp_modules = _erp_module_specs(text)
     target_table = table_match.group(1) if table_match else (KNOWN_TABLES[0] if KNOWN_TABLES else "Generated")
     if table_match and any(word in lowered for word in ("create", "add", "generate", "build")):
         proposals.append({{"kind": "add_table", "name": target_table, "source": "natural_language"}})
@@ -16867,6 +16929,8 @@ def evolution_plan(prompt):
         proposals.append({{"kind": "add_chatbot", "name": (chatbot_match.group(1) if chatbot_match else f"{{target_table}}Assistant"), "table": target_table, "source": "natural_language"}})
     if agent_match or "agent" in lowered:
         proposals.append({{"kind": "add_agent", "name": (agent_match.group(1) if agent_match else f"{{target_table}}Agent"), "provider": "local_default", "tools": ("schema", "forms", "chatbots"), "source": "natural_language"}})
+    for module in erp_modules:
+        proposals.append({{"kind": "add_erp_module", "module": module, "uses": "app/erp_templates.py", "source": "natural_language"}})
     if "target" in lowered or "platform" in lowered or "generate" in lowered:
         selected_targets = target_matches or ("web", "mobile", "desktop")
         proposals.append({{"kind": "set_targets", "targets": selected_targets, "source": "natural_language"}})
@@ -16917,6 +16981,8 @@ def proposals_to_dsl(plan):
             lines.append(f"// add chatbot {{proposal['name']}} for {{proposal['table']}}")
         elif proposal["kind"] == "add_form":
             lines.append(f"view {{proposal['name']}} for {{proposal['table']}} {{{{\\n}}}}")
+        elif proposal["kind"] == "add_erp_module":
+            lines.append(f"// add ERP module {{proposal['module']}} with erp_templates.erp_module_dsl('{{proposal['module']}}')")
         elif proposal["kind"] == "set_targets":
             lines.append("app Generated {{ targets: " + ", ".join(proposal["targets"]) + " }}")
     return "\\n\\n".join(lines)
@@ -16959,6 +17025,8 @@ def migration_impact(plan):
             }})
         elif kind in {{"add_form", "add_chatbot", "add_agent", "set_targets"}}:
             review.append({{"action": kind, "destructive": False}})
+        elif kind == "add_erp_module":
+            review.append({{"action": "add_erp_module", "module": proposal["module"], "destructive": False, "requires_migration_preview": True}})
     return {{
         "format": "appgen.nl-migration-impact.v1",
         "ddl": tuple(ddl),
@@ -17050,10 +17118,10 @@ def nl_evolution_check(existing_paths):
     existing = set(existing_paths)
     required = ("app/nl_evolution.py", "app/templates/appgen_nl_evolution.html")
     missing = tuple(path for path in required if path not in existing)
-    sample = evolution_plan("create table Ticket with field title and form TicketForm workflow Triage from open to closed rule TicketPolicy chatbot SupportBot agent SupportAgent targets web mobile desktop")
+    sample = evolution_plan("create table Ticket with field title and form TicketForm workflow Triage from open to closed rule TicketPolicy chatbot SupportBot agent SupportAgent add ERP accounts payable targets web mobile desktop")
     kinds = tuple(item["kind"] for item in sample["proposals"])
     changeset = evolution_changeset("create table Ticket with field title and form TicketForm chatbot SupportBot agent SupportAgent targets web mobile desktop")
-    return {{"ok": not missing and "add_table" in kinds and "add_agent" in kinds and "add_workflow" in kinds and "set_targets" in kinds and changeset["requires_approval"], "missing": missing, "sample_kinds": kinds}}
+    return {{"ok": not missing and "add_table" in kinds and "add_agent" in kinds and "add_workflow" in kinds and "add_erp_module" in kinds and "set_targets" in kinds and changeset["requires_approval"], "missing": missing, "sample_kinds": kinds}}
 
 
 class NaturalLanguageEvolutionView(BaseView):

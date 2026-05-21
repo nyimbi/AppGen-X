@@ -2934,6 +2934,16 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert "open -> closed" in nl_dsl
     assert "rule TicketPolicy for Ticket" in nl_dsl
     assert "targets: web, mobile, desktop" in nl_dsl
+    erp_nl_plan = nl_evolution.evolution_plan(
+        "generate ERP accounts payable and inventory for targets web desktop"
+    )
+    erp_modules = {
+        item["module"] for item in erp_nl_plan["proposals"] if item["kind"] == "add_erp_module"
+    }
+    assert {"accounts_payable", "inventory"} <= erp_modules
+    assert "erp_templates.erp_module_dsl('accounts_payable')" in nl_evolution.proposals_to_dsl(erp_nl_plan)
+    erp_impact = nl_evolution.migration_impact(erp_nl_plan)
+    assert any(item.get("action") == "add_erp_module" for item in erp_impact["review"])
     changeset = nl_evolution.evolution_changeset(
         "create table Ticket with fields title and form TicketForm chatbot SupportBot agent SupportAgent targets web mobile desktop",
         "app Library\n\ntable Author {\n  id: int pk\n  name: string\n}\n",

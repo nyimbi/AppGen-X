@@ -33,7 +33,7 @@ DEFAULT_CAPABILITIES: tuple[Capability, ...] = (
     Capability("ui.view-composition", "Master-detail, multiple-view, and chart view composition", "partial", "generated relationship-driven view composition contracts and cockpit"),
     Capability("ui.tabbed-views", "Tabbed views with permissions per tab", "partial", "generated tab contracts and role-aware per-tab access policies"),
     Capability("ui.form-designer", "Delphi-style drag-and-drop form designer", "partial", "DSL component placements, generated component palette, form canvas contracts, and drop proposals"),
-    Capability("ui.nl-evolution", "Natural-language application evolution", "partial", "generated NL proposal parser for tables, fields, forms, chatbots, and agents"),
+    Capability("ui.nl-evolution", "Natural-language application evolution", "partial", "generated NL proposal parser for tables, fields, forms, chatbots, agents, platform targets, and ERP template modules"),
     Capability("ui.rapid-prototyping", "Rapid prototyping and preview packages", "partial", "generated mock screens, sample data, prototype plans, experiment hypotheses, and backlog promotion"),
     Capability("ui.view-experience", "Shared generated view experience", "partial", "generated offline field state, active viewers, help/chatbot actions, access logs, version footer, time-on-page, and current-user context"),
     Capability("ui.layout", "Declarative screen sections and tabs", "partial", "view sections feed generated FAB metadata and component form layouts"),
