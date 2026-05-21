@@ -376,8 +376,9 @@ apps include:
 - `native/` with generated Kivy mobile and BeeWare desktop Python starter
   apps, mobile permission manifests, camera/location capture plans, push
   notification payloads, offline sync batches, conflict-resolution plans,
-  offline replay plans, desktop local-file actions, offline queue/cache plans,
-  and API route contracts.
+  offline replay plans, desktop cache snapshots, desktop change-set replay
+  plans, desktop local-file actions, offline queue/cache plans, and API route
+  contracts.
 - `jhipster/app.jdl` and `jhipster/appgen_jhipster.py` with generated
   JHipster JDL exports for Java/TypeScript application generation, preserving
   relation cardinality as JDL `ManyToOne`, `OneToOne`, `OneToMany`, and

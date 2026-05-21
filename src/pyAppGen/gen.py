@@ -26326,6 +26326,71 @@ def local_cache_plan(cache_dir):
     )
 
 
+def desktop_cache_snapshot(cache_dir, records=None):
+    """Return a reviewable desktop cache snapshot without touching disk."""
+    records = dict(records or {{}})
+    return {{
+        "format": "appgen.desktop-cache-snapshot.v1",
+        "cache_dir": cache_dir,
+        "files": tuple(
+            {{
+                "table": item["table"],
+                "path": item["path"],
+                "record_count": len(records.get(item["table"], ())),
+                "status": "planned",
+            }}
+            for item in local_cache_plan(cache_dir)
+        ),
+        "requires_review": False,
+    }}
+
+
+def desktop_change_set(table_name, changes=(), *, source="desktop"):
+    """Return a local desktop change set for later API replay."""
+    table = next((item for item in TABLES if item["name"] == table_name or item["name"].lower() == str(table_name).lower()), None)
+    if table is None:
+        raise KeyError(f"Unknown desktop table: {{table_name}}")
+    normalized = tuple(
+        {{
+            "table": table["name"],
+            "operation": change.get("operation", "upsert"),
+            "values": dict(change.get("values", change)),
+            "status": "pending",
+        }}
+        for change in changes
+    )
+    return {{
+        "format": "appgen.desktop-change-set.v1",
+        "source": source,
+        "table": table["name"],
+        "endpoint": table["endpoint"],
+        "changes": normalized,
+        "requires_review": True,
+    }}
+
+
+def desktop_sync_plan(api_base, change_sets=()):
+    """Return reviewed desktop cache replay steps for generated API routes."""
+    normalized_sets = tuple(change_sets)
+    return {{
+        "format": "appgen.desktop-sync-plan.v1",
+        "api_base": api_base.rstrip("/"),
+        "change_sets": normalized_sets,
+        "steps": tuple(
+            {{
+                "table": change_set["table"],
+                "url": api_base.rstrip("/") + change_set["endpoint"],
+                "method": "POST",
+                "change_count": len(change_set["changes"]),
+                "conflict_policy": "manual_review",
+            }}
+            for change_set in normalized_sets
+        ),
+        "checks": ("cache_snapshot", "network_available", "auth_token_present", "conflict_scan", "audit_sync_result"),
+        "requires_review": True,
+    }}
+
+
 def desktop_file_action(path, *, action="open", table_name=None):
     """Return a reviewed desktop local-file action without touching the file system."""
     if not str(path).strip():
@@ -28293,8 +28358,8 @@ def validate_native_artifacts() -> None:
     if "AppGenMobileApp" not in mobile or "offline_record" not in mobile or "offline_sync_batch" not in mobile or "sync_conflict" not in mobile or "offline_replay_plan" not in mobile or "camera_capture_plan" not in mobile or "push_notification_payload" not in mobile:
         fail("mobile starter must expose Kivy app, device capability, push, offline queue, conflict, and replay helpers")
     desktop = (ROOT / "native" / "desktop" / "app.py").read_text()
-    if "AppGenDesktopApp" not in desktop or "local_cache_plan" not in desktop or "desktop_file_action" not in desktop:
-        fail("desktop starter must expose BeeWare app, local file, notification, and cache helpers")
+    if "AppGenDesktopApp" not in desktop or "local_cache_plan" not in desktop or "desktop_cache_snapshot" not in desktop or "desktop_change_set" not in desktop or "desktop_sync_plan" not in desktop or "desktop_file_action" not in desktop:
+        fail("desktop starter must expose BeeWare app, local file, cache snapshot, change-set, sync, notification, and cache helpers")
 
 
 def validate_jhipster_artifacts() -> None:
@@ -29634,6 +29699,11 @@ def test_generated_runtime_helpers():
         assert native.native_capability_plan("desktop")["offline_storage"] == "json-cache"
         assert desktop.desktop_file_action("/tmp/appgen.json")["review_required"] is True
         assert desktop.desktop_notification_payload("Ready", "Sync complete")["title"] == "Ready"
+        desktop_table = desktop.desktop_contract()["tables"][0]["name"]
+        desktop_changes = desktop.desktop_change_set(desktop_table, ({"values": {"id": 1}},))
+        assert desktop.desktop_cache_snapshot("/tmp/cache")["format"] == "appgen.desktop-cache-snapshot.v1"
+        assert desktop_changes["format"] == "appgen.desktop-change-set.v1"
+        assert desktop.desktop_sync_plan("https://api.example.test", (desktop_changes,))["format"] == "appgen.desktop-sync-plan.v1"
     assert native.scaffold_check(
         {
             "native/appgen_native.py",

@@ -571,6 +571,15 @@ def test_generate_app_from_sqlite_schema_compiles(tmp_path) -> None:
     assert desktop.desktop_file_action("/tmp/book.json", table_name="Book")["review_required"] is True
     assert desktop.desktop_notification_payload("Ready", "Book synced")["title"] == "Ready"
     assert desktop.local_cache_plan("/tmp/cache")[1]["path"].endswith("/book.json")
+    cache_snapshot = desktop.desktop_cache_snapshot("/tmp/cache", {"book": [{"id": 1}]})
+    assert cache_snapshot["format"] == "appgen.desktop-cache-snapshot.v1"
+    assert cache_snapshot["files"][1]["record_count"] == 1
+    change_set = desktop.desktop_change_set("book", ({"values": {"id": 1, "title": "Dune"}},))
+    assert change_set["format"] == "appgen.desktop-change-set.v1"
+    assert change_set["requires_review"] is True
+    desktop_sync = desktop.desktop_sync_plan("https://api.example.test", (change_set,))
+    assert desktop_sync["format"] == "appgen.desktop-sync-plan.v1"
+    assert desktop_sync["steps"][0]["conflict_policy"] == "manual_review"
     jhipster = _load_module(tmp_path / "jhipster" / "appgen_jhipster.py", "generated_jhipster")
     assert jhipster.jhipster_import_command() == ("jhipster", "jdl", "jhipster/app.jdl")
     assert jhipster.export_check({"jhipster/app.jdl", "jhipster/appgen_jhipster.py"})["ok"] is True
