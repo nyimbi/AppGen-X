@@ -28,6 +28,7 @@ from pyAppGen.gen import generate_app_from_schema
 from pyAppGen.dsl import apply_lint_fixes
 from pyAppGen.dsl import dsl_language_quality_contract
 from pyAppGen.dsl import dsl_keyword_budget
+from pyAppGen.dsl import format_dsl
 from pyAppGen.dsl import lint_dsl
 from pyAppGen.schema import load_schema
 from pyAppGen.schema import RelationSchema
@@ -143,6 +144,26 @@ def test_dsl_linter_reports_semantic_feedback(runner: CliRunner, tmp_path) -> No
     assert "view BookForm for Book" in alias_fixed["fixed"]
     assert "flow Publish" in alias_fixed["fixed"]
     assert alias_fixed["after"]["ok"] is True
+    formatted = format_dsl(
+        "app Library{targets:web,mobile} table Author{id:int pk} table Book{id:int pk; title:string required; author_id:int -> Author.id[many-to-one]}"
+    )
+    assert formatted["format"] == "appgen.dsl-format-result.v1"
+    assert formatted["after"]["ok"] is True
+    assert formatted["formatted"] == (
+        "app Library {\n"
+        "  targets: web, mobile\n"
+        "}\n"
+        "\n"
+        "table Author {\n"
+        "  id: int pk\n"
+        "}\n"
+        "\n"
+        "table Book {\n"
+        "  id: int pk\n"
+        "  title: string required\n"
+        "  author_id: int -> Author.id [many-to-one]\n"
+        "}\n"
+    )
 
     dsl_path = tmp_path / "lint.appgen"
     dsl_path.write_text(source)
@@ -3573,6 +3594,13 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert {"replace_ref_with_arrow", "normalize_targets"} <= set(generated_fix["applied"])
     assert "title: string -> Author.id" in generated_fix["fixed"]
     assert "toaster" not in generated_fix["fixed"]
+    generated_format = dsl_reference.format_dsl(
+        "app Library{targets:web,desktop} table Book{id:int pk; title:string required}"
+    )
+    assert generated_format["format"] == "appgen.dsl-format-result.v1"
+    assert generated_format["after"]["ok"] is True
+    assert "app Library {\n  targets: web, desktop\n}" in generated_format["formatted"]
+    assert "table Book {\n  id: int pk\n  title: string required\n}" in generated_format["formatted"]
     generated_alias_lint = dsl_reference.dsl_lint("entity Book { title: string } form BookForm for Book { Main: title }")
     assert generated_alias_lint["ok"] is True
     assert "normalize_authoring_aliases" in {fix["id"] for fix in generated_alias_lint["fixes"]}

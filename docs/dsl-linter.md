@@ -160,6 +160,12 @@ result has `format: appgen.dsl-fix-result.v1`, `applied`, `skipped`,
 `changed`, `before`, `after`, `original`, and `fixed` fields so IDEs can show a
 preview before writing.
 
+Use `pyAppGen.dsl.format_dsl` when the source is already semantically valid but
+needs stable layout. The formatter returns `appgen.dsl-format-result.v1` with
+the original text, formatted text, and before/after lint reports so IDEs and CI
+can show a deterministic formatting preview without changing the keyword
+budget.
+
 ## CI Gate
 
 Use the CLI in CI before generation:

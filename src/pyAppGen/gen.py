@@ -19143,6 +19143,95 @@ def apply_dsl_fixes(source, fix_ids=None):
     }}
 
 
+def _dsl_format_units(source):
+    units = []
+    buffer = []
+    quote = None
+    escape = False
+
+    def flush():
+        value = "".join(buffer).strip()
+        buffer.clear()
+        if value:
+            units.append(value)
+
+    for char in source or "":
+        if quote:
+            buffer.append(char)
+            if escape:
+                escape = False
+            elif char == "\\\\":
+                escape = True
+            elif char == quote:
+                quote = None
+            continue
+        if char in {{"'", '"'}}:
+            quote = char
+            buffer.append(char)
+            continue
+        if char in "{{}};":
+            flush()
+            if char in "{{}}":
+                units.append(char)
+            continue
+        if char in "\\r\\n":
+            flush()
+            continue
+        buffer.append(char)
+    flush()
+    return tuple(units)
+
+
+def _normalize_dsl_spacing(unit):
+    value = re.sub(r"\\s+", " ", str(unit or "").strip())
+    value = re.sub(r"\\s*,\\s*", ", ", value)
+    value = re.sub(r"\\s*:\\s*", ": ", value)
+    value = re.sub(r"\\s*->\\s*", " -> ", value)
+    value = re.sub(r"\\s*=\\s*", " = ", value)
+    value = re.sub(r"\\s*\\[\\s*", " [", value)
+    value = re.sub(r"\\s*\\]\\s*", "]", value)
+    return value.strip()
+
+
+def _format_dsl_source(source):
+    lines = []
+    indent = 0
+    previous_closed_top_level = False
+    for unit in _dsl_format_units(source):
+        if unit == "}}":
+            indent = max(indent - 1, 0)
+            lines.append("  " * indent + "}}")
+            previous_closed_top_level = indent == 0
+            continue
+        if unit == "{{":
+            if lines and lines[-1].strip():
+                lines[-1] = lines[-1].rstrip() + " {{"
+            else:
+                lines.append("  " * indent + "{{")
+            indent += 1
+            previous_closed_top_level = False
+            continue
+        if previous_closed_top_level and lines and lines[-1] != "":
+            lines.append("")
+        lines.append("  " * indent + _normalize_dsl_spacing(unit))
+        previous_closed_top_level = False
+    return "\\n".join(lines).rstrip() + ("\\n" if lines else "")
+
+
+def format_dsl(source):
+    """Return deterministic generated DSL formatting plus lint metadata."""
+    text = source or ""
+    formatted = _format_dsl_source(text)
+    return {{
+        "format": "appgen.dsl-format-result.v1",
+        "changed": formatted != text,
+        "original": text,
+        "formatted": formatted,
+        "before": dsl_lint(text),
+        "after": dsl_lint(formatted),
+    }}
+
+
 def dsl_lint(source):
     """Return lightweight DSL readability and keyword-budget feedback."""
     text = source or ""
@@ -29759,6 +29848,7 @@ def validate_dsl_reference_artifacts() -> None:
         "dsl_lint",
         "dsl_quick_fixes",
         "apply_dsl_fixes",
+        "format_dsl",
         "AUTHORING_ALIASES",
         "normalize_authoring_aliases",
         "dsl_learning_path",

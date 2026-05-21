@@ -167,6 +167,99 @@ def apply_lint_fixes(
     }
 
 
+def format_dsl(text: str, *, source_name: str | None = None) -> dict:
+    """Return deterministic DSL formatting plus before/after lint metadata."""
+    original = text or ""
+    formatted = _format_dsl_source(original)
+    return {
+        "format": "appgen.dsl-format-result.v1",
+        "source": source_name,
+        "changed": formatted != original,
+        "original": original,
+        "formatted": formatted,
+        "before": lint_dsl(original, source_name=source_name),
+        "after": lint_dsl(formatted, source_name=source_name),
+    }
+
+
+def _format_dsl_source(source: str) -> str:
+    units = _dsl_format_units(source)
+    lines: list[str] = []
+    indent = 0
+    previous_closed_top_level = False
+
+    for unit in units:
+        if unit == "}":
+            indent = max(indent - 1, 0)
+            lines.append("  " * indent + "}")
+            previous_closed_top_level = indent == 0
+            continue
+        if unit == "{":
+            if lines and lines[-1].strip():
+                lines[-1] = lines[-1].rstrip() + " {"
+            else:
+                lines.append("  " * indent + "{")
+            indent += 1
+            previous_closed_top_level = False
+            continue
+        if previous_closed_top_level and lines and lines[-1] != "":
+            lines.append("")
+        lines.append("  " * indent + _normalize_dsl_spacing(unit))
+        previous_closed_top_level = False
+
+    return "\n".join(lines).rstrip() + ("\n" if lines else "")
+
+
+def _dsl_format_units(source: str) -> tuple[str, ...]:
+    units: list[str] = []
+    buffer: list[str] = []
+    quote: str | None = None
+    escape = False
+
+    def flush() -> None:
+        value = "".join(buffer).strip()
+        buffer.clear()
+        if value:
+            units.append(value)
+
+    for char in source:
+        if quote:
+            buffer.append(char)
+            if escape:
+                escape = False
+            elif char == "\\":
+                escape = True
+            elif char == quote:
+                quote = None
+            continue
+        if char in {"'", '"'}:
+            quote = char
+            buffer.append(char)
+            continue
+        if char in "{};":
+            flush()
+            if char in "{}":
+                units.append(char)
+            continue
+        if char in "\r\n":
+            flush()
+            continue
+        buffer.append(char)
+    flush()
+    return tuple(units)
+
+
+def _normalize_dsl_spacing(unit: str) -> str:
+    value = re.sub(r"\s+", " ", unit.strip())
+    value = re.sub(r"\s*,\s*", ", ", value)
+    value = re.sub(r"\s*:\s*", ": ", value)
+    value = re.sub(r"\s*->\s*", " -> ", value)
+    value = re.sub(r"\s*=\s*", " = ", value)
+    value = re.sub(r"\s*\[\s*", " [", value)
+    value = re.sub(r"\s*\]\s*", "]", value)
+    return value.strip()
+
+
 def _apply_lint_fix(source: str, fix: dict) -> str:
     kind = fix.get("kind")
     if kind == "replace_all":

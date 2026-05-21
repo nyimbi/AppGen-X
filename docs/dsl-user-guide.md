@@ -35,6 +35,11 @@ Lint without generating:
 appgen --lint-dsl library.appgen
 ```
 
+Format DSL text through `pyAppGen.dsl.format_dsl` or the generated
+`dsl_reference.format_dsl` helper when builders need stable indentation and
+spacing before review. Formatting returns before/after lint reports and does not
+add keywords or apply semantic quick fixes.
+
 ## Modeling Guidance
 
 Use one table per business object. Use explicit `id: int pk` fields when you
