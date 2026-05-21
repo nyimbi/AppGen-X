@@ -424,6 +424,10 @@ traceability chains, mobile/offline capabilities, and required artifacts.
 Use `finance_release_gate()` to verify generated ERP finance operations cover
 tax profiles, currency conversion, budget forecasts, revenue recognition, batch
 processing, and required finance cockpit artifacts.
+Use `manufacturing_release_gate()` to verify generated manufacturing operations
+cover BOM, MRP material requirements, capacity planning, production scheduling,
+purchase requisitions, kanban replenishment, and required manufacturing
+artifacts.
 Use `search_release_gate()` to verify generated searchable-field coverage,
 provider readiness for memory/PostgreSQL/Whoosh/Elasticsearch, reindex plans,
 and the search cockpit artifacts before switching providers in production.

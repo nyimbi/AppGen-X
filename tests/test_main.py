@@ -3120,6 +3120,21 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert manufacturing_ops.manufacturing_ops_check(
         {"app/manufacturing_ops.py", "app/templates/appgen_manufacturing_ops.html"}
     )["ok"] is True
+    manufacturing_gate = manufacturing_ops.manufacturing_release_gate(
+        {"app/manufacturing_ops.py", "app/templates/appgen_manufacturing_ops.html"}
+    )
+    assert manufacturing_gate["format"] == "appgen.manufacturing-release-gate.v1"
+    assert manufacturing_gate["ok"] is True
+    assert {
+        "manufacturing_catalog",
+        "bom_planning",
+        "material_requirements",
+        "capacity_planning",
+        "production_scheduling",
+        "requisition_and_kanban",
+        "artifact_coverage",
+    } <= {gate["gate"] for gate in manufacturing_gate["gates"]}
+    assert manufacturing_ops.manufacturing_release_gate({"app/manufacturing_ops.py"})["ok"] is False
     access_book = data_access.resource_contract("Book")
     assert "title" in access_book["readable_fields"]
     assert "title" in access_book["writable_fields"]

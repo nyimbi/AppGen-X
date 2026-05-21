@@ -3147,7 +3147,10 @@ def write_manufacturing_ops_template(output_dir):
         replenishment contracts.
       </p>
     </div>
-    <a class="btn btn-default" href="{{ url_for('ManufacturingOpsView.catalog_json') }}">Manufacturing JSON</a>
+    <div>
+      <a class="btn btn-default" href="{{ url_for('ManufacturingOpsView.catalog_json') }}">Manufacturing JSON</a>
+      <a class="btn btn-default" href="{{ url_for('ManufacturingOpsView.release_gate_json') }}">Release Gate JSON</a>
+    </div>
   </div>
   <div class="agmo-grid">
     {% for item in resources %}
@@ -13609,6 +13612,60 @@ def manufacturing_ops_check(existing_paths=()):
     }}
 
 
+def manufacturing_release_gate(existing_paths=()):
+    """Return an auditable release gate for generated manufacturing operations."""
+    artifacts = set(existing_paths or ())
+    required_artifacts = ("app/manufacturing_ops.py", "app/templates/appgen_manufacturing_ops.html")
+    sample_table = next(iter(MANUFACTURING_RESOURCES), None)
+    bom = bill_of_material_plan(sample_table, "FG-1", ({{"component": "COMP-1", "quantity_per": 2}},)) if sample_table else None
+    requirements = material_requirements(3, bom["components"], on_hand={{"COMP-1": 1}}) if bom else ()
+    gates = (
+        {{
+            "gate": "manufacturing_catalog",
+            "ok": bool(manufacturing_catalog()) and all(resource["operations"] for resource in manufacturing_catalog()),
+            "evidence": tuple(resource["table"] for resource in manufacturing_catalog()),
+        }},
+        {{
+            "gate": "bom_planning",
+            "ok": bool(bom) and bom["finished_good"] == "FG-1" and bool(bom["components"]),
+            "evidence": "bill_of_material_plan",
+        }},
+        {{
+            "gate": "material_requirements",
+            "ok": bool(requirements) and requirements[0]["net_required"] == 5.0 and requirements[0]["shortage"],
+            "evidence": requirements,
+        }},
+        {{
+            "gate": "capacity_planning",
+            "ok": capacity_plan(({{"work_order": "WO-1", "standard_hours": 4}},), available_hours=8)["overloaded"] is False,
+            "evidence": "capacity_plan",
+        }},
+        {{
+            "gate": "production_scheduling",
+            "ok": production_schedule(({{"work_order": "WO-1", "standard_hours": 4}},), capacity_hours_per_period=8)[0]["period"] == 1,
+            "evidence": "production_schedule",
+        }},
+        {{
+            "gate": "requisition_and_kanban",
+            "ok": purchase_requisition_plan(requirements)["line_count"] == 1 and kanban_signal("COMP-1", on_hand=1, reorder_point=2, lot_size=10)["signal"] == "replenish",
+            "evidence": ("purchase_requisition_plan", "kanban_signal"),
+        }},
+        {{
+            "gate": "artifact_coverage",
+            "ok": set(required_artifacts) <= artifacts,
+            "missing": tuple(item for item in required_artifacts if item not in artifacts),
+        }},
+    )
+    ok = all(gate["ok"] for gate in gates)
+    return {{
+        "format": "appgen.manufacturing-release-gate.v1",
+        "ok": ok,
+        "decision": "approved" if ok else "blocked",
+        "gates": gates,
+        "required_artifacts": required_artifacts,
+    }}
+
+
 class ManufacturingOpsView(BaseView):
     route_base = "/manufacturing-ops"
     default_view = "index"
@@ -13623,6 +13680,10 @@ class ManufacturingOpsView(BaseView):
     @expose("/catalog.json")
     def catalog_json(self):
         return jsonify({{"resources": list(manufacturing_catalog())}})
+
+    @expose("/release-gate.json")
+    def release_gate_json(self):
+        return jsonify(manufacturing_release_gate({{"app/manufacturing_ops.py", "app/templates/appgen_manufacturing_ops.html"}}))
 
 
 def register_manufacturing_ops(appbuilder):
@@ -32661,12 +32722,13 @@ def validate_manufacturing_ops_artifacts() -> None:
         "purchase_requisition_plan",
         "kanban_signal",
         "manufacturing_ops_check",
+        "manufacturing_release_gate",
     )
     if not all(item in contract for item in required):
-        fail("manufacturing operations contract must expose BOM, MRP, capacity, schedule, requisition, and kanban helpers")
+        fail("manufacturing operations contract must expose BOM, MRP, capacity, schedule, requisition, kanban, and release-gate helpers")
     template = (ROOT / "app" / "templates" / "appgen_manufacturing_ops.html").read_text()
-    if "Manufacturing Operations" not in template or "MRP" not in template or "capacity" not in template:
-        fail("manufacturing operations cockpit must expose MRP and capacity contracts")
+    if "Manufacturing Operations" not in template or "MRP" not in template or "capacity" not in template or "Release Gate JSON" not in template:
+        fail("manufacturing operations cockpit must expose MRP, capacity contracts, and release gate")
 
 
 def validate_project_management_artifacts() -> None:
@@ -34361,6 +34423,8 @@ def test_generated_runtime_helpers():
     assert manufacturing_ops.purchase_requisition_plan(requirements)["line_count"] == 1
     assert manufacturing_ops.kanban_signal("COMP-1", on_hand=1, reorder_point=2, lot_size=10)["signal"] == "replenish"
     assert manufacturing_ops.manufacturing_ops_check({"app/manufacturing_ops.py", "app/templates/appgen_manufacturing_ops.html"})["ok"] is True
+    assert manufacturing_ops.manufacturing_release_gate({"app/manufacturing_ops.py", "app/templates/appgen_manufacturing_ops.html"})["ok"] is True
+    assert manufacturing_ops.manufacturing_release_gate({"app/manufacturing_ops.py"})["ok"] is False
     assert isinstance(data_exchange.exchange_catalog(), tuple)
     assert isinstance(performance.performance_catalog(), tuple)
     manifest = json.loads((ROOT / "app" / "appgen.json").read_text())

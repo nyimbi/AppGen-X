@@ -321,7 +321,9 @@ apps include:
   required finance artifacts.
 - `manufacturing_ops.py` and `appgen_manufacturing_ops.html` with generated
   bill-of-material, material-requirements planning, capacity, production
-  scheduling, purchase requisition, and lean replenishment contracts.
+  scheduling, purchase requisition, and lean replenishment contracts. A
+  generated manufacturing release gate proves the BOM, MRP, capacity,
+  scheduling, requisition, kanban, and required manufacturing artifacts.
 - `backup.py` with generated JSON backup exports, payload validation,
   SHA-256 integrity manifests, autobackup schedule plans, retention planning,
   recovery runbooks, disaster-recovery plans, backup release gates, and restore
