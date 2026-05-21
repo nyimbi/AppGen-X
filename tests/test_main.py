@@ -2943,6 +2943,17 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     reindex = search.reindex_plan("elasticsearch", ("Book",))
     assert reindex["requires_review"] is True
     assert reindex["indexes"][0]["bulk_endpoint"] == "/_bulk"
+    search_gate = search.search_release_gate(
+        {"ELASTICSEARCH_URL": "http://localhost:9200"},
+        {"app/search.py", "app/templates/appgen_search.html"},
+        required_provider="elasticsearch",
+    )
+    assert search_gate["format"] == "appgen.search-release-gate.v1"
+    assert search_gate["ok"] is True
+    assert {"index_catalog", "provider_coverage", "required_provider_readiness", "reindex_plan", "artifact_coverage"} <= {
+        gate["gate"] for gate in search_gate["gates"]
+    }
+    assert search.search_release_gate({}, {"app/search.py"}, required_provider="elasticsearch")["ok"] is False
     assert search.row_matches("Book", {"id": 1, "title": "Dune", "internal_code": "B-1"}, "dune") is True
     assert search.search_document("Book", {"id": 1, "title": "Dune", "internal_code": "B-1"})["fields"] == {
         "title": "Dune"

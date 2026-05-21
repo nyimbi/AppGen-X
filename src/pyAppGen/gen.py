@@ -2831,7 +2831,10 @@ def write_search_template(output_dir):
         Elasticsearch mappings, Whoosh schemas, and reviewed reindex runbooks.
       </p>
     </div>
-    <a class="btn btn-default" href="{{ url_for('SearchView.catalog_json') }}">Catalog JSON</a>
+    <div class="ags-actions">
+      <a class="btn btn-default" href="{{ url_for('SearchView.catalog_json') }}">Catalog JSON</a>
+      <a class="btn btn-default" href="{{ url_for('SearchView.release_gate_json') }}">Release Gate JSON</a>
+    </div>
   </div>
   <div class="ags-grid">
     {% for item in indexes %}
@@ -11920,6 +11923,54 @@ def reindex_plan(provider, table_names=None):
     }}
 
 
+def search_release_gate(env=None, existing_paths=(), required_provider="memory"):
+    """Return an auditable release gate for generated search capabilities."""
+    env = env or {{}}
+    artifacts = set(existing_paths or ())
+    required_artifacts = ("app/search.py", "app/templates/appgen_search.html")
+    providers = provider_catalog()
+    provider_names = {{provider["name"] for provider in providers}}
+    provider_readiness = tuple(provider_plan(provider["name"], env) for provider in providers)
+    required_ready = provider_plan(required_provider, env)
+    gates = (
+        {{
+            "gate": "index_catalog",
+            "ok": bool(search_catalog()) and all(index["fields"] and index["primary_key"] for index in search_catalog()),
+            "evidence": tuple(index["table"] for index in search_catalog()),
+        }},
+        {{
+            "gate": "provider_coverage",
+            "ok": {{"memory", "postgres", "whoosh", "elasticsearch"}} <= provider_names,
+            "evidence": tuple(sorted(provider_names)),
+        }},
+        {{
+            "gate": "required_provider_readiness",
+            "ok": required_ready["configured"],
+            "provider": required_provider,
+            "missing": required_ready["missing"],
+        }},
+        {{
+            "gate": "reindex_plan",
+            "ok": all(reindex_plan(provider["name"])["indexes"] for provider in providers),
+            "evidence": tuple(provider["name"] for provider in providers),
+        }},
+        {{
+            "gate": "artifact_coverage",
+            "ok": set(required_artifacts) <= artifacts,
+            "missing": tuple(item for item in required_artifacts if item not in artifacts),
+        }},
+    )
+    ok = all(gate["ok"] for gate in gates)
+    return {{
+        "format": "appgen.search-release-gate.v1",
+        "ok": ok,
+        "decision": "approved" if ok else "blocked",
+        "required_provider": required_provider,
+        "gates": gates,
+        "provider_readiness": provider_readiness,
+    }}
+
+
 def _row_value(row, field):
     if isinstance(row, dict):
         return row.get(field)
@@ -12001,6 +12052,10 @@ class SearchView(BaseView):
     @expose("/providers/<provider>/reindex.json")
     def reindex_json(self, provider):
         return jsonify(reindex_plan(provider))
+
+    @expose("/release-gate.json")
+    def release_gate_json(self):
+        return jsonify(search_release_gate(request.environ, {{"app/search.py", "app/templates/appgen_search.html"}}))
 
 
 def register_search(appbuilder):
@@ -32836,6 +32891,23 @@ def validate_report_delivery_artifacts() -> None:
         fail("report delivery template must expose PDF delivery")
 
 
+def validate_search_artifacts() -> None:
+    contract = (ROOT / "app" / "search.py").read_text()
+    required = (
+        "search_release_gate",
+        "provider_index_plan",
+        "reindex_plan",
+        "elasticsearch_mapping",
+        "whoosh_schema",
+        "search_rows",
+    )
+    if not all(item in contract for item in required):
+        fail("search contract must expose provider indexes, reindex plans, search execution, and release gates")
+    template = (ROOT / "app" / "templates" / "appgen_search.html").read_text()
+    if "Search" not in template or "Catalog JSON" not in template or "Release Gate JSON" not in template:
+        fail("search template must expose generated search catalog and release gate")
+
+
 def validate_branding_artifacts() -> None:
     css = (ROOT / "app" / "static" / "appgen-theme.css").read_text()
     if (
@@ -33136,6 +33208,7 @@ def main() -> int:
     validate_runtime_assurance_artifacts()
     validate_report_artifacts()
     validate_report_delivery_artifacts()
+    validate_search_artifacts()
     validate_branding_artifacts()
     validate_extension_artifacts()
     validate_packaging_artifacts()
@@ -33758,6 +33831,8 @@ def test_generated_runtime_helpers():
     assert search.whoosh_schema(first_search_table)["fields"]
     assert search.provider_index_plan("elasticsearch", first_search_table)["bulk_endpoint"] == "/_bulk"
     assert search.reindex_plan("whoosh", (first_search_table,))["requires_review"] is True
+    assert search.search_release_gate({}, {"app/search.py", "app/templates/appgen_search.html"})["ok"] is True
+    assert search.search_release_gate({}, {"app/search.py"}, required_provider="elasticsearch")["ok"] is False
     assert isinstance(media.media_catalog(), tuple)
     first_document_type = documents.document_catalog()[0]["id"]
     assert documents.document_version(first_document_type, record_id=1, filename="sample.pdf")["version"] == 1
