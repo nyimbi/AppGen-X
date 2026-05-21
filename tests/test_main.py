@@ -26,6 +26,7 @@ from pyAppGen import __main__
 from pyAppGen.gen import generate_app_from_database
 from pyAppGen.gen import generate_app_from_schema
 from pyAppGen.dsl import apply_lint_fixes
+from pyAppGen.dsl import dsl_code_actions
 from pyAppGen.dsl import dsl_completion_items
 from pyAppGen.dsl import dsl_language_service
 from pyAppGen.dsl import dsl_language_quality_contract
@@ -114,9 +115,21 @@ def test_dsl_linter_reports_semantic_feedback(runner: CliRunner, tmp_path) -> No
     assert any("environment variable" in warning for warning in style["warnings"])
     assert any(item["code"] == "prefer_arrow_reference" for item in style["diagnostics"])
     assert any("replace_ref_with_arrow" in item["fix_ids"] for item in style["diagnostics"])
+    assert style["severity_counts"]["warning"] >= 2
     assert {"replace_ref_with_arrow", "use_api_key_env"}.issubset(
         {fix["id"] for fix in style["fixes"]}
     )
+    actions = dsl_code_actions(
+        "app Bad { targets: web, toaster } table Book { id: int pk; author_id: int ref Author.id }",
+        source_name="inline",
+    )
+    assert {action["id"] for action in actions} >= {"replace_ref_with_arrow", "normalize_targets"}
+    target_action = next(action for action in actions if action["id"] == "normalize_targets")
+    assert target_action["format"] == "appgen.dsl-code-action.v1"
+    assert target_action["diagnostic_codes"] == ("unknown_app_target",)
+    assert target_action["edits"][0]["replacement"] == "web"
+    ref_action = next(action for action in actions if action["id"] == "replace_ref_with_arrow")
+    assert "author_id: int -> Author.id" in ref_action["fixed_preview"]
     assert any(fix["id"] == "normalize_targets" for fix in broken["fixes"])
     fixed = apply_lint_fixes(
         "app Bad { targets: web, toaster } table Author { id: int pk } table Book { id: int pk; author_id: int ref Author.id } "
@@ -189,6 +202,7 @@ def test_dsl_linter_reports_semantic_feedback(runner: CliRunner, tmp_path) -> No
     assert service["lint"]["ok"] is True
     assert service["outline"]["summary"]["tables"] == 2
     assert any(item["label"] == "Book" and item["kind"] == "table" for item in service["completions"])
+    assert "code_actions" in service
     assert service["formatting"]["format"] == "appgen.dsl-format-result.v1"
 
     dsl_path = tmp_path / "lint.appgen"
@@ -3861,6 +3875,11 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert {"replace_ref_with_arrow", "normalize_targets"} <= set(generated_fix["applied"])
     assert "title: string -> Author.id" in generated_fix["fixed"]
     assert "toaster" not in generated_fix["fixed"]
+    generated_actions = dsl_reference.dsl_code_actions(
+        "app Bad { targets: web, toaster } table Book { title: string ref Author.id }"
+    )
+    assert {action["id"] for action in generated_actions} >= {"normalize_targets", "replace_ref_with_arrow"}
+    assert all(action["format"] == "appgen.dsl-code-action.v1" for action in generated_actions)
     generated_format = dsl_reference.format_dsl(
         "app Library{targets:web,desktop} table Book{id:int pk; title:string required}"
     )

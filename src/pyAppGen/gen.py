@@ -19213,6 +19213,27 @@ def dsl_quick_fixes(source, errors=(), warnings=()):
     return tuple(fixes)
 
 
+def dsl_code_actions(source):
+    """Return generated IDE code actions tied to deterministic DSL quick fixes."""
+    return dsl_lint(source).get("code_actions", ())
+
+
+def _dsl_code_action(source, fix):
+    fixed_preview = _apply_dsl_fix(source or "", fix)
+    return {{
+        "format": "appgen.dsl-code-action.v1",
+        "id": fix["id"],
+        "title": fix["title"],
+        "kind": "quickfix",
+        "command": {{
+            "name": "appgen.applyDslFix",
+            "arguments": (fix["id"],),
+        }},
+        "changed": fixed_preview != (source or ""),
+        "fixed_preview": fixed_preview,
+    }}
+
+
 def _apply_dsl_fix(source, fix):
     kind = fix.get("kind")
     if kind == "replace_all":
@@ -19403,6 +19424,7 @@ def dsl_lint(source):
         "warnings": tuple(warnings),
         "suggestions": tuple(suggestions),
         "fixes": fixes,
+        "code_actions": tuple(_dsl_code_action(text, fix) for fix in fixes),
         "keyword_budget": dsl_keyword_budget(),
     }}
 
@@ -30097,6 +30119,7 @@ def validate_dsl_reference_artifacts() -> None:
         "dsl_example",
         "dsl_lint",
         "dsl_quick_fixes",
+        "dsl_code_actions",
         "apply_dsl_fixes",
         "format_dsl",
         "AUTHORING_ALIASES",

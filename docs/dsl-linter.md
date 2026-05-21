@@ -62,10 +62,13 @@ Example output:
 ## Python API
 
 ```python
-from pyAppGen.dsl import apply_lint_fixes, lint_dsl, lint_dsl_file
+from pyAppGen.dsl import apply_lint_fixes, dsl_code_actions, lint_dsl, lint_dsl_file
 
 report = lint_dsl_file("invoice.appgen")
 assert report["ok"], report["errors"]
+
+actions = dsl_code_actions("table Book { title: string ref Author.id }")
+print(actions[0]["fixed_preview"])
 
 result = apply_lint_fixes("table Book { title: string ref Author.id }")
 print(result["fixed"])
@@ -100,6 +103,29 @@ Both the CLI and Python API return the same JSON-serializable structure:
       "kind": "regex_replace"
     }
   ],
+  "code_actions": [
+    {
+      "format": "appgen.dsl-code-action.v1",
+      "id": "use_api_key_env",
+      "title": "Use an environment variable for api_key",
+      "kind": "quickfix",
+      "diagnostic_codes": ["literal_api_key"],
+      "edits": [
+        {
+          "range": {
+            "start": {"line": 4, "character": 34},
+            "end": {"line": 4, "character": 51}
+          },
+          "replacement": "api_key: OPENAI_API_KEY"
+        }
+      ]
+    }
+  ],
+  "severity_counts": {
+    "error": 1,
+    "warning": 1,
+    "suggestion": 1
+  },
   "summary": {
     "app": "InvoiceDesk",
     "tables": 3,
@@ -118,7 +144,8 @@ Both the CLI and Python API return the same JSON-serializable structure:
 
 Use `ok` as the machine gate. Use `errors` for blocking fixes, `warnings` for
 risky but parseable source, `suggestions` for authoring guidance,
-`diagnostics` for IDE/CI annotations, and `fixes` for structured IDE/CI actions
+`diagnostics` for IDE/CI annotations, `severity_counts` for status badges, and
+`fixes` plus `code_actions` for structured IDE/CI actions
 such as adding an app declaration, replacing legacy `ref` syntax with `->`,
 normalizing targets, or moving literal API keys to environment-variable
 references. Diagnostics include stable `code`, `severity`, optional line/column
@@ -170,6 +197,12 @@ result has `format: appgen.dsl-fix-result.v1`, `applied`, `skipped`,
 `changed`, `before`, `after`, `original`, and `fixed` fields so IDEs can show a
 preview before writing.
 
+Use `pyAppGen.dsl.dsl_code_actions` when an IDE needs quick-fix commands with
+LSP-style edit ranges, related diagnostic codes, and a `fixed_preview`. These
+actions use `format: appgen.dsl-code-action.v1` and reference the same stable
+fix IDs returned by the linter, so editors can either apply the precise edits
+or delegate to the `appgen.applyDslFix` command.
+
 Use `pyAppGen.dsl.format_dsl` when the source is already semantically valid but
 needs stable layout. The formatter returns `appgen.dsl-format-result.v1` with
 the original text, formatted text, and before/after lint reports so IDEs and CI
@@ -190,6 +223,8 @@ agent needs the complete authoring payload in one call. The result has
 - `completions`: compact keyword completions, Delphi-style component snippets,
   app/table/form/LLM/agent snippets, and schema-aware table, field, reference,
   and provider symbols.
+- `code_actions`: quick-fix commands with related diagnostics, LSP-style edit
+  ranges, and deterministic fixed previews.
 - `formatting`: the deterministic formatter preview.
 - `language_quality`: the keyword-budget and ANTLR grammar evidence.
 

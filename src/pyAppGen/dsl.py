@@ -131,6 +131,7 @@ def lint_dsl(text: str, *, source_name: str | None = None) -> dict:
         "suggestions": tuple(suggestions),
         "diagnostics": _lint_diagnostics(source, errors, warnings, suggestions),
         "fixes": _lint_quick_fixes(source, errors, warnings),
+        "severity_counts": _diagnostic_severity_counts(errors, warnings, suggestions),
         "summary": _lint_summary(schema),
         "language_quality": dsl_language_quality_contract(),
     }
@@ -305,9 +306,44 @@ def dsl_language_service(
         "lint": lint_dsl(source, source_name=source_name),
         "outline": dsl_outline(source, source_name=source_name),
         "completions": dsl_completion_items(prefix, source=source),
+        "code_actions": dsl_code_actions(source, source_name=source_name),
         "formatting": format_dsl(source, source_name=source_name),
         "language_quality": dsl_language_quality_contract(),
     }
+
+
+def dsl_code_actions(text: str, *, source_name: str | None = None) -> tuple[dict, ...]:
+    """Return IDE-ready code actions for deterministic DSL quick fixes."""
+    source = text or ""
+    report = lint_dsl(source, source_name=source_name)
+    diagnostics = report["diagnostics"]
+    actions = []
+    for fix in report["fixes"]:
+        related = tuple(
+            diagnostic
+            for diagnostic in diagnostics
+            if fix["id"] in diagnostic.get("fix_ids", ())
+        )
+        fixed_preview = _apply_lint_fix(source, fix)
+        actions.append(
+            {
+                "format": "appgen.dsl-code-action.v1",
+                "id": fix["id"],
+                "title": fix["title"],
+                "kind": "quickfix",
+                "source": source_name,
+                "diagnostic_codes": tuple(diagnostic["code"] for diagnostic in related),
+                "diagnostics": related,
+                "edits": _fix_edits(source, fix),
+                "command": {
+                    "name": "appgen.applyDslFix",
+                    "arguments": (fix["id"],),
+                },
+                "changed": fixed_preview != source,
+                "fixed_preview": fixed_preview,
+            }
+        )
+    return tuple(actions)
 
 
 def _format_dsl_source(source: str) -> str:
@@ -418,6 +454,73 @@ def _apply_target_normalization(source: str, supported: tuple[str, ...]) -> str:
     return re.sub(r"(\btargets\s*:\s*)([^;\n}]+)", repl, source)
 
 
+def _fix_edits(source: str, fix: dict) -> tuple[dict, ...]:
+    kind = fix.get("kind")
+    if kind == "replace_all":
+        return (
+            {
+                "range": _source_range(source, 0, len(source)),
+                "replacement": str(fix["replacement"]),
+            },
+        )
+    if kind == "insert" and fix.get("position") == "start":
+        return (
+            {
+                "range": _source_range(source, 0, 0),
+                "replacement": str(fix["insert"]),
+            },
+        )
+    if kind == "regex_replace":
+        pattern = re.compile(str(fix["pattern"]))
+        replacement = str(fix["replacement"])
+        return tuple(
+            {
+                "range": _source_range(source, match.start(), match.end()),
+                "replacement": match.expand(replacement),
+            }
+            for match in pattern.finditer(source)
+        )
+    if kind == "replace_targets":
+        match = re.search(r"(\btargets\s*:\s*)([^;\n}]+)", source)
+        if match:
+            fixed = _apply_target_normalization(source, tuple(fix["supported"]))
+            fixed_match = re.search(r"(\btargets\s*:\s*)([^;\n}]+)", fixed)
+            if fixed_match:
+                return (
+                    {
+                        "range": _source_range(source, match.start(2), match.end(2)),
+                        "replacement": fixed_match.group(2),
+                    },
+                )
+    if kind == "normalize_aliases":
+        fixed = _normalize_authoring_aliases(source)
+        if fixed != source:
+            return (
+                {
+                    "range": _source_range(source, 0, len(source)),
+                    "replacement": fixed,
+                },
+            )
+    return ()
+
+
+def _source_range(source: str, start: int, end: int) -> dict:
+    start_line, start_character = _line_column_for_index(source, start)
+    end_line, end_character = _line_column_for_index(source, end)
+    return {
+        "start": {"line": start_line, "character": start_character},
+        "end": {"line": end_line, "character": end_character},
+    }
+
+
+def _line_column_for_index(source: str, index: int) -> tuple[int, int]:
+    bounded = max(0, min(index, len(source)))
+    line = source.count("\n", 0, bounded)
+    previous_newline = source.rfind("\n", 0, bounded)
+    character = bounded if previous_newline < 0 else bounded - previous_newline - 1
+    return line, character
+
+
 def _lint_quick_fixes(source: str, errors: Iterable[str], warnings: Iterable[str]) -> tuple[dict, ...]:
     """Return deterministic quick fixes for common DSL authoring feedback."""
     fixes: list[dict] = []
@@ -498,6 +601,18 @@ def _lint_diagnostics(
     for message in suggestions:
         diagnostics.append(_diagnostic(source, "suggestion", message))
     return tuple(diagnostics)
+
+
+def _diagnostic_severity_counts(
+    errors: Iterable[str],
+    warnings: Iterable[str],
+    suggestions: Iterable[str],
+) -> dict:
+    return {
+        "error": len(tuple(errors)),
+        "warning": len(tuple(warnings)),
+        "suggestion": len(tuple(suggestions)),
+    }
 
 
 def _diagnostic(source: str, severity: str, message: str) -> dict:
