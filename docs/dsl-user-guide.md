@@ -46,6 +46,13 @@ Format DSL text through `pyAppGen.dsl.format_dsl` or the generated
 spacing before review. Formatting returns before/after lint reports and does not
 add keywords or apply semantic quick fixes.
 
+IDE integrations can use `pyAppGen.dsl.dsl_language_service(source)` for a
+single authoring payload: ANTLR-backed lint, parser-backed outline,
+schema-aware completions, deterministic formatting preview, and language-quality
+evidence. The outline falls back to a partial regex outline for incomplete
+drafts, so editors can keep navigation and completions active while a builder is
+still typing.
+
 ## Modeling Guidance
 
 Use one table per business object. Use explicit `id: int pk` fields when you

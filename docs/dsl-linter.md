@@ -176,6 +176,28 @@ the original text, formatted text, and before/after lint reports so IDEs and CI
 can show a deterministic formatting preview without changing the keyword
 budget.
 
+## Language Service
+
+Use `pyAppGen.dsl.dsl_language_service(source)` when an IDE, web editor, or
+agent needs the complete authoring payload in one call. The result has
+`format: appgen.dsl-language-service.v1` and includes:
+
+- `lint`: the ANTLR-backed linter report.
+- `outline`: `appgen.dsl-outline.v1` with app, table, field, view, component,
+  flow, role, rule, LLM, and agent structure. Valid source is parsed through the
+  canonical schema; incomplete drafts fall back to a regex outline so editors
+  can still show navigation while the user is typing.
+- `completions`: compact keyword completions, Delphi-style component snippets,
+  app/table/form/LLM/agent snippets, and schema-aware table, field, reference,
+  and provider symbols.
+- `formatting`: the deterministic formatter preview.
+- `language_quality`: the keyword-budget and ANTLR grammar evidence.
+
+Lower-level integrations can call `dsl_outline(source)` and
+`dsl_completion_items(prefix, source=source)` directly. These helpers are
+package-level so generated Studio, external IDE plugins, and natural-language
+agents can share one authoring contract.
+
 ## CI Gate
 
 Use the CLI in CI before generation:

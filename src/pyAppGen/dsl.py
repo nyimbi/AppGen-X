@@ -191,6 +191,125 @@ def format_dsl(text: str, *, source_name: str | None = None) -> dict:
     }
 
 
+def dsl_outline(text: str, *, source_name: str | None = None) -> dict:
+    """Return an IDE-ready outline for AppGen DSL source."""
+    source = text or ""
+    try:
+        schema = schema_from_dsl(source, source_name=source_name)
+    except AppGenSyntaxError as exc:
+        return _regex_outline(source, source_name=source_name, error=str(exc))
+    except Exception as exc:
+        return _regex_outline(source, source_name=source_name, error=str(exc))
+    return {
+        "format": "appgen.dsl-outline.v1",
+        "source": source_name,
+        "ok": True,
+        "app": schema.app_name,
+        "targets": _lint_summary(schema)["targets"],
+        "blocks": _outline_blocks(source, schema),
+        "tables": tuple(
+            {
+                "name": table.name,
+                "fields": tuple(column.name for column in table.columns),
+                "search_fields": tuple(column.name for column in table.columns if column.searchable),
+                "hidden_fields": tuple(column.name for column in table.columns if column.hidden),
+                "relations": tuple(
+                    {"field": column.name, "target": ".".join(column.references)}
+                    for column in table.columns
+                    if column.references
+                ),
+            }
+            for table in schema.tables
+        ),
+        "views": tuple(
+            {
+                "name": view.name,
+                "table": view.table,
+                "fields": view.fields,
+                "sections": tuple(section.name for section in view.sections),
+                "components": tuple(
+                    {
+                        "field": component.field,
+                        "component": component.component,
+                        "bounds": (component.x, component.y, component.w, component.h),
+                    }
+                    for component in view.components
+                ),
+            }
+            for view in schema.views
+        ),
+        "flows": tuple(
+            {
+                "name": flow.name,
+                "steps": tuple({"source": step.source, "target": step.target} for step in flow.steps),
+            }
+            for flow in schema.flows
+        ),
+        "roles": tuple(role.name for role in schema.roles),
+        "rules": tuple(rule.name for rule in schema.rules),
+        "llms": tuple(provider.name for provider in schema.llm_providers),
+        "agents": tuple(agent.name for agent in schema.agents),
+        "summary": _lint_summary(schema),
+    }
+
+
+def dsl_completion_items(prefix: str = "", *, source: str | None = None) -> tuple[dict, ...]:
+    """Return keyword, snippet, and schema-aware completions for DSL editors."""
+    needle = str(prefix or "").strip().lower()
+    items: list[dict] = [
+        {"label": keyword, "insert": keyword, "kind": "keyword"}
+        for keyword in CORE_KEYWORDS
+    ]
+    items.extend(_dsl_snippets())
+    if source:
+        outline = dsl_outline(source)
+        for table in outline.get("tables", ()):
+            table_name = table["name"]
+            items.append({"label": table_name, "insert": table_name, "kind": "table"})
+            for field_name in table.get("fields", ()):
+                items.append(
+                    {
+                        "label": field_name,
+                        "insert": field_name,
+                        "kind": "field",
+                        "detail": table_name,
+                    }
+                )
+                items.append(
+                    {
+                        "label": f"{table_name}.{field_name}",
+                        "insert": f"{table_name}.{field_name}",
+                        "kind": "reference",
+                    }
+                )
+        for provider_name in outline.get("llms", ()):
+            items.append({"label": provider_name, "insert": provider_name, "kind": "llm"})
+    deduped = tuple({(item["kind"], item["label"]): item for item in items}.values())
+    if not needle:
+        return deduped
+    return tuple(item for item in deduped if item["label"].lower().startswith(needle))
+
+
+def dsl_language_service(
+    text: str,
+    *,
+    source_name: str | None = None,
+    prefix: str = "",
+) -> dict:
+    """Return the package-level DSL language-service payload for IDEs."""
+    source = text or ""
+    return {
+        "format": "appgen.dsl-language-service.v1",
+        "source": source_name,
+        "language": "appgen-dsl",
+        "lint": lint_dsl(source, source_name=source_name),
+        "outline": dsl_outline(source, source_name=source_name),
+        "completions": dsl_completion_items(prefix, source=source),
+        "formatting": format_dsl(source, source_name=source_name),
+        "language_quality": dsl_language_quality_contract(),
+    }
+
+
 def _format_dsl_source(source: str) -> str:
     units = _dsl_format_units(source)
     lines: list[str] = []
@@ -666,6 +785,113 @@ def _lint_summary(schema: AppSchema | None) -> dict:
         "agents": len(schema.agents),
         "targets": targets,
         "unknown_targets": unknown,
+    }
+
+
+def _dsl_snippets() -> tuple[dict, ...]:
+    return (
+        {
+            "label": "Application",
+            "insert": "app MyApp { targets: web, mobile, desktop }",
+            "kind": "snippet",
+            "detail": "Name the app and choose generation targets.",
+        },
+        {
+            "label": "Table",
+            "insert": "table Customer {\n  id: int pk\n  name: string required search\n}",
+            "kind": "snippet",
+            "detail": "Data model block.",
+        },
+        {
+            "label": "Form",
+            "insert": "view CustomerForm for Customer {\n  Main: name\n}",
+            "kind": "snippet",
+            "detail": "Generated form/view block.",
+        },
+        {
+            "label": "Delphi Component",
+            "insert": "@ name TextBox 0 0 6 1",
+            "kind": "snippet",
+            "detail": "Drop a component at x y width height.",
+        },
+        {
+            "label": "Local LLM",
+            "insert": "llm LocalModel {\n  provider: ollama\n  mode: local\n  model: llama3\n}",
+            "kind": "snippet",
+            "detail": "Local LLM provider.",
+        },
+        {
+            "label": "Agent",
+            "insert": "agent Assistant {\n  provider: LocalModel\n  goal: \"Help users finish work\"\n  tools: schema, forms, reports\n}",
+            "kind": "snippet",
+            "detail": "Agentic workflow block.",
+        },
+    )
+
+
+def _outline_blocks(source: str, schema: AppSchema) -> tuple[dict, ...]:
+    names = [("app", schema.app_name)] if schema.app_name else []
+    names.extend(("table", table.name) for table in schema.tables)
+    names.extend(("enum", enum.name) for enum in schema.enums)
+    names.extend(("view", view.name) for view in schema.views)
+    names.extend(("flow", flow.name) for flow in schema.flows)
+    names.extend(("role", role.name) for role in schema.roles)
+    names.extend(("rule", rule.name) for rule in schema.rules)
+    names.extend(("llm", provider.name) for provider in schema.llm_providers)
+    names.extend(("agent", agent.name) for agent in schema.agents)
+    return tuple(_outline_block(source, kind, name) for kind, name in names if name)
+
+
+def _outline_block(source: str, kind: str, name: str) -> dict:
+    line, column = _locate_token(source, name)
+    return {"kind": kind, "name": name, "line": line, "column": column}
+
+
+def _regex_outline(source: str, *, source_name: str | None = None, error: str | None = None) -> dict:
+    normalized = _normalize_authoring_aliases(source or "")
+    app_match = re.search(r"\bapp\s+(\"[^\"]+\"|'[^']+'|[A-Za-z_][A-Za-z0-9_]*)?", normalized)
+    app_name = None
+    if app_match and app_match.group(1):
+        app_name = app_match.group(1).strip("'\"")
+    tables = tuple(
+        {
+            "name": table_name,
+            "fields": fields,
+            "search_fields": (),
+            "hidden_fields": (),
+            "relations": (),
+        }
+        for table_name, fields in _declared_table_fields_for_suggestions(normalized).items()
+    )
+    return {
+        "format": "appgen.dsl-outline.v1",
+        "source": source_name,
+        "ok": False,
+        "app": app_name,
+        "targets": (),
+        "blocks": tuple(
+            _outline_block(normalized, kind, name)
+            for kind in ("table", "enum", "view", "flow", "role", "rule", "llm", "agent")
+            for name in _declared_block_names(normalized, kind)
+        ),
+        "tables": tables,
+        "views": tuple(
+            {
+                "name": view_name,
+                "table": table_name,
+                "fields": (),
+                "sections": (),
+                "components": (),
+            }
+            for view_name, table_name in _declared_view_tables_for_suggestions(normalized).items()
+        ),
+        "flows": tuple({"name": name, "steps": ()} for name in _declared_block_names(normalized, "flow")),
+        "roles": _declared_block_names(normalized, "role"),
+        "rules": _declared_block_names(normalized, "rule"),
+        "llms": _declared_block_names(normalized, "llm"),
+        "agents": _declared_block_names(normalized, "agent"),
+        "summary": {"tables": len(tables), "fields": sum(len(table["fields"]) for table in tables)},
+        "parse_error": error,
     }
 
 

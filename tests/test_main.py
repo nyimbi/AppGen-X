@@ -26,8 +26,11 @@ from pyAppGen import __main__
 from pyAppGen.gen import generate_app_from_database
 from pyAppGen.gen import generate_app_from_schema
 from pyAppGen.dsl import apply_lint_fixes
+from pyAppGen.dsl import dsl_completion_items
+from pyAppGen.dsl import dsl_language_service
 from pyAppGen.dsl import dsl_language_quality_contract
 from pyAppGen.dsl import dsl_keyword_budget
+from pyAppGen.dsl import dsl_outline
 from pyAppGen.dsl import format_dsl
 from pyAppGen.dsl import lint_dsl
 from pyAppGen.schema import load_schema
@@ -164,6 +167,29 @@ def test_dsl_linter_reports_semantic_feedback(runner: CliRunner, tmp_path) -> No
         "  author_id: int -> Author.id [many-to-one]\n"
         "}\n"
     )
+    outline = dsl_outline(source, source_name="inline")
+    assert outline["format"] == "appgen.dsl-outline.v1"
+    assert outline["ok"] is True
+    assert outline["app"] == "LintDemo"
+    assert {block["kind"] for block in outline["blocks"]} >= {"app", "table", "view"}
+    assert next(table for table in outline["tables"] if table["name"] == "Book")["fields"] == (
+        "id",
+        "title",
+        "author_id",
+    )
+    draft_outline = dsl_outline("app Draft { targets: web }\ntable Book { title: string")
+    assert draft_outline["ok"] is False
+    assert draft_outline["app"] == "Draft"
+    assert draft_outline["parse_error"]
+    completions = dsl_completion_items("tit", source=source)
+    assert any(item["label"] == "title" and item["kind"] == "field" for item in completions)
+    assert any(item["label"] == "Delphi Component" for item in dsl_completion_items("Del"))
+    service = dsl_language_service(source, source_name="inline", prefix="Book")
+    assert service["format"] == "appgen.dsl-language-service.v1"
+    assert service["lint"]["ok"] is True
+    assert service["outline"]["summary"]["tables"] == 2
+    assert any(item["label"] == "Book" and item["kind"] == "table" for item in service["completions"])
+    assert service["formatting"]["format"] == "appgen.dsl-format-result.v1"
 
     dsl_path = tmp_path / "lint.appgen"
     dsl_path.write_text(source)
