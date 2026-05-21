@@ -8634,24 +8634,45 @@ def template_context(context):
 
 
 def _seed_text(schema: AppSchema) -> str:
+    seed_columns = {
+        table.name: tuple(
+            column
+            for column in table.columns
+            if not column.derived
+            and (
+                column.primary_key
+                or column.references is not None
+                or not column.hidden
+                or not column.nullable
+            )
+        )
+        for table in schema.tables
+    }
     required_fields = {
         table.name: tuple(
-            _model_attribute_name(column)
-            for column in table.columns
-            if not column.nullable
-            and not column.primary_key
-            and column.references is None
-            and not column.hidden
-            and not column.derived
+            column.name
+            for column in seed_columns[table.name]
+            if not column.nullable and not column.primary_key
         )
+        for table in schema.tables
+    }
+    table_primary_keys = {
+        table.name: tuple(column.name for column in table.columns if column.primary_key)
+        for table in schema.tables
+    }
+    table_dependencies = {
+        table.name: tuple(dict.fromkeys(
+            column.references[0]
+            for column in seed_columns[table.name]
+            if column.references is not None and column.references[0] != table.name
+        ))
         for table in schema.tables
     }
     seed_data = {
         table.name: [
             {
-                _model_attribute_name(column): _sample_seed_value(table.name, column)
-                for column in table.columns
-                if not column.primary_key and column.references is None and not column.hidden and not column.derived
+                column.name: _sample_seed_value(table.name, column)
+                for column in seed_columns[table.name]
             }
         ]
         for table in schema.tables
@@ -8661,24 +8682,60 @@ def _seed_text(schema: AppSchema) -> str:
 from __future__ import annotations
 
 import json
+from copy import deepcopy
 
 
 SEED_DATA = {seed_data!r}
 REQUIRED_SEED_FIELDS = {required_fields!r}
+SEED_PRIMARY_KEYS = {table_primary_keys!r}
+SEED_DEPENDENCIES = {table_dependencies!r}
+
+
+def seed_insert_order():
+    """Return tables in dependency-aware insertion order."""
+    ordered = []
+    visiting = set()
+    visited = set()
+
+    def visit(table_name):
+        if table_name in visited:
+            return
+        if table_name in visiting:
+            return
+        visiting.add(table_name)
+        for dependency in SEED_DEPENDENCIES.get(table_name, ()):
+            if dependency in SEED_DATA:
+                visit(dependency)
+        visiting.remove(table_name)
+        visited.add(table_name)
+        ordered.append(table_name)
+
+    for table_name in SEED_DATA:
+        visit(table_name)
+    return tuple(ordered)
+
+
+def ordered_seed_data(seed_data=None):
+    """Return seed rows ordered so referenced tables are inserted first."""
+    data = SEED_DATA if seed_data is None else seed_data
+    return {{table_name: deepcopy(data.get(table_name, [])) for table_name in seed_insert_order() if table_name in data}}
 
 
 def seed_plan():
     """Return a reviewable deterministic seed plan."""
     return {{
         "format": "appgen.seed-plan.v1",
+        "insert_order": seed_insert_order(),
         "tables": tuple(
             {{
                 "table": table_name,
                 "row_count": len(rows),
                 "required_fields": tuple(REQUIRED_SEED_FIELDS.get(table_name, ())),
+                "primary_keys": tuple(SEED_PRIMARY_KEYS.get(table_name, ())),
+                "dependencies": tuple(SEED_DEPENDENCIES.get(table_name, ())),
                 "fields": tuple(rows[0]) if rows else (),
             }}
-            for table_name, rows in SEED_DATA.items()
+            for table_name, rows in ordered_seed_data().items()
         ),
         "requires_review": True,
     }}
@@ -8689,6 +8746,9 @@ def validate_seed_data(seed_data=None):
     data = SEED_DATA if seed_data is None else seed_data
     errors = []
     for table_name, rows in data.items():
+        unknown_required = tuple(field for field in REQUIRED_SEED_FIELDS.get(table_name, ()) if not rows)
+        if unknown_required:
+            errors.append({{"table": table_name, "row": None, "missing": unknown_required}})
         required = tuple(REQUIRED_SEED_FIELDS.get(table_name, ()))
         for index, row in enumerate(rows):
             missing = tuple(field for field in required if row.get(field) in (None, ""))
@@ -8714,7 +8774,7 @@ def anonymized_seed_data(seed_data=None):
 
 def seed_json(*, anonymize=False):
     """Return generated seed data as stable JSON for review or import."""
-    data = anonymized_seed_data() if anonymize else SEED_DATA
+    data = anonymized_seed_data(ordered_seed_data()) if anonymize else ordered_seed_data()
     payload = {{
         "format": "appgen.seed.v1",
         "plan": seed_plan(),
@@ -8735,7 +8795,7 @@ def _sql_literal(value):
 
 def seed_sql(seed_data=None):
     """Return SQL INSERT statements for generated seed rows without executing them."""
-    data = SEED_DATA if seed_data is None else seed_data
+    data = ordered_seed_data(SEED_DATA if seed_data is None else seed_data)
     statements = []
     for table_name, rows in data.items():
         for row in rows:
@@ -8753,7 +8813,7 @@ def seed_database(db, models):
     if not validation["ok"]:
         raise ValueError(f"Invalid generated seed data: {{validation['errors']}}")
     inserted = {{}}
-    for table_name, rows in SEED_DATA.items():
+    for table_name, rows in ordered_seed_data().items():
         model_name = "".join(part.capitalize() for part in table_name.split("_"))
         model = getattr(models, model_name, None)
         if model is None or not rows:

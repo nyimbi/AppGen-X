@@ -2258,14 +2258,22 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     with pytest.raises(ValueError, match="Column mismatch"):
         backup.validate_backup_payload(bad_payload)
     assert seed.SEED_DATA["Book"][0]["title"] == "Sample Title"
+    assert seed.SEED_DATA["Book"][0]["author_id"] == 1
     assert "internal_code" not in seed.SEED_DATA["Book"][0]
     seed_plan = seed.seed_plan()
     assert seed_plan["format"] == "appgen.seed-plan.v1"
+    assert seed.seed_insert_order().index("Author") < seed.seed_insert_order().index("Book")
+    book_seed_plan = next(item for item in seed_plan["tables"] if item["table"] == "Book")
+    assert book_seed_plan["dependencies"] == ("Author",)
+    assert "author_id" in book_seed_plan["fields"]
     assert seed.validate_seed_data()["ok"] is True
     assert seed.validate_seed_data({"Book": [{"status": "draft"}]})["errors"][0]["missing"] == ("title",)
     assert seed.anonymized_seed_data({"User": [{"email": "ada@example.test", "name": "Ada"}]})["User"][0]["email"] == "[redacted]"
     assert '"format": "appgen.seed.v1"' in seed.seed_json()
-    assert 'INSERT INTO "Book"' in seed.seed_sql()
+    seed_sql = seed.seed_sql()
+    assert 'INSERT INTO "Author"' in seed_sql
+    assert 'INSERT INTO "Book"' in seed_sql
+    assert seed_sql.index('INSERT INTO "Author"') < seed_sql.index('INSERT INTO "Book"')
     catalog = integrations.integration_catalog({})
     assert {item["name"] for item in catalog} == {
         "rest",
