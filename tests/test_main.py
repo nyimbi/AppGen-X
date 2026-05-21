@@ -2836,6 +2836,28 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert collaboration.merge_plan(proposal, decision)["applied"] is True
     rejected = collaboration.review_decision(proposal, "grace", "changes_requested")
     assert collaboration.merge_plan(proposal, rejected)["applied"] is False
+    conflict_left = collaboration.change_proposal(
+        "Book",
+        {"title": "Dune"},
+        {"title": "Dune Messiah"},
+        author="ada",
+    )
+    conflict_right = collaboration.change_proposal(
+        "Book",
+        {"title": "Dune"},
+        {"title": "Children of Dune"},
+        author="grace",
+    )
+    conflict_report = collaboration.proposal_conflict_report((conflict_left, conflict_right))
+    assert conflict_report["ok"] is False
+    assert conflict_report["conflicts"][0]["fields"] == ("title",)
+    queue = collaboration.merge_queue(
+        (conflict_left, conflict_right),
+        (collaboration.review_decision(conflict_left, "bo", "approved"),),
+    )
+    assert queue["blocked"]
+    resolution = collaboration.conflict_resolution_plan(conflict_report["conflicts"][0], actor="bo")
+    assert resolution["format"] == "appgen.conflict-resolution-plan.v1"
     assert any(item["resource"] == "manifest" for item in version_control.version_resource_catalog())
     before_snapshot = version_control.snapshot_manifest(manifest, author="ada", message="baseline")
     changed_manifest = json.loads(json.dumps(manifest))

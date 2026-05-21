@@ -4635,10 +4635,13 @@ def write_collaboration_template(output_dir):
       <h1 class="agv-title">Collaboration</h1>
       <p class="agv-note">
         Generated collaboration and version-control contracts for change proposals,
-        reviewer decisions, revision metadata, and team handoffs.
+        reviewer decisions, merge queues, conflict reports, and team handoffs.
       </p>
     </div>
-    <a class="btn btn-default" href="{{ url_for('CollaborationView.catalog_json') }}">Catalog JSON</a>
+    <div>
+      <a class="btn btn-default" href="{{ url_for('CollaborationView.catalog_json') }}">Catalog JSON</a>
+      <a class="btn btn-default" href="{{ url_for('CollaborationView.merge_queue_json') }}">Merge Queue JSON</a>
+    </div>
   </div>
   <div class="agv-grid">
     {% for item in tables %}
@@ -20996,6 +20999,83 @@ def merge_plan(proposal, decision):
     }}
 
 
+def proposal_conflict_report(proposals):
+    """Return overlapping field conflicts across concurrent proposals."""
+    proposal_rows = tuple(proposals or ())
+    conflicts = []
+    for index, left in enumerate(proposal_rows):
+        for right in proposal_rows[index + 1:]:
+            if left.get("resource") != right.get("resource"):
+                continue
+            overlap = tuple(sorted(set(left.get("changed_fields", ())) & set(right.get("changed_fields", ()))))
+            divergent = tuple(
+                field
+                for field in overlap
+                if left.get("after", {{}}).get(field) != right.get("after", {{}}).get(field)
+            )
+            if divergent:
+                conflicts.append({{
+                    "resource": left["resource"],
+                    "left": left["proposal_id"],
+                    "right": right["proposal_id"],
+                    "fields": divergent,
+                    "requires_resolution": True,
+                }})
+    return {{
+        "format": "appgen.collaboration-conflicts.v1",
+        "ok": not conflicts,
+        "proposal_count": len(proposal_rows),
+        "conflicts": tuple(conflicts),
+    }}
+
+
+def merge_queue(proposals, decisions=()):
+    """Return an ordered merge queue with conflict and review status."""
+    proposal_rows = tuple(proposals or ())
+    decisions_by_proposal = {{decision["proposal_id"]: decision for decision in decisions or ()}}
+    conflict_report = proposal_conflict_report(proposal_rows)
+    blocked = {{item["left"] for item in conflict_report["conflicts"]}} | {{item["right"] for item in conflict_report["conflicts"]}}
+    items = []
+    for proposal in proposal_rows:
+        decision = decisions_by_proposal.get(proposal["proposal_id"])
+        approved = bool(decision and decision.get("decision") == "approved")
+        items.append({{
+            "proposal_id": proposal["proposal_id"],
+            "resource": proposal["resource"],
+            "changed_fields": proposal["changed_fields"],
+            "approved": approved,
+            "blocked": proposal["proposal_id"] in blocked,
+            "ready": approved and proposal["proposal_id"] not in blocked,
+            "decision": decision,
+        }})
+    return {{
+        "format": "appgen.merge-queue.v1",
+        "ready": tuple(item for item in items if item["ready"]),
+        "blocked": tuple(item for item in items if item["blocked"]),
+        "pending_review": tuple(item for item in items if not item["approved"]),
+        "conflicts": conflict_report,
+    }}
+
+
+def conflict_resolution_plan(conflict, *, strategy="manual_review", actor=None):
+    """Return a reviewable resolution plan for a proposal conflict."""
+    return {{
+        "format": "appgen.conflict-resolution-plan.v1",
+        "strategy": strategy,
+        "actor": actor or "reviewer",
+        "resource": conflict["resource"],
+        "proposals": (conflict["left"], conflict["right"]),
+        "fields": conflict["fields"],
+        "steps": (
+            "inspect divergent values",
+            "choose winning field value or compose a new proposal",
+            "record reviewer decision",
+            "re-run proposal_conflict_report",
+        ),
+        "requires_review": True,
+    }}
+
+
 class CollaborationView(BaseView):
     route_base = "/collaboration"
     default_view = "index"
@@ -21007,6 +21087,10 @@ class CollaborationView(BaseView):
     @expose("/catalog.json")
     def catalog_json(self):
         return jsonify(list(collaboration_catalog()))
+
+    @expose("/merge-queue.json")
+    def merge_queue_json(self):
+        return jsonify(merge_queue(()))
 
 
 def register_collaboration(appbuilder):
@@ -28653,6 +28737,17 @@ def validate_realtime_artifacts() -> None:
         fail("realtime template must expose generated topics")
 
 
+def validate_collaboration_artifacts() -> None:
+    contract = (ROOT / "app" / "collaboration.py").read_text()
+    if "change_proposal" not in contract or "review_decision" not in contract or "merge_plan" not in contract:
+        fail("collaboration contract must expose proposals, review decisions, and merge plans")
+    if "proposal_conflict_report" not in contract or "merge_queue" not in contract or "conflict_resolution_plan" not in contract:
+        fail("collaboration contract must expose conflict reports, merge queues, and resolution plans")
+    template = (ROOT / "app" / "templates" / "appgen_collaboration.html").read_text()
+    if "Collaboration" not in template or "Merge Queue JSON" not in template:
+        fail("collaboration template must expose merge queue contracts")
+
+
 def validate_version_control_artifacts() -> None:
     contract = (ROOT / "app" / "version_control.py").read_text()
     if "snapshot_manifest" not in contract or "diff_snapshots" not in contract or "rollback_plan" not in contract:
@@ -29204,6 +29299,7 @@ def main() -> int:
     validate_sdk_artifacts()
     validate_openapi_artifacts()
     validate_version_control_artifacts()
+    validate_collaboration_artifacts()
     validate_realtime_artifacts()
     validate_event_artifacts()
     validate_rpa_artifacts()
@@ -30138,6 +30234,10 @@ def test_generated_runtime_helpers():
         }
     )["ok"] is True
     assert isinstance(collaboration.collaboration_catalog(), tuple)
+    proposal_a = collaboration.change_proposal("manifest", {"name": "A"}, {"name": "B"})
+    proposal_b = collaboration.change_proposal("manifest", {"name": "A"}, {"name": "C"})
+    assert collaboration.proposal_conflict_report((proposal_a, proposal_b))["conflicts"]
+    assert collaboration.merge_queue((proposal_a, proposal_b))["blocked"]
     assert diagnostics.selftest()["ok"] is True
     assert diagnostics.selftest()["summary"]["fail"] == 0
     assert diagnostics.remediation_plan(({{"name": "Book has primary key", "status": "warn", "details": ()}},))["actions"][0]["severity"] == "warning"

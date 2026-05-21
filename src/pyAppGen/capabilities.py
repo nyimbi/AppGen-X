@@ -94,7 +94,7 @@ DEFAULT_CAPABILITIES: tuple[Capability, ...] = (
     Capability("devops.studio", "In-app developer studio", "partial", "generated project tree, searchable command palette, DSL outline/lint/quick-fix/completions, database table proposals, safe SQL workbench plans, generation jobs, diagnostics, code-edit plans, debug sessions, dependency update plans, app cloning, and component sharing"),
     Capability("devops.project-management", "Agile project and DevOps tool integration", "partial", "generated backlog, sprint, release, traceability, and Jira/GitHub/Azure Boards/GitLab export contracts"),
     Capability("support.training", "Generated training, support, tutorials, and sample apps", "partial", "generated support center, knowledge-base topics, onboarding checklists, tutorials, sample DSL apps, search, and support-ticket payloads"),
-    Capability("team.collaboration", "Collaboration and version-control workflows", "partial", "generated change proposals, revision IDs, and review decisions"),
+    Capability("team.collaboration", "Collaboration and version-control workflows", "partial", "generated change proposals, revision IDs, review decisions, conflict reports, merge queues, and resolution plans"),
     Capability("team.version-control", "Low-code version history and rollback", "partial", "generated manifest snapshots, branch plans, diffs, and rollback plans"),
     Capability("team.realtime", "Real-time collaboration and event streams", "partial", "generated event topics, SSE frames, and collaboration message payloads"),
     Capability("quality.diagnostics", "Testing, debugging, and diagnostic tools", "partial", "generated self-tests, debug snapshots, remediation plans, redacted support bundles, API smoke plans, and load-test plans"),

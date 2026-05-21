@@ -400,7 +400,8 @@ apps include:
   contracts, audit events, and business-process observations for repetitive
   browser/API work.
 - `collaboration.py` and `appgen_collaboration.html` with generated revision
-  metadata, change proposals, review decisions, and merge plans.
+  metadata, change proposals, review decisions, merge plans, conflict reports,
+  merge queues, and conflict-resolution plans for concurrent low-code work.
 - `version_control.py` and `appgen_version_control.html` with generated
   manifest snapshots, content-addressed revision IDs, branch plans,
   schema-level diffs, and reviewable rollback plans.
