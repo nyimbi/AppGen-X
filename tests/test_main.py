@@ -421,6 +421,7 @@ def test_generate_app_from_sqlite_schema_compiles(tmp_path) -> None:
     assert (tmp_path / "deploy" / "appgen_https.py").exists()
     assert (tmp_path / "deploy" / "Caddyfile").exists()
     assert (tmp_path / "deploy" / "k8s.yaml").exists()
+    assert (tmp_path / "deploy" / "k8s-autoscale.yaml").exists()
     assert (tmp_path / "deploy" / "terraform-aws.tf").exists()
     assert (tmp_path / "deploy" / "terraform-gcp.tf").exists()
     assert (tmp_path / "deploy" / "terraform-azure.tf").exists()
@@ -510,6 +511,9 @@ def test_generate_app_from_sqlite_schema_compiles(tmp_path) -> None:
     assert "kind: Deployment" in k8s_text
     assert "readinessProbe" in k8s_text
     assert "secret-key" in k8s_text
+    autoscale_text = (tmp_path / "deploy" / "k8s-autoscale.yaml").read_text()
+    assert "HorizontalPodAutoscaler" in autoscale_text
+    assert "appgen_http_p95_ms" in autoscale_text
     compose_text = (tmp_path / "docker-compose.yml").read_text()
     assert "caddy:2" in compose_text
     assert "443:443" in compose_text
@@ -524,6 +528,7 @@ def test_generate_app_from_sqlite_schema_compiles(tmp_path) -> None:
     deployment = _load_module(tmp_path / "deploy" / "appgen_deploy.py", "generated_deployment")
     https = _load_module(tmp_path / "deploy" / "appgen_https.py", "generated_https")
     assert "kubernetes" in deployment.deployment_targets()
+    assert "onprem" in deployment.deployment_targets()
     assert "https" in deployment.deployment_targets()
     assert deployment.artifact_plan("aws") == ("deploy/terraform-aws.tf",)
     assert deployment.artifact_plan("https") == ("deploy/Caddyfile", "deploy/appgen_https.py")
@@ -537,14 +542,28 @@ def test_generate_app_from_sqlite_schema_compiles(tmp_path) -> None:
     rollback_plan = deployment.rollback_plan("kubernetes", previous_image_tag="app:v0")
     assert rollback_plan["previous_image_tag"] == "app:v0"
     assert rollback_plan["review_required"] is True
+    assert deployment.deployment_topology("onprem")["network"] == "private-datacenter"
+    scaling = deployment.scaling_profile("kubernetes", {"replicas": 2, "cpu_percent": 91})
+    assert scaling["desired_replicas"] == 4
+    assert scaling["hpa_artifact"] == "deploy/k8s-autoscale.yaml"
+    infra_scaling = deployment.infrastructure_scaling_plan("kubernetes", {"p95_ms": 900})
+    assert infra_scaling["profile"]["review_required"] is True
     readiness = deployment.cloud_readiness_matrix({"SECRET_KEY": "s", "SQLALCHEMY_DATABASE_URI": "sqlite://"})
-    assert {item["target"] for item in readiness} >= {"kubernetes", "aws", "gcp", "azure"}
+    assert {item["target"] for item in readiness} >= {"kubernetes", "onprem", "aws", "gcp", "azure"}
+    assert deployment.onprem_readiness(
+        {"SECRET_KEY": "s", "SQLALCHEMY_DATABASE_URI": "sqlite://"},
+        {"Dockerfile", "docker-compose.yml", "deploy/Caddyfile"},
+    )["ok"] is True
+    promotion = deployment.release_promotion_plan("compose", "kubernetes", image_tag="app:v2")
+    assert promotion["format"] == "appgen.release-promotion-plan.v1"
+    assert promotion["scaling"]["target"] == "kubernetes"
     all_artifacts = {
         "Dockerfile",
         "docker-compose.yml",
         "deploy/Caddyfile",
         "deploy/appgen_https.py",
         "deploy/k8s.yaml",
+        "deploy/k8s-autoscale.yaml",
         "deploy/terraform-aws.tf",
         "deploy/terraform-gcp.tf",
         "deploy/terraform-azure.tf",

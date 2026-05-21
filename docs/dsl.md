@@ -512,10 +512,11 @@ apps include:
 - `.github/workflows/appgen-ci.yml` and `scripts/appgen_quality.py` with a
   generated CI quality gate for syntax, manifest, PWA, docs, runtime assurance,
   and test-surface checks.
-- `deploy/` with Docker/Compose-adjacent Kubernetes manifests, Terraform
-  starter contracts for AWS, GCP, and Azure, generated deployment runbooks,
-  secret-injection plans, smoke checks, rollback plans, and cloud readiness
-  helpers.
+- `deploy/` with Docker/Compose-adjacent Kubernetes manifests, Kubernetes HPA
+  autoscaling manifests, on-prem topology plans, Terraform starter contracts
+  for AWS, GCP, and Azure, generated deployment runbooks, secret-injection
+  plans, smoke checks, rollback plans, release promotion plans, infrastructure
+  scaling plans, and cloud readiness helpers.
 - `deploy/Caddyfile` and `deploy/appgen_https.py` with generated automatic
   HTTPS reverse proxy configuration and TLS readiness checks.
 - `appgen.json`, a manifest containing tables, relations, views, workflows,

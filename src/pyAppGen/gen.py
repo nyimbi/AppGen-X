@@ -1954,6 +1954,7 @@ def write_project_scaffold(output_dir, schema: AppSchema):
     (deploy_dir / "appgen_https.py").write_text(_https_contract_text(app_name))
     (deploy_dir / "Caddyfile").write_text(_caddyfile_text(app_name))
     (deploy_dir / "k8s.yaml").write_text(_k8s_manifest_text(app_name))
+    (deploy_dir / "k8s-autoscale.yaml").write_text(_k8s_autoscale_text(app_name))
     (deploy_dir / "terraform-aws.tf").write_text(_terraform_text(app_name, "aws"))
     (deploy_dir / "terraform-gcp.tf").write_text(_terraform_text(app_name, "gcp"))
     (deploy_dir / "terraform-azure.tf").write_text(_terraform_text(app_name, "azure"))
@@ -26672,18 +26673,30 @@ from __future__ import annotations
 DEPLOYMENT = {{
     "app_name": {app_name!r},
     "tables": {table_names!r},
-    "targets": ("docker", "compose", "https", "kubernetes", "aws", "gcp", "azure"),
+    "targets": ("docker", "compose", "https", "kubernetes", "onprem", "aws", "gcp", "azure"),
     "artifacts": {{
         "docker": ("Dockerfile",),
         "compose": ("docker-compose.yml", "deploy/Caddyfile", "automation/node-red/flows.json"),
         "https": ("deploy/Caddyfile", "deploy/appgen_https.py"),
-        "kubernetes": ("deploy/k8s.yaml",),
+        "kubernetes": ("deploy/k8s.yaml", "deploy/k8s-autoscale.yaml"),
+        "onprem": ("Dockerfile", "docker-compose.yml", "deploy/Caddyfile"),
         "aws": ("deploy/terraform-aws.tf",),
         "gcp": ("deploy/terraform-gcp.tf",),
         "azure": ("deploy/terraform-azure.tf",),
     }},
     "required_env": ("SECRET_KEY", "SQLALCHEMY_DATABASE_URI"),
     "ports": (8080, 1880),
+}}
+
+TOPOLOGIES = {{
+    "docker": {{"runtime": "container", "database": "external-or-compose", "network": "single-host"}},
+    "compose": {{"runtime": "docker-compose", "database": "compose-postgres-or-external", "network": "single-host"}},
+    "https": {{"runtime": "compose-caddy", "database": "external-or-compose", "network": "public-tls"}},
+    "kubernetes": {{"runtime": "kubernetes", "database": "managed-or-statefulset", "network": "service-ingress"}},
+    "onprem": {{"runtime": "container-or-vm", "database": "local-postgres-or-mysql", "network": "private-datacenter"}},
+    "aws": {{"runtime": "ecs-fargate-or-eks", "database": "rds", "network": "vpc-alb"}},
+    "gcp": {{"runtime": "cloud-run-or-gke", "database": "cloud-sql", "network": "vpc-load-balancer"}},
+    "azure": {{"runtime": "container-apps-or-aks", "database": "azure-database", "network": "vnet-app-gateway"}},
 }}
 
 
@@ -26723,6 +26736,94 @@ def secret_plan(target="kubernetes"):
     }}
 
 
+def deployment_topology(target):
+    """Return runtime, database, and network topology for one deployment target."""
+    if target not in TOPOLOGIES:
+        raise KeyError(f"Unknown deployment target: {{target}}")
+    return dict(TOPOLOGIES[target], target=target, artifacts=artifact_plan(target))
+
+
+def scaling_profile(target="kubernetes", metrics=None):
+    """Return generated scaling thresholds for app and infrastructure capacity."""
+    metrics = dict(metrics or {{}})
+    current_replicas = int(metrics.get("replicas", 2))
+    cpu = float(metrics.get("cpu_percent", 0))
+    p95_ms = float(metrics.get("p95_ms", 0))
+    desired = current_replicas
+    if cpu >= 75 or p95_ms >= 750:
+        desired += 1
+    if cpu >= 90 or p95_ms >= 1200:
+        desired += 1
+    desired = max(1, min(10, desired))
+    return {{
+        "format": "appgen.deployment-scaling-profile.v1",
+        "target": target,
+        "current_replicas": current_replicas,
+        "desired_replicas": desired,
+        "min_replicas": 1,
+        "max_replicas": 10,
+        "hpa_artifact": "deploy/k8s-autoscale.yaml" if target == "kubernetes" else None,
+        "triggers": ("cpu>=75", "p95_ms>=750"),
+        "review_required": desired != current_replicas,
+    }}
+
+
+def infrastructure_scaling_plan(target="kubernetes", metrics=None):
+    """Return target-specific infrastructure scaling guidance."""
+    profile = scaling_profile(target, metrics)
+    return {{
+        "format": "appgen.infrastructure-scaling-plan.v1",
+        "target": target,
+        "topology": deployment_topology(target),
+        "profile": profile,
+        "actions": (
+            "apply HorizontalPodAutoscaler" if target == "kubernetes" else "adjust managed container min/max instances",
+            "verify database connection pool limits",
+            "run load_test_runbook",
+            "watch SLO and rollback if error budget is exceeded",
+        ),
+        "review_required": profile["review_required"],
+    }}
+
+
+def onprem_readiness(environ, existing_paths):
+    """Return private datacenter/on-prem deployment readiness."""
+    existing = set(existing_paths)
+    required = set(DEPLOYMENT["artifacts"]["onprem"])
+    missing = tuple(sorted(required - existing))
+    env = environment_status(environ)
+    return {{
+        "format": "appgen.onprem-readiness.v1",
+        "ok": not missing and env["configured"],
+        "topology": deployment_topology("onprem"),
+        "missing_artifacts": missing,
+        "environment": env,
+        "runbook": deployment_runbook("onprem"),
+    }}
+
+
+def release_promotion_plan(source_target="compose", target="kubernetes", image_tag="latest"):
+    """Return review gates for promoting one generated build between targets."""
+    return {{
+        "format": "appgen.release-promotion-plan.v1",
+        "from": source_target,
+        "to": target,
+        "image_tag": image_tag,
+        "source_artifacts": artifact_plan(source_target),
+        "target_artifacts": artifact_plan(target),
+        "gates": (
+            "source smoke checks passed",
+            "secrets configured",
+            "database migrations reviewed",
+            "target scaling plan reviewed",
+            "rollback plan attached",
+        ),
+        "scaling": infrastructure_scaling_plan(target),
+        "rollback": rollback_plan(target, previous_image_tag="previous"),
+        "requires_review": True,
+    }}
+
+
 def smoke_check_plan(base_url="http://localhost:8080"):
     """Return deployment smoke checks for generated health, UI, and API routes."""
     base = str(base_url).rstrip("/")
@@ -26748,11 +26849,14 @@ def deployment_runbook(target, *, image_tag="latest", base_url="http://localhost
             "build container image",
             "apply target artifacts",
             "verify secrets and database connectivity",
+            "review infrastructure_scaling_plan",
             "run smoke_check_plan",
             "record deployment evidence",
         ),
         "smoke_checks": smoke_check_plan(base_url),
-        "review_required": target in {{"kubernetes", "aws", "gcp", "azure", "https"}},
+        "topology": deployment_topology(target),
+        "scaling": infrastructure_scaling_plan(target),
+        "review_required": target in {{"kubernetes", "aws", "gcp", "azure", "https", "onprem"}},
     }}
 
 
@@ -26782,6 +26886,8 @@ def cloud_readiness_matrix(environ):
             "artifacts": artifact_plan(target),
             "environment_configured": env["configured"],
             "secrets": secret_plan(target),
+            "topology": deployment_topology(target),
+            "scaling": infrastructure_scaling_plan(target),
             "runbook": deployment_runbook(target),
         }}
         for target in deployment_targets()
@@ -26803,6 +26909,8 @@ def deployment_check(environ, existing_paths):
         "missing_artifacts": missing_artifacts,
         "environment": env,
         "targets": cloud_readiness_matrix(environ),
+        "onprem": onprem_readiness(environ, existing),
+        "promotion": release_promotion_plan("compose", "kubernetes"),
     }}
 '''
 
@@ -26949,6 +27057,44 @@ spec:
     - name: http
       port: 80
       targetPort: 8080
+"""
+
+
+def _k8s_autoscale_text(app_name: str) -> str:
+    service_name = underscore(app_name).replace("_", "-").lower()
+    return f"""apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: {service_name}
+  labels:
+    app.kubernetes.io/name: {service_name}
+    app.kubernetes.io/managed-by: appgen
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: {service_name}
+  minReplicas: 2
+  maxReplicas: 10
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 75
+    - type: Pods
+      pods:
+        metric:
+          name: appgen_http_p95_ms
+        target:
+          type: AverageValue
+          averageValue: "750"
+  behavior:
+    scaleDown:
+      stabilizationWindowSeconds: 300
+    scaleUp:
+      stabilizationWindowSeconds: 60
 """
 
 
@@ -28813,6 +28959,7 @@ REQUIRED_PATHS = (
     "deploy/appgen_https.py",
     "deploy/Caddyfile",
     "deploy/k8s.yaml",
+    "deploy/k8s-autoscale.yaml",
     "deploy/terraform-aws.tf",
     "deploy/terraform-gcp.tf",
     "deploy/terraform-azure.tf",
@@ -29776,11 +29923,14 @@ def validate_deployment_artifacts() -> None:
     k8s = (ROOT / "deploy" / "k8s.yaml").read_text()
     if "kind: Deployment" not in k8s or "readinessProbe" not in k8s:
         fail("Kubernetes manifest must define deployment probes")
+    autoscale = (ROOT / "deploy" / "k8s-autoscale.yaml").read_text()
+    if "HorizontalPodAutoscaler" not in autoscale or "appgen_http_p95_ms" not in autoscale:
+        fail("Kubernetes autoscale manifest must define CPU and app latency scaling")
     contract = (ROOT / "deploy" / "appgen_deploy.py").read_text()
-    if '"kubernetes"' not in contract or '"aws"' not in contract or '"https"' not in contract:
-        fail("deployment contract must include Kubernetes and cloud targets")
-    if "deployment_runbook" not in contract or "rollback_plan" not in contract or "cloud_readiness_matrix" not in contract:
-        fail("deployment contract must expose runbooks, rollback, and cloud readiness matrix")
+    if '"kubernetes"' not in contract or '"onprem"' not in contract or '"aws"' not in contract or '"https"' not in contract:
+        fail("deployment contract must include Kubernetes, on-prem, and cloud targets")
+    if "deployment_runbook" not in contract or "rollback_plan" not in contract or "cloud_readiness_matrix" not in contract or "infrastructure_scaling_plan" not in contract or "release_promotion_plan" not in contract:
+        fail("deployment contract must expose runbooks, rollback, readiness, scaling, and promotion plans")
     caddyfile = (ROOT / "deploy" / "Caddyfile").read_text()
     if "reverse_proxy web:8080" not in caddyfile or "APPGEN_DOMAIN" not in caddyfile:
         fail("Caddyfile must configure automatic HTTPS reverse proxy")
