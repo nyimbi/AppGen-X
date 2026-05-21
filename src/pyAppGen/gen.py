@@ -10322,6 +10322,83 @@ def seed_fixture_export(scenario="smoke"):
     }}
 
 
+def seed_scenario_matrix():
+    """Return release evidence for every generated seed scenario."""
+    rows = []
+    for scenario in seed_scenarios():
+        data = scenario_seed_data(scenario["name"])
+        validation = validate_seed_data(data)
+        rows.append(
+            {{
+                "scenario": scenario["name"],
+                "use": tuple(scenario["use"]),
+                "row_counts": scenario["row_counts"],
+                "insert_order": tuple(data),
+                "validation_ok": validation["ok"],
+                "fixture_export_ready": seed_fixture_export(scenario["name"])["validation"]["ok"],
+                "sql_preview_ready": bool(seed_sql(data)) or not SEED_DATA,
+            }}
+        )
+    return tuple(rows)
+
+
+def seed_release_gate(existing_paths=()):
+    """Return an auditable release gate for generated seed and fixture assets."""
+    artifacts = set(existing_paths or ())
+    required_artifacts = ("seed.py", "tests/test_generated_coverage.py", "scripts/appgen_quality.py")
+    order = seed_insert_order()
+    order_index = {{table_name: index for index, table_name in enumerate(order)}}
+    dependency_order_ok = all(
+        dependency not in order_index or order_index[dependency] < order_index[table_name]
+        for table_name, dependencies in SEED_DEPENDENCIES.items()
+        if table_name in order_index
+        for dependency in dependencies
+    )
+    matrix = seed_scenario_matrix()
+    anonymized_json = seed_json(anonymize=True)
+    gates = (
+        {{
+            "gate": "plan_contract",
+            "ok": seed_plan()["format"] == "appgen.seed-plan.v1" and {{"demo", "smoke", "load"}} <= {{item["name"] for item in seed_scenarios()}},
+            "evidence": seed_plan()["format"],
+        }},
+        {{
+            "gate": "dependency_order",
+            "ok": dependency_order_ok,
+            "evidence": order,
+        }},
+        {{
+            "gate": "scenario_validation",
+            "ok": all(item["validation_ok"] and item["fixture_export_ready"] for item in matrix),
+            "evidence": matrix,
+        }},
+        {{
+            "gate": "anonymized_fixture_export",
+            "ok": '"format": "appgen.seed.v1"' in anonymized_json and seed_fixture_export("smoke")["requires_review"],
+            "evidence": "seed_json(anonymize=True)",
+        }},
+        {{
+            "gate": "sql_preview",
+            "ok": bool(seed_sql()) or not SEED_DATA,
+            "evidence": "seed_sql",
+        }},
+        {{
+            "gate": "artifact_coverage",
+            "ok": set(required_artifacts) <= artifacts,
+            "missing": tuple(item for item in required_artifacts if item not in artifacts),
+        }},
+    )
+    ok = all(gate["ok"] for gate in gates)
+    return {{
+        "format": "appgen.seed-release-gate.v1",
+        "ok": ok,
+        "decision": "approved" if ok else "blocked",
+        "gates": gates,
+        "required_artifacts": required_artifacts,
+        "scenario_matrix": matrix,
+    }}
+
+
 def seed_plan():
     """Return a reviewable deterministic seed plan."""
     return {{
@@ -32494,6 +32571,24 @@ def validate_api_testing_artifacts() -> None:
         fail("API testing template must expose generated test, UI smoke, monitor catalogs, and release gate")
 
 
+def validate_seed_artifacts() -> None:
+    contract = (ROOT / "seed.py").read_text()
+    required_terms = (
+        "seed_plan",
+        "seed_scenario_matrix",
+        "seed_release_gate",
+        "seed_fixture_export",
+        "validate_seed_data",
+        "anonymized_seed_data",
+        "seed_sql",
+        "demo",
+        "smoke",
+        "load",
+    )
+    if not all(term in contract for term in required_terms):
+        fail("seed contract must expose scenario matrices, fixture exports, validation, anonymization, SQL previews, and release gates")
+
+
 def validate_diagnostics_artifacts() -> None:
     contract = (ROOT / "app" / "diagnostics.py").read_text()
     required_terms = (
@@ -33027,6 +33122,7 @@ def main() -> int:
     validate_rpa_artifacts()
     validate_diagnostics_artifacts()
     validate_api_testing_artifacts()
+    validate_seed_artifacts()
     validate_test_coverage_artifacts()
     validate_native_artifacts()
     validate_jhipster_artifacts()
@@ -34486,6 +34582,8 @@ def test_generated_runtime_helpers():
     assert seed.validate_seed_data()["ok"] is True
     assert seed.seed_json().startswith("{")
     assert "INSERT INTO" in seed.seed_sql()
+    assert seed.seed_release_gate({"seed.py", "tests/test_generated_coverage.py", "scripts/appgen_quality.py"})["ok"] is True
+    assert seed.seed_release_gate({"seed.py"})["ok"] is False
 '''
 
 

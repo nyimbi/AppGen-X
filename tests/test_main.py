@@ -3350,6 +3350,20 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert fixture_export["validation"]["ok"] is True
     assert "def appgen_seed_data" in fixture_export["pytest"]
     assert 'INSERT INTO "Author"' in fixture_export["sql"]
+    scenario_matrix = seed.seed_scenario_matrix()
+    assert {item["scenario"] for item in scenario_matrix} == {"demo", "smoke", "load"}
+    assert all(item["validation_ok"] and item["fixture_export_ready"] for item in scenario_matrix)
+    seed_gate = seed.seed_release_gate({"seed.py", "tests/test_generated_coverage.py", "scripts/appgen_quality.py"})
+    assert seed_gate["format"] == "appgen.seed-release-gate.v1"
+    assert seed_gate["ok"] is True
+    assert {gate["gate"] for gate in seed_gate["gates"]} >= {
+        "dependency_order",
+        "scenario_validation",
+        "anonymized_fixture_export",
+        "sql_preview",
+        "artifact_coverage",
+    }
+    assert seed.seed_release_gate({"seed.py"})["ok"] is False
     assert seed.validate_seed_data()["ok"] is True
     assert seed.validate_seed_data({"Book": [{"status": "draft"}]})["errors"][0]["missing"] == ("title",)
     assert seed.anonymized_seed_data({"User": [{"email": "ada@example.test", "name": "Ada"}]})["User"][0]["email"] == "[redacted]"

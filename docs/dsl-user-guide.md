@@ -403,6 +403,9 @@ python -m py_compile build/generated-app/app/models.py
 
 For larger projects, add generated quality checks after compilation so schema,
 API, PWA, documentation, and generated test surfaces stay aligned.
+Use the generated `seed_release_gate()` before release to prove seed scenarios
+are dependency ordered, validation-clean, anonymized for fixture export, backed
+by SQL previews, and connected to generated coverage plus quality artifacts.
 Use `/api-testing/release-gate.json` before release to verify API request
 matrices, response validation, smoke fixtures, UI smoke plans, synthetic
 monitors, OpenAPI coverage, and rendered pytest/Playwright modules.

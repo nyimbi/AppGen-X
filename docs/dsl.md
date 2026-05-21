@@ -570,7 +570,10 @@ apps include:
   artifacts.
 - `seed.py` with relationship-aware deterministic demo data, dependency-ordered
   seed plans, demo/smoke/load fixture scenarios, table factories, pytest fixture
-  modules, validation, anonymized fixture exports, and SQL previews;
+  modules, validation, anonymized fixture exports, SQL previews, scenario
+  matrices, and a seed release gate that proves dependency order, fixture
+  validation, anonymized export readiness, SQL preview coverage, and required
+  seed/test/quality artifacts;
   `docs/schema.md` with table,
   field, relationship, and Mermaid ERD documentation, and
   `docs/data-dictionary.json` / `docs/data-dictionary.md` with
