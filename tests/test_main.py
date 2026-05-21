@@ -1766,6 +1766,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert "Feature Matrix JSON" in (output_dir / "templates" / "appgen_low_code_features.html").read_text()
     assert "Roadmap Sources JSON" in (output_dir / "templates" / "appgen_low_code_features.html").read_text()
     assert "JHipster Comparison JSON" in (output_dir / "templates" / "appgen_low_code_features.html").read_text()
+    assert "Superset Certification JSON" in (output_dir / "templates" / "appgen_low_code_features.html").read_text()
     assert "Superset Scorecard JSON" in (output_dir / "templates" / "appgen_low_code_features.html").read_text()
     assert "Superset Evidence JSON" in (output_dir / "templates" / "appgen_low_code_features.html").read_text()
     assert "Prototype JSON" in (output_dir / "templates" / "appgen_prototyping.html").read_text()
@@ -2085,6 +2086,15 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert low_code_features.jhipster_superset_scorecard()["blocking_gaps"] == ()
     assert low_code_features.jhipster_superset_evidence()["ok"] is True
     assert low_code_features.jhipster_superset_evidence({"app/designer.py"})["ok"] is False
+    certification = low_code_features.jhipster_superset_certification()
+    assert certification["format"] == "appgen.jhipster-superset-certification.v1"
+    assert certification["certification"] == "appgen-more-capable-than-jhipster"
+    assert certification["ok"] is True
+    assert certification["blocking_gaps"] == ()
+    assert certification["advantage_ratio"] >= 2.0
+    assert "jhipster/app.jdl" in certification["generated_contracts"]
+    assert "app/form_designer.py" in certification["generated_contracts"]
+    assert low_code_features.jhipster_superset_certification({"app/designer.py"})["ok"] is False
     assert {
         gate["area"] for gate in low_code_features.jhipster_superset_scorecard()["required_gates"]
     } >= {"visual_builders", "schema_import", "native_targets", "agentic_systems", "erp_templates", "runtime_assurance"}
@@ -2117,6 +2127,9 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert low_code_features.low_code_features_check(
         {"app/low_code_features.py", "app/templates/appgen_low_code_features.html", "app/appgen.json"}
     )["jhipster_superset_ok"] is True
+    assert low_code_features.low_code_features_check(
+        {"app/low_code_features.py", "app/templates/appgen_low_code_features.html", "app/appgen.json"}
+    )["jhipster_certification_ok"] is True
     assert low_code_features.low_code_features_check(
         {"app/low_code_features.py", "app/templates/appgen_low_code_features.html", "app/appgen.json"}
     )["roadmap_sources_ok"] is True

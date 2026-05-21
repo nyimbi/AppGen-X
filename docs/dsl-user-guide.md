@@ -287,6 +287,9 @@ AppGen-only gates for visual builders, schema import, native targets, agentic
 systems, natural-language evolution, ERP templates, runtime Studio tooling, and
 application composition. Use `/low-code-features/jhipster-superset.json` to
 check whether a generated app is still more capable than the JHipster baseline.
+Use `/low-code-features/jhipster-superset-certification.json` for the release
+gate that combines preserved JHipster overlap, AppGen-only advantage thresholds,
+roadmap traceability, composition readiness, and generated artifact evidence.
 
 The same module also exposes `/low-code-features/roadmap-sources.json`, which
 maps `docs/ideas.md`, `docs/base_features.md`, and `docs/Lo-code features.md`

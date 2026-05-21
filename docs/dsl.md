@@ -421,7 +421,10 @@ apps include:
   adoption plan so JHipster remains an interoperability target while AppGen
   provides the broader platform: Python-native web/mobile/desktop starters,
   visual builders, agentic systems, ERP templates, schema round trips,
-  operational workbenches, and runtime assurance evidence.
+  operational workbenches, and runtime assurance evidence. Generated low-code
+  feature contracts also expose a JHipster-superset certification gate combining
+  overlap preservation, AppGen-only advantage thresholds, roadmap traceability,
+  composition readiness, and artifact evidence.
 - `chatbots/dialogflow/intents.json`,
   `chatbots/botframework/manifest.json`, and `chatbots/appgen_chatbots.py`
   with generated provider intents, field prompts, and conversation checks.

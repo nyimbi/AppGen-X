@@ -28,6 +28,9 @@ application scaffolding is one export lane, while the AppGen baseline also
 includes low-code studio tooling, Delphi-style form design, ERP templates,
 agentic-system design, natural-language evolution, multi-platform generation,
 DSL linting/reference docs, and runtime assurance contracts for generated apps.
+Generated apps must expose a release gate that proves this position with
+preserved JHipster overlap, AppGen-only advantage thresholds, roadmap-source
+traceability, reusable composition readiness, and artifact evidence.
 
 The DSL should support web, desktop, and mobile applications using Python,
 including:

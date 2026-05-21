@@ -5757,6 +5757,7 @@ def write_low_code_features_template(output_dir):
       <a class="btn btn-default" href="{{ url_for('LowCodeFeaturesView.jhipster_benchmark_json') }}">Benchmark JSON</a>
       <a class="btn btn-default" href="{{ url_for('LowCodeFeaturesView.jhipster_superset_json') }}">Superset Scorecard JSON</a>
       <a class="btn btn-default" href="{{ url_for('LowCodeFeaturesView.jhipster_superset_evidence_json') }}">Superset Evidence JSON</a>
+      <a class="btn btn-default" href="{{ url_for('LowCodeFeaturesView.jhipster_superset_certification_json') }}">Superset Certification JSON</a>
       <a class="btn btn-default" href="{{ url_for('LowCodeFeaturesView.composition_json') }}">Composition JSON</a>
       <a class="btn btn-default" href="{{ url_for('LowCodeFeaturesView.composition_readiness_json') }}">Composition Readiness JSON</a>
     </div>
@@ -5765,6 +5766,7 @@ def write_low_code_features_template(output_dir):
     Competitive position: {{ readiness.competitive_position }} with
     {{ readiness.competitive_advantage_count }} AppGen-only benchmark advantages.
     Superset gate: {{ readiness.jhipster_superset_ok }}.
+    Certification gate: {{ readiness.jhipster_certification_ok }}.
     Roadmap source gate: {{ readiness.roadmap_sources_ok }}.
     AppGen keeps
     JHipster JDL interoperability while adding visual builders, Python-native
@@ -20273,12 +20275,63 @@ def jhipster_superset_evidence(existing_paths=None):
     }}
 
 
+def jhipster_superset_certification(existing_paths=None):
+    """Return a single release gate proving AppGen remains more capable than JHipster."""
+    benchmark = jhipster_capability_benchmark()
+    scorecard = jhipster_superset_scorecard()
+    evidence = jhipster_superset_evidence(existing_paths)
+    roadmap = roadmap_source_report()
+    composition_paths = set(evidence["expected_artifacts"] if existing_paths is None else existing_paths)
+    composition_paths.update({{"app/low_code_features.py", "app/templates/appgen_low_code_features.html", "app/appgen.json"}})
+    composition = composition_marketplace_readiness(composition_paths)
+    overlap_required = ("entity_modeling", "full_stack_web", "frontends", "devops")
+    overlap_areas = {{item["area"] for item in benchmark["overlap"]}}
+    missing_overlap = tuple(area for area in overlap_required if area not in overlap_areas)
+    advantage_ratio = round(benchmark["appgen_only_count"] / max(1, benchmark["overlap_count"]), 2)
+    generated_contracts = (
+        "jhipster/app.jdl",
+        "jhipster/appgen_jhipster.py",
+        "app/low_code_features.py",
+        "app/dsl_reference.py",
+        "app/studio.py",
+        "app/form_designer.py",
+        "app/agents.py",
+        "app/runtime_assurance.py",
+        "app/erp_templates.py",
+    )
+    gates = (
+        {{"gate": "jhipster_overlap_preserved", "ok": not missing_overlap, "missing": missing_overlap}},
+        {{"gate": "appgen_only_advantage_threshold", "ok": benchmark["appgen_only_count"] >= 9, "value": benchmark["appgen_only_count"]}},
+        {{"gate": "advantage_ratio", "ok": advantage_ratio >= 2.0, "value": advantage_ratio}},
+        {{"gate": "scorecard", "ok": scorecard["ok"], "blocking_gaps": scorecard["blocking_gaps"]}},
+        {{"gate": "artifact_evidence", "ok": evidence["ok"], "missing_rows": tuple(row for row in evidence["rows"] if not row["ok"])}},
+        {{"gate": "roadmap_traceability", "ok": roadmap["ok"], "documents": roadmap["documents"]}},
+        {{"gate": "composition_readiness", "ok": composition["ok"], "missing": composition["missing"]}},
+    )
+    return {{
+        "format": "appgen.jhipster-superset-certification.v1",
+        "certification": "appgen-more-capable-than-jhipster",
+        "baseline": dict(JHIPSTER_BASELINE),
+        "position": scorecard["position"],
+        "minimum_overlap_count": len(overlap_required),
+        "actual_overlap_count": benchmark["overlap_count"],
+        "minimum_appgen_only_advantages": 9,
+        "actual_appgen_only_advantages": benchmark["appgen_only_count"],
+        "advantage_ratio": advantage_ratio,
+        "generated_contracts": generated_contracts,
+        "gates": gates,
+        "blocking_gaps": tuple(gate for gate in gates if not gate["ok"]),
+        "ok": all(gate["ok"] for gate in gates),
+    }}
+
+
 def readiness_report():
     """Summarize low-code platform coverage and remaining partial areas."""
     counts = Counter(item["status"] for item in CAPABILITIES)
     partial = tuple(item["key"] for item in CAPABILITIES if item["status"] != "implemented")
     competitive = jhipster_competitive_report()
     superset = jhipster_superset_scorecard()
+    certification = jhipster_superset_certification()
     roadmap_sources = roadmap_source_report()
     return {{
         "source": dict(FEATURE_SOURCE),
@@ -20297,6 +20350,8 @@ def readiness_report():
         "jhipster_differentiators": competitive["appgen_differentiators"],
         "jhipster_superset": superset,
         "jhipster_superset_ok": superset["ok"],
+        "jhipster_certification": certification,
+        "jhipster_certification_ok": certification["ok"],
     }}
 
 
@@ -20332,7 +20387,7 @@ def low_code_features_check(existing_paths):
     missing = tuple(path for path in required if path not in existing)
     report = readiness_report()
     return {{
-        "ok": not missing and report["alignment_complete"] and report["roadmap_sources_ok"] and report["total"] >= 80 and jhipster_competitive_report()["ok"] and report["jhipster_superset_ok"],
+        "ok": not missing and report["alignment_complete"] and report["roadmap_sources_ok"] and report["total"] >= 80 and jhipster_competitive_report()["ok"] and report["jhipster_superset_ok"] and report["jhipster_certification_ok"],
         "missing": missing,
         "source": dict(FEATURE_SOURCE),
         "sources": report["sources"],
@@ -20342,6 +20397,7 @@ def low_code_features_check(existing_paths):
         "competitive_position": report["competitive_position"],
         "competitive_advantage_count": report["competitive_advantage_count"],
         "jhipster_superset_ok": report["jhipster_superset_ok"],
+        "jhipster_certification_ok": report["jhipster_certification_ok"],
     }}
 
 
@@ -20389,6 +20445,10 @@ class LowCodeFeaturesView(BaseView):
     @expose("/jhipster-superset-evidence.json")
     def jhipster_superset_evidence_json(self):
         return jsonify(jhipster_superset_evidence())
+
+    @expose("/jhipster-superset-certification.json")
+    def jhipster_superset_certification_json(self):
+        return jsonify(jhipster_superset_certification())
 
     @expose("/composition.json")
     def composition_json(self):
@@ -29666,6 +29726,7 @@ def validate_low_code_features_artifacts() -> None:
         "jhipster_capability_benchmark",
         "jhipster_superset_scorecard",
         "jhipster_superset_evidence",
+        "jhipster_superset_certification",
         "application_composition_catalog",
         "composition_install_plan",
         "composition_package",
@@ -29677,10 +29738,10 @@ def validate_low_code_features_artifacts() -> None:
     )
     if not all(item in contract for item in required):
         fail("low-code feature matrix must expose capability, roadmap, readiness, and source-document contracts")
-    if "jhipster_competitive_report" not in contract or "broader-than-jhipster" not in contract or "more-capable-than-jhipster" not in contract or "appgen_only_capabilities" not in contract or "application_composition" not in contract:
+    if "jhipster_competitive_report" not in contract or "broader-than-jhipster" not in contract or "appgen-more-capable-than-jhipster" not in contract or "appgen_only_capabilities" not in contract or "application_composition" not in contract:
         fail("low-code feature matrix must make AppGen's broader-than-JHipster position explicit")
     template = (ROOT / "app" / "templates" / "appgen_low_code_features.html").read_text()
-    if "Low-Code Feature Matrix" not in template or "Feature Matrix JSON" not in template or "Readiness JSON" not in template or "Roadmap Sources JSON" not in template or "JHipster Comparison JSON" not in template or "Benchmark JSON" not in template or "Superset Scorecard JSON" not in template or "Superset Evidence JSON" not in template or "Composition JSON" not in template:
+    if "Low-Code Feature Matrix" not in template or "Feature Matrix JSON" not in template or "Readiness JSON" not in template or "Roadmap Sources JSON" not in template or "JHipster Comparison JSON" not in template or "Benchmark JSON" not in template or "Superset Scorecard JSON" not in template or "Superset Evidence JSON" not in template or "Superset Certification JSON" not in template or "Composition JSON" not in template:
         fail("low-code feature cockpit must expose matrix and readiness links")
 
 
@@ -31539,6 +31600,8 @@ def test_generated_runtime_helpers():
     assert low_code_features.jhipster_superset_scorecard()["ok"] is True
     assert low_code_features.jhipster_superset_scorecard()["minimum_appgen_only_advantages"] == 9
     assert low_code_features.jhipster_superset_evidence()["ok"] is True
+    assert low_code_features.jhipster_superset_certification()["ok"] is True
+    assert low_code_features.jhipster_superset_certification()["certification"] == "appgen-more-capable-than-jhipster"
     assert low_code_features.jhipster_superset_scorecard()["blocking_gaps"] == ()
     assert "agentic_systems" in {item["area"] for item in low_code_features.jhipster_competitive_report()["appgen_only_capabilities"]}
     assert "runtime_assurance" in {item["area"] for item in low_code_features.jhipster_competitive_report()["appgen_only_capabilities"]}
