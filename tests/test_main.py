@@ -555,7 +555,18 @@ def test_generate_app_from_sqlite_schema_compiles(tmp_path) -> None:
     assert mobile.camera_capture_plan("book", "cover_image")["permission"] == "android.permission.CAMERA"
     assert mobile.location_capture_plan("book")["status"] == "planned"
     assert mobile.push_notification_payload("Ready", "Book synced")["permission"] == "android.permission.POST_NOTIFICATIONS"
-    assert mobile.offline_record("Book", {"title": "Dune"})["status"] == "queued"
+    offline_book = mobile.offline_record("Book", {"id": 1, "title": "Dune"})
+    assert offline_book["status"] == "queued"
+    assert offline_book["sync_key"] == "book:1"
+    sync_batch = mobile.offline_sync_batch((offline_book,))
+    assert sync_batch["format"] == "appgen.mobile-offline-sync-batch.v1"
+    assert sync_batch["tables"][0]["endpoint"] == "/api/v1/book/"
+    conflict = mobile.sync_conflict(offline_book, {"values": {"id": 1, "title": "Dune Messiah"}})
+    assert conflict["format"] == "appgen.mobile-sync-conflict.v1"
+    assert conflict["requires_review"] is True
+    replay = mobile.offline_replay_plan("https://api.example.test", (offline_book,))
+    assert replay["format"] == "appgen.mobile-offline-replay.v1"
+    assert replay["steps"][0]["conflict_policy"] == "manual_review"
     assert desktop.desktop_contract()["framework"] == "beeware"
     assert desktop.desktop_file_action("/tmp/book.json", table_name="Book")["review_required"] is True
     assert desktop.desktop_notification_payload("Ready", "Book synced")["title"] == "Ready"

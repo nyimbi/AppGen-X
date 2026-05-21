@@ -375,7 +375,8 @@ apps include:
   scaffolds derived from the same REST table contracts.
 - `native/` with generated Kivy mobile and BeeWare desktop Python starter
   apps, mobile permission manifests, camera/location capture plans, push
-  notification payloads, desktop local-file actions, offline queue/cache plans,
+  notification payloads, offline sync batches, conflict-resolution plans,
+  offline replay plans, desktop local-file actions, offline queue/cache plans,
   and API route contracts.
 - `jhipster/app.jdl` and `jhipster/appgen_jhipster.py` with generated
   JHipster JDL exports for Java/TypeScript application generation, preserving

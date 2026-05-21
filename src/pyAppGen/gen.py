@@ -26061,6 +26061,9 @@ def native_capability_plan(target):
     plan["permissions"] = native_permission_manifest(target)
     plan["offline_storage"] = "json-cache" if target == "desktop" else "queued-mutations"
     plan["sync"] = native_api_routes()
+    if target == "mobile":
+        plan["conflict_resolution"] = ("server_wins", "client_wins", "merge_fields", "manual_review")
+        plan["sync_batches"] = "queued mutations grouped by table and operation"
     return plan
 
 
@@ -26120,9 +26123,26 @@ def mobile_contract():
     return {{"app_name": APP_NAME, "framework": "kivy", "tables": TABLES, "permissions": MOBILE_PERMISSIONS}}
 
 
+def _mobile_table(table_name):
+    """Return a generated mobile table descriptor by exact or case-insensitive name."""
+    normalized = str(table_name).lower()
+    table = next((item for item in TABLES if item["name"] == table_name or item["name"].lower() == normalized), None)
+    if table is None:
+        raise KeyError(f"Unknown mobile table: {{table_name}}")
+    return table
+
+
 def offline_record(table_name, values):
     """Return a queued offline mutation payload for later sync."""
-    return {{"table": table_name, "values": dict(values), "status": "queued"}}
+    table = _mobile_table(table_name)
+    return {{
+        "table": table["name"],
+        "values": dict(values),
+        "operation": "upsert",
+        "status": "queued",
+        "client_version": dict(values).get("_version"),
+        "sync_key": f"{{table['name'].lower()}}:{{dict(values).get('id', 'new')}}",
+    }}
 
 
 def sync_plan(api_base):
@@ -26133,6 +26153,77 @@ def sync_plan(api_base):
     )
 
 
+def offline_sync_batch(records=()):
+    """Return a deterministic offline sync batch grouped by generated table."""
+    grouped = {{}}
+    for record in records:
+        payload = record if isinstance(record, dict) and "status" in record else offline_record(record.get("table"), record.get("values", {{}}))
+        grouped.setdefault(payload["table"], []).append(payload)
+    return {{
+        "format": "appgen.mobile-offline-sync-batch.v1",
+        "record_count": sum(len(items) for items in grouped.values()),
+        "tables": tuple(
+            {{
+                "table": table,
+                "records": tuple(items),
+                "endpoint": next((item["endpoint"] for item in TABLES if item["name"] == table), None),
+            }}
+            for table, items in sorted(grouped.items())
+        ),
+        "requires_network": True,
+        "requires_review": False,
+    }}
+
+
+def sync_conflict(local_record, remote_record, strategy="manual_review"):
+    """Return a conflict-resolution plan for offline mobile records."""
+    local = dict(local_record or {{}})
+    remote = dict(remote_record or {{}})
+    local_values = dict(local.get("values", local))
+    remote_values = dict(remote.get("values", remote))
+    fields = tuple(sorted(set(local_values) | set(remote_values)))
+    conflicts = tuple(
+        field
+        for field in fields
+        if local_values.get(field) != remote_values.get(field)
+    )
+    merged = dict(remote_values)
+    if strategy == "client_wins":
+        merged.update(local_values)
+    elif strategy == "merge_fields":
+        merged.update({{field: local_values[field] for field in conflicts if local_values.get(field) not in (None, "")}})
+    return {{
+        "format": "appgen.mobile-sync-conflict.v1",
+        "strategy": strategy,
+        "conflicts": conflicts,
+        "local": local_values,
+        "remote": remote_values,
+        "merged": merged,
+        "requires_review": strategy == "manual_review" or bool(conflicts),
+    }}
+
+
+def offline_replay_plan(api_base, records=()):
+    """Return reviewed replay steps for queued offline mutations."""
+    batch = offline_sync_batch(records)
+    return {{
+        "format": "appgen.mobile-offline-replay.v1",
+        "api_base": api_base.rstrip("/"),
+        "batch": batch,
+        "steps": tuple(
+            {{
+                "table": table["table"],
+                "url": api_base.rstrip("/") + (table["endpoint"] or ""),
+                "method": "POST",
+                "records": table["records"],
+                "conflict_policy": "manual_review",
+            }}
+            for table in batch["tables"]
+        ),
+        "checks": ("network_available", "auth_token_present", "conflict_scan", "retry_backoff", "audit_sync_result"),
+    }}
+
+
 def permission_manifest():
     """Return generated mobile permission declarations for Android and iOS."""
     return MOBILE_PERMISSIONS
@@ -26140,9 +26231,7 @@ def permission_manifest():
 
 def camera_capture_plan(table_name, field=None, *, quality="balanced"):
     """Return a camera capture plan without opening device hardware."""
-    table = next((item for item in TABLES if item["name"] == table_name), None)
-    if table is None:
-        raise KeyError(f"Unknown mobile table: {{table_name}}")
+    _mobile_table(table_name)
     return {{
         "table": table_name,
         "field": field,
@@ -26154,9 +26243,7 @@ def camera_capture_plan(table_name, field=None, *, quality="balanced"):
 
 def location_capture_plan(table_name, *, accuracy="balanced"):
     """Return a location capture plan without reading device sensors."""
-    table = next((item for item in TABLES if item["name"] == table_name), None)
-    if table is None:
-        raise KeyError(f"Unknown mobile table: {{table_name}}")
+    _mobile_table(table_name)
     return {{
         "table": table_name,
         "accuracy": accuracy,
@@ -28203,8 +28290,8 @@ def validate_native_artifacts() -> None:
     if "native_targets" not in contract or "scaffold_check" not in contract or "native_permission_manifest" not in contract or "native_capability_plan" not in contract:
         fail("native contract must expose target, permissions, capability, and scaffold checks")
     mobile = (ROOT / "native" / "mobile" / "app.py").read_text()
-    if "AppGenMobileApp" not in mobile or "offline_record" not in mobile or "camera_capture_plan" not in mobile or "push_notification_payload" not in mobile:
-        fail("mobile starter must expose Kivy app, device capability, push, and offline queue helpers")
+    if "AppGenMobileApp" not in mobile or "offline_record" not in mobile or "offline_sync_batch" not in mobile or "sync_conflict" not in mobile or "offline_replay_plan" not in mobile or "camera_capture_plan" not in mobile or "push_notification_payload" not in mobile:
+        fail("mobile starter must expose Kivy app, device capability, push, offline queue, conflict, and replay helpers")
     desktop = (ROOT / "native" / "desktop" / "app.py").read_text()
     if "AppGenDesktopApp" not in desktop or "local_cache_plan" not in desktop or "desktop_file_action" not in desktop:
         fail("desktop starter must expose BeeWare app, local file, notification, and cache helpers")
@@ -29537,6 +29624,11 @@ def test_generated_runtime_helpers():
         assert mobile.camera_capture_plan(mobile.mobile_contract()["tables"][0]["name"])["status"] == "planned"
         assert mobile.location_capture_plan(mobile.mobile_contract()["tables"][0]["name"])["permission"] == "android.permission.ACCESS_FINE_LOCATION"
         assert mobile.push_notification_payload("Ready", "Sync complete")["permission"] == "android.permission.POST_NOTIFICATIONS"
+        queued_record = mobile.offline_record(mobile.mobile_contract()["tables"][0]["name"], {"id": 1})
+        assert queued_record["status"] == "queued"
+        assert mobile.offline_sync_batch((queued_record,))["format"] == "appgen.mobile-offline-sync-batch.v1"
+        assert mobile.sync_conflict(queued_record, {"values": {"id": 1, "updated": True}})["requires_review"] is True
+        assert mobile.offline_replay_plan("https://api.example.test", (queued_record,))["format"] == "appgen.mobile-offline-replay.v1"
     if "desktop" in native_targets:
         assert desktop.desktop_contract()["framework"] == "beeware"
         assert native.native_capability_plan("desktop")["offline_storage"] == "json-cache"
