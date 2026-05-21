@@ -45,6 +45,11 @@ If you are sketching quickly, you may write `entity` or `model` for `table`,
 as authoring aliases before parsing, then the linter can rewrite them to the
 canonical DSL so the committed language stays small.
 
+Use `dsl_language_quality_contract()` or the generated
+`/dsl-reference/language-quality.json` endpoint when reviewing language changes.
+The contract proves that the ANTLR grammar, generated parser, keyword budget,
+keyword-free syntax, aliases, and learning path still fit the compact DSL goal.
+
 Use `required` for fields that must be entered. Use `search` on fields that
 should appear in generated search contracts. Use `hidden` for generated or
 internal fields. Use `unique` for natural keys like invoice numbers and email

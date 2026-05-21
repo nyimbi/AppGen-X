@@ -128,6 +128,8 @@ It also adds style feedback:
 - Add `llm` and `agent` blocks when agentic behavior is needed.
 - Normalize authoring aliases to canonical DSL words without expanding the
   keyword budget.
+- Include `language_quality` with the ANTLR grammar path, generated parser path,
+  keyword budget, keyword-free syntax, aliases, and learning path.
 
 It also returns structured quick fixes for common authoring feedback:
 

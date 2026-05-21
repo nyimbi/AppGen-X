@@ -90,6 +90,12 @@ The linter reports aliases and can rewrite them with
 `FORM`, or `WORKFLOW` tokens, so these helpers improve learnability without
 expanding the keyword budget.
 
+`pyAppGen.dsl.dsl_language_quality_contract()` exposes this as a machine-readable
+contract with the grammar path, generated parser path, keyword budget, keyword-free
+syntax list, authoring aliases, and four-step learning path. Generated apps expose
+the same evidence through `app/dsl_reference.py` and
+`/dsl-reference/language-quality.json`.
+
 The canonical grammar source lives at `lang/appgen.g4`; generated parser files
 live under `src/pyAppGen/dsl_generated/lang/`.
 

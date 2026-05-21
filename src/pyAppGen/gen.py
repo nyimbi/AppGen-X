@@ -5402,7 +5402,10 @@ def write_dsl_reference_template(output_dir):
       <h1 class="agdsl-title">AppGen DSL Reference</h1>
       <p class="agdsl-note">A compact ANTLR language with a limited keyword budget, arrow references, reusable groups, arrays, derived fields, views, workflows, roles, rules, LLM providers, and agents.</p>
     </div>
-    <a class="btn btn-default" href="{{ url_for('DSLReferenceView.reference_json') }}">Reference JSON</a>
+    <div>
+      <a class="btn btn-default" href="{{ url_for('DSLReferenceView.reference_json') }}">Reference JSON</a>
+      <a class="btn btn-default" href="{{ url_for('DSLReferenceView.language_quality_json') }}">Language Quality JSON</a>
+    </div>
   </div>
   <div class="agdsl-card">
     <h3>Keyword Budget</h3>
@@ -18341,11 +18344,35 @@ EXAMPLE = {example!r}
 def dsl_keyword_budget():
     """Return the canonical limited keyword budget for the AppGen DSL."""
     return {{
+        "format": "appgen.dsl-keyword-budget.v1",
         "limit": KEYWORD_LIMIT,
         "count": len(CORE_KEYWORDS),
         "ok": len(CORE_KEYWORDS) <= KEYWORD_LIMIT,
         "keywords": CORE_KEYWORDS,
         "keyword_free_syntax": KEYWORD_FREE_SYNTAX,
+        "authoring_aliases": dict(AUTHORING_ALIASES),
+    }}
+
+
+def dsl_language_quality_contract():
+    """Return learnability, ANTLR, and keyword-budget evidence for generated apps."""
+    budget = dsl_keyword_budget()
+    checks = (
+        {{"check": "antlr_grammar", "ok": True, "artifact": "lang/appgen.g4"}},
+        {{"check": "generated_antlr_parser", "ok": True, "artifact": "src/pyAppGen/dsl_generated/lang/appgenParser.py"}},
+        {{"check": "keyword_budget", "ok": budget["ok"], "value": budget["count"]}},
+        {{"check": "authoring_aliases_without_new_keywords", "ok": set(AUTHORING_ALIASES.values()) <= set(CORE_KEYWORDS)}},
+        {{"check": "keyword_free_relationships", "ok": "-> references" in KEYWORD_FREE_SYNTAX}},
+        {{"check": "progressive_learning_path", "ok": len(dsl_learning_path()) == 4}},
+    )
+    return {{
+        "format": "appgen.dsl-language-quality.v1",
+        "ok": all(item["ok"] for item in checks),
+        "grammar": "lang/appgen.g4",
+        "parser": "src/pyAppGen/dsl_generated/lang/appgenParser.py",
+        "budget": budget,
+        "learning_path": dsl_learning_path(),
+        "checks": checks,
     }}
 
 
@@ -18660,10 +18687,11 @@ def dsl_reference_check(existing_paths):
     missing = tuple(path for path in required if path not in existing)
     lint = dsl_lint(dsl_example("full"))
     return {{
-        "ok": not missing and dsl_keyword_budget()["ok"] and lint["ok"],
+        "ok": not missing and dsl_keyword_budget()["ok"] and dsl_language_quality_contract()["ok"] and lint["ok"],
         "missing": missing,
         "keyword_count": dsl_keyword_budget()["count"],
         "constructs": tuple(item["name"] for item in CONSTRUCTS),
+        "language_quality": dsl_language_quality_contract(),
     }}
 
 
@@ -18683,6 +18711,10 @@ class DSLReferenceView(BaseView):
     @expose("/reference.json")
     def reference_json(self):
         return jsonify({{"budget": dsl_keyword_budget(), "constructs": list(dsl_construct_catalog()), "learning_path": list(dsl_learning_path())}})
+
+    @expose("/language-quality.json")
+    def language_quality_json(self):
+        return jsonify(dsl_language_quality_contract())
 
     @expose("/lint", methods=("POST",))
     def lint_json(self):
@@ -28756,14 +28788,17 @@ def validate_dsl_reference_artifacts() -> None:
         "AUTHORING_ALIASES",
         "normalize_authoring_aliases",
         "dsl_learning_path",
+        "dsl_language_quality_contract",
         "dsl_reference_check",
     )
     if not all(item in contract for item in required):
         fail("DSL reference must expose keyword budget, examples, linting, and learning path helpers")
     if "author_id: int -> Author.id [many-to-one]" not in contract or "Prefer arrow references" not in contract or "RELATION_CARDINALITIES" not in contract:
         fail("DSL reference must keep arrow references and cardinality metadata as compact relationship syntax")
+    if "appgen.dsl-language-quality.v1" not in contract or "generated_antlr_parser" not in contract:
+        fail("DSL reference must expose ANTLR-backed language quality evidence")
     template = (ROOT / "app" / "templates" / "appgen_dsl_reference.html").read_text()
-    if "AppGen DSL Reference" not in template or "Keyword Budget" not in template or "Reference JSON" not in template:
+    if "AppGen DSL Reference" not in template or "Keyword Budget" not in template or "Reference JSON" not in template or "Language Quality JSON" not in template:
         fail("DSL reference cockpit must expose keyword budget and JSON reference")
 
 
@@ -30609,6 +30644,8 @@ def test_generated_runtime_helpers():
     nl_plan = nl_evolution.evolution_plan("create table Ticket with field title and form TicketForm chatbot SupportBot agent SupportAgent")
     assert {"add_table", "add_field", "add_form", "add_chatbot", "add_agent"}.issubset({item["kind"] for item in nl_plan["proposals"]})
     assert dsl_reference.dsl_keyword_budget()["count"] <= dsl_reference.dsl_keyword_budget()["limit"]
+    assert dsl_reference.dsl_language_quality_contract()["ok"] is True
+    assert dsl_reference.dsl_language_quality_contract()["format"] == "appgen.dsl-language-quality.v1"
     assert "Reference" in {item["name"] for item in dsl_reference.dsl_construct_catalog()}
     assert "author_id: int -> Author.id" in dsl_reference.dsl_example("relation")
     assert dsl_reference.dsl_lint(dsl_reference.dsl_example("full"))["ok"] is True

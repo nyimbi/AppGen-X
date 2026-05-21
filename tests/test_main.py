@@ -26,6 +26,8 @@ from pyAppGen import __main__
 from pyAppGen.gen import generate_app_from_database
 from pyAppGen.gen import generate_app_from_schema
 from pyAppGen.dsl import apply_lint_fixes
+from pyAppGen.dsl import dsl_language_quality_contract
+from pyAppGen.dsl import dsl_keyword_budget
 from pyAppGen.dsl import lint_dsl
 from pyAppGen.schema import load_schema
 from pyAppGen.schema import RelationSchema
@@ -57,6 +59,11 @@ def test_dsl_linter_reports_semantic_feedback(runner: CliRunner, tmp_path) -> No
     assert report["ok"] is True
     assert report["summary"]["tables"] == 2
     assert report["summary"]["targets"] == ("web", "mobile")
+    assert report["language_quality"]["format"] == "appgen.dsl-language-quality.v1"
+    assert report["language_quality"]["ok"] is True
+    assert dsl_keyword_budget()["count"] <= dsl_keyword_budget()["limit"]
+    assert dsl_language_quality_contract()["grammar"] == "lang/appgen.g4"
+    assert dsl_language_quality_contract()["ok"] is True
     broken = lint_dsl("app Bad { targets: web, toaster } table Book { title: string }")
     assert broken["ok"] is False
     assert any("Unknown app targets" in error for error in broken["errors"])
@@ -158,12 +165,14 @@ def test_dsl_documentation_suite_exists() -> None:
     linter = (docs_dir / "dsl-linter.md").read_text()
     assert "Complete Grammar" in grammar
     assert "Lexical Rules" in grammar
+    assert "dsl_language_quality_contract" in grammar
     assert "Delphi-style component placement" in grammar
     assert "Schema Design Checklist" in guide
     assert "Natural Language Evolution" in guide
     assert "9. Add API-Backed LLM Provider" in tutorial
     assert "Output Contract" in linter
     assert "structured quick fixes" in linter
+    assert "language_quality" in linter
     assert "CI Gate" in linter
 
 
@@ -1672,6 +1681,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     ).read_text()
     assert "Keyword Budget" in (output_dir / "templates" / "appgen_dsl_reference.html").read_text()
     assert "Reference JSON" in (output_dir / "templates" / "appgen_dsl_reference.html").read_text()
+    assert "Language Quality JSON" in (output_dir / "templates" / "appgen_dsl_reference.html").read_text()
     assert "View Experience" in (output_dir / "templates" / "appgen_view_experience.html").read_text()
     assert "Presence JSON" in (output_dir / "templates" / "appgen_view_experience.html").read_text()
     assert "data-appgen-time-on-page" in (output_dir / "static" / "appgen-view-experience.js").read_text()
@@ -3340,6 +3350,12 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert "app Existing { theme: sage; targets: web, mobile, desktop }" in patched_dsl
     assert "agent SupportAgent" in patched_dsl
     assert dsl_reference.dsl_keyword_budget()["count"] <= dsl_reference.dsl_keyword_budget()["limit"]
+    assert dsl_reference.dsl_keyword_budget()["format"] == "appgen.dsl-keyword-budget.v1"
+    assert dsl_reference.dsl_language_quality_contract()["format"] == "appgen.dsl-language-quality.v1"
+    assert dsl_reference.dsl_language_quality_contract()["ok"] is True
+    assert dsl_reference.dsl_reference_check(
+        {"app/dsl_reference.py", "app/templates/appgen_dsl_reference.html"}
+    )["language_quality"]["ok"] is True
     assert "[cardinality] relation metadata" in dsl_reference.dsl_keyword_budget()["keyword_free_syntax"]
     assert "entity/model/form/screen/workflow authoring aliases" in dsl_reference.dsl_keyword_budget()["keyword_free_syntax"]
     assert "Reference" in {item["name"] for item in dsl_reference.dsl_construct_catalog()}
