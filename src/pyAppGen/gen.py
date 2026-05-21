@@ -26016,12 +26016,13 @@ def dsl_editor_state(source="appgen.dsl", text=""):
         "source": source,
         "language": "appgen-dsl",
         "text": text,
-        "panels": ("outline", "schema_preview", "database_designer", "generation_plan", "natural_language_changes"),
-        "commands": ("format", "lint", "preview_schema", "generate", "apply_natural_language_change", "quick_fix"),
+        "panels": ("outline", "schema_preview", "database_designer", "generation_plan", "natural_language_changes", "code_actions"),
+        "commands": ("format", "lint", "preview_schema", "generate", "apply_natural_language_change", "quick_fix", "apply_code_action"),
         "lint": lint,
         "outline": lint["outline"],
         "schema_preview": dsl_schema_preview(text),
         "completions": dsl_completion_items(),
+        "code_actions": lint["code_actions"],
     }}
 
 
@@ -26099,6 +26100,7 @@ def dsl_lint_plan(text):
         "warnings": tuple(warnings),
         "suggestions": tuple(suggestions),
         "fixes": fixes,
+        "code_actions": tuple(_dsl_code_action(source, fix) for fix in fixes),
         "outline": outline,
         "keyword_budget": dsl_keyword_budget(),
         "checks": ("keyword_budget", "references", "field_types", "targets"),
@@ -26148,6 +26150,51 @@ def dsl_quick_fixes(source, errors=(), warnings=()):
             "supported": SUPPORTED_TARGETS,
         }})
     return tuple(fixes)
+
+
+def _apply_studio_dsl_fix(source, fix):
+    kind = fix.get("kind")
+    if kind == "replace_all":
+        return str(fix["replacement"])
+    if kind == "insert" and fix.get("position") == "start":
+        return str(fix["insert"]) + str(source or "")
+    if kind == "regex_replace":
+        return re.sub(str(fix["pattern"]), str(fix["replacement"]), str(source or ""))
+    if kind == "replace_targets":
+        def repl(match):
+            prefix, raw_values = match.groups()
+            kept = []
+            for value in raw_values.split(","):
+                target = value.strip().strip("'\\\"").lower().replace("-", "_")
+                if target in SUPPORTED_TARGETS and target not in kept:
+                    kept.append(target)
+            if not kept:
+                kept.append("web")
+            return prefix + ", ".join(kept)
+
+        return re.sub(r"(\\btargets\\s*:\\s*)([^;\\n}}]+)", repl, str(source or ""))
+    return str(source or "")
+
+
+def _dsl_code_action(source, fix):
+    fixed_preview = _apply_studio_dsl_fix(source, fix)
+    return {{
+        "format": "appgen.dsl-code-action.v1",
+        "id": fix["id"],
+        "title": fix["title"],
+        "kind": "quickfix",
+        "command": {{
+            "name": "appgen.applyDslFix",
+            "arguments": (fix["id"],),
+        }},
+        "changed": fixed_preview != str(source or ""),
+        "fixed_preview": fixed_preview,
+    }}
+
+
+def dsl_code_actions(text):
+    """Return generated Studio quick-fix commands for the DSL editor."""
+    return dsl_lint_plan(text)["code_actions"]
 
 
 def dsl_keyword_budget():
@@ -30501,6 +30548,7 @@ def validate_studio_artifacts() -> None:
         "editor_session",
         "dsl_lint_plan",
         "dsl_quick_fixes",
+        "dsl_code_actions",
         "dsl_change_plan",
         "database_design_catalog",
         "table_design",
@@ -32495,7 +32543,12 @@ def test_generated_runtime_helpers():
     assert studio.editable_files()
     assert studio.file_edit_plan("app/models.py", "patch")["requires_review"] is True
     assert "open_dsl" in {item["command"] for item in studio.ide_command_palette()}
-    assert studio.dsl_editor_state(text="app CopyApp")["lint"]["warnings"]
+    editor_state = studio.dsl_editor_state(text="app CopyApp")
+    assert editor_state["lint"]["warnings"]
+    assert "code_actions" in editor_state["panels"]
+    action_state = studio.dsl_editor_state(text="app Bad {{ targets: web, toaster }} table Book {{ title: string ref Author.id }}")
+    assert {{action["id"] for action in action_state["code_actions"]}} >= {{"normalize_targets", "replace_ref_with_arrow"}}
+    assert {{action["id"] for action in studio.dsl_code_actions("table Book {{ title: string ref Author.id }}")}} >= {{"add_app_declaration", "replace_ref_with_arrow"}}
     assert studio.dsl_change_plan("add table Invoice")["preview_required"] is True
     assert studio.database_design_catalog()
     assert studio.table_design(next(iter(studio.database_design_catalog()))["table"])

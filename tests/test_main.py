@@ -3515,7 +3515,15 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert "open_dsl" in {item["command"] for item in studio.ide_command_palette()}
     assert "Application" in {item["name"] for item in studio.project_tree()}
     assert {item["command"] for item in studio.command_palette_search("database")} >= {"design_database"}
-    assert studio.dsl_editor_state(text="app Library")["lint"]["warnings"]
+    editor_state = studio.dsl_editor_state(text="app Library")
+    assert editor_state["lint"]["warnings"]
+    assert "code_actions" in editor_state["panels"]
+    action_state = studio.dsl_editor_state(text="app Bad { targets: web, toaster } table Book { title: string ref Author.id }")
+    assert {action["id"] for action in action_state["code_actions"]} >= {"normalize_targets", "replace_ref_with_arrow"}
+    assert {action["id"] for action in studio.dsl_code_actions("table Book { title: string ref Author.id }")} >= {
+        "add_app_declaration",
+        "replace_ref_with_arrow",
+    }
     assert studio.dsl_keyword_budget()["ok"] is True
     assert studio.dsl_keyword_budget()["canonical_keyword_count"] == 17
     assert studio.dsl_keyword_budget()["legacy_contextual_tokens"] == ("ref",)
