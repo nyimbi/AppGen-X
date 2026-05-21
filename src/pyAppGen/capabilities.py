@@ -45,7 +45,7 @@ DEFAULT_CAPABILITIES: tuple[Capability, ...] = (
     Capability("platform.frontends", "React, Vue, Angular, Svelte, HTMX, and Express front-end scaffolds", "partial", "generated front-end starter files, hypermedia starters, and API contracts"),
     Capability("platform.microservices", "Microservices architecture support", "partial", "generated service boundaries, gateway routes, event routes, health probes, and scaling policies"),
     Capability("platform.native", "Python mobile and desktop app scaffolds", "partial", "generated Kivy mobile and BeeWare desktop starters with mobile permission manifests, camera/location plans, push payloads, desktop file actions, offline queues, and cache plans"),
-    Capability("platform.jhipster", "JHipster JDL export and interoperability", "partial", "generated JHipster JDL, import contract, and broader-than-JHipster comparison in the low-code matrix"),
+    Capability("platform.jhipster", "JHipster JDL export and interoperability", "partial", "generated JHipster JDL, import contract, gap analysis, adoption plan, and broader-than-JHipster comparison in the low-code matrix"),
     Capability("platform.competitive-benchmark", "JHipster-plus capability benchmark", "partial", "generated overlap and AppGen-only benchmark rows for visual builders, native targets, agentic systems, NL evolution, ERP templates, studio operations, and schema import"),
     Capability("platform.chatbots", "Dialogflow and Bot Framework chatbot exports", "partial", "generated chatbot intents, prompts, and provider manifests"),
     Capability("ai.guided-chatbot", "In-app guided chatbot creation flows", "partial", "generated chatbot view, schema prompts, conversation state, and create payloads"),

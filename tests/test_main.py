@@ -583,6 +583,13 @@ def test_generate_app_from_sqlite_schema_compiles(tmp_path) -> None:
     jhipster = _load_module(tmp_path / "jhipster" / "appgen_jhipster.py", "generated_jhipster")
     assert jhipster.jhipster_import_command() == ("jhipster", "jdl", "jhipster/app.jdl")
     assert jhipster.export_check({"jhipster/app.jdl", "jhipster/appgen_jhipster.py"})["ok"] is True
+    assert "agentic-systems" in {item["key"] for item in jhipster.appgen_upgrade_targets()}
+    gap_analysis = jhipster.jhipster_gap_analysis()
+    assert gap_analysis["position"] == "appgen-is-broader-than-jhipster"
+    assert "visual-builders" in gap_analysis["appgen_only"]
+    adoption_plan = jhipster.jhipster_adoption_plan({"jhipster/app.jdl", "jhipster/appgen_jhipster.py"})
+    assert adoption_plan["format"] == "appgen.jhipster-adoption-plan.v1"
+    assert adoption_plan["steps"][1]["side_effect"] == "external_code_generation"
     jdl_text = (tmp_path / "jhipster" / "app.jdl").read_text()
     assert "entity Book" in jdl_text
     assert "relationship ManyToOne" in jdl_text

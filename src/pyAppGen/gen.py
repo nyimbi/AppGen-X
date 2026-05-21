@@ -26543,6 +26543,50 @@ def _jhipster_relationship_contracts(schema: AppSchema) -> tuple[dict, ...]:
 def _jhipster_contract_text(schema: AppSchema, app_name: str) -> str:
     entities = _jhipster_entity_contracts(schema)
     relationships = _jhipster_relationship_contracts(schema)
+    appgen_upgrade_targets = (
+        {
+            "key": "visual-builders",
+            "label": "Visual builders and Delphi-style form design",
+            "jhipster_equivalent": None,
+            "appgen_artifacts": ("app/designer.py", "app/form_designer.py", "app/studio.py"),
+            "adoption_step": "Use generated schema/form workbenches to evolve the model and regenerate DSL.",
+        },
+        {
+            "key": "python-native-targets",
+            "label": "Python web, mobile, and desktop generation",
+            "jhipster_equivalent": "Spring Boot web application",
+            "appgen_artifacts": ("app/__init__.py", "native/mobile/app.py", "native/desktop/app.py"),
+            "adoption_step": "Generate Python-native FAB, Kivy, and BeeWare targets beside the JDL export.",
+        },
+        {
+            "key": "agentic-systems",
+            "label": "Agentic systems and LLM provider contracts",
+            "jhipster_equivalent": None,
+            "appgen_artifacts": ("app/agents.py", "app/chatbot.py", "app/intelligence.py"),
+            "adoption_step": "Model local/API-key LLM providers and agent execution plans in AppGen DSL.",
+        },
+        {
+            "key": "erp-modules",
+            "label": "ERP template library",
+            "jhipster_equivalent": None,
+            "appgen_artifacts": ("app/erp_templates.py", "app/finance_ops.py", "app/inventory_ops.py"),
+            "adoption_step": "Compose generated ledger, AP, AR, invoicing, HR, inventory, and report modules.",
+        },
+        {
+            "key": "operational-workbenches",
+            "label": "Operations, diagnostics, performance, and resilience workbenches",
+            "jhipster_equivalent": "Docker/Kubernetes helpers",
+            "appgen_artifacts": ("app/diagnostics.py", "app/performance.py", "app/resilience.py", "app/studio.py"),
+            "adoption_step": "Use generated runbooks, debug sessions, load tests, and generation job manifests.",
+        },
+        {
+            "key": "schema-import-roundtrip",
+            "label": "DBML, SQL, PonyORM, live database, and JDL coexistence",
+            "jhipster_equivalent": "JDL modeling",
+            "appgen_artifacts": ("app/schema_import.py", "jhipster/app.jdl", "jhipster/appgen_jhipster.py"),
+            "adoption_step": "Keep JDL as an export target while AppGen owns the broader multi-source schema loop.",
+        },
+    )
     return f'''"""Generated JHipster/JDL export contract for AppGen apps."""
 
 from __future__ import annotations
@@ -26555,6 +26599,7 @@ JHIPSTER = {{
     "relationships": {relationships!r},
     "command": ("jhipster", "jdl", "jhipster/app.jdl"),
 }}
+APPGEN_UPGRADE_TARGETS = {appgen_upgrade_targets!r}
 
 
 def jhipster_entities():
@@ -26586,6 +26631,70 @@ def export_check(existing_paths):
         "missing": missing,
         "entities": tuple(entity["entity"] for entity in JHIPSTER["entities"]),
         "relationships": JHIPSTER["relationships"],
+    }}
+
+
+def appgen_upgrade_targets():
+    """Return AppGen capabilities that extend beyond JHipster generation."""
+    return APPGEN_UPGRADE_TARGETS
+
+
+def jhipster_gap_analysis():
+    """Return JHipster parity plus AppGen-only upgrade areas."""
+    return {{
+        "format": "appgen.jhipster-gap-analysis.v1",
+        "jhipster_strengths": (
+            "JDL entity modeling",
+            "Spring Boot service generation",
+            "Java/TypeScript application conventions",
+            "Docker and Kubernetes helpers",
+        ),
+        "parity": (
+            "entity_modeling",
+            "relationship_modeling",
+            "rest_api_generation",
+            "security_conventions",
+            "deployment_helpers",
+        ),
+        "appgen_only": tuple(target["key"] for target in APPGEN_UPGRADE_TARGETS if target["jhipster_equivalent"] is None),
+        "upgrade_targets": APPGEN_UPGRADE_TARGETS,
+        "position": "appgen-is-broader-than-jhipster",
+    }}
+
+
+def jhipster_adoption_plan(existing_paths=(), *, strategy="coexist"):
+    """Return a reviewable plan for using JHipster as an interop target."""
+    export = export_check(existing_paths)
+    steps = (
+        {{
+            "order": 1,
+            "action": "verify_jdl_export",
+            "ok": export["ok"],
+            "missing": export["missing"],
+        }},
+        {{
+            "order": 2,
+            "action": "run_jhipster_import_when_needed",
+            "command": jhipster_import_command(),
+            "side_effect": "external_code_generation",
+            "review_required": True,
+        }},
+        {{
+            "order": 3,
+            "action": "adopt_appgen_upgrade_targets",
+            "targets": tuple(target["key"] for target in APPGEN_UPGRADE_TARGETS),
+            "review_required": True,
+        }},
+    )
+    return {{
+        "format": "appgen.jhipster-adoption-plan.v1",
+        "strategy": strategy,
+        "source": jdl_file(),
+        "entity_count": len(JHIPSTER["entities"]),
+        "relationship_count": len(JHIPSTER["relationships"]),
+        "ready": export["ok"],
+        "steps": steps,
+        "gap_analysis": jhipster_gap_analysis(),
     }}
 '''
 
@@ -28364,8 +28473,13 @@ def validate_native_artifacts() -> None:
 
 def validate_jhipster_artifacts() -> None:
     contract = (ROOT / "jhipster" / "appgen_jhipster.py").read_text()
-    if "jhipster_import_command" not in contract or "export_check" not in contract:
-        fail("JHipster contract must expose import and export checks")
+    if (
+        "jhipster_import_command" not in contract
+        or "export_check" not in contract
+        or "jhipster_gap_analysis" not in contract
+        or "jhipster_adoption_plan" not in contract
+    ):
+        fail("JHipster contract must expose import, export, gap analysis, and adoption checks")
     jdl = (ROOT / "jhipster" / "app.jdl").read_text()
     if "application {" not in jdl or "dto * with mapstruct" not in jdl:
         fail("JHipster JDL must include application config and DTO strategy")
@@ -29989,6 +30103,8 @@ def test_generated_runtime_helpers():
     )["ok"] is True
     assert jhipster.export_check({"jhipster/app.jdl", "jhipster/appgen_jhipster.py"})["ok"] is True
     assert jhipster.jhipster_import_command() == ("jhipster", "jdl", "jhipster/app.jdl")
+    assert jhipster.jhipster_gap_analysis()["position"] == "appgen-is-broader-than-jhipster"
+    assert jhipster.jhipster_adoption_plan({"jhipster/app.jdl", "jhipster/appgen_jhipster.py"})["ready"] is True
     assert set(chatbots.chatbot_targets()) <= {"dialogflow", "botframework"}
     assert chatbots.export_check(
         {

@@ -382,9 +382,11 @@ apps include:
 - `jhipster/app.jdl` and `jhipster/appgen_jhipster.py` with generated
   JHipster JDL exports for Java/TypeScript application generation, preserving
   relation cardinality as JDL `ManyToOne`, `OneToOne`, `OneToMany`, and
-  `ManyToMany` blocks. JHipster is treated as an interoperability target; AppGen
-  also generates Python-native web/mobile/desktop starters, visual builders,
-  agentic systems, ERP templates, and operational workbenches.
+  `ManyToMany` blocks. The contract also emits gap analysis and a reviewable
+  adoption plan so JHipster remains an interoperability target while AppGen
+  provides the broader platform: Python-native web/mobile/desktop starters,
+  visual builders, agentic systems, ERP templates, schema round trips, and
+  operational workbenches.
 - `chatbots/dialogflow/intents.json`,
   `chatbots/botframework/manifest.json`, and `chatbots/appgen_chatbots.py`
   with generated provider intents, field prompts, and conversation checks.
