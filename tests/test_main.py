@@ -2180,8 +2180,11 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert "Validation JSON" in schema_import_template
     assert "Commands JSON" in schema_import_template
     assert "Release Gate JSON" in schema_import_template
-    assert "Export all JSON" in (output_dir / "templates" / "appgen_backup.html").read_text()
-    assert "Autobackup Schedule JSON" in (output_dir / "templates" / "appgen_backup.html").read_text()
+    backup_template = (output_dir / "templates" / "appgen_backup.html").read_text()
+    assert "Export all JSON" in backup_template
+    assert "Autobackup Schedule JSON" in backup_template
+    assert "DR Plan JSON" in backup_template
+    assert "Release Gate JSON" in backup_template
     assert "Configuration" in (output_dir / "templates" / "appgen_config.html").read_text()
     assert "Salesforce" in (output_dir / "templates" / "appgen_integrations.html").read_text()
     assert "Entando" in (output_dir / "templates" / "appgen_integrations.html").read_text()
@@ -3233,6 +3236,21 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert runbook["review_required"] is True
     assert runbook["can_restore"] is True
     assert runbook["steps"][0] == "verify backup manifest and SHA-256 digest"
+    dr_plan = backup.disaster_recovery_plan(backup_json, manifest_record)
+    assert dr_plan["format"] == "appgen.disaster-recovery-plan.v1"
+    assert dr_plan["ok"] is True
+    assert dr_plan["operator_approval_required"] is True
+    backup_gate = backup.backup_release_gate(
+        {"app/backup.py", "app/templates/appgen_backup.html"},
+        backup_json,
+        manifest_record,
+    )
+    assert backup_gate["format"] == "appgen.backup-release-gate.v1"
+    assert backup_gate["ok"] is True
+    assert {"integrity_manifest", "autobackup_schedule", "recovery_runbook", "disaster_recovery"} <= {
+        gate["gate"] for gate in backup_gate["gates"]
+    }
+    assert backup.backup_release_gate({"app/backup.py"}, backup_json, manifest_record)["ok"] is False
     bad_payload = {
         "format": "appgen.backup.v1",
         "tables": [{"table": "Book", "columns": ["id"], "rows": []}],

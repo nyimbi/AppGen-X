@@ -3514,6 +3514,8 @@ def write_backup_template(output_dir):
     <div class="agb-actions">
       <a class="btn btn-primary" href="{{ url_for('BackupView.export_all') }}">Export all JSON</a>
       <a class="btn btn-default" href="{{ url_for('BackupView.schedule_json') }}">Autobackup Schedule JSON</a>
+      <a class="btn btn-default" href="{{ url_for('BackupView.dr_plan_json') }}">DR Plan JSON</a>
+      <a class="btn btn-default" href="{{ url_for('BackupView.release_gate_json') }}">Release Gate JSON</a>
     </div>
   </div>
   <div class="agb-grid">
@@ -13177,6 +13179,57 @@ def recovery_runbook(payload, manifest=None):
     }}
 
 
+def disaster_recovery_plan(payload=None, manifest=None, *, target="empty_database"):
+    """Return disaster-recovery readiness for generated backup workflows."""
+    sample = backup_json({{table_name: () for table_name in BACKUP_TABLES}}) if payload is None else payload
+    selected_manifest = backup_manifest(sample) if manifest is None else manifest
+    runbook = recovery_runbook(sample, selected_manifest)
+    schedule = backup_schedule_plan()
+    retention = retention_plan((selected_manifest,))
+    return {{
+        "format": "appgen.disaster-recovery-plan.v1",
+        "ok": runbook["can_restore"] and schedule["policy"]["enabled"],
+        "target": target,
+        "schedule": schedule,
+        "retention": retention,
+        "runbook": runbook,
+        "rpo": "24h",
+        "rto": "manual-reviewed-restore",
+        "operator_approval_required": True,
+        "checks": ("backup_payload_validation", "manifest_sha256", "table_counts", "dry_run_restore", "quality_gate"),
+    }}
+
+
+def backup_release_gate(existing_paths=(), payload=None, manifest=None):
+    """Return release readiness for generated backup and recovery operations."""
+    existing = set(existing_paths)
+    required = ("app/backup.py", "app/templates/appgen_backup.html")
+    missing = tuple(path for path in required if existing and path not in existing)
+    sample = backup_json({{table_name: () for table_name in BACKUP_TABLES}}) if payload is None else payload
+    selected_manifest = backup_manifest(sample) if manifest is None else manifest
+    integrity = backup_integrity_check(sample, selected_manifest)
+    runbook = recovery_runbook(sample, selected_manifest)
+    dr = disaster_recovery_plan(sample, selected_manifest)
+    schedule = backup_schedule_plan()
+    gates = (
+        {{"gate": "artifacts", "ok": not missing, "evidence": required, "missing": missing}},
+        {{"gate": "payload_validation", "ok": load_backup_payload(sample)["format"] == "appgen.backup.v1", "evidence": tuple(BACKUP_TABLES)}},
+        {{"gate": "integrity_manifest", "ok": integrity["ok"], "evidence": integrity}},
+        {{"gate": "autobackup_schedule", "ok": schedule["policy"]["enabled"] and schedule["job_id"] == "appgen.autobackup.daily", "evidence": schedule}},
+        {{"gate": "retention_policy", "ok": bool(autobackup_policy()["retention"]), "evidence": autobackup_policy()["retention"]}},
+        {{"gate": "recovery_runbook", "ok": runbook["review_required"] and runbook["can_restore"], "evidence": runbook["steps"]}},
+        {{"gate": "disaster_recovery", "ok": dr["ok"] and dr["operator_approval_required"], "evidence": dr["checks"]}},
+    )
+    return {{
+        "format": "appgen.backup-release-gate.v1",
+        "ok": all(gate["ok"] for gate in gates),
+        "gates": gates,
+        "blocking_gaps": tuple(gate["gate"] for gate in gates if not gate["ok"]),
+        "manifest": selected_manifest,
+        "disaster_recovery": dr,
+    }}
+
+
 def load_backup_payload(value):
     """Load a backup payload from JSON text or a dictionary."""
     if isinstance(value, str):
@@ -13276,6 +13329,14 @@ class BackupView(BaseView):
     @expose("/schedule.json")
     def schedule_json(self):
         return jsonify(backup_schedule_plan())
+
+    @expose("/disaster-recovery.json")
+    def dr_plan_json(self):
+        return jsonify(disaster_recovery_plan())
+
+    @expose("/release-gate.json")
+    def release_gate_json(self):
+        return jsonify(backup_release_gate())
 
 
 def register_backup(appbuilder):
@@ -33722,6 +33783,12 @@ def test_generated_runtime_helpers():
     assert backup.backup_integrity_check(backup.backup_json({}), manifest_record)["ok"] is True
     assert backup.backup_schedule_plan("2026-01-01T03:00:00+00:00")["job_id"] == "appgen.autobackup.daily"
     assert backup.recovery_runbook(backup.backup_json({}), manifest_record)["can_restore"] is True
+    assert backup.disaster_recovery_plan(backup.backup_json({}), manifest_record)["format"] == "appgen.disaster-recovery-plan.v1"
+    assert backup.backup_release_gate(
+        {"app/backup.py", "app/templates/appgen_backup.html"},
+        backup.backup_json({}),
+        manifest_record,
+    )["ok"] is True
     assert isinstance(seed.SEED_DATA, dict)
     assert seed.seed_plan()["format"] == "appgen.seed-plan.v1"
     assert {"demo", "smoke", "load"} == {scenario["name"] for scenario in seed.seed_plan()["scenarios"]}

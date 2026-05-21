@@ -261,6 +261,11 @@ requests such as dropping fields or tables are captured as explicit proposals
 with data-loss review, backup requirements, generated test plans, and rollback
 steps instead of being silently applied.
 
+Generated backup pages expose `/backup/disaster-recovery.json` and
+`/backup/release-gate.json` so teams can prove that JSON backups, SHA-256
+manifests, autobackup schedules, retention rules, recovery runbooks, and
+operator-approved restore workflows are present before release.
+
 ## Database Design Workbench
 
 Generated apps include a Studio database workbench derived from the same DSL.
