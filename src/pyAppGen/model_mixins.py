@@ -1,26 +1,79 @@
-from flask_appbuilder.models.mixins import AuditMixin, FileColumn, ImageColumn
-from flask_appbuilder.models.decorators import renders
-from flask_appbuilder import Model
 # from sqlalchemy_searchable import SearchQueryMixin
-from sqlalchemy import (
-    Boolean, CheckConstraint, Column, Date, DateTime, Float, ForeignKey, Integer, Numeric, String,
-    Text, Interval
-)
-import humanize, datetime, hashlib, math
-from io import StringIO
+import humanize
+import datetime
+import hashlib
+import math
+import os
+import sys
+import inspect
+from  base64 import b64encode, decode
+from datetime import date, timedelta
 from flask import Markup, escape
-from sqlalchemy.sql import func, text
+from flask_appbuilder import Model
+from flask_appbuilder.models.decorators import renders
+from flask_appbuilder.models.mixins import AuditMixin, FileColumn, ImageColumn
+from geopy import Point, distance
+from io import StringIO
+from sqlalchemy import Column, String, text
 from sqlalchemy.dialects.postgresql import *
+from sqlalchemy.ext.declarative import declared_attr
 from sqlalchemy.ext.declarative import declared_attr
 from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import relationship, validates
 from sqlalchemy.sql import func, text
+from sqlalchemy.sql import func, text
 from sqlalchemy_utils import observes
-from sqlalchemy_utils.types import TSVectorType
-from geopy import Point, distance
-from datetime import date, timedelta
-from  base64 import b64encode, decode
-import os
+from sqlalchemy_utils import TSVectorType
+
+from sqlalchemy import (
+    Boolean, CheckConstraint, Column, Date, DateTime, Float, ForeignKey, Integer, Numeric, String,
+    Text, Interval
+)
+
+# We will inherit all our ModelMixins from this
+class BaseModelMixin(object):
+
+    @classmethod
+    def mixin_model_cols(cls):
+        return [column.name for column in cls.__table__.columns]
+
+    @classmethod
+    def mixin_cols(cls):
+        # Get a list of all attributes
+        attributes = dir(cls)
+
+        # Filter out built-in methods and attributes
+        user_defined_attributes = [attr for attr in attributes if not (attr.startswith('__') or attr.startswith('mixin_'))]
+
+        # Get a list of user-defined data members
+        data_members = [attribute for attribute in user_defined_attributes if
+                        not inspect.isfunction(getattr(cls, attribute))]
+
+        return data_members
+
+    @classmethod
+    def mixin_methods(cls):
+        # Get a list of all attributes
+        attributes = dir(cls)
+
+        # Filter out built-in methods and attributes
+        user_defined_attributes = [attr for attr in attributes if not attr.startswith('__')]
+
+        # Get a list of user-defined methods
+        methods = [method for method in user_defined_attributes if inspect.isfunction(getattr(cls, method)) and method.startswith('mixin_')]
+
+        return methods
+
+    @classmethod
+    def mixin_attrs(cls):
+        # Get a list of all attributes
+        attributes = dir(cls)
+
+        # Filter out built-in methods and attributes
+        user_defined_attributes = [attr for attr in attributes if not attr.startswith('__')]
+
+        return user_defined_attributes
+
 
 ### UTILITY Classes #####
 class AuditMixinNullable(AuditMixin):
@@ -90,15 +143,35 @@ class AuditMixinNullable(AuditMixin):
         )
 
 
-class RefTypeMixin(object):
+class RefTypeMixin(BaseModelMixin):
     # id = Column(Integer, autoincrement=True, primary_key=True)
     name = Column(String(100), unique=True, nullable=False, index=True)
-    # code = Column(String(20), default="0000", index=True)
+    code = Column(String(20), default="0000", index=True)
     description = Column(String(100))
     notes = Column(Text, default='')
 
     def __repr__(self):
         return self.name
+
+    @classmethod
+    def mixin_fieldset(cls):
+        return[
+            {
+                "label": "Identification",
+                "fields":[
+                    "name",
+                    "code",
+                    "description",
+                    "notes"
+                ]
+            }
+        ]
+    @classmethod
+
+    def mixin_fields(cls):
+        return ["name", "code", "description", "notes"]
+
+
 
 ##############################
 # How to create a Two Table Mixin
@@ -177,7 +250,7 @@ class RefTypeMixin(object):
 
 
 
-class ProjectMixin(object):
+class ProjectMixin(BaseModelMixin):
     @classmethod
     def __init_subclass__(cls):
         super().__init_subclass__()
@@ -322,8 +395,65 @@ class ProjectMixin(object):
         cls.Project = ProjectModel
         cls.Activities = ActivityModel
 
+        @classmethod
+        def get_pj_fieldset(cls):
+            return [
+                {
+                    "label": "Project Summary",
+                    "fields": [
+                        "project_name",
+                        "project_description",
+                        "project_start_date",
+                        "project_end_date",
+                        "project_duration",
+                    ],
+                },
+                {
+                    "label": "Activity Details",
+                    "fields": [
+                        "activity_name",
+                        "priority",
+                        "segment",
+                        "task_group",
+                        "sequence",
+                        "action",
+                        "activity_description",
+                        "goal",
+                        "status",
+                        "planned_start_date",
+                        "actual_start_date",
+                        "start_delay",
+                        "start_notes",
+                        "planned_end_date",
+                        "actual_end_date",
+                        "end_delay",
+                        "end_notes",
+                        "deadline",
+                        "not_started",
+                        "early_start",
+                        "late_start",
+                        "completed",
+                        "early_end",
+                        "late_end",
+                        "deviation_expected",
+                        "contingency_plan",
 
-class TransientMixin(object):
+                    ],
+                },
+                {
+                    "label": "Budget",
+                    "fields": [
+                        "budget",
+                        "spend_td",
+                        "balance_avail",
+                        "over_budget",
+                        "under_budget",
+                    ]
+                }
+            ]
+
+
+class TransientMixin(BaseModelMixin):
     started_date = Column(DateTime, default=datetime.datetime.now())
     ended_date = Column(DateTime)
     is_active = Column(Boolean)
@@ -348,8 +478,37 @@ class TransientMixin(object):
         if self.expiry_date and self.expiry_date > datetime.now():
             return False
 
+    @classmethod
+    def get_transient_fieldset(cls):
+        return [
+            {
+                "label": "Start",
+                "fields": [
+                    "started_date",
+                    "is_active",
+                    "is_suspended",
+                    "active_from_date",
+                    "expired",
+                ],
+            },
+            {
+                "label": "End",
+                "fields": [
+                    "ended_date",
+                    "is_active",
+                    "is_suspended",
+                    "deactivate_date",
+                    "expiry_days",
+                ],
+            },
+            {
+                "label": "Display",
+                "fields": ["display", "extend_expiry_on_access"],
+            },
+        ]
 
-class PlaceMixin(object):
+
+class PlaceMixin(BaseModelMixin):
     """
     if you declare:
     class MyModel(PlaceMixin, Model)
@@ -413,7 +572,7 @@ class PlaceMixin(object):
         return h_distance
 
 
-class PersonCRMMixin(object):
+class PersonCRMMixin(BaseModelMixin):
     net_worth = Column(Integer)
     yearly_income = Column(Integer)
     yearly_Income_range = Column(Text)
@@ -476,7 +635,7 @@ class PersonCRMMixin(object):
     forget_me_date = Column(Date)
 
 
-class PersonMixin(object):
+class PersonMixin(BaseModelMixin):
     salutation = Column(String(20))
     first_name = Column(String(40), nullable=False, index=True)
     other_names = Column(String(40), nullable=True, index=True)
@@ -529,7 +688,7 @@ class PersonMixin(object):
 
 
 
-class ContactMixin(object):
+class ContactMixin(BaseModelMixin):
     full_name = Column(String(100))
     nickname = Column(String(100))
     company = Column(String(100))
@@ -603,7 +762,7 @@ class ContactMixin(object):
 
 
 
-class WebMixin(object):
+class WebMixin(BaseModelMixin):
     # Where
     scheme = Column(String(10), default="http", nullable=False)
     domain = Column(String(300))
@@ -691,54 +850,11 @@ class WebMixin(object):
 # TODO Expand the DocumentMixin to make it searchable
 # mixins.py
 
-from sqlalchemy import Column, String, text
-from sqlalchemy.ext.declarative import declared_attr
-from sqlalchemy_utils import TSVectorType
 
 
-class DocMixin(object):
-    @declared_attr
-    def title(cls):
-        return Column(String(255), nullable=False)
 
-    @declared_attr
-    def content(cls):
-        return Column(String, nullable=False)
 
-    @declared_attr
-    def search_vector(cls):
-        return Column(
-            TSVectorType("title", "content", weights={"title": "A", "content": "B"}),
-            nullable=False,
-            index=True,
-        )
-
-    @classmethod
-    def search(cls, session, query, *, limit=None, offset=None):
-        """
-        Perform a full-text search on the title and content fields.
-
-        :param session: A SQLAlchemy session object.
-        :param query: The search query.
-        :param limit: The maximum number of results to return.
-        :param offset: The starting index of the results.
-        :return: A list of matching objects.
-        """
-        search_query = text("plainto_tsquery(:query)").params(query=query)
-        results = (
-            session.query(cls)
-            .filter(cls.search_vector.match(search_query))
-            .order_by(cls.search_vector.match(search_query).desc())
-        )
-
-        if limit is not None:
-            results = results.limit(limit)
-        if offset is not None:
-            results = results.offset(offset)
-
-        return results.all()
-
-class DocMixin(object):
+class DocMixin(BaseModelMixin):
     # query_class = DocQuery
     mime_type = Column(String(60), default="application/pdf")
     doc = Column(ImageColumn(thumbnail_size=(30, 30, True), size=(300, 300, True)))

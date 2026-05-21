@@ -6,7 +6,6 @@ JHipster (Dockerization etc)
 Entando
 
 
-
 Include node-red as a default
 invenio software
 automatic HTTPS : https://github.com/tiangolo/full-stack
@@ -14,8 +13,9 @@ automatic HTTPS : https://github.com/tiangolo/full-stack
 Be sure to add
 FAB_API_SHOW_STACKTRACE = True
 FAB_API_SWAGGER_UI = True
-
 to config.py
+Create a config.py editor view
+
 ## Other stuff to do
 # 0. Refactor view generation into a class in another file
 # 0. Rationalize imports
@@ -53,7 +53,8 @@ to config.py
 # 6. Produce reports on every table, join table, 3-way table set
 # 7. Deploy to aws, gcp
 # 8. Create a database design tool (dbdesign.io? or pony-orm or a desktop?
-# 9. Generate database documentation
+# 9. Automatically Generate database structure and content documentation
+# 10. Data Model Library for an ERP
 
 
 ## Docker Deployment
@@ -74,8 +75,7 @@ to config.py
 
 - Duplicate the erdiagram language
 - Create an erDiagram editor
-- Add a chatbot that can do basic functions by asking for each field
-in. view
+- Add a chatbot that can do basic functions by asking for each field  in view
 - Add a state charts component that can
 - create workflows and authorisation flows
 - Implement Row Level Security for each user. Sync users with the postgresql database users

@@ -1,11 +1,5 @@
 """Command-line interface."""
-import click
-
-
-@click.command()
-@click.version_option()
-def main() -> None:
-    """Appgen."""
+from .gen import main
 
 
 if __name__ == "__main__":

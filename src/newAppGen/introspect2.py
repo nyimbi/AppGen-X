@@ -9,6 +9,52 @@
 
 import psycopg2
 import pprint
+from sqlalchemy import create_engine, Column, Integer, String, ForeignKey, Table
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import relationship, sessionmaker
+
+
+
+# Define the SQLAlchemy engine and session
+engine = create_engine('postgresql:///plat')
+Session = sessionmaker(bind=engine)
+session = Session()
+
+# Define the base model class for SQLAlchemy
+Base = declarative_base()
+
+
+# Define the app_Table, app_Column, and app_Relationship tables
+class app_Table(Base):
+    __tablename__ = 'app_table'
+
+    id = Column(Integer, primary_key=True)
+    name = Column(String)
+    columns = relationship('app_Column')
+
+class app_Column(Base):
+    __tablename__ = 'app_column'
+
+    id = Column(Integer, primary_key=True)
+    name = Column(String)
+    data_type = Column(String)
+    table_id = Column(Integer, ForeignKey('app_table.id'))
+    table = relationship('app_Table')
+
+class app_Relationship(Base):
+    __tablename__ = 'app_relationship'
+
+    id = Column(Integer, primary_key=True)
+    name = Column(String)
+    source_table_id = Column(Integer, ForeignKey('app_table.id'))
+    source_table = relationship('app_Table', foreign_keys=[source_table_id])
+    source_column_id = Column(Integer, ForeignKey('app_column.id'))
+    source_column = relationship('app_Column', foreign_keys=[source_column_id])
+    referred_table_id = Column(Integer, ForeignKey('app_table.id'))
+    referred_table = relationship('app_Table', foreign_keys=[referred_table_id])
+    referred_column_id = Column(Integer, ForeignKey('app_column.id'))
+    referred_column = relationship('app_Column', foreign_keys=[referred_column_id])
+
 
 def introspect_postgres_db(host, port, dbname, user, password):
     """
@@ -67,6 +113,47 @@ def introspect_postgres_db(host, port, dbname, user, password):
     }
     return schema
 
-sch = introspect_postgres_db('','','plat','','')
-print(pprint.pprint(sch))
+# sch = introspect_postgres_db('','','plat','','')
+# print(pprint.pprint(sch))
+
+
+
+# Introspect the database schema
+def introspect_and_save(host, port, dbname, user, password):
+    # schema = introspect_postgres_db(host='localhost', port='5432', dbname='mydatabase', user='myuser', password='mypassword')
+    schema = introspect_postgres_db(host=host, port=port, dbname=dbname, user=user, password=password)
+
+    # Insert the tables, columns, and relationships into the database
+    for table_name in schema['tables']:
+        table = app_Table(name=table_name)
+        session.add(table)
+        for column_name, data_type in schema['columns'][table_name]:
+            column = app_Column(name=column_name, data_type=data_type, table=table)
+            session.add(column)
+        for relationship in schema['relationships'][table_name]:
+            source_table = session.query(app_Table).filter_by(name=relationship['source_table']).one()
+            source_column = session.query(app_Column).filter_by(name=relationship['source_field'], table_id=source_table.id).one()
+            referred_table = session.query(app_Table).filter_by(name=relationship['referred_table']).one()
+            referred_column = session.query(app_Column).filter_by(name=relationship['referred_column'], table_id=referred_table.id).one()
+            rel = app_Relationship(
+                name=relationship['name'],
+                source_table=source_table,
+                source_column=source_column,
+                referred_table=referred_table,
+                referred_column=referred_column
+            )
+            session.add(rel)
+
+    session.commit()
+
+# # Create the tables if they don't already exist
+# Base.metadata.create_all(engine)
+
+if "__name__" == "__main__":
+    # Create the tables if they don't already exist
+    Base.metadata.create_all(engine)
+    sch = introspect_postgres_db('','','plat','','')
+    print(pprint.pprint(sch))
+    introspect_and_save('localhost',5432,'plat', '','')
+
 

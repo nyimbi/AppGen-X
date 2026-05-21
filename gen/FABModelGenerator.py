@@ -1,26 +1,48 @@
-from DBML4Visitor import DBML4Visitor
+from appgenVisitor import appgenVisitor
 
-class FlaskAppBuilderGenerator(DBML4Visitor):
+class FlaskAppBuilderModelGenerator(DBML4Visitor):
     def __init__(self):
         self.table_name = None
         self.columns = []
 
     def visitTable(self, ctx):
-        self.table_name = ctx.ID().getText()
+        table_name = ctx.ID().getText()
+        columns = []
+        relationships = []
+        for column_ctx in ctx.column():
+            col_name = column_ctx.ID().getText()
+            col_type = column_ctx.type().getText().upper()
+            columns.append((col_name, col_type))
 
-        if ctx.mixin():
-            for mixin_ctx in ctx.mixin():
-                mixin_name = mixin_ctx.ID().getText()
-                self.columns.extend(self.visit(mixin_ctx))
+        for ref_ctx in ctx.reference():
+            if ref_ctx.many_to_many():
+                ref_table_name = ref_ctx.table_name().getText()
+                association_table_name = f"{table_name}_{ref_table_name}"
+                relationships.append((ref_table_name, association_table_name))
 
-        class_def = f"class {self.table_name}(Base):"
-        class_def += "\n\t__tablename__ = '{}'\n".format(self.table_name)
-        class_def += "\tid = Column(Integer, primary_key=True, autoincrement=True)\n"
+        model = f"""
+    class {table_name}(Base):
+        __tablename__ = '{table_name.lower()}'
 
-        for column in self.columns:
-            class_def += f"\t{column}\n"
+    """
+        for col_name, col_type in columns:
+            model += f"    {col_name} = Column({col_type})\n"
 
-        return class_def
+        for ref_table_name, association_table_name in relationships:
+            model += f"""
+    {association_table_name} = Table('{association_table_name.lower()}', Base.metadata,
+        Column('{table_name.lower()}_id', Integer, ForeignKey('{table_name.lower()}.id')),
+        Column('{ref_table_name.lower()}_id', Integer, ForeignKey('{ref_table_name.lower()}.id'))
+    )
+    """
+
+        model += f"""
+        def __repr__(self):
+            return "<{table_name} {self.id}>"
+    """
+
+        self.models.append(model)
+        return ""
 
     def visitMixin(self, ctx):
         return [self.visit(column_ctx) for column_ctx in ctx.column()]
@@ -31,7 +53,7 @@ class FlaskAppBuilderGenerator(DBML4Visitor):
         options = [self.visit(o) for o in ctx.property()]
 
         if "pk" in options:
-            col_type = "IntegerField(primary_key=True)"
+            col_type = "Integer(primary_key=True)"
             options.remove("pk")
         elif "?" in col_type:
             col_type = col_type.replace("?", "")

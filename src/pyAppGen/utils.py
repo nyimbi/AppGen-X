@@ -1,11 +1,6 @@
 import sqlalchemy.types as types
 from sqlalchemy_utils import ChoiceType, ColorType, EmailType, IPAddressType, JSONType, PhoneNumberType, URLType
-import sqlparse
 from typing import List, Dict
-from sqlparse.sql import IdentifierList, Identifier, Parenthesis
-from sqlparse.tokens import Keyword, DDL
-from pathlib import Path
-from pydbml import PyDBML
 import sqlite3
 
 
@@ -45,6 +40,10 @@ def snake_to_camel(string):
     words = string.split('_')
     # capitalize the first letter of each word except the first one
     return words[0] + ''.join(word.capitalize() for word in words[1:])
+
+def snake_to_label(snake_str):
+    components = snake_str.split('_')
+    return ' '.join(word.capitalize() for word in components)
 
 
 def camel_to_pascal(string):
@@ -109,7 +108,9 @@ def map_dbml_datatypes(datatype: str):
 
 
 def map_pgsql_datatypes(pg_type: str):
-    if pg_type.startswith('int'):
+    if pg_type.startswith('interval'):
+        return 'Interval'
+    elif pg_type.startswith('int'):
         return 'Integer'
     elif pg_type in ('bigint', 'bigserial'):
         return 'BigInteger'
@@ -117,12 +118,12 @@ def map_pgsql_datatypes(pg_type: str):
         return 'String'
     elif pg_type in ('text', 'citext'):
         return 'Text'
-    elif pg_type == 'bool':
+    elif pg_type.startswith('bool'):
         return 'Boolean'
     elif pg_type in ('real', 'float4'):
         return 'Float'
     elif pg_type in ('double precision', 'float8'):
-        return 'Double'
+        return 'Numeric'
     elif pg_type in ('numeric', 'decimal'):
         return 'Numeric'
     elif pg_type == 'money':
@@ -131,8 +132,8 @@ def map_pgsql_datatypes(pg_type: str):
         return 'Date'
     elif pg_type in ('time', 'timetz'):
         return 'Time'
-    elif pg_type in ('timestamp', 'timestamptz'):
-        return 'DateTime'
+    elif pg_type.startswith('timestamp'): # in ('timestamp', 'timestamptz'):
+        return "DateTime, server_default=text('NOW())'"
     elif pg_type in ('bytea', 'byte', 'blob'):
         return 'LargeBinary'
     elif pg_type == 'uuid':
@@ -222,6 +223,11 @@ def map_sqlite_datatypes(sqlite_type):
 
 # TODO rewrite parse_ddl to create the same output as parse_dbml
 def parse_ddl(sql_file: str) -> Dict[str, Dict]:
+    import sqlparse
+    from sqlparse.sql import Identifier
+    from sqlparse.sql import IdentifierList
+    from sqlparse.tokens import Keyword
+
     tables = {}
     current_table = None
 
@@ -372,6 +378,10 @@ def parse_dbml_relationship(relationship_str):
 #     return tables
 
 def parse_dbml(dbml_file: str) -> List[dict]:
+    from pathlib import Path
+
+    from pydbml import PyDBML
+
     '''
 
     :param dbml_file:
@@ -608,3 +618,21 @@ def pg_to_fabtypes(postgres_type):
         "xml": "String",
     }
     return type_mapping.get(postgres_type.lower(), "String")
+
+# Usage
+# config_file = "config.py"
+# setting_to_update = "SQLALCHEMY_DATABASE_URI"
+# new_value = "your_new_database_uri"
+# update_config_setting(config_file, setting_to_update, new_value)
+def update_config_setting(config_file, setting, value):
+    # Read the original content of the config file
+    with open(config_file, "r") as file:
+        lines = file.readlines()
+
+    # Update the specific setting with the new value
+    with open(config_file, "w") as file:
+        for line in lines:
+            if line.startswith(setting):
+                file.write(f"{setting} = '{value}'\n")
+            else:
+                file.write(line)

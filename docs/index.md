@@ -15,6 +15,7 @@ maxdepth: 1
 ---
 
 usage
+dsl
 reference
 contributing
 Code of Conduct <codeofconduct>

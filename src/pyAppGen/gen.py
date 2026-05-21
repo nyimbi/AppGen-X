@@ -3,74 +3,227 @@
 #vi: set ai sta et ts=8 sts=4 sw=4 tw=79 wm=0 cc=+1 lbr fo=croq :
 # Copyright (C) Nyimbi Odero,2023
 
-"""A one line summary of the gen1
+"""Generate Flask-AppBuilder code from an existing database schema."""
 
-"""
-
-import os, sys, shutil, click, glob
-from flask import flash
-from sqlalchemy import create_engine, inspect, MetaData, ForeignKey
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.schema import ForeignKeyConstraint
-from sqlalchemy import create_engine, inspect, MetaData
-from inflection import underscore, camelize
-from utils import *
-from headers import  *
-from model_mixins import *
-from view_mixins import *
 from datetime import datetime
+from html import escape
+import json
+from pathlib import Path
+
+import click
+from sqlalchemy import create_engine
+from sqlalchemy import MetaData
+
+try:
+    from sqlalchemy.orm import declarative_base
+except ImportError:  # pragma: no cover - SQLAlchemy < 1.4 compatibility
+    from sqlalchemy.ext.declarative import declarative_base
+from inflection import pluralize
+from inflection import underscore
+from sqlalchemy.schema import ForeignKeyConstraint
+
+from .capabilities import write_manifest
+from .headers import CHART_VIEW_BODY
+from .headers import VIEW_BODY
+from .headers import VIEW_MASTER_DETAIL
+from .headers import VIEW_SCHEMA_CODE
+from .schema import AppSchema
+from .schema import ColumnSchema
+from .schema import ViewSectionSchema
+from .schema import load_schema
+from .schema import normalize_platform_targets
+from .schema import schema_from_metadata
+from .utils import map_pgsql_datatypes
+from .utils import snake_to_label
+from .utils import snake_to_pascal
+from .utils import update_config_setting
 
 # Global Variable
-metadata =''
+metadata = ''
 Base = ''
 engine = ''
 
+REF_TYPE_MIXIN_FIELDS = ["name", "code", "description", "notes"]
+REF_TYPE_MIXIN_FIELDSET = [
+    {
+        "label": "Identification",
+        "fields": REF_TYPE_MIXIN_FIELDS,
+    }
+]
 
-def generate_view_code():
+
+def generate_view_code(schema: AppSchema | None = None):
     global metadata, engine
     output = []
 
     def generate_chart_view_code():
         global metadata, engine
         s = f"{[(table.name, snake_to_label(table.name)) for table in metadata.tables.values()]}"
-        print(s)
         return CHART_VIEW_BODY.format(tbls=s)
 
     def get_foreign_keys(table):
         return [fk for fk in table.foreign_keys]
 
+    def schema_table(table_name):
+        if schema is None:
+            return None
+        for table_schema in schema.tables:
+            if table_schema.name == table_name or underscore(table_schema.name) == underscore(table_name):
+                return table_schema
+        return None
+
+    def schema_view(table_name):
+        if schema is None:
+            return None
+        for view in schema.views:
+            if view.table == table_name or underscore(view.table) == underscore(table_name):
+                return view
+        return None
+
+    def column_attr(column):
+        if isinstance(column, ColumnSchema):
+            return _model_attribute_name(column)
+        return column.name
+
+    def view_columns(table_name, table):
+        table_schema = schema_table(table_name)
+        if table_schema is None:
+            columns = [column.name for column in table.columns if column.name != "id"]
+            return columns, columns, columns
+
+        visible_columns = [
+            column
+            for column in table_schema.columns
+            if not column.hidden and not column.derived and column.name != "id"
+        ]
+        visible_by_name = {column.name: column for column in visible_columns}
+        visible_by_attr = {column_attr(column): column for column in visible_columns}
+        form_columns = [column_attr(column) for column in visible_columns]
+
+        declared_view = schema_view(table_name)
+        if declared_view and declared_view.fields:
+            selected = []
+            for field in declared_view.fields:
+                column = visible_by_name.get(field) or visible_by_attr.get(field)
+                if column is not None:
+                    selected.append(column_attr(column))
+            list_columns = selected
+        else:
+            list_columns = form_columns
+
+        if any(column.searchable for column in table_schema.columns):
+            search_columns = [
+                column_attr(column)
+                for column in visible_columns
+                if column.searchable
+            ]
+        else:
+            search_columns = form_columns
+        return form_columns, list_columns, search_columns
+
+    def view_sections(table_name):
+        table_schema = schema_table(table_name)
+        declared_view = schema_view(table_name)
+        if table_schema is None or declared_view is None or not declared_view.sections:
+            return [], {}
+        attr_by_name = {
+            column.name: column_attr(column)
+            for column in table_schema.columns
+            if not column.hidden and not column.derived and column.name != "id"
+        }
+        attr_by_attr = {
+            column_attr(column): column_attr(column)
+            for column in table_schema.columns
+            if not column.hidden and not column.derived and column.name != "id"
+        }
+        sections = []
+        tabs = {}
+        for section in declared_view.sections:
+            section_fields = []
+            for field in section.fields:
+                resolved = attr_by_name.get(field) or attr_by_attr.get(field)
+                if resolved is not None:
+                    section_fields.append(resolved)
+            if section_fields:
+                section_name = underscore(section.name)
+                section_spec = {
+                    "name": section_name,
+                    "label": snake_to_label(section.name),
+                    "fields": section_fields,
+                }
+                sections.append(section_spec)
+                tabs[section_name] = {
+                    "title": section_spec["label"],
+                    "fields": section_fields,
+                }
+        return sections, tabs
+
     def generate_view(table_name, table):
         class_name = snake_to_pascal(table_name)
         snk_table_name = snake_to_pascal(table_name)
-        tbl_columns = [column_name for column_name in table.columns.keys() if column_name != 'id']
-        rt_cols = str(RefTypeMixin.mixin_fields())
-        rt_fld_set = str(RefTypeMixin.mixin_fieldset())
-        lbl_cols = f"{{" + ', '.join([f'"{column.name}": "{column.name}"' for column in table.columns if not column.name.startswith('id') ]) + "}"
-        output.append(VIEW_BODY.format(
-                                   class_name = class_name,
-                                   snk_table_name = snk_table_name,
-                                   tbl_columns = tbl_columns,
-                                   rt_cols = rt_cols,
-                                   rt_fld_set = rt_fld_set,
-                                   lbl_cols = lbl_cols))
+        form_columns, list_columns, search_columns = view_columns(table_name, table)
+        rt_cols = str(REF_TYPE_MIXIN_FIELDS)
+        rt_fld_set = str(REF_TYPE_MIXIN_FIELDSET)
+        table_schema = schema_table(table_name)
+        sections, tabs = view_sections(table_name)
+        label_columns = (
+            table_schema.columns
+            if table_schema is not None
+            else tuple(table.columns)
+        )
+        lbl_cols = (
+            f"{{"
+            + ', '.join(
+                [
+                    f'"{column.name}": "{column.name}"'
+                    for column in label_columns
+                    if not column.name.startswith('id')
+                    and not getattr(column, "hidden", False)
+                ]
+            )
+            + "}"
+        )
+        output.append(
+            VIEW_BODY.format(
+                class_name=class_name,
+                table_name=table_name,
+                snk_table_name=snk_table_name,
+                tbl_columns=form_columns,
+                form_columns=form_columns,
+                list_columns=list_columns,
+                search_columns=search_columns,
+                view_sections=sections,
+                view_tabs=tabs,
+                rt_cols=rt_cols,
+                rt_fld_set=rt_fld_set,
+                lbl_cols=lbl_cols,
+            )
+        )
 
     def generate_master_detail_view(table_name, table, foreign_key):
         related_table_name = foreign_key.column.table.name
         related_class_name = snake_to_pascal(related_table_name)
         class_name = snake_to_pascal(table_name)
-        output.append(VIEW_MASTER_DETAIL.format(
-            related_table_name  = related_table_name,
-            related_class_name = related_class_name,
-            class_name = class_name
-        ))
-
+        output.append(
+            VIEW_MASTER_DETAIL.format(
+                related_table_name=related_table_name,
+                related_class_name=related_class_name,
+                class_name=class_name,
+            )
+        )
 
     def generate_multiple_view(table_name, table):
         class_name = snake_to_pascal(table_name)
         output.append(f"class {class_name}MultipleModelView(MultipleView):")
         output.append(
-            f"    views = [{class_name}ModelView, " + ', '.join(
-                [f"{class_name}{snake_to_pascal(related_class)}ModelView" for related_class in related_classes]) + "]"
+            f"    views = [{class_name}ModelView, "
+            + ', '.join(
+                [
+                    f"{class_name}{snake_to_pascal(related_class)}ModelView"
+                    for related_class in related_classes
+                ]
+            )
+            + "]"
         )
         output.append("\n")
 
@@ -79,13 +232,9 @@ def generate_view_code():
         generate_view(table_name, table)
 
         if len(foreign_keys) == 1:
-            generate_master_detail_view(
-                table_name, table, foreign_keys[0]
-            )
+            generate_master_detail_view(table_name, table, foreign_keys[0])
         elif len(foreign_keys) > 1:
-            related_classes = [
-                fk.column.table.name for fk in foreign_keys
-            ]
+            related_classes = [fk.column.table.name for fk in foreign_keys]
             for fk in foreign_keys:
                 generate_master_detail_view(table_name, table, fk)
 
@@ -101,41 +250,60 @@ def generate_view_code():
     for table_name, table in metadata.tables.items():
         class_name = snake_to_pascal(table_name)
         view_name = f"{class_name}ModelView"
-        output.append(f"    appbuilder.add_view({view_name}, '{class_name}', icon='fa-table', category='Tables')")
+        output.append(
+            f"    appbuilder.add_view({view_name}, '{class_name}', "
+            "icon='fa-table', category='Tables')"
+        )
 
         foreign_keys = get_foreign_keys(table)
         if len(foreign_keys) == 1:
             related_class_name = snake_to_pascal(foreign_keys[0].column.table.name)
             view_name = f"{class_name}{related_class_name}ModelView"
             output.append(
-                f"    appbuilder.add_view({view_name}, '{class_name} {related_class_name} Master Detail', icon='fa-table', category='Master Detail')")
+                f"    appbuilder.add_view({view_name}, "
+                f"'{class_name} {related_class_name} Master Detail', "
+                "icon='fa-table', category='Master Detail')"
+            )
 
         elif len(foreign_keys) > 1:
             view_name = f"{class_name}MultipleModelView"
             output.append(
-                f"    appbuilder.add_view({view_name}, '{class_name} Multiple', icon='fa-table', category='Multiple')")
+                f"    appbuilder.add_view({view_name}, '{class_name} Multiple', "
+                "icon='fa-table', category='Multiple')"
+            )
 
     output.append("    appbuilder.add_separator('Tables')")
-    output.append("    appbuilder.add_view(ChartView, 'Draw Chart', icon='fa-bar-chart', category='Charts')")
+    output.append(
+        "    appbuilder.add_view(ChartView, 'Draw Chart', "
+        "icon='fa-bar-chart', category='Charts')"
+    )
     output.append('    appbuilder.add_view(SchemaView, "Schema View", category="Database")')
-
 
     return "\n".join(output)
 
 
-def generate_model_code():
+def generate_model_code(schema: AppSchema | None = None):
     output = []
+    enum_values = {enum.name: tuple(enum.values) for enum in schema.enums} if schema else {}
+    schema_columns = {
+        (table.name, column.name): column
+        for table in schema.tables
+        for column in table.columns
+    } if schema else {}
 
     def get_foreign_keys(table):
         return [fk for fk in table.foreign_keys]
 
     def is_association_table(table):
         foreign_keys = [c for c in table.columns if c.foreign_keys]
-        return len(foreign_keys) == 2 and all([fk.primary_key for fk in foreign_keys])
+        return len(foreign_keys) == 2 and all(fk.primary_key for fk in foreign_keys)
 
     def get_relationship_type(table, column):
         for constraint in table.constraints:
-            if isinstance(constraint, ForeignKeyConstraint) and column.name in constraint.columns.keys():
+            if (
+                isinstance(constraint, ForeignKeyConstraint)
+                and column.name in constraint.columns.keys()
+            ):
                 foreign_table = constraint.elements[0].column.table
                 if is_association_table(table):
                     return "Many-to-Many", foreign_table.name
@@ -146,25 +314,49 @@ def generate_model_code():
         return None, None
 
     def render_column(column):
-        column_type = column.type.compile(engine.dialect)
-        fab_column_type = map_pgsql_datatypes(column_type.lower())
+        schema_column = schema_columns.get((column.table.name, column.name))
+        if schema_column is not None and schema_column.type_name in enum_values:
+            values = ", ".join(repr(value) for value in enum_values[schema_column.type_name])
+            fab_column_type = f"Enum({values}, name='{underscore(schema_column.type_name)}_enum')"
+        else:
+            column_type = column.type.compile(engine.dialect)
+            fab_column_type = map_pgsql_datatypes(column_type.lower())
         fk, remote_table = get_relationship_type(column.table, column)
 
         if fk == "One-to-Many":
-            return f"Column({fab_column_type}, ForeignKey('{remote_table}.id'), nullable={column.nullable})", f"{remote_table}"
+            return (
+                f"Column({fab_column_type}, ForeignKey('{remote_table}.id'), "
+                f"nullable={column.nullable})",
+                underscore(remote_table),
+            )
         elif fk == "One-to-One":
-            return f"Column({fab_column_type}, ForeignKey('{remote_table}.id'), nullable={column.nullable}, unique=True)", f"{remote_table}"
+            return (
+                f"Column({fab_column_type}, ForeignKey('{remote_table}.id'), "
+                f"nullable={column.nullable}, unique=True)",
+                underscore(remote_table),
+            )
         elif fk == "Many-to-Many":
-            return f"Column({fab_column_type}, ForeignKey('{remote_table}.id'), primary_key=True, nullable={column.nullable})", f"{remote_table}"
+            return (
+                f"Column({fab_column_type}, ForeignKey('{remote_table}.id'), "
+                f"primary_key=True, nullable={column.nullable})",
+                underscore(remote_table),
+            )
         elif column.primary_key:
-            return f"Column({fab_column_type}, primary_key=True, nullable={column.nullable}, autoincrement=True)", None
+            return (
+                f"Column({fab_column_type}, primary_key=True, "
+                f"nullable={column.nullable}, autoincrement=True)",
+                None,
+            )
         else:
             return f"Column({fab_column_type}, nullable={column.nullable})", None
 
     for table_name, table in metadata.tables.items():
         class_name = snake_to_pascal(table_name)
 
-        output.append(f"class {class_name}(RefTypeMixin, Model):  # RefTypeMixin, TransientMixin, PlaceMixin, DocMixin, PersonMixin")
+        output.append(
+            f"class {class_name}(RefTypeMixin, Model):  "
+            "# RefTypeMixin, TransientMixin, PlaceMixin, DocMixin, PersonMixin"
+        )
         output.append(f"    __tablename__ = '{table_name}'")
 
         primary_key_exists = any(column.primary_key for column in table.columns)
@@ -179,9 +371,7 @@ def generate_model_code():
                 column_name = col_type
             output.append(f"    {column_name} = {column_def}")
 
-        m2m_relationships = [
-            fk for fk in table.foreign_keys if fk.column.table != table
-        ]
+        m2m_relationships = [fk for fk in table.foreign_keys if fk.column.table != table]
 
         if len(m2m_relationships) == 2:
             related_table = m2m_relationships[1].column.table.name
@@ -194,10 +384,16 @@ def generate_model_code():
 
     return "\n".join(output)
 
-def write_model_file(dir):
-    model_code = generate_model_code()   # TODO change this to a template
-    with open(f"{dir}/models.py", "w") as f:
-        f.write("from sqlalchemy import (Column, Integer, String, ForeignKey, DateTime, Boolean, Float, Text, Date, Numeric, Interval, Enum)\n")
+
+def write_model_file(output_dir, schema: AppSchema | None = None):
+    output_dir = Path(output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    model_code = generate_model_code(schema)   # TODO change this to a template
+    with open(output_dir / "models.py", "w") as f:
+        f.write(
+            "from sqlalchemy import (Column, Integer, String, ForeignKey, "
+            "DateTime, Boolean, Float, Text, Date, Time, Numeric, Interval, Enum)\n"
+        )
         f.write("from sqlalchemy.orm import relationship, backref\n")
         f.write("from sqlalchemy.ext.associationproxy import association_proxy\n")
         f.write("from flask_appbuilder import Model\n\n")
@@ -205,11 +401,18 @@ def write_model_file(dir):
         f.write("Base = Model\n\n")
         f.write(model_code)
 
-def write_view_file(dir):
-    view_code = generate_view_code() # TODO change this to a template
-    with open(f"{dir}/views.py", "w") as f:
+
+
+def write_view_file(output_dir, schema: AppSchema | None = None):
+    output_dir = Path(output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    view_code = generate_view_code(schema) # TODO change this to a template
+    with open(output_dir / "views.py", "w") as f:
         f.write("import sys, os\n")
-        f.write("from flask_appbuilder import (ModelView, MultipleView, MasterDetailView, SimpleFormView, BaseView, expose)\n")
+        f.write(
+            "from flask_appbuilder import (ModelView, MultipleView, MasterDetailView, "
+            "SimpleFormView, BaseView, expose)\n"
+        )
         f.write("from flask_appbuilder.models.sqla.interface import SQLAInterface\n")
         f.write("from sqlalchemy import create_engine, inspect, MetaData, ForeignKeyConstraint\n")
         f.write("from wtforms import Form, SelectField, SubmitField\n")
@@ -219,69 +422,23783 @@ def write_view_file(dir):
         f.write("from app.model_mixins import *\n")
         f.write("from app.view_mixins import *\n")
         f.write("from app import appbuilder\n")
+        f.write("from app.extensions import before_save_row, after_save_row\n\n")
+        f.write("def _appgen_model_row(item, columns):\n")
+        f.write("    return {column: getattr(item, column, None) for column in columns}\n\n")
+        f.write("def _appgen_apply_row(item, row):\n")
+        f.write("    for key, value in dict(row).items():\n")
+        f.write("        if hasattr(item, key):\n")
+        f.write("            setattr(item, key, value)\n")
+        f.write("    return item\n\n")
         f.write("# For the chart drawing module\n")
         f.write("engine = create_engine(appbuilder.app.config['SQLALCHEMY_DATABASE_URI'])\n")
-        f.write("metadata = MetaData(bind=engine)\n")
-        f.write("metadata.reflect()\n\n\n")
+        f.write("metadata = MetaData()\n")
+        f.write("metadata.reflect(bind=engine)\n\n\n")
         f.write(view_code)
+
+
+def write_api_file(output_dir, schema: AppSchema):
+    """Write Flask-AppBuilder REST APIs for every generated model."""
+    output_dir = Path(output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    permission_map = {
+        "get": "read",
+        "get_list": "read",
+        "info": "read",
+        "post": "create",
+        "put": "update",
+        "delete": "delete",
+    }
+    with open(output_dir / "api.py", "w") as f:
+        f.write("from flask_appbuilder import ModelRestApi\n")
+        f.write("from flask_appbuilder.models.sqla.interface import SQLAInterface\n\n")
+        f.write("from . import appbuilder\n")
+        f.write("from .extensions import before_save_row, after_save_row\n")
+        f.write("from .models import *\n\n\n")
+        f.write(f"API_PERMISSION_MAP = {permission_map!r}\n\n\n")
+        f.write("def _appgen_model_row(item, columns):\n")
+        f.write("    return {column: getattr(item, column, None) for column in columns}\n\n\n")
+        f.write("def _appgen_apply_row(item, row):\n")
+        f.write("    for key, value in dict(row).items():\n")
+        f.write("        if hasattr(item, key):\n")
+        f.write("            setattr(item, key, value)\n")
+        f.write("    return item\n\n\n")
+        for table in schema.tables:
+            class_name = snake_to_pascal(table.name)
+            columns = [
+                _model_attribute_name(column)
+                for column in table.columns
+                if not column.hidden and not column.derived
+            ]
+            f.write(f"class {class_name}RestApi(ModelRestApi):\n")
+            f.write(f"    resource_name = \"{table.name}\"\n")
+            f.write(f"    class_permission_name = \"{table.name}\"\n")
+            f.write("    method_permission_name = API_PERMISSION_MAP\n")
+            f.write(f"    datamodel = SQLAInterface({class_name})\n")
+            f.write(f"    include_columns = {columns!r}\n")
+            f.write("    allow_browser_login = True\n\n")
+            f.write("    def pre_add(self, item):\n")
+            f.write(f"        normalized = before_save_row({table.name!r}, _appgen_model_row(item, self.include_columns))\n")
+            f.write("        _appgen_apply_row(item, normalized)\n\n")
+            f.write("    def pre_update(self, item):\n")
+            f.write(f"        normalized = before_save_row({table.name!r}, _appgen_model_row(item, self.include_columns))\n")
+            f.write("        _appgen_apply_row(item, normalized)\n\n")
+            f.write("    def post_add(self, item):\n")
+            f.write(f"        after_save_row({table.name!r}, _appgen_model_row(item, self.include_columns))\n\n")
+            f.write("    def post_update(self, item):\n")
+            f.write(f"        after_save_row({table.name!r}, _appgen_model_row(item, self.include_columns))\n\n\n")
+            f.write(f"appbuilder.add_api({class_name}RestApi)\n\n\n")
+
+
+def write_openapi_file(output_dir, schema: AppSchema):
+    """Write a generated OpenAPI contract view and helper module."""
+    output_dir = Path(output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    (output_dir / "openapi.py").write_text(_openapi_text(schema, _app_name(schema)))
+
+
+def write_gql_file(output_dir, schema: AppSchema):
+    """Write a Graphene schema for generated models."""
+    output_dir = Path(output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    with open(output_dir / "gql.py", "w") as f:
+        f.write("import graphene\n\n")
+        f.write("from .models import *\n\n\n")
+        for table in schema.tables:
+            class_name = snake_to_pascal(table.name)
+            f.write(f"class {class_name}Object(graphene.ObjectType):\n")
+            for column in table.columns:
+                if column.hidden or column.derived:
+                    continue
+                f.write(
+                    f"    {_model_attribute_name(column)} = "
+                    f"{_graphene_field(column.type_name)}\n"
+                )
+            f.write("\n\n")
+
+        f.write("class Query(graphene.ObjectType):\n")
+        if schema.tables:
+            for table in schema.tables:
+                class_name = snake_to_pascal(table.name)
+                field_name = underscore(table.name)
+                f.write(f"    {field_name} = graphene.List({class_name}Object)\n")
+            f.write("\n")
+            for table in schema.tables:
+                class_name = snake_to_pascal(table.name)
+                field_name = underscore(table.name)
+                f.write(f"    def resolve_{field_name}(self, info):\n")
+                f.write(f"        return {class_name}.query.all()\n\n")
+        else:
+            f.write("    health = graphene.String()\n\n")
+            f.write("    def resolve_health(self, info):\n")
+            f.write("        return \"ok\"\n\n")
+        f.write("\n\nschema = graphene.Schema(query=Query)\n")
+
+
+def write_security_file(output_dir, schema: AppSchema):
+    """Write role and permission seed metadata for generated apps."""
+    output_dir = Path(output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    with open(output_dir / "security.py", "w") as f:
+        f.write('"""Generated RBAC seed metadata for AppGen apps."""\n\n')
+        f.write("from __future__ import annotations\n\n")
+        f.write("ROLE_POLICIES = {\n")
+        for role in schema.roles:
+            f.write(f"    {role.name!r}: {{\n")
+            for permission in role.permissions:
+                f.write(
+                    f"        {permission.resource!r}: {list(permission.actions)!r},\n"
+                )
+            f.write("    },\n")
+        f.write("}\n\n")
+        f.write("def allowed_actions(role_name, resource):\n")
+        f.write("    \"\"\"Return actions allowed for a role on a resource.\"\"\"\n")
+        f.write("    return tuple(ROLE_POLICIES.get(role_name, {}).get(resource, ()))\n\n")
+        f.write("def can(role_name, resource, action):\n")
+        f.write("    \"\"\"Return whether a role is allowed to perform an action.\"\"\"\n")
+        f.write("    action = action.lower()\n")
+        f.write("    return action in {item.lower() for item in allowed_actions(role_name, resource)}\n\n")
+        f.write("def seed_roles(appbuilder):\n")
+        f.write("    \"\"\"Create declared roles if they do not already exist.\"\"\"\n")
+        f.write("    security_manager = appbuilder.sm\n")
+        f.write("    for role_name in ROLE_POLICIES:\n")
+        f.write("        if security_manager.find_role(role_name) is None:\n")
+        f.write("            security_manager.add_role(role_name)\n")
+        f.write("    return ROLE_POLICIES\n")
+
+
+def write_runtime_security_file(output_dir):
+    """Write generated session timeout and response hardening helpers."""
+    output_dir = Path(output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    (output_dir / "runtime_security.py").write_text(_runtime_security_text())
+
+
+def write_workflow_file(output_dir, schema: AppSchema):
+    """Write executable workflow transition helpers for DSL flows."""
+    output_dir = Path(output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    with open(output_dir / "workflow.py", "w") as f:
+        f.write('"""Generated workflow transition helpers for AppGen apps."""\n\n')
+        f.write("from __future__ import annotations\n\n")
+        f.write("from flask import jsonify, request\n")
+        f.write("from flask_appbuilder import BaseView, expose\n\n\n")
+        f.write("WORKFLOWS = {\n")
+        for flow in schema.flows:
+            f.write(f"    {flow.name!r}: (\n")
+            for step in flow.steps:
+                f.write(f"        ({step.source!r}, {step.target!r}),\n")
+            f.write("    ),\n")
+        f.write("}\n\n")
+        f.write("def transitions(flow_name):\n")
+        f.write("    \"\"\"Return all declared transitions for a workflow.\"\"\"\n")
+        f.write("    return tuple(WORKFLOWS.get(flow_name, ()))\n\n")
+        f.write("def next_states(flow_name, state):\n")
+        f.write("    \"\"\"Return valid target states from the current state.\"\"\"\n")
+        f.write("    return tuple(target for source, target in transitions(flow_name) if source == state)\n\n")
+        f.write("def can_transition(flow_name, source, target):\n")
+        f.write("    \"\"\"Return whether a transition is allowed.\"\"\"\n")
+        f.write("    return (source, target) in transitions(flow_name)\n\n")
+        f.write("def transition(flow_name, source, target):\n")
+        f.write("    \"\"\"Validate and return the target state for a transition.\"\"\"\n")
+        f.write("    if not can_transition(flow_name, source, target):\n")
+        f.write("        raise ValueError(f'{flow_name}: cannot transition from {source} to {target}')\n")
+        f.write("    return target\n\n")
+        f.write("def states(flow_name):\n")
+        f.write("    \"\"\"Return all states mentioned by a workflow.\"\"\"\n")
+        f.write("    result = []\n")
+        f.write("    for source, target in transitions(flow_name):\n")
+        f.write("        if source not in result:\n")
+        f.write("            result.append(source)\n")
+        f.write("        if target not in result:\n")
+        f.write("            result.append(target)\n")
+        f.write("    return tuple(result)\n\n")
+        f.write("def start_states(flow_name):\n")
+        f.write("    \"\"\"Return states that only appear as transition sources.\"\"\"\n")
+        f.write("    sources = {source for source, _target in transitions(flow_name)}\n")
+        f.write("    targets = {target for _source, target in transitions(flow_name)}\n")
+        f.write("    return tuple(state for state in states(flow_name) if state in sources - targets)\n\n")
+        f.write("def terminal_states(flow_name):\n")
+        f.write("    \"\"\"Return states that only appear as transition targets.\"\"\"\n")
+        f.write("    sources = {source for source, _target in transitions(flow_name)}\n")
+        f.write("    targets = {target for _source, target in transitions(flow_name)}\n")
+        f.write("    return tuple(state for state in states(flow_name) if state in targets - sources)\n\n")
+        f.write("def workflow_catalog():\n")
+        f.write("    \"\"\"Return generated workflow metadata for UI and automation.\"\"\"\n")
+        f.write("    return tuple(\n")
+        f.write("        {\n")
+        f.write("            'name': flow_name,\n")
+        f.write("            'transitions': transitions(flow_name),\n")
+        f.write("            'states': states(flow_name),\n")
+        f.write("            'start_states': start_states(flow_name),\n")
+        f.write("            'terminal_states': terminal_states(flow_name),\n")
+        f.write("        }\n")
+        f.write("        for flow_name in sorted(WORKFLOWS)\n")
+        f.write("    )\n\n")
+        f.write("def advance_plan(flow_name, start_state):\n")
+        f.write("    \"\"\"Return a deterministic wizard path following first valid transitions.\"\"\"\n")
+        f.write("    if start_state not in states(flow_name):\n")
+        f.write("        raise ValueError(f'{flow_name}: unknown state {start_state}')\n")
+        f.write("    path = [start_state]\n")
+        f.write("    seen = {start_state}\n")
+        f.write("    current = start_state\n")
+        f.write("    while True:\n")
+        f.write("        next_items = next_states(flow_name, current)\n")
+        f.write("        if not next_items:\n")
+        f.write("            return tuple(path)\n")
+        f.write("        current = next_items[0]\n")
+        f.write("        if current in seen:\n")
+        f.write("            raise ValueError(f'{flow_name}: cycle detected at {current}')\n")
+        f.write("        seen.add(current)\n")
+        f.write("        path.append(current)\n\n")
+        f.write("def transition_graph(flow_name):\n")
+        f.write("    \"\"\"Return adjacency metadata for generated FSM/state-chart tooling.\"\"\"\n")
+        f.write("    return {\n")
+        f.write("        state: tuple(target for source, target in transitions(flow_name) if source == state)\n")
+        f.write("        for state in states(flow_name)\n")
+        f.write("    }\n\n")
+        f.write("def statechart_mermaid(flow_name):\n")
+        f.write("    \"\"\"Return a Mermaid state diagram for a generated workflow.\"\"\"\n")
+        f.write("    lines = ['stateDiagram-v2']\n")
+        f.write("    for state in start_states(flow_name):\n")
+        f.write("        lines.append(f'  [*] --> {state}')\n")
+        f.write("    for source, target in transitions(flow_name):\n")
+        f.write("        lines.append(f'  {source} --> {target}')\n")
+        f.write("    for state in terminal_states(flow_name):\n")
+        f.write("        lines.append(f'  {state} --> [*]')\n")
+        f.write("    return '\\n'.join(lines) + '\\n'\n\n")
+        f.write("def fsm_export(flow_name):\n")
+        f.write("    \"\"\"Return a provider-neutral finite-state-machine export.\"\"\"\n")
+        f.write("    return {\n")
+        f.write("        'name': flow_name,\n")
+        f.write("        'states': states(flow_name),\n")
+        f.write("        'initial': start_states(flow_name),\n")
+        f.write("        'final': terminal_states(flow_name),\n")
+        f.write("        'transitions': tuple(\n")
+        f.write("            {'source': source, 'target': target, 'event': f'{source}_to_{target}'}\n")
+        f.write("            for source, target in transitions(flow_name)\n")
+        f.write("        ),\n")
+        f.write("        'graph': transition_graph(flow_name),\n")
+        f.write("        'mermaid': statechart_mermaid(flow_name),\n")
+        f.write("    }\n\n")
+        f.write("def workflow_graph_check(flow_name):\n")
+        f.write("    \"\"\"Return reachability and dead-end diagnostics for a generated workflow.\"\"\"\n")
+        f.write("    all_states = states(flow_name)\n")
+        f.write("    starts = start_states(flow_name) or all_states[:1]\n")
+        f.write("    reachable = []\n")
+        f.write("    stack = list(starts)\n")
+        f.write("    while stack:\n")
+        f.write("        state = stack.pop(0)\n")
+        f.write("        if state in reachable:\n")
+        f.write("            continue\n")
+        f.write("        reachable.append(state)\n")
+        f.write("        stack.extend(target for target in next_states(flow_name, state) if target not in reachable)\n")
+        f.write("    unreachable = tuple(state for state in all_states if state not in reachable)\n")
+        f.write("    terminals = set(terminal_states(flow_name))\n")
+        f.write("    dead_ends = tuple(state for state in all_states if not next_states(flow_name, state) and state not in terminals)\n")
+        f.write("    return {\n")
+        f.write("        'flow': flow_name,\n")
+        f.write("        'ok': not unreachable and not dead_ends,\n")
+        f.write("        'reachable': tuple(reachable),\n")
+        f.write("        'unreachable': unreachable,\n")
+        f.write("        'dead_ends': dead_ends,\n")
+        f.write("    }\n\n")
+        f.write("class WorkflowView(BaseView):\n")
+        f.write("    route_base = '/workflows'\n")
+        f.write("    default_view = 'index'\n\n")
+        f.write("    @expose('/')\n")
+        f.write("    def index(self):\n")
+        f.write("        return self.render_template('appgen_workflows.html', workflows=workflow_catalog())\n\n")
+        f.write("    @expose('/<flow_name>/<state>/next')\n")
+        f.write("    def next_for_state(self, flow_name, state):\n")
+        f.write("        return jsonify({'flow': flow_name, 'state': state, 'next': next_states(flow_name, state)})\n\n")
+        f.write("    @expose('/<flow_name>/statechart.json')\n")
+        f.write("    def statechart_json(self, flow_name):\n")
+        f.write("        return jsonify(fsm_export(flow_name))\n\n")
+        f.write("    @expose('/<flow_name>/statechart.mmd')\n")
+        f.write("    def statechart_mermaid_route(self, flow_name):\n")
+        f.write("        return statechart_mermaid(flow_name), 200, {'Content-Type': 'text/plain; charset=utf-8'}\n\n")
+        f.write("def register_workflows(appbuilder):\n")
+        f.write("    appbuilder.add_view(\n")
+        f.write("        WorkflowView,\n")
+        f.write("        'Workflows',\n")
+        f.write("        icon='fa-random',\n")
+        f.write("        category='AppGen',\n")
+        f.write("    )\n")
+
+
+def write_rules_file(output_dir, schema: AppSchema):
+    """Write executable business rule and decision helpers for DSL rules."""
+    output_dir = Path(output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    (output_dir / "rules.py").write_text(_rules_text(schema))
+
+
+def write_health_file(output_dir, schema: AppSchema):
+    """Write a small health contract for generated app smoke checks."""
+    output_dir = Path(output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    with open(output_dir / "health.py", "w") as f:
+        f.write('"""Generated health metadata for AppGen apps."""\n\n')
+        f.write("from __future__ import annotations\n\n")
+        f.write(f"APP_NAME = {(_app_name(schema))!r}\n")
+        f.write(f"TABLE_COUNT = {len(schema.tables)!r}\n")
+        f.write(f"RELATION_COUNT = {len(schema.relations)!r}\n")
+        f.write(f"VIEW_COUNT = {len(schema.views)!r}\n")
+        f.write(f"FLOW_COUNT = {len(schema.flows)!r}\n")
+        f.write(f"ROLE_COUNT = {len(schema.roles)!r}\n\n")
+        f.write("def status():\n")
+        f.write("    \"\"\"Return generated application readiness metadata.\"\"\"\n")
+        f.write("    return {\n")
+        f.write("        'app': APP_NAME,\n")
+        f.write("        'ok': True,\n")
+        f.write("        'tables': TABLE_COUNT,\n")
+        f.write("        'relations': RELATION_COUNT,\n")
+        f.write("        'views': VIEW_COUNT,\n")
+        f.write("        'flows': FLOW_COUNT,\n")
+        f.write("        'roles': ROLE_COUNT,\n")
+        f.write("    }\n")
+
+
+def write_monitoring_file(output_dir, schema: AppSchema):
+    """Write generated monitoring endpoints and error helpers."""
+    output_dir = Path(output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    (output_dir / "monitoring.py").write_text(_monitoring_text(schema))
+
+
+def write_resilience_file(output_dir, schema: AppSchema):
+    """Write generated exception-management and recovery helpers."""
+    output_dir = Path(output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    (output_dir / "resilience.py").write_text(_resilience_text(schema))
+
+
+def write_performance_file(output_dir, schema: AppSchema):
+    """Write generated performance budget and scaling helpers."""
+    output_dir = Path(output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    (output_dir / "performance.py").write_text(_performance_text(schema))
+
+
+def write_reports_file(output_dir, schema: AppSchema):
+    """Write generated report catalog and export views."""
+    output_dir = Path(output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    (output_dir / "reports.py").write_text(_reports_text(schema))
+
+
+def write_report_delivery_file(output_dir, schema: AppSchema):
+    """Write generated PDF and email report delivery helpers."""
+    output_dir = Path(output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    (output_dir / "report_delivery.py").write_text(_report_delivery_text(schema))
+
+
+def write_dashboards_file(output_dir, schema: AppSchema):
+    """Write generated dashboard and chart contracts."""
+    output_dir = Path(output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    (output_dir / "dashboards.py").write_text(_dashboards_text(schema))
+
+
+def write_usage_analytics_file(output_dir, schema: AppSchema):
+    """Write generated app usage analytics helpers."""
+    output_dir = Path(output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    (output_dir / "usage_analytics.py").write_text(_usage_analytics_text(schema))
+
+
+def write_search_file(output_dir, schema: AppSchema):
+    """Write generated search index contracts and helpers."""
+    output_dir = Path(output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    (output_dir / "search.py").write_text(_search_text(schema))
+
+
+def write_media_file(output_dir, schema: AppSchema):
+    """Write generated file and image upload contracts."""
+    output_dir = Path(output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    (output_dir / "media.py").write_text(_media_text(schema))
+
+
+def write_documents_file(output_dir, schema: AppSchema):
+    """Write generated document-management contracts."""
+    output_dir = Path(output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    (output_dir / "documents.py").write_text(_documents_text(schema))
+
+
+def write_inventory_ops_file(output_dir, schema: AppSchema):
+    """Write generated inventory traceability, barcode, and RFID contracts."""
+    output_dir = Path(output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    (output_dir / "inventory_ops.py").write_text(_inventory_ops_text(schema))
+
+
+def write_finance_ops_file(output_dir, schema: AppSchema):
+    """Write generated tax, currency, forecast, and batch finance contracts."""
+    output_dir = Path(output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    (output_dir / "finance_ops.py").write_text(_finance_ops_text(schema))
+
+
+def write_manufacturing_ops_file(output_dir, schema: AppSchema):
+    """Write generated manufacturing, MRP, capacity, and scheduling contracts."""
+    output_dir = Path(output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    (output_dir / "manufacturing_ops.py").write_text(_manufacturing_ops_text(schema))
+
+
+def write_backup_file(output_dir, schema: AppSchema):
+    """Write generated backup catalog and export views."""
+    output_dir = Path(output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    (output_dir / "backup.py").write_text(_backup_text(schema))
+
+
+def write_data_access_file(output_dir, schema: AppSchema):
+    """Write generated low-code query and mutation contracts."""
+    output_dir = Path(output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    (output_dir / "data_access.py").write_text(_data_access_text(schema))
+
+
+def write_database_ops_file(output_dir, schema: AppSchema):
+    """Write generated database provider and operations helpers."""
+    output_dir = Path(output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    (output_dir / "database_ops.py").write_text(_database_ops_text(schema))
+
+
+def write_data_exchange_file(output_dir, schema: AppSchema):
+    """Write generated CSV/JSON data exchange helpers."""
+    output_dir = Path(output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    (output_dir / "data_exchange.py").write_text(_data_exchange_text(schema))
+
+
+def write_config_admin_file(output_dir):
+    """Write a safe generated configuration admin view."""
+    output_dir = Path(output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    (output_dir / "config_admin.py").write_text(_config_admin_text())
+
+
+def write_integrations_file(output_dir):
+    """Write generated integration registry and validation helpers."""
+    output_dir = Path(output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    (output_dir / "integrations.py").write_text(_integrations_text())
+
+
+def write_productivity_file(output_dir, schema: AppSchema):
+    """Write generated Microsoft 365 and Google Workspace integration helpers."""
+    output_dir = Path(output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    (output_dir / "productivity.py").write_text(_productivity_text(schema))
+
+
+def write_lifecycle_file(output_dir, schema: AppSchema):
+    """Write generated environment, release, feedback, and lifecycle helpers."""
+    output_dir = Path(output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    (output_dir / "lifecycle.py").write_text(_lifecycle_text(schema, _app_name(schema)))
+
+
+def write_emerging_file(output_dir, schema: AppSchema):
+    """Write generated IoT and blockchain integration helpers."""
+    output_dir = Path(output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    (output_dir / "emerging.py").write_text(_emerging_text(schema))
+
+
+def write_tenancy_file(output_dir, schema: AppSchema):
+    """Write generated multi-tenant row-scope helpers."""
+    output_dir = Path(output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    (output_dir / "tenancy.py").write_text(_tenancy_text(schema))
+
+
+def write_rls_file(output_dir, schema: AppSchema):
+    """Write generated row-level security policy helpers."""
+    output_dir = Path(output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    (output_dir / "rls.py").write_text(_rls_text(schema))
+
+
+def write_identity_file(output_dir):
+    """Write generated enterprise identity and SSO helpers."""
+    output_dir = Path(output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    (output_dir / "identity.py").write_text(_identity_text())
+
+
+def write_compliance_file(output_dir, schema: AppSchema):
+    """Write generated compliance, audit, and redaction helpers."""
+    output_dir = Path(output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    (output_dir / "compliance.py").write_text(_compliance_text(schema))
+
+
+def write_assistant_file(output_dir, schema: AppSchema):
+    """Write generated AI assistance and review helpers."""
+    output_dir = Path(output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    (output_dir / "assistant.py").write_text(_assistant_text(schema))
+
+
+def write_intelligence_file(output_dir, schema: AppSchema):
+    """Write generated AI analytics, NLP, and optimization helpers."""
+    output_dir = Path(output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    (output_dir / "intelligence.py").write_text(_intelligence_text(schema))
+
+
+def write_chatbot_file(output_dir, schema: AppSchema):
+    """Write generated in-app guided chatbot helpers."""
+    output_dir = Path(output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    (output_dir / "chatbot.py").write_text(_chatbot_app_text(schema, _app_name(schema)))
+
+
+def write_voice_file(output_dir, schema: AppSchema):
+    """Write generated voice assistant and speech interface helpers."""
+    output_dir = Path(output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    (output_dir / "voice.py").write_text(_voice_text(schema, _app_name(schema)))
+
+
+def write_agents_file(output_dir, schema: AppSchema):
+    """Write generated agentic system and LLM provider contracts."""
+    output_dir = Path(output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    (output_dir / "agents.py").write_text(_agents_text(schema))
+
+
+def write_text_quality_file(output_dir, schema: AppSchema):
+    """Write generated text-area quality helpers."""
+    output_dir = Path(output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    (output_dir / "text_quality.py").write_text(_text_quality_text(schema))
+
+
+def write_notifications_file(output_dir, schema: AppSchema):
+    """Write generated notification channel and event helpers."""
+    output_dir = Path(output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    (output_dir / "notifications.py").write_text(_notifications_text(schema))
+
+
+def write_platforms_file(output_dir, schema: AppSchema):
+    """Write generated platform target descriptors and export helpers."""
+    output_dir = Path(output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    (output_dir / "platforms.py").write_text(_platforms_text(schema))
+
+
+def write_microservices_file(output_dir, schema: AppSchema):
+    """Write generated microservice architecture descriptors."""
+    output_dir = Path(output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    (output_dir / "microservices.py").write_text(_microservices_text(schema, _app_name(schema)))
+
+
+def write_collaboration_file(output_dir, schema: AppSchema):
+    """Write generated collaboration, versioning, and review helpers."""
+    output_dir = Path(output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    (output_dir / "collaboration.py").write_text(_collaboration_text(schema))
+
+
+def write_version_control_file(output_dir, schema: AppSchema):
+    """Write generated version-control history and rollback helpers."""
+    output_dir = Path(output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    (output_dir / "version_control.py").write_text(_version_control_text(schema))
+
+
+def write_realtime_file(output_dir, schema: AppSchema):
+    """Write generated real-time event and messaging helpers."""
+    output_dir = Path(output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    (output_dir / "realtime.py").write_text(_realtime_text(schema))
+
+
+def write_events_file(output_dir, schema: AppSchema):
+    """Write generated complex-event processing and alerting helpers."""
+    output_dir = Path(output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    (output_dir / "events.py").write_text(_events_text(schema))
+
+
+def write_rpa_file(output_dir, schema: AppSchema):
+    """Write generated RPA and business-process analysis helpers."""
+    output_dir = Path(output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    (output_dir / "rpa.py").write_text(_rpa_text(schema))
+
+
+def write_diagnostics_file(output_dir, schema: AppSchema):
+    """Write generated testing, debugging, and diagnostic helpers."""
+    output_dir = Path(output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    (output_dir / "diagnostics.py").write_text(_diagnostics_text(schema))
+
+
+def write_api_testing_file(output_dir, schema: AppSchema):
+    """Write generated API test and synthetic monitoring helpers."""
+    output_dir = Path(output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    (output_dir / "api_testing.py").write_text(_api_testing_text(schema))
+
+
+def write_code_review_file(output_dir, schema: AppSchema):
+    """Write generated automated code-review helpers."""
+    output_dir = Path(output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    (output_dir / "code_review.py").write_text(_code_review_text(schema))
+
+
+def write_components_file(output_dir, schema: AppSchema):
+    """Write generated component, widget, and layout descriptors."""
+    output_dir = Path(output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    (output_dir / "components.py").write_text(_components_text(schema))
+
+
+def write_view_composition_file(output_dir, schema: AppSchema):
+    """Write generated master-detail, multiple, and chart view composition helpers."""
+    output_dir = Path(output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    (output_dir / "view_composition.py").write_text(_view_composition_text(schema))
+
+
+def write_tabbed_views_file(output_dir, schema: AppSchema):
+    """Write generated tabbed view and per-tab permission helpers."""
+    output_dir = Path(output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    (output_dir / "tabbed_views.py").write_text(_tabbed_views_text(schema))
+
+
+def write_form_designer_file(output_dir, schema: AppSchema):
+    """Write generated Delphi-style drag-and-drop form designer helpers."""
+    output_dir = Path(output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    (output_dir / "form_designer.py").write_text(_form_designer_text(schema))
+
+
+def write_nl_evolution_file(output_dir, schema: AppSchema):
+    """Write generated natural-language app evolution helpers."""
+    output_dir = Path(output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    (output_dir / "nl_evolution.py").write_text(_nl_evolution_text(schema))
+
+
+def write_dsl_reference_file(output_dir, schema: AppSchema):
+    """Write generated DSL reference, examples, and lint helpers."""
+    output_dir = Path(output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    (output_dir / "dsl_reference.py").write_text(_dsl_reference_text(schema, _app_name(schema)))
+
+
+def write_view_experience_file(output_dir, schema: AppSchema):
+    """Write generated shared view-experience helpers."""
+    output_dir = Path(output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    (output_dir / "view_experience.py").write_text(_view_experience_text(schema, _app_name(schema)))
+
+
+def write_support_center_file(output_dir, schema: AppSchema):
+    """Write generated support, tutorial, and sample-app helpers."""
+    output_dir = Path(output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    (output_dir / "support_center.py").write_text(_support_center_text(schema, _app_name(schema)))
+
+
+def write_prototyping_file(output_dir, schema: AppSchema):
+    """Write generated rapid prototyping and preview helpers."""
+    output_dir = Path(output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    (output_dir / "prototyping.py").write_text(_prototyping_text(schema, _app_name(schema)))
+
+
+def write_erp_templates_file(output_dir, schema: AppSchema):
+    """Write generated ERP component template helpers."""
+    output_dir = Path(output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    (output_dir / "erp_templates.py").write_text(_erp_templates_text(schema))
+
+
+def write_project_management_file(output_dir, schema: AppSchema):
+    """Write generated agile project-management and DevOps tool helpers."""
+    output_dir = Path(output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    (output_dir / "project_management.py").write_text(_project_management_text(schema))
+
+
+def write_devtools_file(output_dir, schema: AppSchema):
+    """Write generated IDE and developer-tool integration helpers."""
+    output_dir = Path(output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    (output_dir / "devtools.py").write_text(_devtools_text(schema, _app_name(schema)))
+
+
+def write_studio_file(output_dir, schema: AppSchema):
+    """Write generated in-app developer studio helpers."""
+    output_dir = Path(output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    (output_dir / "studio.py").write_text(_studio_text(schema, _app_name(schema)))
+
+
+def write_wizards_file(output_dir, schema: AppSchema):
+    """Write generated table and workflow wizard contracts."""
+    output_dir = Path(output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    (output_dir / "wizards.py").write_text(_wizards_text(schema))
+
+
+def write_branding_file(output_dir, schema: AppSchema):
+    """Write generated branding and theme descriptors."""
+    output_dir = Path(output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    (output_dir / "branding.py").write_text(_branding_text(schema))
+
+
+def write_extensions_file(output_dir, schema: AppSchema):
+    """Write generated custom-code extension hook descriptors."""
+    output_dir = Path(output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    (output_dir / "extensions.py").write_text(_extensions_text(schema))
+
+
+def write_designer_file(output_dir, schema: AppSchema):
+    """Write a no-code designer cockpit backed by appgen.json."""
+    output_dir = Path(output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    with open(output_dir / "designer.py", "w") as f:
+        f.write('"""Generated no-code designer view for AppGen apps."""\n\n')
+        f.write("from __future__ import annotations\n\n")
+        f.write("import json\n")
+        f.write("from pathlib import Path\n\n")
+        f.write("from flask import jsonify\n")
+        f.write("from flask import request\n")
+        f.write("from flask_appbuilder import BaseView, expose\n\n\n")
+        f.write("def manifest_path():\n")
+        f.write("    return Path(__file__).resolve().parent / 'appgen.json'\n\n\n")
+        f.write("def load_manifest():\n")
+        f.write("    return json.loads(manifest_path().read_text())\n\n\n")
+        f.write("def visual_model(manifest):\n")
+        f.write("    \"\"\"Return graph nodes and edges for visual no-code modelers.\"\"\"\n")
+        f.write("    nodes = []\n")
+        f.write("    edges = []\n")
+        f.write("    for table in manifest.get('tables', []):\n")
+        f.write("        nodes.append({'id': table['name'], 'kind': 'table', 'label': table['name'], 'fields': [column['name'] for column in table.get('columns', [])]})\n")
+        f.write("        for column in table.get('columns', []):\n")
+        f.write("            if column.get('references'):\n")
+        f.write("                target_table, target_column = column['references']\n")
+        f.write("                edges.append({'source': table['name'], 'target': target_table, 'kind': 'relation', 'field': column['name'], 'target_field': target_column})\n")
+        f.write("            if any(enum.get('name') == column.get('type') for enum in manifest.get('enums', [])):\n")
+        f.write("                edges.append({'source': table['name'], 'target': f\"enum:{column['type']}\", 'kind': 'choice', 'field': column['name']})\n")
+        f.write("    for enum in manifest.get('enums', []):\n")
+        f.write("        nodes.append({'id': f\"enum:{enum['name']}\", 'kind': 'enum', 'label': enum['name'], 'values': tuple(enum.get('values', []))})\n")
+        f.write("    for flow in manifest.get('flows', []):\n")
+        f.write("        flow_id = f\"flow:{flow['name']}\"\n")
+        f.write("        nodes.append({'id': flow_id, 'kind': 'flow', 'label': flow['name'], 'steps': len(flow.get('steps', []))})\n")
+        f.write("        for step in flow.get('steps', []):\n")
+        f.write("            edges.append({'source': step['source'], 'target': step['target'], 'kind': 'transition', 'flow': flow['name']})\n")
+        f.write("    return {'nodes': tuple(nodes), 'edges': tuple(edges)}\n\n\n")
+        f.write("def relationship_matrix(manifest):\n")
+        f.write("    \"\"\"Return relationship edges grouped for ER diagram and design tools.\"\"\"\n")
+        f.write("    relationships = []\n")
+        f.write("    for relation in manifest.get('relations', []):\n")
+        f.write("        relationships.append({'source_table': relation['source_table'], 'source_column': relation['source_column'], 'target_table': relation['target_table'], 'target_column': relation.get('target_column') or 'id', 'cardinality': relation.get('cardinality') or 'many-to-one', 'label': f\"{relation['source_table']}.{relation['source_column']} -> {relation['target_table']}.{relation.get('target_column') or 'id'}\"})\n")
+        f.write("    if not relationships:\n")
+        f.write("        for table in manifest.get('tables', []):\n")
+        f.write("            for column in table.get('columns', []):\n")
+        f.write("                if column.get('references'):\n")
+        f.write("                    target_table, target_column = column['references']\n")
+        f.write("                    relationships.append({'source_table': table['name'], 'source_column': column['name'], 'target_table': target_table, 'target_column': target_column, 'cardinality': 'many-to-one', 'label': f\"{table['name']}.{column['name']} -> {target_table}.{target_column}\"})\n")
+        f.write("    return tuple(relationships)\n\n\n")
+        f.write("def erd_mermaid(manifest):\n")
+        f.write("    \"\"\"Return a Mermaid ER diagram for generated tables and relationships.\"\"\"\n")
+        f.write("    lines = ['erDiagram']\n")
+        f.write("    for table in manifest.get('tables', []):\n")
+        f.write("        lines.append(f\"  {table['name']} {{\")\n")
+        f.write("        for column in table.get('columns', []):\n")
+        f.write("            markers = []\n")
+        f.write("            if column.get('primary_key'):\n")
+        f.write("                markers.append('PK')\n")
+        f.write("            if column.get('references'):\n")
+        f.write("                markers.append('FK')\n")
+        f.write("            marker = ' ' + ' '.join(markers) if markers else ''\n")
+        f.write("            label = f\" {column['name']}\" if column.get('name') else ''\n")
+        f.write("            lines.append(f\"    {column.get('type') or 'string'}{marker}{label}\")\n")
+        f.write("        lines.append('  }')\n")
+        f.write("    for relation in relationship_matrix(manifest):\n")
+        f.write("        label = relation['source_column']\n")
+        f.write("        lines.append(f\"  {relation['target_table']} ||--o{{ {relation['source_table']} : {label}\")\n")
+        f.write("    return '\\n'.join(lines) + '\\n'\n\n\n")
+        f.write("def schema_diagram_check(manifest):\n")
+        f.write("    \"\"\"Return readiness for generated schema diagram artifacts.\"\"\"\n")
+        f.write("    diagram = erd_mermaid(manifest)\n")
+        f.write("    tables = tuple(table.get('name') for table in manifest.get('tables', []))\n")
+        f.write("    return {'ok': diagram.startswith('erDiagram') and all(table in diagram for table in tables), 'tables': tables, 'relationships': relationship_matrix(manifest)}\n\n\n")
+        f.write("def designer_state(manifest):\n")
+        f.write("    \"\"\"Return no-code designer state with manifest, graph, and DSL.\"\"\"\n")
+        f.write("    graph = visual_model(manifest)\n")
+        f.write("    primitive_types = ('string', 'text', 'int', 'decimal', 'bool', 'date', 'datetime', 'email', 'image', 'file')\n")
+        f.write("    enum_types = tuple(enum['name'] for enum in manifest.get('enums', []))\n")
+        f.write("    workspace = {'tables': tuple(table['name'] for table in manifest.get('tables', [])), 'types': primitive_types + enum_types, 'enums': tuple(manifest.get('enums', []))}\n")
+        f.write("    return {'manifest': manifest, 'graph': graph, 'erd': erd_mermaid(manifest), 'relationships': relationship_matrix(manifest), 'dsl': dsl_from_manifest(manifest), 'workspace': workspace}\n\n\n")
+        f.write("def proposal_from_payload(payload):\n")
+        f.write("    \"\"\"Build a typed designer proposal from a browser JSON payload.\"\"\"\n")
+        f.write("    kind = payload.get('kind')\n")
+        f.write("    if kind == 'add_table':\n")
+        f.write("        return table_proposal(str(payload['name']).strip())\n")
+        f.write("    if kind == 'add_field':\n")
+        f.write("        return field_proposal(str(payload['table']).strip(), str(payload['name']).strip(), str(payload.get('type') or 'string').strip(), required=bool(payload.get('required')), searchable=bool(payload.get('searchable')), hidden=bool(payload.get('hidden')))\n")
+        f.write("    if kind == 'add_flow_step':\n")
+        f.write("        return flow_step_proposal(str(payload['flow']).strip(), str(payload['source']).strip(), str(payload['target']).strip())\n")
+        f.write("    raise ValueError(f\"Unknown designer proposal: {kind}\")\n\n\n")
+        f.write("def table_proposal(name, *, columns=None):\n")
+        f.write("    \"\"\"Create a manifest patch proposal for a new table.\"\"\"\n")
+        f.write("    columns = tuple(columns or ({'name': 'id', 'type': 'int', 'nullable': False, 'primary_key': True, 'unique': False, 'references': None, 'hidden': False, 'searchable': False, 'derived': False, 'expression': None, 'source_group': None},))\n")
+        f.write("    return {'kind': 'add_table', 'table': {'name': name, 'columns': list(columns)}}\n\n\n")
+        f.write("def field_proposal(table_name, name, type_name='string', **options):\n")
+        f.write("    \"\"\"Create a manifest patch proposal for a new field.\"\"\"\n")
+        f.write("    field = {'name': name, 'type': type_name, 'nullable': not bool(options.get('required')), 'primary_key': bool(options.get('primary_key', False)), 'unique': bool(options.get('unique', False)), 'references': options.get('references'), 'hidden': bool(options.get('hidden', False)), 'searchable': bool(options.get('searchable', False)), 'derived': bool(options.get('derived', False)), 'expression': options.get('expression'), 'source_group': options.get('source_group')}\n")
+        f.write("    return {'kind': 'add_field', 'table': table_name, 'field': field}\n\n\n")
+        f.write("def flow_step_proposal(flow_name, source, target):\n")
+        f.write("    \"\"\"Create a manifest patch proposal for a workflow transition.\"\"\"\n")
+        f.write("    return {'kind': 'add_flow_step', 'flow': flow_name, 'step': {'source': source, 'target': target}}\n\n\n")
+        f.write("def apply_proposal(manifest, proposal):\n")
+        f.write("    \"\"\"Return a new manifest with a no-code designer proposal applied.\"\"\"\n")
+        f.write("    updated = json.loads(json.dumps(manifest))\n")
+        f.write("    kind = proposal.get('kind')\n")
+        f.write("    if kind == 'add_table':\n")
+        f.write("        updated.setdefault('tables', []).append(proposal['table'])\n")
+        f.write("    elif kind == 'add_field':\n")
+        f.write("        for table in updated.setdefault('tables', []):\n")
+        f.write("            if table.get('name') == proposal['table']:\n")
+        f.write("                table.setdefault('columns', []).append(proposal['field'])\n")
+        f.write("                break\n")
+        f.write("        else:\n")
+        f.write("            raise KeyError(proposal['table'])\n")
+        f.write("    elif kind == 'add_flow_step':\n")
+        f.write("        for flow in updated.setdefault('flows', []):\n")
+        f.write("            if flow.get('name') == proposal['flow']:\n")
+        f.write("                flow.setdefault('steps', []).append(proposal['step'])\n")
+        f.write("                break\n")
+        f.write("        else:\n")
+        f.write("            updated.setdefault('flows', []).append({'name': proposal['flow'], 'steps': [proposal['step']]})\n")
+        f.write("    else:\n")
+        f.write("        raise ValueError(f\"Unknown designer proposal: {kind}\")\n")
+        f.write("    return updated\n\n\n")
+        f.write("def proposal_to_dsl(manifest, proposal):\n")
+        f.write("    \"\"\"Return DSL after applying one no-code designer proposal.\"\"\"\n")
+        f.write("    return dsl_from_manifest(apply_proposal(manifest, proposal))\n\n\n")
+        f.write("def dsl_from_manifest(manifest):\n")
+        f.write("    lines = []\n")
+        f.write("    app_name = manifest.get('app_name') or 'GeneratedApp'\n")
+        f.write("    app_options = manifest.get('app_options') or {}\n")
+        f.write("    if app_options:\n")
+        f.write("        options = ' '.join(f'{key}: {value!r};' for key, value in sorted(app_options.items()))\n")
+        f.write("        lines.append(f'app {app_name} {{ {options} }}')\n")
+        f.write("    else:\n")
+        f.write("        lines.append(f'app {app_name}')\n")
+        f.write("    for enum in manifest.get('enums', []):\n")
+        f.write("        values = ' '.join(enum.get('values', []))\n")
+        f.write("        lines.append('')\n")
+        f.write("        lines.append(f\"enum {enum['name']} {{ {values} }}\")\n")
+        f.write("    for table in manifest.get('tables', []):\n")
+        f.write("        lines.append('')\n")
+        f.write("        lines.append(f\"table {table['name']} {{\")\n")
+        f.write("        for column in table.get('columns', []):\n")
+        f.write("            modifiers = []\n")
+        f.write("            if column.get('primary_key'):\n")
+        f.write("                modifiers.append('pk')\n")
+        f.write("            if column.get('nullable') is False and not column.get('primary_key') and not column.get('derived'):\n")
+        f.write("                modifiers.append('required')\n")
+        f.write("            if column.get('unique'):\n")
+        f.write("                modifiers.append('unique')\n")
+        f.write("            if column.get('hidden'):\n")
+        f.write("                modifiers.append('hidden')\n")
+        f.write("            if column.get('searchable'):\n")
+        f.write("                modifiers.append('search')\n")
+        f.write("            if column.get('references'):\n")
+        f.write("                target_table, target_column = column['references']\n")
+        f.write("                modifiers.append(f'-> {target_table}.{target_column}')\n")
+        f.write("            expression = f\" = {column['expression']}\" if column.get('expression') else ''\n")
+        f.write("            suffix = ' ' + ' '.join(modifiers) if modifiers else ''\n")
+        f.write("            lines.append(f\"  {column['name']}: {column['type']}{expression}{suffix}\")\n")
+        f.write("        lines.append('}')\n")
+        f.write("    for view in manifest.get('views', []):\n")
+        f.write("        lines.append('')\n")
+        f.write("        lines.append(f\"view {view['name']} for {view['table']} {{\")\n")
+        f.write("        sections = view.get('sections') or []\n")
+        f.write("        if sections:\n")
+        f.write("            for section in sections:\n")
+        f.write("                fields = ', '.join(section.get('fields', []))\n")
+        f.write("                if fields:\n")
+        f.write("                    lines.append(f\"  {section['name']}: {fields};\")\n")
+        f.write("        else:\n")
+        f.write("            fields = ', '.join(view.get('fields', []))\n")
+        f.write("            if fields:\n")
+        f.write("                lines.append(f'  {fields};')\n")
+        f.write("        for component in view.get('components', []):\n")
+        f.write("            name = component.get('field') or component.get('name')\n")
+        f.write("            if name and component.get('component'):\n")
+        f.write("                lines.append(f\"  @ {name} {component['component']} {component.get('x', 0)} {component.get('y', 0)} {component.get('w', 4)} {component.get('h', 1)};\")\n")
+        f.write("        lines.append('}')\n")
+        f.write("    for flow in manifest.get('flows', []):\n")
+        f.write("        lines.append('')\n")
+        f.write("        lines.append(f\"flow {flow['name']} {{\")\n")
+        f.write("        for step in flow.get('steps', []):\n")
+        f.write("            lines.append(f\"  {step['source']} -> {step['target']};\")\n")
+        f.write("        lines.append('}')\n")
+        f.write("    for role in manifest.get('roles', []):\n")
+        f.write("        lines.append('')\n")
+        f.write("        lines.append(f\"role {role['name']} {{\")\n")
+        f.write("        for permission in role.get('permissions', []):\n")
+        f.write("            actions = ', '.join(permission.get('actions', []))\n")
+        f.write("            lines.append(f\"  {permission['resource']}: {actions};\")\n")
+        f.write("        lines.append('}')\n")
+        f.write("    for rule in manifest.get('rules', []):\n")
+        f.write("        lines.append('')\n")
+        f.write("        lines.append(f\"rule {rule['name']} for {rule['table']} {{\")\n")
+        f.write("        for condition in rule.get('conditions', []):\n")
+        f.write("            if condition.get('operator') == 'required':\n")
+        f.write("                message = f\" {condition['message']!r}\" if condition.get('message') else ''\n")
+        f.write("                lines.append(f\"  {condition['field']} required{message};\")\n")
+        f.write("                continue\n")
+        f.write("            values = ', '.join(str(value) for value in condition.get('values', []))\n")
+        f.write("            action = f\" -> {condition['action']}\" if condition.get('action') else ''\n")
+        f.write("            lines.append(f\"  {condition['field']} {condition['operator']} {values}{action};\")\n")
+        f.write("        lines.append('}')\n")
+        f.write("    return '\\n'.join(lines).strip() + '\\n'\n\n\n")
+        f.write("class AppGenDesignerView(BaseView):\n")
+        f.write("    route_base = '/designer'\n")
+        f.write("    default_view = 'index'\n\n")
+        f.write("    @expose('/')\n")
+        f.write("    def index(self):\n")
+        f.write("        manifest = load_manifest()\n")
+        f.write("        return self.render_template(\n")
+        f.write("            'appgen_designer.html',\n")
+        f.write("            manifest=manifest,\n")
+        f.write("            dsl=dsl_from_manifest(manifest),\n")
+        f.write("            graph=visual_model(manifest),\n")
+        f.write("        )\n\n")
+        f.write("    @expose('/manifest')\n")
+        f.write("    def manifest(self):\n")
+        f.write("        return jsonify(load_manifest())\n\n\n")
+        f.write("    @expose('/model.json')\n")
+        f.write("    def model_json(self):\n")
+        f.write("        return jsonify(designer_state(load_manifest()))\n\n")
+        f.write("    @expose('/relationships.json')\n")
+        f.write("    def relationships_json(self):\n")
+        f.write("        return jsonify(list(relationship_matrix(load_manifest())))\n\n")
+        f.write("    @expose('/erd.mmd')\n")
+        f.write("    def erd_mermaid_route(self):\n")
+        f.write("        return erd_mermaid(load_manifest()), 200, {'Content-Type': 'text/plain; charset=utf-8'}\n\n")
+        f.write("    @expose('/proposal', methods=('POST',))\n")
+        f.write("    def proposal(self):\n")
+        f.write("        manifest = load_manifest()\n")
+        f.write("        proposal = proposal_from_payload(request.get_json(silent=True) or {})\n")
+        f.write("        updated = apply_proposal(manifest, proposal)\n")
+        f.write("        return jsonify({'proposal': proposal, 'manifest': updated, 'graph': visual_model(updated), 'dsl': dsl_from_manifest(updated)})\n\n")
+        f.write("    @expose('/dsl')\n")
+        f.write("    def dsl(self):\n")
+        f.write("        return dsl_from_manifest(load_manifest()), 200, {'Content-Type': 'text/plain; charset=utf-8'}\n\n\n")
+        f.write("def register_designer(appbuilder):\n")
+        f.write("    appbuilder.add_view(\n")
+        f.write("        AppGenDesignerView,\n")
+        f.write("        'Designer',\n")
+        f.write("        icon='fa-object-group',\n")
+        f.write("        category='AppGen',\n")
+        f.write("    )\n")
+
+
+def write_project_scaffold(output_dir, schema: AppSchema):
+    """Write deploy, documentation, and generated smoke-test scaffolding."""
+    output_dir = Path(output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    app_name = _app_name(schema)
+
+    (output_dir / "README.md").write_text(_readme_text(schema, app_name))
+    (output_dir / "requirements.txt").write_text(_requirements_text())
+    (output_dir / "pyproject.toml").write_text(_publishable_pyproject_text(app_name))
+    (output_dir / "MANIFEST.in").write_text(_manifest_in_text())
+    (output_dir / "appgen_package.py").write_text(_package_contract_text(schema, app_name))
+    (output_dir / ".env.example").write_text(_env_text(app_name))
+    (output_dir / "config.py").write_text(_config_text(app_name))
+    (output_dir / "babel.cfg").write_text(_babel_config_text())
+    (output_dir / "seed.py").write_text(_seed_text(schema))
+    (output_dir / "Dockerfile").write_text(_dockerfile_text())
+    (output_dir / "docker-compose.yml").write_text(_compose_text(app_name))
+
+    custom_dir = output_dir / "app_custom"
+    custom_dir.mkdir(parents=True, exist_ok=True)
+    (custom_dir / "__init__.py").write_text('"""Custom extension package for generated AppGen apps."""\n')
+    (custom_dir / "extensions.py").write_text(_custom_extensions_text(schema, app_name))
+
+    deploy_dir = output_dir / "deploy"
+    deploy_dir.mkdir(parents=True, exist_ok=True)
+    (deploy_dir / "appgen_deploy.py").write_text(_deployment_contract_text(schema, app_name))
+    (deploy_dir / "appgen_https.py").write_text(_https_contract_text(app_name))
+    (deploy_dir / "Caddyfile").write_text(_caddyfile_text(app_name))
+    (deploy_dir / "k8s.yaml").write_text(_k8s_manifest_text(app_name))
+    (deploy_dir / "terraform-aws.tf").write_text(_terraform_text(app_name, "aws"))
+    (deploy_dir / "terraform-gcp.tf").write_text(_terraform_text(app_name, "gcp"))
+    (deploy_dir / "terraform-azure.tf").write_text(_terraform_text(app_name, "azure"))
+
+    frontends_dir = output_dir / "frontends"
+    frontends_dir.mkdir(parents=True, exist_ok=True)
+    (frontends_dir / "appgen_frontends.py").write_text(_frontend_contract_text(schema, app_name))
+    for target in ("react", "vue", "angular", "express"):
+        target_dir = frontends_dir / target
+        src_dir = target_dir / "src"
+        src_dir.mkdir(parents=True, exist_ok=True)
+        (target_dir / "package.json").write_text(_frontend_package_text(app_name, target))
+        source_name, source_text = _frontend_source(target, schema, app_name)
+        (src_dir / source_name).write_text(source_text)
+
+    sdks_dir = output_dir / "sdks"
+    sdks_dir.mkdir(parents=True, exist_ok=True)
+    (sdks_dir / "appgen_sdks.py").write_text(_sdk_contract_text(schema, app_name))
+    for target, source_name, source_text in _sdk_sources(schema, app_name):
+        target_dir = sdks_dir / target
+        target_dir.mkdir(parents=True, exist_ok=True)
+        (target_dir / source_name).write_text(source_text)
+
+    native_dir = output_dir / "native"
+    mobile_dir = native_dir / "mobile"
+    desktop_dir = native_dir / "desktop"
+    mobile_dir.mkdir(parents=True, exist_ok=True)
+    desktop_dir.mkdir(parents=True, exist_ok=True)
+    (native_dir / "appgen_native.py").write_text(_native_contract_text(schema, app_name))
+    (mobile_dir / "pyproject.toml").write_text(_native_pyproject_text(app_name, "mobile"))
+    (mobile_dir / "app.py").write_text(_kivy_mobile_text(schema, app_name))
+    (desktop_dir / "pyproject.toml").write_text(_native_pyproject_text(app_name, "desktop"))
+    (desktop_dir / "app.py").write_text(_beeware_desktop_text(schema, app_name))
+
+    jhipster_dir = output_dir / "jhipster"
+    jhipster_dir.mkdir(parents=True, exist_ok=True)
+    (jhipster_dir / "appgen_jhipster.py").write_text(_jhipster_contract_text(schema, app_name))
+    (jhipster_dir / "app.jdl").write_text(_jhipster_jdl_text(schema, app_name))
+
+    chatbots_dir = output_dir / "chatbots"
+    dialogflow_dir = chatbots_dir / "dialogflow"
+    botframework_dir = chatbots_dir / "botframework"
+    dialogflow_dir.mkdir(parents=True, exist_ok=True)
+    botframework_dir.mkdir(parents=True, exist_ok=True)
+    (chatbots_dir / "appgen_chatbots.py").write_text(_chatbot_contract_text(schema, app_name))
+    (dialogflow_dir / "intents.json").write_text(_dialogflow_intents_text(schema, app_name))
+    (botframework_dir / "manifest.json").write_text(_botframework_manifest_text(schema, app_name))
+
+    automation_dir = output_dir / "automation"
+    node_red_dir = automation_dir / "node-red"
+    node_red_dir.mkdir(parents=True, exist_ok=True)
+    (automation_dir / "appgen_node_red.py").write_text(_node_red_contract_text(schema, app_name))
+    (node_red_dir / "flows.json").write_text(_node_red_flows_text(schema, app_name))
+
+    scripts_dir = output_dir / "scripts"
+    scripts_dir.mkdir(parents=True, exist_ok=True)
+    (scripts_dir / "appgen_quality.py").write_text(_quality_script_text())
+
+    workflows_dir = output_dir / ".github" / "workflows"
+    workflows_dir.mkdir(parents=True, exist_ok=True)
+    (workflows_dir / "appgen-ci.yml").write_text(_ci_workflow_text())
+
+    vscode_dir = output_dir / ".vscode"
+    vscode_dir.mkdir(parents=True, exist_ok=True)
+    (vscode_dir / "launch.json").write_text(_vscode_launch_text(app_name))
+    (vscode_dir / "tasks.json").write_text(_vscode_tasks_text())
+    (vscode_dir / "extensions.json").write_text(_vscode_extensions_text())
+    (output_dir / ".project").write_text(_eclipse_project_text(app_name))
+    (output_dir / ".pydevproject").write_text(_pydev_project_text())
+    idea_dir = output_dir / ".idea"
+    idea_run_dir = idea_dir / "runConfigurations"
+    idea_run_dir.mkdir(parents=True, exist_ok=True)
+    (idea_dir / "misc.xml").write_text(_idea_misc_text())
+    (idea_dir / "modules.xml").write_text(_idea_modules_text(app_name))
+    (idea_dir / f"{_idea_module_name(app_name)}.iml").write_text(_idea_module_text())
+    (idea_run_dir / "AppGen_Flask.xml").write_text(_idea_run_config_text(app_name))
+
+    docs_dir = output_dir / "docs"
+    docs_dir.mkdir(parents=True, exist_ok=True)
+    (docs_dir / "schema.md").write_text(_schema_docs_text(schema, app_name))
+    (docs_dir / "data-dictionary.json").write_text(_data_dictionary_json(schema, app_name))
+    (docs_dir / "data-dictionary.md").write_text(_data_dictionary_md_text(schema, app_name))
+    (docs_dir / "openapi.json").write_text(
+        json.dumps(_openapi_spec(schema, app_name), indent=2, sort_keys=True) + "\n"
+    )
+    (docs_dir / "accessibility.md").write_text(_accessibility_docs_text(schema, app_name))
+
+    translations_dir = output_dir / "app" / "translations" / "en" / "LC_MESSAGES"
+    translations_dir.mkdir(parents=True, exist_ok=True)
+    (translations_dir / "messages.po").write_text(_messages_po_text(schema, app_name))
+
+    migrations_dir = output_dir / "migrations"
+    versions_dir = migrations_dir / "versions"
+    migrations_dir.mkdir(parents=True, exist_ok=True)
+    versions_dir.mkdir(parents=True, exist_ok=True)
+    (migrations_dir / "README.md").write_text(_migrations_text())
+    (migrations_dir / "env.py").write_text(_alembic_env_text())
+    (migrations_dir / "script.py.mako").write_text(_alembic_script_text())
+    (migrations_dir / "versions" / ".gitkeep").write_text("")
+    (output_dir / "alembic.ini").write_text(_alembic_ini_text())
+
+    cookiecutter_dir = output_dir / "cookiecutter"
+    cookie_project_dir = cookiecutter_dir / "{{cookiecutter.project_slug}}"
+    cookie_app_dir = cookie_project_dir / "app"
+    cookiecutter_dir.mkdir(parents=True, exist_ok=True)
+    cookie_app_dir.mkdir(parents=True, exist_ok=True)
+    (cookiecutter_dir / "cookiecutter.json").write_text(_cookiecutter_json_text(app_name))
+    (cookie_project_dir / "README.md").write_text(_cookiecutter_readme_text(app_name))
+    (cookie_project_dir / "pyproject.toml").write_text(_cookiecutter_pyproject_text())
+    (cookie_app_dir / "__init__.py").write_text(_cookiecutter_app_init_text())
+
+    tests_dir = output_dir / "tests"
+    tests_dir.mkdir(parents=True, exist_ok=True)
+    (tests_dir / "test_generated_contract.py").write_text(_generated_contract_test_text())
+    (tests_dir / "test_generated_coverage.py").write_text(_generated_coverage_test_text(schema))
+
+
+def write_generated_home(output_dir, schema: AppSchema):
+    """Write a neutral generated landing dashboard for the app."""
+    templates_dir = Path(output_dir) / "templates"
+    templates_dir.mkdir(parents=True, exist_ok=True)
+    branding = _branding_contract(schema)
+    app_name = escape(branding["app_name"])
+    theme_color = escape(branding["palette"]["primary"])
+    table_cards = "\n".join(
+        (
+            f"          <li><strong>{escape(table.name)}</strong>"
+            f"<span>{len(table.columns)} fields</span></li>"
+        )
+        for table in schema.tables
+    )
+    if not table_cards:
+        table_cards = "          <li><strong>No tables yet</strong><span>Define a table in the DSL</span></li>"
+    flow_items = "\n".join(
+        f"          <li>{escape(flow.name)}<span>{len(flow.steps)} transitions</span></li>"
+        for flow in schema.flows
+    )
+    if not flow_items:
+        flow_items = "          <li>No workflows declared<span>Add a flow when the app needs state transitions</span></li>"
+
+    (templates_dir / "my_index.html").write_text(
+        """{% extends "appbuilder/base.html" %}
+{% block content %}
+<link rel="manifest" href="/static/appgen.webmanifest">
+<link rel="stylesheet" href="/static/appgen-theme.css">
+<meta name="theme-color" content='""" + theme_color + """'>
+<style>
+  .ag-hero {
+    margin: 18px 0 24px;
+    padding: 28px;
+    border: 1px solid #d9e2ec;
+    background: var(--appgen-surface, #f8fafc);
+  }
+  .ag-title { margin: 0 0 8px; font-size: 30px; font-weight: 700; color: var(--appgen-text, #14213d); }
+  .ag-subtitle { max-width: 760px; color: var(--appgen-muted, #52616b); font-size: 15px; line-height: 1.55; }
+  .ag-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; }
+  .ag-panel { border: 1px solid #d9e2ec; padding: 18px; background: #ffffff; }
+  .ag-panel h3 { margin: 0 0 12px; font-size: 16px; color: var(--appgen-text, #14213d); }
+  .ag-metric { font-size: 28px; font-weight: 700; color: var(--appgen-primary, #0f766e); }
+  .ag-list { list-style: none; padding: 0; margin: 0; }
+  .ag-list li { display: flex; justify-content: space-between; gap: 12px; padding: 9px 0; border-top: 1px solid #edf2f7; }
+  .ag-list li:first-child { border-top: 0; }
+  .ag-list span { color: var(--appgen-muted, #64748b); }
+  .ag-actions { margin-top: 18px; display: flex; gap: 10px; flex-wrap: wrap; }
+  .ag-actions a { border-radius: 4px; }
+  .ag-skip { position: absolute; left: -999px; top: 8px; background: #ffffff; color: var(--appgen-text, #14213d); border: 2px solid var(--appgen-primary, #0f766e); padding: 8px 10px; z-index: 1000; }
+  .ag-skip:focus { left: 8px; }
+</style>
+<a class="ag-skip" href="#appgen-main">Skip to content</a>
+<main id="appgen-main" tabindex="-1">
+<section class="ag-hero" aria-labelledby="appgen-title">
+  <h1 id="appgen-title" class="ag-title">""" + app_name + """</h1>
+  <p class="ag-subtitle">
+    Generated by AppGen from a canonical schema. The app includes data models,
+    administration views, REST APIs, GraphQL schema, workflow helpers, and role
+    policy metadata.
+  </p>
+  <div class="ag-actions">
+    <a class="btn btn-primary" href="/login/">Sign in</a>
+    <a class="btn btn-default" href="/api/v1/_openapi">API metadata</a>
+    <a class="btn btn-default" href="/monitoring/">Monitoring</a>
+    <a class="btn btn-default" href="/workflows/">Workflows</a>
+    <a class="btn btn-default" href="/reports/">Reports</a>
+    <a class="btn btn-default" href="/backups/">Backups</a>
+    <a class="btn btn-default" href="/appgen/config/">Configuration</a>
+  </div>
+</section>
+<section class="ag-grid" aria-label="Application overview">
+  <div class="ag-panel" role="region" aria-labelledby="appgen-tables-title">
+    <h3 id="appgen-tables-title">Tables</h3>
+    <div class="ag-metric">""" + str(len(schema.tables)) + """</div>
+    <ul class="ag-list">
+""" + table_cards + """
+    </ul>
+  </div>
+  <div class="ag-panel" role="region" aria-labelledby="appgen-automation-title">
+    <h3 id="appgen-automation-title">Automation</h3>
+    <div class="ag-metric">""" + str(len(schema.flows)) + """</div>
+    <ul class="ag-list">
+""" + flow_items + """
+    </ul>
+  </div>
+  <div class="ag-panel" role="region" aria-labelledby="appgen-security-title">
+    <h3 id="appgen-security-title">Security</h3>
+    <div class="ag-metric">""" + str(len(schema.roles)) + """</div>
+    <p class="ag-subtitle">Generated role policies are available in <code>security.py</code>.</p>
+  </div>
+</section>
+</main>
+<script>
+  if ("serviceWorker" in navigator) {
+    window.addEventListener("load", function () {
+      navigator.serviceWorker.register("/static/appgen-sw.js");
+    });
+  }
+</script>
+{% endblock %}
+"""
+    )
+
+
+def write_pwa_assets(output_dir, schema: AppSchema):
+    """Write generated PWA metadata and offline shell assets."""
+    static_dir = Path(output_dir) / "static"
+    static_dir.mkdir(parents=True, exist_ok=True)
+    app_name = _app_name(schema)
+    branding = _branding_contract(schema)
+    (static_dir / "appgen.webmanifest").write_text(_pwa_manifest_text(app_name, branding))
+    (static_dir / "appgen-sw.js").write_text(_service_worker_text())
+    (static_dir / "appgen-offline.html").write_text(_offline_page_text(app_name))
+    (static_dir / "appgen-icon.svg").write_text(_pwa_icon_text(app_name, branding))
+    (static_dir / "appgen-theme.css").write_text(_theme_css_text(branding))
+
+
+def write_designer_template(output_dir, schema: AppSchema):
+    """Write the designer cockpit template."""
+    templates_dir = Path(output_dir) / "templates"
+    templates_dir.mkdir(parents=True, exist_ok=True)
+    (templates_dir / "appgen_designer.html").write_text(
+        """{% extends "appbuilder/base.html" %}
+{% block content %}
+<style>
+  .agd-wrap { margin: 18px 0 32px; }
+  .agd-head { display: flex; justify-content: space-between; gap: 16px; align-items: flex-start; margin-bottom: 18px; }
+  .agd-title { margin: 0; font-size: 28px; font-weight: 700; color: #14213d; }
+  .agd-note { color: #52616b; max-width: 780px; line-height: 1.5; }
+  .agd-grid { display: grid; grid-template-columns: minmax(260px, 0.9fr) minmax(320px, 1.1fr); gap: 16px; }
+  .agd-panel { border: 1px solid #d9e2ec; background: #fff; padding: 16px; }
+  .agd-panel h3 { margin: 0 0 12px; font-size: 16px; color: #14213d; }
+  .agd-list { list-style: none; padding: 0; margin: 0; }
+  .agd-list li { padding: 10px 0; border-top: 1px solid #edf2f7; }
+  .agd-list li:first-child { border-top: 0; }
+  .agd-muted { color: #64748b; font-size: 12px; }
+  .agd-chip { display: inline-block; border: 1px solid #cbd5e1; background: #f8fafc; padding: 4px 8px; margin: 2px; border-radius: 999px; font-size: 12px; }
+  .agd-builder { display: grid; gap: 8px; margin-top: 14px; }
+  .agd-builder input, .agd-builder select { min-height: 34px; border: 1px solid #cbd5e1; padding: 6px 8px; }
+  .agd-builder label { display: flex; align-items: center; gap: 6px; margin: 0; font-weight: 400; color: #334155; }
+  .agd-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .agd-code { width: 100%; min-height: 420px; font-family: Menlo, Consolas, monospace; font-size: 12px; border: 1px solid #cbd5e1; padding: 12px; background: #f8fafc; color: #0f172a; }
+  .agd-link { white-space: nowrap; }
+  @media (max-width: 900px) { .agd-grid { grid-template-columns: 1fr; } .agd-head { display: block; } }
+</style>
+<section class="agd-wrap">
+  <div class="agd-head">
+    <div>
+      <h1 class="agd-title">{{ manifest.app_name or "Generated App" }} Designer</h1>
+      <p class="agd-note">
+        Inspect the generated data model, visual graph, workflows, roles, and a
+        DSL draft reconstructed from the manifest. Proposal helpers turn no-code
+        model edits into regenerated DSL.
+      </p>
+    </div>
+    <div>
+      <a class="btn btn-default agd-link" href="{{ url_for('AppGenDesignerView.manifest') }}">Manifest JSON</a>
+      <a class="btn btn-default agd-link" href="{{ url_for('AppGenDesignerView.model_json') }}">Model JSON</a>
+      <a class="btn btn-default agd-link" href="{{ url_for('AppGenDesignerView.dsl') }}">DSL</a>
+    </div>
+  </div>
+  <div class="agd-grid">
+    <div class="agd-panel">
+      <h3>Model</h3>
+      <ul class="agd-list">
+        {% for table in manifest.tables %}
+        <li>
+          <strong>{{ table.name }}</strong>
+          <div class="agd-muted">{{ table.columns|length }} fields</div>
+        </li>
+        {% else %}
+        <li>No tables declared</li>
+        {% endfor %}
+      </ul>
+      <h3>Workflows</h3>
+      <ul class="agd-list">
+        {% for flow in manifest.flows %}
+        <li><strong>{{ flow.name }}</strong><div class="agd-muted">{{ flow.steps|length }} transitions</div></li>
+        {% else %}
+        <li>No workflows declared</li>
+        {% endfor %}
+      </ul>
+      <h3>Roles</h3>
+      <ul class="agd-list">
+        {% for role in manifest.roles %}
+        <li><strong>{{ role.name }}</strong><div class="agd-muted">{{ role.permissions|length }} resources</div></li>
+        {% else %}
+        <li>No roles declared</li>
+        {% endfor %}
+      </ul>
+      <h3>Visual Graph</h3>
+      <div class="agd-muted">{{ graph.nodes|length }} nodes · {{ graph.edges|length }} edges</div>
+      <div>
+        {% for node in graph.nodes %}
+        <span class="agd-chip">{{ node.kind }}: {{ node.label }}</span>
+        {% endfor %}
+      </div>
+      <h3>No-Code Proposal</h3>
+      <div class="agd-builder" data-proposal-builder>
+        <select data-kind>
+          <option value="add_table">Table</option>
+          <option value="add_field">Field</option>
+          <option value="add_flow_step">Flow Step</option>
+        </select>
+        <div class="agd-row">
+          <input data-table placeholder="Table or flow">
+          <input data-name placeholder="Name">
+        </div>
+        <div class="agd-row">
+          <input data-source placeholder="Source state">
+          <input data-target placeholder="Target state">
+        </div>
+        <select data-type>
+          <option>string</option>
+          <option>text</option>
+          <option>int</option>
+          <option>decimal</option>
+          <option>bool</option>
+          <option>date</option>
+          <option>datetime</option>
+          <option>email</option>
+          <option>image</option>
+          <option>file</option>
+        </select>
+        <label><input type="checkbox" data-required> Required</label>
+        <label><input type="checkbox" data-searchable> Searchable</label>
+        <button class="btn btn-primary" type="button" data-preview>Preview DSL</button>
+        <div class="agd-muted" data-status></div>
+      </div>
+    </div>
+    <div class="agd-panel">
+      <h3>DSL Draft</h3>
+      <textarea class="agd-code" spellcheck="false" data-dsl-preview>{{ dsl }}</textarea>
+    </div>
+  </div>
+</section>
+<script>
+(function () {
+  const builder = document.querySelector("[data-proposal-builder]");
+  if (!builder) return;
+  const preview = document.querySelector("[data-dsl-preview]");
+  const status = builder.querySelector("[data-status]");
+  const value = (name) => builder.querySelector(name).value.trim();
+  const checked = (name) => builder.querySelector(name).checked;
+  builder.querySelector("[data-preview]").addEventListener("click", async function () {
+    const kind = value("[data-kind]");
+    const payload = { kind };
+    if (kind === "add_table") {
+      payload.name = value("[data-name]") || value("[data-table]");
+    } else if (kind === "add_field") {
+      payload.table = value("[data-table]");
+      payload.name = value("[data-name]");
+      payload.type = value("[data-type]");
+      payload.required = checked("[data-required]");
+      payload.searchable = checked("[data-searchable]");
+    } else {
+      payload.flow = value("[data-table]");
+      payload.source = value("[data-source]");
+      payload.target = value("[data-target]");
+    }
+    status.textContent = "Previewing";
+    const response = await fetch("{{ url_for('AppGenDesignerView.proposal') }}", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    });
+    const result = await response.json();
+    preview.value = result.dsl || preview.value;
+    status.textContent = result.dsl ? "Preview ready" : "Preview failed";
+  });
+}());
+</script>
+{% endblock %}
+"""
+    )
+
+
+def write_config_admin_template(output_dir):
+    """Write the generated safe configuration editor template."""
+    templates_dir = Path(output_dir) / "templates"
+    templates_dir.mkdir(parents=True, exist_ok=True)
+    (templates_dir / "appgen_config.html").write_text(
+        """{% extends "appbuilder/base.html" %}
+{% block content %}
+<style>
+  .agc-wrap { margin: 18px 0 32px; }
+  .agc-head { display: flex; justify-content: space-between; gap: 16px; align-items: flex-start; margin-bottom: 18px; }
+  .agc-title { margin: 0; font-size: 28px; font-weight: 700; color: #14213d; }
+  .agc-note { color: #52616b; max-width: 820px; line-height: 1.5; }
+  .agc-panel { border: 1px solid #d9e2ec; background: #fff; padding: 16px; }
+  .agc-section { margin-top: 18px; }
+  .agc-section h2 { margin: 0 0 10px; font-size: 18px; color: #14213d; }
+  .agc-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; }
+  .agc-field { border-top: 1px solid #edf2f7; padding: 12px 0; }
+  .agc-field:first-child { border-top: 0; }
+  .agc-field label { display: block; font-weight: 700; color: #14213d; margin-bottom: 6px; }
+  .agc-field input, .agc-field select, .agc-field textarea { width: 100%; border: 1px solid #cbd5e1; padding: 8px 10px; }
+  .agc-field textarea { min-height: 96px; font-family: Menlo, Consolas, monospace; font-size: 12px; }
+  .agc-help { color: #64748b; font-size: 12px; margin-top: 4px; }
+  .agc-actions { margin-top: 16px; display: flex; gap: 10px; flex-wrap: wrap; }
+  .agc-code { width: 100%; min-height: 220px; font-family: Menlo, Consolas, monospace; font-size: 12px; border: 1px solid #cbd5e1; padding: 12px; background: #f8fafc; color: #0f172a; }
+  .agc-status { border: 1px solid #cbd5e1; background: #f8fafc; padding: 12px; margin-bottom: 14px; }
+  .agc-status strong { color: #14213d; }
+  .agc-list { margin: 8px 0 0; padding-left: 18px; color: #334155; }
+  @media (max-width: 760px) { .agc-head { display: block; } }
+</style>
+<section class="agc-wrap">
+  <div class="agc-head">
+    <div>
+      <h1 class="agc-title">Configuration</h1>
+      <p class="agc-note">
+        Review and update every generated setup setting in <code>config.py</code>.
+        This editor only writes whitelisted assignments.
+      </p>
+    </div>
+    <div>
+      <a class="btn btn-default" href="{{ url_for('ConfigAdminView.setup_json') }}">Setup JSON</a>
+      <a class="btn btn-default" href="{{ url_for('ConfigAdminView.raw_config') }}">Raw config</a>
+    </div>
+  </div>
+  <form class="agc-panel" method="post">
+    <div class="agc-status">
+      <strong>{% if readiness.ready %}Setup ready{% else %}Setup needs attention{% endif %}</strong>
+      {% if readiness.blockers %}
+      <ul class="agc-list">
+        {% for item in readiness.blockers %}
+        <li>{{ item }}</li>
+        {% endfor %}
+      </ul>
+      {% endif %}
+      {% if readiness.warnings %}
+      <ul class="agc-list">
+        {% for item in readiness.warnings %}
+        <li>{{ item }}</li>
+        {% endfor %}
+      </ul>
+      {% endif %}
+    </div>
+    {% for section in sections %}
+    <div class="agc-section">
+      <h2>{{ section.name }}</h2>
+      <div class="agc-grid">
+        {% for meta in section.fields %}
+        <div class="agc-field">
+          <label for="{{ meta.key }}">{{ meta.label }}</label>
+          {% if meta.kind == "bool" %}
+          <select id="{{ meta.key }}" name="{{ meta.key }}">
+            <option value="true" {% if values.get(meta.key) is sameas true %}selected{% endif %}>True</option>
+            <option value="false" {% if values.get(meta.key) is sameas false %}selected{% endif %}>False</option>
+          </select>
+          {% elif meta.kind == "dict" %}
+          <textarea id="{{ meta.key }}" name="{{ meta.key }}">{{ values.get(meta.key, {}) }}</textarea>
+          {% else %}
+          <input id="{{ meta.key }}" name="{{ meta.key }}" value="{{ values.get(meta.key, '') }}" {% if meta.secret %}type="password"{% else %}type="text"{% endif %}>
+          {% endif %}
+          <div class="agc-help"><code>{{ meta.key }}</code> - {{ meta.help }}</div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+    {% endfor %}
+    <div class="agc-actions">
+      <button class="btn btn-primary" type="submit">Save settings</button>
+      <a class="btn btn-default" href="{{ url_for('ConfigAdminView.index') }}">Reload</a>
+    </div>
+  </form>
+  <div class="agc-section">
+    <h2>Environment template</h2>
+    <textarea class="agc-code" readonly>{{ env_text }}</textarea>
+  </div>
+</section>
+{% endblock %}
+"""
+    )
+
+
+def write_reports_template(output_dir):
+    """Write the generated reports overview template."""
+    templates_dir = Path(output_dir) / "templates"
+    templates_dir.mkdir(parents=True, exist_ok=True)
+    (templates_dir / "appgen_reports.html").write_text(
+        """{% extends "appbuilder/base.html" %}
+{% block content %}
+<style>
+  .agr-wrap { margin: 18px 0 32px; }
+  .agr-head { display: flex; justify-content: space-between; gap: 16px; align-items: flex-start; margin-bottom: 18px; }
+  .agr-title { margin: 0; font-size: 28px; font-weight: 700; color: #14213d; }
+  .agr-note { color: #52616b; max-width: 820px; line-height: 1.5; }
+  .agr-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; }
+  .agr-card { border: 1px solid #d9e2ec; background: #fff; padding: 16px; }
+  .agr-card h3 { margin: 0 0 8px; font-size: 17px; color: #14213d; }
+  .agr-muted { color: #64748b; font-size: 12px; }
+  .agr-fields { margin: 12px 0; padding: 0; list-style: none; display: flex; flex-wrap: wrap; gap: 6px; }
+  .agr-fields li { border: 1px solid #cbd5e1; padding: 4px 7px; font-size: 12px; background: #f8fafc; }
+  .agr-actions { margin-top: 12px; }
+  @media (max-width: 760px) { .agr-head { display: block; } }
+</style>
+<section class="agr-wrap">
+  <div class="agr-head">
+    <div>
+      <h1 class="agr-title">Reports</h1>
+      <p class="agr-note">
+        Generated operational exports for every table, relationship join, and
+        three-way table set. Hidden fields are excluded from report definitions
+        and CSV output.
+      </p>
+    </div>
+    <a class="btn btn-default" href="{{ url_for('ReportsView.catalog_json') }}">Catalog JSON</a>
+  </div>
+  <h2 class="agr-title" style="font-size: 20px;">Table reports</h2>
+  <div class="agr-grid">
+    {% for report in reports %}
+    <article class="agr-card">
+      <h3>{{ report.label }}</h3>
+      <div class="agr-muted">{{ report.table }} - {{ report.columns|length }} exported fields</div>
+      <ul class="agr-fields">
+        {% for column in report.columns[:8] %}
+        <li>{{ column }}</li>
+        {% endfor %}
+      </ul>
+      <div class="agr-actions">
+        <a class="btn btn-primary" href="{{ url_for('ReportsView.export_csv', table_name=report.table) }}">Export CSV</a>
+      </div>
+    </article>
+    {% else %}
+    <article class="agr-card">
+      <h3>No reports available</h3>
+      <div class="agr-muted">Define tables in the DSL or import a schema.</div>
+    </article>
+    {% endfor %}
+  </div>
+  <h2 class="agr-title" style="font-size: 20px; margin-top: 22px;">Join reports</h2>
+  <div class="agr-grid">
+    {% for report in join_reports %}
+    <article class="agr-card">
+      <h3>{{ report.label }}</h3>
+      <div class="agr-muted">{{ report.tables|join(" + ") }} - {{ report.columns|length }} exported fields</div>
+      <ul class="agr-fields">
+        {% for column in report.columns[:8] %}
+        <li>{{ column }}</li>
+        {% endfor %}
+      </ul>
+    </article>
+    {% else %}
+    <article class="agr-card">
+      <h3>No join reports available</h3>
+      <div class="agr-muted">Add relationships to generate relationship-aware reports.</div>
+    </article>
+    {% endfor %}
+  </div>
+  <h2 class="agr-title" style="font-size: 20px; margin-top: 22px;">Three-way reports</h2>
+  <div class="agr-grid">
+    {% for report in three_way_reports %}
+    <article class="agr-card">
+      <h3>{{ report.label }}</h3>
+      <div class="agr-muted">{{ report.tables|join(" + ") }} - {{ report.columns|length }} exported fields</div>
+      <ul class="agr-fields">
+        {% for column in report.columns[:8] %}
+        <li>{{ column }}</li>
+        {% endfor %}
+      </ul>
+    </article>
+    {% else %}
+    <article class="agr-card">
+      <h3>No three-way reports available</h3>
+      <div class="agr-muted">Add relation chains or a table with two parents to generate three-table reports.</div>
+    </article>
+    {% endfor %}
+  </div>
+</section>
+{% endblock %}
+"""
+    )
+
+
+def write_report_delivery_template(output_dir):
+    """Write the generated report delivery cockpit template."""
+    templates_dir = Path(output_dir) / "templates"
+    templates_dir.mkdir(parents=True, exist_ok=True)
+    (templates_dir / "appgen_report_delivery.html").write_text(
+        """{% extends "appbuilder/base.html" %}
+{% block content %}
+<style>
+  .agrd-wrap { margin: 18px 0 32px; }
+  .agrd-head { display: flex; justify-content: space-between; gap: 16px; align-items: flex-start; margin-bottom: 18px; }
+  .agrd-title { margin: 0; font-size: 28px; font-weight: 700; color: #14213d; }
+  .agrd-note { color: #52616b; max-width: 820px; line-height: 1.5; }
+  .agrd-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; }
+  .agrd-card { border: 1px solid #d9e2ec; background: #fff; border-radius: 8px; padding: 16px; }
+  .agrd-card h3 { margin: 0 0 8px; font-size: 17px; color: #14213d; }
+  .agrd-muted { color: #64748b; font-size: 12px; }
+  .agrd-pill { display: inline-block; border: 1px solid #cbd5e1; padding: 3px 7px; margin: 3px 4px 0 0; font-size: 12px; background: #f8fafc; }
+  @media (max-width: 760px) { .agrd-head { display: block; } }
+</style>
+<section class="agrd-wrap">
+  <div class="agrd-head">
+    <div>
+      <h1 class="agrd-title">Report Delivery</h1>
+      <p class="agrd-note">
+        Generated PDF export and email delivery contracts for table reports.
+        Dispatch remains explicit so teams can review recipients and attachments
+        before connecting SMTP or a document renderer.
+      </p>
+    </div>
+    <a class="btn btn-default" href="{{ url_for('ReportDeliveryView.catalog_json') }}">Catalog JSON</a>
+  </div>
+  <div class="agrd-grid">
+    {% for item in reports %}
+    <article class="agrd-card">
+      <h3>{{ item.label }}</h3>
+      <div class="agrd-muted">{{ item.table }} - {{ item.columns|length }} fields</div>
+      <span class="agrd-pill">CSV</span>
+      <span class="agrd-pill">PDF</span>
+      <span class="agrd-pill">Email</span>
+      <div style="margin-top: 12px;">
+        <a class="btn btn-xs btn-default" href="{{ url_for('ReportDeliveryView.report_json', table_name=item.table) }}">JSON</a>
+      </div>
+    </article>
+    {% endfor %}
+  </div>
+</section>
+{% endblock %}
+"""
+    )
+
+
+def write_dashboards_template(output_dir):
+    """Write the generated dashboard and chart cockpit template."""
+    templates_dir = Path(output_dir) / "templates"
+    templates_dir.mkdir(parents=True, exist_ok=True)
+    (templates_dir / "appgen_dashboards.html").write_text(
+        """{% extends "appbuilder/base.html" %}
+{% block content %}
+<style>
+  .agv-wrap { margin: 18px 0 32px; }
+  .agv-head { display: flex; justify-content: space-between; gap: 16px; align-items: flex-start; margin-bottom: 18px; }
+  .agv-title { margin: 0; font-size: 28px; font-weight: 700; color: #14213d; }
+  .agv-note { color: #52616b; max-width: 820px; line-height: 1.5; }
+  .agv-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(270px, 1fr)); gap: 14px; }
+  .agv-card { border: 1px solid #d9e2ec; background: #fff; border-radius: 8px; padding: 16px; }
+  .agv-card h3 { margin: 0 0 8px; font-size: 17px; color: #14213d; }
+  .agv-muted { color: #64748b; font-size: 12px; }
+  .agv-pill { display: inline-block; border: 1px solid #cbd5e1; padding: 3px 7px; margin: 3px 4px 0 0; font-size: 12px; background: #f8fafc; }
+  @media (max-width: 760px) { .agv-head { display: block; } }
+</style>
+<section class="agv-wrap">
+  <div class="agv-head">
+    <div>
+      <h1 class="agv-title">Dashboards</h1>
+      <p class="agv-note">
+        Generated dashboard, KPI, and chart contracts for schema-aware data
+        visualization. These descriptors are provider-neutral and can feed
+        Chart.js, ECharts, BI tools, or custom frontend adapters.
+      </p>
+    </div>
+    <a class="btn btn-default" href="{{ url_for('DashboardView.catalog_json') }}">Catalog JSON</a>
+  </div>
+  <div class="agv-grid">
+    {% for dashboard in dashboards %}
+    <article class="agv-card">
+      <h3>{{ dashboard.label }}</h3>
+      <div class="agv-muted">{{ dashboard.table }} - {{ dashboard.charts|length }} charts</div>
+      {% for chart in dashboard.charts %}
+      <span class="agv-pill">{{ chart.kind }}: {{ chart.label }}</span>
+      {% endfor %}
+      <div style="margin-top: 12px;">
+        <a class="btn btn-xs btn-default" href="{{ url_for('DashboardView.dashboard_json', table_name=dashboard.table) }}">JSON</a>
+      </div>
+    </article>
+    {% else %}
+    <article class="agv-card">
+      <h3>No dashboards available</h3>
+      <div class="agv-muted">Define tables in the DSL or import a schema.</div>
+    </article>
+    {% endfor %}
+  </div>
+</section>
+{% endblock %}
+"""
+    )
+
+
+def write_usage_analytics_template(output_dir):
+    """Write the generated usage analytics cockpit template."""
+    templates_dir = Path(output_dir) / "templates"
+    templates_dir.mkdir(parents=True, exist_ok=True)
+    (templates_dir / "appgen_usage_analytics.html").write_text(
+        """{% extends "appbuilder/base.html" %}
+{% block content %}
+<style>
+  .agu-wrap { margin: 18px 0 32px; }
+  .agu-head { display: flex; justify-content: space-between; gap: 16px; align-items: flex-start; margin-bottom: 18px; }
+  .agu-title { margin: 0; font-size: 28px; font-weight: 700; color: #14213d; }
+  .agu-note { color: #52616b; max-width: 820px; line-height: 1.5; }
+  .agu-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; }
+  .agu-card { border: 1px solid #d9e2ec; background: #fff; padding: 16px; }
+  .agu-card h3 { margin: 0 0 8px; font-size: 17px; color: #14213d; }
+  .agu-muted { color: #64748b; font-size: 12px; }
+  .agu-pill { display: inline-block; border: 1px solid #cbd5e1; padding: 3px 7px; margin: 3px 4px 0 0; font-size: 12px; background: #f8fafc; }
+  @media (max-width: 760px) { .agu-head { display: block; } }
+</style>
+<section class="agu-wrap">
+  <div class="agu-head">
+    <div>
+      <h1 class="agu-title">Usage Analytics</h1>
+      <p class="agu-note">
+        Generated app usage analytics for adoption, active users, funnels,
+        retention, and real-time activity reporting.
+      </p>
+    </div>
+    <a class="btn btn-default" href="{{ url_for('UsageAnalyticsView.catalog_json') }}">Analytics Catalog JSON</a>
+  </div>
+  <div class="agu-grid">
+    {% for item in catalog %}
+    <article class="agu-card">
+      <h3>{{ item.label }}</h3>
+      <div class="agu-muted">{{ item.table }}</div>
+      {% for event in item.events %}
+      <span class="agu-pill">{{ event }}</span>
+      {% endfor %}
+    </article>
+    {% endfor %}
+  </div>
+</section>
+{% endblock %}
+"""
+    )
+
+
+def write_search_template(output_dir):
+    """Write the generated search cockpit template."""
+    templates_dir = Path(output_dir) / "templates"
+    templates_dir.mkdir(parents=True, exist_ok=True)
+    (templates_dir / "appgen_search.html").write_text(
+        """{% extends "appbuilder/base.html" %}
+{% block content %}
+<style>
+  .ags-wrap { margin: 18px 0 32px; }
+  .ags-head { display: flex; justify-content: space-between; gap: 16px; align-items: flex-start; margin-bottom: 18px; }
+  .ags-title { margin: 0; font-size: 28px; font-weight: 700; color: #14213d; }
+  .ags-note { color: #52616b; max-width: 820px; line-height: 1.5; }
+  .ags-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(270px, 1fr)); gap: 14px; }
+  .ags-card { border: 1px solid #d9e2ec; background: #fff; border-radius: 8px; padding: 16px; }
+  .ags-card h3 { margin: 0 0 8px; font-size: 17px; color: #14213d; }
+  .ags-muted { color: #64748b; font-size: 12px; }
+  .ags-pill { display: inline-block; border: 1px solid #cbd5e1; padding: 3px 7px; margin: 3px 4px 0 0; font-size: 12px; background: #f8fafc; }
+  @media (max-width: 760px) { .ags-head { display: block; } }
+</style>
+<section class="ags-wrap">
+  <div class="ags-head">
+    <div>
+      <h1 class="ags-title">Search</h1>
+      <p class="ags-note">
+        Generated search indexes and provider plans for in-memory, PostgreSQL,
+        Whoosh, and Elasticsearch adapters. Hidden fields are excluded from
+        every generated index contract.
+      </p>
+    </div>
+    <a class="btn btn-default" href="{{ url_for('SearchView.catalog_json') }}">Catalog JSON</a>
+  </div>
+  <div class="ags-grid">
+    {% for item in indexes %}
+    <article class="ags-card">
+      <h3>{{ item.label }}</h3>
+      <div class="ags-muted">{{ item.table }}</div>
+      {% for field in item.fields %}
+      <span class="ags-pill">{{ field }}</span>
+      {% endfor %}
+      <div style="margin-top: 12px;">
+        <a class="btn btn-xs btn-default" href="{{ url_for('SearchView.index_json', table_name=item.table) }}">JSON</a>
+      </div>
+    </article>
+    {% endfor %}
+  </div>
+</section>
+{% endblock %}
+"""
+    )
+
+
+def write_media_template(output_dir):
+    """Write the generated media/upload cockpit template."""
+    templates_dir = Path(output_dir) / "templates"
+    templates_dir.mkdir(parents=True, exist_ok=True)
+    (templates_dir / "appgen_media.html").write_text(
+        """{% extends "appbuilder/base.html" %}
+{% block content %}
+<style>
+  .agm-wrap { margin: 18px 0 32px; }
+  .agm-head { display: flex; justify-content: space-between; gap: 16px; align-items: flex-start; margin-bottom: 18px; }
+  .agm-title { margin: 0; font-size: 28px; font-weight: 700; color: #14213d; }
+  .agm-note { color: #52616b; max-width: 820px; line-height: 1.5; }
+  .agm-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(270px, 1fr)); gap: 14px; }
+  .agm-card { border: 1px solid #d9e2ec; background: #fff; border-radius: 8px; padding: 16px; }
+  .agm-card h3 { margin: 0 0 8px; font-size: 17px; color: #14213d; }
+  .agm-muted { color: #64748b; font-size: 12px; }
+  .agm-pill { display: inline-block; border: 1px solid #cbd5e1; padding: 3px 7px; margin: 3px 4px 0 0; font-size: 12px; background: #f8fafc; }
+  @media (max-width: 760px) { .agm-head { display: block; } }
+</style>
+<section class="agm-wrap">
+  <div class="agm-head">
+    <div>
+      <h1 class="agm-title">Media</h1>
+      <p class="agm-note">
+        Generated image and upload field contracts with extension, MIME type,
+        size, storage, and validation plans. Hidden fields are excluded.
+      </p>
+    </div>
+    <a class="btn btn-default" href="{{ url_for('MediaView.catalog_json') }}">Catalog JSON</a>
+  </div>
+  <div class="agm-grid">
+    {% for item in fields %}
+    <article class="agm-card">
+      <h3>{{ item.label }}</h3>
+      <div class="agm-muted">{{ item.table }}.{{ item.field }} - {{ item.kind }}</div>
+      {% for mime in item.allowed_mime_types %}
+      <span class="agm-pill">{{ mime }}</span>
+      {% endfor %}
+      <div style="margin-top: 12px;">
+        <a class="btn btn-xs btn-default" href="{{ url_for('MediaView.field_json', table_name=item.table, field_name=item.field) }}">JSON</a>
+      </div>
+    </article>
+    {% else %}
+    <article class="agm-card">
+      <h3>No upload fields</h3>
+      <div class="agm-muted">Use field types such as image, file, upload, blob, or binary.</div>
+    </article>
+    {% endfor %}
+  </div>
+</section>
+{% endblock %}
+"""
+    )
+
+
+def write_documents_template(output_dir):
+    """Write the generated document-management cockpit template."""
+    templates_dir = Path(output_dir) / "templates"
+    templates_dir.mkdir(parents=True, exist_ok=True)
+    (templates_dir / "appgen_documents.html").write_text(
+        """{% extends "appbuilder/base.html" %}
+{% block content %}
+<style>
+  .agd-wrap { margin: 18px 0 32px; }
+  .agd-head { display: flex; justify-content: space-between; gap: 16px; align-items: flex-start; margin-bottom: 18px; }
+  .agd-title { margin: 0; font-size: 28px; font-weight: 700; color: #14213d; }
+  .agd-note { color: #52616b; max-width: 860px; line-height: 1.5; }
+  .agd-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; }
+  .agd-card { border: 1px solid #d9e2ec; background: #fff; border-radius: 8px; padding: 16px; }
+  .agd-card h3 { margin: 0 0 8px; font-size: 17px; color: #14213d; }
+  .agd-muted { color: #64748b; font-size: 12px; }
+  .agd-pill { display: inline-block; border: 1px solid #cbd5e1; padding: 3px 7px; margin: 3px 4px 0 0; font-size: 12px; background: #f8fafc; }
+  @media (max-width: 760px) { .agd-head { display: block; } }
+</style>
+<section class="agd-wrap">
+  <div class="agd-head">
+    <div>
+      <h1 class="agd-title">Document Management</h1>
+      <p class="agd-note">
+        Generated document libraries with version envelopes, approval workflows,
+        retention policies, e-signature payloads, and audit events for ERP-style
+        records and attachments.
+      </p>
+    </div>
+    <a class="btn btn-default" href="{{ url_for('DocumentManagementView.catalog_json') }}">Documents JSON</a>
+  </div>
+  <div class="agd-grid">
+    {% for item in documents %}
+    <article class="agd-card">
+      <h3>{{ item.label }}</h3>
+      <div class="agd-muted">{{ item.id }} - {{ item.library }}</div>
+      <span class="agd-pill">{{ item.kind }}</span>
+      <span class="agd-pill">{{ item.retention_days }} days</span>
+      {% if item.approval_required %}<span class="agd-pill">approval</span>{% endif %}
+      {% if item.esignature_required %}<span class="agd-pill">e-signature</span>{% endif %}
+      <div style="margin-top: 12px;">
+        <a class="btn btn-xs btn-default" href="{{ url_for('DocumentManagementView.document_json', document_type_id=item.id) }}">JSON</a>
+      </div>
+    </article>
+    {% endfor %}
+    <article class="agd-card">
+      <h3>Status Model</h3>
+      {% for status in statuses %}
+      <span class="agd-pill">{{ status }}</span>
+      {% endfor %}
+    </article>
+  </div>
+</section>
+{% endblock %}
+"""
+    )
+
+
+def write_inventory_ops_template(output_dir):
+    """Write the generated inventory traceability cockpit template."""
+    templates_dir = Path(output_dir) / "templates"
+    templates_dir.mkdir(parents=True, exist_ok=True)
+    (templates_dir / "appgen_inventory_ops.html").write_text(
+        """{% extends "appbuilder/base.html" %}
+{% block content %}
+<style>
+  .agio-wrap { margin: 18px 0 32px; }
+  .agio-head { display: flex; justify-content: space-between; gap: 16px; align-items: flex-start; margin-bottom: 18px; }
+  .agio-title { margin: 0; font-size: 28px; font-weight: 700; color: #14213d; }
+  .agio-note { color: #52616b; max-width: 860px; line-height: 1.5; }
+  .agio-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; }
+  .agio-card { border: 1px solid #d9e2ec; background: #fff; border-radius: 8px; padding: 16px; }
+  .agio-card h3 { margin: 0 0 8px; font-size: 17px; color: #14213d; }
+  .agio-muted { color: #64748b; font-size: 12px; }
+  .agio-pill { display: inline-block; border: 1px solid #cbd5e1; padding: 3px 7px; margin: 3px 4px 0 0; font-size: 12px; background: #f8fafc; }
+  @media (max-width: 760px) { .agio-head { display: block; } }
+</style>
+<section class="agio-wrap">
+  <div class="agio-head">
+    <div>
+      <h1 class="agio-title">Inventory Traceability</h1>
+      <p class="agio-note">
+        Generated barcode, QR, RFID, scan-event, stock-movement, cycle-count,
+        and reconciliation contracts for mobile inventory and warehouse work.
+      </p>
+    </div>
+    <a class="btn btn-default" href="{{ url_for('InventoryOpsView.catalog_json') }}">Inventory JSON</a>
+    <a class="btn btn-default" href="{{ url_for('InventoryOpsView.scan_targets_json') }}">Scan Targets</a>
+  </div>
+  <div class="agio-grid">
+    {% for item in resources %}
+    <article class="agio-card">
+      <h3>{{ item.label }}</h3>
+      <div class="agio-muted">{{ item.table }}</div>
+      {% for mode in item.scan_modes %}
+      <span class="agio-pill">{{ mode }}</span>
+      {% endfor %}
+      {% for field in item.identifiers %}
+      <span class="agio-pill">{{ field }}</span>
+      {% endfor %}
+    </article>
+    {% endfor %}
+    <article class="agio-card">
+      <h3>Scanner Modes</h3>
+      {% for mode in modes %}
+      <span class="agio-pill">{{ mode }}</span>
+      {% endfor %}
+    </article>
+  </div>
+</section>
+{% endblock %}
+"""
+    )
+
+
+def write_finance_ops_template(output_dir):
+    """Write the generated finance operations cockpit template."""
+    templates_dir = Path(output_dir) / "templates"
+    templates_dir.mkdir(parents=True, exist_ok=True)
+    (templates_dir / "appgen_finance_ops.html").write_text(
+        """{% extends "appbuilder/base.html" %}
+{% block content %}
+<style>
+  .agfo-wrap { margin: 18px 0 32px; }
+  .agfo-head { display: flex; justify-content: space-between; gap: 16px; align-items: flex-start; margin-bottom: 18px; }
+  .agfo-title { margin: 0; font-size: 28px; font-weight: 700; color: #14213d; }
+  .agfo-note { color: #52616b; max-width: 860px; line-height: 1.5; }
+  .agfo-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; }
+  .agfo-card { border: 1px solid #d9e2ec; background: #fff; border-radius: 8px; padding: 16px; }
+  .agfo-card h3 { margin: 0 0 8px; font-size: 17px; color: #14213d; }
+  .agfo-muted { color: #64748b; font-size: 12px; }
+  .agfo-pill { display: inline-block; border: 1px solid #cbd5e1; padding: 3px 7px; margin: 3px 4px 0 0; font-size: 12px; background: #f8fafc; }
+  @media (max-width: 760px) { .agfo-head { display: block; } }
+</style>
+<section class="agfo-wrap">
+  <div class="agfo-head">
+    <div>
+      <h1 class="agfo-title">Finance Operations</h1>
+      <p class="agfo-note">
+        Generated tax management, multicurrency conversion, budget forecasting,
+        revenue recognition, and batch processing contracts for ERP-grade apps.
+      </p>
+    </div>
+    <a class="btn btn-default" href="{{ url_for('FinanceOpsView.catalog_json') }}">Finance JSON</a>
+  </div>
+  <div class="agfo-grid">
+    {% for item in resources %}
+    <article class="agfo-card">
+      <h3>{{ item.label }}</h3>
+      <div class="agfo-muted">{{ item.table }}</div>
+      {% for field in item.amount_fields %}
+      <span class="agfo-pill">{{ field }}</span>
+      {% endfor %}
+      {% for action in item.batch_actions %}
+      <span class="agfo-pill">{{ action }}</span>
+      {% endfor %}
+    </article>
+    {% endfor %}
+    <article class="agfo-card">
+      <h3>Tax and Currency</h3>
+      {% for code in currencies %}
+      <span class="agfo-pill">{{ code }}</span>
+      {% endfor %}
+      {% for category in tax_rates %}
+      <span class="agfo-pill">{{ category }}</span>
+      {% endfor %}
+    </article>
+  </div>
+</section>
+{% endblock %}
+"""
+    )
+
+
+def write_manufacturing_ops_template(output_dir):
+    """Write the generated manufacturing operations cockpit template."""
+    templates_dir = Path(output_dir) / "templates"
+    templates_dir.mkdir(parents=True, exist_ok=True)
+    (templates_dir / "appgen_manufacturing_ops.html").write_text(
+        """{% extends "appbuilder/base.html" %}
+{% block content %}
+<style>
+  .agmo-wrap { margin: 18px 0 32px; }
+  .agmo-head { display: flex; justify-content: space-between; gap: 16px; align-items: flex-start; margin-bottom: 18px; }
+  .agmo-title { margin: 0; font-size: 28px; font-weight: 700; color: #14213d; }
+  .agmo-note { color: #52616b; max-width: 860px; line-height: 1.5; }
+  .agmo-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; }
+  .agmo-card { border: 1px solid #d9e2ec; background: #fff; border-radius: 8px; padding: 16px; }
+  .agmo-card h3 { margin: 0 0 8px; font-size: 17px; color: #14213d; }
+  .agmo-muted { color: #64748b; font-size: 12px; }
+  .agmo-pill { display: inline-block; border: 1px solid #cbd5e1; padding: 3px 7px; margin: 3px 4px 0 0; font-size: 12px; background: #f8fafc; }
+  @media (max-width: 760px) { .agmo-head { display: block; } }
+</style>
+<section class="agmo-wrap">
+  <div class="agmo-head">
+    <div>
+      <h1 class="agmo-title">Manufacturing Operations</h1>
+      <p class="agmo-note">
+        Generated bill-of-material, MRP material requirements, capacity
+        planning, production scheduling, purchase requisition, and kanban
+        replenishment contracts.
+      </p>
+    </div>
+    <a class="btn btn-default" href="{{ url_for('ManufacturingOpsView.catalog_json') }}">Manufacturing JSON</a>
+  </div>
+  <div class="agmo-grid">
+    {% for item in resources %}
+    <article class="agmo-card">
+      <h3>{{ item.label }}</h3>
+      <div class="agmo-muted">{{ item.table }}</div>
+      {% for operation in item.operations %}
+      <span class="agmo-pill">{{ operation }}</span>
+      {% endfor %}
+      {% for field in item.item_fields %}
+      <span class="agmo-pill">{{ field }}</span>
+      {% endfor %}
+    </article>
+    {% endfor %}
+  </div>
+</section>
+{% endblock %}
+"""
+    )
+
+
+def write_runtime_security_template(output_dir):
+    """Write the generated runtime security cockpit template."""
+    templates_dir = Path(output_dir) / "templates"
+    templates_dir.mkdir(parents=True, exist_ok=True)
+    (templates_dir / "appgen_runtime_security.html").write_text(
+        """{% extends "appbuilder/base.html" %}
+{% block content %}
+<style>
+  .agrsec-wrap { margin: 18px 0 32px; }
+  .agrsec-head { display: flex; justify-content: space-between; gap: 16px; align-items: flex-start; margin-bottom: 18px; }
+  .agrsec-title { margin: 0; font-size: 28px; font-weight: 700; color: #14213d; }
+  .agrsec-note { color: #52616b; max-width: 820px; line-height: 1.5; }
+  .agrsec-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(270px, 1fr)); gap: 14px; }
+  .agrsec-card { border: 1px solid #d9e2ec; background: #fff; border-radius: 8px; padding: 16px; }
+  .agrsec-card h3 { margin: 0 0 8px; font-size: 17px; color: #14213d; }
+  .agrsec-muted { color: #64748b; font-size: 12px; }
+  .agrsec-row { display: flex; justify-content: space-between; gap: 12px; border-bottom: 1px solid #eef2f7; padding: 6px 0; }
+  @media (max-width: 760px) { .agrsec-head { display: block; } .agrsec-row { display: block; } }
+</style>
+<section class="agrsec-wrap">
+  <div class="agrsec-head">
+    <div>
+      <h1 class="agrsec-title">Runtime Security</h1>
+      <p class="agrsec-note">
+        Generated inactivity timeout, session activity, and response-header
+        hardening policy for robust Flask-AppBuilder deployments.
+      </p>
+    </div>
+    <a class="btn btn-default" href="{{ url_for('RuntimeSecurityView.policy_json') }}">Policy JSON</a>
+  </div>
+  <div class="agrsec-grid">
+    <article class="agrsec-card">
+      <h3>Session Policy</h3>
+      <div class="agrsec-row"><span>Idle timeout</span><strong>{{ policy.idle_timeout_seconds }}s</strong></div>
+      <div class="agrsec-row"><span>Activity key</span><strong>{{ policy.last_seen_key }}</strong></div>
+      <div class="agrsec-row"><span>Logout path</span><strong>{{ policy.logout_path }}</strong></div>
+    </article>
+    <article class="agrsec-card">
+      <h3>Security Headers</h3>
+      {% for key, value in policy.headers.items() %}
+      <div class="agrsec-row"><span>{{ key }}</span><strong>{{ value }}</strong></div>
+      {% endfor %}
+    </article>
+  </div>
+</section>
+{% endblock %}
+"""
+    )
+
+
+def write_monitoring_template(output_dir):
+    """Write the generated monitoring overview template."""
+    templates_dir = Path(output_dir) / "templates"
+    templates_dir.mkdir(parents=True, exist_ok=True)
+    (templates_dir / "appgen_monitoring.html").write_text(
+        """{% extends "appbuilder/base.html" %}
+{% block content %}
+<style>
+  .agm-wrap { margin: 18px 0 32px; }
+  .agm-title { margin: 0 0 8px; font-size: 28px; font-weight: 700; color: #14213d; }
+  .agm-note { color: #52616b; max-width: 820px; line-height: 1.5; }
+  .agm-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; }
+  .agm-card { border: 1px solid #d9e2ec; background: #fff; padding: 16px; }
+  .agm-card h3 { margin: 0 0 8px; font-size: 16px; color: #14213d; }
+  .agm-metric { font-size: 28px; font-weight: 700; color: #0f766e; }
+  .agm-actions { margin-top: 16px; display: flex; gap: 8px; flex-wrap: wrap; }
+</style>
+<section class="agm-wrap">
+  <h1 class="agm-title">Monitoring</h1>
+  <p class="agm-note">
+    Generated health, readiness, and error contract overview for operations and
+    automated checks.
+  </p>
+  <div class="agm-grid">
+    <article class="agm-card"><h3>Tables</h3><div class="agm-metric">{{ status.tables }}</div></article>
+    <article class="agm-card"><h3>Relations</h3><div class="agm-metric">{{ status.relations }}</div></article>
+    <article class="agm-card"><h3>Workflows</h3><div class="agm-metric">{{ status.flows }}</div></article>
+    <article class="agm-card"><h3>Roles</h3><div class="agm-metric">{{ status.roles }}</div></article>
+  </div>
+  <div class="agm-actions">
+    <a class="btn btn-primary" href="{{ url_for('MonitoringView.healthz') }}">Health JSON</a>
+    <a class="btn btn-default" href="{{ url_for('MonitoringView.readyz') }}">Readiness JSON</a>
+  </div>
+</section>
+{% endblock %}
+"""
+    )
+
+
+def write_resilience_template(output_dir):
+    """Write the generated resilience and exception-management template."""
+    templates_dir = Path(output_dir) / "templates"
+    templates_dir.mkdir(parents=True, exist_ok=True)
+    (templates_dir / "appgen_resilience.html").write_text(
+        """{% extends "appbuilder/base.html" %}
+{% block content %}
+<style>
+  .agr-wrap { margin: 18px 0 32px; }
+  .agr-head { display: flex; justify-content: space-between; gap: 16px; align-items: flex-start; margin-bottom: 18px; }
+  .agr-title { margin: 0; font-size: 28px; font-weight: 700; color: #14213d; }
+  .agr-note { color: #52616b; max-width: 840px; line-height: 1.5; }
+  .agr-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; }
+  .agr-card { border: 1px solid #d9e2ec; background: #fff; padding: 16px; }
+  .agr-card h3 { margin: 0 0 8px; font-size: 17px; color: #14213d; }
+  .agr-muted { color: #64748b; font-size: 12px; }
+  .agr-pill { display: inline-block; border: 1px solid #cbd5e1; padding: 3px 7px; margin: 3px 4px 0 0; font-size: 12px; background: #f8fafc; }
+  @media (max-width: 760px) { .agr-head { display: block; } }
+</style>
+<section class="agr-wrap">
+  <div class="agr-head">
+    <div>
+      <h1 class="agr-title">Resilience</h1>
+      <p class="agr-note">
+        Generated automatic error handling and exception-management contracts
+        for safe user messages, preserved input, retry plans, circuit breakers,
+        and operator incident reports.
+      </p>
+    </div>
+    <a class="btn btn-default" href="{{ url_for('ResilienceView.catalog_json') }}">Error Handling JSON</a>
+  </div>
+  <div class="agr-grid">
+    {% for name, spec in catalog.classes.items() %}
+    <article class="agr-card">
+      <h3>{{ name }}</h3>
+      <div class="agr-muted">{{ spec.category }} · HTTP {{ spec.status }}</div>
+      {% for action in catalog.recovery_actions.get(spec.category, ()) %}
+      <span class="agr-pill">{{ action }}</span>
+      {% endfor %}
+    </article>
+    {% endfor %}
+    <article class="agr-card">
+      <h3>Exception Plan</h3>
+      <div class="agr-muted">safe responses and incident capture</div>
+      {% for item in plan.notify_on %}
+      <span class="agr-pill">{{ item }}</span>
+      {% endfor %}
+    </article>
+  </div>
+</section>
+{% endblock %}
+"""
+    )
+
+
+def write_performance_template(output_dir):
+    """Write the generated performance and scaling template."""
+    templates_dir = Path(output_dir) / "templates"
+    templates_dir.mkdir(parents=True, exist_ok=True)
+    (templates_dir / "appgen_performance.html").write_text(
+        """{% extends "appbuilder/base.html" %}
+{% block content %}
+<style>
+  .agp-wrap { margin: 18px 0 32px; }
+  .agp-head { display: flex; justify-content: space-between; gap: 16px; align-items: flex-start; margin-bottom: 18px; }
+  .agp-title { margin: 0 0 8px; font-size: 28px; font-weight: 700; color: #14213d; }
+  .agp-note { color: #52616b; max-width: 860px; line-height: 1.5; }
+  .agp-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+  .agp-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; }
+  .agp-card { border: 1px solid #d9e2ec; background: #fff; border-radius: 8px; padding: 16px; }
+  .agp-card h3 { margin: 0 0 8px; font-size: 17px; color: #14213d; }
+  .agp-row { display: flex; justify-content: space-between; gap: 12px; border-bottom: 1px solid #eef2f7; padding: 6px 0; }
+  .agp-row:last-child { border-bottom: 0; }
+  .agp-muted { color: #64748b; font-size: 12px; }
+  .agp-slo { margin: 0 0 18px; display: flex; gap: 8px; flex-wrap: wrap; }
+  .agp-pill { border: 1px solid #cbd5e1; background: #f8fafc; border-radius: 999px; padding: 6px 10px; font-size: 12px; color: #334155; }
+  @media (max-width: 760px) { .agp-head { display: block; } .agp-actions { margin-top: 12px; } .agp-row { display: block; } }
+</style>
+<section class="agp-wrap">
+  <div class="agp-head">
+    <div>
+      <h1 class="agp-title">Performance</h1>
+      <p class="agp-note">
+        Generated performance budgets, pagination, cache, load-test, and
+        autoscale contracts for operating low-code applications with explicit
+        latency and reliability targets.
+      </p>
+    </div>
+    <div class="agp-actions">
+      <a class="btn btn-primary" href="{{ url_for('PerformanceView.catalog_json') }}">Catalog JSON</a>
+      <a class="btn btn-default" href="{{ url_for('PerformanceView.load_profile_json') }}">Load Profile JSON</a>
+    </div>
+  </div>
+  <div class="agp-slo">
+    <span class="agp-pill">p95 {{ slo.p95_ms }}ms</span>
+    <span class="agp-pill">error rate {{ slo.error_rate }}</span>
+    <span class="agp-pill">CPU scale-out {{ slo.cpu_scale_out }}%</span>
+    <span class="agp-pill">queue scale-out {{ slo.queue_depth_scale_out }}</span>
+  </div>
+  <div class="agp-grid">
+    {% for budget in budgets %}
+    <article class="agp-card">
+      <h3>{{ budget.label }}</h3>
+      <p class="agp-muted">{{ budget.route }}</p>
+      <div class="agp-row"><span>Target p95</span><strong>{{ budget.budget_ms }}ms</strong></div>
+      <div class="agp-row"><span>Default page</span><strong>{{ budget.page_size }}</strong></div>
+      <div class="agp-row"><span>Cache TTL</span><strong>{{ budget.cache_ttl_seconds }}s</strong></div>
+      <div class="agp-row"><span>Search fields</span><strong>{{ budget.searchable|length }}</strong></div>
+    </article>
+    {% endfor %}
+  </div>
+</section>
+{% endblock %}
+"""
+    )
+
+
+def write_workflows_template(output_dir):
+    """Write the generated workflow cockpit template."""
+    templates_dir = Path(output_dir) / "templates"
+    templates_dir.mkdir(parents=True, exist_ok=True)
+    (templates_dir / "appgen_workflows.html").write_text(
+        """{% extends "appbuilder/base.html" %}
+{% block content %}
+<style>
+  .agw-wrap { margin: 18px 0 32px; }
+  .agw-head { margin-bottom: 18px; }
+  .agw-title { margin: 0; font-size: 28px; font-weight: 700; color: #14213d; }
+  .agw-note { color: #52616b; max-width: 820px; line-height: 1.5; }
+  .agw-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; }
+  .agw-card { border: 1px solid #d9e2ec; background: #fff; padding: 16px; }
+  .agw-card h3 { margin: 0 0 8px; font-size: 17px; color: #14213d; }
+  .agw-muted { color: #64748b; font-size: 12px; }
+  .agw-flow { list-style: none; padding: 0; margin: 12px 0 0; }
+  .agw-flow li { padding: 8px 0; border-top: 1px solid #edf2f7; }
+  .agw-pill { display: inline-block; border: 1px solid #cbd5e1; padding: 3px 7px; background: #f8fafc; }
+  .agw-actions { margin-top: 12px; display: flex; gap: 8px; flex-wrap: wrap; }
+</style>
+<section class="agw-wrap">
+  <div class="agw-head">
+    <h1 class="agw-title">Workflows</h1>
+    <p class="agw-note">
+      Generated transition cockpit for low-code flows. Start and terminal
+      states are inferred from the declared transition graph.
+    </p>
+  </div>
+  <div class="agw-grid">
+    {% for workflow in workflows %}
+    <article class="agw-card">
+      <h3>{{ workflow.name }}</h3>
+      <div class="agw-muted">
+        Starts: {{ workflow.start_states|join(", ") or "any" }} · Ends: {{ workflow.terminal_states|join(", ") or "open" }}
+      </div>
+      <ul class="agw-flow">
+        {% for source, target in workflow.transitions %}
+        <li><span class="agw-pill">{{ source }}</span> → <span class="agw-pill">{{ target }}</span></li>
+        {% endfor %}
+      </ul>
+      <div class="agw-actions">
+        <a class="btn btn-default" href="{{ url_for('WorkflowView.statechart_json', flow_name=workflow.name) }}">FSM JSON</a>
+        <a class="btn btn-default" href="{{ url_for('WorkflowView.statechart_mermaid_route', flow_name=workflow.name) }}">Mermaid</a>
+      </div>
+    </article>
+    {% else %}
+    <article class="agw-card">
+      <h3>No workflows declared</h3>
+      <div class="agw-muted">Add a flow to the DSL when the app needs guided state transitions.</div>
+    </article>
+    {% endfor %}
+  </div>
+</section>
+{% endblock %}
+"""
+    )
+
+
+def write_backup_template(output_dir):
+    """Write the generated backup operations template."""
+    templates_dir = Path(output_dir) / "templates"
+    templates_dir.mkdir(parents=True, exist_ok=True)
+    (templates_dir / "appgen_backup.html").write_text(
+        """{% extends "appbuilder/base.html" %}
+{% block content %}
+<style>
+  .agb-wrap { margin: 18px 0 32px; }
+  .agb-head { display: flex; justify-content: space-between; gap: 16px; align-items: flex-start; margin-bottom: 18px; }
+  .agb-title { margin: 0; font-size: 28px; font-weight: 700; color: #14213d; }
+  .agb-note { color: #52616b; max-width: 820px; line-height: 1.5; }
+  .agb-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; }
+  .agb-card { border: 1px solid #d9e2ec; background: #fff; padding: 16px; }
+  .agb-card h3 { margin: 0 0 8px; font-size: 17px; color: #14213d; }
+  .agb-muted { color: #64748b; font-size: 12px; }
+  .agb-fields { margin: 12px 0; padding: 0; list-style: none; display: flex; flex-wrap: wrap; gap: 6px; }
+  .agb-fields li { border: 1px solid #cbd5e1; padding: 4px 7px; font-size: 12px; background: #f8fafc; }
+  .agb-actions { margin-top: 12px; display: flex; gap: 8px; flex-wrap: wrap; }
+  @media (max-width: 760px) { .agb-head { display: block; } }
+</style>
+<section class="agb-wrap">
+  <div class="agb-head">
+    <div>
+      <h1 class="agb-title">Backups</h1>
+      <p class="agb-note">
+        Export generated application data as JSON. The generated backup module
+        also includes validation and restore helpers for reviewed recovery
+        scripts.
+      </p>
+    </div>
+    <a class="btn btn-primary" href="{{ url_for('BackupView.export_all') }}">Export all JSON</a>
+  </div>
+  <div class="agb-grid">
+    {% for item in tables %}
+    <article class="agb-card">
+      <h3>{{ item.label }}</h3>
+      <div class="agb-muted">{{ item.table }} - {{ item.columns|length }} fields</div>
+      <ul class="agb-fields">
+        {% for column in item.columns[:8] %}
+        <li>{{ column }}</li>
+        {% endfor %}
+      </ul>
+      <div class="agb-actions">
+        <a class="btn btn-default" href="{{ url_for('BackupView.export_table', table_name=item.table) }}">Export table</a>
+      </div>
+    </article>
+    {% else %}
+    <article class="agb-card">
+      <h3>No tables available</h3>
+      <div class="agb-muted">Define tables in the DSL or import a schema.</div>
+    </article>
+    {% endfor %}
+  </div>
+</section>
+{% endblock %}
+"""
+    )
+
+
+def write_rules_template(output_dir):
+    """Write the generated business rules cockpit template."""
+    templates_dir = Path(output_dir) / "templates"
+    templates_dir.mkdir(parents=True, exist_ok=True)
+    (templates_dir / "appgen_rules.html").write_text(
+        """{% extends "appbuilder/base.html" %}
+{% block content %}
+<style>
+  .agrule-wrap { margin: 18px 0 32px; }
+  .agrule-head { display: flex; justify-content: space-between; gap: 16px; align-items: flex-start; margin-bottom: 18px; }
+  .agrule-title { margin: 0 0 8px; font-size: 28px; font-weight: 700; color: #14213d; }
+  .agrule-note { color: #52616b; max-width: 820px; line-height: 1.5; }
+  .agrule-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; }
+  .agrule-card { border: 1px solid #d9e2ec; background: #fff; border-radius: 8px; padding: 16px; }
+  .agrule-card h3 { margin: 0 0 6px; font-size: 17px; color: #14213d; }
+  .agrule-muted { color: #64748b; font-size: 12px; }
+  .agrule-list { list-style: none; padding: 0; margin: 12px 0 0; }
+  .agrule-list li { border-top: 1px solid #eef2f7; padding: 8px 0; }
+  .agrule-action { color: #0f766e; font-weight: 700; }
+  @media (max-width: 760px) { .agrule-head { display: block; } .agrule-head .btn { margin-top: 12px; } }
+</style>
+<section class="agrule-wrap">
+  <div class="agrule-head">
+    <div>
+      <h1 class="agrule-title">Business Rules</h1>
+      <p class="agrule-note">
+        Generated low-code validation and decision-tree contracts. Rules turn
+        DSL conditions into deterministic row checks and branch actions.
+      </p>
+    </div>
+    <a class="btn btn-primary" href="{{ url_for('RulesView.catalog_json') }}">Rules JSON</a>
+  </div>
+  <div class="agrule-grid">
+    {% for rule in rules %}
+    <article class="agrule-card">
+      <h3>{{ rule.name }}</h3>
+      <p class="agrule-muted">{{ rule.table }}</p>
+      <ul class="agrule-list">
+        {% for condition in rule.conditions %}
+        <li>
+          <strong>{{ condition.field }}</strong> {{ condition.operator }}
+          {{ condition.values|join(", ") }}
+          {% if condition.action %}<span class="agrule-action">→ {{ condition.action }}</span>{% endif %}
+        </li>
+        {% endfor %}
+      </ul>
+    </article>
+    {% else %}
+    <article class="agrule-card">
+      <h3>No rules declared</h3>
+      <div class="agrule-muted">Add a rule when the app needs validation or branch decisions.</div>
+    </article>
+    {% endfor %}
+  </div>
+</section>
+{% endblock %}
+"""
+    )
+
+
+def write_data_exchange_template(output_dir):
+    """Write the generated data exchange template."""
+    templates_dir = Path(output_dir) / "templates"
+    templates_dir.mkdir(parents=True, exist_ok=True)
+    (templates_dir / "appgen_data_exchange.html").write_text(
+        """{% extends "appbuilder/base.html" %}
+{% block content %}
+<style>
+  .agdx-wrap { margin: 18px 0 32px; }
+  .agdx-head { display: flex; justify-content: space-between; gap: 16px; align-items: flex-start; margin-bottom: 18px; }
+  .agdx-title { margin: 0; font-size: 28px; font-weight: 700; color: #14213d; }
+  .agdx-note { color: #52616b; max-width: 840px; line-height: 1.5; }
+  .agdx-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; }
+  .agdx-card { border: 1px solid #d9e2ec; background: #fff; padding: 16px; }
+  .agdx-card h3 { margin: 0 0 8px; font-size: 17px; color: #14213d; }
+  .agdx-muted { color: #64748b; font-size: 12px; }
+  .agdx-pill { display: inline-block; border: 1px solid #cbd5e1; padding: 3px 7px; margin: 3px 4px 0 0; font-size: 12px; background: #f8fafc; }
+  @media (max-width: 760px) { .agdx-head { display: block; } }
+</style>
+<section class="agdx-wrap">
+  <div class="agdx-head">
+    <div>
+      <h1 class="agdx-title">Data Exchange</h1>
+      <p class="agdx-note">
+        Schema-aware CSV and JSON import/export contracts for migrations,
+        bulk loading, reviewed migration batches, and operational data exchange.
+      </p>
+    </div>
+    <a class="btn btn-default" href="{{ url_for('DataExchangeView.catalog_json') }}">Catalog JSON</a>
+  </div>
+  <div class="agdx-grid">
+    {% for item in tables %}
+    <article class="agdx-card">
+      <h3>{{ item.label }}</h3>
+      <div class="agdx-muted">{{ item.table }} - {{ item.fields|length }} public fields</div>
+      <div>
+        {% for field in item.fields %}
+        <span class="agdx-pill">{{ field }}</span>
+        {% endfor %}
+      </div>
+      <p><a class="btn btn-xs btn-default" href="{{ url_for('DataExchangeView.template_csv', table_name=item.table) }}">CSV template</a></p>
+      <div class="agdx-muted">Migration batch planning: validates required fields, splits accepted rows into batches, and flags rejected rows for review.</div>
+    </article>
+    {% endfor %}
+  </div>
+</section>
+{% endblock %}
+"""
+    )
+
+
+def write_data_access_template(output_dir):
+    """Write the generated low-code data access cockpit template."""
+    templates_dir = Path(output_dir) / "templates"
+    templates_dir.mkdir(parents=True, exist_ok=True)
+    (templates_dir / "appgen_data_access.html").write_text(
+        """{% extends "appbuilder/base.html" %}
+{% block content %}
+<style>
+  .agda-wrap { margin: 18px 0 32px; }
+  .agda-head { display: flex; justify-content: space-between; gap: 16px; align-items: flex-start; margin-bottom: 18px; }
+  .agda-title { margin: 0; font-size: 28px; font-weight: 700; color: #14213d; }
+  .agda-note { color: #52616b; max-width: 820px; line-height: 1.5; }
+  .agda-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; }
+  .agda-card { border: 1px solid #d9e2ec; background: #fff; padding: 16px; }
+  .agda-card h3 { margin: 0 0 8px; font-size: 17px; color: #14213d; }
+  .agda-muted { color: #64748b; font-size: 12px; }
+  .agda-pill { display: inline-block; border: 1px solid #cbd5e1; padding: 3px 7px; margin: 3px 4px 0 0; font-size: 12px; background: #f8fafc; }
+  @media (max-width: 760px) { .agda-head { display: block; } }
+</style>
+<section class="agda-wrap">
+  <div class="agda-head">
+    <div>
+      <h1 class="agda-title">Data Access</h1>
+      <p class="agda-note">
+        Generated low-code query and mutation contracts for table reads,
+        filtering, sorting, paging, create, update, and delete plans. Hidden
+        and derived fields are excluded from writable payloads.
+      </p>
+    </div>
+    <a class="btn btn-default" href="{{ url_for('DataAccessView.catalog_json') }}">Access JSON</a>
+  </div>
+  <div class="agda-grid">
+    {% for item in resources %}
+    <article class="agda-card">
+      <h3>{{ item.label }}</h3>
+      <div class="agda-muted">{{ item.table }} - {{ item.model }}</div>
+      <p class="agda-muted">Readable fields</p>
+      {% for field in item.readable_fields %}
+      <span class="agda-pill">{{ field }}</span>
+      {% endfor %}
+      <p class="agda-muted">Writable fields</p>
+      {% for field in item.writable_fields %}
+      <span class="agda-pill">{{ field }}</span>
+      {% endfor %}
+    </article>
+    {% endfor %}
+  </div>
+</section>
+{% endblock %}
+"""
+    )
+
+
+def write_database_ops_template(output_dir):
+    """Write the generated database operations template."""
+    templates_dir = Path(output_dir) / "templates"
+    templates_dir.mkdir(parents=True, exist_ok=True)
+    (templates_dir / "appgen_database_ops.html").write_text(
+        """{% extends "appbuilder/base.html" %}
+{% block content %}
+<style>
+  .agdb-wrap { margin: 18px 0 32px; }
+  .agdb-head { display: flex; justify-content: space-between; gap: 16px; align-items: flex-start; margin-bottom: 18px; }
+  .agdb-title { margin: 0; font-size: 28px; font-weight: 700; color: #14213d; }
+  .agdb-note { color: #52616b; max-width: 840px; line-height: 1.5; }
+  .agdb-actions { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; }
+  .agdb-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; margin-bottom: 18px; }
+  .agdb-card { border: 1px solid #d9e2ec; background: #fff; padding: 16px; }
+  .agdb-card h3 { margin: 0 0 8px; font-size: 17px; color: #14213d; }
+  .agdb-muted { color: #64748b; font-size: 12px; }
+  .agdb-pill { display: inline-block; border: 1px solid #cbd5e1; padding: 3px 7px; margin: 3px 4px 0 0; font-size: 12px; background: #f8fafc; }
+  @media (max-width: 760px) { .agdb-head { display: block; } .agdb-actions { justify-content: flex-start; margin-top: 12px; } }
+</style>
+<section class="agdb-wrap">
+  <div class="agdb-head">
+    <div>
+      <h1 class="agdb-title">Database Operations</h1>
+      <p class="agdb-note">
+        Generated database provider and operations contracts for PostgreSQL,
+        MySQL, SQLite, MongoDB, DynamoDB, Cassandra, Redis, Patroni,
+        PostGraphile, ZomboDB, Elasticsearch, Compose, Kubernetes, NoSQL
+        projections, and migration readiness.
+      </p>
+    </div>
+    <div class="agdb-actions">
+      <a class="btn btn-default" href="{{ url_for('DatabaseOpsView.providers_json') }}">Providers JSON</a>
+      <a class="btn btn-default" href="{{ url_for('DatabaseOpsView.addons_json') }}">Add-ons JSON</a>
+      <a class="btn btn-default" href="{{ url_for('DatabaseOpsView.migration_targets_json') }}">Migration Targets JSON</a>
+      <a class="btn btn-default" href="{{ url_for('DatabaseOpsView.nosql_projections_json') }}">NoSQL Projections JSON</a>
+    </div>
+  </div>
+  <h2>Providers</h2>
+  <div class="agdb-grid">
+    {% for provider in providers %}
+    <article class="agdb-card">
+      <h3>{{ provider.label }}</h3>
+      <div class="agdb-muted">{{ provider.provider }} - {{ provider.sqlalchemy_prefix }}</div>
+      <div>
+        {% for capability in provider.capabilities %}
+        <span class="agdb-pill">{{ capability }}</span>
+        {% endfor %}
+      </div>
+    </article>
+    {% endfor %}
+  </div>
+  <h2>Add-ons</h2>
+  <div class="agdb-grid">
+    {% for addon in addons %}
+    <article class="agdb-card">
+      <h3>{{ addon.label }}</h3>
+      <div class="agdb-muted">{{ addon.addon }} - {{ addon.provider }}</div>
+      <div>
+        {% for capability in addon.capabilities %}
+        <span class="agdb-pill">{{ capability }}</span>
+        {% endfor %}
+      </div>
+    </article>
+    {% endfor %}
+  </div>
+</section>
+{% endblock %}
+"""
+    )
+
+
+def write_integrations_template(output_dir):
+    """Write the generated integration catalog template."""
+    templates_dir = Path(output_dir) / "templates"
+    templates_dir.mkdir(parents=True, exist_ok=True)
+    (templates_dir / "appgen_integrations.html").write_text(
+        """{% extends "appbuilder/base.html" %}
+{% block content %}
+<style>
+  .agi-wrap { margin: 18px 0 32px; }
+  .agi-head { display: flex; justify-content: space-between; gap: 16px; align-items: flex-start; margin-bottom: 18px; }
+  .agi-title { margin: 0; font-size: 28px; font-weight: 700; color: #14213d; }
+  .agi-note { color: #52616b; max-width: 820px; line-height: 1.5; }
+  .agi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; }
+  .agi-card { border: 1px solid #d9e2ec; background: #fff; padding: 16px; }
+  .agi-card h3 { margin: 0 0 8px; font-size: 17px; color: #14213d; }
+  .agi-muted { color: #64748b; font-size: 12px; }
+  .agi-pill { display: inline-block; border: 1px solid #cbd5e1; padding: 3px 7px; margin: 3px 4px 0 0; font-size: 12px; background: #f8fafc; }
+  .agi-ok { color: #176b4d; }
+  .agi-missing { color: #9b2c2c; }
+  @media (max-width: 760px) { .agi-head { display: block; } }
+</style>
+<section class="agi-wrap">
+  <div class="agi-head">
+    <div>
+      <h1 class="agi-title">Integrations</h1>
+      <p class="agi-note">
+        Generated connector registry for REST, webhook, Salesforce, SAP,
+        Entando, Invenio, payment gateways, SMS gateways, and transactional email services.
+        Secrets stay in environment variables and requests are planned
+        explicitly before custom connector code sends data.
+      </p>
+    </div>
+    <a class="btn btn-default" href="{{ url_for('IntegrationView.catalog_json') }}">Catalog JSON</a>
+  </div>
+  <div class="agi-grid">
+    {% for item in integrations %}
+    <article class="agi-card">
+      <h3>{{ item.label }}</h3>
+      <div class="agi-muted">{{ item.kind }} - {{ item.description }}</div>
+      <p class="{{ 'agi-ok' if item.configured else 'agi-missing' }}">
+        {{ "Configured" if item.configured else "Missing configuration" }}
+      </p>
+      {% for key in item.env %}
+      <span class="agi-pill">{{ key }}</span>
+      {% endfor %}
+    </article>
+    {% endfor %}
+  </div>
+</section>
+{% endblock %}
+"""
+    )
+
+
+def write_productivity_template(output_dir):
+    """Write the generated productivity-suite integration template."""
+    templates_dir = Path(output_dir) / "templates"
+    templates_dir.mkdir(parents=True, exist_ok=True)
+    (templates_dir / "appgen_productivity.html").write_text(
+        """{% extends "appbuilder/base.html" %}
+{% block content %}
+<style>
+  .agp-wrap { margin: 18px 0 32px; }
+  .agp-head { display: flex; justify-content: space-between; gap: 16px; align-items: flex-start; margin-bottom: 18px; }
+  .agp-title { margin: 0; font-size: 28px; font-weight: 700; color: #14213d; }
+  .agp-note { color: #52616b; max-width: 860px; line-height: 1.5; }
+  .agp-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; }
+  .agp-card { border: 1px solid #d9e2ec; background: #fff; padding: 16px; }
+  .agp-card h3 { margin: 0 0 8px; font-size: 17px; color: #14213d; }
+  .agp-muted { color: #64748b; font-size: 12px; }
+  .agp-pill { display: inline-block; border: 1px solid #cbd5e1; padding: 3px 7px; margin: 3px 4px 0 0; font-size: 12px; background: #f8fafc; }
+  @media (max-width: 760px) { .agp-head { display: block; } }
+</style>
+<section class="agp-wrap">
+  <div class="agp-head">
+    <div>
+      <h1 class="agp-title">Productivity Integrations</h1>
+      <p class="agp-note">
+        Generated Microsoft 365 and Google Workspace contracts for documents,
+        spreadsheets, calendars, and task sync. Secrets remain environment
+        variable references for downstream connector code.
+      </p>
+    </div>
+    <a class="btn btn-default" href="{{ url_for('ProductivityView.catalog_json') }}">Productivity JSON</a>
+  </div>
+  <div class="agp-grid">
+    {% for provider in providers %}
+    <article class="agp-card">
+      <h3>{{ provider.label }}</h3>
+      <div class="agp-muted">{{ provider.provider }}</div>
+      {% for scope in provider.scopes %}
+      <span class="agp-pill">{{ scope }}</span>
+      {% endfor %}
+    </article>
+    {% endfor %}
+    {% for item in templates %}
+    <article class="agp-card">
+      <h3>{{ item.label }}</h3>
+      <div class="agp-muted">{{ item.table }}</div>
+      <span class="agp-pill">document</span>
+      <span class="agp-pill">spreadsheet</span>
+      <span class="agp-pill">calendar</span>
+    </article>
+    {% endfor %}
+  </div>
+</section>
+{% endblock %}
+"""
+    )
+
+
+def write_lifecycle_template(output_dir):
+    """Write the generated environment and lifecycle management template."""
+    templates_dir = Path(output_dir) / "templates"
+    templates_dir.mkdir(parents=True, exist_ok=True)
+    (templates_dir / "appgen_lifecycle.html").write_text(
+        """{% extends "appbuilder/base.html" %}
+{% block content %}
+<style>
+  .aglc-wrap { margin: 18px 0 32px; }
+  .aglc-head { display: flex; justify-content: space-between; gap: 16px; align-items: flex-start; margin-bottom: 18px; }
+  .aglc-title { margin: 0; font-size: 28px; font-weight: 700; color: #14213d; }
+  .aglc-note { color: #52616b; max-width: 860px; line-height: 1.5; }
+  .aglc-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; }
+  .aglc-card { border: 1px solid #d9e2ec; background: #fff; padding: 16px; }
+  .aglc-card h3 { margin: 0 0 8px; font-size: 17px; color: #14213d; }
+  .aglc-muted { color: #64748b; font-size: 12px; }
+  .aglc-pill { display: inline-block; border: 1px solid #cbd5e1; padding: 3px 7px; margin: 3px 4px 0 0; font-size: 12px; background: #f8fafc; }
+  @media (max-width: 760px) { .aglc-head { display: block; } }
+</style>
+<section class="aglc-wrap">
+  <div class="aglc-head">
+    <div>
+      <h1 class="aglc-title">Lifecycle</h1>
+      <p class="aglc-note">
+        Generated environment management, custom-domain readiness, release,
+        maintenance, feedback, user-testing, and issue-tracking contracts.
+      </p>
+    </div>
+    <a class="btn btn-default" href="{{ url_for('LifecycleView.catalog_json') }}">Lifecycle JSON</a>
+  </div>
+  <div class="aglc-grid">
+    {% for env in environments %}
+    <article class="aglc-card">
+      <h3>{{ env.label }}</h3>
+      <div class="aglc-muted">{{ env.name }}</div>
+      {% for gate in env.gates %}
+      <span class="aglc-pill">{{ gate }}</span>
+      {% endfor %}
+    </article>
+    {% endfor %}
+    <article class="aglc-card">
+      <h3>Release Gates</h3>
+      {% for gate in release_gates %}
+      <span class="aglc-pill">{{ gate }}</span>
+      {% endfor %}
+    </article>
+  </div>
+</section>
+{% endblock %}
+"""
+    )
+
+
+def write_emerging_template(output_dir):
+    """Write the generated IoT and blockchain cockpit template."""
+    templates_dir = Path(output_dir) / "templates"
+    templates_dir.mkdir(parents=True, exist_ok=True)
+    (templates_dir / "appgen_emerging.html").write_text(
+        """{% extends "appbuilder/base.html" %}
+{% block content %}
+<style>
+  .agex-wrap { margin: 18px 0 32px; }
+  .agex-head { display: flex; justify-content: space-between; gap: 16px; align-items: flex-start; margin-bottom: 18px; }
+  .agex-title { margin: 0; font-size: 28px; font-weight: 700; color: #14213d; }
+  .agex-note { color: #52616b; max-width: 820px; line-height: 1.5; }
+  .agex-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; }
+  .agex-card { border: 1px solid #d9e2ec; background: #fff; padding: 16px; }
+  .agex-card h3 { margin: 0 0 8px; font-size: 17px; color: #14213d; }
+  .agex-muted { color: #64748b; font-size: 12px; }
+  .agex-pill { display: inline-block; border: 1px solid #cbd5e1; padding: 3px 7px; margin: 3px 4px 0 0; font-size: 12px; background: #f8fafc; }
+  @media (max-width: 760px) { .agex-head { display: block; } }
+</style>
+<section class="agex-wrap">
+  <div class="agex-head">
+    <div>
+      <h1 class="agex-title">Emerging Integrations</h1>
+      <p class="agex-note">
+        Generated IoT telemetry, device command, and blockchain audit-anchor
+        contracts for edge-ready AppGen applications.
+      </p>
+    </div>
+    <a class="btn btn-default" href="{{ url_for('EmergingView.catalog_json') }}">Emerging Catalog JSON</a>
+  </div>
+  <div class="agex-grid">
+    {% for item in devices %}
+    <article class="agex-card">
+      <h3>{{ item.label }}</h3>
+      <div class="agex-muted">{{ item.device_type }} · {{ item.table }}</div>
+      {% for metric in item.metrics %}
+      <span class="agex-pill">{{ metric }}</span>
+      {% endfor %}
+    </article>
+    {% endfor %}
+  </div>
+</section>
+{% endblock %}
+"""
+    )
+
+
+def write_tenancy_template(output_dir):
+    """Write the generated tenant isolation template."""
+    templates_dir = Path(output_dir) / "templates"
+    templates_dir.mkdir(parents=True, exist_ok=True)
+    (templates_dir / "appgen_tenancy.html").write_text(
+        """{% extends "appbuilder/base.html" %}
+{% block content %}
+<style>
+  .agt-wrap { margin: 18px 0 32px; }
+  .agt-head { display: flex; justify-content: space-between; gap: 16px; align-items: flex-start; margin-bottom: 18px; }
+  .agt-title { margin: 0; font-size: 28px; font-weight: 700; color: #14213d; }
+  .agt-note { color: #52616b; max-width: 820px; line-height: 1.5; }
+  .agt-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; }
+  .agt-card { border: 1px solid #d9e2ec; background: #fff; padding: 16px; }
+  .agt-card h3 { margin: 0 0 8px; font-size: 17px; color: #14213d; }
+  .agt-muted { color: #64748b; font-size: 12px; }
+  .agt-pill { display: inline-block; border: 1px solid #cbd5e1; padding: 3px 7px; margin: 3px 4px 0 0; font-size: 12px; background: #f8fafc; }
+  .agt-scoped { color: #176b4d; }
+  .agt-open { color: #9b2c2c; }
+  @media (max-width: 760px) { .agt-head { display: block; } }
+</style>
+<section class="agt-wrap">
+  <div class="agt-head">
+    <div>
+      <h1 class="agt-title">Tenancy</h1>
+      <p class="agt-note">
+        Generated tenant-isolation map for row-scoped tables. Add a tenant
+        column such as tenant_id or organization_id to isolate records per
+        tenant, then apply the generated filter helpers in custom views and APIs.
+      </p>
+    </div>
+    <a class="btn btn-default" href="{{ url_for('TenancyView.catalog_json') }}">Catalog JSON</a>
+  </div>
+  <div class="agt-grid">
+    {% for item in tables %}
+    <article class="agt-card">
+      <h3>{{ item.label }}</h3>
+      <div class="agt-muted">{{ item.table }}</div>
+      <p class="{{ 'agt-scoped' if item.scoped else 'agt-open' }}">
+        {{ "Tenant scoped" if item.scoped else "No tenant column detected" }}
+      </p>
+      {% for column in item.tenant_columns %}
+      <span class="agt-pill">{{ column }}</span>
+      {% endfor %}
+    </article>
+    {% endfor %}
+  </div>
+</section>
+{% endblock %}
+"""
+    )
+
+
+def write_rls_template(output_dir):
+    """Write the generated row-level security cockpit template."""
+    templates_dir = Path(output_dir) / "templates"
+    templates_dir.mkdir(parents=True, exist_ok=True)
+    (templates_dir / "appgen_rls.html").write_text(
+        """{% extends "appbuilder/base.html" %}
+{% block content %}
+<style>
+  .agrls-wrap { margin: 18px 0 32px; }
+  .agrls-head { display: flex; justify-content: space-between; gap: 16px; align-items: flex-start; margin-bottom: 18px; }
+  .agrls-title { margin: 0; font-size: 28px; font-weight: 700; color: #14213d; }
+  .agrls-note { color: #52616b; max-width: 820px; line-height: 1.5; }
+  .agrls-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(270px, 1fr)); gap: 14px; }
+  .agrls-card { border: 1px solid #d9e2ec; background: #fff; border-radius: 8px; padding: 16px; }
+  .agrls-card h3 { margin: 0 0 8px; font-size: 17px; color: #14213d; }
+  .agrls-muted { color: #64748b; font-size: 12px; }
+  .agrls-pill { display: inline-block; border: 1px solid #cbd5e1; padding: 3px 7px; margin: 3px 4px 0 0; font-size: 12px; background: #f8fafc; }
+  @media (max-width: 760px) { .agrls-head { display: block; } }
+</style>
+<section class="agrls-wrap">
+  <div class="agrls-head">
+    <div>
+      <h1 class="agrls-title">Row-Level Security</h1>
+      <p class="agrls-note">
+        Generated tenant-aware row-level security contracts, Python access
+        checks, and PostgreSQL policy SQL for scoped tables.
+      </p>
+    </div>
+    <a class="btn btn-default" href="{{ url_for('RowLevelSecurityView.catalog_json') }}">Catalog JSON</a>
+  </div>
+  <div class="agrls-grid">
+    {% for policy in policies %}
+    <article class="agrls-card">
+      <h3>{{ policy.label }}</h3>
+      <div class="agrls-muted">{{ policy.table }} - {{ "scoped" if policy.scoped else "unscoped" }}</div>
+      {% if policy.tenant_column %}<span class="agrls-pill">{{ policy.tenant_column }}</span>{% endif %}
+      {% for role in policy.bypass_roles %}<span class="agrls-pill">{{ role }}</span>{% endfor %}
+      <div style="margin-top: 12px;">
+        <a class="btn btn-xs btn-default" href="{{ url_for('RowLevelSecurityView.policy_json', table_name=policy.table) }}">JSON</a>
+      </div>
+    </article>
+    {% endfor %}
+  </div>
+</section>
+{% endblock %}
+"""
+    )
+
+
+def write_identity_template(output_dir):
+    """Write the generated identity provider template."""
+    templates_dir = Path(output_dir) / "templates"
+    templates_dir.mkdir(parents=True, exist_ok=True)
+    (templates_dir / "appgen_identity.html").write_text(
+        """{% extends "appbuilder/base.html" %}
+{% block content %}
+<style>
+  .agi2-wrap { margin: 18px 0 32px; }
+  .agi2-title { margin: 0; font-size: 28px; font-weight: 700; color: #14213d; }
+  .agi2-note { color: #52616b; max-width: 820px; line-height: 1.5; }
+  .agi2-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; margin-top: 18px; }
+  .agi2-card { border: 1px solid #d9e2ec; background: #fff; padding: 16px; }
+  .agi2-card h3 { margin: 0 0 8px; font-size: 17px; color: #14213d; }
+  .agi2-muted { color: #64748b; font-size: 12px; }
+  .agi2-pill { display: inline-block; border: 1px solid #cbd5e1; padding: 3px 7px; margin: 3px 4px 0 0; font-size: 12px; background: #f8fafc; }
+  .agi2-ok { color: #176b4d; }
+  .agi2-missing { color: #9b2c2c; }
+</style>
+<section class="agi2-wrap">
+  <h1 class="agi2-title">Identity</h1>
+  <p class="agi2-note">
+    Generated SSO provider registry for OpenID Connect (OIDC), SAML, LDAP,
+    Active Directory, AWS Cognito, and trusted proxy headers. Configure providers with environment
+    variables before enabling a production authentication flow.
+  </p>
+  <div class="agi2-grid">
+    {% for item in providers %}
+    <article class="agi2-card">
+      <h3>{{ item.label }}</h3>
+      <div class="agi2-muted">{{ item.protocol }}</div>
+      <p class="{{ 'agi2-ok' if item.configured else 'agi2-missing' }}">
+        {{ "Configured" if item.configured else "Missing configuration" }}
+      </p>
+      {% for key in item.env %}
+      <span class="agi2-pill">{{ key }}</span>
+      {% endfor %}
+    </article>
+    {% endfor %}
+  </div>
+</section>
+{% endblock %}
+"""
+    )
+
+
+def write_compliance_template(output_dir):
+    """Write the generated compliance overview template."""
+    templates_dir = Path(output_dir) / "templates"
+    templates_dir.mkdir(parents=True, exist_ok=True)
+    (templates_dir / "appgen_compliance.html").write_text(
+        """{% extends "appbuilder/base.html" %}
+{% block content %}
+<style>
+  .agc-wrap { margin: 18px 0 32px; }
+  .agc-title { margin: 0; font-size: 28px; font-weight: 700; color: #14213d; }
+  .agc-note { color: #52616b; max-width: 820px; line-height: 1.5; }
+  .agc-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; margin-top: 18px; }
+  .agc-card { border: 1px solid #d9e2ec; background: #fff; padding: 16px; }
+  .agc-card h3 { margin: 0 0 8px; font-size: 17px; color: #14213d; }
+  .agc-muted { color: #64748b; font-size: 12px; }
+  .agc-pill { display: inline-block; border: 1px solid #cbd5e1; padding: 3px 7px; margin: 3px 4px 0 0; font-size: 12px; background: #f8fafc; }
+</style>
+<section class="agc-wrap">
+  <h1 class="agc-title">Compliance</h1>
+  <p class="agc-note">
+    Generated audit and protected-field registry. Use these helpers to redact
+    sensitive fields from exports, logs, and integration payloads.
+  </p>
+  <div class="agc-grid">
+    {% for item in tables %}
+    <article class="agc-card">
+      <h3>{{ item.label }}</h3>
+      <div class="agc-muted">{{ item.table }}</div>
+      {% for field in item.protected_fields %}
+      <span class="agc-pill">{{ field }}</span>
+      {% else %}
+      <span class="agc-muted">No protected fields detected</span>
+      {% endfor %}
+    </article>
+    {% endfor %}
+  </div>
+</section>
+{% endblock %}
+"""
+    )
+
+
+def write_assistant_template(output_dir):
+    """Write the generated AI assistance cockpit template."""
+    templates_dir = Path(output_dir) / "templates"
+    templates_dir.mkdir(parents=True, exist_ok=True)
+    (templates_dir / "appgen_assistant.html").write_text(
+        """{% extends "appbuilder/base.html" %}
+{% block content %}
+<style>
+  .aga-wrap { margin: 18px 0 32px; }
+  .aga-title { margin: 0; font-size: 28px; font-weight: 700; color: #14213d; }
+  .aga-note { color: #52616b; max-width: 820px; line-height: 1.5; }
+  .aga-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; margin-top: 18px; }
+  .aga-card { border: 1px solid #d9e2ec; background: #fff; padding: 16px; }
+  .aga-card h3 { margin: 0 0 8px; font-size: 17px; color: #14213d; }
+  .aga-muted { color: #64748b; font-size: 12px; }
+  .aga-pill { display: inline-block; border: 1px solid #cbd5e1; padding: 3px 7px; margin: 3px 4px 0 0; font-size: 12px; background: #f8fafc; }
+</style>
+<section class="aga-wrap">
+  <h1 class="aga-title">Assistant</h1>
+  <p class="aga-note">
+    Generated AI-ready contracts for prompt context, recommendations,
+    prediction features, chatbot field collection, and human review queues.
+    Provider integration stays explicit and dependency-free by default.
+  </p>
+  <div class="aga-grid">
+    {% for item in tables %}
+    <article class="aga-card">
+      <h3>{{ item.label }}</h3>
+      <div class="aga-muted">{{ item.table }}</div>
+      {% for field in item.visible_fields %}
+      <span class="aga-pill">{{ field }}</span>
+      {% endfor %}
+    </article>
+    {% endfor %}
+  </div>
+</section>
+{% endblock %}
+"""
+    )
+
+
+def write_chatbot_template(output_dir):
+    """Write the generated in-app guided chatbot cockpit."""
+    templates_dir = Path(output_dir) / "templates"
+    templates_dir.mkdir(parents=True, exist_ok=True)
+    (templates_dir / "appgen_chatbot.html").write_text(
+        """{% extends "appbuilder/base.html" %}
+{% block content %}
+<style>
+  .agcb-wrap { margin: 18px 0 32px; }
+  .agcb-head { display: flex; justify-content: space-between; gap: 16px; align-items: flex-start; margin-bottom: 18px; }
+  .agcb-title { margin: 0; font-size: 28px; font-weight: 700; color: #14213d; }
+  .agcb-note { color: #52616b; max-width: 820px; line-height: 1.5; }
+  .agcb-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; }
+  .agcb-card { border: 1px solid #d9e2ec; background: #fff; padding: 16px; }
+  .agcb-card h3 { margin: 0 0 8px; font-size: 17px; color: #14213d; }
+  .agcb-pill { display: inline-block; border: 1px solid #cbd5e1; padding: 3px 7px; margin: 3px 4px 0 0; background: #f8fafc; font-size: 12px; }
+  .agcb-muted { color: #64748b; font-size: 12px; }
+  @media (max-width: 760px) { .agcb-head { display: block; } }
+</style>
+<section class="agcb-wrap">
+  <div class="agcb-head">
+    <div>
+      <h1 class="agcb-title">Guided Chatbot</h1>
+      <p class="agcb-note">Generated in-app chatbot flows ask for each field in a view, track missing required answers, and prepare create payloads for review.</p>
+    </div>
+    <a class="btn btn-default" href="{{ url_for('GuidedChatbotView.catalog_json') }}">Catalog JSON</a>
+  </div>
+  <div class="agcb-grid">
+    {% for intent in intents %}
+    <article class="agcb-card">
+      <h3>{{ intent.display_name }}</h3>
+      <div class="agcb-muted">{{ intent.intent }} · {{ intent.table }}</div>
+      {% for prompt in intent.prompts %}
+      <span class="agcb-pill">{{ prompt.field }}{% if prompt.required %} *{% endif %}</span>
+      {% endfor %}
+      <p><a class="btn btn-xs btn-default" href="{{ url_for('GuidedChatbotView.intent_json', intent_name=intent.intent) }}">Flow JSON</a></p>
+    </article>
+    {% endfor %}
+  </div>
+</section>
+{% endblock %}
+"""
+    )
+
+
+def write_intelligence_template(output_dir):
+    """Write the generated AI intelligence cockpit template."""
+    templates_dir = Path(output_dir) / "templates"
+    templates_dir.mkdir(parents=True, exist_ok=True)
+    (templates_dir / "appgen_intelligence.html").write_text(
+        """{% extends "appbuilder/base.html" %}
+{% block content %}
+<style>
+  .agi-wrap { margin: 18px 0 32px; }
+  .agi-head { display: flex; justify-content: space-between; gap: 16px; align-items: flex-start; margin-bottom: 18px; }
+  .agi-title { margin: 0; font-size: 28px; font-weight: 700; color: #14213d; }
+  .agi-note { color: #52616b; max-width: 860px; line-height: 1.5; }
+  .agi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; }
+  .agi-card { border: 1px solid #d9e2ec; background: #fff; padding: 16px; }
+  .agi-card h3 { margin: 0 0 8px; font-size: 17px; color: #14213d; }
+  .agi-muted { color: #64748b; font-size: 12px; }
+  .agi-pill { display: inline-block; border: 1px solid #cbd5e1; padding: 3px 7px; margin: 3px 4px 0 0; font-size: 12px; background: #f8fafc; }
+  @media (max-width: 760px) { .agi-head { display: block; } }
+</style>
+<section class="agi-wrap">
+  <div class="agi-head">
+    <div>
+      <h1 class="agi-title">Intelligence</h1>
+      <p class="agi-note">
+        Generated AI analytics, NLP, recommendation, A/B testing, and
+        predictive-maintenance contracts. These helpers stay dependency-free
+        while giving ML adapters stable table and feature metadata.
+      </p>
+    </div>
+    <a class="btn btn-default" href="{{ url_for('IntelligenceView.catalog_json') }}">Intelligence JSON</a>
+  </div>
+  <div class="agi-grid">
+    {% for item in tables %}
+    <article class="agi-card">
+      <h3>{{ item.label }}</h3>
+      <div class="agi-muted">{{ item.table }}</div>
+      {% for field in item.feature_fields %}
+      <span class="agi-pill">{{ field }}</span>
+      {% endfor %}
+    </article>
+    {% endfor %}
+    <article class="agi-card">
+      <h3>Optimization</h3>
+      {% for experiment in experiments %}
+      <div class="agi-muted">{{ experiment.id }} · {{ experiment.metric }}</div>
+      {% endfor %}
+    </article>
+  </div>
+</section>
+{% endblock %}
+"""
+    )
+
+
+def write_voice_template(output_dir):
+    """Write the generated voice assistant cockpit template."""
+    templates_dir = Path(output_dir) / "templates"
+    templates_dir.mkdir(parents=True, exist_ok=True)
+    (templates_dir / "appgen_voice.html").write_text(
+        """{% extends "appbuilder/base.html" %}
+{% block content %}
+<style>
+  .agv-wrap { margin: 18px 0 32px; }
+  .agv-head { display: flex; justify-content: space-between; gap: 16px; align-items: flex-start; margin-bottom: 18px; }
+  .agv-title { margin: 0; font-size: 28px; font-weight: 700; color: #14213d; }
+  .agv-note { color: #52616b; max-width: 840px; line-height: 1.5; }
+  .agv-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(270px, 1fr)); gap: 14px; }
+  .agv-card { border: 1px solid #d9e2ec; background: #fff; border-radius: 8px; padding: 16px; }
+  .agv-card h3 { margin: 0 0 8px; font-size: 17px; color: #14213d; }
+  .agv-muted { color: #64748b; font-size: 12px; }
+  .agv-pill { display: inline-block; border: 1px solid #cbd5e1; padding: 3px 7px; margin: 3px 4px 0 0; font-size: 12px; background: #f8fafc; }
+  @media (max-width: 760px) { .agv-head { display: block; } }
+</style>
+<section class="agv-wrap">
+  <div class="agv-head">
+    <div>
+      <h1 class="agv-title">Voice Assistant</h1>
+      <p class="agv-note">
+        Generated speech prompts, utterance training phrases, slot-filling
+        plans, SSML responses, and Alexa, Google Assistant, and Web Speech
+        export contracts.
+      </p>
+    </div>
+    <a class="btn btn-default" href="{{ url_for('VoiceAssistantView.catalog_json') }}">Voice JSON</a>
+  </div>
+  <div class="agv-grid">
+    {% for provider in providers %}
+    <article class="agv-card">
+      <h3>{{ provider.provider }}</h3>
+      <div class="agv-muted">{{ provider.mode }}</div>
+      <span class="agv-pill">{{ provider.export }}</span>
+    </article>
+    {% endfor %}
+    {% for intent in intents %}
+    <article class="agv-card">
+      <h3>{{ intent.label }}</h3>
+      <div class="agv-muted">{{ intent.voice_intent }}</div>
+      {% for phrase in intent.utterances %}
+      <span class="agv-pill">{{ phrase }}</span>
+      {% endfor %}
+    </article>
+    {% endfor %}
+  </div>
+</section>
+{% endblock %}
+"""
+    )
+
+
+def write_agents_template(output_dir):
+    """Write the generated agentic systems cockpit template."""
+    templates_dir = Path(output_dir) / "templates"
+    templates_dir.mkdir(parents=True, exist_ok=True)
+    (templates_dir / "appgen_agents.html").write_text(
+        """{% extends "appbuilder/base.html" %}
+{% block content %}
+<style>
+  .agai-wrap { margin: 18px 0 32px; }
+  .agai-head { display: flex; justify-content: space-between; gap: 16px; align-items: flex-start; margin-bottom: 18px; }
+  .agai-title { margin: 0; font-size: 28px; font-weight: 700; color: #14213d; }
+  .agai-note { color: #52616b; max-width: 820px; line-height: 1.5; }
+  .agai-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; }
+  .agai-card { border: 1px solid #d9e2ec; background: #fff; padding: 16px; }
+  .agai-card h3 { margin: 0 0 8px; font-size: 17px; color: #14213d; }
+  .agai-muted { color: #64748b; font-size: 12px; }
+  .agai-pill { display: inline-block; border: 1px solid #cbd5e1; padding: 3px 7px; margin: 3px 4px 0 0; font-size: 12px; background: #f8fafc; }
+  @media (max-width: 760px) { .agai-head { display: block; } }
+</style>
+<section class="agai-wrap">
+  <div class="agai-head">
+    <div>
+      <h1 class="agai-title">Agentic Systems</h1>
+      <p class="agai-note">
+        Generated agent plans and LLM provider readiness for local models and
+        API-key providers. Secrets remain environment variable references.
+      </p>
+    </div>
+    <a class="btn btn-default" href="{{ url_for('AgenticView.catalog_json') }}">Agent Catalog JSON</a>
+  </div>
+  <div class="agai-grid">
+    {% for provider in providers %}
+    <article class="agai-card">
+      <h3>{{ provider.name }}</h3>
+      <div class="agai-muted">{{ provider.provider }} · {{ provider.mode }} · {{ provider.model }}</div>
+      {% for required in provider.required_env %}
+      <span class="agai-pill">{{ required }}</span>
+      {% endfor %}
+    </article>
+    {% endfor %}
+    {% for agent in agents %}
+    <article class="agai-card">
+      <h3>{{ agent.name }}</h3>
+      <div class="agai-muted">{{ agent.provider }} · {{ agent.memory }}</div>
+      {% for tool in agent.tools %}
+      <span class="agai-pill">{{ tool }}</span>
+      {% endfor %}
+    </article>
+    {% endfor %}
+  </div>
+</section>
+{% endblock %}
+"""
+    )
+
+
+def write_text_quality_template(output_dir):
+    """Write the generated text quality cockpit template."""
+    templates_dir = Path(output_dir) / "templates"
+    templates_dir.mkdir(parents=True, exist_ok=True)
+    (templates_dir / "appgen_text_quality.html").write_text(
+        """{% extends "appbuilder/base.html" %}
+{% block content %}
+<style>
+  .agtq-wrap { margin: 18px 0 32px; }
+  .agtq-head { display: flex; justify-content: space-between; gap: 16px; align-items: flex-start; margin-bottom: 18px; }
+  .agtq-title { margin: 0; font-size: 28px; font-weight: 700; color: #14213d; }
+  .agtq-note { color: #52616b; max-width: 820px; line-height: 1.5; }
+  .agtq-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(270px, 1fr)); gap: 14px; }
+  .agtq-card { border: 1px solid #d9e2ec; background: #fff; border-radius: 8px; padding: 16px; }
+  .agtq-card h3 { margin: 0 0 8px; font-size: 17px; color: #14213d; }
+  .agtq-muted { color: #64748b; font-size: 12px; }
+  .agtq-pill { display: inline-block; border: 1px solid #cbd5e1; padding: 3px 7px; margin: 3px 4px 0 0; font-size: 12px; background: #f8fafc; }
+  @media (max-width: 760px) { .agtq-head { display: block; } }
+</style>
+<section class="agtq-wrap">
+  <div class="agtq-head">
+    <div>
+      <h1 class="agtq-title">Text Quality</h1>
+      <p class="agtq-note">
+        Generated spell, grammar, and character-count contracts for textarea
+        fields. Use these descriptors in generated forms and downstream UI
+        adapters to keep long-form input clear and bounded.
+      </p>
+    </div>
+    <a class="btn btn-default" href="{{ url_for('TextQualityView.catalog_json') }}">Catalog JSON</a>
+  </div>
+  <div class="agtq-grid">
+    {% for item in fields %}
+    <article class="agtq-card">
+      <h3>{{ item.label }}</h3>
+      <div class="agtq-muted">{{ item.table }}.{{ item.field }}</div>
+      <span class="agtq-pill">{{ item.soft_limit }} soft</span>
+      <span class="agtq-pill">{{ item.hard_limit }} hard</span>
+      <span class="agtq-pill">spellcheck</span>
+      <span class="agtq-pill">grammar</span>
+    </article>
+    {% else %}
+    <article class="agtq-card">
+      <h3>No textarea fields</h3>
+      <div class="agtq-muted">Use field types such as text, longtext, notes, or description.</div>
+    </article>
+    {% endfor %}
+  </div>
+</section>
+{% endblock %}
+"""
+    )
+
+
+def write_notifications_template(output_dir):
+    """Write the generated notification cockpit template."""
+    templates_dir = Path(output_dir) / "templates"
+    templates_dir.mkdir(parents=True, exist_ok=True)
+    (templates_dir / "appgen_notifications.html").write_text(
+        """{% extends "appbuilder/base.html" %}
+{% block content %}
+<style>
+  .agn-wrap { margin: 18px 0 32px; }
+  .agn-head { display: flex; justify-content: space-between; gap: 16px; align-items: flex-start; margin-bottom: 18px; }
+  .agn-title { margin: 0; font-size: 28px; font-weight: 700; color: #14213d; }
+  .agn-note { color: #52616b; max-width: 820px; line-height: 1.5; }
+  .agn-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; }
+  .agn-card { border: 1px solid #d9e2ec; background: #fff; padding: 16px; }
+  .agn-card h3 { margin: 0 0 8px; font-size: 17px; color: #14213d; }
+  .agn-muted { color: #64748b; font-size: 12px; }
+  .agn-pill { display: inline-block; border: 1px solid #cbd5e1; padding: 3px 7px; margin: 3px 4px 0 0; font-size: 12px; background: #f8fafc; }
+  @media (max-width: 760px) { .agn-head { display: block; } }
+</style>
+<section class="agn-wrap">
+  <div class="agn-head">
+    <div>
+      <h1 class="agn-title">Notifications</h1>
+      <p class="agn-note">
+        Generated notification channels and event templates for in-app, email,
+        webhook, and push-style delivery. Dispatch is explicit so generated
+        apps can review queued messages before external delivery.
+      </p>
+    </div>
+    <a class="btn btn-default" href="{{ url_for('NotificationView.catalog_json') }}">Catalog JSON</a>
+  </div>
+  <div class="agn-grid">
+    {% for channel in channels %}
+    <article class="agn-card">
+      <h3>{{ channel.label }}</h3>
+      <div class="agn-muted">{{ channel.channel }}</div>
+      {% for key in channel.env %}
+      <span class="agn-pill">{{ key }}</span>
+      {% endfor %}
+    </article>
+    {% endfor %}
+  </div>
+</section>
+{% endblock %}
+"""
+    )
+
+
+def write_platforms_template(output_dir):
+    """Write the generated platform targets cockpit template."""
+    templates_dir = Path(output_dir) / "templates"
+    templates_dir.mkdir(parents=True, exist_ok=True)
+    (templates_dir / "appgen_platforms.html").write_text(
+        """{% extends "appbuilder/base.html" %}
+{% block content %}
+<style>
+  .agp-wrap { margin: 18px 0 32px; }
+  .agp-head { display: flex; justify-content: space-between; gap: 16px; align-items: flex-start; margin-bottom: 18px; }
+  .agp-title { margin: 0; font-size: 28px; font-weight: 700; color: #14213d; }
+  .agp-note { color: #52616b; max-width: 820px; line-height: 1.5; }
+  .agp-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; }
+  .agp-card { border: 1px solid #d9e2ec; background: #fff; padding: 16px; }
+  .agp-card h3 { margin: 0 0 8px; font-size: 17px; color: #14213d; }
+  .agp-muted { color: #64748b; font-size: 12px; }
+  .agp-pill { display: inline-block; border: 1px solid #cbd5e1; padding: 3px 7px; margin: 3px 4px 0 0; font-size: 12px; background: #f8fafc; }
+  @media (max-width: 760px) { .agp-head { display: block; } }
+</style>
+<section class="agp-wrap">
+  <div class="agp-head">
+    <div>
+      <h1 class="agp-title">Platforms</h1>
+      <p class="agp-note">
+        Generated target contracts for web, PWA, mobile, desktop, and chatbot
+        adapters. These descriptors define expected capabilities such as
+        offline mode, push notifications, location, camera, and field prompts.
+      </p>
+    </div>
+    <a class="btn btn-default" href="{{ url_for('PlatformView.catalog_json') }}">Catalog JSON</a>
+  </div>
+  <div class="agp-grid">
+    {% for target in targets %}
+    <article class="agp-card">
+      <h3>{{ target.label }}</h3>
+      <div class="agp-muted">{{ target.target }} - {{ target.adapter }}</div>
+      {% for capability in target.capabilities %}
+      <span class="agp-pill">{{ capability }}</span>
+      {% endfor %}
+    </article>
+    {% endfor %}
+  </div>
+</section>
+{% endblock %}
+"""
+    )
+
+
+def write_microservices_template(output_dir):
+    """Write the generated microservices architecture cockpit template."""
+    templates_dir = Path(output_dir) / "templates"
+    templates_dir.mkdir(parents=True, exist_ok=True)
+    (templates_dir / "appgen_microservices.html").write_text(
+        """{% extends "appbuilder/base.html" %}
+{% block content %}
+<style>
+  .agm-wrap { margin: 18px 0 32px; }
+  .agm-head { display: flex; justify-content: space-between; gap: 16px; align-items: flex-start; margin-bottom: 18px; }
+  .agm-title { margin: 0; font-size: 28px; font-weight: 700; color: #14213d; }
+  .agm-note { color: #52616b; max-width: 820px; line-height: 1.5; }
+  .agm-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; }
+  .agm-card { border: 1px solid #d9e2ec; background: #fff; padding: 16px; }
+  .agm-card h3 { margin: 0 0 8px; font-size: 17px; color: #14213d; }
+  .agm-muted { color: #64748b; font-size: 12px; }
+  .agm-pill { display: inline-block; border: 1px solid #cbd5e1; padding: 3px 7px; margin: 3px 4px 0 0; font-size: 12px; background: #f8fafc; }
+  @media (max-width: 760px) { .agm-head { display: block; } }
+</style>
+<section class="agm-wrap">
+  <div class="agm-head">
+    <div>
+      <h1 class="agm-title">Microservices</h1>
+      <p class="agm-note">
+        Generated microservices architecture contract for service boundaries,
+        API gateway routes, event routes, dependencies, health checks, and scaling.
+      </p>
+    </div>
+    <a class="btn btn-default" href="{{ url_for('MicroserviceView.catalog_json') }}">Service Catalog JSON</a>
+  </div>
+  <div class="agm-grid">
+    {% for service in services %}
+    <article class="agm-card">
+      <h3>{{ service.label }}</h3>
+      <div class="agm-muted">{{ service.name }} · {{ service.kind }}</div>
+      {% for table in service.tables %}
+      <span class="agm-pill">{{ table }}</span>
+      {% endfor %}
+      {% for route in service.routes %}
+      <span class="agm-pill">{{ route }}</span>
+      {% endfor %}
+    </article>
+    {% endfor %}
+  </div>
+</section>
+{% endblock %}
+"""
+    )
+
+
+def write_collaboration_template(output_dir):
+    """Write the generated collaboration cockpit template."""
+    templates_dir = Path(output_dir) / "templates"
+    templates_dir.mkdir(parents=True, exist_ok=True)
+    (templates_dir / "appgen_collaboration.html").write_text(
+        """{% extends "appbuilder/base.html" %}
+{% block content %}
+<style>
+  .agv-wrap { margin: 18px 0 32px; }
+  .agv-head { display: flex; justify-content: space-between; gap: 16px; align-items: flex-start; margin-bottom: 18px; }
+  .agv-title { margin: 0; font-size: 28px; font-weight: 700; color: #14213d; }
+  .agv-note { color: #52616b; max-width: 820px; line-height: 1.5; }
+  .agv-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; }
+  .agv-card { border: 1px solid #d9e2ec; background: #fff; padding: 16px; }
+  .agv-card h3 { margin: 0 0 8px; font-size: 17px; color: #14213d; }
+  .agv-muted { color: #64748b; font-size: 12px; }
+  .agv-pill { display: inline-block; border: 1px solid #cbd5e1; padding: 3px 7px; margin: 3px 4px 0 0; font-size: 12px; background: #f8fafc; }
+  @media (max-width: 760px) { .agv-head { display: block; } }
+</style>
+<section class="agv-wrap">
+  <div class="agv-head">
+    <div>
+      <h1 class="agv-title">Collaboration</h1>
+      <p class="agv-note">
+        Generated collaboration and version-control contracts for change proposals,
+        reviewer decisions, revision metadata, and team handoffs.
+      </p>
+    </div>
+    <a class="btn btn-default" href="{{ url_for('CollaborationView.catalog_json') }}">Catalog JSON</a>
+  </div>
+  <div class="agv-grid">
+    {% for item in tables %}
+    <article class="agv-card">
+      <h3>{{ item.label }}</h3>
+      <div class="agv-muted">{{ item.table }}</div>
+      {% for event in item.events %}
+      <span class="agv-pill">{{ event }}</span>
+      {% endfor %}
+    </article>
+    {% endfor %}
+  </div>
+</section>
+{% endblock %}
+"""
+    )
+
+
+def write_version_control_template(output_dir):
+    """Write the generated version-control cockpit template."""
+    templates_dir = Path(output_dir) / "templates"
+    templates_dir.mkdir(parents=True, exist_ok=True)
+    (templates_dir / "appgen_version_control.html").write_text(
+        """{% extends "appbuilder/base.html" %}
+{% block content %}
+<style>
+  .agvc-wrap { margin: 18px 0 32px; }
+  .agvc-head { display: flex; justify-content: space-between; gap: 16px; align-items: flex-start; margin-bottom: 18px; }
+  .agvc-title { margin: 0; font-size: 28px; font-weight: 700; color: #14213d; }
+  .agvc-note { color: #52616b; max-width: 840px; line-height: 1.5; }
+  .agvc-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; }
+  .agvc-card { border: 1px solid #d9e2ec; background: #fff; padding: 16px; }
+  .agvc-card h3 { margin: 0 0 8px; font-size: 17px; color: #14213d; }
+  .agvc-muted { color: #64748b; font-size: 12px; }
+  .agvc-pill { display: inline-block; border: 1px solid #cbd5e1; padding: 3px 7px; margin: 3px 4px 0 0; font-size: 12px; background: #f8fafc; }
+  @media (max-width: 760px) { .agvc-head { display: block; } }
+</style>
+<section class="agvc-wrap">
+  <div class="agvc-head">
+    <div>
+      <h1 class="agvc-title">Version Control</h1>
+      <p class="agvc-note">
+        Generated version history, manifest snapshots, diff summaries, rollback
+        plans, and branch contracts for low-code team development.
+      </p>
+    </div>
+    <a class="btn btn-default" href="{{ url_for('VersionControlView.catalog_json') }}">Catalog JSON</a>
+  </div>
+  <div class="agvc-grid">
+    {% for item in resources %}
+    <article class="agvc-card">
+      <h3>{{ item.label }}</h3>
+      <div class="agvc-muted">{{ item.resource }}</div>
+      {% for artifact in item.artifacts %}
+      <span class="agvc-pill">{{ artifact }}</span>
+      {% endfor %}
+    </article>
+    {% endfor %}
+  </div>
+</section>
+{% endblock %}
+"""
+    )
+
+
+def write_realtime_template(output_dir):
+    """Write the generated real-time collaboration cockpit template."""
+    templates_dir = Path(output_dir) / "templates"
+    templates_dir.mkdir(parents=True, exist_ok=True)
+    (templates_dir / "appgen_realtime.html").write_text(
+        """{% extends "appbuilder/base.html" %}
+{% block content %}
+<style>
+  .agr-wrap { margin: 18px 0 32px; }
+  .agr-head { display: flex; justify-content: space-between; gap: 16px; align-items: flex-start; margin-bottom: 18px; }
+  .agr-title { margin: 0; font-size: 28px; font-weight: 700; color: #14213d; }
+  .agr-note { color: #52616b; max-width: 820px; line-height: 1.5; }
+  .agr-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; }
+  .agr-card { border: 1px solid #d9e2ec; background: #fff; padding: 16px; }
+  .agr-card h3 { margin: 0 0 8px; font-size: 17px; color: #14213d; }
+  .agr-muted { color: #64748b; font-size: 12px; }
+  .agr-pill { display: inline-block; border: 1px solid #cbd5e1; padding: 3px 7px; margin: 3px 4px 0 0; font-size: 12px; background: #f8fafc; }
+  @media (max-width: 760px) { .agr-head { display: block; } }
+</style>
+<section class="agr-wrap">
+  <div class="agr-head">
+    <div>
+      <h1 class="agr-title">Realtime</h1>
+      <p class="agr-note">
+        Generated real-time collaboration and event-stream contracts for table
+        changes, proposal activity, team messages, SSE frames, and reconnect replay.
+      </p>
+    </div>
+    <a class="btn btn-default" href="{{ url_for('RealtimeView.topics_json') }}">Topics JSON</a>
+  </div>
+  <div class="agr-grid">
+    {% for item in topics %}
+    <article class="agr-card">
+      <h3>{{ item.label }}</h3>
+      <div class="agr-muted">{{ item.table }}</div>
+      {% for topic in item.topics %}
+      <span class="agr-pill">{{ topic }}</span>
+      {% endfor %}
+    </article>
+    {% endfor %}
+  </div>
+</section>
+{% endblock %}
+"""
+    )
+
+
+def write_events_template(output_dir):
+    """Write the generated event-processing cockpit template."""
+    templates_dir = Path(output_dir) / "templates"
+    templates_dir.mkdir(parents=True, exist_ok=True)
+    (templates_dir / "appgen_events.html").write_text(
+        """{% extends "appbuilder/base.html" %}
+{% block content %}
+<style>
+  .age-wrap { margin: 18px 0 32px; }
+  .age-head { display: flex; justify-content: space-between; gap: 16px; align-items: flex-start; margin-bottom: 18px; }
+  .age-title { margin: 0; font-size: 28px; font-weight: 700; color: #14213d; }
+  .age-note { color: #52616b; max-width: 820px; line-height: 1.5; }
+  .age-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; }
+  .age-card { border: 1px solid #d9e2ec; background: #fff; padding: 16px; }
+  .age-card h3 { margin: 0 0 8px; font-size: 17px; color: #14213d; }
+  .age-muted { color: #64748b; font-size: 12px; }
+  .age-pill { display: inline-block; border: 1px solid #cbd5e1; padding: 3px 7px; margin: 3px 4px 0 0; font-size: 12px; background: #f8fafc; }
+  @media (max-width: 760px) { .age-head { display: block; } }
+</style>
+<section class="age-wrap">
+  <div class="age-head">
+    <div>
+      <h1 class="age-title">Event Processing</h1>
+      <p class="age-note">
+        Generated complex event processing, alerting, retry, and dead-letter
+        contracts for table changes and workflow transitions.
+      </p>
+    </div>
+    <a class="btn btn-default" href="{{ url_for('EventProcessingView.catalog_json') }}">Event Catalog JSON</a>
+  </div>
+  <div class="age-grid">
+    <article class="age-card">
+      <h3>Topics</h3>
+      {% for topic in topics %}
+      <span class="age-pill">{{ topic }}</span>
+      {% endfor %}
+    </article>
+    <article class="age-card">
+      <h3>Actions</h3>
+      {% for name, actions in catalog.actions.items() %}
+      <div class="age-muted">{{ name }} · {{ actions|join(', ') }}</div>
+      {% endfor %}
+    </article>
+    <article class="age-card">
+      <h3>Retry Policy</h3>
+      <div class="age-muted">{{ catalog.retry_policy.max_attempts }} attempts</div>
+      {% for delay in catalog.retry_policy.backoff_seconds %}
+      <span class="age-pill">{{ delay }}s</span>
+      {% endfor %}
+    </article>
+  </div>
+</section>
+{% endblock %}
+"""
+    )
+
+
+def write_rpa_template(output_dir):
+    """Write the generated RPA and BPA cockpit template."""
+    templates_dir = Path(output_dir) / "templates"
+    templates_dir.mkdir(parents=True, exist_ok=True)
+    (templates_dir / "appgen_rpa.html").write_text(
+        """{% extends "appbuilder/base.html" %}
+{% block content %}
+<style>
+  .agrpa-wrap { margin: 18px 0 32px; }
+  .agrpa-head { display: flex; justify-content: space-between; gap: 16px; align-items: flex-start; margin-bottom: 18px; }
+  .agrpa-title { margin: 0; font-size: 28px; font-weight: 700; color: #14213d; }
+  .agrpa-note { color: #52616b; max-width: 860px; line-height: 1.5; }
+  .agrpa-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; }
+  .agrpa-card { border: 1px solid #d9e2ec; background: #fff; padding: 16px; }
+  .agrpa-card h3 { margin: 0 0 8px; font-size: 17px; color: #14213d; }
+  .agrpa-muted { color: #64748b; font-size: 12px; }
+  .agrpa-pill { display: inline-block; border: 1px solid #cbd5e1; padding: 3px 7px; margin: 3px 4px 0 0; font-size: 12px; background: #f8fafc; }
+  @media (max-width: 760px) { .agrpa-head { display: block; } }
+</style>
+<section class="agrpa-wrap">
+  <div class="agrpa-head">
+    <div>
+      <h1 class="agrpa-title">RPA &amp; BPA</h1>
+      <p class="agrpa-note">
+        Generated robotic-process automation and business-process analysis
+        plans for repetitive table work, BPMN/UML process models, simulation,
+        and UiPath, Blue Prism, and Automation Anywhere export packages. Plans
+        are deterministic, auditable, and ready for desktop, browser, API, or
+        control-room automation adapters.
+      </p>
+    </div>
+    <a class="btn btn-default" href="{{ url_for('RpaBpaView.catalog_json') }}">Automation Catalog JSON</a>
+  </div>
+  <div class="agrpa-grid">
+    {% for task in tasks %}
+    <article class="agrpa-card">
+      <h3>{{ task.label }}</h3>
+      <div class="agrpa-muted">{{ task.id }} · {{ task.surface }}</div>
+      {% for action in task.actions %}
+      <span class="agrpa-pill">{{ action.action }}</span>
+      {% endfor %}
+    </article>
+    {% endfor %}
+    <article class="agrpa-card">
+      <h3>Process Metrics</h3>
+      {% for metric in metrics %}
+      <span class="agrpa-pill">{{ metric }}</span>
+      {% endfor %}
+    </article>
+  </div>
+</section>
+{% endblock %}
+"""
+    )
+
+
+def write_openapi_template(output_dir):
+    """Write the generated OpenAPI cockpit template."""
+    templates_dir = Path(output_dir) / "templates"
+    templates_dir.mkdir(parents=True, exist_ok=True)
+    (templates_dir / "appgen_openapi.html").write_text(
+        """{% extends "appbuilder/base.html" %}
+{% block content %}
+<style>
+  .ago-wrap { margin: 18px 0 32px; }
+  .ago-head { display: flex; justify-content: space-between; gap: 16px; align-items: flex-start; margin-bottom: 18px; }
+  .ago-title { margin: 0; font-size: 28px; font-weight: 700; color: #14213d; }
+  .ago-note { color: #52616b; max-width: 820px; line-height: 1.5; }
+  .ago-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; }
+  .ago-card { border: 1px solid #d9e2ec; background: #fff; padding: 16px; }
+  .ago-card h3 { margin: 0 0 8px; font-size: 17px; color: #14213d; }
+  .ago-muted { color: #64748b; font-size: 12px; }
+  .ago-pill { display: inline-block; border: 1px solid #cbd5e1; padding: 3px 7px; margin: 3px 4px 0 0; font-size: 12px; background: #f8fafc; }
+  @media (max-width: 760px) { .ago-head { display: block; } }
+</style>
+<section class="ago-wrap">
+  <div class="ago-head">
+    <div>
+      <h1 class="ago-title">OpenAPI</h1>
+      <p class="ago-note">
+        Generated OpenAPI 3.1 contract for the REST endpoints, component
+        schemas, operation IDs, and bearer-token security scheme.
+      </p>
+    </div>
+    <a class="btn btn-default" href="{{ url_for('OpenAPIView.openapi_json') }}">OpenAPI JSON</a>
+  </div>
+  <div class="ago-grid">
+    <article class="ago-card">
+      <h3>Contract</h3>
+      <div class="ago-muted">{{ spec.openapi }} · {{ operation_count }} operations</div>
+    </article>
+    <article class="ago-card">
+      <h3>Schemas</h3>
+      {% for schema in schemas %}
+      <span class="ago-pill">{{ schema }}</span>
+      {% endfor %}
+    </article>
+    <article class="ago-card">
+      <h3>Paths</h3>
+      {% for item in paths %}
+      <div class="ago-muted">{{ item.path }} · {{ item.methods|join(', ') }}</div>
+      {% endfor %}
+    </article>
+  </div>
+</section>
+{% endblock %}
+"""
+    )
+
+
+def write_diagnostics_template(output_dir):
+    """Write the generated diagnostics cockpit template."""
+    templates_dir = Path(output_dir) / "templates"
+    templates_dir.mkdir(parents=True, exist_ok=True)
+    (templates_dir / "appgen_diagnostics.html").write_text(
+        """{% extends "appbuilder/base.html" %}
+{% block content %}
+<style>
+  .agd-wrap { margin: 18px 0 32px; }
+  .agd-head { display: flex; justify-content: space-between; gap: 16px; align-items: flex-start; margin-bottom: 18px; }
+  .agd-title { margin: 0; font-size: 28px; font-weight: 700; color: #14213d; }
+  .agd-note { color: #52616b; max-width: 820px; line-height: 1.5; }
+  .agd-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; }
+  .agd-card { border: 1px solid #d9e2ec; background: #fff; padding: 16px; }
+  .agd-card h3 { margin: 0 0 8px; font-size: 17px; color: #14213d; }
+  .agd-muted { color: #64748b; font-size: 12px; }
+  .agd-pill { display: inline-block; border: 1px solid #cbd5e1; padding: 3px 7px; margin: 3px 4px 0 0; font-size: 12px; background: #f8fafc; }
+  @media (max-width: 760px) { .agd-head { display: block; } }
+</style>
+<section class="agd-wrap">
+  <div class="agd-head">
+    <div>
+      <h1 class="agd-title">Diagnostics</h1>
+      <p class="agd-note">
+        Generated testing and debugging contracts for schema invariants,
+        runtime self-tests, debug snapshots, API smoke checks, and load-test plans.
+      </p>
+    </div>
+    <a class="btn btn-default" href="{{ url_for('DiagnosticsView.selftest_json') }}">Self-test JSON</a>
+  </div>
+  <div class="agd-grid">
+    {% for item in checks %}
+    <article class="agd-card">
+      <h3>{{ item.name }}</h3>
+      <div class="agd-muted">{{ item.status }}</div>
+      {% for detail in item.details %}
+      <span class="agd-pill">{{ detail }}</span>
+      {% endfor %}
+    </article>
+    {% endfor %}
+  </div>
+</section>
+{% endblock %}
+"""
+    )
+
+
+def write_api_testing_template(output_dir):
+    """Write the generated API testing cockpit template."""
+    templates_dir = Path(output_dir) / "templates"
+    templates_dir.mkdir(parents=True, exist_ok=True)
+    (templates_dir / "appgen_api_testing.html").write_text(
+        """{% extends "appbuilder/base.html" %}
+{% block content %}
+<style>
+  .agt-wrap { margin: 18px 0 32px; }
+  .agt-head { display: flex; justify-content: space-between; gap: 16px; align-items: flex-start; margin-bottom: 18px; }
+  .agt-title { margin: 0; font-size: 28px; font-weight: 700; color: #14213d; }
+  .agt-note { color: #52616b; max-width: 820px; line-height: 1.5; }
+  .agt-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; }
+  .agt-card { border: 1px solid #d9e2ec; background: #fff; padding: 16px; }
+  .agt-card h3 { margin: 0 0 8px; font-size: 17px; color: #14213d; }
+  .agt-muted { color: #64748b; font-size: 12px; }
+  .agt-pill { display: inline-block; border: 1px solid #cbd5e1; padding: 3px 7px; margin: 3px 4px 0 0; font-size: 12px; background: #f8fafc; }
+  @media (max-width: 760px) { .agt-head { display: block; } }
+</style>
+<section class="agt-wrap">
+  <div class="agt-head">
+    <div>
+      <h1 class="agt-title">API Testing</h1>
+      <p class="agt-note">
+        Generated automated API testing and synthetic monitoring contracts for
+        REST resources, status expectations, payload samples, and probes.
+      </p>
+    </div>
+    <div>
+      <a class="btn btn-default" href="{{ url_for('APITestingView.catalog_json') }}">Test Catalog JSON</a>
+      <a class="btn btn-default" href="{{ url_for('APITestingView.monitor_json') }}">Monitor JSON</a>
+    </div>
+  </div>
+  <div class="agt-grid">
+    {% for item in catalog %}
+    <article class="agt-card">
+      <h3>{{ item.label }}</h3>
+      <div class="agt-muted">{{ item.endpoint }}</div>
+      {% for case in item.cases %}
+      <span class="agt-pill">{{ case.method }} {{ case.name }}</span>
+      {% endfor %}
+    </article>
+    {% endfor %}
+    <article class="agt-card">
+      <h3>Synthetic Monitoring</h3>
+      <div class="agt-muted">{{ monitor.interval_seconds }} second interval</div>
+      {% for probe in monitor.probes %}
+      <span class="agt-pill">{{ probe.method }} {{ probe.name }}</span>
+      {% endfor %}
+    </article>
+  </div>
+</section>
+{% endblock %}
+"""
+    )
+
+
+def write_code_review_template(output_dir):
+    """Write the generated automated code-review cockpit template."""
+    templates_dir = Path(output_dir) / "templates"
+    templates_dir.mkdir(parents=True, exist_ok=True)
+    (templates_dir / "appgen_code_review.html").write_text(
+        """{% extends "appbuilder/base.html" %}
+{% block content %}
+<style>
+  .agcr-wrap { margin: 18px 0 32px; }
+  .agcr-head { display: flex; justify-content: space-between; gap: 16px; align-items: flex-start; margin-bottom: 18px; }
+  .agcr-title { margin: 0; font-size: 28px; font-weight: 700; color: #14213d; }
+  .agcr-note { color: #52616b; max-width: 820px; line-height: 1.5; }
+  .agcr-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(270px, 1fr)); gap: 14px; }
+  .agcr-card { border: 1px solid #d9e2ec; background: #fff; border-radius: 8px; padding: 16px; }
+  .agcr-card h3 { margin: 0 0 8px; font-size: 17px; color: #14213d; }
+  .agcr-muted { color: #64748b; font-size: 12px; }
+  .agcr-pill { display: inline-block; border: 1px solid #cbd5e1; padding: 3px 7px; margin: 3px 4px 0 0; font-size: 12px; background: #f8fafc; }
+  .agcr-warning { color: #9a6700; }
+  .agcr-error { color: #9b2c2c; }
+  .agcr-info { color: #176b4d; }
+  @media (max-width: 760px) { .agcr-head { display: block; } }
+</style>
+<section class="agcr-wrap">
+  <div class="agcr-head">
+    <div>
+      <h1 class="agcr-title">Code Review</h1>
+      <p class="agcr-note">
+        Generated automated code-review findings for schema quality, public API
+        exposure, required fields, and expected generated artifacts.
+      </p>
+    </div>
+    <a class="btn btn-default" href="{{ url_for('CodeReviewView.summary_json') }}">Summary JSON</a>
+  </div>
+  <div class="agcr-grid">
+    {% for finding in summary.findings %}
+    <article class="agcr-card">
+      <h3>{{ finding.rule }}</h3>
+      <div class="agcr-muted">{{ finding.table }}</div>
+      <p class="agcr-{{ finding.severity }}">{{ finding.message }}</p>
+      {% for item in finding.evidence %}
+      <span class="agcr-pill">{{ item }}</span>
+      {% endfor %}
+    </article>
+    {% else %}
+    <article class="agcr-card">
+      <h3>No findings</h3>
+      <div class="agcr-muted">Generated schema review did not find issues.</div>
+    </article>
+    {% endfor %}
+  </div>
+</section>
+{% endblock %}
+"""
+    )
+
+
+def write_components_template(output_dir):
+    """Write the generated component registry cockpit template."""
+    templates_dir = Path(output_dir) / "templates"
+    templates_dir.mkdir(parents=True, exist_ok=True)
+    (templates_dir / "appgen_components.html").write_text(
+        """{% extends "appbuilder/base.html" %}
+{% block content %}
+<style>
+  .agx-wrap { margin: 18px 0 32px; }
+  .agx-head { display: flex; justify-content: space-between; gap: 16px; align-items: flex-start; margin-bottom: 18px; }
+  .agx-title { margin: 0; font-size: 28px; font-weight: 700; color: #14213d; }
+  .agx-note { color: #52616b; max-width: 820px; line-height: 1.5; }
+  .agx-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; }
+  .agx-card { border: 1px solid #d9e2ec; background: #fff; padding: 16px; }
+  .agx-card h3 { margin: 0 0 8px; font-size: 17px; color: #14213d; }
+  .agx-muted { color: #64748b; font-size: 12px; }
+  .agx-pill { display: inline-block; border: 1px solid #cbd5e1; padding: 3px 7px; margin: 3px 4px 0 0; font-size: 12px; background: #f8fafc; }
+  @media (max-width: 760px) { .agx-head { display: block; } }
+</style>
+<section class="agx-wrap">
+  <div class="agx-head">
+    <div>
+      <h1 class="agx-title">Components</h1>
+      <p class="agx-note">
+        Generated component and widget contracts for form fields, list views,
+        detail panels, reusable cards, and downstream visual builders.
+      </p>
+    </div>
+    <a class="btn btn-default" href="{{ url_for('ComponentView.catalog_json') }}">Catalog JSON</a>
+  </div>
+  <div class="agx-grid">
+    {% for item in components %}
+    <article class="agx-card">
+      <h3>{{ item.label }}</h3>
+      <div class="agx-muted">{{ item.table }}</div>
+      {% for component in item.components %}
+      <span class="agx-pill">{{ component }}</span>
+      {% endfor %}
+    </article>
+    {% endfor %}
+  </div>
+</section>
+{% endblock %}
+"""
+    )
+
+
+def write_view_composition_template(output_dir):
+    """Write the generated view-composition cockpit."""
+    templates_dir = Path(output_dir) / "templates"
+    templates_dir.mkdir(parents=True, exist_ok=True)
+    (templates_dir / "appgen_view_composition.html").write_text(
+        """{% extends "appbuilder/base.html" %}
+{% block content %}
+<style>
+  .agvc-wrap { margin: 18px 0 32px; }
+  .agvc-head { display: flex; justify-content: space-between; gap: 16px; align-items: flex-start; margin-bottom: 18px; }
+  .agvc-title { margin: 0; font-size: 28px; font-weight: 700; color: #14213d; }
+  .agvc-note { color: #52616b; max-width: 820px; line-height: 1.5; }
+  .agvc-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; }
+  .agvc-card { border: 1px solid #d9e2ec; background: #fff; padding: 16px; }
+  .agvc-card h3 { margin: 0 0 8px; font-size: 17px; color: #14213d; }
+  .agvc-muted { color: #64748b; font-size: 12px; }
+  .agvc-pill { display: inline-block; border: 1px solid #cbd5e1; padding: 3px 7px; margin: 3px 4px 0 0; background: #f8fafc; font-size: 12px; }
+  @media (max-width: 760px) { .agvc-head { display: block; } }
+</style>
+<section class="agvc-wrap">
+  <div class="agvc-head">
+    <div>
+      <h1 class="agvc-title">View Composition</h1>
+      <p class="agvc-note">Generated MasterDetailView, MultipleView, and ChartView contracts for relationship-aware application screens.</p>
+    </div>
+    <a class="btn btn-default" href="{{ url_for('ViewCompositionView.catalog_json') }}">Catalog JSON</a>
+  </div>
+  <div class="agvc-grid">
+    {% for item in master_detail %}
+    <article class="agvc-card">
+      <h3>{{ item.name }}</h3>
+      <div class="agvc-muted">{{ item.master }} -> {{ item.detail }}</div>
+      <span class="agvc-pill">{{ item.foreign_key }}</span>
+    </article>
+    {% endfor %}
+    {% for item in multiple %}
+    <article class="agvc-card">
+      <h3>{{ item.name }}</h3>
+      <div class="agvc-muted">{{ item.table }}</div>
+      {% for related in item.related_views %}
+      <span class="agvc-pill">{{ related }}</span>
+      {% endfor %}
+    </article>
+    {% endfor %}
+    {% for item in charts %}
+    <article class="agvc-card">
+      <h3>{{ item.name }}</h3>
+      <div class="agvc-muted">{{ item.view_class }} · {{ item.table }}</div>
+      {% for field in item.fields %}
+      <span class="agvc-pill">{{ field }}</span>
+      {% endfor %}
+    </article>
+    {% endfor %}
+  </div>
+</section>
+{% endblock %}
+"""
+    )
+
+
+def write_tabbed_views_template(output_dir):
+    """Write the generated tabbed-view permissions cockpit."""
+    templates_dir = Path(output_dir) / "templates"
+    templates_dir.mkdir(parents=True, exist_ok=True)
+    (templates_dir / "appgen_tabbed_views.html").write_text(
+        """{% extends "appbuilder/base.html" %}
+{% block content %}
+<style>
+  .agtv-wrap { margin: 18px 0 32px; }
+  .agtv-head { display: flex; justify-content: space-between; gap: 16px; align-items: flex-start; margin-bottom: 18px; }
+  .agtv-title { margin: 0; font-size: 28px; font-weight: 700; color: #14213d; }
+  .agtv-note { color: #52616b; max-width: 820px; line-height: 1.5; }
+  .agtv-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; }
+  .agtv-card { border: 1px solid #d9e2ec; background: #fff; padding: 16px; }
+  .agtv-card h3 { margin: 0 0 8px; font-size: 17px; color: #14213d; }
+  .agtv-muted { color: #64748b; font-size: 12px; }
+  .agtv-pill { display: inline-block; border: 1px solid #cbd5e1; padding: 3px 7px; margin: 3px 4px 0 0; background: #f8fafc; font-size: 12px; }
+  @media (max-width: 760px) { .agtv-head { display: block; } }
+</style>
+<section class="agtv-wrap">
+  <div class="agtv-head">
+    <div>
+      <h1 class="agtv-title">Tabbed Views</h1>
+      <p class="agtv-note">Generated tabbed view contracts with role-aware permissions per tab, derived from low-code view sections and declared roles.</p>
+    </div>
+    <a class="btn btn-default" href="{{ url_for('TabbedViewPolicyView.catalog_json') }}">Catalog JSON</a>
+  </div>
+  <div class="agtv-grid">
+    {% for view in views %}
+    <article class="agtv-card">
+      <h3>{{ view.label }}</h3>
+      <div class="agtv-muted">{{ view.table }}</div>
+      {% for tab in view.tabs %}
+      <span class="agtv-pill">{{ tab.label }}: {{ tab.allowed_roles|join(', ') }}</span>
+      {% endfor %}
+    </article>
+    {% endfor %}
+  </div>
+</section>
+{% endblock %}
+"""
+    )
+
+
+def write_form_designer_template(output_dir):
+    """Write the generated Delphi-style form designer template."""
+    templates_dir = Path(output_dir) / "templates"
+    templates_dir.mkdir(parents=True, exist_ok=True)
+    (templates_dir / "appgen_form_designer.html").write_text(
+        """{% extends "appbuilder/base.html" %}
+{% block content %}
+<style>
+  .agfd-wrap { margin: 18px 0 32px; }
+  .agfd-head { display: flex; justify-content: space-between; gap: 16px; align-items: flex-start; margin-bottom: 18px; }
+  .agfd-title { margin: 0; font-size: 28px; font-weight: 700; color: #14213d; }
+  .agfd-note { color: #52616b; max-width: 820px; line-height: 1.5; }
+  .agfd-shell { display: grid; grid-template-columns: 240px minmax(0, 1fr); gap: 14px; }
+  .agfd-panel, .agfd-canvas { border: 1px solid #d9e2ec; background: #fff; padding: 14px; }
+  .agfd-tool { display: block; width: 100%; border: 1px solid #cbd5e1; background: #f8fafc; padding: 8px; margin-bottom: 8px; text-align: left; cursor: grab; }
+  .agfd-grid { min-height: 360px; background-image: linear-gradient(#edf2f7 1px, transparent 1px), linear-gradient(90deg, #edf2f7 1px, transparent 1px); background-size: 32px 32px; }
+  .agfd-form { border: 1px dashed #94a3b8; min-height: 160px; margin-bottom: 12px; padding: 10px; }
+  .agfd-chip { display: inline-block; border: 1px solid #cbd5e1; padding: 4px 7px; margin: 3px; background: #fff; }
+  @media (max-width: 860px) { .agfd-head, .agfd-shell { display: block; } .agfd-panel { margin-bottom: 12px; } }
+</style>
+<section class="agfd-wrap">
+  <div class="agfd-head">
+    <div>
+      <h1 class="agfd-title">Form Designer</h1>
+      <p class="agfd-note">Delphi-style drag-and-drop form canvas with component palette, stable drop proposals, and generated form JSON.</p>
+    </div>
+    <a class="btn btn-default" href="{{ url_for('FormDesignerView.forms_json') }}">Forms JSON</a>
+  </div>
+  <div class="agfd-shell">
+    <aside class="agfd-panel">
+      {% for component in palette %}
+      <button class="agfd-tool" draggable="true" data-component="{{ component.type }}">{{ component.label }}</button>
+      {% endfor %}
+    </aside>
+    <main class="agfd-canvas">
+      {% for form in forms %}
+      <section class="agfd-form agfd-grid" data-table="{{ form.table }}">
+        <h3>{{ form.label }}</h3>
+        <span class="agfd-chip">{{ form.field_count }} fields</span>
+      </section>
+      {% endfor %}
+      <pre id="afd-output"></pre>
+    </main>
+  </div>
+</section>
+<script>
+  let draggedComponent = null;
+  document.querySelectorAll('[data-component]').forEach((item) => {
+    item.addEventListener('dragstart', () => { draggedComponent = item.dataset.component; });
+  });
+  document.querySelectorAll('[data-table]').forEach((canvas) => {
+    canvas.addEventListener('dragover', (event) => event.preventDefault());
+    canvas.addEventListener('drop', async (event) => {
+      event.preventDefault();
+      if (!draggedComponent) return;
+      const payload = { table: canvas.dataset.table, component: draggedComponent, x: 0, y: 0 };
+      const response = await fetch('{{ url_for("FormDesignerView.drop_json") }}', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      document.getElementById('afd-output').textContent = JSON.stringify(await response.json(), null, 2);
+    });
+  });
+</script>
+{% endblock %}
+"""
+    )
+
+
+def write_nl_evolution_template(output_dir):
+    """Write the generated natural-language evolution cockpit template."""
+    templates_dir = Path(output_dir) / "templates"
+    templates_dir.mkdir(parents=True, exist_ok=True)
+    (templates_dir / "appgen_nl_evolution.html").write_text(
+        """{% extends "appbuilder/base.html" %}
+{% block content %}
+<style>
+  .agnl-wrap { margin: 18px 0 32px; }
+  .agnl-title { margin: 0 0 10px; font-size: 28px; font-weight: 700; color: #14213d; }
+  .agnl-note { color: #52616b; max-width: 820px; line-height: 1.5; }
+  .agnl-box { border: 1px solid #d9e2ec; background: #fff; padding: 16px; margin-top: 14px; }
+  .agnl-input { width: 100%; min-height: 110px; border: 1px solid #cbd5e1; padding: 10px; }
+  .agnl-pill { display: inline-block; border: 1px solid #cbd5e1; padding: 3px 7px; margin: 3px 4px 0 0; background: #f8fafc; }
+</style>
+<section class="agnl-wrap">
+  <h1 class="agnl-title">Natural Language Evolution</h1>
+  <p class="agnl-note">Generate auditable proposals for database tables, fields, forms, chatbots, and agents from plain language.</p>
+  {% for capability in capabilities %}
+  <span class="agnl-pill">{{ capability }}</span>
+  {% endfor %}
+  <div class="agnl-box">
+    <textarea id="agnl-prompt" class="agnl-input">create table Ticket with field title and form TicketForm chatbot SupportBot agent SupportAgent</textarea>
+    <button id="agnl-run" class="btn btn-primary" type="button">Plan Changes</button>
+    <pre id="agnl-output"></pre>
+  </div>
+</section>
+<script>
+  document.getElementById('agnl-run').addEventListener('click', async () => {
+    const prompt = document.getElementById('agnl-prompt').value;
+    const response = await fetch('{{ url_for("NaturalLanguageEvolutionView.plan_json") }}', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prompt })
+    });
+    document.getElementById('agnl-output').textContent = JSON.stringify(await response.json(), null, 2);
+  });
+</script>
+{% endblock %}
+"""
+    )
+
+
+def write_dsl_reference_template(output_dir):
+    """Write the generated AppGen DSL reference cockpit template."""
+    templates_dir = Path(output_dir) / "templates"
+    templates_dir.mkdir(parents=True, exist_ok=True)
+    (templates_dir / "appgen_dsl_reference.html").write_text(
+        """{% extends "appbuilder/base.html" %}
+{% block content %}
+<style>
+  .agdsl-wrap { margin: 18px 0 32px; }
+  .agdsl-head { display: flex; justify-content: space-between; gap: 16px; align-items: flex-start; margin-bottom: 18px; }
+  .agdsl-title { margin: 0; font-size: 28px; font-weight: 700; color: #14213d; }
+  .agdsl-note { color: #52616b; max-width: 820px; line-height: 1.5; }
+  .agdsl-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; }
+  .agdsl-card { border: 1px solid #d9e2ec; background: #fff; padding: 16px; }
+  .agdsl-card h3 { margin: 0 0 8px; font-size: 17px; color: #14213d; }
+  .agdsl-pill { display: inline-block; border: 1px solid #cbd5e1; padding: 3px 7px; margin: 3px 4px 0 0; background: #f8fafc; font-size: 12px; }
+  .agdsl-code { display: block; white-space: pre-wrap; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; background: #0f172a; color: #e2e8f0; padding: 12px; overflow-x: auto; }
+  @media (max-width: 760px) { .agdsl-head { display: block; } }
+</style>
+<section class="agdsl-wrap">
+  <div class="agdsl-head">
+    <div>
+      <h1 class="agdsl-title">AppGen DSL Reference</h1>
+      <p class="agdsl-note">A compact ANTLR language with a limited keyword budget, arrow references, reusable groups, arrays, derived fields, views, workflows, roles, rules, LLM providers, and agents.</p>
+    </div>
+    <a class="btn btn-default" href="{{ url_for('DSLReferenceView.reference_json') }}">Reference JSON</a>
+  </div>
+  <div class="agdsl-card">
+    <h3>Keyword Budget</h3>
+    {% for keyword in budget.keywords %}
+    <span class="agdsl-pill">{{ keyword }}</span>
+    {% endfor %}
+  </div>
+  <div class="agdsl-grid">
+    {% for construct in constructs %}
+    <article class="agdsl-card">
+      <h3>{{ construct.name }}</h3>
+      <p class="agdsl-note">{{ construct.purpose }}</p>
+      <span class="agdsl-pill">{{ construct.syntax }}</span>
+    </article>
+    {% endfor %}
+  </div>
+  <div class="agdsl-card">
+    <h3>Example</h3>
+    <code class="agdsl-code">{{ example }}</code>
+  </div>
+</section>
+{% endblock %}
+"""
+    )
+
+
+def write_view_experience_template(output_dir):
+    """Write the generated shared view-experience cockpit template."""
+    templates_dir = Path(output_dir) / "templates"
+    templates_dir.mkdir(parents=True, exist_ok=True)
+    (templates_dir / "appgen_view_experience.html").write_text(
+        """{% extends "appbuilder/base.html" %}
+{% block content %}
+<style>
+  .agvx-wrap { margin: 18px 0 32px; }
+  .agvx-head { display: flex; justify-content: space-between; gap: 16px; align-items: flex-start; margin-bottom: 18px; }
+  .agvx-title { margin: 0; font-size: 28px; font-weight: 700; color: #14213d; }
+  .agvx-note { color: #52616b; max-width: 820px; line-height: 1.5; }
+  .agvx-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; }
+  .agvx-card { border: 1px solid #d9e2ec; background: #fff; padding: 16px; }
+  .agvx-card h3 { margin: 0 0 8px; font-size: 17px; color: #14213d; }
+  .agvx-pill { display: inline-block; border: 1px solid #cbd5e1; padding: 3px 7px; margin: 3px 4px 0 0; background: #f8fafc; font-size: 12px; }
+  @media (max-width: 760px) { .agvx-head { display: block; } }
+</style>
+<section class="agvx-wrap">
+  <div class="agvx-head">
+    <div>
+      <h1 class="agvx-title">View Experience</h1>
+      <p class="agvx-note">Generated base-view contracts for offline field status, active viewers, access logging, chatbot help, app version, time-on-page, and current-user footer context.</p>
+    </div>
+    <div>
+      <a class="btn btn-default" href="{{ url_for('ViewExperienceView.catalog_json') }}">Experience JSON</a>
+      <a class="btn btn-default" href="{{ url_for('ViewExperienceView.presence_json') }}">Presence JSON</a>
+    </div>
+  </div>
+  <div class="agvx-grid">
+    {% for item in features %}
+    <article class="agvx-card">
+      <h3>{{ item.label }}</h3>
+      <p class="agvx-note">{{ item.description }}</p>
+      {% for artifact in item.artifacts %}
+      <span class="agvx-pill">{{ artifact }}</span>
+      {% endfor %}
+    </article>
+    {% endfor %}
+  </div>
+</section>
+{% endblock %}
+"""
+    )
+
+
+def write_view_experience_static(output_dir):
+    """Write the generated browser helper for shared view experience."""
+    static_dir = Path(output_dir) / "static"
+    static_dir.mkdir(parents=True, exist_ok=True)
+    (static_dir / "appgen-view-experience.js").write_text(
+        """(() => {
+  const startedAt = Date.now();
+  const footer = document.querySelector("[data-appgen-view-footer]");
+  const timer = document.querySelector("[data-appgen-time-on-page]");
+  const offline = document.querySelector("[data-appgen-offline-state]");
+
+  const update = () => {
+    if (timer) timer.textContent = `${Math.floor((Date.now() - startedAt) / 1000)}s`;
+    if (offline) offline.textContent = navigator.onLine ? "online" : "offline-ready";
+  };
+
+  window.addEventListener("online", update);
+  window.addEventListener("offline", update);
+  update();
+  setInterval(update, 1000);
+
+  if (footer) footer.dataset.appgenStartedAt = String(startedAt);
+})();
+"""
+    )
+
+
+def write_support_center_template(output_dir):
+    """Write the generated support center cockpit template."""
+    templates_dir = Path(output_dir) / "templates"
+    templates_dir.mkdir(parents=True, exist_ok=True)
+    (templates_dir / "appgen_support_center.html").write_text(
+        """{% extends "appbuilder/base.html" %}
+{% block content %}
+<style>
+  .agsc-wrap { margin: 18px 0 32px; }
+  .agsc-head { display: flex; justify-content: space-between; gap: 16px; align-items: flex-start; margin-bottom: 18px; }
+  .agsc-title { margin: 0; font-size: 28px; font-weight: 700; color: #14213d; }
+  .agsc-note { color: #52616b; max-width: 820px; line-height: 1.5; }
+  .agsc-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; }
+  .agsc-card { border: 1px solid #d9e2ec; background: #fff; padding: 16px; }
+  .agsc-card h3 { margin: 0 0 8px; font-size: 17px; color: #14213d; }
+  .agsc-pill { display: inline-block; border: 1px solid #cbd5e1; padding: 3px 7px; margin: 3px 4px 0 0; background: #f8fafc; font-size: 12px; }
+  @media (max-width: 760px) { .agsc-head { display: block; } }
+</style>
+<section class="agsc-wrap">
+  <div class="agsc-head">
+    <div>
+      <h1 class="agsc-title">Support Center</h1>
+      <p class="agsc-note">Generated training, tutorials, knowledge-base topics, troubleshooting, and sample applications for this app.</p>
+    </div>
+    <div>
+      <a class="btn btn-default" href="{{ url_for('SupportCenterView.topics_json') }}">Topics JSON</a>
+      <a class="btn btn-default" href="{{ url_for('SupportCenterView.tutorials_json') }}">Tutorials JSON</a>
+    </div>
+  </div>
+  <div class="agsc-grid">
+    {% for topic in topics %}
+    <article class="agsc-card">
+      <h3>{{ topic.title }}</h3>
+      <p class="agsc-note">{{ topic.summary }}</p>
+      {% for tag in topic.tags %}
+      <span class="agsc-pill">{{ tag }}</span>
+      {% endfor %}
+    </article>
+    {% endfor %}
+  </div>
+</section>
+{% endblock %}
+"""
+    )
+
+
+def write_prototyping_template(output_dir):
+    """Write the generated rapid prototyping cockpit template."""
+    templates_dir = Path(output_dir) / "templates"
+    templates_dir.mkdir(parents=True, exist_ok=True)
+    (templates_dir / "appgen_prototyping.html").write_text(
+        """{% extends "appbuilder/base.html" %}
+{% block content %}
+<style>
+  .agp2-wrap { margin: 18px 0 32px; }
+  .agp2-head { display: flex; justify-content: space-between; gap: 16px; align-items: flex-start; margin-bottom: 18px; }
+  .agp2-title { margin: 0; font-size: 28px; font-weight: 700; color: #14213d; }
+  .agp2-note { color: #52616b; max-width: 860px; line-height: 1.5; }
+  .agp2-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; }
+  .agp2-card { border: 1px solid #d9e2ec; background: #fff; border-radius: 8px; padding: 16px; }
+  .agp2-card h3 { margin: 0 0 8px; font-size: 17px; color: #14213d; }
+  .agp2-muted { color: #64748b; font-size: 12px; }
+  .agp2-pill { display: inline-block; border: 1px solid #cbd5e1; padding: 3px 7px; margin: 3px 4px 0 0; font-size: 12px; background: #f8fafc; }
+  @media (max-width: 760px) { .agp2-head { display: block; } }
+</style>
+<section class="agp2-wrap">
+  <div class="agp2-head">
+    <div>
+      <h1 class="agp2-title">Rapid Prototyping</h1>
+      <p class="agp2-note">
+        Generated rapid prototyping contracts for mock screens, realistic
+        sample data, preview packages, stakeholder feedback, and experiment
+        hypotheses before committing a low-code change.
+      </p>
+    </div>
+    <a class="btn btn-default" href="{{ url_for('PrototypingView.catalog_json') }}">Prototype JSON</a>
+  </div>
+  <div class="agp2-grid">
+    {% for prototype in prototypes %}
+    <article class="agp2-card">
+      <h3>{{ prototype.label }}</h3>
+      <div class="agp2-muted">{{ prototype.prototype }}</div>
+      {% for screen in prototype.screens %}
+      <span class="agp2-pill">{{ screen }}</span>
+      {% endfor %}
+    </article>
+    {% endfor %}
+  </div>
+</section>
+{% endblock %}
+"""
+    )
+
+
+def write_erp_templates_template(output_dir):
+    """Write the generated ERP component templates cockpit."""
+    templates_dir = Path(output_dir) / "templates"
+    templates_dir.mkdir(parents=True, exist_ok=True)
+    (templates_dir / "appgen_erp_templates.html").write_text(
+        """{% extends "appbuilder/base.html" %}
+{% block content %}
+<style>
+  .agerp-wrap { margin: 18px 0 32px; }
+  .agerp-head { display: flex; justify-content: space-between; gap: 16px; align-items: flex-start; margin-bottom: 18px; }
+  .agerp-title { margin: 0; font-size: 28px; font-weight: 700; color: #14213d; }
+  .agerp-note { color: #52616b; max-width: 820px; line-height: 1.5; }
+  .agerp-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; }
+  .agerp-card { border: 1px solid #d9e2ec; background: #fff; padding: 16px; }
+  .agerp-card h3 { margin: 0 0 8px; font-size: 17px; color: #14213d; }
+  .agerp-pill { display: inline-block; border: 1px solid #cbd5e1; padding: 3px 7px; margin: 3px 4px 0 0; background: #f8fafc; font-size: 12px; }
+  @media (max-width: 760px) { .agerp-head { display: block; } }
+</style>
+<section class="agerp-wrap">
+  <div class="agerp-head">
+    <div>
+      <h1 class="agerp-title">ERP Templates</h1>
+      <p class="agerp-note">Reusable ERP modules for ledgers, accounts, invoicing, AP, AR, inventory, HR, payroll, purchasing, procurement, supply chain, warehouse, manufacturing, sales, CRM, e-commerce, assets, maintenance, quality, documents, compliance, projects, and reports.</p>
+    </div>
+    <a class="btn btn-default" href="{{ url_for('ERPTemplateView.catalog_json') }}">Catalog JSON</a>
+  </div>
+  <div class="agerp-grid">
+    {% for module in modules %}
+    <article class="agerp-card">
+      <h3>{{ module.label }}</h3>
+      {% for table in module.tables %}
+      <span class="agerp-pill">{{ table }}</span>
+      {% endfor %}
+      {% for report in module.reports %}
+      <span class="agerp-pill">{{ report }}</span>
+      {% endfor %}
+      <p><a class="btn btn-xs btn-default" href="{{ url_for('ERPTemplateView.module_dsl', module=module.module) }}">DSL</a></p>
+    </article>
+    {% endfor %}
+  </div>
+</section>
+{% endblock %}
+"""
+    )
+
+
+def write_project_management_template(output_dir):
+    """Write the generated agile project-management cockpit."""
+    templates_dir = Path(output_dir) / "templates"
+    templates_dir.mkdir(parents=True, exist_ok=True)
+    (templates_dir / "appgen_project_management.html").write_text(
+        """{% extends "appbuilder/base.html" %}
+{% block content %}
+<style>
+  .agpm-wrap { margin: 18px 0 32px; }
+  .agpm-head { display: flex; justify-content: space-between; gap: 16px; align-items: flex-start; margin-bottom: 18px; }
+  .agpm-title { margin: 0; font-size: 28px; font-weight: 700; color: #14213d; }
+  .agpm-note { color: #52616b; max-width: 820px; line-height: 1.5; }
+  .agpm-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; }
+  .agpm-card { border: 1px solid #d9e2ec; background: #fff; padding: 16px; }
+  .agpm-card h3 { margin: 0 0 8px; font-size: 17px; color: #14213d; }
+  .agpm-muted { color: #64748b; font-size: 12px; }
+  .agpm-pill { display: inline-block; border: 1px solid #cbd5e1; padding: 3px 7px; margin: 3px 4px 0 0; background: #f8fafc; font-size: 12px; }
+  @media (max-width: 760px) { .agpm-head { display: block; } }
+</style>
+<section class="agpm-wrap">
+  <div class="agpm-head">
+    <div>
+      <h1 class="agpm-title">Project Management</h1>
+      <p class="agpm-note">Generated agile backlog, sprint, release, traceability, and DevOps tool export contracts for Jira, GitHub Issues, Azure Boards, and GitLab.</p>
+    </div>
+    <div>
+      <a class="btn btn-default" href="{{ url_for('ProjectManagementView.backlog_json') }}">Backlog JSON</a>
+      <a class="btn btn-default" href="{{ url_for('ProjectManagementView.traceability_json') }}">Traceability JSON</a>
+    </div>
+  </div>
+  <div class="agpm-grid">
+    {% for item in backlog %}
+    <article class="agpm-card">
+      <h3>{{ item.title }}</h3>
+      <div class="agpm-muted">{{ item.key }} · {{ item.kind }}</div>
+      {% for rule in item.acceptance %}
+      <span class="agpm-pill">{{ rule }}</span>
+      {% endfor %}
+    </article>
+    {% endfor %}
+    <article class="agpm-card">
+      <h3>Release {{ release.version }}</h3>
+      {% for gate in release.gates %}
+      <span class="agpm-pill">{{ gate }}</span>
+      {% endfor %}
+    </article>
+    {% for provider in providers %}
+    <article class="agpm-card">
+      <h3>{{ provider.label }}</h3>
+      <div class="agpm-muted">{{ provider.provider }}</div>
+      {% for env in provider.required_env %}
+      <span class="agpm-pill">{{ env }}</span>
+      {% endfor %}
+    </article>
+    {% endfor %}
+  </div>
+</section>
+{% endblock %}
+"""
+    )
+
+
+def write_devtools_template(output_dir):
+    """Write the generated IDE and developer tooling cockpit."""
+    templates_dir = Path(output_dir) / "templates"
+    templates_dir.mkdir(parents=True, exist_ok=True)
+    (templates_dir / "appgen_devtools.html").write_text(
+        """{% extends "appbuilder/base.html" %}
+{% block content %}
+<style>
+  .agdt-wrap { margin: 18px 0 32px; }
+  .agdt-head { display: flex; justify-content: space-between; gap: 16px; align-items: flex-start; margin-bottom: 18px; }
+  .agdt-title { margin: 0; font-size: 28px; font-weight: 700; color: #14213d; }
+  .agdt-note { color: #52616b; max-width: 820px; line-height: 1.5; }
+  .agdt-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; }
+  .agdt-card { border: 1px solid #d9e2ec; background: #fff; padding: 16px; }
+  .agdt-card h3 { margin: 0 0 8px; font-size: 17px; color: #14213d; }
+  .agdt-muted { color: #64748b; font-size: 12px; }
+  .agdt-pill { display: inline-block; border: 1px solid #cbd5e1; padding: 3px 7px; margin: 3px 4px 0 0; background: #f8fafc; font-size: 12px; }
+  @media (max-width: 760px) { .agdt-head { display: block; } }
+</style>
+<section class="agdt-wrap">
+  <div class="agdt-head">
+    <div>
+      <h1 class="agdt-title">Developer Tools</h1>
+      <p class="agdt-note">Generated Visual Studio Code, JetBrains IDEA/PyCharm, and Eclipse workspace contracts, debug launch profiles, quality tasks, and schema-aware source maps.</p>
+    </div>
+    <a class="btn btn-default" href="{{ url_for('DevToolsView.catalog_json') }}">Catalog JSON</a>
+  </div>
+  <div class="agdt-grid">
+    {% for tool in tools %}
+    <article class="agdt-card">
+      <h3>{{ tool.label }}</h3>
+      <div class="agdt-muted">{{ tool.tool }}</div>
+      {% for artifact in tool.artifacts %}
+      <span class="agdt-pill">{{ artifact }}</span>
+      {% endfor %}
+    </article>
+    {% endfor %}
+  </div>
+</section>
+{% endblock %}
+"""
+    )
+
+
+def write_studio_template(output_dir):
+    """Write the generated in-app developer studio cockpit."""
+    templates_dir = Path(output_dir) / "templates"
+    templates_dir.mkdir(parents=True, exist_ok=True)
+    (templates_dir / "appgen_studio.html").write_text(
+        """{% extends "appbuilder/base.html" %}
+{% block content %}
+<style>
+  .ags-wrap { margin: 18px 0 32px; }
+  .ags-head { display: flex; justify-content: space-between; gap: 16px; align-items: flex-start; margin-bottom: 18px; }
+  .ags-title { margin: 0; font-size: 28px; font-weight: 700; color: #14213d; }
+  .ags-note { color: #52616b; max-width: 860px; line-height: 1.5; }
+  .ags-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; }
+  .ags-card { border: 1px solid #d9e2ec; background: #fff; padding: 16px; }
+  .ags-card h3 { margin: 0 0 8px; font-size: 17px; color: #14213d; }
+  .ags-muted { color: #64748b; font-size: 12px; }
+  .ags-pill { display: inline-block; border: 1px solid #cbd5e1; padding: 3px 7px; margin: 3px 4px 0 0; font-size: 12px; background: #f8fafc; }
+  @media (max-width: 760px) { .ags-head { display: block; } }
+</style>
+<section class="ags-wrap">
+  <div class="ags-head">
+    <div>
+      <h1 class="ags-title">Developer Studio</h1>
+      <p class="ags-note">
+        Generated code-editing, debugging, dependency, cloning, and reusable
+        component-repository contracts for generated AppGen applications.
+      </p>
+    </div>
+    <a class="btn btn-default" href="{{ url_for('StudioView.catalog_json') }}">Studio JSON</a>
+  </div>
+  <div class="ags-grid">
+    {% for file in editable_files %}
+    <article class="ags-card">
+      <h3>{{ file.label }}</h3>
+      <div class="ags-muted">{{ file.path }}</div>
+      <span class="ags-pill">{{ file.language }}</span>
+      <span class="ags-pill">{{ file.kind }}</span>
+    </article>
+    {% endfor %}
+    {% for component in components %}
+    <article class="ags-card">
+      <h3>{{ component.name }}</h3>
+      <div class="ags-muted">{{ component.kind }} · {{ component.resource }}</div>
+      {% for tag in component.tags %}
+      <span class="ags-pill">{{ tag }}</span>
+      {% endfor %}
+    </article>
+    {% endfor %}
+  </div>
+</section>
+{% endblock %}
+"""
+    )
+
+
+def write_wizards_template(output_dir):
+    """Write the generated wizard cockpit template."""
+    templates_dir = Path(output_dir) / "templates"
+    templates_dir.mkdir(parents=True, exist_ok=True)
+    (templates_dir / "appgen_wizards.html").write_text(
+        """{% extends "appbuilder/base.html" %}
+{% block content %}
+<style>
+  .agw-wrap { margin: 18px 0 32px; }
+  .agw-head { display: flex; justify-content: space-between; gap: 16px; align-items: flex-start; margin-bottom: 18px; }
+  .agw-title { margin: 0; font-size: 28px; font-weight: 700; color: #153243; }
+  .agw-note { color: #52616b; max-width: 820px; line-height: 1.5; }
+  .agw-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(270px, 1fr)); gap: 14px; }
+  .agw-card { border: 1px solid #d9e2ec; background: #fff; border-radius: 8px; padding: 16px; }
+  .agw-kind { color: #667085; font-size: 12px; text-transform: uppercase; letter-spacing: .08em; }
+  .agw-card h3 { margin: 6px 0 10px; font-size: 18px; color: #153243; }
+  .agw-step { border-left: 3px solid #0f766e; padding-left: 10px; margin-top: 10px; }
+  .agw-field { display: inline-block; border: 1px solid #cbd5e1; padding: 3px 7px; margin: 3px 4px 0 0; font-size: 12px; background: #f8fafc; }
+  @media (max-width: 760px) { .agw-head { display: block; } }
+</style>
+<section class="agw-wrap">
+  <div class="agw-head">
+    <div>
+      <h1 class="agw-title">Wizards</h1>
+      <p class="agw-note">
+        Generated sequential user-input and process wizard contracts for table
+        creation, review, submission, and workflow-guided operations.
+      </p>
+    </div>
+    <a class="btn btn-default" href="{{ url_for('WizardView.catalog_json') }}">Catalog JSON</a>
+  </div>
+  <div class="agw-grid">
+    {% for wizard in wizards %}
+    <article class="agw-card">
+      <div class="agw-kind">{{ wizard.kind }}</div>
+      <h3>{{ wizard.label }}</h3>
+      <a class="btn btn-xs btn-default" href="{{ url_for('WizardView.wizard_json', wizard_name=wizard.name) }}">JSON</a>
+      {% for step in wizard.steps %}
+      <div class="agw-step">
+        <strong>{{ step.label }}</strong>
+        {% for field in step.fields %}
+        <span class="agw-field">{{ field.field }}</span>
+        {% endfor %}
+      </div>
+      {% endfor %}
+    </article>
+    {% endfor %}
+  </div>
+</section>
+{% endblock %}
+"""
+    )
+
+
+def write_branding_template(output_dir):
+    """Write the generated branding cockpit template."""
+    templates_dir = Path(output_dir) / "templates"
+    templates_dir.mkdir(parents=True, exist_ok=True)
+    (templates_dir / "appgen_branding.html").write_text(
+        """{% extends "appbuilder/base.html" %}
+{% block content %}
+<link rel="stylesheet" href="/static/appgen-theme.css">
+<style>
+  .agb-wrap { margin: 18px 0 32px; }
+  .agb-head { display: flex; justify-content: space-between; gap: 16px; align-items: flex-start; margin-bottom: 18px; }
+  .agb-title { margin: 0; font-size: 28px; font-weight: 700; color: var(--appgen-text); }
+  .agb-note { color: var(--appgen-muted); max-width: 820px; line-height: 1.5; }
+  .agb-preview { border: 1px solid #d9e2ec; background: var(--appgen-surface); padding: 20px; margin-bottom: 16px; }
+  .agb-mark { display: inline-flex; align-items: center; justify-content: center; width: 52px; height: 52px; background: var(--appgen-primary); color: #fff; font-weight: 700; margin-right: 12px; }
+  .agb-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px; }
+  .agb-chip { border: 1px solid #d9e2ec; background: #fff; padding: 12px; }
+  .agb-swatch { height: 36px; border: 1px solid #cbd5e1; margin-bottom: 8px; }
+  @media (max-width: 760px) { .agb-head { display: block; } }
+</style>
+<section class="agb-wrap">
+  <div class="agb-head">
+    <div>
+      <h1 class="agb-title">Branding</h1>
+      <p class="agb-note">
+        Generated branding contract, theme palette, and CSS custom properties
+        derived from the low-code app declaration.
+      </p>
+    </div>
+    <a class="btn btn-default" href="{{ url_for('BrandingView.theme_json') }}">Theme JSON</a>
+  </div>
+  <div class="agb-preview">
+    <span class="agb-mark">{{ branding.logo_text }}</span>
+    <strong>{{ branding.app_name }}</strong>
+    <p class="agb-note">{{ branding.tagline }}</p>
+    <a class="btn btn-primary" href="/">Primary action</a>
+  </div>
+  <div class="agb-grid">
+    {% for name, value in branding.palette.items() %}
+    <article class="agb-chip">
+      <div class="agb-swatch" style="background: {{ value }}"></div>
+      <strong>{{ name }}</strong>
+      <div class="agb-note">{{ value }}</div>
+    </article>
+    {% endfor %}
+  </div>
+</section>
+{% endblock %}
+"""
+    )
+
+
+def write_extensions_template(output_dir):
+    """Write the generated extension hook cockpit template."""
+    templates_dir = Path(output_dir) / "templates"
+    templates_dir.mkdir(parents=True, exist_ok=True)
+    (templates_dir / "appgen_extensions.html").write_text(
+        """{% extends "appbuilder/base.html" %}
+{% block content %}
+<style>
+  .age-wrap { margin: 18px 0 32px; }
+  .age-head { display: flex; justify-content: space-between; gap: 16px; align-items: flex-start; margin-bottom: 18px; }
+  .age-title { margin: 0; font-size: 28px; font-weight: 700; color: #14213d; }
+  .age-note { color: #52616b; max-width: 840px; line-height: 1.5; }
+  .age-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; }
+  .age-card { border: 1px solid #d9e2ec; background: #fff; padding: 16px; }
+  .age-kind { color: #667085; font-size: 12px; text-transform: uppercase; letter-spacing: .08em; }
+  .age-card h3 { margin: 6px 0 8px; font-size: 17px; color: #14213d; }
+  .age-signature { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; color: #0f766e; font-size: 12px; overflow-wrap: anywhere; }
+  @media (max-width: 760px) { .age-head { display: block; } }
+</style>
+<section class="age-wrap">
+  <div class="age-head">
+    <div>
+      <h1 class="age-title">Extensions</h1>
+      <p class="age-note">
+        Generated custom-code hook contracts for safe extension without editing
+        generated files. Implement hooks in <code>app_custom/extensions.py</code>.
+      </p>
+    </div>
+    <a class="btn btn-default" href="{{ url_for('ExtensionView.hooks_json') }}">Hooks JSON</a>
+  </div>
+  <div class="age-grid">
+    {% for hook in hooks %}
+    <article class="age-card">
+      <div class="age-kind">{{ hook.kind }}</div>
+      <h3>{{ hook.hook }}</h3>
+      <div class="age-signature">{{ hook.signature }}</div>
+      <p class="age-note">{{ hook.description }}</p>
+    </article>
+    {% endfor %}
+  </div>
+</section>
+{% endblock %}
+"""
+    )
+
+
+def copy_support_files(output_dir):
+    """Copy runtime support files required by generated FAB apps."""
+    output_dir = Path(output_dir)
+    templates_dir = output_dir / "templates"
+    templates_dir.mkdir(parents=True, exist_ok=True)
+
+    package_root = Path(__file__).resolve().parent
+    for filename in ("model_mixins.py", "view_mixins.py", "index.py", "utils.py", "init.py"):
+        source = package_root / filename
+        target_name = "__init__.py" if filename == "init.py" else filename
+        (output_dir / target_name).write_bytes(source.read_bytes())
+
+    for template in (package_root / "templates").iterdir():
+        if template.is_file() and template.name.endswith(".html"):
+            (templates_dir / template.name).write_bytes(template.read_bytes())
+
+
+def update_generated_config(config_file, database_url):
+    """Update generated app config when the target config exists."""
+    config_path = Path(config_file)
+    if config_path.exists():
+        update_config_setting(config_path, "SQLALCHEMY_DATABASE_URI", database_url)
+
+
+def normalize_database_url(database_url=None, database_name=None):
+    if database_url:
+        return database_url
+    if database_name:
+        return f"postgresql:///{database_name}"
+    raise click.UsageError("Provide --database-url or legacy --idatabase.")
+
+
+def normalize_generated_config_url(value, fallback):
+    if not value:
+        return fallback
+    if "://" in value:
+        return value
+    return f"postgresql:///{value}"
+
+
+def generate_app_from_database(database_url, output_dir, *, config_database_url=None):
+    """Generate FAB models, views, templates, and support files.
+
+    Args:
+        database_url: SQLAlchemy database URL to introspect.
+        output_dir: Generated FAB app package directory, usually ``app``.
+        config_database_url: Optional SQLAlchemy URL to write into ``config.py``.
+
+    Returns:
+        The output directory as a ``Path``.
+    """
+    output_dir = Path(output_dir)
+    get_metadata(database_url)
+    app_schema = schema_from_metadata(metadata, source=database_url)
+    write_model_file(output_dir, app_schema)
+    write_view_file(output_dir, app_schema)
+    write_api_file(output_dir, app_schema)
+    write_openapi_file(output_dir, app_schema)
+    write_gql_file(output_dir, app_schema)
+    write_security_file(output_dir, app_schema)
+    write_runtime_security_file(output_dir)
+    write_workflow_file(output_dir, app_schema)
+    write_rules_file(output_dir, app_schema)
+    write_health_file(output_dir, app_schema)
+    write_monitoring_file(output_dir, app_schema)
+    write_resilience_file(output_dir, app_schema)
+    write_performance_file(output_dir, app_schema)
+    write_reports_file(output_dir, app_schema)
+    write_report_delivery_file(output_dir, app_schema)
+    write_dashboards_file(output_dir, app_schema)
+    write_usage_analytics_file(output_dir, app_schema)
+    write_search_file(output_dir, app_schema)
+    write_media_file(output_dir, app_schema)
+    write_documents_file(output_dir, app_schema)
+    write_inventory_ops_file(output_dir, app_schema)
+    write_finance_ops_file(output_dir, app_schema)
+    write_manufacturing_ops_file(output_dir, app_schema)
+    write_backup_file(output_dir, app_schema)
+    write_data_access_file(output_dir, app_schema)
+    write_data_exchange_file(output_dir, app_schema)
+    write_database_ops_file(output_dir, app_schema)
+    write_config_admin_file(output_dir)
+    write_integrations_file(output_dir)
+    write_productivity_file(output_dir, app_schema)
+    write_lifecycle_file(output_dir, app_schema)
+    write_emerging_file(output_dir, app_schema)
+    write_tenancy_file(output_dir, app_schema)
+    write_rls_file(output_dir, app_schema)
+    write_identity_file(output_dir)
+    write_compliance_file(output_dir, app_schema)
+    write_assistant_file(output_dir, app_schema)
+    write_intelligence_file(output_dir, app_schema)
+    write_chatbot_file(output_dir, app_schema)
+    write_voice_file(output_dir, app_schema)
+    write_agents_file(output_dir, app_schema)
+    write_text_quality_file(output_dir, app_schema)
+    write_notifications_file(output_dir, app_schema)
+    write_platforms_file(output_dir, app_schema)
+    write_microservices_file(output_dir, app_schema)
+    write_collaboration_file(output_dir, app_schema)
+    write_version_control_file(output_dir, app_schema)
+    write_realtime_file(output_dir, app_schema)
+    write_events_file(output_dir, app_schema)
+    write_rpa_file(output_dir, app_schema)
+    write_diagnostics_file(output_dir, app_schema)
+    write_api_testing_file(output_dir, app_schema)
+    write_code_review_file(output_dir, app_schema)
+    write_components_file(output_dir, app_schema)
+    write_view_composition_file(output_dir, app_schema)
+    write_tabbed_views_file(output_dir, app_schema)
+    write_form_designer_file(output_dir, app_schema)
+    write_nl_evolution_file(output_dir, app_schema)
+    write_dsl_reference_file(output_dir, app_schema)
+    write_view_experience_file(output_dir, app_schema)
+    write_support_center_file(output_dir, app_schema)
+    write_prototyping_file(output_dir, app_schema)
+    write_erp_templates_file(output_dir, app_schema)
+    write_project_management_file(output_dir, app_schema)
+    write_devtools_file(output_dir, app_schema)
+    write_studio_file(output_dir, app_schema)
+    write_wizards_file(output_dir, app_schema)
+    write_branding_file(output_dir, app_schema)
+    write_extensions_file(output_dir, app_schema)
+    write_designer_file(output_dir, app_schema)
+    copy_support_files(output_dir)
+    write_generated_home(output_dir, app_schema)
+    write_pwa_assets(output_dir, app_schema)
+    write_designer_template(output_dir, app_schema)
+    write_workflows_template(output_dir)
+    write_rules_template(output_dir)
+    write_monitoring_template(output_dir)
+    write_resilience_template(output_dir)
+    write_performance_template(output_dir)
+    write_reports_template(output_dir)
+    write_report_delivery_template(output_dir)
+    write_dashboards_template(output_dir)
+    write_usage_analytics_template(output_dir)
+    write_search_template(output_dir)
+    write_media_template(output_dir)
+    write_documents_template(output_dir)
+    write_inventory_ops_template(output_dir)
+    write_finance_ops_template(output_dir)
+    write_manufacturing_ops_template(output_dir)
+    write_runtime_security_template(output_dir)
+    write_backup_template(output_dir)
+    write_data_access_template(output_dir)
+    write_data_exchange_template(output_dir)
+    write_database_ops_template(output_dir)
+    write_config_admin_template(output_dir)
+    write_integrations_template(output_dir)
+    write_productivity_template(output_dir)
+    write_lifecycle_template(output_dir)
+    write_emerging_template(output_dir)
+    write_tenancy_template(output_dir)
+    write_rls_template(output_dir)
+    write_identity_template(output_dir)
+    write_compliance_template(output_dir)
+    write_assistant_template(output_dir)
+    write_intelligence_template(output_dir)
+    write_chatbot_template(output_dir)
+    write_voice_template(output_dir)
+    write_agents_template(output_dir)
+    write_text_quality_template(output_dir)
+    write_notifications_template(output_dir)
+    write_platforms_template(output_dir)
+    write_microservices_template(output_dir)
+    write_collaboration_template(output_dir)
+    write_version_control_template(output_dir)
+    write_realtime_template(output_dir)
+    write_events_template(output_dir)
+    write_rpa_template(output_dir)
+    write_openapi_template(output_dir)
+    write_diagnostics_template(output_dir)
+    write_api_testing_template(output_dir)
+    write_code_review_template(output_dir)
+    write_components_template(output_dir)
+    write_view_composition_template(output_dir)
+    write_tabbed_views_template(output_dir)
+    write_form_designer_template(output_dir)
+    write_nl_evolution_template(output_dir)
+    write_dsl_reference_template(output_dir)
+    write_view_experience_template(output_dir)
+    write_view_experience_static(output_dir)
+    write_support_center_template(output_dir)
+    write_prototyping_template(output_dir)
+    write_erp_templates_template(output_dir)
+    write_project_management_template(output_dir)
+    write_devtools_template(output_dir)
+    write_studio_template(output_dir)
+    write_wizards_template(output_dir)
+    write_branding_template(output_dir)
+    write_extensions_template(output_dir)
+    write_project_scaffold(output_dir.parent, app_schema)
+    write_manifest(app_schema, output_dir)
+
+    update_generated_config(
+        output_dir.parent / "config.py",
+        normalize_generated_config_url(config_database_url, database_url),
+    )
+    return output_dir
+
+
+def generate_app_from_schema(schema: AppSchema, output_dir, *, config_database_url=None):
+    """Generate a FAB app from the canonical app schema model."""
+    global metadata, Base, engine
+
+    output_dir = Path(output_dir)
+    engine = create_engine("sqlite://")
+    metadata = schema.to_metadata()
+    Base = declarative_base()
+
+    write_model_file(output_dir, schema)
+    write_view_file(output_dir, schema)
+    write_api_file(output_dir, schema)
+    write_openapi_file(output_dir, schema)
+    write_gql_file(output_dir, schema)
+    write_security_file(output_dir, schema)
+    write_runtime_security_file(output_dir)
+    write_workflow_file(output_dir, schema)
+    write_rules_file(output_dir, schema)
+    write_health_file(output_dir, schema)
+    write_monitoring_file(output_dir, schema)
+    write_resilience_file(output_dir, schema)
+    write_performance_file(output_dir, schema)
+    write_reports_file(output_dir, schema)
+    write_report_delivery_file(output_dir, schema)
+    write_dashboards_file(output_dir, schema)
+    write_usage_analytics_file(output_dir, schema)
+    write_search_file(output_dir, schema)
+    write_media_file(output_dir, schema)
+    write_documents_file(output_dir, schema)
+    write_inventory_ops_file(output_dir, schema)
+    write_finance_ops_file(output_dir, schema)
+    write_manufacturing_ops_file(output_dir, schema)
+    write_backup_file(output_dir, schema)
+    write_data_access_file(output_dir, schema)
+    write_data_exchange_file(output_dir, schema)
+    write_database_ops_file(output_dir, schema)
+    write_config_admin_file(output_dir)
+    write_integrations_file(output_dir)
+    write_productivity_file(output_dir, schema)
+    write_lifecycle_file(output_dir, schema)
+    write_emerging_file(output_dir, schema)
+    write_tenancy_file(output_dir, schema)
+    write_rls_file(output_dir, schema)
+    write_identity_file(output_dir)
+    write_compliance_file(output_dir, schema)
+    write_assistant_file(output_dir, schema)
+    write_intelligence_file(output_dir, schema)
+    write_chatbot_file(output_dir, schema)
+    write_voice_file(output_dir, schema)
+    write_agents_file(output_dir, schema)
+    write_text_quality_file(output_dir, schema)
+    write_notifications_file(output_dir, schema)
+    write_platforms_file(output_dir, schema)
+    write_microservices_file(output_dir, schema)
+    write_collaboration_file(output_dir, schema)
+    write_version_control_file(output_dir, schema)
+    write_realtime_file(output_dir, schema)
+    write_events_file(output_dir, schema)
+    write_rpa_file(output_dir, schema)
+    write_diagnostics_file(output_dir, schema)
+    write_api_testing_file(output_dir, schema)
+    write_code_review_file(output_dir, schema)
+    write_components_file(output_dir, schema)
+    write_view_composition_file(output_dir, schema)
+    write_tabbed_views_file(output_dir, schema)
+    write_form_designer_file(output_dir, schema)
+    write_nl_evolution_file(output_dir, schema)
+    write_dsl_reference_file(output_dir, schema)
+    write_view_experience_file(output_dir, schema)
+    write_support_center_file(output_dir, schema)
+    write_prototyping_file(output_dir, schema)
+    write_erp_templates_file(output_dir, schema)
+    write_project_management_file(output_dir, schema)
+    write_devtools_file(output_dir, schema)
+    write_studio_file(output_dir, schema)
+    write_wizards_file(output_dir, schema)
+    write_branding_file(output_dir, schema)
+    write_extensions_file(output_dir, schema)
+    write_designer_file(output_dir, schema)
+    copy_support_files(output_dir)
+    write_generated_home(output_dir, schema)
+    write_pwa_assets(output_dir, schema)
+    write_designer_template(output_dir, schema)
+    write_workflows_template(output_dir)
+    write_rules_template(output_dir)
+    write_monitoring_template(output_dir)
+    write_resilience_template(output_dir)
+    write_performance_template(output_dir)
+    write_reports_template(output_dir)
+    write_report_delivery_template(output_dir)
+    write_dashboards_template(output_dir)
+    write_usage_analytics_template(output_dir)
+    write_search_template(output_dir)
+    write_media_template(output_dir)
+    write_documents_template(output_dir)
+    write_inventory_ops_template(output_dir)
+    write_finance_ops_template(output_dir)
+    write_manufacturing_ops_template(output_dir)
+    write_runtime_security_template(output_dir)
+    write_backup_template(output_dir)
+    write_data_access_template(output_dir)
+    write_data_exchange_template(output_dir)
+    write_database_ops_template(output_dir)
+    write_config_admin_template(output_dir)
+    write_integrations_template(output_dir)
+    write_productivity_template(output_dir)
+    write_lifecycle_template(output_dir)
+    write_emerging_template(output_dir)
+    write_tenancy_template(output_dir)
+    write_rls_template(output_dir)
+    write_identity_template(output_dir)
+    write_compliance_template(output_dir)
+    write_assistant_template(output_dir)
+    write_intelligence_template(output_dir)
+    write_chatbot_template(output_dir)
+    write_voice_template(output_dir)
+    write_agents_template(output_dir)
+    write_text_quality_template(output_dir)
+    write_notifications_template(output_dir)
+    write_platforms_template(output_dir)
+    write_microservices_template(output_dir)
+    write_collaboration_template(output_dir)
+    write_version_control_template(output_dir)
+    write_realtime_template(output_dir)
+    write_events_template(output_dir)
+    write_rpa_template(output_dir)
+    write_openapi_template(output_dir)
+    write_diagnostics_template(output_dir)
+    write_api_testing_template(output_dir)
+    write_code_review_template(output_dir)
+    write_components_template(output_dir)
+    write_view_composition_template(output_dir)
+    write_tabbed_views_template(output_dir)
+    write_form_designer_template(output_dir)
+    write_nl_evolution_template(output_dir)
+    write_dsl_reference_template(output_dir)
+    write_view_experience_template(output_dir)
+    write_view_experience_static(output_dir)
+    write_support_center_template(output_dir)
+    write_prototyping_template(output_dir)
+    write_erp_templates_template(output_dir)
+    write_project_management_template(output_dir)
+    write_devtools_template(output_dir)
+    write_studio_template(output_dir)
+    write_wizards_template(output_dir)
+    write_branding_template(output_dir)
+    write_extensions_template(output_dir)
+    write_project_scaffold(output_dir.parent, schema)
+    write_manifest(schema, output_dir)
+
+    if config_database_url is not None:
+        update_generated_config(output_dir.parent / "config.py", config_database_url)
+    return output_dir
+
+
+def _model_attribute_name(column: ColumnSchema) -> str:
+    if column.references is not None:
+        return underscore(column.references[0])
+    return underscore(column.name)
+
+
+def _graphene_field(type_name: str) -> str:
+    normalized = type_name.lower().split("(", 1)[0]
+    if normalized in {"int", "integer", "serial", "smallint", "bigint", "bigserial"}:
+        return "graphene.Int()"
+    if normalized in {"float", "real", "double", "double precision", "decimal", "numeric", "money"}:
+        return "graphene.Float()"
+    if normalized in {"bool", "boolean"}:
+        return "graphene.Boolean()"
+    if normalized in {"date", "datetime", "timestamp", "timestamptz", "time"}:
+        return "graphene.String()"
+    return "graphene.String()"
+
+
+def _openapi_schema_for_column(column: ColumnSchema, enum_values: dict[str, tuple[str, ...]]) -> dict:
+    """Return an OpenAPI schema fragment for a generated column."""
+    if column.type_name in enum_values:
+        return {
+            "type": "string",
+            "enum": list(enum_values[column.type_name]),
+            "description": f"{column.type_name} lookup value",
+        }
+
+    normalized = column.type_name.lower().split("(", 1)[0]
+    normalized = normalized.removesuffix("[]")
+    if normalized in {"int", "integer", "serial", "smallint", "bigint", "bigserial"}:
+        return {"type": "integer"}
+    if normalized in {"float", "real", "double", "double precision", "decimal", "numeric", "money"}:
+        return {"type": "number"}
+    if normalized in {"bool", "boolean"}:
+        return {"type": "boolean"}
+    if normalized == "date":
+        return {"type": "string", "format": "date"}
+    if normalized in {"datetime", "timestamp", "timestamptz", "time"}:
+        return {"type": "string", "format": "date-time"}
+    if normalized in {"image", "file", "blob", "binary", "bytea"}:
+        return {"type": "string", "format": "binary"}
+    if column.type_name.endswith("[]"):
+        return {"type": "array", "items": {"type": "string"}}
+    return {"type": "string"}
+
+
+def _openapi_spec(schema: AppSchema, app_name: str) -> dict:
+    """Build a generated OpenAPI 3.1 contract for the REST API surface."""
+    enum_values = {enum.name: tuple(enum.values) for enum in schema.enums}
+    paths: dict[str, dict] = {}
+    component_schemas: dict[str, dict] = {}
+    tags = []
+
+    for table in schema.tables:
+        class_name = snake_to_pascal(table.name)
+        route_name = underscore(table.name)
+        tag_name = snake_to_label(table.name)
+        tags.append({"name": table.name, "description": f"{tag_name} resource"})
+        properties = {}
+        required = []
+        for column in table.columns:
+            if column.hidden or column.derived:
+                continue
+            field_name = _model_attribute_name(column)
+            field_schema = _openapi_schema_for_column(column, enum_values)
+            field_schema["title"] = snake_to_label(column.name)
+            if column.references is not None:
+                field_schema["description"] = (
+                    f"Relationship to {column.references[0]}.{column.references[1]}"
+                )
+            properties[field_name] = field_schema
+            if not column.nullable and not column.primary_key:
+                required.append(field_name)
+
+        component_schemas[class_name] = {
+            "type": "object",
+            "additionalProperties": False,
+            "properties": properties,
+        }
+        if required:
+            component_schemas[class_name]["required"] = required
+
+        collection_path = f"/api/v1/{route_name}/"
+        item_path = f"/api/v1/{route_name}/{{id}}"
+        schema_ref = f"#/components/schemas/{class_name}"
+        paths[collection_path] = {
+            "get": {
+                "tags": [table.name],
+                "summary": f"List {tag_name}",
+                "operationId": f"list{class_name}",
+                "responses": {
+                    "200": {
+                        "description": f"{tag_name} list",
+                        "content": {
+                            "application/json": {
+                                "schema": {"type": "array", "items": {"$ref": schema_ref}}
+                            }
+                        },
+                    }
+                },
+            },
+            "post": {
+                "tags": [table.name],
+                "summary": f"Create {tag_name}",
+                "operationId": f"create{class_name}",
+                "requestBody": {
+                    "required": True,
+                    "content": {"application/json": {"schema": {"$ref": schema_ref}}},
+                },
+                "responses": {
+                    "201": {
+                        "description": f"{tag_name} created",
+                        "content": {"application/json": {"schema": {"$ref": schema_ref}}},
+                    }
+                },
+            },
+        }
+        paths[item_path] = {
+            "get": {
+                "tags": [table.name],
+                "summary": f"Get {tag_name}",
+                "operationId": f"get{class_name}",
+                "parameters": [_openapi_id_parameter()],
+                "responses": {
+                    "200": {
+                        "description": f"{tag_name} detail",
+                        "content": {"application/json": {"schema": {"$ref": schema_ref}}},
+                    },
+                    "404": {"description": "Not found"},
+                },
+            },
+            "put": {
+                "tags": [table.name],
+                "summary": f"Update {tag_name}",
+                "operationId": f"update{class_name}",
+                "parameters": [_openapi_id_parameter()],
+                "requestBody": {
+                    "required": True,
+                    "content": {"application/json": {"schema": {"$ref": schema_ref}}},
+                },
+                "responses": {
+                    "200": {
+                        "description": f"{tag_name} updated",
+                        "content": {"application/json": {"schema": {"$ref": schema_ref}}},
+                    },
+                    "404": {"description": "Not found"},
+                },
+            },
+            "delete": {
+                "tags": [table.name],
+                "summary": f"Delete {tag_name}",
+                "operationId": f"delete{class_name}",
+                "parameters": [_openapi_id_parameter()],
+                "responses": {
+                    "204": {"description": f"{tag_name} deleted"},
+                    "404": {"description": "Not found"},
+                },
+            },
+        }
+
+    return {
+        "openapi": "3.1.0",
+        "info": {
+            "title": f"{app_name} API",
+            "version": "1.0.0",
+            "description": "Generated AppGen REST API contract.",
+        },
+        "servers": [{"url": "/"}],
+        "tags": tags,
+        "paths": paths,
+        "components": {
+            "schemas": component_schemas,
+            "securitySchemes": {
+                "bearerAuth": {"type": "http", "scheme": "bearer", "bearerFormat": "JWT"}
+            },
+        },
+        "security": [{"bearerAuth": []}],
+    }
+
+
+def _openapi_id_parameter() -> dict:
+    return {
+        "name": "id",
+        "in": "path",
+        "required": True,
+        "schema": {"type": "integer"},
+        "description": "Generated row identifier.",
+    }
+
+
+def _openapi_text(schema: AppSchema, app_name: str) -> str:
+    spec = _openapi_spec(schema, app_name)
+    return f'''"""Generated OpenAPI helpers for AppGen REST APIs."""
+
+from __future__ import annotations
+
+from copy import deepcopy
+
+from flask import jsonify
+from flask_appbuilder import BaseView
+from flask_appbuilder import expose
+
+
+OPENAPI_SPEC = {spec!r}
+
+
+def openapi_spec():
+    """Return the generated OpenAPI contract."""
+    return deepcopy(OPENAPI_SPEC)
+
+
+def schema_names():
+    """Return generated component schema names."""
+    return tuple(OPENAPI_SPEC["components"]["schemas"])
+
+
+def path_summary():
+    """Return generated API paths and HTTP methods."""
+    return tuple(
+        {{"path": path, "methods": tuple(sorted(operations))}}
+        for path, operations in OPENAPI_SPEC["paths"].items()
+    )
+
+
+def operation_count():
+    """Return the number of generated OpenAPI operations."""
+    return sum(len(operations) for operations in OPENAPI_SPEC["paths"].values())
+
+
+def openapi_check(existing_paths=()):
+    """Return readiness for generated OpenAPI artifacts."""
+    existing = set(existing_paths)
+    required = {{
+        "app/openapi.py",
+        "app/templates/appgen_openapi.html",
+        "docs/openapi.json",
+    }}
+    missing = tuple(sorted(required - existing))
+    return {{
+        "ok": not missing and OPENAPI_SPEC["openapi"] == "3.1.0" and operation_count() > 0,
+        "missing": missing,
+        "schemas": schema_names(),
+        "operations": operation_count(),
+    }}
+
+
+class OpenAPIView(BaseView):
+    route_base = "/openapi"
+    default_view = "index"
+
+    @expose("/")
+    def index(self):
+        return self.render_template(
+            "appgen_openapi.html",
+            spec=OPENAPI_SPEC,
+            paths=path_summary(),
+            schemas=schema_names(),
+            operation_count=operation_count(),
+        )
+
+    @expose("/openapi.json")
+    def openapi_json(self):
+        return jsonify(OPENAPI_SPEC)
+
+
+def register_openapi(appbuilder):
+    appbuilder.add_view(
+        OpenAPIView,
+        "OpenAPI",
+        icon="fa-code",
+        category="AppGen",
+    )
+'''
+
+
+def _app_name(schema: AppSchema) -> str:
+    return schema.app_name or "Generated App"
+
+
+THEME_PRESETS = {
+    "appgen": {
+        "primary": "#0f766e",
+        "accent": "#b45309",
+        "surface": "#f8fafc",
+        "text": "#14213d",
+        "muted": "#52616b",
+    },
+    "sage": {
+        "primary": "#2f6f5e",
+        "accent": "#9a6b2f",
+        "surface": "#f7faf6",
+        "text": "#17332d",
+        "muted": "#52635d",
+    },
+    "indigo": {
+        "primary": "#4338ca",
+        "accent": "#0f766e",
+        "surface": "#f8fafc",
+        "text": "#1e1b4b",
+        "muted": "#5b6474",
+    },
+    "slate": {
+        "primary": "#334155",
+        "accent": "#0f766e",
+        "surface": "#f8fafc",
+        "text": "#111827",
+        "muted": "#64748b",
+    },
+}
+
+
+def _app_option(schema: AppSchema, key: str, default: str = "") -> str:
+    return str(schema.app_options.get(key, default))
+
+
+def _selected_platform_targets(schema: AppSchema) -> tuple[str, ...]:
+    targets, _unknown = normalize_platform_targets(schema.app_options.get("targets"))
+    return targets
+
+
+def _branding_contract(schema: AppSchema) -> dict:
+    app_name = _app_name(schema)
+    theme = _app_option(schema, "theme", "appgen").lower()
+    palette = dict(THEME_PRESETS.get(theme, THEME_PRESETS["appgen"]))
+    for key in ("primary", "accent", "surface", "text", "muted"):
+        value = _app_option(schema, key)
+        if value:
+            palette[key] = value
+    return {
+        "app_name": app_name,
+        "theme": theme,
+        "logo_text": _app_option(schema, "logo", "".join(part[:1] for part in app_name.split()[:2]).upper() or "AG"),
+        "tagline": _app_option(schema, "tagline", "Generated low-code application"),
+        "palette": palette,
+        "assets": {
+            "css": "static/appgen-theme.css",
+            "icon": "static/appgen-icon.svg",
+            "manifest": "static/appgen.webmanifest",
+        },
+    }
+
+
+def _readme_text(schema: AppSchema, app_name: str) -> str:
+    tables = "\n".join(f"- `{table.name}` ({len(table.columns)} fields)" for table in schema.tables)
+    if not tables:
+        tables = "- No tables declared"
+    flows = "\n".join(f"- `{flow.name}` ({len(flow.steps)} transitions)" for flow in schema.flows)
+    if not flows:
+        flows = "- No workflows declared"
+    roles = "\n".join(f"- `{role.name}`" for role in schema.roles)
+    if not roles:
+        roles = "- No roles declared"
+    return f"""# {app_name}
+
+Generated by AppGen.
+
+## Included
+
+- Flask-AppBuilder models and views in `app/`.
+- REST API classes in `app/api.py`.
+- OpenAPI 3.1 contract and documentation cockpit in `app/openapi.py` and `docs/openapi.json`.
+- GraphQL query schema in `app/gql.py`.
+- Role policy helpers in `app/security.py`.
+- Session timeout and response hardening in `app/runtime_security.py`.
+- Workflow transition helpers and cockpit in `app/workflow.py`.
+- Business rule validation and decision helpers in `app/rules.py`.
+- Health metadata in `app/health.py`.
+- Monitoring endpoints and error envelopes in `app/monitoring.py`.
+- Resilience and exception-management helpers in `app/resilience.py`.
+- Performance budgets, load-test plans, and autoscale helpers in `app/performance.py`.
+- PWA manifest, service worker, and offline shell in `app/static/`.
+- Branding contract and generated theme CSS in `app/branding.py` and `app/static/appgen-theme.css`.
+- Custom extension hooks in `app/extensions.py` with stable user code stubs in `app_custom/`.
+- Babel config and starter English translations in `app/translations/`.
+- Report catalog and CSV exports in `app/reports.py`.
+- PDF report export and email delivery payloads in `app/report_delivery.py`.
+- Dashboard, KPI, and chart contracts in `app/dashboards.py`.
+- App usage analytics in `app/usage_analytics.py`.
+- Search indexes and provider adapter plans in `app/search.py`.
+- Image and upload field contracts in `app/media.py`.
+- JSON backup exports and restore helpers in `app/backup.py`.
+- Schema-aware CSV and JSON import/export helpers in `app/data_exchange.py`.
+- Safe configuration defaults in `config.py`.
+- Configuration admin view in `app/config_admin.py`.
+- Integration registry and cockpit in `app/integrations.py`.
+- IoT telemetry and blockchain audit-anchor helpers in `app/emerging.py`.
+- Tenant-scope registry and filter helpers in `app/tenancy.py`.
+- Row-level security policy helpers and PostgreSQL policy SQL in `app/rls.py`.
+- SSO provider registry in `app/identity.py`.
+- Compliance audit, retention, and redaction helpers in `app/compliance.py`.
+- AI assistance contracts in `app/assistant.py`.
+- Voice assistant speech-interface helpers in `app/voice.py`.
+- Textarea spell, grammar, and character-count helpers in `app/text_quality.py`.
+- Notification channel and event helpers in `app/notifications.py`.
+- Platform target contracts in `app/platforms.py`.
+- Microservices architecture contract in `app/microservices.py`.
+- React, Vue, Angular, and Express starters in `frontends/`.
+- Python, JavaScript, Java, and C# API client scaffolds in `sdks/`.
+- Kivy mobile and BeeWare desktop Python starters in `native/`.
+- JHipster JDL export and import contract in `jhipster/`.
+- Dialogflow and Bot Framework chatbot exports in `chatbots/`.
+- Node-RED automation flow export and webhook contract in `automation/`.
+- Collaboration and version-control helpers in `app/collaboration.py`.
+- Real-time event stream and team message helpers in `app/realtime.py`.
+- Complex event processing, alerting, retry, and dead-letter helpers in `app/events.py`.
+- Diagnostics and debugging helpers in `app/diagnostics.py`.
+- Automated API testing and synthetic monitoring helpers in `app/api_testing.py`.
+- Automated code-review helpers in `app/code_review.py`.
+- Component registry and widget descriptors in `app/components.py`.
+- Sequential table and workflow wizard contracts in `app/wizards.py`.
+- Alembic migration scaffold in `migrations/`.
+- Deterministic demo data in `seed.py`.
+- CI workflow and generated-app quality gate in `.github/workflows/` and `scripts/`.
+- Deployment contracts for Docker, Compose, Kubernetes, AWS, GCP, and Azure in `deploy/`.
+- Automatic HTTPS reverse proxy contract in `deploy/Caddyfile` and `deploy/appgen_https.py`.
+- Schema documentation in `docs/schema.md`.
+- Data dictionary and content guide in `docs/data-dictionary.json` and `docs/data-dictionary.md`.
+- Accessibility baseline checklist in `docs/accessibility.md`.
+- App manifest in `app/appgen.json`.
+- Publishable Python package metadata in `pyproject.toml`, `MANIFEST.in`, and `appgen_package.py`.
+- Reusable Cookiecutter and FAB-extension contracts in `cookiecutter/` and `appgen_package.py`.
+
+## Data Model
+
+{tables}
+
+## Workflows
+
+{flows}
+
+## Roles
+
+{roles}
+
+## Local Run
+
+```console
+python -m venv .venv
+. .venv/bin/activate
+pip install -r requirements.txt
+flask run
+```
+
+## Verification
+
+```console
+python scripts/appgen_quality.py
+pytest
+```
+
+## Seed Data
+
+```console
+python seed.py
+```
+"""
+
+
+def _requirements_text() -> str:
+    return """flask-appbuilder>=4.8.1,<5.0.0
+graphene>=3.2.1,<4.0.0
+psycopg2-binary>=2.9.12,<3.0.0
+sqlalchemy-utils>=0.40.0,<0.41.0
+alembic>=1.13.0,<2.0.0
+"""
+
+
+def _package_slug(app_name: str) -> str:
+    return underscore(app_name).replace("_", "-").lower()
+
+
+def _publishable_pyproject_text(app_name: str) -> str:
+    package_name = f"appgen-{_package_slug(app_name)}"
+    return f'''[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "{package_name}"
+version = "0.1.0"
+description = "Generated AppGen Flask-AppBuilder application"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+  "flask-appbuilder>=4.8.1,<5.0.0",
+  "graphene>=3.2.1,<4.0.0",
+  "sqlalchemy-utils>=0.40.0,<0.41.0",
+  "alembic>=1.13.0,<2.0.0",
+]
+
+[project.optional-dependencies]
+postgres = ["psycopg2-binary>=2.9.12,<3.0.0"]
+dev = ["pytest>=8.0.0", "build>=1.0.0", "twine>=5.0.0"]
+
+[project.entry-points."flask.commands"]
+appgen-quality = "appgen_package:quality_command"
+
+[tool.setuptools]
+include-package-data = true
+py-modules = ["appgen_package", "seed", "config"]
+
+[tool.setuptools.packages.find]
+include = ["app", "app.*", "app_custom", "app_custom.*"]
+'''
+
+
+def _manifest_in_text() -> str:
+    return """include README.md
+include requirements.txt
+include config.py
+recursive-include app/templates *.html
+recursive-include app/static *
+recursive-include app/translations *
+recursive-include docs *.md *.json
+recursive-include migrations *
+recursive-include cookiecutter *
+"""
+
+
+def _package_contract_text(schema: AppSchema, app_name: str) -> str:
+    table_names = tuple(table.name for table in schema.tables)
+    slug = _package_slug(app_name)
+    return f'''"""Generated publishable package and FAB-extension contract."""
+
+from __future__ import annotations
+
+from pathlib import Path
+
+APP_NAME = {app_name!r}
+PACKAGE_NAME = "appgen-{slug}"
+TABLES = {table_names!r}
+REQUIRED_PACKAGE_PATHS = (
+    "pyproject.toml",
+    "MANIFEST.in",
+    "README.md",
+    "requirements.txt",
+    "app/__init__.py",
+    "app/appgen.json",
+    "app/templates/my_index.html",
+    "app_custom/extensions.py",
+    "cookiecutter/cookiecutter.json",
+    "cookiecutter/{{{{cookiecutter.project_slug}}}}/pyproject.toml",
+    "cookiecutter/{{{{cookiecutter.project_slug}}}}/app/__init__.py",
+)
+
+
+def package_metadata():
+    """Return publishable package metadata for this generated app."""
+    return {{
+        "app_name": APP_NAME,
+        "package_name": PACKAGE_NAME,
+        "tables": TABLES,
+        "entry_point": "appgen-quality",
+        "build_command": "python -m build",
+        "publish_command": "python -m twine upload dist/*",
+    }}
+
+
+def fab_extension_contract():
+    """Return the reusable Flask-AppBuilder extension surface."""
+    return {{
+        "module": "app",
+        "factory": "app",
+        "register_hook": "app.extensions.register_extensions",
+        "custom_hooks": "app_custom.extensions",
+        "templates": "app/templates",
+        "static": "app/static",
+    }}
+
+
+def cookiecutter_context(extra=None):
+    """Return default context for the generated Cookiecutter template."""
+    context = {{
+        "project_name": APP_NAME,
+        "project_slug": PACKAGE_NAME.replace("-", "_"),
+        "package_name": PACKAGE_NAME,
+        "description": "Generated AppGen application template",
+    }}
+    if extra:
+        context.update(extra)
+    return context
+
+
+def packaging_check(existing_paths):
+    """Return readiness for build, publish, FAB extension, and Cookiecutter artifacts."""
+    existing = set(existing_paths)
+    missing = tuple(path for path in REQUIRED_PACKAGE_PATHS if path not in existing)
+    return {{
+        "ok": not missing,
+        "missing": missing,
+        "package": package_metadata(),
+        "fab_extension": fab_extension_contract(),
+        "cookiecutter": cookiecutter_context(),
+    }}
+
+
+def quality_command():
+    """Flask CLI entry point that runs the generated quality gate."""
+    import subprocess
+    import sys
+
+    script = Path(__file__).resolve().parent / "scripts" / "appgen_quality.py"
+    raise SystemExit(subprocess.call([sys.executable, str(script)]))
+'''
+
+
+def _cookiecutter_json_text(app_name: str) -> str:
+    context = {
+        "project_name": app_name,
+        "project_slug": f"appgen_{underscore(app_name).lower()}",
+        "package_name": f"appgen-{_package_slug(app_name)}",
+        "description": "Generated AppGen Flask-AppBuilder application",
+    }
+    return json.dumps(context, indent=2, sort_keys=True) + "\n"
+
+
+def _cookiecutter_readme_text(app_name: str) -> str:
+    return f"""# {{{{ cookiecutter.project_name }}}}
+
+Reusable AppGen template derived from {app_name}.
+
+## Generate
+
+```console
+cookiecutter cookiecutter
+```
+
+## Run
+
+```console
+pip install -e .
+flask run
+```
+"""
+
+
+def _cookiecutter_pyproject_text() -> str:
+    return '''[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "{{ cookiecutter.package_name }}"
+version = "0.1.0"
+description = "{{ cookiecutter.description }}"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = ["flask-appbuilder>=4.8.1,<5.0.0"]
+
+[tool.setuptools.packages.find]
+include = ["app", "app.*"]
+'''
+
+
+def _cookiecutter_app_init_text() -> str:
+    return '''"""Cookiecutter-generated AppGen Flask-AppBuilder application."""
+
+from __future__ import annotations
+
+from flask import Flask
+from flask_appbuilder import AppBuilder
+from flask_appbuilder import SQLA
+
+app = Flask(__name__)
+app.config.from_object("config")
+db = SQLA(app)
+appbuilder = AppBuilder(app, db.session)
+'''
+
+
+def _env_text(app_name: str) -> str:
+    return f"""FLASK_APP=app
+FLASK_ENV=production
+APP_NAME={app_name}
+SQLALCHEMY_DATABASE_URI=sqlite:///app.db
+SECRET_KEY=change-me-before-deploy
+"""
+
+
+def _config_text(app_name: str) -> str:
+    return f'''"""Generated Flask-AppBuilder configuration for {app_name}."""
+
+from __future__ import annotations
+
+import os
+
+APP_NAME = {app_name!r}
+SECRET_KEY = os.getenv("SECRET_KEY", "change-me-before-deploy")
+SQLALCHEMY_DATABASE_URI = 'sqlite:///app.db'
+SQLALCHEMY_TRACK_MODIFICATIONS = False
+
+FAB_API_SHOW_STACKTRACE = True
+FAB_API_SWAGGER_UI = True
+
+WTF_CSRF_ENABLED = True
+AUTH_ROLE_ADMIN = "Admin"
+AUTH_ROLE_PUBLIC = "Public"
+SESSION_COOKIE_HTTPONLY = True
+SESSION_COOKIE_SAMESITE = "Lax"
+BABEL_DEFAULT_LOCALE = "en"
+BABEL_DEFAULT_TIMEZONE = "UTC"
+LANGUAGES = {{
+    "en": {{"flag": "us", "name": "English"}},
+}}
+'''
+
+
+def _monitoring_text(schema: AppSchema) -> str:
+    app_name = _app_name(schema)
+    table_count = len(schema.tables)
+    relation_count = len(schema.relations)
+    view_count = len(schema.views)
+    flow_count = len(schema.flows)
+    role_count = len(schema.roles)
+    return f'''"""Generated monitoring and error contract for AppGen apps."""
+
+from __future__ import annotations
+
+import datetime as _dt
+import logging
+
+from flask import jsonify
+from flask_appbuilder import BaseView, expose
+
+
+LOGGER = logging.getLogger("appgen.monitoring")
+APP_NAME = {app_name!r}
+TABLE_COUNT = {table_count!r}
+RELATION_COUNT = {relation_count!r}
+VIEW_COUNT = {view_count!r}
+FLOW_COUNT = {flow_count!r}
+ROLE_COUNT = {role_count!r}
+
+
+def utc_now():
+    return _dt.datetime.now(_dt.UTC).isoformat()
+
+
+def liveness():
+    """Return a lightweight liveness payload."""
+    return {{
+        "app": APP_NAME,
+        "ok": True,
+        "live": True,
+        "timestamp": utc_now(),
+        "tables": TABLE_COUNT,
+        "relations": RELATION_COUNT,
+        "views": VIEW_COUNT,
+        "flows": FLOW_COUNT,
+        "roles": ROLE_COUNT,
+    }}
+
+
+def readiness():
+    """Return readiness checks for generated app dependencies."""
+    payload = liveness()
+    checks = {{
+        "metadata": payload.get("ok") is True,
+        "models": payload.get("tables", 0) >= 0,
+        "workflows": payload.get("flows", 0) >= 0,
+    }}
+    payload["ready"] = all(checks.values())
+    payload["checks"] = checks
+    return payload
+
+
+def error_payload(error, *, status_code=500):
+    """Return a stable JSON-compatible error envelope."""
+    return {{
+        "ok": False,
+        "status": status_code,
+        "error": error.__class__.__name__,
+        "message": str(error),
+        "timestamp": utc_now(),
+    }}
+
+
+def register_error_handlers(app):
+    """Register generated JSON error handlers."""
+
+    @app.errorhandler(404)
+    def not_found(error):
+        return jsonify(error_payload(error, status_code=404)), 404
+
+    @app.errorhandler(500)
+    def server_error(error):
+        LOGGER.exception("Unhandled generated app error", exc_info=error)
+        return jsonify(error_payload(error, status_code=500)), 500
+
+
+class MonitoringView(BaseView):
+    route_base = "/monitoring"
+    default_view = "index"
+
+    @expose("/")
+    def index(self):
+        return self.render_template("appgen_monitoring.html", status=readiness())
+
+    @expose("/healthz")
+    def healthz(self):
+        return jsonify(liveness())
+
+    @expose("/readyz")
+    def readyz(self):
+        payload = readiness()
+        return jsonify(payload), 200 if payload["ready"] else 503
+
+
+def register_monitoring(appbuilder):
+    appbuilder.add_view(
+        MonitoringView,
+        "Monitoring",
+        icon="fa-heartbeat",
+        category="AppGen",
+    )
+'''
+
+
+def _resilience_text(schema: AppSchema) -> str:
+    app_name = _app_name(schema)
+    resources = tuple(table.name for table in schema.tables)
+    operations = tuple(
+        {
+            "resource": table.name,
+            "operations": ("list", "create", "update", "delete", "import", "export"),
+            "guards": ("validation", "authorization", "retry", "safe-error-response"),
+        }
+        for table in schema.tables
+    )
+    if not operations:
+        operations = (
+            {
+                "resource": app_name,
+                "operations": ("list", "create", "update", "delete"),
+                "guards": ("validation", "authorization", "retry", "safe-error-response"),
+            },
+        )
+    return f'''"""Generated exception-management and resilience helpers for AppGen apps."""
+
+from __future__ import annotations
+
+import datetime as _dt
+import hashlib
+
+from flask import jsonify
+from flask_appbuilder import BaseView
+from flask_appbuilder import expose
+
+
+APP_NAME = {app_name!r}
+RESOURCES = {resources!r}
+RESILIENT_OPERATIONS = {operations!r}
+ERROR_CLASSES = {{
+    "PermissionError": {{"category": "authorization", "status": 403, "retryable": False, "severity": "warning"}},
+    "ValueError": {{"category": "validation", "status": 400, "retryable": False, "severity": "info"}},
+    "KeyError": {{"category": "not_found", "status": 404, "retryable": False, "severity": "info"}},
+    "TimeoutError": {{"category": "timeout", "status": 504, "retryable": True, "severity": "error"}},
+    "ConnectionError": {{"category": "integration", "status": 502, "retryable": True, "severity": "error"}},
+}}
+RECOVERY_ACTIONS = {{
+    "authorization": ("ask_admin_for_access", "switch_account", "review_role_policy"),
+    "validation": ("highlight_invalid_fields", "preserve_user_input", "show_required_field_help"),
+    "not_found": ("return_to_list", "refresh_data", "offer_create_new"),
+    "timeout": ("retry_with_backoff", "queue_background_job", "show_status_link"),
+    "integration": ("retry_with_backoff", "switch_provider_if_available", "notify_operations"),
+    "unhandled": ("capture_incident", "show_safe_message", "notify_operations"),
+}}
+DEFAULT_RETRY_POLICY = {{"max_attempts": 4, "backoff_seconds": (1, 5, 20, 60), "jitter": "deterministic"}}
+
+
+def utc_now():
+    return _dt.datetime.now(_dt.UTC).isoformat()
+
+
+def error_catalog():
+    """Return generated exception categories and user-recovery actions."""
+    return {{
+        "app": APP_NAME,
+        "resources": RESOURCES,
+        "classes": ERROR_CLASSES,
+        "recovery_actions": RECOVERY_ACTIONS,
+        "operations": RESILIENT_OPERATIONS,
+        "retry_policy": DEFAULT_RETRY_POLICY,
+    }}
+
+
+def classify_exception(error, context=None):
+    """Classify an exception or exception-name into generated UX-safe handling metadata."""
+    name = error if isinstance(error, str) else error.__class__.__name__
+    spec = ERROR_CLASSES.get(name, {{"category": "unhandled", "status": 500, "retryable": False, "severity": "critical"}})
+    context = dict(context or {{}})
+    return {{
+        "name": name,
+        "category": spec["category"],
+        "status": spec["status"],
+        "retryable": spec["retryable"],
+        "severity": context.get("severity", spec["severity"]),
+        "resource": context.get("resource"),
+        "operation": context.get("operation"),
+    }}
+
+
+def recovery_actions(category):
+    """Return generated user and operator recovery actions for an error category."""
+    return tuple(RECOVERY_ACTIONS.get(category, RECOVERY_ACTIONS["unhandled"]))
+
+
+def retry_policy(operation=None, attempt=1):
+    """Return deterministic retry guidance for transient operations."""
+    attempt = max(1, int(attempt))
+    delays = DEFAULT_RETRY_POLICY["backoff_seconds"]
+    if attempt >= DEFAULT_RETRY_POLICY["max_attempts"]:
+        return {{"retry": False, "operation": operation, "attempt": attempt, "reason": "max_attempts_reached"}}
+    delay = delays[min(attempt - 1, len(delays) - 1)]
+    return {{"retry": True, "operation": operation, "attempt": attempt + 1, "delay_seconds": delay}}
+
+
+def safe_error_response(error, *, request_id=None, context=None):
+    """Return a stable user-safe error envelope that does not expose internals."""
+    classification = classify_exception(error, context)
+    category = classification["category"]
+    return {{
+        "ok": False,
+        "request_id": request_id,
+        "status": classification["status"],
+        "category": category,
+        "severity": classification["severity"],
+        "retryable": classification["retryable"],
+        "user_message": "We could not complete that action. The entered data was preserved where possible.",
+        "technical_message": str(error),
+        "actions": recovery_actions(category),
+        "timestamp": utc_now(),
+    }}
+
+
+def circuit_breaker_state(failures=0, *, threshold=5, opened_at=None, now=None):
+    """Return generated circuit-breaker state for unstable integrations."""
+    failures = int(failures)
+    if failures < threshold:
+        return {{"state": "closed", "failures": failures, "threshold": threshold, "allow_request": True}}
+    if opened_at and now and str(opened_at) < str(now):
+        return {{"state": "half_open", "failures": failures, "threshold": threshold, "allow_request": True}}
+    return {{"state": "open", "failures": failures, "threshold": threshold, "allow_request": False}}
+
+
+def incident_report(error, *, context=None, severity=None):
+    """Build an operator-facing incident report with a stable fingerprint."""
+    classification = classify_exception(error, context)
+    if severity is not None:
+        classification["severity"] = severity
+    material = "|".join(
+        str(part)
+        for part in (
+            APP_NAME,
+            classification["name"],
+            classification.get("resource"),
+            classification.get("operation"),
+            str(error),
+        )
+    )
+    return {{
+        "id": "inc-" + hashlib.sha1(material.encode("utf-8")).hexdigest()[:12],
+        "app": APP_NAME,
+        "classification": classification,
+        "message": str(error),
+        "actions": recovery_actions(classification["category"]),
+        "created_at": utc_now(),
+    }}
+
+
+def exception_management_plan():
+    """Return the generated plan for safe exception handling across the app."""
+    return {{
+        "preserve_user_input": True,
+        "redact_internal_errors": True,
+        "log_incidents": True,
+        "notify_on": ("critical", "error"),
+        "operations": RESILIENT_OPERATIONS,
+        "retry_policy": DEFAULT_RETRY_POLICY,
+    }}
+
+
+def resilience_check(existing_paths=()):
+    """Return readiness for generated error-handling and exception-management artifacts."""
+    existing = set(existing_paths)
+    required = {{"app/resilience.py", "app/templates/appgen_resilience.html"}}
+    missing = tuple(sorted(required - existing))
+    return {{
+        "ok": not missing and bool(error_catalog()["classes"]) and bool(exception_management_plan()["operations"]),
+        "missing": missing,
+        "classes": tuple(ERROR_CLASSES),
+        "resources": RESOURCES,
+    }}
+
+
+class ResilienceView(BaseView):
+    route_base = "/resilience"
+    default_view = "index"
+
+    @expose("/")
+    def index(self):
+        return self.render_template(
+            "appgen_resilience.html",
+            catalog=error_catalog(),
+            plan=exception_management_plan(),
+        )
+
+    @expose("/catalog.json")
+    def catalog_json(self):
+        return jsonify(error_catalog())
+
+
+def register_resilience(appbuilder):
+    appbuilder.add_view(
+        ResilienceView,
+        "Resilience",
+        icon="fa-life-ring",
+        category="AppGen",
+    )
+'''
+
+
+def _performance_text(schema: AppSchema) -> str:
+    tables = {}
+    for table in schema.tables:
+        visible = [column for column in table.columns if not column.hidden and not column.derived]
+        searchable = [_model_attribute_name(column) for column in visible if column.searchable]
+        required = [
+            _model_attribute_name(column)
+            for column in visible
+            if not column.nullable and not column.primary_key
+        ]
+        tables[table.name] = {
+            "table": table.name,
+            "label": snake_to_label(table.name),
+            "fields": tuple(_model_attribute_name(column) for column in visible),
+            "searchable": tuple(searchable),
+            "required": tuple(required),
+            "route": f"/api/v1/{underscore(table.name)}/",
+            "budget_ms": 250 if len(visible) <= 10 else 400,
+            "page_size": 50 if len(visible) <= 12 else 25,
+            "cache_ttl_seconds": 60 if searchable else 30,
+        }
+    return f'''"""Generated performance budgets and scaling helpers for AppGen apps."""
+
+from __future__ import annotations
+
+from flask import jsonify
+from flask_appbuilder import BaseView
+from flask_appbuilder import expose
+
+
+PERFORMANCE_TABLES = {tables!r}
+DEFAULT_SLO = {{
+    "p95_ms": 500,
+    "error_rate": 0.01,
+    "cpu_scale_out": 70,
+    "queue_depth_scale_out": 100,
+}}
+
+
+def performance_catalog():
+    """Return generated per-table performance budgets."""
+    return tuple(sorted(PERFORMANCE_TABLES.values(), key=lambda item: item["label"]))
+
+
+def table_budget(table_name):
+    """Return performance budget for a generated table route."""
+    if table_name not in PERFORMANCE_TABLES:
+        raise KeyError(table_name)
+    return PERFORMANCE_TABLES[table_name]
+
+
+def pagination_plan(table_name, *, requested=None):
+    """Return bounded pagination settings for generated list/API routes."""
+    budget = table_budget(table_name)
+    default = budget["page_size"]
+    size = default if requested is None else max(1, min(int(requested), default * 2))
+    return {{
+        "table": table_name,
+        "default_page_size": default,
+        "page_size": size,
+        "max_page_size": default * 2,
+    }}
+
+
+def cache_policy(table_name):
+    """Return a conservative cache policy for read-heavy generated routes."""
+    budget = table_budget(table_name)
+    return {{
+        "table": table_name,
+        "cache_key": f"appgen:{{table_name.lower()}}:list",
+        "ttl_seconds": budget["cache_ttl_seconds"],
+        "vary": ("tenant_id", "role"),
+        "invalidate_on": (f"{{table_name}}.created", f"{{table_name}}.updated", f"{{table_name}}.deleted"),
+    }}
+
+
+def load_profile_plan(users=25, duration_seconds=60):
+    """Return a deterministic load-test profile for generated API routes."""
+    return {{
+        "users": int(users),
+        "duration_seconds": int(duration_seconds),
+        "routes": tuple(
+            {{
+                "table": table_name,
+                "method": "GET",
+                "path": budget["route"],
+                "target_p95_ms": budget["budget_ms"],
+            }}
+            for table_name, budget in PERFORMANCE_TABLES.items()
+        ),
+    }}
+
+
+def slo_report(metrics, *, slo=None):
+    """Compare runtime metrics with generated SLO targets."""
+    slo = dict(DEFAULT_SLO if slo is None else slo)
+    p95_ms = float(metrics.get("p95_ms", 0))
+    error_rate = float(metrics.get("error_rate", 0))
+    violations = []
+    if p95_ms > slo["p95_ms"]:
+        violations.append("latency")
+    if error_rate > slo["error_rate"]:
+        violations.append("errors")
+    return {{
+        "ok": not violations,
+        "violations": tuple(violations),
+        "p95_ms": p95_ms,
+        "error_rate": error_rate,
+        "slo": slo,
+    }}
+
+
+def autoscale_plan(metrics, *, current_replicas=1, min_replicas=1, max_replicas=6):
+    """Return scale recommendation from CPU, latency, error, and queue signals."""
+    current = int(current_replicas)
+    cpu = float(metrics.get("cpu_percent", 0))
+    queue_depth = int(metrics.get("queue_depth", 0))
+    slo = slo_report(metrics)
+    reasons = []
+    if cpu >= DEFAULT_SLO["cpu_scale_out"]:
+        reasons.append("cpu")
+    if queue_depth >= DEFAULT_SLO["queue_depth_scale_out"]:
+        reasons.append("queue")
+    reasons.extend(slo["violations"])
+    desired = current + 1 if reasons else current
+    if not reasons and cpu < 30 and current > min_replicas:
+        desired = current - 1
+        reasons.append("scale-in")
+    desired = max(int(min_replicas), min(int(max_replicas), desired))
+    return {{
+        "current_replicas": current,
+        "desired_replicas": desired,
+        "reasons": tuple(reasons),
+        "slo": slo,
+    }}
+
+
+def performance_check(existing_paths):
+    """Return readiness for generated performance artifacts."""
+    existing = set(existing_paths)
+    required = ("app/performance.py", "app/templates/appgen_performance.html")
+    missing = tuple(path for path in required if path not in existing)
+    return {{
+        "ok": not missing,
+        "missing": missing,
+        "tables": tuple(PERFORMANCE_TABLES),
+    }}
+
+
+class PerformanceView(BaseView):
+    route_base = "/performance"
+    default_view = "index"
+
+    @expose("/")
+    def index(self):
+        return self.render_template("appgen_performance.html", budgets=performance_catalog(), slo=DEFAULT_SLO)
+
+    @expose("/catalog.json")
+    def catalog_json(self):
+        return jsonify(list(performance_catalog()))
+
+    @expose("/load-profile.json")
+    def load_profile_json(self):
+        return jsonify(load_profile_plan())
+
+
+def register_performance(appbuilder):
+    appbuilder.add_view(
+        PerformanceView,
+        "Performance",
+        icon="fa-tachometer",
+        category="AppGen",
+    )
+'''
+
+
+def _rules_text(schema: AppSchema) -> str:
+    rules = {
+        rule.name: {
+            "name": rule.name,
+            "table": rule.table,
+            "conditions": tuple(
+                {
+                    "field": condition.field,
+                    "operator": condition.operator,
+                    "values": tuple(condition.values),
+                    "message": condition.message,
+                    "action": condition.action,
+                }
+                for condition in rule.conditions
+            ),
+        }
+        for rule in schema.rules
+    }
+    return f'''"""Generated business rule and decision helpers for AppGen apps."""
+
+from __future__ import annotations
+
+from flask import jsonify
+from flask_appbuilder import BaseView
+from flask_appbuilder import expose
+
+
+BUSINESS_RULES = {rules!r}
+
+
+def rules_catalog():
+    """Return generated business rules for UI, validation, and automation."""
+    return tuple(sorted(BUSINESS_RULES.values(), key=lambda item: item["name"]))
+
+
+def rules_for_table(table_name):
+    """Return rules attached to a generated table."""
+    return tuple(rule for rule in rules_catalog() if rule["table"] == table_name)
+
+
+def rule_contract(rule_name):
+    """Return one generated rule contract."""
+    if rule_name not in BUSINESS_RULES:
+        raise KeyError(rule_name)
+    return BUSINESS_RULES[rule_name]
+
+
+def _blank(value):
+    return value is None or value == ""
+
+
+def _number(value):
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def _compare(actual, expected, operator):
+    left = _number(actual)
+    right = _number(expected)
+    if left is None or right is None:
+        left = "" if actual is None else str(actual)
+        right = "" if expected is None else str(expected)
+    if operator == "==":
+        return left == right
+    if operator == "!=":
+        return left != right
+    if operator == ">":
+        return left > right
+    if operator == ">=":
+        return left >= right
+    if operator == "<":
+        return left < right
+    if operator == "<=":
+        return left <= right
+    raise ValueError(f"Unsupported rule operator: {{operator}}")
+
+
+def condition_passes(condition, row):
+    """Return whether a row satisfies one generated condition."""
+    field = condition["field"]
+    value = row.get(field)
+    operator = condition["operator"]
+    expected_values = condition.get("values") or ()
+    if operator == "required":
+        return not _blank(value)
+    if operator == "in":
+        return str(value) in {{str(expected) for expected in expected_values}}
+    expected = expected_values[0] if expected_values else None
+    return _compare(value, expected, operator)
+
+
+def condition_message(rule_name, condition):
+    """Return a stable validation message for a generated condition."""
+    if condition.get("message"):
+        return condition["message"]
+    field = condition["field"]
+    operator = condition["operator"]
+    values = ", ".join(str(value) for value in condition.get("values") or ())
+    if operator == "required":
+        return f"{{field}} is required by {{rule_name}}"
+    return f"{{field}} must satisfy {{operator}} {{values}} for {{rule_name}}"
+
+
+def evaluate_rule(rule_name, row):
+    """Evaluate one rule against a dictionary-like row."""
+    rule = rule_contract(rule_name)
+    errors = []
+    decisions = []
+    checks = []
+    for condition in rule["conditions"]:
+        passed = condition_passes(condition, row)
+        checks.append({{"field": condition["field"], "operator": condition["operator"], "passed": passed}})
+        action = condition.get("action")
+        if action:
+            if passed:
+                decisions.append(action)
+            continue
+        if not passed:
+            errors.append(
+                {{
+                    "rule": rule_name,
+                    "field": condition["field"],
+                    "operator": condition["operator"],
+                    "message": condition_message(rule_name, condition),
+                }}
+            )
+    return {{
+        "rule": rule_name,
+        "table": rule["table"],
+        "ok": not errors,
+        "errors": tuple(errors),
+        "decisions": tuple(decisions),
+        "checks": tuple(checks),
+    }}
+
+
+def validate_row(table_name, row):
+    """Validate a row against every generated rule for its table."""
+    results = tuple(evaluate_rule(rule["name"], row) for rule in rules_for_table(table_name))
+    errors = tuple(error for result in results for error in result["errors"])
+    return {{"table": table_name, "ok": not errors, "errors": errors, "results": results}}
+
+
+def decision_plan(table_name, row):
+    """Return generated decisions/actions selected by matching rule branches."""
+    results = tuple(evaluate_rule(rule["name"], row) for rule in rules_for_table(table_name))
+    decisions = tuple(decision for result in results for decision in result["decisions"])
+    return {{"table": table_name, "decisions": decisions, "results": results}}
+
+
+def rules_check(existing_paths):
+    """Return readiness for generated business-rule artifacts."""
+    existing = set(existing_paths)
+    required = ("app/rules.py", "app/templates/appgen_rules.html")
+    missing = tuple(path for path in required if path not in existing)
+    return {{"ok": not missing, "missing": missing, "rules": tuple(BUSINESS_RULES)}}
+
+
+class RulesView(BaseView):
+    route_base = "/rules"
+    default_view = "index"
+
+    @expose("/")
+    def index(self):
+        return self.render_template("appgen_rules.html", rules=rules_catalog())
+
+    @expose("/catalog.json")
+    def catalog_json(self):
+        return jsonify(list(rules_catalog()))
+
+    @expose("/table/<table_name>.json")
+    def table_json(self, table_name):
+        return jsonify(list(rules_for_table(table_name)))
+
+
+def register_rules(appbuilder):
+    appbuilder.add_view(
+        RulesView,
+        "Business Rules",
+        icon="fa-check-square-o",
+        category="AppGen",
+    )
+'''
+
+
+def _babel_config_text() -> str:
+    return """[python: **.py]
+[jinja2: app/templates/**.html]
+extensions=jinja2.ext.autoescape,jinja2.ext.with_
+"""
+
+
+def _messages_po_text(schema: AppSchema, app_name: str) -> str:
+    labels = _translation_labels(schema, app_name)
+    lines = [
+        'msgid ""',
+        'msgstr ""',
+        '"Project-Id-Version: AppGen Generated App\\n"',
+        '"Language: en\\n"',
+        '"Content-Type: text/plain; charset=UTF-8\\n"',
+        "",
+    ]
+    for label in labels:
+        escaped = label.replace('"', '\\"')
+        lines.extend([f'msgid "{escaped}"', f'msgstr "{escaped}"', ""])
+    return "\n".join(lines)
+
+
+def _translation_labels(schema: AppSchema, app_name: str) -> tuple[str, ...]:
+    labels = {
+        app_name,
+        "Reports",
+        "Backups",
+        "Configuration",
+        "Workflows",
+        "Designer",
+    }
+    for table in schema.tables:
+        labels.add(snake_to_label(table.name))
+        for column in table.columns:
+            labels.add(snake_to_label(column.name))
+    for flow in schema.flows:
+        labels.add(flow.name)
+        for step in flow.steps:
+            labels.add(step.source)
+            labels.add(step.target)
+    for role in schema.roles:
+        labels.add(role.name)
+    return tuple(sorted(labels))
+
+
+def _pwa_manifest_text(app_name: str, branding: dict) -> str:
+    palette = branding["palette"]
+    manifest = {
+        "name": app_name,
+        "short_name": app_name[:24],
+        "description": "Generated AppGen application shell",
+        "start_url": "/",
+        "scope": "/",
+        "display": "standalone",
+        "background_color": palette["surface"],
+        "theme_color": palette["primary"],
+        "icons": [
+            {
+                "src": "/static/appgen-icon.svg",
+                "sizes": "any",
+                "type": "image/svg+xml",
+                "purpose": "any maskable",
+            }
+        ],
+    }
+    return json.dumps(manifest, indent=2, sort_keys=True) + "\n"
+
+
+def _service_worker_text() -> str:
+    return """const APPGEN_CACHE = "appgen-shell-v1";
+const APPGEN_ASSETS = [
+  "/",
+  "/static/appgen.webmanifest",
+  "/static/appgen-icon.svg",
+  "/static/appgen-theme.css",
+  "/static/appgen-offline.html"
+];
+
+self.addEventListener("install", (event) => {
+  event.waitUntil(
+    caches.open(APPGEN_CACHE).then((cache) => cache.addAll(APPGEN_ASSETS))
+  );
+  self.skipWaiting();
+});
+
+self.addEventListener("activate", (event) => {
+  event.waitUntil(
+    caches.keys().then((keys) =>
+      Promise.all(keys.filter((key) => key !== APPGEN_CACHE).map((key) => caches.delete(key)))
+    )
+  );
+  self.clients.claim();
+});
+
+self.addEventListener("fetch", (event) => {
+  if (event.request.method !== "GET") {
+    return;
+  }
+  event.respondWith(
+    fetch(event.request)
+      .then((response) => {
+        const copy = response.clone();
+        caches.open(APPGEN_CACHE).then((cache) => cache.put(event.request, copy));
+        return response;
+      })
+      .catch(() => caches.match(event.request).then((cached) => cached || caches.match("/static/appgen-offline.html")))
+  );
+});
+"""
+
+
+def _offline_page_text(app_name: str) -> str:
+    escaped_name = escape(app_name)
+    return f"""<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{escaped_name} Offline</title>
+  <style>
+    body {{ margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: #f8fafc; color: #14213d; }}
+    main {{ max-width: 680px; margin: 12vh auto; padding: 28px; border: 1px solid #d9e2ec; background: #ffffff; }}
+    h1 {{ margin: 0 0 10px; font-size: 28px; }}
+    p {{ color: #52616b; line-height: 1.55; }}
+  </style>
+</head>
+<body>
+  <main>
+    <h1>{escaped_name} is offline</h1>
+    <p>The generated app shell is available, but live data needs a network connection.</p>
+  </main>
+</body>
+</html>
+"""
+
+
+def _pwa_icon_text(app_name: str, branding: dict) -> str:
+    initials = branding.get("logo_text") or "".join(part[:1] for part in app_name.split()[:2]).upper() or "AG"
+    palette = branding["palette"]
+    return f"""<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-label="{escape(app_name)} icon">
+  <rect width="128" height="128" rx="24" fill="{escape(palette["primary"])}"/>
+  <circle cx="96" cy="32" r="18" fill="{escape(palette["accent"])}"/>
+  <text x="64" y="78" text-anchor="middle" font-family="Arial, sans-serif" font-size="38" font-weight="700" fill="#ffffff">{escape(initials)}</text>
+</svg>
+"""
+
+
+def _theme_css_text(branding: dict) -> str:
+    palette = branding["palette"]
+    return f""":root {{
+  --appgen-primary: {palette["primary"]};
+  --appgen-accent: {palette["accent"]};
+  --appgen-surface: {palette["surface"]};
+  --appgen-text: {palette["text"]};
+  --appgen-muted: {palette["muted"]};
+}}
+
+.navbar, .navbar-inverse {{
+  border-bottom: 3px solid var(--appgen-accent);
+}}
+
+.navbar-inverse .navbar-brand,
+.navbar .navbar-brand {{
+  color: #ffffff;
+  font-weight: 700;
+}}
+
+.btn-primary {{
+  background-color: var(--appgen-primary);
+  border-color: var(--appgen-primary);
+}}
+
+.btn-primary:hover,
+.btn-primary:focus {{
+  background-color: var(--appgen-accent);
+  border-color: var(--appgen-accent);
+}}
+"""
+
+
+def _branding_text(schema: AppSchema) -> str:
+    branding = _branding_contract(schema)
+    return f'''"""Generated branding and theming contract for AppGen apps."""
+
+from __future__ import annotations
+
+from flask import jsonify
+from flask_appbuilder import BaseView
+from flask_appbuilder import expose
+
+
+BRANDING = {branding!r}
+
+
+def theme_contract():
+    """Return generated app branding, palette, and theme asset paths."""
+    return dict(BRANDING)
+
+
+def css_variables():
+    """Return CSS custom properties for generated templates and extensions."""
+    palette = BRANDING["palette"]
+    return {{
+        "--appgen-primary": palette["primary"],
+        "--appgen-accent": palette["accent"],
+        "--appgen-surface": palette["surface"],
+        "--appgen-text": palette["text"],
+        "--appgen-muted": palette["muted"],
+    }}
+
+
+def asset_check(existing_paths):
+    """Return readiness for generated branding assets."""
+    existing = set(existing_paths)
+    required = ("app/branding.py", "app/static/appgen-theme.css", "app/templates/appgen_branding.html")
+    missing = tuple(path for path in required if path not in existing)
+    return {{
+        "ok": not missing,
+        "missing": missing,
+        "theme": BRANDING["theme"],
+        "assets": dict(BRANDING["assets"]),
+    }}
+
+
+class BrandingView(BaseView):
+    route_base = "/branding"
+    default_view = "index"
+
+    @expose("/")
+    def index(self):
+        return self.render_template("appgen_branding.html", branding=theme_contract(), variables=css_variables())
+
+    @expose("/theme.json")
+    def theme_json(self):
+        return jsonify(theme_contract())
+
+
+def register_branding(appbuilder):
+    appbuilder.add_view(
+        BrandingView,
+        "Branding",
+        icon="fa-paint-brush",
+        category="AppGen",
+    )
+'''
+
+
+def _extension_contracts(schema: AppSchema) -> tuple[dict, ...]:
+    base_hooks = (
+        {
+            "hook": "startup",
+            "kind": "lifecycle",
+            "signature": "startup(appbuilder)",
+            "description": "Register custom views, APIs, jobs, or services after generated views are loaded.",
+        },
+        {
+            "hook": "navigation_items",
+            "kind": "ui",
+            "signature": "navigation_items()",
+            "description": "Return custom navigation descriptors for generated UI shells.",
+        },
+        {
+            "hook": "template_context",
+            "kind": "ui",
+            "signature": "template_context(context)",
+            "description": "Add non-sensitive values to generated template context dictionaries.",
+        },
+    )
+    table_hooks = []
+    for table in schema.tables:
+        table_key = underscore(table.name)
+        table_hooks.extend(
+            (
+                {
+                    "hook": f"validate_{table_key}",
+                    "kind": "validation",
+                    "table": table.name,
+                    "signature": f"validate_{table_key}(row)",
+                    "description": f"Return validation errors for {table.name} rows before persistence.",
+                },
+                {
+                    "hook": f"before_save_{table_key}",
+                    "kind": "lifecycle",
+                    "table": table.name,
+                    "signature": f"before_save_{table_key}(row)",
+                    "description": f"Normalize {table.name} rows before create or update operations.",
+                },
+                {
+                    "hook": f"after_save_{table_key}",
+                    "kind": "lifecycle",
+                    "table": table.name,
+                    "signature": f"after_save_{table_key}(row)",
+                    "description": f"Dispatch follow-up work after {table.name} rows are saved.",
+                },
+            )
+        )
+    return tuple((*base_hooks, *table_hooks))
+
+
+def _extensions_text(schema: AppSchema) -> str:
+    contracts = _extension_contracts(schema)
+    return f'''"""Generated extension hook registry for AppGen apps."""
+
+from __future__ import annotations
+
+import importlib
+import importlib.util
+from pathlib import Path
+
+from flask import jsonify
+from flask_appbuilder import BaseView
+from flask_appbuilder import expose
+
+
+CUSTOM_MODULE = "app_custom.extensions"
+EXTENSION_HOOKS = {contracts!r}
+
+
+def extension_points():
+    """Return stable custom-code hook contracts supported by this generated app."""
+    return tuple(EXTENSION_HOOKS)
+
+
+def load_custom_module(module_name=CUSTOM_MODULE):
+    """Load the custom extension module, returning None when it is absent."""
+    try:
+        return importlib.import_module(module_name)
+    except ModuleNotFoundError as exc:
+        if exc.name == module_name or module_name.startswith(str(exc.name) + "."):
+            return None
+        raise
+
+
+def load_rules_module():
+    """Load generated rules in package or direct-file test contexts."""
+    try:
+        from . import rules as appgen_rules
+        return appgen_rules
+    except ImportError:
+        path = Path(__file__).resolve().with_name("rules.py")
+        spec = importlib.util.spec_from_file_location("appgen_generated_rules", path)
+        module = importlib.util.module_from_spec(spec)
+        if spec.loader is None:
+            raise ImportError(f"Cannot load generated rules from {{path}}")
+        spec.loader.exec_module(module)
+        return module
+
+
+def dispatch(hook_name, payload=None, *, module=None):
+    """Dispatch a generated extension hook to app_custom.extensions when present."""
+    target = module if module is not None else load_custom_module()
+    if target is None or not hasattr(target, hook_name):
+        return payload
+    return getattr(target, hook_name)(payload)
+
+
+def validate_row(table_name, row, *, module=None):
+    """Run generated rule validation plus table-specific custom validation."""
+    hook_name = f"validate_{{str(table_name).lower()}}"
+    rules_module = load_rules_module()
+    rule_result = rules_module.validate_row(table_name, dict(row))
+    errors = list(rule_result["errors"])
+    target = module if module is not None else load_custom_module()
+    if target is not None and hasattr(target, hook_name):
+        custom_errors = getattr(target, hook_name)(dict(row))
+        if custom_errors is None:
+            custom_errors = ()
+        errors.extend(custom_errors)
+    return {{
+        "ok": not errors,
+        "errors": tuple(errors),
+        "rules": rule_result,
+        "decisions": rules_module.decision_plan(table_name, dict(row))["decisions"],
+    }}
+
+
+def before_save_row(table_name, row, *, module=None):
+    """Run generated validation before dispatching table-specific save hooks."""
+    validation = validate_row(table_name, row, module=module)
+    if not validation["ok"]:
+        raise ValueError(validation["errors"])
+    hook_name = f"before_save_{{str(table_name).lower()}}"
+    return dispatch(hook_name, dict(row), module=module)
+
+
+def after_save_row(table_name, row, *, module=None):
+    """Dispatch table-specific after-save hooks through one stable helper."""
+    hook_name = f"after_save_{{str(table_name).lower()}}"
+    return dispatch(hook_name, dict(row), module=module)
+
+
+def extension_check(existing_paths):
+    """Return readiness for generated extension artifacts."""
+    existing = set(existing_paths)
+    required = (
+        "app/extensions.py",
+        "app/templates/appgen_extensions.html",
+        "app_custom/__init__.py",
+        "app_custom/extensions.py",
+    )
+    missing = tuple(path for path in required if path not in existing)
+    return {{
+        "ok": not missing,
+        "missing": missing,
+        "hooks": tuple(hook["hook"] for hook in EXTENSION_HOOKS),
+        "custom_module": CUSTOM_MODULE,
+    }}
+
+
+class ExtensionView(BaseView):
+    route_base = "/extensions"
+    default_view = "index"
+
+    @expose("/")
+    def index(self):
+        return self.render_template("appgen_extensions.html", hooks=extension_points())
+
+    @expose("/hooks.json")
+    def hooks_json(self):
+        return jsonify(list(extension_points()))
+
+
+def register_extensions(appbuilder):
+    custom_module = load_custom_module()
+    startup = getattr(custom_module, "startup", None) if custom_module else None
+    if callable(startup):
+        startup(appbuilder)
+    appbuilder.add_view(
+        ExtensionView,
+        "Extensions",
+        icon="fa-plug",
+        category="AppGen",
+    )
+'''
+
+
+def _custom_extensions_text(schema: AppSchema, app_name: str) -> str:
+    table_stubs = []
+    for table in schema.tables:
+        table_key = underscore(table.name)
+        table_stubs.append(
+            f"""
+
+def validate_{table_key}(row):
+    \"\"\"Return validation errors for {table.name} rows; empty means valid.\"\"\"
+    return ()
+
+
+def before_save_{table_key}(row):
+    \"\"\"Return a normalized {table.name} row before persistence.\"\"\"
+    return row
+
+
+def after_save_{table_key}(row):
+    \"\"\"Run side effects after a {table.name} row is saved.\"\"\"
+    return row
+"""
+        )
+    return f'''"""Custom extension hooks for {app_name}.
+
+This file is intentionally outside the generated app package so local
+customizations can survive regeneration.  AppGen loads these functions from
+``app.extensions`` when present.
+"""
+
+from __future__ import annotations
+
+
+def startup(appbuilder):
+    """Register custom views, APIs, services, or jobs."""
+    return None
+
+
+def navigation_items():
+    """Return custom navigation descriptors for generated shells."""
+    return ()
+
+
+def template_context(context):
+    """Return template context additions without mutating generated code."""
+    return dict(context)
+{''.join(table_stubs)}
+'''
+
+
+def _seed_text(schema: AppSchema) -> str:
+    seed_data = {
+        table.name: [
+            {
+                _model_attribute_name(column): _sample_seed_value(table.name, column)
+                for column in table.columns
+                if not column.primary_key and column.references is None and not column.hidden and not column.derived
+            }
+        ]
+        for table in schema.tables
+    }
+    return f'''"""Generated deterministic seed data for AppGen apps."""
+
+from __future__ import annotations
+
+
+SEED_DATA = {seed_data!r}
+
+
+def seed_database(db, models):
+    """Insert generated demo rows when a target table is empty."""
+    inserted = {{}}
+    for table_name, rows in SEED_DATA.items():
+        model_name = "".join(part.capitalize() for part in table_name.split("_"))
+        model = getattr(models, model_name, None)
+        if model is None or not rows:
+            inserted[table_name] = 0
+            continue
+        if db.session.query(model).first() is not None:
+            inserted[table_name] = 0
+            continue
+        for row in rows:
+            db.session.add(model(**row))
+        inserted[table_name] = len(rows)
+    db.session.commit()
+    return inserted
+
+
+def main():
+    from app import db
+    from app import models
+
+    result = seed_database(db, models)
+    print(result)
+
+
+if __name__ == "__main__":
+    main()
+'''
+
+
+def _sample_seed_value(table_name: str, column: ColumnSchema):
+    normalized_type = column.type_name.lower().split("(", 1)[0]
+    name = column.name.lower()
+    if normalized_type.endswith("[]"):
+        return "[]"
+    if normalized_type in {"int", "integer", "serial", "smallint", "bigint", "bigserial"}:
+        return 1
+    if normalized_type in {"float", "real", "double", "double precision", "decimal", "numeric", "money"}:
+        return 1.0
+    if normalized_type in {"bool", "boolean"}:
+        return True
+    if normalized_type in {"date"}:
+        return "2026-01-01"
+    if normalized_type in {"datetime", "timestamp", "timestamptz", "time"}:
+        return "2026-01-01T00:00:00"
+    if "email" in name or normalized_type == "email":
+        return f"{underscore(table_name)}_{underscore(column.name)}@example.com"
+    if "url" in name or normalized_type == "url":
+        return "https://example.com"
+    if "status" in name:
+        return "draft"
+    return f"Sample {snake_to_label(column.name)}"
+
+
+def _schema_docs_text(schema: AppSchema, app_name: str) -> str:
+    lines = [
+        f"# {app_name} Schema",
+        "",
+        "Generated by AppGen from the canonical application schema.",
+        "",
+        "## Tables",
+        "",
+    ]
+    for table in schema.tables:
+        lines.extend(
+            [
+                f"### {table.name}",
+                "",
+                "| Column | Type | Required | Primary Key | Unique | Reference | Hidden | Search | Derived | Expression | Group |",
+                "| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |",
+            ]
+        )
+        for column in table.columns:
+            reference = ""
+            if column.references:
+                reference = f"{column.references[0]}.{column.references[1]}"
+            lines.append(
+                "| "
+                + " | ".join(
+                    [
+                        column.name,
+                        column.type_name,
+                        "no" if column.nullable else "yes",
+                        "yes" if column.primary_key else "no",
+                        "yes" if column.unique else "no",
+                        reference,
+                        "yes" if column.hidden else "no",
+                        "yes" if column.searchable else "no",
+                        "yes" if column.derived else "no",
+                        column.expression or "",
+                        column.source_group or "",
+                    ]
+                )
+                + " |"
+            )
+        lines.append("")
+    lines.extend(["## Relations", ""])
+    if schema.relations:
+        for relation in schema.relations:
+            lines.append(
+                f"- `{relation.source_table}.{relation.source_column}` -> "
+                f"`{relation.target_table}.{relation.target_column}`"
+            )
+    else:
+        lines.append("- No relations declared")
+    lines.append("")
+    lines.extend(["## Mermaid ERD", "", "```mermaid", "erDiagram"])
+    for table in schema.tables:
+        lines.append(f"  {table.name} {{")
+        for column in table.columns:
+            markers = []
+            if column.primary_key:
+                markers.append("PK")
+            if column.references:
+                markers.append("FK")
+            marker = " " + " ".join(markers) if markers else ""
+            lines.append(f"    {column.type_name} {column.name}{marker}")
+        lines.append("  }")
+    for relation in schema.relations:
+        lines.append(
+            f"  {relation.target_table} ||--o{{ {relation.source_table} : {relation.source_column}"
+        )
+    lines.extend(["```", ""])
+    lines.extend(["## Generated Artifacts", "", "- `app/models.py` for SQLAlchemy models.", "- `app/views.py` for Flask-AppBuilder views.", "- `app/api.py` and `app/gql.py` for APIs.", "- `seed.py` for deterministic demo data."])
+    return "\n".join(lines) + "\n"
+
+
+def _content_kind(column: ColumnSchema) -> str:
+    type_name = column.type_name.lower().split("(", 1)[0]
+    name = column.name.lower()
+    if column.primary_key:
+        return "identifier"
+    if column.references is not None:
+        return "relationship"
+    if column.hidden:
+        return "internal"
+    if column.derived:
+        return "computed"
+    if type_name in {"image", "file", "blob", "binary", "bytea"}:
+        return "media"
+    if type_name in {"text", "textarea", "longstr"} or any(part in name for part in ("description", "summary", "note", "body")):
+        return "long_text"
+    if type_name in {"date", "datetime", "timestamp", "timestamptz", "time"} or "date" in name:
+        return "temporal"
+    if type_name in {"decimal", "numeric", "money", "float", "real", "double", "double precision", "int", "integer", "bigint"}:
+        return "measure"
+    if type_name in {"bool", "boolean"}:
+        return "flag"
+    if column.searchable or column.unique or name in {"name", "title", "code", "email", "status"} or name.endswith("_number"):
+        return "descriptor"
+    return "attribute"
+
+
+def _data_dictionary_contract(schema: AppSchema, app_name: str) -> dict:
+    tables = []
+    for table in schema.tables:
+        columns = []
+        for column in table.columns:
+            reference = None
+            if column.references:
+                reference = {"table": column.references[0], "column": column.references[1]}
+            attr_name = _model_attribute_name(column)
+            columns.append(
+                {
+                    "name": column.name,
+                    "attribute": attr_name,
+                    "label": snake_to_label(column.name),
+                    "type": column.type_name,
+                    "content_kind": _content_kind(column),
+                    "required": not column.nullable,
+                    "primary_key": column.primary_key,
+                    "unique": column.unique,
+                    "reference": reference,
+                    "hidden": column.hidden,
+                    "searchable": column.searchable,
+                    "derived": column.derived,
+                    "expression": column.expression,
+                    "source_group": column.source_group,
+                    "readable": not column.hidden and not column.derived,
+                    "writable": not column.primary_key and not column.hidden and not column.derived,
+                    "sample_value": _sample_seed_value(table.name, column),
+                }
+            )
+        visible = [column for column in columns if column["readable"]]
+        display_fields = tuple(
+            column["attribute"]
+            for column in visible
+            if column["content_kind"] in {"descriptor", "long_text", "attribute"}
+        )[:3] or tuple(column["attribute"] for column in visible[:3])
+        tables.append(
+            {
+                "name": table.name,
+                "label": snake_to_label(table.name),
+                "model": snake_to_pascal(table.name),
+                "columns": columns,
+                "display_fields": display_fields,
+                "search_fields": tuple(column["attribute"] for column in columns if column["searchable"] and column["readable"]),
+                "writable_fields": tuple(column["attribute"] for column in columns if column["writable"]),
+                "hidden_fields": tuple(column["attribute"] for column in columns if column["hidden"]),
+                "derived_fields": tuple(column["attribute"] for column in columns if column["derived"]),
+            }
+        )
+    return {
+        "format": "appgen.data-dictionary.v1",
+        "app_name": app_name,
+        "source": schema.source,
+        "tables": tables,
+        "relations": [relation.__dict__ for relation in schema.relations],
+        "enums": [enum.__dict__ for enum in schema.enums],
+    }
+
+
+def _data_dictionary_json(schema: AppSchema, app_name: str) -> str:
+    return json.dumps(_data_dictionary_contract(schema, app_name), indent=2, sort_keys=True) + "\n"
+
+
+def _data_dictionary_md_text(schema: AppSchema, app_name: str) -> str:
+    dictionary = _data_dictionary_contract(schema, app_name)
+    lines = [
+        f"# {app_name} Data Dictionary",
+        "",
+        "Generated by AppGen for database structure, content meaning, and low-code tooling.",
+        "",
+        "## Tables",
+        "",
+    ]
+    for table in dictionary["tables"]:
+        lines.extend(
+            [
+                f"### {table['label']} (`{table['name']}`)",
+                "",
+                f"- Model: `{table['model']}`",
+                f"- Display fields: {', '.join(f'`{field}`' for field in table['display_fields']) or 'none'}",
+                f"- Writable fields: {', '.join(f'`{field}`' for field in table['writable_fields']) or 'none'}",
+                "",
+                "| Field | Attribute | Type | Content | Required | Writable | Sample |",
+                "| --- | --- | --- | --- | --- | --- | --- |",
+            ]
+        )
+        for column in table["columns"]:
+            sample = "" if column["sample_value"] is None else str(column["sample_value"])
+            lines.append(
+                "| "
+                + " | ".join(
+                    [
+                        column["name"],
+                        column["attribute"],
+                        column["type"],
+                        column["content_kind"],
+                        "yes" if column["required"] else "no",
+                        "yes" if column["writable"] else "no",
+                        sample,
+                    ]
+                )
+                + " |"
+            )
+        lines.append("")
+    lines.extend(["## Relations", ""])
+    if dictionary["relations"]:
+        for relation in dictionary["relations"]:
+            lines.append(
+                f"- `{relation['source_table']}.{relation['source_column']}` references "
+                f"`{relation['target_table']}.{relation['target_column']}`"
+            )
+    else:
+        lines.append("- No relations declared")
+    return "\n".join(lines).rstrip() + "\n"
+
+
+def _accessibility_docs_text(schema: AppSchema, app_name: str) -> str:
+    labels = [snake_to_label(table.name) for table in schema.tables]
+    table_list = "\n".join(f"- {label}" for label in labels) or "- No generated table views yet"
+    return f"""# {app_name} Accessibility Baseline
+
+Generated by AppGen as a starting point for accessibility review.
+
+## Included Baseline
+
+- A skip-to-content link on the generated home page.
+- A semantic `<main>` landmark on the generated home page.
+- Region labels for generated dashboard panels.
+- High-contrast default colors in generated AppGen screens.
+- Schema-derived labels for generated model views and reports.
+
+## Review Checklist
+
+- Verify keyboard access for every generated view and custom action.
+- Verify visible focus indicators after theme customization.
+- Check form labels and validation messages in generated CRUD screens.
+- Run an automated WCAG scan before release.
+- Test one screen-reader path through login, list, show, add, edit, reports, backups, and workflows.
+
+## Generated Data Views
+
+{table_list}
+
+## Notes
+
+Accessibility is affected by custom templates, branding, field widgets, and
+third-party FAB extensions. Re-run this checklist after every customization.
+"""
+
+
+def _reports_text(schema: AppSchema) -> str:
+    reports = {}
+    table_columns = {}
+    for table in schema.tables:
+        columns = [
+            _model_attribute_name(column)
+            for column in table.columns
+            if not column.hidden and not column.derived
+        ]
+        table_columns[table.name] = tuple(columns)
+        reports[table.name] = {
+            "key": table.name,
+            "kind": "table",
+            "tables": (table.name,),
+            "table": table.name,
+            "model": snake_to_pascal(table.name),
+            "label": snake_to_label(table.name),
+            "columns": columns,
+        }
+    relation_reports = {}
+    for relation in schema.relations:
+        key = f"{relation.source_table}__{relation.target_table}__join"
+        relation_reports[key] = {
+            "key": key,
+            "kind": "join",
+            "label": f"{snake_to_label(relation.source_table)} with {snake_to_label(relation.target_table)}",
+            "tables": (relation.source_table, relation.target_table),
+            "relations": (
+                {
+                    "source_table": relation.source_table,
+                    "source_column": relation.source_column,
+                    "target_table": relation.target_table,
+                    "target_column": relation.target_column,
+                    "cardinality": relation.cardinality,
+                },
+            ),
+            "columns": tuple(
+                [f"{relation.source_table}.{column}" for column in table_columns.get(relation.source_table, ())]
+                + [f"{relation.target_table}.{column}" for column in table_columns.get(relation.target_table, ())]
+            ),
+        }
+    three_way_reports = {}
+    relation_pairs = []
+    for first in schema.relations:
+        for second in schema.relations:
+            if first == second:
+                continue
+            if first.source_table == second.source_table:
+                relation_pairs.append((first, second, (first.source_table, first.target_table, second.target_table)))
+            elif first.target_table == second.source_table:
+                relation_pairs.append((first, second, (first.source_table, first.target_table, second.target_table)))
+    seen_three_way = set()
+    for first, second, tables in relation_pairs:
+        if len(set(tables)) != 3:
+            continue
+        key = "__".join(tables) + "__three_way"
+        signature = tuple(tables)
+        if signature in seen_three_way:
+            continue
+        seen_three_way.add(signature)
+        columns = []
+        for table_name in tables:
+            columns.extend(f"{table_name}.{column}" for column in table_columns.get(table_name, ()))
+        three_way_reports[key] = {
+            "key": key,
+            "kind": "three_way",
+            "label": " / ".join(snake_to_label(table_name) for table_name in tables),
+            "tables": tuple(tables),
+            "relations": (
+                {
+                    "source_table": first.source_table,
+                    "source_column": first.source_column,
+                    "target_table": first.target_table,
+                    "target_column": first.target_column,
+                    "cardinality": first.cardinality,
+                },
+                {
+                    "source_table": second.source_table,
+                    "source_column": second.source_column,
+                    "target_table": second.target_table,
+                    "target_column": second.target_column,
+                    "cardinality": second.cardinality,
+                },
+            ),
+            "columns": tuple(columns),
+        }
+    return f'''"""Generated report catalog and exports for AppGen apps."""
+
+from __future__ import annotations
+
+import csv
+import io
+
+from flask import Response
+from flask_appbuilder import BaseView, expose
+
+
+REPORTS = {reports!r}
+JOIN_REPORTS = {relation_reports!r}
+THREE_WAY_REPORTS = {three_way_reports!r}
+
+
+def report_catalog():
+    """Return generated report definitions sorted by label."""
+    return tuple(sorted(REPORTS.values(), key=lambda report: report["label"]))
+
+
+def join_report_catalog():
+    """Return generated relationship-aware two-table report definitions."""
+    return tuple(sorted(JOIN_REPORTS.values(), key=lambda report: report["label"]))
+
+
+def three_way_report_catalog():
+    """Return generated three-table report definitions from relation paths."""
+    return tuple(sorted(THREE_WAY_REPORTS.values(), key=lambda report: report["label"]))
+
+
+def all_report_catalog():
+    """Return table, join, and three-way report definitions."""
+    return tuple(sorted(
+        tuple(REPORTS.values()) + tuple(JOIN_REPORTS.values()) + tuple(THREE_WAY_REPORTS.values()),
+        key=lambda report: (report["kind"], report["label"]),
+    ))
+
+
+def visible_columns(table_name):
+    """Return exported columns for a table report."""
+    return tuple(REPORTS.get(table_name, {{}}).get("columns", ()))
+
+
+def report_definition(report_key):
+    """Return any generated table, join, or three-way report definition."""
+    for catalog in (REPORTS, JOIN_REPORTS, THREE_WAY_REPORTS):
+        if report_key in catalog:
+            return catalog[report_key]
+    raise KeyError(f"Unknown report: {{report_key}}")
+
+
+def relationship_report_keys():
+    """Return generated join and three-way report keys."""
+    return tuple(JOIN_REPORTS) + tuple(THREE_WAY_REPORTS)
+
+
+def report_query_plan(report_key):
+    """Return a deterministic query plan for a table, join, or three-way report."""
+    report = report_definition(report_key)
+    return {{
+        "key": report["key"],
+        "kind": report["kind"],
+        "tables": tuple(report["tables"]),
+        "columns": tuple(report["columns"]),
+        "relations": tuple(report.get("relations", ())),
+        "requires_join": report["kind"] in {{"join", "three_way"}},
+    }}
+
+
+def flatten_join_row(report_key, row):
+    """Flatten a nested row payload using a generated relationship report schema."""
+    report = report_definition(report_key)
+    flattened = {{}}
+    for column in report["columns"]:
+        if "." not in column:
+            flattened[column] = value_for(row, column)
+            continue
+        table_name, field_name = column.split(".", 1)
+        table_row = row.get(table_name, {{}}) if isinstance(row, dict) else getattr(row, table_name, {{}})
+        flattened[column] = value_for(table_row, field_name)
+    return flattened
+
+
+def relationship_rows_to_csv(report_key, rows):
+    """Serialize nested join or three-way report rows to CSV."""
+    report = report_definition(report_key)
+    return rows_to_csv(report["columns"], [flatten_join_row(report_key, row) for row in rows])
+
+
+def value_for(row, column):
+    """Read a report value from an object or dictionary row."""
+    if isinstance(row, dict):
+        return row.get(column)
+    return getattr(row, column, None)
+
+
+def rows_to_csv(columns, rows):
+    """Serialize rows to CSV using the report column order."""
+    buffer = io.StringIO()
+    writer = csv.writer(buffer)
+    writer.writerow(columns)
+    for row in rows:
+        writer.writerow([value_for(row, column) for column in columns])
+    return buffer.getvalue()
+
+
+class ReportsView(BaseView):
+    route_base = "/reports"
+    default_view = "index"
+
+    @expose("/")
+    def index(self):
+        return self.render_template(
+            "appgen_reports.html",
+            reports=report_catalog(),
+            join_reports=join_report_catalog(),
+            three_way_reports=three_way_report_catalog(),
+        )
+
+    @expose("/catalog.json")
+    def catalog_json(self):
+        return {{
+            "tables": list(report_catalog()),
+            "joins": list(join_report_catalog()),
+            "three_way": list(three_way_report_catalog()),
+        }}
+
+    @expose("/<table_name>.csv")
+    def export_csv(self, table_name):
+        if table_name not in REPORTS:
+            return Response("Unknown report\\n", status=404, mimetype="text/plain")
+        report = REPORTS[table_name]
+        from . import db
+        from . import models
+
+        model = getattr(models, report["model"])
+        rows = db.session.query(model).limit(10000).all()
+        content = rows_to_csv(report["columns"], rows)
+        headers = {{"Content-Disposition": f"attachment; filename={{table_name}}.csv"}}
+        return Response(content, headers=headers, mimetype="text/csv")
+
+
+def register_reports(appbuilder):
+    appbuilder.add_view(
+        ReportsView,
+        "Reports",
+        icon="fa-file-text-o",
+        category="AppGen",
+    )
+'''
+
+
+def _report_delivery_text(schema: AppSchema) -> str:
+    reports = {}
+    for table in schema.tables:
+        columns = [
+            _model_attribute_name(column)
+            for column in table.columns
+            if not column.hidden and not column.derived
+        ]
+        reports[table.name] = {
+            "table": table.name,
+            "model": snake_to_pascal(table.name),
+            "label": snake_to_label(table.name),
+            "columns": columns,
+            "formats": ("csv", "pdf"),
+            "channels": ("download", "email"),
+        }
+    return f'''"""Generated PDF and email report delivery helpers for AppGen apps."""
+
+from __future__ import annotations
+
+import base64
+import html
+from datetime import datetime
+from datetime import timezone
+
+from flask import Response
+from flask import jsonify
+from flask import request
+from flask_appbuilder import BaseView
+from flask_appbuilder import expose
+
+
+REPORT_DELIVERY = {reports!r}
+
+
+def delivery_catalog():
+    """Return generated report delivery definitions."""
+    return tuple(sorted(REPORT_DELIVERY.values(), key=lambda report: report["label"]))
+
+
+def delivery_report(table_name):
+    """Return one generated report delivery contract."""
+    if table_name not in REPORT_DELIVERY:
+        raise KeyError(f"Unknown report delivery contract: {{table_name}}")
+    return REPORT_DELIVERY[table_name]
+
+
+def _value(row, column):
+    if isinstance(row, dict):
+        return row.get(column)
+    return getattr(row, column, None)
+
+
+def rows_to_html(table_name, rows):
+    """Render report rows as a small printable HTML document."""
+    report = delivery_report(table_name)
+    header = "".join(f"<th>{{html.escape(column)}}</th>" for column in report["columns"])
+    body = []
+    for row in rows:
+        cells = "".join(
+            f"<td>{{html.escape(str(_value(row, column) or ''))}}</td>"
+            for column in report["columns"]
+        )
+        body.append(f"<tr>{{cells}}</tr>")
+    return (
+        "<!doctype html><html><head><meta charset='utf-8'>"
+        f"<title>{{html.escape(report['label'])}}</title>"
+        "<style>body{{font-family:Arial,sans-serif}}table{{border-collapse:collapse;width:100%}}"
+        "th,td{{border:1px solid #ccd6e0;padding:6px;text-align:left}}th{{background:#f1f5f9}}</style>"
+        f"</head><body><h1>{{html.escape(report['label'])}}</h1><table><thead><tr>{{header}}</tr></thead>"
+        f"<tbody>{{''.join(body)}}</tbody></table></body></html>"
+    )
+
+
+def _pdf_escape(text):
+    return str(text).replace("\\\\", "\\\\\\\\").replace("(", "\\\\(").replace(")", "\\\\)")
+
+
+def rows_to_pdf_bytes(table_name, rows, *, max_rows=40):
+    """Render a dependency-free one-page PDF summary for generated reports."""
+    report = delivery_report(table_name)
+    lines = [report["label"], " | ".join(report["columns"])]
+    for row in tuple(rows)[:max_rows]:
+        lines.append(" | ".join(str(_value(row, column) or "") for column in report["columns"]))
+    text_ops = []
+    y = 760
+    for line in lines[:42]:
+        text_ops.append(f"BT /F1 9 Tf 40 {{y}} Td ({{_pdf_escape(line[:110])}}) Tj ET")
+        y -= 16
+    stream = "\\n".join(text_ops).encode("latin-1", "replace")
+    objects = [
+        b"1 0 obj << /Type /Catalog /Pages 2 0 R >> endobj",
+        b"2 0 obj << /Type /Pages /Kids [3 0 R] /Count 1 >> endobj",
+        b"3 0 obj << /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >> endobj",
+        b"4 0 obj << /Type /Font /Subtype /Type1 /BaseFont /Helvetica >> endobj",
+        b"5 0 obj << /Length " + str(len(stream)).encode("ascii") + b" >> stream\\n" + stream + b"\\nendstream endobj",
+    ]
+    output = bytearray(b"%PDF-1.4\\n")
+    offsets = [0]
+    for item in objects:
+        offsets.append(len(output))
+        output.extend(item + b"\\n")
+    xref = len(output)
+    output.extend(f"xref\\n0 {{len(objects) + 1}}\\n0000000000 65535 f \\n".encode("ascii"))
+    for offset in offsets[1:]:
+        output.extend(f"{{offset:010d}} 00000 n \\n".encode("ascii"))
+    output.extend(
+        f"trailer << /Size {{len(objects) + 1}} /Root 1 0 R >>\\nstartxref\\n{{xref}}\\n%%EOF\\n".encode("ascii")
+    )
+    return bytes(output)
+
+
+def pdf_attachment(table_name, rows):
+    """Return a generated PDF attachment payload without sending email."""
+    pdf = rows_to_pdf_bytes(table_name, rows)
+    return {{
+        "filename": f"{{table_name}}.pdf",
+        "content_type": "application/pdf",
+        "bytes": len(pdf),
+        "base64": base64.b64encode(pdf).decode("ascii"),
+    }}
+
+
+def email_report_payload(table_name, rows, *, recipients, subject=None, message=None):
+    """Build an email payload with a generated PDF report attachment."""
+    report = delivery_report(table_name)
+    return {{
+        "channel": "email",
+        "recipients": tuple(recipients),
+        "subject": subject or f"{{report['label']}} report",
+        "body": message or f"Attached report: {{report['label']}}.",
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "attachments": (pdf_attachment(table_name, rows),),
+    }}
+
+
+def delivery_plan(table_name, *, channels=("download",), formats=("csv", "pdf")):
+    """Return supported delivery actions for a generated report."""
+    report = delivery_report(table_name)
+    unsupported_channels = tuple(channel for channel in channels if channel not in report["channels"])
+    unsupported_formats = tuple(format_name for format_name in formats if format_name not in report["formats"])
+    return {{
+        "table": table_name,
+        "ok": not unsupported_channels and not unsupported_formats,
+        "channels": tuple(channels),
+        "formats": tuple(formats),
+        "unsupported_channels": unsupported_channels,
+        "unsupported_formats": unsupported_formats,
+    }}
+
+
+class ReportDeliveryView(BaseView):
+    route_base = "/report-delivery"
+    default_view = "index"
+
+    @expose("/")
+    def index(self):
+        return self.render_template("appgen_report_delivery.html", reports=delivery_catalog())
+
+    @expose("/catalog.json")
+    def catalog_json(self):
+        return jsonify(list(delivery_catalog()))
+
+    @expose("/<table_name>.json")
+    def report_json(self, table_name):
+        return jsonify(delivery_report(table_name))
+
+    @expose("/<table_name>.pdf")
+    def export_pdf(self, table_name):
+        if table_name not in REPORT_DELIVERY:
+            return Response("Unknown report\\n", status=404, mimetype="text/plain")
+        report = REPORT_DELIVERY[table_name]
+        from . import db
+        from . import models
+
+        model = getattr(models, report["model"])
+        rows = db.session.query(model).limit(1000).all()
+        headers = {{"Content-Disposition": f"attachment; filename={{table_name}}.pdf"}}
+        return Response(rows_to_pdf_bytes(table_name, rows), headers=headers, mimetype="application/pdf")
+
+
+def register_report_delivery(appbuilder):
+    appbuilder.add_view(
+        ReportDeliveryView,
+        "Report Delivery",
+        icon="fa-envelope-o",
+        category="AppGen",
+    )
+'''
+
+
+def _dashboards_text(schema: AppSchema) -> str:
+    def normalized_type(column: ColumnSchema) -> str:
+        return column.type_name.lower().split("(", 1)[0]
+
+    def is_numeric(column: ColumnSchema) -> bool:
+        return normalized_type(column) in {
+            "int",
+            "integer",
+            "serial",
+            "smallint",
+            "bigint",
+            "bigserial",
+            "float",
+            "real",
+            "double",
+            "double precision",
+            "decimal",
+            "numeric",
+            "money",
+        }
+
+    def is_temporal(column: ColumnSchema) -> bool:
+        type_name = normalized_type(column)
+        return type_name in {"date", "datetime", "timestamp", "timestamptz", "time"} or "date" in column.name.lower()
+
+    dashboards = {}
+    for table in schema.tables:
+        visible = [column for column in table.columns if not column.hidden and not column.derived]
+        numeric = [column for column in visible if is_numeric(column) and not column.primary_key and column.references is None]
+        temporal = [column for column in visible if is_temporal(column)]
+        categorical = [
+            column
+            for column in visible
+            if column.searchable or column.references is not None or normalized_type(column) in {"bool", "boolean", "string", "varchar", "char", "text"}
+        ]
+        charts = [
+            {
+                "name": f"{table.name}RecordCount",
+                "label": f"{snake_to_label(table.name)} records",
+                "kind": "kpi",
+                "metric": "count",
+                "field": None,
+            }
+        ]
+        if categorical:
+            category = categorical[0]
+            charts.append(
+                {
+                    "name": f"{table.name}{snake_to_pascal(category.name)}Distribution",
+                    "label": f"{snake_to_label(category.name)} distribution",
+                    "kind": "bar",
+                    "metric": "count_by",
+                    "field": _model_attribute_name(category),
+                }
+            )
+        if temporal:
+            date_field = temporal[0]
+            charts.append(
+                {
+                    "name": f"{table.name}{snake_to_pascal(date_field.name)}Trend",
+                    "label": f"{snake_to_label(date_field.name)} trend",
+                    "kind": "line",
+                    "metric": "count_over_time",
+                    "field": _model_attribute_name(date_field),
+                }
+            )
+        if numeric:
+            value_field = numeric[0]
+            charts.append(
+                {
+                    "name": f"{table.name}{snake_to_pascal(value_field.name)}Total",
+                    "label": f"{snake_to_label(value_field.name)} total",
+                    "kind": "number",
+                    "metric": "sum",
+                    "field": _model_attribute_name(value_field),
+                }
+            )
+        dashboards[table.name] = {
+            "table": table.name,
+            "label": snake_to_label(table.name),
+            "model": snake_to_pascal(table.name),
+            "primary_key": next((column.name for column in table.columns if column.primary_key), "id"),
+            "charts": tuple(charts),
+        }
+
+    return f'''"""Generated dashboard and chart contracts for AppGen apps."""
+
+from __future__ import annotations
+
+from collections import Counter
+
+from flask import jsonify
+from flask_appbuilder import BaseView
+from flask_appbuilder import expose
+
+
+DASHBOARDS = {dashboards!r}
+
+
+def dashboard_catalog():
+    """Return generated dashboard definitions."""
+    return tuple(DASHBOARDS.values())
+
+
+def dashboard_spec(table_name):
+    """Return a generated dashboard contract for one table."""
+    if table_name not in DASHBOARDS:
+        raise KeyError(f"Unknown dashboard: {{table_name}}")
+    return DASHBOARDS[table_name]
+
+
+def chart_catalog(table_name=None):
+    """Return generated chart contracts, optionally scoped to one table."""
+    if table_name is not None:
+        return tuple(dashboard_spec(table_name)["charts"])
+    charts = []
+    for dashboard in dashboard_catalog():
+        charts.extend(dashboard["charts"])
+    return tuple(charts)
+
+
+def chart_spec(chart_name):
+    """Return one generated chart contract by name."""
+    for chart in chart_catalog():
+        if chart["name"] == chart_name:
+            return chart
+    raise KeyError(f"Unknown chart: {{chart_name}}")
+
+
+def _row_value(row, field):
+    if isinstance(row, dict):
+        return row.get(field)
+    return getattr(row, field, None)
+
+
+def chart_data(chart, rows):
+    """Build provider-neutral chart data for dictionaries or model rows."""
+    rows = tuple(rows)
+    metric = chart["metric"]
+    field = chart["field"]
+    if metric == "count":
+        return {{"labels": ("records",), "values": (len(rows),)}}
+    if metric == "count_by":
+        counts = Counter(str(_row_value(row, field) or "Unknown") for row in rows)
+        ordered = tuple(sorted(counts.items()))
+        return {{"labels": tuple(label for label, _ in ordered), "values": tuple(value for _, value in ordered)}}
+    if metric == "count_over_time":
+        counts = Counter(str(_row_value(row, field) or "Unknown")[:10] for row in rows)
+        ordered = tuple(sorted(counts.items()))
+        return {{"labels": tuple(label for label, _ in ordered), "values": tuple(value for _, value in ordered)}}
+    if metric == "sum":
+        total = sum(float(_row_value(row, field) or 0) for row in rows)
+        return {{"labels": (field,), "values": (total,)}}
+    raise ValueError(f"Unsupported chart metric: {{metric}}")
+
+
+def dashboard_payload(table_name, rows):
+    """Return one dashboard with computed data for supplied rows."""
+    dashboard = dashboard_spec(table_name)
+    return {{
+        "table": table_name,
+        "label": dashboard["label"],
+        "charts": tuple(
+            dict(chart, data=chart_data(chart, rows))
+            for chart in dashboard["charts"]
+        ),
+    }}
+
+
+def analytics_payload(row_map):
+    """Return all generated dashboards with computed chart data."""
+    return {{
+        "dashboards": tuple(
+            dashboard_payload(table_name, row_map.get(table_name, ()))
+            for table_name in DASHBOARDS
+        )
+    }}
+
+
+class DashboardView(BaseView):
+    route_base = "/dashboards"
+    default_view = "index"
+
+    @expose("/")
+    def index(self):
+        return self.render_template("appgen_dashboards.html", dashboards=dashboard_catalog())
+
+    @expose("/catalog.json")
+    def catalog_json(self):
+        return jsonify(list(dashboard_catalog()))
+
+    @expose("/<table_name>.json")
+    def dashboard_json(self, table_name):
+        return jsonify(dashboard_spec(table_name))
+
+
+def register_dashboards(appbuilder):
+    appbuilder.add_view(
+        DashboardView,
+        "Dashboards",
+        icon="fa-line-chart",
+        category="AppGen",
+    )
+'''
+
+
+def _usage_analytics_text(schema: AppSchema) -> str:
+    table_events = {}
+    for table in schema.tables:
+        table_events[table.name] = {
+            "label": snake_to_label(table.name),
+            "events": (
+                f"{table.name}.viewed",
+                f"{table.name}.created",
+                f"{table.name}.updated",
+                f"{table.name}.deleted",
+                f"{table.name}.searched",
+            ),
+        }
+    return f'''"""Generated app usage analytics helpers for AppGen apps."""
+
+from __future__ import annotations
+
+from collections import Counter
+from datetime import datetime
+from datetime import timezone
+
+from flask import jsonify
+from flask_appbuilder import BaseView
+from flask_appbuilder import expose
+
+
+USAGE_RESOURCES = {table_events!r}
+FUNNEL_STEPS = ("viewed", "created", "updated", "deleted")
+
+
+def usage_catalog():
+    """Return generated app usage analytics resources."""
+    return tuple(
+        {{
+            "table": table_name,
+            "label": spec["label"],
+            "events": tuple(spec["events"]),
+        }}
+        for table_name, spec in USAGE_RESOURCES.items()
+    )
+
+
+def usage_event(table_name, action, *, actor=None, tenant_id=None, metadata=None, occurred_at=None):
+    """Build a stable generated usage event."""
+    if table_name not in USAGE_RESOURCES:
+        raise KeyError(f"Unknown usage resource: {{table_name}}")
+    topic = f"{{table_name}}.{{action}}"
+    known = set(USAGE_RESOURCES[table_name]["events"])
+    if topic not in known:
+        raise KeyError(f"Unknown usage event: {{topic}}")
+    return {{
+        "topic": topic,
+        "table": table_name,
+        "action": action,
+        "actor": actor,
+        "tenant_id": tenant_id,
+        "metadata": metadata or {{}},
+        "occurred_at": occurred_at or datetime.now(timezone.utc).isoformat(),
+    }}
+
+
+def _event_time(event):
+    return str(event.get("occurred_at") or "")[:10]
+
+
+def _event_actor(event):
+    return event.get("actor") or "anonymous"
+
+
+def activity_summary(events):
+    """Return generated real-time activity counts from usage events."""
+    events = tuple(events)
+    by_topic = Counter(event["topic"] for event in events)
+    by_actor = Counter(_event_actor(event) for event in events)
+    by_day = Counter(_event_time(event) for event in events)
+    return {{
+        "events": len(events),
+        "topics": tuple(sorted(by_topic.items())),
+        "active_users": len(by_actor),
+        "actors": tuple(sorted(by_actor.items())),
+        "days": tuple(sorted(by_day.items())),
+    }}
+
+
+def adoption_report(events):
+    """Return app adoption metrics across generated resources."""
+    events = tuple(events)
+    resource_counts = Counter(event["table"] for event in events)
+    create_counts = Counter(event["table"] for event in events if event["action"] == "created")
+    return {{
+        "resources": tuple(
+            {{
+                "table": table_name,
+                "events": resource_counts.get(table_name, 0),
+                "created": create_counts.get(table_name, 0),
+                "adopted": resource_counts.get(table_name, 0) > 0,
+            }}
+            for table_name in USAGE_RESOURCES
+        ),
+        "active_resources": sum(1 for table_name in USAGE_RESOURCES if resource_counts.get(table_name, 0) > 0),
+    }}
+
+
+def funnel_report(table_name, events):
+    """Return a generated funnel for one resource."""
+    scoped = [event for event in events if event.get("table") == table_name]
+    counts = Counter(event.get("action") for event in scoped)
+    steps = tuple({{"step": step, "count": counts.get(step, 0)}} for step in FUNNEL_STEPS)
+    first = steps[0]["count"] if steps else 0
+    last = steps[-1]["count"] if steps else 0
+    return {{
+        "table": table_name,
+        "steps": steps,
+        "conversion_rate": 0 if not first else round(last / first, 4),
+    }}
+
+
+def retention_report(events):
+    """Return generated day-level active-user retention metrics."""
+    by_day = {{}}
+    for event in events:
+        by_day.setdefault(_event_time(event), set()).add(_event_actor(event))
+    ordered = tuple(
+        {{"day": day, "active_users": len(actors)}}
+        for day, actors in sorted(by_day.items())
+        if day
+    )
+    return {{"days": ordered, "latest_active_users": ordered[-1]["active_users"] if ordered else 0}}
+
+
+def realtime_usage_snapshot(events, *, limit=10):
+    """Return the most recent generated usage activity for live dashboards."""
+    ordered = sorted(tuple(events), key=lambda event: str(event.get("occurred_at") or ""), reverse=True)
+    return {{
+        "summary": activity_summary(ordered),
+        "recent": tuple(ordered[: max(1, min(int(limit), 100))]),
+    }}
+
+
+def usage_dashboard(events):
+    """Return a complete generated usage analytics dashboard payload."""
+    events = tuple(events)
+    return {{
+        "summary": activity_summary(events),
+        "adoption": adoption_report(events),
+        "funnels": tuple(funnel_report(table_name, events) for table_name in USAGE_RESOURCES),
+        "retention": retention_report(events),
+        "realtime": realtime_usage_snapshot(events),
+    }}
+
+
+def usage_analytics_check(existing_paths=()):
+    """Return readiness for generated usage analytics artifacts."""
+    existing = set(existing_paths)
+    required = {{"app/usage_analytics.py", "app/templates/appgen_usage_analytics.html"}}
+    missing = tuple(sorted(required - existing))
+    return {{
+        "ok": not missing and bool(USAGE_RESOURCES),
+        "missing": missing,
+        "resources": tuple(USAGE_RESOURCES),
+    }}
+
+
+class UsageAnalyticsView(BaseView):
+    route_base = "/usage-analytics"
+    default_view = "index"
+
+    @expose("/")
+    def index(self):
+        return self.render_template("appgen_usage_analytics.html", catalog=usage_catalog())
+
+    @expose("/catalog.json")
+    def catalog_json(self):
+        return jsonify(list(usage_catalog()))
+
+
+def register_usage_analytics(appbuilder):
+    appbuilder.add_view(
+        UsageAnalyticsView,
+        "Usage Analytics",
+        icon="fa-area-chart",
+        category="AppGen",
+    )
+'''
+
+
+def _search_text(schema: AppSchema) -> str:
+    indexes = {}
+    for table in schema.tables:
+        visible_columns = [column for column in table.columns if not column.hidden and not column.derived]
+        searchable_columns = [column for column in visible_columns if column.searchable]
+        if not searchable_columns:
+            searchable_columns = [
+                column
+                for column in visible_columns
+                if column.references is None and column.type_name.lower().split("(", 1)[0] in {"string", "varchar", "char", "text", "email"}
+            ]
+        fields = tuple(_model_attribute_name(column) for column in searchable_columns)
+        indexes[table.name] = {
+            "table": table.name,
+            "label": snake_to_label(table.name),
+            "model": snake_to_pascal(table.name),
+            "fields": fields,
+            "primary_key": next((column.name for column in table.columns if column.primary_key), "id"),
+        }
+
+    return f'''"""Generated provider-neutral search contracts for AppGen apps."""
+
+from __future__ import annotations
+
+from flask import jsonify
+from flask import request
+from flask_appbuilder import BaseView
+from flask_appbuilder import expose
+
+
+SEARCH_INDEXES = {indexes!r}
+
+SEARCH_PROVIDERS = {{
+    "memory": {{
+        "label": "In-memory",
+        "requires": tuple(),
+        "capabilities": ("contains", "casefold"),
+    }},
+    "postgres": {{
+        "label": "PostgreSQL full-text search",
+        "requires": ("DATABASE_URL",),
+        "capabilities": ("tsvector", "ranking"),
+    }},
+    "whoosh": {{
+        "label": "Whoosh",
+        "requires": ("WHOOSH_INDEX_DIR",),
+        "capabilities": ("local-index", "stemming"),
+    }},
+    "elasticsearch": {{
+        "label": "Elasticsearch",
+        "requires": ("ELASTICSEARCH_URL",),
+        "capabilities": ("distributed-index", "facets"),
+    }},
+}}
+
+
+def search_catalog():
+    """Return generated search indexes for every searchable table."""
+    return tuple(SEARCH_INDEXES.values())
+
+
+def provider_catalog():
+    """Return generated search provider adapter plans."""
+    return tuple(dict(value, name=name) for name, value in SEARCH_PROVIDERS.items())
+
+
+def search_index(table_name):
+    """Return one generated search index contract."""
+    if table_name not in SEARCH_INDEXES:
+        raise KeyError(f"Unknown search index: {{table_name}}")
+    return SEARCH_INDEXES[table_name]
+
+
+def provider_plan(provider, env=None):
+    """Return setup readiness for a generated search provider."""
+    env = env or {{}}
+    if provider not in SEARCH_PROVIDERS:
+        raise KeyError(f"Unknown search provider: {{provider}}")
+    spec = SEARCH_PROVIDERS[provider]
+    missing = tuple(key for key in spec["requires"] if not env.get(key))
+    return dict(spec, name=provider, configured=not missing, missing=missing)
+
+
+def _row_value(row, field):
+    if isinstance(row, dict):
+        return row.get(field)
+    return getattr(row, field, None)
+
+
+def search_document(table_name, row):
+    """Build a safe searchable document from a dictionary or model row."""
+    index = search_index(table_name)
+    return {{
+        "table": table_name,
+        "id": _row_value(row, index["primary_key"]),
+        "fields": {{
+            field: _row_value(row, field)
+            for field in index["fields"]
+        }},
+    }}
+
+
+def row_matches(table_name, row, query):
+    """Return whether a row matches the generated in-memory search contract."""
+    query = (query or "").casefold().strip()
+    if not query:
+        return True
+    document = search_document(table_name, row)
+    haystack = " ".join(str(value or "") for value in document["fields"].values()).casefold()
+    return query in haystack
+
+
+def search_rows(table_name, rows, query, *, limit=20):
+    """Search dictionaries or model rows using the generated index fields."""
+    matches = []
+    for row in rows:
+        if row_matches(table_name, row, query):
+            matches.append(search_document(table_name, row))
+        if len(matches) >= limit:
+            break
+    return tuple(matches)
+
+
+def search_payload(row_map, query, *, limit=20):
+    """Search all generated indexes from a mapping of table name to rows."""
+    return {{
+        "query": query,
+        "results": tuple(
+            {{
+                "table": table_name,
+                "matches": search_rows(table_name, row_map.get(table_name, ()), query, limit=limit),
+            }}
+            for table_name in SEARCH_INDEXES
+        ),
+    }}
+
+
+class SearchView(BaseView):
+    route_base = "/search"
+    default_view = "index"
+
+    @expose("/")
+    def index(self):
+        return self.render_template("appgen_search.html", indexes=search_catalog(), providers=provider_catalog())
+
+    @expose("/catalog.json")
+    def catalog_json(self):
+        return jsonify({{"indexes": list(search_catalog()), "providers": list(provider_catalog())}})
+
+    @expose("/<table_name>.json")
+    def index_json(self, table_name):
+        return jsonify(search_index(table_name))
+
+    @expose("/providers/<provider>.json")
+    def provider_json(self, provider):
+        return jsonify(provider_plan(provider, request.environ))
+
+
+def register_search(appbuilder):
+    appbuilder.add_view(
+        SearchView,
+        "Search",
+        icon="fa-search",
+        category="AppGen",
+    )
+'''
+
+
+def _media_text(schema: AppSchema) -> str:
+    def media_kind(column: ColumnSchema) -> str | None:
+        type_name = column.type_name.lower().split("(", 1)[0]
+        name = column.name.lower()
+        if type_name in {"image", "photo", "picture"} or any(part in name for part in ("image", "photo", "avatar", "picture")):
+            return "image"
+        if type_name in {"file", "upload", "document", "attachment", "blob", "binary", "bytea"} or any(
+            part in name for part in ("file", "upload", "attachment", "document")
+        ):
+            return "file"
+        return None
+
+    fields = {}
+    for table in schema.tables:
+        for column in table.columns:
+            if column.hidden or column.derived:
+                continue
+            kind = media_kind(column)
+            if kind is None:
+                continue
+            field_name = _model_attribute_name(column)
+            if kind == "image":
+                extensions = (".jpg", ".jpeg", ".png", ".gif", ".webp", ".svg")
+                mime_types = ("image/jpeg", "image/png", "image/gif", "image/webp", "image/svg+xml")
+                max_bytes = 5 * 1024 * 1024
+            else:
+                extensions = (".pdf", ".txt", ".csv", ".doc", ".docx", ".xls", ".xlsx", ".png", ".jpg", ".jpeg")
+                mime_types = (
+                    "application/pdf",
+                    "text/plain",
+                    "text/csv",
+                    "application/msword",
+                    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                    "application/vnd.ms-excel",
+                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    "image/png",
+                    "image/jpeg",
+                )
+                max_bytes = 15 * 1024 * 1024
+            fields[f"{table.name}.{field_name}"] = {
+                "table": table.name,
+                "field": field_name,
+                "source_column": column.name,
+                "label": snake_to_label(column.name),
+                "kind": kind,
+                "required": not column.nullable and not column.primary_key,
+                "storage": "local",
+                "directory": f"uploads/{underscore(table.name)}/{field_name}",
+                "allowed_extensions": extensions,
+                "allowed_mime_types": mime_types,
+                "max_bytes": max_bytes,
+            }
+
+    return f'''"""Generated image and file upload contracts for AppGen apps."""
+
+from __future__ import annotations
+
+from pathlib import PurePosixPath
+
+from flask import jsonify
+from flask_appbuilder import BaseView
+from flask_appbuilder import expose
+
+
+MEDIA_FIELDS = {fields!r}
+
+
+def media_catalog():
+    """Return generated upload field contracts."""
+    return tuple(MEDIA_FIELDS.values())
+
+
+def media_field(table_name, field_name):
+    """Return one generated upload field contract."""
+    key = f"{{table_name}}.{{field_name}}"
+    if key not in MEDIA_FIELDS:
+        raise KeyError(f"Unknown media field: {{key}}")
+    return MEDIA_FIELDS[key]
+
+
+def media_fields_for_table(table_name):
+    """Return generated upload fields for one table."""
+    return tuple(field for field in media_catalog() if field["table"] == table_name)
+
+
+def storage_plan(table_name, field_name, *, filename=None):
+    """Return a deterministic storage plan for an uploaded file."""
+    field = media_field(table_name, field_name)
+    safe_name = sanitize_filename(filename or field_name)
+    return {{
+        "table": table_name,
+        "field": field_name,
+        "storage": field["storage"],
+        "directory": field["directory"],
+        "path": str(PurePosixPath(field["directory"]) / safe_name),
+    }}
+
+
+def sanitize_filename(filename):
+    """Return a conservative filename safe for generated storage plans."""
+    cleaned = "".join(char if char.isalnum() or char in ".-_" else "_" for char in str(filename))
+    cleaned = cleaned.strip("._")
+    return cleaned or "upload"
+
+
+def validate_upload(table_name, field_name, *, filename, content_type=None, size=0):
+    """Validate extension, MIME type, and size for a generated upload field."""
+    field = media_field(table_name, field_name)
+    suffix = PurePosixPath(filename).suffix.lower()
+    errors = []
+    if suffix not in field["allowed_extensions"]:
+        errors.append("extension")
+    if content_type and content_type not in field["allowed_mime_types"]:
+        errors.append("content_type")
+    if size and size > field["max_bytes"]:
+        errors.append("size")
+    return {{
+        "ok": not errors,
+        "errors": tuple(errors),
+        "field": field,
+        "storage": storage_plan(table_name, field_name, filename=filename),
+    }}
+
+
+def preview_contract(table_name, field_name):
+    """Return frontend preview expectations for a media field."""
+    field = media_field(table_name, field_name)
+    if field["kind"] == "image":
+        return {{"preview": "thumbnail", "accept": ",".join(field["allowed_mime_types"])}}
+    return {{"preview": "filename", "accept": ",".join(field["allowed_mime_types"])}}
+
+
+class MediaView(BaseView):
+    route_base = "/media"
+    default_view = "index"
+
+    @expose("/")
+    def index(self):
+        return self.render_template("appgen_media.html", fields=media_catalog())
+
+    @expose("/catalog.json")
+    def catalog_json(self):
+        return jsonify(list(media_catalog()))
+
+    @expose("/<table_name>/<field_name>.json")
+    def field_json(self, table_name, field_name):
+        return jsonify(media_field(table_name, field_name))
+
+
+def register_media(appbuilder):
+    appbuilder.add_view(
+        MediaView,
+        "Media",
+        icon="fa-upload",
+        category="AppGen",
+    )
+'''
+
+
+def _documents_text(schema: AppSchema) -> str:
+    def document_kind(column: ColumnSchema) -> str | None:
+        type_name = column.type_name.lower().split("(", 1)[0]
+        name = column.name.lower()
+        if type_name in {"file", "upload", "document", "attachment", "blob", "binary", "bytea"}:
+            return "document"
+        if any(part in name for part in ("file", "upload", "attachment", "document", "contract", "policy")):
+            return "document"
+        if type_name in {"image", "photo", "picture"}:
+            return "image_document"
+        if any(part in name for part in ("image", "photo", "avatar", "picture", "scan")):
+            return "image_document"
+        return None
+
+    document_types = {}
+    for table in schema.tables:
+        visible_columns = [
+            column
+            for column in table.columns
+            if not column.hidden and not column.derived and not column.primary_key
+        ]
+        document_columns = [
+            column
+            for column in visible_columns
+            if document_kind(column) is not None
+        ]
+        if not document_columns:
+            document_columns = [
+                column
+                for column in visible_columns
+                if column.type_name.lower().split("(", 1)[0] in {"text", "string"}
+            ][:1]
+        for column in document_columns:
+            field_name = _model_attribute_name(column)
+            kind = document_kind(column) or "record_document"
+            key = f"{underscore(table.name)}.{field_name}"
+            document_types[key] = {
+                "id": key,
+                "table": table.name,
+                "field": field_name,
+                "source_column": column.name,
+                "label": f"{snake_to_label(table.name)} {snake_to_label(column.name)}",
+                "kind": kind,
+                "library": f"{underscore(table.name)}_documents",
+                "versioned": True,
+                "approval_required": not column.nullable or kind == "document",
+                "esignature_required": any(part in column.name.lower() for part in ("contract", "agreement", "approval", "signature")),
+                "retention_days": 2555 if kind == "document" else 1095,
+                "tags": (underscore(table.name), field_name, kind),
+            }
+
+    if not document_types:
+        document_types["app.document"] = {
+            "id": "app.document",
+            "table": "App",
+            "field": "document",
+            "source_column": "document",
+            "label": "Application Document",
+            "kind": "record_document",
+            "library": "app_documents",
+            "versioned": True,
+            "approval_required": True,
+            "esignature_required": False,
+            "retention_days": 1095,
+            "tags": ("app", "document", "record_document"),
+        }
+
+    return f'''"""Generated document-management contracts for AppGen apps."""
+
+from __future__ import annotations
+
+from datetime import datetime
+from datetime import timezone
+from hashlib import sha256
+import json
+
+from flask import jsonify
+from flask_appbuilder import BaseView
+from flask_appbuilder import expose
+
+
+DOCUMENT_TYPES = {document_types!r}
+DOCUMENT_STATUSES = ("draft", "in_review", "approved", "rejected", "archived")
+
+
+def document_catalog():
+    """Return generated document library descriptors."""
+    return tuple(DOCUMENT_TYPES.values())
+
+
+def document_type(document_type_id):
+    """Return one generated document type descriptor."""
+    if document_type_id not in DOCUMENT_TYPES:
+        raise KeyError(f"Unknown document type: {{document_type_id}}")
+    return DOCUMENT_TYPES[document_type_id]
+
+
+def documents_for_table(table_name):
+    """Return document type descriptors for one generated table."""
+    return tuple(item for item in document_catalog() if item["table"] == table_name)
+
+
+def _stable_id(payload):
+    body = json.dumps(payload, sort_keys=True, default=str)
+    return sha256(body.encode("utf-8")).hexdigest()[:16]
+
+
+def document_version(document_type_id, *, record_id=None, filename=None, version=1, author=None, checksum=None):
+    """Return a deterministic document-version envelope."""
+    doc = document_type(document_type_id)
+    payload = {{
+        "document_type": document_type_id,
+        "record_id": record_id,
+        "filename": filename or f"{{doc['field']}}-v{{version}}",
+        "version": int(version),
+        "author": author,
+        "checksum": checksum,
+        "status": "draft",
+    }}
+    return {{
+        "id": _stable_id(payload),
+        "library": doc["library"],
+        "table": doc["table"],
+        "field": doc["field"],
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        **payload,
+    }}
+
+
+def approval_workflow(document_type_id, *, reviewers=()):
+    """Return a review workflow for a generated document type."""
+    doc = document_type(document_type_id)
+    reviewers = tuple(reviewers or ("owner", "compliance"))
+    steps = (
+        {{"state": "draft", "action": "submit", "target": "in_review"}},
+        {{"state": "in_review", "action": "approve", "target": "approved", "reviewers": reviewers}},
+        {{"state": "in_review", "action": "reject", "target": "rejected", "reviewers": reviewers}},
+        {{"state": "approved", "action": "archive", "target": "archived"}},
+    )
+    return {{
+        "document_type": document_type_id,
+        "required": doc["approval_required"],
+        "reviewers": reviewers,
+        "steps": steps,
+    }}
+
+
+def retention_policy(document_type_id):
+    """Return retention and disposition rules for a generated document type."""
+    doc = document_type(document_type_id)
+    return {{
+        "document_type": document_type_id,
+        "retention_days": int(doc["retention_days"]),
+        "archive_after_days": max(1, int(doc["retention_days"]) // 2),
+        "legal_hold_supported": True,
+        "delete_requires_approval": True,
+    }}
+
+
+def esignature_payload(document_type_id, *, signer, record_id=None, callback_url=None):
+    """Return an e-signature request payload without calling an external provider."""
+    doc = document_type(document_type_id)
+    payload = {{
+        "document_type": document_type_id,
+        "record_id": record_id,
+        "signer": signer,
+        "provider": "provider-adapter",
+        "callback_url": callback_url,
+        "required": bool(doc["esignature_required"]),
+    }}
+    return {{"id": _stable_id(payload), **payload}}
+
+
+def document_audit_event(document_type_id, action, *, actor=None, record_id=None, metadata=None):
+    """Return an immutable audit event for document-management actions."""
+    doc = document_type(document_type_id)
+    payload = {{
+        "document_type": document_type_id,
+        "table": doc["table"],
+        "field": doc["field"],
+        "action": action,
+        "actor": actor,
+        "record_id": record_id,
+        "metadata": dict(metadata or {{}}),
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    }}
+    return {{"id": _stable_id(payload), **payload}}
+
+
+def document_management_check(existing_paths=()):
+    """Return readiness for generated document-management artifacts."""
+    existing = set(existing_paths)
+    required = {{"app/documents.py", "app/templates/appgen_documents.html"}}
+    missing = tuple(sorted(required - existing))
+    return {{
+        "ok": not missing and bool(DOCUMENT_TYPES),
+        "missing": missing,
+        "document_types": tuple(DOCUMENT_TYPES),
+        "statuses": DOCUMENT_STATUSES,
+    }}
+
+
+class DocumentManagementView(BaseView):
+    route_base = "/documents"
+    default_view = "index"
+
+    @expose("/")
+    def index(self):
+        return self.render_template(
+            "appgen_documents.html",
+            documents=document_catalog(),
+            statuses=DOCUMENT_STATUSES,
+        )
+
+    @expose("/catalog.json")
+    def catalog_json(self):
+        return jsonify({{"documents": list(document_catalog()), "statuses": DOCUMENT_STATUSES}})
+
+    @expose("/<path:document_type_id>.json")
+    def document_json(self, document_type_id):
+        return jsonify(document_type(document_type_id))
+
+
+def register_documents(appbuilder):
+    appbuilder.add_view(
+        DocumentManagementView,
+        "Documents",
+        icon="fa-file-text-o",
+        category="AppGen",
+    )
+'''
+
+
+def _inventory_ops_text(schema: AppSchema) -> str:
+    def visible_fields(table):
+        return tuple(
+            _model_attribute_name(column)
+            for column in table.columns
+            if not column.hidden and not column.derived
+        )
+
+    def field_names(table, keywords):
+        matches = []
+        for column in table.columns:
+            if column.hidden or column.derived:
+                continue
+            attr = _model_attribute_name(column)
+            lowered = column.name.lower()
+            if any(keyword in lowered for keyword in keywords):
+                matches.append(attr)
+        return tuple(matches)
+
+    resources = {}
+    for table in schema.tables:
+        fields = visible_fields(table)
+        identifiers = field_names(table, ("sku", "code", "barcode", "rfid", "serial", "lot", "name", "title"))
+        quantity_fields = field_names(table, ("qty", "quantity", "stock", "count", "on_hand"))
+        location_fields = field_names(table, ("warehouse", "location", "bin", "zone", "site"))
+        table_words = underscore(table.name)
+        inventory_like = any(
+            word in table_words
+            for word in ("item", "inventory", "stock", "warehouse", "asset", "product", "shipment", "lot", "serial")
+        )
+        if inventory_like or identifiers or quantity_fields or location_fields:
+            key = table.name
+            resources[key] = {
+                "table": table.name,
+                "label": snake_to_label(table.name),
+                "fields": fields,
+                "identifiers": identifiers or fields[:1],
+                "quantity_fields": quantity_fields,
+                "location_fields": location_fields,
+                "scan_modes": ("barcode", "qr", "rfid"),
+                "mobile_capabilities": ("camera_scan", "rfid_reader", "offline_queue"),
+            }
+
+    if not resources and schema.tables:
+        table = schema.tables[0]
+        resources[table.name] = {
+            "table": table.name,
+            "label": snake_to_label(table.name),
+            "fields": visible_fields(table),
+            "identifiers": visible_fields(table)[:1],
+            "quantity_fields": (),
+            "location_fields": (),
+            "scan_modes": ("barcode", "qr", "rfid"),
+            "mobile_capabilities": ("camera_scan", "rfid_reader", "offline_queue"),
+        }
+
+    return f'''"""Generated inventory traceability, barcode, and RFID helpers for AppGen apps."""
+
+from __future__ import annotations
+
+from datetime import datetime
+from datetime import timezone
+from hashlib import sha256
+import json
+
+from flask import jsonify
+from flask_appbuilder import BaseView
+from flask_appbuilder import expose
+
+
+INVENTORY_RESOURCES = {resources!r}
+SCAN_MODES = ("barcode", "qr", "rfid")
+
+
+def inventory_catalog():
+    """Return schema-derived resources for inventory and warehouse traceability."""
+    return tuple(INVENTORY_RESOURCES.values())
+
+
+def inventory_resource(table_name):
+    """Return one inventory traceability resource."""
+    if table_name not in INVENTORY_RESOURCES:
+        raise KeyError(f"Unknown inventory resource: {{table_name}}")
+    return INVENTORY_RESOURCES[table_name]
+
+
+def scan_targets(table_name=None):
+    """Return mobile scanner targets for barcode, QR, and RFID adapters."""
+    resources = inventory_catalog() if table_name is None else (inventory_resource(table_name),)
+    return tuple(
+        {{
+            "table": resource["table"],
+            "field": identifier,
+            "modes": resource["scan_modes"],
+            "offline": True,
+        }}
+        for resource in resources
+        for identifier in resource["identifiers"]
+    )
+
+
+def _stable_id(payload):
+    body = json.dumps(payload, sort_keys=True, default=str)
+    return sha256(body.encode("utf-8")).hexdigest()[:16]
+
+
+def barcode_label(table_name, values=None, *, symbology="code128"):
+    """Return a deterministic barcode label payload for one record."""
+    resource = inventory_resource(table_name)
+    values = dict(values or {{}})
+    identifier = next((values.get(field) for field in resource["identifiers"] if values.get(field) not in (None, "")), None)
+    identifier = str(identifier if identifier is not None else table_name)
+    payload = {{"table": table_name, "identifier": identifier, "symbology": symbology}}
+    return {{
+        "id": _stable_id(payload),
+        "table": table_name,
+        "identifier": identifier,
+        "symbology": symbology,
+        "value": f"{{table_name}}:{{identifier}}",
+        "human_readable": identifier,
+    }}
+
+
+def rfid_tag_payload(table_name, values=None, *, antenna=None):
+    """Return a vendor-neutral RFID tag write/read payload."""
+    label = barcode_label(table_name, values or {{}}, symbology="epc")
+    payload = {{
+        "table": table_name,
+        "epc": "urn:epc:id:sgtin:" + label["id"],
+        "identifier": label["identifier"],
+        "antenna": antenna,
+        "memory_bank": "epc",
+    }}
+    return {{"id": _stable_id(payload), **payload}}
+
+
+def scan_event(table_name, value, *, mode="barcode", device_id=None, actor=None, occurred_at=None):
+    """Return an immutable scan event for mobile or warehouse adapters."""
+    if mode not in SCAN_MODES:
+        raise ValueError(f"Unsupported scan mode: {{mode}}")
+    resource = inventory_resource(table_name)
+    payload = {{
+        "table": table_name,
+        "value": value,
+        "mode": mode,
+        "device_id": device_id,
+        "actor": actor,
+        "occurred_at": occurred_at or datetime.now(timezone.utc).isoformat(),
+        "candidate_fields": resource["identifiers"],
+    }}
+    return {{"id": _stable_id(payload), **payload}}
+
+
+def stock_movement(table_name, *, sku=None, quantity=0, from_location=None, to_location=None, reason="transfer"):
+    """Return a stock movement contract for ERP inventory flows."""
+    resource = inventory_resource(table_name)
+    movement = {{
+        "table": table_name,
+        "sku": sku,
+        "quantity": float(quantity),
+        "from_location": from_location,
+        "to_location": to_location,
+        "reason": reason,
+        "quantity_fields": resource["quantity_fields"],
+        "location_fields": resource["location_fields"],
+    }}
+    return {{"id": _stable_id(movement), **movement}}
+
+
+def cycle_count_plan(table_name=None):
+    """Return cycle-count tasks for inventory resources."""
+    resources = inventory_catalog() if table_name is None else (inventory_resource(table_name),)
+    return tuple(
+        {{
+            "table": resource["table"],
+            "identifiers": resource["identifiers"],
+            "quantity_fields": resource["quantity_fields"],
+            "location_fields": resource["location_fields"],
+            "scan_modes": resource["scan_modes"],
+            "requires_reconciliation": True,
+        }}
+        for resource in resources
+    )
+
+
+def reconcile_count(table_name, expected, counted):
+    """Return count variance and reconciliation status."""
+    variance = float(counted) - float(expected)
+    return {{
+        "table": table_name,
+        "expected": float(expected),
+        "counted": float(counted),
+        "variance": variance,
+        "matched": variance == 0,
+        "requires_review": variance != 0,
+    }}
+
+
+def traceability_chain(table_name, identifiers):
+    """Return a traceability chain skeleton for lot, serial, barcode, and RFID lookups."""
+    resource = inventory_resource(table_name)
+    identifiers = tuple(str(item) for item in identifiers)
+    return {{
+        "table": table_name,
+        "identifiers": identifiers,
+        "events": tuple(
+            {{"sequence": index, "identifier": identifier, "fields": resource["identifiers"]}}
+            for index, identifier in enumerate(identifiers, start=1)
+        ),
+    }}
+
+
+def inventory_ops_check(existing_paths=()):
+    """Return readiness for generated inventory traceability artifacts."""
+    existing = set(existing_paths)
+    required = {{"app/inventory_ops.py", "app/templates/appgen_inventory_ops.html"}}
+    missing = tuple(sorted(required - existing))
+    return {{
+        "ok": not missing and bool(INVENTORY_RESOURCES),
+        "missing": missing,
+        "resources": tuple(INVENTORY_RESOURCES),
+        "scan_modes": SCAN_MODES,
+    }}
+
+
+class InventoryOpsView(BaseView):
+    route_base = "/inventory-ops"
+    default_view = "index"
+
+    @expose("/")
+    def index(self):
+        return self.render_template(
+            "appgen_inventory_ops.html",
+            resources=inventory_catalog(),
+            modes=SCAN_MODES,
+        )
+
+    @expose("/catalog.json")
+    def catalog_json(self):
+        return jsonify({{"resources": list(inventory_catalog()), "scan_modes": SCAN_MODES}})
+
+    @expose("/scan-targets.json")
+    def scan_targets_json(self):
+        return jsonify(list(scan_targets()))
+
+
+def register_inventory_ops(appbuilder):
+    appbuilder.add_view(
+        InventoryOpsView,
+        "Inventory Traceability",
+        icon="fa-barcode",
+        category="AppGen",
+    )
+'''
+
+
+def _finance_ops_text(schema: AppSchema) -> str:
+    def finance_fields(table, keywords):
+        fields = []
+        for column in table.columns:
+            if column.hidden or column.derived:
+                continue
+            lowered = column.name.lower()
+            if any(keyword in lowered for keyword in keywords):
+                fields.append(_model_attribute_name(column))
+        return tuple(fields)
+
+    resources = {}
+    for table in schema.tables:
+        table_key = underscore(table.name)
+        amount_fields = finance_fields(table, ("amount", "total", "subtotal", "price", "cost", "pay", "budget", "revenue", "tax"))
+        currency_fields = finance_fields(table, ("currency",))
+        date_fields = finance_fields(table, ("date", "period", "month", "year"))
+        finance_like = any(
+            word in table_key
+            for word in ("invoice", "payment", "ledger", "account", "budget", "forecast", "tax", "payroll", "order", "sale")
+        )
+        if finance_like or amount_fields or currency_fields:
+            resources[table.name] = {
+                "table": table.name,
+                "label": snake_to_label(table.name),
+                "amount_fields": amount_fields,
+                "currency_fields": currency_fields,
+                "date_fields": date_fields,
+                "tax_category": "standard",
+                "batch_actions": ("validate", "post", "export", "archive"),
+            }
+
+    if not resources and schema.tables:
+        table = schema.tables[0]
+        resources[table.name] = {
+            "table": table.name,
+            "label": snake_to_label(table.name),
+            "amount_fields": finance_fields(table, ("amount", "total", "price", "cost")) or tuple(
+                _model_attribute_name(column)
+                for column in table.columns
+                if not column.hidden and not column.derived and not column.primary_key
+            )[:1],
+            "currency_fields": finance_fields(table, ("currency",)),
+            "date_fields": finance_fields(table, ("date", "period")),
+            "tax_category": "standard",
+            "batch_actions": ("validate", "post", "export", "archive"),
+        }
+
+    return f'''"""Generated finance operations helpers for AppGen ERP apps."""
+
+from __future__ import annotations
+
+from datetime import datetime
+from datetime import timezone
+from hashlib import sha256
+import json
+
+from flask import jsonify
+from flask_appbuilder import BaseView
+from flask_appbuilder import expose
+
+
+FINANCE_RESOURCES = {resources!r}
+DEFAULT_TAX_RATES = {{
+    "standard": 0.16,
+    "reduced": 0.08,
+    "zero": 0.0,
+    "exempt": 0.0,
+}}
+DEFAULT_EXCHANGE_RATES = {{
+    "USD": 1.0,
+    "EUR": 0.92,
+    "GBP": 0.79,
+    "KES": 129.0,
+}}
+
+
+def finance_catalog():
+    """Return generated finance operation resources."""
+    return tuple(FINANCE_RESOURCES.values())
+
+
+def finance_resource(table_name):
+    """Return one finance resource descriptor."""
+    if table_name not in FINANCE_RESOURCES:
+        raise KeyError(f"Unknown finance resource: {{table_name}}")
+    return FINANCE_RESOURCES[table_name]
+
+
+def tax_profile(country="default", category="standard", rates=None):
+    """Return a deterministic tax profile for a jurisdiction and category."""
+    rates = dict(rates or DEFAULT_TAX_RATES)
+    rate = float(rates.get(category, rates.get("standard", 0)))
+    return {{
+        "country": country,
+        "category": category,
+        "rate": rate,
+        "inclusive": False,
+        "reporting": ("tax_summary", "audit_trail"),
+    }}
+
+
+def tax_calculation(amount, *, category="standard", country="default", rates=None, inclusive=False):
+    """Calculate tax and total without calling an external tax service."""
+    amount = float(amount)
+    profile = tax_profile(country, category, rates)
+    rate = profile["rate"]
+    if inclusive and rate:
+        taxable = amount / (1 + rate)
+        tax = amount - taxable
+        total = amount
+    else:
+        taxable = amount
+        tax = amount * rate
+        total = amount + tax
+    return {{
+        "country": country,
+        "category": category,
+        "rate": rate,
+        "taxable_amount": round(taxable, 2),
+        "tax_amount": round(tax, 2),
+        "total_amount": round(total, 2),
+        "inclusive": bool(inclusive),
+    }}
+
+
+def exchange_rate_plan(base="USD", target="USD", rates=None):
+    """Return exchange-rate lookup and conversion metadata."""
+    rates = dict(rates or DEFAULT_EXCHANGE_RATES)
+    base = str(base).upper()
+    target = str(target).upper()
+    if base not in rates or target not in rates:
+        missing = tuple(code for code in (base, target) if code not in rates)
+        return {{"base": base, "target": target, "ready": False, "missing": missing, "rate": None}}
+    rate = float(rates[target]) / float(rates[base])
+    return {{"base": base, "target": target, "ready": True, "missing": (), "rate": rate}}
+
+
+def convert_amount(amount, *, base="USD", target="USD", rates=None):
+    """Convert an amount through generated exchange-rate metadata."""
+    plan = exchange_rate_plan(base, target, rates)
+    if not plan["ready"]:
+        raise ValueError(f"Missing exchange rate for {{plan['missing']}}")
+    return {{
+        "base": plan["base"],
+        "target": plan["target"],
+        "amount": float(amount),
+        "rate": plan["rate"],
+        "converted": round(float(amount) * plan["rate"], 2),
+    }}
+
+
+def budget_forecast(table_name, history, *, periods=3, growth_rate=0.0):
+    """Return a simple generated budget or demand forecast from historical values."""
+    finance_resource(table_name)
+    history = tuple(float(item) for item in history)
+    baseline = (sum(history) / len(history)) if history else 0.0
+    periods = max(1, int(periods))
+    growth_rate = float(growth_rate)
+    forecast = tuple(round(baseline * ((1 + growth_rate) ** index), 2) for index in range(1, periods + 1))
+    return {{
+        "table": table_name,
+        "baseline": round(baseline, 2),
+        "periods": periods,
+        "growth_rate": growth_rate,
+        "forecast": forecast,
+    }}
+
+
+def revenue_recognition_schedule(amount, *, periods=1, start_period="P1"):
+    """Return a straight-line revenue recognition schedule."""
+    periods = max(1, int(periods))
+    amount = float(amount)
+    per_period = round(amount / periods, 2)
+    schedule = []
+    remaining = round(amount, 2)
+    for index in range(1, periods + 1):
+        value = per_period if index < periods else remaining
+        remaining = round(remaining - value, 2)
+        schedule.append({{"period": f"{{start_period}}+{{index - 1}}", "amount": value}})
+    return {{"amount": round(amount, 2), "periods": periods, "schedule": tuple(schedule)}}
+
+
+def _stable_id(payload):
+    body = json.dumps(payload, sort_keys=True, default=str)
+    return sha256(body.encode("utf-8")).hexdigest()[:16]
+
+
+def batch_process(table_name, rows, *, action="post", actor=None):
+    """Return a batch-processing envelope for finance operations."""
+    resource = finance_resource(table_name)
+    rows = tuple(dict(row) for row in rows)
+    if action not in resource["batch_actions"]:
+        raise ValueError(f"Unsupported finance batch action: {{action}}")
+    amount_fields = resource["amount_fields"]
+    total = 0.0
+    for row in rows:
+        for field in amount_fields:
+            value = row.get(field)
+            if isinstance(value, (int, float)):
+                total += float(value)
+                break
+    payload = {{
+        "table": table_name,
+        "action": action,
+        "actor": actor,
+        "row_count": len(rows),
+        "amount_total": round(total, 2),
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    }}
+    return {{"id": _stable_id(payload), **payload}}
+
+
+def finance_ops_check(existing_paths=()):
+    """Return readiness for generated finance operation artifacts."""
+    existing = set(existing_paths)
+    required = {{"app/finance_ops.py", "app/templates/appgen_finance_ops.html"}}
+    missing = tuple(sorted(required - existing))
+    return {{
+        "ok": not missing and bool(FINANCE_RESOURCES),
+        "missing": missing,
+        "resources": tuple(FINANCE_RESOURCES),
+        "tax_categories": tuple(DEFAULT_TAX_RATES),
+        "currencies": tuple(DEFAULT_EXCHANGE_RATES),
+    }}
+
+
+class FinanceOpsView(BaseView):
+    route_base = "/finance-ops"
+    default_view = "index"
+
+    @expose("/")
+    def index(self):
+        return self.render_template(
+            "appgen_finance_ops.html",
+            resources=finance_catalog(),
+            tax_rates=DEFAULT_TAX_RATES,
+            currencies=DEFAULT_EXCHANGE_RATES,
+        )
+
+    @expose("/catalog.json")
+    def catalog_json(self):
+        return jsonify({{
+            "resources": list(finance_catalog()),
+            "tax_rates": DEFAULT_TAX_RATES,
+            "currencies": DEFAULT_EXCHANGE_RATES,
+        }})
+
+
+def register_finance_ops(appbuilder):
+    appbuilder.add_view(
+        FinanceOpsView,
+        "Finance Operations",
+        icon="fa-money",
+        category="AppGen",
+    )
+'''
+
+
+def _manufacturing_ops_text(schema: AppSchema) -> str:
+    def table_fields(table, keywords):
+        matches = []
+        for column in table.columns:
+            if column.hidden or column.derived:
+                continue
+            attr = _model_attribute_name(column)
+            lowered = column.name.lower()
+            if any(keyword in lowered for keyword in keywords):
+                matches.append(attr)
+        return tuple(matches)
+
+    resources = {}
+    for table in schema.tables:
+        key = underscore(table.name)
+        item_fields = table_fields(table, ("item", "sku", "product", "component", "material", "part"))
+        quantity_fields = table_fields(table, ("qty", "quantity", "demand", "forecast", "required", "count"))
+        capacity_fields = table_fields(table, ("hour", "capacity", "duration", "standard", "labor", "machine"))
+        date_fields = table_fields(table, ("date", "start", "finish", "due", "period", "schedule"))
+        manufacturing_like = any(
+            word in key
+            for word in ("work_order", "bill_of_material", "bom", "routing", "production", "manufacturing", "demand", "forecast")
+        )
+        if manufacturing_like or item_fields or quantity_fields or capacity_fields:
+            resources[table.name] = {
+                "table": table.name,
+                "label": snake_to_label(table.name),
+                "item_fields": item_fields,
+                "quantity_fields": quantity_fields,
+                "capacity_fields": capacity_fields,
+                "date_fields": date_fields,
+                "operations": ("bom", "mrp", "capacity", "schedule", "requisition", "kanban"),
+            }
+
+    if not resources and schema.tables:
+        table = schema.tables[0]
+        resources[table.name] = {
+            "table": table.name,
+            "label": snake_to_label(table.name),
+            "item_fields": table_fields(table, ("item", "sku", "name", "title")) or tuple(
+                _model_attribute_name(column)
+                for column in table.columns
+                if not column.hidden and not column.derived and not column.primary_key
+            )[:1],
+            "quantity_fields": table_fields(table, ("qty", "quantity", "count")),
+            "capacity_fields": table_fields(table, ("hour", "capacity")),
+            "date_fields": table_fields(table, ("date", "period")),
+            "operations": ("bom", "mrp", "capacity", "schedule", "requisition", "kanban"),
+        }
+
+    return f'''"""Generated manufacturing, MRP, and capacity planning helpers for AppGen apps."""
+
+from __future__ import annotations
+
+from hashlib import sha256
+import json
+
+from flask import jsonify
+from flask_appbuilder import BaseView
+from flask_appbuilder import expose
+
+
+MANUFACTURING_RESOURCES = {resources!r}
+
+
+def manufacturing_catalog():
+    """Return generated manufacturing operation resources."""
+    return tuple(MANUFACTURING_RESOURCES.values())
+
+
+def manufacturing_resource(table_name):
+    """Return one manufacturing resource descriptor."""
+    if table_name not in MANUFACTURING_RESOURCES:
+        raise KeyError(f"Unknown manufacturing resource: {{table_name}}")
+    return MANUFACTURING_RESOURCES[table_name]
+
+
+def _stable_id(payload):
+    body = json.dumps(payload, sort_keys=True, default=str)
+    return sha256(body.encode("utf-8")).hexdigest()[:16]
+
+
+def bill_of_material_plan(table_name, finished_good, components):
+    """Return a bill-of-material plan for a finished good."""
+    manufacturing_resource(table_name)
+    components = tuple(
+        {{
+            "component": item["component"],
+            "quantity_per": float(item.get("quantity_per", 1)),
+            "scrap_percent": float(item.get("scrap_percent", 0)),
+        }}
+        for item in components
+    )
+    payload = {{"table": table_name, "finished_good": finished_good, "components": components}}
+    return {{"id": _stable_id(payload), **payload}}
+
+
+def material_requirements(demand, bom_components, *, on_hand=None):
+    """Calculate MRP component requirements from demand and BOM lines."""
+    demand = float(demand)
+    on_hand = dict(on_hand or {{}})
+    requirements = []
+    for component in bom_components:
+        component_name = component["component"]
+        gross = demand * float(component.get("quantity_per", 1))
+        gross = gross * (1 + (float(component.get("scrap_percent", 0)) / 100))
+        available = float(on_hand.get(component_name, 0))
+        net = max(0.0, gross - available)
+        requirements.append({{
+            "component": component_name,
+            "gross_required": round(gross, 3),
+            "on_hand": available,
+            "net_required": round(net, 3),
+            "shortage": net > 0,
+        }})
+    return tuple(requirements)
+
+
+def capacity_plan(work_orders, *, available_hours):
+    """Return capacity utilization and overload status for work orders."""
+    orders = tuple(dict(order) for order in work_orders)
+    required = sum(float(order.get("standard_hours", order.get("hours", 0))) for order in orders)
+    available = float(available_hours)
+    utilization = (required / available) if available else 0
+    return {{
+        "orders": len(orders),
+        "required_hours": round(required, 3),
+        "available_hours": available,
+        "utilization": round(utilization, 4),
+        "overloaded": required > available,
+    }}
+
+
+def production_schedule(work_orders, *, capacity_hours_per_period):
+    """Return a finite-capacity production schedule by period."""
+    capacity = max(0.1, float(capacity_hours_per_period))
+    period = 1
+    used = 0.0
+    schedule = []
+    for order in tuple(dict(item) for item in work_orders):
+        hours = float(order.get("standard_hours", order.get("hours", 0)))
+        if used and used + hours > capacity:
+            period += 1
+            used = 0.0
+        used += hours
+        schedule.append({{
+            "period": period,
+            "work_order": order.get("work_order") or order.get("id") or f"WO-{{len(schedule) + 1}}",
+            "item": order.get("item"),
+            "standard_hours": hours,
+            "period_load": round(used, 3),
+        }})
+    return tuple(schedule)
+
+
+def purchase_requisition_plan(requirements, *, vendor=None):
+    """Return purchase requisition lines for MRP shortages."""
+    lines = tuple(
+        {{
+            "component": item["component"],
+            "quantity": float(item["net_required"]),
+            "vendor": vendor,
+        }}
+        for item in requirements
+        if float(item.get("net_required", 0)) > 0
+    )
+    payload = {{"vendor": vendor, "lines": lines}}
+    return {{"id": _stable_id(payload), "line_count": len(lines), "lines": lines, "vendor": vendor}}
+
+
+def kanban_signal(item, *, on_hand, reorder_point, lot_size):
+    """Return a lean replenishment signal for one material or finished good."""
+    on_hand = float(on_hand)
+    reorder_point = float(reorder_point)
+    lot_size = float(lot_size)
+    needed = on_hand <= reorder_point
+    return {{
+        "item": item,
+        "on_hand": on_hand,
+        "reorder_point": reorder_point,
+        "lot_size": lot_size,
+        "signal": "replenish" if needed else "hold",
+        "quantity": lot_size if needed else 0.0,
+    }}
+
+
+def manufacturing_ops_check(existing_paths=()):
+    """Return readiness for generated manufacturing operation artifacts."""
+    existing = set(existing_paths)
+    required = {{"app/manufacturing_ops.py", "app/templates/appgen_manufacturing_ops.html"}}
+    missing = tuple(sorted(required - existing))
+    return {{
+        "ok": not missing and bool(MANUFACTURING_RESOURCES),
+        "missing": missing,
+        "resources": tuple(MANUFACTURING_RESOURCES),
+        "operations": ("bom", "mrp", "capacity", "schedule", "requisition", "kanban"),
+    }}
+
+
+class ManufacturingOpsView(BaseView):
+    route_base = "/manufacturing-ops"
+    default_view = "index"
+
+    @expose("/")
+    def index(self):
+        return self.render_template(
+            "appgen_manufacturing_ops.html",
+            resources=manufacturing_catalog(),
+        )
+
+    @expose("/catalog.json")
+    def catalog_json(self):
+        return jsonify({{"resources": list(manufacturing_catalog())}})
+
+
+def register_manufacturing_ops(appbuilder):
+    appbuilder.add_view(
+        ManufacturingOpsView,
+        "Manufacturing Operations",
+        icon="fa-industry",
+        category="AppGen",
+    )
+'''
+
+
+def _backup_text(schema: AppSchema) -> str:
+    backup_tables = {}
+    for table in schema.tables:
+        columns = [_model_attribute_name(column) for column in table.columns if not column.derived]
+        backup_tables[table.name] = {
+            "table": table.name,
+            "model": snake_to_pascal(table.name),
+            "label": snake_to_label(table.name),
+            "columns": columns,
+        }
+    return f'''"""Generated JSON backup helpers for AppGen apps."""
+
+from __future__ import annotations
+
+import datetime as _dt
+import json
+
+from flask import Response
+from flask_appbuilder import BaseView, expose
+
+
+BACKUP_TABLES = {backup_tables!r}
+
+
+def backup_catalog():
+    """Return generated backup table definitions sorted by label."""
+    return tuple(sorted(BACKUP_TABLES.values(), key=lambda item: item["label"]))
+
+
+def serializable_value(value):
+    """Convert ORM values into JSON-compatible backup values."""
+    if isinstance(value, (_dt.datetime, _dt.date, _dt.time)):
+        return value.isoformat()
+    return value
+
+
+def row_to_backup(row, columns):
+    """Serialize one ORM row or dictionary to a backup dictionary."""
+    result = {{}}
+    for column in columns:
+        if isinstance(row, dict):
+            value = row.get(column)
+        else:
+            value = getattr(row, column, None)
+        result[column] = serializable_value(value)
+    return result
+
+
+def table_backup(table_name, rows):
+    """Build a JSON-compatible backup payload for one table."""
+    if table_name not in BACKUP_TABLES:
+        raise KeyError(table_name)
+    table = BACKUP_TABLES[table_name]
+    return {{
+        "table": table_name,
+        "columns": tuple(table["columns"]),
+        "rows": [row_to_backup(row, table["columns"]) for row in rows],
+    }}
+
+
+def backup_payload(table_rows):
+    """Build a full app backup payload from a mapping of table rows."""
+    return {{
+        "format": "appgen.backup.v1",
+        "tables": [
+            table_backup(table_name, table_rows.get(table_name, ()))
+            for table_name in BACKUP_TABLES
+        ],
+    }}
+
+
+def backup_json(table_rows):
+    """Serialize a full app backup payload to stable JSON."""
+    return json.dumps(backup_payload(table_rows), indent=2, sort_keys=True) + "\\n"
+
+
+def load_backup_payload(value):
+    """Load a backup payload from JSON text or a dictionary."""
+    if isinstance(value, str):
+        value = json.loads(value)
+    validate_backup_payload(value)
+    return value
+
+
+def validate_backup_payload(payload):
+    """Validate backup format, table names, and declared columns."""
+    if not isinstance(payload, dict):
+        raise ValueError("Backup payload must be a dictionary")
+    if payload.get("format") != "appgen.backup.v1":
+        raise ValueError("Unsupported backup format")
+    tables = payload.get("tables")
+    if not isinstance(tables, list):
+        raise ValueError("Backup payload must contain a tables list")
+    for table_payload in tables:
+        table_name = table_payload.get("table")
+        if table_name not in BACKUP_TABLES:
+            raise ValueError(f"Unknown backup table: {{table_name}}")
+        declared = tuple(table_payload.get("columns", ()))
+        expected = tuple(BACKUP_TABLES[table_name]["columns"])
+        if declared != expected:
+            raise ValueError(f"Column mismatch for {{table_name}}")
+        rows = table_payload.get("rows")
+        if not isinstance(rows, list):
+            raise ValueError(f"Rows for {{table_name}} must be a list")
+    return True
+
+
+def restore_plan(payload):
+    """Return table row counts that would be restored."""
+    payload = load_backup_payload(payload)
+    return {{
+        table_payload["table"]: len(table_payload.get("rows", ()))
+        for table_payload in payload["tables"]
+    }}
+
+
+def restore_payload(db, models, payload, *, dry_run=False):
+    """Restore a validated backup payload into SQLAlchemy models.
+
+    This helper inserts rows from the backup payload.  Run it against a reviewed
+    backup and an empty or intentionally prepared database.
+    """
+    payload = load_backup_payload(payload)
+    restored = {{}}
+    for table_payload in payload["tables"]:
+        table_name = table_payload["table"]
+        model = getattr(models, BACKUP_TABLES[table_name]["model"])
+        restored[table_name] = len(table_payload.get("rows", ()))
+        if dry_run:
+            continue
+        for row in table_payload.get("rows", ()):
+            db.session.add(model(**row))
+    if not dry_run:
+        db.session.commit()
+    return restored
+
+
+class BackupView(BaseView):
+    route_base = "/backups"
+    default_view = "index"
+
+    @expose("/")
+    def index(self):
+        return self.render_template("appgen_backup.html", tables=backup_catalog())
+
+    @expose("/all.json")
+    def export_all(self):
+        from . import db
+        from . import models
+
+        table_rows = {{}}
+        for table_name, table in BACKUP_TABLES.items():
+            model = getattr(models, table["model"])
+            table_rows[table_name] = db.session.query(model).all()
+        content = backup_json(table_rows)
+        headers = {{"Content-Disposition": "attachment; filename=appgen-backup.json"}}
+        return Response(content, headers=headers, mimetype="application/json")
+
+    @expose("/<table_name>.json")
+    def export_table(self, table_name):
+        if table_name not in BACKUP_TABLES:
+            return Response("Unknown backup table\\n", status=404, mimetype="text/plain")
+        from . import db
+        from . import models
+
+        table = BACKUP_TABLES[table_name]
+        model = getattr(models, table["model"])
+        payload = table_backup(table_name, db.session.query(model).all())
+        content = json.dumps(payload, indent=2, sort_keys=True) + "\\n"
+        headers = {{"Content-Disposition": f"attachment; filename={{table_name}}.json"}}
+        return Response(content, headers=headers, mimetype="application/json")
+
+
+def register_backup(appbuilder):
+    appbuilder.add_view(
+        BackupView,
+        "Backups",
+        icon="fa-archive",
+        category="AppGen",
+    )
+'''
+
+
+def _data_access_text(schema: AppSchema) -> str:
+    resources = {}
+    for table in schema.tables:
+        readable = []
+        writable = []
+        required = []
+        filterable = []
+        sortable = []
+        primary_keys = []
+        for column in table.columns:
+            field_name = _model_attribute_name(column)
+            if column.hidden or column.derived:
+                continue
+            readable.append(field_name)
+            sortable.append(field_name)
+            if column.primary_key:
+                primary_keys.append(field_name)
+            if column.searchable or column.primary_key or column.references is not None or column.unique:
+                filterable.append(field_name)
+            if not column.primary_key:
+                writable.append(field_name)
+                if not column.nullable and column.default is None:
+                    required.append(field_name)
+        resources[table.name] = {
+            "table": table.name,
+            "model": snake_to_pascal(table.name),
+            "label": snake_to_label(table.name),
+            "readable_fields": tuple(readable),
+            "writable_fields": tuple(writable),
+            "required_fields": tuple(required),
+            "filterable_fields": tuple(filterable or readable),
+            "sortable_fields": tuple(sortable),
+            "primary_keys": tuple(primary_keys),
+            "operations": ("query", "create", "update", "delete"),
+        }
+    return f'''"""Generated low-code data access contracts for AppGen apps."""
+
+from __future__ import annotations
+
+from flask import jsonify
+from flask import request
+from flask_appbuilder import BaseView
+from flask_appbuilder import expose
+
+
+DATA_ACCESS = {resources!r}
+MAX_LIMIT = 500
+
+
+def data_access_catalog():
+    """Return generated query and mutation contracts for every table."""
+    return tuple(sorted(DATA_ACCESS.values(), key=lambda item: item["label"]))
+
+
+def resource_contract(table_name):
+    """Return one generated low-code data access contract."""
+    if table_name not in DATA_ACCESS:
+        raise KeyError(f"Unknown data access resource: {{table_name}}")
+    return DATA_ACCESS[table_name]
+
+
+def _requested_fields(resource, fields):
+    if fields is None:
+        return tuple(resource["readable_fields"])
+    requested = tuple(fields)
+    unknown = tuple(field for field in requested if field not in resource["readable_fields"])
+    if unknown:
+        raise ValueError(f"Unknown readable field(s): {{', '.join(unknown)}}")
+    return requested
+
+
+def normalize_query(table_name, *, filters=None, sort=None, limit=50, offset=0, fields=None):
+    """Validate and normalize a low-code query contract."""
+    resource = resource_contract(table_name)
+    filters = dict(filters or {{}})
+    unknown_filters = tuple(field for field in filters if field not in resource["filterable_fields"])
+    if unknown_filters:
+        raise ValueError(f"Unknown filter field(s): {{', '.join(unknown_filters)}}")
+    selected_fields = _requested_fields(resource, fields)
+    sort_field = sort or (resource["primary_keys"][:1] or resource["sortable_fields"][:1] or ("",))[0]
+    direction = "asc"
+    if isinstance(sort_field, str) and sort_field.startswith("-"):
+        direction = "desc"
+        sort_field = sort_field[1:]
+    if sort_field and sort_field not in resource["sortable_fields"]:
+        raise ValueError(f"Unknown sort field: {{sort_field}}")
+    limit_value = min(max(int(limit), 0), MAX_LIMIT)
+    offset_value = max(int(offset), 0)
+    return {{
+        "table": table_name,
+        "model": resource["model"],
+        "filters": filters,
+        "fields": selected_fields,
+        "sort": sort_field,
+        "direction": direction,
+        "limit": limit_value,
+        "offset": offset_value,
+    }}
+
+
+def _value(row, field):
+    if isinstance(row, dict):
+        return row.get(field)
+    return getattr(row, field, None)
+
+
+def _matches_condition(actual, condition):
+    if isinstance(condition, dict):
+        for operator, expected in condition.items():
+            if operator == "eq" and actual != expected:
+                return False
+            if operator == "contains" and str(expected).casefold() not in str(actual or "").casefold():
+                return False
+            if operator == "startswith" and not str(actual or "").casefold().startswith(str(expected).casefold()):
+                return False
+            if operator == "in" and actual not in tuple(expected):
+                return False
+            if operator == "gte" and actual < expected:
+                return False
+            if operator == "lte" and actual > expected:
+                return False
+        return True
+    if isinstance(actual, str) and isinstance(condition, str):
+        return actual.casefold() == condition.casefold()
+    return actual == condition
+
+
+def row_matches(row, filters):
+    """Return whether a row satisfies generated low-code filters."""
+    return all(_matches_condition(_value(row, field), condition) for field, condition in dict(filters or {{}}).items())
+
+
+def project_row(row, fields):
+    """Return only selected readable fields from a row."""
+    return {{field: _value(row, field) for field in fields}}
+
+
+def query_rows(table_name, rows, *, filters=None, sort=None, limit=50, offset=0, fields=None):
+    """Apply a generated low-code query contract to in-memory rows."""
+    spec = normalize_query(table_name, filters=filters, sort=sort, limit=limit, offset=offset, fields=fields)
+    matched = [row for row in rows if row_matches(row, spec["filters"])]
+    if spec["sort"]:
+        matched.sort(key=lambda row: (_value(row, spec["sort"]) is None, _value(row, spec["sort"])), reverse=spec["direction"] == "desc")
+    page = matched[spec["offset"]: spec["offset"] + spec["limit"]]
+    return {{
+        "query": spec,
+        "total": len(matched),
+        "rows": tuple(project_row(row, spec["fields"]) for row in page),
+    }}
+
+
+def sanitize_write_payload(table_name, values, *, partial=False):
+    """Return a writable payload plus validation diagnostics."""
+    resource = resource_contract(table_name)
+    values = dict(values or {{}})
+    payload = {{field: values[field] for field in resource["writable_fields"] if field in values}}
+    unknown = tuple(field for field in values if field not in resource["writable_fields"] and field not in resource["primary_keys"])
+    missing = () if partial else tuple(field for field in resource["required_fields"] if not payload.get(field))
+    return {{
+        "table": table_name,
+        "payload": payload,
+        "unknown_fields": unknown,
+        "missing_required": missing,
+        "ok": not unknown and not missing,
+    }}
+
+
+def mutation_plan(table_name, action, values=None, *, actor=None):
+    """Return a reviewed create, update, or delete plan without changing data."""
+    resource = resource_contract(table_name)
+    if action not in resource["operations"] or action == "query":
+        raise ValueError(f"Unsupported mutation action: {{action}}")
+    values = dict(values or {{}})
+    partial = action in {{"update", "delete"}}
+    write = sanitize_write_payload(table_name, values, partial=partial)
+    identity = {{field: values.get(field) for field in resource["primary_keys"] if field in values}}
+    if action in {{"update", "delete"}} and resource["primary_keys"] and not identity:
+        write["ok"] = False
+        write["missing_identity"] = tuple(resource["primary_keys"])
+    else:
+        write["missing_identity"] = ()
+    return {{
+        "table": table_name,
+        "action": action,
+        "actor": actor,
+        "identity": identity,
+        "payload": write["payload"],
+        "ok": write["ok"] and not write["missing_identity"],
+        "missing_required": write["missing_required"],
+        "missing_identity": write["missing_identity"],
+        "unknown_fields": write["unknown_fields"],
+        "review_required": action == "delete",
+    }}
+
+
+def data_access_check(existing_paths):
+    """Return readiness for generated low-code data access artifacts."""
+    existing = set(existing_paths)
+    required = {{"app/data_access.py", "app/templates/appgen_data_access.html"}}
+    missing = tuple(sorted(required - existing))
+    return {{"ok": not missing and bool(DATA_ACCESS), "missing": missing, "resources": tuple(DATA_ACCESS)}}
+
+
+class DataAccessView(BaseView):
+    route_base = "/data-access"
+    default_view = "index"
+
+    @expose("/")
+    def index(self):
+        return self.render_template("appgen_data_access.html", resources=data_access_catalog())
+
+    @expose("/catalog.json")
+    def catalog_json(self):
+        return jsonify(list(data_access_catalog()))
+
+    @expose("/<table_name>.json")
+    def resource_json(self, table_name):
+        return jsonify(resource_contract(table_name))
+
+    @expose("/<table_name>/query-plan", methods=("POST",))
+    def query_plan_json(self, table_name):
+        payload = request.get_json(silent=True) or {{}}
+        return jsonify(normalize_query(table_name, **payload))
+
+
+def register_data_access(appbuilder):
+    appbuilder.add_view(
+        DataAccessView,
+        "Data Access",
+        icon="fa-database",
+        category="AppGen",
+    )
+'''
+
+
+def _database_ops_text(schema: AppSchema) -> str:
+    tables = tuple(table.name for table in schema.tables)
+    return f'''"""Generated database provider and operations contracts for AppGen apps."""
+
+from __future__ import annotations
+
+from flask import jsonify
+from flask_appbuilder import BaseView
+from flask_appbuilder import expose
+
+
+DATABASE_TABLES = {tables!r}
+DATABASE_PROVIDERS = {{
+    "sqlite": {{
+        "label": "SQLite",
+        "kind": "relational",
+        "sqlalchemy_prefix": "sqlite://",
+        "env": ("SQLALCHEMY_DATABASE_URI",),
+        "capabilities": ("embedded", "development", "single-file"),
+    }},
+    "postgresql": {{
+        "label": "PostgreSQL",
+        "kind": "relational",
+        "sqlalchemy_prefix": "postgresql://",
+        "env": ("POSTGRES_HOST", "POSTGRES_DB", "POSTGRES_USER", "POSTGRES_PASSWORD"),
+        "capabilities": ("production", "row-level-security", "jsonb", "full-text-search"),
+    }},
+    "mysql": {{
+        "label": "MySQL",
+        "kind": "relational",
+        "sqlalchemy_prefix": "mysql://",
+        "env": ("MYSQL_HOST", "MYSQL_DATABASE", "MYSQL_USER", "MYSQL_PASSWORD"),
+        "capabilities": ("production", "replication", "json"),
+    }},
+    "mongodb": {{
+        "label": "MongoDB",
+        "kind": "document",
+        "sqlalchemy_prefix": None,
+        "env": ("MONGODB_URI", "MONGODB_DATABASE"),
+        "capabilities": ("document-store", "aggregation", "change-streams"),
+    }},
+    "dynamodb": {{
+        "label": "Amazon DynamoDB",
+        "kind": "key-value",
+        "sqlalchemy_prefix": None,
+        "env": ("AWS_REGION", "DYNAMODB_TABLE_PREFIX"),
+        "capabilities": ("managed-nosql", "single-table", "streams"),
+    }},
+    "cassandra": {{
+        "label": "Apache Cassandra",
+        "kind": "wide-column",
+        "sqlalchemy_prefix": None,
+        "env": ("CASSANDRA_CONTACT_POINTS", "CASSANDRA_KEYSPACE"),
+        "capabilities": ("wide-column", "multi-region", "high-write-throughput"),
+    }},
+    "redis": {{
+        "label": "Redis",
+        "kind": "key-value",
+        "sqlalchemy_prefix": None,
+        "env": ("REDIS_URL",),
+        "capabilities": ("cache", "streams", "ephemeral-documents"),
+    }},
+}}
+
+DATABASE_ADDONS = {{
+    "patroni": {{
+        "label": "Patroni PostgreSQL HA",
+        "provider": "postgresql",
+        "env": ("PATRONI_SCOPE", "PATRONI_ETCD_HOSTS", "POSTGRES_HOST"),
+        "capabilities": ("leader-election", "replication", "failover"),
+    }},
+    "postgraphile": {{
+        "label": "PostGraphile",
+        "provider": "postgresql",
+        "env": ("DATABASE_URL", "POSTGRAPHILE_SCHEMA"),
+        "capabilities": ("graphql", "schema-introspection", "subscriptions"),
+    }},
+    "zombodb": {{
+        "label": "ZomboDB",
+        "provider": "postgresql",
+        "env": ("DATABASE_URL", "ELASTICSEARCH_URL"),
+        "capabilities": ("postgres-extension", "elasticsearch-indexing"),
+    }},
+    "elasticsearch": {{
+        "label": "Elasticsearch",
+        "provider": "search",
+        "env": ("ELASTICSEARCH_URL",),
+        "capabilities": ("distributed-search", "facets", "analytics"),
+    }},
+}}
+
+
+def database_provider_catalog():
+    """Return generated database provider targets."""
+    return tuple(dict(spec, provider=name) for name, spec in DATABASE_PROVIDERS.items())
+
+
+def database_addon_catalog():
+    """Return generated database-adjacent operational add-ons."""
+    return tuple(dict(spec, addon=name) for name, spec in DATABASE_ADDONS.items())
+
+
+def relational_provider_catalog():
+    """Return generated relational database providers."""
+    return tuple(item for item in database_provider_catalog() if item["kind"] == "relational")
+
+
+def nosql_provider_catalog():
+    """Return generated NoSQL database providers."""
+    return tuple(item for item in database_provider_catalog() if item["kind"] != "relational")
+
+
+def provider_plan(provider, environ=None):
+    """Return readiness metadata for a database provider."""
+    env = {{}} if environ is None else environ
+    spec = DATABASE_PROVIDERS[provider]
+    missing = tuple(key for key in spec["env"] if not env.get(key))
+    return dict(spec, provider=provider, configured=not missing, missing=missing, tables=DATABASE_TABLES)
+
+
+def nosql_provider_plan(provider, environ=None):
+    """Return readiness metadata for a generated NoSQL provider."""
+    if provider not in {{item["provider"] for item in nosql_provider_catalog()}}:
+        raise KeyError(f"Unknown NoSQL database provider: {{provider}}")
+    return provider_plan(provider, environ)
+
+
+def addon_plan(addon, environ=None):
+    """Return readiness metadata for a database operations add-on."""
+    env = {{}} if environ is None else environ
+    spec = DATABASE_ADDONS[addon]
+    missing = tuple(key for key in spec["env"] if not env.get(key))
+    return dict(spec, addon=addon, configured=not missing, missing=missing)
+
+
+def compose_service_plan(provider="postgresql"):
+    """Return Docker Compose service descriptors for database providers."""
+    if provider == "postgresql":
+        return {{
+            "service": "postgres",
+            "image": "postgres:16",
+            "ports": ("5432:5432",),
+            "volumes": ("postgres-data:/var/lib/postgresql/data",),
+            "env": DATABASE_PROVIDERS["postgresql"]["env"],
+        }}
+    if provider == "mysql":
+        return {{
+            "service": "mysql",
+            "image": "mysql:8",
+            "ports": ("3306:3306",),
+            "volumes": ("mysql-data:/var/lib/mysql",),
+            "env": DATABASE_PROVIDERS["mysql"]["env"],
+        }}
+    if provider == "sqlite":
+        return {{
+            "service": "sqlite",
+            "image": None,
+            "ports": tuple(),
+            "volumes": ("./data:/app/data",),
+            "env": DATABASE_PROVIDERS["sqlite"]["env"],
+        }}
+    if provider == "mongodb":
+        return {{
+            "service": "mongodb",
+            "image": "mongo:7",
+            "ports": ("27017:27017",),
+            "volumes": ("mongodb-data:/data/db",),
+            "env": DATABASE_PROVIDERS["mongodb"]["env"],
+        }}
+    if provider == "dynamodb":
+        return {{
+            "service": "dynamodb-local",
+            "image": "amazon/dynamodb-local:latest",
+            "ports": ("8000:8000",),
+            "volumes": ("dynamodb-data:/home/dynamodblocal/data",),
+            "env": DATABASE_PROVIDERS["dynamodb"]["env"],
+        }}
+    if provider == "cassandra":
+        return {{
+            "service": "cassandra",
+            "image": "cassandra:5",
+            "ports": ("9042:9042",),
+            "volumes": ("cassandra-data:/var/lib/cassandra",),
+            "env": DATABASE_PROVIDERS["cassandra"]["env"],
+        }}
+    if provider == "redis":
+        return {{
+            "service": "redis",
+            "image": "redis:7-alpine",
+            "ports": ("6379:6379",),
+            "volumes": ("redis-data:/data",),
+            "env": DATABASE_PROVIDERS["redis"]["env"],
+        }}
+    raise KeyError(f"Unknown database provider: {{provider}}")
+
+
+def kubernetes_statefulset_plan(provider="postgresql"):
+    """Return Kubernetes stateful workload descriptors for database providers."""
+    service = compose_service_plan(provider)
+    return {{
+        "kind": "StatefulSet" if provider in {{"postgresql", "mysql", "mongodb", "cassandra", "redis"}} else "PersistentVolumeClaim",
+        "provider": provider,
+        "service": service["service"],
+        "ports": service["ports"],
+        "volumes": service["volumes"],
+    }}
+
+
+def migration_target_matrix():
+    """Return generated migration targets for supported database engines."""
+    return tuple(
+        {{
+            "provider": provider,
+            "kind": spec["kind"],
+            "sqlalchemy_prefix": spec.get("sqlalchemy_prefix"),
+            "tables": DATABASE_TABLES,
+            "alembic": spec["kind"] == "relational",
+        }}
+        for provider, spec in DATABASE_PROVIDERS.items()
+    )
+
+
+def document_projection(table_name):
+    """Return a generated NoSQL document projection for one table."""
+    if table_name not in DATABASE_TABLES:
+        raise KeyError(f"Unknown table: {{table_name}}")
+    return {{
+        "table": table_name,
+        "collection": table_name.lower(),
+        "partition_key": "id",
+        "document_shape": "manifest-row",
+        "providers": tuple(item["provider"] for item in nosql_provider_catalog()),
+    }}
+
+
+def document_projection_matrix():
+    """Return generated table-to-NoSQL projection contracts."""
+    return tuple(document_projection(table_name) for table_name in DATABASE_TABLES)
+
+
+def database_ops_check(existing_paths):
+    """Return readiness for generated database operations artifacts."""
+    existing = set(existing_paths)
+    required = ("app/database_ops.py", "app/templates/appgen_database_ops.html", "docker-compose.yml", "deploy/k8s.yaml")
+    missing = tuple(path for path in required if path not in existing)
+    return {{
+        "ok": not missing and {{"postgresql", "mysql", "sqlite", "mongodb", "dynamodb", "cassandra", "redis"}} <= set(DATABASE_PROVIDERS) and {{"patroni", "postgraphile", "zombodb", "elasticsearch"}} <= set(DATABASE_ADDONS),
+        "missing": missing,
+        "providers": tuple(DATABASE_PROVIDERS),
+        "addons": tuple(DATABASE_ADDONS),
+        "nosql": tuple(item["provider"] for item in nosql_provider_catalog()),
+    }}
+
+
+class DatabaseOpsView(BaseView):
+    route_base = "/database-ops"
+    default_view = "index"
+
+    @expose("/")
+    def index(self):
+        return self.render_template(
+            "appgen_database_ops.html",
+            providers=database_provider_catalog(),
+            addons=database_addon_catalog(),
+        )
+
+    @expose("/providers.json")
+    def providers_json(self):
+        return jsonify(list(database_provider_catalog()))
+
+    @expose("/addons.json")
+    def addons_json(self):
+        return jsonify(list(database_addon_catalog()))
+
+    @expose("/migration-targets.json")
+    def migration_targets_json(self):
+        return jsonify(list(migration_target_matrix()))
+
+    @expose("/nosql-projections.json")
+    def nosql_projections_json(self):
+        return jsonify(list(document_projection_matrix()))
+
+
+def register_database_ops(appbuilder):
+    appbuilder.add_view(
+        DatabaseOpsView,
+        "Database Operations",
+        icon="fa-database",
+        category="AppGen",
+    )
+'''
+
+
+def _data_exchange_text(schema: AppSchema) -> str:
+    exchange_tables = {}
+    for table in schema.tables:
+        fields = []
+        hidden_fields = []
+        required = []
+        for column in table.columns:
+            if column.derived or column.primary_key:
+                continue
+            field_name = _model_attribute_name(column)
+            if column.hidden:
+                hidden_fields.append(field_name)
+                continue
+            fields.append(field_name)
+            if not column.nullable:
+                required.append(field_name)
+        exchange_tables[table.name] = {
+            "table": table.name,
+            "label": snake_to_label(table.name),
+            "fields": tuple(fields),
+            "hidden_fields": tuple(hidden_fields),
+            "required": tuple(required),
+        }
+    return f'''"""Generated schema-aware CSV and JSON data exchange helpers."""
+
+from __future__ import annotations
+
+import csv
+import io
+import json
+
+from flask import Response
+from flask import jsonify
+from flask import request
+from flask_appbuilder import BaseView
+from flask_appbuilder import expose
+
+
+EXCHANGE_TABLES = {exchange_tables!r}
+
+
+def exchange_catalog():
+    """Return generated import/export table contracts."""
+    return tuple(sorted(EXCHANGE_TABLES.values(), key=lambda item: item["label"]))
+
+
+def table_contract(table_name):
+    """Return one generated data exchange contract."""
+    if table_name not in EXCHANGE_TABLES:
+        raise KeyError(table_name)
+    return EXCHANGE_TABLES[table_name]
+
+
+def exchange_fields(table_name, *, include_hidden=False):
+    """Return ordered fields for public or privileged data exchange."""
+    table = table_contract(table_name)
+    fields = tuple(table["fields"])
+    if include_hidden:
+        fields = fields + tuple(table["hidden_fields"])
+    return fields
+
+
+def csv_template(table_name, *, include_hidden=False):
+    """Return a CSV header template for imports."""
+    output = io.StringIO()
+    writer = csv.DictWriter(output, fieldnames=exchange_fields(table_name, include_hidden=include_hidden))
+    writer.writeheader()
+    return output.getvalue()
+
+
+def rows_to_csv(table_name, rows, *, include_hidden=False):
+    """Serialize dictionaries or model rows to CSV using generated field order."""
+    fields = exchange_fields(table_name, include_hidden=include_hidden)
+    output = io.StringIO()
+    writer = csv.DictWriter(output, fieldnames=fields, extrasaction="ignore")
+    writer.writeheader()
+    for row in rows:
+        writer.writerow({{
+            field: row.get(field, "") if isinstance(row, dict) else getattr(row, field, "")
+            for field in fields
+        }})
+    return output.getvalue()
+
+
+def rows_from_csv(table_name, content, *, include_hidden=False):
+    """Parse CSV text into dictionaries restricted to generated exchange fields."""
+    fields = set(exchange_fields(table_name, include_hidden=include_hidden))
+    reader = csv.DictReader(io.StringIO(content or ""))
+    rows = []
+    for raw in reader:
+        rows.append({{
+            key: value
+            for key, value in raw.items()
+            if key in fields and value not in (None, "")
+        }})
+    return tuple(rows)
+
+
+def rows_to_json(table_name, rows, *, include_hidden=False):
+    """Serialize rows to stable JSON for data exchange."""
+    fields = exchange_fields(table_name, include_hidden=include_hidden)
+    payload = {{
+        "format": "appgen.exchange.v1",
+        "table": table_name,
+        "fields": fields,
+        "rows": [
+            {{
+                field: row.get(field) if isinstance(row, dict) else getattr(row, field, None)
+                for field in fields
+            }}
+            for row in rows
+        ],
+    }}
+    return json.dumps(payload, indent=2, sort_keys=True) + "\\n"
+
+
+def rows_from_json(table_name, content, *, include_hidden=False):
+    """Parse AppGen exchange JSON or a plain list of row dictionaries."""
+    value = json.loads(content) if isinstance(content, str) else content
+    if isinstance(value, dict):
+        if value.get("format") != "appgen.exchange.v1":
+            raise ValueError("Unsupported data exchange format")
+        if value.get("table") != table_name:
+            raise ValueError(f"Exchange table mismatch: {{value.get('table')}}")
+        rows = value.get("rows", ())
+    else:
+        rows = value
+    if not isinstance(rows, list):
+        raise ValueError("Exchange rows must be a list")
+    allowed = set(exchange_fields(table_name, include_hidden=include_hidden))
+    return tuple({{key: row.get(key) for key in allowed if key in row}} for row in rows)
+
+
+def validate_import_row(table_name, row, *, strict=True, include_hidden=False):
+    """Validate a row before bulk import."""
+    table = table_contract(table_name)
+    allowed = set(exchange_fields(table_name, include_hidden=include_hidden))
+    missing = tuple(field for field in table["required"] if row.get(field) in (None, ""))
+    unknown = tuple(sorted(set(row) - allowed)) if strict else ()
+    return {{
+        "ok": not missing and not unknown,
+        "missing": missing,
+        "unknown": unknown,
+    }}
+
+
+def import_plan(table_name, content, *, content_type="text/csv", include_hidden=False):
+    """Return parse and validation results for CSV or JSON import content."""
+    if "json" in content_type:
+        rows = rows_from_json(table_name, content, include_hidden=include_hidden)
+    else:
+        rows = rows_from_csv(table_name, content, include_hidden=include_hidden)
+    errors = tuple(
+        dict(row_number=index, **result)
+        for index, row in enumerate(rows, start=1)
+        for result in (validate_import_row(table_name, row, include_hidden=include_hidden),)
+        if not result["ok"]
+    )
+    return {{
+        "table": table_name,
+        "rows": rows,
+        "row_count": len(rows),
+        "errors": errors,
+        "ready": not errors,
+    }}
+
+
+def migration_batch_plan(table_name, content, *, content_type="text/csv", include_hidden=False, batch_size=500):
+    """Return reviewed import batches for legacy-data migration workflows."""
+    plan = import_plan(
+        table_name,
+        content,
+        content_type=content_type,
+        include_hidden=include_hidden,
+    )
+    accepted = tuple(
+        row
+        for index, row in enumerate(plan["rows"], start=1)
+        if not any(error["row_number"] == index for error in plan["errors"])
+    )
+    rejected = tuple(
+        {{"row_number": error["row_number"], "missing": error["missing"], "unknown": error["unknown"]}}
+        for error in plan["errors"]
+    )
+    batch_size = max(1, int(batch_size))
+    batches = tuple(
+        {{
+            "batch": (offset // batch_size) + 1,
+            "table": table_name,
+            "rows": accepted[offset:offset + batch_size],
+            "row_count": len(accepted[offset:offset + batch_size]),
+        }}
+        for offset in range(0, len(accepted), batch_size)
+    )
+    return {{
+        "format": "appgen.migration-batch.v1",
+        "table": table_name,
+        "ready": plan["ready"],
+        "accepted_count": len(accepted),
+        "rejected_count": len(rejected),
+        "batches": batches,
+        "rejected": rejected,
+        "requires_review": bool(rejected),
+    }}
+
+
+def migration_batch_summary(batch_plan):
+    """Return a compact summary for migration review screens and logs."""
+    return {{
+        "format": batch_plan.get("format"),
+        "table": batch_plan.get("table"),
+        "ready": bool(batch_plan.get("ready")),
+        "accepted_count": int(batch_plan.get("accepted_count", 0)),
+        "rejected_count": int(batch_plan.get("rejected_count", 0)),
+        "batch_count": len(tuple(batch_plan.get("batches", ()))),
+        "requires_review": bool(batch_plan.get("requires_review")),
+    }}
+
+
+def migration_batch_request_plan(table_name, payload=None, headers=None):
+    """Return a JSON-safe migration batch response payload and HTTP status."""
+    payload = {{}} if payload is None else dict(payload)
+    headers = {{}} if headers is None else dict(headers)
+    try:
+        content = payload.get("content", "")
+        content_type = payload.get("content_type") or headers.get("Content-Type", "text/csv")
+        include_hidden = bool(payload.get("include_hidden", False))
+        batch_size = int(payload.get("batch_size", 500))
+        return migration_batch_plan(
+            table_name,
+            content,
+            content_type=content_type,
+            include_hidden=include_hidden,
+            batch_size=batch_size,
+        ), 200
+    except KeyError as exc:
+        return {{
+            "ok": False,
+            "error": "unknown_table",
+            "table": table_name,
+            "detail": str(exc),
+        }}, 404
+    except (TypeError, ValueError) as exc:
+        return {{
+            "ok": False,
+            "error": "invalid_migration_batch_request",
+            "table": table_name,
+            "detail": str(exc),
+        }}, 400
+
+
+def exchange_check(existing_paths):
+    """Return readiness for generated data exchange artifacts."""
+    existing = set(existing_paths)
+    required = ("app/data_exchange.py", "app/templates/appgen_data_exchange.html")
+    missing = tuple(path for path in required if path not in existing)
+    return {{
+        "ok": not missing,
+        "missing": missing,
+        "tables": tuple(EXCHANGE_TABLES),
+    }}
+
+
+class DataExchangeView(BaseView):
+    route_base = "/data-exchange"
+    default_view = "index"
+
+    @expose("/")
+    def index(self):
+        return self.render_template("appgen_data_exchange.html", tables=exchange_catalog())
+
+    @expose("/catalog.json")
+    def catalog_json(self):
+        return jsonify(list(exchange_catalog()))
+
+    @expose("/<table_name>/template.csv")
+    def template_csv(self, table_name):
+        return Response(csv_template(table_name), mimetype="text/csv")
+
+    @expose("/<table_name>/migration-batch.json", methods=("POST",))
+    def migration_batch_json(self, table_name):
+        payload = request.get_json(silent=True) or {{}}
+        body, status = migration_batch_request_plan(table_name, payload, request.headers)
+        return jsonify(body), status
+
+
+def register_data_exchange(appbuilder):
+    appbuilder.add_view(
+        DataExchangeView,
+        "Data Exchange",
+        icon="fa-exchange",
+        category="AppGen",
+    )
+'''
+
+
+def _integrations_text() -> str:
+    return '''"""Generated integration registry for AppGen apps."""
+
+from __future__ import annotations
+
+import os
+
+from flask import jsonify
+from flask_appbuilder import BaseView
+from flask_appbuilder import expose
+
+
+INTEGRATIONS = {
+    "rest": {
+        "label": "REST API",
+        "kind": "http",
+        "description": "Outbound HTTP integration point for approved APIs.",
+        "env": ("APPGEN_REST_BASE_URL", "APPGEN_REST_TOKEN"),
+    },
+    "webhook": {
+        "label": "Webhook",
+        "kind": "http",
+        "description": "Event delivery endpoint for workflow and data changes.",
+        "env": ("APPGEN_WEBHOOK_URL", "APPGEN_WEBHOOK_SECRET"),
+    },
+    "salesforce": {
+        "label": "Salesforce",
+        "kind": "crm",
+        "description": "Enterprise CRM connector configuration stub.",
+        "env": ("SALESFORCE_BASE_URL", "SALESFORCE_CLIENT_ID", "SALESFORCE_CLIENT_SECRET"),
+    },
+    "sap": {
+        "label": "SAP",
+        "kind": "erp",
+        "description": "Enterprise ERP connector configuration stub.",
+        "env": ("SAP_BASE_URL", "SAP_CLIENT_ID", "SAP_CLIENT_SECRET"),
+    },
+    "entando": {
+        "label": "Entando",
+        "kind": "low_code_portal",
+        "description": "Low-code portal and micro-frontend integration contract.",
+        "env": ("ENTANDO_BASE_URL", "ENTANDO_CLIENT_ID", "ENTANDO_CLIENT_SECRET"),
+    },
+    "invenio": {
+        "label": "Invenio",
+        "kind": "repository",
+        "description": "Repository deposit and record publication integration contract.",
+        "env": ("INVENIO_BASE_URL", "INVENIO_ACCESS_TOKEN"),
+    },
+    "stripe": {
+        "label": "Stripe",
+        "kind": "payment",
+        "description": "Payment gateway request-plan contract for charges and checkout.",
+        "env": ("STRIPE_API_KEY", "STRIPE_WEBHOOK_SECRET"),
+    },
+    "mpesa": {
+        "label": "M-Pesa",
+        "kind": "payment",
+        "description": "Mobile-money payment gateway request-plan contract.",
+        "env": ("MPESA_CONSUMER_KEY", "MPESA_CONSUMER_SECRET", "MPESA_SHORTCODE"),
+    },
+    "twilio_sms": {
+        "label": "Twilio SMS",
+        "kind": "sms",
+        "description": "SMS gateway request-plan contract for transactional messages.",
+        "env": ("TWILIO_ACCOUNT_SID", "TWILIO_AUTH_TOKEN", "TWILIO_FROM_NUMBER"),
+    },
+    "sendgrid_email": {
+        "label": "SendGrid Email",
+        "kind": "email",
+        "description": "Transactional email request-plan contract.",
+        "env": ("SENDGRID_API_KEY", "APPGEN_EMAIL_FROM"),
+    },
+}
+
+
+INTEGRATION_CONTRACTS = {
+    "entando": {
+        "version": "appgen.integration.entando.v1",
+        "surfaces": ("microfrontend", "page", "widget", "sso_context"),
+        "routes": (
+            "/integrations/entando/microfrontends",
+            "/integrations/entando/pages",
+            "/integrations/entando/events",
+        ),
+        "payload_schema": {
+            "microfrontend": "string",
+            "route": "string",
+            "metadata": "object",
+        },
+        "permissions": ("portal.read", "portal.publish", "portal.configure"),
+        "events": ("portal.microfrontend.publish", "portal.page.mount", "portal.widget.configure"),
+    },
+    "invenio": {
+        "version": "appgen.integration.invenio.v1",
+        "surfaces": ("record", "deposit", "file", "search_index"),
+        "routes": (
+            "/integrations/invenio/records",
+            "/integrations/invenio/deposits",
+            "/integrations/invenio/files",
+        ),
+        "payload_schema": {
+            "record": "object",
+            "files": "array",
+            "metadata": "object",
+        },
+        "permissions": ("repository.read", "repository.deposit", "repository.publish"),
+        "events": ("repository.deposit.create", "repository.record.publish", "repository.file.attach"),
+    },
+}
+
+
+def integration_config(name, environ=None):
+    """Return non-secret configuration status for an integration."""
+    environ = os.environ if environ is None else environ
+    integration = INTEGRATIONS[name]
+    env = tuple(integration["env"])
+    missing = tuple(key for key in env if not environ.get(key))
+    return {
+        "name": name,
+        "label": integration["label"],
+        "kind": integration["kind"],
+        "description": integration["description"],
+        "env": env,
+        "missing": missing,
+        "configured": not missing,
+    }
+
+
+def integration_catalog(environ=None):
+    """Return all generated integration definitions with config status."""
+    return tuple(integration_config(name, environ=environ) for name in INTEGRATIONS)
+
+
+def integrations_by_kind(kind, environ=None):
+    """Return generated integrations of one connector kind."""
+    return tuple(item for item in integration_catalog(environ) if item["kind"] == kind)
+
+
+def integration_contract(name):
+    """Return a generated stable contract descriptor for a first-class integration."""
+    if name not in INTEGRATION_CONTRACTS:
+        raise KeyError(f"Unknown integration contract: {name}")
+    integration = INTEGRATIONS[name]
+    contract = dict(INTEGRATION_CONTRACTS[name])
+    contract.update({
+        "integration": name,
+        "label": integration["label"],
+        "kind": integration["kind"],
+        "env": tuple(integration["env"]),
+        "payload_schema": dict(contract["payload_schema"]),
+    })
+    return contract
+
+
+def generated_integration_contracts():
+    """Return all generated first-class integration contracts."""
+    return tuple(integration_contract(name) for name in INTEGRATION_CONTRACTS)
+
+
+def outbound_request_plan(name, operation, payload=None, environ=None):
+    """Build a reviewed outbound request plan without sending network traffic."""
+    if name not in INTEGRATIONS:
+        raise KeyError(f"Unknown integration: {name}")
+    config = integration_config(name, environ=environ)
+    if not config["configured"]:
+        raise ValueError(f"Integration {name} is missing configuration")
+    return {
+        "integration": name,
+        "operation": operation,
+        "payload": payload or {},
+        "env": config["env"],
+    }
+
+
+def payment_request_plan(provider, *, amount, currency="USD", reference=None, metadata=None, environ=None):
+    """Build a reviewed payment-gateway request plan without charging money."""
+    if provider not in INTEGRATIONS or INTEGRATIONS[provider]["kind"] != "payment":
+        raise KeyError(f"Unknown payment integration: {provider}")
+    amount_value = float(amount)
+    if amount_value <= 0:
+        raise ValueError("Payment amount must be greater than zero")
+    payload = {
+        "amount": amount_value,
+        "currency": currency.upper(),
+        "reference": reference,
+        "metadata": metadata or {},
+    }
+    plan = outbound_request_plan(provider, "payment.authorize", payload, environ)
+    plan["side_effect"] = "external_payment"
+    plan["review_required"] = True
+    return plan
+
+
+def sms_request_plan(provider, *, to, body, metadata=None, environ=None):
+    """Build a reviewed SMS-gateway request plan without sending a message."""
+    if provider not in INTEGRATIONS or INTEGRATIONS[provider]["kind"] != "sms":
+        raise KeyError(f"Unknown SMS integration: {provider}")
+    if not str(to).strip() or not str(body).strip():
+        raise ValueError("SMS recipient and body are required")
+    payload = {"to": to, "body": body, "metadata": metadata or {}}
+    plan = outbound_request_plan(provider, "sms.send", payload, environ)
+    plan["side_effect"] = "external_sms"
+    plan["review_required"] = True
+    return plan
+
+
+def email_request_plan(provider, *, to, subject, body, metadata=None, environ=None):
+    """Build a reviewed email-service request plan without sending email."""
+    if provider not in INTEGRATIONS or INTEGRATIONS[provider]["kind"] != "email":
+        raise KeyError(f"Unknown email integration: {provider}")
+    recipients = tuple(to) if isinstance(to, (list, tuple, set)) else (to,)
+    if not recipients or not str(subject).strip() or not str(body).strip():
+        raise ValueError("Email recipients, subject, and body are required")
+    payload = {"to": recipients, "subject": subject, "body": body, "metadata": metadata or {}}
+    plan = outbound_request_plan(provider, "email.send", payload, environ)
+    plan["side_effect"] = "external_email"
+    plan["review_required"] = True
+    return plan
+
+
+def low_code_portal_plan(provider="entando", *, microfrontend, route="/", metadata=None, environ=None):
+    """Build a reviewed low-code portal publication plan without publishing."""
+    if provider not in INTEGRATIONS or INTEGRATIONS[provider]["kind"] != "low_code_portal":
+        raise KeyError(f"Unknown low-code portal integration: {provider}")
+    if not str(microfrontend).strip() or not str(route).strip():
+        raise ValueError("Portal microfrontend and route are required")
+    payload = {"microfrontend": microfrontend, "route": route, "metadata": metadata or {}}
+    plan = outbound_request_plan(provider, "portal.microfrontend.publish", payload, environ)
+    plan["contract"] = integration_contract(provider)["version"]
+    plan["side_effect"] = "external_portal_publish"
+    plan["review_required"] = True
+    return plan
+
+
+def repository_deposit_plan(provider="invenio", *, record, files=(), metadata=None, environ=None):
+    """Build a reviewed repository deposit plan without uploading records."""
+    if provider not in INTEGRATIONS or INTEGRATIONS[provider]["kind"] != "repository":
+        raise KeyError(f"Unknown repository integration: {provider}")
+    if not record:
+        raise ValueError("Repository record metadata is required")
+    payload = {
+        "record": dict(record),
+        "files": tuple(files),
+        "metadata": metadata or {},
+    }
+    plan = outbound_request_plan(provider, "repository.deposit.create", payload, environ)
+    plan["contract"] = integration_contract(provider)["version"]
+    plan["side_effect"] = "external_repository_deposit"
+    plan["review_required"] = True
+    return plan
+
+
+def integration_check(existing_paths=()):
+    """Return readiness for generated integration artifacts."""
+    existing = set(existing_paths)
+    required = {"app/integrations.py", "app/templates/appgen_integrations.html"}
+    missing = tuple(sorted(required - existing))
+    required_names = {"rest", "webhook", "salesforce", "sap", "entando", "invenio", "stripe", "mpesa", "twilio_sms", "sendgrid_email"}
+    return {
+        "ok": not missing and required_names <= set(INTEGRATIONS) and {"entando", "invenio"} <= set(INTEGRATION_CONTRACTS),
+        "missing": missing,
+        "integrations": tuple(INTEGRATIONS),
+        "kinds": tuple(sorted({spec["kind"] for spec in INTEGRATIONS.values()})),
+        "contracts": tuple(INTEGRATION_CONTRACTS),
+    }
+
+
+class IntegrationView(BaseView):
+    route_base = "/integrations"
+    default_view = "index"
+
+    @expose("/")
+    def index(self):
+        return self.render_template(
+            "appgen_integrations.html",
+            integrations=integration_catalog(),
+        )
+
+    @expose("/catalog.json")
+    def catalog_json(self):
+        return jsonify(list(integration_catalog()))
+
+
+def register_integrations(appbuilder):
+    appbuilder.add_view(
+        IntegrationView,
+        "Integrations",
+        icon="fa-plug",
+        category="AppGen",
+    )
+'''
+
+
+def _productivity_text(schema: AppSchema) -> str:
+    templates = {}
+    for table in schema.tables:
+        visible = [
+            _model_attribute_name(column)
+            for column in table.columns
+            if not column.hidden and not column.derived
+        ]
+        required = [
+            _model_attribute_name(column)
+            for column in table.columns
+            if not column.nullable and not column.hidden and not column.derived and not column.primary_key
+        ]
+        templates[table.name] = {
+            "table": table.name,
+            "label": snake_to_label(table.name),
+            "fields": tuple(visible),
+            "required_fields": tuple(required),
+            "document_title": f"{snake_to_label(table.name)} Record",
+            "spreadsheet_name": f"{snake_to_label(table.name)} Export",
+            "calendar_summary": f"Review {snake_to_label(table.name)}",
+        }
+    return f'''"""Generated productivity-suite integration helpers for AppGen apps."""
+
+from __future__ import annotations
+
+import os
+
+from flask import jsonify
+from flask_appbuilder import BaseView
+from flask_appbuilder import expose
+
+
+PRODUCTIVITY_PROVIDERS = {{
+    "microsoft365": {{
+        "label": "Microsoft 365",
+        "env": ("M365_TENANT_ID", "M365_CLIENT_ID", "M365_CLIENT_SECRET"),
+        "scopes": ("files.readwrite", "calendars.readwrite", "tasks.readwrite"),
+        "document_target": "word",
+        "spreadsheet_target": "excel",
+        "calendar_target": "outlook",
+        "task_target": "planner",
+    }},
+    "google_workspace": {{
+        "label": "Google Workspace",
+        "env": ("GOOGLE_WORKSPACE_CLIENT_ID", "GOOGLE_WORKSPACE_CLIENT_SECRET", "GOOGLE_WORKSPACE_REFRESH_TOKEN"),
+        "scopes": ("docs", "sheets", "calendar", "tasks"),
+        "document_target": "docs",
+        "spreadsheet_target": "sheets",
+        "calendar_target": "calendar",
+        "task_target": "tasks",
+    }},
+}}
+PRODUCTIVITY_TEMPLATES = {templates!r}
+
+
+def provider_config(provider, environ=None):
+    """Return non-secret readiness for a productivity provider."""
+    environ = os.environ if environ is None else environ
+    config = PRODUCTIVITY_PROVIDERS[provider]
+    missing = tuple(key for key in config["env"] if not environ.get(key))
+    return {{
+        "provider": provider,
+        "label": config["label"],
+        "env": tuple(config["env"]),
+        "missing": missing,
+        "configured": not missing,
+        "scopes": tuple(config["scopes"]),
+    }}
+
+
+def provider_catalog(environ=None):
+    """Return Microsoft 365 and Google Workspace connector readiness."""
+    return tuple(provider_config(provider, environ=environ) for provider in PRODUCTIVITY_PROVIDERS)
+
+
+def productivity_templates():
+    """Return schema-derived productivity templates for each table."""
+    return tuple(PRODUCTIVITY_TEMPLATES.values())
+
+
+def document_merge_payload(table_name, row, provider="google_workspace"):
+    """Return a document merge payload for Docs or Word adapters."""
+    template = PRODUCTIVITY_TEMPLATES[table_name]
+    provider_config = PRODUCTIVITY_PROVIDERS[provider]
+    row = dict(row or {{}})
+    fields = {{field: row.get(field, "") for field in template["fields"]}}
+    return {{
+        "provider": provider,
+        "target": provider_config["document_target"],
+        "title": template["document_title"],
+        "table": table_name,
+        "fields": fields,
+        "required_missing": tuple(field for field in template["required_fields"] if not fields.get(field)),
+    }}
+
+
+def spreadsheet_export_payload(table_name, rows=(), provider="google_workspace"):
+    """Return a spreadsheet export payload for Sheets or Excel adapters."""
+    template = PRODUCTIVITY_TEMPLATES[table_name]
+    provider_config = PRODUCTIVITY_PROVIDERS[provider]
+    headers = tuple(template["fields"])
+    normalized_rows = tuple(
+        tuple(dict(row).get(field, "") for field in headers)
+        for row in rows
+    )
+    return {{
+        "provider": provider,
+        "target": provider_config["spreadsheet_target"],
+        "name": template["spreadsheet_name"],
+        "table": table_name,
+        "headers": headers,
+        "rows": normalized_rows,
+        "row_count": len(normalized_rows),
+    }}
+
+
+def calendar_event_payload(table_name, row=None, provider="google_workspace", *, start=None, end=None):
+    """Return a calendar event payload for generated review workflows."""
+    template = PRODUCTIVITY_TEMPLATES[table_name]
+    provider_config = PRODUCTIVITY_PROVIDERS[provider]
+    row = dict(row or {{}})
+    return {{
+        "provider": provider,
+        "target": provider_config["calendar_target"],
+        "summary": template["calendar_summary"],
+        "description": "; ".join(f"{{field}}={{row.get(field, '')}}" for field in template["fields"][:6]),
+        "start": start,
+        "end": end,
+        "table": table_name,
+    }}
+
+
+def task_sync_payload(table_name, row=None, provider="microsoft365", *, assignee=None):
+    """Return a task payload for Planner or Google Tasks adapters."""
+    template = PRODUCTIVITY_TEMPLATES[table_name]
+    provider_config = PRODUCTIVITY_PROVIDERS[provider]
+    row = dict(row or {{}})
+    missing = tuple(field for field in template["required_fields"] if row.get(field) in (None, ""))
+    return {{
+        "provider": provider,
+        "target": provider_config["task_target"],
+        "title": f"Review {{template['label']}}",
+        "assignee": assignee,
+        "table": table_name,
+        "missing_required_fields": missing,
+        "checklist": tuple(f"Confirm {{field}}" for field in template["required_fields"]),
+    }}
+
+
+def productivity_check(existing_paths=()):
+    """Return readiness for generated productivity integration artifacts."""
+    existing = set(existing_paths)
+    required = {{"app/productivity.py", "app/templates/appgen_productivity.html"}}
+    missing = tuple(sorted(required - existing))
+    return {{
+        "ok": not missing and bool(PRODUCTIVITY_TEMPLATES),
+        "missing": missing,
+        "providers": tuple(PRODUCTIVITY_PROVIDERS),
+        "tables": tuple(PRODUCTIVITY_TEMPLATES),
+    }}
+
+
+class ProductivityView(BaseView):
+    route_base = "/productivity"
+    default_view = "index"
+
+    @expose("/")
+    def index(self):
+        return self.render_template(
+            "appgen_productivity.html",
+            providers=provider_catalog(),
+            templates=productivity_templates(),
+        )
+
+    @expose("/catalog.json")
+    def catalog_json(self):
+        return jsonify({{"providers": list(provider_catalog()), "templates": list(productivity_templates())}})
+
+
+def register_productivity(appbuilder):
+    appbuilder.add_view(
+        ProductivityView,
+        "Productivity",
+        icon="fa-briefcase",
+        category="AppGen",
+    )
+'''
+
+
+def _lifecycle_text(schema: AppSchema, app_name: str) -> str:
+    resources = tuple(table.name for table in schema.tables)
+    release_gates = (
+        "quality",
+        "tests",
+        "security",
+        "backup",
+        "migration",
+        "custom_domain",
+        "monitoring",
+    )
+    return f'''"""Generated environment and lifecycle management helpers for AppGen apps."""
+
+from __future__ import annotations
+
+from datetime import datetime
+from datetime import timezone
+from hashlib import sha256
+import json
+
+from flask import jsonify
+from flask_appbuilder import BaseView
+from flask_appbuilder import expose
+
+
+APP_NAME = {app_name!r}
+LIFECYCLE_RESOURCES = {resources!r}
+ENVIRONMENTS = {{
+    "development": {{
+        "label": "Development",
+        "domain_env": "APPGEN_DEV_DOMAIN",
+        "database_env": "APPGEN_DEV_DATABASE_URL",
+        "gates": ("config", "schema", "unit_tests"),
+        "promotion_target": "testing",
+    }},
+    "testing": {{
+        "label": "Testing",
+        "domain_env": "APPGEN_TEST_DOMAIN",
+        "database_env": "APPGEN_TEST_DATABASE_URL",
+        "gates": ("config", "tests", "api_smoke", "accessibility"),
+        "promotion_target": "staging",
+    }},
+    "staging": {{
+        "label": "Staging",
+        "domain_env": "APPGEN_STAGING_DOMAIN",
+        "database_env": "APPGEN_STAGING_DATABASE_URL",
+        "gates": ("config", "tests", "security", "backup", "migration"),
+        "promotion_target": "production",
+    }},
+    "production": {{
+        "label": "Production",
+        "domain_env": "APPGEN_DOMAIN",
+        "database_env": "DATABASE_URL",
+        "gates": ("config", "tests", "security", "backup", "monitoring", "custom_domain"),
+        "promotion_target": None,
+    }},
+}}
+RELEASE_GATES = {release_gates!r}
+
+
+def environment_catalog():
+    """Return generated lifecycle environments and required gates."""
+    return tuple({{"name": name, **spec}} for name, spec in ENVIRONMENTS.items())
+
+
+def environment_status(environment, environ=None):
+    """Return non-secret readiness for one generated environment."""
+    environ = dict(environ or {{}})
+    spec = ENVIRONMENTS[environment]
+    required = (spec["domain_env"], spec["database_env"], "SECRET_KEY")
+    missing = tuple(name for name in required if not environ.get(name))
+    return {{
+        "environment": environment,
+        "label": spec["label"],
+        "ready": not missing,
+        "missing": missing,
+        "domain": environ.get(spec["domain_env"]),
+        "database_configured": bool(environ.get(spec["database_env"])),
+        "gates": tuple(spec["gates"]),
+    }}
+
+
+def custom_domain_plan(environment, domain=None):
+    """Return generated custom-domain DNS and TLS setup guidance."""
+    spec = ENVIRONMENTS[environment]
+    target_domain = domain or f"{{environment}}.example.com"
+    return {{
+        "environment": environment,
+        "domain": target_domain,
+        "domain_env": spec["domain_env"],
+        "dns_records": (
+            {{"type": "CNAME", "name": target_domain, "value": "APPGEN_LOAD_BALANCER"}},
+        ),
+        "tls": {{"provider": "caddy", "email_env": "APPGEN_TLS_EMAIL", "auto_https": True}},
+    }}
+
+
+def release_checklist(environment="production"):
+    """Return required release gates for an environment."""
+    status = ENVIRONMENTS[environment]
+    return {{
+        "environment": environment,
+        "gates": tuple(status["gates"]),
+        "required_artifacts": (
+            "scripts/appgen_quality.py",
+            "tests/test_generated_contract.py",
+            "tests/test_generated_coverage.py",
+            "deploy/k8s.yaml",
+            "deploy/Caddyfile",
+        ),
+    }}
+
+
+def promotion_plan(source, manifest_revision=None):
+    """Return a reviewable promotion plan between lifecycle environments."""
+    if source not in ENVIRONMENTS:
+        raise KeyError(f"Unknown environment: {{source}}")
+    target = ENVIRONMENTS[source]["promotion_target"]
+    if target is None:
+        raise ValueError("Production has no promotion target")
+    return {{
+        "source": source,
+        "target": target,
+        "manifest_revision": manifest_revision,
+        "gates": release_checklist(target)["gates"],
+        "requires_approval": target in {{"staging", "production"}},
+    }}
+
+
+def maintenance_window(environment="production", *, starts_at=None, duration_minutes=30, reason="planned_update"):
+    """Return a generated maintenance/update window."""
+    return {{
+        "environment": environment,
+        "starts_at": starts_at,
+        "duration_minutes": int(duration_minutes),
+        "reason": reason,
+        "affected_resources": LIFECYCLE_RESOURCES,
+        "notifications": ("in_app", "email", "webhook"),
+    }}
+
+
+def update_plan(version, environment="production", *, migration_required=False):
+    """Return generated application update and rollback guidance."""
+    return {{
+        "version": version,
+        "environment": environment,
+        "migration_required": bool(migration_required),
+        "steps": (
+            "backup",
+            "run_quality_gate",
+            "apply_migrations" if migration_required else "skip_migrations",
+            "deploy",
+            "smoke_test",
+            "monitor",
+        ),
+        "rollback": ("restore_previous_image", "restore_backup" if migration_required else "restart_previous_release"),
+    }}
+
+
+def _stable_id(prefix, payload):
+    body = json.dumps(payload, sort_keys=True, default=str)
+    return f"{{prefix}}-{{sha256(body.encode('utf-8')).hexdigest()[:10]}}"
+
+
+def feedback_item(message, *, actor=None, rating=None, area="general"):
+    """Return a generated user-feedback item for product improvement loops."""
+    payload = {{
+        "message": str(message),
+        "actor": actor,
+        "rating": rating,
+        "area": area,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    }}
+    return {{"id": _stable_id("fb", payload), **payload}}
+
+
+def user_test_session(name, tasks=(), *, actor=None):
+    """Return a user-testing session plan with task prompts."""
+    task_list = tuple(tasks or ("create_record", "search_records", "export_report"))
+    return {{
+        "id": _stable_id("ut", {{"name": name, "tasks": task_list, "actor": actor}}),
+        "name": name,
+        "actor": actor,
+        "tasks": tuple({{"task": task, "status": "planned"}} for task in task_list),
+        "metrics": ("completion_rate", "time_on_task", "user_satisfaction"),
+    }}
+
+
+def issue_report(title, *, severity="medium", source="user", details=None):
+    """Return a generated issue/bug report for internal or external trackers."""
+    payload = {{
+        "title": str(title),
+        "severity": severity,
+        "source": source,
+        "details": dict(details or {{}}),
+    }}
+    return {{
+        "id": _stable_id("issue", payload),
+        **payload,
+        "status": "open",
+        "labels": ("appgen", severity, source),
+    }}
+
+
+def lifecycle_check(existing_paths=()):
+    """Return readiness for generated lifecycle artifacts."""
+    existing = set(existing_paths)
+    required = {{"app/lifecycle.py", "app/templates/appgen_lifecycle.html"}}
+    missing = tuple(sorted(required - existing))
+    return {{
+        "ok": not missing and bool(ENVIRONMENTS) and bool(RELEASE_GATES),
+        "missing": missing,
+        "environments": tuple(ENVIRONMENTS),
+        "release_gates": RELEASE_GATES,
+    }}
+
+
+class LifecycleView(BaseView):
+    route_base = "/lifecycle"
+    default_view = "index"
+
+    @expose("/")
+    def index(self):
+        return self.render_template(
+            "appgen_lifecycle.html",
+            environments=environment_catalog(),
+            release_gates=RELEASE_GATES,
+        )
+
+    @expose("/catalog.json")
+    def catalog_json(self):
+        return jsonify({{"environments": list(environment_catalog()), "release_gates": list(RELEASE_GATES)}})
+
+
+def register_lifecycle(appbuilder):
+    appbuilder.add_view(
+        LifecycleView,
+        "Lifecycle",
+        icon="fa-refresh",
+        category="AppGen",
+    )
+'''
+
+
+def _emerging_text(schema: AppSchema) -> str:
+    def is_numeric(column: ColumnSchema) -> bool:
+        normalized = column.type_name.lower().split("(", 1)[0]
+        return normalized in {
+            "int",
+            "integer",
+            "serial",
+            "smallint",
+            "bigint",
+            "float",
+            "real",
+            "double",
+            "double precision",
+            "decimal",
+            "numeric",
+            "money",
+        }
+
+    devices = {}
+    for table in schema.tables:
+        visible = [column for column in table.columns if not column.hidden and not column.derived]
+        metrics = tuple(_model_attribute_name(column) for column in visible if is_numeric(column) and not column.primary_key)
+        if not metrics:
+            metrics = ("record_count",)
+        devices[f"{underscore(table.name)}_device"] = {
+            "table": table.name,
+            "label": f"{snake_to_label(table.name)} Device",
+            "device_type": f"{underscore(table.name)}_sensor",
+            "metrics": metrics,
+            "commands": ("sync", "calibrate", "disable"),
+            "telemetry_topic": f"iot.{table.name}.telemetry",
+            "command_topic": f"iot.{table.name}.command",
+            "anchor_topic": f"chain.{table.name}.anchor",
+        }
+
+    return f'''"""Generated IoT and blockchain integration helpers for AppGen apps."""
+
+from __future__ import annotations
+
+from datetime import datetime
+from datetime import timezone
+from hashlib import sha256
+import json
+
+from flask import jsonify
+from flask_appbuilder import BaseView
+from flask_appbuilder import expose
+
+
+EMERGING_DEVICES = {devices!r}
+BLOCKCHAIN_NETWORKS = {{
+    "ethereum": {{"label": "Ethereum", "anchor_mode": "hash-only"}},
+    "hyperledger": {{"label": "Hyperledger Fabric", "anchor_mode": "private-channel"}},
+    "polygon": {{"label": "Polygon", "anchor_mode": "hash-only"}},
+}}
+
+
+def device_catalog():
+    """Return generated IoT device and telemetry contracts."""
+    return tuple(
+        dict(spec, name=name)
+        for name, spec in EMERGING_DEVICES.items()
+    )
+
+
+def device_contract(name):
+    """Return one generated IoT device contract."""
+    if name not in EMERGING_DEVICES:
+        raise KeyError(f"Unknown generated device: {{name}}")
+    return dict(EMERGING_DEVICES[name], name=name)
+
+
+def telemetry_event(device_name, readings, *, device_id=None, occurred_at=None):
+    """Build a generated telemetry event after validating known metrics."""
+    device = device_contract(device_name)
+    readings = dict(readings)
+    unknown = tuple(sorted(set(readings) - set(device["metrics"])))
+    if unknown:
+        raise ValueError(f"Unknown telemetry metrics for {{device_name}}: {{unknown}}")
+    return {{
+        "topic": device["telemetry_topic"],
+        "device": device_name,
+        "device_id": device_id,
+        "table": device["table"],
+        "readings": readings,
+        "occurred_at": occurred_at or datetime.now(timezone.utc).isoformat(),
+    }}
+
+
+def validate_telemetry(event):
+    """Validate a telemetry event against generated metric contracts."""
+    device = device_contract(event["device"])
+    missing_topic = event.get("topic") != device["telemetry_topic"]
+    unknown = tuple(sorted(set(event.get("readings", {{}})) - set(device["metrics"])))
+    return {{"ok": not missing_topic and not unknown, "wrong_topic": missing_topic, "unknown": unknown}}
+
+
+def command_payload(device_name, command, *, parameters=None, requested_by=None):
+    """Build a generated IoT device command payload."""
+    device = device_contract(device_name)
+    if command not in device["commands"]:
+        raise ValueError(f"Unsupported command for {{device_name}}: {{command}}")
+    return {{
+        "topic": device["command_topic"],
+        "device": device_name,
+        "command": command,
+        "parameters": parameters or {{}},
+        "requested_by": requested_by,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    }}
+
+
+def _stable_hash(value):
+    body = json.dumps(value, sort_keys=True, default=str).encode("utf-8")
+    return sha256(body).hexdigest()
+
+
+def blockchain_anchor(resource, payload, *, network="ethereum", actor=None):
+    """Build a hash-only blockchain audit anchor payload."""
+    if network not in BLOCKCHAIN_NETWORKS:
+        raise KeyError(f"Unknown blockchain network: {{network}}")
+    digest = _stable_hash({{"resource": resource, "payload": payload}})
+    return {{
+        "resource": resource,
+        "network": network,
+        "anchor_mode": BLOCKCHAIN_NETWORKS[network]["anchor_mode"],
+        "hash": digest,
+        "actor": actor,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    }}
+
+
+def verify_anchor(anchor, payload):
+    """Verify a hash-only blockchain audit anchor."""
+    expected = _stable_hash({{"resource": anchor["resource"], "payload": payload}})
+    return {{"ok": anchor.get("hash") == expected, "expected": expected, "actual": anchor.get("hash")}}
+
+
+def smart_contract_plan(resource, actions=("create", "update", "delete"), *, network="ethereum"):
+    """Return a generated smart-contract adapter plan without deploying code."""
+    if network not in BLOCKCHAIN_NETWORKS:
+        raise KeyError(f"Unknown blockchain network: {{network}}")
+    return {{
+        "resource": resource,
+        "network": network,
+        "anchor_mode": BLOCKCHAIN_NETWORKS[network]["anchor_mode"],
+        "events": tuple(f"{{resource}}.{{action}}.anchored" for action in actions),
+        "methods": tuple(f"anchor_{{action}}" for action in actions),
+    }}
+
+
+def edge_sync_plan(device_name, *, offline=True):
+    """Return edge/offline sync guidance for an IoT device contract."""
+    device = device_contract(device_name)
+    return {{
+        "device": device_name,
+        "telemetry_topic": device["telemetry_topic"],
+        "command_topic": device["command_topic"],
+        "offline": offline,
+        "buffer": "sqlite" if offline else "memory",
+        "retry": {{"max_attempts": 5, "backoff_seconds": (5, 30, 120)}},
+    }}
+
+
+def emerging_check(existing_paths=()):
+    """Return readiness for generated IoT and blockchain artifacts."""
+    existing = set(existing_paths)
+    required = {{"app/emerging.py", "app/templates/appgen_emerging.html"}}
+    missing = tuple(sorted(required - existing))
+    return {{
+        "ok": not missing and bool(EMERGING_DEVICES) and bool(BLOCKCHAIN_NETWORKS),
+        "missing": missing,
+        "devices": tuple(EMERGING_DEVICES),
+        "networks": tuple(BLOCKCHAIN_NETWORKS),
+    }}
+
+
+class EmergingView(BaseView):
+    route_base = "/emerging"
+    default_view = "index"
+
+    @expose("/")
+    def index(self):
+        return self.render_template("appgen_emerging.html", devices=device_catalog())
+
+    @expose("/catalog.json")
+    def catalog_json(self):
+        return jsonify({{"devices": list(device_catalog()), "networks": BLOCKCHAIN_NETWORKS}})
+
+
+def register_emerging(appbuilder):
+    appbuilder.add_view(
+        EmergingView,
+        "Emerging",
+        icon="fa-microchip",
+        category="AppGen",
+    )
+'''
+
+
+def _tenancy_text(schema: AppSchema) -> str:
+    tenant_markers = {
+        "tenant",
+        "tenant_id",
+        "account_id",
+        "workspace_id",
+        "organization_id",
+        "organisation_id",
+    }
+    tables = {}
+    for table in schema.tables:
+        tenant_columns = [
+            _model_attribute_name(column)
+            for column in table.columns
+            if not column.derived
+            and (
+                column.name.lower() in tenant_markers
+                or _model_attribute_name(column).lower() in tenant_markers
+            )
+        ]
+        tables[table.name] = {
+            "label": snake_to_label(table.name),
+            "model": snake_to_pascal(table.name),
+            "columns": [_model_attribute_name(column) for column in table.columns if not column.derived],
+            "tenant_columns": tenant_columns,
+        }
+    return f'''"""Generated multi-tenancy helpers for AppGen apps."""
+
+from __future__ import annotations
+
+from flask import jsonify
+from flask import request
+from flask import session
+from flask_appbuilder import BaseView
+from flask_appbuilder import expose
+
+
+TENANT_HEADER = "X-AppGen-Tenant"
+TENANT_SESSION_KEY = "appgen_tenant_id"
+TENANT_TABLES = {tables!r}
+
+
+def tenant_catalog():
+    """Return generated tenant-scope metadata for every table."""
+    return tuple(
+        {{
+            "table": table_name,
+            "label": table["label"],
+            "model": table["model"],
+            "columns": tuple(table["columns"]),
+            "tenant_columns": tuple(table["tenant_columns"]),
+            "scoped": bool(table["tenant_columns"]),
+        }}
+        for table_name, table in TENANT_TABLES.items()
+    )
+
+
+def tenant_context(headers=None, args=None, session_data=None):
+    """Resolve the active tenant id from headers, query args, or session."""
+    headers = {{}} if headers is None else headers
+    args = {{}} if args is None else args
+    session_data = {{}} if session_data is None else session_data
+    tenant_id = (
+        headers.get(TENANT_HEADER)
+        or headers.get(TENANT_HEADER.lower())
+        or args.get("tenant")
+        or args.get("tenant_id")
+        or session_data.get(TENANT_SESSION_KEY)
+    )
+    return {{"tenant_id": tenant_id}}
+
+
+def request_tenant_context():
+    """Resolve the active tenant id from the current Flask request."""
+    return tenant_context(request.headers, request.args, session)
+
+
+def tenant_column(table_name):
+    """Return the first generated tenant column for a table, if present."""
+    table = TENANT_TABLES.get(table_name)
+    if not table or not table["tenant_columns"]:
+        return None
+    return table["tenant_columns"][0]
+
+
+def is_tenant_scoped(table_name):
+    """Return True when the generated table contains a tenant marker column."""
+    return tenant_column(table_name) is not None
+
+
+def tenant_filter_kwargs(table_name, tenant_id):
+    """Return keyword filters for custom queries against tenant-scoped tables."""
+    column = tenant_column(table_name)
+    if column is None or tenant_id in (None, ""):
+        return {{}}
+    return {{column: tenant_id}}
+
+
+def require_tenant(table_name, tenant_id):
+    """Require tenant context when a table is tenant-scoped."""
+    if is_tenant_scoped(table_name) and tenant_id in (None, ""):
+        raise PermissionError(f"Tenant context required for {{table_name}}")
+    return True
+
+
+class TenancyView(BaseView):
+    route_base = "/tenancy"
+    default_view = "index"
+
+    @expose("/")
+    def index(self):
+        return self.render_template("appgen_tenancy.html", tables=tenant_catalog())
+
+    @expose("/catalog.json")
+    def catalog_json(self):
+        return jsonify(list(tenant_catalog()))
+
+    @expose("/context.json")
+    def context_json(self):
+        return jsonify(request_tenant_context())
+
+
+def register_tenancy(appbuilder):
+    appbuilder.add_view(
+        TenancyView,
+        "Tenancy",
+        icon="fa-sitemap",
+        category="AppGen",
+    )
+'''
+
+
+def _rls_text(schema: AppSchema) -> str:
+    tenant_markers = {
+        "tenant",
+        "tenant_id",
+        "account_id",
+        "workspace_id",
+        "organization_id",
+        "organisation_id",
+    }
+    policies = {}
+    for table in schema.tables:
+        tenant_columns = [
+            _model_attribute_name(column)
+            for column in table.columns
+            if not column.derived
+            and (
+                column.name.lower() in tenant_markers
+                or _model_attribute_name(column).lower() in tenant_markers
+            )
+        ]
+        tenant_column = tenant_columns[0] if tenant_columns else None
+        policies[table.name] = {
+            "table": table.name,
+            "label": snake_to_label(table.name),
+            "model": snake_to_pascal(table.name),
+            "tenant_column": tenant_column,
+            "scoped": tenant_column is not None,
+            "bypass_roles": ("Admin", "SecurityManager"),
+        }
+
+    return f'''"""Generated row-level security contracts for AppGen apps."""
+
+from __future__ import annotations
+
+from flask import jsonify
+from flask_appbuilder import BaseView
+from flask_appbuilder import expose
+
+
+RLS_POLICIES = {policies!r}
+
+
+def rls_catalog():
+    """Return generated row-level security policy metadata."""
+    return tuple(RLS_POLICIES.values())
+
+
+def table_policy(table_name):
+    """Return one generated row-level security policy."""
+    if table_name not in RLS_POLICIES:
+        raise KeyError(f"Unknown RLS policy: {{table_name}}")
+    return RLS_POLICIES[table_name]
+
+
+def principal_tenant(principal):
+    """Resolve the principal tenant id from a dictionary-like principal."""
+    principal = principal or {{}}
+    return principal.get("tenant_id") or principal.get("tenant") or principal.get("organization_id")
+
+
+def principal_roles(principal):
+    """Return normalized role names from a dictionary-like principal."""
+    principal = principal or {{}}
+    roles = principal.get("roles") or principal.get("role") or ()
+    if isinstance(roles, str):
+        return (roles,)
+    return tuple(roles)
+
+
+def bypasses_rls(table_name, principal):
+    """Return whether the principal has a generated RLS bypass role."""
+    policy = table_policy(table_name)
+    return bool(set(policy["bypass_roles"]) & set(principal_roles(principal)))
+
+
+def rls_filter_kwargs(table_name, principal):
+    """Return ORM filter kwargs needed to apply generated RLS."""
+    policy = table_policy(table_name)
+    if not policy["scoped"] or bypasses_rls(table_name, principal):
+        return {{}}
+    tenant_id = principal_tenant(principal)
+    if tenant_id in (None, ""):
+        raise PermissionError(f"Tenant context required for {{table_name}}")
+    return {{policy["tenant_column"]: tenant_id}}
+
+
+def can_access_row(table_name, row, principal):
+    """Return whether a row is visible under the generated RLS policy."""
+    policy = table_policy(table_name)
+    if not policy["scoped"] or bypasses_rls(table_name, principal):
+        return True
+    tenant_id = principal_tenant(principal)
+    if tenant_id in (None, ""):
+        return False
+    if isinstance(row, dict):
+        row_value = row.get(policy["tenant_column"])
+    else:
+        row_value = getattr(row, policy["tenant_column"], None)
+    return str(row_value) == str(tenant_id)
+
+
+def filter_rows(table_name, rows, principal):
+    """Filter dictionaries or model rows using the generated RLS policy."""
+    return tuple(row for row in rows if can_access_row(table_name, row, principal))
+
+
+def postgres_policy_sql(table_name, *, app_setting="appgen.tenant_id"):
+    """Return PostgreSQL RLS SQL for one generated table policy."""
+    policy = table_policy(table_name)
+    quoted_table = '"' + table_name.replace('"', '""') + '"'
+    if not policy["scoped"]:
+        return f"-- {{table_name}} is not tenant scoped; no RLS policy generated."
+    tenant_column = '"' + policy["tenant_column"].replace('"', '""') + '"'
+    policy_name = f"appgen_{{table_name.lower()}}_tenant_isolation".replace(" ", "_")
+    return "\\n".join((
+        f"ALTER TABLE {{quoted_table}} ENABLE ROW LEVEL SECURITY;",
+        f"CREATE POLICY {{policy_name}} ON {{quoted_table}}",
+        f"USING ({{tenant_column}}::text = current_setting('{{app_setting}}', true));",
+        f"WITH CHECK ({{tenant_column}}::text = current_setting('{{app_setting}}', true));",
+    ))
+
+
+def postgres_all_policy_sql():
+    """Return PostgreSQL RLS SQL for every generated scoped table."""
+    return "\\n\\n".join(
+        postgres_policy_sql(table_name)
+        for table_name, policy in RLS_POLICIES.items()
+        if policy["scoped"]
+    )
+
+
+class RowLevelSecurityView(BaseView):
+    route_base = "/row-level-security"
+    default_view = "index"
+
+    @expose("/")
+    def index(self):
+        return self.render_template("appgen_rls.html", policies=rls_catalog())
+
+    @expose("/catalog.json")
+    def catalog_json(self):
+        return jsonify(list(rls_catalog()))
+
+    @expose("/<table_name>.json")
+    def policy_json(self, table_name):
+        return jsonify(table_policy(table_name))
+
+    @expose("/postgres.sql")
+    def postgres_sql(self):
+        from flask import Response
+
+        return Response(postgres_all_policy_sql() + "\\n", mimetype="text/plain")
+
+
+def register_rls(appbuilder):
+    appbuilder.add_view(
+        RowLevelSecurityView,
+        "Row-Level Security",
+        icon="fa-lock",
+        category="AppGen",
+    )
+'''
+
+
+def _identity_text() -> str:
+    return '''"""Generated SSO and enterprise identity helpers for AppGen apps."""
+
+from __future__ import annotations
+
+import os
+
+from flask import jsonify
+from flask_appbuilder import BaseView
+from flask_appbuilder import expose
+
+
+IDENTITY_PROVIDERS = {
+    "oidc": {
+        "label": "OpenID Connect",
+        "protocol": "oidc",
+        "env": ("OIDC_ISSUER", "OIDC_CLIENT_ID", "OIDC_CLIENT_SECRET"),
+    },
+    "saml": {
+        "label": "SAML 2.0",
+        "protocol": "saml",
+        "env": ("SAML_METADATA_URL", "SAML_ENTITY_ID"),
+    },
+    "ldap": {
+        "label": "LDAP",
+        "protocol": "ldap",
+        "env": ("LDAP_URI", "LDAP_BIND_DN", "LDAP_BIND_PASSWORD", "LDAP_USER_BASE_DN"),
+    },
+    "active_directory": {
+        "label": "Active Directory",
+        "protocol": "ldap",
+        "env": ("AD_SERVER", "AD_DOMAIN", "AD_BIND_USER", "AD_BIND_PASSWORD", "AD_USER_BASE_DN"),
+    },
+    "headers": {
+        "label": "Trusted Proxy Headers",
+        "protocol": "headers",
+        "env": ("TRUSTED_IDENTITY_HEADER",),
+    },
+    "cognito": {
+        "label": "AWS Cognito",
+        "protocol": "oidc",
+        "env": (
+            "COGNITO_REGION",
+            "COGNITO_USER_POOL_ID",
+            "COGNITO_CLIENT_ID",
+            "COGNITO_CLIENT_SECRET",
+            "COGNITO_DOMAIN",
+        ),
+    },
+}
+
+
+def provider_config(name, environ=None):
+    """Return non-secret SSO provider readiness metadata."""
+    environ = os.environ if environ is None else environ
+    provider = IDENTITY_PROVIDERS[name]
+    env = tuple(provider["env"])
+    missing = tuple(key for key in env if not environ.get(key))
+    return {
+        "name": name,
+        "label": provider["label"],
+        "protocol": provider["protocol"],
+        "env": env,
+        "missing": missing,
+        "configured": not missing,
+    }
+
+
+def provider_catalog(environ=None):
+    """Return generated SSO provider definitions with config status."""
+    return tuple(provider_config(name, environ=environ) for name in IDENTITY_PROVIDERS)
+
+
+def login_request_plan(provider_name, next_url="/", environ=None):
+    """Build an SSO login plan without redirecting or sending network traffic."""
+    if provider_name not in IDENTITY_PROVIDERS:
+        raise KeyError(f"Unknown identity provider: {provider_name}")
+    config = provider_config(provider_name, environ=environ)
+    if not config["configured"]:
+        raise ValueError(f"Identity provider {provider_name} is missing configuration")
+    return {
+        "provider": provider_name,
+        "protocol": config["protocol"],
+        "next_url": next_url,
+        "env": config["env"],
+    }
+
+
+def ldap_bind_plan(provider_name, username, *, environ=None):
+    """Build an LDAP/Active Directory bind plan without opening a network connection."""
+    if provider_name not in {"ldap", "active_directory"}:
+        raise KeyError(f"Unknown LDAP identity provider: {provider_name}")
+    config = provider_config(provider_name, environ=environ)
+    if not config["configured"]:
+        raise ValueError(f"Identity provider {provider_name} is missing configuration")
+    environ = os.environ if environ is None else environ
+    if provider_name == "active_directory":
+        server = environ["AD_SERVER"]
+        domain = environ["AD_DOMAIN"]
+        bind_identity = f"{username}@{domain}" if "@" not in username else username
+        base_dn = environ["AD_USER_BASE_DN"]
+        user_filter = f"(&(objectClass=user)(sAMAccountName={username.split('@', 1)[0]}))"
+    else:
+        server = environ["LDAP_URI"]
+        bind_identity = username
+        base_dn = environ["LDAP_USER_BASE_DN"]
+        user_filter = f"(&(objectClass=person)(uid={username}))"
+    return {
+        "provider": provider_name,
+        "protocol": "ldap",
+        "server": server,
+        "bind_identity": bind_identity,
+        "base_dn": base_dn,
+        "user_filter": user_filter,
+        "env": config["env"],
+        "side_effect": "external_identity_bind",
+        "review_required": True,
+    }
+
+
+def directory_search_plan(provider_name, query, *, attributes=("cn", "mail", "memberOf"), environ=None):
+    """Build a directory search plan without querying LDAP or Active Directory."""
+    bind_plan = ldap_bind_plan(provider_name, str(query), environ=environ)
+    search_filter = (
+        f"(|(cn=*{query}*)(mail=*{query}*)(uid=*{query}*))"
+        if provider_name == "ldap"
+        else f"(|(cn=*{query}*)(mail=*{query}*)(sAMAccountName=*{query}*))"
+    )
+    return {
+        "provider": provider_name,
+        "protocol": "ldap",
+        "server": bind_plan["server"],
+        "base_dn": bind_plan["base_dn"],
+        "filter": search_filter,
+        "attributes": tuple(attributes),
+        "side_effect": "external_directory_search",
+        "review_required": True,
+    }
+
+
+def cognito_issuer(environ=None):
+    """Return the AWS Cognito OIDC issuer URL from environment configuration."""
+    environ = os.environ if environ is None else environ
+    region = environ["COGNITO_REGION"]
+    pool_id = environ["COGNITO_USER_POOL_ID"]
+    return f"https://cognito-idp.{region}.amazonaws.com/{pool_id}"
+
+
+def cognito_jwks_url(environ=None):
+    """Return the AWS Cognito JWKS URL used by token verifiers."""
+    return cognito_issuer(environ).rstrip("/") + "/.well-known/jwks.json"
+
+
+def cognito_authorize_url(next_url="/", environ=None):
+    """Return the hosted-ui authorize URL without redirecting."""
+    environ = os.environ if environ is None else environ
+    config = provider_config("cognito", environ=environ)
+    if not config["configured"]:
+        raise ValueError("Identity provider cognito is missing configuration")
+    domain = environ["COGNITO_DOMAIN"].rstrip("/")
+    client_id = environ["COGNITO_CLIENT_ID"]
+    return (
+        f"{domain}/oauth2/authorize?response_type=code"
+        f"&client_id={client_id}&scope=openid+email+profile&redirect_uri={next_url}"
+    )
+
+
+def cognito_readiness(environ=None):
+    """Return generated AWS Cognito readiness metadata."""
+    config = provider_config("cognito", environ=environ)
+    ready = config["configured"]
+    return {
+        "configured": ready,
+        "missing": config["missing"],
+        "issuer": None if not ready else cognito_issuer(environ),
+        "jwks_url": None if not ready else cognito_jwks_url(environ),
+    }
+
+
+def normalize_principal(claims):
+    """Normalize IdP claims into a stable generated principal contract."""
+    claims = claims or {}
+    username = (
+        claims.get("preferred_username")
+        or claims.get("sAMAccountName")
+        or claims.get("uid")
+        or claims.get("email")
+        or claims.get("mail")
+        or claims.get("sub")
+    )
+    return {
+        "id": claims.get("sub") or claims.get("objectGUID") or claims.get("dn") or username,
+        "username": username,
+        "email": claims.get("email") or claims.get("mail"),
+        "roles": tuple(claims.get("roles", ()) or claims.get("groups", ()) or ()),
+    }
+
+
+class IdentityView(BaseView):
+    route_base = "/identity"
+    default_view = "index"
+
+    @expose("/")
+    def index(self):
+        return self.render_template("appgen_identity.html", providers=provider_catalog())
+
+    @expose("/providers.json")
+    def providers_json(self):
+        return jsonify(list(provider_catalog()))
+
+
+def register_identity(appbuilder):
+    appbuilder.add_view(
+        IdentityView,
+        "Identity",
+        icon="fa-id-card",
+        category="AppGen",
+    )
+'''
+
+
+def _compliance_text(schema: AppSchema) -> str:
+    protected_names = {
+        "email",
+        "phone",
+        "password",
+        "secret",
+        "token",
+        "ssn",
+        "national_id",
+        "nin",
+        "internal_code",
+    }
+    tables = {}
+    for table in schema.tables:
+        protected_fields = []
+        for column in table.columns:
+            attr_name = _model_attribute_name(column)
+            lowered = column.name.lower()
+            if column.derived or column.hidden or lowered in protected_names or any(marker in lowered for marker in ("password", "secret", "token")):
+                protected_fields.append(attr_name)
+        tables[table.name] = {
+            "label": snake_to_label(table.name),
+            "protected_fields": protected_fields,
+            "retention_days": 365,
+        }
+    return f'''"""Generated compliance, audit, and redaction helpers for AppGen apps."""
+
+from __future__ import annotations
+
+from datetime import datetime
+from datetime import timezone
+
+from flask import jsonify
+from flask_appbuilder import BaseView
+from flask_appbuilder import expose
+
+
+COMPLIANCE_TABLES = {tables!r}
+REDACTION = "[redacted]"
+
+
+def compliance_catalog():
+    """Return protected-field and retention metadata for generated tables."""
+    return tuple(
+        {{
+            "table": table_name,
+            "label": table["label"],
+            "protected_fields": tuple(table["protected_fields"]),
+            "retention_days": table["retention_days"],
+        }}
+        for table_name, table in COMPLIANCE_TABLES.items()
+    )
+
+
+def protected_fields(table_name):
+    """Return fields that should be redacted from logs and external payloads."""
+    table = COMPLIANCE_TABLES.get(table_name, {{}})
+    return tuple(table.get("protected_fields", ()))
+
+
+def redact_row(table_name, row):
+    """Return a copy of a row with generated protected fields redacted."""
+    protected = set(protected_fields(table_name))
+    result = dict(row)
+    for field in protected:
+        if field in result:
+            result[field] = REDACTION
+    return result
+
+
+def audit_event(action, resource, *, actor=None, tenant_id=None, metadata=None):
+    """Create a stable audit event payload for storage or forwarding."""
+    return {{
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "action": action,
+        "resource": resource,
+        "actor": actor,
+        "tenant_id": tenant_id,
+        "metadata": metadata or {{}},
+    }}
+
+
+def retention_policy(table_name):
+    """Return the generated retention policy for a table."""
+    table = COMPLIANCE_TABLES.get(table_name)
+    if table is None:
+        return {{"table": table_name, "retention_days": None}}
+    return {{"table": table_name, "retention_days": table["retention_days"]}}
+
+
+class ComplianceView(BaseView):
+    route_base = "/compliance"
+    default_view = "index"
+
+    @expose("/")
+    def index(self):
+        return self.render_template("appgen_compliance.html", tables=compliance_catalog())
+
+    @expose("/catalog.json")
+    def catalog_json(self):
+        return jsonify(list(compliance_catalog()))
+
+
+def register_compliance(appbuilder):
+    appbuilder.add_view(
+        ComplianceView,
+        "Compliance",
+        icon="fa-shield",
+        category="AppGen",
+    )
+'''
+
+
+def _assistant_text(schema: AppSchema) -> str:
+    tables = {}
+    for table in schema.tables:
+        visible_fields = [
+            _model_attribute_name(column)
+            for column in table.columns
+            if not column.hidden and not column.derived
+        ]
+        searchable_fields = [
+            _model_attribute_name(column)
+            for column in table.columns
+            if column.searchable and not column.hidden and not column.derived
+        ]
+        required_fields = [
+            _model_attribute_name(column)
+            for column in table.columns
+            if not column.nullable and not column.primary_key and not column.hidden and not column.derived
+        ]
+        tables[table.name] = {
+            "label": snake_to_label(table.name),
+            "visible_fields": visible_fields,
+            "searchable_fields": searchable_fields,
+            "required_fields": required_fields,
+        }
+    return f'''"""Generated AI assistance contracts for AppGen apps."""
+
+from __future__ import annotations
+
+from flask import jsonify
+from flask_appbuilder import BaseView
+from flask_appbuilder import expose
+
+
+ASSISTANT_TABLES = {tables!r}
+
+
+def assistant_catalog():
+    """Return generated AI-ready metadata for each table."""
+    return tuple(
+        {{
+            "table": table_name,
+            "label": table["label"],
+            "visible_fields": tuple(table["visible_fields"]),
+            "searchable_fields": tuple(table["searchable_fields"]),
+            "required_fields": tuple(table["required_fields"]),
+        }}
+        for table_name, table in ASSISTANT_TABLES.items()
+    )
+
+
+def prompt_context(table_name, row=None):
+    """Build a compact, non-hidden prompt context for a row."""
+    table = ASSISTANT_TABLES[table_name]
+    row = row or {{}}
+    fields = tuple(table["visible_fields"])
+    values = {{field: row.get(field) for field in fields if field in row}}
+    return {{
+        "table": table_name,
+        "label": table["label"],
+        "fields": fields,
+        "values": values,
+    }}
+
+
+def chatbot_questions(table_name):
+    """Return field-collection prompts for chatbot or wizard frontends."""
+    table = ASSISTANT_TABLES[table_name]
+    required = set(table["required_fields"])
+    return tuple(
+        {{
+            "field": field,
+            "question": f"What should {{field.replace('_', ' ')}} be?",
+            "required": field in required,
+        }}
+        for field in table["visible_fields"]
+    )
+
+
+def prediction_features(table_name, row):
+    """Return deterministic model-input features for future ML hooks."""
+    table = ASSISTANT_TABLES[table_name]
+    return {{
+        field: row.get(field)
+        for field in table["visible_fields"]
+        if field in row
+    }}
+
+
+def recommendations(table_name, row=None):
+    """Return deterministic low-code recommendations before model integration."""
+    table = ASSISTANT_TABLES[table_name]
+    row = row or {{}}
+    suggestions = []
+    for field in table["required_fields"]:
+        if row.get(field) in (None, ""):
+            suggestions.append({{
+                "type": "missing_required_field",
+                "field": field,
+                "message": f"Provide {{field.replace('_', ' ')}} before submission.",
+            }})
+    for field in table["searchable_fields"]:
+        if row.get(field):
+            suggestions.append({{
+                "type": "search_hint",
+                "field": field,
+                "message": f"Use {{field.replace('_', ' ')}} to find similar records.",
+            }})
+    return tuple(suggestions)
+
+
+def review_task(table_name, row, reason="assistant_review"):
+    """Create a stable human-review task payload for AI-assisted changes."""
+    return {{
+        "table": table_name,
+        "reason": reason,
+        "context": prompt_context(table_name, row),
+        "recommendations": recommendations(table_name, row),
+    }}
+
+
+class AssistantView(BaseView):
+    route_base = "/assistant"
+    default_view = "index"
+
+    @expose("/")
+    def index(self):
+        return self.render_template("appgen_assistant.html", tables=assistant_catalog())
+
+    @expose("/catalog.json")
+    def catalog_json(self):
+        return jsonify(list(assistant_catalog()))
+
+
+def register_assistant(appbuilder):
+    appbuilder.add_view(
+        AssistantView,
+        "Assistant",
+        icon="fa-magic",
+        category="AppGen",
+    )
+'''
+
+
+def _intelligence_text(schema: AppSchema) -> str:
+    def category(column: ColumnSchema) -> str:
+        type_name = column.type_name.lower().split("(", 1)[0]
+        if type_name in {"int", "integer", "bigint", "smallint", "float", "double", "decimal", "numeric"}:
+            return "numeric"
+        if type_name in {"date", "datetime", "timestamp", "time"}:
+            return "temporal"
+        if type_name in {"bool", "boolean"}:
+            return "boolean"
+        if type_name in {enum.name.lower() for enum in schema.enums}:
+            return "categorical"
+        if any(marker in column.name.lower() for marker in ("description", "notes", "summary", "comment", "body", "content")):
+            return "text"
+        return "text" if type_name in {"text", "string", "varchar", "char"} else "categorical"
+
+    tables = {}
+    for table in schema.tables:
+        fields = []
+        media_fields = []
+        for column in table.columns:
+            if column.hidden or column.derived or column.primary_key:
+                continue
+            type_name = column.type_name.lower().split("(", 1)[0]
+            lowered_name = column.name.lower()
+            fields.append(
+                {
+                    "field": _model_attribute_name(column),
+                    "source_column": column.name,
+                    "type": column.type_name,
+                    "category": category(column),
+                    "required": not column.nullable,
+                    "searchable": column.searchable,
+                }
+            )
+            if (
+                type_name in {"image", "photo", "picture"}
+                or any(marker in lowered_name for marker in ("image", "photo", "avatar", "picture"))
+            ):
+                media_fields.append(
+                    {
+                        "field": _model_attribute_name(column),
+                        "source_column": column.name,
+                        "kind": "image",
+                        "tasks": ("ocr", "classification", "object_detection", "moderation"),
+                    }
+                )
+            elif (
+                type_name in {"video", "movie", "clip"}
+                or any(marker in lowered_name for marker in ("video", "movie", "clip"))
+            ):
+                media_fields.append(
+                    {
+                        "field": _model_attribute_name(column),
+                        "source_column": column.name,
+                        "kind": "video",
+                        "tasks": ("frame_sampling", "classification", "object_detection", "transcription"),
+                    }
+                )
+        tables[table.name] = {
+            "table": table.name,
+            "label": snake_to_label(table.name),
+            "feature_fields": tuple(field["field"] for field in fields),
+            "numeric_fields": tuple(field["field"] for field in fields if field["category"] == "numeric"),
+            "text_fields": tuple(field["field"] for field in fields if field["category"] == "text"),
+            "categorical_fields": tuple(field["field"] for field in fields if field["category"] in {"categorical", "boolean"}),
+            "temporal_fields": tuple(field["field"] for field in fields if field["category"] == "temporal"),
+            "fields": tuple(fields),
+            "media_fields": tuple(media_fields),
+        }
+    experiments = tuple(
+        {
+            "id": f"{underscore(table.name)}.form_layout",
+            "table": table.name,
+            "metric": "completion_rate",
+            "variants": ("control", "compact", "guided"),
+        }
+        for table in schema.tables
+    )
+    return f'''"""Generated AI analytics, NLP, and optimization helpers for AppGen apps."""
+
+from __future__ import annotations
+
+from hashlib import sha256
+import math
+import re
+
+from flask import jsonify
+from flask_appbuilder import BaseView
+from flask_appbuilder import expose
+
+
+INTELLIGENCE_TABLES = {tables!r}
+EXPERIMENTS = {experiments!r}
+VISION_PROVIDERS = {{
+    "opencv": {{
+        "label": "OpenCV",
+        "mode": "local",
+        "env": tuple(),
+        "tasks": ("classification", "object_detection", "ocr"),
+    }},
+    "tensorflow": {{
+        "label": "TensorFlow",
+        "mode": "local",
+        "env": tuple(),
+        "tasks": ("classification", "object_detection"),
+    }},
+    "pytorch": {{
+        "label": "PyTorch",
+        "mode": "local",
+        "env": tuple(),
+        "tasks": ("classification", "object_detection"),
+    }},
+    "google_vision": {{
+        "label": "Google Cloud Vision",
+        "mode": "api",
+        "env": ("GOOGLE_APPLICATION_CREDENTIALS",),
+        "tasks": ("ocr", "classification", "object_detection", "moderation"),
+    }},
+}}
+POSITIVE_WORDS = {{"approved", "fast", "good", "great", "happy", "resolved", "success", "valid"}}
+NEGATIVE_WORDS = {{"bad", "blocked", "broken", "delay", "error", "failed", "late", "risk"}}
+
+
+def intelligence_catalog():
+    """Return generated AI-ready table feature metadata."""
+    return tuple(INTELLIGENCE_TABLES.values())
+
+
+def feature_catalog(table_name):
+    """Return feature fields and categories for one generated table."""
+    return INTELLIGENCE_TABLES[table_name]
+
+
+def vision_provider_catalog(environ=None):
+    """Return generated computer-vision provider readiness contracts."""
+    environ = {{}} if environ is None else environ
+    providers = []
+    for name, spec in VISION_PROVIDERS.items():
+        missing = tuple(key for key in spec["env"] if not environ.get(key))
+        providers.append({{**spec, "provider": name, "configured": not missing, "missing": missing}})
+    return tuple(providers)
+
+
+def media_intelligence_catalog():
+    """Return generated image and video fields ready for vision analysis."""
+    return tuple(
+        {{
+            "table": table_name,
+            "field": media_field["field"],
+            "source_column": media_field["source_column"],
+            "kind": media_field["kind"],
+            "tasks": tuple(media_field["tasks"]),
+        }}
+        for table_name, spec in INTELLIGENCE_TABLES.items()
+        for media_field in spec["media_fields"]
+    )
+
+
+def vision_analysis_plan(table_name, field_name, *, provider="opencv", task="classification", source=None, environ=None):
+    """Build an image/video analysis plan without loading models or sending media."""
+    provider_specs = {{item["provider"]: item for item in vision_provider_catalog(environ)}}
+    if provider not in provider_specs:
+        raise KeyError(f"Unknown vision provider: {{provider}}")
+    if task not in provider_specs[provider]["tasks"]:
+        raise ValueError(f"Vision provider {{provider}} does not support {{task}}")
+    media_field = next(
+        (
+            item
+            for item in media_intelligence_catalog()
+            if item["table"] == table_name and item["field"] == field_name
+        ),
+        None,
+    )
+    if media_field is None:
+        raise KeyError(f"Unknown media field: {{table_name}}.{{field_name}}")
+    if task not in media_field["tasks"]:
+        raise ValueError(f"Media field {{table_name}}.{{field_name}} does not support {{task}}")
+    return {{
+        "table": table_name,
+        "field": field_name,
+        "kind": media_field["kind"],
+        "provider": provider,
+        "task": task,
+        "source": source,
+        "configured": provider_specs[provider]["configured"],
+        "missing": provider_specs[provider]["missing"],
+        "side_effect": "media_analysis",
+        "review_required": provider_specs[provider]["mode"] == "api",
+    }}
+
+
+def ocr_plan(table_name, field_name, *, provider="opencv", source=None, environ=None):
+    """Build a generated OCR analysis plan for an image/video field."""
+    return vision_analysis_plan(table_name, field_name, provider=provider, task="ocr", source=source, environ=environ)
+
+
+def object_detection_plan(table_name, field_name, *, provider="opencv", source=None, environ=None):
+    """Build a generated object-detection analysis plan for an image/video field."""
+    return vision_analysis_plan(table_name, field_name, provider=provider, task="object_detection", source=source, environ=environ)
+
+
+def classification_plan(table_name, field_name, *, provider="opencv", source=None, environ=None):
+    """Build a generated classification analysis plan for an image/video field."""
+    return vision_analysis_plan(table_name, field_name, provider=provider, task="classification", source=source, environ=environ)
+
+
+def preprocess_row(table_name, row):
+    """Return dependency-free model features from a row-like dictionary."""
+    spec = feature_catalog(table_name)
+    row = dict(row or {{}})
+    features = {{}}
+    for field in spec["fields"]:
+        name = field["field"]
+        value = row.get(name)
+        if field["category"] == "numeric":
+            try:
+                features[name] = float(value) if value not in (None, "") else 0.0
+            except (TypeError, ValueError):
+                features[name] = 0.0
+        elif field["category"] == "boolean":
+            features[name] = bool(value)
+        elif field["category"] == "text":
+            text = "" if value is None else str(value)
+            features[f"{{name}}__length"] = len(text)
+            features[f"{{name}}__tokens"] = len(re.findall(r"\\b\\w+\\b", text))
+        else:
+            features[name] = "" if value is None else str(value)
+    return features
+
+
+def anomaly_score(table_name, row, baseline=None):
+    """Return a simple anomaly score using missing values and numeric deviation."""
+    spec = feature_catalog(table_name)
+    row = dict(row or {{}})
+    baseline = dict(baseline or {{}})
+    signals = []
+    for field in spec["fields"]:
+        name = field["field"]
+        value = row.get(name)
+        if field["required"] and value in (None, ""):
+            signals.append({{"field": name, "kind": "missing_required", "score": 1.0}})
+        if field["category"] == "numeric" and value not in (None, ""):
+            try:
+                numeric = float(value)
+                expected = float(baseline.get(name, 0))
+                spread = abs(float(baseline.get(f"{{name}}__spread", 1))) or 1
+                z_score = abs(numeric - expected) / spread
+                if z_score >= 3:
+                    signals.append({{"field": name, "kind": "numeric_outlier", "score": min(z_score / 10, 1.0)}})
+            except (TypeError, ValueError):
+                signals.append({{"field": name, "kind": "not_numeric", "score": 0.5}})
+    score = min(sum(signal["score"] for signal in signals), 1.0)
+    return {{"table": table_name, "score": score, "signals": tuple(signals), "anomalous": score >= 0.5}}
+
+
+def sentiment(text):
+    """Return a deterministic sentiment estimate for generated NLP workflows."""
+    words = [word.casefold() for word in re.findall(r"\\b\\w+\\b", "" if text is None else str(text))]
+    positive = sum(1 for word in words if word in POSITIVE_WORDS)
+    negative = sum(1 for word in words if word in NEGATIVE_WORDS)
+    score = positive - negative
+    label = "positive" if score > 0 else "negative" if score < 0 else "neutral"
+    return {{"label": label, "score": score, "positive": positive, "negative": negative}}
+
+
+def extract_entities(text):
+    """Extract simple title-case entities for NLP adapter bootstrapping."""
+    text = "" if text is None else str(text)
+    return tuple(dict.fromkeys(re.findall(r"\\b[A-Z][a-z]+(?:\\s+[A-Z][a-z]+)*\\b", text)))
+
+
+def classify_text(text):
+    """Classify text into generated operational buckets."""
+    text_value = "" if text is None else str(text)
+    lowered = text_value.casefold()
+    if any(word in lowered for word in ("invoice", "payment", "ledger", "account")):
+        label = "finance"
+    elif any(word in lowered for word in ("employee", "leave", "payroll", "hire")):
+        label = "hr"
+    elif any(word in lowered for word in ("stock", "warehouse", "inventory", "shipment")):
+        label = "operations"
+    elif sentiment(text_value)["label"] == "negative":
+        label = "risk"
+    else:
+        label = "general"
+    return {{"label": label, "sentiment": sentiment(text_value), "entities": extract_entities(text_value)}}
+
+
+def recommendation_plan(table_name, row=None):
+    """Return generated AI-style recommendations from feature metadata."""
+    spec = feature_catalog(table_name)
+    row = dict(row or {{}})
+    recommendations = []
+    for field in spec["fields"]:
+        name = field["field"]
+        if field["required"] and row.get(name) in (None, ""):
+            recommendations.append({{"kind": "complete_required_field", "field": name, "priority": "high"}})
+        if field["searchable"] and row.get(name):
+            recommendations.append({{"kind": "find_similar_records", "field": name, "priority": "medium"}})
+    if spec["text_fields"]:
+        recommendations.append({{"kind": "run_nlp_review", "fields": tuple(spec["text_fields"]), "priority": "medium"}})
+    if spec["numeric_fields"]:
+        recommendations.append({{"kind": "monitor_numeric_anomalies", "fields": tuple(spec["numeric_fields"]), "priority": "medium"}})
+    return tuple(recommendations)
+
+
+def experiment_catalog():
+    """Return generated A/B testing and UX optimization experiments."""
+    return EXPERIMENTS
+
+
+def assign_variant(experiment_id, subject):
+    """Assign a stable A/B variant without external services."""
+    experiment = next((item for item in EXPERIMENTS if item["id"] == experiment_id), None)
+    if experiment is None:
+        raise KeyError(f"Unknown experiment: {{experiment_id}}")
+    variants = tuple(experiment["variants"])
+    digest = sha256(f"{{experiment_id}}:{{subject}}".encode("utf-8")).hexdigest()
+    return variants[int(digest[:8], 16) % len(variants)]
+
+
+def predictive_maintenance(metrics):
+    """Return generated predictive-maintenance guidance from runtime metrics."""
+    metrics = dict(metrics or {{}})
+    p95 = float(metrics.get("p95_ms", 0))
+    error_rate = float(metrics.get("error_rate", 0))
+    queue_depth = float(metrics.get("queue_depth", 0))
+    risks = []
+    if p95 > 750:
+        risks.append("latency")
+    if error_rate > 0.02:
+        risks.append("errors")
+    if queue_depth > 100:
+        risks.append("backlog")
+    return {{
+        "healthy": not risks,
+        "risks": tuple(risks),
+        "maintenance_window": "soon" if risks else "normal",
+        "recommendations": tuple(f"investigate_{{risk}}" for risk in risks),
+    }}
+
+
+def intelligence_check(existing_paths=()):
+    """Return readiness for generated intelligence artifacts."""
+    existing = set(existing_paths)
+    required = {{"app/intelligence.py", "app/templates/appgen_intelligence.html"}}
+    missing = tuple(sorted(required - existing))
+    return {{
+        "ok": not missing and bool(INTELLIGENCE_TABLES) and bool(EXPERIMENTS),
+        "missing": missing,
+        "tables": tuple(INTELLIGENCE_TABLES),
+        "experiments": tuple(item["id"] for item in EXPERIMENTS),
+        "media_fields": tuple(f"{{item['table']}}.{{item['field']}}" for item in media_intelligence_catalog()),
+        "vision_providers": tuple(VISION_PROVIDERS),
+    }}
+
+
+class IntelligenceView(BaseView):
+    route_base = "/intelligence"
+    default_view = "index"
+
+    @expose("/")
+    def index(self):
+        return self.render_template(
+            "appgen_intelligence.html",
+            tables=intelligence_catalog(),
+            experiments=experiment_catalog(),
+        )
+
+    @expose("/catalog.json")
+    def catalog_json(self):
+        return jsonify({{"tables": list(intelligence_catalog()), "experiments": list(experiment_catalog())}})
+
+
+def register_intelligence(appbuilder):
+    appbuilder.add_view(
+        IntelligenceView,
+        "Intelligence",
+        icon="fa-lightbulb-o",
+        category="AppGen",
+    )
+'''
+
+
+def _chatbot_app_text(schema: AppSchema, app_name: str) -> str:
+    intents = _chatbot_table_contracts(schema)
+    return f'''"""Generated in-app guided chatbot contract for AppGen apps."""
+
+from __future__ import annotations
+
+from flask import jsonify
+from flask import request
+from flask_appbuilder import BaseView
+from flask_appbuilder import expose
+
+
+CHATBOT_CONTRACT = {{
+    "app_name": {app_name!r},
+    "intents": {intents!r},
+}}
+
+
+def chatbot_catalog():
+    """Return schema-derived chatbot intents for in-app guided creation."""
+    return tuple(CHATBOT_CONTRACT["intents"])
+
+
+def intent_contract(intent_name):
+    """Return one generated chatbot intent contract."""
+    for intent in CHATBOT_CONTRACT["intents"]:
+        if intent["intent"] == intent_name:
+            return intent
+    raise KeyError(f"Unknown chatbot intent: {{intent_name}}")
+
+
+def _clean_values(values):
+    return {{
+        str(key): value
+        for key, value in dict(values or {{}}).items()
+        if value not in (None, "")
+    }}
+
+
+def conversation_plan(intent_name, values=None):
+    """Return the next schema prompt and create-readiness for a conversation."""
+    intent = intent_contract(intent_name)
+    provided = _clean_values(values)
+    all_fields = intent["required_fields"] + intent["optional_fields"]
+    required_missing = tuple(field for field in intent["required_fields"] if field not in provided)
+    remaining = tuple(field for field in all_fields if field not in provided)
+    prompt_map = {{prompt["field"]: prompt["prompt"] for prompt in intent["prompts"]}}
+    next_field = (required_missing or remaining or (None,))[0]
+    return {{
+        "intent": intent["intent"],
+        "table": intent["table"],
+        "label": intent["label"],
+        "ready": not required_missing,
+        "complete": not remaining,
+        "missing_fields": required_missing,
+        "remaining_fields": remaining,
+        "next_field": next_field,
+        "next_prompt": prompt_map.get(next_field),
+        "values": {{field: provided[field] for field in all_fields if field in provided}},
+    }}
+
+
+def start_conversation(intent_name):
+    """Start a guided chatbot conversation for one create intent."""
+    plan = conversation_plan(intent_name, {{}})
+    history = ()
+    if plan["next_prompt"]:
+        history = ({{"role": "assistant", "message": plan["next_prompt"], "field": plan["next_field"]}},)
+    return {{**plan, "history": history}}
+
+
+def answer_conversation(state, value, field=None):
+    """Apply one user answer and return the updated guided conversation state."""
+    state = dict(state or {{}})
+    intent_name = state.get("intent")
+    if not intent_name:
+        raise KeyError("Conversation state must include an intent")
+    values = dict(state.get("values") or {{}})
+    current = conversation_plan(intent_name, values)
+    answer_field = field or current["next_field"]
+    history = tuple(state.get("history") or ())
+    if answer_field and value not in (None, ""):
+        values[answer_field] = value
+        history = history + ({{"role": "user", "field": answer_field, "message": str(value)}},)
+    updated = conversation_plan(intent_name, values)
+    if updated["next_prompt"]:
+        history = history + (
+            {{"role": "assistant", "field": updated["next_field"], "message": updated["next_prompt"]}},
+        )
+    elif updated["ready"]:
+        history = history + (
+            {{"role": "assistant", "message": f"Ready to create {{updated['label']}}."}},
+        )
+    return {{**updated, "history": history}}
+
+
+def create_payload(intent_name, values):
+    """Return a table-scoped create payload when required fields are present."""
+    plan = conversation_plan(intent_name, values)
+    return {{
+        "intent": plan["intent"],
+        "table": plan["table"],
+        "ready": plan["ready"],
+        "complete": plan["complete"],
+        "missing_fields": plan["missing_fields"],
+        "payload": plan["values"],
+    }}
+
+
+def chatbot_check(existing_paths):
+    """Return readiness for generated in-app chatbot artifacts."""
+    existing = set(existing_paths)
+    required = {{"app/chatbot.py", "app/templates/appgen_chatbot.html"}}
+    missing = tuple(sorted(required - existing))
+    return {{
+        "ok": not missing and bool(chatbot_catalog()),
+        "missing": missing,
+        "intents": tuple(intent["intent"] for intent in chatbot_catalog()),
+    }}
+
+
+class GuidedChatbotView(BaseView):
+    route_base = "/guided-chatbot"
+    default_view = "index"
+
+    @expose("/")
+    def index(self):
+        return self.render_template("appgen_chatbot.html", intents=chatbot_catalog())
+
+    @expose("/catalog.json")
+    def catalog_json(self):
+        return jsonify(list(chatbot_catalog()))
+
+    @expose("/intent/<intent_name>.json")
+    def intent_json(self, intent_name):
+        return jsonify(intent_contract(intent_name))
+
+    @expose("/conversation", methods=("POST",))
+    def conversation_json(self):
+        payload = request.get_json(silent=True) or {{}}
+        state = payload.get("state")
+        if state:
+            return jsonify(
+                answer_conversation(
+                    state,
+                    payload.get("answer"),
+                    field=payload.get("field"),
+                )
+            )
+        return jsonify(start_conversation(payload["intent"]))
+
+
+def register_chatbot(appbuilder):
+    appbuilder.add_view(
+        GuidedChatbotView,
+        "Guided Chatbot",
+        icon="fa-comments",
+        category="AppGen",
+    )
+'''
+
+
+def _voice_text(schema: AppSchema, app_name: str) -> str:
+    intents = []
+    for intent in _chatbot_table_contracts(schema):
+        slots = tuple(
+            {
+                "name": prompt["field"],
+                "type": "AMAZON.NUMBER" if prompt["type"].lower().split("(", 1)[0] in {"int", "integer", "float", "decimal", "numeric"} else "AMAZON.SearchQuery",
+                "required": prompt["required"],
+                "elicitation": f"Please say the {prompt['field'].replace('_', ' ')}.",
+            }
+            for prompt in intent["prompts"]
+        )
+        table_label = intent["label"].casefold()
+        intents.append(
+            {
+                "intent": intent["intent"],
+                "voice_intent": f"{snake_to_pascal(intent['intent'])}VoiceIntent",
+                "table": intent["table"],
+                "label": intent["label"],
+                "utterances": (
+                    f"create {table_label}",
+                    f"add {table_label}",
+                    f"new {table_label}",
+                    f"record {table_label}",
+                ),
+                "slots": slots,
+                "confirmation": f"Ready to create {intent['label']}.",
+            }
+        )
+    return f'''"""Generated voice assistant and speech-interface helpers for AppGen apps."""
+
+from __future__ import annotations
+
+import re
+from xml.sax.saxutils import escape
+
+from flask import jsonify
+from flask_appbuilder import BaseView
+from flask_appbuilder import expose
+
+
+APP_NAME = {app_name!r}
+VOICE_PROVIDERS = {{
+    "alexa": {{"export": "voice/alexa/interaction-model.json", "mode": "custom-skill"}},
+    "google_assistant": {{"export": "voice/google/actions.json", "mode": "conversation-action"}},
+    "web_speech": {{"export": "app/voice.py", "mode": "browser-speech-api"}},
+}}
+VOICE_INTENTS = {tuple(intents)!r}
+
+
+def voice_provider_catalog():
+    """Return generated voice assistant provider export metadata."""
+    return tuple(
+        {{"provider": name, **spec}}
+        for name, spec in VOICE_PROVIDERS.items()
+    )
+
+
+def voice_intent_catalog():
+    """Return generated speech intents derived from schema create flows."""
+    return tuple(VOICE_INTENTS)
+
+
+def voice_intent(intent_name):
+    """Return one generated voice intent."""
+    for intent in VOICE_INTENTS:
+        if intent["intent"] == intent_name or intent["voice_intent"] == intent_name:
+            return intent
+    raise KeyError(f"Unknown voice intent: {{intent_name}}")
+
+
+def utterance_training_phrases(intent_name):
+    """Return utterances for voice-platform training models."""
+    return tuple(voice_intent(intent_name)["utterances"])
+
+
+def slot_schema(intent_name):
+    """Return slot schema for a voice intent."""
+    return tuple(voice_intent(intent_name)["slots"])
+
+
+def speech_prompt(intent_name, values=None):
+    """Return the next spoken prompt for missing required slots."""
+    intent = voice_intent(intent_name)
+    values = dict(values or {{}})
+    for slot in intent["slots"]:
+        if slot["required"] and values.get(slot["name"]) in (None, ""):
+            return {{
+                "intent": intent["intent"],
+                "slot": slot["name"],
+                "prompt": slot["elicitation"],
+                "ssml": ssml(slot["elicitation"]),
+                "complete": False,
+            }}
+    return {{
+        "intent": intent["intent"],
+        "slot": None,
+        "prompt": intent["confirmation"],
+        "ssml": ssml(intent["confirmation"]),
+        "complete": True,
+    }}
+
+
+def normalize_transcript(text):
+    """Normalize an ASR transcript for lightweight intent matching."""
+    return " ".join(re.findall(r"\\w+", str(text or "").casefold()))
+
+
+def match_utterance(text):
+    """Match a spoken utterance to the closest generated voice intent."""
+    normalized = normalize_transcript(text)
+    for intent in VOICE_INTENTS:
+        for phrase in intent["utterances"]:
+            if normalize_transcript(phrase) in normalized:
+                return {{"matched": True, "intent": intent["intent"], "voice_intent": intent["voice_intent"]}}
+    return {{"matched": False, "intent": None, "voice_intent": None}}
+
+
+def slot_fill_plan(intent_name, values=None):
+    """Return required and remaining slots for voice-guided data entry."""
+    intent = voice_intent(intent_name)
+    values = dict(values or {{}})
+    missing = tuple(
+        slot["name"]
+        for slot in intent["slots"]
+        if slot["required"] and values.get(slot["name"]) in (None, "")
+    )
+    remaining = tuple(
+        slot["name"]
+        for slot in intent["slots"]
+        if values.get(slot["name"]) in (None, "")
+    )
+    return {{
+        "intent": intent["intent"],
+        "ready": not missing,
+        "missing_required_slots": missing,
+        "remaining_slots": remaining,
+        "next_prompt": speech_prompt(intent_name, values),
+        "values": values,
+    }}
+
+
+def ssml(text):
+    """Return a safe SSML response for voice assistants."""
+    return f"<speak>{{escape(str(text or ''))}}</speak>"
+
+
+def voice_response(intent_name, values=None):
+    """Return a provider-neutral spoken response payload."""
+    plan = slot_fill_plan(intent_name, values)
+    prompt = plan["next_prompt"]["prompt"]
+    return {{
+        "intent": plan["intent"],
+        "ready": plan["ready"],
+        "text": prompt,
+        "ssml": ssml(prompt),
+        "reprompt": None if plan["ready"] else prompt,
+        "values": plan["values"],
+    }}
+
+
+def alexa_interaction_model():
+    """Return an Alexa-style interaction model contract."""
+    return {{
+        "interactionModel": {{
+            "languageModel": {{
+                "invocationName": APP_NAME.casefold().replace("_", " "),
+                "intents": tuple(
+                    {{
+                        "name": intent["voice_intent"],
+                        "samples": intent["utterances"],
+                        "slots": tuple(
+                            {{"name": slot["name"], "type": slot["type"], "samples": (slot["elicitation"],)}}
+                            for slot in intent["slots"]
+                        ),
+                    }}
+                    for intent in VOICE_INTENTS
+                ),
+            }}
+        }}
+    }}
+
+
+def google_actions_model():
+    """Return a Google Assistant-style actions contract."""
+    return {{
+        "locale": "en",
+        "actions": tuple(
+            {{
+                "name": intent["voice_intent"],
+                "intent": intent["intent"],
+                "trainingPhrases": intent["utterances"],
+                "parameters": tuple(
+                    {{"name": slot["name"], "required": slot["required"]}}
+                    for slot in intent["slots"]
+                ),
+            }}
+            for intent in VOICE_INTENTS
+        ),
+    }}
+
+
+def voice_check(existing_paths=()):
+    """Return readiness for generated voice assistant artifacts."""
+    existing = set(existing_paths)
+    required = {{"app/voice.py", "app/templates/appgen_voice.html"}}
+    missing = tuple(sorted(required - existing))
+    return {{
+        "ok": not missing and bool(VOICE_INTENTS) and bool(VOICE_PROVIDERS),
+        "missing": missing,
+        "providers": tuple(VOICE_PROVIDERS),
+        "intents": tuple(intent["intent"] for intent in VOICE_INTENTS),
+    }}
+
+
+class VoiceAssistantView(BaseView):
+    route_base = "/voice"
+    default_view = "index"
+
+    @expose("/")
+    def index(self):
+        return self.render_template(
+            "appgen_voice.html",
+            providers=voice_provider_catalog(),
+            intents=voice_intent_catalog(),
+        )
+
+    @expose("/catalog.json")
+    def catalog_json(self):
+        return jsonify({{"providers": list(voice_provider_catalog()), "intents": list(voice_intent_catalog())}})
+
+
+def register_voice(appbuilder):
+    appbuilder.add_view(
+        VoiceAssistantView,
+        "Voice Assistant",
+        icon="fa-microphone",
+        category="AppGen",
+    )
+'''
+
+
+def _text_quality_text(schema: AppSchema) -> str:
+    def is_text_area(column: ColumnSchema) -> bool:
+        type_name = column.type_name.lower().split("(", 1)[0]
+        name = column.name.lower()
+        return (
+            type_name in {"text", "longtext", "mediumtext"}
+            or any(marker in name for marker in ("description", "notes", "comment", "summary", "body", "content"))
+        )
+
+    fields = {}
+    for table in schema.tables:
+        for column in table.columns:
+            if column.hidden or column.derived or not is_text_area(column):
+                continue
+            field_name = _model_attribute_name(column)
+            fields[f"{table.name}.{field_name}"] = {
+                "table": table.name,
+                "field": field_name,
+                "label": snake_to_label(column.name),
+                "required": not column.nullable and not column.primary_key,
+                "soft_limit": 500,
+                "hard_limit": 2000,
+                "spellcheck": True,
+                "grammar": True,
+                "counter": True,
+            }
+
+    return f'''"""Generated text quality helpers for AppGen textarea fields."""
+
+from __future__ import annotations
+
+import re
+
+from flask import jsonify
+from flask_appbuilder import BaseView
+from flask_appbuilder import expose
+
+
+TEXT_FIELDS = {fields!r}
+
+
+def text_quality_catalog():
+    """Return generated textarea quality descriptors."""
+    return tuple(TEXT_FIELDS.values())
+
+
+def text_field(table_name, field_name):
+    """Return one generated textarea quality descriptor."""
+    key = f"{{table_name}}.{{field_name}}"
+    if key not in TEXT_FIELDS:
+        raise KeyError(f"Unknown text quality field: {{key}}")
+    return TEXT_FIELDS[key]
+
+
+def character_count(value):
+    """Return generated character and word counts."""
+    text = "" if value is None else str(value)
+    words = tuple(re.findall(r"\\b\\w+\\b", text))
+    return {{"characters": len(text), "words": len(words)}}
+
+
+def repeated_words(value):
+    """Return adjacent repeated words as simple spelling-style hints."""
+    words = re.findall(r"\\b\\w+\\b", "" if value is None else str(value).casefold())
+    repeats = []
+    for previous, current in zip(words, words[1:]):
+        if previous == current and previous not in repeats:
+            repeats.append(previous)
+    return tuple(repeats)
+
+
+def grammar_hints(value):
+    """Return deterministic grammar and readability hints."""
+    text = "" if value is None else str(value)
+    hints = []
+    stripped = text.strip()
+    if "  " in text:
+        hints.append("double_space")
+    if stripped and stripped[0].islower():
+        hints.append("capitalization")
+    if stripped and stripped[-1] not in ".!?":
+        hints.append("terminal_punctuation")
+    if repeated_words(text):
+        hints.append("repeated_words")
+    return tuple(hints)
+
+
+def quality_report(table_name, field_name, value):
+    """Return generated spell, grammar, and character-count feedback."""
+    field = text_field(table_name, field_name)
+    counts = character_count(value)
+    errors = []
+    if field["required"] and not ("" if value is None else str(value)).strip():
+        errors.append("required")
+    if counts["characters"] > field["hard_limit"]:
+        errors.append("too_long")
+    warnings = []
+    if counts["characters"] > field["soft_limit"]:
+        warnings.append("near_limit")
+    warnings.extend(grammar_hints(value))
+    return {{
+        "field": field,
+        "counts": counts,
+        "errors": tuple(errors),
+        "warnings": tuple(warnings),
+        "repeated_words": repeated_words(value),
+        "remaining": max(0, field["hard_limit"] - counts["characters"]),
+    }}
+
+
+def form_text_quality(table_name, values):
+    """Return text quality feedback for all generated textarea fields on a table."""
+    return tuple(
+        quality_report(field["table"], field["field"], values.get(field["field"]))
+        for field in text_quality_catalog()
+        if field["table"] == table_name
+    )
+
+
+class TextQualityView(BaseView):
+    route_base = "/text-quality"
+    default_view = "index"
+
+    @expose("/")
+    def index(self):
+        return self.render_template("appgen_text_quality.html", fields=text_quality_catalog())
+
+    @expose("/catalog.json")
+    def catalog_json(self):
+        return jsonify(list(text_quality_catalog()))
+
+    @expose("/<table_name>/<field_name>.json")
+    def field_json(self, table_name, field_name):
+        return jsonify(text_field(table_name, field_name))
+
+
+def register_text_quality(appbuilder):
+    appbuilder.add_view(
+        TextQualityView,
+        "Text Quality",
+        icon="fa-font",
+        category="AppGen",
+    )
+'''
+
+
+def _notifications_text(schema: AppSchema) -> str:
+    table_events = {}
+    for table in schema.tables:
+        table_events[table.name] = {
+            "label": snake_to_label(table.name),
+            "events": (
+                f"{table.name}.created",
+                f"{table.name}.updated",
+                f"{table.name}.deleted",
+            ),
+        }
+    return f'''"""Generated notification helpers for AppGen apps."""
+
+from __future__ import annotations
+
+from datetime import datetime
+from datetime import timezone
+
+from flask import jsonify
+from flask_appbuilder import BaseView
+from flask_appbuilder import expose
+
+
+NOTIFICATION_CHANNELS = {{
+    "in_app": {{
+        "label": "In-app",
+        "env": (),
+    }},
+    "email": {{
+        "label": "Email",
+        "env": ("SMTP_HOST", "SMTP_FROM"),
+    }},
+    "webhook": {{
+        "label": "Webhook",
+        "env": ("APPGEN_WEBHOOK_URL", "APPGEN_WEBHOOK_SECRET"),
+    }},
+    "push": {{
+        "label": "Push",
+        "env": ("PUSH_PROVIDER", "PUSH_API_KEY"),
+    }},
+}}
+
+NOTIFICATION_EVENTS = {table_events!r}
+
+
+def channel_catalog():
+    """Return generated notification channels."""
+    return tuple(
+        {{
+            "channel": name,
+            "label": channel["label"],
+            "env": tuple(channel["env"]),
+        }}
+        for name, channel in NOTIFICATION_CHANNELS.items()
+    )
+
+
+def event_catalog():
+    """Return generated table event templates."""
+    return tuple(
+        {{
+            "table": table_name,
+            "label": item["label"],
+            "events": tuple(item["events"]),
+        }}
+        for table_name, item in NOTIFICATION_EVENTS.items()
+    )
+
+
+def event_name(table_name, action):
+    """Return a stable generated event name."""
+    return f"{{table_name}}.{{action}}"
+
+
+def notification_payload(channel, subject, body, *, recipients=(), event=None, metadata=None):
+    """Build a notification payload without dispatching externally."""
+    if channel not in NOTIFICATION_CHANNELS:
+        raise KeyError(f"Unknown notification channel: {{channel}}")
+    return {{
+        "channel": channel,
+        "subject": subject,
+        "body": body,
+        "recipients": tuple(recipients),
+        "event": event,
+        "metadata": metadata or {{}},
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    }}
+
+
+def queue_event(table_name, action, row, *, channels=("in_app",), recipients=()):
+    """Return notification payloads for a generated table event."""
+    event = event_name(table_name, action)
+    subject = f"{{table_name}} {{action}}"
+    body = f"{{table_name}} record {{action}}"
+    return tuple(
+        notification_payload(
+            channel,
+            subject,
+            body,
+            recipients=recipients,
+            event=event,
+            metadata={{"table": table_name, "action": action, "row": dict(row)}},
+        )
+        for channel in channels
+    )
+
+
+class NotificationView(BaseView):
+    route_base = "/notifications"
+    default_view = "index"
+
+    @expose("/")
+    def index(self):
+        return self.render_template(
+            "appgen_notifications.html",
+            channels=channel_catalog(),
+            events=event_catalog(),
+        )
+
+    @expose("/catalog.json")
+    def catalog_json(self):
+        return jsonify({{"channels": list(channel_catalog()), "events": list(event_catalog())}})
+
+
+def register_notifications(appbuilder):
+    appbuilder.add_view(
+        NotificationView,
+        "Notifications",
+        icon="fa-bell",
+        category="AppGen",
+    )
+'''
+
+
+def _agents_text(schema: AppSchema) -> str:
+    providers = [
+        {
+            "name": provider.name,
+            "provider": provider.provider,
+            "mode": provider.mode,
+            "model": provider.model or ("llama3" if provider.mode == "local" else "gpt-4.1-mini"),
+            "endpoint": provider.endpoint or ("http://localhost:11434" if provider.mode == "local" else None),
+            "api_key": provider.api_key or ("" if provider.mode == "local" else f"{provider.provider.upper()}_API_KEY"),
+        }
+        for provider in schema.llm_providers
+    ] or [
+        {
+            "name": "local_default",
+            "provider": "ollama",
+            "mode": "local",
+            "model": "llama3",
+            "endpoint": "http://localhost:11434",
+            "api_key": "",
+        },
+        {
+            "name": "api_default",
+            "provider": "openai",
+            "mode": "api",
+            "model": "gpt-4.1-mini",
+            "endpoint": None,
+            "api_key": "OPENAI_API_KEY",
+        },
+    ]
+    agents = [
+        {
+            "name": agent.name,
+            "provider": agent.provider or providers[0]["name"],
+            "goal": agent.goal or f"Assist with {_app_name(schema)} operations",
+            "tools": tuple(agent.tools),
+            "memory": agent.memory,
+            "max_steps": agent.max_steps,
+        }
+        for agent in schema.agents
+    ] or [
+        {
+            "name": "app_builder",
+            "provider": providers[0]["name"],
+            "goal": "Evolve generated tables, forms, chatbots, and automations from approved proposals.",
+            "tools": ("schema", "forms", "chatbots", "workflows"),
+            "memory": "project",
+            "max_steps": 8,
+        }
+    ]
+    return f'''"""Generated agentic system contracts for AppGen apps."""
+
+from __future__ import annotations
+
+import os
+
+from flask import jsonify
+from flask_appbuilder import BaseView
+from flask_appbuilder import expose
+
+
+LLM_PROVIDERS = {providers!r}
+AGENTS = {agents!r}
+
+
+def provider_catalog(environ=None):
+    """Return local and API-key LLM provider readiness metadata."""
+    env = os.environ if environ is None else environ
+    catalog = []
+    for provider in LLM_PROVIDERS:
+        required = () if provider["mode"] == "local" or not provider.get("api_key") else (provider["api_key"],)
+        missing = tuple(name for name in required if not env.get(name))
+        catalog.append(dict(provider, required_env=required, configured=not missing, missing=missing))
+    return tuple(catalog)
+
+
+def agent_catalog():
+    """Return generated agentic system definitions."""
+    return tuple(dict(agent) for agent in AGENTS)
+
+
+def provider_for_agent(agent_name, environ=None):
+    """Return provider readiness for an agent."""
+    agent = next(item for item in AGENTS if item["name"] == agent_name)
+    providers = {{item["name"]: item for item in provider_catalog(environ)}}
+    return providers[agent["provider"]]
+
+
+def agent_plan(agent_name, task, environ=None):
+    """Return a dependency-free execution plan for an agentic task."""
+    agent = next(item for item in AGENTS if item["name"] == agent_name)
+    provider = provider_for_agent(agent_name, environ)
+    return {{
+        "agent": agent["name"],
+        "task": task,
+        "provider": provider["name"],
+        "provider_mode": provider["mode"],
+        "model": provider["model"],
+        "ready": provider["configured"],
+        "tools": tuple(agent["tools"]),
+        "max_steps": agent["max_steps"],
+    }}
+
+
+def agents_check(existing_paths):
+    """Return readiness for generated agentic artifacts."""
+    existing = set(existing_paths)
+    required = ("app/agents.py", "app/templates/appgen_agents.html")
+    missing = tuple(path for path in required if path not in existing)
+    return {{"ok": not missing, "missing": missing, "providers": tuple(p["name"] for p in LLM_PROVIDERS)}}
+
+
+class AgenticView(BaseView):
+    route_base = "/agents"
+    default_view = "index"
+
+    @expose("/")
+    def index(self):
+        return self.render_template(
+            "appgen_agents.html",
+            providers=provider_catalog(),
+            agents=agent_catalog(),
+        )
+
+    @expose("/catalog.json")
+    def catalog_json(self):
+        return jsonify({{"providers": list(provider_catalog()), "agents": list(agent_catalog())}})
+
+    @expose("/<agent_name>.json")
+    def agent_json(self, agent_name):
+        return jsonify(agent_plan(agent_name, "inspect"))
+
+
+def register_agents(appbuilder):
+    appbuilder.add_view(
+        AgenticView,
+        "Agents",
+        icon="fa-magic",
+        category="AppGen",
+    )
+'''
+
+
+def _view_composition_text(schema: AppSchema) -> str:
+    table_fields = {
+        table.name: tuple(
+            _model_attribute_name(column)
+            for column in table.columns
+            if not column.hidden and not column.derived
+        )
+        for table in schema.tables
+    }
+    master_detail = tuple(
+        {
+            "name": f"{snake_to_pascal(relation.source_table)}{snake_to_pascal(relation.target_table)}MasterDetail",
+            "master": relation.source_table,
+            "detail": relation.target_table,
+            "foreign_key": relation.source_column,
+            "target_key": relation.target_column,
+        }
+        for relation in schema.relations
+    )
+    relation_counts: dict[str, list[str]] = {}
+    for relation in schema.relations:
+        relation_counts.setdefault(relation.source_table, []).append(relation.target_table)
+    multiple = tuple(
+        {
+            "name": f"{snake_to_pascal(table_name)}Multiple",
+            "table": table_name,
+            "related_views": tuple(related),
+        }
+        for table_name, related in relation_counts.items()
+        if len(related) > 1
+    )
+    charts = tuple(
+        {
+            "name": f"{snake_to_pascal(table_name)}Charts",
+            "table": table_name,
+            "fields": fields,
+            "view_class": "ChartView",
+        }
+        for table_name, fields in table_fields.items()
+        if fields
+    )
+    return f'''"""Generated view-composition contracts for AppGen apps."""
+
+from __future__ import annotations
+
+from flask import jsonify
+from flask_appbuilder import BaseView
+from flask_appbuilder import expose
+
+
+MASTER_DETAIL_VIEWS = {master_detail!r}
+MULTIPLE_VIEWS = {multiple!r}
+CHART_VIEWS = {charts!r}
+
+
+def master_detail_catalog():
+    """Return generated MasterDetailView contracts."""
+    return MASTER_DETAIL_VIEWS
+
+
+def multiple_view_catalog():
+    """Return generated MultipleView contracts."""
+    return MULTIPLE_VIEWS
+
+
+def chart_view_catalog():
+    """Return generated ChartView contracts."""
+    return CHART_VIEWS
+
+
+def view_composition_catalog():
+    """Return every generated view-composition contract."""
+    return {{
+        "master_detail": master_detail_catalog(),
+        "multiple": multiple_view_catalog(),
+        "charts": chart_view_catalog(),
+    }}
+
+
+def view_composition_check(existing_paths):
+    """Return readiness for generated FAB view-composition artifacts."""
+    existing = set(existing_paths)
+    required = ("app/views.py", "app/view_composition.py", "app/templates/appgen_view_composition.html")
+    missing = tuple(path for path in required if path not in existing)
+    return {{
+        "ok": not missing and bool(CHART_VIEWS),
+        "missing": missing,
+        "master_detail_count": len(MASTER_DETAIL_VIEWS),
+        "multiple_count": len(MULTIPLE_VIEWS),
+        "chart_count": len(CHART_VIEWS),
+    }}
+
+
+class ViewCompositionView(BaseView):
+    route_base = "/view-composition"
+    default_view = "index"
+
+    @expose("/")
+    def index(self):
+        return self.render_template(
+            "appgen_view_composition.html",
+            master_detail=master_detail_catalog(),
+            multiple=multiple_view_catalog(),
+            charts=chart_view_catalog(),
+        )
+
+    @expose("/catalog.json")
+    def catalog_json(self):
+        return jsonify(view_composition_catalog())
+
+
+def register_view_composition(appbuilder):
+    appbuilder.add_view(
+        ViewCompositionView,
+        "View Composition",
+        icon="fa-sitemap",
+        category="AppGen",
+    )
+'''
+
+
+def _tabbed_views_text(schema: AppSchema) -> str:
+    role_permissions: dict[str, dict[str, set[str]]] = {}
+    for role in schema.roles:
+        for permission in role.permissions:
+            actions = set(permission.actions)
+            role_permissions.setdefault(permission.resource, {}).setdefault(role.name, set()).update(actions)
+
+    default_roles = tuple(role.name for role in schema.roles)
+    views = []
+    for view in schema.views:
+        sections = view.sections or (ViewSectionSchema("Main", view.fields),)
+        tabs = []
+        for index, section in enumerate(sections):
+            allowed = []
+            for resource in (f"{view.name}_{section.name}", section.name, view.name, view.table):
+                for role_name, actions in role_permissions.get(resource, {}).items():
+                    if "read" in actions or "view" in actions or "*" in actions:
+                        allowed.append(role_name)
+            allowed_roles = tuple(sorted(set(allowed))) or default_roles or ("Admin",)
+            tabs.append(
+                {
+                    "id": underscore(section.name),
+                    "label": snake_to_label(section.name),
+                    "index": index,
+                    "fields": tuple(section.fields),
+                    "required_action": "read",
+                    "allowed_roles": allowed_roles,
+                    "resource": f"{view.name}.{underscore(section.name)}",
+                }
+            )
+        views.append(
+            {
+                "view": view.name,
+                "label": snake_to_label(view.name),
+                "table": view.table,
+                "tabs": tuple(tabs),
+            }
+        )
+    if not views:
+        for table in schema.tables:
+            fields = tuple(
+                _model_attribute_name(column)
+                for column in table.columns
+                if not column.hidden and not column.derived
+            )
+            allowed = []
+            for role in schema.roles:
+                for permission in role.permissions:
+                    if permission.resource == table.name and ("read" in permission.actions or "*" in permission.actions):
+                        allowed.append(role.name)
+            views.append(
+                {
+                    "view": f"{snake_to_pascal(table.name)}Tabs",
+                    "label": snake_to_label(table.name),
+                    "table": table.name,
+                    "tabs": (
+                        {
+                            "id": "main",
+                            "label": "Main",
+                            "index": 0,
+                            "fields": fields,
+                            "required_action": "read",
+                            "allowed_roles": tuple(sorted(set(allowed))) or default_roles or ("Admin",),
+                            "resource": f"{table.name}.main",
+                        },
+                    ),
+                }
+            )
+    return f'''"""Generated tabbed-view and per-tab permission contracts for AppGen apps."""
+
+from __future__ import annotations
+
+from flask import jsonify
+from flask_appbuilder import BaseView
+from flask_appbuilder import expose
+
+
+TABBED_VIEWS = {tuple(views)!r}
+
+
+def tabbed_view_catalog():
+    """Return generated tabbed view contracts."""
+    return TABBED_VIEWS
+
+
+def tabbed_view(view_name):
+    """Return one generated tabbed view contract."""
+    for view in TABBED_VIEWS:
+        if view["view"] == view_name:
+            return view
+    raise KeyError(f"Unknown tabbed view: {{view_name}}")
+
+
+def tabs_for_view(view_name):
+    """Return tabs for one generated view."""
+    return tuple(tabbed_view(view_name)["tabs"])
+
+
+def tab_policy(view_name, tab_id):
+    """Return the generated permission policy for one tab."""
+    for tab in tabs_for_view(view_name):
+        if tab["id"] == tab_id:
+            return {{
+                "view": view_name,
+                "tab": tab_id,
+                "resource": tab["resource"],
+                "required_action": tab["required_action"],
+                "allowed_roles": tuple(tab["allowed_roles"]),
+            }}
+    raise KeyError(f"Unknown tab: {{view_name}}.{{tab_id}}")
+
+
+def can_access_tab(view_name, tab_id, principal_roles):
+    """Return whether any principal role may access the generated tab."""
+    policy = tab_policy(view_name, tab_id)
+    roles = set(principal_roles or ())
+    return bool(roles & set(policy["allowed_roles"]))
+
+
+def visible_tabs(view_name, principal_roles):
+    """Return generated tabs visible to the supplied principal roles."""
+    return tuple(
+        tab for tab in tabs_for_view(view_name)
+        if can_access_tab(view_name, tab["id"], principal_roles)
+    )
+
+
+def tabbed_views_check(existing_paths=()):
+    """Return readiness for generated tabbed-view artifacts."""
+    existing = set(existing_paths)
+    required = {{"app/tabbed_views.py", "app/templates/appgen_tabbed_views.html"}}
+    missing = tuple(sorted(required - existing))
+    return {{
+        "ok": not missing and bool(TABBED_VIEWS),
+        "missing": missing,
+        "view_count": len(TABBED_VIEWS),
+        "tab_count": sum(len(view["tabs"]) for view in TABBED_VIEWS),
+    }}
+
+
+class TabbedViewPolicyView(BaseView):
+    route_base = "/tabbed-views"
+    default_view = "index"
+
+    @expose("/")
+    def index(self):
+        return self.render_template("appgen_tabbed_views.html", views=tabbed_view_catalog())
+
+    @expose("/catalog.json")
+    def catalog_json(self):
+        return jsonify(list(tabbed_view_catalog()))
+
+    @expose("/<view_name>.json")
+    def view_json(self, view_name):
+        return jsonify(tabbed_view(view_name))
+
+
+def register_tabbed_views(appbuilder):
+    appbuilder.add_view(
+        TabbedViewPolicyView,
+        "Tabbed Views",
+        icon="fa-folder-open",
+        category="AppGen",
+    )
+'''
+
+
+def _form_designer_text(schema: AppSchema) -> str:
+    tables = {
+        table.name: {
+            "label": snake_to_label(table.name),
+            "fields": [
+                {
+                    "name": _model_attribute_name(column),
+                    "type": column.type_name,
+                    "required": not column.nullable,
+                    "references": column.references,
+                }
+                for column in table.columns
+                if not column.hidden and not column.derived
+            ],
+        }
+        for table in schema.tables
+    }
+    declared_designs = {}
+    for view in schema.views:
+        if not view.components:
+            continue
+        declared_designs[view.table] = {
+            "view": view.name,
+            "components": tuple(
+                {
+                    "id": f"{view.table}_{component.name}_{component.x}_{component.y}".lower(),
+                    "table": view.table,
+                    "type": component.component,
+                    "field": component.field,
+                    "x": component.x,
+                    "y": component.y,
+                    "w": component.w,
+                    "h": component.h,
+                    "props": {"source_view": view.name, "source_component": component.name},
+                }
+                for component in view.components
+            ),
+        }
+    return f'''"""Generated Delphi-style form designer contracts for AppGen apps."""
+
+from __future__ import annotations
+
+from flask import jsonify
+from flask import request
+from flask_appbuilder import BaseView
+from flask_appbuilder import expose
+
+
+FORM_TABLES = {tables!r}
+DECLARED_DESIGNS = {declared_designs!r}
+PALETTE = (
+    {{"type": "Label", "label": "Label", "defaults": {{"w": 3, "h": 1}}}},
+    {{"type": "TextBox", "label": "Text Box", "defaults": {{"w": 4, "h": 1}}}},
+    {{"type": "TextArea", "label": "Text Area", "defaults": {{"w": 6, "h": 3}}}},
+    {{"type": "Select", "label": "Select", "defaults": {{"w": 4, "h": 1}}}},
+    {{"type": "Checkbox", "label": "Checkbox", "defaults": {{"w": 2, "h": 1}}}},
+    {{"type": "DatePicker", "label": "Date Picker", "defaults": {{"w": 3, "h": 1}}}},
+    {{"type": "DateTimePicker", "label": "Date Time Picker", "defaults": {{"w": 4, "h": 1}}}},
+    {{"type": "TimePicker", "label": "Time Picker", "defaults": {{"w": 3, "h": 1}}}},
+    {{"type": "NumberInput", "label": "Number", "defaults": {{"w": 3, "h": 1}}}},
+    {{"type": "ImageUpload", "label": "Image Upload", "defaults": {{"w": 4, "h": 2}}}},
+    {{"type": "FileUpload", "label": "File Upload", "defaults": {{"w": 4, "h": 2}}}},
+    {{"type": "RelationshipPicker", "label": "Relationship", "defaults": {{"w": 4, "h": 1}}}},
+    {{"type": "Button", "label": "Button", "defaults": {{"w": 2, "h": 1}}}},
+    {{"type": "Section", "label": "Section", "defaults": {{"w": 12, "h": 2}}}},
+    {{"type": "Tabs", "label": "Tabs", "defaults": {{"w": 12, "h": 3}}}},
+)
+
+
+def component_palette():
+    """Return draggable Delphi-style form components."""
+    return PALETTE
+
+
+def form_catalog():
+    """Return generated form designer catalog entries."""
+    return tuple({{"table": name, "label": spec["label"], "field_count": len(spec["fields"])}} for name, spec in FORM_TABLES.items())
+
+
+def _palette_spec(component_type):
+    for spec in PALETTE:
+        if spec["type"] == component_type:
+            return spec
+    raise KeyError(f"Unknown component type: {{component_type}}")
+
+
+def field_component(table_name, field_name):
+    """Return the default component for a table field."""
+    field = next(item for item in FORM_TABLES[table_name]["fields"] if item["name"] == field_name)
+    normalized = field["type"].lower()
+    if field["references"]:
+        component_type = "RelationshipPicker"
+    elif normalized in {{"text", "longtext", "textarea"}}:
+        component_type = "TextArea"
+    elif normalized in {{"image", "photo", "picture"}}:
+        component_type = "ImageUpload"
+    elif normalized in {{"file", "upload", "document", "attachment", "blob", "binary", "bytea"}}:
+        component_type = "FileUpload"
+    elif normalized in {{"bool", "boolean"}}:
+        component_type = "Checkbox"
+    elif normalized in {{"datetime", "timestamp", "timestamptz"}}:
+        component_type = "DateTimePicker"
+    elif normalized == "time":
+        component_type = "TimePicker"
+    elif "date" in normalized:
+        component_type = "DatePicker"
+    elif normalized in {{"int", "integer", "float", "decimal", "numeric", "money"}}:
+        component_type = "NumberInput"
+    else:
+        component_type = "TextBox"
+    return {{"field": field_name, "type": component_type, "required": field["required"]}}
+
+
+def drop_component(table_name, component_type, field=None, x=0, y=0, w=None, h=None, props=None):
+    """Return a dropped form component instance."""
+    spec = _palette_spec(component_type)
+    defaults = spec["defaults"]
+    return {{
+        "id": f"{{table_name}}_{{field or component_type}}_{{x}}_{{y}}".lower(),
+        "table": table_name,
+        "type": component_type,
+        "field": field,
+        "x": int(x),
+        "y": int(y),
+        "w": int(w if w is not None else defaults["w"]),
+        "h": int(h if h is not None else defaults["h"]),
+        "props": dict(props or {{}}),
+    }}
+
+
+def form_design(table_name):
+    """Return a generated Delphi-style design surface for a table."""
+    declared = DECLARED_DESIGNS.get(table_name)
+    if declared:
+        components = tuple(declared["components"])
+        rows = max((int(component.get("y", 0)) + int(component.get("h", 1)) for component in components), default=10)
+        return {{"table": table_name, "source_view": declared["view"], "canvas": {{"columns": 12, "rows": max(12, rows + 2), "grid": 8}}, "components": components}}
+    components = []
+    y = 0
+    for field in FORM_TABLES[table_name]["fields"]:
+        mapping = field_component(table_name, field["name"])
+        components.append(drop_component(table_name, mapping["type"], field=field["name"], x=0, y=y))
+        y += 2
+    return {{"table": table_name, "canvas": {{"columns": 12, "rows": max(12, y + 2), "grid": 8}}, "components": tuple(components)}}
+
+
+def validate_form_design(design):
+    """Validate component bounds and duplicate IDs."""
+    errors = []
+    seen = set()
+    for component in design.get("components", ()):
+        if component.get("type") not in {{item["type"] for item in PALETTE}}:
+            errors.append(f"unknown component {{component.get('type')}}")
+        if component.get("id") in seen:
+            errors.append(f"duplicate component {{component.get('id')}}")
+        seen.add(component.get("id"))
+        if int(component.get("w", 0)) <= 0 or int(component.get("h", 0)) <= 0:
+            errors.append(f"invalid size {{component.get('id')}}")
+    return {{"ok": not errors, "errors": tuple(errors)}}
+
+
+def proposal_from_drop(payload):
+    """Convert a browser drag/drop payload into a stable form proposal."""
+    table = payload["table"]
+    component_type = payload["component"]
+    return {{"kind": "drop_component", "component": drop_component(table, component_type, payload.get("field"), payload.get("x", 0), payload.get("y", 0), payload.get("w"), payload.get("h"), payload.get("props"))}}
+
+
+def apply_form_proposal(design, proposal):
+    """Apply a form-designer proposal to a design copy."""
+    components = list(design.get("components", ()))
+    if proposal.get("kind") == "drop_component":
+        components.append(proposal["component"])
+    return dict(design, components=tuple(components))
+
+
+def form_designer_check(existing_paths):
+    """Return readiness for generated form designer artifacts."""
+    existing = set(existing_paths)
+    required = ("app/form_designer.py", "app/templates/appgen_form_designer.html")
+    missing = tuple(path for path in required if path not in existing)
+    return {{"ok": not missing, "missing": missing, "palette": tuple(item["type"] for item in PALETTE)}}
+
+
+class FormDesignerView(BaseView):
+    route_base = "/form-designer"
+    default_view = "index"
+
+    @expose("/")
+    def index(self):
+        return self.render_template("appgen_form_designer.html", forms=form_catalog(), palette=component_palette())
+
+    @expose("/palette.json")
+    def palette_json(self):
+        return jsonify(list(component_palette()))
+
+    @expose("/forms.json")
+    def forms_json(self):
+        return jsonify(list(form_catalog()))
+
+    @expose("/<table_name>.json")
+    def form_json(self, table_name):
+        return jsonify(form_design(table_name))
+
+    @expose("/drop", methods=("POST",))
+    def drop_json(self):
+        proposal = proposal_from_drop(request.get_json(force=True) or {{}})
+        return jsonify(proposal)
+
+
+def register_form_designer(appbuilder):
+    appbuilder.add_view(
+        FormDesignerView,
+        "Form Designer",
+        icon="fa-object-group",
+        category="AppGen",
+    )
+'''
+
+
+def _nl_evolution_text(schema: AppSchema) -> str:
+    tables = tuple(table.name for table in schema.tables)
+    return f'''"""Generated natural-language application evolution helpers."""
+
+from __future__ import annotations
+
+import re
+
+from flask import jsonify
+from flask import request
+from flask_appbuilder import BaseView
+from flask_appbuilder import expose
+
+
+KNOWN_TABLES = {tables!r}
+
+
+def evolution_capabilities():
+    """Return app areas that natural language can evolve."""
+    return ("tables", "fields", "forms", "workflows", "rules", "chatbots", "agents", "targets")
+
+
+def _field_type(name, context):
+    """Infer a practical DSL field type from a field name and nearby words."""
+    text = f"{{name}} {{context}}".lower()
+    if name.lower().endswith("_id") or " reference " in f" {{text}} " or " references " in f" {{text}} ":
+        return "int"
+    if any(word in text for word in ("description", "summary", "notes", "note", "comment")):
+        return "text"
+    if any(word in text for word in ("amount", "price", "total", "balance", "rate", "cost")):
+        return "decimal"
+    if any(word in text for word in ("count", "quantity", "qty", "number")):
+        return "int"
+    if "email" in text:
+        return "email"
+    if "datetime" in text or "timestamp" in text:
+        return "datetime"
+    if "date" in text:
+        return "date"
+    return "string"
+
+
+def _field_modifiers(name, context):
+    """Infer common field modifiers from natural language."""
+    text = f"{{name}} {{context}}".lower()
+    modifiers = []
+    if "required" in text or name.lower() in ("name", "title"):
+        modifiers.append("required")
+    if "unique" in text or name.lower() in ("email", "code", "sku"):
+        modifiers.append("unique")
+    if "search" in text or "searchable" in text or name.lower() in ("name", "title", "code", "sku", "email"):
+        modifiers.append("search")
+    return tuple(dict.fromkeys(modifiers))
+
+
+def _field_reference(name, context):
+    """Infer a known table reference for relationship-like field prompts."""
+    text = f"{{name}} {{context}}".lower()
+    explicit = re.search(r"\\b(?:ref|reference|references|to)\\s+([A-Za-z_][A-Za-z0-9_]*)", context, re.I)
+    candidates = []
+    if explicit:
+        candidates.append(explicit.group(1))
+    if name.lower().endswith("_id"):
+        candidates.append(name[:-3])
+    for table in KNOWN_TABLES:
+        table_lower = table.lower()
+        for candidate in candidates:
+            if candidate and candidate.lower() == table_lower:
+                return {{"table": table, "column": "id"}}
+        if re.search(rf"\\b{{re.escape(table_lower)}}\\b", text) and any(word in text for word in ("ref", "reference", "references", "relationship", "belongs", "parent")):
+            return {{"table": table, "column": "id"}}
+    return None
+
+
+def _field_cardinality(context):
+    text = context.lower().replace("_", "-")
+    for value in ("one-to-one", "one-to-many", "many-to-many", "many-to-one"):
+        if value in text:
+            return value
+    if "unique" in text:
+        return "one-to-one"
+    return "many-to-one"
+
+
+def _field_specs(text):
+    """Extract one or more field proposals from a natural-language prompt."""
+    specs = []
+    for match in re.finditer(r"(?:fields?|columns?)\\s+([^.;]+)", text, re.I):
+        segment = match.group(1)
+        segment = re.split(
+            r"\\b(?:form|workflow|flow|rule|policy|chatbot|agent|targets?|platforms?)\\b",
+            segment,
+            maxsplit=1,
+            flags=re.I,
+        )[0]
+        for raw_item in re.split(r",|\\band\\b", segment, flags=re.I):
+            item = raw_item.strip()
+            if not item:
+                continue
+            words = re.findall(r"[A-Za-z_][A-Za-z0-9_]*", item)
+            if not words:
+                continue
+            name = words[0]
+            if name.lower() in {{"required", "unique", "search", "searchable", "text", "decimal", "int", "integer", "string"}}:
+                continue
+            specs.append({{
+                "name": name,
+                "type": _field_type(name, item),
+                "modifiers": _field_modifiers(name, item),
+                "references": _field_reference(name, item),
+                "cardinality": _field_cardinality(item),
+            }})
+    seen = set()
+    unique_specs = []
+    for spec in specs:
+        if spec["name"] in seen:
+            continue
+        seen.add(spec["name"])
+        unique_specs.append(spec)
+    return tuple(unique_specs)
+
+
+def evolution_plan(prompt):
+    """Convert natural language into auditable low-code change proposals."""
+    text = prompt.strip()
+    lowered = text.lower()
+    proposals = []
+    table_match = re.search(r"(?:table|entity)\\s+([A-Za-z_][A-Za-z0-9_]*)", text, re.I)
+    field_specs = _field_specs(text)
+    form_match = re.search(r"form\\s+([A-Za-z_][A-Za-z0-9_]*)", text, re.I)
+    workflow_match = re.search(r"(?:workflow|flow)\\s+([A-Za-z_][A-Za-z0-9_]*)", text, re.I)
+    transition_match = re.search(r"(?:from\\s+)?([A-Za-z_][A-Za-z0-9_]*)\\s+(?:to|->)\\s+([A-Za-z_][A-Za-z0-9_]*)", text, re.I)
+    rule_match = re.search(r"(?:rule|policy)\\s+([A-Za-z_][A-Za-z0-9_]*)", text, re.I)
+    chatbot_match = re.search(r"chatbot\\s+([A-Za-z_][A-Za-z0-9_]*)", text, re.I)
+    agent_match = re.search(r"agent\\s+([A-Za-z_][A-Za-z0-9_]*)", text, re.I)
+    target_matches = tuple(
+        target
+        for target in ("web", "pwa", "mobile", "desktop", "chatbot")
+        if re.search(rf"\\b{{target}}\\b", lowered)
+    )
+    target_table = table_match.group(1) if table_match else (KNOWN_TABLES[0] if KNOWN_TABLES else "Generated")
+    if table_match and any(word in lowered for word in ("create", "add", "generate", "build")):
+        proposals.append({{"kind": "add_table", "name": target_table, "source": "natural_language"}})
+    for field_spec in field_specs:
+        proposals.append({{"kind": "add_field", "table": target_table, "name": field_spec["name"], "type": field_spec["type"], "modifiers": field_spec["modifiers"], "references": field_spec["references"], "cardinality": field_spec["cardinality"], "source": "natural_language"}})
+    if form_match or "form" in lowered:
+        proposals.append({{"kind": "add_form", "table": target_table, "name": (form_match.group(1) if form_match else f"{{target_table}}Form"), "source": "natural_language"}})
+    if workflow_match or "workflow" in lowered or "flow" in lowered:
+        source, target = transition_match.groups() if transition_match else ("draft", "approved")
+        proposals.append({{"kind": "add_workflow", "name": (workflow_match.group(1) if workflow_match else f"{{target_table}}Workflow"), "source_state": source, "target_state": target, "source": "natural_language"}})
+    if rule_match or "rule" in lowered or "required" in lowered:
+        required_field = field_specs[0]["name"] if field_specs else "title"
+        proposals.append({{"kind": "add_rule", "name": (rule_match.group(1) if rule_match else f"{{target_table}}Policy"), "table": target_table, "field": required_field, "operator": "required", "source": "natural_language"}})
+    if chatbot_match or "chatbot" in lowered:
+        proposals.append({{"kind": "add_chatbot", "name": (chatbot_match.group(1) if chatbot_match else f"{{target_table}}Assistant"), "table": target_table, "source": "natural_language"}})
+    if agent_match or "agent" in lowered:
+        proposals.append({{"kind": "add_agent", "name": (agent_match.group(1) if agent_match else f"{{target_table}}Agent"), "provider": "local_default", "tools": ("schema", "forms", "chatbots"), "source": "natural_language"}})
+    if "target" in lowered or "platform" in lowered or "generate" in lowered:
+        selected_targets = target_matches or ("web", "mobile", "desktop")
+        proposals.append({{"kind": "set_targets", "targets": selected_targets, "source": "natural_language"}})
+    return {{"prompt": text, "capabilities": evolution_capabilities(), "proposals": tuple(proposals)}}
+
+
+def _field_dsl_line(proposal):
+    modifiers = " ".join(proposal.get("modifiers", ()))
+    suffix = f" {{modifiers}}" if modifiers else ""
+    reference = proposal.get("references")
+    relation = ""
+    if reference:
+        relation = f" -> {{reference['table']}}.{{reference.get('column', 'id')}} [{{proposal.get('cardinality') or 'many-to-one'}}]"
+    return f"  {{proposal['name']}}: {{proposal['type']}}{{relation}}{{suffix}}"
+
+
+def proposals_to_dsl(plan):
+    """Render natural-language proposals as compact AppGen DSL snippets."""
+    lines = []
+    proposals = tuple(plan.get("proposals", ()))
+    new_tables = {{proposal["name"] for proposal in proposals if proposal["kind"] == "add_table"}}
+    fields_by_table = {{}}
+    for proposal in proposals:
+        if proposal["kind"] == "add_field":
+            fields_by_table.setdefault(proposal["table"], []).append(proposal)
+    for proposal in proposals:
+        if proposal["kind"] == "add_table":
+            field_lines = [_field_dsl_line(field) for field in fields_by_table.get(proposal["name"], ())]
+            body = "\\n".join(("  id: int pk", *field_lines))
+            lines.append(f"table {{proposal['name']}} {{{{\\n{{body}}\\n}}}}")
+        elif proposal["kind"] == "add_field":
+            if proposal["table"] in new_tables:
+                continue
+            modifiers = " ".join(proposal.get("modifiers", ()))
+            suffix = f" {{modifiers}}" if modifiers else ""
+            reference = proposal.get("references")
+            relation = ""
+            if reference:
+                relation = f" -> {{reference['table']}}.{{reference.get('column', 'id')}} [{{proposal.get('cardinality') or 'many-to-one'}}]"
+            lines.append(f"// add field {{proposal['table']}}.{{proposal['name']}}: {{proposal['type']}}{{relation}}{{suffix}}")
+        elif proposal["kind"] == "add_workflow":
+            lines.append(f"flow {{proposal['name']}} {{{{\\n  {{proposal['source_state']}} -> {{proposal['target_state']}};\\n}}}}")
+        elif proposal["kind"] == "add_rule":
+            lines.append(f"rule {{proposal['name']}} for {{proposal['table']}} {{{{\\n  {{proposal['field']}} {{proposal['operator']}};\\n}}}}")
+        elif proposal["kind"] == "add_agent":
+            lines.append(f"agent {{proposal['name']}} {{{{\\n  provider: {{proposal['provider']}}\\n  tools: schema, forms, chatbots\\n}}}}")
+        elif proposal["kind"] == "add_chatbot":
+            lines.append(f"// add chatbot {{proposal['name']}} for {{proposal['table']}}")
+        elif proposal["kind"] == "add_form":
+            lines.append(f"view {{proposal['name']}} for {{proposal['table']}} {{{{\\n}}}}")
+        elif proposal["kind"] == "set_targets":
+            lines.append("app Generated {{ targets: " + ", ".join(proposal["targets"]) + " }}")
+    return "\\n\\n".join(lines)
+
+
+def nl_evolution_check(existing_paths):
+    """Return readiness for natural-language evolution artifacts."""
+    existing = set(existing_paths)
+    required = ("app/nl_evolution.py", "app/templates/appgen_nl_evolution.html")
+    missing = tuple(path for path in required if path not in existing)
+    sample = evolution_plan("create table Ticket with field title and form TicketForm workflow Triage from open to closed rule TicketPolicy chatbot SupportBot agent SupportAgent targets web mobile desktop")
+    kinds = tuple(item["kind"] for item in sample["proposals"])
+    return {{"ok": not missing and "add_table" in kinds and "add_agent" in kinds and "add_workflow" in kinds and "set_targets" in kinds, "missing": missing, "sample_kinds": kinds}}
+
+
+class NaturalLanguageEvolutionView(BaseView):
+    route_base = "/nl-evolution"
+    default_view = "index"
+
+    @expose("/")
+    def index(self):
+        return self.render_template("appgen_nl_evolution.html", capabilities=evolution_capabilities())
+
+    @expose("/plan", methods=("POST",))
+    def plan_json(self):
+        payload = request.get_json(force=True) or {{}}
+        plan = evolution_plan(payload.get("prompt", ""))
+        return jsonify(dict(plan, dsl=proposals_to_dsl(plan)))
+
+    @expose("/capabilities.json")
+    def capabilities_json(self):
+        return jsonify(list(evolution_capabilities()))
+
+
+def register_nl_evolution(appbuilder):
+    appbuilder.add_view(
+        NaturalLanguageEvolutionView,
+        "Natural Language Evolution",
+        icon="fa-comments",
+        category="AppGen",
+    )
+'''
+
+
+def _dsl_reference_text(schema: AppSchema, app_name: str) -> str:
+    first_table = schema.tables[0] if schema.tables else TableSchema("Book", (ColumnSchema("title", "string", nullable=False),))
+    first_table_name = first_table.name
+    first_field = next((column.name for column in first_table.columns if not column.primary_key), "name")
+    example = f"""app {app_name.replace(' ', '')}
+
+table {first_table_name} {{
+  id: int pk
+  {first_field}: string required search
+}}
+
+view {first_table_name}Form for {first_table_name} {{
+  Main: {first_field};
+  @ {first_field} TextBox 0 0 6 1;
+}}
+
+flow Review {{
+  draft -> approved;
+}}
+
+llm LocalModel {{
+  provider: ollama
+  mode: local
+  model: llama3
+}}
+
+llm CloudModel {{
+  provider: openai
+  mode: api
+  model: gpt-4.1-mini
+  api_key: OPENAI_API_KEY
+}}
+
+agent Reviewer {{
+  provider: LocalModel
+  goal: "Review {first_table_name} records"
+  tools: schema, forms
+}}"""
+    return f'''"""Generated AppGen DSL reference, examples, and lint helpers."""
+
+from __future__ import annotations
+
+import re
+
+from flask import jsonify
+from flask import request
+from flask_appbuilder import BaseView
+from flask_appbuilder import expose
+
+
+APP_NAME = {app_name!r}
+CORE_KEYWORDS = (
+    "app", "table", "enum", "view", "for", "flow", "role", "rule",
+    "pk", "required", "unique", "hidden", "search", "default", "in",
+    "llm", "agent",
+)
+KEYWORD_LIMIT = 17
+RELATION_CARDINALITIES = ("many-to-one", "one-to-one", "one-to-many", "many-to-many")
+KEYWORD_FREE_SYNTAX = ("-> references", "[cardinality] relation metadata", "... field groups", "type[] arrays", "= derived fields", "@ component placements", "Name {{...}} reusable groups")
+PLATFORM_TARGETS = ("web", "pwa", "mobile", "desktop", "chatbot")
+PLATFORM_TARGET_ALIASES = {{
+    "browser": "web",
+    "spa": "web",
+    "progressive_web_app": "pwa",
+    "progressive_web": "pwa",
+    "bot": "chatbot",
+    "bots": "chatbot",
+}}
+CONSTRUCTS = (
+    {{"name": "Application", "syntax": "app Name {{ theme: sage }}", "purpose": "Names the generated app and carries app options without adding feature keywords."}},
+    {{"name": "Table", "syntax": "table Book {{ title: string required }}", "purpose": "Defines persistent data models, fields, types, and modifiers."}},
+    {{"name": "Reference", "syntax": "author_id: int -> Author.id [many-to-one]", "purpose": "Connects tables with arrow syntax and optional cardinality metadata instead of a larger relationship vocabulary."}},
+    {{"name": "Reusable Group", "syntax": "Audit {{ created_at: datetime }} then ...Audit", "purpose": "Reuses field blocks without adding a group keyword."}},
+    {{"name": "View", "syntax": "view BookForm for Book {{ Main: title; @ title TextBox 0 0 6 1 }}", "purpose": "Shapes generated forms, list fields, sections, tabs, and Delphi-style component placements."}},
+    {{"name": "Workflow", "syntax": "flow Publish {{ draft -> approved }}", "purpose": "Describes state transitions and generated workflow helpers."}},
+    {{"name": "Rule", "syntax": "rule Policy for Book {{ status in draft, approved }}", "purpose": "Describes validation and decision branches."}},
+    {{"name": "Agentic System", "syntax": "llm Local {{ mode: local }} llm Cloud {{ model: gpt-4.1-mini }} agent Reviewer {{ provider: Local }}", "purpose": "Connects local or API-key LLMs to generated agent plans."}},
+)
+EXAMPLE = {example!r}
+
+
+def dsl_keyword_budget():
+    """Return the canonical limited keyword budget for the AppGen DSL."""
+    return {{
+        "limit": KEYWORD_LIMIT,
+        "count": len(CORE_KEYWORDS),
+        "ok": len(CORE_KEYWORDS) <= KEYWORD_LIMIT,
+        "keywords": CORE_KEYWORDS,
+        "keyword_free_syntax": KEYWORD_FREE_SYNTAX,
+    }}
+
+
+def dsl_construct_catalog():
+    """Return compact learning cards for the main DSL constructs."""
+    return tuple(CONSTRUCTS)
+
+
+def dsl_example(kind="full"):
+    """Return a practical AppGen DSL example."""
+    examples = {{
+        "minimal": "app Mini\\n\\ntable Thing {{\\n  id: int pk\\n  name: string required search\\n}}",
+        "relation": "table Book {{\\n  id: int pk\\n  author_id: int -> Author.id [many-to-one]\\n}}",
+        "agent": "llm LocalModel {{\\n  provider: ollama\\n  mode: local\\n}}\\n\\nllm CloudModel {{\\n  provider: openai\\n  mode: api\\n  model: gpt-4.1-mini\\n  api_key: OPENAI_API_KEY\\n}}\\n\\nagent Helper {{\\n  provider: LocalModel\\n  tools: schema, forms\\n}}",
+        "full": EXAMPLE,
+    }}
+    return examples.get(kind, EXAMPLE)
+
+
+def _duplicate_names(kind, names):
+    seen = set()
+    duplicates = []
+    for name in names:
+        if name in seen and name not in duplicates:
+            duplicates.append(name)
+        seen.add(name)
+    return tuple(f"Duplicate {{kind}} declaration: {{name}}" for name in duplicates)
+
+
+def _named_blocks(source, kind):
+    pattern = re.compile(
+        r"\\b" + re.escape(kind) + r"\\s+([A-Za-z_][A-Za-z0-9_]*)\\s*(?:for\\s+([A-Za-z_][A-Za-z0-9_]*))?\\s*\\{{(?P<body>.*?)\\}}",
+        re.S,
+    )
+    return tuple(
+        {{"name": match.group(1), "target": match.group(2), "body": match.group("body")}}
+        for match in pattern.finditer(source)
+    )
+
+
+def _declared_table_fields(source):
+    fields = {{}}
+    for block in _named_blocks(source, "table"):
+        names = []
+        for line in re.split(r"[;\\n]+", block["body"]):
+            stripped = line.strip()
+            if not stripped or stripped.startswith("...") or "->" in stripped and "." in stripped and ":" not in stripped:
+                continue
+            match = re.match(r"([A-Za-z_][A-Za-z0-9_]*)\\s*:", stripped)
+            if match:
+                names.append(match.group(1))
+        fields[block["name"]] = tuple(names)
+    return fields
+
+
+def _lint_duplicate_declarations(source):
+    errors = []
+    for kind in ("table", "enum", "view", "flow", "role", "rule", "llm", "agent"):
+        names = tuple(block["name"] for block in _named_blocks(source, kind))
+        errors.extend(_duplicate_names(kind, names))
+    for table_name, fields in _declared_table_fields(source).items():
+        errors.extend(_duplicate_names(f"field {{table_name}}", fields))
+    return tuple(errors)
+
+
+def _lint_view_references(source):
+    errors = []
+    table_fields = _declared_table_fields(source)
+    for view in _named_blocks(source, "view"):
+        table_name = view["target"]
+        if not table_name:
+            continue
+        if table_name not in table_fields:
+            errors.append(f"Unknown view table: {{view['name']}} for {{table_name}}")
+            continue
+        allowed = set(table_fields[table_name])
+        for raw_line in re.split(r"[;\\n]+", view["body"]):
+            line = raw_line.strip().rstrip(";")
+            if not line:
+                continue
+            if line.startswith("@"):
+                parts = line.split()
+                if len(parts) > 1 and parts[1] not in allowed:
+                    errors.append(f"Unknown component field: {{view['name']}}.{{parts[1]}}")
+                continue
+            if ":" in line:
+                line = line.split(":", 1)[1]
+            for field_name in [part.strip() for part in line.split(",") if part.strip()]:
+                if field_name not in allowed:
+                    errors.append(f"Unknown view field: {{view['name']}}.{{field_name}}")
+    return tuple(errors)
+
+
+def _lint_agent_providers(source):
+    providers = set(block["name"] for block in _named_blocks(source, "llm"))
+    if not providers:
+        return ()
+    errors = []
+    for agent in _named_blocks(source, "agent"):
+        match = re.search(r"\\bprovider\\s*:\\s*([A-Za-z_][A-Za-z0-9_.-]*)", agent["body"])
+        if match and match.group(1) not in providers:
+            errors.append(f"Unknown agent provider: {{agent['name']}}.{{match.group(1)}}")
+    return tuple(errors)
+
+
+def _lint_relation_cardinality(source):
+    errors = []
+    pattern = re.compile(
+        r"->\\s*[A-Za-z_][A-Za-z0-9_]*\\.[A-Za-z_][A-Za-z0-9_]*\\s*\\[([^\\]]+)\\]"
+    )
+    for match in pattern.finditer(source):
+        value = match.group(1).strip().lower().replace("_", "-")
+        if value not in RELATION_CARDINALITIES:
+            errors.append(
+                "Unknown relation cardinality: "
+                + value
+                + ". Supported: "
+                + ", ".join(RELATION_CARDINALITIES)
+                + "."
+            )
+    return tuple(errors)
+
+
+def dsl_lint(source):
+    """Return lightweight DSL readability and keyword-budget feedback."""
+    text = source or ""
+    errors = []
+    warnings = []
+    suggestions = []
+    if text.count("{{") != text.count("}}"):
+        errors.append("Unbalanced braces: every block opened with {{ must close with }}.")
+    if not re.search(r"\\btable\\s+[A-Za-z_][A-Za-z0-9_]*\\s*{{", text):
+        errors.append("Add at least one table block so the generator has a data model.")
+    if re.search(r"\\bref\\b", text):
+        warnings.append("Prefer arrow references, for example author_id: int -> Author.id.")
+    if re.search(r"\\brelationship\\b|\\bentity\\b|\\bcomponent\\b", text, re.I):
+        suggestions.append("Use existing compact constructs such as table, view, flow, rule, llm, and agent instead of extra keywords.")
+    if re.search(r"api_key\\s*:\\s*['\\\"]", text):
+        warnings.append("Use an environment variable name for api_key, not a literal secret.")
+    target_match = re.search(r"\\btargets\\s*:\\s*([^}};\\n]+)", text)
+    if target_match:
+        requested_targets = [
+            item.strip().lower().replace("-", "_")
+            for item in target_match.group(1).split(",")
+            if item.strip()
+        ]
+        unknown_targets = tuple(
+            item
+            for item in requested_targets
+            if PLATFORM_TARGET_ALIASES.get(item, item) not in PLATFORM_TARGETS
+        )
+        if unknown_targets:
+            errors.append("Unknown app targets: " + ", ".join(unknown_targets) + ".")
+    errors.extend(_lint_duplicate_declarations(text))
+    errors.extend(_lint_view_references(text))
+    errors.extend(_lint_agent_providers(text))
+    errors.extend(_lint_relation_cardinality(text))
+    return {{
+        "ok": not errors and dsl_keyword_budget()["ok"],
+        "errors": tuple(errors),
+        "warnings": tuple(warnings),
+        "suggestions": tuple(suggestions),
+        "keyword_budget": dsl_keyword_budget(),
+    }}
+
+
+def dsl_learning_path():
+    """Return a short path for learning the language by useful increments."""
+    return (
+        {{"step": 1, "goal": "Model data", "constructs": ("app", "table", "enum", "->")}},
+        {{"step": 2, "goal": "Shape screens", "constructs": ("view", "hidden", "search")}},
+        {{"step": 3, "goal": "Add behavior", "constructs": ("flow", "role", "rule")}},
+        {{"step": 4, "goal": "Add intelligence", "constructs": ("llm", "agent")}},
+    )
+
+
+def dsl_reference_check(existing_paths):
+    """Return readiness for generated DSL reference artifacts."""
+    existing = set(existing_paths)
+    required = ("app/dsl_reference.py", "app/templates/appgen_dsl_reference.html")
+    missing = tuple(path for path in required if path not in existing)
+    lint = dsl_lint(dsl_example("full"))
+    return {{
+        "ok": not missing and dsl_keyword_budget()["ok"] and lint["ok"],
+        "missing": missing,
+        "keyword_count": dsl_keyword_budget()["count"],
+        "constructs": tuple(item["name"] for item in CONSTRUCTS),
+    }}
+
+
+class DSLReferenceView(BaseView):
+    route_base = "/dsl-reference"
+    default_view = "index"
+
+    @expose("/")
+    def index(self):
+        return self.render_template(
+            "appgen_dsl_reference.html",
+            budget=dsl_keyword_budget(),
+            constructs=dsl_construct_catalog(),
+            example=dsl_example("full"),
+        )
+
+    @expose("/reference.json")
+    def reference_json(self):
+        return jsonify({{"budget": dsl_keyword_budget(), "constructs": list(dsl_construct_catalog()), "learning_path": list(dsl_learning_path())}})
+
+    @expose("/lint", methods=("POST",))
+    def lint_json(self):
+        payload = request.get_json(force=True) or {{}}
+        return jsonify(dsl_lint(payload.get("source", "")))
+
+
+def register_dsl_reference(appbuilder):
+    appbuilder.add_view(
+        DSLReferenceView,
+        "DSL Reference",
+        icon="fa-language",
+        category="AppGen",
+    )
+'''
+
+
+def _view_experience_text(schema: AppSchema, app_name: str) -> str:
+    resources = tuple(
+        {
+            "table": table.name,
+            "route": f"/{underscore(table.name)}/list/",
+            "fields": tuple(
+                _model_attribute_name(column)
+                for column in table.columns
+                if not column.hidden and not column.derived and not column.primary_key
+            ),
+        }
+        for table in schema.tables
+    )
+    return f'''"""Generated shared view-experience helpers for AppGen apps."""
+
+from __future__ import annotations
+
+from datetime import datetime
+from datetime import timezone
+from hashlib import sha1
+
+from flask import jsonify
+from flask import request
+from flask_appbuilder import BaseView
+from flask_appbuilder import expose
+
+
+APP_NAME = {app_name!r}
+APP_VERSION = "0.1.0"
+VIEW_RESOURCES = {resources!r}
+BASEVIEW_FEATURES = (
+    {{
+        "key": "offline-fields",
+        "label": "Offline field support",
+        "description": "Field-level offline queue metadata for generated forms.",
+        "artifacts": ("offline_field_catalog", "offline_field_state", "appgen-view-experience.js"),
+    }},
+    {{
+        "key": "active-viewers",
+        "label": "Active viewers",
+        "description": "Presence events and active-user summaries for the same generated page.",
+        "artifacts": ("presence_event", "active_viewers"),
+    }},
+    {{
+        "key": "help-chatbot",
+        "label": "Help and suggestions",
+        "description": "A stable help affordance that can route to the generated guided chatbot.",
+        "artifacts": ("help_action", "/chatbot/"),
+    }},
+    {{
+        "key": "access-log",
+        "label": "Access logging",
+        "description": "Deterministic access log payloads for every generated view.",
+        "artifacts": ("access_log_event", "access_log_summary"),
+    }},
+    {{
+        "key": "footer-context",
+        "label": "View footer",
+        "description": "App version, current user, offline state, and time-on-page footer context.",
+        "artifacts": ("view_footer_context", "APP_VERSION"),
+    }},
+)
+
+
+def view_resource_catalog():
+    """Return generated view resources that can use the shared experience shell."""
+    return tuple(VIEW_RESOURCES)
+
+
+def baseview_feature_catalog():
+    """Return generated base-view experience features."""
+    return tuple(BASEVIEW_FEATURES)
+
+
+def resource_for_path(path):
+    """Return the generated resource most likely represented by a request path."""
+    normalized = str(path or "/")
+    normalized_lower = normalized.lower()
+    for resource in VIEW_RESOURCES:
+        if normalized_lower.startswith(resource["route"].lower()) or normalized_lower.strip("/").startswith(resource["table"].lower()):
+            return resource
+    return {{"table": "AppGen", "route": normalized or "/", "fields": ()}}
+
+
+def offline_field_catalog(table_name=None):
+    """Return field-level offline support contracts."""
+    resources = VIEW_RESOURCES
+    if table_name is not None:
+        resources = tuple(resource for resource in VIEW_RESOURCES if resource["table"] == table_name)
+    return tuple(
+        {{
+            "table": resource["table"],
+            "field": field,
+            "storage_key": f"appgen:offline:{{resource['table']}}:{{field}}",
+            "sync_topic": f"{{resource['table']}}.sync",
+        }}
+        for resource in resources
+        for field in resource["fields"]
+    )
+
+
+def offline_field_state(table_name, values):
+    """Return queued offline field states for a generated form payload."""
+    field_contracts = {{item["field"]: item for item in offline_field_catalog(table_name)}}
+    states = []
+    for field, value in dict(values or {{}}).items():
+        if field not in field_contracts:
+            continue
+        material = f"{{table_name}}:{{field}}:{{value}}"
+        states.append(
+            {{
+                "id": "offline-" + sha1(material.encode("utf-8")).hexdigest()[:10],
+                "table": table_name,
+                "field": field,
+                "value": value,
+                "status": "queued",
+                "storage_key": field_contracts[field]["storage_key"],
+                "sync_topic": field_contracts[field]["sync_topic"],
+            }}
+        )
+    return tuple(states)
+
+
+def presence_event(path, user, at=None, event="heartbeat"):
+    """Return a presence event for a user viewing a generated page."""
+    timestamp = at or datetime.now(timezone.utc).isoformat()
+    principal = user or "anonymous"
+    return {{
+        "path": path or "/",
+        "user": principal,
+        "event": event,
+        "seen_at": timestamp,
+        "resource": resource_for_path(path)["table"],
+    }}
+
+
+def active_viewers(path, events, current_time=None, ttl_seconds=60):
+    """Return people currently accessing the same page."""
+    now = current_time or datetime.now(timezone.utc)
+    viewers = {{}}
+    for event in events or ():
+        if event.get("path") != path:
+            continue
+        try:
+            seen_at = datetime.fromisoformat(str(event.get("seen_at")).replace("Z", "+00:00"))
+        except ValueError:
+            continue
+        if seen_at.tzinfo is None:
+            seen_at = seen_at.replace(tzinfo=timezone.utc)
+        age = max(0, int((now - seen_at).total_seconds()))
+        if age <= ttl_seconds:
+            viewers[event.get("user") or "anonymous"] = {{"user": event.get("user") or "anonymous", "age_seconds": age}}
+    return tuple(viewers.values())
+
+
+def access_log_event(path, user, method="GET", status=200, duration_ms=None, at=None):
+    """Return a deterministic access-log payload for a generated view."""
+    timestamp = at or datetime.now(timezone.utc).isoformat()
+    material = f"{{timestamp}}:{{method}}:{{path}}:{{user}}"
+    return {{
+        "id": "access-" + sha1(material.encode("utf-8")).hexdigest()[:12],
+        "app": APP_NAME,
+        "path": path or "/",
+        "resource": resource_for_path(path)["table"],
+        "user": user or "anonymous",
+        "method": method,
+        "status": int(status),
+        "duration_ms": duration_ms,
+        "accessed_at": timestamp,
+    }}
+
+
+def access_log_summary(events):
+    """Summarize generated access log events."""
+    rows = tuple(events or ())
+    users = {{event.get("user") or "anonymous" for event in rows}}
+    resources = {{}}
+    for event in rows:
+        resource = event.get("resource") or "AppGen"
+        resources[resource] = resources.get(resource, 0) + 1
+    return {{"events": len(rows), "unique_users": len(users), "resources": resources}}
+
+
+def help_action(path, user=None, message=""):
+    """Return the generated help/chatbot button target for a view."""
+    resource = resource_for_path(path)
+    return {{
+        "label": "Ask for help",
+        "href": "/chatbot/",
+        "resource": resource["table"],
+        "user": user or "anonymous",
+        "message": message or f"Help with {{resource['table']}}",
+    }}
+
+
+def view_footer_context(user=None, path="/", started_at=None, now=None):
+    """Return footer context for version, time-on-page, user, help, and offline state."""
+    current = now or datetime.now(timezone.utc)
+    if started_at is None:
+        started = current
+    elif isinstance(started_at, datetime):
+        started = started_at
+    else:
+        started = datetime.fromisoformat(str(started_at).replace("Z", "+00:00"))
+    if started.tzinfo is None:
+        started = started.replace(tzinfo=timezone.utc)
+    return {{
+        "app": APP_NAME,
+        "version": APP_VERSION,
+        "path": path,
+        "user": user or "anonymous",
+        "time_on_page_seconds": max(0, int((current - started).total_seconds())),
+        "offline_ready": True,
+        "presence_topic": f"presence:{{resource_for_path(path)['table']}}",
+        "help": help_action(path, user),
+    }}
+
+
+def baseview_experience_check(existing_paths):
+    """Return readiness for generated shared view-experience artifacts."""
+    existing = set(existing_paths)
+    required = (
+        "app/view_experience.py",
+        "app/templates/appgen_view_experience.html",
+        "app/static/appgen-view-experience.js",
+    )
+    missing = tuple(path for path in required if path not in existing)
+    feature_keys = {{item["key"] for item in BASEVIEW_FEATURES}}
+    return {{
+        "ok": not missing and {{
+            "offline-fields",
+            "active-viewers",
+            "help-chatbot",
+            "access-log",
+            "footer-context",
+        }} <= feature_keys,
+        "missing": missing,
+        "features": tuple(feature_keys),
+    }}
+
+
+class ViewExperienceView(BaseView):
+    route_base = "/view-experience"
+    default_view = "index"
+
+    @expose("/")
+    def index(self):
+        return self.render_template("appgen_view_experience.html", features=baseview_feature_catalog())
+
+    @expose("/catalog.json")
+    def catalog_json(self):
+        return jsonify({{"features": list(baseview_feature_catalog()), "resources": list(view_resource_catalog())}})
+
+    @expose("/presence.json")
+    def presence_json(self):
+        path = request.args.get("path", "/")
+        event = presence_event(path, request.args.get("user", "anonymous"))
+        return jsonify({{"event": event, "active": list(active_viewers(path, (event,)) )}})
+
+    @expose("/access-log", methods=("POST",))
+    def access_log_json(self):
+        payload = request.get_json(force=True) or {{}}
+        return jsonify(access_log_event(payload.get("path", "/"), payload.get("user"), payload.get("method", "GET"), payload.get("status", 200), payload.get("duration_ms")))
+
+
+def register_view_experience(appbuilder):
+    appbuilder.add_view(
+        ViewExperienceView,
+        "View Experience",
+        icon="fa-eye",
+        category="AppGen",
+    )
+'''
+
+
+def _support_center_text(schema: AppSchema, app_name: str) -> str:
+    resources = tuple(
+        {
+            "table": table.name,
+            "label": snake_to_label(table.name),
+            "fields": tuple(
+                _model_attribute_name(column)
+                for column in table.columns
+                if not column.hidden and not column.derived and not column.primary_key
+            ),
+        }
+        for table in schema.tables
+    )
+    first = resources[0] if resources else {"table": "Record", "label": "Record", "fields": ("name",)}
+    sample_dsl = f"""app {app_name.replace(' ', '')}Sample
+
+table {first['table']} {{
+  id: int pk
+  {first['fields'][0] if first['fields'] else 'name'}: string required search
+}}
+
+view {first['table']}QuickStart for {first['table']} {{
+  Main: {', '.join(first['fields'][:3]) if first['fields'] else 'name'};
+}}"""
+    return f'''"""Generated support center, tutorials, and sample apps for AppGen apps."""
+
+from __future__ import annotations
+
+from hashlib import sha1
+
+from flask import jsonify
+from flask import request
+from flask_appbuilder import BaseView
+from flask_appbuilder import expose
+
+
+APP_NAME = {app_name!r}
+SUPPORT_RESOURCES = {resources!r}
+SAMPLE_DSL = {sample_dsl!r}
+
+
+def support_topic_catalog():
+    """Return generated knowledge-base topics for this app."""
+    topics = [
+        {{
+            "key": "getting-started",
+            "title": "Getting Started",
+            "summary": f"Create, review, search, and report on {{APP_NAME}} records.",
+            "tags": ("onboarding", "tutorial", "no-code"),
+            "links": ("/designer/", "/dsl-reference/", "/view-experience/"),
+        }},
+        {{
+            "key": "data-import",
+            "title": "Data Import and Export",
+            "summary": "Use generated CSV and JSON templates to migrate existing data safely.",
+            "tags": ("migration", "csv", "json"),
+            "links": ("/data-exchange/", "/database-ops/"),
+        }},
+        {{
+            "key": "security",
+            "title": "Security and Access",
+            "summary": "Review generated roles, session policy, SSO readiness, row-level security, and compliance helpers.",
+            "tags": ("security", "roles", "compliance"),
+            "links": ("/appgen/security/", "/runtime-security/", "/identity/"),
+        }},
+        {{
+            "key": "troubleshooting",
+            "title": "Troubleshooting",
+            "summary": "Run diagnostics, API smoke checks, quality gates, and generated resilience plans.",
+            "tags": ("debugging", "diagnostics", "support"),
+            "links": ("/diagnostics/", "/api-testing/", "/resilience/"),
+        }},
+    ]
+    for resource in SUPPORT_RESOURCES:
+        topics.append(
+            {{
+                "key": f"resource-{{resource['table'].lower()}}",
+                "title": f"Working with {{resource['label']}}",
+                "summary": f"Learn the generated forms, API, reports, imports, and workflows for {{resource['label']}}.",
+                "tags": ("resource", "forms", "reports"),
+                "links": (f"/{{resource['table']}}/list/", "/reports/", "/openapi/"),
+            }}
+        )
+    return tuple(topics)
+
+
+def tutorial_catalog():
+    """Return generated tutorials and guided learning paths."""
+    return (
+        {{
+            "key": "first-app",
+            "title": "Build your first generated app",
+            "level": "beginner",
+            "steps": (
+                "Open the DSL reference and review the keyword budget.",
+                "Use the visual designer to inspect tables and relationships.",
+                "Open a generated form and create a test record.",
+                "Run diagnostics and review the generated quality gate.",
+            ),
+            "artifacts": ("app/dsl_reference.py", "app/designer.py", "scripts/appgen_quality.py"),
+        }},
+        {{
+            "key": "import-existing-data",
+            "title": "Import existing database or spreadsheet data",
+            "level": "intermediate",
+            "steps": (
+                "Generate from DBML, SQL, PonyORM, or a database URL.",
+                "Review docs/schema.md and docs/openapi.json.",
+                "Download CSV templates from Data Exchange.",
+                "Validate rows before import.",
+            ),
+            "artifacts": ("docs/schema.md", "docs/openapi.json", "app/data_exchange.py"),
+        }},
+        {{
+            "key": "secure-release",
+            "title": "Prepare a secure release",
+            "level": "advanced",
+            "steps": (
+                "Review role policies, SSO readiness, and row-level security.",
+                "Check config readiness and replace generated secrets.",
+                "Run generated tests and quality checks.",
+                "Promote through lifecycle release gates.",
+            ),
+            "artifacts": ("app/security.py", "app/identity.py", "app/lifecycle.py"),
+        }},
+    )
+
+
+def sample_application_catalog():
+    """Return sample applications and DSL starters."""
+    return (
+        {{
+            "key": "schema-quickstart",
+            "title": f"{{APP_NAME}} schema quickstart",
+            "source": "generated",
+            "dsl": SAMPLE_DSL,
+            "goals": ("data model", "view", "search"),
+        }},
+        {{
+            "key": "erp-starter",
+            "title": "ERP component starter",
+            "source": "template",
+            "dsl": "Use /erp-templates/general_ledger.dsl or /erp-templates/inventory.dsl",
+            "goals": ("ledger", "inventory", "reports"),
+        }},
+    )
+
+
+def onboarding_checklist(role="builder"):
+    """Return role-aware onboarding tasks."""
+    common = [
+        {{"key": "read-dsl", "label": "Read the DSL reference", "href": "/dsl-reference/", "done": False}},
+        {{"key": "inspect-model", "label": "Inspect the visual model", "href": "/designer/", "done": False}},
+        {{"key": "run-quality", "label": "Run scripts/appgen_quality.py", "href": "/diagnostics/", "done": False}},
+    ]
+    if role == "admin":
+        common.extend(
+            [
+                {{"key": "configure", "label": "Review generated configuration", "href": "/appgen/config/", "done": False}},
+                {{"key": "security", "label": "Review security and identity readiness", "href": "/identity/", "done": False}},
+            ]
+        )
+    elif role == "end_user":
+        common.append({{"key": "help", "label": "Open guided help and chatbot support", "href": "/support-center/", "done": False}})
+    return tuple(common)
+
+
+def search_support(query):
+    """Search generated support topics, tutorials, and sample apps."""
+    needle = str(query or "").lower()
+    entries = []
+    for topic in support_topic_catalog():
+        haystack = " ".join((topic["title"], topic["summary"], " ".join(topic["tags"]))).lower()
+        if not needle or needle in haystack:
+            entries.append(dict(topic, kind="topic"))
+    for tutorial in tutorial_catalog():
+        haystack = " ".join((tutorial["title"], tutorial["level"], " ".join(tutorial["steps"]))).lower()
+        if not needle or needle in haystack:
+            entries.append(dict(tutorial, kind="tutorial"))
+    for sample in sample_application_catalog():
+        haystack = " ".join((sample["title"], sample["dsl"], " ".join(sample["goals"]))).lower()
+        if not needle or needle in haystack:
+            entries.append(dict(sample, kind="sample"))
+    return tuple(entries)
+
+
+def support_ticket_payload(subject, body="", user=None, severity="normal", path=None):
+    """Return a structured support request payload."""
+    material = f"{{APP_NAME}}:{{subject}}:{{user}}:{{path}}"
+    return {{
+        "id": "support-" + sha1(material.encode("utf-8")).hexdigest()[:12],
+        "app": APP_NAME,
+        "subject": subject,
+        "body": body,
+        "user": user or "anonymous",
+        "severity": severity,
+        "path": path,
+        "status": "open",
+        "related": tuple(item["key"] for item in search_support(subject))[:5],
+    }}
+
+
+def support_center_check(existing_paths):
+    """Return readiness for generated support-center artifacts."""
+    existing = set(existing_paths)
+    required = ("app/support_center.py", "app/templates/appgen_support_center.html")
+    missing = tuple(path for path in required if path not in existing)
+    return {{
+        "ok": not missing and bool(support_topic_catalog()) and bool(tutorial_catalog()) and bool(sample_application_catalog()),
+        "missing": missing,
+        "topics": tuple(item["key"] for item in support_topic_catalog()),
+        "tutorials": tuple(item["key"] for item in tutorial_catalog()),
+    }}
+
+
+class SupportCenterView(BaseView):
+    route_base = "/support-center"
+    default_view = "index"
+
+    @expose("/")
+    def index(self):
+        return self.render_template("appgen_support_center.html", topics=support_topic_catalog(), tutorials=tutorial_catalog())
+
+    @expose("/topics.json")
+    def topics_json(self):
+        return jsonify(list(support_topic_catalog()))
+
+    @expose("/tutorials.json")
+    def tutorials_json(self):
+        return jsonify(list(tutorial_catalog()))
+
+    @expose("/samples.json")
+    def samples_json(self):
+        return jsonify(list(sample_application_catalog()))
+
+    @expose("/search.json")
+    def search_json(self):
+        return jsonify(list(search_support(request.args.get("q", ""))))
+
+    @expose("/ticket", methods=("POST",))
+    def ticket_json(self):
+        payload = request.get_json(force=True) or {{}}
+        return jsonify(support_ticket_payload(payload.get("subject", ""), payload.get("body", ""), payload.get("user"), payload.get("severity", "normal"), payload.get("path")))
+
+
+def register_support_center(appbuilder):
+    appbuilder.add_view(
+        SupportCenterView,
+        "Support Center",
+        icon="fa-life-ring",
+        category="AppGen",
+    )
+'''
+
+
+def _prototyping_text(schema: AppSchema, app_name: str) -> str:
+    def sample_value(column: ColumnSchema):
+        type_name = column.type_name.lower().split("(", 1)[0]
+        name = column.name.lower()
+        if column.primary_key:
+            return 1
+        if type_name in {"int", "integer", "bigint", "smallint"}:
+            return 42
+        if type_name in {"float", "double", "decimal", "numeric"}:
+            return "123.45"
+        if type_name in {"bool", "boolean"}:
+            return True
+        if type_name in {"date"}:
+            return "2026-01-15"
+        if type_name in {"datetime", "timestamp"}:
+            return "2026-01-15T09:00:00Z"
+        if "email" in name:
+            return "ada@example.test"
+        if "status" in name:
+            return "draft"
+        return f"Sample {snake_to_label(column.name)}"
+
+    resources = []
+    for table in schema.tables:
+        fields = []
+        for column in table.columns:
+            if column.hidden or column.derived:
+                continue
+            field = _model_attribute_name(column)
+            type_name = column.type_name.lower().split("(", 1)[0]
+            fields.append(
+                {
+                    "field": field,
+                    "label": snake_to_label(field),
+                    "type": column.type_name,
+                    "required": not column.nullable and not column.primary_key,
+                    "widget": "number" if type_name in {"int", "integer", "float", "decimal", "numeric"} else "date" if type_name in {"date", "datetime", "timestamp", "time"} else "checkbox" if type_name in {"bool", "boolean"} else "textarea" if type_name == "text" else "text",
+                    "sample": sample_value(column),
+                }
+            )
+        resources.append(
+            {
+                "resource": table.name,
+                "label": snake_to_label(table.name),
+                "prototype": f"{underscore(table.name)}_rapid_prototype",
+                "screens": ("list", "create", "detail", "dashboard"),
+                "fields": tuple(fields),
+                "experiments": ("layout", "copy", "onboarding"),
+            }
+        )
+    return f'''"""Generated rapid prototyping and preview helpers for AppGen apps."""
+
+from __future__ import annotations
+
+from hashlib import sha1
+
+from flask import jsonify
+from flask_appbuilder import BaseView
+from flask_appbuilder import expose
+
+
+APP_NAME = {app_name!r}
+PROTOTYPE_RESOURCES = {tuple(resources)!r}
+PROTOTYPE_STAGES = ("sketch", "clickable", "validated", "handoff")
+
+
+def prototype_catalog():
+    """Return generated rapid prototypes for schema resources."""
+    return tuple(PROTOTYPE_RESOURCES)
+
+
+def prototype_resource(resource_name):
+    """Return one generated prototype resource."""
+    for resource in PROTOTYPE_RESOURCES:
+        if resource["resource"] == resource_name or resource["prototype"] == resource_name:
+            return resource
+    raise KeyError(f"Unknown prototype resource: {{resource_name}}")
+
+
+def sample_row(resource_name, overrides=None):
+    """Return realistic sample data for quick prototype previews."""
+    resource = prototype_resource(resource_name)
+    row = {{field["field"]: field["sample"] for field in resource["fields"]}}
+    row.update(dict(overrides or {{}}))
+    return row
+
+
+def screen_mockup(resource_name, screen="list"):
+    """Return a schema-aware screen mockup contract."""
+    resource = prototype_resource(resource_name)
+    if screen not in resource["screens"]:
+        raise KeyError(f"Unknown prototype screen: {{screen}}")
+    fields = tuple(resource["fields"])
+    visible = fields[:6] if screen == "list" else fields
+    return {{
+        "resource": resource["resource"],
+        "screen": screen,
+        "title": f"{{resource['label']}} {{screen.title()}}",
+        "layout": "table" if screen == "list" else "form" if screen == "create" else "detail" if screen == "detail" else "dashboard",
+        "fields": visible,
+        "sample": sample_row(resource_name),
+        "actions": ("preview", "comment", "promote"),
+    }}
+
+
+def prototype_plan(resource_name, stage="clickable"):
+    """Return a rapid-prototype plan that can be reviewed before generation."""
+    resource = prototype_resource(resource_name)
+    if stage not in PROTOTYPE_STAGES:
+        raise KeyError(f"Unknown prototype stage: {{stage}}")
+    screens = tuple(screen_mockup(resource["resource"], screen) for screen in resource["screens"])
+    return {{
+        "prototype": resource["prototype"],
+        "resource": resource["resource"],
+        "stage": stage,
+        "screens": screens,
+        "sample_data": sample_row(resource["resource"]),
+        "feedback_channels": ("comments", "usability_test", "analytics"),
+    }}
+
+
+def experiment_hypothesis(resource_name, change, metric="completion_rate"):
+    """Return a rapid-prototyping experiment hypothesis."""
+    resource = prototype_resource(resource_name)
+    material = f"{{APP_NAME}}:{{resource['resource']}}:{{change}}:{{metric}}"
+    return {{
+        "id": "proto-" + sha1(material.encode("utf-8")).hexdigest()[:10],
+        "resource": resource["resource"],
+        "change": change,
+        "metric": metric,
+        "success_criteria": f"Improve {{metric}} for {{resource['label']}}.",
+        "variants": ("current", "prototype"),
+    }}
+
+
+def preview_package(resource_name):
+    """Return a portable preview package for stakeholder review."""
+    plan = prototype_plan(resource_name)
+    return {{
+        "format": "appgen-prototype-v1",
+        "app": APP_NAME,
+        "prototype": plan["prototype"],
+        "screens": plan["screens"],
+        "sample_data": plan["sample_data"],
+    }}
+
+
+def promote_to_backlog(resource_name, accepted=True):
+    """Return backlog items created from a validated prototype."""
+    resource = prototype_resource(resource_name)
+    status = "ready" if accepted else "needs_revision"
+    return tuple(
+        {{
+            "key": f"PROTO-{{resource['resource'].upper()}}-{{index}}",
+            "resource": resource["resource"],
+            "screen": screen,
+            "status": status,
+        }}
+        for index, screen in enumerate(resource["screens"], start=1)
+    )
+
+
+def prototyping_check(existing_paths=()):
+    """Return readiness for generated rapid-prototyping artifacts."""
+    existing = set(existing_paths)
+    required = {{"app/prototyping.py", "app/templates/appgen_prototyping.html"}}
+    missing = tuple(sorted(required - existing))
+    return {{
+        "ok": not missing and bool(PROTOTYPE_RESOURCES),
+        "missing": missing,
+        "resources": tuple(resource["resource"] for resource in PROTOTYPE_RESOURCES),
+    }}
+
+
+class PrototypingView(BaseView):
+    route_base = "/prototyping"
+    default_view = "index"
+
+    @expose("/")
+    def index(self):
+        return self.render_template(
+            "appgen_prototyping.html",
+            prototypes=prototype_catalog(),
+        )
+
+    @expose("/catalog.json")
+    def catalog_json(self):
+        return jsonify(list(prototype_catalog()))
+
+
+def register_prototyping(appbuilder):
+    appbuilder.add_view(
+        PrototypingView,
+        "Rapid Prototyping",
+        icon="fa-flask",
+        category="AppGen",
+    )
+'''
+
+
+def _erp_templates_text(schema: AppSchema) -> str:
+    tables = tuple(table.name for table in schema.tables)
+    modules = {
+        "general_ledger": {
+            "label": "General Ledger",
+            "tables": ("ledger_account", "journal_entry", "journal_line", "fiscal_period"),
+            "workflows": ("journal_entry_approval", "period_close"),
+            "reports": ("trial_balance", "general_ledger", "balance_sheet", "income_statement"),
+        },
+        "chart_of_accounts": {
+            "label": "Chart of Accounts",
+            "tables": ("account", "account_group", "account_type", "cost_center"),
+            "workflows": ("account_activation",),
+            "reports": ("account_listing", "cost_center_summary"),
+        },
+        "accounts_receivable": {
+            "label": "Accounts Receivable",
+            "tables": ("customer", "customer_invoice", "customer_payment", "credit_memo"),
+            "workflows": ("invoice_collection", "credit_hold"),
+            "reports": ("ar_aging", "customer_statement", "cash_receipts"),
+        },
+        "accounts_payable": {
+            "label": "Accounts Payable",
+            "tables": ("vendor", "vendor_bill", "vendor_payment", "debit_memo"),
+            "workflows": ("bill_approval", "payment_run"),
+            "reports": ("ap_aging", "vendor_statement", "cash_requirements"),
+        },
+        "invoicing": {
+            "label": "Invoicing",
+            "tables": ("invoice", "invoice_line", "tax_rate", "payment_term"),
+            "workflows": ("invoice_draft_review", "invoice_send"),
+            "reports": ("invoice_register", "tax_summary"),
+        },
+        "inventory": {
+            "label": "Inventory",
+            "tables": ("item", "warehouse", "stock_move", "stock_count", "lot_serial"),
+            "workflows": ("stock_replenishment", "cycle_count"),
+            "reports": ("stock_on_hand", "inventory_valuation", "reorder_report"),
+        },
+        "human_resources": {
+            "label": "Human Resources",
+            "tables": ("employee", "department", "job_position", "leave_request", "timesheet"),
+            "workflows": ("employee_onboarding", "leave_approval"),
+            "reports": ("headcount", "leave_balance", "timesheet_summary"),
+        },
+        "payroll": {
+            "label": "Payroll",
+            "tables": ("payroll_run", "payslip", "earning_code", "deduction_code"),
+            "workflows": ("payroll_review", "payroll_posting"),
+            "reports": ("payroll_register", "deduction_summary"),
+        },
+        "purchasing": {
+            "label": "Purchasing",
+            "tables": ("purchase_requisition", "purchase_order", "purchase_order_line", "goods_receipt"),
+            "workflows": ("requisition_approval", "po_approval", "receipt_matching"),
+            "reports": ("open_purchase_orders", "vendor_performance"),
+        },
+        "procurement": {
+            "label": "Procurement",
+            "tables": ("supplier", "sourcing_event", "supplier_bid", "contract"),
+            "workflows": ("supplier_onboarding", "bid_evaluation", "contract_renewal"),
+            "reports": ("supplier_scorecard", "contract_expiry", "sourcing_savings"),
+        },
+        "supply_chain": {
+            "label": "Supply Chain",
+            "tables": ("demand_forecast", "supply_plan", "shipment", "carrier"),
+            "workflows": ("supply_plan_review", "shipment_exception"),
+            "reports": ("forecast_accuracy", "inbound_pipeline", "carrier_performance"),
+        },
+        "warehouse_management": {
+            "label": "Warehouse Management",
+            "tables": ("warehouse_zone", "bin_location", "pick_ticket", "shipment_pack"),
+            "workflows": ("wave_picking", "pack_and_ship"),
+            "reports": ("pick_accuracy", "warehouse_utilization", "shipping_backlog"),
+        },
+        "manufacturing": {
+            "label": "Manufacturing",
+            "tables": ("work_order", "bill_of_material", "bom_line", "routing_step"),
+            "workflows": ("work_order_release", "production_close"),
+            "reports": ("production_variance", "work_order_status", "material_shortage"),
+        },
+        "sales": {
+            "label": "Sales",
+            "tables": ("sales_order", "sales_order_line", "quote", "price_list"),
+            "workflows": ("quote_approval", "order_fulfillment"),
+            "reports": ("sales_pipeline", "order_backlog", "margin_report"),
+        },
+        "crm": {
+            "label": "CRM",
+            "tables": ("lead", "opportunity", "account_contact", "case_ticket"),
+            "workflows": ("lead_qualification", "opportunity_review", "case_escalation"),
+            "reports": ("pipeline_forecast", "win_loss", "support_sla"),
+        },
+        "ecommerce": {
+            "label": "E-commerce",
+            "tables": ("web_store", "online_order", "online_order_line", "catalog_sync"),
+            "workflows": ("order_import", "catalog_publication"),
+            "reports": ("online_sales", "abandoned_cart", "channel_inventory"),
+        },
+        "fixed_assets": {
+            "label": "Fixed Assets",
+            "tables": ("asset", "asset_category", "depreciation_schedule", "asset_disposal"),
+            "workflows": ("asset_capitalization", "asset_disposal_approval"),
+            "reports": ("asset_register", "depreciation_report"),
+        },
+        "maintenance": {
+            "label": "Maintenance",
+            "tables": ("maintenance_asset", "maintenance_request", "work_order_task", "spare_part"),
+            "workflows": ("maintenance_approval", "preventive_schedule"),
+            "reports": ("downtime_report", "maintenance_backlog", "spare_part_usage"),
+        },
+        "quality_management": {
+            "label": "Quality Management",
+            "tables": ("inspection_plan", "quality_inspection", "nonconformance", "corrective_action"),
+            "workflows": ("inspection_review", "corrective_action_approval"),
+            "reports": ("defect_trends", "inspection_yield", "corrective_action_status"),
+        },
+        "document_management": {
+            "label": "Document Management",
+            "tables": ("document", "document_version", "approval_route", "retention_policy"),
+            "workflows": ("document_approval", "retention_review"),
+            "reports": ("document_register", "approval_aging", "retention_due"),
+        },
+        "compliance_management": {
+            "label": "Compliance Management",
+            "tables": ("control_objective", "control_test", "audit_issue", "remediation_plan"),
+            "workflows": ("control_attestation", "issue_remediation"),
+            "reports": ("control_coverage", "audit_findings", "remediation_status"),
+        },
+        "projects": {
+            "label": "Projects",
+            "tables": ("project", "project_task", "project_budget", "project_cost"),
+            "workflows": ("project_approval", "budget_revision"),
+            "reports": ("project_profitability", "budget_vs_actual"),
+        },
+        "reporting": {
+            "label": "ERP Reports",
+            "tables": ("report_definition", "report_schedule", "report_distribution"),
+            "workflows": ("report_approval", "scheduled_distribution"),
+            "reports": ("financial_pack", "operational_dashboard", "audit_export"),
+        },
+    }
+    blueprints = {
+        "general_ledger": {
+            "ledger_account": (
+                "id: int pk",
+                "account_code: string required unique search",
+                "name: string required search",
+                "account_type: string required search",
+                "normal_balance: string required default debit",
+                "active: bool default true",
+            ),
+            "journal_entry": (
+                "id: int pk",
+                "entry_number: string required unique search",
+                "entry_date: date required",
+                "description: text",
+                "status: string required default draft search",
+                "fiscal_period_id: int ref fiscal_period.id",
+            ),
+            "journal_line": (
+                "id: int pk",
+                "journal_entry_id: int required ref journal_entry.id",
+                "ledger_account_id: int required ref ledger_account.id",
+                "debit_amount: decimal default 0",
+                "credit_amount: decimal default 0",
+                "memo: text",
+            ),
+            "fiscal_period": (
+                "id: int pk",
+                "name: string required search",
+                "start_date: date required",
+                "end_date: date required",
+                "status: string required default open search",
+            ),
+        },
+        "chart_of_accounts": {
+            "account": (
+                "id: int pk",
+                "code: string required unique search",
+                "name: string required search",
+                "account_group_id: int ref account_group.id",
+                "account_type_id: int ref account_type.id",
+                "cost_center_id: int ref cost_center.id",
+                "active: bool default true",
+            ),
+            "account_group": ("id: int pk", "name: string required unique search", "description: text"),
+            "account_type": ("id: int pk", "name: string required unique search", "financial_statement: string required"),
+            "cost_center": ("id: int pk", "code: string required unique search", "name: string required search"),
+        },
+        "accounts_receivable": {
+            "customer": (
+                "id: int pk",
+                "customer_number: string required unique search",
+                "name: string required search",
+                "email: email search",
+                "credit_limit: decimal default 0",
+                "status: string required default active search",
+            ),
+            "customer_invoice": (
+                "id: int pk",
+                "invoice_number: string required unique search",
+                "customer_id: int required ref customer.id",
+                "invoice_date: date required",
+                "due_date: date required",
+                "total_amount: decimal required default 0",
+                "status: string required default open search",
+            ),
+            "customer_payment": (
+                "id: int pk",
+                "payment_number: string required unique search",
+                "customer_id: int required ref customer.id",
+                "payment_date: date required",
+                "amount: decimal required",
+                "reference: string search",
+            ),
+            "credit_memo": (
+                "id: int pk",
+                "memo_number: string required unique search",
+                "customer_id: int required ref customer.id",
+                "memo_date: date required",
+                "amount: decimal required",
+                "reason: text",
+            ),
+        },
+        "accounts_payable": {
+            "vendor": (
+                "id: int pk",
+                "vendor_number: string required unique search",
+                "name: string required search",
+                "email: email search",
+                "tax_id: string",
+                "status: string required default active search",
+            ),
+            "vendor_bill": (
+                "id: int pk",
+                "bill_number: string required unique search",
+                "vendor_id: int required ref vendor.id",
+                "bill_date: date required",
+                "due_date: date required",
+                "total_amount: decimal required default 0",
+                "status: string required default pending search",
+            ),
+            "vendor_payment": (
+                "id: int pk",
+                "payment_number: string required unique search",
+                "vendor_id: int required ref vendor.id",
+                "payment_date: date required",
+                "amount: decimal required",
+                "reference: string search",
+            ),
+            "debit_memo": (
+                "id: int pk",
+                "memo_number: string required unique search",
+                "vendor_id: int required ref vendor.id",
+                "memo_date: date required",
+                "amount: decimal required",
+                "reason: text",
+            ),
+        },
+        "invoicing": {
+            "invoice": (
+                "id: int pk",
+                "invoice_number: string required unique search",
+                "customer_name: string required search",
+                "invoice_date: date required",
+                "due_date: date required",
+                "subtotal: decimal required default 0",
+                "tax_amount: decimal default 0",
+                "total_amount: decimal = subtotal + tax_amount",
+                "status: string required default draft search",
+            ),
+            "invoice_line": (
+                "id: int pk",
+                "invoice_id: int required ref invoice.id",
+                "description: string required search",
+                "quantity: decimal required default 1",
+                "unit_price: decimal required default 0",
+                "line_total: decimal = quantity * unit_price",
+            ),
+            "tax_rate": ("id: int pk", "name: string required search", "rate_percent: decimal required", "active: bool default true"),
+            "payment_term": ("id: int pk", "name: string required search", "days_due: int required", "discount_percent: decimal default 0"),
+        },
+        "inventory": {
+            "item": (
+                "id: int pk",
+                "sku: string required unique search",
+                "name: string required search",
+                "item_type: string required default stock",
+                "unit_cost: decimal default 0",
+                "reorder_point: decimal default 0",
+                "active: bool default true",
+            ),
+            "warehouse": ("id: int pk", "code: string required unique search", "name: string required search", "location: string search"),
+            "stock_move": (
+                "id: int pk",
+                "item_id: int required ref item.id",
+                "warehouse_id: int required ref warehouse.id",
+                "move_date: date required",
+                "quantity: decimal required",
+                "move_type: string required search",
+                "reference: string search",
+            ),
+            "stock_count": (
+                "id: int pk",
+                "item_id: int required ref item.id",
+                "warehouse_id: int required ref warehouse.id",
+                "count_date: date required",
+                "counted_quantity: decimal required",
+                "variance_quantity: decimal default 0",
+            ),
+            "lot_serial": ("id: int pk", "item_id: int required ref item.id", "lot_number: string required search", "expiry_date: date"),
+        },
+        "human_resources": {
+            "employee": (
+                "id: int pk",
+                "employee_number: string required unique search",
+                "first_name: string required search",
+                "last_name: string required search",
+                "email: email unique search",
+                "department_id: int ref department.id",
+                "job_position_id: int ref job_position.id",
+                "hire_date: date required",
+                "status: string required default active search",
+            ),
+            "department": ("id: int pk", "name: string required unique search", "manager_id: int ref employee.id"),
+            "job_position": ("id: int pk", "title: string required search", "grade: string search", "salary_band: string"),
+            "leave_request": (
+                "id: int pk",
+                "employee_id: int required ref employee.id",
+                "leave_type: string required search",
+                "start_date: date required",
+                "end_date: date required",
+                "status: string required default submitted search",
+            ),
+            "timesheet": (
+                "id: int pk",
+                "employee_id: int required ref employee.id",
+                "work_date: date required",
+                "hours: decimal required",
+                "project_code: string search",
+            ),
+        },
+        "payroll": {
+            "payroll_run": ("id: int pk", "run_number: string required unique search", "period_start: date required", "period_end: date required", "status: string required default draft search"),
+            "payslip": ("id: int pk", "payroll_run_id: int required ref payroll_run.id", "employee_number: string required search", "gross_pay: decimal required default 0", "deductions: decimal default 0", "net_pay: decimal = gross_pay - deductions"),
+            "earning_code": ("id: int pk", "code: string required unique search", "name: string required search", "taxable: bool default true"),
+            "deduction_code": ("id: int pk", "code: string required unique search", "name: string required search", "pre_tax: bool default false"),
+        },
+        "purchasing": {
+            "purchase_requisition": ("id: int pk", "requisition_number: string required unique search", "requester: string required search", "request_date: date required", "status: string required default submitted search"),
+            "purchase_order": ("id: int pk", "po_number: string required unique search", "vendor_name: string required search", "order_date: date required", "status: string required default open search", "total_amount: decimal default 0"),
+            "purchase_order_line": ("id: int pk", "purchase_order_id: int required ref purchase_order.id", "item_description: string required search", "quantity: decimal required", "unit_price: decimal required"),
+            "goods_receipt": ("id: int pk", "purchase_order_id: int required ref purchase_order.id", "receipt_number: string required unique search", "receipt_date: date required", "status: string required default received search"),
+        },
+        "procurement": {
+            "supplier": ("id: int pk", "supplier_number: string required unique search", "name: string required search", "category: string search", "status: string required default prospective search"),
+            "sourcing_event": ("id: int pk", "event_number: string required unique search", "title: string required search", "opened_on: date required", "closes_on: date", "status: string required default open search"),
+            "supplier_bid": ("id: int pk", "sourcing_event_id: int required ref sourcing_event.id", "supplier_id: int required ref supplier.id", "bid_amount: decimal required", "submitted_on: date required", "status: string required default submitted search"),
+            "contract": ("id: int pk", "contract_number: string required unique search", "supplier_id: int required ref supplier.id", "effective_on: date required", "expires_on: date", "contract_value: decimal default 0"),
+        },
+        "supply_chain": {
+            "demand_forecast": ("id: int pk", "forecast_number: string required unique search", "item_sku: string required search", "period: string required search", "forecast_quantity: decimal required"),
+            "supply_plan": ("id: int pk", "plan_number: string required unique search", "period: string required search", "planner: string search", "status: string required default draft search"),
+            "shipment": ("id: int pk", "shipment_number: string required unique search", "carrier_id: int ref carrier.id", "ship_date: date", "eta_date: date", "status: string required default planned search"),
+            "carrier": ("id: int pk", "code: string required unique search", "name: string required search", "service_level: string search"),
+        },
+        "warehouse_management": {
+            "warehouse_zone": ("id: int pk", "code: string required unique search", "name: string required search", "temperature_controlled: bool default false"),
+            "bin_location": ("id: int pk", "warehouse_zone_id: int required ref warehouse_zone.id", "bin_code: string required unique search", "capacity: decimal default 0", "active: bool default true"),
+            "pick_ticket": ("id: int pk", "ticket_number: string required unique search", "bin_location_id: int ref bin_location.id", "requested_on: date required", "status: string required default open search"),
+            "shipment_pack": ("id: int pk", "pick_ticket_id: int required ref pick_ticket.id", "package_number: string required unique search", "packed_on: date", "status: string required default packed search"),
+        },
+        "manufacturing": {
+            "work_order": ("id: int pk", "work_order_number: string required unique search", "item_sku: string required search", "quantity: decimal required", "due_date: date", "status: string required default planned search"),
+            "bill_of_material": ("id: int pk", "bom_number: string required unique search", "item_sku: string required search", "revision: string required default A", "active: bool default true"),
+            "bom_line": ("id: int pk", "bill_of_material_id: int required ref bill_of_material.id", "component_sku: string required search", "quantity_per: decimal required", "scrap_percent: decimal default 0"),
+            "routing_step": ("id: int pk", "work_order_id: int required ref work_order.id", "sequence_number: int required", "work_center: string required search", "standard_hours: decimal default 0"),
+        },
+        "sales": {
+            "sales_order": ("id: int pk", "order_number: string required unique search", "customer_name: string required search", "order_date: date required", "status: string required default open search", "total_amount: decimal default 0"),
+            "sales_order_line": ("id: int pk", "sales_order_id: int required ref sales_order.id", "item_description: string required search", "quantity: decimal required", "unit_price: decimal required"),
+            "quote": ("id: int pk", "quote_number: string required unique search", "customer_name: string required search", "quote_date: date required", "expires_on: date", "status: string required default draft search"),
+            "price_list": ("id: int pk", "name: string required unique search", "currency: string required default USD", "active: bool default true"),
+        },
+        "crm": {
+            "lead": ("id: int pk", "lead_number: string required unique search", "company_name: string required search", "contact_email: email search", "source: string search", "status: string required default new search"),
+            "opportunity": ("id: int pk", "opportunity_number: string required unique search", "lead_id: int ref lead.id", "name: string required search", "stage: string required default qualify search", "expected_value: decimal default 0"),
+            "account_contact": ("id: int pk", "account_name: string required search", "contact_name: string required search", "email: email search", "phone: string search"),
+            "case_ticket": ("id: int pk", "case_number: string required unique search", "account_contact_id: int ref account_contact.id", "subject: string required search", "priority: string required default normal search", "status: string required default open search"),
+        },
+        "ecommerce": {
+            "web_store": ("id: int pk", "code: string required unique search", "name: string required search", "base_url: string search", "active: bool default true"),
+            "online_order": ("id: int pk", "order_number: string required unique search", "web_store_id: int required ref web_store.id", "customer_email: email search", "ordered_on: date required", "status: string required default imported search"),
+            "online_order_line": ("id: int pk", "online_order_id: int required ref online_order.id", "sku: string required search", "quantity: decimal required", "unit_price: decimal required"),
+            "catalog_sync": ("id: int pk", "web_store_id: int required ref web_store.id", "sync_date: date required", "items_published: int default 0", "status: string required default complete search"),
+        },
+        "fixed_assets": {
+            "asset": ("id: int pk", "asset_number: string required unique search", "name: string required search", "asset_category_id: int ref asset_category.id", "acquired_on: date required", "cost: decimal required", "status: string required default active search"),
+            "asset_category": ("id: int pk", "name: string required unique search", "depreciation_method: string required default straight_line"),
+            "depreciation_schedule": ("id: int pk", "asset_id: int required ref asset.id", "period: string required search", "depreciation_amount: decimal required", "book_value: decimal required"),
+            "asset_disposal": ("id: int pk", "asset_id: int required ref asset.id", "disposal_date: date required", "proceeds: decimal default 0", "status: string required default requested search"),
+        },
+        "maintenance": {
+            "maintenance_asset": ("id: int pk", "asset_number: string required unique search", "name: string required search", "location: string search", "criticality: string required default normal search"),
+            "maintenance_request": ("id: int pk", "request_number: string required unique search", "maintenance_asset_id: int required ref maintenance_asset.id", "requested_on: date required", "priority: string required default normal search", "status: string required default open search"),
+            "work_order_task": ("id: int pk", "maintenance_request_id: int required ref maintenance_request.id", "task_name: string required search", "assigned_to: string search", "status: string required default open search"),
+            "spare_part": ("id: int pk", "part_number: string required unique search", "name: string required search", "quantity_on_hand: decimal default 0", "reorder_point: decimal default 0"),
+        },
+        "quality_management": {
+            "inspection_plan": ("id: int pk", "plan_number: string required unique search", "item_sku: string required search", "inspection_type: string required search", "active: bool default true"),
+            "quality_inspection": ("id: int pk", "inspection_plan_id: int required ref inspection_plan.id", "inspection_number: string required unique search", "inspected_on: date required", "result: string required default pending search"),
+            "nonconformance": ("id: int pk", "quality_inspection_id: int required ref quality_inspection.id", "ncr_number: string required unique search", "severity: string required default minor search", "status: string required default open search"),
+            "corrective_action": ("id: int pk", "nonconformance_id: int required ref nonconformance.id", "action_number: string required unique search", "owner: string search", "due_date: date", "status: string required default planned search"),
+        },
+        "document_management": {
+            "document": ("id: int pk", "document_number: string required unique search", "title: string required search", "owner: string search", "status: string required default draft search"),
+            "document_version": ("id: int pk", "document_id: int required ref document.id", "version_number: string required search", "published_on: date", "file_uri: string search"),
+            "approval_route": ("id: int pk", "document_id: int required ref document.id", "approver: string required search", "sequence_number: int required", "status: string required default pending search"),
+            "retention_policy": ("id: int pk", "name: string required unique search", "retention_years: int required", "disposition_action: string required default archive"),
+        },
+        "compliance_management": {
+            "control_objective": ("id: int pk", "control_code: string required unique search", "title: string required search", "risk_area: string search", "status: string required default active search"),
+            "control_test": ("id: int pk", "control_objective_id: int required ref control_objective.id", "test_number: string required unique search", "tested_on: date", "result: string required default pending search"),
+            "audit_issue": ("id: int pk", "control_test_id: int ref control_test.id", "issue_number: string required unique search", "severity: string required default medium search", "status: string required default open search"),
+            "remediation_plan": ("id: int pk", "audit_issue_id: int required ref audit_issue.id", "owner: string required search", "due_date: date", "status: string required default planned search"),
+        },
+        "projects": {
+            "project": ("id: int pk", "project_code: string required unique search", "name: string required search", "customer_name: string search", "start_date: date", "end_date: date", "status: string required default active search"),
+            "project_task": ("id: int pk", "project_id: int required ref project.id", "name: string required search", "owner: string search", "due_date: date", "status: string required default open search"),
+            "project_budget": ("id: int pk", "project_id: int required ref project.id", "budget_amount: decimal required", "approved_on: date", "status: string required default draft search"),
+            "project_cost": ("id: int pk", "project_id: int required ref project.id", "cost_date: date required", "amount: decimal required", "description: string search"),
+        },
+        "reporting": {
+            "report_definition": ("id: int pk", "name: string required unique search", "module: string required search", "query_name: string required search", "format: string required default pdf"),
+            "report_schedule": ("id: int pk", "report_definition_id: int required ref report_definition.id", "cron: string required", "active: bool default true"),
+            "report_distribution": ("id: int pk", "report_definition_id: int required ref report_definition.id", "recipient: email required search", "channel: string required default email"),
+        },
+    }
+    return f'''"""Generated ERP component templates for AppGen apps."""
+
+from __future__ import annotations
+
+from flask import jsonify
+from flask_appbuilder import BaseView
+from flask_appbuilder import expose
+
+
+EXISTING_TABLES = {tables!r}
+ERP_MODULES = {modules!r}
+ERP_TABLE_BLUEPRINTS = {blueprints!r}
+
+
+def erp_template_catalog():
+    """Return ERP component templates for common business modules."""
+    return tuple(
+        {{
+            "module": name,
+            "label": spec["label"],
+            "tables": tuple(spec["tables"]),
+            "workflows": tuple(spec["workflows"]),
+            "reports": tuple(spec["reports"]),
+        }}
+        for name, spec in ERP_MODULES.items()
+    )
+
+
+def _erp_field_syntax(field):
+    """Return the preferred compact DSL syntax for an ERP field blueprint."""
+    return field.replace(" ref ", " -> ")
+
+
+def erp_template(module):
+    """Return one ERP module template."""
+    spec = ERP_MODULES[module]
+    return dict(spec, module=module, table_blueprints=erp_table_blueprints(module), dsl=erp_module_dsl(module))
+
+
+def erp_table_blueprints(module):
+    """Return table-level field blueprints for an ERP module."""
+    table_specs = ERP_TABLE_BLUEPRINTS.get(module, {{}})
+    return tuple(
+        {{"table": table, "fields": tuple(_erp_field_syntax(field) for field in table_specs.get(table, ("id: int pk", "name: string required search")))}}
+        for table in ERP_MODULES[module]["tables"]
+    )
+
+
+def erp_fit_report():
+    """Return generated ERP templates matched against existing app tables."""
+    existing = {{name.lower() for name in EXISTING_TABLES}}
+    report = []
+    for module, spec in ERP_MODULES.items():
+        suggested = tuple(table for table in spec["tables"] if table not in existing)
+        matched = tuple(table for table in spec["tables"] if table in existing)
+        report.append({{"module": module, "matched": matched, "suggested_tables": suggested}})
+    return tuple(report)
+
+
+def erp_module_dsl(module):
+    """Render table stubs for an ERP module as AppGen DSL."""
+    spec = ERP_MODULES[module]
+    table_specs = ERP_TABLE_BLUEPRINTS.get(module, {{}})
+    blocks = []
+    for table in spec["tables"]:
+        fields = tuple(table_specs.get(table, ("id: int pk", "name: string required search")))
+        if not any(field.startswith("id:") for field in fields):
+            fields = ("id: int pk",) + fields
+        body = "\\n".join(f"  {{_erp_field_syntax(field)}}" for field in fields)
+        blocks.append(f"table {{table}} {{{{\\n{{body}}\\n}}}}")
+    return "\\n\\n".join(blocks)
+
+
+def erp_module_package(module):
+    """Return the catalog, table blueprints, workflows, reports, and DSL for one module."""
+    template = erp_template(module)
+    return {{
+        "module": module,
+        "label": template["label"],
+        "tables": tuple(template["tables"]),
+        "workflows": tuple(template["workflows"]),
+        "reports": tuple(template["reports"]),
+        "table_blueprints": erp_table_blueprints(module),
+        "dsl": erp_module_dsl(module),
+    }}
+
+
+def erp_templates_check(existing_paths):
+    """Return readiness for generated ERP template artifacts."""
+    existing = set(existing_paths)
+    required = ("app/erp_templates.py", "app/templates/appgen_erp_templates.html")
+    missing = tuple(path for path in required if path not in existing)
+    keys = tuple(ERP_MODULES)
+    essential = {{
+        "general_ledger", "chart_of_accounts", "invoicing", "accounts_receivable",
+        "accounts_payable", "inventory", "human_resources", "payroll",
+        "purchasing", "procurement", "supply_chain", "warehouse_management",
+        "manufacturing", "sales", "crm", "ecommerce", "fixed_assets",
+        "maintenance", "quality_management", "document_management",
+        "compliance_management", "projects", "reporting"
+    }}
+    return {{"ok": not missing and essential <= set(keys) and bool(ERP_TABLE_BLUEPRINTS.get("general_ledger")), "missing": missing, "modules": keys}}
+
+
+class ERPTemplateView(BaseView):
+    route_base = "/erp-templates"
+    default_view = "index"
+
+    @expose("/")
+    def index(self):
+        return self.render_template("appgen_erp_templates.html", modules=erp_template_catalog(), fit=erp_fit_report())
+
+    @expose("/catalog.json")
+    def catalog_json(self):
+        return jsonify(list(erp_template_catalog()))
+
+    @expose("/<module>.json")
+    def module_json(self, module):
+        return jsonify(erp_template(module))
+
+    @expose("/<module>.dsl")
+    def module_dsl(self, module):
+        return erp_module_dsl(module), 200, {{"Content-Type": "text/plain; charset=utf-8"}}
+
+
+def register_erp_templates(appbuilder):
+    appbuilder.add_view(
+        ERPTemplateView,
+        "ERP Templates",
+        icon="fa-building",
+        category="AppGen",
+    )
+'''
+
+
+def _project_management_text(schema: AppSchema) -> str:
+    resources = tuple(
+        {
+            "table": table.name,
+            "label": snake_to_label(table.name),
+            "fields": tuple(
+                _model_attribute_name(column)
+                for column in table.columns
+                if not column.hidden and not column.derived
+            ),
+        }
+        for table in schema.tables
+    )
+    return f'''"""Generated agile project-management and DevOps integration contracts."""
+
+from __future__ import annotations
+
+from datetime import date
+
+from flask import jsonify
+from flask_appbuilder import BaseView
+from flask_appbuilder import expose
+
+
+APP_RESOURCES = {resources!r}
+TOOL_PROVIDERS = {{
+    "jira": {{
+        "label": "Jira",
+        "env": ("JIRA_BASE_URL", "JIRA_PROJECT_KEY", "JIRA_API_TOKEN"),
+        "issue_url": "{{base}}/browse/{{key}}",
+    }},
+    "github": {{
+        "label": "GitHub Issues",
+        "env": ("GITHUB_REPOSITORY", "GITHUB_TOKEN"),
+        "issue_url": "https://github.com/{{repo}}/issues/{{number}}",
+    }},
+    "azure_boards": {{
+        "label": "Azure Boards",
+        "env": ("AZURE_DEVOPS_ORG", "AZURE_DEVOPS_PROJECT", "AZURE_DEVOPS_TOKEN"),
+        "issue_url": "https://dev.azure.com/{{org}}/{{project}}/_workitems/edit/{{id}}",
+    }},
+    "gitlab": {{
+        "label": "GitLab Issues",
+        "env": ("GITLAB_PROJECT_ID", "GITLAB_TOKEN"),
+        "issue_url": "{{base}}/-/issues/{{iid}}",
+    }},
+}}
+
+
+def project_capabilities():
+    """Return generated project-management capabilities."""
+    return ("backlog", "sprints", "releases", "traceability", "tool-export")
+
+
+def provider_catalog(environ=None):
+    """Return DevOps tool provider readiness without exposing secrets."""
+    env = {{}} if environ is None else environ
+    catalog = []
+    for name, provider in TOOL_PROVIDERS.items():
+        missing = tuple(item for item in provider["env"] if not env.get(item))
+        catalog.append({{"provider": name, "label": provider["label"], "required_env": provider["env"], "configured": not missing, "missing": missing}})
+    return tuple(catalog)
+
+
+def backlog_templates():
+    """Return generated backlog epics and stories for app resources."""
+    items = [
+        {{"key": "APP-FOUNDATION", "kind": "epic", "title": "Generated application foundation", "acceptance": ("security baseline passes", "quality gate runs in CI")}},
+        {{"key": "APP-DESIGN", "kind": "epic", "title": "Low-code design experience", "acceptance": ("visual designer available", "form designer accepts component drops")}},
+    ]
+    for resource in APP_RESOURCES:
+        slug = resource["table"].upper().replace("_", "-")
+        items.append({{
+            "key": f"DATA-{{slug}}",
+            "kind": "story",
+            "title": f"Manage {{resource['label']}} records",
+            "table": resource["table"],
+            "acceptance": (
+                f"CRUD API exists for {{resource['table']}}",
+                f"form and list layouts exist for {{resource['table']}}",
+                f"tests cover generated {{resource['table']}} contracts",
+            ),
+        }})
+    return tuple(items)
+
+
+def sprint_plan(name="Sprint 1", capacity=20):
+    """Return a deterministic sprint plan from generated backlog items."""
+    backlog = backlog_templates()
+    selected = backlog[: max(1, min(len(backlog), int(capacity) // 3 or 1))]
+    return {{"name": name, "capacity": capacity, "items": tuple(selected), "start": date.today().isoformat()}}
+
+
+def release_plan(version="0.1.0"):
+    """Return a generated release readiness plan."""
+    return {{
+        "version": version,
+        "gates": ("appgen_quality", "pytest", "security_headers", "openapi_contract", "backup_restore"),
+        "artifacts": ("Dockerfile", "docker-compose.yml", "deploy/k8s.yaml", ".github/workflows/appgen-ci.yml"),
+        "rollback": ("restore latest backup", "redeploy previous image", "re-run smoke tests"),
+    }}
+
+
+def traceability_matrix():
+    """Trace generated schema resources to backlog and test surfaces."""
+    return tuple(
+        {{
+            "table": resource["table"],
+            "story": f"DATA-{{resource['table'].upper().replace('_', '-')}}",
+            "artifacts": (
+                "app/models.py",
+                "app/views.py",
+                "app/api.py",
+                "app/templates/appgen_form_designer.html",
+                "tests/test_generated_contract.py",
+            ),
+        }}
+        for resource in APP_RESOURCES
+    )
+
+
+def export_issue(provider, backlog_item):
+    """Return a provider-neutral issue payload for an external DevOps tool."""
+    if provider not in TOOL_PROVIDERS:
+        raise KeyError(f"Unknown project-management provider: {{provider}}")
+    return {{
+        "provider": provider,
+        "external_id": backlog_item["key"],
+        "title": backlog_item["title"],
+        "kind": backlog_item["kind"],
+        "labels": ("appgen", backlog_item["kind"]),
+        "description": "\\n".join(f"- {{item}}" for item in backlog_item.get("acceptance", ())),
+    }}
+
+
+def export_plan(provider):
+    """Return all generated issue payloads for a project-management provider."""
+    return tuple(export_issue(provider, item) for item in backlog_templates())
+
+
+def project_management_check(existing_paths):
+    """Return readiness for generated project-management artifacts."""
+    existing = set(existing_paths)
+    required = ("app/project_management.py", "app/templates/appgen_project_management.html")
+    missing = tuple(path for path in required if path not in existing)
+    return {{
+        "ok": not missing and bool(backlog_templates()) and bool(traceability_matrix()),
+        "missing": missing,
+        "providers": tuple(TOOL_PROVIDERS),
+    }}
+
+
+class ProjectManagementView(BaseView):
+    route_base = "/project-management"
+    default_view = "index"
+
+    @expose("/")
+    def index(self):
+        return self.render_template(
+            "appgen_project_management.html",
+            backlog=backlog_templates(),
+            providers=provider_catalog(),
+            release=release_plan(),
+        )
+
+    @expose("/backlog.json")
+    def backlog_json(self):
+        return jsonify(list(backlog_templates()))
+
+    @expose("/traceability.json")
+    def traceability_json(self):
+        return jsonify(list(traceability_matrix()))
+
+    @expose("/providers.json")
+    def providers_json(self):
+        return jsonify(list(provider_catalog()))
+
+
+def register_project_management(appbuilder):
+    appbuilder.add_view(
+        ProjectManagementView,
+        "Project Management",
+        icon="fa-tasks",
+        category="AppGen",
+    )
+'''
+
+
+def _platforms_text(schema: AppSchema) -> str:
+    app_name = _app_name(schema)
+    selected_targets = _selected_platform_targets(schema)
+    tables = {
+        table.name: {
+            "label": snake_to_label(table.name),
+            "fields": [
+                _model_attribute_name(column)
+                for column in table.columns
+                if not column.hidden and not column.derived
+            ],
+        }
+        for table in schema.tables
+    }
+    return f'''"""Generated platform target descriptors for AppGen apps."""
+
+from __future__ import annotations
+
+from flask import jsonify
+from flask_appbuilder import BaseView
+from flask_appbuilder import expose
+
+
+APP_NAME = {app_name!r}
+PLATFORM_TABLES = {tables!r}
+SELECTED_TARGETS = {selected_targets!r}
+PLATFORM_TARGETS = {{
+    "web": {{
+        "label": "Web",
+        "adapter": "flask-appbuilder",
+        "artifacts": ("app/", "frontends/react", "frontends/vue", "frontends/angular", "frontends/express"),
+        "capabilities": ("responsive", "crud", "rest", "graphql"),
+    }},
+    "pwa": {{
+        "label": "Progressive Web App",
+        "adapter": "service-worker",
+        "capabilities": ("offline", "installable", "push"),
+    }},
+    "mobile": {{
+        "label": "Mobile",
+        "adapter": "kivy-or-beeware",
+        "artifacts": ("native/mobile/app.py", "native/mobile/pyproject.toml"),
+        "capabilities": ("offline", "push", "camera", "location"),
+    }},
+    "desktop": {{
+        "label": "Desktop",
+        "adapter": "beeware",
+        "artifacts": ("native/desktop/app.py", "native/desktop/pyproject.toml"),
+        "capabilities": ("offline", "local-files", "keyboard-navigation"),
+    }},
+    "chatbot": {{
+        "label": "Chatbot",
+        "adapter": "dialogflow-or-bot-framework",
+        "capabilities": ("field-prompts", "workflow-intents", "handoff"),
+    }},
+}}
+
+
+def platform_catalog():
+    """Return supported generated platform target descriptors."""
+    return tuple(
+        {{
+            "target": target,
+            "label": details["label"],
+            "adapter": details["adapter"],
+            "artifacts": tuple(details.get("artifacts", ())),
+            "capabilities": tuple(details["capabilities"]),
+        }}
+        for target, details in PLATFORM_TARGETS.items()
+        if target in SELECTED_TARGETS
+    )
+
+
+def selected_platform_targets():
+    """Return platform targets requested by the DSL app options."""
+    return SELECTED_TARGETS
+
+
+def table_contract(table_name):
+    """Return the generated cross-platform table contract."""
+    table = PLATFORM_TABLES[table_name]
+    return {{
+        "table": table_name,
+        "label": table["label"],
+        "fields": tuple(table["fields"]),
+        "list_route": f"/{{table_name.lower()}}/list/",
+        "api_resource": table_name.lower(),
+    }}
+
+
+def platform_contract(target):
+    """Return a provider-neutral export contract for a target platform."""
+    if target not in PLATFORM_TARGETS:
+        raise KeyError(f"Unknown platform target: {{target}}")
+    details = PLATFORM_TARGETS[target]
+    return {{
+        "app_name": APP_NAME,
+        "target": target,
+        "selected": target in SELECTED_TARGETS,
+        "adapter": details["adapter"],
+        "artifacts": tuple(details.get("artifacts", ())),
+        "capabilities": tuple(details["capabilities"]),
+        "tables": tuple(table_contract(table_name) for table_name in PLATFORM_TABLES),
+    }}
+
+
+def generation_matrix():
+    """Return generated web, mobile, and desktop application outputs."""
+    return {{
+        target: platform_contract(target)
+        for target in ("web", "mobile", "desktop")
+        if target in SELECTED_TARGETS
+    }}
+
+
+def chatbot_intents():
+    """Return chatbot intent descriptors for generated table forms."""
+    return tuple(
+        {{
+            "intent": f"create_{{table_name.lower()}}",
+            "table": table_name,
+            "prompts": tuple(
+                {{
+                    "field": field,
+                    "prompt": f"What should {{field.replace('_', ' ')}} be?",
+                }}
+                for field in table["fields"]
+            ),
+        }}
+        for table_name, table in PLATFORM_TABLES.items()
+    )
+
+
+def mobile_capabilities():
+    """Return mobile feature flags expected by downstream adapters."""
+    return {{
+        "selected": "mobile" in SELECTED_TARGETS,
+        "offline": True,
+        "push": True,
+        "location": True,
+        "camera": True,
+    }}
+
+
+class PlatformView(BaseView):
+    route_base = "/platforms"
+    default_view = "index"
+
+    @expose("/")
+    def index(self):
+        return self.render_template("appgen_platforms.html", targets=platform_catalog())
+
+    @expose("/catalog.json")
+    def catalog_json(self):
+        return jsonify(list(platform_catalog()))
+
+    @expose("/<target>.json")
+    def target_json(self, target):
+        return jsonify(platform_contract(target))
+
+
+def register_platforms(appbuilder):
+    appbuilder.add_view(
+        PlatformView,
+        "Platforms",
+        icon="fa-mobile",
+        category="AppGen",
+    )
+'''
+
+
+def _microservices_text(schema: AppSchema, app_name: str) -> str:
+    service_name = underscore(app_name).replace("_", "-").lower()
+    domain_services = {}
+    for table in schema.tables:
+        name = f"{underscore(table.name).replace('_', '-')}-service"
+        route = f"/api/v1/{underscore(table.name)}/"
+        domain_services[name] = {
+            "label": f"{snake_to_label(table.name)} Service",
+            "kind": "domain",
+            "tables": (table.name,),
+            "routes": (route,),
+            "events": (
+                f"{table.name}.created",
+                f"{table.name}.updated",
+                f"{table.name}.deleted",
+                f"{table.name}.failed",
+            ),
+            "dependencies": ("identity-service", "event-service"),
+            "database": f"{underscore(table.name)}_db",
+            "replicas": 2,
+        }
+
+    platform_services = {
+        "api-gateway": {
+            "label": "API Gateway",
+            "kind": "edge",
+            "tables": (),
+            "routes": tuple(f"/api/v1/{underscore(table.name)}/" for table in schema.tables),
+            "events": (),
+            "dependencies": tuple(domain_services),
+            "database": None,
+            "replicas": 2,
+        },
+        "identity-service": {
+            "label": "Identity Service",
+            "kind": "platform",
+            "tables": (),
+            "routes": ("/identity/",),
+            "events": ("identity.login", "identity.logout"),
+            "dependencies": (),
+            "database": "identity_db",
+            "replicas": 2,
+        },
+        "event-service": {
+            "label": "Event Service",
+            "kind": "platform",
+            "tables": (),
+            "routes": ("/events/", "/realtime/"),
+            "events": tuple(
+                event
+                for spec in domain_services.values()
+                for event in spec["events"]
+            ),
+            "dependencies": (),
+            "database": "events_db",
+            "replicas": 2,
+        },
+    }
+    if schema.flows:
+        platform_services["workflow-service"] = {
+            "label": "Workflow Service",
+            "kind": "platform",
+            "tables": (),
+            "routes": ("/workflows/",),
+            "events": tuple(
+                f"workflow.{flow.name}.{step.source}.{step.target}"
+                for flow in schema.flows
+                for step in flow.steps
+            ),
+            "dependencies": ("event-service",),
+            "database": "workflow_db",
+            "replicas": 2,
+        }
+        for service in domain_services.values():
+            service["dependencies"] = service["dependencies"] + ("workflow-service",)
+
+    services = {**platform_services, **domain_services}
+    return f'''"""Generated microservices architecture contract for AppGen apps."""
+
+from __future__ import annotations
+
+from flask import jsonify
+from flask_appbuilder import BaseView
+from flask_appbuilder import expose
+
+
+APP_NAME = {app_name!r}
+SERVICE_NAME = {service_name!r}
+SERVICES = {services!r}
+
+
+def service_catalog():
+    """Return generated service-boundary descriptors."""
+    return tuple(
+        {{
+            "name": name,
+            "label": spec["label"],
+            "kind": spec["kind"],
+            "tables": tuple(spec["tables"]),
+            "routes": tuple(spec["routes"]),
+            "events": tuple(spec["events"]),
+            "dependencies": tuple(spec["dependencies"]),
+            "database": spec["database"],
+            "replicas": spec["replicas"],
+        }}
+        for name, spec in SERVICES.items()
+    )
+
+
+def service_names():
+    """Return generated service names."""
+    return tuple(SERVICES)
+
+
+def service_for_table(table_name):
+    """Return the owning service descriptor for a table."""
+    for service in service_catalog():
+        if table_name in service["tables"]:
+            return service
+    raise KeyError(f"No generated service owns table: {{table_name}}")
+
+
+def api_gateway_routes():
+    """Return generated route-to-service mapping for an API gateway."""
+    routes = []
+    for service in service_catalog():
+        if service["name"] == "api-gateway":
+            continue
+        for route in service["routes"]:
+            routes.append({{
+                "path": route,
+                "service": service["name"],
+                "upstream": f"http://{{service['name']}}:8080{{route}}",
+            }})
+    return tuple(routes)
+
+
+def event_routes():
+    """Return generated event-topic to service ownership mapping."""
+    routes = []
+    for service in service_catalog():
+        for topic in service["events"]:
+            routes.append({{"topic": topic, "service": service["name"]}})
+    return tuple(routes)
+
+
+def dependency_graph():
+    """Return generated service dependency graph."""
+    return {{
+        service["name"]: tuple(service["dependencies"])
+        for service in service_catalog()
+    }}
+
+
+def deployment_units():
+    """Return Kubernetes-friendly generated deployment units."""
+    return tuple(
+        {{
+            "name": service["name"],
+            "image": f"{{SERVICE_NAME}}/{{service['name']}}:latest",
+            "replicas": service["replicas"],
+            "env": ("DATABASE_URL", "SECRET_KEY") if service["database"] else ("SECRET_KEY",),
+            "health": f"/health/{{service['name']}}",
+        }}
+        for service in service_catalog()
+    )
+
+
+def health_check_plan():
+    """Return generated health probes for service monitoring."""
+    return tuple(
+        {{
+            "service": service["name"],
+            "liveness": f"/health/{{service['name']}}/live",
+            "readiness": f"/health/{{service['name']}}/ready",
+            "dependencies": tuple(service["dependencies"]),
+        }}
+        for service in service_catalog()
+    )
+
+
+def scaling_policy(service_name, *, cpu_percent=70, min_replicas=2, max_replicas=10):
+    """Return generated horizontal scaling guidance for a service."""
+    if service_name not in SERVICES:
+        raise KeyError(f"Unknown generated service: {{service_name}}")
+    desired = min(max_replicas, max(min_replicas, SERVICES[service_name]["replicas"]))
+    if cpu_percent >= 80:
+        desired = min(max_replicas, desired + 1)
+    return {{
+        "service": service_name,
+        "min_replicas": min_replicas,
+        "max_replicas": max_replicas,
+        "target_cpu_percent": cpu_percent,
+        "desired_replicas": desired,
+    }}
+
+
+def microservice_check(existing_paths=()):
+    """Return readiness for generated microservice architecture artifacts."""
+    existing = set(existing_paths)
+    required = {{"app/microservices.py", "app/templates/appgen_microservices.html", "deploy/k8s.yaml"}}
+    missing = tuple(sorted(required - existing))
+    return {{
+        "ok": not missing and "api-gateway" in SERVICES and bool(api_gateway_routes()),
+        "missing": missing,
+        "services": service_names(),
+        "routes": api_gateway_routes(),
+    }}
+
+
+class MicroserviceView(BaseView):
+    route_base = "/microservices"
+    default_view = "index"
+
+    @expose("/")
+    def index(self):
+        return self.render_template(
+            "appgen_microservices.html",
+            services=service_catalog(),
+        )
+
+    @expose("/catalog.json")
+    def catalog_json(self):
+        return jsonify({{
+            "services": list(service_catalog()),
+            "routes": list(api_gateway_routes()),
+            "events": list(event_routes()),
+            "dependencies": dependency_graph(),
+        }})
+
+
+def register_microservices(appbuilder):
+    appbuilder.add_view(
+        MicroserviceView,
+        "Microservices",
+        icon="fa-sitemap",
+        category="AppGen",
+    )
+'''
+
+
+def _collaboration_text(schema: AppSchema) -> str:
+    tables = {
+        table.name: {
+            "label": snake_to_label(table.name),
+            "events": (
+                f"{table.name}.proposal.created",
+                f"{table.name}.review.approved",
+                f"{table.name}.review.rejected",
+            ),
+        }
+        for table in schema.tables
+    }
+    return f'''"""Generated collaboration and version-control helpers for AppGen apps."""
+
+from __future__ import annotations
+
+from datetime import datetime
+from datetime import timezone
+from hashlib import sha256
+import json
+
+from flask import jsonify
+from flask_appbuilder import BaseView
+from flask_appbuilder import expose
+
+
+COLLABORATION_TABLES = {tables!r}
+
+
+def collaboration_catalog():
+    """Return generated collaboration metadata for every table."""
+    return tuple(
+        {{
+            "table": table_name,
+            "label": table["label"],
+            "events": tuple(table["events"]),
+        }}
+        for table_name, table in COLLABORATION_TABLES.items()
+    )
+
+
+def revision_id(payload):
+    """Return a stable content hash for a generated revision payload."""
+    body = json.dumps(payload, sort_keys=True, default=str).encode("utf-8")
+    return sha256(body).hexdigest()[:16]
+
+
+def revision_metadata(resource, payload, *, author=None, message=None):
+    """Build stable revision metadata for generated app changes."""
+    revision = {{
+        "resource": resource,
+        "payload": payload,
+        "author": author,
+        "message": message,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    }}
+    revision["revision_id"] = revision_id({{
+        "resource": resource,
+        "payload": payload,
+        "author": author,
+        "message": message,
+    }})
+    return revision
+
+
+def change_proposal(resource, before, after, *, author=None, message=None):
+    """Create a reviewable generated change proposal."""
+    changed_fields = tuple(
+        sorted(
+            field
+            for field in set(before) | set(after)
+            if before.get(field) != after.get(field)
+        )
+    )
+    revision = revision_metadata(resource, after, author=author, message=message)
+    return {{
+        "proposal_id": revision["revision_id"],
+        "resource": resource,
+        "before": dict(before),
+        "after": dict(after),
+        "changed_fields": changed_fields,
+        "status": "proposed",
+        "revision": revision,
+    }}
+
+
+def review_decision(proposal, reviewer, decision, *, comment=None):
+    """Create a stable review decision for a generated change proposal."""
+    if decision not in {{"approved", "rejected", "changes_requested"}}:
+        raise ValueError("Unsupported review decision")
+    return {{
+        "proposal_id": proposal["proposal_id"],
+        "reviewer": reviewer,
+        "decision": decision,
+        "comment": comment,
+        "reviewed_at": datetime.now(timezone.utc).isoformat(),
+    }}
+
+
+def merge_plan(proposal, decision):
+    """Return the merge result that would apply after an approval."""
+    if decision["decision"] != "approved":
+        return {{"applied": False, "reason": decision["decision"]}}
+    return {{
+        "applied": True,
+        "resource": proposal["resource"],
+        "revision_id": proposal["revision"]["revision_id"],
+        "payload": proposal["after"],
+    }}
+
+
+class CollaborationView(BaseView):
+    route_base = "/collaboration"
+    default_view = "index"
+
+    @expose("/")
+    def index(self):
+        return self.render_template("appgen_collaboration.html", tables=collaboration_catalog())
+
+    @expose("/catalog.json")
+    def catalog_json(self):
+        return jsonify(list(collaboration_catalog()))
+
+
+def register_collaboration(appbuilder):
+    appbuilder.add_view(
+        CollaborationView,
+        "Collaboration",
+        icon="fa-code-fork",
+        category="AppGen",
+    )
+'''
+
+
+def _version_control_text(schema: AppSchema) -> str:
+    resources = {
+        "manifest": {
+            "label": "App Manifest",
+            "kind": "manifest",
+            "artifacts": ("app/appgen.json", "docs/schema.md"),
+        },
+        "dsl": {
+            "label": "AppGen DSL",
+            "kind": "dsl",
+            "artifacts": ("designer.dsl", "docs/dsl.md"),
+        },
+    }
+    for table in schema.tables:
+        resources[f"table:{table.name}"] = {
+            "label": snake_to_label(table.name),
+            "kind": "table",
+            "artifacts": ("app/models.py", "app/views.py", "app/api.py"),
+        }
+    for flow in schema.flows:
+        resources[f"flow:{flow.name}"] = {
+            "label": snake_to_label(flow.name),
+            "kind": "workflow",
+            "artifacts": ("app/workflow.py", "app/templates/appgen_workflows.html"),
+        }
+    return f'''"""Generated version-control history helpers for AppGen apps."""
+
+from __future__ import annotations
+
+from datetime import datetime
+from datetime import timezone
+from hashlib import sha256
+import json
+
+from flask import jsonify
+from flask_appbuilder import BaseView
+from flask_appbuilder import expose
+
+
+VERSION_RESOURCES = {resources!r}
+
+
+def version_resource_catalog():
+    """Return resources that participate in generated version control."""
+    return tuple(
+        {{
+            "resource": resource,
+            "label": spec["label"],
+            "kind": spec["kind"],
+            "artifacts": tuple(spec["artifacts"]),
+        }}
+        for resource, spec in VERSION_RESOURCES.items()
+    )
+
+
+def canonical_payload(payload):
+    """Return deterministic JSON for revision hashing and diffing."""
+    return json.dumps(payload, sort_keys=True, separators=(",", ":"), default=str)
+
+
+def revision_id(payload):
+    """Return a stable content-addressed revision ID."""
+    return sha256(canonical_payload(payload).encode("utf-8")).hexdigest()[:16]
+
+
+def snapshot_manifest(manifest, *, author=None, message=None, branch="main"):
+    """Create a generated version snapshot from an app manifest."""
+    payload = json.loads(canonical_payload(manifest))
+    tables = payload.get("tables", ())
+    flows = payload.get("flows", ())
+    views = payload.get("views", ())
+    snapshot = {{
+        "revision_id": revision_id(payload),
+        "branch": branch,
+        "author": author,
+        "message": message,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "summary": {{
+            "tables": len(tables),
+            "fields": sum(len(table.get("columns", ())) for table in tables),
+            "flows": len(flows),
+            "views": len(views),
+        }},
+        "manifest": payload,
+    }}
+    return snapshot
+
+
+def _table_columns(manifest):
+    return {{
+        table.get("name"): {{column.get("name"): column for column in table.get("columns", ())}}
+        for table in manifest.get("tables", ())
+    }}
+
+
+def diff_snapshots(before, after):
+    """Return schema-level changes between two generated snapshots."""
+    before_manifest = before.get("manifest", before)
+    after_manifest = after.get("manifest", after)
+    before_tables = _table_columns(before_manifest)
+    after_tables = _table_columns(after_manifest)
+    before_names = set(before_tables)
+    after_names = set(after_tables)
+    changes = []
+    for table in sorted(after_names - before_names):
+        changes.append({{"kind": "table_added", "table": table}})
+    for table in sorted(before_names - after_names):
+        changes.append({{"kind": "table_removed", "table": table}})
+    for table in sorted(before_names & after_names):
+        before_columns = before_tables[table]
+        after_columns = after_tables[table]
+        for field in sorted(set(after_columns) - set(before_columns)):
+            changes.append({{"kind": "field_added", "table": table, "field": field}})
+        for field in sorted(set(before_columns) - set(after_columns)):
+            changes.append({{"kind": "field_removed", "table": table, "field": field}})
+        for field in sorted(set(before_columns) & set(after_columns)):
+            if before_columns[field] != after_columns[field]:
+                changes.append({{"kind": "field_changed", "table": table, "field": field}})
+    return {{
+        "from": before.get("revision_id") or revision_id(before_manifest),
+        "to": after.get("revision_id") or revision_id(after_manifest),
+        "changes": tuple(changes),
+        "change_count": len(changes),
+    }}
+
+
+def branch_plan(base_snapshot, branch_name, *, author=None):
+    """Return a generated branch contract for parallel low-code work."""
+    branch = {{
+        "branch": branch_name,
+        "base_revision": base_snapshot["revision_id"],
+        "author": author,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    }}
+    branch["branch_id"] = revision_id(branch)
+    return branch
+
+
+def rollback_plan(history, revision_id):
+    """Return a reviewable rollback plan for a prior generated snapshot."""
+    revisions = tuple(history)
+    index = next((idx for idx, item in enumerate(revisions) if item.get("revision_id") == revision_id), None)
+    if index is None:
+        raise KeyError(f"Unknown revision: {{revision_id}}")
+    newer = revisions[index + 1 :]
+    return {{
+        "target_revision": revision_id,
+        "current_revision": revisions[-1]["revision_id"] if revisions else None,
+        "requires_review": True,
+        "discarded_revisions": tuple(item["revision_id"] for item in newer),
+        "restore_manifest": revisions[index].get("manifest", {{}}),
+    }}
+
+
+def version_control_check(existing_paths=()):
+    """Return readiness for generated version-control artifacts."""
+    existing = set(existing_paths)
+    required = {{"app/version_control.py", "app/templates/appgen_version_control.html"}}
+    missing = tuple(sorted(required - existing))
+    return {{
+        "ok": not missing and bool(VERSION_RESOURCES),
+        "missing": missing,
+        "resources": tuple(VERSION_RESOURCES),
+    }}
+
+
+class VersionControlView(BaseView):
+    route_base = "/version-control"
+    default_view = "index"
+
+    @expose("/")
+    def index(self):
+        return self.render_template(
+            "appgen_version_control.html",
+            resources=version_resource_catalog(),
+        )
+
+    @expose("/catalog.json")
+    def catalog_json(self):
+        return jsonify(list(version_resource_catalog()))
+
+
+def register_version_control(appbuilder):
+    appbuilder.add_view(
+        VersionControlView,
+        "Version Control",
+        icon="fa-history",
+        category="AppGen",
+    )
+'''
+
+
+def _realtime_text(schema: AppSchema) -> str:
+    topics = {
+        table.name: {
+            "label": snake_to_label(table.name),
+            "topics": (
+                f"{table.name}.created",
+                f"{table.name}.updated",
+                f"{table.name}.deleted",
+                f"{table.name}.proposal",
+                f"{table.name}.message",
+            ),
+        }
+        for table in schema.tables
+    }
+    return f'''"""Generated real-time collaboration and event-stream helpers for AppGen apps."""
+
+from __future__ import annotations
+
+from datetime import datetime
+from datetime import timezone
+import json
+
+from flask import jsonify
+from flask_appbuilder import BaseView
+from flask_appbuilder import expose
+
+
+REALTIME_TOPICS = {topics!r}
+
+
+def realtime_topics():
+    """Return generated table topics for event streams and collaboration."""
+    return tuple(
+        {{
+            "table": table_name,
+            "label": spec["label"],
+            "topics": tuple(spec["topics"]),
+        }}
+        for table_name, spec in REALTIME_TOPICS.items()
+    )
+
+
+def event_payload(topic, data, *, actor=None, event_id=None):
+    """Build a stable event payload for SSE, websocket, or queue adapters."""
+    known_topics = {{topic for spec in REALTIME_TOPICS.values() for topic in spec["topics"]}}
+    if topic not in known_topics:
+        raise KeyError(f"Unknown real-time topic: {{topic}}")
+    return {{
+        "id": event_id,
+        "topic": topic,
+        "actor": actor,
+        "data": dict(data),
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    }}
+
+
+def sse_frame(event):
+    """Render an event payload as a Server-Sent Events frame."""
+    event_name = event["topic"].replace(".", "_")
+    payload = json.dumps(event, sort_keys=True, default=str)
+    frame_id = "" if event.get("id") is None else f"id: {{event['id']}}\\n"
+    return f"{{frame_id}}event: {{event_name}}\\ndata: {{payload}}\\n\\n"
+
+
+def collaboration_message(room, sender, body, *, metadata=None):
+    """Build a generated real-time collaboration message payload."""
+    return {{
+        "room": room,
+        "sender": sender,
+        "body": body,
+        "metadata": metadata or {{}},
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    }}
+
+
+def replay_plan(*, last_event_id=None, limit=100):
+    """Return a provider-neutral replay plan for reconnecting clients."""
+    return {{
+        "last_event_id": last_event_id,
+        "limit": max(1, min(int(limit), 1000)),
+        "topics": tuple(topic for spec in realtime_topics() for topic in spec["topics"]),
+    }}
+
+
+class RealtimeView(BaseView):
+    route_base = "/realtime"
+    default_view = "index"
+
+    @expose("/")
+    def index(self):
+        return self.render_template("appgen_realtime.html", topics=realtime_topics())
+
+    @expose("/topics.json")
+    def topics_json(self):
+        return jsonify(list(realtime_topics()))
+
+
+def register_realtime(appbuilder):
+    appbuilder.add_view(
+        RealtimeView,
+        "Realtime",
+        icon="fa-bolt",
+        category="AppGen",
+    )
+'''
+
+
+def _events_text(schema: AppSchema) -> str:
+    table_events = {}
+    for table in schema.tables:
+        table_events[table.name] = {
+            "label": snake_to_label(table.name),
+            "topics": (
+                f"{table.name}.created",
+                f"{table.name}.updated",
+                f"{table.name}.deleted",
+                f"{table.name}.failed",
+            ),
+        }
+    workflow_events = {}
+    for flow in schema.flows:
+        workflow_events[flow.name] = {
+            "label": snake_to_label(flow.name),
+            "topics": tuple(
+                f"workflow.{flow.name}.{step.source}.{step.target}"
+                for step in flow.steps
+            ),
+        }
+    return f'''"""Generated complex-event processing and alerting helpers for AppGen apps."""
+
+from __future__ import annotations
+
+from datetime import datetime
+from datetime import timezone
+from hashlib import sha256
+import json
+
+from flask import jsonify
+from flask_appbuilder import BaseView
+from flask_appbuilder import expose
+
+
+TABLE_EVENTS = {table_events!r}
+WORKFLOW_EVENTS = {workflow_events!r}
+EVENT_ACTIONS = {{
+    "created": ("audit", "notify", "realtime"),
+    "updated": ("audit", "notify", "realtime"),
+    "deleted": ("audit", "notify", "realtime"),
+    "failed": ("audit", "alert", "dead-letter"),
+    "workflow": ("audit", "notify", "realtime"),
+}}
+RETRY_POLICY = {{"max_attempts": 3, "backoff_seconds": (5, 30, 120)}}
+
+
+def _event_id(topic, data):
+    body = json.dumps({{"topic": topic, "data": data}}, sort_keys=True, default=str)
+    return sha256(body.encode("utf-8")).hexdigest()[:16]
+
+
+def all_topics():
+    """Return every generated table and workflow topic."""
+    table_topics = tuple(topic for spec in TABLE_EVENTS.values() for topic in spec["topics"])
+    workflow_topics = tuple(topic for spec in WORKFLOW_EVENTS.values() for topic in spec["topics"])
+    return table_topics + workflow_topics
+
+
+def event_catalog():
+    """Return generated complex-event processing metadata."""
+    return {{
+        "tables": tuple(
+            {{"table": table_name, "label": spec["label"], "topics": tuple(spec["topics"])}}
+            for table_name, spec in TABLE_EVENTS.items()
+        ),
+        "workflows": tuple(
+            {{"workflow": flow_name, "label": spec["label"], "topics": tuple(spec["topics"])}}
+            for flow_name, spec in WORKFLOW_EVENTS.items()
+        ),
+        "actions": EVENT_ACTIONS,
+        "retry_policy": RETRY_POLICY,
+    }}
+
+
+def normalize_event(topic, data=None, *, actor=None, tenant_id=None, severity="info", event_id=None):
+    """Build a stable generated event envelope."""
+    if topic not in all_topics():
+        raise KeyError(f"Unknown generated event topic: {{topic}}")
+    payload = dict(data or {{}})
+    return {{
+        "id": event_id or _event_id(topic, payload),
+        "topic": topic,
+        "data": payload,
+        "actor": actor,
+        "tenant_id": tenant_id,
+        "severity": severity,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    }}
+
+
+def match_event_rules(event):
+    """Return generated CEP actions for an event envelope."""
+    topic = event["topic"]
+    if topic.startswith("workflow."):
+        actions = EVENT_ACTIONS["workflow"]
+    else:
+        action = topic.rsplit(".", 1)[-1]
+        actions = EVENT_ACTIONS.get(action, ("audit",))
+    if event.get("severity") in {{"warning", "error", "critical"}} and "alert" not in actions:
+        actions = tuple(actions) + ("alert",)
+    return tuple(actions)
+
+
+def retry_plan(event, *, attempt=1):
+    """Return deterministic retry guidance for transient event-processing errors."""
+    attempt = int(attempt)
+    backoffs = RETRY_POLICY["backoff_seconds"]
+    if attempt >= RETRY_POLICY["max_attempts"]:
+        return {{"retry": False, "attempt": attempt, "reason": "max_attempts_reached"}}
+    delay = backoffs[min(max(attempt - 1, 0), len(backoffs) - 1)]
+    return {{"retry": True, "attempt": attempt + 1, "delay_seconds": delay, "event_id": event["id"]}}
+
+
+def alert_payload(event, message=None):
+    """Build a generated alert payload for monitoring or notification adapters."""
+    return {{
+        "event_id": event["id"],
+        "topic": event["topic"],
+        "severity": event.get("severity", "info"),
+        "message": message or f"Event {{event['topic']}} requires attention",
+        "tenant_id": event.get("tenant_id"),
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    }}
+
+
+def dead_letter_event(event, error, *, attempt=None):
+    """Return a dead-letter envelope for failed event processing."""
+    return {{
+        "event": dict(event),
+        "error": str(error),
+        "attempt": attempt,
+        "dead_lettered_at": datetime.now(timezone.utc).isoformat(),
+    }}
+
+
+def process_event(event):
+    """Return the generated event-processing plan without external side effects."""
+    actions = match_event_rules(event)
+    result = {{
+        "event_id": event["id"],
+        "topic": event["topic"],
+        "actions": actions,
+        "audit": "audit" in actions,
+        "notify": "notify" in actions,
+        "realtime": "realtime" in actions,
+        "dead_letter": "dead-letter" in actions,
+    }}
+    if "alert" in actions:
+        result["alert"] = alert_payload(event)
+    return result
+
+
+def cep_check(existing_paths=()):
+    """Return readiness for generated event-processing artifacts."""
+    existing = set(existing_paths)
+    required = {{"app/events.py", "app/templates/appgen_events.html"}}
+    missing = tuple(sorted(required - existing))
+    return {{
+        "ok": not missing and bool(all_topics()),
+        "missing": missing,
+        "topics": all_topics(),
+        "retry_policy": RETRY_POLICY,
+    }}
+
+
+class EventProcessingView(BaseView):
+    route_base = "/events"
+    default_view = "index"
+
+    @expose("/")
+    def index(self):
+        return self.render_template(
+            "appgen_events.html",
+            catalog=event_catalog(),
+            topics=all_topics(),
+        )
+
+    @expose("/catalog.json")
+    def catalog_json(self):
+        return jsonify(event_catalog())
+
+    @expose("/simulate/<path:topic>.json")
+    def simulate_json(self, topic):
+        return jsonify(process_event(normalize_event(topic, {{"source": "simulation"}})))
+
+
+def register_events(appbuilder):
+    appbuilder.add_view(
+        EventProcessingView,
+        "Events",
+        icon="fa-random",
+        category="AppGen",
+    )
+'''
+
+
+def _rpa_text(schema: AppSchema) -> str:
+    resources = {}
+    tasks = []
+    for table in schema.tables:
+        fields = tuple(
+            _model_attribute_name(column)
+            for column in table.columns
+            if not column.hidden and not column.derived and not column.primary_key
+        )
+        required = tuple(
+            _model_attribute_name(column)
+            for column in table.columns
+            if not column.nullable and not column.hidden and not column.derived and not column.primary_key
+        )
+        searchable = tuple(
+            _model_attribute_name(column)
+            for column in table.columns
+            if column.searchable and not column.hidden and not column.derived
+        )
+        resources[table.name] = {
+            "table": table.name,
+            "label": snake_to_label(table.name),
+            "fields": fields,
+            "required_fields": required,
+            "search_fields": searchable or fields[:3],
+        }
+        table_key = underscore(table.name)
+        tasks.extend(
+            [
+                {
+                    "id": f"{table_key}.create_record",
+                    "label": f"Create {snake_to_label(table.name)}",
+                    "table": table.name,
+                    "surface": "browser",
+                    "trigger": f"/{table_key}/add",
+                    "required_credentials": ("APPGEN_BROWSER_SESSION",),
+                    "actions": (
+                        {"action": "navigate", "target": f"/{table_key}/add"},
+                        {"action": "fill_required_fields", "fields": required},
+                        {"action": "fill_optional_fields", "fields": tuple(field for field in fields if field not in required)},
+                        {"action": "submit", "target": "save"},
+                    ),
+                    "metrics": ("cycle_time_seconds", "validation_errors", "automation_success"),
+                },
+                {
+                    "id": f"{table_key}.search_records",
+                    "label": f"Search {snake_to_label(table.name)}",
+                    "table": table.name,
+                    "surface": "browser",
+                    "trigger": f"/{table_key}/list",
+                    "required_credentials": ("APPGEN_BROWSER_SESSION",),
+                    "actions": (
+                        {"action": "navigate", "target": f"/{table_key}/list"},
+                        {"action": "fill_search_fields", "fields": searchable or fields[:3]},
+                        {"action": "submit", "target": "search"},
+                    ),
+                    "metrics": ("cycle_time_seconds", "result_count", "automation_success"),
+                },
+                {
+                    "id": f"{table_key}.export_records",
+                    "label": f"Export {snake_to_label(table.name)}",
+                    "table": table.name,
+                    "surface": "api",
+                    "trigger": f"/api/v1/{table.name}",
+                    "required_credentials": ("APPGEN_API_TOKEN",),
+                    "actions": (
+                        {"action": "request", "method": "GET", "target": f"/api/v1/{table.name}"},
+                        {"action": "transform", "target": "csv"},
+                        {"action": "archive", "target": f"{table_key}.csv"},
+                    ),
+                    "metrics": ("row_count", "duration_seconds", "automation_success"),
+                },
+            ]
+        )
+
+    return f'''"""Generated RPA and business-process analysis helpers for AppGen apps."""
+
+from __future__ import annotations
+
+from datetime import datetime
+from datetime import timezone
+from hashlib import sha256
+import json
+
+from flask import jsonify
+from flask_appbuilder import BaseView
+from flask_appbuilder import expose
+
+
+RPA_RESOURCES = {resources!r}
+RPA_TASKS = {tuple(tasks)!r}
+PROCESS_METRICS = ("cycle_time_seconds", "duration_seconds", "automation_success", "validation_errors", "row_count", "result_count")
+RPA_PLATFORMS = {{
+    "uipath": {{
+        "label": "UiPath",
+        "env": ("UIPATH_ORCHESTRATOR_URL", "UIPATH_TENANT", "UIPATH_CLIENT_ID", "UIPATH_CLIENT_SECRET"),
+        "artifact": "process-package",
+        "capabilities": ("orchestrator", "queues", "robots", "assets"),
+        "queue_key": "queueName",
+    }},
+    "blue_prism": {{
+        "label": "Blue Prism",
+        "env": ("BLUE_PRISM_API_URL", "BLUE_PRISM_CLIENT_ID", "BLUE_PRISM_CLIENT_SECRET"),
+        "artifact": "release-package",
+        "capabilities": ("control-room", "work-queues", "digital-workers"),
+        "queue_key": "queue_name",
+    }},
+    "automation_anywhere": {{
+        "label": "Automation Anywhere",
+        "env": ("AA_CONTROL_ROOM_URL", "AA_CLIENT_ID", "AA_CLIENT_SECRET"),
+        "artifact": "bot-package",
+        "capabilities": ("control-room", "bots", "workload-management"),
+        "queue_key": "work_item_queue",
+    }},
+}}
+
+
+def rpa_task_catalog():
+    """Return generated RPA task descriptors for browser and API automation."""
+    return RPA_TASKS
+
+
+def rpa_resource_catalog():
+    """Return generated process resources mapped to application tables."""
+    return tuple(RPA_RESOURCES.values())
+
+
+def task_plan(task_id, inputs=None):
+    """Return a deterministic automation plan with resolved input bindings."""
+    inputs = dict(inputs or {{}})
+    for task in RPA_TASKS:
+        if task["id"] != task_id:
+            continue
+        actions = []
+        for index, action in enumerate(task["actions"], start=1):
+            step = dict(action)
+            step["step"] = index
+            if "fields" in step:
+                step["values"] = {{field: inputs.get(field) for field in step["fields"] if field in inputs}}
+            actions.append(step)
+        return {{
+            "id": task["id"],
+            "label": task["label"],
+            "table": task["table"],
+            "surface": task["surface"],
+            "trigger": task["trigger"],
+            "actions": tuple(actions),
+            "required_credentials": tuple(task["required_credentials"]),
+            "metrics": tuple(task["metrics"]),
+        }}
+    raise KeyError(f"Unknown RPA task: {{task_id}}")
+
+
+def credential_readiness(environ=None):
+    """Return missing credential variables for generated automation adapters."""
+    environ = dict(environ or {{}})
+    required = tuple(sorted({{name for task in RPA_TASKS for name in task["required_credentials"]}}))
+    missing = tuple(name for name in required if not environ.get(name))
+    return {{"ready": not missing, "required": required, "missing": missing}}
+
+
+def rpa_platform_catalog(environ=None):
+    """Return supported external RPA platforms and credential readiness."""
+    environ = dict(environ or {{}})
+    catalog = []
+    for platform, config in RPA_PLATFORMS.items():
+        required = tuple(config["env"])
+        missing = tuple(name for name in required if not environ.get(name))
+        catalog.append({{
+            "platform": platform,
+            "label": config["label"],
+            "artifact": config["artifact"],
+            "capabilities": tuple(config["capabilities"]),
+            "required_credentials": required,
+            "ready": not missing,
+            "missing": missing,
+        }})
+    return tuple(catalog)
+
+
+def _rpa_platform_config(platform):
+    key = str(platform).strip().lower().replace("-", "_").replace(" ", "_")
+    if key not in RPA_PLATFORMS:
+        raise KeyError(f"Unknown RPA platform: {{platform}}")
+    return key, RPA_PLATFORMS[key]
+
+
+def rpa_platform_plan(platform, task_id, environ=None):
+    """Return deployment guidance for exporting one task to a vendor RPA platform."""
+    platform_key, config = _rpa_platform_config(platform)
+    plan = task_plan(task_id)
+    readiness = next(item for item in rpa_platform_catalog(environ) if item["platform"] == platform_key)
+    return {{
+        "platform": platform_key,
+        "label": config["label"],
+        "task_id": plan["id"],
+        "table": plan["table"],
+        "artifact": config["artifact"],
+        "capabilities": tuple(config["capabilities"]),
+        "required_credentials": readiness["required_credentials"],
+        "ready": readiness["ready"],
+        "missing": readiness["missing"],
+        "deployment_steps": (
+            f"Create or update {{config['label']}} {{config['artifact']}} for {{plan['id']}}",
+            "Import generated BPMN/UML model as implementation documentation",
+            "Map generated task actions to browser/API adapter activities",
+            "Bind queue payload fields and publish to the target control room",
+        ),
+    }}
+
+
+def rpa_export_package(platform, task_id):
+    """Return a deterministic vendor-neutral package payload for RPA platform importers."""
+    platform_key, config = _rpa_platform_config(platform)
+    plan = task_plan(task_id)
+    model = process_model(task_id)
+    return {{
+        "platform": platform_key,
+        "label": config["label"],
+        "artifact": config["artifact"],
+        "task_id": task_id,
+        "package_id": _audit_id({{"platform": platform_key, "task_id": task_id, "artifact": config["artifact"]}}),
+        "process": model,
+        "bpmn": bpmn_xml(task_id),
+        "uml": uml_activity(task_id),
+        "actions": plan["actions"],
+        "metrics": plan["metrics"],
+    }}
+
+
+def rpa_queue_payload(platform, task_id, inputs=None):
+    """Return a queue/control-room payload for an external RPA platform."""
+    platform_key, config = _rpa_platform_config(platform)
+    plan = task_plan(task_id, inputs or {{}})
+    queue_name = "appgen_" + plan["id"].replace(".", "_").replace("/", "_").strip("_").lower()
+    return {{
+        "platform": platform_key,
+        "task_id": task_id,
+        "queue": queue_name,
+        config["queue_key"]: queue_name,
+        "priority": "normal",
+        "inputs": dict(inputs or {{}}),
+        "actions": plan["actions"],
+        "correlation_id": _audit_id({{"platform": platform_key, "task_id": task_id, "inputs": inputs or {{}}}}),
+    }}
+
+
+def _audit_id(payload):
+    body = json.dumps(payload, sort_keys=True, default=str)
+    return sha256(body.encode("utf-8")).hexdigest()[:16]
+
+
+def automation_audit_event(task_id, actor=None, status="planned", inputs=None):
+    """Build an immutable audit envelope for an automation task execution."""
+    plan = task_plan(task_id, inputs or {{}})
+    payload = {{
+        "task_id": plan["id"],
+        "table": plan["table"],
+        "actor": actor,
+        "status": status,
+        "surface": plan["surface"],
+        "action_count": len(plan["actions"]),
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    }}
+    return {{"id": _audit_id(payload), **payload}}
+
+
+def process_observation(task_id, *, duration_seconds=0, success=True, errors=0, rows=0):
+    """Return a normalized business-process observation for monitoring."""
+    plan = task_plan(task_id)
+    return {{
+        "task_id": task_id,
+        "table": plan["table"],
+        "duration_seconds": float(duration_seconds),
+        "success": bool(success),
+        "errors": int(errors),
+        "rows": int(rows),
+    }}
+
+
+def process_summary(observations):
+    """Summarize generated BPA observations by success rate and throughput."""
+    observations = tuple(observations)
+    total = len(observations)
+    successes = sum(1 for item in observations if item.get("success"))
+    duration = sum(float(item.get("duration_seconds", 0)) for item in observations)
+    rows = sum(int(item.get("rows", 0)) for item in observations)
+    return {{
+        "observations": total,
+        "success_rate": (successes / total) if total else 0,
+        "average_duration_seconds": (duration / total) if total else 0,
+        "rows_processed": rows,
+        "bottlenecks": tuple(
+            item["task_id"]
+            for item in observations
+            if float(item.get("duration_seconds", 0)) > 30 or int(item.get("errors", 0)) > 0
+        ),
+    }}
+
+
+def process_model(task_id):
+    """Return a generated process model for one automation task."""
+    plan = task_plan(task_id)
+    steps = tuple(
+        {{
+            "id": f"step_{{action['step']}}",
+            "label": action["action"],
+            "target": action.get("target"),
+            "order": action["step"],
+        }}
+        for action in plan["actions"]
+    )
+    flows = tuple(
+        {{
+            "source": "start" if index == 0 else steps[index - 1]["id"],
+            "target": step["id"],
+        }}
+        for index, step in enumerate(steps)
+    )
+    flows = flows + (({{"source": steps[-1]["id"], "target": "end"}},) if steps else ({{"source": "start", "target": "end"}},))
+    return {{
+        "task_id": task_id,
+        "label": plan["label"],
+        "surface": plan["surface"],
+        "steps": steps,
+        "flows": flows,
+        "swimlanes": ("user", "appgen", "external_system"),
+    }}
+
+
+def bpmn_xml(task_id):
+    """Return a compact BPMN 2.0-style XML model for one generated task."""
+    model = process_model(task_id)
+    task_nodes = "\\n".join(
+        f'    <bpmn:task id="{{step["id"]}}" name="{{step["label"]}}" />'
+        for step in model["steps"]
+    )
+    sequence_nodes = "\\n".join(
+        f'    <bpmn:sequenceFlow id="flow_{{index}}" sourceRef="{{flow["source"]}}" targetRef="{{flow["target"]}}" />'
+        for index, flow in enumerate(model["flows"], start=1)
+    )
+    return "\\n".join((
+        '<?xml version="1.0" encoding="UTF-8"?>',
+        '<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL">',
+        f'  <bpmn:process id="{{model["task_id"].replace(".", "_")}}" name="{{model["label"]}}" isExecutable="false">',
+        '    <bpmn:startEvent id="start" />',
+        task_nodes,
+        '    <bpmn:endEvent id="end" />',
+        sequence_nodes,
+        '  </bpmn:process>',
+        '</bpmn:definitions>',
+    ))
+
+
+def uml_activity(task_id):
+    """Return a PlantUML activity diagram for one generated process."""
+    model = process_model(task_id)
+    lines = ["@startuml", "start"]
+    for step in model["steps"]:
+        target = "" if step.get("target") in (None, "") else f" ({{step['target']}})"
+        lines.append(f":{{step['label']}}{{target}};")
+    lines.extend(("stop", "@enduml"))
+    return "\\n".join(lines) + "\\n"
+
+
+def validate_process_model(task_id):
+    """Return consistency checks for generated process models."""
+    model = process_model(task_id)
+    step_ids = {{step["id"] for step in model["steps"]}}
+    allowed = step_ids | {{"start", "end"}}
+    invalid_flows = tuple(flow for flow in model["flows"] if flow["source"] not in allowed or flow["target"] not in allowed)
+    terminal_flows = tuple(flow for flow in model["flows"] if flow["target"] == "end")
+    return {{
+        "ok": not invalid_flows and bool(terminal_flows),
+        "invalid_flows": invalid_flows,
+        "step_count": len(model["steps"]),
+        "has_start": any(flow["source"] == "start" for flow in model["flows"]),
+        "has_end": bool(terminal_flows),
+    }}
+
+
+def simulate_process(task_id, *, runs=1, base_duration_seconds=5):
+    """Simulate process timing and bottleneck risk without executing automation."""
+    model = process_model(task_id)
+    runs = max(1, int(runs))
+    base = max(0.1, float(base_duration_seconds))
+    steps = []
+    for step in model["steps"]:
+        duration = round(base * (1 + (step["order"] - 1) * 0.25), 3)
+        steps.append({{**step, "expected_duration_seconds": duration, "total_duration_seconds": round(duration * runs, 3)}})
+    total = round(sum(step["total_duration_seconds"] for step in steps), 3)
+    bottlenecks = tuple(step["id"] for step in steps if step["expected_duration_seconds"] > base * 1.5)
+    return {{
+        "task_id": task_id,
+        "runs": runs,
+        "steps": tuple(steps),
+        "total_duration_seconds": total,
+        "average_duration_seconds": round(total / runs, 3),
+        "bottlenecks": bottlenecks,
+        "valid": validate_process_model(task_id)["ok"],
+    }}
+
+
+def rpa_check(existing_paths=()):
+    """Return readiness for generated RPA/BPA artifacts."""
+    existing = set(existing_paths)
+    required = {{"app/rpa.py", "app/templates/appgen_rpa.html"}}
+    missing = tuple(sorted(required - existing))
+    return {{
+        "ok": not missing and bool(RPA_TASKS),
+        "missing": missing,
+        "task_count": len(RPA_TASKS),
+        "metrics": PROCESS_METRICS,
+        "process_models": tuple(task["id"] for task in RPA_TASKS),
+        "platforms": tuple(RPA_PLATFORMS),
+    }}
+
+
+class RpaBpaView(BaseView):
+    route_base = "/rpa"
+    default_view = "index"
+
+    @expose("/")
+    def index(self):
+        return self.render_template(
+            "appgen_rpa.html",
+            tasks=rpa_task_catalog(),
+            metrics=PROCESS_METRICS,
+        )
+
+    @expose("/catalog.json")
+    def catalog_json(self):
+        return jsonify({{"resources": list(rpa_resource_catalog()), "tasks": list(rpa_task_catalog())}})
+
+    @expose("/task/<path:task_id>.json")
+    def task_json(self, task_id):
+        return jsonify(task_plan(task_id))
+
+
+def register_rpa(appbuilder):
+    appbuilder.add_view(
+        RpaBpaView,
+        "RPA & BPA",
+        icon="fa-tasks",
+        category="AppGen",
+    )
+'''
+
+
+def _diagnostics_text(schema: AppSchema) -> str:
+    tables = {}
+    for table in schema.tables:
+        columns = [_model_attribute_name(column) for column in table.columns]
+        required = [
+            _model_attribute_name(column)
+            for column in table.columns
+            if not column.nullable and not column.primary_key and not column.hidden
+        ]
+        primary_keys = [
+            _model_attribute_name(column)
+            for column in table.columns
+            if column.primary_key
+        ]
+        tables[table.name] = {
+            "label": snake_to_label(table.name),
+            "columns": columns,
+            "required": required,
+            "primary_keys": primary_keys,
+        }
+    return f'''"""Generated testing and debugging helpers for AppGen apps."""
+
+from __future__ import annotations
+
+from datetime import datetime
+from datetime import timezone
+
+from flask import jsonify
+from flask_appbuilder import BaseView
+from flask_appbuilder import expose
+
+
+DIAGNOSTIC_TABLES = {tables!r}
+
+
+def schema_invariants():
+    """Return generated schema invariants for quality checks."""
+    checks = []
+    for table_name, table in DIAGNOSTIC_TABLES.items():
+        checks.append({{
+            "name": f"{{table_name}} has columns",
+            "status": "pass" if table["columns"] else "fail",
+            "details": tuple(table["columns"]),
+        }})
+        checks.append({{
+            "name": f"{{table_name}} has primary key",
+            "status": "pass" if table["primary_keys"] else "warn",
+            "details": tuple(table["primary_keys"]),
+        }})
+    return tuple(checks)
+
+
+def validate_row(table_name, row):
+    """Validate required generated fields for a row-like dictionary."""
+    table = DIAGNOSTIC_TABLES[table_name]
+    missing = tuple(field for field in table["required"] if row.get(field) in (None, ""))
+    return {{
+        "table": table_name,
+        "ok": not missing,
+        "missing": missing,
+    }}
+
+
+def debug_snapshot(config=None, environ=None):
+    """Return a redacted runtime debug snapshot."""
+    config = {{}} if config is None else config
+    environ = {{}} if environ is None else environ
+    redacted_config = {{
+        key: ("[redacted]" if any(marker in key.upper() for marker in ("SECRET", "TOKEN", "PASSWORD")) else value)
+        for key, value in dict(config).items()
+    }}
+    return {{
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "tables": tuple(DIAGNOSTIC_TABLES),
+        "config": redacted_config,
+        "environment_keys": tuple(sorted(environ)),
+    }}
+
+
+def api_smoke_plan():
+    """Return generated endpoint checks for API smoke tests."""
+    return tuple(
+        {{
+            "resource": table_name,
+            "method": "GET",
+            "path": f"/api/v1/{{table_name.lower()}}/",
+        }}
+        for table_name in DIAGNOSTIC_TABLES
+    )
+
+
+def load_test_plan(users=10, duration_seconds=60):
+    """Return a dependency-free load-test plan for downstream tools."""
+    return {{
+        "users": users,
+        "duration_seconds": duration_seconds,
+        "scenarios": api_smoke_plan(),
+    }}
+
+
+def selftest():
+    """Run generated dependency-free self-tests."""
+    checks = list(schema_invariants())
+    ok = all(check["status"] in ("pass", "warn") for check in checks)
+    return {{"ok": ok, "checks": tuple(checks)}}
+
+
+class DiagnosticsView(BaseView):
+    route_base = "/diagnostics"
+    default_view = "index"
+
+    @expose("/")
+    def index(self):
+        return self.render_template("appgen_diagnostics.html", checks=selftest()["checks"])
+
+    @expose("/selftest.json")
+    def selftest_json(self):
+        return jsonify(selftest())
+
+    @expose("/api-smoke.json")
+    def api_smoke_json(self):
+        return jsonify(list(api_smoke_plan()))
+
+
+def register_diagnostics(appbuilder):
+    appbuilder.add_view(
+        DiagnosticsView,
+        "Diagnostics",
+        icon="fa-stethoscope",
+        category="AppGen",
+    )
+'''
+
+
+def _sample_value_for_column(column: ColumnSchema, enum_values: dict[str, tuple[str, ...]]):
+    if column.type_name in enum_values:
+        return enum_values[column.type_name][0] if enum_values[column.type_name] else "sample"
+    normalized = column.type_name.lower().split("(", 1)[0].removesuffix("[]")
+    if normalized in {"int", "integer", "serial", "smallint", "bigint", "bigserial"}:
+        return 1
+    if normalized in {"float", "real", "double", "double precision", "decimal", "numeric", "money"}:
+        return 1.0
+    if normalized in {"bool", "boolean"}:
+        return True
+    if normalized == "date":
+        return "2026-01-01"
+    if normalized in {"datetime", "timestamp", "timestamptz", "time"}:
+        return "2026-01-01T00:00:00Z"
+    if normalized in {"image", "file", "blob", "binary", "bytea"}:
+        return "sample.bin"
+    if column.type_name.endswith("[]"):
+        return ["sample"]
+    return f"sample_{underscore(column.name)}"
+
+
+def _api_testing_text(schema: AppSchema) -> str:
+    enum_values = {enum.name: tuple(enum.values) for enum in schema.enums}
+    tests = {}
+    for table in schema.tables:
+        route = f"/api/v1/{underscore(table.name)}/"
+        payload = {}
+        required = []
+        for column in table.columns:
+            if column.hidden or column.derived or column.primary_key:
+                continue
+            field_name = _model_attribute_name(column)
+            payload[field_name] = _sample_value_for_column(column, enum_values)
+            if not column.nullable:
+                required.append(field_name)
+        tests[table.name] = {
+            "label": snake_to_label(table.name),
+            "resource": underscore(table.name),
+            "endpoint": route,
+            "sample_payload": payload,
+            "required_fields": tuple(required),
+            "cases": (
+                {
+                    "name": f"list_{underscore(table.name)}",
+                    "method": "GET",
+                    "path": route,
+                    "expected_status": (200,),
+                    "requires_fixture": False,
+                },
+                {
+                    "name": f"create_{underscore(table.name)}",
+                    "method": "POST",
+                    "path": route,
+                    "expected_status": (200, 201),
+                    "payload": payload,
+                    "requires_fixture": False,
+                },
+                {
+                    "name": f"get_{underscore(table.name)}",
+                    "method": "GET",
+                    "path": f"{route}{{id}}",
+                    "expected_status": (200, 404),
+                    "requires_fixture": True,
+                },
+                {
+                    "name": f"update_{underscore(table.name)}",
+                    "method": "PUT",
+                    "path": f"{route}{{id}}",
+                    "expected_status": (200, 404),
+                    "payload": payload,
+                    "requires_fixture": True,
+                },
+                {
+                    "name": f"delete_{underscore(table.name)}",
+                    "method": "DELETE",
+                    "path": f"{route}{{id}}",
+                    "expected_status": (200, 204, 404),
+                    "requires_fixture": True,
+                },
+            ),
+        }
+    return f'''"""Generated API testing and synthetic monitoring helpers for AppGen apps."""
+
+from __future__ import annotations
+
+from datetime import datetime
+from datetime import timezone
+
+from flask import jsonify
+from flask_appbuilder import BaseView
+from flask_appbuilder import expose
+
+
+API_TESTS = {tests!r}
+
+
+def api_test_catalog():
+    """Return generated API test cases grouped by resource."""
+    return tuple(
+        {{
+            "table": table_name,
+            "label": spec["label"],
+            "resource": spec["resource"],
+            "endpoint": spec["endpoint"],
+            "required_fields": tuple(spec["required_fields"]),
+            "cases": tuple(spec["cases"]),
+        }}
+        for table_name, spec in API_TESTS.items()
+    )
+
+
+def sample_payload(table_name):
+    """Return a schema-derived sample payload for API create/update tests."""
+    return dict(API_TESTS[table_name]["sample_payload"])
+
+
+def request_plan(base_url=""):
+    """Return dependency-free HTTP request descriptors for downstream runners."""
+    base_url = base_url.rstrip("/")
+    requests = []
+    for table_name, spec in API_TESTS.items():
+        for case in spec["cases"]:
+            path = case["path"].replace("{id}", "1")
+            requests.append({{
+                "name": case["name"],
+                "table": table_name,
+                "method": case["method"],
+                "url": f"{{base_url}}{{path}}" if base_url else path,
+                "path": path,
+                "path_template": case["path"],
+                "headers": {{"Accept": "application/json"}},
+                "json": dict(case.get("payload", {{}})) if "payload" in case else None,
+                "expected_status": tuple(case["expected_status"]),
+                "requires_fixture": case["requires_fixture"],
+            }})
+    return tuple(requests)
+
+
+def synthetic_monitor_plan(interval_seconds=60, base_url=""):
+    """Return a generated synthetic API monitoring plan."""
+    probes = tuple(
+        {{
+            "name": request["name"],
+            "method": request["method"],
+            "url": request["url"],
+            "expected_status": request["expected_status"],
+        }}
+        for request in request_plan(base_url=base_url)
+        if request["method"] == "GET"
+    )
+    return {{
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "interval_seconds": max(15, int(interval_seconds)),
+        "probes": probes,
+    }}
+
+
+def validate_response(test_name, status_code, payload=None):
+    """Validate a response status against a generated API test case."""
+    for request in request_plan():
+        if request["name"] == test_name:
+            ok = int(status_code) in request["expected_status"]
+            return {{
+                "test": test_name,
+                "ok": ok,
+                "status_code": int(status_code),
+                "expected_status": request["expected_status"],
+                "payload_type": type(payload).__name__ if payload is not None else None,
+            }}
+    raise KeyError(f"Unknown API test: {{test_name}}")
+
+
+def synthetic_check_results(responses):
+    """Evaluate synthetic monitoring response statuses by test name."""
+    results = tuple(
+        validate_response(name, status_code)
+        for name, status_code in dict(responses).items()
+    )
+    return {{
+        "ok": all(result["ok"] for result in results),
+        "results": results,
+    }}
+
+
+def contract_coverage(openapi_paths=()):
+    """Compare generated API test paths with an OpenAPI path set."""
+    tested = {{request["path_template"] for request in request_plan()}}
+    documented = set(openapi_paths)
+    missing_tests = tuple(sorted(documented - tested))
+    undocumented_tests = tuple(sorted(tested - documented))
+    return {{
+        "ok": not missing_tests,
+        "tested_paths": tuple(sorted(tested)),
+        "missing_tests": missing_tests,
+        "undocumented_tests": undocumented_tests,
+    }}
+
+
+def api_testing_check(existing_paths=()):
+    """Return readiness for generated API testing artifacts."""
+    existing = set(existing_paths)
+    required = {{"app/api_testing.py", "app/templates/appgen_api_testing.html", "docs/openapi.json"}}
+    missing = tuple(sorted(required - existing))
+    return {{
+        "ok": not missing and bool(API_TESTS),
+        "missing": missing,
+        "requests": len(request_plan()),
+        "resources": tuple(API_TESTS),
+    }}
+
+
+class APITestingView(BaseView):
+    route_base = "/api-testing"
+    default_view = "index"
+
+    @expose("/")
+    def index(self):
+        return self.render_template(
+            "appgen_api_testing.html",
+            catalog=api_test_catalog(),
+            monitor=synthetic_monitor_plan(),
+        )
+
+    @expose("/catalog.json")
+    def catalog_json(self):
+        return jsonify(list(api_test_catalog()))
+
+    @expose("/monitor.json")
+    def monitor_json(self):
+        return jsonify(synthetic_monitor_plan())
+
+
+def register_api_testing(appbuilder):
+    appbuilder.add_view(
+        APITestingView,
+        "API Testing",
+        icon="fa-check-square-o",
+        category="AppGen",
+    )
+'''
+
+
+def _code_review_text(schema: AppSchema) -> str:
+    tables = {}
+    for table in schema.tables:
+        fields = tuple(_model_attribute_name(column) for column in table.columns if not column.hidden and not column.derived)
+        primary_keys = tuple(_model_attribute_name(column) for column in table.columns if column.primary_key)
+        searchable = tuple(_model_attribute_name(column) for column in table.columns if column.searchable and not column.hidden and not column.derived)
+        hidden = tuple(_model_attribute_name(column) for column in table.columns if column.hidden)
+        required = tuple(
+            _model_attribute_name(column)
+            for column in table.columns
+            if not column.nullable and not column.primary_key and not column.hidden and not column.derived
+        )
+        tables[table.name] = {
+            "label": snake_to_label(table.name),
+            "fields": fields,
+            "primary_keys": primary_keys,
+            "searchable": searchable,
+            "hidden": hidden,
+            "required": required,
+        }
+    expected_artifacts = (
+        "app/models.py",
+        "app/views.py",
+        "app/api.py",
+        "app/gql.py",
+        "app/security.py",
+        "app/workflow.py",
+        "app/diagnostics.py",
+        "app/code_review.py",
+        "app/appgen.json",
+        "scripts/appgen_quality.py",
+        "tests/test_generated_contract.py",
+    )
+    return f'''"""Generated automated code-review helpers for AppGen apps."""
+
+from __future__ import annotations
+
+from flask import jsonify
+from flask_appbuilder import BaseView
+from flask_appbuilder import expose
+
+
+REVIEW_TABLES = {tables!r}
+EXPECTED_ARTIFACTS = {expected_artifacts!r}
+
+
+def schema_review():
+    """Return generated schema quality findings."""
+    findings = []
+    for table_name, table in REVIEW_TABLES.items():
+        severity = "info" if table["primary_keys"] else "warning"
+        findings.append({{
+            "rule": "primary-key",
+            "severity": severity,
+            "table": table_name,
+            "message": "Primary key present" if table["primary_keys"] else "Add an explicit primary key",
+            "evidence": tuple(table["primary_keys"]),
+        }})
+        if not table["searchable"] and len(table["fields"]) > 1:
+            findings.append({{
+                "rule": "searchable-field",
+                "severity": "warning",
+                "table": table_name,
+                "message": "Consider marking at least one human-readable field as searchable",
+                "evidence": tuple(table["fields"]),
+            }})
+        if table["hidden"]:
+            findings.append({{
+                "rule": "protected-hidden-fields",
+                "severity": "info",
+                "table": table_name,
+                "message": "Hidden fields are excluded from generated views and public APIs",
+                "evidence": tuple(table["hidden"]),
+            }})
+        for field in table["required"]:
+            findings.append({{
+                "rule": "required-field",
+                "severity": "info",
+                "table": table_name,
+                "message": f"Required field {{field}} is enforced by generated form and API contracts",
+                "evidence": (field,),
+            }})
+    return tuple(findings)
+
+
+def artifact_review(existing_paths):
+    """Return missing generated artifacts for automated review gates."""
+    existing = set(existing_paths)
+    missing = tuple(path for path in EXPECTED_ARTIFACTS if path not in existing)
+    return {{
+        "ok": not missing,
+        "missing": missing,
+        "expected": EXPECTED_ARTIFACTS,
+    }}
+
+
+def review_summary(existing_paths=()):
+    """Return a dependency-free generated code-review summary."""
+    findings = schema_review()
+    blocking = tuple(item for item in findings if item["severity"] == "error")
+    warnings = tuple(item for item in findings if item["severity"] == "warning")
+    artifacts = artifact_review(existing_paths) if existing_paths else None
+    return {{
+        "ok": not blocking and (artifacts is None or artifacts["ok"]),
+        "findings": findings,
+        "warnings": warnings,
+        "blocking": blocking,
+        "artifacts": artifacts,
+    }}
+
+
+class CodeReviewView(BaseView):
+    route_base = "/code-review"
+    default_view = "index"
+
+    @expose("/")
+    def index(self):
+        return self.render_template("appgen_code_review.html", summary=review_summary())
+
+    @expose("/summary.json")
+    def summary_json(self):
+        return jsonify(review_summary())
+
+
+def register_code_review(appbuilder):
+    appbuilder.add_view(
+        CodeReviewView,
+        "Code Review",
+        icon="fa-check-square-o",
+        category="AppGen",
+    )
+'''
+
+
+def _wizards_text(schema: AppSchema) -> str:
+    enum_values = {enum.name: tuple(enum.values) for enum in schema.enums}
+
+    def field_descriptor(column: ColumnSchema) -> dict:
+        return {
+            "field": _model_attribute_name(column),
+            "label": snake_to_label(column.name),
+            "type": column.type_name,
+            "choices": enum_values.get(column.type_name, ()),
+            "required": not column.nullable and not column.primary_key,
+            "primary_key": column.primary_key,
+            "reference": column.references,
+        }
+
+    wizards = {}
+    for table in schema.tables:
+        fields = [field_descriptor(column) for column in table.columns if not column.hidden and not column.derived]
+        required_fields = tuple(field for field in fields if field["required"])
+        optional_fields = tuple(field for field in fields if not field["required"] and not field["primary_key"])
+        technical_fields = tuple(field for field in fields if field["primary_key"])
+        steps = [
+            {
+                "name": "required",
+                "label": "Required fields",
+                "type": "form",
+                "fields": required_fields,
+                "next": "optional" if optional_fields else "review",
+            }
+        ]
+        if optional_fields:
+            steps.append(
+                {
+                    "name": "optional",
+                    "label": "Optional fields",
+                    "type": "form",
+                    "fields": optional_fields,
+                    "next": "review",
+                }
+            )
+        if technical_fields:
+            steps.append(
+                {
+                    "name": "technical",
+                    "label": "Generated identifiers",
+                    "type": "readonly",
+                    "fields": technical_fields,
+                    "next": "review",
+                }
+            )
+        steps.append(
+            {
+                "name": "review",
+                "label": "Review and submit",
+                "type": "review",
+                "fields": tuple(fields),
+                "next": "submit",
+            }
+        )
+        steps.append(
+            {
+                "name": "submit",
+                "label": "Submit",
+                "type": "action",
+                "fields": tuple(),
+                "next": None,
+            }
+        )
+        wizards[f"{table.name}Create"] = {
+            "name": f"{table.name}Create",
+            "label": f"Create {snake_to_label(table.name)}",
+            "kind": "table",
+            "table": table.name,
+            "steps": tuple(steps),
+        }
+
+    for flow in schema.flows:
+        steps = []
+        for index, step in enumerate(flow.steps):
+            steps.append(
+                {
+                    "name": f"{step.source}_to_{step.target}",
+                    "label": f"{snake_to_label(step.source)} to {snake_to_label(step.target)}",
+                    "type": "transition",
+                    "source": step.source,
+                    "target": step.target,
+                    "fields": tuple(),
+                    "next": f"{flow.steps[index + 1].source}_to_{flow.steps[index + 1].target}"
+                    if index + 1 < len(flow.steps)
+                    else "complete",
+                }
+            )
+        steps.append(
+            {
+                "name": "complete",
+                "label": "Complete workflow",
+                "type": "complete",
+                "fields": tuple(),
+                "next": None,
+            }
+        )
+        wizards[f"{flow.name}Workflow"] = {
+            "name": f"{flow.name}Workflow",
+            "label": f"{snake_to_label(flow.name)} workflow",
+            "kind": "workflow",
+            "workflow": flow.name,
+            "steps": tuple(steps),
+        }
+
+    return f'''"""Generated sequential wizard contracts for AppGen apps."""
+
+from __future__ import annotations
+
+from flask import jsonify
+from flask_appbuilder import BaseView
+from flask_appbuilder import expose
+
+
+WIZARDS = {wizards!r}
+
+
+def wizard_catalog():
+    """Return generated table and workflow wizard descriptors."""
+    return tuple(WIZARDS.values())
+
+
+def wizard_plan(wizard_name):
+    """Return a single generated wizard contract."""
+    if wizard_name not in WIZARDS:
+        raise KeyError(f"Unknown wizard: {{wizard_name}}")
+    return WIZARDS[wizard_name]
+
+
+def wizard_steps(wizard_name):
+    """Return the ordered steps for a generated wizard."""
+    return tuple(wizard_plan(wizard_name)["steps"])
+
+
+def current_step(wizard_name, completed_steps=()):
+    """Return the first incomplete step for a generated wizard."""
+    completed = set(completed_steps)
+    for step in wizard_steps(wizard_name):
+        if step["name"] not in completed:
+            return step
+    return None
+
+
+def wizard_progress(wizard_name, completed_steps=()):
+    """Return deterministic wizard progress metadata."""
+    steps = wizard_steps(wizard_name)
+    completed = tuple(step for step in steps if step["name"] in set(completed_steps))
+    remaining = tuple(step for step in steps if step["name"] not in set(completed_steps))
+    return {{
+        "wizard": wizard_name,
+        "completed": completed,
+        "remaining": remaining,
+        "current": remaining[0] if remaining else None,
+        "done": not remaining,
+    }}
+
+
+def field_questions(wizard_name):
+    """Return field prompts collected by a generated table wizard."""
+    questions = []
+    for step in wizard_steps(wizard_name):
+        if step["type"] != "form":
+            continue
+        for field in step["fields"]:
+            questions.append({{
+                "step": step["name"],
+                "field": field["field"],
+                "label": field["label"],
+                "type": field["type"],
+                "choices": field.get("choices", ()),
+                "required": field["required"],
+            }})
+    return tuple(questions)
+
+
+def validate_step(wizard_name, step_name, values):
+    """Validate required fields for one wizard step."""
+    step = next((item for item in wizard_steps(wizard_name) if item["name"] == step_name), None)
+    if step is None:
+        raise KeyError(f"Unknown wizard step: {{wizard_name}}.{{step_name}}")
+    missing = tuple(
+        field["field"]
+        for field in step["fields"]
+        if field["required"] and not values.get(field["field"])
+    )
+    invalid_choices = tuple(
+        field["field"]
+        for field in step["fields"]
+        if field.get("choices") and values.get(field["field"]) not in (None, "") and values.get(field["field"]) not in field["choices"]
+    )
+    return {{"wizard": wizard_name, "step": step_name, "ok": not missing and not invalid_choices, "missing": missing, "invalid_choices": invalid_choices}}
+
+
+class WizardView(BaseView):
+    route_base = "/wizards"
+    default_view = "index"
+
+    @expose("/")
+    def index(self):
+        return self.render_template("appgen_wizards.html", wizards=wizard_catalog())
+
+    @expose("/catalog.json")
+    def catalog_json(self):
+        return jsonify(list(wizard_catalog()))
+
+    @expose("/<wizard_name>.json")
+    def wizard_json(self, wizard_name):
+        return jsonify(wizard_plan(wizard_name))
+
+
+def register_wizards(appbuilder):
+    appbuilder.add_view(
+        WizardView,
+        "Wizards",
+        icon="fa-magic",
+        category="AppGen",
+    )
+'''
+
+
+def _components_text(schema: AppSchema) -> str:
+    enum_values = {enum.name: tuple(enum.values) for enum in schema.enums}
+
+    def widget_for(column: ColumnSchema) -> str:
+        type_name = column.type_name.lower()
+        name = column.name.lower()
+        if column.references is not None:
+            return "relationship-picker"
+        if column.type_name in enum_values:
+            return "select"
+        if type_name in {"image", "photo", "picture"} or any(part in name for part in ("image", "photo", "avatar", "picture")):
+            return "image-upload"
+        if type_name in {"file", "upload", "document", "attachment", "blob", "binary", "bytea"} or any(
+            part in name for part in ("file", "upload", "attachment", "document")
+        ):
+            return "file-upload"
+        if "email" in name or type_name == "email":
+            return "email-input"
+        if type_name in {"datetime", "timestamp", "timestamptz"} or any(
+            part in name for part in ("datetime", "timestamp", "scheduled_at", "last_seen_at")
+        ):
+            return "calendar-datetime"
+        if type_name == "date" or name.endswith("_date") or name.endswith("_on"):
+            return "calendar-date"
+        if type_name == "time" or name.endswith("_time"):
+            return "time-input"
+        if type_name in {"bool", "boolean"}:
+            return "checkbox"
+        if type_name in {"text", "longtext"}:
+            return "textarea"
+        if type_name in {"int", "integer", "smallint", "bigint", "float", "numeric", "decimal"}:
+            return "number-input"
+        return "text-input"
+
+    def component_type_for(widget: str) -> str:
+        return {
+            "relationship-picker": "RelationshipPicker",
+            "select": "Select",
+            "image-upload": "ImageUpload",
+            "file-upload": "FileUpload",
+            "email-input": "EmailInput",
+            "calendar-date": "DatePicker",
+            "calendar-datetime": "DateTimePicker",
+            "time-input": "TimePicker",
+            "checkbox": "Checkbox",
+            "textarea": "TextArea",
+            "number-input": "NumberInput",
+        }.get(widget, "TextBox")
+
+    def input_type_for(widget: str) -> str:
+        return {
+            "email-input": "email",
+            "calendar-date": "date",
+            "calendar-datetime": "datetime-local",
+            "time-input": "time",
+            "checkbox": "checkbox",
+            "number-input": "number",
+            "file-upload": "file",
+            "image-upload": "file",
+        }.get(widget, "text")
+
+    def platform_renderers_for(widget: str) -> dict[str, str]:
+        if widget == "calendar-date":
+            return {
+                "web": "html-date-calendar",
+                "mobile": "native-date-picker",
+                "desktop": "desktop-calendar-picker",
+            }
+        if widget == "calendar-datetime":
+            return {
+                "web": "html-datetime-calendar",
+                "mobile": "native-datetime-picker",
+                "desktop": "desktop-datetime-picker",
+            }
+        if widget == "time-input":
+            return {
+                "web": "html-time-picker",
+                "mobile": "native-time-picker",
+                "desktop": "desktop-time-picker",
+            }
+        return {
+            "web": f"web-{widget}",
+            "mobile": f"mobile-{widget}",
+            "desktop": f"desktop-{widget}",
+        }
+
+    def format_for(widget: str) -> str:
+        return {
+            "calendar-date": "yyyy-MM-dd",
+            "calendar-datetime": "yyyy-MM-ddTHH:mm",
+            "time-input": "HH:mm",
+        }.get(widget, "")
+
+    tables = {}
+    for table in schema.tables:
+        fields = []
+        for column in table.columns:
+            if column.hidden or column.derived:
+                continue
+            widget = widget_for(column)
+            fields.append(
+                {
+                    "field": _model_attribute_name(column),
+                    "source_column": column.name,
+                    "label": snake_to_label(column.name),
+                    "widget": widget,
+                    "component": component_type_for(widget),
+                    "input_type": input_type_for(widget),
+                    "format": format_for(widget),
+                    "calendar": widget in {"calendar-date", "calendar-datetime", "time-input"},
+                    "platform_renderers": platform_renderers_for(widget),
+                    "choices": enum_values.get(column.type_name, ()),
+                    "required": not column.nullable and not column.primary_key,
+                    "searchable": column.searchable,
+                    "primary_key": column.primary_key,
+                    "reference": column.references,
+                }
+            )
+        field_by_name = {field["field"]: field for field in fields}
+        field_by_name.update({field["source_column"]: field for field in fields})
+        layout_sections = []
+        for view in schema.views:
+            if view.table != table.name or not view.sections:
+                continue
+            for section in view.sections:
+                section_fields = tuple(
+                    field_by_name[field]
+                    for field in section.fields
+                    if field in field_by_name
+                )
+                if section_fields:
+                    layout_sections.append(
+                        {
+                            "name": underscore(section.name),
+                            "label": snake_to_label(section.name),
+                            "source_view": view.name,
+                            "fields": section_fields,
+                        }
+                    )
+            break
+        tables[table.name] = {
+            "label": snake_to_label(table.name),
+            "fields": fields,
+            "sections": tuple(layout_sections),
+            "components": ("form", "list", "detail", "card"),
+        }
+    return f'''"""Generated component and widget descriptors for AppGen apps."""
+
+from __future__ import annotations
+
+from flask import jsonify
+from flask_appbuilder import BaseView
+from flask_appbuilder import expose
+
+
+COMPONENT_TABLES = {tables!r}
+
+
+def component_catalog():
+    """Return reusable generated component descriptors for every table."""
+    return tuple(
+        {{
+            "table": table_name,
+            "label": item["label"],
+            "components": tuple(item["components"]),
+            "fields": tuple(item["fields"]),
+        }}
+        for table_name, item in COMPONENT_TABLES.items()
+    )
+
+
+def field_widgets(table_name):
+    """Return generated widget descriptors for visible fields."""
+    return tuple(COMPONENT_TABLES[table_name]["fields"])
+
+
+def field_widget(table_name, field_name):
+    """Return a single generated widget descriptor for a visible field."""
+    for field in field_widgets(table_name):
+        if field["field"] == field_name:
+            return field
+    raise KeyError(f"Unknown component field: {{table_name}}.{{field_name}}")
+
+
+def calendar_fields(table_name):
+    """Return date, datetime, and time fields that should render as pickers."""
+    return tuple(field for field in field_widgets(table_name) if field.get("calendar"))
+
+
+def platform_widget(table_name, field_name, platform="web"):
+    """Return the platform-specific renderer contract for a field widget."""
+    field = field_widget(table_name, field_name)
+    renderers = field.get("platform_renderers", {{}})
+    return {{
+        "table": table_name,
+        "field": field["field"],
+        "widget": field["widget"],
+        "component": field.get("component"),
+        "input_type": field.get("input_type"),
+        "renderer": renderers.get(platform, renderers.get("web")),
+        "platform": platform,
+        "format": field.get("format", ""),
+    }}
+
+
+def widget_registry():
+    """Return the unique widget/component contracts used by this app."""
+    registry = {{}}
+    for table_name in COMPONENT_TABLES:
+        for field in field_widgets(table_name):
+            registry.setdefault(
+                field["widget"],
+                {{
+                    "widget": field["widget"],
+                    "component": field.get("component"),
+                    "input_type": field.get("input_type"),
+                    "calendar": field.get("calendar", False),
+                    "platform_renderers": field.get("platform_renderers", {{}}),
+                    "format": field.get("format", ""),
+                }},
+            )
+    return tuple(registry[item] for item in sorted(registry))
+
+
+def component_palette():
+    """Return reusable components for visual and generated form builders."""
+    return tuple(
+        {{
+            "type": item["component"],
+            "widget": item["widget"],
+            "input_type": item["input_type"],
+            "calendar": item["calendar"],
+        }}
+        for item in widget_registry()
+    )
+
+
+def form_layout(table_name):
+    """Return a low-code form layout split into primary and optional sections."""
+    declared_sections = COMPONENT_TABLES[table_name].get("sections", ())
+    if declared_sections:
+        return {{"table": table_name, "sections": tuple(declared_sections)}}
+    fields = field_widgets(table_name)
+    primary = tuple(field for field in fields if field["required"])
+    optional = tuple(field for field in fields if not field["required"] and not field["primary_key"])
+    technical = tuple(field for field in fields if field["primary_key"])
+    sections = []
+    if primary:
+        sections.append({{"name": "primary", "label": "Primary", "fields": primary}})
+    if optional:
+        sections.append({{"name": "optional", "label": "Optional", "fields": optional}})
+    if technical:
+        sections.append({{"name": "technical", "label": "Technical", "fields": technical}})
+    return {{"table": table_name, "sections": tuple(sections)}}
+
+
+def list_layout(table_name):
+    """Return list columns optimized for scanning and search."""
+    fields = field_widgets(table_name)
+    columns = tuple(field["field"] for field in fields if field["searchable"]) or tuple(
+        field["field"] for field in fields[:4]
+    )
+    return {{
+        "table": table_name,
+        "columns": columns,
+        "searchable": tuple(field["field"] for field in fields if field["searchable"]),
+    }}
+
+
+def detail_layout(table_name):
+    """Return a detail panel layout for all visible fields."""
+    return {{
+        "table": table_name,
+        "fields": field_widgets(table_name),
+    }}
+
+
+def component_spec(table_name, component_type):
+    """Return a reusable form/list/detail/card component contract."""
+    if component_type not in {{"form", "list", "detail", "card"}}:
+        raise ValueError("Unsupported component type")
+    fields = field_widgets(table_name)
+    if component_type == "list":
+        fields = tuple(field for field in fields if field["searchable"]) or fields[:4]
+    if component_type == "card":
+        fields = fields[:4]
+    return {{
+        "table": table_name,
+        "name": f"{{table_name}}{{component_type.title()}}",
+        "type": component_type,
+        "fields": fields,
+    }}
+
+
+def component_contract(table_name):
+    """Return generated component and layout contracts for a table."""
+    return {{
+        "table": table_name,
+        "form": component_spec(table_name, "form"),
+        "list": component_spec(table_name, "list"),
+        "detail": component_spec(table_name, "detail"),
+        "card": component_spec(table_name, "card"),
+        "layouts": {{
+            "form": form_layout(table_name),
+            "list": list_layout(table_name),
+            "detail": detail_layout(table_name),
+        }},
+    }}
+
+
+def layout_spec(table_name):
+    """Return generated responsive layout contracts for a table."""
+    return component_contract(table_name)
+
+
+def visual_builder_payload():
+    """Return all component contracts for downstream visual builders."""
+    return {{
+        "tables": tuple(component_contract(table_name) for table_name in COMPONENT_TABLES),
+        "widgets": widget_registry(),
+        "palette": component_palette(),
+    }}
+
+
+class ComponentView(BaseView):
+    route_base = "/components"
+    default_view = "index"
+
+    @expose("/")
+    def index(self):
+        return self.render_template("appgen_components.html", components=component_catalog())
+
+    @expose("/catalog.json")
+    def catalog_json(self):
+        return jsonify(list(component_catalog()))
+
+    @expose("/<table_name>.json")
+    def table_json(self, table_name):
+        return jsonify(component_contract(table_name))
+
+
+def register_components(appbuilder):
+    appbuilder.add_view(
+        ComponentView,
+        "Components",
+        icon="fa-puzzle-piece",
+        category="AppGen",
+    )
+'''
+
+
+def _runtime_security_text() -> str:
+    return '''"""Generated runtime security policy for AppGen apps."""
+
+from __future__ import annotations
+
+from datetime import datetime
+from datetime import timezone
+
+from flask import redirect
+from flask import request
+from flask import session
+from flask_appbuilder import BaseView
+from flask_appbuilder import expose
+
+
+SECURITY_POLICY = {
+    "idle_timeout_seconds": 1800,
+    "last_seen_key": "_appgen_last_seen",
+    "logout_path": "/logout/",
+    "public_path_prefixes": ("/login/", "/logout/", "/static/", "/health", "/favicon.ico"),
+    "headers": {
+        "X-Content-Type-Options": "nosniff",
+        "X-Frame-Options": "SAMEORIGIN",
+        "Referrer-Policy": "strict-origin-when-cross-origin",
+        "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
+        "Cache-Control": "no-store",
+    },
+}
+
+
+def utc_timestamp(now=None):
+    """Return a stable integer UTC timestamp."""
+    now = now or datetime.now(timezone.utc)
+    return int(now.timestamp())
+
+
+def security_policy():
+    """Return the generated runtime security policy."""
+    return dict(SECURITY_POLICY)
+
+
+def is_public_path(path):
+    """Return whether a request path bypasses inactivity checks."""
+    return any(str(path).startswith(prefix) for prefix in SECURITY_POLICY["public_path_prefixes"])
+
+
+def should_logout(last_seen, *, now=None):
+    """Return whether a session has exceeded the generated idle timeout."""
+    if last_seen in (None, ""):
+        return False
+    try:
+        last_seen = int(last_seen)
+    except (TypeError, ValueError):
+        return True
+    return utc_timestamp(now) - last_seen > SECURITY_POLICY["idle_timeout_seconds"]
+
+
+def session_state(session_data, *, now=None):
+    """Return deterministic session timeout metadata for testing and UI."""
+    last_seen = session_data.get(SECURITY_POLICY["last_seen_key"])
+    now_ts = utc_timestamp(now)
+    remaining = None
+    if last_seen not in (None, ""):
+        try:
+            remaining = max(0, SECURITY_POLICY["idle_timeout_seconds"] - (now_ts - int(last_seen)))
+        except (TypeError, ValueError):
+            remaining = 0
+    return {
+        "last_seen": last_seen,
+        "now": now_ts,
+        "remaining_seconds": remaining,
+        "expired": should_logout(last_seen, now=now),
+    }
+
+
+def mark_activity(session_data, *, now=None):
+    """Update a mutable session mapping with the current activity timestamp."""
+    session_data[SECURITY_POLICY["last_seen_key"]] = utc_timestamp(now)
+    return session_data
+
+
+def security_headers(existing=None):
+    """Return response headers after applying generated hardening defaults."""
+    headers = {} if existing is None else dict(existing)
+    for key, value in SECURITY_POLICY["headers"].items():
+        headers.setdefault(key, value)
+    return headers
+
+
+def register_runtime_security(app):
+    """Install inactivity and response-header hooks on a Flask app."""
+
+    @app.before_request
+    def appgen_inactivity_guard():
+        if is_public_path(request.path):
+            return None
+        key = SECURITY_POLICY["last_seen_key"]
+        if should_logout(session.get(key)):
+            session.clear()
+            return redirect(SECURITY_POLICY["logout_path"])
+        mark_activity(session)
+        return None
+
+    @app.after_request
+    def appgen_security_headers(response):
+        for key, value in security_headers().items():
+            response.headers.setdefault(key, value)
+        return response
+
+    return app
+
+
+class RuntimeSecurityView(BaseView):
+    route_base = "/runtime-security"
+    default_view = "index"
+
+    @expose("/")
+    def index(self):
+        return self.render_template("appgen_runtime_security.html", policy=SECURITY_POLICY)
+
+    @expose("/policy.json")
+    def policy_json(self):
+        from flask import jsonify
+
+        return jsonify(SECURITY_POLICY)
+
+
+def register_runtime_security_view(appbuilder):
+    appbuilder.add_view(
+        RuntimeSecurityView,
+        "Runtime Security",
+        icon="fa-shield",
+        category="AppGen",
+    )
+'''
+
+
+def _config_admin_text() -> str:
+    return '''"""Generated safe configuration editor for AppGen apps."""
+
+from __future__ import annotations
+
+import ast
+from pathlib import Path
+
+from flask import Response, flash, jsonify, request
+from flask_appbuilder import BaseView, expose
+
+
+EDITABLE_CONFIG = {
+    "APP_NAME": {
+        "label": "Application name",
+        "kind": "str",
+        "section": "Application",
+        "secret": False,
+        "help": "Displayed by generated health checks and setup screens.",
+    },
+    "SQLALCHEMY_DATABASE_URI": {
+        "label": "Database URI",
+        "kind": "str",
+        "section": "Database",
+        "secret": False,
+        "help": "SQLAlchemy connection string used by the generated app.",
+    },
+    "SQLALCHEMY_TRACK_MODIFICATIONS": {
+        "label": "Track SQLAlchemy modifications",
+        "kind": "bool",
+        "section": "Database",
+        "secret": False,
+        "help": "Keep disabled unless an extension explicitly needs model-change signals.",
+    },
+    "SECRET_KEY": {
+        "label": "Secret key",
+        "kind": "str",
+        "section": "Security",
+        "secret": True,
+        "help": "Flask signing secret. Replace the generated default before production.",
+    },
+    "FAB_API_SHOW_STACKTRACE": {
+        "label": "API stack traces",
+        "kind": "bool",
+        "section": "API",
+        "secret": False,
+        "help": "Expose API stack traces for development diagnostics.",
+    },
+    "FAB_API_SWAGGER_UI": {
+        "label": "Swagger UI",
+        "kind": "bool",
+        "section": "API",
+        "secret": False,
+        "help": "Enable Flask-AppBuilder API documentation UI.",
+    },
+    "WTF_CSRF_ENABLED": {
+        "label": "CSRF protection",
+        "kind": "bool",
+        "section": "Security",
+        "secret": False,
+        "help": "Keep form CSRF protection enabled for browser sessions.",
+    },
+    "AUTH_ROLE_ADMIN": {
+        "label": "Admin role",
+        "kind": "str",
+        "section": "Security",
+        "secret": False,
+        "help": "Generated Flask-AppBuilder administrator role name.",
+    },
+    "AUTH_ROLE_PUBLIC": {
+        "label": "Public role",
+        "kind": "str",
+        "section": "Security",
+        "secret": False,
+        "help": "Generated Flask-AppBuilder public role name.",
+    },
+    "SESSION_COOKIE_HTTPONLY": {
+        "label": "HTTP-only session cookies",
+        "kind": "bool",
+        "section": "Security",
+        "secret": False,
+        "help": "Prevent browser JavaScript from reading the session cookie.",
+    },
+    "SESSION_COOKIE_SAMESITE": {
+        "label": "Session SameSite policy",
+        "kind": "str",
+        "section": "Security",
+        "secret": False,
+        "help": "Browser SameSite policy for generated session cookies.",
+    },
+    "BABEL_DEFAULT_LOCALE": {
+        "label": "Default locale",
+        "kind": "str",
+        "section": "Localization",
+        "secret": False,
+        "help": "Default locale for generated templates and translations.",
+    },
+    "BABEL_DEFAULT_TIMEZONE": {
+        "label": "Default timezone",
+        "kind": "str",
+        "section": "Localization",
+        "secret": False,
+        "help": "Default timezone for generated date and time presentation.",
+    },
+    "LANGUAGES": {
+        "label": "Languages",
+        "kind": "dict",
+        "section": "Localization",
+        "secret": False,
+        "help": "Flask-Babel language catalog as a Python dictionary literal.",
+    },
+}
+
+CONFIG_SECTIONS = ("Application", "Database", "Security", "API", "Localization")
+
+
+def config_path():
+    return Path(__file__).resolve().parent.parent / "config.py"
+
+
+def parse_config_assignments(text):
+    values = {}
+    tree = ast.parse(text)
+    for node in tree.body:
+        if not isinstance(node, ast.Assign) or len(node.targets) != 1:
+            continue
+        target = node.targets[0]
+        if not isinstance(target, ast.Name) or target.id not in EDITABLE_CONFIG:
+            continue
+        try:
+            values[target.id] = ast.literal_eval(node.value)
+        except (ValueError, SyntaxError):
+            values[target.id] = ""
+    return values
+
+
+def coerce_config_value(key, raw_value):
+    meta = EDITABLE_CONFIG[key]
+    if meta["kind"] == "bool":
+        return str(raw_value).strip().lower() in {"1", "true", "yes", "on"}
+    if meta["kind"] == "dict":
+        value = ast.literal_eval(str(raw_value).strip() or "{}")
+        if not isinstance(value, dict):
+            raise ValueError(f"{key} must be a Python dictionary literal")
+        return value
+    return str(raw_value).strip()
+
+
+def format_config_assignment(key, value):
+    if EDITABLE_CONFIG[key]["kind"] == "bool":
+        return f"{key} = {bool(value)}\\n"
+    if EDITABLE_CONFIG[key]["kind"] == "dict":
+        return f"{key} = {value!r}\\n"
+    return f"{key} = {value!r}\\n"
+
+
+def replace_config_assignment(text, key, value):
+    replacement = format_config_assignment(key, value)
+    lines = text.splitlines(keepends=True)
+    try:
+        tree = ast.parse(text)
+    except SyntaxError:
+        tree = None
+    if tree is not None:
+        for node in tree.body:
+            if not isinstance(node, ast.Assign) or len(node.targets) != 1:
+                continue
+            target = node.targets[0]
+            if isinstance(target, ast.Name) and target.id == key:
+                start = node.lineno - 1
+                end = getattr(node, "end_lineno", node.lineno)
+                lines[start:end] = [replacement]
+                return "".join(lines)
+    if lines and not lines[-1].endswith("\\n"):
+        lines[-1] += "\\n"
+    lines.append(replacement)
+    return "".join(lines)
+
+
+def save_config_values(path, submitted):
+    text = path.read_text()
+    values = {}
+    for key in EDITABLE_CONFIG:
+        if key in submitted:
+            values[key] = coerce_config_value(key, submitted[key])
+            text = replace_config_assignment(text, key, values[key])
+    path.write_text(text)
+    return values
+
+
+def config_sections(values=None):
+    """Return editable config fields grouped for setup screens."""
+    values = {} if values is None else values
+    sections = []
+    for section in CONFIG_SECTIONS:
+        fields = []
+        for key, meta in EDITABLE_CONFIG.items():
+            if meta["section"] != section:
+                continue
+            fields.append({
+                "key": key,
+                "value": values.get(key, ""),
+                **meta,
+            })
+        if fields:
+            sections.append({"name": section, "fields": tuple(fields)})
+    return tuple(sections)
+
+
+def config_schema():
+    """Return machine-readable config metadata for generated setup tools."""
+    return {
+        "sections": config_sections(),
+        "keys": tuple(EDITABLE_CONFIG),
+        "editable_count": len(EDITABLE_CONFIG),
+    }
+
+
+def config_readiness(values):
+    """Return production setup readiness for generated config.py values."""
+    blockers = []
+    warnings = []
+    secret = values.get("SECRET_KEY")
+    if not secret or secret == "change-me-before-deploy":
+        blockers.append("SECRET_KEY must be replaced before production.")
+    if not values.get("SQLALCHEMY_DATABASE_URI"):
+        blockers.append("SQLALCHEMY_DATABASE_URI is required.")
+    if values.get("WTF_CSRF_ENABLED") is False:
+        blockers.append("WTF_CSRF_ENABLED should remain enabled.")
+    if values.get("SESSION_COOKIE_HTTPONLY") is False:
+        blockers.append("SESSION_COOKIE_HTTPONLY should remain enabled.")
+    if values.get("FAB_API_SHOW_STACKTRACE") is True:
+        warnings.append("Disable FAB_API_SHOW_STACKTRACE outside development.")
+    if values.get("SQLALCHEMY_DATABASE_URI") == "sqlite:///app.db":
+        warnings.append("SQLite is fine for local use; configure PostgreSQL or MySQL for production.")
+    return {
+        "ready": not blockers,
+        "blockers": tuple(blockers),
+        "warnings": tuple(warnings),
+        "configured": tuple(key for key in EDITABLE_CONFIG if values.get(key) not in (None, "")),
+        "missing": tuple(key for key in EDITABLE_CONFIG if values.get(key) in (None, "")),
+    }
+
+
+def setup_checklist(values):
+    """Return setup tasks covering every generated config.py assignment."""
+    readiness = config_readiness(values)
+    tasks = []
+    for key, meta in EDITABLE_CONFIG.items():
+        value = values.get(key)
+        tasks.append({
+            "key": key,
+            "label": meta["label"],
+            "section": meta["section"],
+            "ok": value not in (None, ""),
+            "secret": meta["secret"],
+            "help": meta["help"],
+        })
+    return {
+        "ready": readiness["ready"],
+        "tasks": tuple(tasks),
+        "blockers": readiness["blockers"],
+        "warnings": readiness["warnings"],
+    }
+
+
+def env_template(values):
+    """Return an .env starter matching editable generated config settings."""
+    lines = []
+    for key in EDITABLE_CONFIG:
+        value = values.get(key, "")
+        if isinstance(value, bool):
+            rendered = "true" if value else "false"
+        elif isinstance(value, dict):
+            rendered = repr(value)
+        else:
+            rendered = str(value)
+        lines.append(f"{key}={rendered}")
+    return "\\n".join(lines) + "\\n"
+
+
+class ConfigAdminView(BaseView):
+    route_base = "/appgen/config"
+    default_view = "index"
+
+    @expose("/", methods=("GET", "POST"))
+    def index(self):
+        path = config_path()
+        if request.method == "POST":
+            try:
+                save_config_values(path, request.form)
+                flash("Configuration saved. Restart the app for changes to take effect.", "success")
+            except ValueError as exc:
+                flash(str(exc), "danger")
+        values = parse_config_assignments(path.read_text())
+        return self.render_template(
+            "appgen_config.html",
+            editable=EDITABLE_CONFIG,
+            values=values,
+            sections=config_sections(values),
+            readiness=config_readiness(values),
+            checklist=setup_checklist(values),
+            env_text=env_template(values),
+        )
+
+    @expose("/raw")
+    def raw_config(self):
+        return Response(config_path().read_text(), mimetype="text/plain")
+
+    @expose("/setup.json")
+    def setup_json(self):
+        values = parse_config_assignments(config_path().read_text())
+        return jsonify({
+            "schema": config_schema(),
+            "readiness": config_readiness(values),
+            "checklist": setup_checklist(values),
+            "env": env_template(values),
+        })
+
+
+def register_config_admin(appbuilder):
+    appbuilder.add_view(
+        ConfigAdminView,
+        "Configuration",
+        icon="fa-cogs",
+        category="AppGen",
+    )
+'''
+
+
+def _devtool_tables(schema: AppSchema) -> dict:
+    return {
+        table.name: {
+            "model": snake_to_pascal(table.name),
+            "api": f"/api/v1/{underscore(table.name)}/",
+            "fields": tuple(_model_attribute_name(column) for column in table.columns if not column.hidden),
+        }
+        for table in schema.tables
+    }
+
+
+def _devtools_text(schema: AppSchema, app_name: str) -> str:
+    tables = _devtool_tables(schema)
+    tools = {
+        "vscode": {
+            "label": "Visual Studio Code",
+            "artifacts": (".vscode/launch.json", ".vscode/tasks.json", ".vscode/extensions.json"),
+            "commands": ("Python: Flask debug", "AppGen quality", "Pytest"),
+        },
+        "eclipse": {
+            "label": "Eclipse / PyDev",
+            "artifacts": (".project", ".pydevproject"),
+            "commands": ("PyDev run", "PyDev debug"),
+        },
+        "jetbrains": {
+            "label": "JetBrains IDEA / PyCharm",
+            "artifacts": (".idea/misc.xml", ".idea/modules.xml", ".idea/runConfigurations/AppGen_Flask.xml"),
+            "commands": ("Flask run", "AppGen quality", "Pytest"),
+        },
+    }
+    return f'''"""Generated IDE and developer-tool integration helpers for AppGen apps."""
+
+from __future__ import annotations
+
+from flask import jsonify
+from flask_appbuilder import BaseView
+from flask_appbuilder import expose
+
+
+APP_NAME = {app_name!r}
+DEVTOOL_TABLES = {tables!r}
+DEVTOOLS = {tools!r}
+
+
+def devtool_catalog():
+    """Return generated IDE integration descriptors."""
+    return tuple(
+        {{
+            "tool": name,
+            "label": spec["label"],
+            "artifacts": tuple(spec["artifacts"]),
+            "commands": tuple(spec["commands"]),
+        }}
+        for name, spec in DEVTOOLS.items()
+    )
+
+
+def vscode_launch_profile():
+    """Return the generated VS Code Flask debug profile."""
+    return {{
+        "name": f"{{APP_NAME}} Flask",
+        "type": "python",
+        "request": "launch",
+        "module": "flask",
+        "env": {{"FLASK_APP": "app", "FLASK_DEBUG": "1"}},
+        "args": ("run", "--host", "127.0.0.1", "--port", "8080"),
+        "jinja": True,
+    }}
+
+
+def vscode_tasks():
+    """Return generated VS Code task descriptors."""
+    return (
+        {{"label": "AppGen quality", "type": "shell", "command": "python scripts/appgen_quality.py", "group": "test"}},
+        {{"label": "Pytest", "type": "shell", "command": "pytest -q", "group": "test"}},
+        {{"label": "Alembic current", "type": "shell", "command": "alembic -c alembic.ini current", "group": "build"}},
+    )
+
+
+def eclipse_project():
+    """Return generated Eclipse/PyDev project metadata."""
+    return {{
+        "name": APP_NAME,
+        "nature": "org.python.pydev.pythonNature",
+        "builders": ("org.python.pydev.PyDevBuilder",),
+        "source_paths": ("app", "app_custom", "tests"),
+    }}
+
+
+def jetbrains_run_config():
+    """Return generated JetBrains Flask run configuration metadata."""
+    return {{
+        "name": f"{{APP_NAME}} Flask",
+        "type": "Python.FlaskServer",
+        "target": "app",
+        "environment": {{"FLASK_APP": "app", "FLASK_DEBUG": "1"}},
+        "working_directory": "$PROJECT_DIR$",
+        "parameters": "--host 127.0.0.1 --port 8080",
+    }}
+
+
+def jetbrains_tasks():
+    """Return generated JetBrains external tool tasks."""
+    return (
+        {{"name": "AppGen quality", "program": "python", "arguments": "scripts/appgen_quality.py"}},
+        {{"name": "Pytest", "program": "pytest", "arguments": "-q"}},
+        {{"name": "Alembic current", "program": "alembic", "arguments": "-c alembic.ini current"}},
+    )
+
+
+def source_map():
+    """Map generated schema resources to source files for IDE navigation."""
+    return tuple(
+        {{
+            "table": table_name,
+            "model": table["model"],
+            "api": table["api"],
+            "fields": tuple(table["fields"]),
+            "files": ("app/models.py", "app/views.py", "app/api.py", "app/templates"),
+        }}
+        for table_name, table in DEVTOOL_TABLES.items()
+    )
+
+
+def devtools_check(existing_paths=()):
+    """Return readiness for generated IDE integration artifacts."""
+    existing = set(existing_paths)
+    required = {{
+        "app/devtools.py",
+        "app/templates/appgen_devtools.html",
+        ".vscode/launch.json",
+        ".vscode/tasks.json",
+        ".vscode/extensions.json",
+        ".project",
+        ".pydevproject",
+        ".idea/misc.xml",
+        ".idea/modules.xml",
+        ".idea/runConfigurations/AppGen_Flask.xml",
+    }}
+    missing = tuple(sorted(required - existing))
+    return {{
+        "ok": not missing and bool(devtool_catalog()),
+        "missing": missing,
+        "tools": tuple(DEVTOOLS),
+    }}
+
+
+class DevToolsView(BaseView):
+    route_base = "/devtools"
+    default_view = "index"
+
+    @expose("/")
+    def index(self):
+        return self.render_template("appgen_devtools.html", tools=devtool_catalog())
+
+    @expose("/catalog.json")
+    def catalog_json(self):
+        return jsonify(list(devtool_catalog()))
+
+    @expose("/source-map.json")
+    def source_map_json(self):
+        return jsonify(list(source_map()))
+
+
+def register_devtools(appbuilder):
+    appbuilder.add_view(
+        DevToolsView,
+        "Developer Tools",
+        icon="fa-code",
+        category="AppGen",
+    )
+'''
+
+
+def _studio_text(schema: AppSchema, app_name: str) -> str:
+    editable_files = (
+        {"label": "Models", "path": "app/models.py", "language": "python", "kind": "schema", "editable": True},
+        {"label": "Views", "path": "app/views.py", "language": "python", "kind": "ui", "editable": True},
+        {"label": "REST API", "path": "app/api.py", "language": "python", "kind": "api", "editable": True},
+        {"label": "Home template", "path": "app/templates/my_index.html", "language": "jinja2", "kind": "template", "editable": True},
+        {"label": "Theme", "path": "app/static/appgen-theme.css", "language": "css", "kind": "style", "editable": True},
+        {"label": "Extensions", "path": "app_custom/extensions.py", "language": "python", "kind": "extension", "editable": True},
+        {"label": "Configuration", "path": "config.py", "language": "python", "kind": "config", "editable": True},
+    )
+    components = []
+    for table in schema.tables:
+        visible_columns = tuple(_model_attribute_name(column) for column in table.columns if not column.hidden)
+        components.append(
+            {
+                "id": f"{underscore(table.name)}-form",
+                "name": f"{snake_to_pascal(table.name)} Form",
+                "kind": "form",
+                "resource": table.name,
+                "tags": ("form", "crud", "schema"),
+                "fields": visible_columns,
+                "files": ("app/models.py", "app/views.py", "app/templates"),
+            }
+        )
+        components.append(
+            {
+                "id": f"{underscore(table.name)}-list",
+                "name": f"{snake_to_pascal(table.name)} List",
+                "kind": "list",
+                "resource": table.name,
+                "tags": ("table", "search", "export"),
+                "fields": visible_columns,
+                "files": ("app/views.py", "app/api.py"),
+            }
+        )
+    if not components:
+        components.append(
+            {
+                "id": "empty-schema-starter",
+                "name": "Empty Schema Starter",
+                "kind": "starter",
+                "resource": app_name,
+                "tags": ("schema", "starter"),
+                "fields": (),
+                "files": ("app/models.py", "app/views.py"),
+            }
+        )
+    dependencies = (
+        {"package": "flask-appbuilder", "scope": "runtime", "source": "requirements.txt"},
+        {"package": "sqlalchemy", "scope": "runtime", "source": "requirements.txt"},
+        {"package": "flask", "scope": "runtime", "source": "requirements.txt"},
+        {"package": "graphene", "scope": "api", "source": "requirements.txt"},
+        {"package": "alembic", "scope": "migration", "source": "requirements.txt"},
+        {"package": "pytest", "scope": "test", "source": "pyproject.toml"},
+        {"package": "kivy", "scope": "mobile", "source": "native/mobile/pyproject.toml"},
+        {"package": "briefcase", "scope": "desktop", "source": "native/desktop/pyproject.toml"},
+    )
+    debug_sessions = (
+        {
+            "name": "flask",
+            "entrypoint": "flask run --host 127.0.0.1 --port 8080",
+            "breakpoints": (
+                {"path": "app/views.py", "symbol": "init_views", "condition": None},
+                {"path": "app/api.py", "symbol": "pre_add", "condition": None},
+                {"path": "app/rules.py", "symbol": "validate_row", "condition": None},
+            ),
+            "variables": ("request", "current_user", "row", "session"),
+            "commands": ("continue", "step_over", "inspect_variables"),
+        },
+    )
+    return f'''"""Generated in-app developer studio helpers for AppGen apps."""
+
+from __future__ import annotations
+
+from flask import jsonify
+from flask_appbuilder import BaseView
+from flask_appbuilder import expose
+
+
+APP_NAME = {app_name!r}
+EDITABLE_FILES = {editable_files!r}
+COMPONENTS = {tuple(components)!r}
+DEPENDENCIES = {dependencies!r}
+DEBUG_SESSIONS = {debug_sessions!r}
+SECRET_MARKERS = ("SECRET", "TOKEN", "PASSWORD", "API_KEY")
+
+
+def editable_files():
+    """Return files that the in-app studio may edit through reviewed plans."""
+    return tuple(EDITABLE_FILES)
+
+
+def file_edit_plan(path, patch, author=None):
+    """Build a reviewable file-edit plan without mutating the filesystem."""
+    file_spec = next((item for item in EDITABLE_FILES if item["path"] == path), None)
+    language = file_spec["language"] if file_spec else "text"
+    return {{
+        "path": path,
+        "language": language,
+        "patch": patch,
+        "author": author or "studio-user",
+        "requires_review": True,
+        "checks": ("py_compile", "appgen_quality", "pytest"),
+    }}
+
+
+def debug_session(name="flask"):
+    """Return a generated step-debugging session contract."""
+    session = next((item for item in DEBUG_SESSIONS if item["name"] == name), None)
+    if session is None:
+        session = DEBUG_SESSIONS[0]
+    return {{
+        "name": session["name"],
+        "entrypoint": session["entrypoint"],
+        "breakpoints": tuple(session["breakpoints"]),
+        "variables": tuple(session["variables"]),
+        "commands": tuple(session["commands"]),
+    }}
+
+
+def breakpoint_plan(path, line=None, symbol=None, condition=None):
+    """Return a reviewable breakpoint descriptor."""
+    return {{
+        "path": path,
+        "line": line,
+        "symbol": symbol,
+        "condition": condition,
+        "enabled": True,
+    }}
+
+
+def _redact_value(name, value):
+    if any(marker in str(name).upper() for marker in SECRET_MARKERS):
+        return "[redacted]"
+    if isinstance(value, dict):
+        return {{key: _redact_value(key, nested) for key, nested in value.items()}}
+    return value
+
+
+def variable_inspection(scope, variables):
+    """Return safe variable-inspection output with secret-like keys redacted."""
+    return {{
+        "scope": scope,
+        "variables": {{name: _redact_value(name, value) for name, value in dict(variables).items()}},
+    }}
+
+
+def dependency_inventory():
+    """Return generated dependency metadata across runtime and native targets."""
+    return tuple(DEPENDENCIES)
+
+
+def dependency_update_plan(package, target_version, reason=None):
+    """Return a reviewable dependency update plan."""
+    dependency = next((item for item in DEPENDENCIES if item["package"] == package), None)
+    return {{
+        "package": package,
+        "target_version": target_version,
+        "source": dependency["source"] if dependency else "requirements.txt",
+        "scope": dependency["scope"] if dependency else "runtime",
+        "reason": reason or "requested from developer studio",
+        "requires_review": True,
+        "checks": ("appgen_quality", "pytest"),
+    }}
+
+
+def component_repository():
+    """Return reusable components available for local sharing and reuse."""
+    return tuple(COMPONENTS)
+
+
+def component_share_package(component_id):
+    """Build a portable package for a reusable component."""
+    component = next((item for item in COMPONENTS if item["id"] == component_id), None)
+    if component is None:
+        raise KeyError(component_id)
+    return {{
+        "component": component,
+        "app_name": APP_NAME,
+        "format": "appgen-component-v1",
+        "files": tuple(component.get("files", ())),
+    }}
+
+
+def clone_plan(new_app_name, include_data=False):
+    """Return an application clone plan without performing filesystem writes."""
+    return {{
+        "new_app_name": new_app_name,
+        "include_data": bool(include_data),
+        "copy": ("config.py", "app", "app_custom", "migrations", "tests"),
+        "rewrite": (("app/appgen.json", "app_name", new_app_name),),
+        "post_clone_checks": ("python scripts/appgen_quality.py", "pytest -q"),
+        "requires_review": True,
+    }}
+
+
+def studio_catalog():
+    """Return the generated studio catalog."""
+    return {{
+        "files": editable_files(),
+        "debug_sessions": tuple(debug_session(item["name"]) for item in DEBUG_SESSIONS),
+        "components": component_repository(),
+        "dependencies": dependency_inventory(),
+        "clone": clone_plan(f"{{APP_NAME}}Copy"),
+    }}
+
+
+def studio_check(existing_paths=()):
+    """Return readiness for generated in-app developer studio artifacts."""
+    existing = set(existing_paths)
+    required = {{"app/studio.py", "app/templates/appgen_studio.html"}}
+    missing = tuple(sorted(required - existing))
+    return {{
+        "ok": not missing and bool(editable_files()) and bool(component_repository()),
+        "missing": missing,
+        "files": len(EDITABLE_FILES),
+        "components": len(COMPONENTS),
+    }}
+
+
+class StudioView(BaseView):
+    route_base = "/studio"
+    default_view = "index"
+
+    @expose("/")
+    def index(self):
+        return self.render_template(
+            "appgen_studio.html",
+            catalog=studio_catalog(),
+            editable_files=editable_files(),
+            components=component_repository(),
+            dependencies=dependency_inventory(),
+        )
+
+    @expose("/catalog.json")
+    def catalog_json(self):
+        return jsonify(studio_catalog())
+
+
+def register_studio(appbuilder):
+    appbuilder.add_view(
+        StudioView,
+        "Developer Studio",
+        icon="fa-code",
+        category="AppGen",
+    )
+'''
+
+
+def _vscode_launch_text(app_name: str) -> str:
+    profile = {
+        "version": "0.2.0",
+        "configurations": [
+            {
+                "name": f"{app_name} Flask",
+                "type": "python",
+                "request": "launch",
+                "module": "flask",
+                "env": {"FLASK_APP": "app", "FLASK_DEBUG": "1"},
+                "args": ["run", "--host", "127.0.0.1", "--port", "8080"],
+                "jinja": True,
+            }
+        ],
+    }
+    return json.dumps(profile, indent=2, sort_keys=True) + "\n"
+
+
+def _vscode_tasks_text() -> str:
+    tasks = {
+        "version": "2.0.0",
+        "tasks": [
+            {"label": "AppGen quality", "type": "shell", "command": "python scripts/appgen_quality.py", "group": "test", "problemMatcher": []},
+            {"label": "Pytest", "type": "shell", "command": "pytest -q", "group": "test", "problemMatcher": []},
+            {"label": "Alembic current", "type": "shell", "command": "alembic -c alembic.ini current", "group": "build", "problemMatcher": []},
+        ],
+    }
+    return json.dumps(tasks, indent=2, sort_keys=True) + "\n"
+
+
+def _vscode_extensions_text() -> str:
+    extensions = {
+        "recommendations": [
+            "ms-python.python",
+            "ms-python.vscode-pylance",
+            "batisteo.vscode-django",
+            "redhat.vscode-yaml",
+        ]
+    }
+    return json.dumps(extensions, indent=2, sort_keys=True) + "\n"
+
+
+def _eclipse_project_text(app_name: str) -> str:
+    escaped_name = escape(app_name)
+    return f"""<?xml version="1.0" encoding="UTF-8"?>
+<projectDescription>
+  <name>{escaped_name}</name>
+  <comment>Generated AppGen low-code project</comment>
+  <projects/>
+  <buildSpec>
+    <buildCommand>
+      <name>org.python.pydev.PyDevBuilder</name>
+      <arguments/>
+    </buildCommand>
+  </buildSpec>
+  <natures>
+    <nature>org.python.pydev.pythonNature</nature>
+  </natures>
+</projectDescription>
+"""
+
+
+def _pydev_project_text() -> str:
+    return """<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<?eclipse-pydev version="1.0"?>
+<pydev_project>
+  <pydev_property name="org.python.pydev.PYTHON_PROJECT_INTERPRETER">Default</pydev_property>
+  <pydev_property name="org.python.pydev.PYTHON_PROJECT_VERSION">python interpreter</pydev_property>
+  <pydev_pathproperty name="org.python.pydev.PROJECT_SOURCE_PATH">
+    <path>/app</path>
+    <path>/app_custom</path>
+    <path>/tests</path>
+  </pydev_pathproperty>
+</pydev_project>
+"""
+
+
+def _idea_module_name(app_name: str) -> str:
+    return underscore(app_name).replace("_", "-").lower() or "appgen"
+
+
+def _idea_misc_text() -> str:
+    return """<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="ProjectRootManager" version="2" project-jdk-name="Python 3" project-jdk-type="Python SDK" />
+</project>
+"""
+
+
+def _idea_modules_text(app_name: str) -> str:
+    module_name = escape(_idea_module_name(app_name))
+    return f"""<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="ProjectModuleManager">
+    <modules>
+      <module fileurl="file://$PROJECT_DIR$/.idea/{module_name}.iml" filepath="$PROJECT_DIR$/.idea/{module_name}.iml" />
+    </modules>
+  </component>
+</project>
+"""
+
+
+def _idea_module_text() -> str:
+    return """<?xml version="1.0" encoding="UTF-8"?>
+<module type="PYTHON_MODULE" version="4">
+  <component name="NewModuleRootManager">
+    <content url="file://$MODULE_DIR$/..">
+      <sourceFolder url="file://$MODULE_DIR$/../app" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/../app_custom" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/../tests" isTestSource="true" />
+    </content>
+    <orderEntry type="jdk" jdkName="Python 3" jdkType="Python SDK" />
+    <orderEntry type="sourceFolder" forTests="false" />
+  </component>
+</module>
+"""
+
+
+def _idea_run_config_text(app_name: str) -> str:
+    escaped_name = escape(app_name)
+    return f"""<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="{escaped_name} Flask" type="Python.FlaskServer">
+    <module name="{escape(_idea_module_name(app_name))}" />
+    <option name="target" value="app" />
+    <option name="targetType" value="PATH" />
+    <option name="additionalOptions" value="--host 127.0.0.1 --port 8080" />
+    <option name="FLASK_DEBUG" value="true" />
+    <option name="SDK_HOME" value="" />
+    <envs>
+      <env name="FLASK_APP" value="app" />
+      <env name="FLASK_DEBUG" value="1" />
+    </envs>
+    <method v="2" />
+  </configuration>
+</component>
+"""
+
+
+def _dockerfile_text() -> str:
+    return """FROM python:3.12-slim
+
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
+
+WORKDIR /app
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+COPY . .
+
+ENV FLASK_APP=app
+CMD ["flask", "run", "--host=0.0.0.0", "--port=8080"]
+"""
+
+
+def _compose_text(app_name: str) -> str:
+    service_name = underscore(app_name).replace("_", "-").lower()
+    return f"""services:
+  web:
+    build: .
+    container_name: {service_name}-web
+    env_file:
+      - .env.example
+    ports:
+      - "8080:8080"
+    volumes:
+      - .:/app
+
+  https:
+    image: caddy:2
+    container_name: {service_name}-https
+    depends_on:
+      - web
+    environment:
+      APPGEN_DOMAIN: ${{APPGEN_DOMAIN:-localhost}}
+      APPGEN_TLS_EMAIL: ${{APPGEN_TLS_EMAIL:-admin@example.test}}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+
+volumes:
+  caddy_data:
+  caddy_config:
+"""
+
+
+def _deployment_contract_text(schema: AppSchema, app_name: str) -> str:
+    table_names = tuple(table.name for table in schema.tables)
+    return f'''"""Generated deployment contract for AppGen apps."""
+
+from __future__ import annotations
+
+
+DEPLOYMENT = {{
+    "app_name": {app_name!r},
+    "tables": {table_names!r},
+    "targets": ("docker", "compose", "https", "kubernetes", "aws", "gcp", "azure"),
+    "artifacts": {{
+        "docker": ("Dockerfile",),
+        "compose": ("docker-compose.yml", "deploy/Caddyfile"),
+        "https": ("deploy/Caddyfile", "deploy/appgen_https.py"),
+        "kubernetes": ("deploy/k8s.yaml",),
+        "aws": ("deploy/terraform-aws.tf",),
+        "gcp": ("deploy/terraform-gcp.tf",),
+        "azure": ("deploy/terraform-azure.tf",),
+    }},
+    "required_env": ("SECRET_KEY", "SQLALCHEMY_DATABASE_URI"),
+    "ports": (8080,),
+}}
+
+
+def deployment_targets():
+    """Return generated deployment targets."""
+    return DEPLOYMENT["targets"]
+
+
+def artifact_plan(target):
+    """Return files required for one generated deployment target."""
+    if target not in DEPLOYMENT["artifacts"]:
+        raise KeyError(f"Unknown deployment target: {{target}}")
+    return DEPLOYMENT["artifacts"][target]
+
+
+def environment_status(environ):
+    """Return missing deployment environment variables."""
+    missing = tuple(key for key in DEPLOYMENT["required_env"] if not environ.get(key))
+    return {{"configured": not missing, "missing": missing}}
+
+
+def deployment_check(environ, existing_paths):
+    """Return generated deployment readiness checks."""
+    existing = set(existing_paths)
+    missing_artifacts = tuple(
+        path
+        for paths in DEPLOYMENT["artifacts"].values()
+        for path in paths
+        if path not in existing
+    )
+    env = environment_status(environ)
+    return {{
+        "ok": not missing_artifacts and env["configured"],
+        "missing_artifacts": missing_artifacts,
+        "environment": env,
+    }}
+'''
+
+
+def _https_contract_text(app_name: str) -> str:
+    service_name = underscore(app_name).replace("_", "-").lower()
+    return f'''"""Generated automatic HTTPS deployment contract for AppGen apps."""
+
+from __future__ import annotations
+
+
+HTTPS = {{
+    "app_name": {app_name!r},
+    "service_name": {service_name!r},
+    "proxy": "caddy",
+    "domain_env": "APPGEN_DOMAIN",
+    "email_env": "APPGEN_TLS_EMAIL",
+    "artifacts": ("deploy/Caddyfile", "docker-compose.yml"),
+    "ports": (80, 443),
+    "upstream": "web:8080",
+}}
+
+
+def https_artifacts():
+    """Return generated automatic HTTPS artifacts."""
+    return HTTPS["artifacts"]
+
+
+def tls_environment_status(environ):
+    """Return missing TLS environment values for public automatic HTTPS."""
+    domain = environ.get(HTTPS["domain_env"], "")
+    missing = []
+    if not domain:
+        missing.append(HTTPS["domain_env"])
+    if domain and domain not in {{"localhost", "127.0.0.1"}} and not environ.get(HTTPS["email_env"]):
+        missing.append(HTTPS["email_env"])
+    return {{
+        "configured": not missing,
+        "missing": tuple(missing),
+        "domain": domain,
+        "email": environ.get(HTTPS["email_env"], ""),
+    }}
+
+
+def https_readiness(environ, existing_paths):
+    """Return automatic HTTPS readiness for generated deployments."""
+    existing = set(existing_paths)
+    missing_artifacts = tuple(path for path in HTTPS["artifacts"] if path not in existing)
+    env = tls_environment_status(environ)
+    return {{
+        "ok": not missing_artifacts and env["configured"],
+        "proxy": HTTPS["proxy"],
+        "upstream": HTTPS["upstream"],
+        "ports": HTTPS["ports"],
+        "missing_artifacts": missing_artifacts,
+        "environment": env,
+    }}
+
+
+def public_base_url(environ):
+    """Return the generated public HTTPS base URL."""
+    domain = environ.get(HTTPS["domain_env"], "localhost")
+    scheme = "http" if domain in {{"localhost", "127.0.0.1"}} else "https"
+    return f"{{scheme}}://{{domain}}"
+'''
+
+
+def _caddyfile_text(app_name: str) -> str:
+    service_name = underscore(app_name).replace("_", "-").lower()
+    return f"""# Generated automatic HTTPS reverse proxy for {service_name}.
+# Set APPGEN_DOMAIN to a public DNS name for Caddy-managed certificates.
+{{
+    email {{$APPGEN_TLS_EMAIL:admin@example.test}}
+}}
+
+{{$APPGEN_DOMAIN:localhost}} {{
+    encode zstd gzip
+    reverse_proxy web:8080
+    header {{
+        Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+        X-Content-Type-Options "nosniff"
+        X-Frame-Options "SAMEORIGIN"
+        Referrer-Policy "strict-origin-when-cross-origin"
+    }}
+}}
+"""
+
+
+def _k8s_manifest_text(app_name: str) -> str:
+    service_name = underscore(app_name).replace("_", "-").lower()
+    return f"""apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {service_name}
+  labels:
+    app.kubernetes.io/name: {service_name}
+    app.kubernetes.io/managed-by: appgen
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {service_name}
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: {service_name}
+    spec:
+      containers:
+        - name: web
+          image: {service_name}:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8080
+          env:
+            - name: SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {service_name}-secrets
+                  key: secret-key
+            - name: SQLALCHEMY_DATABASE_URI
+              valueFrom:
+                secretKeyRef:
+                  name: {service_name}-secrets
+                  key: database-uri
+          readinessProbe:
+            httpGet:
+              path: /health/ready
+              port: 8080
+          livenessProbe:
+            httpGet:
+              path: /health/live
+              port: 8080
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {service_name}
+  labels:
+    app.kubernetes.io/name: {service_name}
+spec:
+  selector:
+    app.kubernetes.io/name: {service_name}
+  ports:
+    - name: http
+      port: 80
+      targetPort: 8080
+"""
+
+
+def _terraform_text(app_name: str, provider: str) -> str:
+    service_name = underscore(app_name).replace("_", "-").lower()
+    comments = {
+        "aws": "ECS/Fargate or EKS module entrypoint",
+        "gcp": "Cloud Run or GKE module entrypoint",
+        "azure": "Container Apps or AKS module entrypoint",
+    }
+    return f"""terraform {{
+  required_version = ">= 1.6.0"
+}}
+
+variable "image" {{
+  description = "Container image for {service_name}."
+  type        = string
+}}
+
+variable "database_url" {{
+  description = "SQLAlchemy database URL."
+  type        = string
+  sensitive   = true
+}}
+
+variable "secret_key" {{
+  description = "Flask secret key."
+  type        = string
+  sensitive   = true
+}}
+
+locals {{
+  app_name = "{service_name}"
+  port     = 8080
+  target   = "{provider}"
+}}
+
+# {comments[provider]}.
+# Wire this generated contract into your approved organization module.
+output "appgen_deployment_contract" {{
+  value = {{
+    app_name = local.app_name
+    target   = local.target
+    port     = local.port
+  }}
+}}
+"""
+
+
+def _frontend_contract_text(schema: AppSchema, app_name: str) -> str:
+    table_contracts = tuple(
+        {
+            "table": table.name,
+            "endpoint": f"/api/v1/{underscore(table.name)}/",
+            "fields": tuple(_model_attribute_name(column) for column in table.columns if not column.hidden and not column.derived),
+        }
+        for table in schema.tables
+    )
+    selected_targets = _selected_platform_targets(schema)
+    frontend_targets = ("react", "vue", "angular", "express") if "web" in selected_targets else ()
+    return f'''"""Generated front-end scaffold contract for AppGen apps."""
+
+from __future__ import annotations
+
+
+FRONTENDS = {{
+    "react": {{"path": "frontends/react", "entry": "src/App.jsx", "kind": "spa"}},
+    "vue": {{"path": "frontends/vue", "entry": "src/App.vue", "kind": "spa"}},
+    "angular": {{"path": "frontends/angular", "entry": "src/app.component.ts", "kind": "spa"}},
+    "express": {{"path": "frontends/express", "entry": "src/server.js", "kind": "api-proxy"}},
+}}
+SELECTED_FRONTENDS = {frontend_targets!r}
+
+APP_CONTRACT = {{
+    "app_name": {app_name!r},
+    "api_base": "/api/v1",
+    "tables": {table_contracts!r},
+}}
+
+
+def frontend_targets():
+    """Return generated front-end targets."""
+    return SELECTED_FRONTENDS
+
+
+def frontend_plan(target):
+    """Return files and API contract for one generated front-end."""
+    if target not in FRONTENDS:
+        raise KeyError(f"Unknown front-end target: {{target}}")
+    plan = dict(FRONTENDS[target], target=target, api_base=APP_CONTRACT["api_base"], tables=APP_CONTRACT["tables"])
+    plan["selected"] = target in SELECTED_FRONTENDS
+    return plan
+
+
+def api_routes():
+    """Return generated REST routes consumed by front-end scaffolds."""
+    return tuple((table["table"], table["endpoint"]) for table in APP_CONTRACT["tables"])
+
+
+def scaffold_check(existing_paths):
+    """Return readiness for generated front-end scaffold files."""
+    existing = set(existing_paths)
+    missing = []
+    for target in SELECTED_FRONTENDS:
+        spec = FRONTENDS[target]
+        missing.append(f'{{spec["path"]}}/package.json')
+        missing.append(f'{{spec["path"]}}/{{spec["entry"]}}')
+    missing = tuple(path for path in missing if path not in existing)
+    return {{"ok": not missing, "missing": missing}}
+'''
+
+
+def _frontend_package_text(app_name: str, target: str) -> str:
+    package_name = f"{underscore(app_name).replace('_', '-')}-{target}"
+    scripts = {
+        "react": '"dev": "vite --host 0.0.0.0", "build": "vite build"',
+        "vue": '"dev": "vite --host 0.0.0.0", "build": "vite build"',
+        "angular": '"dev": "ng serve --host 0.0.0.0", "build": "ng build"',
+        "express": '"dev": "node src/server.js", "start": "node src/server.js"',
+    }
+    return f"""{{
+  "name": "{package_name}",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Generated {target} starter for {app_name}.",
+  "scripts": {{
+    {scripts[target]}
+  }}
+}}
+"""
+
+
+def _frontend_source(target: str, schema: AppSchema, app_name: str) -> tuple[str, str]:
+    tables = [
+        {
+            "name": table.name,
+            "label": snake_to_label(table.name),
+            "endpoint": f"/api/v1/{underscore(table.name)}/",
+            "fields": [_model_attribute_name(column) for column in table.columns if not column.hidden and not column.derived],
+        }
+        for table in schema.tables
+    ]
+    if target == "react":
+        return (
+            "App.jsx",
+            f"""const tables = {json.dumps(tables, indent=2)};
+
+export default function App() {{
+  return (
+    <main className="appgen-shell">
+      <h1>{app_name}</h1>
+      <section>
+        {{tables.map((table) => (
+          <article key={{table.name}}>
+            <h2>{{table.label}}</h2>
+            <code>{{table.endpoint}}</code>
+            <p>{{table.fields.join(', ')}}</p>
+          </article>
+        ))}}
+      </section>
+    </main>
+  );
+}}
+""",
+        )
+    if target == "vue":
+        return (
+            "App.vue",
+            f"""<script setup>
+const tables = {json.dumps(tables, indent=2)};
+</script>
+
+<template>
+  <main class="appgen-shell">
+    <h1>{app_name}</h1>
+    <section>
+      <article v-for="table in tables" :key="table.name">
+        <h2>{{{{ table.label }}}}</h2>
+        <code>{{{{ table.endpoint }}}}</code>
+        <p>{{{{ table.fields.join(', ') }}}}</p>
+      </article>
+    </section>
+  </main>
+</template>
+""",
+        )
+    if target == "angular":
+        return (
+            "app.component.ts",
+            f"""import {{ Component }} from '@angular/core';
+
+@Component({{
+  selector: 'app-root',
+  template: `
+    <main class="appgen-shell">
+      <h1>{app_name}</h1>
+      <section>
+        <article *ngFor="let table of tables">
+          <h2>{{{{ table.label }}}}</h2>
+          <code>{{{{ table.endpoint }}}}</code>
+          <p>{{{{ table.fields.join(', ') }}}}</p>
+        </article>
+      </section>
+    </main>
+  `,
+}})
+export class AppComponent {{
+  tables = {json.dumps(tables, indent=2)};
+}}
+""",
+        )
+    return (
+        "server.js",
+        f"""const http = require('http');
+
+const contract = {{
+  appName: {json.dumps(app_name)},
+  apiBase: process.env.APPGEN_API_BASE || 'http://localhost:8080/api/v1',
+  tables: {json.dumps(tables, indent=2)}
+}};
+
+const server = http.createServer((req, res) => {{
+  res.setHeader('Content-Type', 'application/json');
+  res.end(JSON.stringify(contract, null, 2));
+}});
+
+server.listen(process.env.PORT || 3000);
+""",
+    )
+
+
+def _native_tables(schema: AppSchema) -> tuple[dict, ...]:
+    return tuple(
+        {
+            "name": table.name,
+            "label": snake_to_label(table.name),
+            "endpoint": f"/api/v1/{underscore(table.name)}/",
+            "fields": tuple(
+                _model_attribute_name(column)
+                for column in table.columns
+                if not column.hidden and not column.derived
+            ),
+        }
+        for table in schema.tables
+    )
+
+
+def _sdk_contract_text(schema: AppSchema, app_name: str) -> str:
+    tables = _native_tables(schema)
+    return f'''"""Generated multi-language API SDK contract for AppGen apps."""
+
+from __future__ import annotations
+
+
+SDK_TARGETS = {{
+    "python": {{
+        "path": "sdks/python/client.py",
+        "language": "Python",
+        "capabilities": ("list", "retrieve", "create", "update", "delete"),
+    }},
+    "javascript": {{
+        "path": "sdks/javascript/client.js",
+        "language": "JavaScript",
+        "capabilities": ("list", "retrieve", "create", "update", "delete"),
+    }},
+    "java": {{
+        "path": "sdks/java/AppGenClient.java",
+        "language": "Java",
+        "capabilities": ("list", "retrieve", "create", "update", "delete"),
+    }},
+    "csharp": {{
+        "path": "sdks/csharp/AppGenClient.cs",
+        "language": "C#",
+        "capabilities": ("list", "retrieve", "create", "update", "delete"),
+    }},
+}}
+
+SDK_CONTRACT = {{
+    "app_name": {app_name!r},
+    "api_base": "/api/v1",
+    "tables": {tables!r},
+}}
+
+
+def sdk_targets():
+    """Return generated SDK target names."""
+    return tuple(SDK_TARGETS)
+
+
+def sdk_plan(target):
+    """Return a generated SDK scaffold plan."""
+    if target not in SDK_TARGETS:
+        raise KeyError(f"Unknown SDK target: {{target}}")
+    return dict(SDK_TARGETS[target], target=target, tables=SDK_CONTRACT["tables"])
+
+
+def sdk_routes():
+    """Return REST routes consumed by generated SDK clients."""
+    return tuple((table["name"], table["endpoint"]) for table in SDK_CONTRACT["tables"])
+
+
+def client_method_names(table_name):
+    """Return generated client method names for a table."""
+    normalized = table_name.lower()
+    return {{
+        "list": f"list_{{normalized}}",
+        "retrieve": f"get_{{normalized}}",
+        "create": f"create_{{normalized}}",
+        "update": f"update_{{normalized}}",
+        "delete": f"delete_{{normalized}}",
+    }}
+
+
+def scaffold_check(existing_paths):
+    """Return readiness for generated SDK scaffold files."""
+    existing = set(existing_paths)
+    required = tuple(spec["path"] for spec in SDK_TARGETS.values()) + ("sdks/appgen_sdks.py",)
+    missing = tuple(path for path in required if path not in existing)
+    return {{"ok": not missing, "missing": missing, "targets": sdk_targets()}}
+'''
+
+
+def _python_sdk_text(schema: AppSchema, app_name: str) -> str:
+    tables = _native_tables(schema)
+    return f'''"""Generated Python API client for {app_name}."""
+
+from __future__ import annotations
+
+import json
+from urllib.parse import urljoin
+from urllib.request import Request
+from urllib.request import urlopen
+
+
+TABLES = {tables!r}
+
+
+class AppGenClient:
+    """Small dependency-free client for generated AppGen REST APIs."""
+
+    def __init__(self, base_url, token=None):
+        self.base_url = base_url.rstrip("/") + "/"
+        self.token = token
+
+    def request(self, method, path, payload=None):
+        body = None if payload is None else json.dumps(payload).encode("utf-8")
+        headers = {{"Accept": "application/json"}}
+        if body is not None:
+            headers["Content-Type"] = "application/json"
+        if self.token:
+            headers["Authorization"] = f"Bearer {{self.token}}"
+        request = Request(urljoin(self.base_url, path.lstrip("/")), data=body, headers=headers, method=method)
+        with urlopen(request) as response:
+            content = response.read()
+        return None if not content else json.loads(content.decode("utf-8"))
+
+    def list(self, table):
+        return self.request("GET", table["endpoint"])
+
+    def retrieve(self, table, row_id):
+        return self.request("GET", f"{{table['endpoint']}}{{row_id}}")
+
+    def create(self, table, values):
+        return self.request("POST", table["endpoint"], values)
+
+    def update(self, table, row_id, values):
+        return self.request("PUT", f"{{table['endpoint']}}{{row_id}}", values)
+
+    def delete(self, table, row_id):
+        return self.request("DELETE", f"{{table['endpoint']}}{{row_id}}")
+
+
+def table_contracts():
+    """Return generated table contracts used by this client."""
+    return TABLES
+'''
+
+
+def _javascript_sdk_text(schema: AppSchema, app_name: str) -> str:
+    tables = _native_tables(schema)
+    return f"""// Generated JavaScript API client for {app_name}.
+
+export const tables = {json.dumps(tables, indent=2)};
+
+export class AppGenClient {{
+  constructor(baseUrl, token = null) {{
+    this.baseUrl = baseUrl.replace(/\\/$/, '');
+    this.token = token;
+  }}
+
+  async request(method, path, payload = undefined) {{
+    const headers = {{ Accept: 'application/json' }};
+    if (payload !== undefined) headers['Content-Type'] = 'application/json';
+    if (this.token) headers.Authorization = `Bearer ${{this.token}}`;
+    const response = await fetch(`${{this.baseUrl}}${{path}}`, {{
+      method,
+      headers,
+      body: payload === undefined ? undefined : JSON.stringify(payload)
+    }});
+    if (!response.ok) throw new Error(`AppGen API request failed: ${{response.status}}`);
+    const text = await response.text();
+    return text ? JSON.parse(text) : null;
+  }}
+
+  list(table) {{ return this.request('GET', table.endpoint); }}
+  retrieve(table, rowId) {{ return this.request('GET', `${{table.endpoint}}${{rowId}}`); }}
+  create(table, values) {{ return this.request('POST', table.endpoint, values); }}
+  update(table, rowId, values) {{ return this.request('PUT', `${{table.endpoint}}${{rowId}}`, values); }}
+  delete(table, rowId) {{ return this.request('DELETE', `${{table.endpoint}}${{rowId}}`); }}
+}}
+"""
+
+
+def _java_sdk_text(schema: AppSchema, app_name: str) -> str:
+    tables = _native_tables(schema)
+    endpoints = ", ".join(f'"{table["endpoint"]}"' for table in tables)
+    return f"""// Generated Java API client skeleton for {app_name}.
+
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.util.List;
+
+public final class AppGenClient {{
+    public static final List<String> ENDPOINTS = List.of({endpoints});
+
+    private final HttpClient client = HttpClient.newHttpClient();
+    private final String baseUrl;
+    private final String token;
+
+    public AppGenClient(String baseUrl, String token) {{
+        this.baseUrl = baseUrl.replaceAll("/$", "");
+        this.token = token;
+    }}
+
+    public String request(String method, String path, String payload) throws Exception {{
+        HttpRequest.Builder builder = HttpRequest.newBuilder(URI.create(baseUrl + path))
+            .header("Accept", "application/json");
+        if (token != null && !token.isBlank()) builder.header("Authorization", "Bearer " + token);
+        if (payload == null) builder.method(method, HttpRequest.BodyPublishers.noBody());
+        else builder.header("Content-Type", "application/json").method(method, HttpRequest.BodyPublishers.ofString(payload));
+        return client.send(builder.build(), HttpResponse.BodyHandlers.ofString()).body();
+    }}
+}}
+"""
+
+
+def _csharp_sdk_text(schema: AppSchema, app_name: str) -> str:
+    tables = _native_tables(schema)
+    endpoints = ", ".join(f'"{table["endpoint"]}"' for table in tables)
+    return f"""// Generated C# API client skeleton for {app_name}.
+
+using System.Net.Http;
+using System.Net.Http.Headers;
+using System.Text;
+using System.Threading.Tasks;
+
+public sealed class AppGenClient
+{{
+    public static readonly string[] Endpoints = new[] {{ {endpoints} }};
+
+    private readonly HttpClient client;
+    private readonly string baseUrl;
+
+    public AppGenClient(string baseUrl, string token = null)
+    {{
+        this.baseUrl = baseUrl.TrimEnd('/');
+        client = new HttpClient();
+        if (!string.IsNullOrWhiteSpace(token))
+        {{
+            client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        }}
+    }}
+
+    public async Task<string> RequestAsync(HttpMethod method, string path, string payload = null)
+    {{
+        using var request = new HttpRequestMessage(method, baseUrl + path);
+        request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+        if (payload != null)
+        {{
+            request.Content = new StringContent(payload, Encoding.UTF8, "application/json");
+        }}
+        using var response = await client.SendAsync(request);
+        response.EnsureSuccessStatusCode();
+        return await response.Content.ReadAsStringAsync();
+    }}
+}}
+"""
+
+
+def _sdk_sources(schema: AppSchema, app_name: str) -> tuple[tuple[str, str, str], ...]:
+    return (
+        ("python", "client.py", _python_sdk_text(schema, app_name)),
+        ("javascript", "client.js", _javascript_sdk_text(schema, app_name)),
+        ("java", "AppGenClient.java", _java_sdk_text(schema, app_name)),
+        ("csharp", "AppGenClient.cs", _csharp_sdk_text(schema, app_name)),
+    )
+
+
+def _native_contract_text(schema: AppSchema, app_name: str) -> str:
+    tables = _native_tables(schema)
+    selected_targets = _selected_platform_targets(schema)
+    native_targets = tuple(target for target in ("mobile", "desktop") if target in selected_targets)
+    return f'''"""Generated native mobile and desktop scaffold contract for AppGen apps."""
+
+from __future__ import annotations
+
+
+NATIVE_TARGETS = {{
+    "mobile": {{
+        "path": "native/mobile",
+        "entry": "app.py",
+        "framework": "kivy",
+        "capabilities": ("offline", "touch", "camera", "location"),
+    }},
+    "desktop": {{
+        "path": "native/desktop",
+        "entry": "app.py",
+        "framework": "beeware",
+        "capabilities": ("offline", "keyboard", "local-files"),
+    }},
+}}
+SELECTED_NATIVE_TARGETS = {native_targets!r}
+
+NATIVE_CONTRACT = {{
+    "app_name": {app_name!r},
+    "api_base": "/api/v1",
+    "tables": {tables!r},
+}}
+
+
+def native_targets():
+    """Return generated native app targets."""
+    return SELECTED_NATIVE_TARGETS
+
+
+def native_plan(target):
+    """Return generated native scaffold plan for mobile or desktop."""
+    if target not in NATIVE_TARGETS:
+        raise KeyError(f"Unknown native target: {{target}}")
+    plan = dict(NATIVE_TARGETS[target], target=target, tables=NATIVE_CONTRACT["tables"])
+    plan["selected"] = target in SELECTED_NATIVE_TARGETS
+    return plan
+
+
+def native_api_routes():
+    """Return REST routes consumed by generated native apps."""
+    return tuple((table["name"], table["endpoint"]) for table in NATIVE_CONTRACT["tables"])
+
+
+def native_feature_matrix():
+    """Return generated capabilities for native adapters."""
+    return tuple(
+        {{"target": target, "framework": spec["framework"], "capabilities": spec["capabilities"]}}
+        for target, spec in NATIVE_TARGETS.items()
+        if target in SELECTED_NATIVE_TARGETS
+    )
+
+
+def scaffold_check(existing_paths):
+    """Return readiness for generated native scaffold files."""
+    existing = set(existing_paths)
+    required = tuple(
+        path
+        for target in SELECTED_NATIVE_TARGETS
+        for spec in (NATIVE_TARGETS[target],)
+        for path in (f'{{spec["path"]}}/pyproject.toml', f'{{spec["path"]}}/{{spec["entry"]}}')
+    ) + ("native/appgen_native.py",)
+    missing = tuple(path for path in required if path not in existing)
+    return {{"ok": not missing, "missing": missing, "targets": native_targets()}}
+'''
+
+
+def _native_pyproject_text(app_name: str, target: str) -> str:
+    package_name = f"{underscore(app_name).replace('_', '-')}-{target}"
+    dependency = "kivy>=2.3,<3" if target == "mobile" else "toga>=0.4,<1"
+    return f"""[project]
+name = "{package_name}"
+version = "0.1.0"
+description = "Generated {target} starter for {app_name}."
+requires-python = ">=3.11"
+dependencies = ["{dependency}", "httpx>=0.27,<1"]
+
+[project.scripts]
+appgen-{target} = "app:main"
+"""
+
+
+def _kivy_mobile_text(schema: AppSchema, app_name: str) -> str:
+    tables = _native_tables(schema)
+    return f'''"""Generated Kivy mobile starter for {app_name}."""
+
+from __future__ import annotations
+
+APP_NAME = {app_name!r}
+TABLES = {tables!r}
+
+
+def mobile_contract():
+    """Return generated mobile table and API descriptors."""
+    return {{"app_name": APP_NAME, "framework": "kivy", "tables": TABLES}}
+
+
+def offline_record(table_name, values):
+    """Return a queued offline mutation payload for later sync."""
+    return {{"table": table_name, "values": dict(values), "status": "queued"}}
+
+
+def sync_plan(api_base):
+    """Return endpoint plan for syncing the generated mobile app."""
+    return tuple(
+        {{"table": table["name"], "url": api_base.rstrip("/") + table["endpoint"]}}
+        for table in TABLES
+    )
+
+
+try:
+    from kivy.app import App
+    from kivy.uix.label import Label
+except ImportError:  # pragma: no cover - generated starter can be inspected without Kivy.
+    App = object
+    Label = None
+
+
+class AppGenMobileApp(App):
+    def build(self):
+        if Label is None:
+            return None
+        table_names = ", ".join(table["label"] for table in TABLES) or "No tables"
+        return Label(text=f"{{APP_NAME}} mobile\\n{{table_names}}")
+
+
+def main():
+    """Run the generated Kivy mobile app."""
+    return AppGenMobileApp().run()
+
+
+if __name__ == "__main__":
+    main()
+'''
+
+
+def _beeware_desktop_text(schema: AppSchema, app_name: str) -> str:
+    tables = _native_tables(schema)
+    return f'''"""Generated BeeWare desktop starter for {app_name}."""
+
+from __future__ import annotations
+
+APP_NAME = {app_name!r}
+TABLES = {tables!r}
+
+
+def desktop_contract():
+    """Return generated desktop table and API descriptors."""
+    return {{"app_name": APP_NAME, "framework": "beeware", "tables": TABLES}}
+
+
+def menu_actions():
+    """Return desktop menu actions for generated tables."""
+    return tuple(
+        {{"label": table["label"], "action": f"open_{{table['name'].lower()}}", "endpoint": table["endpoint"]}}
+        for table in TABLES
+    )
+
+
+def local_cache_plan(cache_dir):
+    """Return local cache file names for generated desktop data."""
+    return tuple(
+        {{"table": table["name"], "path": f"{{cache_dir}}/{{table['name'].lower()}}.json"}}
+        for table in TABLES
+    )
+
+
+try:
+    import toga
+except ImportError:  # pragma: no cover - generated starter can be inspected without BeeWare.
+    toga = None
+
+
+class AppGenDesktopApp(toga.App if toga else object):
+    def startup(self):
+        if toga is None:
+            return None
+        table_names = "\\n".join(table["label"] for table in TABLES) or "No tables"
+        self.main_window = toga.MainWindow(title=APP_NAME)
+        self.main_window.content = toga.Box(children=[toga.Label(table_names)])
+        self.main_window.show()
+
+
+def main():
+    """Run the generated BeeWare desktop app."""
+    if toga is None:
+        return desktop_contract()
+    return AppGenDesktopApp(APP_NAME, "org.appgen.generated").main_loop()
+
+
+if __name__ == "__main__":
+    main()
+'''
+
+
+def _jhipster_type(type_name: str) -> str:
+    normalized = type_name.lower().strip()
+    if normalized.endswith("[]"):
+        return "String"
+    normalized = normalized.split("(", 1)[0]
+    if normalized in {"int", "integer", "serial", "smallint"}:
+        return "Integer"
+    if normalized in {"bigint", "bigserial"}:
+        return "Long"
+    if normalized in {"float", "real", "double", "double precision"}:
+        return "Double"
+    if normalized in {"decimal", "numeric", "money"}:
+        return "BigDecimal"
+    if normalized in {"bool", "boolean"}:
+        return "Boolean"
+    if normalized in {"date"}:
+        return "LocalDate"
+    if normalized in {"datetime", "timestamp", "timestamptz", "time"}:
+        return "Instant"
+    if normalized in {"text", "longtext", "mediumtext"}:
+        return "TextBlob"
+    if normalized in {"blob", "binary", "bytea"}:
+        return "AnyBlob"
+    return "String"
+
+
+def _jhipster_entity_name(table_name: str) -> str:
+    if "_" in table_name:
+        return snake_to_pascal(table_name)
+    return table_name[:1].upper() + table_name[1:]
+
+
+def _jhipster_field_name(column: ColumnSchema) -> str:
+    return underscore(_model_attribute_name(column))
+
+
+def _jhipster_relationship_name(source_column: str) -> str:
+    name = underscore(source_column)
+    if name.endswith("_id"):
+        name = name[:-3]
+    return name or underscore(source_column)
+
+
+def _jhipster_relationship_type(cardinality: str) -> str:
+    return {
+        "one-to-one": "OneToOne",
+        "one-to-many": "OneToMany",
+        "many-to-many": "ManyToMany",
+        "many-to-one": "ManyToOne",
+    }.get(cardinality, "ManyToOne")
+
+
+def _jhipster_collection_name(entity_name: str) -> str:
+    return pluralize(underscore(entity_name))
+
+
+def _jhipster_jdl_relationship_line(relationship: dict) -> str:
+    if relationship["type"] == "OneToMany":
+        collection = _jhipster_collection_name(relationship["target"])
+        inverse = _jhipster_relationship_name(relationship.get("target_column") or "")
+        if inverse:
+            return f"  {relationship['source']}{{{collection}}} to {relationship['target']}{{{inverse}}}"
+        return f"  {relationship['source']}{{{collection}}} to {relationship['target']}"
+    return f"  {relationship['source']}{{{relationship['field']}}} to {relationship['target']}"
+
+
+def _jhipster_entity_contracts(schema: AppSchema) -> tuple[dict, ...]:
+    return tuple(
+        {
+            "table": table.name,
+            "entity": _jhipster_entity_name(table.name),
+            "fields": tuple(
+                {
+                    "name": _jhipster_field_name(column),
+                    "type": _jhipster_type(column.type_name),
+                    "required": not column.nullable and not column.primary_key,
+                    "source_column": column.name,
+                }
+                for column in table.columns
+                if not column.primary_key and not column.references and not column.derived
+            ),
+        }
+        for table in schema.tables
+    )
+
+
+def _jhipster_relationship_contracts(schema: AppSchema) -> tuple[dict, ...]:
+    return tuple(
+        {
+            "type": _jhipster_relationship_type(relation.cardinality),
+            "cardinality": relation.cardinality,
+            "source": _jhipster_entity_name(relation.source_table),
+            "field": _jhipster_relationship_name(relation.source_column),
+            "target": _jhipster_entity_name(relation.target_table),
+            "source_column": relation.source_column,
+            "target_column": relation.target_column,
+        }
+        for relation in schema.relations
+    )
+
+
+def _jhipster_contract_text(schema: AppSchema, app_name: str) -> str:
+    entities = _jhipster_entity_contracts(schema)
+    relationships = _jhipster_relationship_contracts(schema)
+    return f'''"""Generated JHipster/JDL export contract for AppGen apps."""
+
+from __future__ import annotations
+
+
+JHIPSTER = {{
+    "app_name": {app_name!r},
+    "jdl_file": "jhipster/app.jdl",
+    "entities": {entities!r},
+    "relationships": {relationships!r},
+    "command": ("jhipster", "jdl", "jhipster/app.jdl"),
+}}
+
+
+def jhipster_entities():
+    """Return generated JHipster entity contracts."""
+    return tuple(JHIPSTER["entities"])
+
+
+def jhipster_relationships():
+    """Return generated JHipster relationship contracts."""
+    return tuple(JHIPSTER["relationships"])
+
+
+def jhipster_import_command():
+    """Return the generated JHipster JDL import command."""
+    return JHIPSTER["command"]
+
+
+def jdl_file():
+    """Return the generated JDL file path."""
+    return JHIPSTER["jdl_file"]
+
+
+def export_check(existing_paths):
+    """Return readiness for generated JHipster export artifacts."""
+    existing = set(existing_paths)
+    missing = tuple(path for path in ("jhipster/app.jdl", "jhipster/appgen_jhipster.py") if path not in existing)
+    return {{
+        "ok": not missing,
+        "missing": missing,
+        "entities": tuple(entity["entity"] for entity in JHIPSTER["entities"]),
+        "relationships": JHIPSTER["relationships"],
+    }}
+'''
+
+
+def _jhipster_jdl_text(schema: AppSchema, app_name: str) -> str:
+    base_name = snake_to_pascal(app_name).replace("_", "")
+    lines = [
+        "application {",
+        "  config {",
+        f"    baseName {base_name}",
+        "    applicationType monolith",
+        "    authenticationType jwt",
+        "    prodDatabaseType postgresql",
+        "    devDatabaseType h2Disk",
+        "    buildTool maven",
+        "    clientFramework react",
+        "    enableTranslation true",
+        "    nativeLanguage en",
+        "    languages [en]",
+        "  }",
+        "  entities *",
+        "}",
+        "",
+    ]
+    for entity in _jhipster_entity_contracts(schema):
+        lines.append(f"entity {entity['entity']} {{")
+        for field in entity["fields"]:
+            suffix = " required" if field["required"] else ""
+            lines.append(f"  {field['name']} {field['type']}{suffix}")
+        lines.append("}")
+        lines.append("")
+    relationships = _jhipster_relationship_contracts(schema)
+    if relationships:
+        for relationship_type in ("ManyToOne", "OneToOne", "OneToMany", "ManyToMany"):
+            typed_relationships = [
+                relationship for relationship in relationships if relationship["type"] == relationship_type
+            ]
+            if not typed_relationships:
+                continue
+            lines.append(f"relationship {relationship_type} {{")
+            for relationship in typed_relationships:
+                lines.append(_jhipster_jdl_relationship_line(relationship))
+            lines.append("}")
+            lines.append("")
+    lines.extend(
+        [
+            "dto * with mapstruct",
+            "service * with serviceClass",
+            "paginate * with pagination",
+            "filter *",
+            "",
+        ]
+    )
+    return "\n".join(lines)
+
+
+def _node_red_events(schema: AppSchema) -> tuple[dict, ...]:
+    actions = ("created", "updated", "deleted")
+    return tuple(
+        {
+            "kind": "table",
+            "table": table.name,
+            "action": action,
+            "topic": f"{table.name}.{action}",
+            "path": f"/appgen/{underscore(table.name)}/{action}",
+        }
+        for table in schema.tables
+        for action in actions
+    )
+
+
+def _node_red_workflow_events(schema: AppSchema) -> tuple[dict, ...]:
+    return tuple(
+        {
+            "kind": "workflow",
+            "workflow": flow.name,
+            "source": step.source,
+            "target": step.target,
+            "topic": f"workflow.{flow.name}.{step.source}.{step.target}",
+            "path": (
+                f"/appgen/workflow/{underscore(flow.name)}/"
+                f"{underscore(step.source)}/{underscore(step.target)}"
+            ),
+        }
+        for flow in schema.flows
+        for step in flow.steps
+    )
+
+
+def _node_red_contract_text(schema: AppSchema, app_name: str) -> str:
+    events = _node_red_events(schema)
+    workflow_events = _node_red_workflow_events(schema)
+    return f'''"""Generated Node-RED automation contract for AppGen apps."""
+
+from __future__ import annotations
+
+
+FLOW_FILE = "automation/node-red/flows.json"
+
+APP_CONTRACT = {{
+    "app_name": {app_name!r},
+    "flow_file": FLOW_FILE,
+    "events": {events!r},
+    "workflow_events": {workflow_events!r},
+}}
+
+
+def node_red_events():
+    """Return generated table-event topics exposed to Node-RED."""
+    return tuple(APP_CONTRACT["events"])
+
+
+def workflow_events():
+    """Return generated workflow transition topics exposed to Node-RED."""
+    return tuple(APP_CONTRACT["workflow_events"])
+
+
+def automation_events():
+    """Return every generated table and workflow automation topic."""
+    return node_red_events() + workflow_events()
+
+
+def event_topic(table_name, action):
+    """Return the generated event topic for a table action."""
+    normalized = str(table_name).lower()
+    for event in APP_CONTRACT["events"]:
+        if event["table"].lower() == normalized and event["action"] == action:
+            return event["topic"]
+    raise KeyError(f"Unknown Node-RED event: {{table_name}}.{{action}}")
+
+
+def workflow_event_topic(flow_name, source, target):
+    """Return the generated event topic for a workflow transition."""
+    normalized = str(flow_name).lower()
+    for event in APP_CONTRACT["workflow_events"]:
+        if (
+            event["workflow"].lower() == normalized
+            and event["source"] == source
+            and event["target"] == target
+        ):
+            return event["topic"]
+    raise KeyError(f"Unknown Node-RED workflow event: {{flow_name}}.{{source}}.{{target}}")
+
+
+def webhook_plan(table_name, action, base_url=""):
+    """Return the HTTP webhook endpoint that feeds a generated Node-RED event."""
+    normalized = str(table_name).lower()
+    for event in APP_CONTRACT["events"]:
+        if event["table"].lower() == normalized and event["action"] == action:
+            prefix = str(base_url).rstrip("/")
+            return {{
+                "topic": event["topic"],
+                "method": "POST",
+                "path": event["path"],
+                "url": prefix + event["path"],
+            }}
+    raise KeyError(f"Unknown Node-RED webhook: {{table_name}}.{{action}}")
+
+
+def workflow_webhook_plan(flow_name, source, target, base_url=""):
+    """Return the HTTP webhook endpoint that feeds a generated workflow event."""
+    normalized = str(flow_name).lower()
+    for event in APP_CONTRACT["workflow_events"]:
+        if (
+            event["workflow"].lower() == normalized
+            and event["source"] == source
+            and event["target"] == target
+        ):
+            prefix = str(base_url).rstrip("/")
+            return {{
+                "topic": event["topic"],
+                "method": "POST",
+                "path": event["path"],
+                "url": prefix + event["path"],
+            }}
+    raise KeyError(f"Unknown Node-RED workflow webhook: {{flow_name}}.{{source}}.{{target}}")
+
+
+def validate_flow_export(flow_export):
+    """Validate a Node-RED flow export against generated automation events."""
+    if not isinstance(flow_export, list):
+        return {{"ok": False, "error": "flow export must be a list"}}
+    node_names = {{node.get("name") for node in flow_export if isinstance(node, dict)}}
+    http_inputs = tuple(
+        node for node in flow_export if isinstance(node, dict) and node.get("type") == "http in"
+    )
+    expected_events = automation_events()
+    missing = tuple(event["topic"] for event in expected_events if event["topic"] not in node_names)
+    return {{
+        "ok": not missing and bool(http_inputs),
+        "events": tuple(event["topic"] for event in expected_events),
+        "table_events": tuple(event["topic"] for event in APP_CONTRACT["events"]),
+        "workflow_events": tuple(event["topic"] for event in APP_CONTRACT["workflow_events"]),
+        "http_inputs": len(http_inputs),
+        "missing": missing,
+    }}
+'''
+
+
+def _node_red_flows_text(schema: AppSchema, app_name: str) -> str:
+    nodes = [
+        {
+            "id": "appgen-flow",
+            "type": "tab",
+            "label": f"{app_name} Automation",
+            "disabled": False,
+            "info": "Generated AppGen table-event automation flow.",
+        }
+    ]
+    for event in _node_red_events(schema) + _node_red_workflow_events(schema):
+        node_base = underscore(event["topic"].replace(".", "_"))
+        context_lines = [
+            "  event: msg.topic,",
+            f"  kind: {json.dumps(event['kind'])},",
+        ]
+        if event["kind"] == "table":
+            context_lines.extend(
+                [
+                    f"  table: {json.dumps(event['table'])},",
+                    f"  action: {json.dumps(event['action'])},",
+                ]
+            )
+        else:
+            context_lines.extend(
+                [
+                    f"  workflow: {json.dumps(event['workflow'])},",
+                    f"  source: {json.dumps(event['source'])},",
+                    f"  target: {json.dumps(event['target'])},",
+                ]
+            )
+        context_lines.append("  body: msg.payload")
+        function_body = "\n".join(
+            [
+                f"msg.topic = {json.dumps(event['topic'])};",
+                "msg.payload = {",
+                *context_lines,
+                "};",
+                "return msg;",
+            ]
+        )
+        nodes.extend(
+            [
+                {
+                    "id": f"{node_base}-in",
+                    "type": "http in",
+                    "z": "appgen-flow",
+                    "name": event["topic"],
+                    "url": event["path"],
+                    "method": "post",
+                    "upload": False,
+                    "swaggerDoc": "",
+                    "wires": [[f"{node_base}-normalize"]],
+                },
+                {
+                    "id": f"{node_base}-normalize",
+                    "type": "function",
+                    "z": "appgen-flow",
+                    "name": f"Normalize {event['topic']}",
+                    "func": function_body,
+                    "outputs": 1,
+                    "noerr": 0,
+                    "initialize": "",
+                    "finalize": "",
+                    "libs": [],
+                    "wires": [[f"{node_base}-response"]],
+                },
+                {
+                    "id": f"{node_base}-response",
+                    "type": "http response",
+                    "z": "appgen-flow",
+                    "name": f"{event['topic']} accepted",
+                    "statusCode": "202",
+                    "headers": {},
+                    "wires": [],
+                },
+            ]
+        )
+    return json.dumps(nodes, indent=2, sort_keys=True) + "\n"
+
+
+def _chatbot_table_contracts(schema: AppSchema) -> tuple[dict, ...]:
+    contracts = []
+    for table in schema.tables:
+        prompts = []
+        for column in table.columns:
+            if column.hidden or column.derived or column.primary_key:
+                continue
+            field = _model_attribute_name(column)
+            prompts.append(
+                {
+                    "field": field,
+                    "source_column": column.name,
+                    "type": column.type_name,
+                    "required": not column.nullable,
+                    "prompt": f"What should {field.replace('_', ' ')} be?",
+                }
+            )
+        contracts.append(
+            {
+                "intent": f"create_{underscore(table.name)}",
+                "display_name": f"Create {snake_to_label(table.name)}",
+                "table": table.name,
+                "label": snake_to_label(table.name),
+                "required_fields": tuple(prompt["field"] for prompt in prompts if prompt["required"]),
+                "optional_fields": tuple(prompt["field"] for prompt in prompts if not prompt["required"]),
+                "prompts": tuple(prompts),
+            }
+        )
+    return tuple(contracts)
+
+
+def _chatbot_contract_text(schema: AppSchema, app_name: str) -> str:
+    intents = _chatbot_table_contracts(schema)
+    selected_targets = _selected_platform_targets(schema)
+    chatbot_targets = ("dialogflow", "botframework") if "chatbot" in selected_targets else ()
+    return f'''"""Generated chatbot platform export contract for AppGen apps."""
+
+from __future__ import annotations
+
+
+CHATBOT_EXPORTS = {{
+    "dialogflow": ("chatbots/dialogflow/intents.json",),
+    "botframework": ("chatbots/botframework/manifest.json",),
+}}
+SELECTED_CHATBOT_TARGETS = {chatbot_targets!r}
+
+CHATBOT_CONTRACT = {{
+    "app_name": {app_name!r},
+    "intents": {intents!r},
+}}
+
+
+def chatbot_targets():
+    """Return provider targets with generated chatbot export artifacts."""
+    return SELECTED_CHATBOT_TARGETS
+
+
+def chatbot_intents():
+    """Return generated table-creation chatbot intents."""
+    return tuple(CHATBOT_CONTRACT["intents"])
+
+
+def platform_artifacts(target):
+    """Return generated artifact paths for a chatbot provider target."""
+    if target not in CHATBOT_EXPORTS:
+        raise KeyError(f"Unknown chatbot target: {{target}}")
+    return CHATBOT_EXPORTS[target]
+
+
+def conversation_plan(intent_name, values):
+    """Return missing fields and next prompt for a provider-neutral conversation."""
+    provided = {{str(key): value for key, value in dict(values).items() if value not in (None, "")}}
+    for intent in CHATBOT_CONTRACT["intents"]:
+        if intent["intent"] != intent_name:
+            continue
+        all_fields = intent["required_fields"] + intent["optional_fields"]
+        missing = tuple(field for field in intent["required_fields"] if field not in provided)
+        prompt_map = {{prompt["field"]: prompt["prompt"] for prompt in intent["prompts"]}}
+        next_field = missing[0] if missing else None
+        return {{
+            "intent": intent["intent"],
+            "table": intent["table"],
+            "ready": not missing,
+            "missing_fields": missing,
+            "next_prompt": prompt_map.get(next_field),
+            "values": {{field: provided[field] for field in all_fields if field in provided}},
+        }}
+    raise KeyError(f"Unknown chatbot intent: {{intent_name}}")
+
+
+def export_check(existing_paths):
+    """Return readiness for generated chatbot provider artifacts."""
+    existing = set(existing_paths)
+    required = ("chatbots/appgen_chatbots.py",) + tuple(
+        path
+        for target in SELECTED_CHATBOT_TARGETS
+        for path in CHATBOT_EXPORTS[target]
+    )
+    missing = tuple(path for path in required if path not in existing)
+    return {{
+        "ok": not missing,
+        "missing": missing,
+        "targets": chatbot_targets(),
+        "intents": tuple(intent["intent"] for intent in CHATBOT_CONTRACT["intents"]),
+    }}
+'''
+
+
+def _dialogflow_intents_text(schema: AppSchema, app_name: str) -> str:
+    intents = []
+    for contract in _chatbot_table_contracts(schema):
+        intents.append(
+            {
+                "displayName": contract["intent"],
+                "trainingPhrases": [
+                    {"parts": [{"text": f"create {contract['label'].lower()}"}]},
+                    {"parts": [{"text": f"add {contract['label'].lower()}"}]},
+                    {"parts": [{"text": f"new {contract['label'].lower()}"}]},
+                ],
+                "parameters": [
+                    {
+                        "displayName": prompt["field"],
+                        "entityType": "@sys.any",
+                        "mandatory": prompt["required"],
+                        "prompts": [prompt["prompt"]],
+                    }
+                    for prompt in contract["prompts"]
+                ],
+                "messages": [
+                    {
+                        "text": {
+                            "text": [
+                                f"I can create {contract['label'].lower()} records from this conversation."
+                            ]
+                        }
+                    }
+                ],
+            }
+        )
+    return json.dumps(
+        {
+            "displayName": app_name,
+            "languageCode": "en",
+            "intents": intents,
+        },
+        indent=2,
+        sort_keys=True,
+    ) + "\n"
+
+
+def _botframework_manifest_text(schema: AppSchema, app_name: str) -> str:
+    bot_id = f"{underscore(app_name)}-bot"
+    commands = [
+        {
+            "title": contract["intent"],
+            "description": f"Create {contract['label'].lower()} records with guided field prompts.",
+        }
+        for contract in _chatbot_table_contracts(schema)
+    ]
+    manifest = {
+        "$schema": "https://developer.microsoft.com/json-schemas/teams/v1.16/MicrosoftTeams.schema.json",
+        "manifestVersion": "1.16",
+        "version": "0.1.0",
+        "id": bot_id,
+        "packageName": f"appgen.{underscore(app_name)}.bot",
+        "name": {"short": app_name[:30], "full": app_name},
+        "description": {
+            "short": f"{app_name} generated chatbot",
+            "full": "Generated Bot Framework manifest with schema-derived commands and field prompts.",
+        },
+        "bots": [
+            {
+                "botId": bot_id,
+                "scopes": ["personal", "team"],
+                "commandLists": [
+                    {
+                        "scopes": ["personal", "team"],
+                        "commands": commands,
+                    }
+                ],
+            }
+        ],
+    }
+    return json.dumps(manifest, indent=2, sort_keys=True) + "\n"
+
+
+def _ci_workflow_text() -> str:
+    return """name: AppGen CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt pytest
+
+      - name: Run generated quality gate
+        run: python scripts/appgen_quality.py
+
+      - name: Run generated tests
+        run: pytest
+"""
+
+
+def _quality_script_text() -> str:
+    return '''from __future__ import annotations
+
+import json
+import pathlib
+import py_compile
+import sys
+
+
+ROOT = pathlib.Path(__file__).resolve().parents[1]
+
+REQUIRED_PATHS = (
+    "README.md",
+    "requirements.txt",
+    "pyproject.toml",
+    "MANIFEST.in",
+    "appgen_package.py",
+    ".env.example",
+    "config.py",
+    "babel.cfg",
+    "Dockerfile",
+    "docker-compose.yml",
+    "app_custom/__init__.py",
+    "app_custom/extensions.py",
+    "deploy/appgen_deploy.py",
+    "deploy/appgen_https.py",
+    "deploy/Caddyfile",
+    "deploy/k8s.yaml",
+    "deploy/terraform-aws.tf",
+    "deploy/terraform-gcp.tf",
+    "deploy/terraform-azure.tf",
+    "automation/appgen_node_red.py",
+    "automation/node-red/flows.json",
+    "frontends/appgen_frontends.py",
+    "frontends/react/package.json",
+    "frontends/react/src/App.jsx",
+    "frontends/vue/package.json",
+    "frontends/vue/src/App.vue",
+    "frontends/angular/package.json",
+    "frontends/angular/src/app.component.ts",
+    "frontends/express/package.json",
+    "frontends/express/src/server.js",
+    "sdks/appgen_sdks.py",
+    "sdks/python/client.py",
+    "sdks/javascript/client.js",
+    "sdks/java/AppGenClient.java",
+    "sdks/csharp/AppGenClient.cs",
+    "native/appgen_native.py",
+    "native/mobile/pyproject.toml",
+    "native/mobile/app.py",
+    "native/desktop/pyproject.toml",
+    "native/desktop/app.py",
+    "jhipster/appgen_jhipster.py",
+    "jhipster/app.jdl",
+    "chatbots/appgen_chatbots.py",
+    "chatbots/dialogflow/intents.json",
+    "chatbots/botframework/manifest.json",
+    ".github/workflows/appgen-ci.yml",
+    ".vscode/launch.json",
+    ".vscode/tasks.json",
+    ".vscode/extensions.json",
+    ".idea/misc.xml",
+    ".idea/modules.xml",
+    ".idea/runConfigurations/AppGen_Flask.xml",
+    ".project",
+    ".pydevproject",
+    "app/__init__.py",
+    "app/appgen.json",
+    "app/models.py",
+    "app/views.py",
+    "app/api.py",
+    "app/openapi.py",
+    "app/gql.py",
+    "app/security.py",
+    "app/runtime_security.py",
+    "app/workflow.py",
+    "app/rules.py",
+    "app/health.py",
+    "app/monitoring.py",
+    "app/resilience.py",
+    "app/performance.py",
+    "app/reports.py",
+    "app/report_delivery.py",
+    "app/dashboards.py",
+    "app/usage_analytics.py",
+    "app/search.py",
+    "app/media.py",
+    "app/documents.py",
+    "app/inventory_ops.py",
+    "app/finance_ops.py",
+    "app/manufacturing_ops.py",
+    "app/backup.py",
+    "app/data_access.py",
+    "app/data_exchange.py",
+    "app/database_ops.py",
+    "app/designer.py",
+    "app/form_designer.py",
+    "app/nl_evolution.py",
+    "app/dsl_reference.py",
+    "app/view_experience.py",
+    "app/support_center.py",
+    "app/config_admin.py",
+    "app/integrations.py",
+    "app/productivity.py",
+    "app/lifecycle.py",
+    "app/emerging.py",
+    "app/tenancy.py",
+    "app/rls.py",
+    "app/identity.py",
+    "app/compliance.py",
+    "app/assistant.py",
+    "app/intelligence.py",
+    "app/chatbot.py",
+    "app/voice.py",
+    "app/agents.py",
+    "app/text_quality.py",
+    "app/notifications.py",
+    "app/platforms.py",
+    "app/microservices.py",
+    "app/collaboration.py",
+    "app/version_control.py",
+    "app/realtime.py",
+    "app/events.py",
+    "app/rpa.py",
+    "app/diagnostics.py",
+    "app/api_testing.py",
+    "app/code_review.py",
+    "app/components.py",
+    "app/view_composition.py",
+    "app/tabbed_views.py",
+    "app/erp_templates.py",
+    "app/prototyping.py",
+    "app/project_management.py",
+    "app/devtools.py",
+    "app/studio.py",
+    "app/wizards.py",
+    "app/branding.py",
+    "app/extensions.py",
+    "app/static/appgen.webmanifest",
+    "app/static/appgen-sw.js",
+    "app/static/appgen-offline.html",
+    "app/static/appgen-theme.css",
+    "app/static/appgen-view-experience.js",
+    "app/templates/my_index.html",
+    "app/templates/appgen_runtime_security.html",
+    "app/templates/appgen_openapi.html",
+    "app/templates/appgen_rules.html",
+    "app/templates/appgen_designer.html",
+    "app/templates/appgen_form_designer.html",
+    "app/templates/appgen_nl_evolution.html",
+    "app/templates/appgen_dsl_reference.html",
+    "app/templates/appgen_view_experience.html",
+    "app/templates/appgen_support_center.html",
+    "app/templates/appgen_resilience.html",
+    "app/templates/appgen_integrations.html",
+    "app/templates/appgen_productivity.html",
+    "app/templates/appgen_lifecycle.html",
+    "app/templates/appgen_emerging.html",
+    "app/templates/appgen_tenancy.html",
+    "app/templates/appgen_rls.html",
+    "app/templates/appgen_identity.html",
+    "app/templates/appgen_compliance.html",
+    "app/templates/appgen_assistant.html",
+    "app/templates/appgen_intelligence.html",
+    "app/templates/appgen_chatbot.html",
+    "app/templates/appgen_voice.html",
+    "app/templates/appgen_agents.html",
+    "app/templates/appgen_text_quality.html",
+    "app/templates/appgen_notifications.html",
+    "app/templates/appgen_platforms.html",
+    "app/templates/appgen_microservices.html",
+    "app/templates/appgen_collaboration.html",
+    "app/templates/appgen_version_control.html",
+    "app/templates/appgen_realtime.html",
+    "app/templates/appgen_events.html",
+    "app/templates/appgen_rpa.html",
+    "app/templates/appgen_diagnostics.html",
+    "app/templates/appgen_api_testing.html",
+    "app/templates/appgen_code_review.html",
+    "app/templates/appgen_report_delivery.html",
+    "app/templates/appgen_components.html",
+    "app/templates/appgen_view_composition.html",
+    "app/templates/appgen_tabbed_views.html",
+    "app/templates/appgen_erp_templates.html",
+    "app/templates/appgen_prototyping.html",
+    "app/templates/appgen_project_management.html",
+    "app/templates/appgen_devtools.html",
+    "app/templates/appgen_studio.html",
+    "app/templates/appgen_wizards.html",
+    "app/templates/appgen_branding.html",
+    "app/templates/appgen_extensions.html",
+    "app/templates/appgen_data_exchange.html",
+    "app/templates/appgen_database_ops.html",
+    "app/templates/appgen_performance.html",
+    "app/templates/appgen_dashboards.html",
+    "app/templates/appgen_usage_analytics.html",
+    "app/templates/appgen_search.html",
+    "app/templates/appgen_media.html",
+    "app/templates/appgen_documents.html",
+    "app/templates/appgen_inventory_ops.html",
+    "app/templates/appgen_finance_ops.html",
+    "app/templates/appgen_manufacturing_ops.html",
+    "app/templates/appgen_data_access.html",
+    "docs/schema.md",
+    "docs/data-dictionary.json",
+    "docs/data-dictionary.md",
+    "docs/openapi.json",
+    "docs/accessibility.md",
+    "migrations/env.py",
+    "migrations/script.py.mako",
+    "cookiecutter/cookiecutter.json",
+    "cookiecutter/{{cookiecutter.project_slug}}/README.md",
+    "cookiecutter/{{cookiecutter.project_slug}}/pyproject.toml",
+    "cookiecutter/{{cookiecutter.project_slug}}/app/__init__.py",
+    "tests/test_generated_contract.py",
+    "tests/test_generated_coverage.py",
+)
+
+PYTHON_PATHS = (
+    "config.py",
+    "appgen_package.py",
+    "seed.py",
+    "deploy/appgen_deploy.py",
+    "deploy/appgen_https.py",
+    "app_custom/extensions.py",
+    "automation/appgen_node_red.py",
+    "frontends/appgen_frontends.py",
+    "sdks/appgen_sdks.py",
+    "sdks/python/client.py",
+    "native/appgen_native.py",
+    "native/mobile/app.py",
+    "native/desktop/app.py",
+    "jhipster/appgen_jhipster.py",
+    "chatbots/appgen_chatbots.py",
+    "app/__init__.py",
+    "app/models.py",
+    "app/views.py",
+    "app/api.py",
+    "app/openapi.py",
+    "app/gql.py",
+    "app/security.py",
+    "app/runtime_security.py",
+    "app/workflow.py",
+    "app/rules.py",
+    "app/health.py",
+    "app/monitoring.py",
+    "app/resilience.py",
+    "app/performance.py",
+    "app/reports.py",
+    "app/report_delivery.py",
+    "app/dashboards.py",
+    "app/usage_analytics.py",
+    "app/search.py",
+    "app/media.py",
+    "app/documents.py",
+    "app/inventory_ops.py",
+    "app/finance_ops.py",
+    "app/manufacturing_ops.py",
+    "app/backup.py",
+    "app/data_access.py",
+    "app/data_exchange.py",
+    "app/database_ops.py",
+    "app/designer.py",
+    "app/form_designer.py",
+    "app/nl_evolution.py",
+    "app/dsl_reference.py",
+    "app/view_experience.py",
+    "app/support_center.py",
+    "app/config_admin.py",
+    "app/integrations.py",
+    "app/productivity.py",
+    "app/lifecycle.py",
+    "app/emerging.py",
+    "app/tenancy.py",
+    "app/rls.py",
+    "app/identity.py",
+    "app/compliance.py",
+    "app/assistant.py",
+    "app/intelligence.py",
+    "app/chatbot.py",
+    "app/voice.py",
+    "app/agents.py",
+    "app/text_quality.py",
+    "app/notifications.py",
+    "app/platforms.py",
+    "app/microservices.py",
+    "app/collaboration.py",
+    "app/version_control.py",
+    "app/realtime.py",
+    "app/events.py",
+    "app/rpa.py",
+    "app/diagnostics.py",
+    "app/api_testing.py",
+    "app/code_review.py",
+    "app/components.py",
+    "app/view_composition.py",
+    "app/tabbed_views.py",
+    "app/erp_templates.py",
+    "app/prototyping.py",
+    "app/project_management.py",
+    "app/devtools.py",
+    "app/studio.py",
+    "app/wizards.py",
+    "app/branding.py",
+    "app/extensions.py",
+    "migrations/env.py",
+    "tests/test_generated_contract.py",
+    "tests/test_generated_coverage.py",
+)
+
+REQUIRED_CAPABILITIES = {
+    "schema.import",
+    "dsl.language-design",
+    "codegen.fab",
+    "api.rest",
+    "api.graphql",
+    "api.openapi",
+    "api.sdks",
+    "platform.targets",
+    "platform.frontends",
+    "platform.microservices",
+    "platform.native",
+    "platform.jhipster",
+    "platform.chatbots",
+    "automation.node-red",
+    "automation.cep",
+    "content.document-management",
+    "operations.inventory-traceability",
+    "operations.finance",
+    "operations.manufacturing",
+    "automation.rpa-bpa",
+    "workflow.automation",
+    "workflow.statecharts",
+    "security.rbac",
+    "security.session",
+    "security.https",
+    "security.rls",
+    "security.sso",
+    "security.compliance",
+    "deployment.cloud",
+    "devops.cicd",
+    "devops.packaging",
+    "devops.ide-integration",
+    "devops.studio",
+    "devops.project-management",
+    "support.training",
+    "team.collaboration",
+    "team.version-control",
+    "team.realtime",
+    "quality.diagnostics",
+    "quality.api-testing",
+    "quality.code-review",
+    "quality.test-coverage",
+    "components.templates",
+    "components.erp-templates",
+    "components.lookups",
+    "components.text-quality",
+    "logic.business-rules",
+    "ui.wizards",
+    "ui.view-composition",
+    "ui.tabbed-views",
+    "ui.form-designer",
+    "ui.nl-evolution",
+    "ui.rapid-prototyping",
+    "ui.view-experience",
+    "ui.layout",
+    "ui.branding",
+    "platform.extensibility",
+    "integration.enterprise",
+    "integration.productivity",
+    "integration.emerging",
+    "scale.multi-tenancy",
+    "ai.assistance",
+    "ai.intelligence",
+    "ai.guided-chatbot",
+    "ai.voice-assistant",
+    "ai.agentic-systems",
+    "ops.notifications",
+    "ops.monitoring",
+    "ops.resilience",
+    "ops.performance",
+    "ops.configuration",
+    "ops.lifecycle",
+    "ops.backup",
+    "data.access",
+    "data.exchange",
+    "data.database-ops",
+    "data.visualization",
+    "reports.usage-analytics",
+    "data.search",
+    "components.media",
+}
+
+
+def fail(message: str) -> None:
+    raise SystemExit(f"appgen quality failed: {message}")
+
+
+def require_paths() -> None:
+    missing = [path for path in REQUIRED_PATHS if not (ROOT / path).exists()]
+    if missing:
+        fail("missing generated files: " + ", ".join(missing))
+
+
+def compile_python() -> None:
+    for path in PYTHON_PATHS:
+        py_compile.compile(str(ROOT / path), doraise=True)
+
+
+def validate_manifest() -> None:
+    manifest_path = ROOT / "app" / "appgen.json"
+    manifest = json.loads(manifest_path.read_text())
+    tables = manifest.get("tables")
+    capabilities = manifest.get("capabilities")
+    if not isinstance(tables, list) or not tables:
+        fail("manifest must contain at least one table")
+    if not isinstance(capabilities, list):
+        fail("manifest capabilities must be a list")
+    platform_targets = manifest.get("platform_targets")
+    if not isinstance(platform_targets, list) or not platform_targets:
+        fail("manifest must contain normalized platform_targets")
+    if manifest.get("unknown_platform_targets"):
+        fail("manifest contains unknown platform targets")
+    keys = {item.get("key") for item in capabilities if isinstance(item, dict)}
+    missing = sorted(REQUIRED_CAPABILITIES - keys)
+    if missing:
+        fail("manifest missing capabilities: " + ", ".join(missing))
+
+
+def validate_documentation_artifacts() -> None:
+    schema_doc = (ROOT / "docs" / "schema.md").read_text()
+    dictionary = json.loads((ROOT / "docs" / "data-dictionary.json").read_text())
+    dictionary_doc = (ROOT / "docs" / "data-dictionary.md").read_text()
+    if "## Mermaid ERD" not in schema_doc:
+        fail("schema documentation must include Mermaid ERD documentation")
+    if dictionary.get("format") != "appgen.data-dictionary.v1" or not dictionary.get("tables"):
+        fail("data dictionary must expose machine-readable table metadata")
+    first_table = dictionary["tables"][0]
+    if "columns" not in first_table or "display_fields" not in first_table or "writable_fields" not in first_table:
+        fail("data dictionary must expose columns, display fields, and writable fields")
+    if "Data Dictionary" not in dictionary_doc or "Writable fields" not in dictionary_doc:
+        fail("data dictionary markdown must document content and writable fields")
+
+
+def validate_config_admin_artifacts() -> None:
+    contract = (ROOT / "app" / "config_admin.py").read_text()
+    required = (
+        "CONFIG_SECTIONS",
+        "config_schema",
+        "config_readiness",
+        "setup_checklist",
+        "env_template",
+        "setup_json",
+        "LANGUAGES",
+    )
+    if not all(item in contract for item in required):
+        fail("configuration admin must expose full setup metadata for generated config.py")
+    template = (ROOT / "app" / "templates" / "appgen_config.html").read_text()
+    if "Setup JSON" not in template or "Environment template" not in template or "Setup needs attention" not in template:
+        fail("configuration template must expose setup readiness and environment export")
+
+
+def validate_designer_artifacts() -> None:
+    contract = (ROOT / "app" / "designer.py").read_text()
+    if "visual_model" not in contract or "apply_proposal" not in contract or "proposal_to_dsl" not in contract:
+        fail("designer must expose visual graph and no-code proposal helpers")
+    if "erd_mermaid" not in contract or "relationship_matrix" not in contract or "schema_diagram_check" not in contract:
+        fail("designer must expose ERD and relationship export helpers")
+    if "proposal_from_payload" not in contract or "@expose('/proposal'" not in contract:
+        fail("designer must expose browser proposal endpoint")
+    template = (ROOT / "app" / "templates" / "appgen_designer.html").read_text()
+    if "Visual Graph" not in template or "Model JSON" not in template or "Preview DSL" not in template:
+        fail("designer template must expose graph and model JSON")
+
+
+def validate_form_designer_artifacts() -> None:
+    contract = (ROOT / "app" / "form_designer.py").read_text()
+    if "component_palette" not in contract or "drop_component" not in contract or "apply_form_proposal" not in contract:
+        fail("form designer must expose palette, drop, and proposal helpers")
+    template = (ROOT / "app" / "templates" / "appgen_form_designer.html").read_text()
+    if "draggable" not in template or "drop" not in template or "Form Designer" not in template:
+        fail("form designer template must expose drag-and-drop controls")
+
+
+def validate_nl_evolution_artifacts() -> None:
+    contract = (ROOT / "app" / "nl_evolution.py").read_text()
+    if "evolution_plan" not in contract or "proposals_to_dsl" not in contract or "add_agent" not in contract or "add_workflow" not in contract or "set_targets" not in contract or "_field_reference" not in contract:
+        fail("natural-language evolution must expose proposal and DSL helpers")
+    template = (ROOT / "app" / "templates" / "appgen_nl_evolution.html").read_text()
+    if "Natural Language Evolution" not in template or "Plan Changes" not in template:
+        fail("natural-language evolution template must expose planning UI")
+
+
+def validate_dsl_reference_artifacts() -> None:
+    contract = (ROOT / "app" / "dsl_reference.py").read_text()
+    required = (
+        "CORE_KEYWORDS",
+        "KEYWORD_LIMIT",
+        "dsl_keyword_budget",
+        "dsl_construct_catalog",
+        "dsl_example",
+        "dsl_lint",
+        "dsl_learning_path",
+        "dsl_reference_check",
+    )
+    if not all(item in contract for item in required):
+        fail("DSL reference must expose keyword budget, examples, linting, and learning path helpers")
+    if "author_id: int -> Author.id [many-to-one]" not in contract or "Prefer arrow references" not in contract or "RELATION_CARDINALITIES" not in contract:
+        fail("DSL reference must keep arrow references and cardinality metadata as compact relationship syntax")
+    template = (ROOT / "app" / "templates" / "appgen_dsl_reference.html").read_text()
+    if "AppGen DSL Reference" not in template or "Keyword Budget" not in template or "Reference JSON" not in template:
+        fail("DSL reference cockpit must expose keyword budget and JSON reference")
+
+
+def validate_view_experience_artifacts() -> None:
+    contract = (ROOT / "app" / "view_experience.py").read_text()
+    required = (
+        "offline_field_catalog",
+        "offline_field_state",
+        "presence_event",
+        "active_viewers",
+        "access_log_event",
+        "access_log_summary",
+        "help_action",
+        "view_footer_context",
+        "baseview_experience_check",
+    )
+    if not all(item in contract for item in required):
+        fail("view experience must expose offline, presence, access-log, help, footer, and time-on-page helpers")
+    template = (ROOT / "app" / "templates" / "appgen_view_experience.html").read_text()
+    if "View Experience" not in template or "Presence JSON" not in template or "time-on-page" not in template:
+        fail("view experience cockpit must expose base-view feature catalog")
+    script = (ROOT / "app" / "static" / "appgen-view-experience.js").read_text()
+    if "data-appgen-time-on-page" not in script or "offline-ready" not in script:
+        fail("view experience script must expose time-on-page and offline state updates")
+
+
+def validate_support_center_artifacts() -> None:
+    contract = (ROOT / "app" / "support_center.py").read_text()
+    required = (
+        "support_topic_catalog",
+        "tutorial_catalog",
+        "sample_application_catalog",
+        "onboarding_checklist",
+        "search_support",
+        "support_ticket_payload",
+        "support_center_check",
+    )
+    if not all(item in contract for item in required):
+        fail("support center must expose topics, tutorials, sample apps, onboarding, search, and ticket helpers")
+    template = (ROOT / "app" / "templates" / "appgen_support_center.html").read_text()
+    if "Support Center" not in template or "Topics JSON" not in template or "Tutorials JSON" not in template:
+        fail("support center cockpit must expose support topics and tutorials")
+
+
+def validate_prototyping_artifacts() -> None:
+    contract = (ROOT / "app" / "prototyping.py").read_text()
+    required = (
+        "prototype_catalog",
+        "sample_row",
+        "screen_mockup",
+        "prototype_plan",
+        "experiment_hypothesis",
+        "preview_package",
+        "promote_to_backlog",
+        "prototyping_check",
+    )
+    if not all(item in contract for item in required):
+        fail("rapid prototyping contract must expose mock screens, sample data, previews, experiments, and backlog promotion")
+    template = (ROOT / "app" / "templates" / "appgen_prototyping.html").read_text()
+    if "Rapid Prototyping" not in template or "Prototype JSON" not in template:
+        fail("rapid prototyping cockpit must expose generated prototype catalog")
+
+
+def validate_agentic_artifacts() -> None:
+    contract = (ROOT / "app" / "agents.py").read_text()
+    if "provider_catalog" not in contract or "agent_plan" not in contract or "api_key" not in contract:
+        fail("agentic contract must expose providers, agents, and API-key readiness")
+    template = (ROOT / "app" / "templates" / "appgen_agents.html").read_text()
+    if "Agentic Systems" not in template or "local models" not in template:
+        fail("agentic template must expose local and API-key provider readiness")
+
+
+def validate_intelligence_artifacts() -> None:
+    contract = (ROOT / "app" / "intelligence.py").read_text()
+    required = (
+        "preprocess_row",
+        "anomaly_score",
+        "sentiment",
+        "extract_entities",
+        "classify_text",
+        "recommendation_plan",
+        "vision_provider_catalog",
+        "media_intelligence_catalog",
+        "vision_analysis_plan",
+        "ocr_plan",
+        "object_detection_plan",
+        "classification_plan",
+        "google_vision",
+        "opencv",
+        "experiment_catalog",
+        "assign_variant",
+        "predictive_maintenance",
+    )
+    if not all(item in contract for item in required):
+        fail("intelligence contract must expose AI analytics, computer vision, NLP, recommendation, A/B testing, and maintenance helpers")
+    template = (ROOT / "app" / "templates" / "appgen_intelligence.html").read_text()
+    if "Intelligence" not in template or "Intelligence JSON" not in template:
+        fail("intelligence template must expose generated AI analytics catalog")
+
+
+def validate_identity_artifacts() -> None:
+    contract = (ROOT / "app" / "identity.py").read_text()
+    required = (
+        "cognito",
+        "cognito_issuer",
+        "cognito_authorize_url",
+        "ldap",
+        "active_directory",
+        "ldap_bind_plan",
+        "directory_search_plan",
+        "sAMAccountName",
+    )
+    if not all(item in contract for item in required):
+        fail("identity contract must expose Cognito, LDAP, and Active Directory provider helpers")
+    template = (ROOT / "app" / "templates" / "appgen_identity.html").read_text()
+    if "AWS" not in template or "Cognito" not in template or "LDAP" not in template or "Active Directory" not in template:
+        fail("identity template must expose AWS Cognito, LDAP, and Active Directory provider readiness")
+
+
+def validate_erp_template_artifacts() -> None:
+    contract = (ROOT / "app" / "erp_templates.py").read_text()
+    required_modules = (
+        "general_ledger",
+        "chart_of_accounts",
+        "invoicing",
+        "accounts_receivable",
+        "accounts_payable",
+        "inventory",
+        "human_resources",
+        "payroll",
+        "purchasing",
+        "procurement",
+        "supply_chain",
+        "warehouse_management",
+        "manufacturing",
+        "sales",
+        "crm",
+        "ecommerce",
+        "fixed_assets",
+        "maintenance",
+        "quality_management",
+        "document_management",
+        "compliance_management",
+        "projects",
+        "reporting",
+    )
+    if not all(module in contract for module in required_modules):
+        fail("ERP templates must include full core ERP module coverage")
+    if "erp_module_dsl" not in contract or "erp_fit_report" not in contract or "erp_table_blueprints" not in contract or "erp_module_package" not in contract:
+        fail("ERP templates must expose DSL, table blueprints, packages, and fit-report helpers")
+    if "journal_line_id" in contract or "_erp_field_syntax" not in contract or "invoice_line" not in contract:
+        fail("ERP templates must include useful table-level fields and references")
+    template = (ROOT / "app" / "templates" / "appgen_erp_templates.html").read_text()
+    if "ERP Templates" not in template or "ledgers" not in template:
+        fail("ERP template cockpit must expose ERP module catalog")
+
+
+def validate_document_management_artifacts() -> None:
+    contract = (ROOT / "app" / "documents.py").read_text()
+    required = (
+        "document_catalog",
+        "document_version",
+        "approval_workflow",
+        "retention_policy",
+        "esignature_payload",
+        "document_audit_event",
+        "document_management_check",
+    )
+    if not all(item in contract for item in required):
+        fail("document-management contract must expose libraries, versions, approvals, retention, e-signature, and audit helpers")
+    template = (ROOT / "app" / "templates" / "appgen_documents.html").read_text()
+    if "Document Management" not in template or "Documents JSON" not in template or "e-signature" not in template:
+        fail("document-management cockpit must expose document catalog and e-signature readiness")
+
+
+def validate_inventory_ops_artifacts() -> None:
+    contract = (ROOT / "app" / "inventory_ops.py").read_text()
+    required = (
+        "inventory_catalog",
+        "scan_targets",
+        "barcode_label",
+        "rfid_tag_payload",
+        "scan_event",
+        "stock_movement",
+        "cycle_count_plan",
+        "reconcile_count",
+        "traceability_chain",
+        "inventory_ops_check",
+    )
+    if not all(item in contract for item in required):
+        fail("inventory traceability contract must expose barcode, RFID, scan, movement, cycle-count, reconciliation, and traceability helpers")
+    template = (ROOT / "app" / "templates" / "appgen_inventory_ops.html").read_text()
+    if "Inventory Traceability" not in template or "RFID" not in template or "Scan Targets" not in template:
+        fail("inventory traceability cockpit must expose barcode/RFID scan targets")
+
+
+def validate_finance_ops_artifacts() -> None:
+    contract = (ROOT / "app" / "finance_ops.py").read_text()
+    required = (
+        "finance_catalog",
+        "tax_profile",
+        "tax_calculation",
+        "exchange_rate_plan",
+        "convert_amount",
+        "budget_forecast",
+        "revenue_recognition_schedule",
+        "batch_process",
+        "finance_ops_check",
+    )
+    if not all(item in contract for item in required):
+        fail("finance operations contract must expose tax, currency, forecast, revenue, and batch helpers")
+    template = (ROOT / "app" / "templates" / "appgen_finance_ops.html").read_text()
+    if "Finance Operations" not in template or "multicurrency" not in template or "batch processing" not in template:
+        fail("finance operations cockpit must expose tax, multicurrency, forecast, and batch contracts")
+
+
+def validate_manufacturing_ops_artifacts() -> None:
+    contract = (ROOT / "app" / "manufacturing_ops.py").read_text()
+    required = (
+        "manufacturing_catalog",
+        "bill_of_material_plan",
+        "material_requirements",
+        "capacity_plan",
+        "production_schedule",
+        "purchase_requisition_plan",
+        "kanban_signal",
+        "manufacturing_ops_check",
+    )
+    if not all(item in contract for item in required):
+        fail("manufacturing operations contract must expose BOM, MRP, capacity, schedule, requisition, and kanban helpers")
+    template = (ROOT / "app" / "templates" / "appgen_manufacturing_ops.html").read_text()
+    if "Manufacturing Operations" not in template or "MRP" not in template or "capacity" not in template:
+        fail("manufacturing operations cockpit must expose MRP and capacity contracts")
+
+
+def validate_project_management_artifacts() -> None:
+    contract = (ROOT / "app" / "project_management.py").read_text()
+    if "backlog_templates" not in contract or "sprint_plan" not in contract or "release_plan" not in contract:
+        fail("project-management contract must expose backlog, sprint, and release plans")
+    if "traceability_matrix" not in contract or "export_plan" not in contract or "jira" not in contract or "github" not in contract:
+        fail("project-management contract must expose traceability and DevOps provider exports")
+    template = (ROOT / "app" / "templates" / "appgen_project_management.html").read_text()
+    if "Project Management" not in template or "Backlog JSON" not in template or "Traceability JSON" not in template:
+        fail("project-management cockpit must expose backlog and traceability")
+
+
+def validate_devtools_artifacts() -> None:
+    contract = (ROOT / "app" / "devtools.py").read_text()
+    if "devtool_catalog" not in contract or "vscode_launch_profile" not in contract or "eclipse_project" not in contract:
+        fail("developer tools contract must expose IDE catalogs and workspace profiles")
+    if "jetbrains_run_config" not in contract or "jetbrains_tasks" not in contract:
+        fail("developer tools contract must expose JetBrains IDEA/PyCharm integration")
+    if "source_map" not in contract or "devtools_check" not in contract:
+        fail("developer tools contract must expose schema source maps and readiness checks")
+    for path in (".vscode/launch.json", ".vscode/tasks.json", ".vscode/extensions.json"):
+        json.loads((ROOT / path).read_text())
+    for path in (".idea/misc.xml", ".idea/modules.xml", ".idea/runConfigurations/AppGen_Flask.xml"):
+        if "project" not in (ROOT / path).read_text() and "component" not in (ROOT / path).read_text():
+            fail("JetBrains IDEA/PyCharm project files must be valid XML project artifacts")
+    if "org.python.pydev.pythonNature" not in (ROOT / ".project").read_text():
+        fail("Eclipse project must declare PyDev nature")
+    if "PROJECT_SOURCE_PATH" not in (ROOT / ".pydevproject").read_text():
+        fail("PyDev project must declare generated source paths")
+    template = (ROOT / "app" / "templates" / "appgen_devtools.html").read_text()
+    if "Developer Tools" not in template or "Visual Studio Code" not in template or "Eclipse" not in template or "JetBrains" not in template:
+        fail("developer tools cockpit must expose VS Code, JetBrains, and Eclipse integrations")
+
+
+def validate_studio_artifacts() -> None:
+    contract = (ROOT / "app" / "studio.py").read_text()
+    required = (
+        "studio_catalog",
+        "file_edit_plan",
+        "debug_session",
+        "breakpoint_plan",
+        "variable_inspection",
+        "dependency_inventory",
+        "dependency_update_plan",
+        "component_repository",
+        "component_share_package",
+        "clone_plan",
+        "studio_check",
+    )
+    if not all(item in contract for item in required):
+        fail("developer studio contract must expose editing, debugging, dependencies, components, and cloning")
+    template = (ROOT / "app" / "templates" / "appgen_studio.html").read_text()
+    if "Developer Studio" not in template or "Studio JSON" not in template:
+        fail("developer studio cockpit must expose the generated studio catalog")
+
+
+def validate_ci() -> None:
+    workflow = (ROOT / ".github" / "workflows" / "appgen-ci.yml").read_text()
+    if "python scripts/appgen_quality.py" not in workflow:
+        fail("CI workflow must run scripts/appgen_quality.py")
+    if "pytest" not in workflow:
+        fail("CI workflow must run pytest")
+
+
+def validate_deployment_artifacts() -> None:
+    k8s = (ROOT / "deploy" / "k8s.yaml").read_text()
+    if "kind: Deployment" not in k8s or "readinessProbe" not in k8s:
+        fail("Kubernetes manifest must define deployment probes")
+    contract = (ROOT / "deploy" / "appgen_deploy.py").read_text()
+    if '"kubernetes"' not in contract or '"aws"' not in contract or '"https"' not in contract:
+        fail("deployment contract must include Kubernetes and cloud targets")
+    caddyfile = (ROOT / "deploy" / "Caddyfile").read_text()
+    if "reverse_proxy web:8080" not in caddyfile or "APPGEN_DOMAIN" not in caddyfile:
+        fail("Caddyfile must configure automatic HTTPS reverse proxy")
+
+
+def validate_frontend_artifacts() -> None:
+    contract = (ROOT / "frontends" / "appgen_frontends.py").read_text()
+    if '"react"' not in contract or '"express"' not in contract:
+        fail("front-end contract must include React and Express targets")
+    react = (ROOT / "frontends" / "react" / "src" / "App.jsx").read_text()
+    if "/api/v1" not in react:
+        fail("React starter must include generated API routes")
+
+
+def validate_microservice_artifacts() -> None:
+    contract = (ROOT / "app" / "microservices.py").read_text()
+    if "service_catalog" not in contract or "api_gateway_routes" not in contract or "dependency_graph" not in contract:
+        fail("microservices contract must expose service catalog, gateway routes, and dependency graph")
+    if "deployment_units" not in contract or "health_check_plan" not in contract or "scaling_policy" not in contract:
+        fail("microservices contract must expose deployment, health, and scaling plans")
+    template = (ROOT / "app" / "templates" / "appgen_microservices.html").read_text()
+    if "Microservices" not in template or "Service Catalog JSON" not in template:
+        fail("microservices template must expose generated service catalog")
+
+
+def validate_integration_artifacts() -> None:
+    contract = (ROOT / "app" / "integrations.py").read_text()
+    required = (
+        "integration_catalog",
+        "integrations_by_kind",
+        "outbound_request_plan",
+        "payment_request_plan",
+        "sms_request_plan",
+        "email_request_plan",
+        "low_code_portal_plan",
+        "repository_deposit_plan",
+        "integration_contract",
+        "generated_integration_contracts",
+        "appgen.integration.entando.v1",
+        "appgen.integration.invenio.v1",
+        "integration_check",
+        "entando",
+        "invenio",
+        "stripe",
+        "mpesa",
+        "twilio_sms",
+        "sendgrid_email",
+    )
+    if not all(item in contract for item in required):
+        fail("integration contract must expose REST, webhook, enterprise, Entando, Invenio, payment, SMS, and email service plans")
+    template = (ROOT / "app" / "templates" / "appgen_integrations.html").read_text()
+    if "Integrations" not in template or "Entando" not in template or "Invenio" not in template or "payment gateways" not in template or "SMS gateways" not in template:
+        fail("integration template must expose enterprise, portal, repository, payment, and SMS gateway coverage")
+
+
+def validate_productivity_artifacts() -> None:
+    contract = (ROOT / "app" / "productivity.py").read_text()
+    required = (
+        "provider_catalog",
+        "document_merge_payload",
+        "spreadsheet_export_payload",
+        "calendar_event_payload",
+        "task_sync_payload",
+        "productivity_check",
+        "microsoft365",
+        "google_workspace",
+    )
+    if not all(item in contract for item in required):
+        fail("productivity contract must expose Microsoft 365 and Google Workspace payload helpers")
+    template = (ROOT / "app" / "templates" / "appgen_productivity.html").read_text()
+    if "Productivity Integrations" not in template or "Productivity JSON" not in template:
+        fail("productivity template must expose generated productivity catalog")
+
+
+def validate_lifecycle_artifacts() -> None:
+    contract = (ROOT / "app" / "lifecycle.py").read_text()
+    required = (
+        "environment_catalog",
+        "environment_status",
+        "custom_domain_plan",
+        "release_checklist",
+        "promotion_plan",
+        "maintenance_window",
+        "update_plan",
+        "feedback_item",
+        "user_test_session",
+        "issue_report",
+    )
+    if not all(item in contract for item in required):
+        fail("lifecycle contract must expose environments, releases, feedback, user testing, and issue reporting")
+    template = (ROOT / "app" / "templates" / "appgen_lifecycle.html").read_text()
+    if "Lifecycle" not in template or "Lifecycle JSON" not in template:
+        fail("lifecycle template must expose generated lifecycle catalog")
+
+
+def validate_emerging_artifacts() -> None:
+    contract = (ROOT / "app" / "emerging.py").read_text()
+    if "telemetry_event" not in contract or "command_payload" not in contract or "edge_sync_plan" not in contract:
+        fail("emerging-tech contract must expose IoT telemetry, commands, and edge sync")
+    if "blockchain_anchor" not in contract or "verify_anchor" not in contract or "smart_contract_plan" not in contract:
+        fail("emerging-tech contract must expose blockchain audit-anchor helpers")
+    template = (ROOT / "app" / "templates" / "appgen_emerging.html").read_text()
+    if "Emerging Integrations" not in template or "Emerging Catalog JSON" not in template:
+        fail("emerging-tech template must expose IoT and blockchain catalog")
+
+
+def validate_sdk_artifacts() -> None:
+    contract = (ROOT / "sdks" / "appgen_sdks.py").read_text()
+    if "sdk_targets" not in contract or "client_method_names" not in contract:
+        fail("SDK contract must expose targets and generated method names")
+    python_client = (ROOT / "sdks" / "python" / "client.py").read_text()
+    if "class AppGenClient" not in python_client or "urllib.request" not in python_client:
+        fail("Python SDK must expose dependency-free AppGenClient")
+    javascript_client = (ROOT / "sdks" / "javascript" / "client.js").read_text()
+    if "export class AppGenClient" not in javascript_client or "fetch" not in javascript_client:
+        fail("JavaScript SDK must expose fetch-based AppGenClient")
+    java_client = (ROOT / "sdks" / "java" / "AppGenClient.java").read_text()
+    csharp_client = (ROOT / "sdks" / "csharp" / "AppGenClient.cs").read_text()
+    if "HttpClient" not in java_client or "HttpClient" not in csharp_client:
+        fail("Java and C# SDKs must expose HTTP client skeletons")
+
+
+def validate_openapi_artifacts() -> None:
+    spec = json.loads((ROOT / "docs" / "openapi.json").read_text())
+    if spec.get("openapi") != "3.1.0" or not spec.get("paths"):
+        fail("OpenAPI docs must contain a 3.1 contract with generated paths")
+    if "schemas" not in spec.get("components", {}):
+        fail("OpenAPI docs must expose generated component schemas")
+    contract = (ROOT / "app" / "openapi.py").read_text()
+    if "openapi_spec" not in contract or "operation_count" not in contract or "openapi_check" not in contract:
+        fail("OpenAPI module must expose spec and readiness helpers")
+    template = (ROOT / "app" / "templates" / "appgen_openapi.html").read_text()
+    if "OpenAPI" not in template or "OpenAPI JSON" not in template:
+        fail("OpenAPI template must expose generated API documentation")
+
+
+def validate_realtime_artifacts() -> None:
+    contract = (ROOT / "app" / "realtime.py").read_text()
+    if "realtime_topics" not in contract or "sse_frame" not in contract or "collaboration_message" not in contract:
+        fail("realtime contract must expose topics, SSE frames, and messages")
+    template = (ROOT / "app" / "templates" / "appgen_realtime.html").read_text()
+    if "Realtime" not in template or "Topics JSON" not in template:
+        fail("realtime template must expose generated topics")
+
+
+def validate_version_control_artifacts() -> None:
+    contract = (ROOT / "app" / "version_control.py").read_text()
+    if "snapshot_manifest" not in contract or "diff_snapshots" not in contract or "rollback_plan" not in contract:
+        fail("version-control contract must expose snapshots, diffs, and rollback plans")
+    if "branch_plan" not in contract or "version_control_check" not in contract:
+        fail("version-control contract must expose branch and readiness helpers")
+    template = (ROOT / "app" / "templates" / "appgen_version_control.html").read_text()
+    if "Version Control" not in template or "rollback" not in template:
+        fail("version-control template must expose generated history and rollback contracts")
+
+
+def validate_event_artifacts() -> None:
+    contract = (ROOT / "app" / "events.py").read_text()
+    if "match_event_rules" not in contract or "retry_plan" not in contract or "dead_letter_event" not in contract:
+        fail("event-processing contract must expose CEP rules, retry, and dead-letter helpers")
+    if "alert_payload" not in contract or "process_event" not in contract:
+        fail("event-processing contract must expose alerting and processing helpers")
+    template = (ROOT / "app" / "templates" / "appgen_events.html").read_text()
+    if "Event Processing" not in template or "Event Catalog JSON" not in template:
+        fail("event-processing template must expose generated event catalog")
+
+
+def validate_rpa_artifacts() -> None:
+    contract = (ROOT / "app" / "rpa.py").read_text()
+    required_terms = (
+        "rpa_task_catalog",
+        "task_plan",
+        "credential_readiness",
+        "automation_audit_event",
+        "process_observation",
+        "process_summary",
+        "process_model",
+        "bpmn_xml",
+        "uml_activity",
+        "validate_process_model",
+        "simulate_process",
+        "rpa_platform_catalog",
+        "rpa_platform_plan",
+        "rpa_export_package",
+        "rpa_queue_payload",
+        "uipath",
+        "blue_prism",
+        "automation_anywhere",
+    )
+    if not all(term in contract for term in required_terms):
+        fail("RPA/BPA contract must expose task plans, credential readiness, BPMN/UML models, simulation, platform exports, audit, and process analysis")
+    template = (ROOT / "app" / "templates" / "appgen_rpa.html").read_text()
+    if (
+        "RPA &amp; BPA" not in template
+        or "Automation Catalog JSON" not in template
+        or "BPMN/UML" not in template
+        or "UiPath" not in template
+        or "Blue Prism" not in template
+        or "Automation Anywhere" not in template
+    ):
+        fail("RPA/BPA template must expose generated automation, platform export, and process-model catalog")
+
+
+def validate_api_testing_artifacts() -> None:
+    contract = (ROOT / "app" / "api_testing.py").read_text()
+    if "request_plan" not in contract or "validate_response" not in contract or "synthetic_monitor_plan" not in contract:
+        fail("API testing contract must expose request plans, response validation, and synthetic monitoring")
+    if "contract_coverage" not in contract or "api_testing_check" not in contract:
+        fail("API testing contract must expose OpenAPI coverage and readiness helpers")
+    template = (ROOT / "app" / "templates" / "appgen_api_testing.html").read_text()
+    if "API Testing" not in template or "Test Catalog JSON" not in template or "Monitor JSON" not in template:
+        fail("API testing template must expose generated test and monitor catalogs")
+
+
+def validate_test_coverage_artifacts() -> None:
+    coverage = (ROOT / "tests" / "test_generated_coverage.py").read_text()
+    required = (
+        "COVERAGE_MATRIX",
+        "WORKFLOW_COVERAGE",
+        "REQUIRED_AREAS",
+        "REQUIRED_WORKFLOW_AREAS",
+        "workflow_coverage_matrix",
+        "coverage_summary",
+        "uncovered_requirements",
+        "uncovered_workflow_requirements",
+        "test_manifest_tables_have_generated_coverage",
+        "test_manifest_workflows_have_generated_coverage",
+        "test_every_workflow_has_transition_statechart_automation_and_wizard_cases",
+    )
+    if not all(item in coverage for item in required):
+        fail("generated coverage tests must expose per-table and workflow coverage matrices plus pytest checks")
+    if "schema" not in coverage or "api" not in coverage or "security" not in coverage or "reports" not in coverage:
+        fail("generated coverage tests must cover schema, API, security, and reports")
+    if "statechart" not in coverage or "automation" not in coverage or "wizard" not in coverage:
+        fail("generated coverage tests must cover workflow statecharts, automation, and wizards")
+
+
+def validate_native_artifacts() -> None:
+    contract = (ROOT / "native" / "appgen_native.py").read_text()
+    if "native_targets" not in contract or "scaffold_check" not in contract:
+        fail("native contract must expose target and scaffold checks")
+    mobile = (ROOT / "native" / "mobile" / "app.py").read_text()
+    if "AppGenMobileApp" not in mobile or "offline_record" not in mobile:
+        fail("mobile starter must expose Kivy app and offline queue helpers")
+    desktop = (ROOT / "native" / "desktop" / "app.py").read_text()
+    if "AppGenDesktopApp" not in desktop or "local_cache_plan" not in desktop:
+        fail("desktop starter must expose BeeWare app and local cache helpers")
+
+
+def validate_jhipster_artifacts() -> None:
+    contract = (ROOT / "jhipster" / "appgen_jhipster.py").read_text()
+    if "jhipster_import_command" not in contract or "export_check" not in contract:
+        fail("JHipster contract must expose import and export checks")
+    jdl = (ROOT / "jhipster" / "app.jdl").read_text()
+    if "application {" not in jdl or "dto * with mapstruct" not in jdl:
+        fail("JHipster JDL must include application config and DTO strategy")
+
+
+def validate_node_red_artifacts() -> None:
+    flow_export = json.loads((ROOT / "automation" / "node-red" / "flows.json").read_text())
+    if not isinstance(flow_export, list):
+        fail("Node-RED flow export must be a JSON list")
+    if not any(isinstance(node, dict) and node.get("type") == "http in" for node in flow_export):
+        fail("Node-RED flow export must expose HTTP input nodes")
+    contract = (ROOT / "automation" / "appgen_node_red.py").read_text()
+    if "node_red_events" not in contract or "validate_flow_export" not in contract:
+        fail("Node-RED contract helper must expose event and validation helpers")
+    if "workflow_events" not in contract or "workflow_webhook_plan" not in contract:
+        fail("Node-RED contract helper must expose workflow automation helpers")
+    workflow_contract = (ROOT / "app" / "workflow.py").read_text()
+    if "WORKFLOWS = {}" not in workflow_contract and "workflow_event_topic" not in contract:
+        fail("Node-RED contract helper must expose workflow transition topics when workflows exist")
+
+
+def validate_workflow_artifacts() -> None:
+    contract = (ROOT / "app" / "workflow.py").read_text()
+    if "statechart_mermaid" not in contract or "fsm_export" not in contract or "workflow_graph_check" not in contract:
+        fail("workflow contract must expose FSM and state-chart exports")
+    template = (ROOT / "app" / "templates" / "appgen_workflows.html").read_text()
+    if "FSM JSON" not in template or "Mermaid" not in template:
+        fail("workflow template must expose state-chart export links")
+
+
+def validate_rules_artifacts() -> None:
+    contract = (ROOT / "app" / "rules.py").read_text()
+    if "validate_row" not in contract or "decision_plan" not in contract or "rules_catalog" not in contract:
+        fail("rules contract must expose validation and decision helpers")
+    api = (ROOT / "app" / "api.py").read_text()
+    views = (ROOT / "app" / "views.py").read_text()
+    if "def pre_add" not in api or "before_save_row" not in api or "after_save_row" not in api:
+        fail("REST APIs must enforce rules through generated write hooks")
+    if "def pre_add" not in views or "before_save_row" not in views or "after_save_row" not in views:
+        fail("CRUD views must enforce rules through generated write hooks")
+    template = (ROOT / "app" / "templates" / "appgen_rules.html").read_text()
+    if "Business Rules" not in template or "Rules JSON" not in template:
+        fail("rules template must expose generated rule contracts")
+
+
+def validate_resilience_artifacts() -> None:
+    contract = (ROOT / "app" / "resilience.py").read_text()
+    required = (
+        "classify_exception",
+        "safe_error_response",
+        "recovery_actions",
+        "retry_policy",
+        "circuit_breaker_state",
+        "incident_report",
+        "exception_management_plan",
+        "resilience_check",
+    )
+    if not all(item in contract for item in required):
+        fail("resilience contract must expose automatic error handling and exception-management helpers")
+    template = (ROOT / "app" / "templates" / "appgen_resilience.html").read_text()
+    if "Resilience" not in template or "Error Handling JSON" not in template:
+        fail("resilience cockpit must expose generated error-handling catalog")
+
+
+def validate_chatbot_artifacts() -> None:
+    dialogflow = json.loads((ROOT / "chatbots" / "dialogflow" / "intents.json").read_text())
+    intents = dialogflow.get("intents")
+    if not isinstance(intents, list) or not intents:
+        fail("Dialogflow export must contain generated intents")
+    if not any(isinstance(intent, dict) and intent.get("parameters") for intent in intents):
+        fail("Dialogflow intents must contain field parameters")
+    manifest = json.loads((ROOT / "chatbots" / "botframework" / "manifest.json").read_text())
+    bots = manifest.get("bots")
+    if not isinstance(bots, list) or not bots:
+        fail("Bot Framework manifest must contain a bot definition")
+    commands = bots[0].get("commandLists", [{}])[0].get("commands", [])
+    if not commands:
+        fail("Bot Framework manifest must contain generated commands")
+    contract = (ROOT / "chatbots" / "appgen_chatbots.py").read_text()
+    if "chatbot_targets" not in contract or "conversation_plan" not in contract:
+        fail("chatbot contract helper must expose target and conversation helpers")
+    app_contract = (ROOT / "app" / "chatbot.py").read_text()
+    if "start_conversation" not in app_contract or "answer_conversation" not in app_contract or "create_payload" not in app_contract:
+        fail("in-app chatbot must expose guided conversation and create-payload helpers")
+    template = (ROOT / "app" / "templates" / "appgen_chatbot.html").read_text()
+    if "Guided Chatbot" not in template or "Catalog JSON" not in template:
+        fail("in-app chatbot template must expose guided chatbot catalog")
+
+
+def validate_voice_artifacts() -> None:
+    contract = (ROOT / "app" / "voice.py").read_text()
+    required = (
+        "voice_provider_catalog",
+        "voice_intent_catalog",
+        "utterance_training_phrases",
+        "slot_schema",
+        "speech_prompt",
+        "match_utterance",
+        "slot_fill_plan",
+        "ssml",
+        "voice_response",
+        "alexa_interaction_model",
+        "google_actions_model",
+        "voice_check",
+    )
+    if not all(item in contract for item in required):
+        fail("voice assistant contract must expose speech prompts, slots, SSML, and provider exports")
+    template = (ROOT / "app" / "templates" / "appgen_voice.html").read_text()
+    if "Voice Assistant" not in template or "Voice JSON" not in template:
+        fail("voice assistant cockpit must expose generated voice catalog")
+
+
+def validate_report_artifacts() -> None:
+    contract = (ROOT / "app" / "reports.py").read_text()
+    required = (
+        "JOIN_REPORTS",
+        "THREE_WAY_REPORTS",
+        "join_report_catalog",
+        "three_way_report_catalog",
+        "report_query_plan",
+        "relationship_rows_to_csv",
+    )
+    if not all(item in contract for item in required):
+        fail("reports contract must expose table, join, and three-way report helpers")
+    template = (ROOT / "app" / "templates" / "appgen_reports.html").read_text()
+    if "Join reports" not in template or "Three-way reports" not in template or "Catalog JSON" not in template:
+        fail("reports template must expose table, join, and three-way report catalogs")
+
+
+def validate_report_delivery_artifacts() -> None:
+    contract = (ROOT / "app" / "report_delivery.py").read_text()
+    if "rows_to_pdf_bytes" not in contract or "email_report_payload" not in contract:
+        fail("report delivery contract must expose PDF and email helpers")
+    template = (ROOT / "app" / "templates" / "appgen_report_delivery.html").read_text()
+    if "Report Delivery" not in template or "PDF" not in template:
+        fail("report delivery template must expose PDF delivery")
+
+
+def validate_branding_artifacts() -> None:
+    css = (ROOT / "app" / "static" / "appgen-theme.css").read_text()
+    if "--appgen-primary" not in css or "--appgen-accent" not in css:
+        fail("theme CSS must expose generated brand variables")
+    contract = (ROOT / "app" / "branding.py").read_text()
+    if "theme_contract" not in contract or "asset_check" not in contract:
+        fail("branding contract must expose theme and asset checks")
+    template = (ROOT / "app" / "templates" / "appgen_branding.html").read_text()
+    if "Theme JSON" not in template or "branding.palette" not in template:
+        fail("branding template must expose theme preview and palette")
+
+
+def validate_extension_artifacts() -> None:
+    contract = (ROOT / "app" / "extensions.py").read_text()
+    if "extension_points" not in contract or "dispatch" not in contract or "app_custom.extensions" not in contract:
+        fail("extension contract must expose hook registry and custom module dispatch")
+    if "load_rules_module" not in contract or "before_save_row" not in contract:
+        fail("extension contract must enforce generated rules before save")
+    custom = (ROOT / "app_custom" / "extensions.py").read_text()
+    if "def startup" not in custom or "def template_context" not in custom:
+        fail("custom extension module must include stable hook stubs")
+    template = (ROOT / "app" / "templates" / "appgen_extensions.html").read_text()
+    if "app_custom/extensions.py" not in template or "Hooks JSON" not in template:
+        fail("extension template must point users to custom hook stubs")
+
+
+def validate_packaging_artifacts() -> None:
+    pyproject = (ROOT / "pyproject.toml").read_text()
+    if "[build-system]" not in pyproject or "[project]" not in pyproject or "appgen-quality" not in pyproject:
+        fail("publishable pyproject must expose build metadata and quality entry point")
+    manifest = (ROOT / "MANIFEST.in").read_text()
+    if "recursive-include app/templates" not in manifest or "recursive-include cookiecutter" not in manifest:
+        fail("MANIFEST.in must include templates, static assets, docs, migrations, and cookiecutter files")
+    contract = (ROOT / "appgen_package.py").read_text()
+    if "package_metadata" not in contract or "fab_extension_contract" not in contract or "cookiecutter_context" not in contract:
+        fail("package contract must expose package, FAB extension, and Cookiecutter metadata")
+    cookie = json.loads((ROOT / "cookiecutter" / "cookiecutter.json").read_text())
+    if "project_slug" not in cookie or not (ROOT / "cookiecutter" / "{{cookiecutter.project_slug}}" / "app" / "__init__.py").exists():
+        fail("cookiecutter template must expose project context and app scaffold")
+
+
+def validate_component_artifacts() -> None:
+    contract = (ROOT / "app" / "components.py").read_text()
+    if "field_widget" not in contract or "choices" not in contract:
+        fail("component contract must expose field widgets and lookup choices")
+    if "calendar_fields" not in contract or "platform_widget" not in contract or "widget_registry" not in contract:
+        fail("component contract must expose calendar-aware, platform-specific widget contracts")
+    template = (ROOT / "app" / "templates" / "appgen_components.html").read_text()
+    if "Generated component and widget contracts" not in template:
+        fail("component template must expose generated component contracts")
+
+
+def validate_view_composition_artifacts() -> None:
+    contract = (ROOT / "app" / "view_composition.py").read_text()
+    if "master_detail_catalog" not in contract or "multiple_view_catalog" not in contract or "chart_view_catalog" not in contract:
+        fail("view composition contract must expose master-detail, multiple, and chart catalogs")
+    views = (ROOT / "app" / "views.py").read_text()
+    if "MasterDetailView" not in views or "MultipleView" not in views or "ChartView" not in views:
+        fail("generated views.py must include MasterDetailView, MultipleView, and ChartView support")
+    template = (ROOT / "app" / "templates" / "appgen_view_composition.html").read_text()
+    if "View Composition" not in template or "MasterDetailView" not in template or "ChartView" not in template:
+        fail("view composition template must expose generated view composition catalog")
+
+
+def validate_tabbed_view_artifacts() -> None:
+    contract = (ROOT / "app" / "tabbed_views.py").read_text()
+    if "tabbed_view_catalog" not in contract or "tab_policy" not in contract or "can_access_tab" not in contract:
+        fail("tabbed-view contract must expose tab catalogs and per-tab permission checks")
+    if "visible_tabs" not in contract or "tabbed_views_check" not in contract:
+        fail("tabbed-view contract must expose visible tab and readiness helpers")
+    template = (ROOT / "app" / "templates" / "appgen_tabbed_views.html").read_text()
+    if "Tabbed Views" not in template or "permissions per tab" not in template:
+        fail("tabbed-view template must expose per-tab permission metadata")
+
+
+def validate_data_access_artifacts() -> None:
+    contract = (ROOT / "app" / "data_access.py").read_text()
+    required_terms = (
+        "data_access_catalog",
+        "normalize_query",
+        "query_rows",
+        "sanitize_write_payload",
+        "mutation_plan",
+        "data_access_check",
+    )
+    if not all(term in contract for term in required_terms):
+        fail("data access contract must expose query, projection, mutation, and readiness helpers")
+    template = (ROOT / "app" / "templates" / "appgen_data_access.html").read_text()
+    if "Data Access" not in template or "Access JSON" not in template or "Writable fields" not in template:
+        fail("data access template must expose generated read/write contracts")
+
+
+def validate_data_exchange_artifacts() -> None:
+    contract = (ROOT / "app" / "data_exchange.py").read_text()
+    if "csv_template" not in contract or "import_plan" not in contract or "validate_import_row" not in contract:
+        fail("data exchange contract must expose CSV templates and import validation")
+    if "migration_batch_plan" not in contract or "migration_batch_summary" not in contract:
+        fail("data exchange contract must expose reviewed migration batch planning")
+    if "migration_batch_json" not in contract or "migration_batch_request_plan" not in contract or "request.get_json" not in contract:
+        fail("data exchange contract must expose migration batch planning route")
+    if "unknown_table" not in contract or "invalid_migration_batch_request" not in contract:
+        fail("data exchange contract must expose deterministic migration-batch error responses")
+    template = (ROOT / "app" / "templates" / "appgen_data_exchange.html").read_text()
+    if "Data Exchange" not in template or "CSV template" not in template:
+        fail("data exchange template must expose CSV templates")
+    if "Migration batch planning" not in template:
+        fail("data exchange template must expose migration batch planning")
+
+
+def validate_database_ops_artifacts() -> None:
+    contract = (ROOT / "app" / "database_ops.py").read_text()
+    required_terms = (
+        "database_provider_catalog",
+        "compose_service_plan",
+        "kubernetes_statefulset_plan",
+        "migration_target_matrix",
+        "nosql_provider_catalog",
+        "nosql_provider_plan",
+        "document_projection_matrix",
+        "patroni",
+        "postgraphile",
+        "zombodb",
+        "elasticsearch",
+        "mongodb",
+        "dynamodb",
+        "cassandra",
+        "redis",
+    )
+    if not all(term in contract for term in required_terms):
+        fail("database operations contract must expose relational, NoSQL, add-on, and deployment plans")
+    template = (ROOT / "app" / "templates" / "appgen_database_ops.html").read_text()
+    if "Database Operations" not in template or "Providers JSON" not in template or "Add-ons JSON" not in template or "Migration Targets JSON" not in template or "NoSQL" not in template:
+        fail("database operations template must expose provider, NoSQL, and migration links")
+
+
+def validate_performance_artifacts() -> None:
+    contract = (ROOT / "app" / "performance.py").read_text()
+    if "autoscale_plan" not in contract or "slo_report" not in contract or "load_profile_plan" not in contract:
+        fail("performance contract must expose SLO, load-profile, and autoscale helpers")
+    template = (ROOT / "app" / "templates" / "appgen_performance.html").read_text()
+    if "Performance" not in template or "Load Profile JSON" not in template:
+        fail("performance template must expose budgets and load profiles")
+
+
+def validate_usage_analytics_artifacts() -> None:
+    contract = (ROOT / "app" / "usage_analytics.py").read_text()
+    if "usage_event" not in contract or "activity_summary" not in contract or "usage_dashboard" not in contract:
+        fail("usage analytics contract must expose events, activity summaries, and dashboard payloads")
+    if "adoption_report" not in contract or "funnel_report" not in contract or "retention_report" not in contract:
+        fail("usage analytics contract must expose adoption, funnel, and retention reports")
+    template = (ROOT / "app" / "templates" / "appgen_usage_analytics.html").read_text()
+    if "Usage Analytics" not in template or "Analytics Catalog JSON" not in template:
+        fail("usage analytics template must expose generated analytics catalog")
+
+
+def main() -> int:
+    require_paths()
+    compile_python()
+    validate_manifest()
+    validate_documentation_artifacts()
+    validate_config_admin_artifacts()
+    validate_designer_artifacts()
+    validate_form_designer_artifacts()
+    validate_nl_evolution_artifacts()
+    validate_dsl_reference_artifacts()
+    validate_view_experience_artifacts()
+    validate_support_center_artifacts()
+    validate_prototyping_artifacts()
+    validate_agentic_artifacts()
+    validate_intelligence_artifacts()
+    validate_identity_artifacts()
+    validate_erp_template_artifacts()
+    validate_document_management_artifacts()
+    validate_inventory_ops_artifacts()
+    validate_finance_ops_artifacts()
+    validate_manufacturing_ops_artifacts()
+    validate_project_management_artifacts()
+    validate_devtools_artifacts()
+    validate_studio_artifacts()
+    validate_ci()
+    validate_deployment_artifacts()
+    validate_frontend_artifacts()
+    validate_microservice_artifacts()
+    validate_integration_artifacts()
+    validate_productivity_artifacts()
+    validate_lifecycle_artifacts()
+    validate_emerging_artifacts()
+    validate_sdk_artifacts()
+    validate_openapi_artifacts()
+    validate_version_control_artifacts()
+    validate_realtime_artifacts()
+    validate_event_artifacts()
+    validate_rpa_artifacts()
+    validate_api_testing_artifacts()
+    validate_test_coverage_artifacts()
+    validate_native_artifacts()
+    validate_jhipster_artifacts()
+    validate_chatbot_artifacts()
+    validate_voice_artifacts()
+    validate_node_red_artifacts()
+    validate_workflow_artifacts()
+    validate_rules_artifacts()
+    validate_resilience_artifacts()
+    validate_report_artifacts()
+    validate_report_delivery_artifacts()
+    validate_branding_artifacts()
+    validate_extension_artifacts()
+    validate_packaging_artifacts()
+    validate_component_artifacts()
+    validate_view_composition_artifacts()
+    validate_tabbed_view_artifacts()
+    validate_data_access_artifacts()
+    validate_data_exchange_artifacts()
+    validate_database_ops_artifacts()
+    validate_performance_artifacts()
+    validate_usage_analytics_artifacts()
+    print("appgen quality passed")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
+'''
+
+
+def _migrations_text() -> str:
+    return """# Migrations
+
+This generated app includes an Alembic scaffold.
+
+Create the first migration after reviewing generated models:
+
+```console
+alembic -c alembic.ini revision --autogenerate -m "initial schema"
+alembic -c alembic.ini upgrade head
+```
+
+Keep schema changes in migrations once the generated app is customized.
+"""
+
+
+def _alembic_ini_text() -> str:
+    return """[alembic]
+script_location = migrations
+prepend_sys_path = .
+sqlalchemy.url = sqlite:///app.db
+
+[loggers]
+keys = root,sqlalchemy,alembic
+
+[handlers]
+keys = console
+
+[formatters]
+keys = generic
+
+[logger_root]
+level = WARN
+handlers = console
+qualname =
+
+[logger_sqlalchemy]
+level = WARN
+handlers =
+qualname = sqlalchemy.engine
+
+[logger_alembic]
+level = INFO
+handlers =
+qualname = alembic
+
+[handler_console]
+class = StreamHandler
+args = (sys.stderr,)
+level = NOTSET
+formatter = generic
+
+[formatter_generic]
+format = %(levelname)-5.5s [%(name)s] %(message)s
+datefmt = %H:%M:%S
+"""
+
+
+def _alembic_env_text() -> str:
+    return '''from __future__ import annotations
+
+from logging.config import fileConfig
+
+from alembic import context
+from sqlalchemy import engine_from_config
+from sqlalchemy import pool
+
+from app import db
+from app import models  # noqa: F401
+
+
+config = context.config
+
+if config.config_file_name is not None:
+    fileConfig(config.config_file_name)
+
+target_metadata = db.Model.metadata
+
+
+def run_migrations_offline():
+    url = config.get_main_option("sqlalchemy.url")
+    context.configure(
+        url=url,
+        target_metadata=target_metadata,
+        literal_binds=True,
+        dialect_opts={"paramstyle": "named"},
+    )
+
+    with context.begin_transaction():
+        context.run_migrations()
+
+
+def run_migrations_online():
+    connectable = engine_from_config(
+        config.get_section(config.config_ini_section, {}),
+        prefix="sqlalchemy.",
+        poolclass=pool.NullPool,
+    )
+
+    with connectable.connect() as connection:
+        context.configure(connection=connection, target_metadata=target_metadata)
+
+        with context.begin_transaction():
+            context.run_migrations()
+
+
+if context.is_offline_mode():
+    run_migrations_offline()
+else:
+    run_migrations_online()
+'''
+
+
+def _alembic_script_text() -> str:
+    return '''"""${message}
+
+Revision ID: ${up_revision}
+Revises: ${down_revision | comma,n}
+Create Date: ${create_date}
+"""
+
+from alembic import op
+import sqlalchemy as sa
+
+
+revision = ${repr(up_revision)}
+down_revision = ${repr(down_revision)}
+branch_labels = ${repr(branch_labels)}
+depends_on = ${repr(depends_on)}
+
+
+def upgrade():
+    ${upgrades if upgrades else "pass"}
+
+
+def downgrade():
+    ${downgrades if downgrades else "pass"}
+'''
+
+
+def _generated_coverage_test_text(schema: AppSchema) -> str:
+    table_cases = {}
+    for table in schema.tables:
+        visible_columns = tuple(
+            _model_attribute_name(column)
+            for column in table.columns
+            if not column.hidden and not column.derived
+        )
+        required_fields = tuple(
+            _model_attribute_name(column)
+            for column in table.columns
+            if not column.nullable and not column.primary_key and not column.hidden and not column.derived
+        )
+        table_cases[table.name] = {
+            "schema": {
+                "columns": visible_columns,
+                "required": required_fields,
+                "primary_key": tuple(_model_attribute_name(column) for column in table.columns if column.primary_key),
+            },
+            "api": {
+                "endpoint": f"/api/v1/{underscore(table.name)}/",
+                "methods": ("GET", "POST", "PUT", "DELETE"),
+            },
+            "ui": {
+                "model_view": f"{snake_to_pascal(table.name)}ModelView",
+                "form_fields": visible_columns,
+            },
+            "reports": {
+                "columns": visible_columns,
+                "csv": f"/reports/{table.name}.csv",
+            },
+            "security": {
+                "resource": table.name,
+                "checks": ("rbac", "runtime_headers", "csrf"),
+            },
+            "data": {
+                "seeded": bool(visible_columns),
+                "exchange": True,
+                "backup": True,
+            },
+        }
+    workflow_cases = {
+        flow.name: {
+            "transitions": {
+                "steps": tuple(
+                    {
+                        "source": step.source,
+                        "target": step.target,
+                        "topic": f"workflow.{flow.name}.{step.source}.{step.target}",
+                    }
+                    for step in flow.steps
+                ),
+            },
+            "statechart": {
+                "helper": "statechart_mermaid",
+                "fsm": "fsm_export",
+            },
+            "automation": {
+                "node_red": tuple(
+                    f"workflow.{flow.name}.{step.source}.{step.target}"
+                    for step in flow.steps
+                ),
+            },
+            "wizard": {
+                "name": f"{flow.name}Workflow",
+            },
+        }
+        for flow in schema.flows
+    }
+    return f'''"""Generated pytest coverage matrix for this AppGen application."""
+
+from __future__ import annotations
+
+import json
+import pathlib
+
+
+ROOT = pathlib.Path(__file__).resolve().parents[1]
+COVERAGE_MATRIX = {table_cases!r}
+WORKFLOW_COVERAGE = {workflow_cases!r}
+REQUIRED_AREAS = ("schema", "api", "ui", "reports", "security", "data")
+REQUIRED_WORKFLOW_AREAS = ("transitions", "statechart", "automation", "wizard")
+
+
+def coverage_matrix():
+    """Return generated coverage expectations by table."""
+    return COVERAGE_MATRIX
+
+
+def workflow_coverage_matrix():
+    """Return generated coverage expectations by workflow."""
+    return WORKFLOW_COVERAGE
+
+
+def coverage_summary():
+    """Return deterministic coverage totals for generated quality reports."""
+    table_count = len(COVERAGE_MATRIX)
+    workflow_count = len(WORKFLOW_COVERAGE)
+    table_case_count = sum(len(areas) for areas in COVERAGE_MATRIX.values())
+    workflow_case_count = sum(len(areas) for areas in WORKFLOW_COVERAGE.values())
+    minimum_expected_cases = (
+        table_count * len(REQUIRED_AREAS)
+        + workflow_count * len(REQUIRED_WORKFLOW_AREAS)
+    )
+    case_count = table_case_count + workflow_case_count
+    return {{
+        "tables": table_count,
+        "workflows": workflow_count,
+        "areas": REQUIRED_AREAS,
+        "workflow_areas": REQUIRED_WORKFLOW_AREAS,
+        "case_count": case_count,
+        "table_case_count": table_case_count,
+        "workflow_case_count": workflow_case_count,
+        "minimum_expected_cases": minimum_expected_cases,
+        "ok": case_count >= minimum_expected_cases,
+    }}
+
+
+def uncovered_requirements():
+    """Return missing coverage areas per table."""
+    missing = {{}}
+    for table_name, areas in COVERAGE_MATRIX.items():
+        absent = tuple(area for area in REQUIRED_AREAS if area not in areas)
+        if absent:
+            missing[table_name] = absent
+    return missing
+
+
+def uncovered_workflow_requirements():
+    """Return missing coverage areas per workflow."""
+    missing = {{}}
+    for flow_name, areas in WORKFLOW_COVERAGE.items():
+        absent = tuple(area for area in REQUIRED_WORKFLOW_AREAS if area not in areas)
+        if absent:
+            missing[flow_name] = absent
+    return missing
+
+
+def test_manifest_tables_have_generated_coverage():
+    manifest = json.loads((ROOT / "app" / "appgen.json").read_text())
+    manifest_tables = {{table["name"] for table in manifest["tables"]}}
+    assert manifest_tables == set(COVERAGE_MATRIX)
+    assert not uncovered_requirements()
+
+
+def test_manifest_workflows_have_generated_coverage():
+    manifest = json.loads((ROOT / "app" / "appgen.json").read_text())
+    manifest_workflows = {{flow["name"] for flow in manifest["flows"]}}
+    assert manifest_workflows == set(WORKFLOW_COVERAGE)
+    assert not uncovered_workflow_requirements()
+
+
+def test_every_table_has_api_ui_report_security_and_data_cases():
+    for table_name, areas in COVERAGE_MATRIX.items():
+        assert tuple(areas) == REQUIRED_AREAS
+        assert areas["schema"]["columns"], table_name
+        assert areas["api"]["endpoint"].startswith("/api/v1/")
+        assert set(("GET", "POST", "PUT", "DELETE")) <= set(areas["api"]["methods"])
+        assert areas["ui"]["model_view"].endswith("ModelView")
+        assert areas["reports"]["csv"].startswith("/reports/")
+        assert set(("rbac", "runtime_headers", "csrf")) <= set(areas["security"]["checks"])
+        assert areas["data"]["exchange"] is True
+        assert areas["data"]["backup"] is True
+
+
+def test_every_workflow_has_transition_statechart_automation_and_wizard_cases():
+    for flow_name, areas in WORKFLOW_COVERAGE.items():
+        assert tuple(areas) == REQUIRED_WORKFLOW_AREAS
+        assert areas["transitions"]["steps"], flow_name
+        assert all(step["topic"].startswith("workflow.") for step in areas["transitions"]["steps"])
+        assert areas["statechart"]["helper"] == "statechart_mermaid"
+        assert areas["statechart"]["fsm"] == "fsm_export"
+        assert tuple(step["topic"] for step in areas["transitions"]["steps"]) == areas["automation"]["node_red"]
+        assert areas["wizard"]["name"].endswith("Workflow")
+
+
+def test_coverage_summary_meets_generated_minimum():
+    summary = coverage_summary()
+    assert summary["ok"] is True
+    assert summary["case_count"] >= summary["minimum_expected_cases"]
+'''
+
+
+def _generated_contract_test_text() -> str:
+    return '''import importlib.util
+import json
+import pathlib
+
+
+ROOT = pathlib.Path(__file__).resolve().parents[1]
+
+
+def load_module(path, name):
+    spec = importlib.util.spec_from_file_location(name, path)
+    module = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(module)
+    return module
+
+
+def test_generated_manifest_contract():
+    manifest = json.loads((ROOT / "app" / "appgen.json").read_text())
+    assert "tables" in manifest
+    assert "capabilities" in manifest
+    assert (ROOT / "docs" / "schema.md").exists()
+    assert (ROOT / "docs" / "openapi.json").exists()
+    assert (ROOT / "docs" / "accessibility.md").exists()
+    assert (ROOT / "deploy" / "appgen_https.py").exists()
+    assert (ROOT / "deploy" / "Caddyfile").exists()
+    assert (ROOT / "jhipster" / "appgen_jhipster.py").exists()
+    assert (ROOT / "jhipster" / "app.jdl").exists()
+    assert (ROOT / "sdks" / "appgen_sdks.py").exists()
+    assert (ROOT / "sdks" / "python" / "client.py").exists()
+    assert (ROOT / "sdks" / "javascript" / "client.js").exists()
+    assert (ROOT / "sdks" / "java" / "AppGenClient.java").exists()
+    assert (ROOT / "sdks" / "csharp" / "AppGenClient.cs").exists()
+    assert (ROOT / "native" / "appgen_native.py").exists()
+    assert (ROOT / "native" / "mobile" / "app.py").exists()
+    assert (ROOT / "native" / "desktop" / "app.py").exists()
+    assert (ROOT / "chatbots" / "appgen_chatbots.py").exists()
+    assert (ROOT / "chatbots" / "dialogflow" / "intents.json").exists()
+    assert (ROOT / "chatbots" / "botframework" / "manifest.json").exists()
+    assert (ROOT / "automation" / "appgen_node_red.py").exists()
+    assert (ROOT / "automation" / "node-red" / "flows.json").exists()
+    assert (ROOT / ".github" / "workflows" / "appgen-ci.yml").exists()
+    assert (ROOT / "scripts" / "appgen_quality.py").exists()
+    assert (ROOT / "app" / "templates" / "appgen_integrations.html").exists()
+    assert (ROOT / "app" / "templates" / "appgen_runtime_security.html").exists()
+    assert (ROOT / "app" / "templates" / "appgen_openapi.html").exists()
+    assert (ROOT / "app" / "templates" / "appgen_rules.html").exists()
+    assert (ROOT / "app" / "templates" / "appgen_form_designer.html").exists()
+    assert (ROOT / "app" / "templates" / "appgen_nl_evolution.html").exists()
+    assert (ROOT / "app" / "templates" / "appgen_dsl_reference.html").exists()
+    assert (ROOT / "app" / "templates" / "appgen_view_experience.html").exists()
+    assert (ROOT / "app" / "templates" / "appgen_support_center.html").exists()
+    assert (ROOT / "app" / "templates" / "appgen_prototyping.html").exists()
+    assert (ROOT / "app" / "templates" / "appgen_resilience.html").exists()
+    assert (ROOT / "app" / "templates" / "appgen_productivity.html").exists()
+    assert (ROOT / "app" / "templates" / "appgen_lifecycle.html").exists()
+    assert (ROOT / "app" / "templates" / "appgen_dashboards.html").exists()
+    assert (ROOT / "app" / "templates" / "appgen_rls.html").exists()
+    assert (ROOT / "app" / "templates" / "appgen_search.html").exists()
+    assert (ROOT / "app" / "templates" / "appgen_media.html").exists()
+    assert (ROOT / "app" / "templates" / "appgen_documents.html").exists()
+    assert (ROOT / "app" / "templates" / "appgen_inventory_ops.html").exists()
+    assert (ROOT / "app" / "templates" / "appgen_finance_ops.html").exists()
+    assert (ROOT / "app" / "templates" / "appgen_manufacturing_ops.html").exists()
+    assert (ROOT / "app" / "templates" / "appgen_tenancy.html").exists()
+    assert (ROOT / "app" / "templates" / "appgen_identity.html").exists()
+    assert (ROOT / "app" / "templates" / "appgen_compliance.html").exists()
+    assert (ROOT / "app" / "templates" / "appgen_assistant.html").exists()
+    assert (ROOT / "app" / "templates" / "appgen_intelligence.html").exists()
+    assert (ROOT / "app" / "templates" / "appgen_chatbot.html").exists()
+    assert (ROOT / "app" / "templates" / "appgen_voice.html").exists()
+    assert (ROOT / "app" / "templates" / "appgen_agents.html").exists()
+    assert (ROOT / "app" / "templates" / "appgen_text_quality.html").exists()
+    assert (ROOT / "app" / "templates" / "appgen_notifications.html").exists()
+    assert (ROOT / "app" / "templates" / "appgen_platforms.html").exists()
+    assert (ROOT / "app" / "templates" / "appgen_microservices.html").exists()
+    assert (ROOT / "app" / "templates" / "appgen_collaboration.html").exists()
+    assert (ROOT / "app" / "templates" / "appgen_realtime.html").exists()
+    assert (ROOT / "app" / "templates" / "appgen_events.html").exists()
+    assert (ROOT / "app" / "templates" / "appgen_rpa.html").exists()
+    assert (ROOT / "app" / "templates" / "appgen_diagnostics.html").exists()
+    assert (ROOT / "app" / "templates" / "appgen_api_testing.html").exists()
+    assert (ROOT / "app" / "templates" / "appgen_code_review.html").exists()
+    assert (ROOT / "app" / "templates" / "appgen_report_delivery.html").exists()
+    assert (ROOT / "app" / "templates" / "appgen_components.html").exists()
+    assert (ROOT / "app" / "templates" / "appgen_view_composition.html").exists()
+    assert (ROOT / "app" / "templates" / "appgen_erp_templates.html").exists()
+    assert (ROOT / "app" / "templates" / "appgen_project_management.html").exists()
+    assert (ROOT / "app" / "templates" / "appgen_studio.html").exists()
+    assert (ROOT / "app" / "templates" / "appgen_wizards.html").exists()
+    assert (ROOT / "app" / "templates" / "appgen_branding.html").exists()
+    assert (ROOT / "app" / "templates" / "appgen_extensions.html").exists()
+    assert (ROOT / "app" / "templates" / "appgen_data_exchange.html").exists()
+    assert (ROOT / "app" / "templates" / "appgen_database_ops.html").exists()
+    assert (ROOT / "app" / "templates" / "appgen_performance.html").exists()
+    assert (ROOT / "app" / "templates" / "appgen_usage_analytics.html").exists()
+    assert (ROOT / "app_custom" / "extensions.py").exists()
+    assert (ROOT / "app" / "static" / "appgen.webmanifest").exists()
+    assert (ROOT / "app" / "static" / "appgen-sw.js").exists()
+    assert (ROOT / "app" / "static" / "appgen-theme.css").exists()
+    assert (ROOT / "app" / "static" / "appgen-view-experience.js").exists()
+    assert (ROOT / "app" / "translations" / "en" / "LC_MESSAGES" / "messages.po").exists()
+
+
+def test_generated_runtime_helpers():
+    health = load_module(ROOT / "app" / "health.py", "generated_health")
+    monitoring = load_module(ROOT / "app" / "monitoring.py", "generated_monitoring")
+    resilience = load_module(ROOT / "app" / "resilience.py", "generated_resilience")
+    security = load_module(ROOT / "app" / "security.py", "generated_security")
+    runtime_security = load_module(ROOT / "app" / "runtime_security.py", "generated_runtime_security")
+    workflow = load_module(ROOT / "app" / "workflow.py", "generated_workflow")
+    rules = load_module(ROOT / "app" / "rules.py", "generated_rules")
+    report_delivery = load_module(ROOT / "app" / "report_delivery.py", "generated_report_delivery")
+    dashboards = load_module(ROOT / "app" / "dashboards.py", "generated_dashboards")
+    search = load_module(ROOT / "app" / "search.py", "generated_search")
+    media = load_module(ROOT / "app" / "media.py", "generated_media")
+    documents = load_module(ROOT / "app" / "documents.py", "generated_documents")
+    inventory_ops = load_module(ROOT / "app" / "inventory_ops.py", "generated_inventory_ops")
+    finance_ops = load_module(ROOT / "app" / "finance_ops.py", "generated_finance_ops")
+    manufacturing_ops = load_module(ROOT / "app" / "manufacturing_ops.py", "generated_manufacturing_ops")
+    data_exchange = load_module(ROOT / "app" / "data_exchange.py", "generated_data_exchange")
+    database_ops = load_module(ROOT / "app" / "database_ops.py", "generated_database_ops")
+    performance = load_module(ROOT / "app" / "performance.py", "generated_performance")
+    usage_analytics = load_module(ROOT / "app" / "usage_analytics.py", "generated_usage_analytics")
+    designer = load_module(ROOT / "app" / "designer.py", "generated_designer")
+    form_designer = load_module(ROOT / "app" / "form_designer.py", "generated_form_designer")
+    nl_evolution = load_module(ROOT / "app" / "nl_evolution.py", "generated_nl_evolution")
+    dsl_reference = load_module(ROOT / "app" / "dsl_reference.py", "generated_dsl_reference")
+    view_experience = load_module(ROOT / "app" / "view_experience.py", "generated_view_experience")
+    support_center = load_module(ROOT / "app" / "support_center.py", "generated_support_center")
+    prototyping = load_module(ROOT / "app" / "prototyping.py", "generated_prototyping")
+    integrations = load_module(ROOT / "app" / "integrations.py", "generated_integrations")
+    productivity = load_module(ROOT / "app" / "productivity.py", "generated_productivity")
+    lifecycle = load_module(ROOT / "app" / "lifecycle.py", "generated_lifecycle")
+    tenancy = load_module(ROOT / "app" / "tenancy.py", "generated_tenancy")
+    rls = load_module(ROOT / "app" / "rls.py", "generated_rls")
+    identity = load_module(ROOT / "app" / "identity.py", "generated_identity")
+    compliance = load_module(ROOT / "app" / "compliance.py", "generated_compliance")
+    assistant = load_module(ROOT / "app" / "assistant.py", "generated_assistant")
+    intelligence = load_module(ROOT / "app" / "intelligence.py", "generated_intelligence")
+    chatbot = load_module(ROOT / "app" / "chatbot.py", "generated_chatbot")
+    voice = load_module(ROOT / "app" / "voice.py", "generated_voice")
+    agents = load_module(ROOT / "app" / "agents.py", "generated_agents")
+    text_quality = load_module(ROOT / "app" / "text_quality.py", "generated_text_quality")
+    notifications = load_module(ROOT / "app" / "notifications.py", "generated_notifications")
+    platforms = load_module(ROOT / "app" / "platforms.py", "generated_platforms")
+    microservices = load_module(ROOT / "app" / "microservices.py", "generated_microservices")
+    sdks = load_module(ROOT / "sdks" / "appgen_sdks.py", "generated_sdks")
+    realtime = load_module(ROOT / "app" / "realtime.py", "generated_realtime")
+    events = load_module(ROOT / "app" / "events.py", "generated_events")
+    rpa = load_module(ROOT / "app" / "rpa.py", "generated_rpa")
+    native = load_module(ROOT / "native" / "appgen_native.py", "generated_native")
+    api_testing = load_module(ROOT / "app" / "api_testing.py", "generated_api_testing")
+    mobile = load_module(ROOT / "native" / "mobile" / "app.py", "generated_mobile")
+    desktop = load_module(ROOT / "native" / "desktop" / "app.py", "generated_desktop")
+    collaboration = load_module(ROOT / "app" / "collaboration.py", "generated_collaboration")
+    version_control = load_module(ROOT / "app" / "version_control.py", "generated_version_control")
+    diagnostics = load_module(ROOT / "app" / "diagnostics.py", "generated_diagnostics")
+    code_review = load_module(ROOT / "app" / "code_review.py", "generated_code_review")
+    components = load_module(ROOT / "app" / "components.py", "generated_components")
+    view_composition = load_module(ROOT / "app" / "view_composition.py", "generated_view_composition")
+    tabbed_views = load_module(ROOT / "app" / "tabbed_views.py", "generated_tabbed_views")
+    erp_templates = load_module(ROOT / "app" / "erp_templates.py", "generated_erp_templates")
+    project_management = load_module(ROOT / "app" / "project_management.py", "generated_project_management")
+    devtools = load_module(ROOT / "app" / "devtools.py", "generated_devtools")
+    studio = load_module(ROOT / "app" / "studio.py", "generated_studio")
+    wizards = load_module(ROOT / "app" / "wizards.py", "generated_wizards")
+    branding = load_module(ROOT / "app" / "branding.py", "generated_branding")
+    extensions = load_module(ROOT / "app" / "extensions.py", "generated_extensions")
+    https = load_module(ROOT / "deploy" / "appgen_https.py", "generated_https")
+    jhipster = load_module(ROOT / "jhipster" / "appgen_jhipster.py", "generated_jhipster")
+    chatbots = load_module(ROOT / "chatbots" / "appgen_chatbots.py", "generated_chatbots")
+    node_red = load_module(ROOT / "automation" / "appgen_node_red.py", "generated_node_red")
+    backup = load_module(ROOT / "app" / "backup.py", "generated_backup")
+    seed = load_module(ROOT / "seed.py", "generated_seed")
+    openapi = load_module(ROOT / "app" / "openapi.py", "generated_openapi")
+
+    assert health.status()["ok"] is True
+    assert openapi.openapi_spec()["openapi"] == "3.1.0"
+    assert openapi.operation_count() > 0
+    assert openapi.openapi_check(
+        {"app/openapi.py", "docs/openapi.json", "app/templates/appgen_openapi.html"}
+    )["ok"] is True
+    assert monitoring.readiness()["ready"] is True
+    assert resilience.classify_exception(ValueError("bad"))["category"] == "validation"
+    assert resilience.safe_error_response(TimeoutError("slow"))["retryable"] is True
+    assert "preserve_user_input" in resilience.safe_error_response(ValueError("bad"))["actions"]
+    assert resilience.retry_policy("sync", attempt=1)["retry"] is True
+    assert resilience.circuit_breaker_state(5)["state"] == "open"
+    assert resilience.incident_report(RuntimeError("boom"))["id"].startswith("inc-")
+    assert resilience.exception_management_plan()["redact_internal_errors"] is True
+    assert resilience.resilience_check({"app/resilience.py", "app/templates/appgen_resilience.html"})["ok"] is True
+    assert isinstance(security.ROLE_POLICIES, dict)
+    assert runtime_security.should_logout(1, now=runtime_security.datetime.fromtimestamp(2000, runtime_security.timezone.utc)) is True
+    assert isinstance(workflow.WORKFLOWS, dict)
+    assert isinstance(workflow.workflow_catalog(), tuple)
+    if workflow.WORKFLOWS:
+        first_flow = next(iter(workflow.WORKFLOWS))
+        assert "stateDiagram-v2" in workflow.statechart_mermaid(first_flow)
+        assert workflow.fsm_export(first_flow)["name"] == first_flow
+    assert isinstance(rules.rules_catalog(), tuple)
+    assert rules.rules_check({"app/rules.py", "app/templates/appgen_rules.html"})["ok"] is True
+    assert report_delivery.rows_to_pdf_bytes(next(iter(report_delivery.REPORT_DELIVERY)), ()).startswith(b"%PDF")
+    assert report_delivery.delivery_plan(next(iter(report_delivery.REPORT_DELIVERY)))["ok"] is True
+    assert isinstance(dashboards.dashboard_catalog(), tuple)
+    usage_resource = next(iter(usage_analytics.USAGE_RESOURCES))
+    usage_event = usage_analytics.usage_event(usage_resource, "viewed", actor="ada")
+    assert usage_analytics.activity_summary((usage_event,))["active_users"] == 1
+    assert usage_analytics.usage_analytics_check(
+        {"app/usage_analytics.py", "app/templates/appgen_usage_analytics.html"}
+    )["ok"] is True
+    assert isinstance(search.search_catalog(), tuple)
+    assert isinstance(media.media_catalog(), tuple)
+    first_document_type = documents.document_catalog()[0]["id"]
+    assert documents.document_version(first_document_type, record_id=1, filename="sample.pdf")["version"] == 1
+    assert documents.approval_workflow(first_document_type)["steps"][1]["target"] == "approved"
+    assert documents.retention_policy(first_document_type)["legal_hold_supported"] is True
+    assert documents.esignature_payload(first_document_type, signer="ada")["signer"] == "ada"
+    assert documents.document_audit_event(first_document_type, "view", actor="ada")["action"] == "view"
+    assert documents.document_management_check({"app/documents.py", "app/templates/appgen_documents.html"})["ok"] is True
+    first_inventory_table = inventory_ops.inventory_catalog()[0]["table"]
+    assert inventory_ops.scan_targets(first_inventory_table)
+    assert inventory_ops.barcode_label(first_inventory_table, {"title": "Dune"})["symbology"] == "code128"
+    assert inventory_ops.rfid_tag_payload(first_inventory_table, {"title": "Dune"})["epc"].startswith("urn:epc:id:sgtin:")
+    assert inventory_ops.scan_event(first_inventory_table, "Dune", mode="barcode")["mode"] == "barcode"
+    assert inventory_ops.stock_movement(first_inventory_table, sku="Dune", quantity=2)["quantity"] == 2.0
+    assert inventory_ops.cycle_count_plan(first_inventory_table)[0]["requires_reconciliation"] is True
+    assert inventory_ops.reconcile_count(first_inventory_table, expected=2, counted=3)["variance"] == 1.0
+    assert inventory_ops.traceability_chain(first_inventory_table, ("Dune",))["events"][0]["identifier"] == "Dune"
+    assert inventory_ops.inventory_ops_check({"app/inventory_ops.py", "app/templates/appgen_inventory_ops.html"})["ok"] is True
+    first_finance_table = finance_ops.finance_catalog()[0]["table"]
+    assert finance_ops.tax_calculation(100)["tax_amount"] == 16.0
+    assert finance_ops.exchange_rate_plan("USD", "KES")["ready"] is True
+    assert finance_ops.convert_amount(2, base="USD", target="KES")["converted"] == 258.0
+    assert finance_ops.budget_forecast(first_finance_table, (100, 200), periods=2)["forecast"]
+    assert finance_ops.revenue_recognition_schedule(120, periods=3)["schedule"][0]["amount"] == 40.0
+    assert finance_ops.batch_process(first_finance_table, ({{"total": 10}},), action="post")["row_count"] == 1
+    assert finance_ops.finance_ops_check({"app/finance_ops.py", "app/templates/appgen_finance_ops.html"})["ok"] is True
+    first_manufacturing_table = manufacturing_ops.manufacturing_catalog()[0]["table"]
+    bom = manufacturing_ops.bill_of_material_plan(first_manufacturing_table, "FG-1", ({{"component": "COMP-1", "quantity_per": 2}},))
+    requirements = manufacturing_ops.material_requirements(3, bom["components"], on_hand={{"COMP-1": 1}})
+    assert requirements[0]["net_required"] == 5.0
+    assert manufacturing_ops.capacity_plan(({{"work_order": "WO-1", "standard_hours": 4}},), available_hours=8)["overloaded"] is False
+    assert manufacturing_ops.production_schedule(({{"work_order": "WO-1", "standard_hours": 4}},), capacity_hours_per_period=8)[0]["period"] == 1
+    assert manufacturing_ops.purchase_requisition_plan(requirements)["line_count"] == 1
+    assert manufacturing_ops.kanban_signal("COMP-1", on_hand=1, reorder_point=2, lot_size=10)["signal"] == "replenish"
+    assert manufacturing_ops.manufacturing_ops_check({"app/manufacturing_ops.py", "app/templates/appgen_manufacturing_ops.html"})["ok"] is True
+    assert isinstance(data_exchange.exchange_catalog(), tuple)
+    assert isinstance(performance.performance_catalog(), tuple)
+    manifest = json.loads((ROOT / "app" / "appgen.json").read_text())
+    assert designer.visual_model(manifest)["nodes"]
+    assert designer.erd_mermaid(manifest).startswith("erDiagram\\n")
+    assert "Book" in designer.erd_mermaid(manifest)
+    relationships = designer.relationship_matrix(manifest)
+    if manifest.get("relations"):
+        assert relationships and relationships[0]["source_table"]
+    else:
+        assert relationships == ()
+    assert designer.schema_diagram_check(manifest)["ok"] is True
+    assert designer.proposal_from_payload({"kind": "add_field", "table": manifest["tables"][0]["name"], "name": "generated_note", "type": "text"})["kind"] == "add_field"
+    assert "table GeneratedCheck" in designer.proposal_to_dsl(manifest, designer.table_proposal("GeneratedCheck"))
+    first_manifest_table = manifest["tables"][0]["name"]
+    form_design = form_designer.form_design(first_manifest_table)
+    form_proposal = form_designer.proposal_from_drop({"table": first_manifest_table, "component": "TextBox", "x": 1, "y": 1})
+    assert form_designer.validate_form_design(form_designer.apply_form_proposal(form_design, form_proposal))["ok"] is True
+    nl_plan = nl_evolution.evolution_plan("create table Ticket with field title and form TicketForm chatbot SupportBot agent SupportAgent")
+    assert {"add_table", "add_field", "add_form", "add_chatbot", "add_agent"}.issubset({item["kind"] for item in nl_plan["proposals"]})
+    assert dsl_reference.dsl_keyword_budget()["count"] <= dsl_reference.dsl_keyword_budget()["limit"]
+    assert "Reference" in {item["name"] for item in dsl_reference.dsl_construct_catalog()}
+    assert "author_id: int -> Author.id" in dsl_reference.dsl_example("relation")
+    assert dsl_reference.dsl_lint(dsl_reference.dsl_example("full"))["ok"] is True
+    assert dsl_reference.dsl_reference_check(
+        {"app/dsl_reference.py", "app/templates/appgen_dsl_reference.html"}
+    )["ok"] is True
+    presence = view_experience.presence_event("/Book/list/", "ada")
+    assert view_experience.offline_field_state("Book", {"title": "Dune"})
+    assert view_experience.active_viewers("/Book/list/", (presence,))
+    assert view_experience.access_log_summary((view_experience.access_log_event("/Book/list/", "ada"),))["unique_users"] == 1
+    assert view_experience.view_footer_context("ada", "/Book/list/")["help"]["href"] == "/chatbot/"
+    assert view_experience.baseview_experience_check(
+        {
+            "app/view_experience.py",
+            "app/templates/appgen_view_experience.html",
+            "app/static/appgen-view-experience.js",
+        }
+    )["ok"] is True
+    assert support_center.support_topic_catalog()
+    assert support_center.tutorial_catalog()
+    assert support_center.sample_application_catalog()
+    assert support_center.search_support("security")
+    assert support_center.support_ticket_payload("security setup", user="ada")["id"].startswith("support-")
+    assert support_center.support_center_check(
+        {"app/support_center.py", "app/templates/appgen_support_center.html"}
+    )["ok"] is True
+    first_prototype = prototyping.prototype_catalog()[0]["resource"]
+    assert prototyping.sample_row(first_prototype)
+    assert prototyping.screen_mockup(first_prototype, "create")["layout"] == "form"
+    assert prototyping.prototype_plan(first_prototype)["screens"]
+    assert prototyping.experiment_hypothesis(first_prototype, "shorter form")["id"].startswith("proto-")
+    assert prototyping.preview_package(first_prototype)["format"] == "appgen-prototype-v1"
+    assert prototyping.promote_to_backlog(first_prototype)[0]["key"].startswith("PROTO-")
+    assert prototyping.prototyping_check({"app/prototyping.py", "app/templates/appgen_prototyping.html"})["ok"] is True
+    assert {"stripe", "mpesa"} == {item["name"] for item in integrations.integrations_by_kind("payment", {})}
+    assert "twilio_sms" in {item["name"] for item in integrations.integrations_by_kind("sms", {})}
+    assert integrations.payment_request_plan(
+        "stripe",
+        amount=42,
+        environ={"STRIPE_API_KEY": "sk_test", "STRIPE_WEBHOOK_SECRET": "whsec"},
+    )["side_effect"] == "external_payment"
+    assert integrations.sms_request_plan(
+        "twilio_sms",
+        to="+15551234567",
+        body="Ready",
+        environ={
+            "TWILIO_ACCOUNT_SID": "sid",
+            "TWILIO_AUTH_TOKEN": "token",
+            "TWILIO_FROM_NUMBER": "+10000000000",
+        },
+    )["operation"] == "sms.send"
+    assert integrations.email_request_plan(
+        "sendgrid_email",
+        to="ada@example.test",
+        subject="Ready",
+        body="Report ready.",
+        environ={"SENDGRID_API_KEY": "key", "APPGEN_EMAIL_FROM": "noreply@example.test"},
+    )["side_effect"] == "external_email"
+    assert integrations.integration_check({"app/integrations.py", "app/templates/appgen_integrations.html"})["ok"] is True
+    assert {provider["provider"] for provider in productivity.provider_catalog({})} == {"microsoft365", "google_workspace"}
+    first_productivity_table = productivity.productivity_templates()[0]["table"]
+    assert productivity.document_merge_payload(first_productivity_table, {})["table"] == first_productivity_table
+    assert productivity.spreadsheet_export_payload(first_productivity_table, ({},))["row_count"] == 1
+    assert productivity.calendar_event_payload(first_productivity_table)["summary"]
+    assert productivity.task_sync_payload(first_productivity_table)["checklist"] is not None
+    assert productivity.productivity_check({"app/productivity.py", "app/templates/appgen_productivity.html"})["ok"] is True
+    assert {item["name"] for item in lifecycle.environment_catalog()} == {"development", "testing", "staging", "production"}
+    assert lifecycle.environment_status("production", {})["ready"] is False
+    assert lifecycle.custom_domain_plan("production", "app.example.test")["domain"] == "app.example.test"
+    assert lifecycle.promotion_plan("staging")["target"] == "production"
+    assert lifecycle.maintenance_window()["affected_resources"]
+    assert "deploy" in lifecycle.update_plan("1.0.0")["steps"]
+    assert lifecycle.feedback_item("Needs work")["id"].startswith("fb-")
+    assert lifecycle.user_test_session("Smoke")["metrics"]
+    assert lifecycle.issue_report("Broken form")["status"] == "open"
+    assert lifecycle.lifecycle_check({"app/lifecycle.py", "app/templates/appgen_lifecycle.html"})["ok"] is True
+    assert isinstance(tenancy.tenant_catalog(), tuple)
+    assert isinstance(rls.rls_catalog(), tuple)
+    assert isinstance(identity.provider_catalog({}), tuple)
+    assert "cognito" in {item["name"] for item in identity.provider_catalog({})}
+    assert {"ldap", "active_directory"} <= {item["name"] for item in identity.provider_catalog({})}
+    assert identity.ldap_bind_plan(
+        "ldap",
+        "ada",
+        environ={
+            "LDAP_URI": "ldaps://ldap.example.test",
+            "LDAP_BIND_DN": "cn=app,dc=example,dc=test",
+            "LDAP_BIND_PASSWORD": "secret",
+            "LDAP_USER_BASE_DN": "ou=people,dc=example,dc=test",
+        },
+    )["user_filter"] == "(&(objectClass=person)(uid=ada))"
+    assert "sAMAccountName=ada" in identity.ldap_bind_plan(
+        "active_directory",
+        "ada",
+        environ={
+            "AD_SERVER": "ldaps://ad.example.test",
+            "AD_DOMAIN": "example.test",
+            "AD_BIND_USER": "svc-app",
+            "AD_BIND_PASSWORD": "secret",
+            "AD_USER_BASE_DN": "dc=example,dc=test",
+        },
+    )["user_filter"]
+    assert identity.cognito_readiness({})["configured"] is False
+    assert isinstance(compliance.compliance_catalog(), tuple)
+    assert isinstance(assistant.assistant_catalog(), tuple)
+    first_intelligence_table = intelligence.intelligence_catalog()[0]["table"]
+    assert intelligence.preprocess_row(first_intelligence_table, {}) is not None
+    assert "label" in intelligence.sentiment("good success")
+    assert intelligence.extract_entities("Ada Lovelace approved the plan")
+    assert intelligence.classify_text("invoice payment failed")["label"] in {"finance", "risk"}
+    assert {item["provider"] for item in intelligence.vision_provider_catalog({})} == {
+        "opencv",
+        "tensorflow",
+        "pytorch",
+        "google_vision",
+    }
+    if intelligence.media_intelligence_catalog():
+        first_media = intelligence.media_intelligence_catalog()[0]
+        assert intelligence.classification_plan(first_media["table"], first_media["field"])["task"] == "classification"
+        if "ocr" in first_media["tasks"]:
+            assert intelligence.ocr_plan(first_media["table"], first_media["field"])["task"] == "ocr"
+    assert intelligence.recommendation_plan(first_intelligence_table, {})
+    first_experiment = intelligence.experiment_catalog()[0]["id"]
+    assert intelligence.assign_variant(first_experiment, "subject-1") in {"control", "compact", "guided"}
+    assert intelligence.predictive_maintenance({"p95_ms": 900})["healthy"] is False
+    assert intelligence.intelligence_check({"app/intelligence.py", "app/templates/appgen_intelligence.html"})["ok"] is True
+    first_chatbot_intent = chatbot.chatbot_catalog()[0]["intent"]
+    chatbot_state = chatbot.start_conversation(first_chatbot_intent)
+    assert chatbot_state["next_prompt"]
+    chatbot_answered = chatbot.answer_conversation(chatbot_state, "Generated value")
+    assert "payload" in chatbot.create_payload(first_chatbot_intent, chatbot_answered["values"])
+    assert chatbot.chatbot_check({"app/chatbot.py", "app/templates/appgen_chatbot.html"})["ok"] is True
+    assert {item["provider"] for item in voice.voice_provider_catalog()} == {"alexa", "google_assistant", "web_speech"}
+    first_voice_intent = voice.voice_intent_catalog()[0]["intent"]
+    assert voice.utterance_training_phrases(first_voice_intent)
+    assert voice.slot_schema(first_voice_intent)
+    assert voice.match_utterance("please create book")["matched"] is True
+    assert voice.slot_fill_plan(first_voice_intent, {})["ready"] in {True, False}
+    assert voice.voice_response(first_voice_intent, {})["ssml"].startswith("<speak>")
+    assert voice.alexa_interaction_model()["interactionModel"]["languageModel"]["intents"]
+    assert voice.google_actions_model()["actions"]
+    assert voice.voice_check({"app/voice.py", "app/templates/appgen_voice.html"})["ok"] is True
+    assert isinstance(agents.provider_catalog({}), tuple)
+    assert agents.agent_plan(agents.agent_catalog()[0]["name"], "inspect")["ready"] in {True, False}
+    assert isinstance(text_quality.text_quality_catalog(), tuple)
+    assert isinstance(notifications.channel_catalog(), tuple)
+    assert isinstance(platforms.platform_catalog(), tuple)
+    assert "api-gateway" in microservices.service_names()
+    assert microservices.api_gateway_routes()
+    assert microservices.microservice_check(
+        {"app/microservices.py", "app/templates/appgen_microservices.html", "deploy/k8s.yaml"}
+    )["ok"] is True
+    assert isinstance(realtime.realtime_topics(), tuple)
+    assert "event: " in realtime.sse_frame(
+        realtime.event_payload(realtime.realtime_topics()[0]["topics"][0], {})
+    )
+    event_topic = events.all_topics()[0]
+    event = events.normalize_event(event_topic, {"ok": True})
+    assert "audit" in events.match_event_rules(event)
+    assert events.process_event(event)["event_id"] == event["id"]
+    assert events.retry_plan(event)["retry"] is True
+    assert events.dead_letter_event(event, "boom")["event"]["id"] == event["id"]
+    assert events.cep_check({"app/events.py", "app/templates/appgen_events.html"})["ok"] is True
+    first_rpa_task = rpa.rpa_task_catalog()[0]["id"]
+    assert rpa.task_plan(first_rpa_task)["actions"]
+    assert rpa.credential_readiness({})["ready"] is False
+    assert rpa.automation_audit_event(first_rpa_task, actor="ada")["task_id"] == first_rpa_task
+    assert rpa.validate_process_model(first_rpa_task)["ok"] is True
+    assert "<bpmn:process" in rpa.bpmn_xml(first_rpa_task)
+    assert rpa.uml_activity(first_rpa_task).startswith("@startuml")
+    assert rpa.simulate_process(first_rpa_task, runs=2)["valid"] is True
+    assert {{"uipath", "blue_prism", "automation_anywhere"}} == {{item["platform"] for item in rpa.rpa_platform_catalog({{}})}}
+    assert rpa.rpa_platform_plan("uipath", first_rpa_task)["task_id"] == first_rpa_task
+    assert rpa.rpa_export_package("blue_prism", first_rpa_task)["artifact"] == "release-package"
+    assert rpa.rpa_queue_payload("automation_anywhere", first_rpa_task, {{"title": "Dune"}})["inputs"]["title"] == "Dune"
+    observation = rpa.process_observation(first_rpa_task, duration_seconds=45, success=False, errors=1)
+    assert first_rpa_task in rpa.process_summary((observation,))["bottlenecks"]
+    assert rpa.rpa_check({"app/rpa.py", "app/templates/appgen_rpa.html"})["ok"] is True
+    assert set(sdks.sdk_targets()) == {"python", "javascript", "java", "csharp"}
+    assert sdks.scaffold_check(
+        {
+            "sdks/appgen_sdks.py",
+            "sdks/python/client.py",
+            "sdks/javascript/client.js",
+            "sdks/java/AppGenClient.java",
+            "sdks/csharp/AppGenClient.cs",
+        }
+    )["ok"] is True
+    native_targets = set(native.native_targets())
+    assert native_targets <= {"mobile", "desktop"}
+    if "mobile" in native_targets:
+        assert mobile.mobile_contract()["framework"] == "kivy"
+    if "desktop" in native_targets:
+        assert desktop.desktop_contract()["framework"] == "beeware"
+    assert native.scaffold_check(
+        {
+            "native/appgen_native.py",
+            "native/mobile/pyproject.toml",
+            "native/mobile/app.py",
+            "native/desktop/pyproject.toml",
+            "native/desktop/app.py",
+        }
+    )["ok"] is True
+    assert isinstance(collaboration.collaboration_catalog(), tuple)
+    assert diagnostics.selftest()["ok"] is True
+    assert api_testing.request_plan()
+    first_request = api_testing.request_plan()[0]
+    assert api_testing.validate_response(first_request["name"], first_request["expected_status"][0])["ok"] is True
+    assert api_testing.synthetic_monitor_plan()["probes"]
+    assert api_testing.api_testing_check(
+        {"app/api_testing.py", "app/templates/appgen_api_testing.html", "docs/openapi.json"}
+    )["ok"] is True
+    assert isinstance(code_review.schema_review(), tuple)
+    assert code_review.review_summary()["ok"] is True
+    assert version_control.version_resource_catalog()
+    version_manifest = json.loads((ROOT / "app" / "appgen.json").read_text())
+    version_before = version_control.snapshot_manifest(version_manifest, author="ada", message="baseline")
+    version_after_manifest = json.loads(json.dumps(version_manifest))
+    version_after_manifest.setdefault("tables", [])[0].setdefault("columns", []).append({"name": "version_note", "type": "string"})
+    version_after = version_control.snapshot_manifest(version_after_manifest, author="ada", message="add field")
+    assert version_control.diff_snapshots(version_before, version_after)["change_count"] >= 1
+    assert version_control.branch_plan(version_before, "feature/forms")["base_revision"] == version_before["revision_id"]
+    assert version_control.rollback_plan((version_before, version_after), version_before["revision_id"])["requires_review"] is True
+    assert version_control.version_control_check(
+        {"app/version_control.py", "app/templates/appgen_version_control.html"}
+    )["ok"] is True
+    assert isinstance(components.component_catalog(), tuple)
+    assert isinstance(components.widget_registry(), tuple)
+    assert isinstance(components.component_palette(), tuple)
+    assert view_composition.chart_view_catalog()
+    assert view_composition.view_composition_check(
+        {"app/views.py", "app/view_composition.py", "app/templates/appgen_view_composition.html"}
+    )["ok"] is True
+    first_tabbed_view = tabbed_views.tabbed_view_catalog()[0]
+    first_tab = first_tabbed_view["tabs"][0]
+    assert tabbed_views.tab_policy(first_tabbed_view["view"], first_tab["id"])["required_action"] == "read"
+    assert tabbed_views.can_access_tab(first_tabbed_view["view"], first_tab["id"], first_tab["allowed_roles"]) is True
+    assert tabbed_views.visible_tabs(first_tabbed_view["view"], first_tab["allowed_roles"])
+    assert tabbed_views.tabbed_views_check(
+        {"app/tabbed_views.py", "app/templates/appgen_tabbed_views.html"}
+    )["ok"] is True
+    assert "general_ledger" in {item["module"] for item in erp_templates.erp_template_catalog()}
+    assert "table ledger_account" in erp_templates.erp_module_dsl("general_ledger")
+    assert {
+        "general_ledger",
+        "chart_of_accounts",
+        "invoicing",
+        "accounts_receivable",
+        "accounts_payable",
+        "inventory",
+        "human_resources",
+        "payroll",
+        "purchasing",
+        "procurement",
+        "supply_chain",
+        "warehouse_management",
+        "manufacturing",
+        "sales",
+        "crm",
+        "ecommerce",
+        "fixed_assets",
+        "maintenance",
+        "quality_management",
+        "document_management",
+        "compliance_management",
+        "projects",
+        "reporting",
+    }.issubset(
+        {item["module"] for item in erp_templates.erp_template_catalog()}
+    )
+    gl_dsl = erp_templates.erp_module_dsl("general_ledger")
+    assert "ledger_account_id: int required -> ledger_account.id" in gl_dsl
+    assert "debit_amount: decimal default 0" in gl_dsl
+    invoicing_dsl = erp_templates.erp_module_dsl("invoicing")
+    assert "invoice_id: int required -> invoice.id" in invoicing_dsl
+    assert "line_total: decimal = quantity * unit_price" in invoicing_dsl
+    inventory_dsl = erp_templates.erp_module_dsl("inventory")
+    assert "sku: string required unique search" in inventory_dsl
+    manufacturing_dsl = erp_templates.erp_module_dsl("manufacturing")
+    assert "table work_order" in manufacturing_dsl
+    assert "bill_of_material_id: int required -> bill_of_material.id" in manufacturing_dsl
+    crm_dsl = erp_templates.erp_module_dsl("crm")
+    assert "table opportunity" in crm_dsl
+    assert "lead_id: int -> lead.id" in crm_dsl
+    warehouse_dsl = erp_templates.erp_module_dsl("warehouse_management")
+    assert "bin_location_id: int -> bin_location.id" in warehouse_dsl
+    quality_dsl = erp_templates.erp_module_dsl("quality_management")
+    assert "nonconformance_id: int required -> nonconformance.id" in quality_dsl
+    hr_dsl = erp_templates.erp_module_dsl("human_resources")
+    assert "employee_number: string required unique search" in hr_dsl
+    assert erp_templates.erp_table_blueprints("accounts_payable")
+    assert "dsl" in erp_templates.erp_module_package("accounts_receivable")
+    assert erp_templates.erp_templates_check(
+        {"app/erp_templates.py", "app/templates/appgen_erp_templates.html"}
+    )["ok"] is True
+    assert "jira" in {item["provider"] for item in project_management.provider_catalog({})}
+    assert project_management.backlog_templates()
+    assert project_management.traceability_matrix()
+    assert project_management.export_plan("github")[0]["provider"] == "github"
+    assert {item["tool"] for item in devtools.devtool_catalog()} == {"vscode", "eclipse", "jetbrains"}
+    assert devtools.vscode_launch_profile()["module"] == "flask"
+    assert any(task["label"] == "AppGen quality" for task in devtools.vscode_tasks())
+    assert devtools.jetbrains_run_config()["type"] == "Python.FlaskServer"
+    assert any(task["name"] == "AppGen quality" for task in devtools.jetbrains_tasks())
+    assert devtools.eclipse_project()["nature"] == "org.python.pydev.pythonNature"
+    assert devtools.source_map()
+    assert devtools.devtools_check(
+        {
+            "app/devtools.py",
+            "app/templates/appgen_devtools.html",
+            ".vscode/launch.json",
+            ".vscode/tasks.json",
+            ".vscode/extensions.json",
+            ".idea/misc.xml",
+            ".idea/modules.xml",
+            ".idea/runConfigurations/AppGen_Flask.xml",
+            ".project",
+            ".pydevproject",
+        }
+    )["ok"] is True
+    assert studio.editable_files()
+    assert studio.file_edit_plan("app/models.py", "patch")["requires_review"] is True
+    assert studio.debug_session()["breakpoints"]
+    assert studio.breakpoint_plan("app/views.py", symbol="init_views")["symbol"] == "init_views"
+    inspected = studio.variable_inspection("request", {"SECRET_KEY": "x", "row": {"title": "Dune"}})
+    assert inspected["variables"]["SECRET_KEY"] == "[redacted]"
+    assert studio.dependency_inventory()
+    assert studio.dependency_update_plan("flask", "3.0")["package"] == "flask"
+    assert studio.component_repository()
+    first_component = studio.component_repository()[0]
+    assert studio.component_share_package(first_component["id"])["component"]["id"] == first_component["id"]
+    assert studio.clone_plan("CopyApp")["new_app_name"] == "CopyApp"
+    assert studio.studio_check({"app/studio.py", "app/templates/appgen_studio.html"})["ok"] is True
+    assert isinstance(wizards.wizard_catalog(), tuple)
+    assert "--appgen-primary" in branding.css_variables()
+    assert branding.asset_check(
+        {"app/branding.py", "app/static/appgen-theme.css", "app/templates/appgen_branding.html"}
+    )["ok"] is True
+    assert isinstance(extensions.extension_points(), tuple)
+    assert "ok" in extensions.validate_row(next(iter(data_exchange.EXCHANGE_TABLES)), {})
+    assert extensions.extension_check(
+        {
+            "app/extensions.py",
+            "app/templates/appgen_extensions.html",
+            "app_custom/__init__.py",
+            "app_custom/extensions.py",
+        }
+    )["ok"] is True
+    first_table = data_exchange.exchange_catalog()[0]["table"]
+    assert data_exchange.csv_template(first_table)
+    assert data_exchange.exchange_check(
+        {"app/data_exchange.py", "app/templates/appgen_data_exchange.html"}
+    )["ok"] is True
+    assert {item["provider"] for item in database_ops.database_provider_catalog()} == {
+        "postgresql",
+        "mysql",
+        "sqlite",
+        "mongodb",
+        "dynamodb",
+        "cassandra",
+        "redis",
+    }
+    assert {item["provider"] for item in database_ops.relational_provider_catalog()} == {
+        "postgresql",
+        "mysql",
+        "sqlite",
+    }
+    assert {item["provider"] for item in database_ops.nosql_provider_catalog()} == {
+        "mongodb",
+        "dynamodb",
+        "cassandra",
+        "redis",
+    }
+    assert {item["addon"] for item in database_ops.database_addon_catalog()} == {
+        "patroni",
+        "postgraphile",
+        "zombodb",
+        "elasticsearch",
+    }
+    assert database_ops.compose_service_plan("postgresql")["image"] == "postgres:16"
+    assert database_ops.compose_service_plan("mysql")["image"] == "mysql:8"
+    assert database_ops.compose_service_plan("mongodb")["image"] == "mongo:7"
+    assert database_ops.nosql_provider_plan("mongodb", {"MONGODB_URI": "mongodb://db", "MONGODB_DATABASE": "app"})[
+        "configured"
+    ] is True
+    assert database_ops.kubernetes_statefulset_plan("postgresql")["kind"] == "StatefulSet"
+    assert database_ops.kubernetes_statefulset_plan("mongodb")["kind"] == "StatefulSet"
+    assert {item["provider"] for item in database_ops.migration_target_matrix()} == {
+        "postgresql",
+        "mysql",
+        "sqlite",
+        "mongodb",
+        "dynamodb",
+        "cassandra",
+        "redis",
+    }
+    assert {item["provider"] for item in database_ops.migration_target_matrix() if item["alembic"] is False} == {
+        "mongodb",
+        "dynamodb",
+        "cassandra",
+        "redis",
+    }
+    assert database_ops.document_projection(first_table)["collection"] == first_table.lower()
+    assert database_ops.document_projection_matrix()
+    assert database_ops.database_ops_check(
+        {
+            "app/database_ops.py",
+            "app/templates/appgen_database_ops.html",
+            "docker-compose.yml",
+            "deploy/k8s.yaml",
+        }
+    )["ok"] is True
+    assert performance.slo_report({"p95_ms": 250, "error_rate": 0})["ok"] is True
+    assert performance.autoscale_plan({"cpu_percent": 90, "p95_ms": 700}, current_replicas=2)["desired_replicas"] == 3
+    assert performance.performance_check(
+        {"app/performance.py", "app/templates/appgen_performance.html"}
+    )["ok"] is True
+    assert https.https_readiness(
+        {"APPGEN_DOMAIN": "example.test", "APPGEN_TLS_EMAIL": "admin@example.test"},
+        {"deploy/Caddyfile", "docker-compose.yml"},
+    )["ok"] is True
+    assert jhipster.export_check({"jhipster/app.jdl", "jhipster/appgen_jhipster.py"})["ok"] is True
+    assert jhipster.jhipster_import_command() == ("jhipster", "jdl", "jhipster/app.jdl")
+    assert set(chatbots.chatbot_targets()) <= {"dialogflow", "botframework"}
+    assert chatbots.export_check(
+        {
+            "chatbots/appgen_chatbots.py",
+            "chatbots/dialogflow/intents.json",
+            "chatbots/botframework/manifest.json",
+        }
+    )["ok"] is True
+    flow_export = json.loads((ROOT / "automation" / "node-red" / "flows.json").read_text())
+    assert isinstance(node_red.node_red_events(), tuple)
+    assert node_red.validate_flow_export(flow_export)["ok"] is True
+    assert backup.backup_payload({})["format"] == "appgen.backup.v1"
+    assert isinstance(backup.restore_plan(backup.backup_json({})), dict)
+    assert isinstance(seed.SEED_DATA, dict)
+'''
+
 
 def get_metadata(idb):
     global metadata, Base, engine
 
     engine = create_engine(idb)
-    metadata = MetaData(bind=engine)
-    metadata.reflect()
+    metadata = MetaData()
+    metadata.reflect(bind=engine)
     Base = declarative_base()
     return metadata, Base, engine
 
 
-
-
 @click.command()
-@click.option("-w", "--writedir", default="./",help="your flask-appbuilder 'app' directory to write the files to",)
-@click.option( "-i", "--idatabase", default="tt", help="The name of the database to introspect")
-@click.option( "-c", "--wdatabase", default="plat", help="The name of the database to create")
-def main(writedir, idatabase, wdatabase):
-    # First we create a connection string with the commandline parameters
-    # conn_str = f'{dbengine}://{user}:{urllib.parse.quote_plus("pass")}@{host}:{port}/{database}'idatabase
-    idb = f"{idatabase}"
-    wdb = f"{wdatabase}"
-    print(idb, wdb)
+@click.version_option(version="0.0.1", package_name="appgen")
+@click.option(
+    "-w",
+    "--writedir",
+    type=click.Path(file_okay=False, path_type=Path),
+    help="Flask-AppBuilder app package directory to write generated files to.",
+)
+@click.option(
+    "-d",
+    "--database-url",
+    help="SQLAlchemy database URL to introspect, for example sqlite:///example.db.",
+)
+@click.option(
+    "-i",
+    "--idatabase",
+    help="Legacy shortcut for a local PostgreSQL database name to introspect.",
+)
+@click.option(
+    "-c",
+    "--wdatabase",
+    help="Database URL, or legacy PostgreSQL database name, to write into config.py.",
+)
+@click.option(
+    "--dbml",
+    "dbml_path",
+    type=click.Path(exists=True, dir_okay=False, path_type=Path),
+    help="DBML file to generate from.",
+)
+@click.option(
+    "--sql",
+    "sql_path",
+    type=click.Path(exists=True, dir_okay=False, path_type=Path),
+    help="SQL DDL file to generate from.",
+)
+@click.option(
+    "--pony",
+    "pony_path",
+    type=click.Path(exists=True, dir_okay=False, path_type=Path),
+    help="PonyORM entity script to generate from.",
+)
+@click.option(
+    "--dsl",
+    "dsl_path",
+    type=click.Path(exists=True, dir_okay=False, path_type=Path),
+    help="AppGen DSL file to generate from.",
+)
+@click.pass_context
+def main(
+    ctx, writedir, database_url, idatabase, wdatabase, dbml_path, sql_path, pony_path, dsl_path
+):
+    """Generate a Flask-AppBuilder app package from a database schema."""
+    schema_sources = [
+        path for path in (dbml_path, sql_path, pony_path, dsl_path) if path is not None
+    ]
+    if not any([writedir, database_url, idatabase, wdatabase, *schema_sources]):
+        click.echo(ctx.get_help())
+        ctx.exit(0)
 
-    # Not cool, we are setting a global variable
-    print(f"{writedir}")
-    get_metadata(f"postgresql:///{idatabase}")
-    write_model_file(f"{writedir}")
-    write_view_file(f"{writedir}")
-    shutil.copyfile("model_mixins.py", f"{writedir}/model_mixins.py")
-    shutil.copyfile("view_mixins.py", f"{writedir}/view_mixins.py")
-    shutil.copyfile("index.py", f"{writedir}/index.py")
-    shutil.copyfile("utils.py", f"{writedir}/utils.py")
-    shutil.copyfile("my_index.html", f"{writedir}/templates/my_index.html")
-    shutil.copyfile("search_template.html", f"{writedir}/templates/search_template.html")
-    shutil.copyfile("tabbed_edit.html", f"{writedir}/templates/tabbed_edit.html")
-    shutil.copyfile("with_print_button.html", f"{writedir}/templates/with_print_button.html")
-    shutil.copyfile("schema_view.html", f"{writedir}/templates/schema_view.html")
-    shutil.copyfile("init.py", f"{writedir}/__init__.py")  # we are overwriting the init file
+    if writedir is None:
+        raise click.UsageError("Provide --writedir.")
+    if len(schema_sources) > 1:
+        raise click.UsageError("Choose only one of --dbml, --sql, --pony, or --dsl.")
+    if schema_sources and (database_url or idatabase):
+        raise click.UsageError("Choose a file source or database introspection, not both.")
 
-    # Create the destination directory if it doesn't exist
-    tmplt_dir = f"{dir}/templates"
-    if not os.path.exists(tmplt_dir):
-        os.makedirs(tmplt_dir)
-    # Iterate through all HTML files in the source directory
-    for html_file in glob.glob(os.path.join('./', '*.html')):
-        # Copy each HTML file to the destination directory
-        shutil.copy2(html_file, tmplt_dir+'/')
+    if dbml_path is not None:
+        generate_app_from_schema(
+            load_schema(dbml_path, source_type="dbml"),
+            writedir,
+            config_database_url=normalize_generated_config_url(wdatabase, "sqlite:///app.db")
+            if wdatabase
+            else None,
+        )
+        click.echo(f"Generated at: {datetime.now()}")
+        return
+    if sql_path is not None:
+        generate_app_from_schema(
+            load_schema(sql_path, source_type="sql"),
+            writedir,
+            config_database_url=normalize_generated_config_url(wdatabase, "sqlite:///app.db")
+            if wdatabase
+            else None,
+        )
+        click.echo(f"Generated at: {datetime.now()}")
+        return
+    if pony_path is not None:
+        generate_app_from_schema(
+            load_schema(pony_path, source_type="pony"),
+            writedir,
+            config_database_url=normalize_generated_config_url(wdatabase, "sqlite:///app.db")
+            if wdatabase
+            else None,
+        )
+        click.echo(f"Generated at: {datetime.now()}")
+        return
+    if dsl_path is not None:
+        generate_app_from_schema(
+            load_schema(dsl_path, source_type="dsl"),
+            writedir,
+            config_database_url=normalize_generated_config_url(wdatabase, "sqlite:///app.db")
+            if wdatabase
+            else None,
+        )
+        click.echo(f"Generated at: {datetime.now()}")
+        return
 
-    update_config_setting(f"{writedir}/../config.py", "SQLALCHEMY_DATABASE_URI", f"postgresql:///{wdb}")
-    # update_config_setting(f"{writedir}/../config.py", "LANGUAGES", AFRICAN_LANGS)
+    introspection_url = normalize_database_url(database_url, idatabase)
+    generate_app_from_database(
+        introspection_url,
+        writedir,
+        config_database_url=normalize_generated_config_url(wdatabase, introspection_url),
+    )
 
-    print('Generated at: ' + str(datetime.now()))
+    click.echo(f"Generated at: {datetime.now()}")
+
 
 if __name__ == "__main__":
     main()
-
-
-
-
-
