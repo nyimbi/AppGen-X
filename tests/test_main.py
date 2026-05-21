@@ -3687,6 +3687,10 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert api_testing.validate_response("create_book", 201)["ok"] is True
     assert api_testing.synthetic_check_results({"list_book": 200})["ok"] is True
     assert api_testing.synthetic_monitor_plan(interval_seconds=1)["interval_seconds"] == 15
+    fixture_strategy = api_testing.fixture_strategy()
+    assert fixture_strategy["format"] == "appgen.api-test-fixture-strategy.v1"
+    assert fixture_strategy["default_scenario"] == "smoke"
+    assert "get_book" in fixture_strategy["requires_fixture_cases"]
     ui_smoke = api_testing.ui_smoke_plan(base_url="https://app.example.test")
     assert any(item["name"] == "book_list_view" for item in ui_smoke)
     assert ui_smoke[0]["url"].startswith("https://app.example.test/")
@@ -3702,11 +3706,14 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert "def test_generated_ui_smoke(page, case):" in api_testing.render_playwright_smoke_module()
     pytest_cases = api_testing.pytest_case_matrix()
     assert pytest_cases[0]["id"] == api_requests[0]["name"]
+    assert next(case for case in pytest_cases if case["requires_fixture"])["fixture_scenario"] == "smoke"
     rendered_pytest = api_testing.render_pytest_module()
     assert "@pytest.mark.parametrize" in rendered_pytest
-    assert "def test_generated_api_contracts(client, case):" in rendered_pytest
+    assert "FIXTURE_STRATEGY" in rendered_pytest
+    assert "def test_generated_api_contracts(client, appgen_seed_data, case):" in rendered_pytest
     assert api_testing.test_execution_plan()["case_count"] == len(pytest_cases)
     assert api_testing.test_execution_plan()["ui_case_count"] == len(api_testing.ui_smoke_plan())
+    assert api_testing.test_execution_plan()["fixture_source"] == "seed.py"
     assert api_testing.contract_coverage(openapi.openapi_spec()["paths"].keys())["ok"] is True
     assert api_testing.api_testing_check(
         {"app/api_testing.py", "app/templates/appgen_api_testing.html", "docs/openapi.json"}

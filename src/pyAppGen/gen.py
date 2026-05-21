@@ -24085,6 +24085,7 @@ from flask_appbuilder import expose
 
 API_TESTS = {tests!r}
 UI_SMOKE_TESTS = {tuple(ui_smoke)!r}
+SEED_FIXTURE_SCENARIOS = ("demo", "smoke", "load")
 
 
 def api_test_catalog():
@@ -24125,8 +24126,24 @@ def request_plan(base_url=""):
                 "json": dict(case.get("payload", {{}})) if "payload" in case else None,
                 "expected_status": tuple(case["expected_status"]),
                 "requires_fixture": case["requires_fixture"],
+                "fixture_scenario": "smoke" if case["requires_fixture"] else None,
             }})
     return tuple(requests)
+
+
+def fixture_strategy():
+    """Return how generated API tests should obtain seed fixtures."""
+    fixture_cases = tuple(request for request in request_plan() if request["requires_fixture"])
+    return {{
+        "format": "appgen.api-test-fixture-strategy.v1",
+        "source": "seed.py",
+        "default_scenario": "smoke",
+        "available_scenarios": SEED_FIXTURE_SCENARIOS,
+        "pytest_fixture": "appgen_seed_data",
+        "fixture_export": "seed_fixture_export('smoke')",
+        "requires_fixture_cases": tuple(request["name"] for request in fixture_cases),
+        "required": bool(fixture_cases),
+    }}
 
 
 def synthetic_monitor_plan(interval_seconds=60, base_url=""):
@@ -24249,12 +24266,13 @@ def pytest_case_matrix():
             "json": request["json"],
             "expected_status": request["expected_status"],
             "requires_fixture": request["requires_fixture"],
+            "fixture_scenario": request["fixture_scenario"],
         }}
         for request in request_plan()
     )
 
 
-def render_pytest_module(client_fixture="client"):
+def render_pytest_module(client_fixture="client", seed_fixture="appgen_seed_data"):
     """Render a pytest module that can exercise generated API endpoints."""
     lines = [
         '"""Generated AppGen API contract tests."""',
@@ -24262,10 +24280,13 @@ def render_pytest_module(client_fixture="client"):
         "import pytest",
         "",
         f"API_CASES = {{pytest_case_matrix()!r}}",
+        f"FIXTURE_STRATEGY = {{fixture_strategy()!r}}",
         "",
         "",
         "@pytest.mark.parametrize('case', API_CASES, ids=lambda case: case['id'])",
-        f"def test_generated_api_contracts({{client_fixture}}, case):",
+        f"def test_generated_api_contracts({{client_fixture}}, {{seed_fixture}}, case):",
+        "    if case['requires_fixture']:",
+        f"        assert {{seed_fixture}}",
         "    kwargs = {{}}",
         "    if case['json'] is not None:",
         "        kwargs['json'] = case['json']",
@@ -24285,6 +24306,9 @@ def test_execution_plan(client_fixture="client"):
         "ui_module": "tests/test_generated_ui_smoke.py",
         "ui_case_count": len(ui_smoke_plan()),
         "ui_command": "pytest tests/test_generated_ui_smoke.py",
+        "fixture_strategy": fixture_strategy(),
+        "fixture_module": "tests/conftest.py",
+        "fixture_source": "seed.py",
         "requires_fixture_cases": tuple(case["id"] for case in pytest_case_matrix() if case["requires_fixture"]),
     }}
 
@@ -24313,6 +24337,8 @@ def api_testing_check(existing_paths=()):
         "missing": missing,
         "requests": len(request_plan()),
         "ui_smoke": len(ui_smoke_plan()),
+        "fixture_strategy": fixture_strategy(),
+        "fixture_ready": "seed.py" in existing,
         "resources": tuple(API_TESTS),
     }}
 
@@ -30971,6 +30997,8 @@ def validate_api_testing_artifacts() -> None:
         fail("API testing contract must expose generated UI smoke tests and result evaluation")
     if "contract_coverage" not in contract or "api_testing_check" not in contract or "render_pytest_module" not in contract or "test_execution_plan" not in contract:
         fail("API testing contract must expose OpenAPI coverage, pytest rendering, execution plans, and readiness helpers")
+    if "fixture_strategy" not in contract or "seed_fixture_export('smoke')" not in contract or "fixture_scenario" not in contract:
+        fail("API testing contract must connect fixture-dependent tests to generated seed scenarios")
     template = (ROOT / "app" / "templates" / "appgen_api_testing.html").read_text()
     if "API Testing" not in template or "Test Catalog JSON" not in template or "Monitor JSON" not in template or "UI Smoke JSON" not in template:
         fail("API testing template must expose generated test, UI smoke, and monitor catalogs")
@@ -32514,7 +32542,10 @@ def test_generated_runtime_helpers():
     assert api_testing.ui_smoke_plan()
     assert "def test_generated_ui_smoke" in api_testing.render_playwright_smoke_module()
     assert api_testing.pytest_case_matrix()[0]["id"] == first_request["name"]
+    assert api_testing.fixture_strategy()["format"] == "appgen.api-test-fixture-strategy.v1"
+    assert "seed.py" == api_testing.test_execution_plan()["fixture_source"]
     assert "def test_generated_api_contracts" in api_testing.render_pytest_module()
+    assert "appgen_seed_data" in api_testing.render_pytest_module()
     assert api_testing.test_execution_plan()["case_count"] == len(api_testing.pytest_case_matrix())
     assert api_testing.api_testing_check(
         {"app/api_testing.py", "app/templates/appgen_api_testing.html", "docs/openapi.json"}

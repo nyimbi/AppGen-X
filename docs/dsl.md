@@ -516,9 +516,10 @@ apps include:
 - `events.py` and `appgen_events.html` with generated complex event
   processing, alerting, retry, and dead-letter contracts.
 - `api_testing.py` and `appgen_api_testing.html` with generated automated API
-  testing, pytest module rendering, UI smoke-test plans, Playwright-style
-  smoke module rendering, execution plans, contract coverage, result
-  evaluation, and synthetic monitoring contracts.
+  testing, pytest module rendering, smoke/load fixture handoff plans tied to
+  generated seed scenarios, UI smoke-test plans, Playwright-style smoke module
+  rendering, execution plans, contract coverage, result evaluation, and
+  synthetic monitoring contracts.
 - `openapi.py`, `appgen_openapi.html`, and `docs/openapi.json` with generated
   OpenAPI 3.1 API documentation.
 - `microservices.py` and `appgen_microservices.html` with generated service
