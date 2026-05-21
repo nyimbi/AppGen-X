@@ -826,6 +826,71 @@ def write_workflow_file(output_dir, schema: AppSchema):
         f.write("        'bypass_roles': policy['bypass_roles'],\n")
         f.write("        'role_policies': policy['role_policies'],\n")
         f.write("    }\n\n")
+        f.write("def workflow_approval_route(flow_name):\n")
+        f.write("    \"\"\"Return a multi-user approval route for each workflow transition.\"\"\"\n")
+        f.write("    policy = workflow_authorization_policy(flow_name)\n")
+        f.write("    roles = policy['roles'] or policy['bypass_roles']\n")
+        f.write("    return {\n")
+        f.write("        'format': 'appgen.workflow-approval-route.v1',\n")
+        f.write("        'workflow': flow_name,\n")
+        f.write("        'authorization_required': policy['authorization_required'],\n")
+        f.write("        'steps': tuple(\n")
+        f.write("            {\n")
+        f.write("                'source': source,\n")
+        f.write("                'target': target,\n")
+        f.write("                'event': f'{source}_to_{target}',\n")
+        f.write("                'approval_roles': roles,\n")
+        f.write("                'decision': ('approve', 'reject', 'request_changes'),\n")
+        f.write("                'audit_required': True,\n")
+        f.write("            }\n")
+        f.write("            for source, target in transitions(flow_name)\n")
+        f.write("        ),\n")
+        f.write("    }\n\n")
+        f.write("def workflow_sla_plan(flow_name, hours=24):\n")
+        f.write("    \"\"\"Return SLA and escalation metadata for workflow operations.\"\"\"\n")
+        f.write("    policy = workflow_authorization_policy(flow_name)\n")
+        f.write("    return {\n")
+        f.write("        'format': 'appgen.workflow-sla.v1',\n")
+        f.write("        'workflow': flow_name,\n")
+        f.write("        'target_hours': int(hours),\n")
+        f.write("        'escalation_after_hours': int(hours) * 2,\n")
+        f.write("        'notify_roles': policy['roles'] or policy['bypass_roles'],\n")
+        f.write("        'metrics': ('age_hours', 'overdue_count', 'transition_latency_p95'),\n")
+        f.write("        'alerts': tuple(\n")
+        f.write("            {'event': f'{source}_to_{target}', 'when': 'overdue', 'severity': 'warning'}\n")
+        f.write("            for source, target in transitions(flow_name)\n")
+        f.write("        ),\n")
+        f.write("    }\n\n")
+        f.write("def workflow_audit_event(flow_name, source, target, actor=None, decision='approve'):\n")
+        f.write("    \"\"\"Return an audit event for a reviewed workflow transition.\"\"\"\n")
+        f.write("    auth = transition_authorization_plan(flow_name, source, target, {'role': actor} if isinstance(actor, str) else actor)\n")
+        f.write("    return {\n")
+        f.write("        'format': 'appgen.workflow-audit-event.v1',\n")
+        f.write("        'workflow': flow_name,\n")
+        f.write("        'source': source,\n")
+        f.write("        'target': target,\n")
+        f.write("        'event': f'{flow_name}.{source}.{target}',\n")
+        f.write("        'actor': actor,\n")
+        f.write("        'decision': decision,\n")
+        f.write("        'valid_transition': auth['valid_transition'],\n")
+        f.write("        'allowed': auth['allowed'],\n")
+        f.write("        'required_roles': auth['required_roles'],\n")
+        f.write("        'principal_roles': auth['principal_roles'],\n")
+        f.write("    }\n\n")
+        f.write("def transition_runbook(flow_name, source, target, principal=None):\n")
+        f.write("    \"\"\"Return the operational runbook for executing a workflow transition.\"\"\"\n")
+        f.write("    return {\n")
+        f.write("        'format': 'appgen.workflow-transition-runbook.v1',\n")
+        f.write("        'workflow': flow_name,\n")
+        f.write("        'source': source,\n")
+        f.write("        'target': target,\n")
+        f.write("        'authorization': transition_authorization_plan(flow_name, source, target, principal),\n")
+        f.write("        'approval_route': workflow_approval_route(flow_name),\n")
+        f.write("        'sla': workflow_sla_plan(flow_name),\n")
+        f.write("        'audit_event': workflow_audit_event(flow_name, source, target, actor=principal),\n")
+        f.write("        'checks': ('valid_transition', 'authorization', 'approval_recorded', 'audit_logged', 'notifications_queued'),\n")
+        f.write("        'requires_review': True,\n")
+        f.write("    }\n\n")
         f.write("def authorization_flow(flow_name):\n")
         f.write("    \"\"\"Return an FSM authorization graph for workflow designer UIs.\"\"\"\n")
         f.write("    policy = workflow_authorization_policy(flow_name)\n")
@@ -950,8 +1015,10 @@ def write_workflow_file(output_dir, schema: AppSchema):
         f.write("            'scxml': scxml_export(flow_name),\n")
         f.write("        },\n")
         f.write("        'authorization': authorization_flow(flow_name),\n")
+        f.write("        'approval_route': workflow_approval_route(flow_name),\n")
+        f.write("        'sla': workflow_sla_plan(flow_name),\n")
         f.write("        'diagnostics': workflow_graph_check(flow_name),\n")
-        f.write("        'commands': ('add_transition', 'export_mermaid', 'export_scxml', 'inspect_authorization', 'validate_graph'),\n")
+        f.write("        'commands': ('add_transition', 'export_mermaid', 'export_scxml', 'inspect_authorization', 'inspect_approval_route', 'validate_graph'),\n")
         f.write("    }\n\n")
         f.write("def statechart_designer_catalog():\n")
         f.write("    \"\"\"Return every workflow prepared for visual state-chart editing.\"\"\"\n")
@@ -1002,6 +1069,12 @@ def write_workflow_file(output_dir, schema: AppSchema):
         f.write("    @expose('/<flow_name>/authorization.json')\n")
         f.write("    def authorization_json(self, flow_name):\n")
         f.write("        return jsonify(authorization_flow(flow_name))\n\n")
+        f.write("    @expose('/<flow_name>/approval-route.json')\n")
+        f.write("    def approval_route_json(self, flow_name):\n")
+        f.write("        return jsonify(workflow_approval_route(flow_name))\n\n")
+        f.write("    @expose('/<flow_name>/sla.json')\n")
+        f.write("    def sla_json(self, flow_name):\n")
+        f.write("        return jsonify(workflow_sla_plan(flow_name))\n\n")
         f.write("    @expose('/statecharts.json')\n")
         f.write("    def statechart_catalog_json(self):\n")
         f.write("        return jsonify(statechart_designer_catalog())\n\n")
@@ -3200,7 +3273,8 @@ def write_workflows_template(output_dir):
     <h1 class="agw-title">Workflows</h1>
     <p class="agw-note">
       Generated transition cockpit and statechart designer for low-code flows.
-      Start and terminal states are inferred from the declared transition graph.
+      Start and terminal states are inferred from the declared transition graph,
+      with approval routes, SLA plans, and audit-ready runbooks for operations.
     </p>
   </div>
   <div class="agw-grid">
@@ -3221,6 +3295,8 @@ def write_workflows_template(output_dir):
         <a class="btn btn-default" href="{{ url_for('WorkflowView.statechart_scxml_route', flow_name=workflow.name) }}">SCXML</a>
         <a class="btn btn-default" href="{{ url_for('WorkflowView.statechart_workbench_json', flow_name=workflow.name) }}">Workbench JSON</a>
         <a class="btn btn-default" href="{{ url_for('WorkflowView.authorization_json', flow_name=workflow.name) }}">Authorization JSON</a>
+        <a class="btn btn-default" href="{{ url_for('WorkflowView.approval_route_json', flow_name=workflow.name) }}">Approval Route JSON</a>
+        <a class="btn btn-default" href="{{ url_for('WorkflowView.sla_json', flow_name=workflow.name) }}">SLA JSON</a>
       </div>
     </article>
     {% else %}
@@ -28056,9 +28132,11 @@ def validate_workflow_artifacts() -> None:
         fail("workflow contract must expose SCXML, statechart workbench, and reviewed edit proposals")
     if "authorization_flow" not in contract or "can_transition_as" not in contract or "transition_authorization_plan" not in contract:
         fail("workflow contract must expose role-aware authorization flows and transition checks")
+    if "workflow_approval_route" not in contract or "workflow_sla_plan" not in contract or "transition_runbook" not in contract or "workflow_audit_event" not in contract:
+        fail("workflow contract must expose approval routes, SLA plans, transition runbooks, and audit events")
     template = (ROOT / "app" / "templates" / "appgen_workflows.html").read_text()
-    if "FSM JSON" not in template or "Mermaid" not in template or "SCXML" not in template or "Workbench JSON" not in template or "Authorization JSON" not in template:
-        fail("workflow template must expose state-chart and authorization export links")
+    if "FSM JSON" not in template or "Mermaid" not in template or "SCXML" not in template or "Workbench JSON" not in template or "Authorization JSON" not in template or "Approval Route JSON" not in template or "SLA JSON" not in template:
+        fail("workflow template must expose state-chart, authorization, approval, and SLA export links")
 
 
 def validate_rules_artifacts() -> None:
@@ -29010,7 +29088,10 @@ def test_generated_runtime_helpers():
     assert workflow.scxml_export(first_flow).startswith("<scxml")
     assert workflow.statechart_workbench(first_flow)["exports"]["scxml"].startswith("<scxml")
     assert workflow.authorization_flow(first_flow)["format"] == "appgen.workflow-authorization-flow.v1"
+    assert workflow.workflow_approval_route(first_flow)["format"] == "appgen.workflow-approval-route.v1"
+    assert workflow.workflow_sla_plan(first_flow)["format"] == "appgen.workflow-sla.v1"
     assert workflow.transition_authorization_plan(first_flow, workflow.WORKFLOWS[first_flow][0][0], workflow.WORKFLOWS[first_flow][0][1])["valid_transition"] is True
+    assert workflow.transition_runbook(first_flow, workflow.WORKFLOWS[first_flow][0][0], workflow.WORKFLOWS[first_flow][0][1])["requires_review"] is True
     assert workflow.transition_proposal(first_flow, "review", "approved")["requires_review"] is True
     first_validation_table = validation.validation_catalog()[0]["name"]
     assert validation.validate_payload(first_validation_table, {})["format"] == "appgen.validation-result.v1"

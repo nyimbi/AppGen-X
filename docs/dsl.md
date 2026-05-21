@@ -195,8 +195,10 @@ apps include:
 - `workflow.py` with transition helpers such as `next_states`,
   `can_transition`, `transition`, `advance_plan`, Mermaid state-chart exports,
   provider-neutral FSM JSON, SCXML export, graph diagnostics, role-aware
-  workflow authorization flows derived from declared roles, reviewed transition
-  proposals that regenerate DSL, and a generated workflow/statechart cockpit.
+  workflow authorization flows derived from declared roles, approval routes,
+  SLA/escalation plans, audit events, reviewed transition runbooks, reviewed
+  transition proposals that regenerate DSL, and a generated workflow/statechart
+  cockpit.
 - `rules.py` and `appgen_rules.html` with generated business-rule validation,
   row checks, decision-tree exports, branch action plans, and row-level
   decision traces.

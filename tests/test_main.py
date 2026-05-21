@@ -1769,12 +1769,26 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     auth_flow = workflow.authorization_flow("Publish")
     assert auth_flow["format"] == "appgen.workflow-authorization-flow.v1"
     assert auth_flow["transitions"][0]["roles"] == ("Editor",)
+    approval_route = workflow.workflow_approval_route("Publish")
+    assert approval_route["format"] == "appgen.workflow-approval-route.v1"
+    assert approval_route["steps"][0]["approval_roles"] == ("Editor",)
+    sla_plan = workflow.workflow_sla_plan("Publish", hours=8)
+    assert sla_plan["target_hours"] == 8
+    assert sla_plan["escalation_after_hours"] == 16
+    audit_event = workflow.workflow_audit_event("Publish", "draft", "published", actor="Editor")
+    assert audit_event["format"] == "appgen.workflow-audit-event.v1"
+    assert audit_event["allowed"] is True
+    runbook = workflow.transition_runbook("Publish", "draft", "published", {"roles": ["Editor"]})
+    assert runbook["format"] == "appgen.workflow-transition-runbook.v1"
+    assert runbook["approval_route"]["workflow"] == "Publish"
     scxml = workflow.scxml_export("Publish")
     assert scxml.startswith("<scxml")
     assert '<transition event="draft_to_published" target="published" />' in scxml
     workbench = workflow.statechart_workbench("Publish")
     assert workbench["exports"]["scxml"].startswith("<scxml")
     assert workbench["authorization"]["roles"] == ("Editor",)
+    assert workbench["approval_route"]["steps"][0]["audit_required"] is True
+    assert workbench["sla"]["metrics"][0] == "age_hours"
     assert workbench["diagnostics"]["ok"] is True
     proposal = workflow.transition_proposal("Publish", "review", "approved", actor="ada")
     assert proposal["requires_review"] is True
