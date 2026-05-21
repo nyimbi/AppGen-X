@@ -1073,6 +1073,61 @@ def test_dbml_source_preserves_composite_ref_pairs(tmp_path) -> None:
     py_compile.compile(str(output_dir / "api.py"), doraise=True)
 
 
+def test_dbml_source_preserves_ref_direction_and_cardinality(tmp_path) -> None:
+    """DBML '<' and '-' refs normalize to source-column references and cardinality."""
+    dbml_path = tmp_path / "profiles.dbml"
+    dbml_path.write_text(
+        """
+        Table author {
+          id int [pk]
+          name varchar
+        }
+
+        Table book {
+          id int [pk]
+          author_id int
+          title varchar
+        }
+
+        Table author_profile {
+          id int [pk]
+          author_id int [unique]
+          bio text
+        }
+
+        Ref: author.id < book.author_id
+        Ref: author_profile.author_id - author.id
+        """
+    )
+
+    schema = load_schema(dbml_path, source_type="dbml")
+    book_columns = {column.name: column for column in schema.table("book").columns}
+    profile_columns = {column.name: column for column in schema.table("author_profile").columns}
+    relation_cardinality = {
+        (relation.source_table, relation.source_column): relation.cardinality
+        for relation in schema.relations
+    }
+
+    assert book_columns["author_id"].references == ("author", "id")
+    assert profile_columns["author_id"].references == ("author", "id")
+    assert relation_cardinality[("book", "author_id")] == "many-to-one"
+    assert relation_cardinality[("author_profile", "author_id")] == "one-to-one"
+
+    output_dir = tmp_path / "app"
+    generate_app_from_schema(schema, output_dir)
+
+    manifest = json.loads((output_dir / "appgen.json").read_text())
+    manifest_relations = {
+        (relation["source_table"], relation["source_column"]): relation
+        for relation in manifest["relations"]
+    }
+    assert manifest_relations[("book", "author_id")]["target_table"] == "author"
+    assert manifest_relations[("book", "author_id")]["cardinality"] == "many-to-one"
+    assert manifest_relations[("author_profile", "author_id")]["cardinality"] == "one-to-one"
+    py_compile.compile(str(output_dir / "models.py"), doraise=True)
+    py_compile.compile(str(output_dir / "api.py"), doraise=True)
+
+
 def test_sql_source_normalizes_relationships(tmp_path) -> None:
     """SQL DDL imports capture columns, defaults, constraints, domains, and FKs."""
     sql_path = tmp_path / "library.sql"

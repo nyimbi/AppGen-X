@@ -571,10 +571,11 @@ def schema_from_dbml(path: str | Path) -> AppSchema:
 
     for table in parsed.tables:
         columns: list[ColumnSchema] = []
-        refs = _dbml_refs_for_table(table)
+        refs = _dbml_refs_for_table(table, getattr(parsed, "refs", ()))
         unique_index_columns = _dbml_single_column_unique_indexes(table)
         for column in table.columns:
             ref = refs.get(column.name)
+            references = (ref[0], ref[1]) if ref is not None else None
             primary_key = bool(getattr(column, "pk", False))
             columns.append(
                 ColumnSchema(
@@ -584,7 +585,7 @@ def schema_from_dbml(path: str | Path) -> AppSchema:
                     primary_key=primary_key,
                     unique=bool(getattr(column, "unique", False)) or column.name in unique_index_columns,
                     default=_dbml_default(column),
-                    references=ref,
+                    references=references,
                 )
             )
             if ref is not None:
@@ -594,6 +595,7 @@ def schema_from_dbml(path: str | Path) -> AppSchema:
                         source_column=column.name,
                         target_table=ref[0],
                         target_column=ref[1],
+                        cardinality=ref[2],
                     )
                 )
         tables.append(TableSchema(name=table.name, columns=tuple(columns)))
@@ -932,13 +934,22 @@ def sqlalchemy_type(type_name: str):
     return String()
 
 
-def _dbml_refs_for_table(table) -> dict[str, tuple[str, str]]:
-    refs: dict[str, tuple[str, str]] = {}
-    for ref in table.get_refs():
-        if getattr(ref.table1, "name", ref.table1) == table.name:
-            target_table = getattr(ref.table2, "name", ref.table2)
+def _dbml_refs_for_table(table, all_refs=()) -> dict[str, tuple[str, str, str]]:
+    refs: dict[str, tuple[str, str, str]] = {}
+    for ref in all_refs or table.get_refs():
+        ref_type = getattr(ref, "type", ">")
+        left_table = getattr(ref.table1, "name", ref.table1)
+        right_table = getattr(ref.table2, "name", ref.table2)
+        if ref_type == "<":
+            if right_table != table.name:
+                continue
+            for source_column, target_column in zip(ref.col2, ref.col1):
+                refs[source_column.name] = (left_table, target_column.name, "many-to-one")
+            continue
+        if left_table == table.name:
+            cardinality = "one-to-one" if ref_type == "-" else "many-to-one"
             for source_column, target_column in zip(ref.col1, ref.col2):
-                refs[source_column.name] = (target_table, target_column.name)
+                refs[source_column.name] = (right_table, target_column.name, cardinality)
     return refs
 
 
