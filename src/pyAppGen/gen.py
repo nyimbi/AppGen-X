@@ -3762,9 +3762,11 @@ def write_identity_template(output_dir):
   <h1 class="agi2-title">Identity</h1>
   <p class="agi2-note">
     Generated SSO provider registry for OpenID Connect (OIDC), SAML, LDAP,
-    Active Directory, AWS Cognito, and trusted proxy headers. Configure providers with environment
-    variables before enabling a production authentication flow.
+    Active Directory, AWS Cognito, and trusted proxy headers. AWS Cognito
+    includes hosted-ui OAuth metadata, token-exchange plans, logout URLs, and
+    group-to-role mapping helpers without exposing client secrets.
   </p>
+  <p><a class="btn btn-default" href="{{ url_for('IdentityView.cognito_oauth_json') }}">Cognito OAuth JSON</a></p>
   <div class="agi2-grid">
     {% for item in providers %}
     <article class="agi2-card">
@@ -14502,6 +14504,65 @@ def cognito_authorize_url(next_url="/", environ=None):
     )
 
 
+def cognito_oauth_metadata(environ=None):
+    """Return generated AWS Cognito OAuth/OIDC client metadata without secrets."""
+    environ = os.environ if environ is None else environ
+    config = provider_config("cognito", environ=environ)
+    if not config["configured"]:
+        raise ValueError("Identity provider cognito is missing configuration")
+    domain = environ["COGNITO_DOMAIN"].rstrip("/")
+    return {
+        "provider": "cognito",
+        "issuer": cognito_issuer(environ),
+        "jwks_url": cognito_jwks_url(environ),
+        "client_id": environ["COGNITO_CLIENT_ID"],
+        "client_secret_env": "COGNITO_CLIENT_SECRET",
+        "authorize_url": f"{domain}/oauth2/authorize",
+        "token_url": f"{domain}/oauth2/token",
+        "userinfo_url": f"{domain}/oauth2/userInfo",
+        "logout_url": f"{domain}/logout",
+        "scopes": ("openid", "email", "profile"),
+    }
+
+
+def cognito_token_exchange_plan(code, redirect_uri, *, environ=None):
+    """Return a reviewable Cognito authorization-code token exchange plan."""
+    metadata = cognito_oauth_metadata(environ)
+    return {
+        "provider": "cognito",
+        "method": "POST",
+        "url": metadata["token_url"],
+        "auth": "client_secret_basic",
+        "client_id": metadata["client_id"],
+        "client_secret_env": metadata["client_secret_env"],
+        "body": {
+            "grant_type": "authorization_code",
+            "code": code,
+            "redirect_uri": redirect_uri,
+        },
+        "side_effect": "external_token_exchange",
+        "review_required": True,
+    }
+
+
+def cognito_logout_url(post_logout_redirect_uri="/", environ=None):
+    """Return the Cognito hosted-ui logout URL."""
+    environ = os.environ if environ is None else environ
+    metadata = cognito_oauth_metadata(environ)
+    return (
+        f"{metadata['logout_url']}?client_id={metadata['client_id']}"
+        f"&logout_uri={post_logout_redirect_uri}"
+    )
+
+
+def cognito_group_role_mapping(claims, *, prefix=""):
+    """Map Cognito group claims into generated AppGen role names."""
+    groups = tuple((claims or {}).get("cognito:groups", ()) or (claims or {}).get("groups", ()) or ())
+    if prefix:
+        return tuple(group[len(prefix):] for group in groups if str(group).startswith(prefix))
+    return groups
+
+
 def cognito_readiness(environ=None):
     """Return generated AWS Cognito readiness metadata."""
     config = provider_config("cognito", environ=environ)
@@ -14511,6 +14572,7 @@ def cognito_readiness(environ=None):
         "missing": config["missing"],
         "issuer": None if not ready else cognito_issuer(environ),
         "jwks_url": None if not ready else cognito_jwks_url(environ),
+        "oauth": None if not ready else cognito_oauth_metadata(environ),
     }
 
 
@@ -14529,7 +14591,7 @@ def normalize_principal(claims):
         "id": claims.get("sub") or claims.get("objectGUID") or claims.get("dn") or username,
         "username": username,
         "email": claims.get("email") or claims.get("mail"),
-        "roles": tuple(claims.get("roles", ()) or claims.get("groups", ()) or ()),
+        "roles": tuple(claims.get("roles", ()) or claims.get("groups", ()) or claims.get("cognito:groups", ()) or ()),
     }
 
 
@@ -14544,6 +14606,10 @@ class IdentityView(BaseView):
     @expose("/providers.json")
     def providers_json(self):
         return jsonify(list(provider_catalog()))
+
+    @expose("/cognito/oauth.json")
+    def cognito_oauth_json(self):
+        return jsonify(cognito_readiness())
 
 
 def register_identity(appbuilder):
@@ -25954,6 +26020,10 @@ def validate_identity_artifacts() -> None:
         "cognito",
         "cognito_issuer",
         "cognito_authorize_url",
+        "cognito_oauth_metadata",
+        "cognito_token_exchange_plan",
+        "cognito_logout_url",
+        "cognito_group_role_mapping",
         "ldap",
         "active_directory",
         "ldap_bind_plan",
@@ -25961,10 +26031,10 @@ def validate_identity_artifacts() -> None:
         "sAMAccountName",
     )
     if not all(item in contract for item in required):
-        fail("identity contract must expose Cognito, LDAP, and Active Directory provider helpers")
+        fail("identity contract must expose Cognito OAuth, LDAP, and Active Directory provider helpers")
     template = (ROOT / "app" / "templates" / "appgen_identity.html").read_text()
-    if "AWS" not in template or "Cognito" not in template or "LDAP" not in template or "Active Directory" not in template:
-        fail("identity template must expose AWS Cognito, LDAP, and Active Directory provider readiness")
+    if "AWS" not in template or "Cognito OAuth JSON" not in template or "LDAP" not in template or "Active Directory" not in template:
+        fail("identity template must expose AWS Cognito OAuth, LDAP, and Active Directory provider readiness")
 
 
 def validate_erp_template_artifacts() -> None:
@@ -27645,6 +27715,16 @@ def test_generated_runtime_helpers():
         },
     )["user_filter"]
     assert identity.cognito_readiness({})["configured"] is False
+    cognito_env = {{
+        "COGNITO_REGION": "us-east-1",
+        "COGNITO_USER_POOL_ID": "us-east-1_abc",
+        "COGNITO_CLIENT_ID": "client",
+        "COGNITO_CLIENT_SECRET": "secret",
+        "COGNITO_DOMAIN": "https://auth.example.test",
+    }}
+    assert identity.cognito_oauth_metadata(cognito_env)["token_url"].endswith("/oauth2/token")
+    assert identity.cognito_token_exchange_plan("code", "https://app/callback", environ=cognito_env)["review_required"] is True
+    assert identity.cognito_group_role_mapping({{"cognito:groups": ("appgen:Editor",)}}, prefix="appgen:") == ("Editor",)
     assert isinstance(compliance.compliance_catalog(), tuple)
     assert isinstance(assistant.assistant_catalog(), tuple)
     first_intelligence_table = intelligence.intelligence_catalog()[0]["table"]

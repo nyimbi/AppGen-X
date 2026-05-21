@@ -2442,6 +2442,19 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert identity.cognito_authorize_url("https://app.example.test/callback", cognito_env).startswith(
         "https://auth.example.test/oauth2/authorize"
     )
+    oauth = identity.cognito_oauth_metadata(cognito_env)
+    assert oauth["token_url"] == "https://auth.example.test/oauth2/token"
+    assert oauth["client_secret_env"] == "COGNITO_CLIENT_SECRET"
+    token_plan = identity.cognito_token_exchange_plan("auth-code", "https://app.example.test/callback", environ=cognito_env)
+    assert token_plan["auth"] == "client_secret_basic"
+    assert token_plan["body"]["grant_type"] == "authorization_code"
+    assert identity.cognito_logout_url("https://app.example.test/logout", cognito_env).startswith(
+        "https://auth.example.test/logout"
+    )
+    assert identity.cognito_group_role_mapping({"cognito:groups": ["appgen:Editor", "Admins"]}, prefix="appgen:") == (
+        "Editor",
+    )
+    assert identity.cognito_readiness(cognito_env)["oauth"]["userinfo_url"].endswith("/oauth2/userInfo")
     principal = identity.normalize_principal({"sub": "u1", "email": "ada@example.test", "roles": ["Editor"]})
     assert principal["username"] == "ada@example.test"
     assert principal["roles"] == ("Editor",)
@@ -2449,6 +2462,10 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert ad_principal["username"] == "ada"
     assert ad_principal["email"] == "ada@example.test"
     assert ad_principal["roles"] == ("ERP",)
+    cognito_principal = identity.normalize_principal(
+        {"sub": "u2", "email": "bo@example.test", "cognito:groups": ["Editor"]}
+    )
+    assert cognito_principal["roles"] == ("Editor",)
     assert compliance.protected_fields("Book") == ("internal_code",)
     assert compliance.redact_row("Book", {"title": "Dune", "internal_code": "B-1"})["internal_code"] == "[redacted]"
     audit = compliance.audit_event("read", "Book", actor="ada", tenant_id="acme")

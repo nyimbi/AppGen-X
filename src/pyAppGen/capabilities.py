@@ -79,7 +79,7 @@ DEFAULT_CAPABILITIES: tuple[Capability, ...] = (
     Capability("security.session", "Session timeout and runtime hardening", "partial", "generated inactivity timeout and security-header hooks"),
     Capability("security.https", "Automatic HTTPS deployment", "partial", "generated Caddy reverse proxy and TLS readiness checks"),
     Capability("security.rls", "Tenant-aware row-level security", "partial", "generated Python RLS helpers, PostgreSQL policy SQL, tenant session-setting SQL, and reviewable database role/user sync SQL"),
-    Capability("security.sso", "SSO and enterprise authentication", "partial", "generated OIDC, SAML, LDAP, Active Directory, AWS Cognito, and trusted-header registry"),
+    Capability("security.sso", "SSO and enterprise authentication", "partial", "generated OIDC, SAML, LDAP, Active Directory, AWS Cognito hosted-ui OAuth/token/logout contracts, group-role mapping, and trusted-header registry"),
     Capability("security.compliance", "Compliance-oriented data protection", "partial", "generated audit events, retention policy, and redaction helpers"),
     Capability("reports.analytics", "Reports, dashboards, and analytics", "partial", "generated table, join, and three-way report catalogs plus dashboard contracts, CSV/PDF exports, and email delivery payloads"),
     Capability("reports.usage-analytics", "Application usage analytics", "partial", "generated usage events, adoption, funnels, retention, and real-time activity summaries"),

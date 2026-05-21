@@ -296,7 +296,8 @@ apps include:
   SQL, and reviewable database role/user sync SQL for scoped tables.
 - `identity.py` and `appgen_identity.html` with generated OIDC, SAML, LDAP,
   Active Directory, AWS Cognito, and trusted-header SSO provider configuration
-  checks plus reviewed LDAP bind/search plans.
+  checks plus reviewed LDAP bind/search plans and Cognito hosted-ui OAuth,
+  token-exchange, logout, and group-role mapping contracts.
 - `compliance.py` and `appgen_compliance.html` with generated audit event,
   retention, and protected-field redaction helpers.
 - `assistant.py` and `appgen_assistant.html` with generated prompt context,
