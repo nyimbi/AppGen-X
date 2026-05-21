@@ -2192,6 +2192,19 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "APPGEN_REST_TOKEN": "token",
     }
     assert integrations.outbound_request_plan("rest", "sync", {"id": 1}, configured_env)["operation"] == "sync"
+    webhook_env = {
+        "APPGEN_WEBHOOK_URL": "https://hooks.example.test/appgen",
+        "APPGEN_WEBHOOK_SECRET": "secret",
+    }
+    webhook_plan = integrations.signed_webhook_plan("Book.created", {"id": 1}, environ=webhook_env)
+    assert webhook_plan["headers"]["X-AppGen-Event"] == "Book.created"
+    assert webhook_plan["headers"]["Idempotency-Key"] == webhook_plan["idempotency_key"]
+    assert integrations.validate_webhook_signature({"id": 1}, webhook_plan["signature"], "secret") is True
+    assert integrations.integration_idempotency_key("webhook", "webhook.Book.created", {"id": 1}) == webhook_plan["idempotency_key"]
+    outbox_entry = integrations.integration_outbox_entry(webhook_plan)
+    assert outbox_entry["id"].startswith("outbox-")
+    assert outbox_entry["status"] == "pending"
+    assert integrations.delivery_audit_event(outbox_entry, status="queued")["event"] == "integration.delivery.queued"
     payment_env = {"STRIPE_API_KEY": "sk_test", "STRIPE_WEBHOOK_SECRET": "whsec"}
     payment_plan = integrations.payment_request_plan("stripe", amount=42, currency="usd", reference="INV-1", environ=payment_env)
     assert payment_plan["operation"] == "payment.authorize"

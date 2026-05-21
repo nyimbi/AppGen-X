@@ -257,8 +257,10 @@ apps include:
 - `integrations.py` and `appgen_integrations.html` with generated REST,
   webhook, Salesforce, SAP, Entando portal, Invenio repository, payment
   gateway, SMS gateway, and transactional email service contracts. Outbound
-  calls are represented as reviewed request plans so generated applications do
-  not leak credentials or send data without custom connector code.
+  calls are represented as reviewed request plans with signed webhook delivery,
+  idempotency keys, outbox envelopes, and delivery audit events so generated
+  applications do not leak credentials or send data without custom connector
+  code.
 - `config.py` and `config_admin.py` with secure generated defaults, FAB API
   documentation settings, and a whitelisted setup screen for every generated
   `config.py` assignment. The setup contract includes grouped metadata,
@@ -267,8 +269,9 @@ apps include:
 - `integrations.py` and `appgen_integrations.html` with generated REST,
   webhook, Salesforce, SAP, Entando, Invenio, payment gateway, SMS gateway,
   and transactional email connector configuration stubs, reviewed request
-  plans, and first-class Entando/Invenio contract descriptors for routes,
-  payloads, permissions, and events.
+  plans, signed webhook delivery, outbox envelopes, and first-class
+  Entando/Invenio contract descriptors for routes, payloads, permissions, and
+  events.
 - `productivity.py` and `appgen_productivity.html` with generated Microsoft
   365 and Google Workspace document, spreadsheet, calendar, and task-sync
   payload contracts.

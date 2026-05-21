@@ -3282,7 +3282,8 @@ def write_integrations_template(output_dir):
         Generated connector registry for REST, webhook, Salesforce, SAP,
         Entando, Invenio, payment gateways, SMS gateways, and transactional email services.
         Secrets stay in environment variables and requests are planned
-        explicitly before custom connector code sends data.
+        explicitly with signed webhooks, idempotency keys, outbox envelopes, and audit
+        events before custom connector code sends data.
       </p>
     </div>
     <a class="btn btn-default" href="{{ url_for('IntegrationView.catalog_json') }}">Catalog JSON</a>
@@ -11812,6 +11813,11 @@ def _integrations_text() -> str:
 
 from __future__ import annotations
 
+from datetime import datetime
+from datetime import timezone
+from hashlib import sha256
+import hmac
+import json
 import os
 
 from flask import jsonify
@@ -11979,6 +11985,94 @@ def outbound_request_plan(name, operation, payload=None, environ=None):
         "operation": operation,
         "payload": payload or {},
         "env": config["env"],
+    }
+
+
+def _canonical_payload(payload):
+    return json.dumps(payload or {}, sort_keys=True, separators=(",", ":"), default=str)
+
+
+def integration_idempotency_key(name, operation, payload=None):
+    """Return a stable idempotency key for an outbound integration operation."""
+    body = f"{name}:{operation}:{_canonical_payload(payload)}"
+    return sha256(body.encode("utf-8")).hexdigest()
+
+
+def validate_webhook_signature(payload, signature, secret):
+    """Validate a generated webhook signature without trusting string equality timing."""
+    expected = "sha256=" + hmac.new(
+        str(secret).encode("utf-8"),
+        _canonical_payload(payload).encode("utf-8"),
+        "sha256",
+    ).hexdigest()
+    return hmac.compare_digest(str(signature), expected)
+
+
+def signed_webhook_plan(event, payload=None, *, environ=None, headers=None):
+    """Build a signed webhook delivery plan with idempotency metadata."""
+    config = integration_config("webhook", environ=environ)
+    if not config["configured"]:
+        raise ValueError("Integration webhook is missing configuration")
+    environ = os.environ if environ is None else environ
+    body = payload or {}
+    signature = "sha256=" + hmac.new(
+        str(environ["APPGEN_WEBHOOK_SECRET"]).encode("utf-8"),
+        _canonical_payload(body).encode("utf-8"),
+        "sha256",
+    ).hexdigest()
+    operation = f"webhook.{event}"
+    idempotency_key = integration_idempotency_key("webhook", operation, body)
+    request_headers = {
+        "Content-Type": "application/json",
+        "X-AppGen-Event": event,
+        "X-AppGen-Signature": signature,
+        "Idempotency-Key": idempotency_key,
+    }
+    request_headers.update(dict(headers or {}))
+    return {
+        "integration": "webhook",
+        "operation": operation,
+        "url": environ["APPGEN_WEBHOOK_URL"],
+        "payload": body,
+        "headers": request_headers,
+        "signature": signature,
+        "idempotency_key": idempotency_key,
+        "side_effect": "external_webhook",
+        "review_required": True,
+    }
+
+
+def integration_outbox_entry(plan, *, status="pending", attempts=0, available_at=None):
+    """Return a durable outbox envelope for reviewed integration delivery."""
+    payload = {
+        "integration": plan["integration"],
+        "operation": plan["operation"],
+        "payload": plan.get("payload", {}),
+        "idempotency_key": plan.get("idempotency_key")
+        or integration_idempotency_key(plan["integration"], plan["operation"], plan.get("payload")),
+    }
+    return {
+        "id": "outbox-" + sha256(_canonical_payload(payload).encode("utf-8")).hexdigest()[:12],
+        **payload,
+        "headers": dict(plan.get("headers", {})),
+        "status": status,
+        "attempts": int(attempts),
+        "available_at": available_at,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    }
+
+
+def delivery_audit_event(entry, *, status=None, error=None):
+    """Return an audit event for an integration outbox delivery decision."""
+    delivery_status = status or entry.get("status", "pending")
+    return {
+        "event": f"integration.delivery.{delivery_status}",
+        "outbox_id": entry["id"],
+        "integration": entry["integration"],
+        "operation": entry["operation"],
+        "idempotency_key": entry["idempotency_key"],
+        "attempts": entry.get("attempts", 0),
+        "error": error,
     }
 
 
@@ -24269,6 +24363,11 @@ def validate_integration_artifacts() -> None:
         "payment_request_plan",
         "sms_request_plan",
         "email_request_plan",
+        "signed_webhook_plan",
+        "validate_webhook_signature",
+        "integration_idempotency_key",
+        "integration_outbox_entry",
+        "delivery_audit_event",
         "low_code_portal_plan",
         "repository_deposit_plan",
         "integration_contract",
@@ -24286,8 +24385,16 @@ def validate_integration_artifacts() -> None:
     if not all(item in contract for item in required):
         fail("integration contract must expose REST, webhook, enterprise, Entando, Invenio, payment, SMS, and email service plans")
     template = (ROOT / "app" / "templates" / "appgen_integrations.html").read_text()
-    if "Integrations" not in template or "Entando" not in template or "Invenio" not in template or "payment gateways" not in template or "SMS gateways" not in template:
-        fail("integration template must expose enterprise, portal, repository, payment, and SMS gateway coverage")
+    if (
+        "Integrations" not in template
+        or "Entando" not in template
+        or "Invenio" not in template
+        or "payment gateways" not in template
+        or "SMS gateways" not in template
+        or "idempotency keys" not in template
+        or "outbox envelopes" not in template
+    ):
+        fail("integration template must expose enterprise, delivery, portal, repository, payment, and SMS gateway coverage")
 
 
 def validate_productivity_artifacts() -> None:
@@ -25539,6 +25646,14 @@ def test_generated_runtime_helpers():
         body="Report ready.",
         environ={"SENDGRID_API_KEY": "key", "APPGEN_EMAIL_FROM": "noreply@example.test"},
     )["side_effect"] == "external_email"
+    webhook_plan = integrations.signed_webhook_plan(
+        "Book.created",
+        {"id": 1},
+        environ={"APPGEN_WEBHOOK_URL": "https://hooks.example.test/appgen", "APPGEN_WEBHOOK_SECRET": "secret"},
+    )
+    assert integrations.validate_webhook_signature({"id": 1}, webhook_plan["signature"], "secret") is True
+    assert integrations.integration_outbox_entry(webhook_plan)["id"].startswith("outbox-")
+    assert integrations.delivery_audit_event(integrations.integration_outbox_entry(webhook_plan), status="queued")["event"] == "integration.delivery.queued"
     assert integrations.integration_check({"app/integrations.py", "app/templates/appgen_integrations.html"})["ok"] is True
     assert {provider["provider"] for provider in productivity.provider_catalog({})} == {"microsoft365", "google_workspace"}
     first_productivity_table = productivity.productivity_templates()[0]["table"]

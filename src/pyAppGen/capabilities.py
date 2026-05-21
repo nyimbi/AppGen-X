@@ -109,7 +109,7 @@ DEFAULT_CAPABILITIES: tuple[Capability, ...] = (
     Capability("ops.lifecycle", "Environment, release, feedback, and lifecycle management", "partial", "generated environment readiness, custom-domain plans, release gates, maintenance windows, feedback, and issue reports"),
     Capability("ops.backup", "Backup and disaster recovery", "partial", "generated JSON backup exports, integrity manifests, autobackup schedules, retention plans, recovery runbooks, and restore helpers"),
     Capability("scale.multi-tenancy", "Multi-tenancy and scaling", "partial", "generated tenant-scope registry and filter helpers"),
-    Capability("integration.enterprise", "Enterprise service integrations", "partial", "generated REST, webhook, Salesforce, SAP, Entando, Invenio, payment gateway, SMS gateway, and transactional email registry"),
+    Capability("integration.enterprise", "Enterprise service integrations", "partial", "generated REST, webhook, Salesforce, SAP, Entando, Invenio, payment gateway, SMS gateway, transactional email registry, signed webhook plans, idempotency keys, outbox envelopes, and delivery audit events"),
     Capability("integration.productivity", "Microsoft 365 and Google Workspace productivity integrations", "partial", "generated document, spreadsheet, calendar, and task-sync payload contracts"),
     Capability("integration.emerging", "IoT and blockchain integration contracts", "partial", "generated device telemetry, edge sync, command, and blockchain audit-anchor contracts"),
     Capability("ai.assistance", "AI and machine-learning assistance", "partial", "generated assistant context, recommendations, prediction hooks, and review tasks"),
