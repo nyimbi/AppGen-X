@@ -1499,6 +1499,8 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert "JetBrains" in (output_dir / "templates" / "appgen_devtools.html").read_text()
     studio_template = (output_dir / "templates" / "appgen_studio.html").read_text()
     assert "Developer Studio" in studio_template
+    assert "Project Tree JSON" in studio_template
+    assert "Diagnostics JSON" in studio_template
     assert "DSL Editor" in studio_template
     assert "Database Designer" in studio_template
     assert "DBML" in studio_template
@@ -2637,7 +2639,12 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert studio.editable_files()
     assert {"web", "mobile", "desktop"} <= set(studio.ide_workspace()["generation"]["targets"])
     assert "open_dsl" in {item["command"] for item in studio.ide_command_palette()}
+    assert "Application" in {item["name"] for item in studio.project_tree()}
+    assert {item["command"] for item in studio.command_palette_search("database")} >= {"design_database"}
     assert studio.dsl_editor_state(text="app Library")["lint"]["warnings"]
+    dsl_editor = studio.editor_session("appgen.dsl", "app Library { targets: web }")
+    assert dsl_editor["language"] == "appgen-dsl"
+    assert "schema_preview" in dsl_editor["checks"]
     assert studio.dsl_change_plan("add invoice table")["can_create"] == (
         "tables",
         "fields",
@@ -2658,9 +2665,16 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert "Ref: Book.author_id > Author.id" in studio.schema_dbml()
     assert "author_id INTEGER REFERENCES Author(id)" in studio.schema_sql_ddl()
     assert "author_id = Optional('Author')" in studio.schema_ponyorm()
+    table_proposal = studio.database_table_proposal(
+        "Invoice", ({"name": "number", "type": "string", "required": True},)
+    )
+    assert table_proposal["migration"]["requires_review"] is True
+    assert "Table Invoice" in table_proposal["preview"]["dbml"]
     assert studio.schema_change_preview({"add_field": "Book.edition"})["review_required"] is True
     assert studio.database_migration_plan({"add_field": "Book.edition"})["requires_review"] is True
     assert studio.app_generation_plan(targets=("web", "desktop"))["targets"] == ("web", "desktop")
+    job = studio.generation_job_plan(targets=("web", "mobile"), changed_paths=("appgen.dsl",))
+    assert [stage["name"] for stage in job["stages"]] == ["lint_dsl", "schema_diff", "generate", "quality"]
     assert studio.app_management_plan("deploy")["requires_review"] is True
     assert studio.file_edit_plan("app/models.py", "add comment")["requires_review"] is True
     debug = studio.debug_session()
@@ -2672,6 +2686,12 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     component = studio.component_repository()[0]
     assert studio.component_share_package(component["id"])["component"]["id"] == component["id"]
     assert studio.clone_plan("LibraryCopy")["new_app_name"] == "LibraryCopy"
+    ide_report = studio.ide_diagnostics(
+        {"app/studio.py", "app/templates/appgen_studio.html", "app/dsl_reference.py", "app/models.py", "migrations/README.md", "scripts/appgen_quality.py"},
+        {"DATABASE_URL": "sqlite:///app.db", "SECRET_KEY": "x"},
+    )
+    assert ide_report["format"] == "appgen.ide-diagnostics.v1"
+    assert ide_report["ok"] is True
     studio_ready = studio.studio_check({"app/studio.py", "app/templates/appgen_studio.html"})
     assert studio_ready["ok"] is True
     assert "design_database" in studio_ready["commands"]

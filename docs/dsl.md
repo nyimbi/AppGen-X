@@ -380,11 +380,12 @@ apps include:
   IDEA/PyCharm, and Eclipse/PyDev launch, task, extension, source-map, and
   readiness contracts.
 - `studio.py` and `appgen_studio.html` with a generated IDE/workbench for DSL
-  authoring, DSL linting, visual database design, Mermaid ERD export, DBML
-  export, SQL DDL preview, PonyORM preview, migration previews, application
-  generation plans, app management, code editing, breakpoint/debug plans,
-  dependency update plans, app cloning, and reusable component repository
-  exports.
+  authoring, DSL linting, searchable command palettes, project trees, editor
+  sessions, visual database design, Mermaid ERD export, DBML export, SQL DDL
+  preview, PonyORM preview, table proposals, migration previews, staged
+  generation jobs, IDE diagnostics, app management, code editing,
+  breakpoint/debug plans, dependency update plans, app cloning, and reusable
+  component repository exports.
 - `realtime.py` and `appgen_realtime.html` with generated event topics,
   Server-Sent Events frames, collaboration messages, and reconnect replay plans.
 - `diagnostics.py` and `appgen_diagnostics.html` with generated schema

@@ -5446,6 +5446,8 @@ def write_studio_template(output_dir):
     <div class="ags-actions">
       <a class="btn btn-default" href="{{ url_for('StudioView.catalog_json') }}">Studio JSON</a>
       <a class="btn btn-default" href="{{ url_for('StudioView.workspace_json') }}">Workspace JSON</a>
+      <a class="btn btn-default" href="{{ url_for('StudioView.project_tree_json') }}">Project Tree JSON</a>
+      <a class="btn btn-default" href="{{ url_for('StudioView.diagnostics_json') }}">Diagnostics JSON</a>
       <a class="btn btn-default" href="{{ url_for('StudioView.database_design_json') }}">Database Design JSON</a>
       <a class="btn btn-default" href="{{ url_for('StudioView.schema_erd_route') }}">ERD</a>
       <a class="btn btn-default" href="{{ url_for('StudioView.schema_dbml_route') }}">DBML</a>
@@ -5468,6 +5470,20 @@ def write_studio_template(output_dir):
       {% for doc in workspace.dsl_documents %}
       <span class="ags-pill">{{ doc.path }}</span>
       {% endfor %}
+    </article>
+    <article class="ags-card">
+      <h3>Project Tree</h3>
+      <div class="ags-muted">workspace navigation for generated code, DSL, targets, and operations</div>
+      {% for node in workspace.project_tree %}
+      <span class="ags-pill">{{ node.name }}</span>
+      {% endfor %}
+    </article>
+    <article class="ags-card">
+      <h3>Diagnostics</h3>
+      <div class="ags-muted">readiness checks for IDE, DSL, database, and quality gates</div>
+      <span class="ags-pill">lint</span>
+      <span class="ags-pill">schema diff</span>
+      <span class="ags-pill">quality gate</span>
     </article>
     <article class="ags-card">
       <h3>Database Designer</h3>
@@ -21913,6 +21929,28 @@ def _studio_text(schema: AppSchema, app_name: str) -> str:
             "helpers": ("data dictionary", "mermaid ERD", "field catalog"),
         },
     )
+    project_tree = (
+        {
+            "name": "Application",
+            "kind": "folder",
+            "children": tuple(item["path"] for item in editable_files if item["path"].startswith("app/")),
+        },
+        {
+            "name": "DSL And Schema",
+            "kind": "workspace",
+            "children": tuple(item["path"] for item in dsl_documents) + ("docs/data-dictionary.json",),
+        },
+        {
+            "name": "Generated Targets",
+            "kind": "workspace",
+            "children": ("frontends", "native/mobile", "native/desktop", "chatbots", "sdks"),
+        },
+        {
+            "name": "Operations",
+            "kind": "workspace",
+            "children": ("deploy", "migrations", "scripts/appgen_quality.py", ".github/workflows/appgen-ci.yml"),
+        },
+    )
     ide_actions = (
         {"command": "open_dsl", "label": "Open DSL", "scope": "authoring", "checks": ("dsl_lint", "keyword_budget")},
         {"command": "design_database", "label": "Design Database", "scope": "schema", "checks": ("relationship_check", "migration_preview")},
@@ -21936,6 +21974,7 @@ DEPENDENCIES = {dependencies!r}
 DEBUG_SESSIONS = {debug_sessions!r}
 DATABASE_DESIGN = {database_design!r}
 DSL_DOCUMENTS = {dsl_documents!r}
+PROJECT_TREE = {project_tree!r}
 PLATFORM_TARGETS = {platform_targets!r}
 IDE_ACTIONS = {ide_actions!r}
 SECRET_MARKERS = ("SECRET", "TOKEN", "PASSWORD", "API_KEY")
@@ -21950,6 +21989,7 @@ def ide_workspace():
     """Return the complete generated IDE workspace contract."""
     return {{
         "app_name": APP_NAME,
+        "project_tree": project_tree(),
         "dsl_documents": tuple(DSL_DOCUMENTS),
         "database_design": database_design_catalog(),
         "database_workbench": database_design_workspace(),
@@ -21966,6 +22006,31 @@ def ide_command_palette():
     return tuple(IDE_ACTIONS)
 
 
+def project_tree():
+    """Return a generated IDE project tree grouped by builder concern."""
+    return tuple(PROJECT_TREE)
+
+
+def command_palette_search(query=""):
+    """Return IDE commands matching a builder search query."""
+    needle = str(query or "").strip().lower()
+    if not needle:
+        return ide_command_palette()
+    matches = []
+    for action in IDE_ACTIONS:
+        haystack = " ".join(
+            (
+                action["command"],
+                action["label"],
+                action["scope"],
+                " ".join(action.get("checks", ())),
+            )
+        ).lower()
+        if needle in haystack:
+            matches.append(action)
+    return tuple(matches)
+
+
 def dsl_editor_state(source="appgen.dsl", text=""):
     """Return DSL editor state with panels for linting, schema, and generation."""
     return {{
@@ -21975,6 +22040,38 @@ def dsl_editor_state(source="appgen.dsl", text=""):
         "panels": ("outline", "schema_preview", "database_designer", "generation_plan", "natural_language_changes"),
         "commands": ("format", "lint", "preview_schema", "generate", "apply_natural_language_change"),
         "lint": dsl_lint_plan(text),
+    }}
+
+
+def editor_session(path="appgen.dsl", text="", cursor=None):
+    """Return a file editor session with context-aware checks and previews."""
+    file_spec = next((item for item in EDITABLE_FILES if item["path"] == path), None)
+    if file_spec is None and path == "appgen.dsl":
+        file_spec = {{"label": "AppGen DSL", "path": path, "language": "appgen-dsl", "kind": "dsl", "editable": True}}
+    language = file_spec["language"] if file_spec else "text"
+    checks = ["save_plan", "review_required"]
+    previews = []
+    lint = {{"ok": True, "errors": (), "warnings": (), "checks": ()}}
+    if language == "appgen-dsl":
+        lint = dsl_lint_plan(text)
+        checks.extend(("dsl_lint", "schema_preview", "generation_plan"))
+        previews.extend(("schema_erd", "dbml", "sql_ddl", "migration_preview"))
+    elif language == "python":
+        checks.extend(("py_compile", "unit_tests"))
+        previews.append("source_map")
+    elif language in {{"jinja2", "css"}}:
+        checks.extend(("accessibility", "responsive_preview"))
+        previews.append("ui_preview")
+    return {{
+        "path": path,
+        "language": language,
+        "kind": file_spec["kind"] if file_spec else "unknown",
+        "cursor": cursor or {{"line": 1, "column": 1}},
+        "dirty": bool(text),
+        "lint": lint,
+        "checks": tuple(checks),
+        "previews": tuple(previews),
+        "requires_review": True,
     }}
 
 
@@ -22162,6 +22259,33 @@ def database_design_workspace():
     }}
 
 
+def database_table_proposal(table_name, fields=(), action="create"):
+    """Return a visual-database-designer proposal for creating or changing a table."""
+    normalized_fields = []
+    for field in fields or ():
+        if isinstance(field, dict):
+            normalized_fields.append({{
+                "name": field.get("name"),
+                "type": field.get("type", "string"),
+                "required": bool(field.get("required")),
+                "reference": field.get("reference"),
+            }})
+        else:
+            normalized_fields.append({{"name": str(field), "type": "string", "required": False, "reference": None}})
+    return {{
+        "action": action,
+        "table": table_name,
+        "fields": tuple(normalized_fields),
+        "preview": {{
+            "dbml": f"Table {{table_name}} {{{{\\n" + "\\n".join(f"  {{field['name']}} {{field['type']}}" for field in normalized_fields) + "\\n}}}}",
+            "sql": f"CREATE TABLE {{table_name}} (/* reviewed fields */);",
+        }},
+        "migration": database_migration_plan({{"action": action, "table": table_name, "fields": tuple(normalized_fields)}}),
+        "checks": ("duplicate_table", "field_names", "type_support", "data_loss_check"),
+        "requires_review": True,
+    }}
+
+
 def schema_change_preview(change):
     """Return design-time previews after a proposed schema change."""
     return {{
@@ -22192,6 +22316,24 @@ def app_generation_plan(targets=None, source="dsl"):
         "artifacts": ("app", "frontends", "native", "sdks", "deploy", "docs"),
         "commands": ("generate", "quality", "test", "package"),
         "checks": ("py_compile", "pytest", "appgen_quality", "manifest_readiness"),
+    }}
+
+
+def generation_job_plan(command="generate", targets=None, changed_paths=()):
+    """Return a staged IDE job plan for generation and validation."""
+    selected = tuple(targets or PLATFORM_TARGETS or ("web",))
+    changed = tuple(changed_paths or ())
+    return {{
+        "command": command,
+        "targets": selected,
+        "changed_paths": changed,
+        "stages": (
+            {{"name": "lint_dsl", "required": True, "inputs": ("appgen.dsl",)}},
+            {{"name": "schema_diff", "required": True, "inputs": changed}},
+            {{"name": "generate", "required": True, "outputs": ("app", "frontends", "native", "docs")}},
+            {{"name": "quality", "required": True, "commands": ("python -m py_compile", "python scripts/appgen_quality.py", "pytest -q")}},
+        ),
+        "review_required": bool(changed),
     }}
 
 
@@ -22315,6 +22457,7 @@ def studio_catalog():
     return {{
         "workspace": ide_workspace(),
         "files": editable_files(),
+        "project_tree": project_tree(),
         "dsl_documents": tuple(DSL_DOCUMENTS),
         "database_design": database_design_catalog(),
         "command_palette": ide_command_palette(),
@@ -22322,6 +22465,33 @@ def studio_catalog():
         "components": component_repository(),
         "dependencies": dependency_inventory(),
         "clone": clone_plan(f"{{APP_NAME}}Copy"),
+    }}
+
+
+def ide_diagnostics(existing_paths=(), environment=None):
+    """Return IDE readiness diagnostics for generated authoring and management."""
+    existing = set(existing_paths)
+    env = dict(environment or {{}})
+    required = {{
+        "studio": ("app/studio.py", "app/templates/appgen_studio.html"),
+        "dsl": ("app/dsl_reference.py",),
+        "database": ("app/models.py", "migrations/README.md"),
+        "quality": ("scripts/appgen_quality.py",),
+    }}
+    areas = []
+    for area, paths in required.items():
+        missing = tuple(path for path in paths if path not in existing)
+        areas.append({{"area": area, "ok": not missing, "missing": missing}})
+    return {{
+        "ok": all(item["ok"] for item in areas),
+        "format": "appgen.ide-diagnostics.v1",
+        "areas": tuple(areas),
+        "targets": PLATFORM_TARGETS,
+        "environment": {{
+            "database_url": bool(env.get("DATABASE_URL") or env.get("SQLALCHEMY_DATABASE_URI")),
+            "secret_key": bool(env.get("SECRET_KEY")),
+        }},
+        "commands": tuple(item["command"] for item in IDE_ACTIONS),
     }}
 
 
@@ -22362,6 +22532,14 @@ class StudioView(BaseView):
     @expose("/workspace.json")
     def workspace_json(self):
         return jsonify(ide_workspace())
+
+    @expose("/project-tree.json")
+    def project_tree_json(self):
+        return jsonify(list(project_tree()))
+
+    @expose("/diagnostics.json")
+    def diagnostics_json(self):
+        return jsonify(ide_diagnostics())
 
     @expose("/database-design.json")
     def database_design_json(self):
@@ -25172,13 +25350,17 @@ def validate_studio_artifacts() -> None:
     required = (
         "ide_workspace",
         "ide_command_palette",
+        "project_tree",
+        "command_palette_search",
         "dsl_editor_state",
+        "editor_session",
         "dsl_lint_plan",
         "dsl_change_plan",
         "database_design_catalog",
         "table_design",
         "field_design",
         "database_design_workspace",
+        "database_table_proposal",
         "schema_erd_mermaid",
         "schema_dbml",
         "schema_sql_ddl",
@@ -25186,8 +25368,10 @@ def validate_studio_artifacts() -> None:
         "schema_change_preview",
         "database_migration_plan",
         "app_generation_plan",
+        "generation_job_plan",
         "app_management_plan",
         "studio_catalog",
+        "ide_diagnostics",
         "file_edit_plan",
         "debug_session",
         "breakpoint_plan",
@@ -25206,7 +25390,11 @@ def validate_studio_artifacts() -> None:
         "Developer Studio" not in template
         or "Studio JSON" not in template
         or "Workspace JSON" not in template
+        or "Project Tree JSON" not in template
+        or "Diagnostics JSON" not in template
         or "DSL Editor" not in template
+        or "Project Tree" not in template
+        or "Diagnostics" not in template
         or "Database Designer" not in template
         or "DBML" not in template
         or "SQL DDL" not in template
