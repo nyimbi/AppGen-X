@@ -257,6 +257,10 @@ The generated Studio also manages a portfolio of generated applications through
 new apps from DSL, DBML, SQL, PonyORM, or existing database URLs while keeping
 source fidelity, linting, schema diffs, generation jobs, and quality gates in
 one review flow.
+Use `/studio/release-gate.json` before treating the Studio as release-ready;
+it combines diagnostics, DSL linting, database workbench exports, safe SQL
+guards, generation jobs, app portfolio management, reviewed edits, debug
+redaction, dependency review, and component sharing.
 
 ## Design-System QA
 

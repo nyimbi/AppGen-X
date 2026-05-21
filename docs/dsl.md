@@ -457,7 +457,10 @@ apps include:
   artifact manifests, IDE diagnostics, multi-application registry, reviewed
   create/import/open/export plans, app management, code editing,
   breakpoint/debug plans, dependency update plans, app cloning, and reusable
-  component repository exports.
+  component repository exports. The Studio also emits a release gate that
+  checks DSL linting, database workbench exports, safe SQL, generation jobs,
+  app portfolio management, reviewed edits, debug redaction, dependency review,
+  and component sharing before IDE readiness is claimed.
 - `realtime.py` and `appgen_realtime.html` with generated event topics,
   Server-Sent Events frames, collaboration messages, and reconnect replay plans.
 - `diagnostics.py` and `appgen_diagnostics.html` with generated schema

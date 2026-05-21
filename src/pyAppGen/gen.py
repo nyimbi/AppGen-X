@@ -6029,6 +6029,7 @@ def write_studio_template(output_dir):
       <a class="btn btn-default" href="{{ url_for('StudioView.workspace_json') }}">Workspace JSON</a>
       <a class="btn btn-default" href="{{ url_for('StudioView.project_tree_json') }}">Project Tree JSON</a>
       <a class="btn btn-default" href="{{ url_for('StudioView.diagnostics_json') }}">Diagnostics JSON</a>
+      <a class="btn btn-default" href="{{ url_for('StudioView.release_gate_json') }}">Release Gate JSON</a>
       <a class="btn btn-default" href="{{ url_for('StudioView.database_design_json') }}">Database Design JSON</a>
       <a class="btn btn-default" href="{{ url_for('StudioView.sql_workbench_json') }}">SQL Workbench JSON</a>
       <a class="btn btn-default" href="{{ url_for('StudioView.generation_jobs_json') }}">Generation Jobs JSON</a>
@@ -6066,7 +6067,7 @@ def write_studio_template(output_dir):
     </article>
     <article class="ags-card">
       <h3>Diagnostics</h3>
-      <div class="ags-muted">readiness checks for IDE, DSL, database, and quality gates</div>
+      <div class="ags-muted">readiness checks and release gates for IDE, DSL, database, and quality workflows</div>
       <span class="ags-pill">lint</span>
       <span class="ags-pill">schema diff</span>
       <span class="ags-pill">quality gate</span>
@@ -26543,6 +26544,53 @@ def studio_check(existing_paths=()):
     }}
 
 
+def studio_release_gate(existing_paths=(), environment=None):
+    """Return a release gate for the generated IDE and database workbench."""
+    existing = set(existing_paths) or {{
+        "app/studio.py",
+        "app/templates/appgen_studio.html",
+        "app/dsl_reference.py",
+        "app/models.py",
+        "migrations/README.md",
+        "scripts/appgen_quality.py",
+    }}
+    diagnostics = ide_diagnostics(existing, environment=environment)
+    studio = studio_check(existing)
+    workspace = ide_workspace()
+    dsl = dsl_lint_plan("app Gate {{ targets: web, mobile, desktop }} table GateThing {{ id: int pk }}")
+    database = database_design_workspace()
+    sql = sql_workbench_session("select * from " + (DATABASE_DESIGN[0]["table"] if DATABASE_DESIGN else "example"))
+    destructive_sql = sql_statement_guard("delete from " + (DATABASE_DESIGN[0]["table"] if DATABASE_DESIGN else "example"))
+    generation = generation_job_manifest(targets=PLATFORM_TARGETS or ("web",), changed_paths=("appgen.dsl",))
+    edit = file_edit_plan("app/models.py", "reviewed patch")
+    debug = variable_inspection("debug", {{"SECRET_KEY": "secret", "row": {{"id": 1}}}})
+    dependency = dependency_update_plan("flask", "reviewed")
+    component = component_share_package(component_repository()[0]["id"]) if component_repository() else {{}}
+    gates = (
+        {{"gate": "diagnostics", "ok": diagnostics["ok"], "details": diagnostics}},
+        {{"gate": "studio_artifacts", "ok": studio["ok"], "details": studio}},
+        {{"gate": "workspace_sections", "ok": {{"dsl_authoring", "database_workbench", "generation_jobs", "applications"}} <= set(workspace), "details": tuple(workspace)}},
+        {{"gate": "dsl_lint", "ok": dsl["ok"] and dsl["keyword_budget"]["ok"], "details": dsl}},
+        {{"gate": "database_workbench", "ok": bool(database["tables"]) and {{"dbml", "sql", "ponyorm"}} <= set(database["exports"]), "details": database["checks"]}},
+        {{"gate": "safe_sql", "ok": sql["guard"]["ok"] and not destructive_sql["ok"] and not sql["side_effects"], "details": sql["guard"]}},
+        {{"gate": "generation_pipeline", "ok": generation["format"] == "appgen.generation-job.v1" and generation_job_status(generation)["remaining_stages"], "details": generation["plan"]["stages"]}},
+        {{"gate": "application_portfolio", "ok": application_portfolio_check()["ok"], "details": application_registry()["operations"]}},
+        {{"gate": "reviewed_edits", "ok": edit["requires_review"] and "appgen_quality" in edit["checks"], "details": edit["checks"]}},
+        {{"gate": "debug_redaction", "ok": debug["variables"].get("SECRET_KEY") == "[redacted]", "details": debug}},
+        {{"gate": "dependency_review", "ok": dependency["requires_review"] and "pytest" in dependency["checks"], "details": dependency}},
+        {{"gate": "component_sharing", "ok": bool(component.get("files")) and component.get("format") == "appgen-component-v1", "details": component}},
+    )
+    return {{
+        "format": "appgen.studio-release-gate.v1",
+        "ok": all(gate["ok"] for gate in gates),
+        "workspace": APP_NAME,
+        "targets": PLATFORM_TARGETS or ("web",),
+        "source_kinds": application_registry()["source_kinds"],
+        "gates": gates,
+        "blocking_gaps": tuple(gate for gate in gates if not gate["ok"]),
+    }}
+
+
 class StudioView(BaseView):
     route_base = "/studio"
     default_view = "index"
@@ -26573,6 +26621,10 @@ class StudioView(BaseView):
     @expose("/diagnostics.json")
     def diagnostics_json(self):
         return jsonify(ide_diagnostics())
+
+    @expose("/release-gate.json")
+    def release_gate_json(self):
+        return jsonify(studio_release_gate())
 
     @expose("/database-design.json")
     def database_design_json(self):
@@ -30063,6 +30115,7 @@ def validate_studio_artifacts() -> None:
         "app_management_plan",
         "studio_catalog",
         "ide_diagnostics",
+        "studio_release_gate",
         "file_edit_plan",
         "debug_session",
         "breakpoint_plan",
@@ -30083,6 +30136,7 @@ def validate_studio_artifacts() -> None:
         or "Workspace JSON" not in template
         or "Project Tree JSON" not in template
         or "Diagnostics JSON" not in template
+        or "Release Gate JSON" not in template
         or "DSL Editor" not in template
         or "Project Tree" not in template
         or "Diagnostics" not in template
@@ -32026,6 +32080,18 @@ def test_generated_runtime_helpers():
     assert studio.component_share_package(first_component["id"])["component"]["id"] == first_component["id"]
     assert studio.clone_plan("CopyApp")["new_app_name"] == "CopyApp"
     assert studio.studio_check({"app/studio.py", "app/templates/appgen_studio.html"})["ok"] is True
+    studio_gate = studio.studio_release_gate({
+        "app/studio.py",
+        "app/templates/appgen_studio.html",
+        "app/dsl_reference.py",
+        "app/models.py",
+        "migrations/README.md",
+        "scripts/appgen_quality.py",
+    })
+    assert studio_gate["format"] == "appgen.studio-release-gate.v1"
+    assert studio_gate["ok"] is True
+    assert studio_gate["blocking_gaps"] == ()
+    assert "safe_sql" in {gate["gate"] for gate in studio_gate["gates"]}
     assert isinstance(wizards.wizard_catalog(), tuple)
     assert "--appgen-primary" in branding.css_variables()
     assert branding.design_tokens()["interaction"]["touch_target"] == "44px"

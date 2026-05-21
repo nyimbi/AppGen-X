@@ -1737,6 +1737,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert "Developer Studio" in studio_template
     assert "Project Tree JSON" in studio_template
     assert "Diagnostics JSON" in studio_template
+    assert "Release Gate JSON" in studio_template
     assert "DSL Editor" in studio_template
     assert "Database Designer" in studio_template
     assert "DBML" in studio_template
@@ -3305,6 +3306,23 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     studio_ready = studio.studio_check({"app/studio.py", "app/templates/appgen_studio.html"})
     assert studio_ready["ok"] is True
     assert "design_database" in studio_ready["commands"]
+    studio_gate = studio.studio_release_gate(
+        {
+            "app/studio.py",
+            "app/templates/appgen_studio.html",
+            "app/dsl_reference.py",
+            "app/models.py",
+            "migrations/README.md",
+            "scripts/appgen_quality.py",
+        }
+    )
+    assert studio_gate["format"] == "appgen.studio-release-gate.v1"
+    assert studio_gate["ok"] is True
+    assert studio_gate["blocking_gaps"] == ()
+    assert {
+        gate["gate"] for gate in studio_gate["gates"]
+    } >= {"dsl_lint", "database_workbench", "safe_sql", "generation_pipeline", "component_sharing"}
+    assert studio.studio_release_gate({"app/studio.py"})["ok"] is False
     book_tabs = tabbed_views.tabbed_view("BookList")
     assert [tab["id"] for tab in book_tabs["tabs"]] == ["overview", "assets"]
     overview_policy = tabbed_views.tab_policy("BookList", "overview")
