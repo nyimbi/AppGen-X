@@ -584,7 +584,9 @@ apps include:
   autoscaling manifests, on-prem topology plans, Terraform starter contracts
   for AWS, GCP, and Azure, generated deployment runbooks, secret-injection
   plans, smoke checks, rollback plans, release promotion plans, infrastructure
-  scaling plans, and cloud readiness helpers.
+  scaling plans, cloud readiness helpers, and a deployment release gate covering
+  Docker, Compose, HTTPS, Kubernetes, on-prem, AWS, GCP, Azure, PostgreSQL, and
+  MySQL readiness evidence.
 - `deploy/Caddyfile` and `deploy/appgen_https.py` with generated automatic
   HTTPS reverse proxy configuration and TLS readiness checks.
 - `appgen.json`, a manifest containing tables, relations, views, workflows,

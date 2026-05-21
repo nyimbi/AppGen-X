@@ -310,6 +310,12 @@ beyond a scaffolding CLI: it ties authoring, database design, generation,
 portfolio management, diagnostics, and component sharing to commands,
 workflows, and release evidence.
 
+Generated deployment contracts live in `deploy/appgen_deploy.py`. Use
+`deployment_release_gate()` before release to prove Docker, Compose, HTTPS,
+Kubernetes, on-prem, AWS, GCP, Azure, PostgreSQL/MySQL, Terraform, secret
+injection, smoke checks, scaling, rollback, and promotion readiness from the
+generated artifacts.
+
 ## Design-System QA
 
 Generated apps include `branding.py`, `appgen_branding.html`, and

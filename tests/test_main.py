@@ -676,6 +676,22 @@ def test_generate_app_from_sqlite_schema_compiles(tmp_path) -> None:
         {"SECRET_KEY": "s", "SQLALCHEMY_DATABASE_URI": "sqlite://"},
         all_artifacts,
     )["ok"] is True
+    deployment_gate = deployment.deployment_release_gate(deployment.sample_deployment_environment(), all_artifacts)
+    assert deployment_gate["format"] == "appgen.deployment-release-gate.v1"
+    assert deployment_gate["ok"] is True
+    assert {"aws", "gcp", "azure", "kubernetes", "onprem"} <= set(deployment_gate["targets"])
+    assert {"postgresql", "mysql"} <= set(deployment_gate["database_engines"])
+    assert {
+        "artifact_coverage",
+        "target_coverage",
+        "terraform_clouds",
+        "kubernetes_autoscale",
+        "promotion_plan",
+    } <= {gate["gate"] for gate in deployment_gate["gates"]}
+    assert deployment.deployment_release_gate(
+        deployment.sample_deployment_environment(),
+        {"Dockerfile", "docker-compose.yml"},
+    )["ok"] is False
     assert https.https_readiness(
         {"APPGEN_DOMAIN": "example.test", "APPGEN_TLS_EMAIL": "admin@example.test"},
         all_artifacts,

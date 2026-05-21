@@ -28833,6 +28833,7 @@ DEPLOYMENT = {{
         "azure": ("deploy/terraform-azure.tf",),
     }},
     "required_env": ("SECRET_KEY", "SQLALCHEMY_DATABASE_URI"),
+    "database_engines": ("postgresql", "mysql"),
     "ports": (8080, 1880),
 }}
 
@@ -28864,6 +28865,14 @@ def environment_status(environ):
     """Return missing deployment environment variables."""
     missing = tuple(key for key in DEPLOYMENT["required_env"] if not environ.get(key))
     return {{"configured": not missing, "missing": missing}}
+
+
+def sample_deployment_environment():
+    """Return deterministic non-production environment values for release evidence."""
+    return {{
+        "SECRET_KEY": "test-secret",
+        "SQLALCHEMY_DATABASE_URI": "postgresql://appgen:appgen@db/appgen",
+    }}
 
 
 def secret_plan(target="kubernetes"):
@@ -29040,6 +29049,51 @@ def cloud_readiness_matrix(environ):
         }}
         for target in deployment_targets()
     )
+
+
+def deployment_release_gate(environ=None, existing_paths=()):
+    """Return one release gate for Docker, Compose, HTTPS, Kubernetes, cloud, and on-prem deployment."""
+    env = sample_deployment_environment() if environ is None else environ
+    existing = set(existing_paths) or set(
+        path
+        for paths in DEPLOYMENT["artifacts"].values()
+        for path in paths
+    )
+    readiness = deployment_check(env, existing)
+    targets = set(deployment_targets())
+    cloud_targets = {{"aws", "gcp", "azure"}}
+    terraform_artifacts = tuple(
+        path
+        for target in sorted(cloud_targets)
+        for path in artifact_plan(target)
+    )
+    kubernetes_runbook = deployment_runbook("kubernetes", image_tag="appgen:test", base_url="https://app.example.test")
+    promotion = release_promotion_plan("compose", "kubernetes", image_tag="appgen:test")
+    rollback = rollback_plan("kubernetes", previous_image_tag="appgen:previous")
+    scaling = infrastructure_scaling_plan("kubernetes", {{"replicas": 2, "cpu_percent": 91, "p95_ms": 900}})
+    scaling_profile_evidence = scaling["profile"]
+    gates = (
+        {{"gate": "artifact_coverage", "ok": readiness["ok"], "missing": readiness["missing_artifacts"]}},
+        {{"gate": "target_coverage", "ok": {{"docker", "compose", "https", "kubernetes", "onprem", "aws", "gcp", "azure"}} <= targets, "targets": tuple(sorted(targets))}},
+        {{"gate": "database_engines", "ok": {{"postgresql", "mysql"}} <= set(DEPLOYMENT["database_engines"]), "engines": DEPLOYMENT["database_engines"]}},
+        {{"gate": "terraform_clouds", "ok": all(path in existing for path in terraform_artifacts), "artifacts": terraform_artifacts}},
+        {{"gate": "kubernetes_autoscale", "ok": "deploy/k8s-autoscale.yaml" in artifact_plan("kubernetes") and scaling_profile_evidence["desired_replicas"] > scaling_profile_evidence["current_replicas"], "evidence": scaling}},
+        {{"gate": "https_artifacts", "ok": all(path in existing for path in artifact_plan("https")), "artifacts": artifact_plan("https")}},
+        {{"gate": "secret_injection", "ok": environment_status(env)["configured"] and secret_plan("aws")["cloud_secret_store"] == "AWS Secrets Manager", "evidence": secret_plan("kubernetes")}},
+        {{"gate": "smoke_checks", "ok": {{"health", "home"}} <= {{check["name"] for check in smoke_check_plan("https://app.example.test")}}, "checks": smoke_check_plan("https://app.example.test")}},
+        {{"gate": "runbook_review", "ok": kubernetes_runbook["review_required"] and "run smoke_check_plan" in kubernetes_runbook["steps"], "evidence": kubernetes_runbook}},
+        {{"gate": "rollback_plan", "ok": rollback["review_required"] and "restore previous image or release revision" in rollback["steps"], "evidence": rollback}},
+        {{"gate": "promotion_plan", "ok": promotion["requires_review"] and promotion["to"] == "kubernetes" and "rollback plan attached" in promotion["gates"], "evidence": promotion}},
+        {{"gate": "onprem_readiness", "ok": readiness["onprem"]["ok"], "evidence": readiness["onprem"]}},
+    )
+    return {{
+        "format": "appgen.deployment-release-gate.v1",
+        "ok": all(gate["ok"] for gate in gates),
+        "targets": tuple(sorted(targets)),
+        "database_engines": DEPLOYMENT["database_engines"],
+        "gates": gates,
+        "blocking_gaps": tuple(gate for gate in gates if not gate["ok"]),
+    }}
 
 
 def deployment_check(environ, existing_paths):
@@ -32140,8 +32194,8 @@ def validate_deployment_artifacts() -> None:
     contract = (ROOT / "deploy" / "appgen_deploy.py").read_text()
     if '"kubernetes"' not in contract or '"onprem"' not in contract or '"aws"' not in contract or '"https"' not in contract:
         fail("deployment contract must include Kubernetes, on-prem, and cloud targets")
-    if "deployment_runbook" not in contract or "rollback_plan" not in contract or "cloud_readiness_matrix" not in contract or "infrastructure_scaling_plan" not in contract or "release_promotion_plan" not in contract:
-        fail("deployment contract must expose runbooks, rollback, readiness, scaling, and promotion plans")
+    if "deployment_runbook" not in contract or "rollback_plan" not in contract or "cloud_readiness_matrix" not in contract or "infrastructure_scaling_plan" not in contract or "release_promotion_plan" not in contract or "deployment_release_gate" not in contract or "sample_deployment_environment" not in contract:
+        fail("deployment contract must expose runbooks, rollback, readiness, scaling, promotion plans, and a release gate")
     caddyfile = (ROOT / "deploy" / "Caddyfile").read_text()
     if "reverse_proxy web:8080" not in caddyfile or "APPGEN_DOMAIN" not in caddyfile:
         fail("Caddyfile must configure automatic HTTPS reverse proxy")
