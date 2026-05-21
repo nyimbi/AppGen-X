@@ -2672,6 +2672,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         {"app/tabbed_views.py", "app/templates/appgen_tabbed_views.html"}
     )["ok"] is True
     assert diagnostics.selftest()["ok"] is True
+    assert diagnostics.selftest()["summary"]["fail"] == 0
     assert diagnostics.validate_row("Book", {"status": "draft"})["missing"] == ("title",)
     snapshot = diagnostics.debug_snapshot(
         {"SECRET_KEY": "secret", "APP_NAME": "Library"},
@@ -2679,6 +2680,12 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     )
     assert snapshot["config"]["SECRET_KEY"] == "[redacted]"
     assert snapshot["config"]["APP_NAME"] == "Library"
+    remediation = diagnostics.remediation_plan(({"name": "Book has primary key", "status": "warn", "details": ()},))
+    assert remediation["format"] == "appgen.diagnostics-remediation.v1"
+    assert remediation["actions"][0]["severity"] == "warning"
+    support_bundle = diagnostics.support_bundle({"SECRET_KEY": "secret"}, {"PATH": "/usr/bin"})
+    assert support_bundle["format"] == "appgen.support-bundle.v1"
+    assert support_bundle["snapshot"]["config"]["SECRET_KEY"] == "[redacted]"
     assert diagnostics.api_smoke_plan()[1]["path"] == "/api/v1/book/"
     assert diagnostics.load_test_plan(users=3, duration_seconds=5)["users"] == 3
     api_requests = api_testing.request_plan()

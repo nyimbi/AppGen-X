@@ -4511,10 +4511,15 @@ def write_diagnostics_template(output_dir):
       <h1 class="agd-title">Diagnostics</h1>
       <p class="agd-note">
         Generated testing and debugging contracts for schema invariants,
-        runtime self-tests, debug snapshots, API smoke checks, and load-test plans.
+        runtime self-tests, debug snapshots, remediation plans, support bundles,
+        API smoke checks, and load-test plans.
       </p>
     </div>
-    <a class="btn btn-default" href="{{ url_for('DiagnosticsView.selftest_json') }}">Self-test JSON</a>
+    <div>
+      <a class="btn btn-default" href="{{ url_for('DiagnosticsView.selftest_json') }}">Self-test JSON</a>
+      <a class="btn btn-default" href="{{ url_for('DiagnosticsView.remediation_json') }}">Remediation JSON</a>
+      <a class="btn btn-default" href="{{ url_for('DiagnosticsView.support_bundle_json') }}">Support Bundle JSON</a>
+    </div>
   </div>
   <div class="agd-grid">
     {% for item in checks %}
@@ -19843,11 +19848,77 @@ def load_test_plan(users=10, duration_seconds=60):
     }}
 
 
+def diagnostic_summary(checks=None):
+    """Return pass/warn/fail counts for generated diagnostic checks."""
+    selected = tuple(schema_invariants() if checks is None else checks)
+    counts = {{"pass": 0, "warn": 0, "fail": 0}}
+    for check in selected:
+        status = check.get("status", "fail")
+        counts[status] = counts.get(status, 0) + 1
+    return {{
+        "ok": counts.get("fail", 0) == 0,
+        "total": len(selected),
+        "pass": counts.get("pass", 0),
+        "warn": counts.get("warn", 0),
+        "fail": counts.get("fail", 0),
+    }}
+
+
+def remediation_plan(checks=None):
+    """Return actionable remediation steps for warnings and failures."""
+    selected = tuple(schema_invariants() if checks is None else checks)
+    actions = []
+    for index, check in enumerate(selected, start=1):
+        status = check.get("status", "fail")
+        if status == "pass":
+            continue
+        name = check.get("name", f"check_{{index}}")
+        if "primary key" in name:
+            action = "Add or mark a stable primary key in the DSL/database designer, then regenerate models and migrations."
+            command = "appgen --lint-dsl app.appgen"
+        elif "columns" in name:
+            action = "Add at least one persisted field or re-import the source schema before generating the app."
+            command = "appgen --dbml schema.dbml --out app"
+        else:
+            action = "Review the diagnostic details, fix the source model, and rerun generated quality checks."
+            command = "python scripts/appgen_quality.py"
+        actions.append({{
+            "id": f"diag-{{index}}",
+            "check": name,
+            "severity": "error" if status == "fail" else "warning",
+            "status": status,
+            "action": action,
+            "command": command,
+            "details": tuple(check.get("details", ())),
+        }})
+    return {{
+        "format": "appgen.diagnostics-remediation.v1",
+        "ok": not actions,
+        "summary": diagnostic_summary(selected),
+        "actions": tuple(actions),
+    }}
+
+
+def support_bundle(config=None, environ=None):
+    """Return a redacted diagnostic support bundle for debugging handoff."""
+    checks = selftest()
+    remediation = remediation_plan(checks["checks"])
+    return {{
+        "format": "appgen.support-bundle.v1",
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "selftest": checks,
+        "remediation": remediation,
+        "snapshot": debug_snapshot(config=config, environ=environ),
+        "api_smoke": api_smoke_plan(),
+        "load_test": load_test_plan(),
+    }}
+
+
 def selftest():
     """Run generated dependency-free self-tests."""
     checks = list(schema_invariants())
     ok = all(check["status"] in ("pass", "warn") for check in checks)
-    return {{"ok": ok, "checks": tuple(checks)}}
+    return {{"ok": ok, "checks": tuple(checks), "summary": diagnostic_summary(checks)}}
 
 
 class DiagnosticsView(BaseView):
@@ -19865,6 +19936,14 @@ class DiagnosticsView(BaseView):
     @expose("/api-smoke.json")
     def api_smoke_json(self):
         return jsonify(list(api_smoke_plan()))
+
+    @expose("/remediation.json")
+    def remediation_json(self):
+        return jsonify(remediation_plan())
+
+    @expose("/support-bundle.json")
+    def support_bundle_json(self):
+        return jsonify(support_bundle())
 
 
 def register_diagnostics(appbuilder):
@@ -25147,6 +25226,25 @@ def validate_api_testing_artifacts() -> None:
         fail("API testing template must expose generated test and monitor catalogs")
 
 
+def validate_diagnostics_artifacts() -> None:
+    contract = (ROOT / "app" / "diagnostics.py").read_text()
+    required_terms = (
+        "schema_invariants",
+        "validate_row",
+        "debug_snapshot",
+        "diagnostic_summary",
+        "remediation_plan",
+        "support_bundle",
+        "api_smoke_plan",
+        "load_test_plan",
+    )
+    if not all(term in contract for term in required_terms):
+        fail("diagnostics contract must expose schema checks, remediation, support bundles, smoke plans, and load tests")
+    template = (ROOT / "app" / "templates" / "appgen_diagnostics.html").read_text()
+    if "Diagnostics" not in template or "Remediation JSON" not in template or "Support Bundle JSON" not in template:
+        fail("diagnostics template must expose self-test, remediation, and support-bundle links")
+
+
 def validate_test_coverage_artifacts() -> None:
     coverage = (ROOT / "tests" / "test_generated_coverage.py").read_text()
     required = (
@@ -25541,6 +25639,7 @@ def main() -> int:
     validate_realtime_artifacts()
     validate_event_artifacts()
     validate_rpa_artifacts()
+    validate_diagnostics_artifacts()
     validate_api_testing_artifacts()
     validate_test_coverage_artifacts()
     validate_native_artifacts()
@@ -26409,6 +26508,9 @@ def test_generated_runtime_helpers():
     )["ok"] is True
     assert isinstance(collaboration.collaboration_catalog(), tuple)
     assert diagnostics.selftest()["ok"] is True
+    assert diagnostics.selftest()["summary"]["fail"] == 0
+    assert diagnostics.remediation_plan(({{"name": "Book has primary key", "status": "warn", "details": ()}},))["actions"][0]["severity"] == "warning"
+    assert diagnostics.support_bundle({{"SECRET_KEY": "secret"}}, {{"PATH": "/bin"}})["snapshot"]["config"]["SECRET_KEY"] == "[redacted]"
     assert api_testing.request_plan()
     first_request = api_testing.request_plan()[0]
     assert api_testing.validate_response(first_request["name"], first_request["expected_status"][0])["ok"] is True

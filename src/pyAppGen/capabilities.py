@@ -96,7 +96,7 @@ DEFAULT_CAPABILITIES: tuple[Capability, ...] = (
     Capability("team.collaboration", "Collaboration and version-control workflows", "partial", "generated change proposals, revision IDs, and review decisions"),
     Capability("team.version-control", "Low-code version history and rollback", "partial", "generated manifest snapshots, branch plans, diffs, and rollback plans"),
     Capability("team.realtime", "Real-time collaboration and event streams", "partial", "generated event topics, SSE frames, and collaboration message payloads"),
-    Capability("quality.diagnostics", "Testing, debugging, and diagnostic tools", "partial", "generated self-tests, debug snapshots, API smoke plans, and load-test plans"),
+    Capability("quality.diagnostics", "Testing, debugging, and diagnostic tools", "partial", "generated self-tests, debug snapshots, remediation plans, redacted support bundles, API smoke plans, and load-test plans"),
     Capability("quality.api-testing", "Automated API testing and synthetic monitoring", "partial", "generated API request catalog, response expectations, pytest module rendering, execution plans, contract coverage, and monitor probes"),
     Capability("quality.code-review", "Automated code review", "partial", "generated schema and artifact review findings"),
     Capability("quality.test-coverage", "Generated test coverage", "partial", "generated per-table pytest coverage matrix for schema, API, UI, reports, security, and data flows"),

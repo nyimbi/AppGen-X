@@ -386,8 +386,8 @@ apps include:
 - `realtime.py` and `appgen_realtime.html` with generated event topics,
   Server-Sent Events frames, collaboration messages, and reconnect replay plans.
 - `diagnostics.py` and `appgen_diagnostics.html` with generated schema
-  invariants, row validation, redacted debug snapshots, API smoke plans, and
-  load-test plans.
+  invariants, row validation, redacted debug snapshots, remediation plans,
+  support bundles, API smoke plans, and load-test plans.
 - `tests/test_generated_coverage.py` with a generated per-table pytest coverage
   matrix for schema, API, UI, reports, security, and data exchange/backup
   flows.
