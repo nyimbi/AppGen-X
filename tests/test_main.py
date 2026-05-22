@@ -1121,6 +1121,7 @@ def test_generate_app_from_sqlite_schema_compiles(tmp_path) -> None:
     assert "automation.rpa-bpa" in {item["key"] for item in manifest["capabilities"]}
     assert capabilities_by_key["automation.rpa-bpa"]["status"] == "implemented"
     assert "team.collaboration" in {item["key"] for item in manifest["capabilities"]}
+    assert capabilities_by_key["team.collaboration"]["status"] == "implemented"
     assert "team.version-control" in {item["key"] for item in manifest["capabilities"]}
     assert "team.realtime" in {item["key"] for item in manifest["capabilities"]}
     assert "quality.diagnostics" in {item["key"] for item in manifest["capabilities"]}
@@ -2551,6 +2552,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert "class AppGenClient" in (tmp_path / "sdks" / "python" / "client.py").read_text()
     assert "export class AppGenClient" in (tmp_path / "sdks" / "javascript" / "client.js").read_text()
     assert "change proposals" in (output_dir / "templates" / "appgen_collaboration.html").read_text()
+    assert "Workbench JSON" in (output_dir / "templates" / "appgen_collaboration.html").read_text()
     assert "rollback" in (output_dir / "templates" / "appgen_version_control.html").read_text()
     assert "Visual Studio Code" in (output_dir / "templates" / "appgen_devtools.html").read_text()
     assert "JetBrains" in (output_dir / "templates" / "appgen_devtools.html").read_text()
@@ -5534,6 +5536,26 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert {"proposal_review", "merge_plans", "conflict_detection", "merge_queue", "conflict_resolution"} <= {
         gate["gate"] for gate in collaboration_gate["gates"]
     }
+    collaboration_workbench = collaboration.collaboration_workbench(
+        {"app/collaboration.py", "app/templates/appgen_collaboration.html"}
+    )
+    assert collaboration_workbench["format"] == "appgen.collaboration-workbench.v1"
+    assert collaboration_workbench["ok"] is True
+    assert collaboration_workbench["decision"] == "approved"
+    assert {
+        "collaboration_catalog",
+        "proposal_review",
+        "merge_plan",
+        "conflict_detection",
+        "merge_queue",
+        "resolution_plan",
+        "artifact_evidence",
+        "route_surface",
+    } == {check["id"] for check in collaboration_workbench["checks"]}
+    assert "/collaboration/workbench.json" in next(
+        check["evidence"]["routes"] for check in collaboration_workbench["checks"] if check["id"] == "route_surface"
+    )
+    assert collaboration.collaboration_workbench({"app/collaboration.py"})["ok"] is False
     assert collaboration.collaboration_release_gate({"app/collaboration.py"})["ok"] is False
     assert any(item["resource"] == "manifest" for item in version_control.version_resource_catalog())
     before_snapshot = version_control.snapshot_manifest(manifest, author="ada", message="baseline")

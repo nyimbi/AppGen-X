@@ -5243,6 +5243,7 @@ def write_collaboration_template(output_dir):
     <div>
       <a class="btn btn-default" href="{{ url_for('CollaborationView.catalog_json') }}">Catalog JSON</a>
       <a class="btn btn-default" href="{{ url_for('CollaborationView.merge_queue_json') }}">Merge Queue JSON</a>
+      <a class="btn btn-default" href="{{ url_for('CollaborationView.workbench_json') }}">Workbench JSON</a>
       <a class="btn btn-default" href="{{ url_for('CollaborationView.release_gate_json') }}">Release Gate JSON</a>
     </div>
   </div>
@@ -30868,6 +30869,45 @@ def collaboration_release_gate(existing_paths=()):
     }}
 
 
+def collaboration_workbench(existing_paths=()):
+    """Return IDE-facing evidence for team collaboration workflows."""
+    release_gate = collaboration_release_gate(existing_paths)
+    first_table = next(iter(COLLABORATION_TABLES), "manifest")
+    proposal_a = change_proposal(first_table, {{"title": "Old"}}, {{"title": "New"}}, author="ada", message="first proposal")
+    proposal_b = change_proposal(first_table, {{"title": "Old"}}, {{"title": "Other"}}, author="grace", message="second proposal")
+    approval = review_decision(proposal_a, "reviewer", "approved", comment="ready")
+    conflict_report = proposal_conflict_report((proposal_a, proposal_b))
+    queue = merge_queue((proposal_a, proposal_b), (approval,))
+    resolution = conflict_resolution_plan(conflict_report["conflicts"][0], actor="reviewer") if conflict_report["conflicts"] else {{}}
+    routes = (
+        "/collaboration/catalog.json",
+        "/collaboration/merge-queue.json",
+        "/collaboration/workbench.json",
+        "/collaboration/release-gate.json",
+    )
+    checks = (
+        {{"id": "collaboration_catalog", "ok": bool(collaboration_catalog()) and all(item["events"] for item in collaboration_catalog()), "evidence": collaboration_catalog()}},
+        {{"id": "proposal_review", "ok": proposal_a["status"] == "proposed" and approval["decision"] == "approved", "evidence": {{"proposal": proposal_a, "decision": approval}}}},
+        {{"id": "merge_plan", "ok": merge_plan(proposal_a, approval)["applied"] is True, "evidence": merge_plan(proposal_a, approval)}},
+        {{"id": "conflict_detection", "ok": conflict_report["ok"] is False and bool(conflict_report["conflicts"]), "evidence": conflict_report}},
+        {{"id": "merge_queue", "ok": bool(queue["blocked"]) and bool(queue["pending_review"]), "evidence": queue}},
+        {{"id": "resolution_plan", "ok": resolution.get("format") == "appgen.conflict-resolution-plan.v1" and resolution.get("requires_review") is True, "evidence": resolution}},
+        {{"id": "artifact_evidence", "ok": release_gate["ok"], "evidence": release_gate}},
+        {{"id": "route_surface", "ok": all(route.startswith("/collaboration/") for route in routes), "evidence": {{"routes": routes}}}},
+    )
+    ok = all(check["ok"] for check in checks)
+    return {{
+        "format": "appgen.collaboration-workbench.v1",
+        "ok": ok,
+        "decision": "approved" if ok else "blocked",
+        "checks": checks,
+        "release_gate": release_gate,
+        "proposals": (proposal_a, proposal_b),
+        "merge_queue": queue,
+        "conflicts": conflict_report,
+    }}
+
+
 class CollaborationView(BaseView):
     route_base = "/collaboration"
     default_view = "index"
@@ -30883,6 +30923,10 @@ class CollaborationView(BaseView):
     @expose("/merge-queue.json")
     def merge_queue_json(self):
         return jsonify(merge_queue(()))
+
+    @expose("/workbench.json")
+    def workbench_json(self):
+        return jsonify(collaboration_workbench({{"app/collaboration.py", "app/templates/appgen_collaboration.html"}}))
 
     @expose("/release-gate.json")
     def release_gate_json(self):
@@ -41457,11 +41501,13 @@ def validate_collaboration_artifacts() -> None:
         fail("collaboration contract must expose proposals, review decisions, and merge plans")
     if "proposal_conflict_report" not in contract or "merge_queue" not in contract or "conflict_resolution_plan" not in contract:
         fail("collaboration contract must expose conflict reports, merge queues, and resolution plans")
-    if "collaboration_check" not in contract or "collaboration_release_gate" not in contract:
-        fail("collaboration contract must expose readiness and release gates")
+    if "collaboration_check" not in contract or "collaboration_release_gate" not in contract or "collaboration_workbench" not in contract:
+        fail("collaboration contract must expose readiness, workbench, and release gates")
+    if "appgen.collaboration-workbench.v1" not in contract or '@expose("/workbench.json")' not in contract:
+        fail("collaboration contract must expose a versioned workbench route")
     template = (ROOT / "app" / "templates" / "appgen_collaboration.html").read_text()
-    if "Collaboration" not in template or "Merge Queue JSON" not in template or "Release Gate JSON" not in template:
-        fail("collaboration template must expose merge queue and release contracts")
+    if "Collaboration" not in template or "Merge Queue JSON" not in template or "Workbench JSON" not in template or "Release Gate JSON" not in template:
+        fail("collaboration template must expose merge queue, workbench, and release contracts")
 
 
 def validate_version_control_artifacts() -> None:
@@ -43732,6 +43778,10 @@ def test_generated_runtime_helpers():
     assert collaboration.proposal_conflict_report((proposal_a, proposal_b))["conflicts"]
     assert collaboration.merge_queue((proposal_a, proposal_b))["blocked"]
     assert collaboration.collaboration_release_gate({{"app/collaboration.py", "app/templates/appgen_collaboration.html"}})["ok"] is True
+    collaboration_workbench = collaboration.collaboration_workbench({{"app/collaboration.py", "app/templates/appgen_collaboration.html"}})
+    assert collaboration_workbench["format"] == "appgen.collaboration-workbench.v1"
+    assert collaboration_workbench["ok"] is True
+    assert collaboration_workbench["decision"] == "approved"
     assert collaboration.collaboration_release_gate({{"app/collaboration.py"}})["ok"] is False
     assert diagnostics.selftest()["ok"] is True
     assert diagnostics.selftest()["summary"]["fail"] == 0

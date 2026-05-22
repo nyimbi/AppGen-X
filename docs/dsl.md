@@ -741,7 +741,10 @@ apps include:
   merge queues, and conflict-resolution plans for concurrent low-code work. A
   generated collaboration release gate proves proposal review, merge behavior,
   conflict detection, merge queues, conflict-resolution plans, and required
-  collaboration artifacts.
+  collaboration artifacts. `collaboration_workbench()` exposes IDE-ready
+  proposal, review, merge, conflict, queue, resolution, artifact, release-gate,
+  and `/collaboration/workbench.json` route evidence before
+  `team.collaboration` is marked implemented.
 - `version_control.py` and `appgen_version_control.html` with generated
   manifest snapshots, content-addressed revision IDs, branch plans,
   schema-level diffs, and reviewable rollback plans. A generated version-control

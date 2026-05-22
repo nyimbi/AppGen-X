@@ -602,6 +602,9 @@ Use `/collaboration/release-gate.json` or `collaboration_release_gate()` to
 prove team change-management readiness. The gate checks proposal creation,
 review decisions, merge plans, conflict detection, merge queues,
 conflict-resolution plans, and required collaboration artifacts.
+Use `/collaboration/workbench.json` or `collaboration_workbench()` in the
+generated IDE to inspect proposal, review, merge, conflict, queue, resolution,
+artifact, route, and release-gate evidence.
 Use `/version-control/release-gate.json` or
 `version_control_release_gate()` to prove version-history readiness. The gate
 checks content-addressed snapshots, schema diffs, branch contracts, rollback
