@@ -6752,6 +6752,7 @@ def write_branding_template(output_dir):
       <a class="btn btn-default" href="{{ url_for('BrandingView.visual_quality_json') }}">Visual Quality JSON</a>
       <a class="btn btn-default" href="{{ url_for('BrandingView.visual_regression_json') }}">Visual Regression JSON</a>
       <a class="btn btn-default" href="{{ url_for('BrandingView.experience_excellence_json') }}">Experience Excellence JSON</a>
+      <a class="btn btn-default" href="{{ url_for('BrandingView.accessibility_workbench_json') }}">Accessibility Workbench JSON</a>
       <a class="btn btn-default" href="{{ url_for('BrandingView.branding_workbench_json') }}">Branding Workbench JSON</a>
       <a class="btn btn-default" href="{{ url_for('BrandingView.responsive_workbench_json') }}">Responsive Workbench JSON</a>
       <a class="btn btn-default" href="{{ url_for('BrandingView.ui_release_gate_json') }}">UI Release Gate JSON</a>
@@ -6799,6 +6800,10 @@ def write_branding_template(output_dir):
     <article class="agb-chip">
       <strong>UI Release Gate</strong>
       <div class="agb-note">theme, accessibility, screenshots, states, assets</div>
+    </article>
+    <article class="agb-chip">
+      <strong>Accessibility Workbench</strong>
+      <div class="agb-note">WCAG, keyboard paths, landmarks, docs baseline</div>
     </article>
   </div>
 </section>
@@ -11383,6 +11388,49 @@ def accessibility_audit_plan(page=None):
     }}
 
 
+def accessibility_workbench(existing_paths=None):
+    """Return generated accessibility compliance evidence for IDE review."""
+    existing = set(existing_paths or ())
+    required_assets = (
+        "app/branding.py",
+        "app/static/appgen-theme.css",
+        "app/templates/appgen_branding.html",
+        "docs/accessibility.md",
+    )
+    missing_assets = tuple(path for path in required_assets if path not in existing) if existing_paths is not None else ()
+    theme = accessibility_theme_check()
+    checklist = accessibility_checklist()
+    keyboard = keyboard_navigation_plan()
+    landmarks = aria_landmark_contract()
+    audit = accessibility_audit_plan()
+    routes = (
+        "/branding/accessibility.json",
+        "/branding/accessibility-workbench.json",
+        "/branding/ui-release-gate.json",
+    )
+    checks = (
+        {{"id": "wcag_checklist", "ok": bool(checklist) and all(item["wcag"] for item in checklist), "evidence": checklist}},
+        {{"id": "skip_link_baseline", "ok": any(item["id"] == "skip-link" and item["wcag"] == "2.4.1" for item in checklist), "evidence": "skip-to-content"}},
+        {{"id": "keyboard_navigation", "ok": bool(keyboard) and all(item["requires_visible_focus"] for item in keyboard), "evidence": keyboard}},
+        {{"id": "aria_landmarks", "ok": bool(landmarks) and all(item["requires_main"] for item in landmarks), "evidence": landmarks}},
+        {{"id": "theme_accessibility", "ok": theme["ok"] and theme["touch_target"] == "44px", "evidence": theme}},
+        {{"id": "audit_plan", "ok": audit["ok"] and audit["requires_automated_wcag_scan"] and audit["requires_manual_screen_reader_pass"], "evidence": audit}},
+        {{"id": "documentation_baseline", "ok": not missing_assets, "evidence": {{"required": required_assets, "missing": missing_assets}}}},
+        {{"id": "route_surface", "ok": all(route.startswith("/branding/") for route in routes), "evidence": {{"routes": routes}}}},
+    )
+    ok = all(check["ok"] for check in checks)
+    return {{
+        "format": "appgen.accessibility-workbench.v1",
+        "ok": ok,
+        "decision": "approved" if ok else "blocked",
+        "checks": checks,
+        "audit": audit,
+        "keyboard": keyboard,
+        "landmarks": landmarks,
+        "checklist": checklist,
+    }}
+
+
 def ui_experience_release_gate(existing_paths=None):
     """Return an aggregate release gate for polished, accessible generated UI."""
     existing = set(existing_paths or ())
@@ -11462,6 +11510,14 @@ class BrandingView(BaseView):
     @expose("/accessibility.json")
     def accessibility_json(self):
         return jsonify(accessibility_audit_plan())
+
+    @expose("/accessibility-workbench.json")
+    def accessibility_workbench_json(self):
+        return jsonify(
+            accessibility_workbench(
+                {{"app/branding.py", "app/static/appgen-theme.css", "app/templates/appgen_branding.html", "docs/accessibility.md"}}
+            )
+        )
 
     @expose("/visual-regression.json")
     def visual_regression_json(self):
@@ -41740,6 +41796,9 @@ def validate_branding_artifacts() -> None:
         or "ui_experience_release_gate" not in contract
         or "accessibility_theme_check" not in contract
         or "accessibility_audit_plan" not in contract
+        or "accessibility_workbench" not in contract
+        or "appgen.accessibility-workbench.v1" not in contract
+        or '@expose("/accessibility-workbench.json")' not in contract
         or "keyboard_navigation_plan" not in contract
         or "viewport_contract" not in contract
         or "component_state_matrix" not in contract
@@ -41754,9 +41813,11 @@ def validate_branding_artifacts() -> None:
         or "Visual Quality JSON" not in template
         or "Visual Regression JSON" not in template
         or "Experience Excellence JSON" not in template
+        or "Accessibility Workbench JSON" not in template
         or "UI Release Gate JSON" not in template
         or "Viewport Contracts" not in template
         or "Component States" not in template
+        or "Accessibility Workbench" not in template
         or "branding.palette" not in template
     ):
         fail("branding template must expose theme preview, design-system export, visual quality report, visual QA report, and palette")
@@ -43854,6 +43915,12 @@ def test_generated_runtime_helpers():
     assert branding.accessibility_audit_plan()["format"] == "appgen.accessibility-audit.v1"
     assert branding.keyboard_navigation_plan("home")[0]["escape_hatch"] == "skip_to_content"
     assert branding.aria_landmark_contract("home")[0]["requires_main"] is True
+    accessibility_workbench = branding.accessibility_workbench(
+        {"app/branding.py", "app/static/appgen-theme.css", "app/templates/appgen_branding.html", "docs/accessibility.md"}
+    )
+    assert accessibility_workbench["format"] == "appgen.accessibility-workbench.v1"
+    assert accessibility_workbench["ok"] is True
+    assert accessibility_workbench["decision"] == "approved"
     assert branding.asset_check(
         {"app/branding.py", "app/static/appgen-theme.css", "app/templates/appgen_branding.html"}
     )["ok"] is True

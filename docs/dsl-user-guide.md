@@ -546,6 +546,12 @@ items.
 - accessibility audit plans for focus order, landmarks, touch targets, and
   WCAG-oriented checks.
 
+Use `/branding/accessibility-workbench.json` or `accessibility_workbench()` in
+the generated IDE to inspect WCAG checklist coverage, skip-link baseline,
+keyboard navigation, ARIA landmarks, focus/touch checks, audit requirements,
+`docs/accessibility.md` coverage, route evidence, and the resulting release
+decision.
+
 Use the generated `/branding/visual-quality.json` endpoint as the machine gate
 and `/branding/experience-excellence.json` when validating the beautiful and
 sophisticated outcome claim. The excellence gate binds palette and contrast,

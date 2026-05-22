@@ -1137,6 +1137,7 @@ def test_generate_app_from_sqlite_schema_compiles(tmp_path) -> None:
     assert "i18n.localization" in {item["key"] for item in manifest["capabilities"]}
     assert capabilities_by_key["i18n.localization"]["status"] == "implemented"
     assert "a11y.compliance" in {item["key"] for item in manifest["capabilities"]}
+    assert capabilities_by_key["a11y.compliance"]["status"] == "implemented"
     assert "workflow.automation" in {item["key"] for item in manifest["capabilities"]}
     assert "workflow.statecharts" in {item["key"] for item in manifest["capabilities"]}
     assert capabilities_by_key["workflow.automation"]["status"] == "implemented"
@@ -2616,6 +2617,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert "Responsive Layouts" in branding_template
     assert "Visual Regression JSON" in branding_template
     assert "Experience Excellence JSON" in branding_template
+    assert "Accessibility Workbench JSON" in branding_template
     assert "UI Release Gate JSON" in branding_template
     assert "Viewport Contracts" in branding_template
     assert "contrast, palette balance, no-overlap" in branding_template
@@ -3038,6 +3040,26 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert branding.accessibility_audit_plan("home")["ok"] is True
     assert branding.keyboard_navigation_plan("home")[0]["escape_hatch"] == "skip_to_content"
     assert branding.aria_landmark_contract("home")[0]["requires_main"] is True
+    accessibility_workbench = branding.accessibility_workbench(
+        {"app/branding.py", "app/static/appgen-theme.css", "app/templates/appgen_branding.html", "docs/accessibility.md"}
+    )
+    assert accessibility_workbench["format"] == "appgen.accessibility-workbench.v1"
+    assert accessibility_workbench["ok"] is True
+    assert accessibility_workbench["decision"] == "approved"
+    assert {
+        "wcag_checklist",
+        "skip_link_baseline",
+        "keyboard_navigation",
+        "aria_landmarks",
+        "theme_accessibility",
+        "audit_plan",
+        "documentation_baseline",
+        "route_surface",
+    } == {check["id"] for check in accessibility_workbench["checks"]}
+    assert "/branding/accessibility-workbench.json" in next(
+        check["evidence"]["routes"] for check in accessibility_workbench["checks"] if check["id"] == "route_surface"
+    )
+    assert branding.accessibility_workbench({"app/branding.py"})["ok"] is False
     assert branding.asset_check(
         {"app/branding.py", "app/static/appgen-theme.css", "app/templates/appgen_branding.html"}
     )["ok"] is True

@@ -316,6 +316,11 @@ apps include:
   `branding_workbench()` proves theme contract, CSS variables, design-system
   coverage, palette quality, visual quality, responsive evidence, release-gate
   readiness, and route coverage before `ui.branding` is marked implemented.
+  `accessibility_workbench()` proves WCAG checklist coverage, skip-link
+  baseline, keyboard navigation, ARIA landmarks, focus/touch checks, audit
+  requirements, `docs/accessibility.md` coverage, and
+  `/branding/accessibility-workbench.json` route evidence before
+  `a11y.compliance` is marked implemented.
   The generated
   `responsive_workbench()` proves breakpoint tokens, mobile/tablet/desktop/wide
   viewport contracts, responsive layout recipes, touch density, visual matrices,
@@ -913,7 +918,8 @@ apps include:
   `docs/documentation-workbench.json` proves schema Markdown, data dictionary
   JSON/Markdown, OpenAPI, accessibility baseline, and documentation artifact
   coverage before `api.documentation` is marked implemented.
-- `docs/accessibility.md` with a generated accessibility baseline checklist.
+- `docs/accessibility.md` with a generated accessibility baseline checklist
+  referenced by the generated accessibility workbench and release evidence.
 - `.github/workflows/appgen-ci.yml` and `scripts/appgen_quality.py` with a
   generated CI quality gate for syntax, manifest, PWA, docs, runtime assurance,
   and test-surface checks.
