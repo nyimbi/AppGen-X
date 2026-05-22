@@ -514,7 +514,9 @@ apps include:
   notification payloads, offline sync batches, conflict-resolution plans,
   offline replay plans, desktop cache snapshots, desktop change-set replay
   plans, desktop local-file actions, offline queue/cache plans, and API route
-  contracts.
+  contracts. The generated `native_release_gate()` proves selected targets,
+  native package files, mobile permissions, mobile offline replay, desktop
+  cache replay, and shared API routes before native readiness is claimed.
 - `jhipster/app.jdl` and `jhipster/appgen_jhipster.py` with generated
   JHipster JDL exports for Java/TypeScript application generation, preserving
   relation cardinality as JDL `ManyToOne`, `OneToOne`, `OneToMany`, and

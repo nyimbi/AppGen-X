@@ -32185,6 +32185,53 @@ def scaffold_check(existing_paths):
     ) + ("native/appgen_native.py",)
     missing = tuple(path for path in required if path not in existing)
     return {{"ok": not missing, "missing": missing, "targets": native_targets()}}
+
+
+def native_release_gate(existing_paths=()):
+    """Return release readiness for generated mobile and desktop targets."""
+    scaffold = scaffold_check(existing_paths)
+    selected = set(native_targets())
+    mobile_permissions = native_permission_manifest("mobile") if "mobile" in selected else {{}}
+    desktop_permissions = native_permission_manifest("desktop") if "desktop" in selected else {{}}
+    mobile_capability = native_capability_plan("mobile") if "mobile" in selected else {{}}
+    desktop_capability = native_capability_plan("desktop") if "desktop" in selected else {{}}
+    checks = (
+        {{"gate": "target_selection", "ok": bool(selected), "targets": tuple(sorted(selected))}},
+        {{"gate": "scaffold_artifacts", "ok": scaffold["ok"], "missing": scaffold["missing"]}},
+        {{"gate": "api_routes", "ok": bool(native_api_routes()), "routes": native_api_routes()}},
+        {{
+            "gate": "mobile_permissions",
+            "ok": "mobile" not in selected or {{"android.permission.CAMERA", "android.permission.ACCESS_FINE_LOCATION", "android.permission.POST_NOTIFICATIONS"}} <= set(mobile_permissions.get("android", ())),
+            "permissions": mobile_permissions,
+        }},
+        {{
+            "gate": "mobile_offline_sync",
+            "ok": "mobile" not in selected or (
+                mobile_capability.get("offline_storage") == "queued-mutations"
+                and "manual_review" in mobile_capability.get("conflict_resolution", ())
+                and bool(mobile_capability.get("sync"))
+            ),
+            "capability": mobile_capability,
+        }},
+        {{
+            "gate": "desktop_cache_replay",
+            "ok": "desktop" not in selected or (
+                desktop_capability.get("offline_storage") == "json-cache"
+                and "local-files" in desktop_capability.get("capabilities", ())
+                and bool(desktop_permissions)
+            ),
+            "capability": desktop_capability,
+        }},
+    )
+    ok = all(check["ok"] for check in checks)
+    return {{
+        "format": "appgen.native-release-gate.v1",
+        "ok": ok,
+        "decision": "approved" if ok else "blocked",
+        "checks": checks,
+        "feature_matrix": native_feature_matrix(),
+        "scaffold": scaffold,
+    }}
 '''
 
 
@@ -34875,8 +34922,8 @@ def validate_test_coverage_artifacts() -> None:
 
 def validate_native_artifacts() -> None:
     contract = (ROOT / "native" / "appgen_native.py").read_text()
-    if "native_targets" not in contract or "scaffold_check" not in contract or "native_permission_manifest" not in contract or "native_capability_plan" not in contract:
-        fail("native contract must expose target, permissions, capability, and scaffold checks")
+    if "native_targets" not in contract or "scaffold_check" not in contract or "native_permission_manifest" not in contract or "native_capability_plan" not in contract or "native_release_gate" not in contract:
+        fail("native contract must expose target, permissions, capability, scaffold, and release checks")
     mobile = (ROOT / "native" / "mobile" / "app.py").read_text()
     if "AppGenMobileApp" not in mobile or "offline_record" not in mobile or "offline_sync_batch" not in mobile or "sync_conflict" not in mobile or "offline_replay_plan" not in mobile or "camera_capture_plan" not in mobile or "push_notification_payload" not in mobile:
         fail("mobile starter must expose Kivy app, device capability, push, offline queue, conflict, and replay helpers")
@@ -36555,6 +36602,14 @@ def test_generated_runtime_helpers():
     assert platforms.target_package_matrix()["format"] == "appgen.target-package-matrix.v1"
     assert platforms.target_package_matrix()["ok"] is True
     assert platforms.platform_release_gate()["format"] == "appgen.platform-release-gate.v1"
+    assert native.native_release_gate({
+        "native/appgen_native.py",
+        "native/mobile/pyproject.toml",
+        "native/mobile/app.py",
+        "native/desktop/pyproject.toml",
+        "native/desktop/app.py",
+    })["ok"] is True
+    assert native.native_release_gate({"native/appgen_native.py"})["ok"] is False
     assert "api-gateway" in microservices.service_names()
     assert microservices.api_gateway_routes()
     assert microservices.service_mesh_policy()["format"] == "appgen.service-mesh-policy.v1"

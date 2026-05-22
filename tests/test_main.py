@@ -794,6 +794,15 @@ def test_generate_app_from_sqlite_schema_compiles(tmp_path) -> None:
         "native/desktop/app.py",
     }
     assert native.scaffold_check(native_artifacts)["ok"] is True
+    native_gate = native.native_release_gate(native_artifacts)
+    assert native_gate["format"] == "appgen.native-release-gate.v1"
+    assert native_gate["ok"] is True
+    assert {check["gate"] for check in native_gate["checks"]} >= {
+        "mobile_permissions",
+        "mobile_offline_sync",
+        "desktop_cache_replay",
+    }
+    assert native.native_release_gate({"native/appgen_native.py"})["ok"] is False
     assert "android.permission.CAMERA" in native.native_permission_manifest("mobile")["android"]
     assert native.native_capability_plan("desktop")["offline_storage"] == "json-cache"
     assert mobile.mobile_contract()["framework"] == "kivy"
