@@ -4922,6 +4922,7 @@ def write_collaboration_template(output_dir):
     <div>
       <a class="btn btn-default" href="{{ url_for('CollaborationView.catalog_json') }}">Catalog JSON</a>
       <a class="btn btn-default" href="{{ url_for('CollaborationView.merge_queue_json') }}">Merge Queue JSON</a>
+      <a class="btn btn-default" href="{{ url_for('CollaborationView.release_gate_json') }}">Release Gate JSON</a>
     </div>
   </div>
   <div class="agv-grid">
@@ -26169,6 +26170,50 @@ def conflict_resolution_plan(conflict, *, strategy="manual_review", actor=None):
     }}
 
 
+def collaboration_check(existing_paths=()):
+    """Return readiness for generated collaboration artifacts."""
+    existing = set(existing_paths)
+    required = {{"app/collaboration.py", "app/templates/appgen_collaboration.html"}}
+    missing = tuple(sorted(required - existing))
+    return {{
+        "ok": not missing and bool(COLLABORATION_TABLES),
+        "missing": missing,
+        "tables": tuple(COLLABORATION_TABLES),
+    }}
+
+
+def collaboration_release_gate(existing_paths=()):
+    """Return release readiness for generated collaboration workflows."""
+    readiness = collaboration_check(existing_paths)
+    first_table = next(iter(COLLABORATION_TABLES), "manifest")
+    proposal = change_proposal(first_table, {{"title": "Old"}}, {{"title": "New"}}, author="release-gate", message="release proof")
+    approved = review_decision(proposal, "reviewer", "approved", comment="ok")
+    rejected = review_decision(proposal, "reviewer", "changes_requested")
+    merge = merge_plan(proposal, approved)
+    blocked_merge = merge_plan(proposal, rejected)
+    conflict_left = change_proposal(first_table, {{"title": "Old"}}, {{"title": "New"}}, author="ada")
+    conflict_right = change_proposal(first_table, {{"title": "Old"}}, {{"title": "Other"}}, author="grace")
+    conflict_report = proposal_conflict_report((conflict_left, conflict_right))
+    queue = merge_queue((conflict_left, conflict_right), (review_decision(conflict_left, "bo", "approved"),))
+    resolution = conflict_resolution_plan(conflict_report["conflicts"][0], actor="bo") if conflict_report["conflicts"] else {{}}
+    gates = (
+        {{"gate": "artifacts", "ok": readiness["ok"], "missing": readiness["missing"]}},
+        {{"gate": "catalog", "ok": bool(collaboration_catalog()) and all(item["events"] for item in collaboration_catalog()), "catalog": collaboration_catalog()}},
+        {{"gate": "proposal_review", "ok": proposal["changed_fields"] == ("title",) and approved["decision"] == "approved" and rejected["decision"] == "changes_requested", "proposal": proposal}},
+        {{"gate": "merge_plans", "ok": merge["applied"] is True and blocked_merge["applied"] is False, "approved": merge, "blocked": blocked_merge}},
+        {{"gate": "conflict_detection", "ok": conflict_report["ok"] is False and bool(conflict_report["conflicts"]) and conflict_report["conflicts"][0]["fields"] == ("title",), "report": conflict_report}},
+        {{"gate": "merge_queue", "ok": bool(queue["blocked"]) and bool(queue["pending_review"]) and queue["conflicts"]["ok"] is False, "queue": queue}},
+        {{"gate": "conflict_resolution", "ok": resolution.get("format") == "appgen.conflict-resolution-plan.v1" and resolution.get("requires_review") is True, "resolution": resolution}},
+    )
+    ok = all(gate["ok"] for gate in gates)
+    return {{
+        "format": "appgen.collaboration-release-gate.v1",
+        "ok": ok,
+        "decision": "approved" if ok else "blocked",
+        "gates": gates,
+    }}
+
+
 class CollaborationView(BaseView):
     route_base = "/collaboration"
     default_view = "index"
@@ -26184,6 +26229,10 @@ class CollaborationView(BaseView):
     @expose("/merge-queue.json")
     def merge_queue_json(self):
         return jsonify(merge_queue(()))
+
+    @expose("/release-gate.json")
+    def release_gate_json(self):
+        return jsonify(collaboration_release_gate({{"app/collaboration.py", "app/templates/appgen_collaboration.html"}}))
 
 
 def register_collaboration(appbuilder):
@@ -35434,9 +35483,11 @@ def validate_collaboration_artifacts() -> None:
         fail("collaboration contract must expose proposals, review decisions, and merge plans")
     if "proposal_conflict_report" not in contract or "merge_queue" not in contract or "conflict_resolution_plan" not in contract:
         fail("collaboration contract must expose conflict reports, merge queues, and resolution plans")
+    if "collaboration_check" not in contract or "collaboration_release_gate" not in contract:
+        fail("collaboration contract must expose readiness and release gates")
     template = (ROOT / "app" / "templates" / "appgen_collaboration.html").read_text()
-    if "Collaboration" not in template or "Merge Queue JSON" not in template:
-        fail("collaboration template must expose merge queue contracts")
+    if "Collaboration" not in template or "Merge Queue JSON" not in template or "Release Gate JSON" not in template:
+        fail("collaboration template must expose merge queue and release contracts")
 
 
 def validate_version_control_artifacts() -> None:
@@ -37394,6 +37445,8 @@ def test_generated_runtime_helpers():
     proposal_b = collaboration.change_proposal("manifest", {"name": "A"}, {"name": "C"})
     assert collaboration.proposal_conflict_report((proposal_a, proposal_b))["conflicts"]
     assert collaboration.merge_queue((proposal_a, proposal_b))["blocked"]
+    assert collaboration.collaboration_release_gate({{"app/collaboration.py", "app/templates/appgen_collaboration.html"}})["ok"] is True
+    assert collaboration.collaboration_release_gate({{"app/collaboration.py"}})["ok"] is False
     assert diagnostics.selftest()["ok"] is True
     assert diagnostics.selftest()["summary"]["fail"] == 0
     assert diagnostics.remediation_plan(({{"name": "Book has primary key", "status": "warn", "details": ()}},))["actions"][0]["severity"] == "warning"

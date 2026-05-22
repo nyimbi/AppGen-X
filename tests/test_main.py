@@ -4337,6 +4337,15 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert queue["blocked"]
     resolution = collaboration.conflict_resolution_plan(conflict_report["conflicts"][0], actor="bo")
     assert resolution["format"] == "appgen.conflict-resolution-plan.v1"
+    collaboration_gate = collaboration.collaboration_release_gate(
+        {"app/collaboration.py", "app/templates/appgen_collaboration.html"}
+    )
+    assert collaboration_gate["format"] == "appgen.collaboration-release-gate.v1"
+    assert collaboration_gate["ok"] is True
+    assert {"proposal_review", "merge_plans", "conflict_detection", "merge_queue", "conflict_resolution"} <= {
+        gate["gate"] for gate in collaboration_gate["gates"]
+    }
+    assert collaboration.collaboration_release_gate({"app/collaboration.py"})["ok"] is False
     assert any(item["resource"] == "manifest" for item in version_control.version_resource_catalog())
     before_snapshot = version_control.snapshot_manifest(manifest, author="ada", message="baseline")
     changed_manifest = json.loads(json.dumps(manifest))

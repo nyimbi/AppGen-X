@@ -447,6 +447,10 @@ Use `/realtime/release-gate.json` or `realtime_release_gate()` to prove
 interactive event-stream readiness. The gate checks table topic catalogs,
 event payload shape, SSE frame rendering, collaboration message payloads,
 reconnect replay bounds, and required realtime artifacts.
+Use `/collaboration/release-gate.json` or `collaboration_release_gate()` to
+prove team change-management readiness. The gate checks proposal creation,
+review decisions, merge plans, conflict detection, merge queues,
+conflict-resolution plans, and required collaboration artifacts.
 Use `/extensions/release-gate.json` or `extension_release_gate()` to prove
 custom-code extensibility is ready: the gate checks generated artifacts, stable
 hook catalogs, table lifecycle hooks, generated-rule dispatch, custom-module

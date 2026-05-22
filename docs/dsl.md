@@ -567,7 +567,10 @@ apps include:
   and required automation artifacts.
 - `collaboration.py` and `appgen_collaboration.html` with generated revision
   metadata, change proposals, review decisions, merge plans, conflict reports,
-  merge queues, and conflict-resolution plans for concurrent low-code work.
+  merge queues, and conflict-resolution plans for concurrent low-code work. A
+  generated collaboration release gate proves proposal review, merge behavior,
+  conflict detection, merge queues, conflict-resolution plans, and required
+  collaboration artifacts.
 - `version_control.py` and `appgen_version_control.html` with generated
   manifest snapshots, content-addressed revision IDs, branch plans,
   schema-level diffs, and reviewable rollback plans.
