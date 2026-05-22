@@ -969,6 +969,11 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "scene_validation_workflow",
         "asset_import_workflow",
         "preview_runtime_diff_workflow",
+        "style_token_validation",
+        "timeline_scrub_validation",
+        "effect_budget_validation",
+        "scene_graph_integrity",
+        "material_binding",
     } == {check["id"] for check in visual_depth["checks"]}
     assert {"inspect_effective_value", "revert_override"} <= set(visual_depth["contract"]["style_cascade"]["operations"])
     assert {"add_keyframe", "scrub_preview"} <= set(visual_depth["contract"]["timeline_authoring"]["operations"])
@@ -979,6 +984,11 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     assert visual_depth["scene_validation"]["ok"] is True
     assert "write_asset_manifest" in visual_depth["asset_import_workflow"]["pipeline"]
     assert visual_depth["preview_diff"]["diff_result"]["ok"] is True
+    assert visual_depth["style_tokens"]["ok"] is True
+    assert visual_depth["timeline_scrub"]["samples"]
+    assert visual_depth["effect_budget"]["ok"] is True
+    assert visual_depth["scene_integrity"]["ok"] is True
+    assert visual_depth["material_binding"]["ok"] is True
     third_party_registry = third_party_component_registry()
     assert {"devexpress-native", "tms-fnc", "fastreport", "teechart", "indy"} <= {
         item["id"] for item in third_party_registry
@@ -9080,9 +9090,19 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "scene_validation_workflow",
         "asset_import_workflow",
         "preview_runtime_diff_workflow",
+        "style_token_validation",
+        "timeline_scrub_validation",
+        "effect_budget_validation",
+        "scene_graph_integrity",
+        "material_binding",
     } == {check["id"] for check in generated_visual_depth["checks"]}
     assert generated_visual_depth["contract"]["asset_import"]["budgets"]["max_mesh_triangles"] > 0
     assert generated_visual_depth["style_resolution"]["ordered_layers"][0] == "base_theme"
+    assert generated_visual_depth["style_tokens"]["ok"] is True
+    assert generated_visual_depth["timeline_scrub"]["samples"]
+    assert generated_visual_depth["effect_budget"]["ok"] is True
+    assert generated_visual_depth["scene_integrity"]["ok"] is True
+    assert generated_visual_depth["material_binding"]["ok"] is True
     assert "sample_keyframes" in generated_visual_depth["timeline_playback"]["playback_steps"]
     assert "select_fallback" in generated_visual_depth["effect_render"]["render_steps"]
     assert generated_visual_depth["scene_validation"]["ok"] is True

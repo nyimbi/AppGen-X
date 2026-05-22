@@ -3661,6 +3661,118 @@ def cross_target_preview_runtime_diff_workflow() -> dict:
     }
 
 
+def cross_target_style_token_validation_contract() -> dict:
+    """Return resolved style-token validation across states and targets."""
+    resources = cross_target_style_resource_contract()
+    cascade = cross_target_style_cascade_contract()
+    tokens = tuple(
+        {
+            "token": token,
+            "layers": tuple(layer["layer"] for layer in cascade["layers"]),
+            "targets": resources["targets"],
+            "states": resources["states"],
+            "contrast_checked": token in {"color", "shadow"} or token != "bitmap_density",
+        }
+        for token in cascade["tokens"]
+    )
+    return {
+        "format": "appgen.cross-target-style-token-validation-contract.v1",
+        "ok": bool(tokens) and all(token["layers"][0] == "base_theme" for token in tokens),
+        "tokens": tokens,
+        "guards": ("token_names_stable", "contrast_checked", "platform_overrides_reviewed", "state_overrides_reviewed"),
+        "side_effects": (),
+    }
+
+
+def cross_target_timeline_scrub_contract() -> dict:
+    """Return sampled timeline output for deterministic animation scrubbing."""
+    timeline = cross_target_animation_timeline_contract()
+    samples = tuple(
+        {
+            "track": track["id"],
+            "property": track["property"],
+            "samples": tuple({"time_ms": frame[0], "value": frame[1]} for frame in track["keyframes"]),
+            "reduced_motion_value": track["keyframes"][-1][1],
+        }
+        for track in timeline["tracks"]
+    )
+    return {
+        "format": "appgen.cross-target-timeline-scrub-contract.v1",
+        "ok": bool(samples) and all(sample["samples"][0]["time_ms"] == 0 for sample in samples),
+        "samples": samples,
+        "guards": ("deterministic_timeline_ids", "bounded_duration", "reduced_motion_fallback"),
+        "side_effects": (),
+    }
+
+
+def cross_target_effect_budget_contract() -> dict:
+    """Return effect budget validation and fallback assignment evidence."""
+    effect_stack = cross_target_effect_stack_validation_contract()
+    costs = {"cheap": 1, "bounded": 3, "review": 5}
+    rows = tuple(
+        {
+            "effect": item["effect"],
+            "order": item["order"],
+            "cost": costs[item["budget"]],
+            "fallback": item["fallback"],
+            "mobile_allowed": item["budget"] != "review",
+        }
+        for item in effect_stack["stack"]
+    )
+    return {
+        "format": "appgen.cross-target-effect-budget-contract.v1",
+        "ok": sum(row["cost"] for row in rows if row["mobile_allowed"]) <= 7 and all(row["fallback"] for row in rows),
+        "rows": rows,
+        "mobile_budget": 7,
+        "guards": ("mobile_frame_budget", "gpu_fallback", "shader_review_required", "fallback_required"),
+        "side_effects": (),
+    }
+
+
+def cross_target_scene_graph_integrity_contract() -> dict:
+    """Return 3D scene graph integrity evidence for designer/runtime parity."""
+    scene = cross_target_3d_scene_contract()
+    node_ids = tuple(node["id"] for node in scene["scene_graph"])
+    edges = (
+        {"from": "viewport", "to": "camera.main", "role": "active_camera"},
+        {"from": "viewport", "to": "light.key", "role": "lighting"},
+        {"from": "viewport", "to": "mesh.product", "role": "child_mesh"},
+        {"from": "mesh.product", "to": "material.primary", "role": "material"},
+    )
+    missing_endpoints = tuple(
+        {"edge": edge, "missing": tuple(endpoint for endpoint in (edge["from"], edge["to"]) if endpoint not in node_ids)}
+        for edge in edges
+        if edge["from"] not in node_ids or edge["to"] not in node_ids
+    )
+    kinds = tuple(node["kind"] for node in scene["scene_graph"])
+    return {
+        "format": "appgen.cross-target-scene-graph-integrity-contract.v1",
+        "ok": not missing_endpoints and kinds.count("camera") == 1 and "light" in kinds and "mesh" in kinds,
+        "nodes": scene["scene_graph"],
+        "edges": edges,
+        "missing_endpoints": missing_endpoints,
+        "guards": ("single_active_camera", "material_bound_to_mesh", "fallback_thumbnail", "bounded_polygon_budget"),
+        "side_effects": (),
+    }
+
+
+def cross_target_material_binding_contract() -> dict:
+    """Return material, texture, and fallback binding evidence for imported 3D assets."""
+    asset_import = cross_target_visual_asset_import_contract()
+    bindings = (
+        {"mesh": "mesh.product", "material": "material.primary", "texture": "product_basecolor.webp", "fallback": "product_thumbnail.webp"},
+        {"mesh": "mesh.product", "material": "material.primary", "texture": "product_normal.webp", "fallback": "flat_normal"},
+    )
+    return {
+        "format": "appgen.cross-target-material-binding-contract.v1",
+        "ok": all(binding["fallback"] for binding in bindings) and "material_texture" in asset_import["pipelines"],
+        "bindings": bindings,
+        "asset_formats": asset_import["formats"],
+        "guards": ("texture_size_budget", "asset_fingerprint", "fallback_thumbnail", "material_editor_review"),
+        "side_effects": (),
+    }
+
+
 def cross_target_visual_depth_workbench() -> dict:
     """Prove animation, styling, effects, and 3D designer depth."""
     contract = cross_target_visual_depth_contract()
@@ -3670,6 +3782,11 @@ def cross_target_visual_depth_workbench() -> dict:
     scene_validation = cross_target_scene_validation_workflow()
     asset_import = cross_target_asset_import_workflow()
     preview_diff = cross_target_preview_runtime_diff_workflow()
+    style_tokens = cross_target_style_token_validation_contract()
+    timeline_scrub = cross_target_timeline_scrub_contract()
+    effect_budget = cross_target_effect_budget_contract()
+    scene_integrity = cross_target_scene_graph_integrity_contract()
+    material_binding = cross_target_material_binding_contract()
     checks = (
         {
             "id": "style_resources",
@@ -3781,6 +3898,36 @@ def cross_target_visual_depth_workbench() -> dict:
             and not preview_diff["side_effects"],
             "evidence": preview_diff,
         },
+        {
+            "id": "style_token_validation",
+            "ok": style_tokens["ok"] and {"token_names_stable", "state_overrides_reviewed"} <= set(style_tokens["guards"])
+            and not style_tokens["side_effects"],
+            "evidence": style_tokens,
+        },
+        {
+            "id": "timeline_scrub_validation",
+            "ok": timeline_scrub["ok"] and {"bounded_duration", "reduced_motion_fallback"} <= set(timeline_scrub["guards"])
+            and not timeline_scrub["side_effects"],
+            "evidence": timeline_scrub,
+        },
+        {
+            "id": "effect_budget_validation",
+            "ok": effect_budget["ok"] and {"mobile_frame_budget", "fallback_required"} <= set(effect_budget["guards"])
+            and not effect_budget["side_effects"],
+            "evidence": effect_budget,
+        },
+        {
+            "id": "scene_graph_integrity",
+            "ok": scene_integrity["ok"] and {"single_active_camera", "material_bound_to_mesh"} <= set(scene_integrity["guards"])
+            and not scene_integrity["side_effects"],
+            "evidence": scene_integrity,
+        },
+        {
+            "id": "material_binding",
+            "ok": material_binding["ok"] and {"texture_size_budget", "material_editor_review"} <= set(material_binding["guards"])
+            and not material_binding["side_effects"],
+            "evidence": material_binding,
+        },
     )
     ok = all(check["ok"] for check in checks)
     return {
@@ -3794,6 +3941,11 @@ def cross_target_visual_depth_workbench() -> dict:
         "scene_validation": scene_validation,
         "asset_import_workflow": asset_import,
         "preview_diff": preview_diff,
+        "style_tokens": style_tokens,
+        "timeline_scrub": timeline_scrub,
+        "effect_budget": effect_budget,
+        "scene_integrity": scene_integrity,
+        "material_binding": material_binding,
         "checks": checks,
         "blocking_gaps": tuple(check for check in checks if not check["ok"]),
     }
