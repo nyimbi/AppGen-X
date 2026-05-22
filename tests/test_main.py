@@ -4391,6 +4391,26 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
             ".pydevproject",
         }
     )["ok"] is True
+    devtools_gate = devtools.devtools_release_gate(
+        {
+            "app/devtools.py",
+            "app/templates/appgen_devtools.html",
+            ".vscode/launch.json",
+            ".vscode/tasks.json",
+            ".vscode/extensions.json",
+            ".idea/misc.xml",
+            ".idea/modules.xml",
+            ".idea/runConfigurations/AppGen_Flask.xml",
+            ".project",
+            ".pydevproject",
+        }
+    )
+    assert devtools_gate["format"] == "appgen.devtools-release-gate.v1"
+    assert devtools_gate["ok"] is True
+    assert {"tool_catalog", "vscode_debug", "jetbrains_run_config", "eclipse_pydev", "schema_source_map"} <= {
+        gate["gate"] for gate in devtools_gate["gates"]
+    }
+    assert devtools.devtools_release_gate({"app/devtools.py"})["ok"] is False
     assert studio.editable_files()
     assert {"web", "mobile", "desktop"} <= set(studio.ide_workspace()["generation"]["targets"])
     assert "open_dsl" in {item["command"] for item in studio.ide_command_palette()}

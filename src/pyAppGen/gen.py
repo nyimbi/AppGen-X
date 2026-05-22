@@ -6111,7 +6111,10 @@ def write_devtools_template(output_dir):
       <h1 class="agdt-title">Developer Tools</h1>
       <p class="agdt-note">Generated Visual Studio Code, JetBrains IDEA/PyCharm, and Eclipse workspace contracts, debug launch profiles, quality tasks, and schema-aware source maps.</p>
     </div>
-    <a class="btn btn-default" href="{{ url_for('DevToolsView.catalog_json') }}">Catalog JSON</a>
+    <div>
+      <a class="btn btn-default" href="{{ url_for('DevToolsView.catalog_json') }}">Catalog JSON</a>
+      <a class="btn btn-default" href="{{ url_for('DevToolsView.release_gate_json') }}">Release Gate JSON</a>
+    </div>
   </div>
   <div class="agdt-grid">
     {% for tool in tools %}
@@ -29605,6 +29608,33 @@ def devtools_check(existing_paths=()):
     }}
 
 
+def devtools_release_gate(existing_paths=()):
+    """Return release readiness for generated IDE integration contracts."""
+    readiness = devtools_check(existing_paths)
+    catalog = devtool_catalog()
+    vscode = vscode_launch_profile()
+    vscode_task_names = {{task["label"] for task in vscode_tasks()}}
+    jetbrains = jetbrains_run_config()
+    jetbrains_task_names = {{task["name"] for task in jetbrains_tasks()}}
+    eclipse = eclipse_project()
+    source_entries = source_map()
+    gates = (
+        {{"gate": "artifacts", "ok": readiness["ok"], "missing": readiness["missing"]}},
+        {{"gate": "tool_catalog", "ok": {{"vscode", "eclipse", "jetbrains"}} <= {{item["tool"] for item in catalog}}, "catalog": catalog}},
+        {{"gate": "vscode_debug", "ok": vscode["module"] == "flask" and vscode["request"] == "launch" and "AppGen quality" in vscode_task_names and "Pytest" in vscode_task_names, "profile": vscode, "tasks": vscode_tasks()}},
+        {{"gate": "jetbrains_run_config", "ok": jetbrains["type"] == "Python.FlaskServer" and jetbrains["target"] == "app" and "AppGen quality" in jetbrains_task_names and "Pytest" in jetbrains_task_names, "profile": jetbrains, "tasks": jetbrains_tasks()}},
+        {{"gate": "eclipse_pydev", "ok": eclipse["nature"] == "org.python.pydev.pythonNature" and "app" in eclipse["source_paths"] and "tests" in eclipse["source_paths"], "project": eclipse}},
+        {{"gate": "schema_source_map", "ok": bool(source_entries) and all({{"table", "model", "api", "fields", "files"}} <= set(item) for item in source_entries), "source_map": source_entries}},
+    )
+    ok = all(gate["ok"] for gate in gates)
+    return {{
+        "format": "appgen.devtools-release-gate.v1",
+        "ok": ok,
+        "decision": "approved" if ok else "blocked",
+        "gates": gates,
+    }}
+
+
 class DevToolsView(BaseView):
     route_base = "/devtools"
     default_view = "index"
@@ -29620,6 +29650,21 @@ class DevToolsView(BaseView):
     @expose("/source-map.json")
     def source_map_json(self):
         return jsonify(list(source_map()))
+
+    @expose("/release-gate.json")
+    def release_gate_json(self):
+        return jsonify(devtools_release_gate({{
+            "app/devtools.py",
+            "app/templates/appgen_devtools.html",
+            ".vscode/launch.json",
+            ".vscode/tasks.json",
+            ".vscode/extensions.json",
+            ".project",
+            ".pydevproject",
+            ".idea/misc.xml",
+            ".idea/modules.xml",
+            ".idea/runConfigurations/AppGen_Flask.xml",
+        }}))
 
 
 def register_devtools(appbuilder):
@@ -35204,8 +35249,8 @@ def validate_devtools_artifacts() -> None:
         fail("developer tools contract must expose IDE catalogs and workspace profiles")
     if "jetbrains_run_config" not in contract or "jetbrains_tasks" not in contract:
         fail("developer tools contract must expose JetBrains IDEA/PyCharm integration")
-    if "source_map" not in contract or "devtools_check" not in contract:
-        fail("developer tools contract must expose schema source maps and readiness checks")
+    if "source_map" not in contract or "devtools_check" not in contract or "devtools_release_gate" not in contract:
+        fail("developer tools contract must expose schema source maps, readiness checks, and release gates")
     for path in (".vscode/launch.json", ".vscode/tasks.json", ".vscode/extensions.json"):
         json.loads((ROOT / path).read_text())
     for path in (".idea/misc.xml", ".idea/modules.xml", ".idea/runConfigurations/AppGen_Flask.xml"):
@@ -35216,8 +35261,8 @@ def validate_devtools_artifacts() -> None:
     if "PROJECT_SOURCE_PATH" not in (ROOT / ".pydevproject").read_text():
         fail("PyDev project must declare generated source paths")
     template = (ROOT / "app" / "templates" / "appgen_devtools.html").read_text()
-    if "Developer Tools" not in template or "Visual Studio Code" not in template or "Eclipse" not in template or "JetBrains" not in template:
-        fail("developer tools cockpit must expose VS Code, JetBrains, and Eclipse integrations")
+    if "Developer Tools" not in template or "Visual Studio Code" not in template or "Eclipse" not in template or "JetBrains" not in template or "Release Gate JSON" not in template:
+        fail("developer tools cockpit must expose VS Code, JetBrains, Eclipse, and release-gate integrations")
 
 
 def validate_studio_artifacts() -> None:
@@ -37648,6 +37693,35 @@ def test_generated_runtime_helpers():
             ".pydevproject",
         }
     )["ok"] is True
+    assert devtools.devtools_release_gate(
+        {
+            "app/devtools.py",
+            "app/templates/appgen_devtools.html",
+            ".vscode/launch.json",
+            ".vscode/tasks.json",
+            ".vscode/extensions.json",
+            ".idea/misc.xml",
+            ".idea/modules.xml",
+            ".idea/runConfigurations/AppGen_Flask.xml",
+            ".project",
+            ".pydevproject",
+        }
+    )["format"] == "appgen.devtools-release-gate.v1"
+    assert devtools.devtools_release_gate(
+        {
+            "app/devtools.py",
+            "app/templates/appgen_devtools.html",
+            ".vscode/launch.json",
+            ".vscode/tasks.json",
+            ".vscode/extensions.json",
+            ".idea/misc.xml",
+            ".idea/modules.xml",
+            ".idea/runConfigurations/AppGen_Flask.xml",
+            ".project",
+            ".pydevproject",
+        }
+    )["ok"] is True
+    assert devtools.devtools_release_gate({"app/devtools.py"})["ok"] is False
     assert studio.editable_files()
     assert studio.file_edit_plan("app/models.py", "patch")["requires_review"] is True
     assert "open_dsl" in {item["command"] for item in studio.ide_command_palette()}

@@ -455,6 +455,10 @@ Use `/version-control/release-gate.json` or
 `version_control_release_gate()` to prove version-history readiness. The gate
 checks content-addressed snapshots, schema diffs, branch contracts, rollback
 review plans, resource catalogs, and required version-control artifacts.
+Use `/devtools/release-gate.json` or `devtools_release_gate()` to prove
+external IDE readiness. The gate checks IDE catalogs, VS Code debugging/tasks,
+JetBrains run configurations/tasks, Eclipse/PyDev metadata, schema source maps,
+and required editor artifacts.
 Use `/extensions/release-gate.json` or `extension_release_gate()` to prove
 custom-code extensibility is ready: the gate checks generated artifacts, stable
 hook catalogs, table lifecycle hooks, generated-rule dispatch, custom-module

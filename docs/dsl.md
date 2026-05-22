@@ -580,7 +580,9 @@ apps include:
 - `.vscode/`, `.idea/`, `.project`, `.pydevproject`, `devtools.py`, and
   `appgen_devtools.html` with generated Visual Studio Code, JetBrains
   IDEA/PyCharm, and Eclipse/PyDev launch, task, extension, source-map, and
-  readiness contracts.
+  readiness contracts. A generated developer-tools release gate proves IDE
+  catalogs, VS Code debugging/tasks, JetBrains run configurations/tasks,
+  Eclipse/PyDev metadata, schema source maps, and required editor artifacts.
 - `studio.py` and `appgen_studio.html` with a generated IDE/workbench for DSL
   authoring, DSL linting, outline extraction, keyword-budget checks,
   quick fixes, completions/snippets, searchable command palettes, project trees, editor
