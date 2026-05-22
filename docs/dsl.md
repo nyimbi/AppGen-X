@@ -281,9 +281,12 @@ appgen --nl-release-audit
 
 The package-level NL surface emits tables, fields, Delphi-style forms, flows,
 rules, report/dashboard comments, chatbot handoff comments, local/API-key LLM
-providers, agents, ERP module commands, platform targets, migration impact, and
-rollback guidance. Destructive prompts such as `drop table` or `remove field`
-return `requires_approval: true` instead of applying the change.
+providers, agents, ERP module commands plus generated ERP tables/flows,
+platform targets, migration impact, and rollback guidance. The release audit
+also generates a temporary app from an NL-produced DSL patch, compiles core
+Python artifacts, and checks generated native/chatbot/PWA outputs. Destructive
+prompts such as `drop table` or `remove field` return `requires_approval: true`
+instead of applying the change.
 
 Audit the package-level Studio/IDE contract before claiming AppGen can manage
 application design before generation:

@@ -94,6 +94,7 @@ from pyAppGen.integrations import signed_webhook_plan
 from pyAppGen.integrations import validate_webhook_signature
 from pyAppGen.nl import evolution_changeset
 from pyAppGen.nl import evolution_plan
+from pyAppGen.nl import nl_generation_smoke_audit
 from pyAppGen.nl import nl_evolution_release_audit
 from pyAppGen.nl import proposals_to_dsl
 from pyAppGen.ops import database_ops_contract
@@ -559,6 +560,9 @@ def test_package_natural_language_evolution_generates_parseable_dsl(
     assert "mode: local" in dsl_patch
     assert "api_key: OPENAI_API_KEY" in dsl_patch
     assert "// add chatbot SupportBot for Ticket" in dsl_patch
+    assert "table ap_bill" in proposals_to_dsl(
+        evolution_plan(f"{prompt} ERP accounts payable")
+    )
 
     dsl_path = tmp_path / "nl_patch.appgen"
     dsl_path.write_text(dsl_patch, encoding="utf-8")
@@ -575,6 +579,12 @@ def test_package_natural_language_evolution_generates_parseable_dsl(
     assert changeset["ok"] is True
     assert changeset["migration_impact"]["tables_added"] == ("Ticket",)
     assert "dsl_patch" in changeset
+
+    smoke = nl_generation_smoke_audit(f"{prompt} ERP accounts payable")
+    assert smoke["format"] == "appgen.nl-generation-smoke-audit.v1"
+    assert smoke["ok"] is True
+    assert any(check["check"] == "schema_from_natural_language" for check in smoke["checks"])
+    assert all(item["ok"] for item in smoke["compiled"])
 
     audit = nl_evolution_release_audit()
     assert audit["format"] == "appgen.nl-evolution-release-audit.v1"

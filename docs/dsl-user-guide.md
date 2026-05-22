@@ -140,7 +140,8 @@ audited natural-language change set. Run `appgen --nl-dsl "..."` to emit the
 reviewable DSL patch, and `appgen --nl-release-audit` to prove the package-level
 NL evolution contract covers tables, fields, forms, workflows, rules, reports,
 dashboards, chatbots, agents, ERP modules, platform targets, local LLMs, and
-API-key LLMs.
+API-key LLMs. The audit also generates a temporary app from an NL-produced DSL
+patch, compiles core Python artifacts, and checks native/chatbot/PWA outputs.
 Run `appgen --studio-release-audit` to prove the package-level Studio contract
 is ready for DSL editing, database design, multi-source intake, generation job
 management, and application lifecycle management before any app is generated.
@@ -519,9 +520,9 @@ platform-target checks.
 Before generation, the package CLI exposes the same idea with
 `appgen --nl-plan`, `appgen --nl-dsl`, and `appgen --nl-release-audit`.
 `--nl-dsl` emits parseable AppGen DSL for schema, forms, flows, rules, local and
-API-key LLM providers, and agents; report, dashboard, chatbot, and ERP requests
-are preserved as explicit review comments or ERP template commands so the
-builder can apply them deliberately.
+API-key LLM providers, agents, and requested ERP module tables/flows; report,
+dashboard, and chatbot requests remain explicit review comments so the builder
+can apply them deliberately.
 
 Generated backup pages expose `/backups/disaster-recovery.json` and
 `/backups/release-gate.json` so teams can prove that JSON backups, SHA-256

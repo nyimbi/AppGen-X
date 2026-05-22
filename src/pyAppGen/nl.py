@@ -7,10 +7,14 @@ surface before generation, so prompts can become auditable DSL patches.
 
 from __future__ import annotations
 
+import py_compile
 import re
+import tempfile
+from pathlib import Path
 
 from .erp import ERP_MODULES
 from .erp import erp_module_dsl
+from .schema import normalize_platform_targets
 
 
 SUPPORTED_TARGETS = ("web", "pwa", "mobile", "desktop", "chatbot")
@@ -192,6 +196,7 @@ def proposals_to_dsl(plan: dict) -> str:
         elif kind == "add_erp_module":
             lines.append("")
             lines.append(f"// add ERP module {proposal['module']} with {proposal['command']}")
+            lines.extend(_erp_module_dsl_body(proposal["module"]))
 
     return "\n".join(lines).rstrip() + "\n"
 
@@ -248,17 +253,105 @@ def rollback_plan(plan: dict) -> dict:
     }
 
 
+def _compile_smoke_artifacts(project_dir: Path) -> tuple[dict, ...]:
+    artifacts = (
+        "app/models.py",
+        "app/views.py",
+        "app/nl_evolution.py",
+        "app/agents.py",
+        "native/mobile/app.py",
+        "native/desktop/app.py",
+        "chatbots/appgen_chatbots.py",
+    )
+    results = []
+    for relative in artifacts:
+        path = project_dir / relative
+        try:
+            py_compile.compile(str(path), doraise=True)
+        except py_compile.PyCompileError as exc:
+            results.append({"path": relative, "ok": False, "error": str(exc)})
+        else:
+            results.append({"path": relative, "ok": True})
+    return tuple(results)
+
+
+def nl_generation_smoke_audit(prompt: str | None = None) -> dict:
+    """Generate an app from an NL-produced DSL patch and verify key outputs."""
+    from .dsl import schema_from_dsl
+    from .gen import generate_app_from_schema
+
+    sample = prompt or _sample_prompt()
+    plan = evolution_plan(sample)
+    dsl_patch = proposals_to_dsl(plan)
+    schema = schema_from_dsl(dsl_patch, source_name="nl-smoke.appgen")
+    targets, unknown_targets = normalize_platform_targets(schema.app_options.get("targets"))
+    erp_tables = tuple(
+        table.name
+        for proposal in plan["proposals"]
+        if proposal.get("kind") == "add_erp_module"
+        for table in schema_from_dsl(erp_module_dsl(proposal["module"])).tables
+    )
+    with tempfile.TemporaryDirectory(prefix="appgen-nl-generation-") as raw_workdir:
+        project_dir = Path(raw_workdir) / "nl-smoke"
+        generate_app_from_schema(schema, project_dir / "app")
+        artifacts = (
+            "app/models.py",
+            "app/views.py",
+            "app/nl_evolution.py",
+            "app/agents.py",
+            "app/static/appgen.webmanifest",
+            "native/mobile/app.py",
+            "native/desktop/app.py",
+            "chatbots/appgen_chatbots.py",
+        )
+        missing = tuple(path for path in artifacts if not (project_dir / path).exists())
+        compiled = _compile_smoke_artifacts(project_dir)
+    schema_tables = {table.name for table in schema.tables}
+    checks = (
+        {
+            "check": "schema_from_natural_language",
+            "ok": {"Ticket", *erp_tables} <= schema_tables
+            and any(view.name == "TicketForm" for view in schema.views),
+            "tables": tuple(sorted(schema_tables)),
+            "erp_tables": erp_tables,
+        },
+        {
+            "check": "agent_and_targets",
+            "ok": any(agent.name == "SupportAgent" for agent in schema.agents)
+            and {"web", "mobile", "desktop"} <= set(targets)
+            and not unknown_targets,
+            "targets": targets,
+            "unknown_targets": unknown_targets,
+        },
+        {
+            "check": "generated_artifacts",
+            "ok": not missing,
+            "missing": missing,
+        },
+        {
+            "check": "compiled_artifacts",
+            "ok": all(item["ok"] for item in compiled),
+        },
+    )
+    return {
+        "format": "appgen.nl-generation-smoke-audit.v1",
+        "scope": "package",
+        "ok": all(check["ok"] for check in checks),
+        "prompt": sample,
+        "plan": plan,
+        "dsl_patch": dsl_patch,
+        "checks": checks,
+        "compiled": compiled,
+    }
+
+
 def nl_evolution_release_audit() -> dict:
     """Return package-level readiness evidence for natural-language evolution."""
-    sample = (
-        "create table Ticket with fields title required, amount decimal, due_date date "
-        "and form TicketForm workflow Triage rule TicketPolicy report TicketReport "
-        "dashboard TicketDashboard chatbot SupportBot agent SupportAgent ERP accounts payable "
-        "targets web mobile desktop"
-    )
+    sample = _sample_prompt()
     plan = evolution_plan(sample)
     dsl_patch = proposals_to_dsl(plan)
     destructive = destructive_intent_report("remove field title from Ticket and drop table OldTicket")
+    smoke = nl_generation_smoke_audit(sample)
     required_kinds = {
         "add_table",
         "add_field",
@@ -285,7 +378,12 @@ def nl_evolution_release_audit() -> dict:
         },
         {"id": "local_and_api_llms", "ok": "mode: local" in dsl_patch and "api_key: OPENAI_API_KEY" in dsl_patch},
         {"id": "destructive_guard", "ok": destructive["requires_approval"] is True},
-        {"id": "erp_bridge", "ok": "appgen --erp-template accounts_payable" in dsl_patch},
+        {
+            "id": "erp_bridge",
+            "ok": "appgen --erp-template accounts_payable" in dsl_patch
+            and "table ap_bill" in dsl_patch,
+        },
+        {"id": "generation_smoke", "ok": smoke["ok"], "checks": smoke["checks"]},
     )
     ok = all(gate["ok"] for gate in gates)
     return {
@@ -296,8 +394,27 @@ def nl_evolution_release_audit() -> dict:
         "gates": gates,
         "sample_plan": plan,
         "sample_dsl": dsl_patch,
+        "generation_smoke": smoke,
         "blocking_gaps": tuple(gate for gate in gates if not gate["ok"]),
     }
+
+
+def _sample_prompt() -> str:
+    return (
+        "create table Ticket with fields title required, amount decimal, due_date date "
+        "and form TicketForm workflow Triage rule TicketPolicy report TicketReport "
+        "dashboard TicketDashboard chatbot SupportBot agent SupportAgent ERP accounts payable "
+        "targets web mobile desktop"
+    )
+
+
+def _erp_module_dsl_body(module: str) -> tuple[str, ...]:
+    lines = erp_module_dsl(module).splitlines()
+    if lines and lines[0].lstrip().startswith("app "):
+        lines = lines[1:]
+    while lines and not lines[0].strip():
+        lines = lines[1:]
+    return tuple(lines)
 
 
 def _requested_table(prompt: str) -> str:
