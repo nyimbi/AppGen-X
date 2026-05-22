@@ -263,8 +263,8 @@ Generated apps include natural-language evolution contracts. A builder can ask
 for changes such as:
 
 ```text
-Create table Ticket with fields title and status, add TicketForm, add SupportBot,
-and target web mobile desktop.
+Create table Ticket with fields title and status, add TicketForm, add TicketReport,
+add TicketDashboard, add SupportBot, and target web mobile desktop.
 ```
 
 The generated change set must still be reviewed. AppGen treats natural language
@@ -272,6 +272,12 @@ as an authoring assistant, not as an unreviewed mutation path. Destructive
 requests such as dropping fields or tables are captured as explicit proposals
 with data-loss review, backup requirements, generated test plans, and rollback
 steps instead of being silently applied.
+
+Natural language proposals cover database tables and fields, forms, workflows,
+rules, reports, dashboards, chatbots, agents, platform targets, and ERP template
+modules. Report and dashboard requests are reviewed as generated application
+surface changes and add report delivery plus dashboard render checks to the
+generated test plan.
 
 Generated backup pages expose `/backup/disaster-recovery.json` and
 `/backup/release-gate.json` so teams can prove that JSON backups, SHA-256

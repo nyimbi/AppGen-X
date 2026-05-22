@@ -4574,7 +4574,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     nl_plan = nl_evolution.evolution_plan(
         "create table Ticket with fields title, email unique, amount decimal, author_id references Author required "
         "and form TicketForm workflow Triage "
-        "from open to closed rule TicketPolicy chatbot SupportBot agent SupportAgent "
+        "from open to closed rule TicketPolicy report TicketReport dashboard TicketDashboard chatbot SupportBot agent SupportAgent "
         "targets web mobile desktop"
     )
     assert {
@@ -4583,6 +4583,8 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "add_form",
         "add_workflow",
         "add_rule",
+        "add_report",
+        "add_dashboard",
         "add_chatbot",
         "add_agent",
         "set_targets",
@@ -4606,6 +4608,8 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert "flow Triage" in nl_dsl
     assert "open -> closed" in nl_dsl
     assert "rule TicketPolicy for Ticket" in nl_dsl
+    assert "// add report TicketReport for Ticket formats csv, pdf" in nl_dsl
+    assert "// add dashboard TicketDashboard for Ticket charts kpi, bar" in nl_dsl
     assert "targets: web, mobile, desktop" in nl_dsl
     erp_nl_plan = nl_evolution.evolution_plan(
         "generate ERP accounts payable and inventory for targets web desktop"
@@ -4618,7 +4622,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     erp_impact = nl_evolution.migration_impact(erp_nl_plan)
     assert any(item.get("action") == "add_erp_module" for item in erp_impact["review"])
     changeset = nl_evolution.evolution_changeset(
-        "create table Ticket with fields title and form TicketForm chatbot SupportBot agent SupportAgent targets web mobile desktop",
+        "create table Ticket with fields title and form TicketForm report TicketReport dashboard TicketDashboard chatbot SupportBot agent SupportAgent targets web mobile desktop",
         "app Library\n\ntable Author {\n  id: int pk\n  name: string\n}\n",
     )
     assert changeset["format"] == "appgen.nl-changeset.v1"
@@ -4627,13 +4631,15 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert changeset["migration_impact"]["format"] == "appgen.nl-migration-impact.v1"
     assert {"action": "create_table", "table": "Ticket", "destructive": False} in changeset["migration_impact"]["ddl"]
     assert changeset["test_plan"]["format"] == "appgen.nl-test-plan.v1"
-    assert {"dsl_lint", "schema_diff", "ui_smoke", "agent_provider_readiness"} <= set(changeset["test_plan"]["checks"])
+    assert {"dsl_lint", "schema_diff", "ui_smoke", "agent_provider_readiness", "report_delivery_preview", "dashboard_render_preview"} <= set(changeset["test_plan"]["checks"])
     assert changeset["rollback"]["format"] == "appgen.nl-rollback-plan.v1"
     assert changeset["rollback"]["review_required"] is True
     assert changeset["requires_approval"] is True
     assert changeset["app_patch"] == {"targets": ("web", "mobile", "desktop")}
     assert "app Library { targets: web, mobile, desktop }" in changeset["applied_preview"]
     assert "table Ticket {" in changeset["applied_preview"]
+    assert "// add report TicketReport for Ticket formats csv, pdf" in changeset["applied_preview"]
+    assert "// add dashboard TicketDashboard for Ticket charts kpi, bar" in changeset["applied_preview"]
     approval = nl_evolution.approval_workflow(changeset, actor="ada")
     assert approval["current"] == "review"
     assert approval["actor"] == "ada"

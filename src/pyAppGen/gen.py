@@ -20183,7 +20183,7 @@ ERP_STACKS = {{
 
 def evolution_capabilities():
     """Return app areas that natural language can evolve."""
-    return ("tables", "fields", "forms", "workflows", "rules", "chatbots", "agents", "targets", "erp_modules")
+    return ("tables", "fields", "forms", "workflows", "rules", "reports", "dashboards", "chatbots", "agents", "targets", "erp_modules")
 
 
 def destructive_intent_report(prompt):
@@ -20275,7 +20275,7 @@ def _field_specs(text):
     for match in re.finditer(r"(?:fields?|columns?)\\s+([^.;]+)", text, re.I):
         segment = match.group(1)
         segment = re.split(
-            r"\\b(?:form|workflow|flow|rule|policy|chatbot|agent|targets?|platforms?)\\b",
+            r"\\b(?:form|workflow|flow|rule|policy|report|reports|dashboard|dashboards|chart|analytics|chatbot|agent|targets?|platforms?)\\b",
             segment,
             maxsplit=1,
             flags=re.I,
@@ -20349,6 +20349,8 @@ def evolution_plan(prompt):
     workflow_match = re.search(r"(?:workflow|flow)\\s+([A-Za-z_][A-Za-z0-9_]*)", text, re.I)
     transition_match = re.search(r"(?:from\\s+)?([A-Za-z_][A-Za-z0-9_]*)\\s+(?:to|->)\\s+([A-Za-z_][A-Za-z0-9_]*)", text, re.I)
     rule_match = re.search(r"(?:rule|policy)\\s+([A-Za-z_][A-Za-z0-9_]*)", text, re.I)
+    report_match = re.search(r"reports?\\s+([A-Za-z_][A-Za-z0-9_]*)", text, re.I)
+    dashboard_match = re.search(r"dashboards?\\s+([A-Za-z_][A-Za-z0-9_]*)", text, re.I)
     chatbot_match = re.search(r"chatbot\\s+([A-Za-z_][A-Za-z0-9_]*)", text, re.I)
     agent_match = re.search(r"agent\\s+([A-Za-z_][A-Za-z0-9_]*)", text, re.I)
     target_matches = _target_specs(text)
@@ -20371,6 +20373,10 @@ def evolution_plan(prompt):
     if rule_match or "rule" in lowered or "required" in lowered:
         required_field = field_specs[0]["name"] if field_specs else "title"
         proposals.append({{"kind": "add_rule", "name": (rule_match.group(1) if rule_match else f"{{target_table}}Policy"), "table": target_table, "field": required_field, "operator": "required", "source": "natural_language"}})
+    if report_match or "report" in lowered or "reports" in lowered:
+        proposals.append({{"kind": "add_report", "name": (report_match.group(1) if report_match else f"{{target_table}}Report"), "table": target_table, "formats": ("csv", "pdf"), "source": "natural_language"}})
+    if dashboard_match or "dashboard" in lowered or "dashboards" in lowered or "analytics" in lowered:
+        proposals.append({{"kind": "add_dashboard", "name": (dashboard_match.group(1) if dashboard_match else f"{{target_table}}Dashboard"), "table": target_table, "charts": ("kpi", "bar"), "source": "natural_language"}})
     if chatbot_match or "chatbot" in lowered:
         proposals.append({{"kind": "add_chatbot", "name": (chatbot_match.group(1) if chatbot_match else f"{{target_table}}Assistant"), "table": target_table, "source": "natural_language"}})
     if agent_match or "agent" in lowered:
@@ -20425,6 +20431,10 @@ def proposals_to_dsl(plan):
             lines.append(f"agent {{proposal['name']}} {{{{\\n  provider: {{proposal['provider']}}\\n  tools: schema, forms, chatbots\\n}}}}")
         elif proposal["kind"] == "add_chatbot":
             lines.append(f"// add chatbot {{proposal['name']}} for {{proposal['table']}}")
+        elif proposal["kind"] == "add_report":
+            lines.append(f"// add report {{proposal['name']}} for {{proposal['table']}} formats {{', '.join(proposal['formats'])}}")
+        elif proposal["kind"] == "add_dashboard":
+            lines.append(f"// add dashboard {{proposal['name']}} for {{proposal['table']}} charts {{', '.join(proposal['charts'])}}")
         elif proposal["kind"] == "add_form":
             lines.append(f"view {{proposal['name']}} for {{proposal['table']}} {{{{\\n}}}}")
         elif proposal["kind"] == "add_erp_module":
@@ -20450,7 +20460,7 @@ def proposal_summary(plan):
         "tables": tuple(
             proposal.get("name") or proposal.get("table")
             for proposal in plan.get("proposals", ())
-            if proposal.get("kind") in {{"add_table", "add_field", "add_form"}}
+            if proposal.get("kind") in {{"add_table", "add_field", "add_form", "add_report", "add_dashboard"}}
         ),
     }}
 
@@ -20473,7 +20483,7 @@ def migration_impact(plan):
                 "destructive": False,
                 "requires_backfill": "required" in proposal.get("modifiers", ()) and proposal.get("table") in KNOWN_TABLES,
             }})
-        elif kind in {{"add_form", "add_chatbot", "add_agent", "set_targets"}}:
+        elif kind in {{"add_form", "add_chatbot", "add_agent", "add_report", "add_dashboard", "set_targets"}}:
             review.append({{"action": kind, "destructive": False}})
         elif kind == "add_erp_module":
             review.append({{"action": "add_erp_module", "module": proposal["module"], "destructive": False, "requires_migration_preview": True}})
@@ -20527,6 +20537,10 @@ def evolution_test_plan(plan):
         checks.extend(("schema_diff", "migration_preview", "data_backup_review"))
     if any(kind in {{"add_form", "add_chatbot", "add_agent"}} for kind in kinds):
         checks.extend(("ui_smoke", "chatbot_conversation_preview", "agent_provider_readiness"))
+    if "add_report" in kinds:
+        checks.extend(("report_catalog_preview", "report_delivery_preview"))
+    if "add_dashboard" in kinds:
+        checks.extend(("dashboard_render_preview", "analytics_smoke"))
     if "set_targets" in kinds:
         checks.append("platform_target_generation")
     return {{
@@ -20611,11 +20625,11 @@ def nl_evolution_check(existing_paths):
     existing = set(existing_paths)
     required = ("app/nl_evolution.py", "app/templates/appgen_nl_evolution.html")
     missing = tuple(path for path in required if path not in existing)
-    sample = evolution_plan("create table Ticket with field title and form TicketForm workflow Triage from open to closed rule TicketPolicy chatbot SupportBot agent SupportAgent add ERP accounts payable targets web mobile desktop")
+    sample = evolution_plan("create table Ticket with field title and form TicketForm workflow Triage from open to closed rule TicketPolicy report TicketReport dashboard TicketDashboard chatbot SupportBot agent SupportAgent add ERP accounts payable targets web mobile desktop")
     kinds = tuple(item["kind"] for item in sample["proposals"])
     changeset = evolution_changeset("create table Ticket with field title and form TicketForm chatbot SupportBot agent SupportAgent targets web mobile desktop")
     destructive = evolution_changeset("remove field title from Ticket", "app Demo {{ targets: web }}\\n\\ntable Ticket {{\\n  id: int pk\\n  title: string\\n}}")
-    return {{"ok": not missing and "add_table" in kinds and "add_agent" in kinds and "add_workflow" in kinds and "add_erp_module" in kinds and "set_targets" in kinds and changeset["requires_approval"] and destructive["migration_impact"]["destructive"] and destructive["rollback"]["requires_backup"], "missing": missing, "sample_kinds": kinds}}
+    return {{"ok": not missing and "add_table" in kinds and "add_report" in kinds and "add_dashboard" in kinds and "add_agent" in kinds and "add_workflow" in kinds and "add_erp_module" in kinds and "set_targets" in kinds and changeset["requires_approval"] and destructive["migration_impact"]["destructive"] and destructive["rollback"]["requires_backup"], "missing": missing, "sample_kinds": kinds}}
 
 
 class NaturalLanguageEvolutionView(BaseView):
@@ -33272,7 +33286,7 @@ def validate_form_designer_artifacts() -> None:
 
 def validate_nl_evolution_artifacts() -> None:
     contract = (ROOT / "app" / "nl_evolution.py").read_text()
-    if "evolution_plan" not in contract or "proposals_to_dsl" not in contract or "add_agent" not in contract or "add_workflow" not in contract or "set_targets" not in contract or "_field_reference" not in contract:
+    if "evolution_plan" not in contract or "proposals_to_dsl" not in contract or "add_report" not in contract or "add_dashboard" not in contract or "add_agent" not in contract or "add_workflow" not in contract or "set_targets" not in contract or "_field_reference" not in contract:
         fail("natural-language evolution must expose proposal and DSL helpers")
     if "evolution_changeset" not in contract or "apply_changeset" not in contract or "migration_impact" not in contract or "approval_workflow" not in contract or "destructive_intent_report" not in contract or "evolution_test_plan" not in contract or "rollback_plan" not in contract:
         fail("natural-language evolution must expose approval-ready changesets, destructive-intent review, test plans, rollback, and migration impact")
@@ -35426,8 +35440,12 @@ def test_generated_runtime_helpers():
     form_design = form_designer.form_design(first_manifest_table)
     form_proposal = form_designer.proposal_from_drop({"table": first_manifest_table, "component": "TextBox", "x": 1, "y": 1})
     assert form_designer.validate_form_design(form_designer.apply_form_proposal(form_design, form_proposal))["ok"] is True
-    nl_plan = nl_evolution.evolution_plan("create table Ticket with field title and form TicketForm chatbot SupportBot agent SupportAgent")
-    assert {"add_table", "add_field", "add_form", "add_chatbot", "add_agent"}.issubset({item["kind"] for item in nl_plan["proposals"]})
+    nl_plan = nl_evolution.evolution_plan("create table Ticket with field title and form TicketForm report TicketReport dashboard TicketDashboard chatbot SupportBot agent SupportAgent")
+    assert {"add_table", "add_field", "add_form", "add_report", "add_dashboard", "add_chatbot", "add_agent"}.issubset({item["kind"] for item in nl_plan["proposals"]})
+    nl_dsl = nl_evolution.proposals_to_dsl(nl_plan)
+    assert "// add report TicketReport for Ticket formats csv, pdf" in nl_dsl
+    assert "// add dashboard TicketDashboard for Ticket charts kpi, bar" in nl_dsl
+    assert {"report_catalog_preview", "dashboard_render_preview"} <= set(nl_evolution.evolution_test_plan(nl_plan)["checks"])
     assert dsl_reference.dsl_keyword_budget()["count"] <= dsl_reference.dsl_keyword_budget()["limit"]
     assert dsl_reference.dsl_language_quality_contract()["ok"] is True
     assert dsl_reference.dsl_language_quality_contract()["format"] == "appgen.dsl-language-quality.v1"
