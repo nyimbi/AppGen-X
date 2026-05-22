@@ -28,6 +28,11 @@ Field modifier aliases follow the same rule: `searchable` normalizes to
 `normalize_modifier_aliases` quick fix.
 Use `#`, `//`, or `/* ... */` comments anywhere whitespace is allowed; comments
 are ignored by the parser and do not affect generated artifacts.
+The DSL authoring release gate proves the language remains learnable and
+operational: it checks the ANTLR parser, keyword budget, syntax/semantic
+linting, formatter stability, IDE navigation, code actions, authoring guidance,
+and source-family coverage for DBML, SQL, PonyORM, live database introspection,
+and DSL files.
 
 The optional `app { ... }` block carries app-level options such as `theme`,
 `primary`, `accent`, `logo`, `tagline`, explicit row-level security targets,

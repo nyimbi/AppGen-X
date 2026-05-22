@@ -5637,6 +5637,7 @@ def write_dsl_reference_template(output_dir):
     <div>
       <a class="btn btn-default" href="{{ url_for('DSLReferenceView.reference_json') }}">Reference JSON</a>
       <a class="btn btn-default" href="{{ url_for('DSLReferenceView.language_quality_json') }}">Language Quality JSON</a>
+      <a class="btn btn-default" href="{{ url_for('DSLReferenceView.authoring_release_gate_json') }}">Authoring Gate JSON</a>
     </div>
   </div>
   <div class="agdsl-card">
@@ -20587,6 +20588,13 @@ PLATFORM_TARGET_ALIASES = {{
     "bot": "chatbot",
     "bots": "chatbot",
 }}
+SOURCE_FAMILIES = (
+    {{"kind": "dbml", "entrypoint": "schema_from_dbml", "command": "appgen --dbml schema.dbml --writedir app"}},
+    {{"kind": "sql", "entrypoint": "schema_from_sql", "command": "appgen --sql schema.sql --writedir app"}},
+    {{"kind": "ponyorm", "entrypoint": "schema_from_ponyorm", "command": "appgen --pony entities.py --writedir app"}},
+    {{"kind": "database", "entrypoint": "schema_from_database_url", "command": "appgen --database-url postgresql+psycopg2://user@host/db --writedir app"}},
+    {{"kind": "dsl", "entrypoint": "schema_from_dsl_file", "command": "appgen --dsl app.appgen --writedir app"}},
+)
 CONSTRUCTS = (
     {{"name": "Application", "syntax": "app Name {{ theme: sage }}", "purpose": "Names the generated app and carries app options without adding feature keywords."}},
     {{"name": "Authoring Aliases", "syntax": "entity Book {{...}} -> table Book {{...}}", "purpose": "Lets builders use familiar words while persisted source stays on the compact keyword budget."}},
@@ -20914,6 +20922,55 @@ def dsl_authoring_score(source):
     }}
 
 
+def dsl_authoring_release_gate(source=None, expected_sources=("dbml", "sql", "ponyorm", "database", "dsl")):
+    """Return release evidence for generated DSL authoring in Studio."""
+    sample = dsl_example("full")
+    if source is None and not re.search(r"\\btargets\\s*:", sample):
+        if re.search(r"^\\s*app\\s+[^\\n{{]+$", sample, re.M):
+            sample = re.sub(
+                r"^(\\s*app\\s+[^\\n{{]+)\\s*$",
+                r"\\1 {{ targets: web, mobile, desktop }}",
+                sample,
+                count=1,
+                flags=re.M,
+            )
+        else:
+            sample = re.sub(
+                r"(\\bapp\\s+(?:\\"[^\\"]+\\"|'[^']+'|[A-Za-z_][A-Za-z0-9_]*)\\s*\\{{)",
+                r"\\1 targets: web, mobile, desktop; ",
+                sample,
+                count=1,
+            )
+    text = source if source is not None else format_dsl(sample)["formatted"]
+    lint = dsl_lint(text)
+    formatted = format_dsl(text)
+    score = dsl_authoring_score(text)
+    quality = dsl_language_quality_contract()
+    source_kinds = {{item["kind"] for item in SOURCE_FAMILIES}}
+    required_sources = tuple(expected_sources)
+    construct_names = tuple(item["name"] for item in dsl_construct_catalog())
+    gates = (
+        {{"gate": "language_quality", "ok": quality["ok"], "evidence": quality["checks"]}},
+        {{"gate": "keyword_budget", "ok": quality["budget"]["ok"] and quality["canonical_keyword_count"] <= quality["budget"]["limit"], "evidence": quality["budget"]}},
+        {{"gate": "syntax_semantics", "ok": lint["ok"], "errors": lint["errors"], "warnings": lint["warnings"]}},
+        {{"gate": "formatter_stability", "ok": formatted["after"]["ok"] and (text or "").strip() == formatted["formatted"].strip(), "changed": formatted["changed"]}},
+        {{"gate": "learning_cards", "ok": {{"Application", "Table", "Reference", "View", "Agentic System"}} <= set(construct_names), "constructs": construct_names}},
+        {{"gate": "source_family_coverage", "ok": set(required_sources) <= source_kinds, "required": required_sources, "supported": tuple(item["kind"] for item in SOURCE_FAMILIES)}},
+        {{"gate": "authoring_guidance", "ok": score["ok"] and not score["next_actions"], "score": score["score"], "next_actions": score["next_actions"]}},
+        {{"gate": "ide_contract", "ok": "code_actions" in lint and all(action.get("format") == "appgen.dsl-code-action.v1" for action in lint["code_actions"]), "code_action_count": len(lint["code_actions"])}},
+    )
+    ok = all(gate["ok"] for gate in gates)
+    return {{
+        "format": "appgen.dsl-authoring-release-gate.v1",
+        "language": "appgen-dsl",
+        "ok": ok,
+        "decision": "approved" if ok else "blocked",
+        "gates": gates,
+        "source_families": SOURCE_FAMILIES,
+        "blocking_gaps": tuple(gate for gate in gates if not gate["ok"]),
+    }}
+
+
 def _dsl_code_action(source, fix):
     fixed_preview = _apply_dsl_fix(source or "", fix)
     return {{
@@ -21146,13 +21203,15 @@ def dsl_reference_check(existing_paths):
     missing = tuple(path for path in required if path not in existing)
     lint = dsl_lint(dsl_example("full"))
     score = dsl_authoring_score(dsl_example("full"))
+    release_gate = dsl_authoring_release_gate()
     return {{
-        "ok": not missing and dsl_keyword_budget()["ok"] and dsl_language_quality_contract()["ok"] and lint["ok"] and score["ok"],
+        "ok": not missing and dsl_keyword_budget()["ok"] and dsl_language_quality_contract()["ok"] and lint["ok"] and score["ok"] and release_gate["ok"],
         "missing": missing,
         "keyword_count": dsl_keyword_budget()["count"],
         "constructs": tuple(item["name"] for item in CONSTRUCTS),
         "language_quality": dsl_language_quality_contract(),
         "authoring_score": score,
+        "authoring_release_gate": release_gate,
     }}
 
 
@@ -21176,6 +21235,10 @@ class DSLReferenceView(BaseView):
     @expose("/language-quality.json")
     def language_quality_json(self):
         return jsonify(dsl_language_quality_contract())
+
+    @expose("/authoring-gate.json")
+    def authoring_release_gate_json(self):
+        return jsonify(dsl_authoring_release_gate())
 
     @expose("/lint", methods=("POST",))
     def lint_json(self):
@@ -32924,17 +32987,18 @@ def validate_dsl_reference_artifacts() -> None:
         "dsl_learning_path",
         "dsl_language_quality_contract",
         "dsl_authoring_score",
+        "dsl_authoring_release_gate",
         "dsl_reference_check",
     )
     if not all(item in contract for item in required):
-        fail("DSL reference must expose keyword budget, examples, linting, authoring score, and learning path helpers")
+        fail("DSL reference must expose keyword budget, examples, linting, authoring score, release gate, and learning path helpers")
     if "author_id: int -> Author.id [many-to-one]" not in contract or "Prefer arrow references" not in contract or "RELATION_CARDINALITIES" not in contract:
         fail("DSL reference must keep arrow references and cardinality metadata as compact relationship syntax")
     if "appgen.dsl-language-quality.v1" not in contract or "generated_antlr_parser" not in contract:
         fail("DSL reference must expose ANTLR-backed language quality evidence")
     template = (ROOT / "app" / "templates" / "appgen_dsl_reference.html").read_text()
-    if "AppGen DSL Reference" not in template or "Keyword Budget" not in template or "Reference JSON" not in template or "Language Quality JSON" not in template:
-        fail("DSL reference cockpit must expose keyword budget and JSON reference")
+    if "AppGen DSL Reference" not in template or "Keyword Budget" not in template or "Reference JSON" not in template or "Language Quality JSON" not in template or "Authoring Gate JSON" not in template:
+        fail("DSL reference cockpit must expose keyword budget, JSON reference, and authoring gate")
 
 
 def validate_view_experience_artifacts() -> None:
@@ -35025,6 +35089,9 @@ def test_generated_runtime_helpers():
     assert dsl_reference.dsl_lint(dsl_reference.dsl_example("full"))["ok"] is True
     assert dsl_reference.dsl_authoring_score(dsl_reference.dsl_example("full"))["format"] == "appgen.dsl-authoring-score.v1"
     assert dsl_reference.dsl_authoring_score(dsl_reference.dsl_example("full"))["ok"] is True
+    assert dsl_reference.dsl_authoring_release_gate()["format"] == "appgen.dsl-authoring-release-gate.v1"
+    assert dsl_reference.dsl_authoring_release_gate()["ok"] is True
+    assert dsl_reference.dsl_authoring_release_gate("table Book {{ title: string }}")["ok"] is False
     generated_dsl_fix = dsl_reference.apply_dsl_fixes("app Bad { targets: web, toaster } table Book { title: string ref Author.id }")
     assert generated_dsl_fix["format"] == "appgen.dsl-fix-result.v1"
     assert "replace_ref_with_arrow" in generated_dsl_fix["applied"]

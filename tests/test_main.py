@@ -27,6 +27,7 @@ from pyAppGen import __main__
 from pyAppGen.gen import generate_app_from_database
 from pyAppGen.gen import generate_app_from_schema
 from pyAppGen.dsl import apply_lint_fixes
+from pyAppGen.dsl import dsl_authoring_release_gate
 from pyAppGen.dsl import dsl_authoring_score
 from pyAppGen.dsl import dsl_code_actions
 from pyAppGen.dsl import dsl_completion_items
@@ -86,6 +87,23 @@ def test_dsl_linter_reports_semantic_feedback(runner: CliRunner, tmp_path) -> No
     formatted_score = dsl_authoring_score(format_dsl(source)["formatted"], source_name="inline")
     assert formatted_score["ok"] is True
     assert formatted_score["next_actions"] == ()
+    authoring_gate = dsl_authoring_release_gate(format_dsl(source)["formatted"], source_name="inline")
+    assert authoring_gate["format"] == "appgen.dsl-authoring-release-gate.v1"
+    assert authoring_gate["ok"] is True
+    assert {
+        "language_quality",
+        "keyword_budget",
+        "syntax_semantics",
+        "formatter_stability",
+        "outline_and_navigation",
+        "source_family_coverage",
+        "authoring_guidance",
+        "ide_contract",
+    } <= {gate["gate"] for gate in authoring_gate["gates"]}
+    assert {"dbml", "sql", "ponyorm", "database", "dsl"} <= {
+        item["kind"] for item in authoring_gate["source_families"]
+    }
+    assert dsl_authoring_release_gate("table Book { title: string }")["ok"] is False
     broken = lint_dsl("app Bad { targets: web, toaster } table Book { title: string }")
     assert broken["ok"] is False
     assert any("Unknown app targets" in error for error in broken["errors"])
@@ -308,6 +326,7 @@ def test_dsl_documentation_suite_exists() -> None:
     assert "Output Contract" in linter
     assert "structured quick fixes" in linter
     assert "language_quality" in linter
+    assert "dsl_authoring_release_gate" in linter
     assert "CI Gate" in linter
 
 
@@ -2287,6 +2306,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert "Keyword Budget" in (output_dir / "templates" / "appgen_dsl_reference.html").read_text()
     assert "Reference JSON" in (output_dir / "templates" / "appgen_dsl_reference.html").read_text()
     assert "Language Quality JSON" in (output_dir / "templates" / "appgen_dsl_reference.html").read_text()
+    assert "Authoring Gate JSON" in (output_dir / "templates" / "appgen_dsl_reference.html").read_text()
     assert "View Experience" in (output_dir / "templates" / "appgen_view_experience.html").read_text()
     assert "Presence JSON" in (output_dir / "templates" / "appgen_view_experience.html").read_text()
     assert "data-appgen-time-on-page" in (output_dir / "static" / "appgen-view-experience.js").read_text()
@@ -4567,6 +4587,9 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert dsl_reference.dsl_reference_check(
         {"app/dsl_reference.py", "app/templates/appgen_dsl_reference.html"}
     )["language_quality"]["ok"] is True
+    assert dsl_reference.dsl_reference_check(
+        {"app/dsl_reference.py", "app/templates/appgen_dsl_reference.html"}
+    )["authoring_release_gate"]["ok"] is True
     assert "[cardinality] relation metadata" in dsl_reference.dsl_keyword_budget()["keyword_free_syntax"]
     assert "entity/model/form/screen/workflow authoring aliases" in dsl_reference.dsl_keyword_budget()["keyword_free_syntax"]
     assert "hide/searchable modifier aliases" in dsl_reference.dsl_keyword_budget()["keyword_free_syntax"]
@@ -4574,6 +4597,13 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert "Reference" in {item["name"] for item in dsl_reference.dsl_construct_catalog()}
     assert "author_id: int -> Author.id [many-to-one]" in dsl_reference.dsl_example("relation")
     assert dsl_reference.dsl_lint(dsl_reference.dsl_example("full"))["ok"] is True
+    generated_authoring_gate = dsl_reference.dsl_authoring_release_gate()
+    assert generated_authoring_gate["format"] == "appgen.dsl-authoring-release-gate.v1"
+    assert generated_authoring_gate["ok"] is True
+    assert {"dbml", "sql", "ponyorm", "database", "dsl"} <= {
+        item["kind"] for item in generated_authoring_gate["source_families"]
+    }
+    assert dsl_reference.dsl_authoring_release_gate("table Book { title: string }")["ok"] is False
     assert dsl_reference.dsl_lint(
         "table Book { author_id: int -> Author.id [one2one] }"
     )["errors"]

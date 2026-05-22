@@ -26,6 +26,7 @@ from .schema import RelationSchema
 from .schema import RuleConditionSchema
 from .schema import RuleSchema
 from .schema import RoleSchema
+from .schema import SUPPORTED_SCHEMA_SOURCES
 from .schema import TableSchema
 from .schema import ViewSchema
 from .schema import ViewSectionSchema
@@ -312,6 +313,92 @@ def dsl_language_service(
         "formatting": format_dsl(source, source_name=source_name),
         "authoring_score": dsl_authoring_score(source, source_name=source_name),
         "language_quality": dsl_language_quality_contract(),
+    }
+
+
+def dsl_authoring_release_gate(
+    text: str,
+    *,
+    source_name: str | None = None,
+    expected_sources: Iterable[str] = ("dbml", "sql", "ponyorm", "database", "dsl"),
+) -> dict:
+    """Return release evidence for the full DSL authoring experience."""
+    source = text or ""
+    lint = lint_dsl(source, source_name=source_name)
+    outline = dsl_outline(source, source_name=source_name)
+    formatting = format_dsl(source, source_name=source_name)
+    score = dsl_authoring_score(source, source_name=source_name)
+    quality = dsl_language_quality_contract()
+    completions = dsl_completion_items(source=source)
+    actions = dsl_code_actions(source, source_name=source_name)
+    source_catalog = tuple(
+        {
+            "kind": item["kind"],
+            "entrypoint": item["entrypoint"],
+            "command": item["command"],
+        }
+        for item in SUPPORTED_SCHEMA_SOURCES
+    )
+    supported_sources = {item["kind"] for item in source_catalog}
+    required_sources = tuple(expected_sources)
+    summary = lint["summary"]
+    gates = (
+        {
+            "gate": "language_quality",
+            "ok": quality["ok"],
+            "evidence": quality["checks"],
+        },
+        {
+            "gate": "keyword_budget",
+            "ok": quality["budget"]["ok"] and quality["canonical_keyword_count"] <= quality["budget"]["limit"],
+            "evidence": quality["budget"],
+        },
+        {
+            "gate": "syntax_semantics",
+            "ok": lint["ok"],
+            "errors": lint["errors"],
+            "warnings": lint["warnings"],
+        },
+        {
+            "gate": "formatter_stability",
+            "ok": formatting["after"]["ok"] and source.strip() == formatting["formatted"].strip(),
+            "changed": formatting["changed"],
+        },
+        {
+            "gate": "outline_and_navigation",
+            "ok": outline.get("ok") is True and bool(outline.get("blocks")) and summary["tables"] > 0,
+            "block_count": len(outline.get("blocks", ())),
+        },
+        {
+            "gate": "source_family_coverage",
+            "ok": set(required_sources) <= supported_sources,
+            "required": required_sources,
+            "supported": tuple(item["kind"] for item in source_catalog),
+        },
+        {
+            "gate": "authoring_guidance",
+            "ok": score["ok"] and not score["next_actions"],
+            "score": score["score"],
+            "next_actions": score["next_actions"],
+        },
+        {
+            "gate": "ide_contract",
+            "ok": bool(completions) and all(action.get("format") == "appgen.dsl-code-action.v1" for action in actions),
+            "completion_count": len(completions),
+            "code_action_count": len(actions),
+        },
+    )
+    ok = all(gate["ok"] for gate in gates)
+    return {
+        "format": "appgen.dsl-authoring-release-gate.v1",
+        "source": source_name,
+        "language": "appgen-dsl",
+        "ok": ok,
+        "decision": "approved" if ok else "blocked",
+        "gates": gates,
+        "source_families": source_catalog,
+        "summary": summary,
+        "blocking_gaps": tuple(gate for gate in gates if not gate["ok"]),
     }
 
 

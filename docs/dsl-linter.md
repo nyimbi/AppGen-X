@@ -155,6 +155,12 @@ such as `entity`, `model`, `form`, `screen`, and `workflow`, which are accepted
 before ANTLR parsing but should be normalized to `table`, `view`, and `flow` in
 committed source.
 
+Use `pyAppGen.dsl.dsl_authoring_release_gate(source)` as the stronger release
+gate for the complete authoring loop. It combines language quality,
+syntax/semantic linting, formatter stability, IDE navigation, code actions,
+weighted authoring guidance, and source-family coverage for DBML, SQL, PonyORM,
+live databases, and DSL files.
+
 ## Checks
 
 The package-level linter uses the ANTLR parser and schema validator, so it

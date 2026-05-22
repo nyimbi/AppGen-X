@@ -73,6 +73,11 @@ Use `dsl_language_quality_contract()` or the generated
 `/dsl-reference/language-quality.json` endpoint when reviewing language changes.
 The contract proves that the ANTLR grammar, generated parser, keyword budget,
 keyword-free syntax, aliases, and learning path still fit the compact DSL goal.
+Use `dsl_authoring_release_gate()` or `/dsl-reference/authoring-gate.json` when
+reviewing release readiness for the whole authoring loop. The gate combines
+language quality, syntax/semantic linting, formatter stability, IDE navigation,
+code actions, authoring guidance, and source-family coverage for DBML, SQL,
+PonyORM, live databases, and DSL files.
 
 Use `required` for fields that must be entered. Use `search` on fields that
 should appear in generated search contracts. Use `hidden` for generated or
