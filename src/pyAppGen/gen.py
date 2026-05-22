@@ -6198,6 +6198,7 @@ def write_form_designer_template(output_dir):
       <a class="btn btn-default" href="{{ url_for('FormDesignerView.third_party_components_json') }}">Third-party Components JSON</a>
       <a class="btn btn-default" href="{{ url_for('FormDesignerView.component_usability_json') }}">Component Usability JSON</a>
       <a class="btn btn-default" href="{{ url_for('FormDesignerView.component_analogs_json') }}">Component Analogs JSON</a>
+      <a class="btn btn-default" href="{{ url_for('FormDesignerView.object_inspector_json') }}">Object Inspector JSON</a>
       <a class="btn btn-default" href="{{ url_for('FormDesignerView.pascal_runtime_json') }}">Pascal Runtime JSON</a>
       <a class="btn btn-default" href="{{ url_for('FormDesignerView.release_gate_json') }}">Release Gate JSON</a>
     </div>
@@ -25732,16 +25733,72 @@ def pascal_runtime_workbench(table_name=None):
 
 
 def object_inspector_contract(component_type="TextBox"):
-    """Return Object Inspector parity metadata for properties and events."""
-    sample = drop_component(next(iter(FORM_TABLES), "Form"), component_type if component_type in {{item["type"] for item in PALETTE}} else "TextBox")
+    """Return Object Inspector parity metadata for properties, events, and editors."""
+    palette_types = {{item["type"] for item in PALETTE}}
+    component_type = component_type if component_type in palette_types else "TextBox"
+    category = _component_category(component_type)
+    properties = _component_properties(component_type, category)
     return {{
         "format": "appgen.generated-object-inspector-contract.v1",
         "component": component_type,
         "tabs": ("Properties", "Events", "Data", "Actions"),
-        "property_editors": property_sheet(sample),
-        "event_editors": ("OnClick", "OnChange", "OnValidate", "OnCreate", "OnDestroy"),
-        "component_editors": ("align", "tab_order", "anchors", "constraints", "bindings"),
-        "custom_designer_hooks": ("paint_overlay", "verb_menu", "selection_handles", "smart_tags"),
+        "property_editors": tuple(_property_editor_descriptor(name, component_type, category) for name in properties),
+        "event_editors": tuple(
+            {{
+                "name": event,
+                "signature": f"{{event}}(sender, context)",
+                "handler_stub": f"{{_module_name(component_type)}}_{{_module_name(event)}}",
+                "supports_create": True,
+                "supports_navigate": True,
+                "supports_detach": True,
+            }}
+            for event in _component_events(component_type, category)
+        ),
+        "component_editors": tuple(
+            {{
+                "verb": verb,
+                "scope": component_type,
+                "side_effects": (),
+                "requires_selection": verb not in ("open_bindings", "edit_style"),
+            }}
+            for verb in ("edit_items", "edit_columns", "open_bindings", "edit_style", "reset_layout", "align_to_grid")
+        ),
+        "custom_designers": tuple(
+            {{
+                "hook": hook,
+                "surface": "form-designer",
+                "supports_multi_select": hook in ("selection_handles", "alignment_guides", "verb_menu"),
+            }}
+            for hook in ("paint_overlay", "verb_menu", "selection_handles", "smart_tags", "alignment_guides", "inline_preview")
+        ),
+        "state": {{
+            "sort_modes": ("categorized", "alphabetical"),
+            "filters": ("all", "modified", "favorites", "data_bound", "events"),
+            "persistence": "per-user-per-project",
+        }},
+    }}
+
+
+def object_inspector_workbench():
+    """Prove property, event, component-editor, and custom-designer coverage."""
+    sample_components = ("TextBox", "Grid", "Rectangle", "StyleBook", "GestureManager", "Viewport3D", "DatabaseConnection")
+    contracts = tuple(object_inspector_contract(component) for component in sample_components)
+    observed_editor_types = {{editor["editor"] for contract in contracts for editor in contract["property_editors"]}}
+    checks = (
+        {{"id": "property_editor_types", "ok": {{"string", "boolean", "number"}} <= observed_editor_types and bool({{"collection", "choice", "binding", "color", "resource"}} & observed_editor_types), "evidence": tuple(sorted(observed_editor_types))}},
+        {{"id": "event_editor_lifecycle", "ok": all(editor["supports_create"] and editor["supports_navigate"] and editor["supports_detach"] for contract in contracts for editor in contract["event_editors"]), "evidence": tuple((contract["component"], tuple(editor["name"] for editor in contract["event_editors"])) for contract in contracts)}},
+        {{"id": "component_editor_verbs", "ok": all(contract["component_editors"] for contract in contracts) and {{"open_bindings", "align_to_grid"}} <= {{editor["verb"] for contract in contracts for editor in contract["component_editors"]}}, "evidence": tuple((contract["component"], tuple(editor["verb"] for editor in contract["component_editors"])) for contract in contracts)}},
+        {{"id": "custom_designer_hooks", "ok": all(contract["custom_designers"] for contract in contracts) and {{"paint_overlay", "selection_handles", "inline_preview"}} <= {{hook["hook"] for contract in contracts for hook in contract["custom_designers"]}}, "evidence": tuple((contract["component"], tuple(hook["hook"] for hook in contract["custom_designers"])) for contract in contracts)}},
+        {{"id": "inspector_state", "ok": all({{"categorized", "alphabetical"}} <= set(contract["state"]["sort_modes"]) for contract in contracts), "evidence": tuple((contract["component"], contract["state"]) for contract in contracts)}},
+    )
+    ok = all(check["ok"] for check in checks)
+    return {{
+        "format": "appgen.generated-object-inspector-workbench.v1",
+        "ok": ok,
+        "decision": "approved" if ok else "blocked",
+        "contracts": contracts,
+        "checks": checks,
+        "blocking_gaps": tuple(check for check in checks if not check["ok"]),
     }}
 
 
@@ -26031,6 +26088,29 @@ def _component_package(package_id):
         if package["id"] == package_id:
             return package
     raise KeyError(f"Unknown component package: {{package_id}}")
+
+
+def _property_editor_descriptor(name, component_type, category):
+    editor = _property_editor_type(name)
+    if name in ("items", "columns", "tabs", "actions", "series", "fields"):
+        editor = "collection"
+    elif name in ("data_source", "dataset", "bindings", "target_table"):
+        editor = "binding"
+    elif name in ("fill", "stroke", "color", "start_color", "end_color"):
+        editor = "color"
+    elif name in ("source", "resources", "theme", "style_books", "mesh", "material"):
+        editor = "resource"
+    elif name in ("align", "direction", "orientation_mode", "light_type", "effect", "easing"):
+        editor = "choice"
+    return {{
+        "name": name,
+        "editor": editor,
+        "component": component_type,
+        "category": category,
+        "default": _default_property_value(name, component_type, category),
+        "supports_reset": True,
+        "supports_binding": category in ("input", "choice", "calendar", "data", "data_access", "media", "graphics"),
+    }}
 
 
 def _local_component_paths():
@@ -26357,14 +26437,14 @@ def rad_parity_workbench(existing_paths=()):
         {{"id": "built_in_component_usability", "ok": component_usability_workbench()["ok"], "evidence": component_usability_workbench()}},
         {{"id": "pascal_runtime_and_dfm_streaming", "ok": "text-dfm" in dfm_streaming_contract()["stream_formats"] and pascal_runtime_workbench()["ok"], "evidence": {{"streaming": dfm_streaming_contract(), "runtime": pascal_runtime_workbench()}}}},
         {{"id": "pascal_runtime_workbench", "ok": pascal_runtime_workbench()["ok"], "evidence": pascal_runtime_workbench()}},
-        {{"id": "object_inspector_parity", "ok": {{"Properties", "Events"}} <= set(object_inspector_contract()["tabs"]), "evidence": object_inspector_contract()}},
+        {{"id": "object_inspector_parity", "ok": {{"Properties", "Events"}} <= set(object_inspector_contract()["tabs"]) and object_inspector_workbench()["ok"], "evidence": {{"contract": object_inspector_contract(), "workbench": object_inspector_workbench()}}}},
         {{"id": "livebindings_designer", "ok": "control_to_field" in livebindings_contract()["binding_edges"], "evidence": livebindings_contract()}},
         {{"id": "firedac_datasnap_radserver_interbase_tooling", "ok": {{"FireDAC", "DataSnap", "RAD Server", "InterBase"}} <= set(rad_data_tooling_contract()["tooling"]), "evidence": rad_data_tooling_contract()}},
         {{"id": "design_time_package_installation", "ok": install_plan["ok"] and install_plan["requires_review"], "evidence": install_plan}},
         {{"id": "mobile_native_device_api_coverage", "ok": {{"camera", "location", "push_notifications", "secure_storage"}} <= set(mobile_native_api_contract()["apis"]), "evidence": mobile_native_api_contract()}},
         {{"id": "cross_target_animation_effects_3d_depth", "ok": bool(cross_target_visual_depth_contract()["animation"]) and bool(cross_target_visual_depth_contract()["three_d"]), "evidence": cross_target_visual_depth_contract()}},
         {{"id": "third_party_component_ecosystem", "ok": install_plan["ok"] and {{"grid", "reports", "charts", "database", "network", "animation"}} <= categories and package_workbench["ok"], "evidence": {{"packages": install_plan["packages"], "categories": tuple(sorted(categories)), "package_workbench": package_workbench}}}},
-        {{"id": "route_surface", "ok": not missing, "evidence": {{"routes": ("/form-designer/rad-parity.json", "/form-designer/third-party-components.json", "/form-designer/component-usability.json", "/form-designer/component-analogs.json", "/form-designer/pascal-runtime.json")}}}},
+        {{"id": "route_surface", "ok": not missing, "evidence": {{"routes": ("/form-designer/rad-parity.json", "/form-designer/third-party-components.json", "/form-designer/component-usability.json", "/form-designer/component-analogs.json", "/form-designer/object-inspector.json", "/form-designer/pascal-runtime.json")}}}},
     )
     ok = all(check["ok"] for check in checks)
     return {{
@@ -26552,7 +26632,7 @@ def form_designer_workbench(existing_paths=()):
         {{
             "id": "route_surface",
             "ok": not missing,
-            "evidence": {{"routes": ("/form-designer/", "/form-designer/forms.json", "/form-designer/drop", "/form-designer/workbench.json", "/form-designer/release-gate.json", "/form-designer/rad-parity.json", "/form-designer/third-party-components.json", "/form-designer/component-usability.json", "/form-designer/component-analogs.json", "/form-designer/pascal-runtime.json")}},
+            "evidence": {{"routes": ("/form-designer/", "/form-designer/forms.json", "/form-designer/drop", "/form-designer/workbench.json", "/form-designer/release-gate.json", "/form-designer/rad-parity.json", "/form-designer/third-party-components.json", "/form-designer/component-usability.json", "/form-designer/component-analogs.json", "/form-designer/object-inspector.json", "/form-designer/pascal-runtime.json")}},
         }},
         {{
             "id": "rad_parity_workbench",
@@ -26607,6 +26687,10 @@ class FormDesignerView(BaseView):
     @expose("/component-analogs.json")
     def component_analogs_json(self):
         return jsonify(component_analog_workbench())
+
+    @expose("/object-inspector.json")
+    def object_inspector_json(self):
+        return jsonify(object_inspector_workbench())
 
     @expose("/pascal-runtime.json")
     def pascal_runtime_json(self):
@@ -43912,6 +43996,7 @@ def validate_form_designer_artifacts() -> None:
         or '@expose("/third-party-components.json")' not in contract
         or '@expose("/component-usability.json")' not in contract
         or '@expose("/component-analogs.json")' not in contract
+        or '@expose("/object-inspector.json")' not in contract
         or '@expose("/pascal-runtime.json")' not in contract
     ):
         fail("form designer must expose RAD parity and third-party component ecosystem contracts")
@@ -43920,7 +44005,7 @@ def validate_form_designer_artifacts() -> None:
         fail("form designer template must expose drag-and-drop controls")
     if "getBoundingClientRect" not in template or "Inspector" not in template or "Release Gate JSON" not in template:
         fail("form designer template must capture drop coordinates, property inspector, and release gate")
-    if "RAD Parity JSON" not in template or "Third-party Components JSON" not in template or "Component Usability JSON" not in template or "Component Analogs JSON" not in template or "Pascal Runtime JSON" not in template:
+    if "RAD Parity JSON" not in template or "Third-party Components JSON" not in template or "Component Usability JSON" not in template or "Component Analogs JSON" not in template or "Object Inspector JSON" not in template or "Pascal Runtime JSON" not in template:
         fail("form designer template must expose RAD parity and third-party component routes")
 
 

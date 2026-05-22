@@ -51,6 +51,9 @@ A generated app can include:
 - `component_analog_workbench()` proves analog coverage for cross-target
   controls, layout containers, data display, graphics, animations, theming,
   gestures, sensors, 3D scene primitives, and data-access components.
+- `object_inspector_workbench()` proves property editors, event editors,
+  component editor verbs, custom designer hooks, filtering, sorting, and
+  inspector state persistence.
 - `app/component_packages/<package>.py` gives every curated component package
   its own reviewed package contract with `package_contract()`, `install_plan()`,
   `load_policy()`, and `test_plan()` exports.

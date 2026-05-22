@@ -200,6 +200,9 @@ Visual design is split into two related capabilities:
 - `component_analog_workbench()` sits above the raw palette and proves requested
   native-style analog coverage across controls, layouts, graphics, animation,
   theming, gestures, sensors, 3D primitives, and data access.
+- `object_inspector_workbench()` validates the design-time metadata layer:
+  property editors, event handler lifecycle, component verbs, custom designer
+  hooks, filtering/sorting modes, and persisted inspector state.
 - `visual_modeling.py` handles database graph nodes, relationships, ERD export,
   DBML/SQL/PonyORM export, schema proposals, and migration preview.
 - `branding.py` handles brand/theme contracts, splash-screen configuration,

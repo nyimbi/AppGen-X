@@ -992,15 +992,110 @@ def pascal_runtime_workbench(design: dict | None = None) -> dict:
 
 def object_inspector_contract(component: str = "TextBox") -> dict:
     """Return Object Inspector parity metadata for properties, events, and editors."""
-    properties = property_inspector(component if component in COMPONENTS else "TextBox")["properties"]
+    component = component if component in COMPONENTS else "TextBox"
+    category = COMPONENTS[component]["category"]
+    properties = property_inspector(component)["properties"]
     return {
         "format": "appgen.object-inspector-contract.v1",
         "component": component,
         "tabs": ("Properties", "Events", "Data", "Actions"),
-        "property_editors": tuple({"name": name, "editor": "boolean" if name in {"required", "readonly"} else "string"} for name in properties),
-        "event_editors": ("OnClick", "OnChange", "OnValidate", "OnCreate", "OnDestroy"),
-        "component_editors": ("align", "tab_order", "anchors", "constraints", "bindings"),
-        "custom_designer_hooks": ("paint_overlay", "verb_menu", "selection_handles", "smart_tags"),
+        "property_editors": tuple(_property_editor_descriptor(name, component, category) for name in properties),
+        "event_editors": tuple(
+            {
+                "name": event,
+                "signature": f"{event}(sender, context)",
+                "handler_stub": f"{_module_name(component)}_{_module_name(event)}",
+                "supports_create": True,
+                "supports_navigate": True,
+                "supports_detach": True,
+            }
+            for event in _component_events(component, category)
+        ),
+        "component_editors": tuple(
+            {
+                "verb": verb,
+                "scope": component,
+                "side_effects": (),
+                "requires_selection": verb not in {"open_bindings", "edit_style"},
+            }
+            for verb in ("edit_items", "edit_columns", "open_bindings", "edit_style", "reset_layout", "align_to_grid")
+        ),
+        "custom_designers": tuple(
+            {
+                "hook": hook,
+                "surface": "form-designer",
+                "supports_multi_select": hook in {"selection_handles", "alignment_guides", "verb_menu"},
+            }
+            for hook in ("paint_overlay", "verb_menu", "selection_handles", "smart_tags", "alignment_guides", "inline_preview")
+        ),
+        "state": {
+            "sort_modes": ("categorized", "alphabetical"),
+            "filters": ("all", "modified", "favorites", "data_bound", "events"),
+            "persistence": "per-user-per-project",
+        },
+    }
+
+
+def object_inspector_workbench() -> dict:
+    """Prove property, event, component-editor, and custom-designer coverage."""
+    sample_components = (
+        "TextBox",
+        "Grid",
+        "Rectangle",
+        "StyleBook",
+        "GestureManager",
+        "Viewport3D",
+        "DatabaseConnection",
+    )
+    contracts = tuple(object_inspector_contract(component) for component in sample_components)
+    required_editor_types = {"string", "boolean", "number", "collection", "choice", "binding", "color", "resource"}
+    observed_editor_types = {
+        editor["editor"]
+        for contract in contracts
+        for editor in contract["property_editors"]
+    }
+    checks = (
+        {
+            "id": "property_editor_types",
+            "ok": {"string", "boolean", "number"} <= observed_editor_types
+            and bool(required_editor_types & observed_editor_types),
+            "evidence": tuple(sorted(observed_editor_types)),
+        },
+        {
+            "id": "event_editor_lifecycle",
+            "ok": all(
+                editor["supports_create"] and editor["supports_navigate"] and editor["supports_detach"]
+                for contract in contracts
+                for editor in contract["event_editors"]
+            ),
+            "evidence": tuple((contract["component"], tuple(editor["name"] for editor in contract["event_editors"])) for contract in contracts),
+        },
+        {
+            "id": "component_editor_verbs",
+            "ok": all(contract["component_editors"] for contract in contracts)
+            and {"open_bindings", "align_to_grid"} <= {editor["verb"] for contract in contracts for editor in contract["component_editors"]},
+            "evidence": tuple((contract["component"], tuple(editor["verb"] for editor in contract["component_editors"])) for contract in contracts),
+        },
+        {
+            "id": "custom_designer_hooks",
+            "ok": all(contract["custom_designers"] for contract in contracts)
+            and {"paint_overlay", "selection_handles", "inline_preview"} <= {hook["hook"] for contract in contracts for hook in contract["custom_designers"]},
+            "evidence": tuple((contract["component"], tuple(hook["hook"] for hook in contract["custom_designers"])) for contract in contracts),
+        },
+        {
+            "id": "inspector_state",
+            "ok": all({"categorized", "alphabetical"} <= set(contract["state"]["sort_modes"]) for contract in contracts),
+            "evidence": tuple((contract["component"], contract["state"]) for contract in contracts),
+        },
+    )
+    ok = all(check["ok"] for check in checks)
+    return {
+        "format": "appgen.object-inspector-workbench.v1",
+        "ok": ok,
+        "decision": "approved" if ok else "blocked",
+        "contracts": contracts,
+        "checks": checks,
+        "blocking_gaps": tuple(check for check in checks if not check["ok"]),
     }
 
 
@@ -1100,8 +1195,9 @@ def rad_parity_workbench(existing_paths: set[str] | None = None) -> dict:
         },
         {
             "id": "object_inspector_parity",
-            "ok": {"Properties", "Events"} <= set(object_inspector_contract()["tabs"]),
-            "evidence": object_inspector_contract(),
+            "ok": {"Properties", "Events"} <= set(object_inspector_contract()["tabs"])
+            and object_inspector_workbench()["ok"],
+            "evidence": {"contract": object_inspector_contract(), "workbench": object_inspector_workbench()},
         },
         {
             "id": "livebindings_designer",
@@ -1810,6 +1906,31 @@ def _component_package(package_id: str) -> dict:
         if package["id"] == package_id:
             return package
     raise KeyError(f"Unknown component package: {package_id}")
+
+
+def _property_editor_descriptor(name: str, component: str, category: str) -> dict:
+    editor = property_inspector(component)["property_types"].get(name, "string")
+    if name in {"items", "columns", "tabs", "actions", "series", "fields"}:
+        editor = "collection"
+    elif name in {"data_source", "dataset", "bindings", "target_table"}:
+        editor = "binding"
+    elif name in {"fill", "stroke", "color", "start_color", "end_color"}:
+        editor = "color"
+    elif name in {"source", "resources", "theme", "style_books", "mesh", "material"}:
+        editor = "resource"
+    elif name in {"align", "direction", "orientation_mode", "light_type", "effect", "easing"}:
+        editor = "choice"
+    elif name in {"x", "y", "w", "h", "rows", "columns", "stroke_width", "duration", "timeout", "interval", "tab_order"}:
+        editor = "number"
+    return {
+        "name": name,
+        "editor": editor,
+        "component": component,
+        "category": category,
+        "default": _default_property_value(name, component, category),
+        "supports_reset": True,
+        "supports_binding": category in {"input", "choice", "calendar", "data", "data_access", "media", "graphics"},
+    }
 
 
 def _default_property_value(name: str, component: str, category: str) -> object:

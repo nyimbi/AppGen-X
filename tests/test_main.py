@@ -89,6 +89,8 @@ from pyAppGen.form_designer import form_design as package_form_design
 from pyAppGen.form_designer import form_design_to_dfm
 from pyAppGen.form_designer import form_designer_generation_smoke_audit
 from pyAppGen.form_designer import form_designer_release_audit
+from pyAppGen.form_designer import object_inspector_contract
+from pyAppGen.form_designer import object_inspector_workbench
 from pyAppGen.form_designer import rad_parity_workbench
 from pyAppGen.form_designer import palette_categories
 from pyAppGen.form_designer import parse_dfm_text
@@ -792,6 +794,22 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     assert analog_workbench["format"] == "appgen.component-analog-workbench.v1"
     assert analog_workbench["ok"] is True
     assert {"layouts", "graphics", "sensors", "three-d", "data-access"} <= set(analog_workbench["groups"])
+    inspector_contract = object_inspector_contract("Grid")
+    assert inspector_contract["format"] == "appgen.object-inspector-contract.v1"
+    assert {"Properties", "Events", "Data", "Actions"} <= set(inspector_contract["tabs"])
+    assert inspector_contract["property_editors"]
+    assert all(editor["supports_create"] for editor in inspector_contract["event_editors"])
+    assert {"open_bindings", "align_to_grid"} <= {editor["verb"] for editor in inspector_contract["component_editors"]}
+    inspector_workbench = object_inspector_workbench()
+    assert inspector_workbench["format"] == "appgen.object-inspector-workbench.v1"
+    assert inspector_workbench["ok"] is True
+    assert {
+        "property_editor_types",
+        "event_editor_lifecycle",
+        "component_editor_verbs",
+        "custom_designer_hooks",
+        "inspector_state",
+    } == {check["id"] for check in inspector_workbench["checks"]}
     third_party_registry = third_party_component_registry()
     assert {"devexpress-native", "tms-fnc", "fastreport", "teechart", "indy"} <= {
         item["id"] for item in third_party_registry
@@ -8594,6 +8612,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert "Third-party Components JSON" in (output_dir / "templates" / "appgen_form_designer.html").read_text()
     assert "Component Usability JSON" in (output_dir / "templates" / "appgen_form_designer.html").read_text()
     assert "Component Analogs JSON" in (output_dir / "templates" / "appgen_form_designer.html").read_text()
+    assert "Object Inspector JSON" in (output_dir / "templates" / "appgen_form_designer.html").read_text()
     assert "Pascal Runtime JSON" in (output_dir / "templates" / "appgen_form_designer.html").read_text()
     workbench = form_designer.form_designer_workbench(
         {"app/form_designer.py", "app/templates/appgen_form_designer.html"}
@@ -8626,6 +8645,9 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert "/form-designer/component-analogs.json" in next(
         check["evidence"]["routes"] for check in workbench["checks"] if check["id"] == "route_surface"
     )
+    assert "/form-designer/object-inspector.json" in next(
+        check["evidence"]["routes"] for check in workbench["checks"] if check["id"] == "route_surface"
+    )
     assert "/form-designer/pascal-runtime.json" in next(
         check["evidence"]["routes"] for check in workbench["checks"] if check["id"] == "route_surface"
     )
@@ -8653,6 +8675,12 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert generated_analogs["ok"] is True
     assert {"TButton", "TEdit", "TStyleBook", "TGesture", "DBClient"} <= {
         item["source"] for item in generated_analogs["matrix"]
+    }
+    generated_inspector = form_designer.object_inspector_workbench()
+    assert generated_inspector["format"] == "appgen.generated-object-inspector-workbench.v1"
+    assert generated_inspector["ok"] is True
+    assert {"custom_designer_hooks", "component_editor_verbs"} <= {
+        check["id"] for check in generated_inspector["checks"]
     }
     generated_usability = form_designer.component_usability_workbench()
     assert generated_usability["format"] == "appgen.generated-component-usability-workbench.v1"
