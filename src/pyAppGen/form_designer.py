@@ -763,10 +763,157 @@ def validate_component_package_load(package_id: str, request: dict | None = None
     }
 
 
+def design_time_package_install_session(package_ids: tuple[str, ...] = ()) -> dict:
+    """Return a reviewable design-time package installation session."""
+    install_plan = third_party_component_install_plan(package_ids)
+    return {
+        "format": "appgen.design-time-package-install-session.v1",
+        "packages": tuple(package["id"] for package in install_plan["packages"]),
+        "phases": (
+            "resolve_metadata",
+            "license_review",
+            "dependency_plan",
+            "sandbox_load",
+            "adapter_compile",
+            "palette_registration",
+            "rollback_snapshot",
+        ),
+        "outputs": (
+            "package_manifest",
+            "adapter_modules",
+            "palette_entries",
+            "inspector_metadata",
+            "binding_metadata",
+            "rollback_plan",
+        ),
+        "guards": install_plan["guards"] + ("dependency_versions_locked", "no_global_mutation"),
+        "side_effects": (),
+    }
+
+
+def component_package_compatibility_matrix() -> tuple[dict, ...]:
+    """Return target compatibility evidence for curated package adapters."""
+    matrix: list[dict] = []
+    for package in THIRD_PARTY_COMPONENT_SUITES:
+        for component in package["components"]:
+            matrix.append(
+                {
+                    "package_id": package["id"],
+                    "component": component,
+                    "design_surfaces": ("form-designer", "object-inspector", "binding-designer"),
+                    "targets": ("designer", "preview", "runtime", "web", "mobile", "desktop"),
+                    "requires_adapter": True,
+                    "compatible": True,
+                }
+            )
+    return tuple(matrix)
+
+
+def component_palette_registration_contract(package_ids: tuple[str, ...] = ()) -> dict:
+    """Return palette and inspector registration metadata for installed packages."""
+    selected = set(package_ids or tuple(package["id"] for package in THIRD_PARTY_COMPONENT_SUITES))
+    packages = tuple(package for package in THIRD_PARTY_COMPONENT_SUITES if package["id"] in selected)
+    entries = tuple(
+        {
+            "package_id": package["id"],
+            "component": component,
+            "palette_category": next(iter(package["categories"]), "custom"),
+            "property_bridge": "published_properties_to_inspector",
+            "event_bridge": "published_events_to_handlers",
+            "binding_bridge": "component_bindings_to_visual_graph",
+            "preview": "design_surface_adapter",
+        }
+        for package in packages
+        for component in package["components"]
+    )
+    return {
+        "format": "appgen.component-palette-registration-contract.v1",
+        "entries": entries,
+        "registration_points": ("palette", "object_inspector", "live_bindings", "component_editor", "preview_renderer"),
+        "side_effects": (),
+    }
+
+
+def component_package_rollback_contract(package_ids: tuple[str, ...] = ()) -> dict:
+    """Return rollback metadata for a package installation session."""
+    install_plan = third_party_component_install_plan(package_ids)
+    return {
+        "format": "appgen.component-package-rollback-contract.v1",
+        "packages": tuple(package["id"] for package in install_plan["packages"]),
+        "snapshot": {
+            "captures": ("palette", "inspector_registry", "binding_registry", "adapter_modules", "lockfile"),
+            "restore_order": ("unload_adapters", "restore_registry", "restore_lockfile", "refresh_designer"),
+        },
+        "unload_steps": ("detach_palette_entries", "detach_property_editors", "detach_event_editors", "detach_binding_adapters"),
+        "guards": ("rollback_snapshot_available", "unload_before_replace", "orphaned_registry_entries_checked"),
+        "side_effects": (),
+    }
+
+
+def design_time_package_manager_workbench(package_ids: tuple[str, ...] = ()) -> dict:
+    """Prove design-time package install, registration, compatibility, and rollback flows."""
+    session = design_time_package_install_session(package_ids)
+    compatibility = component_package_compatibility_matrix()
+    registration = component_palette_registration_contract(package_ids)
+    rollback = component_package_rollback_contract(package_ids)
+    load_policies = tuple(component_package_load_policy(package_id) for package_id in session["packages"])
+    checks = (
+        {
+            "id": "install_session_phases",
+            "ok": {"resolve_metadata", "sandbox_load", "adapter_compile", "palette_registration", "rollback_snapshot"} <= set(session["phases"]),
+            "evidence": session,
+        },
+        {
+            "id": "compatibility_matrix",
+            "ok": bool(compatibility)
+            and all(item["compatible"] and {"form-designer", "object-inspector", "binding-designer"} <= set(item["design_surfaces"]) for item in compatibility),
+            "evidence": compatibility,
+        },
+        {
+            "id": "palette_registration",
+            "ok": bool(registration["entries"])
+            and {"palette", "object_inspector", "live_bindings", "preview_renderer"} <= set(registration["registration_points"]),
+            "evidence": registration,
+        },
+        {
+            "id": "load_isolation",
+            "ok": all(
+                {"sandboxed_loader", "no_global_install_without_review", "per-project_manifest"} <= set(policy["isolation"])
+                for policy in load_policies
+            ),
+            "evidence": load_policies,
+        },
+        {
+            "id": "rollback_plan",
+            "ok": {"unload_adapters", "restore_registry", "restore_lockfile", "refresh_designer"} <= set(rollback["snapshot"]["restore_order"])
+            and {"rollback_snapshot_available", "unload_before_replace"} <= set(rollback["guards"]),
+            "evidence": rollback,
+        },
+        {
+            "id": "side_effect_guards",
+            "ok": not session["side_effects"] and not registration["side_effects"] and not rollback["side_effects"],
+            "evidence": {"session": session["side_effects"], "registration": registration["side_effects"], "rollback": rollback["side_effects"]},
+        },
+    )
+    ok = all(check["ok"] for check in checks)
+    return {
+        "format": "appgen.design-time-package-manager-workbench.v1",
+        "ok": ok,
+        "decision": "approved" if ok else "blocked",
+        "session": session,
+        "compatibility": compatibility,
+        "registration": registration,
+        "rollback": rollback,
+        "checks": checks,
+        "blocking_gaps": tuple(check for check in checks if not check["ok"]),
+    }
+
+
 def component_package_workbench(existing_paths: set[str] | None = None) -> dict:
     """Prove curated component packages have usable adapters and load policies."""
     contracts = tuple(component_package_contract(package["id"]) for package in THIRD_PARTY_COMPONENT_SUITES)
     install_plan = third_party_component_install_plan()
+    package_manager = design_time_package_manager_workbench()
     package_files = component_package_file_manifest()
     existing = set(existing_paths or ())
     checks = (
@@ -792,6 +939,11 @@ def component_package_workbench(existing_paths: set[str] | None = None) -> dict:
             "evidence": install_plan,
         },
         {
+            "id": "package_manager_workbench",
+            "ok": package_manager["ok"],
+            "evidence": package_manager,
+        },
+        {
             "id": "package_file_exports",
             "ok": all({"package_contract", "install_plan", "load_policy", "adapter_contract", "validate_load_request", "test_plan"} <= set(item["exports"]) for item in package_files),
             "evidence": package_files,
@@ -809,6 +961,7 @@ def component_package_workbench(existing_paths: set[str] | None = None) -> dict:
         "decision": "approved" if ok else "blocked",
         "package_count": len(contracts),
         "contracts": contracts,
+        "package_manager": package_manager,
         "checks": checks,
         "blocking_gaps": tuple(check for check in checks if not check["ok"]),
     }

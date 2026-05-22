@@ -82,6 +82,7 @@ from pyAppGen.form_designer import component_package_workbench
 from pyAppGen.form_designer import component_palette
 from pyAppGen.form_designer import component_usability_workbench
 from pyAppGen.form_designer import cross_target_visual_depth_workbench
+from pyAppGen.form_designer import design_time_package_manager_workbench
 from pyAppGen.form_designer import detect_overlaps
 from pyAppGen.form_designer import dfm_round_trip
 from pyAppGen.form_designer import field_component_matrix
@@ -886,6 +887,18 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     package_workbench = component_package_workbench()
     assert package_workbench["format"] == "appgen.component-package-workbench.v1"
     assert package_workbench["ok"] is True
+    assert "package_manager_workbench" in {check["id"] for check in package_workbench["checks"]}
+    package_manager = design_time_package_manager_workbench()
+    assert package_manager["format"] == "appgen.design-time-package-manager-workbench.v1"
+    assert package_manager["ok"] is True
+    assert {
+        "install_session_phases",
+        "compatibility_matrix",
+        "palette_registration",
+        "load_isolation",
+        "rollback_plan",
+        "side_effect_guards",
+    } == {check["id"] for check in package_manager["checks"]}
     assert third_party_component_import_contract(
         {
             "id": "custom-suite",
@@ -8735,6 +8748,12 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     }
     assert form_designer.third_party_component_install_plan()["requires_review"] is True
     assert form_designer.third_party_component_install_plan()["side_effects"] == ()
+    generated_package_manager = form_designer.design_time_package_manager_workbench()
+    assert generated_package_manager["format"] == "appgen.generated-design-time-package-manager-workbench.v1"
+    assert generated_package_manager["ok"] is True
+    assert {"install_session_phases", "palette_registration", "rollback_plan"} <= {
+        check["id"] for check in generated_package_manager["checks"]
+    }
     assert form_designer.dfm_streaming_contract()["stream_formats"][0] == "text-dfm"
     assert form_designer.dfm_round_trip("Book")["ok"] is True
     generated_runtime = form_designer.pascal_runtime_workbench("Book")

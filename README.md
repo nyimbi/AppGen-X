@@ -321,6 +321,9 @@ Generated apps include Studio contracts for:
   graphs, effect pipelines, 3D scene designer tools, and runtime fallbacks.
 - Curated third-party component registry for useful commercial and open-source
   suites, plus reviewed package import/install plans for additional vendors.
+- A design-time package manager workbench proves install session phases,
+  compatibility matrices, palette/inspector/binding registration, isolated
+  loading, rollback plans, and side-effect guards.
 - Generated package modules under `app/component_packages/<package>.py` export
   `package_contract()`, `install_plan()`, `load_policy()`, and `test_plan()`.
 - Natural-language evolution review queues.

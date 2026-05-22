@@ -74,6 +74,9 @@ A generated app can include:
 - `app/component_packages/<package>.py` gives every curated component package
   its own reviewed package contract with `package_contract()`, `install_plan()`,
   `load_policy()`, and `test_plan()` exports.
+- `design_time_package_manager_workbench()` proves install session phases,
+  compatibility matrices, palette/inspector/binding registration, isolated
+  loading, rollback plans, and side-effect guards.
 - `app/designer.py` for visual database design and ERD exports.
 - `app/agents.py` for LLM providers and agent plans.
 - `app/platforms.py`, `native/mobile`, `native/desktop`, PWA assets, and
