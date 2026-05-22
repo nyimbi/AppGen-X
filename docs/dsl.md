@@ -31,8 +31,11 @@ are ignored by the parser and do not affect generated artifacts.
 The DSL authoring release gate proves the language remains learnable and
 operational: it checks the ANTLR parser, keyword budget, syntax/semantic
 linting, formatter stability, IDE navigation, code actions, authoring guidance,
-and source-family coverage for DBML, SQL, PonyORM, live database introspection,
-and DSL files.
+language ergonomics, and source-family coverage for DBML, SQL, PonyORM, live
+database introspection, and DSL files. `dsl_language_ergonomics_contract()`
+proves friendly aliases, keyword-free expressiveness, quick fixes,
+deterministic formatting, the progressive learning path, and multi-source
+guidance before the authoring gate can pass.
 `dsl_antlr_integrity_report()` additionally proves the canonical grammar and
 generated lexer/parser metadata are synchronized, including token names, parser
 rules, required DSL constructs, and compact keyword literals.
@@ -516,8 +519,9 @@ apps include:
 - `dsl_reference.py` and `appgen_dsl_reference.html` with generated DSL
   keyword-budget checks, compact construct cards, examples, a learning path,
   lightweight lint feedback, structured quick fixes, deterministic formatting,
-  fix-result previews, format-result previews, and authoring-score guidance so
-  every generated app carries an approachable reference for the ANTLR language.
+  fix-result previews, format-result previews, language-ergonomics evidence,
+  and authoring-score guidance so every generated app carries an approachable
+  reference for the ANTLR language.
 - `view_experience.py`, `appgen_view_experience.html`, and
   `appgen-view-experience.js` with generated base-view contracts for offline
   field state, active viewers on the same page, chatbot/help actions, access log

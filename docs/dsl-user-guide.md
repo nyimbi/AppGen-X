@@ -73,11 +73,16 @@ Use `dsl_language_quality_contract()` or the generated
 `/dsl-reference/language-quality.json` endpoint when reviewing language changes.
 The contract proves that the ANTLR grammar, generated parser, keyword budget,
 keyword-free syntax, aliases, and learning path still fit the compact DSL goal.
+Use `dsl_language_ergonomics_contract()` or
+`/dsl-reference/language-ergonomics.json` when reviewing whether the language
+is still pleasant to author. It proves aliases, keyword-free syntax, legacy-ref
+quick fixes, formatter stability, learning path, completion-ready samples, and
+DBML/SQL/PonyORM/database/DSL source guidance.
 Use `dsl_authoring_release_gate()` or `/dsl-reference/authoring-gate.json` when
 reviewing release readiness for the whole authoring loop. The gate combines
 language quality, syntax/semantic linting, formatter stability, IDE navigation,
-code actions, authoring guidance, and source-family coverage for DBML, SQL,
-PonyORM, live databases, and DSL files.
+code actions, authoring guidance, language ergonomics, and source-family
+coverage for DBML, SQL, PonyORM, live databases, and DSL files.
 Use `dsl_antlr_integrity_report()` when changing the grammar: it proves the
 canonical grammar, generated lexer, generated parser, token names, parser rules,
 and compact keyword literals are synchronized before the language-service

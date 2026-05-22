@@ -5852,6 +5852,7 @@ def write_dsl_reference_template(output_dir):
     <div>
       <a class="btn btn-default" href="{{ url_for('DSLReferenceView.reference_json') }}">Reference JSON</a>
       <a class="btn btn-default" href="{{ url_for('DSLReferenceView.language_quality_json') }}">Language Quality JSON</a>
+      <a class="btn btn-default" href="{{ url_for('DSLReferenceView.language_ergonomics_json') }}">Language Ergonomics JSON</a>
       <a class="btn btn-default" href="{{ url_for('DSLReferenceView.authoring_release_gate_json') }}">Authoring Gate JSON</a>
     </div>
   </div>
@@ -22549,7 +22550,7 @@ def _dsl_reference_text(schema: AppSchema, app_name: str) -> str:
     first_table = schema.tables[0] if schema.tables else TableSchema("Book", (ColumnSchema("title", "string", nullable=False),))
     first_table_name = first_table.name
     first_field = next((column.name for column in first_table.columns if not column.primary_key), "name")
-    example = f"""app {app_name.replace(' ', '')}
+    example = f"""app {app_name.replace(' ', '')} {{ targets: web, mobile, desktop }}
 
 table {first_table_name} {{
   id: int pk
@@ -22744,6 +22745,37 @@ def dsl_language_quality_contract():
         }},
         "learning_path": dsl_learning_path(),
         "checks": checks,
+    }}
+
+
+def dsl_language_ergonomics_contract(source=None):
+    """Return generated evidence that the DSL stays compact and pleasant to edit."""
+    sample = source if source is not None else dsl_example("full")
+    formatted = format_dsl(sample)
+    lint = dsl_lint(formatted["formatted"])
+    score = dsl_authoring_score(formatted["formatted"])
+    quality = dsl_language_quality_contract()
+    alias_source = "app AliasDemo {{ targets: web }} entity Book {{ title: string searchable; secret: string hide }} form BookForm for Book {{ Main: title }} workflow Publish {{ draft -> live }}"
+    alias_fix = apply_dsl_fixes(alias_source)
+    ref_source = "app RefDemo {{ targets: web }} table Author {{ id: int pk }} table Book {{ author_id: int ref Author.id }}"
+    ref_actions = dsl_code_actions(ref_source)
+    source_kinds = {{item["kind"] for item in SOURCE_FAMILIES}}
+    checks = (
+        {{"check": "compact_keyword_budget", "ok": quality["budget"]["ok"] and quality["canonical_keyword_count"] == KEYWORD_LIMIT, "evidence": quality["budget"]}},
+        {{"check": "keyword_free_expressiveness", "ok": {{"-> references", "@ component placements", "... field groups", "= derived fields"}} <= set(KEYWORD_FREE_SYNTAX), "syntax": KEYWORD_FREE_SYNTAX}},
+        {{"check": "friendly_aliases", "ok": alias_fix["after"]["ok"] and {{"normalize_authoring_aliases", "normalize_modifier_aliases"}} <= set(alias_fix["applied"]), "applied": alias_fix["applied"]}},
+        {{"check": "legacy_ref_guidance", "ok": "ref" in LEGACY_CONTEXTUAL_TOKENS and any(action["id"] == "replace_ref_with_arrow" for action in ref_actions), "actions": tuple(action["id"] for action in ref_actions)}},
+        {{"check": "formatter_stability", "ok": formatted["after"]["ok"] and format_dsl(formatted["formatted"])["formatted"] == formatted["formatted"], "changed": formatted["changed"]}},
+        {{"check": "progressive_learning_path", "ok": len(dsl_learning_path()) == 4 and dsl_learning_path()[0]["constructs"][0] == "app" and {{"llm", "agent"}} <= set(dsl_learning_path()[-1]["constructs"]), "learning_path": dsl_learning_path()}},
+        {{"check": "authoring_completion", "ok": lint["ok"] and score["ok"] and not score["next_actions"], "score": score["score"], "next_actions": score["next_actions"]}},
+        {{"check": "source_family_guidance", "ok": {{"dbml", "sql", "ponyorm", "database", "dsl"}} <= source_kinds, "source_families": tuple(sorted(source_kinds))}},
+    )
+    return {{
+        "format": "appgen.dsl-language-ergonomics.v1",
+        "ok": all(check["ok"] for check in checks),
+        "checks": checks,
+        "sample": formatted["formatted"],
+        "blocking_gaps": tuple(check for check in checks if not check["ok"]),
     }}
 
 
@@ -23035,6 +23067,7 @@ def dsl_authoring_release_gate(source=None, expected_sources=("dbml", "sql", "po
     formatted = format_dsl(text)
     score = dsl_authoring_score(text)
     quality = dsl_language_quality_contract()
+    ergonomics = dsl_language_ergonomics_contract(text)
     source_kinds = {{item["kind"] for item in SOURCE_FAMILIES}}
     required_sources = tuple(expected_sources)
     construct_names = tuple(item["name"] for item in dsl_construct_catalog())
@@ -23046,6 +23079,7 @@ def dsl_authoring_release_gate(source=None, expected_sources=("dbml", "sql", "po
         {{"gate": "learning_cards", "ok": {{"Application", "Table", "Reference", "View", "Agentic System"}} <= set(construct_names), "constructs": construct_names}},
         {{"gate": "source_family_coverage", "ok": set(required_sources) <= source_kinds, "required": required_sources, "supported": tuple(item["kind"] for item in SOURCE_FAMILIES)}},
         {{"gate": "authoring_guidance", "ok": score["ok"] and not score["next_actions"], "score": score["score"], "next_actions": score["next_actions"]}},
+        {{"gate": "language_ergonomics", "ok": ergonomics["ok"], "evidence": ergonomics["checks"]}},
         {{"gate": "ide_contract", "ok": "code_actions" in lint and all(action.get("format") == "appgen.dsl-code-action.v1" for action in lint["code_actions"]), "code_action_count": len(lint["code_actions"])}},
     )
     ok = all(gate["ok"] for gate in gates)
@@ -23293,12 +23327,14 @@ def dsl_reference_check(existing_paths):
     lint = dsl_lint(dsl_example("full"))
     score = dsl_authoring_score(dsl_example("full"))
     release_gate = dsl_authoring_release_gate()
+    ergonomics = dsl_language_ergonomics_contract()
     return {{
-        "ok": not missing and dsl_keyword_budget()["ok"] and dsl_language_quality_contract()["ok"] and lint["ok"] and score["ok"] and release_gate["ok"],
+        "ok": not missing and dsl_keyword_budget()["ok"] and dsl_language_quality_contract()["ok"] and ergonomics["ok"] and lint["ok"] and score["ok"] and release_gate["ok"],
         "missing": missing,
         "keyword_count": dsl_keyword_budget()["count"],
         "constructs": tuple(item["name"] for item in CONSTRUCTS),
         "language_quality": dsl_language_quality_contract(),
+        "language_ergonomics": ergonomics,
         "authoring_score": score,
         "authoring_release_gate": release_gate,
     }}
@@ -23324,6 +23360,10 @@ class DSLReferenceView(BaseView):
     @expose("/language-quality.json")
     def language_quality_json(self):
         return jsonify(dsl_language_quality_contract())
+
+    @expose("/language-ergonomics.json")
+    def language_ergonomics_json(self):
+        return jsonify(dsl_language_ergonomics_contract())
 
     @expose("/authoring-gate.json")
     def authoring_release_gate_json(self):
@@ -36727,6 +36767,7 @@ def validate_dsl_reference_artifacts() -> None:
         "dsl_learning_path",
         "dsl_antlr_integrity_report",
         "dsl_language_quality_contract",
+        "dsl_language_ergonomics_contract",
         "dsl_authoring_score",
         "dsl_authoring_release_gate",
         "dsl_reference_check",
@@ -36738,7 +36779,7 @@ def validate_dsl_reference_artifacts() -> None:
     if "appgen.dsl-language-quality.v1" not in contract or "generated_antlr_parser" not in contract:
         fail("DSL reference must expose ANTLR-backed language quality evidence")
     template = (ROOT / "app" / "templates" / "appgen_dsl_reference.html").read_text()
-    if "AppGen DSL Reference" not in template or "Keyword Budget" not in template or "Reference JSON" not in template or "Language Quality JSON" not in template or "Authoring Gate JSON" not in template:
+    if "AppGen DSL Reference" not in template or "Keyword Budget" not in template or "Reference JSON" not in template or "Language Quality JSON" not in template or "Language Ergonomics JSON" not in template or "Authoring Gate JSON" not in template:
         fail("DSL reference cockpit must expose keyword budget, JSON reference, and authoring gate")
 
 
@@ -39175,6 +39216,9 @@ def test_generated_runtime_helpers():
     assert dsl_reference.dsl_antlr_integrity_report()["format"] == "appgen.dsl-antlr-integrity.v1"
     assert dsl_reference.dsl_antlr_integrity_report()["ok"] is True
     assert dsl_reference.dsl_language_quality_contract()["antlr_integrity"]["ok"] is True
+    assert dsl_reference.dsl_language_ergonomics_contract()["format"] == "appgen.dsl-language-ergonomics.v1"
+    assert dsl_reference.dsl_language_ergonomics_contract()["ok"] is True
+    assert dsl_reference.dsl_language_ergonomics_contract("table Book {{ title: string }}")["ok"] is False
     assert "Reference" in {item["name"] for item in dsl_reference.dsl_construct_catalog()}
     assert "author_id: int -> Author.id" in dsl_reference.dsl_example("relation")
     assert dsl_reference.dsl_lint(dsl_reference.dsl_example("full"))["ok"] is True
@@ -39182,6 +39226,7 @@ def test_generated_runtime_helpers():
     assert dsl_reference.dsl_authoring_score(dsl_reference.dsl_example("full"))["ok"] is True
     assert dsl_reference.dsl_authoring_release_gate()["format"] == "appgen.dsl-authoring-release-gate.v1"
     assert dsl_reference.dsl_authoring_release_gate()["ok"] is True
+    assert "language_ergonomics" in {gate["gate"] for gate in dsl_reference.dsl_authoring_release_gate()["gates"]}
     assert dsl_reference.dsl_authoring_release_gate("table Book {{ title: string }}")["ok"] is False
     generated_dsl_fix = dsl_reference.apply_dsl_fixes("app Bad { targets: web, toaster } table Book { title: string ref Author.id }")
     assert generated_dsl_fix["format"] == "appgen.dsl-fix-result.v1"

@@ -34,6 +34,7 @@ from pyAppGen.dsl import dsl_code_actions
 from pyAppGen.dsl import dsl_completion_items
 from pyAppGen.dsl import dsl_language_service
 from pyAppGen.dsl import dsl_language_quality_contract
+from pyAppGen.dsl import dsl_language_ergonomics_contract
 from pyAppGen.dsl import dsl_keyword_budget
 from pyAppGen.dsl import dsl_outline
 from pyAppGen.dsl import format_dsl
@@ -95,6 +96,20 @@ def test_dsl_linter_reports_semantic_feedback(runner: CliRunner, tmp_path) -> No
         for check in dsl_language_quality_contract()["checks"]
     )
     assert dsl_language_quality_contract()["ok"] is True
+    ergonomics = dsl_language_ergonomics_contract()
+    assert ergonomics["format"] == "appgen.dsl-language-ergonomics.v1"
+    assert ergonomics["ok"] is True
+    assert {
+        "compact_keyword_budget",
+        "keyword_free_expressiveness",
+        "friendly_aliases",
+        "legacy_ref_guidance",
+        "formatter_stability",
+        "progressive_learning_path",
+        "authoring_completion",
+        "source_family_guidance",
+    } <= {check["check"] for check in ergonomics["checks"]}
+    assert dsl_language_ergonomics_contract("table Book { title: string }")["ok"] is False
     score = dsl_authoring_score(source, source_name="inline")
     assert score["format"] == "appgen.dsl-authoring-score.v1"
     assert score["ok"] is True
@@ -114,6 +129,7 @@ def test_dsl_linter_reports_semantic_feedback(runner: CliRunner, tmp_path) -> No
         "outline_and_navigation",
         "source_family_coverage",
         "authoring_guidance",
+        "language_ergonomics",
         "ide_contract",
     } <= {gate["gate"] for gate in authoring_gate["gates"]}
     assert {"dbml", "sql", "ponyorm", "database", "dsl"} <= {
@@ -2402,6 +2418,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert "Keyword Budget" in (output_dir / "templates" / "appgen_dsl_reference.html").read_text()
     assert "Reference JSON" in (output_dir / "templates" / "appgen_dsl_reference.html").read_text()
     assert "Language Quality JSON" in (output_dir / "templates" / "appgen_dsl_reference.html").read_text()
+    assert "Language Ergonomics JSON" in (output_dir / "templates" / "appgen_dsl_reference.html").read_text()
     assert "Authoring Gate JSON" in (output_dir / "templates" / "appgen_dsl_reference.html").read_text()
     assert "View Experience" in (output_dir / "templates" / "appgen_view_experience.html").read_text()
     assert "Presence JSON" in (output_dir / "templates" / "appgen_view_experience.html").read_text()
@@ -5275,6 +5292,9 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert dsl_reference.dsl_language_quality_contract()["format"] == "appgen.dsl-language-quality.v1"
     assert dsl_reference.dsl_language_quality_contract()["ok"] is True
     assert dsl_reference.dsl_language_quality_contract()["canonical_keyword_count"] == 17
+    assert dsl_reference.dsl_language_ergonomics_contract()["format"] == "appgen.dsl-language-ergonomics.v1"
+    assert dsl_reference.dsl_language_ergonomics_contract()["ok"] is True
+    assert dsl_reference.dsl_language_ergonomics_contract("table Book { title: string }")["ok"] is False
     assert dsl_reference.dsl_antlr_integrity_report()["format"] == "appgen.dsl-antlr-integrity.v1"
     assert dsl_reference.dsl_antlr_integrity_report()["ok"] is True
     assert dsl_reference.dsl_language_quality_contract()["antlr_integrity"]["ok"] is True
@@ -5288,6 +5308,9 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     )["language_quality"]["ok"] is True
     assert dsl_reference.dsl_reference_check(
         {"app/dsl_reference.py", "app/templates/appgen_dsl_reference.html"}
+    )["language_ergonomics"]["ok"] is True
+    assert dsl_reference.dsl_reference_check(
+        {"app/dsl_reference.py", "app/templates/appgen_dsl_reference.html"}
     )["authoring_release_gate"]["ok"] is True
     assert "[cardinality] relation metadata" in dsl_reference.dsl_keyword_budget()["keyword_free_syntax"]
     assert "entity/model/form/screen/workflow authoring aliases" in dsl_reference.dsl_keyword_budget()["keyword_free_syntax"]
@@ -5299,6 +5322,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     generated_authoring_gate = dsl_reference.dsl_authoring_release_gate()
     assert generated_authoring_gate["format"] == "appgen.dsl-authoring-release-gate.v1"
     assert generated_authoring_gate["ok"] is True
+    assert "language_ergonomics" in {gate["gate"] for gate in generated_authoring_gate["gates"]}
     assert {"dbml", "sql", "ponyorm", "database", "dsl"} <= {
         item["kind"] for item in generated_authoring_gate["source_families"]
     }

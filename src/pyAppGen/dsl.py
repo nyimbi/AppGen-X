@@ -316,6 +316,78 @@ def dsl_language_service(
     }
 
 
+def dsl_language_ergonomics_contract(text: str | None = None, *, source_name: str | None = None) -> dict:
+    """Return evidence that the DSL stays learnable, compact, and pleasant to edit."""
+    sample = text if text is not None else DSL_ERGONOMICS_SAMPLE
+    formatted = format_dsl(sample, source_name=source_name)
+    lint = lint_dsl(formatted["formatted"], source_name=source_name)
+    score = dsl_authoring_score(formatted["formatted"], source_name=source_name)
+    quality = dsl_language_quality_contract()
+    alias_source = (
+        "app AliasDemo { targets: web } "
+        "entity Book { title: string searchable; secret: string hide } "
+        "form BookForm for Book { Main: title } workflow Publish { draft -> live }"
+    )
+    alias_fix = apply_lint_fixes(alias_source, source_name=source_name)
+    ref_source = "app RefDemo { targets: web } table Author { id: int pk } table Book { author_id: int ref Author.id }"
+    ref_actions = dsl_code_actions(ref_source, source_name=source_name)
+    source_kinds = {item["kind"] for item in SUPPORTED_SCHEMA_SOURCES}
+    checks = (
+        {
+            "check": "compact_keyword_budget",
+            "ok": quality["budget"]["ok"] and quality["canonical_keyword_count"] == KEYWORD_LIMIT,
+            "evidence": quality["budget"],
+        },
+        {
+            "check": "keyword_free_expressiveness",
+            "ok": {"-> references", "@ component placements", "... field groups", "= derived fields"} <= set(KEYWORD_FREE_SYNTAX),
+            "syntax": KEYWORD_FREE_SYNTAX,
+        },
+        {
+            "check": "friendly_aliases",
+            "ok": alias_fix["after"]["ok"]
+            and {"normalize_authoring_aliases", "normalize_modifier_aliases"} <= set(alias_fix["applied"]),
+            "applied": alias_fix["applied"],
+        },
+        {
+            "check": "legacy_ref_guidance",
+            "ok": "ref" in LEGACY_CONTEXTUAL_TOKENS and any(action["id"] == "replace_ref_with_arrow" for action in ref_actions),
+            "actions": tuple(action["id"] for action in ref_actions),
+        },
+        {
+            "check": "formatter_stability",
+            "ok": formatted["after"]["ok"] and format_dsl(formatted["formatted"])["formatted"] == formatted["formatted"],
+            "changed": formatted["changed"],
+        },
+        {
+            "check": "progressive_learning_path",
+            "ok": len(LEARNING_PATH) == 4
+            and LEARNING_PATH[0]["constructs"][0] == "app"
+            and {"llm", "agent"} <= set(LEARNING_PATH[-1]["constructs"]),
+            "learning_path": LEARNING_PATH,
+        },
+        {
+            "check": "authoring_completion",
+            "ok": lint["ok"] and score["ok"] and not score["next_actions"],
+            "score": score["score"],
+            "next_actions": score["next_actions"],
+        },
+        {
+            "check": "source_family_guidance",
+            "ok": {"dbml", "sql", "ponyorm", "database", "dsl"} <= source_kinds,
+            "source_families": tuple(sorted(source_kinds)),
+        },
+    )
+    return {
+        "format": "appgen.dsl-language-ergonomics.v1",
+        "source": source_name,
+        "ok": all(check["ok"] for check in checks),
+        "checks": checks,
+        "sample": formatted["formatted"],
+        "blocking_gaps": tuple(check for check in checks if not check["ok"]),
+    }
+
+
 def dsl_authoring_release_gate(
     text: str,
     *,
@@ -329,6 +401,7 @@ def dsl_authoring_release_gate(
     formatting = format_dsl(source, source_name=source_name)
     score = dsl_authoring_score(source, source_name=source_name)
     quality = dsl_language_quality_contract()
+    ergonomics = dsl_language_ergonomics_contract(source, source_name=source_name)
     completions = dsl_completion_items(source=source)
     actions = dsl_code_actions(source, source_name=source_name)
     source_catalog = tuple(
@@ -380,6 +453,11 @@ def dsl_authoring_release_gate(
             "ok": score["ok"] and not score["next_actions"],
             "score": score["score"],
             "next_actions": score["next_actions"],
+        },
+        {
+            "gate": "language_ergonomics",
+            "ok": ergonomics["ok"],
+            "evidence": ergonomics["checks"],
         },
         {
             "gate": "ide_contract",
@@ -1266,6 +1344,42 @@ LEARNING_PATH = (
     {"step": 3, "goal": "Add behavior", "constructs": ("flow", "role", "rule")},
     {"step": 4, "goal": "Add intelligence", "constructs": ("llm", "agent")},
 )
+DSL_ERGONOMICS_SAMPLE = """app Ergonomic {
+  targets: web, mobile, desktop
+}
+
+table Author {
+  id: int pk
+  name: string required search
+}
+
+table Book {
+  id: int pk
+  title: string required search
+  author_id: int -> Author.id [many-to-one]
+}
+
+view BookForm for Book {
+  Main: title, author_id
+  @ title TextBox 0 0 6 1
+}
+
+flow Publish {
+  draft -> published
+}
+
+llm LocalModel {
+  provider: ollama
+  mode: local
+  model: llama3
+}
+
+agent Reviewer {
+  provider: LocalModel
+  goal: "Review books"
+  tools: schema, forms
+}
+"""
 _AUTHORING_ALIAS_RE = re.compile(
     r"(?P<prefix>^[ \t]*|\}[ \t]*)(?P<alias>entity|model|form|screen|workflow)\b(?=\s+[A-Za-z_][A-Za-z0-9_]*(?:\s+for\s+[A-Za-z_][A-Za-z0-9_]*)?\s*\{)",
     flags=re.IGNORECASE | re.MULTILINE,
