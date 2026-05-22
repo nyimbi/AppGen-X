@@ -5294,6 +5294,7 @@ def write_version_control_template(output_dir):
     </div>
     <div>
       <a class="btn btn-default" href="{{ url_for('VersionControlView.catalog_json') }}">Catalog JSON</a>
+      <a class="btn btn-default" href="{{ url_for('VersionControlView.workbench_json') }}">Workbench JSON</a>
       <a class="btn btn-default" href="{{ url_for('VersionControlView.release_gate_json') }}">Release Gate JSON</a>
     </div>
   </div>
@@ -31145,6 +31146,52 @@ def version_control_release_gate(existing_paths=()):
     }}
 
 
+def version_control_workbench(existing_paths=()):
+    """Return IDE-ready version-history evidence for generated apps."""
+    release_gate = version_control_release_gate(existing_paths)
+    table_resource = next((name.split(":", 1)[1] for name in VERSION_RESOURCES if name.startswith("table:")), "manifest")
+    baseline_manifest = {{
+        "tables": ({{"name": table_resource, "columns": ({{"name": "id", "type": "integer"}},)}},),
+        "views": (),
+        "flows": (),
+    }}
+    changed_manifest = {{
+        "tables": ({{"name": table_resource, "columns": ({{"name": "id", "type": "integer"}}, {{"name": "status", "type": "string"}})}},),
+        "views": (),
+        "flows": (),
+    }}
+    baseline = snapshot_manifest(baseline_manifest, author="workbench", message="baseline")
+    changed = snapshot_manifest(changed_manifest, author="workbench", message="add status")
+    history = (baseline, changed)
+    diff = diff_snapshots(baseline, changed)
+    branch = branch_plan(baseline, "feature/workbench", author="workbench")
+    rollback = rollback_plan(history, baseline["revision_id"])
+    routes = ("/version-control/", "/version-control/catalog.json", "/version-control/workbench.json", "/version-control/release-gate.json")
+    checks = (
+        {{"id": "resource_catalog", "ok": bool(version_resource_catalog()), "evidence": {{"resources": version_resource_catalog()}}}},
+        {{"id": "snapshot_history", "ok": len(history) == 2 and history[0]["revision_id"] != history[1]["revision_id"], "evidence": {{"history": history}}}},
+        {{"id": "schema_diff", "ok": diff["change_count"] == 1 and diff["changes"][0]["kind"] == "field_added", "evidence": diff}},
+        {{"id": "branch_plan", "ok": branch["base_revision"] == baseline["revision_id"] and bool(branch["branch_id"]), "evidence": branch}},
+        {{"id": "rollback_plan", "ok": rollback["requires_review"] is True and rollback["discarded_revisions"] == (changed["revision_id"],), "evidence": rollback}},
+        {{"id": "artifact_evidence", "ok": release_gate["gates"][0]["ok"], "evidence": release_gate["gates"][0]}},
+        {{"id": "route_surface", "ok": "/version-control/workbench.json" in routes, "evidence": {{"routes": routes}}}},
+        {{"id": "release_gate", "ok": release_gate["ok"], "evidence": release_gate}},
+    )
+    ok = all(check["ok"] for check in checks)
+    return {{
+        "format": "appgen.version-control-workbench.v1",
+        "ok": ok,
+        "decision": "approved" if ok else "blocked",
+        "checks": checks,
+        "resources": version_resource_catalog(),
+        "history": history,
+        "diff": diff,
+        "branch": branch,
+        "rollback": rollback,
+        "release_gate": release_gate,
+    }}
+
+
 class VersionControlView(BaseView):
     route_base = "/version-control"
     default_view = "index"
@@ -31159,6 +31206,10 @@ class VersionControlView(BaseView):
     @expose("/catalog.json")
     def catalog_json(self):
         return jsonify(list(version_resource_catalog()))
+
+    @expose("/workbench.json")
+    def workbench_json(self):
+        return jsonify(version_control_workbench({{"app/version_control.py", "app/templates/appgen_version_control.html"}}))
 
     @expose("/release-gate.json")
     def release_gate_json(self):
@@ -41514,11 +41565,13 @@ def validate_version_control_artifacts() -> None:
     contract = (ROOT / "app" / "version_control.py").read_text()
     if "snapshot_manifest" not in contract or "diff_snapshots" not in contract or "rollback_plan" not in contract:
         fail("version-control contract must expose snapshots, diffs, and rollback plans")
-    if "branch_plan" not in contract or "version_control_check" not in contract or "version_control_release_gate" not in contract:
-        fail("version-control contract must expose branch, readiness, and release-gate helpers")
+    if "branch_plan" not in contract or "version_control_check" not in contract or "version_control_release_gate" not in contract or "version_control_workbench" not in contract:
+        fail("version-control contract must expose branch, readiness, workbench, and release-gate helpers")
+    if "appgen.version-control-workbench.v1" not in contract or '@expose("/workbench.json")' not in contract:
+        fail("version-control contract must expose a versioned workbench route")
     template = (ROOT / "app" / "templates" / "appgen_version_control.html").read_text()
-    if "Version Control" not in template or "rollback" not in template or "Release Gate JSON" not in template:
-        fail("version-control template must expose generated history, rollback, and release contracts")
+    if "Version Control" not in template or "rollback" not in template or "Workbench JSON" not in template or "Release Gate JSON" not in template:
+        fail("version-control template must expose generated history, rollback, workbench, and release contracts")
 
 
 def validate_event_artifacts() -> None:
@@ -43831,6 +43884,12 @@ def test_generated_runtime_helpers():
         {"app/version_control.py", "app/templates/appgen_version_control.html"}
     )["format"] == "appgen.version-control-release-gate.v1"
     assert version_control.version_control_release_gate(
+        {"app/version_control.py", "app/templates/appgen_version_control.html"}
+    )["ok"] is True
+    assert version_control.version_control_workbench(
+        {"app/version_control.py", "app/templates/appgen_version_control.html"}
+    )["format"] == "appgen.version-control-workbench.v1"
+    assert version_control.version_control_workbench(
         {"app/version_control.py", "app/templates/appgen_version_control.html"}
     )["ok"] is True
     assert version_control.version_control_release_gate({"app/version_control.py"})["ok"] is False

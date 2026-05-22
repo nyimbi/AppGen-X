@@ -609,6 +609,9 @@ Use `/version-control/release-gate.json` or
 `version_control_release_gate()` to prove version-history readiness. The gate
 checks content-addressed snapshots, schema diffs, branch contracts, rollback
 review plans, resource catalogs, and required version-control artifacts.
+Use `/version-control/workbench.json` or `version_control_workbench()` in the
+generated IDE to inspect resource catalog, snapshot history, diff, branch,
+rollback, artifact, route, and release-gate evidence.
 Use `/code-review/release-gate.json` or `code_review_release_gate()` to prove
 generated quality-review readiness. The gate checks required artifact coverage,
 schema-rule coverage, primary-key checks, searchability review, required-field

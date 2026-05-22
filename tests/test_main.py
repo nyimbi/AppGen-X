@@ -1123,6 +1123,7 @@ def test_generate_app_from_sqlite_schema_compiles(tmp_path) -> None:
     assert "team.collaboration" in {item["key"] for item in manifest["capabilities"]}
     assert capabilities_by_key["team.collaboration"]["status"] == "implemented"
     assert "team.version-control" in {item["key"] for item in manifest["capabilities"]}
+    assert capabilities_by_key["team.version-control"]["status"] == "implemented"
     assert "team.realtime" in {item["key"] for item in manifest["capabilities"]}
     assert "quality.diagnostics" in {item["key"] for item in manifest["capabilities"]}
     assert "quality.api-testing" in {item["key"] for item in manifest["capabilities"]}
@@ -2554,6 +2555,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert "change proposals" in (output_dir / "templates" / "appgen_collaboration.html").read_text()
     assert "Workbench JSON" in (output_dir / "templates" / "appgen_collaboration.html").read_text()
     assert "rollback" in (output_dir / "templates" / "appgen_version_control.html").read_text()
+    assert "Workbench JSON" in (output_dir / "templates" / "appgen_version_control.html").read_text()
     assert "Visual Studio Code" in (output_dir / "templates" / "appgen_devtools.html").read_text()
     assert "JetBrains" in (output_dir / "templates" / "appgen_devtools.html").read_text()
     assert "Source Map JSON" in (output_dir / "templates" / "appgen_devtools.html").read_text()
@@ -5580,6 +5582,26 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert {"content_addressed_snapshot", "schema_diff", "branch_contract", "rollback_plan"} <= {
         gate["gate"] for gate in version_gate["gates"]
     }
+    version_workbench = version_control.version_control_workbench(
+        {"app/version_control.py", "app/templates/appgen_version_control.html"}
+    )
+    assert version_workbench["format"] == "appgen.version-control-workbench.v1"
+    assert version_workbench["ok"] is True
+    assert version_workbench["decision"] == "approved"
+    assert {
+        "resource_catalog",
+        "snapshot_history",
+        "schema_diff",
+        "branch_plan",
+        "rollback_plan",
+        "artifact_evidence",
+        "route_surface",
+        "release_gate",
+    } == {check["id"] for check in version_workbench["checks"]}
+    assert "/version-control/workbench.json" in next(
+        check["evidence"]["routes"] for check in version_workbench["checks"] if check["id"] == "route_surface"
+    )
+    assert version_control.version_control_workbench({"app/version_control.py"})["ok"] is False
     assert version_control.version_control_release_gate({"app/version_control.py"})["ok"] is False
     assert {item["tool"] for item in devtools.devtool_catalog()} == {"vscode", "eclipse", "jetbrains"}
     assert devtools.vscode_launch_profile()["module"] == "flask"

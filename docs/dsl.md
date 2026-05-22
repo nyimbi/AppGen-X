@@ -750,7 +750,10 @@ apps include:
   schema-level diffs, and reviewable rollback plans. A generated version-control
   release gate proves content-addressed snapshots, schema diffs, branch
   contracts, rollback review plans, resource catalogs, and required version
-  artifacts.
+  artifacts. `version_control_workbench()` exposes IDE-ready resource catalog,
+  snapshot history, diff, branch, rollback, artifact, release-gate, and
+  `/version-control/workbench.json` route evidence before
+  `team.version-control` is marked implemented.
 - `.vscode/`, `.idea/`, `.project`, `.pydevproject`, `devtools.py`, and
   `appgen_devtools.html` with generated Visual Studio Code, JetBrains
   IDEA/PyCharm, and Eclipse/PyDev launch, task, extension, source-map, and
