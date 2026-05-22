@@ -77,13 +77,18 @@ from pyAppGen.form_designer import apply_drop
 from pyAppGen.form_designer import component_palette
 from pyAppGen.form_designer import component_usability_workbench
 from pyAppGen.form_designer import detect_overlaps
+from pyAppGen.form_designer import dfm_round_trip
 from pyAppGen.form_designer import field_component_matrix
 from pyAppGen.form_designer import form_canvas
 from pyAppGen.form_designer import form_design as package_form_design
+from pyAppGen.form_designer import form_design_to_dfm
 from pyAppGen.form_designer import form_designer_generation_smoke_audit
 from pyAppGen.form_designer import form_designer_release_audit
 from pyAppGen.form_designer import rad_parity_workbench
 from pyAppGen.form_designer import palette_categories
+from pyAppGen.form_designer import parse_dfm_text
+from pyAppGen.form_designer import pascal_runtime_workbench
+from pyAppGen.form_designer import pascal_unit_contract
 from pyAppGen.form_designer import placement_suggestions
 from pyAppGen.form_designer import property_inspector
 from pyAppGen.form_designer import snap_drop
@@ -764,7 +769,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         item["component"] for item in palette
     }
     third_party_registry = third_party_component_registry()
-    assert {"devexpress-vcl", "tms-fnc", "fastreport", "teechart", "indy"} <= {
+    assert {"devexpress-native", "tms-fnc", "fastreport", "teechart", "indy"} <= {
         item["id"] for item in third_party_registry
     }
     install_plan = third_party_component_install_plan()
@@ -775,7 +780,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         {
             "id": "custom-suite",
             "vendor": "Internal",
-            "frameworks": ("VCL", "FMX"),
+            "frameworks": ("native desktop", "cross-target UI"),
             "components": ("TInternalGrid",),
             "categories": ("grid",),
         }
@@ -792,8 +797,12 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "validation_rules",
         "drop_defaults",
         "preview_contracts",
+        "per_component_files",
+        "per_package_files",
     } == {check["id"] for check in usability["checks"]}
     assert all({"web", "mobile", "desktop"} <= set(item["renderers"]) for item in usability["components"])
+    assert all(item["path"].startswith("app/component_contracts/") for item in usability["component_files"])
+    assert all(item["path"].startswith("app/component_packages/") for item in usability["package_files"])
 
     canvas = form_canvas("Customer")
     assert canvas["format"] == "appgen.package-form-canvas.v1"
@@ -804,6 +813,17 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     assert design["format"] == "appgen.package-form-design.v1"
     assert design["view"] == "CustomerForm"
     assert validate_form_design(design)["ok"] is True
+    dfm_text = form_design_to_dfm(design)
+    assert "AppGenField = 'name'" in dfm_text
+    parsed_dfm = parse_dfm_text(dfm_text)
+    assert parsed_dfm["ok"] is True
+    assert dfm_round_trip(design)["ok"] is True
+    unit = pascal_unit_contract(design)
+    assert unit["unit_source"].startswith("unit CustomerFormUnit;")
+    assert "{$R *.dfm}" in unit["unit_source"]
+    runtime = pascal_runtime_workbench(design)
+    assert runtime["format"] == "appgen.pascal-runtime-workbench.v1"
+    assert runtime["ok"] is True
 
     matrix = field_component_matrix()
     assert matrix
@@ -847,15 +867,16 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     assert audit["rad_parity"]["ok"] is True
     assert rad_parity_workbench()["ok"] is True
     assert {
-        "vcl_fmx_component_parity",
+        "native_ui_parity_component_parity",
         "built_in_component_usability",
         "pascal_runtime_and_dfm_streaming",
+        "pascal_runtime_workbench",
         "object_inspector_parity",
         "livebindings_designer",
         "firedac_datasnap_radserver_interbase_tooling",
         "design_time_package_installation",
         "mobile_native_device_api_coverage",
-        "fmx_animation_effects_3d_depth",
+        "cross_target_animation_effects_3d_depth",
         "third_party_component_ecosystem",
         "artifact_contract",
     } == {check["id"] for check in rad_parity_workbench()["checks"]}
@@ -8533,6 +8554,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert "RAD Parity JSON" in (output_dir / "templates" / "appgen_form_designer.html").read_text()
     assert "Third-party Components JSON" in (output_dir / "templates" / "appgen_form_designer.html").read_text()
     assert "Component Usability JSON" in (output_dir / "templates" / "appgen_form_designer.html").read_text()
+    assert "Pascal Runtime JSON" in (output_dir / "templates" / "appgen_form_designer.html").read_text()
     workbench = form_designer.form_designer_workbench(
         {"app/form_designer.py", "app/templates/appgen_form_designer.html"}
     )
@@ -8561,20 +8583,28 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert "/form-designer/component-usability.json" in next(
         check["evidence"]["routes"] for check in workbench["checks"] if check["id"] == "route_surface"
     )
+    assert "/form-designer/pascal-runtime.json" in next(
+        check["evidence"]["routes"] for check in workbench["checks"] if check["id"] == "route_surface"
+    )
     generated_rad = form_designer.rad_parity_workbench(
         {"app/form_designer.py", "app/templates/appgen_form_designer.html"}
     )
     assert generated_rad["format"] == "appgen.generated-rad-parity-workbench.v1"
     assert generated_rad["ok"] is True
-    assert {"devexpress-vcl", "tms-fnc", "fastreport", "teechart", "indy"} <= {
+    assert {"devexpress-native", "tms-fnc", "fastreport", "teechart", "indy"} <= {
         item["id"] for item in form_designer.third_party_component_registry()
     }
     assert form_designer.third_party_component_install_plan()["requires_review"] is True
     assert form_designer.third_party_component_install_plan()["side_effects"] == ()
     assert form_designer.dfm_streaming_contract()["stream_formats"][0] == "text-dfm"
+    assert form_designer.dfm_round_trip("Book")["ok"] is True
+    generated_runtime = form_designer.pascal_runtime_workbench("Book")
+    assert generated_runtime["format"] == "appgen.generated-pascal-runtime-workbench.v1"
+    assert generated_runtime["ok"] is True
+    assert "{$R *.dfm}" in generated_runtime["unit"]["unit_source"]
     assert "control_to_field" in form_designer.livebindings_contract()["binding_edges"]
     assert "camera" in form_designer.mobile_native_api_contract()["apis"]
-    assert "viewport3d" in form_designer.fmx_visual_depth_contract()["three_d"]
+    assert "viewport3d" in form_designer.cross_target_visual_depth_contract()["three_d"]
     generated_usability = form_designer.component_usability_workbench()
     assert generated_usability["format"] == "appgen.generated-component-usability-workbench.v1"
     assert generated_usability["ok"] is True
@@ -8583,6 +8613,23 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         {"web", "mobile", "desktop"} <= set(item["renderers"])
         for item in generated_usability["components"]
     )
+    assert all(item["exists"] for item in generated_usability["component_files"])
+    assert all(item["exists"] for item in generated_usability["package_files"])
+    text_box_file = output_dir / "component_contracts" / "text_box.py"
+    package_file = output_dir / "component_packages" / "devexpress_native.py"
+    assert text_box_file.exists()
+    assert package_file.exists()
+    py_compile.compile(str(text_box_file), doraise=True)
+    py_compile.compile(str(package_file), doraise=True)
+    text_box_component = _load_module(text_box_file, "generated_text_box_component")
+    assert text_box_component.contract()["component"] == "TextBox"
+    assert text_box_component.render()["format"] == "appgen.component-render-node.v1"
+    assert text_box_component.validate_props({"unknown": True})["ok"] is False
+    assert "preview_renders" in text_box_component.test_plan()["tests"]
+    component_package = _load_module(package_file, "generated_component_package")
+    assert component_package.package_contract()["package"]["id"] == "devexpress-native"
+    assert component_package.install_plan()["side_effects"] == ()
+    assert component_package.load_policy()["requires_review"] is True
     assert len(workbench["forms"]) >= 2
     assert any(item["type"] == "DatePicker" for item in workbench["field_mappings"])
     assert form_designer.form_designer_workbench({"app/form_designer.py"})["ok"] is False

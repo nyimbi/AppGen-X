@@ -193,6 +193,10 @@ Visual design is split into two related capabilities:
   editing, responsive layouts, renderer metadata, design validation, per-component
   usability evidence, RAD parity contracts, and reviewed third-party component
   package import/install plans.
+- `component_contracts/<component>.py` and `component_packages/<package>.py`
+  are generated alongside the form designer so every component and package has a
+  discrete, importable contract, renderer/loader surface, validation evidence,
+  and test plan.
 - `visual_modeling.py` handles database graph nodes, relationships, ERD export,
   DBML/SQL/PonyORM export, schema proposals, and migration preview.
 - `branding.py` handles brand/theme contracts, splash-screen configuration,

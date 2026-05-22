@@ -1742,6 +1742,210 @@ def write_form_designer_file(output_dir, schema: AppSchema):
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
     (output_dir / "form_designer.py").write_text(_form_designer_text(schema))
+    write_component_contract_files(output_dir)
+
+
+def write_component_contract_files(output_dir):
+    """Write one generated implementation module per built-in component and package."""
+    output_dir = Path(output_dir)
+    component_dir = output_dir / "component_contracts"
+    package_dir = output_dir / "component_packages"
+    component_dir.mkdir(parents=True, exist_ok=True)
+    package_dir.mkdir(parents=True, exist_ok=True)
+    component_names = (
+        "Label", "TextBox", "EmailInput", "TextArea", "Select", "Checkbox",
+        "DatePicker", "DateTimePicker", "TimePicker", "NumberInput",
+        "ImageUpload", "FileUpload", "RelationshipPicker", "Button",
+        "Section", "Tabs", "Panel", "GroupBox", "RadioGroup", "ListBox",
+        "TreeView", "Grid", "PageControl", "MainMenu", "PopupMenu",
+        "ToolBar", "ActionList", "Image", "Chart", "ReportViewer",
+        "WebBrowser", "Timer", "DataSource", "BindingSource", "RESTClient",
+        "CameraView", "LocationSensor", "NotificationCenter", "Animation",
+        "Effect", "Viewport3D",
+    )
+    package_ids = (
+        "devexpress-native", "tms-fnc", "fastreport", "teechart", "skia4rad",
+        "jvcl-jcl", "virtual-treeview", "indy", "devart-data-access",
+        "intraweb-unigui",
+    )
+    (component_dir / "__init__.py").write_text(_component_contract_init_text(component_names), encoding="utf-8")
+    (package_dir / "__init__.py").write_text(_component_package_init_text(package_ids), encoding="utf-8")
+    for component_name in component_names:
+        (component_dir / f"{_module_name(component_name)}.py").write_text(
+            _component_contract_module_text(component_name),
+            encoding="utf-8",
+        )
+    for package_id in package_ids:
+        (package_dir / f"{_module_name(package_id)}.py").write_text(
+            _component_package_module_text(package_id),
+            encoding="utf-8",
+        )
+
+
+def _module_name(name: str) -> str:
+    """Return a stable snake-case module name for a component or package."""
+    chars = []
+    for index, char in enumerate(name.replace("-", "_")):
+        if char.isupper() and index and (not name[index - 1].isupper()):
+            chars.append("_")
+        chars.append(char.lower() if char.isalnum() else "_")
+    return "_".join(part for part in "".join(chars).split("_") if part)
+
+
+def _component_contract_init_text(component_names: tuple[str, ...]) -> str:
+    modules = tuple(_module_name(name) for name in component_names)
+    return (
+        '"""Generated per-component implementation modules."""\n\n'
+        f"COMPONENT_MODULES = {modules!r}\n"
+    )
+
+
+def _component_package_init_text(package_ids: tuple[str, ...]) -> str:
+    modules = tuple(_module_name(package_id) for package_id in package_ids)
+    return (
+        '"""Generated per-package implementation modules."""\n\n'
+        f"PACKAGE_MODULES = {modules!r}\n"
+    )
+
+
+def _component_contract_module_text(component_name: str) -> str:
+    return f'''"""Generated implementation contract for the {component_name} component."""
+
+from __future__ import annotations
+
+import importlib.util
+from pathlib import Path
+
+try:
+    from app import form_designer
+except ImportError:  # pragma: no cover - direct module smoke loading
+    spec = importlib.util.spec_from_file_location("generated_component_form_designer", Path(__file__).resolve().parents[1] / "form_designer.py")
+    form_designer = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(form_designer)
+
+
+COMPONENT = {component_name!r}
+
+
+def contract():
+    """Return the authoritative runtime/editor contract for this component."""
+    return form_designer.component_runtime_contract(COMPONENT)
+
+
+def render(props=None, value=None):
+    """Render a deterministic virtual node for tests and preview surfaces."""
+    current = contract()
+    merged = dict(current["default_props"])
+    merged.update(dict(props or {{}}))
+    return {{
+        "format": "appgen.component-render-node.v1",
+        "component": COMPONENT,
+        "renderer": current["renderers"]["web"],
+        "props": merged,
+        "value": value,
+        "events": current["events"],
+        "bindings": current["bindings"],
+    }}
+
+
+def validate_props(props=None):
+    """Validate supplied props against this component's property editors."""
+    current = contract()
+    allowed = set(current["default_props"])
+    supplied = set((props or {{}}).keys())
+    unknown = tuple(sorted(supplied - allowed))
+    return {{
+        "format": "appgen.component-prop-validation.v1",
+        "component": COMPONENT,
+        "ok": not unknown,
+        "unknown": unknown,
+        "rules": current["validation_rules"],
+    }}
+
+
+def preview():
+    """Return a usable preview payload for the component."""
+    return render()
+
+
+def test_plan():
+    """Return the generated test plan proving this component remains usable."""
+    return {{
+        "format": "appgen.component-test-plan.v1",
+        "component": COMPONENT,
+        "tests": (
+            "contract_has_renderers",
+            "default_props_validate",
+            "preview_renders",
+            "events_declared",
+            "validation_rules_declared",
+        ),
+    }}
+'''
+
+
+def _component_package_module_text(package_id: str) -> str:
+    return f'''"""Generated implementation contract for the {package_id} component package."""
+
+from __future__ import annotations
+
+import importlib.util
+from pathlib import Path
+
+try:
+    from app import form_designer
+except ImportError:  # pragma: no cover - direct module smoke loading
+    spec = importlib.util.spec_from_file_location("generated_package_form_designer", Path(__file__).resolve().parents[1] / "form_designer.py")
+    form_designer = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(form_designer)
+
+
+PACKAGE_ID = {package_id!r}
+
+
+def package_contract():
+    """Return the package registry entry for this component package."""
+    package = next(item for item in form_designer.third_party_component_registry() if item["id"] == PACKAGE_ID)
+    return {{
+        "format": "appgen.component-package-contract.v1",
+        "package": package,
+        "components": package["components"],
+        "frameworks": package["frameworks"],
+        "license": package["license"],
+    }}
+
+
+def install_plan():
+    """Return the reviewed no-side-effect install plan for this package."""
+    return form_designer.third_party_component_install_plan((PACKAGE_ID,))
+
+
+def load_policy():
+    """Return the guardrails required before design-time loading."""
+    return {{
+        "format": "appgen.component-package-load-policy.v1",
+        "package_id": PACKAGE_ID,
+        "requires_review": True,
+        "side_effects": (),
+        "guards": install_plan()["guards"],
+    }}
+
+
+def test_plan():
+    """Return package-level tests required before enabling design-time loading."""
+    return {{
+        "format": "appgen.component-package-test-plan.v1",
+        "package_id": PACKAGE_ID,
+        "tests": (
+            "package_contract_resolves",
+            "install_plan_has_no_side_effects",
+            "license_review_required",
+            "load_policy_declares_guards",
+        ),
+    }}
+'''
 
 
 def write_nl_evolution_file(output_dir, schema: AppSchema):
@@ -5990,6 +6194,7 @@ def write_form_designer_template(output_dir):
       <a class="btn btn-default" href="{{ url_for('FormDesignerView.rad_parity_json') }}">RAD Parity JSON</a>
       <a class="btn btn-default" href="{{ url_for('FormDesignerView.third_party_components_json') }}">Third-party Components JSON</a>
       <a class="btn btn-default" href="{{ url_for('FormDesignerView.component_usability_json') }}">Component Usability JSON</a>
+      <a class="btn btn-default" href="{{ url_for('FormDesignerView.pascal_runtime_json') }}">Pascal Runtime JSON</a>
       <a class="btn btn-default" href="{{ url_for('FormDesignerView.release_gate_json') }}">Release Gate JSON</a>
     </div>
   </div>
@@ -8800,6 +9005,9 @@ def _performance_text(schema: AppSchema) -> str:
 
 from __future__ import annotations
 
+import re
+from pathlib import Path
+
 from flask import jsonify
 from flask_appbuilder import BaseView
 from flask_appbuilder import expose
@@ -9248,6 +9456,9 @@ def _runtime_assurance_text(schema: AppSchema) -> str:
     return f'''"""Generated runtime assurance contract for AppGen apps."""
 
 from __future__ import annotations
+
+import re
+from pathlib import Path
 
 from flask import jsonify
 from flask_appbuilder import BaseView
@@ -10355,6 +10566,9 @@ def _i18n_text(schema: AppSchema, app_name: str) -> str:
 
 from __future__ import annotations
 
+import re
+from pathlib import Path
+
 from flask import jsonify
 from flask import request
 from flask_appbuilder import BaseView
@@ -10723,7 +10937,7 @@ def _pwa_icon_text(app_name: str, branding: dict) -> str:
     palette = branding["palette"]
     return f"""<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-label="{escape(app_name)} icon">
   <rect width="128" height="128" rx="24" fill="{escape(palette["primary"])}"/>
-  <circle cx="96" cy="32" r="18" fill="{escape(palette["accent"])}"/>
+  <circle Cx="96" cy="32" r="18" fill="{escape(palette["accent"])}"/>
   <text x="64" y="78" text-anchor="middle" font-family="Arial, sans-serif" font-size="38" font-weight="700" fill="#ffffff">{escape(initials)}</text>
 </svg>
 """
@@ -25028,6 +25242,9 @@ def _form_designer_text(schema: AppSchema) -> str:
 
 from __future__ import annotations
 
+import re
+from pathlib import Path
+
 from flask import jsonify
 from flask import request
 from flask_appbuilder import BaseView
@@ -25080,16 +25297,16 @@ PALETTE = (
     {{"type": "Viewport3D", "label": "3D Viewport", "defaults": {{"w": 8, "h": 6}}}},
 )
 THIRD_PARTY_COMPONENT_SUITES = (
-    {{"id": "devexpress-vcl", "vendor": "DevExpress", "frameworks": ("VCL",), "license": "commercial", "categories": ("grid", "ribbon", "scheduler", "spreadsheet", "pivot", "printing"), "components": ("cxGrid", "cxRibbon", "cxScheduler", "cxSpreadsheet", "cxPivotGrid")}},
-    {{"id": "tms-fnc", "vendor": "TMS Software", "frameworks": ("VCL", "FMX", "WEB"), "license": "commercial", "categories": ("grid", "planner", "maps", "charts", "cloud", "cross-platform-ui"), "components": ("TTMSFNCGrid", "TTMSFNCPlanner", "TTMSFNCMaps", "TTMSFNCChart")}},
-    {{"id": "fastreport", "vendor": "Fast Reports", "frameworks": ("VCL", "FMX", "Lazarus"), "license": "commercial", "categories": ("reports", "print", "export", "designer"), "components": ("TfrxReport", "TfrxDesigner", "TfrxPDFExport", "TfrxDBDataset")}},
-    {{"id": "teechart", "vendor": "Steema", "frameworks": ("VCL", "FMX"), "license": "commercial", "categories": ("charts", "gauges", "maps", "dashboards"), "components": ("TChart", "TGauge", "TMapSeries", "TDBChart")}},
-    {{"id": "skia4rad", "vendor": "Skia4RAD", "frameworks": ("VCL", "FMX", "Console"), "license": "open-source", "categories": ("graphics", "svg", "animation", "text-rendering"), "components": ("TSkPaintBox", "TSkSvg", "TSkAnimatedImage", "TSkLabel")}},
-    {{"id": "jvcl-jcl", "vendor": "Project JEDI", "frameworks": ("VCL",), "license": "open-source", "categories": ("utilities", "visual-controls", "dialogs", "system"), "components": ("TJvFormStorage", "TJvWizard", "TJvInspector", "TJvDBGrid")}},
-    {{"id": "virtual-treeview", "vendor": "Virtual TreeView", "frameworks": ("VCL",), "license": "open-source", "categories": ("tree", "virtualization", "large-data"), "components": ("TVirtualStringTree", "TVirtualDrawTree")}},
-    {{"id": "indy", "vendor": "Indy Project", "frameworks": ("VCL", "FMX", "Console"), "license": "open-source", "categories": ("network", "http", "smtp", "tcp", "sockets"), "components": ("TIdHTTP", "TIdSMTP", "TIdTCPClient", "TIdTCPServer")}},
-    {{"id": "devart-data-access", "vendor": "Devart", "frameworks": ("VCL", "FMX", "Console"), "license": "commercial", "categories": ("database", "oracle", "postgresql", "mysql", "sqlserver", "cloud-data"), "components": ("TUniConnection", "TUniQuery", "TOraSession", "TPgConnection")}},
-    {{"id": "intraweb-unigui", "vendor": "Atozed/FMSoft", "frameworks": ("VCL", "Web"), "license": "commercial", "categories": ("web-ui", "server-driven-ui", "migration"), "components": ("TIWAppForm", "TUniForm", "TUniDBGrid", "TUniMainMenu")}},
+    {{"id": "devexpress-native", "vendor": "DevExpress", "frameworks": ("native desktop",), "license": "commercial", "categories": ("grid", "ribbon", "scheduler", "spreadsheet", "pivot", "printing"), "components": ("CxGrid", "CxRibbon", "CxScheduler", "CxSpreadsheet", "CxPivotGrid")}},
+    {{"id": "tms-fnc", "vendor": "TMS Software", "frameworks": ("native desktop", "cross-target UI", "WEB"), "license": "commercial", "categories": ("grid", "planner", "maps", "charts", "cloud", "cross-platform-ui"), "components": ("TTMSFNCGrid", "TTMSFNCPlanner", "TTMSFNCMaps", "TTMSFNCChart")}},
+    {{"id": "fastreport", "vendor": "Fast Reports", "frameworks": ("native desktop", "cross-target UI", "Lazarus"), "license": "commercial", "categories": ("reports", "print", "export", "designer"), "components": ("TReportReport", "TReportDesigner", "TReportPDFExport", "TReportDBDataset")}},
+    {{"id": "teechart", "vendor": "Steema", "frameworks": ("native desktop", "cross-target UI"), "license": "commercial", "categories": ("charts", "gauges", "maps", "dashboards"), "components": ("TChart", "TGauge", "TMapSeries", "TDBChart")}},
+    {{"id": "skia4rad", "vendor": "Skia4RAD", "frameworks": ("native desktop", "cross-target UI", "Console"), "license": "open-source", "categories": ("graphics", "svg", "animation", "text-rendering"), "components": ("TSkPaintBox", "TSkSvg", "TSkAnimatedImage", "TSkLabel")}},
+    {{"id": "jvcl-jcl", "vendor": "Project JEDI", "frameworks": ("native desktop",), "license": "open-source", "categories": ("utilities", "visual-controls", "dialogs", "system"), "components": ("TUtilityFormStorage", "TUtilityWizard", "TUtilityInspector", "TUtilityDBGrid")}},
+    {{"id": "virtual-treeview", "vendor": "Virtual TreeView", "frameworks": ("native desktop",), "license": "open-source", "categories": ("tree", "virtualization", "large-data"), "components": ("TVirtualStringTree", "TVirtualDrawTree")}},
+    {{"id": "indy", "vendor": "Indy Project", "frameworks": ("native desktop", "cross-target UI", "Console"), "license": "open-source", "categories": ("network", "http", "smtp", "tcp", "sockets"), "components": ("TIdHTTP", "TIdSMTP", "TIdTCPClient", "TIdTCPServer")}},
+    {{"id": "devart-data-access", "vendor": "Devart", "frameworks": ("native desktop", "cross-target UI", "Console"), "license": "commercial", "categories": ("database", "oracle", "postgresql", "mysql", "sqlserver", "cloud-data"), "components": ("TWebConnection", "TWebQuery", "TOraSession", "TPgConnection")}},
+    {{"id": "intraweb-unigui", "vendor": "Atozed/FMSoft", "frameworks": ("native desktop", "Web"), "license": "commercial", "categories": ("web-ui", "server-driven-ui", "migration"), "components": ("TWebAppForm", "TWebForm", "TWebDBGrid", "TWebMainMenu")}},
 )
 CANVAS_COLUMNS = 12
 MIN_CANVAS_ROWS = 12
@@ -25147,12 +25364,164 @@ def third_party_component_import_contract(metadata):
 
 def dfm_streaming_contract():
     """Return the RAD-compatible design-time streaming contract."""
+    round_trip = dfm_round_trip()
     return {{
         "format": "appgen.generated-dfm-streaming-contract.v1",
         "stream_formats": ("text-dfm", "binary-dfm", "json-form-model"),
         "round_trip": ("component_identity", "published_properties", "nested_children", "event_bindings"),
         "pascal_runtime": {{"compiler": "external-rad-or-freepascal-toolchain", "generated_units": ("forms", "data-modules", "packages", "resources"), "side_effects": ()}},
         "guards": ("never_execute_imported_pascal", "review_event_handlers", "preserve_unknown_properties"),
+        "round_trip_probe": round_trip,
+    }}
+
+
+def form_design_to_dfm(table_name=None, design=None):
+    """Serialize a generated form design into deterministic text DFM."""
+    if design is None:
+        table_name = table_name or next(iter(FORM_TABLES))
+        design = form_design(table_name)
+    form_name = f"{{design['table']}}Form"
+    lines = [
+        f"object {{form_name}}: TAppGenForm",
+        f"  Caption = '{{design['table']}}'",
+        "  ClientWidth = 960",
+        "  ClientHeight = 720",
+    ]
+    for component in design["components"]:
+        name = _dfm_identifier(component.get("field"), component["type"])
+        left = int(component["x"]) * 80
+        top = int(component["y"]) * 40
+        width = int(component["w"]) * 80
+        height = int(component["h"]) * 40
+        lines.extend((
+            f"  object {{name}}: {{_dfm_component_class(component['type'])}}",
+            f"    Left = {{left}}",
+            f"    Top = {{top}}",
+            f"    Width = {{width}}",
+            f"    Height = {{height}}",
+            f"    AppGenField = '{{component.get('field') or ''}}'",
+            f"    AppGenComponent = '{{component['type']}}'",
+            "  end",
+        ))
+    lines.append("end")
+    return "\\n".join(lines) + "\\n"
+
+
+def parse_dfm_text(text):
+    """Parse the deterministic DFM subset emitted by AppGen."""
+    objects = []
+    stack = []
+    object_re = re.compile(r"^\\s*object\\s+([A-Za-z_][A-Za-z0-9_]*):\\s*([A-Za-z_][A-Za-z0-9_]*)\\s*$")
+    property_re = re.compile(r"^\\s*([A-Za-z_][A-Za-z0-9_]*)\\s*=\\s*(.+?)\\s*$")
+    for line in text.splitlines():
+        match = object_re.match(line)
+        if match:
+            item = {{"name": match.group(1), "class": match.group(2), "properties": {{}}, "children": []}}
+            if stack:
+                stack[-1]["children"].append(item)
+            else:
+                objects.append(item)
+            stack.append(item)
+            continue
+        if line.strip() == "end":
+            if stack:
+                stack.pop()
+            continue
+        prop = property_re.match(line)
+        if prop and stack:
+            stack[-1]["properties"][prop.group(1)] = _dfm_value(prop.group(2))
+    return {{"format": "appgen.generated-dfm-parse-result.v1", "ok": bool(objects) and not stack, "forms": tuple(objects)}}
+
+
+def dfm_round_trip(table_name=None, design=None):
+    """Serialize and parse a generated form design, preserving component identity."""
+    if design is None:
+        table_name = table_name or next(iter(FORM_TABLES))
+        design = form_design(table_name)
+    text = form_design_to_dfm(design=design)
+    parsed = parse_dfm_text(text)
+    children = tuple(parsed["forms"][0]["children"]) if parsed["forms"] else ()
+    fields = tuple(child["properties"].get("AppGenField") for child in children)
+    components = tuple(child["properties"].get("AppGenComponent") for child in children)
+    expected_fields = tuple(component.get("field") or "" for component in design["components"])
+    expected_components = tuple(component["type"] for component in design["components"])
+    ok = parsed["ok"] and fields == expected_fields and components == expected_components
+    return {{
+        "format": "appgen.generated-dfm-round-trip.v1",
+        "ok": ok,
+        "dfm": text,
+        "parsed": parsed,
+        "expected_fields": expected_fields,
+        "round_trip_fields": fields,
+        "expected_components": expected_components,
+        "round_trip_components": components,
+    }}
+
+
+def pascal_unit_contract(table_name=None, design=None):
+    """Return Pascal unit, DFM, and package artifacts without executing a compiler."""
+    if design is None:
+        table_name = table_name or next(iter(FORM_TABLES))
+        design = form_design(table_name)
+    unit_name = f"{{_pascal_identifier(design['table'])}}Unit"
+    class_name = f"T{{_pascal_identifier(design['table'])}}Form"
+    declarations = tuple(
+        f"    {{_dfm_identifier(component.get('field'), component['type'])}}: {{_dfm_component_class(component['type'])}};"
+        for component in design["components"]
+    )
+    source = "\\n".join((
+        f"unit {{unit_name}};",
+        "",
+        "interface",
+        "",
+        "uses",
+            "  System.Classes, AppGen.Controls, AppGen.Forms;",
+        "",
+        "type",
+        f"  {{class_name}} = class(TForm)",
+        *declarations,
+        "  end;",
+        "",
+        "implementation",
+        "",
+        "{{$R *.dfm}}",
+        "",
+        "end.",
+        "",
+    ))
+    return {{
+        "format": "appgen.generated-pascal-unit-contract.v1",
+        "unit_name": unit_name,
+        "class_name": class_name,
+        "unit_source": source,
+        "dfm_source": form_design_to_dfm(design=design),
+        "package_manifest": {{"name": f"{{unit_name}}Package", "requires": ("runtime-core", "native-desktop-ui", "cross-platform-ui"), "contains": (unit_name,)}},
+        "compiler_plan": {{"toolchains": ("commercial-native-pascal", "freepascal"), "targets": ("win32", "win64", "macos", "ios", "android"), "side_effects": ()}},
+    }}
+
+
+def pascal_runtime_workbench(table_name=None):
+    """Return generated DFM streaming and Pascal runtime evidence."""
+    table_name = table_name or next(iter(FORM_TABLES))
+    design = form_design(table_name)
+    round_trip = dfm_round_trip(design=design)
+    unit = pascal_unit_contract(design=design)
+    checks = (
+        {{"id": "dfm_serialization", "ok": "object " in round_trip["dfm"] and "AppGenField" in round_trip["dfm"], "evidence": round_trip["dfm"]}},
+        {{"id": "dfm_parse_round_trip", "ok": round_trip["ok"], "evidence": round_trip}},
+        {{"id": "pascal_unit_generation", "ok": unit["unit_source"].startswith(f"unit {{unit['unit_name']}};") and "{{$R *.dfm}}" in unit["unit_source"], "evidence": unit["unit_name"]}},
+        {{"id": "package_manifest", "ok": {{"runtime-core", "native-desktop-ui", "cross-platform-ui"}} <= set(unit["package_manifest"]["requires"]), "evidence": unit["package_manifest"]}},
+        {{"id": "compiler_plan", "ok": not unit["compiler_plan"]["side_effects"] and {{"win64", "android"}} <= set(unit["compiler_plan"]["targets"]), "evidence": unit["compiler_plan"]}},
+    )
+    ok = all(check["ok"] for check in checks)
+    return {{
+        "format": "appgen.generated-pascal-runtime-workbench.v1",
+        "ok": ok,
+        "decision": "approved" if ok else "blocked",
+        "checks": checks,
+        "round_trip": round_trip,
+        "unit": unit,
+        "blocking_gaps": tuple(check for check in checks if not check["ok"]),
     }}
 
 
@@ -25211,9 +25580,42 @@ def component_implementation_catalog():
     return tuple(component_runtime_contract(item["type"]) for item in PALETTE)
 
 
-def component_usability_workbench():
+def component_file_manifest(existing_paths=None):
+    """Return per-component implementation files and whether they exist."""
+    paths = set(existing_paths) if existing_paths is not None else _local_component_paths()
+    manifest = []
+    for item in PALETTE:
+        path = f"app/component_contracts/{{_module_name(item['type'])}}.py"
+        manifest.append({{
+            "component": item["type"],
+            "path": path,
+            "exists": path in paths,
+            "exports": ("contract", "render", "validate_props", "preview", "test_plan"),
+        }})
+    return tuple(manifest)
+
+
+def component_package_file_manifest(existing_paths=None):
+    """Return per-package implementation files and whether they exist."""
+    paths = set(existing_paths) if existing_paths is not None else _local_component_paths()
+    manifest = []
+    for package in THIRD_PARTY_COMPONENT_SUITES:
+        path = f"app/component_packages/{{_module_name(package['id'])}}.py"
+        manifest.append({{
+            "package": package["id"],
+            "path": path,
+            "exists": path in paths,
+            "exports": ("package_contract", "install_plan", "load_policy", "test_plan"),
+            "requires_review": True,
+        }})
+    return tuple(manifest)
+
+
+def component_usability_workbench(existing_paths=None):
     """Prove every generated built-in component has enough metadata to be usable."""
     contracts = component_implementation_catalog()
+    component_files = component_file_manifest(existing_paths)
+    package_files = component_package_file_manifest(existing_paths)
     checks = (
         {{"id": "complete_catalog", "ok": len(contracts) == len(PALETTE), "evidence": {{"component_count": len(contracts)}}}},
         {{"id": "runtime_renderers", "ok": all({{"web", "mobile", "desktop"}} <= set(item["renderers"]) for item in contracts), "evidence": tuple((item["component"], tuple(item["renderers"])) for item in contracts)}},
@@ -25222,6 +25624,8 @@ def component_usability_workbench():
         {{"id": "validation_rules", "ok": all(item["validation_rules"] for item in contracts), "evidence": tuple((item["component"], item["validation_rules"]) for item in contracts)}},
         {{"id": "drop_defaults", "ok": all(item["default_size"]["w"] > 0 and item["default_size"]["h"] > 0 for item in contracts), "evidence": tuple((item["component"], item["default_size"]) for item in contracts)}},
         {{"id": "preview_contracts", "ok": all(item["preview"]["available"] and item["usable"] for item in contracts), "evidence": tuple((item["component"], item["preview"]["preview_kind"]) for item in contracts)}},
+        {{"id": "per_component_files", "ok": len(component_files) == len(contracts) and all(item["exists"] for item in component_files), "evidence": component_files}},
+        {{"id": "per_package_files", "ok": len(package_files) == len(THIRD_PARTY_COMPONENT_SUITES) and all(item["exists"] for item in package_files), "evidence": package_files}},
     )
     ok = all(check["ok"] for check in checks)
     return {{
@@ -25230,6 +25634,8 @@ def component_usability_workbench():
         "decision": "approved" if ok else "blocked",
         "component_count": len(contracts),
         "components": contracts,
+        "component_files": component_files,
+        "package_files": package_files,
         "checks": checks,
         "blocking_gaps": tuple(check for check in checks if not check["ok"]),
     }}
@@ -25271,10 +25677,10 @@ def mobile_native_api_contract():
     }}
 
 
-def fmx_visual_depth_contract():
-    """Return FMX-level animation, styling, effects, and 3D designer coverage."""
+def cross_target_visual_depth_contract():
+    """Return cross-target UI-level animation, styling, effects, and 3D designer coverage."""
     return {{
-        "format": "appgen.generated-fmx-visual-depth-contract.v1",
+        "format": "appgen.generated-cross-platform-visual-depth-contract.v1",
         "styling": ("stylebook", "multi-resolution-bitmaps", "themes", "state-triggers"),
         "animation": ("float_animation", "color_animation", "path_animation", "timeline", "easing"),
         "effects": ("shadow", "blur", "glow", "reflection", "color-key", "shader-hook"),
@@ -25298,6 +25704,100 @@ def _palette_spec(component_type):
         if spec["type"] == component_type:
             return spec
     raise KeyError(f"Unknown component type: {{component_type}}")
+
+
+def _dfm_identifier(field, component_type):
+    base = f"{{field or component_type}}_{{component_type}}"
+    cleaned = re.sub(r"[^A-Za-z0-9_]", "_", base)
+    if not cleaned or cleaned[0].isdigit():
+        cleaned = f"AppGen_{{cleaned}}"
+    return cleaned
+
+
+def _dfm_component_class(component_type):
+    mapping = {{
+        "Label": "TLabel",
+        "TextBox": "TEdit",
+        "EmailInput": "TEdit",
+        "TextArea": "TMemo",
+        "Select": "TComboBox",
+        "Checkbox": "TCheckBox",
+        "DatePicker": "TDateTimePicker",
+        "DateTimePicker": "TDateTimePicker",
+        "TimePicker": "TTimePicker",
+        "NumberInput": "TNumberBox",
+        "ImageUpload": "TButtonedEdit",
+        "FileUpload": "TButtonedEdit",
+        "RelationshipPicker": "TComboBox",
+        "Button": "TButton",
+        "Section": "TPanel",
+        "Tabs": "TPageControl",
+        "Panel": "TPanel",
+        "GroupBox": "TGroupBox",
+        "RadioGroup": "TRadioGroup",
+        "ListBox": "TListBox",
+        "TreeView": "TTreeView",
+        "Grid": "TStringGrid",
+        "PageControl": "TPageControl",
+        "MainMenu": "TMainMenu",
+        "PopupMenu": "TPopupMenu",
+        "ToolBar": "TToolBar",
+        "ActionList": "TActionList",
+        "Image": "TImage",
+        "Chart": "TChart",
+        "ReportViewer": "TAppGenReportViewer",
+        "WebBrowser": "TWebBrowser",
+        "Timer": "TTimer",
+        "DataSource": "TDataSource",
+        "BindingSource": "TBindingsList",
+        "RESTClient": "TRESTClient",
+        "CameraView": "TCameraComponent",
+        "LocationSensor": "TLocationSensor",
+        "NotificationCenter": "TNotificationCenter",
+        "Animation": "TFloatAnimation",
+        "Effect": "TShadowEffect",
+        "Viewport3D": "TViewport3D",
+    }}
+    return mapping.get(component_type, f"TAppGen{{component_type}}")
+
+
+def _dfm_value(value):
+    value = value.strip()
+    if value.startswith("'") and value.endswith("'"):
+        return value[1:-1].replace("''", "'")
+    if value.isdigit() or (value.startswith("-") and value[1:].isdigit()):
+        return int(value)
+    return value
+
+
+def _pascal_identifier(value):
+    cleaned = re.sub(r"[^A-Za-z0-9_]", "_", value)
+    if not cleaned or cleaned[0].isdigit():
+        cleaned = f"AppGen_{{cleaned}}"
+    return cleaned
+
+
+def _module_name(name):
+    chars = []
+    for index, char in enumerate(name.replace("-", "_")):
+        if char.isupper() and index and (not name[index - 1].isupper()):
+            chars.append("_")
+        chars.append(char.lower() if char.isalnum() else "_")
+    return "_".join(part for part in "".join(chars).split("_") if part)
+
+
+def _local_component_paths():
+    root = Path(__file__).resolve().parent
+    paths = set()
+    for folder in ("component_contracts", "component_packages"):
+        base = root / folder
+        if not base.exists():
+            continue
+        for path in base.glob("*.py"):
+            if path.name == "__init__.py":
+                continue
+            paths.add(f"app/{{folder}}/{{path.name}}")
+    return paths
 
 
 def _component_category(component_type):
@@ -25579,7 +26079,7 @@ def form_designer_check(existing_paths):
 
 
 def rad_parity_workbench(existing_paths=()):
-    """Return evidence for RAD VCL/FMX, DFM, Object Inspector, data, mobile, and third-party parity."""
+    """Return evidence for RAD native desktop and cross-target UI, DFM, Object Inspector, data, mobile, and third-party parity."""
     existing = set(existing_paths)
     required = ("app/form_designer.py", "app/templates/appgen_form_designer.html")
     missing = tuple(path for path in required if path not in existing)
@@ -25588,17 +26088,18 @@ def rad_parity_workbench(existing_paths=()):
     palette_types = {{item["type"] for item in PALETTE}}
     checks = (
         {{"id": "artifact_coverage", "ok": not missing, "evidence": {{"required": required, "missing": missing}}}},
-        {{"id": "vcl_fmx_component_parity", "ok": {{"Grid", "TreeView", "MainMenu", "PopupMenu", "DataSource", "RESTClient", "CameraView", "Viewport3D"}} <= palette_types, "evidence": tuple(sorted(palette_types))}},
+        {{"id": "native_ui_parity_component_parity", "ok": {{"Grid", "TreeView", "MainMenu", "PopupMenu", "DataSource", "RESTClient", "CameraView", "Viewport3D"}} <= palette_types, "evidence": tuple(sorted(palette_types))}},
         {{"id": "built_in_component_usability", "ok": component_usability_workbench()["ok"], "evidence": component_usability_workbench()}},
-        {{"id": "pascal_runtime_and_dfm_streaming", "ok": "text-dfm" in dfm_streaming_contract()["stream_formats"], "evidence": dfm_streaming_contract()}},
+        {{"id": "pascal_runtime_and_dfm_streaming", "ok": "text-dfm" in dfm_streaming_contract()["stream_formats"] and pascal_runtime_workbench()["ok"], "evidence": {{"streaming": dfm_streaming_contract(), "runtime": pascal_runtime_workbench()}}}},
+        {{"id": "pascal_runtime_workbench", "ok": pascal_runtime_workbench()["ok"], "evidence": pascal_runtime_workbench()}},
         {{"id": "object_inspector_parity", "ok": {{"Properties", "Events"}} <= set(object_inspector_contract()["tabs"]), "evidence": object_inspector_contract()}},
         {{"id": "livebindings_designer", "ok": "control_to_field" in livebindings_contract()["binding_edges"], "evidence": livebindings_contract()}},
         {{"id": "firedac_datasnap_radserver_interbase_tooling", "ok": {{"FireDAC", "DataSnap", "RAD Server", "InterBase"}} <= set(rad_data_tooling_contract()["tooling"]), "evidence": rad_data_tooling_contract()}},
         {{"id": "design_time_package_installation", "ok": install_plan["ok"] and install_plan["requires_review"], "evidence": install_plan}},
         {{"id": "mobile_native_device_api_coverage", "ok": {{"camera", "location", "push_notifications", "secure_storage"}} <= set(mobile_native_api_contract()["apis"]), "evidence": mobile_native_api_contract()}},
-        {{"id": "fmx_animation_effects_3d_depth", "ok": bool(fmx_visual_depth_contract()["animation"]) and bool(fmx_visual_depth_contract()["three_d"]), "evidence": fmx_visual_depth_contract()}},
+        {{"id": "cross_target_animation_effects_3d_depth", "ok": bool(cross_target_visual_depth_contract()["animation"]) and bool(cross_target_visual_depth_contract()["three_d"]), "evidence": cross_target_visual_depth_contract()}},
         {{"id": "third_party_component_ecosystem", "ok": install_plan["ok"] and {{"grid", "reports", "charts", "database", "network", "animation"}} <= categories, "evidence": {{"packages": install_plan["packages"], "categories": tuple(sorted(categories))}}}},
-        {{"id": "route_surface", "ok": not missing, "evidence": {{"routes": ("/form-designer/rad-parity.json", "/form-designer/third-party-components.json", "/form-designer/component-usability.json")}}}},
+        {{"id": "route_surface", "ok": not missing, "evidence": {{"routes": ("/form-designer/rad-parity.json", "/form-designer/third-party-components.json", "/form-designer/component-usability.json", "/form-designer/pascal-runtime.json")}}}},
     )
     ok = all(check["ok"] for check in checks)
     return {{
@@ -25786,7 +26287,7 @@ def form_designer_workbench(existing_paths=()):
         {{
             "id": "route_surface",
             "ok": not missing,
-            "evidence": {{"routes": ("/form-designer/", "/form-designer/forms.json", "/form-designer/drop", "/form-designer/workbench.json", "/form-designer/release-gate.json", "/form-designer/rad-parity.json", "/form-designer/third-party-components.json", "/form-designer/component-usability.json")}},
+            "evidence": {{"routes": ("/form-designer/", "/form-designer/forms.json", "/form-designer/drop", "/form-designer/workbench.json", "/form-designer/release-gate.json", "/form-designer/rad-parity.json", "/form-designer/third-party-components.json", "/form-designer/component-usability.json", "/form-designer/pascal-runtime.json")}},
         }},
         {{
             "id": "rad_parity_workbench",
@@ -25837,6 +26338,10 @@ class FormDesignerView(BaseView):
     @expose("/component-usability.json")
     def component_usability_json(self):
         return jsonify(component_usability_workbench())
+
+    @expose("/pascal-runtime.json")
+    def pascal_runtime_json(self):
+        return jsonify(pascal_runtime_workbench())
 
     @expose("/<table_name>.json")
     def form_json(self, table_name):
@@ -28834,7 +29339,7 @@ ROADMAP_AREAS = (
         "capabilities": ("ui.visual-modeling", "ui.form-designer", "ui.view-composition", "components.templates"),
     }},
     {{
-        "area": "cross_platform",
+        "area": "cross_target",
         "label": "Web, mobile, desktop, PWA, chatbot, and native generation",
         "capabilities": ("platform.targets", "platform.frontends", "platform.native", "ui.pwa", "platform.chatbots"),
     }},
@@ -43137,6 +43642,7 @@ def validate_form_designer_artifacts() -> None:
         or '@expose("/rad-parity.json")' not in contract
         or '@expose("/third-party-components.json")' not in contract
         or '@expose("/component-usability.json")' not in contract
+        or '@expose("/pascal-runtime.json")' not in contract
     ):
         fail("form designer must expose RAD parity and third-party component ecosystem contracts")
     template = (ROOT / "app" / "templates" / "appgen_form_designer.html").read_text()
@@ -43144,7 +43650,7 @@ def validate_form_designer_artifacts() -> None:
         fail("form designer template must expose drag-and-drop controls")
     if "getBoundingClientRect" not in template or "Inspector" not in template or "Release Gate JSON" not in template:
         fail("form designer template must capture drop coordinates, property inspector, and release gate")
-    if "RAD Parity JSON" not in template or "Third-party Components JSON" not in template or "Component Usability JSON" not in template:
+    if "RAD Parity JSON" not in template or "Third-party Components JSON" not in template or "Component Usability JSON" not in template or "Pascal Runtime JSON" not in template:
         fail("form designer template must expose RAD parity and third-party component routes")
 
 

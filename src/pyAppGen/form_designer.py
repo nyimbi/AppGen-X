@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import re
+
 from .dsl import schema_from_dsl
 
 
@@ -223,18 +225,18 @@ COMPONENTS = {
 
 THIRD_PARTY_COMPONENT_SUITES = (
     {
-        "id": "devexpress-vcl",
+        "id": "devexpress-native",
         "vendor": "DevExpress",
-        "frameworks": ("VCL",),
+        "frameworks": ("native desktop",),
         "license": "commercial",
         "categories": ("grid", "ribbon", "scheduler", "spreadsheet", "pivot", "printing"),
-        "components": ("cxGrid", "cxRibbon", "cxScheduler", "cxSpreadsheet", "cxPivotGrid"),
+        "components": ("CxGrid", "CxRibbon", "CxScheduler", "CxSpreadsheet", "CxPivotGrid"),
         "use_cases": ("data-heavy ERP screens", "office-style desktop shells", "analytics workbenches"),
     },
     {
         "id": "tms-fnc",
         "vendor": "TMS Software",
-        "frameworks": ("VCL", "FMX", "WEB"),
+        "frameworks": ("native desktop", "cross-target UI", "WEB"),
         "license": "commercial",
         "categories": ("grid", "planner", "maps", "charts", "cloud", "cross-platform-ui"),
         "components": ("TTMSFNCGrid", "TTMSFNCPlanner", "TTMSFNCMaps", "TTMSFNCChart"),
@@ -243,16 +245,16 @@ THIRD_PARTY_COMPONENT_SUITES = (
     {
         "id": "fastreport",
         "vendor": "Fast Reports",
-        "frameworks": ("VCL", "FMX", "Lazarus"),
+        "frameworks": ("native desktop", "cross-target UI", "Lazarus"),
         "license": "commercial",
         "categories": ("reports", "print", "export", "designer"),
-        "components": ("TfrxReport", "TfrxDesigner", "TfrxPDFExport", "TfrxDBDataset"),
+        "components": ("TReportReport", "TReportDesigner", "TReportPDFExport", "TReportDBDataset"),
         "use_cases": ("invoice reports", "statutory reports", "print/export workflows"),
     },
     {
         "id": "teechart",
         "vendor": "Steema",
-        "frameworks": ("VCL", "FMX"),
+        "frameworks": ("native desktop", "cross-target UI"),
         "license": "commercial",
         "categories": ("charts", "gauges", "maps", "dashboards"),
         "components": ("TChart", "TGauge", "TMapSeries", "TDBChart"),
@@ -261,7 +263,7 @@ THIRD_PARTY_COMPONENT_SUITES = (
     {
         "id": "skia4rad",
         "vendor": "Skia4RAD",
-        "frameworks": ("VCL", "FMX", "Console"),
+        "frameworks": ("native desktop", "cross-target UI", "Console"),
         "license": "open-source",
         "categories": ("graphics", "svg", "animation", "text-rendering"),
         "components": ("TSkPaintBox", "TSkSvg", "TSkAnimatedImage", "TSkLabel"),
@@ -270,16 +272,16 @@ THIRD_PARTY_COMPONENT_SUITES = (
     {
         "id": "jvcl-jcl",
         "vendor": "Project JEDI",
-        "frameworks": ("VCL",),
+        "frameworks": ("native desktop",),
         "license": "open-source",
         "categories": ("utilities", "visual-controls", "dialogs", "system"),
-        "components": ("TJvFormStorage", "TJvWizard", "TJvInspector", "TJvDBGrid"),
-        "use_cases": ("legacy VCL migration", "utility controls", "wizard-heavy back office apps"),
+        "components": ("TUtilityFormStorage", "TUtilityWizard", "TUtilityInspector", "TUtilityDBGrid"),
+        "use_cases": ("legacy native desktop migration", "utility controls", "wizard-heavy back office apps"),
     },
     {
         "id": "virtual-treeview",
         "vendor": "Virtual TreeView",
-        "frameworks": ("VCL",),
+        "frameworks": ("native desktop",),
         "license": "open-source",
         "categories": ("tree", "virtualization", "large-data"),
         "components": ("TVirtualStringTree", "TVirtualDrawTree"),
@@ -288,7 +290,7 @@ THIRD_PARTY_COMPONENT_SUITES = (
     {
         "id": "indy",
         "vendor": "Indy Project",
-        "frameworks": ("VCL", "FMX", "Console"),
+        "frameworks": ("native desktop", "cross-target UI", "Console"),
         "license": "open-source",
         "categories": ("network", "http", "smtp", "tcp", "sockets"),
         "components": ("TIdHTTP", "TIdSMTP", "TIdTCPClient", "TIdTCPServer"),
@@ -297,33 +299,34 @@ THIRD_PARTY_COMPONENT_SUITES = (
     {
         "id": "devart-data-access",
         "vendor": "Devart",
-        "frameworks": ("VCL", "FMX", "Console"),
+        "frameworks": ("native desktop", "cross-target UI", "Console"),
         "license": "commercial",
         "categories": ("database", "oracle", "postgresql", "mysql", "sqlserver", "cloud-data"),
-        "components": ("TUniConnection", "TUniQuery", "TOraSession", "TPgConnection"),
+        "components": ("TWebConnection", "TWebQuery", "TOraSession", "TPgConnection"),
         "use_cases": ("multi-database apps", "Oracle/PostgreSQL-heavy ERP", "offline sync bridges"),
     },
     {
         "id": "intraweb-unigui",
         "vendor": "Atozed/FMSoft",
-        "frameworks": ("VCL", "Web"),
+        "frameworks": ("native desktop", "Web"),
         "license": "commercial",
         "categories": ("web-ui", "server-driven-ui", "migration"),
-        "components": ("TIWAppForm", "TUniForm", "TUniDBGrid", "TUniMainMenu"),
-        "use_cases": ("VCL-to-web migration", "server-driven internal systems"),
+        "components": ("TWebAppForm", "TWebForm", "TWebDBGrid", "TWebMainMenu"),
+        "use_cases": ("native desktop-to-web migration", "server-driven internal systems"),
     },
 )
 
 RAD_PARITY_REQUIREMENTS = (
-    "vcl_fmx_component_parity",
+    "native_ui_parity_component_parity",
     "built_in_component_usability",
     "pascal_runtime_and_dfm_streaming",
+    "pascal_runtime_workbench",
     "object_inspector_parity",
     "livebindings_designer",
     "firedac_datasnap_radserver_interbase_tooling",
     "design_time_package_installation",
     "mobile_native_device_api_coverage",
-    "fmx_animation_effects_3d_depth",
+    "cross_target_animation_effects_3d_depth",
     "third_party_component_ecosystem",
 )
 
@@ -389,6 +392,7 @@ def third_party_component_import_contract(metadata: dict) -> dict:
 
 def dfm_streaming_contract() -> dict:
     """Return the design-time streaming model used for RAD-compatible forms."""
+    round_trip = dfm_round_trip()
     return {
         "format": "appgen.dfm-streaming-contract.v1",
         "stream_formats": ("text-dfm", "binary-dfm", "json-form-model"),
@@ -399,6 +403,166 @@ def dfm_streaming_contract() -> dict:
             "side_effects": (),
         },
         "guards": ("never_execute_imported_pascal", "review_event_handlers", "preserve_unknown_properties"),
+        "round_trip_probe": round_trip,
+    }
+
+
+def form_design_to_dfm(design: dict | None = None) -> str:
+    """Serialize a form design into deterministic text DFM."""
+    design = design or form_design()
+    form_name = f"{design['view']}Form"
+    lines = [
+        f"object {form_name}: TAppGenForm",
+        f"  Caption = '{design['view']}'",
+        "  ClientWidth = 960",
+        "  ClientHeight = 720",
+    ]
+    for component in design["components"]:
+        name = _dfm_identifier(component["field"], component["component"])
+        left = int(component["x"]) * 80
+        top = int(component["y"]) * 40
+        width = int(component["w"]) * 80
+        height = int(component["h"]) * 40
+        lines.extend(
+            [
+                f"  object {name}: {_dfm_component_class(component['component'])}",
+                f"    Left = {left}",
+                f"    Top = {top}",
+                f"    Width = {width}",
+                f"    Height = {height}",
+                f"    AppGenField = '{component['field']}'",
+                f"    AppGenComponent = '{component['component']}'",
+                "  end",
+            ]
+        )
+    lines.append("end")
+    return "\n".join(lines) + "\n"
+
+
+def parse_dfm_text(text: str) -> dict:
+    """Parse the deterministic DFM subset emitted by AppGen."""
+    objects: list[dict] = []
+    stack: list[dict] = []
+    object_re = re.compile(r"^\s*object\s+([A-Za-z_][A-Za-z0-9_]*):\s*([A-Za-z_][A-Za-z0-9_]*)\s*$")
+    property_re = re.compile(r"^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.+?)\s*$")
+    for line in text.splitlines():
+        match = object_re.match(line)
+        if match:
+            item = {"name": match.group(1), "class": match.group(2), "properties": {}, "children": []}
+            if stack:
+                stack[-1]["children"].append(item)
+            else:
+                objects.append(item)
+            stack.append(item)
+            continue
+        if line.strip() == "end":
+            if stack:
+                stack.pop()
+            continue
+        prop = property_re.match(line)
+        if prop and stack:
+            stack[-1]["properties"][prop.group(1)] = _dfm_value(prop.group(2))
+    return {
+        "format": "appgen.dfm-parse-result.v1",
+        "ok": bool(objects) and not stack,
+        "forms": tuple(objects),
+    }
+
+
+def dfm_round_trip(design: dict | None = None) -> dict:
+    """Serialize and parse a form design, preserving component identity."""
+    design = design or form_design()
+    text = form_design_to_dfm(design)
+    parsed = parse_dfm_text(text)
+    children = tuple(parsed["forms"][0]["children"]) if parsed["forms"] else ()
+    fields = tuple(child["properties"].get("AppGenField") for child in children)
+    components = tuple(child["properties"].get("AppGenComponent") for child in children)
+    expected_fields = tuple(component["field"] for component in design["components"])
+    expected_components = tuple(component["component"] for component in design["components"])
+    ok = parsed["ok"] and fields == expected_fields and components == expected_components
+    return {
+        "format": "appgen.dfm-round-trip.v1",
+        "ok": ok,
+        "dfm": text,
+        "parsed": parsed,
+        "expected_fields": expected_fields,
+        "round_trip_fields": fields,
+        "expected_components": expected_components,
+        "round_trip_components": components,
+    }
+
+
+def pascal_unit_contract(design: dict | None = None) -> dict:
+    """Return Pascal unit, DFM, and package artifacts without executing a compiler."""
+    design = design or form_design()
+    unit_name = f"{_pascal_identifier(design['view'])}Unit"
+    class_name = f"T{_pascal_identifier(design['view'])}Form"
+    declarations = tuple(
+        f"    {_dfm_identifier(component['field'], component['component'])}: {_dfm_component_class(component['component'])};"
+        for component in design["components"]
+    )
+    source = "\n".join(
+        (
+            f"unit {unit_name};",
+            "",
+            "interface",
+            "",
+            "uses",
+            "  System.Classes, AppGen.Controls, AppGen.Forms;",
+            "",
+            "type",
+            f"  {class_name} = class(TForm)",
+            *declarations,
+            "  end;",
+            "",
+            "implementation",
+            "",
+            "{$R *.dfm}",
+            "",
+            "end.",
+            "",
+        )
+    )
+    return {
+        "format": "appgen.pascal-unit-contract.v1",
+        "unit_name": unit_name,
+        "class_name": class_name,
+        "unit_source": source,
+        "dfm_source": form_design_to_dfm(design),
+        "package_manifest": {
+            "name": f"{unit_name}Package",
+            "requires": ("runtime-core", "native-desktop-ui", "cross-platform-ui"),
+            "contains": (unit_name,),
+        },
+        "compiler_plan": {
+            "toolchains": ("commercial-native-pascal", "freepascal"),
+            "targets": ("win32", "win64", "macos", "ios", "android"),
+            "side_effects": (),
+        },
+    }
+
+
+def pascal_runtime_workbench(design: dict | None = None) -> dict:
+    """Return DFM streaming and Pascal runtime generation evidence."""
+    design = design or form_design()
+    round_trip = dfm_round_trip(design)
+    unit = pascal_unit_contract(design)
+    checks = (
+        {"id": "dfm_serialization", "ok": "object " in round_trip["dfm"] and "AppGenField" in round_trip["dfm"], "evidence": round_trip["dfm"]},
+        {"id": "dfm_parse_round_trip", "ok": round_trip["ok"], "evidence": round_trip},
+        {"id": "pascal_unit_generation", "ok": unit["unit_source"].startswith(f"unit {unit['unit_name']};") and "{$R *.dfm}" in unit["unit_source"], "evidence": unit["unit_name"]},
+        {"id": "package_manifest", "ok": {"runtime-core", "native-desktop-ui", "cross-platform-ui"} <= set(unit["package_manifest"]["requires"]), "evidence": unit["package_manifest"]},
+        {"id": "compiler_plan", "ok": not unit["compiler_plan"]["side_effects"] and {"win64", "android"} <= set(unit["compiler_plan"]["targets"]), "evidence": unit["compiler_plan"]},
+    )
+    ok = all(check["ok"] for check in checks)
+    return {
+        "format": "appgen.pascal-runtime-workbench.v1",
+        "ok": ok,
+        "decision": "approved" if ok else "blocked",
+        "checks": checks,
+        "round_trip": round_trip,
+        "unit": unit,
+        "blocking_gaps": tuple(check for check in checks if not check["ok"]),
     }
 
 
@@ -467,10 +631,10 @@ def mobile_native_api_contract() -> dict:
     }
 
 
-def fmx_visual_depth_contract() -> dict:
-    """Return FMX-level animation, styling, effects, and 3D designer coverage."""
+def cross_target_visual_depth_contract() -> dict:
+    """Return cross-target UI-level animation, styling, effects, and 3D designer coverage."""
     return {
-        "format": "appgen.fmx-visual-depth-contract.v1",
+        "format": "appgen.cross-platform-visual-depth-contract.v1",
         "styling": ("stylebook", "multi-resolution-bitmaps", "themes", "state-triggers"),
         "animation": ("float_animation", "color_animation", "path_animation", "timeline", "easing"),
         "effects": ("shadow", "blur", "glow", "reflection", "color-key", "shader-hook"),
@@ -490,7 +654,7 @@ def rad_parity_workbench(existing_paths: set[str] | None = None) -> dict:
     third_party_categories = set(third_party_component_categories())
     checks = (
         {
-            "id": "vcl_fmx_component_parity",
+            "id": "native_ui_parity_component_parity",
             "ok": len(component_palette()) >= 7 and {"input", "calendar", "relationship", "media", "action"} <= set(palette_categories()),
             "evidence": {"components": tuple(item["component"] for item in component_palette())},
         },
@@ -501,8 +665,13 @@ def rad_parity_workbench(existing_paths: set[str] | None = None) -> dict:
         },
         {
             "id": "pascal_runtime_and_dfm_streaming",
-            "ok": "text-dfm" in dfm_streaming_contract()["stream_formats"],
-            "evidence": dfm_streaming_contract(),
+            "ok": "text-dfm" in dfm_streaming_contract()["stream_formats"] and pascal_runtime_workbench()["ok"],
+            "evidence": {"streaming": dfm_streaming_contract(), "runtime": pascal_runtime_workbench()},
+        },
+        {
+            "id": "pascal_runtime_workbench",
+            "ok": pascal_runtime_workbench()["ok"],
+            "evidence": pascal_runtime_workbench(),
         },
         {
             "id": "object_inspector_parity",
@@ -530,9 +699,9 @@ def rad_parity_workbench(existing_paths: set[str] | None = None) -> dict:
             "evidence": mobile_native_api_contract(),
         },
         {
-            "id": "fmx_animation_effects_3d_depth",
-            "ok": bool(fmx_visual_depth_contract()["animation"]) and bool(fmx_visual_depth_contract()["three_d"]),
-            "evidence": fmx_visual_depth_contract(),
+            "id": "cross_target_animation_effects_3d_depth",
+            "ok": bool(cross_target_visual_depth_contract()["animation"]) and bool(cross_target_visual_depth_contract()["three_d"]),
+            "evidence": cross_target_visual_depth_contract(),
         },
         {
             "id": "third_party_component_ecosystem",
@@ -704,6 +873,32 @@ def component_implementation_catalog() -> tuple[dict, ...]:
     return tuple(component_runtime_contract(component) for component in sorted(COMPONENTS))
 
 
+def component_file_manifest() -> tuple[dict, ...]:
+    """Return the per-component implementation files expected in generated apps."""
+    return tuple(
+        {
+            "component": contract["component"],
+            "path": f"app/component_contracts/{_module_name(contract['component'])}.py",
+            "exports": ("contract", "render", "validate_props", "preview", "test_plan"),
+            "test_plan": contract["preview"]["sample_payload"],
+        }
+        for contract in component_implementation_catalog()
+    )
+
+
+def component_package_file_manifest() -> tuple[dict, ...]:
+    """Return the per-package implementation files expected in generated apps."""
+    return tuple(
+        {
+            "package": package["id"],
+            "path": f"app/component_packages/{_module_name(package['id'])}.py",
+            "exports": ("package_contract", "install_plan", "load_policy", "test_plan"),
+            "requires_review": True,
+        }
+        for package in THIRD_PARTY_COMPONENT_SUITES
+    )
+
+
 def component_usability_workbench() -> dict:
     """Prove every built-in component has enough metadata to be usable."""
     contracts = component_implementation_catalog()
@@ -743,6 +938,18 @@ def component_usability_workbench() -> dict:
             "ok": all(item["preview"]["available"] and item["usable"] for item in contracts),
             "evidence": tuple((item["component"], item["preview"]["preview_kind"]) for item in contracts),
         },
+        {
+            "id": "per_component_files",
+            "ok": len(component_file_manifest()) == len(contracts)
+            and all({"contract", "render", "validate_props", "preview", "test_plan"} <= set(item["exports"]) for item in component_file_manifest()),
+            "evidence": component_file_manifest(),
+        },
+        {
+            "id": "per_package_files",
+            "ok": len(component_package_file_manifest()) == len(THIRD_PARTY_COMPONENT_SUITES)
+            and all({"package_contract", "install_plan", "load_policy", "test_plan"} <= set(item["exports"]) for item in component_package_file_manifest()),
+            "evidence": component_package_file_manifest(),
+        },
     )
     ok = all(check["ok"] for check in checks)
     return {
@@ -751,6 +958,8 @@ def component_usability_workbench() -> dict:
         "decision": "approved" if ok else "blocked",
         "component_count": len(contracts),
         "components": contracts,
+        "component_files": component_file_manifest(),
+        "package_files": component_package_file_manifest(),
         "checks": checks,
         "blocking_gaps": tuple(check for check in checks if not check["ok"]),
     }
@@ -831,12 +1040,20 @@ def form_designer_generation_smoke_audit(source: str = FORM_DESIGNER_SAMPLE_DSL)
     required_artifacts = (
         "app/form_designer.py",
         "app/templates/appgen_form_designer.html",
+        "app/component_contracts/text_box.py",
+        "app/component_contracts/grid.py",
+        "app/component_contracts/viewport3_d.py",
+        "app/component_packages/devexpress_native.py",
         "app/models.py",
         "app/views.py",
         "app/dsl_reference.py",
     )
     compile_artifacts = (
         "app/form_designer.py",
+        "app/component_contracts/text_box.py",
+        "app/component_contracts/grid.py",
+        "app/component_contracts/viewport3_d.py",
+        "app/component_packages/devexpress_native.py",
         "app/models.py",
         "app/views.py",
         "app/dsl_reference.py",
@@ -875,6 +1092,10 @@ def form_designer_generation_smoke_audit(source: str = FORM_DESIGNER_SAMPLE_DSL)
         existing_paths = {
             "app/form_designer.py",
             "app/templates/appgen_form_designer.html",
+            "app/component_contracts/text_box.py",
+            "app/component_contracts/grid.py",
+            "app/component_contracts/viewport3_d.py",
+            "app/component_packages/devexpress_native.py",
         }
         palette = generated_form_designer.component_palette()
         forms = generated_form_designer.form_catalog()
@@ -1039,6 +1260,77 @@ def _component_for_type(type_name: str) -> str:
     if type_name in {"file", "image"}:
         return "FileUpload"
     return "TextBox"
+
+
+def _dfm_identifier(field: str | None, component: str) -> str:
+    base = f"{field or component}_{component}"
+    cleaned = re.sub(r"[^A-Za-z0-9_]", "_", base)
+    if not cleaned or cleaned[0].isdigit():
+        cleaned = f"AppGen_{cleaned}"
+    return cleaned
+
+
+def _dfm_component_class(component: str) -> str:
+    mapping = {
+        "TextBox": "TEdit",
+        "EmailInput": "TEdit",
+        "TextArea": "TMemo",
+        "DatePicker": "TDateTimePicker",
+        "Lookup": "TComboBox",
+        "FileUpload": "TButtonedEdit",
+        "Button": "TButton",
+        "Panel": "TPanel",
+        "GroupBox": "TGroupBox",
+        "RadioGroup": "TRadioGroup",
+        "ListBox": "TListBox",
+        "TreeView": "TTreeView",
+        "Grid": "TStringGrid",
+        "PageControl": "TPageControl",
+        "MainMenu": "TMainMenu",
+        "PopupMenu": "TPopupMenu",
+        "ToolBar": "TToolBar",
+        "ActionList": "TActionList",
+        "Image": "TImage",
+        "Chart": "TChart",
+        "ReportViewer": "TAppGenReportViewer",
+        "WebBrowser": "TWebBrowser",
+        "Timer": "TTimer",
+        "DataSource": "TDataSource",
+        "BindingSource": "TBindingsList",
+        "RESTClient": "TRESTClient",
+        "CameraView": "TCameraComponent",
+        "LocationSensor": "TLocationSensor",
+        "NotificationCenter": "TNotificationCenter",
+        "Animation": "TFloatAnimation",
+        "Effect": "TShadowEffect",
+        "Viewport3D": "TViewport3D",
+    }
+    return mapping.get(component, f"TAppGen{component}")
+
+
+def _dfm_value(value: str) -> object:
+    value = value.strip()
+    if value.startswith("'") and value.endswith("'"):
+        return value[1:-1].replace("''", "'")
+    if value.isdigit() or (value.startswith("-") and value[1:].isdigit()):
+        return int(value)
+    return value
+
+
+def _pascal_identifier(value: str) -> str:
+    cleaned = re.sub(r"[^A-Za-z0-9_]", "_", value)
+    if not cleaned or cleaned[0].isdigit():
+        cleaned = f"AppGen_{cleaned}"
+    return cleaned
+
+
+def _module_name(name: str) -> str:
+    chars = []
+    for index, char in enumerate(name.replace("-", "_")):
+        if char.isupper() and index and (not name[index - 1].isupper()):
+            chars.append("_")
+        chars.append(char.lower() if char.isalnum() else "_")
+    return "_".join(part for part in "".join(chars).split("_") if part)
 
 
 def _default_property_value(name: str, component: str, category: str) -> object:

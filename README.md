@@ -287,14 +287,19 @@ Generated apps include Studio contracts for:
 - DSL editor state, syntax diagnostics, code actions, snippets, and formatting.
 - Visual database catalog, ERD export, schema refactors, and migration preview.
 - RAD-style form design with component palette and property inspector.
-- VCL/FMX-compatible RAD parity contracts: DFM-style streaming, Object
+- native desktop and cross-target UI RAD parity contracts: DFM-style streaming, Object
   Inspector metadata, LiveBindings-style binding graphs, native data-service
   tooling, mobile device APIs, animation/effects, and 3D surface descriptors.
 - A component usability gate that requires every built-in component to carry
   renderer targets, default properties, property editors, events, validation
   rules, drop defaults, binding metadata, and preview contracts.
+- Generated component modules under `app/component_contracts/<component>.py`
+  export `contract()`, `render()`, `validate_props()`, `preview()`, and
+  `test_plan()` for each built-in component.
 - Curated third-party component registry for useful commercial and open-source
   suites, plus reviewed package import/install plans for additional vendors.
+- Generated package modules under `app/component_packages/<package>.py` export
+  `package_contract()`, `install_plan()`, `load_policy()`, and `test_plan()`.
 - Natural-language evolution review queues.
 - Generation plans for web, PWA, mobile, desktop, and chatbot targets.
 - Release gates, app history, snapshots, restore points, and capability matrix.

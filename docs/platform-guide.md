@@ -45,6 +45,12 @@ A generated app can include:
   built-in palette item is proven usable before release: renderer targets,
   default properties, property editors, events, validation rules, drop defaults,
   binding metadata, and preview contracts must exist for every component.
+- `app/component_contracts/<component>.py` gives every built-in component its
+  own implementation contract with `contract()`, `render()`, `validate_props()`,
+  `preview()`, and `test_plan()` exports.
+- `app/component_packages/<package>.py` gives every curated component package
+  its own reviewed package contract with `package_contract()`, `install_plan()`,
+  `load_policy()`, and `test_plan()` exports.
 - `app/designer.py` for visual database design and ERD exports.
 - `app/agents.py` for LLM providers and agent plans.
 - `app/platforms.py`, `native/mobile`, `native/desktop`, PWA assets, and
