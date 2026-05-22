@@ -2456,6 +2456,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert "Visual Quality JSON" in branding_template
     assert "Responsive Layouts" in branding_template
     assert "Visual Regression JSON" in branding_template
+    assert "Experience Excellence JSON" in branding_template
     assert "UI Release Gate JSON" in branding_template
     assert "Viewport Contracts" in branding_template
     assert "contrast, palette balance, no-overlap" in branding_template
@@ -2760,6 +2761,15 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert branding.visual_experience_quality_report()["format"] == "appgen.visual-experience-quality.v1"
     assert branding.visual_experience_quality_report()["ok"] is True
     assert any(item["check"] == "no_overlap_review" for item in branding.visual_experience_quality_report()["checks"])
+    excellence = branding.ui_experience_excellence_gate(
+        {"app/branding.py", "app/static/appgen-theme.css", "app/templates/appgen_branding.html"}
+    )
+    assert excellence["format"] == "appgen.ui-experience-excellence-gate.v1"
+    assert excellence["ok"] is True
+    assert {"beautiful", "sophisticated", "responsive", "accessible", "stateful", "reviewable", "asset_backed"} == {
+        check["outcome"] for check in excellence["checks"]
+    }
+    assert branding.ui_experience_excellence_gate({"app/branding.py"})["ok"] is False
     assert "mobile" in branding.design_system_report()["viewports"]
     assert branding.component_style_contract("button")["min_height"] == "44px"
     assert branding.component_style_contract("page-header")["responsive_behavior"] == "actions wrap below title on mobile"
@@ -2784,9 +2794,10 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     )
     assert ui_gate["format"] == "appgen.ui-experience-release-gate.v1"
     assert ui_gate["ok"] is True
-    assert {"theme_quality", "visual_quality", "accessibility", "visual_regression", "assets"} <= {
+    assert {"theme_quality", "visual_quality", "experience_excellence", "accessibility", "visual_regression", "assets"} <= {
         item["gate"] for item in ui_gate["gates"]
     }
+    assert ui_gate["experience_excellence"]["ok"] is True
     assert branding.ui_experience_release_gate({"app/branding.py"})["ok"] is False
     assert low_code_features.readiness_report()["source"]["document"] == "docs/Lo-code features.md"
     assert {"docs/ideas.md", "docs/base_features.md", "docs/Lo-code features.md"} == {

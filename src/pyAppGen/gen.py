@@ -6549,6 +6549,7 @@ def write_branding_template(output_dir):
       <a class="btn btn-default" href="{{ url_for('BrandingView.quality_json') }}">Quality JSON</a>
       <a class="btn btn-default" href="{{ url_for('BrandingView.visual_quality_json') }}">Visual Quality JSON</a>
       <a class="btn btn-default" href="{{ url_for('BrandingView.visual_regression_json') }}">Visual Regression JSON</a>
+      <a class="btn btn-default" href="{{ url_for('BrandingView.experience_excellence_json') }}">Experience Excellence JSON</a>
       <a class="btn btn-default" href="{{ url_for('BrandingView.ui_release_gate_json') }}">UI Release Gate JSON</a>
     </div>
   </div>
@@ -10615,6 +10616,71 @@ def visual_experience_quality_report():
     }}
 
 
+def ui_experience_excellence_gate(existing_paths=None):
+    """Return outcome evidence for beautiful, sophisticated generated UI."""
+    existing = set(existing_paths or ())
+    required_assets = ("app/branding.py", "app/static/appgen-theme.css", "app/templates/appgen_branding.html")
+    missing_assets = tuple(path for path in required_assets if path not in existing) if existing_paths is not None else ()
+    design = design_system_report()
+    visual = visual_experience_quality_report()
+    accessibility = accessibility_audit_plan()
+    matrix = visual_test_matrix()
+    regression = visual_regression_plan()
+    palette = palette_balance_report()
+    required_states = {{"hover", "focus", "disabled", "invalid", "selected", "empty", "error"}}
+    matrix_states = set(matrix["states"])
+    matrix_viewports = {{row["viewport"] for row in matrix["rows"]}}
+    checks = (
+        {{
+            "outcome": "beautiful",
+            "ok": visual["ok"] and palette["ok"] and contrast_ratio(BRANDING["palette"]["text"], BRANDING["palette"]["surface"]) >= 4.5,
+            "evidence": ("visual_experience_quality_report", "palette_balance_report", "contrast_ratio"),
+        }},
+        {{
+            "outcome": "sophisticated",
+            "ok": {{"typography", "density", "layouts", "component_states", "viewports"}} <= set(design),
+            "evidence": ("typography_scale", "density_modes", "layout_contract", "component_state_matrix", "viewport_contract"),
+        }},
+        {{
+            "outcome": "responsive",
+            "ok": matrix["ok"] and {{"mobile", "tablet", "desktop", "wide"}} <= matrix_viewports,
+            "evidence": tuple(sorted(matrix_viewports)),
+        }},
+        {{
+            "outcome": "accessible",
+            "ok": accessibility["ok"] and accessibility["theme"]["touch_target"] == "44px" and all(item["requires_main"] for item in accessibility["landmarks"]),
+            "evidence": ("accessibility_audit_plan", "keyboard_navigation_plan", "aria_landmark_contract"),
+        }},
+        {{
+            "outcome": "stateful",
+            "ok": required_states <= matrix_states,
+            "required_states": tuple(sorted(required_states)),
+            "present_states": tuple(sorted(matrix_states)),
+        }},
+        {{
+            "outcome": "reviewable",
+            "ok": bool(regression["pages"]) and any("screenshot" in check for check in regression["checks"]) and any("overlap" in check for check in regression["checks"]),
+            "evidence": regression["checks"],
+        }},
+        {{
+            "outcome": "asset_backed",
+            "ok": not missing_assets,
+            "required": required_assets,
+            "missing": missing_assets,
+        }},
+    )
+    return {{
+        "format": "appgen.ui-experience-excellence-gate.v1",
+        "ok": all(check["ok"] for check in checks),
+        "checks": checks,
+        "blocking_gaps": tuple(check for check in checks if not check["ok"]),
+        "design_system": design,
+        "visual_quality": visual,
+        "visual_test_matrix": matrix,
+        "accessibility": accessibility,
+    }}
+
+
 def accessibility_theme_check():
     """Return readiness checks for focus, touch, and generated color tokens."""
     variables = css_variables()
@@ -10719,9 +10785,11 @@ def ui_experience_release_gate(existing_paths=None):
     accessibility = accessibility_audit_plan()
     regression = visual_regression_plan()
     matrix = visual_test_matrix()
+    excellence = ui_experience_excellence_gate(existing_paths)
     gates = (
         {{"gate": "theme_quality", "ok": theme["ok"], "evidence": "theme_quality_report"}},
         {{"gate": "visual_quality", "ok": visual["ok"], "evidence": "visual_experience_quality_report"}},
+        {{"gate": "experience_excellence", "ok": excellence["ok"], "evidence": "ui_experience_excellence_gate"}},
         {{"gate": "accessibility", "ok": accessibility["ok"], "evidence": "accessibility_audit_plan"}},
         {{"gate": "visual_regression", "ok": bool(regression["pages"]) and bool(regression["checks"]), "evidence": "visual_regression_plan"}},
         {{"gate": "visual_test_matrix", "ok": matrix["ok"], "evidence": "visual_test_matrix"}},
@@ -10735,6 +10803,7 @@ def ui_experience_release_gate(existing_paths=None):
         "gates": gates,
         "blocking_gaps": tuple(item["gate"] for item in gates if not item["ok"]),
         "theme": BRANDING["theme"],
+        "experience_excellence": excellence,
         "visual_test_matrix": matrix,
         "visual_regression": regression,
         "accessibility": accessibility,
@@ -10754,6 +10823,7 @@ def asset_check(existing_paths):
         "design_system": design_tokens(),
         "quality": theme_quality_report(),
         "visual_quality": visual_experience_quality_report(),
+        "experience_excellence": ui_experience_excellence_gate(existing),
         "accessibility": accessibility_theme_check(),
         "audit": accessibility_audit_plan(),
         "visual_regression": visual_regression_plan(),
@@ -10792,6 +10862,10 @@ class BrandingView(BaseView):
     @expose("/visual-quality.json")
     def visual_quality_json(self):
         return jsonify(visual_experience_quality_report())
+
+    @expose("/experience-excellence.json")
+    def experience_excellence_json(self):
+        return jsonify(ui_experience_excellence_gate())
 
     @expose("/ui-release-gate.json")
     def ui_release_gate_json(self):
@@ -38079,6 +38153,7 @@ def validate_branding_artifacts() -> None:
         or "palette_balance_report" not in contract
         or "contrast_ratio" not in contract
         or "visual_experience_quality_report" not in contract
+        or "ui_experience_excellence_gate" not in contract
         or "visual_test_matrix" not in contract
         or "ui_experience_release_gate" not in contract
         or "accessibility_theme_check" not in contract
@@ -38096,6 +38171,7 @@ def validate_branding_artifacts() -> None:
         or "Quality JSON" not in template
         or "Visual Quality JSON" not in template
         or "Visual Regression JSON" not in template
+        or "Experience Excellence JSON" not in template
         or "UI Release Gate JSON" not in template
         or "Viewport Contracts" not in template
         or "Component States" not in template
@@ -40068,6 +40144,13 @@ def test_generated_runtime_helpers():
     assert branding.visual_experience_quality_report()["format"] == "appgen.visual-experience-quality.v1"
     assert branding.visual_experience_quality_report()["ok"] is True
     assert any(item["check"] == "no_overlap_review" for item in branding.visual_experience_quality_report()["checks"])
+    assert branding.ui_experience_excellence_gate(
+        {{"app/branding.py", "app/static/appgen-theme.css", "app/templates/appgen_branding.html"}}
+    )["format"] == "appgen.ui-experience-excellence-gate.v1"
+    assert branding.ui_experience_excellence_gate(
+        {{"app/branding.py", "app/static/appgen-theme.css", "app/templates/appgen_branding.html"}}
+    )["ok"] is True
+    assert branding.ui_experience_excellence_gate({{"app/branding.py"}})["ok"] is False
     assert branding.accessibility_theme_check()["ok"] is True
     assert branding.accessibility_audit_plan()["format"] == "appgen.accessibility-audit.v1"
     assert branding.keyboard_navigation_plan("home")[0]["escape_hatch"] == "skip_to_content"
@@ -40078,6 +40161,9 @@ def test_generated_runtime_helpers():
     assert branding.ui_experience_release_gate(
         {"app/branding.py", "app/static/appgen-theme.css", "app/templates/appgen_branding.html"}
     )["ok"] is True
+    assert branding.ui_experience_release_gate(
+        {"app/branding.py", "app/static/appgen-theme.css", "app/templates/appgen_branding.html"}
+    )["experience_excellence"]["ok"] is True
     assert isinstance(extensions.extension_points(), tuple)
     assert "ok" in extensions.validate_row(next(iter(data_exchange.EXCHANGE_TABLES)), {})
     assert extensions.extension_check(

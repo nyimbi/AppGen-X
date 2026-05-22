@@ -531,10 +531,15 @@ items.
   WCAG-oriented checks.
 
 Use the generated `/branding/visual-quality.json` endpoint as the machine gate
-and `/branding/ui-release-gate.json` as the aggregate ship gate when validating
-that generated applications are polished across web, mobile, and desktop-sized
-viewports. `/branding/visual-regression.json` remains the screenshot checklist
-for browser-driven visual QA.
+and `/branding/experience-excellence.json` when validating the beautiful and
+sophisticated outcome claim. The excellence gate binds palette and contrast,
+typography, density, layout recipes, mobile/tablet/desktop/wide viewport
+coverage, component state coverage, accessibility, visual-regression review,
+and generated branding assets. Use `/branding/ui-release-gate.json` as the
+aggregate ship gate when validating that generated applications are polished
+across web, mobile, and desktop-sized viewports.
+`/branding/visual-regression.json` remains the screenshot checklist for
+browser-driven visual QA.
 Use the generated `coverage_release_gate()` in
 `tests/test_generated_coverage.py` to prove table, workflow, view-experience,
 quality, diagnostics, and release-gate coverage before claiming generated test

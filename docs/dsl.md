@@ -297,8 +297,9 @@ apps include:
   quality reports for contrast, palette balance, no-overlap review, and
   viewport coverage, deterministic visual test matrices, WCAG-oriented
   accessibility audit plans, keyboard navigation plans, ARIA landmark
-  contracts, focus/touch checks, CSS custom properties, and a UI experience
-  release gate that aggregates theme quality, accessibility, visual regression,
+  contracts, focus/touch checks, CSS custom properties, an experience-excellence
+  gate, and a UI experience release gate that aggregates theme quality,
+  beautiful/sophisticated outcome evidence, accessibility, visual regression,
   responsive coverage, component states, and required assets.
 - `extensions.py`, `appgen_extensions.html`, and `app_custom/extensions.py`
   with stable custom-code hooks that survive regeneration. A generated
