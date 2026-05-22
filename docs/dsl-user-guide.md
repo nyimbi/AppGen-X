@@ -98,6 +98,8 @@ adapters, and verifies that every family produces an `AppSchema` with tables,
 relations, fingerprints, fidelity reports, and generation commands.
 Run `appgen --schema-source-audit` to emit the same release proof as JSON from
 the command line.
+Run `appgen --source-intake-release-audit` to promote DBML, SQL, PonyORM,
+database URL, and DSL intake into package-level release evidence.
 Run `appgen --dsl-antlr-report` before grammar releases to prove the canonical
 grammar, generated lexer, and generated parser remain synchronized.
 Run `appgen --dsl-authoring-gate appgen.appgen` when reviewing a concrete DSL
@@ -113,8 +115,8 @@ Run `appgen --generated-app-excellence-audit` before claiming generated apps are
 beautiful, sophisticated, secure, reliable, robust, functional, and highly
 capable.
 Run `appgen --package-goal-audit` to collect roadmap traceability, JHipster
-superiority, generated-app excellence, ERP template, and natural-language
-evolution evidence into one package-level JSON bundle.
+superiority, generated-app excellence, schema source intake, ERP template, and
+natural-language evolution evidence into one package-level JSON bundle.
 Run `appgen --erp-template-catalog` to list package-level ERP starter modules,
 then `appgen --erp-template invoicing > invoicing.appgen` to export a module as
 DSL before generating it with `appgen --dsl`.

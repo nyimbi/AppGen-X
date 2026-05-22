@@ -108,6 +108,11 @@ from pyAppGen.schema import schema_from_metadata
 from pyAppGen.schema import schema_source_contract
 from pyAppGen.schema import schema_source_example_audit
 from pyAppGen.schema import schema_source_kind
+from pyAppGen.source_intake import all_source_generation_plans
+from pyAppGen.source_intake import source_catalog
+from pyAppGen.source_intake import source_example_matrix
+from pyAppGen.source_intake import source_generation_plan
+from pyAppGen.source_intake import source_intake_release_audit
 from pyAppGen.security import authorization_audit_event as package_authorization_audit_event
 from pyAppGen.security import authorize as package_authorize
 from pyAppGen.security import compliance_contract as package_compliance_contract
@@ -334,6 +339,7 @@ def test_package_goal_audit_cli_aggregates_objective_evidence(
         "delphi_form_designer",
         "visual_modeling",
         "security_identity",
+        "schema_source_intake",
         "config_editor",
         "publishable_distribution",
         "reporting_chartviews",
@@ -362,6 +368,7 @@ def test_package_goal_audit_cli_aggregates_objective_evidence(
     assert cli_report["audits"]["form_designer"]["ok"] is True
     assert cli_report["audits"]["visual_modeling"]["ok"] is True
     assert cli_report["audits"]["security"]["ok"] is True
+    assert cli_report["audits"]["source_intake"]["ok"] is True
     assert cli_report["audits"]["config_editor"]["ok"] is True
     assert cli_report["audits"]["distribution"]["ok"] is True
     assert cli_report["audits"]["reporting"]["ok"] is True
@@ -769,6 +776,70 @@ def test_package_security_audit_covers_auth_identity_and_compliance(
     report = json.loads(result.output)
     assert report["ok"] is True
     assert report["decisions"]["deny"]["allowed"] is False
+
+
+def test_package_source_intake_audit_covers_all_generation_sources(
+    runner: CliRunner,
+) -> None:
+    """The package release audit promotes every import source to goal evidence."""
+    assert {item["kind"] for item in source_catalog()} == {
+        "dbml",
+        "sql",
+        "ponyorm",
+        "database",
+        "dsl",
+    }
+
+    matrix = source_example_matrix()
+    assert matrix["format"] == "appgen.package-source-intake-matrix.v1"
+    assert matrix["ok"] is True
+    assert set(matrix["source_kinds"]) == {"dbml", "sql", "ponyorm", "database", "dsl"}
+
+    plans = all_source_generation_plans()
+    assert {plan["source_kind"] for plan in plans} == {
+        "dbml",
+        "sql",
+        "ponyorm",
+        "database",
+        "dsl",
+    }
+    assert source_generation_plan("dbml")["command"] == (
+        "appgen --dbml schema.dbml --writedir app"
+    )
+    assert source_generation_plan("sql")["command"] == (
+        "appgen --sql schema.sql --writedir app"
+    )
+    assert source_generation_plan("ponyorm")["command"] == (
+        "appgen --pony entities.py --writedir app"
+    )
+    assert source_generation_plan("database")["command"] == (
+        "appgen --database-url postgresql+psycopg2://user@host/db --writedir app"
+    )
+    assert source_generation_plan("dsl")["command"] == (
+        "appgen --dsl app.appgen --writedir app"
+    )
+
+    audit = source_intake_release_audit()
+    assert audit["format"] == "appgen.package-source-intake-release-audit.v1"
+    assert audit["ok"] is True
+    assert {
+        "source_catalog",
+        "example_adapters",
+        "database_url_dialects",
+        "generation_commands",
+        "source_fidelity",
+        "artifact_contract",
+    } == {gate["id"] for gate in audit["gates"]}
+
+    missing = source_intake_release_audit(existing_paths={"app/schema_import.py"})
+    assert missing["ok"] is False
+    assert any(gate["id"] == "artifact_contract" for gate in missing["blocking_gaps"])
+
+    result = runner.invoke(__main__.main, ["--source-intake-release-audit"])
+    assert result.exit_code == 0
+    report = json.loads(result.output)
+    assert report["ok"] is True
+    assert report["generation_plans"][0]["command"].startswith("appgen --dbml")
 
 
 def test_package_config_editor_audit_covers_safe_setup(

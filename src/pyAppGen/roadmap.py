@@ -513,6 +513,7 @@ def package_goal_audit(root: Path | str | None = None) -> dict:
     from .ops import ops_release_audit
     from .reporting import reporting_release_audit
     from .security import security_release_audit
+    from .source_intake import source_intake_release_audit
     from .studio import studio_release_audit
     from .targets import target_release_audit
     from .visual_modeling import visual_modeling_release_audit
@@ -526,6 +527,7 @@ def package_goal_audit(root: Path | str | None = None) -> dict:
     form_designer = form_designer_release_audit()
     visual_modeling = visual_modeling_release_audit()
     security = security_release_audit()
+    source_intake = source_intake_release_audit()
     config_editor = config_editor_release_audit()
     distribution = distribution_release_audit()
     reporting = reporting_release_audit()
@@ -578,6 +580,11 @@ def package_goal_audit(root: Path | str | None = None) -> dict:
             "id": "security_identity",
             "ok": security["ok"],
             "format": security["format"],
+        },
+        {
+            "id": "schema_source_intake",
+            "ok": source_intake["ok"],
+            "format": source_intake["format"],
         },
         {
             "id": "config_editor",
@@ -638,6 +645,7 @@ def package_goal_audit(root: Path | str | None = None) -> dict:
             "form_designer": form_designer,
             "visual_modeling": visual_modeling,
             "security": security,
+            "source_intake": source_intake,
             "config_editor": config_editor,
             "distribution": distribution,
             "reporting": reporting,

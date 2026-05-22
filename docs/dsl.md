@@ -184,6 +184,14 @@ The same proof is available from the CLI:
 appgen --schema-source-audit
 ```
 
+Promote that adapter proof into the package-level objective audit before
+claiming AppGen can generate from DBML, SQL, PonyORM, existing databases, and
+DSL sources:
+
+```console
+appgen --source-intake-release-audit
+```
+
 Check that the ANTLR grammar and generated parser artifacts are synchronized:
 
 ```console
@@ -221,7 +229,8 @@ appgen --generated-app-excellence-audit
 
 Run the aggregate package goal audit when you need one machine-readable bundle
 covering roadmap traceability, JHipster superiority, and generated-app
-excellence, ERP templates, and package-level natural-language evolution:
+excellence, schema source intake, ERP templates, and package-level
+natural-language evolution:
 
 ```console
 appgen --package-goal-audit
