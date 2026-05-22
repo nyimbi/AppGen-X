@@ -1253,6 +1253,60 @@ def write_health_file(output_dir, schema: AppSchema):
         f.write("        'flows': FLOW_COUNT,\n")
         f.write("        'roles': ROLE_COUNT,\n")
         f.write("    }\n")
+        f.write("\n\n")
+        f.write("def health_summary():\n")
+        f.write("    \"\"\"Return generated health metadata with readiness checks.\"\"\"\n")
+        f.write("    payload = status()\n")
+        f.write("    checks = {\n")
+        f.write("        'app_name': bool(payload['app']),\n")
+        f.write("        'schema_counts': payload['tables'] >= 0 and payload['relations'] >= 0,\n")
+        f.write("        'ui_counts': payload['views'] >= 0,\n")
+        f.write("        'automation_counts': payload['flows'] >= 0 and payload['roles'] >= 0,\n")
+        f.write("    }\n")
+        f.write("    return {\n")
+        f.write("        'format': 'appgen.health-summary.v1',\n")
+        f.write("        'ok': all(checks.values()) and payload['ok'] is True,\n")
+        f.write("        'status': payload,\n")
+        f.write("        'checks': checks,\n")
+        f.write("    }\n")
+        f.write("\n\n")
+        f.write("def health_release_gate(existing_paths=()):\n")
+        f.write("    \"\"\"Return deterministic release evidence for generated health metadata.\"\"\"\n")
+        f.write("    existing = set(existing_paths)\n")
+        f.write("    required = {'app/health.py'}\n")
+        f.write("    summary = health_summary()\n")
+        f.write("    checks = (\n")
+        f.write("        {\n")
+        f.write("            'gate': 'artifact_coverage',\n")
+        f.write("            'ok': required.issubset(existing),\n")
+        f.write("            'required': tuple(sorted(required)),\n")
+        f.write("            'missing': tuple(sorted(required - existing)),\n")
+        f.write("        },\n")
+        f.write("        {\n")
+        f.write("            'gate': 'status_payload',\n")
+        f.write("            'ok': summary['status']['ok'] is True and summary['status']['app'] == APP_NAME,\n")
+        f.write("            'app': APP_NAME,\n")
+        f.write("        },\n")
+        f.write("        {\n")
+        f.write("            'gate': 'schema_metadata',\n")
+        f.write("            'ok': summary['checks']['schema_counts'] and summary['status']['tables'] == TABLE_COUNT,\n")
+        f.write("            'tables': TABLE_COUNT,\n")
+        f.write("            'relations': RELATION_COUNT,\n")
+        f.write("        },\n")
+        f.write("        {\n")
+        f.write("            'gate': 'ui_and_automation_metadata',\n")
+        f.write("            'ok': summary['checks']['ui_counts'] and summary['checks']['automation_counts'],\n")
+        f.write("            'views': VIEW_COUNT,\n")
+        f.write("            'flows': FLOW_COUNT,\n")
+        f.write("            'roles': ROLE_COUNT,\n")
+        f.write("        },\n")
+        f.write("    )\n")
+        f.write("    return {\n")
+        f.write("        'format': 'appgen.health-release-gate.v1',\n")
+        f.write("        'ok': all(check['ok'] for check in checks),\n")
+        f.write("        'checks': checks,\n")
+        f.write("        'summary': summary,\n")
+        f.write("    }\n")
 
 
 def write_monitoring_file(output_dir, schema: AppSchema):
@@ -37635,6 +37689,19 @@ def validate_monitoring_artifacts() -> None:
         fail("monitoring cockpit must expose health, readiness, and release evidence")
 
 
+def validate_health_artifacts() -> None:
+    contract = (ROOT / "app" / "health.py").read_text()
+    required = (
+        "status",
+        "health_summary",
+        "health_release_gate",
+        "appgen.health-summary.v1",
+        "appgen.health-release-gate.v1",
+    )
+    if not all(item in contract for item in required):
+        fail("health contract must expose status, summary, and release-gate metadata")
+
+
 def validate_runtime_assurance_artifacts() -> None:
     contract = (ROOT / "app" / "runtime_assurance.py").read_text()
     if (
@@ -38114,6 +38181,7 @@ def main() -> int:
     validate_wizard_artifacts()
     validate_rules_artifacts()
     validate_validation_artifacts()
+    validate_health_artifacts()
     validate_monitoring_artifacts()
     validate_resilience_artifacts()
     validate_runtime_assurance_artifacts()
@@ -38718,6 +38786,10 @@ def test_generated_runtime_helpers():
     openapi = load_module(ROOT / "app" / "openapi.py", "generated_openapi")
 
     assert health.status()["ok"] is True
+    assert health.health_summary()["format"] == "appgen.health-summary.v1"
+    assert health.health_release_gate({"app/health.py"})["format"] == "appgen.health-release-gate.v1"
+    assert health.health_release_gate({"app/health.py"})["ok"] is True
+    assert health.health_release_gate(set())["ok"] is False
     assert openapi.openapi_spec()["openapi"] == "3.1.0"
     assert openapi.operation_count() > 0
     assert openapi.openapi_check(

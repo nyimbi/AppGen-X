@@ -255,6 +255,9 @@ apps include:
   chatbots. The generated `validation_release_gate()` proves table validation
   contracts, valid payloads, required-field errors, partial updates, UI
   schemas, enum errors, type errors, and required validation artifacts.
+- `health.py` with generated schema and automation health metadata. The
+  generated `health_release_gate()` proves the health artifact, status payload,
+  schema metadata, UI counts, and automation counts.
 - `monitoring.py` with liveness/readiness endpoints and generated JSON error
   envelopes. The generated `monitoring_release_gate()` proves monitoring
   artifacts, liveness metadata, readiness checks, JSON error envelopes, and

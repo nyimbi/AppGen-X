@@ -3020,6 +3020,17 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert {"shell", "loading", "empty", "error", "footer"} <= set(author_coverage["experience"]["view_states"])
     assert "app/runtime_assurance.py" in author_coverage["quality"]["release_gates"]
     assert health.status()["tables"] == 2
+    health_gate = health.health_release_gate({"app/health.py"})
+    assert health.health_summary()["format"] == "appgen.health-summary.v1"
+    assert health_gate["format"] == "appgen.health-release-gate.v1"
+    assert health_gate["ok"] is True
+    assert {
+        "artifact_coverage",
+        "status_payload",
+        "schema_metadata",
+        "ui_and_automation_metadata",
+    } <= {check["gate"] for check in health_gate["checks"]}
+    assert health.health_release_gate(set())["ok"] is False
     assert monitoring.liveness()["live"] is True
     assert monitoring.readiness()["ready"] is True
     assert monitoring.error_payload(ValueError("bad"), status_code=400)["status"] == 400
