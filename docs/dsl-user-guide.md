@@ -329,9 +329,12 @@ review generated revisions, capture rollback-ready snapshots, compare changed
 DSL/schema/code areas, and restore through a reviewed quality-gated plan.
 Use `/studio/release-gate.json` before treating the Studio as release-ready;
 it combines diagnostics, DSL linting, database workbench exports, safe SQL
-guards, the parameterized query builder, generation jobs, app portfolio
-management, versioned management, capability coverage, reviewed edits, debug
-redaction, dependency review, and component sharing. Use
+guards, schema refactor plans, the parameterized query builder, generation
+jobs, app portfolio management, versioned management, capability coverage,
+reviewed edits, debug redaction, dependency review, and component sharing. Use
+`/studio/database-design-gate.json` and `/studio/schema-refactor.json` to review
+table and field rename impact across DSL, models, APIs, GraphQL, migrations,
+docs, and generated tests before applying database-design changes. Use
 `/studio/capability-matrix.json` when you need a compact proof that the
 generated IDE covers DSL authoring, database design, application generation,
 application management, versioned app management, debugging, dependency review,

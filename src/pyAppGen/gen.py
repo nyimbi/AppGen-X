@@ -6113,6 +6113,8 @@ def write_studio_template(output_dir):
       <a class="btn btn-default" href="{{ url_for('StudioView.release_gate_json') }}">Release Gate JSON</a>
       <a class="btn btn-default" href="{{ url_for('StudioView.superiority_profile_json') }}">IDE Superiority JSON</a>
       <a class="btn btn-default" href="{{ url_for('StudioView.database_design_json') }}">Database Design JSON</a>
+      <a class="btn btn-default" href="{{ url_for('StudioView.database_design_gate_json') }}">Database Design Gate JSON</a>
+      <a class="btn btn-default" href="{{ url_for('StudioView.schema_refactor_json') }}">Schema Refactor JSON</a>
       <a class="btn btn-default" href="{{ url_for('StudioView.sql_workbench_json') }}">SQL Workbench JSON</a>
       <a class="btn btn-default" href="{{ url_for('StudioView.sql_builder_json') }}">SQL Builder JSON</a>
       <a class="btn btn-default" href="{{ url_for('StudioView.generation_jobs_json') }}">Generation Jobs JSON</a>
@@ -29699,6 +29701,124 @@ def database_migration_plan(change, target="alembic"):
     }}
 
 
+def _design_table(table_name):
+    return next((item for item in DATABASE_DESIGN if item["table"] == table_name), None)
+
+
+def _design_field(table, field_name):
+    return next(
+        (field for field in table["fields"] if field["name"] == field_name or field["attribute"] == field_name),
+        None,
+    )
+
+
+def _safe_identifier(value):
+    return bool(re.match(r"^[A-Za-z_][A-Za-z0-9_]*$", str(value or "")))
+
+
+def schema_refactor_plan(action, table_name, *, field_name=None, new_name=None):
+    """Return a reviewed schema refactor plan for database-designer changes."""
+    action = str(action or "").strip().lower()
+    table = _design_table(table_name)
+    blockers = []
+    if action not in {{"rename_table", "rename_field"}}:
+        blockers.append("Unsupported schema refactor action.")
+    if table is None:
+        blockers.append(f"Unknown table: {{table_name}}")
+    if not _safe_identifier(new_name):
+        blockers.append("New name must be a valid identifier.")
+    field = _design_field(table, field_name) if table is not None and field_name else None
+    if action == "rename_field" and field is None:
+        blockers.append(f"Unknown field: {{table_name}}.{{field_name}}")
+    current_name = field["name"] if action == "rename_field" and field is not None else table_name
+    change = {{
+        "action": action,
+        "table": table_name,
+        "field": field_name,
+        "from": current_name,
+        "to": new_name,
+    }}
+    migration = database_migration_plan(change)
+    impacted = (
+        "appgen.dsl",
+        "app/models.py",
+        "app/views.py",
+        "app/api.py",
+        "app/gql.py",
+        "docs/schema.md",
+        "migrations/versions",
+        "tests/test_generated_coverage.py",
+    )
+    if action == "rename_table":
+        dsl_patch = f"rename table {{table_name}} to {{new_name}}"
+        dbml_patch = f"Table {{table_name}} -> Table {{new_name}}"
+    elif field is not None:
+        dsl_patch = f"rename field {{table_name}}.{{field['name']}} to {{new_name}}"
+        dbml_patch = f"{{table_name}}.{{field['name']}} -> {{table_name}}.{{new_name}}"
+    else:
+        dsl_patch = ""
+        dbml_patch = ""
+    return {{
+        "format": "appgen.schema-refactor-plan.v1",
+        "ok": not blockers,
+        "action": action,
+        "table": table_name,
+        "field": field_name,
+        "new_name": new_name,
+        "change": change,
+        "migration": migration,
+        "impacted_artifacts": impacted,
+        "preview": {{
+            "dsl_patch": dsl_patch,
+            "dbml_patch": dbml_patch,
+            "sql": f"-- reviewed rename via {{migration['target']}} migration",
+        }},
+        "checks": ("identifier_valid", "reference_update", "migration_preview", "test_update", "rollback_snapshot"),
+        "blockers": tuple(blockers),
+        "requires_review": True,
+        "data_loss": False,
+    }}
+
+
+def database_design_release_gate(existing_paths=()):
+    """Return readiness evidence for Studio database design and refactoring."""
+    existing = set(existing_paths) or {{
+        "app/studio.py",
+        "app/templates/appgen_studio.html",
+        "app/models.py",
+        "migrations/README.md",
+        "docs/schema.md",
+        "tests/test_generated_coverage.py",
+    }}
+    first_table = DATABASE_DESIGN[0]["table"] if DATABASE_DESIGN else "example"
+    if DATABASE_DESIGN and DATABASE_DESIGN[0]["fields"]:
+        first_field = next(
+            (field["name"] for field in DATABASE_DESIGN[0]["fields"] if not field["primary_key"]),
+            DATABASE_DESIGN[0]["fields"][0]["name"],
+        )
+    else:
+        first_field = "name"
+    required = {{"app/studio.py", "app/templates/appgen_studio.html", "app/models.py", "migrations/README.md"}}
+    missing = tuple(sorted(required - existing))
+    workspace = database_design_workspace()
+    rename_table = schema_refactor_plan("rename_table", first_table, new_name=f"{{first_table}}Archive")
+    rename_field = schema_refactor_plan("rename_field", first_table, field_name=first_field, new_name=f"{{first_field}}_new")
+    destructive = sql_statement_guard("drop table " + first_table)
+    gates = (
+        {{"gate": "artifact_coverage", "ok": not missing, "details": missing}},
+        {{"gate": "workspace_exports", "ok": bool(workspace["tables"]) and {{"dbml", "sql", "ponyorm"}} <= set(workspace["exports"]), "details": tuple(workspace["exports"])}},
+        {{"gate": "schema_refactoring", "ok": rename_table["ok"] and rename_field["ok"] and rename_table["requires_review"] and not rename_field["data_loss"], "details": (rename_table, rename_field)}},
+        {{"gate": "safe_sql_guard", "ok": destructive["ok"] is False and "drop" in destructive["blocked_keywords"], "details": destructive}},
+        {{"gate": "migration_review", "ok": rename_table["migration"]["requires_review"] and "appgen_quality" in rename_table["migration"]["checks"], "details": rename_table["migration"]}},
+    )
+    return {{
+        "format": "appgen.database-design-release-gate.v1",
+        "ok": all(gate["ok"] for gate in gates),
+        "gates": gates,
+        "blocking_gaps": tuple(gate for gate in gates if not gate["ok"]),
+    }}
+
+
 def app_generation_plan(targets=None, source="dsl"):
     """Return an application generation plan for selected targets."""
     selected = tuple(targets or PLATFORM_TARGETS or ("web",))
@@ -30206,6 +30326,7 @@ def studio_release_gate(existing_paths=(), environment=None):
     workspace = ide_workspace()
     dsl = dsl_lint_plan("app Gate {{ targets: web, mobile, desktop }} table GateThing {{ id: int pk }}")
     database = database_design_workspace()
+    database_design_gate = database_design_release_gate(existing)
     sql = sql_workbench_session("select * from " + (DATABASE_DESIGN[0]["table"] if DATABASE_DESIGN else "example"))
     query = sql_select_builder(DATABASE_DESIGN[0]["table"]) if DATABASE_DESIGN else {{"ok": False}}
     destructive_sql = sql_statement_guard("delete from " + (DATABASE_DESIGN[0]["table"] if DATABASE_DESIGN else "example"))
@@ -30224,6 +30345,7 @@ def studio_release_gate(existing_paths=(), environment=None):
         {{"gate": "capability_matrix", "ok": ide_capability_matrix()["ok"], "details": ide_capability_matrix()}},
         {{"gate": "dsl_lint", "ok": dsl["ok"] and dsl["keyword_budget"]["ok"], "details": dsl}},
         {{"gate": "database_workbench", "ok": bool(database["tables"]) and {{"dbml", "sql", "ponyorm"}} <= set(database["exports"]), "details": database["checks"]}},
+        {{"gate": "database_design_release", "ok": database_design_gate["ok"], "details": database_design_gate}},
         {{"gate": "safe_sql", "ok": sql["guard"]["ok"] and not destructive_sql["ok"] and not sql["side_effects"], "details": sql["guard"]}},
         {{"gate": "query_builder", "ok": query["ok"] and query["guard"]["read_only"] and bool(sql_completion_items(table_name=query["table"])), "details": query}},
         {{"gate": "generation_pipeline", "ok": generation["format"] == "appgen.generation-job.v1" and generation_job_status(generation)["remaining_stages"], "details": generation["plan"]["stages"]}},
@@ -30337,6 +30459,15 @@ class StudioView(BaseView):
     @expose("/database-design.json")
     def database_design_json(self):
         return jsonify(list(database_design_catalog()))
+
+    @expose("/database-design-gate.json")
+    def database_design_gate_json(self):
+        return jsonify(database_design_release_gate())
+
+    @expose("/schema-refactor.json")
+    def schema_refactor_json(self):
+        table_name = DATABASE_DESIGN[0]["table"] if DATABASE_DESIGN else "example"
+        return jsonify(schema_refactor_plan("rename_table", table_name, new_name=f"{{table_name}}Archive"))
 
     @expose("/generation-jobs.json")
     def generation_jobs_json(self):
@@ -34110,6 +34241,8 @@ def validate_studio_artifacts() -> None:
         "schema_ponyorm",
         "schema_change_preview",
         "database_migration_plan",
+        "schema_refactor_plan",
+        "database_design_release_gate",
         "app_generation_plan",
         "generation_job_plan",
         "generation_job_id",
@@ -34161,6 +34294,8 @@ def validate_studio_artifacts() -> None:
         or "Diagnostics" not in template
         or "Capability Matrix" not in template
         or "Database Designer" not in template
+        or "Database Design Gate JSON" not in template
+        or "Schema Refactor JSON" not in template
         or "Generation Jobs" not in template
         or "SQL Workbench JSON" not in template
         or "SQL Builder JSON" not in template
@@ -36386,6 +36521,27 @@ def test_generated_runtime_helpers():
     assert "db.Entity" in studio.schema_ponyorm()
     assert studio.schema_change_preview({"add_field": "Book.edition"})["review_required"] is True
     assert studio.database_migration_plan({"add_field": "Book.edition"})["requires_review"] is True
+    non_pk_field = next(field["name"] for field in studio.table_design(first_table)["fields"] if not field["primary_key"])
+    rename_table = studio.schema_refactor_plan("rename_table", first_table, new_name=f"{{first_table}}Archive")
+    assert rename_table["format"] == "appgen.schema-refactor-plan.v1"
+    assert rename_table["ok"] is True
+    assert rename_table["migration"]["requires_review"] is True
+    assert "app/models.py" in rename_table["impacted_artifacts"]
+    rename_field = studio.schema_refactor_plan(
+        "rename_field",
+        first_table,
+        field_name=non_pk_field,
+        new_name=f"{{non_pk_field}}_new",
+    )
+    assert rename_field["ok"] is True
+    assert "dsl_patch" in rename_field["preview"]
+    assert studio.schema_refactor_plan("rename_field", "Missing", field_name="name", new_name="new_name")["ok"] is False
+    database_design_gate = studio.database_design_release_gate(
+        {{"app/studio.py", "app/templates/appgen_studio.html", "app/models.py", "migrations/README.md"}}
+    )
+    assert database_design_gate["format"] == "appgen.database-design-release-gate.v1"
+    assert database_design_gate["ok"] is True
+    assert "schema_refactoring" in {gate["gate"] for gate in database_design_gate["gates"]}
     assert studio.app_generation_plan()["artifacts"]
     generated_job = studio.generation_job_manifest(targets=("web", "desktop"), changed_paths=("appgen.dsl",))
     assert generated_job["format"] == "appgen.generation-job.v1"
@@ -36435,7 +36591,7 @@ def test_generated_runtime_helpers():
     assert studio_gate["format"] == "appgen.studio-release-gate.v1"
     assert studio_gate["ok"] is True
     assert studio_gate["blocking_gaps"] == ()
-    assert {{"capability_matrix", "safe_sql", "query_builder", "versioned_management"}} <= {gate["gate"] for gate in studio_gate["gates"]}
+    assert {{"capability_matrix", "database_design_release", "safe_sql", "query_builder", "versioned_management"}} <= {gate["gate"] for gate in studio_gate["gates"]}
     assert studio.ide_superiority_profile({{
         "app/studio.py",
         "app/templates/appgen_studio.html",

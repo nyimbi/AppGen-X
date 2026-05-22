@@ -551,7 +551,8 @@ apps include:
   quick fixes, completions/snippets, searchable command palettes, project trees, editor
   sessions, visual database design, Mermaid ERD export, DBML export, SQL DDL
   preview, read-only SQL workbench/explain-plan guards, parameterized SELECT
-  builder, SQL completions, PonyORM preview, table proposals, migration previews, staged
+  builder, SQL completions, PonyORM preview, table proposals, schema refactor
+  plans for table and field renames, migration previews, staged
   generation jobs with deterministic IDs, queue/status/log views, target
   artifact manifests, IDE diagnostics, IDE capability matrices, workflow
   blueprints, multi-application registry, reviewed create/import/open/export
@@ -559,8 +560,9 @@ apps include:
   editing, breakpoint/debug plans, dependency update plans, app cloning, and
   reusable component repository exports. The Studio also emits a release gate
   that checks DSL linting, database workbench exports, safe SQL, query-builder
-  validation, capability coverage, generation jobs, app portfolio management,
-  versioned management, reviewed edits, debug redaction, dependency review, and
+  validation, database-design release evidence, capability coverage, generation
+  jobs, app portfolio management, versioned management, reviewed edits,
+  debug redaction, dependency review, and
   component sharing before IDE readiness is claimed. A separate IDE superiority
   profile proves that the Studio is an integrated low-code IDE for authoring,
   database design, generation, versioned portfolio management, diagnostics, and

@@ -2334,6 +2334,8 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert "Diagnostics JSON" in studio_template
     assert "Release Gate JSON" in studio_template
     assert "IDE Superiority JSON" in studio_template
+    assert "Database Design Gate JSON" in studio_template
+    assert "Schema Refactor JSON" in studio_template
     assert "Version History JSON" in studio_template
     assert "Snapshot Plan JSON" in studio_template
     assert "Restore Plan JSON" in studio_template
@@ -4390,6 +4392,21 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert relationship_proposal["migration"]["change"]["action"] == "add_relationship"
     assert studio.schema_change_preview({"add_field": "Book.edition"})["review_required"] is True
     assert studio.database_migration_plan({"add_field": "Book.edition"})["requires_review"] is True
+    rename_table = studio.schema_refactor_plan("rename_table", "Book", new_name="BookArchive")
+    assert rename_table["format"] == "appgen.schema-refactor-plan.v1"
+    assert rename_table["ok"] is True
+    assert rename_table["migration"]["requires_review"] is True
+    assert "app/models.py" in rename_table["impacted_artifacts"]
+    rename_field = studio.schema_refactor_plan("rename_field", "Book", field_name="title", new_name="book_title")
+    assert rename_field["ok"] is True
+    assert "dsl_patch" in rename_field["preview"]
+    assert studio.schema_refactor_plan("rename_field", "Missing", field_name="name", new_name="new_name")["ok"] is False
+    database_design_gate = studio.database_design_release_gate(
+        {"app/studio.py", "app/templates/appgen_studio.html", "app/models.py", "migrations/README.md"}
+    )
+    assert database_design_gate["format"] == "appgen.database-design-release-gate.v1"
+    assert database_design_gate["ok"] is True
+    assert "schema_refactoring" in {gate["gate"] for gate in database_design_gate["gates"]}
     assert studio.app_generation_plan(targets=("web", "desktop"))["targets"] == ("web", "desktop")
     job = studio.generation_job_plan(targets=("web", "mobile"), changed_paths=("appgen.dsl",))
     assert [stage["name"] for stage in job["stages"]] == ["lint_dsl", "schema_diff", "generate", "quality"]
@@ -4461,7 +4478,17 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert studio_gate["blocking_gaps"] == ()
     assert {
         gate["gate"] for gate in studio_gate["gates"]
-    } >= {"capability_matrix", "dsl_lint", "database_workbench", "safe_sql", "query_builder", "generation_pipeline", "component_sharing", "versioned_management"}
+    } >= {
+        "capability_matrix",
+        "dsl_lint",
+        "database_workbench",
+        "database_design_release",
+        "safe_sql",
+        "query_builder",
+        "generation_pipeline",
+        "component_sharing",
+        "versioned_management",
+    }
     superiority_profile = studio.ide_superiority_profile(
         {
             "app/studio.py",
