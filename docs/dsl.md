@@ -174,6 +174,10 @@ command, canonical fingerprint, supported source contract, round-trip targets,
 normalization checks, SQLAlchemy database URL dialect support, and known lossy
 areas that need review, such as SQL triggers/views, DBML notes, PonyORM custom
 methods, or database grants.
+Use `schema_source_example_audit()` during release review to parse concrete DBML,
+SQL, PonyORM, live SQLite database, and DSL examples through the real adapters.
+The audit proves each source family produces an `AppSchema` with tables,
+relations, fingerprints, fidelity reports, and generator commands.
 
 ## Shape
 

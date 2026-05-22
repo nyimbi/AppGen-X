@@ -44,6 +44,7 @@ from pyAppGen.schema import load_schema
 from pyAppGen.schema import RelationSchema
 from pyAppGen.schema import schema_from_metadata
 from pyAppGen.schema import schema_source_contract
+from pyAppGen.schema import schema_source_example_audit
 from pyAppGen.schema import schema_source_kind
 
 
@@ -1430,6 +1431,25 @@ def test_schema_source_profile_fingerprints_imports(tmp_path) -> None:
     assert source_contract["format"] == "appgen.schema-source-contract.v1"
     assert {"dbml", "sql", "ponyorm", "database"} <= set(source_contract["source_kinds"])
     assert source_contract["sqlalchemy_driver_urls"] is True
+    assert source_contract["example_audit_entrypoint"] == "schema_source_example_audit"
+
+    example_audit = schema_source_example_audit()
+    assert example_audit["format"] == "appgen.schema-source-example-audit.v1"
+    assert example_audit["canonical_contract"] == "AppSchema"
+    assert example_audit["ok"] is True
+    assert {"dbml", "sql", "ponyorm", "database", "dsl"} == {
+        row["source_kind"] for row in example_audit["rows"]
+    }
+    assert all(row["counts"]["tables"] >= 2 for row in example_audit["rows"])
+    assert all(row["counts"]["relations"] >= 1 for row in example_audit["rows"])
+    assert all(row["fingerprint"] for row in example_audit["rows"])
+    assert {
+        "source_family_coverage",
+        "normalizes_tables_and_relations",
+        "fidelity_reports",
+        "generation_commands",
+        "fingerprints",
+    } <= {check["check"] for check in example_audit["checks"]}
 
 
 def test_dbml_source_normalizes_and_generates(tmp_path) -> None:

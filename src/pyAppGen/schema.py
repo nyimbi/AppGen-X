@@ -11,6 +11,7 @@ import ast
 import hashlib
 import json
 import re
+import tempfile
 import textwrap
 from dataclasses import dataclass
 from dataclasses import field
@@ -489,6 +490,7 @@ def schema_source_contract() -> dict:
         for source in SUPPORTED_SCHEMA_SOURCES
     )
     source_kinds = tuple(source["kind"] for source in sources)
+    required_source_kinds = {source["kind"] for source in SUPPORTED_SCHEMA_SOURCES}
     return {
         "format": "appgen.schema-source-contract.v1",
         "canonical_contract": "AppSchema",
@@ -496,7 +498,173 @@ def schema_source_contract() -> dict:
         "source_kinds": source_kinds,
         "database_url_dialects": SUPPORTED_DATABASE_DIALECTS,
         "sqlalchemy_driver_urls": True,
-        "ok": {"dbml", "sql", "ponyorm", "database"} <= set(source_kinds),
+        "example_audit_entrypoint": "schema_source_example_audit",
+        "ok": required_source_kinds <= set(source_kinds),
+    }
+
+
+_SOURCE_EXAMPLE_DBML = """
+Table author {
+  id int [pk]
+  name varchar [not null]
+}
+
+Table book {
+  id int [pk]
+  title varchar [not null]
+  author_id int [ref: > author.id]
+}
+"""
+
+_SOURCE_EXAMPLE_SQL = """
+CREATE TABLE author (
+  id INTEGER PRIMARY KEY,
+  name TEXT NOT NULL
+);
+
+CREATE TABLE book (
+  id INTEGER PRIMARY KEY,
+  title TEXT NOT NULL,
+  author_id INTEGER NOT NULL REFERENCES author(id)
+);
+"""
+
+_SOURCE_EXAMPLE_PONYORM = """
+from pony.orm import Database, PrimaryKey, Required, Set
+
+db = Database()
+
+class Author(db.Entity):
+    id = PrimaryKey(int)
+    name = Required(str)
+    books = Set("Book")
+
+class Book(db.Entity):
+    id = PrimaryKey(int)
+    title = Required(str)
+    author = Required(Author)
+"""
+
+_SOURCE_EXAMPLE_DSL = """
+app SourceAudit { targets: web, mobile, desktop }
+
+table Author {
+  id: int pk
+  name: string required
+}
+
+table Book {
+  id: int pk
+  title: string required
+  author_id: int required -> Author.id [many-to-one]
+}
+
+view BookForm for Book {
+  @ title TextBox 0 0 8 1;
+  @ author_id Lookup 0 1 8 1;
+}
+"""
+
+
+def schema_source_example_audit() -> dict:
+    """Parse concrete sample inputs for every source family into AppSchema."""
+    with tempfile.TemporaryDirectory(prefix="appgen-source-audit-") as raw_workdir:
+        workdir = Path(raw_workdir)
+        dbml_path = workdir / "schema.dbml"
+        sql_path = workdir / "schema.sql"
+        pony_path = workdir / "entities.py"
+        dsl_path = workdir / "app.appgen"
+        database_path = workdir / "existing.db"
+
+        dbml_path.write_text(_SOURCE_EXAMPLE_DBML)
+        sql_path.write_text(_SOURCE_EXAMPLE_SQL)
+        pony_path.write_text(_SOURCE_EXAMPLE_PONYORM)
+        dsl_path.write_text(_SOURCE_EXAMPLE_DSL)
+
+        metadata = MetaData()
+        Table(
+            "author",
+            metadata,
+            Column("id", Integer, primary_key=True),
+            Column("name", String, nullable=False),
+        )
+        Table(
+            "book",
+            metadata,
+            Column("id", Integer, primary_key=True),
+            Column("title", String, nullable=False),
+            Column("author_id", Integer, ForeignKey("author.id"), nullable=False),
+        )
+        database_url = f"sqlite:///{database_path}"
+        metadata.create_all(create_engine(database_url))
+
+        from .dsl import schema_from_dsl_file
+
+        schemas = (
+            ("dbml", schema_from_dbml(dbml_path)),
+            ("sql", schema_from_sql(sql_path)),
+            ("ponyorm", schema_from_ponyorm(pony_path)),
+            ("database", schema_from_database_url(database_url)),
+            ("dsl", schema_from_dsl_file(dsl_path)),
+        )
+
+        rows = []
+        for expected_kind, schema in schemas:
+            profile = schema.source_profile()
+            fidelity = schema.source_fidelity_report()
+            counts = dict(profile["counts"])
+            row_checks = {
+                "source_kind": profile["source_kind"] == expected_kind,
+                "tables": counts["tables"] >= 2,
+                "relations": counts["relations"] >= 1,
+                "fingerprint": bool(profile["fingerprint"]),
+                "fidelity": fidelity["ok"] is True,
+                "import_command": bool(fidelity["import_command"]),
+            }
+            rows.append(
+                {
+                    "source_kind": expected_kind,
+                    "ok": all(row_checks.values()),
+                    "checks": row_checks,
+                    "counts": counts,
+                    "fingerprint": profile["fingerprint"],
+                    "roundtrip_targets": tuple(fidelity["roundtrip_targets"]),
+                    "import_command": fidelity["import_command"],
+                }
+            )
+
+    covered_kinds = {row["source_kind"] for row in rows}
+    required_kinds = {source["kind"] for source in SUPPORTED_SCHEMA_SOURCES}
+    checks = (
+        {
+            "check": "source_family_coverage",
+            "ok": required_kinds <= covered_kinds,
+            "required": tuple(sorted(required_kinds)),
+            "covered": tuple(sorted(covered_kinds)),
+        },
+        {
+            "check": "normalizes_tables_and_relations",
+            "ok": all(row["counts"]["tables"] >= 2 and row["counts"]["relations"] >= 1 for row in rows),
+        },
+        {
+            "check": "fidelity_reports",
+            "ok": all(row["checks"]["fidelity"] for row in rows),
+        },
+        {
+            "check": "generation_commands",
+            "ok": all(row["checks"]["import_command"] for row in rows),
+        },
+        {
+            "check": "fingerprints",
+            "ok": all(row["checks"]["fingerprint"] for row in rows),
+        },
+    )
+    return {
+        "format": "appgen.schema-source-example-audit.v1",
+        "canonical_contract": "AppSchema",
+        "rows": tuple(rows),
+        "checks": checks,
+        "ok": all(row["ok"] for row in rows) and all(check["ok"] for check in checks),
     }
 
 
