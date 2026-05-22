@@ -253,6 +253,9 @@ Generated apps include `/resilience/` for exception-management review. Use
 to prove required resilience artifacts, exception taxonomy, safe user-facing
 responses, retry and circuit-breaker behavior, incident reports, and the
 exception-management plan.
+Use `/resilience/workbench.json` or `resilience_workbench()` to inspect
+taxonomy, safe responses, retry and circuit-breaker evidence, incident reports,
+routes, artifacts, and release-gate evidence.
 
 Use `rule` for validation and decisions:
 

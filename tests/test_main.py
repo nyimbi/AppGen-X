@@ -1178,6 +1178,7 @@ def test_generate_app_from_sqlite_schema_compiles(tmp_path) -> None:
     assert capabilities_by_key["devops.ide-integration"]["status"] == "implemented"
     assert capabilities_by_key["devops.project-management"]["status"] == "implemented"
     assert capabilities_by_key["ops.monitoring"]["status"] == "implemented"
+    assert capabilities_by_key["ops.resilience"]["status"] == "implemented"
     assert capabilities_by_key["platform.microservices"]["status"] == "implemented"
     assert capabilities_by_key["platform.targets"]["status"] == "implemented"
     assert capabilities_by_key["platform.native"]["status"] == "implemented"
@@ -2524,6 +2525,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert "Release Gate JSON" in monitoring_template
     resilience_template = (output_dir / "templates" / "appgen_resilience.html").read_text()
     assert "Error Handling JSON" in resilience_template
+    assert "Workbench JSON" in resilience_template
     assert "Release Gate JSON" in resilience_template
     rules_template = (output_dir / "templates" / "appgen_rules.html").read_text()
     assert "Business Rules" in rules_template
@@ -3718,6 +3720,22 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "incident_reporting",
         "exception_management_plan",
     } <= {check["gate"] for check in resilience_gate["checks"]}
+    resilience_workbench = resilience.resilience_workbench({"app/resilience.py", "app/templates/appgen_resilience.html"})
+    assert resilience_workbench["format"] == "appgen.resilience-workbench.v1"
+    assert resilience_workbench["ok"] is True
+    assert resilience_workbench["decision"] == "approved"
+    assert {
+        "artifact_coverage",
+        "exception_taxonomy",
+        "safe_error_responses",
+        "retry_and_circuit_breakers",
+        "incident_reporting",
+        "exception_management_plan",
+        "route_surface",
+        "release_gate",
+    } == {check["id"] for check in resilience_workbench["checks"]}
+    assert "/resilience/workbench.json" in resilience_workbench["routes"]
+    assert resilience.resilience_workbench({"app/resilience.py"})["ok"] is False
     assert resilience.resilience_release_gate({"app/resilience.py"})["ok"] is False
     assert performance.table_budget("Book")["route"] == "/api/v1/book/"
     assert performance.pagination_plan("Book", requested=999)["page_size"] == (

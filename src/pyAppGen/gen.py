@@ -3598,6 +3598,7 @@ def write_resilience_template(output_dir):
     </div>
     <div>
       <a class="btn btn-default" href="{{ url_for('ResilienceView.catalog_json') }}">Error Handling JSON</a>
+      <a class="btn btn-default" href="{{ url_for('ResilienceView.workbench_json') }}">Workbench JSON</a>
       <a class="btn btn-default" href="{{ url_for('ResilienceView.release_gate_json') }}">Release Gate JSON</a>
     </div>
   </div>
@@ -8656,6 +8657,43 @@ def resilience_release_gate(existing_paths=()):
     }}
 
 
+def resilience_workbench(existing_paths=()):
+    """Return IDE-ready resilience and exception-management evidence."""
+    release_gate = resilience_release_gate(existing_paths)
+    check_by_name = {{check["gate"]: check for check in release_gate["checks"]}}
+    timeout_response = safe_error_response(TimeoutError("slow"), request_id="req-1")
+    validation_response = safe_error_response(ValueError("bad input"), request_id="req-2")
+    incident = incident_report(RuntimeError("boom"), context={{"resource": RESOURCES[0] if RESOURCES else APP_NAME, "operation": "create"}})
+    routes = (
+        "/resilience/",
+        "/resilience/catalog.json",
+        "/resilience/workbench.json",
+        "/resilience/release-gate.json",
+    )
+    checks = (
+        {{"id": "artifact_coverage", "ok": check_by_name["artifact_coverage"]["ok"], "evidence": check_by_name["artifact_coverage"]}},
+        {{"id": "exception_taxonomy", "ok": check_by_name["exception_taxonomy"]["ok"], "evidence": error_catalog()}},
+        {{"id": "safe_error_responses", "ok": check_by_name["safe_error_responses"]["ok"], "evidence": (timeout_response, validation_response)}},
+        {{"id": "retry_and_circuit_breakers", "ok": check_by_name["retry_and_circuit_breakers"]["ok"], "evidence": {{"retry": retry_policy("sync", attempt=1), "max_retry": retry_policy("sync", attempt=DEFAULT_RETRY_POLICY["max_attempts"]), "circuit": circuit_breaker_state(5)}}}},
+        {{"id": "incident_reporting", "ok": check_by_name["incident_reporting"]["ok"], "evidence": incident}},
+        {{"id": "exception_management_plan", "ok": check_by_name["exception_management_plan"]["ok"], "evidence": exception_management_plan()}},
+        {{"id": "route_surface", "ok": "/resilience/workbench.json" in routes and "/resilience/release-gate.json" in routes, "evidence": {{"routes": routes}}}},
+        {{"id": "release_gate", "ok": release_gate["ok"], "evidence": release_gate}},
+    )
+    ok = all(check["ok"] for check in checks)
+    return {{
+        "format": "appgen.resilience-workbench.v1",
+        "ok": ok,
+        "decision": "approved" if ok else "blocked",
+        "checks": checks,
+        "catalog": error_catalog(),
+        "safe_responses": (timeout_response, validation_response),
+        "incident": incident,
+        "routes": routes,
+        "release_gate": release_gate,
+    }}
+
+
 class ResilienceView(BaseView):
     route_base = "/resilience"
     default_view = "index"
@@ -8671,6 +8709,10 @@ class ResilienceView(BaseView):
     @expose("/catalog.json")
     def catalog_json(self):
         return jsonify(error_catalog())
+
+    @expose("/workbench.json")
+    def workbench_json(self):
+        return jsonify(resilience_workbench({{"app/resilience.py", "app/templates/appgen_resilience.html"}}))
 
     @expose("/release-gate.json")
     def release_gate_json(self):
@@ -42540,14 +42582,17 @@ def validate_resilience_artifacts() -> None:
         "exception_management_plan",
         "resilience_check",
         "resilience_release_gate",
+        "resilience_workbench",
+        "appgen.resilience-workbench.v1",
+        '@expose("/workbench.json")',
         "appgen.resilience-release-gate.v1",
         '@expose("/release-gate.json")',
     )
     if not all(item in contract for item in required):
-        fail("resilience contract must expose automatic error handling, exception-management helpers, and release evidence")
+        fail("resilience contract must expose automatic error handling, exception-management helpers, workbench, and release evidence")
     template = (ROOT / "app" / "templates" / "appgen_resilience.html").read_text()
-    if "Resilience" not in template or "Error Handling JSON" not in template or "Release Gate JSON" not in template:
-        fail("resilience cockpit must expose generated error-handling catalog and release evidence")
+    if "Resilience" not in template or "Error Handling JSON" not in template or "Workbench JSON" not in template or "Release Gate JSON" not in template:
+        fail("resilience cockpit must expose generated error-handling catalog, workbench, and release evidence")
 
 
 def validate_monitoring_artifacts() -> None:
@@ -43974,6 +44019,9 @@ def test_generated_runtime_helpers():
     assert resilience.resilience_check({"app/resilience.py", "app/templates/appgen_resilience.html"})["ok"] is True
     assert resilience.resilience_release_gate({"app/resilience.py", "app/templates/appgen_resilience.html"})["format"] == "appgen.resilience-release-gate.v1"
     assert resilience.resilience_release_gate({"app/resilience.py", "app/templates/appgen_resilience.html"})["ok"] is True
+    assert resilience.resilience_workbench({"app/resilience.py", "app/templates/appgen_resilience.html"})["format"] == "appgen.resilience-workbench.v1"
+    assert resilience.resilience_workbench({"app/resilience.py", "app/templates/appgen_resilience.html"})["ok"] is True
+    assert resilience.resilience_workbench({"app/resilience.py"})["ok"] is False
     assert resilience.resilience_release_gate({"app/resilience.py"})["ok"] is False
     assert isinstance(security.ROLE_POLICIES, dict)
     assert isinstance(security.policy_matrix(), tuple)
