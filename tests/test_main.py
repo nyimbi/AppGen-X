@@ -1061,6 +1061,7 @@ def test_generate_app_from_sqlite_schema_compiles(tmp_path) -> None:
     assert "components.templates" in {item["key"] for item in manifest["capabilities"]}
     assert capabilities_by_key["components.templates"]["status"] == "implemented"
     assert "components.lookups" in {item["key"] for item in manifest["capabilities"]}
+    assert capabilities_by_key["components.lookups"]["status"] == "implemented"
     assert "components.text-quality" in {item["key"] for item in manifest["capabilities"]}
     assert "components.media" in {item["key"] for item in manifest["capabilities"]}
     assert "ui.wizards" in {item["key"] for item in manifest["capabilities"]}
@@ -5310,6 +5311,27 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert components.lookup_options("Book", "author", [{"id": 1, "name": "Ada", "email": "ada@example.test"}]) == (
         {"value": 1, "label": "Ada ada@example.test"},
     )
+    assert components.enum_choice_contract("Book", "status")["choices"][0] == {
+        "value": "draft",
+        "label": "Draft",
+    }
+    lookup_workbench = components.lookup_workbench({"app/components.py", "app/templates/appgen_components.html"})
+    assert lookup_workbench["format"] == "appgen.lookup-workbench.v1"
+    assert lookup_workbench["ok"] is True
+    assert lookup_workbench["decision"] == "approved"
+    assert {
+        "artifact_coverage",
+        "relationship_contracts",
+        "label_fields",
+        "lookup_options",
+        "enum_choices",
+        "widget_mapping",
+        "route_surface",
+    } == {check["id"] for check in lookup_workbench["checks"]}
+    assert "/components/lookup-workbench.json" in next(
+        check["evidence"]["routes"] for check in lookup_workbench["checks"] if check["id"] == "route_surface"
+    )
+    assert components.lookup_workbench({"app/components.py"})["ok"] is False
     assert components.field_widget("Book", "status")["widget"] == "select"
     assert components.field_widget("Book", "status")["choices"] == ("draft", "published", "archived")
     assert components.field_widget("Book", "summary")["widget"] == "textarea"
@@ -5333,6 +5355,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert custom_preview["props"]["penColor"] == "#111111"
     assert components.custom_widget_palette_entry(custom_widget)["custom"] is True
     assert "custom_widget_extension_points" in components.visual_builder_payload()
+    assert "Lookup Workbench JSON" in (output_dir / "templates" / "appgen_components.html").read_text()
     template_package = components.component_template_package("Book")
     assert template_package["format"] == "appgen.component-template-package.v1"
     assert {template["type"] for template in template_package["templates"]} == {"form", "list", "detail", "card"}

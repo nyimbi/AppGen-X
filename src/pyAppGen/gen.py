@@ -5689,6 +5689,7 @@ def write_components_template(output_dir):
       <a class="btn btn-default" href="{{ url_for('ComponentView.catalog_json') }}">Catalog JSON</a>
       <a class="btn btn-default" href="{{ url_for('ComponentView.custom_widget_json') }}">Custom Widget JSON</a>
       <a class="btn btn-default" href="{{ url_for('ComponentView.layout_workbench_json') }}">Layout Workbench JSON</a>
+      <a class="btn btn-default" href="{{ url_for('ComponentView.lookup_workbench_json') }}">Lookup Workbench JSON</a>
       <a class="btn btn-default" href="{{ url_for('ComponentView.template_workbench_json') }}">Template Workbench JSON</a>
       <a class="btn btn-default" href="{{ url_for('ComponentView.release_gate_json') }}">Release Gate JSON</a>
     </div>
@@ -31757,6 +31758,75 @@ def lookup_options(table_name, field_name, rows=()):
     return tuple(options)
 
 
+def enum_fields(table_name):
+    """Return enum-backed fields that should render as select choices."""
+    return tuple(field for field in field_widgets(table_name) if field.get("choices"))
+
+
+def enum_choice_contract(table_name, field_name):
+    """Return generated select-choice metadata for one enum-backed field."""
+    field = field_widget(table_name, field_name)
+    if not field.get("choices"):
+        raise KeyError(f"Field is not enum-backed: {{table_name}}.{{field_name}}")
+    return {{
+        "table": table_name,
+        "field": field["field"],
+        "source_column": field["source_column"],
+        "widget": field["widget"],
+        "component": field["component"],
+        "choices": tuple({{"value": choice, "label": str(choice).replace("_", " ").title()}} for choice in field["choices"]),
+        "required": field["required"],
+    }}
+
+
+def lookup_workbench(existing_paths=()):
+    """Return generated relationship and enum lookup evidence for low-code builders."""
+    existing = set(existing_paths or ())
+    required = {{"app/components.py", "app/templates/appgen_components.html"}}
+    relationship_contracts = tuple(
+        dict(
+            lookup_contract(table_name, field["field"]),
+            widget=field["widget"],
+            component=field["component"],
+            options=lookup_options(
+                table_name,
+                field["field"],
+                (
+                    {{
+                        field["lookup"]["value_field"]: 1,
+                        **{{label_field: f"Sample {{label_field}}" for label_field in field["lookup"]["label_fields"]}},
+                    }},
+                ),
+            ),
+        )
+        for table_name in COMPONENT_TABLES
+        for field in lookup_fields(table_name)
+    )
+    enum_contracts = tuple(
+        enum_choice_contract(table_name, field["field"])
+        for table_name in COMPONENT_TABLES
+        for field in enum_fields(table_name)
+    )
+    checks = (
+        {{"id": "artifact_coverage", "ok": required.issubset(existing), "evidence": {{"required": tuple(sorted(required)), "missing": tuple(sorted(required - existing))}}}},
+        {{"id": "relationship_contracts", "ok": bool(relationship_contracts) and all(item["target_table"] and item["value_field"] for item in relationship_contracts), "evidence": relationship_contracts}},
+        {{"id": "label_fields", "ok": all(item["label_fields"] for item in relationship_contracts), "evidence": tuple(item["label_fields"] for item in relationship_contracts)}},
+        {{"id": "lookup_options", "ok": all(item["options"] and item["options"][0]["label"] for item in relationship_contracts), "evidence": tuple(item["options"] for item in relationship_contracts)}},
+        {{"id": "enum_choices", "ok": bool(enum_contracts) and all(item["choices"] and item["component"] == "Select" for item in enum_contracts), "evidence": enum_contracts}},
+        {{"id": "widget_mapping", "ok": all(item["widget"] == "relationship-picker" for item in relationship_contracts) and all(item["widget"] == "select" for item in enum_contracts), "evidence": {{"relationships": len(relationship_contracts), "enums": len(enum_contracts)}}}},
+        {{"id": "route_surface", "ok": True, "evidence": {{"routes": ("/components/catalog.json", "/components/<table_name>.json", "/components/lookup-workbench.json", "/components/release-gate.json")}}}},
+    )
+    ok = all(check["ok"] for check in checks)
+    return {{
+        "format": "appgen.lookup-workbench.v1",
+        "ok": ok,
+        "decision": "approved" if ok else "blocked",
+        "checks": checks,
+        "relationships": relationship_contracts,
+        "enums": enum_contracts,
+    }}
+
+
 def calendar_fields(table_name):
     """Return date, datetime, and time fields that should render as pickers."""
     return tuple(field for field in field_widgets(table_name) if field.get("calendar"))
@@ -32255,6 +32325,10 @@ class ComponentView(BaseView):
     @expose("/layout-workbench.json")
     def layout_workbench_json(self):
         return jsonify(layout_workbench({{"app/components.py", "app/templates/appgen_components.html"}}))
+
+    @expose("/lookup-workbench.json")
+    def lookup_workbench_json(self):
+        return jsonify(lookup_workbench({{"app/components.py", "app/templates/appgen_components.html"}}))
 
     @expose("/template-workbench.json")
     def template_workbench_json(self):

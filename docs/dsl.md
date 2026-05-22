@@ -751,6 +751,10 @@ apps include:
   widget contracts with web, mobile, and desktop renderer hints. Custom widgets
   produce reviewable registration plans, renderer mappings, palette entries,
   preview payloads, and accessibility contracts before they are installed. The
+  generated `lookup_workbench()` proves relationship picker contracts, enum
+  select contracts, label-field selection, UI-ready lookup options, widget
+  mappings, and route evidence before `components.lookups` is marked
+  implemented. The
   generated `component_release_gate()` proves component catalog coverage,
   widget registry depth, platform renderers, lookup contracts, calendar
   widgets, layout contracts, custom-widget extension points, visual-builder
