@@ -237,6 +237,139 @@ def validate_form_design(design: dict) -> dict:
     }
 
 
+def form_designer_generation_smoke_audit(source: str = FORM_DESIGNER_SAMPLE_DSL) -> dict:
+    """Generate a temporary app and exercise its generated form designer."""
+    import importlib.util
+    import py_compile
+    import tempfile
+    from pathlib import Path
+
+    from .gen import generate_app_from_schema
+    from .schema import load_schema
+
+    required_artifacts = (
+        "app/form_designer.py",
+        "app/templates/appgen_form_designer.html",
+        "app/models.py",
+        "app/views.py",
+        "app/dsl_reference.py",
+    )
+    compile_artifacts = (
+        "app/form_designer.py",
+        "app/models.py",
+        "app/views.py",
+        "app/dsl_reference.py",
+    )
+
+    with tempfile.TemporaryDirectory(prefix="appgen-form-designer-smoke-") as tmp:
+        project_dir = Path(tmp)
+        dsl_path = project_dir / "form_designer.appgen"
+        dsl_path.write_text(source, encoding="utf-8")
+        schema = load_schema(dsl_path, source_type="dsl")
+        output_dir = project_dir / "app"
+        generate_app_from_schema(schema, output_dir)
+
+        missing_artifacts = tuple(
+            artifact for artifact in required_artifacts if not (project_dir / artifact).exists()
+        )
+        compiled = []
+        compile_failures = []
+        for artifact in compile_artifacts:
+            path = project_dir / artifact
+            if not path.exists():
+                continue
+            try:
+                py_compile.compile(str(path), doraise=True)
+            except py_compile.PyCompileError as exc:
+                compile_failures.append({"artifact": artifact, "error": str(exc)})
+            else:
+                compiled.append(artifact)
+
+        module_path = output_dir / "form_designer.py"
+        spec = importlib.util.spec_from_file_location(
+            "generated_form_designer_smoke", module_path
+        )
+        generated_form_designer = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(generated_form_designer)
+        existing_paths = {
+            "app/form_designer.py",
+            "app/templates/appgen_form_designer.html",
+        }
+        palette = generated_form_designer.component_palette()
+        forms = generated_form_designer.form_catalog()
+        first_table = forms[0]["table"] if forms else None
+        design = generated_form_designer.form_design(first_table) if first_table else {}
+        validation = generated_form_designer.validate_form_design(design) if first_table else {}
+        proposal = (
+            generated_form_designer.proposal_from_drop(
+                {
+                    "table": first_table,
+                    "component": "TextBox",
+                    "field": "name",
+                    "x": 2.3,
+                    "y": 7.7,
+                }
+            )
+            if first_table
+            else {}
+        )
+        updated = (
+            generated_form_designer.apply_form_proposal(design, proposal)
+            if first_table
+            else {}
+        )
+        updated_validation = (
+            generated_form_designer.validate_form_design(updated) if first_table else {}
+        )
+        release_gate = generated_form_designer.form_designer_release_gate(existing_paths)
+        workbench = generated_form_designer.form_designer_workbench(existing_paths)
+
+    checks = (
+        {
+            "id": "generated_artifacts",
+            "ok": not missing_artifacts,
+            "required_artifacts": required_artifacts,
+            "missing": missing_artifacts,
+        },
+        {
+            "id": "generated_python_compiles",
+            "ok": not compile_failures and set(compiled) == set(compile_artifacts),
+            "compiled": tuple(compiled),
+            "failures": tuple(compile_failures),
+        },
+        {
+            "id": "palette_and_catalog",
+            "ok": {"TextBox", "TextArea", "DatePicker", "RelationshipPicker", "Button"}
+            <= {item["type"] for item in palette}
+            and bool(forms),
+            "forms": forms,
+        },
+        {
+            "id": "canvas_drop_contract",
+            "ok": validation.get("ok") is True
+            and proposal.get("kind") == "drop_component"
+            and any(item.get("name") == "field" for item in proposal.get("properties", ()))
+            and updated_validation.get("ok") is True,
+        },
+        {
+            "id": "generated_release_contracts",
+            "ok": release_gate["ok"] and workbench["ok"],
+            "release_gate": release_gate["format"],
+            "workbench": workbench["format"],
+        },
+    )
+    ok = all(check["ok"] for check in checks)
+    return {
+        "format": "appgen.form-designer-generation-smoke-audit.v1",
+        "ok": ok,
+        "decision": "approved" if ok else "blocked",
+        "required_artifacts": required_artifacts,
+        "compiled_artifacts": tuple(compiled),
+        "checks": checks,
+        "blocking_gaps": tuple(check for check in checks if not check["ok"]),
+    }
+
+
 def form_designer_release_audit(existing_paths: set[str] | None = None) -> dict:
     """Return package-level proof for Delphi-style form design readiness."""
     existing = (
@@ -253,6 +386,7 @@ def form_designer_release_audit(existing_paths: set[str] | None = None) -> dict:
     overlap_case = tuple(design["components"]) + (
         {"field": "duplicate_name", "component": "TextBox", "x": 0, "y": 0, "w": 6, "h": 1},
     )
+    generation_smoke = form_designer_generation_smoke_audit()
     gates = (
         {
             "id": "palette_breadth",
@@ -285,6 +419,11 @@ def form_designer_release_audit(existing_paths: set[str] | None = None) -> dict:
             "id": "artifact_contract",
             "ok": {"app/form_designer.py", "app/templates/appgen_form_designer.html"} <= existing,
         },
+        {
+            "id": "generation_smoke",
+            "ok": generation_smoke["ok"],
+            "checks": tuple(check["id"] for check in generation_smoke["checks"]),
+        },
     )
     ok = all(gate["ok"] for gate in gates)
     return {
@@ -298,6 +437,7 @@ def form_designer_release_audit(existing_paths: set[str] | None = None) -> dict:
         "drop": drop,
         "suggestions": placement_suggestions(),
         "validation": validate_form_design(design),
+        "generation_smoke": generation_smoke,
         "gates": gates,
         "blocking_gaps": tuple(gate for gate in gates if not gate["ok"]),
         "stop_condition": "do-not-claim-delphi-form-designer-unless-ok-is-true",

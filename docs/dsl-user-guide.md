@@ -160,7 +160,11 @@ superiority contracts.
 Run `appgen --form-designer-release-audit` to prove the package-level
 Delphi-style form designer has draggable palette categories, snap-to-grid
 drop proposals, property inspectors, placement suggestions, overlap guardrails,
-and generated form-designer artifact coverage before release.
+and generated form-designer artifact coverage before release. The audit also
+generates a temporary app from Delphi-style component placement DSL, verifies
+generated form designer, template, model, view, and DSL-reference artifacts,
+compiles generated form-designer-facing modules, and exercises generated
+palette, catalog, canvas, drop, release-gate, and workbench contracts.
 Run `appgen --visual-modeling-release-audit` to prove package-level visual
 schema graphs, Mermaid ERDs, DBML/SQL/PonyORM/DSL exports, visual
 table/field/relationship proposals, migration previews, and code/database

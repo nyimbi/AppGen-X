@@ -24751,6 +24751,7 @@ DECLARED_DESIGNS = {declared_designs!r}
 PALETTE = (
     {{"type": "Label", "label": "Label", "defaults": {{"w": 3, "h": 1}}}},
     {{"type": "TextBox", "label": "Text Box", "defaults": {{"w": 4, "h": 1}}}},
+    {{"type": "EmailInput", "label": "Email", "defaults": {{"w": 4, "h": 1}}}},
     {{"type": "TextArea", "label": "Text Area", "defaults": {{"w": 6, "h": 3}}}},
     {{"type": "Select", "label": "Select", "defaults": {{"w": 4, "h": 1}}}},
     {{"type": "Checkbox", "label": "Checkbox", "defaults": {{"w": 2, "h": 1}}}},
@@ -24980,7 +24981,20 @@ def form_designer_release_gate(existing_paths=()):
     if first_table and FORM_TABLES[first_table]["fields"]:
         first_field = FORM_TABLES[first_table]["fields"][0]["name"]
     component_type = field_component(first_table, first_field)["type"] if first_table and first_field else "TextBox"
-    proposal = proposal_from_drop({{"table": first_table, "component": component_type, "field": first_field, "x": 1, "y": 1}}) if first_table else {{"properties": (), "component": {{}}}}
+    if first_table:
+        suggestion = placement_suggestion(design, component_type, first_field)
+        suggested_component = suggestion["component"]
+        proposal = proposal_from_drop({{
+            "table": first_table,
+            "component": component_type,
+            "field": first_field,
+            "x": suggested_component["x"],
+            "y": suggested_component["y"],
+            "w": suggested_component["w"],
+            "h": suggested_component["h"],
+        }})
+    else:
+        proposal = {{"properties": (), "component": {{}}}}
     updated = apply_form_proposal(design, proposal) if first_table else design
     updated_validation = validate_form_design(updated) if first_table else {{"ok": False, "conflicts": ()}}
     collision_component = dict(proposal["component"], id=str(proposal["component"].get("id", "drop")) + "_collision")
@@ -25051,14 +25065,22 @@ def form_designer_workbench(existing_paths=()):
     first_component = first_design.get("components", ({{}},))[0] if first_design.get("components") else {{}}
     first_field = first_component.get("field")
     first_type = first_component.get("type") or "TextBox"
+    suggestion = placement_suggestion(first_design, first_type, first_field) if first_design.get("table") else {{"component": {{}}, "canvas": {{}}}}
     proposal = (
-        proposal_from_drop({{"table": first_design["table"], "component": first_type, "field": first_field, "x": 1, "y": 1}})
+        proposal_from_drop({{
+            "table": first_design["table"],
+            "component": first_type,
+            "field": first_field,
+            "x": suggestion["component"]["x"],
+            "y": suggestion["component"]["y"],
+            "w": suggestion["component"]["w"],
+            "h": suggestion["component"]["h"],
+        }})
         if first_design.get("table")
         else {{"kind": "drop_component", "component": {{}}, "properties": ()}}
     )
     updated = apply_form_proposal(first_design, proposal) if first_design.get("table") else first_design
     updated_validation = validate_form_design(updated) if first_design.get("table") else {{"ok": False, "conflicts": ()}}
-    suggestion = placement_suggestion(first_design, first_type, first_field) if first_design.get("table") else {{"component": {{}}, "canvas": {{}}}}
     snapped = drop_component(first_design["table"], first_type, field=first_field, x=99, y=2, w=4) if first_design.get("table") else {{}}
     collision_component = dict(proposal["component"], id=str(proposal["component"].get("id", "drop")) + "_collision")
     collision_design = dict(first_design, components=tuple(first_design.get("components", ())) + (proposal["component"], collision_component))

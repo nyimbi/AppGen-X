@@ -323,7 +323,11 @@ appgen --form-designer-release-audit
 The form-designer audit proves draggable component palette breadth, a stable
 snap-to-grid canvas, field-to-component mappings, snapped drop proposals,
 property-inspector metadata, placement suggestions, overlap guardrails, and the
-generated form-designer artifact contract.
+generated form-designer artifact contract. It also generates a temporary app
+from Delphi-style component placement DSL, verifies generated form designer,
+template, model, view, and DSL-reference artifacts, compiles the generated
+form-designer-facing modules, and exercises generated palette, catalog, canvas,
+drop, release-gate, and workbench contracts.
 
 Audit the package-level visual modeling and database-design contract before
 claiming visual models can generate code and database schema:

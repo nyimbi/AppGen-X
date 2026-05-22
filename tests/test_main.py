@@ -75,6 +75,7 @@ from pyAppGen.form_designer import detect_overlaps
 from pyAppGen.form_designer import field_component_matrix
 from pyAppGen.form_designer import form_canvas
 from pyAppGen.form_designer import form_design as package_form_design
+from pyAppGen.form_designer import form_designer_generation_smoke_audit
 from pyAppGen.form_designer import form_designer_release_audit
 from pyAppGen.form_designer import palette_categories
 from pyAppGen.form_designer import placement_suggestions
@@ -763,7 +764,19 @@ def test_package_form_designer_audit_covers_delphi_style_drop_design(
         "placement_suggestions",
         "overlap_guardrails",
         "artifact_contract",
+        "generation_smoke",
     } == {gate["id"] for gate in audit["gates"]}
+    assert audit["generation_smoke"]["ok"] is True
+
+    smoke = form_designer_generation_smoke_audit()
+    assert smoke["format"] == "appgen.form-designer-generation-smoke-audit.v1"
+    assert smoke["ok"] is True
+    assert {
+        "app/form_designer.py",
+        "app/templates/appgen_form_designer.html",
+        "app/models.py",
+    } <= set(smoke["required_artifacts"])
+    assert {"app/form_designer.py", "app/models.py"} <= set(smoke["compiled_artifacts"])
 
     missing = form_designer_release_audit(existing_paths={"app/form_designer.py"})
     assert missing["ok"] is False
