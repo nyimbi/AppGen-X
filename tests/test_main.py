@@ -42,6 +42,7 @@ from pyAppGen.dsl import format_dsl
 from pyAppGen.dsl import lint_dsl
 from pyAppGen.roadmap import generated_app_excellence_audit
 from pyAppGen.roadmap import jhipster_superiority_audit
+from pyAppGen.roadmap import package_goal_audit
 from pyAppGen.roadmap import roadmap_release_audit
 from pyAppGen.schema import load_schema
 from pyAppGen.schema import RelationSchema
@@ -223,6 +224,34 @@ def test_generated_app_excellence_audit_cli_guards_quality_claims(
     assert cli_report["ok"] is True
     assert cli_report["decision"] == "approved"
     assert all(gate["ok"] for gate in cli_report["gates"])
+
+
+def test_package_goal_audit_cli_aggregates_objective_evidence(
+    runner: CliRunner,
+) -> None:
+    """The CLI exposes one package-level evidence bundle for the active goal."""
+    direct_report = package_goal_audit()
+    assert direct_report["format"] == "appgen.package-goal-audit.v1"
+    assert direct_report["ok"] is True
+    assert {
+        "roadmap_traceability",
+        "jhipster_superiority",
+        "generated_app_excellence",
+        "source_document_scope",
+    } == {gate["id"] for gate in direct_report["gates"]}
+    assert direct_report["stop_condition"] == (
+        "do-not-mark-active-goal-complete-unless-ok-is-true"
+    )
+
+    result = runner.invoke(__main__.main, ["--package-goal-audit"])
+
+    assert result.exit_code == 0
+    cli_report = json.loads(result.output)
+    assert cli_report["ok"] is True
+    assert cli_report["decision"] == "approved"
+    assert cli_report["audits"]["roadmap"]["ok"] is True
+    assert cli_report["audits"]["jhipster_superiority"]["ok"] is True
+    assert cli_report["audits"]["generated_app_excellence"]["ok"] is True
 
 
 def test_dsl_linter_reports_semantic_feedback(runner: CliRunner, tmp_path) -> None:

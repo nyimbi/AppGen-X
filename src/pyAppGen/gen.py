@@ -46837,6 +46837,11 @@ def get_metadata(idb):
     ),
 )
 @click.option(
+    "--package-goal-audit",
+    is_flag=True,
+    help="Print aggregate JSON proof for the package-level AppGen objective.",
+)
+@click.option(
     "--schema-source-audit",
     is_flag=True,
     help=(
@@ -46870,6 +46875,7 @@ def main(
     roadmap_release_audit,
     jhipster_superiority_audit,
     generated_app_excellence_audit,
+    package_goal_audit,
     schema_source_audit,
     dsl_antlr_report,
 ):
@@ -46885,6 +46891,7 @@ def main(
         roadmap_release_audit,
         jhipster_superiority_audit,
         generated_app_excellence_audit,
+        package_goal_audit,
         schema_source_audit,
         dsl_antlr_report,
     ]
@@ -46908,6 +46915,7 @@ def main(
                 roadmap_release_audit,
                 jhipster_superiority_audit,
                 generated_app_excellence_audit,
+                package_goal_audit,
                 dsl_antlr_report,
                 *schema_sources,
             ]
@@ -46934,6 +46942,7 @@ def main(
                 roadmap_release_audit,
                 jhipster_superiority_audit,
                 generated_app_excellence_audit,
+                package_goal_audit,
                 schema_source_audit,
                 *schema_sources,
             ]
@@ -46961,6 +46970,7 @@ def main(
                 roadmap_release_audit,
                 jhipster_superiority_audit,
                 generated_app_excellence_audit,
+                package_goal_audit,
                 schema_source_audit,
                 dsl_antlr_report,
                 *schema_sources,
@@ -46985,6 +46995,7 @@ def main(
                 roadmap_release_audit,
                 jhipster_superiority_audit,
                 generated_app_excellence_audit,
+                package_goal_audit,
                 schema_source_audit,
                 dsl_antlr_report,
                 *schema_sources,
@@ -47013,6 +47024,7 @@ def main(
                 roadmap_release_audit,
                 jhipster_superiority_audit,
                 generated_app_excellence_audit,
+                package_goal_audit,
                 schema_source_audit,
                 dsl_antlr_report,
                 *schema_sources,
@@ -47040,6 +47052,7 @@ def main(
                 roadmap_release_audit,
                 jhipster_superiority_audit,
                 generated_app_excellence_audit,
+                package_goal_audit,
                 schema_source_audit,
                 dsl_antlr_report,
                 *schema_sources,
@@ -47068,6 +47081,7 @@ def main(
                 wdatabase,
                 jhipster_superiority_audit,
                 generated_app_excellence_audit,
+                package_goal_audit,
                 *schema_sources,
             ]
         ):
@@ -47089,6 +47103,7 @@ def main(
                 idatabase,
                 wdatabase,
                 generated_app_excellence_audit,
+                package_goal_audit,
                 *schema_sources,
             ]
         ):
@@ -47103,14 +47118,34 @@ def main(
         ctx.exit(0 if result["ok"] else 1)
 
     if generated_app_excellence_audit:
-        if any([writedir, database_url, idatabase, wdatabase, *schema_sources]):
+        if any(
+            [
+                writedir,
+                database_url,
+                idatabase,
+                wdatabase,
+                package_goal_audit,
+                *schema_sources,
+            ]
+        ):
             raise click.UsageError(
                 "--generated-app-excellence-audit cannot be combined with "
-                "generation options."
+                "generation or audit options."
             )
         from .roadmap import generated_app_excellence_audit as package_excellence_audit
 
         result = package_excellence_audit()
+        click.echo(json.dumps(result, indent=2, sort_keys=True, default=list))
+        ctx.exit(0 if result["ok"] else 1)
+
+    if package_goal_audit:
+        if any([writedir, database_url, idatabase, wdatabase, *schema_sources]):
+            raise click.UsageError(
+                "--package-goal-audit cannot be combined with generation options."
+            )
+        from .roadmap import package_goal_audit as package_goal_audit_report
+
+        result = package_goal_audit_report()
         click.echo(json.dumps(result, indent=2, sort_keys=True, default=list))
         ctx.exit(0 if result["ok"] else 1)
 

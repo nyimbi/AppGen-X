@@ -112,6 +112,9 @@ and AppGen-only advantage areas.
 Run `appgen --generated-app-excellence-audit` before claiming generated apps are
 beautiful, sophisticated, secure, reliable, robust, functional, and highly
 capable.
+Run `appgen --package-goal-audit` to collect roadmap traceability, JHipster
+superiority, and generated-app excellence evidence into one package-level JSON
+bundle.
 
 Use `required` for fields that must be entered. Use `search` on fields that
 should appear in generated search contracts. Use `hidden` for generated or

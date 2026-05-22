@@ -219,6 +219,14 @@ capable:
 appgen --generated-app-excellence-audit
 ```
 
+Run the aggregate package goal audit when you need one machine-readable bundle
+covering roadmap traceability, JHipster superiority, and generated-app
+excellence:
+
+```console
+appgen --package-goal-audit
+```
+
 ## Shape
 
 - `table` defines persistent data models.

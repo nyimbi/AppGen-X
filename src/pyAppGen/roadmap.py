@@ -501,6 +501,51 @@ def generated_app_excellence_audit() -> dict:
     }
 
 
+def package_goal_audit(root: Path | str | None = None) -> dict:
+    """Return aggregate package evidence for the active AppGen objective."""
+    roadmap = roadmap_release_audit(root)
+    superiority = jhipster_superiority_audit()
+    excellence = generated_app_excellence_audit()
+    gates = (
+        {
+            "id": "roadmap_traceability",
+            "ok": roadmap["ok"],
+            "format": roadmap["format"],
+        },
+        {
+            "id": "jhipster_superiority",
+            "ok": superiority["ok"],
+            "format": superiority["format"],
+        },
+        {
+            "id": "generated_app_excellence",
+            "ok": excellence["ok"],
+            "format": excellence["format"],
+        },
+        {
+            "id": "source_document_scope",
+            "ok": {"docs/ideas.md", "docs/base_features.md", "docs/Lo-code features.md"}
+            <= {document["path"] for document in roadmap["documents"]},
+            "documents": tuple(document["path"] for document in roadmap["documents"]),
+        },
+    )
+    ok = all(gate["ok"] for gate in gates)
+    return {
+        "format": "appgen.package-goal-audit.v1",
+        "scope": "package",
+        "ok": ok,
+        "decision": "approved" if ok else "blocked",
+        "gates": gates,
+        "audits": {
+            "roadmap": roadmap,
+            "jhipster_superiority": superiority,
+            "generated_app_excellence": excellence,
+        },
+        "blocking_gaps": tuple(gate for gate in gates if not gate["ok"]),
+        "stop_condition": "do-not-mark-active-goal-complete-unless-ok-is-true",
+    }
+
+
 def roadmap_release_audit(root: Path | str | None = None) -> dict:
     """Return package-level proof that roadmap docs map to implemented features."""
     documents = roadmap_document_checks(root)
