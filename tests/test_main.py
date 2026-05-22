@@ -5208,6 +5208,15 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     )
     compile(updated_languages, "config.py", "exec")
     assert "'fr': {'flag': 'fr', 'name': 'French'}" in updated_languages
+    config_gate = config_admin.config_admin_release_gate(
+        {"config.py", "app/config_admin.py", "app/templates/appgen_config.html"}
+    )
+    assert config_gate["format"] == "appgen.config-admin-release-gate.v1"
+    assert config_gate["ok"] is True
+    assert {"editable_catalog", "production_readiness", "safe_assignment_rewrite", "env_export"} <= {
+        gate["gate"] for gate in config_gate["gates"]
+    }
+    assert config_admin.config_admin_release_gate({"app/config_admin.py"})["ok"] is False
     assert "enum Status { draft published archived }" in designer.dsl_from_manifest(manifest)
     assert "table Book" in designer.dsl_from_manifest(manifest)
     assert "internal_code: string hidden" in designer.dsl_from_manifest(manifest)

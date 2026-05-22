@@ -2512,6 +2512,7 @@ def write_config_admin_template(output_dir):
     </div>
     <div>
       <a class="btn btn-default" href="{{ url_for('ConfigAdminView.setup_json') }}">Setup JSON</a>
+      <a class="btn btn-default" href="{{ url_for('ConfigAdminView.release_gate_json') }}">Release Gate JSON</a>
       <a class="btn btn-default" href="{{ url_for('ConfigAdminView.raw_config') }}">Raw config</a>
     </div>
   </div>
@@ -29154,6 +29155,61 @@ def env_template(values):
     return "\\n".join(lines) + "\\n"
 
 
+def sample_config_values(overrides=None):
+    """Return deterministic sample values for setup and release-gate checks."""
+    values = {
+        "APP_NAME": "AppGen",
+        "SQLALCHEMY_DATABASE_URI": "postgresql://appgen:appgen@db/appgen",
+        "SQLALCHEMY_TRACK_MODIFICATIONS": False,
+        "SECRET_KEY": "replace-with-production-secret",
+        "FAB_API_SHOW_STACKTRACE": False,
+        "FAB_API_SWAGGER_UI": True,
+        "WTF_CSRF_ENABLED": True,
+        "AUTH_ROLE_ADMIN": "Admin",
+        "AUTH_ROLE_PUBLIC": "Public",
+        "SESSION_COOKIE_HTTPONLY": True,
+        "SESSION_COOKIE_SAMESITE": "Lax",
+        "BABEL_DEFAULT_LOCALE": "en",
+        "BABEL_DEFAULT_TIMEZONE": "UTC",
+        "LANGUAGES": {"en": {"flag": "us", "name": "English"}},
+    }
+    if overrides:
+        values.update(overrides)
+    return values
+
+
+def config_admin_release_gate(existing_paths=()):
+    """Return release readiness for generated config.py setup management."""
+    existing = set(existing_paths)
+    required = {"config.py", "app/config_admin.py", "app/templates/appgen_config.html"}
+    missing = tuple(sorted(required - existing))
+    sample = sample_config_values()
+    unsafe = sample_config_values({"SECRET_KEY": "change-me-before-deploy", "SQLALCHEMY_DATABASE_URI": ""})
+    source = "APP_NAME = 'Old'\\nSECRET_KEY = 'change-me-before-deploy'\\nLANGUAGES = {'en': {'flag': 'us', 'name': 'English'}}\\n"
+    updated = replace_config_assignment(source, "APP_NAME", "New Name")
+    updated_dict = replace_config_assignment(source, "LANGUAGES", sample["LANGUAGES"])
+    readiness = config_readiness(sample)
+    unsafe_readiness = config_readiness(unsafe)
+    checklist = setup_checklist(sample)
+    env = env_template(sample)
+    sections = config_sections(sample)
+    gates = (
+        {"gate": "artifacts", "ok": not missing, "missing": missing},
+        {"gate": "editable_catalog", "ok": set(EDITABLE_CONFIG) == set(sample) and len(CONFIG_SECTIONS) == len(sections), "keys": tuple(EDITABLE_CONFIG)},
+        {"gate": "production_readiness", "ok": readiness["ready"] and not readiness["blockers"] and not unsafe_readiness["ready"] and bool(unsafe_readiness["blockers"]), "readiness": readiness, "unsafe": unsafe_readiness},
+        {"gate": "setup_checklist", "ok": len(checklist["tasks"]) == len(EDITABLE_CONFIG) and all(task["section"] in CONFIG_SECTIONS for task in checklist["tasks"]), "checklist": checklist},
+        {"gate": "safe_assignment_rewrite", "ok": "APP_NAME = 'New Name'" in updated and "LANGUAGES = {'en': {'flag': 'us', 'name': 'English'}}" in updated_dict, "updated": updated},
+        {"gate": "env_export", "ok": "APP_NAME=AppGen" in env and "FAB_API_SWAGGER_UI=true" in env and "SECRET_KEY=replace-with-production-secret" in env, "env": env},
+    )
+    ok = all(gate["ok"] for gate in gates)
+    return {
+        "format": "appgen.config-admin-release-gate.v1",
+        "ok": ok,
+        "decision": "approved" if ok else "blocked",
+        "gates": gates,
+    }
+
+
 class ConfigAdminView(BaseView):
     route_base = "/appgen/config"
     default_view = "index"
@@ -29191,6 +29247,10 @@ class ConfigAdminView(BaseView):
             "checklist": setup_checklist(values),
             "env": env_template(values),
         })
+
+    @expose("/release-gate.json")
+    def release_gate_json(self):
+        return jsonify(config_admin_release_gate({"config.py", "app/config_admin.py", "app/templates/appgen_config.html"}))
 
 
 def register_config_admin(appbuilder):
@@ -34472,13 +34532,15 @@ def validate_config_admin_artifacts() -> None:
         "setup_checklist",
         "env_template",
         "setup_json",
+        "sample_config_values",
+        "config_admin_release_gate",
         "LANGUAGES",
     )
     if not all(item in contract for item in required):
         fail("configuration admin must expose full setup metadata for generated config.py")
     template = (ROOT / "app" / "templates" / "appgen_config.html").read_text()
-    if "Setup JSON" not in template or "Environment template" not in template or "Setup needs attention" not in template:
-        fail("configuration template must expose setup readiness and environment export")
+    if "Setup JSON" not in template or "Release Gate JSON" not in template or "Environment template" not in template or "Setup needs attention" not in template:
+        fail("configuration template must expose setup readiness, release readiness, and environment export")
 
 
 def validate_designer_artifacts() -> None:

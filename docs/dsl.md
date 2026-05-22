@@ -400,7 +400,10 @@ apps include:
   documentation settings, and a whitelisted setup screen for every generated
   `config.py` assignment. The setup contract includes grouped metadata,
   production-readiness checks, a setup checklist, safe multi-line assignment
-  replacement, `/appgen/config/setup.json`, and `.env` export text.
+  replacement, `/appgen/config/setup.json`, and `.env` export text. A generated
+  config-admin release gate proves config artifacts, editable-key coverage,
+  production readiness, unsafe blocker detection, setup checklists, safe
+  assignment rewrites, and environment export behavior.
 - `integrations.py` and `appgen_integrations.html` with generated REST,
   webhook, Salesforce, SAP, Entando, Invenio, payment gateway, SMS gateway,
   and transactional email connector configuration stubs, reviewed request

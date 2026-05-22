@@ -373,6 +373,12 @@ beyond a scaffolding CLI: it ties authoring, database design, generation,
 versioned portfolio management, diagnostics, and component sharing to commands,
 workflows, and release evidence.
 
+Generated configuration editors expose `config_admin_release_gate()` and
+`/appgen/config/release-gate.json`. Use this gate to prove editable
+`config.py` coverage, production readiness, unsafe blocker detection, safe
+assignment rewriting, setup checklist coverage, and `.env` export behavior
+before promoting generated setup screens.
+
 Generated data-access workbenches expose `data_access_release_gate()` and
 `/data-access/release-gate.json` to prove query and mutation readiness. The
 gate checks that required artifacts exist, resources are cataloged, query
