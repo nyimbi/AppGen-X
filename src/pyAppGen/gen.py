@@ -46872,6 +46872,11 @@ def get_metadata(idb):
     help="Print JSON proof that package-level Studio/IDE capabilities are ready.",
 )
 @click.option(
+    "--form-designer-release-audit",
+    is_flag=True,
+    help="Print JSON proof that package-level Delphi-style form design is ready.",
+)
+@click.option(
     "--config-release-audit",
     is_flag=True,
     help="Print JSON proof that package-level config editor safeguards are ready.",
@@ -46947,6 +46952,7 @@ def main(
     nl_dsl_prompt,
     nl_release_audit,
     studio_release_audit,
+    form_designer_release_audit,
     config_release_audit,
     distribution_release_audit,
     reporting_release_audit,
@@ -46965,6 +46971,7 @@ def main(
     audit_options = [
         *nl_options,
         studio_release_audit,
+        form_designer_release_audit,
         config_release_audit,
         distribution_release_audit,
         reporting_release_audit,
@@ -47335,6 +47342,7 @@ def main(
                 nl_dsl_prompt,
                 nl_release_audit,
                 studio_release_audit,
+                form_designer_release_audit,
                 config_release_audit,
                 distribution_release_audit,
                 reporting_release_audit,
@@ -47363,6 +47371,7 @@ def main(
                 wdatabase,
                 nl_release_audit,
                 studio_release_audit,
+                form_designer_release_audit,
                 config_release_audit,
                 distribution_release_audit,
                 reporting_release_audit,
@@ -47390,6 +47399,7 @@ def main(
                 idatabase,
                 wdatabase,
                 studio_release_audit,
+                form_designer_release_audit,
                 config_release_audit,
                 distribution_release_audit,
                 reporting_release_audit,
@@ -47416,6 +47426,7 @@ def main(
                 database_url,
                 idatabase,
                 wdatabase,
+                form_designer_release_audit,
                 config_release_audit,
                 distribution_release_audit,
                 reporting_release_audit,
@@ -47435,6 +47446,34 @@ def main(
         click.echo(json.dumps(result, indent=2, sort_keys=True, default=list))
         ctx.exit(0 if result["ok"] else 1)
 
+    if form_designer_release_audit:
+        if any(
+            [
+                writedir,
+                database_url,
+                idatabase,
+                wdatabase,
+                config_release_audit,
+                distribution_release_audit,
+                reporting_release_audit,
+                ops_release_audit,
+                integration_release_audit,
+                agentic_release_audit,
+                target_release_audit,
+                *schema_sources,
+            ]
+        ):
+            raise click.UsageError(
+                "--form-designer-release-audit cannot be combined with generation options."
+            )
+        from .form_designer import (
+            form_designer_release_audit as package_form_designer_release_audit,
+        )
+
+        result = package_form_designer_release_audit()
+        click.echo(json.dumps(result, indent=2, sort_keys=True, default=list))
+        ctx.exit(0 if result["ok"] else 1)
+
     if config_release_audit:
         if any(
             [
@@ -47442,6 +47481,7 @@ def main(
                 database_url,
                 idatabase,
                 wdatabase,
+                form_designer_release_audit,
                 distribution_release_audit,
                 reporting_release_audit,
                 ops_release_audit,
@@ -47471,6 +47511,7 @@ def main(
                 ops_release_audit,
                 integration_release_audit,
                 agentic_release_audit,
+                form_designer_release_audit,
                 target_release_audit,
                 *schema_sources,
             ]
@@ -47494,6 +47535,7 @@ def main(
                 ops_release_audit,
                 integration_release_audit,
                 agentic_release_audit,
+                form_designer_release_audit,
                 target_release_audit,
                 *schema_sources,
             ]
@@ -47516,6 +47558,7 @@ def main(
                 wdatabase,
                 integration_release_audit,
                 agentic_release_audit,
+                form_designer_release_audit,
                 target_release_audit,
                 *schema_sources,
             ]
@@ -47538,6 +47581,7 @@ def main(
                 wdatabase,
                 agentic_release_audit,
                 target_release_audit,
+                form_designer_release_audit,
                 *schema_sources,
             ]
         ):
@@ -47573,7 +47617,16 @@ def main(
         ctx.exit(0 if result["ok"] else 1)
 
     if target_release_audit:
-        if any([writedir, database_url, idatabase, wdatabase, *schema_sources]):
+        if any(
+            [
+                writedir,
+                database_url,
+                idatabase,
+                wdatabase,
+                form_designer_release_audit,
+                *schema_sources,
+            ]
+        ):
             raise click.UsageError(
                 "--target-release-audit cannot be combined with generation options."
             )

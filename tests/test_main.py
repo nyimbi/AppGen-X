@@ -62,6 +62,18 @@ from pyAppGen.erp import erp_module_dsl
 from pyAppGen.erp import erp_starter_manifest
 from pyAppGen.erp import erp_template_catalog
 from pyAppGen.erp import erp_template_release_audit
+from pyAppGen.form_designer import apply_drop
+from pyAppGen.form_designer import component_palette
+from pyAppGen.form_designer import detect_overlaps
+from pyAppGen.form_designer import field_component_matrix
+from pyAppGen.form_designer import form_canvas
+from pyAppGen.form_designer import form_design as package_form_design
+from pyAppGen.form_designer import form_designer_release_audit
+from pyAppGen.form_designer import palette_categories
+from pyAppGen.form_designer import placement_suggestions
+from pyAppGen.form_designer import property_inspector
+from pyAppGen.form_designer import snap_drop
+from pyAppGen.form_designer import validate_form_design
 from pyAppGen.integrations import generated_integration_contracts
 from pyAppGen.integrations import integration_catalog
 from pyAppGen.integrations import integration_contract
@@ -299,6 +311,7 @@ def test_package_goal_audit_cli_aggregates_objective_evidence(
         "erp_template_exports",
         "natural_language_evolution",
         "robust_ide",
+        "delphi_form_designer",
         "config_editor",
         "publishable_distribution",
         "reporting_chartviews",
@@ -324,6 +337,7 @@ def test_package_goal_audit_cli_aggregates_objective_evidence(
     assert cli_report["audits"]["erp_templates"]["ok"] is True
     assert cli_report["audits"]["natural_language_evolution"]["ok"] is True
     assert cli_report["audits"]["studio"]["ok"] is True
+    assert cli_report["audits"]["form_designer"]["ok"] is True
     assert cli_report["audits"]["config_editor"]["ok"] is True
     assert cli_report["audits"]["distribution"]["ok"] is True
     assert cli_report["audits"]["reporting"]["ok"] is True
@@ -502,6 +516,77 @@ def test_package_studio_audit_covers_ide_database_and_generation(
     report = json.loads(result.output)
     assert report["ok"] is True
     assert report["workspace"]["database_design"]["ok"] is True
+
+
+def test_package_form_designer_audit_covers_delphi_style_drop_design(
+    runner: CliRunner,
+) -> None:
+    """The package proves Delphi-style component drops before generation."""
+    palette = component_palette()
+    assert {"input", "calendar", "relationship", "media", "action"} <= set(
+        palette_categories()
+    )
+    assert {"TextBox", "TextArea", "DatePicker", "Lookup", "FileUpload"} <= {
+        item["component"] for item in palette
+    }
+
+    canvas = form_canvas("Customer")
+    assert canvas["format"] == "appgen.package-form-canvas.v1"
+    assert canvas["grid"]["columns"] == 12
+    assert {"web", "mobile", "desktop"} <= set(canvas["render_targets"])
+
+    design = package_form_design()
+    assert design["format"] == "appgen.package-form-design.v1"
+    assert design["view"] == "CustomerForm"
+    assert validate_form_design(design)["ok"] is True
+
+    matrix = field_component_matrix()
+    assert matrix
+    assert all(item["supported"] for item in matrix)
+
+    drop = snap_drop("TextBox", 2.3, 7.7, field="generated_note")
+    assert drop["format"] == "appgen.package-form-drop-proposal.v1"
+    assert drop["proposal"]["x"] == 2
+    assert drop["proposal"]["y"] == 8
+    assert drop["review_required"] is True
+    assert "label" in property_inspector("TextBox", field="name")["properties"]
+
+    updated = apply_drop(design, {**drop["proposal"], "field_type": "string"})
+    assert updated["validation"]["ok"] is True
+
+    overlaps = detect_overlaps(
+        (
+            {"field": "a", "x": 0, "y": 0, "w": 4, "h": 1},
+            {"field": "b", "x": 3, "y": 0, "w": 4, "h": 1},
+        )
+    )
+    assert overlaps == ({"left": "a", "right": "b"},)
+    assert any(item["field"] == "phone" for item in placement_suggestions())
+
+    audit = form_designer_release_audit()
+    assert audit["format"] == "appgen.package-form-designer-release-audit.v1"
+    assert audit["ok"] is True
+    assert {
+        "palette_breadth",
+        "canvas_contract",
+        "field_component_mapping",
+        "drop_snap_property_inspector",
+        "placement_suggestions",
+        "overlap_guardrails",
+        "artifact_contract",
+    } == {gate["id"] for gate in audit["gates"]}
+
+    missing = form_designer_release_audit(existing_paths={"app/form_designer.py"})
+    assert missing["ok"] is False
+    assert any(gate["id"] == "artifact_contract" for gate in missing["blocking_gaps"])
+
+    result = runner.invoke(__main__.main, ["--form-designer-release-audit"])
+    assert result.exit_code == 0
+    report = json.loads(result.output)
+    assert report["ok"] is True
+    assert report["drop"]["property_inspector"]["format"] == (
+        "appgen.package-form-property-inspector.v1"
+    )
 
 
 def test_package_config_editor_audit_covers_safe_setup(

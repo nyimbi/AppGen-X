@@ -128,6 +128,10 @@ API-key LLMs.
 Run `appgen --studio-release-audit` to prove the package-level Studio contract
 is ready for DSL editing, database design, multi-source intake, generation job
 management, and application lifecycle management before any app is generated.
+Run `appgen --form-designer-release-audit` to prove the package-level
+Delphi-style form designer has draggable palette categories, snap-to-grid
+drop proposals, property inspectors, placement suggestions, overlap guardrails,
+and generated form-designer artifact coverage before release.
 Run `appgen --config-release-audit` to prove the package-level configuration
 editor contract has roadmap-required FAB API flags, whitelisted editable keys,
 production safety checks, and environment export coverage.

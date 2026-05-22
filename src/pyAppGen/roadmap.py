@@ -507,6 +507,7 @@ def package_goal_audit(root: Path | str | None = None) -> dict:
     from .config_admin import config_editor_release_audit
     from .distribution import distribution_release_audit
     from .erp import erp_template_release_audit
+    from .form_designer import form_designer_release_audit
     from .integrations import integration_release_audit
     from .nl import nl_evolution_release_audit
     from .ops import ops_release_audit
@@ -520,6 +521,7 @@ def package_goal_audit(root: Path | str | None = None) -> dict:
     erp_templates = erp_template_release_audit()
     nl_evolution = nl_evolution_release_audit()
     studio = studio_release_audit()
+    form_designer = form_designer_release_audit()
     config_editor = config_editor_release_audit()
     distribution = distribution_release_audit()
     reporting = reporting_release_audit()
@@ -557,6 +559,11 @@ def package_goal_audit(root: Path | str | None = None) -> dict:
             "id": "robust_ide",
             "ok": studio["ok"],
             "format": studio["format"],
+        },
+        {
+            "id": "delphi_form_designer",
+            "ok": form_designer["ok"],
+            "format": form_designer["format"],
         },
         {
             "id": "config_editor",
@@ -614,6 +621,7 @@ def package_goal_audit(root: Path | str | None = None) -> dict:
             "erp_templates": erp_templates,
             "natural_language_evolution": nl_evolution,
             "studio": studio,
+            "form_designer": form_designer,
             "config_editor": config_editor,
             "distribution": distribution,
             "reporting": reporting,
