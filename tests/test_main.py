@@ -1081,6 +1081,7 @@ def test_generate_app_from_sqlite_schema_compiles(tmp_path) -> None:
     assert capabilities_by_key["ops.notifications"]["status"] == "implemented"
     assert capabilities_by_key["operations.inventory-traceability"]["status"] == "implemented"
     assert capabilities_by_key["operations.finance"]["status"] == "implemented"
+    assert capabilities_by_key["operations.manufacturing"]["status"] == "implemented"
     assert "data.seed" in {item["key"] for item in manifest["capabilities"]}
     assert "ui.visual-modeling" in {item["key"] for item in manifest["capabilities"]}
     assert "ui.pwa" in {item["key"] for item in manifest["capabilities"]}
@@ -3802,6 +3803,28 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "requisition_and_kanban",
         "artifact_coverage",
     } <= {gate["gate"] for gate in manufacturing_gate["gates"]}
+    assert "Workbench JSON" in (output_dir / "templates" / "appgen_manufacturing_ops.html").read_text()
+    manufacturing_workbench = manufacturing_ops.manufacturing_workbench(
+        {"app/manufacturing_ops.py", "app/templates/appgen_manufacturing_ops.html"}
+    )
+    assert manufacturing_workbench["format"] == "appgen.manufacturing-workbench.v1"
+    assert manufacturing_workbench["ok"] is True
+    assert manufacturing_workbench["decision"] == "approved"
+    assert {
+        "artifact_coverage",
+        "manufacturing_catalog",
+        "bom_planning",
+        "material_requirements",
+        "capacity_planning",
+        "production_scheduling",
+        "requisition_and_kanban",
+        "release_gate",
+        "route_surface",
+    } == {check["id"] for check in manufacturing_workbench["checks"]}
+    assert "/manufacturing-ops/workbench.json" in next(
+        check["evidence"]["routes"] for check in manufacturing_workbench["checks"] if check["id"] == "route_surface"
+    )
+    assert manufacturing_ops.manufacturing_workbench({"app/manufacturing_ops.py"})["ok"] is False
     assert manufacturing_ops.manufacturing_release_gate({"app/manufacturing_ops.py"})["ok"] is False
     access_book = data_access.resource_contract("Book")
     assert "title" in access_book["readable_fields"]

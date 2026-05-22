@@ -3365,6 +3365,7 @@ def write_manufacturing_ops_template(output_dir):
     </div>
     <div>
       <a class="btn btn-default" href="{{ url_for('ManufacturingOpsView.catalog_json') }}">Manufacturing JSON</a>
+      <a class="btn btn-default" href="{{ url_for('ManufacturingOpsView.workbench_json') }}">Workbench JSON</a>
       <a class="btn btn-default" href="{{ url_for('ManufacturingOpsView.release_gate_json') }}">Release Gate JSON</a>
     </div>
   </div>
@@ -15531,6 +15532,83 @@ def manufacturing_release_gate(existing_paths=()):
     }}
 
 
+def manufacturing_workbench(existing_paths=()):
+    """Return generated manufacturing operations evidence for low-code builders."""
+    artifacts = set(existing_paths or ())
+    required = {{"app/manufacturing_ops.py", "app/templates/appgen_manufacturing_ops.html"}}
+    catalog = manufacturing_catalog()
+    sample_table = next(iter(MANUFACTURING_RESOURCES), None)
+    bom = bill_of_material_plan(sample_table, "FG-1", ({{"component": "COMP-1", "quantity_per": 2}},)) if sample_table else None
+    requirements = material_requirements(3, bom["components"], on_hand={{"COMP-1": 1}}) if bom else ()
+    capacity = capacity_plan(({{"work_order": "WO-1", "standard_hours": 4}},), available_hours=8)
+    schedule = production_schedule(({{"work_order": "WO-1", "standard_hours": 4}},), capacity_hours_per_period=8)
+    requisition = purchase_requisition_plan(requirements)
+    kanban = kanban_signal("COMP-1", on_hand=1, reorder_point=2, lot_size=10)
+    release = manufacturing_release_gate(artifacts)
+    checks = (
+        {{
+            "id": "artifact_coverage",
+            "ok": required.issubset(artifacts),
+            "evidence": {{"required": tuple(sorted(required)), "missing": tuple(sorted(required - artifacts))}},
+        }},
+        {{
+            "id": "manufacturing_catalog",
+            "ok": bool(catalog) and all(resource["operations"] for resource in catalog),
+            "evidence": tuple(resource["table"] for resource in catalog),
+        }},
+        {{
+            "id": "bom_planning",
+            "ok": bool(bom) and bom["finished_good"] == "FG-1" and bool(bom["components"]),
+            "evidence": bom,
+        }},
+        {{
+            "id": "material_requirements",
+            "ok": bool(requirements) and requirements[0]["net_required"] == 5.0 and requirements[0]["shortage"],
+            "evidence": requirements,
+        }},
+        {{
+            "id": "capacity_planning",
+            "ok": capacity["overloaded"] is False and capacity["available_hours"] == 8.0,
+            "evidence": capacity,
+        }},
+        {{
+            "id": "production_scheduling",
+            "ok": bool(schedule) and schedule[0]["period"] == 1,
+            "evidence": schedule,
+        }},
+        {{
+            "id": "requisition_and_kanban",
+            "ok": requisition["line_count"] == 1 and kanban["signal"] == "replenish" and kanban["quantity"] == 10.0,
+            "evidence": {{"requisition": requisition, "kanban": kanban}},
+        }},
+        {{
+            "id": "release_gate",
+            "ok": release["ok"],
+            "evidence": release["format"],
+        }},
+        {{
+            "id": "route_surface",
+            "ok": True,
+            "evidence": {{"routes": ("/manufacturing-ops/catalog.json", "/manufacturing-ops/workbench.json", "/manufacturing-ops/release-gate.json")}},
+        }},
+    )
+    ok = all(check["ok"] for check in checks)
+    return {{
+        "format": "appgen.manufacturing-workbench.v1",
+        "ok": ok,
+        "decision": "approved" if ok else "blocked",
+        "checks": checks,
+        "catalog": catalog,
+        "bom": bom,
+        "requirements": requirements,
+        "capacity": capacity,
+        "schedule": schedule,
+        "requisition": requisition,
+        "kanban": kanban,
+        "release_gate": release,
+    }}
+
+
 class ManufacturingOpsView(BaseView):
     route_base = "/manufacturing-ops"
     default_view = "index"
@@ -15545,6 +15623,10 @@ class ManufacturingOpsView(BaseView):
     @expose("/catalog.json")
     def catalog_json(self):
         return jsonify({{"resources": list(manufacturing_catalog())}})
+
+    @expose("/workbench.json")
+    def workbench_json(self):
+        return jsonify(manufacturing_workbench({{"app/manufacturing_ops.py", "app/templates/appgen_manufacturing_ops.html"}}))
 
     @expose("/release-gate.json")
     def release_gate_json(self):
