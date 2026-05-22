@@ -1179,6 +1179,7 @@ def test_generate_app_from_sqlite_schema_compiles(tmp_path) -> None:
     assert capabilities_by_key["devops.project-management"]["status"] == "implemented"
     assert capabilities_by_key["ops.monitoring"]["status"] == "implemented"
     assert capabilities_by_key["ops.resilience"]["status"] == "implemented"
+    assert capabilities_by_key["ops.performance"]["status"] == "implemented"
     assert capabilities_by_key["platform.microservices"]["status"] == "implemented"
     assert capabilities_by_key["platform.targets"]["status"] == "implemented"
     assert capabilities_by_key["platform.native"]["status"] == "implemented"
@@ -2527,6 +2528,8 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert "Error Handling JSON" in resilience_template
     assert "Workbench JSON" in resilience_template
     assert "Release Gate JSON" in resilience_template
+    performance_template = (output_dir / "templates" / "appgen_performance.html").read_text()
+    assert "Workbench JSON" in performance_template
     rules_template = (output_dir / "templates" / "appgen_rules.html").read_text()
     assert "Business Rules" in rules_template
     assert "Workbench JSON" in rules_template
@@ -3779,6 +3782,26 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "slo_reporting",
         "autoscale_plan",
     } <= {check["gate"] for check in performance_gate["checks"]}
+    performance_workbench = performance.performance_workbench(
+        {"app/performance.py", "app/templates/appgen_performance.html"}
+    )
+    assert performance_workbench["format"] == "appgen.performance-workbench.v1"
+    assert performance_workbench["ok"] is True
+    assert performance_workbench["decision"] == "approved"
+    assert {
+        "artifact_coverage",
+        "budget_catalog",
+        "pagination_and_cache",
+        "load_test_matrix",
+        "executable_exports",
+        "runbook_review",
+        "slo_reporting",
+        "autoscale_plan",
+        "route_surface",
+        "release_gate",
+    } == {check["id"] for check in performance_workbench["checks"]}
+    assert "/performance/workbench.json" in performance_workbench["routes"]
+    assert performance.performance_workbench({"app/performance.py"})["ok"] is False
     assert performance.performance_release_gate({"app/performance.py"})["ok"] is False
     runtime_assurance = _load_module(output_dir / "runtime_assurance.py", "generated_runtime_assurance")
     assurance_report = runtime_assurance.runtime_assurance_report({"p95_ms": 200, "error_rate": 0})

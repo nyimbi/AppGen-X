@@ -3664,6 +3664,7 @@ def write_performance_template(output_dir):
       <a class="btn btn-default" href="{{ url_for('PerformanceView.load_profile_json') }}">Load Profile JSON</a>
       <a class="btn btn-default" href="{{ url_for('PerformanceView.load_test_matrix_json') }}">Load Test Matrix JSON</a>
       <a class="btn btn-default" href="{{ url_for('PerformanceView.load_test_runbook_json') }}">Load Test Runbook JSON</a>
+      <a class="btn btn-default" href="{{ url_for('PerformanceView.workbench_json') }}">Workbench JSON</a>
       <a class="btn btn-default" href="{{ url_for('PerformanceView.release_gate_json') }}">Release Gate JSON</a>
       <a class="btn btn-default" href="{{ url_for('PerformanceView.k6_script_route') }}">k6 Script</a>
       <a class="btn btn-default" href="{{ url_for('PerformanceView.locustfile_route') }}">Locustfile</a>
@@ -9053,6 +9054,52 @@ def performance_release_gate(existing_paths=()):
     }}
 
 
+def performance_workbench(existing_paths=()):
+    """Return IDE-ready performance, load-test, SLO, and autoscale evidence."""
+    release_gate = performance_release_gate(existing_paths)
+    check_by_name = {{check["gate"]: check for check in release_gate["checks"]}}
+    matrix = load_test_matrix(users=3, duration_seconds=5)
+    runbook = load_test_runbook(users=3, duration_seconds=5)
+    passing_slo = slo_report({{"p95_ms": DEFAULT_SLO["p95_ms"] - 1, "error_rate": 0}})
+    scale_out = autoscale_plan({{"cpu_percent": 90, "queue_depth": 150, "p95_ms": DEFAULT_SLO["p95_ms"] + 100}}, current_replicas=2)
+    routes = (
+        "/performance/",
+        "/performance/catalog.json",
+        "/performance/load-profile.json",
+        "/performance/load-test-matrix.json",
+        "/performance/load-test-runbook.json",
+        "/performance/workbench.json",
+        "/performance/release-gate.json",
+        "/performance/k6.js",
+        "/performance/locustfile.py",
+    )
+    checks = (
+        {{"id": "artifact_coverage", "ok": check_by_name["artifact_coverage"]["ok"], "evidence": check_by_name["artifact_coverage"]}},
+        {{"id": "budget_catalog", "ok": check_by_name["budget_catalog"]["ok"], "evidence": performance_catalog()}},
+        {{"id": "pagination_and_cache", "ok": check_by_name["pagination_and_cache"]["ok"], "evidence": tuple({{"table": item["table"], "pagination": pagination_plan(item["table"], requested=item["page_size"] * 10), "cache": cache_policy(item["table"])}} for item in performance_catalog())}},
+        {{"id": "load_test_matrix", "ok": check_by_name["load_test_matrix"]["ok"], "evidence": matrix}},
+        {{"id": "executable_exports", "ok": check_by_name["executable_exports"]["ok"], "evidence": {{"k6": "performance.k6.js", "locust": "locustfile.py"}}}},
+        {{"id": "runbook_review", "ok": check_by_name["runbook_review"]["ok"], "evidence": runbook}},
+        {{"id": "slo_reporting", "ok": passing_slo["ok"] is True and check_by_name["slo_reporting"]["ok"], "evidence": {{"passing": passing_slo, "slo": DEFAULT_SLO}}}},
+        {{"id": "autoscale_plan", "ok": check_by_name["autoscale_plan"]["ok"], "evidence": scale_out}},
+        {{"id": "route_surface", "ok": "/performance/workbench.json" in routes and "/performance/release-gate.json" in routes and "/performance/k6.js" in routes, "evidence": {{"routes": routes}}}},
+        {{"id": "release_gate", "ok": release_gate["ok"], "evidence": release_gate}},
+    )
+    ok = all(check["ok"] for check in checks)
+    return {{
+        "format": "appgen.performance-workbench.v1",
+        "ok": ok,
+        "decision": "approved" if ok else "blocked",
+        "checks": checks,
+        "catalog": performance_catalog(),
+        "matrix": matrix,
+        "runbook": runbook,
+        "autoscale": scale_out,
+        "routes": routes,
+        "release_gate": release_gate,
+    }}
+
+
 class PerformanceView(BaseView):
     route_base = "/performance"
     default_view = "index"
@@ -9076,6 +9123,10 @@ class PerformanceView(BaseView):
     @expose("/load-test-runbook.json")
     def load_test_runbook_json(self):
         return jsonify(load_test_runbook())
+
+    @expose("/workbench.json")
+    def workbench_json(self):
+        return jsonify(performance_workbench({{"app/performance.py", "app/templates/appgen_performance.html"}}))
 
     @expose("/release-gate.json")
     def release_gate_json(self):
@@ -43038,11 +43089,11 @@ def validate_performance_artifacts() -> None:
         fail("performance contract must expose SLO, load-profile, and autoscale helpers")
     if "load_test_matrix" not in contract or "k6_script" not in contract or "locustfile_text" not in contract or "load_test_runbook" not in contract:
         fail("performance contract must expose load-test matrices, k6 scripts, Locust files, and runbooks")
-    if "performance_release_gate" not in contract or "appgen.performance-release-gate.v1" not in contract or '@expose("/release-gate.json")' not in contract:
-        fail("performance contract must expose generated release evidence")
+    if "performance_release_gate" not in contract or "performance_workbench" not in contract or "appgen.performance-workbench.v1" not in contract or "appgen.performance-release-gate.v1" not in contract or '@expose("/workbench.json")' not in contract or '@expose("/release-gate.json")' not in contract:
+        fail("performance contract must expose generated workbench and release evidence")
     template = (ROOT / "app" / "templates" / "appgen_performance.html").read_text()
-    if "Performance" not in template or "Load Profile JSON" not in template or "Load Test Matrix JSON" not in template or "Release Gate JSON" not in template or "k6 Script" not in template or "Locustfile" not in template:
-        fail("performance template must expose budgets, load profiles, executable load-test exports, and release evidence")
+    if "Performance" not in template or "Load Profile JSON" not in template or "Load Test Matrix JSON" not in template or "Workbench JSON" not in template or "Release Gate JSON" not in template or "k6 Script" not in template or "Locustfile" not in template:
+        fail("performance template must expose budgets, load profiles, executable load-test exports, workbench, and release evidence")
 
 
 def validate_usage_analytics_artifacts() -> None:
@@ -45489,6 +45540,13 @@ def test_generated_runtime_helpers():
     assert performance.performance_release_gate(
         {"app/performance.py", "app/templates/appgen_performance.html"}
     )["ok"] is True
+    assert performance.performance_workbench(
+        {"app/performance.py", "app/templates/appgen_performance.html"}
+    )["format"] == "appgen.performance-workbench.v1"
+    assert performance.performance_workbench(
+        {"app/performance.py", "app/templates/appgen_performance.html"}
+    )["ok"] is True
+    assert performance.performance_workbench({"app/performance.py"})["ok"] is False
     assert performance.performance_release_gate({"app/performance.py"})["ok"] is False
     migration_artifacts = {{
         "alembic.ini",

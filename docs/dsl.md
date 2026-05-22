@@ -297,7 +297,10 @@ apps include:
   recommendations. The generated `performance_release_gate()` proves required
   artifacts, budget catalogs, bounded pagination and cache behavior, load-test
   matrices, executable k6/Locust exports, reviewed runbooks, SLO reporting, and
-  autoscale recommendations.
+  autoscale recommendations. `performance_workbench()` exposes IDE-ready budget,
+  pagination/cache, load-test, executable-export, runbook, SLO, autoscale, route,
+  artifact, and release-gate evidence before `ops.performance` is marked
+  implemented.
 - `runtime_assurance.py` and `appgen_runtime_assurance.html` with a generated
   readiness matrix that ties security hardening, health checks, resilience,
   SLOs, backup integrity, recovery runbooks, visual/accessibility quality, and

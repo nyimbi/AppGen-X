@@ -616,6 +616,9 @@ performance readiness. The gate checks generated budget catalogs, bounded
 pagination and cache behavior, load-test matrices, executable k6 and Locust
 exports, reviewed runbooks, SLO reporting, autoscale recommendations, and
 required performance artifacts.
+Use `/performance/workbench.json` or `performance_workbench()` to inspect
+budget, pagination/cache, load-test, executable-export, runbook, SLO, autoscale,
+route, artifact, and release-gate evidence.
 Use `/rpa/release-gate.json` or `rpa_release_gate()` to prove generated
 automation readiness. The gate checks RPA/BPA task catalogs, process models,
 BPMN/UML exports, simulations, vendor export packages, queue payloads,
