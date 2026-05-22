@@ -5183,6 +5183,7 @@ def write_microservices_template(output_dir):
       <a class="btn btn-default" href="{{ url_for('MicroserviceView.catalog_json') }}">Service Catalog JSON</a>
       <a class="btn btn-default" href="{{ url_for('MicroserviceView.relationships_json') }}">Relationships JSON</a>
       <a class="btn btn-default" href="{{ url_for('MicroserviceView.mesh_json') }}">Service Mesh JSON</a>
+      <a class="btn btn-default" href="{{ url_for('MicroserviceView.workbench_json') }}">Workbench JSON</a>
       <a class="btn btn-default" href="{{ url_for('MicroserviceView.release_gate_json') }}">Release Gate JSON</a>
     </div>
   </div>
@@ -29953,6 +29954,48 @@ def microservice_release_gate(existing_paths=()):
     }}
 
 
+def microservice_workbench(existing_paths=()):
+    """Return consolidated microservice architecture evidence for generated IDEs."""
+    release_gate = microservice_release_gate(existing_paths)
+    routes = (
+        "/microservices/catalog.json",
+        "/microservices/relationships.json",
+        "/microservices/mesh.json",
+        "/microservices/workbench.json",
+        "/microservices/release-gate.json",
+    )
+    services = service_catalog()
+    gateway_routes = api_gateway_routes()
+    events = event_routes()
+    relationships = cross_service_relationships()
+    health = health_check_plan()
+    scaling = tuple(scaling_policy(service["name"], cpu_percent=90) for service in services)
+    checks = (
+        {{"id": "artifact_coverage", "ok": microservice_check(existing_paths)["ok"], "evidence": microservice_check(existing_paths)}},
+        {{"id": "service_catalog", "ok": "api-gateway" in service_names() and any(service["kind"] == "domain" for service in services), "evidence": services}},
+        {{"id": "gateway_routes", "ok": bool(gateway_routes), "evidence": gateway_routes}},
+        {{"id": "event_routes", "ok": bool(events) and all("." in route["topic"] for route in events), "evidence": events}},
+        {{"id": "relationships", "ok": bool(relationships) and bool(relationship_consistency_plan()) and bool(relationship_event_contracts()), "evidence": {{"relationships": relationships, "consistency": relationship_consistency_plan(), "events": relationship_event_contracts()}}}},
+        {{"id": "service_mesh", "ok": service_mesh_policy()["mtls"] == "STRICT", "evidence": service_mesh_policy()}},
+        {{"id": "health_scaling", "ok": bool(health) and all(item["readiness"].endswith("/ready") for item in health) and all(item["desired_replicas"] >= item["min_replicas"] for item in scaling), "evidence": {{"health": health, "scaling": scaling}}}},
+        {{"id": "canary_release", "ok": traffic_shift_plan("api-gateway", stable_weight=80, canary_weight=20)["rollback"] == {{"stable": 100, "canary": 0}}, "evidence": traffic_shift_plan("api-gateway", stable_weight=80, canary_weight=20)}},
+        {{"id": "release_gate", "ok": release_gate["ok"], "evidence": release_gate["decision"]}},
+        {{"id": "route_surface", "ok": all(route.startswith("/microservices/") for route in routes), "evidence": {{"routes": routes}}}},
+    )
+    ok = all(check["ok"] for check in checks)
+    return {{
+        "format": "appgen.microservice-workbench.v1",
+        "ok": ok,
+        "decision": "approved" if ok else "blocked",
+        "services": services,
+        "routes": routes,
+        "gateway_routes": gateway_routes,
+        "events": events,
+        "release_gate": release_gate,
+        "checks": checks,
+    }}
+
+
 class MicroserviceView(BaseView):
     route_base = "/microservices"
     default_view = "index"
@@ -29990,6 +30033,10 @@ class MicroserviceView(BaseView):
             "policy": service_mesh_policy(),
             "traffic_shift": traffic_shift_plan("api-gateway"),
         }})
+
+    @expose("/workbench.json")
+    def workbench_json(self):
+        return jsonify(microservice_workbench({{"app/microservices.py", "app/templates/appgen_microservices.html", "deploy/k8s.yaml"}}))
 
     @expose("/release-gate.json")
     def release_gate_json(self):

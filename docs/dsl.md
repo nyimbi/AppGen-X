@@ -870,7 +870,11 @@ apps include:
   policies, canary traffic-shift plans, health probes, and scaling plans. A
   generated microservice release gate proves service catalogs, gateway routes,
   event ownership, relationship consistency, service-mesh policy,
-  health/scaling plans, and canary rollback.
+  health/scaling plans, and canary rollback. `microservice_workbench()` adds
+  generated IDE evidence for artifact coverage, service catalogs, gateway and
+  event routes, relationships, service-mesh policy, health/scaling plans,
+  canary rollback, release decisions, and `/microservices/workbench.json` route
+  coverage.
 - `usage_analytics.py` and `appgen_usage_analytics.html` with generated
   adoption, funnel, retention, and real-time app-usage analytics. A generated
   analytics release gate proves event catalog coverage, activity summaries,

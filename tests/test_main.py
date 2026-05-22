@@ -1065,6 +1065,7 @@ def test_generate_app_from_sqlite_schema_compiles(tmp_path) -> None:
     assert capabilities_by_key["data.exchange"]["status"] == "implemented"
     assert capabilities_by_key["data.search"]["status"] == "implemented"
     assert capabilities_by_key["data.database-ops"]["status"] == "implemented"
+    assert capabilities_by_key["platform.microservices"]["status"] == "implemented"
     assert capabilities_by_key["platform.targets"]["status"] == "implemented"
     assert capabilities_by_key["platform.native"]["status"] == "implemented"
     assert capabilities_by_key["platform.frontends"]["status"] == "implemented"
@@ -2509,6 +2510,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     microservices_template = (output_dir / "templates" / "appgen_microservices.html").read_text()
     assert "microservices architecture contract" in microservices_template
     assert "Service Mesh JSON" in microservices_template
+    assert "Workbench JSON" in microservices_template
     assert "class AppGenClient" in (tmp_path / "sdks" / "python" / "client.py").read_text()
     assert "export class AppGenClient" in (tmp_path / "sdks" / "javascript" / "client.js").read_text()
     assert "change proposals" in (output_dir / "templates" / "appgen_collaboration.html").read_text()
@@ -5122,6 +5124,28 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert {"service_catalog", "gateway_routes", "relationships", "service_mesh", "health_scaling"} <= {
         gate["gate"] for gate in microservice_gate["gates"]
     }
+    microservice_workbench = microservices.microservice_workbench(
+        {"app/microservices.py", "app/templates/appgen_microservices.html", "deploy/k8s.yaml"}
+    )
+    assert microservice_workbench["format"] == "appgen.microservice-workbench.v1"
+    assert microservice_workbench["ok"] is True
+    assert microservice_workbench["release_gate"]["ok"] is True
+    assert {
+        "artifact_coverage",
+        "service_catalog",
+        "gateway_routes",
+        "event_routes",
+        "relationships",
+        "service_mesh",
+        "health_scaling",
+        "canary_release",
+        "release_gate",
+        "route_surface",
+    } == {check["id"] for check in microservice_workbench["checks"]}
+    assert "/microservices/workbench.json" in next(
+        check["evidence"]["routes"] for check in microservice_workbench["checks"] if check["id"] == "route_surface"
+    )
+    assert microservices.microservice_workbench({"app/microservices.py"})["ok"] is False
     assert microservices.microservice_release_gate({"app/microservices.py"})["ok"] is False
     intents = platforms.chatbot_intents()
     assert any(intent["intent"] == "create_book" for intent in intents)
