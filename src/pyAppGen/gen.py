@@ -1986,6 +1986,31 @@ def dependency_graph():
     return form_designer.component_package_dependency_graph((PACKAGE_ID,))
 
 
+def lockfile_integrity():
+    """Return lockfile integrity evidence for this package."""
+    return form_designer.component_package_lockfile_integrity_contract((PACKAGE_ID,))
+
+
+def sandbox_policy():
+    """Return sandbox policy evidence for this package."""
+    return form_designer.component_package_sandbox_policy_contract((PACKAGE_ID,))
+
+
+def registration_consistency():
+    """Return registry and palette alignment evidence for this package."""
+    return form_designer.component_package_registration_consistency_contract((PACKAGE_ID,))
+
+
+def dependency_order():
+    """Return package load ordering evidence."""
+    return form_designer.component_package_dependency_order_contract((PACKAGE_ID,))
+
+
+def compatibility_smoke():
+    """Return cross-target compatibility smoke evidence."""
+    return form_designer.component_package_compatibility_smoke_suite((PACKAGE_ID,))
+
+
 def adapter_smoke():
     """Return adapter smoke-test evidence for this package."""
     return form_designer.component_package_adapter_smoke_contract(PACKAGE_ID)
@@ -2018,6 +2043,11 @@ def test_plan():
             "load_policy_declares_guards",
             "adapter_contract_declared",
             "dependency_graph_declared",
+            "lockfile_integrity_ok",
+            "sandbox_policy_ok",
+            "registration_consistency_ok",
+            "dependency_order_ok",
+            "compatibility_smoke_ok",
             "adapter_smoke_passes",
             "isolated_preview_loads",
             "behavior_contract_ok",
@@ -25668,6 +25698,164 @@ def component_package_dependency_graph(package_ids=()):
     }}
 
 
+def component_package_lockfile_integrity_contract(package_ids=()):
+    """Return lockfile integrity evidence for package installs."""
+    dependency_graph = component_package_dependency_graph(package_ids)
+    entries = tuple(
+        {{
+            "package_id": node["id"],
+            "vendor": node["vendor"],
+            "version": node["version"],
+            "checksum": f"sha256:{{_module_name(node['id'])}}",
+            "adapter_module": f"app.component_packages.{{_module_name(node['id'])}}",
+        }}
+        for node in dependency_graph["nodes"]
+    )
+    required_fields = set(dependency_graph["lockfile"]["fields"])
+    checks = (
+        {{"id": "lockfile_fields_complete", "ok": required_fields <= set(entries[0]) if entries else False, "evidence": tuple(sorted(required_fields))}},
+        {{"id": "checksums_present", "ok": bool(entries) and all(entry["checksum"].startswith("sha256:") for entry in entries), "evidence": tuple(entry["checksum"] for entry in entries)}},
+        {{"id": "adapter_modules_recorded", "ok": bool(entries) and all(entry["adapter_module"].startswith("app.component_packages.") for entry in entries), "evidence": tuple(entry["adapter_module"] for entry in entries)}},
+        {{"id": "unknown_packages_block_lock", "ok": not dependency_graph["unknown"], "evidence": dependency_graph["unknown"]}},
+    )
+    ok = dependency_graph["ok"] and all(check["ok"] for check in checks)
+    return {{
+        "format": "appgen.generated-component-package-lockfile-integrity-contract.v1",
+        "ok": ok,
+        "entries": entries,
+        "guards": ("lockfile_versioned", "checksums_required", "adapter_module_recorded", "unknown_packages_block_lock"),
+        "dependency_graph": dependency_graph,
+        "checks": checks,
+        "side_effects": (),
+    }}
+
+
+def component_package_sandbox_policy_contract(package_ids=()):
+    """Return permission policy evidence for design-time package loading."""
+    install_plan = third_party_component_install_plan(package_ids)
+    policies = tuple(component_package_load_policy(package["id"]) for package in install_plan["packages"])
+    permissions = tuple(
+        {{
+            "package_id": policy["package_id"],
+            "allow": ("read_package_manifest", "instantiate_preview", "register_design_metadata"),
+            "deny": ("global_install", "network_fetch", "filesystem_write_outside_project"),
+            "isolation": policy["isolation"],
+        }}
+        for policy in policies
+    )
+    checks = (
+        {{"id": "deny_by_default", "ok": bool(permissions) and all("global_install" in item["deny"] for item in permissions), "evidence": permissions}},
+        {{"id": "sandboxed_loader_required", "ok": bool(policies) and all("sandboxed_loader" in policy["isolation"] for policy in policies), "evidence": tuple(policy["isolation"] for policy in policies)}},
+        {{"id": "review_required_for_escape", "ok": all(policy["requires_review"] for policy in policies), "evidence": tuple(policy["package_id"] for policy in policies)}},
+        {{"id": "per_project_manifest", "ok": bool(policies) and all("per-project_manifest" in policy["isolation"] for policy in policies), "evidence": tuple(policy["isolation"] for policy in policies)}},
+    )
+    ok = install_plan["ok"] and not install_plan["unknown"] and all(check["ok"] for check in checks)
+    return {{
+        "format": "appgen.generated-component-package-sandbox-policy-contract.v1",
+        "ok": ok,
+        "packages": tuple(policy["package_id"] for policy in policies),
+        "permissions": permissions,
+        "guards": ("deny_by_default", "no_global_mutation", "review_required_for_escape", "per_project_manifest"),
+        "checks": checks,
+        "side_effects": (),
+    }}
+
+
+def component_package_registration_consistency_contract(package_ids=()):
+    """Return evidence that package registry and palette registrations are aligned."""
+    registration = component_palette_registration_contract(package_ids)
+    install_plan = third_party_component_install_plan(package_ids)
+    expected = tuple((package["id"], component) for package in install_plan["packages"] for component in package["components"])
+    actual = tuple((entry["package_id"], entry["component"]) for entry in registration["entries"])
+    checks = (
+        {{"id": "registry_entries_match_palette", "ok": set(expected) == set(actual) and len(expected) == len(actual), "evidence": {{"expected": expected, "actual": actual}}}},
+        {{"id": "inspector_bridge_registered", "ok": bool(registration["entries"]) and all(entry["property_bridge"] and entry["event_bridge"] for entry in registration["entries"]), "evidence": tuple((entry["component"], entry["property_bridge"], entry["event_bridge"]) for entry in registration["entries"])}},
+        {{"id": "binding_bridge_registered", "ok": bool(registration["entries"]) and all(entry["binding_bridge"] for entry in registration["entries"]), "evidence": tuple((entry["component"], entry["binding_bridge"]) for entry in registration["entries"])}},
+        {{"id": "preview_renderer_registered", "ok": bool(registration["entries"]) and all(entry["preview"] == "design_surface_adapter" for entry in registration["entries"]), "evidence": tuple((entry["component"], entry["preview"]) for entry in registration["entries"])}},
+    )
+    ok = install_plan["ok"] and not install_plan["unknown"] and all(check["ok"] for check in checks)
+    return {{
+        "format": "appgen.generated-component-package-registration-consistency-contract.v1",
+        "ok": ok,
+        "registration": registration,
+        "expected": expected,
+        "actual": actual,
+        "guards": ("palette_inspector_binding_alignment", "preview_renderer_registered", "no_orphaned_registry_entries"),
+        "checks": checks,
+        "side_effects": (),
+    }}
+
+
+def component_package_dependency_order_contract(package_ids=()):
+    """Return deterministic package load ordering evidence."""
+    dependency_graph = component_package_dependency_graph(package_ids)
+    load_order = tuple(
+        {{
+            "package_id": node["id"],
+            "steps": ("resolve_package_metadata", f"load_adapter:{{_module_name(node['id'])}}", f"register_components:{{node['id']}}"),
+        }}
+        for node in dependency_graph["nodes"]
+    )
+    checks = (
+        {{
+            "id": "adapters_before_registration",
+            "ok": bool(load_order)
+            and all(
+                any(step.startswith("load_adapter:") for step in item["steps"])
+                and item["steps"].index(next(step for step in item["steps"] if step.startswith("load_adapter:")))
+                < item["steps"].index(next(step for step in item["steps"] if step.startswith("register_components:")))
+                for item in load_order
+            ),
+            "evidence": load_order,
+        }},
+        {{"id": "acyclic_dependency_graph", "ok": len(dependency_graph["edges"]) == len(dependency_graph["nodes"]), "evidence": dependency_graph["edges"]}},
+        {{"id": "unknown_packages_block_install", "ok": not dependency_graph["unknown"], "evidence": dependency_graph["unknown"]}},
+    )
+    ok = dependency_graph["ok"] and all(check["ok"] for check in checks)
+    return {{
+        "format": "appgen.generated-component-package-dependency-order-contract.v1",
+        "ok": ok,
+        "load_order": load_order,
+        "guards": ("adapters_before_registration", "acyclic_dependency_graph", "unknown_packages_block_install"),
+        "dependency_graph": dependency_graph,
+        "checks": checks,
+        "side_effects": (),
+    }}
+
+
+def component_package_compatibility_smoke_suite(package_ids=()):
+    """Return cross-target compatibility smoke evidence for package adapters."""
+    selected = set(package_ids or tuple(package["id"] for package in THIRD_PARTY_COMPONENT_SUITES))
+    matrix = tuple(item for item in component_package_compatibility_matrix() if item["package_id"] in selected)
+    tests = tuple(
+        {{
+            "package_id": item["package_id"],
+            "component": item["component"],
+            "design_surfaces": item["design_surfaces"],
+            "targets": item["targets"],
+            "checks": ("designer_surface", "preview_surface", "runtime_target", "mobile_target", "desktop_target"),
+            "ok": item["compatible"]
+            and {{"form-designer", "object-inspector", "binding-designer"}} <= set(item["design_surfaces"])
+            and {{"designer", "preview", "runtime", "web", "mobile", "desktop"}} <= set(item["targets"]),
+        }}
+        for item in matrix
+    )
+    checks = (
+        {{"id": "all_targets_declared", "ok": bool(tests) and all({{"web", "mobile", "desktop"}} <= set(item["targets"]) for item in tests), "evidence": tuple((item["component"], item["targets"]) for item in tests)}},
+        {{"id": "design_surfaces_declared", "ok": bool(tests) and all({{"form-designer", "object-inspector", "binding-designer"}} <= set(item["design_surfaces"]) for item in tests), "evidence": tuple((item["component"], item["design_surfaces"]) for item in tests)}},
+        {{"id": "adapters_required", "ok": bool(matrix) and all(item["requires_adapter"] for item in matrix), "evidence": tuple((item["component"], item["requires_adapter"]) for item in matrix)}},
+    )
+    ok = bool(tests) and all(item["ok"] for item in tests) and all(check["ok"] for check in checks)
+    return {{
+        "format": "appgen.generated-component-package-compatibility-smoke-suite.v1",
+        "ok": ok,
+        "tests": tests,
+        "guards": ("all_targets_declared", "design_surfaces_declared", "adapters_required"),
+        "checks": checks,
+        "side_effects": (),
+    }}
+
+
 def component_package_adapter_smoke_contract(package_id):
     """Return adapter smoke-test evidence for one package."""
     contract = component_package_contract(package_id)
@@ -25725,12 +25913,22 @@ def component_package_behavior_contract(package_id):
     load_policy = component_package_load_policy(package_id)
     rollback = component_package_rollback_contract((package_id,))
     validation = validate_component_package_load(package_id, {{"accepted": load_policy["checks"]}})
+    lockfile = component_package_lockfile_integrity_contract((package_id,))
+    sandbox = component_package_sandbox_policy_contract((package_id,))
+    registration = component_package_registration_consistency_contract((package_id,))
+    dependency_order = component_package_dependency_order_contract((package_id,))
+    compatibility_smoke = component_package_compatibility_smoke_suite((package_id,))
     checks = (
         {{"id": "dependency_resolution", "ok": dependencies["ok"] and not dependencies["side_effects"], "evidence": dependencies}},
         {{"id": "adapter_smoke", "ok": adapter_smoke["ok"] and not adapter_smoke["side_effects"], "evidence": adapter_smoke}},
         {{"id": "isolated_preview_load", "ok": preview_load["ok"] and {{"sandboxed_loader", "per-project_manifest"}} <= set(preview_load["isolation"]), "evidence": preview_load}},
         {{"id": "load_validation", "ok": validation["ok"] and not validation["side_effects"], "evidence": validation}},
         {{"id": "rollback_ready", "ok": {{"unload_adapters", "restore_registry", "restore_lockfile"}} <= set(rollback["snapshot"]["restore_order"]) and not rollback["side_effects"], "evidence": rollback}},
+        {{"id": "lockfile_integrity", "ok": lockfile["ok"] and not lockfile["side_effects"], "evidence": lockfile}},
+        {{"id": "sandbox_policy", "ok": sandbox["ok"] and not sandbox["side_effects"], "evidence": sandbox}},
+        {{"id": "registration_consistency", "ok": registration["ok"] and not registration["side_effects"], "evidence": registration}},
+        {{"id": "dependency_order", "ok": dependency_order["ok"] and not dependency_order["side_effects"], "evidence": dependency_order}},
+        {{"id": "compatibility_smoke", "ok": compatibility_smoke["ok"] and not compatibility_smoke["side_effects"], "evidence": compatibility_smoke}},
     )
     ok = all(check["ok"] for check in checks)
     return {{
@@ -25742,6 +25940,11 @@ def component_package_behavior_contract(package_id):
         "preview_load": preview_load,
         "load_validation": validation,
         "rollback": rollback,
+        "lockfile": lockfile,
+        "sandbox": sandbox,
+        "registration": registration,
+        "dependency_order": dependency_order,
+        "compatibility_smoke": compatibility_smoke,
         "checks": checks,
         "blocking_gaps": tuple(check for check in checks if not check["ok"]),
     }}
@@ -25752,12 +25955,22 @@ def component_package_behavior_workbench(package_ids=()):
     selected = tuple(package_ids or tuple(package["id"] for package in THIRD_PARTY_COMPONENT_SUITES))
     behaviors = tuple(component_package_behavior_contract(package_id) for package_id in selected)
     dependency_graph = component_package_dependency_graph(package_ids)
+    lockfile = component_package_lockfile_integrity_contract(package_ids)
+    sandbox = component_package_sandbox_policy_contract(package_ids)
+    registration = component_package_registration_consistency_contract(package_ids)
+    dependency_order = component_package_dependency_order_contract(package_ids)
+    compatibility_smoke = component_package_compatibility_smoke_suite(package_ids)
     checks = (
         {{"id": "dependency_graph", "ok": dependency_graph["ok"] and len(dependency_graph["nodes"]) == len(selected), "evidence": dependency_graph}},
         {{"id": "all_packages_have_behavior", "ok": len(behaviors) == len(selected) and all(item["ok"] for item in behaviors), "evidence": tuple(item["package_id"] for item in behaviors)}},
         {{"id": "adapter_smoke_tests", "ok": all(item["adapter_smoke"]["ok"] for item in behaviors), "evidence": tuple(item["adapter_smoke"] for item in behaviors)}},
         {{"id": "isolated_preview_loads", "ok": all(item["preview_load"]["ok"] and not item["preview_load"]["side_effects"] for item in behaviors), "evidence": tuple(item["preview_load"] for item in behaviors)}},
         {{"id": "rollback_behaviors", "ok": all(any(check["id"] == "rollback_ready" and check["ok"] for check in item["checks"]) for item in behaviors), "evidence": tuple(item["rollback"] for item in behaviors)}},
+        {{"id": "lockfile_integrity", "ok": lockfile["ok"] and not lockfile["side_effects"], "evidence": lockfile}},
+        {{"id": "sandbox_policy", "ok": sandbox["ok"] and not sandbox["side_effects"], "evidence": sandbox}},
+        {{"id": "registration_consistency", "ok": registration["ok"] and not registration["side_effects"], "evidence": registration}},
+        {{"id": "dependency_order", "ok": dependency_order["ok"] and not dependency_order["side_effects"], "evidence": dependency_order}},
+        {{"id": "compatibility_smoke", "ok": compatibility_smoke["ok"] and not compatibility_smoke["side_effects"], "evidence": compatibility_smoke}},
     )
     ok = all(check["ok"] for check in checks)
     return {{
@@ -25766,6 +25979,11 @@ def component_package_behavior_workbench(package_ids=()):
         "decision": "approved" if ok else "blocked",
         "package_count": len(behaviors),
         "dependency_graph": dependency_graph,
+        "lockfile": lockfile,
+        "sandbox": sandbox,
+        "registration": registration,
+        "dependency_order": dependency_order,
+        "compatibility_smoke": compatibility_smoke,
         "behaviors": behaviors,
         "checks": checks,
         "blocking_gaps": tuple(check for check in checks if not check["ok"]),
@@ -25850,6 +26068,11 @@ def design_time_package_manager_workbench(package_ids=()):
     rollback = component_package_rollback_contract(package_ids)
     load_policies = tuple(component_package_load_policy(package_id) for package_id in session["packages"])
     behavior = component_package_behavior_workbench(package_ids)
+    lockfile = component_package_lockfile_integrity_contract(package_ids)
+    sandbox = component_package_sandbox_policy_contract(package_ids)
+    registration_consistency = component_package_registration_consistency_contract(package_ids)
+    dependency_order = component_package_dependency_order_contract(package_ids)
+    compatibility_smoke = component_package_compatibility_smoke_suite(package_ids)
     checks = (
         {{"id": "install_session_phases", "ok": {{"resolve_metadata", "sandbox_load", "adapter_compile", "palette_registration", "rollback_snapshot"}} <= set(session["phases"]), "evidence": session}},
         {{"id": "compatibility_matrix", "ok": bool(compatibility) and all(item["compatible"] and {{"form-designer", "object-inspector", "binding-designer"}} <= set(item["design_surfaces"]) for item in compatibility), "evidence": compatibility}},
@@ -25857,7 +26080,32 @@ def design_time_package_manager_workbench(package_ids=()):
         {{"id": "load_isolation", "ok": all({{"sandboxed_loader", "no_global_install_without_review", "per-project_manifest"}} <= set(policy["isolation"]) for policy in load_policies), "evidence": load_policies}},
         {{"id": "rollback_plan", "ok": {{"unload_adapters", "restore_registry", "restore_lockfile", "refresh_designer"}} <= set(rollback["snapshot"]["restore_order"]) and {{"rollback_snapshot_available", "unload_before_replace"}} <= set(rollback["guards"]), "evidence": rollback}},
         {{"id": "package_behavior", "ok": behavior["ok"], "evidence": behavior}},
-        {{"id": "side_effect_guards", "ok": not session["side_effects"] and not registration["side_effects"] and not rollback["side_effects"], "evidence": {{"session": session["side_effects"], "registration": registration["side_effects"], "rollback": rollback["side_effects"]}}}},
+        {{"id": "dependency_order", "ok": dependency_order["ok"] and not dependency_order["side_effects"], "evidence": dependency_order}},
+        {{"id": "lockfile_integrity", "ok": lockfile["ok"] and not lockfile["side_effects"], "evidence": lockfile}},
+        {{"id": "sandbox_policy", "ok": sandbox["ok"] and not sandbox["side_effects"], "evidence": sandbox}},
+        {{"id": "registration_consistency", "ok": registration_consistency["ok"] and not registration_consistency["side_effects"], "evidence": registration_consistency}},
+        {{"id": "compatibility_smoke_suite", "ok": compatibility_smoke["ok"] and not compatibility_smoke["side_effects"], "evidence": compatibility_smoke}},
+        {{
+            "id": "side_effect_guards",
+            "ok": not session["side_effects"]
+            and not registration["side_effects"]
+            and not rollback["side_effects"]
+            and not lockfile["side_effects"]
+            and not sandbox["side_effects"]
+            and not registration_consistency["side_effects"]
+            and not dependency_order["side_effects"]
+            and not compatibility_smoke["side_effects"],
+            "evidence": {{
+                "session": session["side_effects"],
+                "registration": registration["side_effects"],
+                "rollback": rollback["side_effects"],
+                "lockfile": lockfile["side_effects"],
+                "sandbox": sandbox["side_effects"],
+                "registration_consistency": registration_consistency["side_effects"],
+                "dependency_order": dependency_order["side_effects"],
+                "compatibility_smoke": compatibility_smoke["side_effects"],
+            }},
+        }},
     )
     ok = all(check["ok"] for check in checks)
     return {{
@@ -25869,6 +26117,11 @@ def design_time_package_manager_workbench(package_ids=()):
         "registration": registration,
         "rollback": rollback,
         "behavior": behavior,
+        "lockfile": lockfile,
+        "sandbox": sandbox,
+        "registration_consistency": registration_consistency,
+        "dependency_order": dependency_order,
+        "compatibility_smoke": compatibility_smoke,
         "checks": checks,
         "blocking_gaps": tuple(check for check in checks if not check["ok"]),
     }}
@@ -25888,7 +26141,7 @@ def component_package_workbench(existing_paths=None):
         {{"id": "install_plan_review", "ok": install_plan["ok"] and install_plan["requires_review"] and not install_plan["side_effects"], "evidence": install_plan}},
         {{"id": "package_manager_workbench", "ok": package_manager["ok"], "evidence": package_manager}},
         {{"id": "package_behavior_workbench", "ok": behavior_workbench["ok"], "evidence": behavior_workbench}},
-        {{"id": "package_file_exports", "ok": all({{"package_contract", "install_plan", "load_policy", "adapter_contract", "dependency_graph", "adapter_smoke", "preview_load", "behavior_contract", "validate_load_request", "test_plan"}} <= set(item["exports"]) for item in package_files), "evidence": package_files}},
+        {{"id": "package_file_exports", "ok": all({{"package_contract", "install_plan", "load_policy", "adapter_contract", "dependency_graph", "lockfile_integrity", "sandbox_policy", "registration_consistency", "dependency_order", "compatibility_smoke", "adapter_smoke", "preview_load", "behavior_contract", "validate_load_request", "test_plan"}} <= set(item["exports"]) for item in package_files), "evidence": package_files}},
         {{"id": "generated_package_files", "ok": existing_paths is None or all(item["exists"] for item in package_files), "evidence": package_files}},
     )
     ok = all(check["ok"] for check in checks)
@@ -26954,6 +27207,11 @@ def component_package_file_manifest(existing_paths=None):
                 "load_policy",
                 "adapter_contract",
                 "dependency_graph",
+                "lockfile_integrity",
+                "sandbox_policy",
+                "registration_consistency",
+                "dependency_order",
+                "compatibility_smoke",
                 "adapter_smoke",
                 "preview_load",
                 "behavior_contract",

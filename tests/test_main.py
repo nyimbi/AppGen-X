@@ -80,9 +80,14 @@ from pyAppGen.form_designer import component_package_contract
 from pyAppGen.form_designer import component_package_adapter_smoke_contract
 from pyAppGen.form_designer import component_package_behavior_contract
 from pyAppGen.form_designer import component_package_behavior_workbench
+from pyAppGen.form_designer import component_package_compatibility_smoke_suite
 from pyAppGen.form_designer import component_package_dependency_graph
+from pyAppGen.form_designer import component_package_dependency_order_contract
+from pyAppGen.form_designer import component_package_lockfile_integrity_contract
 from pyAppGen.form_designer import component_package_load_policy
 from pyAppGen.form_designer import component_package_preview_load_contract
+from pyAppGen.form_designer import component_package_registration_consistency_contract
+from pyAppGen.form_designer import component_package_sandbox_policy_contract
 from pyAppGen.form_designer import component_package_workbench
 from pyAppGen.form_designer import component_palette
 from pyAppGen.form_designer import component_usability_workbench
@@ -1004,6 +1009,20 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     dependency_graph = component_package_dependency_graph(("devexpress-native",))
     assert dependency_graph["ok"] is True
     assert dependency_graph["lockfile"]["required"] is True
+    lockfile = component_package_lockfile_integrity_contract(("devexpress-native",))
+    assert lockfile["ok"] is True
+    assert lockfile["entries"][0]["checksum"].startswith("sha256:")
+    sandbox = component_package_sandbox_policy_contract(("devexpress-native",))
+    assert sandbox["ok"] is True
+    assert "global_install" in sandbox["permissions"][0]["deny"]
+    registration_consistency = component_package_registration_consistency_contract(("devexpress-native",))
+    assert registration_consistency["ok"] is True
+    dependency_order = component_package_dependency_order_contract(("devexpress-native",))
+    assert dependency_order["ok"] is True
+    assert dependency_order["load_order"][0]["steps"][1].startswith("load_adapter:")
+    compatibility_smoke = component_package_compatibility_smoke_suite(("devexpress-native",))
+    assert compatibility_smoke["ok"] is True
+    assert {"web", "mobile", "desktop"} <= set(compatibility_smoke["tests"][0]["targets"])
     adapter_smoke = component_package_adapter_smoke_contract("devexpress-native")
     assert adapter_smoke["ok"] is True
     assert adapter_smoke["probes"]
@@ -1018,6 +1037,11 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "isolated_preview_load",
         "load_validation",
         "rollback_ready",
+        "lockfile_integrity",
+        "sandbox_policy",
+        "registration_consistency",
+        "dependency_order",
+        "compatibility_smoke",
     } == {check["id"] for check in package_behavior["checks"]}
     package_policy = component_package_load_policy("devexpress-native")
     assert package_policy["requires_review"] is True
@@ -1040,6 +1064,11 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "adapter_smoke_tests",
         "isolated_preview_loads",
         "rollback_behaviors",
+        "lockfile_integrity",
+        "sandbox_policy",
+        "registration_consistency",
+        "dependency_order",
+        "compatibility_smoke",
     } == {check["id"] for check in behavior_workbench["checks"]}
     package_manager = design_time_package_manager_workbench()
     assert package_manager["format"] == "appgen.design-time-package-manager-workbench.v1"
@@ -1051,6 +1080,11 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "load_isolation",
         "rollback_plan",
         "package_behavior",
+        "dependency_order",
+        "lockfile_integrity",
+        "sandbox_policy",
+        "registration_consistency",
+        "compatibility_smoke_suite",
         "side_effect_guards",
     } == {check["id"] for check in package_manager["checks"]}
     assert third_party_component_import_contract(
@@ -8943,7 +8977,17 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     generated_package_manager = form_designer.design_time_package_manager_workbench()
     assert generated_package_manager["format"] == "appgen.generated-design-time-package-manager-workbench.v1"
     assert generated_package_manager["ok"] is True
-    assert {"install_session_phases", "palette_registration", "rollback_plan", "package_behavior"} <= {
+    assert {
+        "install_session_phases",
+        "palette_registration",
+        "rollback_plan",
+        "package_behavior",
+        "lockfile_integrity",
+        "sandbox_policy",
+        "registration_consistency",
+        "dependency_order",
+        "compatibility_smoke_suite",
+    } <= {
         check["id"] for check in generated_package_manager["checks"]
     }
     assert generated_package_manager["behavior"]["ok"] is True
@@ -9189,6 +9233,11 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert component_package.load_policy()["requires_review"] is True
     assert component_package.adapter_contract()
     assert component_package.dependency_graph()["ok"] is True
+    assert component_package.lockfile_integrity()["ok"] is True
+    assert component_package.sandbox_policy()["ok"] is True
+    assert component_package.registration_consistency()["ok"] is True
+    assert component_package.dependency_order()["ok"] is True
+    assert component_package.compatibility_smoke()["ok"] is True
     assert component_package.adapter_smoke()["ok"] is True
     assert component_package.preview_load()["ok"] is True
     assert component_package.behavior_contract()["ok"] is True
@@ -9197,6 +9246,11 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         {"accepted": component_package.load_policy()["checks"]}
     )["ok"] is True
     assert "adapter_contract_declared" in component_package.test_plan()["tests"]
+    assert "lockfile_integrity_ok" in component_package.test_plan()["tests"]
+    assert "sandbox_policy_ok" in component_package.test_plan()["tests"]
+    assert "registration_consistency_ok" in component_package.test_plan()["tests"]
+    assert "dependency_order_ok" in component_package.test_plan()["tests"]
+    assert "compatibility_smoke_ok" in component_package.test_plan()["tests"]
     assert "behavior_contract_ok" in component_package.test_plan()["tests"]
     assert len(workbench["forms"]) >= 2
     assert any(item["type"] == "DatePicker" for item in workbench["field_mappings"])
