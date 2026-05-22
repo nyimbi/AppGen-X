@@ -6242,6 +6242,7 @@ def write_prototyping_template(output_dir):
     </div>
     <div>
       <a class="btn btn-default" href="{{ url_for('PrototypingView.catalog_json') }}">Prototype JSON</a>
+      <a class="btn btn-default" href="{{ url_for('PrototypingView.workbench_json') }}">Workbench JSON</a>
       <a class="btn btn-default" href="{{ url_for('PrototypingView.release_gate_json') }}">Release Gate JSON</a>
     </div>
   </div>
@@ -26576,6 +26577,42 @@ def prototyping_release_gate(existing_paths=()):
     }}
 
 
+def prototyping_workbench(existing_paths=()):
+    """Return aggregate evidence for generated rapid prototyping."""
+    existing = set(existing_paths)
+    required = {{"app/prototyping.py", "app/templates/appgen_prototyping.html"}}
+    missing = tuple(sorted(required - existing))
+    resources = prototype_catalog()
+    first_resource = resources[0]["resource"] if resources else None
+    plan = prototype_plan(first_resource) if first_resource else {{"screens": ()}}
+    preview = preview_package(first_resource) if first_resource else {{}}
+    experiment = experiment_hypothesis(first_resource, "shorter form") if first_resource else {{}}
+    backlog = promote_to_backlog(first_resource) if first_resource else ()
+    release = prototyping_release_gate(existing)
+    checks = (
+        {{"id": "artifact_coverage", "ok": not missing, "evidence": {{"required": tuple(sorted(required)), "missing": missing}}}},
+        {{"id": "resource_catalog", "ok": bool(resources) and all(resource.get("fields") for resource in resources), "evidence": tuple(resource["resource"] for resource in resources)}},
+        {{"id": "screen_mockups", "ok": bool(resources) and all({{"list", "create", "detail", "dashboard"}} <= set(resource["screens"]) for resource in resources), "evidence": tuple(resources[0]["screens"]) if resources else ()}},
+        {{"id": "sample_data", "ok": bool(first_resource) and bool(sample_row(first_resource)), "evidence": sample_row(first_resource) if first_resource else {{}}}},
+        {{"id": "preview_package", "ok": preview.get("format") == "appgen-prototype-v1" and bool(preview.get("screens")), "evidence": preview}},
+        {{"id": "experiment_hypotheses", "ok": str(experiment.get("id", "")).startswith("proto-") and "prototype" in tuple(experiment.get("variants", ())), "evidence": experiment}},
+        {{"id": "backlog_promotion", "ok": bool(backlog) and all(item.get("key", "").startswith("PROTO-") for item in backlog), "evidence": backlog}},
+        {{"id": "release_gate", "ok": release["ok"], "evidence": {{"format": release["format"], "blocking_gaps": tuple(check["gate"] for check in release["checks"] if not check["ok"])}}}},
+        {{"id": "route_surface", "ok": not missing, "evidence": {{"routes": ("/prototyping/", "/prototyping/catalog.json", "/prototyping/workbench.json", "/prototyping/release-gate.json")}}}},
+    )
+    ok = all(check["ok"] for check in checks)
+    return {{
+        "format": "appgen.prototyping-workbench.v1",
+        "ok": ok,
+        "decision": "approved" if ok else "blocked",
+        "checks": checks,
+        "resources": resources,
+        "plan": plan,
+        "preview": preview,
+        "release_gate": release,
+    }}
+
+
 class PrototypingView(BaseView):
     route_base = "/prototyping"
     default_view = "index"
@@ -26590,6 +26627,10 @@ class PrototypingView(BaseView):
     @expose("/catalog.json")
     def catalog_json(self):
         return jsonify(list(prototype_catalog()))
+
+    @expose("/workbench.json")
+    def workbench_json(self):
+        return jsonify(prototyping_workbench({{"app/prototyping.py", "app/templates/appgen_prototyping.html"}}))
 
     @expose("/release-gate.json")
     def release_gate_json(self):

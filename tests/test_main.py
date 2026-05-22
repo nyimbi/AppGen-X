@@ -1036,6 +1036,7 @@ def test_generate_app_from_sqlite_schema_compiles(tmp_path) -> None:
     assert capabilities_by_key["ui.tabbed-views"]["status"] == "implemented"
     assert capabilities_by_key["ui.form-designer"]["status"] == "implemented"
     assert capabilities_by_key["ui.nl-evolution"]["status"] == "implemented"
+    assert capabilities_by_key["ui.rapid-prototyping"]["status"] == "implemented"
     assert capabilities_by_key["ui.view-experience"]["status"] == "implemented"
     assert capabilities_by_key["devops.studio"]["status"] == "implemented"
     assert capabilities_by_key["components.erp-templates"]["status"] == "implemented"
@@ -5762,6 +5763,28 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "experiment_hypotheses",
         "backlog_promotion",
     } <= {check["gate"] for check in prototyping_gate["checks"]}
+    assert "Workbench JSON" in prototyping_template
+    prototyping_workbench = prototyping.prototyping_workbench(
+        {"app/prototyping.py", "app/templates/appgen_prototyping.html"}
+    )
+    assert prototyping_workbench["format"] == "appgen.prototyping-workbench.v1"
+    assert prototyping_workbench["ok"] is True
+    assert prototyping_workbench["decision"] == "approved"
+    assert {
+        "artifact_coverage",
+        "resource_catalog",
+        "screen_mockups",
+        "sample_data",
+        "preview_package",
+        "experiment_hypotheses",
+        "backlog_promotion",
+        "release_gate",
+        "route_surface",
+    } == {check["id"] for check in prototyping_workbench["checks"]}
+    assert "/prototyping/workbench.json" in next(
+        check["evidence"]["routes"] for check in prototyping_workbench["checks"] if check["id"] == "route_surface"
+    )
+    assert prototyping.prototyping_workbench({"app/prototyping.py"})["ok"] is False
     assert prototyping.prototyping_release_gate({"app/prototyping.py"})["ok"] is False
     erp_modules = {item["module"] for item in erp_templates.erp_template_catalog()}
     assert {
