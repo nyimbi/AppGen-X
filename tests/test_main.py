@@ -63,6 +63,7 @@ from pyAppGen.dsl import lint_dsl
 from pyAppGen.dsl_quality import dsl_documentation_catalog
 from pyAppGen.dsl_quality import dsl_linter_release_contract
 from pyAppGen.dsl_quality import dsl_release_audit
+from pyAppGen.dsl_quality import generated_dsl_reference_smoke_audit
 from pyAppGen.erp import erp_module_dsl
 from pyAppGen.erp import erp_starter_manifest
 from pyAppGen.erp import erp_template_catalog
@@ -1434,9 +1435,17 @@ def test_package_dsl_release_audit_covers_linter_grammar_and_docs(
     assert linter["invalid_sample"]["ok"] is False
     assert linter["legacy_sample"]["fixes"]
 
+    generated_smoke = generated_dsl_reference_smoke_audit()
+    assert generated_smoke["format"] == "appgen.generated-dsl-reference-smoke-audit.v1"
+    assert generated_smoke["ok"] is True
+    assert generated_smoke["language_quality"]["canonical_keyword_count"] == 17
+    assert generated_smoke["authoring_gate"]["ok"] is True
+    assert generated_smoke["compile"]["ok"] is True
+
     audit = dsl_release_audit()
     assert audit["format"] == "appgen.package-dsl-release-audit.v1"
     assert audit["ok"] is True
+    assert audit["generated_reference_smoke"]["ok"] is True
     assert {
         "authoring_release_gate",
         "antlr_grammar_sync",
@@ -1444,6 +1453,7 @@ def test_package_dsl_release_audit_covers_linter_grammar_and_docs(
         "documentation_coverage",
         "cli_contract",
         "artifact_contract",
+        "generated_reference_smoke",
     } == {gate["id"] for gate in audit["gates"]}
 
     missing = dsl_release_audit(existing_paths={"app/dsl_reference.py"})

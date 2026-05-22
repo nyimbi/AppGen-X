@@ -110,7 +110,9 @@ source coverage, and IDE support.
 Run `appgen --dsl-release-audit` when reviewing the package-level DSL contract:
 it aggregates the authoring gate, ANTLR grammar sync, linter diagnostics and
 quick fixes, grammar/user-guide/tutorial/linter docs, CLI commands, and
-generated DSL reference artifacts.
+generated DSL reference artifacts. It also generates a temporary app and
+executes the generated DSL reference helpers for language quality, authoring
+gates, quick fixes, and formatting.
 Run `appgen --roadmap-release-audit` when reviewing whether the package-level
 capability map still satisfies `docs/ideas.md`, `docs/base_features.md`, and
 `docs/Lo-code features.md`.

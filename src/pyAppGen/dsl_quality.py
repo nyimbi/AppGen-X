@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import importlib.util
+import py_compile
+import tempfile
 from collections.abc import Iterable
 from pathlib import Path
 
@@ -148,6 +151,115 @@ def dsl_artifact_contract(existing_paths: Iterable[str] | None = None) -> dict:
     }
 
 
+def generated_dsl_reference_smoke_audit(sample: str | None = None) -> dict:
+    """Generate an app and exercise its generated DSL reference tooling."""
+    from .dsl import schema_from_dsl
+    from .gen import generate_app_from_schema
+
+    source = sample or package_dsl_sample()
+    with tempfile.TemporaryDirectory(prefix="appgen-dsl-reference-") as raw_workdir:
+        project_dir = Path(raw_workdir) / "dsl-reference"
+        generate_app_from_schema(
+            schema_from_dsl(source, source_name="dsl-reference-smoke.appgen"),
+            project_dir / "app",
+        )
+        paths = {
+            "app/dsl_reference.py": project_dir / "app" / "dsl_reference.py",
+            "app/templates/appgen_dsl_reference.html": project_dir
+            / "app"
+            / "templates"
+            / "appgen_dsl_reference.html",
+        }
+        missing = tuple(relative for relative, path in paths.items() if not path.exists())
+        compile_result = _compile_generated_dsl_reference(paths["app/dsl_reference.py"])
+        generated = _load_generated_module(
+            paths["app/dsl_reference.py"],
+            "appgen_generated_dsl_reference",
+        )
+        quality = generated.dsl_language_quality_contract()
+        authoring_gate = generated.dsl_authoring_release_gate()
+        alias_fix = generated.apply_dsl_fixes(
+            "entity Book { title: string searchable; secret: string hide } "
+            "form BookForm for Book { Main: title }"
+        )
+        legacy_fix = generated.apply_dsl_fixes(
+            "app Bad { targets: web, toaster } table Author { id: int pk } "
+            "table Book { id: int pk; author_id: int ref Author.id }"
+        )
+        formatted = generated.format_dsl(
+            "app Library{targets:web,desktop} table Book{id:int pk; title:string required}"
+        )
+    checks = (
+        {
+            "check": "generated_artifacts",
+            "ok": not missing,
+            "missing": missing,
+        },
+        {
+            "check": "compiled_reference",
+            "ok": compile_result["ok"],
+            "path": "app/dsl_reference.py",
+        },
+        {
+            "check": "generated_language_quality",
+            "ok": quality["ok"]
+            and quality["canonical_keyword_count"] <= quality["budget"]["limit"]
+            and quality["antlr_integrity"]["ok"],
+        },
+        {
+            "check": "generated_authoring_gate",
+            "ok": authoring_gate["ok"]
+            and {"language_ergonomics", "language_experience"}
+            <= {gate["gate"] for gate in authoring_gate["gates"]},
+        },
+        {
+            "check": "generated_quick_fixes",
+            "ok": {"normalize_authoring_aliases", "normalize_modifier_aliases"}
+            <= set(alias_fix["applied"])
+            and {"replace_ref_with_arrow", "normalize_targets"} <= set(legacy_fix["applied"])
+            and "toaster" not in legacy_fix["fixed"],
+        },
+        {
+            "check": "generated_formatter",
+            "ok": formatted["after"]["ok"]
+            and "app Library {\n  targets: web, desktop\n}" in formatted["formatted"],
+        },
+    )
+    return {
+        "format": "appgen.generated-dsl-reference-smoke-audit.v1",
+        "scope": "package",
+        "ok": all(check["ok"] for check in checks),
+        "checks": checks,
+        "compile": compile_result,
+        "language_quality": {
+            "format": quality["format"],
+            "ok": quality["ok"],
+            "canonical_keyword_count": quality["canonical_keyword_count"],
+        },
+        "authoring_gate": {
+            "format": authoring_gate["format"],
+            "ok": authoring_gate["ok"],
+        },
+    }
+
+
+def _compile_generated_dsl_reference(path: Path) -> dict:
+    try:
+        py_compile.compile(str(path), doraise=True)
+    except py_compile.PyCompileError as exc:
+        return {"ok": False, "error": str(exc)}
+    return {"ok": True}
+
+
+def _load_generated_module(path: Path, module_name: str):
+    spec = importlib.util.spec_from_file_location(module_name, path)
+    if spec is None or spec.loader is None:
+        raise ImportError(f"Cannot load generated module from {path}")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
 def dsl_release_audit(
     existing_paths: Iterable[str] | None = None,
     *,
@@ -163,6 +275,7 @@ def dsl_release_audit(
     linter = dsl_linter_release_contract(sample)
     docs = dsl_documentation_catalog(root)
     artifacts = dsl_artifact_contract(existing_paths)
+    generated_reference = generated_dsl_reference_smoke_audit(sample)
     cli_commands = (
         "appgen --lint-dsl app.appgen",
         "appgen --fix-dsl app.appgen",
@@ -205,6 +318,11 @@ def dsl_release_audit(
             "required_artifacts": artifacts["required_artifacts"],
             "missing": artifacts["missing"],
         },
+        {
+            "id": "generated_reference_smoke",
+            "ok": generated_reference["ok"],
+            "checks": generated_reference["checks"],
+        },
     )
     ok = all(gate["ok"] for gate in gates)
     return {
@@ -218,6 +336,7 @@ def dsl_release_audit(
         "linter": linter,
         "documentation": docs,
         "artifact_contract": artifacts,
+        "generated_reference_smoke": generated_reference,
         "gates": gates,
         "blocking_gaps": tuple(gate for gate in gates if not gate["ok"]),
         "stop_condition": "do-not-claim-dsl-readiness-unless-ok-is-true",

@@ -160,6 +160,9 @@ gate for the complete authoring loop. It combines language quality,
 syntax/semantic linting, formatter stability, IDE navigation, code actions,
 weighted authoring guidance, and source-family coverage for DBML, SQL, PonyORM,
 live databases, and DSL files.
+At package level, `dsl_release_audit()` also generates a temporary app and runs
+the generated `dsl_reference.py` helpers so release evidence covers the DSL
+tooling users receive inside generated applications.
 
 ## Checks
 

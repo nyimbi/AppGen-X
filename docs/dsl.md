@@ -209,7 +209,9 @@ appgen --dsl-authoring-gate library.ags
 
 Run the package-level DSL release audit before claiming the language has a
 ready linter, synchronized grammar, complete guide/tutorial/linter docs, and
-generated reference artifacts:
+generated reference artifacts. The audit also generates a temporary app and
+exercises the generated `dsl_reference.py` language-quality, authoring-gate,
+quick-fix, and formatter helpers:
 
 ```console
 appgen --dsl-release-audit
