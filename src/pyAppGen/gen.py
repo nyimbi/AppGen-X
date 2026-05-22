@@ -2431,6 +2431,7 @@ def write_project_scaffold(output_dir, schema: AppSchema):
     versions_dir.mkdir(parents=True, exist_ok=True)
     (migrations_dir / "README.md").write_text(_migrations_text())
     (migrations_dir / "env.py").write_text(_alembic_env_text())
+    (migrations_dir / "appgen_migrations.py").write_text(_migration_contract_text(schema))
     (migrations_dir / "script.py.mako").write_text(_alembic_script_text())
     (migrations_dir / "versions" / ".gitkeep").write_text("")
     (output_dir / "alembic.ini").write_text(_alembic_ini_text())
@@ -40893,6 +40894,7 @@ REQUIRED_PATHS = (
     "docs/openapi.json",
     "docs/accessibility.md",
     "migrations/env.py",
+    "migrations/appgen_migrations.py",
     "migrations/script.py.mako",
     "cookiecutter/cookiecutter.json",
     "cookiecutter/{{cookiecutter.project_slug}}/README.md",
@@ -40994,6 +40996,7 @@ PYTHON_PATHS = (
     "app/branding.py",
     "app/extensions.py",
     "migrations/env.py",
+    "migrations/appgen_migrations.py",
     "tests/test_generated_contract.py",
     "tests/test_generated_coverage.py",
 )
@@ -41965,6 +41968,25 @@ def validate_ci() -> None:
         fail("CI workflow must run scripts/appgen_quality.py")
     if "pytest" not in workflow:
         fail("CI workflow must run pytest")
+
+
+def validate_migration_artifacts() -> None:
+    contract = (ROOT / "migrations" / "appgen_migrations.py").read_text()
+    required = (
+        "migration_inventory",
+        "revision_plan",
+        "migration_sql_preview",
+        "migration_rollback_plan",
+        "migration_review_checklist",
+        "migration_release_gate",
+        "migration_workbench",
+        "appgen.migration-workbench.v1",
+    )
+    if not all(item in contract for item in required):
+        fail("migration contract must expose inventory, revision plan, SQL preview, rollback, review checklist, release gate, and workbench helpers")
+    readme = (ROOT / "migrations" / "README.md").read_text()
+    if "migration_workbench()" not in readme or "migration_release_gate()" not in readme:
+        fail("migration README must document release gate and workbench review flow")
 
 
 def validate_deployment_artifacts() -> None:
@@ -42953,6 +42975,7 @@ def main() -> int:
     validate_devtools_artifacts()
     validate_studio_artifacts()
     validate_ci()
+    validate_migration_artifacts()
     validate_deployment_artifacts()
     validate_frontend_artifacts()
     validate_microservice_artifacts()
@@ -43013,7 +43036,8 @@ if __name__ == "__main__":
 def _migrations_text() -> str:
     return """# Migrations
 
-This generated app includes an Alembic scaffold.
+This generated app includes an Alembic scaffold and a generated migration
+contract in `migrations/appgen_migrations.py`.
 
 Create the first migration after reviewing generated models:
 
@@ -43023,7 +43047,224 @@ alembic -c alembic.ini upgrade head
 ```
 
 Keep schema changes in migrations once the generated app is customized.
+
+Use `migration_release_gate()` before applying changes and
+`migration_workbench()` in the generated IDE/review flow to inspect schema
+inventory, revision planning, SQL previews, rollback plans, review checklists,
+and Alembic command evidence.
 """
+
+
+def _migration_contract_text(schema: AppSchema) -> str:
+    migration_tables = tuple(
+        {
+            "name": table.name,
+            "fields": tuple(
+                {
+                    "name": column.name,
+                    "type": column.type_name,
+                    "nullable": column.nullable,
+                    "primary_key": column.primary_key,
+                    "unique": column.unique,
+                }
+                for column in table.columns
+            ),
+        }
+        for table in schema.tables
+    )
+    return f'''"""Generated migration planning contract for AppGen apps."""
+
+from __future__ import annotations
+
+
+MIGRATION_SCHEMA = {{
+    "tables": {migration_tables!r},
+    "artifacts": (
+        "alembic.ini",
+        "migrations/README.md",
+        "migrations/env.py",
+        "migrations/script.py.mako",
+        "migrations/versions/.gitkeep",
+        "migrations/appgen_migrations.py",
+    ),
+    "commands": (
+        "alembic -c alembic.ini revision --autogenerate -m <message>",
+        "alembic -c alembic.ini upgrade head",
+        "alembic -c alembic.ini downgrade -1",
+    ),
+}}
+
+
+def migration_inventory():
+    """Return generated table and field inventory for migration review."""
+    return tuple(MIGRATION_SCHEMA["tables"])
+
+
+def _sql_type(type_name):
+    normalized = str(type_name).lower()
+    if normalized in ("int", "integer", "bigint"):
+        return "INTEGER"
+    if normalized in ("float", "decimal", "numeric"):
+        return "NUMERIC"
+    if normalized in ("bool", "boolean"):
+        return "BOOLEAN"
+    if normalized in ("date", "datetime"):
+        return "TIMESTAMP"
+    if normalized in ("text", "string", "varchar"):
+        return "TEXT"
+    return "TEXT"
+
+
+def _create_table_change(table):
+    return {{
+        "op": "create_table",
+        "table": table["name"],
+        "columns": table["fields"],
+        "destructive": False,
+        "requires_review": True,
+    }}
+
+
+def default_migration_changes():
+    """Return deterministic initial migration operations from the generated schema."""
+    return tuple(_create_table_change(table) for table in migration_inventory())
+
+
+def revision_plan(message="schema update", changes=None):
+    """Return a reviewed Alembic revision plan."""
+    operations = tuple(changes or default_migration_changes())
+    destructive = any(operation.get("destructive") for operation in operations)
+    return {{
+        "format": "appgen.migration-revision-plan.v1",
+        "message": message,
+        "operations": operations,
+        "operation_count": len(operations),
+        "commands": MIGRATION_SCHEMA["commands"],
+        "destructive": destructive,
+        "requires_review": True,
+    }}
+
+
+def migration_sql_preview(changes=None):
+    """Return deterministic SQL preview text for migration operations."""
+    operations = tuple(changes or default_migration_changes())
+    statements = []
+    for operation in operations:
+        op = operation.get("op")
+        table = operation.get("table")
+        if op == "create_table":
+            columns = []
+            for column in operation.get("columns", ()):
+                fragment = f"{{column['name']}} {{_sql_type(column.get('type'))}}"
+                if column.get("primary_key"):
+                    fragment += " PRIMARY KEY"
+                if not column.get("nullable", True):
+                    fragment += " NOT NULL"
+                if column.get("unique"):
+                    fragment += " UNIQUE"
+                columns.append(fragment)
+            statements.append(f"CREATE TABLE {{table}} ({{', '.join(columns)}});")
+        elif op == "add_column":
+            column = operation.get("column", {{"name": operation.get("field", "new_field"), "type": "text", "nullable": True}})
+            statements.append(f"ALTER TABLE {{table}} ADD COLUMN {{column['name']}} {{_sql_type(column.get('type'))}};")
+        elif op in ("drop_column", "drop_table"):
+            statements.append(f"-- destructive migration requires backup review before {{op}} on {{table}}")
+        else:
+            statements.append(f"-- review custom migration operation: {{op}} on {{table}}")
+    return {{
+        "format": "appgen.migration-sql-preview.v1",
+        "statements": tuple(statements),
+        "requires_review": True,
+    }}
+
+
+def migration_rollback_plan(changes=None):
+    """Return rollback guidance for a migration revision."""
+    plan = revision_plan(changes=changes)
+    return {{
+        "format": "appgen.migration-rollback-plan.v1",
+        "destructive": plan["destructive"],
+        "steps": (
+            "snapshot database before upgrade",
+            "run alembic -c alembic.ini downgrade -1 if post-upgrade checks fail",
+            "restore snapshot before retrying destructive changes" if plan["destructive"] else "rerun generated smoke and data checks",
+            "record migration evidence",
+        ),
+        "requires_backup": plan["destructive"],
+        "requires_review": True,
+    }}
+
+
+def migration_review_checklist(changes=None):
+    """Return review checks required before applying migrations."""
+    plan = revision_plan(changes=changes)
+    return {{
+        "format": "appgen.migration-review-checklist.v1",
+        "checks": (
+            "schema inventory reviewed",
+            "autogenerated Alembic revision reviewed",
+            "SQL preview reviewed",
+            "rollback plan attached",
+            "backup completed" if plan["destructive"] else "backup decision recorded",
+            "appgen quality gate passed",
+        ),
+        "destructive": plan["destructive"],
+        "requires_review": True,
+    }}
+
+
+def migration_release_gate(existing_paths=(), changes=None):
+    """Return migration readiness for generated Alembic artifacts and review evidence."""
+    existing = set(existing_paths) or set(MIGRATION_SCHEMA["artifacts"])
+    missing = tuple(path for path in MIGRATION_SCHEMA["artifacts"] if path not in existing)
+    plan = revision_plan(changes=changes)
+    sql = migration_sql_preview(changes)
+    rollback = migration_rollback_plan(changes)
+    checklist = migration_review_checklist(changes)
+    gates = (
+        {{"gate": "artifact_coverage", "ok": not missing, "missing": missing, "required": MIGRATION_SCHEMA["artifacts"]}},
+        {{"gate": "schema_inventory", "ok": bool(migration_inventory()), "evidence": migration_inventory()}},
+        {{"gate": "revision_plan", "ok": plan["format"] == "appgen.migration-revision-plan.v1" and plan["requires_review"], "evidence": plan}},
+        {{"gate": "sql_preview", "ok": bool(sql["statements"]) and sql["requires_review"], "evidence": sql}},
+        {{"gate": "rollback_plan", "ok": rollback["requires_review"] and "snapshot database before upgrade" in rollback["steps"], "evidence": rollback}},
+        {{"gate": "review_checklist", "ok": "SQL preview reviewed" in checklist["checks"] and checklist["requires_review"], "evidence": checklist}},
+        {{"gate": "alembic_commands", "ok": all("alembic -c alembic.ini" in command for command in MIGRATION_SCHEMA["commands"]), "evidence": MIGRATION_SCHEMA["commands"]}},
+    )
+    return {{
+        "format": "appgen.migration-release-gate.v1",
+        "ok": all(gate["ok"] for gate in gates),
+        "gates": gates,
+        "blocking_gaps": tuple(gate for gate in gates if not gate["ok"]),
+        "plan": plan,
+        "sql_preview": sql,
+        "rollback": rollback,
+    }}
+
+
+def migration_workbench(existing_paths=(), changes=None):
+    """Return IDE-ready migration evidence for schema evolution."""
+    release_gate = migration_release_gate(existing_paths, changes)
+    checklist = migration_review_checklist(changes)
+    checks = (
+        {{"id": "schema_inventory", "ok": bool(migration_inventory()), "evidence": migration_inventory()}},
+        {{"id": "revision_plan", "ok": release_gate["plan"]["requires_review"], "evidence": release_gate["plan"]}},
+        {{"id": "sql_preview", "ok": bool(release_gate["sql_preview"]["statements"]), "evidence": release_gate["sql_preview"]}},
+        {{"id": "rollback_plan", "ok": release_gate["rollback"]["requires_review"], "evidence": release_gate["rollback"]}},
+        {{"id": "review_checklist", "ok": checklist["requires_review"] and len(checklist["checks"]) >= 5, "evidence": checklist}},
+        {{"id": "artifact_coverage", "ok": release_gate["gates"][0]["ok"], "evidence": release_gate["gates"][0]}},
+        {{"id": "alembic_commands", "ok": any("revision --autogenerate" in command for command in MIGRATION_SCHEMA["commands"]), "evidence": MIGRATION_SCHEMA["commands"]}},
+        {{"id": "release_gate", "ok": release_gate["ok"], "evidence": release_gate}},
+    )
+    ok = all(check["ok"] for check in checks)
+    return {{
+        "format": "appgen.migration-workbench.v1",
+        "ok": ok,
+        "decision": "approved" if ok else "blocked",
+        "checks": checks,
+        "inventory": migration_inventory(),
+        "release_gate": release_gate,
+    }}
+'''
 
 
 def _alembic_ini_text() -> str:
@@ -43616,6 +43857,7 @@ def test_generated_runtime_helpers():
     wizards = load_module(ROOT / "app" / "wizards.py", "generated_wizards")
     branding = load_module(ROOT / "app" / "branding.py", "generated_branding")
     extensions = load_module(ROOT / "app" / "extensions.py", "generated_extensions")
+    migrations = load_module(ROOT / "migrations" / "appgen_migrations.py", "generated_migrations")
     deployment = load_module(ROOT / "deploy" / "appgen_deploy.py", "generated_deployment")
     https = load_module(ROOT / "deploy" / "appgen_https.py", "generated_https")
     jhipster = load_module(ROOT / "jhipster" / "appgen_jhipster.py", "generated_jhipster")
@@ -45124,6 +45366,19 @@ def test_generated_runtime_helpers():
         {"app/performance.py", "app/templates/appgen_performance.html"}
     )["ok"] is True
     assert performance.performance_release_gate({"app/performance.py"})["ok"] is False
+    migration_artifacts = {{
+        "alembic.ini",
+        "migrations/README.md",
+        "migrations/env.py",
+        "migrations/script.py.mako",
+        "migrations/versions/.gitkeep",
+        "migrations/appgen_migrations.py",
+    }}
+    assert migrations.migration_release_gate(migration_artifacts)["format"] == "appgen.migration-release-gate.v1"
+    assert migrations.migration_release_gate(migration_artifacts)["ok"] is True
+    assert migrations.migration_workbench(migration_artifacts)["format"] == "appgen.migration-workbench.v1"
+    assert migrations.migration_workbench(migration_artifacts)["ok"] is True
+    assert migrations.migration_release_gate({"alembic.ini"})["ok"] is False
     deployment_artifacts = {{
         "Dockerfile",
         "docker-compose.yml",

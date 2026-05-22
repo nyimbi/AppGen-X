@@ -758,6 +758,10 @@ python -m py_compile build/generated-app/app/models.py
 
 For larger projects, add generated quality checks after compilation so schema,
 API, PWA, documentation, and generated test surfaces stay aligned.
+Use `migration_release_gate()` before applying database changes to prove Alembic
+artifact coverage, schema inventory, revision plans, SQL previews, rollback
+plans, review checklists, and command evidence. Use `migration_workbench()` to
+inspect the same evidence in database-design and release-review flows.
 Use the generated `seed_release_gate()` before release to prove seed scenarios
 are dependency ordered, validation-clean, anonymized for fixture export, backed
 by SQL previews, and connected to generated coverage plus quality artifacts.

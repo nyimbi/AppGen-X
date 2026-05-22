@@ -644,10 +644,12 @@ def test_generate_app_from_sqlite_schema_compiles(tmp_path) -> None:
     assert (tmp_path / "scripts" / "appgen_quality.py").exists()
     assert (tmp_path / "migrations" / "README.md").exists()
     assert (tmp_path / "alembic.ini").exists()
+    assert (tmp_path / "migrations" / "appgen_migrations.py").exists()
     assert (tmp_path / "migrations" / "script.py.mako").exists()
     assert (tmp_path / "migrations" / "versions" / ".gitkeep").exists()
     assert (tmp_path / "tests" / "test_generated_coverage.py").exists()
     py_compile.compile(str(tmp_path / "migrations" / "env.py"), doraise=True)
+    py_compile.compile(str(tmp_path / "migrations" / "appgen_migrations.py"), doraise=True)
     py_compile.compile(str(tmp_path / "deploy" / "appgen_deploy.py"), doraise=True)
     py_compile.compile(str(tmp_path / "deploy" / "appgen_https.py"), doraise=True)
     py_compile.compile(str(tmp_path / "frontends" / "appgen_frontends.py"), doraise=True)
@@ -744,8 +746,36 @@ def test_generate_app_from_sqlite_schema_compiles(tmp_path) -> None:
     assert 'target   = "aws"' in (tmp_path / "deploy" / "terraform-aws.tf").read_text()
     assert 'target   = "gcp"' in (tmp_path / "deploy" / "terraform-gcp.tf").read_text()
     assert 'target   = "azure"' in (tmp_path / "deploy" / "terraform-azure.tf").read_text()
+    migration = _load_module(tmp_path / "migrations" / "appgen_migrations.py", "generated_migrations")
     deployment = _load_module(tmp_path / "deploy" / "appgen_deploy.py", "generated_deployment")
     https = _load_module(tmp_path / "deploy" / "appgen_https.py", "generated_https")
+    migration_artifacts = {
+        "alembic.ini",
+        "migrations/README.md",
+        "migrations/env.py",
+        "migrations/script.py.mako",
+        "migrations/versions/.gitkeep",
+        "migrations/appgen_migrations.py",
+    }
+    migration_gate = migration.migration_release_gate(migration_artifacts)
+    assert migration_gate["format"] == "appgen.migration-release-gate.v1"
+    assert migration_gate["ok"] is True
+    assert {
+        "artifact_coverage",
+        "schema_inventory",
+        "revision_plan",
+        "sql_preview",
+        "rollback_plan",
+        "review_checklist",
+        "alembic_commands",
+    } == {gate["gate"] for gate in migration_gate["gates"]}
+    migration_workbench = migration.migration_workbench(migration_artifacts)
+    assert migration_workbench["format"] == "appgen.migration-workbench.v1"
+    assert migration_workbench["ok"] is True
+    assert migration_workbench["decision"] == "approved"
+    assert migration.migration_release_gate({"alembic.ini"})["ok"] is False
+    destructive_change = ({"op": "drop_column", "table": "Book", "field": "legacy", "destructive": True},)
+    assert migration.migration_rollback_plan(destructive_change)["requires_backup"] is True
     assert "kubernetes" in deployment.deployment_targets()
     assert "onprem" in deployment.deployment_targets()
     assert "https" in deployment.deployment_targets()
@@ -1139,6 +1169,7 @@ def test_generate_app_from_sqlite_schema_compiles(tmp_path) -> None:
     assert capabilities_by_key["reports.analytics"]["status"] == "implemented"
     assert capabilities_by_key["reports.usage-analytics"]["status"] == "implemented"
     assert capabilities_by_key["data.exchange"]["status"] == "implemented"
+    assert capabilities_by_key["data.migrations"]["status"] == "implemented"
     assert capabilities_by_key["data.search"]["status"] == "implemented"
     assert capabilities_by_key["data.database-ops"]["status"] == "implemented"
     assert capabilities_by_key["deployment.cloud"]["status"] == "implemented"

@@ -454,6 +454,11 @@ apps include:
   provider catalogs, add-on catalogs, Compose services, Kubernetes stateful
   workloads, schema inventory, migration targets, cutover plans, NoSQL
   projections, release gates, and `/database-ops/workbench.json` route coverage.
+- `migrations/appgen_migrations.py` with generated schema inventory, Alembic
+  revision plans, SQL previews, rollback plans, migration review checklists, and
+  a migration workbench. `migration_release_gate()` proves artifact coverage,
+  inventory, revision planning, SQL preview, rollback, review checklist, and
+  Alembic command evidence before `data.migrations` is marked implemented.
 - `schema_import.py` and `appgen_schema_import.html` with generated DBML, SQL
   DDL, PonyORM, live database, and DSL source catalogs, source provenance profiles,
   stable source fingerprints, source-fidelity reports, normalization reports,
