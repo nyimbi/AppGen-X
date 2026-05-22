@@ -2892,6 +2892,21 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
             "app_custom/extensions.py",
         }
     )["ok"] is True
+    extension_gate = extensions.extension_release_gate(
+        {
+            "app/extensions.py",
+            "app/templates/appgen_extensions.html",
+            "app_custom/__init__.py",
+            "app_custom/extensions.py",
+            "appgen_package.py",
+        }
+    )
+    assert extension_gate["format"] == "appgen.extension-release-gate.v1"
+    assert extension_gate["ok"] is True
+    assert {"hook_registry", "generated_rule_dispatch", "packaging_handoff"} <= {
+        check["gate"] for check in extension_gate["checks"]
+    }
+    assert extensions.extension_release_gate({"app/extensions.py"})["ok"] is False
     assert appgen_package.package_metadata()["package_name"] == "appgen-library"
     assert appgen_package.fab_extension_contract()["custom_hooks"] == "app_custom.extensions"
     assert appgen_package.cookiecutter_context()["project_slug"] == "appgen_library"

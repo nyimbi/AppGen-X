@@ -282,7 +282,11 @@ apps include:
   release gate that aggregates theme quality, accessibility, visual regression,
   responsive coverage, component states, and required assets.
 - `extensions.py`, `appgen_extensions.html`, and `app_custom/extensions.py`
-  with stable custom-code hooks that survive regeneration.
+  with stable custom-code hooks that survive regeneration. A generated
+  extension release gate proves artifact presence, hook registry coverage,
+  table lifecycle hooks, generated-rule dispatch, custom-module wiring,
+  packaging handoff, and hook categories before custom-code extensibility is
+  treated as release-ready.
 - `pyproject.toml`, `MANIFEST.in`, `appgen_package.py`, and `cookiecutter/`
   with publishable package metadata, a quality entry point, FAB extension
   metadata, and a reusable Cookiecutter scaffold for new generated apps.

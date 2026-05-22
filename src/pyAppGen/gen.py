@@ -6453,7 +6453,10 @@ def write_extensions_template(output_dir):
         generated files. Implement hooks in <code>app_custom/extensions.py</code>.
       </p>
     </div>
-    <a class="btn btn-default" href="{{ url_for('ExtensionView.hooks_json') }}">Hooks JSON</a>
+    <div>
+      <a class="btn btn-default" href="{{ url_for('ExtensionView.hooks_json') }}">Hooks JSON</a>
+      <a class="btn btn-default" href="{{ url_for('ExtensionView.release_gate_json') }}">Release Gate JSON</a>
+    </div>
   </div>
   <div class="age-grid">
     {% for hook in hooks %}
@@ -10259,6 +10262,49 @@ def extension_check(existing_paths):
     }}
 
 
+def extension_release_gate(existing_paths=()):
+    """Return release readiness for generated extensibility contracts."""
+    readiness = extension_check(existing_paths)
+    hooks = extension_points()
+    hook_names = {{hook["hook"] for hook in hooks}}
+    hook_kinds = {{hook["kind"] for hook in hooks}}
+    table_names = tuple({{
+        hook["table"]
+        for hook in hooks
+        if hook.get("table")
+    }})
+    hooks_by_table = {{
+        table: {{hook["hook"] for hook in hooks if hook.get("table") == table}}
+        for table in table_names
+    }}
+    rules_probe = {{"ok": True, "errors": (), "decisions": ()}}
+    if table_names:
+        try:
+            rules_probe = validate_row(table_names[0], {{}})
+            rules_dispatch_ok = set(rules_probe) >= {{"ok", "errors", "rules", "decisions"}}
+        except Exception as exc:
+            rules_dispatch_ok = False
+            rules_probe = {{"ok": False, "error": str(exc)}}
+    else:
+        rules_dispatch_ok = True
+    checks = (
+        {{"gate": "artifacts", "ok": readiness["ok"], "missing": readiness["missing"]}},
+        {{"gate": "hook_registry", "ok": bool(hooks) and "startup" in hook_names and "template_context" in hook_names, "hooks": tuple(sorted(hook_names))}},
+        {{"gate": "table_lifecycle_hooks", "ok": not table_names or all(any(name.startswith("validate_") for name in names) and any(name.startswith("before_save_") for name in names) and any(name.startswith("after_save_") for name in names) for names in hooks_by_table.values()), "tables": table_names}},
+        {{"gate": "generated_rule_dispatch", "ok": rules_dispatch_ok, "probe": rules_probe}},
+        {{"gate": "custom_module_contract", "ok": CUSTOM_MODULE == "app_custom.extensions" and "app_custom/extensions.py" not in readiness["missing"], "module": CUSTOM_MODULE}},
+        {{"gate": "packaging_handoff", "ok": "appgen_package.py" in set(existing_paths), "artifact": "appgen_package.py"}},
+        {{"gate": "hook_categories", "ok": {{"lifecycle", "ui", "validation"}} <= hook_kinds, "categories": tuple(sorted(hook_kinds))}},
+    )
+    ok = all(check["ok"] for check in checks)
+    return {{
+        "format": "appgen.extension-release-gate.v1",
+        "ok": ok,
+        "decision": "approved" if ok else "blocked",
+        "checks": checks,
+    }}
+
+
 class ExtensionView(BaseView):
     route_base = "/extensions"
     default_view = "index"
@@ -10270,6 +10316,16 @@ class ExtensionView(BaseView):
     @expose("/hooks.json")
     def hooks_json(self):
         return jsonify(list(extension_points()))
+
+    @expose("/release-gate.json")
+    def release_gate_json(self):
+        return jsonify(extension_release_gate({{
+            "app/extensions.py",
+            "app/templates/appgen_extensions.html",
+            "app_custom/__init__.py",
+            "app_custom/extensions.py",
+            "appgen_package.py",
+        }}))
 
 
 def register_extensions(appbuilder):
@@ -35467,12 +35523,14 @@ def validate_extension_artifacts() -> None:
         fail("extension contract must expose hook registry and custom module dispatch")
     if "load_rules_module" not in contract or "before_save_row" not in contract:
         fail("extension contract must enforce generated rules before save")
+    if "extension_release_gate" not in contract:
+        fail("extension contract must expose release readiness")
     custom = (ROOT / "app_custom" / "extensions.py").read_text()
     if "def startup" not in custom or "def template_context" not in custom:
         fail("custom extension module must include stable hook stubs")
     template = (ROOT / "app" / "templates" / "appgen_extensions.html").read_text()
-    if "app_custom/extensions.py" not in template or "Hooks JSON" not in template:
-        fail("extension template must point users to custom hook stubs")
+    if "app_custom/extensions.py" not in template or "Hooks JSON" not in template or "Release Gate JSON" not in template:
+        fail("extension template must point users to custom hook stubs and release readiness")
 
 
 def validate_packaging_artifacts() -> None:
@@ -37240,6 +37298,16 @@ def test_generated_runtime_helpers():
             "app_custom/extensions.py",
         }
     )["ok"] is True
+    assert extensions.extension_release_gate(
+        {
+            "app/extensions.py",
+            "app/templates/appgen_extensions.html",
+            "app_custom/__init__.py",
+            "app_custom/extensions.py",
+            "appgen_package.py",
+        }
+    )["ok"] is True
+    assert extensions.extension_release_gate({"app/extensions.py"})["ok"] is False
     first_table = data_exchange.exchange_catalog()[0]["table"]
     assert data_exchange.csv_template(first_table)
     assert data_exchange.exchange_check(

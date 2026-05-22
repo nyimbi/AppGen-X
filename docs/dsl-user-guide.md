@@ -416,6 +416,10 @@ Use the generated `coverage_release_gate()` in
 `tests/test_generated_coverage.py` to prove table, workflow, view-experience,
 quality, diagnostics, and release-gate coverage before claiming generated test
 coverage is complete.
+Use `/extensions/release-gate.json` or `extension_release_gate()` to prove
+custom-code extensibility is ready: the gate checks generated artifacts, stable
+hook catalogs, table lifecycle hooks, generated-rule dispatch, custom-module
+wiring, packaging handoff, and hook category coverage.
 
 Use `/runtime-assurance/excellence-gate.json` as the final generated-app
 quality decision. It aggregates the release gate into seven explicit product
