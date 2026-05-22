@@ -1066,6 +1066,7 @@ def test_generate_app_from_sqlite_schema_compiles(tmp_path) -> None:
     assert capabilities_by_key["components.text-quality"]["status"] == "implemented"
     assert "components.media" in {item["key"] for item in manifest["capabilities"]}
     assert capabilities_by_key["components.media"]["status"] == "implemented"
+    assert capabilities_by_key["content.document-management"]["status"] == "implemented"
     assert "ui.wizards" in {item["key"] for item in manifest["capabilities"]}
     assert capabilities_by_key["ui.wizards"]["status"] == "implemented"
     assert "ui.layout" in {item["key"] for item in manifest["capabilities"]}
@@ -3570,7 +3571,30 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert esign["signer"] == "ada@example.test"
     audit = documents.document_audit_event("book.manuscript_file", "approved", actor="grace", record_id=1)
     assert audit["action"] == "approved"
+    assert "Workbench JSON" in (output_dir / "templates" / "appgen_documents.html").read_text()
     assert documents.document_management_check({"app/documents.py", "app/templates/appgen_documents.html"})["ok"] is True
+    document_workbench = documents.document_management_workbench(
+        {"app/documents.py", "app/templates/appgen_documents.html"}
+    )
+    assert document_workbench["format"] == "appgen.document-management-workbench.v1"
+    assert document_workbench["ok"] is True
+    assert document_workbench["decision"] == "approved"
+    assert {
+        "artifact_coverage",
+        "document_catalog",
+        "version_envelopes",
+        "approval_workflows",
+        "retention_policy",
+        "esignature_payloads",
+        "audit_events",
+        "status_model",
+        "release_gate",
+        "route_surface",
+    } == {check["id"] for check in document_workbench["checks"]}
+    assert "/documents/workbench.json" in next(
+        check["evidence"]["routes"] for check in document_workbench["checks"] if check["id"] == "route_surface"
+    )
+    assert documents.document_management_workbench({"app/documents.py"})["ok"] is False
     document_gate = documents.document_release_gate({"app/documents.py", "app/templates/appgen_documents.html"})
     assert document_gate["format"] == "appgen.document-release-gate.v1"
     assert document_gate["ok"] is True

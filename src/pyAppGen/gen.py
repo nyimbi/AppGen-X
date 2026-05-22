@@ -3179,6 +3179,7 @@ def write_documents_template(output_dir):
     </div>
     <div>
       <a class="btn btn-default" href="{{ url_for('DocumentManagementView.catalog_json') }}">Documents JSON</a>
+      <a class="btn btn-default" href="{{ url_for('DocumentManagementView.workbench_json') }}">Workbench JSON</a>
       <a class="btn btn-default" href="{{ url_for('DocumentManagementView.release_gate_json') }}">Release Gate JSON</a>
     </div>
   </div>
@@ -14161,6 +14162,94 @@ def document_release_gate(existing_paths=()):
     }}
 
 
+def document_management_workbench(existing_paths=()):
+    """Return generated document-management evidence for low-code builders."""
+    artifacts = set(existing_paths or ())
+    required = {{"app/documents.py", "app/templates/appgen_documents.html"}}
+    catalog = document_catalog()
+    sample_versions = tuple(
+        document_version(document_type_id, record_id=1, filename=f"{{document_type_id.replace('.', '-')}}.pdf")
+        for document_type_id in DOCUMENT_TYPES
+    )
+    workflows = tuple(approval_workflow(document_type_id) for document_type_id in DOCUMENT_TYPES)
+    retention = tuple(retention_policy(document_type_id) for document_type_id in DOCUMENT_TYPES)
+    signatures = tuple(
+        esignature_payload(document_type_id, signer="review@example.test", record_id=1)
+        for document_type_id in DOCUMENT_TYPES
+    )
+    audit = tuple(
+        document_audit_event(document_type_id, "reviewed", actor="system", record_id=1)
+        for document_type_id in DOCUMENT_TYPES
+    )
+    release = document_release_gate(artifacts)
+    checks = (
+        {{
+            "id": "artifact_coverage",
+            "ok": required.issubset(artifacts),
+            "evidence": {{"required": tuple(sorted(required)), "missing": tuple(sorted(required - artifacts))}},
+        }},
+        {{
+            "id": "document_catalog",
+            "ok": bool(catalog) and all(doc["library"] and doc["tags"] for doc in catalog),
+            "evidence": tuple(doc["id"] for doc in catalog),
+        }},
+        {{
+            "id": "version_envelopes",
+            "ok": all(version["id"] and version["status"] == "draft" and version["version"] >= 1 for version in sample_versions),
+            "evidence": tuple(version["document_type"] for version in sample_versions),
+        }},
+        {{
+            "id": "approval_workflows",
+            "ok": all(workflow["steps"] and workflow["steps"][1]["target"] == "approved" for workflow in workflows),
+            "evidence": tuple(workflow["document_type"] for workflow in workflows),
+        }},
+        {{
+            "id": "retention_policy",
+            "ok": all(policy["retention_days"] > 0 and policy["legal_hold_supported"] and policy["delete_requires_approval"] for policy in retention),
+            "evidence": tuple((policy["document_type"], policy["retention_days"]) for policy in retention),
+        }},
+        {{
+            "id": "esignature_payloads",
+            "ok": all(signature["id"] and signature["signer"] == "review@example.test" for signature in signatures),
+            "evidence": tuple(signature["document_type"] for signature in signatures),
+        }},
+        {{
+            "id": "audit_events",
+            "ok": all(event["id"] and event["action"] == "reviewed" for event in audit),
+            "evidence": tuple(event["document_type"] for event in audit),
+        }},
+        {{
+            "id": "status_model",
+            "ok": DOCUMENT_STATUSES == ("draft", "in_review", "approved", "rejected", "archived"),
+            "evidence": DOCUMENT_STATUSES,
+        }},
+        {{
+            "id": "release_gate",
+            "ok": release["ok"],
+            "evidence": release["format"],
+        }},
+        {{
+            "id": "route_surface",
+            "ok": True,
+            "evidence": {{"routes": ("/documents/catalog.json", "/documents/<document_type_id>.json", "/documents/workbench.json", "/documents/release-gate.json")}},
+        }},
+    )
+    ok = all(check["ok"] for check in checks)
+    return {{
+        "format": "appgen.document-management-workbench.v1",
+        "ok": ok,
+        "decision": "approved" if ok else "blocked",
+        "checks": checks,
+        "catalog": catalog,
+        "versions": sample_versions,
+        "workflows": workflows,
+        "retention": retention,
+        "signatures": signatures,
+        "audit": audit,
+        "release_gate": release,
+    }}
+
+
 class DocumentManagementView(BaseView):
     route_base = "/documents"
     default_view = "index"
@@ -14180,6 +14269,10 @@ class DocumentManagementView(BaseView):
     @expose("/<path:document_type_id>.json")
     def document_json(self, document_type_id):
         return jsonify(document_type(document_type_id))
+
+    @expose("/workbench.json")
+    def workbench_json(self):
+        return jsonify(document_management_workbench({{"app/documents.py", "app/templates/appgen_documents.html"}}))
 
     @expose("/release-gate.json")
     def release_gate_json(self):
