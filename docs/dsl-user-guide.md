@@ -287,6 +287,10 @@ Use `security_workbench()` in generated `app/security.py` to inspect policy
 matrix, authorization decision, audit event, RBAC change proposal, resource
 catalog, threat model, secret scan, dependency review, API security tests,
 release gate, and signoff evidence before publishing an app.
+Use `/runtime-security/workbench.json` or `runtime_security_workbench()` to
+inspect generated idle-timeout policy, public-path bypasses, expired and active
+session states, activity markers, security headers, route coverage, and release
+gate evidence.
 
 Use the app option `rls` when row-level security should scope a table by a
 domain-specific field name:

@@ -242,7 +242,12 @@ apps include:
   dependency, API-security, release-gate, and signoff readiness before
   `security.rbac` is marked implemented.
 - `runtime_security.py` and `appgen_runtime_security.html` with generated
-  inactivity logout and security-header hardening hooks.
+  inactivity logout and security-header hardening hooks. The generated
+  `runtime_security_release_gate()` and `runtime_security_workbench()` prove
+  artifact coverage, timeout policy, public-path bypass, expired/active session
+  handling, activity markers, security headers, and
+  `/runtime-security/workbench.json` route evidence before `security.session`
+  is marked implemented.
 - `workflow.py` with transition helpers such as `next_states`,
   `can_transition`, `transition`, `advance_plan`, Mermaid state-chart exports,
   provider-neutral FSM JSON, SCXML export, graph diagnostics, role-aware

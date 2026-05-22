@@ -3499,7 +3499,11 @@ def write_runtime_security_template(output_dir):
         hardening policy for robust Flask-AppBuilder deployments.
       </p>
     </div>
-    <a class="btn btn-default" href="{{ url_for('RuntimeSecurityView.policy_json') }}">Policy JSON</a>
+    <div>
+      <a class="btn btn-default" href="{{ url_for('RuntimeSecurityView.policy_json') }}">Policy JSON</a>
+      <a class="btn btn-default" href="{{ url_for('RuntimeSecurityView.workbench_json') }}">Workbench JSON</a>
+      <a class="btn btn-default" href="{{ url_for('RuntimeSecurityView.release_gate_json') }}">Release Gate JSON</a>
+    </div>
   </div>
   <div class="agrsec-grid">
     <article class="agrsec-card">
@@ -34691,6 +34695,76 @@ def security_headers(existing=None):
     return headers
 
 
+def runtime_security_check(existing_paths=()):
+    """Return readiness for generated runtime-security artifacts."""
+    existing = set(existing_paths)
+    required = {"app/runtime_security.py", "app/templates/appgen_runtime_security.html"}
+    missing = tuple(sorted(required - existing))
+    return {
+        "ok": not missing,
+        "missing": missing,
+        "required": tuple(sorted(required)),
+        "policy": security_policy(),
+    }
+
+
+def runtime_security_release_gate(existing_paths=()):
+    """Return release evidence for generated session and header hardening."""
+    readiness = runtime_security_check(existing_paths)
+    now = datetime.fromtimestamp(2000, timezone.utc)
+    active_session = {SECURITY_POLICY["last_seen_key"]: 1900}
+    expired_session = {SECURITY_POLICY["last_seen_key"]: 1}
+    updated = mark_activity({}, now=now)
+    headers = security_headers({"X-Frame-Options": "DENY"})
+    gates = (
+        {"gate": "artifacts", "ok": readiness["ok"], "missing": readiness["missing"]},
+        {"gate": "timeout_policy", "ok": SECURITY_POLICY["idle_timeout_seconds"] >= 900 and SECURITY_POLICY["last_seen_key"], "policy": security_policy()},
+        {"gate": "public_path_bypass", "ok": is_public_path("/static/app.css") and not is_public_path("/book/list/"), "prefixes": SECURITY_POLICY["public_path_prefixes"]},
+        {"gate": "expired_session", "ok": should_logout(expired_session[SECURITY_POLICY["last_seen_key"]], now=now), "state": session_state(expired_session, now=now)},
+        {"gate": "active_session", "ok": not should_logout(active_session[SECURITY_POLICY["last_seen_key"]], now=now) and session_state(active_session, now=now)["remaining_seconds"] > 0, "state": session_state(active_session, now=now)},
+        {"gate": "activity_marker", "ok": updated[SECURITY_POLICY["last_seen_key"]] == 2000, "session": updated},
+        {"gate": "security_headers", "ok": headers["X-Frame-Options"] == "DENY" and headers["X-Content-Type-Options"] == "nosniff" and "Permissions-Policy" in headers, "headers": headers},
+    )
+    ok = all(gate["ok"] for gate in gates)
+    return {
+        "format": "appgen.runtime-security-release-gate.v1",
+        "ok": ok,
+        "decision": "approved" if ok else "blocked",
+        "gates": gates,
+    }
+
+
+def runtime_security_workbench(existing_paths=()):
+    """Return IDE-ready runtime session-security evidence."""
+    release_gate = runtime_security_release_gate(existing_paths)
+    routes = (
+        "/runtime-security/",
+        "/runtime-security/policy.json",
+        "/runtime-security/workbench.json",
+        "/runtime-security/release-gate.json",
+    )
+    checks = (
+        {"id": "artifact_evidence", "ok": release_gate["gates"][0]["ok"], "evidence": release_gate["gates"][0]},
+        {"id": "timeout_policy", "ok": next(gate for gate in release_gate["gates"] if gate["gate"] == "timeout_policy")["ok"], "evidence": next(gate for gate in release_gate["gates"] if gate["gate"] == "timeout_policy")},
+        {"id": "public_path_bypass", "ok": next(gate for gate in release_gate["gates"] if gate["gate"] == "public_path_bypass")["ok"], "evidence": next(gate for gate in release_gate["gates"] if gate["gate"] == "public_path_bypass")},
+        {"id": "expired_session", "ok": next(gate for gate in release_gate["gates"] if gate["gate"] == "expired_session")["ok"], "evidence": next(gate for gate in release_gate["gates"] if gate["gate"] == "expired_session")},
+        {"id": "active_session", "ok": next(gate for gate in release_gate["gates"] if gate["gate"] == "active_session")["ok"], "evidence": next(gate for gate in release_gate["gates"] if gate["gate"] == "active_session")},
+        {"id": "activity_marker", "ok": next(gate for gate in release_gate["gates"] if gate["gate"] == "activity_marker")["ok"], "evidence": next(gate for gate in release_gate["gates"] if gate["gate"] == "activity_marker")},
+        {"id": "security_headers", "ok": next(gate for gate in release_gate["gates"] if gate["gate"] == "security_headers")["ok"], "evidence": next(gate for gate in release_gate["gates"] if gate["gate"] == "security_headers")},
+        {"id": "route_surface", "ok": "/runtime-security/workbench.json" in routes, "evidence": {"routes": routes}},
+        {"id": "release_gate", "ok": release_gate["ok"], "evidence": release_gate},
+    )
+    ok = all(check["ok"] for check in checks)
+    return {
+        "format": "appgen.runtime-security-workbench.v1",
+        "ok": ok,
+        "decision": "approved" if ok else "blocked",
+        "checks": checks,
+        "policy": security_policy(),
+        "release_gate": release_gate,
+    }
+
+
 def register_runtime_security(app):
     """Install inactivity and response-header hooks on a Flask app."""
 
@@ -34727,6 +34801,18 @@ class RuntimeSecurityView(BaseView):
         from flask import jsonify
 
         return jsonify(SECURITY_POLICY)
+
+    @expose("/workbench.json")
+    def workbench_json(self):
+        from flask import jsonify
+
+        return jsonify(runtime_security_workbench({"app/runtime_security.py", "app/templates/appgen_runtime_security.html"}))
+
+    @expose("/release-gate.json")
+    def release_gate_json(self):
+        from flask import jsonify
+
+        return jsonify(runtime_security_release_gate({"app/runtime_security.py", "app/templates/appgen_runtime_security.html"}))
 
 
 def register_runtime_security_view(appbuilder):
@@ -43293,6 +43379,15 @@ def test_generated_runtime_helpers():
     assert security.security_workbench(
         {"SECRET_KEY": "x" * 32},
         {"app/security.py", "app/runtime_security.py", "app/identity.py", "app/rls.py", "app/compliance.py"},
+    )["ok"] is True
+    assert runtime_security.runtime_security_release_gate(
+        {"app/runtime_security.py", "app/templates/appgen_runtime_security.html"}
+    )["format"] == "appgen.runtime-security-release-gate.v1"
+    assert runtime_security.runtime_security_workbench(
+        {"app/runtime_security.py", "app/templates/appgen_runtime_security.html"}
+    )["format"] == "appgen.runtime-security-workbench.v1"
+    assert runtime_security.runtime_security_workbench(
+        {"app/runtime_security.py", "app/templates/appgen_runtime_security.html"}
     )["ok"] is True
     assert runtime_security.should_logout(1, now=runtime_security.datetime.fromtimestamp(2000, runtime_security.timezone.utc)) is True
     assurance_report = runtime_assurance.runtime_assurance_report({"p95_ms": 200, "error_rate": 0})

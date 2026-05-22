@@ -1097,6 +1097,7 @@ def test_generate_app_from_sqlite_schema_compiles(tmp_path) -> None:
     assert capabilities_by_key["platform.targets"]["status"] == "implemented"
     assert capabilities_by_key["platform.native"]["status"] == "implemented"
     assert capabilities_by_key["security.rbac"]["status"] == "implemented"
+    assert capabilities_by_key["security.session"]["status"] == "implemented"
     assert capabilities_by_key["platform.frontends"]["status"] == "implemented"
     assert capabilities_by_key["ui.view-composition"]["status"] == "implemented"
     assert capabilities_by_key["ui.tabbed-views"]["status"] == "implemented"
@@ -2365,6 +2366,9 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert "after_save_row('Book'" in views_text
     assert "ROLE_POLICIES" in (output_dir / "security.py").read_text()
     assert "RuntimeSecurityView" in (output_dir / "runtime_security.py").read_text()
+    runtime_security_template = (output_dir / "templates" / "appgen_runtime_security.html").read_text()
+    assert "Workbench JSON" in runtime_security_template
+    assert "Release Gate JSON" in runtime_security_template
     assert "WorkflowView" in (output_dir / "workflow.py").read_text()
     assert "RulesView" in (output_dir / "rules.py").read_text()
     assert "MonitoringView" in (output_dir / "monitoring.py").read_text()
@@ -2845,6 +2849,35 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     headers = runtime_security.security_headers({"X-Frame-Options": "DENY"})
     assert headers["X-Frame-Options"] == "DENY"
     assert headers["X-Content-Type-Options"] == "nosniff"
+    runtime_security_gate = runtime_security.runtime_security_release_gate(
+        {"app/runtime_security.py", "app/templates/appgen_runtime_security.html"}
+    )
+    assert runtime_security_gate["format"] == "appgen.runtime-security-release-gate.v1"
+    assert runtime_security_gate["ok"] is True
+    assert {"timeout_policy", "public_path_bypass", "expired_session", "active_session", "security_headers"} <= {
+        gate["gate"] for gate in runtime_security_gate["gates"]
+    }
+    runtime_security_workbench = runtime_security.runtime_security_workbench(
+        {"app/runtime_security.py", "app/templates/appgen_runtime_security.html"}
+    )
+    assert runtime_security_workbench["format"] == "appgen.runtime-security-workbench.v1"
+    assert runtime_security_workbench["ok"] is True
+    assert runtime_security_workbench["decision"] == "approved"
+    assert {
+        "artifact_evidence",
+        "timeout_policy",
+        "public_path_bypass",
+        "expired_session",
+        "active_session",
+        "activity_marker",
+        "security_headers",
+        "route_surface",
+        "release_gate",
+    } == {check["id"] for check in runtime_security_workbench["checks"]}
+    assert "/runtime-security/workbench.json" in next(
+        check["evidence"]["routes"] for check in runtime_security_workbench["checks"] if check["id"] == "route_surface"
+    )
+    assert runtime_security.runtime_security_workbench({"app/runtime_security.py"})["ok"] is False
     openapi_spec = openapi.openapi_spec()
     assert openapi_spec["openapi"] == "3.1.0"
     assert "/api/v1/book/" in openapi_spec["paths"]
