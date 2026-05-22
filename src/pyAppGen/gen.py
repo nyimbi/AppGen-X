@@ -5391,7 +5391,10 @@ def write_code_review_template(output_dir):
         exposure, required fields, and expected generated artifacts.
       </p>
     </div>
-    <a class="btn btn-default" href="{{ url_for('CodeReviewView.summary_json') }}">Summary JSON</a>
+    <div>
+      <a class="btn btn-default" href="{{ url_for('CodeReviewView.summary_json') }}">Summary JSON</a>
+      <a class="btn btn-default" href="{{ url_for('CodeReviewView.release_gate_json') }}">Release Gate JSON</a>
+    </div>
   </div>
   <div class="agcr-grid">
     {% for finding in summary.findings %}
@@ -29192,6 +29195,89 @@ def review_summary(existing_paths=()):
     }}
 
 
+def code_review_release_gate(existing_paths=()):
+    """Return deterministic release evidence for generated code-review coverage."""
+    findings = schema_review()
+    artifact_result = artifact_review(existing_paths)
+    required_fields = tuple(
+        (table_name, field)
+        for table_name, table in REVIEW_TABLES.items()
+        for field in table["required"]
+    )
+    hidden_fields = tuple(
+        (table_name, field)
+        for table_name, table in REVIEW_TABLES.items()
+        for field in table["hidden"]
+    )
+    checks = (
+        {{
+            "gate": "artifact_coverage",
+            "ok": artifact_result["ok"],
+            "missing": artifact_result["missing"],
+        }},
+        {{
+            "gate": "schema_rules",
+            "ok": bool(findings)
+            and {{"primary-key", "required-field"}}.issubset({{finding["rule"] for finding in findings}}),
+            "finding_count": len(findings),
+        }},
+        {{
+            "gate": "primary_key_review",
+            "ok": all(
+                any(finding["rule"] == "primary-key" and finding["table"] == table_name for finding in findings)
+                for table_name in REVIEW_TABLES
+            ),
+            "tables": tuple(REVIEW_TABLES),
+        }},
+        {{
+            "gate": "searchability_review",
+            "ok": all(
+                table["searchable"]
+                or any(
+                    finding["rule"] == "searchable-field" and finding["table"] == table_name
+                    for finding in findings
+                )
+                for table_name, table in REVIEW_TABLES.items()
+            ),
+            "warning_tables": tuple(
+                finding["table"] for finding in findings if finding["rule"] == "searchable-field"
+            ),
+        }},
+        {{
+            "gate": "required_field_review",
+            "ok": all(
+                any(
+                    finding["rule"] == "required-field"
+                    and finding["table"] == table_name
+                    and field in finding["evidence"]
+                    for finding in findings
+                )
+                for table_name, field in required_fields
+            ),
+            "required_fields": required_fields,
+        }},
+        {{
+            "gate": "protected_field_review",
+            "ok": all(
+                any(
+                    finding["rule"] == "protected-hidden-fields"
+                    and finding["table"] == table_name
+                    and field in finding["evidence"]
+                    for finding in findings
+                )
+                for table_name, field in hidden_fields
+            ),
+            "hidden_fields": hidden_fields,
+        }},
+    )
+    return {{
+        "format": "appgen.code-review-release-gate.v1",
+        "ok": all(check["ok"] for check in checks),
+        "checks": checks,
+        "warnings": tuple(item for item in findings if item["severity"] == "warning"),
+    }}
+
+
 class CodeReviewView(BaseView):
     route_base = "/code-review"
     default_view = "index"
@@ -29203,6 +29289,10 @@ class CodeReviewView(BaseView):
     @expose("/summary.json")
     def summary_json(self):
         return jsonify(review_summary())
+
+    @expose("/release-gate.json")
+    def release_gate_json(self):
+        return jsonify(code_review_release_gate(EXPECTED_ARTIFACTS))
 
 
 def register_code_review(appbuilder):
@@ -38882,6 +38972,9 @@ def test_generated_runtime_helpers():
     )["ok"] is True
     assert isinstance(code_review.schema_review(), tuple)
     assert code_review.review_summary()["ok"] is True
+    assert code_review.code_review_release_gate(code_review.EXPECTED_ARTIFACTS)["format"] == "appgen.code-review-release-gate.v1"
+    assert code_review.code_review_release_gate(code_review.EXPECTED_ARTIFACTS)["ok"] is True
+    assert code_review.code_review_release_gate({"app/models.py"})["ok"] is False
     assert version_control.version_resource_catalog()
     version_manifest = json.loads((ROOT / "app" / "appgen.json").read_text())
     version_before = version_control.snapshot_manifest(version_manifest, author="ada", message="baseline")

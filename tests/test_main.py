@@ -2382,9 +2382,9 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert "runtime self-tests" in (output_dir / "templates" / "appgen_diagnostics.html").read_text()
     assert "automated API testing" in (output_dir / "templates" / "appgen_api_testing.html").read_text()
     assert "Release Gate JSON" in (output_dir / "templates" / "appgen_api_testing.html").read_text()
-    assert "Generated automated code-review findings" in (
-        output_dir / "templates" / "appgen_code_review.html"
-    ).read_text()
+    code_review_template = (output_dir / "templates" / "appgen_code_review.html").read_text()
+    assert "Generated automated code-review findings" in code_review_template
+    assert "Release Gate JSON" in code_review_template
     assert "Generated component and widget contracts" in (
         output_dir / "templates" / "appgen_components.html"
     ).read_text()
@@ -4925,6 +4925,18 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert any(item["rule"] == "protected-hidden-fields" and item["table"] == "Book" for item in review_findings)
     assert code_review.review_summary()["ok"] is True
     assert code_review.artifact_review({"app/models.py"})["missing"]
+    code_review_gate = code_review.code_review_release_gate(code_review.EXPECTED_ARTIFACTS)
+    assert code_review_gate["format"] == "appgen.code-review-release-gate.v1"
+    assert code_review_gate["ok"] is True
+    assert {
+        "artifact_coverage",
+        "schema_rules",
+        "primary_key_review",
+        "searchability_review",
+        "required_field_review",
+        "protected_field_review",
+    } <= {check["gate"] for check in code_review_gate["checks"]}
+    assert code_review.code_review_release_gate({"app/models.py"})["ok"] is False
     component_catalog = components.component_catalog()
     assert any(item["table"] == "Book" and "form" in item["components"] for item in component_catalog)
     assert components.field_widget("Author", "email")["widget"] == "email-input"

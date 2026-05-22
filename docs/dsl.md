@@ -665,7 +665,10 @@ apps include:
   table areas, workflow areas, experience cases, quality cases, minimum case
   counts, and required quality artifacts before test coverage is claimed.
 - `code_review.py` and `appgen_code_review.html` with generated automated
-  schema and artifact review findings for quality gates.
+  schema and artifact review findings for quality gates. The generated
+  `code_review_release_gate()` proves required artifact coverage, schema-rule
+  coverage, primary-key checks, searchability review, required-field review,
+  and protected-hidden-field review before code quality is claimed.
 - `components.py` and `appgen_components.html` with generated reusable form,
   list, detail, and card component contracts plus field widget descriptors for
   visual builders. Date, datetime, and time fields produce calendar-aware
