@@ -1141,6 +1141,31 @@ def write_workflow_file(output_dir, schema: AppSchema):
         f.write("        'unreachable': unreachable,\n")
         f.write("        'dead_ends': dead_ends,\n")
         f.write("    }\n\n")
+        f.write("def workflow_release_gate(existing_paths=()):\n")
+        f.write("    \"\"\"Return release readiness for generated workflows and statecharts.\"\"\"\n")
+        f.write("    existing = set(existing_paths or ())\n")
+        f.write("    required = {'app/workflow.py', 'app/templates/appgen_workflows.html'}\n")
+        f.write("    missing = tuple(sorted(required - existing))\n")
+        f.write("    flow_names = tuple(sorted(WORKFLOWS))\n")
+        f.write("    diagnostics = tuple(workflow_graph_check(flow_name) for flow_name in flow_names)\n")
+        f.write("    workbenches = tuple(statechart_workbench(flow_name) for flow_name in flow_names)\n")
+        f.write("    checks = (\n")
+        f.write("        {'gate': 'artifacts', 'ok': not missing, 'missing': missing},\n")
+        f.write("        {'gate': 'workflow_catalog', 'ok': bool(flow_names), 'workflows': flow_names},\n")
+        f.write("        {'gate': 'statechart_exports', 'ok': bool(workbenches) and all(item['fsm']['transitions'] and item['exports']['mermaid'].startswith('stateDiagram-v2') and item['exports']['scxml'].startswith('<scxml') for item in workbenches)},\n")
+        f.write("        {'gate': 'graph_diagnostics', 'ok': bool(diagnostics) and all(item['ok'] for item in diagnostics), 'diagnostics': diagnostics},\n")
+        f.write("        {'gate': 'authorization_flows', 'ok': bool(workbenches) and all(item['authorization']['format'] == 'appgen.workflow-authorization-flow.v1' for item in workbenches)},\n")
+        f.write("        {'gate': 'approval_routes', 'ok': bool(workbenches) and all(item['approval_route']['steps'] for item in workbenches)},\n")
+        f.write("        {'gate': 'sla_runbooks', 'ok': bool(flow_names) and all(workflow_sla_plan(flow_name)['metrics'] and transition_runbook(flow_name, transitions(flow_name)[0][0], transitions(flow_name)[0][1])['requires_review'] for flow_name in flow_names if transitions(flow_name))},\n")
+        f.write("    )\n")
+        f.write("    ok = all(check['ok'] for check in checks)\n")
+        f.write("    return {\n")
+        f.write("        'format': 'appgen.workflow-release-gate.v1',\n")
+        f.write("        'ok': ok,\n")
+        f.write("        'decision': 'approved' if ok else 'blocked',\n")
+        f.write("        'checks': checks,\n")
+        f.write("        'diagnostics': diagnostics,\n")
+        f.write("    }\n\n")
         f.write("class WorkflowView(BaseView):\n")
         f.write("    route_base = '/workflows'\n")
         f.write("    default_view = 'index'\n\n")
@@ -1174,6 +1199,9 @@ def write_workflow_file(output_dir, schema: AppSchema):
         f.write("    @expose('/statecharts.json')\n")
         f.write("    def statechart_catalog_json(self):\n")
         f.write("        return jsonify(statechart_designer_catalog())\n\n")
+        f.write("    @expose('/release-gate.json')\n")
+        f.write("    def release_gate_json(self):\n")
+        f.write("        return jsonify(workflow_release_gate({'app/workflow.py', 'app/templates/appgen_workflows.html'}))\n\n")
         f.write("    @expose('/<flow_name>/proposal', methods=('POST',))\n")
         f.write("    def transition_proposal_json(self, flow_name):\n")
         f.write("        payload = request.get_json(silent=True) or {}\n")
@@ -3475,6 +3503,7 @@ def write_workflows_template(output_dir):
       Start and terminal states are inferred from the declared transition graph,
       with approval routes, SLA plans, and audit-ready runbooks for operations.
     </p>
+    <a class="btn btn-default" href="{{ url_for('WorkflowView.release_gate_json') }}">Release Gate JSON</a>
   </div>
   <div class="agw-grid">
     {% for workflow in workflows %}
@@ -35037,11 +35066,11 @@ def validate_workflow_artifacts() -> None:
         fail("workflow contract must expose SCXML, statechart workbench, and reviewed edit proposals")
     if "authorization_flow" not in contract or "can_transition_as" not in contract or "transition_authorization_plan" not in contract:
         fail("workflow contract must expose role-aware authorization flows and transition checks")
-    if "workflow_approval_route" not in contract or "workflow_sla_plan" not in contract or "transition_runbook" not in contract or "workflow_audit_event" not in contract:
-        fail("workflow contract must expose approval routes, SLA plans, transition runbooks, and audit events")
+    if "workflow_approval_route" not in contract or "workflow_sla_plan" not in contract or "transition_runbook" not in contract or "workflow_audit_event" not in contract or "workflow_release_gate" not in contract:
+        fail("workflow contract must expose approval routes, SLA plans, transition runbooks, audit events, and release gates")
     template = (ROOT / "app" / "templates" / "appgen_workflows.html").read_text()
-    if "FSM JSON" not in template or "Mermaid" not in template or "SCXML" not in template or "Workbench JSON" not in template or "Authorization JSON" not in template or "Approval Route JSON" not in template or "SLA JSON" not in template:
-        fail("workflow template must expose state-chart, authorization, approval, and SLA export links")
+    if "FSM JSON" not in template or "Mermaid" not in template or "SCXML" not in template or "Workbench JSON" not in template or "Authorization JSON" not in template or "Approval Route JSON" not in template or "SLA JSON" not in template or "Release Gate JSON" not in template:
+        fail("workflow template must expose state-chart, authorization, approval, SLA, and release export links")
 
 
 def validate_rules_artifacts() -> None:
@@ -36245,6 +36274,8 @@ def test_generated_runtime_helpers():
     assert workflow.transition_authorization_plan(first_flow, workflow.WORKFLOWS[first_flow][0][0], workflow.WORKFLOWS[first_flow][0][1])["valid_transition"] is True
     assert workflow.transition_runbook(first_flow, workflow.WORKFLOWS[first_flow][0][0], workflow.WORKFLOWS[first_flow][0][1])["requires_review"] is True
     assert workflow.transition_proposal(first_flow, "review", "approved")["requires_review"] is True
+    assert workflow.workflow_release_gate({"app/workflow.py", "app/templates/appgen_workflows.html"})["ok"] is True
+    assert workflow.workflow_release_gate({"app/workflow.py"})["ok"] is False
     first_validation_table = validation.validation_catalog()[0]["name"]
     assert validation.validate_payload(first_validation_table, {})["format"] == "appgen.validation-result.v1"
     assert validation.ui_validation_schema(first_validation_table)["format"] == "appgen.ui-validation.v1"

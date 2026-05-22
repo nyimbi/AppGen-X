@@ -198,6 +198,10 @@ flow Publish {
 Generated workflow artifacts include transition helpers, Mermaid state diagrams,
 provider-neutral FSM JSON, SCXML export for state-chart tools, graph diagnostics,
 and reviewed transition proposals that can be turned back into DSL.
+Use `workflow_release_gate()` or `/workflows/release-gate.json` to prove
+workflow artifacts, FSM/Mermaid/SCXML exports, graph diagnostics,
+authorization flows, approval routes, SLA metadata, and transition runbooks
+before treating generated workflow automation as release-ready.
 
 Use `rule` for validation and decisions:
 

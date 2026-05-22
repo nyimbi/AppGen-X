@@ -2633,6 +2633,16 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert workbench["diagnostics"]["ok"] is True
     proposal = workflow.transition_proposal("Publish", "review", "approved", actor="ada")
     assert proposal["requires_review"] is True
+    workflow_gate = workflow.workflow_release_gate({"app/workflow.py", "app/templates/appgen_workflows.html"})
+    assert workflow_gate["format"] == "appgen.workflow-release-gate.v1"
+    assert workflow_gate["ok"] is True
+    assert {check["gate"] for check in workflow_gate["checks"]} >= {
+        "statechart_exports",
+        "authorization_flows",
+        "approval_routes",
+        "sla_runbooks",
+    }
+    assert workflow.workflow_release_gate({"app/workflow.py"})["ok"] is False
     assert proposal["dsl"] == "flow Publish {\n  review -> approved;\n}\n"
     assert "New source state: review" in proposal["warnings"]
     assert rules.rules_for_table("Book")[0]["name"] == "PublishPolicy"

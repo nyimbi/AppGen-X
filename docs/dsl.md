@@ -240,7 +240,10 @@ apps include:
   workflow authorization flows derived from declared roles, approval routes,
   SLA/escalation plans, audit events, reviewed transition runbooks, reviewed
   transition proposals that regenerate DSL, and a generated workflow/statechart
-  cockpit.
+  cockpit. The generated `workflow_release_gate()` proves workflow artifacts,
+  FSM/Mermaid/SCXML exports, graph diagnostics, authorization flows, approval
+  routes, SLA metadata, and reviewed runbooks before workflow readiness is
+  claimed.
 - `rules.py` and `appgen_rules.html` with generated business-rule validation,
   row checks, decision-tree exports, branch action plans, and row-level
   decision traces.
