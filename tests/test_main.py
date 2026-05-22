@@ -944,9 +944,27 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "background_resume_workflow",
     } == {check["id"] for check in mobile_workbench["checks"]}
     mobile_apis = set(mobile_workbench["contract"]["apis"])
+    assert {
+        "microphone",
+        "audio_player",
+        "video_player",
+        "haptics",
+        "vibration",
+        "clipboard",
+        "deep_links",
+        "app_lifecycle",
+        "network_status",
+        "filesystem",
+        "device_info",
+        "maps",
+        "screen_capture",
+    } <= mobile_apis
     assert mobile_apis == {permission["api"] for permission in mobile_workbench["contract"]["permission_manifest"]["permissions"]}
     assert mobile_apis == {adapter["api"] for adapter in mobile_workbench["contract"]["component_adapters"]["adapters"]}
     assert mobile_apis == {fixture["api"] for fixture in mobile_workbench["contract"]["simulator"]["fixtures"]}
+    assert {"media_permission_denied", "clipboard_sandbox", "lifecycle_resume"} <= set(
+        mobile_workbench["contract"]["component_adapters"]["test_harnesses"]
+    )
     assert mobile_workbench["permission_workflow"]["steps"][-1] == "dispatch_result"
     assert "emit_component_event" in mobile_workbench["adapter_dispatch"]["pipeline"]
     assert "assert_component_events" in mobile_workbench["simulator_replay"]["scenario"]
@@ -9098,6 +9116,21 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "background_resume_workflow",
     } == {check["id"] for check in generated_mobile["checks"]}
     generated_mobile_apis = set(generated_mobile["contract"]["apis"])
+    assert {
+        "microphone",
+        "audio_player",
+        "video_player",
+        "haptics",
+        "vibration",
+        "clipboard",
+        "deep_links",
+        "app_lifecycle",
+        "network_status",
+        "filesystem",
+        "device_info",
+        "maps",
+        "screen_capture",
+    } <= generated_mobile_apis
     assert generated_mobile_apis == {
         permission["api"] for permission in generated_mobile["contract"]["permission_manifest"]["permissions"]
     }
@@ -9107,6 +9140,9 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert generated_mobile_apis == {
         fixture["api"] for fixture in generated_mobile["contract"]["simulator"]["fixtures"]
     }
+    assert {"media_permission_denied", "clipboard_sandbox", "lifecycle_resume"} <= set(
+        generated_mobile["contract"]["component_adapters"]["test_harnesses"]
+    )
     assert generated_mobile["permission_workflow"]["steps"][-1] == "dispatch_result"
     assert "emit_component_event" in generated_mobile["adapter_dispatch"]["pipeline"]
     assert "assert_component_events" in generated_mobile["simulator_replay"]["scenario"]
