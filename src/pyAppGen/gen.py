@@ -5016,7 +5016,10 @@ def write_realtime_template(output_dir):
         changes, proposal activity, team messages, SSE frames, and reconnect replay.
       </p>
     </div>
-    <a class="btn btn-default" href="{{ url_for('RealtimeView.topics_json') }}">Topics JSON</a>
+    <div>
+      <a class="btn btn-default" href="{{ url_for('RealtimeView.topics_json') }}">Topics JSON</a>
+      <a class="btn btn-default" href="{{ url_for('RealtimeView.release_gate_json') }}">Release Gate JSON</a>
+    </div>
   </div>
   <div class="agr-grid">
     {% for item in topics %}
@@ -26469,6 +26472,46 @@ def replay_plan(*, last_event_id=None, limit=100):
     }}
 
 
+def realtime_check(existing_paths=()):
+    """Return readiness for generated realtime artifacts."""
+    existing = set(existing_paths)
+    required = {{"app/realtime.py", "app/templates/appgen_realtime.html"}}
+    missing = tuple(sorted(required - existing))
+    return {{
+        "ok": not missing and bool(REALTIME_TOPICS),
+        "missing": missing,
+        "tables": tuple(REALTIME_TOPICS),
+        "topic_count": sum(len(spec["topics"]) for spec in REALTIME_TOPICS.values()),
+    }}
+
+
+def realtime_release_gate(existing_paths=()):
+    """Return release readiness for generated realtime collaboration contracts."""
+    readiness = realtime_check(existing_paths)
+    topics = realtime_topics()
+    first_topic = topics[0]["topics"][0] if topics else None
+    event = event_payload(first_topic, {{"sample": True}}, actor="release-gate", event_id="evt-release") if first_topic else {{}}
+    frame = sse_frame(event) if event else ""
+    message = collaboration_message("release-room", "release-gate", "Ready", metadata={{"topic": first_topic}}) if first_topic else {{}}
+    replay = replay_plan(last_event_id="evt-release", limit=5000)
+    minimum_topics = len(topics) * 5
+    gates = (
+        {{"gate": "artifacts", "ok": readiness["ok"], "missing": readiness["missing"]}},
+        {{"gate": "topic_catalog", "ok": bool(topics) and readiness["topic_count"] >= minimum_topics and all({{"created", "updated", "deleted", "proposal", "message"}} <= {{topic.rsplit(".", 1)[-1] for topic in item["topics"]}} for item in topics), "topic_count": readiness["topic_count"]}},
+        {{"gate": "event_payload", "ok": bool(event) and event.get("topic") == first_topic and event.get("actor") == "release-gate" and event.get("data", {{}}).get("sample") is True, "event": event}},
+        {{"gate": "sse_frame", "ok": frame.startswith("id: evt-release\\nevent: ") and "\\ndata: " in frame and frame.endswith("\\n\\n"), "frame": frame}},
+        {{"gate": "collaboration_message", "ok": message.get("room") == "release-room" and message.get("sender") == "release-gate" and message.get("metadata", {{}}).get("topic") == first_topic, "message": message}},
+        {{"gate": "replay_plan", "ok": replay["last_event_id"] == "evt-release" and replay["limit"] == 1000 and first_topic in replay["topics"], "replay": replay}},
+    )
+    ok = all(gate["ok"] for gate in gates)
+    return {{
+        "format": "appgen.realtime-release-gate.v1",
+        "ok": ok,
+        "decision": "approved" if ok else "blocked",
+        "gates": gates,
+    }}
+
+
 class RealtimeView(BaseView):
     route_base = "/realtime"
     default_view = "index"
@@ -26480,6 +26523,10 @@ class RealtimeView(BaseView):
     @expose("/topics.json")
     def topics_json(self):
         return jsonify(list(realtime_topics()))
+
+    @expose("/release-gate.json")
+    def release_gate_json(self):
+        return jsonify(realtime_release_gate({{"app/realtime.py", "app/templates/appgen_realtime.html"}}))
 
 
 def register_realtime(appbuilder):
@@ -35374,9 +35421,11 @@ def validate_realtime_artifacts() -> None:
     contract = (ROOT / "app" / "realtime.py").read_text()
     if "realtime_topics" not in contract or "sse_frame" not in contract or "collaboration_message" not in contract:
         fail("realtime contract must expose topics, SSE frames, and messages")
+    if "realtime_check" not in contract or "realtime_release_gate" not in contract:
+        fail("realtime contract must expose readiness and release gates")
     template = (ROOT / "app" / "templates" / "appgen_realtime.html").read_text()
-    if "Realtime" not in template or "Topics JSON" not in template:
-        fail("realtime template must expose generated topics")
+    if "Realtime" not in template or "Topics JSON" not in template or "Release Gate JSON" not in template:
+        fail("realtime template must expose generated topics and release readiness")
 
 
 def validate_collaboration_artifacts() -> None:
@@ -37272,6 +37321,8 @@ def test_generated_runtime_helpers():
     assert "event: " in realtime.sse_frame(
         realtime.event_payload(realtime.realtime_topics()[0]["topics"][0], {})
     )
+    assert realtime.realtime_release_gate({{"app/realtime.py", "app/templates/appgen_realtime.html"}})["ok"] is True
+    assert realtime.realtime_release_gate({{"app/realtime.py"}})["ok"] is False
     event_topic = events.all_topics()[0]
     event = events.normalize_event(event_topic, {"ok": True})
     assert "audit" in events.match_event_rules(event)

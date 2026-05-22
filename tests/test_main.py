@@ -4235,6 +4235,13 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert realtime.sse_frame(event).startswith("id: evt-1\nevent: Book_updated\n")
     assert realtime.collaboration_message("Book", "ada", "Ready")["body"] == "Ready"
     assert "Book.updated" in realtime.replay_plan(limit=10)["topics"]
+    realtime_gate = realtime.realtime_release_gate({"app/realtime.py", "app/templates/appgen_realtime.html"})
+    assert realtime_gate["format"] == "appgen.realtime-release-gate.v1"
+    assert realtime_gate["ok"] is True
+    assert {"topic_catalog", "event_payload", "sse_frame", "collaboration_message", "replay_plan"} <= {
+        gate["gate"] for gate in realtime_gate["gates"]
+    }
+    assert realtime.realtime_release_gate({"app/realtime.py"})["ok"] is False
     event_catalog = events.event_catalog()
     assert any("Book.created" in item["topics"] for item in event_catalog["tables"])
     workflow_topic = "workflow.Publish.draft.published"

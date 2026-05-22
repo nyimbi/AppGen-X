@@ -443,6 +443,10 @@ automation readiness. The gate checks RPA/BPA task catalogs, process models,
 BPMN/UML exports, simulations, vendor export packages, queue payloads,
 credential contracts, audit envelopes, business-process observations, and
 required automation artifacts.
+Use `/realtime/release-gate.json` or `realtime_release_gate()` to prove
+interactive event-stream readiness. The gate checks table topic catalogs,
+event payload shape, SSE frame rendering, collaboration message payloads,
+reconnect replay bounds, and required realtime artifacts.
 Use `/extensions/release-gate.json` or `extension_release_gate()` to prove
 custom-code extensibility is ready: the gate checks generated artifacts, stable
 hook catalogs, table lifecycle hooks, generated-rule dispatch, custom-module

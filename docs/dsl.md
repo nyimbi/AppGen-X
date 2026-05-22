@@ -598,6 +598,9 @@ apps include:
   component sharing rather than only a scaffolding command runner.
 - `realtime.py` and `appgen_realtime.html` with generated event topics,
   Server-Sent Events frames, collaboration messages, and reconnect replay plans.
+  A generated realtime release gate proves topic catalogs, event payloads, SSE
+  rendering, collaboration message payloads, replay bounds, and required
+  realtime artifacts.
 - `diagnostics.py` and `appgen_diagnostics.html` with generated schema
   invariants, row validation, redacted debug snapshots, remediation plans,
   support bundles, API smoke plans, and load-test plans. A generated
