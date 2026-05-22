@@ -1078,6 +1078,7 @@ def test_generate_app_from_sqlite_schema_compiles(tmp_path) -> None:
     assert capabilities_by_key["platform.extensibility"]["status"] == "implemented"
     assert "devops.packaging" in {item["key"] for item in manifest["capabilities"]}
     assert capabilities_by_key["devops.packaging"]["status"] == "implemented"
+    assert capabilities_by_key["ops.notifications"]["status"] == "implemented"
     assert "data.seed" in {item["key"] for item in manifest["capabilities"]}
     assert "ui.visual-modeling" in {item["key"] for item in manifest["capabilities"]}
     assert "ui.pwa" in {item["key"] for item in manifest["capabilities"]}
@@ -4681,6 +4682,28 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "queue_metadata",
         "unknown_channel_guard",
     } <= {check["gate"] for check in notification_gate["checks"]}
+    assert "Workbench JSON" in (output_dir / "templates" / "appgen_notifications.html").read_text()
+    notification_workbench = notifications.notification_workbench(
+        {"app/notifications.py", "app/templates/appgen_notifications.html"}
+    )
+    assert notification_workbench["format"] == "appgen.notification-workbench.v1"
+    assert notification_workbench["ok"] is True
+    assert notification_workbench["decision"] == "approved"
+    assert {
+        "artifact_coverage",
+        "channel_catalog",
+        "env_secret_policy",
+        "event_catalog",
+        "payload_contract",
+        "queue_metadata",
+        "unknown_channel_guard",
+        "release_gate",
+        "route_surface",
+    } == {check["id"] for check in notification_workbench["checks"]}
+    assert "/notifications/workbench.json" in next(
+        check["evidence"]["routes"] for check in notification_workbench["checks"] if check["id"] == "route_surface"
+    )
+    assert notifications.notification_workbench({"app/notifications.py"})["ok"] is False
     assert notifications.notification_release_gate({"app/notifications.py"})["ok"] is False
     agent_providers = agents.provider_catalog({})
     assert {provider["mode"] for provider in agent_providers} == {"local", "api"}

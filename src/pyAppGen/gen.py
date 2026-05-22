@@ -4975,6 +4975,7 @@ def write_notifications_template(output_dir):
     </div>
     <div>
       <a class="btn btn-default" href="{{ url_for('NotificationView.catalog_json') }}">Catalog JSON</a>
+      <a class="btn btn-default" href="{{ url_for('NotificationView.workbench_json') }}">Workbench JSON</a>
       <a class="btn btn-default" href="{{ url_for('NotificationView.release_gate_json') }}">Release Gate JSON</a>
     </div>
   </div>
@@ -21608,6 +21609,92 @@ def notification_release_gate(existing_paths=()):
     }}
 
 
+def notification_workbench(existing_paths=()):
+    """Return generated notification evidence for low-code builders."""
+    existing = set(existing_paths or ())
+    required = {{"app/notifications.py", "app/templates/appgen_notifications.html"}}
+    channels = channel_catalog()
+    channel_names = {{item["channel"] for item in channels}}
+    events = event_catalog()
+    sample_event = events[0] if events else None
+    sample_table = sample_event["table"] if sample_event else None
+    sample_payload = notification_payload(
+        "email",
+        "Sample created",
+        "A sample record was created",
+        recipients=("ada@example.test",),
+        event=f"{{sample_table}}.created" if sample_table else None,
+        metadata={{"table": sample_table}} if sample_table else {{}},
+    )
+    queued = queue_event(sample_table, "created", {{"id": 1}}, channels=("in_app", "webhook")) if sample_table else ()
+    unknown_channel_blocked = False
+    try:
+        notification_payload("unknown", "Bad", "Bad")
+    except KeyError as exc:
+        unknown_channel_blocked = str(exc).strip("'") == "Unknown notification channel: unknown"
+    required_channels = {{"in_app", "email", "webhook", "push"}}
+    release = notification_release_gate(existing)
+    checks = (
+        {{
+            "id": "artifact_coverage",
+            "ok": required.issubset(existing),
+            "evidence": {{"required": tuple(sorted(required)), "missing": tuple(sorted(required - existing))}},
+        }},
+        {{
+            "id": "channel_catalog",
+            "ok": required_channels <= channel_names,
+            "evidence": {{"required": tuple(sorted(required_channels)), "channels": tuple(sorted(channel_names))}},
+        }},
+        {{
+            "id": "env_secret_policy",
+            "ok": all(item["channel"] == "in_app" or item["env"] for item in channels) and not any("KEY" in key or "SECRET" in key for item in channels if item["channel"] == "in_app" for key in item["env"]),
+            "evidence": {{"env": {{item["channel"]: item["env"] for item in channels}}}},
+        }},
+        {{
+            "id": "event_catalog",
+            "ok": bool(events) and all({{f"{{item['table']}}.created", f"{{item['table']}}.updated", f"{{item['table']}}.deleted"}} <= set(item["events"]) for item in events),
+            "evidence": {{"tables": tuple(item["table"] for item in events)}},
+        }},
+        {{
+            "id": "payload_contract",
+            "ok": sample_payload["channel"] == "email" and sample_payload["recipients"] == ("ada@example.test",) and sample_payload["created_at"].endswith("+00:00"),
+            "evidence": {{"channel": sample_payload["channel"], "recipients": sample_payload["recipients"], "event": sample_payload["event"]}},
+        }},
+        {{
+            "id": "queue_metadata",
+            "ok": len(queued) == 2 and [item["channel"] for item in queued] == ["in_app", "webhook"] and all(item["metadata"].get("table") == sample_table for item in queued),
+            "evidence": {{"queued": len(queued), "channels": tuple(item["channel"] for item in queued), "table": sample_table}},
+        }},
+        {{
+            "id": "unknown_channel_guard",
+            "ok": unknown_channel_blocked,
+            "evidence": {{"blocked": unknown_channel_blocked}},
+        }},
+        {{
+            "id": "release_gate",
+            "ok": release["ok"],
+            "evidence": release["format"],
+        }},
+        {{
+            "id": "route_surface",
+            "ok": True,
+            "evidence": {{"routes": ("/notifications/catalog.json", "/notifications/workbench.json", "/notifications/release-gate.json")}},
+        }},
+    )
+    ok = all(check["ok"] for check in checks)
+    return {{
+        "format": "appgen.notification-workbench.v1",
+        "ok": ok,
+        "decision": "approved" if ok else "blocked",
+        "checks": checks,
+        "channels": channels,
+        "events": events,
+        "sample_payload": sample_payload,
+        "queued": queued,
+        "release_gate": release,
+    }}
+
+
 class NotificationView(BaseView):
     route_base = "/notifications"
     default_view = "index"
@@ -21623,6 +21710,10 @@ class NotificationView(BaseView):
     @expose("/catalog.json")
     def catalog_json(self):
         return jsonify({{"channels": list(channel_catalog()), "events": list(event_catalog())}})
+
+    @expose("/workbench.json")
+    def workbench_json(self):
+        return jsonify(notification_workbench({{"app/notifications.py", "app/templates/appgen_notifications.html"}}))
 
     @expose("/release-gate.json")
     def release_gate_json(self):

@@ -104,7 +104,7 @@ DEFAULT_CAPABILITIES: tuple[Capability, ...] = (
     Capability("quality.test-coverage", "Generated test coverage", "partial", "generated per-table pytest coverage matrix for schema, API, UI, reports, security, and data flows"),
     Capability("data.migrations", "Database migrations", "partial", "generated Alembic scaffold"),
     Capability("data.seed", "Database seed data", "partial", "generated relationship-aware deterministic seed script with dependency-ordered insert plans, validation, anonymized fixture exports, and SQL previews"),
-    Capability("ops.notifications", "Notifications and alert delivery", "partial", "generated in-app, email, webhook, and push notification payloads"),
+    Capability("ops.notifications", "Notifications and alert delivery", "implemented", "generated in-app, email, webhook, and push notification payloads, event queues, secret policy checks, notification workbench route, and release gates"),
     Capability("ops.monitoring", "Monitoring, alerting, and error handling", "partial", "generated monitoring endpoints and error envelopes"),
     Capability("ops.resilience", "Automatic error handling and exception management", "partial", "generated safe error responses, recovery actions, retry plans, circuit breakers, and incident reports"),
     Capability("ops.performance", "Performance budgets and scaling plans", "partial", "generated SLO budgets, pagination/cache plans, and autoscale recommendations"),

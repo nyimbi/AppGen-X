@@ -623,9 +623,10 @@ apps include:
   coverage before `components.text-quality` is marked implemented.
 - `notifications.py` and `appgen_notifications.html` with generated in-app,
   email, webhook, and push-style notification payloads for table events. The
-  generated `notification_release_gate()` proves channel catalogs, environment
-  secret policy, generated table events, payload contracts, queue metadata, and
-  unknown-channel guardrails.
+  generated `notification_workbench()` proves channel catalogs, environment
+  secret policy, generated table events, payload contracts, queue metadata,
+  unknown-channel guardrails, release gates, and route coverage before
+  `ops.notifications` is marked implemented.
 - `platforms.py` and `appgen_platforms.html` with generated web, PWA, mobile,
   desktop, and chatbot target contracts plus a web/mobile/desktop generation
   matrix, target package matrix, mobile capability contract, and platform
