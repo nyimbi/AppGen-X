@@ -4155,7 +4155,10 @@ def write_emerging_template(output_dir):
         contracts for edge-ready AppGen applications.
       </p>
     </div>
-    <a class="btn btn-default" href="{{ url_for('EmergingView.catalog_json') }}">Emerging Catalog JSON</a>
+    <div>
+      <a class="btn btn-default" href="{{ url_for('EmergingView.catalog_json') }}">Emerging Catalog JSON</a>
+      <a class="btn btn-default" href="{{ url_for('EmergingView.release_gate_json') }}">Release Gate JSON</a>
+    </div>
   </div>
   <div class="agex-grid">
     {% for item in devices %}
@@ -17598,6 +17601,79 @@ def emerging_check(existing_paths=()):
     }}
 
 
+def emerging_release_gate(existing_paths=()):
+    """Return a release decision for generated IoT and blockchain contracts."""
+    existing = set(existing_paths)
+    required = ("app/emerging.py", "app/templates/appgen_emerging.html")
+    missing = tuple(path for path in required if path not in existing)
+    devices = device_catalog()
+    device = devices[0] if devices else None
+    device_name = device["name"] if device else None
+    metric = device["metrics"][0] if device and device["metrics"] else None
+    telemetry = telemetry_event(device_name, {{metric: 1}}, device_id="device-1") if device_name and metric else {{}}
+    telemetry_validation = validate_telemetry(telemetry) if telemetry else {{"ok": False}}
+    command = command_payload(device_name, "sync", requested_by="builder") if device_name else {{}}
+    anchor = blockchain_anchor(device["table"], {{"id": 1}}, network="ethereum", actor="builder") if device else {{}}
+    anchor_check = verify_anchor(anchor, {{"id": 1}}) if anchor else {{"ok": False}}
+    contract = smart_contract_plan(device["table"], network="hyperledger") if device else {{}}
+    edge = edge_sync_plan(device_name) if device_name else {{}}
+    unknown_metric_blocked = False
+    unsupported_command_blocked = False
+    if device_name:
+        try:
+            telemetry_event(device_name, {{"unknown_metric": 1}})
+        except ValueError:
+            unknown_metric_blocked = True
+        try:
+            command_payload(device_name, "reboot")
+        except ValueError:
+            unsupported_command_blocked = True
+    checks = (
+        {{
+            "gate": "artifact_coverage",
+            "ok": not missing,
+            "evidence": {{"required": required, "missing": missing}},
+        }},
+        {{
+            "gate": "device_catalog",
+            "ok": bool(devices) and all(item["telemetry_topic"] and item["command_topic"] and item["metrics"] for item in devices),
+            "evidence": {{"device_count": len(devices), "devices": tuple(item["name"] for item in devices)}},
+        }},
+        {{
+            "gate": "telemetry_validation",
+            "ok": telemetry_validation["ok"] and unknown_metric_blocked,
+            "evidence": {{"topic": telemetry.get("topic"), "metric": metric, "unknown_metric_blocked": unknown_metric_blocked}},
+        }},
+        {{
+            "gate": "command_contract",
+            "ok": command.get("topic") == (device.get("command_topic") if device else None) and unsupported_command_blocked,
+            "evidence": {{"command": command.get("command"), "unsupported_command_blocked": unsupported_command_blocked}},
+        }},
+        {{
+            "gate": "blockchain_anchor",
+            "ok": anchor.get("anchor_mode") == "hash-only" and anchor_check["ok"],
+            "evidence": {{"network": anchor.get("network"), "hash": anchor.get("hash")}},
+        }},
+        {{
+            "gate": "smart_contract_plan",
+            "ok": contract.get("anchor_mode") == "private-channel" and bool(contract.get("events")) and bool(contract.get("methods")),
+            "evidence": {{"network": contract.get("network"), "events": contract.get("events", ())}},
+        }},
+        {{
+            "gate": "edge_sync",
+            "ok": edge.get("offline") is True and edge.get("buffer") == "sqlite" and edge.get("retry", {{}}).get("max_attempts", 0) >= 3,
+            "evidence": {{"buffer": edge.get("buffer"), "retry": edge.get("retry")}},
+        }},
+    )
+    ok = all(check["ok"] for check in checks)
+    return {{
+        "format": "appgen.emerging-release-gate.v1",
+        "ok": ok,
+        "decision": "approved" if ok else "blocked",
+        "checks": checks,
+    }}
+
+
 class EmergingView(BaseView):
     route_base = "/emerging"
     default_view = "index"
@@ -17609,6 +17685,10 @@ class EmergingView(BaseView):
     @expose("/catalog.json")
     def catalog_json(self):
         return jsonify({{"devices": list(device_catalog()), "networks": BLOCKCHAIN_NETWORKS}})
+
+    @expose("/release-gate.json")
+    def release_gate_json(self):
+        return jsonify(emerging_release_gate({{"app/emerging.py", "app/templates/appgen_emerging.html"}}))
 
 
 def register_emerging(appbuilder):
@@ -36496,9 +36576,11 @@ def validate_emerging_artifacts() -> None:
         fail("emerging-tech contract must expose IoT telemetry, commands, and edge sync")
     if "blockchain_anchor" not in contract or "verify_anchor" not in contract or "smart_contract_plan" not in contract:
         fail("emerging-tech contract must expose blockchain audit-anchor helpers")
+    if "emerging_release_gate" not in contract or "appgen.emerging-release-gate.v1" not in contract or '@expose("/release-gate.json")' not in contract:
+        fail("emerging-tech contract must expose release readiness checks and route")
     template = (ROOT / "app" / "templates" / "appgen_emerging.html").read_text()
-    if "Emerging Integrations" not in template or "Emerging Catalog JSON" not in template:
-        fail("emerging-tech template must expose IoT and blockchain catalog")
+    if "Emerging Integrations" not in template or "Emerging Catalog JSON" not in template or "Release Gate JSON" not in template:
+        fail("emerging-tech template must expose IoT and blockchain catalog plus release readiness")
 
 
 def validate_sdk_artifacts() -> None:
@@ -37860,6 +37942,7 @@ def test_generated_runtime_helpers():
     integrations = load_module(ROOT / "app" / "integrations.py", "generated_integrations")
     productivity = load_module(ROOT / "app" / "productivity.py", "generated_productivity")
     lifecycle = load_module(ROOT / "app" / "lifecycle.py", "generated_lifecycle")
+    emerging = load_module(ROOT / "app" / "emerging.py", "generated_emerging")
     tenancy = load_module(ROOT / "app" / "tenancy.py", "generated_tenancy")
     rls = load_module(ROOT / "app" / "rls.py", "generated_rls")
     identity = load_module(ROOT / "app" / "identity.py", "generated_identity")
@@ -38314,6 +38397,18 @@ def test_generated_runtime_helpers():
     assert lifecycle.lifecycle_check({"app/lifecycle.py", "app/templates/appgen_lifecycle.html"})["ok"] is True
     assert lifecycle.lifecycle_release_gate({"app/lifecycle.py", "app/templates/appgen_lifecycle.html"})["ok"] is True
     assert lifecycle.lifecycle_release_gate({"app/lifecycle.py"})["ok"] is False
+    first_device = emerging.device_catalog()[0]
+    telemetry = emerging.telemetry_event(first_device["name"], {first_device["metrics"][0]: 1})
+    assert emerging.validate_telemetry(telemetry)["ok"] is True
+    assert emerging.command_payload(first_device["name"], "sync")["topic"] == first_device["command_topic"]
+    anchor = emerging.blockchain_anchor(first_device["table"], {"id": 1})
+    assert emerging.verify_anchor(anchor, {"id": 1})["ok"] is True
+    assert emerging.smart_contract_plan(first_device["table"], network="hyperledger")["anchor_mode"] == "private-channel"
+    assert emerging.edge_sync_plan(first_device["name"])["buffer"] == "sqlite"
+    assert emerging.emerging_check({"app/emerging.py", "app/templates/appgen_emerging.html"})["ok"] is True
+    assert emerging.emerging_release_gate({"app/emerging.py", "app/templates/appgen_emerging.html"})["format"] == "appgen.emerging-release-gate.v1"
+    assert emerging.emerging_release_gate({"app/emerging.py", "app/templates/appgen_emerging.html"})["ok"] is True
+    assert emerging.emerging_release_gate({"app/emerging.py"})["ok"] is False
     assert isinstance(tenancy.tenant_catalog(), tuple)
     assert isinstance(rls.rls_catalog(), tuple)
     assert rls.postgres_role_sync_plan()["review_required"] is True

@@ -425,6 +425,12 @@ apps include:
   lifecycle release gate proves environment coverage, production configuration,
   release controls, promotion/domain readiness, maintenance/update plans,
   feedback/testing/issue loops, and required lifecycle artifacts.
+- `emerging.py` and `appgen_emerging.html` with generated IoT device catalogs,
+  telemetry validation, device command payloads, blockchain audit anchors,
+  smart-contract adapter plans, and edge/offline sync guidance. A generated
+  emerging release gate proves device and topic coverage, telemetry and command
+  guardrails, hash-only anchor verification, private-channel contract plans,
+  edge buffering/retry behavior, and required emerging-tech artifacts.
 - `tenancy.py` and `appgen_tenancy.html` with generated tenant-column
   detection, tenant context extraction, and filter helpers for row isolation.
 - `rls.py` and `appgen_rls.html` with generated tenant-aware row-level

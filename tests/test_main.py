@@ -2068,6 +2068,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     py_compile.compile(str(output_dir / "integrations.py"), doraise=True)
     py_compile.compile(str(output_dir / "productivity.py"), doraise=True)
     py_compile.compile(str(output_dir / "lifecycle.py"), doraise=True)
+    py_compile.compile(str(output_dir / "emerging.py"), doraise=True)
     py_compile.compile(str(output_dir / "tenancy.py"), doraise=True)
     py_compile.compile(str(output_dir / "rls.py"), doraise=True)
     py_compile.compile(str(output_dir / "identity.py"), doraise=True)
@@ -2203,6 +2204,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert "@expose('/proposal'" in (output_dir / "designer.py").read_text()
     assert "ConfigAdminView" in (output_dir / "config_admin.py").read_text()
     assert "IntegrationView" in (output_dir / "integrations.py").read_text()
+    assert "EmergingView" in (output_dir / "emerging.py").read_text()
     assert "TenancyView" in (output_dir / "tenancy.py").read_text()
     assert "RowLevelSecurityView" in (output_dir / "rls.py").read_text()
     assert "IdentityView" in (output_dir / "identity.py").read_text()
@@ -2316,6 +2318,9 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert "Release Gate JSON" in (output_dir / "templates" / "appgen_productivity.html").read_text()
     assert "Lifecycle JSON" in (output_dir / "templates" / "appgen_lifecycle.html").read_text()
     assert "Release Gate JSON" in (output_dir / "templates" / "appgen_lifecycle.html").read_text()
+    emerging_template = (output_dir / "templates" / "appgen_emerging.html").read_text()
+    assert "Emerging Catalog JSON" in emerging_template
+    assert "Release Gate JSON" in emerging_template
     assert "Release Gate JSON" in (output_dir / "templates" / "appgen_project_management.html").read_text()
     assert "tenant_id" in (output_dir / "templates" / "appgen_tenancy.html").read_text()
     assert "row-level security contracts" in (output_dir / "templates" / "appgen_rls.html").read_text()
@@ -2498,6 +2503,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     integrations = _load_module(output_dir / "integrations.py", "generated_integrations")
     productivity = _load_module(output_dir / "productivity.py", "generated_productivity")
     lifecycle = _load_module(output_dir / "lifecycle.py", "generated_lifecycle")
+    emerging = _load_module(output_dir / "emerging.py", "generated_emerging")
     tenancy = _load_module(output_dir / "tenancy.py", "generated_tenancy")
     rls = _load_module(output_dir / "rls.py", "generated_rls")
     identity = _load_module(output_dir / "identity.py", "generated_identity")
@@ -3938,6 +3944,29 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "artifact_coverage",
     } <= {gate["gate"] for gate in lifecycle_gate["gates"]}
     assert lifecycle.lifecycle_release_gate({"app/lifecycle.py"})["ok"] is False
+    first_device = emerging.device_catalog()[0]
+    telemetry = emerging.telemetry_event(first_device["name"], {first_device["metrics"][0]: 1}, device_id="device-1")
+    assert telemetry["topic"] == first_device["telemetry_topic"]
+    assert emerging.validate_telemetry(telemetry)["ok"] is True
+    assert emerging.command_payload(first_device["name"], "sync")["topic"] == first_device["command_topic"]
+    anchor = emerging.blockchain_anchor("Book", {"id": 1}, network="ethereum")
+    assert emerging.verify_anchor(anchor, {"id": 1})["ok"] is True
+    assert emerging.smart_contract_plan("Book", network="hyperledger")["anchor_mode"] == "private-channel"
+    assert emerging.edge_sync_plan(first_device["name"])["buffer"] == "sqlite"
+    assert emerging.emerging_check({"app/emerging.py", "app/templates/appgen_emerging.html"})["ok"] is True
+    emerging_gate = emerging.emerging_release_gate({"app/emerging.py", "app/templates/appgen_emerging.html"})
+    assert emerging_gate["format"] == "appgen.emerging-release-gate.v1"
+    assert emerging_gate["ok"] is True
+    assert {
+        "artifact_coverage",
+        "device_catalog",
+        "telemetry_validation",
+        "command_contract",
+        "blockchain_anchor",
+        "smart_contract_plan",
+        "edge_sync",
+    } <= {check["gate"] for check in emerging_gate["checks"]}
+    assert emerging.emerging_release_gate({"app/emerging.py"})["ok"] is False
     assert tenancy.is_tenant_scoped("Book") is False
     assert tenancy.tenant_filter_kwargs("Book", "acme") == {}
     assert tenancy.tenant_context({"X-AppGen-Tenant": "acme"}, {}, {}) == {"tenant_id": "acme"}
