@@ -600,6 +600,9 @@ apps include:
 - `tabbed_views.py` and `appgen_tabbed_views.html` with generated tabbed view
   contracts and role-aware permissions per tab. View sections become tabs, and
   declared role permissions on the view table decide which roles can see them.
+  The generated `tabbed_views_release_gate()` proves tab artifacts, role
+  policies, positive access for allowed roles, and denial for unknown roles
+  before tabbed-view readiness is claimed.
 - `erp_templates.py` and `appgen_erp_templates.html` with reusable ERP module
   templates for ledgers, accounts, invoicing, AP, AR, inventory, HR, payroll,
   purchasing, procurement, supply chain, warehouse management, manufacturing,

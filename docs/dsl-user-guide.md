@@ -352,6 +352,11 @@ beyond a scaffolding CLI: it ties authoring, database design, generation,
 versioned portfolio management, diagnostics, and component sharing to commands,
 workflows, and release evidence.
 
+Generated tabbed views also expose `tabbed_views_release_gate()` and
+`/tabbed-views/release-gate.json` so each tabbed section has explicit allowed
+roles, allowed-role access is proven, unknown roles are denied, and required tab
+artifacts are present.
+
 Generated deployment contracts live in `deploy/appgen_deploy.py`. Use
 `deployment_release_gate()` before release to prove Docker, Compose, HTTPS,
 Kubernetes, on-prem, AWS, GCP, Azure, PostgreSQL/MySQL, Terraform, secret

@@ -4539,6 +4539,15 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert tabbed_views.can_access_tab("BookList", "overview", ("Editor",)) is True
     assert tabbed_views.can_access_tab("BookList", "overview", ("Viewer",)) is False
     assert [tab["id"] for tab in tabbed_views.visible_tabs("BookList", ("Editor",))] == ["overview", "assets"]
+    matrix = tabbed_views.tab_permission_matrix()
+    assert matrix[0]["allowed_access_ok"] is True
+    assert matrix[0]["unknown_role_denied"] is True
+    tab_gate = tabbed_views.tabbed_views_release_gate(
+        {"app/tabbed_views.py", "app/templates/appgen_tabbed_views.html"}
+    )
+    assert tab_gate["format"] == "appgen.tabbed-views-release-gate.v1"
+    assert tab_gate["ok"] is True
+    assert tabbed_views.tabbed_views_release_gate({"app/tabbed_views.py"})["ok"] is False
     assert tabbed_views.tabbed_views_check(
         {"app/tabbed_views.py", "app/templates/appgen_tabbed_views.html"}
     )["ok"] is True

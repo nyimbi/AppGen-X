@@ -5478,7 +5478,10 @@ def write_tabbed_views_template(output_dir):
       <h1 class="agtv-title">Tabbed Views</h1>
       <p class="agtv-note">Generated tabbed view contracts with role-aware permissions per tab, derived from low-code view sections and declared roles.</p>
     </div>
-    <a class="btn btn-default" href="{{ url_for('TabbedViewPolicyView.catalog_json') }}">Catalog JSON</a>
+    <div>
+      <a class="btn btn-default" href="{{ url_for('TabbedViewPolicyView.catalog_json') }}">Catalog JSON</a>
+      <a class="btn btn-default" href="{{ url_for('TabbedViewPolicyView.release_gate_json') }}">Release Gate JSON</a>
+    </div>
   </div>
   <div class="agtv-grid">
     {% for view in views %}
@@ -19973,6 +19976,27 @@ def visible_tabs(view_name, principal_roles):
     )
 
 
+def tab_permission_matrix():
+    """Return role-policy evidence for every generated tab."""
+    rows = []
+    for view in tabbed_view_catalog():
+        for tab in view["tabs"]:
+            policy = tab_policy(view["view"], tab["id"])
+            allowed_roles = tuple(policy["allowed_roles"])
+            rows.append(
+                {{
+                    "view": view["view"],
+                    "tab": tab["id"],
+                    "resource": policy["resource"],
+                    "allowed_roles": allowed_roles,
+                    "allowed_access_ok": bool(allowed_roles)
+                    and can_access_tab(view["view"], tab["id"], allowed_roles),
+                    "unknown_role_denied": can_access_tab(view["view"], tab["id"], ("__unknown_role__",)) is False,
+                }}
+            )
+    return tuple(rows)
+
+
 def tabbed_views_check(existing_paths=()):
     """Return readiness for generated tabbed-view artifacts."""
     existing = set(existing_paths)
@@ -19983,6 +20007,27 @@ def tabbed_views_check(existing_paths=()):
         "missing": missing,
         "view_count": len(TABBED_VIEWS),
         "tab_count": sum(len(view["tabs"]) for view in TABBED_VIEWS),
+    }}
+
+
+def tabbed_views_release_gate(existing_paths=()):
+    """Return release readiness for generated tabbed views and tab permissions."""
+    readiness = tabbed_views_check(existing_paths)
+    matrix = tab_permission_matrix()
+    checks = (
+        {{"gate": "artifacts", "ok": readiness["ok"], "missing": readiness["missing"]}},
+        {{"gate": "view_catalog", "ok": readiness["view_count"] > 0 and readiness["tab_count"] > 0, "view_count": readiness["view_count"], "tab_count": readiness["tab_count"]}},
+        {{"gate": "role_policy", "ok": bool(matrix) and all(row["allowed_roles"] for row in matrix), "matrix": matrix}},
+        {{"gate": "positive_access", "ok": bool(matrix) and all(row["allowed_access_ok"] for row in matrix)}},
+        {{"gate": "deny_unknown_role", "ok": bool(matrix) and all(row["unknown_role_denied"] for row in matrix)}},
+    )
+    ok = all(check["ok"] for check in checks)
+    return {{
+        "format": "appgen.tabbed-views-release-gate.v1",
+        "ok": ok,
+        "decision": "approved" if ok else "blocked",
+        "checks": checks,
+        "permission_matrix": matrix,
     }}
 
 
@@ -20001,6 +20046,10 @@ class TabbedViewPolicyView(BaseView):
     @expose("/<view_name>.json")
     def view_json(self, view_name):
         return jsonify(tabbed_view(view_name))
+
+    @expose("/release-gate.json")
+    def release_gate_json(self):
+        return jsonify(tabbed_views_release_gate({{"app/tabbed_views.py", "app/templates/appgen_tabbed_views.html"}}))
 
 
 def register_tabbed_views(appbuilder):
@@ -35315,11 +35364,11 @@ def validate_tabbed_view_artifacts() -> None:
     contract = (ROOT / "app" / "tabbed_views.py").read_text()
     if "tabbed_view_catalog" not in contract or "tab_policy" not in contract or "can_access_tab" not in contract:
         fail("tabbed-view contract must expose tab catalogs and per-tab permission checks")
-    if "visible_tabs" not in contract or "tabbed_views_check" not in contract:
-        fail("tabbed-view contract must expose visible tab and readiness helpers")
+    if "visible_tabs" not in contract or "tabbed_views_check" not in contract or "tab_permission_matrix" not in contract or "tabbed_views_release_gate" not in contract:
+        fail("tabbed-view contract must expose visible tab, permission matrix, and release readiness helpers")
     template = (ROOT / "app" / "templates" / "appgen_tabbed_views.html").read_text()
-    if "Tabbed Views" not in template or "permissions per tab" not in template:
-        fail("tabbed-view template must expose per-tab permission metadata")
+    if "Tabbed Views" not in template or "permissions per tab" not in template or "Release Gate JSON" not in template:
+        fail("tabbed-view template must expose per-tab permission metadata and release readiness")
 
 
 def validate_data_access_artifacts() -> None:
@@ -36768,6 +36817,11 @@ def test_generated_runtime_helpers():
     assert tabbed_views.tab_policy(first_tabbed_view["view"], first_tab["id"])["required_action"] == "read"
     assert tabbed_views.can_access_tab(first_tabbed_view["view"], first_tab["id"], first_tab["allowed_roles"]) is True
     assert tabbed_views.visible_tabs(first_tabbed_view["view"], first_tab["allowed_roles"])
+    assert tabbed_views.tab_permission_matrix()[0]["unknown_role_denied"] is True
+    assert tabbed_views.tabbed_views_release_gate(
+        {"app/tabbed_views.py", "app/templates/appgen_tabbed_views.html"}
+    )["ok"] is True
+    assert tabbed_views.tabbed_views_release_gate({"app/tabbed_views.py"})["ok"] is False
     assert tabbed_views.tabbed_views_check(
         {"app/tabbed_views.py", "app/templates/appgen_tabbed_views.html"}
     )["ok"] is True
