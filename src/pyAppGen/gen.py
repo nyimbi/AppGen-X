@@ -7829,6 +7829,69 @@ def packaging_release_gate(existing_paths=()):
     }}
 
 
+def packaging_workbench(existing_paths=()):
+    """Return generated packaging evidence for publishable app templates."""
+    existing = set(existing_paths or ())
+    required = set(REQUIRED_PACKAGE_PATHS)
+    package = package_metadata()
+    extension = fab_extension_contract()
+    cookiecutter = cookiecutter_context()
+    release = packaging_release_gate(existing)
+    checks = (
+        {{
+            "id": "artifact_coverage",
+            "ok": required.issubset(existing),
+            "evidence": {{"required": tuple(REQUIRED_PACKAGE_PATHS), "missing": tuple(path for path in REQUIRED_PACKAGE_PATHS if path not in existing)}},
+        }},
+        {{
+            "id": "package_metadata",
+            "ok": package["package_name"].startswith("appgen-") and package["tables"],
+            "evidence": package,
+        }},
+        {{
+            "id": "build_command",
+            "ok": package["build_command"] == "python -m build",
+            "evidence": package["build_command"],
+        }},
+        {{
+            "id": "publish_metadata",
+            "ok": package["publish_command"].startswith("python -m twine upload"),
+            "evidence": package["publish_command"],
+        }},
+        {{
+            "id": "fab_extension",
+            "ok": extension["module"] == "app" and extension["custom_hooks"] == "app_custom.extensions",
+            "evidence": extension,
+        }},
+        {{
+            "id": "cookiecutter_template",
+            "ok": cookiecutter["project_slug"].startswith("appgen_") and cookiecutter["package_name"] == PACKAGE_NAME,
+            "evidence": cookiecutter,
+        }},
+        {{
+            "id": "quality_entrypoint",
+            "ok": package["entry_point"] == "appgen-quality",
+            "evidence": package["entry_point"],
+        }},
+        {{
+            "id": "release_gate",
+            "ok": release["ok"],
+            "evidence": release["format"],
+        }},
+    )
+    ok = all(check["ok"] for check in checks)
+    return {{
+        "format": "appgen.packaging-workbench.v1",
+        "ok": ok,
+        "decision": "approved" if ok else "blocked",
+        "checks": checks,
+        "package": package,
+        "fab_extension": extension,
+        "cookiecutter": cookiecutter,
+        "release_gate": release,
+    }}
+
+
 def quality_command():
     """Flask CLI entry point that runs the generated quality gate."""
     import subprocess

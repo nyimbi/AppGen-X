@@ -1077,6 +1077,7 @@ def test_generate_app_from_sqlite_schema_compiles(tmp_path) -> None:
     assert "platform.extensibility" in {item["key"] for item in manifest["capabilities"]}
     assert capabilities_by_key["platform.extensibility"]["status"] == "implemented"
     assert "devops.packaging" in {item["key"] for item in manifest["capabilities"]}
+    assert capabilities_by_key["devops.packaging"]["status"] == "implemented"
     assert "data.seed" in {item["key"] for item in manifest["capabilities"]}
     assert "ui.visual-modeling" in {item["key"] for item in manifest["capabilities"]}
     assert "ui.pwa" in {item["key"] for item in manifest["capabilities"]}
@@ -3231,6 +3232,35 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert {"build_metadata", "publish_metadata", "fab_extension", "cookiecutter_template", "quality_entrypoint"} <= {
         gate["gate"] for gate in packaging_gate["gates"]
     }
+    packaging_workbench = appgen_package.packaging_workbench(
+        {
+            "pyproject.toml",
+            "MANIFEST.in",
+            "README.md",
+            "requirements.txt",
+            "app/__init__.py",
+            "app/appgen.json",
+            "app/templates/my_index.html",
+            "app_custom/extensions.py",
+            "cookiecutter/cookiecutter.json",
+            "cookiecutter/{{cookiecutter.project_slug}}/pyproject.toml",
+            "cookiecutter/{{cookiecutter.project_slug}}/app/__init__.py",
+        }
+    )
+    assert packaging_workbench["format"] == "appgen.packaging-workbench.v1"
+    assert packaging_workbench["ok"] is True
+    assert packaging_workbench["decision"] == "approved"
+    assert {
+        "artifact_coverage",
+        "package_metadata",
+        "build_command",
+        "publish_metadata",
+        "fab_extension",
+        "cookiecutter_template",
+        "quality_entrypoint",
+        "release_gate",
+    } == {check["id"] for check in packaging_workbench["checks"]}
+    assert appgen_package.packaging_workbench({"pyproject.toml"})["ok"] is False
     assert appgen_package.packaging_release_gate({"pyproject.toml"})["ok"] is False
     assert set(generated_coverage.coverage_matrix()) == {"Author", "Book"}
     assert set(generated_coverage.workflow_coverage_matrix()) == {"Publish"}
