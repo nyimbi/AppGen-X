@@ -509,10 +509,13 @@ apps include:
   adoption plan so JHipster remains an interoperability target while AppGen
   provides the broader platform: Python-native web/mobile/desktop starters,
   visual builders, agentic systems, ERP templates, schema round trips,
-  operational workbenches, and runtime assurance evidence. Generated low-code
-  feature contracts also expose a JHipster-superset certification gate combining
-  overlap preservation, AppGen-only advantage thresholds, roadmap traceability,
-  composition readiness, and artifact evidence.
+  operational workbenches, and runtime assurance evidence. The same contract
+  renders an AppGen DSL migration draft from the generated JDL shape and exposes
+  a migration release gate for upgrading JHipster/JDL-shaped projects into the
+  broader AppGen platform. Generated low-code feature contracts also expose a
+  JHipster-superset certification gate combining overlap preservation,
+  AppGen-only advantage thresholds, roadmap traceability, composition readiness,
+  and artifact evidence.
 - `chatbots/dialogflow/intents.json`,
   `chatbots/botframework/manifest.json`, and `chatbots/appgen_chatbots.py`
   with generated provider intents, field prompts, and conversation checks.

@@ -31931,6 +31931,13 @@ JHIPSTER = {{
     "command": ("jhipster", "jdl", "jhipster/app.jdl"),
 }}
 APPGEN_UPGRADE_TARGETS = {appgen_upgrade_targets!r}
+JHIPSTER_MIGRATION_ARTIFACTS = (
+    "jhipster/app.jdl",
+    "jhipster/appgen_jhipster.py",
+    "app/schema_import.py",
+    "app/studio.py",
+    "app/low_code_features.py",
+)
 
 
 def jhipster_entities():
@@ -31968,6 +31975,98 @@ def export_check(existing_paths):
 def appgen_upgrade_targets():
     """Return AppGen capabilities that extend beyond JHipster generation."""
     return APPGEN_UPGRADE_TARGETS
+
+
+def _appgen_field_type(jhipster_type):
+    return {{
+        "Integer": "int",
+        "Long": "int",
+        "Double": "float",
+        "Float": "float",
+        "BigDecimal": "decimal",
+        "Boolean": "bool",
+        "LocalDate": "date",
+        "Instant": "datetime",
+        "ZonedDateTime": "datetime",
+        "TextBlob": "text",
+        "AnyBlob": "blob",
+        "ImageBlob": "blob",
+    }}.get(jhipster_type, "string")
+
+
+def _entity_table_map():
+    return {{entity["entity"]: entity["table"] for entity in JHIPSTER["entities"]}}
+
+
+def jhipster_to_appgen_dsl(*, targets=("web", "mobile", "desktop")):
+    """Render an AppGen DSL migration draft from the generated JHipster contracts."""
+    table_by_entity = _entity_table_map()
+    relationships_by_source = {{}}
+    for relationship in JHIPSTER["relationships"]:
+        source_table = table_by_entity.get(relationship["source"], relationship["source"])
+        relationships_by_source.setdefault(source_table, []).append(relationship)
+    target_list = ", ".join(targets)
+    lines = [f"app {{JHIPSTER['app_name']}} {{{{ targets: {{target_list}} }}}}", ""]
+    for entity in JHIPSTER["entities"]:
+        lines.append(f"table {{entity['table']}} {{{{")
+        for field in entity["fields"]:
+            required = " required" if field["required"] else ""
+            lines.append(f"  {{field['source_column']}}:{{_appgen_field_type(field['type'])}}{{required}}")
+        for relationship in relationships_by_source.get(entity["table"], ()):
+            target_table = table_by_entity.get(relationship["target"], relationship["target"])
+            lines.append(
+                f"  {{relationship['source_column']}}:int -> {{target_table}}.{{relationship['target_column']}}[{{relationship['cardinality']}}]"
+            )
+        lines.append("}}")
+        lines.append("")
+    return "\\n".join(lines).strip() + "\\n"
+
+
+def jhipster_upgrade_migration_plan(existing_paths=(), *, targets=("web", "mobile", "desktop")):
+    """Return a reviewable JDL-to-AppGen upgrade plan with generated DSL output."""
+    existing = set(existing_paths)
+    export = export_check(existing)
+    missing_platform_artifacts = tuple(path for path in JHIPSTER_MIGRATION_ARTIFACTS if path not in existing)
+    upgrade_artifacts = tuple(
+        sorted({{artifact for target in APPGEN_UPGRADE_TARGETS for artifact in target["appgen_artifacts"]}})
+    )
+    missing_upgrade_artifacts = tuple(path for path in upgrade_artifacts if path not in existing)
+    return {{
+        "format": "appgen.jhipster-upgrade-migration-plan.v1",
+        "source": jdl_file(),
+        "targets": tuple(targets),
+        "appgen_dsl": jhipster_to_appgen_dsl(targets=targets),
+        "export_ready": export["ok"],
+        "missing_platform_artifacts": missing_platform_artifacts,
+        "missing_upgrade_artifacts": missing_upgrade_artifacts,
+        "steps": (
+            {{"order": 1, "action": "read_jdl_contract", "artifact": jdl_file(), "ok": export["ok"]}},
+            {{"order": 2, "action": "translate_to_appgen_dsl", "review_required": True}},
+            {{"order": 3, "action": "run_appgen_generation", "targets": tuple(targets), "review_required": True}},
+            {{"order": 4, "action": "enable_appgen_only_capabilities", "targets": tuple(target["key"] for target in APPGEN_UPGRADE_TARGETS)}},
+        ),
+        "ok": export["ok"] and not missing_platform_artifacts and not missing_upgrade_artifacts,
+    }}
+
+
+def jhipster_migration_release_gate(existing_paths=()):
+    """Return readiness for upgrading JHipster/JDL-shaped projects into AppGen."""
+    plan = jhipster_upgrade_migration_plan(existing_paths)
+    dsl = plan["appgen_dsl"]
+    blockers = tuple(
+        {{"kind": "missing_platform_artifact", "path": path}}
+        for path in plan["missing_platform_artifacts"]
+    ) + tuple(
+        {{"kind": "missing_upgrade_artifact", "path": path}}
+        for path in plan["missing_upgrade_artifacts"]
+    )
+    return {{
+        "format": "appgen.jhipster-migration-release-gate.v1",
+        "ok": plan["ok"] and "table " in dsl and "targets:" in dsl and not blockers,
+        "decision": "approved" if plan["ok"] and "table " in dsl and "targets:" in dsl and not blockers else "blocked",
+        "plan": plan,
+        "blockers": blockers,
+    }}
 
 
 def jhipster_gap_analysis():
@@ -33974,8 +34073,11 @@ def validate_jhipster_artifacts() -> None:
         or "export_check" not in contract
         or "jhipster_gap_analysis" not in contract
         or "jhipster_adoption_plan" not in contract
+        or "jhipster_to_appgen_dsl" not in contract
+        or "jhipster_upgrade_migration_plan" not in contract
+        or "jhipster_migration_release_gate" not in contract
     ):
-        fail("JHipster contract must expose import, export, gap analysis, and adoption checks")
+        fail("JHipster contract must expose import, export, migration, gap analysis, and adoption checks")
     jdl = (ROOT / "jhipster" / "app.jdl").read_text()
     if "application {" not in jdl or "dto * with mapstruct" not in jdl:
         fail("JHipster JDL must include application config and DTO strategy")
@@ -36006,6 +36108,18 @@ def test_generated_runtime_helpers():
     assert jhipster.jhipster_import_command() == ("jhipster", "jdl", "jhipster/app.jdl")
     assert jhipster.jhipster_gap_analysis()["position"] == "appgen-is-broader-than-jhipster"
     assert jhipster.jhipster_adoption_plan({"jhipster/app.jdl", "jhipster/appgen_jhipster.py"})["ready"] is True
+    migrated_dsl = jhipster.jhipster_to_appgen_dsl()
+    assert "targets: web, mobile, desktop" in migrated_dsl
+    assert "table " in migrated_dsl
+    jhipster_evidence = set(jhipster.JHIPSTER_MIGRATION_ARTIFACTS)
+    jhipster_evidence.update(
+        artifact
+        for target in jhipster.appgen_upgrade_targets()
+        for artifact in target["appgen_artifacts"]
+    )
+    assert jhipster.jhipster_upgrade_migration_plan(jhipster_evidence)["ok"] is True
+    assert jhipster.jhipster_migration_release_gate(jhipster_evidence)["format"] == "appgen.jhipster-migration-release-gate.v1"
+    assert jhipster.jhipster_migration_release_gate({"jhipster/app.jdl"})["ok"] is False
     assert set(chatbots.chatbot_targets()) <= {"dialogflow", "botframework"}
     assert chatbots.export_check(
         {

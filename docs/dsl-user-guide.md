@@ -389,6 +389,13 @@ application-composition layer itself: block catalog depth, dependency topology,
 reviewable install order, sandbox controls, package publication targets, and
 artifact evidence.
 
+The generated `jhipster/appgen_jhipster.py` contract also supports migration in
+the other direction. Use `jhipster_to_appgen_dsl()` to draft AppGen DSL from the
+generated JDL-shaped entity contract, `jhipster_upgrade_migration_plan()` to
+plan the move into AppGen targets, and `jhipster_migration_release_gate()` to
+prove the required JDL, Studio, schema-import, and AppGen-only upgrade artifacts
+are present.
+
 ERP templates are generated as deployable starter packages, not only example
 tables. Use `/erp-templates/roadmap.json` for the phased implementation plan
 and `/erp-templates/release-gate.json` to verify module coverage, table

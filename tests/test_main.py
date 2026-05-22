@@ -810,6 +810,23 @@ def test_generate_app_from_sqlite_schema_compiles(tmp_path) -> None:
     adoption_plan = jhipster.jhipster_adoption_plan({"jhipster/app.jdl", "jhipster/appgen_jhipster.py"})
     assert adoption_plan["format"] == "appgen.jhipster-adoption-plan.v1"
     assert adoption_plan["steps"][1]["side_effect"] == "external_code_generation"
+    migrated_dsl = jhipster.jhipster_to_appgen_dsl()
+    assert "targets: web, mobile, desktop" in migrated_dsl
+    assert "table book" in migrated_dsl
+    assert "author_id:int -> author.id[many-to-one]" in migrated_dsl
+    jhipster_evidence = set(jhipster.JHIPSTER_MIGRATION_ARTIFACTS)
+    jhipster_evidence.update(
+        artifact
+        for target in jhipster.appgen_upgrade_targets()
+        for artifact in target["appgen_artifacts"]
+    )
+    migration_plan = jhipster.jhipster_upgrade_migration_plan(jhipster_evidence)
+    assert migration_plan["format"] == "appgen.jhipster-upgrade-migration-plan.v1"
+    assert migration_plan["ok"] is True
+    migration_gate = jhipster.jhipster_migration_release_gate(jhipster_evidence)
+    assert migration_gate["format"] == "appgen.jhipster-migration-release-gate.v1"
+    assert migration_gate["decision"] == "approved"
+    assert jhipster.jhipster_migration_release_gate({"jhipster/app.jdl"})["ok"] is False
     jdl_text = (tmp_path / "jhipster" / "app.jdl").read_text()
     assert "entity Book" in jdl_text
     assert "relationship ManyToOne" in jdl_text
