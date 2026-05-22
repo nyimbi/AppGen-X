@@ -5735,6 +5735,7 @@ def write_view_composition_template(output_dir):
     </div>
     <div>
       <a class="btn btn-default" href="{{ url_for('ViewCompositionView.catalog_json') }}">Catalog JSON</a>
+      <a class="btn btn-default" href="{{ url_for('ViewCompositionView.workbench_json') }}">Workbench JSON</a>
       <a class="btn btn-default" href="{{ url_for('ViewCompositionView.release_gate_json') }}">Release Gate JSON</a>
     </div>
   </div>
@@ -5798,6 +5799,7 @@ def write_tabbed_views_template(output_dir):
     </div>
     <div>
       <a class="btn btn-default" href="{{ url_for('TabbedViewPolicyView.catalog_json') }}">Catalog JSON</a>
+      <a class="btn btn-default" href="{{ url_for('TabbedViewPolicyView.workbench_json') }}">Workbench JSON</a>
       <a class="btn btn-default" href="{{ url_for('TabbedViewPolicyView.release_gate_json') }}">Release Gate JSON</a>
     </div>
   </div>
@@ -21534,6 +21536,33 @@ def view_composition_release_gate(existing_paths=()):
     }}
 
 
+def view_composition_workbench(existing_paths=()):
+    """Return aggregate evidence for generated master/detail, multiple, and chart views."""
+    existing = set(existing_paths)
+    required = {{"app/views.py", "app/view_composition.py", "app/templates/appgen_view_composition.html"}}
+    missing = tuple(sorted(required - existing))
+    catalog = view_composition_catalog()
+    release = view_composition_release_gate(existing)
+    checks = (
+        {{"id": "artifact_coverage", "ok": not missing, "evidence": {{"required": tuple(sorted(required)), "missing": missing}}}},
+        {{"id": "master_detail_catalog", "ok": all(item.get("master") and item.get("detail") and item.get("foreign_key") for item in MASTER_DETAIL_VIEWS), "evidence": MASTER_DETAIL_VIEWS}},
+        {{"id": "multiple_view_catalog", "ok": all(len(item.get("related_views", ())) > 1 for item in MULTIPLE_VIEWS), "evidence": MULTIPLE_VIEWS}},
+        {{"id": "chart_view_catalog", "ok": bool(CHART_VIEWS) and all(item.get("view_class") == "ChartView" and item.get("fields") for item in CHART_VIEWS), "evidence": CHART_VIEWS}},
+        {{"id": "catalog_integrity", "ok": set(catalog) == {{"master_detail", "multiple", "charts"}} and catalog["charts"] == CHART_VIEWS, "evidence": tuple(catalog)}},
+        {{"id": "release_gate", "ok": release["ok"], "evidence": {{"format": release["format"], "blocking": tuple(check["gate"] for check in release["checks"] if not check["ok"])}}}},
+        {{"id": "route_surface", "ok": not missing, "evidence": {{"routes": ("/view-composition/", "/view-composition/catalog.json", "/view-composition/workbench.json", "/view-composition/release-gate.json")}}}},
+    )
+    ok = all(check["ok"] for check in checks)
+    return {{
+        "format": "appgen.view-composition-workbench.v1",
+        "ok": ok,
+        "decision": "approved" if ok else "blocked",
+        "checks": checks,
+        "catalog": catalog,
+        "release_gate": release,
+    }}
+
+
 class ViewCompositionView(BaseView):
     route_base = "/view-composition"
     default_view = "index"
@@ -21550,6 +21579,10 @@ class ViewCompositionView(BaseView):
     @expose("/catalog.json")
     def catalog_json(self):
         return jsonify(view_composition_catalog())
+
+    @expose("/workbench.json")
+    def workbench_json(self):
+        return jsonify(view_composition_workbench({{"app/views.py", "app/view_composition.py", "app/templates/appgen_view_composition.html"}}))
 
     @expose("/release-gate.json")
     def release_gate_json(self):
@@ -21748,6 +21781,39 @@ def tabbed_views_release_gate(existing_paths=()):
     }}
 
 
+def tabbed_views_workbench(existing_paths=()):
+    """Return aggregate evidence for generated tabbed views and per-tab permissions."""
+    existing = set(existing_paths)
+    required = {{"app/tabbed_views.py", "app/templates/appgen_tabbed_views.html"}}
+    missing = tuple(sorted(required - existing))
+    readiness = tabbed_views_check(existing)
+    matrix = tab_permission_matrix()
+    release = tabbed_views_release_gate(existing)
+    first_view = TABBED_VIEWS[0] if TABBED_VIEWS else {{"view": None, "tabs": ()}}
+    first_tab = first_view["tabs"][0] if first_view.get("tabs") else {{"id": None, "allowed_roles": ()}}
+    allowed_roles = tuple(first_tab.get("allowed_roles", ()))
+    checks = (
+        {{"id": "artifact_coverage", "ok": not missing, "evidence": {{"required": tuple(sorted(required)), "missing": missing}}}},
+        {{"id": "view_catalog", "ok": readiness["view_count"] > 0 and readiness["tab_count"] > 0, "evidence": readiness}},
+        {{"id": "permission_matrix", "ok": bool(matrix) and all(row["allowed_roles"] for row in matrix), "evidence": matrix}},
+        {{"id": "positive_access", "ok": bool(first_tab.get("id")) and can_access_tab(first_view["view"], first_tab["id"], allowed_roles), "evidence": {{"view": first_view.get("view"), "tab": first_tab.get("id"), "roles": allowed_roles}}}},
+        {{"id": "deny_unknown_role", "ok": bool(first_tab.get("id")) and can_access_tab(first_view["view"], first_tab["id"], ("__unknown_role__",)) is False, "evidence": {{"view": first_view.get("view"), "tab": first_tab.get("id")}}}},
+        {{"id": "visible_tabs", "ok": bool(first_tab.get("id")) and first_tab["id"] in tuple(tab["id"] for tab in visible_tabs(first_view["view"], allowed_roles)), "evidence": tuple(tab["id"] for tab in visible_tabs(first_view["view"], allowed_roles)) if first_tab.get("id") else ()}},
+        {{"id": "release_gate", "ok": release["ok"], "evidence": {{"format": release["format"], "blocking_gaps": tuple(check["gate"] for check in release["checks"] if not check["ok"])}}}},
+        {{"id": "route_surface", "ok": not missing, "evidence": {{"routes": ("/tabbed-views/", "/tabbed-views/catalog.json", "/tabbed-views/workbench.json", "/tabbed-views/release-gate.json", "/tabbed-views/<view_name>.json")}}}},
+    )
+    ok = all(check["ok"] for check in checks)
+    return {{
+        "format": "appgen.tabbed-views-workbench.v1",
+        "ok": ok,
+        "decision": "approved" if ok else "blocked",
+        "checks": checks,
+        "views": tabbed_view_catalog(),
+        "permission_matrix": matrix,
+        "release_gate": release,
+    }}
+
+
 class TabbedViewPolicyView(BaseView):
     route_base = "/tabbed-views"
     default_view = "index"
@@ -21759,6 +21825,10 @@ class TabbedViewPolicyView(BaseView):
     @expose("/catalog.json")
     def catalog_json(self):
         return jsonify(list(tabbed_view_catalog()))
+
+    @expose("/workbench.json")
+    def workbench_json(self):
+        return jsonify(tabbed_views_workbench({{"app/tabbed_views.py", "app/templates/appgen_tabbed_views.html"}}))
 
     @expose("/<view_name>.json")
     def view_json(self, view_name):

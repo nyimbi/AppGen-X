@@ -1032,6 +1032,8 @@ def test_generate_app_from_sqlite_schema_compiles(tmp_path) -> None:
     assert capabilities_by_key["platform.targets"]["status"] == "implemented"
     assert capabilities_by_key["platform.native"]["status"] == "implemented"
     assert capabilities_by_key["platform.frontends"]["status"] == "implemented"
+    assert capabilities_by_key["ui.view-composition"]["status"] == "implemented"
+    assert capabilities_by_key["ui.tabbed-views"]["status"] == "implemented"
     assert capabilities_by_key["ui.form-designer"]["status"] == "implemented"
     assert capabilities_by_key["ui.nl-evolution"]["status"] == "implemented"
     assert capabilities_by_key["devops.studio"]["status"] == "implemented"
@@ -5118,6 +5120,27 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     )
     assert tab_gate["format"] == "appgen.tabbed-views-release-gate.v1"
     assert tab_gate["ok"] is True
+    assert "Workbench JSON" in (output_dir / "templates" / "appgen_tabbed_views.html").read_text()
+    tab_workbench = tabbed_views.tabbed_views_workbench(
+        {"app/tabbed_views.py", "app/templates/appgen_tabbed_views.html"}
+    )
+    assert tab_workbench["format"] == "appgen.tabbed-views-workbench.v1"
+    assert tab_workbench["ok"] is True
+    assert tab_workbench["decision"] == "approved"
+    assert {
+        "artifact_coverage",
+        "view_catalog",
+        "permission_matrix",
+        "positive_access",
+        "deny_unknown_role",
+        "visible_tabs",
+        "release_gate",
+        "route_surface",
+    } == {check["id"] for check in tab_workbench["checks"]}
+    assert "/tabbed-views/workbench.json" in next(
+        check["evidence"]["routes"] for check in tab_workbench["checks"] if check["id"] == "route_surface"
+    )
+    assert tabbed_views.tabbed_views_workbench({"app/tabbed_views.py"})["ok"] is False
     assert tabbed_views.tabbed_views_release_gate({"app/tabbed_views.py"})["ok"] is False
     assert tabbed_views.tabbed_views_check(
         {"app/tabbed_views.py", "app/templates/appgen_tabbed_views.html"}
@@ -5294,6 +5317,26 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "catalog_shape",
         "generated_view_classes",
     } <= {check["gate"] for check in view_composition_gate["checks"]}
+    assert "Workbench JSON" in (output_dir / "templates" / "appgen_view_composition.html").read_text()
+    view_composition_workbench = view_composition.view_composition_workbench(
+        {"app/views.py", "app/view_composition.py", "app/templates/appgen_view_composition.html"}
+    )
+    assert view_composition_workbench["format"] == "appgen.view-composition-workbench.v1"
+    assert view_composition_workbench["ok"] is True
+    assert view_composition_workbench["decision"] == "approved"
+    assert {
+        "artifact_coverage",
+        "master_detail_catalog",
+        "multiple_view_catalog",
+        "chart_view_catalog",
+        "catalog_integrity",
+        "release_gate",
+        "route_surface",
+    } == {check["id"] for check in view_composition_workbench["checks"]}
+    assert "/view-composition/workbench.json" in next(
+        check["evidence"]["routes"] for check in view_composition_workbench["checks"] if check["id"] == "route_surface"
+    )
+    assert view_composition.view_composition_workbench({"app/view_composition.py"})["ok"] is False
     assert view_composition.view_composition_release_gate({"app/view_composition.py"})["ok"] is False
     assert any(item["type"] == "TextBox" for item in form_designer.component_palette())
     assert any(item["type"] == "DateTimePicker" for item in form_designer.component_palette())

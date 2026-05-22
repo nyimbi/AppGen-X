@@ -746,13 +746,18 @@ apps include:
   relationships and visible fields. The generated
   `view_composition_release_gate()` proves required artifacts, master/detail
   contracts, optional MultipleView group integrity, ChartView field coverage,
-  aggregate catalog shape, and generated FAB view-class support.
+  aggregate catalog shape, and generated FAB view-class support. The generated
+  `view_composition_workbench()` proves aggregate catalog, release, and route
+  evidence before `ui.view-composition` is marked implemented.
 - `tabbed_views.py` and `appgen_tabbed_views.html` with generated tabbed view
   contracts and role-aware permissions per tab. View sections become tabs, and
   declared role permissions on the view table decide which roles can see them.
   The generated `tabbed_views_release_gate()` proves tab artifacts, role
   policies, positive access for allowed roles, and denial for unknown roles
-  before tabbed-view readiness is claimed.
+  before tabbed-view readiness is claimed. The generated
+  `tabbed_views_workbench()` proves permission matrices, visible-tab filtering,
+  positive/negative access checks, release gates, and route coverage before
+  `ui.tabbed-views` is marked implemented.
 - `erp_templates.py` and `appgen_erp_templates.html` with reusable ERP module
   templates for ledgers, accounts, invoicing, AP, AR, inventory, HR, payroll,
   purchasing, procurement, supply chain, warehouse management, manufacturing,
