@@ -3241,6 +3241,7 @@ def write_inventory_ops_template(output_dir):
     <div>
       <a class="btn btn-default" href="{{ url_for('InventoryOpsView.catalog_json') }}">Inventory JSON</a>
       <a class="btn btn-default" href="{{ url_for('InventoryOpsView.scan_targets_json') }}">Scan Targets</a>
+      <a class="btn btn-default" href="{{ url_for('InventoryOpsView.workbench_json') }}">Workbench JSON</a>
       <a class="btn btn-default" href="{{ url_for('InventoryOpsView.release_gate_json') }}">Release Gate JSON</a>
     </div>
   </div>
@@ -14740,6 +14741,107 @@ def inventory_release_gate(existing_paths=()):
     }}
 
 
+def inventory_workbench(existing_paths=()):
+    """Return generated inventory traceability evidence for low-code builders."""
+    artifacts = set(existing_paths or ())
+    required = {{"app/inventory_ops.py", "app/templates/appgen_inventory_ops.html"}}
+    catalog = inventory_catalog()
+    first_values = {{
+        resource["table"]: {{
+            (resource["identifiers"][0] if resource["identifiers"] else "id"): "SAMPLE"
+        }}
+        for resource in catalog
+    }}
+    barcode_samples = tuple(
+        barcode_label(resource["table"], first_values[resource["table"]])
+        for resource in catalog
+    )
+    rfid_samples = tuple(
+        rfid_tag_payload(resource["table"], first_values[resource["table"]])
+        for resource in catalog
+    )
+    movements = tuple(
+        stock_movement(resource["table"], sku="SAMPLE", quantity=1)
+        for resource in catalog
+    )
+    counts = tuple(cycle_count_plan(resource["table"])[0] for resource in catalog)
+    reconciliations = tuple(
+        reconcile_count(resource["table"], expected=1, counted=2)
+        for resource in catalog
+    )
+    traces = tuple(
+        traceability_chain(resource["table"], ("SAMPLE",))
+        for resource in catalog
+    )
+    release = inventory_release_gate(artifacts)
+    checks = (
+        {{
+            "id": "artifact_coverage",
+            "ok": required.issubset(artifacts),
+            "evidence": {{"required": tuple(sorted(required)), "missing": tuple(sorted(required - artifacts))}},
+        }},
+        {{
+            "id": "inventory_catalog",
+            "ok": bool(catalog) and all(resource["identifiers"] and resource["scan_modes"] for resource in catalog),
+            "evidence": tuple(resource["table"] for resource in catalog),
+        }},
+        {{
+            "id": "scan_targets",
+            "ok": all(set(SCAN_MODES) <= set(target["modes"]) and target["offline"] for target in scan_targets()),
+            "evidence": tuple((target["table"], target["field"]) for target in scan_targets()),
+        }},
+        {{
+            "id": "barcode_rfid",
+            "ok": all(item["value"].startswith(item["table"] + ":") for item in barcode_samples)
+            and all(item["epc"].startswith("urn:epc:id:sgtin:") for item in rfid_samples),
+            "evidence": {{"barcodes": barcode_samples, "rfid": rfid_samples}},
+        }},
+        {{
+            "id": "movement_and_counts",
+            "ok": all(item["quantity"] == 1.0 for item in movements)
+            and all(item["requires_reconciliation"] for item in counts)
+            and all(item["requires_review"] for item in reconciliations),
+            "evidence": {{"movements": movements, "counts": counts, "reconciliations": reconciliations}},
+        }},
+        {{
+            "id": "traceability",
+            "ok": all(item["events"] for item in traces),
+            "evidence": traces,
+        }},
+        {{
+            "id": "mobile_offline_capabilities",
+            "ok": all({{"camera_scan", "rfid_reader", "offline_queue"}} <= set(resource["mobile_capabilities"]) for resource in catalog),
+            "evidence": tuple(resource["mobile_capabilities"] for resource in catalog),
+        }},
+        {{
+            "id": "release_gate",
+            "ok": release["ok"],
+            "evidence": release["format"],
+        }},
+        {{
+            "id": "route_surface",
+            "ok": True,
+            "evidence": {{"routes": ("/inventory-ops/catalog.json", "/inventory-ops/scan-targets.json", "/inventory-ops/workbench.json", "/inventory-ops/release-gate.json")}},
+        }},
+    )
+    ok = all(check["ok"] for check in checks)
+    return {{
+        "format": "appgen.inventory-workbench.v1",
+        "ok": ok,
+        "decision": "approved" if ok else "blocked",
+        "checks": checks,
+        "catalog": catalog,
+        "scan_targets": scan_targets(),
+        "barcodes": barcode_samples,
+        "rfid": rfid_samples,
+        "movements": movements,
+        "cycle_counts": counts,
+        "reconciliations": reconciliations,
+        "traceability": traces,
+        "release_gate": release,
+    }}
+
+
 class InventoryOpsView(BaseView):
     route_base = "/inventory-ops"
     default_view = "index"
@@ -14759,6 +14861,10 @@ class InventoryOpsView(BaseView):
     @expose("/scan-targets.json")
     def scan_targets_json(self):
         return jsonify(list(scan_targets()))
+
+    @expose("/workbench.json")
+    def workbench_json(self):
+        return jsonify(inventory_workbench({{"app/inventory_ops.py", "app/templates/appgen_inventory_ops.html"}}))
 
     @expose("/release-gate.json")
     def release_gate_json(self):

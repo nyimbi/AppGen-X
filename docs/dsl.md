@@ -373,10 +373,11 @@ apps include:
   `content.document-management` is marked implemented.
 - `inventory_ops.py` and `appgen_inventory_ops.html` with generated barcode,
   RFID, scan-event, stock-movement, cycle-count, and reconciliation contracts
-  for inventory and warehouse traceability. A generated inventory release gate
+  for inventory and warehouse traceability. A generated `inventory_workbench()`
   proves scan targets, barcode/RFID payloads, movement/count/reconciliation
-  contracts, traceability chains, mobile/offline capabilities, and required
-  inventory artifacts.
+  contracts, traceability chains, mobile/offline capabilities, release gates,
+  and route coverage before `operations.inventory-traceability` is marked
+  implemented.
 - `finance_ops.py` and `appgen_finance_ops.html` with generated tax,
   multicurrency conversion, budget forecasting, revenue recognition, and batch
   processing contracts for ERP-grade financial operations. A generated finance

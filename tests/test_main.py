@@ -1079,6 +1079,7 @@ def test_generate_app_from_sqlite_schema_compiles(tmp_path) -> None:
     assert "devops.packaging" in {item["key"] for item in manifest["capabilities"]}
     assert capabilities_by_key["devops.packaging"]["status"] == "implemented"
     assert capabilities_by_key["ops.notifications"]["status"] == "implemented"
+    assert capabilities_by_key["operations.inventory-traceability"]["status"] == "implemented"
     assert "data.seed" in {item["key"] for item in manifest["capabilities"]}
     assert "ui.visual-modeling" in {item["key"] for item in manifest["capabilities"]}
     assert "ui.pwa" in {item["key"] for item in manifest["capabilities"]}
@@ -3695,6 +3696,28 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "mobile_offline_capabilities",
         "artifact_coverage",
     } <= {gate["gate"] for gate in inventory_gate["gates"]}
+    assert "Workbench JSON" in (output_dir / "templates" / "appgen_inventory_ops.html").read_text()
+    inventory_workbench = inventory_ops.inventory_workbench(
+        {"app/inventory_ops.py", "app/templates/appgen_inventory_ops.html"}
+    )
+    assert inventory_workbench["format"] == "appgen.inventory-workbench.v1"
+    assert inventory_workbench["ok"] is True
+    assert inventory_workbench["decision"] == "approved"
+    assert {
+        "artifact_coverage",
+        "inventory_catalog",
+        "scan_targets",
+        "barcode_rfid",
+        "movement_and_counts",
+        "traceability",
+        "mobile_offline_capabilities",
+        "release_gate",
+        "route_surface",
+    } == {check["id"] for check in inventory_workbench["checks"]}
+    assert "/inventory-ops/workbench.json" in next(
+        check["evidence"]["routes"] for check in inventory_workbench["checks"] if check["id"] == "route_surface"
+    )
+    assert inventory_ops.inventory_workbench({"app/inventory_ops.py"})["ok"] is False
     assert inventory_ops.inventory_release_gate({"app/inventory_ops.py"})["ok"] is False
     assert finance_ops.tax_calculation(100, category="standard")["tax_amount"] == 16.0
     assert finance_ops.tax_calculation(116, inclusive=True)["taxable_amount"] == 100.0
