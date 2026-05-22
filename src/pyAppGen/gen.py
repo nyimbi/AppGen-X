@@ -4388,6 +4388,7 @@ def write_lifecycle_template(output_dir):
     </div>
     <div>
       <a class="btn btn-default" href="{{ url_for('LifecycleView.catalog_json') }}">Lifecycle JSON</a>
+      <a class="btn btn-default" href="{{ url_for('LifecycleView.workbench_json') }}">Workbench JSON</a>
       <a class="btn btn-default" href="{{ url_for('LifecycleView.release_gate_json') }}">Release Gate JSON</a>
     </div>
   </div>
@@ -19821,6 +19822,64 @@ def lifecycle_release_gate(existing_paths=(), environ=None):
     }}
 
 
+def lifecycle_workbench(existing_paths=(), environ=None):
+    """Return IDE-ready environment, release, feedback, and issue-loop evidence."""
+    release_gate = lifecycle_release_gate(existing_paths, environ=environ)
+    gate_by_name = {{gate["gate"]: gate for gate in release_gate["gates"]}}
+    sample_environment = {{
+        "SECRET_KEY": "configured",
+        "APPGEN_DOMAIN": "app.example.test",
+        "DATABASE_URL": "postgresql://appgen.example/db",
+    }}
+    env = sample_environment if environ is None else dict(environ)
+    environments = environment_catalog()
+    production_status = environment_status("production", env)
+    release = release_checklist("production")
+    promotion = promotion_plan("staging", manifest_revision="rev-1")
+    domain = custom_domain_plan("production", "app.example.test")
+    maintenance = maintenance_window(duration_minutes=45)
+    update = update_plan("1.2.3", migration_required=True)
+    feedback = feedback_item("Needs work", rating=2)
+    session = user_test_session("Onboarding")
+    issue = issue_report("Broken form", severity="high")
+    routes = (
+        "/lifecycle/",
+        "/lifecycle/catalog.json",
+        "/lifecycle/workbench.json",
+        "/lifecycle/release-gate.json",
+    )
+    checks = (
+        {{"id": "environment_catalog", "ok": gate_by_name["environment_catalog"]["ok"], "evidence": environments}},
+        {{"id": "production_configuration", "ok": gate_by_name["production_configuration"]["ok"], "evidence": production_status}},
+        {{"id": "release_controls", "ok": gate_by_name["release_controls"]["ok"], "evidence": release}},
+        {{"id": "promotion_and_domain", "ok": gate_by_name["promotion_and_domain"]["ok"], "evidence": {{"promotion": promotion, "domain": domain}}}},
+        {{"id": "maintenance_update", "ok": gate_by_name["maintenance_update"]["ok"], "evidence": {{"maintenance": maintenance, "update": update}}}},
+        {{"id": "feedback_testing_issues", "ok": gate_by_name["feedback_testing_issues"]["ok"], "evidence": {{"feedback": feedback, "user_test": session, "issue": issue}}}},
+        {{"id": "artifact_coverage", "ok": gate_by_name["artifact_coverage"]["ok"], "evidence": gate_by_name["artifact_coverage"]}},
+        {{"id": "route_surface", "ok": {{"/lifecycle/workbench.json", "/lifecycle/catalog.json", "/lifecycle/release-gate.json"}} <= set(routes), "evidence": {{"routes": routes}}}},
+        {{"id": "release_gate", "ok": release_gate["ok"], "evidence": release_gate}},
+    )
+    ok = all(check["ok"] for check in checks)
+    return {{
+        "format": "appgen.lifecycle-workbench.v1",
+        "ok": ok,
+        "decision": "approved" if ok else "blocked",
+        "checks": checks,
+        "environments": environments,
+        "production": production_status,
+        "release_checklist": release,
+        "promotion": promotion,
+        "domain": domain,
+        "maintenance": maintenance,
+        "update": update,
+        "feedback": feedback,
+        "user_test": session,
+        "issue": issue,
+        "routes": routes,
+        "release_gate": release_gate,
+    }}
+
+
 class LifecycleView(BaseView):
     route_base = "/lifecycle"
     default_view = "index"
@@ -19836,6 +19895,10 @@ class LifecycleView(BaseView):
     @expose("/catalog.json")
     def catalog_json(self):
         return jsonify({{"environments": list(environment_catalog()), "release_gates": list(RELEASE_GATES)}})
+
+    @expose("/workbench.json")
+    def workbench_json(self):
+        return jsonify(lifecycle_workbench({{"app/lifecycle.py", "app/templates/appgen_lifecycle.html"}}))
 
     @expose("/release-gate.json")
     def release_gate_json(self):
@@ -42398,11 +42461,14 @@ def validate_lifecycle_artifacts() -> None:
         "user_test_session",
         "issue_report",
         "lifecycle_release_gate",
+        "lifecycle_workbench",
+        "appgen.lifecycle-workbench.v1",
+        '@expose("/workbench.json")',
     )
     if not all(item in contract for item in required):
         fail("lifecycle contract must expose environments, releases, feedback, user testing, issue reporting, and release gates")
     template = (ROOT / "app" / "templates" / "appgen_lifecycle.html").read_text()
-    if "Lifecycle" not in template or "Lifecycle JSON" not in template or "Release Gate JSON" not in template:
+    if "Lifecycle" not in template or "Lifecycle JSON" not in template or "Workbench JSON" not in template or "Release Gate JSON" not in template:
         fail("lifecycle template must expose generated lifecycle catalog and release gate")
 
 
@@ -44729,6 +44795,9 @@ def test_generated_runtime_helpers():
     assert lifecycle.issue_report("Broken form")["status"] == "open"
     assert lifecycle.lifecycle_check({"app/lifecycle.py", "app/templates/appgen_lifecycle.html"})["ok"] is True
     assert lifecycle.lifecycle_release_gate({"app/lifecycle.py", "app/templates/appgen_lifecycle.html"})["ok"] is True
+    assert lifecycle.lifecycle_workbench({"app/lifecycle.py", "app/templates/appgen_lifecycle.html"})["format"] == "appgen.lifecycle-workbench.v1"
+    assert lifecycle.lifecycle_workbench({"app/lifecycle.py", "app/templates/appgen_lifecycle.html"})["ok"] is True
+    assert lifecycle.lifecycle_workbench({"app/lifecycle.py"})["ok"] is False
     assert lifecycle.lifecycle_release_gate({"app/lifecycle.py"})["ok"] is False
     first_device = emerging.device_catalog()[0]
     telemetry = emerging.telemetry_event(first_device["name"], {first_device["metrics"][0]: 1})

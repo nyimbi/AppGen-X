@@ -1278,6 +1278,7 @@ def test_generate_app_from_sqlite_schema_compiles(tmp_path) -> None:
     assert "ops.assurance" in {item["key"] for item in manifest["capabilities"]}
     assert "ops.configuration" in {item["key"] for item in manifest["capabilities"]}
     assert "ops.lifecycle" in {item["key"] for item in manifest["capabilities"]}
+    assert capabilities_by_key["ops.lifecycle"]["status"] == "implemented"
     assert "ops.backup" in {item["key"] for item in manifest["capabilities"]}
 
 
@@ -4988,6 +4989,23 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "feedback_testing_issues",
         "artifact_coverage",
     } <= {gate["gate"] for gate in lifecycle_gate["gates"]}
+    lifecycle_workbench = lifecycle.lifecycle_workbench({"app/lifecycle.py", "app/templates/appgen_lifecycle.html"})
+    assert lifecycle_workbench["format"] == "appgen.lifecycle-workbench.v1"
+    assert lifecycle_workbench["ok"] is True
+    assert lifecycle_workbench["decision"] == "approved"
+    assert {
+        "environment_catalog",
+        "production_configuration",
+        "release_controls",
+        "promotion_and_domain",
+        "maintenance_update",
+        "feedback_testing_issues",
+        "artifact_coverage",
+        "route_surface",
+        "release_gate",
+    } == {check["id"] for check in lifecycle_workbench["checks"]}
+    assert "/lifecycle/workbench.json" in lifecycle_workbench["routes"]
+    assert lifecycle.lifecycle_workbench({"app/lifecycle.py"})["ok"] is False
     assert lifecycle.lifecycle_release_gate({"app/lifecycle.py"})["ok"] is False
     first_device = emerging.device_catalog()[0]
     telemetry = emerging.telemetry_event(first_device["name"], {first_device["metrics"][0]: 1}, device_id="device-1")

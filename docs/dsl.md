@@ -520,6 +520,10 @@ apps include:
   lifecycle release gate proves environment coverage, production configuration,
   release controls, promotion/domain readiness, maintenance/update plans,
   feedback/testing/issue loops, and required lifecycle artifacts.
+  `lifecycle_workbench()` and `/lifecycle/workbench.json` aggregate environment
+  catalogs, production readiness, release controls, promotion/domain evidence,
+  maintenance/update plans, feedback/testing/issue loops, route surface, and the
+  release gate into one generated IDE lifecycle review.
 - `emerging.py` and `appgen_emerging.html` with generated IoT device catalogs,
   telemetry validation, device command payloads, blockchain audit anchors,
   smart-contract adapter plans, and edge/offline sync guidance. A generated

@@ -525,6 +525,10 @@ Use `/lifecycle/release-gate.json` to verify environment coverage, production
 configuration, release controls, promotion/domain readiness, maintenance/update
 plans, feedback, user-testing sessions, issue reports, and lifecycle artifacts
 before operating a generated app.
+Use `/lifecycle/workbench.json` or `lifecycle_workbench()` in the generated IDE
+to inspect environment catalogs, production readiness, release controls,
+promotion/domain evidence, maintenance/update plans, feedback/testing/issue
+loops, route coverage, and release readiness together.
 Use `/emerging/release-gate.json` or `emerging_release_gate()` before promoting
 generated IoT or blockchain adapters. The gate proves device catalogs,
 telemetry validation, command guardrails, hash-only blockchain anchor
