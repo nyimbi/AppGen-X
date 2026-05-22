@@ -515,6 +515,9 @@ apps include:
   SQL, reviewable database role/user sync SQL for scoped tables, and an
   `rls_release_gate()` that blocks release when tenant filters, PostgreSQL
   policies, role sync, or required RLS artifacts are incomplete.
+  `rls_workbench()` exposes IDE-ready policy catalog, tenant filter, row
+  filtering, PostgreSQL policy SQL, tenant session SQL, role sync, artifact,
+  route, and release-gate evidence before `security.rls` is marked implemented.
 - `identity.py` and `appgen_identity.html` with generated OIDC, SAML, LDAP,
   Active Directory, AWS Cognito, and trusted-header SSO provider configuration
   checks plus reviewed LDAP bind/search plans and Cognito hosted-ui OAuth,

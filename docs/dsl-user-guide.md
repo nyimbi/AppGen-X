@@ -314,6 +314,9 @@ Generated apps include `rls_release_gate()` and
 `/row-level-security/release-gate.json`. Use them before production release to
 prove the RLS catalog, tenant filters, PostgreSQL policy SQL, PostgreSQL role
 sync plan, user grants, and required RLS artifacts are ready.
+Use `/row-level-security/workbench.json` or `rls_workbench()` to inspect policy
+catalog, tenant filter behavior, row filtering, PostgreSQL policy SQL, tenant
+session SQL, role sync, artifact, route, and release-gate evidence.
 
 ## Agentic Systems
 

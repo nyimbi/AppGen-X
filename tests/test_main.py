@@ -1126,6 +1126,7 @@ def test_generate_app_from_sqlite_schema_compiles(tmp_path) -> None:
     assert capabilities_by_key["security.rbac"]["status"] == "implemented"
     assert capabilities_by_key["security.session"]["status"] == "implemented"
     assert capabilities_by_key["security.https"]["status"] == "implemented"
+    assert capabilities_by_key["security.rls"]["status"] == "implemented"
     assert capabilities_by_key["platform.frontends"]["status"] == "implemented"
     assert capabilities_by_key["ui.view-composition"]["status"] == "implemented"
     assert capabilities_by_key["ui.tabbed-views"]["status"] == "implemented"
@@ -7894,6 +7895,28 @@ def test_generated_tenancy_helpers_detect_tenant_columns(tmp_path) -> None:
     )
     assert release_gate["format"] == "appgen.rls-release-gate.v1"
     assert release_gate["ok"] is True
+    rls_workbench = rls.rls_workbench(
+        {"app/tenancy.py", "app/rls.py", "app/templates/appgen_rls.html"},
+        ({"username": "ada", "roles": ["ProjectManager"], "tenant_id": "acme"},),
+    )
+    assert rls_workbench["format"] == "appgen.rls-workbench.v1"
+    assert rls_workbench["ok"] is True
+    assert rls_workbench["decision"] == "approved"
+    assert {
+        "policy_catalog",
+        "tenant_filter",
+        "row_filtering",
+        "postgres_policy_sql",
+        "tenant_session_sql",
+        "postgres_role_sync",
+        "artifact_evidence",
+        "route_surface",
+        "release_gate",
+    } == {check["id"] for check in rls_workbench["checks"]}
+    assert "/row-level-security/workbench.json" in next(
+        check["evidence"]["routes"] for check in rls_workbench["checks"] if check["id"] == "route_surface"
+    )
+    assert rls.rls_workbench({"app/rls.py"})["ok"] is False
     assert rls.rls_release_gate({"app/rls.py"})["ok"] is False
     with pytest.raises(PermissionError, match="Tenant context required"):
         tenancy.require_tenant("Project", None)

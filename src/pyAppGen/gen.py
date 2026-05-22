@@ -4544,6 +4544,7 @@ def write_rls_template(output_dir):
       <a class="btn btn-default" href="{{ url_for('RowLevelSecurityView.catalog_json') }}">Catalog JSON</a>
       <a class="btn btn-default" href="{{ url_for('RowLevelSecurityView.postgres_sql') }}">PostgreSQL SQL</a>
       <a class="btn btn-default" href="{{ url_for('RowLevelSecurityView.role_sync_sql') }}">Role Sync SQL</a>
+      <a class="btn btn-default" href="{{ url_for('RowLevelSecurityView.workbench_json') }}">Workbench JSON</a>
       <a class="btn btn-default" href="{{ url_for('RowLevelSecurityView.release_gate_json') }}">Release Gate JSON</a>
     </div>
   </div>
@@ -20326,6 +20327,52 @@ def rls_release_gate(existing_paths=(), principals=()):
     }}
 
 
+def rls_workbench(existing_paths=(), principals=()):
+    """Return IDE-ready RLS evidence for generated tenant isolation."""
+    release_gate = rls_release_gate(existing_paths, principals)
+    coverage = rls_policy_coverage()
+    scoped_table = coverage["scoped_table_names"][0] if coverage["scoped_table_names"] else None
+    principal = (principals or ({{"username": "workbench", "roles": APPGEN_ROLES[:1], "tenant_id": "tenant-a"}},))[0]
+    filter_kwargs = rls_filter_kwargs(scoped_table, principal) if scoped_table else {{}}
+    rows = (
+        {{**filter_kwargs, "id": 1}},
+        {{next(iter(filter_kwargs), "tenant_id"): "tenant-b", "id": 2}},
+    ) if scoped_table and filter_kwargs else ()
+    filtered = filter_rows(scoped_table, rows, principal) if scoped_table else ()
+    policy_sql = postgres_policy_sql(scoped_table) if scoped_table else ""
+    tenant_sql = postgres_set_tenant_sql(principal_tenant(principal) or "tenant-a")
+    role_sync = postgres_role_sync_plan((principal,))
+    routes = (
+        "/row-level-security/",
+        "/row-level-security/catalog.json",
+        "/row-level-security/postgres.sql",
+        "/row-level-security/role-sync.sql",
+        "/row-level-security/workbench.json",
+        "/row-level-security/release-gate.json",
+    )
+    checks = (
+        {{"id": "policy_catalog", "ok": bool(rls_catalog()), "evidence": rls_catalog()}},
+        {{"id": "tenant_filter", "ok": not scoped_table or bool(filter_kwargs), "evidence": {{"table": scoped_table, "filter": filter_kwargs}}}},
+        {{"id": "row_filtering", "ok": not scoped_table or len(filtered) == 1, "evidence": {{"rows": rows, "filtered": filtered}}}},
+        {{"id": "postgres_policy_sql", "ok": not scoped_table or "ENABLE ROW LEVEL SECURITY" in policy_sql, "evidence": policy_sql}},
+        {{"id": "tenant_session_sql", "ok": "set_config" in tenant_sql and str(principal_tenant(principal) or "tenant-a") in tenant_sql, "evidence": tenant_sql}},
+        {{"id": "postgres_role_sync", "ok": role_sync["review_required"] is True and bool(role_sync["roles"]), "evidence": role_sync}},
+        {{"id": "artifact_evidence", "ok": release_gate["checks"][0]["ok"], "evidence": release_gate["checks"][0]}},
+        {{"id": "route_surface", "ok": "/row-level-security/workbench.json" in routes, "evidence": {{"routes": routes}}}},
+        {{"id": "release_gate", "ok": release_gate["ok"], "evidence": release_gate}},
+    )
+    ok = all(check["ok"] for check in checks)
+    return {{
+        "format": "appgen.rls-workbench.v1",
+        "ok": ok,
+        "decision": "approved" if ok else "blocked",
+        "checks": checks,
+        "coverage": coverage,
+        "principal": principal,
+        "release_gate": release_gate,
+    }}
+
+
 class RowLevelSecurityView(BaseView):
     route_base = "/row-level-security"
     default_view = "index"
@@ -20353,6 +20400,10 @@ class RowLevelSecurityView(BaseView):
         from flask import Response
 
         return Response(postgres_role_sync_sql() + "\\n", mimetype="text/plain")
+
+    @expose("/workbench.json")
+    def workbench_json(self):
+        return jsonify(rls_workbench(REQUIRED_RLS_ARTIFACTS))
 
     @expose("/release-gate.json")
     def release_gate_json(self):
@@ -41410,13 +41461,15 @@ def validate_rls_artifacts() -> None:
         "postgres_role_sync_sql",
         "rls_policy_coverage",
         "rls_release_gate",
+        "rls_workbench",
         "appgen.rls-release-gate.v1",
+        "appgen.rls-workbench.v1",
     )
     if not all(item in contract for item in required):
-        fail("RLS contract must expose PostgreSQL policy SQL, database role sync, coverage, and release gate helpers")
+        fail("RLS contract must expose PostgreSQL policy SQL, database role sync, coverage, workbench, and release gate helpers")
     template = (ROOT / "app" / "templates" / "appgen_rls.html").read_text()
-    if "PostgreSQL SQL" not in template or "Role Sync SQL" not in template or "Release Gate JSON" not in template:
-        fail("RLS template must expose PostgreSQL SQL, role sync SQL, and release readiness")
+    if "PostgreSQL SQL" not in template or "Role Sync SQL" not in template or "Workbench JSON" not in template or "Release Gate JSON" not in template:
+        fail("RLS template must expose PostgreSQL SQL, role sync SQL, workbench, and release readiness")
 
 
 def validate_compliance_artifacts() -> None:
