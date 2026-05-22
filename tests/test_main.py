@@ -596,6 +596,7 @@ def test_generate_app_from_sqlite_schema_compiles(tmp_path) -> None:
     assert (tmp_path / "docs" / "schema.md").exists()
     assert (tmp_path / "docs" / "data-dictionary.json").exists()
     assert (tmp_path / "docs" / "data-dictionary.md").exists()
+    assert (tmp_path / "docs" / "documentation-workbench.json").exists()
     assert (tmp_path / "docs" / "openapi.json").exists()
     assert (tmp_path / "docs" / "accessibility.md").exists()
     assert (tmp_path / "Dockerfile").exists()
@@ -690,6 +691,19 @@ def test_generate_app_from_sqlite_schema_compiles(tmp_path) -> None:
     data_dictionary_md = (tmp_path / "docs" / "data-dictionary.md").read_text()
     assert "Data Dictionary" in data_dictionary_md
     assert "Writable fields" in data_dictionary_md
+    documentation_workbench = json.loads((tmp_path / "docs" / "documentation-workbench.json").read_text())
+    assert documentation_workbench["format"] == "appgen.documentation-workbench.v1"
+    assert documentation_workbench["ok"] is True
+    assert documentation_workbench["decision"] == "approved"
+    assert {
+        "schema_markdown",
+        "data_dictionary_json",
+        "data_dictionary_markdown",
+        "openapi_document",
+        "accessibility_baseline",
+        "artifact_coverage",
+    } == {check["id"] for check in documentation_workbench["checks"]}
+    assert "docs/openapi.json" in documentation_workbench["artifacts"]
     k8s_text = (tmp_path / "deploy" / "k8s.yaml").read_text()
     assert "kind: Deployment" in k8s_text
     assert "readinessProbe" in k8s_text
@@ -1029,6 +1043,7 @@ def test_generate_app_from_sqlite_schema_compiles(tmp_path) -> None:
     assert "platform.microservices" in {item["key"] for item in manifest["capabilities"]}
     assert "platform.native" in {item["key"] for item in manifest["capabilities"]}
     capabilities_by_key = {item["key"]: item for item in manifest["capabilities"]}
+    assert capabilities_by_key["api.documentation"]["status"] == "implemented"
     assert capabilities_by_key["platform.targets"]["status"] == "implemented"
     assert capabilities_by_key["platform.native"]["status"] == "implemented"
     assert capabilities_by_key["platform.frontends"]["status"] == "implemented"

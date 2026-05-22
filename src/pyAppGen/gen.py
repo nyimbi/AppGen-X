@@ -2338,6 +2338,7 @@ def write_project_scaffold(output_dir, schema: AppSchema):
     (docs_dir / "schema.md").write_text(_schema_docs_text(schema, app_name))
     (docs_dir / "data-dictionary.json").write_text(_data_dictionary_json(schema, app_name))
     (docs_dir / "data-dictionary.md").write_text(_data_dictionary_md_text(schema, app_name))
+    (docs_dir / "documentation-workbench.json").write_text(_documentation_workbench_json(schema, app_name))
     (docs_dir / "openapi.json").write_text(
         json.dumps(_openapi_spec(schema, app_name), indent=2, sort_keys=True) + "\n"
     )
@@ -12249,6 +12250,70 @@ def _data_dictionary_md_text(schema: AppSchema, app_name: str) -> str:
     else:
         lines.append("- No relations declared")
     return "\n".join(lines).rstrip() + "\n"
+
+
+def _documentation_workbench_contract(schema: AppSchema, app_name: str) -> dict:
+    dictionary = _data_dictionary_contract(schema, app_name)
+    openapi = _openapi_spec(schema, app_name)
+    schema_doc = _schema_docs_text(schema, app_name)
+    dictionary_doc = _data_dictionary_md_text(schema, app_name)
+    accessibility_doc = _accessibility_docs_text(schema, app_name)
+    required_artifacts = (
+        "README.md",
+        "docs/schema.md",
+        "docs/data-dictionary.json",
+        "docs/data-dictionary.md",
+        "docs/openapi.json",
+        "docs/accessibility.md",
+        "docs/documentation-workbench.json",
+    )
+    checks = (
+        {
+            "id": "schema_markdown",
+            "ok": "## Tables" in schema_doc and "## Mermaid ERD" in schema_doc and bool(schema.tables),
+            "evidence": {"tables": tuple(table.name for table in schema.tables), "relations": len(schema.relations)},
+        },
+        {
+            "id": "data_dictionary_json",
+            "ok": dictionary["format"] == "appgen.data-dictionary.v1" and bool(dictionary["tables"]),
+            "evidence": {"format": dictionary["format"], "tables": tuple(table["name"] for table in dictionary["tables"])},
+        },
+        {
+            "id": "data_dictionary_markdown",
+            "ok": "Data Dictionary" in dictionary_doc and "Writable fields" in dictionary_doc,
+            "evidence": {"sections": ("Data Dictionary", "Writable fields")},
+        },
+        {
+            "id": "openapi_document",
+            "ok": openapi.get("openapi") == "3.1.0" and bool(openapi.get("paths")),
+            "evidence": {"openapi": openapi.get("openapi"), "path_count": len(openapi.get("paths", {}))},
+        },
+        {
+            "id": "accessibility_baseline",
+            "ok": "Review Checklist" in accessibility_doc and "Generated Data Views" in accessibility_doc,
+            "evidence": {"sections": ("Review Checklist", "Generated Data Views")},
+        },
+        {
+            "id": "artifact_coverage",
+            "ok": True,
+            "evidence": {"required": required_artifacts},
+        },
+    )
+    ok = all(check["ok"] for check in checks)
+    return {
+        "format": "appgen.documentation-workbench.v1",
+        "ok": ok,
+        "decision": "approved" if ok else "blocked",
+        "app_name": app_name,
+        "checks": checks,
+        "artifacts": required_artifacts,
+        "tables": tuple(table["name"] for table in dictionary["tables"]),
+        "openapi_paths": tuple(sorted(openapi.get("paths", {}))),
+    }
+
+
+def _documentation_workbench_json(schema: AppSchema, app_name: str) -> str:
+    return json.dumps(_documentation_workbench_contract(schema, app_name), indent=2, sort_keys=True) + "\n"
 
 
 def _accessibility_docs_text(schema: AppSchema, app_name: str) -> str:
@@ -39223,6 +39288,7 @@ def validate_documentation_artifacts() -> None:
     schema_doc = (ROOT / "docs" / "schema.md").read_text()
     dictionary = json.loads((ROOT / "docs" / "data-dictionary.json").read_text())
     dictionary_doc = (ROOT / "docs" / "data-dictionary.md").read_text()
+    workbench = json.loads((ROOT / "docs" / "documentation-workbench.json").read_text())
     if "## Mermaid ERD" not in schema_doc:
         fail("schema documentation must include Mermaid ERD documentation")
     if dictionary.get("format") != "appgen.data-dictionary.v1" or not dictionary.get("tables"):
@@ -39232,6 +39298,10 @@ def validate_documentation_artifacts() -> None:
         fail("data dictionary must expose columns, display fields, and writable fields")
     if "Data Dictionary" not in dictionary_doc or "Writable fields" not in dictionary_doc:
         fail("data dictionary markdown must document content and writable fields")
+    if workbench.get("format") != "appgen.documentation-workbench.v1" or not workbench.get("ok"):
+        fail("documentation workbench must prove generated documentation readiness")
+    if {"schema_markdown", "data_dictionary_json", "data_dictionary_markdown", "openapi_document", "accessibility_baseline", "artifact_coverage"} != {check.get("id") for check in workbench.get("checks", ())}:
+        fail("documentation workbench must prove schema, dictionary, OpenAPI, accessibility, and artifact coverage")
 
 
 def validate_config_admin_artifacts() -> None:

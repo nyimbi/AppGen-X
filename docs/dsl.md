@@ -859,7 +859,10 @@ apps include:
   field, relationship, and Mermaid ERD documentation, and
   `docs/data-dictionary.json` / `docs/data-dictionary.md` with
   machine-readable structure, content-kind, sample-value, display-field, and
-  writable-field metadata.
+  writable-field metadata. The generated
+  `docs/documentation-workbench.json` proves schema Markdown, data dictionary
+  JSON/Markdown, OpenAPI, accessibility baseline, and documentation artifact
+  coverage before `api.documentation` is marked implemented.
 - `docs/accessibility.md` with a generated accessibility baseline checklist.
 - `.github/workflows/appgen-ci.yml` and `scripts/appgen_quality.py` with a
   generated CI quality gate for syntax, manifest, PWA, docs, runtime assurance,
