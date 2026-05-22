@@ -312,6 +312,9 @@ AppGen still detects conventional tenant fields such as `tenant_id`,
 `account_id`, `workspace_id`, and `organization_id`, but explicit `rls`
 targets make the generated tenancy helpers and PostgreSQL policy SQL
 reviewable in the DSL.
+Use `/tenancy/workbench.json` or `tenancy_workbench()` in the generated IDE to
+inspect tenant catalogs, context sources, filter helpers, tenant requirement
+checks, route coverage, and release readiness for the multi-tenant helper layer.
 
 Generated apps include `rls_release_gate()` and
 `/row-level-security/release-gate.json`. Use them before production release to

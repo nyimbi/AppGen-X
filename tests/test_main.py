@@ -1175,6 +1175,7 @@ def test_generate_app_from_sqlite_schema_compiles(tmp_path) -> None:
     assert capabilities_by_key["data.database-ops"]["status"] == "implemented"
     assert capabilities_by_key["deployment.cloud"]["status"] == "implemented"
     assert capabilities_by_key["devops.cicd"]["status"] == "implemented"
+    assert capabilities_by_key["scale.multi-tenancy"]["status"] == "implemented"
     assert capabilities_by_key["devops.ide-integration"]["status"] == "implemented"
     assert capabilities_by_key["devops.project-management"]["status"] == "implemented"
     assert capabilities_by_key["ops.monitoring"]["status"] == "implemented"
@@ -2628,7 +2629,10 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert "Emerging Catalog JSON" in emerging_template
     assert "Release Gate JSON" in emerging_template
     assert "Release Gate JSON" in (output_dir / "templates" / "appgen_project_management.html").read_text()
-    assert "tenant_id" in (output_dir / "templates" / "appgen_tenancy.html").read_text()
+    tenancy_template = (output_dir / "templates" / "appgen_tenancy.html").read_text()
+    assert "tenant_id" in tenancy_template
+    assert "Workbench JSON" in tenancy_template
+    assert "Release Gate JSON" in tenancy_template
     assert "row-level security contracts" in (output_dir / "templates" / "appgen_rls.html").read_text()
     identity_template = (output_dir / "templates" / "appgen_identity.html").read_text()
     assert "OpenID Connect" in identity_template
@@ -5056,6 +5060,8 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert tenancy.is_tenant_scoped("Book") is False
     assert tenancy.tenant_filter_kwargs("Book", "acme") == {}
     assert tenancy.tenant_context({"X-AppGen-Tenant": "acme"}, {}, {}) == {"tenant_id": "acme"}
+    assert tenancy.tenancy_release_gate({"app/tenancy.py", "app/templates/appgen_tenancy.html"})["ok"] is True
+    assert tenancy.tenancy_workbench({"app/tenancy.py", "app/templates/appgen_tenancy.html"})["format"] == "appgen.tenancy-workbench.v1"
     assert rls.table_policy("Book")["scoped"] is False
     assert rls.rls_filter_kwargs("Book", {"tenant_id": "acme"}) == {}
     assert rls.can_access_row("Book", {"title": "Dune"}, {}) is True
@@ -8122,6 +8128,25 @@ def test_generated_tenancy_helpers_detect_tenant_columns(tmp_path) -> None:
     assert catalog[0]["tenant_columns"] == ("tenant_id",)
     assert tenancy.is_tenant_scoped("Project") is True
     assert tenancy.tenant_filter_kwargs("Project", "acme") == {"tenant_id": "acme"}
+    tenancy_gate = tenancy.tenancy_release_gate({"app/tenancy.py", "app/templates/appgen_tenancy.html"})
+    assert tenancy_gate["format"] == "appgen.tenancy-release-gate.v1"
+    assert tenancy_gate["ok"] is True
+    assert tenancy_gate["scoped_tables"] == ("Project",)
+    tenancy_workbench = tenancy.tenancy_workbench({"app/tenancy.py", "app/templates/appgen_tenancy.html"})
+    assert tenancy_workbench["format"] == "appgen.tenancy-workbench.v1"
+    assert tenancy_workbench["ok"] is True
+    assert tenancy_workbench["decision"] == "approved"
+    assert {
+        "artifact_coverage",
+        "tenant_catalog",
+        "context_resolution",
+        "filter_helpers",
+        "tenant_requirement",
+        "route_surface",
+        "release_gate",
+    } == {check["id"] for check in tenancy_workbench["checks"]}
+    assert "/tenancy/workbench.json" in tenancy_workbench["routes"]
+    assert tenancy.tenancy_workbench({"app/tenancy.py"})["ok"] is False
     assert rls.table_policy("Project")["tenant_column"] == "tenant_id"
     assert rls.rls_filter_kwargs("Project", {"tenant_id": "acme"}) == {"tenant_id": "acme"}
     assert rls.can_access_row("Project", {"tenant_id": "acme", "name": "A"}, {"tenant_id": "acme"}) is True

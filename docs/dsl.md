@@ -536,6 +536,10 @@ apps include:
   edge buffering/retry behavior, and required emerging-tech artifacts.
 - `tenancy.py` and `appgen_tenancy.html` with generated tenant-column
   detection, tenant context extraction, and filter helpers for row isolation.
+  `tenancy_release_gate()` and `tenancy_workbench()` prove tenant catalog
+  coverage, header/query/session context resolution, scoped filter helpers,
+  tenant requirement checks, route coverage, and required tenancy artifacts
+  before `scale.multi-tenancy` is marked implemented.
 - `rls.py` and `appgen_rls.html` with generated tenant-aware row-level
   security helpers plus PostgreSQL `CREATE POLICY` SQL, tenant session-setting
   SQL, reviewable database role/user sync SQL for scoped tables, and an

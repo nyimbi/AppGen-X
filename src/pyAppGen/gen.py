@@ -4497,7 +4497,11 @@ def write_tenancy_template(output_dir):
         tenant, then apply the generated filter helpers in custom views and APIs.
       </p>
     </div>
-    <a class="btn btn-default" href="{{ url_for('TenancyView.catalog_json') }}">Catalog JSON</a>
+    <div>
+      <a class="btn btn-default" href="{{ url_for('TenancyView.catalog_json') }}">Catalog JSON</a>
+      <a class="btn btn-default" href="{{ url_for('TenancyView.workbench_json') }}">Workbench JSON</a>
+      <a class="btn btn-default" href="{{ url_for('TenancyView.release_gate_json') }}">Release Gate JSON</a>
+    </div>
   </div>
   <div class="agt-grid">
     {% for item in tables %}
@@ -20320,6 +20324,7 @@ from flask_appbuilder import expose
 TENANT_HEADER = "X-AppGen-Tenant"
 TENANT_SESSION_KEY = "appgen_tenant_id"
 TENANT_TABLES = {tables!r}
+TENANCY_REQUIRED_ARTIFACTS = ("app/tenancy.py", "app/templates/appgen_tenancy.html")
 
 
 def tenant_catalog():
@@ -20386,6 +20391,87 @@ def require_tenant(table_name, tenant_id):
     return True
 
 
+def _tenant_requirement_blocks(scoped_table):
+    if not scoped_table:
+        return True
+    try:
+        require_tenant(scoped_table, None)
+    except PermissionError:
+        return True
+    return False
+
+
+def tenancy_release_gate(existing_paths=()):
+    """Return release readiness for generated multi-tenancy helpers."""
+    existing = set(existing_paths)
+    missing = tuple(path for path in TENANCY_REQUIRED_ARTIFACTS if path not in existing)
+    catalog = tenant_catalog()
+    scoped_tables = tuple(item["table"] for item in catalog if item["scoped"])
+    unscoped_tables = tuple(item["table"] for item in catalog if not item["scoped"])
+    scoped_table = scoped_tables[0] if scoped_tables else None
+    filter_sample = tenant_filter_kwargs(scoped_table, "tenant-a") if scoped_table else {{}}
+    unscoped_filter_ok = all(not tenant_filter_kwargs(table, "tenant-a") for table in unscoped_tables)
+    gates = (
+        {{"gate": "artifact_coverage", "ok": not missing, "required": TENANCY_REQUIRED_ARTIFACTS, "missing": missing}},
+        {{"gate": "tenant_catalog", "ok": bool(catalog) and all("scoped" in item and "tenant_columns" in item for item in catalog), "evidence": catalog}},
+        {{"gate": "context_resolution", "ok": tenant_context({{TENANT_HEADER: "header"}}, {{}}, {{}})["tenant_id"] == "header" and tenant_context({{}}, {{"tenant": "query"}}, {{}})["tenant_id"] == "query" and tenant_context({{}}, {{}}, {{TENANT_SESSION_KEY: "session"}})["tenant_id"] == "session", "sources": (TENANT_HEADER, "tenant", TENANT_SESSION_KEY)}},
+        {{"gate": "filter_helpers", "ok": (not scoped_table or bool(filter_sample)) and unscoped_filter_ok, "scoped_table": scoped_table, "filter": filter_sample}},
+        {{"gate": "tenant_requirement", "ok": _tenant_requirement_blocks(scoped_table) and all(require_tenant(table, None) for table in unscoped_tables), "scoped_table": scoped_table}},
+    )
+    ok = all(gate["ok"] for gate in gates)
+    return {{
+        "format": "appgen.tenancy-release-gate.v1",
+        "ok": ok,
+        "decision": "approved" if ok else "blocked",
+        "gates": gates,
+        "scoped_tables": scoped_tables,
+        "unscoped_tables": unscoped_tables,
+        "required_artifacts": TENANCY_REQUIRED_ARTIFACTS,
+    }}
+
+
+def tenancy_workbench(existing_paths=()):
+    """Return IDE-ready tenant catalog, context, filter, and route evidence."""
+    release_gate = tenancy_release_gate(existing_paths)
+    gate_by_name = {{gate["gate"]: gate for gate in release_gate["gates"]}}
+    catalog = tenant_catalog()
+    scoped_table = release_gate["scoped_tables"][0] if release_gate["scoped_tables"] else None
+    context_samples = {{
+        "header": tenant_context({{TENANT_HEADER: "tenant-a"}}, {{}}, {{}}),
+        "query": tenant_context({{}}, {{"tenant": "tenant-b"}}, {{}}),
+        "session": tenant_context({{}}, {{}}, {{TENANT_SESSION_KEY: "tenant-c"}}),
+    }}
+    filter_sample = tenant_filter_kwargs(scoped_table, "tenant-a") if scoped_table else {{}}
+    routes = (
+        "/tenancy/",
+        "/tenancy/catalog.json",
+        "/tenancy/context.json",
+        "/tenancy/workbench.json",
+        "/tenancy/release-gate.json",
+    )
+    checks = (
+        {{"id": "artifact_coverage", "ok": gate_by_name["artifact_coverage"]["ok"], "evidence": gate_by_name["artifact_coverage"]}},
+        {{"id": "tenant_catalog", "ok": gate_by_name["tenant_catalog"]["ok"], "evidence": catalog}},
+        {{"id": "context_resolution", "ok": gate_by_name["context_resolution"]["ok"], "evidence": context_samples}},
+        {{"id": "filter_helpers", "ok": gate_by_name["filter_helpers"]["ok"], "evidence": {{"scoped_table": scoped_table, "filter": filter_sample}}}},
+        {{"id": "tenant_requirement", "ok": gate_by_name["tenant_requirement"]["ok"], "evidence": {{"scoped_table": scoped_table}}}},
+        {{"id": "route_surface", "ok": {{"/tenancy/workbench.json", "/tenancy/release-gate.json", "/tenancy/catalog.json", "/tenancy/context.json"}} <= set(routes), "evidence": {{"routes": routes}}}},
+        {{"id": "release_gate", "ok": release_gate["ok"], "evidence": release_gate}},
+    )
+    ok = all(check["ok"] for check in checks)
+    return {{
+        "format": "appgen.tenancy-workbench.v1",
+        "ok": ok,
+        "decision": "approved" if ok else "blocked",
+        "checks": checks,
+        "catalog": catalog,
+        "context_samples": context_samples,
+        "filter_sample": filter_sample,
+        "routes": routes,
+        "release_gate": release_gate,
+    }}
+
+
 class TenancyView(BaseView):
     route_base = "/tenancy"
     default_view = "index"
@@ -20401,6 +20487,14 @@ class TenancyView(BaseView):
     @expose("/context.json")
     def context_json(self):
         return jsonify(request_tenant_context())
+
+    @expose("/workbench.json")
+    def workbench_json(self):
+        return jsonify(tenancy_workbench(TENANCY_REQUIRED_ARTIFACTS))
+
+    @expose("/release-gate.json")
+    def release_gate_json(self):
+        return jsonify(tenancy_release_gate(TENANCY_REQUIRED_ARTIFACTS))
 
 
 def register_tenancy(appbuilder):
@@ -44867,6 +44961,9 @@ def test_generated_runtime_helpers():
     assert emerging.emerging_release_gate({"app/emerging.py", "app/templates/appgen_emerging.html"})["ok"] is True
     assert emerging.emerging_release_gate({"app/emerging.py"})["ok"] is False
     assert isinstance(tenancy.tenant_catalog(), tuple)
+    assert tenancy.tenancy_release_gate({"app/tenancy.py", "app/templates/appgen_tenancy.html"})["format"] == "appgen.tenancy-release-gate.v1"
+    assert tenancy.tenancy_workbench({"app/tenancy.py", "app/templates/appgen_tenancy.html"})["format"] == "appgen.tenancy-workbench.v1"
+    assert tenancy.tenancy_workbench({"app/tenancy.py"})["ok"] is False
     assert isinstance(rls.rls_catalog(), tuple)
     assert rls.postgres_role_sync_plan()["review_required"] is True
     assert "CREATE ROLE" in rls.postgres_role_sync_sql()
