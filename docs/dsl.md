@@ -390,7 +390,11 @@ appgen --reporting-release-audit
 The reporting audit proves every table receives a report, relations receive
 join reports, two-hop relation paths receive 3-way reports, every table receives
 a ChartView contract, and report delivery covers PDF export plus email
-attachments.
+attachments. It also generates a temporary reporting app, verifies generated
+report, delivery, dashboard, template, model, and view artifacts, compiles the
+generated reporting stack, and exercises generated table/join/3-way catalogs,
+CSV export, PDF rendering, email payloads, dashboard chart rendering, workbench,
+and release-gate contracts.
 
 Audit package-level operations readiness before claiming Docker, Kubernetes,
 cloud, search, HTTPS, and automation outputs are ready:

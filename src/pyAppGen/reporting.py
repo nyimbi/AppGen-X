@@ -162,6 +162,156 @@ def report_delivery_contract() -> dict:
     }
 
 
+def reporting_generation_smoke_audit(schema: AppSchema | None = None) -> dict:
+    """Generate a temporary app and exercise its generated reporting stack."""
+    import importlib.util
+    import py_compile
+    import tempfile
+    from pathlib import Path
+
+    from .gen import generate_app_from_schema
+
+    app_schema = schema or sample_reporting_schema()
+    required_artifacts = (
+        "app/reports.py",
+        "app/report_delivery.py",
+        "app/dashboards.py",
+        "app/models.py",
+        "app/views.py",
+        "app/templates/appgen_reports.html",
+        "app/templates/appgen_report_delivery.html",
+        "app/templates/appgen_dashboards.html",
+    )
+    compile_artifacts = (
+        "app/reports.py",
+        "app/report_delivery.py",
+        "app/dashboards.py",
+        "app/models.py",
+        "app/views.py",
+    )
+
+    with tempfile.TemporaryDirectory(prefix="appgen-reporting-smoke-") as tmp:
+        project_dir = Path(tmp)
+        output_dir = project_dir / "app"
+        generate_app_from_schema(app_schema, output_dir)
+
+        missing_artifacts = tuple(
+            artifact for artifact in required_artifacts if not (project_dir / artifact).exists()
+        )
+        compiled = []
+        compile_failures = []
+        for artifact in compile_artifacts:
+            path = project_dir / artifact
+            if not path.exists():
+                continue
+            try:
+                py_compile.compile(str(path), doraise=True)
+            except py_compile.PyCompileError as exc:
+                compile_failures.append({"artifact": artifact, "error": str(exc)})
+            else:
+                compiled.append(artifact)
+
+        modules = {}
+        for name in ("reports", "report_delivery", "dashboards"):
+            module_path = output_dir / f"{name}.py"
+            spec = importlib.util.spec_from_file_location(f"generated_{name}_smoke", module_path)
+            module = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(module)
+            modules[name] = module
+
+        reports = modules["reports"]
+        delivery = modules["report_delivery"]
+        dashboards = modules["dashboards"]
+        existing = {
+            "app/reports.py",
+            "app/report_delivery.py",
+            "app/dashboards.py",
+            "app/templates/appgen_reports.html",
+            "app/templates/appgen_report_delivery.html",
+            "app/templates/appgen_dashboards.html",
+        }
+        report_catalog = reports.report_catalog()
+        join_catalog = reports.join_report_catalog()
+        three_way_catalog = reports.three_way_report_catalog()
+        first_report = report_catalog[0]
+        report_csv = reports.rows_to_csv(
+            first_report["columns"],
+            ({column: f"Sample {column}" for column in first_report["columns"]},),
+        )
+        relation_key = reports.relationship_report_keys()[0]
+        relation_csv = reports.relationship_rows_to_csv(relation_key, ())
+        reports_gate = reports.reports_release_gate(existing)
+        reports_workbench = reports.reports_workbench(existing)
+
+        first_table = delivery.delivery_catalog()[0]["table"]
+        sample_rows = delivery.delivery_sample_rows()[first_table]
+        pdf = delivery.rows_to_pdf_bytes(first_table, sample_rows)
+        email = delivery.email_report_payload(
+            first_table, sample_rows, recipients=("review@example.test",)
+        )
+        delivery_gate = delivery.report_delivery_release_gate(existing)
+
+        dashboard_catalog = dashboards.dashboard_catalog()
+        chart_catalog = dashboards.chart_catalog()
+        first_dashboard = dashboard_catalog[0]["table"]
+        dashboard_rows = dashboards.dashboard_sample_rows()[first_dashboard]
+        dashboard_payload = dashboards.dashboard_payload(first_dashboard, dashboard_rows)
+        first_chart = chart_catalog[0]
+        chart_render = dashboards.chart_render_contract(first_chart, dashboard_rows)
+        dashboard_gate = dashboards.dashboard_release_gate(existing)
+        visualization = dashboards.visualization_workbench(existing)
+
+    checks = (
+        {
+            "id": "generated_artifacts",
+            "ok": not missing_artifacts,
+            "required_artifacts": required_artifacts,
+            "missing": missing_artifacts,
+        },
+        {
+            "id": "generated_python_compiles",
+            "ok": not compile_failures and set(compiled) == set(compile_artifacts),
+            "compiled": tuple(compiled),
+            "failures": tuple(compile_failures),
+        },
+        {
+            "id": "report_catalogs_and_exports",
+            "ok": bool(report_catalog)
+            and bool(join_catalog)
+            and bool(three_way_catalog)
+            and report_csv.startswith(",".join(first_report["columns"][:1]))
+            and relation_csv.startswith(",".join(reports.report_definition(relation_key)["columns"][:1]))
+            and reports_gate["ok"]
+            and reports_workbench["ok"],
+        },
+        {
+            "id": "pdf_email_delivery",
+            "ok": pdf.startswith(b"%PDF")
+            and email["attachments"][0]["content_type"] == "application/pdf"
+            and delivery_gate["ok"],
+        },
+        {
+            "id": "dashboard_chart_contracts",
+            "ok": bool(dashboard_catalog)
+            and bool(chart_catalog)
+            and dashboard_payload["charts"]
+            and chart_render["vega_lite"]["$schema"].endswith("/vega-lite/v5.json")
+            and dashboard_gate["ok"]
+            and visualization["ok"],
+        },
+    )
+    ok = all(check["ok"] for check in checks)
+    return {
+        "format": "appgen.reporting-generation-smoke-audit.v1",
+        "ok": ok,
+        "decision": "approved" if ok else "blocked",
+        "required_artifacts": required_artifacts,
+        "compiled_artifacts": tuple(compiled),
+        "checks": checks,
+        "blocking_gaps": tuple(check for check in checks if not check["ok"]),
+    }
+
+
 def reporting_release_audit(schema: AppSchema | None = None, existing_paths: set[str] | None = None) -> dict:
     """Return package-level proof for report, join, 3-way, and ChartView coverage."""
     app_schema = schema or sample_reporting_schema()
@@ -179,6 +329,7 @@ def reporting_release_audit(schema: AppSchema | None = None, existing_paths: set
     chartviews = chartview_catalog(app_schema)
     delivery = report_delivery_contract()
     table_names = {table.name for table in app_schema.tables}
+    generation_smoke = reporting_generation_smoke_audit(app_schema)
     gates = (
         {
             "id": "every_table_reported",
@@ -218,6 +369,11 @@ def reporting_release_audit(schema: AppSchema | None = None, existing_paths: set
             }
             <= existing,
         },
+        {
+            "id": "generation_smoke",
+            "ok": generation_smoke["ok"],
+            "checks": tuple(check["id"] for check in generation_smoke["checks"]),
+        },
     )
     ok = all(gate["ok"] for gate in gates)
     return {
@@ -230,6 +386,7 @@ def reporting_release_audit(schema: AppSchema | None = None, existing_paths: set
         "three_way_reports": three_way_reports,
         "chartviews": chartviews,
         "delivery": delivery,
+        "generation_smoke": generation_smoke,
         "gates": gates,
         "blocking_gaps": tuple(gate for gate in gates if not gate["ok"]),
         "stop_condition": "do-not-claim-reporting-chartview-readiness-unless-ok-is-true",

@@ -113,6 +113,7 @@ from pyAppGen.roadmap import roadmap_release_audit
 from pyAppGen.reporting import chartview_catalog
 from pyAppGen.reporting import join_report_catalog
 from pyAppGen.reporting import report_delivery_contract
+from pyAppGen.reporting import reporting_generation_smoke_audit
 from pyAppGen.reporting import reporting_release_audit
 from pyAppGen.reporting import table_report_catalog
 from pyAppGen.reporting import three_way_report_catalog
@@ -1182,7 +1183,22 @@ def test_package_reporting_audit_covers_tables_joins_and_chartviews(
         "chartviews",
         "pdf_email_delivery",
         "artifact_contract",
+        "generation_smoke",
     } == {gate["id"] for gate in audit["gates"]}
+    assert audit["generation_smoke"]["ok"] is True
+
+    smoke = reporting_generation_smoke_audit()
+    assert smoke["format"] == "appgen.reporting-generation-smoke-audit.v1"
+    assert smoke["ok"] is True
+    assert {
+        "app/reports.py",
+        "app/report_delivery.py",
+        "app/dashboards.py",
+        "app/templates/appgen_reports.html",
+    } <= set(smoke["required_artifacts"])
+    assert {"app/reports.py", "app/report_delivery.py", "app/dashboards.py"} <= set(
+        smoke["compiled_artifacts"]
+    )
 
     missing = reporting_release_audit(existing_paths={"app/reports.py"})
     assert missing["ok"] is False

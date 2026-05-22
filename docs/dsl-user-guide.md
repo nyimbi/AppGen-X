@@ -185,7 +185,12 @@ metadata, Cookiecutter templates, Flask-AppBuilder extension hooks, generated
 coverage tests, and seed-script contracts are present before release.
 Run `appgen --reporting-release-audit` to prove every table has a report,
 relations have join reports, two-hop paths have 3-way reports, ChartView
-contracts exist, and PDF/email report delivery is covered.
+contracts exist, and PDF/email report delivery is covered. The audit also
+generates a temporary reporting app, verifies generated report, delivery,
+dashboard, template, model, and view artifacts, compiles the generated reporting
+stack, and exercises generated table/join/3-way catalogs, CSV export, PDF
+rendering, email payloads, dashboard chart rendering, workbench, and release
+gates.
 Run `appgen --ops-release-audit` to prove Docker, Kubernetes, Terraform cloud
 targets, automatic HTTPS, Elasticsearch, Whoosh, default Node-RED, and database
 operations contracts are covered before release.
