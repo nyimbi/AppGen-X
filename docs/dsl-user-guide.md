@@ -200,7 +200,11 @@ operations contracts are covered before release.
 Run `appgen --integration-release-audit` to prove REST/webhook, Salesforce,
 SAP, Entando, Invenio, Stripe, M-Pesa, Twilio SMS, and SendGrid email
 connectors, signed delivery, idempotency, and portal/repository contracts are
-covered before release.
+covered before release. The audit also generates a temporary app, compiles the
+generated integration module, and exercises generated connector catalog,
+Entando/Invenio contracts, signed webhook delivery, outbox audit events,
+payment/SMS/email plans, portal publication, repository deposit, workbench, and
+release-gate contracts.
 Run `appgen --agentic-release-audit` to prove DSL `llm`/`agent` blocks, local
 Ollama/LM Studio providers, API-key OpenAI/Anthropic providers, secret
 guardrails, reviewed tool policies, execution matrices, and generated agent

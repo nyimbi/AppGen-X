@@ -422,7 +422,11 @@ appgen --integration-release-audit
 The integration audit proves REST and signed-webhook contracts, Salesforce and
 SAP stubs, Stripe and M-Pesa payment plans, Twilio SMS, SendGrid email, stable
 idempotency keys, and first-class generated contracts for Entando
-micro-frontends and Invenio repository deposits.
+micro-frontends and Invenio repository deposits. It also generates a temporary
+app, compiles the generated integration module, and exercises generated
+connector catalog, Entando/Invenio contracts, signed webhook delivery, outbox
+audit events, payment/SMS/email plans, portal publication, repository deposit,
+workbench, and release-gate contracts.
 
 Audit package-level agentic readiness before claiming the DSL can design
 agentic systems across local and API-key LLM providers:

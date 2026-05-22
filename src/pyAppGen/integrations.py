@@ -111,6 +111,16 @@ INTEGRATION_CONTRACTS = {
 }
 
 
+INTEGRATION_SAMPLE_DSL = """
+app IntegrationAudit { targets: web, mobile, desktop }
+
+table Book {
+  id: int pk
+  title: string required search
+}
+"""
+
+
 def integration_config(name: str, environ: dict | None = None) -> dict:
     """Return non-secret configuration status for a connector."""
     if name not in INTEGRATIONS:
@@ -292,6 +302,225 @@ def repository_deposit_plan(
     }
 
 
+def integration_generation_smoke_audit(source: str = INTEGRATION_SAMPLE_DSL) -> dict:
+    """Generate a temporary app and exercise its integration workbench contracts."""
+    import importlib.util
+    import py_compile
+    import tempfile
+    from pathlib import Path
+
+    from .dsl import schema_from_dsl
+    from .gen import generate_app_from_schema
+
+    required_artifacts = (
+        "app/integrations.py",
+        "app/templates/appgen_integrations.html",
+        "app/models.py",
+        "app/views.py",
+    )
+    compile_artifacts = (
+        "app/integrations.py",
+        "app/models.py",
+        "app/views.py",
+    )
+    existing_paths = {"app/integrations.py", "app/templates/appgen_integrations.html"}
+    webhook_env = {
+        "APPGEN_WEBHOOK_URL": "https://hooks.example.test/appgen",
+        "APPGEN_WEBHOOK_SECRET": "secret",
+    }
+    payment_env = {"STRIPE_API_KEY": "sk_test", "STRIPE_WEBHOOK_SECRET": "whsec"}
+    sms_env = {
+        "TWILIO_ACCOUNT_SID": "sid",
+        "TWILIO_AUTH_TOKEN": "token",
+        "TWILIO_FROM_NUMBER": "+10000000000",
+    }
+    email_env = {"SENDGRID_API_KEY": "key", "APPGEN_EMAIL_FROM": "noreply@example.test"}
+    entando_env = {
+        "ENTANDO_BASE_URL": "https://portal.example.test",
+        "ENTANDO_CLIENT_ID": "client",
+        "ENTANDO_CLIENT_SECRET": "secret",
+    }
+    invenio_env = {
+        "INVENIO_BASE_URL": "https://repo.example.test",
+        "INVENIO_ACCESS_TOKEN": "token",
+    }
+
+    with tempfile.TemporaryDirectory(prefix="appgen-integration-smoke-") as tmp:
+        project_dir = Path(tmp)
+        output_dir = project_dir / "app"
+        schema = schema_from_dsl(source, source_name="integration-smoke.appgen")
+        generate_app_from_schema(schema, output_dir)
+
+        missing_artifacts = tuple(
+            artifact for artifact in required_artifacts if not (project_dir / artifact).exists()
+        )
+        compiled = []
+        compile_failures = []
+        for artifact in compile_artifacts:
+            path = project_dir / artifact
+            if not path.exists():
+                continue
+            try:
+                py_compile.compile(str(path), doraise=True)
+            except py_compile.PyCompileError as exc:
+                compile_failures.append({"artifact": artifact, "error": str(exc)})
+            else:
+                compiled.append(artifact)
+
+        module_path = output_dir / "integrations.py"
+        spec = importlib.util.spec_from_file_location(
+            "generated_integration_smoke_integrations",
+            module_path,
+        )
+        generated_integrations = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(generated_integrations)
+
+        catalog = generated_integrations.integration_catalog({})
+        contracts = generated_integrations.generated_integration_contracts()
+        entando = generated_integrations.integration_contract("entando")
+        invenio = generated_integrations.integration_contract("invenio")
+        webhook = generated_integrations.signed_webhook_plan(
+            "Book.created",
+            {"id": 1},
+            environ=webhook_env,
+        )
+        webhook_valid = generated_integrations.validate_webhook_signature(
+            {"id": 1},
+            webhook["signature"],
+            webhook_env["APPGEN_WEBHOOK_SECRET"],
+        )
+        outbox = generated_integrations.integration_outbox_entry(webhook)
+        delivery_audit = generated_integrations.delivery_audit_event(outbox, status="queued")
+        payment = generated_integrations.payment_request_plan(
+            "stripe",
+            amount=42,
+            currency="usd",
+            reference="INV-1",
+            environ=payment_env,
+        )
+        sms = generated_integrations.sms_request_plan(
+            "twilio_sms",
+            to="+15551234567",
+            body="Ready",
+            environ=sms_env,
+        )
+        email = generated_integrations.email_request_plan(
+            "sendgrid_email",
+            to="ada@example.test",
+            subject="Ready",
+            body="Report ready.",
+            environ=email_env,
+        )
+        portal = generated_integrations.low_code_portal_plan(
+            microfrontend="book-list",
+            route="/books",
+            environ=entando_env,
+        )
+        deposit = generated_integrations.repository_deposit_plan(
+            record={"title": "Dune"},
+            files=("dune.pdf",),
+            environ=invenio_env,
+        )
+        missing_config_guard = False
+        try:
+            generated_integrations.outbound_request_plan("webhook", "webhook.Book.created", {})
+        except ValueError:
+            missing_config_guard = True
+        release_gate = generated_integrations.integration_release_gate(existing_paths)
+        workbench = generated_integrations.integration_workbench(existing_paths)
+        artifact_check = generated_integrations.integration_check(existing_paths)
+
+    checks = (
+        {
+            "id": "generated_artifacts",
+            "ok": not missing_artifacts,
+            "required_artifacts": required_artifacts,
+            "missing": missing_artifacts,
+        },
+        {
+            "id": "generated_python_compiles",
+            "ok": not compile_failures and set(compiled) == set(compile_artifacts),
+            "compiled": tuple(compiled),
+            "failures": tuple(compile_failures),
+        },
+        {
+            "id": "connector_catalog_and_contracts",
+            "ok": {
+                "rest",
+                "webhook",
+                "salesforce",
+                "sap",
+                "entando",
+                "invenio",
+                "stripe",
+                "mpesa",
+                "twilio_sms",
+                "sendgrid_email",
+            }
+            <= {item["name"] for item in catalog}
+            and {contract["integration"] for contract in contracts} == {"entando", "invenio"}
+            and entando["version"] == "appgen.integration.entando.v1"
+            and invenio["version"] == "appgen.integration.invenio.v1",
+            "catalog": catalog,
+            "contracts": contracts,
+        },
+        {
+            "id": "signed_delivery_and_outbox",
+            "ok": webhook_valid is True
+            and webhook["headers"]["Idempotency-Key"] == webhook["idempotency_key"]
+            and outbox["id"].startswith("outbox-")
+            and delivery_audit["event"] == "integration.delivery.queued",
+            "webhook": webhook,
+            "outbox": outbox,
+            "audit": delivery_audit,
+        },
+        {
+            "id": "commercial_and_missing_config_guards",
+            "ok": payment["side_effect"] == "external_payment"
+            and sms["side_effect"] == "external_sms"
+            and email["side_effect"] == "external_email"
+            and payment["review_required"] is True
+            and sms["review_required"] is True
+            and email["review_required"] is True
+            and missing_config_guard is True,
+            "payment": payment,
+            "sms": sms,
+            "email": email,
+            "missing_config_guard": missing_config_guard,
+        },
+        {
+            "id": "portal_repository_contracts",
+            "ok": portal["contract"] == "appgen.integration.entando.v1"
+            and deposit["contract"] == "appgen.integration.invenio.v1"
+            and portal["review_required"] is True
+            and deposit["review_required"] is True,
+            "entando": portal,
+            "invenio": deposit,
+        },
+        {
+            "id": "generated_release_and_workbench",
+            "ok": release_gate["ok"] is True
+            and workbench["ok"] is True
+            and artifact_check["ok"] is True,
+            "release_gate": release_gate,
+            "workbench": workbench,
+            "artifact_check": artifact_check,
+        },
+    )
+    ok = all(check["ok"] for check in checks)
+    return {
+        "format": "appgen.integration-generation-smoke-audit.v1",
+        "scope": "generated-app",
+        "ok": ok,
+        "decision": "approved" if ok else "blocked",
+        "required_artifacts": required_artifacts,
+        "compiled_artifacts": tuple(compiled),
+        "checks": checks,
+        "blocking_gaps": tuple(check for check in checks if not check["ok"]),
+        "stop_condition": "do-not-claim-generated-integration-readiness-unless-ok-is-true",
+    }
+
+
 def integration_release_audit(existing_paths: set[str] | None = None) -> dict:
     """Return package-level proof for enterprise integration readiness."""
     existing = (
@@ -306,6 +535,7 @@ def integration_release_audit(existing_paths: set[str] | None = None) -> dict:
     deposit_plan = repository_deposit_plan()
     entando = integration_contract("entando")
     invenio = integration_contract("invenio")
+    generation_smoke = integration_generation_smoke_audit()
     gates = (
         {
             "id": "connector_catalog",
@@ -349,6 +579,11 @@ def integration_release_audit(existing_paths: set[str] | None = None) -> dict:
             "id": "artifact_contract",
             "ok": {"app/integrations.py", "app/templates/appgen_integrations.html"} <= existing,
         },
+        {
+            "id": "generation_smoke",
+            "ok": generation_smoke["ok"],
+            "checks": tuple(check["id"] for check in generation_smoke["checks"]),
+        },
     )
     ok = all(gate["ok"] for gate in gates)
     return {
@@ -364,6 +599,7 @@ def integration_release_audit(existing_paths: set[str] | None = None) -> dict:
             "invenio": deposit_plan,
         },
         "webhook": webhook,
+        "generation_smoke": generation_smoke,
         "gates": gates,
         "blocking_gaps": tuple(gate for gate in gates if not gate["ok"]),
         "stop_condition": "do-not-claim-enterprise-integration-readiness-unless-ok-is-true",

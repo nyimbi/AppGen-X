@@ -88,6 +88,7 @@ from pyAppGen.ideas import ideas_release_audit
 from pyAppGen.ideas import ideas_requirement_rows
 from pyAppGen.ideas import ideas_section_summary
 from pyAppGen.integrations import generated_integration_contracts
+from pyAppGen.integrations import integration_generation_smoke_audit
 from pyAppGen.integrations import integration_catalog
 from pyAppGen.integrations import integration_contract
 from pyAppGen.integrations import integration_idempotency_key
@@ -1348,7 +1349,18 @@ def test_package_integrations_audit_covers_enterprise_contracts(
         "signed_webhooks",
         "idempotent_outbound",
         "artifact_contract",
+        "generation_smoke",
     } == {gate["id"] for gate in audit["gates"]}
+    assert audit["generation_smoke"]["ok"] is True
+
+    smoke = integration_generation_smoke_audit()
+    assert smoke["format"] == "appgen.integration-generation-smoke-audit.v1"
+    assert smoke["ok"] is True
+    assert {
+        "app/integrations.py",
+        "app/templates/appgen_integrations.html",
+    } <= set(smoke["required_artifacts"])
+    assert "app/integrations.py" in set(smoke["compiled_artifacts"])
 
     missing = integration_release_audit(existing_paths={"app/integrations.py"})
     assert missing["ok"] is False
