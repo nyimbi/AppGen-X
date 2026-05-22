@@ -451,6 +451,10 @@ Use `/collaboration/release-gate.json` or `collaboration_release_gate()` to
 prove team change-management readiness. The gate checks proposal creation,
 review decisions, merge plans, conflict detection, merge queues,
 conflict-resolution plans, and required collaboration artifacts.
+Use `/version-control/release-gate.json` or
+`version_control_release_gate()` to prove version-history readiness. The gate
+checks content-addressed snapshots, schema diffs, branch contracts, rollback
+review plans, resource catalogs, and required version-control artifacts.
 Use `/extensions/release-gate.json` or `extension_release_gate()` to prove
 custom-code extensibility is ready: the gate checks generated artifacts, stable
 hook catalogs, table lifecycle hooks, generated-rule dispatch, custom-module

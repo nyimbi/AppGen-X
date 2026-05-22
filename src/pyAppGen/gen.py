@@ -4970,7 +4970,10 @@ def write_version_control_template(output_dir):
         plans, and branch contracts for low-code team development.
       </p>
     </div>
-    <a class="btn btn-default" href="{{ url_for('VersionControlView.catalog_json') }}">Catalog JSON</a>
+    <div>
+      <a class="btn btn-default" href="{{ url_for('VersionControlView.catalog_json') }}">Catalog JSON</a>
+      <a class="btn btn-default" href="{{ url_for('VersionControlView.release_gate_json') }}">Release Gate JSON</a>
+    </div>
   </div>
   <div class="agvc-grid">
     {% for item in resources %}
@@ -26411,6 +26414,42 @@ def version_control_check(existing_paths=()):
     }}
 
 
+def version_control_release_gate(existing_paths=()):
+    """Return release readiness for generated version-control workflows."""
+    readiness = version_control_check(existing_paths)
+    table_resource = next((name.split(":", 1)[1] for name in VERSION_RESOURCES if name.startswith("table:")), "manifest")
+    before_manifest = {{
+        "tables": ({{"name": table_resource, "columns": ({{"name": "id", "type": "integer"}},)}},),
+        "views": (),
+        "flows": (),
+    }}
+    after_manifest = {{
+        "tables": ({{"name": table_resource, "columns": ({{"name": "id", "type": "integer"}}, {{"name": "title", "type": "string"}})}},),
+        "views": (),
+        "flows": (),
+    }}
+    before = snapshot_manifest(before_manifest, author="release-gate", message="baseline")
+    after = snapshot_manifest(after_manifest, author="release-gate", message="add title")
+    diff = diff_snapshots(before, after)
+    branch = branch_plan(before, "feature/release-gate", author="release-gate")
+    rollback = rollback_plan((before, after), before["revision_id"])
+    gates = (
+        {{"gate": "artifacts", "ok": readiness["ok"], "missing": readiness["missing"]}},
+        {{"gate": "resource_catalog", "ok": bool(version_resource_catalog()) and "manifest" in readiness["resources"] and "dsl" in readiness["resources"], "resources": version_resource_catalog()}},
+        {{"gate": "content_addressed_snapshot", "ok": before["revision_id"] == revision_id(before["manifest"]) and after["revision_id"] == revision_id(after["manifest"]) and before["revision_id"] != after["revision_id"], "before": before, "after": after}},
+        {{"gate": "schema_diff", "ok": diff["change_count"] == 1 and diff["changes"][0]["kind"] == "field_added" and diff["changes"][0]["field"] == "title", "diff": diff}},
+        {{"gate": "branch_contract", "ok": branch["base_revision"] == before["revision_id"] and branch["branch"] == "feature/release-gate" and bool(branch["branch_id"]), "branch": branch}},
+        {{"gate": "rollback_plan", "ok": rollback["requires_review"] is True and rollback["target_revision"] == before["revision_id"] and rollback["discarded_revisions"] == (after["revision_id"],), "rollback": rollback}},
+    )
+    ok = all(gate["ok"] for gate in gates)
+    return {{
+        "format": "appgen.version-control-release-gate.v1",
+        "ok": ok,
+        "decision": "approved" if ok else "blocked",
+        "gates": gates,
+    }}
+
+
 class VersionControlView(BaseView):
     route_base = "/version-control"
     default_view = "index"
@@ -26425,6 +26464,10 @@ class VersionControlView(BaseView):
     @expose("/catalog.json")
     def catalog_json(self):
         return jsonify(list(version_resource_catalog()))
+
+    @expose("/release-gate.json")
+    def release_gate_json(self):
+        return jsonify(version_control_release_gate({{"app/version_control.py", "app/templates/appgen_version_control.html"}}))
 
 
 def register_version_control(appbuilder):
@@ -35494,11 +35537,11 @@ def validate_version_control_artifacts() -> None:
     contract = (ROOT / "app" / "version_control.py").read_text()
     if "snapshot_manifest" not in contract or "diff_snapshots" not in contract or "rollback_plan" not in contract:
         fail("version-control contract must expose snapshots, diffs, and rollback plans")
-    if "branch_plan" not in contract or "version_control_check" not in contract:
-        fail("version-control contract must expose branch and readiness helpers")
+    if "branch_plan" not in contract or "version_control_check" not in contract or "version_control_release_gate" not in contract:
+        fail("version-control contract must expose branch, readiness, and release-gate helpers")
     template = (ROOT / "app" / "templates" / "appgen_version_control.html").read_text()
-    if "Version Control" not in template or "rollback" not in template:
-        fail("version-control template must expose generated history and rollback contracts")
+    if "Version Control" not in template or "rollback" not in template or "Release Gate JSON" not in template:
+        fail("version-control template must expose generated history, rollback, and release contracts")
 
 
 def validate_event_artifacts() -> None:
@@ -37488,6 +37531,13 @@ def test_generated_runtime_helpers():
     assert version_control.version_control_check(
         {"app/version_control.py", "app/templates/appgen_version_control.html"}
     )["ok"] is True
+    assert version_control.version_control_release_gate(
+        {"app/version_control.py", "app/templates/appgen_version_control.html"}
+    )["format"] == "appgen.version-control-release-gate.v1"
+    assert version_control.version_control_release_gate(
+        {"app/version_control.py", "app/templates/appgen_version_control.html"}
+    )["ok"] is True
+    assert version_control.version_control_release_gate({"app/version_control.py"})["ok"] is False
     assert isinstance(components.component_catalog(), tuple)
     assert isinstance(components.widget_registry(), tuple)
     assert isinstance(components.component_palette(), tuple)

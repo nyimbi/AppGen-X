@@ -4361,6 +4361,15 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert version_control.version_control_check(
         {"app/version_control.py", "app/templates/appgen_version_control.html"}
     )["ok"] is True
+    version_gate = version_control.version_control_release_gate(
+        {"app/version_control.py", "app/templates/appgen_version_control.html"}
+    )
+    assert version_gate["format"] == "appgen.version-control-release-gate.v1"
+    assert version_gate["ok"] is True
+    assert {"content_addressed_snapshot", "schema_diff", "branch_contract", "rollback_plan"} <= {
+        gate["gate"] for gate in version_gate["gates"]
+    }
+    assert version_control.version_control_release_gate({"app/version_control.py"})["ok"] is False
     assert {item["tool"] for item in devtools.devtool_catalog()} == {"vscode", "eclipse", "jetbrains"}
     assert devtools.vscode_launch_profile()["module"] == "flask"
     assert any(task["label"] == "AppGen quality" for task in devtools.vscode_tasks())

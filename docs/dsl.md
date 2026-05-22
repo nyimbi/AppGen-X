@@ -573,7 +573,10 @@ apps include:
   collaboration artifacts.
 - `version_control.py` and `appgen_version_control.html` with generated
   manifest snapshots, content-addressed revision IDs, branch plans,
-  schema-level diffs, and reviewable rollback plans.
+  schema-level diffs, and reviewable rollback plans. A generated version-control
+  release gate proves content-addressed snapshots, schema diffs, branch
+  contracts, rollback review plans, resource catalogs, and required version
+  artifacts.
 - `.vscode/`, `.idea/`, `.project`, `.pydevproject`, `devtools.py`, and
   `appgen_devtools.html` with generated Visual Studio Code, JetBrains
   IDEA/PyCharm, and Eclipse/PyDev launch, task, extension, source-map, and
