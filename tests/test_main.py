@@ -55,6 +55,15 @@ from pyAppGen.erp import erp_module_dsl
 from pyAppGen.erp import erp_starter_manifest
 from pyAppGen.erp import erp_template_catalog
 from pyAppGen.erp import erp_template_release_audit
+from pyAppGen.integrations import generated_integration_contracts
+from pyAppGen.integrations import integration_catalog
+from pyAppGen.integrations import integration_contract
+from pyAppGen.integrations import integration_idempotency_key
+from pyAppGen.integrations import integration_release_audit
+from pyAppGen.integrations import low_code_portal_plan
+from pyAppGen.integrations import repository_deposit_plan
+from pyAppGen.integrations import signed_webhook_plan
+from pyAppGen.integrations import validate_webhook_signature
 from pyAppGen.nl import evolution_changeset
 from pyAppGen.nl import evolution_plan
 from pyAppGen.nl import nl_evolution_release_audit
@@ -279,6 +288,7 @@ def test_package_goal_audit_cli_aggregates_objective_evidence(
         "publishable_distribution",
         "reporting_chartviews",
         "ops_deployment_search",
+        "enterprise_integrations",
         "source_document_scope",
     } == {gate["id"] for gate in direct_report["gates"]}
     assert direct_report["stop_condition"] == (
@@ -301,6 +311,7 @@ def test_package_goal_audit_cli_aggregates_objective_evidence(
     assert cli_report["audits"]["distribution"]["ok"] is True
     assert cli_report["audits"]["reporting"]["ok"] is True
     assert cli_report["audits"]["ops"]["ok"] is True
+    assert cli_report["audits"]["integrations"]["ok"] is True
 
 
 def test_package_erp_templates_export_generatable_dsl(
@@ -675,6 +686,87 @@ def test_package_ops_audit_covers_deployment_search_and_node_red(
     report = json.loads(result.output)
     assert report["ok"] is True
     assert "elasticsearch" in report["contracts"]["search"]["providers"]
+
+
+def test_package_integrations_audit_covers_enterprise_contracts(
+    runner: CliRunner,
+) -> None:
+    """The package proves enterprise connectors and Entando/Invenio contracts."""
+    catalog = integration_catalog()
+    assert {
+        "rest",
+        "webhook",
+        "salesforce",
+        "sap",
+        "entando",
+        "invenio",
+        "stripe",
+        "mpesa",
+        "twilio_sms",
+        "sendgrid_email",
+    } <= {item["name"] for item in catalog}
+
+    entando = integration_contract("entando")
+    assert entando["version"] == "appgen.integration.entando.v1"
+    assert {"microfrontend", "page", "widget", "sso_context"} <= set(entando["surfaces"])
+
+    invenio = integration_contract("invenio")
+    assert invenio["version"] == "appgen.integration.invenio.v1"
+    assert {"record", "deposit", "file", "search_index"} <= set(invenio["surfaces"])
+
+    contracts = generated_integration_contracts()
+    assert {contract["integration"] for contract in contracts} == {"entando", "invenio"}
+
+    webhook = signed_webhook_plan(
+        "Invoice.created",
+        {"id": 42},
+        environ={
+            "APPGEN_WEBHOOK_URL": "https://hooks.example.test",
+            "APPGEN_WEBHOOK_SECRET": "secret",
+        },
+    )
+    assert webhook["url"] == "https://hooks.example.test"
+    assert validate_webhook_signature({"id": 42}, webhook["signature"], "secret")
+    assert webhook["headers"]["Idempotency-Key"] == integration_idempotency_key(
+        "webhook",
+        "webhook.Invoice.created",
+        {"id": 42},
+    )
+
+    portal_plan = low_code_portal_plan("entando", "CustomerPortal", route="/customer")
+    assert portal_plan["contract"]["version"] == "appgen.integration.entando.v1"
+    assert portal_plan["payload"]["route"] == "/customer"
+    assert portal_plan["review_required"] is True
+
+    deposit_plan = repository_deposit_plan("invenio", "CustomerRecord", {"title": "Customer"})
+    assert deposit_plan["contract"]["version"] == "appgen.integration.invenio.v1"
+    assert deposit_plan["payload"]["metadata"] == {"title": "Customer"}
+    assert deposit_plan["review_required"] is True
+
+    audit = integration_release_audit()
+    assert audit["format"] == "appgen.package-integration-release-audit.v1"
+    assert audit["ok"] is True
+    assert {
+        "connector_catalog",
+        "entando_contract",
+        "invenio_contract",
+        "signed_webhooks",
+        "idempotent_outbound",
+        "artifact_contract",
+    } == {gate["id"] for gate in audit["gates"]}
+
+    missing = integration_release_audit(existing_paths={"app/integrations.py"})
+    assert missing["ok"] is False
+    assert any(gate["id"] == "artifact_contract" for gate in missing["blocking_gaps"])
+
+    result = runner.invoke(__main__.main, ["--integration-release-audit"])
+    assert result.exit_code == 0
+    report = json.loads(result.output)
+    assert report["ok"] is True
+    assert {contract["integration"] for contract in report["contracts"]} == {
+        "entando",
+        "invenio",
+    }
 
 
 def test_dsl_linter_reports_semantic_feedback(runner: CliRunner, tmp_path) -> None:

@@ -309,6 +309,19 @@ GCP, and Azure, automatic HTTPS, Elasticsearch and Whoosh search plans, default
 Node-RED flows, and database operations contracts for Patroni, ZomboDB, and
 PostGraphile.
 
+Audit package-level enterprise integration readiness before claiming generated
+apps can connect to external APIs, webhooks, portals, repositories, payments,
+SMS, and email:
+
+```console
+appgen --integration-release-audit
+```
+
+The integration audit proves REST and signed-webhook contracts, Salesforce and
+SAP stubs, Stripe and M-Pesa payment plans, Twilio SMS, SendGrid email, stable
+idempotency keys, and first-class generated contracts for Entando
+micro-frontends and Invenio repository deposits.
+
 ## Shape
 
 - `table` defines persistent data models.

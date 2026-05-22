@@ -506,6 +506,7 @@ def package_goal_audit(root: Path | str | None = None) -> dict:
     from .config_admin import config_editor_release_audit
     from .distribution import distribution_release_audit
     from .erp import erp_template_release_audit
+    from .integrations import integration_release_audit
     from .nl import nl_evolution_release_audit
     from .ops import ops_release_audit
     from .reporting import reporting_release_audit
@@ -521,6 +522,7 @@ def package_goal_audit(root: Path | str | None = None) -> dict:
     distribution = distribution_release_audit()
     reporting = reporting_release_audit()
     ops = ops_release_audit()
+    integrations = integration_release_audit()
     gates = (
         {
             "id": "roadmap_traceability",
@@ -573,6 +575,11 @@ def package_goal_audit(root: Path | str | None = None) -> dict:
             "format": ops["format"],
         },
         {
+            "id": "enterprise_integrations",
+            "ok": integrations["ok"],
+            "format": integrations["format"],
+        },
+        {
             "id": "source_document_scope",
             "ok": {"docs/ideas.md", "docs/base_features.md", "docs/Lo-code features.md"}
             <= {document["path"] for document in roadmap["documents"]},
@@ -597,6 +604,7 @@ def package_goal_audit(root: Path | str | None = None) -> dict:
             "distribution": distribution,
             "reporting": reporting,
             "ops": ops,
+            "integrations": integrations,
         },
         "blocking_gaps": tuple(gate for gate in gates if not gate["ok"]),
         "stop_condition": "do-not-mark-active-goal-complete-unless-ok-is-true",

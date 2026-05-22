@@ -140,6 +140,10 @@ contracts exist, and PDF/email report delivery is covered.
 Run `appgen --ops-release-audit` to prove Docker, Kubernetes, Terraform cloud
 targets, automatic HTTPS, Elasticsearch, Whoosh, default Node-RED, and database
 operations contracts are covered before release.
+Run `appgen --integration-release-audit` to prove REST/webhook, Salesforce,
+SAP, Entando, Invenio, Stripe, M-Pesa, Twilio SMS, and SendGrid email
+connectors, signed delivery, idempotency, and portal/repository contracts are
+covered before release.
 
 Use `required` for fields that must be entered. Use `search` on fields that
 should appear in generated search contracts. Use `hidden` for generated or
