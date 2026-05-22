@@ -474,7 +474,10 @@ apps include:
   including executable table DSL for new-table prompts with inferred fields and
   known-table relationship references, approval-ready change sets,
   destructive-intent detection, generated test plans, rollback plans, migration
-  impact summaries, and existing-DSL patch previews.
+  impact summaries, existing-DSL patch previews, and
+  `nl_evolution_release_gate()` readiness evidence for artifact coverage,
+  plain-language scope, review workflow, destructive guardrails, generated test
+  plans, and platform target patches.
 - `dsl_reference.py` and `appgen_dsl_reference.html` with generated DSL
   keyword-budget checks, compact construct cards, examples, a learning path,
   lightweight lint feedback, structured quick fixes, deterministic formatting,

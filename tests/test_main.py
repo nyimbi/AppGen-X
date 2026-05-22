@@ -4951,6 +4951,19 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert destructive_changeset["test_plan"]["destructive"] is True
     assert "data_backup_review" in destructive_changeset["test_plan"]["checks"]
     assert "// destructive: remove field Ticket.title" in destructive_changeset["applied_preview"]
+    nl_gate = nl_evolution.nl_evolution_release_gate({"app/nl_evolution.py", "app/templates/appgen_nl_evolution.html"})
+    assert nl_gate["format"] == "appgen.nl-evolution-release-gate.v1"
+    assert nl_gate["ok"] is True
+    assert nl_gate["decision"] == "approved"
+    assert {check["id"] for check in nl_gate["checks"]} == {
+        "artifacts_present",
+        "plain_language_scope",
+        "reviewable_changeset",
+        "generated_test_plan",
+        "destructive_guardrails",
+        "target_patch_preview",
+    }
+    assert nl_evolution.nl_evolution_release_gate({"app/nl_evolution.py"})["ok"] is False
     assert dsl_reference.dsl_keyword_budget()["count"] <= dsl_reference.dsl_keyword_budget()["limit"]
     assert dsl_reference.dsl_keyword_budget()["format"] == "appgen.dsl-keyword-budget.v1"
     assert dsl_reference.dsl_keyword_budget()["legacy_contextual_tokens"] == ("ref",)

@@ -316,6 +316,14 @@ modules. Report and dashboard requests are reviewed as generated application
 surface changes and add report delivery plus dashboard render checks to the
 generated test plan.
 
+Use `/nl-evolution/release-gate.json` or `nl_evolution_release_gate()` before
+allowing natural-language app changes into a release. The gate proves generated
+artifacts are present, the sample plain-language plan covers schema, UI,
+automation, chatbot, agent, ERP, and target changes, reviewable change sets are
+created, destructive requests require backups, and generated test plans include
+DSL lint, migration preview, UI smoke, agent readiness, report/dashboard, and
+platform-target checks.
+
 Generated backup pages expose `/backup/disaster-recovery.json` and
 `/backup/release-gate.json` so teams can prove that JSON backups, SHA-256
 manifests, autobackup schedules, retention rules, recovery runbooks, and

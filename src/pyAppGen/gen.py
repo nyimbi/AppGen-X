@@ -5654,6 +5654,7 @@ def write_nl_evolution_template(output_dir):
   <span class="agnl-pill">{{ capability }}</span>
   {% endfor %}
   <div class="agnl-box">
+    <a class="btn btn-default" href="{{ url_for('NaturalLanguageEvolutionView.release_gate_json') }}">Release Gate JSON</a>
     <textarea id="agnl-prompt" class="agnl-input">create table Ticket with field title and form TicketForm chatbot SupportBot agent SupportAgent</textarea>
     <button id="agnl-run" class="btn btn-primary" type="button">Plan Changes</button>
     <pre id="agnl-output"></pre>
@@ -21287,6 +21288,99 @@ def approval_workflow(changeset, actor="builder"):
     }}
 
 
+def nl_evolution_release_gate(existing_paths=()):
+    """Return a release decision for natural-language application evolution."""
+    existing = set(existing_paths)
+    required = ("app/nl_evolution.py", "app/templates/appgen_nl_evolution.html")
+    missing = tuple(path for path in required if path not in existing)
+    sample_prompt = (
+        "create table Ticket with fields title, email unique and form TicketForm "
+        "workflow Triage from open to closed rule TicketPolicy report TicketReport "
+        "dashboard TicketDashboard chatbot SupportBot agent SupportAgent "
+        "add ERP accounts payable targets web mobile desktop"
+    )
+    sample_plan = evolution_plan(sample_prompt)
+    sample_kinds = {{proposal["kind"] for proposal in sample_plan["proposals"]}}
+    sample_changeset = evolution_changeset(sample_prompt, "app Existing {{ targets: web }}\\n")
+    destructive_changeset = evolution_changeset(
+        "remove field title from Ticket and drop table OldTicket",
+        "app Existing {{ targets: web }}\\n\\ntable Ticket {{\\n  id: int pk\\n  title: string\\n}}\\n",
+    )
+    test_checks = set(sample_changeset["test_plan"]["checks"])
+    expected_kinds = {{
+        "add_table",
+        "add_field",
+        "add_form",
+        "add_workflow",
+        "add_rule",
+        "add_report",
+        "add_dashboard",
+        "add_chatbot",
+        "add_agent",
+        "add_erp_module",
+        "set_targets",
+    }}
+    required_checks = {{
+        "dsl_lint",
+        "schema_diff",
+        "migration_preview",
+        "ui_smoke",
+        "agent_provider_readiness",
+        "report_delivery_preview",
+        "dashboard_render_preview",
+        "platform_target_generation",
+    }}
+    checks = (
+        {{
+            "id": "artifacts_present",
+            "ok": not missing,
+            "evidence": {{"required": required, "missing": missing}},
+        }},
+        {{
+            "id": "plain_language_scope",
+            "ok": expected_kinds <= sample_kinds,
+            "evidence": {{"expected": tuple(sorted(expected_kinds)), "sample": tuple(sorted(sample_kinds))}},
+        }},
+        {{
+            "id": "reviewable_changeset",
+            "ok": sample_changeset["requires_approval"] and sample_changeset["migration_impact"]["requires_review"] and bool(sample_changeset["dsl_blocks"]),
+            "evidence": {{
+                "changeset": sample_changeset["id"],
+                "dsl_blocks": len(sample_changeset["dsl_blocks"]),
+                "migration_review": sample_changeset["migration_impact"]["requires_review"],
+            }},
+        }},
+        {{
+            "id": "generated_test_plan",
+            "ok": required_checks <= test_checks,
+            "evidence": {{"required": tuple(sorted(required_checks)), "sample": tuple(sorted(test_checks))}},
+        }},
+        {{
+            "id": "destructive_guardrails",
+            "ok": destructive_changeset["destructive_intent"]["destructive"] and destructive_changeset["migration_impact"]["destructive"] and destructive_changeset["rollback"]["requires_backup"],
+            "evidence": {{
+                "destructive": destructive_changeset["migration_impact"]["destructive"],
+                "requires_backup": destructive_changeset["rollback"]["requires_backup"],
+                "checks": destructive_changeset["test_plan"]["checks"],
+            }},
+        }},
+        {{
+            "id": "target_patch_preview",
+            "ok": "targets: web, mobile, desktop" in sample_changeset["applied_preview"],
+            "evidence": {{"app_patch": sample_changeset["app_patch"]}},
+        }},
+    )
+    ok = all(check["ok"] for check in checks)
+    return {{
+        "format": "appgen.nl-evolution-release-gate.v1",
+        "ok": ok,
+        "decision": "approved" if ok else "blocked",
+        "checks": checks,
+        "capabilities": evolution_capabilities(),
+        "sample_changeset": sample_changeset["id"],
+    }}
+
+
 def nl_evolution_check(existing_paths):
     """Return readiness for natural-language evolution artifacts."""
     existing = set(existing_paths)
@@ -21322,6 +21416,10 @@ class NaturalLanguageEvolutionView(BaseView):
     @expose("/capabilities.json")
     def capabilities_json(self):
         return jsonify(list(evolution_capabilities()))
+
+    @expose("/release-gate.json")
+    def release_gate_json(self):
+        return jsonify(nl_evolution_release_gate({{"app/nl_evolution.py", "app/templates/appgen_nl_evolution.html"}}))
 
 
 def register_nl_evolution(appbuilder):
@@ -34944,9 +35042,11 @@ def validate_nl_evolution_artifacts() -> None:
         fail("natural-language evolution must expose proposal and DSL helpers")
     if "evolution_changeset" not in contract or "apply_changeset" not in contract or "migration_impact" not in contract or "approval_workflow" not in contract or "destructive_intent_report" not in contract or "evolution_test_plan" not in contract or "rollback_plan" not in contract:
         fail("natural-language evolution must expose approval-ready changesets, destructive-intent review, test plans, rollback, and migration impact")
+    if "nl_evolution_release_gate" not in contract or "appgen.nl-evolution-release-gate.v1" not in contract or '@expose("/release-gate.json")' not in contract:
+        fail("natural-language evolution must expose a release gate contract and route")
     template = (ROOT / "app" / "templates" / "appgen_nl_evolution.html").read_text()
-    if "Natural Language Evolution" not in template or "Plan Changes" not in template:
-        fail("natural-language evolution template must expose planning UI")
+    if "Natural Language Evolution" not in template or "Plan Changes" not in template or "Release Gate JSON" not in template:
+        fail("natural-language evolution template must expose planning UI and release readiness")
 
 
 def validate_dsl_reference_artifacts() -> None:
@@ -37253,6 +37353,10 @@ def test_generated_runtime_helpers():
     assert "// add report TicketReport for Ticket formats csv, pdf" in nl_dsl
     assert "// add dashboard TicketDashboard for Ticket charts kpi, bar" in nl_dsl
     assert {"report_catalog_preview", "dashboard_render_preview"} <= set(nl_evolution.evolution_test_plan(nl_plan)["checks"])
+    nl_gate = nl_evolution.nl_evolution_release_gate({"app/nl_evolution.py", "app/templates/appgen_nl_evolution.html"})
+    assert nl_gate["format"] == "appgen.nl-evolution-release-gate.v1"
+    assert nl_gate["ok"] is True
+    assert nl_evolution.nl_evolution_release_gate({"app/nl_evolution.py"})["ok"] is False
     assert dsl_reference.dsl_keyword_budget()["count"] <= dsl_reference.dsl_keyword_budget()["limit"]
     assert dsl_reference.dsl_language_quality_contract()["ok"] is True
     assert dsl_reference.dsl_language_quality_contract()["format"] == "appgen.dsl-language-quality.v1"
