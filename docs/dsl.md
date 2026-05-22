@@ -498,7 +498,10 @@ apps include:
   replacement, `/appgen/config/setup.json`, and `.env` export text. A generated
   config-admin release gate proves config artifacts, editable-key coverage,
   production readiness, unsafe blocker detection, setup checklists, safe
-  assignment rewrites, and environment export behavior.
+  assignment rewrites, and environment export behavior. `config_admin_workbench()`
+  and `/appgen/config/workbench.json` aggregate the editable schema, grouped
+  sections, readiness, checklist, assignment rewrite proof, environment export,
+  route surface, and release gate into one IDE configuration review.
 - `integrations.py` and `appgen_integrations.html` with generated REST,
   webhook, Salesforce, SAP, Entando, Invenio, payment gateway, SMS gateway,
   and transactional email connector configuration stubs, reviewed request

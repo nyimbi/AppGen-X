@@ -1181,6 +1181,7 @@ def test_generate_app_from_sqlite_schema_compiles(tmp_path) -> None:
     assert capabilities_by_key["ops.resilience"]["status"] == "implemented"
     assert capabilities_by_key["ops.performance"]["status"] == "implemented"
     assert capabilities_by_key["ops.assurance"]["status"] == "implemented"
+    assert capabilities_by_key["ops.configuration"]["status"] == "implemented"
     assert capabilities_by_key["platform.microservices"]["status"] == "implemented"
     assert capabilities_by_key["platform.targets"]["status"] == "implemented"
     assert capabilities_by_key["platform.native"]["status"] == "implemented"
@@ -7360,6 +7361,24 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert {"editable_catalog", "production_readiness", "safe_assignment_rewrite", "env_export"} <= {
         gate["gate"] for gate in config_gate["gates"]
     }
+    config_workbench = config_admin.config_admin_workbench(
+        {"config.py", "app/config_admin.py", "app/templates/appgen_config.html"}
+    )
+    assert config_workbench["format"] == "appgen.config-admin-workbench.v1"
+    assert config_workbench["ok"] is True
+    assert config_workbench["decision"] == "approved"
+    assert {
+        "artifact_coverage",
+        "editable_catalog",
+        "production_readiness",
+        "setup_checklist",
+        "safe_assignment_rewrite",
+        "env_export",
+        "route_surface",
+        "release_gate",
+    } == {check["id"] for check in config_workbench["checks"]}
+    assert "/appgen/config/workbench.json" in config_workbench["routes"]
+    assert config_admin.config_admin_workbench({"app/config_admin.py"})["ok"] is False
     assert config_admin.config_admin_release_gate({"app/config_admin.py"})["ok"] is False
     assert "enum Status { draft published archived }" in designer.dsl_from_manifest(manifest)
     assert "table Book" in designer.dsl_from_manifest(manifest)

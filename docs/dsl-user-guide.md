@@ -492,6 +492,10 @@ Generated configuration editors expose `config_admin_release_gate()` and
 `config.py` coverage, production readiness, unsafe blocker detection, safe
 assignment rewriting, setup checklist coverage, and `.env` export behavior
 before promoting generated setup screens.
+Use `/appgen/config/workbench.json` or `config_admin_workbench()` in the
+generated IDE to inspect the editable config schema, grouped sections, setup
+readiness, setup checklist, safe rewrite proof, environment export, route
+surface, and release gate together.
 
 Generated data-access workbenches expose `data_access_release_gate()` and
 `/data-access/release-gate.json` to prove query and mutation readiness. The
