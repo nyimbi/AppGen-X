@@ -1127,6 +1127,7 @@ def test_generate_app_from_sqlite_schema_compiles(tmp_path) -> None:
     assert "team.realtime" in {item["key"] for item in manifest["capabilities"]}
     assert capabilities_by_key["team.realtime"]["status"] == "implemented"
     assert "quality.diagnostics" in {item["key"] for item in manifest["capabilities"]}
+    assert capabilities_by_key["quality.diagnostics"]["status"] == "implemented"
     assert "quality.api-testing" in {item["key"] for item in manifest["capabilities"]}
     assert "quality.code-review" in {item["key"] for item in manifest["capabilities"]}
     assert "quality.test-coverage" in {item["key"] for item in manifest["capabilities"]}
@@ -2595,6 +2596,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert "RPA &amp; BPA" in rpa_template
     assert "Workbench JSON" in rpa_template
     assert "runtime self-tests" in (output_dir / "templates" / "appgen_diagnostics.html").read_text()
+    assert "Workbench JSON" in (output_dir / "templates" / "appgen_diagnostics.html").read_text()
     assert "automated API testing" in (output_dir / "templates" / "appgen_api_testing.html").read_text()
     assert "Release Gate JSON" in (output_dir / "templates" / "appgen_api_testing.html").read_text()
     code_review_template = (output_dir / "templates" / "appgen_code_review.html").read_text()
@@ -5974,6 +5976,27 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert {"schema_selftest", "debug_redaction", "support_bundle", "api_smoke", "load_test"} <= {
         gate["gate"] for gate in diagnostics_gate["gates"]
     }
+    diagnostics_workbench = diagnostics.diagnostics_workbench(
+        {"app/diagnostics.py", "app/templates/appgen_diagnostics.html"}
+    )
+    assert diagnostics_workbench["format"] == "appgen.diagnostics-workbench.v1"
+    assert diagnostics_workbench["ok"] is True
+    assert diagnostics_workbench["decision"] == "approved"
+    assert {
+        "schema_selftest",
+        "debug_snapshot",
+        "remediation_plan",
+        "support_bundle",
+        "api_smoke",
+        "load_test",
+        "artifact_evidence",
+        "route_surface",
+        "release_gate",
+    } == {check["id"] for check in diagnostics_workbench["checks"]}
+    assert "/diagnostics/workbench.json" in next(
+        check["evidence"]["routes"] for check in diagnostics_workbench["checks"] if check["id"] == "route_surface"
+    )
+    assert diagnostics.diagnostics_workbench({"app/diagnostics.py"})["ok"] is False
     assert diagnostics.diagnostics_release_gate({"app/diagnostics.py"})["ok"] is False
     api_requests = api_testing.request_plan()
     assert any(request["name"] == "list_book" and request["path"] == "/api/v1/book/" for request in api_requests)

@@ -573,6 +573,9 @@ Use `/diagnostics/release-gate.json` or `diagnostics_release_gate()` to prove
 debugging readiness. The gate checks diagnostic artifacts, schema self-tests,
 secret redaction, remediation planning, support bundle shape, API smoke plans,
 and load-test plans.
+Use `/diagnostics/workbench.json` or `diagnostics_workbench()` in the generated
+IDE to inspect self-test, debug snapshot, remediation, support bundle, API
+smoke, load-test, artifact, route, and release-gate evidence.
 Use `health_release_gate()` in `app/health.py` to prove generated health
 metadata before wiring runtime endpoints. The gate checks the health artifact,
 status payload, schema metadata, UI counts, and automation counts.

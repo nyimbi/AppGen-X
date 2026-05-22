@@ -5578,6 +5578,7 @@ def write_diagnostics_template(output_dir):
       <a class="btn btn-default" href="{{ url_for('DiagnosticsView.selftest_json') }}">Self-test JSON</a>
       <a class="btn btn-default" href="{{ url_for('DiagnosticsView.remediation_json') }}">Remediation JSON</a>
       <a class="btn btn-default" href="{{ url_for('DiagnosticsView.support_bundle_json') }}">Support Bundle JSON</a>
+      <a class="btn btn-default" href="{{ url_for('DiagnosticsView.workbench_json') }}">Workbench JSON</a>
       <a class="btn btn-default" href="{{ url_for('DiagnosticsView.release_gate_json') }}">Release Gate JSON</a>
     </div>
   </div>
@@ -32506,6 +32507,51 @@ def diagnostics_release_gate(existing_paths=()):
     }}
 
 
+def diagnostics_workbench(existing_paths=()):
+    """Return IDE-ready diagnostics evidence for generated apps."""
+    release_gate = diagnostics_release_gate(existing_paths)
+    checks = selftest()
+    snapshot = debug_snapshot({{"SECRET_KEY": "secret", "APP_NAME": "AppGen"}}, {{"PATH": "/bin", "USER": "appgen"}})
+    remediation = remediation_plan(({{"name": "workbench primary key", "status": "warn", "details": ()}},))
+    support = support_bundle({{"SECRET_KEY": "secret"}}, {{"PATH": "/bin"}})
+    smoke = api_smoke_plan()
+    load = load_test_plan(users=5, duration_seconds=10)
+    routes = (
+        "/diagnostics/",
+        "/diagnostics/selftest.json",
+        "/diagnostics/api-smoke.json",
+        "/diagnostics/remediation.json",
+        "/diagnostics/support-bundle.json",
+        "/diagnostics/workbench.json",
+        "/diagnostics/release-gate.json",
+    )
+    checks_out = (
+        {{"id": "schema_selftest", "ok": checks["ok"] and checks["summary"]["fail"] == 0, "evidence": checks}},
+        {{"id": "debug_snapshot", "ok": snapshot["config"].get("SECRET_KEY") == "[redacted]" and "PATH" in snapshot["environment_keys"], "evidence": snapshot}},
+        {{"id": "remediation_plan", "ok": remediation["format"] == "appgen.diagnostics-remediation.v1" and remediation["actions"], "evidence": remediation}},
+        {{"id": "support_bundle", "ok": support["format"] == "appgen.support-bundle.v1" and support["snapshot"]["config"].get("SECRET_KEY") == "[redacted]", "evidence": support}},
+        {{"id": "api_smoke", "ok": bool(smoke) and all(item["method"] == "GET" for item in smoke), "evidence": smoke}},
+        {{"id": "load_test", "ok": load["users"] == 5 and load["duration_seconds"] == 10 and len(load["scenarios"]) == len(smoke), "evidence": load}},
+        {{"id": "artifact_evidence", "ok": release_gate["gates"][0]["ok"], "evidence": release_gate["gates"][0]}},
+        {{"id": "route_surface", "ok": "/diagnostics/workbench.json" in routes, "evidence": {{"routes": routes}}}},
+        {{"id": "release_gate", "ok": release_gate["ok"], "evidence": release_gate}},
+    )
+    ok = all(check["ok"] for check in checks_out)
+    return {{
+        "format": "appgen.diagnostics-workbench.v1",
+        "ok": ok,
+        "decision": "approved" if ok else "blocked",
+        "checks": checks_out,
+        "selftest": checks,
+        "snapshot": snapshot,
+        "remediation": remediation,
+        "support_bundle": support,
+        "api_smoke": smoke,
+        "load_test": load,
+        "release_gate": release_gate,
+    }}
+
+
 class DiagnosticsView(BaseView):
     route_base = "/diagnostics"
     default_view = "index"
@@ -32529,6 +32575,10 @@ class DiagnosticsView(BaseView):
     @expose("/support-bundle.json")
     def support_bundle_json(self):
         return jsonify(support_bundle())
+
+    @expose("/workbench.json")
+    def workbench_json(self):
+        return jsonify(diagnostics_workbench({{"app/diagnostics.py", "app/templates/appgen_diagnostics.html"}}))
 
     @expose("/release-gate.json")
     def release_gate_json(self):
@@ -41713,12 +41763,15 @@ def validate_diagnostics_artifacts() -> None:
         "load_test_plan",
         "diagnostics_check",
         "diagnostics_release_gate",
+        "diagnostics_workbench",
     )
     if not all(term in contract for term in required_terms):
-        fail("diagnostics contract must expose schema checks, remediation, support bundles, smoke plans, and load tests")
+        fail("diagnostics contract must expose schema checks, remediation, support bundles, workbench, smoke plans, and load tests")
+    if "appgen.diagnostics-workbench.v1" not in contract or '@expose("/workbench.json")' not in contract:
+        fail("diagnostics contract must expose a versioned workbench route")
     template = (ROOT / "app" / "templates" / "appgen_diagnostics.html").read_text()
-    if "Diagnostics" not in template or "Remediation JSON" not in template or "Support Bundle JSON" not in template or "Release Gate JSON" not in template:
-        fail("diagnostics template must expose self-test, remediation, support-bundle, and release-gate links")
+    if "Diagnostics" not in template or "Remediation JSON" not in template or "Support Bundle JSON" not in template or "Workbench JSON" not in template or "Release Gate JSON" not in template:
+        fail("diagnostics template must expose self-test, remediation, support-bundle, workbench, and release-gate links")
 
 
 def validate_test_coverage_artifacts() -> None:
@@ -43885,6 +43938,8 @@ def test_generated_runtime_helpers():
     assert diagnostics.remediation_plan(({{"name": "Book has primary key", "status": "warn", "details": ()}},))["actions"][0]["severity"] == "warning"
     assert diagnostics.support_bundle({{"SECRET_KEY": "secret"}}, {{"PATH": "/bin"}})["snapshot"]["config"]["SECRET_KEY"] == "[redacted]"
     assert diagnostics.diagnostics_release_gate({{"app/diagnostics.py", "app/templates/appgen_diagnostics.html"}})["ok"] is True
+    assert diagnostics.diagnostics_workbench({{"app/diagnostics.py", "app/templates/appgen_diagnostics.html"}})["format"] == "appgen.diagnostics-workbench.v1"
+    assert diagnostics.diagnostics_workbench({{"app/diagnostics.py", "app/templates/appgen_diagnostics.html"}})["ok"] is True
     assert diagnostics.diagnostics_release_gate({{"app/diagnostics.py"}})["ok"] is False
     assert api_testing.request_plan()
     first_request = api_testing.request_plan()[0]

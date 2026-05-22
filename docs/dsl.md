@@ -800,6 +800,10 @@ apps include:
   diagnostics release gate proves artifact presence, schema self-tests,
   redaction, remediation planning, support bundle shape, API smoke coverage,
   and load-test planning before debugging readiness is claimed.
+  `diagnostics_workbench()` exposes IDE-ready self-test, debug snapshot,
+  remediation, support bundle, API smoke, load-test, artifact, release-gate,
+  and `/diagnostics/workbench.json` route evidence before
+  `quality.diagnostics` is marked implemented.
 - `tests/test_generated_coverage.py` with a generated per-table pytest coverage
   matrix for schema, API, UI, reports, security, and data exchange/backup
   flows, plus view-experience, accessibility, diagnostics, release-gate, and
