@@ -533,7 +533,9 @@ apps include:
   erasure planning, and retention-disposition review helpers. A generated
   compliance release gate proves privacy request coverage, redaction, erasure
   review, retention disposition, audit events, and required compliance
-  artifacts.
+  artifacts. `compliance_workbench()` exposes IDE-ready catalog, redaction,
+  privacy request, subject export, erasure, retention, audit, artifact, route,
+  and release-gate evidence before `security.compliance` is marked implemented.
 - `assistant.py` and `appgen_assistant.html` with generated prompt context,
   chatbot field questions, deterministic recommendations, prediction feature
   extraction, and human-review task payloads. The generated

@@ -4645,6 +4645,7 @@ def write_compliance_template(output_dir):
   </p>
   <p>
     <a class="btn btn-default" href="{{ url_for('ComplianceView.privacy_requests_json') }}">Privacy Requests JSON</a>
+    <a class="btn btn-default" href="{{ url_for('ComplianceView.workbench_json') }}">Workbench JSON</a>
     <a class="btn btn-default" href="{{ url_for('ComplianceView.release_gate_json') }}">Release Gate JSON</a>
   </p>
   <div class="agc-grid">
@@ -21076,6 +21077,56 @@ def compliance_release_gate(existing_paths=(), sample_rows=None):
     }}
 
 
+def compliance_workbench(existing_paths=(), sample_rows=None):
+    """Return IDE-ready compliance and data-protection evidence."""
+    sample_rows = sample_rows or {{
+        table_name: ({{"id": 1, **{{field: f"sample_{{field}}" for field in protected_fields(table_name)}}, "age_days": table["retention_days"] + 1}},)
+        for table_name, table in COMPLIANCE_TABLES.items()
+    }}
+    release_gate = compliance_release_gate(existing_paths, sample_rows)
+    first_table = next(iter(COMPLIANCE_TABLES), "resource")
+    privacy = tuple(privacy_request(kind, "subject-1", tables=(first_table,), actor="dpo") for kind in ("access", "export", "erase", "restrict"))
+    export = subject_export_package("subject-1", sample_rows, actor="dpo")
+    erasure = erasure_plan("subject-1", sample_rows, actor="dpo")
+    retention = tuple(
+        retention_disposition_review(table_name, rows)
+        for table_name, rows in dict(sample_rows).items()
+        if table_name in COMPLIANCE_TABLES
+    )
+    routes = (
+        "/compliance/",
+        "/compliance/catalog.json",
+        "/compliance/privacy-requests.json",
+        "/compliance/workbench.json",
+        "/compliance/release-gate.json",
+    )
+    checks = (
+        {{"id": "catalog", "ok": bool(compliance_catalog()), "evidence": compliance_catalog()}},
+        {{"id": "redaction", "ok": next(gate for gate in release_gate["gates"] if gate["gate"] == "redaction")["ok"], "evidence": export}},
+        {{"id": "privacy_requests", "ok": all(item["format"] == "appgen.privacy-request.v1" for item in privacy) and any(item["requires_review"] for item in privacy), "evidence": privacy}},
+        {{"id": "subject_export", "ok": export["format"] == "appgen.subject-export.v1" and export["audit"]["action"] == "privacy.export", "evidence": export}},
+        {{"id": "erasure_review", "ok": erasure["requires_review"] and erasure["format"] == "appgen.erasure-plan.v1", "evidence": erasure}},
+        {{"id": "retention_disposition", "ok": bool(retention) and all(item["format"] == "appgen.retention-disposition-review.v1" for item in retention), "evidence": retention}},
+        {{"id": "audit_events", "ok": export["audit"]["action"] == "privacy.export" and erasure["audit"]["action"] == "privacy.erase.plan", "evidence": (export["audit"], erasure["audit"])}},
+        {{"id": "artifact_evidence", "ok": release_gate["gates"][0]["ok"], "evidence": release_gate["gates"][0]}},
+        {{"id": "route_surface", "ok": "/compliance/workbench.json" in routes, "evidence": {{"routes": routes}}}},
+        {{"id": "release_gate", "ok": release_gate["ok"], "evidence": release_gate}},
+    )
+    ok = all(check["ok"] for check in checks)
+    return {{
+        "format": "appgen.compliance-workbench.v1",
+        "ok": ok,
+        "decision": "approved" if ok else "blocked",
+        "checks": checks,
+        "catalog": compliance_catalog(),
+        "privacy_requests": privacy,
+        "export": export,
+        "erasure": erasure,
+        "retention": retention,
+        "release_gate": release_gate,
+    }}
+
+
 class ComplianceView(BaseView):
     route_base = "/compliance"
     default_view = "index"
@@ -21094,6 +21145,10 @@ class ComplianceView(BaseView):
             "supported": ("access", "export", "rectify", "erase", "restrict", "object"),
             "sample": privacy_request("export", "subject-1"),
         }})
+
+    @expose("/workbench.json")
+    def workbench_json(self):
+        return jsonify(compliance_workbench({"app/compliance.py", "app/templates/appgen_compliance.html"}))
 
     @expose("/release-gate.json")
     def release_gate_json(self):
@@ -41561,12 +41616,14 @@ def validate_compliance_artifacts() -> None:
         "erasure_plan",
         "retention_disposition_review",
         "compliance_release_gate",
+        "compliance_workbench",
+        "appgen.compliance-workbench.v1",
     )
     if not all(item in contract for item in required):
-        fail("compliance contract must expose audit, redaction, privacy request, export, erasure, and retention review helpers")
+        fail("compliance contract must expose audit, redaction, privacy request, export, erasure, retention review, and workbench helpers")
     template = (ROOT / "app" / "templates" / "appgen_compliance.html").read_text()
-    if "Compliance" not in template or "Privacy Requests JSON" not in template or "Release Gate JSON" not in template:
-        fail("compliance template must expose privacy request contracts and release gate")
+    if "Compliance" not in template or "Privacy Requests JSON" not in template or "Workbench JSON" not in template or "Release Gate JSON" not in template:
+        fail("compliance template must expose privacy request contracts, workbench, and release gate")
 
 
 def validate_erp_template_artifacts() -> None:
@@ -44137,6 +44194,12 @@ def test_generated_runtime_helpers():
         {"app/compliance.py", "app/templates/appgen_compliance.html"}
     )["format"] == "appgen.compliance-release-gate.v1"
     assert compliance.compliance_release_gate(
+        {"app/compliance.py", "app/templates/appgen_compliance.html"}
+    )["ok"] is True
+    assert compliance.compliance_workbench(
+        {"app/compliance.py", "app/templates/appgen_compliance.html"}
+    )["format"] == "appgen.compliance-workbench.v1"
+    assert compliance.compliance_workbench(
         {"app/compliance.py", "app/templates/appgen_compliance.html"}
     )["ok"] is True
     assert isinstance(assistant.assistant_catalog(), tuple)

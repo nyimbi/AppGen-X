@@ -838,6 +838,9 @@ artifact evidence, route coverage, and the resulting release decision.
 Use `/compliance/release-gate.json` to verify privacy request envelopes,
 protected-field redaction, erasure review, retention disposition, audit events,
 and compliance artifacts before a generated app is released.
+Use `/compliance/workbench.json` or `compliance_workbench()` to inspect catalog,
+redaction, privacy request, subject export, erasure, retention disposition,
+audit, artifact, route, and release-gate evidence.
 Use `/identity/release-gate.json` to prove generated SSO readiness across OIDC,
 SAML, LDAP, Active Directory, trusted headers, AWS Cognito OAuth, token exchange
 review, and principal normalization.

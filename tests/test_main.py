@@ -1128,6 +1128,7 @@ def test_generate_app_from_sqlite_schema_compiles(tmp_path) -> None:
     assert capabilities_by_key["security.https"]["status"] == "implemented"
     assert capabilities_by_key["security.rls"]["status"] == "implemented"
     assert capabilities_by_key["security.sso"]["status"] == "implemented"
+    assert capabilities_by_key["security.compliance"]["status"] == "implemented"
     assert capabilities_by_key["platform.frontends"]["status"] == "implemented"
     assert capabilities_by_key["ui.view-composition"]["status"] == "implemented"
     assert capabilities_by_key["ui.tabbed-views"]["status"] == "implemented"
@@ -2565,6 +2566,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert "Release Gate JSON" in identity_template
     compliance_template = (output_dir / "templates" / "appgen_compliance.html").read_text()
     assert "protected-field" in compliance_template
+    assert "Workbench JSON" in compliance_template
     assert "Release Gate JSON" in compliance_template
     assistant_template = (output_dir / "templates" / "appgen_assistant.html").read_text()
     assert "prediction features" in assistant_template
@@ -5005,6 +5007,29 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert {"redaction", "privacy_requests", "erasure_review", "retention_disposition", "audit_events"} <= {
         gate["gate"] for gate in compliance_gate["gates"]
     }
+    compliance_workbench = compliance.compliance_workbench(
+        {"app/compliance.py", "app/templates/appgen_compliance.html"},
+        {"Book": [{"id": 1, "internal_code": "B-1", "age_days": 400}]},
+    )
+    assert compliance_workbench["format"] == "appgen.compliance-workbench.v1"
+    assert compliance_workbench["ok"] is True
+    assert compliance_workbench["decision"] == "approved"
+    assert {
+        "catalog",
+        "redaction",
+        "privacy_requests",
+        "subject_export",
+        "erasure_review",
+        "retention_disposition",
+        "audit_events",
+        "artifact_evidence",
+        "route_surface",
+        "release_gate",
+    } == {check["id"] for check in compliance_workbench["checks"]}
+    assert "/compliance/workbench.json" in next(
+        check["evidence"]["routes"] for check in compliance_workbench["checks"] if check["id"] == "route_surface"
+    )
+    assert compliance.compliance_workbench({"app/compliance.py"}, {"Book": [{"id": 1, "age_days": 400}]})["ok"] is False
     assert compliance.compliance_release_gate({"app/compliance.py"}, {"Book": [{"id": 1, "age_days": 400}]})[
         "ok"
     ] is False
