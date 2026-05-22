@@ -530,6 +530,10 @@ Generated apps include `/support-center/` for built-in learning and help. Use
 shipping onboarding content to prove knowledge-base coverage, guided tutorials,
 builder/admin/end-user onboarding, support search, sample DSL starters, and
 support-ticket correlation.
+Use `/support-center/workbench.json` or `support_center_workbench()` inside the
+IDE to inspect support topics, tutorials, role-specific onboarding, support
+search, sample DSL starters, support-ticket correlation, artifact readiness, and
+route evidence.
 
 Use `/prototyping/release-gate.json` or `prototyping_release_gate()` before
 promoting a rapid prototype. The gate proves generated prototype artifacts,

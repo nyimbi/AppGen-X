@@ -597,7 +597,10 @@ apps include:
   entries, support-ticket payloads, and sample DSL applications. The generated
   `support_center_release_gate()` proves artifact coverage, knowledge-base
   breadth, tutorial paths, role-aware onboarding, searchability, usable sample
-  DSL, and support-ticket correlation.
+  DSL, and support-ticket correlation. The generated
+  `support_center_workbench()` exposes IDE-ready knowledge-base, tutorial,
+  role-onboarding, support search, sample DSL, ticket-correlation, artifact,
+  and route-surface evidence.
 - `low_code_features.py` and `appgen_low_code_features.html` with a generated
   capability matrix grounded in `docs/ideas.md`, `docs/base_features.md`, and
   `docs/Lo-code features.md`, roadmap alignment, readiness reporting for the

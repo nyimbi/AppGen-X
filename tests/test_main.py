@@ -1076,6 +1076,7 @@ def test_generate_app_from_sqlite_schema_compiles(tmp_path) -> None:
     assert capabilities_by_key["ui.rapid-prototyping"]["status"] == "implemented"
     assert capabilities_by_key["ui.view-experience"]["status"] == "implemented"
     assert capabilities_by_key["devops.studio"]["status"] == "implemented"
+    assert capabilities_by_key["support.training"]["status"] == "implemented"
     assert capabilities_by_key["components.erp-templates"]["status"] == "implemented"
     assert capabilities_by_key["ai.agentic-systems"]["status"] == "implemented"
     assert capabilities_by_key["ai.voice-assistant"]["status"] == "implemented"
@@ -2576,6 +2577,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     support_template = (output_dir / "templates" / "appgen_support_center.html").read_text()
     assert "Support Center" in support_template
     assert "Tutorials JSON" in support_template
+    assert "Workbench JSON" in support_template
     assert "Release Gate JSON" in support_template
     assert "Low-Code Feature Matrix" in (output_dir / "templates" / "appgen_low_code_features.html").read_text()
     assert "Feature Matrix JSON" in (output_dir / "templates" / "appgen_low_code_features.html").read_text()
@@ -6386,6 +6388,26 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "ticket_correlation",
     } <= {check["gate"] for check in support_gate["checks"]}
     assert support_center.support_center_release_gate({"app/support_center.py"})["ok"] is False
+    support_workbench = support_center.support_center_workbench(
+        {"app/support_center.py", "app/templates/appgen_support_center.html"}
+    )
+    assert support_workbench["format"] == "appgen.support-center-workbench.v1"
+    assert support_workbench["ok"] is True
+    assert support_workbench["decision"] == "approved"
+    assert {
+        "knowledge_base",
+        "tutorial_paths",
+        "role_onboarding",
+        "support_search",
+        "sample_dsl",
+        "ticket_correlation",
+        "artifact_evidence",
+        "route_surface",
+    } == {check["id"] for check in support_workbench["checks"]}
+    assert "/support-center/workbench.json" in next(
+        check["evidence"]["routes"] for check in support_workbench["checks"] if check["id"] == "route_surface"
+    )
+    assert support_center.support_center_workbench({"app/support_center.py"})["ok"] is False
     first_prototype = prototyping.prototype_catalog()[0]["resource"]
     assert prototyping.sample_row(first_prototype)
     assert prototyping.screen_mockup(first_prototype, "create")["layout"] == "form"
