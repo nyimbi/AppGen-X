@@ -1087,6 +1087,7 @@ def test_generate_app_from_sqlite_schema_compiles(tmp_path) -> None:
     assert "automation.node-red" in {item["key"] for item in manifest["capabilities"]}
     assert capabilities_by_key["automation.node-red"]["status"] == "implemented"
     assert "automation.cep" in {item["key"] for item in manifest["capabilities"]}
+    assert capabilities_by_key["automation.cep"]["status"] == "implemented"
     assert "automation.rpa-bpa" in {item["key"] for item in manifest["capabilities"]}
     assert "team.collaboration" in {item["key"] for item in manifest["capabilities"]}
     assert "team.version-control" in {item["key"] for item in manifest["capabilities"]}
@@ -2538,7 +2539,9 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert "Release Gate JSON" in i18n_template
     assert "event-stream contracts" in (output_dir / "templates" / "appgen_realtime.html").read_text()
     assert "permissions per tab" in (output_dir / "templates" / "appgen_tabbed_views.html").read_text()
-    assert "complex event processing" in (output_dir / "templates" / "appgen_events.html").read_text()
+    events_template = (output_dir / "templates" / "appgen_events.html").read_text()
+    assert "complex event processing" in events_template
+    assert "Workbench JSON" in events_template
     assert "RPA &amp; BPA" in (output_dir / "templates" / "appgen_rpa.html").read_text()
     assert "runtime self-tests" in (output_dir / "templates" / "appgen_diagnostics.html").read_text()
     assert "automated API testing" in (output_dir / "templates" / "appgen_api_testing.html").read_text()
@@ -5207,6 +5210,25 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "retry_dead_letter",
         "workflow_events",
     } <= {check["gate"] for check in event_gate["checks"]}
+    event_workbench = events.event_workbench({"app/events.py", "app/templates/appgen_events.html"})
+    assert event_workbench["format"] == "appgen.event-workbench.v1"
+    assert event_workbench["ok"] is True
+    assert event_workbench["release_gate"]["ok"] is True
+    assert {
+        "artifact_coverage",
+        "topic_catalog",
+        "event_envelopes",
+        "processing_actions",
+        "failure_alerting",
+        "retry_dead_letter",
+        "workflow_events",
+        "release_gate",
+        "route_surface",
+    } == {check["id"] for check in event_workbench["checks"]}
+    assert "/events/workbench.json" in next(
+        check["evidence"]["routes"] for check in event_workbench["checks"] if check["id"] == "route_surface"
+    )
+    assert events.event_workbench({"app/events.py"})["ok"] is False
     assert events.event_release_gate({"app/events.py"})["ok"] is False
     rpa_tasks = {task["id"]: task for task in rpa.rpa_task_catalog()}
     assert "book.create_record" in rpa_tasks

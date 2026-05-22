@@ -5387,6 +5387,7 @@ def write_events_template(output_dir):
     </div>
     <div>
       <a class="btn btn-default" href="{{ url_for('EventProcessingView.catalog_json') }}">Event Catalog JSON</a>
+      <a class="btn btn-default" href="{{ url_for('EventProcessingView.workbench_json') }}">Workbench JSON</a>
       <a class="btn btn-default" href="{{ url_for('EventProcessingView.release_gate_json') }}">Release Gate JSON</a>
     </div>
   </div>
@@ -30880,6 +30881,50 @@ def event_release_gate(existing_paths=()):
     }}
 
 
+def event_workbench(existing_paths=()):
+    """Return consolidated complex-event processing evidence for generated IDEs."""
+    release_gate = event_release_gate(existing_paths)
+    sample_topics = all_topics()
+    sample_events = tuple(
+        normalize_event(topic, {{"source": "workbench"}}, actor="workbench")
+        for topic in sample_topics
+    )
+    processing = tuple(process_event(event) for event in sample_events)
+    failure_topic = next((topic for topic in sample_topics if topic.endswith(".failed")), sample_topics[0] if sample_topics else None)
+    failed_event = normalize_event(failure_topic, {{"source": "workbench"}}, severity="error") if failure_topic else None
+    retry = retry_plan(sample_events[0], attempt=1) if sample_events else {{}}
+    dead_letter = dead_letter_event(failed_event, "workbench failure", attempt=RETRY_POLICY["max_attempts"]) if failed_event else {{}}
+    routes = (
+        "/events/catalog.json",
+        "/events/workbench.json",
+        "/events/simulate/<topic>.json",
+        "/events/release-gate.json",
+    )
+    checks = (
+        {{"id": "artifact_coverage", "ok": cep_check(existing_paths)["ok"], "evidence": cep_check(existing_paths)}},
+        {{"id": "topic_catalog", "ok": bool(sample_topics), "evidence": event_catalog()}},
+        {{"id": "event_envelopes", "ok": bool(sample_events) and all(event.get("id") and event.get("actor") == "workbench" for event in sample_events), "evidence": sample_events}},
+        {{"id": "processing_actions", "ok": bool(processing) and all(item.get("audit") for item in processing), "evidence": processing}},
+        {{"id": "failure_alerting", "ok": failed_event is not None and process_event(failed_event).get("dead_letter") is True and process_event(failed_event).get("alert", {{}}).get("severity") == "error", "evidence": process_event(failed_event) if failed_event else {{}}}},
+        {{"id": "retry_dead_letter", "ok": retry.get("retry") is True and dead_letter.get("error") == "workbench failure", "evidence": {{"retry": retry, "dead_letter": dead_letter}}}},
+        {{"id": "workflow_events", "ok": not WORKFLOW_EVENTS or any(topic.startswith("workflow.") for topic in sample_topics), "evidence": WORKFLOW_EVENTS}},
+        {{"id": "release_gate", "ok": release_gate["ok"], "evidence": release_gate["decision"]}},
+        {{"id": "route_surface", "ok": all(route.startswith("/events/") for route in routes), "evidence": {{"routes": routes}}}},
+    )
+    ok = all(check["ok"] for check in checks)
+    return {{
+        "format": "appgen.event-workbench.v1",
+        "ok": ok,
+        "decision": "approved" if ok else "blocked",
+        "catalog": event_catalog(),
+        "events": sample_events,
+        "processing": processing,
+        "routes": routes,
+        "release_gate": release_gate,
+        "checks": checks,
+    }}
+
+
 class EventProcessingView(BaseView):
     route_base = "/events"
     default_view = "index"
@@ -30895,6 +30940,10 @@ class EventProcessingView(BaseView):
     @expose("/catalog.json")
     def catalog_json(self):
         return jsonify(event_catalog())
+
+    @expose("/workbench.json")
+    def workbench_json(self):
+        return jsonify(event_workbench({{"app/events.py", "app/templates/appgen_events.html"}}))
 
     @expose("/simulate/<path:topic>.json")
     def simulate_json(self, topic):

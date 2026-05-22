@@ -844,7 +844,10 @@ apps include:
   processing, alerting, retry, and dead-letter contracts. The generated
   `event_release_gate()` proves artifact coverage, table/workflow topic
   catalogs, event envelope shape, processing actions, failure alerting,
-  retry/dead-letter behavior, and workflow-event handling.
+  retry/dead-letter behavior, and workflow-event handling. `event_workbench()`
+  adds generated IDE evidence for topic catalogs, event envelopes, processing
+  plans, failure alerting, retry/dead-letter behavior, workflow events, release
+  decisions, and `/events/workbench.json` route coverage.
 - `api_testing.py` and `appgen_api_testing.html` with generated automated API
   testing, pytest module rendering, smoke/load fixture handoff plans tied to
   generated seed scenarios, UI smoke-test plans, Playwright-style smoke module
