@@ -5700,6 +5700,7 @@ def write_code_review_template(output_dir):
     </div>
     <div>
       <a class="btn btn-default" href="{{ url_for('CodeReviewView.summary_json') }}">Summary JSON</a>
+      <a class="btn btn-default" href="{{ url_for('CodeReviewView.workbench_json') }}">Workbench JSON</a>
       <a class="btn btn-default" href="{{ url_for('CodeReviewView.release_gate_json') }}">Release Gate JSON</a>
     </div>
   </div>
@@ -33310,6 +33311,35 @@ def code_review_release_gate(existing_paths=()):
     }}
 
 
+def code_review_workbench(existing_paths=()):
+    """Return IDE-ready code-review evidence for generated apps."""
+    release_gate = code_review_release_gate(existing_paths)
+    findings = schema_review()
+    summary = review_summary(existing_paths)
+    artifacts = artifact_review(existing_paths)
+    rules = tuple(sorted({{finding["rule"] for finding in findings}}))
+    routes = ("/code-review/", "/code-review/summary.json", "/code-review/workbench.json", "/code-review/release-gate.json")
+    checks = (
+        {{"id": "finding_catalog", "ok": bool(findings), "evidence": findings}},
+        {{"id": "review_summary", "ok": summary["ok"], "evidence": summary}},
+        {{"id": "artifact_review", "ok": artifacts["ok"], "evidence": artifacts}},
+        {{"id": "schema_rules", "ok": {{"primary-key", "required-field"}}.issubset(set(rules)), "evidence": rules}},
+        {{"id": "release_gate", "ok": release_gate["ok"], "evidence": release_gate}},
+        {{"id": "route_surface", "ok": "/code-review/workbench.json" in routes, "evidence": {{"routes": routes}}}},
+    )
+    ok = all(check["ok"] for check in checks)
+    return {{
+        "format": "appgen.code-review-workbench.v1",
+        "ok": ok,
+        "decision": "approved" if ok else "blocked",
+        "checks": checks,
+        "findings": findings,
+        "summary": summary,
+        "artifacts": artifacts,
+        "release_gate": release_gate,
+    }}
+
+
 class CodeReviewView(BaseView):
     route_base = "/code-review"
     default_view = "index"
@@ -33321,6 +33351,10 @@ class CodeReviewView(BaseView):
     @expose("/summary.json")
     def summary_json(self):
         return jsonify(review_summary())
+
+    @expose("/workbench.json")
+    def workbench_json(self):
+        return jsonify(code_review_workbench(EXPECTED_ARTIFACTS))
 
     @expose("/release-gate.json")
     def release_gate_json(self):
@@ -44032,6 +44066,8 @@ def test_generated_runtime_helpers():
     assert code_review.review_summary()["ok"] is True
     assert code_review.code_review_release_gate(code_review.EXPECTED_ARTIFACTS)["format"] == "appgen.code-review-release-gate.v1"
     assert code_review.code_review_release_gate(code_review.EXPECTED_ARTIFACTS)["ok"] is True
+    assert code_review.code_review_workbench(code_review.EXPECTED_ARTIFACTS)["format"] == "appgen.code-review-workbench.v1"
+    assert code_review.code_review_workbench(code_review.EXPECTED_ARTIFACTS)["ok"] is True
     assert code_review.code_review_release_gate({"app/models.py"})["ok"] is False
     assert version_control.version_resource_catalog()
     version_manifest = json.loads((ROOT / "app" / "appgen.json").read_text())

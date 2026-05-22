@@ -622,6 +622,9 @@ Use `/code-review/release-gate.json` or `code_review_release_gate()` to prove
 generated quality-review readiness. The gate checks required artifact coverage,
 schema-rule coverage, primary-key checks, searchability review, required-field
 review, and protected hidden-field review.
+Use `/code-review/workbench.json` or `code_review_workbench()` in the generated
+IDE to inspect finding catalog, review summary, artifact review, schema-rule,
+route, and release-gate evidence.
 Use `/devtools/release-gate.json` or `devtools_release_gate()` to prove
 external IDE readiness. The gate checks IDE catalogs, VS Code debugging/tasks,
 JetBrains run configurations/tasks, Eclipse/PyDev metadata, schema source maps,

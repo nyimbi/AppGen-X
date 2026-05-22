@@ -1131,6 +1131,7 @@ def test_generate_app_from_sqlite_schema_compiles(tmp_path) -> None:
     assert "quality.api-testing" in {item["key"] for item in manifest["capabilities"]}
     assert capabilities_by_key["quality.api-testing"]["status"] == "implemented"
     assert "quality.code-review" in {item["key"] for item in manifest["capabilities"]}
+    assert capabilities_by_key["quality.code-review"]["status"] == "implemented"
     assert "quality.test-coverage" in {item["key"] for item in manifest["capabilities"]}
     assert "components.templates" in {item["key"] for item in manifest["capabilities"]}
     assert capabilities_by_key["components.templates"]["status"] == "implemented"
@@ -2603,6 +2604,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert "Release Gate JSON" in (output_dir / "templates" / "appgen_api_testing.html").read_text()
     code_review_template = (output_dir / "templates" / "appgen_code_review.html").read_text()
     assert "Generated automated code-review findings" in code_review_template
+    assert "Workbench JSON" in code_review_template
     assert "Release Gate JSON" in code_review_template
     components_template = (output_dir / "templates" / "appgen_components.html").read_text()
     assert "Generated component and widget contracts" in components_template
@@ -6093,6 +6095,22 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "required_field_review",
         "protected_field_review",
     } <= {check["gate"] for check in code_review_gate["checks"]}
+    code_review_workbench = code_review.code_review_workbench(code_review.EXPECTED_ARTIFACTS)
+    assert code_review_workbench["format"] == "appgen.code-review-workbench.v1"
+    assert code_review_workbench["ok"] is True
+    assert code_review_workbench["decision"] == "approved"
+    assert {
+        "finding_catalog",
+        "review_summary",
+        "artifact_review",
+        "schema_rules",
+        "release_gate",
+        "route_surface",
+    } == {check["id"] for check in code_review_workbench["checks"]}
+    assert "/code-review/workbench.json" in next(
+        check["evidence"]["routes"] for check in code_review_workbench["checks"] if check["id"] == "route_surface"
+    )
+    assert code_review.code_review_workbench({"app/models.py"})["ok"] is False
     assert code_review.code_review_release_gate({"app/models.py"})["ok"] is False
     component_catalog = components.component_catalog()
     assert any(item["table"] == "Book" and "form" in item["components"] for item in component_catalog)
