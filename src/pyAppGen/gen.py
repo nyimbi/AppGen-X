@@ -46867,6 +46867,11 @@ def get_metadata(idb):
     help="Print JSON proof that package-level natural-language evolution is ready.",
 )
 @click.option(
+    "--studio-release-audit",
+    is_flag=True,
+    help="Print JSON proof that package-level Studio/IDE capabilities are ready.",
+)
+@click.option(
     "--schema-source-audit",
     is_flag=True,
     help=(
@@ -46906,6 +46911,7 @@ def main(
     nl_plan_prompt,
     nl_dsl_prompt,
     nl_release_audit,
+    studio_release_audit,
     schema_source_audit,
     dsl_antlr_report,
 ):
@@ -46926,6 +46932,7 @@ def main(
         erp_template_catalog,
         erp_template_module,
         *nl_options,
+        studio_release_audit,
         schema_source_audit,
         dsl_antlr_report,
     ]
@@ -46953,6 +46960,7 @@ def main(
                 erp_template_catalog,
                 erp_template_module,
                 *nl_options,
+                studio_release_audit,
                 dsl_antlr_report,
                 *schema_sources,
             ]
@@ -46983,6 +46991,7 @@ def main(
                 erp_template_catalog,
                 erp_template_module,
                 *nl_options,
+                studio_release_audit,
                 schema_source_audit,
                 *schema_sources,
             ]
@@ -47014,6 +47023,7 @@ def main(
                 erp_template_catalog,
                 erp_template_module,
                 *nl_options,
+                studio_release_audit,
                 schema_source_audit,
                 dsl_antlr_report,
                 *schema_sources,
@@ -47042,6 +47052,7 @@ def main(
                 erp_template_catalog,
                 erp_template_module,
                 *nl_options,
+                studio_release_audit,
                 schema_source_audit,
                 dsl_antlr_report,
                 *schema_sources,
@@ -47074,6 +47085,7 @@ def main(
                 erp_template_catalog,
                 erp_template_module,
                 *nl_options,
+                studio_release_audit,
                 schema_source_audit,
                 dsl_antlr_report,
                 *schema_sources,
@@ -47105,6 +47117,7 @@ def main(
                 erp_template_catalog,
                 erp_template_module,
                 *nl_options,
+                studio_release_audit,
                 schema_source_audit,
                 dsl_antlr_report,
                 *schema_sources,
@@ -47137,6 +47150,7 @@ def main(
                 erp_template_catalog,
                 erp_template_module,
                 *nl_options,
+                studio_release_audit,
                 *schema_sources,
             ]
         ):
@@ -47162,6 +47176,7 @@ def main(
                 erp_template_catalog,
                 erp_template_module,
                 *nl_options,
+                studio_release_audit,
                 *schema_sources,
             ]
         ):
@@ -47186,6 +47201,7 @@ def main(
                 erp_template_catalog,
                 erp_template_module,
                 *nl_options,
+                studio_release_audit,
                 *schema_sources,
             ]
         ):
@@ -47209,6 +47225,7 @@ def main(
                 erp_template_catalog,
                 erp_template_module,
                 *nl_options,
+                studio_release_audit,
                 *schema_sources,
             ]
         ):
@@ -47231,6 +47248,7 @@ def main(
                 wdatabase,
                 erp_template_module,
                 *nl_options,
+                studio_release_audit,
                 *schema_sources,
             ]
         ):
@@ -47245,7 +47263,17 @@ def main(
         ctx.exit(0 if result["ok"] else 1)
 
     if erp_template_module:
-        if any([writedir, database_url, idatabase, wdatabase, *nl_options, *schema_sources]):
+        if any(
+            [
+                writedir,
+                database_url,
+                idatabase,
+                wdatabase,
+                *nl_options,
+                studio_release_audit,
+                *schema_sources,
+            ]
+        ):
             raise click.UsageError(
                 "--erp-template cannot be combined with generation options."
             )
@@ -47258,7 +47286,18 @@ def main(
         ctx.exit(0)
 
     if nl_plan_prompt:
-        if any([writedir, database_url, idatabase, wdatabase, nl_dsl_prompt, nl_release_audit, *schema_sources]):
+        if any(
+            [
+                writedir,
+                database_url,
+                idatabase,
+                wdatabase,
+                nl_dsl_prompt,
+                nl_release_audit,
+                studio_release_audit,
+                *schema_sources,
+            ]
+        ):
             raise click.UsageError(
                 "--nl-plan cannot be combined with generation or other NL options."
             )
@@ -47269,7 +47308,17 @@ def main(
         ctx.exit(0 if result["ok"] else 1)
 
     if nl_dsl_prompt:
-        if any([writedir, database_url, idatabase, wdatabase, nl_release_audit, *schema_sources]):
+        if any(
+            [
+                writedir,
+                database_url,
+                idatabase,
+                wdatabase,
+                nl_release_audit,
+                studio_release_audit,
+                *schema_sources,
+            ]
+        ):
             raise click.UsageError(
                 "--nl-dsl cannot be combined with generation or other NL options."
             )
@@ -47280,13 +47329,24 @@ def main(
         ctx.exit(0 if result["ok"] else 1)
 
     if nl_release_audit:
-        if any([writedir, database_url, idatabase, wdatabase, *schema_sources]):
+        if any([writedir, database_url, idatabase, wdatabase, studio_release_audit, *schema_sources]):
             raise click.UsageError(
                 "--nl-release-audit cannot be combined with generation options."
             )
         from .nl import nl_evolution_release_audit as package_nl_release_audit
 
         result = package_nl_release_audit()
+        click.echo(json.dumps(result, indent=2, sort_keys=True, default=list))
+        ctx.exit(0 if result["ok"] else 1)
+
+    if studio_release_audit:
+        if any([writedir, database_url, idatabase, wdatabase, *schema_sources]):
+            raise click.UsageError(
+                "--studio-release-audit cannot be combined with generation options."
+            )
+        from .studio import studio_release_audit as package_studio_release_audit
+
+        result = package_studio_release_audit()
         click.echo(json.dumps(result, indent=2, sort_keys=True, default=list))
         ctx.exit(0 if result["ok"] else 1)
 

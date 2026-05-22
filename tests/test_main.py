@@ -58,6 +58,11 @@ from pyAppGen.schema import schema_from_metadata
 from pyAppGen.schema import schema_source_contract
 from pyAppGen.schema import schema_source_example_audit
 from pyAppGen.schema import schema_source_kind
+from pyAppGen.studio import database_design_workspace
+from pyAppGen.studio import dsl_editor_state
+from pyAppGen.studio import generation_job_manifest
+from pyAppGen.studio import studio_release_audit
+from pyAppGen.studio import studio_workspace
 
 
 @pytest.fixture
@@ -247,6 +252,7 @@ def test_package_goal_audit_cli_aggregates_objective_evidence(
         "generated_app_excellence",
         "erp_template_exports",
         "natural_language_evolution",
+        "robust_ide",
         "source_document_scope",
     } == {gate["id"] for gate in direct_report["gates"]}
     assert direct_report["stop_condition"] == (
@@ -264,6 +270,7 @@ def test_package_goal_audit_cli_aggregates_objective_evidence(
     assert cli_report["audits"]["generated_app_excellence"]["ok"] is True
     assert cli_report["audits"]["erp_templates"]["ok"] is True
     assert cli_report["audits"]["natural_language_evolution"]["ok"] is True
+    assert cli_report["audits"]["studio"]["ok"] is True
 
 
 def test_package_erp_templates_export_generatable_dsl(
@@ -390,6 +397,51 @@ def test_package_natural_language_evolution_generates_parseable_dsl(
     assert audit_result.exit_code == 0
     audit_report = json.loads(audit_result.output)
     assert audit_report["ok"] is True
+
+
+def test_package_studio_audit_covers_ide_database_and_generation(
+    runner: CliRunner,
+) -> None:
+    """The package exposes robust IDE evidence before app generation."""
+    workspace = studio_workspace()
+    assert workspace["format"] == "appgen.package-studio-workspace.v1"
+    assert {
+        "dsl_authoring",
+        "database_design",
+        "source_intake",
+        "generation_jobs",
+        "application_management",
+        "natural_language_evolution",
+    } <= set(workspace["sections"])
+
+    editor = dsl_editor_state("app Bad { targets: web, toaster } table Book { title: string ref Author.id }")
+    assert editor["format"] == "appgen.package-dsl-editor-state.v1"
+    assert editor["ok"] is False
+    assert {action["id"] for action in editor["code_actions"]} >= {
+        "normalize_targets",
+        "replace_ref_with_arrow",
+    }
+
+    database = database_design_workspace()
+    assert database["ok"] is True
+    assert "relationship" in database["proposal_kinds"]
+    assert {"appgen_dsl", "dbml", "sql_ddl", "ponyorm"} <= set(database["exports"])
+
+    job = generation_job_manifest(targets=("web", "desktop"), changed_paths=("appgen.dsl",))
+    assert job["format"] == "appgen.package-generation-job.v1"
+    assert job["stages"] == ("lint_dsl", "schema_diff", "generate", "quality", "package")
+
+    audit = studio_release_audit()
+    assert audit["format"] == "appgen.package-studio-release-audit.v1"
+    assert audit["ok"] is True
+    assert audit["stop_condition"] == "do-not-claim-robust-ide-unless-ok-is-true"
+    assert all(gate["ok"] for gate in audit["gates"])
+
+    result = runner.invoke(__main__.main, ["--studio-release-audit"])
+    assert result.exit_code == 0
+    report = json.loads(result.output)
+    assert report["ok"] is True
+    assert report["workspace"]["database_design"]["ok"] is True
 
 
 def test_dsl_linter_reports_semantic_feedback(runner: CliRunner, tmp_path) -> None:

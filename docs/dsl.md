@@ -250,6 +250,18 @@ providers, agents, ERP module commands, platform targets, migration impact, and
 rollback guidance. Destructive prompts such as `drop table` or `remove field`
 return `requires_approval: true` instead of applying the change.
 
+Audit the package-level Studio/IDE contract before claiming AppGen can manage
+application design before generation:
+
+```console
+appgen --studio-release-audit
+```
+
+The Studio audit covers DSL editor diagnostics, completions and code actions,
+database-design workspaces, source intake for DBML/SQL/PonyORM/live DB/DSL,
+reviewable generation jobs, and application snapshot/restore/version-management
+commands.
+
 ## Shape
 
 - `table` defines persistent data models.

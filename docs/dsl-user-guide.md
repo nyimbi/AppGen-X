@@ -125,6 +125,9 @@ reviewable DSL patch, and `appgen --nl-release-audit` to prove the package-level
 NL evolution contract covers tables, fields, forms, workflows, rules, reports,
 dashboards, chatbots, agents, ERP modules, platform targets, local LLMs, and
 API-key LLMs.
+Run `appgen --studio-release-audit` to prove the package-level Studio contract
+is ready for DSL editing, database design, multi-source intake, generation job
+management, and application lifecycle management before any app is generated.
 
 Use `required` for fields that must be entered. Use `search` on fields that
 should appear in generated search contracts. Use `hidden` for generated or
@@ -524,6 +527,8 @@ it combines diagnostics, DSL linting, database workbench exports, safe SQL
 guards, schema refactor plans, the parameterized query builder, generation
 jobs, app portfolio management, versioned management, capability coverage,
 reviewed edits, debug redaction, dependency review, and component sharing. Use
+the package-level `appgen --studio-release-audit` before generation to verify
+the same IDE readiness contract exists outside a generated app. Use
 `/studio/database-design-gate.json` and `/studio/schema-refactor.json` to review
 table and field rename impact across DSL, models, APIs, GraphQL, migrations,
 docs, and generated tests before applying database-design changes. Use
