@@ -765,6 +765,9 @@ inspect the same evidence in database-design and release-review flows.
 Use the generated `seed_release_gate()` before release to prove seed scenarios
 are dependency ordered, validation-clean, anonymized for fixture export, backed
 by SQL previews, and connected to generated coverage plus quality artifacts.
+Use `seed_workbench()` to inspect seed plans, insert order, scenario matrices,
+smoke fixtures, anonymized exports, SQL previews, validation, artifact coverage,
+and release-gate evidence in the IDE.
 Use `reports_release_gate()` to prove generated reports cover table catalogs,
 CSV exports, relationship-aware joins, three-way report paths, query plans, and
 required report artifacts before relying on generated operational reporting.

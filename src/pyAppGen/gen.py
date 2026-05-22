@@ -12248,6 +12248,36 @@ def seed_release_gate(existing_paths=()):
     }}
 
 
+def seed_workbench(existing_paths=()):
+    """Return IDE-ready seed, fixture, validation, and SQL preview evidence."""
+    release_gate = seed_release_gate(existing_paths)
+    gate_by_name = {{gate["gate"]: gate for gate in release_gate["gates"]}}
+    smoke_fixture = seed_fixture_export("smoke")
+    checks = (
+        {{"id": "plan_contract", "ok": gate_by_name["plan_contract"]["ok"], "evidence": seed_plan()}},
+        {{"id": "dependency_order", "ok": gate_by_name["dependency_order"]["ok"], "evidence": seed_insert_order()}},
+        {{"id": "scenario_matrix", "ok": gate_by_name["scenario_validation"]["ok"], "evidence": seed_scenario_matrix()}},
+        {{"id": "smoke_fixture", "ok": smoke_fixture["format"] == "appgen.seed-fixture.v1" and smoke_fixture["validation"]["ok"], "evidence": smoke_fixture}},
+        {{"id": "anonymized_export", "ok": gate_by_name["anonymized_fixture_export"]["ok"], "evidence": seed_json(anonymize=True)}},
+        {{"id": "sql_preview", "ok": gate_by_name["sql_preview"]["ok"], "evidence": seed_sql()}},
+        {{"id": "validation", "ok": validate_seed_data()["ok"], "evidence": validate_seed_data()}},
+        {{"id": "artifact_coverage", "ok": gate_by_name["artifact_coverage"]["ok"], "evidence": gate_by_name["artifact_coverage"]}},
+        {{"id": "release_gate", "ok": release_gate["ok"], "evidence": release_gate}},
+    )
+    ok = all(check["ok"] for check in checks)
+    return {{
+        "format": "appgen.seed-workbench.v1",
+        "ok": ok,
+        "decision": "approved" if ok else "blocked",
+        "checks": checks,
+        "plan": seed_plan(),
+        "scenarios": seed_scenarios(),
+        "scenario_matrix": seed_scenario_matrix(),
+        "smoke_fixture": smoke_fixture,
+        "release_gate": release_gate,
+    }}
+
+
 def seed_plan():
     """Return a reviewable deterministic seed plan."""
     return {{
@@ -42280,6 +42310,8 @@ def validate_seed_artifacts() -> None:
         "seed_plan",
         "seed_scenario_matrix",
         "seed_release_gate",
+        "seed_workbench",
+        "appgen.seed-workbench.v1",
         "seed_fixture_export",
         "validate_seed_data",
         "anonymized_seed_data",
@@ -42289,7 +42321,7 @@ def validate_seed_artifacts() -> None:
         "load",
     )
     if not all(term in contract for term in required_terms):
-        fail("seed contract must expose scenario matrices, fixture exports, validation, anonymization, SQL previews, and release gates")
+        fail("seed contract must expose scenario matrices, fixture exports, validation, anonymization, SQL previews, workbench evidence, and release gates")
 
 
 def validate_diagnostics_artifacts() -> None:
@@ -45479,6 +45511,9 @@ def test_generated_runtime_helpers():
     assert seed.seed_json().startswith("{")
     assert "INSERT INTO" in seed.seed_sql()
     assert seed.seed_release_gate({"seed.py", "tests/test_generated_coverage.py", "scripts/appgen_quality.py"})["ok"] is True
+    assert seed.seed_workbench({"seed.py", "tests/test_generated_coverage.py", "scripts/appgen_quality.py"})["format"] == "appgen.seed-workbench.v1"
+    assert seed.seed_workbench({"seed.py", "tests/test_generated_coverage.py", "scripts/appgen_quality.py"})["ok"] is True
+    assert seed.seed_workbench({"seed.py"})["ok"] is False
     assert seed.seed_release_gate({"seed.py"})["ok"] is False
 '''
 

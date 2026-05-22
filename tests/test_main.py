@@ -1170,6 +1170,7 @@ def test_generate_app_from_sqlite_schema_compiles(tmp_path) -> None:
     assert capabilities_by_key["reports.usage-analytics"]["status"] == "implemented"
     assert capabilities_by_key["data.exchange"]["status"] == "implemented"
     assert capabilities_by_key["data.migrations"]["status"] == "implemented"
+    assert capabilities_by_key["data.seed"]["status"] == "implemented"
     assert capabilities_by_key["data.search"]["status"] == "implemented"
     assert capabilities_by_key["data.database-ops"]["status"] == "implemented"
     assert capabilities_by_key["deployment.cloud"]["status"] == "implemented"
@@ -4722,6 +4723,22 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "sql_preview",
         "artifact_coverage",
     }
+    seed_workbench = seed.seed_workbench({"seed.py", "tests/test_generated_coverage.py", "scripts/appgen_quality.py"})
+    assert seed_workbench["format"] == "appgen.seed-workbench.v1"
+    assert seed_workbench["ok"] is True
+    assert seed_workbench["decision"] == "approved"
+    assert {
+        "plan_contract",
+        "dependency_order",
+        "scenario_matrix",
+        "smoke_fixture",
+        "anonymized_export",
+        "sql_preview",
+        "validation",
+        "artifact_coverage",
+        "release_gate",
+    } == {check["id"] for check in seed_workbench["checks"]}
+    assert seed.seed_workbench({"seed.py"})["ok"] is False
     assert seed.seed_release_gate({"seed.py"})["ok"] is False
     assert seed.validate_seed_data()["ok"] is True
     assert seed.validate_seed_data({"Book": [{"status": "draft"}]})["errors"][0]["missing"] == ("title",)

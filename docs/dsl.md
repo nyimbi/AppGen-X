@@ -961,7 +961,10 @@ apps include:
   modules, validation, anonymized fixture exports, SQL previews, scenario
   matrices, and a seed release gate that proves dependency order, fixture
   validation, anonymized export readiness, SQL preview coverage, and required
-  seed/test/quality artifacts;
+  seed/test/quality artifacts. `seed_workbench()` exposes IDE-ready plan,
+  dependency order, scenario matrix, smoke fixture, anonymized export, SQL
+  preview, validation, artifact, and release-gate evidence before `data.seed`
+  is marked implemented;
   `docs/schema.md` with table,
   field, relationship, and Mermaid ERD documentation, and
   `docs/data-dictionary.json` / `docs/data-dictionary.md` with
