@@ -904,11 +904,23 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "simulator_profiles",
         "simulator_fixture_coverage",
         "side_effect_guards",
+        "permission_prompt_workflow",
+        "adapter_dispatch_workflow",
+        "simulator_replay_workflow",
+        "platform_fallback_workflow",
+        "privacy_review_workflow",
+        "background_resume_workflow",
     } == {check["id"] for check in mobile_workbench["checks"]}
     mobile_apis = set(mobile_workbench["contract"]["apis"])
     assert mobile_apis == {permission["api"] for permission in mobile_workbench["contract"]["permission_manifest"]["permissions"]}
     assert mobile_apis == {adapter["api"] for adapter in mobile_workbench["contract"]["component_adapters"]["adapters"]}
     assert mobile_apis == {fixture["api"] for fixture in mobile_workbench["contract"]["simulator"]["fixtures"]}
+    assert mobile_workbench["permission_workflow"]["steps"][-1] == "dispatch_result"
+    assert "emit_component_event" in mobile_workbench["adapter_dispatch"]["pipeline"]
+    assert "assert_component_events" in mobile_workbench["simulator_replay"]["scenario"]
+    assert "designer_warning_visible" in mobile_workbench["platform_fallback"]["guards"]
+    assert "least_privilege" in mobile_workbench["privacy_review"]["review_items"]
+    assert "resume_foreground" in mobile_workbench["background_resume"]["schedule"]
     visual_depth = cross_target_visual_depth_workbench()
     assert visual_depth["format"] == "appgen.cross-target-visual-depth-workbench.v1"
     assert visual_depth["ok"] is True
@@ -8946,9 +8958,20 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     generated_mobile = form_designer.mobile_native_api_workbench()
     assert generated_mobile["format"] == "appgen.generated-mobile-native-api-workbench.v1"
     assert generated_mobile["ok"] is True
-    assert {"api_breadth", "permission_manifest", "component_adapters", "simulator_fixture_coverage"} <= {
-        check["id"] for check in generated_mobile["checks"]
-    }
+    assert {
+        "api_breadth",
+        "permission_manifest",
+        "component_adapters",
+        "simulator_profiles",
+        "simulator_fixture_coverage",
+        "side_effect_guards",
+        "permission_prompt_workflow",
+        "adapter_dispatch_workflow",
+        "simulator_replay_workflow",
+        "platform_fallback_workflow",
+        "privacy_review_workflow",
+        "background_resume_workflow",
+    } == {check["id"] for check in generated_mobile["checks"]}
     generated_mobile_apis = set(generated_mobile["contract"]["apis"])
     assert generated_mobile_apis == {
         permission["api"] for permission in generated_mobile["contract"]["permission_manifest"]["permissions"]
@@ -8956,6 +8979,15 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert generated_mobile_apis == {
         adapter["api"] for adapter in generated_mobile["contract"]["component_adapters"]["adapters"]
     }
+    assert generated_mobile_apis == {
+        fixture["api"] for fixture in generated_mobile["contract"]["simulator"]["fixtures"]
+    }
+    assert generated_mobile["permission_workflow"]["steps"][-1] == "dispatch_result"
+    assert "emit_component_event" in generated_mobile["adapter_dispatch"]["pipeline"]
+    assert "assert_component_events" in generated_mobile["simulator_replay"]["scenario"]
+    assert "designer_warning_visible" in generated_mobile["platform_fallback"]["guards"]
+    assert "least_privilege" in generated_mobile["privacy_review"]["review_items"]
+    assert "resume_foreground" in generated_mobile["background_resume"]["schedule"]
     generated_visual_depth = form_designer.cross_target_visual_depth_workbench()
     assert generated_visual_depth["format"] == "appgen.generated-cross-target-visual-depth-workbench.v1"
     assert generated_visual_depth["ok"] is True

@@ -2737,6 +2737,92 @@ def mobile_device_simulator_contract() -> dict:
     }
 
 
+def mobile_permission_prompt_workflow(api: str = "camera") -> dict:
+    """Return a deterministic permission prompt workflow for one native API."""
+    manifest = mobile_permission_manifest_contract()
+    permission = next((item for item in manifest["permissions"] if item["api"] == api), None)
+    return {
+        "format": "appgen.mobile-permission-prompt-workflow.v1",
+        "api": api,
+        "ok": permission is not None,
+        "permission": permission,
+        "steps": ("check_cached_grant", "show_reviewable_prompt", "request_platform_permission", "record_privacy_audit", "dispatch_result"),
+        "outcomes": ("granted", "denied", "restricted", "not_available"),
+        "side_effects": (),
+    }
+
+
+def mobile_adapter_dispatch_workflow(api: str = "camera") -> dict:
+    """Return runtime adapter dispatch evidence for one native API."""
+    adapters = mobile_component_adapter_contract()["adapters"]
+    adapter = next((item for item in adapters if item["api"] == api), None)
+    return {
+        "format": "appgen.mobile-adapter-dispatch-workflow.v1",
+        "api": api,
+        "ok": adapter is not None,
+        "adapter": adapter,
+        "pipeline": ("validate_props", "check_permission", "invoke_platform_adapter", "normalize_payload", "emit_component_event"),
+        "error_paths": ("permission_denied", "adapter_unavailable", "timeout", "payload_validation_failed"),
+        "side_effects": (),
+    }
+
+
+def mobile_simulator_replay_workflow(api: str = "location") -> dict:
+    """Return deterministic simulator replay evidence for a native API fixture."""
+    simulator = mobile_device_simulator_contract()
+    fixture = next((item for item in simulator["fixtures"] if item["api"] == api), None)
+    return {
+        "format": "appgen.mobile-simulator-replay-workflow.v1",
+        "api": api,
+        "ok": fixture is not None,
+        "fixture": fixture,
+        "scenario": ("load_fixture", "set_permissions", "set_orientation", "replay_sensor_stream", "assert_component_events"),
+        "profiles": simulator["profiles"],
+        "side_effects": (),
+    }
+
+
+def mobile_platform_fallback_workflow(api: str = "nfc") -> dict:
+    """Return platform fallback behavior for partially supported native APIs."""
+    adapters = mobile_component_adapter_contract()["adapters"]
+    adapter = next((item for item in adapters if item["api"] == api), None)
+    unavailable_targets = tuple(target for target in ("android", "ios", "desktop", "web-pwa") if adapter and target not in adapter["targets"])
+    return {
+        "format": "appgen.mobile-platform-fallback-workflow.v1",
+        "api": api,
+        "ok": adapter is not None,
+        "unavailable_targets": unavailable_targets,
+        "fallbacks": tuple({"target": target, "behavior": "disable_component_with_explanation"} for target in unavailable_targets),
+        "guards": ("no_hidden_runtime_failure", "designer_warning_visible", "alternative_action_documented"),
+        "side_effects": (),
+    }
+
+
+def mobile_privacy_review_workflow() -> dict:
+    """Return privacy-label review evidence for native API usage."""
+    manifest = mobile_permission_manifest_contract()
+    return {
+        "format": "appgen.mobile-privacy-review-workflow.v1",
+        "apis": tuple(permission["api"] for permission in manifest["permissions"]),
+        "review_items": ("purpose_string", "store_privacy_label", "data_retention", "third_party_sharing", "least_privilege"),
+        "prompts": tuple({"api": permission["api"], "prompt": permission["prompt"]} for permission in manifest["permissions"]),
+        "guards": manifest["guards"],
+        "side_effects": (),
+    }
+
+
+def mobile_background_resume_workflow() -> dict:
+    """Return background execution and resume workflow evidence."""
+    return {
+        "format": "appgen.mobile-background-resume-workflow.v1",
+        "api": "background_tasks",
+        "schedule": ("register_task", "persist_checkpoint", "run_in_background", "handle_timeout", "resume_foreground"),
+        "resume_payload": {"checkpoint": "last_successful_step", "retry": "exponential_backoff", "user_visible": True},
+        "guards": ("battery_policy_respected", "timeout_visible", "foreground_resume_reconciles_state"),
+        "side_effects": (),
+    }
+
+
 def mobile_native_api_workbench() -> dict:
     """Prove mobile/native device API component coverage and reviewability."""
     contract = mobile_native_api_contract()
@@ -2744,6 +2830,12 @@ def mobile_native_api_workbench() -> dict:
     adapter_apis = {adapter["api"] for adapter in contract["component_adapters"]["adapters"]}
     permission_apis = {permission["api"] for permission in contract["permission_manifest"]["permissions"]}
     fixture_apis = {fixture["api"] for fixture in contract["simulator"]["fixtures"]}
+    permission_workflow = mobile_permission_prompt_workflow()
+    adapter_dispatch = mobile_adapter_dispatch_workflow()
+    simulator_replay = mobile_simulator_replay_workflow()
+    platform_fallback = mobile_platform_fallback_workflow()
+    privacy_review = mobile_privacy_review_workflow()
+    background_resume = mobile_background_resume_workflow()
     checks = (
         {
             "id": "api_breadth",
@@ -2794,6 +2886,42 @@ def mobile_native_api_workbench() -> dict:
             and {"permission_manifest_generated", "runtime_permission_prompt"} <= set(contract["guards"]),
             "evidence": {"guards": contract["guards"], "simulator": contract["simulator"]["side_effects"]},
         },
+        {
+            "id": "permission_prompt_workflow",
+            "ok": permission_workflow["ok"] and {"show_reviewable_prompt", "dispatch_result"} <= set(permission_workflow["steps"])
+            and not permission_workflow["side_effects"],
+            "evidence": permission_workflow,
+        },
+        {
+            "id": "adapter_dispatch_workflow",
+            "ok": adapter_dispatch["ok"] and {"check_permission", "emit_component_event"} <= set(adapter_dispatch["pipeline"])
+            and not adapter_dispatch["side_effects"],
+            "evidence": adapter_dispatch,
+        },
+        {
+            "id": "simulator_replay_workflow",
+            "ok": simulator_replay["ok"] and {"load_fixture", "assert_component_events"} <= set(simulator_replay["scenario"])
+            and not simulator_replay["side_effects"],
+            "evidence": simulator_replay,
+        },
+        {
+            "id": "platform_fallback_workflow",
+            "ok": platform_fallback["ok"] and "designer_warning_visible" in platform_fallback["guards"]
+            and not platform_fallback["side_effects"],
+            "evidence": platform_fallback,
+        },
+        {
+            "id": "privacy_review_workflow",
+            "ok": api_set <= set(privacy_review["apis"]) and {"purpose_string", "least_privilege"} <= set(privacy_review["review_items"])
+            and not privacy_review["side_effects"],
+            "evidence": privacy_review,
+        },
+        {
+            "id": "background_resume_workflow",
+            "ok": {"persist_checkpoint", "resume_foreground"} <= set(background_resume["schedule"])
+            and not background_resume["side_effects"],
+            "evidence": background_resume,
+        },
     )
     ok = all(check["ok"] for check in checks)
     return {
@@ -2801,6 +2929,12 @@ def mobile_native_api_workbench() -> dict:
         "ok": ok,
         "decision": "approved" if ok else "blocked",
         "contract": contract,
+        "permission_workflow": permission_workflow,
+        "adapter_dispatch": adapter_dispatch,
+        "simulator_replay": simulator_replay,
+        "platform_fallback": platform_fallback,
+        "privacy_review": privacy_review,
+        "background_resume": background_resume,
         "checks": checks,
         "blocking_gaps": tuple(check for check in checks if not check["ok"]),
     }
