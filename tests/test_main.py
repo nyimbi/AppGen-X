@@ -1085,6 +1085,9 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     runtime = pascal_runtime_workbench(design)
     assert runtime["format"] == "appgen.pascal-runtime-workbench.v1"
     assert runtime["ok"] is True
+    assert runtime["unit_parse"]["class_name"] == unit["class_name"]
+    assert runtime["semantic_validation"]["ok"] is True
+    assert not runtime["semantic_validation"]["diagnostics"]
     assert {
         "dfm_serialization",
         "dfm_parse_round_trip",
@@ -1092,6 +1095,8 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "package_manifest",
         "compiler_plan",
         "compiler_pipeline",
+        "unit_parse_validation",
+        "semantic_cross_check",
         "runtime_type_info",
         "event_binding_lifecycle",
         "resource_streaming",
@@ -8923,6 +8928,8 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert "{$R *.dfm}" in generated_runtime["unit"]["unit_source"]
     assert {
         "compiler_pipeline",
+        "unit_parse_validation",
+        "semantic_cross_check",
         "runtime_type_info",
         "event_binding_lifecycle",
         "resource_streaming",
@@ -8940,6 +8947,9 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "resource_bundle",
     )
     assert generated_runtime["events"]["bindings"]
+    assert generated_runtime["unit_parse"]["component_declarations"]
+    assert generated_runtime["semantic_validation"]["ok"] is True
+    assert not generated_runtime["semantic_validation"]["diagnostics"]
     assert generated_runtime["incremental"]["cache_keys"]
     assert generated_runtime["artifact_parity"]["evidence"]["component_count"] == len(generated_runtime["round_trip"]["round_trip_components"])
     assert "control_to_field" in form_designer.livebindings_contract()["binding_edges"]

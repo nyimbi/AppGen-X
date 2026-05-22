@@ -26057,6 +26057,63 @@ def pascal_compiler_pipeline_contract(table_name=None, design=None):
     }}
 
 
+def pascal_unit_parse_contract(table_name=None, design=None):
+    """Parse the generated unit subset into reviewable compiler inputs."""
+    unit = pascal_unit_contract(table_name=table_name, design=design)
+    uses_units = []
+    declarations = []
+    resource_directives = []
+    class_name = ""
+    for raw_line in unit["unit_source"].splitlines():
+        line = raw_line.strip()
+        if line.startswith("System.") or line.startswith("AppGen."):
+            uses_units.extend(part.strip().strip(",;") for part in line.split(",") if part.strip())
+        if line.startswith("{{$R "):
+            resource_directives.append(line)
+        if " = class(" in line:
+            class_name = line.split("=", 1)[0].strip()
+        if ": " in line and line.endswith(";") and " = class(" not in line:
+            name, component_class = line.rstrip(";").split(": ", 1)
+            declarations.append({{"name": name.strip(), "class": component_class.strip()}})
+    return {{
+        "format": "appgen.generated-pascal-unit-parse-contract.v1",
+        "unit_name": unit["unit_name"],
+        "class_name": class_name,
+        "uses": tuple(uses_units),
+        "component_declarations": tuple(declarations),
+        "resource_directives": tuple(resource_directives),
+        "guards": ("single_form_class_required", "resource_directive_required", "component_declarations_typed"),
+        "side_effects": (),
+    }}
+
+
+def pascal_semantic_validation_contract(table_name=None, design=None):
+    """Cross-check generated units, form streams, packages, and event bindings."""
+    unit = pascal_unit_contract(table_name=table_name, design=design)
+    parsed_unit = pascal_unit_parse_contract(table_name=table_name, design=design)
+    round_trip = dfm_round_trip(table_name=table_name, design=design)
+    events = pascal_event_binding_contract(table_name=table_name, design=design)
+    streamed_components = tuple(child["name"] for child in round_trip["parsed"]["forms"][0]["children"]) if round_trip["parsed"]["forms"] else ()
+    declared_components = tuple(item["name"] for item in parsed_unit["component_declarations"])
+    event_components = tuple(binding["component"] for binding in events["bindings"])
+    checks = (
+        {{"id": "form_class_declared", "ok": parsed_unit["class_name"] == unit["class_name"], "evidence": {{"expected": unit["class_name"], "actual": parsed_unit["class_name"]}}}},
+        {{"id": "resource_directive_declared", "ok": "{{$R *.dfm}}" in parsed_unit["resource_directives"], "evidence": parsed_unit["resource_directives"]}},
+        {{"id": "streamed_components_declared", "ok": set(streamed_components) <= set(declared_components), "evidence": {{"streamed": streamed_components, "declared": declared_components}}}},
+        {{"id": "declared_components_streamed", "ok": set(declared_components) <= set(streamed_components), "evidence": {{"declared": declared_components, "streamed": streamed_components}}}},
+        {{"id": "package_contains_unit", "ok": unit["unit_name"] in unit["package_manifest"]["contains"], "evidence": unit["package_manifest"]}},
+        {{"id": "event_bindings_target_components", "ok": set(event_components) <= set(declared_components), "evidence": {{"events": event_components, "declared": declared_components}}}},
+    )
+    return {{
+        "format": "appgen.generated-pascal-semantic-validation-contract.v1",
+        "ok": all(check["ok"] for check in checks),
+        "checks": checks,
+        "diagnostics": tuple(check for check in checks if not check["ok"]),
+        "guards": ("no_code_execution", "unit_stream_package_alignment", "event_targets_declared"),
+        "side_effects": (),
+    }}
+
+
 def pascal_incremental_compile_contract(table_name=None, design=None):
     """Return incremental compile planning metadata without invoking a toolchain."""
     unit = pascal_unit_contract(table_name=table_name, design=design)
@@ -26264,6 +26321,8 @@ def pascal_runtime_workbench(table_name=None):
     round_trip = dfm_round_trip(design=design)
     unit = pascal_unit_contract(design=design)
     compiler = pascal_compiler_pipeline_contract(design=design)
+    unit_parse = pascal_unit_parse_contract(design=design)
+    semantic_validation = pascal_semantic_validation_contract(design=design)
     incremental = pascal_incremental_compile_contract(design=design)
     diagnostics = pascal_diagnostic_mapping_contract(design=design)
     package_dependencies = pascal_package_dependency_contract(design=design)
@@ -26281,6 +26340,8 @@ def pascal_runtime_workbench(table_name=None):
         {{"id": "package_manifest", "ok": {{"runtime-core", "native-desktop-ui", "cross-platform-ui"}} <= set(unit["package_manifest"]["requires"]), "evidence": unit["package_manifest"]}},
         {{"id": "compiler_plan", "ok": not unit["compiler_plan"]["side_effects"] and {{"win64", "android"}} <= set(unit["compiler_plan"]["targets"]), "evidence": unit["compiler_plan"]}},
         {{"id": "compiler_pipeline", "ok": {{"parse_units", "type_check", "resource_link", "emit_target"}} <= set(compiler["stages"]) and not compiler["side_effects"], "evidence": compiler}},
+        {{"id": "unit_parse_validation", "ok": unit_parse["class_name"] == unit["class_name"] and {{"AppGen.Controls", "AppGen.Forms"}} <= set(unit_parse["uses"]) and "{{$R *.dfm}}" in unit_parse["resource_directives"] and not unit_parse["side_effects"], "evidence": unit_parse}},
+        {{"id": "semantic_cross_check", "ok": semantic_validation["ok"] and not semantic_validation["side_effects"], "evidence": semantic_validation}},
         {{"id": "runtime_type_info", "ok": bool(rtti["components"]) and "unknown_properties_preserved" in rtti["guards"], "evidence": rtti}},
         {{"id": "event_binding_lifecycle", "ok": bool(events["bindings"]) and {{"create_stub", "navigate_to_handler", "detach_handler"}} <= set(events["lifecycle"]) and not events["side_effects"], "evidence": events}},
         {{"id": "resource_streaming", "ok": {{"unknown_properties", "nested_children", "event_bindings"}} <= set(resources["preservation"]) and not resources["side_effects"], "evidence": resources}},
@@ -26301,6 +26362,8 @@ def pascal_runtime_workbench(table_name=None):
         "round_trip": round_trip,
         "unit": unit,
         "compiler": compiler,
+        "unit_parse": unit_parse,
+        "semantic_validation": semantic_validation,
         "incremental": incremental,
         "diagnostics": diagnostics,
         "package_dependencies": package_dependencies,
