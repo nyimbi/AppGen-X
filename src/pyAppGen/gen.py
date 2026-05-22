@@ -4821,11 +4821,12 @@ def write_microservices_template(output_dir):
       <p class="agm-note">
         Generated microservices architecture contract for service boundaries,
         API gateway routes, event routes, cross-service relationships,
-        dependencies, health checks, and scaling.
+        dependencies, service-mesh policy, health checks, and scaling.
       </p>
     </div>
     <a class="btn btn-default" href="{{ url_for('MicroserviceView.catalog_json') }}">Service Catalog JSON</a>
     <a class="btn btn-default" href="{{ url_for('MicroserviceView.relationships_json') }}">Relationships JSON</a>
+    <a class="btn btn-default" href="{{ url_for('MicroserviceView.mesh_json') }}">Service Mesh JSON</a>
   </div>
   <div class="agm-grid">
     {% for service in services %}
@@ -25155,17 +25156,58 @@ def scaling_policy(service_name, *, cpu_percent=70, min_replicas=2, max_replicas
     }}
 
 
+def service_mesh_policy(provider="istio"):
+    """Return generated service-mesh security and observability contracts."""
+    return {{
+        "format": "appgen.service-mesh-policy.v1",
+        "provider": provider,
+        "providers": ("istio", "linkerd", "kubernetes-network-policy"),
+        "mtls": "STRICT",
+        "telemetry": ("request_rate", "error_rate", "duration_p95", "trace_id"),
+        "services": tuple(
+            {{
+                "service": service["name"],
+                "inbound_routes": tuple(service["routes"]),
+                "outbound_dependencies": tuple(service["dependencies"]),
+                "authorization": "allow gateway and declared dependencies only",
+            }}
+            for service in service_catalog()
+        ),
+        "checks": ("mtls_enabled", "authorization_policy", "telemetry_labels", "canary_route_review"),
+    }}
+
+
+def traffic_shift_plan(service_name, *, stable_weight=90, canary_weight=10):
+    """Return a service-mesh canary traffic plan for one generated service."""
+    if service_name not in SERVICES:
+        raise KeyError(f"Unknown generated service: {{service_name}}")
+    total = max(1, int(stable_weight) + int(canary_weight))
+    stable = round(int(stable_weight) * 100 / total)
+    canary = 100 - stable
+    return {{
+        "format": "appgen.service-traffic-shift.v1",
+        "service": service_name,
+        "routes": SERVICES[service_name]["routes"],
+        "weights": {{"stable": stable, "canary": canary}},
+        "gates": ("health_check", "error_budget", "p95_latency", "rollback_route"),
+        "rollback": {{"stable": 100, "canary": 0}},
+        "requires_review": canary > 0,
+    }}
+
+
 def microservice_check(existing_paths=()):
     """Return readiness for generated microservice architecture artifacts."""
     existing = set(existing_paths)
     required = {{"app/microservices.py", "app/templates/appgen_microservices.html", "deploy/k8s.yaml"}}
     missing = tuple(sorted(required - existing))
+    mesh = service_mesh_policy()
     return {{
-        "ok": not missing and "api-gateway" in SERVICES and bool(api_gateway_routes()),
+        "ok": not missing and "api-gateway" in SERVICES and bool(api_gateway_routes()) and mesh["mtls"] == "STRICT",
         "missing": missing,
         "services": service_names(),
         "routes": api_gateway_routes(),
         "cross_service_relationships": cross_service_relationships(),
+        "mesh": mesh,
     }}
 
 
@@ -25189,6 +25231,7 @@ class MicroserviceView(BaseView):
             "dependencies": dependency_graph(),
             "relationships": list(cross_service_relationships()),
             "relationship_events": list(relationship_event_contracts()),
+            "mesh": service_mesh_policy(),
         }})
 
     @expose("/relationships.json")
@@ -25197,6 +25240,13 @@ class MicroserviceView(BaseView):
             "relationships": list(cross_service_relationships()),
             "consistency": list(relationship_consistency_plan()),
             "events": list(relationship_event_contracts()),
+        }})
+
+    @expose("/mesh.json")
+    def mesh_json(self):
+        return jsonify({{
+            "policy": service_mesh_policy(),
+            "traffic_shift": traffic_shift_plan("api-gateway"),
         }})
 
 
@@ -33971,9 +34021,11 @@ def validate_microservice_artifacts() -> None:
         fail("microservices contract must expose deployment, health, and scaling plans")
     if "cross_service_relationships" not in contract or "relationship_resolver_plan" not in contract or "relationship_consistency_plan" not in contract:
         fail("microservices contract must expose cross-service relationship resolver and consistency plans")
+    if "service_mesh_policy" not in contract or "traffic_shift_plan" not in contract or "mtls" not in contract:
+        fail("microservices contract must expose service-mesh policy and traffic-shift plans")
     template = (ROOT / "app" / "templates" / "appgen_microservices.html").read_text()
-    if "Microservices" not in template or "Service Catalog JSON" not in template or "Relationships JSON" not in template:
-        fail("microservices template must expose generated service and relationship catalogs")
+    if "Microservices" not in template or "Service Catalog JSON" not in template or "Relationships JSON" not in template or "Service Mesh JSON" not in template:
+        fail("microservices template must expose generated service, relationship, and service-mesh catalogs")
 
 
 def validate_integration_artifacts() -> None:
@@ -35844,6 +35896,9 @@ def test_generated_runtime_helpers():
     assert platforms.platform_release_gate()["format"] == "appgen.platform-release-gate.v1"
     assert "api-gateway" in microservices.service_names()
     assert microservices.api_gateway_routes()
+    assert microservices.service_mesh_policy()["format"] == "appgen.service-mesh-policy.v1"
+    assert microservices.service_mesh_policy()["mtls"] == "STRICT"
+    assert microservices.traffic_shift_plan("api-gateway")["rollback"] == {"stable": 100, "canary": 0}
     assert isinstance(microservices.cross_service_relationships(), tuple)
     if microservices.cross_service_relationships():
         first_relationship = microservices.cross_service_relationships()[0]
@@ -35857,6 +35912,9 @@ def test_generated_runtime_helpers():
     assert microservices.microservice_check(
         {"app/microservices.py", "app/templates/appgen_microservices.html", "deploy/k8s.yaml"}
     )["ok"] is True
+    assert microservices.microservice_check(
+        {"app/microservices.py", "app/templates/appgen_microservices.html", "deploy/k8s.yaml"}
+    )["mesh"]["mtls"] == "STRICT"
     assert isinstance(realtime.realtime_topics(), tuple)
     assert "event: " in realtime.sse_frame(
         realtime.event_payload(realtime.realtime_topics()[0]["topics"][0], {})

@@ -615,7 +615,8 @@ apps include:
   OpenAPI 3.1 API documentation.
 - `microservices.py` and `appgen_microservices.html` with generated service
   boundaries, gateway routes, event routes, cross-service relationship
-  resolvers, consistency reviews, health probes, and scaling plans.
+  resolvers, consistency reviews, service-mesh mTLS/authorization/telemetry
+  policies, canary traffic-shift plans, health probes, and scaling plans.
 - `usage_analytics.py` and `appgen_usage_analytics.html` with generated
   adoption, funnel, retention, and real-time app-usage analytics. A generated
   analytics release gate proves event catalog coverage, activity summaries,

@@ -2303,7 +2303,9 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert "web, PWA, mobile, desktop, and chatbot" in platforms_template
     assert "Generation Matrix JSON" in platforms_template
     assert "Release Gate JSON" in platforms_template
-    assert "microservices architecture contract" in (output_dir / "templates" / "appgen_microservices.html").read_text()
+    microservices_template = (output_dir / "templates" / "appgen_microservices.html").read_text()
+    assert "microservices architecture contract" in microservices_template
+    assert "Service Mesh JSON" in microservices_template
     assert "class AppGenClient" in (tmp_path / "sdks" / "python" / "client.py").read_text()
     assert "export class AppGenClient" in (tmp_path / "sdks" / "javascript" / "client.js").read_text()
     assert "change proposals" in (output_dir / "templates" / "appgen_collaboration.html").read_text()
@@ -4068,6 +4070,14 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert microservices.deployment_units()[0]["name"] == "api-gateway"
     assert microservices.health_check_plan()[0]["liveness"].endswith("/live")
     assert microservices.scaling_policy("book-service", cpu_percent=90)["desired_replicas"] == 3
+    mesh = microservices.service_mesh_policy()
+    assert mesh["format"] == "appgen.service-mesh-policy.v1"
+    assert mesh["mtls"] == "STRICT"
+    assert "istio" in mesh["providers"]
+    traffic_shift = microservices.traffic_shift_plan("book-service", stable_weight=80, canary_weight=20)
+    assert traffic_shift["format"] == "appgen.service-traffic-shift.v1"
+    assert traffic_shift["weights"] == {"stable": 80, "canary": 20}
+    assert traffic_shift["rollback"] == {"stable": 100, "canary": 0}
     relationships = microservices.cross_service_relationships()
     assert relationships[0]["source_table"] == "Book"
     assert relationships[0]["source_column"] == "author_id"
@@ -4085,6 +4095,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     )
     assert check["ok"] is True
     assert check["cross_service_relationships"]
+    assert check["mesh"]["mtls"] == "STRICT"
     intents = platforms.chatbot_intents()
     assert any(intent["intent"] == "create_book" for intent in intents)
     assert set(sdks.sdk_targets()) == {"python", "javascript", "java", "csharp"}
