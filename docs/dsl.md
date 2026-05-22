@@ -414,8 +414,9 @@ appgen --target-release-audit
 
 The target audit parses DSL target selection and proves Flask-AppBuilder web,
 installable PWA, Kivy mobile, BeeWare desktop, and chatbot provider contracts,
-including package artifacts, mobile permissions/offline queues, and desktop
-local-cache/sync replay expectations.
+including generated package artifacts, compiled Python target modules, JSON
+provider exports, PWA runtime assets, mobile permissions/offline queues, and
+desktop local-cache/sync replay expectations.
 
 ## Shape
 

@@ -177,9 +177,10 @@ Ollama/LM Studio providers, API-key OpenAI/Anthropic providers, secret
 guardrails, reviewed tool policies, execution matrices, and generated agent
 artifacts are covered before release.
 Run `appgen --target-release-audit` to prove web, PWA, mobile, desktop, and
-chatbot target selection, package artifacts, Kivy mobile permissions/offline
-queues, and BeeWare desktop local-cache/sync contracts are covered before
-release.
+chatbot target selection, generated package artifacts, compiled Python target
+modules, JSON provider exports, PWA runtime assets, Kivy mobile
+permissions/offline queues, and BeeWare desktop local-cache/sync contracts are
+covered before release.
 
 Use `required` for fields that must be entered. Use `search` on fields that
 should appear in generated search contracts. Use `hidden` for generated or

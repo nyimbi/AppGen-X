@@ -2,18 +2,23 @@
 
 from __future__ import annotations
 
+import json
+import py_compile
+import tempfile
+from pathlib import Path
+
 from .dsl import schema_from_dsl
 
 
 TARGETS = {
     "web": {
         "runtime": "Flask-AppBuilder",
-        "artifacts": ("app/__init__.py", "app/views.py", "app/templates/index.html"),
+        "artifacts": ("app/__init__.py", "app/views.py", "app/templates/my_index.html"),
         "capabilities": ("responsive_forms", "rbac", "api_routes", "reports"),
     },
     "pwa": {
         "runtime": "service-worker",
-        "artifacts": ("app/static/manifest.json", "app/static/service-worker.js"),
+        "artifacts": ("app/static/appgen.webmanifest", "app/static/appgen-sw.js"),
         "capabilities": ("installable", "offline_shell", "push_ready"),
     },
     "mobile": {
@@ -32,6 +37,21 @@ TARGETS = {
         "capabilities": ("guided_create", "required_field_prompts", "provider_exports"),
     },
 }
+_SMOKE_PYTHON_ARTIFACTS = (
+    "app/__init__.py",
+    "app/views.py",
+    "app/platforms.py",
+    "app/pwa.py",
+    "native/appgen_native.py",
+    "native/mobile/app.py",
+    "native/desktop/app.py",
+    "chatbots/appgen_chatbots.py",
+)
+_SMOKE_JSON_ARTIFACTS = (
+    "app/static/appgen.webmanifest",
+    "chatbots/dialogflow/intents.json",
+    "chatbots/botframework/manifest.json",
+)
 
 TARGET_SAMPLE_DSL = """
 app TargetAudit { targets: web, pwa, mobile, desktop, chatbot }
@@ -81,6 +101,96 @@ def target_package_matrix(targets: tuple[str, ...] | None = None) -> dict:
         "format": "appgen.package-target-matrix.v1",
         "ok": {row["target"] for row in rows} == set(selected),
         "rows": rows,
+    }
+
+
+def _compile_target_artifacts(project_dir: Path) -> tuple[dict, ...]:
+    results = []
+    for relative in _SMOKE_PYTHON_ARTIFACTS:
+        path = project_dir / relative
+        try:
+            py_compile.compile(str(path), doraise=True)
+        except py_compile.PyCompileError as exc:
+            results.append({"path": relative, "ok": False, "error": str(exc)})
+        else:
+            results.append({"path": relative, "ok": True})
+    return tuple(results)
+
+
+def _json_target_artifacts(project_dir: Path) -> tuple[dict, ...]:
+    results = []
+    for relative in _SMOKE_JSON_ARTIFACTS:
+        path = project_dir / relative
+        try:
+            json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError) as exc:
+            results.append({"path": relative, "ok": False, "error": str(exc)})
+        else:
+            results.append({"path": relative, "ok": True})
+    return tuple(results)
+
+
+def target_generation_smoke_audit() -> dict:
+    """Generate every application target and verify emitted artifacts."""
+    from .gen import generate_app_from_schema
+
+    with tempfile.TemporaryDirectory(prefix="appgen-target-generation-") as raw_workdir:
+        project_dir = Path(raw_workdir) / "target-smoke"
+        app_dir = project_dir / "app"
+        generate_app_from_schema(
+            schema_from_dsl(TARGET_SAMPLE_DSL, source_name="target-smoke.appgen"),
+            app_dir,
+        )
+        target_rows = tuple(
+            {
+                "target": target,
+                "artifacts": contract["artifacts"],
+                "missing": tuple(
+                    artifact
+                    for artifact in contract["artifacts"]
+                    if not (project_dir / artifact).exists()
+                ),
+            }
+            for target, contract in TARGETS.items()
+        )
+        compile_results = _compile_target_artifacts(project_dir)
+        json_results = _json_target_artifacts(project_dir)
+        home_text = (project_dir / "app/templates/my_index.html").read_text(encoding="utf-8")
+        service_worker = (project_dir / "app/static/appgen-sw.js").read_text(encoding="utf-8")
+        manifest = json.loads(
+            (project_dir / "app/static/appgen.webmanifest").read_text(encoding="utf-8")
+        )
+    checks = (
+        {
+            "check": "target_artifacts",
+            "ok": all(not row["missing"] for row in target_rows),
+            "targets": tuple(row["target"] for row in target_rows),
+        },
+        {
+            "check": "compiled_python_targets",
+            "ok": all(item["ok"] for item in compile_results),
+            "artifacts": _SMOKE_PYTHON_ARTIFACTS,
+        },
+        {
+            "check": "json_target_exports",
+            "ok": all(item["ok"] for item in json_results),
+            "artifacts": _SMOKE_JSON_ARTIFACTS,
+        },
+        {
+            "check": "pwa_runtime_assets",
+            "ok": "/static/appgen.webmanifest" in home_text
+            and "APPGEN_CACHE" in service_worker
+            and manifest.get("display") == "standalone",
+        },
+    )
+    return {
+        "format": "appgen.package-target-generation-smoke-audit.v1",
+        "scope": "package",
+        "rows": target_rows,
+        "compiled": compile_results,
+        "json_artifacts": json_results,
+        "checks": checks,
+        "ok": all(check["ok"] for check in checks),
     }
 
 
@@ -140,6 +250,7 @@ def target_release_audit(existing_paths: set[str] | None = None) -> dict:
     package_matrix = target_package_matrix()
     mobile = mobile_capability_contract()
     desktop = desktop_capability_contract()
+    smoke = target_generation_smoke_audit()
     catalog_targets = {item["target"] for item in target_catalog()}
     gates = (
         {
@@ -168,6 +279,11 @@ def target_release_audit(existing_paths: set[str] | None = None) -> dict:
             "ok": {"pwa", "chatbot"} <= catalog_targets,
         },
         {
+            "id": "target_generation_smoke",
+            "ok": smoke["ok"],
+            "checks": smoke["checks"],
+        },
+        {
             "id": "artifact_contract",
             "ok": expected_artifacts <= existing,
         },
@@ -183,6 +299,7 @@ def target_release_audit(existing_paths: set[str] | None = None) -> dict:
         "package_matrix": package_matrix,
         "mobile": mobile,
         "desktop": desktop,
+        "generation_smoke": smoke,
         "gates": gates,
         "blocking_gaps": tuple(gate for gate in gates if not gate["ok"]),
         "stop_condition": "do-not-claim-multi-target-generation-unless-ok-is-true",

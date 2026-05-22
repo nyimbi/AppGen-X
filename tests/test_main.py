@@ -144,6 +144,7 @@ from pyAppGen.targets import generation_matrix as package_generation_matrix
 from pyAppGen.targets import mobile_capability_contract
 from pyAppGen.targets import target_catalog
 from pyAppGen.targets import target_contract
+from pyAppGen.targets import target_generation_smoke_audit
 from pyAppGen.targets import target_package_matrix
 from pyAppGen.targets import target_release_audit
 from pyAppGen.visual_modeling import code_generation_plan
@@ -1323,6 +1324,7 @@ def test_package_target_audit_covers_web_mobile_desktop_generation(
     web = target_contract("web")
     assert web["runtime"] == "Flask-AppBuilder"
     assert "api_routes" in web["capabilities"]
+    assert "app/templates/my_index.html" in web["artifacts"]
 
     matrix = package_generation_matrix()
     assert {row["target"] for row in matrix} == {"web", "mobile", "desktop"}
@@ -1347,6 +1349,20 @@ def test_package_target_audit_covers_web_mobile_desktop_generation(
     assert desktop["ok"] is True
     assert desktop["file_actions_review_required"] is True
 
+    smoke = target_generation_smoke_audit()
+    assert smoke["format"] == "appgen.package-target-generation-smoke-audit.v1"
+    assert smoke["ok"] is True
+    assert {row["target"] for row in smoke["rows"]} == {
+        "web",
+        "pwa",
+        "mobile",
+        "desktop",
+        "chatbot",
+    }
+    assert all(not row["missing"] for row in smoke["rows"])
+    assert all(item["ok"] for item in smoke["compiled"])
+    assert all(item["ok"] for item in smoke["json_artifacts"])
+
     audit = target_release_audit()
     assert audit["format"] == "appgen.package-target-release-audit.v1"
     assert audit["ok"] is True
@@ -1357,6 +1373,7 @@ def test_package_target_audit_covers_web_mobile_desktop_generation(
         "mobile_contract",
         "desktop_contract",
         "pwa_chatbot_contracts",
+        "target_generation_smoke",
         "artifact_contract",
     } == {gate["id"] for gate in audit["gates"]}
 
