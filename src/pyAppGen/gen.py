@@ -2111,6 +2111,62 @@ def write_designer_file(output_dir, schema: AppSchema):
         f.write("            lines.append(f\"  {condition['field']} {condition['operator']} {values}{action};\")\n")
         f.write("        lines.append('}')\n")
         f.write("    return '\\n'.join(lines).strip() + '\\n'\n\n\n")
+        f.write("def visual_modeling_workbench(manifest):\n")
+        f.write("    \"\"\"Return the full visual data, workflow, proposal, and DSL workbench.\"\"\"\n")
+        f.write("    state = designer_state(manifest)\n")
+        f.write("    table_names = tuple(table.get('name') for table in manifest.get('tables', []) if table.get('name'))\n")
+        f.write("    first_table = table_names[0] if table_names else 'GeneratedTable'\n")
+        f.write("    target_table = table_names[1] if len(table_names) > 1 else first_table\n")
+        f.write("    proposals = (\n")
+        f.write("        table_proposal('GeneratedVisualTable'),\n")
+        f.write("        field_proposal(first_table, 'generated_visual_note', 'text', searchable=True),\n")
+        f.write("        relationship_proposal(first_table, 'generated_visual_parent_id', target_table),\n")
+        f.write("        flow_step_proposal('VisualWorkflow', 'draft', 'approved'),\n")
+        f.write("    )\n")
+        f.write("    previews = tuple(\n")
+        f.write("        {\n")
+        f.write("            'kind': proposal['kind'],\n")
+        f.write("            'dsl': proposal_to_dsl(manifest, proposal),\n")
+        f.write("            'migration': migration_preview(manifest, proposal),\n")
+        f.write("        }\n")
+        f.write("        for proposal in proposals\n")
+        f.write("    )\n")
+        f.write("    return {\n")
+        f.write("        'format': 'appgen.visual-modeling-workbench.v1',\n")
+        f.write("        'ok': bool(state['graph']['nodes']) and bool(state['dsl']) and all(item['migration']['requires_review'] for item in previews),\n")
+        f.write("        'graph_summary': {'nodes': len(state['graph']['nodes']), 'edges': len(state['graph']['edges'])},\n")
+        f.write("        'workspace': state['workspace'],\n")
+        f.write("        'relationships': state['relationships'],\n")
+        f.write("        'proposal_kinds': tuple(proposal['kind'] for proposal in proposals),\n")
+        f.write("        'previews': previews,\n")
+        f.write("        'routes': ('/designer/model.json', '/designer/relationships.json', '/designer/erd.mmd', '/designer/proposal', '/designer/migration-preview', '/designer/dsl', '/designer/visual-modeling-release-gate.json'),\n")
+        f.write("    }\n\n\n")
+        f.write("def visual_modeling_release_gate(manifest, existing_paths=()):\n")
+        f.write("    \"\"\"Return release evidence for visual data, form-adjacent, and workflow modeling.\"\"\"\n")
+        f.write("    existing = set(existing_paths)\n")
+        f.write("    required = {'app/designer.py', 'app/templates/appgen_designer.html', 'app/appgen.json'}\n")
+        f.write("    workbench = visual_modeling_workbench(manifest)\n")
+        f.write("    diagram_gate = schema_diagram_release_gate(manifest, existing_paths)\n")
+        f.write("    required_proposals = {'add_table', 'add_field', 'add_relationship', 'add_flow_step'}\n")
+        f.write("    proposal_kinds = set(workbench['proposal_kinds'])\n")
+        f.write("    checks = (\n")
+        f.write("        {'gate': 'artifact_coverage', 'ok': required.issubset(existing), 'missing': tuple(sorted(required - existing))},\n")
+        f.write("        {'gate': 'visual_workbench', 'ok': workbench['ok'], 'evidence': workbench['graph_summary']},\n")
+        f.write("        {'gate': 'workspace_catalog', 'ok': bool(workbench['workspace']['tables']) and bool(workbench['workspace']['types']), 'evidence': workbench['workspace']},\n")
+        f.write("        {'gate': 'proposal_breadth', 'ok': required_proposals <= proposal_kinds, 'evidence': workbench['proposal_kinds']},\n")
+        f.write("        {'gate': 'schema_diff_and_migrations', 'ok': all(item['migration']['format'] == 'appgen.migration-preview.v1' and item['migration']['requires_review'] for item in workbench['previews']), 'evidence': tuple(item['migration']['operation_count'] for item in workbench['previews'])},\n")
+        f.write("        {'gate': 'dsl_regeneration', 'ok': all('table ' in item['dsl'] and item['dsl'].endswith('\\n') for item in workbench['previews']), 'evidence': tuple(item['kind'] for item in workbench['previews'])},\n")
+        f.write("        {'gate': 'route_surface', 'ok': {'/designer/model.json', '/designer/proposal', '/designer/migration-preview', '/designer/dsl'} <= set(workbench['routes']), 'evidence': workbench['routes']},\n")
+        f.write("        {'gate': 'schema_diagram_gate', 'ok': diagram_gate['ok'], 'evidence': diagram_gate['checks']},\n")
+        f.write("    )\n")
+        f.write("    return {\n")
+        f.write("        'format': 'appgen.visual-modeling-release-gate.v1',\n")
+        f.write("        'ok': all(check['ok'] for check in checks),\n")
+        f.write("        'decision': 'approved' if all(check['ok'] for check in checks) else 'blocked',\n")
+        f.write("        'workbench': workbench,\n")
+        f.write("        'checks': checks,\n")
+        f.write("        'blocking_gaps': tuple(check['gate'] for check in checks if not check['ok']),\n")
+        f.write("    }\n\n\n")
         f.write("class AppGenDesignerView(BaseView):\n")
         f.write("    route_base = '/designer'\n")
         f.write("    default_view = 'index'\n\n")
@@ -2138,6 +2194,12 @@ def write_designer_file(output_dir, schema: AppSchema):
         f.write("    @expose('/schema-diagram-release-gate.json')\n")
         f.write("    def schema_diagram_release_gate_json(self):\n")
         f.write("        return jsonify(schema_diagram_release_gate(\n")
+        f.write("            load_manifest(),\n")
+        f.write("            {'app/designer.py', 'app/templates/appgen_designer.html', 'app/appgen.json'},\n")
+        f.write("        ))\n\n")
+        f.write("    @expose('/visual-modeling-release-gate.json')\n")
+        f.write("    def visual_modeling_release_gate_json(self):\n")
+        f.write("        return jsonify(visual_modeling_release_gate(\n")
         f.write("            load_manifest(),\n")
         f.write("            {'app/designer.py', 'app/templates/appgen_designer.html', 'app/appgen.json'},\n")
         f.write("        ))\n\n")
@@ -2470,6 +2532,7 @@ def write_designer_template(output_dir, schema: AppSchema):
       <a class="btn btn-default agd-link" href="{{ url_for('AppGenDesignerView.manifest') }}">Manifest JSON</a>
       <a class="btn btn-default agd-link" href="{{ url_for('AppGenDesignerView.model_json') }}">Model JSON</a>
       <a class="btn btn-default agd-link" href="{{ url_for('AppGenDesignerView.schema_diagram_release_gate_json') }}">Schema Diagram Gate JSON</a>
+      <a class="btn btn-default agd-link" href="{{ url_for('AppGenDesignerView.visual_modeling_release_gate_json') }}">Visual Modeling Gate JSON</a>
       <a class="btn btn-default agd-link" href="{{ url_for('AppGenDesignerView.dsl') }}">DSL</a>
     </div>
   </div>
@@ -37402,10 +37465,13 @@ def validate_designer_artifacts() -> None:
         or "relationship_matrix" not in contract
         or "schema_diagram_check" not in contract
         or "schema_diagram_release_gate" not in contract
+        or "visual_modeling_release_gate" not in contract
         or "appgen.schema-diagram-release-gate.v1" not in contract
+        or "appgen.visual-modeling-release-gate.v1" not in contract
         or "@expose('/schema-diagram-release-gate.json'" not in contract
+        or "@expose('/visual-modeling-release-gate.json'" not in contract
     ):
-        fail("designer must expose ERD and relationship export helpers")
+        fail("designer must expose ERD, relationship, and visual modeling release helpers")
     if "schema_diff" not in contract or "migration_preview" not in contract or "@expose('/migration-preview'" not in contract:
         fail("designer must expose schema diff and migration preview contracts")
     if "relationship_proposal" not in contract or "add_relationship" not in contract:
@@ -37418,6 +37484,7 @@ def validate_designer_artifacts() -> None:
         or "Model JSON" not in template
         or "Preview DSL" not in template
         or "Schema Diagram Gate JSON" not in template
+        or "Visual Modeling Gate JSON" not in template
     ):
         fail("designer template must expose graph and model JSON")
 
@@ -39891,6 +39958,16 @@ def test_generated_runtime_helpers():
     assert diagram_gate["format"] == "appgen.schema-diagram-release-gate.v1"
     assert diagram_gate["ok"] is True
     assert designer.schema_diagram_release_gate(manifest, {"app/designer.py"})["ok"] is False
+    assert designer.visual_modeling_workbench(manifest)["format"] == "appgen.visual-modeling-workbench.v1"
+    assert designer.visual_modeling_release_gate(
+        manifest,
+        {"app/designer.py", "app/templates/appgen_designer.html", "app/appgen.json"},
+    )["format"] == "appgen.visual-modeling-release-gate.v1"
+    assert designer.visual_modeling_release_gate(
+        manifest,
+        {"app/designer.py", "app/templates/appgen_designer.html", "app/appgen.json"},
+    )["ok"] is True
+    assert designer.visual_modeling_release_gate(manifest, {"app/designer.py"})["ok"] is False
     assert designer.proposal_from_payload({"kind": "add_field", "table": manifest["tables"][0]["name"], "name": "generated_note", "type": "text"})["kind"] == "add_field"
     if len(manifest["tables"]) >= 2:
         relationship_patch = designer.relationship_proposal(manifest["tables"][1]["name"], "generated_parent_id", manifest["tables"][0]["name"])

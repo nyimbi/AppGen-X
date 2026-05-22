@@ -1062,6 +1062,7 @@ def test_generate_app_from_sqlite_schema_compiles(tmp_path) -> None:
     assert "ui.visual-modeling" in {item["key"] for item in manifest["capabilities"]}
     assert "ui.pwa" in {item["key"] for item in manifest["capabilities"]}
     assert capabilities_by_key["ui.pwa"]["status"] == "implemented"
+    assert capabilities_by_key["ui.visual-modeling"]["status"] == "implemented"
     assert "i18n.localization" in {item["key"] for item in manifest["capabilities"]}
     assert "a11y.compliance" in {item["key"] for item in manifest["capabilities"]}
     assert "workflow.automation" in {item["key"] for item in manifest["capabilities"]}
@@ -2313,6 +2314,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert "Model JSON" in (output_dir / "templates" / "appgen_designer.html").read_text()
     assert "Preview DSL" in (output_dir / "templates" / "appgen_designer.html").read_text()
     assert "Schema Diagram Gate JSON" in (output_dir / "templates" / "appgen_designer.html").read_text()
+    assert "Visual Modeling Gate JSON" in (output_dir / "templates" / "appgen_designer.html").read_text()
     monitoring_template = (output_dir / "templates" / "appgen_monitoring.html").read_text()
     assert "Health JSON" in monitoring_template
     assert "Release Gate JSON" in monitoring_template
@@ -5876,6 +5878,20 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "migration_preview",
     } <= {check["gate"] for check in diagram_gate["checks"]}
     assert designer.schema_diagram_release_gate(manifest, {"app/designer.py"})["ok"] is False
+    workbench = designer.visual_modeling_workbench(manifest)
+    assert workbench["format"] == "appgen.visual-modeling-workbench.v1"
+    assert workbench["ok"] is True
+    assert {"add_table", "add_field", "add_relationship", "add_flow_step"} <= set(workbench["proposal_kinds"])
+    visual_gate = designer.visual_modeling_release_gate(
+        manifest,
+        {"app/designer.py", "app/templates/appgen_designer.html", "app/appgen.json"},
+    )
+    assert visual_gate["format"] == "appgen.visual-modeling-release-gate.v1"
+    assert visual_gate["ok"] is True
+    assert {"visual_workbench", "proposal_breadth", "schema_diff_and_migrations", "dsl_regeneration", "route_surface"} <= {
+        check["gate"] for check in visual_gate["checks"]
+    }
+    assert designer.visual_modeling_release_gate(manifest, {"app/designer.py"})["ok"] is False
     table_patch = designer.table_proposal("Publisher")
     assert "table Publisher" in designer.proposal_to_dsl(manifest, table_patch)
     field_patch = designer.field_proposal("Book", "isbn", required=True, searchable=True)

@@ -509,7 +509,12 @@ apps include:
   contracts, migration previews, and regenerated DSL for database design
   workbenches. The generated `schema_diagram_release_gate()` proves required
   designer artifacts, visual graph completeness, Mermaid ERD coverage,
-  relationship metadata, diagram readiness, and migration-preview review.
+  relationship metadata, diagram readiness, and migration-preview review. The
+  generated `visual_modeling_release_gate()` proves the broader visual modeling
+  workbench: workspace catalogs, table/field/relationship/workflow proposal
+  breadth, schema diffs, reviewed migration previews, DSL regeneration, and
+  route coverage for model, relationship, ERD, proposal, migration, and DSL
+  endpoints.
 - `form_designer.py` and `appgen_form_designer.html` with Delphi-style
   drag-and-drop component palette, snapped form canvas contracts, overlap
   conflict detection, drop proposals, property-inspector metadata, and
