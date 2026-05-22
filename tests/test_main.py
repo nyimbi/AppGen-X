@@ -2416,7 +2416,9 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     erp_template_text = (output_dir / "templates" / "appgen_erp_templates.html").read_text()
     assert "Roadmap JSON" in erp_template_text
     assert "Release Gate JSON" in erp_template_text
-    assert "Prototype JSON" in (output_dir / "templates" / "appgen_prototyping.html").read_text()
+    prototyping_template = (output_dir / "templates" / "appgen_prototyping.html").read_text()
+    assert "Prototype JSON" in prototyping_template
+    assert "Release Gate JSON" in prototyping_template
     assert "Generated sequential user-input" in (output_dir / "templates" / "appgen_wizards.html").read_text()
     branding_template = (output_dir / "templates" / "appgen_branding.html").read_text()
     assert "Generated branding contract" in branding_template
@@ -5294,6 +5296,21 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert prototyping.preview_package(first_prototype)["format"] == "appgen-prototype-v1"
     assert prototyping.promote_to_backlog(first_prototype)[0]["key"].startswith("PROTO-")
     assert prototyping.prototyping_check({"app/prototyping.py", "app/templates/appgen_prototyping.html"})["ok"] is True
+    prototyping_gate = prototyping.prototyping_release_gate(
+        {"app/prototyping.py", "app/templates/appgen_prototyping.html"}
+    )
+    assert prototyping_gate["format"] == "appgen.prototyping-release-gate.v1"
+    assert prototyping_gate["ok"] is True
+    assert {
+        "artifact_coverage",
+        "resource_catalog",
+        "screen_coverage",
+        "sample_data",
+        "preview_package",
+        "experiment_hypotheses",
+        "backlog_promotion",
+    } <= {check["gate"] for check in prototyping_gate["checks"]}
+    assert prototyping.prototyping_release_gate({"app/prototyping.py"})["ok"] is False
     erp_modules = {item["module"] for item in erp_templates.erp_template_catalog()}
     assert {
         "general_ledger",

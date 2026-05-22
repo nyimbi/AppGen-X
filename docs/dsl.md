@@ -540,7 +540,11 @@ apps include:
   publication targets, and artifact evidence.
 - `prototyping.py` and `appgen_prototyping.html` with rapid mock screens,
   realistic sample data, preview packages, experiment hypotheses, and backlog
-  promotion plans for fast stakeholder iteration.
+  promotion plans for fast stakeholder iteration. The generated
+  `prototyping_release_gate()` proves artifact coverage, schema-backed
+  prototype catalogs, list/create/detail/dashboard screen coverage, usable
+  sample data, portable preview packages, experiment hypotheses, and backlog
+  promotion before a prototype is released.
 - `text_quality.py` and `appgen_text_quality.html` with generated textarea
   spell, grammar, and character-count feedback contracts. The generated
   `text_quality_release_gate()` proves textarea catalogs, counters, grammar

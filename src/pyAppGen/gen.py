@@ -5985,7 +5985,10 @@ def write_prototyping_template(output_dir):
         hypotheses before committing a low-code change.
       </p>
     </div>
-    <a class="btn btn-default" href="{{ url_for('PrototypingView.catalog_json') }}">Prototype JSON</a>
+    <div>
+      <a class="btn btn-default" href="{{ url_for('PrototypingView.catalog_json') }}">Prototype JSON</a>
+      <a class="btn btn-default" href="{{ url_for('PrototypingView.release_gate_json') }}">Release Gate JSON</a>
+    </div>
   </div>
   <div class="agp2-grid">
     {% for prototype in prototypes %}
@@ -25152,6 +25155,64 @@ def prototyping_check(existing_paths=()):
     }}
 
 
+def prototyping_release_gate(existing_paths=()):
+    """Return deterministic release evidence for generated rapid prototypes."""
+    existing = set(existing_paths)
+    required = {{"app/prototyping.py", "app/templates/appgen_prototyping.html"}}
+    resources = prototype_catalog()
+    first_resource = resources[0]["resource"] if resources else None
+    first_plan = prototype_plan(first_resource) if first_resource else {{"screens": ()}}
+    first_preview = preview_package(first_resource) if first_resource else {{}}
+    first_experiment = experiment_hypothesis(first_resource, "shorter form") if first_resource else {{}}
+    first_backlog = promote_to_backlog(first_resource) if first_resource else ()
+    checks = (
+        {{
+            "gate": "artifact_coverage",
+            "ok": required.issubset(existing),
+            "required": tuple(sorted(required)),
+            "missing": tuple(sorted(required - existing)),
+        }},
+        {{
+            "gate": "resource_catalog",
+            "ok": bool(resources) and all(resource.get("fields") for resource in resources),
+            "resources": tuple(resource["resource"] for resource in resources),
+        }},
+        {{
+            "gate": "screen_coverage",
+            "ok": bool(resources)
+            and all({{"list", "create", "detail", "dashboard"}}.issubset(set(resource["screens"])) for resource in resources),
+            "screens": tuple(resources[0]["screens"]) if resources else (),
+        }},
+        {{
+            "gate": "sample_data",
+            "ok": bool(first_resource) and bool(sample_row(first_resource)),
+            "resource": first_resource,
+        }},
+        {{
+            "gate": "preview_package",
+            "ok": first_preview.get("format") == "appgen-prototype-v1" and bool(first_preview.get("screens")),
+            "format": first_preview.get("format"),
+        }},
+        {{
+            "gate": "experiment_hypotheses",
+            "ok": str(first_experiment.get("id", "")).startswith("proto-")
+            and "prototype" in tuple(first_experiment.get("variants", ())),
+            "metric": first_experiment.get("metric"),
+        }},
+        {{
+            "gate": "backlog_promotion",
+            "ok": bool(first_backlog) and all(item.get("key", "").startswith("PROTO-") for item in first_backlog),
+            "items": len(first_backlog),
+        }},
+    )
+    return {{
+        "format": "appgen.prototyping-release-gate.v1",
+        "ok": all(check["ok"] for check in checks),
+        "checks": checks,
+        "stage": first_plan.get("stage"),
+    }}
+
+
 class PrototypingView(BaseView):
     route_base = "/prototyping"
     default_view = "index"
@@ -25166,6 +25227,10 @@ class PrototypingView(BaseView):
     @expose("/catalog.json")
     def catalog_json(self):
         return jsonify(list(prototype_catalog()))
+
+    @expose("/release-gate.json")
+    def release_gate_json(self):
+        return jsonify(prototyping_release_gate({{"app/prototyping.py", "app/templates/appgen_prototyping.html"}}))
 
 
 def register_prototyping(appbuilder):
@@ -36025,12 +36090,15 @@ def validate_prototyping_artifacts() -> None:
         "preview_package",
         "promote_to_backlog",
         "prototyping_check",
+        "prototyping_release_gate",
+        "appgen.prototyping-release-gate.v1",
+        '@expose("/release-gate.json")',
     )
     if not all(item in contract for item in required):
-        fail("rapid prototyping contract must expose mock screens, sample data, previews, experiments, and backlog promotion")
+        fail("rapid prototyping contract must expose mock screens, sample data, previews, experiments, backlog promotion, and release evidence")
     template = (ROOT / "app" / "templates" / "appgen_prototyping.html").read_text()
-    if "Rapid Prototyping" not in template or "Prototype JSON" not in template:
-        fail("rapid prototyping cockpit must expose generated prototype catalog")
+    if "Rapid Prototyping" not in template or "Prototype JSON" not in template or "Release Gate JSON" not in template:
+        fail("rapid prototyping cockpit must expose generated prototype catalog and release evidence")
 
 
 def validate_agentic_artifacts() -> None:
@@ -38425,6 +38493,9 @@ def test_generated_runtime_helpers():
     assert prototyping.preview_package(first_prototype)["format"] == "appgen-prototype-v1"
     assert prototyping.promote_to_backlog(first_prototype)[0]["key"].startswith("PROTO-")
     assert prototyping.prototyping_check({"app/prototyping.py", "app/templates/appgen_prototyping.html"})["ok"] is True
+    assert prototyping.prototyping_release_gate({"app/prototyping.py", "app/templates/appgen_prototyping.html"})["format"] == "appgen.prototyping-release-gate.v1"
+    assert prototyping.prototyping_release_gate({"app/prototyping.py", "app/templates/appgen_prototyping.html"})["ok"] is True
+    assert prototyping.prototyping_release_gate({"app/prototyping.py"})["ok"] is False
     assert {"stripe", "mpesa"} == {item["name"] for item in integrations.integrations_by_kind("payment", {})}
     assert "twilio_sms" in {item["name"] for item in integrations.integrations_by_kind("sms", {})}
     assert integrations.payment_request_plan(
