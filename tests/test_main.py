@@ -1177,6 +1177,7 @@ def test_generate_app_from_sqlite_schema_compiles(tmp_path) -> None:
     assert capabilities_by_key["devops.cicd"]["status"] == "implemented"
     assert capabilities_by_key["scale.multi-tenancy"]["status"] == "implemented"
     assert capabilities_by_key["integration.enterprise"]["status"] == "implemented"
+    assert capabilities_by_key["integration.productivity"]["status"] == "implemented"
     assert capabilities_by_key["devops.ide-integration"]["status"] == "implemented"
     assert capabilities_by_key["devops.project-management"]["status"] == "implemented"
     assert capabilities_by_key["ops.monitoring"]["status"] == "implemented"
@@ -2624,6 +2625,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert "Workbench JSON" in (output_dir / "templates" / "appgen_integrations.html").read_text()
     assert "Release Gate JSON" in (output_dir / "templates" / "appgen_integrations.html").read_text()
     assert "Productivity Integrations" in (output_dir / "templates" / "appgen_productivity.html").read_text()
+    assert "Workbench JSON" in (output_dir / "templates" / "appgen_productivity.html").read_text()
     assert "Release Gate JSON" in (output_dir / "templates" / "appgen_productivity.html").read_text()
     assert "Lifecycle JSON" in (output_dir / "templates" / "appgen_lifecycle.html").read_text()
     assert "Release Gate JSON" in (output_dir / "templates" / "appgen_lifecycle.html").read_text()
@@ -5005,6 +5007,27 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "task_sync",
         "artifact_coverage",
     } <= {gate["gate"] for gate in productivity_gate["gates"]}
+    productivity_workbench = productivity.productivity_workbench(
+        {"app/productivity.py", "app/templates/appgen_productivity.html"}
+    )
+    assert productivity_workbench["format"] == "appgen.productivity-workbench.v1"
+    assert productivity_workbench["ok"] is True
+    assert productivity_workbench["decision"] == "approved"
+    assert {
+        "provider_catalog",
+        "template_catalog",
+        "document_merge",
+        "spreadsheet_export",
+        "calendar_payload",
+        "task_sync",
+        "artifact_coverage",
+        "route_surface",
+        "release_gate",
+    } == {check["id"] for check in productivity_workbench["checks"]}
+    assert "/productivity/workbench.json" in productivity_workbench["routes"]
+    assert productivity_workbench["payloads"]["spreadsheet"]["target"] == "excel"
+    assert productivity_workbench["payloads"]["calendar"]["target"] == "calendar"
+    assert productivity.productivity_workbench({"app/productivity.py"})["ok"] is False
     assert productivity.productivity_release_gate({"app/productivity.py"})["ok"] is False
     assert {item["name"] for item in lifecycle.environment_catalog()} == {
         "development",

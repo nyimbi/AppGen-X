@@ -861,6 +861,10 @@ Use `/productivity/release-gate.json` to verify Microsoft 365 and Google
 Workspace provider coverage, schema-derived document/spreadsheet/calendar/task
 payloads, and required productivity artifacts before connecting live office
 suite APIs.
+Use `/productivity/workbench.json` or `productivity_workbench()` in the generated
+IDE to inspect provider catalogs, schema-derived templates, document,
+spreadsheet, calendar, and task payloads, route coverage, and release readiness
+together.
 Use `/api-testing/release-gate.json` before release to verify API request
 matrices, response validation, smoke fixtures, UI smoke plans, synthetic
 monitors, OpenAPI coverage, and rendered pytest/Playwright modules.

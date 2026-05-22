@@ -523,6 +523,10 @@ apps include:
   payload contracts. A generated productivity release gate proves provider
   coverage, schema-derived templates, document merge payloads, spreadsheet
   exports, calendar events, task sync, and required productivity artifacts.
+  `productivity_workbench()` and `/productivity/workbench.json` aggregate
+  provider catalogs, schema-derived templates, document/spreadsheet/calendar/
+  task payloads, route coverage, and release-gate evidence before
+  `integration.productivity` is marked implemented.
 - `lifecycle.py` and `appgen_lifecycle.html` with generated environment
   readiness, custom-domain plans, release gates, maintenance/update windows,
   feedback items, user-testing sessions, and issue reports. A generated

@@ -4331,6 +4331,7 @@ def write_productivity_template(output_dir):
     </div>
     <div>
       <a class="btn btn-default" href="{{ url_for('ProductivityView.catalog_json') }}">Productivity JSON</a>
+      <a class="btn btn-default" href="{{ url_for('ProductivityView.workbench_json') }}">Workbench JSON</a>
       <a class="btn btn-default" href="{{ url_for('ProductivityView.release_gate_json') }}">Release Gate JSON</a>
     </div>
   </div>
@@ -19635,6 +19636,54 @@ def productivity_release_gate(existing_paths=(), environ=None):
     }}
 
 
+def productivity_workbench(existing_paths=(), environ=None):
+    """Return IDE-ready productivity provider and payload evidence."""
+    release_gate = productivity_release_gate(existing_paths, environ=environ)
+    gate_by_name = {{gate["gate"]: gate for gate in release_gate["gates"]}}
+    sample_table = next(iter(PRODUCTIVITY_TEMPLATES), None)
+    sample_template = PRODUCTIVITY_TEMPLATES.get(sample_table, {{}})
+    sample_row = {{field: f"sample-{{field}}" for field in sample_template.get("fields", ())}}
+    required_row = {{field: f"sample-{{field}}" for field in sample_template.get("required_fields", ())}}
+    doc_payload = document_merge_payload(sample_table, sample_row) if sample_table else {{"target": None}}
+    sheet_payload = spreadsheet_export_payload(sample_table, (sample_row,), provider="microsoft365") if sample_table else {{"row_count": 0}}
+    calendar_payload = calendar_event_payload(sample_table, sample_row) if sample_table else {{"summary": ""}}
+    task_payload = task_sync_payload(sample_table, required_row) if sample_table else {{"missing_required_fields": ("missing",)}}
+    routes = (
+        "/productivity/",
+        "/productivity/catalog.json",
+        "/productivity/workbench.json",
+        "/productivity/release-gate.json",
+    )
+    checks = (
+        {{"id": "provider_catalog", "ok": gate_by_name["provider_catalog"]["ok"], "evidence": provider_catalog(environ)}},
+        {{"id": "template_catalog", "ok": gate_by_name["template_catalog"]["ok"], "evidence": productivity_templates()}},
+        {{"id": "document_merge", "ok": gate_by_name["document_merge"]["ok"], "evidence": doc_payload}},
+        {{"id": "spreadsheet_export", "ok": gate_by_name["spreadsheet_export"]["ok"], "evidence": sheet_payload}},
+        {{"id": "calendar_payload", "ok": gate_by_name["calendar_payload"]["ok"], "evidence": calendar_payload}},
+        {{"id": "task_sync", "ok": gate_by_name["task_sync"]["ok"], "evidence": task_payload}},
+        {{"id": "artifact_coverage", "ok": gate_by_name["artifact_coverage"]["ok"], "evidence": gate_by_name["artifact_coverage"]}},
+        {{"id": "route_surface", "ok": {{"/productivity/workbench.json", "/productivity/release-gate.json", "/productivity/catalog.json"}} <= set(routes), "evidence": {{"routes": routes}}}},
+        {{"id": "release_gate", "ok": release_gate["ok"], "evidence": release_gate}},
+    )
+    ok = all(check["ok"] for check in checks)
+    return {{
+        "format": "appgen.productivity-workbench.v1",
+        "ok": ok,
+        "decision": "approved" if ok else "blocked",
+        "checks": checks,
+        "providers": provider_catalog(environ),
+        "templates": productivity_templates(),
+        "payloads": {{
+            "document": doc_payload,
+            "spreadsheet": sheet_payload,
+            "calendar": calendar_payload,
+            "task": task_payload,
+        }},
+        "routes": routes,
+        "release_gate": release_gate,
+    }}
+
+
 class ProductivityView(BaseView):
     route_base = "/productivity"
     default_view = "index"
@@ -19650,6 +19699,10 @@ class ProductivityView(BaseView):
     @expose("/catalog.json")
     def catalog_json(self):
         return jsonify({{"providers": list(provider_catalog()), "templates": list(productivity_templates())}})
+
+    @expose("/workbench.json")
+    def workbench_json(self):
+        return jsonify(productivity_workbench({{"app/productivity.py", "app/templates/appgen_productivity.html"}}))
 
     @expose("/release-gate.json")
     def release_gate_json(self):
@@ -42657,13 +42710,16 @@ def validate_productivity_artifacts() -> None:
         "task_sync_payload",
         "productivity_check",
         "productivity_release_gate",
+        "productivity_workbench",
+        "appgen.productivity-workbench.v1",
+        '@expose("/workbench.json")',
         "microsoft365",
         "google_workspace",
     )
     if not all(item in contract for item in required):
         fail("productivity contract must expose Microsoft 365 and Google Workspace payload helpers and release gates")
     template = (ROOT / "app" / "templates" / "appgen_productivity.html").read_text()
-    if "Productivity Integrations" not in template or "Productivity JSON" not in template or "Release Gate JSON" not in template:
+    if "Productivity Integrations" not in template or "Productivity JSON" not in template or "Workbench JSON" not in template or "Release Gate JSON" not in template:
         fail("productivity template must expose generated productivity catalog and release gate")
 
 
@@ -45006,6 +45062,9 @@ def test_generated_runtime_helpers():
     assert productivity.task_sync_payload(first_productivity_table)["checklist"] is not None
     assert productivity.productivity_check({"app/productivity.py", "app/templates/appgen_productivity.html"})["ok"] is True
     assert productivity.productivity_release_gate({"app/productivity.py", "app/templates/appgen_productivity.html"})["ok"] is True
+    assert productivity.productivity_workbench({"app/productivity.py", "app/templates/appgen_productivity.html"})["format"] == "appgen.productivity-workbench.v1"
+    assert productivity.productivity_workbench({"app/productivity.py", "app/templates/appgen_productivity.html"})["ok"] is True
+    assert productivity.productivity_workbench({"app/productivity.py"})["ok"] is False
     assert productivity.productivity_release_gate({"app/productivity.py"})["ok"] is False
     assert {item["name"] for item in lifecycle.environment_catalog()} == {"development", "testing", "staging", "production"}
     assert lifecycle.environment_status("production", {})["ready"] is False
