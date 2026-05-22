@@ -1033,6 +1033,7 @@ def test_generate_app_from_sqlite_schema_compiles(tmp_path) -> None:
     assert capabilities_by_key["platform.native"]["status"] == "implemented"
     assert capabilities_by_key["platform.frontends"]["status"] == "implemented"
     assert capabilities_by_key["ui.form-designer"]["status"] == "implemented"
+    assert capabilities_by_key["ui.nl-evolution"]["status"] == "implemented"
     assert capabilities_by_key["devops.studio"]["status"] == "implemented"
     assert "platform.jhipster" in {item["key"] for item in manifest["capabilities"]}
     assert "platform.competitive-benchmark" in {item["key"] for item in manifest["capabilities"]}
@@ -5426,6 +5427,32 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert destructive_changeset["test_plan"]["destructive"] is True
     assert "data_backup_review" in destructive_changeset["test_plan"]["checks"]
     assert "// destructive: remove field Ticket.title" in destructive_changeset["applied_preview"]
+    assert "Workbench JSON" in (output_dir / "templates" / "appgen_nl_evolution.html").read_text()
+    nl_workbench = nl_evolution.nl_evolution_workbench(
+        {"app/nl_evolution.py", "app/templates/appgen_nl_evolution.html"}
+    )
+    assert nl_workbench["format"] == "appgen.nl-evolution-workbench.v1"
+    assert nl_workbench["ok"] is True
+    assert nl_workbench["decision"] == "approved"
+    assert {
+        "artifact_coverage",
+        "plain_language_capabilities",
+        "proposal_lifecycle_scope",
+        "dsl_patch_generation",
+        "reviewable_changesets",
+        "migration_impact",
+        "destructive_guardrails",
+        "existing_dsl_patch_preview",
+        "generated_test_plan",
+        "route_surface",
+    } == {check["id"] for check in nl_workbench["checks"]}
+    assert "/nl-evolution/workbench.json" in next(
+        check["evidence"]["routes"] for check in nl_workbench["checks"] if check["id"] == "route_surface"
+    )
+    assert {"add_table", "add_agent", "add_chatbot", "add_erp_module", "set_targets"} <= {
+        item["kind"] for item in nl_workbench["plan"]["proposals"]
+    }
+    assert nl_evolution.nl_evolution_workbench({"app/nl_evolution.py"})["ok"] is False
     nl_gate = nl_evolution.nl_evolution_release_gate({"app/nl_evolution.py", "app/templates/appgen_nl_evolution.html"})
     assert nl_gate["format"] == "appgen.nl-evolution-release-gate.v1"
     assert nl_gate["ok"] is True

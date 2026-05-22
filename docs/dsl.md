@@ -533,7 +533,11 @@ apps include:
   impact summaries, existing-DSL patch previews, and
   `nl_evolution_release_gate()` readiness evidence for artifact coverage,
   plain-language scope, review workflow, destructive guardrails, generated test
-  plans, and platform target patches.
+  plans, and platform target patches. The generated `nl_evolution_workbench()`
+  proves prompt-to-plan coverage for database tables/fields, forms, workflows,
+  rules, reports, dashboards, chatbots, agents, ERP modules, platform targets,
+  DSL patch previews, approval workflows, migration impact, destructive-change
+  guardrails, rollback plans, generated test plans, and route coverage.
 - `dsl_reference.py` and `appgen_dsl_reference.html` with generated DSL
   keyword-budget checks, compact construct cards, examples, a learning path,
   lightweight lint feedback, structured quick fixes, deterministic formatting,

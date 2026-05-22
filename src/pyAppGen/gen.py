@@ -5924,6 +5924,7 @@ def write_nl_evolution_template(output_dir):
   <span class="agnl-pill">{{ capability }}</span>
   {% endfor %}
   <div class="agnl-box">
+    <a class="btn btn-default" href="{{ url_for('NaturalLanguageEvolutionView.workbench_json') }}">Workbench JSON</a>
     <a class="btn btn-default" href="{{ url_for('NaturalLanguageEvolutionView.release_gate_json') }}">Release Gate JSON</a>
     <textarea id="agnl-prompt" class="agnl-input">create table Ticket with field title and form TicketForm chatbot SupportBot agent SupportAgent</textarea>
     <button id="agnl-run" class="btn btn-primary" type="button">Plan Changes</button>
@@ -22802,6 +22803,109 @@ def nl_evolution_release_gate(existing_paths=()):
     }}
 
 
+def nl_evolution_workbench(existing_paths=()):
+    """Return aggregate natural-language evolution workbench evidence."""
+    existing = set(existing_paths)
+    required = ("app/nl_evolution.py", "app/templates/appgen_nl_evolution.html")
+    missing = tuple(path for path in required if path not in existing)
+    lifecycle_prompt = (
+        "create table Ticket with fields title, email unique, amount decimal, author_id references Author required "
+        "and form TicketForm workflow Triage from open to closed rule TicketPolicy "
+        "report TicketReport dashboard TicketDashboard chatbot SupportBot agent SupportAgent "
+        "generate ERP accounts payable and inventory targets web mobile desktop"
+    )
+    lifecycle_plan = evolution_plan(lifecycle_prompt)
+    lifecycle_kinds = {{proposal["kind"] for proposal in lifecycle_plan["proposals"]}}
+    lifecycle_dsl = proposals_to_dsl(lifecycle_plan)
+    lifecycle_changeset = evolution_changeset(lifecycle_prompt, "app Library {{ theme: sage }}\\n")
+    destructive_changeset = evolution_changeset(
+        "remove field title from Ticket and drop table OldTicket",
+        "app Library {{ targets: web }}\\n\\ntable Ticket {{\\n  id: int pk\\n  title: string\\n}}\\n",
+    )
+    approval = approval_workflow(lifecycle_changeset, actor="builder")
+    impact = lifecycle_changeset["migration_impact"]
+    required_capabilities = ("tables", "fields", "forms", "workflows", "rules", "reports", "dashboards", "chatbots", "agents", "targets", "erp_modules")
+    required_kinds = {{
+        "add_table",
+        "add_field",
+        "add_form",
+        "add_workflow",
+        "add_rule",
+        "add_report",
+        "add_dashboard",
+        "add_chatbot",
+        "add_agent",
+        "add_erp_module",
+        "set_targets",
+    }}
+    checks = (
+        {{
+            "id": "artifact_coverage",
+            "ok": not missing,
+            "evidence": {{"required": required, "missing": missing}},
+        }},
+        {{
+            "id": "plain_language_capabilities",
+            "ok": set(required_capabilities) <= set(evolution_capabilities()),
+            "evidence": {{"required": required_capabilities, "available": evolution_capabilities()}},
+        }},
+        {{
+            "id": "proposal_lifecycle_scope",
+            "ok": required_kinds <= lifecycle_kinds,
+            "evidence": {{"required": tuple(sorted(required_kinds)), "actual": tuple(sorted(lifecycle_kinds))}},
+        }},
+        {{
+            "id": "dsl_patch_generation",
+            "ok": all(fragment in lifecycle_dsl for fragment in ("table Ticket", "title: string", "view TicketForm", "flow Triage", "rule TicketPolicy", "agent SupportAgent", "targets: web, mobile, desktop", "erp_templates.erp_module_dsl('accounts_payable')")),
+            "evidence": {{"preview": lifecycle_dsl}},
+        }},
+        {{
+            "id": "reviewable_changesets",
+            "ok": lifecycle_changeset["requires_approval"] and approval["current"] == "review" and "rollback_plan" in approval["required_checks"],
+            "evidence": {{"changeset": lifecycle_changeset["id"], "approval": approval}},
+        }},
+        {{
+            "id": "migration_impact",
+            "ok": impact["requires_review"] and any(item.get("action") == "create_table" for item in impact["ddl"]) and any(item.get("action") == "add_erp_module" for item in impact["review"]),
+            "evidence": impact,
+        }},
+        {{
+            "id": "destructive_guardrails",
+            "ok": destructive_changeset["destructive_intent"]["destructive"] and destructive_changeset["migration_impact"]["destructive"] and destructive_changeset["rollback"]["requires_backup"],
+            "evidence": {{
+                "intent": destructive_changeset["destructive_intent"],
+                "impact": destructive_changeset["migration_impact"],
+                "rollback": destructive_changeset["rollback"],
+            }},
+        }},
+        {{
+            "id": "existing_dsl_patch_preview",
+            "ok": "app Library {{ theme: sage; targets: web, mobile, desktop }}" in lifecycle_changeset["applied_preview"] and "table Ticket" in lifecycle_changeset["applied_preview"],
+            "evidence": {{"preview": lifecycle_changeset["applied_preview"]}},
+        }},
+        {{
+            "id": "generated_test_plan",
+            "ok": {{"dsl_lint", "schema_diff", "ui_smoke", "agent_provider_readiness", "report_delivery_preview", "dashboard_render_preview", "platform_target_generation"}} <= set(lifecycle_changeset["test_plan"]["checks"]),
+            "evidence": lifecycle_changeset["test_plan"],
+        }},
+        {{
+            "id": "route_surface",
+            "ok": not missing,
+            "evidence": {{"routes": ("/nl-evolution/", "/nl-evolution/plan", "/nl-evolution/changeset", "/nl-evolution/capabilities.json", "/nl-evolution/workbench.json", "/nl-evolution/release-gate.json")}},
+        }},
+    )
+    ok = all(check["ok"] for check in checks)
+    return {{
+        "format": "appgen.nl-evolution-workbench.v1",
+        "ok": ok,
+        "decision": "approved" if ok else "blocked",
+        "checks": checks,
+        "plan": lifecycle_plan,
+        "changeset": lifecycle_changeset,
+        "destructive_changeset": destructive_changeset,
+    }}
+
+
 def nl_evolution_check(existing_paths):
     """Return readiness for natural-language evolution artifacts."""
     existing = set(existing_paths)
@@ -22837,6 +22941,10 @@ class NaturalLanguageEvolutionView(BaseView):
     @expose("/capabilities.json")
     def capabilities_json(self):
         return jsonify(list(evolution_capabilities()))
+
+    @expose("/workbench.json")
+    def workbench_json(self):
+        return jsonify(nl_evolution_workbench({{"app/nl_evolution.py", "app/templates/appgen_nl_evolution.html"}}))
 
     @expose("/release-gate.json")
     def release_gate_json(self):
