@@ -2902,6 +2902,27 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert release_gate["ok"] is True
     assert release_gate["decision"] == "approved"
     assert {"security", "operations", "experience", "delivery"} == {area["id"] for area in release_gate["areas"]}
+    excellence_gate = runtime_assurance.generated_app_excellence_gate(
+        {"p95_ms": 200, "error_rate": 0},
+        runtime_assurance.REQUIRED_RELEASE_ARTIFACTS,
+    )
+    assert excellence_gate["format"] == "appgen.generated-app-excellence-gate.v1"
+    assert excellence_gate["ok"] is True
+    assert excellence_gate["decision"] == "approved"
+    assert {
+        "beautiful",
+        "sophisticated",
+        "secure",
+        "reliable",
+        "robust",
+        "functional",
+        "highly_capable",
+    } == {category["id"] for category in excellence_gate["categories"]}
+    assert runtime_assurance.generated_app_excellence_gate(
+        {"visual_quality": False},
+        runtime_assurance.REQUIRED_RELEASE_ARTIFACTS,
+    )["decision"] == "blocked"
+    assert runtime_assurance.generated_app_excellence_gate(existing_paths={"app/runtime_assurance.py"})["ok"] is False
     assert runtime_assurance.application_release_gate(
         {"visual_quality": False},
         runtime_assurance.REQUIRED_RELEASE_ARTIFACTS,

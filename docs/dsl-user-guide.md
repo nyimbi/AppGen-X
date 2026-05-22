@@ -356,6 +356,11 @@ that generated applications are polished across web, mobile, and desktop-sized
 viewports. `/branding/visual-regression.json` remains the screenshot checklist
 for browser-driven visual QA.
 
+Use `/runtime-assurance/excellence-gate.json` as the final generated-app
+quality decision. It aggregates the release gate into seven explicit product
+outcomes: beautiful, sophisticated, secure, reliable, robust, functional, and
+highly capable.
+
 ## JHipster-Plus Readiness
 
 Generated apps keep JHipster JDL interoperability while exposing a stricter

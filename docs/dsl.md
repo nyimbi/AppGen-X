@@ -259,7 +259,10 @@ apps include:
   the generated quality gate into one auditable operations contract. It also
   emits `application_release_gate()`, an aggregate release decision over
   security signoff, operations readiness, polished generated UI, tests, docs,
-  manifests, and required artifacts.
+  manifests, and required artifacts. `generated_app_excellence_gate()` is the
+  stricter product-level gate: it blocks release claims unless the generated
+  app proves the seven roadmap outcomes of beautiful, sophisticated, secure,
+  reliable, robust, functional, and highly capable.
 - `static/appgen.webmanifest`, `static/appgen-sw.js`, and an offline shell for
   progressive web app behavior.
 - `branding.py`, `appgen_branding.html`, and `static/appgen-theme.css` with a

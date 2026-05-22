@@ -3422,6 +3422,7 @@ def write_runtime_assurance_template(output_dir):
     <div class="aga-actions">
       <a class="btn btn-primary" href="{{ url_for('RuntimeAssuranceView.report_json') }}">Assurance JSON</a>
       <a class="btn btn-default" href="{{ url_for('RuntimeAssuranceView.release_gate_json') }}">Release Gate JSON</a>
+      <a class="btn btn-default" href="{{ url_for('RuntimeAssuranceView.excellence_gate_json') }}">Excellence Gate JSON</a>
       <a class="btn btn-default" href="{{ url_for('RuntimeAssuranceView.matrix_json') }}">Matrix JSON</a>
     </div>
   </div>
@@ -8239,6 +8240,50 @@ DEFAULT_RELEASE_SIGNALS = {{
     "manifest": True,
     "documentation": True,
 }}
+EXCELLENCE_CATEGORIES = (
+    {{
+        "id": "beautiful",
+        "label": "Beautiful generated experience",
+        "checks": ("visual_quality", "accessibility", "responsive_viewports", "no_overlap_review"),
+        "release_area": "experience",
+    }},
+    {{
+        "id": "sophisticated",
+        "label": "Sophisticated product behavior",
+        "checks": ("design_system", "component_states", "manifest", "documentation"),
+        "release_area": "experience",
+    }},
+    {{
+        "id": "secure",
+        "label": "Secure by default",
+        "checks": ("security_signoff", "secret_scan", "threat_model", "rbac_matrix", "api_security_tests"),
+        "release_area": "security",
+    }},
+    {{
+        "id": "reliable",
+        "label": "Reliable in operation",
+        "checks": ("readiness", "runtime_assurance", "performance_slo", "load_tests"),
+        "release_area": "operations",
+    }},
+    {{
+        "id": "robust",
+        "label": "Robust under failure",
+        "checks": ("resilience", "backup_integrity", "recovery_runbook", "quality_gate"),
+        "release_area": "operations",
+    }},
+    {{
+        "id": "functional",
+        "label": "Functionally shippable",
+        "checks": ("py_compile", "pytest", "manifest", "quality_gate"),
+        "release_area": "delivery",
+    }},
+    {{
+        "id": "highly_capable",
+        "label": "Highly capable generated platform",
+        "checks": ("documentation", "api_security_tests", "component_states", "load_tests"),
+        "release_area": "delivery",
+    }},
+)
 
 
 def runtime_assurance_matrix():
@@ -8349,6 +8394,42 @@ def application_release_gate(signals=None, existing_paths=()):
     }}
 
 
+def generated_app_excellence_gate(signals=None, existing_paths=()):
+    """Return a product-level gate for beautiful, secure, robust generated apps."""
+    release = application_release_gate(signals, existing_paths)
+    signal_values = dict(DEFAULT_RELEASE_SIGNALS if signals is None else {{**DEFAULT_RELEASE_SIGNALS, **signals}})
+    release_by_id = {{area["id"]: area for area in release["areas"]}}
+    categories = []
+    for category in EXCELLENCE_CATEGORIES:
+        checks = tuple(
+            {{"name": check, "ok": _release_check_signal(check, signal_values)}}
+            for check in category["checks"]
+        )
+        release_area = release_by_id.get(category["release_area"], {{"ok": False}})
+        categories.append({{
+            "id": category["id"],
+            "label": category["label"],
+            "ok": all(check["ok"] for check in checks) and bool(release_area.get("ok", False)),
+            "checks": checks,
+            "release_area": category["release_area"],
+        }})
+    blockers = tuple(
+        {{"category": category["id"], "kind": "check", "check": check["name"]}}
+        for category in categories
+        for check in category["checks"]
+        if not check["ok"]
+    ) + tuple({{"category": "release", **blocker}} for blocker in release["blockers"])
+    return {{
+        "format": "appgen.generated-app-excellence-gate.v1",
+        "app": APP_NAME,
+        "ok": release["ok"] and all(category["ok"] for category in categories) and not blockers,
+        "decision": "approved" if release["ok"] and all(category["ok"] for category in categories) and not blockers else "blocked",
+        "categories": tuple(categories),
+        "application_release_gate": release,
+        "blockers": blockers,
+    }}
+
+
 class RuntimeAssuranceView(BaseView):
     route_base = "/runtime-assurance"
     default_view = "index"
@@ -8368,6 +8449,10 @@ class RuntimeAssuranceView(BaseView):
     @expose("/release-gate.json")
     def release_gate_json(self):
         return jsonify(application_release_gate(existing_paths=REQUIRED_RELEASE_ARTIFACTS))
+
+    @expose("/excellence-gate.json")
+    def excellence_gate_json(self):
+        return jsonify(generated_app_excellence_gate(existing_paths=REQUIRED_RELEASE_ARTIFACTS))
 
 
 def register_runtime_assurance(appbuilder):
@@ -33990,15 +34075,22 @@ def validate_runtime_assurance_artifacts() -> None:
         "runtime_assurance_report" not in contract
         or "runtime_assurance_check" not in contract
         or "application_release_gate" not in contract
+        or "generated_app_excellence_gate" not in contract
+        or "EXCELLENCE_CATEGORIES" not in contract
         or "RELEASE_GATE_AREAS" not in contract
         or "REQUIRED_RELEASE_ARTIFACTS" not in contract
         or "visual_quality" not in contract
         or "security_signoff" not in contract
     ):
-        fail("runtime assurance contract must expose operations readiness and aggregate application release gate")
+        fail("runtime assurance contract must expose operations readiness, release, and generated-app excellence gates")
     template = (ROOT / "app" / "templates" / "appgen_runtime_assurance.html").read_text()
-    if "Release Gate JSON" not in template or "visual quality" not in template.lower() or "accessibility" not in template.lower():
-        fail("runtime assurance cockpit must expose aggregate release-gate and generated UI quality evidence")
+    if (
+        "Release Gate JSON" not in template
+        or "Excellence Gate JSON" not in template
+        or "visual quality" not in template.lower()
+        or "accessibility" not in template.lower()
+    ):
+        fail("runtime assurance cockpit must expose aggregate release, excellence, and generated UI quality evidence")
 
 
 def validate_chatbot_artifacts() -> None:
@@ -35017,6 +35109,27 @@ def test_generated_runtime_helpers():
     assert release_gate["ok"] is True
     assert release_gate["decision"] == "approved"
     assert "experience" in {area["id"] for area in release_gate["areas"]}
+    excellence_gate = runtime_assurance.generated_app_excellence_gate(
+        {"p95_ms": 200, "error_rate": 0},
+        runtime_assurance.REQUIRED_RELEASE_ARTIFACTS,
+    )
+    assert excellence_gate["format"] == "appgen.generated-app-excellence-gate.v1"
+    assert excellence_gate["ok"] is True
+    assert excellence_gate["decision"] == "approved"
+    assert {
+        "beautiful",
+        "sophisticated",
+        "secure",
+        "reliable",
+        "robust",
+        "functional",
+        "highly_capable",
+    } == {category["id"] for category in excellence_gate["categories"]}
+    assert runtime_assurance.generated_app_excellence_gate(
+        {"visual_quality": False},
+        runtime_assurance.REQUIRED_RELEASE_ARTIFACTS,
+    )["decision"] == "blocked"
+    assert runtime_assurance.generated_app_excellence_gate(existing_paths={"app/runtime_assurance.py"})["ok"] is False
     assert runtime_assurance.application_release_gate(
         {"visual_quality": False},
         runtime_assurance.REQUIRED_RELEASE_ARTIFACTS,
