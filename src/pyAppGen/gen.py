@@ -37983,6 +37983,49 @@ def deployment_release_gate(environ=None, existing_paths=()):
     }}
 
 
+def deployment_workbench(environ=None, existing_paths=()):
+    """Return IDE-ready deployment evidence for every generated target."""
+    env = sample_deployment_environment() if environ is None else environ
+    existing = set(existing_paths) or set(
+        path
+        for paths in DEPLOYMENT["artifacts"].values()
+        for path in paths
+    )
+    release_gate = deployment_release_gate(env, existing)
+    readiness = deployment_check(env, existing)
+    matrix = cloud_readiness_matrix(env)
+    cloud_targets = ("aws", "gcp", "azure")
+    target_set = set(deployment_targets())
+    gate_by_name = {{gate["gate"]: gate for gate in release_gate["gates"]}}
+    checks = (
+        {{"id": "target_matrix", "ok": {{"docker", "compose", "https", "kubernetes", "onprem", "aws", "gcp", "azure"}} <= target_set, "evidence": tuple(deployment_targets())}},
+        {{"id": "artifact_coverage", "ok": gate_by_name["artifact_coverage"]["ok"], "evidence": readiness["missing_artifacts"]}},
+        {{"id": "database_engines", "ok": {{"postgresql", "mysql"}} <= set(DEPLOYMENT["database_engines"]), "evidence": DEPLOYMENT["database_engines"]}},
+        {{"id": "cloud_readiness", "ok": all(item["target"] in cloud_targets and item["environment_configured"] for item in matrix if item["target"] in cloud_targets), "evidence": tuple(item for item in matrix if item["target"] in cloud_targets)}},
+        {{"id": "terraform_clouds", "ok": gate_by_name["terraform_clouds"]["ok"], "evidence": gate_by_name["terraform_clouds"]}},
+        {{"id": "kubernetes_autoscale", "ok": gate_by_name["kubernetes_autoscale"]["ok"], "evidence": gate_by_name["kubernetes_autoscale"]["evidence"]}},
+        {{"id": "secret_injection", "ok": gate_by_name["secret_injection"]["ok"], "evidence": secret_plan("kubernetes")}},
+        {{"id": "smoke_checks", "ok": gate_by_name["smoke_checks"]["ok"], "evidence": smoke_check_plan("https://app.example.test")}},
+        {{"id": "runbook_review", "ok": gate_by_name["runbook_review"]["ok"], "evidence": deployment_runbook("kubernetes", image_tag="appgen:test", base_url="https://app.example.test")}},
+        {{"id": "rollback_plan", "ok": gate_by_name["rollback_plan"]["ok"], "evidence": rollback_plan("kubernetes", previous_image_tag="appgen:previous")}},
+        {{"id": "promotion_plan", "ok": gate_by_name["promotion_plan"]["ok"], "evidence": release_promotion_plan("compose", "kubernetes", image_tag="appgen:test")}},
+        {{"id": "onprem_readiness", "ok": gate_by_name["onprem_readiness"]["ok"], "evidence": readiness["onprem"]}},
+        {{"id": "release_gate", "ok": release_gate["ok"], "evidence": release_gate}},
+    )
+    ok = all(check["ok"] for check in checks)
+    return {{
+        "format": "appgen.deployment-workbench.v1",
+        "ok": ok,
+        "decision": "approved" if ok else "blocked",
+        "checks": checks,
+        "targets": matrix,
+        "topologies": tuple(deployment_topology(target) for target in deployment_targets()),
+        "runbooks": tuple(deployment_runbook(target) for target in deployment_targets()),
+        "release_gate": release_gate,
+        "blocking_gaps": tuple(check for check in checks if not check["ok"]),
+    }}
+
+
 def deployment_check(environ, existing_paths):
     """Return generated deployment readiness checks."""
     existing = set(existing_paths)
@@ -41934,8 +41977,8 @@ def validate_deployment_artifacts() -> None:
     contract = (ROOT / "deploy" / "appgen_deploy.py").read_text()
     if '"kubernetes"' not in contract or '"onprem"' not in contract or '"aws"' not in contract or '"https"' not in contract:
         fail("deployment contract must include Kubernetes, on-prem, and cloud targets")
-    if "deployment_runbook" not in contract or "rollback_plan" not in contract or "cloud_readiness_matrix" not in contract or "infrastructure_scaling_plan" not in contract or "release_promotion_plan" not in contract or "deployment_release_gate" not in contract or "sample_deployment_environment" not in contract:
-        fail("deployment contract must expose runbooks, rollback, readiness, scaling, promotion plans, and a release gate")
+    if "deployment_runbook" not in contract or "rollback_plan" not in contract or "cloud_readiness_matrix" not in contract or "infrastructure_scaling_plan" not in contract or "release_promotion_plan" not in contract or "deployment_release_gate" not in contract or "deployment_workbench" not in contract or "sample_deployment_environment" not in contract:
+        fail("deployment contract must expose runbooks, rollback, readiness, scaling, promotion plans, a workbench, and a release gate")
     caddyfile = (ROOT / "deploy" / "Caddyfile").read_text()
     if "reverse_proxy web:8080" not in caddyfile or "APPGEN_DOMAIN" not in caddyfile:
         fail("Caddyfile must configure automatic HTTPS reverse proxy")
@@ -43573,6 +43616,7 @@ def test_generated_runtime_helpers():
     wizards = load_module(ROOT / "app" / "wizards.py", "generated_wizards")
     branding = load_module(ROOT / "app" / "branding.py", "generated_branding")
     extensions = load_module(ROOT / "app" / "extensions.py", "generated_extensions")
+    deployment = load_module(ROOT / "deploy" / "appgen_deploy.py", "generated_deployment")
     https = load_module(ROOT / "deploy" / "appgen_https.py", "generated_https")
     jhipster = load_module(ROOT / "jhipster" / "appgen_jhipster.py", "generated_jhipster")
     chatbots = load_module(ROOT / "chatbots" / "appgen_chatbots.py", "generated_chatbots")
@@ -45080,6 +45124,34 @@ def test_generated_runtime_helpers():
         {"app/performance.py", "app/templates/appgen_performance.html"}
     )["ok"] is True
     assert performance.performance_release_gate({"app/performance.py"})["ok"] is False
+    deployment_artifacts = {{
+        "Dockerfile",
+        "docker-compose.yml",
+        "deploy/Caddyfile",
+        "deploy/appgen_https.py",
+        "deploy/k8s.yaml",
+        "deploy/k8s-autoscale.yaml",
+        "deploy/terraform-aws.tf",
+        "deploy/terraform-gcp.tf",
+        "deploy/terraform-azure.tf",
+        "automation/node-red/flows.json",
+    }}
+    assert deployment.deployment_release_gate(
+        deployment.sample_deployment_environment(),
+        deployment_artifacts,
+    )["ok"] is True
+    assert deployment.deployment_workbench(
+        deployment.sample_deployment_environment(),
+        deployment_artifacts,
+    )["format"] == "appgen.deployment-workbench.v1"
+    assert deployment.deployment_workbench(
+        deployment.sample_deployment_environment(),
+        deployment_artifacts,
+    )["ok"] is True
+    assert deployment.deployment_workbench(
+        deployment.sample_deployment_environment(),
+        {"Dockerfile", "docker-compose.yml"},
+    )["ok"] is False
     assert https.https_readiness(
         {"APPGEN_DOMAIN": "example.test", "APPGEN_TLS_EMAIL": "admin@example.test"},
         {"deploy/Caddyfile", "docker-compose.yml"},

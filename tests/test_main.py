@@ -804,6 +804,30 @@ def test_generate_app_from_sqlite_schema_compiles(tmp_path) -> None:
         "kubernetes_autoscale",
         "promotion_plan",
     } <= {gate["gate"] for gate in deployment_gate["gates"]}
+    deployment_workbench = deployment.deployment_workbench(deployment.sample_deployment_environment(), all_artifacts)
+    assert deployment_workbench["format"] == "appgen.deployment-workbench.v1"
+    assert deployment_workbench["ok"] is True
+    assert deployment_workbench["decision"] == "approved"
+    assert {
+        "target_matrix",
+        "artifact_coverage",
+        "database_engines",
+        "cloud_readiness",
+        "terraform_clouds",
+        "kubernetes_autoscale",
+        "secret_injection",
+        "smoke_checks",
+        "runbook_review",
+        "rollback_plan",
+        "promotion_plan",
+        "onprem_readiness",
+        "release_gate",
+    } == {check["id"] for check in deployment_workbench["checks"]}
+    assert {"aws", "gcp", "azure"} <= {item["target"] for item in deployment_workbench["targets"]}
+    assert deployment.deployment_workbench(
+        deployment.sample_deployment_environment(),
+        {"Dockerfile", "docker-compose.yml"},
+    )["ok"] is False
     assert deployment.deployment_release_gate(
         deployment.sample_deployment_environment(),
         {"Dockerfile", "docker-compose.yml"},
@@ -1117,6 +1141,7 @@ def test_generate_app_from_sqlite_schema_compiles(tmp_path) -> None:
     assert capabilities_by_key["data.exchange"]["status"] == "implemented"
     assert capabilities_by_key["data.search"]["status"] == "implemented"
     assert capabilities_by_key["data.database-ops"]["status"] == "implemented"
+    assert capabilities_by_key["deployment.cloud"]["status"] == "implemented"
     assert capabilities_by_key["devops.cicd"]["status"] == "implemented"
     assert capabilities_by_key["devops.ide-integration"]["status"] == "implemented"
     assert capabilities_by_key["devops.project-management"]["status"] == "implemented"

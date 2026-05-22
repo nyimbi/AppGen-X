@@ -979,7 +979,10 @@ apps include:
   plans, smoke checks, rollback plans, release promotion plans, infrastructure
   scaling plans, cloud readiness helpers, and a deployment release gate covering
   Docker, Compose, HTTPS, Kubernetes, on-prem, AWS, GCP, Azure, PostgreSQL, and
-  MySQL readiness evidence.
+  MySQL readiness evidence. `deployment_workbench()` exposes IDE-ready target,
+  artifact, database, cloud readiness, Terraform, autoscale, secret, smoke,
+  runbook, rollback, promotion, on-prem, and release-gate evidence before
+  `deployment.cloud` is marked implemented.
 - `deploy/Caddyfile` and `deploy/appgen_https.py` with generated automatic
   HTTPS reverse proxy configuration and TLS readiness checks. The generated
   `https_release_gate()` and `https_workbench()` prove Caddy artifact coverage,
