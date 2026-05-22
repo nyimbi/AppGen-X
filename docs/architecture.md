@@ -223,9 +223,10 @@ Visual design is split into two related capabilities:
 - `mobile_native_api_workbench()` validates full listed-device-API coverage:
   permission manifests, design-time/runtime component adapters, simulator
   fixtures, platform targets, and runtime permission guardrails.
-- `cross_target_visual_depth_workbench()` validates style resources, animation
-  state graphs, effect pipelines, 3D scene designer tools, import metadata, and
-  runtime fallbacks.
+- `cross_target_visual_depth_workbench()` validates style resources, style
+  cascade authoring, animation timelines, effect-stack validation, 3D scene
+  authoring, asset import budgets, preview/runtime parity, and runtime
+  fallbacks.
 - `design_time_package_manager_workbench()` validates package install sessions,
   compatibility matrices, palette/inspector/binding registration, isolated
   loading, rollback plans, package behavior contracts, dependency lockfile

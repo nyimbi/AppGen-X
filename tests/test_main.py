@@ -885,7 +885,16 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "effects_pipeline",
         "scene_designer",
         "runtime_guards",
+        "style_cascade_authoring",
+        "timeline_authoring",
+        "effect_stack_validation",
+        "scene_authoring",
+        "asset_import_budgets",
+        "preview_runtime_parity",
     } == {check["id"] for check in visual_depth["checks"]}
+    assert {"inspect_effective_value", "revert_override"} <= set(visual_depth["contract"]["style_cascade"]["operations"])
+    assert {"add_keyframe", "scrub_preview"} <= set(visual_depth["contract"]["timeline_authoring"]["operations"])
+    assert {"add_mesh", "assign_material"} <= {item["op"] for item in visual_depth["contract"]["scene_authoring"]["operations"]}
     third_party_registry = third_party_component_registry()
     assert {"devexpress-native", "tms-fnc", "fastreport", "teechart", "indy"} <= {
         item["id"] for item in third_party_registry
@@ -8868,9 +8877,10 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     generated_visual_depth = form_designer.cross_target_visual_depth_workbench()
     assert generated_visual_depth["format"] == "appgen.generated-cross-target-visual-depth-workbench.v1"
     assert generated_visual_depth["ok"] is True
-    assert {"style_resources", "animation_state_graph", "scene_designer"} <= {
+    assert {"style_resources", "animation_state_graph", "scene_designer", "preview_runtime_parity"} <= {
         check["id"] for check in generated_visual_depth["checks"]
     }
+    assert generated_visual_depth["contract"]["asset_import"]["budgets"]["max_mesh_triangles"] > 0
     generated_analogs = form_designer.component_analog_workbench()
     assert generated_analogs["format"] == "appgen.generated-component-analog-workbench.v1"
     assert generated_analogs["ok"] is True

@@ -75,9 +75,9 @@ A generated app can include:
   every listed API has generated permission metadata, a design-time/runtime
   component adapter, simulator fixtures, platform targets, and permission
   guardrails.
-- `cross_target_visual_depth_workbench()` proves style resources, animation
-  state graphs, effect pipelines, 3D scene designer tools, and runtime
-  fallbacks.
+- `cross_target_visual_depth_workbench()` proves style resources, style cascade
+  authoring, animation timelines, effect-stack validation, 3D scene authoring,
+  asset import budgets, preview/runtime parity, and runtime fallbacks.
 - `app/component_packages/<package>.py` gives every curated component package
   its own reviewed package contract with `package_contract()`, `install_plan()`,
   `load_policy()`, `dependency_graph()`, `adapter_smoke()`, `preview_load()`,

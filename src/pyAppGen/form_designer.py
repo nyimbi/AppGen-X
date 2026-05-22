@@ -2493,6 +2493,12 @@ def cross_target_visual_depth_contract() -> dict:
     state_graph = cross_target_state_graph_contract()
     effects_pipeline = cross_target_effects_pipeline_contract()
     scene_designer = cross_target_3d_scene_contract()
+    style_cascade = cross_target_style_cascade_contract()
+    timeline_authoring = cross_target_animation_timeline_contract()
+    effect_stack = cross_target_effect_stack_validation_contract()
+    scene_authoring = cross_target_3d_scene_authoring_contract()
+    asset_import = cross_target_visual_asset_import_contract()
+    preview_runtime = cross_target_visual_preview_runtime_contract()
     return {
         "format": "appgen.cross-platform-visual-depth-contract.v1",
         "styling": ("stylebook", "multi-resolution-bitmaps", "themes", "state-triggers"),
@@ -2503,6 +2509,12 @@ def cross_target_visual_depth_contract() -> dict:
         "state_graph": state_graph,
         "effects_pipeline": effects_pipeline,
         "scene_designer": scene_designer,
+        "style_cascade": style_cascade,
+        "timeline_authoring": timeline_authoring,
+        "effect_stack": effect_stack,
+        "scene_authoring": scene_authoring,
+        "asset_import": asset_import,
+        "preview_runtime": preview_runtime,
         "guards": ("reduced_motion_fallback", "gpu_fallback", "mobile_frame_budget"),
     }
 
@@ -2514,7 +2526,27 @@ def cross_target_style_resource_contract() -> dict:
         "resources": ("stylebook", "theme_tokens", "state_triggers", "multi_resolution_bitmaps", "platform_overrides"),
         "states": ("normal", "hover", "pressed", "focused", "disabled", "selected", "invalid"),
         "targets": ("web", "mobile", "desktop", "pwa"),
+        "inheritance": ("base_theme", "component_class", "state_override", "platform_override", "local_override"),
         "guards": ("contrast_checked", "token_names_stable", "platform_overrides_reviewed"),
+    }
+
+
+def cross_target_style_cascade_contract() -> dict:
+    """Return style inheritance and override behavior for visual authoring."""
+    layers = (
+        {"layer": "base_theme", "order": 10, "editable": True},
+        {"layer": "component_class", "order": 20, "editable": True},
+        {"layer": "state_override", "order": 30, "editable": True},
+        {"layer": "platform_override", "order": 40, "editable": True},
+        {"layer": "local_override", "order": 50, "editable": True},
+    )
+    return {
+        "format": "appgen.cross-target-style-cascade-contract.v1",
+        "layers": layers,
+        "tokens": ("color", "font", "spacing", "radius", "shadow", "motion", "bitmap_density"),
+        "operations": ("inspect_effective_value", "promote_to_theme", "override_for_state", "override_for_platform", "revert_override"),
+        "guards": ("contrast_checked", "token_names_stable", "override_diff_visible"),
+        "side_effects": (),
     }
 
 
@@ -2539,6 +2571,23 @@ def cross_target_state_graph_contract() -> dict:
     }
 
 
+def cross_target_animation_timeline_contract() -> dict:
+    """Return timeline/keyframe authoring behavior for animation design."""
+    tracks = (
+        {"id": "track.opacity", "property": "opacity", "keyframes": ((0, 0.0), (180, 1.0)), "interpolation": "ease_out"},
+        {"id": "track.color", "property": "fill", "keyframes": ((0, "#ffffff"), (180, "#2f6fed")), "interpolation": "ease_in"},
+        {"id": "track.path", "property": "position", "keyframes": ((0, "M0,0"), (240, "M100,24")), "interpolation": "path"},
+    )
+    return {
+        "format": "appgen.cross-target-animation-timeline-contract.v1",
+        "tracks": tracks,
+        "operations": ("add_keyframe", "move_keyframe", "edit_easing", "scrub_preview", "bind_trigger", "export_runtime_timeline"),
+        "triggers": ("pointer_enter", "command", "state_change", "data_change", "timeline_complete"),
+        "guards": ("reduced_motion_fallback", "deterministic_timeline_ids", "bounded_duration"),
+        "side_effects": (),
+    }
+
+
 def cross_target_effects_pipeline_contract() -> dict:
     """Return effect pipeline contracts for design-time preview and runtime rendering."""
     return {
@@ -2547,6 +2596,24 @@ def cross_target_effects_pipeline_contract() -> dict:
         "pipeline": ("source", "mask", "effect_stack", "composite", "fallback"),
         "quality_levels": ("low_power", "balanced", "high_quality"),
         "guards": ("gpu_fallback", "bounded_blur_radius", "mobile_frame_budget"),
+        "side_effects": (),
+    }
+
+
+def cross_target_effect_stack_validation_contract() -> dict:
+    """Return effect stack validation and fallback behavior."""
+    stack = (
+        {"effect": "shadow", "order": 10, "budget": "cheap", "fallback": "static_shadow"},
+        {"effect": "blur", "order": 20, "budget": "bounded", "fallback": "no_blur"},
+        {"effect": "glow", "order": 30, "budget": "bounded", "fallback": "solid_outline"},
+        {"effect": "shader_hook", "order": 40, "budget": "review", "fallback": "precomputed_bitmap"},
+    )
+    return {
+        "format": "appgen.cross-target-effect-stack-validation-contract.v1",
+        "stack": stack,
+        "operations": ("add_effect", "reorder_effect", "preview_quality", "validate_budget", "assign_fallback"),
+        "quality_levels": ("low_power", "balanced", "high_quality"),
+        "guards": ("gpu_fallback", "bounded_blur_radius", "mobile_frame_budget", "shader_review_required"),
         "side_effects": (),
     }
 
@@ -2565,6 +2632,52 @@ def cross_target_3d_scene_contract() -> dict:
         "tools": ("orbit", "pan", "zoom", "transform_gizmo", "material_editor", "model_importer"),
         "import_formats": ("gltf", "glb", "obj"),
         "guards": ("bounded_polygon_budget", "texture_size_budget", "fallback_thumbnail"),
+        "side_effects": (),
+    }
+
+
+def cross_target_3d_scene_authoring_contract() -> dict:
+    """Return 3D scene graph editing behavior."""
+    operations = (
+        {"op": "add_mesh", "requires": ("mesh", "material"), "undoable": True},
+        {"op": "position_camera", "requires": ("camera", "viewport"), "undoable": True},
+        {"op": "edit_light", "requires": ("light", "intensity"), "undoable": True},
+        {"op": "assign_material", "requires": ("mesh", "material"), "undoable": True},
+        {"op": "preview_orbit", "requires": ("viewport", "camera"), "undoable": False},
+    )
+    return {
+        "format": "appgen.cross-target-3d-scene-authoring-contract.v1",
+        "operations": operations,
+        "gizmos": ("translate", "rotate", "scale", "orbit_camera", "light_cone", "material_probe"),
+        "scene_validation": ("camera_present", "bounded_polygon_budget", "texture_size_budget", "fallback_thumbnail"),
+        "side_effects": (),
+    }
+
+
+def cross_target_visual_asset_import_contract() -> dict:
+    """Return visual asset import and budget contracts."""
+    return {
+        "format": "appgen.cross-target-visual-asset-import-contract.v1",
+        "formats": ("png", "webp", "svg", "gltf", "glb", "obj"),
+        "pipelines": ("multi_density_bitmap", "vector_path", "model_mesh", "material_texture", "fallback_thumbnail"),
+        "budgets": {
+            "max_texture_px": 4096,
+            "max_mesh_triangles": 50000,
+            "max_animation_ms": 5000,
+        },
+        "guards": ("texture_size_budget", "bounded_polygon_budget", "asset_fingerprint", "fallback_thumbnail"),
+        "side_effects": (),
+    }
+
+
+def cross_target_visual_preview_runtime_contract() -> dict:
+    """Return preview/runtime parity evidence for visual designer output."""
+    return {
+        "format": "appgen.cross-target-visual-preview-runtime-contract.v1",
+        "preview_modes": ("design_time", "reduced_motion", "low_power_gpu", "target_runtime"),
+        "runtime_artifacts": ("style_resources", "timeline_runtime", "effect_stack", "scene_graph", "asset_manifest"),
+        "parity_checks": ("effective_style_match", "timeline_keyframes_match", "effect_fallback_match", "scene_graph_match", "asset_fingerprint_match"),
+        "guards": ("side_effect_free_preview", "runtime_diff_visible", "fallbacks_declared"),
         "side_effects": (),
     }
 
@@ -2603,6 +2716,48 @@ def cross_target_visual_depth_workbench() -> dict:
             and not contract["effects_pipeline"]["side_effects"]
             and not contract["scene_designer"]["side_effects"],
             "evidence": {"guards": contract["guards"], "effects": contract["effects_pipeline"], "scene": contract["scene_designer"]},
+        },
+        {
+            "id": "style_cascade_authoring",
+            "ok": {"base_theme", "state_override", "platform_override", "local_override"} <= {layer["layer"] for layer in contract["style_cascade"]["layers"]}
+            and {"inspect_effective_value", "revert_override"} <= set(contract["style_cascade"]["operations"])
+            and not contract["style_cascade"]["side_effects"],
+            "evidence": contract["style_cascade"],
+        },
+        {
+            "id": "timeline_authoring",
+            "ok": bool(contract["timeline_authoring"]["tracks"])
+            and {"add_keyframe", "scrub_preview", "export_runtime_timeline"} <= set(contract["timeline_authoring"]["operations"])
+            and not contract["timeline_authoring"]["side_effects"],
+            "evidence": contract["timeline_authoring"],
+        },
+        {
+            "id": "effect_stack_validation",
+            "ok": {"shadow", "blur", "glow", "shader_hook"} <= {item["effect"] for item in contract["effect_stack"]["stack"]}
+            and {"validate_budget", "assign_fallback"} <= set(contract["effect_stack"]["operations"])
+            and not contract["effect_stack"]["side_effects"],
+            "evidence": contract["effect_stack"],
+        },
+        {
+            "id": "scene_authoring",
+            "ok": {"add_mesh", "position_camera", "edit_light", "assign_material"} <= {item["op"] for item in contract["scene_authoring"]["operations"]}
+            and {"translate", "rotate", "scale", "orbit_camera"} <= set(contract["scene_authoring"]["gizmos"])
+            and not contract["scene_authoring"]["side_effects"],
+            "evidence": contract["scene_authoring"],
+        },
+        {
+            "id": "asset_import_budgets",
+            "ok": {"gltf", "glb", "obj", "png", "webp"} <= set(contract["asset_import"]["formats"])
+            and {"texture_size_budget", "bounded_polygon_budget", "asset_fingerprint"} <= set(contract["asset_import"]["guards"])
+            and not contract["asset_import"]["side_effects"],
+            "evidence": contract["asset_import"],
+        },
+        {
+            "id": "preview_runtime_parity",
+            "ok": {"effective_style_match", "timeline_keyframes_match", "scene_graph_match"} <= set(contract["preview_runtime"]["parity_checks"])
+            and {"style_resources", "timeline_runtime", "effect_stack", "scene_graph"} <= set(contract["preview_runtime"]["runtime_artifacts"])
+            and not contract["preview_runtime"]["side_effects"],
+            "evidence": contract["preview_runtime"],
         },
     )
     ok = all(check["ok"] for check in checks)

@@ -323,8 +323,9 @@ Generated apps include Studio contracts for:
 - A mobile/native API workbench proves every listed device API has permission
   metadata, a design-time/runtime component adapter, simulator fixtures,
   platform targets, and side-effect guards.
-- A cross-target visual depth workbench proves style resources, animation state
-  graphs, effect pipelines, 3D scene designer tools, and runtime fallbacks.
+- A cross-target visual depth workbench proves style resources, style cascade
+  authoring, animation timelines, effect-stack validation, 3D scene authoring,
+  asset import budgets, preview/runtime parity, and runtime fallbacks.
 - Curated third-party component registry for useful commercial and open-source
   suites, plus reviewed package import/install plans for additional vendors.
 - A design-time package manager workbench proves install session phases,
