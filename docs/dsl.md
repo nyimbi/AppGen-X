@@ -249,7 +249,10 @@ apps include:
   cockpit. The generated `workflow_release_gate()` proves workflow artifacts,
   FSM/Mermaid/SCXML exports, graph diagnostics, authorization flows, approval
   routes, SLA metadata, and reviewed runbooks before workflow readiness is
-  claimed.
+  claimed. `workflow_workbench()` adds aggregate IDE-ready evidence for workflow
+  catalogs, statechart exports, graph diagnostics, authorization flows, approval
+  routes, SLA runbooks, release decisions, and `/workflows/workbench.json` route
+  coverage.
 - `rules.py` and `appgen_rules.html` with generated business-rule validation,
   row checks, decision-tree exports, branch action plans, and row-level
   decision traces. The generated `rules_release_gate()` proves required

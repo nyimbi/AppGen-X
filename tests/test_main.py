@@ -1112,6 +1112,8 @@ def test_generate_app_from_sqlite_schema_compiles(tmp_path) -> None:
     assert "a11y.compliance" in {item["key"] for item in manifest["capabilities"]}
     assert "workflow.automation" in {item["key"] for item in manifest["capabilities"]}
     assert "workflow.statecharts" in {item["key"] for item in manifest["capabilities"]}
+    assert capabilities_by_key["workflow.automation"]["status"] == "implemented"
+    assert capabilities_by_key["workflow.statecharts"]["status"] == "implemented"
     assert "logic.business-rules" in {item["key"] for item in manifest["capabilities"]}
     assert "ops.monitoring" in {item["key"] for item in manifest["capabilities"]}
     assert "ops.resilience" in {item["key"] for item in manifest["capabilities"]}
@@ -2378,6 +2380,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert "FSM JSON" in (output_dir / "templates" / "appgen_workflows.html").read_text()
     assert "SCXML" in (output_dir / "templates" / "appgen_workflows.html").read_text()
     assert "Workbench JSON" in (output_dir / "templates" / "appgen_workflows.html").read_text()
+    assert "All Workflows Workbench JSON" in (output_dir / "templates" / "appgen_workflows.html").read_text()
     assert "Export CSV" in (output_dir / "templates" / "appgen_reports.html").read_text()
     assert "Release Gate JSON" in (output_dir / "templates" / "appgen_reports.html").read_text()
     assert "Generated PDF export and email delivery contracts" in (
@@ -2837,6 +2840,24 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "approval_routes",
         "sla_runbooks",
     }
+    workflow_workbench = workflow.workflow_workbench({"app/workflow.py", "app/templates/appgen_workflows.html"})
+    assert workflow_workbench["format"] == "appgen.workflow-workbench.v1"
+    assert workflow_workbench["ok"] is True
+    assert workflow_workbench["release_gate"]["ok"] is True
+    assert {
+        "release_gate",
+        "workflow_catalog",
+        "statechart_exports",
+        "graph_diagnostics",
+        "authorization_flows",
+        "approval_routes",
+        "sla_runbooks",
+        "route_surface",
+    } == {check["id"] for check in workflow_workbench["checks"]}
+    assert "/workflows/workbench.json" in next(
+        check["evidence"]["routes"] for check in workflow_workbench["checks"] if check["id"] == "route_surface"
+    )
+    assert workflow.workflow_workbench({"app/workflow.py"})["ok"] is False
     assert workflow.workflow_release_gate({"app/workflow.py"})["ok"] is False
     assert proposal["dsl"] == "flow Publish {\n  review -> approved;\n}\n"
     assert "New source state: review" in proposal["warnings"]
