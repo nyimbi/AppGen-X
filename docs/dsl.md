@@ -285,6 +285,18 @@ The distribution audit covers publishable package metadata, Cookiecutter
 template artifacts, Flask-AppBuilder extension hooks, generated coverage tests,
 and idempotent seed-script expectations.
 
+Audit package-level reporting and ChartView coverage before claiming the
+roadmap reporting lane is complete:
+
+```console
+appgen --reporting-release-audit
+```
+
+The reporting audit proves every table receives a report, relations receive
+join reports, two-hop relation paths receive 3-way reports, every table receives
+a ChartView contract, and report delivery covers PDF export plus email
+attachments.
+
 ## Shape
 
 - `table` defines persistent data models.

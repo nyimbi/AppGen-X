@@ -507,6 +507,7 @@ def package_goal_audit(root: Path | str | None = None) -> dict:
     from .distribution import distribution_release_audit
     from .erp import erp_template_release_audit
     from .nl import nl_evolution_release_audit
+    from .reporting import reporting_release_audit
     from .studio import studio_release_audit
 
     roadmap = roadmap_release_audit(root)
@@ -517,6 +518,7 @@ def package_goal_audit(root: Path | str | None = None) -> dict:
     studio = studio_release_audit()
     config_editor = config_editor_release_audit()
     distribution = distribution_release_audit()
+    reporting = reporting_release_audit()
     gates = (
         {
             "id": "roadmap_traceability",
@@ -559,6 +561,11 @@ def package_goal_audit(root: Path | str | None = None) -> dict:
             "format": distribution["format"],
         },
         {
+            "id": "reporting_chartviews",
+            "ok": reporting["ok"],
+            "format": reporting["format"],
+        },
+        {
             "id": "source_document_scope",
             "ok": {"docs/ideas.md", "docs/base_features.md", "docs/Lo-code features.md"}
             <= {document["path"] for document in roadmap["documents"]},
@@ -581,6 +588,7 @@ def package_goal_audit(root: Path | str | None = None) -> dict:
             "studio": studio,
             "config_editor": config_editor,
             "distribution": distribution,
+            "reporting": reporting,
         },
         "blocking_gaps": tuple(gate for gate in gates if not gate["ok"]),
         "stop_condition": "do-not-mark-active-goal-complete-unless-ok-is-true",

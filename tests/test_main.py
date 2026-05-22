@@ -63,6 +63,12 @@ from pyAppGen.roadmap import generated_app_excellence_audit
 from pyAppGen.roadmap import jhipster_superiority_audit
 from pyAppGen.roadmap import package_goal_audit
 from pyAppGen.roadmap import roadmap_release_audit
+from pyAppGen.reporting import chartview_catalog
+from pyAppGen.reporting import join_report_catalog
+from pyAppGen.reporting import report_delivery_contract
+from pyAppGen.reporting import reporting_release_audit
+from pyAppGen.reporting import table_report_catalog
+from pyAppGen.reporting import three_way_report_catalog
 from pyAppGen.schema import load_schema
 from pyAppGen.schema import RelationSchema
 from pyAppGen.schema import schema_from_metadata
@@ -266,6 +272,7 @@ def test_package_goal_audit_cli_aggregates_objective_evidence(
         "robust_ide",
         "config_editor",
         "publishable_distribution",
+        "reporting_chartviews",
         "source_document_scope",
     } == {gate["id"] for gate in direct_report["gates"]}
     assert direct_report["stop_condition"] == (
@@ -286,6 +293,7 @@ def test_package_goal_audit_cli_aggregates_objective_evidence(
     assert cli_report["audits"]["studio"]["ok"] is True
     assert cli_report["audits"]["config_editor"]["ok"] is True
     assert cli_report["audits"]["distribution"]["ok"] is True
+    assert cli_report["audits"]["reporting"]["ok"] is True
 
 
 def test_package_erp_templates_export_generatable_dsl(
@@ -551,6 +559,67 @@ def test_package_distribution_audit_covers_publishable_templates(
     report = json.loads(result.output)
     assert report["ok"] is True
     assert "appgen_package.py" in report["manifests"]["package"]["artifacts"]
+
+
+def test_package_reporting_audit_covers_tables_joins_and_chartviews(
+    runner: CliRunner,
+) -> None:
+    """The package proves table, join, 3-way, ChartView, PDF, and email reporting."""
+    table_reports = table_report_catalog()
+    assert {report["table"] for report in table_reports} == {
+        "customer",
+        "invoice",
+        "invoice_line",
+    }
+    assert all("pdf" in report["formats"] for report in table_reports)
+    assert all("email" in report["delivery"] for report in table_reports)
+
+    join_reports = join_report_catalog()
+    assert len(join_reports) >= 2
+    assert any(report["tables"] == ("invoice", "customer") for report in join_reports)
+
+    three_way_reports = three_way_report_catalog()
+    assert three_way_reports
+    assert any(
+        report["tables"] == ("invoice_line", "invoice", "customer")
+        for report in three_way_reports
+    )
+
+    chartviews = chartview_catalog()
+    assert {chart["table"] for chart in chartviews} == {
+        "customer",
+        "invoice",
+        "invoice_line",
+    }
+    assert all(chart["class_name"].endswith("ChartView") for chart in chartviews)
+    assert all("vega_lite" in chart["renderers"] for chart in chartviews)
+
+    delivery = report_delivery_contract()
+    assert delivery["format"] == "appgen.package-report-delivery.v1"
+    assert {"download", "email"} <= set(delivery["channels"])
+    assert "application/pdf" in delivery["email_attachment_types"]
+
+    audit = reporting_release_audit()
+    assert audit["format"] == "appgen.package-reporting-release-audit.v1"
+    assert audit["ok"] is True
+    assert {
+        "every_table_reported",
+        "join_reports",
+        "three_way_reports",
+        "chartviews",
+        "pdf_email_delivery",
+        "artifact_contract",
+    } == {gate["id"] for gate in audit["gates"]}
+
+    missing = reporting_release_audit(existing_paths={"app/reports.py"})
+    assert missing["ok"] is False
+    assert any(gate["id"] == "artifact_contract" for gate in missing["blocking_gaps"])
+
+    result = runner.invoke(__main__.main, ["--reporting-release-audit"])
+    assert result.exit_code == 0
+    report = json.loads(result.output)
+    assert report["ok"] is True
+    assert report["three_way_reports"]
 
 
 def test_dsl_linter_reports_semantic_feedback(runner: CliRunner, tmp_path) -> None:

@@ -134,6 +134,9 @@ production safety checks, and environment export coverage.
 Run `appgen --distribution-release-audit` to prove publishable package
 metadata, Cookiecutter templates, Flask-AppBuilder extension hooks, generated
 coverage tests, and seed-script contracts are present before release.
+Run `appgen --reporting-release-audit` to prove every table has a report,
+relations have join reports, two-hop paths have 3-way reports, ChartView
+contracts exist, and PDF/email report delivery is covered.
 
 Use `required` for fields that must be entered. Use `search` on fields that
 should appear in generated search contracts. Use `hidden` for generated or
