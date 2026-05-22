@@ -3389,6 +3389,7 @@ def write_performance_template(output_dir):
       <a class="btn btn-default" href="{{ url_for('PerformanceView.load_profile_json') }}">Load Profile JSON</a>
       <a class="btn btn-default" href="{{ url_for('PerformanceView.load_test_matrix_json') }}">Load Test Matrix JSON</a>
       <a class="btn btn-default" href="{{ url_for('PerformanceView.load_test_runbook_json') }}">Load Test Runbook JSON</a>
+      <a class="btn btn-default" href="{{ url_for('PerformanceView.release_gate_json') }}">Release Gate JSON</a>
       <a class="btn btn-default" href="{{ url_for('PerformanceView.k6_script_route') }}">k6 Script</a>
       <a class="btn btn-default" href="{{ url_for('PerformanceView.locustfile_route') }}">Locustfile</a>
     </div>
@@ -8309,6 +8310,85 @@ def performance_check(existing_paths):
     }}
 
 
+def performance_release_gate(existing_paths=()):
+    """Return deterministic release evidence for generated performance readiness."""
+    existing = set(existing_paths)
+    required = {{"app/performance.py", "app/templates/appgen_performance.html"}}
+    catalog = performance_catalog()
+    matrix = load_test_matrix(users=3, duration_seconds=5)
+    runbook = load_test_runbook(users=3, duration_seconds=5)
+    k6 = k6_script(users=3, duration_seconds=5)
+    locust = locustfile_text()
+    passing_slo = slo_report({{"p95_ms": DEFAULT_SLO["p95_ms"] - 1, "error_rate": 0}})
+    failing_slo = slo_report({{"p95_ms": DEFAULT_SLO["p95_ms"] + 1, "error_rate": DEFAULT_SLO["error_rate"] + 0.01}})
+    scale_out = autoscale_plan({{"cpu_percent": 90, "queue_depth": 150, "p95_ms": DEFAULT_SLO["p95_ms"] + 100}}, current_replicas=2)
+    checks = (
+        {{
+            "gate": "artifact_coverage",
+            "ok": required.issubset(existing),
+            "required": tuple(sorted(required)),
+            "missing": tuple(sorted(required - existing)),
+        }},
+        {{
+            "gate": "budget_catalog",
+            "ok": bool(catalog)
+            and all(item["route"].startswith("/api/v1/") and item["budget_ms"] <= DEFAULT_SLO["p95_ms"] for item in catalog),
+            "tables": tuple(item["table"] for item in catalog),
+        }},
+        {{
+            "gate": "pagination_and_cache",
+            "ok": all(
+                pagination_plan(item["table"], requested=item["page_size"] * 10)["page_size"] <= item["page_size"] * 2
+                and cache_policy(item["table"])["ttl_seconds"] == item["cache_ttl_seconds"]
+                and "tenant_id" in cache_policy(item["table"])["vary"]
+                for item in catalog
+            ),
+            "route_count": len(catalog),
+        }},
+        {{
+            "gate": "load_test_matrix",
+            "ok": matrix["format"] == "appgen.load-test-matrix.v1"
+            and bool(matrix["scenarios"])
+            and all(scenario["executor"] == "constant-vus" and scenario["thresholds"] for scenario in matrix["scenarios"]),
+            "scenario_count": len(matrix["scenarios"]),
+        }},
+        {{
+            "gate": "executable_exports",
+            "ok": "export const options" in k6
+            and "http.get" in k6
+            and "class AppGenUser" in locust
+            and "self.client.get" in locust,
+            "artifacts": ("performance.k6.js", "locustfile.py"),
+        }},
+        {{
+            "gate": "runbook_review",
+            "ok": runbook["format"] == "appgen.load-test-runbook.v1"
+            and runbook["requires_review"] is True
+            and "run load test" in runbook["checks"]
+            and any("k6 run performance.k6.js" in command for command in runbook["commands"]),
+            "commands": runbook["commands"],
+        }},
+        {{
+            "gate": "slo_reporting",
+            "ok": passing_slo["ok"] is True
+            and failing_slo["ok"] is False
+            and {{"latency", "errors"}}.issubset(set(failing_slo["violations"])),
+            "slo": DEFAULT_SLO,
+        }},
+        {{
+            "gate": "autoscale_plan",
+            "ok": scale_out["desired_replicas"] > scale_out["current_replicas"]
+            and {{"cpu", "queue", "latency"}}.issubset(set(scale_out["reasons"])),
+            "plan": scale_out,
+        }},
+    )
+    return {{
+        "format": "appgen.performance-release-gate.v1",
+        "ok": all(check["ok"] for check in checks),
+        "checks": checks,
+    }}
+
+
 class PerformanceView(BaseView):
     route_base = "/performance"
     default_view = "index"
@@ -8332,6 +8412,10 @@ class PerformanceView(BaseView):
     @expose("/load-test-runbook.json")
     def load_test_runbook_json(self):
         return jsonify(load_test_runbook())
+
+    @expose("/release-gate.json")
+    def release_gate_json(self):
+        return jsonify(performance_release_gate({{"app/performance.py", "app/templates/appgen_performance.html"}}))
 
     @expose("/k6.js")
     def k6_script_route(self):
@@ -37865,9 +37949,11 @@ def validate_performance_artifacts() -> None:
         fail("performance contract must expose SLO, load-profile, and autoscale helpers")
     if "load_test_matrix" not in contract or "k6_script" not in contract or "locustfile_text" not in contract or "load_test_runbook" not in contract:
         fail("performance contract must expose load-test matrices, k6 scripts, Locust files, and runbooks")
+    if "performance_release_gate" not in contract or "appgen.performance-release-gate.v1" not in contract or '@expose("/release-gate.json")' not in contract:
+        fail("performance contract must expose generated release evidence")
     template = (ROOT / "app" / "templates" / "appgen_performance.html").read_text()
-    if "Performance" not in template or "Load Profile JSON" not in template or "Load Test Matrix JSON" not in template or "k6 Script" not in template or "Locustfile" not in template:
-        fail("performance template must expose budgets, load profiles, and executable load-test exports")
+    if "Performance" not in template or "Load Profile JSON" not in template or "Load Test Matrix JSON" not in template or "Release Gate JSON" not in template or "k6 Script" not in template or "Locustfile" not in template:
+        fail("performance template must expose budgets, load profiles, executable load-test exports, and release evidence")
 
 
 def validate_usage_analytics_artifacts() -> None:
@@ -39818,6 +39904,13 @@ def test_generated_runtime_helpers():
     assert performance.performance_check(
         {"app/performance.py", "app/templates/appgen_performance.html"}
     )["ok"] is True
+    assert performance.performance_release_gate(
+        {"app/performance.py", "app/templates/appgen_performance.html"}
+    )["format"] == "appgen.performance-release-gate.v1"
+    assert performance.performance_release_gate(
+        {"app/performance.py", "app/templates/appgen_performance.html"}
+    )["ok"] is True
+    assert performance.performance_release_gate({"app/performance.py"})["ok"] is False
     assert https.https_readiness(
         {"APPGEN_DOMAIN": "example.test", "APPGEN_TLS_EMAIL": "admin@example.test"},
         {"deploy/Caddyfile", "docker-compose.yml"},

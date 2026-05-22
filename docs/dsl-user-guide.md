@@ -532,6 +532,11 @@ Use `/diagnostics/release-gate.json` or `diagnostics_release_gate()` to prove
 debugging readiness. The gate checks diagnostic artifacts, schema self-tests,
 secret redaction, remediation planning, support bundle shape, API smoke plans,
 and load-test plans.
+Use `/performance/release-gate.json` or `performance_release_gate()` to prove
+performance readiness. The gate checks generated budget catalogs, bounded
+pagination and cache behavior, load-test matrices, executable k6 and Locust
+exports, reviewed runbooks, SLO reporting, autoscale recommendations, and
+required performance artifacts.
 Use `/rpa/release-gate.json` or `rpa_release_gate()` to prove generated
 automation readiness. The gate checks RPA/BPA task catalogs, process models,
 BPMN/UML exports, simulations, vendor export packages, queue payloads,

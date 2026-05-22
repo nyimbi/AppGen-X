@@ -266,7 +266,10 @@ apps include:
 - `performance.py` and `appgen_performance.html` with generated SLO budgets,
   pagination and cache contracts, deterministic load-test profiles, k6 script
   export, Locust file export, reviewed load-test runbooks, and autoscale
-  recommendations.
+  recommendations. The generated `performance_release_gate()` proves required
+  artifacts, budget catalogs, bounded pagination and cache behavior, load-test
+  matrices, executable k6/Locust exports, reviewed runbooks, SLO reporting, and
+  autoscale recommendations.
 - `runtime_assurance.py` and `appgen_runtime_assurance.html` with a generated
   readiness matrix that ties security hardening, health checks, resilience,
   SLOs, backup integrity, recovery runbooks, visual/accessibility quality, and

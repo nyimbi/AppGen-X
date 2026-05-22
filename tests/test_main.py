@@ -2240,9 +2240,9 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert "Release Gate JSON" in resilience_template
     assert "Business Rules" in (output_dir / "templates" / "appgen_rules.html").read_text()
     assert "OpenAPI JSON" in (output_dir / "templates" / "appgen_openapi.html").read_text()
-    assert "Generated performance budgets" in (
-        output_dir / "templates" / "appgen_performance.html"
-    ).read_text()
+    performance_template = (output_dir / "templates" / "appgen_performance.html").read_text()
+    assert "Generated performance budgets" in performance_template
+    assert "Release Gate JSON" in performance_template
     assert "Generated operational assurance" in (
         output_dir / "templates" / "appgen_runtime_assurance.html"
     ).read_text()
@@ -3068,6 +3068,22 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert performance.performance_check(
         {"app/performance.py", "app/templates/appgen_performance.html"}
     )["ok"] is True
+    performance_gate = performance.performance_release_gate(
+        {"app/performance.py", "app/templates/appgen_performance.html"}
+    )
+    assert performance_gate["format"] == "appgen.performance-release-gate.v1"
+    assert performance_gate["ok"] is True
+    assert {
+        "artifact_coverage",
+        "budget_catalog",
+        "pagination_and_cache",
+        "load_test_matrix",
+        "executable_exports",
+        "runbook_review",
+        "slo_reporting",
+        "autoscale_plan",
+    } <= {check["gate"] for check in performance_gate["checks"]}
+    assert performance.performance_release_gate({"app/performance.py"})["ok"] is False
     runtime_assurance = _load_module(output_dir / "runtime_assurance.py", "generated_runtime_assurance")
     assurance_report = runtime_assurance.runtime_assurance_report({"p95_ms": 200, "error_rate": 0})
     assert assurance_report["format"] == "appgen.runtime-assurance.v1"
