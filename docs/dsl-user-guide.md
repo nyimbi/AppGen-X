@@ -446,6 +446,10 @@ Use `/data-exchange/release-gate.json` to verify schema-aware CSV templates,
 JSON exchange round-trips, import validation, reviewed migration batches,
 deterministic request errors, and data-exchange artifacts before loading legacy
 or operational data.
+Use `/productivity/release-gate.json` to verify Microsoft 365 and Google
+Workspace provider coverage, schema-derived document/spreadsheet/calendar/task
+payloads, and required productivity artifacts before connecting live office
+suite APIs.
 Use `/api-testing/release-gate.json` before release to verify API request
 matrices, response validation, smoke fixtures, UI smoke plans, synthetic
 monitors, OpenAPI coverage, and rendered pytest/Playwright modules.

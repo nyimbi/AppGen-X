@@ -2226,6 +2226,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert "Invenio" in (output_dir / "templates" / "appgen_integrations.html").read_text()
     assert "Release Gate JSON" in (output_dir / "templates" / "appgen_integrations.html").read_text()
     assert "Productivity Integrations" in (output_dir / "templates" / "appgen_productivity.html").read_text()
+    assert "Release Gate JSON" in (output_dir / "templates" / "appgen_productivity.html").read_text()
     assert "Lifecycle JSON" in (output_dir / "templates" / "appgen_lifecycle.html").read_text()
     assert "Release Gate JSON" in (output_dir / "templates" / "appgen_project_management.html").read_text()
     assert "tenant_id" in (output_dir / "templates" / "appgen_tenancy.html").read_text()
@@ -3613,6 +3614,21 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     task_payload = productivity.task_sync_payload("Book", {"status": "draft"})
     assert "title" in task_payload["missing_required_fields"]
     assert productivity.productivity_check({"app/productivity.py", "app/templates/appgen_productivity.html"})["ok"] is True
+    productivity_gate = productivity.productivity_release_gate(
+        {"app/productivity.py", "app/templates/appgen_productivity.html"}
+    )
+    assert productivity_gate["format"] == "appgen.productivity-release-gate.v1"
+    assert productivity_gate["ok"] is True
+    assert {
+        "provider_catalog",
+        "template_catalog",
+        "document_merge",
+        "spreadsheet_export",
+        "calendar_payload",
+        "task_sync",
+        "artifact_coverage",
+    } <= {gate["gate"] for gate in productivity_gate["gates"]}
+    assert productivity.productivity_release_gate({"app/productivity.py"})["ok"] is False
     assert {item["name"] for item in lifecycle.environment_catalog()} == {
         "development",
         "testing",

@@ -380,7 +380,9 @@ apps include:
   portal, repository, payment, SMS, email, and artifact coverage.
 - `productivity.py` and `appgen_productivity.html` with generated Microsoft
   365 and Google Workspace document, spreadsheet, calendar, and task-sync
-  payload contracts.
+  payload contracts. A generated productivity release gate proves provider
+  coverage, schema-derived templates, document merge payloads, spreadsheet
+  exports, calendar events, task sync, and required productivity artifacts.
 - `lifecycle.py` and `appgen_lifecycle.html` with generated environment
   readiness, custom-domain plans, release gates, maintenance/update windows,
   feedback items, user-testing sessions, and issue reports.
