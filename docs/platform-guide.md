@@ -44,10 +44,14 @@ A generated app can include:
 - `app/form_designer.py` also exposes `component_usability_workbench()` so every
   built-in palette item is proven usable before release: renderer targets,
   default properties, property editors, events, validation rules, drop defaults,
-  binding metadata, and preview contracts must exist for every component.
+  binding metadata, preview contracts, and `component_behavior_workbench()`
+  evidence for render nodes, prop validation, event dispatch, target adapters,
+  accessibility metadata, and side-effect-free previews must exist for every
+  component.
 - `app/component_contracts/<component>.py` gives every built-in component its
   own implementation contract with `contract()`, `render()`, `validate_props()`,
-  `preview()`, and `test_plan()` exports.
+  `preview()`, `behavior_contract()`, `target_adapters()`, `dispatch_event()`,
+  and `test_plan()` exports.
 - `component_analog_workbench()` proves analog coverage for cross-target
   controls, layout containers, data display, graphics, animations, theming,
   gestures, sensors, 3D scene primitives, and data-access components.

@@ -934,7 +934,10 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "per_component_files",
         "per_package_files",
         "requested_analog_coverage",
+        "component_behavior",
     } == {check["id"] for check in usability["checks"]}
+    assert usability["behavior_workbench"]["ok"] is True
+    assert usability["behavior_workbench"]["component_count"] == len(palette)
     assert all({"web", "mobile", "desktop"} <= set(item["renderers"]) for item in usability["components"])
     assert all(item["path"].startswith("app/component_contracts/") for item in usability["component_files"])
     assert all(item["path"].startswith("app/component_packages/") for item in usability["package_files"])
@@ -8826,6 +8829,8 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert generated_usability["format"] == "appgen.generated-component-usability-workbench.v1"
     assert generated_usability["ok"] is True
     assert generated_usability["component_count"] == len(form_designer.component_palette())
+    assert generated_usability["behavior_workbench"]["ok"] is True
+    assert generated_usability["behavior_workbench"]["component_count"] == len(form_designer.component_palette())
     assert all(
         {"web", "mobile", "desktop"} <= set(item["renderers"])
         for item in generated_usability["components"]
@@ -8842,7 +8847,11 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert text_box_component.contract()["component"] == "TextBox"
     assert text_box_component.render()["format"] == "appgen.component-render-node.v1"
     assert text_box_component.validate_props({"unknown": True})["ok"] is False
+    assert text_box_component.behavior_contract()["ok"] is True
+    assert text_box_component.target_adapters()["adapters"]
+    assert text_box_component.dispatch_event("OnCreate")["ok"] is True
     assert "preview_renders" in text_box_component.test_plan()["tests"]
+    assert "behavior_contract_ok" in text_box_component.test_plan()["tests"]
     component_package = _load_module(package_file, "generated_component_package")
     assert component_package.package_contract()["package"]["id"] == "devexpress-native"
     assert component_package.install_plan()["side_effects"] == ()

@@ -295,9 +295,12 @@ Generated apps include Studio contracts for:
   tooling, mobile device APIs, animation/effects, and 3D surface descriptors.
 - A component usability gate that requires every built-in component to carry
   renderer targets, default properties, property editors, events, validation
-  rules, drop defaults, binding metadata, and preview contracts.
+  rules, drop defaults, binding metadata, preview contracts, and behavior
+  evidence for render nodes, prop validation, event dispatch, target adapters,
+  accessibility metadata, and side-effect-free previews.
 - Generated component modules under `app/component_contracts/<component>.py`
   export `contract()`, `render()`, `validate_props()`, `preview()`, and
+  `behavior_contract()`, `target_adapters()`, `dispatch_event()`, and
   `test_plan()` for each built-in component.
 - A component analog workbench covers requested cross-target controls, layouts,
   data display, graphics, animation, theming, gestures, sensors, 3D surfaces,

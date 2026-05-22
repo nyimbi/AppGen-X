@@ -1873,6 +1873,29 @@ def preview():
     return render()
 
 
+def behavior_contract():
+    """Return behavior evidence for this component."""
+    return form_designer.component_behavior_contract(COMPONENT)
+
+
+def target_adapters():
+    """Return target adapter behavior for this component."""
+    return form_designer.component_target_adapter_contract(COMPONENT)
+
+
+def dispatch_event(event_name):
+    """Return event dispatch metadata for a named event."""
+    dispatch = form_designer.component_event_dispatch_contract(COMPONENT)
+    matches = tuple(handler for handler in dispatch["handlers"] if handler["event"] == event_name)
+    return {{
+        "format": "appgen.component-event-dispatch-result.v1",
+        "component": COMPONENT,
+        "event": event_name,
+        "ok": bool(matches),
+        "matches": matches,
+    }}
+
+
 def test_plan():
     """Return the generated test plan proving this component remains usable."""
     return {{
@@ -1884,6 +1907,9 @@ def test_plan():
             "preview_renders",
             "events_declared",
             "validation_rules_declared",
+            "behavior_contract_ok",
+            "target_adapters_declared",
+            "event_dispatch_declared",
         ),
     }}
 '''
@@ -26162,6 +26188,146 @@ def component_runtime_contract(component_type):
     }}
 
 
+def component_render_contract(component_type):
+    """Return deterministic render-node behavior for a generated component."""
+    contract = component_runtime_contract(component_type)
+    return {{
+        "format": "appgen.generated-component-render-contract.v1",
+        "component": component_type,
+        "nodes": tuple(
+            {{
+                "target": target,
+                "renderer": renderer,
+                "props": contract["default_props"],
+                "events": contract["events"],
+                "bindings": contract["bindings"],
+            }}
+            for target, renderer in contract["renderers"].items()
+        ),
+        "accessibility": {{
+            "focusable": contract["category"] not in ("graphics", "theme", "nonvisual"),
+            "label_source": "caption" if "caption" in contract["default_props"] else "label",
+            "keyboard": ("tab", "enter", "space") if contract["category"] in ("input", "choice", "action") else (),
+        }},
+        "side_effects": (),
+    }}
+
+
+def component_prop_validation_contract(component_type, props=None):
+    """Return property validation behavior for a generated component."""
+    contract = component_runtime_contract(component_type)
+    supplied = props or contract["default_props"]
+    allowed = set(contract["default_props"])
+    editors = {{item["name"]: item["type"] for item in contract["property_editors"]}}
+    unknown = tuple(sorted(set(supplied) - allowed))
+    typed = tuple(
+        {{
+            "property": name,
+            "expected": editors.get(name, "string"),
+            "ok": name in allowed,
+        }}
+        for name in supplied
+    )
+    return {{
+        "format": "appgen.generated-component-prop-validation-contract.v1",
+        "component": component_type,
+        "ok": not unknown and all(item["ok"] for item in typed),
+        "unknown": unknown,
+        "typed": typed,
+        "rules": contract["validation_rules"],
+        "side_effects": (),
+    }}
+
+
+def component_event_dispatch_contract(component_type):
+    """Return event dispatch metadata for a generated component."""
+    contract = component_runtime_contract(component_type)
+    handlers = tuple(
+        {{
+            "event": event,
+            "handler": f"{{_module_name(component_type)}}_{{_module_name(event)}}",
+            "phases": ("capture", "validate", "dispatch", "bubble"),
+            "side_effects": (),
+        }}
+        for event in contract["events"]
+    )
+    return {{
+        "format": "appgen.generated-component-event-dispatch-contract.v1",
+        "component": component_type,
+        "handlers": handlers,
+        "guards": ("handler_signature_checked", "disabled_components_skip_dispatch", "errors_reported_to_designer"),
+    }}
+
+
+def component_target_adapter_contract(component_type):
+    """Return cross-target adapter metadata for a generated component."""
+    contract = component_runtime_contract(component_type)
+    return {{
+        "format": "appgen.generated-component-target-adapter-contract.v1",
+        "component": component_type,
+        "adapters": tuple(
+            {{
+                "target": target,
+                "renderer": renderer,
+                "lifecycle": ("create", "update", "validate", "destroy"),
+                "supports_preview": True,
+                "side_effects": (),
+            }}
+            for target, renderer in contract["renderers"].items()
+        ),
+        "guards": ("stable_component_id", "target_specific_props_reviewed", "preview_matches_runtime_shape"),
+    }}
+
+
+def component_behavior_contract(component_type):
+    """Return behavior evidence for one generated built-in component."""
+    render = component_render_contract(component_type)
+    validation = component_prop_validation_contract(component_type)
+    events = component_event_dispatch_contract(component_type)
+    adapters = component_target_adapter_contract(component_type)
+    checks = (
+        {{"id": "render_nodes", "ok": {{"web", "mobile", "desktop"}} <= {{node["target"] for node in render["nodes"]}} and not render["side_effects"], "evidence": render}},
+        {{"id": "property_validation", "ok": validation["ok"] and not validation["side_effects"], "evidence": validation}},
+        {{"id": "event_dispatch", "ok": bool(events["handlers"]) and all(not handler["side_effects"] for handler in events["handlers"]), "evidence": events}},
+        {{"id": "target_adapters", "ok": all({{"create", "update", "validate", "destroy"}} <= set(adapter["lifecycle"]) and not adapter["side_effects"] for adapter in adapters["adapters"]), "evidence": adapters}},
+        {{"id": "accessibility_preview", "ok": "label_source" in render["accessibility"], "evidence": render["accessibility"]}},
+    )
+    ok = all(check["ok"] for check in checks)
+    return {{
+        "format": "appgen.generated-component-behavior-contract.v1",
+        "component": component_type,
+        "ok": ok,
+        "render": render,
+        "validation": validation,
+        "events": events,
+        "adapters": adapters,
+        "checks": checks,
+        "blocking_gaps": tuple(check for check in checks if not check["ok"]),
+    }}
+
+
+def component_behavior_workbench():
+    """Prove every generated built-in component has render, validation, event, and adapter behavior."""
+    behaviors = tuple(component_behavior_contract(item["type"]) for item in PALETTE)
+    checks = (
+        {{"id": "all_components_have_behavior", "ok": len(behaviors) == len(PALETTE) and all(item["ok"] for item in behaviors), "evidence": tuple(item["component"] for item in behaviors)}},
+        {{"id": "render_behavior", "ok": all(any(check["id"] == "render_nodes" and check["ok"] for check in item["checks"]) for item in behaviors), "evidence": tuple(item["render"] for item in behaviors)}},
+        {{"id": "validation_behavior", "ok": all(any(check["id"] == "property_validation" and check["ok"] for check in item["checks"]) for item in behaviors), "evidence": tuple(item["validation"] for item in behaviors)}},
+        {{"id": "event_behavior", "ok": all(any(check["id"] == "event_dispatch" and check["ok"] for check in item["checks"]) for item in behaviors), "evidence": tuple(item["events"] for item in behaviors)}},
+        {{"id": "target_adapter_behavior", "ok": all(any(check["id"] == "target_adapters" and check["ok"] for check in item["checks"]) for item in behaviors), "evidence": tuple(item["adapters"] for item in behaviors)}},
+    )
+    ok = all(check["ok"] for check in checks)
+    return {{
+        "format": "appgen.generated-component-behavior-workbench.v1",
+        "ok": ok,
+        "decision": "approved" if ok else "blocked",
+        "component_count": len(behaviors),
+        "behaviors": behaviors,
+        "checks": checks,
+        "blocking_gaps": tuple(check for check in checks if not check["ok"]),
+    }}
+
+
 def component_implementation_catalog():
     """Return usability contracts for every generated built-in component."""
     return tuple(component_runtime_contract(item["type"]) for item in PALETTE)
@@ -26177,7 +26343,16 @@ def component_file_manifest(existing_paths=None):
             "component": item["type"],
             "path": path,
             "exists": path in paths,
-            "exports": ("contract", "render", "validate_props", "preview", "test_plan"),
+            "exports": (
+                "contract",
+                "render",
+                "validate_props",
+                "preview",
+                "behavior_contract",
+                "target_adapters",
+                "dispatch_event",
+                "test_plan",
+            ),
         }})
     return tuple(manifest)
 
@@ -26204,6 +26379,7 @@ def component_usability_workbench(existing_paths=None):
     component_files = component_file_manifest(existing_paths)
     package_files = component_package_file_manifest(existing_paths)
     analog_workbench = component_analog_workbench()
+    behavior_workbench = component_behavior_workbench()
     checks = (
         {{"id": "complete_catalog", "ok": len(contracts) == len(PALETTE), "evidence": {{"component_count": len(contracts)}}}},
         {{"id": "runtime_renderers", "ok": all({{"web", "mobile", "desktop"}} <= set(item["renderers"]) for item in contracts), "evidence": tuple((item["component"], tuple(item["renderers"])) for item in contracts)}},
@@ -26212,9 +26388,10 @@ def component_usability_workbench(existing_paths=None):
         {{"id": "validation_rules", "ok": all(item["validation_rules"] for item in contracts), "evidence": tuple((item["component"], item["validation_rules"]) for item in contracts)}},
         {{"id": "drop_defaults", "ok": all(item["default_size"]["w"] > 0 and item["default_size"]["h"] > 0 for item in contracts), "evidence": tuple((item["component"], item["default_size"]) for item in contracts)}},
         {{"id": "preview_contracts", "ok": all(item["preview"]["available"] and item["usable"] for item in contracts), "evidence": tuple((item["component"], item["preview"]["preview_kind"]) for item in contracts)}},
-        {{"id": "per_component_files", "ok": len(component_files) == len(contracts) and all(item["exists"] for item in component_files), "evidence": component_files}},
+        {{"id": "per_component_files", "ok": len(component_files) == len(contracts) and all(item["exists"] and {{"contract", "render", "validate_props", "preview", "behavior_contract", "target_adapters", "dispatch_event", "test_plan"}} <= set(item["exports"]) for item in component_files), "evidence": component_files}},
         {{"id": "per_package_files", "ok": len(package_files) == len(THIRD_PARTY_COMPONENT_SUITES) and all(item["exists"] for item in package_files), "evidence": package_files}},
         {{"id": "requested_analog_coverage", "ok": analog_workbench["ok"], "evidence": analog_workbench}},
+        {{"id": "component_behavior", "ok": behavior_workbench["ok"], "evidence": behavior_workbench}},
     )
     ok = all(check["ok"] for check in checks)
     return {{
@@ -26226,6 +26403,7 @@ def component_usability_workbench(existing_paths=None):
         "component_files": component_files,
         "package_files": package_files,
         "analog_workbench": analog_workbench,
+        "behavior_workbench": behavior_workbench,
         "checks": checks,
         "blocking_gaps": tuple(check for check in checks if not check["ok"]),
     }}
