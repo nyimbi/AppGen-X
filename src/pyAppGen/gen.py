@@ -6287,6 +6287,7 @@ def write_erp_templates_template(output_dir):
       <a class="btn btn-default" href="{{ url_for('ERPTemplateView.stacks_json') }}">Stacks JSON</a>
       <a class="btn btn-default" href="{{ url_for('ERPTemplateView.starter_json') }}">Starter JSON</a>
       <a class="btn btn-default" href="{{ url_for('ERPTemplateView.roadmap_json') }}">Roadmap JSON</a>
+      <a class="btn btn-default" href="{{ url_for('ERPTemplateView.workbench_json') }}">Workbench JSON</a>
       <a class="btn btn-default" href="{{ url_for('ERPTemplateView.release_gate_json') }}">Release Gate JSON</a>
     </div>
   </div>
@@ -27153,6 +27154,52 @@ def erp_starter_release_gate(modules=None, app_name="ERPStarter", existing_paths
     }}
 
 
+def erp_template_workbench(existing_paths=()):
+    """Return aggregate evidence for the generated ERP template library."""
+    existing = set(existing_paths)
+    required = ("app/erp_templates.py", "app/templates/appgen_erp_templates.html")
+    missing = tuple(path for path in required if path not in existing)
+    essential = {{
+        "general_ledger", "chart_of_accounts", "invoicing", "accounts_receivable",
+        "accounts_payable", "inventory", "human_resources", "payroll",
+        "purchasing", "procurement", "supply_chain", "warehouse_management",
+        "manufacturing", "sales", "crm", "ecommerce", "fixed_assets",
+        "maintenance", "quality_management", "document_management",
+        "compliance_management", "projects", "reporting",
+    }}
+    catalog_modules = {{item["module"] for item in erp_template_catalog()}}
+    full_modules = ERP_MODULE_RECOMMENDATIONS["full_erp"]
+    full_coverage = erp_domain_coverage_report(full_modules)
+    finance_manifest = erp_starter_manifest(ERP_MODULE_RECOMMENDATIONS["finance_core"], app_name="FinanceDesk")
+    distribution_manifest = erp_starter_manifest(ERP_MODULE_RECOMMENDATIONS["distribution_core"], app_name="DistributionDesk")
+    full_release = erp_starter_release_gate(full_modules, app_name="EnterpriseDesk", existing_paths=existing)
+    full_migration = erp_data_migration_plan(full_modules, source="legacy_erp")
+    composite_dsl = erp_composite_dsl(("general_ledger", "accounts_receivable", "accounts_payable", "inventory", "human_resources"), app_name="EnterpriseDesk")
+    checks = (
+        {{"id": "artifact_coverage", "ok": not missing, "evidence": {{"required": required, "missing": missing}}}},
+        {{"id": "module_catalog", "ok": essential <= catalog_modules, "evidence": {{"required": tuple(sorted(essential)), "available": tuple(sorted(catalog_modules))}}}},
+        {{"id": "table_blueprints", "ok": all(erp_table_blueprints(module) for module in essential), "evidence": {{"module_count": len(essential)}}}},
+        {{"id": "starter_stacks", "ok": {{"finance_core", "distribution_core", "people_core", "manufacturing_core", "full_erp"}} <= {{item["stack"] for item in erp_recommended_stacks()}}, "evidence": tuple(item["stack"] for item in erp_recommended_stacks())}},
+        {{"id": "domain_coverage", "ok": {{"finance", "distribution", "people", "manufacturing", "governance"}} <= set(full_coverage["covered_domains"]), "evidence": full_coverage}},
+        {{"id": "composite_dsl", "ok": all(fragment in composite_dsl for fragment in ("app EnterpriseDesk", "table ledger_account", "table customer_invoice", "table vendor_bill", "table item", "table employee")), "evidence": {{"preview": composite_dsl[:1200]}}}},
+        {{"id": "starter_manifests", "ok": {{"customer_invoice", "vendor_bill"}} <= set(finance_manifest["tables"]) and {{"stock_move", "purchase_order", "sales_order"}} <= set(distribution_manifest["tables"]), "evidence": {{"finance_tables": finance_manifest["tables"], "distribution_tables": distribution_manifest["tables"]}}}},
+        {{"id": "generation_and_migration", "ok": [step["name"] for step in erp_starter_generation_plan(full_modules)["steps"]] == ["compose_dsl", "lint_dsl", "generate", "verify"] and bool(full_migration["batches"]) and "trial_balance" in full_migration["cutover_checks"], "evidence": {{"steps": erp_starter_generation_plan(full_modules)["steps"], "batches": len(full_migration["batches"])}}}},
+        {{"id": "release_gate", "ok": full_release["ok"], "evidence": {{"format": full_release["format"], "blocking_gaps": full_release["blocking_gaps"]}}}},
+        {{"id": "route_surface", "ok": not missing, "evidence": {{"routes": ("/erp-templates/", "/erp-templates/catalog.json", "/erp-templates/stacks.json", "/erp-templates/starter.json", "/erp-templates/roadmap.json", "/erp-templates/workbench.json", "/erp-templates/release-gate.json", "/erp-templates/<module>.dsl")}}}},
+    )
+    ok = all(check["ok"] for check in checks)
+    return {{
+        "format": "appgen.erp-template-workbench.v1",
+        "ok": ok,
+        "decision": "approved" if ok else "blocked",
+        "checks": checks,
+        "catalog": erp_template_catalog(),
+        "stacks": erp_recommended_stacks(),
+        "coverage": full_coverage,
+        "release_gate": full_release,
+    }}
+
+
 def erp_templates_check(existing_paths):
     """Return readiness for generated ERP template artifacts."""
     existing = set(existing_paths)
@@ -27200,6 +27247,10 @@ class ERPTemplateView(BaseView):
     @expose("/roadmap.json")
     def roadmap_json(self):
         return jsonify(erp_implementation_roadmap())
+
+    @expose("/workbench.json")
+    def workbench_json(self):
+        return jsonify(erp_template_workbench(existing_paths=("app/erp_templates.py", "app/templates/appgen_erp_templates.html")))
 
     @expose("/release-gate.json")
     def release_gate_json(self):

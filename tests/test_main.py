@@ -1035,6 +1035,7 @@ def test_generate_app_from_sqlite_schema_compiles(tmp_path) -> None:
     assert capabilities_by_key["ui.form-designer"]["status"] == "implemented"
     assert capabilities_by_key["ui.nl-evolution"]["status"] == "implemented"
     assert capabilities_by_key["devops.studio"]["status"] == "implemented"
+    assert capabilities_by_key["components.erp-templates"]["status"] == "implemented"
     assert "platform.jhipster" in {item["key"] for item in manifest["capabilities"]}
     assert "platform.competitive-benchmark" in {item["key"] for item in manifest["capabilities"]}
     assert "platform.jhipster-superiority" in {item["key"] for item in manifest["capabilities"]}
@@ -5749,6 +5750,29 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         item["gate"] for item in erp_gate["gates"]
     }
     assert erp_templates.erp_starter_release_gate(("inventory",), existing_paths={"app/erp_templates.py"})["ok"] is False
+    assert "Workbench JSON" in erp_template_text
+    erp_workbench = erp_templates.erp_template_workbench(
+        existing_paths={"app/erp_templates.py", "app/templates/appgen_erp_templates.html"}
+    )
+    assert erp_workbench["format"] == "appgen.erp-template-workbench.v1"
+    assert erp_workbench["ok"] is True
+    assert erp_workbench["decision"] == "approved"
+    assert {
+        "artifact_coverage",
+        "module_catalog",
+        "table_blueprints",
+        "starter_stacks",
+        "domain_coverage",
+        "composite_dsl",
+        "starter_manifests",
+        "generation_and_migration",
+        "release_gate",
+        "route_surface",
+    } == {check["id"] for check in erp_workbench["checks"]}
+    assert "/erp-templates/workbench.json" in next(
+        check["evidence"]["routes"] for check in erp_workbench["checks"] if check["id"] == "route_surface"
+    )
+    assert erp_templates.erp_template_workbench(existing_paths={"app/erp_templates.py"})["ok"] is False
     migration_plan = erp_templates.erp_data_migration_plan(("inventory",), source="legacy")
     assert migration_plan["format"] == "appgen.erp-migration-plan.v1"
     assert migration_plan["batches"][0]["source"].startswith("legacy.")

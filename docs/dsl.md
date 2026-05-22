@@ -760,6 +760,10 @@ apps include:
   plans. Generated ERP packages also include domain coverage reports,
   implementation roadmaps, and ERP release gates so users can start from
   realistic, deployable ERP components rather than empty placeholder tables.
+  The generated `erp_template_workbench()` proves full module coverage, table
+  blueprints, starter stacks, domain coverage, composite DSL, starter manifests,
+  generation/migration plans, release gates, and route coverage before
+  `components.erp-templates` is marked implemented.
 - `project_management.py` and `appgen_project_management.html` with generated
   agile backlog, sprint, release, traceability, and Jira/GitHub/Azure
   Boards/GitLab issue-export contracts, plus a project-management release gate
