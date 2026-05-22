@@ -673,7 +673,10 @@ apps include:
   and workflow wizard coverage, field prompts, step validation, progression
   behavior, and required wizard artifacts before wizard readiness is claimed.
 - `events.py` and `appgen_events.html` with generated complex event
-  processing, alerting, retry, and dead-letter contracts.
+  processing, alerting, retry, and dead-letter contracts. The generated
+  `event_release_gate()` proves artifact coverage, table/workflow topic
+  catalogs, event envelope shape, processing actions, failure alerting,
+  retry/dead-letter behavior, and workflow-event handling.
 - `api_testing.py` and `appgen_api_testing.html` with generated automated API
   testing, pytest module rendering, smoke/load fixture handoff plans tied to
   generated seed scenarios, UI smoke-test plans, Playwright-style smoke module

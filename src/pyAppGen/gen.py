@@ -5073,7 +5073,10 @@ def write_events_template(output_dir):
         contracts for table changes and workflow transitions.
       </p>
     </div>
-    <a class="btn btn-default" href="{{ url_for('EventProcessingView.catalog_json') }}">Event Catalog JSON</a>
+    <div>
+      <a class="btn btn-default" href="{{ url_for('EventProcessingView.catalog_json') }}">Event Catalog JSON</a>
+      <a class="btn btn-default" href="{{ url_for('EventProcessingView.release_gate_json') }}">Release Gate JSON</a>
+    </div>
   </div>
   <div class="age-grid">
     <article class="age-card">
@@ -27066,6 +27069,70 @@ def cep_check(existing_paths=()):
     }}
 
 
+def event_release_gate(existing_paths=()):
+    """Return a release decision for generated complex-event processing."""
+    existing = set(existing_paths)
+    required = {{"app/events.py", "app/templates/appgen_events.html"}}
+    missing = tuple(sorted(required - existing))
+    topics = all_topics()
+    first_table_topic = next((topic for topic in topics if not topic.startswith("workflow.")), None)
+    first_workflow_topic = next((topic for topic in topics if topic.startswith("workflow.")), None)
+    sample_event = normalize_event(first_table_topic, {{"sample": True}}, actor="release-gate", tenant_id="tenant") if first_table_topic else {{}}
+    sample_plan = process_event(sample_event) if sample_event else {{}}
+    failed_topic = next((topic for topic in topics if topic.endswith(".failed")), first_table_topic)
+    failed_event = normalize_event(failed_topic, {{"sample": True}}, severity="error") if failed_topic else {{}}
+    failed_plan = process_event(failed_event) if failed_event else {{}}
+    workflow_event = normalize_event(first_workflow_topic, {{"transition": True}}, actor="release-gate") if first_workflow_topic else None
+    workflow_plan = process_event(workflow_event) if workflow_event else None
+    retry = retry_plan(sample_event, attempt=1) if sample_event else {{}}
+    dead_letter = dead_letter_event(failed_event, "release-gate failure", attempt=RETRY_POLICY["max_attempts"]) if failed_event else {{}}
+    checks = (
+        {{
+            "gate": "artifact_coverage",
+            "ok": not missing,
+            "evidence": {{"required": tuple(sorted(required)), "missing": missing}},
+        }},
+        {{
+            "gate": "topic_catalog",
+            "ok": bool(topics) and all("." in topic for topic in topics),
+            "evidence": {{"topics": topics, "tables": tuple(TABLE_EVENTS), "workflows": tuple(WORKFLOW_EVENTS)}},
+        }},
+        {{
+            "gate": "event_envelope",
+            "ok": bool(sample_event) and sample_event.get("actor") == "release-gate" and sample_event.get("tenant_id") == "tenant" and bool(sample_event.get("id")),
+            "evidence": sample_event,
+        }},
+        {{
+            "gate": "processing_actions",
+            "ok": sample_plan.get("audit") is True and sample_plan.get("notify") is True and sample_plan.get("realtime") is True,
+            "evidence": sample_plan,
+        }},
+        {{
+            "gate": "failure_alerting",
+            "ok": failed_plan.get("dead_letter") is True and failed_plan.get("alert", {{}}).get("severity") == "error",
+            "evidence": failed_plan,
+        }},
+        {{
+            "gate": "retry_dead_letter",
+            "ok": retry.get("retry") is True and retry.get("delay_seconds") == RETRY_POLICY["backoff_seconds"][0] and dead_letter.get("error") == "release-gate failure",
+            "evidence": {{"retry": retry, "dead_letter": dead_letter}},
+        }},
+        {{
+            "gate": "workflow_events",
+            "ok": first_workflow_topic is None or (workflow_plan and workflow_plan.get("audit") is True and workflow_plan.get("realtime") is True),
+            "evidence": {{"topic": first_workflow_topic, "plan": workflow_plan}},
+        }},
+    )
+    ok = all(check["ok"] for check in checks)
+    return {{
+        "format": "appgen.event-release-gate.v1",
+        "ok": ok,
+        "decision": "approved" if ok else "blocked",
+        "checks": checks,
+        "retry_policy": RETRY_POLICY,
+    }}
+
+
 class EventProcessingView(BaseView):
     route_base = "/events"
     default_view = "index"
@@ -27085,6 +27152,10 @@ class EventProcessingView(BaseView):
     @expose("/simulate/<path:topic>.json")
     def simulate_json(self, topic):
         return jsonify(process_event(normalize_event(topic, {{"source": "simulation"}})))
+
+    @expose("/release-gate.json")
+    def release_gate_json(self):
+        return jsonify(event_release_gate({{"app/events.py", "app/templates/appgen_events.html"}}))
 
 
 def register_events(appbuilder):
@@ -35957,9 +36028,11 @@ def validate_event_artifacts() -> None:
         fail("event-processing contract must expose CEP rules, retry, and dead-letter helpers")
     if "alert_payload" not in contract or "process_event" not in contract:
         fail("event-processing contract must expose alerting and processing helpers")
+    if "event_release_gate" not in contract or "appgen.event-release-gate.v1" not in contract or '@expose("/release-gate.json")' not in contract:
+        fail("event-processing contract must expose release readiness checks and route")
     template = (ROOT / "app" / "templates" / "appgen_events.html").read_text()
-    if "Event Processing" not in template or "Event Catalog JSON" not in template:
-        fail("event-processing template must expose generated event catalog")
+    if "Event Processing" not in template or "Event Catalog JSON" not in template or "Release Gate JSON" not in template:
+        fail("event-processing template must expose generated event catalog and release readiness")
 
 
 def validate_rpa_artifacts() -> None:
@@ -37855,6 +37928,9 @@ def test_generated_runtime_helpers():
     assert events.retry_plan(event)["retry"] is True
     assert events.dead_letter_event(event, "boom")["event"]["id"] == event["id"]
     assert events.cep_check({"app/events.py", "app/templates/appgen_events.html"})["ok"] is True
+    assert events.event_release_gate({"app/events.py", "app/templates/appgen_events.html"})["format"] == "appgen.event-release-gate.v1"
+    assert events.event_release_gate({"app/events.py", "app/templates/appgen_events.html"})["ok"] is True
+    assert events.event_release_gate({"app/events.py"})["ok"] is False
     first_rpa_task = rpa.rpa_task_catalog()[0]["id"]
     assert rpa.task_plan(first_rpa_task)["actions"]
     assert rpa.credential_readiness({})["ready"] is False

@@ -4320,6 +4320,19 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert events.retry_plan(table_event, attempt=1)["delay_seconds"] == 5
     assert events.dead_letter_event(table_event, "boom")["error"] == "boom"
     assert events.cep_check({"app/events.py", "app/templates/appgen_events.html"})["ok"] is True
+    event_gate = events.event_release_gate({"app/events.py", "app/templates/appgen_events.html"})
+    assert event_gate["format"] == "appgen.event-release-gate.v1"
+    assert event_gate["ok"] is True
+    assert {
+        "artifact_coverage",
+        "topic_catalog",
+        "event_envelope",
+        "processing_actions",
+        "failure_alerting",
+        "retry_dead_letter",
+        "workflow_events",
+    } <= {check["gate"] for check in event_gate["checks"]}
+    assert events.event_release_gate({"app/events.py"})["ok"] is False
     rpa_tasks = {task["id"]: task for task in rpa.rpa_task_catalog()}
     assert "book.create_record" in rpa_tasks
     book_task_plan = rpa.task_plan("book.create_record", {"title": "Dune"})
