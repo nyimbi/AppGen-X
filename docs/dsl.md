@@ -523,9 +523,10 @@ apps include:
   `ManyToMany` blocks. The contract also emits gap analysis and a reviewable
   adoption plan so JHipster remains an interoperability target while AppGen
   provides the broader platform: Python-native web/mobile/desktop starters,
-  visual builders, agentic systems, ERP templates, schema round trips,
-  operational workbenches, and runtime assurance evidence. The same contract
-  renders an AppGen DSL migration draft from the generated JDL shape and exposes
+  visual builders, tenant isolation and security governance, agentic systems,
+  ERP templates, schema round trips, operational workbenches, native release
+  gates, and runtime assurance evidence. The same contract renders an AppGen
+  DSL migration draft from the generated JDL shape and exposes
   a migration release gate for upgrading JHipster/JDL-shaped projects into the
   broader AppGen platform. Generated low-code feature contracts also expose a
   JHipster-superset certification gate combining overlap preservation,

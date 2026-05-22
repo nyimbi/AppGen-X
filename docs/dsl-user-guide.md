@@ -406,9 +406,10 @@ highly capable.
 Generated apps keep JHipster JDL interoperability while exposing a stricter
 low-code capability scorecard in `low_code_features.py`. The scorecard requires
 at least eleven AppGen-only gates: visual builders, schema import, native targets,
-agentic systems, natural-language evolution, ERP templates, runtime Studio
-tooling, runtime assurance, application composition, bidirectional JHipster
-migration, and the database IDE/workbench. Use
+tenant isolation/security governance, agentic systems, natural-language
+evolution, ERP templates, runtime Studio tooling, runtime assurance,
+application composition, bidirectional JHipster migration, and the database
+IDE/workbench. Use
 `/low-code-features/jhipster-superset.json` to check whether a generated app is
 still more capable than the JHipster baseline.
 Use `/low-code-features/jhipster-superset-certification.json` for the release

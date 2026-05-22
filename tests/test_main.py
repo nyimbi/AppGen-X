@@ -842,6 +842,9 @@ def test_generate_app_from_sqlite_schema_compiles(tmp_path) -> None:
     gap_analysis = jhipster.jhipster_gap_analysis()
     assert gap_analysis["position"] == "appgen-is-broader-than-jhipster"
     assert "visual-builders" in gap_analysis["appgen_only"]
+    assert "security-data-governance" in gap_analysis["appgen_only"]
+    native_target = next(target for target in jhipster.appgen_upgrade_targets() if target["key"] == "python-native-targets")
+    assert "native/appgen_native.py" in native_target["appgen_artifacts"]
     adoption_plan = jhipster.jhipster_adoption_plan({"jhipster/app.jdl", "jhipster/appgen_jhipster.py"})
     assert adoption_plan["format"] == "appgen.jhipster-adoption-plan.v1"
     assert adoption_plan["steps"][1]["side_effect"] == "external_code_generation"
@@ -2799,6 +2802,9 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert "agentic_systems" in {item["area"] for item in low_code_features.jhipster_competitive_report()["appgen_only_capabilities"]}
     assert "runtime_assurance" in {item["area"] for item in low_code_features.jhipster_competitive_report()["appgen_only_capabilities"]}
     assert "database_ide" in {item["area"] for item in low_code_features.jhipster_competitive_report()["appgen_only_capabilities"]}
+    assert "security_data_governance" in {
+        item["area"] for item in low_code_features.jhipster_competitive_report()["appgen_only_capabilities"]
+    }
     assert "jhipster_migration" in {
         item["area"] for item in low_code_features.jhipster_competitive_report()["appgen_only_capabilities"]
     }
