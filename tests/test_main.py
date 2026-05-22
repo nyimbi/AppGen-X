@@ -1064,6 +1064,7 @@ def test_generate_app_from_sqlite_schema_compiles(tmp_path) -> None:
     assert capabilities_by_key["components.lookups"]["status"] == "implemented"
     assert "components.text-quality" in {item["key"] for item in manifest["capabilities"]}
     assert "components.media" in {item["key"] for item in manifest["capabilities"]}
+    assert capabilities_by_key["components.media"]["status"] == "implemented"
     assert "ui.wizards" in {item["key"] for item in manifest["capabilities"]}
     assert capabilities_by_key["ui.wizards"]["status"] == "implemented"
     assert "ui.layout" in {item["key"] for item in manifest["capabilities"]}
@@ -3533,6 +3534,24 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert {"media_catalog", "validation_policy", "storage_safety", "preview_contracts", "artifact_coverage"} <= {
         gate["gate"] for gate in media_gate["gates"]
     }
+    assert "Workbench JSON" in (output_dir / "templates" / "appgen_media.html").read_text()
+    media_workbench = media.media_upload_workbench({"app/media.py", "app/templates/appgen_media.html"})
+    assert media_workbench["format"] == "appgen.media-workbench.v1"
+    assert media_workbench["ok"] is True
+    assert media_workbench["decision"] == "approved"
+    assert {
+        "artifact_coverage",
+        "catalog",
+        "validation_matrix",
+        "storage_safety",
+        "preview_contracts",
+        "release_gate",
+        "route_surface",
+    } == {check["id"] for check in media_workbench["checks"]}
+    assert "/media/workbench.json" in next(
+        check["evidence"]["routes"] for check in media_workbench["checks"] if check["id"] == "route_surface"
+    )
+    assert media.media_upload_workbench({"app/media.py"})["ok"] is False
     assert media.media_release_gate({"app/media.py"})["ok"] is False
     document_catalog = documents.document_catalog()
     assert any(item["id"] == "book.manuscript_file" and item["approval_required"] for item in document_catalog)

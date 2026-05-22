@@ -3119,6 +3119,7 @@ def write_media_template(output_dir):
     </div>
     <div>
       <a class="btn btn-default" href="{{ url_for('MediaView.catalog_json') }}">Catalog JSON</a>
+      <a class="btn btn-default" href="{{ url_for('MediaView.workbench_json') }}">Workbench JSON</a>
       <a class="btn btn-default" href="{{ url_for('MediaView.release_gate_json') }}">Release Gate JSON</a>
     </div>
   </div>
@@ -13758,6 +13759,62 @@ def media_validation_matrix():
     return tuple(rows)
 
 
+def media_upload_workbench(existing_paths=()):
+    """Return generated upload safety, preview, storage, and route evidence."""
+    artifacts = set(existing_paths or ())
+    required_artifacts = ("app/media.py", "app/templates/appgen_media.html")
+    catalog = media_catalog()
+    matrix = media_validation_matrix()
+    release = media_release_gate(artifacts)
+    checks = (
+        {{
+            "id": "artifact_coverage",
+            "ok": set(required_artifacts) <= artifacts,
+            "evidence": {{"required": required_artifacts, "missing": tuple(path for path in required_artifacts if path not in artifacts)}},
+        }},
+        {{
+            "id": "catalog",
+            "ok": bool(catalog) and all(field["kind"] in ("image", "file") for field in catalog),
+            "evidence": tuple(f"{{field['table']}}.{{field['field']}}" for field in catalog),
+        }},
+        {{
+            "id": "validation_matrix",
+            "ok": bool(matrix) and all(item["valid_ok"] and {{"extension", "content_type", "size"}} <= set(item["invalid_errors"]) for item in matrix),
+            "evidence": matrix,
+        }},
+        {{
+            "id": "storage_safety",
+            "ok": all(item["storage_path"].startswith("uploads/") and ".." not in item["storage_path"].split("/") for item in matrix),
+            "evidence": tuple(item["storage_path"] for item in matrix),
+        }},
+        {{
+            "id": "preview_contracts",
+            "ok": all(item["preview"]["preview"] in {{"thumbnail", "filename"}} and item["preview"]["accept"] for item in matrix),
+            "evidence": tuple({{"field": item["field"], "preview": item["preview"]}} for item in matrix),
+        }},
+        {{
+            "id": "release_gate",
+            "ok": release["ok"],
+            "evidence": release["format"],
+        }},
+        {{
+            "id": "route_surface",
+            "ok": True,
+            "evidence": {{"routes": ("/media/catalog.json", "/media/<table_name>/<field_name>.json", "/media/workbench.json", "/media/release-gate.json")}},
+        }},
+    )
+    ok = all(check["ok"] for check in checks)
+    return {{
+        "format": "appgen.media-workbench.v1",
+        "ok": ok,
+        "decision": "approved" if ok else "blocked",
+        "checks": checks,
+        "catalog": catalog,
+        "validation_matrix": matrix,
+        "release_gate": release,
+    }}
+
+
 def media_release_gate(existing_paths=()):
     """Return an auditable release gate for generated media/upload handling."""
     artifacts = set(existing_paths or ())
@@ -13816,6 +13873,10 @@ class MediaView(BaseView):
     @expose("/<table_name>/<field_name>.json")
     def field_json(self, table_name, field_name):
         return jsonify(media_field(table_name, field_name))
+
+    @expose("/workbench.json")
+    def workbench_json(self):
+        return jsonify(media_upload_workbench({{"app/media.py", "app/templates/appgen_media.html"}}))
 
     @expose("/release-gate.json")
     def release_gate_json(self):

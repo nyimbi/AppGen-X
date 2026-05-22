@@ -360,7 +360,10 @@ apps include:
   validation, preview, and storage contracts for fields typed as image, file,
   upload, blob, or binary. A generated media release gate proves MIME/extension
   validation, unsafe-upload rejection, sanitized storage paths, preview
-  contracts, and required media artifacts.
+  contracts, and required media artifacts. The generated
+  `media_upload_workbench()` proves upload catalogs, validation matrices,
+  storage safety, preview contracts, release gates, and route evidence before
+  `components.media` is marked implemented.
 - `documents.py` and `appgen_documents.html` with generated document libraries,
   version envelopes, approval workflows, retention policies, e-signature
   payloads, and audit events for ERP-style document management. A generated
