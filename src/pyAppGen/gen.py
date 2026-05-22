@@ -34571,6 +34571,53 @@ def frontend_quality_matrix():
     }}
 
 
+def frontend_framework_parity_matrix(existing_paths=()):
+    """Return parity evidence across generated SPA, hypermedia, and API-proxy targets."""
+    existing = set(existing_paths)
+    route_bindings = frontend_route_bindings()
+    routes_by_target = {{
+        target: tuple(row for row in route_bindings if row["target"] == target and row["selected"])
+        for target in SELECTED_FRONTENDS
+    }}
+    quality = frontend_quality_matrix()
+    quality_by_target = {{row["target"]: row for row in quality["rows"]}}
+    rows = []
+    for target in SELECTED_FRONTENDS:
+        plan = frontend_plan(target)
+        package_path = f'{{plan["path"]}}/package.json'
+        entry_path = f'{{plan["path"]}}/{{plan["entry"]}}'
+        missing = tuple(path for path in (package_path, entry_path) if existing and path not in existing)
+        route_endpoints = tuple(row["endpoint"] for row in routes_by_target[target])
+        rows.append({{
+            "target": target,
+            "kind": plan["kind"],
+            "package": package_path,
+            "entry": entry_path,
+            "missing": missing,
+            "dev": plan["dev"],
+            "build": plan["build"],
+            "route_count": len(route_endpoints),
+            "route_endpoints": route_endpoints,
+            "quality_checks": quality_by_target[target]["checks"],
+            "secret_free": frontend_environment_contract()["secret_free"],
+            "ok": (
+                not missing
+                and bool(plan["dev"])
+                and len(route_endpoints) == len(APP_CONTRACT["tables"])
+                and all(endpoint.startswith(APP_CONTRACT["api_base"]) for endpoint in route_endpoints)
+                and quality_by_target[target]["ok"]
+                and frontend_environment_contract()["secret_free"]
+            ),
+        }})
+    return {{
+        "format": "appgen.frontend-framework-parity-matrix.v1",
+        "ok": bool(rows) and all(row["ok"] for row in rows),
+        "targets": SELECTED_FRONTENDS,
+        "rows": tuple(rows),
+        "kinds": tuple(sorted({{row["kind"] for row in rows}})),
+    }}
+
+
 def frontend_release_gate(existing_paths):
     """Return release evidence for generated React/Vue/Angular/Svelte/HTMX/Express scaffolds."""
     scaffold = scaffold_check(existing_paths)
@@ -34591,6 +34638,33 @@ def frontend_release_gate(existing_paths):
         "ok": all(gate["ok"] for gate in gates),
         "gates": gates,
         "blocking_gaps": tuple(gate for gate in gates if not gate["ok"]),
+    }}
+
+
+def frontend_generation_experience_gate(existing_paths=()):
+    """Return aggregate readiness for the generated multi-framework front-end surface."""
+    release = frontend_release_gate(existing_paths)
+    parity = frontend_framework_parity_matrix(existing_paths)
+    selected = set(SELECTED_FRONTENDS)
+    required = {{"react", "vue", "angular", "svelte", "htmx", "express"}}
+    gates = (
+        {{"gate": "framework_coverage", "ok": required <= selected, "evidence": SELECTED_FRONTENDS}},
+        {{"gate": "release_gate", "ok": release["ok"], "evidence": release["blocking_gaps"]}},
+        {{"gate": "framework_parity", "ok": parity["ok"], "evidence": parity["rows"]}},
+        {{"gate": "rendering_modes", "ok": {{"spa", "hypermedia", "api-proxy"}} <= set(parity["kinds"]), "evidence": parity["kinds"]}},
+        {{"gate": "api_contract_reuse", "ok": bool(api_routes()) and all(len(row["route_endpoints"]) == len(api_routes()) for row in parity["rows"]), "evidence": api_routes()}},
+        {{"gate": "secret_policy", "ok": frontend_environment_contract()["secret_free"], "evidence": frontend_environment_contract()}},
+    )
+    ok = all(gate["ok"] for gate in gates)
+    return {{
+        "format": "appgen.frontend-generation-experience-gate.v1",
+        "ok": ok,
+        "decision": "approved" if ok else "blocked",
+        "targets": SELECTED_FRONTENDS,
+        "parity_matrix": parity,
+        "release_gate": release,
+        "gates": gates,
+        "blocking_gaps": tuple(gate["gate"] for gate in gates if not gate["ok"]),
     }}
 '''
 
@@ -37832,8 +37906,8 @@ def validate_frontend_artifacts() -> None:
     contract = (ROOT / "frontends" / "appgen_frontends.py").read_text()
     if '"react"' not in contract or '"express"' not in contract or '"svelte"' not in contract or '"htmx"' not in contract:
         fail("front-end contract must include React, Svelte, HTMX, and Express targets")
-    if "frontend_route_bindings" not in contract or "frontend_command_matrix" not in contract or "frontend_quality_matrix" not in contract or "frontend_release_gate" not in contract:
-        fail("front-end contract must expose route bindings, command matrix, quality matrix, and release gate")
+    if "frontend_route_bindings" not in contract or "frontend_command_matrix" not in contract or "frontend_quality_matrix" not in contract or "frontend_framework_parity_matrix" not in contract or "frontend_generation_experience_gate" not in contract or "frontend_release_gate" not in contract:
+        fail("front-end contract must expose route bindings, command matrix, quality matrix, parity matrix, experience gate, and release gate")
     react = (ROOT / "frontends" / "react" / "src" / "App.jsx").read_text()
     if "/api/v1" not in react:
         fail("React starter must include generated API routes")

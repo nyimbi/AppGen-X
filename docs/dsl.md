@@ -598,7 +598,9 @@ apps include:
 - `frontends/` with generated React, Vue, Angular, Svelte, HTMX, and Express
   starter contracts wired to the generated REST API routes, shared API
   environment variables, route-binding matrices, dev/build command matrices,
-  responsive/accessibility quality checks, and a front-end release gate.
+  responsive/accessibility quality checks, framework parity matrices for SPA,
+  hypermedia, and API-proxy targets, and a front-end generation experience
+  gate.
 - `sdks/` with generated Python, JavaScript, Java, and C# API client
   scaffolds derived from the same REST table contracts. A generated SDK release
   gate proves multi-language target coverage, scaffold artifacts, REST route

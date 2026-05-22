@@ -804,6 +804,17 @@ def test_generate_app_from_sqlite_schema_compiles(tmp_path) -> None:
     assert {"scaffold_artifacts", "route_bindings", "command_matrix", "quality_matrix", "environment_contract"} <= {
         gate["gate"] for gate in frontend_gate["gates"]
     }
+    frontend_parity = frontends.frontend_framework_parity_matrix(frontend_artifacts)
+    assert frontend_parity["format"] == "appgen.frontend-framework-parity-matrix.v1"
+    assert frontend_parity["ok"] is True
+    assert {"spa", "hypermedia", "api-proxy"} <= set(frontend_parity["kinds"])
+    frontend_experience = frontends.frontend_generation_experience_gate(frontend_artifacts)
+    assert frontend_experience["format"] == "appgen.frontend-generation-experience-gate.v1"
+    assert frontend_experience["ok"] is True
+    assert {"framework_coverage", "framework_parity", "rendering_modes", "api_contract_reuse"} <= {
+        gate["gate"] for gate in frontend_experience["gates"]
+    }
+    assert frontends.frontend_generation_experience_gate({"frontends/react/package.json"})["ok"] is False
     assert "/api/v1/book/" in (tmp_path / "frontends" / "react" / "src" / "App.jsx").read_text()
     assert "<template>" in (tmp_path / "frontends" / "vue" / "src" / "App.vue").read_text()
     assert "AppComponent" in (tmp_path / "frontends" / "angular" / "src" / "app.component.ts").read_text()
@@ -1000,6 +1011,7 @@ def test_generate_app_from_sqlite_schema_compiles(tmp_path) -> None:
     capabilities_by_key = {item["key"]: item for item in manifest["capabilities"]}
     assert capabilities_by_key["platform.targets"]["status"] == "implemented"
     assert capabilities_by_key["platform.native"]["status"] == "implemented"
+    assert capabilities_by_key["platform.frontends"]["status"] == "implemented"
     assert "platform.jhipster" in {item["key"] for item in manifest["capabilities"]}
     assert "platform.competitive-benchmark" in {item["key"] for item in manifest["capabilities"]}
     assert "platform.jhipster-superiority" in {item["key"] for item in manifest["capabilities"]}
