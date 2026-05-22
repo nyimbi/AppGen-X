@@ -5859,6 +5859,7 @@ def write_support_center_template(output_dir):
     <div>
       <a class="btn btn-default" href="{{ url_for('SupportCenterView.topics_json') }}">Topics JSON</a>
       <a class="btn btn-default" href="{{ url_for('SupportCenterView.tutorials_json') }}">Tutorials JSON</a>
+      <a class="btn btn-default" href="{{ url_for('SupportCenterView.release_gate_json') }}">Release Gate JSON</a>
     </div>
   </div>
   <div class="agsc-grid">
@@ -23494,6 +23495,75 @@ def support_center_check(existing_paths):
     }}
 
 
+def support_center_release_gate(existing_paths=()):
+    """Return a release decision for generated support and onboarding."""
+    existing = set(existing_paths)
+    required = ("app/support_center.py", "app/templates/appgen_support_center.html")
+    missing = tuple(path for path in required if path not in existing)
+    topics = support_topic_catalog()
+    tutorials = tutorial_catalog()
+    samples = sample_application_catalog()
+    builder_onboarding = onboarding_checklist("builder")
+    admin_onboarding = onboarding_checklist("admin")
+    end_user_onboarding = onboarding_checklist("end_user")
+    security_results = search_support("security")
+    import_results = search_support("import")
+    ticket = support_ticket_payload("security", user="ada", path="/identity/")
+    sample_dsl = samples[0]["dsl"] if samples else ""
+    checks = (
+        {{
+            "gate": "artifact_coverage",
+            "ok": not missing,
+            "evidence": {{"required": required, "missing": missing}},
+        }},
+        {{
+            "gate": "knowledge_base",
+            "ok": {{"getting-started", "data-import", "security", "troubleshooting"}} <= {{item["key"] for item in topics}},
+            "evidence": {{"topics": tuple(item["key"] for item in topics)}},
+        }},
+        {{
+            "gate": "tutorial_paths",
+            "ok": {{"first-app", "import-existing-data", "secure-release"}} <= {{item["key"] for item in tutorials}} and all(item["steps"] and item["artifacts"] for item in tutorials),
+            "evidence": {{"tutorials": tuple(item["key"] for item in tutorials)}},
+        }},
+        {{
+            "gate": "onboarding_roles",
+            "ok": (
+                {{"read-dsl", "inspect-model", "run-quality"}} <= {{item["key"] for item in builder_onboarding}}
+                and "security" in {{item["key"] for item in admin_onboarding}}
+                and "help" in {{item["key"] for item in end_user_onboarding}}
+            ),
+            "evidence": {{
+                "builder": tuple(item["key"] for item in builder_onboarding),
+                "admin": tuple(item["key"] for item in admin_onboarding),
+                "end_user": tuple(item["key"] for item in end_user_onboarding),
+            }},
+        }},
+        {{
+            "gate": "searchability",
+            "ok": bool(security_results) and bool(import_results),
+            "evidence": {{"security_hits": len(security_results), "import_hits": len(import_results)}},
+        }},
+        {{
+            "gate": "sample_dsl",
+            "ok": "table " in sample_dsl and "view " in sample_dsl and "required search" in sample_dsl,
+            "evidence": {{"sample": samples[0]["key"] if samples else None}},
+        }},
+        {{
+            "gate": "ticket_correlation",
+            "ok": ticket["id"].startswith("support-") and ticket["status"] == "open" and "security" in ticket["related"],
+            "evidence": {{"id": ticket["id"], "related": ticket["related"]}},
+        }},
+    )
+    ok = all(check["ok"] for check in checks)
+    return {{
+        "format": "appgen.support-center-release-gate.v1",
+        "ok": ok,
+        "decision": "approved" if ok else "blocked",
+        "checks": checks,
+    }}
+
+
 class SupportCenterView(BaseView):
     route_base = "/support-center"
     default_view = "index"
@@ -23522,6 +23592,10 @@ class SupportCenterView(BaseView):
     def ticket_json(self):
         payload = request.get_json(force=True) or {{}}
         return jsonify(support_ticket_payload(payload.get("subject", ""), payload.get("body", ""), payload.get("user"), payload.get("severity", "normal"), payload.get("path")))
+
+    @expose("/release-gate.json")
+    def release_gate_json(self):
+        return jsonify(support_center_release_gate({{"app/support_center.py", "app/templates/appgen_support_center.html"}}))
 
 
 def register_support_center(appbuilder):
@@ -35889,12 +35963,15 @@ def validate_support_center_artifacts() -> None:
         "search_support",
         "support_ticket_payload",
         "support_center_check",
+        "support_center_release_gate",
     )
     if not all(item in contract for item in required):
         fail("support center must expose topics, tutorials, sample apps, onboarding, search, and ticket helpers")
+    if "appgen.support-center-release-gate.v1" not in contract or '@expose("/release-gate.json")' not in contract:
+        fail("support center must expose release readiness checks and route")
     template = (ROOT / "app" / "templates" / "appgen_support_center.html").read_text()
-    if "Support Center" not in template or "Topics JSON" not in template or "Tutorials JSON" not in template:
-        fail("support center cockpit must expose support topics and tutorials")
+    if "Support Center" not in template or "Topics JSON" not in template or "Tutorials JSON" not in template or "Release Gate JSON" not in template:
+        fail("support center cockpit must expose support topics, tutorials, and release readiness")
 
 
 def validate_low_code_features_artifacts() -> None:
@@ -38278,6 +38355,13 @@ def test_generated_runtime_helpers():
     assert support_center.support_center_check(
         {"app/support_center.py", "app/templates/appgen_support_center.html"}
     )["ok"] is True
+    assert support_center.support_center_release_gate(
+        {"app/support_center.py", "app/templates/appgen_support_center.html"}
+    )["format"] == "appgen.support-center-release-gate.v1"
+    assert support_center.support_center_release_gate(
+        {"app/support_center.py", "app/templates/appgen_support_center.html"}
+    )["ok"] is True
+    assert support_center.support_center_release_gate({"app/support_center.py"})["ok"] is False
     assert low_code_features.readiness_report()["source"]["document"] == "docs/Lo-code features.md"
     assert low_code_features.readiness_report()["alignment_complete"] is True
     assert low_code_features.readiness_report()["roadmap_sources_ok"] is True

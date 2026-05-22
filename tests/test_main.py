@@ -2397,8 +2397,10 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert "View States JSON" in (output_dir / "templates" / "appgen_view_experience.html").read_text()
     assert "Release Gate JSON" in (output_dir / "templates" / "appgen_view_experience.html").read_text()
     assert "data-appgen-time-on-page" in (output_dir / "static" / "appgen-view-experience.js").read_text()
-    assert "Support Center" in (output_dir / "templates" / "appgen_support_center.html").read_text()
-    assert "Tutorials JSON" in (output_dir / "templates" / "appgen_support_center.html").read_text()
+    support_template = (output_dir / "templates" / "appgen_support_center.html").read_text()
+    assert "Support Center" in support_template
+    assert "Tutorials JSON" in support_template
+    assert "Release Gate JSON" in support_template
     assert "Low-Code Feature Matrix" in (output_dir / "templates" / "appgen_low_code_features.html").read_text()
     assert "Feature Matrix JSON" in (output_dir / "templates" / "appgen_low_code_features.html").read_text()
     assert "Roadmap Sources JSON" in (output_dir / "templates" / "appgen_low_code_features.html").read_text()
@@ -5269,6 +5271,21 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert support_center.support_center_check(
         {"app/support_center.py", "app/templates/appgen_support_center.html"}
     )["ok"] is True
+    support_gate = support_center.support_center_release_gate(
+        {"app/support_center.py", "app/templates/appgen_support_center.html"}
+    )
+    assert support_gate["format"] == "appgen.support-center-release-gate.v1"
+    assert support_gate["ok"] is True
+    assert {
+        "artifact_coverage",
+        "knowledge_base",
+        "tutorial_paths",
+        "onboarding_roles",
+        "searchability",
+        "sample_dsl",
+        "ticket_correlation",
+    } <= {check["gate"] for check in support_gate["checks"]}
+    assert support_center.support_center_release_gate({"app/support_center.py"})["ok"] is False
     first_prototype = prototyping.prototype_catalog()[0]["resource"]
     assert prototyping.sample_row(first_prototype)
     assert prototyping.screen_mockup(first_prototype, "create")["layout"] == "form"

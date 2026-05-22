@@ -480,6 +480,12 @@ Generated apps also include `view_experience.py` for view-level polish. Use
 verify each generated page has a stable shell, layout-preserving loading state,
 actionable empty state, recoverable error state, footer context, offline status,
 and chatbot/help affordance.
+
+Generated apps include `/support-center/` for built-in learning and help. Use
+`/support-center/release-gate.json` or `support_center_release_gate()` before
+shipping onboarding content to prove knowledge-base coverage, guided tutorials,
+builder/admin/end-user onboarding, support search, sample DSL starters, and
+support-ticket correlation.
 - accessibility audit plans for focus order, landmarks, touch targets, and
   WCAG-oriented checks.
 
