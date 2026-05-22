@@ -4276,6 +4276,7 @@ def write_integrations_template(output_dir):
     </div>
     <div>
       <a class="btn btn-default" href="{{ url_for('IntegrationView.catalog_json') }}">Catalog JSON</a>
+      <a class="btn btn-default" href="{{ url_for('IntegrationView.workbench_json') }}">Workbench JSON</a>
       <a class="btn btn-default" href="{{ url_for('IntegrationView.release_gate_json') }}">Release Gate JSON</a>
     </div>
   </div>
@@ -19316,6 +19317,68 @@ def integration_release_gate(existing_paths=(), environ=None):
     }
 
 
+def integration_workbench(existing_paths=(), environ=None):
+    """Return IDE-ready connector, contract, delivery, and release evidence."""
+    release_gate = integration_release_gate(existing_paths, environ=environ)
+    gate_by_name = {gate["gate"]: gate for gate in release_gate["gates"]}
+    webhook_env = {
+        "APPGEN_WEBHOOK_URL": "https://hooks.example.test/appgen",
+        "APPGEN_WEBHOOK_SECRET": "secret",
+    }
+    payment_env = {"STRIPE_API_KEY": "sk_test", "STRIPE_WEBHOOK_SECRET": "whsec"}
+    sms_env = {
+        "TWILIO_ACCOUNT_SID": "sid",
+        "TWILIO_AUTH_TOKEN": "token",
+        "TWILIO_FROM_NUMBER": "+10000000000",
+    }
+    email_env = {"SENDGRID_API_KEY": "key", "APPGEN_EMAIL_FROM": "noreply@example.test"}
+    entando_env = {
+        "ENTANDO_BASE_URL": "https://portal.example.test",
+        "ENTANDO_CLIENT_ID": "client",
+        "ENTANDO_CLIENT_SECRET": "secret",
+    }
+    invenio_env = {"INVENIO_BASE_URL": "https://repo.example.test", "INVENIO_ACCESS_TOKEN": "token"}
+    webhook_plan = signed_webhook_plan("Book.created", {"id": 1}, environ=webhook_env)
+    outbox = integration_outbox_entry(webhook_plan)
+    portal_plan = low_code_portal_plan(microfrontend="book-list", route="/books", environ=entando_env)
+    deposit_plan = repository_deposit_plan(record={"title": "Dune"}, files=("dune.pdf",), environ=invenio_env)
+    commercial = {
+        "payment": payment_request_plan("stripe", amount=42, currency="usd", reference="INV-1", environ=payment_env),
+        "sms": sms_request_plan("twilio_sms", to="+15551234567", body="Ready", environ=sms_env),
+        "email": email_request_plan("sendgrid_email", to="ada@example.test", subject="Ready", body="Report ready.", environ=email_env),
+    }
+    routes = (
+        "/integrations/",
+        "/integrations/catalog.json",
+        "/integrations/workbench.json",
+        "/integrations/release-gate.json",
+    )
+    checks = (
+        {"id": "connector_catalog", "ok": gate_by_name["connector_catalog"]["ok"], "evidence": integration_catalog(environ)},
+        {"id": "first_class_contracts", "ok": gate_by_name["first_class_contracts"]["ok"], "evidence": generated_integration_contracts()},
+        {"id": "reviewed_delivery", "ok": gate_by_name["reviewed_delivery"]["ok"], "evidence": {"webhook": webhook_plan, "outbox": outbox, "audit": delivery_audit_event(outbox, status="queued")}},
+        {"id": "commercial_channels", "ok": gate_by_name["commercial_channels"]["ok"], "evidence": commercial},
+        {"id": "portal_repository_contracts", "ok": gate_by_name["portal_repository_contracts"]["ok"], "evidence": {"entando": portal_plan, "invenio": deposit_plan}},
+        {"id": "artifact_coverage", "ok": gate_by_name["artifact_coverage"]["ok"], "evidence": gate_by_name["artifact_coverage"]},
+        {"id": "route_surface", "ok": {"/integrations/workbench.json", "/integrations/release-gate.json", "/integrations/catalog.json"} <= set(routes), "evidence": {"routes": routes}},
+        {"id": "release_gate", "ok": release_gate["ok"], "evidence": release_gate},
+    )
+    ok = all(check["ok"] for check in checks)
+    return {
+        "format": "appgen.integration-workbench.v1",
+        "ok": ok,
+        "decision": "approved" if ok else "blocked",
+        "checks": checks,
+        "catalog": integration_catalog(environ),
+        "contracts": generated_integration_contracts(),
+        "reviewed_delivery": {"webhook": webhook_plan, "outbox": outbox},
+        "commercial": commercial,
+        "portal_repository": {"entando": portal_plan, "invenio": deposit_plan},
+        "routes": routes,
+        "release_gate": release_gate,
+    }
+
+
 class IntegrationView(BaseView):
     route_base = "/integrations"
     default_view = "index"
@@ -19330,6 +19393,10 @@ class IntegrationView(BaseView):
     @expose("/catalog.json")
     def catalog_json(self):
         return jsonify(list(integration_catalog()))
+
+    @expose("/workbench.json")
+    def workbench_json(self):
+        return jsonify(integration_workbench({"app/integrations.py", "app/templates/appgen_integrations.html"}))
 
     @expose("/release-gate.json")
     def release_gate_json(self):
@@ -42553,6 +42620,9 @@ def validate_integration_artifacts() -> None:
         "appgen.integration.invenio.v1",
         "integration_check",
         "integration_release_gate",
+        "integration_workbench",
+        "appgen.integration-workbench.v1",
+        '@expose("/workbench.json")',
         "entando",
         "invenio",
         "stripe",
@@ -42571,6 +42641,7 @@ def validate_integration_artifacts() -> None:
         or "SMS gateways" not in template
         or "idempotency keys" not in template
         or "outbox envelopes" not in template
+        or "Workbench JSON" not in template
         or "Release Gate JSON" not in template
     ):
         fail("integration template must expose enterprise, delivery, portal, repository, payment, SMS gateway, and release-gate coverage")
@@ -44923,6 +44994,9 @@ def test_generated_runtime_helpers():
     assert integrations.delivery_audit_event(integrations.integration_outbox_entry(webhook_plan), status="queued")["event"] == "integration.delivery.queued"
     assert integrations.integration_check({"app/integrations.py", "app/templates/appgen_integrations.html"})["ok"] is True
     assert integrations.integration_release_gate({"app/integrations.py", "app/templates/appgen_integrations.html"})["ok"] is True
+    assert integrations.integration_workbench({"app/integrations.py", "app/templates/appgen_integrations.html"})["format"] == "appgen.integration-workbench.v1"
+    assert integrations.integration_workbench({"app/integrations.py", "app/templates/appgen_integrations.html"})["ok"] is True
+    assert integrations.integration_workbench({"app/integrations.py"})["ok"] is False
     assert integrations.integration_release_gate({"app/integrations.py"})["ok"] is False
     assert {provider["provider"] for provider in productivity.provider_catalog({})} == {"microsoft365", "google_workspace"}
     first_productivity_table = productivity.productivity_templates()[0]["table"]

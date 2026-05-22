@@ -1176,6 +1176,7 @@ def test_generate_app_from_sqlite_schema_compiles(tmp_path) -> None:
     assert capabilities_by_key["deployment.cloud"]["status"] == "implemented"
     assert capabilities_by_key["devops.cicd"]["status"] == "implemented"
     assert capabilities_by_key["scale.multi-tenancy"]["status"] == "implemented"
+    assert capabilities_by_key["integration.enterprise"]["status"] == "implemented"
     assert capabilities_by_key["devops.ide-integration"]["status"] == "implemented"
     assert capabilities_by_key["devops.project-management"]["status"] == "implemented"
     assert capabilities_by_key["ops.monitoring"]["status"] == "implemented"
@@ -2620,6 +2621,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert "Salesforce" in (output_dir / "templates" / "appgen_integrations.html").read_text()
     assert "Entando" in (output_dir / "templates" / "appgen_integrations.html").read_text()
     assert "Invenio" in (output_dir / "templates" / "appgen_integrations.html").read_text()
+    assert "Workbench JSON" in (output_dir / "templates" / "appgen_integrations.html").read_text()
     assert "Release Gate JSON" in (output_dir / "templates" / "appgen_integrations.html").read_text()
     assert "Productivity Integrations" in (output_dir / "templates" / "appgen_productivity.html").read_text()
     assert "Release Gate JSON" in (output_dir / "templates" / "appgen_productivity.html").read_text()
@@ -4955,6 +4957,26 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "portal_repository_contracts",
         "artifact_coverage",
     } <= {gate["gate"] for gate in integration_gate["gates"]}
+    integration_workbench = integrations.integration_workbench(
+        {"app/integrations.py", "app/templates/appgen_integrations.html"}
+    )
+    assert integration_workbench["format"] == "appgen.integration-workbench.v1"
+    assert integration_workbench["ok"] is True
+    assert integration_workbench["decision"] == "approved"
+    assert {
+        "connector_catalog",
+        "first_class_contracts",
+        "reviewed_delivery",
+        "commercial_channels",
+        "portal_repository_contracts",
+        "artifact_coverage",
+        "route_surface",
+        "release_gate",
+    } == {check["id"] for check in integration_workbench["checks"]}
+    assert "/integrations/workbench.json" in integration_workbench["routes"]
+    assert integration_workbench["portal_repository"]["entando"]["contract"] == "appgen.integration.entando.v1"
+    assert integration_workbench["portal_repository"]["invenio"]["contract"] == "appgen.integration.invenio.v1"
+    assert integrations.integration_workbench({"app/integrations.py"})["ok"] is False
     assert integrations.integration_release_gate({"app/integrations.py"})["ok"] is False
     productivity_providers = {item["provider"]: item for item in productivity.provider_catalog({})}
     assert set(productivity_providers) == {"microsoft365", "google_workspace"}

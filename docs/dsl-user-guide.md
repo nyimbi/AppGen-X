@@ -838,6 +838,10 @@ Use `/integrations/release-gate.json` to verify REST/webhook/enterprise
 connector coverage, first-class Entando and Invenio contracts, signed webhook
 delivery, payment/SMS/email request plans, outbox auditability, and required
 integration artifacts before custom connector code sends data.
+Use `/integrations/workbench.json` or `integration_workbench()` in the generated
+IDE to inspect connector catalog, first-class Entando/Invenio contracts, signed
+delivery, commercial channels, portal/repository handoffs, route coverage, and
+release readiness together.
 Use `node_red_release_gate()` before promoting generated automation. The gate
 proves Node-RED is present as the default local automation runtime, validates
 the generated flow export, confirms table and workflow webhook endpoints, and

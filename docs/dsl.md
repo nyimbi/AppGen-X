@@ -495,6 +495,11 @@ apps include:
   code. A generated integration release gate proves connector coverage,
   first-class Entando/Invenio contracts, signed delivery, commercial channels,
   portal/repository plans, and required integration artifacts.
+  `integration_workbench()` and `/integrations/workbench.json` aggregate the
+  connector catalog, first-class Entando/Invenio contracts, signed webhook
+  delivery, payment/SMS/email plans, portal/repository handoffs, route surface,
+  and release-gate evidence before `integration.enterprise` is marked
+  implemented.
 - `config.py` and `config_admin.py` with secure generated defaults, FAB API
   documentation settings, and a whitelisted setup screen for every generated
   `config.py` assignment. The setup contract includes grouped metadata,
