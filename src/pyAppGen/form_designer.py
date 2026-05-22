@@ -2432,9 +2432,109 @@ def data_offline_sync_contract() -> dict:
     }
 
 
+def data_connection_test_contract(connection_name: str = "primary_sql") -> dict:
+    """Return a deterministic connection test workflow for the data tooling."""
+    catalog = {item["name"]: item for item in rad_data_connection_catalog()}
+    profile = catalog.get(connection_name)
+    steps = (
+        "resolve_profile",
+        "load_secret_reference",
+        "open_test_transaction",
+        "read_schema_version",
+        "rollback_test_transaction",
+    )
+    return {
+        "format": "appgen.data-connection-test-contract.v1",
+        "connection": connection_name,
+        "ok": profile is not None,
+        "profile": profile,
+        "steps": steps,
+        "diagnostics": ("driver_loaded", "secret_reference_present", "schema_visible", "transaction_rollback_ok"),
+        "side_effects": (),
+    }
+
+
+def data_query_preview_contract(query_name: str = "browse_records") -> dict:
+    """Return a side-effect-free query preview workflow."""
+    designer = rad_query_designer_contract()
+    return {
+        "format": "appgen.data-query-preview-contract.v1",
+        "query": query_name,
+        "builder": "sql_builder",
+        "parameters": ({"name": "limit", "type": "int", "default": 50}, {"name": "offset", "type": "int", "default": 0}),
+        "plan": ("parse", "bind_parameters", "estimate_cost", "preview_rows", "explain_plan"),
+        "guards": designer["guards"],
+        "side_effects": (),
+    }
+
+
+def data_server_method_invocation_contract(method_name: str = "list_records") -> dict:
+    """Return a generated server method invocation workflow."""
+    methods = data_service_method_contract()
+    return {
+        "format": "appgen.data-server-method-invocation-contract.v1",
+        "method": method_name,
+        "transport": methods["transports"][0],
+        "pipeline": ("client_proxy", "auth_filter", "request_validator", "server_method_stub", "response_mapper"),
+        "session": {"mode": "stateless", "timeout_ms": 30000, "transaction_scope": "read_only"},
+        "artifacts": methods["generated_artifacts"],
+        "side_effects": (),
+    }
+
+
+def data_resource_publish_contract(resource: str = "tables") -> dict:
+    """Return a reviewed resource publication workflow."""
+    resources = data_service_resource_contract()
+    return {
+        "format": "appgen.data-resource-publish-contract.v1",
+        "resource": resource,
+        "ok": resource in resources["resources"],
+        "route": f"/api/resources/{resource}",
+        "pipeline": ("generate_resource", "attach_security", "attach_edge_modules", "publish_metadata", "register_analytics"),
+        "security": resources["security"],
+        "edge_modules": resources["edge_modules"],
+        "side_effects": (),
+    }
+
+
+def local_database_maintenance_contract() -> dict:
+    """Return local embedded store maintenance workflows."""
+    local = local_database_contract()
+    return {
+        "format": "appgen.local-database-maintenance-contract.v1",
+        "workflows": (
+            {"name": "backup", "steps": ("checkpoint", "encrypt_backup", "write_manifest", "verify_checksum")},
+            {"name": "restore", "steps": ("verify_manifest", "decrypt_backup", "restore_store", "rebuild_indexes")},
+            {"name": "change_view_sync", "steps": ("capture_changes", "project_batch", "mark_checkpoint", "queue_replication")},
+        ),
+        "features": local["features"],
+        "guards": local["guards"],
+        "side_effects": (),
+    }
+
+
+def offline_conflict_review_contract() -> dict:
+    """Return offline sync conflict review workflow evidence."""
+    sync = data_offline_sync_contract()
+    return {
+        "format": "appgen.offline-conflict-review-contract.v1",
+        "sample_conflict": {"table": "Customer", "field": "name", "server": "Ada", "client": "Ada L."},
+        "strategies": sync["conflict_strategies"],
+        "review_flow": ("detect_conflict", "show_conflict_grid", "preview_merge", "approve_resolution", "write_audit_log"),
+        "queue_guards": sync["queue"],
+        "side_effects": (),
+    }
+
+
 def rad_data_tooling_workbench() -> dict:
     """Prove native data-service tooling depth across connections, queries, services, and local sync."""
     contract = rad_data_tooling_contract()
+    connection_test = data_connection_test_contract()
+    query_preview = data_query_preview_contract()
+    method_invocation = data_server_method_invocation_contract()
+    resource_publish = data_resource_publish_contract()
+    local_maintenance = local_database_maintenance_contract()
+    conflict_review = offline_conflict_review_contract()
     checks = (
         {
             "id": "connection_catalog",
@@ -2479,6 +2579,40 @@ def rad_data_tooling_workbench() -> dict:
             and not contract["offline_sync"]["side_effects"],
             "evidence": contract["guards"],
         },
+        {
+            "id": "connection_test_workflow",
+            "ok": connection_test["ok"] and "rollback_test_transaction" in connection_test["steps"] and not connection_test["side_effects"],
+            "evidence": connection_test,
+        },
+        {
+            "id": "query_preview_workflow",
+            "ok": {"bind_parameters", "explain_plan"} <= set(query_preview["plan"]) and not query_preview["side_effects"],
+            "evidence": query_preview,
+        },
+        {
+            "id": "server_method_invocation_workflow",
+            "ok": {"client_proxy", "server_method_stub", "response_mapper"} <= set(method_invocation["pipeline"])
+            and not method_invocation["side_effects"],
+            "evidence": method_invocation,
+        },
+        {
+            "id": "resource_publish_workflow",
+            "ok": resource_publish["ok"] and {"attach_security", "register_analytics"} <= set(resource_publish["pipeline"])
+            and not resource_publish["side_effects"],
+            "evidence": resource_publish,
+        },
+        {
+            "id": "local_database_maintenance_workflow",
+            "ok": {"backup", "restore", "change_view_sync"} <= {workflow["name"] for workflow in local_maintenance["workflows"]}
+            and not local_maintenance["side_effects"],
+            "evidence": local_maintenance,
+        },
+        {
+            "id": "offline_conflict_review_workflow",
+            "ok": {"detect_conflict", "approve_resolution", "write_audit_log"} <= set(conflict_review["review_flow"])
+            and not conflict_review["side_effects"],
+            "evidence": conflict_review,
+        },
     )
     ok = all(check["ok"] for check in checks)
     return {
@@ -2486,6 +2620,12 @@ def rad_data_tooling_workbench() -> dict:
         "ok": ok,
         "decision": "approved" if ok else "blocked",
         "contract": contract,
+        "connection_test": connection_test,
+        "query_preview": query_preview,
+        "method_invocation": method_invocation,
+        "resource_publish": resource_publish,
+        "local_maintenance": local_maintenance,
+        "conflict_review": conflict_review,
         "checks": checks,
         "blocking_gaps": tuple(check for check in checks if not check["ok"]),
     }

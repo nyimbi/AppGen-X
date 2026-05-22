@@ -879,7 +879,21 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "local_database_tooling",
         "offline_sync_tooling",
         "side_effect_guards",
+        "connection_test_workflow",
+        "query_preview_workflow",
+        "server_method_invocation_workflow",
+        "resource_publish_workflow",
+        "local_database_maintenance_workflow",
+        "offline_conflict_review_workflow",
     } == {check["id"] for check in data_workbench["checks"]}
+    assert data_workbench["connection_test"]["steps"][-1] == "rollback_test_transaction"
+    assert "explain_plan" in data_workbench["query_preview"]["plan"]
+    assert "response_mapper" in data_workbench["method_invocation"]["pipeline"]
+    assert data_workbench["resource_publish"]["route"] == "/api/resources/tables"
+    assert {"backup", "restore", "change_view_sync"} <= {
+        workflow["name"] for workflow in data_workbench["local_maintenance"]["workflows"]
+    }
+    assert "write_audit_log" in data_workbench["conflict_review"]["review_flow"]
     mobile_workbench = mobile_native_api_workbench()
     assert mobile_workbench["format"] == "appgen.mobile-native-api-workbench.v1"
     assert mobile_workbench["ok"] is True
@@ -8906,9 +8920,29 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     generated_data_tooling = form_designer.rad_data_tooling_workbench()
     assert generated_data_tooling["format"] == "appgen.generated-rad-data-tooling-workbench.v1"
     assert generated_data_tooling["ok"] is True
-    assert {"connection_catalog", "query_designer", "offline_sync_tooling"} <= {
-        check["id"] for check in generated_data_tooling["checks"]
+    assert {
+        "connection_catalog",
+        "query_designer",
+        "server_method_tooling",
+        "resource_tooling",
+        "local_database_tooling",
+        "offline_sync_tooling",
+        "side_effect_guards",
+        "connection_test_workflow",
+        "query_preview_workflow",
+        "server_method_invocation_workflow",
+        "resource_publish_workflow",
+        "local_database_maintenance_workflow",
+        "offline_conflict_review_workflow",
+    } == {check["id"] for check in generated_data_tooling["checks"]}
+    assert generated_data_tooling["connection_test"]["steps"][-1] == "rollback_test_transaction"
+    assert "explain_plan" in generated_data_tooling["query_preview"]["plan"]
+    assert "response_mapper" in generated_data_tooling["method_invocation"]["pipeline"]
+    assert generated_data_tooling["resource_publish"]["route"] == "/api/resources/tables"
+    assert {"backup", "restore", "change_view_sync"} <= {
+        workflow["name"] for workflow in generated_data_tooling["local_maintenance"]["workflows"]
     }
+    assert "write_audit_log" in generated_data_tooling["conflict_review"]["review_flow"]
     generated_mobile = form_designer.mobile_native_api_workbench()
     assert generated_mobile["format"] == "appgen.generated-mobile-native-api-workbench.v1"
     assert generated_mobile["ok"] is True
