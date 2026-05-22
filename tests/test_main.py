@@ -2375,6 +2375,9 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert "SQL DDL" in studio_template
     assert "Workspace JSON" in studio_template
     assert "Version History" in studio_template
+    i18n_template = (output_dir / "templates" / "appgen_i18n.html").read_text()
+    assert "Localization" in i18n_template
+    assert "Release Gate JSON" in i18n_template
     assert "event-stream contracts" in (output_dir / "templates" / "appgen_realtime.html").read_text()
     assert "permissions per tab" in (output_dir / "templates" / "appgen_tabbed_views.html").read_text()
     assert "complex event processing" in (output_dir / "templates" / "appgen_events.html").read_text()
@@ -4215,6 +4218,21 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert i18n.i18n_check(
         {"babel.cfg", "app/i18n.py", "app/templates/appgen_i18n.html", "app/translations/en/LC_MESSAGES/messages.po"}
     )["ok"] is True
+    i18n_gate = i18n.i18n_release_gate(
+        {"babel.cfg", "app/i18n.py", "app/templates/appgen_i18n.html", "app/translations/en/LC_MESSAGES/messages.po"}
+    )
+    assert i18n_gate["format"] == "appgen.i18n-release-gate.v1"
+    assert i18n_gate["ok"] is True
+    assert {
+        "artifact_coverage",
+        "locale_catalog",
+        "default_catalog",
+        "fallback_translation",
+        "locale_negotiation",
+        "missing_key_report",
+        "runtime_payload",
+    } <= {check["gate"] for check in i18n_gate["checks"]}
+    assert i18n.i18n_release_gate({"app/i18n.py"})["ok"] is False
     features = assistant.prediction_features("Book", {"title": "Dune", "internal_code": "B-1"})
     assert features == {"title": "Dune"}
     text_catalog = text_quality.text_quality_catalog()

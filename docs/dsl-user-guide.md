@@ -205,6 +205,12 @@ Generated SDK contracts expose `sdk_release_gate()` in `sdks/appgen_sdks.py` to
 prove Python, JavaScript, Java, and C# client coverage, scaffold artifacts,
 REST route catalogs, client method names, and OpenAPI path alignment.
 
+Generated apps include `/localization/` for translation catalog review. Use
+`/localization/release-gate.json` or `i18n_release_gate()` before publishing a
+localized app to prove Babel artifacts, locale metadata, default catalog
+coverage, fallback translation behavior, locale negotiation, missing-key
+reports, and runtime payload shape.
+
 ## Adding Behavior
 
 Use `flow` for state transitions:

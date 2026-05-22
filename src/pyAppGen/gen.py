@@ -4678,6 +4678,7 @@ def write_i18n_template(output_dir):
     <div>
       <a class="btn btn-default" href="{{ url_for('LocalizationView.catalog_json') }}">Catalog JSON</a>
       <a class="btn btn-default" href="{{ url_for('LocalizationView.missing_json') }}">Missing Keys JSON</a>
+      <a class="btn btn-default" href="{{ url_for('LocalizationView.release_gate_json') }}">Release Gate JSON</a>
     </div>
   </div>
   <div class="agi18n-grid">
@@ -9426,6 +9427,74 @@ def i18n_check(existing_paths=()):
     }}
 
 
+def i18n_release_gate(existing_paths=()):
+    """Return deterministic release evidence for generated localization readiness."""
+    existing = set(existing_paths)
+    required = {{
+        "babel.cfg",
+        "app/i18n.py",
+        "app/templates/appgen_i18n.html",
+        "app/translations/en/LC_MESSAGES/messages.po",
+    }}
+    default_catalog = translation_catalog(DEFAULT_LOCALE)
+    missing_report = missing_translation_report()
+    sample_key = next(iter(default_catalog), "")
+    es_payload = translation_payload("es")
+    negotiated = negotiate_locale("fr-CA,fr;q=0.9,en;q=0.8")
+    checks = (
+        {{
+            "gate": "artifact_coverage",
+            "ok": required.issubset(existing),
+            "required": tuple(sorted(required)),
+            "missing": tuple(sorted(required - existing)),
+        }},
+        {{
+            "gate": "locale_catalog",
+            "ok": DEFAULT_LOCALE in LOCALES
+            and bool(LOCALES)
+            and all(locale.get("locale") and locale.get("label") and locale.get("direction") in {{"ltr", "rtl"}} for locale in LOCALES.values()),
+            "locales": tuple(LOCALES),
+        }},
+        {{
+            "gate": "default_catalog",
+            "ok": bool(default_catalog) and all(key == value for key, value in default_catalog.items()),
+            "translation_count": len(default_catalog),
+        }},
+        {{
+            "gate": "fallback_translation",
+            "ok": bool(sample_key)
+            and translate(sample_key, locale="es") == default_catalog[sample_key]
+            and translate("__missing__", locale="es") == "__missing__",
+            "fallback_locale": DEFAULT_LOCALE,
+        }},
+        {{
+            "gate": "locale_negotiation",
+            "ok": negotiated == "fr" and negotiate_locale("zz-ZZ") == DEFAULT_LOCALE,
+            "sample": negotiated,
+        }},
+        {{
+            "gate": "missing_key_report",
+            "ok": missing_report["format"] == "appgen.i18n-missing.v1"
+            and DEFAULT_LOCALE == missing_report["default_locale"]
+            and all(locale in missing_report["missing"] for locale in LOCALES if locale != DEFAULT_LOCALE),
+            "complete": missing_report["complete"],
+        }},
+        {{
+            "gate": "runtime_payload",
+            "ok": es_payload["format"] == "appgen.i18n-payload.v1"
+            and es_payload["fallback_locale"] == DEFAULT_LOCALE
+            and es_payload["direction"] in {{"ltr", "rtl"}}
+            and isinstance(es_payload["translations"], dict),
+            "locale": es_payload["locale"],
+        }},
+    )
+    return {{
+        "format": "appgen.i18n-release-gate.v1",
+        "ok": all(check["ok"] for check in checks),
+        "checks": checks,
+    }}
+
+
 class LocalizationView(BaseView):
     route_base = "/localization"
     default_view = "index"
@@ -9442,6 +9511,10 @@ class LocalizationView(BaseView):
     @expose("/missing.json")
     def missing_json(self):
         return jsonify(missing_translation_report())
+
+    @expose("/release-gate.json")
+    def release_gate_json(self):
+        return jsonify(i18n_release_gate({{"babel.cfg", "app/i18n.py", "app/templates/appgen_i18n.html", "app/translations/en/LC_MESSAGES/messages.po"}}))
 
 
 def register_i18n(appbuilder):
@@ -36385,12 +36458,15 @@ def validate_i18n_artifacts() -> None:
         "missing_translation_report",
         "translation_payload",
         "i18n_check",
+        "i18n_release_gate",
+        "appgen.i18n-release-gate.v1",
+        '@expose("/release-gate.json")',
     )
     if not all(item in contract for item in required):
-        fail("i18n contract must expose catalogs, translation, locale negotiation, missing-key reporting, and readiness checks")
+        fail("i18n contract must expose catalogs, translation, locale negotiation, missing-key reporting, readiness checks, and release evidence")
     template = (ROOT / "app" / "templates" / "appgen_i18n.html").read_text()
-    if "Localization" not in template or "Catalog JSON" not in template or "Missing Keys JSON" not in template:
-        fail("i18n template must expose localization catalog and missing-key reports")
+    if "Localization" not in template or "Catalog JSON" not in template or "Missing Keys JSON" not in template or "Release Gate JSON" not in template:
+        fail("i18n template must expose localization catalog, missing-key reports, and release evidence")
 
 
 def validate_assistant_artifacts() -> None:
@@ -38944,6 +39020,9 @@ def test_generated_runtime_helpers():
     assert i18n.negotiate_locale("fr-CA,fr;q=0.9,en;q=0.8") == "fr"
     assert i18n.missing_translation_report(("en", "es"))["format"] == "appgen.i18n-missing.v1"
     assert i18n.i18n_check({{"babel.cfg", "app/i18n.py", "app/templates/appgen_i18n.html", "app/translations/en/LC_MESSAGES/messages.po"}})["ok"] is True
+    assert i18n.i18n_release_gate({{"babel.cfg", "app/i18n.py", "app/templates/appgen_i18n.html", "app/translations/en/LC_MESSAGES/messages.po"}})["format"] == "appgen.i18n-release-gate.v1"
+    assert i18n.i18n_release_gate({{"babel.cfg", "app/i18n.py", "app/templates/appgen_i18n.html", "app/translations/en/LC_MESSAGES/messages.po"}})["ok"] is True
+    assert i18n.i18n_release_gate({{"app/i18n.py"}})["ok"] is False
     assert isinstance(agents.provider_catalog({}), tuple)
     assert agents.agent_plan(agents.agent_catalog()[0]["name"], "inspect")["ready"] in {True, False}
     assert agents.provider_connection_matrix({"OPENAI_API_KEY": "test"})["format"] == "appgen.agent-provider-matrix.v1"
