@@ -305,6 +305,11 @@ shipping generated in-app chatbots. The gate proves generated intents exist,
 field prompts cover required values, incomplete conversations block create
 payloads, answered conversations progress to readiness, and create payloads are
 scoped to the target table.
+Use `/voice/release-gate.json` or `voice_release_gate()` before publishing
+speech interfaces. The gate proves Alexa, Google Assistant, and Web Speech
+exports are present, utterances match generated intents, required slots block
+incomplete requests, ready responses render valid SSML, and platform model
+exports contain generated commands.
 
 ## Natural Language Evolution
 

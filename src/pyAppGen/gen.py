@@ -4552,7 +4552,10 @@ def write_voice_template(output_dir):
         export contracts.
       </p>
     </div>
-    <a class="btn btn-default" href="{{ url_for('VoiceAssistantView.catalog_json') }}">Voice JSON</a>
+    <div>
+      <a class="btn btn-default" href="{{ url_for('VoiceAssistantView.catalog_json') }}">Voice JSON</a>
+      <a class="btn btn-default" href="{{ url_for('VoiceAssistantView.release_gate_json') }}">Release Gate JSON</a>
+    </div>
   </div>
   <div class="agv-grid">
     {% for provider in providers %}
@@ -19666,6 +19669,67 @@ def voice_check(existing_paths=()):
     }}
 
 
+def voice_release_gate(existing_paths=()):
+    """Return a release decision for generated voice assistants."""
+    existing = set(existing_paths)
+    required = {{"app/voice.py", "app/templates/appgen_voice.html"}}
+    missing = tuple(sorted(required - existing))
+    providers = voice_provider_catalog()
+    intents = voice_intent_catalog()
+    first_intent = intents[0]["intent"] if intents else None
+    phrases = utterance_training_phrases(first_intent) if first_intent else ()
+    slots = slot_schema(first_intent) if first_intent else ()
+    empty_plan = slot_fill_plan(first_intent, {{}}) if first_intent else {{}}
+    required_values = {{
+        slot["name"]: f"sample {{slot['name']}}"
+        for slot in slots
+        if slot["required"]
+    }}
+    ready_plan = slot_fill_plan(first_intent, required_values) if first_intent else {{}}
+    response = voice_response(first_intent, required_values) if first_intent else {{}}
+    alexa = alexa_interaction_model()
+    google = google_actions_model()
+    checks = (
+        {{
+            "gate": "artifact_coverage",
+            "ok": not missing,
+            "evidence": {{"required": tuple(sorted(required)), "missing": missing}},
+        }},
+        {{
+            "gate": "provider_exports",
+            "ok": {{"alexa", "google_assistant", "web_speech"}} <= {{provider["provider"] for provider in providers}},
+            "evidence": {{"providers": providers}},
+        }},
+        {{
+            "gate": "utterance_training",
+            "ok": bool(first_intent) and bool(phrases) and match_utterance(phrases[0])["matched"] is True,
+            "evidence": {{"intent": first_intent, "phrases": phrases}},
+        }},
+        {{
+            "gate": "slot_filling",
+            "ok": bool(first_intent) and tuple(empty_plan.get("missing_required_slots", ())) == tuple(slot["name"] for slot in slots if slot["required"]) and ready_plan.get("ready") is True,
+            "evidence": {{"empty": empty_plan, "ready": ready_plan}},
+        }},
+        {{
+            "gate": "ssml_response",
+            "ok": response.get("ssml", "").startswith("<speak>") and response.get("ready") is True,
+            "evidence": response,
+        }},
+        {{
+            "gate": "platform_models",
+            "ok": bool(alexa.get("interactionModel", {{}}).get("languageModel", {{}}).get("intents")) and bool(google.get("actions")),
+            "evidence": {{"alexa_intents": len(alexa.get("interactionModel", {{}}).get("languageModel", {{}}).get("intents", ())), "google_actions": len(google.get("actions", ())) }},
+        }},
+    )
+    ok = all(check["ok"] for check in checks)
+    return {{
+        "format": "appgen.voice-release-gate.v1",
+        "ok": ok,
+        "decision": "approved" if ok else "blocked",
+        "checks": checks,
+    }}
+
+
 class VoiceAssistantView(BaseView):
     route_base = "/voice"
     default_view = "index"
@@ -19681,6 +19745,10 @@ class VoiceAssistantView(BaseView):
     @expose("/catalog.json")
     def catalog_json(self):
         return jsonify({{"providers": list(voice_provider_catalog()), "intents": list(voice_intent_catalog())}})
+
+    @expose("/release-gate.json")
+    def release_gate_json(self):
+        return jsonify(voice_release_gate({{"app/voice.py", "app/templates/appgen_voice.html"}}))
 
 
 def register_voice(appbuilder):
@@ -36418,12 +36486,15 @@ def validate_voice_artifacts() -> None:
         "alexa_interaction_model",
         "google_actions_model",
         "voice_check",
+        "voice_release_gate",
     )
     if not all(item in contract for item in required):
         fail("voice assistant contract must expose speech prompts, slots, SSML, and provider exports")
+    if "appgen.voice-release-gate.v1" not in contract or '@expose("/release-gate.json")' not in contract:
+        fail("voice assistant contract must expose release readiness checks and route")
     template = (ROOT / "app" / "templates" / "appgen_voice.html").read_text()
-    if "Voice Assistant" not in template or "Voice JSON" not in template:
-        fail("voice assistant cockpit must expose generated voice catalog")
+    if "Voice Assistant" not in template or "Voice JSON" not in template or "Release Gate JSON" not in template:
+        fail("voice assistant cockpit must expose generated voice catalog and release readiness")
 
 
 def validate_report_artifacts() -> None:
@@ -37931,6 +38002,9 @@ def test_generated_runtime_helpers():
     assert voice.alexa_interaction_model()["interactionModel"]["languageModel"]["intents"]
     assert voice.google_actions_model()["actions"]
     assert voice.voice_check({"app/voice.py", "app/templates/appgen_voice.html"})["ok"] is True
+    assert voice.voice_release_gate({"app/voice.py", "app/templates/appgen_voice.html"})["format"] == "appgen.voice-release-gate.v1"
+    assert voice.voice_release_gate({"app/voice.py", "app/templates/appgen_voice.html"})["ok"] is True
+    assert voice.voice_release_gate({"app/voice.py"})["ok"] is False
     assert i18n.translate("Book", locale="en") == "Book"
     assert i18n.negotiate_locale("fr-CA,fr;q=0.9,en;q=0.8") == "fr"
     assert i18n.missing_translation_report(("en", "es"))["format"] == "appgen.i18n-missing.v1"

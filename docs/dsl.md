@@ -459,7 +459,10 @@ apps include:
   conversation progression, and create-payload readiness.
 - `voice.py` and `appgen_voice.html` with generated speech prompts, utterance
   training phrases, slot-filling plans, SSML responses, and Alexa, Google
-  Assistant, and Web Speech export contracts.
+  Assistant, and Web Speech export contracts. The generated
+  `voice_release_gate()` proves provider exports, utterance matching,
+  slot-filling readiness, SSML responses, platform model exports, and required
+  voice cockpit artifacts.
 - `agents.py` and `appgen_agents.html` with generated agent plans, local and
   API-key LLM provider readiness checks, provider connection matrices, agent
   tool policies, execution matrices, and agentic release gates.

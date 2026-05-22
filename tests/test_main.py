@@ -4126,6 +4126,18 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert voice.alexa_interaction_model()["interactionModel"]["languageModel"]["intents"]
     assert voice.google_actions_model()["actions"]
     assert voice.voice_check({"app/voice.py", "app/templates/appgen_voice.html"})["ok"] is True
+    voice_gate = voice.voice_release_gate({"app/voice.py", "app/templates/appgen_voice.html"})
+    assert voice_gate["format"] == "appgen.voice-release-gate.v1"
+    assert voice_gate["ok"] is True
+    assert {
+        "artifact_coverage",
+        "provider_exports",
+        "utterance_training",
+        "slot_filling",
+        "ssml_response",
+        "platform_models",
+    } <= {check["gate"] for check in voice_gate["checks"]}
+    assert voice.voice_release_gate({"app/voice.py"})["ok"] is False
     assert i18n.translate("Book", locale="en") == "Book"
     assert i18n.translate("Book", locale="es") == "Book"
     assert i18n.negotiate_locale("fr-CA,fr;q=0.9,en;q=0.8") == "fr"
