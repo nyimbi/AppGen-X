@@ -813,6 +813,33 @@ def test_generate_app_from_sqlite_schema_compiles(tmp_path) -> None:
         all_artifacts,
     )["ok"] is True
     assert https.public_base_url({"APPGEN_DOMAIN": "example.test"}) == "https://example.test"
+    assert https.caddy_proxy_contract()["headers"][0] == "Strict-Transport-Security"
+    https_gate = https.https_release_gate(
+        {"APPGEN_DOMAIN": "example.test", "APPGEN_TLS_EMAIL": "admin@example.test"},
+        {"deploy/Caddyfile", "docker-compose.yml", "deploy/appgen_https.py"},
+    )
+    assert https_gate["format"] == "appgen.https-release-gate.v1"
+    assert https_gate["ok"] is True
+    assert {"artifact_coverage", "public_tls_environment", "localhost_fallback", "caddy_contract"} <= {
+        gate["gate"] for gate in https_gate["gates"]
+    }
+    https_workbench = https.https_workbench(
+        {"APPGEN_DOMAIN": "example.test", "APPGEN_TLS_EMAIL": "admin@example.test"},
+        {"deploy/Caddyfile", "docker-compose.yml", "deploy/appgen_https.py"},
+    )
+    assert https_workbench["format"] == "appgen.https-workbench.v1"
+    assert https_workbench["ok"] is True
+    assert https_workbench["decision"] == "approved"
+    assert {
+        "artifact_coverage",
+        "public_tls_environment",
+        "localhost_fallback",
+        "proxy_upstream",
+        "tls_ports",
+        "caddy_contract",
+        "release_gate",
+    } == {check["id"] for check in https_workbench["checks"]}
+    assert https.https_workbench({"APPGEN_DOMAIN": "example.test"}, {"deploy/Caddyfile"})["ok"] is False
     frontends = _load_module(tmp_path / "frontends" / "appgen_frontends.py", "generated_frontends")
     assert set(frontends.frontend_targets()) == {"react", "vue", "angular", "svelte", "htmx", "express"}
     assert frontends.frontend_plan("react")["entry"] == "src/App.jsx"
@@ -1098,6 +1125,7 @@ def test_generate_app_from_sqlite_schema_compiles(tmp_path) -> None:
     assert capabilities_by_key["platform.native"]["status"] == "implemented"
     assert capabilities_by_key["security.rbac"]["status"] == "implemented"
     assert capabilities_by_key["security.session"]["status"] == "implemented"
+    assert capabilities_by_key["security.https"]["status"] == "implemented"
     assert capabilities_by_key["platform.frontends"]["status"] == "implemented"
     assert capabilities_by_key["ui.view-composition"]["status"] == "implemented"
     assert capabilities_by_key["ui.tabbed-views"]["status"] == "implemented"

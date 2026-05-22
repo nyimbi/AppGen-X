@@ -37880,11 +37880,85 @@ def https_readiness(environ, existing_paths):
     }}
 
 
+def caddy_proxy_contract():
+    """Return generated Caddy reverse-proxy expectations."""
+    return {{
+        "format": "appgen.caddy-proxy-contract.v1",
+        "proxy": HTTPS["proxy"],
+        "upstream": HTTPS["upstream"],
+        "ports": HTTPS["ports"],
+        "headers": (
+            "Strict-Transport-Security",
+            "X-Content-Type-Options",
+            "X-Frame-Options",
+            "Referrer-Policy",
+        ),
+        "compression": ("zstd", "gzip"),
+        "auto_https": True,
+    }}
+
+
 def public_base_url(environ):
     """Return the generated public HTTPS base URL."""
     domain = environ.get(HTTPS["domain_env"], "localhost")
     scheme = "http" if domain in {{"localhost", "127.0.0.1"}} else "https"
     return f"{{scheme}}://{{domain}}"
+
+
+def https_release_gate(environ=None, existing_paths=()):
+    """Return release evidence for generated automatic HTTPS."""
+    environ = dict(environ or {{}})
+    existing = set(existing_paths)
+    required = tuple(dict.fromkeys(HTTPS["artifacts"] + ("deploy/appgen_https.py",)))
+    missing = tuple(path for path in required if path not in existing)
+    public_env = tls_environment_status(environ)
+    local_env = tls_environment_status({{HTTPS["domain_env"]: "localhost"}})
+    readiness = https_readiness(environ, existing)
+    caddy = caddy_proxy_contract()
+    public_url = public_base_url(environ)
+    local_url = public_base_url({{HTTPS["domain_env"]: "localhost"}})
+    gates = (
+        {{"gate": "artifact_coverage", "ok": not missing, "missing": missing, "required": required}},
+        {{"gate": "public_tls_environment", "ok": public_env["configured"] and public_url.startswith("https://"), "environment": public_env, "url": public_url}},
+        {{"gate": "localhost_fallback", "ok": local_env["configured"] and local_url == "http://localhost", "environment": local_env, "url": local_url}},
+        {{"gate": "proxy_upstream", "ok": HTTPS["proxy"] == "caddy" and HTTPS["upstream"] == "web:8080", "proxy": HTTPS["proxy"], "upstream": HTTPS["upstream"]}},
+        {{"gate": "tls_ports", "ok": set(HTTPS["ports"]) == {{80, 443}}, "ports": HTTPS["ports"]}},
+        {{"gate": "caddy_contract", "ok": caddy["auto_https"] is True and "Strict-Transport-Security" in caddy["headers"], "contract": caddy}},
+        {{"gate": "readiness", "ok": readiness["ok"], "readiness": readiness}},
+    )
+    ok = all(gate["ok"] for gate in gates)
+    return {{
+        "format": "appgen.https-release-gate.v1",
+        "ok": ok,
+        "decision": "approved" if ok else "blocked",
+        "gates": gates,
+        "base_url": public_url,
+    }}
+
+
+def https_workbench(environ=None, existing_paths=()):
+    """Return IDE-ready automatic HTTPS evidence."""
+    release_gate = https_release_gate(environ, existing_paths)
+    caddy = caddy_proxy_contract()
+    checks = (
+        {{"id": "artifact_coverage", "ok": release_gate["gates"][0]["ok"], "evidence": release_gate["gates"][0]}},
+        {{"id": "public_tls_environment", "ok": next(gate for gate in release_gate["gates"] if gate["gate"] == "public_tls_environment")["ok"], "evidence": next(gate for gate in release_gate["gates"] if gate["gate"] == "public_tls_environment")}},
+        {{"id": "localhost_fallback", "ok": next(gate for gate in release_gate["gates"] if gate["gate"] == "localhost_fallback")["ok"], "evidence": next(gate for gate in release_gate["gates"] if gate["gate"] == "localhost_fallback")}},
+        {{"id": "proxy_upstream", "ok": next(gate for gate in release_gate["gates"] if gate["gate"] == "proxy_upstream")["ok"], "evidence": next(gate for gate in release_gate["gates"] if gate["gate"] == "proxy_upstream")}},
+        {{"id": "tls_ports", "ok": next(gate for gate in release_gate["gates"] if gate["gate"] == "tls_ports")["ok"], "evidence": next(gate for gate in release_gate["gates"] if gate["gate"] == "tls_ports")}},
+        {{"id": "caddy_contract", "ok": caddy["auto_https"] is True and "Strict-Transport-Security" in caddy["headers"], "evidence": caddy}},
+        {{"id": "release_gate", "ok": release_gate["ok"], "evidence": release_gate}},
+    )
+    ok = all(check["ok"] for check in checks)
+    return {{
+        "format": "appgen.https-workbench.v1",
+        "ok": ok,
+        "decision": "approved" if ok else "blocked",
+        "checks": checks,
+        "https": HTTPS,
+        "caddy": caddy,
+        "release_gate": release_gate,
+    }}
 '''
 
 
@@ -44817,6 +44891,14 @@ def test_generated_runtime_helpers():
     assert https.https_readiness(
         {"APPGEN_DOMAIN": "example.test", "APPGEN_TLS_EMAIL": "admin@example.test"},
         {"deploy/Caddyfile", "docker-compose.yml"},
+    )["ok"] is True
+    assert https.https_release_gate(
+        {"APPGEN_DOMAIN": "example.test", "APPGEN_TLS_EMAIL": "admin@example.test"},
+        {"deploy/Caddyfile", "docker-compose.yml", "deploy/appgen_https.py"},
+    )["format"] == "appgen.https-release-gate.v1"
+    assert https.https_workbench(
+        {"APPGEN_DOMAIN": "example.test", "APPGEN_TLS_EMAIL": "admin@example.test"},
+        {"deploy/Caddyfile", "docker-compose.yml", "deploy/appgen_https.py"},
     )["ok"] is True
     assert jhipster.export_check({"jhipster/app.jdl", "jhipster/appgen_jhipster.py"})["ok"] is True
     assert jhipster.jhipster_import_command() == ("jhipster", "jdl", "jhipster/app.jdl")

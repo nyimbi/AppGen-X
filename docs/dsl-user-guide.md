@@ -504,6 +504,9 @@ Generated deployment contracts live in `deploy/appgen_deploy.py`. Use
 Kubernetes, on-prem, AWS, GCP, Azure, PostgreSQL/MySQL, Terraform, secret
 injection, smoke checks, scaling, rollback, and promotion readiness from the
 generated artifacts.
+Use `https_workbench()` in `deploy/appgen_https.py` to inspect automatic HTTPS
+artifact coverage, public TLS environment, localhost fallback, Caddy upstream,
+ports, HSTS/header contract, and release-gate evidence.
 Use `/lifecycle/release-gate.json` to verify environment coverage, production
 configuration, release controls, promotion/domain readiness, maintenance/update
 plans, feedback, user-testing sessions, issue reports, and lifecycle artifacts

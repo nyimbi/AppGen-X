@@ -973,7 +973,11 @@ apps include:
   Docker, Compose, HTTPS, Kubernetes, on-prem, AWS, GCP, Azure, PostgreSQL, and
   MySQL readiness evidence.
 - `deploy/Caddyfile` and `deploy/appgen_https.py` with generated automatic
-  HTTPS reverse proxy configuration and TLS readiness checks.
+  HTTPS reverse proxy configuration and TLS readiness checks. The generated
+  `https_release_gate()` and `https_workbench()` prove Caddy artifact coverage,
+  public TLS environment, localhost fallback, upstream and TLS ports, HSTS/header
+  expectations, and release readiness before `security.https` is marked
+  implemented.
 - `appgen.json`, a manifest containing tables, relations, views, workflows,
   roles, and low-code platform capability targets.
 - The generated designer exposes graph nodes/edges plus table, field, and
