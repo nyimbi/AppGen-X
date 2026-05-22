@@ -409,7 +409,11 @@ appgen --ops-release-audit
 The ops audit proves Docker Compose, Kubernetes, autoscaling, Terraform for AWS,
 GCP, and Azure, automatic HTTPS, Elasticsearch and Whoosh search plans, default
 Node-RED flows, and database operations contracts for Patroni, ZomboDB, and
-PostGraphile.
+PostGraphile. It also generates a temporary app, compiles generated deployment,
+HTTPS, search, database-ops, and Node-RED modules, and exercises generated
+deployment runbooks, autoscaling, TLS readiness, search provider mappings,
+database HA/add-on plans, migration cutover, NoSQL projections, Node-RED flow
+validation, workbench, and release-gate contracts.
 
 Audit package-level enterprise integration readiness before claiming generated
 apps can connect to external APIs, webhooks, portals, repositories, payments,

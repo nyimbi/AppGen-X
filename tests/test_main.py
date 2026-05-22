@@ -105,6 +105,7 @@ from pyAppGen.nl import proposals_to_dsl
 from pyAppGen.ops import database_ops_contract
 from pyAppGen.ops import deployment_contract
 from pyAppGen.ops import node_red_contract
+from pyAppGen.ops import ops_generation_smoke_audit
 from pyAppGen.ops import ops_release_audit
 from pyAppGen.ops import search_contract
 from pyAppGen.roadmap import generated_app_excellence_audit
@@ -1271,7 +1272,28 @@ def test_package_ops_audit_covers_deployment_search_and_node_red(
         "search_providers",
         "node_red_default",
         "database_ops",
+        "generation_smoke",
     } == {gate["id"] for gate in audit["gates"]}
+    assert audit["generation_smoke"]["ok"] is True
+
+    smoke = ops_generation_smoke_audit()
+    assert smoke["format"] == "appgen.ops-generation-smoke-audit.v1"
+    assert smoke["ok"] is True
+    assert {
+        "deploy/appgen_deploy.py",
+        "deploy/appgen_https.py",
+        "app/search.py",
+        "app/database_ops.py",
+        "automation/appgen_node_red.py",
+        "automation/node-red/flows.json",
+    } <= set(smoke["required_artifacts"])
+    assert {
+        "deploy/appgen_deploy.py",
+        "deploy/appgen_https.py",
+        "app/search.py",
+        "app/database_ops.py",
+        "automation/appgen_node_red.py",
+    } <= set(smoke["compiled_artifacts"])
 
     missing = ops_release_audit(existing_paths={"Dockerfile"})
     assert missing["ok"] is False

@@ -196,7 +196,12 @@ rendering, email payloads, dashboard chart rendering, workbench, and release
 gates.
 Run `appgen --ops-release-audit` to prove Docker, Kubernetes, Terraform cloud
 targets, automatic HTTPS, Elasticsearch, Whoosh, default Node-RED, and database
-operations contracts are covered before release.
+operations contracts are covered before release. The audit also generates a
+temporary app, compiles generated deployment, HTTPS, search, database-ops, and
+Node-RED modules, and exercises generated deployment runbooks, autoscaling, TLS
+readiness, search provider mappings, database HA/add-on plans, migration
+cutover, NoSQL projections, Node-RED flow validation, workbench, and
+release-gate contracts.
 Run `appgen --integration-release-audit` to prove REST/webhook, Salesforce,
 SAP, Entando, Invenio, Stripe, M-Pesa, Twilio SMS, and SendGrid email
 connectors, signed delivery, idempotency, and portal/repository contracts are
