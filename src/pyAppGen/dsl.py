@@ -122,7 +122,7 @@ def lint_dsl(text: str, *, source_name: str | None = None) -> dict:
         if not schema.app_name:
             warnings.append("Add an app declaration to name generated applications and targets.")
         if not schema.views:
-            suggestions.append("Add view blocks to design forms and Delphi-style component layouts.")
+            suggestions.append("Add view blocks to design forms and RAD-style component layouts.")
         if not schema.llm_providers and not schema.agents:
             suggestions.append("Add llm and agent blocks when the app needs agentic behavior.")
 
@@ -582,7 +582,7 @@ def dsl_authoring_score(text: str, *, source_name: str | None = None) -> dict:
             "check": "form_design",
             "ok": summary["views"] > 0,
             "weight": 10,
-            "next_action": "Add a view block or Delphi-style component placement.",
+            "next_action": "Add a view block or RAD-style component placement.",
         },
         {
             "check": "target_selection",
@@ -998,7 +998,7 @@ def _diagnostic_code(message: str) -> str:
         return "modifier_alias"
     if "canonical DSL words" in message:
         return "authoring_alias"
-    if "Delphi-style component" in message:
+    if "RAD-style component" in message:
         return "missing_view_blocks"
     if "agentic behavior" in message:
         return "missing_agentic_blocks"
@@ -1259,7 +1259,7 @@ def _dsl_snippets() -> tuple[dict, ...]:
             "detail": "Generated form/view block.",
         },
         {
-            "label": "Delphi Component",
+            "label": "RAD Component",
             "insert": "@ name TextBox 0 0 6 1",
             "kind": "snippet",
             "detail": "Drop a component at x y width height.",

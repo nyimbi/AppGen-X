@@ -164,10 +164,10 @@ Studio-facing Python modules, and exercises the generated workspace, DSL editor,
 database designer, generation queue, portfolio, release gate, and IDE
 superiority contracts.
 Run `appgen --form-designer-release-audit` to prove the package-level
-Delphi-style form designer has draggable palette categories, snap-to-grid
+RAD-style form designer has draggable palette categories, snap-to-grid
 drop proposals, property inspectors, placement suggestions, overlap guardrails,
 and generated form-designer artifact coverage before release. The audit also
-generates a temporary app from Delphi-style component placement DSL, verifies
+generates a temporary app from RAD-style component placement DSL, verifies
 generated form designer, template, model, view, and DSL-reference artifacts,
 compiles generated form-designer-facing modules, and exercises generated
 palette, catalog, canvas, drop, release-gate, and workbench contracts.
@@ -296,7 +296,7 @@ view BookForm for Book {
 }
 ```
 
-Delphi-style component placement:
+RAD-style component placement:
 
 ```appgen
 view BookForm for Book {

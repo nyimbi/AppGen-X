@@ -214,7 +214,7 @@ Use enum names as field types.
 enumDecl : ENUM IDENT LBRACE IDENT* RBRACE ;
 ```
 
-## Views And Delphi-Style Components
+## Views And RAD-Style Components
 
 ```antlr
 viewDecl           : VIEW IDENT FOR IDENT LBRACE viewItem* RBRACE ;
@@ -237,7 +237,7 @@ The component placement format is:
 @ field Component x y w h
 ```
 
-This is the Delphi-style component placement form: a component is dropped on a
+This is the RAD-style component placement form: a component is dropped on a
 named form field with grid coordinates and dimensions. The generated form
 designer uses those coordinates for canvas placement, overlap checks, and
 property-inspector metadata.
@@ -366,7 +366,7 @@ Parsing is only the first gate. The package linter also validates:
 - relation source and target tables/fields;
 - field-level reference targets;
 - derived-field references;
-- view section fields and Delphi-style component fields;
+- view section fields and RAD-style component fields;
 - role resources and rule table/field references;
 - agent provider names when LLM providers are declared;
 - relation cardinality values.

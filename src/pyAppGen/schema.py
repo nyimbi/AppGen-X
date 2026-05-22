@@ -160,7 +160,7 @@ class ViewSectionSchema:
 
 @dataclass(frozen=True)
 class FormComponentSchema:
-    """A Delphi-style component placed on a generated form canvas."""
+    """A RAD-style component placed on a generated form canvas."""
 
     name: str
     component: str

@@ -32,7 +32,7 @@ ROADMAP_DOCUMENTS = (
         "path": "docs/base_features.md",
         "required_phrases": (
             "JHipster superset",
-            "Delphi-style form design",
+            "RAD-style form design",
             "ERP templates",
             "agentic-system design",
             "natural-language evolution",
@@ -69,8 +69,8 @@ ROADMAP_CAPABILITY_REQUIREMENTS = (
         "capabilities": ("dsl.language-design",),
     },
     {
-        "id": "delphi-form-designer",
-        "description": "Allow users to drop components onto forms in a Delphi-style designer.",
+        "id": "rad-form-designer",
+        "description": "Allow users to drop components onto forms in a RAD-style designer.",
         "capabilities": ("ui.form-designer", "ui.visual-modeling"),
     },
     {
@@ -172,8 +172,8 @@ APPGEN_ADVANTAGE_REQUIREMENTS = (
         "capabilities": ("devops.studio", "ui.visual-modeling", "devops.ide-integration"),
     },
     {
-        "id": "delphi-form-design",
-        "description": "Delphi-style drop-target form designer and component palette.",
+        "id": "rad-form-design",
+        "description": "RAD-style drop-target form designer and component palette.",
         "capabilities": ("ui.form-designer", "components.templates"),
     },
     {
@@ -914,7 +914,7 @@ def package_goal_audit(root: Path | str | None = None) -> dict:
             "format": studio["format"],
         },
         {
-            "id": "delphi_form_designer",
+            "id": "rad_form_designer",
             "ok": form_designer["ok"],
             "format": form_designer["format"],
         },

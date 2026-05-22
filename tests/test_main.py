@@ -75,16 +75,21 @@ from pyAppGen.erp import erp_template_catalog
 from pyAppGen.erp import erp_template_release_audit
 from pyAppGen.form_designer import apply_drop
 from pyAppGen.form_designer import component_palette
+from pyAppGen.form_designer import component_usability_workbench
 from pyAppGen.form_designer import detect_overlaps
 from pyAppGen.form_designer import field_component_matrix
 from pyAppGen.form_designer import form_canvas
 from pyAppGen.form_designer import form_design as package_form_design
 from pyAppGen.form_designer import form_designer_generation_smoke_audit
 from pyAppGen.form_designer import form_designer_release_audit
+from pyAppGen.form_designer import rad_parity_workbench
 from pyAppGen.form_designer import palette_categories
 from pyAppGen.form_designer import placement_suggestions
 from pyAppGen.form_designer import property_inspector
 from pyAppGen.form_designer import snap_drop
+from pyAppGen.form_designer import third_party_component_import_contract
+from pyAppGen.form_designer import third_party_component_install_plan
+from pyAppGen.form_designer import third_party_component_registry
 from pyAppGen.form_designer import validate_form_design
 from pyAppGen.ideas import ideas_document_check
 from pyAppGen.ideas import ideas_generation_smoke_audit
@@ -267,7 +272,7 @@ def test_roadmap_release_audit_cli_maps_docs_to_capabilities(
     assert {
         "schema-sources",
         "antlr-dsl",
-        "delphi-form-designer",
+        "rad-form-designer",
         "multi-platform-generation",
         "agentic-systems",
         "natural-language-evolution",
@@ -403,7 +408,7 @@ def test_jhipster_superiority_audit_cli_proves_appgen_advantages(
     assert len(direct_report["advantages"]) >= direct_report["minimum_advantages"]
     assert {
         "visual-low-code-studio",
-        "delphi-form-design",
+        "rad-form-design",
         "natural-language-evolution",
         "agentic-systems",
         "native-targets",
@@ -478,7 +483,7 @@ def test_package_goal_audit_cli_aggregates_objective_evidence(
         "erp_template_exports",
         "natural_language_evolution",
         "robust_ide",
-        "delphi_form_designer",
+        "rad_form_designer",
         "visual_modeling",
         "security_identity",
         "schema_source_intake",
@@ -744,10 +749,10 @@ def test_package_studio_audit_covers_ide_database_and_generation(
     assert report["workspace"]["database_design"]["ok"] is True
 
 
-def test_package_form_designer_audit_covers_delphi_style_drop_design(
+def test_package_form_designer_audit_covers_rad_style_drop_design(
     runner: CliRunner,
 ) -> None:
-    """The package proves Delphi-style component drops before generation."""
+    """The package proves RAD-style component drops before generation."""
     palette = component_palette()
     assert {"input", "calendar", "relationship", "media", "action"} <= set(
         palette_categories()
@@ -755,6 +760,40 @@ def test_package_form_designer_audit_covers_delphi_style_drop_design(
     assert {"TextBox", "TextArea", "DatePicker", "Lookup", "FileUpload"} <= {
         item["component"] for item in palette
     }
+    assert {"Grid", "TreeView", "MainMenu", "PopupMenu", "CameraView", "Viewport3D"} <= {
+        item["component"] for item in palette
+    }
+    third_party_registry = third_party_component_registry()
+    assert {"devexpress-vcl", "tms-fnc", "fastreport", "teechart", "indy"} <= {
+        item["id"] for item in third_party_registry
+    }
+    install_plan = third_party_component_install_plan()
+    assert install_plan["ok"] is True
+    assert install_plan["requires_review"] is True
+    assert install_plan["side_effects"] == ()
+    assert third_party_component_import_contract(
+        {
+            "id": "custom-suite",
+            "vendor": "Internal",
+            "frameworks": ("VCL", "FMX"),
+            "components": ("TInternalGrid",),
+            "categories": ("grid",),
+        }
+    )["ok"] is True
+    usability = component_usability_workbench()
+    assert usability["format"] == "appgen.component-usability-workbench.v1"
+    assert usability["ok"] is True
+    assert usability["component_count"] == len(palette)
+    assert {
+        "complete_catalog",
+        "runtime_renderers",
+        "property_editors",
+        "events",
+        "validation_rules",
+        "drop_defaults",
+        "preview_contracts",
+    } == {check["id"] for check in usability["checks"]}
+    assert all({"web", "mobile", "desktop"} <= set(item["renderers"]) for item in usability["components"])
 
     canvas = form_canvas("Customer")
     assert canvas["format"] == "appgen.package-form-canvas.v1"
@@ -801,8 +840,25 @@ def test_package_form_designer_audit_covers_delphi_style_drop_design(
         "overlap_guardrails",
         "artifact_contract",
         "generation_smoke",
+        "rad_parity_workbench",
     } == {gate["id"] for gate in audit["gates"]}
     assert audit["generation_smoke"]["ok"] is True
+    assert audit["rad_parity"]["format"] == "appgen.rad-parity-workbench.v1"
+    assert audit["rad_parity"]["ok"] is True
+    assert rad_parity_workbench()["ok"] is True
+    assert {
+        "vcl_fmx_component_parity",
+        "built_in_component_usability",
+        "pascal_runtime_and_dfm_streaming",
+        "object_inspector_parity",
+        "livebindings_designer",
+        "firedac_datasnap_radserver_interbase_tooling",
+        "design_time_package_installation",
+        "mobile_native_device_api_coverage",
+        "fmx_animation_effects_3d_depth",
+        "third_party_component_ecosystem",
+        "artifact_contract",
+    } == {check["id"] for check in rad_parity_workbench()["checks"]}
 
     smoke = form_designer_generation_smoke_audit()
     assert smoke["format"] == "appgen.form-designer-generation-smoke-audit.v1"
@@ -1910,7 +1966,7 @@ def test_dsl_linter_reports_semantic_feedback(runner: CliRunner, tmp_path) -> No
     assert draft_outline["parse_error"]
     completions = dsl_completion_items("tit", source=source)
     assert any(item["label"] == "title" and item["kind"] == "field" for item in completions)
-    assert any(item["label"] == "Delphi Component" for item in dsl_completion_items("Del"))
+    assert any(item["label"] == "RAD Component" for item in dsl_completion_items("RAD"))
     service = dsl_language_service(source, source_name="inline", prefix="Book")
     assert service["format"] == "appgen.dsl-language-service.v1"
     assert service["lint"]["ok"] is True
@@ -1987,7 +2043,7 @@ def test_dsl_documentation_suite_exists() -> None:
     assert "Complete Grammar" in grammar
     assert "Lexical Rules" in grammar
     assert "dsl_language_quality_contract" in grammar
-    assert "Delphi-style component placement" in grammar
+    assert "RAD-style component placement" in grammar
     assert "Schema Design Checklist" in guide
     assert "Natural Language Evolution" in guide
     assert "9. Add API-Backed LLM Provider" in tutorial
@@ -7904,7 +7960,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert any("Unknown app targets: toaster" in error for error in authoring["lint"]["errors"])
     assert any(fix["id"] == "normalize_targets" for fix in authoring["lint"]["fixes"])
     assert studio.dsl_quick_fixes("table Book { id: int pk }")[0]["id"] == "add_app_declaration"
-    assert any(item["label"] == "Delphi Component" for item in studio.dsl_completion_items("Delphi"))
+    assert any(item["label"] == "RAD Component" for item in studio.dsl_completion_items("RAD"))
     assert studio.dsl_schema_preview("table Book { id: int pk }")["exports"] == ("dbml", "sql", "ponyorm")
     dsl_editor = studio.editor_session("appgen.dsl", "app Library { targets: web }")
     assert dsl_editor["language"] == "appgen-dsl"
@@ -8474,6 +8530,9 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert "getBoundingClientRect" in (output_dir / "templates" / "appgen_form_designer.html").read_text()
     assert "Inspector" in (output_dir / "templates" / "appgen_form_designer.html").read_text()
     assert "Workbench JSON" in (output_dir / "templates" / "appgen_form_designer.html").read_text()
+    assert "RAD Parity JSON" in (output_dir / "templates" / "appgen_form_designer.html").read_text()
+    assert "Third-party Components JSON" in (output_dir / "templates" / "appgen_form_designer.html").read_text()
+    assert "Component Usability JSON" in (output_dir / "templates" / "appgen_form_designer.html").read_text()
     workbench = form_designer.form_designer_workbench(
         {"app/form_designer.py", "app/templates/appgen_form_designer.html"}
     )
@@ -8491,9 +8550,38 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "placement_suggestions",
         "conflict_guardrails",
         "route_surface",
+        "rad_parity_workbench",
     } == {check["id"] for check in workbench["checks"]}
     assert "/form-designer/workbench.json" in next(
         check["evidence"]["routes"] for check in workbench["checks"] if check["id"] == "route_surface"
+    )
+    assert "/form-designer/rad-parity.json" in next(
+        check["evidence"]["routes"] for check in workbench["checks"] if check["id"] == "route_surface"
+    )
+    assert "/form-designer/component-usability.json" in next(
+        check["evidence"]["routes"] for check in workbench["checks"] if check["id"] == "route_surface"
+    )
+    generated_rad = form_designer.rad_parity_workbench(
+        {"app/form_designer.py", "app/templates/appgen_form_designer.html"}
+    )
+    assert generated_rad["format"] == "appgen.generated-rad-parity-workbench.v1"
+    assert generated_rad["ok"] is True
+    assert {"devexpress-vcl", "tms-fnc", "fastreport", "teechart", "indy"} <= {
+        item["id"] for item in form_designer.third_party_component_registry()
+    }
+    assert form_designer.third_party_component_install_plan()["requires_review"] is True
+    assert form_designer.third_party_component_install_plan()["side_effects"] == ()
+    assert form_designer.dfm_streaming_contract()["stream_formats"][0] == "text-dfm"
+    assert "control_to_field" in form_designer.livebindings_contract()["binding_edges"]
+    assert "camera" in form_designer.mobile_native_api_contract()["apis"]
+    assert "viewport3d" in form_designer.fmx_visual_depth_contract()["three_d"]
+    generated_usability = form_designer.component_usability_workbench()
+    assert generated_usability["format"] == "appgen.generated-component-usability-workbench.v1"
+    assert generated_usability["ok"] is True
+    assert generated_usability["component_count"] == len(form_designer.component_palette())
+    assert all(
+        {"web", "mobile", "desktop"} <= set(item["renderers"])
+        for item in generated_usability["components"]
     )
     assert len(workbench["forms"]) >= 2
     assert any(item["type"] == "DatePicker" for item in workbench["field_mappings"])
@@ -8511,6 +8599,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "field_component_mapping",
         "drop_proposal_metadata",
         "overlap_guardrails",
+        "rad_parity_contracts",
     } == {check["id"] for check in form_gate["checks"]}
     assert form_designer.form_designer_release_gate({"app/form_designer.py"})["ok"] is False
     nl_plan = nl_evolution.evolution_plan(

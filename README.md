@@ -38,7 +38,7 @@ Generated packages include:
 - Flask-AppBuilder models, views, forms, APIs, GraphQL, templates, and config.
 - A generated Studio/IDE for managing applications, DSL, database designs,
   form layouts, natural-language evolution, releases, and audits.
-- Delphi-style visual form designer contracts with drop zones, components,
+- RAD-style visual form designer contracts with drop zones, components,
   property inspectors, layout validation, and renderer metadata.
 - Splash-screen, editable-menu, right-click/context-menu, and UI fine-tuning
   contracts in the generated branding workbench.
@@ -91,7 +91,7 @@ appgen --package-goal-audit
 ```
 
 The package goal audit aggregates roadmap traceability, DSL quality, source
-intake, ERP templates, Studio/IDE readiness, Delphi-style form design, visual
+intake, ERP templates, Studio/IDE readiness, RAD-style form design, visual
 modeling, security, reporting, deployment, integrations, agentic systems,
 multi-target generation, and generated-app excellence.
 
@@ -269,7 +269,7 @@ The language supports:
 
 - Tables, fields, enums, defaults, uniqueness, hidden/search fields, arrays,
   derived fields, and relationships.
-- View sections and Delphi-style component placement with coordinates.
+- View sections and RAD-style component placement with coordinates.
 - Workflows and transition graphs.
 - Roles and rule policies.
 - Local/API LLM providers and agent definitions.
@@ -286,7 +286,15 @@ Generated apps include Studio contracts for:
 - Application portfolio management.
 - DSL editor state, syntax diagnostics, code actions, snippets, and formatting.
 - Visual database catalog, ERD export, schema refactors, and migration preview.
-- Delphi-style form design with component palette and property inspector.
+- RAD-style form design with component palette and property inspector.
+- VCL/FMX-compatible RAD parity contracts: DFM-style streaming, Object
+  Inspector metadata, LiveBindings-style binding graphs, native data-service
+  tooling, mobile device APIs, animation/effects, and 3D surface descriptors.
+- A component usability gate that requires every built-in component to carry
+  renderer targets, default properties, property editors, events, validation
+  rules, drop defaults, binding metadata, and preview contracts.
+- Curated third-party component registry for useful commercial and open-source
+  suites, plus reviewed package import/install plans for additional vendors.
 - Natural-language evolution review queues.
 - Generation plans for web, PWA, mobile, desktop, and chatbot targets.
 - Release gates, app history, snapshots, restore points, and capability matrix.

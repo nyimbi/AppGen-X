@@ -132,7 +132,7 @@ After generation, inspect:
   web application surface.
 - `app/studio.py` for generated IDE/management contracts.
 - `app/dsl_reference.py` for generated language guidance and linter helpers.
-- `app/form_designer.py` for form component layout and Delphi-style design
+- `app/form_designer.py` for form component layout and RAD-style design
   contracts.
 - `app/branding.py` for theme tokens, splash screens, editable menus,
   right-click/context menus, accessibility, responsive UI contracts, and visual

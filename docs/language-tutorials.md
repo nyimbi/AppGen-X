@@ -84,7 +84,7 @@ table Project {
 
 Bare field groups keep the language compact while avoiding repetition.
 
-## Tutorial 5: Views And Delphi-Style Form Design
+## Tutorial 5: Views And RAD-Style Form Design
 
 ```appgen
 view InvoiceForm for Invoice {

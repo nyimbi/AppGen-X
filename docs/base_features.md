@@ -26,7 +26,7 @@ base feature contract referenced by the project goal.
 
 AppGen must be treated as a JHipster superset, not a peer clone: JHipster-style
 application scaffolding is one export lane, while the AppGen baseline also
-includes low-code studio tooling, Delphi-style form design, ERP templates,
+includes low-code studio tooling, RAD-style form design, ERP templates,
 agentic-system design, natural-language evolution, multi-platform generation,
 DSL linting/reference docs, versioned app management, and runtime assurance
 contracts for generated apps.
