@@ -237,7 +237,10 @@ apps include:
   normalization, authorization decisions, audit events, policy matrices, and
   reviewable RBAC change proposals that regenerate DSL, plus generated threat
   models, secret exposure scans, dependency security plans, API security test
-  plans, release security gates, and signoff envelopes.
+  plans, release security gates, signoff envelopes, and `security_workbench()`
+  evidence for policy, authorization, audit, RBAC proposal, threat, secret,
+  dependency, API-security, release-gate, and signoff readiness before
+  `security.rbac` is marked implemented.
 - `runtime_security.py` and `appgen_runtime_security.html` with generated
   inactivity logout and security-header hardening hooks.
 - `workflow.py` with transition helpers such as `next_states`,

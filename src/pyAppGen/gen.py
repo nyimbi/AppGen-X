@@ -761,6 +761,42 @@ def write_security_file(output_dir, schema: AppSchema):
         f.write("        'decision': 'approved' if gate['ok'] else 'blocked',\n")
         f.write("        'required_before_release': not gate['ok'],\n")
         f.write("    }\n\n")
+        f.write("def security_workbench(values=None, existing_paths=(), actor=None):\n")
+        f.write("    \"\"\"Return IDE-ready RBAC and security readiness evidence.\"\"\"\n")
+        f.write("    signoff = security_signoff(values, existing_paths, actor=actor)\n")
+        f.write("    matrix = policy_matrix()\n")
+        f.write("    first_policy = matrix[0] if matrix else {'role': None, 'resource': None, 'actions': ()}\n")
+        f.write("    first_action = first_policy['actions'][0] if first_policy.get('actions') else 'read'\n")
+        f.write("    decision = authorize({'id': actor or 'security-workbench', 'roles': (first_policy.get('role'),)}, first_policy.get('resource'), first_action) if first_policy.get('role') else {'ok': False}\n")
+        f.write("    audit = authorization_audit_event(decision, request_id='security-workbench')\n")
+        f.write("    proposal = access_change_proposal(first_policy.get('role') or 'Reviewer', first_policy.get('resource') or 'Resource', first_policy.get('actions') or ('read',), actor=actor)\n")
+        f.write("    gate = signoff['gate']\n")
+        f.write("    checks = (\n")
+        f.write("        {'id': 'policy_matrix', 'ok': bool(matrix), 'evidence': matrix},\n")
+        f.write("        {'id': 'authorization_decision', 'ok': bool(decision.get('ok')), 'evidence': decision},\n")
+        f.write("        {'id': 'authorization_audit', 'ok': audit.get('event') in ('security.authorization.allowed', 'security.authorization.denied'), 'evidence': audit},\n")
+        f.write("        {'id': 'rbac_change_proposal', 'ok': proposal['review_required'] is True and proposal['dsl'].startswith('role '), 'evidence': proposal},\n")
+        f.write("        {'id': 'resource_catalog', 'ok': bool(security_resource_catalog()), 'evidence': security_resource_catalog()},\n")
+        f.write("        {'id': 'threat_model', 'ok': threat_model()['format'] == 'appgen.security-threat-model.v1' and bool(threat_model()['threats']), 'evidence': threat_model()},\n")
+        f.write("        {'id': 'secret_scan', 'ok': gate['secret_scan']['ok'], 'evidence': gate['secret_scan']},\n")
+        f.write("        {'id': 'dependency_security', 'ok': gate['dependency_security']['requires_review'] is True, 'evidence': gate['dependency_security']},\n")
+        f.write("        {'id': 'api_security_tests', 'ok': bool(gate['api_security_tests']['cases']), 'evidence': gate['api_security_tests']},\n")
+        f.write("        {'id': 'security_gate', 'ok': gate['ok'], 'evidence': gate},\n")
+        f.write("        {'id': 'security_signoff', 'ok': signoff['ok'] and signoff['decision'] == 'approved', 'evidence': signoff},\n")
+        f.write("    )\n")
+        f.write("    ok = all(check['ok'] for check in checks)\n")
+        f.write("    return {\n")
+        f.write("        'format': 'appgen.security-workbench.v1',\n")
+        f.write("        'ok': ok,\n")
+        f.write("        'decision': 'approved' if ok else 'blocked',\n")
+        f.write("        'checks': checks,\n")
+        f.write("        'policy_matrix': matrix,\n")
+        f.write("        'authorization': decision,\n")
+        f.write("        'audit': audit,\n")
+        f.write("        'proposal': proposal,\n")
+        f.write("        'gate': gate,\n")
+        f.write("        'signoff': signoff,\n")
+        f.write("    }\n\n")
         f.write("def seed_roles(appbuilder):\n")
         f.write("    \"\"\"Create declared roles if they do not already exist.\"\"\"\n")
         f.write("    security_manager = appbuilder.sm\n")
@@ -40783,12 +40819,13 @@ def validate_security_artifacts() -> None:
         "api_security_test_plan",
         "security_gate_plan",
         "security_signoff",
+        "security_workbench",
         "authorization_audit_event",
     )
     if not all(item in contract for item in required):
-        fail("security contract must expose threat modeling, secret scanning, dependency review, API security tests, gates, signoff, and audit events")
-    if "appgen.security-threat-model.v1" not in contract or "appgen.security-gate-plan.v1" not in contract:
-        fail("security contract must expose versioned threat-model and gate-plan evidence")
+        fail("security contract must expose threat modeling, secret scanning, dependency review, API security tests, gates, signoff, workbench, and audit events")
+    if "appgen.security-threat-model.v1" not in contract or "appgen.security-gate-plan.v1" not in contract or "appgen.security-workbench.v1" not in contract:
+        fail("security contract must expose versioned threat-model, gate-plan, and workbench evidence")
 
 
 def validate_documentation_artifacts() -> None:
@@ -43249,6 +43286,14 @@ def test_generated_runtime_helpers():
         {"SECRET_KEY": "x" * 32},
         {"app/security.py", "app/runtime_security.py", "app/identity.py", "app/rls.py", "app/compliance.py"},
     )["decision"] == "approved"
+    assert security.security_workbench(
+        {"SECRET_KEY": "x" * 32},
+        {"app/security.py", "app/runtime_security.py", "app/identity.py", "app/rls.py", "app/compliance.py"},
+    )["format"] == "appgen.security-workbench.v1"
+    assert security.security_workbench(
+        {"SECRET_KEY": "x" * 32},
+        {"app/security.py", "app/runtime_security.py", "app/identity.py", "app/rls.py", "app/compliance.py"},
+    )["ok"] is True
     assert runtime_security.should_logout(1, now=runtime_security.datetime.fromtimestamp(2000, runtime_security.timezone.utc)) is True
     assurance_report = runtime_assurance.runtime_assurance_report({"p95_ms": 200, "error_rate": 0})
     assert assurance_report["format"] == "appgen.runtime-assurance.v1"

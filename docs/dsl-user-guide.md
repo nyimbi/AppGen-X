@@ -283,6 +283,11 @@ role Editor {
 }
 ```
 
+Use `security_workbench()` in generated `app/security.py` to inspect policy
+matrix, authorization decision, audit event, RBAC change proposal, resource
+catalog, threat model, secret scan, dependency review, API security tests,
+release gate, and signoff evidence before publishing an app.
+
 Use the app option `rls` when row-level security should scope a table by a
 domain-specific field name:
 

@@ -1062,6 +1062,7 @@ def test_generate_app_from_sqlite_schema_compiles(tmp_path) -> None:
     assert "security.sso" in {item["key"] for item in manifest["capabilities"]}
     assert "security.session" in {item["key"] for item in manifest["capabilities"]}
     assert "security.https" in {item["key"] for item in manifest["capabilities"]}
+    assert "security.rbac" in {item["key"] for item in manifest["capabilities"]}
     assert "security.rls" in {item["key"] for item in manifest["capabilities"]}
     assert "security.compliance" in {item["key"] for item in manifest["capabilities"]}
     assert "ai.assistance" in {item["key"] for item in manifest["capabilities"]}
@@ -1095,6 +1096,7 @@ def test_generate_app_from_sqlite_schema_compiles(tmp_path) -> None:
     assert capabilities_by_key["platform.microservices"]["status"] == "implemented"
     assert capabilities_by_key["platform.targets"]["status"] == "implemented"
     assert capabilities_by_key["platform.native"]["status"] == "implemented"
+    assert capabilities_by_key["security.rbac"]["status"] == "implemented"
     assert capabilities_by_key["platform.frontends"]["status"] == "implemented"
     assert capabilities_by_key["ui.view-composition"]["status"] == "implemented"
     assert capabilities_by_key["ui.tabbed-views"]["status"] == "implemented"
@@ -2810,6 +2812,28 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         {"app/security.py", "app/runtime_security.py", "app/identity.py", "app/rls.py", "app/compliance.py"},
         actor="ada",
     )["decision"] == "approved"
+    security_workbench = security.security_workbench(
+        {"SECRET_KEY": "x" * 32},
+        {"app/security.py", "app/runtime_security.py", "app/identity.py", "app/rls.py", "app/compliance.py"},
+        actor="ada",
+    )
+    assert security_workbench["format"] == "appgen.security-workbench.v1"
+    assert security_workbench["ok"] is True
+    assert security_workbench["decision"] == "approved"
+    assert {
+        "policy_matrix",
+        "authorization_decision",
+        "authorization_audit",
+        "rbac_change_proposal",
+        "resource_catalog",
+        "threat_model",
+        "secret_scan",
+        "dependency_security",
+        "api_security_tests",
+        "security_gate",
+        "security_signoff",
+    } == {check["id"] for check in security_workbench["checks"]}
+    assert security.security_workbench({"SECRET_KEY": "change-me"}, {"app/security.py"}, actor="ada")["ok"] is False
     assert runtime_security.security_policy()["idle_timeout_seconds"] == 1800
     assert runtime_security.is_public_path("/static/app.css") is True
     assert runtime_security.is_public_path("/book/list/") is False
