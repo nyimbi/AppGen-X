@@ -434,7 +434,11 @@ appgen --agentic-release-audit
 The agentic audit parses DSL `llm` and `agent` blocks, proves Ollama and
 LM Studio local provider contracts, OpenAI and Anthropic API-key contracts,
 environment-only secret policy, missing-key guardrails, reviewed agent tool
-policies, execution matrices, and generated agent artifact expectations.
+policies, execution matrices, and generated agent artifact expectations. It
+also generates a temporary app from the agentic DSL sample, compiles generated
+agent modules, and exercises generated local/API-key provider readiness, agent
+plans, tool policies, execution matrices, workbench, and release-gate
+contracts.
 
 Audit package-level target readiness before claiming AppGen can generate web,
 PWA, mobile, desktop, and chatbot applications:

@@ -27,6 +27,7 @@ from pyAppGen import __main__
 from pyAppGen.agentic import agent_catalog
 from pyAppGen.agentic import agent_execution_matrix
 from pyAppGen.agentic import agent_tool_policy
+from pyAppGen.agentic import agentic_generation_smoke_audit
 from pyAppGen.agentic import agentic_release_audit
 from pyAppGen.agentic import dsl_agentic_contract
 from pyAppGen.agentic import provider_catalog as agentic_provider_catalog
@@ -1372,6 +1373,7 @@ def test_package_agentic_audit_covers_llm_providers_and_agents(
     assert dsl_contract["ok"] is True
     assert set(dsl_contract["provider_modes"]) == {"local", "api"}
     assert "SupportAgent" in dsl_contract["agents"]
+    assert "ReleaseReviewer" in dsl_contract["agents"]
 
     providers = agentic_provider_catalog({"OPENAI_API_KEY": "test", "ANTHROPIC_API_KEY": "test"})
     assert {provider["mode"] for provider in providers} == {"local", "api"}
@@ -1423,7 +1425,18 @@ def test_package_agentic_audit_covers_llm_providers_and_agents(
         "tool_policy",
         "execution_matrix",
         "artifact_contract",
+        "generation_smoke",
     } == {gate["id"] for gate in audit["gates"]}
+    assert audit["generation_smoke"]["ok"] is True
+
+    smoke = agentic_generation_smoke_audit()
+    assert smoke["format"] == "appgen.agentic-generation-smoke-audit.v1"
+    assert smoke["ok"] is True
+    assert {
+        "app/agents.py",
+        "app/templates/appgen_agents.html",
+    } <= set(smoke["required_artifacts"])
+    assert "app/agents.py" in set(smoke["compiled_artifacts"])
 
     missing = agentic_release_audit(existing_paths={"app/agents.py"})
     assert missing["ok"] is False

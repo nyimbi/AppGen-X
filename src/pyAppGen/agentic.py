@@ -45,6 +45,14 @@ agent SupportAgent {
   memory: project
   max_steps: 6
 }
+
+agent ReleaseReviewer {
+  provider: ApiModel
+  goal: "Review generated application changes before release"
+  tools: schema, reports, agents
+  memory: session
+  max_steps: 4
+}
 """
 
 PROVIDERS = {
@@ -209,6 +217,149 @@ def agent_execution_matrix(task: str = "review generated change", environ: dict 
     }
 
 
+def agentic_generation_smoke_audit(source: str = AGENTIC_SAMPLE_DSL) -> dict:
+    """Generate a temporary app and exercise its generated agentic contracts."""
+    import importlib.util
+    import py_compile
+    import tempfile
+    from pathlib import Path
+
+    from .gen import generate_app_from_schema
+
+    required_artifacts = (
+        "app/agents.py",
+        "app/templates/appgen_agents.html",
+        "app/models.py",
+        "app/views.py",
+    )
+    compile_artifacts = (
+        "app/agents.py",
+        "app/models.py",
+        "app/views.py",
+    )
+    existing_paths = {"app/agents.py", "app/templates/appgen_agents.html"}
+    env = {"OPENAI_API_KEY": "configured-for-generated-smoke"}
+
+    with tempfile.TemporaryDirectory(prefix="appgen-agentic-smoke-") as tmp:
+        project_dir = Path(tmp)
+        output_dir = project_dir / "app"
+        schema = schema_from_dsl(source, source_name="agentic-smoke.appgen")
+        generate_app_from_schema(schema, output_dir)
+
+        missing_artifacts = tuple(
+            artifact for artifact in required_artifacts if not (project_dir / artifact).exists()
+        )
+        compiled = []
+        compile_failures = []
+        for artifact in compile_artifacts:
+            path = project_dir / artifact
+            if not path.exists():
+                continue
+            try:
+                py_compile.compile(str(path), doraise=True)
+            except py_compile.PyCompileError as exc:
+                compile_failures.append({"artifact": artifact, "error": str(exc)})
+            else:
+                compiled.append(artifact)
+
+        module_path = output_dir / "agents.py"
+        spec = importlib.util.spec_from_file_location(
+            "generated_agentic_smoke_agents",
+            module_path,
+        )
+        generated_agents = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(generated_agents)
+
+        providers = generated_agents.provider_catalog(env)
+        missing_providers = generated_agents.provider_catalog({})
+        provider_matrix = generated_agents.provider_connection_matrix(env)
+        agents = generated_agents.agent_catalog()
+        tool_policy = generated_agents.agent_tool_policy()
+        execution = generated_agents.agent_execution_matrix(
+            task="review generated app evolution",
+            environ=env,
+        )
+        local_plan = generated_agents.agent_plan(
+            "SupportAgent",
+            "triage support ticket",
+            environ=env,
+        )
+        api_plan = generated_agents.agent_plan(
+            "ReleaseReviewer",
+            "review generated app",
+            environ=env,
+        )
+        release_gate = generated_agents.agentic_release_gate(existing_paths, environ=env)
+        workbench = generated_agents.agentic_workbench(existing_paths, environ=env)
+        artifact_check = generated_agents.agents_check(existing_paths)
+
+    checks = (
+        {
+            "id": "generated_artifacts",
+            "ok": not missing_artifacts,
+            "required_artifacts": required_artifacts,
+            "missing": missing_artifacts,
+        },
+        {
+            "id": "generated_python_compiles",
+            "ok": not compile_failures and set(compiled) == set(compile_artifacts),
+            "compiled": tuple(compiled),
+            "failures": tuple(compile_failures),
+        },
+        {
+            "id": "provider_modes_and_secret_guards",
+            "ok": {"local", "api"} <= set(provider_matrix["modes"])
+            and all(
+                provider["mode"] == "local" or provider["required_env"] == ("OPENAI_API_KEY",)
+                for provider in providers
+            )
+            and any(provider["mode"] == "api" and provider["missing"] for provider in missing_providers),
+            "providers": providers,
+            "missing_providers": missing_providers,
+            "matrix": provider_matrix,
+        },
+        {
+            "id": "agent_catalog_and_links",
+            "ok": {"SupportAgent", "ReleaseReviewer"} <= {agent["name"] for agent in agents}
+            and {plan["provider_mode"] for plan in (local_plan, api_plan)} == {"local", "api"}
+            and local_plan["ready"] is True
+            and api_plan["ready"] is True,
+            "agents": agents,
+            "local_plan": local_plan,
+            "api_plan": api_plan,
+        },
+        {
+            "id": "tool_policy_and_execution_matrix",
+            "ok": tool_policy["ok"] is True
+            and execution["ok"] is True
+            and all(plan["ready"] for plan in execution["plans"]),
+            "tool_policy": tool_policy,
+            "execution": execution,
+        },
+        {
+            "id": "generated_release_and_workbench",
+            "ok": release_gate["ok"] is True
+            and workbench["ok"] is True
+            and artifact_check["ok"] is True,
+            "release_gate": release_gate,
+            "workbench": workbench,
+            "artifact_check": artifact_check,
+        },
+    )
+    ok = all(check["ok"] for check in checks)
+    return {
+        "format": "appgen.agentic-generation-smoke-audit.v1",
+        "scope": "generated-app",
+        "ok": ok,
+        "decision": "approved" if ok else "blocked",
+        "required_artifacts": required_artifacts,
+        "compiled_artifacts": tuple(compiled),
+        "checks": checks,
+        "blocking_gaps": tuple(check for check in checks if not check["ok"]),
+        "stop_condition": "do-not-claim-generated-agentic-readiness-unless-ok-is-true",
+    }
+
+
 def agentic_release_audit(
     existing_paths: set[str] | None = None,
     environ: dict | None = None,
@@ -228,6 +379,7 @@ def agentic_release_audit(
     missing_secret_matrix = provider_connection_matrix({})
     tool_policy = agent_tool_policy()
     execution = agent_execution_matrix(environ=audit_env)
+    generation_smoke = agentic_generation_smoke_audit()
     agent_providers = {agent["provider"] for agent in agent_catalog()}
     provider_names = {provider["name"] for provider in provider_catalog(audit_env)}
     gates = (
@@ -268,6 +420,11 @@ def agentic_release_audit(
             "id": "artifact_contract",
             "ok": {"app/agents.py", "app/templates/appgen_agents.html"} <= existing,
         },
+        {
+            "id": "generation_smoke",
+            "ok": generation_smoke["ok"],
+            "checks": tuple(check["id"] for check in generation_smoke["checks"]),
+        },
     )
     ok = all(gate["ok"] for gate in gates)
     return {
@@ -281,6 +438,7 @@ def agentic_release_audit(
         "agents": agent_catalog(),
         "tool_policy": tool_policy,
         "execution": execution,
+        "generation_smoke": generation_smoke,
         "gates": gates,
         "blocking_gaps": tuple(gate for gate in gates if not gate["ok"]),
         "stop_condition": "do-not-claim-agentic-system-readiness-unless-ok-is-true",

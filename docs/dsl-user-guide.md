@@ -204,7 +204,10 @@ covered before release.
 Run `appgen --agentic-release-audit` to prove DSL `llm`/`agent` blocks, local
 Ollama/LM Studio providers, API-key OpenAI/Anthropic providers, secret
 guardrails, reviewed tool policies, execution matrices, and generated agent
-artifacts are covered before release.
+artifacts are covered before release. The audit also generates a temporary app
+from the agentic DSL sample, compiles generated agent modules, and exercises
+generated local/API-key provider readiness, agent plans, tool policies,
+execution matrices, workbench, and release-gate contracts.
 Run `appgen --target-release-audit` to prove web, PWA, mobile, desktop, and
 chatbot target selection, generated package artifacts, compiled Python target
 modules, JSON provider exports, PWA runtime assets, Kivy mobile
