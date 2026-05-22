@@ -860,6 +860,10 @@ apps include:
   Boards/GitLab issue-export contracts, plus a project-management release gate
   for provider coverage, backlog/sprint readiness, release controls,
   traceability, DevOps exports, and required artifacts.
+  `project_management_workbench()` exposes IDE-ready provider, backlog, sprint,
+  release, traceability, DevOps export, artifact, release-gate, and
+  `/project-management/workbench.json` route evidence before
+  `devops.project-management` is marked implemented.
 - `wizards.py` and `appgen_wizards.html` with generated sequential table
   creation wizards and workflow process wizards derived from existing tables
   and `flow` declarations. The generated `wizard_release_gate()` proves table

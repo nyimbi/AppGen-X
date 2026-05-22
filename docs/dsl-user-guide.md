@@ -775,6 +775,9 @@ Use `/project-management/release-gate.json` to verify generated backlog,
 sprint, release-control, traceability, Jira/GitHub/Azure Boards/GitLab export,
 and project-management artifact coverage before handing a generated app to a
 delivery team.
+Use `/project-management/workbench.json` or `project_management_workbench()` in
+the generated IDE to inspect provider, backlog, sprint, release, traceability,
+DevOps export, artifact, route, and release-gate evidence.
 Use `/data-exchange/release-gate.json` to verify schema-aware CSV templates,
 JSON exchange round-trips, import validation, reviewed migration batches,
 deterministic request errors, and data-exchange artifacts before loading legacy

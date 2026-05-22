@@ -1091,6 +1091,7 @@ def test_generate_app_from_sqlite_schema_compiles(tmp_path) -> None:
     assert capabilities_by_key["data.database-ops"]["status"] == "implemented"
     assert capabilities_by_key["devops.cicd"]["status"] == "implemented"
     assert capabilities_by_key["devops.ide-integration"]["status"] == "implemented"
+    assert capabilities_by_key["devops.project-management"]["status"] == "implemented"
     assert capabilities_by_key["platform.microservices"]["status"] == "implemented"
     assert capabilities_by_key["platform.targets"]["status"] == "implemented"
     assert capabilities_by_key["platform.native"]["status"] == "implemented"
@@ -6744,6 +6745,26 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "devops_exports",
         "artifact_coverage",
     } <= {gate["gate"] for gate in project_gate["gates"]}
+    project_workbench = project_management.project_management_workbench(
+        {"app/project_management.py", "app/templates/appgen_project_management.html"}
+    )
+    assert project_workbench["format"] == "appgen.project-management-workbench.v1"
+    assert project_workbench["ok"] is True
+    assert project_workbench["decision"] == "approved"
+    assert {
+        "provider_catalog",
+        "backlog",
+        "sprint_plan",
+        "release_plan",
+        "traceability",
+        "devops_exports",
+        "artifact_evidence",
+        "route_surface",
+    } == {check["id"] for check in project_workbench["checks"]}
+    assert "/project-management/workbench.json" in next(
+        check["evidence"]["routes"] for check in project_workbench["checks"] if check["id"] == "route_surface"
+    )
+    assert project_management.project_management_workbench({"app/project_management.py"})["ok"] is False
     assert project_management.project_management_release_gate({"app/project_management.py"})["ok"] is False
     wizard_catalog = wizards.wizard_catalog()
     assert any(item["name"] == "BookCreate" and item["kind"] == "table" for item in wizard_catalog)
