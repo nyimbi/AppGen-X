@@ -26458,6 +26458,77 @@ def inspector_state_persistence_contract():
     }}
 
 
+def inspector_property_edit_workflow(component_type="TextBox"):
+    """Return deterministic generated apply/cancel behavior for property edits."""
+    validation = inspector_property_validation_contract(component_type)
+    first_result = validation["results"][0] if validation["results"] else {{"property": "name", "editor": "string"}}
+    return {{
+        "format": "appgen.generated-inspector-property-edit-workflow.v1",
+        "component": component_type,
+        "property": first_result["property"],
+        "editor": first_result["editor"],
+        "workflow": ("begin_edit", "coerce_value", "validate_value", "stage_change", "apply_change", "emit_property_changed"),
+        "cancel_workflow": ("begin_edit", "stage_change", "cancel_change", "restore_snapshot"),
+        "guards": validation["guards"],
+        "side_effects": (),
+    }}
+
+
+def inspector_event_edit_workflow(component_type="TextBox"):
+    """Return deterministic generated event handler rename/detach propagation behavior."""
+    lifecycle = inspector_event_lifecycle_contract(component_type)
+    first_action = lifecycle["actions"][0] if lifecycle["actions"] else {{"event": "OnCreate", "handler": "on_create"}}
+    return {{
+        "format": "appgen.generated-inspector-event-edit-workflow.v1",
+        "component": component_type,
+        "event": first_action["event"],
+        "handler": first_action["handler"],
+        "workflow": ("create_stub", "navigate_to_handler", "rename_handler", "update_component_reference", "detach_handler", "mark_orphan_for_review"),
+        "guards": lifecycle["guards"],
+        "side_effects": (),
+    }}
+
+
+def inspector_component_editor_transaction(component_type="Grid"):
+    """Return generated transactional behavior for component editor verbs."""
+    execution = component_editor_execution_contract(component_type)
+    return {{
+        "format": "appgen.generated-inspector-component-editor-transaction.v1",
+        "component": component_type,
+        "verbs": tuple(plan["verb"] for plan in execution["plans"]),
+        "transaction": ("capture_selection", "snapshot_design", "open_editor", "stage_change", "validate_change", "apply_change", "record_undo"),
+        "rollback": ("cancel_change", "restore_snapshot", "clear_staged_change"),
+        "guards": execution["guards"],
+        "side_effects": (),
+    }}
+
+
+def inspector_custom_designer_render_workflow(component_type="Grid"):
+    """Return generated render-pass behavior for custom designer hooks."""
+    activation = custom_designer_activation_contract(component_type)
+    return {{
+        "format": "appgen.generated-inspector-custom-designer-render-workflow.v1",
+        "component": component_type,
+        "hooks": tuple(hook["hook"] for hook in activation["hooks"]),
+        "render_pass": ("resolve_selection", "render_overlay", "render_selection_handles", "render_inline_preview", "publish_hit_targets"),
+        "isolation": ("overlay_non_destructive", "hook_isolated", "multi_select_consistent"),
+        "side_effects": (),
+    }}
+
+
+def inspector_state_restore_workflow():
+    """Return generated inspector state save/restore workflow evidence."""
+    state = inspector_state_persistence_contract()
+    return {{
+        "format": "appgen.generated-inspector-state-restore-workflow.v1",
+        "state_keys": state["state_keys"],
+        "workflow": ("read_schema_version", "load_workspace_state", "ignore_missing_state", "restore_filters", "restore_selected_tab", "persist_after_change"),
+        "restore_points": state["restore_points"],
+        "guards": state["guards"],
+        "side_effects": (),
+    }}
+
+
 def object_inspector_workbench():
     """Prove property, event, component-editor, and custom-designer coverage."""
     sample_components = ("TextBox", "Grid", "Rectangle", "StyleBook", "GestureManager", "Viewport3D", "DatabaseConnection")
@@ -26469,6 +26540,11 @@ def object_inspector_workbench():
     component_execution = tuple(component_editor_execution_contract(component) for component in sample_components)
     designer_activation = tuple(custom_designer_activation_contract(component) for component in sample_components)
     state_persistence = inspector_state_persistence_contract()
+    property_edit_workflows = tuple(inspector_property_edit_workflow(component) for component in sample_components)
+    event_edit_workflows = tuple(inspector_event_edit_workflow(component) for component in sample_components)
+    component_transactions = tuple(inspector_component_editor_transaction(component) for component in sample_components)
+    custom_render_workflows = tuple(inspector_custom_designer_render_workflow(component) for component in sample_components)
+    state_restore = inspector_state_restore_workflow()
     checks = (
         {{"id": "property_editor_types", "ok": {{"string", "boolean", "number"}} <= observed_editor_types and bool({{"collection", "choice", "binding", "color", "resource"}} & observed_editor_types), "evidence": tuple(sorted(observed_editor_types))}},
         {{"id": "event_editor_lifecycle", "ok": all(editor["supports_create"] and editor["supports_navigate"] and editor["supports_detach"] for contract in contracts for editor in contract["event_editors"]), "evidence": tuple((contract["component"], tuple(editor["name"] for editor in contract["event_editors"])) for contract in contracts)}},
@@ -26481,6 +26557,11 @@ def object_inspector_workbench():
         {{"id": "component_editor_execution", "ok": all(all({{"capture_selection", "open_editor", "stage_change", "validate_change", "apply_or_cancel"}} <= set(plan["plan"]) and not plan["side_effects"] for plan in contract["plans"]) for contract in component_execution), "evidence": component_execution}},
         {{"id": "custom_designer_activation", "ok": all(all({{"hook", "surface", "activation"}} <= set(hook) and not hook["side_effects"] for hook in contract["hooks"]) for contract in designer_activation), "evidence": designer_activation}},
         {{"id": "state_persistence", "ok": {{"sort_mode", "filter", "favorites", "selected_tab"}} <= set(state_persistence["state_keys"]) and not state_persistence["side_effects"], "evidence": state_persistence}},
+        {{"id": "property_edit_workflow", "ok": all({{"begin_edit", "validate_value", "apply_change", "emit_property_changed"}} <= set(workflow["workflow"]) and not workflow["side_effects"] for workflow in property_edit_workflows), "evidence": property_edit_workflows}},
+        {{"id": "event_edit_workflow", "ok": all({{"rename_handler", "update_component_reference", "mark_orphan_for_review"}} <= set(workflow["workflow"]) and not workflow["side_effects"] for workflow in event_edit_workflows), "evidence": event_edit_workflows}},
+        {{"id": "component_editor_transaction", "ok": all({{"snapshot_design", "apply_change", "record_undo"}} <= set(transaction["transaction"]) and {{"restore_snapshot"}} <= set(transaction["rollback"]) and not transaction["side_effects"] for transaction in component_transactions), "evidence": component_transactions}},
+        {{"id": "custom_designer_render_workflow", "ok": all({{"render_overlay", "render_selection_handles", "publish_hit_targets"}} <= set(workflow["render_pass"]) and not workflow["side_effects"] for workflow in custom_render_workflows), "evidence": custom_render_workflows}},
+        {{"id": "state_restore_workflow", "ok": {{"load_workspace_state", "restore_selected_tab", "persist_after_change"}} <= set(state_restore["workflow"]) and not state_restore["side_effects"], "evidence": state_restore}},
     )
     ok = all(check["ok"] for check in checks)
     return {{
@@ -26494,6 +26575,11 @@ def object_inspector_workbench():
         "component_execution": component_execution,
         "designer_activation": designer_activation,
         "state_persistence": state_persistence,
+        "property_edit_workflows": property_edit_workflows,
+        "event_edit_workflows": event_edit_workflows,
+        "component_transactions": component_transactions,
+        "custom_render_workflows": custom_render_workflows,
+        "state_restore": state_restore,
         "checks": checks,
         "blocking_gaps": tuple(check for check in checks if not check["ok"]),
     }}
