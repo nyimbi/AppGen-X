@@ -503,7 +503,11 @@ apps include:
   voice cockpit artifacts.
 - `agents.py` and `appgen_agents.html` with generated agent plans, local and
   API-key LLM provider readiness checks, provider connection matrices, agent
-  tool policies, execution matrices, and agentic release gates.
+  tool policies, execution matrices, and agentic release gates. The generated
+  `agentic_workbench()` proves local/API-key provider modes, secret-safe API-key
+  environment guards, agent/provider links, reviewed tool allowlists, execution
+  readiness, release gates, and route coverage before `ai.agentic-systems` is
+  marked implemented.
 - `designer.py` and `appgen_designer.html` with visual schema graphs, ERD
   exports, reviewable table/field/relationship/workflow proposals, schema-diff
   contracts, migration previews, and regenerated DSL for database design

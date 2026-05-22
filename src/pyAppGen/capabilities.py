@@ -118,7 +118,7 @@ DEFAULT_CAPABILITIES: tuple[Capability, ...] = (
     Capability("integration.emerging", "IoT and blockchain integration contracts", "partial", "generated device telemetry, edge sync, command, and blockchain audit-anchor contracts"),
     Capability("ai.assistance", "AI and machine-learning assistance", "partial", "generated assistant context, recommendations, prediction hooks, and review tasks"),
     Capability("ai.intelligence", "AI analytics, computer vision, NLP, recommendation, and UX optimization", "partial", "generated feature preprocessing, anomaly detection, image/video analysis plans, OCR/classification/object-detection contracts, NLP helpers, A/B testing, and predictive maintenance"),
-    Capability("ai.agentic-systems", "Agentic systems with local and API-key LLM providers", "partial", "DSL llm/agent blocks, generated provider readiness, and agent execution plans"),
+    Capability("ai.agentic-systems", "Agentic systems with local and API-key LLM providers", "implemented", "DSL llm/agent blocks, generated local/API-key provider catalogs, provider readiness matrices, API-key environment guards, secret-safe provider policies, agent catalogs, reviewed tool policies, execution matrices, agentic workbench, cockpit routes, and release gates"),
 )
 
 

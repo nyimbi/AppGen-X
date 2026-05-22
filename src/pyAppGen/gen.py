@@ -4803,6 +4803,7 @@ def write_agents_template(output_dir):
     </div>
     <div>
       <a class="btn btn-default" href="{{ url_for('AgenticView.catalog_json') }}">Agent Catalog JSON</a>
+      <a class="btn btn-default" href="{{ url_for('AgenticView.workbench_json') }}">Workbench JSON</a>
       <a class="btn btn-default" href="{{ url_for('AgenticView.release_gate_json') }}">Release Gate JSON</a>
     </div>
   </div>
@@ -21290,6 +21291,44 @@ def agentic_release_gate(existing_paths=(), environ=None):
     }}
 
 
+def agentic_workbench(existing_paths=(), environ=None):
+    """Return aggregate evidence for generated agentic-system design."""
+    existing = set(existing_paths)
+    required = ("app/agents.py", "app/templates/appgen_agents.html")
+    missing = tuple(path for path in required if path not in existing)
+    env = dict(environ or {{"OPENAI_API_KEY": "configured"}})
+    providers = provider_connection_matrix(env)
+    catalog = agent_catalog()
+    tools = agent_tool_policy()
+    execution = agent_execution_matrix(task="review generated app evolution", environ=env)
+    release = agentic_release_gate(existing, environ=env)
+    provider_names = {{provider["name"] for provider in provider_catalog(env)}}
+    missing_api_env = provider_catalog({{}})
+    checks = (
+        {{"id": "artifact_coverage", "ok": not missing, "evidence": {{"required": required, "missing": missing}}}},
+        {{"id": "provider_modes", "ok": {{"local", "api"}} <= set(providers["modes"]), "evidence": providers}},
+        {{"id": "api_key_secret_policy", "ok": providers["ok"] and all(row["mode"] == "local" or all(str(name).isupper() and "KEY" in str(name) for name in row["required_env"]) for row in providers["providers"]), "evidence": providers["providers"]}},
+        {{"id": "api_key_readiness_guard", "ok": any(provider["mode"] == "api" and provider["missing"] for provider in missing_api_env), "evidence": missing_api_env}},
+        {{"id": "agent_catalog", "ok": bool(catalog) and all(agent["provider"] in provider_names and agent["max_steps"] > 0 for agent in catalog), "evidence": catalog}},
+        {{"id": "tool_policy", "ok": tools["ok"] and all(policy["requires_review"] for policy in tools["policies"]), "evidence": tools}},
+        {{"id": "execution_matrix", "ok": execution["ok"] and all(plan["ready"] for plan in execution["plans"]), "evidence": execution}},
+        {{"id": "release_gate", "ok": release["ok"], "evidence": {{"format": release["format"], "blocking_gaps": release["blocking_gaps"]}}}},
+        {{"id": "route_surface", "ok": not missing, "evidence": {{"routes": ("/agents/", "/agents/catalog.json", "/agents/workbench.json", "/agents/release-gate.json", "/agents/<agent_name>.json")}}}},
+    )
+    ok = all(check["ok"] for check in checks)
+    return {{
+        "format": "appgen.agentic-workbench.v1",
+        "ok": ok,
+        "decision": "approved" if ok else "blocked",
+        "checks": checks,
+        "providers": providers,
+        "agents": catalog,
+        "tools": tools,
+        "execution": execution,
+        "release_gate": release,
+    }}
+
+
 def agents_check(existing_paths):
     """Return readiness for generated agentic artifacts."""
     existing = set(existing_paths)
@@ -21319,6 +21358,10 @@ class AgenticView(BaseView):
     @expose("/catalog.json")
     def catalog_json(self):
         return jsonify({{"providers": list(provider_catalog()), "agents": list(agent_catalog())}})
+
+    @expose("/workbench.json")
+    def workbench_json(self):
+        return jsonify(agentic_workbench({{"app/agents.py", "app/templates/appgen_agents.html"}}))
 
     @expose("/release-gate.json")
     def release_gate_json(self):

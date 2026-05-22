@@ -1036,6 +1036,7 @@ def test_generate_app_from_sqlite_schema_compiles(tmp_path) -> None:
     assert capabilities_by_key["ui.nl-evolution"]["status"] == "implemented"
     assert capabilities_by_key["devops.studio"]["status"] == "implemented"
     assert capabilities_by_key["components.erp-templates"]["status"] == "implemented"
+    assert capabilities_by_key["ai.agentic-systems"]["status"] == "implemented"
     assert "platform.jhipster" in {item["key"] for item in manifest["capabilities"]}
     assert "platform.competitive-benchmark" in {item["key"] for item in manifest["capabilities"]}
     assert "platform.jhipster-superiority" in {item["key"] for item in manifest["capabilities"]}
@@ -4528,6 +4529,29 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         gate["gate"] for gate in agent_gate["gates"]
     }
     assert agents.agentic_release_gate({"app/agents.py"}, environ={"OPENAI_API_KEY": "test"})["ok"] is False
+    assert "Workbench JSON" in (output_dir / "templates" / "appgen_agents.html").read_text()
+    agentic_workbench = agents.agentic_workbench(
+        {"app/agents.py", "app/templates/appgen_agents.html"},
+        environ={"OPENAI_API_KEY": "test"},
+    )
+    assert agentic_workbench["format"] == "appgen.agentic-workbench.v1"
+    assert agentic_workbench["ok"] is True
+    assert agentic_workbench["decision"] == "approved"
+    assert {
+        "artifact_coverage",
+        "provider_modes",
+        "api_key_secret_policy",
+        "api_key_readiness_guard",
+        "agent_catalog",
+        "tool_policy",
+        "execution_matrix",
+        "release_gate",
+        "route_surface",
+    } == {check["id"] for check in agentic_workbench["checks"]}
+    assert "/agents/workbench.json" in next(
+        check["evidence"]["routes"] for check in agentic_workbench["checks"] if check["id"] == "route_surface"
+    )
+    assert agents.agentic_workbench({"app/agents.py"}, environ={"OPENAI_API_KEY": "test"})["ok"] is False
     assert {item["target"] for item in platforms.platform_catalog()} == {"web", "pwa", "mobile", "desktop", "chatbot"}
     mobile_contract = platforms.platform_contract("mobile")
     assert "camera" in mobile_contract["capabilities"]
