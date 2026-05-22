@@ -246,7 +246,10 @@ apps include:
   claimed.
 - `rules.py` and `appgen_rules.html` with generated business-rule validation,
   row checks, decision-tree exports, branch action plans, and row-level
-  decision traces.
+  decision traces. The generated `rules_release_gate()` proves required
+  artifacts, rule catalogs, validation success/error contracts, decision plans,
+  decision-tree exports, and decision traces before customization readiness is
+  claimed.
 - `validation.py` with schema-driven payload, field, enum, type, required-field,
   relationship, and UI validation contracts for forms, APIs, imports, and
   chatbots.

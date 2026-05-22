@@ -2657,6 +2657,13 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert decision_trace["format"] == "appgen.decision-trace.v1"
     assert decision_trace["decisions"] == ("review",)
     assert rules.rules_check({"app/rules.py", "app/templates/appgen_rules.html"})["ok"] is True
+    rules_gate = rules.rules_release_gate({"app/rules.py", "app/templates/appgen_rules.html"})
+    assert rules_gate["format"] == "appgen.rules-release-gate.v1"
+    assert rules_gate["ok"] is True
+    assert {"rule_catalog", "validation_contracts", "decision_contracts"} <= {
+        check["gate"] for check in rules_gate["checks"]
+    }
+    assert rules.rules_release_gate({"app/rules.py"})["ok"] is False
     assert validation.table_validation_contract("Book")["name"] == "Book"
     assert validation.field_validation_contract("Book", "status")["enum_values"] == ("draft", "published", "archived")
     assert validation.validate_payload("Book", {"status": "draft"})["errors"][0]["code"] == "required"

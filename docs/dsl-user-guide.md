@@ -217,6 +217,12 @@ rule PublishPolicy for Book {
 }
 ```
 
+Generated business rules expose `rules_release_gate()` and
+`/rules/release-gate.json`. Use this gate to prove rule catalogs, validation
+success/error behavior, branch decision plans, decision-tree exports, decision
+traces, and required rule artifacts before treating low-code customization as
+release-ready.
+
 Use `role` for generated access policies:
 
 ```appgen

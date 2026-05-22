@@ -3638,6 +3638,7 @@ def write_rules_template(output_dir):
     <div>
       <a class="btn btn-primary" href="{{ url_for('RulesView.catalog_json') }}">Rules JSON</a>
       <a class="btn btn-default" href="{{ url_for('RulesView.decision_trees_json') }}">Decision Trees JSON</a>
+      <a class="btn btn-default" href="{{ url_for('RulesView.release_gate_json') }}">Release Gate JSON</a>
     </div>
   </div>
   <div class="agrule-grid">
@@ -8751,6 +8752,100 @@ def rules_check(existing_paths):
     return {{"ok": not missing, "missing": missing, "rules": tuple(BUSINESS_RULES), "decision_trees": len(decision_tree_catalog())}}
 
 
+def _passing_sample_row(rule):
+    row = {{}}
+    for condition in rule["conditions"]:
+        field = condition["field"]
+        operator = condition["operator"]
+        values = tuple(condition.get("values") or ())
+        if operator == "required":
+            row.setdefault(field, f"sample_{{field}}")
+        elif operator == "in":
+            row[field] = values[0] if values else f"sample_{{field}}"
+        elif operator in ("==", ">=", "<="):
+            row[field] = values[0] if values else "1"
+        elif operator == "!=":
+            row[field] = f"not_{{values[0]}}" if values else "sample"
+        elif operator == ">":
+            row[field] = "2"
+        elif operator == "<":
+            row[field] = "0"
+        else:
+            row.setdefault(field, f"sample_{{field}}")
+    return row
+
+
+def _failing_sample_row(rule):
+    row = _passing_sample_row(rule)
+    for condition in rule["conditions"]:
+        if condition.get("action"):
+            continue
+        operator = condition["operator"]
+        field = condition["field"]
+        values = tuple(condition.get("values") or ())
+        if operator == "required":
+            row[field] = ""
+            break
+        if operator == "in":
+            row[field] = "__invalid__"
+            break
+        if operator == "==":
+            row[field] = "__invalid__"
+            break
+        if operator == "!=" and values:
+            row[field] = values[0]
+            break
+        if operator == ">":
+            row[field] = "-1"
+            break
+        if operator == ">=":
+            row[field] = "-1"
+            break
+        if operator == "<":
+            row[field] = "999999"
+            break
+        if operator == "<=":
+            row[field] = "999999"
+            break
+    return row
+
+
+def rules_release_gate(existing_paths=()):
+    """Return release readiness for generated business-rule customization."""
+    readiness = rules_check(existing_paths)
+    rule_checks = []
+    for rule in rules_catalog():
+        passing_row = _passing_sample_row(rule)
+        failing_row = _failing_sample_row(rule)
+        valid = validate_row(rule["table"], passing_row)
+        invalid = validate_row(rule["table"], failing_row)
+        decision = decision_plan(rule["table"], passing_row)
+        tree = rule_decision_tree(rule["name"])
+        trace = decision_trace(rule["table"], passing_row)
+        rule_checks.append({{
+            "rule": rule["name"],
+            "table": rule["table"],
+            "validation_ok": valid["ok"],
+            "error_contract_ok": bool(invalid["errors"]) or all(condition.get("action") for condition in rule["conditions"]),
+            "decision_plan_ok": set(decision) >= {{"table", "decisions", "results"}},
+            "tree_ok": tree["format"] == "appgen.decision-tree.v1" and bool(tree["nodes"]),
+            "trace_ok": trace["format"] == "appgen.decision-trace.v1" and trace["table"] == rule["table"],
+        }})
+    checks = (
+        {{"gate": "artifacts", "ok": readiness["ok"], "missing": readiness["missing"]}},
+        {{"gate": "rule_catalog", "ok": bool(rules_catalog()), "rules": tuple(BUSINESS_RULES)}},
+        {{"gate": "validation_contracts", "ok": bool(rule_checks) and all(item["validation_ok"] and item["error_contract_ok"] for item in rule_checks), "checks": tuple(rule_checks)}},
+        {{"gate": "decision_contracts", "ok": bool(rule_checks) and all(item["decision_plan_ok"] and item["tree_ok"] and item["trace_ok"] for item in rule_checks), "checks": tuple(rule_checks)}},
+    )
+    ok = all(check["ok"] for check in checks)
+    return {{
+        "format": "appgen.rules-release-gate.v1",
+        "ok": ok,
+        "decision": "approved" if ok else "blocked",
+        "checks": checks,
+    }}
+
+
 class RulesView(BaseView):
     route_base = "/rules"
     default_view = "index"
@@ -8770,6 +8865,10 @@ class RulesView(BaseView):
     @expose("/decision-trees.json")
     def decision_trees_json(self):
         return jsonify(list(decision_tree_catalog()))
+
+    @expose("/release-gate.json")
+    def release_gate_json(self):
+        return jsonify(rules_release_gate({{"app/rules.py", "app/templates/appgen_rules.html"}}))
 
 
 def register_rules(appbuilder):
@@ -35261,6 +35360,8 @@ def validate_rules_artifacts() -> None:
         fail("rules contract must expose validation and decision helpers")
     if "rule_decision_tree" not in contract or "decision_tree_catalog" not in contract or "decision_trace" not in contract:
         fail("rules contract must expose decision-tree exports and traces")
+    if "rules_release_gate" not in contract:
+        fail("rules contract must expose release readiness")
     api = (ROOT / "app" / "api.py").read_text()
     views = (ROOT / "app" / "views.py").read_text()
     if "def pre_add" not in api or "before_save_row" not in api or "after_save_row" not in api:
@@ -35268,8 +35369,8 @@ def validate_rules_artifacts() -> None:
     if "def pre_add" not in views or "before_save_row" not in views or "after_save_row" not in views:
         fail("CRUD views must enforce rules through generated write hooks")
     template = (ROOT / "app" / "templates" / "appgen_rules.html").read_text()
-    if "Business Rules" not in template or "Rules JSON" not in template or "Decision Trees JSON" not in template:
-        fail("rules template must expose generated rule and decision-tree contracts")
+    if "Business Rules" not in template or "Rules JSON" not in template or "Decision Trees JSON" not in template or "Release Gate JSON" not in template:
+        fail("rules template must expose generated rule, decision-tree, and release contracts")
 
 
 def validate_validation_artifacts() -> None:
@@ -36468,6 +36569,8 @@ def test_generated_runtime_helpers():
     assert validation.ui_validation_schema(first_validation_table)["format"] == "appgen.ui-validation.v1"
     assert isinstance(rules.rules_catalog(), tuple)
     assert rules.rules_check({"app/rules.py", "app/templates/appgen_rules.html"})["ok"] is True
+    assert rules.rules_release_gate({"app/rules.py", "app/templates/appgen_rules.html"})["ok"] is True
+    assert rules.rules_release_gate({"app/rules.py"})["ok"] is False
     assert reports.reports_release_gate({"app/reports.py", "app/templates/appgen_reports.html"})["ok"] is True
     assert reports.reports_release_gate({"app/reports.py"})["ok"] is False
     assert report_delivery.rows_to_pdf_bytes(next(iter(report_delivery.REPORT_DELIVERY)), ()).startswith(b"%PDF")
