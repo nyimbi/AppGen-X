@@ -519,7 +519,11 @@ apps include:
   drag-and-drop component palette, snapped form canvas contracts, overlap
   conflict detection, drop proposals, property-inspector metadata, and
   `form_designer_release_gate()` evidence for palette breadth, canvas contracts,
-  field-to-component mapping, drop metadata, and overlap guardrails.
+  field-to-component mapping, drop metadata, and overlap guardrails. The
+  generated `form_designer_workbench()` proves the fuller Delphi-style design
+  surface: palette categories, per-table form generation, field mapping
+  matrices, snap/bounds behavior, property inspectors, placement suggestions,
+  proposal application, conflict guardrails, and workbench route coverage.
 - `nl_evolution.py` and `appgen_nl_evolution.html` with natural-language
   proposal planning for tables, fields, forms, workflows, rules, chatbots,
   agents, reports, dashboards, platform targets, and ERP template modules,

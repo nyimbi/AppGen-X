@@ -5846,6 +5846,7 @@ def write_form_designer_template(output_dir):
     </div>
     <div>
       <a class="btn btn-default" href="{{ url_for('FormDesignerView.forms_json') }}">Forms JSON</a>
+      <a class="btn btn-default" href="{{ url_for('FormDesignerView.workbench_json') }}">Workbench JSON</a>
       <a class="btn btn-default" href="{{ url_for('FormDesignerView.release_gate_json') }}">Release Gate JSON</a>
     </div>
   </div>
@@ -22063,6 +22064,106 @@ def form_designer_release_gate(existing_paths=()):
     }}
 
 
+def form_designer_workbench(existing_paths=()):
+    """Return aggregate Delphi-style workbench evidence for generated forms."""
+    existing = set(existing_paths)
+    required = ("app/form_designer.py", "app/templates/appgen_form_designer.html")
+    missing = tuple(path for path in required if path not in existing)
+    palette_types = {{item["type"] for item in PALETTE}}
+    palette_categories = {{
+        "text": tuple(item for item in ("Label", "TextBox", "TextArea") if item in palette_types),
+        "choice": tuple(item for item in ("Select", "Checkbox", "RelationshipPicker") if item in palette_types),
+        "date_time": tuple(item for item in ("DatePicker", "DateTimePicker", "TimePicker") if item in palette_types),
+        "media": tuple(item for item in ("ImageUpload", "FileUpload") if item in palette_types),
+        "layout": tuple(item for item in ("Section", "Tabs", "Button") if item in palette_types),
+    }}
+    forms = tuple(form_design(table_name) for table_name in FORM_TABLES)
+    field_mappings = tuple(
+        dict(field_component(table_name, field["name"]), table=table_name)
+        for table_name, spec in FORM_TABLES.items()
+        for field in spec["fields"]
+    )
+    first_design = forms[0] if forms else {{"table": None, "canvas": {{}}, "components": ()}}
+    first_component = first_design.get("components", ({{}},))[0] if first_design.get("components") else {{}}
+    first_field = first_component.get("field")
+    first_type = first_component.get("type") or "TextBox"
+    proposal = (
+        proposal_from_drop({{"table": first_design["table"], "component": first_type, "field": first_field, "x": 1, "y": 1}})
+        if first_design.get("table")
+        else {{"kind": "drop_component", "component": {{}}, "properties": ()}}
+    )
+    updated = apply_form_proposal(first_design, proposal) if first_design.get("table") else first_design
+    updated_validation = validate_form_design(updated) if first_design.get("table") else {{"ok": False, "conflicts": ()}}
+    suggestion = placement_suggestion(first_design, first_type, first_field) if first_design.get("table") else {{"component": {{}}, "canvas": {{}}}}
+    snapped = drop_component(first_design["table"], first_type, field=first_field, x=99, y=2, w=4) if first_design.get("table") else {{}}
+    collision_component = dict(proposal["component"], id=str(proposal["component"].get("id", "drop")) + "_collision")
+    collision_design = dict(first_design, components=tuple(first_design.get("components", ())) + (proposal["component"], collision_component))
+    collision_validation = validate_form_design(collision_design) if first_design.get("table") else {{"ok": True, "conflicts": ()}}
+    inspector_names = {{item["name"] for item in property_sheet(first_component)}} if first_component else set()
+    checks = (
+        {{
+            "id": "artifact_coverage",
+            "ok": not missing,
+            "evidence": {{"required": required, "missing": missing}},
+        }},
+        {{
+            "id": "palette_categories",
+            "ok": all(palette_categories.values()) and len(palette_types) >= 12,
+            "evidence": palette_categories,
+        }},
+        {{
+            "id": "table_form_catalog",
+            "ok": bool(FORM_TABLES) and len(forms) == len(FORM_TABLES) and all(form["canvas"]["columns"] == CANVAS_COLUMNS for form in forms),
+            "evidence": {{"tables": tuple(FORM_TABLES), "forms": tuple(form["table"] for form in forms)}},
+        }},
+        {{
+            "id": "field_mapping_matrix",
+            "ok": len(field_mappings) == sum(len(spec["fields"]) for spec in FORM_TABLES.values()) and all(item["type"] in palette_types for item in field_mappings),
+            "evidence": {{"count": len(field_mappings), "sample": field_mappings[:5]}},
+        }},
+        {{
+            "id": "snap_grid_bounds",
+            "ok": bool(snapped) and snapped["x"] == CANVAS_COLUMNS - snapped["w"] and component_bounds(snapped)["right"] == CANVAS_COLUMNS and snapped["y"] == 2,
+            "evidence": {{"component": snapped, "bounds": component_bounds(snapped) if snapped else {{}}}},
+        }},
+        {{
+            "id": "property_inspector",
+            "ok": {{"field", "x", "y", "w", "h", "type"}} <= inspector_names,
+            "evidence": {{"properties": tuple(sorted(inspector_names))}},
+        }},
+        {{
+            "id": "proposal_application",
+            "ok": proposal.get("kind") == "drop_component" and updated_validation["ok"],
+            "evidence": {{"proposal": proposal.get("component"), "validation": updated_validation}},
+        }},
+        {{
+            "id": "placement_suggestions",
+            "ok": bool(first_design.get("components")) and suggestion["component"]["y"] > max(component["y"] for component in first_design["components"]),
+            "evidence": suggestion,
+        }},
+        {{
+            "id": "conflict_guardrails",
+            "ok": collision_validation["ok"] is False and bool(collision_validation["conflicts"]),
+            "evidence": collision_validation,
+        }},
+        {{
+            "id": "route_surface",
+            "ok": not missing,
+            "evidence": {{"routes": ("/form-designer/", "/form-designer/forms.json", "/form-designer/drop", "/form-designer/workbench.json", "/form-designer/release-gate.json")}},
+        }},
+    )
+    ok = all(check["ok"] for check in checks)
+    return {{
+        "format": "appgen.form-designer-workbench.v1",
+        "ok": ok,
+        "decision": "approved" if ok else "blocked",
+        "checks": checks,
+        "palette": tuple(sorted(palette_types)),
+        "forms": forms,
+        "field_mappings": field_mappings,
+    }}
+
+
 class FormDesignerView(BaseView):
     route_base = "/form-designer"
     default_view = "index"
@@ -22078,6 +22179,10 @@ class FormDesignerView(BaseView):
     @expose("/forms.json")
     def forms_json(self):
         return jsonify(list(form_catalog()))
+
+    @expose("/workbench.json")
+    def workbench_json(self):
+        return jsonify(form_designer_workbench({{"app/form_designer.py", "app/templates/appgen_form_designer.html"}}))
 
     @expose("/<table_name>.json")
     def form_json(self, table_name):

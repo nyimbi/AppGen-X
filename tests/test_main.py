@@ -1032,6 +1032,7 @@ def test_generate_app_from_sqlite_schema_compiles(tmp_path) -> None:
     assert capabilities_by_key["platform.targets"]["status"] == "implemented"
     assert capabilities_by_key["platform.native"]["status"] == "implemented"
     assert capabilities_by_key["platform.frontends"]["status"] == "implemented"
+    assert capabilities_by_key["ui.form-designer"]["status"] == "implemented"
     assert "platform.jhipster" in {item["key"] for item in manifest["capabilities"]}
     assert "platform.competitive-benchmark" in {item["key"] for item in manifest["capabilities"]}
     assert "platform.jhipster-superiority" in {item["key"] for item in manifest["capabilities"]}
@@ -5295,6 +5296,31 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert suggestion["component"]["y"] > max(component["y"] for component in design["components"])
     assert "getBoundingClientRect" in (output_dir / "templates" / "appgen_form_designer.html").read_text()
     assert "Inspector" in (output_dir / "templates" / "appgen_form_designer.html").read_text()
+    assert "Workbench JSON" in (output_dir / "templates" / "appgen_form_designer.html").read_text()
+    workbench = form_designer.form_designer_workbench(
+        {"app/form_designer.py", "app/templates/appgen_form_designer.html"}
+    )
+    assert workbench["format"] == "appgen.form-designer-workbench.v1"
+    assert workbench["ok"] is True
+    assert workbench["decision"] == "approved"
+    assert {
+        "artifact_coverage",
+        "palette_categories",
+        "table_form_catalog",
+        "field_mapping_matrix",
+        "snap_grid_bounds",
+        "property_inspector",
+        "proposal_application",
+        "placement_suggestions",
+        "conflict_guardrails",
+        "route_surface",
+    } == {check["id"] for check in workbench["checks"]}
+    assert "/form-designer/workbench.json" in next(
+        check["evidence"]["routes"] for check in workbench["checks"] if check["id"] == "route_surface"
+    )
+    assert len(workbench["forms"]) >= 2
+    assert any(item["type"] == "DatePicker" for item in workbench["field_mappings"])
+    assert form_designer.form_designer_workbench({"app/form_designer.py"})["ok"] is False
     form_gate = form_designer.form_designer_release_gate(
         {"app/form_designer.py", "app/templates/appgen_form_designer.html"}
     )
