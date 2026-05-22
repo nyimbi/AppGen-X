@@ -478,6 +478,7 @@ def test_generate_app_from_sqlite_schema_compiles(tmp_path) -> None:
         output_dir / "text_quality.py",
         output_dir / "notifications.py",
         output_dir / "platforms.py",
+        output_dir / "pwa.py",
         output_dir / "microservices.py",
         output_dir / "collaboration.py",
         output_dir / "version_control.py",
@@ -560,6 +561,7 @@ def test_generate_app_from_sqlite_schema_compiles(tmp_path) -> None:
     assert (output_dir / "templates" / "appgen_text_quality.html").exists()
     assert (output_dir / "templates" / "appgen_notifications.html").exists()
     assert (output_dir / "templates" / "appgen_platforms.html").exists()
+    assert (output_dir / "templates" / "appgen_pwa.html").exists()
     assert (output_dir / "templates" / "appgen_microservices.html").exists()
     assert (output_dir / "templates" / "appgen_collaboration.html").exists()
     assert (output_dir / "templates" / "appgen_version_control.html").exists()
@@ -821,6 +823,24 @@ def test_generate_app_from_sqlite_schema_compiles(tmp_path) -> None:
     assert "{#each tables as table}" in (tmp_path / "frontends" / "svelte" / "src" / "App.svelte").read_text()
     assert "hx-get" in (tmp_path / "frontends" / "htmx" / "src" / "server.js").read_text()
     assert "http.createServer" in (tmp_path / "frontends" / "express" / "src" / "server.js").read_text()
+    pwa = _load_module(output_dir / "pwa.py", "generated_pwa")
+    pwa_artifacts = {
+        "app/static/appgen.webmanifest",
+        "app/static/appgen-sw.js",
+        "app/static/appgen-offline.html",
+        "app/static/appgen-icon.svg",
+        "app/static/appgen-theme.css",
+    }
+    pwa_matrix = pwa.installability_matrix(pwa_artifacts)
+    assert pwa_matrix["format"] == "appgen.pwa-installability-matrix.v1"
+    assert pwa_matrix["ok"] is True
+    pwa_gate = pwa.pwa_release_gate(pwa_artifacts)
+    assert pwa_gate["format"] == "appgen.pwa-release-gate.v1"
+    assert pwa_gate["ok"] is True
+    assert {"installability_matrix", "standalone_manifest", "offline_runtime", "safe_fetch_scope"} <= {
+        gate["gate"] for gate in pwa_gate["gates"]
+    }
+    assert pwa.pwa_release_gate({"app/static/appgen.webmanifest"})["ok"] is False
     native = _load_module(tmp_path / "native" / "appgen_native.py", "generated_native")
     mobile = _load_module(tmp_path / "native" / "mobile" / "app.py", "generated_mobile")
     desktop = _load_module(tmp_path / "native" / "desktop" / "app.py", "generated_desktop")
@@ -1041,6 +1061,7 @@ def test_generate_app_from_sqlite_schema_compiles(tmp_path) -> None:
     assert "data.seed" in {item["key"] for item in manifest["capabilities"]}
     assert "ui.visual-modeling" in {item["key"] for item in manifest["capabilities"]}
     assert "ui.pwa" in {item["key"] for item in manifest["capabilities"]}
+    assert capabilities_by_key["ui.pwa"]["status"] == "implemented"
     assert "i18n.localization" in {item["key"] for item in manifest["capabilities"]}
     assert "a11y.compliance" in {item["key"] for item in manifest["capabilities"]}
     assert "workflow.automation" in {item["key"] for item in manifest["capabilities"]}
@@ -2409,6 +2430,9 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert "Generation Matrix JSON" in platforms_template
     assert "Release Gate JSON" in platforms_template
     assert "Experience Gate JSON" in platforms_template
+    pwa_template = (output_dir / "templates" / "appgen_pwa.html").read_text()
+    assert "installability" in pwa_template
+    assert "Release Gate JSON" in pwa_template
     microservices_template = (output_dir / "templates" / "appgen_microservices.html").read_text()
     assert "microservices architecture contract" in microservices_template
     assert "Service Mesh JSON" in microservices_template

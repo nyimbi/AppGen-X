@@ -1568,6 +1568,13 @@ def write_platforms_file(output_dir, schema: AppSchema):
     (output_dir / "platforms.py").write_text(_platforms_text(schema))
 
 
+def write_pwa_file(output_dir, schema: AppSchema):
+    """Write generated PWA installability and offline-readiness contracts."""
+    output_dir = Path(output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    (output_dir / "pwa.py").write_text(_pwa_text(schema))
+
+
 def write_microservices_file(output_dir, schema: AppSchema):
     """Write generated microservice architecture descriptors."""
     output_dir = Path(output_dir)
@@ -4974,6 +4981,56 @@ def write_platforms_template(output_dir):
     )
 
 
+def write_pwa_template(output_dir):
+    """Write the generated PWA readiness cockpit template."""
+    templates_dir = Path(output_dir) / "templates"
+    templates_dir.mkdir(parents=True, exist_ok=True)
+    (templates_dir / "appgen_pwa.html").write_text(
+        """{% extends "appbuilder/base.html" %}
+{% block content %}
+<style>
+  .agpwa-wrap { margin: 18px 0 32px; }
+  .agpwa-head { display: flex; justify-content: space-between; gap: 16px; align-items: flex-start; margin-bottom: 18px; }
+  .agpwa-title { margin: 0; font-size: 28px; font-weight: 700; color: #14213d; }
+  .agpwa-note { color: #52616b; max-width: 820px; line-height: 1.5; }
+  .agpwa-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; }
+  .agpwa-card { border: 1px solid #d9e2ec; background: #fff; padding: 16px; }
+  .agpwa-card h3 { margin: 0 0 8px; font-size: 17px; color: #14213d; }
+  .agpwa-muted { color: #64748b; font-size: 12px; }
+  .agpwa-pill { display: inline-block; border: 1px solid #cbd5e1; padding: 3px 7px; margin: 3px 4px 0 0; font-size: 12px; background: #f8fafc; }
+  @media (max-width: 760px) { .agpwa-head { display: block; } }
+</style>
+<section class="agpwa-wrap">
+  <div class="agpwa-head">
+    <div>
+      <h1 class="agpwa-title">PWA</h1>
+      <p class="agpwa-note">
+        Generated installability, service-worker, offline shell, icon, and
+        app-shell registration contracts for the generated web application.
+      </p>
+    </div>
+    <div>
+      <a class="btn btn-default" href="{{ url_for('PwaView.catalog_json') }}">Catalog JSON</a>
+      <a class="btn btn-default" href="{{ url_for('PwaView.release_gate_json') }}">Release Gate JSON</a>
+    </div>
+  </div>
+  <div class="agpwa-grid">
+    {% for item in assets %}
+    <article class="agpwa-card">
+      <h3>{{ item.label }}</h3>
+      <div class="agpwa-muted">{{ item.path }}</div>
+      {% for capability in item.capabilities %}
+      <span class="agpwa-pill">{{ capability }}</span>
+      {% endfor %}
+    </article>
+    {% endfor %}
+  </div>
+</section>
+{% endblock %}
+"""
+    )
+
+
 def write_microservices_template(output_dir):
     """Write the generated microservices architecture cockpit template."""
     templates_dir = Path(output_dir) / "templates"
@@ -6758,6 +6815,7 @@ def generate_app_from_database(database_url, output_dir, *, config_database_url=
     write_text_quality_file(output_dir, app_schema)
     write_notifications_file(output_dir, app_schema)
     write_platforms_file(output_dir, app_schema)
+    write_pwa_file(output_dir, app_schema)
     write_microservices_file(output_dir, app_schema)
     write_collaboration_file(output_dir, app_schema)
     write_version_control_file(output_dir, app_schema)
@@ -6829,6 +6887,7 @@ def generate_app_from_database(database_url, output_dir, *, config_database_url=
     write_text_quality_template(output_dir)
     write_notifications_template(output_dir)
     write_platforms_template(output_dir)
+    write_pwa_template(output_dir)
     write_microservices_template(output_dir)
     write_collaboration_template(output_dir)
     write_version_control_template(output_dir)
@@ -6924,6 +6983,7 @@ def generate_app_from_schema(schema: AppSchema, output_dir, *, config_database_u
     write_text_quality_file(output_dir, schema)
     write_notifications_file(output_dir, schema)
     write_platforms_file(output_dir, schema)
+    write_pwa_file(output_dir, schema)
     write_microservices_file(output_dir, schema)
     write_collaboration_file(output_dir, schema)
     write_version_control_file(output_dir, schema)
@@ -6995,6 +7055,7 @@ def generate_app_from_schema(schema: AppSchema, output_dir, *, config_database_u
     write_text_quality_template(output_dir)
     write_notifications_template(output_dir)
     write_platforms_template(output_dir)
+    write_pwa_template(output_dir)
     write_microservices_template(output_dir)
     write_collaboration_template(output_dir)
     write_version_control_template(output_dir)
@@ -27472,6 +27533,143 @@ def register_platforms(appbuilder):
 '''
 
 
+def _pwa_text(schema: AppSchema) -> str:
+    app_name = _app_name(schema)
+    branding = _branding_contract(schema)
+    selected_targets = _selected_platform_targets(schema)
+    return f'''"""Generated PWA installability and offline-readiness contracts."""
+
+from __future__ import annotations
+
+from flask import jsonify
+from flask_appbuilder import BaseView
+from flask_appbuilder import expose
+
+
+APP_NAME = {app_name!r}
+SELECTED_TARGETS = {selected_targets!r}
+PWA_ASSETS = (
+    {{"label": "Web Manifest", "path": "app/static/appgen.webmanifest", "capabilities": ("installable", "standalone-display", "theme-color")}},
+    {{"label": "Service Worker", "path": "app/static/appgen-sw.js", "capabilities": ("precache", "runtime-cache", "offline-fallback")}},
+    {{"label": "Offline Shell", "path": "app/static/appgen-offline.html", "capabilities": ("offline-message", "responsive-shell")}},
+    {{"label": "Application Icon", "path": "app/static/appgen-icon.svg", "capabilities": ("maskable", "svg")}},
+    {{"label": "Theme CSS", "path": "app/static/appgen-theme.css", "capabilities": ("theme", "focus-ring")}},
+)
+MANIFEST_CONTRACT = {{
+    "name": APP_NAME,
+    "short_name": APP_NAME[:24],
+    "start_url": "/",
+    "scope": "/",
+    "display": "standalone",
+    "background_color": {branding["palette"]["surface"]!r},
+    "theme_color": {branding["palette"]["primary"]!r},
+    "icons": ({{"src": "/static/appgen-icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable"}},),
+}}
+SERVICE_WORKER_CONTRACT = {{
+    "path": "app/static/appgen-sw.js",
+    "cache_name": "appgen-shell-v1",
+    "precache_urls": ("/", "/static/appgen.webmanifest", "/static/appgen-icon.svg", "/static/appgen-theme.css", "/static/appgen-offline.html"),
+    "runtime_strategy": "network_first_with_cache_fallback",
+    "offline_fallback": "/static/appgen-offline.html",
+    "ignored_methods": ("POST", "PUT", "PATCH", "DELETE"),
+}}
+
+
+def pwa_asset_catalog():
+    """Return generated PWA asset descriptors."""
+    return PWA_ASSETS
+
+
+def manifest_contract():
+    """Return the generated web app manifest contract."""
+    return MANIFEST_CONTRACT
+
+
+def service_worker_contract():
+    """Return the generated service-worker cache and fallback contract."""
+    return SERVICE_WORKER_CONTRACT
+
+
+def offline_shell_contract():
+    """Return the generated offline fallback shell contract."""
+    return {{
+        "path": "app/static/appgen-offline.html",
+        "title": f"{{APP_NAME}} Offline",
+        "message": "The generated app shell is available, but live data needs a network connection.",
+        "registered_from_home": True,
+    }}
+
+
+def installability_matrix(existing_paths=()):
+    """Return PWA installability and offline evidence for generated assets."""
+    existing = set(existing_paths)
+    manifest = manifest_contract()
+    service_worker = service_worker_contract()
+    rows = (
+        {{"gate": "target_selected", "ok": "pwa" in SELECTED_TARGETS, "evidence": SELECTED_TARGETS}},
+        {{"gate": "asset_coverage", "ok": not tuple(asset["path"] for asset in PWA_ASSETS if existing and asset["path"] not in existing), "evidence": tuple(asset["path"] for asset in PWA_ASSETS)}},
+        {{"gate": "manifest_installable", "ok": manifest["display"] == "standalone" and manifest["start_url"] == "/" and bool(manifest["icons"]), "evidence": manifest}},
+        {{"gate": "service_worker_precache", "ok": service_worker["offline_fallback"] in service_worker["precache_urls"] and "/" in service_worker["precache_urls"], "evidence": service_worker}},
+        {{"gate": "offline_shell", "ok": offline_shell_contract()["registered_from_home"] and offline_shell_contract()["path"].endswith("appgen-offline.html"), "evidence": offline_shell_contract()}},
+    )
+    missing = tuple(asset["path"] for asset in PWA_ASSETS if existing and asset["path"] not in existing)
+    return {{
+        "format": "appgen.pwa-installability-matrix.v1",
+        "ok": all(row["ok"] for row in rows),
+        "missing": missing,
+        "rows": rows,
+    }}
+
+
+def pwa_release_gate(existing_paths=()):
+    """Return release readiness for the generated installable offline web app."""
+    matrix = installability_matrix(existing_paths)
+    gates = (
+        {{"gate": "installability_matrix", "ok": matrix["ok"], "evidence": matrix["rows"]}},
+        {{"gate": "artifact_coverage", "ok": not matrix["missing"], "evidence": matrix["missing"]}},
+        {{"gate": "standalone_manifest", "ok": manifest_contract()["display"] == "standalone", "evidence": manifest_contract()}},
+        {{"gate": "offline_runtime", "ok": service_worker_contract()["offline_fallback"] == "/static/appgen-offline.html", "evidence": service_worker_contract()}},
+        {{"gate": "safe_fetch_scope", "ok": "POST" in service_worker_contract()["ignored_methods"], "evidence": service_worker_contract()["ignored_methods"]}},
+    )
+    ok = all(gate["ok"] for gate in gates)
+    return {{
+        "format": "appgen.pwa-release-gate.v1",
+        "ok": ok,
+        "decision": "approved" if ok else "blocked",
+        "assets": PWA_ASSETS,
+        "installability": matrix,
+        "gates": gates,
+        "blocking_gaps": tuple(gate["gate"] for gate in gates if not gate["ok"]),
+    }}
+
+
+class PwaView(BaseView):
+    route_base = "/pwa"
+    default_view = "index"
+
+    @expose("/")
+    def index(self):
+        return self.render_template("appgen_pwa.html", assets=pwa_asset_catalog())
+
+    @expose("/catalog.json")
+    def catalog_json(self):
+        return jsonify(list(pwa_asset_catalog()))
+
+    @expose("/release-gate.json")
+    def release_gate_json(self):
+        return jsonify(pwa_release_gate())
+
+
+def register_pwa(appbuilder):
+    appbuilder.add_view(
+        PwaView,
+        "PWA",
+        icon="fa-cloud-download",
+        category="AppGen",
+    )
+'''
+
+
 def _microservices_text(schema: AppSchema, app_name: str) -> str:
     service_name = underscore(app_name).replace("_", "-").lower()
     domain_services = {}
@@ -36820,6 +37018,7 @@ REQUIRED_PATHS = (
     "app/text_quality.py",
     "app/notifications.py",
     "app/platforms.py",
+    "app/pwa.py",
     "app/microservices.py",
     "app/collaboration.py",
     "app/version_control.py",
@@ -36875,6 +37074,7 @@ REQUIRED_PATHS = (
     "app/templates/appgen_text_quality.html",
     "app/templates/appgen_notifications.html",
     "app/templates/appgen_platforms.html",
+    "app/templates/appgen_pwa.html",
     "app/templates/appgen_microservices.html",
     "app/templates/appgen_collaboration.html",
     "app/templates/appgen_version_control.html",
@@ -39448,6 +39648,7 @@ def test_generated_runtime_helpers():
     text_quality = load_module(ROOT / "app" / "text_quality.py", "generated_text_quality")
     notifications = load_module(ROOT / "app" / "notifications.py", "generated_notifications")
     platforms = load_module(ROOT / "app" / "platforms.py", "generated_platforms")
+    pwa = load_module(ROOT / "app" / "pwa.py", "generated_pwa")
     microservices = load_module(ROOT / "app" / "microservices.py", "generated_microservices")
     sdks = load_module(ROOT / "sdks" / "appgen_sdks.py", "generated_sdks")
     realtime = load_module(ROOT / "app" / "realtime.py", "generated_realtime")
@@ -40108,6 +40309,16 @@ def test_generated_runtime_helpers():
     assert platforms.platform_release_gate()["format"] == "appgen.platform-release-gate.v1"
     assert platforms.platform_target_experience_gate()["format"] == "appgen.platform-target-experience-gate.v1"
     assert platforms.platform_target_experience_gate()["ok"] is True
+    pwa_artifacts = {
+        "app/static/appgen.webmanifest",
+        "app/static/appgen-sw.js",
+        "app/static/appgen-offline.html",
+        "app/static/appgen-icon.svg",
+        "app/static/appgen-theme.css",
+    }
+    assert pwa.pwa_release_gate(pwa_artifacts)["format"] == "appgen.pwa-release-gate.v1"
+    assert pwa.pwa_release_gate(pwa_artifacts)["ok"] is True
+    assert pwa.pwa_release_gate({"app/static/appgen.webmanifest"})["ok"] is False
     assert native.native_release_gate({
         "native/appgen_native.py",
         "native/mobile/pyproject.toml",

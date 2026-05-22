@@ -291,8 +291,12 @@ apps include:
   stricter product-level gate: it blocks release claims unless the generated
   app proves the seven roadmap outcomes of beautiful, sophisticated, secure,
   reliable, robust, functional, and highly capable.
-- `static/appgen.webmanifest`, `static/appgen-sw.js`, and an offline shell for
-  progressive web app behavior.
+- `pwa.py`, `appgen_pwa.html`, `static/appgen.webmanifest`,
+  `static/appgen-sw.js`, `static/appgen-offline.html`, icons, and theme assets
+  for installable progressive web app behavior. The generated
+  `pwa_release_gate()` proves PWA target selection, artifact coverage,
+  standalone manifest readiness, service-worker precache/offline fallback,
+  safe fetch scope, and offline shell registration.
 - `branding.py`, `appgen_branding.html`, and `static/appgen-theme.css` with a
   generated brand contract, theme preview, design tokens, component style
   contracts, responsive layout recipes, typography scale, density modes,

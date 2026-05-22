@@ -38,7 +38,7 @@ def set_sqlite_pragma(dbapi_connection, connection_record):
     cursor.close()
 """
 
-from . import models, views, api, openapi, workflow, rules, designer, view_composition, tabbed_views, form_designer, nl_evolution, dsl_reference, view_experience, support_center, low_code_features, prototyping, config_admin, integrations, productivity, lifecycle, emerging, tenancy, rls, identity, compliance, assistant, intelligence, chatbot, voice, agents, text_quality, notifications, platforms, microservices, collaboration, version_control, realtime, events, rpa, diagnostics, api_testing, components, erp_templates, project_management, devtools, studio, wizards, branding, extensions, reports, report_delivery, dashboards, usage_analytics, search, media, documents, inventory_ops, finance_ops, manufacturing_ops, data_access, data_exchange, database_ops, schema_import, runtime_security, backup, monitoring, resilience, performance, runtime_assurance  # , gql_schema
+from . import models, views, api, openapi, workflow, rules, designer, view_composition, tabbed_views, form_designer, nl_evolution, dsl_reference, view_experience, support_center, low_code_features, prototyping, config_admin, integrations, productivity, lifecycle, emerging, tenancy, rls, identity, compliance, assistant, intelligence, chatbot, voice, agents, text_quality, notifications, platforms, pwa, microservices, collaboration, version_control, realtime, events, rpa, diagnostics, api_testing, components, erp_templates, project_management, devtools, studio, wizards, branding, extensions, reports, report_delivery, dashboards, usage_analytics, search, media, documents, inventory_ops, finance_ops, manufacturing_ops, data_access, data_exchange, database_ops, schema_import, runtime_security, backup, monitoring, resilience, performance, runtime_assurance  # , gql_schema
 
 from app.views import init_views
 from app.security import seed_roles
@@ -71,6 +71,7 @@ from app.agents import register_agents
 from app.text_quality import register_text_quality
 from app.notifications import register_notifications
 from app.platforms import register_platforms
+from app.pwa import register_pwa
 from app.microservices import register_microservices
 from app.collaboration import register_collaboration
 from app.version_control import register_version_control
@@ -159,6 +160,7 @@ register_agents(appbuilder)
 register_text_quality(appbuilder)
 register_notifications(appbuilder)
 register_platforms(appbuilder)
+register_pwa(appbuilder)
 register_microservices(appbuilder)
 register_collaboration(appbuilder)
 register_version_control(appbuilder)
