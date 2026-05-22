@@ -624,7 +624,9 @@ apps include:
   traceability, DevOps exports, and required artifacts.
 - `wizards.py` and `appgen_wizards.html` with generated sequential table
   creation wizards and workflow process wizards derived from existing tables
-  and `flow` declarations.
+  and `flow` declarations. The generated `wizard_release_gate()` proves table
+  and workflow wizard coverage, field prompts, step validation, progression
+  behavior, and required wizard artifacts before wizard readiness is claimed.
 - `events.py` and `appgen_events.html` with generated complex event
   processing, alerting, retry, and dead-letter contracts.
 - `api_testing.py` and `appgen_api_testing.html` with generated automated API

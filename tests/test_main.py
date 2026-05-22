@@ -5088,6 +5088,13 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     publish_wizard = wizards.wizard_plan("PublishWorkflow")
     assert publish_wizard["steps"][0]["source"] == "draft"
     assert publish_wizard["steps"][-1]["name"] == "complete"
+    wizard_gate = wizards.wizard_release_gate({"app/wizards.py", "app/templates/appgen_wizards.html"})
+    assert wizard_gate["format"] == "appgen.wizard-release-gate.v1"
+    assert wizard_gate["ok"] is True
+    assert {"table_wizards", "workflow_wizards", "step_validation", "progression"} <= {
+        check["gate"] for check in wizard_gate["checks"]
+    }
+    assert wizards.wizard_release_gate({"app/wizards.py"})["ok"] is False
     flow_export = json.loads((tmp_path / "automation" / "node-red" / "flows.json").read_text())
     assert node_red.event_topic("Book", "updated") == "Book.updated"
     assert node_red.webhook_plan("Book", "updated", "https://example.test")["url"] == (

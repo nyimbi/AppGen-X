@@ -6305,7 +6305,10 @@ def write_wizards_template(output_dir):
         creation, review, submission, and workflow-guided operations.
       </p>
     </div>
-    <a class="btn btn-default" href="{{ url_for('WizardView.catalog_json') }}">Catalog JSON</a>
+    <div>
+      <a class="btn btn-default" href="{{ url_for('WizardView.catalog_json') }}">Catalog JSON</a>
+      <a class="btn btn-default" href="{{ url_for('WizardView.release_gate_json') }}">Release Gate JSON</a>
+    </div>
   </div>
   <div class="agw-grid">
     {% for wizard in wizards %}
@@ -27819,6 +27822,43 @@ def validate_step(wizard_name, step_name, values):
     return {{"wizard": wizard_name, "step": step_name, "ok": not missing and not invalid_choices, "missing": missing, "invalid_choices": invalid_choices}}
 
 
+def wizard_release_gate(existing_paths=()):
+    """Return release readiness for generated sequential table and workflow wizards."""
+    existing = set(existing_paths or ())
+    required = {{"app/wizards.py", "app/templates/appgen_wizards.html"}}
+    missing = tuple(sorted(required - existing))
+    catalog = wizard_catalog()
+    table_wizards = tuple(item for item in catalog if item["kind"] == "table")
+    workflow_wizards = tuple(item for item in catalog if item["kind"] == "workflow")
+    question_wizards = tuple(item["name"] for item in table_wizards if field_questions(item["name"]))
+    validation_results = tuple(
+        validate_step(item["name"], item["steps"][0]["name"], {{}})
+        for item in table_wizards
+        if item["steps"]
+    )
+    progress_results = tuple(
+        wizard_progress(item["name"], (item["steps"][0]["name"],))
+        for item in catalog
+        if item["steps"]
+    )
+    checks = (
+        {{"gate": "artifacts", "ok": not missing, "missing": missing}},
+        {{"gate": "wizard_catalog", "ok": bool(catalog), "count": len(catalog)}},
+        {{"gate": "table_wizards", "ok": bool(table_wizards), "count": len(table_wizards)}},
+        {{"gate": "workflow_wizards", "ok": bool(workflow_wizards), "count": len(workflow_wizards)}},
+        {{"gate": "field_questions", "ok": bool(question_wizards), "wizards": question_wizards}},
+        {{"gate": "step_validation", "ok": bool(validation_results) and any(result["missing"] or result["invalid_choices"] for result in validation_results), "results": validation_results}},
+        {{"gate": "progression", "ok": bool(progress_results) and all(result["current"] is not None or result["done"] for result in progress_results), "results": progress_results}},
+    )
+    ok = all(check["ok"] for check in checks)
+    return {{
+        "format": "appgen.wizard-release-gate.v1",
+        "ok": ok,
+        "decision": "approved" if ok else "blocked",
+        "checks": checks,
+    }}
+
+
 class WizardView(BaseView):
     route_base = "/wizards"
     default_view = "index"
@@ -27834,6 +27874,10 @@ class WizardView(BaseView):
     @expose("/<wizard_name>.json")
     def wizard_json(self, wizard_name):
         return jsonify(wizard_plan(wizard_name))
+
+    @expose("/release-gate.json")
+    def release_gate_json(self):
+        return jsonify(wizard_release_gate({{"app/wizards.py", "app/templates/appgen_wizards.html"}}))
 
 
 def register_wizards(appbuilder):
@@ -35073,6 +35117,17 @@ def validate_workflow_artifacts() -> None:
         fail("workflow template must expose state-chart, authorization, approval, SLA, and release export links")
 
 
+def validate_wizard_artifacts() -> None:
+    contract = (ROOT / "app" / "wizards.py").read_text()
+    if "wizard_catalog" not in contract or "wizard_plan" not in contract or "wizard_progress" not in contract:
+        fail("wizard contract must expose catalog, plans, and progress helpers")
+    if "field_questions" not in contract or "validate_step" not in contract or "wizard_release_gate" not in contract:
+        fail("wizard contract must expose field questions, step validation, and release readiness")
+    template = (ROOT / "app" / "templates" / "appgen_wizards.html").read_text()
+    if "Wizards" not in template or "Catalog JSON" not in template or "Release Gate JSON" not in template:
+        fail("wizard template must expose catalog and release readiness")
+
+
 def validate_rules_artifacts() -> None:
     contract = (ROOT / "app" / "rules.py").read_text()
     if "validate_row" not in contract or "decision_plan" not in contract or "rules_catalog" not in contract:
@@ -35584,6 +35639,7 @@ def main() -> int:
     validate_voice_artifacts()
     validate_node_red_artifacts()
     validate_workflow_artifacts()
+    validate_wizard_artifacts()
     validate_rules_artifacts()
     validate_validation_artifacts()
     validate_resilience_artifacts()
@@ -37074,6 +37130,8 @@ def test_generated_runtime_helpers():
         "scripts/appgen_quality.py",
     }})["ok"] is True
     assert isinstance(wizards.wizard_catalog(), tuple)
+    assert wizards.wizard_release_gate({{"app/wizards.py", "app/templates/appgen_wizards.html"}})["ok"] is True
+    assert wizards.wizard_release_gate({{"app/wizards.py"}})["ok"] is False
     assert "--appgen-primary" in branding.css_variables()
     assert branding.design_tokens()["interaction"]["touch_target"] == "44px"
     assert "button" in branding.component_style_contract()

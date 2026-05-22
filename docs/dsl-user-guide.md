@@ -203,6 +203,11 @@ workflow artifacts, FSM/Mermaid/SCXML exports, graph diagnostics,
 authorization flows, approval routes, SLA metadata, and transition runbooks
 before treating generated workflow automation as release-ready.
 
+Generated table and workflow wizards expose `wizard_release_gate()` and
+`/wizards/release-gate.json`. Use this gate to prove field prompts, required
+step validation, sequential progress behavior, table wizard coverage, workflow
+wizard coverage, and required wizard artifacts before release.
+
 Use `rule` for validation and decisions:
 
 ```appgen
