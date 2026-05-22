@@ -3663,7 +3663,10 @@ def write_data_exchange_template(output_dir):
         bulk loading, reviewed migration batches, and operational data exchange.
       </p>
     </div>
-    <a class="btn btn-default" href="{{ url_for('DataExchangeView.catalog_json') }}">Catalog JSON</a>
+    <div>
+      <a class="btn btn-default" href="{{ url_for('DataExchangeView.catalog_json') }}">Catalog JSON</a>
+      <a class="btn btn-default" href="{{ url_for('DataExchangeView.release_gate_json') }}">Release Gate JSON</a>
+    </div>
   </div>
   <div class="agdx-grid">
     {% for item in tables %}
@@ -15462,6 +15465,76 @@ def exchange_check(existing_paths):
     }}
 
 
+def data_exchange_release_gate(existing_paths=()):
+    """Return an auditable release gate for generated data exchange contracts."""
+    artifacts = set(existing_paths or ())
+    required_artifacts = ("app/data_exchange.py", "app/templates/appgen_data_exchange.html")
+    sample_table = next(iter(EXCHANGE_TABLES), None)
+    fields = exchange_fields(sample_table) if sample_table else ()
+    sample_row = {{field: f"sample-{{field}}" for field in fields}}
+    csv_body = rows_to_csv(sample_table, (sample_row,)) if sample_table else ""
+    json_body = rows_to_json(sample_table, (sample_row,)) if sample_table else "{{}}"
+    import_result = import_plan(sample_table, csv_body) if sample_table else {{"ready": False}}
+    migration = migration_batch_plan(sample_table, csv_body, batch_size=1) if sample_table else {{"format": None, "accepted_count": 0}}
+    request_body, request_status = migration_batch_request_plan(
+        sample_table,
+        {{"content": csv_body, "batch_size": 1}},
+    ) if sample_table else ({{"ok": False}}, 404)
+    invalid_body, invalid_status = migration_batch_request_plan(sample_table, {{"batch_size": "bad"}}) if sample_table else ({{}}, 404)
+    missing_body, missing_status = migration_batch_request_plan("__missing__", {{}})
+    gates = (
+        {{
+            "gate": "exchange_catalog",
+            "ok": bool(exchange_catalog()) and bool(sample_table) and bool(fields),
+            "evidence": tuple(item["table"] for item in exchange_catalog()),
+        }},
+        {{
+            "gate": "csv_templates",
+            "ok": bool(fields) and csv_template(sample_table).startswith(fields[0]),
+            "evidence": fields,
+        }},
+        {{
+            "gate": "json_round_trip",
+            "ok": bool(sample_table) and rows_from_json(sample_table, json_body)[0] == sample_row,
+            "evidence": "appgen.exchange.v1",
+        }},
+        {{
+            "gate": "import_validation",
+            "ok": bool(import_result.get("ready")) and validate_import_row(sample_table, sample_row)["ok"],
+            "evidence": import_result.get("row_count"),
+        }},
+        {{
+            "gate": "migration_batches",
+            "ok": migration.get("format") == "appgen.migration-batch.v1"
+            and migration_batch_summary(migration)["batch_count"] == migration.get("accepted_count"),
+            "evidence": migration_batch_summary(migration),
+        }},
+        {{
+            "gate": "request_contracts",
+            "ok": request_status == 200
+            and request_body.get("accepted_count") == 1
+            and invalid_status == 400
+            and invalid_body.get("error") == "invalid_migration_batch_request"
+            and missing_status == 404
+            and missing_body.get("error") == "unknown_table",
+            "evidence": (request_status, invalid_status, missing_status),
+        }},
+        {{
+            "gate": "artifact_coverage",
+            "ok": set(required_artifacts) <= artifacts,
+            "missing": tuple(item for item in required_artifacts if item not in artifacts),
+        }},
+    )
+    ok = all(gate["ok"] for gate in gates)
+    return {{
+        "format": "appgen.data-exchange-release-gate.v1",
+        "ok": ok,
+        "decision": "approved" if ok else "blocked",
+        "gates": gates,
+        "required_artifacts": required_artifacts,
+    }}
+
+
 class DataExchangeView(BaseView):
     route_base = "/data-exchange"
     default_view = "index"
@@ -15483,6 +15556,10 @@ class DataExchangeView(BaseView):
         payload = request.get_json(silent=True) or {{}}
         body, status = migration_batch_request_plan(table_name, payload, request.headers)
         return jsonify(body), status
+
+    @expose("/release-gate.json")
+    def release_gate_json(self):
+        return jsonify(data_exchange_release_gate({{"app/data_exchange.py", "app/templates/appgen_data_exchange.html"}}))
 
 
 def register_data_exchange(appbuilder):
@@ -33751,11 +33828,13 @@ def validate_data_exchange_artifacts() -> None:
         fail("data exchange contract must expose reviewed migration batch planning")
     if "migration_batch_json" not in contract or "migration_batch_request_plan" not in contract or "request.get_json" not in contract:
         fail("data exchange contract must expose migration batch planning route")
+    if "data_exchange_release_gate" not in contract:
+        fail("data exchange contract must expose release-gate evidence")
     if "unknown_table" not in contract or "invalid_migration_batch_request" not in contract:
         fail("data exchange contract must expose deterministic migration-batch error responses")
     template = (ROOT / "app" / "templates" / "appgen_data_exchange.html").read_text()
-    if "Data Exchange" not in template or "CSV template" not in template:
-        fail("data exchange template must expose CSV templates")
+    if "Data Exchange" not in template or "CSV template" not in template or "Release Gate JSON" not in template:
+        fail("data exchange template must expose CSV templates and release gate")
     if "Migration batch planning" not in template:
         fail("data exchange template must expose migration batch planning")
 
@@ -35238,6 +35317,8 @@ def test_generated_runtime_helpers():
     assert data_exchange.exchange_check(
         {"app/data_exchange.py", "app/templates/appgen_data_exchange.html"}
     )["ok"] is True
+    assert data_exchange.data_exchange_release_gate({"app/data_exchange.py", "app/templates/appgen_data_exchange.html"})["ok"] is True
+    assert data_exchange.data_exchange_release_gate({"app/data_exchange.py"})["ok"] is False
     assert {item["provider"] for item in database_ops.database_provider_catalog()} == {
         "postgresql",
         "mysql",

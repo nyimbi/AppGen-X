@@ -2202,6 +2202,9 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert "Migration batch planning" in (
         output_dir / "templates" / "appgen_data_exchange.html"
     ).read_text()
+    assert "Release Gate JSON" in (
+        output_dir / "templates" / "appgen_data_exchange.html"
+    ).read_text()
     assert "Database Operations" in (
         output_dir / "templates" / "appgen_database_ops.html"
     ).read_text()
@@ -3241,6 +3244,21 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert data_exchange.exchange_check(
         {"app/data_exchange.py", "app/templates/appgen_data_exchange.html"}
     )["ok"] is True
+    exchange_gate = data_exchange.data_exchange_release_gate(
+        {"app/data_exchange.py", "app/templates/appgen_data_exchange.html"}
+    )
+    assert exchange_gate["format"] == "appgen.data-exchange-release-gate.v1"
+    assert exchange_gate["ok"] is True
+    assert {
+        "exchange_catalog",
+        "csv_templates",
+        "json_round_trip",
+        "import_validation",
+        "migration_batches",
+        "request_contracts",
+        "artifact_coverage",
+    } <= {gate["gate"] for gate in exchange_gate["gates"]}
+    assert data_exchange.data_exchange_release_gate({"app/data_exchange.py"})["ok"] is False
     assert {item["provider"] for item in database_ops.database_provider_catalog()} == {
         "postgresql",
         "mysql",

@@ -439,6 +439,10 @@ Use `/project-management/release-gate.json` to verify generated backlog,
 sprint, release-control, traceability, Jira/GitHub/Azure Boards/GitLab export,
 and project-management artifact coverage before handing a generated app to a
 delivery team.
+Use `/data-exchange/release-gate.json` to verify schema-aware CSV templates,
+JSON exchange round-trips, import validation, reviewed migration batches,
+deterministic request errors, and data-exchange artifacts before loading legacy
+or operational data.
 Use `/api-testing/release-gate.json` before release to verify API request
 matrices, response validation, smoke fixtures, UI smoke plans, synthetic
 monitors, OpenAPI coverage, and rendered pytest/Playwright modules.

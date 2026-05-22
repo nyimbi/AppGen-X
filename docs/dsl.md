@@ -335,7 +335,9 @@ apps include:
   delete plans.
 - `data_exchange.py` and `appgen_data_exchange.html` with schema-aware CSV and
   JSON import/export templates, row validation, reviewed migration batch plans,
-  and migration-friendly UI guidance.
+  migration-friendly UI guidance, and a generated data-exchange release gate
+  that proves catalog, CSV templates, JSON round-trips, import validation,
+  migration batches, request error contracts, and required artifacts.
 - `database_ops.py` and `appgen_database_ops.html` with generated PostgreSQL,
   MySQL, SQLite, MongoDB, DynamoDB, Cassandra, Redis, Patroni, PostGraphile,
   ZomboDB, Elasticsearch, Compose, Kubernetes, NoSQL document projections,
