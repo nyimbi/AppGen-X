@@ -6613,6 +6613,7 @@ def write_studio_template(output_dir):
       <a class="btn btn-default" href="{{ url_for('StudioView.sql_builder_json') }}">SQL Builder JSON</a>
       <a class="btn btn-default" href="{{ url_for('StudioView.generation_jobs_json') }}">Generation Jobs JSON</a>
       <a class="btn btn-default" href="{{ url_for('StudioView.generation_artifacts_json') }}">Generation Artifacts JSON</a>
+      <a class="btn btn-default" href="{{ url_for('StudioView.source_intake_json') }}">Source Intake JSON</a>
       <a class="btn btn-default" href="{{ url_for('StudioView.applications_json') }}">Applications JSON</a>
       <a class="btn btn-default" href="{{ url_for('StudioView.application_create_json') }}">Create App JSON</a>
       <a class="btn btn-default" href="{{ url_for('StudioView.application_history_json') }}">Version History JSON</a>
@@ -6684,6 +6685,13 @@ def write_studio_template(output_dir):
       <div class="ags-muted">{{ workspace.generation.source }}</div>
       {% for target in workspace.generation.targets %}
       <span class="ags-pill">{{ target }}</span>
+      {% endfor %}
+    </article>
+    <article class="ags-card">
+      <h3>Source Intake</h3>
+      <div class="ags-muted">import review for DSL, DBML, SQL, PonyORM, and live databases</div>
+      {% for source in workspace.source_intake.source_kinds %}
+      <span class="ags-pill">{{ source }}</span>
       {% endfor %}
     </article>
     <article class="ags-card">
@@ -36848,6 +36856,8 @@ def _studio_text(schema: AppSchema, app_name: str) -> str:
         {"command": "open_dsl", "label": "Open DSL", "scope": "authoring", "checks": ("dsl_lint", "keyword_budget")},
         {"command": "design_database", "label": "Design Database", "scope": "schema", "checks": ("relationship_check", "migration_preview")},
         {"command": "open_sql_workbench", "label": "Open SQL Workbench", "scope": "schema", "checks": ("read_only_guard", "explain_plan")},
+        {"command": "create_application", "label": "Create Application", "scope": "source-intake", "checks": ("source_profile", "source_fidelity")},
+        {"command": "import_application", "label": "Import Application", "scope": "source-intake", "checks": ("source_parse", "schema_diff")},
         {"command": "generate_application", "label": "Generate Application", "scope": "codegen", "checks": ("py_compile", "appgen_quality")},
         {"command": "manage_application", "label": "Manage Application", "scope": "operations", "checks": ("readiness", "deployment_plan")},
         {"command": "debug_application", "label": "Debug Application", "scope": "runtime", "checks": ("breakpoints", "variable_redaction")},
@@ -36905,6 +36915,13 @@ DSL_SNIPPETS = (
     {{"label": "Agent", "insert": "agent Assistant {{\\n  provider: LocalModel\\n  goal: \\"Help users finish work\\"\\n  tools: schema, forms, reports\\n}}", "kind": "ai"}},
 )
 SUPPORTED_TARGETS = ("web", "pwa", "mobile", "desktop", "chatbot")
+SOURCE_INTAKE_CATALOG = (
+    {{"source_kind": "dsl", "label": "AppGen DSL", "example_path": "appgen.dsl", "extension": ".dsl", "validations": ("dsl_lint", "schema_preview", "keyword_budget")}},
+    {{"source_kind": "dbml", "label": "DBML", "example_path": "schema.dbml", "extension": ".dbml", "validations": ("parse_dbml", "source_fidelity", "relationship_check")}},
+    {{"source_kind": "sql", "label": "SQL DDL", "example_path": "schema.sql", "extension": ".sql", "validations": ("parse_sql", "safe_sql_guard", "source_fidelity")}},
+    {{"source_kind": "ponyorm", "label": "PonyORM", "example_path": "entities.py", "extension": ".py", "validations": ("static_ast_parse", "source_fidelity", "relation_preview")}},
+    {{"source_kind": "database", "label": "Existing Database", "example_path": "sqlite:///existing.db", "extension": None, "validations": ("sqlalchemy_reflect", "source_fidelity", "schema_diff")}},
+)
 
 
 def editable_files():
@@ -36924,6 +36941,7 @@ def ide_workspace():
         "sql_workbench": sql_workbench_session(),
         "editable_files": editable_files(),
         "command_palette": ide_command_palette(),
+        "source_intake": source_intake_workspace(),
         "generation": app_generation_plan(),
         "generation_jobs": generation_job_queue(),
         "applications": application_registry(),
@@ -36944,6 +36962,7 @@ def ide_capability_matrix():
     matrix = (
         {{"capability": "dsl_authoring", "commands": ("open_dsl", "lint_dsl"), "evidence": ("dsl_editor_state", "dsl_lint_plan", "dsl_code_actions"), "ok": "open_dsl" in commands}},
         {{"capability": "database_design", "commands": ("design_database",), "evidence": ("database_design_workspace", "schema_dbml", "schema_sql_ddl", "schema_ponyorm"), "ok": "design_database" in commands and bool(database_design_catalog())}},
+        {{"capability": "source_intake", "commands": ("create_application", "import_application"), "evidence": ("source_intake_catalog", "source_intake_workspace", "application_import_plan"), "ok": source_intake_workspace()["ok"]}},
         {{"capability": "application_generation", "commands": ("generate_application",), "evidence": ("app_generation_plan", "generation_job_queue", "generation_artifact_manifest"), "ok": "generate_application" in commands and bool(generation_job_queue()["jobs"])}},
         {{"capability": "application_management", "commands": ("manage_application",), "evidence": ("application_registry", "application_creation_plan", "application_import_plan", "application_export_package"), "ok": "manage_application" in commands and application_portfolio_check()["ok"]}},
         {{"capability": "versioned_app_management", "commands": ("manage_application",), "evidence": ("application_version_history", "application_snapshot_plan", "application_restore_plan", "application_diff_plan"), "ok": application_version_history()["ok"] and application_snapshot_plan()["rollback_supported"]}},
@@ -36965,7 +36984,7 @@ def ide_workflow_blueprint(workflow=None):
     """Return end-to-end IDE workflows for generated app builders."""
     workflows = {{
         "author_dsl": ("open DSL", "lint syntax and semantics", "apply quick fixes", "preview schema exports"),
-        "create_application": ("choose source", "inspect source fidelity", "lint DSL", "generate targets", "register application"),
+        "create_application": ("choose source intake profile", "inspect source fidelity", "lint or parse source", "generate targets", "register application"),
         "evolve_with_natural_language": ("capture prompt", "preview DSL change", "review schema diff", "approve migration", "run quality gate"),
         "design_database": ("edit table/field design", "preview ERD/DBML/SQL/PonyORM", "review migration", "generate app"),
         "generate_application": ("select targets", "queue generation job", "run lint and schema diff", "publish artifact manifest"),
@@ -37859,6 +37878,31 @@ def _source_flag(source_kind):
     raise KeyError(kind)
 
 
+def source_intake_catalog():
+    """Return supported source import profiles for Studio application creation."""
+    profiles = []
+    for item in SOURCE_INTAKE_CATALOG:
+        profiles.append({{
+            **item,
+            "flag": _source_flag(item["source_kind"]),
+            "command_preview": application_creation_plan(
+                APP_NAME,
+                source_kind=item["source_kind"],
+                source_path=item["example_path"],
+            )["command"],
+            "review": ("source_profile", "source_fidelity", "schema_diff", "generation_quality"),
+        }})
+    return tuple(profiles)
+
+
+def _source_intake_profile(source_kind):
+    kind = str(source_kind or "dsl").lower()
+    profile = next((item for item in source_intake_catalog() if item["source_kind"] == kind), None)
+    if profile is None:
+        raise KeyError(kind)
+    return profile
+
+
 def application_creation_plan(app_name, source_kind="dsl", source_path="appgen.dsl", targets=None):
     """Return a reviewable plan for creating or regenerating an application."""
     selected_targets = tuple(targets or PLATFORM_TARGETS or ("web",))
@@ -37894,6 +37938,44 @@ def application_import_plan(source_kind, source_path, app_name=None, targets=Non
             "run generation quality checks",
         ),
         "can_register": True,
+    }}
+
+
+def source_intake_workspace(source_kind="dsl", source_path=None, app_name=None, targets=None):
+    """Return an IDE source-intake review workspace before generation."""
+    profile = _source_intake_profile(source_kind)
+    path = source_path or profile["example_path"]
+    import_plan = application_import_plan(profile["source_kind"], path, app_name=app_name, targets=targets)
+    catalog = source_intake_catalog()
+    source_kinds = tuple(item["source_kind"] for item in catalog)
+    gates = (
+        {{"gate": "source_supported", "ok": profile["source_kind"] in source_kinds, "details": source_kinds}},
+        {{"gate": "command_ready", "ok": bool(import_plan["creation"]["command"]), "details": import_plan["creation"]["command"]}},
+        {{"gate": "validation_pipeline", "ok": bool(profile["validations"]) and "source_fidelity" in profile["review"], "details": profile["validations"]}},
+        {{"gate": "reviewable_registration", "ok": import_plan["can_register"] and import_plan["creation"]["requires_review"], "details": import_plan["review_gates"]}},
+    )
+    return {{
+        "format": "appgen.source-intake-workspace.v1",
+        "ok": all(gate["ok"] for gate in gates),
+        "source_kind": profile["source_kind"],
+        "source_path": path,
+        "source_kinds": source_kinds,
+        "selected_profile": profile,
+        "catalog": catalog,
+        "import_plan": import_plan,
+        "fidelity_preview": {{
+            "expected_contract": "AppSchema",
+            "checks": ("has_tables", "fingerprint", "relations_normalized", "portable_defaults"),
+            "manifest_keys": ("source_profile", "source_fidelity"),
+        }},
+        "review_checklist": (
+            "parse or reflect the source",
+            "inspect source fidelity and lossy feature warnings",
+            "preview schema diff and migrations",
+            "select web/mobile/desktop/chatbot targets",
+            "queue generation and quality checks",
+        ),
+        "gates": gates,
     }}
 
 
@@ -38255,6 +38337,7 @@ def studio_catalog():
         "project_tree": project_tree(),
         "dsl_documents": tuple(DSL_DOCUMENTS),
         "database_design": database_design_catalog(),
+        "source_intake": source_intake_workspace(),
         "command_palette": ide_command_palette(),
         "capability_matrix": ide_capability_matrix(),
         "workflow_blueprint": ide_workflow_blueprint(),
@@ -38330,6 +38413,7 @@ def studio_release_gate(existing_paths=(), environment=None):
     workspace = ide_workspace()
     dsl = dsl_lint_plan("app Gate {{ targets: web, mobile, desktop }} table GateThing {{ id: int pk }}")
     database = database_design_workspace()
+    source_intake = source_intake_workspace("dbml", "schema.dbml")
     database_design_gate = database_design_release_gate(existing)
     sql = sql_workbench_session("select * from " + (DATABASE_DESIGN[0]["table"] if DATABASE_DESIGN else "example"))
     query = sql_select_builder(DATABASE_DESIGN[0]["table"]) if DATABASE_DESIGN else {{"ok": False}}
@@ -38345,10 +38429,11 @@ def studio_release_gate(existing_paths=(), environment=None):
     gates = (
         {{"gate": "diagnostics", "ok": diagnostics["ok"], "details": diagnostics}},
         {{"gate": "studio_artifacts", "ok": studio["ok"], "details": studio}},
-        {{"gate": "workspace_sections", "ok": {{"dsl_authoring", "database_workbench", "generation_jobs", "applications"}} <= set(workspace), "details": tuple(workspace)}},
+        {{"gate": "workspace_sections", "ok": {{"dsl_authoring", "database_workbench", "source_intake", "generation_jobs", "applications"}} <= set(workspace), "details": tuple(workspace)}},
         {{"gate": "capability_matrix", "ok": ide_capability_matrix()["ok"], "details": ide_capability_matrix()}},
         {{"gate": "dsl_lint", "ok": dsl["ok"] and dsl["keyword_budget"]["ok"], "details": dsl}},
         {{"gate": "database_workbench", "ok": bool(database["tables"]) and {{"dbml", "sql", "ponyorm"}} <= set(database["exports"]), "details": database["checks"]}},
+        {{"gate": "source_intake", "ok": source_intake["ok"] and {{"dsl", "dbml", "sql", "ponyorm", "database"}} <= set(source_intake["source_kinds"]), "details": source_intake["gates"]}},
         {{"gate": "database_design_release", "ok": database_design_gate["ok"], "details": database_design_gate}},
         {{"gate": "safe_sql", "ok": sql["guard"]["ok"] and not destructive_sql["ok"] and not sql["side_effects"], "details": sql["guard"]}},
         {{"gate": "query_builder", "ok": query["ok"] and query["guard"]["read_only"] and bool(sql_completion_items(table_name=query["table"])), "details": query}},
@@ -38382,6 +38467,7 @@ def ide_superiority_profile(existing_paths=(), environment=None):
     required_workflows = (
         "author_dsl",
         "design_database",
+        "create_application",
         "generate_application",
         "manage_application",
         "debug_application",
@@ -38390,6 +38476,7 @@ def ide_superiority_profile(existing_paths=(), environment=None):
     required_capabilities = (
         "dsl_authoring",
         "database_design",
+        "source_intake",
         "application_generation",
         "application_management",
         "debugging",
@@ -38402,6 +38489,7 @@ def ide_superiority_profile(existing_paths=(), environment=None):
         {{"gate": "capability_coverage", "ok": set(required_capabilities) <= capability_keys, "missing": tuple(item for item in required_capabilities if item not in capability_keys)}},
         {{"gate": "command_surface", "ok": {{"open_dsl", "design_database", "generate_application", "manage_application", "debug_application"}} <= command_keys, "commands": tuple(sorted(command_keys))}},
         {{"gate": "database_ide", "ok": bool(database_design_workspace()["tables"]) and sql_workbench_session()["guard"]["read_only"], "evidence": ("database_design_workspace", "sql_workbench_session", "sql_select_builder")}},
+        {{"gate": "source_intake", "ok": source_intake_workspace("database", "sqlite:///legacy.db")["ok"], "evidence": ("source_intake_catalog", "source_intake_workspace", "application_import_plan")}},
         {{"gate": "reviewable_generation", "ok": generation_job_status()["remaining_stages"] == ("lint_dsl", "schema_diff", "generate", "quality"), "evidence": generation_job_manifest()["job_id"]}},
         {{"gate": "portfolio_management", "ok": application_portfolio_check()["ok"], "evidence": application_registry()["operations"]}},
         {{"gate": "versioned_management", "ok": application_version_history()["ok"] and application_restore_plan(application_snapshot_plan()["snapshot_id"])["requires_review"], "evidence": application_version_history()["rollback_points"]}},
@@ -38480,6 +38568,10 @@ class StudioView(BaseView):
     @expose("/generation-artifacts.json")
     def generation_artifacts_json(self):
         return jsonify(generation_artifact_manifest())
+
+    @expose("/source-intake.json")
+    def source_intake_json(self):
+        return jsonify(source_intake_workspace())
 
     @expose("/applications.json")
     def applications_json(self):
@@ -42951,6 +43043,8 @@ def validate_studio_artifacts() -> None:
         "generation_job_queue",
         "generation_job_status",
         "generation_job_log",
+        "source_intake_catalog",
+        "source_intake_workspace",
         "application_registry",
         "application_creation_plan",
         "application_import_plan",
@@ -43002,6 +43096,8 @@ def validate_studio_artifacts() -> None:
         or "parameterized query builder" not in template
         or "Generation Jobs JSON" not in template
         or "Generation Artifacts JSON" not in template
+        or "Source Intake JSON" not in template
+        or "Source Intake" not in template
         or "Applications JSON" not in template
         or "Create App JSON" not in template
         or "Version History JSON" not in template
@@ -46200,6 +46296,13 @@ def test_generated_runtime_helpers():
     assert studio.generation_job_log(generated_job)["entries"][0]["stage"] == "lint_dsl"
     assert studio.generation_job_queue((generated_job,))["jobs"][0]["job_id"] == generated_job["job_id"]
     assert studio.generation_artifact_manifest(("web", "desktop"))["format"] == "appgen.generation-artifacts.v1"
+    source_intake = studio.source_intake_workspace("dbml", "schema.dbml")
+    assert source_intake["format"] == "appgen.source-intake-workspace.v1"
+    assert source_intake["ok"] is True
+    assert {{"dsl", "dbml", "sql", "ponyorm", "database"}} <= set(source_intake["source_kinds"])
+    assert source_intake["import_plan"]["creation"]["command"] == "appgen --dbml schema.dbml --writedir apps/" + APP_NAME.lower()
+    assert "source_fidelity" in source_intake["selected_profile"]["review"]
+    assert "source_intake" in studio.ide_workspace()
     assert studio.application_registry()["format"] == "appgen.application-registry.v1"
     assert {"dsl", "dbml", "sql", "ponyorm", "database"} <= set(studio.application_registry()["source_kinds"])
     assert studio.application_creation_plan("InvoiceApp", source_kind="sql", source_path="schema.sql")["command"] == "appgen --sql schema.sql --writedir apps/invoiceapp"
@@ -46241,7 +46344,7 @@ def test_generated_runtime_helpers():
     assert studio_gate["format"] == "appgen.studio-release-gate.v1"
     assert studio_gate["ok"] is True
     assert studio_gate["blocking_gaps"] == ()
-    assert {{"capability_matrix", "database_design_release", "safe_sql", "query_builder", "versioned_management"}} <= {gate["gate"] for gate in studio_gate["gates"]}
+    assert {{"capability_matrix", "database_design_release", "source_intake", "safe_sql", "query_builder", "versioned_management"}} <= {gate["gate"] for gate in studio_gate["gates"]}
     assert studio.ide_superiority_profile({{
         "app/studio.py",
         "app/templates/appgen_studio.html",
