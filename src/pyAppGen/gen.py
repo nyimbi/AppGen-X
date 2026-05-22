@@ -1822,6 +1822,55 @@ def write_designer_file(output_dir, schema: AppSchema):
         f.write("    diagram = erd_mermaid(manifest)\n")
         f.write("    tables = tuple(table.get('name') for table in manifest.get('tables', []))\n")
         f.write("    return {'ok': diagram.startswith('erDiagram') and all(table in diagram for table in tables), 'tables': tables, 'relationships': relationship_matrix(manifest)}\n\n\n")
+        f.write("def schema_diagram_release_gate(manifest, existing_paths=()):\n")
+        f.write("    \"\"\"Return deterministic release evidence for generated schema diagrams.\"\"\"\n")
+        f.write("    existing = set(existing_paths)\n")
+        f.write("    required = {'app/designer.py', 'app/templates/appgen_designer.html', 'app/appgen.json'}\n")
+        f.write("    graph = visual_model(manifest)\n")
+        f.write("    erd = erd_mermaid(manifest)\n")
+        f.write("    relationships = relationship_matrix(manifest)\n")
+        f.write("    diagram = schema_diagram_check(manifest)\n")
+        f.write("    preview = migration_preview(manifest)\n")
+        f.write("    table_names = tuple(table.get('name') for table in manifest.get('tables', []) if table.get('name'))\n")
+        f.write("    checks = (\n")
+        f.write("        {\n")
+        f.write("            'gate': 'artifact_coverage',\n")
+        f.write("            'ok': required.issubset(existing),\n")
+        f.write("            'required': tuple(sorted(required)),\n")
+        f.write("            'missing': tuple(sorted(required - existing)),\n")
+        f.write("        },\n")
+        f.write("        {\n")
+        f.write("            'gate': 'visual_graph',\n")
+        f.write("            'ok': bool(graph['nodes']) and all(table in {node['id'] for node in graph['nodes']} for table in table_names),\n")
+        f.write("            'nodes': len(graph['nodes']),\n")
+        f.write("            'edges': len(graph['edges']),\n")
+        f.write("        },\n")
+        f.write("        {\n")
+        f.write("            'gate': 'erd_export',\n")
+        f.write("            'ok': erd.startswith('erDiagram') and all(table in erd for table in table_names),\n")
+        f.write("            'line_count': len(erd.splitlines()),\n")
+        f.write("        },\n")
+        f.write("        {\n")
+        f.write("            'gate': 'relationship_metadata',\n")
+        f.write("            'ok': all(item.get('source_table') and item.get('target_table') and item.get('source_column') for item in relationships),\n")
+        f.write("            'relationship_count': len(relationships),\n")
+        f.write("        },\n")
+        f.write("        {\n")
+        f.write("            'gate': 'diagram_check',\n")
+        f.write("            'ok': diagram['ok'] is True and diagram['tables'] == table_names,\n")
+        f.write("            'tables': table_names,\n")
+        f.write("        },\n")
+        f.write("        {\n")
+        f.write("            'gate': 'migration_preview',\n")
+        f.write("            'ok': preview['format'] == 'appgen.migration-preview.v1' and preview['requires_review'] is True and 'schema_diff' in preview['checks'],\n")
+        f.write("            'operation_count': preview['operation_count'],\n")
+        f.write("        },\n")
+        f.write("    )\n")
+        f.write("    return {\n")
+        f.write("        'format': 'appgen.schema-diagram-release-gate.v1',\n")
+        f.write("        'ok': all(check['ok'] for check in checks),\n")
+        f.write("        'checks': checks,\n")
+        f.write("    }\n\n\n")
         f.write("def _table_map(manifest):\n")
         f.write("    return {table.get('name'): table for table in manifest.get('tables', []) if table.get('name')}\n\n\n")
         f.write("def _column_map(table):\n")
@@ -2079,6 +2128,12 @@ def write_designer_file(output_dir, schema: AppSchema):
         f.write("    @expose('/erd.mmd')\n")
         f.write("    def erd_mermaid_route(self):\n")
         f.write("        return erd_mermaid(load_manifest()), 200, {'Content-Type': 'text/plain; charset=utf-8'}\n\n")
+        f.write("    @expose('/schema-diagram-release-gate.json')\n")
+        f.write("    def schema_diagram_release_gate_json(self):\n")
+        f.write("        return jsonify(schema_diagram_release_gate(\n")
+        f.write("            load_manifest(),\n")
+        f.write("            {'app/designer.py', 'app/templates/appgen_designer.html', 'app/appgen.json'},\n")
+        f.write("        ))\n\n")
         f.write("    @expose('/proposal', methods=('POST',))\n")
         f.write("    def proposal(self):\n")
         f.write("        manifest = load_manifest()\n")
@@ -2407,6 +2462,7 @@ def write_designer_template(output_dir, schema: AppSchema):
     <div>
       <a class="btn btn-default agd-link" href="{{ url_for('AppGenDesignerView.manifest') }}">Manifest JSON</a>
       <a class="btn btn-default agd-link" href="{{ url_for('AppGenDesignerView.model_json') }}">Model JSON</a>
+      <a class="btn btn-default agd-link" href="{{ url_for('AppGenDesignerView.schema_diagram_release_gate_json') }}">Schema Diagram Gate JSON</a>
       <a class="btn btn-default agd-link" href="{{ url_for('AppGenDesignerView.dsl') }}">DSL</a>
     </div>
   </div>
@@ -36521,7 +36577,14 @@ def validate_designer_artifacts() -> None:
     contract = (ROOT / "app" / "designer.py").read_text()
     if "visual_model" not in contract or "apply_proposal" not in contract or "proposal_to_dsl" not in contract:
         fail("designer must expose visual graph and no-code proposal helpers")
-    if "erd_mermaid" not in contract or "relationship_matrix" not in contract or "schema_diagram_check" not in contract:
+    if (
+        "erd_mermaid" not in contract
+        or "relationship_matrix" not in contract
+        or "schema_diagram_check" not in contract
+        or "schema_diagram_release_gate" not in contract
+        or "appgen.schema-diagram-release-gate.v1" not in contract
+        or "@expose('/schema-diagram-release-gate.json'" not in contract
+    ):
         fail("designer must expose ERD and relationship export helpers")
     if "schema_diff" not in contract or "migration_preview" not in contract or "@expose('/migration-preview'" not in contract:
         fail("designer must expose schema diff and migration preview contracts")
@@ -36530,7 +36593,12 @@ def validate_designer_artifacts() -> None:
     if "proposal_from_payload" not in contract or "@expose('/proposal'" not in contract:
         fail("designer must expose browser proposal endpoint")
     template = (ROOT / "app" / "templates" / "appgen_designer.html").read_text()
-    if "Visual Graph" not in template or "Model JSON" not in template or "Preview DSL" not in template:
+    if (
+        "Visual Graph" not in template
+        or "Model JSON" not in template
+        or "Preview DSL" not in template
+        or "Schema Diagram Gate JSON" not in template
+    ):
         fail("designer template must expose graph and model JSON")
 
 
@@ -38989,6 +39057,13 @@ def test_generated_runtime_helpers():
     else:
         assert relationships == ()
     assert designer.schema_diagram_check(manifest)["ok"] is True
+    diagram_gate = designer.schema_diagram_release_gate(
+        manifest,
+        {"app/designer.py", "app/templates/appgen_designer.html", "app/appgen.json"},
+    )
+    assert diagram_gate["format"] == "appgen.schema-diagram-release-gate.v1"
+    assert diagram_gate["ok"] is True
+    assert designer.schema_diagram_release_gate(manifest, {"app/designer.py"})["ok"] is False
     assert designer.proposal_from_payload({"kind": "add_field", "table": manifest["tables"][0]["name"], "name": "generated_note", "type": "text"})["kind"] == "add_field"
     if len(manifest["tables"]) >= 2:
         relationship_patch = designer.relationship_proposal(manifest["tables"][1]["name"], "generated_parent_id", manifest["tables"][0]["name"])

@@ -2234,6 +2234,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert "Visual Graph" in (output_dir / "templates" / "appgen_designer.html").read_text()
     assert "Model JSON" in (output_dir / "templates" / "appgen_designer.html").read_text()
     assert "Preview DSL" in (output_dir / "templates" / "appgen_designer.html").read_text()
+    assert "Schema Diagram Gate JSON" in (output_dir / "templates" / "appgen_designer.html").read_text()
     monitoring_template = (output_dir / "templates" / "appgen_monitoring.html").read_text()
     assert "Health JSON" in monitoring_template
     assert "Release Gate JSON" in monitoring_template
@@ -5677,6 +5678,21 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert relationships[0]["source_table"] == "Book"
     assert relationships[0]["target_table"] == "Author"
     assert designer.schema_diagram_check(manifest)["ok"] is True
+    diagram_gate = designer.schema_diagram_release_gate(
+        manifest,
+        {"app/designer.py", "app/templates/appgen_designer.html", "app/appgen.json"},
+    )
+    assert diagram_gate["format"] == "appgen.schema-diagram-release-gate.v1"
+    assert diagram_gate["ok"] is True
+    assert {
+        "artifact_coverage",
+        "visual_graph",
+        "erd_export",
+        "relationship_metadata",
+        "diagram_check",
+        "migration_preview",
+    } <= {check["gate"] for check in diagram_gate["checks"]}
+    assert designer.schema_diagram_release_gate(manifest, {"app/designer.py"})["ok"] is False
     table_patch = designer.table_proposal("Publisher")
     assert "table Publisher" in designer.proposal_to_dsl(manifest, table_patch)
     field_patch = designer.field_proposal("Book", "isbn", required=True, searchable=True)

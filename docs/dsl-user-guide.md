@@ -408,6 +408,12 @@ It exposes:
   read-only guards;
 - migration previews for proposed schema changes.
 
+Use `/designer/schema-diagram-release-gate.json` or
+`schema_diagram_release_gate()` before claiming database-design readiness. The
+gate proves generated designer artifacts, visual graph completeness, Mermaid
+ERD coverage, relationship metadata, diagram checks, and reviewed migration
+preview evidence.
+
 Use this workbench to round-trip between visual design and source-controlled
 DSL. The DSL remains the durable source of truth.
 

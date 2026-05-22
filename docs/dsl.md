@@ -495,7 +495,9 @@ apps include:
 - `designer.py` and `appgen_designer.html` with visual schema graphs, ERD
   exports, reviewable table/field/relationship/workflow proposals, schema-diff
   contracts, migration previews, and regenerated DSL for database design
-  workbenches.
+  workbenches. The generated `schema_diagram_release_gate()` proves required
+  designer artifacts, visual graph completeness, Mermaid ERD coverage,
+  relationship metadata, diagram readiness, and migration-preview review.
 - `form_designer.py` and `appgen_form_designer.html` with Delphi-style
   drag-and-drop component palette, snapped form canvas contracts, overlap
   conflict detection, drop proposals, property-inspector metadata, and
