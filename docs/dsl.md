@@ -256,7 +256,9 @@ apps include:
   contracts, valid payloads, required-field errors, partial updates, UI
   schemas, enum errors, type errors, and required validation artifacts.
 - `monitoring.py` with liveness/readiness endpoints and generated JSON error
-  envelopes.
+  envelopes. The generated `monitoring_release_gate()` proves monitoring
+  artifacts, liveness metadata, readiness checks, JSON error envelopes, and
+  endpoint contracts.
 - `resilience.py` and `appgen_resilience.html` with generated automatic error
   handling, safe user-facing responses, recovery actions, retry plans,
   circuit-breaker state, and operator incident reports. The generated

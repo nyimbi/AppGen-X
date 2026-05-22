@@ -3286,6 +3286,7 @@ def write_monitoring_template(output_dir):
   <div class="agm-actions">
     <a class="btn btn-primary" href="{{ url_for('MonitoringView.healthz') }}">Health JSON</a>
     <a class="btn btn-default" href="{{ url_for('MonitoringView.readyz') }}">Readiness JSON</a>
+    <a class="btn btn-default" href="{{ url_for('MonitoringView.release_gate_json') }}">Release Gate JSON</a>
   </div>
 </section>
 {% endblock %}
@@ -7750,6 +7751,68 @@ def error_payload(error, *, status_code=500):
     }}
 
 
+def monitoring_release_gate(existing_paths=()):
+    """Return deterministic release evidence for generated monitoring readiness."""
+    existing = set(existing_paths)
+    required = {{"app/monitoring.py", "app/health.py", "app/templates/appgen_monitoring.html"}}
+    live = liveness()
+    ready = readiness()
+    not_found = error_payload(KeyError("missing"), status_code=404)
+    server_error = error_payload(RuntimeError("boom"), status_code=500)
+    checks = (
+        {{
+            "gate": "artifact_coverage",
+            "ok": required.issubset(existing),
+            "required": tuple(sorted(required)),
+            "missing": tuple(sorted(required - existing)),
+        }},
+        {{
+            "gate": "liveness_payload",
+            "ok": live["ok"] is True
+            and live["live"] is True
+            and live["app"] == APP_NAME
+            and isinstance(live["timestamp"], str)
+            and all(key in live for key in ("tables", "relations", "views", "flows", "roles")),
+            "counts": {{
+                "tables": live["tables"],
+                "relations": live["relations"],
+                "views": live["views"],
+                "flows": live["flows"],
+                "roles": live["roles"],
+            }},
+        }},
+        {{
+            "gate": "readiness_checks",
+            "ok": ready["ready"] is True
+            and set(ready["checks"]) == {{"metadata", "models", "workflows"}}
+            and all(ready["checks"].values()),
+            "checks": ready["checks"],
+        }},
+        {{
+            "gate": "error_envelopes",
+            "ok": not_found["ok"] is False
+            and not_found["status"] == 404
+            and server_error["status"] == 500
+            and "timestamp" in server_error
+            and "Traceback" not in server_error["message"],
+            "statuses": (not_found["status"], server_error["status"]),
+        }},
+        {{
+            "gate": "endpoint_contracts",
+            "ok": bool(MonitoringView.route_base)
+            and MonitoringView.route_base == "/monitoring"
+            and hasattr(MonitoringView, "healthz")
+            and hasattr(MonitoringView, "readyz"),
+            "routes": ("/monitoring/healthz", "/monitoring/readyz"),
+        }},
+    )
+    return {{
+        "format": "appgen.monitoring-release-gate.v1",
+        "ok": all(check["ok"] for check in checks),
+        "checks": checks,
+    }}
+
+
 def register_error_handlers(app):
     """Register generated JSON error handlers."""
 
@@ -7779,6 +7842,10 @@ class MonitoringView(BaseView):
     def readyz(self):
         payload = readiness()
         return jsonify(payload), 200 if payload["ready"] else 503
+
+    @expose("/release-gate.json")
+    def release_gate_json(self):
+        return jsonify(monitoring_release_gate({{"app/monitoring.py", "app/health.py", "app/templates/appgen_monitoring.html"}}))
 
 
 def register_monitoring(appbuilder):
@@ -37550,6 +37617,24 @@ def validate_resilience_artifacts() -> None:
         fail("resilience cockpit must expose generated error-handling catalog and release evidence")
 
 
+def validate_monitoring_artifacts() -> None:
+    contract = (ROOT / "app" / "monitoring.py").read_text()
+    required = (
+        "liveness",
+        "readiness",
+        "error_payload",
+        "register_error_handlers",
+        "monitoring_release_gate",
+        "appgen.monitoring-release-gate.v1",
+        '@expose("/release-gate.json")',
+    )
+    if not all(item in contract for item in required):
+        fail("monitoring contract must expose health, readiness, error-envelope, and release-gate helpers")
+    template = (ROOT / "app" / "templates" / "appgen_monitoring.html").read_text()
+    if "Monitoring" not in template or "Health JSON" not in template or "Readiness JSON" not in template or "Release Gate JSON" not in template:
+        fail("monitoring cockpit must expose health, readiness, and release evidence")
+
+
 def validate_runtime_assurance_artifacts() -> None:
     contract = (ROOT / "app" / "runtime_assurance.py").read_text()
     if (
@@ -38029,6 +38114,7 @@ def main() -> int:
     validate_wizard_artifacts()
     validate_rules_artifacts()
     validate_validation_artifacts()
+    validate_monitoring_artifacts()
     validate_resilience_artifacts()
     validate_runtime_assurance_artifacts()
     validate_report_artifacts()
@@ -38645,6 +38731,9 @@ def test_generated_runtime_helpers():
     )["ok"] is True
     assert openapi.openapi_release_gate({"app/openapi.py"})["ok"] is False
     assert monitoring.readiness()["ready"] is True
+    assert monitoring.monitoring_release_gate({"app/monitoring.py", "app/health.py", "app/templates/appgen_monitoring.html"})["format"] == "appgen.monitoring-release-gate.v1"
+    assert monitoring.monitoring_release_gate({"app/monitoring.py", "app/health.py", "app/templates/appgen_monitoring.html"})["ok"] is True
+    assert monitoring.monitoring_release_gate({"app/monitoring.py"})["ok"] is False
     assert resilience.classify_exception(ValueError("bad"))["category"] == "validation"
     assert resilience.safe_error_response(TimeoutError("slow"))["retryable"] is True
     assert "preserve_user_input" in resilience.safe_error_response(ValueError("bad"))["actions"]

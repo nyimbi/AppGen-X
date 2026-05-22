@@ -2234,7 +2234,9 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert "Visual Graph" in (output_dir / "templates" / "appgen_designer.html").read_text()
     assert "Model JSON" in (output_dir / "templates" / "appgen_designer.html").read_text()
     assert "Preview DSL" in (output_dir / "templates" / "appgen_designer.html").read_text()
-    assert "Health JSON" in (output_dir / "templates" / "appgen_monitoring.html").read_text()
+    monitoring_template = (output_dir / "templates" / "appgen_monitoring.html").read_text()
+    assert "Health JSON" in monitoring_template
+    assert "Release Gate JSON" in monitoring_template
     resilience_template = (output_dir / "templates" / "appgen_resilience.html").read_text()
     assert "Error Handling JSON" in resilience_template
     assert "Release Gate JSON" in resilience_template
@@ -3021,6 +3023,19 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert monitoring.liveness()["live"] is True
     assert monitoring.readiness()["ready"] is True
     assert monitoring.error_payload(ValueError("bad"), status_code=400)["status"] == 400
+    monitoring_gate = monitoring.monitoring_release_gate(
+        {"app/monitoring.py", "app/health.py", "app/templates/appgen_monitoring.html"}
+    )
+    assert monitoring_gate["format"] == "appgen.monitoring-release-gate.v1"
+    assert monitoring_gate["ok"] is True
+    assert {
+        "artifact_coverage",
+        "liveness_payload",
+        "readiness_checks",
+        "error_envelopes",
+        "endpoint_contracts",
+    } <= {check["gate"] for check in monitoring_gate["checks"]}
+    assert monitoring.monitoring_release_gate({"app/monitoring.py"})["ok"] is False
     assert resilience.classify_exception(ValueError("bad"))["category"] == "validation"
     assert resilience.safe_error_response(TimeoutError("slow"))["retryable"] is True
     assert "preserve_user_input" in resilience.safe_error_response(ValueError("bad"))["actions"]

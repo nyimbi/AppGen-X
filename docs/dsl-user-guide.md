@@ -532,6 +532,10 @@ Use `/diagnostics/release-gate.json` or `diagnostics_release_gate()` to prove
 debugging readiness. The gate checks diagnostic artifacts, schema self-tests,
 secret redaction, remediation planning, support bundle shape, API smoke plans,
 and load-test plans.
+Use `/monitoring/release-gate.json` or `monitoring_release_gate()` to prove
+operations monitoring readiness. The gate checks monitoring artifacts,
+liveness metadata, readiness checks, JSON error envelopes, and generated
+monitoring endpoint contracts.
 Use `/performance/release-gate.json` or `performance_release_gate()` to prove
 performance readiness. The gate checks generated budget catalogs, bounded
 pagination and cache behavior, load-test matrices, executable k6 and Locust
