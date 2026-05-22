@@ -1075,6 +1075,7 @@ def test_generate_app_from_sqlite_schema_compiles(tmp_path) -> None:
     assert capabilities_by_key["ui.responsive"]["status"] == "implemented"
     assert capabilities_by_key["ui.branding"]["status"] == "implemented"
     assert "platform.extensibility" in {item["key"] for item in manifest["capabilities"]}
+    assert capabilities_by_key["platform.extensibility"]["status"] == "implemented"
     assert "devops.packaging" in {item["key"] for item in manifest["capabilities"]}
     assert "data.seed" in {item["key"] for item in manifest["capabilities"]}
     assert "ui.visual-modeling" in {item["key"] for item in manifest["capabilities"]}
@@ -3163,6 +3164,34 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert {"hook_registry", "generated_rule_dispatch", "packaging_handoff"} <= {
         check["gate"] for check in extension_gate["checks"]
     }
+    assert "Workbench JSON" in (output_dir / "templates" / "appgen_extensions.html").read_text()
+    extension_workbench = extensions.extension_workbench(
+        {
+            "app/extensions.py",
+            "app/templates/appgen_extensions.html",
+            "app_custom/__init__.py",
+            "app_custom/extensions.py",
+            "appgen_package.py",
+        }
+    )
+    assert extension_workbench["format"] == "appgen.extension-workbench.v1"
+    assert extension_workbench["ok"] is True
+    assert extension_workbench["decision"] == "approved"
+    assert {
+        "artifact_coverage",
+        "hook_registry",
+        "lifecycle_hooks",
+        "generated_rule_dispatch",
+        "custom_module_contract",
+        "packaging_handoff",
+        "hook_categories",
+        "release_gate",
+        "route_surface",
+    } == {check["id"] for check in extension_workbench["checks"]}
+    assert "/extensions/workbench.json" in next(
+        check["evidence"]["routes"] for check in extension_workbench["checks"] if check["id"] == "route_surface"
+    )
+    assert extensions.extension_workbench({"app/extensions.py"})["ok"] is False
     assert extensions.extension_release_gate({"app/extensions.py"})["ok"] is False
     assert appgen_package.package_metadata()["package_name"] == "appgen-library"
     assert appgen_package.fab_extension_contract()["custom_hooks"] == "app_custom.extensions"

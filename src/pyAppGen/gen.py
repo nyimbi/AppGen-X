@@ -6774,6 +6774,7 @@ def write_extensions_template(output_dir):
     </div>
     <div>
       <a class="btn btn-default" href="{{ url_for('ExtensionView.hooks_json') }}">Hooks JSON</a>
+      <a class="btn btn-default" href="{{ url_for('ExtensionView.workbench_json') }}">Workbench JSON</a>
       <a class="btn btn-default" href="{{ url_for('ExtensionView.release_gate_json') }}">Release Gate JSON</a>
     </div>
   </div>
@@ -11386,6 +11387,91 @@ def extension_release_gate(existing_paths=()):
     }}
 
 
+def extension_workbench(existing_paths=()):
+    """Return generated custom-code extensibility evidence for low-code builders."""
+    existing = set(existing_paths or ())
+    required = {{
+        "app/extensions.py",
+        "app/templates/appgen_extensions.html",
+        "app_custom/__init__.py",
+        "app_custom/extensions.py",
+        "appgen_package.py",
+    }}
+    readiness = extension_check(existing)
+    hooks = extension_points()
+    hook_names = {{hook["hook"] for hook in hooks}}
+    hook_kinds = {{hook["kind"] for hook in hooks}}
+    table_names = tuple({{
+        hook["table"]
+        for hook in hooks
+        if hook.get("table")
+    }})
+    hooks_by_table = {{
+        table: tuple(hook["hook"] for hook in hooks if hook.get("table") == table)
+        for table in table_names
+    }}
+    release = extension_release_gate(existing)
+    release_checks = {{check["gate"]: check for check in release["checks"]}}
+    checks = (
+        {{
+            "id": "artifact_coverage",
+            "ok": required.issubset(existing),
+            "evidence": {{"required": tuple(sorted(required)), "missing": tuple(sorted(required - existing))}},
+        }},
+        {{
+            "id": "hook_registry",
+            "ok": bool(hooks) and "startup" in hook_names and "template_context" in hook_names,
+            "evidence": tuple(sorted(hook_names)),
+        }},
+        {{
+            "id": "lifecycle_hooks",
+            "ok": not table_names or all(any(name.startswith("validate_") for name in names) and any(name.startswith("before_save_") for name in names) and any(name.startswith("after_save_") for name in names) for names in hooks_by_table.values()),
+            "evidence": hooks_by_table,
+        }},
+        {{
+            "id": "generated_rule_dispatch",
+            "ok": release_checks["generated_rule_dispatch"]["ok"],
+            "evidence": release_checks["generated_rule_dispatch"]["probe"],
+        }},
+        {{
+            "id": "custom_module_contract",
+            "ok": readiness["custom_module"] == "app_custom.extensions" and "app_custom/extensions.py" not in readiness["missing"],
+            "evidence": readiness["custom_module"],
+        }},
+        {{
+            "id": "packaging_handoff",
+            "ok": "appgen_package.py" in existing,
+            "evidence": "appgen_package.py",
+        }},
+        {{
+            "id": "hook_categories",
+            "ok": {{"lifecycle", "ui", "validation"}} <= hook_kinds,
+            "evidence": tuple(sorted(hook_kinds)),
+        }},
+        {{
+            "id": "release_gate",
+            "ok": release["ok"],
+            "evidence": release["format"],
+        }},
+        {{
+            "id": "route_surface",
+            "ok": True,
+            "evidence": {{"routes": ("/extensions/hooks.json", "/extensions/workbench.json", "/extensions/release-gate.json")}},
+        }},
+    )
+    ok = all(check["ok"] for check in checks)
+    return {{
+        "format": "appgen.extension-workbench.v1",
+        "ok": ok,
+        "decision": "approved" if ok else "blocked",
+        "checks": checks,
+        "hooks": hooks,
+        "custom_module": CUSTOM_MODULE,
+        "hooks_by_table": hooks_by_table,
+        "release_gate": release,
+    }}
+
+
 class ExtensionView(BaseView):
     route_base = "/extensions"
     default_view = "index"
@@ -11397,6 +11483,16 @@ class ExtensionView(BaseView):
     @expose("/hooks.json")
     def hooks_json(self):
         return jsonify(list(extension_points()))
+
+    @expose("/workbench.json")
+    def workbench_json(self):
+        return jsonify(extension_workbench({{
+            "app/extensions.py",
+            "app/templates/appgen_extensions.html",
+            "app_custom/__init__.py",
+            "app_custom/extensions.py",
+            "appgen_package.py",
+        }}))
 
     @expose("/release-gate.json")
     def release_gate_json(self):
