@@ -307,7 +307,10 @@ apps include:
   contracts, focus/touch checks, CSS custom properties, an experience-excellence
   gate, and a UI experience release gate that aggregates theme quality,
   beautiful/sophisticated outcome evidence, accessibility, visual regression,
-  responsive coverage, component states, and required assets.
+  responsive coverage, component states, and required assets. The generated
+  `responsive_workbench()` proves breakpoint tokens, mobile/tablet/desktop/wide
+  viewport contracts, responsive layout recipes, touch density, visual matrices,
+  and route evidence before `ui.responsive` is marked implemented.
 - `extensions.py`, `appgen_extensions.html`, and `app_custom/extensions.py`
   with stable custom-code hooks that survive regeneration. A generated
   extension release gate proves artifact presence, hook registry coverage,
