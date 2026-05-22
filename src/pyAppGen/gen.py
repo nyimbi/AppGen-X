@@ -46935,6 +46935,11 @@ def get_metadata(idb):
     ),
 )
 @click.option(
+    "--dsl-release-audit",
+    is_flag=True,
+    help="Print JSON proof that package-level DSL linter, grammar, and docs are ready.",
+)
+@click.option(
     "--dsl-antlr-report",
     is_flag=True,
     help=(
@@ -46979,6 +46984,7 @@ def main(
     agentic_release_audit,
     target_release_audit,
     schema_source_audit,
+    dsl_release_audit,
     dsl_antlr_report,
 ):
     """Generate a Flask-AppBuilder app package from a database schema."""
@@ -47014,6 +47020,7 @@ def main(
         erp_template_module,
         *audit_options,
         schema_source_audit,
+        dsl_release_audit,
         dsl_antlr_report,
     ]
     if not any(
@@ -47021,6 +47028,39 @@ def main(
     ):
         click.echo(ctx.get_help())
         ctx.exit(0)
+
+    if dsl_release_audit:
+        if any(
+            [
+                writedir,
+                database_url,
+                idatabase,
+                wdatabase,
+                lint_dsl_path,
+                fix_dsl_path,
+                format_dsl_path,
+                dsl_authoring_gate_path,
+                roadmap_release_audit,
+                jhipster_superiority_audit,
+                generated_app_excellence_audit,
+                package_goal_audit,
+                erp_template_catalog,
+                erp_template_module,
+                *audit_options,
+                schema_source_audit,
+                dsl_antlr_report,
+                *schema_sources,
+            ]
+        ):
+            raise click.UsageError(
+                "--dsl-release-audit cannot be combined with generation or DSL "
+                "utility options."
+            )
+        from .dsl_quality import dsl_release_audit as package_dsl_release_audit
+
+        result = package_dsl_release_audit()
+        click.echo(json.dumps(result, indent=2, sort_keys=True, default=list))
+        ctx.exit(0 if result["ok"] else 1)
 
     if schema_source_audit:
         if any(
@@ -47040,6 +47080,7 @@ def main(
                 erp_template_catalog,
                 erp_template_module,
                 *audit_options,
+                dsl_release_audit,
                 dsl_antlr_report,
                 *schema_sources,
             ]
@@ -47071,6 +47112,7 @@ def main(
                 erp_template_module,
                 *audit_options,
                 schema_source_audit,
+                dsl_release_audit,
                 *schema_sources,
             ]
         ):

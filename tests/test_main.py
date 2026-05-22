@@ -58,6 +58,9 @@ from pyAppGen.dsl import dsl_keyword_budget
 from pyAppGen.dsl import dsl_outline
 from pyAppGen.dsl import format_dsl
 from pyAppGen.dsl import lint_dsl
+from pyAppGen.dsl_quality import dsl_documentation_catalog
+from pyAppGen.dsl_quality import dsl_linter_release_contract
+from pyAppGen.dsl_quality import dsl_release_audit
 from pyAppGen.erp import erp_module_dsl
 from pyAppGen.erp import erp_starter_manifest
 from pyAppGen.erp import erp_template_catalog
@@ -333,6 +336,7 @@ def test_package_goal_audit_cli_aggregates_objective_evidence(
         "roadmap_traceability",
         "jhipster_superiority",
         "generated_app_excellence",
+        "dsl_linter_docs_grammar",
         "erp_template_exports",
         "natural_language_evolution",
         "robust_ide",
@@ -362,6 +366,7 @@ def test_package_goal_audit_cli_aggregates_objective_evidence(
     assert cli_report["audits"]["roadmap"]["ok"] is True
     assert cli_report["audits"]["jhipster_superiority"]["ok"] is True
     assert cli_report["audits"]["generated_app_excellence"]["ok"] is True
+    assert cli_report["audits"]["dsl_quality"]["ok"] is True
     assert cli_report["audits"]["erp_templates"]["ok"] is True
     assert cli_report["audits"]["natural_language_evolution"]["ok"] is True
     assert cli_report["audits"]["studio"]["ok"] is True
@@ -1267,6 +1272,50 @@ def test_package_target_audit_covers_web_mobile_desktop_generation(
         "desktop",
         "chatbot",
     }
+
+
+def test_package_dsl_release_audit_covers_linter_grammar_and_docs(
+    runner: CliRunner,
+) -> None:
+    """The package proves the DSL linter, grammar, and documentation as a unit."""
+    docs = dsl_documentation_catalog()
+    assert {item["path"] for item in docs} == {
+        "docs/dsl.md",
+        "docs/dsl-grammar.md",
+        "docs/dsl-user-guide.md",
+        "docs/dsl-tutorial.md",
+        "docs/dsl-linter.md",
+        "docs/index.md",
+    }
+    assert all(item["ok"] for item in docs)
+
+    linter = dsl_linter_release_contract()
+    assert linter["format"] == "appgen.package-dsl-linter-contract.v1"
+    assert linter["ok"] is True
+    assert linter["invalid_sample"]["ok"] is False
+    assert linter["legacy_sample"]["fixes"]
+
+    audit = dsl_release_audit()
+    assert audit["format"] == "appgen.package-dsl-release-audit.v1"
+    assert audit["ok"] is True
+    assert {
+        "authoring_release_gate",
+        "antlr_grammar_sync",
+        "linter_diagnostics_and_fixes",
+        "documentation_coverage",
+        "cli_contract",
+        "artifact_contract",
+    } == {gate["id"] for gate in audit["gates"]}
+
+    missing = dsl_release_audit(existing_paths={"app/dsl_reference.py"})
+    assert missing["ok"] is False
+    assert any(gate["id"] == "artifact_contract" for gate in missing["blocking_gaps"])
+
+    result = runner.invoke(__main__.main, ["--dsl-release-audit"])
+    assert result.exit_code == 0
+    report = json.loads(result.output)
+    assert report["ok"] is True
+    assert report["antlr_integrity"]["ok"] is True
 
 
 def test_dsl_linter_reports_semantic_feedback(runner: CliRunner, tmp_path) -> None:

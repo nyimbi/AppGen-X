@@ -198,10 +198,19 @@ Check that the ANTLR grammar and generated parser artifacts are synchronized:
 appgen --dsl-antlr-report
 ```
 
-Run the full authoring release gate for a DSL file:
+Run the full authoring release gate for a DSL file with
+`dsl_authoring_release_gate()` or the CLI:
 
 ```console
 appgen --dsl-authoring-gate library.ags
+```
+
+Run the package-level DSL release audit before claiming the language has a
+ready linter, synchronized grammar, complete guide/tutorial/linter docs, and
+generated reference artifacts:
+
+```console
+appgen --dsl-release-audit
 ```
 
 Run the package-level roadmap audit before claiming AppGen satisfies the full
@@ -229,8 +238,8 @@ appgen --generated-app-excellence-audit
 
 Run the aggregate package goal audit when you need one machine-readable bundle
 covering roadmap traceability, JHipster superiority, and generated-app
-excellence, schema source intake, ERP templates, and package-level
-natural-language evolution:
+excellence, DSL linter/grammar/docs, schema source intake, ERP templates, and
+package-level natural-language evolution:
 
 ```console
 appgen --package-goal-audit

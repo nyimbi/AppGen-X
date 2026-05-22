@@ -506,6 +506,7 @@ def package_goal_audit(root: Path | str | None = None) -> dict:
     from .agentic import agentic_release_audit
     from .config_admin import config_editor_release_audit
     from .distribution import distribution_release_audit
+    from .dsl_quality import dsl_release_audit
     from .erp import erp_template_release_audit
     from .form_designer import form_designer_release_audit
     from .integrations import integration_release_audit
@@ -521,6 +522,7 @@ def package_goal_audit(root: Path | str | None = None) -> dict:
     roadmap = roadmap_release_audit(root)
     superiority = jhipster_superiority_audit()
     excellence = generated_app_excellence_audit()
+    dsl_quality = dsl_release_audit(root=root)
     erp_templates = erp_template_release_audit()
     nl_evolution = nl_evolution_release_audit()
     studio = studio_release_audit()
@@ -550,6 +552,11 @@ def package_goal_audit(root: Path | str | None = None) -> dict:
             "id": "generated_app_excellence",
             "ok": excellence["ok"],
             "format": excellence["format"],
+        },
+        {
+            "id": "dsl_linter_docs_grammar",
+            "ok": dsl_quality["ok"],
+            "format": dsl_quality["format"],
         },
         {
             "id": "erp_template_exports",
@@ -639,6 +646,7 @@ def package_goal_audit(root: Path | str | None = None) -> dict:
             "roadmap": roadmap,
             "jhipster_superiority": superiority,
             "generated_app_excellence": excellence,
+            "dsl_quality": dsl_quality,
             "erp_templates": erp_templates,
             "natural_language_evolution": nl_evolution,
             "studio": studio,

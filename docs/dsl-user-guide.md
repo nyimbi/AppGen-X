@@ -105,6 +105,10 @@ grammar, generated lexer, and generated parser remain synchronized.
 Run `appgen --dsl-authoring-gate appgen.appgen` when reviewing a concrete DSL
 file for release readiness across linting, formatting, language ergonomics,
 source coverage, and IDE support.
+Run `appgen --dsl-release-audit` when reviewing the package-level DSL contract:
+it aggregates the authoring gate, ANTLR grammar sync, linter diagnostics and
+quick fixes, grammar/user-guide/tutorial/linter docs, CLI commands, and
+generated DSL reference artifacts.
 Run `appgen --roadmap-release-audit` when reviewing whether the package-level
 capability map still satisfies `docs/ideas.md`, `docs/base_features.md`, and
 `docs/Lo-code features.md`.
@@ -115,8 +119,9 @@ Run `appgen --generated-app-excellence-audit` before claiming generated apps are
 beautiful, sophisticated, secure, reliable, robust, functional, and highly
 capable.
 Run `appgen --package-goal-audit` to collect roadmap traceability, JHipster
-superiority, generated-app excellence, schema source intake, ERP template, and
-natural-language evolution evidence into one package-level JSON bundle.
+superiority, generated-app excellence, DSL quality, schema source intake, ERP
+template, and natural-language evolution evidence into one package-level JSON
+bundle.
 Run `appgen --erp-template-catalog` to list package-level ERP starter modules,
 then `appgen --erp-template invoicing > invoicing.appgen` to export a module as
 DSL before generating it with `appgen --dsl`.
