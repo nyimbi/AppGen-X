@@ -5975,6 +5975,7 @@ def write_project_management_template(output_dir):
     <div>
       <a class="btn btn-default" href="{{ url_for('ProjectManagementView.backlog_json') }}">Backlog JSON</a>
       <a class="btn btn-default" href="{{ url_for('ProjectManagementView.traceability_json') }}">Traceability JSON</a>
+      <a class="btn btn-default" href="{{ url_for('ProjectManagementView.release_gate_json') }}">Release Gate JSON</a>
     </div>
   </div>
   <div class="agpm-grid">
@@ -23809,6 +23810,57 @@ def project_management_check(existing_paths):
     }}
 
 
+def project_management_release_gate(existing_paths=()):
+    """Return an auditable release gate for generated project-management contracts."""
+    artifacts = set(existing_paths or ())
+    required_artifacts = ("app/project_management.py", "app/templates/appgen_project_management.html")
+    backlog = backlog_templates()
+    release = release_plan()
+    sprint = sprint_plan(capacity=6)
+    traceability = traceability_matrix()
+    provider_exports = {{provider: export_plan(provider) for provider in TOOL_PROVIDERS}}
+    gates = (
+        {{
+            "gate": "provider_catalog",
+            "ok": {{"jira", "github", "azure_boards", "gitlab"}} <= set(TOOL_PROVIDERS),
+            "evidence": tuple(TOOL_PROVIDERS),
+        }},
+        {{
+            "gate": "backlog_and_sprint",
+            "ok": bool(backlog) and any(item["kind"] == "epic" for item in backlog) and bool(sprint["items"]),
+            "evidence": (len(backlog), len(sprint["items"])),
+        }},
+        {{
+            "gate": "release_controls",
+            "ok": {{"appgen_quality", "pytest", "security_headers", "openapi_contract", "backup_restore"}} <= set(release["gates"]) and bool(release["rollback"]),
+            "evidence": release["gates"],
+        }},
+        {{
+            "gate": "traceability",
+            "ok": bool(traceability) and all(item["story"].startswith("DATA-") and item["artifacts"] for item in traceability),
+            "evidence": tuple(item["story"] for item in traceability),
+        }},
+        {{
+            "gate": "devops_exports",
+            "ok": all(exports and exports[0]["provider"] == provider and exports[0]["description"] for provider, exports in provider_exports.items()),
+            "evidence": tuple(provider_exports),
+        }},
+        {{
+            "gate": "artifact_coverage",
+            "ok": set(required_artifacts) <= artifacts,
+            "missing": tuple(item for item in required_artifacts if item not in artifacts),
+        }},
+    )
+    ok = all(gate["ok"] for gate in gates)
+    return {{
+        "format": "appgen.project-management-release-gate.v1",
+        "ok": ok,
+        "decision": "approved" if ok else "blocked",
+        "gates": gates,
+        "required_artifacts": required_artifacts,
+    }}
+
+
 class ProjectManagementView(BaseView):
     route_base = "/project-management"
     default_view = "index"
@@ -23833,6 +23885,10 @@ class ProjectManagementView(BaseView):
     @expose("/providers.json")
     def providers_json(self):
         return jsonify(list(provider_catalog()))
+
+    @expose("/release-gate.json")
+    def release_gate_json(self):
+        return jsonify(project_management_release_gate({{"app/project_management.py", "app/templates/appgen_project_management.html"}}))
 
 
 def register_project_management(appbuilder):
@@ -32832,9 +32888,11 @@ def validate_project_management_artifacts() -> None:
         fail("project-management contract must expose backlog, sprint, and release plans")
     if "traceability_matrix" not in contract or "export_plan" not in contract or "jira" not in contract or "github" not in contract:
         fail("project-management contract must expose traceability and DevOps provider exports")
+    if "project_management_release_gate" not in contract:
+        fail("project-management contract must expose release-gate evidence")
     template = (ROOT / "app" / "templates" / "appgen_project_management.html").read_text()
-    if "Project Management" not in template or "Backlog JSON" not in template or "Traceability JSON" not in template:
-        fail("project-management cockpit must expose backlog and traceability")
+    if "Project Management" not in template or "Backlog JSON" not in template or "Traceability JSON" not in template or "Release Gate JSON" not in template:
+        fail("project-management cockpit must expose backlog, traceability, and release gate")
 
 
 def validate_devtools_artifacts() -> None:
@@ -35020,6 +35078,8 @@ def test_generated_runtime_helpers():
     assert project_management.backlog_templates()
     assert project_management.traceability_matrix()
     assert project_management.export_plan("github")[0]["provider"] == "github"
+    assert project_management.project_management_release_gate({"app/project_management.py", "app/templates/appgen_project_management.html"})["ok"] is True
+    assert project_management.project_management_release_gate({"app/project_management.py"})["ok"] is False
     assert {item["tool"] for item in devtools.devtool_catalog()} == {"vscode", "eclipse", "jetbrains"}
     assert devtools.vscode_launch_profile()["module"] == "flask"
     assert any(task["label"] == "AppGen quality" for task in devtools.vscode_tasks())

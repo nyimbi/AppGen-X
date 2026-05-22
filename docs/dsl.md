@@ -567,7 +567,9 @@ apps include:
   realistic, deployable ERP components rather than empty placeholder tables.
 - `project_management.py` and `appgen_project_management.html` with generated
   agile backlog, sprint, release, traceability, and Jira/GitHub/Azure
-  Boards/GitLab issue-export contracts.
+  Boards/GitLab issue-export contracts, plus a project-management release gate
+  for provider coverage, backlog/sprint readiness, release controls,
+  traceability, DevOps exports, and required artifacts.
 - `wizards.py` and `appgen_wizards.html` with generated sequential table
   creation wizards and workflow process wizards derived from existing tables
   and `flow` declarations.

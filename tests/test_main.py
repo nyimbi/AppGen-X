@@ -2223,6 +2223,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert "Release Gate JSON" in (output_dir / "templates" / "appgen_integrations.html").read_text()
     assert "Productivity Integrations" in (output_dir / "templates" / "appgen_productivity.html").read_text()
     assert "Lifecycle JSON" in (output_dir / "templates" / "appgen_lifecycle.html").read_text()
+    assert "Release Gate JSON" in (output_dir / "templates" / "appgen_project_management.html").read_text()
     assert "tenant_id" in (output_dir / "templates" / "appgen_tenancy.html").read_text()
     assert "row-level security contracts" in (output_dir / "templates" / "appgen_rls.html").read_text()
     identity_template = (output_dir / "templates" / "appgen_identity.html").read_text()
@@ -4692,6 +4693,20 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert "appgen_quality" in project_management.release_plan()["gates"]
     assert project_management.traceability_matrix()[0]["story"].startswith("DATA-")
     assert project_management.export_plan("github")[0]["provider"] == "github"
+    project_gate = project_management.project_management_release_gate(
+        {"app/project_management.py", "app/templates/appgen_project_management.html"}
+    )
+    assert project_gate["format"] == "appgen.project-management-release-gate.v1"
+    assert project_gate["ok"] is True
+    assert {
+        "provider_catalog",
+        "backlog_and_sprint",
+        "release_controls",
+        "traceability",
+        "devops_exports",
+        "artifact_coverage",
+    } <= {gate["gate"] for gate in project_gate["gates"]}
+    assert project_management.project_management_release_gate({"app/project_management.py"})["ok"] is False
     wizard_catalog = wizards.wizard_catalog()
     assert any(item["name"] == "BookCreate" and item["kind"] == "table" for item in wizard_catalog)
     assert any(item["name"] == "PublishWorkflow" and item["kind"] == "workflow" for item in wizard_catalog)
