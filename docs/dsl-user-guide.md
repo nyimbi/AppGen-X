@@ -119,7 +119,9 @@ AppGen is more capable than JHipster; it checks preserved baseline capabilities
 and AppGen-only advantage areas.
 Run `appgen --generated-app-excellence-audit` before claiming generated apps are
 beautiful, sophisticated, secure, reliable, robust, functional, and highly
-capable.
+capable. It generates a temporary app, compiles generated excellence artifacts,
+runs the generated quality script, and exercises runtime-assurance plus
+UI-experience excellence gates.
 Run `appgen --ideas-release-audit` to prove the original `docs/ideas.md`
 roadmap entries, from JHipster and source intake through deployment, DBScript
 language ideas, reporting, RLS, tabbed permissions, and autobackup, map to
@@ -792,7 +794,9 @@ package artifacts.
 Use `/runtime-assurance/excellence-gate.json` as the final generated-app
 quality decision. It aggregates the release gate into seven explicit product
 outcomes: beautiful, sophisticated, secure, reliable, robust, functional, and
-highly capable.
+highly capable. The package-level `appgen --generated-app-excellence-audit`
+mirrors that by generating a temporary app and running its quality script plus
+runtime/UI excellence gates before approving the claim.
 Use `/runtime-assurance/workbench.json` or `runtime_assurance_workbench()` in
 the generated IDE to inspect the assurance matrix, runtime report, artifact
 coverage, application release gate, generated-app excellence gate, and route

@@ -103,6 +103,7 @@ from pyAppGen.ops import node_red_contract
 from pyAppGen.ops import ops_release_audit
 from pyAppGen.ops import search_contract
 from pyAppGen.roadmap import generated_app_excellence_audit
+from pyAppGen.roadmap import generated_app_excellence_smoke_audit
 from pyAppGen.roadmap import jhipster_superiority_audit
 from pyAppGen.roadmap import package_goal_audit
 from pyAppGen.roadmap import roadmap_release_audit
@@ -390,6 +391,7 @@ def test_generated_app_excellence_audit_cli_guards_quality_claims(
     direct_report = generated_app_excellence_audit()
     assert direct_report["format"] == "appgen.generated-app-excellence-audit.v1"
     assert direct_report["ok"] is True
+    assert direct_report["generated_smoke"]["ok"] is True
     assert {
         "beautiful",
         "sophisticated",
@@ -402,6 +404,13 @@ def test_generated_app_excellence_audit_cli_guards_quality_claims(
     assert direct_report["stop_condition"] == (
         "do-not-claim-generated-app-excellence-unless-ok-is-true"
     )
+    smoke = generated_app_excellence_smoke_audit()
+    assert smoke["format"] == "appgen.generated-app-excellence-smoke-audit.v1"
+    assert smoke["ok"] is True
+    assert smoke["quality"]["ok"] is True
+    assert smoke["runtime_excellence"]["decision"] == "approved"
+    assert smoke["ui_excellence"]["decision"] == "approved"
+    assert all(item["ok"] for item in smoke["compiled"])
 
     result = runner.invoke(__main__.main, ["--generated-app-excellence-audit"])
 

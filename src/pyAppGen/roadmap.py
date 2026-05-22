@@ -7,6 +7,11 @@ has been generated.
 
 from __future__ import annotations
 
+import importlib.util
+import py_compile
+import subprocess
+import sys
+import tempfile
 from pathlib import Path
 
 from .capabilities import DEFAULT_CAPABILITIES
@@ -307,6 +312,50 @@ GENERATED_APP_EXCELLENCE_REQUIREMENTS = (
         ),
     },
 )
+EXCELLENCE_SAMPLE_DSL = """
+app ExcellenceAudit { theme: sage; targets: web, pwa, mobile, desktop, chatbot }
+
+table Customer {
+  id: int pk
+  name: string required search
+  email: email search
+}
+
+table Invoice {
+  id: int pk
+  customer_id: int required -> Customer.id [many-to-one]
+  invoice_no: string required unique search
+  total_amount: decimal required
+  due_date: date
+}
+
+view InvoiceForm for Invoice {
+  Main: customer_id, invoice_no, total_amount, due_date
+  @ invoice_no TextBox 0 0 6 1
+  @ total_amount NumberInput 0 1 6 1
+  @ due_date DatePicker 0 2 6 1
+}
+"""
+EXCELLENCE_SMOKE_PYTHON_ARTIFACTS = (
+    "app/models.py",
+    "app/views.py",
+    "app/branding.py",
+    "app/runtime_assurance.py",
+    "scripts/appgen_quality.py",
+    "tests/test_generated_contract.py",
+    "tests/test_generated_coverage.py",
+)
+EXCELLENCE_SMOKE_REQUIRED_ARTIFACTS = (
+    "app/branding.py",
+    "app/static/appgen-theme.css",
+    "app/templates/appgen_branding.html",
+    "app/runtime_assurance.py",
+    "app/templates/appgen_runtime_assurance.html",
+    "scripts/appgen_quality.py",
+    "tests/test_generated_contract.py",
+    "app/appgen.json",
+    "docs/schema.md",
+)
 
 
 def _read_document(root: Path, relative_path: str) -> str:
@@ -447,6 +496,7 @@ def jhipster_superiority_audit() -> dict:
 def generated_app_excellence_audit() -> dict:
     """Return package-level proof for generated app quality claims."""
     categories = _capability_group_checks(GENERATED_APP_EXCELLENCE_REQUIREMENTS)
+    smoke = generated_app_excellence_smoke_audit()
     gates = (
         {
             "id": "objective_quality_categories",
@@ -487,6 +537,11 @@ def generated_app_excellence_audit() -> dict:
                 "components.erp-templates",
             ),
         },
+        {
+            "id": "generated_excellence_smoke",
+            "ok": smoke["ok"],
+            "checks": smoke["checks"],
+        },
     )
     ok = all(gate["ok"] for gate in gates)
     return {
@@ -495,10 +550,148 @@ def generated_app_excellence_audit() -> dict:
         "ok": ok,
         "decision": "approved" if ok else "blocked",
         "categories": categories,
+        "generated_smoke": smoke,
         "gates": gates,
         "blocking_gaps": tuple(gate for gate in gates if not gate["ok"]),
         "stop_condition": "do-not-claim-generated-app-excellence-unless-ok-is-true",
     }
+
+
+def generated_app_excellence_smoke_audit() -> dict:
+    """Generate an app and exercise its own excellence and quality gates."""
+    from .dsl import schema_from_dsl
+    from .gen import generate_app_from_schema
+
+    with tempfile.TemporaryDirectory(prefix="appgen-excellence-") as raw_workdir:
+        project_dir = Path(raw_workdir) / "excellence"
+        generate_app_from_schema(
+            schema_from_dsl(EXCELLENCE_SAMPLE_DSL, source_name="excellence.appgen"),
+            project_dir / "app",
+        )
+        existing_paths = {
+            path.relative_to(project_dir).as_posix()
+            for path in project_dir.rglob("*")
+            if path.is_file()
+        }
+        missing = tuple(
+            path for path in EXCELLENCE_SMOKE_REQUIRED_ARTIFACTS if path not in existing_paths
+        )
+        compiled = _compile_generated_excellence_artifacts(project_dir)
+        quality = _run_generated_quality_script(project_dir)
+        runtime_assurance = _load_generated_module(
+            project_dir / "app" / "runtime_assurance.py",
+            "appgen_generated_runtime_assurance",
+        )
+        branding = _load_generated_module(
+            project_dir / "app" / "branding.py",
+            "appgen_generated_branding",
+        )
+        runtime_gate = runtime_assurance.generated_app_excellence_gate(
+            {"p95_ms": 200, "error_rate": 0},
+            set(runtime_assurance.REQUIRED_RELEASE_ARTIFACTS),
+        )
+        ui_gate = branding.ui_experience_excellence_gate(
+            {
+                "app/branding.py",
+                "app/static/appgen-theme.css",
+                "app/templates/appgen_branding.html",
+            }
+        )
+        visual_quality = branding.visual_experience_quality_report()
+    checks = (
+        {
+            "check": "required_artifacts",
+            "ok": not missing,
+            "missing": missing,
+        },
+        {
+            "check": "compiled_excellence_artifacts",
+            "ok": all(item["ok"] for item in compiled),
+            "artifacts": EXCELLENCE_SMOKE_PYTHON_ARTIFACTS,
+        },
+        {
+            "check": "generated_quality_script",
+            "ok": quality["ok"],
+            "returncode": quality["returncode"],
+        },
+        {
+            "check": "runtime_excellence_gate",
+            "ok": runtime_gate["ok"]
+            and {
+                "beautiful",
+                "sophisticated",
+                "secure",
+                "reliable",
+                "robust",
+                "functional",
+                "highly_capable",
+            }
+            == {category["id"] for category in runtime_gate["categories"]},
+            "decision": runtime_gate["decision"],
+        },
+        {
+            "check": "ui_experience_gate",
+            "ok": ui_gate["ok"] and visual_quality["ok"],
+            "decision": "approved" if ui_gate["ok"] and visual_quality["ok"] else "blocked",
+        },
+    )
+    return {
+        "format": "appgen.generated-app-excellence-smoke-audit.v1",
+        "scope": "package",
+        "ok": all(check["ok"] for check in checks),
+        "checks": checks,
+        "compiled": compiled,
+        "quality": quality,
+        "runtime_excellence": {
+            "format": runtime_gate["format"],
+            "decision": runtime_gate["decision"],
+            "categories": tuple(category["id"] for category in runtime_gate["categories"]),
+        },
+        "ui_excellence": {
+            "format": ui_gate["format"],
+            "decision": "approved" if ui_gate["ok"] and visual_quality["ok"] else "blocked",
+            "visual_quality": visual_quality["ok"],
+        },
+    }
+
+
+def _compile_generated_excellence_artifacts(project_dir: Path) -> tuple[dict, ...]:
+    results = []
+    for relative in EXCELLENCE_SMOKE_PYTHON_ARTIFACTS:
+        path = project_dir / relative
+        try:
+            py_compile.compile(str(path), doraise=True)
+        except py_compile.PyCompileError as exc:
+            results.append({"path": relative, "ok": False, "error": str(exc)})
+        else:
+            results.append({"path": relative, "ok": True})
+    return tuple(results)
+
+
+def _run_generated_quality_script(project_dir: Path) -> dict:
+    script = project_dir / "scripts" / "appgen_quality.py"
+    result = subprocess.run(
+        [sys.executable, str(script)],
+        cwd=project_dir,
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    return {
+        "ok": result.returncode == 0 and "appgen quality passed" in result.stdout,
+        "returncode": result.returncode,
+        "stdout": result.stdout.strip(),
+        "stderr": result.stderr.strip(),
+    }
+
+
+def _load_generated_module(path: Path, module_name: str):
+    spec = importlib.util.spec_from_file_location(module_name, path)
+    if spec is None or spec.loader is None:
+        raise ImportError(f"Cannot load generated module from {path}")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
 
 
 def package_goal_audit(root: Path | str | None = None) -> dict:

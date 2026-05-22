@@ -232,7 +232,9 @@ appgen --jhipster-superiority-audit
 
 Run the generated-app excellence audit before claiming generated apps are
 beautiful, sophisticated, secure, reliable, robust, functional, and highly
-capable:
+capable. The audit now generates a temporary app, compiles the generated
+excellence artifacts, runs `scripts/appgen_quality.py`, and exercises the
+generated runtime-assurance and UI-experience excellence gates:
 
 ```console
 appgen --generated-app-excellence-audit
