@@ -1046,6 +1046,7 @@ def test_generate_app_from_sqlite_schema_compiles(tmp_path) -> None:
     assert capabilities_by_key["api.documentation"]["status"] == "implemented"
     assert capabilities_by_key["api.openapi"]["status"] == "implemented"
     assert capabilities_by_key["api.sdks"]["status"] == "implemented"
+    assert capabilities_by_key["data.exchange"]["status"] == "implemented"
     assert capabilities_by_key["platform.targets"]["status"] == "implemented"
     assert capabilities_by_key["platform.native"]["status"] == "implemented"
     assert capabilities_by_key["platform.frontends"]["status"] == "implemented"
@@ -3986,6 +3987,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert missing_body["error"] == "unknown_table"
     assert "migration_batch_json" in (output_dir / "data_exchange.py").read_text()
     assert "migration_batch_request_plan" in (output_dir / "data_exchange.py").read_text()
+    assert "data_exchange_workbench" in (output_dir / "data_exchange.py").read_text()
     assert "request.get_json" in (output_dir / "data_exchange.py").read_text()
     json_exchange = data_exchange.rows_to_json("Book", [{"title": "Dune", "internal_code": "B-1"}])
     assert "internal_code" not in json_exchange
@@ -4007,6 +4009,27 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "request_contracts",
         "artifact_coverage",
     } <= {gate["gate"] for gate in exchange_gate["gates"]}
+    exchange_workbench = data_exchange.data_exchange_workbench(
+        {"app/data_exchange.py", "app/templates/appgen_data_exchange.html"}
+    )
+    assert exchange_workbench["format"] == "appgen.data-exchange-workbench.v1"
+    assert exchange_workbench["ok"] is True
+    assert exchange_workbench["release_gate"]["ok"] is True
+    assert {
+        "artifact_coverage",
+        "exchange_catalog",
+        "csv_templates",
+        "json_round_trip",
+        "import_validation",
+        "migration_batches",
+        "request_contracts",
+        "release_gate",
+        "route_surface",
+    } == {check["id"] for check in exchange_workbench["checks"]}
+    assert "/data-exchange/workbench.json" in next(
+        check["evidence"]["routes"] for check in exchange_workbench["checks"] if check["id"] == "route_surface"
+    )
+    assert data_exchange.data_exchange_workbench({"app/data_exchange.py"})["ok"] is False
     assert data_exchange.data_exchange_release_gate({"app/data_exchange.py"})["ok"] is False
     assert {item["provider"] for item in database_ops.database_provider_catalog()} == {
         "postgresql",

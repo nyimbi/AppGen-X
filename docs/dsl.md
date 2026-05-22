@@ -408,7 +408,11 @@ apps include:
   JSON import/export templates, row validation, reviewed migration batch plans,
   migration-friendly UI guidance, and a generated data-exchange release gate
   that proves catalog, CSV templates, JSON round-trips, import validation,
-  migration batches, request error contracts, and required artifacts.
+  migration batches, request error contracts, and required artifacts. A generated
+  `data_exchange_workbench()` adds IDE-ready evidence for artifact coverage,
+  catalog, templates, JSON round-trips, validation, migration batches, request
+  contracts, release decisions, and `/data-exchange/workbench.json` route
+  coverage.
 - `database_ops.py` and `appgen_database_ops.html` with generated PostgreSQL,
   MySQL, SQLite, MongoDB, DynamoDB, Cassandra, Redis, Patroni, PostGraphile,
   ZomboDB, Elasticsearch, Compose, Kubernetes, NoSQL document projections,

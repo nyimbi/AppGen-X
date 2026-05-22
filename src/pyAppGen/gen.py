@@ -3891,6 +3891,7 @@ def write_data_exchange_template(output_dir):
     </div>
     <div>
       <a class="btn btn-default" href="{{ url_for('DataExchangeView.catalog_json') }}">Catalog JSON</a>
+      <a class="btn btn-default" href="{{ url_for('DataExchangeView.workbench_json') }}">Workbench JSON</a>
       <a class="btn btn-default" href="{{ url_for('DataExchangeView.release_gate_json') }}">Release Gate JSON</a>
     </div>
   </div>
@@ -17945,6 +17946,40 @@ def data_exchange_release_gate(existing_paths=()):
     }}
 
 
+def data_exchange_workbench(existing_paths=()):
+    """Return consolidated data exchange evidence for generated IDEs."""
+    release_gate = data_exchange_release_gate(existing_paths)
+    gate_map = {{gate["gate"]: gate for gate in release_gate["gates"]}}
+    routes = (
+        "/data-exchange/catalog.json",
+        "/data-exchange/<table_name>/template.csv",
+        "/data-exchange/<table_name>/migration-batch.json",
+        "/data-exchange/workbench.json",
+        "/data-exchange/release-gate.json",
+    )
+    checks = (
+        {{"id": "artifact_coverage", "ok": exchange_check(existing_paths)["ok"], "evidence": exchange_check(existing_paths)}},
+        {{"id": "exchange_catalog", "ok": gate_map["exchange_catalog"]["ok"], "evidence": exchange_catalog()}},
+        {{"id": "csv_templates", "ok": gate_map["csv_templates"]["ok"], "evidence": tuple({{"table": item["table"], "template": csv_template(item["table"])}} for item in exchange_catalog())}},
+        {{"id": "json_round_trip", "ok": gate_map["json_round_trip"]["ok"], "evidence": gate_map["json_round_trip"]["evidence"]}},
+        {{"id": "import_validation", "ok": gate_map["import_validation"]["ok"], "evidence": gate_map["import_validation"]["evidence"]}},
+        {{"id": "migration_batches", "ok": gate_map["migration_batches"]["ok"], "evidence": gate_map["migration_batches"]["evidence"]}},
+        {{"id": "request_contracts", "ok": gate_map["request_contracts"]["ok"], "evidence": gate_map["request_contracts"]["evidence"]}},
+        {{"id": "release_gate", "ok": release_gate["ok"], "evidence": release_gate["decision"]}},
+        {{"id": "route_surface", "ok": all(route.startswith("/data-exchange/") for route in routes), "evidence": {{"routes": routes}}}},
+    )
+    ok = all(check["ok"] for check in checks)
+    return {{
+        "format": "appgen.data-exchange-workbench.v1",
+        "ok": ok,
+        "decision": "approved" if ok else "blocked",
+        "tables": exchange_catalog(),
+        "routes": routes,
+        "release_gate": release_gate,
+        "checks": checks,
+    }}
+
+
 class DataExchangeView(BaseView):
     route_base = "/data-exchange"
     default_view = "index"
@@ -17966,6 +18001,10 @@ class DataExchangeView(BaseView):
         payload = request.get_json(silent=True) or {{}}
         body, status = migration_batch_request_plan(table_name, payload, request.headers)
         return jsonify(body), status
+
+    @expose("/workbench.json")
+    def workbench_json(self):
+        return jsonify(data_exchange_workbench({{"app/data_exchange.py", "app/templates/appgen_data_exchange.html"}}))
 
     @expose("/release-gate.json")
     def release_gate_json(self):
