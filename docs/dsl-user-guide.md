@@ -780,6 +780,9 @@ bearer-token security metadata, and required OpenAPI artifacts.
 Use `/usage-analytics/release-gate.json` to prove generated app-usage
 analytics cover event catalogs, adoption, funnels, retention, real-time
 snapshots, and dashboard payloads.
+Use `/usage-analytics/workbench.json` in the generated IDE to inspect event
+catalogs, activity summaries, adoption, funnels, retention, realtime snapshots,
+artifact evidence, route coverage, and the resulting release decision.
 Use `/compliance/release-gate.json` to verify privacy request envelopes,
 protected-field redaction, erasure review, retention disposition, audit events,
 and compliance artifacts before a generated app is released.

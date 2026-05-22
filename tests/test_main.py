@@ -1063,6 +1063,7 @@ def test_generate_app_from_sqlite_schema_compiles(tmp_path) -> None:
     assert capabilities_by_key["api.openapi"]["status"] == "implemented"
     assert capabilities_by_key["api.sdks"]["status"] == "implemented"
     assert capabilities_by_key["reports.analytics"]["status"] == "implemented"
+    assert capabilities_by_key["reports.usage-analytics"]["status"] == "implemented"
     assert capabilities_by_key["data.exchange"]["status"] == "implemented"
     assert capabilities_by_key["data.search"]["status"] == "implemented"
     assert capabilities_by_key["data.database-ops"]["status"] == "implemented"
@@ -2423,6 +2424,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert "Workbench JSON" in (output_dir / "templates" / "appgen_dashboards.html").read_text()
     usage_template = (output_dir / "templates" / "appgen_usage_analytics.html").read_text()
     assert "app usage analytics" in usage_template
+    assert "Usage Workbench JSON" in usage_template
     assert "Release Gate JSON" in usage_template
     assert "Generated search indexes" in (output_dir / "templates" / "appgen_search.html").read_text()
     assert "Generated image and upload field contracts" in (
@@ -3704,6 +3706,27 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert {"event_catalog", "activity_summary", "adoption", "funnels", "retention", "realtime"} <= {
         gate["gate"] for gate in usage_gate["gates"]
     }
+    usage_workbench = usage_analytics.usage_analytics_workbench(
+        {"app/usage_analytics.py", "app/templates/appgen_usage_analytics.html"},
+        sample_usage,
+    )
+    assert usage_workbench["format"] == "appgen.usage-analytics-workbench.v1"
+    assert usage_workbench["ok"] is True
+    assert usage_workbench["decision"] == "approved"
+    assert {
+        "event_catalog",
+        "activity_summary",
+        "adoption",
+        "funnels",
+        "retention",
+        "realtime",
+        "artifact_evidence",
+        "route_surface",
+    } == {check["id"] for check in usage_workbench["checks"]}
+    assert "/usage-analytics/workbench.json" in next(
+        check["evidence"]["routes"] for check in usage_workbench["checks"] if check["id"] == "route_surface"
+    )
+    assert usage_analytics.usage_analytics_workbench({"app/usage_analytics.py"}, sample_usage)["ok"] is False
     assert usage_analytics.usage_analytics_release_gate({"app/usage_analytics.py"}, sample_usage)["ok"] is False
     assert usage_analytics.usage_analytics_check(
         {"app/usage_analytics.py", "app/templates/appgen_usage_analytics.html"}

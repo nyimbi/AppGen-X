@@ -3042,6 +3042,7 @@ def write_usage_analytics_template(output_dir):
     </div>
     <div>
       <a class="btn btn-default" href="{{ url_for('UsageAnalyticsView.catalog_json') }}">Analytics Catalog JSON</a>
+      <a class="btn btn-default" href="{{ url_for('UsageAnalyticsView.workbench_json') }}">Usage Workbench JSON</a>
       <a class="btn btn-default" href="{{ url_for('UsageAnalyticsView.release_gate_json') }}">Release Gate JSON</a>
     </div>
   </div>
@@ -13870,6 +13871,37 @@ def usage_analytics_release_gate(existing_paths=(), events=None):
     }}
 
 
+def usage_analytics_workbench(existing_paths=(), events=None):
+    """Return IDE-facing usage analytics workbench evidence."""
+    sample = tuple(sample_usage_events() if events is None else events)
+    dashboard = usage_dashboard(sample)
+    release_gate = usage_analytics_release_gate(existing_paths, sample)
+    routes = (
+        "/usage-analytics/catalog.json",
+        "/usage-analytics/workbench.json",
+        "/usage-analytics/release-gate.json",
+    )
+    checks = (
+        {{"id": "event_catalog", "ok": bool(usage_catalog()), "evidence": usage_catalog()}},
+        {{"id": "activity_summary", "ok": dashboard["summary"]["events"] == len(sample), "evidence": dashboard["summary"]}},
+        {{"id": "adoption", "ok": dashboard["adoption"]["active_resources"] == len(USAGE_RESOURCES), "evidence": dashboard["adoption"]}},
+        {{"id": "funnels", "ok": len(dashboard["funnels"]) == len(USAGE_RESOURCES) and all(item["steps"] for item in dashboard["funnels"]), "evidence": dashboard["funnels"]}},
+        {{"id": "retention", "ok": dashboard["retention"]["latest_active_users"] > 0 and bool(dashboard["retention"]["days"]), "evidence": dashboard["retention"]}},
+        {{"id": "realtime", "ok": dashboard["realtime"]["summary"]["events"] == len(sample) and bool(dashboard["realtime"]["recent"]), "evidence": dashboard["realtime"]}},
+        {{"id": "artifact_evidence", "ok": release_gate["ok"], "evidence": release_gate}},
+        {{"id": "route_surface", "ok": all(route.startswith("/usage-analytics/") for route in routes), "evidence": {{"routes": routes}}}},
+    )
+    ok = all(check["ok"] for check in checks)
+    return {{
+        "format": "appgen.usage-analytics-workbench.v1",
+        "ok": ok,
+        "decision": "approved" if ok else "blocked",
+        "dashboard": dashboard,
+        "release_gate": release_gate,
+        "checks": checks,
+    }}
+
+
 def usage_analytics_check(existing_paths=()):
     """Return readiness for generated usage analytics artifacts."""
     existing = set(existing_paths)
@@ -13894,9 +13926,17 @@ class UsageAnalyticsView(BaseView):
     def catalog_json(self):
         return jsonify(list(usage_catalog()))
 
+    @expose("/workbench.json")
+    def workbench_json(self):
+        return jsonify(
+            usage_analytics_workbench({{"app/usage_analytics.py", "app/templates/appgen_usage_analytics.html"}})
+        )
+
     @expose("/release-gate.json")
     def release_gate_json(self):
-        return jsonify(usage_analytics_release_gate())
+        return jsonify(
+            usage_analytics_release_gate({{"app/usage_analytics.py", "app/templates/appgen_usage_analytics.html"}})
+        )
 
 
 def register_usage_analytics(appbuilder):
@@ -41921,9 +41961,11 @@ def validate_usage_analytics_artifacts() -> None:
         fail("usage analytics contract must expose adoption, funnel, and retention reports")
     if "sample_usage_events" not in contract or "usage_analytics_release_gate" not in contract:
         fail("usage analytics contract must expose sample events and a release gate")
+    if "usage_analytics_workbench" not in contract or "appgen.usage-analytics-workbench.v1" not in contract or '@expose("/workbench.json")' not in contract:
+        fail("usage analytics contract must expose an IDE workbench route and payload")
     template = (ROOT / "app" / "templates" / "appgen_usage_analytics.html").read_text()
-    if "Usage Analytics" not in template or "Analytics Catalog JSON" not in template or "Release Gate JSON" not in template:
-        fail("usage analytics template must expose generated analytics catalog and release gate")
+    if "Usage Analytics" not in template or "Analytics Catalog JSON" not in template or "Usage Workbench JSON" not in template or "Release Gate JSON" not in template:
+        fail("usage analytics template must expose generated analytics catalog, workbench, and release gate")
 
 
 def main() -> int:
@@ -42750,6 +42792,12 @@ def test_generated_runtime_helpers():
     assert usage_analytics.usage_analytics_release_gate(
         {"app/usage_analytics.py", "app/templates/appgen_usage_analytics.html"}
     )["ok"] is True
+    usage_workbench = usage_analytics.usage_analytics_workbench(
+        {"app/usage_analytics.py", "app/templates/appgen_usage_analytics.html"}
+    )
+    assert usage_workbench["format"] == "appgen.usage-analytics-workbench.v1"
+    assert usage_workbench["ok"] is True
+    assert usage_workbench["decision"] == "approved"
     assert isinstance(search.search_catalog(), tuple)
     first_search_table = search.search_catalog()[0]["table"]
     assert search.elasticsearch_mapping(first_search_table)["mappings"]["properties"]

@@ -895,7 +895,10 @@ apps include:
   adoption, funnel, retention, and real-time app-usage analytics. A generated
   analytics release gate proves event catalog coverage, activity summaries,
   adoption, funnels, retention, realtime snapshots, and required analytics
-  artifacts.
+  artifacts. `usage_analytics_workbench()` exposes IDE-ready evidence for
+  event catalogs, activity summaries, adoption, funnels, retention, realtime
+  snapshots, artifact readiness, release decisions, and
+  `/usage-analytics/workbench.json` route coverage.
 - `seed.py` with relationship-aware deterministic demo data, dependency-ordered
   seed plans, demo/smoke/load fixture scenarios, table factories, pytest fixture
   modules, validation, anonymized fixture exports, SQL previews, scenario
