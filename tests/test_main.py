@@ -120,6 +120,7 @@ from pyAppGen.schema import schema_source_kind
 from pyAppGen.source_intake import all_source_generation_plans
 from pyAppGen.source_intake import source_catalog
 from pyAppGen.source_intake import source_example_matrix
+from pyAppGen.source_intake import source_generation_smoke_audit
 from pyAppGen.source_intake import source_generation_plan
 from pyAppGen.source_intake import source_intake_release_audit
 from pyAppGen.security import authorization_audit_event as package_authorization_audit_event
@@ -912,6 +913,19 @@ def test_package_source_intake_audit_covers_all_generation_sources(
         "appgen --dsl app.appgen --writedir app"
     )
 
+    smoke = source_generation_smoke_audit()
+    assert smoke["format"] == "appgen.package-source-generation-smoke-audit.v1"
+    assert smoke["ok"] is True
+    assert {row["source_kind"] for row in smoke["rows"]} == {
+        "dbml",
+        "sql",
+        "ponyorm",
+        "database",
+        "dsl",
+    }
+    assert all(row["checks"]["compile"] for row in smoke["rows"])
+    assert all(row["checks"]["source_fidelity"] for row in smoke["rows"])
+
     audit = source_intake_release_audit()
     assert audit["format"] == "appgen.package-source-intake-release-audit.v1"
     assert audit["ok"] is True
@@ -921,6 +935,7 @@ def test_package_source_intake_audit_covers_all_generation_sources(
         "database_url_dialects",
         "generation_commands",
         "source_fidelity",
+        "generation_smoke",
         "artifact_contract",
     } == {gate["id"] for gate in audit["gates"]}
 

@@ -99,7 +99,9 @@ relations, fingerprints, fidelity reports, and generation commands.
 Run `appgen --schema-source-audit` to emit the same release proof as JSON from
 the command line.
 Run `appgen --source-intake-release-audit` to promote DBML, SQL, PonyORM,
-database URL, and DSL intake into package-level release evidence.
+database URL, and DSL intake into package-level release evidence. It also
+generates temporary apps from all five source families, verifies source-fidelity
+manifests, and compiles core generated Python artifacts.
 Run `appgen --dsl-antlr-report` before grammar releases to prove the canonical
 grammar, generated lexer, and generated parser remain synchronized.
 Run `appgen --dsl-authoring-gate appgen.appgen` when reviewing a concrete DSL

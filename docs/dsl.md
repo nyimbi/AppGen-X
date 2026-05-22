@@ -186,7 +186,9 @@ appgen --schema-source-audit
 
 Promote that adapter proof into the package-level objective audit before
 claiming AppGen can generate from DBML, SQL, PonyORM, existing databases, and
-DSL sources:
+DSL sources. This audit parses every source family, generates a temporary app
+from each one, checks the generated source-fidelity manifest, and compiles core
+generated Python artifacts:
 
 ```console
 appgen --source-intake-release-audit
