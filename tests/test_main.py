@@ -2672,6 +2672,13 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert validation.validate_payload("Book", {"title": "Dune"}, partial=True)["ok"] is True
     assert validation.ui_validation_schema("Book")["format"] == "appgen.ui-validation.v1"
     assert validation.validation_check({"app/validation.py"})["ok"] is True
+    validation_gate = validation.validation_release_gate({"app/validation.py"})
+    assert validation_gate["format"] == "appgen.validation-release-gate.v1"
+    assert validation_gate["ok"] is True
+    assert {"table_contracts", "enum_contracts", "type_contracts"} <= {
+        check["gate"] for check in validation_gate["checks"]
+    }
+    assert validation.validation_release_gate(set())["ok"] is False
     assert branding.theme_contract()["theme"] == "sage"
     assert branding.css_variables()["--appgen-primary"] == "#2f6f5e"
     assert branding.css_variables()["--appgen-content-max"] == "1180px"

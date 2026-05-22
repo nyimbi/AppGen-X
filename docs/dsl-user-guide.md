@@ -223,6 +223,12 @@ success/error behavior, branch decision plans, decision-tree exports, decision
 traces, and required rule artifacts before treating low-code customization as
 release-ready.
 
+Generated schema validation exposes `validation_release_gate()` to prove
+field-level and payload-level contracts before generated forms, APIs, imports,
+or chatbots accept writes. The gate checks valid payloads, required-field
+errors, partial updates, UI validation schemas, enum errors, type errors, and
+the required validation artifact.
+
 Use `role` for generated access policies:
 
 ```appgen

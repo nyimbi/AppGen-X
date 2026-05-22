@@ -9056,6 +9056,92 @@ def validation_check(existing_paths):
         "missing": missing,
         "tables": tuple(VALIDATION_TABLES),
     }}
+
+
+def _sample_value(field):
+    if field["enum_values"]:
+        return field["enum_values"][0]
+    normalized = _normalized_type(field["type"])
+    if normalized in {{"int", "integer", "serial", "smallint", "bigint", "bigserial"}}:
+        return 1
+    if normalized in {{"float", "real", "double", "double precision", "decimal", "numeric", "money"}}:
+        return 1.5
+    if normalized in {{"bool", "boolean"}}:
+        return True
+    if normalized.endswith("[]"):
+        return ("sample",)
+    return f"sample_{{field['attribute']}}"
+
+
+def _valid_payload(table_name):
+    table = table_validation_contract(table_name)
+    return {{
+        field["attribute"]: _sample_value(field)
+        for field in table["fields"]
+        if not field["primary_key"] and not field["derived"] and not field["hidden"]
+    }}
+
+
+def _type_probe(field):
+    normalized = _normalized_type(field["type"])
+    if normalized in {{"int", "integer", "serial", "smallint", "bigint", "bigserial", "float", "real", "double", "double precision", "decimal", "numeric", "money"}}:
+        return "not-a-number"
+    if normalized in {{"bool", "boolean"}}:
+        return "not-a-bool"
+    if normalized.endswith("[]"):
+        return "not-an-array"
+    return None
+
+
+def validation_release_gate(existing_paths=()):
+    """Return release readiness for generated schema validation contracts."""
+    readiness = validation_check(existing_paths)
+    table_checks = []
+    enum_checks = []
+    type_checks = []
+    for table in validation_catalog():
+        table_name = table["name"]
+        payload = _valid_payload(table_name)
+        valid = validate_payload(table_name, payload)
+        missing_required = validate_payload(table_name, {{}})
+        partial = validate_payload(table_name, {{}}, partial=True)
+        ui_schema = ui_validation_schema(table_name)
+        table_checks.append({{
+            "table": table_name,
+            "valid_payload_ok": valid["ok"],
+            "required_errors_ok": bool(missing_required["errors"]) or not any(field["required"] for field in table["fields"]),
+            "partial_update_ok": partial["ok"],
+            "ui_schema_ok": ui_schema["format"] == "appgen.ui-validation.v1" and all(field["name"] for field in ui_schema["fields"]),
+        }})
+        for field in table["fields"]:
+            if field["enum_values"]:
+                invalid_enum = validate_field(table_name, field["attribute"], "__invalid_enum__")
+                enum_checks.append({{
+                    "table": table_name,
+                    "field": field["attribute"],
+                    "ok": any(error["code"] == "enum" for error in invalid_enum["errors"]),
+                }})
+            probe = _type_probe(field)
+            if probe is not None:
+                invalid_type = validate_field(table_name, field["attribute"], probe)
+                type_checks.append({{
+                    "table": table_name,
+                    "field": field["attribute"],
+                    "ok": any(error["code"] == "type" for error in invalid_type["errors"]),
+                }})
+    checks = (
+        {{"gate": "artifacts", "ok": readiness["ok"], "missing": readiness["missing"]}},
+        {{"gate": "table_contracts", "ok": bool(table_checks) and all(item["valid_payload_ok"] and item["required_errors_ok"] and item["partial_update_ok"] and item["ui_schema_ok"] for item in table_checks), "checks": tuple(table_checks)}},
+        {{"gate": "enum_contracts", "ok": not enum_checks or all(item["ok"] for item in enum_checks), "checks": tuple(enum_checks)}},
+        {{"gate": "type_contracts", "ok": not type_checks or all(item["ok"] for item in type_checks), "checks": tuple(type_checks)}},
+    )
+    ok = all(check["ok"] for check in checks)
+    return {{
+        "format": "appgen.validation-release-gate.v1",
+        "ok": ok,
+        "decision": "approved" if ok else "blocked",
+        "checks": checks,
+    }}
 '''
 
 
@@ -35384,6 +35470,7 @@ def validate_validation_artifacts() -> None:
         "validate_payload",
         "ui_validation_schema",
         "validation_check",
+        "validation_release_gate",
     )
     if not all(item in contract for item in required):
         fail("validation contract must expose field, payload, UI schema, and readiness helpers")
@@ -36567,6 +36654,8 @@ def test_generated_runtime_helpers():
     first_validation_table = validation.validation_catalog()[0]["name"]
     assert validation.validate_payload(first_validation_table, {})["format"] == "appgen.validation-result.v1"
     assert validation.ui_validation_schema(first_validation_table)["format"] == "appgen.ui-validation.v1"
+    assert validation.validation_release_gate({"app/validation.py"})["ok"] is True
+    assert validation.validation_release_gate(set())["ok"] is False
     assert isinstance(rules.rules_catalog(), tuple)
     assert rules.rules_check({"app/rules.py", "app/templates/appgen_rules.html"})["ok"] is True
     assert rules.rules_release_gate({"app/rules.py", "app/templates/appgen_rules.html"})["ok"] is True

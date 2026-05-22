@@ -252,7 +252,9 @@ apps include:
   claimed.
 - `validation.py` with schema-driven payload, field, enum, type, required-field,
   relationship, and UI validation contracts for forms, APIs, imports, and
-  chatbots.
+  chatbots. The generated `validation_release_gate()` proves table validation
+  contracts, valid payloads, required-field errors, partial updates, UI
+  schemas, enum errors, type errors, and required validation artifacts.
 - `monitoring.py` with liveness/readiness endpoints and generated JSON error
   envelopes.
 - `resilience.py` and `appgen_resilience.html` with generated automatic error
