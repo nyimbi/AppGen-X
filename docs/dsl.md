@@ -262,6 +262,18 @@ database-design workspaces, source intake for DBML/SQL/PonyORM/live DB/DSL,
 reviewable generation jobs, and application snapshot/restore/version-management
 commands.
 
+Audit the package-level configuration editor contract before claiming the
+roadmap `config.py` setup screen is ready:
+
+```console
+appgen --config-release-audit
+```
+
+The config audit proves roadmap-required `FAB_API_SHOW_STACKTRACE` and
+`FAB_API_SWAGGER_UI` defaults, whitelisted editable keys, production safety
+warnings, environment export, and generated `config.py`/`config_admin.py`/
+template artifact expectations.
+
 ## Shape
 
 - `table` defines persistent data models.

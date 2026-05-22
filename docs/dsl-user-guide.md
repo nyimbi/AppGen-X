@@ -128,6 +128,9 @@ API-key LLMs.
 Run `appgen --studio-release-audit` to prove the package-level Studio contract
 is ready for DSL editing, database design, multi-source intake, generation job
 management, and application lifecycle management before any app is generated.
+Run `appgen --config-release-audit` to prove the package-level configuration
+editor contract has roadmap-required FAB API flags, whitelisted editable keys,
+production safety checks, and environment export coverage.
 
 Use `required` for fields that must be entered. Use `search` on fields that
 should appear in generated search contracts. Use `hidden` for generated or

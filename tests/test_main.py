@@ -24,6 +24,11 @@ from sqlalchemy import create_engine
 from sqlalchemy import text
 
 from pyAppGen import __main__
+from pyAppGen.config_admin import config_editor_catalog
+from pyAppGen.config_admin import config_editor_release_audit
+from pyAppGen.config_admin import parse_config_assignments
+from pyAppGen.config_admin import render_config
+from pyAppGen.config_admin import update_config_source
 from pyAppGen.gen import generate_app_from_database
 from pyAppGen.gen import generate_app_from_schema
 from pyAppGen.dsl import apply_lint_fixes
@@ -253,6 +258,7 @@ def test_package_goal_audit_cli_aggregates_objective_evidence(
         "erp_template_exports",
         "natural_language_evolution",
         "robust_ide",
+        "config_editor",
         "source_document_scope",
     } == {gate["id"] for gate in direct_report["gates"]}
     assert direct_report["stop_condition"] == (
@@ -271,6 +277,7 @@ def test_package_goal_audit_cli_aggregates_objective_evidence(
     assert cli_report["audits"]["erp_templates"]["ok"] is True
     assert cli_report["audits"]["natural_language_evolution"]["ok"] is True
     assert cli_report["audits"]["studio"]["ok"] is True
+    assert cli_report["audits"]["config_editor"]["ok"] is True
 
 
 def test_package_erp_templates_export_generatable_dsl(
@@ -442,6 +449,50 @@ def test_package_studio_audit_covers_ide_database_and_generation(
     report = json.loads(result.output)
     assert report["ok"] is True
     assert report["workspace"]["database_design"]["ok"] is True
+
+
+def test_package_config_editor_audit_covers_safe_setup(
+    runner: CliRunner,
+) -> None:
+    """The package exposes safe config.py editor evidence before generation."""
+    catalog = config_editor_catalog()
+    assert catalog["format"] == "appgen.package-config-editor-catalog.v1"
+    assert catalog["ok"] is True
+    assert {"FAB_API_SHOW_STACKTRACE", "FAB_API_SWAGGER_UI"} <= set(
+        catalog["editable_keys"]
+    )
+
+    source = render_config()
+    values = parse_config_assignments(source)
+    assert values["FAB_API_SHOW_STACKTRACE"] is True
+    assert values["FAB_API_SWAGGER_UI"] is True
+
+    update = update_config_source(
+        source,
+        {
+            "APP_NAME": "ProductionApp",
+            "FAB_API_SHOW_STACKTRACE": False,
+            "UNKNOWN_SETTING": True,
+        },
+    )
+    assert update["ok"] is False
+    assert update["accepted"] == ("APP_NAME", "FAB_API_SHOW_STACKTRACE")
+    assert update["rejected"] == ("UNKNOWN_SETTING",)
+    assert "APP_NAME = 'ProductionApp'" in update["source"]
+
+    audit = config_editor_release_audit()
+    assert audit["format"] == "appgen.package-config-editor-release-audit.v1"
+    assert audit["ok"] is True
+    assert audit["stop_condition"] == (
+        "do-not-claim-config-editor-readiness-unless-ok-is-true"
+    )
+    assert all(gate["ok"] for gate in audit["gates"])
+
+    result = runner.invoke(__main__.main, ["--config-release-audit"])
+    assert result.exit_code == 0
+    report = json.loads(result.output)
+    assert report["ok"] is True
+    assert "FAB_API_SWAGGER_UI=true" in report["env_export"]
 
 
 def test_dsl_linter_reports_semantic_feedback(runner: CliRunner, tmp_path) -> None:
