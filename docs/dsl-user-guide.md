@@ -162,6 +162,12 @@ Use section rows for readable forms and component placements when the exact
 canvas layout matters. Component coordinates are grid values, not pixels, so
 the same DSL can be adapted to web, mobile, and desktop renderers.
 
+Use `/form-designer/release-gate.json` or `form_designer_release_gate()` before
+shipping a generated visual builder. The gate proves the component palette is
+wide enough for business forms, the canvas contract is stable, fields map to
+appropriate components, dropped components include property-inspector metadata,
+and overlap detection blocks invalid layouts.
+
 ## Choosing Targets
 
 Supported targets are `web`, `pwa`, `mobile`, `desktop`, and `chatbot`.

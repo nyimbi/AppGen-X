@@ -5578,7 +5578,10 @@ def write_form_designer_template(output_dir):
       <h1 class="agfd-title">Form Designer</h1>
       <p class="agfd-note">Delphi-style drag-and-drop form canvas with component palette, stable drop proposals, and generated form JSON.</p>
     </div>
-    <a class="btn btn-default" href="{{ url_for('FormDesignerView.forms_json') }}">Forms JSON</a>
+    <div>
+      <a class="btn btn-default" href="{{ url_for('FormDesignerView.forms_json') }}">Forms JSON</a>
+      <a class="btn btn-default" href="{{ url_for('FormDesignerView.release_gate_json') }}">Release Gate JSON</a>
+    </div>
   </div>
   <div class="agfd-shell">
     <aside class="agfd-panel">
@@ -20751,6 +20754,69 @@ def form_designer_check(existing_paths):
     return {{"ok": not missing, "missing": missing, "palette": tuple(item["type"] for item in PALETTE)}}
 
 
+def form_designer_release_gate(existing_paths=()):
+    """Return a release decision for Delphi-style form design."""
+    existing = set(existing_paths)
+    required = ("app/form_designer.py", "app/templates/appgen_form_designer.html")
+    missing = tuple(path for path in required if path not in existing)
+    table_names = tuple(FORM_TABLES)
+    first_table = table_names[0] if table_names else None
+    palette_types = {{item["type"] for item in PALETTE}}
+    required_palette = {{"TextBox", "TextArea", "DatePicker", "DateTimePicker", "RelationshipPicker", "Button"}}
+    design = form_design(first_table) if first_table else {{"canvas": {{}}, "components": ()}}
+    canvas = design.get("canvas", {{}})
+    first_field = None
+    if first_table and FORM_TABLES[first_table]["fields"]:
+        first_field = FORM_TABLES[first_table]["fields"][0]["name"]
+    component_type = field_component(first_table, first_field)["type"] if first_table and first_field else "TextBox"
+    proposal = proposal_from_drop({{"table": first_table, "component": component_type, "field": first_field, "x": 1, "y": 1}}) if first_table else {{"properties": (), "component": {{}}}}
+    updated = apply_form_proposal(design, proposal) if first_table else design
+    updated_validation = validate_form_design(updated) if first_table else {{"ok": False, "conflicts": ()}}
+    collision_component = dict(proposal["component"], id=str(proposal["component"].get("id", "drop")) + "_collision")
+    collision_design = dict(design, components=tuple(design.get("components", ())) + (proposal["component"], collision_component))
+    collision_validation = validate_form_design(collision_design) if first_table else {{"ok": True, "conflicts": ()}}
+    checks = (
+        {{
+            "id": "artifact_coverage",
+            "ok": not missing,
+            "evidence": {{"required": required, "missing": missing}},
+        }},
+        {{
+            "id": "palette_breadth",
+            "ok": required_palette <= palette_types,
+            "evidence": {{"required": tuple(sorted(required_palette)), "available": tuple(sorted(palette_types))}},
+        }},
+        {{
+            "id": "canvas_contract",
+            "ok": bool(first_table) and canvas.get("columns") == CANVAS_COLUMNS and int(canvas.get("rows", 0)) >= MIN_CANVAS_ROWS and canvas.get("grid") == GRID_SIZE,
+            "evidence": {{"table": first_table, "canvas": canvas}},
+        }},
+        {{
+            "id": "field_component_mapping",
+            "ok": bool(first_field) and component_type in palette_types,
+            "evidence": {{"table": first_table, "field": first_field, "component": component_type}},
+        }},
+        {{
+            "id": "drop_proposal_metadata",
+            "ok": proposal.get("kind") == "drop_component" and any(item.get("name") == "field" for item in proposal.get("properties", ())) and updated_validation["ok"],
+            "evidence": {{"proposal": proposal.get("component"), "properties": proposal.get("properties", ())}},
+        }},
+        {{
+            "id": "overlap_guardrails",
+            "ok": collision_validation["ok"] is False and bool(collision_validation["conflicts"]),
+            "evidence": {{"conflicts": collision_validation["conflicts"]}},
+        }},
+    )
+    ok = all(check["ok"] for check in checks)
+    return {{
+        "format": "appgen.form-designer-release-gate.v1",
+        "ok": ok,
+        "decision": "approved" if ok else "blocked",
+        "checks": checks,
+        "forms": form_catalog(),
+    }}
+
+
 class FormDesignerView(BaseView):
     route_base = "/form-designer"
     default_view = "index"
@@ -20775,6 +20841,10 @@ class FormDesignerView(BaseView):
     def drop_json(self):
         proposal = proposal_from_drop(request.get_json(force=True) or {{}})
         return jsonify(proposal)
+
+    @expose("/release-gate.json")
+    def release_gate_json(self):
+        return jsonify(form_designer_release_gate({{"app/form_designer.py", "app/templates/appgen_form_designer.html"}}))
 
 
 def register_form_designer(appbuilder):
@@ -35029,11 +35099,13 @@ def validate_form_designer_artifacts() -> None:
         fail("form designer must expose palette, drop, and proposal helpers")
     if "snap_to_grid" not in contract or "layout_conflicts" not in contract or "property_sheet" not in contract:
         fail("form designer must expose snapped placement, conflict detection, and property inspection")
+    if "form_designer_release_gate" not in contract or "appgen.form-designer-release-gate.v1" not in contract or '@expose("/release-gate.json")' not in contract:
+        fail("form designer must expose release readiness checks and route")
     template = (ROOT / "app" / "templates" / "appgen_form_designer.html").read_text()
     if "draggable" not in template or "drop" not in template or "Form Designer" not in template:
         fail("form designer template must expose drag-and-drop controls")
-    if "getBoundingClientRect" not in template or "Inspector" not in template:
-        fail("form designer template must capture drop coordinates and expose property inspector")
+    if "getBoundingClientRect" not in template or "Inspector" not in template or "Release Gate JSON" not in template:
+        fail("form designer template must capture drop coordinates, property inspector, and release gate")
 
 
 def validate_nl_evolution_artifacts() -> None:
@@ -37347,6 +37419,10 @@ def test_generated_runtime_helpers():
     form_design = form_designer.form_design(first_manifest_table)
     form_proposal = form_designer.proposal_from_drop({"table": first_manifest_table, "component": "TextBox", "x": 1, "y": 1})
     assert form_designer.validate_form_design(form_designer.apply_form_proposal(form_design, form_proposal))["ok"] is True
+    form_gate = form_designer.form_designer_release_gate({"app/form_designer.py", "app/templates/appgen_form_designer.html"})
+    assert form_gate["format"] == "appgen.form-designer-release-gate.v1"
+    assert form_gate["ok"] is True
+    assert form_designer.form_designer_release_gate({"app/form_designer.py"})["ok"] is False
     nl_plan = nl_evolution.evolution_plan("create table Ticket with field title and form TicketForm report TicketReport dashboard TicketDashboard chatbot SupportBot agent SupportAgent")
     assert {"add_table", "add_field", "add_form", "add_report", "add_dashboard", "add_chatbot", "add_agent"}.issubset({item["kind"] for item in nl_plan["proposals"]})
     nl_dsl = nl_evolution.proposals_to_dsl(nl_plan)

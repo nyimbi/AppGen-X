@@ -467,7 +467,9 @@ apps include:
   workbenches.
 - `form_designer.py` and `appgen_form_designer.html` with Delphi-style
   drag-and-drop component palette, snapped form canvas contracts, overlap
-  conflict detection, drop proposals, and property-inspector metadata.
+  conflict detection, drop proposals, property-inspector metadata, and
+  `form_designer_release_gate()` evidence for palette breadth, canvas contracts,
+  field-to-component mapping, drop metadata, and overlap guardrails.
 - `nl_evolution.py` and `appgen_nl_evolution.html` with natural-language
   proposal planning for tables, fields, forms, workflows, rules, chatbots,
   agents, reports, dashboards, platform targets, and ERP template modules,

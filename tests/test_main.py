@@ -4862,6 +4862,21 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert suggestion["component"]["y"] > max(component["y"] for component in design["components"])
     assert "getBoundingClientRect" in (output_dir / "templates" / "appgen_form_designer.html").read_text()
     assert "Inspector" in (output_dir / "templates" / "appgen_form_designer.html").read_text()
+    form_gate = form_designer.form_designer_release_gate(
+        {"app/form_designer.py", "app/templates/appgen_form_designer.html"}
+    )
+    assert form_gate["format"] == "appgen.form-designer-release-gate.v1"
+    assert form_gate["ok"] is True
+    assert form_gate["decision"] == "approved"
+    assert {
+        "artifact_coverage",
+        "palette_breadth",
+        "canvas_contract",
+        "field_component_mapping",
+        "drop_proposal_metadata",
+        "overlap_guardrails",
+    } == {check["id"] for check in form_gate["checks"]}
+    assert form_designer.form_designer_release_gate({"app/form_designer.py"})["ok"] is False
     nl_plan = nl_evolution.evolution_plan(
         "create table Ticket with fields title, email unique, amount decimal, author_id references Author required "
         "and form TicketForm workflow Triage "
