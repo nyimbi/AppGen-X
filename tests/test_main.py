@@ -1082,6 +1082,7 @@ def test_generate_app_from_sqlite_schema_compiles(tmp_path) -> None:
     assert capabilities_by_key["operations.inventory-traceability"]["status"] == "implemented"
     assert capabilities_by_key["operations.finance"]["status"] == "implemented"
     assert capabilities_by_key["operations.manufacturing"]["status"] == "implemented"
+    assert capabilities_by_key["data.access"]["status"] == "implemented"
     assert "data.seed" in {item["key"] for item in manifest["capabilities"]}
     assert "ui.visual-modeling" in {item["key"] for item in manifest["capabilities"]}
     assert "ui.pwa" in {item["key"] for item in manifest["capabilities"]}
@@ -3880,6 +3881,25 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     workbench = data_access.data_access_workbench("Book")
     assert workbench["query_builder"]["operators"] == ("eq", "contains", "startswith", "in", "gte", "lte")
     assert workbench["mutations"]["bulk_supported"] is True
+    workbench_index = data_access.data_access_workbench_index(
+        {"app/data_access.py", "app/templates/appgen_data_access.html"}
+    )
+    assert workbench_index["format"] == "appgen.data-access-workbench.v1"
+    assert workbench_index["ok"] is True
+    assert workbench_index["decision"] == "approved"
+    assert {
+        "artifact_coverage",
+        "resource_catalog",
+        "query_contracts",
+        "mutation_contracts",
+        "workbench_metadata",
+        "release_gate",
+        "route_surface",
+    } == {check["id"] for check in workbench_index["checks"]}
+    assert "/data-access/workbench.json" in next(
+        check["evidence"]["routes"] for check in workbench_index["checks"] if check["id"] == "route_surface"
+    )
+    assert data_access.data_access_workbench_index({"app/data_access.py"})["ok"] is False
     delete_plan = data_access.mutation_plan("Book", "delete", {"id": 1})
     assert delete_plan["review_required"] is True
     assert data_access.data_access_check({"app/data_access.py", "app/templates/appgen_data_access.html"})["ok"] is True

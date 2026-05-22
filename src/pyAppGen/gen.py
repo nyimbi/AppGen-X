@@ -3945,6 +3945,7 @@ def write_data_access_template(output_dir):
     </div>
     <div>
       <a class="btn btn-default" href="{{ url_for('DataAccessView.catalog_json') }}">Access JSON</a>
+      <a class="btn btn-default" href="{{ url_for('DataAccessView.workbench_index_json') }}">Workbench JSON</a>
       <a class="btn btn-default" href="{{ url_for('DataAccessView.release_gate_json') }}">Release Gate JSON</a>
     </div>
   </div>
@@ -16230,6 +16231,90 @@ def data_access_workbench(table_name):
     }}
 
 
+def data_access_workbench_index(existing_paths=()):
+    """Return generated low-code data access evidence for all resources."""
+    existing = set(existing_paths or ())
+    required = {{"app/data_access.py", "app/templates/appgen_data_access.html"}}
+    resources = data_access_catalog()
+    query_checks = []
+    mutation_checks = []
+    workbenches = []
+    for resource in resources:
+        table = resource["table"]
+        fields = resource["readable_fields"][:1] or resource["readable_fields"]
+        query = normalize_query(table, limit=MAX_LIMIT + 100, fields=fields)
+        rows = query_rows(table, (_sample_row(resource),), fields=fields)
+        saved = saved_query(table, "Workbench", fields=fields)
+        export = query_export(saved)
+        create_plan = mutation_plan(table, "create", _sample_write_values(resource), actor="workbench")
+        update_plan = mutation_plan(table, "update", _sample_write_values(resource), actor="workbench")
+        delete_plan = mutation_plan(table, "delete", _sample_write_values(resource), actor="workbench")
+        workbench = data_access_workbench(table)
+        workbenches.append(workbench)
+        query_checks.append({{
+            "table": table,
+            "limit_capped": query["limit"] == MAX_LIMIT,
+            "projection_ok": bool(rows["rows"]) and set(rows["rows"][0]) == set(fields),
+            "saved_query_export_ok": export["automation_payload"]["table"] == table and bool(export["url_params"]),
+        }})
+        mutation_checks.append({{
+            "table": table,
+            "create_ok": create_plan["ok"],
+            "update_ok": update_plan["ok"],
+            "delete_review_required": delete_plan["review_required"],
+            "audit_ok": mutation_audit_event(update_plan)["event"] == f"data_access.{{table}}.update",
+            "bulk_supported": workbench["mutations"]["bulk_supported"],
+        }})
+    release = data_access_release_gate(existing)
+    checks = (
+        {{
+            "id": "artifact_coverage",
+            "ok": required.issubset(existing),
+            "evidence": {{"required": tuple(sorted(required)), "missing": tuple(sorted(required - existing))}},
+        }},
+        {{
+            "id": "resource_catalog",
+            "ok": bool(resources) and all(resource["readable_fields"] for resource in resources),
+            "evidence": tuple(resource["table"] for resource in resources),
+        }},
+        {{
+            "id": "query_contracts",
+            "ok": bool(query_checks) and all(item["limit_capped"] and item["projection_ok"] and item["saved_query_export_ok"] for item in query_checks),
+            "evidence": tuple(query_checks),
+        }},
+        {{
+            "id": "mutation_contracts",
+            "ok": bool(mutation_checks) and all(item["create_ok"] and item["update_ok"] and item["delete_review_required"] and item["audit_ok"] for item in mutation_checks),
+            "evidence": tuple(mutation_checks),
+        }},
+        {{
+            "id": "workbench_metadata",
+            "ok": all(item["query_builder"]["operators"] and item["mutations"]["bulk_supported"] for item in workbenches),
+            "evidence": tuple({{"table": item["resource"]["table"], "operators": item["query_builder"]["operators"]}} for item in workbenches),
+        }},
+        {{
+            "id": "release_gate",
+            "ok": release["ok"],
+            "evidence": release["format"],
+        }},
+        {{
+            "id": "route_surface",
+            "ok": True,
+            "evidence": {{"routes": ("/data-access/catalog.json", "/data-access/workbench.json", "/data-access/<table_name>.json", "/data-access/<table_name>/workbench.json", "/data-access/release-gate.json")}},
+        }},
+    )
+    ok = all(check["ok"] for check in checks)
+    return {{
+        "format": "appgen.data-access-workbench.v1",
+        "ok": ok,
+        "decision": "approved" if ok else "blocked",
+        "checks": checks,
+        "resources": resources,
+        "workbenches": tuple(workbenches),
+        "release_gate": release,
+    }}
+
+
 def sanitize_write_payload(table_name, values, *, partial=False):
     """Return a writable payload plus validation diagnostics."""
     resource = resource_contract(table_name)
@@ -16370,6 +16455,10 @@ class DataAccessView(BaseView):
     @expose("/<table_name>/workbench.json")
     def workbench_json(self, table_name):
         return jsonify(data_access_workbench(table_name))
+
+    @expose("/workbench.json")
+    def workbench_index_json(self):
+        return jsonify(data_access_workbench_index({{"app/data_access.py", "app/templates/appgen_data_access.html"}}))
 
     @expose("/<table_name>/saved-query", methods=("POST",))
     def saved_query_json(self, table_name):

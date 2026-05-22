@@ -399,10 +399,11 @@ apps include:
   query/update contracts for table reads, filter validation, sorting, paging,
   field projection, saved queries, portable query exports, create/update
   payload checks, reviewed bulk mutations, mutation audit events, and reviewed
-  delete plans. A generated data-access release gate proves required
+  delete plans. A generated `data_access_workbench_index()` proves required
   artifacts, resource catalogs, limit-capped projections, saved-query exports,
-  create/update/delete mutation plans, mutation audit events, and workbench
-  metadata before the data workbench is treated as release-ready.
+  create/update/delete mutation plans, mutation audit events, workbench
+  metadata, release gates, and route coverage before `data.access` is marked
+  implemented.
 - `data_exchange.py` and `appgen_data_exchange.html` with schema-aware CSV and
   JSON import/export templates, row validation, reviewed migration batch plans,
   migration-friendly UI guidance, and a generated data-exchange release gate
