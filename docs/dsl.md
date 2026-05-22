@@ -699,7 +699,8 @@ apps include:
   component sharing before IDE readiness is claimed. A separate IDE superiority
   profile proves that the Studio is an integrated low-code IDE for authoring,
   database design, generation, versioned portfolio management, diagnostics, and
-  component sharing rather than only a scaffolding command runner.
+  component sharing rather than only a scaffolding command runner, and is the
+  manifest evidence for the implemented `devops.studio` capability.
 - `realtime.py` and `appgen_realtime.html` with generated event topics,
   Server-Sent Events frames, collaboration messages, and reconnect replay plans.
   A generated realtime release gate proves topic catalogs, event payloads, SSE
