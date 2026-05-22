@@ -61,6 +61,12 @@ A generated app can include:
   metadata, server method and client proxy tooling, secured resource tooling,
   embedded local database support, offline sync policies, conflict handling, and
   side-effect guards.
+- `mobile_native_api_workbench()` proves device API breadth, generated
+  permission manifests, component adapters, simulator profiles, and permission
+  guardrails.
+- `cross_target_visual_depth_workbench()` proves style resources, animation
+  state graphs, effect pipelines, 3D scene designer tools, and runtime
+  fallbacks.
 - `app/component_packages/<package>.py` gives every curated component package
   its own reviewed package contract with `package_contract()`, `install_plan()`,
   `load_policy()`, and `test_plan()` exports.

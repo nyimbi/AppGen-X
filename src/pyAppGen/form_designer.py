@@ -1435,6 +1435,9 @@ def rad_data_tooling_workbench() -> dict:
 
 def mobile_native_api_contract() -> dict:
     """Return mobile/native device APIs exposed to the component designer."""
+    permission_manifest = mobile_permission_manifest_contract()
+    adapters = mobile_component_adapter_contract()
+    simulator = mobile_device_simulator_contract()
     return {
         "format": "appgen.mobile-native-api-contract.v1",
         "apis": (
@@ -1454,19 +1457,233 @@ def mobile_native_api_contract() -> dict:
             "background_tasks",
         ),
         "targets": ("android", "ios", "desktop", "web-pwa"),
+        "permission_manifest": permission_manifest,
+        "component_adapters": adapters,
+        "simulator": simulator,
         "guards": ("permission_manifest_generated", "runtime_permission_prompt", "privacy_labels_reviewed"),
+    }
+
+
+def mobile_permission_manifest_contract() -> dict:
+    """Return generated permission metadata for native device APIs."""
+    return {
+        "format": "appgen.mobile-permission-manifest-contract.v1",
+        "platforms": ("android", "ios", "desktop", "web-pwa"),
+        "permissions": (
+            {"api": "camera", "android": ("CAMERA",), "ios": ("NSCameraUsageDescription",), "prompt": "Capture images"},
+            {"api": "photos", "android": ("READ_MEDIA_IMAGES",), "ios": ("NSPhotoLibraryUsageDescription",), "prompt": "Select photos"},
+            {"api": "location", "android": ("ACCESS_FINE_LOCATION",), "ios": ("NSLocationWhenInUseUsageDescription",), "prompt": "Use location"},
+            {"api": "push_notifications", "android": ("POST_NOTIFICATIONS",), "ios": ("aps-environment",), "prompt": "Receive notifications"},
+            {"api": "bluetooth", "android": ("BLUETOOTH_SCAN", "BLUETOOTH_CONNECT"), "ios": ("NSBluetoothAlwaysUsageDescription",), "prompt": "Connect devices"},
+            {"api": "nfc", "android": ("NFC",), "ios": ("com.apple.developer.nfc.readersession.formats",), "prompt": "Scan tags"},
+            {"api": "biometrics", "android": ("USE_BIOMETRIC",), "ios": ("NSFaceIDUsageDescription",), "prompt": "Verify identity"},
+        ),
+        "guards": ("least_privilege", "reviewable_prompts", "store_privacy_labels"),
+    }
+
+
+def mobile_component_adapter_contract() -> dict:
+    """Return design-time and runtime component adapters for device APIs."""
+    return {
+        "format": "appgen.mobile-component-adapter-contract.v1",
+        "adapters": (
+            {"component": "CameraView", "api": "camera", "events": ("on_capture", "on_error"), "preview": "mock_camera_frame"},
+            {"component": "LocationSensor", "api": "location", "events": ("on_location", "on_permission_denied"), "preview": "mock_coordinates"},
+            {"component": "MotionSensor", "api": "sensors", "events": ("on_motion", "on_shake"), "preview": "motion_trace"},
+            {"component": "SecureStore", "api": "secure_storage", "events": ("on_read", "on_write"), "preview": "redacted_key_list"},
+            {"component": "PushClient", "api": "push_notifications", "events": ("on_message", "on_token"), "preview": "notification_payload"},
+            {"component": "BluetoothClient", "api": "bluetooth", "events": ("on_scan", "on_connect"), "preview": "mock_device_list"},
+            {"component": "NfcReader", "api": "nfc", "events": ("on_tag", "on_error"), "preview": "tag_payload"},
+        ),
+        "test_harnesses": ("permission_denied", "offline_device", "background_resume", "mock_sensor_stream"),
+    }
+
+
+def mobile_device_simulator_contract() -> dict:
+    """Return generated simulator profiles for native device APIs."""
+    return {
+        "format": "appgen.mobile-device-simulator-contract.v1",
+        "profiles": ("phone_portrait", "phone_landscape", "tablet", "desktop_touch", "offline_pwa"),
+        "scenario_controls": ("permissions", "battery", "network", "orientation", "sensor_stream", "background_resume"),
+        "fixtures": ("camera_frame", "gps_route", "motion_trace", "push_message", "bluetooth_scan", "nfc_tag"),
+        "side_effects": (),
+    }
+
+
+def mobile_native_api_workbench() -> dict:
+    """Prove mobile/native device API component coverage and reviewability."""
+    contract = mobile_native_api_contract()
+    api_set = set(contract["apis"])
+    adapter_apis = {adapter["api"] for adapter in contract["component_adapters"]["adapters"]}
+    permission_apis = {permission["api"] for permission in contract["permission_manifest"]["permissions"]}
+    checks = (
+        {
+            "id": "api_breadth",
+            "ok": {"camera", "photos", "location", "sensors", "biometrics", "push_notifications", "secure_storage", "bluetooth", "nfc"} <= api_set,
+            "evidence": contract["apis"],
+        },
+        {
+            "id": "permission_manifest",
+            "ok": {"camera", "location", "push_notifications", "bluetooth", "nfc", "biometrics"} <= permission_apis
+            and "least_privilege" in contract["permission_manifest"]["guards"],
+            "evidence": contract["permission_manifest"],
+        },
+        {
+            "id": "component_adapters",
+            "ok": {"camera", "location", "sensors", "secure_storage", "push_notifications", "bluetooth", "nfc"} <= adapter_apis
+            and all(adapter["events"] for adapter in contract["component_adapters"]["adapters"]),
+            "evidence": contract["component_adapters"],
+        },
+        {
+            "id": "simulator_profiles",
+            "ok": {"phone_portrait", "tablet", "desktop_touch"} <= set(contract["simulator"]["profiles"])
+            and {"permissions", "orientation", "sensor_stream"} <= set(contract["simulator"]["scenario_controls"]),
+            "evidence": contract["simulator"],
+        },
+        {
+            "id": "side_effect_guards",
+            "ok": not contract["simulator"]["side_effects"]
+            and {"permission_manifest_generated", "runtime_permission_prompt"} <= set(contract["guards"]),
+            "evidence": {"guards": contract["guards"], "simulator": contract["simulator"]["side_effects"]},
+        },
+    )
+    ok = all(check["ok"] for check in checks)
+    return {
+        "format": "appgen.mobile-native-api-workbench.v1",
+        "ok": ok,
+        "decision": "approved" if ok else "blocked",
+        "contract": contract,
+        "checks": checks,
+        "blocking_gaps": tuple(check for check in checks if not check["ok"]),
     }
 
 
 def cross_target_visual_depth_contract() -> dict:
     """Return cross-target UI-level animation, styling, effects, and 3D designer coverage."""
+    style_resources = cross_target_style_resource_contract()
+    state_graph = cross_target_state_graph_contract()
+    effects_pipeline = cross_target_effects_pipeline_contract()
+    scene_designer = cross_target_3d_scene_contract()
     return {
         "format": "appgen.cross-platform-visual-depth-contract.v1",
         "styling": ("stylebook", "multi-resolution-bitmaps", "themes", "state-triggers"),
         "animation": ("float_animation", "color_animation", "path_animation", "timeline", "easing"),
         "effects": ("shadow", "blur", "glow", "reflection", "color-key", "shader-hook"),
         "three_d": ("viewport3d", "camera", "light", "mesh", "material", "model-import"),
+        "style_resources": style_resources,
+        "state_graph": state_graph,
+        "effects_pipeline": effects_pipeline,
+        "scene_designer": scene_designer,
         "guards": ("reduced_motion_fallback", "gpu_fallback", "mobile_frame_budget"),
+    }
+
+
+def cross_target_style_resource_contract() -> dict:
+    """Return style and theme resources exposed to the visual designer."""
+    return {
+        "format": "appgen.cross-target-style-resource-contract.v1",
+        "resources": ("stylebook", "theme_tokens", "state_triggers", "multi_resolution_bitmaps", "platform_overrides"),
+        "states": ("normal", "hover", "pressed", "focused", "disabled", "selected", "invalid"),
+        "targets": ("web", "mobile", "desktop", "pwa"),
+        "guards": ("contrast_checked", "token_names_stable", "platform_overrides_reviewed"),
+    }
+
+
+def cross_target_state_graph_contract() -> dict:
+    """Return visual state and animation timeline graph metadata."""
+    return {
+        "format": "appgen.cross-target-state-graph-contract.v1",
+        "nodes": (
+            {"id": "card.normal", "kind": "state"},
+            {"id": "card.hover", "kind": "state"},
+            {"id": "card.expanded", "kind": "state"},
+            {"id": "timeline.fade_in", "kind": "timeline"},
+            {"id": "path.reveal", "kind": "path_animation"},
+        ),
+        "edges": (
+            {"from": "card.normal", "to": "card.hover", "trigger": "pointer_enter"},
+            {"from": "card.hover", "to": "card.expanded", "trigger": "command"},
+            {"from": "timeline.fade_in", "to": "card.expanded", "trigger": "complete"},
+        ),
+        "easing": ("linear", "ease_in", "ease_out", "ease_in_out", "spring"),
+        "guards": ("reduced_motion_fallback", "deterministic_timeline_ids"),
+    }
+
+
+def cross_target_effects_pipeline_contract() -> dict:
+    """Return effect pipeline contracts for design-time preview and runtime rendering."""
+    return {
+        "format": "appgen.cross-target-effects-pipeline-contract.v1",
+        "effects": ("shadow", "blur", "glow", "reflection", "color_key", "shader_hook"),
+        "pipeline": ("source", "mask", "effect_stack", "composite", "fallback"),
+        "quality_levels": ("low_power", "balanced", "high_quality"),
+        "guards": ("gpu_fallback", "bounded_blur_radius", "mobile_frame_budget"),
+        "side_effects": (),
+    }
+
+
+def cross_target_3d_scene_contract() -> dict:
+    """Return 3D scene designer contracts for cameras, lights, meshes, and materials."""
+    return {
+        "format": "appgen.cross-target-3d-scene-contract.v1",
+        "scene_graph": (
+            {"id": "viewport", "kind": "viewport3d"},
+            {"id": "camera.main", "kind": "camera"},
+            {"id": "light.key", "kind": "light"},
+            {"id": "mesh.product", "kind": "mesh"},
+            {"id": "material.primary", "kind": "material"},
+        ),
+        "tools": ("orbit", "pan", "zoom", "transform_gizmo", "material_editor", "model_importer"),
+        "import_formats": ("gltf", "glb", "obj"),
+        "guards": ("bounded_polygon_budget", "texture_size_budget", "fallback_thumbnail"),
+        "side_effects": (),
+    }
+
+
+def cross_target_visual_depth_workbench() -> dict:
+    """Prove animation, styling, effects, and 3D designer depth."""
+    contract = cross_target_visual_depth_contract()
+    checks = (
+        {
+            "id": "style_resources",
+            "ok": {"stylebook", "theme_tokens", "state_triggers", "multi_resolution_bitmaps"} <= set(contract["style_resources"]["resources"])
+            and {"normal", "pressed", "focused", "disabled"} <= set(contract["style_resources"]["states"]),
+            "evidence": contract["style_resources"],
+        },
+        {
+            "id": "animation_state_graph",
+            "ok": {"state", "timeline", "path_animation"} <= {node["kind"] for node in contract["state_graph"]["nodes"]}
+            and {"ease_in", "ease_out", "spring"} <= set(contract["state_graph"]["easing"]),
+            "evidence": contract["state_graph"],
+        },
+        {
+            "id": "effects_pipeline",
+            "ok": {"shadow", "blur", "glow", "reflection", "shader_hook"} <= set(contract["effects_pipeline"]["effects"])
+            and "gpu_fallback" in contract["effects_pipeline"]["guards"],
+            "evidence": contract["effects_pipeline"],
+        },
+        {
+            "id": "scene_designer",
+            "ok": {"viewport3d", "camera", "light", "mesh", "material"} <= {node["kind"] for node in contract["scene_designer"]["scene_graph"]}
+            and {"orbit", "transform_gizmo", "material_editor", "model_importer"} <= set(contract["scene_designer"]["tools"]),
+            "evidence": contract["scene_designer"],
+        },
+        {
+            "id": "runtime_guards",
+            "ok": {"reduced_motion_fallback", "gpu_fallback", "mobile_frame_budget"} <= set(contract["guards"])
+            and not contract["effects_pipeline"]["side_effects"]
+            and not contract["scene_designer"]["side_effects"],
+            "evidence": {"guards": contract["guards"], "effects": contract["effects_pipeline"], "scene": contract["scene_designer"]},
+        },
+    )
+    ok = all(check["ok"] for check in checks)
+    return {
+        "format": "appgen.cross-target-visual-depth-workbench.v1",
+        "ok": ok,
+        "decision": "approved" if ok else "blocked",
+        "contract": contract,
+        "checks": checks,
+        "blocking_gaps": tuple(check for check in checks if not check["ok"]),
     }
 
 
@@ -1526,13 +1743,16 @@ def rad_parity_workbench(existing_paths: set[str] | None = None) -> dict:
         },
         {
             "id": "mobile_native_device_api_coverage",
-            "ok": {"camera", "location", "push_notifications", "secure_storage"} <= set(mobile_native_api_contract()["apis"]),
-            "evidence": mobile_native_api_contract(),
+            "ok": {"camera", "location", "push_notifications", "secure_storage"} <= set(mobile_native_api_contract()["apis"])
+            and mobile_native_api_workbench()["ok"],
+            "evidence": {"contract": mobile_native_api_contract(), "workbench": mobile_native_api_workbench()},
         },
         {
             "id": "cross_target_animation_effects_3d_depth",
-            "ok": bool(cross_target_visual_depth_contract()["animation"]) and bool(cross_target_visual_depth_contract()["three_d"]),
-            "evidence": cross_target_visual_depth_contract(),
+            "ok": bool(cross_target_visual_depth_contract()["animation"])
+            and bool(cross_target_visual_depth_contract()["three_d"])
+            and cross_target_visual_depth_workbench()["ok"],
+            "evidence": {"contract": cross_target_visual_depth_contract(), "workbench": cross_target_visual_depth_workbench()},
         },
         {
             "id": "third_party_component_ecosystem",

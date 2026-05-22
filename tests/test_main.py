@@ -81,6 +81,7 @@ from pyAppGen.form_designer import component_package_load_policy
 from pyAppGen.form_designer import component_package_workbench
 from pyAppGen.form_designer import component_palette
 from pyAppGen.form_designer import component_usability_workbench
+from pyAppGen.form_designer import cross_target_visual_depth_workbench
 from pyAppGen.form_designer import detect_overlaps
 from pyAppGen.form_designer import dfm_round_trip
 from pyAppGen.form_designer import field_component_matrix
@@ -91,6 +92,7 @@ from pyAppGen.form_designer import form_designer_generation_smoke_audit
 from pyAppGen.form_designer import form_designer_release_audit
 from pyAppGen.form_designer import livebindings_graph_contract
 from pyAppGen.form_designer import livebindings_workbench
+from pyAppGen.form_designer import mobile_native_api_workbench
 from pyAppGen.form_designer import object_inspector_contract
 from pyAppGen.form_designer import object_inspector_workbench
 from pyAppGen.form_designer import rad_parity_workbench
@@ -842,6 +844,26 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "offline_sync_tooling",
         "side_effect_guards",
     } == {check["id"] for check in data_workbench["checks"]}
+    mobile_workbench = mobile_native_api_workbench()
+    assert mobile_workbench["format"] == "appgen.mobile-native-api-workbench.v1"
+    assert mobile_workbench["ok"] is True
+    assert {
+        "api_breadth",
+        "permission_manifest",
+        "component_adapters",
+        "simulator_profiles",
+        "side_effect_guards",
+    } == {check["id"] for check in mobile_workbench["checks"]}
+    visual_depth = cross_target_visual_depth_workbench()
+    assert visual_depth["format"] == "appgen.cross-target-visual-depth-workbench.v1"
+    assert visual_depth["ok"] is True
+    assert {
+        "style_resources",
+        "animation_state_graph",
+        "effects_pipeline",
+        "scene_designer",
+        "runtime_guards",
+    } == {check["id"] for check in visual_depth["checks"]}
     third_party_registry = third_party_component_registry()
     assert {"devexpress-native", "tms-fnc", "fastreport", "teechart", "indy"} <= {
         item["id"] for item in third_party_registry
@@ -8720,8 +8742,18 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert {"connection_catalog", "query_designer", "offline_sync_tooling"} <= {
         check["id"] for check in generated_data_tooling["checks"]
     }
-    assert "camera" in form_designer.mobile_native_api_contract()["apis"]
-    assert "viewport3d" in form_designer.cross_target_visual_depth_contract()["three_d"]
+    generated_mobile = form_designer.mobile_native_api_workbench()
+    assert generated_mobile["format"] == "appgen.generated-mobile-native-api-workbench.v1"
+    assert generated_mobile["ok"] is True
+    assert {"api_breadth", "permission_manifest", "component_adapters"} <= {
+        check["id"] for check in generated_mobile["checks"]
+    }
+    generated_visual_depth = form_designer.cross_target_visual_depth_workbench()
+    assert generated_visual_depth["format"] == "appgen.generated-cross-target-visual-depth-workbench.v1"
+    assert generated_visual_depth["ok"] is True
+    assert {"style_resources", "animation_state_graph", "scene_designer"} <= {
+        check["id"] for check in generated_visual_depth["checks"]
+    }
     generated_analogs = form_designer.component_analog_workbench()
     assert generated_analogs["format"] == "appgen.generated-component-analog-workbench.v1"
     assert generated_analogs["ok"] is True

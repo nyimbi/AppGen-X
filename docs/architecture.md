@@ -210,6 +210,12 @@ Visual design is split into two related capabilities:
   profile catalogs, parameterized query design, server method and client proxy
   generation, secured resource metadata, embedded local database contracts,
   offline sync policies, conflict handling, and side-effect guards.
+- `mobile_native_api_workbench()` validates device API coverage through
+  permission manifests, design-time component adapters, simulator profiles, and
+  runtime permission guardrails.
+- `cross_target_visual_depth_workbench()` validates style resources, animation
+  state graphs, effect pipelines, 3D scene designer tools, import metadata, and
+  runtime fallbacks.
 - `visual_modeling.py` handles database graph nodes, relationships, ERD export,
   DBML/SQL/PonyORM export, schema proposals, and migration preview.
 - `branding.py` handles brand/theme contracts, splash-screen configuration,
