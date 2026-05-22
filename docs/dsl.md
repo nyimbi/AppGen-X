@@ -447,7 +447,10 @@ apps include:
   artifacts.
 - `assistant.py` and `appgen_assistant.html` with generated prompt context,
   chatbot field questions, deterministic recommendations, prediction feature
-  extraction, and human-review task payloads.
+  extraction, and human-review task payloads. The generated
+  `assistant_release_gate()` proves artifact coverage, table assistance
+  catalogs, non-hidden prompt context, chatbot questions, prediction features,
+  recommendation behavior, and human-review payloads.
 - `intelligence.py` and `appgen_intelligence.html` with generated AI analytics,
   preprocessing, anomaly detection, image/video analysis plans, OCR,
   classification, object-detection contracts, NLP, recommendation, A/B testing,

@@ -4404,6 +4404,7 @@ def write_assistant_template(output_dir):
     prediction features, chatbot field collection, and human review queues.
     Provider integration stays explicit and dependency-free by default.
   </p>
+  <p><a class="btn btn-default" href="{{ url_for('AssistantView.release_gate_json') }}">Release Gate JSON</a></p>
   <div class="aga-grid">
     {% for item in tables %}
     <article class="aga-card">
@@ -18824,6 +18825,86 @@ def review_task(table_name, row, reason="assistant_review"):
     }}
 
 
+def assistant_check(existing_paths=()):
+    """Return readiness for generated AI assistance artifacts."""
+    existing = set(existing_paths)
+    required = ("app/assistant.py", "app/templates/appgen_assistant.html")
+    missing = tuple(path for path in required if path not in existing)
+    catalog = assistant_catalog()
+    return {{
+        "format": "appgen.assistant-check.v1",
+        "ok": not missing and bool(catalog),
+        "missing": missing,
+        "table_count": len(catalog),
+        "tables": tuple(item["table"] for item in catalog),
+    }}
+
+
+def assistant_release_gate(existing_paths=()):
+    """Return a release decision for generated AI assistance contracts."""
+    existing = set(existing_paths)
+    required = ("app/assistant.py", "app/templates/appgen_assistant.html")
+    missing = tuple(path for path in required if path not in existing)
+    catalog = assistant_catalog()
+    sample = catalog[0] if catalog else None
+    sample_table = sample["table"] if sample else None
+    visible = tuple(sample["visible_fields"]) if sample else ()
+    required_fields = set(sample["required_fields"]) if sample else set()
+    sample_row = {{field: f"sample-{{field}}" for field in visible[:1]}}
+    context = prompt_context(sample_table, sample_row) if sample_table else {{}}
+    questions = chatbot_questions(sample_table) if sample_table else ()
+    question_fields = {{question["field"] for question in questions}}
+    features = prediction_features(sample_table, dict(sample_row, internal_code="hidden")) if sample_table else {{}}
+    missing_required_row = {{field: "" for field in required_fields}}
+    suggestions = recommendations(sample_table, missing_required_row) if sample_table else ()
+    suggestion_types = {{item["type"] for item in suggestions}}
+    review = review_task(sample_table, missing_required_row) if sample_table else {{}}
+    checks = (
+        {{
+            "gate": "artifact_coverage",
+            "ok": not missing,
+            "evidence": {{"required": required, "missing": missing}},
+        }},
+        {{
+            "gate": "assistant_catalog",
+            "ok": bool(catalog) and all(item["visible_fields"] for item in catalog),
+            "evidence": {{"table_count": len(catalog), "tables": tuple(item["table"] for item in catalog)}},
+        }},
+        {{
+            "gate": "prompt_context",
+            "ok": bool(context.get("fields")) and set(context.get("values", ())) <= set(context.get("fields", ())),
+            "evidence": {{"table": sample_table, "fields": context.get("fields", ()), "values": tuple(context.get("values", {{}}))}},
+        }},
+        {{
+            "gate": "chatbot_questions",
+            "ok": bool(questions) and set(visible) <= question_fields and required_fields <= question_fields,
+            "evidence": {{"question_fields": tuple(sorted(question_fields)), "required_fields": tuple(sorted(required_fields))}},
+        }},
+        {{
+            "gate": "prediction_features",
+            "ok": set(features) <= set(visible) and "internal_code" not in features,
+            "evidence": {{"feature_fields": tuple(features), "visible_fields": visible}},
+        }},
+        {{
+            "gate": "recommendations",
+            "ok": (not required_fields) or "missing_required_field" in suggestion_types,
+            "evidence": {{"suggestion_types": tuple(sorted(suggestion_types)), "required_fields": tuple(sorted(required_fields))}},
+        }},
+        {{
+            "gate": "human_review",
+            "ok": review.get("context", {{}}).get("table") == sample_table and "recommendations" in review,
+            "evidence": {{"table": review.get("table"), "reason": review.get("reason")}},
+        }},
+    )
+    ok = all(check["ok"] for check in checks)
+    return {{
+        "format": "appgen.assistant-release-gate.v1",
+        "ok": ok,
+        "decision": "approved" if ok else "blocked",
+        "checks": checks,
+    }}
+
+
 class AssistantView(BaseView):
     route_base = "/assistant"
     default_view = "index"
@@ -18835,6 +18916,10 @@ class AssistantView(BaseView):
     @expose("/catalog.json")
     def catalog_json(self):
         return jsonify(list(assistant_catalog()))
+
+    @expose("/release-gate.json")
+    def release_gate_json(self):
+        return jsonify(assistant_release_gate({{"app/assistant.py", "app/templates/appgen_assistant.html"}}))
 
 
 def register_assistant(appbuilder):
@@ -35649,6 +35734,27 @@ def validate_i18n_artifacts() -> None:
         fail("i18n template must expose localization catalog and missing-key reports")
 
 
+def validate_assistant_artifacts() -> None:
+    contract = (ROOT / "app" / "assistant.py").read_text()
+    required = (
+        "assistant_catalog",
+        "prompt_context",
+        "chatbot_questions",
+        "prediction_features",
+        "recommendations",
+        "review_task",
+        "assistant_check",
+        "assistant_release_gate",
+    )
+    if not all(item in contract for item in required):
+        fail("assistant contract must expose prompt context, questions, features, recommendations, review tasks, and release readiness")
+    if "appgen.assistant-release-gate.v1" not in contract or '@expose("/release-gate.json")' not in contract:
+        fail("assistant contract must expose release readiness checks and route")
+    template = (ROOT / "app" / "templates" / "appgen_assistant.html").read_text()
+    if "Assistant" not in template or "prediction features" not in template or "Release Gate JSON" not in template:
+        fail("assistant cockpit must expose generated AI assistance contracts and release readiness")
+
+
 def validate_intelligence_artifacts() -> None:
     contract = (ROOT / "app" / "intelligence.py").read_text()
     required = (
@@ -36935,6 +37041,7 @@ def main() -> int:
     validate_prototyping_artifacts()
     validate_agentic_artifacts()
     validate_i18n_artifacts()
+    validate_assistant_artifacts()
     validate_intelligence_artifacts()
     validate_rls_artifacts()
     validate_identity_artifacts()
@@ -38047,6 +38154,14 @@ def test_generated_runtime_helpers():
         {"app/compliance.py", "app/templates/appgen_compliance.html"}
     )["ok"] is True
     assert isinstance(assistant.assistant_catalog(), tuple)
+    assert assistant.assistant_check({"app/assistant.py", "app/templates/appgen_assistant.html"})["ok"] is True
+    assert assistant.assistant_release_gate(
+        {"app/assistant.py", "app/templates/appgen_assistant.html"}
+    )["format"] == "appgen.assistant-release-gate.v1"
+    assert assistant.assistant_release_gate(
+        {"app/assistant.py", "app/templates/appgen_assistant.html"}
+    )["ok"] is True
+    assert assistant.assistant_release_gate({"app/assistant.py"})["ok"] is False
     first_intelligence_table = intelligence.intelligence_catalog()[0]["table"]
     assert intelligence.preprocess_row(first_intelligence_table, {}) is not None
     assert "label" in intelligence.sentiment("good success")

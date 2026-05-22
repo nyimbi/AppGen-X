@@ -2325,7 +2325,9 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     compliance_template = (output_dir / "templates" / "appgen_compliance.html").read_text()
     assert "protected-field" in compliance_template
     assert "Release Gate JSON" in compliance_template
-    assert "prediction features" in (output_dir / "templates" / "appgen_assistant.html").read_text()
+    assistant_template = (output_dir / "templates" / "appgen_assistant.html").read_text()
+    assert "prediction features" in assistant_template
+    assert "Release Gate JSON" in assistant_template
     assert "Intelligence JSON" in (output_dir / "templates" / "appgen_intelligence.html").read_text()
     assert "Guided Chatbot" in (output_dir / "templates" / "appgen_chatbot.html").read_text()
     assert "Voice JSON" in (output_dir / "templates" / "appgen_voice.html").read_text()
@@ -4064,6 +4066,20 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert "internal_code" not in context["fields"]
     questions = assistant.chatbot_questions("Book")
     assert any(question["field"] == "title" and question["required"] for question in questions)
+    assistant_gate = assistant.assistant_release_gate({"app/assistant.py", "app/templates/appgen_assistant.html"})
+    assert assistant.assistant_check({"app/assistant.py", "app/templates/appgen_assistant.html"})["ok"] is True
+    assert assistant_gate["format"] == "appgen.assistant-release-gate.v1"
+    assert assistant_gate["ok"] is True
+    assert {
+        "artifact_coverage",
+        "assistant_catalog",
+        "prompt_context",
+        "chatbot_questions",
+        "prediction_features",
+        "recommendations",
+        "human_review",
+    } <= {check["gate"] for check in assistant_gate["checks"]}
+    assert assistant.assistant_release_gate({"app/assistant.py"})["ok"] is False
     intelligence_catalog = {item["table"]: item for item in intelligence.intelligence_catalog()}
     assert "Book" in intelligence_catalog
     book_features = intelligence.preprocess_row("Book", {"title": "Dune", "summary": "Good success"})
