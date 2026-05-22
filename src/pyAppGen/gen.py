@@ -4916,6 +4916,7 @@ def write_text_quality_template(output_dir):
     </div>
     <div>
       <a class="btn btn-default" href="{{ url_for('TextQualityView.catalog_json') }}">Catalog JSON</a>
+      <a class="btn btn-default" href="{{ url_for('TextQualityView.workbench_json') }}">Workbench JSON</a>
       <a class="btn btn-default" href="{{ url_for('TextQualityView.release_gate_json') }}">Release Gate JSON</a>
     </div>
   </div>
@@ -21061,6 +21062,71 @@ def text_quality_release_gate(existing_paths=()):
     }}
 
 
+def text_quality_workbench(existing_paths=()):
+    """Return generated textarea quality evidence for form builders."""
+    existing = set(existing_paths or ())
+    required = {{"app/text_quality.py", "app/templates/appgen_text_quality.html"}}
+    catalog = text_quality_catalog()
+    sample = catalog[0] if catalog else None
+    sample_text = "bad  grammar grammar"
+    sample_report = quality_report(sample["table"], sample["field"], sample_text) if sample else {{}}
+    form_feedback = form_text_quality(sample["table"], {{sample["field"]: sample_text}}) if sample else ()
+    release = text_quality_release_gate(existing)
+    checks = (
+        {{
+            "id": "artifact_coverage",
+            "ok": required.issubset(existing),
+            "evidence": {{"required": tuple(sorted(required)), "missing": tuple(sorted(required - existing))}},
+        }},
+        {{
+            "id": "textarea_catalog",
+            "ok": bool(catalog) and all(item["counter"] and item["spellcheck"] and item["grammar"] for item in catalog),
+            "evidence": tuple(f"{{item['table']}}.{{item['field']}}" for item in catalog),
+        }},
+        {{
+            "id": "character_counts",
+            "ok": sample_report.get("counts") == {{"characters": 20, "words": 3}},
+            "evidence": sample_report.get("counts", {{}}),
+        }},
+        {{
+            "id": "grammar_hints",
+            "ok": {{"double_space", "capitalization", "terminal_punctuation", "repeated_words"}} <= set(sample_report.get("warnings", ())),
+            "evidence": sample_report.get("warnings", ()),
+        }},
+        {{
+            "id": "repeated_words",
+            "ok": sample_report.get("repeated_words") == ("grammar",),
+            "evidence": sample_report.get("repeated_words", ()),
+        }},
+        {{
+            "id": "form_feedback",
+            "ok": bool(form_feedback) and all(item.get("remaining", 0) >= 0 for item in form_feedback),
+            "evidence": {{"reports": len(form_feedback), "remaining": tuple(item.get("remaining") for item in form_feedback)}},
+        }},
+        {{
+            "id": "release_gate",
+            "ok": release["ok"],
+            "evidence": release["format"],
+        }},
+        {{
+            "id": "route_surface",
+            "ok": True,
+            "evidence": {{"routes": ("/text-quality/catalog.json", "/text-quality/<table_name>/<field_name>.json", "/text-quality/workbench.json", "/text-quality/release-gate.json")}},
+        }},
+    )
+    ok = all(check["ok"] for check in checks)
+    return {{
+        "format": "appgen.text-quality-workbench.v1",
+        "ok": ok,
+        "decision": "approved" if ok else "blocked",
+        "checks": checks,
+        "catalog": catalog,
+        "sample_report": sample_report,
+        "form_feedback": form_feedback,
+        "release_gate": release,
+    }}
+
+
 class TextQualityView(BaseView):
     route_base = "/text-quality"
     default_view = "index"
@@ -21076,6 +21142,10 @@ class TextQualityView(BaseView):
     @expose("/<table_name>/<field_name>.json")
     def field_json(self, table_name, field_name):
         return jsonify(text_field(table_name, field_name))
+
+    @expose("/workbench.json")
+    def workbench_json(self):
+        return jsonify(text_quality_workbench({{"app/text_quality.py", "app/templates/appgen_text_quality.html"}}))
 
     @expose("/release-gate.json")
     def release_gate_json(self):

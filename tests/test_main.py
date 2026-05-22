@@ -1063,6 +1063,7 @@ def test_generate_app_from_sqlite_schema_compiles(tmp_path) -> None:
     assert "components.lookups" in {item["key"] for item in manifest["capabilities"]}
     assert capabilities_by_key["components.lookups"]["status"] == "implemented"
     assert "components.text-quality" in {item["key"] for item in manifest["capabilities"]}
+    assert capabilities_by_key["components.text-quality"]["status"] == "implemented"
     assert "components.media" in {item["key"] for item in manifest["capabilities"]}
     assert capabilities_by_key["components.media"]["status"] == "implemented"
     assert "ui.wizards" in {item["key"] for item in manifest["capabilities"]}
@@ -4524,6 +4525,27 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     text_gate = text_quality.text_quality_release_gate(
         {"app/text_quality.py", "app/templates/appgen_text_quality.html"}
     )
+    assert "Workbench JSON" in (output_dir / "templates" / "appgen_text_quality.html").read_text()
+    text_workbench = text_quality.text_quality_workbench(
+        {"app/text_quality.py", "app/templates/appgen_text_quality.html"}
+    )
+    assert text_workbench["format"] == "appgen.text-quality-workbench.v1"
+    assert text_workbench["ok"] is True
+    assert text_workbench["decision"] == "approved"
+    assert {
+        "artifact_coverage",
+        "textarea_catalog",
+        "character_counts",
+        "grammar_hints",
+        "repeated_words",
+        "form_feedback",
+        "release_gate",
+        "route_surface",
+    } == {check["id"] for check in text_workbench["checks"]}
+    assert "/text-quality/workbench.json" in next(
+        check["evidence"]["routes"] for check in text_workbench["checks"] if check["id"] == "route_surface"
+    )
+    assert text_quality.text_quality_workbench({"app/text_quality.py"})["ok"] is False
     assert text_quality.text_quality_check({"app/text_quality.py", "app/templates/appgen_text_quality.html"})[
         "ok"
     ] is True
