@@ -190,6 +190,12 @@ Check that the ANTLR grammar and generated parser artifacts are synchronized:
 appgen --dsl-antlr-report
 ```
 
+Run the full authoring release gate for a DSL file:
+
+```console
+appgen --dsl-authoring-gate library.ags
+```
+
 ## Shape
 
 - `table` defines persistent data models.

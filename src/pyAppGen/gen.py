@@ -46810,6 +46810,12 @@ def get_metadata(idb):
     help="Format an AppGen DSL file in place and print JSON feedback.",
 )
 @click.option(
+    "--dsl-authoring-gate",
+    "dsl_authoring_gate_path",
+    type=click.Path(exists=True, dir_okay=False, path_type=Path),
+    help="Print JSON release readiness feedback for an AppGen DSL file.",
+)
+@click.option(
     "--schema-source-audit",
     is_flag=True,
     help=(
@@ -46839,6 +46845,7 @@ def main(
     lint_dsl_path,
     fix_dsl_path,
     format_dsl_path,
+    dsl_authoring_gate_path,
     schema_source_audit,
     dsl_antlr_report,
 ):
@@ -46850,6 +46857,7 @@ def main(
         lint_dsl_path,
         fix_dsl_path,
         format_dsl_path,
+        dsl_authoring_gate_path,
         schema_source_audit,
         dsl_antlr_report,
     ]
@@ -46869,6 +46877,7 @@ def main(
                 lint_dsl_path,
                 fix_dsl_path,
                 format_dsl_path,
+                dsl_authoring_gate_path,
                 *schema_sources,
             ]
         ):
@@ -46890,6 +46899,7 @@ def main(
                 lint_dsl_path,
                 fix_dsl_path,
                 format_dsl_path,
+                dsl_authoring_gate_path,
                 schema_source_audit,
                 *schema_sources,
             ]
@@ -46913,6 +46923,7 @@ def main(
                 wdatabase,
                 fix_dsl_path,
                 format_dsl_path,
+                dsl_authoring_gate_path,
                 schema_source_audit,
                 dsl_antlr_report,
                 *schema_sources,
@@ -46933,6 +46944,7 @@ def main(
                 idatabase,
                 wdatabase,
                 format_dsl_path,
+                dsl_authoring_gate_path,
                 schema_source_audit,
                 dsl_antlr_report,
                 *schema_sources,
@@ -46957,6 +46969,7 @@ def main(
                 database_url,
                 idatabase,
                 wdatabase,
+                dsl_authoring_gate_path,
                 schema_source_audit,
                 dsl_antlr_report,
                 *schema_sources,
@@ -46973,6 +46986,32 @@ def main(
         }
         click.echo(json.dumps(printable, indent=2, sort_keys=True))
         ctx.exit(0 if result["after"]["ok"] else 1)
+
+    if dsl_authoring_gate_path is not None:
+        if any(
+            [
+                writedir,
+                database_url,
+                idatabase,
+                wdatabase,
+                schema_source_audit,
+                dsl_antlr_report,
+                *schema_sources,
+            ]
+        ):
+            raise click.UsageError(
+                "--dsl-authoring-gate cannot be combined with generation or DSL "
+                "utility options."
+            )
+        from .dsl import dsl_authoring_release_gate
+
+        source = dsl_authoring_gate_path.read_text(encoding="utf-8")
+        result = dsl_authoring_release_gate(
+            source,
+            source_name=str(dsl_authoring_gate_path),
+        )
+        click.echo(json.dumps(result, indent=2, sort_keys=True, default=list))
+        ctx.exit(0 if result["ok"] else 1)
 
     if writedir is None:
         raise click.UsageError("Provide --writedir.")

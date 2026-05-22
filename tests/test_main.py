@@ -94,6 +94,38 @@ def test_dsl_antlr_report_cli_proves_generated_parser_sync(runner: CliRunner) ->
     assert report["missing_lexer_tokens"] == []
 
 
+def test_dsl_authoring_gate_cli_reports_release_readiness(
+    runner: CliRunner,
+    tmp_path,
+) -> None:
+    """The CLI exposes the full DSL authoring release gate for a file."""
+    source = format_dsl(
+        """
+        app GateDemo { targets: web, mobile }
+        table Customer { id: int pk; name: string required search; }
+        view CustomerForm for Customer { Main: name; @ name TextBox 0 0 8 1; }
+        llm Local { provider: ollama; mode: local; model: llama3; }
+        agent Assistant { provider: Local; goal: "Help users"; }
+        """
+    )["formatted"]
+    dsl_path = tmp_path / "gate.appgen"
+    dsl_path.write_text(source, encoding="utf-8")
+
+    result = runner.invoke(__main__.main, ["--dsl-authoring-gate", str(dsl_path)])
+
+    assert result.exit_code == 0
+    report = json.loads(result.output)
+    assert report["format"] == "appgen.dsl-authoring-release-gate.v1"
+    assert report["ok"] is True
+    assert {
+        "language_quality",
+        "syntax_semantics",
+        "formatter_stability",
+        "language_experience",
+        "ide_contract",
+    } <= {gate["gate"] for gate in report["gates"]}
+
+
 def test_dsl_linter_reports_semantic_feedback(runner: CliRunner, tmp_path) -> None:
     """The DSL linter validates syntax, semantics, and CLI JSON output."""
     source = """
