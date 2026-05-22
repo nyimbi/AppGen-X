@@ -3052,6 +3052,7 @@ def write_search_template(output_dir):
     </div>
     <div class="ags-actions">
       <a class="btn btn-default" href="{{ url_for('SearchView.catalog_json') }}">Catalog JSON</a>
+      <a class="btn btn-default" href="{{ url_for('SearchView.workbench_json') }}">Workbench JSON</a>
       <a class="btn btn-default" href="{{ url_for('SearchView.release_gate_json') }}">Release Gate JSON</a>
     </div>
   </div>
@@ -13802,6 +13803,45 @@ def search_release_gate(env=None, existing_paths=(), required_provider="memory")
     }}
 
 
+def search_workbench(env=None, existing_paths=(), required_provider="memory"):
+    """Return consolidated generated search evidence for IDE review."""
+    env = env or {{}}
+    release_gate = search_release_gate(env, existing_paths, required_provider=required_provider)
+    gate_map = {{gate["gate"]: gate for gate in release_gate["gates"]}}
+    routes = (
+        "/search/catalog.json",
+        "/search/<table_name>.json",
+        "/search/providers/<provider>.json",
+        "/search/providers/<provider>/<table_name>.json",
+        "/search/providers/<provider>/reindex.json",
+        "/search/workbench.json",
+        "/search/release-gate.json",
+    )
+    indexes = search_catalog()
+    providers = provider_catalog()
+    checks = (
+        {{"id": "index_catalog", "ok": gate_map["index_catalog"]["ok"], "evidence": indexes}},
+        {{"id": "provider_coverage", "ok": gate_map["provider_coverage"]["ok"], "evidence": providers}},
+        {{"id": "required_provider_readiness", "ok": gate_map["required_provider_readiness"]["ok"], "evidence": provider_plan(required_provider, env)}},
+        {{"id": "provider_index_plans", "ok": all(provider_index_plan(provider["name"], index["table"]) for provider in providers for index in indexes), "evidence": tuple(provider["name"] for provider in providers)}},
+        {{"id": "reindex_plan", "ok": gate_map["reindex_plan"]["ok"], "evidence": tuple(reindex_plan(provider["name"]) for provider in providers)}},
+        {{"id": "artifact_coverage", "ok": gate_map["artifact_coverage"]["ok"], "evidence": gate_map["artifact_coverage"]}},
+        {{"id": "release_gate", "ok": release_gate["ok"], "evidence": release_gate["decision"]}},
+        {{"id": "route_surface", "ok": all(route.startswith("/search/") for route in routes), "evidence": {{"routes": routes}}}},
+    )
+    ok = all(check["ok"] for check in checks)
+    return {{
+        "format": "appgen.search-workbench.v1",
+        "ok": ok,
+        "decision": "approved" if ok else "blocked",
+        "indexes": indexes,
+        "providers": providers,
+        "routes": routes,
+        "release_gate": release_gate,
+        "checks": checks,
+    }}
+
+
 def _row_value(row, field):
     if isinstance(row, dict):
         return row.get(field)
@@ -13883,6 +13923,10 @@ class SearchView(BaseView):
     @expose("/providers/<provider>/reindex.json")
     def reindex_json(self, provider):
         return jsonify(reindex_plan(provider))
+
+    @expose("/workbench.json")
+    def workbench_json(self):
+        return jsonify(search_workbench(request.environ, {{"app/search.py", "app/templates/appgen_search.html"}}))
 
     @expose("/release-gate.json")
     def release_gate_json(self):

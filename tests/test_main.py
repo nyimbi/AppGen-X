@@ -1047,6 +1047,7 @@ def test_generate_app_from_sqlite_schema_compiles(tmp_path) -> None:
     assert capabilities_by_key["api.openapi"]["status"] == "implemented"
     assert capabilities_by_key["api.sdks"]["status"] == "implemented"
     assert capabilities_by_key["data.exchange"]["status"] == "implemented"
+    assert capabilities_by_key["data.search"]["status"] == "implemented"
     assert capabilities_by_key["platform.targets"]["status"] == "implemented"
     assert capabilities_by_key["platform.native"]["status"] == "implemented"
     assert capabilities_by_key["platform.frontends"]["status"] == "implemented"
@@ -3596,6 +3597,28 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert {"index_catalog", "provider_coverage", "required_provider_readiness", "reindex_plan", "artifact_coverage"} <= {
         gate["gate"] for gate in search_gate["gates"]
     }
+    search_workbench = search.search_workbench(
+        {"ELASTICSEARCH_URL": "http://localhost:9200"},
+        {"app/search.py", "app/templates/appgen_search.html"},
+        required_provider="elasticsearch",
+    )
+    assert search_workbench["format"] == "appgen.search-workbench.v1"
+    assert search_workbench["ok"] is True
+    assert search_workbench["release_gate"]["ok"] is True
+    assert {
+        "index_catalog",
+        "provider_coverage",
+        "required_provider_readiness",
+        "provider_index_plans",
+        "reindex_plan",
+        "artifact_coverage",
+        "release_gate",
+        "route_surface",
+    } == {check["id"] for check in search_workbench["checks"]}
+    assert "/search/workbench.json" in next(
+        check["evidence"]["routes"] for check in search_workbench["checks"] if check["id"] == "route_surface"
+    )
+    assert search.search_workbench({}, {"app/search.py"}, required_provider="elasticsearch")["ok"] is False
     assert search.search_release_gate({}, {"app/search.py"}, required_provider="elasticsearch")["ok"] is False
     assert search.row_matches("Book", {"id": 1, "title": "Dune", "internal_code": "B-1"}, "dune") is True
     assert search.search_document("Book", {"id": 1, "title": "Dune", "internal_code": "B-1"})["fields"] == {

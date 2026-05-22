@@ -355,7 +355,11 @@ apps include:
   and provider plans for in-memory, PostgreSQL, Whoosh, and Elasticsearch search,
   including Elasticsearch mappings, Whoosh schema descriptors, and reviewed
   reindex runbooks. A generated search release gate proves index coverage,
-  provider coverage/readiness, reindex planning, and search artifact coverage.
+  provider coverage/readiness, reindex planning, and search artifact coverage;
+  `search_workbench()` adds IDE-ready evidence for index catalogs, provider
+  coverage, required-provider readiness, provider index plans, reindex plans,
+  artifact coverage, release decisions, and `/search/workbench.json` route
+  coverage.
 - `media.py` and `appgen_media.html` with generated image and file upload
   validation, preview, and storage contracts for fields typed as image, file,
   upload, blob, or binary. A generated media release gate proves MIME/extension
