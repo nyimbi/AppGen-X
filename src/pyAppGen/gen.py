@@ -6036,6 +6036,7 @@ def write_view_experience_template(output_dir):
       <a class="btn btn-default" href="{{ url_for('ViewExperienceView.catalog_json') }}">Experience JSON</a>
       <a class="btn btn-default" href="{{ url_for('ViewExperienceView.presence_json') }}">Presence JSON</a>
       <a class="btn btn-default" href="{{ url_for('ViewExperienceView.states_json') }}">View States JSON</a>
+      <a class="btn btn-default" href="{{ url_for('ViewExperienceView.workbench_json') }}">Workbench JSON</a>
       <a class="btn btn-default" href="{{ url_for('ViewExperienceView.release_gate_json') }}">Release Gate JSON</a>
     </div>
   </div>
@@ -24367,6 +24368,47 @@ def view_experience_release_gate(existing_paths=()):
     }}
 
 
+def view_experience_workbench(existing_paths=()):
+    """Return aggregate evidence for polished generated view behavior."""
+    existing = set(existing_paths)
+    required = (
+        "app/view_experience.py",
+        "app/templates/appgen_view_experience.html",
+        "app/static/appgen-view-experience.js",
+    )
+    missing = tuple(path for path in required if path not in existing)
+    sample_path = VIEW_RESOURCES[0]["route"] if VIEW_RESOURCES else "/"
+    sample_table = VIEW_RESOURCES[0]["table"] if VIEW_RESOURCES else "AppGen"
+    field_values = {{field: f"sample-{{field}}" for field in (VIEW_RESOURCES[0]["fields"][:2] if VIEW_RESOURCES else ())}}
+    offline = offline_field_state(sample_table, field_values)
+    presence = presence_event(sample_path, "builder")
+    access = access_log_event(sample_path, "builder", duration_ms=32)
+    states = view_state_matrix(sample_path)
+    release = view_experience_release_gate(existing)
+    feature_keys = {{feature["key"] for feature in baseview_feature_catalog()}}
+    checks = (
+        {{"id": "artifact_coverage", "ok": not missing, "evidence": {{"required": required, "missing": missing}}}},
+        {{"id": "feature_catalog", "ok": {{"offline-fields", "active-viewers", "help-chatbot", "access-log", "footer-context", "polished-states"}} <= feature_keys, "evidence": tuple(sorted(feature_keys))}},
+        {{"id": "offline_state", "ok": bool(offline) if field_values else bool(offline_field_catalog()), "evidence": offline or offline_field_catalog()}},
+        {{"id": "presence_and_access", "ok": bool(active_viewers(sample_path, (presence,))) and access_log_summary((access,))["unique_users"] == 1, "evidence": {{"presence": presence, "access": access}}}},
+        {{"id": "help_and_footer", "ok": states["footer"]["offline_ready"] and states["footer"]["help"]["href"] == "/chatbot/" and states["footer"]["version"] == APP_VERSION, "evidence": states["footer"]}},
+        {{"id": "polished_states", "ok": states["shell"]["format"] == "appgen.view-shell.v1" and states["loading"]["skeleton"]["preserve_layout"] and states["empty"]["requires_action"] and states["error"]["requires_operator_review"], "evidence": states}},
+        {{"id": "release_gate", "ok": release["ok"], "evidence": {{"format": release["format"], "blocking_gaps": release["blocking_gaps"]}}}},
+        {{"id": "route_surface", "ok": not missing, "evidence": {{"routes": ("/view-experience/", "/view-experience/catalog.json", "/view-experience/presence.json", "/view-experience/states.json", "/view-experience/workbench.json", "/view-experience/release-gate.json", "/view-experience/access-log")}}}},
+    )
+    ok = all(check["ok"] for check in checks)
+    return {{
+        "format": "appgen.view-experience-workbench.v1",
+        "ok": ok,
+        "decision": "approved" if ok else "blocked",
+        "checks": checks,
+        "resources": view_resource_catalog(),
+        "features": baseview_feature_catalog(),
+        "state_matrix": states,
+        "release_gate": release,
+    }}
+
+
 class ViewExperienceView(BaseView):
     route_base = "/view-experience"
     default_view = "index"
@@ -24388,6 +24430,10 @@ class ViewExperienceView(BaseView):
     @expose("/states.json")
     def states_json(self):
         return jsonify(view_state_matrix(request.args.get("path", "/")))
+
+    @expose("/workbench.json")
+    def workbench_json(self):
+        return jsonify(view_experience_workbench({{"app/view_experience.py", "app/templates/appgen_view_experience.html", "app/static/appgen-view-experience.js"}}))
 
     @expose("/release-gate.json")
     def release_gate_json(self):

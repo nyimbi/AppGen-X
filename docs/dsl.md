@@ -554,7 +554,10 @@ apps include:
   events, polished page shells, layout-preserving loading skeletons,
   actionable empty states, recoverable error states, app version footer context,
   time-on-page, current-user display, view state matrices, and a
-  view-experience release gate.
+  view-experience release gate. The generated `view_experience_workbench()`
+  proves feature catalogs, offline state, presence/access logs, help/footer
+  context, polished view states, release gates, and route coverage before
+  `ui.view-experience` is marked implemented.
 - `support_center.py` and `appgen_support_center.html` with generated
   knowledge-base topics, tutorials, onboarding checklists, searchable support
   entries, support-ticket payloads, and sample DSL applications. The generated

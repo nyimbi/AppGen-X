@@ -1036,6 +1036,7 @@ def test_generate_app_from_sqlite_schema_compiles(tmp_path) -> None:
     assert capabilities_by_key["ui.tabbed-views"]["status"] == "implemented"
     assert capabilities_by_key["ui.form-designer"]["status"] == "implemented"
     assert capabilities_by_key["ui.nl-evolution"]["status"] == "implemented"
+    assert capabilities_by_key["ui.view-experience"]["status"] == "implemented"
     assert capabilities_by_key["devops.studio"]["status"] == "implemented"
     assert capabilities_by_key["components.erp-templates"]["status"] == "implemented"
     assert capabilities_by_key["ai.agentic-systems"]["status"] == "implemented"
@@ -5686,6 +5687,31 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert experience_gate["format"] == "appgen.view-experience-release-gate.v1"
     assert experience_gate["ok"] is True
     assert {"shell", "loading", "empty", "error", "footer"} <= {gate["gate"] for gate in experience_gate["gates"]}
+    assert "Workbench JSON" in (output_dir / "templates" / "appgen_view_experience.html").read_text()
+    experience_workbench = view_experience.view_experience_workbench(
+        {
+            "app/view_experience.py",
+            "app/templates/appgen_view_experience.html",
+            "app/static/appgen-view-experience.js",
+        }
+    )
+    assert experience_workbench["format"] == "appgen.view-experience-workbench.v1"
+    assert experience_workbench["ok"] is True
+    assert experience_workbench["decision"] == "approved"
+    assert {
+        "artifact_coverage",
+        "feature_catalog",
+        "offline_state",
+        "presence_and_access",
+        "help_and_footer",
+        "polished_states",
+        "release_gate",
+        "route_surface",
+    } == {check["id"] for check in experience_workbench["checks"]}
+    assert "/view-experience/workbench.json" in next(
+        check["evidence"]["routes"] for check in experience_workbench["checks"] if check["id"] == "route_surface"
+    )
+    assert view_experience.view_experience_workbench({"app/view_experience.py"})["ok"] is False
     assert "getting-started" in {item["key"] for item in support_center.support_topic_catalog()}
     assert support_center.tutorial_catalog()[0]["key"] == "first-app"
     sample_dsl = support_center.sample_application_catalog()[0]["dsl"]
