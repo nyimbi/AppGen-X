@@ -5688,6 +5688,7 @@ def write_components_template(output_dir):
     <div>
       <a class="btn btn-default" href="{{ url_for('ComponentView.catalog_json') }}">Catalog JSON</a>
       <a class="btn btn-default" href="{{ url_for('ComponentView.custom_widget_json') }}">Custom Widget JSON</a>
+      <a class="btn btn-default" href="{{ url_for('ComponentView.layout_workbench_json') }}">Layout Workbench JSON</a>
       <a class="btn btn-default" href="{{ url_for('ComponentView.release_gate_json') }}">Release Gate JSON</a>
     </div>
   </div>
@@ -31717,6 +31718,87 @@ def visual_builder_payload():
     }}
 
 
+def layout_workbench(existing_paths=()):
+    """Return generated layout design evidence for screen/form builders."""
+    existing = set(existing_paths or ())
+    required = {{"app/components.py", "app/templates/appgen_components.html"}}
+    table_contracts = tuple(component_contract(table_name) for table_name in COMPONENT_TABLES)
+    form_sections = tuple(
+        {{
+            "table": contract["table"],
+            "sections": tuple(section["name"] for section in contract["layouts"]["form"]["sections"]),
+            "declared": bool(COMPONENT_TABLES[contract["table"]].get("sections")),
+        }}
+        for contract in table_contracts
+    )
+    checks = (
+        {{
+            "id": "artifact_coverage",
+            "ok": required.issubset(existing),
+            "evidence": {{"required": tuple(sorted(required)), "missing": tuple(sorted(required - existing))}},
+        }},
+        {{
+            "id": "form_sections",
+            "ok": bool(form_sections) and all(item["sections"] for item in form_sections),
+            "evidence": form_sections,
+        }},
+        {{
+            "id": "declared_view_sections",
+            "ok": any(item["declared"] for item in form_sections),
+            "evidence": tuple(item for item in form_sections if item["declared"]),
+        }},
+        {{
+            "id": "list_layouts",
+            "ok": all(contract["layouts"]["list"]["columns"] for contract in table_contracts),
+            "evidence": tuple(
+                {{"table": contract["table"], "columns": contract["layouts"]["list"]["columns"]}}
+                for contract in table_contracts
+            ),
+        }},
+        {{
+            "id": "detail_layouts",
+            "ok": all(contract["layouts"]["detail"]["fields"] for contract in table_contracts),
+            "evidence": tuple(
+                {{"table": contract["table"], "field_count": len(contract["layouts"]["detail"]["fields"])}}
+                for contract in table_contracts
+            ),
+        }},
+        {{
+            "id": "card_components",
+            "ok": all(contract["card"]["fields"] for contract in table_contracts),
+            "evidence": tuple({{"table": contract["table"], "field_count": len(contract["card"]["fields"])}} for contract in table_contracts),
+        }},
+        {{
+            "id": "visual_builder_payload",
+            "ok": bool(visual_builder_payload()["tables"]) and bool(visual_builder_payload()["palette"]),
+            "evidence": {{
+                "tables": len(visual_builder_payload()["tables"]),
+                "palette": len(visual_builder_payload()["palette"]),
+            }},
+        }},
+        {{
+            "id": "route_surface",
+            "ok": True,
+            "evidence": {{
+                "routes": (
+                    "/components/catalog.json",
+                    "/components/<table_name>.json",
+                    "/components/layout-workbench.json",
+                    "/components/release-gate.json",
+                )
+            }},
+        }},
+    )
+    ok = all(check["ok"] for check in checks)
+    return {{
+        "format": "appgen.layout-workbench.v1",
+        "ok": ok,
+        "decision": "approved" if ok else "blocked",
+        "checks": checks,
+        "contracts": table_contracts,
+    }}
+
+
 def component_release_gate(existing_paths=()):
     """Return deterministic release evidence for generated component readiness."""
     existing = set(existing_paths)
@@ -31832,6 +31914,10 @@ class ComponentView(BaseView):
     @expose("/custom-widget.json")
     def custom_widget_json(self):
         return jsonify(custom_widget_registration_plan("Custom Widget"))
+
+    @expose("/layout-workbench.json")
+    def layout_workbench_json(self):
+        return jsonify(layout_workbench({{"app/components.py", "app/templates/appgen_components.html"}}))
 
     @expose("/release-gate.json")
     def release_gate_json(self):

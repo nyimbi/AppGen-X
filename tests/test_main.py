@@ -1064,6 +1064,7 @@ def test_generate_app_from_sqlite_schema_compiles(tmp_path) -> None:
     assert "components.media" in {item["key"] for item in manifest["capabilities"]}
     assert "ui.wizards" in {item["key"] for item in manifest["capabilities"]}
     assert "ui.layout" in {item["key"] for item in manifest["capabilities"]}
+    assert capabilities_by_key["ui.layout"]["status"] == "implemented"
     assert "ui.branding" in {item["key"] for item in manifest["capabilities"]}
     assert "platform.extensibility" in {item["key"] for item in manifest["capabilities"]}
     assert "devops.packaging" in {item["key"] for item in manifest["capabilities"]}
@@ -5300,6 +5301,25 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "custom_widget_extension",
         "visual_builder_payload",
     } <= {check["gate"] for check in component_gate["checks"]}
+    assert "Layout Workbench JSON" in (output_dir / "templates" / "appgen_components.html").read_text()
+    layout_workbench = components.layout_workbench({"app/components.py", "app/templates/appgen_components.html"})
+    assert layout_workbench["format"] == "appgen.layout-workbench.v1"
+    assert layout_workbench["ok"] is True
+    assert layout_workbench["decision"] == "approved"
+    assert {
+        "artifact_coverage",
+        "form_sections",
+        "declared_view_sections",
+        "list_layouts",
+        "detail_layouts",
+        "card_components",
+        "visual_builder_payload",
+        "route_surface",
+    } == {check["id"] for check in layout_workbench["checks"]}
+    assert "/components/layout-workbench.json" in next(
+        check["evidence"]["routes"] for check in layout_workbench["checks"] if check["id"] == "route_surface"
+    )
+    assert components.layout_workbench({"app/components.py"})["ok"] is False
     assert components.component_release_gate({"app/components.py"})["ok"] is False
     assert any(item["master"] == "Book" and item["detail"] == "Author" for item in view_composition.master_detail_catalog())
     assert view_composition.chart_view_catalog()

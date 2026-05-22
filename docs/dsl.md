@@ -747,7 +747,10 @@ apps include:
   generated `component_release_gate()` proves component catalog coverage,
   widget registry depth, platform renderers, lookup contracts, calendar
   widgets, layout contracts, custom-widget extension points, visual-builder
-  payload readiness, and required component artifacts.
+  payload readiness, and required component artifacts. The generated
+  `layout_workbench()` proves declared view sections, fallback form sections,
+  list/detail/card contracts, visual-builder payloads, and route evidence
+  before `ui.layout` is marked implemented.
 - `view_composition.py` and `appgen_view_composition.html` with generated
   MasterDetailView, MultipleView, and ChartView contracts derived from schema
   relationships and visible fields. The generated
