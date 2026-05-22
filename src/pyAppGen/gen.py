@@ -36412,6 +36412,35 @@ def platform_artifacts(target):
     return CHATBOT_EXPORTS[target]
 
 
+def provider_export_matrix(existing_paths=()):
+    """Return provider-specific export evidence for generated chatbot targets."""
+    existing = set(existing_paths)
+    rows = []
+    for target in SELECTED_CHATBOT_TARGETS:
+        artifacts = platform_artifacts(target)
+        missing = tuple(path for path in artifacts if existing and path not in existing)
+        checks = (
+            ("intent_display_names", "training_phrases", "parameters")
+            if target == "dialogflow"
+            else ("manifest_metadata", "command_lists", "parameters")
+        )
+        rows.append({{
+            "provider": target,
+            "artifacts": artifacts,
+            "missing": missing,
+            "checks": checks,
+            "intent_count": len(chatbot_intents()),
+            "prompt_count": sum(len(intent["prompts"]) for intent in chatbot_intents()),
+            "ok": not missing and bool(chatbot_intents()) and all(intent["prompts"] for intent in chatbot_intents()),
+        }})
+    return {{
+        "format": "appgen.chatbot-provider-export-matrix.v1",
+        "ok": bool(rows) and all(row["ok"] for row in rows),
+        "providers": SELECTED_CHATBOT_TARGETS,
+        "rows": tuple(rows),
+    }}
+
+
 def conversation_plan(intent_name, values):
     """Return missing fields and next prompt for a provider-neutral conversation."""
     provided = {{str(key): value for key, value in dict(values).items() if value not in (None, "")}}
@@ -36447,6 +36476,33 @@ def export_check(existing_paths):
         "missing": missing,
         "targets": chatbot_targets(),
         "intents": tuple(intent["intent"] for intent in CHATBOT_CONTRACT["intents"]),
+    }}
+
+
+def chatbot_provider_release_gate(existing_paths=()):
+    """Return release readiness for Dialogflow and Bot Framework exports."""
+    exports = export_check(existing_paths)
+    matrix = provider_export_matrix(existing_paths)
+    targets = set(chatbot_targets())
+    intents = chatbot_intents()
+    first_intent = intents[0]["intent"] if intents else None
+    empty_plan = conversation_plan(first_intent, {{}}) if first_intent else {{}}
+    gates = (
+        {{"gate": "provider_targets", "ok": {{"dialogflow", "botframework"}} <= targets, "evidence": tuple(sorted(targets))}},
+        {{"gate": "artifact_coverage", "ok": exports["ok"], "evidence": exports}},
+        {{"gate": "provider_export_matrix", "ok": matrix["ok"], "evidence": matrix["rows"]}},
+        {{"gate": "intent_prompt_coverage", "ok": bool(intents) and all(intent["prompts"] for intent in intents), "evidence": tuple((intent["intent"], len(intent["prompts"])) for intent in intents)}},
+        {{"gate": "conversation_readiness", "ok": bool(first_intent) and empty_plan.get("ready") is False and bool(empty_plan.get("next_prompt")), "evidence": empty_plan}},
+    )
+    ok = all(gate["ok"] for gate in gates)
+    return {{
+        "format": "appgen.chatbot-provider-release-gate.v1",
+        "ok": ok,
+        "decision": "approved" if ok else "blocked",
+        "providers": SELECTED_CHATBOT_TARGETS,
+        "export_matrix": matrix,
+        "gates": gates,
+        "blocking_gaps": tuple(gate["gate"] for gate in gates if not gate["ok"]),
     }}
 '''
 
@@ -40708,6 +40764,14 @@ def test_generated_runtime_helpers():
             "chatbots/botframework/manifest.json",
         }
     )["ok"] is True
+    assert chatbots.chatbot_provider_release_gate(
+        {
+            "chatbots/appgen_chatbots.py",
+            "chatbots/dialogflow/intents.json",
+            "chatbots/botframework/manifest.json",
+        }
+    )["format"] == "appgen.chatbot-provider-release-gate.v1"
+    assert chatbots.chatbot_provider_release_gate({"chatbots/appgen_chatbots.py"})["ok"] is False
     flow_export = json.loads((ROOT / "automation" / "node-red" / "flows.json").read_text())
     assert isinstance(node_red.node_red_events(), tuple)
     assert node_red.validate_flow_export(flow_export)["ok"] is True

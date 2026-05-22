@@ -913,6 +913,16 @@ def test_generate_app_from_sqlite_schema_compiles(tmp_path) -> None:
         "chatbots/botframework/manifest.json",
     }
     assert chatbots.export_check(chatbot_artifacts)["ok"] is True
+    provider_matrix = chatbots.provider_export_matrix(chatbot_artifacts)
+    assert provider_matrix["format"] == "appgen.chatbot-provider-export-matrix.v1"
+    assert provider_matrix["ok"] is True
+    provider_gate = chatbots.chatbot_provider_release_gate(chatbot_artifacts)
+    assert provider_gate["format"] == "appgen.chatbot-provider-release-gate.v1"
+    assert provider_gate["ok"] is True
+    assert {"provider_targets", "artifact_coverage", "provider_export_matrix", "conversation_readiness"} <= {
+        gate["gate"] for gate in provider_gate["gates"]
+    }
+    assert chatbots.chatbot_provider_release_gate({"chatbots/appgen_chatbots.py"})["ok"] is False
     dialogflow_export = json.loads((tmp_path / "chatbots" / "dialogflow" / "intents.json").read_text())
     assert "create_book" in {intent["displayName"] for intent in dialogflow_export["intents"]}
     bot_manifest = json.loads((tmp_path / "chatbots" / "botframework" / "manifest.json").read_text())
@@ -995,6 +1005,8 @@ def test_generate_app_from_sqlite_schema_compiles(tmp_path) -> None:
     assert "platform.jhipster-superiority" in {item["key"] for item in manifest["capabilities"]}
     assert "platform.chatbots" in {item["key"] for item in manifest["capabilities"]}
     assert "ai.guided-chatbot" in {item["key"] for item in manifest["capabilities"]}
+    assert capabilities_by_key["platform.chatbots"]["status"] == "implemented"
+    assert capabilities_by_key["ai.guided-chatbot"]["status"] == "implemented"
     assert "automation.node-red" in {item["key"] for item in manifest["capabilities"]}
     assert "automation.cep" in {item["key"] for item in manifest["capabilities"]}
     assert "automation.rpa-bpa" in {item["key"] for item in manifest["capabilities"]}

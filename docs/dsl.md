@@ -489,7 +489,8 @@ apps include:
   ask for generated view fields, track missing required answers, and prepare
   create payloads. The generated `chatbot_release_gate()` proves artifact
   coverage, intent catalogs, prompt coverage, required-field blocking,
-  conversation progression, and create-payload readiness.
+  conversation progression, and create-payload readiness, which makes guided
+  creation flows a first-class generated capability.
 - `voice.py` and `appgen_voice.html` with generated speech prompts, utterance
   training phrases, slot-filling plans, SSML responses, and Alexa, Google
   Assistant, and Web Speech export contracts. The generated
@@ -627,7 +628,9 @@ apps include:
   JHipster migration readiness, composition readiness, and artifact evidence.
 - `chatbots/dialogflow/intents.json`,
   `chatbots/botframework/manifest.json`, and `chatbots/appgen_chatbots.py`
-  with generated provider intents, field prompts, and conversation checks.
+  with generated provider intents, field prompts, conversation checks, provider
+  export matrices, and `chatbot_provider_release_gate()` evidence for
+  Dialogflow and Bot Framework artifact readiness.
 - `automation/node-red/flows.json` and `automation/appgen_node_red.py` with
   generated Node-RED webhook flows for table events, declared workflow
   transitions, webhook endpoint plans, a default Docker Compose Node-RED
