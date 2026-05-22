@@ -4012,6 +4012,7 @@ def write_database_ops_template(output_dir):
     <div class="agdb-actions">
       <a class="btn btn-default" href="{{ url_for('DatabaseOpsView.providers_json') }}">Providers JSON</a>
       <a class="btn btn-default" href="{{ url_for('DatabaseOpsView.addons_json') }}">Add-ons JSON</a>
+      <a class="btn btn-default" href="{{ url_for('DatabaseOpsView.workbench_json') }}">Workbench JSON</a>
       <a class="btn btn-default" href="{{ url_for('DatabaseOpsView.addon_release_gate_json') }}">Add-on Release Gate JSON</a>
       <a class="btn btn-default" href="{{ url_for('DatabaseOpsView.patroni_json') }}">Patroni JSON</a>
       <a class="btn btn-default" href="{{ url_for('DatabaseOpsView.postgraphile_json') }}">PostGraphile JSON</a>
@@ -17594,6 +17595,51 @@ def database_ops_check(existing_paths):
     }}
 
 
+def database_ops_workbench(existing_paths=(), environ=None):
+    """Return consolidated database operations evidence for generated IDEs."""
+    env = {{}} if environ is None else environ
+    check = database_ops_check(existing_paths)
+    addon_gate = database_addon_release_gate(existing_paths, env)
+    routes = (
+        "/database-ops/providers.json",
+        "/database-ops/addons.json",
+        "/database-ops/workbench.json",
+        "/database-ops/addon-release-gate.json",
+        "/database-ops/patroni.json",
+        "/database-ops/postgraphile.json",
+        "/database-ops/zombodb.json",
+        "/database-ops/migration-targets.json",
+        "/database-ops/schema-inventory.json",
+        "/database-ops/migration-cutover.json",
+        "/database-ops/nosql-projections.json",
+    )
+    provider_names = {{item["provider"] for item in database_provider_catalog()}}
+    addon_names = {{item["addon"] for item in database_addon_catalog()}}
+    checks = (
+        {{"id": "artifact_coverage", "ok": not check["missing"], "evidence": check}},
+        {{"id": "provider_catalog", "ok": {{"postgresql", "mysql", "sqlite", "mongodb", "dynamodb", "cassandra", "redis"}} <= provider_names, "evidence": database_provider_catalog()}},
+        {{"id": "addon_catalog", "ok": {{"patroni", "postgraphile", "zombodb", "elasticsearch"}} <= addon_names, "evidence": database_addon_catalog()}},
+        {{"id": "compose_services", "ok": all(compose_service_plan(provider)["service"] for provider in provider_names), "evidence": tuple(compose_service_plan(provider) for provider in provider_names)}},
+        {{"id": "kubernetes_statefulsets", "ok": all(kubernetes_statefulset_plan(provider)["kind"] for provider in provider_names), "evidence": tuple(kubernetes_statefulset_plan(provider) for provider in provider_names)}},
+        {{"id": "addon_release_gate", "ok": addon_gate["ok"], "evidence": addon_gate}},
+        {{"id": "schema_inventory", "ok": bool(schema_inventory()), "evidence": schema_inventory()}},
+        {{"id": "migration_targets", "ok": bool(migration_target_matrix()), "evidence": migration_target_matrix()}},
+        {{"id": "migration_cutover", "ok": migration_cutover_plan()["format"] == "appgen.database-cutover-plan.v1", "evidence": migration_cutover_plan()}},
+        {{"id": "nosql_projections", "ok": bool(document_projection_matrix()), "evidence": document_projection_matrix()}},
+        {{"id": "route_surface", "ok": all(route.startswith("/database-ops/") for route in routes), "evidence": {{"routes": routes}}}},
+    )
+    ok = all(item["ok"] for item in checks)
+    return {{
+        "format": "appgen.database-ops-workbench.v1",
+        "ok": ok,
+        "decision": "approved" if ok else "blocked",
+        "providers": database_provider_catalog(),
+        "addons": database_addon_catalog(),
+        "routes": routes,
+        "checks": checks,
+    }}
+
+
 class DatabaseOpsView(BaseView):
     route_base = "/database-ops"
     default_view = "index"
@@ -17613,6 +17659,10 @@ class DatabaseOpsView(BaseView):
     @expose("/addons.json")
     def addons_json(self):
         return jsonify(list(database_addon_catalog()))
+
+    @expose("/workbench.json")
+    def workbench_json(self):
+        return jsonify(database_ops_workbench({{"app/database_ops.py", "app/templates/appgen_database_ops.html", "docker-compose.yml", "deploy/k8s.yaml"}}))
 
     @expose("/addon-release-gate.json")
     def addon_release_gate_json(self):

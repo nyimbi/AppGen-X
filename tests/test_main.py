@@ -1048,6 +1048,7 @@ def test_generate_app_from_sqlite_schema_compiles(tmp_path) -> None:
     assert capabilities_by_key["api.sdks"]["status"] == "implemented"
     assert capabilities_by_key["data.exchange"]["status"] == "implemented"
     assert capabilities_by_key["data.search"]["status"] == "implemented"
+    assert capabilities_by_key["data.database-ops"]["status"] == "implemented"
     assert capabilities_by_key["platform.targets"]["status"] == "implemented"
     assert capabilities_by_key["platform.native"]["status"] == "implemented"
     assert capabilities_by_key["platform.frontends"]["status"] == "implemented"
@@ -2423,6 +2424,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     ).read_text()
     database_ops_template = (output_dir / "templates" / "appgen_database_ops.html").read_text()
     assert "Add-on Release Gate JSON" in database_ops_template
+    assert "Workbench JSON" in database_ops_template
     assert "Patroni JSON" in database_ops_template
     assert "PostGraphile JSON" in database_ops_template
     assert "ZomboDB JSON" in database_ops_template
@@ -4161,6 +4163,33 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
             "deploy/k8s.yaml",
         }
     )["addon_release_gate"]["ok"] is True
+    database_ops_workbench = database_ops.database_ops_workbench(
+        {
+            "app/database_ops.py",
+            "app/templates/appgen_database_ops.html",
+            "docker-compose.yml",
+            "deploy/k8s.yaml",
+        }
+    )
+    assert database_ops_workbench["format"] == "appgen.database-ops-workbench.v1"
+    assert database_ops_workbench["ok"] is True
+    assert {
+        "artifact_coverage",
+        "provider_catalog",
+        "addon_catalog",
+        "compose_services",
+        "kubernetes_statefulsets",
+        "addon_release_gate",
+        "schema_inventory",
+        "migration_targets",
+        "migration_cutover",
+        "nosql_projections",
+        "route_surface",
+    } == {check["id"] for check in database_ops_workbench["checks"]}
+    assert "/database-ops/workbench.json" in next(
+        check["evidence"]["routes"] for check in database_ops_workbench["checks"] if check["id"] == "route_surface"
+    )
+    assert database_ops.database_ops_workbench({"app/database_ops.py"})["ok"] is False
     assert {item["kind"] for item in schema_import.schema_source_catalog()} == {
         "dbml",
         "sql",

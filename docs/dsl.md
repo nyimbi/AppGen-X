@@ -424,7 +424,10 @@ apps include:
   migration-target readiness contracts. Patroni HA cluster plans,
   PostGraphile schema exposure plans, ZomboDB index plans, and a generated
   database add-on release gate make these capabilities reviewable before
-  production rollout.
+  production rollout. `database_ops_workbench()` adds IDE-ready evidence for
+  provider catalogs, add-on catalogs, Compose services, Kubernetes stateful
+  workloads, schema inventory, migration targets, cutover plans, NoSQL
+  projections, release gates, and `/database-ops/workbench.json` route coverage.
 - `schema_import.py` and `appgen_schema_import.html` with generated DBML, SQL
   DDL, PonyORM, live database, and DSL source catalogs, source provenance profiles,
   stable source fingerprints, source-fidelity reports, normalization reports,
