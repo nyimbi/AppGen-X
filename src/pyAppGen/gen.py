@@ -5234,6 +5234,7 @@ def write_diagnostics_template(output_dir):
       <a class="btn btn-default" href="{{ url_for('DiagnosticsView.selftest_json') }}">Self-test JSON</a>
       <a class="btn btn-default" href="{{ url_for('DiagnosticsView.remediation_json') }}">Remediation JSON</a>
       <a class="btn btn-default" href="{{ url_for('DiagnosticsView.support_bundle_json') }}">Support Bundle JSON</a>
+      <a class="btn btn-default" href="{{ url_for('DiagnosticsView.release_gate_json') }}">Release Gate JSON</a>
     </div>
   </div>
   <div class="agd-grid">
@@ -27306,6 +27307,45 @@ def selftest():
     return {{"ok": ok, "checks": tuple(checks), "summary": diagnostic_summary(checks)}}
 
 
+def diagnostics_check(existing_paths=()):
+    """Return readiness for generated diagnostics artifacts."""
+    existing = set(existing_paths)
+    required = {{"app/diagnostics.py", "app/templates/appgen_diagnostics.html"}}
+    missing = tuple(sorted(required - existing))
+    return {{
+        "ok": not missing and bool(DIAGNOSTIC_TABLES),
+        "missing": missing,
+        "tables": tuple(DIAGNOSTIC_TABLES),
+    }}
+
+
+def diagnostics_release_gate(existing_paths=()):
+    """Return release readiness for generated diagnostics and debugging helpers."""
+    readiness = diagnostics_check(existing_paths)
+    checks = selftest()
+    snapshot = debug_snapshot({{"SECRET_KEY": "secret", "APP_NAME": "AppGen"}}, {{"PATH": "/bin"}})
+    remediation = remediation_plan(({{"name": "release primary key", "status": "warn", "details": ()}},))
+    support = support_bundle({{"SECRET_KEY": "secret"}}, {{"PATH": "/bin"}})
+    smoke = api_smoke_plan()
+    load = load_test_plan(users=3, duration_seconds=5)
+    gates = (
+        {{"gate": "artifacts", "ok": readiness["ok"], "missing": readiness["missing"]}},
+        {{"gate": "schema_selftest", "ok": checks["ok"] and checks["summary"]["fail"] == 0, "summary": checks["summary"]}},
+        {{"gate": "debug_redaction", "ok": snapshot["config"].get("SECRET_KEY") == "[redacted]" and snapshot["config"].get("APP_NAME") == "AppGen", "snapshot": snapshot}},
+        {{"gate": "remediation_plan", "ok": remediation["format"] == "appgen.diagnostics-remediation.v1" and remediation["actions"] and remediation["actions"][0]["severity"] == "warning", "plan": remediation}},
+        {{"gate": "support_bundle", "ok": support["format"] == "appgen.support-bundle.v1" and support["snapshot"]["config"].get("SECRET_KEY") == "[redacted]", "bundle": support}},
+        {{"gate": "api_smoke", "ok": bool(smoke) and all(item["method"] == "GET" and item["path"].startswith("/api/v1/") for item in smoke), "plan": smoke}},
+        {{"gate": "load_test", "ok": load["users"] == 3 and load["duration_seconds"] == 5 and len(load["scenarios"]) == len(smoke), "plan": load}},
+    )
+    ok = all(gate["ok"] for gate in gates)
+    return {{
+        "format": "appgen.diagnostics-release-gate.v1",
+        "ok": ok,
+        "decision": "approved" if ok else "blocked",
+        "gates": gates,
+    }}
+
+
 class DiagnosticsView(BaseView):
     route_base = "/diagnostics"
     default_view = "index"
@@ -27329,6 +27369,10 @@ class DiagnosticsView(BaseView):
     @expose("/support-bundle.json")
     def support_bundle_json(self):
         return jsonify(support_bundle())
+
+    @expose("/release-gate.json")
+    def release_gate_json(self):
+        return jsonify(diagnostics_release_gate({{"app/diagnostics.py", "app/templates/appgen_diagnostics.html"}}))
 
 
 def register_diagnostics(appbuilder):
@@ -35330,12 +35374,14 @@ def validate_diagnostics_artifacts() -> None:
         "support_bundle",
         "api_smoke_plan",
         "load_test_plan",
+        "diagnostics_check",
+        "diagnostics_release_gate",
     )
     if not all(term in contract for term in required_terms):
         fail("diagnostics contract must expose schema checks, remediation, support bundles, smoke plans, and load tests")
     template = (ROOT / "app" / "templates" / "appgen_diagnostics.html").read_text()
-    if "Diagnostics" not in template or "Remediation JSON" not in template or "Support Bundle JSON" not in template:
-        fail("diagnostics template must expose self-test, remediation, and support-bundle links")
+    if "Diagnostics" not in template or "Remediation JSON" not in template or "Support Bundle JSON" not in template or "Release Gate JSON" not in template:
+        fail("diagnostics template must expose self-test, remediation, support-bundle, and release-gate links")
 
 
 def validate_test_coverage_artifacts() -> None:
@@ -37179,6 +37225,8 @@ def test_generated_runtime_helpers():
     assert diagnostics.selftest()["summary"]["fail"] == 0
     assert diagnostics.remediation_plan(({{"name": "Book has primary key", "status": "warn", "details": ()}},))["actions"][0]["severity"] == "warning"
     assert diagnostics.support_bundle({{"SECRET_KEY": "secret"}}, {{"PATH": "/bin"}})["snapshot"]["config"]["SECRET_KEY"] == "[redacted]"
+    assert diagnostics.diagnostics_release_gate({{"app/diagnostics.py", "app/templates/appgen_diagnostics.html"}})["ok"] is True
+    assert diagnostics.diagnostics_release_gate({{"app/diagnostics.py"}})["ok"] is False
     assert api_testing.request_plan()
     first_request = api_testing.request_plan()[0]
     assert api_testing.validate_response(first_request["name"], first_request["expected_status"][0])["ok"] is True

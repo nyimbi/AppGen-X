@@ -4612,6 +4612,13 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert support_bundle["snapshot"]["config"]["SECRET_KEY"] == "[redacted]"
     assert diagnostics.api_smoke_plan()[1]["path"] == "/api/v1/book/"
     assert diagnostics.load_test_plan(users=3, duration_seconds=5)["users"] == 3
+    diagnostics_gate = diagnostics.diagnostics_release_gate({"app/diagnostics.py", "app/templates/appgen_diagnostics.html"})
+    assert diagnostics_gate["format"] == "appgen.diagnostics-release-gate.v1"
+    assert diagnostics_gate["ok"] is True
+    assert {"schema_selftest", "debug_redaction", "support_bundle", "api_smoke", "load_test"} <= {
+        gate["gate"] for gate in diagnostics_gate["gates"]
+    }
+    assert diagnostics.diagnostics_release_gate({"app/diagnostics.py"})["ok"] is False
     api_requests = api_testing.request_plan()
     assert any(request["name"] == "list_book" and request["path"] == "/api/v1/book/" for request in api_requests)
     assert api_testing.sample_payload("Book")["title"] == "sample_title"

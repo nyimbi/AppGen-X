@@ -594,7 +594,10 @@ apps include:
   Server-Sent Events frames, collaboration messages, and reconnect replay plans.
 - `diagnostics.py` and `appgen_diagnostics.html` with generated schema
   invariants, row validation, redacted debug snapshots, remediation plans,
-  support bundles, API smoke plans, and load-test plans.
+  support bundles, API smoke plans, and load-test plans. A generated
+  diagnostics release gate proves artifact presence, schema self-tests,
+  redaction, remediation planning, support bundle shape, API smoke coverage,
+  and load-test planning before debugging readiness is claimed.
 - `tests/test_generated_coverage.py` with a generated per-table pytest coverage
   matrix for schema, API, UI, reports, security, and data exchange/backup
   flows, plus view-experience, accessibility, diagnostics, release-gate, and
