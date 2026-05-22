@@ -356,6 +356,10 @@ speech interfaces. The gate proves Alexa, Google Assistant, and Web Speech
 exports are present, utterances match generated intents, required slots block
 incomplete requests, ready responses render valid SSML, and platform model
 exports contain generated commands.
+Use `/voice/workbench.json` or `voice_workbench()` while designing speech
+interfaces in the IDE. The workbench returns provider catalogs, utterance
+matching checks, slot-filling plans, SSML previews, platform model exports,
+artifact readiness, and route evidence for the generated voice surface.
 
 Use `/text-quality/release-gate.json` or `text_quality_release_gate()` before
 shipping generated long-form inputs. The gate proves textarea quality catalogs,

@@ -1078,6 +1078,7 @@ def test_generate_app_from_sqlite_schema_compiles(tmp_path) -> None:
     assert capabilities_by_key["devops.studio"]["status"] == "implemented"
     assert capabilities_by_key["components.erp-templates"]["status"] == "implemented"
     assert capabilities_by_key["ai.agentic-systems"]["status"] == "implemented"
+    assert capabilities_by_key["ai.voice-assistant"]["status"] == "implemented"
     assert "platform.jhipster" in {item["key"] for item in manifest["capabilities"]}
     assert "platform.competitive-benchmark" in {item["key"] for item in manifest["capabilities"]}
     assert "platform.jhipster-superiority" in {item["key"] for item in manifest["capabilities"]}
@@ -2494,6 +2495,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert "Intelligence JSON" in (output_dir / "templates" / "appgen_intelligence.html").read_text()
     assert "Guided Chatbot" in (output_dir / "templates" / "appgen_chatbot.html").read_text()
     assert "Voice JSON" in (output_dir / "templates" / "appgen_voice.html").read_text()
+    assert "Workbench JSON" in (output_dir / "templates" / "appgen_voice.html").read_text()
     text_quality_template = (output_dir / "templates" / "appgen_text_quality.html").read_text()
     assert "Generated spell, grammar, and character-count contracts" in text_quality_template
     assert "Release Gate JSON" in text_quality_template
@@ -4855,6 +4857,23 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "platform_models",
     } <= {check["gate"] for check in voice_gate["checks"]}
     assert voice.voice_release_gate({"app/voice.py"})["ok"] is False
+    voice_workbench = voice.voice_workbench({"app/voice.py", "app/templates/appgen_voice.html"})
+    assert voice_workbench["format"] == "appgen.voice-workbench.v1"
+    assert voice_workbench["ok"] is True
+    assert voice_workbench["decision"] == "approved"
+    assert {
+        "provider_exports",
+        "utterance_matching",
+        "slot_filling",
+        "ssml_response",
+        "platform_models",
+        "artifact_evidence",
+        "route_surface",
+    } == {check["id"] for check in voice_workbench["checks"]}
+    assert "/voice/workbench.json" in next(
+        check["evidence"]["routes"] for check in voice_workbench["checks"] if check["id"] == "route_surface"
+    )
+    assert voice.voice_workbench({"app/voice.py"})["ok"] is False
     assert i18n.translate("Book", locale="en") == "Book"
     assert i18n.translate("Book", locale="es") == "Book"
     assert i18n.negotiate_locale("fr-CA,fr;q=0.9,en;q=0.8") == "fr"

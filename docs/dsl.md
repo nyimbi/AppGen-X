@@ -531,7 +531,10 @@ apps include:
   Assistant, and Web Speech export contracts. The generated
   `voice_release_gate()` proves provider exports, utterance matching,
   slot-filling readiness, SSML responses, platform model exports, and required
-  voice cockpit artifacts.
+  voice cockpit artifacts. The generated `voice_workbench()` gives the IDE a
+  route-backed speech design surface for provider export checks, utterance
+  matching, required slot prompts, SSML preview, platform model exports, and
+  artifact readiness.
 - `agents.py` and `appgen_agents.html` with generated agent plans, local and
   API-key LLM provider readiness checks, provider connection matrices, agent
   tool policies, execution matrices, and agentic release gates. The generated

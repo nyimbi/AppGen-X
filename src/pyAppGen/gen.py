@@ -4799,6 +4799,7 @@ def write_voice_template(output_dir):
     </div>
     <div>
       <a class="btn btn-default" href="{{ url_for('VoiceAssistantView.catalog_json') }}">Voice JSON</a>
+      <a class="btn btn-default" href="{{ url_for('VoiceAssistantView.workbench_json') }}">Workbench JSON</a>
       <a class="btn btn-default" href="{{ url_for('VoiceAssistantView.release_gate_json') }}">Release Gate JSON</a>
     </div>
   </div>
@@ -21816,6 +21817,74 @@ def voice_release_gate(existing_paths=()):
     }}
 
 
+def voice_workbench(existing_paths=()):
+    """Return an IDE-ready speech design and platform export workbench."""
+    providers = voice_provider_catalog()
+    intents = voice_intent_catalog()
+    first_intent = intents[0]["intent"] if intents else None
+    phrases = utterance_training_phrases(first_intent) if first_intent else ()
+    slots = slot_schema(first_intent) if first_intent else ()
+    required_values = {{
+        slot["name"]: f"sample {{slot['name']}}"
+        for slot in slots
+        if slot["required"]
+    }}
+    empty_plan = slot_fill_plan(first_intent, {{}}) if first_intent else {{}}
+    ready_plan = slot_fill_plan(first_intent, required_values) if first_intent else {{}}
+    response = voice_response(first_intent, required_values) if first_intent else {{}}
+    alexa = alexa_interaction_model()
+    google = google_actions_model()
+    release = voice_release_gate(existing_paths)
+    routes = ("/voice/catalog.json", "/voice/workbench.json", "/voice/release-gate.json")
+    checks = (
+        {{
+            "id": "provider_exports",
+            "ok": {{"alexa", "google_assistant", "web_speech"}} <= {{provider["provider"] for provider in providers}},
+            "evidence": {{"providers": providers}},
+        }},
+        {{
+            "id": "utterance_matching",
+            "ok": bool(phrases) and all(match_utterance(phrase)["matched"] for phrase in phrases),
+            "evidence": {{"intent": first_intent, "phrases": phrases}},
+        }},
+        {{
+            "id": "slot_filling",
+            "ok": bool(slots) and tuple(empty_plan.get("missing_required_slots", ())) == tuple(slot["name"] for slot in slots if slot["required"]) and ready_plan.get("ready") is True,
+            "evidence": {{"empty": empty_plan, "ready": ready_plan}},
+        }},
+        {{
+            "id": "ssml_response",
+            "ok": response.get("ssml", "").startswith("<speak>") and response.get("ready") is True,
+            "evidence": response,
+        }},
+        {{
+            "id": "platform_models",
+            "ok": bool(alexa.get("interactionModel", {{}}).get("languageModel", {{}}).get("intents")) and bool(google.get("actions")),
+            "evidence": {{"alexa": alexa, "google": google}},
+        }},
+        {{
+            "id": "artifact_evidence",
+            "ok": release["ok"],
+            "evidence": {{"blocking_gates": tuple(check["gate"] for check in release["checks"] if not check["ok"])}},
+        }},
+        {{
+            "id": "route_surface",
+            "ok": all(route.startswith("/voice/") for route in routes),
+            "evidence": {{"routes": routes}},
+        }},
+    )
+    ok = all(check["ok"] for check in checks)
+    return {{
+        "format": "appgen.voice-workbench.v1",
+        "ok": ok,
+        "decision": "approved" if ok else "blocked",
+        "providers": providers,
+        "intents": intents,
+        "release_gate": release,
+        "checks": checks,
+    }}
+
+
 class VoiceAssistantView(BaseView):
     route_base = "/voice"
     default_view = "index"
@@ -21831,6 +21900,10 @@ class VoiceAssistantView(BaseView):
     @expose("/catalog.json")
     def catalog_json(self):
         return jsonify({{"providers": list(voice_provider_catalog()), "intents": list(voice_intent_catalog())}})
+
+    @expose("/workbench.json")
+    def workbench_json(self):
+        return jsonify(voice_workbench({{"app/voice.py", "app/templates/appgen_voice.html"}}))
 
     @expose("/release-gate.json")
     def release_gate_json(self):
@@ -41194,13 +41267,14 @@ def validate_voice_artifacts() -> None:
         "google_actions_model",
         "voice_check",
         "voice_release_gate",
+        "voice_workbench",
     )
     if not all(item in contract for item in required):
         fail("voice assistant contract must expose speech prompts, slots, SSML, and provider exports")
-    if "appgen.voice-release-gate.v1" not in contract or '@expose("/release-gate.json")' not in contract:
+    if "appgen.voice-release-gate.v1" not in contract or "appgen.voice-workbench.v1" not in contract or '@expose("/workbench.json")' not in contract or '@expose("/release-gate.json")' not in contract:
         fail("voice assistant contract must expose release readiness checks and route")
     template = (ROOT / "app" / "templates" / "appgen_voice.html").read_text()
-    if "Voice Assistant" not in template or "Voice JSON" not in template or "Release Gate JSON" not in template:
+    if "Voice Assistant" not in template or "Voice JSON" not in template or "Workbench JSON" not in template or "Release Gate JSON" not in template:
         fail("voice assistant cockpit must expose generated voice catalog and release readiness")
 
 
@@ -42825,6 +42899,17 @@ def test_generated_runtime_helpers():
     assert voice.voice_release_gate({"app/voice.py", "app/templates/appgen_voice.html"})["format"] == "appgen.voice-release-gate.v1"
     assert voice.voice_release_gate({"app/voice.py", "app/templates/appgen_voice.html"})["ok"] is True
     assert voice.voice_release_gate({"app/voice.py"})["ok"] is False
+    voice_workbench = voice.voice_workbench({"app/voice.py", "app/templates/appgen_voice.html"})
+    assert voice_workbench["format"] == "appgen.voice-workbench.v1"
+    assert voice_workbench["ok"] is True
+    assert voice_workbench["decision"] == "approved"
+    assert {"provider_exports", "utterance_matching", "slot_filling", "ssml_response", "platform_models", "artifact_evidence", "route_surface"} == {
+        check["id"] for check in voice_workbench["checks"]
+    }
+    assert "/voice/workbench.json" in next(
+        check["evidence"]["routes"] for check in voice_workbench["checks"] if check["id"] == "route_surface"
+    )
+    assert voice.voice_workbench({"app/voice.py"})["ok"] is False
     assert i18n.translate("Book", locale="en") == "Book"
     assert i18n.negotiate_locale("fr-CA,fr;q=0.9,en;q=0.8") == "fr"
     assert i18n.missing_translation_report(("en", "es"))["format"] == "appgen.i18n-missing.v1"
