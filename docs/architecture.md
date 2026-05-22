@@ -220,9 +220,9 @@ Visual design is split into two related capabilities:
   profile catalogs, parameterized query design, server method and client proxy
   generation, secured resource metadata, embedded local database contracts,
   offline sync policies, conflict handling, and side-effect guards.
-- `mobile_native_api_workbench()` validates device API coverage through
-  permission manifests, design-time component adapters, simulator profiles, and
-  runtime permission guardrails.
+- `mobile_native_api_workbench()` validates full listed-device-API coverage:
+  permission manifests, design-time/runtime component adapters, simulator
+  fixtures, platform targets, and runtime permission guardrails.
 - `cross_target_visual_depth_workbench()` validates style resources, animation
   state graphs, effect pipelines, 3D scene designer tools, import metadata, and
   runtime fallbacks.

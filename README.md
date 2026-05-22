@@ -320,8 +320,9 @@ Generated apps include Studio contracts for:
 - A native data tooling workbench proves connection catalogs, query designer
   metadata, server method/client proxy generation, secured resource tooling,
   embedded local database support, offline sync policies, and conflict guards.
-- A mobile/native API workbench proves device API breadth, permission manifests,
-  design-time component adapters, simulator profiles, and side-effect guards.
+- A mobile/native API workbench proves every listed device API has permission
+  metadata, a design-time/runtime component adapter, simulator fixtures,
+  platform targets, and side-effect guards.
 - A cross-target visual depth workbench proves style resources, animation state
   graphs, effect pipelines, 3D scene designer tools, and runtime fallbacks.
 - Curated third-party component registry for useful commercial and open-source

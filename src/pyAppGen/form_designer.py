@@ -323,6 +323,72 @@ COMPONENTS = {
         "default_size": {"w": 3, "h": 1},
         "properties": ("channels", "permission", "deep_link", "badge", "sound"),
     },
+    "PhotoPicker": {
+        "category": "mobile",
+        "field_types": ("image", "file"),
+        "default_size": {"w": 4, "h": 3},
+        "properties": ("permission", "albums", "selection_limit", "preview", "fallback"),
+    },
+    "BiometricAuth": {
+        "category": "mobile",
+        "field_types": ("boolean",),
+        "default_size": {"w": 3, "h": 1},
+        "properties": ("permission", "reason", "fallback", "timeout", "retry"),
+    },
+    "ContactsPicker": {
+        "category": "mobile",
+        "field_types": ("string", "json"),
+        "default_size": {"w": 4, "h": 3},
+        "properties": ("permission", "fields", "filter", "selection_limit", "fallback"),
+    },
+    "CalendarEvents": {
+        "category": "mobile",
+        "field_types": ("datetime", "json"),
+        "default_size": {"w": 4, "h": 3},
+        "properties": ("permission", "calendars", "date_range", "write_access", "fallback"),
+    },
+    "SecureStore": {
+        "category": "mobile",
+        "field_types": ("string", "json"),
+        "default_size": {"w": 3, "h": 1},
+        "properties": ("permission", "key_namespace", "encryption", "biometric_gate", "fallback"),
+    },
+    "PushClient": {
+        "category": "mobile",
+        "field_types": ("json",),
+        "default_size": {"w": 3, "h": 1},
+        "properties": ("permission", "channels", "token_field", "deep_link", "fallback"),
+    },
+    "BluetoothClient": {
+        "category": "mobile",
+        "field_types": ("json",),
+        "default_size": {"w": 4, "h": 2},
+        "properties": ("permission", "scan_filters", "services", "pairing", "fallback"),
+    },
+    "NfcReader": {
+        "category": "mobile",
+        "field_types": ("string", "json"),
+        "default_size": {"w": 3, "h": 1},
+        "properties": ("permission", "formats", "read_timeout", "write_enabled", "fallback"),
+    },
+    "FilePicker": {
+        "category": "mobile",
+        "field_types": ("file", "string"),
+        "default_size": {"w": 4, "h": 2},
+        "properties": ("permission", "accept", "multiple", "max_size_mb", "fallback"),
+    },
+    "ShareSheet": {
+        "category": "mobile",
+        "field_types": ("string", "file", "url"),
+        "default_size": {"w": 3, "h": 1},
+        "properties": ("permission", "payload", "targets", "subject", "fallback"),
+    },
+    "BackgroundTask": {
+        "category": "mobile",
+        "field_types": (),
+        "default_size": {"w": 3, "h": 1},
+        "properties": ("permission", "task", "interval", "network_required", "fallback"),
+    },
     "Animation": {
         "category": "effects",
         "field_types": (),
@@ -2286,10 +2352,17 @@ def mobile_permission_manifest_contract() -> dict:
             {"api": "camera", "android": ("CAMERA",), "ios": ("NSCameraUsageDescription",), "prompt": "Capture images"},
             {"api": "photos", "android": ("READ_MEDIA_IMAGES",), "ios": ("NSPhotoLibraryUsageDescription",), "prompt": "Select photos"},
             {"api": "location", "android": ("ACCESS_FINE_LOCATION",), "ios": ("NSLocationWhenInUseUsageDescription",), "prompt": "Use location"},
+            {"api": "sensors", "android": ("BODY_SENSORS",), "ios": ("NSMotionUsageDescription",), "prompt": "Read device motion"},
+            {"api": "biometrics", "android": ("USE_BIOMETRIC",), "ios": ("NSFaceIDUsageDescription",), "prompt": "Verify identity"},
             {"api": "push_notifications", "android": ("POST_NOTIFICATIONS",), "ios": ("aps-environment",), "prompt": "Receive notifications"},
+            {"api": "contacts", "android": ("READ_CONTACTS",), "ios": ("NSContactsUsageDescription",), "prompt": "Select contacts"},
+            {"api": "calendar", "android": ("READ_CALENDAR", "WRITE_CALENDAR"), "ios": ("NSCalendarsUsageDescription",), "prompt": "Read calendar events"},
+            {"api": "secure_storage", "android": ("USE_BIOMETRIC",), "ios": ("NSFaceIDUsageDescription",), "prompt": "Protect stored secrets"},
             {"api": "bluetooth", "android": ("BLUETOOTH_SCAN", "BLUETOOTH_CONNECT"), "ios": ("NSBluetoothAlwaysUsageDescription",), "prompt": "Connect devices"},
             {"api": "nfc", "android": ("NFC",), "ios": ("com.apple.developer.nfc.readersession.formats",), "prompt": "Scan tags"},
-            {"api": "biometrics", "android": ("USE_BIOMETRIC",), "ios": ("NSFaceIDUsageDescription",), "prompt": "Verify identity"},
+            {"api": "file_picker", "android": ("READ_MEDIA_IMAGES", "READ_MEDIA_VIDEO"), "ios": ("UIDocumentPickerModeImport",), "prompt": "Select files"},
+            {"api": "share_sheet", "android": ("ACTION_SEND",), "ios": ("UIActivityViewController",), "prompt": "Share content"},
+            {"api": "background_tasks", "android": ("FOREGROUND_SERVICE",), "ios": ("BGTaskSchedulerPermittedIdentifiers",), "prompt": "Run background work"},
         ),
         "guards": ("least_privilege", "reviewable_prompts", "store_privacy_labels"),
     }
@@ -2300,15 +2373,22 @@ def mobile_component_adapter_contract() -> dict:
     return {
         "format": "appgen.mobile-component-adapter-contract.v1",
         "adapters": (
-            {"component": "CameraView", "api": "camera", "events": ("on_capture", "on_error"), "preview": "mock_camera_frame"},
-            {"component": "LocationSensor", "api": "location", "events": ("on_location", "on_permission_denied"), "preview": "mock_coordinates"},
-            {"component": "MotionSensor", "api": "sensors", "events": ("on_motion", "on_shake"), "preview": "motion_trace"},
-            {"component": "SecureStore", "api": "secure_storage", "events": ("on_read", "on_write"), "preview": "redacted_key_list"},
-            {"component": "PushClient", "api": "push_notifications", "events": ("on_message", "on_token"), "preview": "notification_payload"},
-            {"component": "BluetoothClient", "api": "bluetooth", "events": ("on_scan", "on_connect"), "preview": "mock_device_list"},
-            {"component": "NfcReader", "api": "nfc", "events": ("on_tag", "on_error"), "preview": "tag_payload"},
+            {"component": "CameraView", "api": "camera", "events": ("on_capture", "on_error"), "preview": "mock_camera_frame", "targets": ("android", "ios", "desktop", "web-pwa")},
+            {"component": "PhotoPicker", "api": "photos", "events": ("on_select", "on_error"), "preview": "mock_photo_library", "targets": ("android", "ios", "desktop", "web-pwa")},
+            {"component": "LocationSensor", "api": "location", "events": ("on_location", "on_permission_denied"), "preview": "mock_coordinates", "targets": ("android", "ios", "desktop", "web-pwa")},
+            {"component": "MotionSensor", "api": "sensors", "events": ("on_motion", "on_shake"), "preview": "motion_trace", "targets": ("android", "ios", "desktop", "web-pwa")},
+            {"component": "BiometricAuth", "api": "biometrics", "events": ("on_success", "on_failure"), "preview": "mock_biometric_prompt", "targets": ("android", "ios", "desktop")},
+            {"component": "PushClient", "api": "push_notifications", "events": ("on_message", "on_token"), "preview": "notification_payload", "targets": ("android", "ios", "web-pwa")},
+            {"component": "ContactsPicker", "api": "contacts", "events": ("on_select", "on_permission_denied"), "preview": "mock_contact_list", "targets": ("android", "ios", "desktop")},
+            {"component": "CalendarEvents", "api": "calendar", "events": ("on_read", "on_write", "on_error"), "preview": "mock_calendar_events", "targets": ("android", "ios", "desktop")},
+            {"component": "SecureStore", "api": "secure_storage", "events": ("on_read", "on_write"), "preview": "redacted_key_list", "targets": ("android", "ios", "desktop", "web-pwa")},
+            {"component": "BluetoothClient", "api": "bluetooth", "events": ("on_scan", "on_connect"), "preview": "mock_device_list", "targets": ("android", "ios", "desktop")},
+            {"component": "NfcReader", "api": "nfc", "events": ("on_tag", "on_error"), "preview": "tag_payload", "targets": ("android", "ios")},
+            {"component": "FilePicker", "api": "file_picker", "events": ("on_select", "on_cancel", "on_error"), "preview": "mock_file_list", "targets": ("android", "ios", "desktop", "web-pwa")},
+            {"component": "ShareSheet", "api": "share_sheet", "events": ("on_share", "on_cancel", "on_error"), "preview": "mock_share_targets", "targets": ("android", "ios", "desktop", "web-pwa")},
+            {"component": "BackgroundTask", "api": "background_tasks", "events": ("on_run", "on_timeout", "on_error"), "preview": "mock_background_schedule", "targets": ("android", "ios", "desktop", "web-pwa")},
         ),
-        "test_harnesses": ("permission_denied", "offline_device", "background_resume", "mock_sensor_stream"),
+        "test_harnesses": ("permission_denied", "offline_device", "background_resume", "mock_sensor_stream", "privacy_prompt_review", "platform_fallback"),
     }
 
 
@@ -2318,7 +2398,22 @@ def mobile_device_simulator_contract() -> dict:
         "format": "appgen.mobile-device-simulator-contract.v1",
         "profiles": ("phone_portrait", "phone_landscape", "tablet", "desktop_touch", "offline_pwa"),
         "scenario_controls": ("permissions", "battery", "network", "orientation", "sensor_stream", "background_resume"),
-        "fixtures": ("camera_frame", "gps_route", "motion_trace", "push_message", "bluetooth_scan", "nfc_tag"),
+        "fixtures": (
+            {"api": "camera", "fixture": "camera_frame"},
+            {"api": "photos", "fixture": "photo_library"},
+            {"api": "location", "fixture": "gps_route"},
+            {"api": "sensors", "fixture": "motion_trace"},
+            {"api": "biometrics", "fixture": "biometric_result"},
+            {"api": "push_notifications", "fixture": "push_message"},
+            {"api": "contacts", "fixture": "contact_list"},
+            {"api": "calendar", "fixture": "calendar_events"},
+            {"api": "secure_storage", "fixture": "secure_key_store"},
+            {"api": "bluetooth", "fixture": "bluetooth_scan"},
+            {"api": "nfc", "fixture": "nfc_tag"},
+            {"api": "file_picker", "fixture": "file_selection"},
+            {"api": "share_sheet", "fixture": "share_targets"},
+            {"api": "background_tasks", "fixture": "background_resume"},
+        ),
         "side_effects": (),
     }
 
@@ -2329,22 +2424,38 @@ def mobile_native_api_workbench() -> dict:
     api_set = set(contract["apis"])
     adapter_apis = {adapter["api"] for adapter in contract["component_adapters"]["adapters"]}
     permission_apis = {permission["api"] for permission in contract["permission_manifest"]["permissions"]}
+    fixture_apis = {fixture["api"] for fixture in contract["simulator"]["fixtures"]}
     checks = (
         {
             "id": "api_breadth",
-            "ok": {"camera", "photos", "location", "sensors", "biometrics", "push_notifications", "secure_storage", "bluetooth", "nfc"} <= api_set,
+            "ok": {
+                "camera",
+                "photos",
+                "location",
+                "sensors",
+                "biometrics",
+                "push_notifications",
+                "contacts",
+                "calendar",
+                "secure_storage",
+                "bluetooth",
+                "nfc",
+                "file_picker",
+                "share_sheet",
+                "background_tasks",
+            }
+            <= api_set,
             "evidence": contract["apis"],
         },
         {
             "id": "permission_manifest",
-            "ok": {"camera", "location", "push_notifications", "bluetooth", "nfc", "biometrics"} <= permission_apis
-            and "least_privilege" in contract["permission_manifest"]["guards"],
+            "ok": api_set <= permission_apis and "least_privilege" in contract["permission_manifest"]["guards"],
             "evidence": contract["permission_manifest"],
         },
         {
             "id": "component_adapters",
-            "ok": {"camera", "location", "sensors", "secure_storage", "push_notifications", "bluetooth", "nfc"} <= adapter_apis
-            and all(adapter["events"] for adapter in contract["component_adapters"]["adapters"]),
+            "ok": api_set <= adapter_apis
+            and all(adapter["events"] and {"android", "ios"} & set(adapter["targets"]) for adapter in contract["component_adapters"]["adapters"]),
             "evidence": contract["component_adapters"],
         },
         {
@@ -2352,6 +2463,11 @@ def mobile_native_api_workbench() -> dict:
             "ok": {"phone_portrait", "tablet", "desktop_touch"} <= set(contract["simulator"]["profiles"])
             and {"permissions", "orientation", "sensor_stream"} <= set(contract["simulator"]["scenario_controls"]),
             "evidence": contract["simulator"],
+        },
+        {
+            "id": "simulator_fixture_coverage",
+            "ok": api_set <= fixture_apis,
+            "evidence": contract["simulator"]["fixtures"],
         },
         {
             "id": "side_effect_guards",
@@ -3146,13 +3262,11 @@ def form_designer_generation_smoke_audit(source: str = FORM_DESIGNER_SAMPLE_DSL)
         generated_form_designer = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(generated_form_designer)
         existing_paths = {
-            "app/form_designer.py",
-            "app/templates/appgen_form_designer.html",
-            "app/component_contracts/text_box.py",
-            "app/component_contracts/grid.py",
-            "app/component_contracts/viewport3_d.py",
-            "app/component_packages/devexpress_native.py",
+            str(path.relative_to(project_dir))
+            for path in output_dir.rglob("*.py")
+            if "__pycache__" not in path.parts
         }
+        existing_paths.add("app/templates/appgen_form_designer.html")
         palette = generated_form_designer.component_palette()
         forms = generated_form_designer.form_catalog()
         first_table = forms[0]["table"] if forms else None

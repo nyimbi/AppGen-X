@@ -869,8 +869,13 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "permission_manifest",
         "component_adapters",
         "simulator_profiles",
+        "simulator_fixture_coverage",
         "side_effect_guards",
     } == {check["id"] for check in mobile_workbench["checks"]}
+    mobile_apis = set(mobile_workbench["contract"]["apis"])
+    assert mobile_apis == {permission["api"] for permission in mobile_workbench["contract"]["permission_manifest"]["permissions"]}
+    assert mobile_apis == {adapter["api"] for adapter in mobile_workbench["contract"]["component_adapters"]["adapters"]}
+    assert mobile_apis == {fixture["api"] for fixture in mobile_workbench["contract"]["simulator"]["fixtures"]}
     visual_depth = cross_target_visual_depth_workbench()
     assert visual_depth["format"] == "appgen.cross-target-visual-depth-workbench.v1"
     assert visual_depth["ok"] is True
@@ -8744,9 +8749,21 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert "Data Bindings JSON" in (output_dir / "templates" / "appgen_form_designer.html").read_text()
     assert "Data Tooling JSON" in (output_dir / "templates" / "appgen_form_designer.html").read_text()
     assert "Pascal Runtime JSON" in (output_dir / "templates" / "appgen_form_designer.html").read_text()
-    workbench = form_designer.form_designer_workbench(
-        {"app/form_designer.py", "app/templates/appgen_form_designer.html"}
+    generated_form_designer_paths = {
+        "app/form_designer.py",
+        "app/templates/appgen_form_designer.html",
+    }
+    generated_form_designer_paths.update(
+        f"app/component_contracts/{path.name}"
+        for path in (output_dir / "component_contracts").glob("*.py")
+        if path.name != "__init__.py"
     )
+    generated_form_designer_paths.update(
+        f"app/component_packages/{path.name}"
+        for path in (output_dir / "component_packages").glob("*.py")
+        if path.name != "__init__.py"
+    )
+    workbench = form_designer.form_designer_workbench(generated_form_designer_paths)
     assert workbench["format"] == "appgen.form-designer-workbench.v1"
     assert workbench["ok"] is True
     assert workbench["decision"] == "approved"
@@ -8838,8 +8855,15 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     generated_mobile = form_designer.mobile_native_api_workbench()
     assert generated_mobile["format"] == "appgen.generated-mobile-native-api-workbench.v1"
     assert generated_mobile["ok"] is True
-    assert {"api_breadth", "permission_manifest", "component_adapters"} <= {
+    assert {"api_breadth", "permission_manifest", "component_adapters", "simulator_fixture_coverage"} <= {
         check["id"] for check in generated_mobile["checks"]
+    }
+    generated_mobile_apis = set(generated_mobile["contract"]["apis"])
+    assert generated_mobile_apis == {
+        permission["api"] for permission in generated_mobile["contract"]["permission_manifest"]["permissions"]
+    }
+    assert generated_mobile_apis == {
+        adapter["api"] for adapter in generated_mobile["contract"]["component_adapters"]["adapters"]
     }
     generated_visual_depth = form_designer.cross_target_visual_depth_workbench()
     assert generated_visual_depth["format"] == "appgen.generated-cross-target-visual-depth-workbench.v1"

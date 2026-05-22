@@ -71,8 +71,9 @@ A generated app can include:
   metadata, server method and client proxy tooling, secured resource tooling,
   embedded local database support, offline sync policies, conflict handling, and
   side-effect guards.
-- `mobile_native_api_workbench()` proves device API breadth, generated
-  permission manifests, component adapters, simulator profiles, and permission
+- `mobile_native_api_workbench()` proves device API breadth with full coverage:
+  every listed API has generated permission metadata, a design-time/runtime
+  component adapter, simulator fixtures, platform targets, and permission
   guardrails.
 - `cross_target_visual_depth_workbench()` proves style resources, animation
   state graphs, effect pipelines, 3D scene designer tools, and runtime
