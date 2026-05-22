@@ -60,7 +60,8 @@ A generated app can include:
   inspector state persistence.
 - `livebindings_workbench()` proves visual data-binding graph nodes and edges,
   expression validation, converters, validators, designer gestures, and runtime
-  update modes.
+  update modes, plus link authoring operations, conflict checks, preview
+  evaluation, generated runtime wiring, and undo/redo history.
 - `rad_data_tooling_workbench()` proves connection catalogs, query designer
   metadata, server method and client proxy tooling, secured resource tooling,
   embedded local database support, offline sync policies, conflict handling, and

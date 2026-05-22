@@ -832,6 +832,11 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "converter_validator_catalogs",
         "designer_surface",
         "runtime_modes",
+        "authoring_operations",
+        "conflict_validation",
+        "preview_evaluation",
+        "runtime_wiring",
+        "history_undo_redo",
     } == {check["id"] for check in binding_workbench["checks"]}
     data_workbench = rad_data_tooling_workbench()
     assert data_workbench["format"] == "appgen.rad-data-tooling-workbench.v1"
@@ -8774,9 +8779,11 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     generated_bindings = form_designer.livebindings_workbench()
     assert generated_bindings["format"] == "appgen.generated-livebindings-workbench.v1"
     assert generated_bindings["ok"] is True
-    assert {"graph_nodes", "graph_edges", "expression_validation"} <= {
+    assert {"graph_nodes", "graph_edges", "expression_validation", "authoring_operations", "runtime_wiring"} <= {
         check["id"] for check in generated_bindings["checks"]
     }
+    assert generated_bindings["authoring"]["operations"]
+    assert generated_bindings["runtime_wiring"]["artifacts"]
     generated_data_tooling = form_designer.rad_data_tooling_workbench()
     assert generated_data_tooling["format"] == "appgen.generated-rad-data-tooling-workbench.v1"
     assert generated_data_tooling["ok"] is True

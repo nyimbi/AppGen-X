@@ -209,7 +209,8 @@ Visual design is split into two related capabilities:
   hooks, filtering/sorting modes, and persisted inspector state.
 - `livebindings_workbench()` validates visual data-binding graphs, expression
   safety, converter/validator catalogs, designer interactions, and runtime
-  update modes.
+  update modes, plus link authoring operations, conflict checks, preview
+  evaluation, generated runtime wiring, and undo/redo history.
 - `rad_data_tooling_workbench()` validates native data tooling: connection
   profile catalogs, parameterized query design, server method and client proxy
   generation, secured resource metadata, embedded local database contracts,

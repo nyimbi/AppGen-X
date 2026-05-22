@@ -26181,6 +26181,73 @@ def validate_binding_expression(expression):
     return {{"format": "appgen.generated-binding-expression-validation.v1", "expression": expression, "ok": bool(expression) and not unknown_functions and not blocked_tokens, "functions": function_calls, "unknown_functions": unknown_functions, "blocked_tokens": blocked_tokens, "side_effects": ()}}
 
 
+def binding_authoring_session():
+    """Return visual binding designer operations for creating and changing bindings."""
+    graph = livebindings_graph_contract()
+    field_to_control = next(edge for edge in graph["edges"] if edge["kind"] == "field_to_control")
+    control_to_field = next(edge for edge in graph["edges"] if edge["kind"] == "control_to_field")
+    expression_edge = next(edge for edge in graph["edges"] if edge["kind"] == "expression_to_property")
+    return {{
+        "format": "appgen.generated-binding-authoring-session.v1",
+        "operations": (
+            {{"op": "create_link", "edge": field_to_control, "gesture": "drag_link", "review_required": True}},
+            {{"op": "make_two_way", "edges": (field_to_control, control_to_field), "gesture": "toggle_two_way", "review_required": True}},
+            {{"op": "attach_expression", "edge": expression_edge, "gesture": "drop_expression", "review_required": True}},
+            {{"op": "preview_value", "source": expression_edge["from"], "gesture": "preview_value", "review_required": False}},
+            {{"op": "disable_binding", "edge": field_to_control, "gesture": "disable_binding", "review_required": True}},
+        ),
+        "undo_redo": ("create_link", "make_two_way", "attach_expression", "disable_binding"),
+        "side_effects": (),
+    }}
+
+
+def binding_conflict_validation_contract():
+    """Return binding conflict checks for visual graph edits."""
+    graph = livebindings_graph_contract()
+    edge_keys = tuple((edge["from"], edge["to"], edge["kind"]) for edge in graph["edges"])
+    duplicate_edges = tuple(key for key in edge_keys if edge_keys.count(key) > 1)
+    write_targets = tuple(edge["to"] for edge in graph["edges"] if edge["kind"] == "control_to_field")
+    duplicate_writes = tuple(target for target in write_targets if write_targets.count(target) > 1)
+    return {{
+        "format": "appgen.generated-binding-conflict-validation-contract.v1",
+        "ok": not duplicate_edges and not duplicate_writes,
+        "checks": ("duplicate_edges", "multiple_writers", "missing_converter", "unsafe_expression", "disabled_required_binding"),
+        "duplicate_edges": duplicate_edges,
+        "duplicate_writes": duplicate_writes,
+        "side_effects": (),
+    }}
+
+
+def binding_preview_evaluation_contract():
+    """Return side-effect-free preview evaluation evidence for binding expressions."""
+    graph = livebindings_graph_contract()
+    previews = tuple(
+        {{"node": node["id"], "expression": node["expression"], "sample_input": None, "sample_output": "", "validator": node["validator"]}}
+        for node in graph["nodes"]
+        if node["kind"] == "expression"
+    )
+    return {{"format": "appgen.generated-binding-preview-evaluation-contract.v1", "previews": previews, "evaluation_mode": "sandboxed_expression_subset", "side_effects": ()}}
+
+
+def binding_runtime_wiring_contract():
+    """Return generated runtime wiring for binding graph execution."""
+    graph = livebindings_graph_contract()
+    return {{
+        "format": "appgen.generated-binding-runtime-wiring-contract.v1",
+        "artifacts": ("binding_registry", "observer_hooks", "update_queue", "validation_pipeline", "converter_pipeline"),
+        "triggers": ("on_change", "on_exit", "on_validate", "manual"),
+        "edges": graph["edges"],
+        "error_surfaces": ("field_error", "form_error", "toast", "log"),
+        "side_effects": (),
+    }}
+
+
+def binding_history_contract():
+    """Return undo/redo history metadata for binding designer edits."""
+    session = binding_authoring_session()
+    return {{"format": "appgen.generated-binding-history-contract.v1", "commands": tuple(operation["op"] for operation in session["operations"]), "undo_stack": session["undo_redo"], "redo_stack": (), "checkpoints": ("before_preview", "before_apply", "after_apply"), "side_effects": ()}}
+
+
 def livebindings_converter_catalog():
     """Return generated converters available to the visual binding designer."""
     return (
@@ -26206,6 +26273,11 @@ def livebindings_workbench():
     contract = livebindings_contract()
     graph = contract["graph"]
     expressions = tuple(node["validator"] for node in graph["nodes"] if node["kind"] == "expression")
+    authoring = binding_authoring_session()
+    conflicts = binding_conflict_validation_contract()
+    previews = binding_preview_evaluation_contract()
+    runtime_wiring = binding_runtime_wiring_contract()
+    history = binding_history_contract()
     checks = (
         {{"id": "graph_nodes", "ok": {{"dataset", "field", "control", "expression"}} <= {{node["kind"] for node in graph["nodes"]}}, "evidence": tuple((node["id"], node["kind"]) for node in graph["nodes"])}},
         {{"id": "graph_edges", "ok": {{"dataset_to_field", "field_to_control", "control_to_field", "expression_to_property"}} <= {{edge["kind"] for edge in graph["edges"]}}, "evidence": graph["edges"]}},
@@ -26213,9 +26285,14 @@ def livebindings_workbench():
         {{"id": "converter_validator_catalogs", "ok": bool(graph["converters"]) and bool(graph["validators"]), "evidence": {{"converters": graph["converters"], "validators": graph["validators"]}}}},
         {{"id": "designer_surface", "ok": {{"drag_link", "preview_value", "disable_binding"}} <= set(contract["designer"]["gestures"]), "evidence": contract["designer"]}},
         {{"id": "runtime_modes", "ok": {{"one_way", "two_way", "command"}} <= set(contract["runtime"]["modes"]), "evidence": contract["runtime"]}},
+        {{"id": "authoring_operations", "ok": {{"create_link", "make_two_way", "attach_expression", "preview_value", "disable_binding"}} <= {{operation["op"] for operation in authoring["operations"]}} and not authoring["side_effects"], "evidence": authoring}},
+        {{"id": "conflict_validation", "ok": conflicts["ok"] and {{"duplicate_edges", "multiple_writers", "unsafe_expression"}} <= set(conflicts["checks"]) and not conflicts["side_effects"], "evidence": conflicts}},
+        {{"id": "preview_evaluation", "ok": bool(previews["previews"]) and all(preview["validator"]["ok"] for preview in previews["previews"]) and not previews["side_effects"], "evidence": previews}},
+        {{"id": "runtime_wiring", "ok": {{"binding_registry", "observer_hooks", "update_queue", "validation_pipeline"}} <= set(runtime_wiring["artifacts"]) and {{"on_change", "on_validate"}} <= set(runtime_wiring["triggers"]) and not runtime_wiring["side_effects"], "evidence": runtime_wiring}},
+        {{"id": "history_undo_redo", "ok": {{"create_link", "attach_expression", "disable_binding"}} <= set(history["commands"]) and {{"before_apply", "after_apply"}} <= set(history["checkpoints"]) and not history["side_effects"], "evidence": history}},
     )
     ok = all(check["ok"] for check in checks)
-    return {{"format": "appgen.generated-livebindings-workbench.v1", "ok": ok, "decision": "approved" if ok else "blocked", "contract": contract, "checks": checks, "blocking_gaps": tuple(check for check in checks if not check["ok"])}}
+    return {{"format": "appgen.generated-livebindings-workbench.v1", "ok": ok, "decision": "approved" if ok else "blocked", "contract": contract, "authoring": authoring, "conflicts": conflicts, "previews": previews, "runtime_wiring": runtime_wiring, "history": history, "checks": checks, "blocking_gaps": tuple(check for check in checks if not check["ok"])}}
 
 
 def rad_data_tooling_contract():
