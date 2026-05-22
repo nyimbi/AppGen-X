@@ -160,6 +160,7 @@ from pyAppGen.visual_modeling import migration_preview as visual_migration_previ
 from pyAppGen.visual_modeling import relationship_proposal as visual_relationship_proposal
 from pyAppGen.visual_modeling import table_proposal as visual_table_proposal
 from pyAppGen.visual_modeling import visual_graph
+from pyAppGen.visual_modeling import visual_modeling_generation_smoke_audit
 from pyAppGen.visual_modeling import visual_model_exports
 from pyAppGen.visual_modeling import visual_modeling_release_audit
 from pyAppGen.visual_modeling import visual_schema
@@ -843,7 +844,19 @@ def test_package_visual_modeling_audit_covers_visual_schema_generation(
         "migration_preview",
         "code_generation_plan",
         "artifact_contract",
+        "generation_smoke",
     } == {gate["id"] for gate in audit["gates"]}
+    assert audit["generation_smoke"]["ok"] is True
+
+    smoke = visual_modeling_generation_smoke_audit()
+    assert smoke["format"] == "appgen.visual-modeling-generation-smoke-audit.v1"
+    assert smoke["ok"] is True
+    assert {
+        "app/designer.py",
+        "app/templates/appgen_designer.html",
+        "app/appgen.json",
+    } <= set(smoke["required_artifacts"])
+    assert "app/designer.py" in set(smoke["compiled_artifacts"])
 
     missing = visual_modeling_release_audit(existing_paths={"app/designer.py"})
     assert missing["ok"] is False

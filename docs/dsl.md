@@ -338,7 +338,11 @@ appgen --visual-modeling-release-audit
 
 The visual-modeling audit proves graph nodes and edges, Mermaid ERD export,
 DBML/SQL/PonyORM/DSL export, reviewable table/field/relationship proposals,
-migration previews, and generated code/database artifact plans.
+migration previews, and generated code/database artifact plans. It also
+generates a temporary app from the visual-model DSL, verifies generated
+designer, template, manifest, model, view, and migration artifacts, compiles the
+generated designer-facing modules, and exercises generated graph, ERD,
+proposal, migration, DSL-regeneration, workbench, and release-gate contracts.
 
 Audit the package-level security and identity contract before claiming
 generated apps are secure:

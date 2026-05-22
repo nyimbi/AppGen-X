@@ -236,6 +236,126 @@ def code_generation_plan(proposal: dict) -> dict:
     }
 
 
+def visual_modeling_generation_smoke_audit(source: str = VISUAL_MODEL_SAMPLE_DSL) -> dict:
+    """Generate a temporary app and exercise its generated visual designer."""
+    import importlib.util
+    import json
+    import py_compile
+    import tempfile
+    from pathlib import Path
+
+    from .gen import generate_app_from_schema
+    from .schema import load_schema
+
+    required_artifacts = (
+        "app/designer.py",
+        "app/templates/appgen_designer.html",
+        "app/appgen.json",
+        "app/models.py",
+        "app/views.py",
+        "migrations/README.md",
+    )
+    compile_artifacts = (
+        "app/designer.py",
+        "app/models.py",
+        "app/views.py",
+    )
+
+    with tempfile.TemporaryDirectory(prefix="appgen-visual-modeling-smoke-") as tmp:
+        project_dir = Path(tmp)
+        dsl_path = project_dir / "visual_model.appgen"
+        dsl_path.write_text(source, encoding="utf-8")
+        schema = load_schema(dsl_path, source_type="dsl")
+        output_dir = project_dir / "app"
+        generate_app_from_schema(schema, output_dir)
+
+        missing_artifacts = tuple(
+            artifact for artifact in required_artifacts if not (project_dir / artifact).exists()
+        )
+        compiled = []
+        compile_failures = []
+        for artifact in compile_artifacts:
+            path = project_dir / artifact
+            if not path.exists():
+                continue
+            try:
+                py_compile.compile(str(path), doraise=True)
+            except py_compile.PyCompileError as exc:
+                compile_failures.append({"artifact": artifact, "error": str(exc)})
+            else:
+                compiled.append(artifact)
+
+        manifest = json.loads((output_dir / "appgen.json").read_text(encoding="utf-8"))
+        module_path = output_dir / "designer.py"
+        spec = importlib.util.spec_from_file_location("generated_visual_designer_smoke", module_path)
+        generated_designer = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(generated_designer)
+
+        existing_paths = {
+            "app/designer.py",
+            "app/templates/appgen_designer.html",
+            "app/appgen.json",
+        }
+        graph = generated_designer.visual_model(manifest)
+        erd = generated_designer.erd_mermaid(manifest)
+        relationship = generated_designer.relationship_proposal(
+            "Book", "publisher_id", "Author"
+        )
+        updated_manifest = generated_designer.apply_proposal(manifest, relationship)
+        migration = generated_designer.migration_preview(manifest, relationship)
+        dsl_preview = generated_designer.proposal_to_dsl(manifest, relationship)
+        workbench = generated_designer.visual_modeling_workbench(manifest)
+        release_gate = generated_designer.visual_modeling_release_gate(
+            manifest, existing_paths
+        )
+
+    checks = (
+        {
+            "id": "generated_artifacts",
+            "ok": not missing_artifacts,
+            "required_artifacts": required_artifacts,
+            "missing": missing_artifacts,
+        },
+        {
+            "id": "generated_python_compiles",
+            "ok": not compile_failures and set(compiled) == set(compile_artifacts),
+            "compiled": tuple(compiled),
+            "failures": tuple(compile_failures),
+        },
+        {
+            "id": "generated_graph_and_erd",
+            "ok": {"Author", "Book"} <= {node["id"] for node in graph["nodes"]}
+            and any(edge["kind"] == "relation" for edge in graph["edges"])
+            and erd.startswith("erDiagram\n")
+            and "Author ||--o{ Book" in erd,
+        },
+        {
+            "id": "proposal_migration_dsl",
+            "ok": migration["format"] == "appgen.migration-preview.v1"
+            and migration["requires_review"]
+            and migration["operations"][0]["op"] == "add_column"
+            and "publisher_id: int -> Author.id" in dsl_preview
+            and any(table["name"] == "Book" for table in updated_manifest["tables"]),
+        },
+        {
+            "id": "generated_release_contracts",
+            "ok": workbench["ok"] and release_gate["ok"],
+            "workbench": workbench["format"],
+            "release_gate": release_gate["format"],
+        },
+    )
+    ok = all(check["ok"] for check in checks)
+    return {
+        "format": "appgen.visual-modeling-generation-smoke-audit.v1",
+        "ok": ok,
+        "decision": "approved" if ok else "blocked",
+        "required_artifacts": required_artifacts,
+        "compiled_artifacts": tuple(compiled),
+        "checks": checks,
+        "blocking_gaps": tuple(check for check in checks if not check["ok"]),
+    }
+
+
 def visual_modeling_release_audit(existing_paths: set[str] | None = None) -> dict:
     """Return package-level proof for visual modeling readiness."""
     existing = (
@@ -250,6 +370,7 @@ def visual_modeling_release_audit(existing_paths: set[str] | None = None) -> dic
     relation = relationship_proposal("Book", "publisher_id", "Publisher")
     migration = migration_preview(relation)
     generation = code_generation_plan(relation)
+    generation_smoke = visual_modeling_generation_smoke_audit()
     gates = (
         {
             "id": "visual_graph",
@@ -284,6 +405,11 @@ def visual_modeling_release_audit(existing_paths: set[str] | None = None) -> dic
             "id": "artifact_contract",
             "ok": {"app/designer.py", "app/templates/appgen_designer.html", "app/appgen.json"} <= existing,
         },
+        {
+            "id": "generation_smoke",
+            "ok": generation_smoke["ok"],
+            "checks": tuple(check["id"] for check in generation_smoke["checks"]),
+        },
     )
     ok = all(gate["ok"] for gate in gates)
     return {
@@ -297,6 +423,7 @@ def visual_modeling_release_audit(existing_paths: set[str] | None = None) -> dic
         "proposals": (table, field, relation),
         "migration": migration,
         "generation": generation,
+        "generation_smoke": generation_smoke,
         "gates": gates,
         "blocking_gaps": tuple(gate for gate in gates if not gate["ok"]),
         "stop_condition": "do-not-claim-visual-modeling-unless-ok-is-true",

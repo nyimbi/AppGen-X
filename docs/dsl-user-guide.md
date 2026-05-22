@@ -168,7 +168,11 @@ palette, catalog, canvas, drop, release-gate, and workbench contracts.
 Run `appgen --visual-modeling-release-audit` to prove package-level visual
 schema graphs, Mermaid ERDs, DBML/SQL/PonyORM/DSL exports, visual
 table/field/relationship proposals, migration previews, and code/database
-generation plans before release.
+generation plans before release. The audit also generates a temporary app from
+the visual-model DSL, verifies generated designer, template, manifest, model,
+view, and migration artifacts, compiles generated designer-facing modules, and
+exercises generated graph, ERD, proposal, migration, DSL-regeneration,
+workbench, and release-gate contracts.
 Run `appgen --security-release-audit` to prove package-level RBAC, authorization
 audit events, OIDC/SAML/LDAP/Active Directory/AWS Cognito SSO contracts,
 tenant/RLS policy SQL, session hardening, compliance/privacy controls, secret
