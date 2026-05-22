@@ -558,7 +558,11 @@ apps include:
   JHipster frontier gate proves advanced JHipster families such as domain
   modeling, front-end targets, service architecture, data operations, quality
   operations, and enterprise experience are preserved before each family is
-  exceeded by AppGen-only generated capabilities. The
+  exceeded by AppGen-only generated capabilities. A generated feature
+  superiority index then scores modeling sources, application targets, IDE/UX,
+  enterprise operations, AI/ERP/composition, and migration interoperability so
+  every domain must have deeper generated AppGen feature coverage than the
+  JHipster baseline plus route and artifact evidence. The
   application-composition release gate proves reusable block catalog depth,
   dependency topology, reviewable install order, sandbox controls, package
   publication targets, and artifact evidence.

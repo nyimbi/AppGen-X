@@ -632,6 +632,11 @@ certification gate can pass.
 Use `/low-code-features/jhipster-frontier-gate.json` to prove advanced
 JHipster capability families are still preserved and then exceeded by generated
 AppGen-only capabilities before making stronger product-positioning claims.
+Use `/low-code-features/jhipster-feature-superiority-index.json` for the
+domain-scored feature index: each modeling, target, IDE/UX, enterprise
+operations, AI/ERP/composition, and migration domain must show more generated
+AppGen features than the JHipster baseline, with generated routes and artifacts
+present.
 Generated microservice apps also expose `/microservices/mesh.json` for
 service-mesh mTLS, authorization, telemetry, and canary traffic-shift plans.
 Use `/microservices/release-gate.json` or `microservice_release_gate()` to prove

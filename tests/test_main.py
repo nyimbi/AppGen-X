@@ -2897,12 +2897,25 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert all(family["parity_ok"] and family["exceeds_ok"] for family in frontier["families"])
     assert low_code_features.jhipster_frontier_gate({"app/designer.py"})["ok"] is False
     assert low_code_features.readiness_report()["jhipster_frontier_ok"] is True
+    feature_index = low_code_features.jhipster_feature_superiority_index()
+    assert feature_index["format"] == "appgen.jhipster-feature-superiority-index.v1"
+    assert feature_index["ok"] is True
+    assert feature_index["aggregate_ratio"] >= feature_index["minimum_aggregate_ratio"]
+    assert {"modeling_sources", "application_targets", "ai_erp_composition"} <= {
+        item["domain"] for item in feature_index["domains"]
+    }
+    assert all(item["appgen_score"] > item["jhipster_score"] for item in feature_index["domains"])
+    assert low_code_features.jhipster_feature_superiority_index({"app/designer.py"})["ok"] is False
+    assert low_code_features.readiness_report()["jhipster_feature_superiority_ok"] is True
     assert low_code_features.low_code_features_check(
         {"app/low_code_features.py", "app/templates/appgen_low_code_features.html", "app/appgen.json"}
     )["jhipster_superset_blueprint_ok"] is True
     assert low_code_features.low_code_features_check(
         {"app/low_code_features.py", "app/templates/appgen_low_code_features.html", "app/appgen.json"}
     )["jhipster_frontier_ok"] is True
+    assert low_code_features.low_code_features_check(
+        {"app/low_code_features.py", "app/templates/appgen_low_code_features.html", "app/appgen.json"}
+    )["jhipster_feature_superiority_ok"] is True
     assert low_code_features.low_code_features_check(
         {"app/low_code_features.py", "app/templates/appgen_low_code_features.html", "app/appgen.json"}
     )["jhipster_capability_proof_ok"] is True
