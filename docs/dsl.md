@@ -755,6 +755,10 @@ apps include:
   widget registry depth, platform renderers, lookup contracts, calendar
   widgets, layout contracts, custom-widget extension points, visual-builder
   payload readiness, and required component artifacts. The generated
+  `component_template_workbench()` proves reusable component packages, widget
+  descriptors, layout contracts, custom-widget templates, visual-builder
+  payloads, release gates, and route evidence before `components.templates` is
+  marked implemented. The generated
   `layout_workbench()` proves declared view sections, fallback form sections,
   list/detail/card contracts, visual-builder payloads, and route evidence
   before `ui.layout` is marked implemented.

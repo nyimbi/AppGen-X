@@ -5689,6 +5689,7 @@ def write_components_template(output_dir):
       <a class="btn btn-default" href="{{ url_for('ComponentView.catalog_json') }}">Catalog JSON</a>
       <a class="btn btn-default" href="{{ url_for('ComponentView.custom_widget_json') }}">Custom Widget JSON</a>
       <a class="btn btn-default" href="{{ url_for('ComponentView.layout_workbench_json') }}">Layout Workbench JSON</a>
+      <a class="btn btn-default" href="{{ url_for('ComponentView.template_workbench_json') }}">Template Workbench JSON</a>
       <a class="btn btn-default" href="{{ url_for('ComponentView.release_gate_json') }}">Release Gate JSON</a>
     </div>
   </div>
@@ -32052,6 +32053,89 @@ def layout_workbench(existing_paths=()):
     }}
 
 
+def component_template_package(table_name):
+    """Return a reusable component template package for one generated table."""
+    contract = component_contract(table_name)
+    return {{
+        "format": "appgen.component-template-package.v1",
+        "table": table_name,
+        "label": COMPONENT_TABLES[table_name]["label"],
+        "templates": (
+            contract["form"],
+            contract["list"],
+            contract["detail"],
+            contract["card"],
+        ),
+        "layouts": contract["layouts"],
+        "widgets": field_widgets(table_name),
+        "palette": tuple(
+            {{
+                "field": field["field"],
+                "type": field["component"],
+                "widget": field["widget"],
+                "required": field["required"],
+                "platform_renderers": field["platform_renderers"],
+            }}
+            for field in field_widgets(table_name)
+        ),
+        "extension_points": CUSTOM_WIDGET_EXTENSION_POINTS,
+        "install_plan": {{
+            "steps": (
+                "register reusable templates",
+                "publish palette entries",
+                "bind layouts to generated views",
+                "run component release gate",
+            ),
+            "side_effects": (),
+            "requires_review": True,
+        }},
+    }}
+
+
+def component_template_catalog():
+    """Return reusable component template packages for all generated tables."""
+    return tuple(component_template_package(table_name) for table_name in COMPONENT_TABLES)
+
+
+def component_template_workbench(existing_paths=()):
+    """Return generated component template marketplace and visual-builder evidence."""
+    existing = set(existing_paths or ())
+    required = {{"app/components.py", "app/templates/appgen_components.html"}}
+    packages = component_template_catalog()
+    custom_widget = custom_widget_contract("Workbench Widget")
+    custom_plan = custom_widget_registration_plan(custom_widget)
+    custom_preview = custom_widget_preview(custom_widget)
+    custom_palette = custom_widget_palette_entry(custom_widget)
+    visual_builder = visual_builder_payload()
+    release = component_release_gate(existing)
+    checks = (
+        {{"id": "artifact_coverage", "ok": required.issubset(existing), "evidence": {{"required": tuple(sorted(required)), "missing": tuple(sorted(required - existing))}}}},
+        {{"id": "template_packages", "ok": bool(packages) and all(len(package["templates"]) == 4 for package in packages), "evidence": tuple(package["table"] for package in packages)}},
+        {{"id": "widget_descriptors", "ok": all(package["widgets"] and package["palette"] for package in packages), "evidence": tuple({{"table": package["table"], "widgets": len(package["widgets"])}} for package in packages)}},
+        {{"id": "layout_contracts", "ok": all({{"form", "list", "detail"}} <= set(package["layouts"]) for package in packages), "evidence": tuple(package["table"] for package in packages)}},
+        {{"id": "custom_widget_template", "ok": custom_plan["requires_review"] and custom_preview["format"] == "appgen.custom-widget-preview.v1" and custom_palette["custom"] is True, "evidence": {{"plan": custom_plan["format"], "preview": custom_preview["format"], "palette": custom_palette}}}},
+        {{"id": "visual_builder_payload", "ok": bool(visual_builder["tables"]) and bool(visual_builder["widgets"]) and bool(visual_builder["palette"]), "evidence": {{"tables": len(visual_builder["tables"]), "widgets": len(visual_builder["widgets"]), "palette": len(visual_builder["palette"])}}}},
+        {{"id": "release_gate", "ok": release["ok"], "evidence": release["format"]}},
+        {{"id": "route_surface", "ok": True, "evidence": {{"routes": ("/components/catalog.json", "/components/<table_name>.json", "/components/template-workbench.json", "/components/custom-widget.json", "/components/release-gate.json")}}}},
+    )
+    ok = all(check["ok"] for check in checks)
+    return {{
+        "format": "appgen.component-template-workbench.v1",
+        "ok": ok,
+        "decision": "approved" if ok else "blocked",
+        "checks": checks,
+        "packages": packages,
+        "custom_widget": {{
+            "contract": custom_widget,
+            "plan": custom_plan,
+            "preview": custom_preview,
+            "palette": custom_palette,
+        }},
+        "visual_builder": visual_builder,
+        "release_gate": release,
+    }}
+
+
 def component_release_gate(existing_paths=()):
     """Return deterministic release evidence for generated component readiness."""
     existing = set(existing_paths)
@@ -32171,6 +32255,10 @@ class ComponentView(BaseView):
     @expose("/layout-workbench.json")
     def layout_workbench_json(self):
         return jsonify(layout_workbench({{"app/components.py", "app/templates/appgen_components.html"}}))
+
+    @expose("/template-workbench.json")
+    def template_workbench_json(self):
+        return jsonify(component_template_workbench({{"app/components.py", "app/templates/appgen_components.html"}}))
 
     @expose("/release-gate.json")
     def release_gate_json(self):

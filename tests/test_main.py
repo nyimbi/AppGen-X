@@ -1059,6 +1059,7 @@ def test_generate_app_from_sqlite_schema_compiles(tmp_path) -> None:
     assert "quality.code-review" in {item["key"] for item in manifest["capabilities"]}
     assert "quality.test-coverage" in {item["key"] for item in manifest["capabilities"]}
     assert "components.templates" in {item["key"] for item in manifest["capabilities"]}
+    assert capabilities_by_key["components.templates"]["status"] == "implemented"
     assert "components.lookups" in {item["key"] for item in manifest["capabilities"]}
     assert "components.text-quality" in {item["key"] for item in manifest["capabilities"]}
     assert "components.media" in {item["key"] for item in manifest["capabilities"]}
@@ -5332,6 +5333,11 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert custom_preview["props"]["penColor"] == "#111111"
     assert components.custom_widget_palette_entry(custom_widget)["custom"] is True
     assert "custom_widget_extension_points" in components.visual_builder_payload()
+    template_package = components.component_template_package("Book")
+    assert template_package["format"] == "appgen.component-template-package.v1"
+    assert {template["type"] for template in template_package["templates"]} == {"form", "list", "detail", "card"}
+    assert template_package["install_plan"]["requires_review"] is True
+    assert components.component_template_catalog()
     component_gate = components.component_release_gate({"app/components.py", "app/templates/appgen_components.html"})
     assert component_gate["format"] == "appgen.component-release-gate.v1"
     assert component_gate["ok"] is True
@@ -5365,6 +5371,28 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         check["evidence"]["routes"] for check in layout_workbench["checks"] if check["id"] == "route_surface"
     )
     assert components.layout_workbench({"app/components.py"})["ok"] is False
+    assert "Template Workbench JSON" in (output_dir / "templates" / "appgen_components.html").read_text()
+    template_workbench = components.component_template_workbench(
+        {"app/components.py", "app/templates/appgen_components.html"}
+    )
+    assert template_workbench["format"] == "appgen.component-template-workbench.v1"
+    assert template_workbench["ok"] is True
+    assert template_workbench["decision"] == "approved"
+    assert {
+        "artifact_coverage",
+        "template_packages",
+        "widget_descriptors",
+        "layout_contracts",
+        "custom_widget_template",
+        "visual_builder_payload",
+        "release_gate",
+        "route_surface",
+    } == {check["id"] for check in template_workbench["checks"]}
+    assert "/components/template-workbench.json" in next(
+        check["evidence"]["routes"] for check in template_workbench["checks"] if check["id"] == "route_surface"
+    )
+    assert template_workbench["custom_widget"]["palette"]["custom"] is True
+    assert components.component_template_workbench({"app/components.py"})["ok"] is False
     assert components.component_release_gate({"app/components.py"})["ok"] is False
     assert any(item["master"] == "Book" and item["detail"] == "Author" for item in view_composition.master_detail_catalog())
     assert view_composition.chart_view_catalog()
