@@ -200,6 +200,10 @@ Visual design is split into two related capabilities:
 - `component_analog_workbench()` sits above the raw palette and proves requested
   native-style analog coverage across controls, layouts, graphics, animation,
   theming, gestures, sensors, 3D primitives, and data access.
+- `pascal_runtime_workbench()` validates deterministic form streaming, generated
+  units, package manifests, compiler pipeline metadata, runtime type
+  information, event binding lifecycle, resource streaming, and form lifecycle
+  hooks.
 - `object_inspector_workbench()` validates the design-time metadata layer:
   property editors, event handler lifecycle, component verbs, custom designer
   hooks, filtering/sorting modes, and persisted inspector state.

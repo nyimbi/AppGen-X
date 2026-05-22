@@ -935,6 +935,18 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     runtime = pascal_runtime_workbench(design)
     assert runtime["format"] == "appgen.pascal-runtime-workbench.v1"
     assert runtime["ok"] is True
+    assert {
+        "dfm_serialization",
+        "dfm_parse_round_trip",
+        "pascal_unit_generation",
+        "package_manifest",
+        "compiler_plan",
+        "compiler_pipeline",
+        "runtime_type_info",
+        "event_binding_lifecycle",
+        "resource_streaming",
+        "runtime_lifecycle",
+    } == {check["id"] for check in runtime["checks"]}
 
     matrix = field_component_matrix()
     assert matrix
@@ -8729,6 +8741,16 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert generated_runtime["format"] == "appgen.generated-pascal-runtime-workbench.v1"
     assert generated_runtime["ok"] is True
     assert "{$R *.dfm}" in generated_runtime["unit"]["unit_source"]
+    assert {"compiler_pipeline", "runtime_type_info", "event_binding_lifecycle", "resource_streaming", "runtime_lifecycle"} <= {
+        check["id"] for check in generated_runtime["checks"]
+    }
+    assert generated_runtime["compiler"]["outputs"] == (
+        "runtime_package",
+        "design_package",
+        "symbol_map",
+        "resource_bundle",
+    )
+    assert generated_runtime["events"]["bindings"]
     assert "control_to_field" in form_designer.livebindings_contract()["binding_edges"]
     generated_bindings = form_designer.livebindings_workbench()
     assert generated_bindings["format"] == "appgen.generated-livebindings-workbench.v1"

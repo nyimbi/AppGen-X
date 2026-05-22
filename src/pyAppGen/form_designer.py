@@ -966,17 +966,140 @@ def pascal_unit_contract(design: dict | None = None) -> dict:
     }
 
 
+def pascal_compiler_pipeline_contract(design: dict | None = None) -> dict:
+    """Return native language compile pipeline metadata without invoking a toolchain."""
+    unit = pascal_unit_contract(design)
+    return {
+        "format": "appgen.pascal-compiler-pipeline-contract.v1",
+        "stages": ("parse_units", "resolve_uses", "type_check", "resource_link", "emit_target", "package_sign"),
+        "inputs": (unit["unit_name"], f"{unit['unit_name']}.dfm", f"{unit['package_manifest']['name']}.dproj"),
+        "outputs": ("runtime_package", "design_package", "symbol_map", "resource_bundle"),
+        "diagnostics": ("syntax", "unit_resolution", "published_property_mismatch", "resource_missing", "target_sdk"),
+        "targets": unit["compiler_plan"]["targets"],
+        "side_effects": (),
+    }
+
+
+def pascal_rtti_contract(design: dict | None = None) -> dict:
+    """Return runtime type information metadata for generated forms and components."""
+    design = design or form_design()
+    return {
+        "format": "appgen.pascal-rtti-contract.v1",
+        "form_class": f"T{_pascal_identifier(design['view'])}Form",
+        "published_properties": ("Name", "Caption", "ClientWidth", "ClientHeight"),
+        "components": tuple(
+            {
+                "name": _dfm_identifier(component["field"], component["component"]),
+                "class": _dfm_component_class(component["component"]),
+                "published_properties": ("Left", "Top", "Width", "Height", "AppGenField", "AppGenComponent"),
+            }
+            for component in design["components"]
+        ),
+        "guards": ("published_property_names_stable", "unknown_properties_preserved", "type_metadata_reviewable"),
+    }
+
+
+def pascal_event_binding_contract(design: dict | None = None) -> dict:
+    """Return event handler binding metadata for generated component instances."""
+    design = design or form_design()
+    bindings = tuple(
+        {
+            "component": _dfm_identifier(component["field"], component["component"]),
+            "event": event,
+            "handler": f"{_module_name(component['component'])}_{_module_name(component['field'])}_{_module_name(event)}",
+            "signature": f"{event}(sender, context)",
+            "generated_stub": True,
+        }
+        for component in design["components"]
+        for event in _component_events(component["component"], COMPONENTS[component["component"]]["category"])[:2]
+    )
+    return {
+        "format": "appgen.pascal-event-binding-contract.v1",
+        "bindings": bindings,
+        "lifecycle": ("create_stub", "navigate_to_handler", "detach_handler", "rename_safe_update"),
+        "guards": ("review_generated_handlers", "never_execute_imported_handlers", "stable_handler_names"),
+        "side_effects": (),
+    }
+
+
+def pascal_resource_streaming_contract(design: dict | None = None) -> dict:
+    """Return design-time resource streaming metadata beyond text form files."""
+    unit = pascal_unit_contract(design)
+    return {
+        "format": "appgen.pascal-resource-streaming-contract.v1",
+        "resources": (
+            {"kind": "form_text", "path": f"{unit['unit_name']}.dfm", "round_trip": True},
+            {"kind": "form_binary", "path": f"{unit['unit_name']}.res", "round_trip": True},
+            {"kind": "style", "path": "appgen.styles", "round_trip": True},
+            {"kind": "images", "path": "appgen.images", "round_trip": True},
+        ),
+        "preservation": ("unknown_properties", "nested_children", "event_bindings", "binary_resource_ids"),
+        "guards": ("deterministic_resource_names", "resource_diff_review", "binary_stream_hash_recorded"),
+        "side_effects": (),
+    }
+
+
+def pascal_runtime_lifecycle_contract(design: dict | None = None) -> dict:
+    """Return runtime lifecycle hooks for generated forms and data modules."""
+    unit = pascal_unit_contract(design)
+    return {
+        "format": "appgen.pascal-runtime-lifecycle-contract.v1",
+        "unit": unit["unit_name"],
+        "hooks": ("initialize_application", "create_form", "load_resources", "bind_events", "show_form", "release_form"),
+        "data_modules": ("connections", "queries", "client_datasets", "offline_cache"),
+        "threading": ("main_ui_thread", "background_worker", "synchronize_to_ui"),
+        "guards": ("ui_thread_affinity", "resource_disposal", "exception_boundary"),
+        "side_effects": (),
+    }
+
+
 def pascal_runtime_workbench(design: dict | None = None) -> dict:
     """Return DFM streaming and Pascal runtime generation evidence."""
     design = design or form_design()
     round_trip = dfm_round_trip(design)
     unit = pascal_unit_contract(design)
+    compiler = pascal_compiler_pipeline_contract(design)
+    rtti = pascal_rtti_contract(design)
+    events = pascal_event_binding_contract(design)
+    resources = pascal_resource_streaming_contract(design)
+    lifecycle = pascal_runtime_lifecycle_contract(design)
     checks = (
         {"id": "dfm_serialization", "ok": "object " in round_trip["dfm"] and "AppGenField" in round_trip["dfm"], "evidence": round_trip["dfm"]},
         {"id": "dfm_parse_round_trip", "ok": round_trip["ok"], "evidence": round_trip},
         {"id": "pascal_unit_generation", "ok": unit["unit_source"].startswith(f"unit {unit['unit_name']};") and "{$R *.dfm}" in unit["unit_source"], "evidence": unit["unit_name"]},
         {"id": "package_manifest", "ok": {"runtime-core", "native-desktop-ui", "cross-platform-ui"} <= set(unit["package_manifest"]["requires"]), "evidence": unit["package_manifest"]},
         {"id": "compiler_plan", "ok": not unit["compiler_plan"]["side_effects"] and {"win64", "android"} <= set(unit["compiler_plan"]["targets"]), "evidence": unit["compiler_plan"]},
+        {
+            "id": "compiler_pipeline",
+            "ok": {"parse_units", "type_check", "resource_link", "emit_target"} <= set(compiler["stages"])
+            and not compiler["side_effects"],
+            "evidence": compiler,
+        },
+        {
+            "id": "runtime_type_info",
+            "ok": bool(rtti["components"]) and "unknown_properties_preserved" in rtti["guards"],
+            "evidence": rtti,
+        },
+        {
+            "id": "event_binding_lifecycle",
+            "ok": bool(events["bindings"])
+            and {"create_stub", "navigate_to_handler", "detach_handler"} <= set(events["lifecycle"])
+            and not events["side_effects"],
+            "evidence": events,
+        },
+        {
+            "id": "resource_streaming",
+            "ok": {"unknown_properties", "nested_children", "event_bindings"} <= set(resources["preservation"])
+            and not resources["side_effects"],
+            "evidence": resources,
+        },
+        {
+            "id": "runtime_lifecycle",
+            "ok": {"create_form", "load_resources", "bind_events", "release_form"} <= set(lifecycle["hooks"])
+            and "ui_thread_affinity" in lifecycle["guards"]
+            and not lifecycle["side_effects"],
+            "evidence": lifecycle,
+        },
     )
     ok = all(check["ok"] for check in checks)
     return {
@@ -986,6 +1109,11 @@ def pascal_runtime_workbench(design: dict | None = None) -> dict:
         "checks": checks,
         "round_trip": round_trip,
         "unit": unit,
+        "compiler": compiler,
+        "rtti": rtti,
+        "events": events,
+        "resources": resources,
+        "lifecycle": lifecycle,
         "blocking_gaps": tuple(check for check in checks if not check["ok"]),
     }
 
