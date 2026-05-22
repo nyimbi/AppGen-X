@@ -285,6 +285,19 @@ The visual-modeling audit proves graph nodes and edges, Mermaid ERD export,
 DBML/SQL/PonyORM/DSL export, reviewable table/field/relationship proposals,
 migration previews, and generated code/database artifact plans.
 
+Audit the package-level security and identity contract before claiming
+generated apps are secure:
+
+```console
+appgen --security-release-audit
+```
+
+The security audit proves DSL role policies, authorization decisions and audit
+events, OIDC/SAML/LDAP/Active Directory/AWS Cognito SSO provider contracts,
+environment-only secret policy, tenant/RLS PostgreSQL policy SQL, session
+timeout and security headers, compliance/privacy controls, secret scanning, and
+required generated security artifacts.
+
 Audit the package-level configuration editor contract before claiming the
 roadmap `config.py` setup screen is ready:
 

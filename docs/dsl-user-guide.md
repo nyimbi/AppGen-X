@@ -136,6 +136,10 @@ Run `appgen --visual-modeling-release-audit` to prove package-level visual
 schema graphs, Mermaid ERDs, DBML/SQL/PonyORM/DSL exports, visual
 table/field/relationship proposals, migration previews, and code/database
 generation plans before release.
+Run `appgen --security-release-audit` to prove package-level RBAC, authorization
+audit events, OIDC/SAML/LDAP/Active Directory/AWS Cognito SSO contracts,
+tenant/RLS policy SQL, session hardening, compliance/privacy controls, secret
+scanning, and generated security artifact coverage before release.
 Run `appgen --config-release-audit` to prove the package-level configuration
 editor contract has roadmap-required FAB API flags, whitelisted editable keys,
 production safety checks, and environment export coverage.

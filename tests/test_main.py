@@ -108,6 +108,16 @@ from pyAppGen.schema import schema_from_metadata
 from pyAppGen.schema import schema_source_contract
 from pyAppGen.schema import schema_source_example_audit
 from pyAppGen.schema import schema_source_kind
+from pyAppGen.security import authorization_audit_event as package_authorization_audit_event
+from pyAppGen.security import authorize as package_authorize
+from pyAppGen.security import compliance_contract as package_compliance_contract
+from pyAppGen.security import normalize_principal as package_normalize_principal
+from pyAppGen.security import role_policy_catalog as package_role_policy_catalog
+from pyAppGen.security import secret_exposure_scan as package_secret_exposure_scan
+from pyAppGen.security import security_release_audit
+from pyAppGen.security import session_hardening_policy
+from pyAppGen.security import sso_provider_catalog
+from pyAppGen.security import tenant_rls_contract
 from pyAppGen.studio import database_design_workspace
 from pyAppGen.studio import dsl_editor_state
 from pyAppGen.studio import generation_job_manifest
@@ -323,6 +333,7 @@ def test_package_goal_audit_cli_aggregates_objective_evidence(
         "robust_ide",
         "delphi_form_designer",
         "visual_modeling",
+        "security_identity",
         "config_editor",
         "publishable_distribution",
         "reporting_chartviews",
@@ -350,6 +361,7 @@ def test_package_goal_audit_cli_aggregates_objective_evidence(
     assert cli_report["audits"]["studio"]["ok"] is True
     assert cli_report["audits"]["form_designer"]["ok"] is True
     assert cli_report["audits"]["visual_modeling"]["ok"] is True
+    assert cli_report["audits"]["security"]["ok"] is True
     assert cli_report["audits"]["config_editor"]["ok"] is True
     assert cli_report["audits"]["distribution"]["ok"] is True
     assert cli_report["audits"]["reporting"]["ok"] is True
@@ -664,6 +676,99 @@ def test_package_visual_modeling_audit_covers_visual_schema_generation(
     report = json.loads(result.output)
     assert report["ok"] is True
     assert report["graph"]["ok"] is True
+
+
+def test_package_security_audit_covers_auth_identity_and_compliance(
+    runner: CliRunner,
+) -> None:
+    """The package proves RBAC, SSO, tenant/RLS, session, and compliance guards."""
+    policies = package_role_policy_catalog()
+    assert any(
+        policy["role"] == "Analyst"
+        and policy["resource"] == "Project"
+        and "update" in policy["actions"]
+        for policy in policies
+    )
+
+    principal = package_normalize_principal(
+        {"sub": "u1", "roles": ["Analyst"], "tenant_id": "42", "provider": "oidc"}
+    )
+    assert principal["roles"] == ("Analyst",)
+    allow = package_authorize(principal, "Project", "update")
+    deny = package_authorize(principal, "Project", "delete")
+    assert allow["allowed"] is True
+    assert deny["allowed"] is False
+    assert package_authorization_audit_event(deny)["event"] == "security.authorization.denied"
+
+    env = {
+        "OIDC_ISSUER": "https://idp.example.test",
+        "OIDC_CLIENT_ID": "client",
+        "OIDC_CLIENT_SECRET": "env-secret",
+        "SAML_METADATA_URL": "https://idp.example.test/metadata",
+        "SAML_ENTITY_ID": "appgen",
+        "LDAP_URL": "ldaps://directory.example.test",
+        "LDAP_BIND_DN": "cn=appgen",
+        "LDAP_BIND_PASSWORD": "env-secret",
+        "AD_DOMAIN": "example.test",
+        "AD_CLIENT_ID": "client",
+        "AD_CLIENT_SECRET": "env-secret",
+        "COGNITO_DOMAIN": "auth.example.test",
+        "COGNITO_CLIENT_ID": "client",
+        "COGNITO_CLIENT_SECRET": "env-secret",
+    }
+    providers = sso_provider_catalog(env)
+    assert {item["provider"] for item in providers} == {
+        "oidc",
+        "saml",
+        "ldap",
+        "active_directory",
+        "cognito",
+    }
+    assert all(item["configured"] for item in providers)
+    assert all(item["secret_policy"] == "env-only" for item in providers)
+    assert all(item["configured"] is False for item in sso_provider_catalog({}))
+
+    rls = tenant_rls_contract()
+    assert rls["format"] == "appgen.package-tenant-rls-contract.v1"
+    assert rls["target"] == {"table": "Project", "field": "org_id"}
+    assert "CREATE POLICY" in rls["postgres_policy_sql"]
+
+    session = session_hardening_policy()
+    assert session["idle_timeout_seconds"] == 1800
+    assert session["auto_logout"] is True
+    assert session["headers"]["X-Frame-Options"] == "DENY"
+
+    compliance = package_compliance_contract()
+    assert compliance["format"] == "appgen.package-compliance-contract.v1"
+    assert {"GDPR", "HIPAA-ready"} <= set(compliance["regulatory_profiles"])
+
+    assert package_secret_exposure_scan({"SECRET_KEY": "managed-secret"})["ok"] is True
+    assert package_secret_exposure_scan({"SECRET_KEY": "change-me"})["ok"] is False
+
+    audit = security_release_audit()
+    assert audit["format"] == "appgen.package-security-release-audit.v1"
+    assert audit["ok"] is True
+    assert {
+        "rbac_authorization",
+        "authorization_audit",
+        "sso_provider_coverage",
+        "sso_missing_secret_guard",
+        "tenant_rls",
+        "session_hardening",
+        "compliance_privacy",
+        "secret_exposure_scan",
+        "artifact_contract",
+    } == {gate["id"] for gate in audit["gates"]}
+
+    missing = security_release_audit(existing_paths={"app/security.py"})
+    assert missing["ok"] is False
+    assert any(gate["id"] == "artifact_contract" for gate in missing["blocking_gaps"])
+
+    result = runner.invoke(__main__.main, ["--security-release-audit"])
+    assert result.exit_code == 0
+    report = json.loads(result.output)
+    assert report["ok"] is True
+    assert report["decisions"]["deny"]["allowed"] is False
 
 
 def test_package_config_editor_audit_covers_safe_setup(
