@@ -2,6 +2,10 @@
 
 from __future__ import annotations
 
+import importlib.util
+import json
+import py_compile
+import tempfile
 from pathlib import Path
 
 from .capabilities import DEFAULT_CAPABILITIES
@@ -246,6 +250,80 @@ IDEAS_REQUIREMENTS = (
     },
 )
 
+IDEAS_SAMPLE_DSL = """
+app IdeasAudit { theme: sage; targets: web, pwa, mobile, desktop, chatbot }
+
+table Customer {
+  id: int pk
+  name: string required search
+  email: email search
+}
+
+table WorkItem {
+  id: int pk
+  customer_id: int required -> Customer.id [many-to-one]
+  title: string required search
+  summary: text
+  status: string required
+  attachment: file
+  screenshot: image
+}
+
+flow WorkItemFlow {
+  draft -> active
+  active -> done
+}
+
+role Editor {
+  WorkItem: read, create, update;
+}
+
+view WorkItemForm for WorkItem {
+  Main: customer_id, title, status, summary
+  Assets: attachment, screenshot
+  @ title TextBox 0 0 6 1
+  @ summary TextArea 0 1 8 3
+  @ screenshot ImageUpload 0 5 4 2
+}
+"""
+
+IDEAS_SMOKE_REQUIRED_ARTIFACTS = (
+    "app/low_code_features.py",
+    "app/schema_import.py",
+    "app/templates/appgen_schema_import.html",
+    "app/database_ops.py",
+    "app/templates/appgen_database_ops.html",
+    "app/config_admin.py",
+    "app/templates/appgen_config.html",
+    "app/reports.py",
+    "app/templates/appgen_reports.html",
+    "app/platforms.py",
+    "jhipster/appgen_jhipster.py",
+    "jhipster/app.jdl",
+    "automation/appgen_node_red.py",
+    "automation/node-red/flows.json",
+    "deploy/appgen_deploy.py",
+    "Dockerfile",
+    "docker-compose.yml",
+    "deploy/k8s.yaml",
+    "deploy/terraform-aws.tf",
+    "deploy/terraform-gcp.tf",
+    "deploy/terraform-azure.tf",
+    "app/appgen.json",
+)
+
+IDEAS_SMOKE_PYTHON_ARTIFACTS = (
+    "app/low_code_features.py",
+    "app/schema_import.py",
+    "app/database_ops.py",
+    "app/config_admin.py",
+    "app/reports.py",
+    "app/platforms.py",
+    "jhipster/appgen_jhipster.py",
+    "automation/appgen_node_red.py",
+    "deploy/appgen_deploy.py",
+)
+
 
 def _capability_index() -> dict[str, dict]:
     return {item.key: item.__dict__ for item in DEFAULT_CAPABILITIES}
@@ -323,11 +401,207 @@ def ideas_section_summary(rows: tuple[dict, ...] | None = None) -> tuple[dict, .
     return tuple(summaries)
 
 
+def ideas_generation_smoke_audit(source: str = IDEAS_SAMPLE_DSL) -> dict:
+    """Generate an app and exercise emitted contracts tied to docs/ideas.md."""
+    from .dsl import schema_from_dsl
+    from .gen import generate_app_from_schema
+
+    with tempfile.TemporaryDirectory(prefix="appgen-ideas-") as raw_workdir:
+        project_dir = Path(raw_workdir) / "ideas"
+        output_dir = project_dir / "app"
+        generate_app_from_schema(
+            schema_from_dsl(source, source_name="ideas-smoke.appgen"),
+            output_dir,
+        )
+        existing_paths = {
+            path.relative_to(project_dir).as_posix()
+            for path in project_dir.rglob("*")
+            if path.is_file()
+        }
+        missing = tuple(
+            artifact
+            for artifact in IDEAS_SMOKE_REQUIRED_ARTIFACTS
+            if artifact not in existing_paths
+        )
+        compiled = []
+        compile_failures = []
+        for relative in IDEAS_SMOKE_PYTHON_ARTIFACTS:
+            path = project_dir / relative
+            try:
+                py_compile.compile(str(path), doraise=True)
+            except py_compile.PyCompileError as exc:
+                compile_failures.append({"path": relative, "error": str(exc)})
+            else:
+                compiled.append(relative)
+
+        low_code = _load_generated_module(
+            project_dir / "app" / "low_code_features.py",
+            "appgen_ideas_low_code",
+        )
+        schema_import = _load_generated_module(
+            project_dir / "app" / "schema_import.py",
+            "appgen_ideas_schema_import",
+        )
+        database_ops = _load_generated_module(
+            project_dir / "app" / "database_ops.py",
+            "appgen_ideas_database_ops",
+        )
+        config_admin = _load_generated_module(
+            project_dir / "app" / "config_admin.py",
+            "appgen_ideas_config_admin",
+        )
+        reports = _load_generated_module(
+            project_dir / "app" / "reports.py",
+            "appgen_ideas_reports",
+        )
+        platforms = _load_generated_module(
+            project_dir / "app" / "platforms.py",
+            "appgen_ideas_platforms",
+        )
+        jhipster = _load_generated_module(
+            project_dir / "jhipster" / "appgen_jhipster.py",
+            "appgen_ideas_jhipster",
+        )
+        node_red = _load_generated_module(
+            project_dir / "automation" / "appgen_node_red.py",
+            "appgen_ideas_node_red",
+        )
+        deployment = _load_generated_module(
+            project_dir / "deploy" / "appgen_deploy.py",
+            "appgen_ideas_deployment",
+        )
+
+        ideas_alignment = low_code.ideas_roadmap_alignment()
+        roadmap_gate = low_code.roadmap_release_audit(existing_paths)
+        schema_gate = schema_import.schema_import_release_gate(
+            {
+                "app/schema_import.py",
+                "app/templates/appgen_schema_import.html",
+                "app/appgen.json",
+            }
+        )
+        database_gate = database_ops.database_addon_release_gate(
+            {
+                "app/database_ops.py",
+                "app/templates/appgen_database_ops.html",
+                "docker-compose.yml",
+                "deploy/k8s.yaml",
+            }
+        )
+        config_gate = config_admin.config_admin_release_gate(
+            {"config.py", "app/config_admin.py", "app/templates/appgen_config.html"}
+        )
+        reports_gate = reports.reports_release_gate(
+            {"app/reports.py", "app/templates/appgen_reports.html"}
+        )
+        platform_gate = platforms.platform_release_gate(existing_paths)
+        jhipster_evidence = set(jhipster.JHIPSTER_MIGRATION_ARTIFACTS)
+        jhipster_evidence.update(
+            artifact
+            for target in jhipster.appgen_upgrade_targets()
+            for artifact in target["appgen_artifacts"]
+        )
+        jhipster_gate = jhipster.jhipster_migration_release_gate(jhipster_evidence)
+        flow_export = json.loads(
+            (project_dir / "automation" / "node-red" / "flows.json").read_text(
+                encoding="utf-8"
+            )
+        )
+        node_red_gate = node_red.node_red_release_gate(
+            {
+                "automation/appgen_node_red.py",
+                "automation/node-red/flows.json",
+                "docker-compose.yml",
+            },
+            flow_export,
+        )
+        deployment_artifacts = {
+            "Dockerfile",
+            "docker-compose.yml",
+            "deploy/Caddyfile",
+            "deploy/appgen_https.py",
+            "deploy/k8s.yaml",
+            "deploy/k8s-autoscale.yaml",
+            "deploy/terraform-aws.tf",
+            "deploy/terraform-gcp.tf",
+            "deploy/terraform-azure.tf",
+            "automation/node-red/flows.json",
+        }
+        deployment_gate = deployment.deployment_release_gate(
+            deployment.sample_deployment_environment(),
+            deployment_artifacts,
+        )
+
+    checks = (
+        {
+            "id": "generated_ideas_artifacts",
+            "ok": not missing,
+            "required_artifacts": IDEAS_SMOKE_REQUIRED_ARTIFACTS,
+            "missing": missing,
+        },
+        {
+            "id": "generated_python_compiles",
+            "ok": not compile_failures
+            and set(compiled) == set(IDEAS_SMOKE_PYTHON_ARTIFACTS),
+            "compiled": tuple(compiled),
+            "failures": tuple(compile_failures),
+        },
+        {
+            "id": "generated_ideas_alignment",
+            "ok": len(ideas_alignment) == 19
+            and all(item["covered"] for item in ideas_alignment)
+            and roadmap_gate["ok"],
+            "requirements": tuple(item["id"] for item in ideas_alignment),
+        },
+        {
+            "id": "generated_source_and_database",
+            "ok": schema_gate["ok"] and database_gate["ok"],
+            "source_kinds": tuple(item["source_kind"] for item in schema_gate["sources"]),
+            "database_gate": database_gate["format"],
+        },
+        {
+            "id": "generated_jhipster_node_red_deploy",
+            "ok": jhipster_gate["ok"] and node_red_gate["ok"] and deployment_gate["ok"],
+            "jhipster": jhipster_gate["format"],
+            "node_red": node_red_gate["format"],
+            "deployment_targets": deployment_gate["targets"],
+        },
+        {
+            "id": "generated_config_reports_targets",
+            "ok": config_gate["ok"] and reports_gate["ok"] and platform_gate["ok"],
+            "config": config_gate["format"],
+            "reports": reports_gate["format"],
+            "targets": platform_gate["targets"],
+        },
+    )
+    ok = all(check["ok"] for check in checks)
+    return {
+        "format": "appgen.ideas-generation-smoke-audit.v1",
+        "scope": "package",
+        "ok": ok,
+        "decision": "approved" if ok else "blocked",
+        "required_artifacts": IDEAS_SMOKE_REQUIRED_ARTIFACTS,
+        "compiled_artifacts": tuple(compiled),
+        "checks": checks,
+        "blocking_gaps": tuple(check for check in checks if not check["ok"]),
+    }
+
+
+def _load_generated_module(path: Path, module_name: str):
+    spec = importlib.util.spec_from_file_location(module_name, path)
+    if spec is None or spec.loader is None:
+        raise ImportError(f"Cannot load generated module from {path}")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
 def ideas_release_audit(root: Path | str | None = None) -> dict:
     """Return package-level proof for the original docs/ideas.md roadmap."""
     document = ideas_document_check(root)
     rows = ideas_requirement_rows()
     sections = ideas_section_summary(rows)
+    generation_smoke = ideas_generation_smoke_audit()
     gates = (
         {
             "id": "document_contract",
@@ -345,6 +619,11 @@ def ideas_release_audit(root: Path | str | None = None) -> dict:
             "ok": len(sections) == len(IDEAS_REQUIREMENTS) and all(section["ok"] for section in sections),
             "sections": sections,
         },
+        {
+            "id": "generation_smoke",
+            "ok": generation_smoke["ok"],
+            "checks": tuple(check["id"] for check in generation_smoke["checks"]),
+        },
     )
     ok = all(gate["ok"] for gate in gates)
     return {
@@ -355,6 +634,7 @@ def ideas_release_audit(root: Path | str | None = None) -> dict:
         "document": document,
         "items": rows,
         "sections": sections,
+        "generation_smoke": generation_smoke,
         "gates": gates,
         "blocking_gaps": tuple(gate for gate in gates if not gate["ok"]),
         "stop_condition": "do-not-claim-ideas-roadmap-readiness-unless-ok-is-true",

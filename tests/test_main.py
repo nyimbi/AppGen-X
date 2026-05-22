@@ -87,6 +87,7 @@ from pyAppGen.form_designer import property_inspector
 from pyAppGen.form_designer import snap_drop
 from pyAppGen.form_designer import validate_form_design
 from pyAppGen.ideas import ideas_document_check
+from pyAppGen.ideas import ideas_generation_smoke_audit
 from pyAppGen.ideas import ideas_release_audit
 from pyAppGen.ideas import ideas_requirement_rows
 from pyAppGen.ideas import ideas_section_summary
@@ -329,7 +330,15 @@ def test_ideas_release_audit_maps_original_roadmap_items(
         "document_contract",
         "roadmap_item_coverage",
         "section_coverage",
+        "generation_smoke",
     } == {gate["id"] for gate in audit["gates"]}
+    assert audit["generation_smoke"]["ok"] is True
+    smoke = ideas_generation_smoke_audit()
+    assert smoke["format"] == "appgen.ideas-generation-smoke-audit.v1"
+    assert smoke["ok"] is True
+    assert {"jhipster/appgen_jhipster.py", "automation/appgen_node_red.py", "deploy/appgen_deploy.py"} <= set(
+        smoke["required_artifacts"]
+    )
 
     result = runner.invoke(__main__.main, ["--ideas-release-audit"])
 

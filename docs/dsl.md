@@ -254,6 +254,10 @@ roadmap items are covered by implemented package capability evidence:
 appgen --ideas-release-audit
 ```
 
+The ideas audit also generates a temporary app and exercises emitted contracts
+for source import, database operations, JHipster migration, Node-RED,
+deployment, configuration, reports, and platform targets.
+
 Run the base-feature audit before claiming every numbered item and platform
 bullet in `docs/base_features.md` has implemented package capability evidence:
 

@@ -129,7 +129,9 @@ UI-experience excellence gates.
 Run `appgen --ideas-release-audit` to prove the original `docs/ideas.md`
 roadmap entries, from JHipster and source intake through deployment, DBScript
 language ideas, reporting, RLS, tabbed permissions, and autobackup, map to
-implemented package capability evidence.
+implemented package capability evidence. It generates a temporary app and
+exercises emitted source-import, database-ops, JHipster, Node-RED, deployment,
+config, report, and platform-target gates.
 Run `appgen --base-features-release-audit` to prove every numbered baseline
 feature and platform bullet in `docs/base_features.md` maps to implemented
 package capability evidence. It generates a temporary app and exercises the
