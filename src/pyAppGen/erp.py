@@ -381,6 +381,161 @@ def erp_starter_manifest(
     }
 
 
+def erp_generation_smoke_audit(stack: str = "finance_core") -> dict:
+    """Generate and compile an ERP starter app from package-level DSL."""
+    import json
+    import py_compile
+    import tempfile
+    from pathlib import Path
+
+    from .gen import generate_app_from_schema
+    from .schema import load_schema
+
+    starter = erp_starter_manifest(stack, app_name="ERPGenerationSmoke")
+    stack_name = starter["stack"]
+    required_tables_by_stack = {
+        "finance_core": (
+            "ledger_account",
+            "journal_entry",
+            "journal_line",
+            "customer",
+            "ar_invoice",
+            "ap_bill",
+            "invoice",
+            "invoice_line",
+            "report_definition",
+        ),
+        "distribution_core": (
+            "item",
+            "warehouse",
+            "stock_movement",
+            "customer",
+            "invoice",
+            "invoice_line",
+            "ar_invoice",
+            "report_definition",
+        ),
+        "people_core": (
+            "department",
+            "employee",
+            "payroll_run",
+            "payslip",
+            "report_definition",
+        ),
+        "full_erp": tuple(
+            sorted({table for module in ERP_MODULES.values() for table in module["tables"]})
+        ),
+    }
+    required_tables = required_tables_by_stack[stack_name]
+    required_artifacts = (
+        "app/models.py",
+        "app/views.py",
+        "app/erp_templates.py",
+        "app/finance_ops.py",
+        "app/reports.py",
+        "app/report_delivery.py",
+        "app/templates/appgen_erp_templates.html",
+        "app/static/appgen.webmanifest",
+        "native/appgen_native.py",
+        "native/mobile/app.py",
+        "native/mobile/pyproject.toml",
+        "native/desktop/app.py",
+        "native/desktop/pyproject.toml",
+    )
+    compile_artifacts = (
+        "app/models.py",
+        "app/views.py",
+        "app/erp_templates.py",
+        "app/finance_ops.py",
+        "app/reports.py",
+        "app/report_delivery.py",
+        "native/appgen_native.py",
+        "native/mobile/app.py",
+        "native/desktop/app.py",
+    )
+
+    with tempfile.TemporaryDirectory(prefix="appgen-erp-smoke-") as tmp:
+        project_dir = Path(tmp)
+        dsl_path = project_dir / f"{stack_name}.appgen"
+        dsl_path.write_text(starter["dsl"], encoding="utf-8")
+        schema = load_schema(dsl_path, source_type="dsl")
+        output_dir = project_dir / "app"
+        generate_app_from_schema(schema, output_dir)
+
+        schema_tables = tuple(sorted(table.name for table in schema.tables))
+        missing_tables = tuple(
+            table for table in required_tables if table not in schema_tables
+        )
+        missing_artifacts = tuple(
+            artifact for artifact in required_artifacts if not (project_dir / artifact).exists()
+        )
+        compiled = []
+        compile_failures = []
+        for artifact in compile_artifacts:
+            path = project_dir / artifact
+            if not path.exists():
+                continue
+            try:
+                py_compile.compile(str(path), doraise=True)
+            except py_compile.PyCompileError as exc:
+                compile_failures.append({"artifact": artifact, "error": str(exc)})
+            else:
+                compiled.append(artifact)
+
+        manifest = json.loads((output_dir / "appgen.json").read_text(encoding="utf-8"))
+        manifest_tables = tuple(sorted(table["name"] for table in manifest["tables"]))
+        manifest_missing = tuple(
+            table for table in required_tables if table not in manifest_tables
+        )
+
+    checks = (
+        {
+            "id": "starter_dsl_parse",
+            "ok": not missing_tables,
+            "required_tables": required_tables,
+            "schema_tables": schema_tables,
+            "missing": missing_tables,
+        },
+        {
+            "id": "generated_artifacts",
+            "ok": not missing_artifacts,
+            "required_artifacts": required_artifacts,
+            "missing": missing_artifacts,
+        },
+        {
+            "id": "generated_python_compiles",
+            "ok": not compile_failures and set(compiled) == set(compile_artifacts),
+            "compiled": tuple(compiled),
+            "failures": tuple(compile_failures),
+        },
+        {
+            "id": "manifest_table_coverage",
+            "ok": not manifest_missing,
+            "manifest_tables": manifest_tables,
+            "missing": manifest_missing,
+        },
+    )
+    ok = all(check["ok"] for check in checks)
+    return {
+        "format": "appgen.erp-generation-smoke-audit.v1",
+        "ok": ok,
+        "decision": "approved" if ok else "blocked",
+        "stack": stack_name,
+        "starter": {
+            "format": starter["format"],
+            "modules": starter["modules"],
+            "tables": starter["tables"],
+            "workflows": starter["workflows"],
+            "reports": starter["reports"],
+        },
+        "schema_tables": schema_tables,
+        "required_artifacts": required_artifacts,
+        "compiled_artifacts": tuple(compiled),
+        "checks": checks,
+        "blocking_gaps": tuple(check for check in checks if not check["ok"]),
+    }
+
+
 def erp_template_release_audit() -> dict:
     """Return package-level release evidence for ERP starter templates."""
     catalog = erp_template_catalog()
@@ -397,6 +552,7 @@ def erp_template_release_audit() -> dict:
     )
     module_names = {module["module"] for module in catalog["modules"]}
     finance = erp_starter_manifest("finance_core")
+    generation_smoke = erp_generation_smoke_audit("finance_core")
     gates = (
         {
             "id": "required_modules",
@@ -418,6 +574,11 @@ def erp_template_release_audit() -> dict:
             "id": "generation_command",
             "ok": finance["command"].startswith("appgen --dsl "),
         },
+        {
+            "id": "generation_smoke",
+            "ok": generation_smoke["ok"],
+            "checks": tuple(check["id"] for check in generation_smoke["checks"]),
+        },
     )
     ok = all(gate["ok"] for gate in gates)
     return {
@@ -426,6 +587,7 @@ def erp_template_release_audit() -> dict:
         "decision": "approved" if ok else "blocked",
         "catalog": catalog,
         "starter": finance,
+        "generation_smoke": generation_smoke,
         "gates": gates,
         "blocking_gaps": tuple(gate for gate in gates if not gate["ok"]),
     }

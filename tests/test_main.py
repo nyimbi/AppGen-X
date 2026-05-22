@@ -64,6 +64,7 @@ from pyAppGen.dsl_quality import dsl_documentation_catalog
 from pyAppGen.dsl_quality import dsl_linter_release_contract
 from pyAppGen.dsl_quality import dsl_release_audit
 from pyAppGen.dsl_quality import generated_dsl_reference_smoke_audit
+from pyAppGen.erp import erp_generation_smoke_audit
 from pyAppGen.erp import erp_module_dsl
 from pyAppGen.erp import erp_starter_manifest
 from pyAppGen.erp import erp_template_catalog
@@ -503,7 +504,10 @@ def test_package_erp_templates_export_generatable_dsl(
         "payroll",
         "reporting",
     } <= {module["module"] for module in catalog["modules"]}
-    assert erp_template_release_audit()["ok"] is True
+    release_audit = erp_template_release_audit()
+    assert release_audit["ok"] is True
+    assert release_audit["generation_smoke"]["ok"] is True
+    assert "generation_smoke" in {gate["id"] for gate in release_audit["gates"]}
 
     invoicing_dsl = erp_module_dsl("invoicing")
     assert "table invoice_line" in invoicing_dsl
@@ -521,6 +525,26 @@ def test_package_erp_templates_export_generatable_dsl(
     assert {"ledger_account", "journal_entry", "ap_bill", "ar_invoice"} <= set(
         starter["tables"]
     )
+
+    smoke = erp_generation_smoke_audit("finance_core")
+    assert smoke["format"] == "appgen.erp-generation-smoke-audit.v1"
+    assert smoke["ok"] is True
+    assert {"ledger_account", "journal_entry", "ap_bill", "ar_invoice"} <= set(
+        smoke["schema_tables"]
+    )
+    assert {
+        "app/erp_templates.py",
+        "app/finance_ops.py",
+        "app/templates/appgen_erp_templates.html",
+        "native/mobile/app.py",
+        "native/desktop/app.py",
+    } <= set(smoke["required_artifacts"])
+    assert {
+        "app/erp_templates.py",
+        "app/finance_ops.py",
+        "native/mobile/app.py",
+        "native/desktop/app.py",
+    } <= set(smoke["compiled_artifacts"])
 
     catalog_result = runner.invoke(__main__.main, ["--erp-template-catalog"])
     assert catalog_result.exit_code == 0

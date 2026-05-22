@@ -137,7 +137,10 @@ coverage, DSL quality, schema source intake, ERP template, and natural-language
 evolution evidence into one package-level JSON bundle.
 Run `appgen --erp-template-catalog` to list package-level ERP starter modules,
 then `appgen --erp-template invoicing > invoicing.appgen` to export a module as
-DSL before generating it with `appgen --dsl`.
+DSL before generating it with `appgen --dsl`. The ERP release audit also
+generates a temporary finance-core ERP starter, verifies core ledger/AP/AR,
+invoicing, and reporting tables, checks generated ERP/native/PWA artifacts, and
+compiles generated ERP-facing Python modules.
 Run `appgen --nl-plan "create table Ticket with fields title required and form
 TicketForm agent SupportAgent targets web mobile desktop"` to produce an
 audited natural-language change set. Run `appgen --nl-dsl "..."` to emit the
@@ -863,7 +866,10 @@ ERP templates are generated as deployable starter packages, not only example
 tables. Use `/erp-templates/roadmap.json` for the phased implementation plan
 and `/erp-templates/release-gate.json` to verify module coverage, table
 blueprints, workflows, reports, migration planning, generation steps, and
-required ERP template artifacts.
+required ERP template artifacts. Package-level release evidence includes a
+finance-core generation smoke that parses exported ERP DSL, writes a generated
+app, verifies ERP/native/PWA artifacts, and compiles the generated finance,
+ERP-template, reporting, mobile, and desktop modules.
 
 The same module also exposes `/low-code-features/roadmap-sources.json`, which
 maps `docs/ideas.md`, `docs/base_features.md`, and `docs/Lo-code features.md`

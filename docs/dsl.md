@@ -274,6 +274,11 @@ appgen --erp-template invoicing > invoicing.appgen
 appgen --dsl invoicing.appgen --writedir apps/invoicing
 ```
 
+The ERP release audit goes past catalog coverage: it builds a temporary
+finance-core starter from the exported DSL, verifies ledger/AP/AR/invoicing and
+reporting tables, checks generated ERP/native/PWA artifacts, and compiles the
+generated ERP, reporting, finance, mobile, and desktop modules.
+
 Convert a natural-language app change into an audited plan or a reviewable DSL
 patch before generation:
 
