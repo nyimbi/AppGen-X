@@ -2233,6 +2233,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert "Normalization JSON" in schema_import_template
     assert "Validation JSON" in schema_import_template
     assert "Commands JSON" in schema_import_template
+    assert "Generation Proof JSON" in schema_import_template
     assert "Release Gate JSON" in schema_import_template
     backup_template = (output_dir / "templates" / "appgen_backup.html").read_text()
     assert "Export all JSON" in backup_template
@@ -3390,6 +3391,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "sql",
         "ponyorm",
         "database",
+        "dsl",
     }
     assert schema_import.schema_source_profile()["counts"]["tables"] == 2
     assert schema_import.schema_source_profile()["fingerprint"] == manifest["source_profile"]["fingerprint"]
@@ -3416,31 +3418,42 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "sql",
         "ponyorm",
         "database",
+        "dsl",
     }
     assert schema_import.import_command_plan("dbml", "schema.dbml")["command"] == "appgen --dbml schema.dbml --writedir app"
     assert schema_import.import_command_plan("ponyorm", "entities.py")["command"] == "appgen --pony entities.py --writedir app"
+    assert schema_import.import_command_plan("dsl", "app.appgen")["command"] == "appgen --dsl app.appgen --writedir app"
     assert schema_import.source_roundtrip_plan("sql")["to"] == "sql"
     diff = schema_import.schema_roundtrip_diff("dbml", current_manifest={"tables": ["Book", "LegacyBook"]})
     assert diff["format"] == "appgen.schema-roundtrip-diff.v1"
     assert diff["destructive"] is True
     assert {"op": "review_extra_table", "table": "LegacyBook", "destructive": True} in diff["operations"]
-    assert len(schema_import.all_schema_roundtrip_diffs()) == 4
+    assert len(schema_import.all_schema_roundtrip_diffs()) == 5
     apply_plan = schema_import.import_apply_plan("sql", "schema.sql")
     assert apply_plan["format"] == "appgen.schema-import-apply-plan.v1"
     assert apply_plan["requires_review"] is True
     assert apply_plan["diff"]["source_kind"] == "sql"
     assert "app/models.py" in apply_plan["writes"]
-    assert len(schema_import.all_import_apply_plans()) == 4
+    assert len(schema_import.all_import_apply_plans()) == 5
+    generation_proof = schema_import.source_generation_proof(
+        {"app/schema_import.py", "app/templates/appgen_schema_import.html", "app/appgen.json"}
+    )
+    assert generation_proof["format"] == "appgen.schema-source-generation-proof.v1"
+    assert generation_proof["ok"] is True
+    assert {"dbml", "sql", "ponyorm", "database", "dsl"} == {
+        item["source_kind"] for item in generation_proof["sources"]
+    }
+    assert schema_import.source_generation_proof({"app/schema_import.py"})["ok"] is False
     assert schema_import.schema_import_check(
         {"app/schema_import.py", "app/templates/appgen_schema_import.html", "app/appgen.json"}
-    )["ok"] is True
+    )["generation_proof"]["ok"] is True
     import_gate = schema_import.schema_import_release_gate(
         {"app/schema_import.py", "app/templates/appgen_schema_import.html", "app/appgen.json"}
     )
     assert import_gate["format"] == "appgen.schema-import-release-gate.v1"
     assert import_gate["ok"] is True
     assert import_gate["blocking_gaps"] == ()
-    assert {item["source_kind"] for item in import_gate["sources"]} == {"dbml", "sql", "ponyorm", "database"}
+    assert {item["source_kind"] for item in import_gate["sources"]} == {"dbml", "sql", "ponyorm", "database", "dsl"}
     assert schema_import.schema_import_release_gate({"app/schema_import.py"})["ok"] is False
     assert backup.BACKUP_TABLES["Book"]["columns"] == [
         "id",

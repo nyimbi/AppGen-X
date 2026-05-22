@@ -351,13 +351,14 @@ apps include:
   schema inventory, legacy migration risk assessment, cutover plans, and
   migration-target readiness contracts.
 - `schema_import.py` and `appgen_schema_import.html` with generated DBML, SQL
-  DDL, PonyORM, and live database source catalogs, source provenance profiles,
+  DDL, PonyORM, live database, and DSL source catalogs, source provenance profiles,
   stable source fingerprints, source-fidelity reports, normalization reports,
   source validation plans, import command plans, round-trip export plans,
-  source-to-generated diff plans, and reviewed import apply plans before
+  source-to-generated diff plans, reviewed import apply plans, and source
+  generation proof matrices before
   generated files are overwritten. A schema-import release gate combines
   artifact readiness, source-family coverage, validation, round-trip targets,
-  source fidelity, and database URL dialect evidence before generation coverage
+  source fidelity, database URL dialect evidence, and generation proof before generation coverage
   is claimed. The generated `appgen.json` manifest carries
   the same `source_profile` and `source_fidelity` evidence so an app can prove
   which source family was normalized, which tables, relationships, enums, and

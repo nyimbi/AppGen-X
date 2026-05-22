@@ -3848,8 +3848,8 @@ def write_schema_import_template(output_dir):
     <div>
       <h1 class="agsi-title">Schema Import</h1>
       <p class="agsi-note">
-        Generated import workbench for DBML, SQL DDL, PonyORM scripts, and live
-        database introspection, with normalization evidence and reviewable
+        Generated import workbench for DBML, SQL DDL, PonyORM scripts, live
+        database introspection, and AppGen DSL sources, with normalization evidence and reviewable
         generation commands, round-trip diffs, and reviewed apply plans.
       </p>
     </div>
@@ -3862,6 +3862,7 @@ def write_schema_import_template(output_dir):
       <a class="btn btn-default" href="{{ url_for('SchemaImportView.commands_json') }}">Commands JSON</a>
       <a class="btn btn-default" href="{{ url_for('SchemaImportView.roundtrip_diff_json') }}">Round-trip Diff JSON</a>
       <a class="btn btn-default" href="{{ url_for('SchemaImportView.apply_plans_json') }}">Apply Plans JSON</a>
+      <a class="btn btn-default" href="{{ url_for('SchemaImportView.generation_proof_json') }}">Generation Proof JSON</a>
       <a class="btn btn-default" href="{{ url_for('SchemaImportView.release_gate_json') }}">Release Gate JSON</a>
     </div>
   </div>
@@ -14501,6 +14502,14 @@ def _schema_import_text(schema: AppSchema) -> str:
             "url_dialects": source_contract["database_url_dialects"],
             "sqlalchemy_driver_urls": True,
         },
+        {
+            "kind": "dsl",
+            "label": "AppGen DSL",
+            "extensions": (".ag", ".ags", ".appgen"),
+            "command": "appgen --dsl app.appgen --writedir app",
+            "normalizes": ("app options", "tables", "relations", "views", "flows", "roles", "rules", "LLM providers", "agents"),
+            "validation": ("antlr_parse", "semantic_lint", "keyword_budget", "authoring_release_gate"),
+        },
     )
     return f'''"""Generated schema import provenance and normalization contracts for AppGen apps."""
 
@@ -14569,6 +14578,7 @@ def source_validation_plan(source_kind=None):
         "sql": ("review dialect-specific DDL outside CREATE/ALTER TABLE", "confirm computed/generated columns manually"),
         "ponyorm": ("AST import never executes Python side effects", "review custom Python properties manually"),
         "database": ("database introspection is read-only", "review views/materialized views outside table metadata"),
+        "dsl": ("ANTLR and semantic lint must pass", "review generated DSL authoring release gate before production"),
     }}[kind]
     return {{
         "format": "appgen.schema-source-validation.v1",
@@ -14616,8 +14626,9 @@ def import_command_plan(source_kind=None, path=None, writedir="app"):
         "sql": "schema.sql",
         "ponyorm": "entities.py",
         "database": "sqlite:///existing.db",
+        "dsl": "app.appgen",
     }}[kind]
-    flag = "--database-url" if kind == "database" else f"--{{kind if kind != 'ponyorm' else 'pony'}}"
+    flag = "--database-url" if kind == "database" else f"--{{'pony' if kind == 'ponyorm' else kind}}"
     return {{
         "source_kind": kind,
         "path": example,
@@ -14730,6 +14741,48 @@ def all_import_apply_plans(writedir="app", current_manifest=None, target_kind="d
     )
 
 
+def source_generation_proof(existing_paths=()):
+    """Return end-to-end generation proof for every schema source family."""
+    existing = set(existing_paths) or {{"app/schema_import.py", "app/templates/appgen_schema_import.html", "app/appgen.json"}}
+    required_artifacts = ("app/schema_import.py", "app/templates/appgen_schema_import.html", "app/appgen.json")
+    validations = {{item["source_kind"]: item for item in all_source_validation_plans()}}
+    diffs = {{item["source_kind"]: item for item in all_schema_roundtrip_diffs()}}
+    apply_plans = {{item["source_kind"]: item for item in all_import_apply_plans()}}
+    rows = []
+    for source in SCHEMA_SOURCES:
+        kind = source["kind"]
+        command = import_command_plan(kind)
+        validation = validations.get(kind, {{}})
+        diff = diffs.get(kind, {{}})
+        apply_plan = apply_plans.get(kind, {{}})
+        rows.append({{
+            "source_kind": kind,
+            "command": command["command"],
+            "validation_ok": validation.get("format") == "appgen.schema-source-validation.v1" and bool(validation.get("checks")),
+            "roundtrip_ok": diff.get("format") == "appgen.schema-roundtrip-diff.v1" and diff.get("canonical_contract") == "AppSchema",
+            "apply_plan_ok": apply_plan.get("format") == "appgen.schema-import-apply-plan.v1" and apply_plan.get("requires_review") is True,
+            "artifact_evidence_ok": set(required_artifacts) <= existing,
+            "quality_checks": command["checks"],
+        }})
+    gates = (
+        {{"gate": "source_catalog", "ok": {{"dbml", "sql", "ponyorm", "database", "dsl"}} <= {{item["kind"] for item in SCHEMA_SOURCES}}, "sources": tuple(item["kind"] for item in SCHEMA_SOURCES)}},
+        {{"gate": "validation_plans", "ok": all(row["validation_ok"] for row in rows), "rows": tuple(rows)}},
+        {{"gate": "roundtrip_diffs", "ok": all(row["roundtrip_ok"] for row in rows), "rows": tuple(rows)}},
+        {{"gate": "reviewed_apply_plans", "ok": all(row["apply_plan_ok"] for row in rows), "rows": tuple(rows)}},
+        {{"gate": "artifact_evidence", "ok": set(required_artifacts) <= existing, "missing": tuple(path for path in required_artifacts if path not in existing)}},
+        {{"gate": "quality_checks", "ok": all({{"schema_normalization", "migration_preview", "py_compile", "appgen_quality"}} <= set(row["quality_checks"]) for row in rows), "rows": tuple(rows)}},
+    )
+    ok = all(gate["ok"] for gate in gates)
+    return {{
+        "format": "appgen.schema-source-generation-proof.v1",
+        "ok": ok,
+        "decision": "approved" if ok else "blocked",
+        "sources": tuple(rows),
+        "gates": gates,
+        "blocking_gaps": tuple(gate for gate in gates if not gate["ok"]),
+    }}
+
+
 def schema_import_check(existing_paths=()):
     """Return readiness for generated schema import artifacts."""
     existing = set(existing_paths)
@@ -14740,7 +14793,8 @@ def schema_import_check(existing_paths=()):
         and bool(SCHEMA_SOURCES)
         and len(all_source_validation_plans()) == len(SCHEMA_SOURCES)
         and len(all_schema_roundtrip_diffs()) == len(SCHEMA_SOURCES)
-        and len(all_import_apply_plans()) == len(SCHEMA_SOURCES),
+        and len(all_import_apply_plans()) == len(SCHEMA_SOURCES)
+        and source_generation_proof(existing)["ok"],
         "missing": missing,
         "sources": tuple(item["kind"] for item in SCHEMA_SOURCES),
         "source_contract": schema_source_contract(),
@@ -14750,6 +14804,7 @@ def schema_import_check(existing_paths=()):
         "validation": all_source_validation_plans(),
         "roundtrip_diffs": all_schema_roundtrip_diffs(),
         "apply_plans": all_import_apply_plans(),
+        "generation_proof": source_generation_proof(existing),
     }}
 
 
@@ -14763,7 +14818,7 @@ def schema_import_release_gate(existing_paths=()):
     apply_plans = {{item["source_kind"]: item for item in all_import_apply_plans()}}
     commands = {{kind: import_command_plan(kind) for kind in source_kinds}}
     fidelity = source_fidelity_report()
-    required = ("dbml", "sql", "ponyorm", "database")
+    required = ("dbml", "sql", "ponyorm", "database", "dsl")
     source_rows = tuple(
         {{
             "source_kind": kind,
@@ -14788,6 +14843,7 @@ def schema_import_release_gate(existing_paths=()):
         {{"gate": "source_fidelity", "ok": fidelity["ok"] and fidelity["source_contract"]["ok"], "details": fidelity}},
         {{"gate": "roundtrip_targets", "ok": {{"dsl", "dbml", "sql", "ponyorm"}} <= set(fidelity["roundtrip_targets"]), "details": fidelity["roundtrip_targets"]}},
         {{"gate": "database_url_dialects", "ok": "postgresql" in schema_source_contract()["database_url_dialects"] and schema_source_contract()["sqlalchemy_driver_urls"], "details": schema_source_contract()["database_url_dialects"]}},
+        {{"gate": "generation_proof", "ok": source_generation_proof(existing)["ok"], "details": source_generation_proof(existing)}},
     )
     return {{
         "format": "appgen.schema-import-release-gate.v1",
@@ -14845,6 +14901,10 @@ class SchemaImportView(BaseView):
     @expose("/apply-plans.json")
     def apply_plans_json(self):
         return jsonify(list(all_import_apply_plans()))
+
+    @expose("/generation-proof.json")
+    def generation_proof_json(self):
+        return jsonify(source_generation_proof())
 
     @expose("/release-gate.json")
     def release_gate_json(self):
@@ -34278,19 +34338,20 @@ def validate_schema_import_artifacts() -> None:
         "all_schema_roundtrip_diffs",
         "import_apply_plan",
         "all_import_apply_plans",
+        "source_generation_proof",
         "schema_import_check",
         "schema_import_release_gate",
     )
     if not all(item in contract for item in required):
-        fail("schema import contract must expose source catalog, fidelity, normalization, validation, command plans, roundtrip diffs, apply plans, and readiness checks")
-    for source in ("dbml", "sql", "ponyorm", "database"):
+        fail("schema import contract must expose source catalog, fidelity, normalization, validation, command plans, roundtrip diffs, apply plans, generation proof, and readiness checks")
+    for source in ("dbml", "sql", "ponyorm", "database", "dsl"):
         if source not in contract:
-            fail("schema import contract must cover DBML, SQL, PonyORM, and database sources")
+            fail("schema import contract must cover DBML, SQL, PonyORM, database, and DSL sources")
     if "postgresql+psycopg2" not in contract or "sqlalchemy_driver_urls" not in contract:
         fail("schema import contract must document SQLAlchemy driver-suffixed database URLs")
     template = (ROOT / "app" / "templates" / "appgen_schema_import.html").read_text()
-    if "Schema Import" not in template or "Catalog JSON" not in template or "Fidelity JSON" not in template or "Normalization JSON" not in template or "Validation JSON" not in template or "Commands JSON" not in template or "Round-trip Diff JSON" not in template or "Apply Plans JSON" not in template or "Release Gate JSON" not in template:
-        fail("schema import cockpit must expose source catalog, fidelity, normalization, validation, commands, round-trip diffs, and apply plans")
+    if "Schema Import" not in template or "Catalog JSON" not in template or "Fidelity JSON" not in template or "Normalization JSON" not in template or "Validation JSON" not in template or "Commands JSON" not in template or "Round-trip Diff JSON" not in template or "Apply Plans JSON" not in template or "Generation Proof JSON" not in template or "Release Gate JSON" not in template:
+        fail("schema import cockpit must expose source catalog, fidelity, normalization, validation, commands, round-trip diffs, apply plans, and generation proof")
 
 
 def validate_performance_artifacts() -> None:
@@ -35784,7 +35845,7 @@ def test_generated_runtime_helpers():
             "deploy/k8s.yaml",
         }
     )["ok"] is True
-    assert {item["kind"] for item in schema_import.schema_source_catalog()} == {"dbml", "sql", "ponyorm", "database"}
+    assert {item["kind"] for item in schema_import.schema_source_catalog()} == {"dbml", "sql", "ponyorm", "database", "dsl"}
     assert schema_import.schema_source_contract()["format"] == "appgen.schema-source-contract.v1"
     assert schema_import.schema_source_contract()["sqlalchemy_driver_urls"] is True
     assert schema_import.normalization_report()["format"] == "appgen.schema-normalization.v1"
@@ -35793,22 +35854,25 @@ def test_generated_runtime_helpers():
     assert schema_import.source_fidelity_report()["ok"] is True
     assert "dsl" in schema_import.source_fidelity_report()["roundtrip_targets"]
     assert schema_import.source_validation_plan("sql")["format"] == "appgen.schema-source-validation.v1"
-    assert len(schema_import.all_source_validation_plans()) == 4
+    assert len(schema_import.all_source_validation_plans()) == 5
     assert schema_import.import_command_plan("ponyorm", "entities.py")["command"] == "appgen --pony entities.py --writedir app"
+    assert schema_import.import_command_plan("dsl", "app.appgen")["command"] == "appgen --dsl app.appgen --writedir app"
     assert schema_import.source_roundtrip_plan("dbml")["to"] == "dbml"
     schema_diff = schema_import.schema_roundtrip_diff("dbml", current_manifest={"tables": [first_table, "LegacyTable"]})
     assert schema_diff["format"] == "appgen.schema-roundtrip-diff.v1"
     assert schema_diff["destructive"] is True
-    assert len(schema_import.all_schema_roundtrip_diffs()) == 4
+    assert len(schema_import.all_schema_roundtrip_diffs()) == 5
     schema_apply = schema_import.import_apply_plan("sql", "schema.sql")
     assert schema_apply["format"] == "appgen.schema-import-apply-plan.v1"
     assert schema_apply["requires_review"] is True
     assert schema_apply["diff"]["source_kind"] == "sql"
-    assert len(schema_import.all_import_apply_plans()) == 4
+    assert len(schema_import.all_import_apply_plans()) == 5
+    assert schema_import.source_generation_proof({"app/schema_import.py", "app/templates/appgen_schema_import.html", "app/appgen.json"})["ok"] is True
+    assert schema_import.source_generation_proof({"app/schema_import.py"})["ok"] is False
     import_gate = schema_import.schema_import_release_gate({"app/schema_import.py", "app/templates/appgen_schema_import.html", "app/appgen.json"})
     assert import_gate["format"] == "appgen.schema-import-release-gate.v1"
     assert import_gate["ok"] is True
-    assert {item["source_kind"] for item in import_gate["sources"]} == {"dbml", "sql", "ponyorm", "database"}
+    assert {item["source_kind"] for item in import_gate["sources"]} == {"dbml", "sql", "ponyorm", "database", "dsl"}
     assert schema_import.schema_import_check(
         {"app/schema_import.py", "app/templates/appgen_schema_import.html", "app/appgen.json"}
     )["ok"] is True

@@ -293,12 +293,16 @@ DSL. The DSL remains the durable source of truth.
 
 For imported sources, check `appgen.json.source_fidelity` or
 `/schema-import/fidelity.json` before regenerating. The report proves which
-DBML, SQL, PonyORM, or live database source was normalized, lists the command
+DBML, SQL, PonyORM, live database, or DSL source was normalized, lists the command
 that generated the app, records the canonical fingerprint, and calls out
 source-specific review areas before generated files are overwritten.
 Use `/schema-import/release-gate.json` for the stricter proof that every source
 family has validation, round-trip diff, import command, reviewed apply-plan,
 fidelity, and database URL dialect evidence.
+Use `/schema-import/generation-proof.json` when you need a source-by-source
+matrix showing that DBML, SQL, PonyORM, live database, and DSL generation each
+have validation plans, round-trip diffs, reviewed apply plans, artifact
+evidence, and generated quality checks.
 
 The generated Studio also manages a portfolio of generated applications through
 `/studio/applications.json`. Use its create/import/open/export plans to build
