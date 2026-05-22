@@ -221,7 +221,7 @@ appgen --generated-app-excellence-audit
 
 Run the aggregate package goal audit when you need one machine-readable bundle
 covering roadmap traceability, JHipster superiority, and generated-app
-excellence:
+excellence, ERP templates, and package-level natural-language evolution:
 
 ```console
 appgen --package-goal-audit
@@ -234,6 +234,21 @@ appgen --erp-template-catalog
 appgen --erp-template invoicing > invoicing.appgen
 appgen --dsl invoicing.appgen --writedir apps/invoicing
 ```
+
+Convert a natural-language app change into an audited plan or a reviewable DSL
+patch before generation:
+
+```console
+appgen --nl-plan "create table Ticket with fields title required and form TicketForm agent SupportAgent targets web mobile desktop"
+appgen --nl-dsl "create table Ticket with fields title required and form TicketForm agent SupportAgent targets web mobile desktop" > ticket_patch.appgen
+appgen --nl-release-audit
+```
+
+The package-level NL surface emits tables, fields, Delphi-style forms, flows,
+rules, report/dashboard comments, chatbot handoff comments, local/API-key LLM
+providers, agents, ERP module commands, platform targets, migration impact, and
+rollback guidance. Destructive prompts such as `drop table` or `remove field`
+return `requires_approval: true` instead of applying the change.
 
 ## Shape
 

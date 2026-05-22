@@ -113,11 +113,18 @@ Run `appgen --generated-app-excellence-audit` before claiming generated apps are
 beautiful, sophisticated, secure, reliable, robust, functional, and highly
 capable.
 Run `appgen --package-goal-audit` to collect roadmap traceability, JHipster
-superiority, and generated-app excellence evidence into one package-level JSON
-bundle.
+superiority, generated-app excellence, ERP template, and natural-language
+evolution evidence into one package-level JSON bundle.
 Run `appgen --erp-template-catalog` to list package-level ERP starter modules,
 then `appgen --erp-template invoicing > invoicing.appgen` to export a module as
 DSL before generating it with `appgen --dsl`.
+Run `appgen --nl-plan "create table Ticket with fields title required and form
+TicketForm agent SupportAgent targets web mobile desktop"` to produce an
+audited natural-language change set. Run `appgen --nl-dsl "..."` to emit the
+reviewable DSL patch, and `appgen --nl-release-audit` to prove the package-level
+NL evolution contract covers tables, fields, forms, workflows, rules, reports,
+dashboards, chatbots, agents, ERP modules, platform targets, local LLMs, and
+API-key LLMs.
 
 Use `required` for fields that must be entered. Use `search` on fields that
 should appear in generated search contracts. Use `hidden` for generated or
@@ -452,6 +459,13 @@ automation, chatbot, agent, ERP, and target changes, reviewable change sets are
 created, destructive requests require backups, and generated test plans include
 DSL lint, migration preview, UI smoke, agent readiness, report/dashboard, and
 platform-target checks.
+
+Before generation, the package CLI exposes the same idea with
+`appgen --nl-plan`, `appgen --nl-dsl`, and `appgen --nl-release-audit`.
+`--nl-dsl` emits parseable AppGen DSL for schema, forms, flows, rules, local and
+API-key LLM providers, and agents; report, dashboard, chatbot, and ERP requests
+are preserved as explicit review comments or ERP template commands so the
+builder can apply them deliberately.
 
 Generated backup pages expose `/backups/disaster-recovery.json` and
 `/backups/release-gate.json` so teams can prove that JSON backups, SHA-256

@@ -44,6 +44,10 @@ from pyAppGen.erp import erp_module_dsl
 from pyAppGen.erp import erp_starter_manifest
 from pyAppGen.erp import erp_template_catalog
 from pyAppGen.erp import erp_template_release_audit
+from pyAppGen.nl import evolution_changeset
+from pyAppGen.nl import evolution_plan
+from pyAppGen.nl import nl_evolution_release_audit
+from pyAppGen.nl import proposals_to_dsl
 from pyAppGen.roadmap import generated_app_excellence_audit
 from pyAppGen.roadmap import jhipster_superiority_audit
 from pyAppGen.roadmap import package_goal_audit
@@ -242,6 +246,7 @@ def test_package_goal_audit_cli_aggregates_objective_evidence(
         "jhipster_superiority",
         "generated_app_excellence",
         "erp_template_exports",
+        "natural_language_evolution",
         "source_document_scope",
     } == {gate["id"] for gate in direct_report["gates"]}
     assert direct_report["stop_condition"] == (
@@ -258,6 +263,7 @@ def test_package_goal_audit_cli_aggregates_objective_evidence(
     assert cli_report["audits"]["jhipster_superiority"]["ok"] is True
     assert cli_report["audits"]["generated_app_excellence"]["ok"] is True
     assert cli_report["audits"]["erp_templates"]["ok"] is True
+    assert cli_report["audits"]["natural_language_evolution"]["ok"] is True
 
 
 def test_package_erp_templates_export_generatable_dsl(
@@ -310,6 +316,80 @@ def test_package_erp_templates_export_generatable_dsl(
     assert template_result.exit_code == 0
     assert "app InvoicingApp" in template_result.output
     assert "table invoice_line" in template_result.output
+
+
+def test_package_natural_language_evolution_generates_parseable_dsl(
+    runner: CliRunner,
+    tmp_path,
+) -> None:
+    """Natural-language evolution produces audited, parseable DSL patches."""
+    prompt = (
+        "create table Ticket with fields title required, amount decimal, due_date date "
+        "and form TicketForm workflow Triage rule TicketPolicy report TicketReport "
+        "dashboard TicketDashboard chatbot SupportBot agent SupportAgent targets web mobile desktop"
+    )
+    plan = evolution_plan(prompt)
+    assert plan["format"] == "appgen.nl-evolution-plan.v1"
+    assert {
+        "add_table",
+        "add_field",
+        "add_form",
+        "add_workflow",
+        "add_rule",
+        "add_report",
+        "add_dashboard",
+        "add_chatbot",
+        "add_agent",
+        "set_targets",
+    } <= {item["kind"] for item in plan["proposals"]}
+
+    dsl_patch = proposals_to_dsl(plan)
+    assert "table Ticket" in dsl_patch
+    assert "view TicketForm for Ticket" in dsl_patch
+    assert "flow Triage" in dsl_patch
+    assert "agent SupportAgent" in dsl_patch
+    assert "targets: web, mobile, desktop" in dsl_patch
+    assert "mode: local" in dsl_patch
+    assert "api_key: OPENAI_API_KEY" in dsl_patch
+    assert "// add chatbot SupportBot for Ticket" in dsl_patch
+
+    dsl_path = tmp_path / "nl_patch.appgen"
+    dsl_path.write_text(dsl_patch, encoding="utf-8")
+    schema = load_schema(dsl_path, source_type="dsl")
+    assert schema.app_options["targets"] == "web,mobile,desktop"
+    ticket_columns = {column.name: column for column in schema.table("Ticket").columns}
+    assert ticket_columns["amount"].type_name == "decimal"
+    assert schema.views[0].name == "TicketForm"
+    assert schema.flows[0].name == "Triage"
+    assert schema.agents[0].provider == "LocalModel"
+
+    changeset = evolution_changeset(prompt)
+    assert changeset["format"] == "appgen.nl-evolution-changeset.v1"
+    assert changeset["ok"] is True
+    assert changeset["migration_impact"]["tables_added"] == ("Ticket",)
+    assert "dsl_patch" in changeset
+
+    audit = nl_evolution_release_audit()
+    assert audit["format"] == "appgen.nl-evolution-release-audit.v1"
+    assert audit["ok"] is True
+    assert all(gate["ok"] for gate in audit["gates"])
+
+    plan_result = runner.invoke(__main__.main, ["--nl-plan", prompt])
+    assert plan_result.exit_code == 0
+    plan_report = json.loads(plan_result.output)
+    assert plan_report["ok"] is True
+    assert plan_report["plan"]["format"] == "appgen.nl-evolution-plan.v1"
+    assert "table Ticket" in plan_report["dsl_patch"]
+
+    dsl_result = runner.invoke(__main__.main, ["--nl-dsl", prompt])
+    assert dsl_result.exit_code == 0
+    assert "table Ticket" in dsl_result.output
+    assert "agent SupportAgent" in dsl_result.output
+
+    audit_result = runner.invoke(__main__.main, ["--nl-release-audit"])
+    assert audit_result.exit_code == 0
+    audit_report = json.loads(audit_result.output)
+    assert audit_report["ok"] is True
 
 
 def test_dsl_linter_reports_semantic_feedback(runner: CliRunner, tmp_path) -> None:
