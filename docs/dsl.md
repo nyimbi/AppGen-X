@@ -561,7 +561,10 @@ apps include:
   task plans, credential readiness checks, BPMN/UML process models, process
   validation, simulation, UiPath/Blue Prism/Automation Anywhere export
   contracts, audit events, and business-process observations for repetitive
-  browser/API work.
+  browser/API work. A generated RPA/BPA release gate proves task catalogs,
+  process models, BPMN/UML exports, simulations, platform exports, queue
+  payloads, credential contracts, audit events, business-process observations,
+  and required automation artifacts.
 - `collaboration.py` and `appgen_collaboration.html` with generated revision
   metadata, change proposals, review decisions, merge plans, conflict reports,
   merge queues, and conflict-resolution plans for concurrent low-code work.

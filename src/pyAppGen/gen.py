@@ -5123,7 +5123,10 @@ def write_rpa_template(output_dir):
         control-room automation adapters.
       </p>
     </div>
-    <a class="btn btn-default" href="{{ url_for('RpaBpaView.catalog_json') }}">Automation Catalog JSON</a>
+    <div>
+      <a class="btn btn-default" href="{{ url_for('RpaBpaView.catalog_json') }}">Automation Catalog JSON</a>
+      <a class="btn btn-default" href="{{ url_for('RpaBpaView.release_gate_json') }}">Release Gate JSON</a>
+    </div>
   </div>
   <div class="agrpa-grid">
     {% for task in tasks %}
@@ -27104,6 +27107,55 @@ def rpa_check(existing_paths=()):
     }}
 
 
+def rpa_release_gate(existing_paths=()):
+    """Return release readiness for generated RPA and BPA contracts."""
+    readiness = rpa_check(existing_paths)
+    first_task = RPA_TASKS[0]["id"] if RPA_TASKS else None
+    model_checks = []
+    for task in RPA_TASKS:
+        task_id = task["id"]
+        model = process_model(task_id)
+        validation = validate_process_model(task_id)
+        simulation = simulate_process(task_id, runs=2, base_duration_seconds=5)
+        model_checks.append({{
+            "task_id": task_id,
+            "plan_ok": bool(task_plan(task_id)["actions"]),
+            "model_ok": validation["ok"] and model["flows"][0]["source"] == "start" and model["flows"][-1]["target"] == "end",
+            "bpmn_ok": "<bpmn:process" in bpmn_xml(task_id),
+            "uml_ok": uml_activity(task_id).startswith("@startuml"),
+            "simulation_ok": simulation["valid"] and simulation["runs"] == 2,
+        }})
+    platform_checks = []
+    if first_task:
+        for platform in RPA_PLATFORMS:
+            export = rpa_export_package(platform, first_task)
+            queue = rpa_queue_payload(platform, first_task, {{"sample": "value"}})
+            platform_checks.append({{
+                "platform": platform,
+                "plan_ok": rpa_platform_plan(platform, first_task)["task_id"] == first_task,
+                "export_ok": export["task_id"] == first_task and bool(export["package_id"]) and "<bpmn:process" in export["bpmn"],
+                "queue_ok": queue["task_id"] == first_task and bool(queue["correlation_id"]),
+            }})
+    audit = automation_audit_event(first_task, actor="release-gate") if first_task else {{}}
+    observation = process_observation(first_task, duration_seconds=45, success=False, errors=1) if first_task else {{}}
+    summary = process_summary((observation,)) if first_task else {{"bottlenecks": ()}}
+    gates = (
+        {{"gate": "artifacts", "ok": readiness["ok"], "missing": readiness["missing"]}},
+        {{"gate": "task_catalog", "ok": bool(RPA_TASKS) and bool(rpa_resource_catalog()), "task_count": len(RPA_TASKS)}},
+        {{"gate": "process_models", "ok": bool(model_checks) and all(item["plan_ok"] and item["model_ok"] and item["bpmn_ok"] and item["uml_ok"] and item["simulation_ok"] for item in model_checks), "checks": tuple(model_checks)}},
+        {{"gate": "platform_exports", "ok": bool(platform_checks) and all(item["plan_ok"] and item["export_ok"] and item["queue_ok"] for item in platform_checks), "checks": tuple(platform_checks)}},
+        {{"gate": "credential_readiness", "ok": set(credential_readiness({{}})["required"]) == {{"APPGEN_API_TOKEN", "APPGEN_BROWSER_SESSION"}}, "details": credential_readiness({{}})}},
+        {{"gate": "audit_and_bpa", "ok": bool(audit.get("id")) and first_task in summary["bottlenecks"], "audit": audit, "summary": summary}},
+    )
+    ok = all(gate["ok"] for gate in gates)
+    return {{
+        "format": "appgen.rpa-release-gate.v1",
+        "ok": ok,
+        "decision": "approved" if ok else "blocked",
+        "gates": gates,
+    }}
+
+
 class RpaBpaView(BaseView):
     route_base = "/rpa"
     default_view = "index"
@@ -27123,6 +27175,10 @@ class RpaBpaView(BaseView):
     @expose("/task/<path:task_id>.json")
     def task_json(self, task_id):
         return jsonify(task_plan(task_id))
+
+    @expose("/release-gate.json")
+    def release_gate_json(self):
+        return jsonify(rpa_release_gate({{"app/rpa.py", "app/templates/appgen_rpa.html"}}))
 
 
 def register_rpa(appbuilder):
@@ -35374,6 +35430,7 @@ def validate_rpa_artifacts() -> None:
         "rpa_platform_plan",
         "rpa_export_package",
         "rpa_queue_payload",
+        "rpa_release_gate",
         "uipath",
         "blue_prism",
         "automation_anywhere",
@@ -35384,6 +35441,7 @@ def validate_rpa_artifacts() -> None:
     if (
         "RPA &amp; BPA" not in template
         or "Automation Catalog JSON" not in template
+        or "Release Gate JSON" not in template
         or "BPMN/UML" not in template
         or "UiPath" not in template
         or "Blue Prism" not in template
@@ -37236,6 +37294,8 @@ def test_generated_runtime_helpers():
     observation = rpa.process_observation(first_rpa_task, duration_seconds=45, success=False, errors=1)
     assert first_rpa_task in rpa.process_summary((observation,))["bottlenecks"]
     assert rpa.rpa_check({"app/rpa.py", "app/templates/appgen_rpa.html"})["ok"] is True
+    assert rpa.rpa_release_gate({"app/rpa.py", "app/templates/appgen_rpa.html"})["ok"] is True
+    assert rpa.rpa_release_gate({"app/rpa.py"})["ok"] is False
     assert set(sdks.sdk_targets()) == {"python", "javascript", "java", "csharp"}
     assert sdks.scaffold_check(
         {

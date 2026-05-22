@@ -438,6 +438,11 @@ Use `/diagnostics/release-gate.json` or `diagnostics_release_gate()` to prove
 debugging readiness. The gate checks diagnostic artifacts, schema self-tests,
 secret redaction, remediation planning, support bundle shape, API smoke plans,
 and load-test plans.
+Use `/rpa/release-gate.json` or `rpa_release_gate()` to prove generated
+automation readiness. The gate checks RPA/BPA task catalogs, process models,
+BPMN/UML exports, simulations, vendor export packages, queue payloads,
+credential contracts, audit envelopes, business-process observations, and
+required automation artifacts.
 Use `/extensions/release-gate.json` or `extension_release_gate()` to prove
 custom-code extensibility is ready: the gate checks generated artifacts, stable
 hook catalogs, table lifecycle hooks, generated-rule dispatch, custom-module

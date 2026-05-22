@@ -4288,6 +4288,13 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "automation_anywhere",
     )
     assert rpa.rpa_check({"app/rpa.py", "app/templates/appgen_rpa.html"})["ok"] is True
+    rpa_gate = rpa.rpa_release_gate({"app/rpa.py", "app/templates/appgen_rpa.html"})
+    assert rpa_gate["format"] == "appgen.rpa-release-gate.v1"
+    assert rpa_gate["ok"] is True
+    assert {"process_models", "platform_exports", "credential_readiness", "audit_and_bpa"} <= {
+        gate["gate"] for gate in rpa_gate["gates"]
+    }
+    assert rpa.rpa_release_gate({"app/rpa.py"})["ok"] is False
     proposal = collaboration.change_proposal(
         "Book",
         {"title": "Dune"},
