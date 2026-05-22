@@ -841,3 +841,7 @@ and compliance artifacts before a generated app is released.
 Use `/identity/release-gate.json` to prove generated SSO readiness across OIDC,
 SAML, LDAP, Active Directory, trusted headers, AWS Cognito OAuth, token exchange
 review, and principal normalization.
+Use `/identity/workbench.json` or `identity_workbench()` to inspect provider
+configuration, login plan, directory bind/search plans, Cognito OAuth/token/
+logout contracts, group-role mapping, trusted-header plan, principal
+normalization, artifact, route, and release-gate evidence.

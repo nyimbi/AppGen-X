@@ -1127,6 +1127,7 @@ def test_generate_app_from_sqlite_schema_compiles(tmp_path) -> None:
     assert capabilities_by_key["security.session"]["status"] == "implemented"
     assert capabilities_by_key["security.https"]["status"] == "implemented"
     assert capabilities_by_key["security.rls"]["status"] == "implemented"
+    assert capabilities_by_key["security.sso"]["status"] == "implemented"
     assert capabilities_by_key["platform.frontends"]["status"] == "implemented"
     assert capabilities_by_key["ui.view-composition"]["status"] == "implemented"
     assert capabilities_by_key["ui.tabbed-views"]["status"] == "implemented"
@@ -4935,6 +4936,32 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert {"provider_catalog", "provider_configuration", "directory_plans", "cognito_oauth", "token_exchange_review"} <= {
         gate["gate"] for gate in identity_gate["gates"]
     }
+    identity_workbench = identity.identity_workbench(
+        {"app/identity.py", "app/templates/appgen_identity.html"},
+        identity.sample_identity_environment(),
+    )
+    assert identity_workbench["format"] == "appgen.identity-workbench.v1"
+    assert identity_workbench["ok"] is True
+    assert identity_workbench["decision"] == "approved"
+    assert {
+        "provider_catalog",
+        "provider_configuration",
+        "login_plan",
+        "directory_plans",
+        "cognito_oauth",
+        "token_exchange_review",
+        "cognito_logout",
+        "group_role_mapping",
+        "trusted_headers",
+        "principal_normalization",
+        "artifact_evidence",
+        "route_surface",
+        "release_gate",
+    } == {check["id"] for check in identity_workbench["checks"]}
+    assert "/identity/workbench.json" in next(
+        check["evidence"]["routes"] for check in identity_workbench["checks"] if check["id"] == "route_surface"
+    )
+    assert identity.identity_workbench({"app/identity.py"}, identity.sample_identity_environment())["ok"] is False
     assert identity.identity_release_gate({"app/identity.py"}, identity.sample_identity_environment())["ok"] is False
     principal = identity.normalize_principal({"sub": "u1", "email": "ada@example.test", "roles": ["Editor"]})
     assert principal["username"] == "ada@example.test"

@@ -4596,6 +4596,7 @@ def write_identity_template(output_dir):
   </p>
   <p>
     <a class="btn btn-default" href="{{ url_for('IdentityView.cognito_oauth_json') }}">Cognito OAuth JSON</a>
+    <a class="btn btn-default" href="{{ url_for('IdentityView.workbench_json') }}">Workbench JSON</a>
     <a class="btn btn-default" href="{{ url_for('IdentityView.release_gate_json') }}">Release Gate JSON</a>
   </p>
   <div class="agi2-grid">
@@ -20738,6 +20739,74 @@ def identity_release_gate(existing_paths=(), environ=None):
     }
 
 
+def trusted_header_plan(environ=None):
+    """Return generated trusted-header identity mapping metadata."""
+    environ = os.environ if environ is None else environ
+    config = provider_config("headers", environ=environ)
+    header = environ.get("TRUSTED_IDENTITY_HEADER", "X-Forwarded-User")
+    return {
+        "format": "appgen.trusted-header-plan.v1",
+        "configured": config["configured"],
+        "header": header,
+        "claims": {
+            "username": header,
+            "email": environ.get("TRUSTED_EMAIL_HEADER", "X-Forwarded-Email"),
+            "groups": environ.get("TRUSTED_GROUPS_HEADER", "X-Forwarded-Groups"),
+        },
+        "requires_trusted_proxy": True,
+    }
+
+
+def identity_workbench(existing_paths=(), environ=None):
+    """Return IDE-ready SSO and enterprise identity evidence."""
+    env = sample_identity_environment() if environ is None else environ
+    release_gate = identity_release_gate(existing_paths, env)
+    providers = provider_catalog(env)
+    login_plan = login_request_plan("oidc", "/next", env)
+    ldap_plan = ldap_bind_plan("ldap", "ada", environ=env)
+    ad_plan = ldap_bind_plan("active_directory", "ada", environ=env)
+    directory_plan = directory_search_plan("active_directory", "ada", environ=env)
+    cognito = cognito_readiness(env)
+    token_plan = cognito_token_exchange_plan("code", "https://app.example.test/callback", environ=env)
+    logout_url = cognito_logout_url("https://app.example.test/logout", env)
+    group_mapping = cognito_group_role_mapping({"cognito:groups": ("appgen:Editor", "Admins")}, prefix="appgen:")
+    trusted = trusted_header_plan(env)
+    principal = normalize_principal({"sub": "u1", "email": "ada@example.test", "cognito:groups": ("Editor",)})
+    routes = (
+        "/identity/",
+        "/identity/providers.json",
+        "/identity/cognito/oauth.json",
+        "/identity/workbench.json",
+        "/identity/release-gate.json",
+    )
+    checks = (
+        {"id": "provider_catalog", "ok": {item["name"] for item in providers} == set(IDENTITY_PROVIDERS), "evidence": providers},
+        {"id": "provider_configuration", "ok": all(item["configured"] for item in providers), "evidence": providers},
+        {"id": "login_plan", "ok": login_plan["protocol"] == "oidc" and login_plan["next_url"] == "/next", "evidence": login_plan},
+        {"id": "directory_plans", "ok": ldap_plan["review_required"] and ad_plan["review_required"] and directory_plan["review_required"], "evidence": (ldap_plan, ad_plan, directory_plan)},
+        {"id": "cognito_oauth", "ok": cognito["configured"] and cognito["oauth"]["client_secret_env"] == "COGNITO_CLIENT_SECRET", "evidence": cognito},
+        {"id": "token_exchange_review", "ok": token_plan["review_required"] and "client_secret" not in token_plan["body"], "evidence": token_plan},
+        {"id": "cognito_logout", "ok": logout_url.startswith(env["COGNITO_DOMAIN"].rstrip("/") + "/logout"), "evidence": logout_url},
+        {"id": "group_role_mapping", "ok": group_mapping == ("Editor",), "evidence": group_mapping},
+        {"id": "trusted_headers", "ok": trusted["configured"] and trusted["requires_trusted_proxy"], "evidence": trusted},
+        {"id": "principal_normalization", "ok": principal["username"] == "ada@example.test" and principal["roles"] == ("Editor",), "evidence": principal},
+        {"id": "artifact_evidence", "ok": release_gate["gates"][0]["ok"], "evidence": release_gate["gates"][0]},
+        {"id": "route_surface", "ok": "/identity/workbench.json" in routes, "evidence": {"routes": routes}},
+        {"id": "release_gate", "ok": release_gate["ok"], "evidence": release_gate},
+    )
+    ok = all(check["ok"] for check in checks)
+    return {
+        "format": "appgen.identity-workbench.v1",
+        "ok": ok,
+        "decision": "approved" if ok else "blocked",
+        "checks": checks,
+        "providers": providers,
+        "cognito": cognito,
+        "trusted_headers": trusted,
+        "release_gate": release_gate,
+    }
+
+
 class IdentityView(BaseView):
     route_base = "/identity"
     default_view = "index"
@@ -20753,6 +20822,10 @@ class IdentityView(BaseView):
     @expose("/cognito/oauth.json")
     def cognito_oauth_json(self):
         return jsonify(cognito_readiness())
+
+    @expose("/workbench.json")
+    def workbench_json(self):
+        return jsonify(identity_workbench({"app/identity.py", "app/templates/appgen_identity.html"}))
 
     @expose("/release-gate.json")
     def release_gate_json(self):
@@ -41445,12 +41518,15 @@ def validate_identity_artifacts() -> None:
         "sAMAccountName",
         "sample_identity_environment",
         "identity_release_gate",
+        "identity_workbench",
+        "trusted_header_plan",
+        "appgen.identity-workbench.v1",
     )
     if not all(item in contract for item in required):
-        fail("identity contract must expose Cognito OAuth, LDAP, and Active Directory provider helpers")
+        fail("identity contract must expose Cognito OAuth, LDAP, Active Directory, trusted-header, and workbench helpers")
     template = (ROOT / "app" / "templates" / "appgen_identity.html").read_text()
-    if "AWS" not in template or "Cognito OAuth JSON" not in template or "Release Gate JSON" not in template or "LDAP" not in template or "Active Directory" not in template:
-        fail("identity template must expose AWS Cognito OAuth, LDAP, Active Directory, and release readiness")
+    if "AWS" not in template or "Cognito OAuth JSON" not in template or "Workbench JSON" not in template or "Release Gate JSON" not in template or "LDAP" not in template or "Active Directory" not in template:
+        fail("identity template must expose AWS Cognito OAuth, LDAP, Active Directory, workbench, and release readiness")
 
 
 def validate_rls_artifacts() -> None:

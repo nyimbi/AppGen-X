@@ -524,7 +524,10 @@ apps include:
   token-exchange, logout, and group-role mapping contracts. A generated
   identity release gate proves SSO provider coverage, provider configuration,
   login planning, LDAP/Active Directory plans, Cognito OAuth metadata,
-  reviewable token exchange, and principal normalization.
+  reviewable token exchange, and principal normalization. `identity_workbench()`
+  exposes IDE-ready provider, login, directory, Cognito OAuth/token/logout,
+  group mapping, trusted-header, principal, artifact, route, and release-gate
+  evidence before `security.sso` is marked implemented.
 - `compliance.py` and `appgen_compliance.html` with generated audit event,
   retention, protected-field redaction, privacy request, subject export,
   erasure planning, and retention-disposition review helpers. A generated
