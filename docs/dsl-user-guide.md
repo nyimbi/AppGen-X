@@ -132,7 +132,9 @@ language ideas, reporting, RLS, tabbed permissions, and autobackup, map to
 implemented package capability evidence.
 Run `appgen --base-features-release-audit` to prove every numbered baseline
 feature and platform bullet in `docs/base_features.md` maps to implemented
-package capability evidence.
+package capability evidence. It generates a temporary app and exercises the
+emitted low-code roadmap alignment, application release gate, platform target
+gate, and data-access gate.
 Run `appgen --package-goal-audit` to collect roadmap traceability, JHipster
 superiority, generated-app excellence, ideas-roadmap coverage, base-feature
 coverage, DSL quality, schema source intake, ERP template, and natural-language

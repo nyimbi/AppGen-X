@@ -175,6 +175,93 @@ SUPERSET_REQUIREMENTS = (
     "ops.assurance",
 )
 
+BASE_FEATURE_SAMPLE_DSL = """
+app BaseFeatureAudit { theme: sage; targets: web, pwa, mobile, desktop, chatbot }
+
+table Customer {
+  id: int pk
+  name: string required search
+  email: email search
+}
+
+table SupportTicket {
+  id: int pk
+  customer_id: int required -> Customer.id [many-to-one]
+  title: string required search
+  status: string required
+  priority: string required
+}
+
+flow TicketLifecycle {
+  open -> assigned
+  assigned -> resolved
+}
+
+role SupportAgent {
+  SupportTicket: read, update;
+}
+
+view TicketForm for SupportTicket {
+  Main: customer_id, title, status, priority
+  @ title TextBox 0 0 6 1
+  @ status Select 0 1 4 1
+  @ priority Select 4 1 4 1
+}
+"""
+
+BASE_FEATURE_SMOKE_REQUIRED_ARTIFACTS = (
+    "app/models.py",
+    "app/views.py",
+    "app/api.py",
+    "app/gql.py",
+    "app/data_access.py",
+    "app/templates/appgen_data_access.html",
+    "app/security.py",
+    "app/workflow.py",
+    "app/wizards.py",
+    "app/reports.py",
+    "app/integrations.py",
+    "app/dashboards.py",
+    "app/events.py",
+    "app/extensions.py",
+    "app/diagnostics.py",
+    "app/api_testing.py",
+    "app/runtime_assurance.py",
+    "app/platforms.py",
+    "app/low_code_features.py",
+    "app/templates/appgen_low_code_features.html",
+    "native/mobile/app.py",
+    "native/desktop/app.py",
+    "Dockerfile",
+    ".github/workflows/appgen-ci.yml",
+    "scripts/appgen_quality.py",
+    "app/appgen.json",
+)
+
+BASE_FEATURE_SMOKE_PYTHON_ARTIFACTS = (
+    "app/models.py",
+    "app/views.py",
+    "app/api.py",
+    "app/gql.py",
+    "app/data_access.py",
+    "app/security.py",
+    "app/workflow.py",
+    "app/wizards.py",
+    "app/reports.py",
+    "app/integrations.py",
+    "app/dashboards.py",
+    "app/events.py",
+    "app/extensions.py",
+    "app/diagnostics.py",
+    "app/api_testing.py",
+    "app/runtime_assurance.py",
+    "app/platforms.py",
+    "app/low_code_features.py",
+    "native/mobile/app.py",
+    "native/desktop/app.py",
+    "scripts/appgen_quality.py",
+)
+
 
 def _capability_index() -> dict[str, dict]:
     return {item.key: item.__dict__ for item in DEFAULT_CAPABILITIES}
@@ -224,6 +311,123 @@ def base_feature_document_check(root: Path | str | None = None) -> dict:
     }
 
 
+def base_feature_generation_smoke_audit(source: str = BASE_FEATURE_SAMPLE_DSL) -> dict:
+    """Generate an app and exercise generated docs/base_features.md evidence."""
+    import importlib.util
+    import py_compile
+    import tempfile
+
+    from .dsl import schema_from_dsl
+    from .gen import generate_app_from_schema
+
+    with tempfile.TemporaryDirectory(prefix="appgen-base-features-") as raw_workdir:
+        project_dir = Path(raw_workdir) / "base-features"
+        generate_app_from_schema(
+            schema_from_dsl(source, source_name="base-features.appgen"),
+            project_dir / "app",
+        )
+        existing_paths = {
+            path.relative_to(project_dir).as_posix()
+            for path in project_dir.rglob("*")
+            if path.is_file()
+        }
+        missing = tuple(
+            artifact
+            for artifact in BASE_FEATURE_SMOKE_REQUIRED_ARTIFACTS
+            if artifact not in existing_paths
+        )
+        compiled = []
+        compile_failures = []
+        for relative in BASE_FEATURE_SMOKE_PYTHON_ARTIFACTS:
+            path = project_dir / relative
+            try:
+                py_compile.compile(str(path), doraise=True)
+            except py_compile.PyCompileError as exc:
+                compile_failures.append({"path": relative, "error": str(exc)})
+            else:
+                compiled.append(relative)
+
+        def load_module(relative: str, module_name: str):
+            spec = importlib.util.spec_from_file_location(module_name, project_dir / relative)
+            module = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(module)
+            return module
+
+        low_code = load_module("app/low_code_features.py", "appgen_base_low_code")
+        runtime_assurance = load_module(
+            "app/runtime_assurance.py",
+            "appgen_base_runtime_assurance",
+        )
+        platforms = load_module("app/platforms.py", "appgen_base_platforms")
+        data_access = load_module("app/data_access.py", "appgen_base_data_access")
+
+        base_alignment = low_code.base_feature_alignment()
+        source_report = low_code.roadmap_source_report()
+        roadmap_gate = low_code.roadmap_release_audit(existing_paths)
+        runtime_gate = runtime_assurance.application_release_gate(existing_paths=existing_paths)
+        platform_gate = platforms.platform_release_gate(existing_paths)
+        data_gate = data_access.data_access_release_gate(
+            {"app/data_access.py", "app/templates/appgen_data_access.html"}
+        )
+
+    checks = (
+        {
+            "id": "generated_base_artifacts",
+            "ok": not missing,
+            "required_artifacts": BASE_FEATURE_SMOKE_REQUIRED_ARTIFACTS,
+            "missing": missing,
+        },
+        {
+            "id": "generated_python_compiles",
+            "ok": not compile_failures
+            and set(compiled) == set(BASE_FEATURE_SMOKE_PYTHON_ARTIFACTS),
+            "compiled": tuple(compiled),
+            "failures": tuple(compile_failures),
+        },
+        {
+            "id": "generated_base_feature_alignment",
+            "ok": len(base_alignment) == 16
+            and all(item["covered"] for item in base_alignment)
+            and source_report["base_features_complete"] is True,
+            "requirements": tuple(item["id"] for item in base_alignment),
+        },
+        {
+            "id": "generated_roadmap_release_gate",
+            "ok": roadmap_gate["ok"],
+            "decision": roadmap_gate["decision"],
+        },
+        {
+            "id": "generated_runtime_assurance",
+            "ok": runtime_gate["ok"]
+            and {
+                "security",
+                "operations",
+                "experience",
+                "delivery",
+            }
+            <= {area["id"] for area in runtime_gate["areas"]},
+            "decision": runtime_gate["decision"],
+        },
+        {
+            "id": "generated_platform_and_data_access",
+            "ok": platform_gate["ok"] and data_gate["ok"],
+            "platform_targets": platform_gate["targets"],
+            "data_access_format": data_gate["format"],
+        },
+    )
+    ok = all(check["ok"] for check in checks)
+    return {
+        "format": "appgen.base-feature-generation-smoke-audit.v1",
+        "scope": "package",
+        "ok": ok,
+        "decision": "approved" if ok else "blocked",
+        "required_artifacts": BASE_FEATURE_SMOKE_REQUIRED_ARTIFACTS,
+        "compiled_artifacts": tuple(compiled),
+        "checks": checks,
+        "blocking_gaps": tuple(check for check in checks if not check["ok"]),
+    }
+
+
 def base_feature_release_audit(root: Path | str | None = None) -> dict:
     """Return package-level proof for every docs/base_features.md requirement."""
     document = base_feature_document_check(root)
@@ -235,6 +439,7 @@ def base_feature_release_audit(root: Path | str | None = None) -> dict:
         for key in SUPERSET_REQUIREMENTS
         if capabilities.get(key, {}).get("status") != "implemented"
     )
+    generation_smoke = base_feature_generation_smoke_audit()
     gates = (
         {
             "id": "document_contract",
@@ -257,6 +462,11 @@ def base_feature_release_audit(root: Path | str | None = None) -> dict:
             "required_capabilities": SUPERSET_REQUIREMENTS,
             "missing_capabilities": superset_missing,
         },
+        {
+            "id": "generation_smoke",
+            "ok": generation_smoke["ok"],
+            "checks": tuple(check["id"] for check in generation_smoke["checks"]),
+        },
     )
     ok = all(gate["ok"] for gate in gates)
     return {
@@ -267,6 +477,7 @@ def base_feature_release_audit(root: Path | str | None = None) -> dict:
         "document": document,
         "numbered_features": numbered,
         "platform_requirements": platform,
+        "generation_smoke": generation_smoke,
         "gates": gates,
         "blocking_gaps": tuple(gate for gate in gates if not gate["ok"]),
         "stop_condition": "do-not-claim-base-feature-readiness-unless-ok-is-true",

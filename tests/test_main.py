@@ -33,6 +33,7 @@ from pyAppGen.agentic import dsl_agentic_contract
 from pyAppGen.agentic import provider_catalog as agentic_provider_catalog
 from pyAppGen.agentic import provider_connection_matrix
 from pyAppGen.base_features import base_feature_document_check
+from pyAppGen.base_features import base_feature_generation_smoke_audit
 from pyAppGen.base_features import base_feature_release_audit
 from pyAppGen.config_admin import config_editor_catalog
 from pyAppGen.config_admin import config_editor_generation_smoke_audit
@@ -357,7 +358,15 @@ def test_base_features_release_audit_maps_every_base_requirement(
         "numbered_base_features",
         "platform_bullets",
         "jhipster_superset_clause",
+        "generation_smoke",
     } == {gate["id"] for gate in audit["gates"]}
+    assert audit["generation_smoke"]["ok"] is True
+    smoke = base_feature_generation_smoke_audit()
+    assert smoke["format"] == "appgen.base-feature-generation-smoke-audit.v1"
+    assert smoke["ok"] is True
+    assert {"app/runtime_assurance.py", "app/platforms.py", "app/data_access.py"} <= set(
+        smoke["required_artifacts"]
+    )
     assert {"data_modeling", "runtime_assurance"} <= {
         item["id"] for item in audit["numbered_features"]
     }
@@ -7316,13 +7325,16 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert {"web", "mobile", "desktop"} <= {row["target"] for row in package_matrix["rows"]}
     platform_gate = platforms.platform_release_gate(
         {
-            "app/",
-            "frontends/react",
-            "frontends/vue",
-            "frontends/angular",
-            "frontends/svelte",
-            "frontends/htmx",
-            "frontends/express",
+            "app/views.py",
+            "app/api.py",
+            "app/gql.py",
+            "app/templates/my_index.html",
+            "frontends/react/package.json",
+            "frontends/vue/package.json",
+            "frontends/angular/package.json",
+            "frontends/svelte/package.json",
+            "frontends/htmx/package.json",
+            "frontends/express/package.json",
             "app/static/appgen.webmanifest",
             "app/static/appgen-sw.js",
             "app/static/appgen-offline.html",
@@ -7342,13 +7354,16 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert platforms.platform_release_gate({"app/"})["ok"] is False
     target_experience = platforms.platform_target_experience_gate(
         {
-            "app/",
-            "frontends/react",
-            "frontends/vue",
-            "frontends/angular",
-            "frontends/svelte",
-            "frontends/htmx",
-            "frontends/express",
+            "app/views.py",
+            "app/api.py",
+            "app/gql.py",
+            "app/templates/my_index.html",
+            "frontends/react/package.json",
+            "frontends/vue/package.json",
+            "frontends/angular/package.json",
+            "frontends/svelte/package.json",
+            "frontends/htmx/package.json",
+            "frontends/express/package.json",
             "app/static/appgen.webmanifest",
             "app/static/appgen-sw.js",
             "app/static/appgen-offline.html",

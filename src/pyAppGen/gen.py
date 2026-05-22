@@ -30946,7 +30946,7 @@ PLATFORM_TARGETS = {{
     "web": {{
         "label": "Web",
         "adapter": "flask-appbuilder",
-        "artifacts": ("app/", "frontends/react", "frontends/vue", "frontends/angular", "frontends/svelte", "frontends/htmx", "frontends/express"),
+        "artifacts": ("app/views.py", "app/api.py", "app/gql.py", "app/templates/my_index.html", "frontends/react/package.json", "frontends/vue/package.json", "frontends/angular/package.json", "frontends/svelte/package.json", "frontends/htmx/package.json", "frontends/express/package.json"),
         "capabilities": ("responsive", "crud", "rest", "graphql", "hypermedia"),
     }},
     "pwa": {{

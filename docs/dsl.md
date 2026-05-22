@@ -261,6 +261,11 @@ bullet in `docs/base_features.md` has implemented package capability evidence:
 appgen --base-features-release-audit
 ```
 
+The base-feature audit also generates a temporary app and exercises the emitted
+low-code roadmap alignment, application release gate, platform target gate, and
+data-access gate so the numbered baseline is backed by generated runtime
+evidence.
+
 Run the aggregate package goal audit when you need one machine-readable bundle
 covering roadmap traceability, JHipster superiority, and generated-app
 excellence, ideas-roadmap coverage, base-feature coverage,
