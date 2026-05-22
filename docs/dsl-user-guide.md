@@ -727,6 +727,10 @@ preview contracts, and required media cockpit artifacts.
 Use `dashboard_release_gate()` to verify chart catalogs, Vega-Lite render
 contracts, accessibility summaries, and web/mobile/desktop renderer targets for
 generated analytics dashboards.
+Use `/dashboards/workbench.json` or `visualization_workbench()` inside the IDE
+to inspect aggregate dashboard catalogs, chart render contracts, accessibility
+summaries, analytics payloads, renderer targets, artifact readiness, and route
+evidence.
 Use `document_release_gate()` to prove generated document libraries have version
 envelopes, approval workflows, retention/legal-hold policy, e-signature
 payloads, audit events, and required document cockpit artifacts.

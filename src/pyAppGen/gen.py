@@ -2982,6 +2982,7 @@ def write_dashboards_template(output_dir):
     </div>
     <div>
       <a class="btn btn-default" href="{{ url_for('DashboardView.catalog_json') }}">Catalog JSON</a>
+      <a class="btn btn-default" href="{{ url_for('DashboardView.visualization_workbench_json') }}">Visualization Workbench JSON</a>
       <a class="btn btn-default" href="{{ url_for('DashboardView.release_gate_json') }}">Release Gate JSON</a>
     </div>
   </div>
@@ -13550,6 +13551,79 @@ def dashboard_release_gate(existing_paths=()):
     }}
 
 
+def visualization_workbench(existing_paths=()):
+    """Return aggregate IDE evidence for chart, dashboard, and renderer readiness."""
+    samples = dashboard_sample_rows()
+    dashboards = dashboard_catalog()
+    charts = chart_catalog()
+    chart_rows = {{
+        chart["name"]: samples.get(dashboard["table"], ())
+        for dashboard in dashboards
+        for chart in dashboard["charts"]
+    }}
+    workbenches = tuple(
+        dashboard_workbench(table_name, samples.get(table_name, ()))
+        for table_name in DASHBOARDS
+    )
+    release = dashboard_release_gate(existing_paths)
+    required_targets = ("web:vega-lite", "mobile:native-chart", "desktop:native-chart")
+    routes = (
+        "/dashboards/catalog.json",
+        "/dashboards/workbench.json",
+        "/dashboards/<table_name>/workbench.json",
+        "/dashboards/chart/<chart_name>/vega.json",
+        "/dashboards/release-gate.json",
+    )
+    checks = (
+        {{
+            "id": "dashboard_catalog",
+            "ok": bool(dashboards) and all(dashboard["charts"] for dashboard in dashboards),
+            "evidence": {{"dashboards": tuple(dashboard["table"] for dashboard in dashboards)}},
+        }},
+        {{
+            "id": "chart_render_contracts",
+            "ok": bool(charts) and all(chart_render_contract(chart, chart_rows.get(chart["name"], ()))["vega_lite"].get("$schema", "").endswith("/vega-lite/v5.json") for chart in charts),
+            "evidence": tuple(chart["name"] for chart in charts),
+        }},
+        {{
+            "id": "accessibility_summaries",
+            "ok": all(bool(chart_accessibility_summary(chart, chart_rows.get(chart["name"], ()))) for chart in charts),
+            "evidence": tuple(chart_accessibility_summary(chart, chart_rows.get(chart["name"], ())) for chart in charts),
+        }},
+        {{
+            "id": "renderer_targets",
+            "ok": all(set(required_targets) <= set(workbench["renderer_targets"]) for workbench in workbenches),
+            "evidence": tuple(workbench["renderer_targets"] for workbench in workbenches),
+        }},
+        {{
+            "id": "analytics_payload",
+            "ok": len(analytics_payload(samples)["dashboards"]) == len(dashboards),
+            "evidence": analytics_payload(samples),
+        }},
+        {{
+            "id": "artifact_evidence",
+            "ok": release["ok"],
+            "evidence": {{"blocking_gates": tuple(gate["gate"] for gate in release["gates"] if not gate["ok"])}},
+        }},
+        {{
+            "id": "route_surface",
+            "ok": all(route.startswith("/dashboards/") for route in routes),
+            "evidence": {{"routes": routes}},
+        }},
+    )
+    ok = all(check["ok"] for check in checks)
+    return {{
+        "format": "appgen.visualization-workbench.v1",
+        "ok": ok,
+        "decision": "approved" if ok else "blocked",
+        "dashboards": dashboards,
+        "charts": charts,
+        "workbenches": workbenches,
+        "release_gate": release,
+        "checks": checks,
+    }}
+
+
 class DashboardView(BaseView):
     route_base = "/dashboards"
     default_view = "index"
@@ -13561,6 +13635,10 @@ class DashboardView(BaseView):
     @expose("/catalog.json")
     def catalog_json(self):
         return jsonify(list(dashboard_catalog()))
+
+    @expose("/workbench.json")
+    def visualization_workbench_json(self):
+        return jsonify(visualization_workbench({{"app/dashboards.py", "app/templates/appgen_dashboards.html"}}))
 
     @expose("/<table_name>.json")
     def dashboard_json(self, table_name):
@@ -41578,13 +41656,14 @@ def validate_dashboard_artifacts() -> None:
         "chart_render_contract",
         "chart_accessibility_summary",
         "dashboard_workbench",
+        "visualization_workbench",
         "dashboard_sample_rows",
         "dashboard_release_gate",
     )
     if not all(item in contract for item in required):
         fail("dashboard contract must expose catalogs, render contracts, accessibility summaries, workbenches, sample rows, and release gates")
     template = (ROOT / "app" / "templates" / "appgen_dashboards.html").read_text()
-    if "Dashboards" not in template or "Workbench JSON" not in template or "Release Gate JSON" not in template:
+    if "Dashboards" not in template or "Visualization Workbench JSON" not in template or "Workbench JSON" not in template or "Release Gate JSON" not in template:
         fail("dashboard template must expose generated dashboard workbench and release gate")
 
 
@@ -42648,6 +42727,17 @@ def test_generated_runtime_helpers():
     assert isinstance(dashboards.dashboard_catalog(), tuple)
     assert dashboards.dashboard_release_gate({"app/dashboards.py", "app/templates/appgen_dashboards.html"})["ok"] is True
     assert dashboards.dashboard_release_gate({"app/dashboards.py"})["ok"] is False
+    visualization_workbench = dashboards.visualization_workbench({"app/dashboards.py", "app/templates/appgen_dashboards.html"})
+    assert visualization_workbench["format"] == "appgen.visualization-workbench.v1"
+    assert visualization_workbench["ok"] is True
+    assert visualization_workbench["decision"] == "approved"
+    assert {"dashboard_catalog", "chart_render_contracts", "accessibility_summaries", "renderer_targets", "analytics_payload", "artifact_evidence", "route_surface"} == {
+        check["id"] for check in visualization_workbench["checks"]
+    }
+    assert "/dashboards/workbench.json" in next(
+        check["evidence"]["routes"] for check in visualization_workbench["checks"] if check["id"] == "route_surface"
+    )
+    assert dashboards.visualization_workbench({"app/dashboards.py"})["ok"] is False
     usage_resource = next(iter(usage_analytics.USAGE_RESOURCES))
     usage_event = usage_analytics.usage_event(usage_resource, "viewed", actor="ada")
     assert usage_analytics.activity_summary((usage_event,))["active_users"] == 1

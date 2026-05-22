@@ -360,7 +360,10 @@ apps include:
   workbench payloads for schema-aware data visualization. A generated dashboard
   release gate proves dashboard/catalog coverage, Vega-Lite rendering contracts,
   accessibility summaries, web/mobile/desktop renderer targets, and required
-  dashboard artifacts.
+  dashboard artifacts. The generated `visualization_workbench()` provides
+  aggregate IDE evidence for dashboard catalogs, chart render contracts,
+  accessibility text, analytics payloads, renderer targets, artifacts, and
+  dashboard route coverage.
 - `search.py` and `appgen_search.html` with generated searchable-field indexes
   and provider plans for in-memory, PostgreSQL, Whoosh, and Elasticsearch search,
   including Elasticsearch mappings, Whoosh schema descriptors, and reviewed

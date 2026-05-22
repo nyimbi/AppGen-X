@@ -1127,6 +1127,7 @@ def test_generate_app_from_sqlite_schema_compiles(tmp_path) -> None:
     assert capabilities_by_key["operations.finance"]["status"] == "implemented"
     assert capabilities_by_key["operations.manufacturing"]["status"] == "implemented"
     assert capabilities_by_key["data.access"]["status"] == "implemented"
+    assert capabilities_by_key["data.visualization"]["status"] == "implemented"
     assert "data.seed" in {item["key"] for item in manifest["capabilities"]}
     assert "ui.visual-modeling" in {item["key"] for item in manifest["capabilities"]}
     assert "ui.pwa" in {item["key"] for item in manifest["capabilities"]}
@@ -2418,6 +2419,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert "Generated dashboard, KPI, and chart contracts" in (
         output_dir / "templates" / "appgen_dashboards.html"
     ).read_text()
+    assert "Visualization Workbench JSON" in (output_dir / "templates" / "appgen_dashboards.html").read_text()
     assert "Workbench JSON" in (output_dir / "templates" / "appgen_dashboards.html").read_text()
     usage_template = (output_dir / "templates" / "appgen_usage_analytics.html").read_text()
     assert "app usage analytics" in usage_template
@@ -3663,6 +3665,23 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         gate["gate"] for gate in dashboard_gate["gates"]
     }
     assert dashboards.dashboard_release_gate({"app/dashboards.py"})["ok"] is False
+    visualization_workbench = dashboards.visualization_workbench({"app/dashboards.py", "app/templates/appgen_dashboards.html"})
+    assert visualization_workbench["format"] == "appgen.visualization-workbench.v1"
+    assert visualization_workbench["ok"] is True
+    assert visualization_workbench["decision"] == "approved"
+    assert {
+        "dashboard_catalog",
+        "chart_render_contracts",
+        "accessibility_summaries",
+        "renderer_targets",
+        "analytics_payload",
+        "artifact_evidence",
+        "route_surface",
+    } == {check["id"] for check in visualization_workbench["checks"]}
+    assert "/dashboards/workbench.json" in next(
+        check["evidence"]["routes"] for check in visualization_workbench["checks"] if check["id"] == "route_surface"
+    )
+    assert dashboards.visualization_workbench({"app/dashboards.py"})["ok"] is False
     usage_events = (
         usage_analytics.usage_event("Book", "viewed", actor="ada", occurred_at="2026-01-01T10:00:00Z"),
         usage_analytics.usage_event("Book", "created", actor="ada", occurred_at="2026-01-01T10:01:00Z"),
