@@ -41881,13 +41881,15 @@ def validate_test_coverage_artifacts() -> None:
         "uncovered_requirements",
         "uncovered_workflow_requirements",
         "coverage_release_gate",
+        "coverage_workbench",
+        "appgen.coverage-workbench.v1",
         "test_manifest_tables_have_generated_coverage",
         "test_manifest_workflows_have_generated_coverage",
         "test_every_workflow_has_transition_statechart_automation_and_wizard_cases",
         "test_coverage_release_gate_is_ready",
     )
     if not all(item in coverage for item in required):
-        fail("generated coverage tests must expose per-table and workflow coverage matrices plus pytest checks")
+        fail("generated coverage tests must expose per-table and workflow coverage matrices, workbench evidence, and pytest checks")
     if "schema" not in coverage or "api" not in coverage or "security" not in coverage or "reports" not in coverage or "experience" not in coverage or "quality" not in coverage:
         fail("generated coverage tests must cover schema, API, security, reports, experience, and quality")
     if "statechart" not in coverage or "automation" not in coverage or "wizard" not in coverage:
@@ -42913,6 +42915,42 @@ def coverage_release_gate(existing_paths=()):
     }}
 
 
+def coverage_workbench(existing_paths=()):
+    """Return IDE/test-runner evidence for generated coverage breadth."""
+    gate = coverage_release_gate(existing_paths)
+    catalog = coverage_area_catalog()
+    summary = coverage_summary()
+    pytest_entrypoints = (
+        "test_manifest_tables_have_generated_coverage",
+        "test_manifest_workflows_have_generated_coverage",
+        "test_every_table_has_api_ui_report_security_and_data_cases",
+        "test_every_workflow_has_transition_statechart_automation_and_wizard_cases",
+        "test_coverage_summary_meets_generated_minimum",
+        "test_coverage_release_gate_is_ready",
+    )
+    checks = (
+        {{"id": "table_matrix", "ok": bool(COVERAGE_MATRIX) and not uncovered_requirements(), "evidence": COVERAGE_MATRIX}},
+        {{"id": "workflow_matrix", "ok": not uncovered_workflow_requirements(), "evidence": WORKFLOW_COVERAGE}},
+        {{"id": "area_catalog", "ok": set(REQUIRED_AREAS) == set(catalog["table_areas"]) and set(REQUIRED_WORKFLOW_AREAS) == set(catalog["workflow_areas"]), "evidence": catalog}},
+        {{"id": "minimum_case_count", "ok": summary["ok"], "evidence": summary}},
+        {{"id": "pytest_entrypoints", "ok": len(pytest_entrypoints) >= 6, "evidence": pytest_entrypoints}},
+        {{"id": "artifact_evidence", "ok": next(item for item in gate["gates"] if item["gate"] == "artifact_coverage")["ok"], "evidence": next(item for item in gate["gates"] if item["gate"] == "artifact_coverage")}},
+        {{"id": "release_gate", "ok": gate["ok"], "evidence": gate}},
+    )
+    ok = all(check["ok"] for check in checks)
+    return {{
+        "format": "appgen.coverage-workbench.v1",
+        "ok": ok,
+        "decision": "approved" if ok else "blocked",
+        "checks": checks,
+        "matrix": coverage_matrix(),
+        "workflow_matrix": workflow_coverage_matrix(),
+        "catalog": catalog,
+        "summary": summary,
+        "release_gate": gate,
+    }}
+
+
 def test_manifest_tables_have_generated_coverage():
     manifest = json.loads((ROOT / "app" / "appgen.json").read_text())
     manifest_tables = {{table["name"] for table in manifest["tables"]}}
@@ -42966,6 +43004,9 @@ def test_coverage_release_gate_is_ready():
     assert gate["format"] == "appgen.coverage-release-gate.v1"
     assert gate["ok"] is True
     assert {{"experience_cases", "quality_cases", "artifact_coverage"}} <= {{item["gate"] for item in gate["gates"]}}
+    workbench = coverage_workbench()
+    assert workbench["format"] == "appgen.coverage-workbench.v1"
+    assert workbench["ok"] is True
 '''
 
 

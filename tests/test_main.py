@@ -1133,6 +1133,7 @@ def test_generate_app_from_sqlite_schema_compiles(tmp_path) -> None:
     assert "quality.code-review" in {item["key"] for item in manifest["capabilities"]}
     assert capabilities_by_key["quality.code-review"]["status"] == "implemented"
     assert "quality.test-coverage" in {item["key"] for item in manifest["capabilities"]}
+    assert capabilities_by_key["quality.test-coverage"]["status"] == "implemented"
     assert "components.templates" in {item["key"] for item in manifest["capabilities"]}
     assert capabilities_by_key["components.templates"]["status"] == "implemented"
     assert capabilities_by_key["components.application-composition"]["status"] == "implemented"
@@ -3485,6 +3486,23 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert coverage_gate["format"] == "appgen.coverage-release-gate.v1"
     assert coverage_gate["ok"] is True
     assert {"experience_cases", "quality_cases", "artifact_coverage"} <= {gate["gate"] for gate in coverage_gate["gates"]}
+    coverage_workbench = generated_coverage.coverage_workbench()
+    assert coverage_workbench["format"] == "appgen.coverage-workbench.v1"
+    assert coverage_workbench["ok"] is True
+    assert coverage_workbench["decision"] == "approved"
+    assert {
+        "table_matrix",
+        "workflow_matrix",
+        "area_catalog",
+        "minimum_case_count",
+        "pytest_entrypoints",
+        "artifact_evidence",
+        "release_gate",
+    } == {check["id"] for check in coverage_workbench["checks"]}
+    assert "test_coverage_release_gate_is_ready" in next(
+        check["evidence"] for check in coverage_workbench["checks"] if check["id"] == "pytest_entrypoints"
+    )
+    assert generated_coverage.coverage_workbench({"tests/test_generated_coverage.py"})["ok"] is False
     author_coverage = generated_coverage.coverage_matrix()["Author"]
     assert {"shell", "loading", "empty", "error", "footer"} <= set(author_coverage["experience"]["view_states"])
     assert "app/runtime_assurance.py" in author_coverage["quality"]["release_gates"]

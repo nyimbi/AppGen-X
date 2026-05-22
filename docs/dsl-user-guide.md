@@ -566,6 +566,9 @@ Use the generated `coverage_release_gate()` in
 `tests/test_generated_coverage.py` to prove table, workflow, view-experience,
 quality, diagnostics, and release-gate coverage before claiming generated test
 coverage is complete.
+Use `coverage_workbench()` in the same generated pytest module to inspect table
+matrix, workflow matrix, area catalog, minimum case count, pytest entrypoints,
+artifact, and release-gate evidence.
 Use `ci_release_gate()` in `scripts/appgen_quality.py` to prove the generated
 GitHub Actions workflow, quality script, required CI stages, quality/test
 commands, and generated test artifacts before claiming CI/CD readiness.

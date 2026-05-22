@@ -810,6 +810,9 @@ apps include:
   generated-test artifact coverage. A generated coverage release gate proves
   table areas, workflow areas, experience cases, quality cases, minimum case
   counts, and required quality artifacts before test coverage is claimed.
+  `coverage_workbench()` exposes test-runner/IDE-ready table matrix, workflow
+  matrix, area catalog, minimum case count, pytest entrypoint, artifact, and
+  release-gate evidence before `quality.test-coverage` is marked implemented.
 - `code_review.py` and `appgen_code_review.html` with generated automated
   schema and artifact review findings for quality gates. The generated
   `code_review_release_gate()` proves required artifact coverage, schema-rule
