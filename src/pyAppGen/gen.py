@@ -27102,6 +27102,73 @@ def binding_conflict_validation_contract():
     }}
 
 
+def binding_graph_validation_contract():
+    """Return structural validation for visual binding graph nodes and edges."""
+    graph = livebindings_graph_contract()
+    node_ids = tuple(node["id"] for node in graph["nodes"])
+    missing_endpoints = tuple(
+        {{"edge": edge, "missing": tuple(endpoint for endpoint in (edge["from"], edge["to"]) if endpoint not in node_ids)}}
+        for edge in graph["edges"]
+        if edge["from"] not in node_ids or edge["to"] not in node_ids
+    )
+    dependency_edge_kinds = {{"dataset_to_field", "field_to_control", "expression_to_property"}}
+    adjacency = {{
+        node_id: tuple(
+            edge["to"]
+            for edge in graph["edges"]
+            if edge["from"] == node_id and edge["kind"] in dependency_edge_kinds
+        )
+        for node_id in node_ids
+    }}
+    cycles = []
+
+    def visit(node_id, path):
+        if node_id in path:
+            cycles.append(path[path.index(node_id):] + (node_id,))
+            return
+        for target in adjacency.get(node_id, ()):
+            visit(target, path + (node_id,))
+
+    for node_id in node_ids:
+        visit(node_id, ())
+    return {{
+        "format": "appgen.generated-binding-graph-validation-contract.v1",
+        "ok": not missing_endpoints and not cycles,
+        "node_count": len(node_ids),
+        "edge_count": len(graph["edges"]),
+        "dependency_edge_kinds": tuple(sorted(dependency_edge_kinds)),
+        "missing_endpoints": missing_endpoints,
+        "cycles": tuple(cycles),
+        "guards": ("all_edge_endpoints_exist", "acyclic_runtime_dependencies", "stable_node_identity"),
+        "side_effects": (),
+    }}
+
+
+def binding_edit_transaction_contract():
+    """Return staged visual edit transactions against a binding graph."""
+    graph = livebindings_graph_contract()
+    session = binding_authoring_session()
+    validation = binding_graph_validation_contract()
+    operations = tuple(
+        {{
+            "op": operation["op"],
+            "stage": ("capture_graph", "apply_to_staged_graph", "validate_graph", "preview_delta", "commit_or_rollback"),
+            "rollback": ("restore_graph_snapshot", "clear_preview_delta"),
+            "review_required": operation["review_required"],
+        }}
+        for operation in session["operations"]
+        if operation["op"] != "preview_value"
+    )
+    return {{
+        "format": "appgen.generated-binding-edit-transaction-contract.v1",
+        "graph_snapshot": {{"nodes": len(graph["nodes"]), "edges": len(graph["edges"])}},
+        "operations": operations,
+        "validation": validation,
+        "undo_checkpoint": "before_binding_graph_edit",
+        "side_effects": (),
+    }}
+
+
 def binding_preview_evaluation_contract():
     """Return side-effect-free preview evaluation evidence for binding expressions."""
     graph = livebindings_graph_contract()
@@ -27111,6 +27178,24 @@ def binding_preview_evaluation_contract():
         if node["kind"] == "expression"
     )
     return {{"format": "appgen.generated-binding-preview-evaluation-contract.v1", "previews": previews, "evaluation_mode": "sandboxed_expression_subset", "side_effects": ()}}
+
+
+def binding_preview_runtime_parity_contract():
+    """Return parity evidence between preview evaluation and runtime wiring."""
+    previews = binding_preview_evaluation_contract()
+    runtime = binding_runtime_wiring_contract()
+    preview_nodes = tuple(preview["node"] for preview in previews["previews"])
+    runtime_expression_sources = tuple(edge["from"] for edge in runtime["edges"] if edge["kind"] == "expression_to_property")
+    return {{
+        "format": "appgen.generated-binding-preview-runtime-parity-contract.v1",
+        "ok": set(preview_nodes) == set(runtime_expression_sources)
+        and "validation_pipeline" in runtime["artifacts"]
+        and "converter_pipeline" in runtime["artifacts"],
+        "preview_nodes": preview_nodes,
+        "runtime_expression_sources": runtime_expression_sources,
+        "parity_checks": ("expression_sources_match", "validation_pipeline_shared", "converter_pipeline_shared"),
+        "side_effects": (),
+    }}
 
 
 def binding_runtime_wiring_contract():
@@ -27159,8 +27244,11 @@ def livebindings_workbench():
     expressions = tuple(node["validator"] for node in graph["nodes"] if node["kind"] == "expression")
     authoring = binding_authoring_session()
     conflicts = binding_conflict_validation_contract()
+    graph_validation = binding_graph_validation_contract()
+    edit_transactions = binding_edit_transaction_contract()
     previews = binding_preview_evaluation_contract()
     runtime_wiring = binding_runtime_wiring_contract()
+    preview_runtime_parity = binding_preview_runtime_parity_contract()
     history = binding_history_contract()
     checks = (
         {{"id": "graph_nodes", "ok": {{"dataset", "field", "control", "expression"}} <= {{node["kind"] for node in graph["nodes"]}}, "evidence": tuple((node["id"], node["kind"]) for node in graph["nodes"])}},
@@ -27171,12 +27259,15 @@ def livebindings_workbench():
         {{"id": "runtime_modes", "ok": {{"one_way", "two_way", "command"}} <= set(contract["runtime"]["modes"]), "evidence": contract["runtime"]}},
         {{"id": "authoring_operations", "ok": {{"create_link", "make_two_way", "attach_expression", "preview_value", "disable_binding"}} <= {{operation["op"] for operation in authoring["operations"]}} and not authoring["side_effects"], "evidence": authoring}},
         {{"id": "conflict_validation", "ok": conflicts["ok"] and {{"duplicate_edges", "multiple_writers", "unsafe_expression"}} <= set(conflicts["checks"]) and not conflicts["side_effects"], "evidence": conflicts}},
+        {{"id": "graph_validation", "ok": graph_validation["ok"] and {{"all_edge_endpoints_exist", "acyclic_runtime_dependencies"}} <= set(graph_validation["guards"]) and not graph_validation["side_effects"], "evidence": graph_validation}},
+        {{"id": "edit_transactions", "ok": bool(edit_transactions["operations"]) and all({{"capture_graph", "validate_graph", "commit_or_rollback"}} <= set(operation["stage"]) for operation in edit_transactions["operations"]) and edit_transactions["validation"]["ok"] and not edit_transactions["side_effects"], "evidence": edit_transactions}},
         {{"id": "preview_evaluation", "ok": bool(previews["previews"]) and all(preview["validator"]["ok"] for preview in previews["previews"]) and not previews["side_effects"], "evidence": previews}},
         {{"id": "runtime_wiring", "ok": {{"binding_registry", "observer_hooks", "update_queue", "validation_pipeline"}} <= set(runtime_wiring["artifacts"]) and {{"on_change", "on_validate"}} <= set(runtime_wiring["triggers"]) and not runtime_wiring["side_effects"], "evidence": runtime_wiring}},
+        {{"id": "preview_runtime_parity", "ok": preview_runtime_parity["ok"] and not preview_runtime_parity["side_effects"], "evidence": preview_runtime_parity}},
         {{"id": "history_undo_redo", "ok": {{"create_link", "attach_expression", "disable_binding"}} <= set(history["commands"]) and {{"before_apply", "after_apply"}} <= set(history["checkpoints"]) and not history["side_effects"], "evidence": history}},
     )
     ok = all(check["ok"] for check in checks)
-    return {{"format": "appgen.generated-livebindings-workbench.v1", "ok": ok, "decision": "approved" if ok else "blocked", "contract": contract, "authoring": authoring, "conflicts": conflicts, "previews": previews, "runtime_wiring": runtime_wiring, "history": history, "checks": checks, "blocking_gaps": tuple(check for check in checks if not check["ok"])}}
+    return {{"format": "appgen.generated-livebindings-workbench.v1", "ok": ok, "decision": "approved" if ok else "blocked", "contract": contract, "authoring": authoring, "conflicts": conflicts, "graph_validation": graph_validation, "edit_transactions": edit_transactions, "previews": previews, "runtime_wiring": runtime_wiring, "preview_runtime_parity": preview_runtime_parity, "history": history, "checks": checks, "blocking_gaps": tuple(check for check in checks if not check["ok"])}}
 
 
 def rad_data_tooling_contract():

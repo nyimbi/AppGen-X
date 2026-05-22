@@ -874,10 +874,17 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "runtime_modes",
         "authoring_operations",
         "conflict_validation",
+        "graph_validation",
+        "edit_transactions",
         "preview_evaluation",
         "runtime_wiring",
+        "preview_runtime_parity",
         "history_undo_redo",
     } == {check["id"] for check in binding_workbench["checks"]}
+    assert binding_workbench["graph_validation"]["ok"] is True
+    assert binding_workbench["edit_transactions"]["validation"]["ok"] is True
+    assert all("commit_or_rollback" in operation["stage"] for operation in binding_workbench["edit_transactions"]["operations"])
+    assert binding_workbench["preview_runtime_parity"]["ok"] is True
     data_workbench = rad_data_tooling_workbench()
     assert data_workbench["format"] == "appgen.rad-data-tooling-workbench.v1"
     assert data_workbench["ok"] is True
@@ -8956,11 +8963,23 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     generated_bindings = form_designer.livebindings_workbench()
     assert generated_bindings["format"] == "appgen.generated-livebindings-workbench.v1"
     assert generated_bindings["ok"] is True
-    assert {"graph_nodes", "graph_edges", "expression_validation", "authoring_operations", "runtime_wiring"} <= {
+    assert {
+        "graph_nodes",
+        "graph_edges",
+        "expression_validation",
+        "authoring_operations",
+        "graph_validation",
+        "edit_transactions",
+        "runtime_wiring",
+        "preview_runtime_parity",
+    } <= {
         check["id"] for check in generated_bindings["checks"]
     }
     assert generated_bindings["authoring"]["operations"]
+    assert generated_bindings["graph_validation"]["ok"] is True
+    assert generated_bindings["edit_transactions"]["validation"]["ok"] is True
     assert generated_bindings["runtime_wiring"]["artifacts"]
+    assert generated_bindings["preview_runtime_parity"]["ok"] is True
     generated_data_tooling = form_designer.rad_data_tooling_workbench()
     assert generated_data_tooling["format"] == "appgen.generated-rad-data-tooling-workbench.v1"
     assert generated_data_tooling["ok"] is True
