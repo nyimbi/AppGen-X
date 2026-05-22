@@ -78,6 +78,10 @@ reviewing release readiness for the whole authoring loop. The gate combines
 language quality, syntax/semantic linting, formatter stability, IDE navigation,
 code actions, authoring guidance, and source-family coverage for DBML, SQL,
 PonyORM, live databases, and DSL files.
+Use `dsl_antlr_integrity_report()` when changing the grammar: it proves the
+canonical grammar, generated lexer, generated parser, token names, parser rules,
+and compact keyword literals are synchronized before the language-service
+contract is considered healthy.
 
 Use `required` for fields that must be entered. Use `search` on fields that
 should appear in generated search contracts. Use `hidden` for generated or

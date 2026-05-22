@@ -1293,12 +1293,111 @@ def dsl_keyword_budget() -> dict:
     }
 
 
+def dsl_antlr_integrity_report() -> dict:
+    """Return drift evidence between the canonical grammar and generated parser."""
+    grammar_path = Path(__file__).resolve().parents[2] / "lang" / "appgen.g4"
+    parser_path = _GENERATED_DIR / "appgenParser.py"
+    lexer_path = _GENERATED_DIR / "appgenLexer.py"
+    grammar_text = grammar_path.read_text() if grammar_path.exists() else ""
+    grammar_tokens = tuple(re.findall(r"^([A-Z_]+)\s*:", grammar_text, flags=re.MULTILINE))
+    grammar_rules = tuple(
+        re.findall(r"^([a-z][A-Za-z0-9_]*)\s*(?:\n\s*)?:", grammar_text, flags=re.MULTILINE)
+    )
+    grammar_literals = {
+        token: literal
+        for token, literal in re.findall(
+            r"^([A-Z_]+)\s*:\s*'([^']+)'", grammar_text, flags=re.MULTILINE
+        )
+    }
+    parser_symbols = tuple(name for name in appgenParser.symbolicNames if name != "<INVALID>")
+    lexer_symbols = tuple(name for name in appgenLexer.symbolicNames if name != "<INVALID>")
+    parser_literals = {
+        symbol: appgenParser.literalNames[index].strip("'")
+        for index, symbol in enumerate(appgenParser.symbolicNames)
+        if symbol != "<INVALID>"
+        and index < len(appgenParser.literalNames)
+        and appgenParser.literalNames[index].startswith("'")
+    }
+    grammar_token_set = set(grammar_tokens)
+    parser_symbol_set = set(parser_symbols)
+    lexer_symbol_set = set(lexer_symbols)
+    grammar_rule_set = set(grammar_rules)
+    parser_rule_set = set(appgenParser.ruleNames)
+    canonical_keyword_tokens = tuple(
+        token for token, literal in grammar_literals.items() if literal in CORE_KEYWORDS
+    )
+    keyword_literal_mismatches = tuple(
+        {
+            "token": token,
+            "grammar": literal,
+            "parser": parser_literals.get(token),
+        }
+        for token, literal in grammar_literals.items()
+        if literal in CORE_KEYWORDS and parser_literals.get(token) != literal
+    )
+    required_rules = (
+        "schema",
+        "tableDecl",
+        "viewDecl",
+        "componentPlacement",
+        "flowDecl",
+        "llmDecl",
+        "agentDecl",
+    )
+    missing_required_rules = tuple(rule for rule in required_rules if rule not in parser_rule_set)
+    missing_parser_tokens = tuple(token for token in grammar_tokens if token not in parser_symbol_set)
+    missing_lexer_tokens = tuple(token for token in grammar_tokens if token not in lexer_symbol_set)
+    missing_parser_rules = tuple(rule for rule in grammar_rules if rule not in parser_rule_set)
+    extra_parser_tokens = tuple(
+        token
+        for token in parser_symbols
+        if token not in grammar_token_set and token not in {"EOF"}
+    )
+    extra_parser_rules = tuple(rule for rule in appgenParser.ruleNames if rule not in grammar_rule_set)
+    ok = (
+        grammar_path.exists()
+        and parser_path.exists()
+        and lexer_path.exists()
+        and not missing_parser_tokens
+        and not missing_lexer_tokens
+        and not missing_parser_rules
+        and not extra_parser_tokens
+        and not extra_parser_rules
+        and not keyword_literal_mismatches
+        and not missing_required_rules
+        and len(canonical_keyword_tokens) == len(CORE_KEYWORDS)
+    )
+    return {
+        "format": "appgen.dsl-antlr-integrity.v1",
+        "ok": ok,
+        "grammar": "lang/appgen.g4",
+        "parser": "src/pyAppGen/dsl_generated/lang/appgenParser.py",
+        "lexer": "src/pyAppGen/dsl_generated/lang/appgenLexer.py",
+        "grammar_token_count": len(grammar_tokens),
+        "parser_token_count": len(parser_symbols),
+        "lexer_token_count": len(lexer_symbols),
+        "grammar_rule_count": len(grammar_rules),
+        "parser_rule_count": len(appgenParser.ruleNames),
+        "canonical_keyword_tokens": canonical_keyword_tokens,
+        "missing_parser_tokens": missing_parser_tokens,
+        "missing_lexer_tokens": missing_lexer_tokens,
+        "missing_parser_rules": missing_parser_rules,
+        "missing_required_rules": missing_required_rules,
+        "extra_parser_tokens": extra_parser_tokens,
+        "extra_parser_rules": extra_parser_rules,
+        "keyword_literal_mismatches": keyword_literal_mismatches,
+        "legacy_contextual_tokens": LEGACY_CONTEXTUAL_TOKENS,
+    }
+
+
 def dsl_language_quality_contract() -> dict:
     """Return learnability, ANTLR, and keyword-budget evidence for the DSL."""
     budget = dsl_keyword_budget()
+    antlr = dsl_antlr_integrity_report()
     checks = (
         {"check": "antlr_grammar", "ok": (Path(__file__).resolve().parents[2] / "lang" / "appgen.g4").exists()},
         {"check": "generated_antlr_parser", "ok": (_GENERATED_DIR / "appgenParser.py").exists()},
+        {"check": "antlr_grammar_parser_sync", "ok": antlr["ok"], "evidence": antlr},
         {"check": "keyword_budget", "ok": budget["ok"], "value": budget["count"]},
         {"check": "authoring_aliases_without_new_keywords", "ok": set(AUTHORING_ALIASES.values()) <= set(CORE_KEYWORDS)},
         {"check": "modifier_aliases_without_new_keywords", "ok": set(MODIFIER_ALIASES.values()) <= set(CORE_KEYWORDS)},
@@ -1311,6 +1410,7 @@ def dsl_language_quality_contract() -> dict:
         "ok": all(item["ok"] for item in checks),
         "grammar": "lang/appgen.g4",
         "parser": "src/pyAppGen/dsl_generated/lang/appgenParser.py",
+        "antlr_integrity": antlr,
         "budget": budget,
         "keywords": CORE_KEYWORDS,
         "canonical_keyword_count": len(CORE_KEYWORDS),

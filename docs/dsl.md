@@ -33,6 +33,9 @@ operational: it checks the ANTLR parser, keyword budget, syntax/semantic
 linting, formatter stability, IDE navigation, code actions, authoring guidance,
 and source-family coverage for DBML, SQL, PonyORM, live database introspection,
 and DSL files.
+`dsl_antlr_integrity_report()` additionally proves the canonical grammar and
+generated lexer/parser metadata are synchronized, including token names, parser
+rules, required DSL constructs, and compact keyword literals.
 
 The optional `app { ... }` block carries app-level options such as `theme`,
 `primary`, `accent`, `logo`, `tagline`, explicit row-level security targets,

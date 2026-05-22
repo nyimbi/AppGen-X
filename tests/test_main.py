@@ -27,6 +27,7 @@ from pyAppGen import __main__
 from pyAppGen.gen import generate_app_from_database
 from pyAppGen.gen import generate_app_from_schema
 from pyAppGen.dsl import apply_lint_fixes
+from pyAppGen.dsl import dsl_antlr_integrity_report
 from pyAppGen.dsl import dsl_authoring_release_gate
 from pyAppGen.dsl import dsl_authoring_score
 from pyAppGen.dsl import dsl_code_actions
@@ -78,6 +79,21 @@ def test_dsl_linter_reports_semantic_feedback(runner: CliRunner, tmp_path) -> No
     assert dsl_keyword_budget()["legacy_contextual_tokens"] == ("ref",)
     assert dsl_keyword_budget()["modifier_aliases"] == {"hide": "hidden", "searchable": "search"}
     assert dsl_language_quality_contract()["grammar"] == "lang/appgen.g4"
+    antlr_integrity = dsl_antlr_integrity_report()
+    assert antlr_integrity["format"] == "appgen.dsl-antlr-integrity.v1"
+    assert antlr_integrity["ok"] is True
+    assert antlr_integrity["missing_parser_tokens"] == ()
+    assert antlr_integrity["missing_lexer_tokens"] == ()
+    assert antlr_integrity["missing_parser_rules"] == ()
+    assert antlr_integrity["keyword_literal_mismatches"] == ()
+    assert {"APP", "TABLE", "VIEW", "FLOW", "LLM", "AGENT"} <= set(
+        antlr_integrity["canonical_keyword_tokens"]
+    )
+    assert dsl_language_quality_contract()["antlr_integrity"]["ok"] is True
+    assert any(
+        check["check"] == "antlr_grammar_parser_sync" and check["ok"]
+        for check in dsl_language_quality_contract()["checks"]
+    )
     assert dsl_language_quality_contract()["ok"] is True
     score = dsl_authoring_score(source, source_name="inline")
     assert score["format"] == "appgen.dsl-authoring-score.v1"
@@ -4644,6 +4660,13 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert dsl_reference.dsl_language_quality_contract()["format"] == "appgen.dsl-language-quality.v1"
     assert dsl_reference.dsl_language_quality_contract()["ok"] is True
     assert dsl_reference.dsl_language_quality_contract()["canonical_keyword_count"] == 17
+    assert dsl_reference.dsl_antlr_integrity_report()["format"] == "appgen.dsl-antlr-integrity.v1"
+    assert dsl_reference.dsl_antlr_integrity_report()["ok"] is True
+    assert dsl_reference.dsl_language_quality_contract()["antlr_integrity"]["ok"] is True
+    assert any(
+        check["check"] == "antlr_grammar_parser_sync" and check["ok"]
+        for check in dsl_reference.dsl_language_quality_contract()["checks"]
+    )
     assert "ref" not in dsl_reference.dsl_language_quality_contract()["keywords"]
     assert dsl_reference.dsl_reference_check(
         {"app/dsl_reference.py", "app/templates/appgen_dsl_reference.html"}

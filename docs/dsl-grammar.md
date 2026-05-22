@@ -98,6 +98,11 @@ contract with the grammar path, generated parser path, keyword budget, keyword-f
 syntax list, authoring aliases, and four-step learning path. Generated apps expose
 the same evidence through `app/dsl_reference.py` and
 `/dsl-reference/language-quality.json`.
+`pyAppGen.dsl.dsl_antlr_integrity_report()` is the stricter drift check: it
+compares `lang/appgen.g4` with the generated ANTLR lexer/parser token and rule
+metadata, verifies that compact keyword literals still match, and reports any
+missing parser tokens, lexer tokens, parser rules, required rules, or keyword
+literal mismatches before generation is trusted.
 `pyAppGen.dsl.dsl_authoring_score()` complements the quality contract with
 weighted IDE checks and next actions for complete, canonical, formatted DSL
 source without increasing the keyword budget.

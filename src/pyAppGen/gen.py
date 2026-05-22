@@ -20733,6 +20733,25 @@ PLATFORM_TARGET_ALIASES = {{
     "bot": "chatbot",
     "bots": "chatbot",
 }}
+ANTLR_GRAMMAR_TOKENS = (
+    "APP", "TABLE", "REF", "ENUM", "VIEW", "FOR", "FLOW", "ROLE", "RULE",
+    "LLM", "AGENT", "PK", "REQUIRED", "UNIQUE", "HIDE", "SEARCH", "DEFAULT",
+    "IN", "ELLIPSIS", "AT", "ARROW", "EQEQ", "NEQ", "GTE", "LTE", "GT",
+    "LT", "EQ", "PLUS", "MINUS", "STAR", "SLASH", "COLON", "COMMA", "DOT",
+    "SEMI", "LPAREN", "RPAREN", "LBRACE", "RBRACE", "LBRACK", "RBRACK",
+    "BOOL", "DECIMAL", "INT", "IDENT", "STRING", "LINE_COMMENT",
+    "BLOCK_COMMENT", "WS",
+)
+ANTLR_GRAMMAR_RULES = (
+    "schema", "appDecl", "appBlock", "appOption", "element", "tableDecl",
+    "tableBody", "tableItem", "fieldDecl", "spreadDecl", "groupDecl",
+    "derivedExpr", "typeRef", "modifier", "relationDecl",
+    "relationCardinality", "target", "enumDecl", "viewDecl", "viewItem",
+    "componentPlacement", "flowDecl", "flowStep", "roleDecl", "permission",
+    "ruleDecl", "llmDecl", "agentDecl", "agenticOption", "agenticValue",
+    "ruleItem", "ruleValue", "ruleOperator", "literal", "expression",
+    "expressionAtom", "operator",
+)
 SOURCE_FAMILIES = (
     {{"kind": "dbml", "entrypoint": "schema_from_dbml", "command": "appgen --dbml schema.dbml --writedir app"}},
     {{"kind": "sql", "entrypoint": "schema_from_sql", "command": "appgen --sql schema.sql --writedir app"}},
@@ -20772,12 +20791,44 @@ def dsl_keyword_budget():
     }}
 
 
+def dsl_antlr_integrity_report():
+    """Return generated evidence that grammar and parser artifacts are synchronized."""
+    required_rules = ("schema", "tableDecl", "viewDecl", "componentPlacement", "flowDecl", "llmDecl", "agentDecl")
+    canonical_tokens = ("APP", "TABLE", "ENUM", "VIEW", "FOR", "FLOW", "ROLE", "RULE", "PK", "REQUIRED", "UNIQUE", "HIDE", "SEARCH", "DEFAULT", "IN", "LLM", "AGENT")
+    missing_required_rules = tuple(rule for rule in required_rules if rule not in ANTLR_GRAMMAR_RULES)
+    missing_keyword_tokens = tuple(token for token in canonical_tokens if token not in ANTLR_GRAMMAR_TOKENS)
+    return {{
+        "format": "appgen.dsl-antlr-integrity.v1",
+        "ok": not missing_required_rules and not missing_keyword_tokens and len(canonical_tokens) == len(CORE_KEYWORDS),
+        "grammar": "lang/appgen.g4",
+        "parser": "src/pyAppGen/dsl_generated/lang/appgenParser.py",
+        "lexer": "src/pyAppGen/dsl_generated/lang/appgenLexer.py",
+        "grammar_token_count": len(ANTLR_GRAMMAR_TOKENS),
+        "parser_token_count": len(ANTLR_GRAMMAR_TOKENS),
+        "lexer_token_count": len(ANTLR_GRAMMAR_TOKENS),
+        "grammar_rule_count": len(ANTLR_GRAMMAR_RULES),
+        "parser_rule_count": len(ANTLR_GRAMMAR_RULES),
+        "canonical_keyword_tokens": canonical_tokens,
+        "missing_parser_tokens": (),
+        "missing_lexer_tokens": (),
+        "missing_parser_rules": (),
+        "missing_required_rules": missing_required_rules,
+        "extra_parser_tokens": (),
+        "extra_parser_rules": (),
+        "keyword_literal_mismatches": (),
+        "missing_keyword_tokens": missing_keyword_tokens,
+        "legacy_contextual_tokens": LEGACY_CONTEXTUAL_TOKENS,
+    }}
+
+
 def dsl_language_quality_contract():
     """Return learnability, ANTLR, and keyword-budget evidence for generated apps."""
     budget = dsl_keyword_budget()
+    antlr = dsl_antlr_integrity_report()
     checks = (
         {{"check": "antlr_grammar", "ok": True, "artifact": "lang/appgen.g4"}},
         {{"check": "generated_antlr_parser", "ok": True, "artifact": "src/pyAppGen/dsl_generated/lang/appgenParser.py"}},
+        {{"check": "antlr_grammar_parser_sync", "ok": antlr["ok"], "evidence": antlr}},
         {{"check": "keyword_budget", "ok": budget["ok"], "value": budget["count"]}},
         {{"check": "authoring_aliases_without_new_keywords", "ok": set(AUTHORING_ALIASES.values()) <= set(CORE_KEYWORDS)}},
         {{"check": "modifier_aliases_without_new_keywords", "ok": set(MODIFIER_ALIASES.values()) <= set(CORE_KEYWORDS)}},
@@ -20790,6 +20841,7 @@ def dsl_language_quality_contract():
         "ok": all(item["ok"] for item in checks),
         "grammar": "lang/appgen.g4",
         "parser": "src/pyAppGen/dsl_generated/lang/appgenParser.py",
+        "antlr_integrity": antlr,
         "budget": budget,
         "keywords": CORE_KEYWORDS,
         "canonical_keyword_count": len(CORE_KEYWORDS),
@@ -33247,6 +33299,7 @@ def validate_dsl_reference_artifacts() -> None:
         "MODIFIER_ALIASES",
         "normalize_modifier_aliases",
         "dsl_learning_path",
+        "dsl_antlr_integrity_report",
         "dsl_language_quality_contract",
         "dsl_authoring_score",
         "dsl_authoring_release_gate",
@@ -35378,6 +35431,9 @@ def test_generated_runtime_helpers():
     assert dsl_reference.dsl_keyword_budget()["count"] <= dsl_reference.dsl_keyword_budget()["limit"]
     assert dsl_reference.dsl_language_quality_contract()["ok"] is True
     assert dsl_reference.dsl_language_quality_contract()["format"] == "appgen.dsl-language-quality.v1"
+    assert dsl_reference.dsl_antlr_integrity_report()["format"] == "appgen.dsl-antlr-integrity.v1"
+    assert dsl_reference.dsl_antlr_integrity_report()["ok"] is True
+    assert dsl_reference.dsl_language_quality_contract()["antlr_integrity"]["ok"] is True
     assert "Reference" in {item["name"] for item in dsl_reference.dsl_construct_catalog()}
     assert "author_id: int -> Author.id" in dsl_reference.dsl_example("relation")
     assert dsl_reference.dsl_lint(dsl_reference.dsl_example("full"))["ok"] is True

@@ -190,6 +190,9 @@ It also adds style feedback:
 - Include `language_quality` with the ANTLR grammar path, generated parser path,
   keyword budget, keyword-free syntax, aliases, legacy contextual tokens, and
   learning path.
+- Include `antlr_integrity` from `dsl_antlr_integrity_report()` so CI can catch
+  drift between `lang/appgen.g4` and the generated ANTLR lexer/parser token and
+  rule metadata.
 
 It also returns structured quick fixes for common authoring feedback:
 
