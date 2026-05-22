@@ -380,10 +380,11 @@ apps include:
   implemented.
 - `finance_ops.py` and `appgen_finance_ops.html` with generated tax,
   multicurrency conversion, budget forecasting, revenue recognition, and batch
-  processing contracts for ERP-grade financial operations. A generated finance
-  release gate proves finance-resource coverage, tax profiles, currency
-  conversion, budget forecasting, revenue recognition, batch processing, and
-  required finance artifacts.
+  processing contracts for ERP-grade financial operations. A generated
+  `finance_workbench()` proves finance-resource coverage, tax profiles,
+  currency conversion, budget forecasting, revenue recognition, batch
+  processing, release gates, and route coverage before `operations.finance` is
+  marked implemented.
 - `manufacturing_ops.py` and `appgen_manufacturing_ops.html` with generated
   bill-of-material, material-requirements planning, capacity, production
   scheduling, purchase requisition, and lean replenishment contracts. A

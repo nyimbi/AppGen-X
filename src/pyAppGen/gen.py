@@ -3301,6 +3301,7 @@ def write_finance_ops_template(output_dir):
     </div>
     <div>
       <a class="btn btn-default" href="{{ url_for('FinanceOpsView.catalog_json') }}">Finance JSON</a>
+      <a class="btn btn-default" href="{{ url_for('FinanceOpsView.workbench_json') }}">Workbench JSON</a>
       <a class="btn btn-default" href="{{ url_for('FinanceOpsView.release_gate_json') }}">Release Gate JSON</a>
     </div>
   </div>
@@ -15160,6 +15161,83 @@ def finance_release_gate(existing_paths=()):
     }}
 
 
+def finance_workbench(existing_paths=()):
+    """Return generated finance operations evidence for low-code builders."""
+    artifacts = set(existing_paths or ())
+    required = {{"app/finance_ops.py", "app/templates/appgen_finance_ops.html"}}
+    catalog = finance_catalog()
+    sample_table = next(iter(FINANCE_RESOURCES), None)
+    tax_standard = tax_calculation(100, category="standard")
+    tax_inclusive = tax_calculation(116, inclusive=True)
+    exchange_plan = exchange_rate_plan("USD", "KES")
+    conversion = convert_amount(2, base="USD", target="KES")
+    forecast = budget_forecast(sample_table, (100, 200), periods=2, growth_rate=0.1) if sample_table else {{}}
+    revenue = revenue_recognition_schedule(120, periods=3)
+    batch = batch_process(sample_table, ({{"amount": 100}},), action="post", actor="system") if sample_table else {{}}
+    release = finance_release_gate(artifacts)
+    checks = (
+        {{
+            "id": "artifact_coverage",
+            "ok": required.issubset(artifacts),
+            "evidence": {{"required": tuple(sorted(required)), "missing": tuple(sorted(required - artifacts))}},
+        }},
+        {{
+            "id": "finance_catalog",
+            "ok": bool(catalog) and all(resource["batch_actions"] for resource in catalog),
+            "evidence": tuple(resource["table"] for resource in catalog),
+        }},
+        {{
+            "id": "tax_profiles",
+            "ok": tax_standard["tax_amount"] == 16.0 and tax_inclusive["taxable_amount"] == 100.0,
+            "evidence": {{"standard": tax_standard, "inclusive": tax_inclusive, "rates": DEFAULT_TAX_RATES}},
+        }},
+        {{
+            "id": "currency_conversion",
+            "ok": exchange_plan["ready"] and conversion["converted"] == 258.0,
+            "evidence": {{"plan": exchange_plan, "conversion": conversion, "rates": DEFAULT_EXCHANGE_RATES}},
+        }},
+        {{
+            "id": "budget_forecast",
+            "ok": bool(forecast.get("forecast")),
+            "evidence": forecast,
+        }},
+        {{
+            "id": "revenue_recognition",
+            "ok": revenue["schedule"][0]["amount"] == 40.0,
+            "evidence": revenue,
+        }},
+        {{
+            "id": "batch_processing",
+            "ok": batch.get("row_count") == 1 and batch.get("action") == "post",
+            "evidence": batch,
+        }},
+        {{
+            "id": "release_gate",
+            "ok": release["ok"],
+            "evidence": release["format"],
+        }},
+        {{
+            "id": "route_surface",
+            "ok": True,
+            "evidence": {{"routes": ("/finance-ops/catalog.json", "/finance-ops/workbench.json", "/finance-ops/release-gate.json")}},
+        }},
+    )
+    ok = all(check["ok"] for check in checks)
+    return {{
+        "format": "appgen.finance-workbench.v1",
+        "ok": ok,
+        "decision": "approved" if ok else "blocked",
+        "checks": checks,
+        "catalog": catalog,
+        "tax": {{"standard": tax_standard, "inclusive": tax_inclusive}},
+        "exchange": {{"plan": exchange_plan, "conversion": conversion}},
+        "forecast": forecast,
+        "revenue": revenue,
+        "batch": batch,
+        "release_gate": release,
+    }}
+
+
 class FinanceOpsView(BaseView):
     route_base = "/finance-ops"
     default_view = "index"
@@ -15180,6 +15258,10 @@ class FinanceOpsView(BaseView):
             "tax_rates": DEFAULT_TAX_RATES,
             "currencies": DEFAULT_EXCHANGE_RATES,
         }})
+
+    @expose("/workbench.json")
+    def workbench_json(self):
+        return jsonify(finance_workbench({{"app/finance_ops.py", "app/templates/appgen_finance_ops.html"}}))
 
     @expose("/release-gate.json")
     def release_gate_json(self):

@@ -1080,6 +1080,7 @@ def test_generate_app_from_sqlite_schema_compiles(tmp_path) -> None:
     assert capabilities_by_key["devops.packaging"]["status"] == "implemented"
     assert capabilities_by_key["ops.notifications"]["status"] == "implemented"
     assert capabilities_by_key["operations.inventory-traceability"]["status"] == "implemented"
+    assert capabilities_by_key["operations.finance"]["status"] == "implemented"
     assert "data.seed" in {item["key"] for item in manifest["capabilities"]}
     assert "ui.visual-modeling" in {item["key"] for item in manifest["capabilities"]}
     assert "ui.pwa" in {item["key"] for item in manifest["capabilities"]}
@@ -3745,6 +3746,26 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "batch_processing",
         "artifact_coverage",
     } <= {gate["gate"] for gate in finance_gate["gates"]}
+    assert "Workbench JSON" in (output_dir / "templates" / "appgen_finance_ops.html").read_text()
+    finance_workbench = finance_ops.finance_workbench({"app/finance_ops.py", "app/templates/appgen_finance_ops.html"})
+    assert finance_workbench["format"] == "appgen.finance-workbench.v1"
+    assert finance_workbench["ok"] is True
+    assert finance_workbench["decision"] == "approved"
+    assert {
+        "artifact_coverage",
+        "finance_catalog",
+        "tax_profiles",
+        "currency_conversion",
+        "budget_forecast",
+        "revenue_recognition",
+        "batch_processing",
+        "release_gate",
+        "route_surface",
+    } == {check["id"] for check in finance_workbench["checks"]}
+    assert "/finance-ops/workbench.json" in next(
+        check["evidence"]["routes"] for check in finance_workbench["checks"] if check["id"] == "route_surface"
+    )
+    assert finance_ops.finance_workbench({"app/finance_ops.py"})["ok"] is False
     assert finance_ops.finance_release_gate({"app/finance_ops.py"})["ok"] is False
     first_manufacturing_table = manufacturing_ops.manufacturing_catalog()[0]["table"]
     bom = manufacturing_ops.bill_of_material_plan(
