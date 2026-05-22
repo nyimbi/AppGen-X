@@ -318,18 +318,22 @@ The generated Studio also manages a portfolio of generated applications through
 `/studio/applications.json`. Use its create/import/open/export plans to build
 new apps from DSL, DBML, SQL, PonyORM, or existing database URLs while keeping
 source fidelity, linting, schema diffs, generation jobs, and quality gates in
-one review flow.
+one review flow. Use `/studio/application-history.json`,
+`/studio/application-snapshot.json`, and `/studio/application-restore.json` to
+review generated revisions, capture rollback-ready snapshots, compare changed
+DSL/schema/code areas, and restore through a reviewed quality-gated plan.
 Use `/studio/release-gate.json` before treating the Studio as release-ready;
 it combines diagnostics, DSL linting, database workbench exports, safe SQL
 guards, the parameterized query builder, generation jobs, app portfolio
-management, capability coverage, reviewed edits, debug redaction, dependency
-review, and component sharing. Use `/studio/capability-matrix.json` when you
-need a compact proof that the generated IDE covers DSL authoring, database
-design, application generation, application management, debugging, dependency
-review, reusable components, and natural-language evolution.
+management, versioned management, capability coverage, reviewed edits, debug
+redaction, dependency review, and component sharing. Use
+`/studio/capability-matrix.json` when you need a compact proof that the
+generated IDE covers DSL authoring, database design, application generation,
+application management, versioned app management, debugging, dependency review,
+reusable components, and natural-language evolution.
 Use `/studio/superiority-profile.json` to show why the generated IDE goes
 beyond a scaffolding CLI: it ties authoring, database design, generation,
-portfolio management, diagnostics, and component sharing to commands,
+versioned portfolio management, diagnostics, and component sharing to commands,
 workflows, and release evidence.
 
 Generated deployment contracts live in `deploy/appgen_deploy.py`. Use

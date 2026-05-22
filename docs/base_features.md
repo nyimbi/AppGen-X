@@ -28,7 +28,8 @@ AppGen must be treated as a JHipster superset, not a peer clone: JHipster-style
 application scaffolding is one export lane, while the AppGen baseline also
 includes low-code studio tooling, Delphi-style form design, ERP templates,
 agentic-system design, natural-language evolution, multi-platform generation,
-DSL linting/reference docs, and runtime assurance contracts for generated apps.
+DSL linting/reference docs, versioned app management, and runtime assurance
+contracts for generated apps.
 Generated apps must expose a release gate that proves this position with
 preserved JHipster overlap, AppGen-only advantage thresholds, roadmap-source
 traceability, reusable composition readiness, and artifact evidence.

@@ -550,16 +550,16 @@ apps include:
   generation jobs with deterministic IDs, queue/status/log views, target
   artifact manifests, IDE diagnostics, IDE capability matrices, workflow
   blueprints, multi-application registry, reviewed create/import/open/export
-  plans, app management, code editing,
-  breakpoint/debug plans, dependency update plans, app cloning, and reusable
-  component repository exports. The Studio also emits a release gate that
-  checks DSL linting, database workbench exports, safe SQL, query-builder
+  plans, version history, snapshot/diff/restore plans, app management, code
+  editing, breakpoint/debug plans, dependency update plans, app cloning, and
+  reusable component repository exports. The Studio also emits a release gate
+  that checks DSL linting, database workbench exports, safe SQL, query-builder
   validation, capability coverage, generation jobs, app portfolio management,
-  reviewed edits, debug redaction, dependency review, and component sharing
-  before IDE readiness is claimed. A separate IDE superiority profile proves
-  that the Studio is an integrated low-code IDE for authoring, database design,
-  generation, portfolio management, diagnostics, and component sharing rather
-  than only a scaffolding command runner.
+  versioned management, reviewed edits, debug redaction, dependency review, and
+  component sharing before IDE readiness is claimed. A separate IDE superiority
+  profile proves that the Studio is an integrated low-code IDE for authoring,
+  database design, generation, versioned portfolio management, diagnostics, and
+  component sharing rather than only a scaffolding command runner.
 - `realtime.py` and `appgen_realtime.html` with generated event topics,
   Server-Sent Events frames, collaboration messages, and reconnect replay plans.
 - `diagnostics.py` and `appgen_diagnostics.html` with generated schema

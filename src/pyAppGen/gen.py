@@ -6114,6 +6114,9 @@ def write_studio_template(output_dir):
       <a class="btn btn-default" href="{{ url_for('StudioView.generation_artifacts_json') }}">Generation Artifacts JSON</a>
       <a class="btn btn-default" href="{{ url_for('StudioView.applications_json') }}">Applications JSON</a>
       <a class="btn btn-default" href="{{ url_for('StudioView.application_create_json') }}">Create App JSON</a>
+      <a class="btn btn-default" href="{{ url_for('StudioView.application_history_json') }}">Version History JSON</a>
+      <a class="btn btn-default" href="{{ url_for('StudioView.application_snapshot_json') }}">Snapshot Plan JSON</a>
+      <a class="btn btn-default" href="{{ url_for('StudioView.application_restore_json') }}">Restore Plan JSON</a>
       <a class="btn btn-default" href="{{ url_for('StudioView.schema_erd_route') }}">ERD</a>
       <a class="btn btn-default" href="{{ url_for('StudioView.schema_dbml_route') }}">DBML</a>
       <a class="btn btn-default" href="{{ url_for('StudioView.schema_sql_route') }}">SQL DDL</a>
@@ -6187,6 +6190,13 @@ def write_studio_template(output_dir):
       <div class="ags-muted">{{ workspace.management.app_name }}</div>
       {% for operation in workspace.management.operations %}
       <span class="ags-pill">{{ operation }}</span>
+      {% endfor %}
+    </article>
+    <article class="ags-card">
+      <h3>Version History</h3>
+      <div class="ags-muted">snapshot, diff, restore, and rollback-point planning for generated apps</div>
+      {% for revision in workspace.history.rollback_points %}
+      <span class="ags-pill">{{ revision }}</span>
       {% endfor %}
     </article>
     <article class="ags-card">
@@ -28742,6 +28752,7 @@ def ide_workspace():
         "generation": app_generation_plan(),
         "generation_jobs": generation_job_queue(),
         "applications": application_registry(),
+        "history": application_version_history(),
         "management": app_management_plan("status"),
         "debug": tuple(debug_session(item["name"]) for item in DEBUG_SESSIONS),
     }}
@@ -28760,6 +28771,7 @@ def ide_capability_matrix():
         {{"capability": "database_design", "commands": ("design_database",), "evidence": ("database_design_workspace", "schema_dbml", "schema_sql_ddl", "schema_ponyorm"), "ok": "design_database" in commands and bool(database_design_catalog())}},
         {{"capability": "application_generation", "commands": ("generate_application",), "evidence": ("app_generation_plan", "generation_job_queue", "generation_artifact_manifest"), "ok": "generate_application" in commands and bool(generation_job_queue()["jobs"])}},
         {{"capability": "application_management", "commands": ("manage_application",), "evidence": ("application_registry", "application_creation_plan", "application_import_plan", "application_export_package"), "ok": "manage_application" in commands and application_portfolio_check()["ok"]}},
+        {{"capability": "versioned_app_management", "commands": ("manage_application",), "evidence": ("application_version_history", "application_snapshot_plan", "application_restore_plan", "application_diff_plan"), "ok": application_version_history()["ok"] and application_snapshot_plan()["rollback_supported"]}},
         {{"capability": "debugging", "commands": ("debug_application",), "evidence": ("debug_session", "breakpoint_plan", "variable_inspection"), "ok": "debug_application" in commands and bool(DEBUG_SESSIONS)}},
         {{"capability": "dependency_review", "commands": (), "evidence": ("dependency_inventory", "dependency_update_plan"), "ok": bool(dependency_inventory())}},
         {{"capability": "component_repository", "commands": (), "evidence": ("component_repository", "component_share_package"), "ok": bool(component_repository())}},
@@ -28783,6 +28795,7 @@ def ide_workflow_blueprint(workflow=None):
         "design_database": ("edit table/field design", "preview ERD/DBML/SQL/PonyORM", "review migration", "generate app"),
         "generate_application": ("select targets", "queue generation job", "run lint and schema diff", "publish artifact manifest"),
         "manage_application": ("open app", "inspect diagnostics", "package/export", "deploy or rollback with review"),
+        "review_change_history": ("inspect version history", "compare generated revisions", "capture snapshot", "restore with quality gate"),
         "debug_application": ("start debug profile", "set breakpoints", "inspect redacted variables", "capture remediation plan"),
         "share_component": ("select reusable component", "package files", "review dependencies", "publish to composition catalog"),
     }}
@@ -29536,7 +29549,7 @@ def application_registry(apps=None):
         "format": "appgen.application-registry.v1",
         "active": APP_NAME,
         "apps": items,
-        "operations": ("create", "import", "open", "clone", "package", "archive"),
+        "operations": ("create", "import", "open", "clone", "package", "snapshot", "diff", "restore", "archive"),
         "source_kinds": ("dsl", "dbml", "sql", "ponyorm", "database"),
         "targets": PLATFORM_TARGETS or ("web",),
     }}
@@ -29620,20 +29633,95 @@ def application_export_package(app_name=None, include_data=False):
     }}
 
 
+def application_version_history(app_name=None, entries=None):
+    """Return reviewable generated-application version history for Studio."""
+    name = app_name or APP_NAME
+    history = tuple(entries or (
+        {{
+            "revision": "rev-initial",
+            "app_name": name,
+            "source": "appgen.dsl",
+            "targets": PLATFORM_TARGETS or ("web",),
+            "author": "appgen",
+            "changes": ("initial generation",),
+            "artifacts": ("app/appgen.json", "app/models.py", "app/views.py", "docs/schema.md"),
+            "rollback_point": True,
+        }},
+    ))
+    return {{
+        "format": "appgen.application-version-history.v1",
+        "ok": bool(history),
+        "app_name": name,
+        "entries": history,
+        "rollback_points": tuple(item["revision"] for item in history if item.get("rollback_point")),
+        "compare_supported": len(history) >= 1,
+    }}
+
+
+def application_snapshot_plan(label="before-change", app_name=None, changed_paths=()):
+    """Return a deterministic snapshot plan before a generated app mutation."""
+    name = app_name or APP_NAME
+    changed = tuple(changed_paths or ("appgen.dsl", "app/models.py", "app/views.py"))
+    seed = "|".join((name, str(label), ",".join(changed)))
+    snapshot_id = "snap-" + hashlib.sha1(seed.encode("utf-8")).hexdigest()[:12]
+    return {{
+        "format": "appgen.application-snapshot-plan.v1",
+        "snapshot_id": snapshot_id,
+        "app_name": name,
+        "label": label,
+        "changed_paths": changed,
+        "capture": ("dsl", "schema_fingerprint", "migration_head", "generated_artifacts", "quality_report"),
+        "checks": ("manifest_readiness", "schema_diff", "backup_manifest", "quality_gate"),
+        "rollback_supported": True,
+        "requires_review": False,
+    }}
+
+
+def application_diff_plan(from_revision="rev-initial", to_revision="working-copy", app_name=None):
+    """Return a review plan for comparing generated application revisions."""
+    return {{
+        "format": "appgen.application-diff-plan.v1",
+        "app_name": app_name or APP_NAME,
+        "from_revision": from_revision,
+        "to_revision": to_revision,
+        "areas": ("dsl", "schema", "forms", "workflows", "agents", "generated_code", "migrations"),
+        "checks": ("dsl_lint", "schema_diff", "migration_impact", "generated_tests"),
+        "requires_review": True,
+    }}
+
+
+def application_restore_plan(snapshot_id, app_name=None):
+    """Return a rollback plan for restoring a generated application snapshot."""
+    return {{
+        "format": "appgen.application-restore-plan.v1",
+        "app_name": app_name or APP_NAME,
+        "snapshot_id": snapshot_id,
+        "steps": ("restore_dsl", "restore_generated_artifacts", "restore_migration_state", "rerun_quality_gate"),
+        "checks": ("backup_manifest", "schema_fingerprint", "appgen_quality", "pytest"),
+        "requires_review": True,
+        "side_effect": "workspace_rollback",
+    }}
+
+
 def application_portfolio_check(apps=None):
     """Return readiness for generated multi-application IDE management."""
     registry = application_registry(apps)
     creation = application_creation_plan(APP_NAME)
+    history = application_version_history()
+    snapshot = application_snapshot_plan()
     return {{
         "format": "appgen.application-portfolio-check.v1",
         "ok": bool(registry["apps"])
         and {{"dsl", "dbml", "sql", "ponyorm", "database"}} <= set(registry["source_kinds"])
         and bool(creation["command"])
-        and {{"web", "mobile", "desktop"}} <= set(registry["targets"]),
+        and {{"web", "mobile", "desktop"}} <= set(registry["targets"])
+        and history["ok"]
+        and snapshot["rollback_supported"],
         "apps": len(registry["apps"]),
         "active": registry["active"],
         "operations": registry["operations"],
         "targets": registry["targets"],
+        "rollback_points": history["rollback_points"],
     }}
 
 
@@ -29756,9 +29844,9 @@ def app_management_plan(action, app_name=None):
     return {{
         "action": action,
         "app_name": app_name or APP_NAME,
-        "operations": ("clone", "package", "deploy", "backup", "restore", "rollback", "inspect"),
+        "operations": ("clone", "package", "snapshot", "diff", "deploy", "backup", "restore", "rollback", "inspect"),
         "requires_review": action in {{"deploy", "restore", "rollback"}},
-        "checks": ("config_readiness", "security_readiness", "backup_state", "quality_gate"),
+        "checks": ("config_readiness", "security_readiness", "backup_state", "version_history", "quality_gate"),
     }}
 
 
@@ -29883,6 +29971,9 @@ def studio_catalog():
         "generation_jobs": generation_job_queue(),
         "generation_artifacts": generation_artifact_manifest(),
         "applications": application_registry(),
+        "history": application_version_history(),
+        "snapshot": application_snapshot_plan(),
+        "restore": application_restore_plan(application_snapshot_plan()["snapshot_id"]),
         "clone": clone_plan(f"{{APP_NAME}}Copy"),
     }}
 
@@ -29950,6 +30041,9 @@ def studio_release_gate(existing_paths=(), environment=None):
     query = sql_select_builder(DATABASE_DESIGN[0]["table"]) if DATABASE_DESIGN else {{"ok": False}}
     destructive_sql = sql_statement_guard("delete from " + (DATABASE_DESIGN[0]["table"] if DATABASE_DESIGN else "example"))
     generation = generation_job_manifest(targets=PLATFORM_TARGETS or ("web",), changed_paths=("appgen.dsl",))
+    history = application_version_history()
+    snapshot = application_snapshot_plan(changed_paths=("appgen.dsl",))
+    restore = application_restore_plan(snapshot["snapshot_id"])
     edit = file_edit_plan("app/models.py", "reviewed patch")
     debug = variable_inspection("debug", {{"SECRET_KEY": "secret", "row": {{"id": 1}}}})
     dependency = dependency_update_plan("flask", "reviewed")
@@ -29965,6 +30059,7 @@ def studio_release_gate(existing_paths=(), environment=None):
         {{"gate": "query_builder", "ok": query["ok"] and query["guard"]["read_only"] and bool(sql_completion_items(table_name=query["table"])), "details": query}},
         {{"gate": "generation_pipeline", "ok": generation["format"] == "appgen.generation-job.v1" and generation_job_status(generation)["remaining_stages"], "details": generation["plan"]["stages"]}},
         {{"gate": "application_portfolio", "ok": application_portfolio_check()["ok"], "details": application_registry()["operations"]}},
+        {{"gate": "versioned_management", "ok": history["ok"] and snapshot["rollback_supported"] and restore["requires_review"], "details": {{"history": history["rollback_points"], "snapshot": snapshot["snapshot_id"], "restore": restore["steps"]}}}},
         {{"gate": "reviewed_edits", "ok": edit["requires_review"] and "appgen_quality" in edit["checks"], "details": edit["checks"]}},
         {{"gate": "debug_redaction", "ok": debug["variables"].get("SECRET_KEY") == "[redacted]", "details": debug}},
         {{"gate": "dependency_review", "ok": dependency["requires_review"] and "pytest" in dependency["checks"], "details": dependency}},
@@ -30004,6 +30099,7 @@ def ide_superiority_profile(existing_paths=(), environment=None):
         "application_management",
         "debugging",
         "component_repository",
+        "versioned_app_management",
     )
     gates = (
         {{"gate": "studio_release", "ok": release["ok"], "evidence": release["format"]}},
@@ -30013,6 +30109,7 @@ def ide_superiority_profile(existing_paths=(), environment=None):
         {{"gate": "database_ide", "ok": bool(database_design_workspace()["tables"]) and sql_workbench_session()["guard"]["read_only"], "evidence": ("database_design_workspace", "sql_workbench_session", "sql_select_builder")}},
         {{"gate": "reviewable_generation", "ok": generation_job_status()["remaining_stages"] == ("lint_dsl", "schema_diff", "generate", "quality"), "evidence": generation_job_manifest()["job_id"]}},
         {{"gate": "portfolio_management", "ok": application_portfolio_check()["ok"], "evidence": application_registry()["operations"]}},
+        {{"gate": "versioned_management", "ok": application_version_history()["ok"] and application_restore_plan(application_snapshot_plan()["snapshot_id"])["requires_review"], "evidence": application_version_history()["rollback_points"]}},
     )
     return {{
         "format": "appgen.ide-superiority-profile.v1",
@@ -30091,6 +30188,19 @@ class StudioView(BaseView):
     @expose("/application-portfolio-check.json")
     def application_portfolio_check_json(self):
         return jsonify(application_portfolio_check())
+
+    @expose("/application-history.json")
+    def application_history_json(self):
+        return jsonify(application_version_history())
+
+    @expose("/application-snapshot.json")
+    def application_snapshot_json(self):
+        return jsonify(application_snapshot_plan())
+
+    @expose("/application-restore.json")
+    def application_restore_json(self):
+        snapshot = application_snapshot_plan()
+        return jsonify(application_restore_plan(snapshot["snapshot_id"]))
 
     @expose("/schema-workbench.json")
     def schema_workbench_json(self):
@@ -33758,6 +33868,10 @@ def validate_studio_artifacts() -> None:
         "application_import_plan",
         "application_open_plan",
         "application_export_package",
+        "application_version_history",
+        "application_snapshot_plan",
+        "application_diff_plan",
+        "application_restore_plan",
         "application_portfolio_check",
         "app_management_plan",
         "studio_catalog",
@@ -33800,12 +33914,16 @@ def validate_studio_artifacts() -> None:
         or "Generation Artifacts JSON" not in template
         or "Applications JSON" not in template
         or "Create App JSON" not in template
+        or "Version History JSON" not in template
+        or "Snapshot Plan JSON" not in template
+        or "Restore Plan JSON" not in template
         or "DBML" not in template
         or "SQL DDL" not in template
         or "Generation Plan" not in template
         or "Application Registry" not in template
+        or "Version History" not in template
     ):
-        fail("developer studio cockpit must expose IDE workspace, DSL editor, database designer exports, generation jobs, application registry, and generation plan")
+        fail("developer studio cockpit must expose IDE workspace, DSL editor, database designer exports, generation jobs, application registry, version history, and generation plan")
 
 
 def validate_ci() -> None:
@@ -36013,8 +36131,19 @@ def test_generated_runtime_helpers():
     assert studio.application_import_plan("database", "sqlite:///legacy.db")["source_kind"] == "database"
     assert studio.application_open_plan(APP_NAME)["format"] == "appgen.application-open-plan.v1"
     assert studio.application_export_package(APP_NAME)["bundle"]
+    history = studio.application_version_history(APP_NAME)
+    assert history["format"] == "appgen.application-version-history.v1"
+    assert history["rollback_points"]
+    snapshot = studio.application_snapshot_plan(changed_paths=("appgen.dsl",))
+    assert snapshot["format"] == "appgen.application-snapshot-plan.v1"
+    assert snapshot["rollback_supported"] is True
+    assert studio.application_diff_plan(history["rollback_points"][0], "working-copy")["requires_review"] is True
+    restore = studio.application_restore_plan(snapshot["snapshot_id"])
+    assert restore["format"] == "appgen.application-restore-plan.v1"
+    assert restore["side_effect"] == "workspace_rollback"
     assert studio.application_portfolio_check()["ok"] is True
     assert studio.app_management_plan("deploy")["requires_review"] is True
+    assert "version_history" in studio.app_management_plan("rollback")["checks"]
     assert studio.debug_session()["breakpoints"]
     assert studio.breakpoint_plan("app/views.py", symbol="init_views")["symbol"] == "init_views"
     inspected = studio.variable_inspection("request", {"SECRET_KEY": "x", "row": {"title": "Dune"}})
@@ -36037,7 +36166,7 @@ def test_generated_runtime_helpers():
     assert studio_gate["format"] == "appgen.studio-release-gate.v1"
     assert studio_gate["ok"] is True
     assert studio_gate["blocking_gaps"] == ()
-    assert {{"capability_matrix", "safe_sql", "query_builder"}} <= {gate["gate"] for gate in studio_gate["gates"]}
+    assert {{"capability_matrix", "safe_sql", "query_builder", "versioned_management"}} <= {gate["gate"] for gate in studio_gate["gates"]}
     assert studio.ide_superiority_profile({{
         "app/studio.py",
         "app/templates/appgen_studio.html",

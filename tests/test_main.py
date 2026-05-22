@@ -2317,6 +2317,9 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert "Diagnostics JSON" in studio_template
     assert "Release Gate JSON" in studio_template
     assert "IDE Superiority JSON" in studio_template
+    assert "Version History JSON" in studio_template
+    assert "Snapshot Plan JSON" in studio_template
+    assert "Restore Plan JSON" in studio_template
     assert "DSL Editor" in studio_template
     assert "Database Designer" in studio_template
     assert "DBML" in studio_template
@@ -2324,6 +2327,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert "parameterized query builder" in studio_template
     assert "SQL DDL" in studio_template
     assert "Workspace JSON" in studio_template
+    assert "Version History" in studio_template
     assert "event-stream contracts" in (output_dir / "templates" / "appgen_realtime.html").read_text()
     assert "permissions per tab" in (output_dir / "templates" / "appgen_tabbed_views.html").read_text()
     assert "complex event processing" in (output_dir / "templates" / "appgen_events.html").read_text()
@@ -4353,8 +4357,19 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert studio.application_import_plan("database", "sqlite:///legacy.db")["source_kind"] == "database"
     assert studio.application_open_plan("Library")["format"] == "appgen.application-open-plan.v1"
     assert studio.application_export_package("Library")["bundle"]
+    history = studio.application_version_history("Library")
+    assert history["format"] == "appgen.application-version-history.v1"
+    assert history["rollback_points"]
+    snapshot = studio.application_snapshot_plan(changed_paths=("appgen.dsl",))
+    assert snapshot["format"] == "appgen.application-snapshot-plan.v1"
+    assert snapshot["rollback_supported"] is True
+    assert studio.application_diff_plan(history["rollback_points"][0], "working-copy")["requires_review"] is True
+    restore = studio.application_restore_plan(snapshot["snapshot_id"])
+    assert restore["format"] == "appgen.application-restore-plan.v1"
+    assert restore["side_effect"] == "workspace_rollback"
     assert studio.application_portfolio_check()["ok"] is True
     assert studio.app_management_plan("deploy")["requires_review"] is True
+    assert "version_history" in studio.app_management_plan("rollback")["checks"]
     assert studio.file_edit_plan("app/models.py", "add comment")["requires_review"] is True
     debug = studio.debug_session()
     assert debug["breakpoints"]
@@ -4389,7 +4404,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert studio_gate["blocking_gaps"] == ()
     assert {
         gate["gate"] for gate in studio_gate["gates"]
-    } >= {"capability_matrix", "dsl_lint", "database_workbench", "safe_sql", "query_builder", "generation_pipeline", "component_sharing"}
+    } >= {"capability_matrix", "dsl_lint", "database_workbench", "safe_sql", "query_builder", "generation_pipeline", "component_sharing", "versioned_management"}
     superiority_profile = studio.ide_superiority_profile(
         {
             "app/studio.py",
