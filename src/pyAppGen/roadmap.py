@@ -504,6 +504,7 @@ def generated_app_excellence_audit() -> dict:
 def package_goal_audit(root: Path | str | None = None) -> dict:
     """Return aggregate package evidence for the active AppGen objective."""
     from .agentic import agentic_release_audit
+    from .base_features import base_feature_release_audit
     from .config_admin import config_editor_release_audit
     from .distribution import distribution_release_audit
     from .dsl_quality import dsl_release_audit
@@ -520,6 +521,7 @@ def package_goal_audit(root: Path | str | None = None) -> dict:
     from .visual_modeling import visual_modeling_release_audit
 
     roadmap = roadmap_release_audit(root)
+    base_features = base_feature_release_audit(root)
     superiority = jhipster_superiority_audit()
     excellence = generated_app_excellence_audit()
     dsl_quality = dsl_release_audit(root=root)
@@ -542,6 +544,11 @@ def package_goal_audit(root: Path | str | None = None) -> dict:
             "id": "roadmap_traceability",
             "ok": roadmap["ok"],
             "format": roadmap["format"],
+        },
+        {
+            "id": "base_feature_contract",
+            "ok": base_features["ok"],
+            "format": base_features["format"],
         },
         {
             "id": "jhipster_superiority",
@@ -644,6 +651,7 @@ def package_goal_audit(root: Path | str | None = None) -> dict:
         "gates": gates,
         "audits": {
             "roadmap": roadmap,
+            "base_features": base_features,
             "jhipster_superiority": superiority,
             "generated_app_excellence": excellence,
             "dsl_quality": dsl_quality,

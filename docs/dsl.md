@@ -236,10 +236,17 @@ capable:
 appgen --generated-app-excellence-audit
 ```
 
+Run the base-feature audit before claiming every numbered item and platform
+bullet in `docs/base_features.md` has implemented package capability evidence:
+
+```console
+appgen --base-features-release-audit
+```
+
 Run the aggregate package goal audit when you need one machine-readable bundle
 covering roadmap traceability, JHipster superiority, and generated-app
-excellence, DSL linter/grammar/docs, schema source intake, ERP templates, and
-package-level natural-language evolution:
+excellence, base-feature coverage, DSL linter/grammar/docs, schema source
+intake, ERP templates, and package-level natural-language evolution:
 
 ```console
 appgen --package-goal-audit

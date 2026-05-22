@@ -31,6 +31,8 @@ from pyAppGen.agentic import agentic_release_audit
 from pyAppGen.agentic import dsl_agentic_contract
 from pyAppGen.agentic import provider_catalog as agentic_provider_catalog
 from pyAppGen.agentic import provider_connection_matrix
+from pyAppGen.base_features import base_feature_document_check
+from pyAppGen.base_features import base_feature_release_audit
 from pyAppGen.config_admin import config_editor_catalog
 from pyAppGen.config_admin import config_editor_release_audit
 from pyAppGen.config_admin import parse_config_assignments
@@ -264,6 +266,41 @@ def test_roadmap_release_audit_cli_maps_docs_to_capabilities(
     assert all(gate["ok"] for gate in cli_report["gates"])
 
 
+def test_base_features_release_audit_maps_every_base_requirement(
+    runner: CliRunner,
+) -> None:
+    """Every docs/base_features.md baseline item has package capability proof."""
+    document = base_feature_document_check()
+    assert document["format"] == "appgen.base-feature-document-check.v1"
+    assert document["ok"] is True
+
+    audit = base_feature_release_audit()
+    assert audit["format"] == "appgen.base-feature-release-audit.v1"
+    assert audit["ok"] is True
+    assert len(audit["numbered_features"]) == 16
+    assert len(audit["platform_requirements"]) == 11
+    assert {
+        "document_contract",
+        "numbered_base_features",
+        "platform_bullets",
+        "jhipster_superset_clause",
+    } == {gate["id"] for gate in audit["gates"]}
+    assert {"data_modeling", "runtime_assurance"} <= {
+        item["id"] for item in audit["numbered_features"]
+    }
+    assert {"web_desktop_mobile_ui", "composition_packages"} <= {
+        item["id"] for item in audit["platform_requirements"]
+    }
+
+    result = runner.invoke(__main__.main, ["--base-features-release-audit"])
+
+    assert result.exit_code == 0
+    cli_report = json.loads(result.output)
+    assert cli_report["ok"] is True
+    assert cli_report["decision"] == "approved"
+    assert all(gate["ok"] for gate in cli_report["gates"])
+
+
 def test_jhipster_superiority_audit_cli_proves_appgen_advantages(
     runner: CliRunner,
 ) -> None:
@@ -334,6 +371,7 @@ def test_package_goal_audit_cli_aggregates_objective_evidence(
     assert direct_report["ok"] is True
     assert {
         "roadmap_traceability",
+        "base_feature_contract",
         "jhipster_superiority",
         "generated_app_excellence",
         "dsl_linter_docs_grammar",
@@ -364,6 +402,7 @@ def test_package_goal_audit_cli_aggregates_objective_evidence(
     assert cli_report["ok"] is True
     assert cli_report["decision"] == "approved"
     assert cli_report["audits"]["roadmap"]["ok"] is True
+    assert cli_report["audits"]["base_features"]["ok"] is True
     assert cli_report["audits"]["jhipster_superiority"]["ok"] is True
     assert cli_report["audits"]["generated_app_excellence"]["ok"] is True
     assert cli_report["audits"]["dsl_quality"]["ok"] is True
