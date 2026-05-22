@@ -678,7 +678,10 @@ apps include:
 - `microservices.py` and `appgen_microservices.html` with generated service
   boundaries, gateway routes, event routes, cross-service relationship
   resolvers, consistency reviews, service-mesh mTLS/authorization/telemetry
-  policies, canary traffic-shift plans, health probes, and scaling plans.
+  policies, canary traffic-shift plans, health probes, and scaling plans. A
+  generated microservice release gate proves service catalogs, gateway routes,
+  event ownership, relationship consistency, service-mesh policy,
+  health/scaling plans, and canary rollback.
 - `usage_analytics.py` and `appgen_usage_analytics.html` with generated
   adoption, funnel, retention, and real-time app-usage analytics. A generated
   analytics release gate proves event catalog coverage, activity summaries,

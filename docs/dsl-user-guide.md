@@ -499,6 +499,9 @@ JHipster capability families are still preserved and then exceeded by generated
 AppGen-only capabilities before making stronger product-positioning claims.
 Generated microservice apps also expose `/microservices/mesh.json` for
 service-mesh mTLS, authorization, telemetry, and canary traffic-shift plans.
+Use `/microservices/release-gate.json` or `microservice_release_gate()` to prove
+service catalogs, gateway routes, event ownership, cross-service relationship
+consistency, service-mesh policy, health/scaling plans, and canary rollback.
 Use `/low-code-features/composition-release-gate.json` to prove the reusable
 application-composition layer itself: block catalog depth, dependency topology,
 reviewable install order, sandbox controls, package publication targets, and

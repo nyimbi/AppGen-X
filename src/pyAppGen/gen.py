@@ -4867,9 +4867,12 @@ def write_microservices_template(output_dir):
         dependencies, service-mesh policy, health checks, and scaling.
       </p>
     </div>
-    <a class="btn btn-default" href="{{ url_for('MicroserviceView.catalog_json') }}">Service Catalog JSON</a>
-    <a class="btn btn-default" href="{{ url_for('MicroserviceView.relationships_json') }}">Relationships JSON</a>
-    <a class="btn btn-default" href="{{ url_for('MicroserviceView.mesh_json') }}">Service Mesh JSON</a>
+    <div>
+      <a class="btn btn-default" href="{{ url_for('MicroserviceView.catalog_json') }}">Service Catalog JSON</a>
+      <a class="btn btn-default" href="{{ url_for('MicroserviceView.relationships_json') }}">Relationships JSON</a>
+      <a class="btn btn-default" href="{{ url_for('MicroserviceView.mesh_json') }}">Service Mesh JSON</a>
+      <a class="btn btn-default" href="{{ url_for('MicroserviceView.release_gate_json') }}">Release Gate JSON</a>
+    </div>
   </div>
   <div class="agm-grid">
     {% for service in services %}
@@ -25975,6 +25978,38 @@ def microservice_check(existing_paths=()):
     }}
 
 
+def microservice_release_gate(existing_paths=()):
+    """Return release readiness for generated microservice architecture."""
+    readiness = microservice_check(existing_paths)
+    services = service_catalog()
+    gateway_routes = api_gateway_routes()
+    events = event_routes()
+    relationships = cross_service_relationships()
+    consistency = relationship_consistency_plan()
+    relationship_events = relationship_event_contracts()
+    mesh = service_mesh_policy()
+    health = health_check_plan()
+    scaling = tuple(scaling_policy(service["name"], cpu_percent=90) for service in services)
+    canary = traffic_shift_plan("api-gateway", stable_weight=80, canary_weight=20)
+    gates = (
+        {{"gate": "artifacts", "ok": readiness["ok"], "missing": readiness["missing"]}},
+        {{"gate": "service_catalog", "ok": "api-gateway" in service_names() and any(service["kind"] == "domain" for service in services), "services": services}},
+        {{"gate": "gateway_routes", "ok": bool(gateway_routes) and all(route["path"].startswith("/api/v1/") or route["path"].startswith("/") for route in gateway_routes), "routes": gateway_routes}},
+        {{"gate": "event_routes", "ok": bool(events) and all("." in route["topic"] for route in events), "events": events}},
+        {{"gate": "relationships", "ok": bool(relationships) and bool(consistency) and bool(relationship_events) and all(item["requires_review"] for item in consistency), "relationships": relationships, "consistency": consistency, "events": relationship_events}},
+        {{"gate": "service_mesh", "ok": mesh["mtls"] == "STRICT" and "authorization_policy" in mesh["checks"], "mesh": mesh}},
+        {{"gate": "health_scaling", "ok": bool(health) and all(item["readiness"].endswith("/ready") for item in health) and all(item["desired_replicas"] >= item["min_replicas"] for item in scaling), "health": health, "scaling": scaling}},
+        {{"gate": "canary_release", "ok": canary["requires_review"] is True and canary["rollback"] == {{"stable": 100, "canary": 0}}, "canary": canary}},
+    )
+    ok = all(gate["ok"] for gate in gates)
+    return {{
+        "format": "appgen.microservice-release-gate.v1",
+        "ok": ok,
+        "decision": "approved" if ok else "blocked",
+        "gates": gates,
+    }}
+
+
 class MicroserviceView(BaseView):
     route_base = "/microservices"
     default_view = "index"
@@ -26012,6 +26047,10 @@ class MicroserviceView(BaseView):
             "policy": service_mesh_policy(),
             "traffic_shift": traffic_shift_plan("api-gateway"),
         }})
+
+    @expose("/release-gate.json")
+    def release_gate_json(self):
+        return jsonify(microservice_release_gate({{"app/microservices.py", "app/templates/appgen_microservices.html", "deploy/k8s.yaml"}}))
 
 
 def register_microservices(appbuilder):
@@ -35482,11 +35521,11 @@ def validate_microservice_artifacts() -> None:
         fail("microservices contract must expose deployment, health, and scaling plans")
     if "cross_service_relationships" not in contract or "relationship_resolver_plan" not in contract or "relationship_consistency_plan" not in contract:
         fail("microservices contract must expose cross-service relationship resolver and consistency plans")
-    if "service_mesh_policy" not in contract or "traffic_shift_plan" not in contract or "mtls" not in contract:
-        fail("microservices contract must expose service-mesh policy and traffic-shift plans")
+    if "service_mesh_policy" not in contract or "traffic_shift_plan" not in contract or "microservice_release_gate" not in contract or "mtls" not in contract:
+        fail("microservices contract must expose service-mesh policy, traffic-shift plans, and release gates")
     template = (ROOT / "app" / "templates" / "appgen_microservices.html").read_text()
-    if "Microservices" not in template or "Service Catalog JSON" not in template or "Relationships JSON" not in template or "Service Mesh JSON" not in template:
-        fail("microservices template must expose generated service, relationship, and service-mesh catalogs")
+    if "Microservices" not in template or "Service Catalog JSON" not in template or "Relationships JSON" not in template or "Service Mesh JSON" not in template or "Release Gate JSON" not in template:
+        fail("microservices template must expose generated service, relationship, service-mesh, and release-gate catalogs")
 
 
 def validate_integration_artifacts() -> None:
@@ -37526,6 +37565,13 @@ def test_generated_runtime_helpers():
     assert microservices.microservice_check(
         {"app/microservices.py", "app/templates/appgen_microservices.html", "deploy/k8s.yaml"}
     )["mesh"]["mtls"] == "STRICT"
+    assert microservices.microservice_release_gate(
+        {"app/microservices.py", "app/templates/appgen_microservices.html", "deploy/k8s.yaml"}
+    )["format"] == "appgen.microservice-release-gate.v1"
+    assert microservices.microservice_release_gate(
+        {"app/microservices.py", "app/templates/appgen_microservices.html", "deploy/k8s.yaml"}
+    )["ok"] is True
+    assert microservices.microservice_release_gate({"app/microservices.py"})["ok"] is False
     assert isinstance(realtime.realtime_topics(), tuple)
     assert "event: " in realtime.sse_frame(
         realtime.event_payload(realtime.realtime_topics()[0]["topics"][0], {})

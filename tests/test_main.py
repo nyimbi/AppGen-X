@@ -4222,6 +4222,15 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert check["ok"] is True
     assert check["cross_service_relationships"]
     assert check["mesh"]["mtls"] == "STRICT"
+    microservice_gate = microservices.microservice_release_gate(
+        {"app/microservices.py", "app/templates/appgen_microservices.html", "deploy/k8s.yaml"}
+    )
+    assert microservice_gate["format"] == "appgen.microservice-release-gate.v1"
+    assert microservice_gate["ok"] is True
+    assert {"service_catalog", "gateway_routes", "relationships", "service_mesh", "health_scaling"} <= {
+        gate["gate"] for gate in microservice_gate["gates"]
+    }
+    assert microservices.microservice_release_gate({"app/microservices.py"})["ok"] is False
     intents = platforms.chatbot_intents()
     assert any(intent["intent"] == "create_book" for intent in intents)
     assert set(sdks.sdk_targets()) == {"python", "javascript", "java", "csharp"}
