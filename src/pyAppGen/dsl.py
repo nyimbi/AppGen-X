@@ -388,6 +388,72 @@ def dsl_language_ergonomics_contract(text: str | None = None, *, source_name: st
     }
 
 
+def dsl_language_experience_gate(text: str | None = None, *, source_name: str | None = None) -> dict:
+    """Return outcome evidence for a delightful, intuitive, functional DSL."""
+    source = text if text is not None else DSL_ERGONOMICS_SAMPLE
+    formatted = format_dsl(source, source_name=source_name)
+    canonical = formatted["formatted"]
+    lint = lint_dsl(canonical, source_name=source_name)
+    outline = dsl_outline(canonical, source_name=source_name)
+    score = dsl_authoring_score(canonical, source_name=source_name)
+    quality = dsl_language_quality_contract()
+    ergonomics = dsl_language_ergonomics_contract(canonical, source_name=source_name)
+    completions = dsl_completion_items(source=canonical)
+    actions = dsl_code_actions("table Book { author_id: int ref Author.id }", source_name=source_name)
+    summary = lint["summary"]
+    source_kinds = {item["kind"] for item in SUPPORTED_SCHEMA_SOURCES}
+    checks = (
+        {
+            "outcome": "delightful",
+            "ok": ergonomics["ok"] and formatted["after"]["ok"] and len(completions) >= len(CORE_KEYWORDS),
+            "evidence": ("language_ergonomics", "deterministic_formatter", "completion_catalog"),
+        },
+        {
+            "outcome": "intuitive",
+            "ok": score["ok"]
+            and not score["next_actions"]
+            and len(LEARNING_PATH) == 4
+            and any(action["id"] == "replace_ref_with_arrow" for action in actions),
+            "evidence": ("authoring_score", "progressive_learning_path", "code_actions"),
+        },
+        {
+            "outcome": "functional",
+            "ok": lint["ok"]
+            and outline.get("ok") is True
+            and summary["tables"] >= 2
+            and summary["views"] >= 1
+            and summary["flows"] >= 1
+            and summary["llm_providers"] >= 1
+            and summary["agents"] >= 1,
+            "summary": summary,
+        },
+        {
+            "outcome": "antlr_backed",
+            "ok": quality["antlr_integrity"]["ok"],
+            "evidence": quality["antlr_integrity"],
+        },
+        {
+            "outcome": "keyword_limited",
+            "ok": quality["budget"]["ok"] and quality["canonical_keyword_count"] == KEYWORD_LIMIT,
+            "evidence": quality["budget"],
+        },
+        {
+            "outcome": "multi_source_ready",
+            "ok": {"dbml", "sql", "ponyorm", "database", "dsl"} <= source_kinds,
+            "source_families": tuple(sorted(source_kinds)),
+        },
+    )
+    return {
+        "format": "appgen.dsl-language-experience-gate.v1",
+        "source": source_name,
+        "ok": all(check["ok"] for check in checks),
+        "language": "appgen-dsl",
+        "checks": checks,
+        "blocking_gaps": tuple(check for check in checks if not check["ok"]),
+        "sample": canonical,
+    }
+
+
 def dsl_authoring_release_gate(
     text: str,
     *,
@@ -402,6 +468,7 @@ def dsl_authoring_release_gate(
     score = dsl_authoring_score(source, source_name=source_name)
     quality = dsl_language_quality_contract()
     ergonomics = dsl_language_ergonomics_contract(source, source_name=source_name)
+    experience = dsl_language_experience_gate(source_name=source_name)
     completions = dsl_completion_items(source=source)
     actions = dsl_code_actions(source, source_name=source_name)
     source_catalog = tuple(
@@ -458,6 +525,11 @@ def dsl_authoring_release_gate(
             "gate": "language_ergonomics",
             "ok": ergonomics["ok"],
             "evidence": ergonomics["checks"],
+        },
+        {
+            "gate": "language_experience",
+            "ok": experience["ok"],
+            "evidence": experience["checks"],
         },
         {
             "gate": "ide_contract",

@@ -193,6 +193,9 @@ It also adds style feedback:
 - Include `antlr_integrity` from `dsl_antlr_integrity_report()` so CI can catch
   drift between `lang/appgen.g4` and the generated ANTLR lexer/parser token and
   rule metadata.
+- Include `language_experience` from `dsl_language_experience_gate()` when a
+  release needs the stronger outcome proof that the DSL remains delightful,
+  intuitive, functional, ANTLR-backed, keyword-limited, and source-family ready.
 
 It also returns structured quick fixes for common authoring feedback:
 

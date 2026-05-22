@@ -78,11 +78,16 @@ Use `dsl_language_ergonomics_contract()` or
 is still pleasant to author. It proves aliases, keyword-free syntax, legacy-ref
 quick fixes, formatter stability, learning path, completion-ready samples, and
 DBML/SQL/PonyORM/database/DSL source guidance.
+Use `dsl_language_experience_gate()` or
+`/dsl-reference/language-experience-gate.json` for the outcome gate. It proves
+the DSL is delightful to edit, intuitive to learn, functional across data,
+forms, workflows, and agentic constructs, ANTLR-backed, keyword-limited, and
+ready for DBML/SQL/PonyORM/database/DSL generation sources.
 Use `dsl_authoring_release_gate()` or `/dsl-reference/authoring-gate.json` when
 reviewing release readiness for the whole authoring loop. The gate combines
 language quality, syntax/semantic linting, formatter stability, IDE navigation,
-code actions, authoring guidance, language ergonomics, and source-family
-coverage for DBML, SQL, PonyORM, live databases, and DSL files.
+code actions, authoring guidance, language ergonomics, language experience, and
+source-family coverage for DBML, SQL, PonyORM, live databases, and DSL files.
 Use `dsl_antlr_integrity_report()` when changing the grammar: it proves the
 canonical grammar, generated lexer, generated parser, token names, parser rules,
 and compact keyword literals are synchronized before the language-service

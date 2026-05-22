@@ -35,7 +35,10 @@ language ergonomics, and source-family coverage for DBML, SQL, PonyORM, live
 database introspection, and DSL files. `dsl_language_ergonomics_contract()`
 proves friendly aliases, keyword-free expressiveness, quick fixes,
 deterministic formatting, the progressive learning path, and multi-source
-guidance before the authoring gate can pass.
+guidance before the authoring gate can pass. `dsl_language_experience_gate()`
+adds the user-facing language promise: generated evidence must prove the DSL is
+delightful, intuitive, functional, ANTLR-backed, keyword-limited, and ready for
+all supported schema source families.
 `dsl_antlr_integrity_report()` additionally proves the canonical grammar and
 generated lexer/parser metadata are synchronized, including token names, parser
 rules, required DSL constructs, and compact keyword literals.
