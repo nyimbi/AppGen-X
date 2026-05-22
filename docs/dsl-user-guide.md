@@ -132,6 +132,10 @@ Run `appgen --form-designer-release-audit` to prove the package-level
 Delphi-style form designer has draggable palette categories, snap-to-grid
 drop proposals, property inspectors, placement suggestions, overlap guardrails,
 and generated form-designer artifact coverage before release.
+Run `appgen --visual-modeling-release-audit` to prove package-level visual
+schema graphs, Mermaid ERDs, DBML/SQL/PonyORM/DSL exports, visual
+table/field/relationship proposals, migration previews, and code/database
+generation plans before release.
 Run `appgen --config-release-audit` to prove the package-level configuration
 editor contract has roadmap-required FAB API flags, whitelisted editable keys,
 production safety checks, and environment export coverage.

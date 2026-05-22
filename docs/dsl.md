@@ -274,6 +274,17 @@ snap-to-grid canvas, field-to-component mappings, snapped drop proposals,
 property-inspector metadata, placement suggestions, overlap guardrails, and the
 generated form-designer artifact contract.
 
+Audit the package-level visual modeling and database-design contract before
+claiming visual models can generate code and database schema:
+
+```console
+appgen --visual-modeling-release-audit
+```
+
+The visual-modeling audit proves graph nodes and edges, Mermaid ERD export,
+DBML/SQL/PonyORM/DSL export, reviewable table/field/relationship proposals,
+migration previews, and generated code/database artifact plans.
+
 Audit the package-level configuration editor contract before claiming the
 roadmap `config.py` setup screen is ready:
 

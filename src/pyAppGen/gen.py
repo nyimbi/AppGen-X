@@ -46877,6 +46877,11 @@ def get_metadata(idb):
     help="Print JSON proof that package-level Delphi-style form design is ready.",
 )
 @click.option(
+    "--visual-modeling-release-audit",
+    is_flag=True,
+    help="Print JSON proof that package-level visual modeling and database design are ready.",
+)
+@click.option(
     "--config-release-audit",
     is_flag=True,
     help="Print JSON proof that package-level config editor safeguards are ready.",
@@ -46953,6 +46958,7 @@ def main(
     nl_release_audit,
     studio_release_audit,
     form_designer_release_audit,
+    visual_modeling_release_audit,
     config_release_audit,
     distribution_release_audit,
     reporting_release_audit,
@@ -46972,6 +46978,7 @@ def main(
         *nl_options,
         studio_release_audit,
         form_designer_release_audit,
+        visual_modeling_release_audit,
         config_release_audit,
         distribution_release_audit,
         reporting_release_audit,
@@ -47343,6 +47350,7 @@ def main(
                 nl_release_audit,
                 studio_release_audit,
                 form_designer_release_audit,
+                visual_modeling_release_audit,
                 config_release_audit,
                 distribution_release_audit,
                 reporting_release_audit,
@@ -47372,6 +47380,7 @@ def main(
                 nl_release_audit,
                 studio_release_audit,
                 form_designer_release_audit,
+                visual_modeling_release_audit,
                 config_release_audit,
                 distribution_release_audit,
                 reporting_release_audit,
@@ -47400,6 +47409,7 @@ def main(
                 wdatabase,
                 studio_release_audit,
                 form_designer_release_audit,
+                visual_modeling_release_audit,
                 config_release_audit,
                 distribution_release_audit,
                 reporting_release_audit,
@@ -47427,6 +47437,7 @@ def main(
                 idatabase,
                 wdatabase,
                 form_designer_release_audit,
+                visual_modeling_release_audit,
                 config_release_audit,
                 distribution_release_audit,
                 reporting_release_audit,
@@ -47454,6 +47465,7 @@ def main(
                 idatabase,
                 wdatabase,
                 config_release_audit,
+                visual_modeling_release_audit,
                 distribution_release_audit,
                 reporting_release_audit,
                 ops_release_audit,
@@ -47474,6 +47486,34 @@ def main(
         click.echo(json.dumps(result, indent=2, sort_keys=True, default=list))
         ctx.exit(0 if result["ok"] else 1)
 
+    if visual_modeling_release_audit:
+        if any(
+            [
+                writedir,
+                database_url,
+                idatabase,
+                wdatabase,
+                config_release_audit,
+                distribution_release_audit,
+                reporting_release_audit,
+                ops_release_audit,
+                integration_release_audit,
+                agentic_release_audit,
+                target_release_audit,
+                *schema_sources,
+            ]
+        ):
+            raise click.UsageError(
+                "--visual-modeling-release-audit cannot be combined with generation options."
+            )
+        from .visual_modeling import (
+            visual_modeling_release_audit as package_visual_modeling_release_audit,
+        )
+
+        result = package_visual_modeling_release_audit()
+        click.echo(json.dumps(result, indent=2, sort_keys=True, default=list))
+        ctx.exit(0 if result["ok"] else 1)
+
     if config_release_audit:
         if any(
             [
@@ -47482,6 +47522,7 @@ def main(
                 idatabase,
                 wdatabase,
                 form_designer_release_audit,
+                visual_modeling_release_audit,
                 distribution_release_audit,
                 reporting_release_audit,
                 ops_release_audit,
@@ -47512,6 +47553,7 @@ def main(
                 integration_release_audit,
                 agentic_release_audit,
                 form_designer_release_audit,
+                visual_modeling_release_audit,
                 target_release_audit,
                 *schema_sources,
             ]
@@ -47536,6 +47578,7 @@ def main(
                 integration_release_audit,
                 agentic_release_audit,
                 form_designer_release_audit,
+                visual_modeling_release_audit,
                 target_release_audit,
                 *schema_sources,
             ]
@@ -47559,6 +47602,7 @@ def main(
                 integration_release_audit,
                 agentic_release_audit,
                 form_designer_release_audit,
+                visual_modeling_release_audit,
                 target_release_audit,
                 *schema_sources,
             ]
@@ -47582,6 +47626,7 @@ def main(
                 agentic_release_audit,
                 target_release_audit,
                 form_designer_release_audit,
+                visual_modeling_release_audit,
                 *schema_sources,
             ]
         ):
@@ -47624,6 +47669,7 @@ def main(
                 idatabase,
                 wdatabase,
                 form_designer_release_audit,
+                visual_modeling_release_audit,
                 *schema_sources,
             ]
         ):

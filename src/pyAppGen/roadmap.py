@@ -514,6 +514,7 @@ def package_goal_audit(root: Path | str | None = None) -> dict:
     from .reporting import reporting_release_audit
     from .studio import studio_release_audit
     from .targets import target_release_audit
+    from .visual_modeling import visual_modeling_release_audit
 
     roadmap = roadmap_release_audit(root)
     superiority = jhipster_superiority_audit()
@@ -522,6 +523,7 @@ def package_goal_audit(root: Path | str | None = None) -> dict:
     nl_evolution = nl_evolution_release_audit()
     studio = studio_release_audit()
     form_designer = form_designer_release_audit()
+    visual_modeling = visual_modeling_release_audit()
     config_editor = config_editor_release_audit()
     distribution = distribution_release_audit()
     reporting = reporting_release_audit()
@@ -564,6 +566,11 @@ def package_goal_audit(root: Path | str | None = None) -> dict:
             "id": "delphi_form_designer",
             "ok": form_designer["ok"],
             "format": form_designer["format"],
+        },
+        {
+            "id": "visual_modeling",
+            "ok": visual_modeling["ok"],
+            "format": visual_modeling["format"],
         },
         {
             "id": "config_editor",
@@ -622,6 +629,7 @@ def package_goal_audit(root: Path | str | None = None) -> dict:
             "natural_language_evolution": nl_evolution,
             "studio": studio,
             "form_designer": form_designer,
+            "visual_modeling": visual_modeling,
             "config_editor": config_editor,
             "distribution": distribution,
             "reporting": reporting,

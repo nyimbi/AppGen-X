@@ -121,6 +121,16 @@ from pyAppGen.targets import target_catalog
 from pyAppGen.targets import target_contract
 from pyAppGen.targets import target_package_matrix
 from pyAppGen.targets import target_release_audit
+from pyAppGen.visual_modeling import code_generation_plan
+from pyAppGen.visual_modeling import erd_mermaid as package_erd_mermaid
+from pyAppGen.visual_modeling import field_proposal as visual_field_proposal
+from pyAppGen.visual_modeling import migration_preview as visual_migration_preview
+from pyAppGen.visual_modeling import relationship_proposal as visual_relationship_proposal
+from pyAppGen.visual_modeling import table_proposal as visual_table_proposal
+from pyAppGen.visual_modeling import visual_graph
+from pyAppGen.visual_modeling import visual_model_exports
+from pyAppGen.visual_modeling import visual_modeling_release_audit
+from pyAppGen.visual_modeling import visual_schema
 
 
 @pytest.fixture
@@ -312,6 +322,7 @@ def test_package_goal_audit_cli_aggregates_objective_evidence(
         "natural_language_evolution",
         "robust_ide",
         "delphi_form_designer",
+        "visual_modeling",
         "config_editor",
         "publishable_distribution",
         "reporting_chartviews",
@@ -338,6 +349,7 @@ def test_package_goal_audit_cli_aggregates_objective_evidence(
     assert cli_report["audits"]["natural_language_evolution"]["ok"] is True
     assert cli_report["audits"]["studio"]["ok"] is True
     assert cli_report["audits"]["form_designer"]["ok"] is True
+    assert cli_report["audits"]["visual_modeling"]["ok"] is True
     assert cli_report["audits"]["config_editor"]["ok"] is True
     assert cli_report["audits"]["distribution"]["ok"] is True
     assert cli_report["audits"]["reporting"]["ok"] is True
@@ -587,6 +599,71 @@ def test_package_form_designer_audit_covers_delphi_style_drop_design(
     assert report["drop"]["property_inspector"]["format"] == (
         "appgen.package-form-property-inspector.v1"
     )
+
+
+def test_package_visual_modeling_audit_covers_visual_schema_generation(
+    runner: CliRunner,
+) -> None:
+    """The package proves visual models can regenerate schema/code plans."""
+    model = visual_schema()
+    assert model["format"] == "appgen.package-visual-schema.v1"
+    assert {"Author", "Book"} == {table["name"] for table in model["tables"]}
+    assert model["relations"][0]["target_table"] == "Author"
+
+    graph = visual_graph()
+    assert graph["format"] == "appgen.package-visual-graph.v1"
+    assert graph["ok"] is True
+    assert any(edge["type"] == "relationship" for edge in graph["edges"])
+
+    erd = package_erd_mermaid()
+    assert erd.startswith("erDiagram\n")
+    assert "Author ||--o{ Book" in erd
+
+    exports = visual_model_exports()
+    assert exports["format"] == "appgen.package-visual-model-exports.v1"
+    assert "Table Book" in exports["dbml"]
+    assert "CREATE TABLE Book" in exports["sql"]
+    assert "class Book(db.Entity)" in exports["ponyorm"]
+
+    table = visual_table_proposal("Publisher")
+    field = visual_field_proposal("Book", "subtitle")
+    relation = visual_relationship_proposal("Book", "publisher_id", "Publisher")
+    assert table["kind"] == "add_table"
+    assert field["dsl"] == "  subtitle: string"
+    assert relation["dsl"] == "  publisher_id: int -> Publisher.id [many-to-one]"
+
+    migration = visual_migration_preview(relation)
+    assert migration["format"] == "appgen.package-visual-migration-preview.v1"
+    assert migration["requires_review"] is True
+    assert migration["operations"][0]["op"] == "add_column"
+
+    generation = code_generation_plan(relation)
+    assert generation["format"] == "appgen.package-visual-code-generation-plan.v1"
+    assert "app/models.py" in generation["artifacts"]
+    assert "migration_preview" in generation["checks"]
+
+    audit = visual_modeling_release_audit()
+    assert audit["format"] == "appgen.package-visual-modeling-release-audit.v1"
+    assert audit["ok"] is True
+    assert {
+        "visual_graph",
+        "erd_export",
+        "schema_exports",
+        "proposal_breadth",
+        "migration_preview",
+        "code_generation_plan",
+        "artifact_contract",
+    } == {gate["id"] for gate in audit["gates"]}
+
+    missing = visual_modeling_release_audit(existing_paths={"app/designer.py"})
+    assert missing["ok"] is False
+    assert any(gate["id"] == "artifact_contract" for gate in missing["blocking_gaps"])
+
+    result = runner.invoke(__main__.main, ["--visual-modeling-release-audit"])
+    assert result.exit_code == 0
+    report = json.loads(result.output)
+    assert report["ok"] is True
+    assert report["graph"]["ok"] is True
 
 
 def test_package_config_editor_audit_covers_safe_setup(
