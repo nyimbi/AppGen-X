@@ -701,7 +701,9 @@ apps include:
   service, runtime readiness checks, flow validation, and
   `node_red_release_gate()` evidence for artifact coverage, event-topic
   coverage, webhook contracts, workflow transition webhooks, and Compose
-  runtime readiness.
+  runtime readiness. `node_red_workbench()` adds generated IDE evidence for
+  artifacts, flow validation, table/workflow webhooks, default runtime, Compose
+  service, release decisions, and `/appgen/...` webhook route coverage.
 - `rpa.py` and `appgen_rpa.html` with generated robotic-process automation
   task plans, credential readiness checks, BPMN/UML process models, process
   validation, simulation, UiPath/Blue Prism/Automation Anywhere export

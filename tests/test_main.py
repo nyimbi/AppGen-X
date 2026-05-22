@@ -989,6 +989,22 @@ def test_generate_app_from_sqlite_schema_compiles(tmp_path) -> None:
     )
     assert node_red_gate["format"] == "appgen.node-red-release-gate.v1"
     assert node_red_gate["ok"] is True
+    node_red_workbench = node_red.node_red_workbench(
+        {"automation/appgen_node_red.py", "automation/node-red/flows.json", "docker-compose.yml"},
+        flow_export,
+    )
+    assert node_red_workbench["format"] == "appgen.node-red-workbench.v1"
+    assert node_red_workbench["ok"] is True
+    assert node_red_workbench["release_gate"]["ok"] is True
+    assert {
+        "artifact_coverage",
+        "event_topic_coverage",
+        "webhook_contracts",
+        "default_runtime",
+        "compose_service",
+        "release_gate",
+        "route_surface",
+    } == {check["id"] for check in node_red_workbench["checks"]}
     assert node_red.node_red_release_gate({"automation/appgen_node_red.py"}, flow_export)["ok"] is False
     assert node_red.workflow_events() == ()
     assert any(node.get("type") == "http in" and node.get("name") == "book.created" for node in flow_export)
@@ -1069,6 +1085,7 @@ def test_generate_app_from_sqlite_schema_compiles(tmp_path) -> None:
     assert capabilities_by_key["platform.chatbots"]["status"] == "implemented"
     assert capabilities_by_key["ai.guided-chatbot"]["status"] == "implemented"
     assert "automation.node-red" in {item["key"] for item in manifest["capabilities"]}
+    assert capabilities_by_key["automation.node-red"]["status"] == "implemented"
     assert "automation.cep" in {item["key"] for item in manifest["capabilities"]}
     assert "automation.rpa-bpa" in {item["key"] for item in manifest["capabilities"]}
     assert "team.collaboration" in {item["key"] for item in manifest["capabilities"]}
@@ -6520,6 +6537,14 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "default_runtime",
         "compose_service",
     } <= {check["gate"] for check in node_red_gate["checks"]}
+    node_red_workbench = node_red.node_red_workbench(
+        {"automation/appgen_node_red.py", "automation/node-red/flows.json", "docker-compose.yml"},
+        flow_export,
+    )
+    assert node_red_workbench["format"] == "appgen.node-red-workbench.v1"
+    assert node_red_workbench["ok"] is True
+    assert "/appgen/workflow/publish/draft/published" in node_red_workbench["routes"]
+    assert node_red.node_red_workbench({"automation/appgen_node_red.py"}, flow_export)["ok"] is False
     assert node_red.node_red_release_gate({"automation/appgen_node_red.py"}, flow_export)["ok"] is False
     assert validation["workflow_events"] == (
         "workflow.Publish.draft.published",

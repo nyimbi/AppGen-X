@@ -38789,6 +38789,43 @@ def node_red_release_gate(existing_paths=(), flow_export=None):
         "checks": checks,
         "runtime": node_red_runtime_service(),
     }}
+
+
+def node_red_workbench(existing_paths=(), flow_export=None):
+    """Return consolidated Node-RED automation evidence for generated IDEs."""
+    release_gate = node_red_release_gate(existing_paths, flow_export)
+    validation = validate_flow_export(flow_export or [])
+    runtime = runtime_readiness(existing_paths)
+    routes = tuple(event["path"] for event in automation_events())
+    table_webhooks = tuple(
+        webhook_plan(event["table"], event["action"])
+        for event in node_red_events()
+    )
+    workflow_webhooks = tuple(
+        workflow_webhook_plan(event["workflow"], event["source"], event["target"])
+        for event in workflow_events()
+    )
+    checks = (
+        {{"id": "artifact_coverage", "ok": runtime["ok"] and not node_red_release_gate(existing_paths, flow_export)["checks"][0]["evidence"]["missing"], "evidence": runtime}},
+        {{"id": "event_topic_coverage", "ok": bool(automation_events()) and validation["ok"], "evidence": validation}},
+        {{"id": "webhook_contracts", "ok": len(table_webhooks) == len(node_red_events()) and len(workflow_webhooks) == len(workflow_events()), "evidence": {{"table_webhooks": table_webhooks, "workflow_webhooks": workflow_webhooks}}}},
+        {{"id": "default_runtime", "ok": runtime["default_service"] == "node-red" and runtime["port"] == 1880, "evidence": runtime}},
+        {{"id": "compose_service", "ok": compose_service_plan()["image"].startswith("nodered/node-red") and compose_service_plan()["ports"] == ("1880:1880",), "evidence": compose_service_plan()}},
+        {{"id": "release_gate", "ok": release_gate["ok"], "evidence": release_gate["decision"]}},
+        {{"id": "route_surface", "ok": all(route.startswith("/appgen/") for route in routes), "evidence": {{"routes": routes}}}},
+    )
+    ok = all(check["ok"] for check in checks)
+    return {{
+        "format": "appgen.node-red-workbench.v1",
+        "ok": ok,
+        "decision": "approved" if ok else "blocked",
+        "events": automation_events(),
+        "runtime": node_red_runtime_service(),
+        "compose": compose_service_plan(),
+        "routes": routes,
+        "release_gate": release_gate,
+        "checks": checks,
+    }}
 '''
 
 
