@@ -1125,6 +1125,7 @@ def test_generate_app_from_sqlite_schema_compiles(tmp_path) -> None:
     assert "team.version-control" in {item["key"] for item in manifest["capabilities"]}
     assert capabilities_by_key["team.version-control"]["status"] == "implemented"
     assert "team.realtime" in {item["key"] for item in manifest["capabilities"]}
+    assert capabilities_by_key["team.realtime"]["status"] == "implemented"
     assert "quality.diagnostics" in {item["key"] for item in manifest["capabilities"]}
     assert "quality.api-testing" in {item["key"] for item in manifest["capabilities"]}
     assert "quality.code-review" in {item["key"] for item in manifest["capabilities"]}
@@ -2585,6 +2586,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert "Workbench JSON" in i18n_template
     assert "Release Gate JSON" in i18n_template
     assert "event-stream contracts" in (output_dir / "templates" / "appgen_realtime.html").read_text()
+    assert "Workbench JSON" in (output_dir / "templates" / "appgen_realtime.html").read_text()
     assert "permissions per tab" in (output_dir / "templates" / "appgen_tabbed_views.html").read_text()
     events_template = (output_dir / "templates" / "appgen_events.html").read_text()
     assert "complex event processing" in events_template
@@ -5384,6 +5386,24 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert {"topic_catalog", "event_payload", "sse_frame", "collaboration_message", "replay_plan"} <= {
         gate["gate"] for gate in realtime_gate["gates"]
     }
+    realtime_workbench = realtime.realtime_workbench({"app/realtime.py", "app/templates/appgen_realtime.html"})
+    assert realtime_workbench["format"] == "appgen.realtime-workbench.v1"
+    assert realtime_workbench["ok"] is True
+    assert realtime_workbench["decision"] == "approved"
+    assert {
+        "topic_catalog",
+        "event_payload",
+        "sse_frame",
+        "collaboration_message",
+        "replay_plan",
+        "artifact_evidence",
+        "route_surface",
+        "release_gate",
+    } == {check["id"] for check in realtime_workbench["checks"]}
+    assert "/realtime/workbench.json" in next(
+        check["evidence"]["routes"] for check in realtime_workbench["checks"] if check["id"] == "route_surface"
+    )
+    assert realtime.realtime_workbench({"app/realtime.py"})["ok"] is False
     assert realtime.realtime_release_gate({"app/realtime.py"})["ok"] is False
     event_catalog = events.event_catalog()
     assert any("Book.created" in item["topics"] for item in event_catalog["tables"])

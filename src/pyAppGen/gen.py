@@ -5345,6 +5345,7 @@ def write_realtime_template(output_dir):
     </div>
     <div>
       <a class="btn btn-default" href="{{ url_for('RealtimeView.topics_json') }}">Topics JSON</a>
+      <a class="btn btn-default" href="{{ url_for('RealtimeView.workbench_json') }}">Workbench JSON</a>
       <a class="btn btn-default" href="{{ url_for('RealtimeView.release_gate_json') }}">Release Gate JSON</a>
     </div>
   </div>
@@ -31350,6 +31351,41 @@ def realtime_release_gate(existing_paths=()):
     }}
 
 
+def realtime_workbench(existing_paths=()):
+    """Return IDE-ready realtime evidence for generated event streams."""
+    release_gate = realtime_release_gate(existing_paths)
+    topics = realtime_topics()
+    first_topic = topics[0]["topics"][1] if topics and len(topics[0]["topics"]) > 1 else (topics[0]["topics"][0] if topics else None)
+    event = event_payload(first_topic, {{"changed": True}}, actor="workbench", event_id="evt-workbench") if first_topic else {{}}
+    frame = sse_frame(event) if event else ""
+    message = collaboration_message("workbench-room", "workbench", "Realtime ready", metadata={{"topic": first_topic}}) if first_topic else {{}}
+    replay = replay_plan(last_event_id="evt-workbench", limit=250)
+    routes = ("/realtime/", "/realtime/topics.json", "/realtime/workbench.json", "/realtime/release-gate.json")
+    checks = (
+        {{"id": "topic_catalog", "ok": bool(topics), "evidence": topics}},
+        {{"id": "event_payload", "ok": bool(event) and event.get("topic") == first_topic and event.get("actor") == "workbench", "evidence": event}},
+        {{"id": "sse_frame", "ok": frame.startswith("id: evt-workbench\\nevent: ") and frame.endswith("\\n\\n"), "evidence": {{"frame": frame}}}},
+        {{"id": "collaboration_message", "ok": message.get("room") == "workbench-room" and message.get("metadata", {{}}).get("topic") == first_topic, "evidence": message}},
+        {{"id": "replay_plan", "ok": replay["last_event_id"] == "evt-workbench" and replay["limit"] == 250 and first_topic in replay["topics"], "evidence": replay}},
+        {{"id": "artifact_evidence", "ok": release_gate["gates"][0]["ok"], "evidence": release_gate["gates"][0]}},
+        {{"id": "route_surface", "ok": "/realtime/workbench.json" in routes, "evidence": {{"routes": routes}}}},
+        {{"id": "release_gate", "ok": release_gate["ok"], "evidence": release_gate}},
+    )
+    ok = all(check["ok"] for check in checks)
+    return {{
+        "format": "appgen.realtime-workbench.v1",
+        "ok": ok,
+        "decision": "approved" if ok else "blocked",
+        "checks": checks,
+        "topics": topics,
+        "event": event,
+        "sse_frame": frame,
+        "message": message,
+        "replay": replay,
+        "release_gate": release_gate,
+    }}
+
+
 class RealtimeView(BaseView):
     route_base = "/realtime"
     default_view = "index"
@@ -31361,6 +31397,10 @@ class RealtimeView(BaseView):
     @expose("/topics.json")
     def topics_json(self):
         return jsonify(list(realtime_topics()))
+
+    @expose("/workbench.json")
+    def workbench_json(self):
+        return jsonify(realtime_workbench({{"app/realtime.py", "app/templates/appgen_realtime.html"}}))
 
     @expose("/release-gate.json")
     def release_gate_json(self):
@@ -41539,11 +41579,13 @@ def validate_realtime_artifacts() -> None:
     contract = (ROOT / "app" / "realtime.py").read_text()
     if "realtime_topics" not in contract or "sse_frame" not in contract or "collaboration_message" not in contract:
         fail("realtime contract must expose topics, SSE frames, and messages")
-    if "realtime_check" not in contract or "realtime_release_gate" not in contract:
-        fail("realtime contract must expose readiness and release gates")
+    if "realtime_check" not in contract or "realtime_release_gate" not in contract or "realtime_workbench" not in contract:
+        fail("realtime contract must expose readiness, workbench, and release gates")
+    if "appgen.realtime-workbench.v1" not in contract or '@expose("/workbench.json")' not in contract:
+        fail("realtime contract must expose a versioned workbench route")
     template = (ROOT / "app" / "templates" / "appgen_realtime.html").read_text()
-    if "Realtime" not in template or "Topics JSON" not in template or "Release Gate JSON" not in template:
-        fail("realtime template must expose generated topics and release readiness")
+    if "Realtime" not in template or "Topics JSON" not in template or "Workbench JSON" not in template or "Release Gate JSON" not in template:
+        fail("realtime template must expose generated topics, workbench, and release readiness")
 
 
 def validate_collaboration_artifacts() -> None:
@@ -43734,6 +43776,8 @@ def test_generated_runtime_helpers():
         realtime.event_payload(realtime.realtime_topics()[0]["topics"][0], {})
     )
     assert realtime.realtime_release_gate({{"app/realtime.py", "app/templates/appgen_realtime.html"}})["ok"] is True
+    assert realtime.realtime_workbench({{"app/realtime.py", "app/templates/appgen_realtime.html"}})["format"] == "appgen.realtime-workbench.v1"
+    assert realtime.realtime_workbench({{"app/realtime.py", "app/templates/appgen_realtime.html"}})["ok"] is True
     assert realtime.realtime_release_gate({{"app/realtime.py"}})["ok"] is False
     event_topic = events.all_topics()[0]
     event = events.normalize_event(event_topic, {"ok": True})

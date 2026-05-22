@@ -790,7 +790,10 @@ apps include:
   Server-Sent Events frames, collaboration messages, and reconnect replay plans.
   A generated realtime release gate proves topic catalogs, event payloads, SSE
   rendering, collaboration message payloads, replay bounds, and required
-  realtime artifacts.
+  realtime artifacts. `realtime_workbench()` exposes IDE-ready topic catalog,
+  event payload, SSE frame, collaboration message, replay, artifact,
+  release-gate, and `/realtime/workbench.json` route evidence before
+  `team.realtime` is marked implemented.
 - `diagnostics.py` and `appgen_diagnostics.html` with generated schema
   invariants, row validation, redacted debug snapshots, remediation plans,
   support bundles, API smoke plans, and load-test plans. A generated

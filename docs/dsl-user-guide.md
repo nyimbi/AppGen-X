@@ -594,6 +594,9 @@ Use `/realtime/release-gate.json` or `realtime_release_gate()` to prove
 interactive event-stream readiness. The gate checks table topic catalogs,
 event payload shape, SSE frame rendering, collaboration message payloads,
 reconnect replay bounds, and required realtime artifacts.
+Use `/realtime/workbench.json` or `realtime_workbench()` in the generated IDE to
+inspect topic catalog, event payload, SSE frame, collaboration message, replay,
+artifact, route, and release-gate evidence.
 Use `/events/release-gate.json` or `event_release_gate()` to prove complex
 event processing readiness. The gate checks generated table/workflow topics,
 event envelopes, processing actions, failure alerting, retry backoff,
