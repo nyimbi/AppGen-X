@@ -220,6 +220,9 @@ Generated apps include `/localization/` for translation catalog review. Use
 localized app to prove Babel artifacts, locale metadata, default catalog
 coverage, fallback translation behavior, locale negotiation, missing-key
 reports, and runtime payload shape.
+Use `/localization/workbench.json` or `i18n_workbench()` inside the IDE to
+inspect locale catalogs, fallback behavior, negotiated payloads, missing-key
+reports, artifact readiness, and route evidence.
 
 ## Adding Behavior
 

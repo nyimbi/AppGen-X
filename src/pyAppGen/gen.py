@@ -4918,6 +4918,7 @@ def write_i18n_template(output_dir):
     <div>
       <a class="btn btn-default" href="{{ url_for('LocalizationView.catalog_json') }}">Catalog JSON</a>
       <a class="btn btn-default" href="{{ url_for('LocalizationView.missing_json') }}">Missing Keys JSON</a>
+      <a class="btn btn-default" href="{{ url_for('LocalizationView.workbench_json') }}">Workbench JSON</a>
       <a class="btn btn-default" href="{{ url_for('LocalizationView.release_gate_json') }}">Release Gate JSON</a>
     </div>
   </div>
@@ -10223,6 +10224,69 @@ def i18n_release_gate(existing_paths=()):
     }}
 
 
+def i18n_workbench(existing_paths=()):
+    """Return an IDE-ready localization design and readiness workbench."""
+    default_catalog = translation_catalog(DEFAULT_LOCALE)
+    sample_key = next(iter(default_catalog), "")
+    missing_report = missing_translation_report()
+    payload = translation_payload("fr-CA,fr;q=0.9,en;q=0.8")
+    release = i18n_release_gate(existing_paths)
+    routes = (
+        "/localization/catalog.json",
+        "/localization/missing.json",
+        "/localization/workbench.json",
+        "/localization/release-gate.json",
+    )
+    checks = (
+        {{
+            "id": "locale_catalog",
+            "ok": DEFAULT_LOCALE in LOCALES and len(locale_catalog()) >= 3,
+            "evidence": {{"locales": locale_catalog()}},
+        }},
+        {{
+            "id": "default_catalog",
+            "ok": bool(default_catalog) and sample_key in default_catalog,
+            "evidence": {{"sample_key": sample_key, "translation_count": len(default_catalog)}},
+        }},
+        {{
+            "id": "fallback_translation",
+            "ok": bool(sample_key) and translate(sample_key, locale="es") == default_catalog[sample_key] and translate("__missing__", locale="es") == "__missing__",
+            "evidence": {{"fallback_locale": DEFAULT_LOCALE, "sample_key": sample_key}},
+        }},
+        {{
+            "id": "locale_negotiation",
+            "ok": payload["locale"] == "fr" and negotiate_locale("zz-ZZ") == DEFAULT_LOCALE,
+            "evidence": payload,
+        }},
+        {{
+            "id": "missing_key_report",
+            "ok": missing_report["format"] == "appgen.i18n-missing.v1" and all(locale in missing_report["missing"] for locale in LOCALES if locale != DEFAULT_LOCALE),
+            "evidence": missing_report,
+        }},
+        {{
+            "id": "artifact_evidence",
+            "ok": release["ok"],
+            "evidence": {{"blocking_gates": tuple(check["gate"] for check in release["checks"] if not check["ok"])}},
+        }},
+        {{
+            "id": "route_surface",
+            "ok": all(route.startswith("/localization/") for route in routes),
+            "evidence": {{"routes": routes}},
+        }},
+    )
+    ok = all(check["ok"] for check in checks)
+    return {{
+        "format": "appgen.i18n-workbench.v1",
+        "ok": ok,
+        "decision": "approved" if ok else "blocked",
+        "locales": locale_catalog(),
+        "missing_report": missing_report,
+        "payload": payload,
+        "release_gate": release,
+        "checks": checks,
+    }}
+
+
 class LocalizationView(BaseView):
     route_base = "/localization"
     default_view = "index"
@@ -10239,6 +10303,10 @@ class LocalizationView(BaseView):
     @expose("/missing.json")
     def missing_json(self):
         return jsonify(missing_translation_report())
+
+    @expose("/workbench.json")
+    def workbench_json(self):
+        return jsonify(i18n_workbench({{"babel.cfg", "app/i18n.py", "app/templates/appgen_i18n.html", "app/translations/en/LC_MESSAGES/messages.po"}}))
 
     @expose("/release-gate.json")
     def release_gate_json(self):
@@ -40320,13 +40388,16 @@ def validate_i18n_artifacts() -> None:
         "translation_payload",
         "i18n_check",
         "i18n_release_gate",
+        "i18n_workbench",
         "appgen.i18n-release-gate.v1",
+        "appgen.i18n-workbench.v1",
+        '@expose("/workbench.json")',
         '@expose("/release-gate.json")',
     )
     if not all(item in contract for item in required):
         fail("i18n contract must expose catalogs, translation, locale negotiation, missing-key reporting, readiness checks, and release evidence")
     template = (ROOT / "app" / "templates" / "appgen_i18n.html").read_text()
-    if "Localization" not in template or "Catalog JSON" not in template or "Missing Keys JSON" not in template or "Release Gate JSON" not in template:
+    if "Localization" not in template or "Catalog JSON" not in template or "Missing Keys JSON" not in template or "Workbench JSON" not in template or "Release Gate JSON" not in template:
         fail("i18n template must expose localization catalog, missing-key reports, and release evidence")
 
 
@@ -43015,6 +43086,17 @@ def test_generated_runtime_helpers():
     assert i18n.i18n_release_gate({{"babel.cfg", "app/i18n.py", "app/templates/appgen_i18n.html", "app/translations/en/LC_MESSAGES/messages.po"}})["format"] == "appgen.i18n-release-gate.v1"
     assert i18n.i18n_release_gate({{"babel.cfg", "app/i18n.py", "app/templates/appgen_i18n.html", "app/translations/en/LC_MESSAGES/messages.po"}})["ok"] is True
     assert i18n.i18n_release_gate({{"app/i18n.py"}})["ok"] is False
+    i18n_workbench = i18n.i18n_workbench({{"babel.cfg", "app/i18n.py", "app/templates/appgen_i18n.html", "app/translations/en/LC_MESSAGES/messages.po"}})
+    assert i18n_workbench["format"] == "appgen.i18n-workbench.v1"
+    assert i18n_workbench["ok"] is True
+    assert i18n_workbench["decision"] == "approved"
+    assert {"locale_catalog", "default_catalog", "fallback_translation", "locale_negotiation", "missing_key_report", "artifact_evidence", "route_surface"} == {
+        check["id"] for check in i18n_workbench["checks"]
+    }
+    assert "/localization/workbench.json" in next(
+        check["evidence"]["routes"] for check in i18n_workbench["checks"] if check["id"] == "route_surface"
+    )
+    assert i18n.i18n_workbench({{"app/i18n.py"}})["ok"] is False
     assert isinstance(agents.provider_catalog({}), tuple)
     assert agents.agent_plan(agents.agent_catalog()[0]["name"], "inspect")["ready"] in {True, False}
     assert agents.provider_connection_matrix({"OPENAI_API_KEY": "test"})["format"] == "appgen.agent-provider-matrix.v1"

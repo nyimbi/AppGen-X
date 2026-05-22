@@ -338,7 +338,9 @@ apps include:
   fallback translation payloads, and missing-key reports. The generated
   `i18n_release_gate()` proves localization artifacts, locale metadata, default
   catalog coverage, fallback translation behavior, locale negotiation,
-  missing-key report visibility, and runtime payload shape.
+  missing-key report visibility, and runtime payload shape. The generated
+  `i18n_workbench()` exposes IDE-ready locale catalog, fallback translation,
+  negotiation, missing-key, artifact, and route-surface evidence.
 - `reports.py` and `appgen_reports.html` with generated report catalogs and CSV
   exports for every table plus relationship-aware join reports and three-way
   table-set reports derived from the schema relation graph. A generated reports
