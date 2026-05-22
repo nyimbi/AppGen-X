@@ -1177,6 +1177,7 @@ def test_generate_app_from_sqlite_schema_compiles(tmp_path) -> None:
     assert capabilities_by_key["devops.cicd"]["status"] == "implemented"
     assert capabilities_by_key["devops.ide-integration"]["status"] == "implemented"
     assert capabilities_by_key["devops.project-management"]["status"] == "implemented"
+    assert capabilities_by_key["ops.monitoring"]["status"] == "implemented"
     assert capabilities_by_key["platform.microservices"]["status"] == "implemented"
     assert capabilities_by_key["platform.targets"]["status"] == "implemented"
     assert capabilities_by_key["platform.native"]["status"] == "implemented"
@@ -2519,6 +2520,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert "Visual Modeling Gate JSON" in (output_dir / "templates" / "appgen_designer.html").read_text()
     monitoring_template = (output_dir / "templates" / "appgen_monitoring.html").read_text()
     assert "Health JSON" in monitoring_template
+    assert "Workbench JSON" in monitoring_template
     assert "Release Gate JSON" in monitoring_template
     resilience_template = (output_dir / "templates" / "appgen_resilience.html").read_text()
     assert "Error Handling JSON" in resilience_template
@@ -3679,6 +3681,23 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "error_envelopes",
         "endpoint_contracts",
     } <= {check["gate"] for check in monitoring_gate["checks"]}
+    monitoring_workbench = monitoring.monitoring_workbench(
+        {"app/monitoring.py", "app/health.py", "app/templates/appgen_monitoring.html"}
+    )
+    assert monitoring_workbench["format"] == "appgen.monitoring-workbench.v1"
+    assert monitoring_workbench["ok"] is True
+    assert monitoring_workbench["decision"] == "approved"
+    assert {
+        "artifact_coverage",
+        "liveness_payload",
+        "readiness_checks",
+        "error_envelopes",
+        "endpoint_contracts",
+        "route_surface",
+        "release_gate",
+    } == {check["id"] for check in monitoring_workbench["checks"]}
+    assert "/monitoring/workbench.json" in monitoring_workbench["routes"]
+    assert monitoring.monitoring_workbench({"app/monitoring.py"})["ok"] is False
     assert monitoring.monitoring_release_gate({"app/monitoring.py"})["ok"] is False
     assert resilience.classify_exception(ValueError("bad"))["category"] == "validation"
     assert resilience.safe_error_response(TimeoutError("slow"))["retryable"] is True

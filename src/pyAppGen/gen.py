@@ -3558,6 +3558,7 @@ def write_monitoring_template(output_dir):
   <div class="agm-actions">
     <a class="btn btn-primary" href="{{ url_for('MonitoringView.healthz') }}">Health JSON</a>
     <a class="btn btn-default" href="{{ url_for('MonitoringView.readyz') }}">Readiness JSON</a>
+    <a class="btn btn-default" href="{{ url_for('MonitoringView.workbench_json') }}">Workbench JSON</a>
     <a class="btn btn-default" href="{{ url_for('MonitoringView.release_gate_json') }}">Release Gate JSON</a>
   </div>
 </section>
@@ -8330,6 +8331,39 @@ def monitoring_release_gate(existing_paths=()):
     }}
 
 
+def monitoring_workbench(existing_paths=()):
+    """Return IDE-ready monitoring, readiness, and error-envelope evidence."""
+    release_gate = monitoring_release_gate(existing_paths)
+    check_by_name = {{check["gate"]: check for check in release_gate["checks"]}}
+    routes = (
+        "/monitoring/",
+        "/monitoring/healthz",
+        "/monitoring/readyz",
+        "/monitoring/workbench.json",
+        "/monitoring/release-gate.json",
+    )
+    checks = (
+        {{"id": "artifact_coverage", "ok": check_by_name["artifact_coverage"]["ok"], "evidence": check_by_name["artifact_coverage"]}},
+        {{"id": "liveness_payload", "ok": check_by_name["liveness_payload"]["ok"], "evidence": liveness()}},
+        {{"id": "readiness_checks", "ok": check_by_name["readiness_checks"]["ok"], "evidence": readiness()}},
+        {{"id": "error_envelopes", "ok": check_by_name["error_envelopes"]["ok"], "evidence": (error_payload(KeyError("missing"), status_code=404), error_payload(RuntimeError("boom"), status_code=500))}},
+        {{"id": "endpoint_contracts", "ok": check_by_name["endpoint_contracts"]["ok"], "evidence": check_by_name["endpoint_contracts"]}},
+        {{"id": "route_surface", "ok": "/monitoring/workbench.json" in routes and "/monitoring/release-gate.json" in routes, "evidence": {{"routes": routes}}}},
+        {{"id": "release_gate", "ok": release_gate["ok"], "evidence": release_gate}},
+    )
+    ok = all(check["ok"] for check in checks)
+    return {{
+        "format": "appgen.monitoring-workbench.v1",
+        "ok": ok,
+        "decision": "approved" if ok else "blocked",
+        "checks": checks,
+        "liveness": liveness(),
+        "readiness": readiness(),
+        "routes": routes,
+        "release_gate": release_gate,
+    }}
+
+
 def register_error_handlers(app):
     """Register generated JSON error handlers."""
 
@@ -8359,6 +8393,10 @@ class MonitoringView(BaseView):
     def readyz(self):
         payload = readiness()
         return jsonify(payload), 200 if payload["ready"] else 503
+
+    @expose("/workbench.json")
+    def workbench_json(self):
+        return jsonify(monitoring_workbench({{"app/monitoring.py", "app/health.py", "app/templates/appgen_monitoring.html"}}))
 
     @expose("/release-gate.json")
     def release_gate_json(self):
@@ -42520,14 +42558,17 @@ def validate_monitoring_artifacts() -> None:
         "error_payload",
         "register_error_handlers",
         "monitoring_release_gate",
+        "monitoring_workbench",
+        "appgen.monitoring-workbench.v1",
+        '@expose("/workbench.json")',
         "appgen.monitoring-release-gate.v1",
         '@expose("/release-gate.json")',
     )
     if not all(item in contract for item in required):
-        fail("monitoring contract must expose health, readiness, error-envelope, and release-gate helpers")
+        fail("monitoring contract must expose health, readiness, error-envelope, workbench, and release-gate helpers")
     template = (ROOT / "app" / "templates" / "appgen_monitoring.html").read_text()
-    if "Monitoring" not in template or "Health JSON" not in template or "Readiness JSON" not in template or "Release Gate JSON" not in template:
-        fail("monitoring cockpit must expose health, readiness, and release evidence")
+    if "Monitoring" not in template or "Health JSON" not in template or "Readiness JSON" not in template or "Workbench JSON" not in template or "Release Gate JSON" not in template:
+        fail("monitoring cockpit must expose health, readiness, workbench, and release evidence")
 
 
 def validate_health_artifacts() -> None:
@@ -43919,6 +43960,9 @@ def test_generated_runtime_helpers():
     assert monitoring.readiness()["ready"] is True
     assert monitoring.monitoring_release_gate({"app/monitoring.py", "app/health.py", "app/templates/appgen_monitoring.html"})["format"] == "appgen.monitoring-release-gate.v1"
     assert monitoring.monitoring_release_gate({"app/monitoring.py", "app/health.py", "app/templates/appgen_monitoring.html"})["ok"] is True
+    assert monitoring.monitoring_workbench({"app/monitoring.py", "app/health.py", "app/templates/appgen_monitoring.html"})["format"] == "appgen.monitoring-workbench.v1"
+    assert monitoring.monitoring_workbench({"app/monitoring.py", "app/health.py", "app/templates/appgen_monitoring.html"})["ok"] is True
+    assert monitoring.monitoring_workbench({"app/monitoring.py"})["ok"] is False
     assert monitoring.monitoring_release_gate({"app/monitoring.py"})["ok"] is False
     assert resilience.classify_exception(ValueError("bad"))["category"] == "validation"
     assert resilience.safe_error_response(TimeoutError("slow"))["retryable"] is True

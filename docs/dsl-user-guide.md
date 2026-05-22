@@ -605,6 +605,9 @@ Use `/monitoring/release-gate.json` or `monitoring_release_gate()` to prove
 operations monitoring readiness. The gate checks monitoring artifacts,
 liveness metadata, readiness checks, JSON error envelopes, and generated
 monitoring endpoint contracts.
+Use `/monitoring/workbench.json` or `monitoring_workbench()` to inspect
+liveness, readiness, error-envelope, endpoint, route, artifact, and release-gate
+evidence in the generated IDE.
 Use `/performance/release-gate.json` or `performance_release_gate()` to prove
 performance readiness. The gate checks generated budget catalogs, bounded
 pagination and cache behavior, load-test matrices, executable k6 and Locust

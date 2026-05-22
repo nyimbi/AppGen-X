@@ -280,7 +280,9 @@ apps include:
 - `monitoring.py` with liveness/readiness endpoints and generated JSON error
   envelopes. The generated `monitoring_release_gate()` proves monitoring
   artifacts, liveness metadata, readiness checks, JSON error envelopes, and
-  endpoint contracts.
+  endpoint contracts. `monitoring_workbench()` exposes IDE-ready liveness,
+  readiness, error-envelope, endpoint, route, artifact, and release-gate
+  evidence before `ops.monitoring` is marked implemented.
 - `resilience.py` and `appgen_resilience.html` with generated automatic error
   handling, safe user-facing responses, recovery actions, retry plans,
   circuit-breaker state, and operator incident reports. The generated
