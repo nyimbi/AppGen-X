@@ -103,6 +103,9 @@ grammar, generated lexer, and generated parser remain synchronized.
 Run `appgen --dsl-authoring-gate appgen.appgen` when reviewing a concrete DSL
 file for release readiness across linting, formatting, language ergonomics,
 source coverage, and IDE support.
+Run `appgen --roadmap-release-audit` when reviewing whether the package-level
+capability map still satisfies `docs/ideas.md`, `docs/base_features.md`, and
+`docs/Lo-code features.md`.
 
 Use `required` for fields that must be entered. Use `search` on fields that
 should appear in generated search contracts. Use `hidden` for generated or

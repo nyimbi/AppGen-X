@@ -46816,6 +46816,14 @@ def get_metadata(idb):
     help="Print JSON release readiness feedback for an AppGen DSL file.",
 )
 @click.option(
+    "--roadmap-release-audit",
+    is_flag=True,
+    help=(
+        "Print JSON proof that roadmap documents map to implemented AppGen "
+        "capabilities."
+    ),
+)
+@click.option(
     "--schema-source-audit",
     is_flag=True,
     help=(
@@ -46846,6 +46854,7 @@ def main(
     fix_dsl_path,
     format_dsl_path,
     dsl_authoring_gate_path,
+    roadmap_release_audit,
     schema_source_audit,
     dsl_antlr_report,
 ):
@@ -46858,6 +46867,7 @@ def main(
         fix_dsl_path,
         format_dsl_path,
         dsl_authoring_gate_path,
+        roadmap_release_audit,
         schema_source_audit,
         dsl_antlr_report,
     ]
@@ -46878,6 +46888,7 @@ def main(
                 fix_dsl_path,
                 format_dsl_path,
                 dsl_authoring_gate_path,
+                roadmap_release_audit,
                 *schema_sources,
             ]
         ):
@@ -46900,6 +46911,7 @@ def main(
                 fix_dsl_path,
                 format_dsl_path,
                 dsl_authoring_gate_path,
+                roadmap_release_audit,
                 schema_source_audit,
                 *schema_sources,
             ]
@@ -46924,6 +46936,7 @@ def main(
                 fix_dsl_path,
                 format_dsl_path,
                 dsl_authoring_gate_path,
+                roadmap_release_audit,
                 schema_source_audit,
                 dsl_antlr_report,
                 *schema_sources,
@@ -46945,6 +46958,7 @@ def main(
                 wdatabase,
                 format_dsl_path,
                 dsl_authoring_gate_path,
+                roadmap_release_audit,
                 schema_source_audit,
                 dsl_antlr_report,
                 *schema_sources,
@@ -46970,6 +46984,7 @@ def main(
                 idatabase,
                 wdatabase,
                 dsl_authoring_gate_path,
+                roadmap_release_audit,
                 schema_source_audit,
                 dsl_antlr_report,
                 *schema_sources,
@@ -46994,6 +47009,7 @@ def main(
                 database_url,
                 idatabase,
                 wdatabase,
+                roadmap_release_audit,
                 schema_source_audit,
                 dsl_antlr_report,
                 *schema_sources,
@@ -47010,6 +47026,17 @@ def main(
             source,
             source_name=str(dsl_authoring_gate_path),
         )
+        click.echo(json.dumps(result, indent=2, sort_keys=True, default=list))
+        ctx.exit(0 if result["ok"] else 1)
+
+    if roadmap_release_audit:
+        if any([writedir, database_url, idatabase, wdatabase, *schema_sources]):
+            raise click.UsageError(
+                "--roadmap-release-audit cannot be combined with generation options."
+            )
+        from .roadmap import roadmap_release_audit as package_roadmap_release_audit
+
+        result = package_roadmap_release_audit()
         click.echo(json.dumps(result, indent=2, sort_keys=True, default=list))
         ctx.exit(0 if result["ok"] else 1)
 

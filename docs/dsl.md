@@ -196,6 +196,14 @@ Run the full authoring release gate for a DSL file:
 appgen --dsl-authoring-gate library.ags
 ```
 
+Run the package-level roadmap audit before claiming AppGen satisfies the full
+low-code objective from `docs/ideas.md`, `docs/base_features.md`, and
+`docs/Lo-code features.md`:
+
+```console
+appgen --roadmap-release-audit
+```
+
 ## Shape
 
 - `table` defines persistent data models.

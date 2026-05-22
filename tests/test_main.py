@@ -40,6 +40,7 @@ from pyAppGen.dsl import dsl_keyword_budget
 from pyAppGen.dsl import dsl_outline
 from pyAppGen.dsl import format_dsl
 from pyAppGen.dsl import lint_dsl
+from pyAppGen.roadmap import roadmap_release_audit
 from pyAppGen.schema import load_schema
 from pyAppGen.schema import RelationSchema
 from pyAppGen.schema import schema_from_metadata
@@ -124,6 +125,41 @@ def test_dsl_authoring_gate_cli_reports_release_readiness(
         "language_experience",
         "ide_contract",
     } <= {gate["gate"] for gate in report["gates"]}
+
+
+def test_roadmap_release_audit_cli_maps_docs_to_capabilities(
+    runner: CliRunner,
+) -> None:
+    """The CLI exposes package-level roadmap proof from the current repo docs."""
+    direct_report = roadmap_release_audit()
+    assert direct_report["format"] == "appgen.roadmap-release-audit.v1"
+    assert direct_report["ok"] is True
+    assert {"docs/ideas.md", "docs/base_features.md", "docs/Lo-code features.md"} == {
+        document["path"] for document in direct_report["documents"]
+    }
+    assert {
+        "schema-sources",
+        "antlr-dsl",
+        "delphi-form-designer",
+        "multi-platform-generation",
+        "agentic-systems",
+        "natural-language-evolution",
+        "erp-templates",
+        "robust-ide",
+        "jhipster-plus",
+        "secure-reliable-apps",
+    } == {requirement["id"] for requirement in direct_report["requirements"]}
+
+    result = runner.invoke(__main__.main, ["--roadmap-release-audit"])
+
+    assert result.exit_code == 0
+    cli_report = json.loads(result.output)
+    assert cli_report["ok"] is True
+    assert cli_report["decision"] == "approved"
+    assert "docs/Lo-code features.md" in {
+        document["path"] for document in cli_report["documents"]
+    }
+    assert all(gate["ok"] for gate in cli_report["gates"])
 
 
 def test_dsl_linter_reports_semantic_feedback(runner: CliRunner, tmp_path) -> None:
