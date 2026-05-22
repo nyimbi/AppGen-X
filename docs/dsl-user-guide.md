@@ -323,6 +323,12 @@ exports are present, utterances match generated intents, required slots block
 incomplete requests, ready responses render valid SSML, and platform model
 exports contain generated commands.
 
+Use `/text-quality/release-gate.json` or `text_quality_release_gate()` before
+shipping generated long-form inputs. The gate proves textarea quality catalogs,
+character and word counters, grammar hints, repeated-word detection,
+required-field enforcement, hard length limits, and per-form feedback without
+requiring external NLP services.
+
 ## Natural Language Evolution
 
 Generated apps include natural-language evolution contracts. A builder can ask

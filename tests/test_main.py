@@ -2331,9 +2331,9 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert "Intelligence JSON" in (output_dir / "templates" / "appgen_intelligence.html").read_text()
     assert "Guided Chatbot" in (output_dir / "templates" / "appgen_chatbot.html").read_text()
     assert "Voice JSON" in (output_dir / "templates" / "appgen_voice.html").read_text()
-    assert "Generated spell, grammar, and character-count contracts" in (
-        output_dir / "templates" / "appgen_text_quality.html"
-    ).read_text()
+    text_quality_template = (output_dir / "templates" / "appgen_text_quality.html").read_text()
+    assert "Generated spell, grammar, and character-count contracts" in text_quality_template
+    assert "Release Gate JSON" in text_quality_template
     assert "Generated notification channels" in (output_dir / "templates" / "appgen_notifications.html").read_text()
     platforms_template = (output_dir / "templates" / "appgen_platforms.html").read_text()
     assert "web, PWA, mobile, desktop, and chatbot" in platforms_template
@@ -4190,6 +4190,23 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert "terminal_punctuation" in quality["warnings"]
     assert quality["repeated_words"] == ("grammar",)
     assert text_quality.form_text_quality("Book", {"summary": "Fine."})[0]["remaining"] == 1995
+    text_gate = text_quality.text_quality_release_gate(
+        {"app/text_quality.py", "app/templates/appgen_text_quality.html"}
+    )
+    assert text_quality.text_quality_check({"app/text_quality.py", "app/templates/appgen_text_quality.html"})[
+        "ok"
+    ] is True
+    assert text_gate["format"] == "appgen.text-quality-release-gate.v1"
+    assert text_gate["ok"] is True
+    assert {
+        "artifact_coverage",
+        "field_catalog",
+        "character_and_word_counts",
+        "grammar_and_repeats",
+        "required_and_limits",
+        "form_feedback",
+    } <= {check["gate"] for check in text_gate["checks"]}
+    assert text_quality.text_quality_release_gate({"app/text_quality.py"})["ok"] is False
     suggestions = assistant.recommendations("Book", {"status": "draft"})
     assert any(item["type"] == "missing_required_field" and item["field"] == "title" for item in suggestions)
     review = assistant.review_task("Book", {"status": "draft"})

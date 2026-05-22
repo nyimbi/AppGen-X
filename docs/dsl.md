@@ -533,7 +533,10 @@ apps include:
   realistic sample data, preview packages, experiment hypotheses, and backlog
   promotion plans for fast stakeholder iteration.
 - `text_quality.py` and `appgen_text_quality.html` with generated textarea
-  spell, grammar, and character-count feedback contracts.
+  spell, grammar, and character-count feedback contracts. The generated
+  `text_quality_release_gate()` proves textarea catalogs, counters, grammar
+  hints, repeated-word detection, required-field enforcement, length limits,
+  and per-form feedback.
 - `notifications.py` and `appgen_notifications.html` with generated in-app,
   email, webhook, and push-style notification payloads for table events.
 - `platforms.py` and `appgen_platforms.html` with generated web, PWA, mobile,

@@ -4723,7 +4723,10 @@ def write_text_quality_template(output_dir):
         adapters to keep long-form input clear and bounded.
       </p>
     </div>
-    <a class="btn btn-default" href="{{ url_for('TextQualityView.catalog_json') }}">Catalog JSON</a>
+    <div>
+      <a class="btn btn-default" href="{{ url_for('TextQualityView.catalog_json') }}">Catalog JSON</a>
+      <a class="btn btn-default" href="{{ url_for('TextQualityView.release_gate_json') }}">Release Gate JSON</a>
+    </div>
   </div>
   <div class="agtq-grid">
     {% for item in fields %}
@@ -20048,6 +20051,82 @@ def form_text_quality(table_name, values):
     )
 
 
+def text_quality_check(existing_paths=()):
+    """Return readiness for generated text quality artifacts."""
+    existing = set(existing_paths)
+    required = ("app/text_quality.py", "app/templates/appgen_text_quality.html")
+    missing = tuple(path for path in required if path not in existing)
+    catalog = text_quality_catalog()
+    return {{
+        "format": "appgen.text-quality-check.v1",
+        "ok": not missing and bool(catalog),
+        "missing": missing,
+        "field_count": len(catalog),
+        "fields": tuple(f"{{item['table']}}.{{item['field']}}" for item in catalog),
+    }}
+
+
+def text_quality_release_gate(existing_paths=()):
+    """Return a release decision for generated text quality contracts."""
+    existing = set(existing_paths)
+    required = ("app/text_quality.py", "app/templates/appgen_text_quality.html")
+    missing = tuple(path for path in required if path not in existing)
+    catalog = text_quality_catalog()
+    sample = catalog[0] if catalog else None
+    sample_text = "bad  grammar grammar"
+    counts = character_count(sample_text)
+    repeats = repeated_words(sample_text)
+    hints = grammar_hints(sample_text)
+    report = quality_report(sample["table"], sample["field"], sample_text) if sample else {{}}
+    required_value = "" if sample and sample.get("required") else sample_text
+    required_report = quality_report(sample["table"], sample["field"], required_value) if sample else {{}}
+    long_report = quality_report(sample["table"], sample["field"], "x" * 2001) if sample else {{}}
+    form_report = form_text_quality(sample["table"], {{sample["field"]: sample_text}}) if sample else ()
+    checks = (
+        {{
+            "gate": "artifact_coverage",
+            "ok": not missing,
+            "evidence": {{"required": required, "missing": missing}},
+        }},
+        {{
+            "gate": "field_catalog",
+            "ok": bool(catalog) and all(item["counter"] and item["spellcheck"] and item["grammar"] for item in catalog),
+            "evidence": {{"field_count": len(catalog), "fields": tuple(f"{{item['table']}}.{{item['field']}}" for item in catalog)}},
+        }},
+        {{
+            "gate": "character_and_word_counts",
+            "ok": counts == {{"characters": 20, "words": 3}},
+            "evidence": counts,
+        }},
+        {{
+            "gate": "grammar_and_repeats",
+            "ok": {{"double_space", "capitalization", "terminal_punctuation", "repeated_words"}} <= set(hints) and repeats == ("grammar",),
+            "evidence": {{"hints": hints, "repeated_words": repeats}},
+        }},
+        {{
+            "gate": "required_and_limits",
+            "ok": "too_long" in long_report.get("errors", ()) and (not sample or not sample.get("required") or "required" in required_report.get("errors", ())),
+            "evidence": {{
+                "required": sample.get("required") if sample else False,
+                "required_errors": required_report.get("errors", ()),
+                "long_errors": long_report.get("errors", ()),
+            }},
+        }},
+        {{
+            "gate": "form_feedback",
+            "ok": bool(form_report) and report.get("remaining", 0) >= 0,
+            "evidence": {{"reports": len(form_report), "remaining": report.get("remaining")}},
+        }},
+    )
+    ok = all(check["ok"] for check in checks)
+    return {{
+        "format": "appgen.text-quality-release-gate.v1",
+        "ok": ok,
+        "decision": "approved" if ok else "blocked",
+        "checks": checks,
+    }}
+
+
 class TextQualityView(BaseView):
     route_base = "/text-quality"
     default_view = "index"
@@ -20063,6 +20142,10 @@ class TextQualityView(BaseView):
     @expose("/<table_name>/<field_name>.json")
     def field_json(self, table_name, field_name):
         return jsonify(text_field(table_name, field_name))
+
+    @expose("/release-gate.json")
+    def release_gate_json(self):
+        return jsonify(text_quality_release_gate({{"app/text_quality.py", "app/templates/appgen_text_quality.html"}}))
 
 
 def register_text_quality(appbuilder):
@@ -35755,6 +35838,28 @@ def validate_assistant_artifacts() -> None:
         fail("assistant cockpit must expose generated AI assistance contracts and release readiness")
 
 
+def validate_text_quality_artifacts() -> None:
+    contract = (ROOT / "app" / "text_quality.py").read_text()
+    required = (
+        "text_quality_catalog",
+        "text_field",
+        "character_count",
+        "repeated_words",
+        "grammar_hints",
+        "quality_report",
+        "form_text_quality",
+        "text_quality_check",
+        "text_quality_release_gate",
+    )
+    if not all(item in contract for item in required):
+        fail("text quality contract must expose catalog, counts, grammar hints, per-field reports, form feedback, and release readiness")
+    if "appgen.text-quality-release-gate.v1" not in contract or '@expose("/release-gate.json")' not in contract:
+        fail("text quality contract must expose release readiness checks and route")
+    template = (ROOT / "app" / "templates" / "appgen_text_quality.html").read_text()
+    if "Text Quality" not in template or "Catalog JSON" not in template or "Release Gate JSON" not in template:
+        fail("text quality cockpit must expose generated textarea quality catalog and release readiness")
+
+
 def validate_intelligence_artifacts() -> None:
     contract = (ROOT / "app" / "intelligence.py").read_text()
     required = (
@@ -37042,6 +37147,7 @@ def main() -> int:
     validate_agentic_artifacts()
     validate_i18n_artifacts()
     validate_assistant_artifacts()
+    validate_text_quality_artifacts()
     validate_intelligence_artifacts()
     validate_rls_artifacts()
     validate_identity_artifacts()
@@ -38222,6 +38328,14 @@ def test_generated_runtime_helpers():
         environ={"OPENAI_API_KEY": "test"},
     )["ok"] is True
     assert isinstance(text_quality.text_quality_catalog(), tuple)
+    assert text_quality.text_quality_check({"app/text_quality.py", "app/templates/appgen_text_quality.html"})["ok"] is True
+    assert text_quality.text_quality_release_gate(
+        {"app/text_quality.py", "app/templates/appgen_text_quality.html"}
+    )["format"] == "appgen.text-quality-release-gate.v1"
+    assert text_quality.text_quality_release_gate(
+        {"app/text_quality.py", "app/templates/appgen_text_quality.html"}
+    )["ok"] is True
+    assert text_quality.text_quality_release_gate({"app/text_quality.py"})["ok"] is False
     assert isinstance(notifications.channel_catalog(), tuple)
     assert isinstance(platforms.platform_catalog(), tuple)
     assert platforms.target_package_matrix()["format"] == "appgen.target-package-matrix.v1"
