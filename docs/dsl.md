@@ -900,7 +900,11 @@ apps include:
   synthetic monitoring contracts. A generated API testing release gate combines
   artifact readiness, request matrices, response validation, fixture strategy,
   UI smoke coverage, synthetic monitoring, OpenAPI contract coverage, and
-  rendered pytest/Playwright modules.
+  rendered pytest/Playwright modules. `api_testing_workbench()` exposes
+  IDE-ready request matrix, response validation, fixture, UI smoke, synthetic
+  monitor, OpenAPI coverage, rendered module, execution-plan, artifact,
+  release-gate, and `/api-testing/workbench.json` route evidence before
+  `quality.api-testing` is marked implemented.
 - `openapi.py`, `appgen_openapi.html`, and `docs/openapi.json` with generated
   OpenAPI 3.1 API documentation. A generated `openapi_workbench()` proves
   artifact readiness, OpenAPI version, path catalogs, operation contracts,

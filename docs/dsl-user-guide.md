@@ -801,6 +801,10 @@ suite APIs.
 Use `/api-testing/release-gate.json` before release to verify API request
 matrices, response validation, smoke fixtures, UI smoke plans, synthetic
 monitors, OpenAPI coverage, and rendered pytest/Playwright modules.
+Use `/api-testing/workbench.json` or `api_testing_workbench()` in the generated
+IDE to inspect request matrix, response validation, fixtures, UI smoke,
+monitoring, contract coverage, rendered module, execution-plan, artifact,
+route, and release-gate evidence.
 Use `/openapi/release-gate.json` before API publication to verify OpenAPI 3.1
 metadata, generated path catalogs, operation IDs/responses, component schemas,
 bearer-token security metadata, and required OpenAPI artifacts.

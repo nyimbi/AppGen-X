@@ -1129,6 +1129,7 @@ def test_generate_app_from_sqlite_schema_compiles(tmp_path) -> None:
     assert "quality.diagnostics" in {item["key"] for item in manifest["capabilities"]}
     assert capabilities_by_key["quality.diagnostics"]["status"] == "implemented"
     assert "quality.api-testing" in {item["key"] for item in manifest["capabilities"]}
+    assert capabilities_by_key["quality.api-testing"]["status"] == "implemented"
     assert "quality.code-review" in {item["key"] for item in manifest["capabilities"]}
     assert "quality.test-coverage" in {item["key"] for item in manifest["capabilities"]}
     assert "components.templates" in {item["key"] for item in manifest["capabilities"]}
@@ -2598,6 +2599,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert "runtime self-tests" in (output_dir / "templates" / "appgen_diagnostics.html").read_text()
     assert "Workbench JSON" in (output_dir / "templates" / "appgen_diagnostics.html").read_text()
     assert "automated API testing" in (output_dir / "templates" / "appgen_api_testing.html").read_text()
+    assert "Workbench JSON" in (output_dir / "templates" / "appgen_api_testing.html").read_text()
     assert "Release Gate JSON" in (output_dir / "templates" / "appgen_api_testing.html").read_text()
     code_review_template = (output_dir / "templates" / "appgen_code_review.html").read_text()
     assert "Generated automated code-review findings" in code_review_template
@@ -6043,6 +6045,32 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert {"api_request_matrix", "ui_smoke", "synthetic_monitoring", "contract_coverage"} <= {
         gate["gate"] for gate in api_testing_gate["gates"]
     }
+    api_testing_workbench = api_testing.api_testing_workbench(
+        {"app/api_testing.py", "app/templates/appgen_api_testing.html", "docs/openapi.json"},
+        openapi.openapi_spec()["paths"].keys(),
+    )
+    assert api_testing_workbench["format"] == "appgen.api-testing-workbench.v1"
+    assert api_testing_workbench["ok"] is True
+    assert api_testing_workbench["decision"] == "approved"
+    assert {
+        "api_request_matrix",
+        "response_validation",
+        "fixture_strategy",
+        "ui_smoke",
+        "synthetic_monitoring",
+        "contract_coverage",
+        "rendered_test_modules",
+        "execution_plan",
+        "artifact_evidence",
+        "route_surface",
+        "release_gate",
+    } == {check["id"] for check in api_testing_workbench["checks"]}
+    assert "/api-testing/workbench.json" in next(
+        check["evidence"]["routes"] for check in api_testing_workbench["checks"] if check["id"] == "route_surface"
+    )
+    assert api_testing.api_testing_workbench({"app/api_testing.py"}, openapi.openapi_spec()["paths"].keys())[
+        "ok"
+    ] is False
     assert api_testing.api_testing_release_gate({"app/api_testing.py"}, openapi.openapi_spec()["paths"].keys())[
         "ok"
     ] is False
