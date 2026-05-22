@@ -701,7 +701,11 @@ apps include:
   superiority index then scores modeling sources, application targets, IDE/UX,
   enterprise operations, AI/ERP/composition, and migration interoperability so
   every domain must have deeper generated AppGen feature coverage than the
-  JHipster baseline plus route and artifact evidence. The
+  JHipster baseline plus route and artifact evidence. The generated
+  `roadmap_release_audit()` and `/low-code-features/roadmap-release-audit.json`
+  bind roadmap-source rows to implemented capability status, generated
+  artifacts, critical route surfaces, generated test evidence, and JHipster
+  superset gates. The
   application-composition release gate proves reusable block catalog depth,
   dependency topology, reviewable install order, sandbox controls, package
   publication targets, and artifact evidence. The generated composition

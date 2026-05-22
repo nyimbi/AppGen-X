@@ -762,8 +762,11 @@ required ERP template artifacts.
 
 The same module also exposes `/low-code-features/roadmap-sources.json`, which
 maps `docs/ideas.md`, `docs/base_features.md`, and `docs/Lo-code features.md`
-to generated capabilities and artifacts. Treat that endpoint as the source
-traceability gate before claiming roadmap coverage.
+to generated capabilities and artifacts. Use
+`/low-code-features/roadmap-release-audit.json` or `roadmap_release_audit()` as
+the stricter release proof: it requires implemented capability status,
+generated artifact evidence, critical IDE/workbench routes, generated tests, and
+JHipster-superset gates before claiming roadmap coverage.
 
 ## Linting Workflow
 

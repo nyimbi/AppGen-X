@@ -2754,6 +2754,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert "Low-Code Feature Matrix" in (output_dir / "templates" / "appgen_low_code_features.html").read_text()
     assert "Feature Matrix JSON" in (output_dir / "templates" / "appgen_low_code_features.html").read_text()
     assert "Roadmap Sources JSON" in (output_dir / "templates" / "appgen_low_code_features.html").read_text()
+    assert "Roadmap Release Audit JSON" in (output_dir / "templates" / "appgen_low_code_features.html").read_text()
     assert "JHipster Comparison JSON" in (output_dir / "templates" / "appgen_low_code_features.html").read_text()
     assert "Composition Workbench JSON" in (output_dir / "templates" / "appgen_low_code_features.html").read_text()
     assert "Composition Release Gate JSON" in (output_dir / "templates" / "appgen_low_code_features.html").read_text()
@@ -3301,6 +3302,24 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert low_code_features.roadmap_source_report()["ok"] is True
     assert low_code_features.roadmap_source_report()["base_features_complete"] is True
     assert low_code_features.roadmap_source_report()["ideas_roadmap_complete"] is True
+    roadmap_audit = low_code_features.roadmap_release_audit()
+    assert roadmap_audit["format"] == "appgen.roadmap-release-audit.v1"
+    assert roadmap_audit["ok"] is True
+    assert roadmap_audit["decision"] == "approved"
+    assert {
+        "source_document_lineage",
+        "implementation_status",
+        "base_feature_requirements",
+        "ideas_roadmap_requirements",
+        "low_code_feature_families",
+        "artifact_evidence",
+        "route_surface",
+        "test_evidence",
+        "jhipster_superset",
+    } == {check["id"] for check in roadmap_audit["checks"]}
+    assert "tests/test_generated_contract.py" in roadmap_audit["required_tests"]
+    assert "/studio/" in roadmap_audit["critical_routes"]
+    assert low_code_features.roadmap_release_audit({"app/low_code_features.py"})["ok"] is False
     assert "schema-sources" in {item["id"] for item in low_code_features.ideas_roadmap_alignment()}
     assert "deployment" in {item["id"] for item in low_code_features.base_feature_alignment()}
     assert low_code_features.readiness_report()["alignment_complete"] is True

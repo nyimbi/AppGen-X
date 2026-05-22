@@ -6311,6 +6311,7 @@ def write_low_code_features_template(output_dir):
       <a class="btn btn-default" href="{{ url_for('LowCodeFeaturesView.jhipster_superiority_tiers_json') }}">Superiority Tiers JSON</a>
       <a class="btn btn-default" href="{{ url_for('LowCodeFeaturesView.jhipster_frontier_gate_json') }}">JHipster Frontier Gate JSON</a>
       <a class="btn btn-default" href="{{ url_for('LowCodeFeaturesView.jhipster_feature_superiority_index_json') }}">Feature Superiority Index JSON</a>
+      <a class="btn btn-default" href="{{ url_for('LowCodeFeaturesView.roadmap_release_audit_json') }}">Roadmap Release Audit JSON</a>
       <a class="btn btn-default" href="{{ url_for('LowCodeFeaturesView.composition_json') }}">Composition JSON</a>
       <a class="btn btn-default" href="{{ url_for('LowCodeFeaturesView.composition_readiness_json') }}">Composition Readiness JSON</a>
       <a class="btn btn-default" href="{{ url_for('LowCodeFeaturesView.composition_workbench_json') }}">Composition Workbench JSON</a>
@@ -28560,6 +28561,134 @@ def roadmap_source_report():
     }}
 
 
+def roadmap_release_audit(existing_paths=None):
+    """Prove roadmap coverage with implemented capabilities, artifacts, routes, and tests."""
+    base = base_feature_alignment()
+    ideas = ideas_roadmap_alignment()
+    low_code = roadmap_alignment()
+    documents = source_document_contracts()
+    expected_artifacts = tuple(
+        dict.fromkeys(
+            path
+            for requirement in tuple(BASE_FEATURE_REQUIREMENTS) + tuple(IDEAS_ROADMAP_REQUIREMENTS)
+            for path in requirement["artifacts"]
+        )
+    )
+    required_tests = (
+        "tests/test_generated_contract.py",
+        "tests/test_generated_coverage.py",
+        "scripts/appgen_quality.py",
+    )
+    existing = set(expected_artifacts + required_tests if existing_paths is None else existing_paths)
+    capability_status = {{item["key"]: item["status"] for item in CAPABILITIES}}
+
+    def harden_alignment(rows):
+        hardened = []
+        for row in rows:
+            implemented = tuple(key for key in row["capability_keys"] if capability_status.get(key) == "implemented")
+            not_implemented = tuple(key for key in row["capability_keys"] if capability_status.get(key) != "implemented")
+            missing_artifacts = tuple(path for path in row["artifacts"] if path not in existing)
+            hardened.append({{
+                **row,
+                "implemented_capabilities": implemented,
+                "not_implemented_capabilities": not_implemented,
+                "missing_artifacts": missing_artifacts,
+                "covered": row["covered"] and not not_implemented and not missing_artifacts,
+            }})
+        return tuple(hardened)
+
+    base_hardened = harden_alignment(base)
+    ideas_hardened = harden_alignment(ideas)
+    low_code_hardened = tuple(
+        {{
+            **row,
+            "implemented_capabilities": tuple(item["key"] for item in row["capabilities"] if item["status"] == "implemented"),
+            "not_implemented_capabilities": tuple(item["key"] for item in row["capabilities"] if item["status"] != "implemented"),
+            "covered": row["covered"] and all(item["status"] == "implemented" for item in row["capabilities"]),
+        }}
+        for row in low_code
+    )
+    route_map = jhipster_superset_route_map()
+    critical_routes = (
+        "/studio/",
+        "/dsl-reference/",
+        "/schema-import/",
+        "/designer/",
+        "/form-designer/",
+        "/nl-evolution/",
+        "/agents/",
+        "/platforms/",
+        "/erp-templates/",
+        "/runtime-assurance/",
+        "/low-code-features/",
+    )
+    route_paths = {{item["route"] for item in route_map}} | {{"/dsl-reference/"}}
+    missing_routes = tuple(route for route in critical_routes if route not in route_paths)
+    missing_tests = tuple(path for path in required_tests if path not in existing)
+    non_implemented = tuple(item for item in CAPABILITIES if item["status"] != "implemented")
+    checks = (
+        {{
+            "id": "source_document_lineage",
+            "ok": {{"docs/ideas.md", "docs/base_features.md", "docs/Lo-code features.md"}} <= {{item["document"] for item in documents}},
+            "evidence": documents,
+        }},
+        {{
+            "id": "implementation_status",
+            "ok": not non_implemented,
+            "evidence": {{"total": len(CAPABILITIES), "non_implemented": non_implemented}},
+        }},
+        {{
+            "id": "base_feature_requirements",
+            "ok": all(row["covered"] for row in base_hardened),
+            "evidence": base_hardened,
+        }},
+        {{
+            "id": "ideas_roadmap_requirements",
+            "ok": all(row["covered"] for row in ideas_hardened),
+            "evidence": ideas_hardened,
+        }},
+        {{
+            "id": "low_code_feature_families",
+            "ok": all(row["covered"] for row in low_code_hardened),
+            "evidence": low_code_hardened,
+        }},
+        {{
+            "id": "artifact_evidence",
+            "ok": all(not row["missing_artifacts"] for row in base_hardened + ideas_hardened),
+            "evidence": {{"expected_artifacts": expected_artifacts}},
+        }},
+        {{
+            "id": "route_surface",
+            "ok": not missing_routes,
+            "evidence": {{"critical_routes": critical_routes, "missing_routes": missing_routes}},
+        }},
+        {{
+            "id": "test_evidence",
+            "ok": not missing_tests,
+            "evidence": {{"required_tests": required_tests, "missing_tests": missing_tests}},
+        }},
+        {{
+            "id": "jhipster_superset",
+            "ok": jhipster_superset_certification()["ok"] and jhipster_feature_superiority_index()["ok"],
+            "evidence": {{"certification": jhipster_superset_certification(), "feature_index": jhipster_feature_superiority_index()}},
+        }},
+    )
+    ok = all(check["ok"] for check in checks)
+    return {{
+        "format": "appgen.roadmap-release-audit.v1",
+        "ok": ok,
+        "decision": "approved" if ok else "blocked",
+        "documents": documents,
+        "base_features": base_hardened,
+        "ideas_roadmap": ideas_hardened,
+        "low_code_features": low_code_hardened,
+        "expected_artifacts": expected_artifacts,
+        "required_tests": required_tests,
+        "critical_routes": critical_routes,
+        "checks": checks,
+    }}
+
+
 def jhipster_capability_benchmark():
     """Return overlap and AppGen-only capability rows for JHipster comparison."""
     rows = tuple(dict(item) for item in COMPETITIVE_BENCHMARK)
@@ -29147,6 +29276,7 @@ def readiness_report():
     frontier = jhipster_frontier_gate()
     feature_superiority = jhipster_feature_superiority_index()
     roadmap_sources = roadmap_source_report()
+    roadmap_audit = roadmap_release_audit()
     return {{
         "source": dict(FEATURE_SOURCE),
         "sources": roadmap_sources["documents"],
@@ -29158,6 +29288,8 @@ def readiness_report():
         "alignment_complete": all(item["covered"] for item in roadmap_alignment()),
         "roadmap_sources": roadmap_sources,
         "roadmap_sources_ok": roadmap_sources["ok"],
+        "roadmap_release_audit": roadmap_audit,
+        "roadmap_release_audit_ok": roadmap_audit["ok"],
         "competitive_position": competitive["position"],
         "competitive_advantage_count": competitive["appgen_only_capability_count"],
         "jhipster_overlap_count": competitive["jhipster_overlap_count"],
@@ -29261,6 +29393,10 @@ class LowCodeFeaturesView(BaseView):
     @expose("/roadmap-sources.json")
     def roadmap_sources_json(self):
         return jsonify(roadmap_source_report())
+
+    @expose("/roadmap-release-audit.json")
+    def roadmap_release_audit_json(self):
+        return jsonify(roadmap_release_audit())
 
     @expose("/jhipster-comparison.json")
     def jhipster_comparison_json(self):
@@ -42328,6 +42464,7 @@ def validate_low_code_features_artifacts() -> None:
         "base_feature_alignment",
         "ideas_roadmap_alignment",
         "roadmap_source_report",
+        "roadmap_release_audit",
         "readiness_report",
         "jhipster_capability_benchmark",
         "jhipster_superset_scorecard",
@@ -42357,7 +42494,7 @@ def validate_low_code_features_artifacts() -> None:
     if "jhipster_competitive_report" not in contract or "broader-than-jhipster" not in contract or "appgen-more-capable-than-jhipster" not in contract or "appgen_only_capabilities" not in contract or "application_composition" not in contract:
         fail("low-code feature matrix must make AppGen's broader-than-JHipster position explicit")
     template = (ROOT / "app" / "templates" / "appgen_low_code_features.html").read_text()
-    if "Low-Code Feature Matrix" not in template or "Feature Matrix JSON" not in template or "Readiness JSON" not in template or "Roadmap Sources JSON" not in template or "JHipster Comparison JSON" not in template or "Benchmark JSON" not in template or "Superset Scorecard JSON" not in template or "Superset Evidence JSON" not in template or "Superset Certification JSON" not in template or "Superset Blueprint JSON" not in template or "Capability Depth JSON" not in template or "Capability Proof JSON" not in template or "Superiority Tiers JSON" not in template or "JHipster Frontier Gate JSON" not in template or "Feature Superiority Index JSON" not in template or "Composition JSON" not in template or "Composition Workbench JSON" not in template or "Composition Release Gate JSON" not in template:
+    if "Low-Code Feature Matrix" not in template or "Feature Matrix JSON" not in template or "Readiness JSON" not in template or "Roadmap Sources JSON" not in template or "Roadmap Release Audit JSON" not in template or "JHipster Comparison JSON" not in template or "Benchmark JSON" not in template or "Superset Scorecard JSON" not in template or "Superset Evidence JSON" not in template or "Superset Certification JSON" not in template or "Superset Blueprint JSON" not in template or "Capability Depth JSON" not in template or "Capability Proof JSON" not in template or "Superiority Tiers JSON" not in template or "JHipster Frontier Gate JSON" not in template or "Feature Superiority Index JSON" not in template or "Composition JSON" not in template or "Composition Workbench JSON" not in template or "Composition Release Gate JSON" not in template:
         fail("low-code feature cockpit must expose matrix and readiness links")
 
 
@@ -45235,6 +45372,9 @@ def test_generated_runtime_helpers():
     assert low_code_features.readiness_report()["alignment_complete"] is True
     assert low_code_features.readiness_report()["roadmap_sources_ok"] is True
     assert low_code_features.roadmap_source_report()["ok"] is True
+    assert low_code_features.roadmap_release_audit()["format"] == "appgen.roadmap-release-audit.v1"
+    assert low_code_features.roadmap_release_audit()["ok"] is True
+    assert low_code_features.roadmap_release_audit({"app/low_code_features.py"})["ok"] is False
     assert "docs/base_features.md" in {item["document"] for item in low_code_features.source_document_contracts()}
     assert "schema-sources" in {item["id"] for item in low_code_features.ideas_roadmap_alignment()}
     assert low_code_features.readiness_report()["competitive_advantage_count"] >= 7
