@@ -1179,6 +1179,7 @@ def test_generate_app_from_sqlite_schema_compiles(tmp_path) -> None:
     assert capabilities_by_key["integration.enterprise"]["status"] == "implemented"
     assert capabilities_by_key["integration.productivity"]["status"] == "implemented"
     assert capabilities_by_key["integration.emerging"]["status"] == "implemented"
+    assert capabilities_by_key["ai.assistance"]["status"] == "implemented"
     assert capabilities_by_key["devops.ide-integration"]["status"] == "implemented"
     assert capabilities_by_key["devops.project-management"]["status"] == "implemented"
     assert capabilities_by_key["ops.monitoring"]["status"] == "implemented"
@@ -2649,6 +2650,8 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert "Release Gate JSON" in compliance_template
     assistant_template = (output_dir / "templates" / "appgen_assistant.html").read_text()
     assert "prediction features" in assistant_template
+    assert "Assistant JSON" in assistant_template
+    assert "Workbench JSON" in assistant_template
     assert "Release Gate JSON" in assistant_template
     assert "Intelligence JSON" in (output_dir / "templates" / "appgen_intelligence.html").read_text()
     assert "Guided Chatbot" in (output_dir / "templates" / "appgen_chatbot.html").read_text()
@@ -5315,6 +5318,23 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "recommendations",
         "human_review",
     } <= {check["gate"] for check in assistant_gate["checks"]}
+    assistant_workbench = assistant.assistant_workbench({"app/assistant.py", "app/templates/appgen_assistant.html"})
+    assert assistant_workbench["format"] == "appgen.assistant-workbench.v1"
+    assert assistant_workbench["ok"] is True
+    assert assistant_workbench["decision"] == "approved"
+    assert {
+        "artifact_coverage",
+        "assistant_catalog",
+        "prompt_context",
+        "chatbot_questions",
+        "prediction_features",
+        "recommendations",
+        "human_review",
+        "route_surface",
+        "release_gate",
+    } == {check["id"] for check in assistant_workbench["checks"]}
+    assert "/assistant/workbench.json" in assistant_workbench["routes"]
+    assert assistant.assistant_workbench({"app/assistant.py"})["ok"] is False
     assert assistant.assistant_release_gate({"app/assistant.py"})["ok"] is False
     intelligence_catalog = {item["table"]: item for item in intelligence.intelligence_catalog()}
     assert "Book" in intelligence_catalog

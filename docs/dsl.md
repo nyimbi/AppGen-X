@@ -582,7 +582,9 @@ apps include:
   extraction, and human-review task payloads. The generated
   `assistant_release_gate()` proves artifact coverage, table assistance
   catalogs, non-hidden prompt context, chatbot questions, prediction features,
-  recommendation behavior, and human-review payloads.
+  recommendation behavior, and human-review payloads. `assistant_workbench()`
+  and `/assistant/workbench.json` aggregate those checks with route coverage for
+  generated IDE review.
 - `intelligence.py` and `appgen_intelligence.html` with generated AI analytics,
   preprocessing, anomaly detection, image/video analysis plans, OCR,
   classification, object-detection contracts, NLP, recommendation, A/B testing,
