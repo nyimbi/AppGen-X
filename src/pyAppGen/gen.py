@@ -3730,6 +3730,7 @@ def write_runtime_assurance_template(output_dir):
     </div>
     <div class="aga-actions">
       <a class="btn btn-primary" href="{{ url_for('RuntimeAssuranceView.report_json') }}">Assurance JSON</a>
+      <a class="btn btn-default" href="{{ url_for('RuntimeAssuranceView.workbench_json') }}">Workbench JSON</a>
       <a class="btn btn-default" href="{{ url_for('RuntimeAssuranceView.release_gate_json') }}">Release Gate JSON</a>
       <a class="btn btn-default" href="{{ url_for('RuntimeAssuranceView.excellence_gate_json') }}">Excellence Gate JSON</a>
       <a class="btn btn-default" href="{{ url_for('RuntimeAssuranceView.matrix_json') }}">Matrix JSON</a>
@@ -9483,6 +9484,68 @@ def generated_app_excellence_gate(signals=None, existing_paths=()):
     }}
 
 
+def runtime_assurance_workbench(signals=None, existing_paths=()):
+    """Return IDE-ready assurance, release, and excellence evidence."""
+    existing = set(existing_paths)
+    matrix = runtime_assurance_matrix()
+    report = runtime_assurance_report(signals)
+    artifact_check = runtime_assurance_check(existing)
+    release_gate = application_release_gate(signals, existing)
+    excellence_gate = generated_app_excellence_gate(signals, existing)
+    routes = (
+        "/runtime-assurance/",
+        "/runtime-assurance/report.json",
+        "/runtime-assurance/matrix.json",
+        "/runtime-assurance/workbench.json",
+        "/runtime-assurance/release-gate.json",
+        "/runtime-assurance/excellence-gate.json",
+    )
+    expected_areas = {{"security", "monitoring", "resilience", "performance", "backup", "quality_gate", "visual_experience"}}
+    route_set = set(routes)
+    checks = (
+        {{
+            "id": "matrix_coverage",
+            "ok": expected_areas <= {{area["id"] for area in matrix}} and all(area["artifacts"] for area in matrix),
+            "evidence": {{"areas": tuple(area["id"] for area in matrix), "artifact_count": len(REQUIRED_ARTIFACTS)}},
+        }},
+        {{
+            "id": "report_contract",
+            "ok": report["format"] == "appgen.runtime-assurance.v1"
+            and report["ok"] is True
+            and runtime_assurance_report({{"p95_ms": DEFAULT_SLO["p95_ms"] + 1}})["ok"] is False,
+            "evidence": report,
+        }},
+        {{"id": "artifact_coverage", "ok": artifact_check["ok"], "evidence": artifact_check}},
+        {{"id": "application_release_gate", "ok": release_gate["ok"], "evidence": release_gate}},
+        {{"id": "generated_app_excellence_gate", "ok": excellence_gate["ok"], "evidence": excellence_gate}},
+        {{
+            "id": "route_surface",
+            "ok": {{
+                "/runtime-assurance/workbench.json",
+                "/runtime-assurance/release-gate.json",
+                "/runtime-assurance/excellence-gate.json",
+                "/runtime-assurance/matrix.json",
+                "/runtime-assurance/report.json",
+            }} <= route_set,
+            "evidence": {{"routes": routes}},
+        }},
+    )
+    ok = all(check["ok"] for check in checks)
+    return {{
+        "format": "appgen.runtime-assurance-workbench.v1",
+        "app": APP_NAME,
+        "ok": ok,
+        "decision": "approved" if ok else "blocked",
+        "checks": checks,
+        "matrix": matrix,
+        "report": report,
+        "artifact_check": artifact_check,
+        "application_release_gate": release_gate,
+        "generated_app_excellence_gate": excellence_gate,
+        "routes": routes,
+    }}
+
+
 class RuntimeAssuranceView(BaseView):
     route_base = "/runtime-assurance"
     default_view = "index"
@@ -9498,6 +9561,10 @@ class RuntimeAssuranceView(BaseView):
     @expose("/matrix.json")
     def matrix_json(self):
         return jsonify(runtime_assurance_matrix())
+
+    @expose("/workbench.json")
+    def workbench_json(self):
+        return jsonify(runtime_assurance_workbench(existing_paths=set(REQUIRED_ARTIFACTS) | set(REQUIRED_RELEASE_ARTIFACTS)))
 
     @expose("/release-gate.json")
     def release_gate_json(self):
@@ -42685,6 +42752,9 @@ def validate_runtime_assurance_artifacts() -> None:
     if (
         "runtime_assurance_report" not in contract
         or "runtime_assurance_check" not in contract
+        or "runtime_assurance_workbench" not in contract
+        or "appgen.runtime-assurance-workbench.v1" not in contract
+        or '@expose("/workbench.json")' not in contract
         or "application_release_gate" not in contract
         or "generated_app_excellence_gate" not in contract
         or "EXCELLENCE_CATEGORIES" not in contract
@@ -42698,6 +42768,7 @@ def validate_runtime_assurance_artifacts() -> None:
     if (
         "Release Gate JSON" not in template
         or "Excellence Gate JSON" not in template
+        or "Workbench JSON" not in template
         or "visual quality" not in template.lower()
         or "accessibility" not in template.lower()
     ):
@@ -44140,6 +44211,24 @@ def test_generated_runtime_helpers():
         "functional",
         "highly_capable",
     } == {category["id"] for category in excellence_gate["categories"]}
+    assurance_artifacts = set(runtime_assurance.REQUIRED_ARTIFACTS) | set(runtime_assurance.REQUIRED_RELEASE_ARTIFACTS)
+    assurance_workbench = runtime_assurance.runtime_assurance_workbench(
+        {"p95_ms": 200, "error_rate": 0},
+        assurance_artifacts,
+    )
+    assert assurance_workbench["format"] == "appgen.runtime-assurance-workbench.v1"
+    assert assurance_workbench["ok"] is True
+    assert assurance_workbench["decision"] == "approved"
+    assert {
+        "matrix_coverage",
+        "report_contract",
+        "artifact_coverage",
+        "application_release_gate",
+        "generated_app_excellence_gate",
+        "route_surface",
+    } == {check["id"] for check in assurance_workbench["checks"]}
+    assert "/runtime-assurance/workbench.json" in assurance_workbench["routes"]
+    assert runtime_assurance.runtime_assurance_workbench(existing_paths={"app/runtime_assurance.py"})["ok"] is False
     assert runtime_assurance.generated_app_excellence_gate(
         {"visual_quality": False},
         runtime_assurance.REQUIRED_RELEASE_ARTIFACTS,

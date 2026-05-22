@@ -1180,6 +1180,7 @@ def test_generate_app_from_sqlite_schema_compiles(tmp_path) -> None:
     assert capabilities_by_key["ops.monitoring"]["status"] == "implemented"
     assert capabilities_by_key["ops.resilience"]["status"] == "implemented"
     assert capabilities_by_key["ops.performance"]["status"] == "implemented"
+    assert capabilities_by_key["ops.assurance"]["status"] == "implemented"
     assert capabilities_by_key["platform.microservices"]["status"] == "implemented"
     assert capabilities_by_key["platform.targets"]["status"] == "implemented"
     assert capabilities_by_key["platform.native"]["status"] == "implemented"
@@ -3854,6 +3855,24 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "functional",
         "highly_capable",
     } == {category["id"] for category in excellence_gate["categories"]}
+    assurance_artifacts = set(runtime_assurance.REQUIRED_ARTIFACTS) | set(runtime_assurance.REQUIRED_RELEASE_ARTIFACTS)
+    assurance_workbench = runtime_assurance.runtime_assurance_workbench(
+        {"p95_ms": 200, "error_rate": 0},
+        assurance_artifacts,
+    )
+    assert assurance_workbench["format"] == "appgen.runtime-assurance-workbench.v1"
+    assert assurance_workbench["ok"] is True
+    assert assurance_workbench["decision"] == "approved"
+    assert {
+        "matrix_coverage",
+        "report_contract",
+        "artifact_coverage",
+        "application_release_gate",
+        "generated_app_excellence_gate",
+        "route_surface",
+    } == {check["id"] for check in assurance_workbench["checks"]}
+    assert "/runtime-assurance/workbench.json" in assurance_workbench["routes"]
+    assert runtime_assurance.runtime_assurance_workbench(existing_paths={"app/runtime_assurance.py"})["ok"] is False
     assert runtime_assurance.generated_app_excellence_gate(
         {"visual_quality": False},
         runtime_assurance.REQUIRED_RELEASE_ARTIFACTS,

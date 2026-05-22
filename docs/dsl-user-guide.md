@@ -676,6 +676,10 @@ Use `/runtime-assurance/excellence-gate.json` as the final generated-app
 quality decision. It aggregates the release gate into seven explicit product
 outcomes: beautiful, sophisticated, secure, reliable, robust, functional, and
 highly capable.
+Use `/runtime-assurance/workbench.json` or `runtime_assurance_workbench()` in
+the generated IDE to inspect the assurance matrix, runtime report, artifact
+coverage, application release gate, generated-app excellence gate, and route
+surface together before certifying operations readiness.
 
 ## JHipster-Plus Readiness
 

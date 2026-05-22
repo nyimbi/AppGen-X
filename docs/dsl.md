@@ -310,7 +310,10 @@ apps include:
   manifests, and required artifacts. `generated_app_excellence_gate()` is the
   stricter product-level gate: it blocks release claims unless the generated
   app proves the seven roadmap outcomes of beautiful, sophisticated, secure,
-  reliable, robust, functional, and highly capable.
+  reliable, robust, functional, and highly capable. `runtime_assurance_workbench()`
+  and `/runtime-assurance/workbench.json` aggregate the matrix, assurance report,
+  artifact coverage, application release gate, generated-app excellence gate,
+  and route surface into one IDE-ready assurance review.
 - `pwa.py`, `appgen_pwa.html`, `static/appgen.webmanifest`,
   `static/appgen-sw.js`, `static/appgen-offline.html`, icons, and theme assets
   for installable progressive web app behavior. The generated
