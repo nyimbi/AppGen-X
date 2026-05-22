@@ -484,6 +484,10 @@ artifacts.
 Use `search_release_gate()` to verify generated searchable-field coverage,
 provider readiness for memory/PostgreSQL/Whoosh/Elasticsearch, reindex plans,
 and the search cockpit artifacts before switching providers in production.
+Use `/database-ops/addon-release-gate.json`, `/database-ops/patroni.json`,
+`/database-ops/postgraphile.json`, and `/database-ops/zombodb.json` to verify
+generated database add-ons include HA cluster, GraphQL schema, and PostgreSQL
+full-text index plans before rollout.
 Use `/integrations/release-gate.json` to verify REST/webhook/enterprise
 connector coverage, first-class Entando and Invenio contracts, signed webhook
 delivery, payment/SMS/email request plans, outbox auditability, and required

@@ -3784,6 +3784,10 @@ def write_database_ops_template(output_dir):
     <div class="agdb-actions">
       <a class="btn btn-default" href="{{ url_for('DatabaseOpsView.providers_json') }}">Providers JSON</a>
       <a class="btn btn-default" href="{{ url_for('DatabaseOpsView.addons_json') }}">Add-ons JSON</a>
+      <a class="btn btn-default" href="{{ url_for('DatabaseOpsView.addon_release_gate_json') }}">Add-on Release Gate JSON</a>
+      <a class="btn btn-default" href="{{ url_for('DatabaseOpsView.patroni_json') }}">Patroni JSON</a>
+      <a class="btn btn-default" href="{{ url_for('DatabaseOpsView.postgraphile_json') }}">PostGraphile JSON</a>
+      <a class="btn btn-default" href="{{ url_for('DatabaseOpsView.zombodb_json') }}">ZomboDB JSON</a>
       <a class="btn btn-default" href="{{ url_for('DatabaseOpsView.migration_targets_json') }}">Migration Targets JSON</a>
       <a class="btn btn-default" href="{{ url_for('DatabaseOpsView.schema_inventory_json') }}">Schema Inventory JSON</a>
       <a class="btn btn-default" href="{{ url_for('DatabaseOpsView.migration_cutover_json') }}">Cutover Plan JSON</a>
@@ -15187,6 +15191,103 @@ def addon_plan(addon, environ=None):
     return dict(spec, addon=addon, configured=not missing, missing=missing)
 
 
+def _zombodb_index_fields(table_name):
+    """Return generated columns that should participate in a ZomboDB index."""
+    columns = SCHEMA_INVENTORY[table_name]["columns"]
+    candidates = tuple(
+        column["name"]
+        for column in columns
+        if not column.get("hidden") and not column.get("derived") and not column.get("primary_key")
+    )
+    return candidates or tuple(column["name"] for column in columns if not column.get("hidden"))
+
+
+def patroni_cluster_plan(environ=None):
+    """Return a reviewable Patroni HA plan for PostgreSQL-backed generated apps."""
+    readiness = addon_plan("patroni", environ)
+    return {{
+        "format": "appgen.patroni-cluster-plan.v1",
+        "addon": "patroni",
+        "provider": "postgresql",
+        "configured": readiness["configured"],
+        "missing": readiness["missing"],
+        "members": ("postgres-0", "postgres-1", "postgres-2"),
+        "leader_election": "etcd-or-consul",
+        "replication": "streaming",
+        "failover": {{"automatic": True, "max_lag_mb": 64, "synchronous_mode": False}},
+        "checks": ("cluster_members", "leader_lock", "replication_lag", "backup_before_failover"),
+        "requires_review": True,
+    }}
+
+
+def postgraphile_schema_plan(schema="public", environ=None):
+    """Return a PostGraphile exposure plan for generated table APIs."""
+    readiness = addon_plan("postgraphile", environ)
+    return {{
+        "format": "appgen.postgraphile-schema-plan.v1",
+        "addon": "postgraphile",
+        "provider": "postgresql",
+        "configured": readiness["configured"],
+        "missing": readiness["missing"],
+        "schema": schema,
+        "tables": DATABASE_TABLES,
+        "endpoint": "/graphql",
+        "watch": True,
+        "rls_required": True,
+        "checks": ("schema_introspection", "rls_enabled", "jwt_claims", "subscription_review"),
+        "requires_review": True,
+    }}
+
+
+def zombodb_index_plan(environ=None):
+    """Return ZomboDB index plans for generated searchable tables."""
+    readiness = addon_plan("zombodb", environ)
+    indexes = tuple(
+        {{
+            "table": table_name,
+            "index": f"idx_{{table_name.lower()}}_zombodb",
+            "using": "zombodb",
+            "fields": _zombodb_index_fields(table_name),
+            "elasticsearch_url_env": "ELASTICSEARCH_URL",
+        }}
+        for table_name in DATABASE_TABLES
+    )
+    return {{
+        "format": "appgen.zombodb-index-plan.v1",
+        "addon": "zombodb",
+        "provider": "postgresql",
+        "configured": readiness["configured"],
+        "missing": readiness["missing"],
+        "indexes": indexes,
+        "checks": ("extension_installed", "index_created", "elasticsearch_reachable", "query_plan_review"),
+        "requires_review": True,
+    }}
+
+
+def database_addon_release_gate(existing_paths=(), environ=None):
+    """Return release evidence for generated database operations add-ons."""
+    existing = set(existing_paths)
+    required = {{"app/database_ops.py", "app/templates/appgen_database_ops.html", "docker-compose.yml", "deploy/k8s.yaml"}}
+    missing = tuple(sorted(required - existing))
+    patroni = patroni_cluster_plan(environ)
+    postgraphile = postgraphile_schema_plan(environ=environ)
+    zombodb = zombodb_index_plan(environ)
+    addon_names = {{item["addon"] for item in database_addon_catalog()}}
+    gates = (
+        {{"gate": "artifact_coverage", "ok": not missing, "details": missing}},
+        {{"gate": "addon_catalog", "ok": {{"patroni", "postgraphile", "zombodb", "elasticsearch"}} <= addon_names, "details": tuple(sorted(addon_names))}},
+        {{"gate": "patroni_ha_plan", "ok": patroni["format"] == "appgen.patroni-cluster-plan.v1" and len(patroni["members"]) >= 3, "details": patroni}},
+        {{"gate": "postgraphile_schema_plan", "ok": postgraphile["rls_required"] and postgraphile["endpoint"] == "/graphql", "details": postgraphile}},
+        {{"gate": "zombodb_index_plan", "ok": bool(zombodb["indexes"]) and all(index["using"] == "zombodb" for index in zombodb["indexes"]), "details": zombodb}},
+    )
+    return {{
+        "format": "appgen.database-addon-release-gate.v1",
+        "ok": all(gate["ok"] for gate in gates),
+        "gates": gates,
+        "blocking_gaps": tuple(gate for gate in gates if not gate["ok"]),
+    }}
+
+
 def compose_service_plan(provider="postgresql"):
     """Return Docker Compose service descriptors for database providers."""
     if provider == "postgresql":
@@ -15374,13 +15475,15 @@ def database_ops_check(existing_paths):
     existing = set(existing_paths)
     required = ("app/database_ops.py", "app/templates/appgen_database_ops.html", "docker-compose.yml", "deploy/k8s.yaml")
     missing = tuple(path for path in required if path not in existing)
+    addon_gate = database_addon_release_gate(existing)
     return {{
-        "ok": not missing and {{"postgresql", "mysql", "sqlite", "mongodb", "dynamodb", "cassandra", "redis"}} <= set(DATABASE_PROVIDERS) and {{"patroni", "postgraphile", "zombodb", "elasticsearch"}} <= set(DATABASE_ADDONS) and bool(schema_inventory()),
+        "ok": not missing and {{"postgresql", "mysql", "sqlite", "mongodb", "dynamodb", "cassandra", "redis"}} <= set(DATABASE_PROVIDERS) and {{"patroni", "postgraphile", "zombodb", "elasticsearch"}} <= set(DATABASE_ADDONS) and bool(schema_inventory()) and addon_gate["ok"],
         "missing": missing,
         "providers": tuple(DATABASE_PROVIDERS),
         "addons": tuple(DATABASE_ADDONS),
         "nosql": tuple(item["provider"] for item in nosql_provider_catalog()),
         "inventory": tuple(SCHEMA_INVENTORY),
+        "addon_release_gate": addon_gate,
     }}
 
 
@@ -15403,6 +15506,22 @@ class DatabaseOpsView(BaseView):
     @expose("/addons.json")
     def addons_json(self):
         return jsonify(list(database_addon_catalog()))
+
+    @expose("/addon-release-gate.json")
+    def addon_release_gate_json(self):
+        return jsonify(database_addon_release_gate({{"app/database_ops.py", "app/templates/appgen_database_ops.html", "docker-compose.yml", "deploy/k8s.yaml"}}))
+
+    @expose("/patroni.json")
+    def patroni_json(self):
+        return jsonify(patroni_cluster_plan())
+
+    @expose("/postgraphile.json")
+    def postgraphile_json(self):
+        return jsonify(postgraphile_schema_plan())
+
+    @expose("/zombodb.json")
+    def zombodb_json(self):
+        return jsonify(zombodb_index_plan())
 
     @expose("/migration-targets.json")
     def migration_targets_json(self):
@@ -34843,6 +34962,10 @@ def validate_database_ops_artifacts() -> None:
         "nosql_provider_catalog",
         "nosql_provider_plan",
         "document_projection_matrix",
+        "patroni_cluster_plan",
+        "postgraphile_schema_plan",
+        "zombodb_index_plan",
+        "database_addon_release_gate",
         "patroni",
         "postgraphile",
         "zombodb",
@@ -34855,8 +34978,8 @@ def validate_database_ops_artifacts() -> None:
     if not all(term in contract for term in required_terms):
         fail("database operations contract must expose relational, NoSQL, add-on, deployment, and legacy migration plans")
     template = (ROOT / "app" / "templates" / "appgen_database_ops.html").read_text()
-    if "Database Operations" not in template or "Providers JSON" not in template or "Add-ons JSON" not in template or "Migration Targets JSON" not in template or "Schema Inventory JSON" not in template or "Cutover Plan JSON" not in template or "NoSQL" not in template:
-        fail("database operations template must expose provider, NoSQL, schema inventory, and migration links")
+    if "Database Operations" not in template or "Providers JSON" not in template or "Add-ons JSON" not in template or "Add-on Release Gate JSON" not in template or "Patroni JSON" not in template or "PostGraphile JSON" not in template or "ZomboDB JSON" not in template or "Migration Targets JSON" not in template or "Schema Inventory JSON" not in template or "Cutover Plan JSON" not in template or "NoSQL" not in template:
+        fail("database operations template must expose provider, add-on, NoSQL, schema inventory, and migration links")
 
 
 def validate_schema_import_artifacts() -> None:
@@ -36396,6 +36519,31 @@ def test_generated_runtime_helpers():
         "zombodb",
         "elasticsearch",
     }
+    patroni = database_ops.patroni_cluster_plan(
+        {{"PATRONI_SCOPE": "appgen", "PATRONI_ETCD_HOSTS": "etcd:2379", "POSTGRES_HOST": "postgres"}}
+    )
+    assert patroni["format"] == "appgen.patroni-cluster-plan.v1"
+    assert len(patroni["members"]) == 3
+    assert patroni["configured"] is True
+    postgraphile = database_ops.postgraphile_schema_plan(
+        environ={{"DATABASE_URL": "postgresql://app", "POSTGRAPHILE_SCHEMA": "public"}}
+    )
+    assert postgraphile["format"] == "appgen.postgraphile-schema-plan.v1"
+    assert postgraphile["endpoint"] == "/graphql"
+    assert postgraphile["rls_required"] is True
+    zombodb = database_ops.zombodb_index_plan(
+        {{"DATABASE_URL": "postgresql://app", "ELASTICSEARCH_URL": "http://elastic:9200"}}
+    )
+    assert zombodb["format"] == "appgen.zombodb-index-plan.v1"
+    assert all(index["using"] == "zombodb" for index in zombodb["indexes"])
+    addon_gate = database_ops.database_addon_release_gate(
+        {{"app/database_ops.py", "app/templates/appgen_database_ops.html", "docker-compose.yml", "deploy/k8s.yaml"}}
+    )
+    assert addon_gate["format"] == "appgen.database-addon-release-gate.v1"
+    assert addon_gate["ok"] is True
+    assert {{"patroni_ha_plan", "postgraphile_schema_plan", "zombodb_index_plan"}} <= {
+        gate["gate"] for gate in addon_gate["gates"]
+    }
     assert database_ops.compose_service_plan("postgresql")["image"] == "postgres:16"
     assert database_ops.compose_service_plan("mysql")["image"] == "mysql:8"
     assert database_ops.compose_service_plan("mongodb")["image"] == "mongo:7"
@@ -36429,6 +36577,14 @@ def test_generated_runtime_helpers():
             "deploy/k8s.yaml",
         }
     )["ok"] is True
+    assert database_ops.database_ops_check(
+        {
+            "app/database_ops.py",
+            "app/templates/appgen_database_ops.html",
+            "docker-compose.yml",
+            "deploy/k8s.yaml",
+        }
+    )["addon_release_gate"]["ok"] is True
     assert {item["kind"] for item in schema_import.schema_source_catalog()} == {"dbml", "sql", "ponyorm", "database", "dsl"}
     assert schema_import.schema_source_contract()["format"] == "appgen.schema-source-contract.v1"
     assert schema_import.schema_source_contract()["sqlalchemy_driver_urls"] is True

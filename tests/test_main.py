@@ -2271,6 +2271,11 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert "Database Operations" in (
         output_dir / "templates" / "appgen_database_ops.html"
     ).read_text()
+    database_ops_template = (output_dir / "templates" / "appgen_database_ops.html").read_text()
+    assert "Add-on Release Gate JSON" in database_ops_template
+    assert "Patroni JSON" in database_ops_template
+    assert "PostGraphile JSON" in database_ops_template
+    assert "ZomboDB JSON" in database_ops_template
     schema_import_template = (output_dir / "templates" / "appgen_schema_import.html").read_text()
     assert "Schema Import" in schema_import_template
     assert "Normalization JSON" in schema_import_template
@@ -3416,6 +3421,29 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "zombodb",
         "elasticsearch",
     }
+    patroni = database_ops.patroni_cluster_plan(
+        {"PATRONI_SCOPE": "appgen", "PATRONI_ETCD_HOSTS": "etcd:2379", "POSTGRES_HOST": "postgres"}
+    )
+    assert patroni["format"] == "appgen.patroni-cluster-plan.v1"
+    assert len(patroni["members"]) == 3
+    assert patroni["configured"] is True
+    postgraphile = database_ops.postgraphile_schema_plan(
+        environ={"DATABASE_URL": "postgresql://app", "POSTGRAPHILE_SCHEMA": "public"}
+    )
+    assert postgraphile["format"] == "appgen.postgraphile-schema-plan.v1"
+    assert postgraphile["endpoint"] == "/graphql"
+    assert postgraphile["rls_required"] is True
+    zombodb = database_ops.zombodb_index_plan({"DATABASE_URL": "postgresql://app", "ELASTICSEARCH_URL": "http://elastic:9200"})
+    assert zombodb["format"] == "appgen.zombodb-index-plan.v1"
+    assert all(index["using"] == "zombodb" for index in zombodb["indexes"])
+    addon_gate = database_ops.database_addon_release_gate(
+        {"app/database_ops.py", "app/templates/appgen_database_ops.html", "docker-compose.yml", "deploy/k8s.yaml"}
+    )
+    assert addon_gate["format"] == "appgen.database-addon-release-gate.v1"
+    assert addon_gate["ok"] is True
+    assert {"patroni_ha_plan", "postgraphile_schema_plan", "zombodb_index_plan"} <= {
+        gate["gate"] for gate in addon_gate["gates"]
+    }
     assert database_ops.compose_service_plan("postgresql")["image"] == "postgres:16"
     assert database_ops.compose_service_plan("mysql")["image"] == "mysql:8"
     assert database_ops.compose_service_plan("mongodb")["image"] == "mongo:7"
@@ -3466,6 +3494,14 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
             "deploy/k8s.yaml",
         }
     )["ok"] is True
+    assert database_ops.database_ops_check(
+        {
+            "app/database_ops.py",
+            "app/templates/appgen_database_ops.html",
+            "docker-compose.yml",
+            "deploy/k8s.yaml",
+        }
+    )["addon_release_gate"]["ok"] is True
     assert {item["kind"] for item in schema_import.schema_source_catalog()} == {
         "dbml",
         "sql",

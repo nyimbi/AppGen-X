@@ -355,7 +355,10 @@ apps include:
   MySQL, SQLite, MongoDB, DynamoDB, Cassandra, Redis, Patroni, PostGraphile,
   ZomboDB, Elasticsearch, Compose, Kubernetes, NoSQL document projections,
   schema inventory, legacy migration risk assessment, cutover plans, and
-  migration-target readiness contracts.
+  migration-target readiness contracts. Patroni HA cluster plans,
+  PostGraphile schema exposure plans, ZomboDB index plans, and a generated
+  database add-on release gate make these capabilities reviewable before
+  production rollout.
 - `schema_import.py` and `appgen_schema_import.html` with generated DBML, SQL
   DDL, PonyORM, live database, and DSL source catalogs, source provenance profiles,
   stable source fingerprints, source-fidelity reports, normalization reports,
