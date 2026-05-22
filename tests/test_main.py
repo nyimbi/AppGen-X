@@ -2334,7 +2334,9 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     text_quality_template = (output_dir / "templates" / "appgen_text_quality.html").read_text()
     assert "Generated spell, grammar, and character-count contracts" in text_quality_template
     assert "Release Gate JSON" in text_quality_template
-    assert "Generated notification channels" in (output_dir / "templates" / "appgen_notifications.html").read_text()
+    notifications_template = (output_dir / "templates" / "appgen_notifications.html").read_text()
+    assert "Generated notification channels" in notifications_template
+    assert "Release Gate JSON" in notifications_template
     platforms_template = (output_dir / "templates" / "appgen_platforms.html").read_text()
     assert "web, PWA, mobile, desktop, and chatbot" in platforms_template
     assert "Generation Matrix JSON" in platforms_template
@@ -4228,6 +4230,24 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert [item["channel"] for item in queued] == ["in_app", "webhook"]
     assert queued[0]["event"] == "Book.created"
     assert queued[0]["metadata"]["row"] == {"title": "Dune"}
+    notification_gate = notifications.notification_release_gate(
+        {"app/notifications.py", "app/templates/appgen_notifications.html"}
+    )
+    assert notifications.notification_check({"app/notifications.py", "app/templates/appgen_notifications.html"})[
+        "ok"
+    ] is True
+    assert notification_gate["format"] == "appgen.notification-release-gate.v1"
+    assert notification_gate["ok"] is True
+    assert {
+        "artifact_coverage",
+        "channel_catalog",
+        "env_secret_policy",
+        "event_catalog",
+        "payload_contract",
+        "queue_metadata",
+        "unknown_channel_guard",
+    } <= {check["gate"] for check in notification_gate["checks"]}
+    assert notifications.notification_release_gate({"app/notifications.py"})["ok"] is False
     agent_providers = agents.provider_catalog({})
     assert {provider["mode"] for provider in agent_providers} == {"local", "api"}
     assert agents.agent_plan(agents.agent_catalog()[0]["name"], "inspect")["model"]

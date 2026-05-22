@@ -4780,7 +4780,10 @@ def write_notifications_template(output_dir):
         apps can review queued messages before external delivery.
       </p>
     </div>
-    <a class="btn btn-default" href="{{ url_for('NotificationView.catalog_json') }}">Catalog JSON</a>
+    <div>
+      <a class="btn btn-default" href="{{ url_for('NotificationView.catalog_json') }}">Catalog JSON</a>
+      <a class="btn btn-default" href="{{ url_for('NotificationView.release_gate_json') }}">Release Gate JSON</a>
+    </div>
   </div>
   <div class="agn-grid">
     {% for channel in channels %}
@@ -20265,6 +20268,93 @@ def queue_event(table_name, action, row, *, channels=("in_app",), recipients=())
     )
 
 
+def notification_check(existing_paths=()):
+    """Return readiness for generated notification artifacts."""
+    existing = set(existing_paths)
+    required = ("app/notifications.py", "app/templates/appgen_notifications.html")
+    missing = tuple(path for path in required if path not in existing)
+    channels = channel_catalog()
+    events = event_catalog()
+    return {{
+        "format": "appgen.notification-check.v1",
+        "ok": not missing and bool(channels) and bool(events),
+        "missing": missing,
+        "channels": tuple(item["channel"] for item in channels),
+        "tables": tuple(item["table"] for item in events),
+    }}
+
+
+def notification_release_gate(existing_paths=()):
+    """Return a release decision for generated notification contracts."""
+    existing = set(existing_paths)
+    required = ("app/notifications.py", "app/templates/appgen_notifications.html")
+    missing = tuple(path for path in required if path not in existing)
+    channels = channel_catalog()
+    channel_names = {{item["channel"] for item in channels}}
+    events = event_catalog()
+    sample_event = events[0] if events else None
+    sample_table = sample_event["table"] if sample_event else None
+    sample_payload = notification_payload(
+        "email",
+        "Sample created",
+        "A sample record was created",
+        recipients=("ada@example.test",),
+        event=f"{{sample_table}}.created" if sample_table else None,
+        metadata={{"table": sample_table}} if sample_table else {{}},
+    )
+    queued = queue_event(sample_table, "created", {{"id": 1}}, channels=("in_app", "webhook")) if sample_table else ()
+    unknown_channel_blocked = False
+    try:
+        notification_payload("unknown", "Bad", "Bad")
+    except KeyError as exc:
+        unknown_channel_blocked = str(exc).strip("'") == "Unknown notification channel: unknown"
+    required_channels = {{"in_app", "email", "webhook", "push"}}
+    checks = (
+        {{
+            "gate": "artifact_coverage",
+            "ok": not missing,
+            "evidence": {{"required": required, "missing": missing}},
+        }},
+        {{
+            "gate": "channel_catalog",
+            "ok": required_channels <= channel_names,
+            "evidence": {{"required": tuple(sorted(required_channels)), "channels": tuple(sorted(channel_names))}},
+        }},
+        {{
+            "gate": "env_secret_policy",
+            "ok": all(item["channel"] == "in_app" or item["env"] for item in channels) and not any("KEY" in key or "SECRET" in key for item in channels if item["channel"] == "in_app" for key in item["env"]),
+            "evidence": {{"env": {{item["channel"]: item["env"] for item in channels}}}},
+        }},
+        {{
+            "gate": "event_catalog",
+            "ok": bool(events) and all({{f"{{item['table']}}.created", f"{{item['table']}}.updated", f"{{item['table']}}.deleted"}} <= set(item["events"]) for item in events),
+            "evidence": {{"tables": tuple(item["table"] for item in events)}},
+        }},
+        {{
+            "gate": "payload_contract",
+            "ok": sample_payload["channel"] == "email" and sample_payload["recipients"] == ("ada@example.test",) and sample_payload["created_at"].endswith("+00:00"),
+            "evidence": {{"channel": sample_payload["channel"], "recipients": sample_payload["recipients"], "event": sample_payload["event"]}},
+        }},
+        {{
+            "gate": "queue_metadata",
+            "ok": len(queued) == 2 and [item["channel"] for item in queued] == ["in_app", "webhook"] and all(item["metadata"].get("table") == sample_table for item in queued),
+            "evidence": {{"queued": len(queued), "channels": tuple(item["channel"] for item in queued), "table": sample_table}},
+        }},
+        {{
+            "gate": "unknown_channel_guard",
+            "ok": unknown_channel_blocked,
+            "evidence": {{"blocked": unknown_channel_blocked}},
+        }},
+    )
+    ok = all(check["ok"] for check in checks)
+    return {{
+        "format": "appgen.notification-release-gate.v1",
+        "ok": ok,
+        "decision": "approved" if ok else "blocked",
+        "checks": checks,
+    }}
+
+
 class NotificationView(BaseView):
     route_base = "/notifications"
     default_view = "index"
@@ -20280,6 +20370,10 @@ class NotificationView(BaseView):
     @expose("/catalog.json")
     def catalog_json(self):
         return jsonify({{"channels": list(channel_catalog()), "events": list(event_catalog())}})
+
+    @expose("/release-gate.json")
+    def release_gate_json(self):
+        return jsonify(notification_release_gate({{"app/notifications.py", "app/templates/appgen_notifications.html"}}))
 
 
 def register_notifications(appbuilder):
@@ -35860,6 +35954,26 @@ def validate_text_quality_artifacts() -> None:
         fail("text quality cockpit must expose generated textarea quality catalog and release readiness")
 
 
+def validate_notification_artifacts() -> None:
+    contract = (ROOT / "app" / "notifications.py").read_text()
+    required = (
+        "channel_catalog",
+        "event_catalog",
+        "event_name",
+        "notification_payload",
+        "queue_event",
+        "notification_check",
+        "notification_release_gate",
+    )
+    if not all(item in contract for item in required):
+        fail("notification contract must expose channels, events, payloads, queues, and release readiness")
+    if "appgen.notification-release-gate.v1" not in contract or '@expose("/release-gate.json")' not in contract:
+        fail("notification contract must expose release readiness checks and route")
+    template = (ROOT / "app" / "templates" / "appgen_notifications.html").read_text()
+    if "Notifications" not in template or "Catalog JSON" not in template or "Release Gate JSON" not in template:
+        fail("notification cockpit must expose generated notification catalog and release readiness")
+
+
 def validate_intelligence_artifacts() -> None:
     contract = (ROOT / "app" / "intelligence.py").read_text()
     required = (
@@ -37148,6 +37262,7 @@ def main() -> int:
     validate_i18n_artifacts()
     validate_assistant_artifacts()
     validate_text_quality_artifacts()
+    validate_notification_artifacts()
     validate_intelligence_artifacts()
     validate_rls_artifacts()
     validate_identity_artifacts()
@@ -38337,6 +38452,14 @@ def test_generated_runtime_helpers():
     )["ok"] is True
     assert text_quality.text_quality_release_gate({"app/text_quality.py"})["ok"] is False
     assert isinstance(notifications.channel_catalog(), tuple)
+    assert notifications.notification_check({"app/notifications.py", "app/templates/appgen_notifications.html"})["ok"] is True
+    assert notifications.notification_release_gate(
+        {"app/notifications.py", "app/templates/appgen_notifications.html"}
+    )["format"] == "appgen.notification-release-gate.v1"
+    assert notifications.notification_release_gate(
+        {"app/notifications.py", "app/templates/appgen_notifications.html"}
+    )["ok"] is True
+    assert notifications.notification_release_gate({"app/notifications.py"})["ok"] is False
     assert isinstance(platforms.platform_catalog(), tuple)
     assert platforms.target_package_matrix()["format"] == "appgen.target-package-matrix.v1"
     assert platforms.target_package_matrix()["ok"] is True

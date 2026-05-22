@@ -329,6 +329,12 @@ character and word counters, grammar hints, repeated-word detection,
 required-field enforcement, hard length limits, and per-form feedback without
 requiring external NLP services.
 
+Use `/notifications/release-gate.json` or `notification_release_gate()` before
+shipping generated notification flows. The gate proves in-app, email, webhook,
+and push channel coverage, environment-variable secret policy, table event
+coverage, payload shape, queue metadata, and unknown-channel guardrails without
+dispatching external messages.
+
 ## Natural Language Evolution
 
 Generated apps include natural-language evolution contracts. A builder can ask
