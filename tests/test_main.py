@@ -1178,6 +1178,7 @@ def test_generate_app_from_sqlite_schema_compiles(tmp_path) -> None:
     assert capabilities_by_key["scale.multi-tenancy"]["status"] == "implemented"
     assert capabilities_by_key["integration.enterprise"]["status"] == "implemented"
     assert capabilities_by_key["integration.productivity"]["status"] == "implemented"
+    assert capabilities_by_key["integration.emerging"]["status"] == "implemented"
     assert capabilities_by_key["devops.ide-integration"]["status"] == "implemented"
     assert capabilities_by_key["devops.project-management"]["status"] == "implemented"
     assert capabilities_by_key["ops.monitoring"]["status"] == "implemented"
@@ -2631,6 +2632,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert "Release Gate JSON" in (output_dir / "templates" / "appgen_lifecycle.html").read_text()
     emerging_template = (output_dir / "templates" / "appgen_emerging.html").read_text()
     assert "Emerging Catalog JSON" in emerging_template
+    assert "Workbench JSON" in emerging_template
     assert "Release Gate JSON" in emerging_template
     assert "Release Gate JSON" in (output_dir / "templates" / "appgen_project_management.html").read_text()
     tenancy_template = (output_dir / "templates" / "appgen_tenancy.html").read_text()
@@ -5101,6 +5103,23 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "smart_contract_plan",
         "edge_sync",
     } <= {check["gate"] for check in emerging_gate["checks"]}
+    emerging_workbench = emerging.emerging_workbench({"app/emerging.py", "app/templates/appgen_emerging.html"})
+    assert emerging_workbench["format"] == "appgen.emerging-workbench.v1"
+    assert emerging_workbench["ok"] is True
+    assert emerging_workbench["decision"] == "approved"
+    assert {
+        "artifact_coverage",
+        "device_catalog",
+        "telemetry_validation",
+        "command_contract",
+        "blockchain_anchor",
+        "smart_contract_plan",
+        "edge_sync",
+        "route_surface",
+        "release_gate",
+    } == {check["id"] for check in emerging_workbench["checks"]}
+    assert "/emerging/workbench.json" in emerging_workbench["routes"]
+    assert emerging.emerging_workbench({"app/emerging.py"})["ok"] is False
     assert emerging.emerging_release_gate({"app/emerging.py"})["ok"] is False
     assert tenancy.is_tenant_scoped("Book") is False
     assert tenancy.tenant_filter_kwargs("Book", "acme") == {}

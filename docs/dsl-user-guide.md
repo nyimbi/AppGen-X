@@ -535,12 +535,13 @@ Use `/lifecycle/workbench.json` or `lifecycle_workbench()` in the generated IDE
 to inspect environment catalogs, production readiness, release controls,
 promotion/domain evidence, maintenance/update plans, feedback/testing/issue
 loops, route coverage, and release readiness together.
-Use `/emerging/release-gate.json` or `emerging_release_gate()` before promoting
-generated IoT or blockchain adapters. The gate proves device catalogs,
-telemetry validation, command guardrails, hash-only blockchain anchor
+Use `/emerging/workbench.json`, `emerging_workbench()`,
+`/emerging/release-gate.json`, or `emerging_release_gate()` before promoting
+generated IoT or blockchain adapters. The workbench and gate prove device
+catalogs, telemetry validation, command guardrails, hash-only blockchain anchor
 verification, smart-contract adapter plans, edge/offline buffering, retry
-guidance, and required emerging-tech cockpit artifacts without connecting to
-external devices or networks.
+guidance, route coverage, and required emerging-tech cockpit artifacts without
+connecting to external devices or networks.
 
 ## Design-System QA
 

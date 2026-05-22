@@ -4448,6 +4448,7 @@ def write_emerging_template(output_dir):
     </div>
     <div>
       <a class="btn btn-default" href="{{ url_for('EmergingView.catalog_json') }}">Emerging Catalog JSON</a>
+      <a class="btn btn-default" href="{{ url_for('EmergingView.workbench_json') }}">Workbench JSON</a>
       <a class="btn btn-default" href="{{ url_for('EmergingView.release_gate_json') }}">Release Gate JSON</a>
     </div>
   </div>
@@ -20344,6 +20345,94 @@ def emerging_release_gate(existing_paths=()):
     }}
 
 
+def emerging_workbench(existing_paths=()):
+    """Return deterministic IDE workbench evidence for IoT and blockchain integrations."""
+    release_gate = emerging_release_gate(existing_paths)
+    devices = device_catalog()
+    device = devices[0] if devices else None
+    device_name = device["name"] if device else None
+    metric = device["metrics"][0] if device and device["metrics"] else None
+    telemetry = telemetry_event(device_name, {{metric: 1}}, device_id="device-1") if device_name and metric else {{}}
+    telemetry_validation = validate_telemetry(telemetry) if telemetry else {{"ok": False}}
+    command = command_payload(device_name, "sync", requested_by="builder") if device_name else {{}}
+    anchor = blockchain_anchor(device["table"], {{"id": 1}}, network="ethereum", actor="builder") if device else {{}}
+    anchor_check = verify_anchor(anchor, {{"id": 1}}) if anchor else {{"ok": False}}
+    contract = smart_contract_plan(device["table"], network="hyperledger") if device else {{}}
+    edge = edge_sync_plan(device_name) if device_name else {{}}
+    routes = (
+        "/emerging/",
+        "/emerging/catalog.json",
+        "/emerging/workbench.json",
+        "/emerging/release-gate.json",
+    )
+    gates = {{check["gate"]: check for check in release_gate["checks"]}}
+    checks = (
+        {{
+            "id": "artifact_coverage",
+            "ok": gates.get("artifact_coverage", {{}}).get("ok") is True,
+            "evidence": gates.get("artifact_coverage", {{}}).get("evidence", {{}}),
+        }},
+        {{
+            "id": "device_catalog",
+            "ok": bool(devices) and gates.get("device_catalog", {{}}).get("ok") is True,
+            "evidence": {{"device_count": len(devices), "devices": tuple(item["name"] for item in devices)}},
+        }},
+        {{
+            "id": "telemetry_validation",
+            "ok": telemetry_validation["ok"] and gates.get("telemetry_validation", {{}}).get("ok") is True,
+            "evidence": {{"topic": telemetry.get("topic"), "metric": metric}},
+        }},
+        {{
+            "id": "command_contract",
+            "ok": command.get("topic") == (device.get("command_topic") if device else None)
+            and gates.get("command_contract", {{}}).get("ok") is True,
+            "evidence": {{"topic": command.get("topic"), "command": command.get("command")}},
+        }},
+        {{
+            "id": "blockchain_anchor",
+            "ok": anchor.get("anchor_mode") == "hash-only" and anchor_check["ok"]
+            and gates.get("blockchain_anchor", {{}}).get("ok") is True,
+            "evidence": {{"network": anchor.get("network"), "hash": anchor.get("hash")}},
+        }},
+        {{
+            "id": "smart_contract_plan",
+            "ok": contract.get("anchor_mode") == "private-channel"
+            and gates.get("smart_contract_plan", {{}}).get("ok") is True,
+            "evidence": {{"network": contract.get("network"), "methods": contract.get("methods", ())}},
+        }},
+        {{
+            "id": "edge_sync",
+            "ok": edge.get("buffer") == "sqlite" and gates.get("edge_sync", {{}}).get("ok") is True,
+            "evidence": {{"buffer": edge.get("buffer"), "retry": edge.get("retry")}},
+        }},
+        {{
+            "id": "route_surface",
+            "ok": all(route.startswith("/emerging/") for route in routes),
+            "evidence": {{"routes": routes}},
+        }},
+        {{
+            "id": "release_gate",
+            "ok": release_gate["ok"],
+            "evidence": {{"decision": release_gate["decision"], "format": release_gate["format"]}},
+        }},
+    )
+    ok = all(check["ok"] for check in checks)
+    return {{
+        "format": "appgen.emerging-workbench.v1",
+        "ok": ok,
+        "decision": "approved" if ok else "blocked",
+        "devices": devices,
+        "telemetry": telemetry,
+        "command": command,
+        "anchor": anchor,
+        "smart_contract": contract,
+        "edge": edge,
+        "routes": routes,
+        "release_gate": release_gate,
+        "checks": checks,
+    }}
+
+
 class EmergingView(BaseView):
     route_base = "/emerging"
     default_view = "index"
@@ -20355,6 +20444,10 @@ class EmergingView(BaseView):
     @expose("/catalog.json")
     def catalog_json(self):
         return jsonify({{"devices": list(device_catalog()), "networks": BLOCKCHAIN_NETWORKS}})
+
+    @expose("/workbench.json")
+    def workbench_json(self):
+        return jsonify(emerging_workbench({{"app/emerging.py", "app/templates/appgen_emerging.html"}}))
 
     @expose("/release-gate.json")
     def release_gate_json(self):
@@ -42756,9 +42849,11 @@ def validate_emerging_artifacts() -> None:
         fail("emerging-tech contract must expose blockchain audit-anchor helpers")
     if "emerging_release_gate" not in contract or "appgen.emerging-release-gate.v1" not in contract or '@expose("/release-gate.json")' not in contract:
         fail("emerging-tech contract must expose release readiness checks and route")
+    if "emerging_workbench" not in contract or "appgen.emerging-workbench.v1" not in contract or '@expose("/workbench.json")' not in contract:
+        fail("emerging-tech contract must expose IDE workbench evidence and route")
     template = (ROOT / "app" / "templates" / "appgen_emerging.html").read_text()
-    if "Emerging Integrations" not in template or "Emerging Catalog JSON" not in template or "Release Gate JSON" not in template:
-        fail("emerging-tech template must expose IoT and blockchain catalog plus release readiness")
+    if "Emerging Integrations" not in template or "Emerging Catalog JSON" not in template or "Workbench JSON" not in template or "Release Gate JSON" not in template:
+        fail("emerging-tech template must expose IoT, blockchain, workbench, and release readiness")
 
 
 def validate_sdk_artifacts() -> None:
@@ -45092,6 +45187,9 @@ def test_generated_runtime_helpers():
     assert emerging.emerging_check({"app/emerging.py", "app/templates/appgen_emerging.html"})["ok"] is True
     assert emerging.emerging_release_gate({"app/emerging.py", "app/templates/appgen_emerging.html"})["format"] == "appgen.emerging-release-gate.v1"
     assert emerging.emerging_release_gate({"app/emerging.py", "app/templates/appgen_emerging.html"})["ok"] is True
+    assert emerging.emerging_workbench({"app/emerging.py", "app/templates/appgen_emerging.html"})["format"] == "appgen.emerging-workbench.v1"
+    assert emerging.emerging_workbench({"app/emerging.py", "app/templates/appgen_emerging.html"})["ok"] is True
+    assert emerging.emerging_workbench({"app/emerging.py"})["ok"] is False
     assert emerging.emerging_release_gate({"app/emerging.py"})["ok"] is False
     assert isinstance(tenancy.tenant_catalog(), tuple)
     assert tenancy.tenancy_release_gate({"app/tenancy.py", "app/templates/appgen_tenancy.html"})["format"] == "appgen.tenancy-release-gate.v1"

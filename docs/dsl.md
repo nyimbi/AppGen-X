@@ -543,6 +543,8 @@ apps include:
   emerging release gate proves device and topic coverage, telemetry and command
   guardrails, hash-only anchor verification, private-channel contract plans,
   edge buffering/retry behavior, and required emerging-tech artifacts.
+  `emerging_workbench()` and `/emerging/workbench.json` aggregate those signals
+  with route coverage into one IDE-ready IoT and blockchain integration review.
 - `tenancy.py` and `appgen_tenancy.html` with generated tenant-column
   detection, tenant context extraction, and filter helpers for row isolation.
   `tenancy_release_gate()` and `tenancy_workbench()` prove tenant catalog
