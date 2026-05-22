@@ -41,6 +41,7 @@ from pyAppGen.config_admin import render_config
 from pyAppGen.config_admin import update_config_source
 from pyAppGen.distribution import cookiecutter_template_manifest
 from pyAppGen.distribution import distribution_artifact_manifest
+from pyAppGen.distribution import distribution_generation_smoke_audit
 from pyAppGen.distribution import distribution_release_audit
 from pyAppGen.distribution import fab_extension_manifest
 from pyAppGen.distribution import generated_coverage_manifest
@@ -1148,7 +1149,26 @@ def test_package_distribution_audit_covers_publishable_templates(
         "fab_extension",
         "generated_test_coverage",
         "seed_scripts",
+        "generation_smoke",
     } == {gate["id"] for gate in audit["gates"]}
+    assert audit["generation_smoke"]["ok"] is True
+
+    smoke = distribution_generation_smoke_audit()
+    assert smoke["format"] == "appgen.distribution-generation-smoke-audit.v1"
+    assert smoke["ok"] is True
+    assert {
+        "appgen_package.py",
+        "cookiecutter/cookiecutter.json",
+        "tests/test_generated_coverage.py",
+        "scripts/appgen_quality.py",
+        "seed.py",
+    } <= set(smoke["required_artifacts"])
+    assert {
+        "appgen_package.py",
+        "tests/test_generated_coverage.py",
+        "scripts/appgen_quality.py",
+        "seed.py",
+    } <= set(smoke["compiled_artifacts"])
 
     missing_cookiecutter = distribution_release_audit(existing_paths={"appgen_package.py"})
     assert missing_cookiecutter["ok"] is False

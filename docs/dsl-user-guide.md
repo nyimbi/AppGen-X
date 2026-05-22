@@ -185,7 +185,11 @@ editor contract has roadmap-required FAB API flags, whitelisted editable keys,
 production safety checks, and environment export coverage.
 Run `appgen --distribution-release-audit` to prove publishable package
 metadata, Cookiecutter templates, Flask-AppBuilder extension hooks, generated
-coverage tests, and seed-script contracts are present before release.
+coverage tests, and seed-script contracts are present before release. The audit
+also generates a temporary app, compiles generated packaging, seed, quality,
+coverage, model, view, and extension modules, and exercises generated package
+metadata, FAB extension, Cookiecutter context, coverage release gates, seed
+fixture contracts, quality entrypoint, workbench, and release-gate contracts.
 Run `appgen --reporting-release-audit` to prove every table has a report,
 relations have join reports, two-hop paths have 3-way reports, ChartView
 contracts exist, and PDF/email report delivery is covered. The audit also

@@ -381,7 +381,11 @@ appgen --distribution-release-audit
 
 The distribution audit covers publishable package metadata, Cookiecutter
 template artifacts, Flask-AppBuilder extension hooks, generated coverage tests,
-and idempotent seed-script expectations.
+and idempotent seed-script expectations. It also generates a temporary app,
+compiles generated packaging, seed, quality, coverage, model, view, and
+extension modules, and exercises generated package metadata, FAB extension,
+Cookiecutter context, coverage release gates, seed fixture contracts, quality
+entrypoint, workbench, and release-gate contracts.
 
 Audit package-level reporting and ChartView coverage before claiming the
 roadmap reporting lane is complete:
