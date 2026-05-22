@@ -35,6 +35,7 @@ from pyAppGen.agentic import provider_connection_matrix
 from pyAppGen.base_features import base_feature_document_check
 from pyAppGen.base_features import base_feature_release_audit
 from pyAppGen.config_admin import config_editor_catalog
+from pyAppGen.config_admin import config_editor_generation_smoke_audit
 from pyAppGen.config_admin import config_editor_release_audit
 from pyAppGen.config_admin import parse_config_assignments
 from pyAppGen.config_admin import render_config
@@ -1104,6 +1105,16 @@ def test_package_config_editor_audit_covers_safe_setup(
         "do-not-claim-config-editor-readiness-unless-ok-is-true"
     )
     assert all(gate["ok"] for gate in audit["gates"])
+    assert audit["generation_smoke"]["ok"] is True
+    assert "generation_smoke" in {gate["id"] for gate in audit["gates"]}
+
+    smoke = config_editor_generation_smoke_audit()
+    assert smoke["format"] == "appgen.config-editor-generation-smoke-audit.v1"
+    assert smoke["ok"] is True
+    assert {"config.py", "app/config_admin.py", "app/templates/appgen_config.html"} <= set(
+        smoke["required_artifacts"]
+    )
+    assert {"config.py", "app/config_admin.py"} <= set(smoke["compiled_artifacts"])
 
     result = runner.invoke(__main__.main, ["--config-release-audit"])
     assert result.exit_code == 0

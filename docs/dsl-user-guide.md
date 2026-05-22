@@ -646,7 +646,10 @@ Generated configuration editors expose `config_admin_release_gate()` and
 `/appgen/config/release-gate.json`. Use this gate to prove editable
 `config.py` coverage, production readiness, unsafe blocker detection, safe
 assignment rewriting, setup checklist coverage, and `.env` export behavior
-before promoting generated setup screens.
+before promoting generated setup screens. The package audit also generates a
+temporary app and exercises the generated config editor so readiness depends on
+the emitted `config.py`, `config_admin.py`, setup template, workbench, and
+release gate executing successfully.
 Use `/appgen/config/workbench.json` or `config_admin_workbench()` in the
 generated IDE to inspect the editable config schema, grouped sections, setup
 readiness, setup checklist, safe rewrite proof, environment export, route

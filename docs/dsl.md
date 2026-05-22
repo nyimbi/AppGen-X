@@ -370,7 +370,10 @@ appgen --config-release-audit
 The config audit proves roadmap-required `FAB_API_SHOW_STACKTRACE` and
 `FAB_API_SWAGGER_UI` defaults, whitelisted editable keys, production safety
 warnings, environment export, and generated `config.py`/`config_admin.py`/
-template artifact expectations.
+template artifact expectations. It also generates a temporary app, compiles the
+generated config, config-admin, model, and view modules, and exercises generated
+config parsing, grouped setup metadata, production readiness, safe rewrite,
+environment export, workbench, and release-gate contracts.
 
 Audit the package-level distribution contract before claiming AppGen is a
 publishable generator with reusable templates:
