@@ -205,6 +205,35 @@ from pyAppGen.visual_modeling import visual_modeling_release_audit
 from pyAppGen.visual_modeling import visual_schema
 
 
+REQUESTED_COMPONENT_ANALOG_SOURCES = {
+    "TButton", "TEdit", "TLabel", "TListBox", "TComboBox", "TCheckBox", "TRadioButton",
+    "TLayout", "TScrollBox", "TFlowLayout", "TGridLayout", "TVerticalBoxLayout",
+    "THorizontalBoxLayout",
+    "TStringGrid", "TListView", "TTreeView", "TGrid",
+    "TShape", "TPath", "TRectangle", "TEllipse", "TLine", "TImage", "TBitmap",
+    "TFloatAnimation", "TColorAnimation", "TPathAnimation", "TAnimation",
+    "TStyleBook", "TStyleManager",
+    "TGestureManager", "TGesture",
+    "TLocationSensor", "TMotionSensor", "TOrientationSensor",
+    "TViewPort3D", "TDummy3D", "TCamera3D", "TLight3D", "TMesh3D",
+    "DB", "DBTables", "DBClient",
+}
+
+REQUESTED_COMPONENT_ANALOGS = {
+    "Button", "TextBox", "Label", "ListBox", "Select", "Checkbox", "RadioButton",
+    "Layout", "ScrollBox", "FlowLayout", "GridLayout", "VerticalBoxLayout",
+    "HorizontalBoxLayout",
+    "StringGrid", "ListView", "TreeView", "Grid",
+    "Shape", "PathShape", "Rectangle", "Ellipse", "Line", "Image", "Bitmap",
+    "FloatAnimation", "ColorAnimation", "PathAnimation", "Animation",
+    "StyleBook", "StyleManager",
+    "GestureManager", "Gesture",
+    "LocationSensor", "MotionSensor", "OrientationSensor",
+    "Viewport3D", "Dummy3D", "Camera3D", "Light3D", "Mesh3D",
+    "DatabaseConnection", "TableAdapter", "ClientDataSet",
+}
+
+
 @pytest.fixture
 def runner() -> CliRunner:
     """Fixture for invoking command-line interfaces."""
@@ -787,20 +816,10 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     assert {"Grid", "TreeView", "MainMenu", "PopupMenu", "CameraView", "Viewport3D"} <= {
         item["component"] for item in palette
     }
-    requested_analogs = {
-        "Button", "TextBox", "Label", "ListBox", "Select", "Checkbox", "RadioButton",
-        "Layout", "ScrollBox", "FlowLayout", "GridLayout", "VerticalBoxLayout", "HorizontalBoxLayout",
-        "StringGrid", "ListView", "TreeView", "Grid",
-        "Shape", "PathShape", "Rectangle", "Ellipse", "Line", "Image", "Bitmap",
-        "FloatAnimation", "ColorAnimation", "PathAnimation", "Animation",
-        "StyleBook", "StyleManager", "GestureManager", "Gesture",
-        "LocationSensor", "MotionSensor", "OrientationSensor",
-        "Viewport3D", "Dummy3D", "Camera3D", "Light3D", "Mesh3D",
-        "DatabaseConnection", "TableAdapter", "ClientDataSet",
-    }
-    assert requested_analogs <= {item["component"] for item in palette}
+    assert REQUESTED_COMPONENT_ANALOGS <= {item["component"] for item in palette}
     analog_matrix = component_analog_matrix()
-    assert {item["source"] for item in analog_matrix} >= {"TButton", "TEdit", "TStyleBook", "TGesture", "DBClient"}
+    assert {item["source"] for item in analog_matrix} == REQUESTED_COMPONENT_ANALOG_SOURCES
+    assert {item["analog"] for item in analog_matrix} == REQUESTED_COMPONENT_ANALOGS
     analog_workbench = component_analog_workbench()
     assert analog_workbench["format"] == "appgen.component-analog-workbench.v1"
     assert analog_workbench["ok"] is True
@@ -8906,8 +8925,11 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     generated_analogs = form_designer.component_analog_workbench()
     assert generated_analogs["format"] == "appgen.generated-component-analog-workbench.v1"
     assert generated_analogs["ok"] is True
-    assert {"TButton", "TEdit", "TStyleBook", "TGesture", "DBClient"} <= {
+    assert REQUESTED_COMPONENT_ANALOG_SOURCES == {
         item["source"] for item in generated_analogs["matrix"]
+    }
+    assert REQUESTED_COMPONENT_ANALOGS == {
+        item["analog"] for item in generated_analogs["matrix"]
     }
     generated_inspector = form_designer.object_inspector_workbench()
     assert generated_inspector["format"] == "appgen.generated-object-inspector-workbench.v1"
