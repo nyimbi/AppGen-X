@@ -46842,6 +46842,16 @@ def get_metadata(idb):
     help="Print aggregate JSON proof for the package-level AppGen objective.",
 )
 @click.option(
+    "--erp-template-catalog",
+    is_flag=True,
+    help="Print JSON catalog of package-level ERP starter templates.",
+)
+@click.option(
+    "--erp-template",
+    "erp_template_module",
+    help="Print AppGen DSL for one ERP module, for example invoicing.",
+)
+@click.option(
     "--schema-source-audit",
     is_flag=True,
     help=(
@@ -46876,6 +46886,8 @@ def main(
     jhipster_superiority_audit,
     generated_app_excellence_audit,
     package_goal_audit,
+    erp_template_catalog,
+    erp_template_module,
     schema_source_audit,
     dsl_antlr_report,
 ):
@@ -46892,6 +46904,8 @@ def main(
         jhipster_superiority_audit,
         generated_app_excellence_audit,
         package_goal_audit,
+        erp_template_catalog,
+        erp_template_module,
         schema_source_audit,
         dsl_antlr_report,
     ]
@@ -46916,6 +46930,8 @@ def main(
                 jhipster_superiority_audit,
                 generated_app_excellence_audit,
                 package_goal_audit,
+                erp_template_catalog,
+                erp_template_module,
                 dsl_antlr_report,
                 *schema_sources,
             ]
@@ -46943,6 +46959,8 @@ def main(
                 jhipster_superiority_audit,
                 generated_app_excellence_audit,
                 package_goal_audit,
+                erp_template_catalog,
+                erp_template_module,
                 schema_source_audit,
                 *schema_sources,
             ]
@@ -46971,6 +46989,8 @@ def main(
                 jhipster_superiority_audit,
                 generated_app_excellence_audit,
                 package_goal_audit,
+                erp_template_catalog,
+                erp_template_module,
                 schema_source_audit,
                 dsl_antlr_report,
                 *schema_sources,
@@ -46996,6 +47016,8 @@ def main(
                 jhipster_superiority_audit,
                 generated_app_excellence_audit,
                 package_goal_audit,
+                erp_template_catalog,
+                erp_template_module,
                 schema_source_audit,
                 dsl_antlr_report,
                 *schema_sources,
@@ -47025,6 +47047,8 @@ def main(
                 jhipster_superiority_audit,
                 generated_app_excellence_audit,
                 package_goal_audit,
+                erp_template_catalog,
+                erp_template_module,
                 schema_source_audit,
                 dsl_antlr_report,
                 *schema_sources,
@@ -47053,6 +47077,8 @@ def main(
                 jhipster_superiority_audit,
                 generated_app_excellence_audit,
                 package_goal_audit,
+                erp_template_catalog,
+                erp_template_module,
                 schema_source_audit,
                 dsl_antlr_report,
                 *schema_sources,
@@ -47082,6 +47108,8 @@ def main(
                 jhipster_superiority_audit,
                 generated_app_excellence_audit,
                 package_goal_audit,
+                erp_template_catalog,
+                erp_template_module,
                 *schema_sources,
             ]
         ):
@@ -47104,6 +47132,8 @@ def main(
                 wdatabase,
                 generated_app_excellence_audit,
                 package_goal_audit,
+                erp_template_catalog,
+                erp_template_module,
                 *schema_sources,
             ]
         ):
@@ -47125,6 +47155,8 @@ def main(
                 idatabase,
                 wdatabase,
                 package_goal_audit,
+                erp_template_catalog,
+                erp_template_module,
                 *schema_sources,
             ]
         ):
@@ -47139,15 +47171,60 @@ def main(
         ctx.exit(0 if result["ok"] else 1)
 
     if package_goal_audit:
-        if any([writedir, database_url, idatabase, wdatabase, *schema_sources]):
+        if any(
+            [
+                writedir,
+                database_url,
+                idatabase,
+                wdatabase,
+                erp_template_catalog,
+                erp_template_module,
+                *schema_sources,
+            ]
+        ):
             raise click.UsageError(
-                "--package-goal-audit cannot be combined with generation options."
+                "--package-goal-audit cannot be combined with generation or "
+                "template options."
             )
         from .roadmap import package_goal_audit as package_goal_audit_report
 
         result = package_goal_audit_report()
         click.echo(json.dumps(result, indent=2, sort_keys=True, default=list))
         ctx.exit(0 if result["ok"] else 1)
+
+    if erp_template_catalog:
+        if any(
+            [
+                writedir,
+                database_url,
+                idatabase,
+                wdatabase,
+                erp_template_module,
+                *schema_sources,
+            ]
+        ):
+            raise click.UsageError(
+                "--erp-template-catalog cannot be combined with generation or "
+                "template options."
+            )
+        from .erp import erp_template_catalog as package_erp_template_catalog
+
+        result = package_erp_template_catalog()
+        click.echo(json.dumps(result, indent=2, sort_keys=True, default=list))
+        ctx.exit(0 if result["ok"] else 1)
+
+    if erp_template_module:
+        if any([writedir, database_url, idatabase, wdatabase, *schema_sources]):
+            raise click.UsageError(
+                "--erp-template cannot be combined with generation options."
+            )
+        from .erp import erp_module_dsl
+
+        try:
+            click.echo(erp_module_dsl(erp_template_module), nl=False)
+        except KeyError as exc:
+            raise click.UsageError(str(exc)) from exc
+        ctx.exit(0)
 
     if writedir is None:
         raise click.UsageError("Provide --writedir.")

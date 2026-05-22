@@ -503,9 +503,12 @@ def generated_app_excellence_audit() -> dict:
 
 def package_goal_audit(root: Path | str | None = None) -> dict:
     """Return aggregate package evidence for the active AppGen objective."""
+    from .erp import erp_template_release_audit
+
     roadmap = roadmap_release_audit(root)
     superiority = jhipster_superiority_audit()
     excellence = generated_app_excellence_audit()
+    erp_templates = erp_template_release_audit()
     gates = (
         {
             "id": "roadmap_traceability",
@@ -521,6 +524,11 @@ def package_goal_audit(root: Path | str | None = None) -> dict:
             "id": "generated_app_excellence",
             "ok": excellence["ok"],
             "format": excellence["format"],
+        },
+        {
+            "id": "erp_template_exports",
+            "ok": erp_templates["ok"],
+            "format": erp_templates["format"],
         },
         {
             "id": "source_document_scope",
@@ -540,6 +548,7 @@ def package_goal_audit(root: Path | str | None = None) -> dict:
             "roadmap": roadmap,
             "jhipster_superiority": superiority,
             "generated_app_excellence": excellence,
+            "erp_templates": erp_templates,
         },
         "blocking_gaps": tuple(gate for gate in gates if not gate["ok"]),
         "stop_condition": "do-not-mark-active-goal-complete-unless-ok-is-true",

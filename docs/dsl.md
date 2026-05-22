@@ -227,6 +227,14 @@ excellence:
 appgen --package-goal-audit
 ```
 
+Discover package-level ERP starter modules and export one as AppGen DSL:
+
+```console
+appgen --erp-template-catalog
+appgen --erp-template invoicing > invoicing.appgen
+appgen --dsl invoicing.appgen --writedir apps/invoicing
+```
+
 ## Shape
 
 - `table` defines persistent data models.

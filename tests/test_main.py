@@ -40,6 +40,10 @@ from pyAppGen.dsl import dsl_keyword_budget
 from pyAppGen.dsl import dsl_outline
 from pyAppGen.dsl import format_dsl
 from pyAppGen.dsl import lint_dsl
+from pyAppGen.erp import erp_module_dsl
+from pyAppGen.erp import erp_starter_manifest
+from pyAppGen.erp import erp_template_catalog
+from pyAppGen.erp import erp_template_release_audit
 from pyAppGen.roadmap import generated_app_excellence_audit
 from pyAppGen.roadmap import jhipster_superiority_audit
 from pyAppGen.roadmap import package_goal_audit
@@ -237,6 +241,7 @@ def test_package_goal_audit_cli_aggregates_objective_evidence(
         "roadmap_traceability",
         "jhipster_superiority",
         "generated_app_excellence",
+        "erp_template_exports",
         "source_document_scope",
     } == {gate["id"] for gate in direct_report["gates"]}
     assert direct_report["stop_condition"] == (
@@ -252,6 +257,59 @@ def test_package_goal_audit_cli_aggregates_objective_evidence(
     assert cli_report["audits"]["roadmap"]["ok"] is True
     assert cli_report["audits"]["jhipster_superiority"]["ok"] is True
     assert cli_report["audits"]["generated_app_excellence"]["ok"] is True
+    assert cli_report["audits"]["erp_templates"]["ok"] is True
+
+
+def test_package_erp_templates_export_generatable_dsl(
+    runner: CliRunner,
+    tmp_path,
+) -> None:
+    """Package ERP templates are discoverable and export DSL generation input."""
+    catalog = erp_template_catalog()
+    assert catalog["format"] == "appgen.erp-template-catalog.v1"
+    assert catalog["ok"] is True
+    assert {
+        "chart_of_accounts",
+        "general_ledger",
+        "accounts_receivable",
+        "accounts_payable",
+        "invoicing",
+        "inventory",
+        "human_resources",
+        "payroll",
+        "reporting",
+    } <= {module["module"] for module in catalog["modules"]}
+    assert erp_template_release_audit()["ok"] is True
+
+    invoicing_dsl = erp_module_dsl("invoicing")
+    assert "table invoice_line" in invoicing_dsl
+    assert "product_id: int required -> product.id" in invoicing_dsl
+    dsl_path = tmp_path / "invoicing.appgen"
+    dsl_path.write_text(invoicing_dsl, encoding="utf-8")
+    schema = load_schema(dsl_path, source_type="dsl")
+    assert schema.source_profile()["source_kind"] == "dsl"
+    assert {"invoice", "invoice_line", "product", "customer"} <= {
+        table.name for table in schema.tables
+    }
+
+    starter = erp_starter_manifest("finance_core", app_name="FinanceDesk")
+    assert starter["format"] == "appgen.erp-starter.v1"
+    assert {"ledger_account", "journal_entry", "ap_bill", "ar_invoice"} <= set(
+        starter["tables"]
+    )
+
+    catalog_result = runner.invoke(__main__.main, ["--erp-template-catalog"])
+    assert catalog_result.exit_code == 0
+    catalog_report = json.loads(catalog_result.output)
+    assert catalog_report["ok"] is True
+    assert "appgen --erp-template invoicing" in {
+        module["command"] for module in catalog_report["modules"]
+    }
+
+    template_result = runner.invoke(__main__.main, ["--erp-template", "invoicing"])
+    assert template_result.exit_code == 0
+    assert "app InvoicingApp" in template_result.output
+    assert "table invoice_line" in template_result.output
 
 
 def test_dsl_linter_reports_semantic_feedback(runner: CliRunner, tmp_path) -> None:

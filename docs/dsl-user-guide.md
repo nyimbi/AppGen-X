@@ -115,6 +115,9 @@ capable.
 Run `appgen --package-goal-audit` to collect roadmap traceability, JHipster
 superiority, and generated-app excellence evidence into one package-level JSON
 bundle.
+Run `appgen --erp-template-catalog` to list package-level ERP starter modules,
+then `appgen --erp-template invoicing > invoicing.appgen` to export a module as
+DSL before generating it with `appgen --dsl`.
 
 Use `required` for fields that must be entered. Use `search` on fields that
 should appear in generated search contracts. Use `hidden` for generated or
