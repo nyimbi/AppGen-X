@@ -307,7 +307,11 @@ appgen --studio-release-audit
 The Studio audit covers DSL editor diagnostics, completions and code actions,
 database-design workspaces, source intake for DBML/SQL/PonyORM/live DB/DSL,
 reviewable generation jobs, and application snapshot/restore/version-management
-commands.
+commands. It also generates a temporary Studio app, verifies the generated IDE,
+database-ops, DSL-reference, migration, and quality artifacts, compiles the
+generated Studio-facing Python modules, and exercises the generated workspace,
+DSL editor, database designer, generation queue, portfolio, release gate, and
+IDE superiority contracts.
 
 Audit the package-level Delphi-style form designer contract before claiming
 users can drop components onto generated forms:

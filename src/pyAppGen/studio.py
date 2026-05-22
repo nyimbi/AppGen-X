@@ -156,6 +156,138 @@ def application_management_plan() -> dict:
     }
 
 
+def studio_generation_smoke_audit(source: str = SAMPLE_DSL) -> dict:
+    """Generate a temporary app and exercise its generated Studio contract."""
+    import importlib.util
+    import py_compile
+    import tempfile
+    from pathlib import Path
+
+    from .gen import generate_app_from_schema
+    from .schema import load_schema
+
+    required_artifacts = (
+        "app/studio.py",
+        "app/templates/appgen_studio.html",
+        "app/dsl_reference.py",
+        "app/database_ops.py",
+        "app/designer.py",
+        "app/models.py",
+        "migrations/README.md",
+        "scripts/appgen_quality.py",
+    )
+    compile_artifacts = (
+        "app/studio.py",
+        "app/dsl_reference.py",
+        "app/database_ops.py",
+        "app/designer.py",
+        "app/models.py",
+    )
+
+    with tempfile.TemporaryDirectory(prefix="appgen-studio-smoke-") as tmp:
+        project_dir = Path(tmp)
+        dsl_path = project_dir / "studio.appgen"
+        dsl_path.write_text(source, encoding="utf-8")
+        schema = load_schema(dsl_path, source_type="dsl")
+        output_dir = project_dir / "app"
+        generate_app_from_schema(schema, output_dir)
+
+        missing_artifacts = tuple(
+            artifact for artifact in required_artifacts if not (project_dir / artifact).exists()
+        )
+        compiled = []
+        compile_failures = []
+        for artifact in compile_artifacts:
+            path = project_dir / artifact
+            if not path.exists():
+                continue
+            try:
+                py_compile.compile(str(path), doraise=True)
+            except py_compile.PyCompileError as exc:
+                compile_failures.append({"artifact": artifact, "error": str(exc)})
+            else:
+                compiled.append(artifact)
+
+        module_path = output_dir / "studio.py"
+        spec = importlib.util.spec_from_file_location("generated_studio_smoke", module_path)
+        generated_studio = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(generated_studio)
+        existing_paths = set(required_artifacts)
+        workspace = generated_studio.ide_workspace()
+        editor_state = generated_studio.dsl_editor_state(
+            text="app Bad { targets: web, toaster } table Book { title: string ref Author.id }"
+        )
+        database_workspace = generated_studio.database_design_workspace()
+        job = generated_studio.generation_job_manifest(
+            targets=("web", "mobile", "desktop"), changed_paths=("appgen.dsl",)
+        )
+        portfolio = generated_studio.application_portfolio_check()
+        release_gate = generated_studio.studio_release_gate(existing_paths)
+        superiority = generated_studio.ide_superiority_profile(existing_paths)
+
+    checks = (
+        {
+            "id": "generated_artifacts",
+            "ok": not missing_artifacts,
+            "required_artifacts": required_artifacts,
+            "missing": missing_artifacts,
+        },
+        {
+            "id": "generated_python_compiles",
+            "ok": not compile_failures and set(compiled) == set(compile_artifacts),
+            "compiled": tuple(compiled),
+            "failures": tuple(compile_failures),
+        },
+        {
+            "id": "workspace_contract",
+            "ok": {
+                "dsl_authoring",
+                "database_design",
+                "generation",
+                "applications",
+                "source_intake",
+            }
+            <= set(workspace),
+            "targets": workspace["generation"]["targets"],
+        },
+        {
+            "id": "dsl_editor_contract",
+            "ok": editor_state["language"] == "appgen-dsl"
+            and not editor_state["lint"]["ok"]
+            and {"normalize_targets", "replace_ref_with_arrow"}
+            <= {action["id"] for action in editor_state["code_actions"]},
+        },
+        {
+            "id": "database_designer_contract",
+            "ok": database_workspace["erd"].startswith("erDiagram\n")
+            and "relationship" in database_workspace["proposal_kinds"],
+        },
+        {
+            "id": "generation_management_contract",
+            "ok": tuple(stage["name"] for stage in job["plan"]["stages"])
+            == ("lint_dsl", "schema_diff", "generate", "quality")
+            and portfolio["ok"]
+            and release_gate["ok"]
+            and superiority["ok"],
+        },
+    )
+    ok = all(check["ok"] for check in checks)
+    return {
+        "format": "appgen.studio-generation-smoke-audit.v1",
+        "ok": ok,
+        "decision": "approved" if ok else "blocked",
+        "required_artifacts": required_artifacts,
+        "compiled_artifacts": tuple(compiled),
+        "workspace_sections": tuple(workspace),
+        "release_gate": {
+            "format": release_gate["format"],
+            "ok": release_gate["ok"],
+        },
+        "checks": checks,
+        "blocking_gaps": tuple(check for check in checks if not check["ok"]),
+    }
+
+
 def studio_release_audit(source: str = SAMPLE_DSL) -> dict:
     """Return package-level proof for robust Studio/IDE readiness."""
     workspace = studio_workspace(source)
@@ -163,6 +295,7 @@ def studio_release_audit(source: str = SAMPLE_DSL) -> dict:
     database = workspace["database_design"]
     jobs = workspace["generation_jobs"]
     management = workspace["application_management"]
+    generation_smoke = studio_generation_smoke_audit(source)
     gates = (
         {
             "id": "workspace_sections",
@@ -180,6 +313,11 @@ def studio_release_audit(source: str = SAMPLE_DSL) -> dict:
         {"id": "source_intake", "ok": workspace["source_intake"]["ok"]},
         {"id": "generation_queue", "ok": jobs["ok"] and jobs["jobs"][0]["stages"][0] == "lint_dsl"},
         {"id": "application_management", "ok": "create_application" in management["commands"]},
+        {
+            "id": "generation_smoke",
+            "ok": generation_smoke["ok"],
+            "checks": tuple(check["id"] for check in generation_smoke["checks"]),
+        },
     )
     ok = all(gate["ok"] for gate in gates)
     return {
@@ -188,6 +326,7 @@ def studio_release_audit(source: str = SAMPLE_DSL) -> dict:
         "ok": ok,
         "decision": "approved" if ok else "blocked",
         "workspace": workspace,
+        "generation_smoke": generation_smoke,
         "gates": gates,
         "blocking_gaps": tuple(gate for gate in gates if not gate["ok"]),
         "stop_condition": "do-not-claim-robust-ide-unless-ok-is-true",

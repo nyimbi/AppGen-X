@@ -152,6 +152,11 @@ patch, compiles core Python artifacts, and checks native/chatbot/PWA outputs.
 Run `appgen --studio-release-audit` to prove the package-level Studio contract
 is ready for DSL editing, database design, multi-source intake, generation job
 management, and application lifecycle management before any app is generated.
+The audit also generates a temporary Studio app, verifies generated IDE,
+database-ops, DSL-reference, migration, and quality artifacts, compiles
+Studio-facing Python modules, and exercises the generated workspace, DSL editor,
+database designer, generation queue, portfolio, release gate, and IDE
+superiority contracts.
 Run `appgen --form-designer-release-audit` to prove the package-level
 Delphi-style form designer has draggable palette categories, snap-to-grid
 drop proposals, property inspectors, placement suggestions, overlap guardrails,
@@ -589,7 +594,10 @@ guards, schema refactor plans, the parameterized query builder, generation
 jobs, app portfolio management, versioned management, capability coverage,
 reviewed edits, debug redaction, dependency review, and component sharing. Use
 the package-level `appgen --studio-release-audit` before generation to verify
-the same IDE readiness contract exists outside a generated app. Use
+the same IDE readiness contract exists outside a generated app. The package
+audit includes a generation smoke that writes and compiles a temporary generated
+Studio app and executes its workspace, DSL editor, database designer, generation,
+application portfolio, release-gate, and superiority contracts. Use
 `/studio/database-design-gate.json` and `/studio/schema-refactor.json` to review
 table and field rename impact across DSL, models, APIs, GraphQL, migrations,
 docs, and generated tests before applying database-design changes. Use

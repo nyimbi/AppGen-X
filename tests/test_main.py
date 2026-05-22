@@ -140,6 +140,7 @@ from pyAppGen.security import tenant_rls_contract
 from pyAppGen.studio import database_design_workspace
 from pyAppGen.studio import dsl_editor_state
 from pyAppGen.studio import generation_job_manifest
+from pyAppGen.studio import studio_generation_smoke_audit
 from pyAppGen.studio import studio_release_audit
 from pyAppGen.studio import studio_workspace
 from pyAppGen.targets import desktop_capability_contract
@@ -678,8 +679,26 @@ def test_package_studio_audit_covers_ide_database_and_generation(
     audit = studio_release_audit()
     assert audit["format"] == "appgen.package-studio-release-audit.v1"
     assert audit["ok"] is True
+    assert audit["generation_smoke"]["ok"] is True
+    assert "generation_smoke" in {gate["id"] for gate in audit["gates"]}
     assert audit["stop_condition"] == "do-not-claim-robust-ide-unless-ok-is-true"
     assert all(gate["ok"] for gate in audit["gates"])
+
+    smoke = studio_generation_smoke_audit()
+    assert smoke["format"] == "appgen.studio-generation-smoke-audit.v1"
+    assert smoke["ok"] is True
+    assert {
+        "app/studio.py",
+        "app/templates/appgen_studio.html",
+        "app/dsl_reference.py",
+        "app/database_ops.py",
+    } <= set(smoke["required_artifacts"])
+    assert {"app/studio.py", "app/dsl_reference.py", "app/database_ops.py"} <= set(
+        smoke["compiled_artifacts"]
+    )
+    assert {"dsl_authoring", "database_design", "generation", "applications"} <= set(
+        smoke["workspace_sections"]
+    )
 
     result = runner.invoke(__main__.main, ["--studio-release-audit"])
     assert result.exit_code == 0
