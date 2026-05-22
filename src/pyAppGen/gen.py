@@ -2574,7 +2574,10 @@ def write_reports_template(output_dir):
         and CSV output.
       </p>
     </div>
-    <a class="btn btn-default" href="{{ url_for('ReportsView.catalog_json') }}">Catalog JSON</a>
+    <div>
+      <a class="btn btn-default" href="{{ url_for('ReportsView.catalog_json') }}">Catalog JSON</a>
+      <a class="btn btn-default" href="{{ url_for('ReportsView.release_gate_json') }}">Release Gate JSON</a>
+    </div>
   </div>
   <h2 class="agr-title" style="font-size: 20px;">Table reports</h2>
   <div class="agr-grid">
@@ -11021,6 +11024,64 @@ def rows_to_csv(columns, rows):
     return buffer.getvalue()
 
 
+def reports_release_gate(existing_paths=()):
+    """Return an auditable release gate for generated report contracts."""
+    artifacts = set(existing_paths or ())
+    required_artifacts = ("app/reports.py", "app/templates/appgen_reports.html")
+    sample_report = report_catalog()[0] if report_catalog() else None
+    sample_columns = tuple(sample_report["columns"]) if sample_report else ()
+    sample_row = {{column: f"sample-{{column}}" for column in sample_columns}}
+    table_csv = rows_to_csv(sample_columns, (sample_row,)) if sample_report else ""
+    relation_keys = relationship_report_keys()
+    first_relation_key = relation_keys[0] if relation_keys else None
+    relation_csv = relationship_rows_to_csv(first_relation_key, ()) if first_relation_key else ""
+    gates = (
+        {{
+            "gate": "table_catalog",
+            "ok": bool(report_catalog()) and all(report["kind"] == "table" and report["columns"] for report in report_catalog()),
+            "evidence": tuple(report["key"] for report in report_catalog()),
+        }},
+        {{
+            "gate": "csv_export",
+            "ok": bool(sample_columns) and all(column in table_csv for column in sample_columns[:2]),
+            "evidence": sample_columns,
+        }},
+        {{
+            "gate": "join_reports",
+            "ok": all(report_query_plan(key)["requires_join"] for key in JOIN_REPORTS),
+            "evidence": tuple(JOIN_REPORTS),
+        }},
+        {{
+            "gate": "three_way_reports",
+            "ok": all(len(report_query_plan(key)["tables"]) == 3 for key in THREE_WAY_REPORTS),
+            "evidence": tuple(THREE_WAY_REPORTS) or ("not_applicable",),
+        }},
+        {{
+            "gate": "relationship_csv",
+            "ok": (not first_relation_key) or bool(relation_csv.startswith(",".join(report_definition(first_relation_key)["columns"][:1]))),
+            "evidence": first_relation_key or "not_applicable",
+        }},
+        {{
+            "gate": "query_plans",
+            "ok": all(report_query_plan(report["key"])["columns"] for report in all_report_catalog()),
+            "evidence": tuple(report["key"] for report in all_report_catalog()),
+        }},
+        {{
+            "gate": "artifact_coverage",
+            "ok": set(required_artifacts) <= artifacts,
+            "missing": tuple(item for item in required_artifacts if item not in artifacts),
+        }},
+    )
+    ok = all(gate["ok"] for gate in gates)
+    return {{
+        "format": "appgen.reports-release-gate.v1",
+        "ok": ok,
+        "decision": "approved" if ok else "blocked",
+        "gates": gates,
+        "required_artifacts": required_artifacts,
+    }}
+
+
 class ReportsView(BaseView):
     route_base = "/reports"
     default_view = "index"
@@ -11041,6 +11102,10 @@ class ReportsView(BaseView):
             "joins": list(join_report_catalog()),
             "three_way": list(three_way_report_catalog()),
         }}
+
+    @expose("/release-gate.json")
+    def release_gate_json(self):
+        return jsonify(reports_release_gate({{"app/reports.py", "app/templates/appgen_reports.html"}}))
 
     @expose("/<table_name>.csv")
     def export_csv(self, table_name):
@@ -33606,12 +33671,13 @@ def validate_report_artifacts() -> None:
         "three_way_report_catalog",
         "report_query_plan",
         "relationship_rows_to_csv",
+        "reports_release_gate",
     )
     if not all(item in contract for item in required):
-        fail("reports contract must expose table, join, and three-way report helpers")
+        fail("reports contract must expose table, join, three-way, and release-gate report helpers")
     template = (ROOT / "app" / "templates" / "appgen_reports.html").read_text()
-    if "Join reports" not in template or "Three-way reports" not in template or "Catalog JSON" not in template:
-        fail("reports template must expose table, join, and three-way report catalogs")
+    if "Join reports" not in template or "Three-way reports" not in template or "Catalog JSON" not in template or "Release Gate JSON" not in template:
+        fail("reports template must expose table, join, three-way, and release-gate report catalogs")
 
 
 def validate_report_delivery_artifacts() -> None:
@@ -34587,6 +34653,8 @@ def test_generated_runtime_helpers():
     assert validation.ui_validation_schema(first_validation_table)["format"] == "appgen.ui-validation.v1"
     assert isinstance(rules.rules_catalog(), tuple)
     assert rules.rules_check({"app/rules.py", "app/templates/appgen_rules.html"})["ok"] is True
+    assert reports.reports_release_gate({"app/reports.py", "app/templates/appgen_reports.html"})["ok"] is True
+    assert reports.reports_release_gate({"app/reports.py"})["ok"] is False
     assert report_delivery.rows_to_pdf_bytes(next(iter(report_delivery.REPORT_DELIVERY)), ()).startswith(b"%PDF")
     assert report_delivery.delivery_plan(next(iter(report_delivery.REPORT_DELIVERY)))["ok"] is True
     assert report_delivery.report_delivery_release_gate({"app/report_delivery.py", "app/templates/appgen_report_delivery.html"})["ok"] is True

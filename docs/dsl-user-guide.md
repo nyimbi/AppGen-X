@@ -406,6 +406,9 @@ API, PWA, documentation, and generated test surfaces stay aligned.
 Use the generated `seed_release_gate()` before release to prove seed scenarios
 are dependency ordered, validation-clean, anonymized for fixture export, backed
 by SQL previews, and connected to generated coverage plus quality artifacts.
+Use `reports_release_gate()` to prove generated reports cover table catalogs,
+CSV exports, relationship-aware joins, three-way report paths, query plans, and
+required report artifacts before relying on generated operational reporting.
 Use `report_delivery_release_gate()` to prove generated report delivery has
 CSV/PDF formats, download/email channels, printable previews, PDF attachments,
 and required report-delivery artifacts before wiring production email.

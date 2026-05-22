@@ -2166,6 +2166,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert "SCXML" in (output_dir / "templates" / "appgen_workflows.html").read_text()
     assert "Workbench JSON" in (output_dir / "templates" / "appgen_workflows.html").read_text()
     assert "Export CSV" in (output_dir / "templates" / "appgen_reports.html").read_text()
+    assert "Release Gate JSON" in (output_dir / "templates" / "appgen_reports.html").read_text()
     assert "Generated PDF export and email delivery contracts" in (
         output_dir / "templates" / "appgen_report_delivery.html"
     ).read_text()
@@ -2876,6 +2877,19 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert reports.join_report_catalog()
     first_join = reports.join_report_catalog()[0]
     assert reports.report_query_plan(first_join["key"])["requires_join"] is True
+    reports_gate = reports.reports_release_gate({"app/reports.py", "app/templates/appgen_reports.html"})
+    assert reports_gate["format"] == "appgen.reports-release-gate.v1"
+    assert reports_gate["ok"] is True
+    assert {
+        "table_catalog",
+        "csv_export",
+        "join_reports",
+        "three_way_reports",
+        "relationship_csv",
+        "query_plans",
+        "artifact_coverage",
+    } <= {gate["gate"] for gate in reports_gate["gates"]}
+    assert reports.reports_release_gate({"app/reports.py"})["ok"] is False
     assert report_delivery.delivery_plan("Book", channels=("download", "email"), formats=("csv", "pdf"))["ok"] is True
     assert report_delivery.rows_to_html("Book", [{"title": "Dune", "status": "draft"}]).startswith("<!doctype html>")
     assert report_delivery.rows_to_pdf_bytes("Book", [{"title": "Dune", "status": "draft"}]).startswith(b"%PDF")

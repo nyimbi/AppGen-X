@@ -278,7 +278,9 @@ apps include:
   fallback translation payloads, and missing-key reports.
 - `reports.py` and `appgen_reports.html` with generated report catalogs and CSV
   exports for every table plus relationship-aware join reports and three-way
-  table-set reports derived from the schema relation graph.
+  table-set reports derived from the schema relation graph. A generated reports
+  release gate proves table catalogs, CSV exports, join and three-way reports,
+  relationship CSV output, query plans, and required report artifacts.
 - `report_delivery.py` and `appgen_report_delivery.html` with generated PDF
   exports and email delivery payloads for reports, plus a release gate proving
   delivery catalog coverage, CSV/PDF format coverage, download/email channel
