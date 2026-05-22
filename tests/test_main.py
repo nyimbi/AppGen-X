@@ -24,6 +24,13 @@ from sqlalchemy import create_engine
 from sqlalchemy import text
 
 from pyAppGen import __main__
+from pyAppGen.agentic import agent_catalog
+from pyAppGen.agentic import agent_execution_matrix
+from pyAppGen.agentic import agent_tool_policy
+from pyAppGen.agentic import agentic_release_audit
+from pyAppGen.agentic import dsl_agentic_contract
+from pyAppGen.agentic import provider_catalog as agentic_provider_catalog
+from pyAppGen.agentic import provider_connection_matrix
 from pyAppGen.config_admin import config_editor_catalog
 from pyAppGen.config_admin import config_editor_release_audit
 from pyAppGen.config_admin import parse_config_assignments
@@ -289,6 +296,7 @@ def test_package_goal_audit_cli_aggregates_objective_evidence(
         "reporting_chartviews",
         "ops_deployment_search",
         "enterprise_integrations",
+        "agentic_systems",
         "source_document_scope",
     } == {gate["id"] for gate in direct_report["gates"]}
     assert direct_report["stop_condition"] == (
@@ -312,6 +320,7 @@ def test_package_goal_audit_cli_aggregates_objective_evidence(
     assert cli_report["audits"]["reporting"]["ok"] is True
     assert cli_report["audits"]["ops"]["ok"] is True
     assert cli_report["audits"]["integrations"]["ok"] is True
+    assert cli_report["audits"]["agentic"]["ok"] is True
 
 
 def test_package_erp_templates_export_generatable_dsl(
@@ -767,6 +776,79 @@ def test_package_integrations_audit_covers_enterprise_contracts(
         "entando",
         "invenio",
     }
+
+
+def test_package_agentic_audit_covers_llm_providers_and_agents(
+    runner: CliRunner,
+) -> None:
+    """The package proves local/API-key LLMs, agents, and tool policies."""
+    dsl_contract = dsl_agentic_contract()
+    assert dsl_contract["format"] == "appgen.package-agentic-dsl-contract.v1"
+    assert dsl_contract["ok"] is True
+    assert set(dsl_contract["provider_modes"]) == {"local", "api"}
+    assert "SupportAgent" in dsl_contract["agents"]
+
+    providers = agentic_provider_catalog({"OPENAI_API_KEY": "test", "ANTHROPIC_API_KEY": "test"})
+    assert {provider["mode"] for provider in providers} == {"local", "api"}
+    assert {provider["provider"] for provider in providers} >= {
+        "ollama",
+        "lmstudio",
+        "openai",
+        "anthropic",
+    }
+    assert all(provider["configured"] for provider in providers)
+    assert all(
+        provider["secret_policy"] == "env-only"
+        for provider in providers
+        if provider["mode"] == "api"
+    )
+
+    missing_matrix = provider_connection_matrix({})
+    assert missing_matrix["ok"] is False
+    assert set(missing_matrix["missing_api_providers"]) == {"ApiModel", "ClaudeModel"}
+
+    ready_matrix = provider_connection_matrix(
+        {"OPENAI_API_KEY": "test", "ANTHROPIC_API_KEY": "test"}
+    )
+    assert ready_matrix["format"] == "appgen.package-agent-provider-matrix.v1"
+    assert ready_matrix["ok"] is True
+
+    assert {agent["provider"] for agent in agent_catalog()} == {"LocalModel", "ApiModel"}
+    policy = agent_tool_policy()
+    assert policy["format"] == "appgen.package-agent-tool-policy.v1"
+    assert policy["ok"] is True
+    assert all("drop_table" in item["denied_tools"] for item in policy["policies"])
+
+    execution = agent_execution_matrix(
+        environ={"OPENAI_API_KEY": "test", "ANTHROPIC_API_KEY": "test"}
+    )
+    assert execution["format"] == "appgen.package-agent-execution-matrix.v1"
+    assert execution["ok"] is True
+    assert all(plan["review_required"] for plan in execution["plans"])
+
+    audit = agentic_release_audit()
+    assert audit["format"] == "appgen.package-agentic-release-audit.v1"
+    assert audit["ok"] is True
+    assert {
+        "dsl_llm_agent_blocks",
+        "provider_modes",
+        "api_key_secret_policy",
+        "missing_secret_guard",
+        "agent_provider_links",
+        "tool_policy",
+        "execution_matrix",
+        "artifact_contract",
+    } == {gate["id"] for gate in audit["gates"]}
+
+    missing = agentic_release_audit(existing_paths={"app/agents.py"})
+    assert missing["ok"] is False
+    assert any(gate["id"] == "artifact_contract" for gate in missing["blocking_gaps"])
+
+    result = runner.invoke(__main__.main, ["--agentic-release-audit"])
+    assert result.exit_code == 0
+    report = json.loads(result.output)
+    assert report["ok"] is True
+    assert report["providers"]["ok"] is True
 
 
 def test_dsl_linter_reports_semantic_feedback(runner: CliRunner, tmp_path) -> None:

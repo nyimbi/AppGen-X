@@ -322,6 +322,18 @@ SAP stubs, Stripe and M-Pesa payment plans, Twilio SMS, SendGrid email, stable
 idempotency keys, and first-class generated contracts for Entando
 micro-frontends and Invenio repository deposits.
 
+Audit package-level agentic readiness before claiming the DSL can design
+agentic systems across local and API-key LLM providers:
+
+```console
+appgen --agentic-release-audit
+```
+
+The agentic audit parses DSL `llm` and `agent` blocks, proves Ollama and
+LM Studio local provider contracts, OpenAI and Anthropic API-key contracts,
+environment-only secret policy, missing-key guardrails, reviewed agent tool
+policies, execution matrices, and generated agent artifact expectations.
+
 ## Shape
 
 - `table` defines persistent data models.

@@ -144,6 +144,10 @@ Run `appgen --integration-release-audit` to prove REST/webhook, Salesforce,
 SAP, Entando, Invenio, Stripe, M-Pesa, Twilio SMS, and SendGrid email
 connectors, signed delivery, idempotency, and portal/repository contracts are
 covered before release.
+Run `appgen --agentic-release-audit` to prove DSL `llm`/`agent` blocks, local
+Ollama/LM Studio providers, API-key OpenAI/Anthropic providers, secret
+guardrails, reviewed tool policies, execution matrices, and generated agent
+artifacts are covered before release.
 
 Use `required` for fields that must be entered. Use `search` on fields that
 should appear in generated search contracts. Use `hidden` for generated or

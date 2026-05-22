@@ -503,6 +503,7 @@ def generated_app_excellence_audit() -> dict:
 
 def package_goal_audit(root: Path | str | None = None) -> dict:
     """Return aggregate package evidence for the active AppGen objective."""
+    from .agentic import agentic_release_audit
     from .config_admin import config_editor_release_audit
     from .distribution import distribution_release_audit
     from .erp import erp_template_release_audit
@@ -523,6 +524,7 @@ def package_goal_audit(root: Path | str | None = None) -> dict:
     reporting = reporting_release_audit()
     ops = ops_release_audit()
     integrations = integration_release_audit()
+    agentic = agentic_release_audit()
     gates = (
         {
             "id": "roadmap_traceability",
@@ -580,6 +582,11 @@ def package_goal_audit(root: Path | str | None = None) -> dict:
             "format": integrations["format"],
         },
         {
+            "id": "agentic_systems",
+            "ok": agentic["ok"],
+            "format": agentic["format"],
+        },
+        {
             "id": "source_document_scope",
             "ok": {"docs/ideas.md", "docs/base_features.md", "docs/Lo-code features.md"}
             <= {document["path"] for document in roadmap["documents"]},
@@ -605,6 +612,7 @@ def package_goal_audit(root: Path | str | None = None) -> dict:
             "reporting": reporting,
             "ops": ops,
             "integrations": integrations,
+            "agentic": agentic,
         },
         "blocking_gaps": tuple(gate for gate in gates if not gate["ok"]),
         "stop_condition": "do-not-mark-active-goal-complete-unless-ok-is-true",

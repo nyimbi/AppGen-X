@@ -46897,6 +46897,11 @@ def get_metadata(idb):
     help="Print JSON proof that package enterprise integration contracts are ready.",
 )
 @click.option(
+    "--agentic-release-audit",
+    is_flag=True,
+    help="Print JSON proof that package agentic-system contracts are ready.",
+)
+@click.option(
     "--schema-source-audit",
     is_flag=True,
     help=(
@@ -46942,6 +46947,7 @@ def main(
     reporting_release_audit,
     ops_release_audit,
     integration_release_audit,
+    agentic_release_audit,
     schema_source_audit,
     dsl_antlr_report,
 ):
@@ -46958,6 +46964,7 @@ def main(
         reporting_release_audit,
         ops_release_audit,
         integration_release_audit,
+        agentic_release_audit,
     ]
     utility_options = [
         lint_dsl_path,
@@ -47326,6 +47333,7 @@ def main(
                 reporting_release_audit,
                 ops_release_audit,
                 integration_release_audit,
+                agentic_release_audit,
                 *schema_sources,
             ]
         ):
@@ -47352,6 +47360,7 @@ def main(
                 reporting_release_audit,
                 ops_release_audit,
                 integration_release_audit,
+                agentic_release_audit,
                 *schema_sources,
             ]
         ):
@@ -47377,6 +47386,7 @@ def main(
                 reporting_release_audit,
                 ops_release_audit,
                 integration_release_audit,
+                agentic_release_audit,
                 *schema_sources,
             ]
         ):
@@ -47401,6 +47411,7 @@ def main(
                 reporting_release_audit,
                 ops_release_audit,
                 integration_release_audit,
+                agentic_release_audit,
                 *schema_sources,
             ]
         ):
@@ -47424,6 +47435,7 @@ def main(
                 reporting_release_audit,
                 ops_release_audit,
                 integration_release_audit,
+                agentic_release_audit,
                 *schema_sources,
             ]
         ):
@@ -47446,6 +47458,7 @@ def main(
                 reporting_release_audit,
                 ops_release_audit,
                 integration_release_audit,
+                agentic_release_audit,
                 *schema_sources,
             ]
         ):
@@ -47467,6 +47480,7 @@ def main(
                 wdatabase,
                 ops_release_audit,
                 integration_release_audit,
+                agentic_release_audit,
                 *schema_sources,
             ]
         ):
@@ -47487,6 +47501,7 @@ def main(
                 idatabase,
                 wdatabase,
                 integration_release_audit,
+                agentic_release_audit,
                 *schema_sources,
             ]
         ):
@@ -47500,7 +47515,16 @@ def main(
         ctx.exit(0 if result["ok"] else 1)
 
     if integration_release_audit:
-        if any([writedir, database_url, idatabase, wdatabase, *schema_sources]):
+        if any(
+            [
+                writedir,
+                database_url,
+                idatabase,
+                wdatabase,
+                agentic_release_audit,
+                *schema_sources,
+            ]
+        ):
             raise click.UsageError(
                 "--integration-release-audit cannot be combined with generation options."
             )
@@ -47509,6 +47533,17 @@ def main(
         )
 
         result = package_integration_release_audit()
+        click.echo(json.dumps(result, indent=2, sort_keys=True, default=list))
+        ctx.exit(0 if result["ok"] else 1)
+
+    if agentic_release_audit:
+        if any([writedir, database_url, idatabase, wdatabase, *schema_sources]):
+            raise click.UsageError(
+                "--agentic-release-audit cannot be combined with generation options."
+            )
+        from .agentic import agentic_release_audit as package_agentic_release_audit
+
+        result = package_agentic_release_audit()
         click.echo(json.dumps(result, indent=2, sort_keys=True, default=list))
         ctx.exit(0 if result["ok"] else 1)
 
