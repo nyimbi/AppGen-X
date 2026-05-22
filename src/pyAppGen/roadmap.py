@@ -512,6 +512,7 @@ def package_goal_audit(root: Path | str | None = None) -> dict:
     from .ops import ops_release_audit
     from .reporting import reporting_release_audit
     from .studio import studio_release_audit
+    from .targets import target_release_audit
 
     roadmap = roadmap_release_audit(root)
     superiority = jhipster_superiority_audit()
@@ -525,6 +526,7 @@ def package_goal_audit(root: Path | str | None = None) -> dict:
     ops = ops_release_audit()
     integrations = integration_release_audit()
     agentic = agentic_release_audit()
+    targets = target_release_audit()
     gates = (
         {
             "id": "roadmap_traceability",
@@ -587,6 +589,11 @@ def package_goal_audit(root: Path | str | None = None) -> dict:
             "format": agentic["format"],
         },
         {
+            "id": "multi_target_generation",
+            "ok": targets["ok"],
+            "format": targets["format"],
+        },
+        {
             "id": "source_document_scope",
             "ok": {"docs/ideas.md", "docs/base_features.md", "docs/Lo-code features.md"}
             <= {document["path"] for document in roadmap["documents"]},
@@ -613,6 +620,7 @@ def package_goal_audit(root: Path | str | None = None) -> dict:
             "ops": ops,
             "integrations": integrations,
             "agentic": agentic,
+            "targets": targets,
         },
         "blocking_gaps": tuple(gate for gate in gates if not gate["ok"]),
         "stop_condition": "do-not-mark-active-goal-complete-unless-ok-is-true",

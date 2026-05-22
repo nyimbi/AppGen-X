@@ -101,6 +101,14 @@ from pyAppGen.studio import dsl_editor_state
 from pyAppGen.studio import generation_job_manifest
 from pyAppGen.studio import studio_release_audit
 from pyAppGen.studio import studio_workspace
+from pyAppGen.targets import desktop_capability_contract
+from pyAppGen.targets import dsl_target_contract
+from pyAppGen.targets import generation_matrix as package_generation_matrix
+from pyAppGen.targets import mobile_capability_contract
+from pyAppGen.targets import target_catalog
+from pyAppGen.targets import target_contract
+from pyAppGen.targets import target_package_matrix
+from pyAppGen.targets import target_release_audit
 
 
 @pytest.fixture
@@ -297,6 +305,7 @@ def test_package_goal_audit_cli_aggregates_objective_evidence(
         "ops_deployment_search",
         "enterprise_integrations",
         "agentic_systems",
+        "multi_target_generation",
         "source_document_scope",
     } == {gate["id"] for gate in direct_report["gates"]}
     assert direct_report["stop_condition"] == (
@@ -321,6 +330,7 @@ def test_package_goal_audit_cli_aggregates_objective_evidence(
     assert cli_report["audits"]["ops"]["ok"] is True
     assert cli_report["audits"]["integrations"]["ok"] is True
     assert cli_report["audits"]["agentic"]["ok"] is True
+    assert cli_report["audits"]["targets"]["ok"] is True
 
 
 def test_package_erp_templates_export_generatable_dsl(
@@ -849,6 +859,76 @@ def test_package_agentic_audit_covers_llm_providers_and_agents(
     report = json.loads(result.output)
     assert report["ok"] is True
     assert report["providers"]["ok"] is True
+
+
+def test_package_target_audit_covers_web_mobile_desktop_generation(
+    runner: CliRunner,
+) -> None:
+    """The package proves web, PWA, mobile, desktop, and chatbot targets."""
+    catalog = target_catalog()
+    assert {item["target"] for item in catalog} == {
+        "web",
+        "pwa",
+        "mobile",
+        "desktop",
+        "chatbot",
+    }
+
+    web = target_contract("web")
+    assert web["runtime"] == "Flask-AppBuilder"
+    assert "api_routes" in web["capabilities"]
+
+    matrix = package_generation_matrix()
+    assert {row["target"] for row in matrix} == {"web", "mobile", "desktop"}
+
+    package_matrix = target_package_matrix()
+    assert package_matrix["format"] == "appgen.package-target-matrix.v1"
+    assert package_matrix["ok"] is True
+    assert {"web", "mobile", "desktop"} <= {row["target"] for row in package_matrix["rows"]}
+
+    dsl_contract = dsl_target_contract()
+    assert dsl_contract["format"] == "appgen.package-target-dsl-contract.v1"
+    assert dsl_contract["ok"] is True
+    assert set(dsl_contract["targets"]) == {"web", "pwa", "mobile", "desktop", "chatbot"}
+
+    mobile = mobile_capability_contract()
+    assert mobile["format"] == "appgen.package-mobile-target-contract.v1"
+    assert mobile["ok"] is True
+    assert "android.permission.CAMERA" in mobile["permissions"]
+
+    desktop = desktop_capability_contract()
+    assert desktop["format"] == "appgen.package-desktop-target-contract.v1"
+    assert desktop["ok"] is True
+    assert desktop["file_actions_review_required"] is True
+
+    audit = target_release_audit()
+    assert audit["format"] == "appgen.package-target-release-audit.v1"
+    assert audit["ok"] is True
+    assert {
+        "target_catalog",
+        "dsl_target_selection",
+        "package_matrix",
+        "mobile_contract",
+        "desktop_contract",
+        "pwa_chatbot_contracts",
+        "artifact_contract",
+    } == {gate["id"] for gate in audit["gates"]}
+
+    missing = target_release_audit(existing_paths={"app/views.py"})
+    assert missing["ok"] is False
+    assert any(gate["id"] == "artifact_contract" for gate in missing["blocking_gaps"])
+
+    result = runner.invoke(__main__.main, ["--target-release-audit"])
+    assert result.exit_code == 0
+    report = json.loads(result.output)
+    assert report["ok"] is True
+    assert {item["target"] for item in report["catalog"]} == {
+        "web",
+        "pwa",
+        "mobile",
+        "desktop",
+        "chatbot",
+    }
 
 
 def test_dsl_linter_reports_semantic_feedback(runner: CliRunner, tmp_path) -> None:

@@ -334,6 +334,18 @@ LM Studio local provider contracts, OpenAI and Anthropic API-key contracts,
 environment-only secret policy, missing-key guardrails, reviewed agent tool
 policies, execution matrices, and generated agent artifact expectations.
 
+Audit package-level target readiness before claiming AppGen can generate web,
+PWA, mobile, desktop, and chatbot applications:
+
+```console
+appgen --target-release-audit
+```
+
+The target audit parses DSL target selection and proves Flask-AppBuilder web,
+installable PWA, Kivy mobile, BeeWare desktop, and chatbot provider contracts,
+including package artifacts, mobile permissions/offline queues, and desktop
+local-cache/sync replay expectations.
+
 ## Shape
 
 - `table` defines persistent data models.
