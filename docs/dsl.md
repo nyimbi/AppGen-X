@@ -648,7 +648,9 @@ apps include:
 - `sdks/` with generated Python, JavaScript, Java, and C# API client
   scaffolds derived from the same REST table contracts. A generated SDK release
   gate proves multi-language target coverage, scaffold artifacts, REST route
-  catalogs, client method names, and OpenAPI path alignment.
+  catalogs, client method names, and OpenAPI path alignment; `sdk_workbench()`
+  packages the same target matrix, artifact coverage, method catalog, route
+  catalog, OpenAPI alignment, and release decision for generated IDE review.
 - `native/` with generated Kivy mobile and BeeWare desktop Python starter
   apps, mobile permission manifests, camera/location capture plans, push
   notification payloads, offline sync batches, conflict-resolution plans,

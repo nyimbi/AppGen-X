@@ -37165,6 +37165,38 @@ def sdk_release_gate(existing_paths=(), openapi_paths=()):
         "decision": "approved" if ok else "blocked",
         "gates": gates,
     }}
+
+
+def sdk_workbench(existing_paths=(), openapi_paths=()):
+    """Return consolidated SDK evidence for API builders and generated IDEs."""
+    targets = sdk_targets()
+    routes = sdk_routes()
+    release_gate = sdk_release_gate(existing_paths, openapi_paths)
+    method_catalog = tuple(
+        {{"table": table_name, "endpoint": endpoint, "methods": client_method_names(table_name)}}
+        for table_name, endpoint in routes
+    )
+    checks = (
+        {{"id": "target_matrix", "ok": {{"python", "javascript", "java", "csharp"}} <= set(targets), "targets": targets}},
+        {{"id": "artifact_coverage", "ok": scaffold_check(existing_paths)["ok"], "missing": scaffold_check(existing_paths)["missing"]}},
+        {{"id": "route_catalog", "ok": bool(routes), "routes": routes}},
+        {{"id": "client_methods", "ok": bool(method_catalog) and all({{"list", "retrieve", "create", "update", "delete"}} <= set(item["methods"]) for item in method_catalog), "methods": method_catalog}},
+        {{"id": "openapi_alignment", "ok": next((gate["ok"] for gate in release_gate["gates"] if gate["gate"] == "openapi_alignment"), False)}},
+        {{"id": "release_gate", "ok": release_gate["ok"], "decision": release_gate["decision"]}},
+    )
+    ok = all(check["ok"] for check in checks)
+    return {{
+        "format": "appgen.sdk-workbench.v1",
+        "ok": ok,
+        "decision": "approved" if ok else "blocked",
+        "app_name": SDK_CONTRACT["app_name"],
+        "api_base": SDK_CONTRACT["api_base"],
+        "targets": tuple(sdk_plan(target) for target in targets),
+        "routes": routes,
+        "methods": method_catalog,
+        "release_gate": release_gate,
+        "checks": checks,
+    }}
 '''
 
 

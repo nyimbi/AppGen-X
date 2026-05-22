@@ -64,7 +64,7 @@ DEFAULT_CAPABILITIES: tuple[Capability, ...] = (
     Capability("data.access", "Low-code query, mutation, and validation contracts", "implemented", "generated table read/write contracts with filters, sorting, paging, projections, saved queries, mutation plans, audit events, data access workbench route, and release gates"),
     Capability("api.documentation", "Automatic API and schema documentation", "implemented", "generated README, schema docs, data dictionary, content guide, OpenAPI docs, accessibility baseline, documentation workbench contract, and quality gates"),
     Capability("api.openapi", "OpenAPI contract generation", "implemented", "generated OpenAPI 3.1 spec, docs/openapi.json, API docs view, OpenAPI workbench route, and release gates"),
-    Capability("api.sdks", "Multi-language API SDK exports", "partial", "generated Python, JavaScript, Java, and C# client scaffolds"),
+    Capability("api.sdks", "Multi-language API SDK exports", "implemented", "generated Python, JavaScript, Java, and C# client scaffolds, route catalogs, method catalogs, OpenAPI alignment checks, SDK workbench contract, and release gates"),
     Capability("data.exchange", "Schema-aware CSV and JSON data exchange", "partial", "generated import templates, row validation, and export helpers"),
     Capability("data.search", "Schema-aware full-text search", "partial", "generated search indexes, provider adapter plans, Elasticsearch mappings, Whoosh schemas, and reviewed reindex runbooks"),
     Capability("data.database-ops", "Database provider and operations contracts", "partial", "generated PostgreSQL, MySQL, SQLite, MongoDB, DynamoDB, Cassandra, Redis, Patroni, PostGraphile, ZomboDB, and Elasticsearch readiness plans"),

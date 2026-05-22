@@ -1045,6 +1045,7 @@ def test_generate_app_from_sqlite_schema_compiles(tmp_path) -> None:
     capabilities_by_key = {item["key"]: item for item in manifest["capabilities"]}
     assert capabilities_by_key["api.documentation"]["status"] == "implemented"
     assert capabilities_by_key["api.openapi"]["status"] == "implemented"
+    assert capabilities_by_key["api.sdks"]["status"] == "implemented"
     assert capabilities_by_key["platform.targets"]["status"] == "implemented"
     assert capabilities_by_key["platform.native"]["status"] == "implemented"
     assert capabilities_by_key["platform.frontends"]["status"] == "implemented"
@@ -5011,6 +5012,23 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert {"target_matrix", "route_catalog", "client_methods", "openapi_alignment"} <= {
         gate["gate"] for gate in sdk_gate["gates"]
     }
+    sdk_workbench = sdks.sdk_workbench(
+        {
+            "sdks/appgen_sdks.py",
+            "sdks/python/client.py",
+            "sdks/javascript/client.js",
+            "sdks/java/AppGenClient.java",
+            "sdks/csharp/AppGenClient.cs",
+        },
+        openapi.openapi_spec()["paths"].keys(),
+    )
+    assert sdk_workbench["format"] == "appgen.sdk-workbench.v1"
+    assert sdk_workbench["ok"] is True
+    assert sdk_workbench["release_gate"]["ok"] is True
+    assert {"target_matrix", "artifact_coverage", "route_catalog", "client_methods", "openapi_alignment", "release_gate"} == {
+        check["id"] for check in sdk_workbench["checks"]
+    }
+    assert sdks.sdk_workbench({"sdks/appgen_sdks.py"}, openapi.openapi_spec()["paths"].keys())["ok"] is False
     assert sdks.sdk_release_gate({"sdks/appgen_sdks.py"}, openapi.openapi_spec()["paths"].keys())["ok"] is False
     collaboration_catalog = collaboration.collaboration_catalog()
     assert any(item["table"] == "Book" and "Book.proposal.created" in item["events"] for item in collaboration_catalog)
