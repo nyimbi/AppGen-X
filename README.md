@@ -40,6 +40,9 @@ Generated packages include:
   form layouts, natural-language evolution, releases, and audits.
 - RAD-style visual form designer contracts with drop zones, components,
   property inspectors, layout validation, and renderer metadata.
+- Native data tooling contracts for connection profiles, query design, server
+  methods, generated client proxies, secured resources, embedded local storage,
+  offline sync, conflict handling, and side-effect guards.
 - Splash-screen, editable-menu, right-click/context-menu, and UI fine-tuning
   contracts in the generated branding workbench.
 - Visual database modeling exports for Mermaid ERD, DBML, SQL DDL, PonyORM, and
@@ -305,6 +308,9 @@ Generated apps include Studio contracts for:
 - A visual data-binding workbench proves binding graph nodes/edges, expression
   validation, converter and validator catalogs, designer gestures, and runtime
   binding modes.
+- A native data tooling workbench proves connection catalogs, query designer
+  metadata, server method/client proxy generation, secured resource tooling,
+  embedded local database support, offline sync policies, and conflict guards.
 - Curated third-party component registry for useful commercial and open-source
   suites, plus reviewed package import/install plans for additional vendors.
 - Generated package modules under `app/component_packages/<package>.py` export

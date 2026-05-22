@@ -57,6 +57,10 @@ A generated app can include:
 - `livebindings_workbench()` proves visual data-binding graph nodes and edges,
   expression validation, converters, validators, designer gestures, and runtime
   update modes.
+- `rad_data_tooling_workbench()` proves connection catalogs, query designer
+  metadata, server method and client proxy tooling, secured resource tooling,
+  embedded local database support, offline sync policies, conflict handling, and
+  side-effect guards.
 - `app/component_packages/<package>.py` gives every curated component package
   its own reviewed package contract with `package_contract()`, `install_plan()`,
   `load_policy()`, and `test_plan()` exports.

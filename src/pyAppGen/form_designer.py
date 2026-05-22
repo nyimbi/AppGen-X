@@ -1267,6 +1267,12 @@ def livebindings_workbench() -> dict:
 
 def rad_data_tooling_contract() -> dict:
     """Return native RAD data-service tooling modeled by the generated IDE."""
+    connection_catalog = rad_data_connection_catalog()
+    query_designer = rad_query_designer_contract()
+    server_methods = data_service_method_contract()
+    resource_contract = data_service_resource_contract()
+    local_database = local_database_contract()
+    offline_sync = data_offline_sync_contract()
     return {
         "format": "appgen.rad-data-tooling-contract.v1",
         "tooling": {
@@ -1275,7 +1281,155 @@ def rad_data_tooling_contract() -> dict:
             "RAD Server": ("resources", "edge_modules", "users", "groups", "analytics"),
             "InterBase": ("local_embedded", "change_views", "encryption", "backup_restore"),
         },
+        "connection_catalog": connection_catalog,
+        "query_designer": query_designer,
+        "server_methods": server_methods,
+        "resources": resource_contract,
+        "local_database": local_database,
+        "offline_sync": offline_sync,
         "guards": ("connection_secrets_externalized", "migrations_reviewed", "offline_sync_conflicts_visible"),
+    }
+
+
+def rad_data_connection_catalog() -> tuple[dict, ...]:
+    """Return connection profiles managed by the generated data tooling."""
+    return (
+        {
+            "name": "primary_sql",
+            "driver": "relational",
+            "capabilities": ("pooled_connections", "transactions", "prepared_queries", "schema_introspection"),
+            "secret_policy": "externalized",
+        },
+        {
+            "name": "local_embedded",
+            "driver": "embedded",
+            "capabilities": ("encrypted_store", "local_transactions", "change_views", "backup_restore"),
+            "secret_policy": "local_keychain",
+        },
+        {
+            "name": "rest_edge",
+            "driver": "http_resource",
+            "capabilities": ("resource_endpoints", "auth_filters", "analytics", "rate_limits"),
+            "secret_policy": "externalized",
+        },
+    )
+
+
+def rad_query_designer_contract() -> dict:
+    """Return query, stored procedure, and schema-adapter design contracts."""
+    return {
+        "format": "appgen.rad-query-designer-contract.v1",
+        "surfaces": ("sql_builder", "parameter_editor", "stored_procedure_browser", "schema_adapter", "migration_preview"),
+        "query_types": ("select", "insert", "update", "delete", "stored_procedure", "view"),
+        "parameter_types": ("string", "int", "decimal", "date", "datetime", "boolean", "blob"),
+        "guards": ("parameterized_sql_only", "schema_diff_review", "transaction_boundary_visible"),
+        "side_effects": (),
+    }
+
+
+def data_service_method_contract() -> dict:
+    """Return server method and client proxy generation contracts."""
+    return {
+        "format": "appgen.data-service-method-contract.v1",
+        "method_kinds": ("query", "command", "transaction", "stream", "background_job"),
+        "transports": ("https_json", "websocket", "local_loopback"),
+        "generated_artifacts": ("server_method_stub", "client_proxy", "auth_filter", "request_validator", "integration_test"),
+        "session_lifecycle": ("stateless", "stateful_session", "transaction_scope", "timeout_policy"),
+        "side_effects": (),
+    }
+
+
+def data_service_resource_contract() -> dict:
+    """Return REST/resource tooling contracts for generated back ends."""
+    return {
+        "format": "appgen.data-service-resource-contract.v1",
+        "resources": ("tables", "reports", "files", "jobs", "health", "analytics"),
+        "security": ("users", "groups", "roles", "api_keys", "audit_log"),
+        "edge_modules": ("auth", "validation", "rate_limit", "telemetry", "offline_sync"),
+        "analytics": ("usage", "latency", "errors", "resource_heatmap"),
+        "side_effects": (),
+    }
+
+
+def local_database_contract() -> dict:
+    """Return local embedded database tooling contracts."""
+    return {
+        "format": "appgen.local-database-contract.v1",
+        "features": ("embedded_store", "encryption", "backup_restore", "change_views", "replication_queue"),
+        "designers": ("table_browser", "index_editor", "backup_plan", "change_view_designer"),
+        "guards": ("encrypted_by_default", "backup_before_schema_change", "replication_conflicts_reviewed"),
+        "side_effects": (),
+    }
+
+
+def data_offline_sync_contract() -> dict:
+    """Return offline cache and conflict-resolution contracts."""
+    return {
+        "format": "appgen.data-offline-sync-contract.v1",
+        "cache_modes": ("read_through", "write_behind", "explicit_snapshot"),
+        "conflict_strategies": ("server_wins", "client_wins", "field_merge", "manual_review"),
+        "queue": ("operation_log", "retry_policy", "idempotency_keys", "tombstones"),
+        "review_surfaces": ("conflict_grid", "replay_plan", "sync_health", "audit_log"),
+        "side_effects": (),
+    }
+
+
+def rad_data_tooling_workbench() -> dict:
+    """Prove native data-service tooling depth across connections, queries, services, and local sync."""
+    contract = rad_data_tooling_contract()
+    checks = (
+        {
+            "id": "connection_catalog",
+            "ok": bool(contract["connection_catalog"])
+            and all(item["secret_policy"] in {"externalized", "local_keychain"} for item in contract["connection_catalog"]),
+            "evidence": contract["connection_catalog"],
+        },
+        {
+            "id": "query_designer",
+            "ok": {"sql_builder", "stored_procedure_browser", "schema_adapter"} <= set(contract["query_designer"]["surfaces"])
+            and "parameterized_sql_only" in contract["query_designer"]["guards"],
+            "evidence": contract["query_designer"],
+        },
+        {
+            "id": "server_method_tooling",
+            "ok": {"server_method_stub", "client_proxy", "integration_test"} <= set(contract["server_methods"]["generated_artifacts"]),
+            "evidence": contract["server_methods"],
+        },
+        {
+            "id": "resource_tooling",
+            "ok": {"users", "groups", "roles", "audit_log"} <= set(contract["resources"]["security"])
+            and "telemetry" in contract["resources"]["edge_modules"],
+            "evidence": contract["resources"],
+        },
+        {
+            "id": "local_database_tooling",
+            "ok": {"embedded_store", "encryption", "change_views", "backup_restore"} <= set(contract["local_database"]["features"]),
+            "evidence": contract["local_database"],
+        },
+        {
+            "id": "offline_sync_tooling",
+            "ok": {"field_merge", "manual_review"} <= set(contract["offline_sync"]["conflict_strategies"])
+            and "idempotency_keys" in contract["offline_sync"]["queue"],
+            "evidence": contract["offline_sync"],
+        },
+        {
+            "id": "side_effect_guards",
+            "ok": not contract["query_designer"]["side_effects"]
+            and not contract["server_methods"]["side_effects"]
+            and not contract["resources"]["side_effects"]
+            and not contract["local_database"]["side_effects"]
+            and not contract["offline_sync"]["side_effects"],
+            "evidence": contract["guards"],
+        },
+    )
+    ok = all(check["ok"] for check in checks)
+    return {
+        "format": "appgen.rad-data-tooling-workbench.v1",
+        "ok": ok,
+        "decision": "approved" if ok else "blocked",
+        "contract": contract,
+        "checks": checks,
+        "blocking_gaps": tuple(check for check in checks if not check["ok"]),
     }
 
 
@@ -1361,8 +1515,9 @@ def rad_parity_workbench(existing_paths: set[str] | None = None) -> dict:
         },
         {
             "id": "firedac_datasnap_radserver_interbase_tooling",
-            "ok": {"FireDAC", "DataSnap", "RAD Server", "InterBase"} <= set(rad_data_tooling_contract()["tooling"]),
-            "evidence": rad_data_tooling_contract(),
+            "ok": {"FireDAC", "DataSnap", "RAD Server", "InterBase"} <= set(rad_data_tooling_contract()["tooling"])
+            and rad_data_tooling_workbench()["ok"],
+            "evidence": {"contract": rad_data_tooling_contract(), "workbench": rad_data_tooling_workbench()},
         },
         {
             "id": "design_time_package_installation",

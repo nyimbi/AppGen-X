@@ -100,6 +100,7 @@ from pyAppGen.form_designer import pascal_runtime_workbench
 from pyAppGen.form_designer import pascal_unit_contract
 from pyAppGen.form_designer import placement_suggestions
 from pyAppGen.form_designer import property_inspector
+from pyAppGen.form_designer import rad_data_tooling_workbench
 from pyAppGen.form_designer import snap_drop
 from pyAppGen.form_designer import third_party_component_import_contract
 from pyAppGen.form_designer import third_party_component_install_plan
@@ -829,6 +830,18 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "designer_surface",
         "runtime_modes",
     } == {check["id"] for check in binding_workbench["checks"]}
+    data_workbench = rad_data_tooling_workbench()
+    assert data_workbench["format"] == "appgen.rad-data-tooling-workbench.v1"
+    assert data_workbench["ok"] is True
+    assert {
+        "connection_catalog",
+        "query_designer",
+        "server_method_tooling",
+        "resource_tooling",
+        "local_database_tooling",
+        "offline_sync_tooling",
+        "side_effect_guards",
+    } == {check["id"] for check in data_workbench["checks"]}
     third_party_registry = third_party_component_registry()
     assert {"devexpress-native", "tms-fnc", "fastreport", "teechart", "indy"} <= {
         item["id"] for item in third_party_registry
@@ -8633,6 +8646,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert "Component Analogs JSON" in (output_dir / "templates" / "appgen_form_designer.html").read_text()
     assert "Object Inspector JSON" in (output_dir / "templates" / "appgen_form_designer.html").read_text()
     assert "Data Bindings JSON" in (output_dir / "templates" / "appgen_form_designer.html").read_text()
+    assert "Data Tooling JSON" in (output_dir / "templates" / "appgen_form_designer.html").read_text()
     assert "Pascal Runtime JSON" in (output_dir / "templates" / "appgen_form_designer.html").read_text()
     workbench = form_designer.form_designer_workbench(
         {"app/form_designer.py", "app/templates/appgen_form_designer.html"}
@@ -8671,6 +8685,9 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert "/form-designer/livebindings.json" in next(
         check["evidence"]["routes"] for check in workbench["checks"] if check["id"] == "route_surface"
     )
+    assert "/form-designer/data-tooling.json" in next(
+        check["evidence"]["routes"] for check in workbench["checks"] if check["id"] == "route_surface"
+    )
     assert "/form-designer/pascal-runtime.json" in next(
         check["evidence"]["routes"] for check in workbench["checks"] if check["id"] == "route_surface"
     )
@@ -8696,6 +8713,12 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert generated_bindings["ok"] is True
     assert {"graph_nodes", "graph_edges", "expression_validation"} <= {
         check["id"] for check in generated_bindings["checks"]
+    }
+    generated_data_tooling = form_designer.rad_data_tooling_workbench()
+    assert generated_data_tooling["format"] == "appgen.generated-rad-data-tooling-workbench.v1"
+    assert generated_data_tooling["ok"] is True
+    assert {"connection_catalog", "query_designer", "offline_sync_tooling"} <= {
+        check["id"] for check in generated_data_tooling["checks"]
     }
     assert "camera" in form_designer.mobile_native_api_contract()["apis"]
     assert "viewport3d" in form_designer.cross_target_visual_depth_contract()["three_d"]

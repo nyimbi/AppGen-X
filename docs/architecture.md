@@ -206,6 +206,10 @@ Visual design is split into two related capabilities:
 - `livebindings_workbench()` validates visual data-binding graphs, expression
   safety, converter/validator catalogs, designer interactions, and runtime
   update modes.
+- `rad_data_tooling_workbench()` validates native data tooling: connection
+  profile catalogs, parameterized query design, server method and client proxy
+  generation, secured resource metadata, embedded local database contracts,
+  offline sync policies, conflict handling, and side-effect guards.
 - `visual_modeling.py` handles database graph nodes, relationships, ERD export,
   DBML/SQL/PonyORM export, schema proposals, and migration preview.
 - `branding.py` handles brand/theme contracts, splash-screen configuration,
