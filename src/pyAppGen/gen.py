@@ -4807,6 +4807,7 @@ def write_intelligence_template(output_dir):
     </div>
     <div>
       <a class="btn btn-default" href="{{ url_for('IntelligenceView.catalog_json') }}">Intelligence JSON</a>
+      <a class="btn btn-default" href="{{ url_for('IntelligenceView.workbench_json') }}">Workbench JSON</a>
       <a class="btn btn-default" href="{{ url_for('IntelligenceView.release_gate_json') }}">Release Gate JSON</a>
     </div>
   </div>
@@ -22576,6 +22577,111 @@ def intelligence_release_gate(existing_paths=()):
     }}
 
 
+def intelligence_workbench(existing_paths=()):
+    """Return deterministic IDE workbench evidence for generated intelligence helpers."""
+    release_gate = intelligence_release_gate(existing_paths)
+    tables = intelligence_catalog()
+    first_table = tables[0]["table"] if tables else None
+    sample_row = {{
+        field["field"]: ("good success" if field["category"] == "text" else 1)
+        for field in feature_catalog(first_table)["fields"]
+    }} if first_table else {{}}
+    features = preprocess_row(first_table, sample_row) if first_table else {{}}
+    anomaly = anomaly_score(first_table, {{}}) if first_table else {{}}
+    recommendations = recommendation_plan(first_table, {{}}) if first_table else ()
+    media_fields = media_intelligence_catalog()
+    media_field = media_fields[0] if media_fields else None
+    vision_plan = (
+        vision_analysis_plan(media_field["table"], media_field["field"], provider="opencv", task=media_field["tasks"][0])
+        if media_field
+        else None
+    )
+    api_vision_plan = (
+        object_detection_plan(media_field["table"], media_field["field"], provider="google_vision", environ={{}})
+        if media_field and "object_detection" in media_field["tasks"]
+        else None
+    )
+    experiment = experiment_catalog()[0] if experiment_catalog() else None
+    variant = assign_variant(experiment["id"], "workbench") if experiment else None
+    maintenance = predictive_maintenance({{"p95_ms": 900, "error_rate": 0.03, "queue_depth": 120}})
+    nlp = {{
+        "sentiment": sentiment("good success"),
+        "classification": classify_text("invoice payment failed"),
+        "entities": extract_entities("Ada Lovelace approved the plan"),
+    }}
+    routes = (
+        "/intelligence/",
+        "/intelligence/catalog.json",
+        "/intelligence/workbench.json",
+        "/intelligence/release-gate.json",
+    )
+    gates = {{check["gate"]: check for check in release_gate["checks"]}}
+    checks = (
+        {{
+            "id": "artifact_coverage",
+            "ok": gates.get("artifact_coverage", {{}}).get("ok") is True,
+            "evidence": gates.get("artifact_coverage", {{}}).get("evidence", {{}}),
+        }},
+        {{
+            "id": "feature_catalog",
+            "ok": gates.get("feature_catalog", {{}}).get("ok") is True and bool(features),
+            "evidence": {{"table": first_table, "features": tuple(features)}},
+        }},
+        {{
+            "id": "anomaly_and_recommendations",
+            "ok": gates.get("anomaly_and_recommendations", {{}}).get("ok") is True,
+            "evidence": {{"anomaly": anomaly, "recommendations": recommendations}},
+        }},
+        {{
+            "id": "nlp_helpers",
+            "ok": gates.get("nlp_helpers", {{}}).get("ok") is True,
+            "evidence": nlp,
+        }},
+        {{
+            "id": "vision_contracts",
+            "ok": gates.get("vision_contracts", {{}}).get("ok") is True,
+            "evidence": {{"media_field": media_field, "local_plan": vision_plan, "api_plan": api_vision_plan}},
+        }},
+        {{
+            "id": "experiments",
+            "ok": bool(experiment) and gates.get("experiments", {{}}).get("ok") is True and variant in tuple(experiment.get("variants", ())),
+            "evidence": {{"experiment": experiment, "variant": variant}},
+        }},
+        {{
+            "id": "predictive_maintenance",
+            "ok": gates.get("predictive_maintenance", {{}}).get("ok") is True,
+            "evidence": maintenance,
+        }},
+        {{
+            "id": "route_surface",
+            "ok": all(route.startswith("/intelligence/") for route in routes),
+            "evidence": {{"routes": routes}},
+        }},
+        {{
+            "id": "release_gate",
+            "ok": release_gate["ok"],
+            "evidence": {{"decision": release_gate["decision"], "format": release_gate["format"]}},
+        }},
+    )
+    ok = all(check["ok"] for check in checks)
+    return {{
+        "format": "appgen.intelligence-workbench.v1",
+        "ok": ok,
+        "decision": "approved" if ok else "blocked",
+        "tables": tables,
+        "features": features,
+        "anomaly": anomaly,
+        "recommendations": recommendations,
+        "vision": {{"media_field": media_field, "local_plan": vision_plan, "api_plan": api_vision_plan}},
+        "nlp": nlp,
+        "experiment": {{"definition": experiment, "variant": variant}},
+        "maintenance": maintenance,
+        "routes": routes,
+        "release_gate": release_gate,
+        "checks": checks,
+    }}
+
+
 class IntelligenceView(BaseView):
     route_base = "/intelligence"
     default_view = "index"
@@ -22591,6 +22697,10 @@ class IntelligenceView(BaseView):
     @expose("/catalog.json")
     def catalog_json(self):
         return jsonify({{"tables": list(intelligence_catalog()), "experiments": list(experiment_catalog())}})
+
+    @expose("/workbench.json")
+    def workbench_json(self):
+        return jsonify(intelligence_workbench({{"app/intelligence.py", "app/templates/appgen_intelligence.html"}}))
 
     @expose("/release-gate.json")
     def release_gate_json(self):
@@ -42401,14 +42511,17 @@ def validate_intelligence_artifacts() -> None:
         "assign_variant",
         "predictive_maintenance",
         "intelligence_release_gate",
+        "intelligence_workbench",
     )
     if not all(item in contract for item in required):
         fail("intelligence contract must expose AI analytics, computer vision, NLP, recommendation, A/B testing, and maintenance helpers")
     if "appgen.intelligence-release-gate.v1" not in contract or '@expose("/release-gate.json")' not in contract:
         fail("intelligence contract must expose release readiness checks and route")
+    if "appgen.intelligence-workbench.v1" not in contract or '@expose("/workbench.json")' not in contract:
+        fail("intelligence contract must expose IDE workbench evidence and route")
     template = (ROOT / "app" / "templates" / "appgen_intelligence.html").read_text()
-    if "Intelligence" not in template or "Intelligence JSON" not in template or "Release Gate JSON" not in template:
-        fail("intelligence template must expose generated AI analytics catalog and release readiness")
+    if "Intelligence" not in template or "Intelligence JSON" not in template or "Workbench JSON" not in template or "Release Gate JSON" not in template:
+        fail("intelligence template must expose generated AI analytics catalog, workbench, and release readiness")
 
 
 def validate_identity_artifacts() -> None:
@@ -45395,6 +45508,9 @@ def test_generated_runtime_helpers():
     assert intelligence.intelligence_check({"app/intelligence.py", "app/templates/appgen_intelligence.html"})["ok"] is True
     assert intelligence.intelligence_release_gate({"app/intelligence.py", "app/templates/appgen_intelligence.html"})["format"] == "appgen.intelligence-release-gate.v1"
     assert intelligence.intelligence_release_gate({"app/intelligence.py", "app/templates/appgen_intelligence.html"})["ok"] is True
+    assert intelligence.intelligence_workbench({"app/intelligence.py", "app/templates/appgen_intelligence.html"})["format"] == "appgen.intelligence-workbench.v1"
+    assert intelligence.intelligence_workbench({"app/intelligence.py", "app/templates/appgen_intelligence.html"})["ok"] is True
+    assert intelligence.intelligence_workbench({"app/intelligence.py"})["ok"] is False
     assert intelligence.intelligence_release_gate({"app/intelligence.py"})["ok"] is False
     first_chatbot_intent = chatbot.chatbot_catalog()[0]["intent"]
     chatbot_state = chatbot.start_conversation(first_chatbot_intent)

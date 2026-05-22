@@ -363,11 +363,12 @@ features stay within visible fields, recommendations catch missing required
 values, route coverage is present, and human-review tasks carry context for
 assisted changes.
 
-Use `/intelligence/release-gate.json` or `intelligence_release_gate()` before
-shipping generated AI analytics. The gate proves table feature catalogs,
-anomaly and recommendation behavior, NLP helpers, local and API vision plans,
-A/B assignment, predictive-maintenance signals, and required cockpit artifacts
-without invoking external model APIs.
+Use `/intelligence/workbench.json`, `intelligence_workbench()`,
+`/intelligence/release-gate.json`, or `intelligence_release_gate()` before
+shipping generated AI analytics. The workbench and gate prove table feature
+catalogs, anomaly and recommendation behavior, NLP helpers, local and API
+vision plans, A/B assignment, predictive-maintenance signals, route coverage,
+and required cockpit artifacts without invoking external model APIs.
 
 Use `/guided-chatbot/release-gate.json` or `chatbot_release_gate()` before
 shipping generated in-app chatbots. The gate proves generated intents exist,

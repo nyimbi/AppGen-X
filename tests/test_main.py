@@ -1180,6 +1180,7 @@ def test_generate_app_from_sqlite_schema_compiles(tmp_path) -> None:
     assert capabilities_by_key["integration.productivity"]["status"] == "implemented"
     assert capabilities_by_key["integration.emerging"]["status"] == "implemented"
     assert capabilities_by_key["ai.assistance"]["status"] == "implemented"
+    assert capabilities_by_key["ai.intelligence"]["status"] == "implemented"
     assert capabilities_by_key["devops.ide-integration"]["status"] == "implemented"
     assert capabilities_by_key["devops.project-management"]["status"] == "implemented"
     assert capabilities_by_key["ops.monitoring"]["status"] == "implemented"
@@ -2653,7 +2654,9 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert "Assistant JSON" in assistant_template
     assert "Workbench JSON" in assistant_template
     assert "Release Gate JSON" in assistant_template
-    assert "Intelligence JSON" in (output_dir / "templates" / "appgen_intelligence.html").read_text()
+    intelligence_template = (output_dir / "templates" / "appgen_intelligence.html").read_text()
+    assert "Intelligence JSON" in intelligence_template
+    assert "Workbench JSON" in intelligence_template
     assert "Guided Chatbot" in (output_dir / "templates" / "appgen_chatbot.html").read_text()
     assert "Voice JSON" in (output_dir / "templates" / "appgen_voice.html").read_text()
     assert "Workbench JSON" in (output_dir / "templates" / "appgen_voice.html").read_text()
@@ -5376,6 +5379,25 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "experiments",
         "predictive_maintenance",
     } <= {check["gate"] for check in intelligence_gate["checks"]}
+    intelligence_workbench = intelligence.intelligence_workbench(
+        {"app/intelligence.py", "app/templates/appgen_intelligence.html"}
+    )
+    assert intelligence_workbench["format"] == "appgen.intelligence-workbench.v1"
+    assert intelligence_workbench["ok"] is True
+    assert intelligence_workbench["decision"] == "approved"
+    assert {
+        "artifact_coverage",
+        "feature_catalog",
+        "anomaly_and_recommendations",
+        "nlp_helpers",
+        "vision_contracts",
+        "experiments",
+        "predictive_maintenance",
+        "route_surface",
+        "release_gate",
+    } == {check["id"] for check in intelligence_workbench["checks"]}
+    assert "/intelligence/workbench.json" in intelligence_workbench["routes"]
+    assert intelligence.intelligence_workbench({"app/intelligence.py"})["ok"] is False
     assert intelligence.intelligence_release_gate({"app/intelligence.py"})["ok"] is False
     chatbot_intents = {item["intent"]: item for item in chatbot.chatbot_catalog()}
     assert "create_book" in chatbot_intents

@@ -592,6 +592,8 @@ apps include:
   `intelligence_release_gate()` proves feature catalogs, anomaly and
   recommendation checks, NLP helpers, local/API vision plans, A/B assignment,
   predictive-maintenance signals, and required intelligence cockpit artifacts.
+  `intelligence_workbench()` and `/intelligence/workbench.json` aggregate those
+  signals with route coverage for generated IDE review.
 - `chatbot.py` and `appgen_chatbot.html` with in-app guided chatbot flows that
   ask for generated view fields, track missing required answers, and prepare
   create payloads. The generated `chatbot_release_gate()` proves artifact
