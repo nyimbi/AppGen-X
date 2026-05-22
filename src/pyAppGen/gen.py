@@ -5186,7 +5186,10 @@ def write_openapi_template(output_dir):
         schemas, operation IDs, and bearer-token security scheme.
       </p>
     </div>
-    <a class="btn btn-default" href="{{ url_for('OpenAPIView.openapi_json') }}">OpenAPI JSON</a>
+    <div>
+      <a class="btn btn-default" href="{{ url_for('OpenAPIView.openapi_json') }}">OpenAPI JSON</a>
+      <a class="btn btn-default" href="{{ url_for('OpenAPIView.release_gate_json') }}">Release Gate JSON</a>
+    </div>
   </div>
   <div class="ago-grid">
     <article class="ago-card">
@@ -7112,6 +7115,35 @@ def openapi_check(existing_paths=()):
     }}
 
 
+def openapi_release_gate(existing_paths=()):
+    """Return release readiness for generated OpenAPI contracts."""
+    readiness = openapi_check(existing_paths)
+    spec = openapi_spec()
+    paths = spec.get("paths", {{}})
+    schemas = spec.get("components", {{}}).get("schemas", {{}})
+    operations = tuple(
+        dict(operation, path=path, method=method)
+        for path, methods in paths.items()
+        for method, operation in methods.items()
+    )
+    security_schemes = spec.get("components", {{}}).get("securitySchemes", {{}})
+    gates = (
+        {{"gate": "artifacts", "ok": readiness["ok"], "missing": readiness["missing"]}},
+        {{"gate": "openapi_version", "ok": spec.get("openapi") == "3.1.0" and bool(spec.get("info", {{}}).get("title")), "version": spec.get("openapi"), "info": spec.get("info", {{}})}},
+        {{"gate": "path_catalog", "ok": bool(paths) and all(path.startswith("/api/v1/") for path in paths), "paths": path_summary()}},
+        {{"gate": "operation_contracts", "ok": bool(operations) and all(operation.get("operationId") and operation.get("responses") for operation in operations), "operation_count": len(operations)}},
+        {{"gate": "component_schemas", "ok": bool(schemas) and all(schema.get("type") == "object" and schema.get("properties") for schema in schemas.values()), "schemas": schema_names()}},
+        {{"gate": "security_scheme", "ok": security_schemes.get("bearerAuth", {{}}).get("scheme") == "bearer" and bool(spec.get("security")), "security": security_schemes}},
+    )
+    ok = all(gate["ok"] for gate in gates)
+    return {{
+        "format": "appgen.openapi-release-gate.v1",
+        "ok": ok,
+        "decision": "approved" if ok else "blocked",
+        "gates": gates,
+    }}
+
+
 class OpenAPIView(BaseView):
     route_base = "/openapi"
     default_view = "index"
@@ -7129,6 +7161,10 @@ class OpenAPIView(BaseView):
     @expose("/openapi.json")
     def openapi_json(self):
         return jsonify(OPENAPI_SPEC)
+
+    @expose("/release-gate.json")
+    def release_gate_json(self):
+        return jsonify(openapi_release_gate({{"app/openapi.py", "docs/openapi.json", "app/templates/appgen_openapi.html"}}))
 
 
 def register_openapi(appbuilder):
@@ -35547,11 +35583,11 @@ def validate_openapi_artifacts() -> None:
     if "schemas" not in spec.get("components", {}):
         fail("OpenAPI docs must expose generated component schemas")
     contract = (ROOT / "app" / "openapi.py").read_text()
-    if "openapi_spec" not in contract or "operation_count" not in contract or "openapi_check" not in contract:
-        fail("OpenAPI module must expose spec and readiness helpers")
+    if "openapi_spec" not in contract or "operation_count" not in contract or "openapi_check" not in contract or "openapi_release_gate" not in contract:
+        fail("OpenAPI module must expose spec, readiness, and release-gate helpers")
     template = (ROOT / "app" / "templates" / "appgen_openapi.html").read_text()
-    if "OpenAPI" not in template or "OpenAPI JSON" not in template:
-        fail("OpenAPI template must expose generated API documentation")
+    if "OpenAPI" not in template or "OpenAPI JSON" not in template or "Release Gate JSON" not in template:
+        fail("OpenAPI template must expose generated API documentation and release-gate evidence")
 
 
 def validate_realtime_artifacts() -> None:
@@ -36921,6 +36957,13 @@ def test_generated_runtime_helpers():
     assert openapi.openapi_check(
         {"app/openapi.py", "docs/openapi.json", "app/templates/appgen_openapi.html"}
     )["ok"] is True
+    assert openapi.openapi_release_gate(
+        {"app/openapi.py", "docs/openapi.json", "app/templates/appgen_openapi.html"}
+    )["format"] == "appgen.openapi-release-gate.v1"
+    assert openapi.openapi_release_gate(
+        {"app/openapi.py", "docs/openapi.json", "app/templates/appgen_openapi.html"}
+    )["ok"] is True
+    assert openapi.openapi_release_gate({"app/openapi.py"})["ok"] is False
     assert monitoring.readiness()["ready"] is True
     assert resilience.classify_exception(ValueError("bad"))["category"] == "validation"
     assert resilience.safe_error_response(TimeoutError("slow"))["retryable"] is True

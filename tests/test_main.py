@@ -2580,6 +2580,15 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert openapi.openapi_check(
         {"app/openapi.py", "docs/openapi.json", "app/templates/appgen_openapi.html"}
     )["ok"] is True
+    openapi_gate = openapi.openapi_release_gate(
+        {"app/openapi.py", "docs/openapi.json", "app/templates/appgen_openapi.html"}
+    )
+    assert openapi_gate["format"] == "appgen.openapi-release-gate.v1"
+    assert openapi_gate["ok"] is True
+    assert {"openapi_version", "path_catalog", "operation_contracts", "component_schemas", "security_scheme"} <= {
+        gate["gate"] for gate in openapi_gate["gates"]
+    }
+    assert openapi.openapi_release_gate({"app/openapi.py"})["ok"] is False
     docs_openapi = json.loads((tmp_path / "docs" / "openapi.json").read_text())
     assert docs_openapi["openapi"] == "3.1.0"
     assert workflow.next_states("Publish", "draft") == ("published",)

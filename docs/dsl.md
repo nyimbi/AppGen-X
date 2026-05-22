@@ -670,7 +670,9 @@ apps include:
   UI smoke coverage, synthetic monitoring, OpenAPI contract coverage, and
   rendered pytest/Playwright modules.
 - `openapi.py`, `appgen_openapi.html`, and `docs/openapi.json` with generated
-  OpenAPI 3.1 API documentation.
+  OpenAPI 3.1 API documentation. A generated OpenAPI release gate proves
+  artifact readiness, OpenAPI version, path catalogs, operation contracts,
+  component schemas, and bearer-token security metadata.
 - `microservices.py` and `appgen_microservices.html` with generated service
   boundaries, gateway routes, event routes, cross-service relationship
   resolvers, consistency reviews, service-mesh mTLS/authorization/telemetry

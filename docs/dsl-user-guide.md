@@ -597,6 +597,9 @@ suite APIs.
 Use `/api-testing/release-gate.json` before release to verify API request
 matrices, response validation, smoke fixtures, UI smoke plans, synthetic
 monitors, OpenAPI coverage, and rendered pytest/Playwright modules.
+Use `/openapi/release-gate.json` before API publication to verify OpenAPI 3.1
+metadata, generated path catalogs, operation IDs/responses, component schemas,
+bearer-token security metadata, and required OpenAPI artifacts.
 Use `/usage-analytics/release-gate.json` to prove generated app-usage
 analytics cover event catalogs, adoption, funnels, retention, real-time
 snapshots, and dashboard payloads.
