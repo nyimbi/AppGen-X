@@ -465,6 +465,10 @@ apps include:
   routes before a release can claim to be more capable than JHipster. A
   generated capability-depth index also requires design-time, generation-time,
   runtime, and governance evidence for every AppGen-only advantage. The
+  JHipster frontier gate proves advanced JHipster families such as domain
+  modeling, front-end targets, service architecture, data operations, quality
+  operations, and enterprise experience are preserved before each family is
+  exceeded by AppGen-only generated capabilities. The
   application-composition release gate proves reusable block catalog depth,
   dependency topology, reviewable install order, sandbox controls, package
   publication targets, and artifact evidence.

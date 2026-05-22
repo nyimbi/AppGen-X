@@ -2303,6 +2303,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert "Superset Blueprint JSON" in (output_dir / "templates" / "appgen_low_code_features.html").read_text()
     assert "Capability Depth JSON" in (output_dir / "templates" / "appgen_low_code_features.html").read_text()
     assert "Superiority Tiers JSON" in (output_dir / "templates" / "appgen_low_code_features.html").read_text()
+    assert "JHipster Frontier Gate JSON" in (output_dir / "templates" / "appgen_low_code_features.html").read_text()
     erp_template_text = (output_dir / "templates" / "appgen_erp_templates.html").read_text()
     assert "Roadmap JSON" in erp_template_text
     assert "Release Gate JSON" in erp_template_text
@@ -2671,9 +2672,22 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert low_code_features.readiness_report()["jhipster_superset_blueprint_ok"] is True
     assert low_code_features.readiness_report()["jhipster_superiority_ok"] is True
     assert low_code_features.readiness_report()["jhipster_capability_depth_ok"] is True
+    frontier = low_code_features.jhipster_frontier_gate()
+    assert frontier["format"] == "appgen.jhipster-frontier-gate.v1"
+    assert frontier["ok"] is True
+    assert frontier["stop_condition"] == "do-not-claim-frontier-superiority-unless-ok-is-true"
+    assert {"domain_modeling", "service_architecture", "quality_operations"} <= {
+        family["family"] for family in frontier["families"]
+    }
+    assert all(family["parity_ok"] and family["exceeds_ok"] for family in frontier["families"])
+    assert low_code_features.jhipster_frontier_gate({"app/designer.py"})["ok"] is False
+    assert low_code_features.readiness_report()["jhipster_frontier_ok"] is True
     assert low_code_features.low_code_features_check(
         {"app/low_code_features.py", "app/templates/appgen_low_code_features.html", "app/appgen.json"}
     )["jhipster_superset_blueprint_ok"] is True
+    assert low_code_features.low_code_features_check(
+        {"app/low_code_features.py", "app/templates/appgen_low_code_features.html", "app/appgen.json"}
+    )["jhipster_frontier_ok"] is True
     assert low_code_features.jhipster_superset_blueprint({"app/form_designer.py"})["ok"] is False
     assert {
         gate["area"] for gate in low_code_features.jhipster_superset_scorecard()["required_gates"]

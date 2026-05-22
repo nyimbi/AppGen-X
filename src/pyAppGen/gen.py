@@ -5823,6 +5823,7 @@ def write_low_code_features_template(output_dir):
       <a class="btn btn-default" href="{{ url_for('LowCodeFeaturesView.jhipster_superset_blueprint_json') }}">Superset Blueprint JSON</a>
       <a class="btn btn-default" href="{{ url_for('LowCodeFeaturesView.jhipster_capability_depth_json') }}">Capability Depth JSON</a>
       <a class="btn btn-default" href="{{ url_for('LowCodeFeaturesView.jhipster_superiority_tiers_json') }}">Superiority Tiers JSON</a>
+      <a class="btn btn-default" href="{{ url_for('LowCodeFeaturesView.jhipster_frontier_gate_json') }}">JHipster Frontier Gate JSON</a>
       <a class="btn btn-default" href="{{ url_for('LowCodeFeaturesView.composition_json') }}">Composition JSON</a>
       <a class="btn btn-default" href="{{ url_for('LowCodeFeaturesView.composition_readiness_json') }}">Composition Readiness JSON</a>
       <a class="btn btn-default" href="{{ url_for('LowCodeFeaturesView.composition_release_gate_json') }}">Composition Release Gate JSON</a>
@@ -22039,6 +22040,56 @@ JHIPSTER_DEPTH_REQUIREMENTS = (
         ),
     }},
 )
+JHIPSTER_FRONTIER_REQUIREMENTS = (
+    {{
+        "family": "domain_modeling",
+        "label": "JDL entity modeling, validation, relationships, and filtering",
+        "jhipster_features": ("JDL entities", "relationships", "validation", "filtering", "pagination"),
+        "parity_capabilities": ("platform.jhipster", "schema.import", "data.access", "data.migrations"),
+        "parity_artifacts": ("jhipster/app.jdl", "jhipster/appgen_jhipster.py", "app/schema_import.py", "app/data_access.py"),
+        "exceeds_with": ("visual_builders", "database_ide", "schema_import", "natural_language_evolution"),
+    }},
+    {{
+        "family": "web_frontends",
+        "label": "Generated web UI and multiple front-end stacks",
+        "jhipster_features": ("Angular", "React", "Vue", "responsive UI", "PWA"),
+        "parity_capabilities": ("platform.frontends", "ui.responsive", "ui.pwa", "ui.branding"),
+        "parity_artifacts": ("frontends/appgen_frontends.py", "app/templates/appgen_platforms.html", "app/branding.py"),
+        "exceeds_with": ("visual_builders", "native_targets", "runtime_studio"),
+    }},
+    {{
+        "family": "service_architecture",
+        "label": "REST, OpenAPI, security, microservices, gateway, and deployment",
+        "jhipster_features": ("REST", "OpenAPI", "JWT/OIDC", "microservices", "gateway", "Docker/Kubernetes"),
+        "parity_capabilities": ("api.rest", "api.openapi", "security.sso", "platform.microservices", "deployment.cloud", "devops.cicd"),
+        "parity_artifacts": ("app/api.py", "docs/openapi.json", "app/identity.py", "app/microservices.py", "deploy/k8s/deployment.yaml"),
+        "exceeds_with": ("runtime_assurance", "runtime_studio", "application_composition"),
+    }},
+    {{
+        "family": "data_operations",
+        "label": "Search, cache, database operations, migrations, and seed data",
+        "jhipster_features": ("Elasticsearch", "cache", "database migrations", "seed data", "database providers"),
+        "parity_capabilities": ("data.search", "ops.performance", "data.database-ops", "data.migrations", "data.seed"),
+        "parity_artifacts": ("app/search.py", "app/performance.py", "app/database_ops.py", "migrations/env.py", "seed.py"),
+        "exceeds_with": ("database_ide", "schema_import", "runtime_assurance"),
+    }},
+    {{
+        "family": "quality_operations",
+        "label": "Testing, diagnostics, monitoring, auditability, and release readiness",
+        "jhipster_features": ("CI", "tests", "health checks", "monitoring", "audit"),
+        "parity_capabilities": ("quality.api-testing", "quality.test-coverage", "quality.diagnostics", "ops.monitoring", "ops.assurance"),
+        "parity_artifacts": ("app/api_testing.py", "tests/test_generated_coverage.py", "app/diagnostics.py", "app/monitoring.py", "app/runtime_assurance.py"),
+        "exceeds_with": ("runtime_assurance", "runtime_studio", "application_composition"),
+    }},
+    {{
+        "family": "enterprise_experience",
+        "label": "Localization, collaboration, real-time updates, compliance, and integrations",
+        "jhipster_features": ("i18n", "websocket updates", "auditing", "OAuth integrations", "enterprise integrations"),
+        "parity_capabilities": ("i18n.localization", "team.realtime", "security.compliance", "integration.enterprise", "team.collaboration"),
+        "parity_artifacts": ("app/i18n.py", "app/realtime.py", "app/compliance.py", "app/integrations.py", "app/collaboration.py"),
+        "exceeds_with": ("agentic_systems", "erp_templates", "application_composition"),
+    }},
+)
 ROADMAP_AREAS = (
     {{
         "area": "visual_building",
@@ -22683,6 +22734,69 @@ def jhipster_superset_route_map():
     return routes
 
 
+def jhipster_frontier_gate(existing_paths=None):
+    """Prove AppGen preserves advanced JHipster families and exceeds each one."""
+    capability_keys = {{item["key"] for item in CAPABILITIES}}
+    benchmark = jhipster_capability_benchmark()
+    appgen_only_areas = {{item["area"] for item in benchmark["appgen_only"]}}
+    route_map = jhipster_superset_route_map()
+    route_areas = {{item["area"] for item in route_map}}
+    expected_artifacts = tuple(
+        dict.fromkeys(path for requirement in JHIPSTER_FRONTIER_REQUIREMENTS for path in requirement["parity_artifacts"])
+    )
+    existing = set(expected_artifacts if existing_paths is None else existing_paths)
+    families = []
+    for requirement in JHIPSTER_FRONTIER_REQUIREMENTS:
+        missing_capabilities = tuple(
+            capability
+            for capability in requirement["parity_capabilities"]
+            if capability not in capability_keys
+        )
+        missing_artifacts = tuple(
+            artifact
+            for artifact in requirement["parity_artifacts"]
+            if artifact not in existing
+        )
+        missing_advantages = tuple(
+            area
+            for area in requirement["exceeds_with"]
+            if area not in appgen_only_areas
+        )
+        surfaced_advantages = tuple(
+            area
+            for area in requirement["exceeds_with"]
+            if area in route_areas
+        )
+        parity_ok = not missing_capabilities and not missing_artifacts
+        exceeds_ok = not missing_advantages and bool(surfaced_advantages)
+        families.append({{
+            **requirement,
+            "missing_capabilities": missing_capabilities,
+            "missing_artifacts": missing_artifacts,
+            "missing_advantages": missing_advantages,
+            "surfaced_advantages": surfaced_advantages,
+            "parity_ok": parity_ok,
+            "exceeds_ok": exceeds_ok,
+            "ok": parity_ok and exceeds_ok,
+        }})
+    certification = jhipster_superset_certification(existing_paths)
+    superiority = jhipster_superiority_tiers(existing_paths)
+    return {{
+        "format": "appgen.jhipster-frontier-gate.v1",
+        "position": "appgen-exceeds-jhipster-frontier",
+        "baseline": dict(JHIPSTER_BASELINE),
+        "minimum_jhipster_families": len(JHIPSTER_FRONTIER_REQUIREMENTS),
+        "actual_jhipster_families": len(families),
+        "expected_artifacts": expected_artifacts,
+        "families": tuple(families),
+        "certification_ok": certification["ok"],
+        "superiority_ok": superiority["ok"],
+        "blocking_gaps": tuple(family for family in families if not family["ok"]) + certification["blocking_gaps"] + superiority["blocking_gaps"],
+        "stop_condition": "do-not-claim-frontier-superiority-unless-ok-is-true",
+        "ok": len(families) >= len(JHIPSTER_FRONTIER_REQUIREMENTS) and all(family["ok"] for family in families) and certification["ok"] and superiority["ok"],
+    }}
+
+
 def jhipster_superiority_tiers(existing_paths=None):
     """Return tiered gates for being more capable than JHipster."""
     benchmark = jhipster_capability_benchmark()
@@ -22798,6 +22912,7 @@ def readiness_report():
     blueprint = jhipster_superset_blueprint()
     superiority = jhipster_superiority_tiers()
     depth = jhipster_capability_depth_index()
+    frontier = jhipster_frontier_gate()
     roadmap_sources = roadmap_source_report()
     return {{
         "source": dict(FEATURE_SOURCE),
@@ -22824,6 +22939,8 @@ def readiness_report():
         "jhipster_superiority_ok": superiority["ok"],
         "jhipster_capability_depth": depth,
         "jhipster_capability_depth_ok": depth["ok"],
+        "jhipster_frontier": frontier,
+        "jhipster_frontier_ok": frontier["ok"],
     }}
 
 
@@ -22859,7 +22976,7 @@ def low_code_features_check(existing_paths):
     missing = tuple(path for path in required if path not in existing)
     report = readiness_report()
     return {{
-        "ok": not missing and report["alignment_complete"] and report["roadmap_sources_ok"] and report["total"] >= 80 and jhipster_competitive_report()["ok"] and report["jhipster_superset_ok"] and report["jhipster_certification_ok"] and report["jhipster_superset_blueprint_ok"] and report["jhipster_superiority_ok"] and report["jhipster_capability_depth_ok"],
+        "ok": not missing and report["alignment_complete"] and report["roadmap_sources_ok"] and report["total"] >= 80 and jhipster_competitive_report()["ok"] and report["jhipster_superset_ok"] and report["jhipster_certification_ok"] and report["jhipster_superset_blueprint_ok"] and report["jhipster_superiority_ok"] and report["jhipster_capability_depth_ok"] and report["jhipster_frontier_ok"],
         "missing": missing,
         "source": dict(FEATURE_SOURCE),
         "sources": report["sources"],
@@ -22873,6 +22990,7 @@ def low_code_features_check(existing_paths):
         "jhipster_superset_blueprint_ok": report["jhipster_superset_blueprint_ok"],
         "jhipster_superiority_ok": report["jhipster_superiority_ok"],
         "jhipster_capability_depth_ok": report["jhipster_capability_depth_ok"],
+        "jhipster_frontier_ok": report["jhipster_frontier_ok"],
     }}
 
 
@@ -22936,6 +23054,10 @@ class LowCodeFeaturesView(BaseView):
     @expose("/jhipster-superiority-tiers.json")
     def jhipster_superiority_tiers_json(self):
         return jsonify(jhipster_superiority_tiers())
+
+    @expose("/jhipster-frontier-gate.json")
+    def jhipster_frontier_gate_json(self):
+        return jsonify(jhipster_frontier_gate())
 
     @expose("/composition.json")
     def composition_json(self):
@@ -32875,6 +32997,7 @@ def validate_low_code_features_artifacts() -> None:
         "jhipster_superset_blueprint",
         "jhipster_superiority_tiers",
         "jhipster_capability_depth_index",
+        "jhipster_frontier_gate",
         "application_composition_catalog",
         "composition_dependency_audit",
         "composition_install_plan",
@@ -32891,7 +33014,7 @@ def validate_low_code_features_artifacts() -> None:
     if "jhipster_competitive_report" not in contract or "broader-than-jhipster" not in contract or "appgen-more-capable-than-jhipster" not in contract or "appgen_only_capabilities" not in contract or "application_composition" not in contract:
         fail("low-code feature matrix must make AppGen's broader-than-JHipster position explicit")
     template = (ROOT / "app" / "templates" / "appgen_low_code_features.html").read_text()
-    if "Low-Code Feature Matrix" not in template or "Feature Matrix JSON" not in template or "Readiness JSON" not in template or "Roadmap Sources JSON" not in template or "JHipster Comparison JSON" not in template or "Benchmark JSON" not in template or "Superset Scorecard JSON" not in template or "Superset Evidence JSON" not in template or "Superset Certification JSON" not in template or "Superset Blueprint JSON" not in template or "Capability Depth JSON" not in template or "Superiority Tiers JSON" not in template or "Composition JSON" not in template or "Composition Release Gate JSON" not in template:
+    if "Low-Code Feature Matrix" not in template or "Feature Matrix JSON" not in template or "Readiness JSON" not in template or "Roadmap Sources JSON" not in template or "JHipster Comparison JSON" not in template or "Benchmark JSON" not in template or "Superset Scorecard JSON" not in template or "Superset Evidence JSON" not in template or "Superset Certification JSON" not in template or "Superset Blueprint JSON" not in template or "Capability Depth JSON" not in template or "Superiority Tiers JSON" not in template or "JHipster Frontier Gate JSON" not in template or "Composition JSON" not in template or "Composition Release Gate JSON" not in template:
         fail("low-code feature cockpit must expose matrix and readiness links")
 
 
@@ -34958,6 +35081,10 @@ def test_generated_runtime_helpers():
     assert low_code_features.jhipster_superiority_tiers()["ok"] is True
     assert low_code_features.jhipster_superiority_tiers()["format"] == "appgen.jhipster-superiority-tiers.v1"
     assert low_code_features.readiness_report()["jhipster_superiority_ok"] is True
+    assert low_code_features.jhipster_frontier_gate()["format"] == "appgen.jhipster-frontier-gate.v1"
+    assert low_code_features.jhipster_frontier_gate()["ok"] is True
+    assert low_code_features.jhipster_frontier_gate({"app/designer.py"})["ok"] is False
+    assert low_code_features.readiness_report()["jhipster_frontier_ok"] is True
     assert low_code_features.jhipster_superset_scorecard()["blocking_gaps"] == ()
     assert "agentic_systems" in {item["area"] for item in low_code_features.jhipster_competitive_report()["appgen_only_capabilities"]}
     assert "runtime_assurance" in {item["area"] for item in low_code_features.jhipster_competitive_report()["appgen_only_capabilities"]}

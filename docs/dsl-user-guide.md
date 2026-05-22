@@ -367,6 +367,9 @@ Use `/low-code-features/jhipster-capability-depth.json` to inspect the depth
 index behind the claim. Each AppGen-only advantage must show design-time,
 generation-time, runtime, and governance evidence rather than only naming a
 feature.
+Use `/low-code-features/jhipster-frontier-gate.json` to prove advanced
+JHipster capability families are still preserved and then exceeded by generated
+AppGen-only capabilities before making stronger product-positioning claims.
 Use `/low-code-features/composition-release-gate.json` to prove the reusable
 application-composition layer itself: block catalog depth, dependency topology,
 reviewable install order, sandbox controls, package publication targets, and
