@@ -2228,6 +2228,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert "Productivity Integrations" in (output_dir / "templates" / "appgen_productivity.html").read_text()
     assert "Release Gate JSON" in (output_dir / "templates" / "appgen_productivity.html").read_text()
     assert "Lifecycle JSON" in (output_dir / "templates" / "appgen_lifecycle.html").read_text()
+    assert "Release Gate JSON" in (output_dir / "templates" / "appgen_lifecycle.html").read_text()
     assert "Release Gate JSON" in (output_dir / "templates" / "appgen_project_management.html").read_text()
     assert "tenant_id" in (output_dir / "templates" / "appgen_tenancy.html").read_text()
     assert "row-level security contracts" in (output_dir / "templates" / "appgen_rls.html").read_text()
@@ -3649,6 +3650,19 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     )
     assert lifecycle.issue_report("Broken form", severity="high")["status"] == "open"
     assert lifecycle.lifecycle_check({"app/lifecycle.py", "app/templates/appgen_lifecycle.html"})["ok"] is True
+    lifecycle_gate = lifecycle.lifecycle_release_gate({"app/lifecycle.py", "app/templates/appgen_lifecycle.html"})
+    assert lifecycle_gate["format"] == "appgen.lifecycle-release-gate.v1"
+    assert lifecycle_gate["ok"] is True
+    assert {
+        "environment_catalog",
+        "production_configuration",
+        "release_controls",
+        "promotion_and_domain",
+        "maintenance_update",
+        "feedback_testing_issues",
+        "artifact_coverage",
+    } <= {gate["gate"] for gate in lifecycle_gate["gates"]}
+    assert lifecycle.lifecycle_release_gate({"app/lifecycle.py"})["ok"] is False
     assert tenancy.is_tenant_scoped("Book") is False
     assert tenancy.tenant_filter_kwargs("Book", "acme") == {}
     assert tenancy.tenant_context({"X-AppGen-Tenant": "acme"}, {}, {}) == {"tenant_id": "acme"}

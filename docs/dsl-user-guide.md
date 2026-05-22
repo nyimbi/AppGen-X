@@ -318,6 +318,10 @@ Generated deployment contracts live in `deploy/appgen_deploy.py`. Use
 Kubernetes, on-prem, AWS, GCP, Azure, PostgreSQL/MySQL, Terraform, secret
 injection, smoke checks, scaling, rollback, and promotion readiness from the
 generated artifacts.
+Use `/lifecycle/release-gate.json` to verify environment coverage, production
+configuration, release controls, promotion/domain readiness, maintenance/update
+plans, feedback, user-testing sessions, issue reports, and lifecycle artifacts
+before operating a generated app.
 
 ## Design-System QA
 

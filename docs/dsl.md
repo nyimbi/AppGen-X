@@ -385,7 +385,10 @@ apps include:
   exports, calendar events, task sync, and required productivity artifacts.
 - `lifecycle.py` and `appgen_lifecycle.html` with generated environment
   readiness, custom-domain plans, release gates, maintenance/update windows,
-  feedback items, user-testing sessions, and issue reports.
+  feedback items, user-testing sessions, and issue reports. A generated
+  lifecycle release gate proves environment coverage, production configuration,
+  release controls, promotion/domain readiness, maintenance/update plans,
+  feedback/testing/issue loops, and required lifecycle artifacts.
 - `tenancy.py` and `appgen_tenancy.html` with generated tenant-column
   detection, tenant context extraction, and filter helpers for row isolation.
 - `rls.py` and `appgen_rls.html` with generated tenant-aware row-level

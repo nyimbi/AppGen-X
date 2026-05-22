@@ -4059,7 +4059,10 @@ def write_lifecycle_template(output_dir):
         maintenance, feedback, user-testing, and issue-tracking contracts.
       </p>
     </div>
-    <a class="btn btn-default" href="{{ url_for('LifecycleView.catalog_json') }}">Lifecycle JSON</a>
+    <div>
+      <a class="btn btn-default" href="{{ url_for('LifecycleView.catalog_json') }}">Lifecycle JSON</a>
+      <a class="btn btn-default" href="{{ url_for('LifecycleView.release_gate_json') }}">Release Gate JSON</a>
+    </div>
   </div>
   <div class="aglc-grid">
     {% for env in environments %}
@@ -16589,6 +16592,71 @@ def lifecycle_check(existing_paths=()):
     }}
 
 
+def lifecycle_release_gate(existing_paths=(), environ=None):
+    """Return an auditable release gate for generated lifecycle management."""
+    artifacts = set(existing_paths or ())
+    required_artifacts = ("app/lifecycle.py", "app/templates/appgen_lifecycle.html")
+    sample_environment = {{
+        "SECRET_KEY": "configured",
+        "APPGEN_DOMAIN": "app.example.test",
+        "DATABASE_URL": "postgresql://appgen.example/db",
+    }}
+    env = sample_environment if environ is None else dict(environ)
+    production_status = environment_status("production", env)
+    promotion = promotion_plan("staging", manifest_revision="rev-1")
+    maintenance = maintenance_window(duration_minutes=45)
+    update = update_plan("1.2.3", migration_required=True)
+    feedback = feedback_item("Needs work", rating=2)
+    session = user_test_session("Onboarding")
+    issue = issue_report("Broken form", severity="high")
+    gates = (
+        {{
+            "gate": "environment_catalog",
+            "ok": {{"development", "testing", "staging", "production"}} <= {{item["name"] for item in environment_catalog()}},
+            "evidence": tuple(item["name"] for item in environment_catalog()),
+        }},
+        {{
+            "gate": "production_configuration",
+            "ok": production_status["ready"] and production_status["database_configured"] and production_status["domain"] == "app.example.test",
+            "evidence": production_status["gates"],
+        }},
+        {{
+            "gate": "release_controls",
+            "ok": {{"quality", "tests", "security", "backup", "migration", "custom_domain", "monitoring"}} <= set(RELEASE_GATES)
+            and bool(release_checklist("production")["required_artifacts"]),
+            "evidence": (RELEASE_GATES, release_checklist("production")["required_artifacts"]),
+        }},
+        {{
+            "gate": "promotion_and_domain",
+            "ok": promotion["target"] == "production" and promotion["requires_approval"] and custom_domain_plan("production", "app.example.test")["tls"]["auto_https"],
+            "evidence": (promotion["source"], promotion["target"]),
+        }},
+        {{
+            "gate": "maintenance_update",
+            "ok": maintenance["duration_minutes"] == 45 and "apply_migrations" in update["steps"] and bool(update["rollback"]),
+            "evidence": (maintenance["notifications"], update["steps"]),
+        }},
+        {{
+            "gate": "feedback_testing_issues",
+            "ok": feedback["id"].startswith("fb-") and session["metrics"] and issue["status"] == "open",
+            "evidence": (feedback["id"], session["id"], issue["id"]),
+        }},
+        {{
+            "gate": "artifact_coverage",
+            "ok": set(required_artifacts) <= artifacts,
+            "missing": tuple(item for item in required_artifacts if item not in artifacts),
+        }},
+    )
+    ok = all(gate["ok"] for gate in gates)
+    return {{
+        "format": "appgen.lifecycle-release-gate.v1",
+        "ok": ok,
+        "decision": "approved" if ok else "blocked",
+        "gates": gates,
+        "required_artifacts": required_artifacts,
+    }}
+
+
 class LifecycleView(BaseView):
     route_base = "/lifecycle"
     default_view = "index"
@@ -16604,6 +16672,10 @@ class LifecycleView(BaseView):
     @expose("/catalog.json")
     def catalog_json(self):
         return jsonify({{"environments": list(environment_catalog()), "release_gates": list(RELEASE_GATES)}})
+
+    @expose("/release-gate.json")
+    def release_gate_json(self):
+        return jsonify(lifecycle_release_gate({{"app/lifecycle.py", "app/templates/appgen_lifecycle.html"}}))
 
 
 def register_lifecycle(appbuilder):
@@ -33348,12 +33420,13 @@ def validate_lifecycle_artifacts() -> None:
         "feedback_item",
         "user_test_session",
         "issue_report",
+        "lifecycle_release_gate",
     )
     if not all(item in contract for item in required):
-        fail("lifecycle contract must expose environments, releases, feedback, user testing, and issue reporting")
+        fail("lifecycle contract must expose environments, releases, feedback, user testing, issue reporting, and release gates")
     template = (ROOT / "app" / "templates" / "appgen_lifecycle.html").read_text()
-    if "Lifecycle" not in template or "Lifecycle JSON" not in template:
-        fail("lifecycle template must expose generated lifecycle catalog")
+    if "Lifecycle" not in template or "Lifecycle JSON" not in template or "Release Gate JSON" not in template:
+        fail("lifecycle template must expose generated lifecycle catalog and release gate")
 
 
 def validate_emerging_artifacts() -> None:
@@ -34971,6 +35044,8 @@ def test_generated_runtime_helpers():
     assert lifecycle.user_test_session("Smoke")["metrics"]
     assert lifecycle.issue_report("Broken form")["status"] == "open"
     assert lifecycle.lifecycle_check({"app/lifecycle.py", "app/templates/appgen_lifecycle.html"})["ok"] is True
+    assert lifecycle.lifecycle_release_gate({"app/lifecycle.py", "app/templates/appgen_lifecycle.html"})["ok"] is True
+    assert lifecycle.lifecycle_release_gate({"app/lifecycle.py"})["ok"] is False
     assert isinstance(tenancy.tenant_catalog(), tuple)
     assert isinstance(rls.rls_catalog(), tuple)
     assert rls.postgres_role_sync_plan()["review_required"] is True
