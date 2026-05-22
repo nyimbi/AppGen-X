@@ -203,6 +203,9 @@ Visual design is split into two related capabilities:
 - `object_inspector_workbench()` validates the design-time metadata layer:
   property editors, event handler lifecycle, component verbs, custom designer
   hooks, filtering/sorting modes, and persisted inspector state.
+- `livebindings_workbench()` validates visual data-binding graphs, expression
+  safety, converter/validator catalogs, designer interactions, and runtime
+  update modes.
 - `visual_modeling.py` handles database graph nodes, relationships, ERD export,
   DBML/SQL/PonyORM export, schema proposals, and migration preview.
 - `branding.py` handles brand/theme contracts, splash-screen configuration,

@@ -89,6 +89,8 @@ from pyAppGen.form_designer import form_design as package_form_design
 from pyAppGen.form_designer import form_design_to_dfm
 from pyAppGen.form_designer import form_designer_generation_smoke_audit
 from pyAppGen.form_designer import form_designer_release_audit
+from pyAppGen.form_designer import livebindings_graph_contract
+from pyAppGen.form_designer import livebindings_workbench
 from pyAppGen.form_designer import object_inspector_contract
 from pyAppGen.form_designer import object_inspector_workbench
 from pyAppGen.form_designer import rad_parity_workbench
@@ -810,6 +812,23 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "custom_designer_hooks",
         "inspector_state",
     } == {check["id"] for check in inspector_workbench["checks"]}
+    binding_graph = livebindings_graph_contract()
+    assert binding_graph["format"] == "appgen.livebindings-graph.v1"
+    assert {"dataset", "field", "control", "expression"} <= {node["kind"] for node in binding_graph["nodes"]}
+    assert {"field_to_control", "control_to_field", "expression_to_property"} <= {
+        edge["kind"] for edge in binding_graph["edges"]
+    }
+    binding_workbench = livebindings_workbench()
+    assert binding_workbench["format"] == "appgen.livebindings-workbench.v1"
+    assert binding_workbench["ok"] is True
+    assert {
+        "graph_nodes",
+        "graph_edges",
+        "expression_validation",
+        "converter_validator_catalogs",
+        "designer_surface",
+        "runtime_modes",
+    } == {check["id"] for check in binding_workbench["checks"]}
     third_party_registry = third_party_component_registry()
     assert {"devexpress-native", "tms-fnc", "fastreport", "teechart", "indy"} <= {
         item["id"] for item in third_party_registry
@@ -8613,6 +8632,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert "Component Usability JSON" in (output_dir / "templates" / "appgen_form_designer.html").read_text()
     assert "Component Analogs JSON" in (output_dir / "templates" / "appgen_form_designer.html").read_text()
     assert "Object Inspector JSON" in (output_dir / "templates" / "appgen_form_designer.html").read_text()
+    assert "Data Bindings JSON" in (output_dir / "templates" / "appgen_form_designer.html").read_text()
     assert "Pascal Runtime JSON" in (output_dir / "templates" / "appgen_form_designer.html").read_text()
     workbench = form_designer.form_designer_workbench(
         {"app/form_designer.py", "app/templates/appgen_form_designer.html"}
@@ -8648,6 +8668,9 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert "/form-designer/object-inspector.json" in next(
         check["evidence"]["routes"] for check in workbench["checks"] if check["id"] == "route_surface"
     )
+    assert "/form-designer/livebindings.json" in next(
+        check["evidence"]["routes"] for check in workbench["checks"] if check["id"] == "route_surface"
+    )
     assert "/form-designer/pascal-runtime.json" in next(
         check["evidence"]["routes"] for check in workbench["checks"] if check["id"] == "route_surface"
     )
@@ -8668,6 +8691,12 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert generated_runtime["ok"] is True
     assert "{$R *.dfm}" in generated_runtime["unit"]["unit_source"]
     assert "control_to_field" in form_designer.livebindings_contract()["binding_edges"]
+    generated_bindings = form_designer.livebindings_workbench()
+    assert generated_bindings["format"] == "appgen.generated-livebindings-workbench.v1"
+    assert generated_bindings["ok"] is True
+    assert {"graph_nodes", "graph_edges", "expression_validation"} <= {
+        check["id"] for check in generated_bindings["checks"]
+    }
     assert "camera" in form_designer.mobile_native_api_contract()["apis"]
     assert "viewport3d" in form_designer.cross_target_visual_depth_contract()["three_d"]
     generated_analogs = form_designer.component_analog_workbench()

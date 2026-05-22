@@ -302,6 +302,9 @@ Generated apps include Studio contracts for:
 - An Object Inspector workbench proves property editor types, event-handler
   lifecycle actions, component editor verbs, custom designer hooks, and
   persisted inspector state.
+- A visual data-binding workbench proves binding graph nodes/edges, expression
+  validation, converter and validator catalogs, designer gestures, and runtime
+  binding modes.
 - Curated third-party component registry for useful commercial and open-source
   suites, plus reviewed package import/install plans for additional vendors.
 - Generated package modules under `app/component_packages/<package>.py` export

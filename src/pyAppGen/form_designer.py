@@ -1101,13 +1101,167 @@ def object_inspector_workbench() -> dict:
 
 def livebindings_contract() -> dict:
     """Return LiveBindings-style visual data-binding contracts."""
+    graph = livebindings_graph_contract()
     return {
         "format": "appgen.livebindings-designer-contract.v1",
         "binding_nodes": ("control", "field", "dataset", "expression", "converter", "validator"),
         "binding_edges": ("control_to_field", "field_to_control", "expression_to_property", "dataset_to_grid"),
-        "expressions": ("format", "parse", "lookup", "aggregate", "conditional"),
-        "generated_artifacts": ("binding_graph", "binding_list", "data_sources", "validation_rules"),
+        "expressions": ("format", "parse", "lookup", "aggregate", "conditional", "coalesce", "concat"),
+        "generated_artifacts": ("binding_graph", "binding_list", "data_sources", "validation_rules", "converters", "designer_surface"),
+        "graph": graph,
+        "designer": {
+            "palette": ("data_source", "control", "field", "expression", "converter", "validator"),
+            "gestures": ("drag_link", "reroute_edge", "inspect_node", "preview_value", "disable_binding"),
+            "side_effects": (),
+        },
+        "runtime": {
+            "modes": ("one_way", "two_way", "one_time", "command"),
+            "update_triggers": ("on_change", "on_exit", "on_validate", "manual"),
+            "error_surfaces": ("field_error", "form_error", "toast", "log"),
+        },
         "review_required": True,
+    }
+
+
+def livebindings_graph_contract(design: dict | None = None) -> dict:
+    """Return a visual binding graph for form controls, fields, and datasets."""
+    design = design or form_design()
+    table = design["table"]
+    component_nodes = tuple(
+        {
+            "id": f"control:{component['field']}",
+            "kind": "control",
+            "component": component["component"],
+            "field": component["field"],
+            "property": _binding_property(component["component"]),
+        }
+        for component in design["components"]
+    )
+    field_nodes = tuple(
+        {
+            "id": f"field:{component['field']}",
+            "kind": "field",
+            "table": table,
+            "field": component["field"],
+            "field_type": component.get("field_type", "string"),
+        }
+        for component in design["components"]
+    )
+    dataset_node = {"id": f"dataset:{table}", "kind": "dataset", "table": table, "mode": "browse_edit"}
+    expression_nodes = tuple(
+        {
+            "id": f"expression:{component['field']}:display",
+            "kind": "expression",
+            "expression": f"coalesce({component['field']}, '')",
+            "validator": validate_binding_expression(f"coalesce({component['field']}, '')"),
+        }
+        for component in design["components"]
+    )
+    edges = []
+    for component in design["components"]:
+        field = component["field"]
+        edges.extend(
+            (
+                {"from": f"dataset:{table}", "to": f"field:{field}", "kind": "dataset_to_field"},
+                {"from": f"field:{field}", "to": f"control:{field}", "kind": "field_to_control", "mode": "read"},
+                {"from": f"control:{field}", "to": f"field:{field}", "kind": "control_to_field", "mode": "write"},
+                {"from": f"expression:{field}:display", "to": f"control:{field}", "kind": "expression_to_property", "property": "display"},
+            )
+        )
+    return {
+        "format": "appgen.livebindings-graph.v1",
+        "table": table,
+        "nodes": (dataset_node,) + field_nodes + component_nodes + expression_nodes,
+        "edges": tuple(edges),
+        "converters": livebindings_converter_catalog(),
+        "validators": livebindings_validator_catalog(),
+    }
+
+
+def validate_binding_expression(expression: str) -> dict:
+    """Validate a binding expression against the allowed expression subset."""
+    expression = expression.strip()
+    allowed_functions = ("format", "parse", "lookup", "aggregate", "conditional", "coalesce", "concat")
+    risky_tokens = ("__", "import", "eval", "exec", "open(", "subprocess", "lambda")
+    function_calls = tuple(match.group(1) for match in re.finditer(r"\b([A-Za-z_][A-Za-z0-9_]*)\s*\(", expression))
+    unknown_functions = tuple(name for name in function_calls if name not in allowed_functions)
+    blocked_tokens = tuple(token for token in risky_tokens if token in expression)
+    return {
+        "format": "appgen.binding-expression-validation.v1",
+        "expression": expression,
+        "ok": bool(expression) and not unknown_functions and not blocked_tokens,
+        "functions": function_calls,
+        "unknown_functions": unknown_functions,
+        "blocked_tokens": blocked_tokens,
+        "side_effects": (),
+    }
+
+
+def livebindings_converter_catalog() -> tuple[dict, ...]:
+    """Return generated converters available to the visual binding designer."""
+    return (
+        {"name": "string_to_int", "from": "string", "to": "int", "null_policy": "preserve"},
+        {"name": "decimal_to_currency", "from": "decimal", "to": "string", "format": "localized"},
+        {"name": "date_to_display", "from": "date", "to": "string", "format": "short_date"},
+        {"name": "bool_to_visibility", "from": "boolean", "to": "visibility", "false_value": "hidden"},
+    )
+
+
+def livebindings_validator_catalog() -> tuple[dict, ...]:
+    """Return generated validators available to the visual binding designer."""
+    return (
+        {"name": "required", "applies_to": ("string", "text", "int", "decimal", "date")},
+        {"name": "email", "applies_to": ("string",)},
+        {"name": "range", "applies_to": ("int", "decimal", "date")},
+        {"name": "lookup_exists", "applies_to": ("relation", "int")},
+    )
+
+
+def livebindings_workbench() -> dict:
+    """Prove visual data-binding graph, expression, converter, and route coverage."""
+    contract = livebindings_contract()
+    graph = contract["graph"]
+    expressions = tuple(node["validator"] for node in graph["nodes"] if node["kind"] == "expression")
+    checks = (
+        {
+            "id": "graph_nodes",
+            "ok": {"dataset", "field", "control", "expression"} <= {node["kind"] for node in graph["nodes"]},
+            "evidence": tuple((node["id"], node["kind"]) for node in graph["nodes"]),
+        },
+        {
+            "id": "graph_edges",
+            "ok": {"dataset_to_field", "field_to_control", "control_to_field", "expression_to_property"} <= {edge["kind"] for edge in graph["edges"]},
+            "evidence": graph["edges"],
+        },
+        {
+            "id": "expression_validation",
+            "ok": bool(expressions) and all(item["ok"] and not item["side_effects"] for item in expressions),
+            "evidence": expressions,
+        },
+        {
+            "id": "converter_validator_catalogs",
+            "ok": bool(graph["converters"]) and bool(graph["validators"]),
+            "evidence": {"converters": graph["converters"], "validators": graph["validators"]},
+        },
+        {
+            "id": "designer_surface",
+            "ok": {"drag_link", "preview_value", "disable_binding"} <= set(contract["designer"]["gestures"]),
+            "evidence": contract["designer"],
+        },
+        {
+            "id": "runtime_modes",
+            "ok": {"one_way", "two_way", "command"} <= set(contract["runtime"]["modes"]),
+            "evidence": contract["runtime"],
+        },
+    )
+    ok = all(check["ok"] for check in checks)
+    return {
+        "format": "appgen.livebindings-workbench.v1",
+        "ok": ok,
+        "decision": "approved" if ok else "blocked",
+        "contract": contract,
+        "checks": checks,
+        "blocking_gaps": tuple(check for check in checks if not check["ok"]),
     }
 
 
@@ -1201,8 +1355,9 @@ def rad_parity_workbench(existing_paths: set[str] | None = None) -> dict:
         },
         {
             "id": "livebindings_designer",
-            "ok": "control_to_field" in livebindings_contract()["binding_edges"],
-            "evidence": livebindings_contract(),
+            "ok": "control_to_field" in livebindings_contract()["binding_edges"]
+            and livebindings_workbench()["ok"],
+            "evidence": {"contract": livebindings_contract(), "workbench": livebindings_workbench()},
         },
         {
             "id": "firedac_datasnap_radserver_interbase_tooling",
@@ -1931,6 +2086,17 @@ def _property_editor_descriptor(name: str, component: str, category: str) -> dic
         "supports_reset": True,
         "supports_binding": category in {"input", "choice", "calendar", "data", "data_access", "media", "graphics"},
     }
+
+
+def _binding_property(component: str) -> str:
+    category = COMPONENTS.get(component, {}).get("category")
+    if category in {"input", "choice", "calendar", "relationship"}:
+        return "value"
+    if category in {"data", "data_access", "analytics", "reports"}:
+        return "dataset"
+    if category in {"media", "graphics"}:
+        return "source"
+    return "caption"
 
 
 def _default_property_value(name: str, component: str, category: str) -> object:

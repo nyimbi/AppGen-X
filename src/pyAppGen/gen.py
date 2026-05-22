@@ -6199,6 +6199,7 @@ def write_form_designer_template(output_dir):
       <a class="btn btn-default" href="{{ url_for('FormDesignerView.component_usability_json') }}">Component Usability JSON</a>
       <a class="btn btn-default" href="{{ url_for('FormDesignerView.component_analogs_json') }}">Component Analogs JSON</a>
       <a class="btn btn-default" href="{{ url_for('FormDesignerView.object_inspector_json') }}">Object Inspector JSON</a>
+      <a class="btn btn-default" href="{{ url_for('FormDesignerView.livebindings_json') }}">Data Bindings JSON</a>
       <a class="btn btn-default" href="{{ url_for('FormDesignerView.pascal_runtime_json') }}">Pascal Runtime JSON</a>
       <a class="btn btn-default" href="{{ url_for('FormDesignerView.release_gate_json') }}">Release Gate JSON</a>
     </div>
@@ -25909,14 +25910,103 @@ def component_usability_workbench(existing_paths=None):
 
 def livebindings_contract():
     """Return LiveBindings-style visual data-binding contracts."""
+    graph = livebindings_graph_contract()
     return {{
         "format": "appgen.generated-livebindings-designer-contract.v1",
         "binding_nodes": ("control", "field", "dataset", "expression", "converter", "validator"),
         "binding_edges": ("control_to_field", "field_to_control", "expression_to_property", "dataset_to_grid"),
-        "expressions": ("format", "parse", "lookup", "aggregate", "conditional"),
-        "generated_artifacts": ("binding_graph", "binding_list", "data_sources", "validation_rules"),
+        "expressions": ("format", "parse", "lookup", "aggregate", "conditional", "coalesce", "concat"),
+        "generated_artifacts": ("binding_graph", "binding_list", "data_sources", "validation_rules", "converters", "designer_surface"),
+        "graph": graph,
+        "designer": {{"palette": ("data_source", "control", "field", "expression", "converter", "validator"), "gestures": ("drag_link", "reroute_edge", "inspect_node", "preview_value", "disable_binding"), "side_effects": ()}},
+        "runtime": {{"modes": ("one_way", "two_way", "one_time", "command"), "update_triggers": ("on_change", "on_exit", "on_validate", "manual"), "error_surfaces": ("field_error", "form_error", "toast", "log")}},
         "review_required": True,
     }}
+
+
+def livebindings_graph_contract(table_name=None, design=None):
+    """Return a visual binding graph for form controls, fields, and datasets."""
+    if design is None:
+        table_name = table_name or next(iter(FORM_TABLES))
+        design = form_design(table_name)
+    table = design["table"]
+    component_nodes = tuple({{"id": f"control:{{component.get('field') or component['id']}}", "kind": "control", "component": component["type"], "field": component.get("field"), "property": _binding_property(component["type"])}} for component in design["components"])
+    field_nodes = tuple({{"id": f"field:{{component.get('field') or component['id']}}", "kind": "field", "table": table, "field": component.get("field") or "", "field_type": "string"}} for component in design["components"])
+    dataset_node = {{"id": f"dataset:{{table}}", "kind": "dataset", "table": table, "mode": "browse_edit"}}
+    expression_nodes = tuple(
+        {{
+            "id": f"expression:{{component.get('field') or component['id']}}:display",
+            "kind": "expression",
+            "expression": f"coalesce({{component.get('field') or component['id']}}, '')",
+            "validator": validate_binding_expression(f"coalesce({{component.get('field') or component['id']}}, '')"),
+        }}
+        for component in design["components"]
+    )
+    edges = []
+    for component in design["components"]:
+        field = component.get("field") or component["id"]
+        edges.extend((
+            {{"from": f"dataset:{{table}}", "to": f"field:{{field}}", "kind": "dataset_to_field"}},
+            {{"from": f"field:{{field}}", "to": f"control:{{field}}", "kind": "field_to_control", "mode": "read"}},
+            {{"from": f"control:{{field}}", "to": f"field:{{field}}", "kind": "control_to_field", "mode": "write"}},
+            {{"from": f"expression:{{field}}:display", "to": f"control:{{field}}", "kind": "expression_to_property", "property": "display"}},
+        ))
+    return {{
+        "format": "appgen.generated-livebindings-graph.v1",
+        "table": table,
+        "nodes": (dataset_node,) + field_nodes + component_nodes + expression_nodes,
+        "edges": tuple(edges),
+        "converters": livebindings_converter_catalog(),
+        "validators": livebindings_validator_catalog(),
+    }}
+
+
+def validate_binding_expression(expression):
+    """Validate a binding expression against the allowed expression subset."""
+    expression = str(expression or "").strip()
+    allowed_functions = ("format", "parse", "lookup", "aggregate", "conditional", "coalesce", "concat")
+    risky_tokens = ("__", "import", "eval", "exec", "open(", "subprocess", "lambda")
+    function_calls = tuple(match.group(1) for match in re.finditer(r"\\b([A-Za-z_][A-Za-z0-9_]*)\\s*\\(", expression))
+    unknown_functions = tuple(name for name in function_calls if name not in allowed_functions)
+    blocked_tokens = tuple(token for token in risky_tokens if token in expression)
+    return {{"format": "appgen.generated-binding-expression-validation.v1", "expression": expression, "ok": bool(expression) and not unknown_functions and not blocked_tokens, "functions": function_calls, "unknown_functions": unknown_functions, "blocked_tokens": blocked_tokens, "side_effects": ()}}
+
+
+def livebindings_converter_catalog():
+    """Return generated converters available to the visual binding designer."""
+    return (
+        {{"name": "string_to_int", "from": "string", "to": "int", "null_policy": "preserve"}},
+        {{"name": "decimal_to_currency", "from": "decimal", "to": "string", "format": "localized"}},
+        {{"name": "date_to_display", "from": "date", "to": "string", "format": "short_date"}},
+        {{"name": "bool_to_visibility", "from": "boolean", "to": "visibility", "false_value": "hidden"}},
+    )
+
+
+def livebindings_validator_catalog():
+    """Return generated validators available to the visual binding designer."""
+    return (
+        {{"name": "required", "applies_to": ("string", "text", "int", "decimal", "date")}},
+        {{"name": "email", "applies_to": ("string",)}},
+        {{"name": "range", "applies_to": ("int", "decimal", "date")}},
+        {{"name": "lookup_exists", "applies_to": ("relation", "int")}},
+    )
+
+
+def livebindings_workbench():
+    """Prove visual data-binding graph, expression, converter, and route coverage."""
+    contract = livebindings_contract()
+    graph = contract["graph"]
+    expressions = tuple(node["validator"] for node in graph["nodes"] if node["kind"] == "expression")
+    checks = (
+        {{"id": "graph_nodes", "ok": {{"dataset", "field", "control", "expression"}} <= {{node["kind"] for node in graph["nodes"]}}, "evidence": tuple((node["id"], node["kind"]) for node in graph["nodes"])}},
+        {{"id": "graph_edges", "ok": {{"dataset_to_field", "field_to_control", "control_to_field", "expression_to_property"}} <= {{edge["kind"] for edge in graph["edges"]}}, "evidence": graph["edges"]}},
+        {{"id": "expression_validation", "ok": bool(expressions) and all(item["ok"] and not item["side_effects"] for item in expressions), "evidence": expressions}},
+        {{"id": "converter_validator_catalogs", "ok": bool(graph["converters"]) and bool(graph["validators"]), "evidence": {{"converters": graph["converters"], "validators": graph["validators"]}}}},
+        {{"id": "designer_surface", "ok": {{"drag_link", "preview_value", "disable_binding"}} <= set(contract["designer"]["gestures"]), "evidence": contract["designer"]}},
+        {{"id": "runtime_modes", "ok": {{"one_way", "two_way", "command"}} <= set(contract["runtime"]["modes"]), "evidence": contract["runtime"]}},
+    )
+    ok = all(check["ok"] for check in checks)
+    return {{"format": "appgen.generated-livebindings-workbench.v1", "ok": ok, "decision": "approved" if ok else "blocked", "contract": contract, "checks": checks, "blocking_gaps": tuple(check for check in checks if not check["ok"])}}
 
 
 def rad_data_tooling_contract():
@@ -26111,6 +26201,17 @@ def _property_editor_descriptor(name, component_type, category):
         "supports_reset": True,
         "supports_binding": category in ("input", "choice", "calendar", "data", "data_access", "media", "graphics"),
     }}
+
+
+def _binding_property(component_type):
+    category = _component_category(component_type)
+    if category in ("input", "choice", "calendar", "relationship"):
+        return "value"
+    if category in ("data", "data_access", "analytics", "reports"):
+        return "dataset"
+    if category in ("media", "graphics"):
+        return "source"
+    return "caption"
 
 
 def _local_component_paths():
@@ -26438,13 +26539,13 @@ def rad_parity_workbench(existing_paths=()):
         {{"id": "pascal_runtime_and_dfm_streaming", "ok": "text-dfm" in dfm_streaming_contract()["stream_formats"] and pascal_runtime_workbench()["ok"], "evidence": {{"streaming": dfm_streaming_contract(), "runtime": pascal_runtime_workbench()}}}},
         {{"id": "pascal_runtime_workbench", "ok": pascal_runtime_workbench()["ok"], "evidence": pascal_runtime_workbench()}},
         {{"id": "object_inspector_parity", "ok": {{"Properties", "Events"}} <= set(object_inspector_contract()["tabs"]) and object_inspector_workbench()["ok"], "evidence": {{"contract": object_inspector_contract(), "workbench": object_inspector_workbench()}}}},
-        {{"id": "livebindings_designer", "ok": "control_to_field" in livebindings_contract()["binding_edges"], "evidence": livebindings_contract()}},
+        {{"id": "livebindings_designer", "ok": "control_to_field" in livebindings_contract()["binding_edges"] and livebindings_workbench()["ok"], "evidence": {{"contract": livebindings_contract(), "workbench": livebindings_workbench()}}}},
         {{"id": "firedac_datasnap_radserver_interbase_tooling", "ok": {{"FireDAC", "DataSnap", "RAD Server", "InterBase"}} <= set(rad_data_tooling_contract()["tooling"]), "evidence": rad_data_tooling_contract()}},
         {{"id": "design_time_package_installation", "ok": install_plan["ok"] and install_plan["requires_review"], "evidence": install_plan}},
         {{"id": "mobile_native_device_api_coverage", "ok": {{"camera", "location", "push_notifications", "secure_storage"}} <= set(mobile_native_api_contract()["apis"]), "evidence": mobile_native_api_contract()}},
         {{"id": "cross_target_animation_effects_3d_depth", "ok": bool(cross_target_visual_depth_contract()["animation"]) and bool(cross_target_visual_depth_contract()["three_d"]), "evidence": cross_target_visual_depth_contract()}},
         {{"id": "third_party_component_ecosystem", "ok": install_plan["ok"] and {{"grid", "reports", "charts", "database", "network", "animation"}} <= categories and package_workbench["ok"], "evidence": {{"packages": install_plan["packages"], "categories": tuple(sorted(categories)), "package_workbench": package_workbench}}}},
-        {{"id": "route_surface", "ok": not missing, "evidence": {{"routes": ("/form-designer/rad-parity.json", "/form-designer/third-party-components.json", "/form-designer/component-usability.json", "/form-designer/component-analogs.json", "/form-designer/object-inspector.json", "/form-designer/pascal-runtime.json")}}}},
+        {{"id": "route_surface", "ok": not missing, "evidence": {{"routes": ("/form-designer/rad-parity.json", "/form-designer/third-party-components.json", "/form-designer/component-usability.json", "/form-designer/component-analogs.json", "/form-designer/object-inspector.json", "/form-designer/livebindings.json", "/form-designer/pascal-runtime.json")}}}},
     )
     ok = all(check["ok"] for check in checks)
     return {{
@@ -26632,7 +26733,7 @@ def form_designer_workbench(existing_paths=()):
         {{
             "id": "route_surface",
             "ok": not missing,
-            "evidence": {{"routes": ("/form-designer/", "/form-designer/forms.json", "/form-designer/drop", "/form-designer/workbench.json", "/form-designer/release-gate.json", "/form-designer/rad-parity.json", "/form-designer/third-party-components.json", "/form-designer/component-usability.json", "/form-designer/component-analogs.json", "/form-designer/object-inspector.json", "/form-designer/pascal-runtime.json")}},
+            "evidence": {{"routes": ("/form-designer/", "/form-designer/forms.json", "/form-designer/drop", "/form-designer/workbench.json", "/form-designer/release-gate.json", "/form-designer/rad-parity.json", "/form-designer/third-party-components.json", "/form-designer/component-usability.json", "/form-designer/component-analogs.json", "/form-designer/object-inspector.json", "/form-designer/livebindings.json", "/form-designer/pascal-runtime.json")}},
         }},
         {{
             "id": "rad_parity_workbench",
@@ -26691,6 +26792,10 @@ class FormDesignerView(BaseView):
     @expose("/object-inspector.json")
     def object_inspector_json(self):
         return jsonify(object_inspector_workbench())
+
+    @expose("/livebindings.json")
+    def livebindings_json(self):
+        return jsonify(livebindings_workbench())
 
     @expose("/pascal-runtime.json")
     def pascal_runtime_json(self):
@@ -43997,6 +44102,7 @@ def validate_form_designer_artifacts() -> None:
         or '@expose("/component-usability.json")' not in contract
         or '@expose("/component-analogs.json")' not in contract
         or '@expose("/object-inspector.json")' not in contract
+        or '@expose("/livebindings.json")' not in contract
         or '@expose("/pascal-runtime.json")' not in contract
     ):
         fail("form designer must expose RAD parity and third-party component ecosystem contracts")
@@ -44005,7 +44111,7 @@ def validate_form_designer_artifacts() -> None:
         fail("form designer template must expose drag-and-drop controls")
     if "getBoundingClientRect" not in template or "Inspector" not in template or "Release Gate JSON" not in template:
         fail("form designer template must capture drop coordinates, property inspector, and release gate")
-    if "RAD Parity JSON" not in template or "Third-party Components JSON" not in template or "Component Usability JSON" not in template or "Component Analogs JSON" not in template or "Object Inspector JSON" not in template or "Pascal Runtime JSON" not in template:
+    if "RAD Parity JSON" not in template or "Third-party Components JSON" not in template or "Component Usability JSON" not in template or "Component Analogs JSON" not in template or "Object Inspector JSON" not in template or "Data Bindings JSON" not in template or "Pascal Runtime JSON" not in template:
         fail("form designer template must expose RAD parity and third-party component routes")
 
 

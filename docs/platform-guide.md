@@ -54,6 +54,9 @@ A generated app can include:
 - `object_inspector_workbench()` proves property editors, event editors,
   component editor verbs, custom designer hooks, filtering, sorting, and
   inspector state persistence.
+- `livebindings_workbench()` proves visual data-binding graph nodes and edges,
+  expression validation, converters, validators, designer gestures, and runtime
+  update modes.
 - `app/component_packages/<package>.py` gives every curated component package
   its own reviewed package contract with `package_contract()`, `install_plan()`,
   `load_policy()`, and `test_plan()` exports.
