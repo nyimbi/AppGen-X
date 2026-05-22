@@ -754,6 +754,10 @@ apps include:
   readiness contracts. A generated developer-tools release gate proves IDE
   catalogs, VS Code debugging/tasks, JetBrains run configurations/tasks,
   Eclipse/PyDev metadata, schema source maps, and required editor artifacts.
+  `devtools_workbench()` adds IDE-ready evidence for tool catalogs, VS Code,
+  JetBrains, Eclipse/PyDev, schema source maps, artifact coverage, and
+  `/devtools/workbench.json` route coverage before `devops.ide-integration` is
+  marked implemented.
 - `studio.py` and `appgen_studio.html` with a generated IDE/workbench for DSL
   authoring, DSL linting, outline extraction, keyword-budget checks,
   quick fixes, completions/snippets, searchable command palettes, project trees, editor

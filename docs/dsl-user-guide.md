@@ -614,6 +614,9 @@ Use `/devtools/release-gate.json` or `devtools_release_gate()` to prove
 external IDE readiness. The gate checks IDE catalogs, VS Code debugging/tasks,
 JetBrains run configurations/tasks, Eclipse/PyDev metadata, schema source maps,
 and required editor artifacts.
+Use `/devtools/workbench.json` or `devtools_workbench()` inside the generated
+IDE to inspect tool catalogs, VS Code, JetBrains, Eclipse/PyDev, source-map,
+artifact, route, and release-gate evidence.
 Use `/extensions/release-gate.json` or `extension_release_gate()` to prove
 custom-code extensibility is ready: the gate checks generated artifacts, stable
 hook catalogs, table lifecycle hooks, generated-rule dispatch, custom-module

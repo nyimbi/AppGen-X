@@ -1090,6 +1090,7 @@ def test_generate_app_from_sqlite_schema_compiles(tmp_path) -> None:
     assert capabilities_by_key["data.search"]["status"] == "implemented"
     assert capabilities_by_key["data.database-ops"]["status"] == "implemented"
     assert capabilities_by_key["devops.cicd"]["status"] == "implemented"
+    assert capabilities_by_key["devops.ide-integration"]["status"] == "implemented"
     assert capabilities_by_key["platform.microservices"]["status"] == "implemented"
     assert capabilities_by_key["platform.targets"]["status"] == "implemented"
     assert capabilities_by_key["platform.native"]["status"] == "implemented"
@@ -2552,6 +2553,8 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert "rollback" in (output_dir / "templates" / "appgen_version_control.html").read_text()
     assert "Visual Studio Code" in (output_dir / "templates" / "appgen_devtools.html").read_text()
     assert "JetBrains" in (output_dir / "templates" / "appgen_devtools.html").read_text()
+    assert "Source Map JSON" in (output_dir / "templates" / "appgen_devtools.html").read_text()
+    assert "Workbench JSON" in (output_dir / "templates" / "appgen_devtools.html").read_text()
     studio_template = (output_dir / "templates" / "appgen_studio.html").read_text()
     assert "Developer Studio" in studio_template
     assert "Project Tree JSON" in studio_template
@@ -5595,6 +5598,36 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert {"tool_catalog", "vscode_debug", "jetbrains_run_config", "eclipse_pydev", "schema_source_map"} <= {
         gate["gate"] for gate in devtools_gate["gates"]
     }
+    devtools_workbench = devtools.devtools_workbench(
+        {
+            "app/devtools.py",
+            "app/templates/appgen_devtools.html",
+            ".vscode/launch.json",
+            ".vscode/tasks.json",
+            ".vscode/extensions.json",
+            ".idea/misc.xml",
+            ".idea/modules.xml",
+            ".idea/runConfigurations/AppGen_Flask.xml",
+            ".project",
+            ".pydevproject",
+        }
+    )
+    assert devtools_workbench["format"] == "appgen.devtools-workbench.v1"
+    assert devtools_workbench["ok"] is True
+    assert devtools_workbench["decision"] == "approved"
+    assert {
+        "tool_catalog",
+        "vscode_debug",
+        "jetbrains_run_config",
+        "eclipse_pydev",
+        "schema_source_map",
+        "artifact_evidence",
+        "route_surface",
+    } == {check["id"] for check in devtools_workbench["checks"]}
+    assert "/devtools/workbench.json" in next(
+        check["evidence"]["routes"] for check in devtools_workbench["checks"] if check["id"] == "route_surface"
+    )
+    assert devtools.devtools_workbench({"app/devtools.py"})["ok"] is False
     assert devtools.devtools_release_gate({"app/devtools.py"})["ok"] is False
     assert studio.editable_files()
     assert {"web", "mobile", "desktop"} <= set(studio.ide_workspace()["generation"]["targets"])
