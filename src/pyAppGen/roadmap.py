@@ -510,6 +510,7 @@ def package_goal_audit(root: Path | str | None = None) -> dict:
     from .dsl_quality import dsl_release_audit
     from .erp import erp_template_release_audit
     from .form_designer import form_designer_release_audit
+    from .ideas import ideas_release_audit
     from .integrations import integration_release_audit
     from .nl import nl_evolution_release_audit
     from .ops import ops_release_audit
@@ -521,6 +522,7 @@ def package_goal_audit(root: Path | str | None = None) -> dict:
     from .visual_modeling import visual_modeling_release_audit
 
     roadmap = roadmap_release_audit(root)
+    ideas = ideas_release_audit(root)
     base_features = base_feature_release_audit(root)
     superiority = jhipster_superiority_audit()
     excellence = generated_app_excellence_audit()
@@ -544,6 +546,11 @@ def package_goal_audit(root: Path | str | None = None) -> dict:
             "id": "roadmap_traceability",
             "ok": roadmap["ok"],
             "format": roadmap["format"],
+        },
+        {
+            "id": "ideas_roadmap_contract",
+            "ok": ideas["ok"],
+            "format": ideas["format"],
         },
         {
             "id": "base_feature_contract",
@@ -651,6 +658,7 @@ def package_goal_audit(root: Path | str | None = None) -> dict:
         "gates": gates,
         "audits": {
             "roadmap": roadmap,
+            "ideas": ideas,
             "base_features": base_features,
             "jhipster_superiority": superiority,
             "generated_app_excellence": excellence,

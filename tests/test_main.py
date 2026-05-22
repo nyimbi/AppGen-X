@@ -79,6 +79,10 @@ from pyAppGen.form_designer import placement_suggestions
 from pyAppGen.form_designer import property_inspector
 from pyAppGen.form_designer import snap_drop
 from pyAppGen.form_designer import validate_form_design
+from pyAppGen.ideas import ideas_document_check
+from pyAppGen.ideas import ideas_release_audit
+from pyAppGen.ideas import ideas_requirement_rows
+from pyAppGen.ideas import ideas_section_summary
 from pyAppGen.integrations import generated_integration_contracts
 from pyAppGen.integrations import integration_catalog
 from pyAppGen.integrations import integration_contract
@@ -266,6 +270,49 @@ def test_roadmap_release_audit_cli_maps_docs_to_capabilities(
     assert all(gate["ok"] for gate in cli_report["gates"])
 
 
+def test_ideas_release_audit_maps_original_roadmap_items(
+    runner: CliRunner,
+) -> None:
+    """Every docs/ideas.md roadmap item has package capability proof."""
+    document = ideas_document_check()
+    assert document["format"] == "appgen.ideas-document-check.v1"
+    assert document["ok"] is True
+
+    rows = ideas_requirement_rows()
+    assert len(rows) == 64
+    assert {row["section"] for row in rows} == {
+        "ecosystem",
+        "other_stuff",
+        "big_things",
+        "docker_deployment",
+        "dbscript_ideas",
+        "extended_bullets",
+    }
+    assert {"dbml_sql_ponyorm_generation", "existing_database_generation"} <= {
+        row["id"] for row in rows
+    }
+
+    sections = ideas_section_summary(rows)
+    assert all(section["ok"] for section in sections)
+
+    audit = ideas_release_audit()
+    assert audit["format"] == "appgen.ideas-release-audit.v1"
+    assert audit["ok"] is True
+    assert {
+        "document_contract",
+        "roadmap_item_coverage",
+        "section_coverage",
+    } == {gate["id"] for gate in audit["gates"]}
+
+    result = runner.invoke(__main__.main, ["--ideas-release-audit"])
+
+    assert result.exit_code == 0
+    cli_report = json.loads(result.output)
+    assert cli_report["ok"] is True
+    assert cli_report["decision"] == "approved"
+    assert cli_report["gates"][1]["total"] == 64
+
+
 def test_base_features_release_audit_maps_every_base_requirement(
     runner: CliRunner,
 ) -> None:
@@ -371,6 +418,7 @@ def test_package_goal_audit_cli_aggregates_objective_evidence(
     assert direct_report["ok"] is True
     assert {
         "roadmap_traceability",
+        "ideas_roadmap_contract",
         "base_feature_contract",
         "jhipster_superiority",
         "generated_app_excellence",
@@ -402,6 +450,7 @@ def test_package_goal_audit_cli_aggregates_objective_evidence(
     assert cli_report["ok"] is True
     assert cli_report["decision"] == "approved"
     assert cli_report["audits"]["roadmap"]["ok"] is True
+    assert cli_report["audits"]["ideas"]["ok"] is True
     assert cli_report["audits"]["base_features"]["ok"] is True
     assert cli_report["audits"]["jhipster_superiority"]["ok"] is True
     assert cli_report["audits"]["generated_app_excellence"]["ok"] is True

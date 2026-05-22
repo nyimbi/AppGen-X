@@ -118,13 +118,17 @@ and AppGen-only advantage areas.
 Run `appgen --generated-app-excellence-audit` before claiming generated apps are
 beautiful, sophisticated, secure, reliable, robust, functional, and highly
 capable.
+Run `appgen --ideas-release-audit` to prove the original `docs/ideas.md`
+roadmap entries, from JHipster and source intake through deployment, DBScript
+language ideas, reporting, RLS, tabbed permissions, and autobackup, map to
+implemented package capability evidence.
 Run `appgen --base-features-release-audit` to prove every numbered baseline
 feature and platform bullet in `docs/base_features.md` maps to implemented
 package capability evidence.
 Run `appgen --package-goal-audit` to collect roadmap traceability, JHipster
-superiority, generated-app excellence, base-feature coverage, DSL quality,
-schema source intake, ERP template, and natural-language evolution evidence into
-one package-level JSON bundle.
+superiority, generated-app excellence, ideas-roadmap coverage, base-feature
+coverage, DSL quality, schema source intake, ERP template, and natural-language
+evolution evidence into one package-level JSON bundle.
 Run `appgen --erp-template-catalog` to list package-level ERP starter modules,
 then `appgen --erp-template invoicing > invoicing.appgen` to export a module as
 DSL before generating it with `appgen --dsl`.

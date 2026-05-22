@@ -46837,6 +46837,11 @@ def get_metadata(idb):
     ),
 )
 @click.option(
+    "--ideas-release-audit",
+    is_flag=True,
+    help="Print JSON proof that docs/ideas.md roadmap items are ready.",
+)
+@click.option(
     "--base-features-release-audit",
     is_flag=True,
     help="Print JSON proof that docs/base_features.md requirements are ready.",
@@ -46970,6 +46975,7 @@ def main(
     roadmap_release_audit,
     jhipster_superiority_audit,
     generated_app_excellence_audit,
+    ideas_release_audit,
     base_features_release_audit,
     package_goal_audit,
     erp_template_catalog,
@@ -47021,6 +47027,7 @@ def main(
         roadmap_release_audit,
         jhipster_superiority_audit,
         generated_app_excellence_audit,
+        ideas_release_audit,
         base_features_release_audit,
         package_goal_audit,
         erp_template_catalog,
@@ -47036,6 +47043,41 @@ def main(
         click.echo(ctx.get_help())
         ctx.exit(0)
 
+    if ideas_release_audit:
+        if any(
+            [
+                writedir,
+                database_url,
+                idatabase,
+                wdatabase,
+                lint_dsl_path,
+                fix_dsl_path,
+                format_dsl_path,
+                dsl_authoring_gate_path,
+                roadmap_release_audit,
+                jhipster_superiority_audit,
+                generated_app_excellence_audit,
+                base_features_release_audit,
+                package_goal_audit,
+                erp_template_catalog,
+                erp_template_module,
+                *audit_options,
+                schema_source_audit,
+                dsl_release_audit,
+                dsl_antlr_report,
+                *schema_sources,
+            ]
+        ):
+            raise click.UsageError(
+                "--ideas-release-audit cannot be combined with generation or "
+                "audit options."
+            )
+        from .ideas import ideas_release_audit as package_ideas_release_audit
+
+        result = package_ideas_release_audit()
+        click.echo(json.dumps(result, indent=2, sort_keys=True, default=list))
+        ctx.exit(0 if result["ok"] else 1)
+
     if base_features_release_audit:
         if any(
             [
@@ -47050,6 +47092,7 @@ def main(
                 roadmap_release_audit,
                 jhipster_superiority_audit,
                 generated_app_excellence_audit,
+                ideas_release_audit,
                 package_goal_audit,
                 erp_template_catalog,
                 erp_template_module,
@@ -47084,6 +47127,7 @@ def main(
                 roadmap_release_audit,
                 jhipster_superiority_audit,
                 generated_app_excellence_audit,
+                ideas_release_audit,
                 base_features_release_audit,
                 package_goal_audit,
                 erp_template_catalog,
@@ -47118,6 +47162,7 @@ def main(
                 roadmap_release_audit,
                 jhipster_superiority_audit,
                 generated_app_excellence_audit,
+                ideas_release_audit,
                 base_features_release_audit,
                 package_goal_audit,
                 erp_template_catalog,
