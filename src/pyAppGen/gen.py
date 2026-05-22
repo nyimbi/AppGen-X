@@ -3859,6 +3859,7 @@ def write_backup_template(output_dir):
       <a class="btn btn-primary" href="{{ url_for('BackupView.export_all') }}">Export all JSON</a>
       <a class="btn btn-default" href="{{ url_for('BackupView.schedule_json') }}">Autobackup Schedule JSON</a>
       <a class="btn btn-default" href="{{ url_for('BackupView.dr_plan_json') }}">DR Plan JSON</a>
+      <a class="btn btn-default" href="{{ url_for('BackupView.workbench_json') }}">Workbench JSON</a>
       <a class="btn btn-default" href="{{ url_for('BackupView.release_gate_json') }}">Release Gate JSON</a>
     </div>
   </div>
@@ -16753,6 +16754,56 @@ def backup_release_gate(existing_paths=(), payload=None, manifest=None):
     }}
 
 
+def backup_workbench(existing_paths=(), payload=None, manifest=None):
+    """Return IDE-ready backup, retention, recovery, and DR evidence."""
+    sample = backup_json({{table_name: () for table_name in BACKUP_TABLES}}) if payload is None else payload
+    selected_manifest = backup_manifest(sample) if manifest is None else manifest
+    release_gate = backup_release_gate(existing_paths, sample, selected_manifest)
+    gate_by_name = {{gate["gate"]: gate for gate in release_gate["gates"]}}
+    integrity = backup_integrity_check(sample, selected_manifest)
+    schedule = backup_schedule_plan()
+    retention = retention_plan((selected_manifest,))
+    runbook = recovery_runbook(sample, selected_manifest)
+    dr = disaster_recovery_plan(sample, selected_manifest)
+    restore = restore_plan(sample)
+    routes = (
+        "/backups/",
+        "/backups/all.json",
+        "/backups/schedule.json",
+        "/backups/disaster-recovery.json",
+        "/backups/workbench.json",
+        "/backups/release-gate.json",
+    )
+    checks = (
+        {{"id": "artifact_coverage", "ok": gate_by_name["artifacts"]["ok"], "evidence": gate_by_name["artifacts"]}},
+        {{"id": "payload_validation", "ok": gate_by_name["payload_validation"]["ok"], "evidence": {{"tables": tuple(BACKUP_TABLES), "restore": restore}}}},
+        {{"id": "integrity_manifest", "ok": gate_by_name["integrity_manifest"]["ok"], "evidence": integrity}},
+        {{"id": "autobackup_schedule", "ok": gate_by_name["autobackup_schedule"]["ok"], "evidence": schedule}},
+        {{"id": "retention_policy", "ok": gate_by_name["retention_policy"]["ok"], "evidence": retention}},
+        {{"id": "recovery_runbook", "ok": gate_by_name["recovery_runbook"]["ok"], "evidence": runbook}},
+        {{"id": "disaster_recovery", "ok": gate_by_name["disaster_recovery"]["ok"], "evidence": dr}},
+        {{"id": "route_surface", "ok": {{"/backups/workbench.json", "/backups/disaster-recovery.json", "/backups/release-gate.json", "/backups/all.json"}} <= set(routes), "evidence": {{"routes": routes}}}},
+        {{"id": "release_gate", "ok": release_gate["ok"], "evidence": release_gate}},
+    )
+    ok = all(check["ok"] for check in checks)
+    return {{
+        "format": "appgen.backup-workbench.v1",
+        "ok": ok,
+        "decision": "approved" if ok else "blocked",
+        "checks": checks,
+        "catalog": backup_catalog(),
+        "manifest": selected_manifest,
+        "integrity": integrity,
+        "schedule": schedule,
+        "retention": retention,
+        "runbook": runbook,
+        "disaster_recovery": dr,
+        "restore": restore,
+        "routes": routes,
+        "release_gate": release_gate,
+    }}
+
+
 def load_backup_payload(value):
     """Load a backup payload from JSON text or a dictionary."""
     if isinstance(value, str):
@@ -16856,6 +16907,10 @@ class BackupView(BaseView):
     @expose("/disaster-recovery.json")
     def dr_plan_json(self):
         return jsonify(disaster_recovery_plan())
+
+    @expose("/workbench.json")
+    def workbench_json(self):
+        return jsonify(backup_workbench({{"app/backup.py", "app/templates/appgen_backup.html"}}))
 
     @expose("/release-gate.json")
     def release_gate_json(self):
@@ -45866,6 +45921,12 @@ def test_generated_runtime_helpers():
         backup.backup_json({}),
         manifest_record,
     )["ok"] is True
+    assert backup.backup_workbench(
+        {"app/backup.py", "app/templates/appgen_backup.html"},
+        backup.backup_json({}),
+        manifest_record,
+    )["format"] == "appgen.backup-workbench.v1"
+    assert backup.backup_workbench({"app/backup.py"}, backup.backup_json({}), manifest_record)["ok"] is False
     assert isinstance(seed.SEED_DATA, dict)
     assert seed.seed_plan()["format"] == "appgen.seed-plan.v1"
     assert {"demo", "smoke", "load"} == {scenario["name"] for scenario in seed.seed_plan()["scenarios"]}

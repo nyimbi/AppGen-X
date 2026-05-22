@@ -1280,6 +1280,7 @@ def test_generate_app_from_sqlite_schema_compiles(tmp_path) -> None:
     assert "ops.lifecycle" in {item["key"] for item in manifest["capabilities"]}
     assert capabilities_by_key["ops.lifecycle"]["status"] == "implemented"
     assert "ops.backup" in {item["key"] for item in manifest["capabilities"]}
+    assert capabilities_by_key["ops.backup"]["status"] == "implemented"
 
 
 def test_metadata_defaults_are_portable() -> None:
@@ -2612,6 +2613,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert "Export all JSON" in backup_template
     assert "Autobackup Schedule JSON" in backup_template
     assert "DR Plan JSON" in backup_template
+    assert "Workbench JSON" in backup_template
     assert "Release Gate JSON" in backup_template
     assert "Configuration" in (output_dir / "templates" / "appgen_config.html").read_text()
     assert "Salesforce" in (output_dir / "templates" / "appgen_integrations.html").read_text()
@@ -4766,6 +4768,27 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert {"integrity_manifest", "autobackup_schedule", "recovery_runbook", "disaster_recovery"} <= {
         gate["gate"] for gate in backup_gate["gates"]
     }
+    backup_workbench = backup.backup_workbench(
+        {"app/backup.py", "app/templates/appgen_backup.html"},
+        backup_json,
+        manifest_record,
+    )
+    assert backup_workbench["format"] == "appgen.backup-workbench.v1"
+    assert backup_workbench["ok"] is True
+    assert backup_workbench["decision"] == "approved"
+    assert {
+        "artifact_coverage",
+        "payload_validation",
+        "integrity_manifest",
+        "autobackup_schedule",
+        "retention_policy",
+        "recovery_runbook",
+        "disaster_recovery",
+        "route_surface",
+        "release_gate",
+    } == {check["id"] for check in backup_workbench["checks"]}
+    assert "/backups/workbench.json" in backup_workbench["routes"]
+    assert backup.backup_workbench({"app/backup.py"}, backup_json, manifest_record)["ok"] is False
     assert backup.backup_release_gate({"app/backup.py"}, backup_json, manifest_record)["ok"] is False
     bad_payload = {
         "format": "appgen.backup.v1",

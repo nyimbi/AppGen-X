@@ -421,10 +421,13 @@ created, destructive requests require backups, and generated test plans include
 DSL lint, migration preview, UI smoke, agent readiness, report/dashboard, and
 platform-target checks.
 
-Generated backup pages expose `/backup/disaster-recovery.json` and
-`/backup/release-gate.json` so teams can prove that JSON backups, SHA-256
+Generated backup pages expose `/backups/disaster-recovery.json` and
+`/backups/release-gate.json` so teams can prove that JSON backups, SHA-256
 manifests, autobackup schedules, retention rules, recovery runbooks, and
 operator-approved restore workflows are present before release.
+Use `/backups/workbench.json` or `backup_workbench()` in the generated IDE to
+inspect payload validation, manifest integrity, schedule, retention, recovery,
+DR, route coverage, and release readiness together.
 
 ## Database Design Workbench
 

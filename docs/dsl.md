@@ -434,7 +434,11 @@ apps include:
 - `backup.py` with generated JSON backup exports, payload validation,
   SHA-256 integrity manifests, autobackup schedule plans, retention planning,
   recovery runbooks, disaster-recovery plans, backup release gates, and restore
-  helpers for reviewed data recovery workflows.
+  helpers for reviewed data recovery workflows. `backup_workbench()` and
+  `/backups/workbench.json` aggregate payload validation, manifest integrity,
+  autobackup scheduling, retention policy, recovery runbooks, disaster recovery,
+  route surface, and release-gate evidence before `ops.backup` is marked
+  implemented.
 - `data_access.py` and `appgen_data_access.html` with generated low-code
   query/update contracts for table reads, filter validation, sorting, paging,
   field projection, saved queries, portable query exports, create/update
