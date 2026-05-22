@@ -2235,7 +2235,9 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert "Model JSON" in (output_dir / "templates" / "appgen_designer.html").read_text()
     assert "Preview DSL" in (output_dir / "templates" / "appgen_designer.html").read_text()
     assert "Health JSON" in (output_dir / "templates" / "appgen_monitoring.html").read_text()
-    assert "Error Handling JSON" in (output_dir / "templates" / "appgen_resilience.html").read_text()
+    resilience_template = (output_dir / "templates" / "appgen_resilience.html").read_text()
+    assert "Error Handling JSON" in resilience_template
+    assert "Release Gate JSON" in resilience_template
     assert "Business Rules" in (output_dir / "templates" / "appgen_rules.html").read_text()
     assert "OpenAPI JSON" in (output_dir / "templates" / "appgen_openapi.html").read_text()
     assert "Generated performance budgets" in (
@@ -3027,6 +3029,18 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert resilience.incident_report(RuntimeError("boom"))["id"].startswith("inc-")
     assert resilience.exception_management_plan()["redact_internal_errors"] is True
     assert resilience.resilience_check({"app/resilience.py", "app/templates/appgen_resilience.html"})["ok"] is True
+    resilience_gate = resilience.resilience_release_gate({"app/resilience.py", "app/templates/appgen_resilience.html"})
+    assert resilience_gate["format"] == "appgen.resilience-release-gate.v1"
+    assert resilience_gate["ok"] is True
+    assert {
+        "artifact_coverage",
+        "exception_taxonomy",
+        "safe_error_responses",
+        "retry_and_circuit_breakers",
+        "incident_reporting",
+        "exception_management_plan",
+    } <= {check["gate"] for check in resilience_gate["checks"]}
+    assert resilience.resilience_release_gate({"app/resilience.py"})["ok"] is False
     assert performance.table_budget("Book")["route"] == "/api/v1/book/"
     assert performance.pagination_plan("Book", requested=999)["page_size"] == (
         performance.table_budget("Book")["page_size"] * 2

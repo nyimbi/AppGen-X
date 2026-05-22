@@ -259,7 +259,10 @@ apps include:
   envelopes.
 - `resilience.py` and `appgen_resilience.html` with generated automatic error
   handling, safe user-facing responses, recovery actions, retry plans,
-  circuit-breaker state, and operator incident reports.
+  circuit-breaker state, and operator incident reports. The generated
+  `resilience_release_gate()` proves required artifacts, exception taxonomy,
+  safe user responses, retry and circuit-breaker behavior, incident reporting,
+  and the exception-management plan.
 - `performance.py` and `appgen_performance.html` with generated SLO budgets,
   pagination and cache contracts, deterministic load-test profiles, k6 script
   export, Locust file export, reviewed load-test runbooks, and autoscale

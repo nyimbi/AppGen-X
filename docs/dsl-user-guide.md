@@ -235,6 +235,12 @@ Generated table and workflow wizards expose `wizard_release_gate()` and
 step validation, sequential progress behavior, table wizard coverage, workflow
 wizard coverage, and required wizard artifacts before release.
 
+Generated apps include `/resilience/` for exception-management review. Use
+`/resilience/release-gate.json` or `resilience_release_gate()` before release
+to prove required resilience artifacts, exception taxonomy, safe user-facing
+responses, retry and circuit-breaker behavior, incident reports, and the
+exception-management plan.
+
 Use `rule` for validation and decisions:
 
 ```appgen

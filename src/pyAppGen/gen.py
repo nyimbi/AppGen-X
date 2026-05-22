@@ -3322,7 +3322,10 @@ def write_resilience_template(output_dir):
         and operator incident reports.
       </p>
     </div>
-    <a class="btn btn-default" href="{{ url_for('ResilienceView.catalog_json') }}">Error Handling JSON</a>
+    <div>
+      <a class="btn btn-default" href="{{ url_for('ResilienceView.catalog_json') }}">Error Handling JSON</a>
+      <a class="btn btn-default" href="{{ url_for('ResilienceView.release_gate_json') }}">Release Gate JSON</a>
+    </div>
   </div>
   <div class="agr-grid">
     {% for name, spec in catalog.classes.items() %}
@@ -7964,6 +7967,72 @@ def resilience_check(existing_paths=()):
     }}
 
 
+def resilience_release_gate(existing_paths=()):
+    """Return deterministic release evidence for generated resilience behavior."""
+    existing = set(existing_paths)
+    required = {{"app/resilience.py", "app/templates/appgen_resilience.html"}}
+    timeout_response = safe_error_response(TimeoutError("slow"), request_id="req-1")
+    validation_response = safe_error_response(ValueError("bad input"), request_id="req-2")
+    retry = retry_policy("sync", attempt=1)
+    max_retry = retry_policy("sync", attempt=DEFAULT_RETRY_POLICY["max_attempts"])
+    circuit_open = circuit_breaker_state(5)
+    incident = incident_report(RuntimeError("boom"), context={{"resource": RESOURCES[0] if RESOURCES else APP_NAME, "operation": "create"}})
+    plan = exception_management_plan()
+    checks = (
+        {{
+            "gate": "artifact_coverage",
+            "ok": required.issubset(existing),
+            "required": tuple(sorted(required)),
+            "missing": tuple(sorted(required - existing)),
+        }},
+        {{
+            "gate": "exception_taxonomy",
+            "ok": {{"PermissionError", "ValueError", "KeyError", "TimeoutError", "ConnectionError"}}.issubset(ERROR_CLASSES)
+            and all(spec.get("category") and spec.get("status") and spec.get("severity") for spec in ERROR_CLASSES.values()),
+            "classes": tuple(ERROR_CLASSES),
+        }},
+        {{
+            "gate": "safe_error_responses",
+            "ok": timeout_response["retryable"] is True
+            and validation_response["status"] == 400
+            and "preserve_user_input" in validation_response["actions"]
+            and "technical_message" in timeout_response
+            and "Traceback" not in timeout_response["user_message"],
+            "sample_status": (validation_response["status"], timeout_response["status"]),
+        }},
+        {{
+            "gate": "retry_and_circuit_breakers",
+            "ok": retry["retry"] is True
+            and retry["delay_seconds"] == DEFAULT_RETRY_POLICY["backoff_seconds"][0]
+            and max_retry["retry"] is False
+            and circuit_open["state"] == "open"
+            and circuit_open["allow_request"] is False,
+            "policy": DEFAULT_RETRY_POLICY,
+        }},
+        {{
+            "gate": "incident_reporting",
+            "ok": incident["id"].startswith("inc-")
+            and incident["classification"]["severity"] == "critical"
+            and "capture_incident" in recovery_actions("unhandled"),
+            "incident_id": incident["id"],
+        }},
+        {{
+            "gate": "exception_management_plan",
+            "ok": plan["preserve_user_input"] is True
+            and plan["redact_internal_errors"] is True
+            and plan["log_incidents"] is True
+            and "critical" in plan["notify_on"]
+            and bool(plan["operations"]),
+            "operation_count": len(plan["operations"]),
+        }},
+    )
+    return {{
+        "format": "appgen.resilience-release-gate.v1",
+        "ok": all(check["ok"] for check in checks),
+        "checks": checks,
+    }}
+
+
 class ResilienceView(BaseView):
     route_base = "/resilience"
     default_view = "index"
@@ -7979,6 +8048,10 @@ class ResilienceView(BaseView):
     @expose("/catalog.json")
     def catalog_json(self):
         return jsonify(error_catalog())
+
+    @expose("/release-gate.json")
+    def release_gate_json(self):
+        return jsonify(resilience_release_gate({{"app/resilience.py", "app/templates/appgen_resilience.html"}}))
 
 
 def register_resilience(appbuilder):
@@ -37382,12 +37455,15 @@ def validate_resilience_artifacts() -> None:
         "incident_report",
         "exception_management_plan",
         "resilience_check",
+        "resilience_release_gate",
+        "appgen.resilience-release-gate.v1",
+        '@expose("/release-gate.json")',
     )
     if not all(item in contract for item in required):
-        fail("resilience contract must expose automatic error handling and exception-management helpers")
+        fail("resilience contract must expose automatic error handling, exception-management helpers, and release evidence")
     template = (ROOT / "app" / "templates" / "appgen_resilience.html").read_text()
-    if "Resilience" not in template or "Error Handling JSON" not in template:
-        fail("resilience cockpit must expose generated error-handling catalog")
+    if "Resilience" not in template or "Error Handling JSON" not in template or "Release Gate JSON" not in template:
+        fail("resilience cockpit must expose generated error-handling catalog and release evidence")
 
 
 def validate_runtime_assurance_artifacts() -> None:
@@ -38491,6 +38567,9 @@ def test_generated_runtime_helpers():
     assert resilience.incident_report(RuntimeError("boom"))["id"].startswith("inc-")
     assert resilience.exception_management_plan()["redact_internal_errors"] is True
     assert resilience.resilience_check({"app/resilience.py", "app/templates/appgen_resilience.html"})["ok"] is True
+    assert resilience.resilience_release_gate({"app/resilience.py", "app/templates/appgen_resilience.html"})["format"] == "appgen.resilience-release-gate.v1"
+    assert resilience.resilience_release_gate({"app/resilience.py", "app/templates/appgen_resilience.html"})["ok"] is True
+    assert resilience.resilience_release_gate({"app/resilience.py"})["ok"] is False
     assert isinstance(security.ROLE_POLICIES, dict)
     assert isinstance(security.policy_matrix(), tuple)
     first_role = next(iter(security.ROLE_POLICIES), None)
