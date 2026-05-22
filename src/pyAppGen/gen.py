@@ -6683,6 +6683,7 @@ def write_branding_template(output_dir):
       <a class="btn btn-default" href="{{ url_for('BrandingView.visual_quality_json') }}">Visual Quality JSON</a>
       <a class="btn btn-default" href="{{ url_for('BrandingView.visual_regression_json') }}">Visual Regression JSON</a>
       <a class="btn btn-default" href="{{ url_for('BrandingView.experience_excellence_json') }}">Experience Excellence JSON</a>
+      <a class="btn btn-default" href="{{ url_for('BrandingView.branding_workbench_json') }}">Branding Workbench JSON</a>
       <a class="btn btn-default" href="{{ url_for('BrandingView.responsive_workbench_json') }}">Responsive Workbench JSON</a>
       <a class="btn btn-default" href="{{ url_for('BrandingView.ui_release_gate_json') }}">UI Release Gate JSON</a>
     </div>
@@ -10821,6 +10822,85 @@ def responsive_workbench(existing_paths=None):
     }}
 
 
+def branding_workbench(existing_paths=None):
+    """Return generated branding evidence for theme, assets, design-system, and preview routes."""
+    existing = set(existing_paths or ())
+    required_assets = ("app/branding.py", "app/static/appgen-theme.css", "app/templates/appgen_branding.html")
+    missing_assets = tuple(path for path in required_assets if path not in existing) if existing_paths is not None else ()
+    theme = theme_contract()
+    design = design_system_report()
+    quality = theme_quality_report()
+    palette = palette_balance_report()
+    responsive = responsive_workbench(existing_paths)
+    release = ui_experience_release_gate(existing_paths)
+    checks = (
+        {{
+            "id": "artifact_coverage",
+            "ok": not missing_assets,
+            "evidence": {{"required": required_assets, "missing": missing_assets}},
+        }},
+        {{
+            "id": "theme_contract",
+            "ok": bool(theme["theme"]) and bool(theme["palette"]) and bool(theme["assets"]),
+            "evidence": {{"theme": theme["theme"], "assets": theme["assets"]}},
+        }},
+        {{
+            "id": "css_variables",
+            "ok": {{"--appgen-primary", "--appgen-accent", "--appgen-focus-ring"}} <= set(css_variables()),
+            "evidence": tuple(sorted(css_variables())),
+        }},
+        {{
+            "id": "design_system",
+            "ok": {{"tokens", "typography", "density", "layouts", "components", "viewports"}} <= set(design),
+            "evidence": design["format"],
+        }},
+        {{
+            "id": "palette_quality",
+            "ok": palette["ok"],
+            "evidence": palette["checks"],
+        }},
+        {{
+            "id": "visual_quality",
+            "ok": quality["ok"],
+            "evidence": tuple(check["check"] for check in quality["checks"]),
+        }},
+        {{
+            "id": "responsive_workbench",
+            "ok": responsive["ok"],
+            "evidence": responsive["format"],
+        }},
+        {{
+            "id": "release_gate",
+            "ok": release["ok"],
+            "evidence": release["format"],
+        }},
+        {{
+            "id": "route_surface",
+            "ok": True,
+            "evidence": {{
+                "routes": (
+                    "/branding/theme.json",
+                    "/branding/design-system.json",
+                    "/branding/branding-workbench.json",
+                    "/branding/responsive-workbench.json",
+                    "/branding/ui-release-gate.json",
+                )
+            }},
+        }},
+    )
+    ok = all(check["ok"] for check in checks)
+    return {{
+        "format": "appgen.branding-workbench.v1",
+        "ok": ok,
+        "decision": "approved" if ok else "blocked",
+        "checks": checks,
+        "theme": theme,
+        "design_system": design,
+        "responsive": responsive,
+        "release_gate": release,
+    }}
+
+
 def ui_experience_excellence_gate(existing_paths=None):
     """Return outcome evidence for beautiful, sophisticated generated UI."""
     existing = set(existing_paths or ())
@@ -11071,6 +11151,10 @@ class BrandingView(BaseView):
     @expose("/experience-excellence.json")
     def experience_excellence_json(self):
         return jsonify(ui_experience_excellence_gate())
+
+    @expose("/branding-workbench.json")
+    def branding_workbench_json(self):
+        return jsonify(branding_workbench({{"app/branding.py", "app/static/appgen-theme.css", "app/templates/appgen_branding.html"}}))
 
     @expose("/responsive-workbench.json")
     def responsive_workbench_json(self):

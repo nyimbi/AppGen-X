@@ -1067,6 +1067,7 @@ def test_generate_app_from_sqlite_schema_compiles(tmp_path) -> None:
     assert capabilities_by_key["ui.layout"]["status"] == "implemented"
     assert "ui.branding" in {item["key"] for item in manifest["capabilities"]}
     assert capabilities_by_key["ui.responsive"]["status"] == "implemented"
+    assert capabilities_by_key["ui.branding"]["status"] == "implemented"
     assert "platform.extensibility" in {item["key"] for item in manifest["capabilities"]}
     assert "devops.packaging" in {item["key"] for item in manifest["capabilities"]}
     assert "data.seed" in {item["key"] for item in manifest["capabilities"]}
@@ -2855,6 +2856,28 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         check["evidence"]["routes"] for check in responsive_workbench["checks"] if check["id"] == "route_surface"
     )
     assert branding.responsive_workbench({"app/branding.py"})["ok"] is False
+    assert "Branding Workbench JSON" in (output_dir / "templates" / "appgen_branding.html").read_text()
+    branding_workbench = branding.branding_workbench(
+        {"app/branding.py", "app/static/appgen-theme.css", "app/templates/appgen_branding.html"}
+    )
+    assert branding_workbench["format"] == "appgen.branding-workbench.v1"
+    assert branding_workbench["ok"] is True
+    assert branding_workbench["decision"] == "approved"
+    assert {
+        "artifact_coverage",
+        "theme_contract",
+        "css_variables",
+        "design_system",
+        "palette_quality",
+        "visual_quality",
+        "responsive_workbench",
+        "release_gate",
+        "route_surface",
+    } == {check["id"] for check in branding_workbench["checks"]}
+    assert "/branding/branding-workbench.json" in next(
+        check["evidence"]["routes"] for check in branding_workbench["checks"] if check["id"] == "route_surface"
+    )
+    assert branding.branding_workbench({"app/branding.py"})["ok"] is False
     assert branding.contrast_ratio("#14213d", "#f8fafc") >= 4.5
     assert branding.palette_balance_report()["ok"] is True
     assert branding.visual_experience_quality_report()["format"] == "appgen.visual-experience-quality.v1"

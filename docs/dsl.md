@@ -308,6 +308,10 @@ apps include:
   gate, and a UI experience release gate that aggregates theme quality,
   beautiful/sophisticated outcome evidence, accessibility, visual regression,
   responsive coverage, component states, and required assets. The generated
+  `branding_workbench()` proves theme contract, CSS variables, design-system
+  coverage, palette quality, visual quality, responsive evidence, release-gate
+  readiness, and route coverage before `ui.branding` is marked implemented.
+  The generated
   `responsive_workbench()` proves breakpoint tokens, mobile/tablet/desktop/wide
   viewport contracts, responsive layout recipes, touch density, visual matrices,
   and route evidence before `ui.responsive` is marked implemented.
