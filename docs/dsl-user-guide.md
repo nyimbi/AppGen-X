@@ -115,7 +115,9 @@ executes the generated DSL reference helpers for language quality, authoring
 gates, quick fixes, and formatting.
 Run `appgen --roadmap-release-audit` when reviewing whether the package-level
 capability map still satisfies `docs/ideas.md`, `docs/base_features.md`, and
-`docs/Lo-code features.md`.
+`docs/Lo-code features.md`. The audit generates a temporary app and exercises
+the emitted `low_code_features.py` source lineage, generated roadmap release
+gate, composition workbench, and JHipster superiority evidence.
 Run `appgen --jhipster-superiority-audit` before making product claims that
 AppGen is more capable than JHipster; it checks preserved baseline capabilities
 and AppGen-only advantage areas.

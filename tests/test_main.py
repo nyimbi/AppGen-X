@@ -113,6 +113,7 @@ from pyAppGen.ops import search_contract
 from pyAppGen.roadmap import generated_app_excellence_audit
 from pyAppGen.roadmap import generated_app_excellence_smoke_audit
 from pyAppGen.roadmap import jhipster_superiority_audit
+from pyAppGen.roadmap import low_code_roadmap_generation_smoke_audit
 from pyAppGen.roadmap import package_goal_audit
 from pyAppGen.roadmap import roadmap_release_audit
 from pyAppGen.reporting import chartview_catalog
@@ -273,6 +274,15 @@ def test_roadmap_release_audit_cli_maps_docs_to_capabilities(
         "jhipster-plus",
         "secure-reliable-apps",
     } == {requirement["id"] for requirement in direct_report["requirements"]}
+    assert direct_report["generation_smoke"]["ok"] is True
+    assert "generated_low_code_roadmap" in {gate["id"] for gate in direct_report["gates"]}
+
+    smoke = low_code_roadmap_generation_smoke_audit()
+    assert smoke["format"] == "appgen.low-code-roadmap-generation-smoke-audit.v1"
+    assert smoke["ok"] is True
+    assert {"app/low_code_features.py", "app/templates/appgen_low_code_features.html"} <= set(
+        smoke["required_artifacts"]
+    )
 
     result = runner.invoke(__main__.main, ["--roadmap-release-audit"])
 

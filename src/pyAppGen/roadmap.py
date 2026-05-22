@@ -356,6 +356,18 @@ EXCELLENCE_SMOKE_REQUIRED_ARTIFACTS = (
     "app/appgen.json",
     "docs/schema.md",
 )
+LOW_CODE_ROADMAP_SMOKE_REQUIRED_ARTIFACTS = (
+    "app/low_code_features.py",
+    "app/templates/appgen_low_code_features.html",
+    "app/appgen.json",
+    "jhipster/app.jdl",
+    "cookiecutter/cookiecutter.json",
+)
+LOW_CODE_ROADMAP_SMOKE_PYTHON_ARTIFACTS = (
+    "app/low_code_features.py",
+    "app/models.py",
+    "app/views.py",
+)
 
 
 def _read_document(root: Path, relative_path: str) -> str:
@@ -655,6 +667,127 @@ def generated_app_excellence_smoke_audit() -> dict:
     }
 
 
+def low_code_roadmap_generation_smoke_audit() -> dict:
+    """Generate an app and exercise its emitted low-code roadmap contract."""
+    from .dsl import schema_from_dsl
+    from .gen import generate_app_from_schema
+
+    with tempfile.TemporaryDirectory(prefix="appgen-low-code-roadmap-") as raw_workdir:
+        project_dir = Path(raw_workdir) / "low-code-roadmap"
+        generate_app_from_schema(
+            schema_from_dsl(EXCELLENCE_SAMPLE_DSL, source_name="low-code-roadmap.appgen"),
+            project_dir / "app",
+        )
+        existing_paths = {
+            path.relative_to(project_dir).as_posix()
+            for path in project_dir.rglob("*")
+            if path.is_file()
+        }
+        missing = tuple(
+            path
+            for path in LOW_CODE_ROADMAP_SMOKE_REQUIRED_ARTIFACTS
+            if path not in existing_paths
+        )
+        compiled = []
+        compile_failures = []
+        for relative in LOW_CODE_ROADMAP_SMOKE_PYTHON_ARTIFACTS:
+            path = project_dir / relative
+            try:
+                py_compile.compile(str(path), doraise=True)
+            except py_compile.PyCompileError as exc:
+                compile_failures.append({"path": relative, "error": str(exc)})
+            else:
+                compiled.append(relative)
+
+        low_code = _load_generated_module(
+            project_dir / "app" / "low_code_features.py",
+            "appgen_generated_low_code_roadmap",
+        )
+        release_paths = {
+            "app/low_code_features.py",
+            "app/templates/appgen_low_code_features.html",
+            "app/appgen.json",
+        }
+        source_documents = low_code.source_document_contracts()
+        readiness = low_code.readiness_report()
+        roadmap_gate = low_code.roadmap_release_audit(existing_paths)
+        composition_gate = low_code.composition_release_gate(release_paths)
+        composition_workbench = low_code.composition_workbench(release_paths)
+        superset = low_code.jhipster_superset_certification()
+        frontier = low_code.jhipster_frontier_gate()
+        template = (project_dir / "app" / "templates" / "appgen_low_code_features.html").read_text(
+            encoding="utf-8"
+        )
+
+    checks = (
+        {
+            "id": "generated_low_code_artifacts",
+            "ok": not missing,
+            "required_artifacts": LOW_CODE_ROADMAP_SMOKE_REQUIRED_ARTIFACTS,
+            "missing": missing,
+        },
+        {
+            "id": "generated_low_code_compiles",
+            "ok": not compile_failures
+            and set(compiled) == set(LOW_CODE_ROADMAP_SMOKE_PYTHON_ARTIFACTS),
+            "compiled": tuple(compiled),
+            "failures": tuple(compile_failures),
+        },
+        {
+            "id": "source_document_lineage",
+            "ok": {"docs/ideas.md", "docs/base_features.md", "docs/Lo-code features.md"}
+            <= {document["document"] for document in source_documents}
+            and readiness["roadmap_sources_ok"] is True,
+            "documents": tuple(document["document"] for document in source_documents),
+        },
+        {
+            "id": "generated_roadmap_release_gate",
+            "ok": roadmap_gate["ok"]
+            and {
+                "source_document_lineage",
+                "implementation_status",
+                "base_feature_requirements",
+                "ideas_roadmap_requirements",
+                "low_code_feature_families",
+                "artifact_evidence",
+                "route_surface",
+                "test_evidence",
+                "jhipster_superset",
+            }
+            == {check["id"] for check in roadmap_gate["checks"]},
+            "decision": roadmap_gate["decision"],
+        },
+        {
+            "id": "generated_composition_and_superset",
+            "ok": composition_gate["ok"]
+            and composition_workbench["ok"]
+            and superset["ok"]
+            and frontier["ok"],
+            "composition": composition_gate["format"],
+            "workbench": composition_workbench["format"],
+            "certification": superset["certification"],
+            "frontier": frontier["format"],
+        },
+        {
+            "id": "generated_template_routes",
+            "ok": "Roadmap Release Audit JSON" in template
+            and "Composition Workbench JSON" in template
+            and "JHipster Frontier Gate JSON" in template,
+        },
+    )
+    ok = all(check["ok"] for check in checks)
+    return {
+        "format": "appgen.low-code-roadmap-generation-smoke-audit.v1",
+        "scope": "package",
+        "ok": ok,
+        "decision": "approved" if ok else "blocked",
+        "required_artifacts": LOW_CODE_ROADMAP_SMOKE_REQUIRED_ARTIFACTS,
+        "compiled_artifacts": tuple(compiled),
+        "checks": checks,
+        "blocking_gaps": tuple(check for check in checks if not check["ok"]),
+    }
+
+
 def _compile_generated_excellence_artifacts(project_dir: Path) -> tuple[dict, ...]:
     results = []
     for relative in EXCELLENCE_SMOKE_PYTHON_ARTIFACTS:
@@ -880,6 +1013,7 @@ def roadmap_release_audit(root: Path | str | None = None) -> dict:
     """Return package-level proof that roadmap docs map to implemented features."""
     documents = roadmap_document_checks(root)
     capability_checks = roadmap_capability_checks()
+    generation_smoke = low_code_roadmap_generation_smoke_audit()
     gates = (
         {
             "id": "roadmap_documents",
@@ -908,6 +1042,11 @@ def roadmap_release_audit(root: Path | str | None = None) -> dict:
                 "platform.competitive-benchmark",
             ),
         },
+        {
+            "id": "generated_low_code_roadmap",
+            "ok": generation_smoke["ok"],
+            "checks": tuple(check["id"] for check in generation_smoke["checks"]),
+        },
     )
     ok = all(gate["ok"] for gate in gates)
     return {
@@ -917,6 +1056,7 @@ def roadmap_release_audit(root: Path | str | None = None) -> dict:
         "decision": "approved" if ok else "blocked",
         "documents": documents,
         "requirements": capability_checks,
+        "generation_smoke": generation_smoke,
         "gates": gates,
         "blocking_gaps": tuple(gate for gate in gates if not gate["ok"]),
     }

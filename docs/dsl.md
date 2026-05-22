@@ -225,6 +225,11 @@ low-code objective from `docs/ideas.md`, `docs/base_features.md`, and
 appgen --roadmap-release-audit
 ```
 
+The roadmap audit also generates a temporary app and exercises the emitted
+`low_code_features.py` contract, including source-document lineage, the
+generated roadmap release gate, composition readiness, and JHipster superiority
+evidence.
+
 Run the package-level JHipster superiority audit before claiming AppGen is more
 capable than JHipster:
 
