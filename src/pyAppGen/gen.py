@@ -4446,7 +4446,10 @@ def write_chatbot_template(output_dir):
       <h1 class="agcb-title">Guided Chatbot</h1>
       <p class="agcb-note">Generated in-app chatbot flows ask for each field in a view, track missing required answers, and prepare create payloads for review.</p>
     </div>
-    <a class="btn btn-default" href="{{ url_for('GuidedChatbotView.catalog_json') }}">Catalog JSON</a>
+    <div>
+      <a class="btn btn-default" href="{{ url_for('GuidedChatbotView.catalog_json') }}">Catalog JSON</a>
+      <a class="btn btn-default" href="{{ url_for('GuidedChatbotView.release_gate_json') }}">Release Gate JSON</a>
+    </div>
   </div>
   <div class="agcb-grid">
     {% for intent in intents %}
@@ -19343,6 +19346,65 @@ def chatbot_check(existing_paths):
     }}
 
 
+def chatbot_release_gate(existing_paths=()):
+    """Return a release decision for generated guided chatbot flows."""
+    existing = set(existing_paths)
+    required = {{"app/chatbot.py", "app/templates/appgen_chatbot.html"}}
+    missing = tuple(sorted(required - existing))
+    intents = chatbot_catalog()
+    first_intent = intents[0]["intent"] if intents else None
+    initial = start_conversation(first_intent) if first_intent else {{}}
+    intent = intent_contract(first_intent) if first_intent else {{"required_fields": (), "optional_fields": (), "prompts": ()}}
+    required_values = {{
+        field: f"sample_{{field}}"
+        for field in intent["required_fields"]
+    }}
+    progressed = initial
+    for field, value in required_values.items():
+        progressed = answer_conversation(progressed, value, field=field)
+    payload = create_payload(first_intent, progressed.get("values", {{}})) if first_intent else {{}}
+    prompt_fields = tuple(prompt["field"] for prompt in intent["prompts"])
+    checks = (
+        {{
+            "gate": "artifact_coverage",
+            "ok": not missing,
+            "evidence": {{"required": tuple(sorted(required)), "missing": missing}},
+        }},
+        {{
+            "gate": "intent_catalog",
+            "ok": bool(intents) and all(intent.get("intent") and intent.get("table") for intent in intents),
+            "evidence": {{"intents": tuple(intent["intent"] for intent in intents)}},
+        }},
+        {{
+            "gate": "prompt_coverage",
+            "ok": bool(first_intent) and set(intent["required_fields"]) <= set(prompt_fields) and bool(prompt_fields),
+            "evidence": {{"intent": first_intent, "required": intent["required_fields"], "prompts": prompt_fields}},
+        }},
+        {{
+            "gate": "required_field_blocking",
+            "ok": bool(first_intent) and initial.get("ready") is (not bool(intent["required_fields"])) and tuple(initial.get("missing_fields", ())) == tuple(intent["required_fields"]),
+            "evidence": initial,
+        }},
+        {{
+            "gate": "conversation_progression",
+            "ok": bool(first_intent) and progressed.get("ready") is True and not progressed.get("missing_fields") and len(progressed.get("history", ())) >= len(required_values),
+            "evidence": {{"values": progressed.get("values", {{}}), "history_length": len(progressed.get("history", ()))}},
+        }},
+        {{
+            "gate": "create_payload",
+            "ok": payload.get("ready") is True and payload.get("table") == intent.get("table") and set(required_values) <= set(payload.get("payload", {{}})),
+            "evidence": payload,
+        }},
+    )
+    ok = all(check["ok"] for check in checks)
+    return {{
+        "format": "appgen.chatbot-release-gate.v1",
+        "ok": ok,
+        "decision": "approved" if ok else "blocked",
+        "checks": checks,
+    }}
+
+
 class GuidedChatbotView(BaseView):
     route_base = "/guided-chatbot"
     default_view = "index"
@@ -19358,6 +19420,10 @@ class GuidedChatbotView(BaseView):
     @expose("/intent/<intent_name>.json")
     def intent_json(self, intent_name):
         return jsonify(intent_contract(intent_name))
+
+    @expose("/release-gate.json")
+    def release_gate_json(self):
+        return jsonify(chatbot_release_gate({{"app/chatbot.py", "app/templates/appgen_chatbot.html"}}))
 
     @expose("/conversation", methods=("POST",))
     def conversation_json(self):
@@ -36330,9 +36396,11 @@ def validate_chatbot_artifacts() -> None:
     app_contract = (ROOT / "app" / "chatbot.py").read_text()
     if "start_conversation" not in app_contract or "answer_conversation" not in app_contract or "create_payload" not in app_contract:
         fail("in-app chatbot must expose guided conversation and create-payload helpers")
+    if "chatbot_release_gate" not in app_contract or "appgen.chatbot-release-gate.v1" not in app_contract or '@expose("/release-gate.json")' not in app_contract:
+        fail("in-app chatbot must expose release readiness checks and route")
     template = (ROOT / "app" / "templates" / "appgen_chatbot.html").read_text()
-    if "Guided Chatbot" not in template or "Catalog JSON" not in template:
-        fail("in-app chatbot template must expose guided chatbot catalog")
+    if "Guided Chatbot" not in template or "Catalog JSON" not in template or "Release Gate JSON" not in template:
+        fail("in-app chatbot template must expose guided chatbot catalog and release readiness")
 
 
 def validate_voice_artifacts() -> None:
@@ -37850,6 +37918,9 @@ def test_generated_runtime_helpers():
     chatbot_answered = chatbot.answer_conversation(chatbot_state, "Generated value")
     assert "payload" in chatbot.create_payload(first_chatbot_intent, chatbot_answered["values"])
     assert chatbot.chatbot_check({"app/chatbot.py", "app/templates/appgen_chatbot.html"})["ok"] is True
+    assert chatbot.chatbot_release_gate({"app/chatbot.py", "app/templates/appgen_chatbot.html"})["format"] == "appgen.chatbot-release-gate.v1"
+    assert chatbot.chatbot_release_gate({"app/chatbot.py", "app/templates/appgen_chatbot.html"})["ok"] is True
+    assert chatbot.chatbot_release_gate({"app/chatbot.py"})["ok"] is False
     assert {item["provider"] for item in voice.voice_provider_catalog()} == {"alexa", "google_assistant", "web_speech"}
     first_voice_intent = voice.voice_intent_catalog()[0]["intent"]
     assert voice.utterance_training_phrases(first_voice_intent)

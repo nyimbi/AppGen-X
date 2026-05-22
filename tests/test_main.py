@@ -4104,6 +4104,18 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert payload["ready"] is True
     assert payload["payload"]["title"] == "Dune"
     assert chatbot.chatbot_check({"app/chatbot.py", "app/templates/appgen_chatbot.html"})["ok"] is True
+    chatbot_gate = chatbot.chatbot_release_gate({"app/chatbot.py", "app/templates/appgen_chatbot.html"})
+    assert chatbot_gate["format"] == "appgen.chatbot-release-gate.v1"
+    assert chatbot_gate["ok"] is True
+    assert {
+        "artifact_coverage",
+        "intent_catalog",
+        "prompt_coverage",
+        "required_field_blocking",
+        "conversation_progression",
+        "create_payload",
+    } <= {check["gate"] for check in chatbot_gate["checks"]}
+    assert chatbot.chatbot_release_gate({"app/chatbot.py"})["ok"] is False
     assert {item["provider"] for item in voice.voice_provider_catalog()} == {"alexa", "google_assistant", "web_speech"}
     first_voice_intent = voice.voice_intent_catalog()[0]["intent"]
     assert voice.utterance_training_phrases(first_voice_intent)

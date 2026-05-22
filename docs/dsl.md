@@ -454,7 +454,9 @@ apps include:
   and predictive-maintenance contracts.
 - `chatbot.py` and `appgen_chatbot.html` with in-app guided chatbot flows that
   ask for generated view fields, track missing required answers, and prepare
-  create payloads.
+  create payloads. The generated `chatbot_release_gate()` proves artifact
+  coverage, intent catalogs, prompt coverage, required-field blocking,
+  conversation progression, and create-payload readiness.
 - `voice.py` and `appgen_voice.html` with generated speech prompts, utterance
   training phrases, slot-filling plans, SSML responses, and Alexa, Google
   Assistant, and Web Speech export contracts.
