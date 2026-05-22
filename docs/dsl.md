@@ -297,6 +297,18 @@ join reports, two-hop relation paths receive 3-way reports, every table receives
 a ChartView contract, and report delivery covers PDF export plus email
 attachments.
 
+Audit package-level operations readiness before claiming Docker, Kubernetes,
+cloud, search, HTTPS, and automation outputs are ready:
+
+```console
+appgen --ops-release-audit
+```
+
+The ops audit proves Docker Compose, Kubernetes, autoscaling, Terraform for AWS,
+GCP, and Azure, automatic HTTPS, Elasticsearch and Whoosh search plans, default
+Node-RED flows, and database operations contracts for Patroni, ZomboDB, and
+PostGraphile.
+
 ## Shape
 
 - `table` defines persistent data models.

@@ -59,6 +59,11 @@ from pyAppGen.nl import evolution_changeset
 from pyAppGen.nl import evolution_plan
 from pyAppGen.nl import nl_evolution_release_audit
 from pyAppGen.nl import proposals_to_dsl
+from pyAppGen.ops import database_ops_contract
+from pyAppGen.ops import deployment_contract
+from pyAppGen.ops import node_red_contract
+from pyAppGen.ops import ops_release_audit
+from pyAppGen.ops import search_contract
 from pyAppGen.roadmap import generated_app_excellence_audit
 from pyAppGen.roadmap import jhipster_superiority_audit
 from pyAppGen.roadmap import package_goal_audit
@@ -273,6 +278,7 @@ def test_package_goal_audit_cli_aggregates_objective_evidence(
         "config_editor",
         "publishable_distribution",
         "reporting_chartviews",
+        "ops_deployment_search",
         "source_document_scope",
     } == {gate["id"] for gate in direct_report["gates"]}
     assert direct_report["stop_condition"] == (
@@ -294,6 +300,7 @@ def test_package_goal_audit_cli_aggregates_objective_evidence(
     assert cli_report["audits"]["config_editor"]["ok"] is True
     assert cli_report["audits"]["distribution"]["ok"] is True
     assert cli_report["audits"]["reporting"]["ok"] is True
+    assert cli_report["audits"]["ops"]["ok"] is True
 
 
 def test_package_erp_templates_export_generatable_dsl(
@@ -620,6 +627,54 @@ def test_package_reporting_audit_covers_tables_joins_and_chartviews(
     report = json.loads(result.output)
     assert report["ok"] is True
     assert report["three_way_reports"]
+
+
+def test_package_ops_audit_covers_deployment_search_and_node_red(
+    runner: CliRunner,
+) -> None:
+    """The package proves Docker, cloud, search, HTTPS, and Node-RED readiness."""
+    deployment = deployment_contract()
+    assert deployment["format"] == "appgen.package-deployment-contract.v1"
+    assert {"kubernetes", "aws", "gcp", "azure", "https"} <= set(deployment["targets"])
+    assert {"postgresql", "mysql"} <= set(deployment["database_engines"])
+    assert "deploy/k8s.yaml" in deployment["artifacts"]
+    assert "deploy/terraform-aws.tf" in deployment["artifacts"]
+
+    search = search_contract()
+    assert search["format"] == "appgen.package-search-contract.v1"
+    assert {"elasticsearch", "whoosh"} <= set(search["providers"])
+    assert search["provider_env"]["elasticsearch"] == ("ELASTICSEARCH_URL",)
+
+    node_red = node_red_contract()
+    assert node_red["format"] == "appgen.package-node-red-contract.v1"
+    assert node_red["image"] == "nodered/node-red:3.1"
+    assert node_red["run"] == "docker compose up node-red"
+
+    database_ops = database_ops_contract()
+    assert database_ops["format"] == "appgen.package-database-ops-contract.v1"
+    assert {"patroni", "zombodb", "postgraphile"} <= set(database_ops["ha_components"])
+
+    audit = ops_release_audit()
+    assert audit["format"] == "appgen.package-ops-release-audit.v1"
+    assert audit["ok"] is True
+    assert {
+        "docker_kubernetes",
+        "terraform_clouds",
+        "automatic_https",
+        "search_providers",
+        "node_red_default",
+        "database_ops",
+    } == {gate["id"] for gate in audit["gates"]}
+
+    missing = ops_release_audit(existing_paths={"Dockerfile"})
+    assert missing["ok"] is False
+    assert any(gate["id"] == "terraform_clouds" for gate in missing["blocking_gaps"])
+
+    result = runner.invoke(__main__.main, ["--ops-release-audit"])
+    assert result.exit_code == 0
+    report = json.loads(result.output)
+    assert report["ok"] is True
+    assert "elasticsearch" in report["contracts"]["search"]["providers"]
 
 
 def test_dsl_linter_reports_semantic_feedback(runner: CliRunner, tmp_path) -> None:

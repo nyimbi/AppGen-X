@@ -46887,6 +46887,11 @@ def get_metadata(idb):
     help="Print JSON proof that package reporting and ChartView outputs are ready.",
 )
 @click.option(
+    "--ops-release-audit",
+    is_flag=True,
+    help="Print JSON proof that package deployment, search, and automation ops are ready.",
+)
+@click.option(
     "--schema-source-audit",
     is_flag=True,
     help=(
@@ -46930,6 +46935,7 @@ def main(
     config_release_audit,
     distribution_release_audit,
     reporting_release_audit,
+    ops_release_audit,
     schema_source_audit,
     dsl_antlr_report,
 ):
@@ -46944,6 +46950,7 @@ def main(
         config_release_audit,
         distribution_release_audit,
         reporting_release_audit,
+        ops_release_audit,
     ]
     utility_options = [
         lint_dsl_path,
@@ -47310,6 +47317,7 @@ def main(
                 config_release_audit,
                 distribution_release_audit,
                 reporting_release_audit,
+                ops_release_audit,
                 *schema_sources,
             ]
         ):
@@ -47334,6 +47342,7 @@ def main(
                 config_release_audit,
                 distribution_release_audit,
                 reporting_release_audit,
+                ops_release_audit,
                 *schema_sources,
             ]
         ):
@@ -47357,6 +47366,7 @@ def main(
                 config_release_audit,
                 distribution_release_audit,
                 reporting_release_audit,
+                ops_release_audit,
                 *schema_sources,
             ]
         ):
@@ -47379,6 +47389,7 @@ def main(
                 config_release_audit,
                 distribution_release_audit,
                 reporting_release_audit,
+                ops_release_audit,
                 *schema_sources,
             ]
         ):
@@ -47400,6 +47411,7 @@ def main(
                 wdatabase,
                 distribution_release_audit,
                 reporting_release_audit,
+                ops_release_audit,
                 *schema_sources,
             ]
         ):
@@ -47413,7 +47425,7 @@ def main(
         ctx.exit(0 if result["ok"] else 1)
 
     if distribution_release_audit:
-        if any([writedir, database_url, idatabase, wdatabase, reporting_release_audit, *schema_sources]):
+        if any([writedir, database_url, idatabase, wdatabase, reporting_release_audit, ops_release_audit, *schema_sources]):
             raise click.UsageError(
                 "--distribution-release-audit cannot be combined with generation options."
             )
@@ -47424,13 +47436,24 @@ def main(
         ctx.exit(0 if result["ok"] else 1)
 
     if reporting_release_audit:
-        if any([writedir, database_url, idatabase, wdatabase, *schema_sources]):
+        if any([writedir, database_url, idatabase, wdatabase, ops_release_audit, *schema_sources]):
             raise click.UsageError(
                 "--reporting-release-audit cannot be combined with generation options."
             )
         from .reporting import reporting_release_audit as package_reporting_release_audit
 
         result = package_reporting_release_audit()
+        click.echo(json.dumps(result, indent=2, sort_keys=True, default=list))
+        ctx.exit(0 if result["ok"] else 1)
+
+    if ops_release_audit:
+        if any([writedir, database_url, idatabase, wdatabase, *schema_sources]):
+            raise click.UsageError(
+                "--ops-release-audit cannot be combined with generation options."
+            )
+        from .ops import ops_release_audit as package_ops_release_audit
+
+        result = package_ops_release_audit()
         click.echo(json.dumps(result, indent=2, sort_keys=True, default=list))
         ctx.exit(0 if result["ok"] else 1)
 
