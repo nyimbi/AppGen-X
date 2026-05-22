@@ -22074,6 +22074,7 @@ COMPETITIVE_BENCHMARK = (
     {{"area": "runtime_assurance", "label": "Auditable generated runtime readiness", "jhipster": False, "appgen": True, "evidence": "Generated assurance matrix tying security, monitoring, resilience, SLOs, backup, recovery, and quality gates together"}},
     {{"area": "database_ide", "label": "In-app database IDE and safe SQL workbench", "jhipster": False, "appgen": True, "evidence": "Visual database designer, ERD/DBML/SQL/PonyORM previews, read-only SQL guard, and deterministic explain-plan contracts"}},
     {{"area": "schema_import", "label": "Multi-source schema import", "jhipster": False, "appgen": True, "evidence": "DBML, SQL DDL, static PonyORM scripts, live database introspection, round-trip diffs, and reviewed apply plans"}},
+    {{"area": "jhipster_migration", "label": "Bidirectional JHipster-to-AppGen migration", "jhipster": False, "appgen": True, "evidence": "Generated JDL export, AppGen DSL migration draft, upgrade migration plan, and migration release gate"}},
     {{"area": "application_composition", "label": "Application composition marketplace", "jhipster": False, "appgen": True, "evidence": "Generated installable blocks, dependency graph, review gates, composition packages, and portal/repository handoff metadata"}},
 )
 APPGEN_DIFFERENTIATORS = (
@@ -22088,6 +22089,7 @@ APPGEN_DIFFERENTIATORS = (
     {{"capability": "Operational workbenches", "evidence": "Config editor, diagnostics, backup, monitoring, resilience, performance, migration, and deployment contracts"}},
     {{"capability": "Database IDE", "evidence": "Visual database design plus safe SQL scratchpad, read-only guards, and explain-plan previews"}},
     {{"capability": "JHipster interoperability", "evidence": "JDL export remains available without limiting AppGen's broader feature set"}},
+    {{"capability": "JHipster upgrade migration", "evidence": "Generated JDL-shaped contracts can be translated back into AppGen DSL with an upgrade plan and migration release gate"}},
 )
 JHIPSTER_SUPERIORITY_TIERS = (
     {{
@@ -22102,7 +22104,7 @@ JHIPSTER_SUPERIORITY_TIERS = (
         "tier": "outperform-baseline",
         "label": "Exceed JHipster with AppGen-only product capabilities",
         "source": "appgen_only",
-        "minimum": 10,
+        "minimum": 11,
         "areas": (
             "visual_builders",
             "native_targets",
@@ -22113,9 +22115,10 @@ JHIPSTER_SUPERIORITY_TIERS = (
             "runtime_assurance",
             "database_ide",
             "schema_import",
+            "jhipster_migration",
             "application_composition",
         ),
-        "decision": "A release must prove at least ten generated capabilities that are outside the JHipster baseline.",
+        "decision": "A release must prove at least eleven generated capabilities that are outside the JHipster baseline.",
     }},
     {{
         "tier": "product-platform",
@@ -22245,6 +22248,16 @@ JHIPSTER_DEPTH_REQUIREMENTS = (
             {{"dimension": "generation_time", "evidence": "dependency graph, install plans, composition packages, and previews"}},
             {{"dimension": "runtime", "evidence": "low-code feature cockpit, composition JSON, Entando, Invenio, and cookiecutter handoffs"}},
             {{"dimension": "governance", "evidence": "marketplace readiness, review checks, sandbox previews, and JHipster certification gates"}},
+        ),
+    }},
+    {{
+        "area": "jhipster_migration",
+        "minimum_dimensions": 4,
+        "dimensions": (
+            {{"dimension": "design_time", "evidence": "generated JDL-shaped entity and relationship contracts"}},
+            {{"dimension": "generation_time", "evidence": "AppGen DSL migration draft and target selection"}},
+            {{"dimension": "runtime", "evidence": "JHipster migration plan consumed by Studio, schema import, and low-code workbenches"}},
+            {{"dimension": "governance", "evidence": "migration release gate with missing artifact blockers"}},
         ),
     }},
 )
@@ -22777,6 +22790,11 @@ def jhipster_superset_scorecard():
             "required": ("devops.studio", "data.database-ops", "ui.visual-modeling"),
             "artifacts": ("app/studio.py", "app/database_ops.py", "app/designer.py"),
         }},
+        {{
+            "area": "jhipster_migration",
+            "required": ("platform.jhipster", "schema.import", "dsl.language-design", "devops.studio"),
+            "artifacts": ("jhipster/app.jdl", "jhipster/appgen_jhipster.py", "app/schema_import.py", "app/studio.py", "app/low_code_features.py"),
+        }},
     )
     capability_keys = {{item["key"] for item in CAPABILITIES}}
     gates = tuple(
@@ -22793,12 +22811,12 @@ def jhipster_superset_scorecard():
         "format": "appgen.jhipster-superset-scorecard.v1",
         "baseline": dict(JHIPSTER_BASELINE),
         "position": "more-capable-than-jhipster",
-        "minimum_appgen_only_advantages": 10,
+        "minimum_appgen_only_advantages": 11,
         "actual_appgen_only_advantages": benchmark["appgen_only_count"],
         "required_gates": gates,
         "blocking_gaps": tuple(gate for gate in gates if not gate["ok"]),
         "interop_preserved": "platform.jhipster" in capability_keys,
-        "ok": benchmark["appgen_only_count"] >= 10 and all(gate["ok"] for gate in gates) and "platform.jhipster" in capability_keys,
+        "ok": benchmark["appgen_only_count"] >= 11 and all(gate["ok"] for gate in gates) and "platform.jhipster" in capability_keys,
     }}
 
 
@@ -22870,7 +22888,7 @@ def jhipster_superset_certification(existing_paths=None):
         "position": scorecard["position"],
         "minimum_overlap_count": len(overlap_required),
         "actual_overlap_count": benchmark["overlap_count"],
-        "minimum_appgen_only_advantages": 10,
+        "minimum_appgen_only_advantages": 11,
         "actual_appgen_only_advantages": benchmark["appgen_only_count"],
         "advantage_ratio": advantage_ratio,
         "capability_depth": depth,
@@ -23047,12 +23065,12 @@ def jhipster_superiority_tiers(existing_paths=None):
         "tiers": tuple(rows),
         "scorecard_ok": scorecard["ok"],
         "certification_ok": certification["ok"],
-        "minimum_appgen_only_advantages": 10,
+        "minimum_appgen_only_advantages": 11,
         "actual_appgen_only_advantages": benchmark["appgen_only_count"],
         "advantage_ratio": certification["advantage_ratio"],
         "blocking_gaps": tuple(row for row in rows if not row["ok"]) + certification["blocking_gaps"],
         "stop_condition": "do-not-claim-jhipster-superiority-unless-ok-is-true",
-        "ok": certification["ok"] and all(row["ok"] for row in rows) and benchmark["appgen_only_count"] >= 10,
+        "ok": certification["ok"] and all(row["ok"] for row in rows) and benchmark["appgen_only_count"] >= 11,
     }}
 
 
@@ -35411,10 +35429,11 @@ def test_generated_runtime_helpers():
     assert "components.application-composition" in {item["key"] for item in low_code_features.capability_matrix()}
     assert low_code_features.jhipster_capability_benchmark()["ok"] is True
     assert low_code_features.jhipster_superset_scorecard()["ok"] is True
-    assert low_code_features.jhipster_superset_scorecard()["minimum_appgen_only_advantages"] == 10
+    assert low_code_features.jhipster_superset_scorecard()["minimum_appgen_only_advantages"] == 11
     assert low_code_features.jhipster_superset_evidence()["ok"] is True
     assert low_code_features.jhipster_superset_certification()["ok"] is True
     assert low_code_features.jhipster_superset_certification()["certification"] == "appgen-more-capable-than-jhipster"
+    assert low_code_features.jhipster_superset_certification()["actual_appgen_only_advantages"] >= 11
     assert low_code_features.jhipster_capability_depth_index()["format"] == "appgen.jhipster-capability-depth-index.v1"
     assert low_code_features.jhipster_capability_depth_index()["ok"] is True
     assert low_code_features.jhipster_superset_certification()["capability_depth"]["ok"] is True
@@ -35432,6 +35451,7 @@ def test_generated_runtime_helpers():
     assert "agentic_systems" in {item["area"] for item in low_code_features.jhipster_competitive_report()["appgen_only_capabilities"]}
     assert "runtime_assurance" in {item["area"] for item in low_code_features.jhipster_competitive_report()["appgen_only_capabilities"]}
     assert "database_ide" in {item["area"] for item in low_code_features.jhipster_competitive_report()["appgen_only_capabilities"]}
+    assert "jhipster_migration" in {item["area"] for item in low_code_features.jhipster_competitive_report()["appgen_only_capabilities"]}
     assert "application_composition" in {item["area"] for item in low_code_features.jhipster_competitive_report()["appgen_only_capabilities"]}
     composition_plan = low_code_features.composition_install_plan(("agentic-suite", "erp-suite"))
     assert composition_plan["format"] == "appgen.composition-install-plan.v1"

@@ -470,7 +470,7 @@ apps include:
   for design, generation, operations, evolution, and composition workflows so
   the comparison is tied to usable in-app surfaces rather than a static claim.
   A generated superiority-tier gate separately proves preserved baseline
-  parity, at least ten AppGen-only advantages, and generated IDE/workbench
+  parity, at least eleven AppGen-only advantages, and generated IDE/workbench
   routes before a release can claim to be more capable than JHipster. A
   generated capability-depth index also requires design-time, generation-time,
   runtime, and governance evidence for every AppGen-only advantage. The
@@ -514,8 +514,8 @@ apps include:
   a migration release gate for upgrading JHipster/JDL-shaped projects into the
   broader AppGen platform. Generated low-code feature contracts also expose a
   JHipster-superset certification gate combining overlap preservation,
-  AppGen-only advantage thresholds, roadmap traceability, composition readiness,
-  and artifact evidence.
+  AppGen-only advantage thresholds, roadmap traceability, bidirectional
+  JHipster migration readiness, composition readiness, and artifact evidence.
 - `chatbots/dialogflow/intents.json`,
   `chatbots/botframework/manifest.json`, and `chatbots/appgen_chatbots.py`
   with generated provider intents, field prompts, and conversation checks.

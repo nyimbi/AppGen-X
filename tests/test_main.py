@@ -2671,7 +2671,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert low_code_features.jhipster_competitive_report()["superset_scorecard"]["ok"] is True
     assert low_code_features.jhipster_capability_benchmark()["ok"] is True
     assert low_code_features.jhipster_superset_scorecard()["position"] == "more-capable-than-jhipster"
-    assert low_code_features.jhipster_superset_scorecard()["minimum_appgen_only_advantages"] == 10
+    assert low_code_features.jhipster_superset_scorecard()["minimum_appgen_only_advantages"] == 11
     assert low_code_features.jhipster_superset_scorecard()["blocking_gaps"] == ()
     assert low_code_features.jhipster_superset_evidence()["ok"] is True
     assert low_code_features.jhipster_superset_evidence({"app/designer.py"})["ok"] is False
@@ -2679,7 +2679,12 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert depth["format"] == "appgen.jhipster-capability-depth-index.v1"
     assert depth["ok"] is True
     assert depth["minimum_dimensions_per_area"] == 4
-    assert {item["area"] for item in depth["areas"]} >= {"visual_builders", "agentic_systems", "database_ide"}
+    assert {item["area"] for item in depth["areas"]} >= {
+        "visual_builders",
+        "agentic_systems",
+        "database_ide",
+        "jhipster_migration",
+    }
     assert low_code_features.jhipster_capability_depth_index({"app/designer.py"})["ok"] is False
     certification = low_code_features.jhipster_superset_certification()
     assert certification["format"] == "appgen.jhipster-superset-certification.v1"
@@ -2687,6 +2692,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert certification["ok"] is True
     assert certification["blocking_gaps"] == ()
     assert certification["advantage_ratio"] >= 2.0
+    assert certification["actual_appgen_only_advantages"] >= 11
     assert certification["capability_depth"]["ok"] is True
     assert "jhipster/app.jdl" in certification["generated_contracts"]
     assert "app/form_designer.py" in certification["generated_contracts"]
@@ -2699,7 +2705,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     superiority = low_code_features.jhipster_superiority_tiers()
     assert superiority["format"] == "appgen.jhipster-superiority-tiers.v1"
     assert superiority["ok"] is True
-    assert superiority["minimum_appgen_only_advantages"] == 10
+    assert superiority["minimum_appgen_only_advantages"] == 11
     assert superiority["stop_condition"] == "do-not-claim-jhipster-superiority-unless-ok-is-true"
     assert {"preserve-baseline", "outperform-baseline", "product-platform"} == {
         item["tier"] for item in superiority["tiers"]
@@ -2737,11 +2743,15 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "erp_templates",
         "runtime_assurance",
         "database_ide",
+        "jhipster_migration",
     }
     assert len(low_code_features.jhipster_competitive_report()["appgen_differentiators"]) >= 7
     assert "agentic_systems" in {item["area"] for item in low_code_features.jhipster_competitive_report()["appgen_only_capabilities"]}
     assert "runtime_assurance" in {item["area"] for item in low_code_features.jhipster_competitive_report()["appgen_only_capabilities"]}
     assert "database_ide" in {item["area"] for item in low_code_features.jhipster_competitive_report()["appgen_only_capabilities"]}
+    assert "jhipster_migration" in {
+        item["area"] for item in low_code_features.jhipster_competitive_report()["appgen_only_capabilities"]
+    }
     assert "application_composition" in {
         item["area"] for item in low_code_features.jhipster_competitive_report()["appgen_only_capabilities"]
     }
