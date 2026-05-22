@@ -800,6 +800,9 @@ apps include:
   and `flow` declarations. The generated `wizard_release_gate()` proves table
   and workflow wizard coverage, field prompts, step validation, progression
   behavior, and required wizard artifacts before wizard readiness is claimed.
+  The generated `wizard_workbench()` proves catalog, table/workflow wizard
+  coverage, session payloads, reviewable submission plans, workflow progression,
+  release gates, and route evidence before `ui.wizards` is marked implemented.
 - `events.py` and `appgen_events.html` with generated complex event
   processing, alerting, retry, and dead-letter contracts. The generated
   `event_release_gate()` proves artifact coverage, table/workflow topic

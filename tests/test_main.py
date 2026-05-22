@@ -1063,6 +1063,7 @@ def test_generate_app_from_sqlite_schema_compiles(tmp_path) -> None:
     assert "components.text-quality" in {item["key"] for item in manifest["capabilities"]}
     assert "components.media" in {item["key"] for item in manifest["capabilities"]}
     assert "ui.wizards" in {item["key"] for item in manifest["capabilities"]}
+    assert capabilities_by_key["ui.wizards"]["status"] == "implemented"
     assert "ui.layout" in {item["key"] for item in manifest["capabilities"]}
     assert capabilities_by_key["ui.layout"]["status"] == "implemented"
     assert "ui.branding" in {item["key"] for item in manifest["capabilities"]}
@@ -5996,6 +5997,13 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert wizards.validate_step("BookCreate", "required", {"status": "draft"})["missing"] == ("title",)
     assert wizards.validate_step("BookCreate", "optional", {"status": "bad"})["invalid_choices"] == ("status",)
     assert wizards.wizard_progress("BookCreate", ("required",))["current"]["name"] == "optional"
+    session = wizards.wizard_session("BookCreate", {"title": "Dune", "status": "draft"})
+    assert session["format"] == "appgen.wizard-session.v1"
+    assert session["can_advance"] is True
+    submission = wizards.wizard_submission_plan("BookCreate", {"title": "Dune", "status": "draft"})
+    assert submission["format"] == "appgen.wizard-submission-plan.v1"
+    assert submission["ready"] is True
+    assert submission["requires_review"] is True
     publish_wizard = wizards.wizard_plan("PublishWorkflow")
     assert publish_wizard["steps"][0]["source"] == "draft"
     assert publish_wizard["steps"][-1]["name"] == "complete"
@@ -6005,6 +6013,26 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert {"table_wizards", "workflow_wizards", "step_validation", "progression"} <= {
         check["gate"] for check in wizard_gate["checks"]
     }
+    assert "Workbench JSON" in (output_dir / "templates" / "appgen_wizards.html").read_text()
+    wizard_workbench = wizards.wizard_workbench({"app/wizards.py", "app/templates/appgen_wizards.html"})
+    assert wizard_workbench["format"] == "appgen.wizard-workbench.v1"
+    assert wizard_workbench["ok"] is True
+    assert wizard_workbench["decision"] == "approved"
+    assert {
+        "artifact_coverage",
+        "catalog",
+        "table_wizards",
+        "workflow_wizards",
+        "session_payload",
+        "submission_plan",
+        "workflow_progression",
+        "release_gate",
+        "route_surface",
+    } == {check["id"] for check in wizard_workbench["checks"]}
+    assert "/wizards/workbench.json" in next(
+        check["evidence"]["routes"] for check in wizard_workbench["checks"] if check["id"] == "route_surface"
+    )
+    assert wizards.wizard_workbench({"app/wizards.py"})["ok"] is False
     assert wizards.wizard_release_gate({"app/wizards.py"})["ok"] is False
     flow_export = json.loads((tmp_path / "automation" / "node-red" / "flows.json").read_text())
     assert node_red.event_topic("Book", "updated") == "Book.updated"

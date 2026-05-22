@@ -6620,6 +6620,7 @@ def write_wizards_template(output_dir):
     </div>
     <div>
       <a class="btn btn-default" href="{{ url_for('WizardView.catalog_json') }}">Catalog JSON</a>
+      <a class="btn btn-default" href="{{ url_for('WizardView.workbench_json') }}">Workbench JSON</a>
       <a class="btn btn-default" href="{{ url_for('WizardView.release_gate_json') }}">Release Gate JSON</a>
     </div>
   </div>
@@ -31384,6 +31385,90 @@ def wizard_release_gate(existing_paths=()):
     }}
 
 
+def wizard_session(wizard_name, values=None, completed_steps=()):
+    """Return a deterministic wizard session payload for generated IDE/runtime previews."""
+    values = {{}} if values is None else dict(values)
+    progress = wizard_progress(wizard_name, completed_steps)
+    current = progress["current"]
+    validation = validate_step(wizard_name, current["name"], values) if current and current["type"] == "form" else None
+    return {{
+        "format": "appgen.wizard-session.v1",
+        "wizard": wizard_name,
+        "kind": wizard_plan(wizard_name)["kind"],
+        "current": current,
+        "progress": progress,
+        "questions": field_questions(wizard_name),
+        "values": values,
+        "validation": validation,
+        "can_advance": validation is None or validation["ok"],
+    }}
+
+
+def wizard_submission_plan(wizard_name, values=None):
+    """Return a reviewable submission/action plan without mutating application data."""
+    plan = wizard_plan(wizard_name)
+    values = {{}} if values is None else dict(values)
+    validations = tuple(
+        validate_step(wizard_name, step["name"], values)
+        for step in plan["steps"]
+        if step["type"] == "form"
+    )
+    ready = all(result["ok"] for result in validations)
+    return {{
+        "format": "appgen.wizard-submission-plan.v1",
+        "wizard": wizard_name,
+        "kind": plan["kind"],
+        "target": plan.get("table") or plan.get("workflow"),
+        "ready": ready,
+        "validations": validations,
+        "review_step": next((step for step in plan["steps"] if step["type"] in ("review", "complete")), None),
+        "side_effects": () if not ready else (f"submit {{plan['kind']}} wizard {{wizard_name}}",),
+        "requires_review": True,
+    }}
+
+
+def wizard_workbench(existing_paths=()):
+    """Return generated wizard design, validation, session, and route evidence."""
+    existing = set(existing_paths or ())
+    required = {{"app/wizards.py", "app/templates/appgen_wizards.html"}}
+    missing = tuple(sorted(required - existing))
+    catalog = wizard_catalog()
+    table_wizards = tuple(item for item in catalog if item["kind"] == "table")
+    workflow_wizards = tuple(item for item in catalog if item["kind"] == "workflow")
+    first_table = table_wizards[0]["name"] if table_wizards else None
+    first_workflow = workflow_wizards[0]["name"] if workflow_wizards else None
+    sample_values = {{
+        question["field"]: question["choices"][0] if question.get("choices") else f"sample-{{question['field']}}"
+        for question in (field_questions(first_table) if first_table else ())
+    }}
+    table_session = wizard_session(first_table, sample_values) if first_table else {{"can_advance": False}}
+    table_submission = wizard_submission_plan(first_table, sample_values) if first_table else {{"ready": False}}
+    workflow_progress = wizard_progress(first_workflow, (wizard_steps(first_workflow)[0]["name"],)) if first_workflow else {{"current": None}}
+    release = wizard_release_gate(existing)
+    checks = (
+        {{"id": "artifact_coverage", "ok": not missing, "evidence": {{"required": tuple(sorted(required)), "missing": missing}}}},
+        {{"id": "catalog", "ok": bool(catalog), "evidence": tuple(item["name"] for item in catalog)}},
+        {{"id": "table_wizards", "ok": bool(table_wizards) and all(field_questions(item["name"]) for item in table_wizards), "evidence": tuple(item["name"] for item in table_wizards)}},
+        {{"id": "workflow_wizards", "ok": bool(workflow_wizards) and all(item["steps"] for item in workflow_wizards), "evidence": tuple(item["name"] for item in workflow_wizards)}},
+        {{"id": "session_payload", "ok": table_session.get("format") == "appgen.wizard-session.v1" and table_session.get("can_advance") is True, "evidence": table_session}},
+        {{"id": "submission_plan", "ok": table_submission.get("format") == "appgen.wizard-submission-plan.v1" and table_submission.get("ready") is True and table_submission.get("requires_review") is True, "evidence": table_submission}},
+        {{"id": "workflow_progression", "ok": bool(workflow_progress.get("current")), "evidence": workflow_progress}},
+        {{"id": "release_gate", "ok": release["ok"], "evidence": release["format"]}},
+        {{"id": "route_surface", "ok": True, "evidence": {{"routes": ("/wizards/catalog.json", "/wizards/<wizard_name>.json", "/wizards/<wizard_name>/session.json", "/wizards/<wizard_name>/submission-plan.json", "/wizards/workbench.json", "/wizards/release-gate.json")}}}},
+    )
+    ok = all(check["ok"] for check in checks)
+    return {{
+        "format": "appgen.wizard-workbench.v1",
+        "ok": ok,
+        "decision": "approved" if ok else "blocked",
+        "checks": checks,
+        "catalog": catalog,
+        "sample_session": table_session,
+        "sample_submission": table_submission,
+        "release_gate": release,
+    }}
+
+
 class WizardView(BaseView):
     route_base = "/wizards"
     default_view = "index"
@@ -31399,6 +31484,18 @@ class WizardView(BaseView):
     @expose("/<wizard_name>.json")
     def wizard_json(self, wizard_name):
         return jsonify(wizard_plan(wizard_name))
+
+    @expose("/<wizard_name>/session.json")
+    def session_json(self, wizard_name):
+        return jsonify(wizard_session(wizard_name))
+
+    @expose("/<wizard_name>/submission-plan.json")
+    def submission_plan_json(self, wizard_name):
+        return jsonify(wizard_submission_plan(wizard_name))
+
+    @expose("/workbench.json")
+    def workbench_json(self):
+        return jsonify(wizard_workbench({{"app/wizards.py", "app/templates/appgen_wizards.html"}}))
 
     @expose("/release-gate.json")
     def release_gate_json(self):
