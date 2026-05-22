@@ -615,6 +615,10 @@ Use `/low-code-features/jhipster-capability-depth.json` to inspect the depth
 index behind the claim. Each AppGen-only advantage must show design-time,
 generation-time, runtime, and governance evidence rather than only naming a
 feature.
+Use `/low-code-features/jhipster-capability-proof.json` for the stricter proof
+matrix. It requires every AppGen-only superiority area to carry benchmark,
+capability, artifact, depth, and generated route evidence before the
+certification gate can pass.
 Use `/low-code-features/jhipster-frontier-gate.json` to prove advanced
 JHipster capability families are still preserved and then exceeded by generated
 AppGen-only capabilities before making stronger product-positioning claims.

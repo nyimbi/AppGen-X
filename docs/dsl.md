@@ -546,7 +546,10 @@ apps include:
   parity, at least eleven AppGen-only advantages, and generated IDE/workbench
   routes before a release can claim to be more capable than JHipster. A
   generated capability-depth index also requires design-time, generation-time,
-  runtime, and governance evidence for every AppGen-only advantage. The
+  runtime, and governance evidence for every AppGen-only advantage. A generated
+  capability-proof matrix then binds every superiority claim to benchmark,
+  capability, artifact, depth, and route evidence so AppGen-only claims cannot
+  pass as documentation-only assertions. The
   JHipster frontier gate proves advanced JHipster families such as domain
   modeling, front-end targets, service architecture, data operations, quality
   operations, and enterprise experience are preserved before each family is
