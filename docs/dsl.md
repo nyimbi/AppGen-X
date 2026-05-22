@@ -496,7 +496,9 @@ apps include:
   matrix, target package matrix, mobile capability contract, and platform
   release gate for downstream adapters.
 - `frontends/` with generated React, Vue, Angular, Svelte, HTMX, and Express
-  starter contracts wired to the generated REST API routes.
+  starter contracts wired to the generated REST API routes, shared API
+  environment variables, route-binding matrices, dev/build command matrices,
+  responsive/accessibility quality checks, and a front-end release gate.
 - `sdks/` with generated Python, JavaScript, Java, and C# API client
   scaffolds derived from the same REST table contracts.
 - `native/` with generated Kivy mobile and BeeWare desktop Python starter

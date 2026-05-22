@@ -175,6 +175,11 @@ app FieldOps { targets: web, pwa, mobile, desktop, chatbot }
 bot contracts and provider exports. Use `/platforms/generation-matrix.json`
 and `/platforms/release-gate.json` to verify selected target packages,
 capabilities, artifacts, and web/mobile/desktop readiness.
+When `web` is selected, AppGen also emits React, Vue, Angular, Svelte, HTMX,
+and Express starter contracts under `frontends/`; use
+`frontends/appgen_frontends.py` to inspect route bindings, shared API
+environment variables, dev/build commands, quality checks, and the generated
+front-end release gate.
 
 ## Adding Behavior
 

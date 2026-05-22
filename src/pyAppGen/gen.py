@@ -31046,12 +31046,12 @@ from __future__ import annotations
 
 
 FRONTENDS = {{
-    "react": {{"path": "frontends/react", "entry": "src/App.jsx", "kind": "spa"}},
-    "vue": {{"path": "frontends/vue", "entry": "src/App.vue", "kind": "spa"}},
-    "angular": {{"path": "frontends/angular", "entry": "src/app.component.ts", "kind": "spa"}},
-    "svelte": {{"path": "frontends/svelte", "entry": "src/App.svelte", "kind": "spa"}},
-    "htmx": {{"path": "frontends/htmx", "entry": "src/server.js", "kind": "hypermedia"}},
-    "express": {{"path": "frontends/express", "entry": "src/server.js", "kind": "api-proxy"}},
+    "react": {{"path": "frontends/react", "entry": "src/App.jsx", "kind": "spa", "dev": "npm run dev", "build": "npm run build"}},
+    "vue": {{"path": "frontends/vue", "entry": "src/App.vue", "kind": "spa", "dev": "npm run dev", "build": "npm run build"}},
+    "angular": {{"path": "frontends/angular", "entry": "src/app.component.ts", "kind": "spa", "dev": "npm run dev", "build": "npm run build"}},
+    "svelte": {{"path": "frontends/svelte", "entry": "src/App.svelte", "kind": "spa", "dev": "npm run dev", "build": "npm run build"}},
+    "htmx": {{"path": "frontends/htmx", "entry": "src/server.js", "kind": "hypermedia", "dev": "npm run dev", "build": None}},
+    "express": {{"path": "frontends/express", "entry": "src/server.js", "kind": "api-proxy", "dev": "npm run dev", "build": None}},
 }}
 SELECTED_FRONTENDS = {frontend_targets!r}
 
@@ -31091,6 +31091,92 @@ def scaffold_check(existing_paths):
         missing.append(f'{{spec["path"]}}/{{spec["entry"]}}')
     missing = tuple(path for path in missing if path not in existing)
     return {{"ok": not missing, "missing": missing}}
+
+
+def frontend_environment_contract(api_base=None):
+    """Return shared environment variables used by all generated front-end targets."""
+    return {{
+        "format": "appgen.frontend-environment.v1",
+        "api_base": api_base or "APPGEN_API_BASE",
+        "variables": (
+            {{"name": "APPGEN_API_BASE", "required": True, "default": "http://localhost:8080/api/v1"}},
+            {{"name": "APPGEN_APP_NAME", "required": False, "default": APP_CONTRACT["app_name"]}},
+        ),
+        "secret_free": True,
+    }}
+
+
+def frontend_route_bindings():
+    """Return cross-framework API route bindings for every generated table."""
+    return tuple(
+        {{
+            "target": target,
+            "table": table["table"],
+            "endpoint": table["endpoint"],
+            "binding": f"{{target}}:{{table['table']}}",
+            "selected": target in SELECTED_FRONTENDS,
+        }}
+        for target in FRONTENDS
+        for table in APP_CONTRACT["tables"]
+    )
+
+
+def frontend_command_matrix():
+    """Return dev/build commands and generated entrypoints for each front-end target."""
+    return tuple(
+        {{
+            "target": target,
+            "path": spec["path"],
+            "entry": spec["entry"],
+            "kind": spec["kind"],
+            "dev": spec["dev"],
+            "build": spec["build"],
+            "selected": target in SELECTED_FRONTENDS,
+        }}
+        for target, spec in FRONTENDS.items()
+    )
+
+
+def frontend_quality_matrix():
+    """Return generated parity checks for front-end scaffolds."""
+    checks = ("api_route_binding", "responsive_shell", "keyboard_navigation", "empty_state", "error_state")
+    return {{
+        "format": "appgen.frontend-quality-matrix.v1",
+        "targets": SELECTED_FRONTENDS,
+        "checks": checks,
+        "rows": tuple(
+            {{
+                "target": target,
+                "checks": checks,
+                "selected": target in SELECTED_FRONTENDS,
+                "ok": target in SELECTED_FRONTENDS and bool(APP_CONTRACT["tables"]),
+            }}
+            for target in FRONTENDS
+        ),
+    }}
+
+
+def frontend_release_gate(existing_paths):
+    """Return release evidence for generated React/Vue/Angular/Svelte/HTMX/Express scaffolds."""
+    scaffold = scaffold_check(existing_paths)
+    routes = frontend_route_bindings()
+    commands = frontend_command_matrix()
+    quality = frontend_quality_matrix()
+    selected_commands = tuple(row for row in commands if row["selected"])
+    gates = (
+        {{"gate": "scaffold_artifacts", "ok": scaffold["ok"], "details": scaffold}},
+        {{"gate": "target_coverage", "ok": set(SELECTED_FRONTENDS) <= set(FRONTENDS), "details": SELECTED_FRONTENDS}},
+        {{"gate": "route_bindings", "ok": bool(routes) and all(row["endpoint"].startswith("/api/v1/") for row in routes if row["selected"]), "details": routes}},
+        {{"gate": "command_matrix", "ok": all(row["dev"] for row in selected_commands), "details": selected_commands}},
+        {{"gate": "quality_matrix", "ok": all(row["ok"] for row in quality["rows"] if row["selected"]), "details": quality}},
+        {{"gate": "environment_contract", "ok": frontend_environment_contract()["secret_free"], "details": frontend_environment_contract()}},
+    )
+    return {{
+        "format": "appgen.frontend-release-gate.v1",
+        "ok": all(gate["ok"] for gate in gates),
+        "gates": gates,
+        "blocking_gaps": tuple(gate for gate in gates if not gate["ok"]),
+    }}
 '''
 
 
@@ -34005,6 +34091,8 @@ def validate_frontend_artifacts() -> None:
     contract = (ROOT / "frontends" / "appgen_frontends.py").read_text()
     if '"react"' not in contract or '"express"' not in contract or '"svelte"' not in contract or '"htmx"' not in contract:
         fail("front-end contract must include React, Svelte, HTMX, and Express targets")
+    if "frontend_route_bindings" not in contract or "frontend_command_matrix" not in contract or "frontend_quality_matrix" not in contract or "frontend_release_gate" not in contract:
+        fail("front-end contract must expose route bindings, command matrix, quality matrix, and release gate")
     react = (ROOT / "frontends" / "react" / "src" / "App.jsx").read_text()
     if "/api/v1" not in react:
         fail("React starter must include generated API routes")

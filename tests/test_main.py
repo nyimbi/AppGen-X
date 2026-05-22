@@ -764,6 +764,16 @@ def test_generate_app_from_sqlite_schema_compiles(tmp_path) -> None:
         "frontends/express/src/server.js",
     }
     assert frontends.scaffold_check(frontend_artifacts)["ok"] is True
+    assert frontends.frontend_environment_contract()["secret_free"] is True
+    assert any(row["target"] == "react" and row["endpoint"] == "/api/v1/book/" for row in frontends.frontend_route_bindings())
+    assert frontends.frontend_command_matrix()[0]["dev"] == "npm run dev"
+    assert frontends.frontend_quality_matrix()["format"] == "appgen.frontend-quality-matrix.v1"
+    frontend_gate = frontends.frontend_release_gate(frontend_artifacts)
+    assert frontend_gate["format"] == "appgen.frontend-release-gate.v1"
+    assert frontend_gate["ok"] is True
+    assert {"scaffold_artifacts", "route_bindings", "command_matrix", "quality_matrix", "environment_contract"} <= {
+        gate["gate"] for gate in frontend_gate["gates"]
+    }
     assert "/api/v1/book/" in (tmp_path / "frontends" / "react" / "src" / "App.jsx").read_text()
     assert "<template>" in (tmp_path / "frontends" / "vue" / "src" / "App.vue").read_text()
     assert "AppComponent" in (tmp_path / "frontends" / "angular" / "src" / "app.component.ts").read_text()
@@ -5496,6 +5506,20 @@ def test_appgen_dsl_targets_select_generated_platform_contracts(tmp_path) -> Non
     assert platforms.platform_contract("pwa")["selected"] is False
     assert set(frontends.frontend_targets()) == {"react", "vue", "angular", "svelte", "htmx", "express"}
     assert frontends.frontend_plan("react")["selected"] is True
+    assert frontends.frontend_release_gate({
+        "frontends/react/package.json",
+        "frontends/react/src/App.jsx",
+        "frontends/vue/package.json",
+        "frontends/vue/src/App.vue",
+        "frontends/angular/package.json",
+        "frontends/angular/src/app.component.ts",
+        "frontends/svelte/package.json",
+        "frontends/svelte/src/App.svelte",
+        "frontends/htmx/package.json",
+        "frontends/htmx/src/server.js",
+        "frontends/express/package.json",
+        "frontends/express/src/server.js",
+    })["ok"] is True
     assert set(native.native_targets()) == {"mobile", "desktop"}
     assert native.native_plan("mobile")["selected"] is True
     assert chatbots.chatbot_targets() == ()
