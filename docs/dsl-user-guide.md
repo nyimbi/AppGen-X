@@ -566,6 +566,9 @@ Use the generated `coverage_release_gate()` in
 `tests/test_generated_coverage.py` to prove table, workflow, view-experience,
 quality, diagnostics, and release-gate coverage before claiming generated test
 coverage is complete.
+Use `ci_release_gate()` in `scripts/appgen_quality.py` to prove the generated
+GitHub Actions workflow, quality script, required CI stages, quality/test
+commands, and generated test artifacts before claiming CI/CD readiness.
 Use `/diagnostics/release-gate.json` or `diagnostics_release_gate()` to prove
 debugging readiness. The gate checks diagnostic artifacts, schema self-tests,
 secret redaction, remediation planning, support bundle shape, API smoke plans,

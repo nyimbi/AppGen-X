@@ -40296,6 +40296,80 @@ REQUIRED_CAPABILITIES = {
 }
 
 
+CI_PIPELINE_STAGES = (
+    {
+        "id": "checkout",
+        "label": "Check out repository",
+        "command": "actions/checkout@v4",
+        "required": True,
+    },
+    {
+        "id": "setup_python",
+        "label": "Set up Python",
+        "command": "actions/setup-python@v5",
+        "required": True,
+    },
+    {
+        "id": "install_dependencies",
+        "label": "Install dependencies",
+        "command": "python -m pip install -r requirements.txt pytest",
+        "required": True,
+    },
+    {
+        "id": "quality_gate",
+        "label": "Run generated quality gate",
+        "command": "python scripts/appgen_quality.py",
+        "required": True,
+    },
+    {
+        "id": "generated_tests",
+        "label": "Run generated tests",
+        "command": "pytest",
+        "required": True,
+    },
+)
+
+
+def ci_pipeline_contract() -> dict:
+    return {
+        "format": "appgen.ci-pipeline-contract.v1",
+        "provider": "github-actions",
+        "workflow": ".github/workflows/appgen-ci.yml",
+        "quality_script": "scripts/appgen_quality.py",
+        "stages": CI_PIPELINE_STAGES,
+        "required_commands": tuple(stage["command"] for stage in CI_PIPELINE_STAGES if stage["required"]),
+    }
+
+
+def ci_release_gate(existing_paths=None) -> dict:
+    existing = set(existing_paths or ())
+    required_artifacts = (".github/workflows/appgen-ci.yml", "scripts/appgen_quality.py", "tests/test_generated_contract.py")
+    missing = tuple(
+        path
+        for path in required_artifacts
+        if (path not in existing if existing_paths is not None else not (ROOT / path).exists())
+    )
+    workflow = (ROOT / ".github" / "workflows" / "appgen-ci.yml").read_text() if (ROOT / ".github" / "workflows" / "appgen-ci.yml").exists() else ""
+    contract = ci_pipeline_contract()
+    checks = (
+        {"id": "workflow_artifact", "ok": ".github/workflows/appgen-ci.yml" not in missing, "evidence": contract["workflow"]},
+        {"id": "quality_script", "ok": "scripts/appgen_quality.py" not in missing, "evidence": contract["quality_script"]},
+        {"id": "required_stages", "ok": all(stage["required"] for stage in contract["stages"]), "evidence": tuple(stage["id"] for stage in contract["stages"])},
+        {"id": "quality_command", "ok": "python scripts/appgen_quality.py" in workflow or existing_paths is not None, "evidence": "python scripts/appgen_quality.py"},
+        {"id": "pytest_command", "ok": "pytest" in workflow or existing_paths is not None, "evidence": "pytest"},
+        {"id": "artifact_coverage", "ok": not missing, "evidence": {"required": required_artifacts, "missing": missing}},
+    )
+    ok = all(check["ok"] for check in checks)
+    return {
+        "format": "appgen.ci-release-gate.v1",
+        "ok": ok,
+        "decision": "approved" if ok else "blocked",
+        "checks": checks,
+        "pipeline": contract,
+        "blocking_gaps": tuple(check["id"] for check in checks if not check["ok"]),
+    }
+
+
 def fail(message: str) -> None:
     raise SystemExit(f"appgen quality failed: {message}")
 
@@ -41082,6 +41156,11 @@ def validate_studio_artifacts() -> None:
 
 
 def validate_ci() -> None:
+    gate = ci_release_gate()
+    if gate.get("format") != "appgen.ci-release-gate.v1" or not gate.get("ok"):
+        fail("CI release gate must approve generated workflow, quality script, and test artifacts")
+    if {"workflow_artifact", "quality_script", "required_stages", "quality_command", "pytest_command", "artifact_coverage"} != {check.get("id") for check in gate.get("checks", ())}:
+        fail("CI release gate must prove workflow, quality script, stage, command, and artifact coverage")
     workflow = (ROOT / ".github" / "workflows" / "appgen-ci.yml").read_text()
     if "python scripts/appgen_quality.py" not in workflow:
         fail("CI workflow must run scripts/appgen_quality.py")

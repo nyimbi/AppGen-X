@@ -667,6 +667,9 @@ def test_generate_app_from_sqlite_schema_compiles(tmp_path) -> None:
     assert "python scripts/appgen_quality.py" in ci_text
     assert "pytest" in ci_text
     quality_script = (tmp_path / "scripts" / "appgen_quality.py").read_text()
+    assert "ci_pipeline_contract" in quality_script
+    assert "ci_release_gate" in quality_script
+    assert "appgen.ci-release-gate.v1" in quality_script
     assert "workflow_webhook_plan" in quality_script
     quality = subprocess.run(
         [sys.executable, str(tmp_path / "scripts" / "appgen_quality.py")],
@@ -675,6 +678,25 @@ def test_generate_app_from_sqlite_schema_compiles(tmp_path) -> None:
         text=True,
     )
     assert "appgen quality passed" in quality.stdout
+    quality_spec = importlib.util.spec_from_file_location("generated_quality", tmp_path / "scripts" / "appgen_quality.py")
+    assert quality_spec is not None and quality_spec.loader is not None
+    generated_quality = importlib.util.module_from_spec(quality_spec)
+    quality_spec.loader.exec_module(generated_quality)
+    ci_gate = generated_quality.ci_release_gate(
+        {".github/workflows/appgen-ci.yml", "scripts/appgen_quality.py", "tests/test_generated_contract.py"}
+    )
+    assert ci_gate["format"] == "appgen.ci-release-gate.v1"
+    assert ci_gate["ok"] is True
+    assert ci_gate["decision"] == "approved"
+    assert {
+        "workflow_artifact",
+        "quality_script",
+        "required_stages",
+        "quality_command",
+        "pytest_command",
+        "artifact_coverage",
+    } == {check["id"] for check in ci_gate["checks"]}
+    assert generated_quality.ci_release_gate({"scripts/appgen_quality.py"})["ok"] is False
     schema_docs = (tmp_path / "docs" / "schema.md").read_text()
     assert "author_id" in schema_docs
     assert "`book.author_id` -> `author.id`" in schema_docs
@@ -1067,6 +1089,7 @@ def test_generate_app_from_sqlite_schema_compiles(tmp_path) -> None:
     assert capabilities_by_key["data.exchange"]["status"] == "implemented"
     assert capabilities_by_key["data.search"]["status"] == "implemented"
     assert capabilities_by_key["data.database-ops"]["status"] == "implemented"
+    assert capabilities_by_key["devops.cicd"]["status"] == "implemented"
     assert capabilities_by_key["platform.microservices"]["status"] == "implemented"
     assert capabilities_by_key["platform.targets"]["status"] == "implemented"
     assert capabilities_by_key["platform.native"]["status"] == "implemented"

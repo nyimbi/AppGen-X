@@ -922,7 +922,10 @@ apps include:
   referenced by the generated accessibility workbench and release evidence.
 - `.github/workflows/appgen-ci.yml` and `scripts/appgen_quality.py` with a
   generated CI quality gate for syntax, manifest, PWA, docs, runtime assurance,
-  and test-surface checks.
+  and test-surface checks. The generated quality script exposes
+  `ci_pipeline_contract()` and `ci_release_gate()` to prove workflow artifacts,
+  required CI stages, quality/test commands, and generated test artifact
+  coverage before `devops.cicd` is marked implemented.
 - `deploy/` with Docker/Compose-adjacent Kubernetes manifests, Kubernetes HPA
   autoscaling manifests, on-prem topology plans, Terraform starter contracts
   for AWS, GCP, and Azure, generated deployment runbooks, secret-injection
