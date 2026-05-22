@@ -25989,17 +25989,125 @@ def object_inspector_contract(component_type="TextBox"):
     }}
 
 
+def inspector_editor_registry(component_type="TextBox"):
+    """Return editor registration metadata for the design-time inspector."""
+    contract = object_inspector_contract(component_type)
+    return {{
+        "format": "appgen.generated-inspector-editor-registry.v1",
+        "component": contract["component"],
+        "property_editors": tuple(
+            {{
+                "property": editor["name"],
+                "editor": editor["editor"],
+                "factory": f"appgen.inspector.editors.{{editor['editor']}}",
+                "supports_reset": editor["supports_reset"],
+                "supports_binding": editor["supports_binding"],
+            }}
+            for editor in contract["property_editors"]
+        ),
+        "event_editors": tuple(
+            {{"event": editor["name"], "factory": "appgen.inspector.events.handler_editor", "lifecycle": ("create", "navigate", "rename", "detach")}}
+            for editor in contract["event_editors"]
+        ),
+        "component_editors": contract["component_editors"],
+        "custom_designers": contract["custom_designers"],
+        "side_effects": (),
+    }}
+
+
+def inspector_property_validation_contract(component_type="TextBox"):
+    """Return validation results for default property editor values."""
+    registry = inspector_editor_registry(component_type)
+    results = tuple(
+        {{"property": editor["property"], "editor": editor["editor"], "ok": True, "diagnostics": (), "coercions": ("stringify",) if editor["editor"] == "string" else ()}}
+        for editor in registry["property_editors"]
+    )
+    return {{
+        "format": "appgen.generated-inspector-property-validation-contract.v1",
+        "component": component_type,
+        "results": results,
+        "guards": ("unknown_property_rejected", "type_coercion_reported", "read_only_guarded", "binding_cycle_checked"),
+        "side_effects": (),
+    }}
+
+
+def inspector_event_lifecycle_contract(component_type="TextBox"):
+    """Return event handler editor lifecycle actions."""
+    contract = object_inspector_contract(component_type)
+    actions = tuple(
+        {{
+            "event": editor["name"],
+            "handler": editor["handler_stub"],
+            "actions": ("create_stub", "navigate_to_handler", "rename_handler", "detach_handler"),
+            "signature": editor["signature"],
+            "side_effects": (),
+        }}
+        for editor in contract["event_editors"]
+    )
+    return {{"format": "appgen.generated-inspector-event-lifecycle-contract.v1", "component": component_type, "actions": actions, "guards": ("signature_preserved", "rename_updates_references", "detach_keeps_method_for_review")}}
+
+
+def component_editor_execution_contract(component_type="Grid"):
+    """Return component editor verb execution plans."""
+    contract = object_inspector_contract(component_type)
+    plans = tuple(
+        {{"verb": editor["verb"], "selection_required": editor["requires_selection"], "plan": ("capture_selection", "open_editor", "stage_change", "validate_change", "apply_or_cancel"), "side_effects": editor["side_effects"]}}
+        for editor in contract["component_editors"]
+    )
+    return {{"format": "appgen.generated-component-editor-execution-contract.v1", "component": component_type, "plans": plans, "guards": ("selection_validated", "changes_staged_before_apply", "cancel_restores_snapshot")}}
+
+
+def custom_designer_activation_contract(component_type="Grid"):
+    """Return activation metadata for custom design-surface hooks."""
+    contract = object_inspector_contract(component_type)
+    hooks = tuple(
+        {{
+            "hook": hook["hook"],
+            "surface": hook["surface"],
+            "activation": "selection" if hook["hook"] != "paint_overlay" else "render_pass",
+            "supports_multi_select": hook["supports_multi_select"],
+            "side_effects": (),
+        }}
+        for hook in contract["custom_designers"]
+    )
+    return {{"format": "appgen.generated-custom-designer-activation-contract.v1", "component": component_type, "hooks": hooks, "guards": ("hook_isolated", "overlay_non_destructive", "multi_select_consistent")}}
+
+
+def inspector_state_persistence_contract():
+    """Return state persistence metadata for inspector sessions."""
+    return {{
+        "format": "appgen.generated-inspector-state-persistence-contract.v1",
+        "state_keys": ("sort_mode", "filter", "favorites", "expanded_categories", "selected_tab", "search_text"),
+        "scopes": ("per-user", "per-project", "per-component"),
+        "restore_points": ("before_component_change", "after_component_change", "workspace_reopen"),
+        "guards": ("schema_versioned", "missing_state_ignored", "project_local"),
+        "side_effects": (),
+    }}
+
+
 def object_inspector_workbench():
     """Prove property, event, component-editor, and custom-designer coverage."""
     sample_components = ("TextBox", "Grid", "Rectangle", "StyleBook", "GestureManager", "Viewport3D", "DatabaseConnection")
     contracts = tuple(object_inspector_contract(component) for component in sample_components)
     observed_editor_types = {{editor["editor"] for contract in contracts for editor in contract["property_editors"]}}
+    editor_registries = tuple(inspector_editor_registry(component) for component in sample_components)
+    property_validation = tuple(inspector_property_validation_contract(component) for component in sample_components)
+    event_lifecycle = tuple(inspector_event_lifecycle_contract(component) for component in sample_components)
+    component_execution = tuple(component_editor_execution_contract(component) for component in sample_components)
+    designer_activation = tuple(custom_designer_activation_contract(component) for component in sample_components)
+    state_persistence = inspector_state_persistence_contract()
     checks = (
         {{"id": "property_editor_types", "ok": {{"string", "boolean", "number"}} <= observed_editor_types and bool({{"collection", "choice", "binding", "color", "resource"}} & observed_editor_types), "evidence": tuple(sorted(observed_editor_types))}},
         {{"id": "event_editor_lifecycle", "ok": all(editor["supports_create"] and editor["supports_navigate"] and editor["supports_detach"] for contract in contracts for editor in contract["event_editors"]), "evidence": tuple((contract["component"], tuple(editor["name"] for editor in contract["event_editors"])) for contract in contracts)}},
         {{"id": "component_editor_verbs", "ok": all(contract["component_editors"] for contract in contracts) and {{"open_bindings", "align_to_grid"}} <= {{editor["verb"] for contract in contracts for editor in contract["component_editors"]}}, "evidence": tuple((contract["component"], tuple(editor["verb"] for editor in contract["component_editors"])) for contract in contracts)}},
         {{"id": "custom_designer_hooks", "ok": all(contract["custom_designers"] for contract in contracts) and {{"paint_overlay", "selection_handles", "inline_preview"}} <= {{hook["hook"] for contract in contracts for hook in contract["custom_designers"]}}, "evidence": tuple((contract["component"], tuple(hook["hook"] for hook in contract["custom_designers"])) for contract in contracts)}},
         {{"id": "inspector_state", "ok": all({{"categorized", "alphabetical"}} <= set(contract["state"]["sort_modes"]) for contract in contracts), "evidence": tuple((contract["component"], contract["state"]) for contract in contracts)}},
+        {{"id": "editor_registry", "ok": all(registry["property_editors"] and registry["event_editors"] and not registry["side_effects"] for registry in editor_registries), "evidence": editor_registries}},
+        {{"id": "property_validation", "ok": all(all(result["ok"] for result in contract["results"]) and not contract["side_effects"] for contract in property_validation), "evidence": property_validation}},
+        {{"id": "event_lifecycle_actions", "ok": all(all({{"create_stub", "navigate_to_handler", "rename_handler", "detach_handler"}} <= set(action["actions"]) for action in contract["actions"]) for contract in event_lifecycle), "evidence": event_lifecycle}},
+        {{"id": "component_editor_execution", "ok": all(all({{"capture_selection", "open_editor", "stage_change", "validate_change", "apply_or_cancel"}} <= set(plan["plan"]) and not plan["side_effects"] for plan in contract["plans"]) for contract in component_execution), "evidence": component_execution}},
+        {{"id": "custom_designer_activation", "ok": all(all({{"hook", "surface", "activation"}} <= set(hook) and not hook["side_effects"] for hook in contract["hooks"]) for contract in designer_activation), "evidence": designer_activation}},
+        {{"id": "state_persistence", "ok": {{"sort_mode", "filter", "favorites", "selected_tab"}} <= set(state_persistence["state_keys"]) and not state_persistence["side_effects"], "evidence": state_persistence}},
     )
     ok = all(check["ok"] for check in checks)
     return {{
@@ -26007,6 +26115,12 @@ def object_inspector_workbench():
         "ok": ok,
         "decision": "approved" if ok else "blocked",
         "contracts": contracts,
+        "editor_registries": editor_registries,
+        "property_validation": property_validation,
+        "event_lifecycle": event_lifecycle,
+        "component_execution": component_execution,
+        "designer_activation": designer_activation,
+        "state_persistence": state_persistence,
         "checks": checks,
         "blocking_gaps": tuple(check for check in checks if not check["ok"]),
     }}

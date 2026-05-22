@@ -307,8 +307,9 @@ Generated apps include Studio contracts for:
   information, event binding lifecycle, resource streaming, and form lifecycle
   hooks.
 - An Object Inspector workbench proves property editor types, event-handler
-  lifecycle actions, component editor verbs, custom designer hooks, and
-  persisted inspector state.
+  lifecycle actions, component editor verbs, custom designer hooks, editor
+  registration, property validation, staged verb execution, custom designer
+  activation, and persisted inspector state.
 - A visual data-binding workbench proves binding graph nodes/edges, expression
   validation, converter and validator catalogs, designer gestures, and runtime
   binding modes, plus link authoring operations, conflict checks, preview

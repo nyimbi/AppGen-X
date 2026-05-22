@@ -815,6 +815,12 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "component_editor_verbs",
         "custom_designer_hooks",
         "inspector_state",
+        "editor_registry",
+        "property_validation",
+        "event_lifecycle_actions",
+        "component_editor_execution",
+        "custom_designer_activation",
+        "state_persistence",
     } == {check["id"] for check in inspector_workbench["checks"]}
     binding_graph = livebindings_graph_contract()
     assert binding_graph["format"] == "appgen.livebindings-graph.v1"
@@ -8811,9 +8817,11 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     generated_inspector = form_designer.object_inspector_workbench()
     assert generated_inspector["format"] == "appgen.generated-object-inspector-workbench.v1"
     assert generated_inspector["ok"] is True
-    assert {"custom_designer_hooks", "component_editor_verbs"} <= {
+    assert {"custom_designer_hooks", "component_editor_verbs", "editor_registry", "property_validation", "state_persistence"} <= {
         check["id"] for check in generated_inspector["checks"]
     }
+    assert generated_inspector["editor_registries"]
+    assert generated_inspector["state_persistence"]["state_keys"]
     generated_usability = form_designer.component_usability_workbench()
     assert generated_usability["format"] == "appgen.generated-component-usability-workbench.v1"
     assert generated_usability["ok"] is True
