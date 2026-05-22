@@ -624,7 +624,9 @@ apps include:
   JHipster baseline plus route and artifact evidence. The
   application-composition release gate proves reusable block catalog depth,
   dependency topology, reviewable install order, sandbox controls, package
-  publication targets, and artifact evidence.
+  publication targets, and artifact evidence. The generated composition
+  workbench exposes IDE-ready catalog, dependency, reviewed install,
+  publication handoff, artifact, and route-surface checks for reusable blocks.
 - `prototyping.py` and `appgen_prototyping.html` with rapid mock screens,
   realistic sample data, preview packages, experiment hypotheses, and backlog
   promotion plans for fast stakeholder iteration. The generated

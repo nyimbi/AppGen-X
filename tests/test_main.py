@@ -1100,6 +1100,7 @@ def test_generate_app_from_sqlite_schema_compiles(tmp_path) -> None:
     assert "quality.test-coverage" in {item["key"] for item in manifest["capabilities"]}
     assert "components.templates" in {item["key"] for item in manifest["capabilities"]}
     assert capabilities_by_key["components.templates"]["status"] == "implemented"
+    assert capabilities_by_key["components.application-composition"]["status"] == "implemented"
     assert "components.lookups" in {item["key"] for item in manifest["capabilities"]}
     assert capabilities_by_key["components.lookups"]["status"] == "implemented"
     assert "components.text-quality" in {item["key"] for item in manifest["capabilities"]}
@@ -2578,6 +2579,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert "Feature Matrix JSON" in (output_dir / "templates" / "appgen_low_code_features.html").read_text()
     assert "Roadmap Sources JSON" in (output_dir / "templates" / "appgen_low_code_features.html").read_text()
     assert "JHipster Comparison JSON" in (output_dir / "templates" / "appgen_low_code_features.html").read_text()
+    assert "Composition Workbench JSON" in (output_dir / "templates" / "appgen_low_code_features.html").read_text()
     assert "Composition Release Gate JSON" in (output_dir / "templates" / "appgen_low_code_features.html").read_text()
     assert "Superset Certification JSON" in (output_dir / "templates" / "appgen_low_code_features.html").read_text()
     assert "Superset Scorecard JSON" in (output_dir / "templates" / "appgen_low_code_features.html").read_text()
@@ -3224,6 +3226,24 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         gate["gate"] for gate in composition_gate["gates"]
     }
     assert low_code_features.composition_release_gate({"app/low_code_features.py"})["ok"] is False
+    composition_workbench = low_code_features.composition_workbench(
+        {"app/low_code_features.py", "app/templates/appgen_low_code_features.html", "app/appgen.json"}
+    )
+    assert composition_workbench["format"] == "appgen.composition-workbench.v1"
+    assert composition_workbench["ok"] is True
+    assert composition_workbench["decision"] == "approved"
+    assert {
+        "block_catalog",
+        "dependency_topology",
+        "reviewed_install",
+        "publication_handoffs",
+        "artifact_evidence",
+        "route_surface",
+    } == {check["id"] for check in composition_workbench["checks"]}
+    assert "/low-code-features/composition-workbench.json" in next(
+        check["evidence"]["routes"] for check in composition_workbench["checks"] if check["id"] == "route_surface"
+    )
+    assert low_code_features.composition_workbench({"app/low_code_features.py"})["ok"] is False
     assert low_code_features.low_code_features_check(
         {"app/low_code_features.py", "app/templates/appgen_low_code_features.html", "app/appgen.json"}
     )["ok"] is True

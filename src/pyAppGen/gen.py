@@ -6238,6 +6238,7 @@ def write_low_code_features_template(output_dir):
       <a class="btn btn-default" href="{{ url_for('LowCodeFeaturesView.jhipster_feature_superiority_index_json') }}">Feature Superiority Index JSON</a>
       <a class="btn btn-default" href="{{ url_for('LowCodeFeaturesView.composition_json') }}">Composition JSON</a>
       <a class="btn btn-default" href="{{ url_for('LowCodeFeaturesView.composition_readiness_json') }}">Composition Readiness JSON</a>
+      <a class="btn btn-default" href="{{ url_for('LowCodeFeaturesView.composition_workbench_json') }}">Composition Workbench JSON</a>
       <a class="btn btn-default" href="{{ url_for('LowCodeFeaturesView.composition_release_gate_json') }}">Composition Release Gate JSON</a>
     </div>
   </div>
@@ -26856,6 +26857,70 @@ def composition_release_gate(existing_paths=()):
     }}
 
 
+def composition_workbench(existing_paths=()):
+    """Return an IDE-ready workbench for installing and publishing reusable app blocks."""
+    existing = set(existing_paths)
+    block_keys = tuple(block["key"] for block in COMPOSITION_BLOCKS)
+    catalog = application_composition_catalog()
+    audit = composition_dependency_audit()
+    install = composition_install_plan(block_keys)
+    package = composition_package("appgen-composition-workbench", block_keys)
+    preview = composition_preview(block_keys)
+    readiness = composition_marketplace_readiness(existing)
+    release = composition_release_gate(existing)
+    expected_targets = ("studio", "entando", "invenio", "cookiecutter")
+    routes = (
+        "/low-code-features/composition.json",
+        "/low-code-features/composition-readiness.json",
+        "/low-code-features/composition-workbench.json",
+        "/low-code-features/composition-release-gate.json",
+    )
+    checks = (
+        {{
+            "id": "block_catalog",
+            "ok": len(catalog) >= 7 and "schema-core" in block_keys and len({{block["kind"] for block in catalog}}) >= 5,
+            "evidence": {{"blocks": block_keys, "kinds": tuple(sorted({{block["kind"] for block in catalog}}))}},
+        }},
+        {{
+            "id": "dependency_topology",
+            "ok": audit["ok"] and install["blocks"][0] == "schema-core" and set(install["blocks"]) == set(block_keys),
+            "evidence": audit,
+        }},
+        {{
+            "id": "reviewed_install",
+            "ok": install["requires_review"] and install["sandbox_preview"] and preview["destructive"] is False and len(install["checks"]) >= len(block_keys),
+            "evidence": {{"install": install, "preview": preview}},
+        }},
+        {{
+            "id": "publication_handoffs",
+            "ok": all(target in package["publish_targets"] for target in expected_targets),
+            "evidence": {{"publish_targets": package["publish_targets"], "package": package}},
+        }},
+        {{
+            "id": "artifact_evidence",
+            "ok": readiness["ok"] and release["ok"],
+            "evidence": {{"missing": readiness["missing"], "blocking_gaps": release["blocking_gaps"]}},
+        }},
+        {{
+            "id": "route_surface",
+            "ok": all(route.startswith("/low-code-features/") for route in routes),
+            "evidence": {{"routes": routes}},
+        }},
+    )
+    ok = all(check["ok"] for check in checks)
+    return {{
+        "format": "appgen.composition-workbench.v1",
+        "ok": ok,
+        "decision": "approved" if ok else "blocked",
+        "catalog": catalog,
+        "install_plan": install,
+        "package": package,
+        "preview": preview,
+        "release_gate": release,
+        "checks": checks,
+    }}
+
+
 def grouped_capabilities():
     """Group capabilities by their top-level area."""
     grouped = defaultdict(list)
@@ -27691,9 +27756,13 @@ class LowCodeFeaturesView(BaseView):
     def composition_readiness_json(self):
         return jsonify(composition_marketplace_readiness())
 
+    @expose("/composition-workbench.json")
+    def composition_workbench_json(self):
+        return jsonify(composition_workbench({{"app/low_code_features.py", "app/templates/appgen_low_code_features.html", "app/appgen.json"}}))
+
     @expose("/composition-release-gate.json")
     def composition_release_gate_json(self):
-        return jsonify(composition_release_gate())
+        return jsonify(composition_release_gate({{"app/low_code_features.py", "app/templates/appgen_low_code_features.html", "app/appgen.json"}}))
 
 
 def register_low_code_features(appbuilder):
@@ -40028,6 +40097,7 @@ def validate_low_code_features_artifacts() -> None:
         "composition_package",
         "composition_marketplace_readiness",
         "composition_release_gate",
+        "composition_workbench",
         "low_code_features_check",
         "docs/Lo-code features.md",
         "docs/ideas.md",
@@ -40038,7 +40108,7 @@ def validate_low_code_features_artifacts() -> None:
     if "jhipster_competitive_report" not in contract or "broader-than-jhipster" not in contract or "appgen-more-capable-than-jhipster" not in contract or "appgen_only_capabilities" not in contract or "application_composition" not in contract:
         fail("low-code feature matrix must make AppGen's broader-than-JHipster position explicit")
     template = (ROOT / "app" / "templates" / "appgen_low_code_features.html").read_text()
-    if "Low-Code Feature Matrix" not in template or "Feature Matrix JSON" not in template or "Readiness JSON" not in template or "Roadmap Sources JSON" not in template or "JHipster Comparison JSON" not in template or "Benchmark JSON" not in template or "Superset Scorecard JSON" not in template or "Superset Evidence JSON" not in template or "Superset Certification JSON" not in template or "Superset Blueprint JSON" not in template or "Capability Depth JSON" not in template or "Capability Proof JSON" not in template or "Superiority Tiers JSON" not in template or "JHipster Frontier Gate JSON" not in template or "Feature Superiority Index JSON" not in template or "Composition JSON" not in template or "Composition Release Gate JSON" not in template:
+    if "Low-Code Feature Matrix" not in template or "Feature Matrix JSON" not in template or "Readiness JSON" not in template or "Roadmap Sources JSON" not in template or "JHipster Comparison JSON" not in template or "Benchmark JSON" not in template or "Superset Scorecard JSON" not in template or "Superset Evidence JSON" not in template or "Superset Certification JSON" not in template or "Superset Blueprint JSON" not in template or "Capability Depth JSON" not in template or "Capability Proof JSON" not in template or "Superiority Tiers JSON" not in template or "JHipster Frontier Gate JSON" not in template or "Feature Superiority Index JSON" not in template or "Composition JSON" not in template or "Composition Workbench JSON" not in template or "Composition Release Gate JSON" not in template:
         fail("low-code feature cockpit must expose matrix and readiness links")
 
 
@@ -42545,6 +42615,19 @@ def test_generated_runtime_helpers():
     assert low_code_features.composition_release_gate(
         {"app/low_code_features.py", "app/templates/appgen_low_code_features.html", "app/appgen.json"}
     )["ok"] is True
+    composition_workbench = low_code_features.composition_workbench(
+        {"app/low_code_features.py", "app/templates/appgen_low_code_features.html", "app/appgen.json"}
+    )
+    assert composition_workbench["format"] == "appgen.composition-workbench.v1"
+    assert composition_workbench["ok"] is True
+    assert composition_workbench["decision"] == "approved"
+    assert {"block_catalog", "dependency_topology", "reviewed_install", "publication_handoffs", "artifact_evidence", "route_surface"} == {
+        check["id"] for check in composition_workbench["checks"]
+    }
+    assert "/low-code-features/composition-workbench.json" in next(
+        check["evidence"]["routes"] for check in composition_workbench["checks"] if check["id"] == "route_surface"
+    )
+    assert low_code_features.composition_workbench({"app/low_code_features.py"})["ok"] is False
     assert low_code_features.low_code_features_check(
         {"app/low_code_features.py", "app/templates/appgen_low_code_features.html", "app/appgen.json"}
     )["ok"] is True

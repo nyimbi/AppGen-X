@@ -651,6 +651,10 @@ Use `/low-code-features/composition-release-gate.json` to prove the reusable
 application-composition layer itself: block catalog depth, dependency topology,
 reviewable install order, sandbox controls, package publication targets, and
 artifact evidence.
+Use `/low-code-features/composition-workbench.json` when the IDE needs the full
+reusable-block installation surface: catalog evidence, dependency audit,
+reviewed install plan, non-destructive preview, Entando/Invenio/Cookiecutter
+publication handoffs, artifact readiness, and generated route evidence.
 
 The generated `jhipster/appgen_jhipster.py` contract also supports migration in
 the other direction. Use `jhipster_to_appgen_dsl()` to draft AppGen DSL from the
