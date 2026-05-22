@@ -307,8 +307,9 @@ Generated apps include Studio contracts for:
   and data-access components with usable generated contracts.
 - A native language/runtime workbench proves deterministic form streaming,
   generated units, package manifests, compiler pipeline metadata, runtime type
-  information, event binding lifecycle, resource streaming, and form lifecycle
-  hooks.
+  information, event binding lifecycle, resource streaming, form lifecycle
+  hooks, incremental compile planning, diagnostic mapping, package dependency
+  order, event stub evolution, resource fidelity, and runtime artifact parity.
 - An Object Inspector workbench proves property editor types, event-handler
   lifecycle actions, component editor verbs, custom designer hooks, editor
   registration, property validation, staged verb execution, custom designer

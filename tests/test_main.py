@@ -1022,7 +1022,18 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "event_binding_lifecycle",
         "resource_streaming",
         "runtime_lifecycle",
+        "incremental_compile",
+        "diagnostic_mapping",
+        "package_dependency_order",
+        "event_stub_evolution",
+        "resource_round_trip_fidelity",
+        "runtime_artifact_parity",
     } == {check["id"] for check in runtime["checks"]}
+    assert runtime["incremental"]["outputs"][0] == "diagnostic_delta"
+    assert "package_manager" in runtime["diagnostics"]["designer_surfaces"]
+    assert runtime["package_dependencies"]["load_order"][-1] == unit["package_manifest"]["name"]
+    assert "user_code_regions_preserved" in runtime["event_evolution"]["guards"]
+    assert runtime["artifact_parity"]["evidence"]["component_count"] == len(design["components"])
 
     matrix = field_component_matrix()
     assert matrix
@@ -8836,7 +8847,16 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert generated_runtime["format"] == "appgen.generated-pascal-runtime-workbench.v1"
     assert generated_runtime["ok"] is True
     assert "{$R *.dfm}" in generated_runtime["unit"]["unit_source"]
-    assert {"compiler_pipeline", "runtime_type_info", "event_binding_lifecycle", "resource_streaming", "runtime_lifecycle"} <= {
+    assert {
+        "compiler_pipeline",
+        "runtime_type_info",
+        "event_binding_lifecycle",
+        "resource_streaming",
+        "runtime_lifecycle",
+        "incremental_compile",
+        "diagnostic_mapping",
+        "runtime_artifact_parity",
+    } <= {
         check["id"] for check in generated_runtime["checks"]
     }
     assert generated_runtime["compiler"]["outputs"] == (
@@ -8846,6 +8866,8 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "resource_bundle",
     )
     assert generated_runtime["events"]["bindings"]
+    assert generated_runtime["incremental"]["cache_keys"]
+    assert generated_runtime["artifact_parity"]["evidence"]["component_count"] == len(generated_runtime["round_trip"]["round_trip_components"])
     assert "control_to_field" in form_designer.livebindings_contract()["binding_edges"]
     generated_bindings = form_designer.livebindings_workbench()
     assert generated_bindings["format"] == "appgen.generated-livebindings-workbench.v1"

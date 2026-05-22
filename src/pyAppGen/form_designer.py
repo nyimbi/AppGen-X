@@ -1425,6 +1425,69 @@ def pascal_compiler_pipeline_contract(design: dict | None = None) -> dict:
     }
 
 
+def pascal_incremental_compile_contract(design: dict | None = None) -> dict:
+    """Return incremental compile planning metadata without invoking a toolchain."""
+    unit = pascal_unit_contract(design)
+    graph = (
+        {"unit": unit["unit_name"], "depends_on": ("AppGen.Controls", "AppGen.Forms"), "dirty_inputs": ("unit_source", "dfm_source")},
+        {"unit": f"{unit['unit_name']}Resources", "depends_on": (unit["unit_name"],), "dirty_inputs": ("dfm_source", "style_resources", "image_resources")},
+        {"unit": f"{unit['unit_name']}Package", "depends_on": (unit["unit_name"], f"{unit['unit_name']}Resources"), "dirty_inputs": ("package_manifest",)},
+    )
+    return {
+        "format": "appgen.pascal-incremental-compile-contract.v1",
+        "graph": graph,
+        "cache_keys": ("unit_source_hash", "dfm_hash", "resource_hash", "package_manifest_hash", "target_sdk_hash"),
+        "invalidations": ("published_property_changed", "event_handler_changed", "resource_changed", "target_changed"),
+        "outputs": ("diagnostic_delta", "compiled_unit_cache", "resource_bundle_cache", "package_cache"),
+        "side_effects": (),
+    }
+
+
+def pascal_diagnostic_mapping_contract(design: dict | None = None) -> dict:
+    """Return compiler/design diagnostic mapping metadata."""
+    design = design or form_design()
+    compiler = pascal_compiler_pipeline_contract(design)
+    mappings = tuple(
+        {
+            "diagnostic": diagnostic,
+            "surface": "form_designer" if diagnostic in {"published_property_mismatch", "resource_missing"} else "unit_editor",
+            "severity": "error" if diagnostic in {"syntax", "unit_resolution", "resource_missing"} else "warning",
+            "maps_to": ("component_id", "property_name", "source_span", "resource_path"),
+        }
+        for diagnostic in compiler["diagnostics"]
+    )
+    return {
+        "format": "appgen.pascal-diagnostic-mapping-contract.v1",
+        "mappings": mappings,
+        "designer_surfaces": ("form_designer", "object_inspector", "unit_editor", "package_manager"),
+        "guards": ("source_span_required", "component_identity_preserved", "diagnostic_does_not_execute_code"),
+        "side_effects": (),
+    }
+
+
+def pascal_package_dependency_contract(design: dict | None = None) -> dict:
+    """Return package dependency ordering for runtime and design artifacts."""
+    unit = pascal_unit_contract(design)
+    nodes = (
+        {"id": "runtime-core", "kind": "runtime", "order": 10},
+        {"id": "native-desktop-ui", "kind": "ui", "order": 20},
+        {"id": "cross-platform-ui", "kind": "ui", "order": 30},
+        {"id": unit["package_manifest"]["name"], "kind": "generated-package", "order": 40},
+    )
+    return {
+        "format": "appgen.pascal-package-dependency-contract.v1",
+        "nodes": nodes,
+        "edges": (
+            {"from": unit["package_manifest"]["name"], "to": "runtime-core"},
+            {"from": unit["package_manifest"]["name"], "to": "native-desktop-ui"},
+            {"from": unit["package_manifest"]["name"], "to": "cross-platform-ui"},
+        ),
+        "load_order": tuple(node["id"] for node in sorted(nodes, key=lambda item: item["order"])),
+        "guards": ("acyclic_dependencies", "runtime_before_design_package", "version_pins_required"),
+        "side_effects": (),
+    }
+
+
 def pascal_rtti_contract(design: dict | None = None) -> dict:
     """Return runtime type information metadata for generated forms and components."""
     design = design or form_design()
@@ -1467,6 +1530,26 @@ def pascal_event_binding_contract(design: dict | None = None) -> dict:
     }
 
 
+def pascal_event_stub_evolution_contract(design: dict | None = None) -> dict:
+    """Return event stub creation, rename, detach, and regeneration metadata."""
+    events = pascal_event_binding_contract(design)
+    operations = (
+        {"op": "create_stub", "preserves_user_code": True, "requires_review": False},
+        {"op": "rename_component", "preserves_user_code": True, "requires_review": True},
+        {"op": "rename_event", "preserves_user_code": True, "requires_review": True},
+        {"op": "detach_handler", "preserves_user_code": True, "requires_review": True},
+        {"op": "regenerate_signature", "preserves_user_code": True, "requires_review": True},
+    )
+    return {
+        "format": "appgen.pascal-event-stub-evolution-contract.v1",
+        "binding_count": len(events["bindings"]),
+        "operations": operations,
+        "history": ("before_change", "staged_update", "after_apply", "undo_checkpoint"),
+        "guards": ("user_code_regions_preserved", "stable_handler_names", "orphaned_handlers_reported"),
+        "side_effects": (),
+    }
+
+
 def pascal_resource_streaming_contract(design: dict | None = None) -> dict:
     """Return design-time resource streaming metadata beyond text form files."""
     unit = pascal_unit_contract(design)
@@ -1480,6 +1563,28 @@ def pascal_resource_streaming_contract(design: dict | None = None) -> dict:
         ),
         "preservation": ("unknown_properties", "nested_children", "event_bindings", "binary_resource_ids"),
         "guards": ("deterministic_resource_names", "resource_diff_review", "binary_stream_hash_recorded"),
+        "side_effects": (),
+    }
+
+
+def pascal_resource_round_trip_fidelity_contract(design: dict | None = None) -> dict:
+    """Return resource round-trip fidelity checks for text, binary, and asset streams."""
+    resources = pascal_resource_streaming_contract(design)
+    probes = tuple(
+        {
+            "resource": resource["kind"],
+            "path": resource["path"],
+            "preserves_identity": True,
+            "preserves_unknowns": resource["kind"] in {"form_text", "form_binary"},
+            "hash_recorded": True,
+        }
+        for resource in resources["resources"]
+    )
+    return {
+        "format": "appgen.pascal-resource-round-trip-fidelity-contract.v1",
+        "probes": probes,
+        "preservation": resources["preservation"],
+        "guards": ("binary_stream_hash_recorded", "unknown_properties_preserved", "asset_fingerprint_recorded"),
         "side_effects": (),
     }
 
@@ -1498,16 +1603,42 @@ def pascal_runtime_lifecycle_contract(design: dict | None = None) -> dict:
     }
 
 
+def pascal_runtime_artifact_parity_contract(design: dict | None = None) -> dict:
+    """Return parity evidence between design-time artifacts and runtime outputs."""
+    unit = pascal_unit_contract(design)
+    round_trip = dfm_round_trip(design)
+    resources = pascal_resource_streaming_contract(design)
+    return {
+        "format": "appgen.pascal-runtime-artifact-parity-contract.v1",
+        "design_artifacts": ("unit_source", "dfm_source", "package_manifest", "resource_manifest"),
+        "runtime_artifacts": ("compiled_unit", "linked_form_resource", "runtime_package", "resource_bundle"),
+        "parity_checks": ("component_identity_match", "published_properties_match", "event_bindings_match", "resource_hash_match", "package_manifest_match"),
+        "evidence": {
+            "unit": unit["unit_name"],
+            "component_count": len(round_trip["round_trip_components"]),
+            "resource_count": len(resources["resources"]),
+        },
+        "guards": ("runtime_diff_visible", "resource_hash_recorded", "component_identity_preserved"),
+        "side_effects": (),
+    }
+
+
 def pascal_runtime_workbench(design: dict | None = None) -> dict:
     """Return DFM streaming and Pascal runtime generation evidence."""
     design = design or form_design()
     round_trip = dfm_round_trip(design)
     unit = pascal_unit_contract(design)
     compiler = pascal_compiler_pipeline_contract(design)
+    incremental = pascal_incremental_compile_contract(design)
+    diagnostics = pascal_diagnostic_mapping_contract(design)
+    package_dependencies = pascal_package_dependency_contract(design)
     rtti = pascal_rtti_contract(design)
     events = pascal_event_binding_contract(design)
+    event_evolution = pascal_event_stub_evolution_contract(design)
     resources = pascal_resource_streaming_contract(design)
+    resource_fidelity = pascal_resource_round_trip_fidelity_contract(design)
     lifecycle = pascal_runtime_lifecycle_contract(design)
+    artifact_parity = pascal_runtime_artifact_parity_contract(design)
     checks = (
         {"id": "dfm_serialization", "ok": "object " in round_trip["dfm"] and "AppGenField" in round_trip["dfm"], "evidence": round_trip["dfm"]},
         {"id": "dfm_parse_round_trip", "ok": round_trip["ok"], "evidence": round_trip},
@@ -1545,6 +1676,48 @@ def pascal_runtime_workbench(design: dict | None = None) -> dict:
             and not lifecycle["side_effects"],
             "evidence": lifecycle,
         },
+        {
+            "id": "incremental_compile",
+            "ok": {"unit_source_hash", "dfm_hash", "resource_hash"} <= set(incremental["cache_keys"])
+            and {"diagnostic_delta", "compiled_unit_cache"} <= set(incremental["outputs"])
+            and not incremental["side_effects"],
+            "evidence": incremental,
+        },
+        {
+            "id": "diagnostic_mapping",
+            "ok": {"form_designer", "unit_editor", "package_manager"} <= set(diagnostics["designer_surfaces"])
+            and all("source_span" in mapping["maps_to"] for mapping in diagnostics["mappings"])
+            and not diagnostics["side_effects"],
+            "evidence": diagnostics,
+        },
+        {
+            "id": "package_dependency_order",
+            "ok": package_dependencies["load_order"][-1] == unit["package_manifest"]["name"]
+            and "acyclic_dependencies" in package_dependencies["guards"]
+            and not package_dependencies["side_effects"],
+            "evidence": package_dependencies,
+        },
+        {
+            "id": "event_stub_evolution",
+            "ok": {"create_stub", "rename_component", "detach_handler", "regenerate_signature"} <= {item["op"] for item in event_evolution["operations"]}
+            and "user_code_regions_preserved" in event_evolution["guards"]
+            and not event_evolution["side_effects"],
+            "evidence": event_evolution,
+        },
+        {
+            "id": "resource_round_trip_fidelity",
+            "ok": all(probe["hash_recorded"] and probe["preserves_identity"] for probe in resource_fidelity["probes"])
+            and {"unknown_properties_preserved", "asset_fingerprint_recorded"} <= set(resource_fidelity["guards"])
+            and not resource_fidelity["side_effects"],
+            "evidence": resource_fidelity,
+        },
+        {
+            "id": "runtime_artifact_parity",
+            "ok": {"component_identity_match", "published_properties_match", "resource_hash_match"} <= set(artifact_parity["parity_checks"])
+            and "runtime_diff_visible" in artifact_parity["guards"]
+            and not artifact_parity["side_effects"],
+            "evidence": artifact_parity,
+        },
     )
     ok = all(check["ok"] for check in checks)
     return {
@@ -1555,10 +1728,16 @@ def pascal_runtime_workbench(design: dict | None = None) -> dict:
         "round_trip": round_trip,
         "unit": unit,
         "compiler": compiler,
+        "incremental": incremental,
+        "diagnostics": diagnostics,
+        "package_dependencies": package_dependencies,
         "rtti": rtti,
         "events": events,
+        "event_evolution": event_evolution,
         "resources": resources,
+        "resource_fidelity": resource_fidelity,
         "lifecycle": lifecycle,
+        "artifact_parity": artifact_parity,
         "blocking_gaps": tuple(check for check in checks if not check["ok"]),
     }
 

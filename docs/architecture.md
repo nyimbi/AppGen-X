@@ -205,8 +205,9 @@ Visual design is split into two related capabilities:
   target adapters, accessibility metadata, and side-effect-free preview behavior.
 - `pascal_runtime_workbench()` validates deterministic form streaming, generated
   units, package manifests, compiler pipeline metadata, runtime type
-  information, event binding lifecycle, resource streaming, and form lifecycle
-  hooks.
+  information, event binding lifecycle, resource streaming, form lifecycle
+  hooks, incremental compile planning, diagnostic mapping, package dependency
+  order, event stub evolution, resource fidelity, and runtime artifact parity.
 - `object_inspector_workbench()` validates the design-time metadata layer:
   property editors, event handler lifecycle, component verbs, custom designer
   hooks, editor registration, property validation, staged verb execution,

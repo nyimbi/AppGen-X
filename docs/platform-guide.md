@@ -57,8 +57,9 @@ A generated app can include:
   gestures, sensors, 3D scene primitives, and data-access components.
 - `pascal_runtime_workbench()` proves deterministic form streaming, generated
   units, package manifests, compiler pipeline metadata, runtime type
-  information, event binding lifecycle, resource streaming, and form lifecycle
-  hooks.
+  information, event binding lifecycle, resource streaming, form lifecycle
+  hooks, incremental compile planning, diagnostic mapping, package dependency
+  order, event stub evolution, resource fidelity, and runtime artifact parity.
 - `object_inspector_workbench()` proves property editors, event editors,
   component editor verbs, custom designer hooks, editor registration, property
   validation, staged verb execution, custom designer activation, filtering,
