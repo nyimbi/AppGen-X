@@ -5814,6 +5814,9 @@ def test_generated_tenancy_helpers_detect_tenant_columns(tmp_path) -> None:
     assert "Project" in rls.postgres_all_policy_sql()
     assert rls.postgres_role_name("ProjectManager") == "appgen_projectmanager"
     assert rls.postgres_set_tenant_sql("acme") == "SELECT set_config('appgen.tenant_id', 'acme', true);"
+    coverage = rls.rls_policy_coverage()
+    assert coverage["scoped_table_names"] == ("Project",)
+    assert coverage["postgres_policy_sql_ready"] is True
     sync_plan = rls.postgres_role_sync_plan(
         ({"username": "ada", "roles": ["ProjectManager"], "tenant_id": "acme"},)
     )
@@ -5826,6 +5829,13 @@ def test_generated_tenancy_helpers_detect_tenant_columns(tmp_path) -> None:
     assert 'CREATE ROLE "appgen_projectmanager" NOLOGIN;' in sync_sql
     assert 'CREATE ROLE "ada" LOGIN;' in sync_sql
     assert 'GRANT "appgen_projectmanager" TO "ada";' in sync_sql
+    release_gate = rls.rls_release_gate(
+        {"app/tenancy.py", "app/rls.py", "app/templates/appgen_rls.html"},
+        ({"username": "ada", "roles": ["ProjectManager"], "tenant_id": "acme"},),
+    )
+    assert release_gate["format"] == "appgen.rls-release-gate.v1"
+    assert release_gate["ok"] is True
+    assert rls.rls_release_gate({"app/rls.py"})["ok"] is False
     with pytest.raises(PermissionError, match="Tenant context required"):
         tenancy.require_tenant("Project", None)
     with pytest.raises(PermissionError, match="Tenant context required"):

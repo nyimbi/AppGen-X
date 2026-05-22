@@ -231,6 +231,11 @@ AppGen still detects conventional tenant fields such as `tenant_id`,
 targets make the generated tenancy helpers and PostgreSQL policy SQL
 reviewable in the DSL.
 
+Generated apps include `rls_release_gate()` and
+`/row-level-security/release-gate.json`. Use them before production release to
+prove the RLS catalog, tenant filters, PostgreSQL policy SQL, PostgreSQL role
+sync plan, user grants, and required RLS artifacts are ready.
+
 ## Agentic Systems
 
 Declare LLM providers separately from agents. This makes local and API-backed

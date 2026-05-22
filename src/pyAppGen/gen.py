@@ -4222,7 +4222,12 @@ def write_rls_template(output_dir):
         role/user sync plans for scoped tables.
       </p>
     </div>
-    <a class="btn btn-default" href="{{ url_for('RowLevelSecurityView.catalog_json') }}">Catalog JSON</a>
+    <div>
+      <a class="btn btn-default" href="{{ url_for('RowLevelSecurityView.catalog_json') }}">Catalog JSON</a>
+      <a class="btn btn-default" href="{{ url_for('RowLevelSecurityView.postgres_sql') }}">PostgreSQL SQL</a>
+      <a class="btn btn-default" href="{{ url_for('RowLevelSecurityView.role_sync_sql') }}">Role Sync SQL</a>
+      <a class="btn btn-default" href="{{ url_for('RowLevelSecurityView.release_gate_json') }}">Release Gate JSON</a>
+    </div>
   </div>
   <div class="agrls-grid">
     {% for policy in policies %}
@@ -17367,6 +17372,7 @@ from flask_appbuilder import expose
 
 RLS_POLICIES = {policies!r}
 APPGEN_ROLES = {role_names!r}
+REQUIRED_RLS_ARTIFACTS = ("app/tenancy.py", "app/rls.py", "app/templates/appgen_rls.html")
 
 
 def rls_catalog():
@@ -17551,6 +17557,53 @@ def postgres_all_policy_sql():
     )
 
 
+def rls_policy_coverage():
+    """Return generated RLS coverage counts for release review."""
+    policies = rls_catalog()
+    scoped = tuple(policy for policy in policies if policy["scoped"])
+    return {{
+        "tables": len(policies),
+        "scoped_tables": len(scoped),
+        "unscoped_tables": len(policies) - len(scoped),
+        "scoped_table_names": tuple(policy["table"] for policy in scoped),
+        "tenant_columns": tuple(
+            {{"table": policy["table"], "tenant_column": policy["tenant_column"], "tenant_source": policy["tenant_source"]}}
+            for policy in scoped
+        ),
+        "postgres_policy_sql_ready": all("ENABLE ROW LEVEL SECURITY" in postgres_policy_sql(policy["table"]) for policy in scoped),
+        "app_roles": APPGEN_ROLES,
+    }}
+
+
+def rls_release_gate(existing_paths=(), principals=()):
+    """Return a release gate for generated tenant isolation and PostgreSQL sync."""
+    existing = set(existing_paths or ())
+    missing = tuple(path for path in REQUIRED_RLS_ARTIFACTS if path not in existing)
+    coverage = rls_policy_coverage()
+    role_sync = postgres_role_sync_plan(principals)
+    scoped_tables = coverage["scoped_table_names"]
+    user_inputs = tuple(principal for principal in principals or () if principal)
+    checks = (
+        {{"id": "artifacts", "ok": not missing, "missing": missing}},
+        {{"id": "policy_catalog", "ok": coverage["tables"] == len(RLS_POLICIES) and bool(RLS_POLICIES), "tables": coverage["tables"]}},
+        {{"id": "tenant_filters", "ok": all(item["tenant_column"] for item in coverage["tenant_columns"]), "tenant_columns": coverage["tenant_columns"]}},
+        {{"id": "postgres_policy_sql", "ok": not scoped_tables or coverage["postgres_policy_sql_ready"], "scoped_tables": scoped_tables}},
+        {{"id": "postgres_role_sync", "ok": role_sync["review_required"] is True and bool(role_sync["roles"]), "roles": role_sync["roles"]}},
+        {{"id": "postgres_user_sync", "ok": not user_inputs or bool(role_sync["users"]), "users": role_sync["users"]}},
+    )
+    ok = all(check["ok"] for check in checks)
+    return {{
+        "format": "appgen.rls-release-gate.v1",
+        "ok": ok,
+        "decision": "approved" if ok else "blocked",
+        "checks": checks,
+        "coverage": coverage,
+        "role_sync_plan": role_sync,
+        "required_artifacts": REQUIRED_RLS_ARTIFACTS,
+        "missing_artifacts": missing,
+    }}
+
+
 class RowLevelSecurityView(BaseView):
     route_base = "/row-level-security"
     default_view = "index"
@@ -17572,6 +17625,16 @@ class RowLevelSecurityView(BaseView):
         from flask import Response
 
         return Response(postgres_all_policy_sql() + "\\n", mimetype="text/plain")
+
+    @expose("/role-sync.sql")
+    def role_sync_sql(self):
+        from flask import Response
+
+        return Response(postgres_role_sync_sql() + "\\n", mimetype="text/plain")
+
+    @expose("/release-gate.json")
+    def release_gate_json(self):
+        return jsonify(rls_release_gate(REQUIRED_RLS_ARTIFACTS))
 
 
 def register_rls(appbuilder):
@@ -34153,6 +34216,23 @@ def validate_identity_artifacts() -> None:
         fail("identity template must expose AWS Cognito OAuth, LDAP, Active Directory, and release readiness")
 
 
+def validate_rls_artifacts() -> None:
+    contract = (ROOT / "app" / "rls.py").read_text()
+    required = (
+        "postgres_policy_sql",
+        "postgres_role_sync_plan",
+        "postgres_role_sync_sql",
+        "rls_policy_coverage",
+        "rls_release_gate",
+        "appgen.rls-release-gate.v1",
+    )
+    if not all(item in contract for item in required):
+        fail("RLS contract must expose PostgreSQL policy SQL, database role sync, coverage, and release gate helpers")
+    template = (ROOT / "app" / "templates" / "appgen_rls.html").read_text()
+    if "PostgreSQL SQL" not in template or "Role Sync SQL" not in template or "Release Gate JSON" not in template:
+        fail("RLS template must expose PostgreSQL SQL, role sync SQL, and release readiness")
+
+
 def validate_compliance_artifacts() -> None:
     contract = (ROOT / "app" / "compliance.py").read_text()
     required = (
@@ -35333,6 +35413,7 @@ def main() -> int:
     validate_agentic_artifacts()
     validate_i18n_artifacts()
     validate_intelligence_artifacts()
+    validate_rls_artifacts()
     validate_identity_artifacts()
     validate_compliance_artifacts()
     validate_erp_template_artifacts()
@@ -36361,6 +36442,9 @@ def test_generated_runtime_helpers():
     assert isinstance(rls.rls_catalog(), tuple)
     assert rls.postgres_role_sync_plan()["review_required"] is True
     assert "CREATE ROLE" in rls.postgres_role_sync_sql()
+    assert rls.rls_policy_coverage()["tables"] >= 1
+    assert rls.rls_release_gate({"app/tenancy.py", "app/rls.py", "app/templates/appgen_rls.html"})["ok"] is True
+    assert rls.rls_release_gate({"app/rls.py"})["ok"] is False
     assert isinstance(identity.provider_catalog({}), tuple)
     assert "cognito" in {item["name"] for item in identity.provider_catalog({})}
     assert {"ldap", "active_directory"} <= {item["name"] for item in identity.provider_catalog({})}
