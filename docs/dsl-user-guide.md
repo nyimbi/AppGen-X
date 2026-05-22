@@ -361,6 +361,13 @@ beyond a scaffolding CLI: it ties authoring, database design, generation,
 versioned portfolio management, diagnostics, and component sharing to commands,
 workflows, and release evidence.
 
+Generated data-access workbenches expose `data_access_release_gate()` and
+`/data-access/release-gate.json` to prove query and mutation readiness. The
+gate checks that required artifacts exist, resources are cataloged, query
+limits are capped, field projections work, saved queries export cleanly,
+create/update/delete plans are reviewed, mutation audit events are emitted, and
+workbench metadata is available for low-code builders.
+
 Generated tabbed views also expose `tabbed_views_release_gate()` and
 `/tabbed-views/release-gate.json` so each tabbed section has explicit allowed
 roles, allowed-role access is proven, unknown roles are denied, and required tab

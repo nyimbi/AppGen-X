@@ -3751,7 +3751,10 @@ def write_data_access_template(output_dir):
         and derived fields are excluded from writable payloads.
       </p>
     </div>
-    <a class="btn btn-default" href="{{ url_for('DataAccessView.catalog_json') }}">Access JSON</a>
+    <div>
+      <a class="btn btn-default" href="{{ url_for('DataAccessView.catalog_json') }}">Access JSON</a>
+      <a class="btn btn-default" href="{{ url_for('DataAccessView.release_gate_json') }}">Release Gate JSON</a>
+    </div>
   </div>
   <div class="agda-grid">
     {% for item in resources %}
@@ -14560,6 +14563,70 @@ def data_access_check(existing_paths):
     return {{"ok": not missing and bool(DATA_ACCESS), "missing": missing, "resources": tuple(DATA_ACCESS)}}
 
 
+def _sample_row(resource):
+    row = {{}}
+    for field in resource["readable_fields"]:
+        row[field] = 1 if field in resource["primary_keys"] else f"sample_{{field}}"
+    return row
+
+
+def _sample_write_values(resource):
+    values = {{}}
+    for field in resource["required_fields"]:
+        values[field] = f"sample_{{field}}"
+    for field in resource["primary_keys"]:
+        values[field] = 1
+    if not values and resource["writable_fields"]:
+        values[resource["writable_fields"][0]] = f"sample_{{resource['writable_fields'][0]}}"
+    return values
+
+
+def data_access_release_gate(existing_paths=()):
+    """Return release readiness for generated low-code query and mutation contracts."""
+    readiness = data_access_check(existing_paths)
+    resources = data_access_catalog()
+    query_checks = []
+    mutation_checks = []
+    for resource in resources:
+        table = resource["table"]
+        fields = resource["readable_fields"][:1] or resource["readable_fields"]
+        query = normalize_query(table, limit=MAX_LIMIT + 100, fields=fields)
+        rows = query_rows(table, (_sample_row(resource),), fields=fields)
+        saved = saved_query(table, "Release Gate", fields=fields)
+        export = query_export(saved)
+        create_plan = mutation_plan(table, "create", _sample_write_values(resource), actor="release-gate")
+        update_plan = mutation_plan(table, "update", _sample_write_values(resource), actor="release-gate")
+        delete_plan = mutation_plan(table, "delete", _sample_write_values(resource), actor="release-gate")
+        workbench = data_access_workbench(table)
+        query_checks.append({{
+            "table": table,
+            "limit_capped": query["limit"] == MAX_LIMIT,
+            "projection_ok": bool(rows["rows"]) and set(rows["rows"][0]) == set(fields),
+            "saved_query_export_ok": export["automation_payload"]["table"] == table and bool(export["url_params"]),
+        }})
+        mutation_checks.append({{
+            "table": table,
+            "create_ok": create_plan["ok"],
+            "update_ok": update_plan["ok"],
+            "delete_review_required": delete_plan["review_required"],
+            "audit_ok": mutation_audit_event(update_plan)["event"] == f"data_access.{{table}}.update",
+            "workbench_ok": bool(workbench["query_builder"]["operators"]) and workbench["mutations"]["bulk_supported"],
+        }})
+    checks = (
+        {{"gate": "artifacts", "ok": readiness["ok"], "missing": readiness["missing"]}},
+        {{"gate": "resource_catalog", "ok": bool(resources), "count": len(resources)}},
+        {{"gate": "query_contracts", "ok": bool(query_checks) and all(item["limit_capped"] and item["projection_ok"] and item["saved_query_export_ok"] for item in query_checks), "checks": tuple(query_checks)}},
+        {{"gate": "mutation_contracts", "ok": bool(mutation_checks) and all(item["create_ok"] and item["update_ok"] and item["delete_review_required"] and item["audit_ok"] and item["workbench_ok"] for item in mutation_checks), "checks": tuple(mutation_checks)}},
+    )
+    ok = all(check["ok"] for check in checks)
+    return {{
+        "format": "appgen.data-access-release-gate.v1",
+        "ok": ok,
+        "decision": "approved" if ok else "blocked",
+        "checks": checks,
+    }}
+
+
 class DataAccessView(BaseView):
     route_base = "/data-access"
     default_view = "index"
@@ -14594,6 +14661,10 @@ class DataAccessView(BaseView):
     def bulk_plan_json(self, table_name):
         payload = request.get_json(silent=True) or {{}}
         return jsonify(bulk_mutation_plan(table_name, payload.get("action", "update"), payload.get("rows", ()), actor=payload.get("actor")))
+
+    @expose("/release-gate.json")
+    def release_gate_json(self):
+        return jsonify(data_access_release_gate({{"app/data_access.py", "app/templates/appgen_data_access.html"}}))
 
 
 def register_data_access(appbuilder):
@@ -35468,12 +35539,13 @@ def validate_data_access_artifacts() -> None:
         "mutation_audit_event",
         "data_access_workbench",
         "data_access_check",
+        "data_access_release_gate",
     )
     if not all(term in contract for term in required_terms):
         fail("data access contract must expose query, projection, mutation, and readiness helpers")
     template = (ROOT / "app" / "templates" / "appgen_data_access.html").read_text()
-    if "Data Access" not in template or "Access JSON" not in template or "Writable fields" not in template or "Workbench JSON" not in template:
-        fail("data access template must expose generated read/write contracts")
+    if "Data Access" not in template or "Access JSON" not in template or "Writable fields" not in template or "Workbench JSON" not in template or "Release Gate JSON" not in template:
+        fail("data access template must expose generated read/write contracts and release readiness")
 
 
 def validate_data_exchange_artifacts() -> None:
@@ -36182,6 +36254,7 @@ def test_generated_runtime_helpers():
     inventory_ops = load_module(ROOT / "app" / "inventory_ops.py", "generated_inventory_ops")
     finance_ops = load_module(ROOT / "app" / "finance_ops.py", "generated_finance_ops")
     manufacturing_ops = load_module(ROOT / "app" / "manufacturing_ops.py", "generated_manufacturing_ops")
+    data_access = load_module(ROOT / "app" / "data_access.py", "generated_data_access")
     data_exchange = load_module(ROOT / "app" / "data_exchange.py", "generated_data_exchange")
     database_ops = load_module(ROOT / "app" / "database_ops.py", "generated_database_ops")
     schema_import = load_module(ROOT / "app" / "schema_import.py", "generated_schema_import")
@@ -36411,6 +36484,8 @@ def test_generated_runtime_helpers():
     assert manufacturing_ops.manufacturing_ops_check({"app/manufacturing_ops.py", "app/templates/appgen_manufacturing_ops.html"})["ok"] is True
     assert manufacturing_ops.manufacturing_release_gate({"app/manufacturing_ops.py", "app/templates/appgen_manufacturing_ops.html"})["ok"] is True
     assert manufacturing_ops.manufacturing_release_gate({"app/manufacturing_ops.py"})["ok"] is False
+    assert data_access.data_access_release_gate({"app/data_access.py", "app/templates/appgen_data_access.html"})["ok"] is True
+    assert data_access.data_access_release_gate({"app/data_access.py"})["ok"] is False
     assert isinstance(data_exchange.exchange_catalog(), tuple)
     assert isinstance(performance.performance_catalog(), tuple)
     manifest = json.loads((ROOT / "app" / "appgen.json").read_text())

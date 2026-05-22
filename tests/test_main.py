@@ -3370,6 +3370,11 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     delete_plan = data_access.mutation_plan("Book", "delete", {"id": 1})
     assert delete_plan["review_required"] is True
     assert data_access.data_access_check({"app/data_access.py", "app/templates/appgen_data_access.html"})["ok"] is True
+    data_gate = data_access.data_access_release_gate({"app/data_access.py", "app/templates/appgen_data_access.html"})
+    assert data_gate["format"] == "appgen.data-access-release-gate.v1"
+    assert data_gate["ok"] is True
+    assert {"query_contracts", "mutation_contracts"} <= {check["gate"] for check in data_gate["checks"]}
+    assert data_access.data_access_release_gate({"app/data_access.py"})["ok"] is False
     exchange_contract = data_exchange.table_contract("Book")
     assert exchange_contract["fields"] == (
         "title",
