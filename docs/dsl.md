@@ -589,7 +589,11 @@ apps include:
 - `platforms.py` and `appgen_platforms.html` with generated web, PWA, mobile,
   desktop, and chatbot target contracts plus a web/mobile/desktop generation
   matrix, target package matrix, mobile capability contract, and platform
-  release gate for downstream adapters.
+  release gate for downstream adapters. The generated
+  `platform_target_experience_gate()` proves the selected target breadth,
+  artifact evidence, per-target UX checks, generated route surface, native
+  starter coverage, and chatbot table intents as one aggregate
+  web/PWA/mobile/desktop/chatbot app-generation contract.
 - `frontends/` with generated React, Vue, Angular, Svelte, HTMX, and Express
   starter contracts wired to the generated REST API routes, shared API
   environment variables, route-binding matrices, dev/build command matrices,

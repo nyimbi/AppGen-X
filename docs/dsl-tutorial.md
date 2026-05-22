@@ -150,7 +150,8 @@ After generation, inspect:
 - `app/studio.py` for IDE/workbench contracts.
 - `app/dsl_reference.py` for generated DSL examples and lint helpers.
 - `app/form_designer.py` for Delphi-style component placement.
-- `app/platforms.py` and `native/` for web, mobile, and desktop targets.
+- `app/platforms.py` and `native/` for the aggregate web, PWA, mobile,
+  desktop, and chatbot target experience gate.
 - `app/agents.py` for local/API LLM readiness and agent plans.
 
 ## 11. Review The Generated Studio

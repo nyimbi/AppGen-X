@@ -987,6 +987,9 @@ def test_generate_app_from_sqlite_schema_compiles(tmp_path) -> None:
     assert "components.erp-templates" in {item["key"] for item in manifest["capabilities"]}
     assert "platform.microservices" in {item["key"] for item in manifest["capabilities"]}
     assert "platform.native" in {item["key"] for item in manifest["capabilities"]}
+    capabilities_by_key = {item["key"]: item for item in manifest["capabilities"]}
+    assert capabilities_by_key["platform.targets"]["status"] == "implemented"
+    assert capabilities_by_key["platform.native"]["status"] == "implemented"
     assert "platform.jhipster" in {item["key"] for item in manifest["capabilities"]}
     assert "platform.competitive-benchmark" in {item["key"] for item in manifest["capabilities"]}
     assert "platform.jhipster-superiority" in {item["key"] for item in manifest["capabilities"]}
@@ -2381,6 +2384,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert "web, PWA, mobile, desktop, and chatbot" in platforms_template
     assert "Generation Matrix JSON" in platforms_template
     assert "Release Gate JSON" in platforms_template
+    assert "Experience Gate JSON" in platforms_template
     microservices_template = (output_dir / "templates" / "appgen_microservices.html").read_text()
     assert "microservices architecture contract" in microservices_template
     assert "Service Mesh JSON" in microservices_template
@@ -4494,6 +4498,8 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
             "native/mobile/pyproject.toml",
             "native/desktop/app.py",
             "native/desktop/pyproject.toml",
+            "app/chatbot.py",
+            "app/templates/appgen_chatbot.html",
         }
     )
     assert platform_gate["format"] == "appgen.platform-release-gate.v1"
@@ -4502,6 +4508,33 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         gate["gate"] for gate in platform_gate["gates"]
     }
     assert platforms.platform_release_gate({"app/"})["ok"] is False
+    target_experience = platforms.platform_target_experience_gate(
+        {
+            "app/",
+            "frontends/react",
+            "frontends/vue",
+            "frontends/angular",
+            "frontends/svelte",
+            "frontends/htmx",
+            "frontends/express",
+            "app/static/appgen.webmanifest",
+            "app/static/appgen-sw.js",
+            "app/static/appgen-offline.html",
+            "native/mobile/app.py",
+            "native/mobile/pyproject.toml",
+            "native/desktop/app.py",
+            "native/desktop/pyproject.toml",
+            "app/chatbot.py",
+            "app/templates/appgen_chatbot.html",
+        }
+    )
+    assert target_experience["format"] == "appgen.platform-target-experience-gate.v1"
+    assert target_experience["ok"] is True
+    assert {"web", "pwa", "mobile", "desktop", "chatbot"} <= set(target_experience["targets"])
+    assert {"target_breadth", "experience_matrix", "release_gate", "native_starters", "chatbot_intents"} <= {
+        gate["gate"] for gate in target_experience["gates"]
+    }
+    assert platforms.platform_target_experience_gate({"app/"})["ok"] is False
     assert mobile_contract["tables"][1]["table"] == "Book"
     assert "internal_code" not in mobile_contract["tables"][1]["fields"]
     assert platforms.mobile_capabilities()["location"] is True

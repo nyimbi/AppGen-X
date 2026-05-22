@@ -4954,6 +4954,7 @@ def write_platforms_template(output_dir):
       <a class="btn btn-default" href="{{ url_for('PlatformView.catalog_json') }}">Catalog JSON</a>
       <a class="btn btn-default" href="{{ url_for('PlatformView.generation_matrix_json') }}">Generation Matrix JSON</a>
       <a class="btn btn-default" href="{{ url_for('PlatformView.release_gate_json') }}">Release Gate JSON</a>
+      <a class="btn btn-default" href="{{ url_for('PlatformView.experience_gate_json') }}">Experience Gate JSON</a>
     </div>
   </div>
   <div class="agp-grid">
@@ -27183,6 +27184,7 @@ PLATFORM_TARGETS = {{
     "chatbot": {{
         "label": "Chatbot",
         "adapter": "dialogflow-or-bot-framework",
+        "artifacts": ("app/chatbot.py", "app/templates/appgen_chatbot.html"),
         "capabilities": ("field-prompts", "workflow-intents", "handoff"),
     }},
 }}
@@ -27275,6 +27277,52 @@ def target_package_matrix(targets=None):
     }}
 
 
+def target_experience_matrix(existing_paths=()):
+    """Return end-to-end UX and package evidence for every selected target."""
+    existing = set(existing_paths)
+    required_capabilities = {{
+        "web": ("responsive", "crud", "rest", "graphql"),
+        "pwa": ("offline", "installable", "push"),
+        "mobile": ("offline", "push", "camera", "location"),
+        "desktop": ("offline", "local-files", "keyboard-navigation"),
+        "chatbot": ("field-prompts", "workflow-intents", "handoff"),
+    }}
+    experience_checks = {{
+        "web": ("form_routes", "rest_api", "graphql_api", "frontend_starters"),
+        "pwa": ("manifest", "service_worker", "offline_shell", "push_plan"),
+        "mobile": ("touch_forms", "device_permissions", "offline_mutations", "push_payloads"),
+        "desktop": ("keyboard_forms", "local_file_actions", "offline_cache", "sync_replay"),
+        "chatbot": ("table_intents", "slot_prompts", "handoff_payloads", "provider_exports"),
+    }}
+    rows = []
+    for target in SELECTED_TARGETS:
+        contract = platform_contract(target)
+        capabilities = set(contract["capabilities"])
+        artifacts = tuple(contract["artifacts"])
+        missing = tuple(path for path in artifacts if existing and path not in existing)
+        rows.append({{
+            "target": target,
+            "adapter": contract["adapter"],
+            "artifacts": artifacts,
+            "missing": missing,
+            "required_capabilities": required_capabilities[target],
+            "experience_checks": experience_checks[target],
+            "table_contracts": contract["tables"],
+            "ok": (
+                not missing
+                and set(required_capabilities[target]) <= capabilities
+                and bool(contract["tables"])
+                and bool(experience_checks[target])
+            ),
+        }})
+    return {{
+        "format": "appgen.target-experience-matrix.v1",
+        "ok": bool(rows) and all(row["ok"] for row in rows),
+        "targets": SELECTED_TARGETS,
+        "rows": tuple(rows),
+    }}
+
+
 def platform_release_gate(existing_paths=(), required_targets=("web", "mobile", "desktop")):
     """Return release readiness for generated web, mobile, and desktop targets."""
     existing = set(existing_paths)
@@ -27301,6 +27349,56 @@ def platform_release_gate(existing_paths=(), required_targets=("web", "mobile", 
         "required_targets": required,
         "generation_matrix": generation_matrix(),
         "package_matrix": matrix,
+        "gates": gates,
+        "blocking_gaps": tuple(gate["gate"] for gate in gates if not gate["ok"]),
+    }}
+
+
+def platform_target_experience_gate(existing_paths=(), required_targets=("web", "pwa", "mobile", "desktop", "chatbot")):
+    """Return the aggregate generated-app target experience gate.
+
+    This is the proof point for claiming generated web, PWA, mobile, desktop,
+    and chatbot app coverage as one coherent low-code target surface.
+    """
+    selected = set(SELECTED_TARGETS)
+    required = tuple(target for target in required_targets if target in PLATFORM_TARGETS)
+    experience = target_experience_matrix(existing_paths)
+    release = platform_release_gate(existing_paths, required_targets=("web", "mobile", "desktop"))
+    intents = chatbot_intents()
+    route_catalog = (
+        "/platforms/catalog.json",
+        "/platforms/generation-matrix.json",
+        "/platforms/release-gate.json",
+        "/platforms/experience-gate.json",
+    )
+    native_artifacts = {{
+        path
+        for target in ("mobile", "desktop")
+        if target in selected
+        for path in platform_contract(target)["artifacts"]
+    }}
+    experience_artifacts = {{
+        path
+        for row in experience["rows"]
+        for path in row["artifacts"]
+    }}
+    gates = (
+        {{"gate": "target_breadth", "ok": set(required) <= selected, "evidence": SELECTED_TARGETS}},
+        {{"gate": "experience_matrix", "ok": experience["ok"], "evidence": experience["rows"]}},
+        {{"gate": "release_gate", "ok": release["ok"], "evidence": release["blocking_gaps"]}},
+        {{"gate": "generated_routes", "ok": len(route_catalog) == 4, "evidence": route_catalog}},
+        {{"gate": "native_starters", "ok": not native_artifacts or all(path in experience_artifacts for path in native_artifacts), "evidence": tuple(sorted(native_artifacts))}},
+        {{"gate": "chatbot_intents", "ok": "chatbot" not in selected or len(intents) == len(PLATFORM_TABLES), "evidence": intents}},
+    )
+    return {{
+        "format": "appgen.platform-target-experience-gate.v1",
+        "ok": all(gate["ok"] for gate in gates),
+        "decision": "approved" if all(gate["ok"] for gate in gates) else "blocked",
+        "targets": SELECTED_TARGETS,
+        "required_targets": required,
+        "experience_matrix": experience,
+        "release_gate": release,
+        "routes": route_catalog,
         "gates": gates,
         "blocking_gaps": tuple(gate["gate"] for gate in gates if not gate["ok"]),
     }}
@@ -27354,6 +27452,10 @@ class PlatformView(BaseView):
     @expose("/release-gate.json")
     def release_gate_json(self):
         return jsonify(platform_release_gate())
+
+    @expose("/experience-gate.json")
+    def experience_gate_json(self):
+        return jsonify(platform_target_experience_gate())
 
     @expose("/<target>.json")
     def target_json(self, target):
@@ -39874,6 +39976,8 @@ def test_generated_runtime_helpers():
     assert platforms.target_package_matrix()["format"] == "appgen.target-package-matrix.v1"
     assert platforms.target_package_matrix()["ok"] is True
     assert platforms.platform_release_gate()["format"] == "appgen.platform-release-gate.v1"
+    assert platforms.platform_target_experience_gate()["format"] == "appgen.platform-target-experience-gate.v1"
+    assert platforms.platform_target_experience_gate()["ok"] is True
     assert native.native_release_gate({
         "native/appgen_native.py",
         "native/mobile/pyproject.toml",
