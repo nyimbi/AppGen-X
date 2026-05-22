@@ -29,6 +29,12 @@ view CustomerForm for Customer {
 """
 
 COMPONENTS = {
+    "Label": {
+        "category": "display",
+        "field_types": (),
+        "default_size": {"w": 3, "h": 1},
+        "properties": ("caption", "align", "style", "visible", "enabled"),
+    },
     "TextBox": {
         "category": "input",
         "field_types": ("string", "int", "decimal"),
@@ -58,6 +64,18 @@ COMPONENTS = {
         "field_types": ("relation", "int"),
         "default_size": {"w": 6, "h": 1},
         "properties": ("label", "target_table", "label_fields", "search", "required"),
+    },
+    "Select": {
+        "category": "choice",
+        "field_types": ("string", "int", "enum"),
+        "default_size": {"w": 4, "h": 1},
+        "properties": ("label", "items", "required", "search", "help_text"),
+    },
+    "Checkbox": {
+        "category": "choice",
+        "field_types": ("bool", "boolean"),
+        "default_size": {"w": 2, "h": 1},
+        "properties": ("label", "checked", "required", "tab_order", "help_text"),
     },
     "FileUpload": {
         "category": "media",
@@ -89,11 +107,23 @@ COMPONENTS = {
         "default_size": {"w": 4, "h": 3},
         "properties": ("items", "columns", "required", "tab_order", "help_text"),
     },
+    "RadioButton": {
+        "category": "choice",
+        "field_types": ("string", "int", "enum"),
+        "default_size": {"w": 3, "h": 1},
+        "properties": ("caption", "group", "checked", "required", "tab_order"),
+    },
     "ListBox": {
         "category": "choice",
         "field_types": ("string", "int", "enum"),
         "default_size": {"w": 4, "h": 4},
         "properties": ("items", "multi_select", "sorted", "required", "help_text"),
+    },
+    "ListView": {
+        "category": "data",
+        "field_types": ("relation", "dataset"),
+        "default_size": {"w": 6, "h": 6},
+        "properties": ("data_source", "item_template", "grouping", "search", "selection_mode"),
     },
     "TreeView": {
         "category": "navigation",
@@ -107,11 +137,53 @@ COMPONENTS = {
         "default_size": {"w": 12, "h": 6},
         "properties": ("data_source", "columns", "sortable", "filterable", "editable"),
     },
+    "StringGrid": {
+        "category": "data",
+        "field_types": ("relation", "dataset"),
+        "default_size": {"w": 12, "h": 6},
+        "properties": ("data_source", "columns", "fixed_rows", "fixed_columns", "editable"),
+    },
     "PageControl": {
         "category": "container",
         "field_types": (),
         "default_size": {"w": 12, "h": 6},
         "properties": ("tabs", "active_tab", "align", "lazy_mount", "tab_position"),
+    },
+    "Layout": {
+        "category": "container",
+        "field_types": (),
+        "default_size": {"w": 12, "h": 4},
+        "properties": ("align", "padding", "gap", "children", "visible"),
+    },
+    "ScrollBox": {
+        "category": "container",
+        "field_types": (),
+        "default_size": {"w": 12, "h": 8},
+        "properties": ("scrollbars", "content_width", "content_height", "padding", "visible"),
+    },
+    "FlowLayout": {
+        "category": "container",
+        "field_types": (),
+        "default_size": {"w": 12, "h": 4},
+        "properties": ("direction", "wrap", "gap", "justify", "align_items"),
+    },
+    "GridLayout": {
+        "category": "container",
+        "field_types": (),
+        "default_size": {"w": 12, "h": 6},
+        "properties": ("rows", "columns", "gap", "areas", "responsive_breakpoints"),
+    },
+    "VerticalBoxLayout": {
+        "category": "container",
+        "field_types": (),
+        "default_size": {"w": 6, "h": 8},
+        "properties": ("gap", "padding", "align_items", "children", "scrollable"),
+    },
+    "HorizontalBoxLayout": {
+        "category": "container",
+        "field_types": (),
+        "default_size": {"w": 12, "h": 3},
+        "properties": ("gap", "padding", "align_items", "children", "wrap"),
     },
     "MainMenu": {
         "category": "menu",
@@ -142,6 +214,42 @@ COMPONENTS = {
         "field_types": ("image", "file"),
         "default_size": {"w": 4, "h": 3},
         "properties": ("source", "fit", "alt_text", "preview", "lazy_load"),
+    },
+    "Shape": {
+        "category": "graphics",
+        "field_types": (),
+        "default_size": {"w": 3, "h": 3},
+        "properties": ("shape", "fill", "stroke", "stroke_width", "opacity"),
+    },
+    "PathShape": {
+        "category": "graphics",
+        "field_types": (),
+        "default_size": {"w": 4, "h": 3},
+        "properties": ("path_data", "fill", "stroke", "stroke_width", "scale"),
+    },
+    "Rectangle": {
+        "category": "graphics",
+        "field_types": (),
+        "default_size": {"w": 4, "h": 2},
+        "properties": ("fill", "stroke", "corner_radius", "stroke_width", "opacity"),
+    },
+    "Ellipse": {
+        "category": "graphics",
+        "field_types": (),
+        "default_size": {"w": 3, "h": 3},
+        "properties": ("fill", "stroke", "stroke_width", "opacity", "hit_test"),
+    },
+    "Line": {
+        "category": "graphics",
+        "field_types": (),
+        "default_size": {"w": 4, "h": 1},
+        "properties": ("stroke", "stroke_width", "x1", "y1", "x2", "y2"),
+    },
+    "Bitmap": {
+        "category": "graphics",
+        "field_types": ("image", "file"),
+        "default_size": {"w": 4, "h": 3},
+        "properties": ("source", "dpi", "scale_mode", "transparent", "cache_policy"),
     },
     "Chart": {
         "category": "analytics",
@@ -197,6 +305,18 @@ COMPONENTS = {
         "default_size": {"w": 3, "h": 1},
         "properties": ("accuracy", "permission", "watch", "interval", "fallback"),
     },
+    "MotionSensor": {
+        "category": "mobile",
+        "field_types": ("sensor", "decimal"),
+        "default_size": {"w": 3, "h": 1},
+        "properties": ("permission", "sample_rate", "axes", "threshold", "fallback"),
+    },
+    "OrientationSensor": {
+        "category": "mobile",
+        "field_types": ("sensor", "decimal"),
+        "default_size": {"w": 3, "h": 1},
+        "properties": ("permission", "sample_rate", "orientation_mode", "threshold", "fallback"),
+    },
     "NotificationCenter": {
         "category": "mobile",
         "field_types": (),
@@ -209,11 +329,53 @@ COMPONENTS = {
         "default_size": {"w": 3, "h": 1},
         "properties": ("target", "property", "duration", "easing", "reduced_motion"),
     },
+    "FloatAnimation": {
+        "category": "effects",
+        "field_types": (),
+        "default_size": {"w": 3, "h": 1},
+        "properties": ("target", "property", "start_value", "end_value", "duration"),
+    },
+    "ColorAnimation": {
+        "category": "effects",
+        "field_types": (),
+        "default_size": {"w": 3, "h": 1},
+        "properties": ("target", "property", "start_color", "end_color", "duration"),
+    },
+    "PathAnimation": {
+        "category": "effects",
+        "field_types": (),
+        "default_size": {"w": 3, "h": 1},
+        "properties": ("target", "path_data", "duration", "easing", "auto_reverse"),
+    },
     "Effect": {
         "category": "effects",
         "field_types": (),
         "default_size": {"w": 3, "h": 1},
         "properties": ("target", "effect", "intensity", "gpu_fallback", "enabled"),
+    },
+    "StyleBook": {
+        "category": "theme",
+        "field_types": (),
+        "default_size": {"w": 3, "h": 1},
+        "properties": ("theme", "resources", "variants", "platform_overrides", "active"),
+    },
+    "StyleManager": {
+        "category": "theme",
+        "field_types": (),
+        "default_size": {"w": 3, "h": 1},
+        "properties": ("style_books", "active_style", "dark_mode", "high_contrast", "platform_rules"),
+    },
+    "GestureManager": {
+        "category": "gesture",
+        "field_types": (),
+        "default_size": {"w": 3, "h": 1},
+        "properties": ("gestures", "targets", "recognizers", "conflicts", "enabled"),
+    },
+    "Gesture": {
+        "category": "gesture",
+        "field_types": (),
+        "default_size": {"w": 2, "h": 1},
+        "properties": ("kind", "target", "threshold", "direction", "enabled"),
     },
     "Viewport3D": {
         "category": "three_d",
@@ -221,7 +383,95 @@ COMPONENTS = {
         "default_size": {"w": 8, "h": 6},
         "properties": ("camera", "lights", "models", "materials", "mobile_budget"),
     },
+    "Dummy3D": {
+        "category": "three_d",
+        "field_types": (),
+        "default_size": {"w": 2, "h": 2},
+        "properties": ("position", "rotation", "scale", "children", "visible"),
+    },
+    "Camera3D": {
+        "category": "three_d",
+        "field_types": (),
+        "default_size": {"w": 2, "h": 2},
+        "properties": ("position", "rotation", "field_of_view", "near_clip", "far_clip"),
+    },
+    "Light3D": {
+        "category": "three_d",
+        "field_types": (),
+        "default_size": {"w": 2, "h": 2},
+        "properties": ("light_type", "color", "intensity", "position", "shadows"),
+    },
+    "Mesh3D": {
+        "category": "three_d",
+        "field_types": (),
+        "default_size": {"w": 3, "h": 3},
+        "properties": ("mesh", "material", "position", "rotation", "scale"),
+    },
+    "DatabaseConnection": {
+        "category": "data_access",
+        "field_types": ("dataset",),
+        "default_size": {"w": 3, "h": 1},
+        "properties": ("driver", "connection_name", "transaction", "pooling", "secure_secrets"),
+    },
+    "TableAdapter": {
+        "category": "data_access",
+        "field_types": ("dataset", "relation"),
+        "default_size": {"w": 3, "h": 1},
+        "properties": ("table", "connection", "filters", "indexes", "cached_updates"),
+    },
+    "ClientDataSet": {
+        "category": "data_access",
+        "field_types": ("dataset", "relation"),
+        "default_size": {"w": 3, "h": 1},
+        "properties": ("fields", "provider", "change_log", "merge_policy", "offline_cache"),
+    },
 }
+
+COMPONENT_ANALOG_REQUIREMENTS = (
+    {"group": "cross-target-ui", "source": "TButton", "analog": "Button"},
+    {"group": "cross-target-ui", "source": "TEdit", "analog": "TextBox"},
+    {"group": "cross-target-ui", "source": "TLabel", "analog": "Label"},
+    {"group": "cross-target-ui", "source": "TListBox", "analog": "ListBox"},
+    {"group": "cross-target-ui", "source": "TComboBox", "analog": "Select"},
+    {"group": "cross-target-ui", "source": "TCheckBox", "analog": "Checkbox"},
+    {"group": "cross-target-ui", "source": "TRadioButton", "analog": "RadioButton"},
+    {"group": "layouts", "source": "TLayout", "analog": "Layout"},
+    {"group": "layouts", "source": "TScrollBox", "analog": "ScrollBox"},
+    {"group": "layouts", "source": "TFlowLayout", "analog": "FlowLayout"},
+    {"group": "layouts", "source": "TGridLayout", "analog": "GridLayout"},
+    {"group": "layouts", "source": "TVerticalBoxLayout", "analog": "VerticalBoxLayout"},
+    {"group": "layouts", "source": "THorizontalBoxLayout", "analog": "HorizontalBoxLayout"},
+    {"group": "data-display", "source": "TStringGrid", "analog": "StringGrid"},
+    {"group": "data-display", "source": "TListView", "analog": "ListView"},
+    {"group": "data-display", "source": "TTreeView", "analog": "TreeView"},
+    {"group": "data-display", "source": "TGrid", "analog": "Grid"},
+    {"group": "graphics", "source": "TShape", "analog": "Shape"},
+    {"group": "graphics", "source": "TPath", "analog": "PathShape"},
+    {"group": "graphics", "source": "TRectangle", "analog": "Rectangle"},
+    {"group": "graphics", "source": "TEllipse", "analog": "Ellipse"},
+    {"group": "graphics", "source": "TLine", "analog": "Line"},
+    {"group": "graphics", "source": "TImage", "analog": "Image"},
+    {"group": "graphics", "source": "TBitmap", "analog": "Bitmap"},
+    {"group": "animations", "source": "TFloatAnimation", "analog": "FloatAnimation"},
+    {"group": "animations", "source": "TColorAnimation", "analog": "ColorAnimation"},
+    {"group": "animations", "source": "TPathAnimation", "analog": "PathAnimation"},
+    {"group": "animations", "source": "TAnimation", "analog": "Animation"},
+    {"group": "styles-theming", "source": "TStyleBook", "analog": "StyleBook"},
+    {"group": "styles-theming", "source": "TStyleManager", "analog": "StyleManager"},
+    {"group": "gestures", "source": "TGestureManager", "analog": "GestureManager"},
+    {"group": "gestures", "source": "TGesture", "analog": "Gesture"},
+    {"group": "sensors", "source": "TLocationSensor", "analog": "LocationSensor"},
+    {"group": "sensors", "source": "TMotionSensor", "analog": "MotionSensor"},
+    {"group": "sensors", "source": "TOrientationSensor", "analog": "OrientationSensor"},
+    {"group": "three-d", "source": "TViewPort3D", "analog": "Viewport3D"},
+    {"group": "three-d", "source": "TDummy3D", "analog": "Dummy3D"},
+    {"group": "three-d", "source": "TCamera3D", "analog": "Camera3D"},
+    {"group": "three-d", "source": "TLight3D", "analog": "Light3D"},
+    {"group": "three-d", "source": "TMesh3D", "analog": "Mesh3D"},
+    {"group": "data-access", "source": "DB", "analog": "DatabaseConnection"},
+    {"group": "data-access", "source": "DBTables", "analog": "TableAdapter"},
+    {"group": "data-access", "source": "DBClient", "analog": "ClientDataSet"},
+)
 
 THIRD_PARTY_COMPONENT_SUITES = (
     {
@@ -336,6 +586,62 @@ def component_palette() -> tuple[dict, ...]:
     return tuple({"component": name, **spec} for name, spec in COMPONENTS.items())
 
 
+def component_analog_matrix() -> tuple[dict, ...]:
+    """Return requested native component analog coverage."""
+    return tuple(
+        {
+            **requirement,
+            "implemented": requirement["analog"] in COMPONENTS,
+            "contract": component_runtime_contract(requirement["analog"]) if requirement["analog"] in COMPONENTS else None,
+        }
+        for requirement in COMPONENT_ANALOG_REQUIREMENTS
+    )
+
+
+def component_analog_workbench() -> dict:
+    """Prove all requested component analogs are present and usable."""
+    matrix = component_analog_matrix()
+    groups = tuple(sorted({item["group"] for item in matrix}))
+    checks = (
+        {
+            "id": "all_requested_analogs_present",
+            "ok": all(item["implemented"] for item in matrix),
+            "evidence": tuple(item for item in matrix if not item["implemented"]),
+        },
+        {
+            "id": "all_requested_analogs_usable",
+            "ok": all(item["contract"] and item["contract"]["usable"] for item in matrix),
+            "evidence": tuple((item["source"], item["analog"]) for item in matrix if item["contract"] and item["contract"]["usable"]),
+        },
+        {
+            "id": "groups_covered",
+            "ok": {
+                "cross-target-ui",
+                "layouts",
+                "data-display",
+                "graphics",
+                "animations",
+                "styles-theming",
+                "gestures",
+                "sensors",
+                "three-d",
+                "data-access",
+            } <= set(groups),
+            "evidence": groups,
+        },
+    )
+    ok = all(check["ok"] for check in checks)
+    return {
+        "format": "appgen.component-analog-workbench.v1",
+        "ok": ok,
+        "decision": "approved" if ok else "blocked",
+        "matrix": matrix,
+        "groups": groups,
+        "checks": checks,
+        "blocking_gaps": tuple(check for check in checks if not check["ok"]),
+    }
+
+
 def third_party_component_registry() -> tuple[dict, ...]:
     """Return useful third-party RAD component suites the IDE can model."""
     return THIRD_PARTY_COMPONENT_SUITES
@@ -387,6 +693,124 @@ def third_party_component_import_contract(metadata: dict) -> dict:
         },
         "requires_review": True,
         "side_effects": (),
+    }
+
+
+def component_package_contract(package_id: str) -> dict:
+    """Return the runtime adapter contract for a curated component package."""
+    package = _component_package(package_id)
+    module = _module_name(package["id"])
+    adapters = tuple(
+        {
+            "component": component,
+            "adapter": f"appgen.component_packages.{module}.{_module_name(component)}",
+            "design_surface": "form-designer",
+            "property_bridge": "published_properties_to_inspector",
+            "event_bridge": "published_events_to_handlers",
+            "binding_bridge": "component_bindings_to_visual_graph",
+            "render_targets": ("designer", "preview", "runtime"),
+        }
+        for component in package["components"]
+    )
+    return {
+        "format": "appgen.component-package-contract.v1",
+        "package": package,
+        "module": f"app.component_packages.{module}",
+        "adapters": adapters,
+        "load_policy": component_package_load_policy(package_id),
+        "install_plan": third_party_component_install_plan((package_id,)),
+        "implemented": bool(adapters),
+    }
+
+
+def component_package_load_policy(package_id: str) -> dict:
+    """Return design-time package loading guardrails."""
+    package = _component_package(package_id)
+    install_plan = third_party_component_install_plan((package_id,))
+    checks = (
+        "license_accepted",
+        "version_pinned",
+        "package_hash_recorded",
+        "adapter_manifest_present",
+        "design_time_only_code_isolated",
+        "rollback_snapshot_available",
+    )
+    return {
+        "format": "appgen.component-package-load-policy.v1",
+        "package_id": package["id"],
+        "requires_review": True,
+        "side_effects": (),
+        "guards": install_plan["guards"],
+        "checks": checks,
+        "isolation": ("sandboxed_loader", "no_global_install_without_review", "per-project_manifest"),
+        "approved": install_plan["ok"] and not install_plan["unknown"] and bool(package["components"]),
+    }
+
+
+def validate_component_package_load(package_id: str, request: dict | None = None) -> dict:
+    """Validate a package load request without performing side effects."""
+    request = request or {}
+    policy = component_package_load_policy(package_id)
+    accepted = set(request.get("accepted", ()))
+    missing = tuple(check for check in policy["checks"] if check not in accepted)
+    return {
+        "format": "appgen.component-package-load-validation.v1",
+        "package_id": package_id,
+        "ok": not missing and policy["approved"],
+        "missing": missing,
+        "side_effects": (),
+        "policy": policy,
+    }
+
+
+def component_package_workbench(existing_paths: set[str] | None = None) -> dict:
+    """Prove curated component packages have usable adapters and load policies."""
+    contracts = tuple(component_package_contract(package["id"]) for package in THIRD_PARTY_COMPONENT_SUITES)
+    install_plan = third_party_component_install_plan()
+    package_files = component_package_file_manifest()
+    existing = set(existing_paths or ())
+    checks = (
+        {
+            "id": "registry_coverage",
+            "ok": len(contracts) == len(THIRD_PARTY_COMPONENT_SUITES)
+            and {contract["package"]["id"] for contract in contracts} == {package["id"] for package in THIRD_PARTY_COMPONENT_SUITES},
+            "evidence": tuple(contract["package"]["id"] for contract in contracts),
+        },
+        {
+            "id": "adapter_coverage",
+            "ok": all(contract["adapters"] and len(contract["adapters"]) == len(contract["package"]["components"]) for contract in contracts),
+            "evidence": tuple((contract["package"]["id"], tuple(adapter["component"] for adapter in contract["adapters"])) for contract in contracts),
+        },
+        {
+            "id": "load_policy_guards",
+            "ok": all(contract["load_policy"]["requires_review"] and not contract["load_policy"]["side_effects"] and contract["load_policy"]["checks"] for contract in contracts),
+            "evidence": tuple((contract["package"]["id"], contract["load_policy"]["checks"]) for contract in contracts),
+        },
+        {
+            "id": "install_plan_review",
+            "ok": install_plan["ok"] and install_plan["requires_review"] and not install_plan["side_effects"],
+            "evidence": install_plan,
+        },
+        {
+            "id": "package_file_exports",
+            "ok": all({"package_contract", "install_plan", "load_policy", "adapter_contract", "validate_load_request", "test_plan"} <= set(item["exports"]) for item in package_files),
+            "evidence": package_files,
+        },
+        {
+            "id": "generated_package_files",
+            "ok": not existing or all(item["path"] in existing for item in package_files),
+            "evidence": {"existing": tuple(sorted(existing)), "expected": package_files},
+        },
+    )
+    ok = all(check["ok"] for check in checks)
+    return {
+        "format": "appgen.component-package-workbench.v1",
+        "ok": ok,
+        "decision": "approved" if ok else "blocked",
+        "package_count": len(contracts),
+        "contracts": contracts,
+        "checks": checks,
+        "blocking_gaps": tuple(check for check in checks if not check["ok"]),
     }
 
 
@@ -651,6 +1075,7 @@ def rad_parity_workbench(existing_paths: set[str] | None = None) -> dict:
         else existing_paths
     )
     install_plan = third_party_component_install_plan()
+    package_workbench = component_package_workbench()
     third_party_categories = set(third_party_component_categories())
     checks = (
         {
@@ -705,8 +1130,14 @@ def rad_parity_workbench(existing_paths: set[str] | None = None) -> dict:
         },
         {
             "id": "third_party_component_ecosystem",
-            "ok": install_plan["ok"] and {"grid", "reports", "charts", "database", "network", "animation"} <= third_party_categories,
-            "evidence": {"packages": install_plan["packages"], "categories": tuple(sorted(third_party_categories))},
+            "ok": install_plan["ok"]
+            and {"grid", "reports", "charts", "database", "network", "animation"} <= third_party_categories
+            and package_workbench["ok"],
+            "evidence": {
+                "packages": install_plan["packages"],
+                "categories": tuple(sorted(third_party_categories)),
+                "package_workbench": package_workbench,
+            },
         },
         {
             "id": "artifact_contract",
@@ -892,7 +1323,7 @@ def component_package_file_manifest() -> tuple[dict, ...]:
         {
             "package": package["id"],
             "path": f"app/component_packages/{_module_name(package['id'])}.py",
-            "exports": ("package_contract", "install_plan", "load_policy", "test_plan"),
+            "exports": ("package_contract", "install_plan", "load_policy", "adapter_contract", "validate_load_request", "test_plan"),
             "requires_review": True,
         }
         for package in THIRD_PARTY_COMPONENT_SUITES
@@ -902,6 +1333,7 @@ def component_package_file_manifest() -> tuple[dict, ...]:
 def component_usability_workbench() -> dict:
     """Prove every built-in component has enough metadata to be usable."""
     contracts = component_implementation_catalog()
+    analog_workbench = component_analog_workbench()
     checks = (
         {
             "id": "complete_catalog",
@@ -950,6 +1382,11 @@ def component_usability_workbench() -> dict:
             and all({"package_contract", "install_plan", "load_policy", "test_plan"} <= set(item["exports"]) for item in component_package_file_manifest()),
             "evidence": component_package_file_manifest(),
         },
+        {
+            "id": "requested_analog_coverage",
+            "ok": analog_workbench["ok"],
+            "evidence": analog_workbench,
+        },
     )
     ok = all(check["ok"] for check in checks)
     return {
@@ -960,6 +1397,7 @@ def component_usability_workbench() -> dict:
         "components": contracts,
         "component_files": component_file_manifest(),
         "package_files": component_package_file_manifest(),
+        "analog_workbench": analog_workbench,
         "checks": checks,
         "blocking_gaps": tuple(check for check in checks if not check["ok"]),
     }
@@ -1275,6 +1713,9 @@ def _dfm_component_class(component: str) -> str:
         "TextBox": "TEdit",
         "EmailInput": "TEdit",
         "TextArea": "TMemo",
+        "Label": "TLabel",
+        "Select": "TComboBox",
+        "Checkbox": "TCheckBox",
         "DatePicker": "TDateTimePicker",
         "Lookup": "TComboBox",
         "FileUpload": "TButtonedEdit",
@@ -1282,15 +1723,30 @@ def _dfm_component_class(component: str) -> str:
         "Panel": "TPanel",
         "GroupBox": "TGroupBox",
         "RadioGroup": "TRadioGroup",
+        "RadioButton": "TRadioButton",
         "ListBox": "TListBox",
+        "ListView": "TListView",
         "TreeView": "TTreeView",
         "Grid": "TStringGrid",
+        "StringGrid": "TStringGrid",
         "PageControl": "TPageControl",
+        "Layout": "TLayout",
+        "ScrollBox": "TScrollBox",
+        "FlowLayout": "TFlowLayout",
+        "GridLayout": "TGridLayout",
+        "VerticalBoxLayout": "TVerticalBoxLayout",
+        "HorizontalBoxLayout": "THorizontalBoxLayout",
         "MainMenu": "TMainMenu",
         "PopupMenu": "TPopupMenu",
         "ToolBar": "TToolBar",
         "ActionList": "TActionList",
         "Image": "TImage",
+        "Shape": "TShape",
+        "PathShape": "TPath",
+        "Rectangle": "TRectangle",
+        "Ellipse": "TEllipse",
+        "Line": "TLine",
+        "Bitmap": "TBitmap",
         "Chart": "TChart",
         "ReportViewer": "TAppGenReportViewer",
         "WebBrowser": "TWebBrowser",
@@ -1300,10 +1756,26 @@ def _dfm_component_class(component: str) -> str:
         "RESTClient": "TRESTClient",
         "CameraView": "TCameraComponent",
         "LocationSensor": "TLocationSensor",
+        "MotionSensor": "TMotionSensor",
+        "OrientationSensor": "TOrientationSensor",
         "NotificationCenter": "TNotificationCenter",
         "Animation": "TFloatAnimation",
+        "FloatAnimation": "TFloatAnimation",
+        "ColorAnimation": "TColorAnimation",
+        "PathAnimation": "TPathAnimation",
         "Effect": "TShadowEffect",
+        "StyleBook": "TStyleBook",
+        "StyleManager": "TStyleManager",
+        "GestureManager": "TGestureManager",
+        "Gesture": "TGesture",
         "Viewport3D": "TViewport3D",
+        "Dummy3D": "TDummy3D",
+        "Camera3D": "TCamera3D",
+        "Light3D": "TLight3D",
+        "Mesh3D": "TMesh3D",
+        "DatabaseConnection": "TDatabase",
+        "TableAdapter": "TTable",
+        "ClientDataSet": "TClientDataSet",
     }
     return mapping.get(component, f"TAppGen{component}")
 
@@ -1333,14 +1805,21 @@ def _module_name(name: str) -> str:
     return "_".join(part for part in "".join(chars).split("_") if part)
 
 
+def _component_package(package_id: str) -> dict:
+    for package in THIRD_PARTY_COMPONENT_SUITES:
+        if package["id"] == package_id:
+            return package
+    raise KeyError(f"Unknown component package: {package_id}")
+
+
 def _default_property_value(name: str, component: str, category: str) -> object:
-    if name in {"required", "readonly", "spellcheck", "preview", "visible", "enabled", "lazy_load", "filterable", "sortable", "editable", "watch", "multi_select", "sorted"}:
+    if name in {"required", "readonly", "spellcheck", "preview", "visible", "enabled", "lazy_load", "filterable", "sortable", "editable", "watch", "multi_select", "sorted", "checked", "wrap", "scrollable", "transparent", "hit_test", "active", "dark_mode", "high_contrast", "shadows", "secure_secrets", "pooling", "cached_updates", "offline_cache", "auto_reverse"}:
         return name in {"visible", "enabled", "sortable", "filterable"}
-    if name in {"rows", "columns", "interval", "timeout", "duration", "tab_order", "max_size_mb"}:
+    if name in {"rows", "columns", "interval", "timeout", "duration", "tab_order", "max_size_mb", "gap", "fixed_rows", "fixed_columns", "stroke_width", "opacity", "sample_rate", "threshold", "intensity", "field_of_view", "near_clip", "far_clip", "dpi"}:
         return 1 if name != "duration" else 200
-    if name in {"items", "actions", "tabs", "series", "bindings", "validators", "converters", "channels", "lights", "models", "materials", "export_formats", "headers"}:
+    if name in {"items", "actions", "tabs", "series", "bindings", "validators", "converters", "channels", "lights", "models", "materials", "export_formats", "headers", "children", "areas", "responsive_breakpoints", "style_books", "gestures", "targets", "recognizers", "conflicts", "axes", "fields", "indexes"}:
         return ()
-    if name in {"target", "source", "data_source", "dataset", "url", "base_url", "report", "camera"}:
+    if name in {"target", "source", "data_source", "dataset", "url", "base_url", "report", "camera", "group", "shape", "fill", "stroke", "path_data", "scale", "scale_mode", "cache_policy", "orientation_mode", "start_value", "end_value", "start_color", "end_color", "theme", "resources", "variants", "platform_overrides", "active_style", "platform_rules", "kind", "direction", "driver", "connection_name", "transaction", "table", "connection", "provider", "change_log", "merge_policy", "mesh", "material", "position", "rotation", "light_type", "color"}:
         return ""
     if name == "label":
         return component
@@ -1378,7 +1857,11 @@ def _component_events(component: str, category: str) -> tuple[str, ...]:
         "nonvisual": ("OnTimer", "OnStart", "OnStop"),
         "mobile": ("OnPermission", "OnCapture", "OnError"),
         "effects": ("OnStart", "OnFinish", "OnCancel"),
+        "graphics": ("OnPaint", "OnHitTest", "OnResize"),
+        "theme": ("OnApply", "OnChange", "OnFallback"),
+        "gesture": ("OnGesture", "OnRecognize", "OnConflict"),
         "three_d": ("OnLoad", "OnRender", "OnFrame"),
+        "data_access": ("OnConnect", "OnOpen", "OnError"),
     }
     return base + by_category.get(category, ("OnChange",))
 
@@ -1387,10 +1870,12 @@ def _component_validation_rules(component: str, category: str) -> tuple[str, ...
     rules = ["within_canvas_bounds", "stable_component_id", "known_property_names"]
     if COMPONENTS[component]["field_types"]:
         rules.append("field_type_supported")
-    if category in {"mobile", "integration", "data"}:
+    if category in {"mobile", "integration", "data", "data_access"}:
         rules.append("permission_or_secret_reviewed")
-    if category in {"effects", "three_d"}:
+    if category in {"effects", "three_d", "graphics"}:
         rules.append("performance_budget_declared")
+    if category in {"theme", "gesture"}:
+        rules.append("target_surface_declared")
     if category == "menu":
         rules.append("role_visibility_reviewed")
     return tuple(rules)

@@ -197,6 +197,9 @@ Visual design is split into two related capabilities:
   are generated alongside the form designer so every component and package has a
   discrete, importable contract, renderer/loader surface, validation evidence,
   and test plan.
+- `component_analog_workbench()` sits above the raw palette and proves requested
+  native-style analog coverage across controls, layouts, graphics, animation,
+  theming, gestures, sensors, 3D primitives, and data access.
 - `visual_modeling.py` handles database graph nodes, relationships, ERD export,
   DBML/SQL/PonyORM export, schema proposals, and migration preview.
 - `branding.py` handles brand/theme contracts, splash-screen configuration,

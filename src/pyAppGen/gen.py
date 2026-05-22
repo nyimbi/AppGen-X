@@ -1756,12 +1756,16 @@ def write_component_contract_files(output_dir):
         "Label", "TextBox", "EmailInput", "TextArea", "Select", "Checkbox",
         "DatePicker", "DateTimePicker", "TimePicker", "NumberInput",
         "ImageUpload", "FileUpload", "RelationshipPicker", "Button",
-        "Section", "Tabs", "Panel", "GroupBox", "RadioGroup", "ListBox",
-        "TreeView", "Grid", "PageControl", "MainMenu", "PopupMenu",
-        "ToolBar", "ActionList", "Image", "Chart", "ReportViewer",
+        "Section", "Tabs", "Panel", "GroupBox", "RadioGroup", "RadioButton", "ListBox",
+        "ListView", "TreeView", "Grid", "StringGrid", "PageControl", "Layout",
+        "ScrollBox", "FlowLayout", "GridLayout", "VerticalBoxLayout", "HorizontalBoxLayout",
+        "MainMenu", "PopupMenu", "ToolBar", "ActionList", "Image",
+        "Shape", "PathShape", "Rectangle", "Ellipse", "Line", "Bitmap", "Chart", "ReportViewer",
         "WebBrowser", "Timer", "DataSource", "BindingSource", "RESTClient",
-        "CameraView", "LocationSensor", "NotificationCenter", "Animation",
-        "Effect", "Viewport3D",
+        "CameraView", "LocationSensor", "MotionSensor", "OrientationSensor", "NotificationCenter", "Animation",
+        "FloatAnimation", "ColorAnimation", "PathAnimation", "Effect", "StyleBook", "StyleManager",
+        "GestureManager", "Gesture", "Viewport3D", "Dummy3D", "Camera3D", "Light3D", "Mesh3D",
+        "DatabaseConnection", "TableAdapter", "ClientDataSet",
     )
     package_ids = (
         "devexpress-native", "tms-fnc", "fastreport", "teechart", "skia4rad",
@@ -1907,14 +1911,7 @@ PACKAGE_ID = {package_id!r}
 
 def package_contract():
     """Return the package registry entry for this component package."""
-    package = next(item for item in form_designer.third_party_component_registry() if item["id"] == PACKAGE_ID)
-    return {{
-        "format": "appgen.component-package-contract.v1",
-        "package": package,
-        "components": package["components"],
-        "frameworks": package["frameworks"],
-        "license": package["license"],
-    }}
+    return form_designer.component_package_contract(PACKAGE_ID)
 
 
 def install_plan():
@@ -1924,13 +1921,17 @@ def install_plan():
 
 def load_policy():
     """Return the guardrails required before design-time loading."""
-    return {{
-        "format": "appgen.component-package-load-policy.v1",
-        "package_id": PACKAGE_ID,
-        "requires_review": True,
-        "side_effects": (),
-        "guards": install_plan()["guards"],
-    }}
+    return form_designer.component_package_load_policy(PACKAGE_ID)
+
+
+def adapter_contract():
+    """Return component adapters exposed by this package."""
+    return package_contract()["adapters"]
+
+
+def validate_load_request(request=None):
+    """Validate a design-time package load request without side effects."""
+    return form_designer.validate_component_package_load(PACKAGE_ID, request or {{}})
 
 
 def test_plan():
@@ -1943,6 +1944,8 @@ def test_plan():
             "install_plan_has_no_side_effects",
             "license_review_required",
             "load_policy_declares_guards",
+            "adapter_contract_declared",
+            "load_request_validation_blocks_missing_checks",
         ),
     }}
 '''
@@ -6194,6 +6197,7 @@ def write_form_designer_template(output_dir):
       <a class="btn btn-default" href="{{ url_for('FormDesignerView.rad_parity_json') }}">RAD Parity JSON</a>
       <a class="btn btn-default" href="{{ url_for('FormDesignerView.third_party_components_json') }}">Third-party Components JSON</a>
       <a class="btn btn-default" href="{{ url_for('FormDesignerView.component_usability_json') }}">Component Usability JSON</a>
+      <a class="btn btn-default" href="{{ url_for('FormDesignerView.component_analogs_json') }}">Component Analogs JSON</a>
       <a class="btn btn-default" href="{{ url_for('FormDesignerView.pascal_runtime_json') }}">Pascal Runtime JSON</a>
       <a class="btn btn-default" href="{{ url_for('FormDesignerView.release_gate_json') }}">Release Gate JSON</a>
     </div>
@@ -25273,15 +25277,30 @@ PALETTE = (
     {{"type": "Panel", "label": "Panel", "defaults": {{"w": 12, "h": 3}}}},
     {{"type": "GroupBox", "label": "Group Box", "defaults": {{"w": 6, "h": 3}}}},
     {{"type": "RadioGroup", "label": "Radio Group", "defaults": {{"w": 4, "h": 3}}}},
+    {{"type": "RadioButton", "label": "Radio Button", "defaults": {{"w": 3, "h": 1}}}},
     {{"type": "ListBox", "label": "List Box", "defaults": {{"w": 4, "h": 4}}}},
+    {{"type": "ListView", "label": "List View", "defaults": {{"w": 6, "h": 6}}}},
     {{"type": "TreeView", "label": "Tree View", "defaults": {{"w": 4, "h": 6}}}},
     {{"type": "Grid", "label": "Grid", "defaults": {{"w": 12, "h": 6}}}},
+    {{"type": "StringGrid", "label": "String Grid", "defaults": {{"w": 12, "h": 6}}}},
     {{"type": "PageControl", "label": "Page Control", "defaults": {{"w": 12, "h": 6}}}},
+    {{"type": "Layout", "label": "Layout", "defaults": {{"w": 12, "h": 4}}}},
+    {{"type": "ScrollBox", "label": "Scroll Box", "defaults": {{"w": 12, "h": 8}}}},
+    {{"type": "FlowLayout", "label": "Flow Layout", "defaults": {{"w": 12, "h": 4}}}},
+    {{"type": "GridLayout", "label": "Grid Layout", "defaults": {{"w": 12, "h": 6}}}},
+    {{"type": "VerticalBoxLayout", "label": "Vertical Box Layout", "defaults": {{"w": 6, "h": 8}}}},
+    {{"type": "HorizontalBoxLayout", "label": "Horizontal Box Layout", "defaults": {{"w": 12, "h": 3}}}},
     {{"type": "MainMenu", "label": "Main Menu", "defaults": {{"w": 12, "h": 1}}}},
     {{"type": "PopupMenu", "label": "Popup Menu", "defaults": {{"w": 4, "h": 1}}}},
     {{"type": "ToolBar", "label": "Tool Bar", "defaults": {{"w": 12, "h": 1}}}},
     {{"type": "ActionList", "label": "Action List", "defaults": {{"w": 4, "h": 1}}}},
     {{"type": "Image", "label": "Image", "defaults": {{"w": 4, "h": 3}}}},
+    {{"type": "Shape", "label": "Shape", "defaults": {{"w": 3, "h": 3}}}},
+    {{"type": "PathShape", "label": "Path Shape", "defaults": {{"w": 4, "h": 3}}}},
+    {{"type": "Rectangle", "label": "Rectangle", "defaults": {{"w": 4, "h": 2}}}},
+    {{"type": "Ellipse", "label": "Ellipse", "defaults": {{"w": 3, "h": 3}}}},
+    {{"type": "Line", "label": "Line", "defaults": {{"w": 4, "h": 1}}}},
+    {{"type": "Bitmap", "label": "Bitmap", "defaults": {{"w": 4, "h": 3}}}},
     {{"type": "Chart", "label": "Chart", "defaults": {{"w": 8, "h": 5}}}},
     {{"type": "ReportViewer", "label": "Report Viewer", "defaults": {{"w": 12, "h": 7}}}},
     {{"type": "WebBrowser", "label": "Web Browser", "defaults": {{"w": 8, "h": 6}}}},
@@ -25291,10 +25310,71 @@ PALETTE = (
     {{"type": "RESTClient", "label": "REST Client", "defaults": {{"w": 3, "h": 1}}}},
     {{"type": "CameraView", "label": "Camera View", "defaults": {{"w": 4, "h": 4}}}},
     {{"type": "LocationSensor", "label": "Location Sensor", "defaults": {{"w": 3, "h": 1}}}},
+    {{"type": "MotionSensor", "label": "Motion Sensor", "defaults": {{"w": 3, "h": 1}}}},
+    {{"type": "OrientationSensor", "label": "Orientation Sensor", "defaults": {{"w": 3, "h": 1}}}},
     {{"type": "NotificationCenter", "label": "Notification Center", "defaults": {{"w": 3, "h": 1}}}},
     {{"type": "Animation", "label": "Animation", "defaults": {{"w": 3, "h": 1}}}},
+    {{"type": "FloatAnimation", "label": "Float Animation", "defaults": {{"w": 3, "h": 1}}}},
+    {{"type": "ColorAnimation", "label": "Color Animation", "defaults": {{"w": 3, "h": 1}}}},
+    {{"type": "PathAnimation", "label": "Path Animation", "defaults": {{"w": 3, "h": 1}}}},
     {{"type": "Effect", "label": "Effect", "defaults": {{"w": 3, "h": 1}}}},
+    {{"type": "StyleBook", "label": "Style Book", "defaults": {{"w": 3, "h": 1}}}},
+    {{"type": "StyleManager", "label": "Style Manager", "defaults": {{"w": 3, "h": 1}}}},
+    {{"type": "GestureManager", "label": "Gesture Manager", "defaults": {{"w": 3, "h": 1}}}},
+    {{"type": "Gesture", "label": "Gesture", "defaults": {{"w": 2, "h": 1}}}},
     {{"type": "Viewport3D", "label": "3D Viewport", "defaults": {{"w": 8, "h": 6}}}},
+    {{"type": "Dummy3D", "label": "3D Dummy", "defaults": {{"w": 2, "h": 2}}}},
+    {{"type": "Camera3D", "label": "3D Camera", "defaults": {{"w": 2, "h": 2}}}},
+    {{"type": "Light3D", "label": "3D Light", "defaults": {{"w": 2, "h": 2}}}},
+    {{"type": "Mesh3D", "label": "3D Mesh", "defaults": {{"w": 3, "h": 3}}}},
+    {{"type": "DatabaseConnection", "label": "Database Connection", "defaults": {{"w": 3, "h": 1}}}},
+    {{"type": "TableAdapter", "label": "Table Adapter", "defaults": {{"w": 3, "h": 1}}}},
+    {{"type": "ClientDataSet", "label": "Client Data Set", "defaults": {{"w": 3, "h": 1}}}},
+)
+COMPONENT_ANALOG_REQUIREMENTS = (
+    {{"group": "cross-target-ui", "source": "TButton", "analog": "Button"}},
+    {{"group": "cross-target-ui", "source": "TEdit", "analog": "TextBox"}},
+    {{"group": "cross-target-ui", "source": "TLabel", "analog": "Label"}},
+    {{"group": "cross-target-ui", "source": "TListBox", "analog": "ListBox"}},
+    {{"group": "cross-target-ui", "source": "TComboBox", "analog": "Select"}},
+    {{"group": "cross-target-ui", "source": "TCheckBox", "analog": "Checkbox"}},
+    {{"group": "cross-target-ui", "source": "TRadioButton", "analog": "RadioButton"}},
+    {{"group": "layouts", "source": "TLayout", "analog": "Layout"}},
+    {{"group": "layouts", "source": "TScrollBox", "analog": "ScrollBox"}},
+    {{"group": "layouts", "source": "TFlowLayout", "analog": "FlowLayout"}},
+    {{"group": "layouts", "source": "TGridLayout", "analog": "GridLayout"}},
+    {{"group": "layouts", "source": "TVerticalBoxLayout", "analog": "VerticalBoxLayout"}},
+    {{"group": "layouts", "source": "THorizontalBoxLayout", "analog": "HorizontalBoxLayout"}},
+    {{"group": "data-display", "source": "TStringGrid", "analog": "StringGrid"}},
+    {{"group": "data-display", "source": "TListView", "analog": "ListView"}},
+    {{"group": "data-display", "source": "TTreeView", "analog": "TreeView"}},
+    {{"group": "data-display", "source": "TGrid", "analog": "Grid"}},
+    {{"group": "graphics", "source": "TShape", "analog": "Shape"}},
+    {{"group": "graphics", "source": "TPath", "analog": "PathShape"}},
+    {{"group": "graphics", "source": "TRectangle", "analog": "Rectangle"}},
+    {{"group": "graphics", "source": "TEllipse", "analog": "Ellipse"}},
+    {{"group": "graphics", "source": "TLine", "analog": "Line"}},
+    {{"group": "graphics", "source": "TImage", "analog": "Image"}},
+    {{"group": "graphics", "source": "TBitmap", "analog": "Bitmap"}},
+    {{"group": "animations", "source": "TFloatAnimation", "analog": "FloatAnimation"}},
+    {{"group": "animations", "source": "TColorAnimation", "analog": "ColorAnimation"}},
+    {{"group": "animations", "source": "TPathAnimation", "analog": "PathAnimation"}},
+    {{"group": "animations", "source": "TAnimation", "analog": "Animation"}},
+    {{"group": "styles-theming", "source": "TStyleBook", "analog": "StyleBook"}},
+    {{"group": "styles-theming", "source": "TStyleManager", "analog": "StyleManager"}},
+    {{"group": "gestures", "source": "TGestureManager", "analog": "GestureManager"}},
+    {{"group": "gestures", "source": "TGesture", "analog": "Gesture"}},
+    {{"group": "sensors", "source": "TLocationSensor", "analog": "LocationSensor"}},
+    {{"group": "sensors", "source": "TMotionSensor", "analog": "MotionSensor"}},
+    {{"group": "sensors", "source": "TOrientationSensor", "analog": "OrientationSensor"}},
+    {{"group": "three-d", "source": "TViewPort3D", "analog": "Viewport3D"}},
+    {{"group": "three-d", "source": "TDummy3D", "analog": "Dummy3D"}},
+    {{"group": "three-d", "source": "TCamera3D", "analog": "Camera3D"}},
+    {{"group": "three-d", "source": "TLight3D", "analog": "Light3D"}},
+    {{"group": "three-d", "source": "TMesh3D", "analog": "Mesh3D"}},
+    {{"group": "data-access", "source": "DB", "analog": "DatabaseConnection"}},
+    {{"group": "data-access", "source": "DBTables", "analog": "TableAdapter"}},
+    {{"group": "data-access", "source": "DBClient", "analog": "ClientDataSet"}},
 )
 THIRD_PARTY_COMPONENT_SUITES = (
     {{"id": "devexpress-native", "vendor": "DevExpress", "frameworks": ("native desktop",), "license": "commercial", "categories": ("grid", "ribbon", "scheduler", "spreadsheet", "pivot", "printing"), "components": ("CxGrid", "CxRibbon", "CxScheduler", "CxSpreadsheet", "CxPivotGrid")}},
@@ -25316,6 +25396,40 @@ GRID_SIZE = 8
 def component_palette():
     """Return draggable RAD-style form components."""
     return PALETTE
+
+
+def component_analog_matrix():
+    """Return requested native component analog coverage."""
+    palette_types = {{item["type"] for item in PALETTE}}
+    return tuple(
+        {{
+            **requirement,
+            "implemented": requirement["analog"] in palette_types,
+            "contract": component_runtime_contract(requirement["analog"]) if requirement["analog"] in palette_types else None,
+        }}
+        for requirement in COMPONENT_ANALOG_REQUIREMENTS
+    )
+
+
+def component_analog_workbench():
+    """Prove all requested component analogs are present and usable."""
+    matrix = component_analog_matrix()
+    groups = tuple(sorted({{item["group"] for item in matrix}}))
+    checks = (
+        {{"id": "all_requested_analogs_present", "ok": all(item["implemented"] for item in matrix), "evidence": tuple(item for item in matrix if not item["implemented"])}},
+        {{"id": "all_requested_analogs_usable", "ok": all(item["contract"] and item["contract"]["usable"] for item in matrix), "evidence": tuple((item["source"], item["analog"]) for item in matrix if item["contract"] and item["contract"]["usable"])}},
+        {{"id": "groups_covered", "ok": {{"cross-target-ui", "layouts", "data-display", "graphics", "animations", "styles-theming", "gestures", "sensors", "three-d", "data-access"}} <= set(groups), "evidence": groups}},
+    )
+    ok = all(check["ok"] for check in checks)
+    return {{
+        "format": "appgen.generated-component-analog-workbench.v1",
+        "ok": ok,
+        "decision": "approved" if ok else "blocked",
+        "matrix": matrix,
+        "groups": groups,
+        "checks": checks,
+        "blocking_gaps": tuple(check for check in checks if not check["ok"]),
+    }}
 
 
 def third_party_component_registry():
@@ -25359,6 +25473,98 @@ def third_party_component_import_contract(metadata):
         }},
         "requires_review": True,
         "side_effects": (),
+    }}
+
+
+def component_package_contract(package_id):
+    """Return the runtime adapter contract for a curated component package."""
+    package = _component_package(package_id)
+    module = _module_name(package["id"])
+    adapters = tuple(
+        {{
+            "component": component,
+            "adapter": f"appgen.component_packages.{{module}}.{{_module_name(component)}}",
+            "design_surface": "form-designer",
+            "property_bridge": "published_properties_to_inspector",
+            "event_bridge": "published_events_to_handlers",
+            "binding_bridge": "component_bindings_to_visual_graph",
+            "render_targets": ("designer", "preview", "runtime"),
+        }}
+        for component in package["components"]
+    )
+    return {{
+        "format": "appgen.generated-component-package-contract.v1",
+        "package": package,
+        "module": f"app.component_packages.{{module}}",
+        "adapters": adapters,
+        "load_policy": component_package_load_policy(package_id),
+        "install_plan": third_party_component_install_plan((package_id,)),
+        "implemented": bool(adapters),
+    }}
+
+
+def component_package_load_policy(package_id):
+    """Return design-time package loading guardrails."""
+    package = _component_package(package_id)
+    install_plan = third_party_component_install_plan((package_id,))
+    checks = (
+        "license_accepted",
+        "version_pinned",
+        "package_hash_recorded",
+        "adapter_manifest_present",
+        "design_time_only_code_isolated",
+        "rollback_snapshot_available",
+    )
+    return {{
+        "format": "appgen.generated-component-package-load-policy.v1",
+        "package_id": package["id"],
+        "requires_review": True,
+        "side_effects": (),
+        "guards": install_plan["guards"],
+        "checks": checks,
+        "isolation": ("sandboxed_loader", "no_global_install_without_review", "per-project_manifest"),
+        "approved": install_plan["ok"] and not install_plan["unknown"] and bool(package["components"]),
+    }}
+
+
+def validate_component_package_load(package_id, request=None):
+    """Validate a package load request without performing side effects."""
+    request = request or {{}}
+    policy = component_package_load_policy(package_id)
+    accepted = set(request.get("accepted", ()))
+    missing = tuple(check for check in policy["checks"] if check not in accepted)
+    return {{
+        "format": "appgen.generated-component-package-load-validation.v1",
+        "package_id": package_id,
+        "ok": not missing and policy["approved"],
+        "missing": missing,
+        "side_effects": (),
+        "policy": policy,
+    }}
+
+
+def component_package_workbench(existing_paths=None):
+    """Prove curated component packages have usable adapters and load policies."""
+    contracts = tuple(component_package_contract(package["id"]) for package in THIRD_PARTY_COMPONENT_SUITES)
+    install_plan = third_party_component_install_plan()
+    package_files = component_package_file_manifest(existing_paths)
+    checks = (
+        {{"id": "registry_coverage", "ok": len(contracts) == len(THIRD_PARTY_COMPONENT_SUITES) and {{contract["package"]["id"] for contract in contracts}} == {{package["id"] for package in THIRD_PARTY_COMPONENT_SUITES}}, "evidence": tuple(contract["package"]["id"] for contract in contracts)}},
+        {{"id": "adapter_coverage", "ok": all(contract["adapters"] and len(contract["adapters"]) == len(contract["package"]["components"]) for contract in contracts), "evidence": tuple((contract["package"]["id"], tuple(adapter["component"] for adapter in contract["adapters"])) for contract in contracts)}},
+        {{"id": "load_policy_guards", "ok": all(contract["load_policy"]["requires_review"] and not contract["load_policy"]["side_effects"] and contract["load_policy"]["checks"] for contract in contracts), "evidence": tuple((contract["package"]["id"], contract["load_policy"]["checks"]) for contract in contracts)}},
+        {{"id": "install_plan_review", "ok": install_plan["ok"] and install_plan["requires_review"] and not install_plan["side_effects"], "evidence": install_plan}},
+        {{"id": "package_file_exports", "ok": all({{"package_contract", "install_plan", "load_policy", "adapter_contract", "validate_load_request", "test_plan"}} <= set(item["exports"]) for item in package_files), "evidence": package_files}},
+        {{"id": "generated_package_files", "ok": existing_paths is None or all(item["exists"] for item in package_files), "evidence": package_files}},
+    )
+    ok = all(check["ok"] for check in checks)
+    return {{
+        "format": "appgen.generated-component-package-workbench.v1",
+        "ok": ok,
+        "decision": "approved" if ok else "blocked",
+        "package_count": len(contracts),
+        "contracts": contracts,
+        "checks": checks,
+        "blocking_gaps": tuple(check for check in checks if not check["ok"]),
     }}
 
 
@@ -25605,7 +25811,7 @@ def component_package_file_manifest(existing_paths=None):
             "package": package["id"],
             "path": path,
             "exists": path in paths,
-            "exports": ("package_contract", "install_plan", "load_policy", "test_plan"),
+            "exports": ("package_contract", "install_plan", "load_policy", "adapter_contract", "validate_load_request", "test_plan"),
             "requires_review": True,
         }})
     return tuple(manifest)
@@ -25616,6 +25822,7 @@ def component_usability_workbench(existing_paths=None):
     contracts = component_implementation_catalog()
     component_files = component_file_manifest(existing_paths)
     package_files = component_package_file_manifest(existing_paths)
+    analog_workbench = component_analog_workbench()
     checks = (
         {{"id": "complete_catalog", "ok": len(contracts) == len(PALETTE), "evidence": {{"component_count": len(contracts)}}}},
         {{"id": "runtime_renderers", "ok": all({{"web", "mobile", "desktop"}} <= set(item["renderers"]) for item in contracts), "evidence": tuple((item["component"], tuple(item["renderers"])) for item in contracts)}},
@@ -25626,6 +25833,7 @@ def component_usability_workbench(existing_paths=None):
         {{"id": "preview_contracts", "ok": all(item["preview"]["available"] and item["usable"] for item in contracts), "evidence": tuple((item["component"], item["preview"]["preview_kind"]) for item in contracts)}},
         {{"id": "per_component_files", "ok": len(component_files) == len(contracts) and all(item["exists"] for item in component_files), "evidence": component_files}},
         {{"id": "per_package_files", "ok": len(package_files) == len(THIRD_PARTY_COMPONENT_SUITES) and all(item["exists"] for item in package_files), "evidence": package_files}},
+        {{"id": "requested_analog_coverage", "ok": analog_workbench["ok"], "evidence": analog_workbench}},
     )
     ok = all(check["ok"] for check in checks)
     return {{
@@ -25636,6 +25844,7 @@ def component_usability_workbench(existing_paths=None):
         "components": contracts,
         "component_files": component_files,
         "package_files": package_files,
+        "analog_workbench": analog_workbench,
         "checks": checks,
         "blocking_gaps": tuple(check for check in checks if not check["ok"]),
     }}
@@ -25735,15 +25944,30 @@ def _dfm_component_class(component_type):
         "Panel": "TPanel",
         "GroupBox": "TGroupBox",
         "RadioGroup": "TRadioGroup",
+        "RadioButton": "TRadioButton",
         "ListBox": "TListBox",
+        "ListView": "TListView",
         "TreeView": "TTreeView",
         "Grid": "TStringGrid",
+        "StringGrid": "TStringGrid",
         "PageControl": "TPageControl",
+        "Layout": "TLayout",
+        "ScrollBox": "TScrollBox",
+        "FlowLayout": "TFlowLayout",
+        "GridLayout": "TGridLayout",
+        "VerticalBoxLayout": "TVerticalBoxLayout",
+        "HorizontalBoxLayout": "THorizontalBoxLayout",
         "MainMenu": "TMainMenu",
         "PopupMenu": "TPopupMenu",
         "ToolBar": "TToolBar",
         "ActionList": "TActionList",
         "Image": "TImage",
+        "Shape": "TShape",
+        "PathShape": "TPath",
+        "Rectangle": "TRectangle",
+        "Ellipse": "TEllipse",
+        "Line": "TLine",
+        "Bitmap": "TBitmap",
         "Chart": "TChart",
         "ReportViewer": "TAppGenReportViewer",
         "WebBrowser": "TWebBrowser",
@@ -25753,10 +25977,26 @@ def _dfm_component_class(component_type):
         "RESTClient": "TRESTClient",
         "CameraView": "TCameraComponent",
         "LocationSensor": "TLocationSensor",
+        "MotionSensor": "TMotionSensor",
+        "OrientationSensor": "TOrientationSensor",
         "NotificationCenter": "TNotificationCenter",
         "Animation": "TFloatAnimation",
+        "FloatAnimation": "TFloatAnimation",
+        "ColorAnimation": "TColorAnimation",
+        "PathAnimation": "TPathAnimation",
         "Effect": "TShadowEffect",
+        "StyleBook": "TStyleBook",
+        "StyleManager": "TStyleManager",
+        "GestureManager": "TGestureManager",
+        "Gesture": "TGesture",
         "Viewport3D": "TViewport3D",
+        "Dummy3D": "TDummy3D",
+        "Camera3D": "TCamera3D",
+        "Light3D": "TLight3D",
+        "Mesh3D": "TMesh3D",
+        "DatabaseConnection": "TDatabase",
+        "TableAdapter": "TTable",
+        "ClientDataSet": "TClientDataSet",
     }}
     return mapping.get(component_type, f"TAppGen{{component_type}}")
 
@@ -25786,6 +26026,13 @@ def _module_name(name):
     return "_".join(part for part in "".join(chars).split("_") if part)
 
 
+def _component_package(package_id):
+    for package in THIRD_PARTY_COMPONENT_SUITES:
+        if package["id"] == package_id:
+            return package
+    raise KeyError(f"Unknown component package: {{package_id}}")
+
+
 def _local_component_paths():
     root = Path(__file__).resolve().parent
     paths = set()
@@ -25806,11 +26053,18 @@ def _component_category(component_type):
         "DatePicker": "calendar", "DateTimePicker": "calendar", "TimePicker": "calendar", "NumberInput": "input",
         "ImageUpload": "media", "FileUpload": "media", "RelationshipPicker": "relationship", "Button": "action",
         "Section": "container", "Tabs": "container", "Panel": "container", "GroupBox": "container", "RadioGroup": "choice",
-        "ListBox": "choice", "TreeView": "navigation", "Grid": "data", "PageControl": "container", "MainMenu": "menu",
+        "RadioButton": "choice", "ListBox": "choice", "ListView": "data", "TreeView": "navigation", "Grid": "data",
+        "StringGrid": "data", "PageControl": "container", "Layout": "container", "ScrollBox": "container",
+        "FlowLayout": "container", "GridLayout": "container", "VerticalBoxLayout": "container", "HorizontalBoxLayout": "container", "MainMenu": "menu",
         "PopupMenu": "menu", "ToolBar": "action", "ActionList": "action", "Image": "media", "Chart": "analytics",
+        "Shape": "graphics", "PathShape": "graphics", "Rectangle": "graphics", "Ellipse": "graphics", "Line": "graphics", "Bitmap": "graphics",
         "ReportViewer": "reports", "WebBrowser": "integration", "Timer": "nonvisual", "DataSource": "data",
         "BindingSource": "data", "RESTClient": "integration", "CameraView": "mobile", "LocationSensor": "mobile",
-        "NotificationCenter": "mobile", "Animation": "effects", "Effect": "effects", "Viewport3D": "three_d",
+        "MotionSensor": "mobile", "OrientationSensor": "mobile", "NotificationCenter": "mobile",
+        "Animation": "effects", "FloatAnimation": "effects", "ColorAnimation": "effects", "PathAnimation": "effects", "Effect": "effects",
+        "StyleBook": "theme", "StyleManager": "theme", "GestureManager": "gesture", "Gesture": "gesture",
+        "Viewport3D": "three_d", "Dummy3D": "three_d", "Camera3D": "three_d", "Light3D": "three_d", "Mesh3D": "three_d",
+        "DatabaseConnection": "data_access", "TableAdapter": "data_access", "ClientDataSet": "data_access",
     }}
     return category_map.get(component_type, "custom")
 
@@ -25835,17 +26089,21 @@ def _component_properties(component_type, category):
         "nonvisual": ("interval", "enabled", "single_shot", "jitter"),
         "mobile": ("permission", "accuracy", "channels", "capture_action"),
         "effects": ("target", "duration", "easing", "reduced_motion"),
+        "graphics": ("fill", "stroke", "stroke_width", "opacity", "path_data"),
+        "theme": ("theme", "resources", "variants", "platform_overrides"),
+        "gesture": ("gestures", "target", "threshold", "direction"),
         "three_d": ("camera", "lights", "models", "materials"),
+        "data_access": ("driver", "connection_name", "table", "fields", "offline_cache"),
     }}
     return tuple(dict.fromkeys(common + by_category.get(category, ("props",))))
 
 
 def _property_editor_type(name):
-    if name in ("visible", "enabled", "required", "readonly", "preview", "multi_select", "lazy_load", "auto_open", "single_shot", "reduced_motion"):
+    if name in ("visible", "enabled", "required", "readonly", "preview", "multi_select", "lazy_load", "auto_open", "single_shot", "reduced_motion", "active", "dark_mode", "offline_cache"):
         return "boolean"
-    if name in ("tab_order", "columns", "max_size_mb", "timeout", "interval", "duration", "jitter"):
+    if name in ("tab_order", "columns", "max_size_mb", "timeout", "interval", "duration", "jitter", "stroke_width", "opacity", "threshold"):
         return "number"
-    if name in ("items", "actions", "children", "filters", "events", "roles", "shortcuts", "icons", "series", "parameters", "export_formats", "headers", "channels", "lights", "models", "materials"):
+    if name in ("items", "actions", "children", "filters", "events", "roles", "shortcuts", "icons", "series", "parameters", "export_formats", "headers", "channels", "lights", "models", "materials", "gestures", "fields"):
         return "collection"
     return "string"
 
@@ -25887,19 +26145,25 @@ def _component_events(component_type, category):
         "nonvisual": ("OnTimer", "OnStart", "OnStop"),
         "mobile": ("OnPermission", "OnCapture", "OnError"),
         "effects": ("OnStart", "OnFinish", "OnCancel"),
+        "graphics": ("OnPaint", "OnHitTest", "OnResize"),
+        "theme": ("OnApply", "OnChange", "OnFallback"),
+        "gesture": ("OnGesture", "OnRecognize", "OnConflict"),
         "three_d": ("OnLoad", "OnRender", "OnFrame"),
+        "data_access": ("OnConnect", "OnOpen", "OnError"),
     }}
     return base + by_category.get(category, ("OnChange",))
 
 
 def _component_validation_rules(component_type, category):
     rules = ["within_canvas_bounds", "stable_component_id", "known_property_names"]
-    if category in ("input", "choice", "calendar", "relationship", "data", "analytics", "reports", "media"):
+    if category in ("input", "choice", "calendar", "relationship", "data", "analytics", "reports", "media", "data_access"):
         rules.append("binding_or_field_reviewed")
-    if category in ("mobile", "integration", "data"):
+    if category in ("mobile", "integration", "data", "data_access"):
         rules.append("permission_or_secret_reviewed")
-    if category in ("effects", "three_d"):
+    if category in ("effects", "three_d", "graphics"):
         rules.append("performance_budget_declared")
+    if category in ("theme", "gesture"):
+        rules.append("target_surface_declared")
     if category == "menu":
         rules.append("role_visibility_reviewed")
     return tuple(rules)
@@ -26084,6 +26348,7 @@ def rad_parity_workbench(existing_paths=()):
     required = ("app/form_designer.py", "app/templates/appgen_form_designer.html")
     missing = tuple(path for path in required if path not in existing)
     install_plan = third_party_component_install_plan()
+    package_workbench = component_package_workbench()
     categories = {{category for suite in THIRD_PARTY_COMPONENT_SUITES for category in suite["categories"]}}
     palette_types = {{item["type"] for item in PALETTE}}
     checks = (
@@ -26098,8 +26363,8 @@ def rad_parity_workbench(existing_paths=()):
         {{"id": "design_time_package_installation", "ok": install_plan["ok"] and install_plan["requires_review"], "evidence": install_plan}},
         {{"id": "mobile_native_device_api_coverage", "ok": {{"camera", "location", "push_notifications", "secure_storage"}} <= set(mobile_native_api_contract()["apis"]), "evidence": mobile_native_api_contract()}},
         {{"id": "cross_target_animation_effects_3d_depth", "ok": bool(cross_target_visual_depth_contract()["animation"]) and bool(cross_target_visual_depth_contract()["three_d"]), "evidence": cross_target_visual_depth_contract()}},
-        {{"id": "third_party_component_ecosystem", "ok": install_plan["ok"] and {{"grid", "reports", "charts", "database", "network", "animation"}} <= categories, "evidence": {{"packages": install_plan["packages"], "categories": tuple(sorted(categories))}}}},
-        {{"id": "route_surface", "ok": not missing, "evidence": {{"routes": ("/form-designer/rad-parity.json", "/form-designer/third-party-components.json", "/form-designer/component-usability.json", "/form-designer/pascal-runtime.json")}}}},
+        {{"id": "third_party_component_ecosystem", "ok": install_plan["ok"] and {{"grid", "reports", "charts", "database", "network", "animation"}} <= categories and package_workbench["ok"], "evidence": {{"packages": install_plan["packages"], "categories": tuple(sorted(categories)), "package_workbench": package_workbench}}}},
+        {{"id": "route_surface", "ok": not missing, "evidence": {{"routes": ("/form-designer/rad-parity.json", "/form-designer/third-party-components.json", "/form-designer/component-usability.json", "/form-designer/component-analogs.json", "/form-designer/pascal-runtime.json")}}}},
     )
     ok = all(check["ok"] for check in checks)
     return {{
@@ -26287,7 +26552,7 @@ def form_designer_workbench(existing_paths=()):
         {{
             "id": "route_surface",
             "ok": not missing,
-            "evidence": {{"routes": ("/form-designer/", "/form-designer/forms.json", "/form-designer/drop", "/form-designer/workbench.json", "/form-designer/release-gate.json", "/form-designer/rad-parity.json", "/form-designer/third-party-components.json", "/form-designer/component-usability.json", "/form-designer/pascal-runtime.json")}},
+            "evidence": {{"routes": ("/form-designer/", "/form-designer/forms.json", "/form-designer/drop", "/form-designer/workbench.json", "/form-designer/release-gate.json", "/form-designer/rad-parity.json", "/form-designer/third-party-components.json", "/form-designer/component-usability.json", "/form-designer/component-analogs.json", "/form-designer/pascal-runtime.json")}},
         }},
         {{
             "id": "rad_parity_workbench",
@@ -26338,6 +26603,10 @@ class FormDesignerView(BaseView):
     @expose("/component-usability.json")
     def component_usability_json(self):
         return jsonify(component_usability_workbench())
+
+    @expose("/component-analogs.json")
+    def component_analogs_json(self):
+        return jsonify(component_analog_workbench())
 
     @expose("/pascal-runtime.json")
     def pascal_runtime_json(self):
@@ -43642,6 +43911,7 @@ def validate_form_designer_artifacts() -> None:
         or '@expose("/rad-parity.json")' not in contract
         or '@expose("/third-party-components.json")' not in contract
         or '@expose("/component-usability.json")' not in contract
+        or '@expose("/component-analogs.json")' not in contract
         or '@expose("/pascal-runtime.json")' not in contract
     ):
         fail("form designer must expose RAD parity and third-party component ecosystem contracts")
@@ -43650,7 +43920,7 @@ def validate_form_designer_artifacts() -> None:
         fail("form designer template must expose drag-and-drop controls")
     if "getBoundingClientRect" not in template or "Inspector" not in template or "Release Gate JSON" not in template:
         fail("form designer template must capture drop coordinates, property inspector, and release gate")
-    if "RAD Parity JSON" not in template or "Third-party Components JSON" not in template or "Component Usability JSON" not in template or "Pascal Runtime JSON" not in template:
+    if "RAD Parity JSON" not in template or "Third-party Components JSON" not in template or "Component Usability JSON" not in template or "Component Analogs JSON" not in template or "Pascal Runtime JSON" not in template:
         fail("form designer template must expose RAD parity and third-party component routes")
 
 

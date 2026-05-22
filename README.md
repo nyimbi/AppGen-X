@@ -296,6 +296,9 @@ Generated apps include Studio contracts for:
 - Generated component modules under `app/component_contracts/<component>.py`
   export `contract()`, `render()`, `validate_props()`, `preview()`, and
   `test_plan()` for each built-in component.
+- A component analog workbench covers requested cross-target controls, layouts,
+  data display, graphics, animation, theming, gestures, sensors, 3D surfaces,
+  and data-access components with usable generated contracts.
 - Curated third-party component registry for useful commercial and open-source
   suites, plus reviewed package import/install plans for additional vendors.
 - Generated package modules under `app/component_packages/<package>.py` export

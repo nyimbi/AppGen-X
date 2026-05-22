@@ -74,6 +74,11 @@ from pyAppGen.erp import erp_starter_manifest
 from pyAppGen.erp import erp_template_catalog
 from pyAppGen.erp import erp_template_release_audit
 from pyAppGen.form_designer import apply_drop
+from pyAppGen.form_designer import component_analog_matrix
+from pyAppGen.form_designer import component_analog_workbench
+from pyAppGen.form_designer import component_package_contract
+from pyAppGen.form_designer import component_package_load_policy
+from pyAppGen.form_designer import component_package_workbench
 from pyAppGen.form_designer import component_palette
 from pyAppGen.form_designer import component_usability_workbench
 from pyAppGen.form_designer import detect_overlaps
@@ -95,6 +100,7 @@ from pyAppGen.form_designer import snap_drop
 from pyAppGen.form_designer import third_party_component_import_contract
 from pyAppGen.form_designer import third_party_component_install_plan
 from pyAppGen.form_designer import third_party_component_registry
+from pyAppGen.form_designer import validate_component_package_load
 from pyAppGen.form_designer import validate_form_design
 from pyAppGen.ideas import ideas_document_check
 from pyAppGen.ideas import ideas_generation_smoke_audit
@@ -768,6 +774,24 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     assert {"Grid", "TreeView", "MainMenu", "PopupMenu", "CameraView", "Viewport3D"} <= {
         item["component"] for item in palette
     }
+    requested_analogs = {
+        "Button", "TextBox", "Label", "ListBox", "Select", "Checkbox", "RadioButton",
+        "Layout", "ScrollBox", "FlowLayout", "GridLayout", "VerticalBoxLayout", "HorizontalBoxLayout",
+        "StringGrid", "ListView", "TreeView", "Grid",
+        "Shape", "PathShape", "Rectangle", "Ellipse", "Line", "Image", "Bitmap",
+        "FloatAnimation", "ColorAnimation", "PathAnimation", "Animation",
+        "StyleBook", "StyleManager", "GestureManager", "Gesture",
+        "LocationSensor", "MotionSensor", "OrientationSensor",
+        "Viewport3D", "Dummy3D", "Camera3D", "Light3D", "Mesh3D",
+        "DatabaseConnection", "TableAdapter", "ClientDataSet",
+    }
+    assert requested_analogs <= {item["component"] for item in palette}
+    analog_matrix = component_analog_matrix()
+    assert {item["source"] for item in analog_matrix} >= {"TButton", "TEdit", "TStyleBook", "TGesture", "DBClient"}
+    analog_workbench = component_analog_workbench()
+    assert analog_workbench["format"] == "appgen.component-analog-workbench.v1"
+    assert analog_workbench["ok"] is True
+    assert {"layouts", "graphics", "sensors", "three-d", "data-access"} <= set(analog_workbench["groups"])
     third_party_registry = third_party_component_registry()
     assert {"devexpress-native", "tms-fnc", "fastreport", "teechart", "indy"} <= {
         item["id"] for item in third_party_registry
@@ -776,6 +800,20 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     assert install_plan["ok"] is True
     assert install_plan["requires_review"] is True
     assert install_plan["side_effects"] == ()
+    package_contract = component_package_contract("devexpress-native")
+    assert package_contract["format"] == "appgen.component-package-contract.v1"
+    assert package_contract["implemented"] is True
+    assert package_contract["adapters"]
+    package_policy = component_package_load_policy("devexpress-native")
+    assert package_policy["requires_review"] is True
+    assert package_policy["side_effects"] == ()
+    assert validate_component_package_load("devexpress-native")["ok"] is False
+    assert validate_component_package_load(
+        "devexpress-native", {"accepted": package_policy["checks"]}
+    )["ok"] is True
+    package_workbench = component_package_workbench()
+    assert package_workbench["format"] == "appgen.component-package-workbench.v1"
+    assert package_workbench["ok"] is True
     assert third_party_component_import_contract(
         {
             "id": "custom-suite",
@@ -799,6 +837,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "preview_contracts",
         "per_component_files",
         "per_package_files",
+        "requested_analog_coverage",
     } == {check["id"] for check in usability["checks"]}
     assert all({"web", "mobile", "desktop"} <= set(item["renderers"]) for item in usability["components"])
     assert all(item["path"].startswith("app/component_contracts/") for item in usability["component_files"])
@@ -8554,6 +8593,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert "RAD Parity JSON" in (output_dir / "templates" / "appgen_form_designer.html").read_text()
     assert "Third-party Components JSON" in (output_dir / "templates" / "appgen_form_designer.html").read_text()
     assert "Component Usability JSON" in (output_dir / "templates" / "appgen_form_designer.html").read_text()
+    assert "Component Analogs JSON" in (output_dir / "templates" / "appgen_form_designer.html").read_text()
     assert "Pascal Runtime JSON" in (output_dir / "templates" / "appgen_form_designer.html").read_text()
     workbench = form_designer.form_designer_workbench(
         {"app/form_designer.py", "app/templates/appgen_form_designer.html"}
@@ -8583,6 +8623,9 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert "/form-designer/component-usability.json" in next(
         check["evidence"]["routes"] for check in workbench["checks"] if check["id"] == "route_surface"
     )
+    assert "/form-designer/component-analogs.json" in next(
+        check["evidence"]["routes"] for check in workbench["checks"] if check["id"] == "route_surface"
+    )
     assert "/form-designer/pascal-runtime.json" in next(
         check["evidence"]["routes"] for check in workbench["checks"] if check["id"] == "route_surface"
     )
@@ -8605,6 +8648,12 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert "control_to_field" in form_designer.livebindings_contract()["binding_edges"]
     assert "camera" in form_designer.mobile_native_api_contract()["apis"]
     assert "viewport3d" in form_designer.cross_target_visual_depth_contract()["three_d"]
+    generated_analogs = form_designer.component_analog_workbench()
+    assert generated_analogs["format"] == "appgen.generated-component-analog-workbench.v1"
+    assert generated_analogs["ok"] is True
+    assert {"TButton", "TEdit", "TStyleBook", "TGesture", "DBClient"} <= {
+        item["source"] for item in generated_analogs["matrix"]
+    }
     generated_usability = form_designer.component_usability_workbench()
     assert generated_usability["format"] == "appgen.generated-component-usability-workbench.v1"
     assert generated_usability["ok"] is True
@@ -8630,6 +8679,12 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert component_package.package_contract()["package"]["id"] == "devexpress-native"
     assert component_package.install_plan()["side_effects"] == ()
     assert component_package.load_policy()["requires_review"] is True
+    assert component_package.adapter_contract()
+    assert component_package.validate_load_request()["ok"] is False
+    assert component_package.validate_load_request(
+        {"accepted": component_package.load_policy()["checks"]}
+    )["ok"] is True
+    assert "adapter_contract_declared" in component_package.test_plan()["tests"]
     assert len(workbench["forms"]) >= 2
     assert any(item["type"] == "DatePicker" for item in workbench["field_mappings"])
     assert form_designer.form_designer_workbench({"app/form_designer.py"})["ok"] is False
