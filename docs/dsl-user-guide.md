@@ -96,6 +96,8 @@ Use `schema_source_example_audit()` when validating source imports. It creates
 small DBML, SQL, PonyORM, live SQLite database, and DSL examples, runs the real
 adapters, and verifies that every family produces an `AppSchema` with tables,
 relations, fingerprints, fidelity reports, and generation commands.
+Run `appgen --schema-source-audit` to emit the same release proof as JSON from
+the command line.
 
 Use `required` for fields that must be entered. Use `search` on fields that
 should appear in generated search contracts. Use `hidden` for generated or

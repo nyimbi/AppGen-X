@@ -35,6 +35,7 @@ from .schema import load_schema
 from .schema import normalize_platform_targets
 from .schema import schema_from_metadata
 from .schema import schema_source_contract
+from .schema import schema_source_example_audit
 from .utils import map_pgsql_datatypes
 from .utils import snake_to_label
 from .utils import snake_to_pascal
@@ -46808,6 +46809,14 @@ def get_metadata(idb):
     type=click.Path(exists=True, dir_okay=False, path_type=Path),
     help="Format an AppGen DSL file in place and print JSON feedback.",
 )
+@click.option(
+    "--schema-source-audit",
+    is_flag=True,
+    help=(
+        "Print JSON proof that DBML, SQL, PonyORM, live DB, and DSL sources "
+        "normalize correctly."
+    ),
+)
 @click.pass_context
 def main(
     ctx,
@@ -46822,17 +46831,58 @@ def main(
     lint_dsl_path,
     fix_dsl_path,
     format_dsl_path,
+    schema_source_audit,
 ):
     """Generate a Flask-AppBuilder app package from a database schema."""
     schema_sources = [
         path for path in (dbml_path, sql_path, pony_path, dsl_path) if path is not None
     ]
-    if not any([writedir, database_url, idatabase, wdatabase, lint_dsl_path, fix_dsl_path, format_dsl_path, *schema_sources]):
+    utility_options = [
+        lint_dsl_path,
+        fix_dsl_path,
+        format_dsl_path,
+        schema_source_audit,
+    ]
+    if not any(
+        [writedir, database_url, idatabase, wdatabase, *utility_options, *schema_sources]
+    ):
         click.echo(ctx.get_help())
         ctx.exit(0)
 
+    if schema_source_audit:
+        if any(
+            [
+                writedir,
+                database_url,
+                idatabase,
+                wdatabase,
+                lint_dsl_path,
+                fix_dsl_path,
+                format_dsl_path,
+                *schema_sources,
+            ]
+        ):
+            raise click.UsageError(
+                "--schema-source-audit cannot be combined with generation or DSL "
+                "utility options."
+            )
+        result = schema_source_example_audit()
+        click.echo(json.dumps(result, indent=2, sort_keys=True, default=list))
+        ctx.exit(0 if result["ok"] else 1)
+
     if lint_dsl_path is not None:
-        if any([writedir, database_url, idatabase, wdatabase, fix_dsl_path, format_dsl_path, *schema_sources]):
+        if any(
+            [
+                writedir,
+                database_url,
+                idatabase,
+                wdatabase,
+                fix_dsl_path,
+                format_dsl_path,
+                schema_source_audit,
+                *schema_sources,
+            ]
+        ):
             raise click.UsageError("--lint-dsl cannot be combined with generation options.")
         from .dsl import lint_dsl_file
 
@@ -46841,7 +46891,17 @@ def main(
         ctx.exit(0 if result["ok"] else 1)
 
     if fix_dsl_path is not None:
-        if any([writedir, database_url, idatabase, wdatabase, format_dsl_path, *schema_sources]):
+        if any(
+            [
+                writedir,
+                database_url,
+                idatabase,
+                wdatabase,
+                format_dsl_path,
+                schema_source_audit,
+                *schema_sources,
+            ]
+        ):
             raise click.UsageError("--fix-dsl cannot be combined with generation options.")
         from .dsl import fix_dsl_file
 
@@ -46855,7 +46915,16 @@ def main(
         ctx.exit(0 if result["after"]["ok"] else 1)
 
     if format_dsl_path is not None:
-        if any([writedir, database_url, idatabase, wdatabase, *schema_sources]):
+        if any(
+            [
+                writedir,
+                database_url,
+                idatabase,
+                wdatabase,
+                schema_source_audit,
+                *schema_sources,
+            ]
+        ):
             raise click.UsageError("--format-dsl cannot be combined with generation options.")
         from .dsl import format_dsl_file
 

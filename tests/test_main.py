@@ -60,6 +60,26 @@ def test_main_succeeds(runner: CliRunner) -> None:
     assert result.exit_code == 0
 
 
+def test_schema_source_audit_cli_reports_all_sources(runner: CliRunner) -> None:
+    """The CLI exposes release proof for every supported source family."""
+    result = runner.invoke(__main__.main, ["--schema-source-audit"])
+
+    assert result.exit_code == 0
+    report = json.loads(result.output)
+    assert report["format"] == "appgen.schema-source-example-audit.v1"
+    assert report["ok"] is True
+    assert {"dbml", "sql", "ponyorm", "database", "dsl"} == {
+        row["source_kind"] for row in report["rows"]
+    }
+    assert all(row["ok"] and row["checks"]["fidelity"] for row in report["rows"])
+    assert any(
+        row["source_kind"] == "database"
+        and row["import_command"]
+        == "appgen --database-url postgresql+psycopg2://user@host/db --writedir app"
+        for row in report["rows"]
+    )
+
+
 def test_dsl_linter_reports_semantic_feedback(runner: CliRunner, tmp_path) -> None:
     """The DSL linter validates syntax, semantics, and CLI JSON output."""
     source = """

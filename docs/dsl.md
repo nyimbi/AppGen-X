@@ -178,6 +178,11 @@ Use `schema_source_example_audit()` during release review to parse concrete DBML
 SQL, PonyORM, live SQLite database, and DSL examples through the real adapters.
 The audit proves each source family produces an `AppSchema` with tables,
 relations, fingerprints, fidelity reports, and generator commands.
+The same proof is available from the CLI:
+
+```console
+appgen --schema-source-audit
+```
 
 ## Shape
 
