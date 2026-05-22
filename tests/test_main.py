@@ -2948,6 +2948,27 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
             "cookiecutter/{{cookiecutter.project_slug}}/app/__init__.py",
         }
     )["ok"] is True
+    packaging_gate = appgen_package.packaging_release_gate(
+        {
+            "pyproject.toml",
+            "MANIFEST.in",
+            "README.md",
+            "requirements.txt",
+            "app/__init__.py",
+            "app/appgen.json",
+            "app/templates/my_index.html",
+            "app_custom/extensions.py",
+            "cookiecutter/cookiecutter.json",
+            "cookiecutter/{{cookiecutter.project_slug}}/pyproject.toml",
+            "cookiecutter/{{cookiecutter.project_slug}}/app/__init__.py",
+        }
+    )
+    assert packaging_gate["format"] == "appgen.packaging-release-gate.v1"
+    assert packaging_gate["ok"] is True
+    assert {"build_metadata", "publish_metadata", "fab_extension", "cookiecutter_template", "quality_entrypoint"} <= {
+        gate["gate"] for gate in packaging_gate["gates"]
+    }
+    assert appgen_package.packaging_release_gate({"pyproject.toml"})["ok"] is False
     assert set(generated_coverage.coverage_matrix()) == {"Author", "Book"}
     assert set(generated_coverage.workflow_coverage_matrix()) == {"Publish"}
     publish_coverage = generated_coverage.workflow_coverage_matrix()["Publish"]

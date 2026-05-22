@@ -7504,6 +7504,29 @@ def packaging_check(existing_paths):
     }}
 
 
+def packaging_release_gate(existing_paths=()):
+    """Return release readiness for generated packaging and template artifacts."""
+    readiness = packaging_check(existing_paths)
+    package = package_metadata()
+    extension = fab_extension_contract()
+    cookiecutter = cookiecutter_context()
+    gates = (
+        {{"gate": "artifacts", "ok": readiness["ok"], "missing": readiness["missing"]}},
+        {{"gate": "build_metadata", "ok": package["package_name"].startswith("appgen-") and package["build_command"] == "python -m build" and package["entry_point"] == "appgen-quality", "package": package}},
+        {{"gate": "publish_metadata", "ok": package["publish_command"].startswith("python -m twine upload") and bool(package["tables"]), "package": package}},
+        {{"gate": "fab_extension", "ok": extension["module"] == "app" and extension["custom_hooks"] == "app_custom.extensions" and extension["templates"] == "app/templates", "extension": extension}},
+        {{"gate": "cookiecutter_template", "ok": cookiecutter["project_slug"].startswith("appgen_") and cookiecutter["package_name"] == PACKAGE_NAME and "project_name" in cookiecutter, "cookiecutter": cookiecutter}},
+        {{"gate": "quality_entrypoint", "ok": package["entry_point"] == "appgen-quality", "command": "quality_command"}},
+    )
+    ok = all(gate["ok"] for gate in gates)
+    return {{
+        "format": "appgen.packaging-release-gate.v1",
+        "ok": ok,
+        "decision": "approved" if ok else "blocked",
+        "gates": gates,
+    }}
+
+
 def quality_command():
     """Flask CLI entry point that runs the generated quality gate."""
     import subprocess
@@ -36185,8 +36208,8 @@ def validate_packaging_artifacts() -> None:
     if "recursive-include app/templates" not in manifest or "recursive-include cookiecutter" not in manifest:
         fail("MANIFEST.in must include templates, static assets, docs, migrations, and cookiecutter files")
     contract = (ROOT / "appgen_package.py").read_text()
-    if "package_metadata" not in contract or "fab_extension_contract" not in contract or "cookiecutter_context" not in contract:
-        fail("package contract must expose package, FAB extension, and Cookiecutter metadata")
+    if "package_metadata" not in contract or "fab_extension_contract" not in contract or "cookiecutter_context" not in contract or "packaging_release_gate" not in contract:
+        fail("package contract must expose package, FAB extension, Cookiecutter metadata, and release gates")
     cookie = json.loads((ROOT / "cookiecutter" / "cookiecutter.json").read_text())
     if "project_slug" not in cookie or not (ROOT / "cookiecutter" / "{{cookiecutter.project_slug}}" / "app" / "__init__.py").exists():
         fail("cookiecutter template must expose project context and app scaffold")
@@ -38035,6 +38058,37 @@ def test_generated_runtime_helpers():
         }
     )["ok"] is True
     assert extensions.extension_release_gate({"app/extensions.py"})["ok"] is False
+    assert appgen_package.packaging_release_gate(
+        {
+            "pyproject.toml",
+            "MANIFEST.in",
+            "README.md",
+            "requirements.txt",
+            "app/__init__.py",
+            "app/appgen.json",
+            "app/templates/my_index.html",
+            "app_custom/extensions.py",
+            "cookiecutter/cookiecutter.json",
+            "cookiecutter/{{cookiecutter.project_slug}}/pyproject.toml",
+            "cookiecutter/{{cookiecutter.project_slug}}/app/__init__.py",
+        }
+    )["format"] == "appgen.packaging-release-gate.v1"
+    assert appgen_package.packaging_release_gate(
+        {
+            "pyproject.toml",
+            "MANIFEST.in",
+            "README.md",
+            "requirements.txt",
+            "app/__init__.py",
+            "app/appgen.json",
+            "app/templates/my_index.html",
+            "app_custom/extensions.py",
+            "cookiecutter/cookiecutter.json",
+            "cookiecutter/{{cookiecutter.project_slug}}/pyproject.toml",
+            "cookiecutter/{{cookiecutter.project_slug}}/app/__init__.py",
+        }
+    )["ok"] is True
+    assert appgen_package.packaging_release_gate({"pyproject.toml"})["ok"] is False
     first_table = data_exchange.exchange_catalog()[0]["table"]
     assert data_exchange.csv_template(first_table)
     assert data_exchange.exchange_check(

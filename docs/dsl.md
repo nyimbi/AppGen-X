@@ -294,7 +294,10 @@ apps include:
   treated as release-ready.
 - `pyproject.toml`, `MANIFEST.in`, `appgen_package.py`, and `cookiecutter/`
   with publishable package metadata, a quality entry point, FAB extension
-  metadata, and a reusable Cookiecutter scaffold for new generated apps.
+  metadata, and a reusable Cookiecutter scaffold for new generated apps. A
+  generated packaging release gate proves build metadata, publish metadata, FAB
+  extension handoff, Cookiecutter context, quality entry point, and required
+  package artifacts.
 - `babel.cfg`, `i18n.py`, `appgen_i18n.html`, and
   `translations/en/LC_MESSAGES/messages.po` starter catalogs generated from
   app, table, field, workflow, and role labels, plus locale negotiation,

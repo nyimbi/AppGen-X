@@ -466,6 +466,10 @@ Use `/extensions/release-gate.json` or `extension_release_gate()` to prove
 custom-code extensibility is ready: the gate checks generated artifacts, stable
 hook catalogs, table lifecycle hooks, generated-rule dispatch, custom-module
 wiring, packaging handoff, and hook category coverage.
+Use `packaging_release_gate()` in `appgen_package.py` before distributing a
+generated app. The gate checks build metadata, publish metadata, FAB extension
+handoff, Cookiecutter context, the generated quality entry point, and required
+package artifacts.
 
 Use `/runtime-assurance/excellence-gate.json` as the final generated-app
 quality decision. It aggregates the release gate into seven explicit product
