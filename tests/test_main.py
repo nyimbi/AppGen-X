@@ -1044,6 +1044,7 @@ def test_generate_app_from_sqlite_schema_compiles(tmp_path) -> None:
     assert "platform.native" in {item["key"] for item in manifest["capabilities"]}
     capabilities_by_key = {item["key"]: item for item in manifest["capabilities"]}
     assert capabilities_by_key["api.documentation"]["status"] == "implemented"
+    assert capabilities_by_key["api.openapi"]["status"] == "implemented"
     assert capabilities_by_key["platform.targets"]["status"] == "implemented"
     assert capabilities_by_key["platform.native"]["status"] == "implemented"
     assert capabilities_by_key["platform.frontends"]["status"] == "implemented"
@@ -2747,6 +2748,27 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert {"openapi_version", "path_catalog", "operation_contracts", "component_schemas", "security_scheme"} <= {
         gate["gate"] for gate in openapi_gate["gates"]
     }
+    assert "Workbench JSON" in (output_dir / "templates" / "appgen_openapi.html").read_text()
+    openapi_workbench = openapi.openapi_workbench(
+        {"app/openapi.py", "docs/openapi.json", "app/templates/appgen_openapi.html"}
+    )
+    assert openapi_workbench["format"] == "appgen.openapi-workbench.v1"
+    assert openapi_workbench["ok"] is True
+    assert openapi_workbench["decision"] == "approved"
+    assert {
+        "artifact_coverage",
+        "openapi_version",
+        "path_catalog",
+        "operation_contracts",
+        "component_schemas",
+        "security_scheme",
+        "release_gate",
+        "route_surface",
+    } == {check["id"] for check in openapi_workbench["checks"]}
+    assert "/openapi/workbench.json" in next(
+        check["evidence"]["routes"] for check in openapi_workbench["checks"] if check["id"] == "route_surface"
+    )
+    assert openapi.openapi_workbench({"app/openapi.py"})["ok"] is False
     assert openapi.openapi_release_gate({"app/openapi.py"})["ok"] is False
     docs_openapi = json.loads((tmp_path / "docs" / "openapi.json").read_text())
     assert docs_openapi["openapi"] == "3.1.0"

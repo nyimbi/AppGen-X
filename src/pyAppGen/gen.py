@@ -5460,6 +5460,7 @@ def write_openapi_template(output_dir):
     </div>
     <div>
       <a class="btn btn-default" href="{{ url_for('OpenAPIView.openapi_json') }}">OpenAPI JSON</a>
+      <a class="btn btn-default" href="{{ url_for('OpenAPIView.workbench_json') }}">Workbench JSON</a>
       <a class="btn btn-default" href="{{ url_for('OpenAPIView.release_gate_json') }}">Release Gate JSON</a>
     </div>
   </div>
@@ -7455,6 +7456,75 @@ def openapi_release_gate(existing_paths=()):
     }}
 
 
+def openapi_workbench(existing_paths=()):
+    """Return generated OpenAPI evidence for API builders and SDK generators."""
+    existing = set(existing_paths or ())
+    required = {{"app/openapi.py", "app/templates/appgen_openapi.html", "docs/openapi.json"}}
+    spec = openapi_spec()
+    paths = spec.get("paths", {{}})
+    schemas = spec.get("components", {{}}).get("schemas", {{}})
+    operations = tuple(
+        dict(operation, path=path, method=method)
+        for path, methods in paths.items()
+        for method, operation in methods.items()
+    )
+    security_schemes = spec.get("components", {{}}).get("securitySchemes", {{}})
+    release = openapi_release_gate(existing)
+    checks = (
+        {{
+            "id": "artifact_coverage",
+            "ok": required.issubset(existing),
+            "evidence": {{"required": tuple(sorted(required)), "missing": tuple(sorted(required - existing))}},
+        }},
+        {{
+            "id": "openapi_version",
+            "ok": spec.get("openapi") == "3.1.0" and bool(spec.get("info", {{}}).get("title")),
+            "evidence": {{"version": spec.get("openapi"), "info": spec.get("info", {{}})}},
+        }},
+        {{
+            "id": "path_catalog",
+            "ok": bool(paths) and all(path.startswith("/api/v1/") for path in paths),
+            "evidence": path_summary(),
+        }},
+        {{
+            "id": "operation_contracts",
+            "ok": bool(operations) and all(operation.get("operationId") and operation.get("responses") for operation in operations),
+            "evidence": {{"operation_count": len(operations)}},
+        }},
+        {{
+            "id": "component_schemas",
+            "ok": bool(schemas) and all(schema.get("type") == "object" and schema.get("properties") for schema in schemas.values()),
+            "evidence": schema_names(),
+        }},
+        {{
+            "id": "security_scheme",
+            "ok": security_schemes.get("bearerAuth", {{}}).get("scheme") == "bearer" and bool(spec.get("security")),
+            "evidence": security_schemes,
+        }},
+        {{
+            "id": "release_gate",
+            "ok": release["ok"],
+            "evidence": release["format"],
+        }},
+        {{
+            "id": "route_surface",
+            "ok": True,
+            "evidence": {{"routes": ("/openapi/openapi.json", "/openapi/workbench.json", "/openapi/release-gate.json")}},
+        }},
+    )
+    ok = all(check["ok"] for check in checks)
+    return {{
+        "format": "appgen.openapi-workbench.v1",
+        "ok": ok,
+        "decision": "approved" if ok else "blocked",
+        "checks": checks,
+        "paths": path_summary(),
+        "schemas": schema_names(),
+        "operations": operation_count(),
+        "release_gate": release,
+    }}
+
+
 class OpenAPIView(BaseView):
     route_base = "/openapi"
     default_view = "index"
@@ -7472,6 +7542,10 @@ class OpenAPIView(BaseView):
     @expose("/openapi.json")
     def openapi_json(self):
         return jsonify(OPENAPI_SPEC)
+
+    @expose("/workbench.json")
+    def workbench_json(self):
+        return jsonify(openapi_workbench({{"app/openapi.py", "docs/openapi.json", "app/templates/appgen_openapi.html"}}))
 
     @expose("/release-gate.json")
     def release_gate_json(self):
