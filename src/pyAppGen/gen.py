@@ -32714,6 +32714,33 @@ def scaffold_check(existing_paths):
     required = tuple(spec["path"] for spec in SDK_TARGETS.values()) + ("sdks/appgen_sdks.py",)
     missing = tuple(path for path in required if path not in existing)
     return {{"ok": not missing, "missing": missing, "targets": sdk_targets()}}
+
+
+def sdk_release_gate(existing_paths=(), openapi_paths=()):
+    """Return release readiness for generated multi-language SDKs."""
+    readiness = scaffold_check(existing_paths)
+    targets = sdk_targets()
+    routes = sdk_routes()
+    method_catalog = tuple(
+        {{"table": table_name, "endpoint": endpoint, "methods": client_method_names(table_name)}}
+        for table_name, endpoint in routes
+    )
+    expected_openapi_paths = tuple(endpoint if endpoint.endswith("/") else endpoint + "/" for _, endpoint in routes)
+    available_openapi_paths = set(openapi_paths or expected_openapi_paths)
+    gates = (
+        {{"gate": "artifacts", "ok": readiness["ok"], "missing": readiness["missing"]}},
+        {{"gate": "target_matrix", "ok": {{"python", "javascript", "java", "csharp"}} <= set(targets) and all(SDK_TARGETS[target]["capabilities"] == ("list", "retrieve", "create", "update", "delete") for target in targets), "targets": tuple(sdk_plan(target) for target in targets)}},
+        {{"gate": "route_catalog", "ok": bool(routes) and all(endpoint.startswith("/api/v1/") for _, endpoint in routes), "routes": routes}},
+        {{"gate": "client_methods", "ok": bool(method_catalog) and all({{"list", "retrieve", "create", "update", "delete"}} <= set(item["methods"]) for item in method_catalog), "methods": method_catalog}},
+        {{"gate": "openapi_alignment", "ok": all(path in available_openapi_paths for path in expected_openapi_paths), "expected_paths": expected_openapi_paths}},
+    )
+    ok = all(gate["ok"] for gate in gates)
+    return {{
+        "format": "appgen.sdk-release-gate.v1",
+        "ok": ok,
+        "decision": "approved" if ok else "blocked",
+        "gates": gates,
+    }}
 '''
 
 
@@ -35562,8 +35589,8 @@ def validate_emerging_artifacts() -> None:
 
 def validate_sdk_artifacts() -> None:
     contract = (ROOT / "sdks" / "appgen_sdks.py").read_text()
-    if "sdk_targets" not in contract or "client_method_names" not in contract:
-        fail("SDK contract must expose targets and generated method names")
+    if "sdk_targets" not in contract or "client_method_names" not in contract or "sdk_release_gate" not in contract:
+        fail("SDK contract must expose targets, generated method names, and release gates")
     python_client = (ROOT / "sdks" / "python" / "client.py").read_text()
     if "class AppGenClient" not in python_client or "urllib.request" not in python_client:
         fail("Python SDK must expose dependency-free AppGenClient")
@@ -37539,6 +37566,27 @@ def test_generated_runtime_helpers():
             "sdks/csharp/AppGenClient.cs",
         }
     )["ok"] is True
+    assert sdks.sdk_release_gate(
+        {
+            "sdks/appgen_sdks.py",
+            "sdks/python/client.py",
+            "sdks/javascript/client.js",
+            "sdks/java/AppGenClient.java",
+            "sdks/csharp/AppGenClient.cs",
+        },
+        openapi.openapi_spec()["paths"].keys(),
+    )["format"] == "appgen.sdk-release-gate.v1"
+    assert sdks.sdk_release_gate(
+        {
+            "sdks/appgen_sdks.py",
+            "sdks/python/client.py",
+            "sdks/javascript/client.js",
+            "sdks/java/AppGenClient.java",
+            "sdks/csharp/AppGenClient.cs",
+        },
+        openapi.openapi_spec()["paths"].keys(),
+    )["ok"] is True
+    assert sdks.sdk_release_gate({"sdks/appgen_sdks.py"}, openapi.openapi_spec()["paths"].keys())["ok"] is False
     native_targets = set(native.native_targets())
     assert native_targets <= {"mobile", "desktop"}
     if "mobile" in native_targets:

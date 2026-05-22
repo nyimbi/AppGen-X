@@ -4236,6 +4236,22 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
             "sdks/csharp/AppGenClient.cs",
         }
     )["ok"] is True
+    sdk_gate = sdks.sdk_release_gate(
+        {
+            "sdks/appgen_sdks.py",
+            "sdks/python/client.py",
+            "sdks/javascript/client.js",
+            "sdks/java/AppGenClient.java",
+            "sdks/csharp/AppGenClient.cs",
+        },
+        openapi.openapi_spec()["paths"].keys(),
+    )
+    assert sdk_gate["format"] == "appgen.sdk-release-gate.v1"
+    assert sdk_gate["ok"] is True
+    assert {"target_matrix", "route_catalog", "client_methods", "openapi_alignment"} <= {
+        gate["gate"] for gate in sdk_gate["gates"]
+    }
+    assert sdks.sdk_release_gate({"sdks/appgen_sdks.py"}, openapi.openapi_spec()["paths"].keys())["ok"] is False
     collaboration_catalog = collaboration.collaboration_catalog()
     assert any(item["table"] == "Book" and "Book.proposal.created" in item["events"] for item in collaboration_catalog)
     realtime_topics = realtime.realtime_topics()

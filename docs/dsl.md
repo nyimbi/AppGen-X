@@ -526,7 +526,9 @@ apps include:
   environment variables, route-binding matrices, dev/build command matrices,
   responsive/accessibility quality checks, and a front-end release gate.
 - `sdks/` with generated Python, JavaScript, Java, and C# API client
-  scaffolds derived from the same REST table contracts.
+  scaffolds derived from the same REST table contracts. A generated SDK release
+  gate proves multi-language target coverage, scaffold artifacts, REST route
+  catalogs, client method names, and OpenAPI path alignment.
 - `native/` with generated Kivy mobile and BeeWare desktop Python starter
   apps, mobile permission manifests, camera/location capture plans, push
   notification payloads, offline sync batches, conflict-resolution plans,

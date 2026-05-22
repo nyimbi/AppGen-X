@@ -183,6 +183,9 @@ and Express starter contracts under `frontends/`; use
 `frontends/appgen_frontends.py` to inspect route bindings, shared API
 environment variables, dev/build commands, quality checks, and the generated
 front-end release gate.
+Generated SDK contracts expose `sdk_release_gate()` in `sdks/appgen_sdks.py` to
+prove Python, JavaScript, Java, and C# client coverage, scaffold artifacts,
+REST route catalogs, client method names, and OpenAPI path alignment.
 
 ## Adding Behavior
 
