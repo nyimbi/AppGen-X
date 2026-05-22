@@ -27452,6 +27452,88 @@ def offline_conflict_review_contract():
     }}
 
 
+def data_driver_capability_matrix():
+    """Return reviewed capability coverage for configured generated data drivers."""
+    profiles = rad_data_connection_catalog()
+    rows = tuple(
+        {{
+            "connection": profile["name"],
+            "driver": profile["driver"],
+            "capabilities": profile["capabilities"],
+            "secrets_externalized": profile["secret_policy"] in ("externalized", "local_keychain"),
+            "supports_transaction_probe": "transactions" in profile["capabilities"] or "local_transactions" in profile["capabilities"],
+        }}
+        for profile in profiles
+    )
+    return {{
+        "format": "appgen.generated-data-driver-capability-matrix.v1",
+        "ok": bool(rows) and all(row["secrets_externalized"] for row in rows),
+        "rows": rows,
+        "guards": ("secret_reference_required", "transaction_probe_declared", "capability_mismatch_blocks_publish"),
+        "side_effects": (),
+    }}
+
+
+def data_schema_adapter_diff_contract():
+    """Return generated schema-adapter diff and migration-preview evidence."""
+    return {{
+        "format": "appgen.generated-data-schema-adapter-diff-contract.v1",
+        "source": {{"table": "Customer", "fields": ("id", "name", "updated_at")}},
+        "target": {{"table": "Customer", "fields": ("id", "name", "email", "updated_at")}},
+        "operations": ({{"op": "add_field", "field": "email", "nullable": True}},),
+        "preview": ("alter_table_add_nullable_field", "backfill_plan", "rollback_script"),
+        "guards": ("migration_preview_required", "data_loss_check_required", "rollback_script_required"),
+        "side_effects": (),
+    }}
+
+
+def data_transaction_rehearsal_contract():
+    """Return generated transaction rehearsal workflow for data operations."""
+    return {{
+        "format": "appgen.generated-data-transaction-rehearsal-contract.v1",
+        "scenario": "batched_customer_update",
+        "steps": ("begin_transaction", "apply_mutation_batch", "validate_constraints", "collect_diagnostics", "rollback_transaction", "assert_no_persisted_changes"),
+        "diagnostics": ("constraint_violations", "row_counts", "latency_budget", "deadlock_retry_policy"),
+        "guards": ("rollback_is_mandatory", "no_write_committed", "diagnostics_redacted"),
+        "side_effects": (),
+    }}
+
+
+def data_offline_replay_contract():
+    """Return generated offline queue replay and idempotency evidence."""
+    sync = data_offline_sync_contract()
+    return {{
+        "format": "appgen.generated-data-offline-replay-contract.v1",
+        "queue": sync["queue"],
+        "batches": (
+            {{"batch": "customer-edits", "operations": ("upsert", "delete_tombstone"), "idempotency_key": "customer-edits:sha256"}},
+            {{"batch": "invoice-edits", "operations": ("upsert", "field_merge"), "idempotency_key": "invoice-edits:sha256"}},
+        ),
+        "replay_flow": ("load_queue", "dedupe_by_idempotency_key", "apply_in_order", "detect_conflicts", "pause_for_manual_review", "mark_replayed"),
+        "guards": ("idempotency_keys_required", "tombstones_preserved", "manual_conflicts_pause_replay"),
+        "side_effects": (),
+    }}
+
+
+def data_service_contract_test_plan():
+    """Return generated contract tests for methods and published resources."""
+    methods = data_service_method_contract()
+    resources = data_service_resource_contract()
+    tests = (
+        {{"name": "method_auth_filter", "surface": "server_method", "assertions": ("requires_auth", "validates_request", "maps_response")}},
+        {{"name": "resource_security", "surface": "resource", "assertions": ("role_required", "audit_logged", "rate_limited")}},
+        {{"name": "client_proxy_shape", "surface": "client_proxy", "assertions": ("timeout_declared", "transport_declared", "error_surface_mapped")}},
+    )
+    return {{
+        "format": "appgen.generated-data-service-contract-test-plan.v1",
+        "tests": tests,
+        "artifacts": methods["generated_artifacts"],
+        "resources": resources["resources"],
+        "guards": ("auth_filter_required", "request_validator_required", "audit_log_required"),
+        "side_effects": (),
+    }}
+
+
 def rad_data_tooling_workbench():
     """Prove native data-service tooling depth across connections, queries, services, and local sync."""
     contract = rad_data_tooling_contract()
@@ -27461,6 +27543,11 @@ def rad_data_tooling_workbench():
     resource_publish = data_resource_publish_contract()
     local_maintenance = local_database_maintenance_contract()
     conflict_review = offline_conflict_review_contract()
+    driver_matrix = data_driver_capability_matrix()
+    schema_diff = data_schema_adapter_diff_contract()
+    transaction_rehearsal = data_transaction_rehearsal_contract()
+    offline_replay = data_offline_replay_contract()
+    service_tests = data_service_contract_test_plan()
     checks = (
         {{"id": "connection_catalog", "ok": bool(contract["connection_catalog"]) and all(item["secret_policy"] in ("externalized", "local_keychain") for item in contract["connection_catalog"]), "evidence": contract["connection_catalog"]}},
         {{"id": "query_designer", "ok": {{"sql_builder", "stored_procedure_browser", "schema_adapter"}} <= set(contract["query_designer"]["surfaces"]) and "parameterized_sql_only" in contract["query_designer"]["guards"], "evidence": contract["query_designer"]}},
@@ -27475,9 +27562,14 @@ def rad_data_tooling_workbench():
         {{"id": "resource_publish_workflow", "ok": resource_publish["ok"] and {{"attach_security", "register_analytics"}} <= set(resource_publish["pipeline"]) and not resource_publish["side_effects"], "evidence": resource_publish}},
         {{"id": "local_database_maintenance_workflow", "ok": {{"backup", "restore", "change_view_sync"}} <= {{workflow["name"] for workflow in local_maintenance["workflows"]}} and not local_maintenance["side_effects"], "evidence": local_maintenance}},
         {{"id": "offline_conflict_review_workflow", "ok": {{"detect_conflict", "approve_resolution", "write_audit_log"}} <= set(conflict_review["review_flow"]) and not conflict_review["side_effects"], "evidence": conflict_review}},
+        {{"id": "driver_capability_matrix", "ok": driver_matrix["ok"] and all(row["secrets_externalized"] for row in driver_matrix["rows"]) and not driver_matrix["side_effects"], "evidence": driver_matrix}},
+        {{"id": "schema_adapter_diff", "ok": {{"migration_preview_required", "rollback_script_required"}} <= set(schema_diff["guards"]) and "rollback_script" in schema_diff["preview"] and not schema_diff["side_effects"], "evidence": schema_diff}},
+        {{"id": "transaction_rehearsal", "ok": {{"begin_transaction", "rollback_transaction", "assert_no_persisted_changes"}} <= set(transaction_rehearsal["steps"]) and not transaction_rehearsal["side_effects"], "evidence": transaction_rehearsal}},
+        {{"id": "offline_replay_plan", "ok": {{"dedupe_by_idempotency_key", "pause_for_manual_review", "mark_replayed"}} <= set(offline_replay["replay_flow"]) and "idempotency_keys_required" in offline_replay["guards"] and not offline_replay["side_effects"], "evidence": offline_replay}},
+        {{"id": "service_contract_tests", "ok": all({{"surface", "assertions"}} <= set(test) for test in service_tests["tests"]) and {{"auth_filter_required", "request_validator_required"}} <= set(service_tests["guards"]) and not service_tests["side_effects"], "evidence": service_tests}},
     )
     ok = all(check["ok"] for check in checks)
-    return {{"format": "appgen.generated-rad-data-tooling-workbench.v1", "ok": ok, "decision": "approved" if ok else "blocked", "contract": contract, "connection_test": connection_test, "query_preview": query_preview, "method_invocation": method_invocation, "resource_publish": resource_publish, "local_maintenance": local_maintenance, "conflict_review": conflict_review, "checks": checks, "blocking_gaps": tuple(check for check in checks if not check["ok"])}}
+    return {{"format": "appgen.generated-rad-data-tooling-workbench.v1", "ok": ok, "decision": "approved" if ok else "blocked", "contract": contract, "connection_test": connection_test, "query_preview": query_preview, "method_invocation": method_invocation, "resource_publish": resource_publish, "local_maintenance": local_maintenance, "conflict_review": conflict_review, "driver_matrix": driver_matrix, "schema_diff": schema_diff, "transaction_rehearsal": transaction_rehearsal, "offline_replay": offline_replay, "service_tests": service_tests, "checks": checks, "blocking_gaps": tuple(check for check in checks if not check["ok"])}}
 
 
 def mobile_native_api_contract():
