@@ -46824,6 +46824,11 @@ def get_metadata(idb):
     ),
 )
 @click.option(
+    "--jhipster-superiority-audit",
+    is_flag=True,
+    help="Print JSON proof that AppGen preserves and exceeds JHipster capabilities.",
+)
+@click.option(
     "--schema-source-audit",
     is_flag=True,
     help=(
@@ -46855,6 +46860,7 @@ def main(
     format_dsl_path,
     dsl_authoring_gate_path,
     roadmap_release_audit,
+    jhipster_superiority_audit,
     schema_source_audit,
     dsl_antlr_report,
 ):
@@ -46868,6 +46874,7 @@ def main(
         format_dsl_path,
         dsl_authoring_gate_path,
         roadmap_release_audit,
+        jhipster_superiority_audit,
         schema_source_audit,
         dsl_antlr_report,
     ]
@@ -46889,6 +46896,8 @@ def main(
                 format_dsl_path,
                 dsl_authoring_gate_path,
                 roadmap_release_audit,
+                jhipster_superiority_audit,
+                dsl_antlr_report,
                 *schema_sources,
             ]
         ):
@@ -46912,6 +46921,7 @@ def main(
                 format_dsl_path,
                 dsl_authoring_gate_path,
                 roadmap_release_audit,
+                jhipster_superiority_audit,
                 schema_source_audit,
                 *schema_sources,
             ]
@@ -46937,6 +46947,7 @@ def main(
                 format_dsl_path,
                 dsl_authoring_gate_path,
                 roadmap_release_audit,
+                jhipster_superiority_audit,
                 schema_source_audit,
                 dsl_antlr_report,
                 *schema_sources,
@@ -46959,6 +46970,7 @@ def main(
                 format_dsl_path,
                 dsl_authoring_gate_path,
                 roadmap_release_audit,
+                jhipster_superiority_audit,
                 schema_source_audit,
                 dsl_antlr_report,
                 *schema_sources,
@@ -46985,6 +46997,7 @@ def main(
                 wdatabase,
                 dsl_authoring_gate_path,
                 roadmap_release_audit,
+                jhipster_superiority_audit,
                 schema_source_audit,
                 dsl_antlr_report,
                 *schema_sources,
@@ -47010,6 +47023,7 @@ def main(
                 idatabase,
                 wdatabase,
                 roadmap_release_audit,
+                jhipster_superiority_audit,
                 schema_source_audit,
                 dsl_antlr_report,
                 *schema_sources,
@@ -47030,13 +47044,35 @@ def main(
         ctx.exit(0 if result["ok"] else 1)
 
     if roadmap_release_audit:
-        if any([writedir, database_url, idatabase, wdatabase, *schema_sources]):
+        if any(
+            [
+                writedir,
+                database_url,
+                idatabase,
+                wdatabase,
+                jhipster_superiority_audit,
+                *schema_sources,
+            ]
+        ):
             raise click.UsageError(
-                "--roadmap-release-audit cannot be combined with generation options."
+                "--roadmap-release-audit cannot be combined with generation or "
+                "audit options."
             )
         from .roadmap import roadmap_release_audit as package_roadmap_release_audit
 
         result = package_roadmap_release_audit()
+        click.echo(json.dumps(result, indent=2, sort_keys=True, default=list))
+        ctx.exit(0 if result["ok"] else 1)
+
+    if jhipster_superiority_audit:
+        if any([writedir, database_url, idatabase, wdatabase, *schema_sources]):
+            raise click.UsageError(
+                "--jhipster-superiority-audit cannot be combined with generation "
+                "options."
+            )
+        from .roadmap import jhipster_superiority_audit as package_superiority_audit
+
+        result = package_superiority_audit()
         click.echo(json.dumps(result, indent=2, sort_keys=True, default=list))
         ctx.exit(0 if result["ok"] else 1)
 

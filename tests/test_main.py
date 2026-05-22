@@ -40,6 +40,7 @@ from pyAppGen.dsl import dsl_keyword_budget
 from pyAppGen.dsl import dsl_outline
 from pyAppGen.dsl import format_dsl
 from pyAppGen.dsl import lint_dsl
+from pyAppGen.roadmap import jhipster_superiority_audit
 from pyAppGen.roadmap import roadmap_release_audit
 from pyAppGen.schema import load_schema
 from pyAppGen.schema import RelationSchema
@@ -159,6 +160,38 @@ def test_roadmap_release_audit_cli_maps_docs_to_capabilities(
     assert "docs/Lo-code features.md" in {
         document["path"] for document in cli_report["documents"]
     }
+    assert all(gate["ok"] for gate in cli_report["gates"])
+
+
+def test_jhipster_superiority_audit_cli_proves_appgen_advantages(
+    runner: CliRunner,
+) -> None:
+    """The CLI exposes package-level proof that AppGen exceeds JHipster."""
+    direct_report = jhipster_superiority_audit()
+    assert direct_report["format"] == "appgen.jhipster-superiority-audit.v1"
+    assert direct_report["ok"] is True
+    assert direct_report["position"] == "appgen-is-more-capable-than-jhipster"
+    assert len(direct_report["advantages"]) >= direct_report["minimum_advantages"]
+    assert {
+        "visual-low-code-studio",
+        "delphi-form-design",
+        "natural-language-evolution",
+        "agentic-systems",
+        "native-targets",
+        "erp-template-library",
+        "runtime-assurance",
+        "enterprise-composition",
+    } == {item["id"] for item in direct_report["advantages"]}
+
+    result = runner.invoke(__main__.main, ["--jhipster-superiority-audit"])
+
+    assert result.exit_code == 0
+    cli_report = json.loads(result.output)
+    assert cli_report["ok"] is True
+    assert cli_report["decision"] == "approved"
+    assert cli_report["stop_condition"] == (
+        "do-not-claim-jhipster-superiority-unless-ok-is-true"
+    )
     assert all(gate["ok"] for gate in cli_report["gates"])
 
 

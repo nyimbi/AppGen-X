@@ -106,6 +106,9 @@ source coverage, and IDE support.
 Run `appgen --roadmap-release-audit` when reviewing whether the package-level
 capability map still satisfies `docs/ideas.md`, `docs/base_features.md`, and
 `docs/Lo-code features.md`.
+Run `appgen --jhipster-superiority-audit` before making product claims that
+AppGen is more capable than JHipster; it checks preserved baseline capabilities
+and AppGen-only advantage areas.
 
 Use `required` for fields that must be entered. Use `search` on fields that
 should appear in generated search contracts. Use `hidden` for generated or

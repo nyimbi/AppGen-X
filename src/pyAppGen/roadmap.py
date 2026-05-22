@@ -127,6 +127,92 @@ ROADMAP_CAPABILITY_REQUIREMENTS = (
     },
 )
 
+JHIPSTER_BASELINE_REQUIREMENTS = (
+    {
+        "id": "domain-modeling",
+        "description": "Schema/model intake and generated application code.",
+        "capabilities": ("schema.import", "codegen.fab", "api.rest", "api.graphql"),
+    },
+    {
+        "id": "frontend-and-pwa",
+        "description": "Modern front-end and PWA scaffolding.",
+        "capabilities": ("platform.frontends", "ui.pwa", "ui.responsive"),
+    },
+    {
+        "id": "security-and-identity",
+        "description": "RBAC, session hardening, HTTPS, and enterprise identity.",
+        "capabilities": (
+            "security.rbac",
+            "security.session",
+            "security.https",
+            "security.sso",
+        ),
+    },
+    {
+        "id": "deployment-and-ci",
+        "description": "Cloud deployment, packaging, CI/CD, and generated tests.",
+        "capabilities": (
+            "deployment.cloud",
+            "devops.cicd",
+            "devops.packaging",
+            "quality.test-coverage",
+        ),
+    },
+)
+
+APPGEN_ADVANTAGE_REQUIREMENTS = (
+    {
+        "id": "visual-low-code-studio",
+        "description": "Integrated Studio, visual modeling, and database design.",
+        "capabilities": ("devops.studio", "ui.visual-modeling", "devops.ide-integration"),
+    },
+    {
+        "id": "delphi-form-design",
+        "description": "Delphi-style drop-target form designer and component palette.",
+        "capabilities": ("ui.form-designer", "components.templates"),
+    },
+    {
+        "id": "natural-language-evolution",
+        "description": "Natural-language changes for tables, fields, forms, agents, and ERP.",
+        "capabilities": ("ui.nl-evolution",),
+    },
+    {
+        "id": "agentic-systems",
+        "description": "Local and API-key LLM providers with agent/tool policy evidence.",
+        "capabilities": ("ai.agentic-systems",),
+    },
+    {
+        "id": "native-targets",
+        "description": "Python mobile and desktop target scaffolds.",
+        "capabilities": ("platform.native", "platform.targets"),
+    },
+    {
+        "id": "erp-template-library",
+        "description": "ERP templates for finance, inventory, HR, reporting, and operations.",
+        "capabilities": ("components.erp-templates", "operations.finance"),
+    },
+    {
+        "id": "runtime-assurance",
+        "description": "Runtime assurance, diagnostics, performance, backup, and resilience.",
+        "capabilities": (
+            "ops.assurance",
+            "quality.diagnostics",
+            "ops.performance",
+            "ops.backup",
+            "ops.resilience",
+        ),
+    },
+    {
+        "id": "enterprise-composition",
+        "description": "Application composition, enterprise integrations, and reusable packages.",
+        "capabilities": (
+            "components.application-composition",
+            "integration.enterprise",
+            "platform.extensibility",
+        ),
+    },
+)
+
 
 def _read_document(root: Path, relative_path: str) -> str:
     path = root / relative_path
@@ -180,6 +266,87 @@ def roadmap_capability_checks() -> tuple[dict, ...]:
             }
         )
     return tuple(checks)
+
+
+def _capability_group_checks(requirements: tuple[dict, ...]) -> tuple[dict, ...]:
+    capability_status = {
+        capability.key: capability.status for capability in DEFAULT_CAPABILITIES
+    }
+    return tuple(
+        {
+            "id": requirement["id"],
+            "description": requirement["description"],
+            "capabilities": requirement["capabilities"],
+            "missing_capabilities": tuple(
+                key
+                for key in requirement["capabilities"]
+                if capability_status.get(key) != "implemented"
+            ),
+            "ok": all(
+                capability_status.get(key) == "implemented"
+                for key in requirement["capabilities"]
+            ),
+        }
+        for requirement in requirements
+    )
+
+
+def jhipster_superiority_audit() -> dict:
+    """Return package-level proof that AppGen preserves and exceeds JHipster."""
+    baseline = _capability_group_checks(JHIPSTER_BASELINE_REQUIREMENTS)
+    advantages = _capability_group_checks(APPGEN_ADVANTAGE_REQUIREMENTS)
+    minimum_advantages = 8
+    gates = (
+        {
+            "id": "jhipster_baseline_preserved",
+            "ok": all(item["ok"] for item in baseline),
+            "requirements": baseline,
+        },
+        {
+            "id": "appgen_only_advantages",
+            "ok": sum(1 for item in advantages if item["ok"]) >= minimum_advantages,
+            "minimum": minimum_advantages,
+            "requirements": advantages,
+        },
+        {
+            "id": "explicit_superiority_capabilities",
+            "ok": all(
+                item["ok"]
+                for item in _capability_group_checks(
+                    (
+                        {
+                            "id": "competitive-benchmark",
+                            "description": "Generated competitive benchmark and superiority gates.",
+                            "capabilities": (
+                                "platform.jhipster",
+                                "platform.jhipster-superiority",
+                                "platform.competitive-benchmark",
+                            ),
+                        },
+                    )
+                )
+            ),
+            "capabilities": (
+                "platform.jhipster",
+                "platform.jhipster-superiority",
+                "platform.competitive-benchmark",
+            ),
+        },
+    )
+    ok = all(gate["ok"] for gate in gates)
+    return {
+        "format": "appgen.jhipster-superiority-audit.v1",
+        "scope": "package",
+        "position": "appgen-is-more-capable-than-jhipster",
+        "ok": ok,
+        "decision": "approved" if ok else "blocked",
+        "baseline": baseline,
+        "advantages": advantages,
+        "minimum_advantages": minimum_advantages,
+        "gates": gates,
+        "blocking_gaps": tuple(gate for gate in gates if not gate["ok"]),
+        "stop_condition": "do-not-claim-jhipster-superiority-unless-ok-is-true",
+    }
 
 
 def roadmap_release_audit(root: Path | str | None = None) -> dict:

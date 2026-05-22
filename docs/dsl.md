@@ -204,6 +204,13 @@ low-code objective from `docs/ideas.md`, `docs/base_features.md`, and
 appgen --roadmap-release-audit
 ```
 
+Run the package-level JHipster superiority audit before claiming AppGen is more
+capable than JHipster:
+
+```console
+appgen --jhipster-superiority-audit
+```
+
 ## Shape
 
 - `table` defines persistent data models.
