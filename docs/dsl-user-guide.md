@@ -716,6 +716,15 @@ Generated apps include `branding.py`, `appgen_branding.html`, and
 - a visual regression plan that lists screenshot targets and state coverage;
 - a visual test matrix for home, list, form, and dashboard surfaces across
   generated viewports.
+- splash-screen contracts with brand mark, timing, preload assets,
+  reduced-motion behavior, and target coverage;
+- editable menu catalogs, a guarded menu edit schema, and reviewable menu edit
+  plans for sidebar, topbar, workspace, and footer navigation;
+- right-click/context-menu contracts for table rows, form fields, designer
+  canvases, and workflow steps;
+- a UI customization workbench that combines splash screens, menu editing,
+  context menus, design tokens, layout recipes, viewport contracts, and
+  component states.
 
 Generated apps also include `view_experience.py` for view-level polish. Use
 `/view-experience/states.json` and `/view-experience/release-gate.json` to
@@ -752,7 +761,10 @@ and `/branding/experience-excellence.json` when validating the beautiful and
 sophisticated outcome claim. The excellence gate binds palette and contrast,
 typography, density, layout recipes, mobile/tablet/desktop/wide viewport
 coverage, component state coverage, accessibility, visual-regression review,
-and generated branding assets. Use `/branding/ui-release-gate.json` as the
+generated branding assets, splash screens, editable menus, right-click menus,
+and guarded UI fine-tuning. Use `/branding/ui-customization-workbench.json` to
+inspect splash-screen, menu-editing, context-menu, and design-token evidence in
+one payload. Use `/branding/ui-release-gate.json` as the
 aggregate ship gate when validating that generated applications are polished
 across web, mobile, and desktop-sized viewports.
 `/branding/visual-regression.json` remains the screenshot checklist for

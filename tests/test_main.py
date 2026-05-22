@@ -4831,6 +4831,10 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert {"mobile", "tablet", "desktop"} <= {row["viewport"] for row in branding.visual_test_matrix()["rows"]}
     assert "invalid" in branding.visual_test_matrix("record-form")["states"]
     assert "Responsive Workbench JSON" in (output_dir / "templates" / "appgen_branding.html").read_text()
+    assert "Splash Screen JSON" in (output_dir / "templates" / "appgen_branding.html").read_text()
+    assert "Menus JSON" in (output_dir / "templates" / "appgen_branding.html").read_text()
+    assert "Context Menus JSON" in (output_dir / "templates" / "appgen_branding.html").read_text()
+    assert "UI Customization Workbench JSON" in (output_dir / "templates" / "appgen_branding.html").read_text()
     responsive_workbench = branding.responsive_workbench(
         {"app/branding.py", "app/static/appgen-theme.css", "app/templates/appgen_branding.html"}
     )
@@ -4865,6 +4869,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "palette_quality",
         "visual_quality",
         "responsive_workbench",
+        "ui_customization",
         "release_gate",
         "route_surface",
     } == {check["id"] for check in branding_workbench["checks"]}
@@ -4872,6 +4877,37 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         check["evidence"]["routes"] for check in branding_workbench["checks"] if check["id"] == "route_surface"
     )
     assert branding.branding_workbench({"app/branding.py"})["ok"] is False
+    assert branding.splash_screen_contract()["format"] == "appgen.splash-screen.v1"
+    assert branding.splash_screen_contract()["motion"]["reduced_motion"] == "fade"
+    assert branding.menu_catalog()[0]["items"][0]["id"] == "home"
+    assert branding.menu_edit_schema()["review_required"] is True
+    assert branding.menu_edit_plan(
+        ({"menu": "primary", "item": "reports", "fields": ("label",), "route": "/reports/"},)
+    )["ok"] is True
+    assert branding.menu_edit_plan(
+        ({"menu": "primary", "item": "bad", "fields": ("unsafe",), "route": "https://example.test"},)
+    )["ok"] is False
+    assert branding.context_menu_for("table-row")["trigger"] == "contextmenu"
+    assert branding.context_menu_action_plan("designer-canvas", "add-component")["requires_review"] is True
+    customization = branding.ui_customization_workbench(
+        {"app/branding.py", "app/static/appgen-theme.css", "app/templates/appgen_branding.html"}
+    )
+    assert customization["format"] == "appgen.ui-customization-workbench.v1"
+    assert customization["ok"] is True
+    assert {
+        "artifact_coverage",
+        "splash_screen",
+        "editable_menus",
+        "menu_edit_guards",
+        "context_menus",
+        "reviewed_actions",
+        "fine_tuning",
+        "route_surface",
+    } == {check["id"] for check in customization["checks"]}
+    assert "/branding/ui-customization-workbench.json" in next(
+        check["evidence"]["routes"] for check in customization["checks"] if check["id"] == "route_surface"
+    )
+    assert branding.ui_customization_workbench({"app/branding.py"})["ok"] is False
     assert branding.contrast_ratio("#14213d", "#f8fafc") >= 4.5
     assert branding.palette_balance_report()["ok"] is True
     assert branding.visual_experience_quality_report()["format"] == "appgen.visual-experience-quality.v1"
@@ -4882,7 +4918,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     )
     assert excellence["format"] == "appgen.ui-experience-excellence-gate.v1"
     assert excellence["ok"] is True
-    assert {"beautiful", "sophisticated", "responsive", "accessible", "stateful", "reviewable", "asset_backed"} == {
+    assert {"beautiful", "sophisticated", "responsive", "accessible", "stateful", "customizable", "reviewable", "asset_backed"} == {
         check["outcome"] for check in excellence["checks"]
     }
     assert branding.ui_experience_excellence_gate({"app/branding.py"})["ok"] is False
@@ -4930,7 +4966,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     )
     assert ui_gate["format"] == "appgen.ui-experience-release-gate.v1"
     assert ui_gate["ok"] is True
-    assert {"theme_quality", "visual_quality", "experience_excellence", "accessibility", "visual_regression", "assets"} <= {
+    assert {"theme_quality", "visual_quality", "experience_excellence", "accessibility", "visual_regression", "ui_customization", "assets"} <= {
         item["gate"] for item in ui_gate["gates"]
     }
     assert ui_gate["experience_excellence"]["ok"] is True

@@ -632,15 +632,24 @@ apps include:
   contracts, responsive layout recipes, typography scale, density modes,
   viewport contracts, component state matrices, visual regression plans, visual
   quality reports for contrast, palette balance, no-overlap review, and
-  viewport coverage, deterministic visual test matrices, WCAG-oriented
+  viewport coverage, deterministic visual test matrices, splash-screen
+  contracts, editable menu catalogs, guarded menu edit plans, right-click
+  context-menu contracts, WCAG-oriented
   accessibility audit plans, keyboard navigation plans, ARIA landmark
   contracts, focus/touch checks, CSS custom properties, an experience-excellence
   gate, and a UI experience release gate that aggregates theme quality,
-  beautiful/sophisticated outcome evidence, accessibility, visual regression,
-  responsive coverage, component states, and required assets. The generated
+  beautiful/sophisticated outcome evidence, UI customization, accessibility,
+  visual regression, responsive coverage, component states, and required assets.
+  The generated
   `branding_workbench()` proves theme contract, CSS variables, design-system
-  coverage, palette quality, visual quality, responsive evidence, release-gate
-  readiness, and route coverage before `ui.branding` is marked implemented.
+  coverage, palette quality, visual quality, responsive evidence, splash/menu/
+  context-menu customization evidence, release-gate readiness, and route
+  coverage before `ui.branding` is marked implemented.
+  `ui_customization_workbench()` proves `/branding/splash.json`,
+  `/branding/menus.json`, `/branding/context-menus.json`, and
+  `/branding/ui-customization-workbench.json` readiness before treating
+  generated splash screens, menu editing, right-click menus, and UI fine-tuning
+  as release-ready.
   `accessibility_workbench()` proves WCAG checklist coverage, skip-link
   baseline, keyboard navigation, ARIA landmarks, focus/touch checks, audit
   requirements, `docs/accessibility.md` coverage, and

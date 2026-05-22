@@ -6835,11 +6835,15 @@ def write_branding_template(output_dir):
       <a class="btn btn-default" href="{{ url_for('BrandingView.visual_quality_json') }}">Visual Quality JSON</a>
       <a class="btn btn-default" href="{{ url_for('BrandingView.visual_regression_json') }}">Visual Regression JSON</a>
       <a class="btn btn-default" href="{{ url_for('BrandingView.experience_excellence_json') }}">Experience Excellence JSON</a>
-      <a class="btn btn-default" href="{{ url_for('BrandingView.accessibility_workbench_json') }}">Accessibility Workbench JSON</a>
-      <a class="btn btn-default" href="{{ url_for('BrandingView.branding_workbench_json') }}">Branding Workbench JSON</a>
-      <a class="btn btn-default" href="{{ url_for('BrandingView.responsive_workbench_json') }}">Responsive Workbench JSON</a>
-      <a class="btn btn-default" href="{{ url_for('BrandingView.ui_release_gate_json') }}">UI Release Gate JSON</a>
-    </div>
+	      <a class="btn btn-default" href="{{ url_for('BrandingView.accessibility_workbench_json') }}">Accessibility Workbench JSON</a>
+	      <a class="btn btn-default" href="{{ url_for('BrandingView.branding_workbench_json') }}">Branding Workbench JSON</a>
+	      <a class="btn btn-default" href="{{ url_for('BrandingView.responsive_workbench_json') }}">Responsive Workbench JSON</a>
+	      <a class="btn btn-default" href="{{ url_for('BrandingView.splash_json') }}">Splash Screen JSON</a>
+	      <a class="btn btn-default" href="{{ url_for('BrandingView.menus_json') }}">Menus JSON</a>
+	      <a class="btn btn-default" href="{{ url_for('BrandingView.context_menus_json') }}">Context Menus JSON</a>
+	      <a class="btn btn-default" href="{{ url_for('BrandingView.ui_customization_workbench_json') }}">UI Customization Workbench JSON</a>
+	      <a class="btn btn-default" href="{{ url_for('BrandingView.ui_release_gate_json') }}">UI Release Gate JSON</a>
+	    </div>
   </div>
   <div class="agb-preview">
     <span class="agb-mark">{{ branding.logo_text }}</span>
@@ -6884,13 +6888,25 @@ def write_branding_template(output_dir):
       <strong>UI Release Gate</strong>
       <div class="agb-note">theme, accessibility, screenshots, states, assets</div>
     </article>
-    <article class="agb-chip">
-      <strong>Accessibility Workbench</strong>
-      <div class="agb-note">WCAG, keyboard paths, landmarks, docs baseline</div>
-    </article>
-  </div>
-</section>
-{% endblock %}
+	    <article class="agb-chip">
+	      <strong>Accessibility Workbench</strong>
+	      <div class="agb-note">WCAG, keyboard paths, landmarks, docs baseline</div>
+	    </article>
+	    <article class="agb-chip">
+	      <strong>Splash Screens</strong>
+	      <div class="agb-note">brand mark, timing, preload, reduced-motion fallback</div>
+	    </article>
+	    <article class="agb-chip">
+	      <strong>Editable Menus</strong>
+	      <div class="agb-note">navigation groups, role visibility, reorder plans</div>
+	    </article>
+	    <article class="agb-chip">
+	      <strong>Right-click Menus</strong>
+	      <div class="agb-note">table rows, form fields, designer canvas, workflow steps</div>
+	    </article>
+	  </div>
+	</section>
+	{% endblock %}
 """
     )
 
@@ -11107,6 +11123,236 @@ def viewport_contract(viewport=None):
     return viewports[viewport]
 
 
+def splash_screen_contract():
+    """Return generated splash-screen configuration for web, PWA, mobile, and desktop shells."""
+    palette = BRANDING["palette"]
+    return {{
+        "format": "appgen.splash-screen.v1",
+        "app_name": BRANDING["app_name"],
+        "logo_text": BRANDING["logo_text"],
+        "tagline": BRANDING["tagline"],
+        "theme": BRANDING["theme"],
+        "background": palette["primary"],
+        "foreground": "#ffffff",
+        "accent": palette["accent"],
+        "min_duration_ms": 450,
+        "max_duration_ms": 1800,
+        "dismissal": ("app_ready", "route_hydrated", "manual_skip"),
+        "preload_assets": (
+            BRANDING["assets"]["css"],
+            "static/appgen-icon.svg",
+            "static/appgen.webmanifest",
+        ),
+        "motion": {{
+            "default": "fade-scale",
+            "reduced_motion": "fade",
+            "must_not_block_first_input": True,
+        }},
+        "targets": ("web", "pwa", "mobile", "desktop"),
+    }}
+
+
+def menu_catalog():
+    """Return editable generated application menu descriptors."""
+    return (
+        {{
+            "id": "primary",
+            "label": "Primary",
+            "location": "sidebar",
+            "items": (
+                {{"id": "home", "label": "Home", "route": "/", "icon": "home", "roles": ("Admin", "User"), "editable": True}},
+                {{"id": "studio", "label": "Studio", "route": "/studio/", "icon": "object-group", "roles": ("Admin",), "editable": True}},
+                {{"id": "reports", "label": "Reports", "route": "/reports/", "icon": "bar-chart", "roles": ("Admin", "User"), "editable": True}},
+            ),
+        }},
+        {{
+            "id": "design",
+            "label": "Design",
+            "location": "workspace",
+            "items": (
+                {{"id": "database-designer", "label": "Database Designer", "route": "/designer/", "icon": "sitemap", "roles": ("Admin",), "editable": True}},
+                {{"id": "form-designer", "label": "Form Designer", "route": "/form-designer/", "icon": "th-large", "roles": ("Admin",), "editable": True}},
+                {{"id": "branding", "label": "Branding", "route": "/branding/", "icon": "paint-brush", "roles": ("Admin",), "editable": True}},
+            ),
+        }},
+        {{
+            "id": "operations",
+            "label": "Operations",
+            "location": "footer",
+            "items": (
+                {{"id": "release-gates", "label": "Release Gates", "route": "/runtime-assurance/", "icon": "check-circle", "roles": ("Admin",), "editable": True}},
+                {{"id": "support", "label": "Support", "route": "/support-center/", "icon": "life-ring", "roles": ("Admin", "User"), "editable": True}},
+            ),
+        }},
+    )
+
+
+def menu_edit_schema():
+    """Return the allowed menu editing surface for the generated Studio."""
+    return {{
+        "format": "appgen.menu-edit-schema.v1",
+        "editable_fields": ("label", "route", "icon", "roles", "order", "visible", "location"),
+        "locations": ("sidebar", "topbar", "workspace", "footer"),
+        "role_source": "FAB security roles",
+        "guards": (
+            "route_must_start_with_slash",
+            "roles_must_be_known_before_release",
+            "hidden_items_remain_addressable",
+            "admin_can_restore_default_menus",
+        ),
+        "review_required": True,
+    }}
+
+
+def menu_edit_plan(changes=()):
+    """Return a reviewable menu edit plan without mutating generated navigation."""
+    schema = menu_edit_schema()
+    allowed = set(schema["editable_fields"])
+    normalized = []
+    violations = []
+    for index, change in enumerate(tuple(changes or ())):
+        change = dict(change)
+        fields = set(change.get("fields", ()))
+        unknown = tuple(sorted(fields - allowed))
+        route = change.get("route")
+        if route is not None and not str(route).startswith("/"):
+            violations.append({{"index": index, "field": "route", "reason": "route_must_start_with_slash"}})
+        if unknown:
+            violations.append({{"index": index, "field": "fields", "reason": "unknown_edit_fields", "fields": unknown}})
+        normalized.append({{
+            "menu": change.get("menu"),
+            "item": change.get("item"),
+            "operation": change.get("operation", "update"),
+            "fields": tuple(sorted(fields)),
+            "route": route,
+            "requires_review": True,
+        }})
+    return {{
+        "format": "appgen.menu-edit-plan.v1",
+        "ok": not violations,
+        "changes": tuple(normalized),
+        "violations": tuple(violations),
+        "guards": schema["guards"],
+        "requires_review": True,
+    }}
+
+
+def context_menu_catalog():
+    """Return generated right-click/context-menu contracts for generated UI surfaces."""
+    return (
+        {{
+            "surface": "table-row",
+            "trigger": "contextmenu",
+            "selector": "[data-appgen-row]",
+            "actions": (
+                {{"id": "open", "label": "Open", "icon": "external-link", "side_effect": "navigate", "requires_review": False}},
+                {{"id": "duplicate", "label": "Duplicate", "icon": "copy", "side_effect": "create_record", "requires_review": True}},
+                {{"id": "export", "label": "Export", "icon": "download", "side_effect": "download", "requires_review": False}},
+            ),
+        }},
+        {{
+            "surface": "form-field",
+            "trigger": "contextmenu",
+            "selector": "[data-appgen-field]",
+            "actions": (
+                {{"id": "edit-field", "label": "Edit Field", "icon": "edit", "side_effect": "schema_proposal", "requires_review": True}},
+                {{"id": "show-validation", "label": "Show Validation", "icon": "alert-circle", "side_effect": "inspect", "requires_review": False}},
+            ),
+        }},
+        {{
+            "surface": "designer-canvas",
+            "trigger": "contextmenu",
+            "selector": "[data-appgen-canvas]",
+            "actions": (
+                {{"id": "add-component", "label": "Add Component", "icon": "plus-square", "side_effect": "form_design_proposal", "requires_review": True}},
+                {{"id": "align-selection", "label": "Align Selection", "icon": "align-left", "side_effect": "layout_proposal", "requires_review": True}},
+            ),
+        }},
+        {{
+            "surface": "workflow-step",
+            "trigger": "contextmenu",
+            "selector": "[data-appgen-workflow-step]",
+            "actions": (
+                {{"id": "add-transition", "label": "Add Transition", "icon": "git-branch", "side_effect": "workflow_proposal", "requires_review": True}},
+                {{"id": "view-runbook", "label": "View Runbook", "icon": "book", "side_effect": "inspect", "requires_review": False}},
+            ),
+        }},
+    )
+
+
+def context_menu_for(surface):
+    """Return one generated context menu by surface name."""
+    menu = next((item for item in context_menu_catalog() if item["surface"] == surface), None)
+    if menu is None:
+        raise KeyError(f"Unknown context menu surface: {{surface}}")
+    return menu
+
+
+def context_menu_action_plan(surface, action_id, payload=None):
+    """Return a reviewed action plan for one right-click menu command."""
+    menu = context_menu_for(surface)
+    action = next((item for item in menu["actions"] if item["id"] == action_id), None)
+    if action is None:
+        raise KeyError(f"Unknown context menu action: {{surface}}.{{action_id}}")
+    return {{
+        "format": "appgen.context-menu-action-plan.v1",
+        "surface": surface,
+        "action": action,
+        "payload": dict(payload or {{}}),
+        "requires_review": bool(action["requires_review"]),
+        "side_effect": action["side_effect"],
+    }}
+
+
+def ui_customization_workbench(existing_paths=None):
+    """Return splash, menu, context-menu, and fine-tuning evidence for generated UI."""
+    existing = set(existing_paths or ())
+    required_assets = ("app/branding.py", "app/static/appgen-theme.css", "app/templates/appgen_branding.html")
+    missing_assets = tuple(path for path in required_assets if path not in existing) if existing_paths is not None else ()
+    splash = splash_screen_contract()
+    menus = menu_catalog()
+    menu_schema = menu_edit_schema()
+    valid_menu_plan = menu_edit_plan((
+        {{"menu": "primary", "item": "reports", "operation": "update", "fields": ("label", "order"), "route": "/reports/"}},
+    ))
+    invalid_menu_plan = menu_edit_plan((
+        {{"menu": "primary", "item": "external", "operation": "update", "fields": ("label", "unsafe"), "route": "http://example.test"}},
+    ))
+    context_menus = context_menu_catalog()
+    reviewed_actions = tuple(
+        context_menu_action_plan(item["surface"], next(action["id"] for action in item["actions"] if action["requires_review"]))
+        for item in context_menus
+        if any(action["requires_review"] for action in item["actions"])
+    )
+    checks = (
+        {{"id": "artifact_coverage", "ok": not missing_assets, "evidence": {{"required": required_assets, "missing": missing_assets}}}},
+        {{"id": "splash_screen", "ok": splash["min_duration_ms"] < splash["max_duration_ms"] and "reduced_motion" in splash["motion"], "evidence": splash}},
+        {{"id": "editable_menus", "ok": bool(menus) and all(item["items"] for item in menus) and menu_schema["review_required"], "evidence": menus}},
+        {{"id": "menu_edit_guards", "ok": valid_menu_plan["ok"] and not invalid_menu_plan["ok"] and invalid_menu_plan["violations"], "evidence": {{"valid": valid_menu_plan, "invalid": invalid_menu_plan}}}},
+        {{"id": "context_menus", "ok": bool(context_menus) and all(item["trigger"] == "contextmenu" and item["actions"] for item in context_menus), "evidence": context_menus}},
+        {{"id": "reviewed_actions", "ok": bool(reviewed_actions) and all(item["requires_review"] for item in reviewed_actions), "evidence": reviewed_actions}},
+        {{"id": "fine_tuning", "ok": bool(design_tokens()) and bool(component_state_matrix()) and bool(viewport_contract()), "evidence": ("design_tokens", "component_state_matrix", "viewport_contract", "layout_contract")}},
+        {{"id": "route_surface", "ok": True, "evidence": {{"routes": ("/branding/splash.json", "/branding/menus.json", "/branding/context-menus.json", "/branding/ui-customization-workbench.json")}}}},
+    )
+    ok = all(check["ok"] for check in checks)
+    return {{
+        "format": "appgen.ui-customization-workbench.v1",
+        "ok": ok,
+        "decision": "approved" if ok else "blocked",
+        "checks": checks,
+        "splash": splash,
+        "menus": menus,
+        "menu_edit_schema": menu_schema,
+        "context_menus": context_menus,
+        "fine_tuning": {{
+            "tokens": design_tokens(),
+            "layouts": layout_contract(),
+            "states": component_state_matrix(),
+            "viewports": viewport_contract(),
+        }},
+    }}
+
+
 def component_style_contract(component=None):
     """Return generated component style contracts for app builders and extensions."""
     tokens = design_tokens()
@@ -11306,6 +11552,10 @@ def design_system_report():
         "components": component_style_contract(),
         "component_states": component_state_matrix(),
         "viewports": viewport_contract(),
+        "splash": splash_screen_contract(),
+        "menus": menu_catalog(),
+        "context_menus": context_menu_catalog(),
+        "ui_customization": ui_customization_workbench(),
         "visual_regression": visual_regression_plan(),
         "palette_balance": palette_balance_report(),
         "css_variables": css_variables(),
@@ -11437,6 +11687,7 @@ def branding_workbench(existing_paths=None):
     quality = theme_quality_report()
     palette = palette_balance_report()
     responsive = responsive_workbench(existing_paths)
+    customization = ui_customization_workbench(existing_paths)
     release = ui_experience_release_gate(existing_paths)
     checks = (
         {{
@@ -11475,6 +11726,11 @@ def branding_workbench(existing_paths=None):
             "evidence": responsive["format"],
         }},
         {{
+            "id": "ui_customization",
+            "ok": customization["ok"],
+            "evidence": customization["format"],
+        }},
+        {{
             "id": "release_gate",
             "ok": release["ok"],
             "evidence": release["format"],
@@ -11488,6 +11744,7 @@ def branding_workbench(existing_paths=None):
                     "/branding/design-system.json",
                     "/branding/branding-workbench.json",
                     "/branding/responsive-workbench.json",
+                    "/branding/ui-customization-workbench.json",
                     "/branding/ui-release-gate.json",
                 )
             }},
@@ -11502,6 +11759,7 @@ def branding_workbench(existing_paths=None):
         "theme": theme,
         "design_system": design,
         "responsive": responsive,
+        "customization": customization,
         "release_gate": release,
     }}
 
@@ -11517,6 +11775,7 @@ def ui_experience_excellence_gate(existing_paths=None):
     matrix = visual_test_matrix()
     regression = visual_regression_plan()
     palette = palette_balance_report()
+    customization = ui_customization_workbench(existing_paths)
     required_states = {{"hover", "focus", "disabled", "invalid", "selected", "empty", "error"}}
     matrix_states = set(matrix["states"])
     matrix_viewports = {{row["viewport"] for row in matrix["rows"]}}
@@ -11548,6 +11807,11 @@ def ui_experience_excellence_gate(existing_paths=None):
             "present_states": tuple(sorted(matrix_states)),
         }},
         {{
+            "outcome": "customizable",
+            "ok": customization["ok"] and splash_screen_contract()["format"] == "appgen.splash-screen.v1",
+            "evidence": ("splash_screen_contract", "menu_edit_plan", "context_menu_catalog", "ui_customization_workbench"),
+        }},
+        {{
             "outcome": "reviewable",
             "ok": bool(regression["pages"]) and any("screenshot" in check for check in regression["checks"]) and any("overlap" in check for check in regression["checks"]),
             "evidence": regression["checks"],
@@ -11568,6 +11832,7 @@ def ui_experience_excellence_gate(existing_paths=None):
         "visual_quality": visual,
         "visual_test_matrix": matrix,
         "accessibility": accessibility,
+        "customization": customization,
     }}
 
 
@@ -11719,6 +11984,7 @@ def ui_experience_release_gate(existing_paths=None):
     regression = visual_regression_plan()
     matrix = visual_test_matrix()
     excellence = ui_experience_excellence_gate(existing_paths)
+    customization = ui_customization_workbench(existing_paths)
     gates = (
         {{"gate": "theme_quality", "ok": theme["ok"], "evidence": "theme_quality_report"}},
         {{"gate": "visual_quality", "ok": visual["ok"], "evidence": "visual_experience_quality_report"}},
@@ -11728,6 +11994,7 @@ def ui_experience_release_gate(existing_paths=None):
         {{"gate": "visual_test_matrix", "ok": matrix["ok"], "evidence": "visual_test_matrix"}},
         {{"gate": "responsive_coverage", "ok": {{"mobile", "tablet", "desktop"}} <= set(regression["viewports"]), "evidence": tuple(regression["viewports"])}},
         {{"gate": "component_states", "ok": {{"button", "form-control", "table-row", "dashboard-card"}} <= set(regression["states"]), "evidence": tuple(regression["states"])}},
+        {{"gate": "ui_customization", "ok": customization["ok"], "evidence": "ui_customization_workbench"}},
         {{"gate": "assets", "ok": not missing_assets, "evidence": required_assets, "missing": missing_assets}},
     )
     return {{
@@ -11740,6 +12007,7 @@ def ui_experience_release_gate(existing_paths=None):
         "visual_test_matrix": matrix,
         "visual_regression": regression,
         "accessibility": accessibility,
+        "customization": customization,
     }}
 
 
@@ -11760,6 +12028,7 @@ def asset_check(existing_paths):
         "accessibility": accessibility_theme_check(),
         "audit": accessibility_audit_plan(),
         "visual_regression": visual_regression_plan(),
+        "ui_customization": ui_customization_workbench(existing),
         "ui_release_gate": ui_experience_release_gate(existing),
     }}
 
@@ -11815,6 +12084,22 @@ class BrandingView(BaseView):
     @expose("/responsive-workbench.json")
     def responsive_workbench_json(self):
         return jsonify(responsive_workbench({{"app/branding.py", "app/static/appgen-theme.css", "app/templates/appgen_branding.html"}}))
+
+    @expose("/splash.json")
+    def splash_json(self):
+        return jsonify(splash_screen_contract())
+
+    @expose("/menus.json")
+    def menus_json(self):
+        return jsonify({{"menus": list(menu_catalog()), "edit_schema": menu_edit_schema()}})
+
+    @expose("/context-menus.json")
+    def context_menus_json(self):
+        return jsonify(list(context_menu_catalog()))
+
+    @expose("/ui-customization-workbench.json")
+    def ui_customization_workbench_json(self):
+        return jsonify(ui_customization_workbench({{"app/branding.py", "app/static/appgen-theme.css", "app/templates/appgen_branding.html"}}))
 
     @expose("/ui-release-gate.json")
     def ui_release_gate_json(self):

@@ -15,6 +15,11 @@ maxdepth: 1
 ---
 
 usage
+platform-guide
+architecture
+app-generation-guide
+language-tutorials
+deployment-guide
 dsl
 dsl-grammar
 dsl-user-guide
