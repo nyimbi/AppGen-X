@@ -2814,6 +2814,10 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert low_code_features.readiness_report()["competitive_position"] == "broader-than-jhipster"
     assert low_code_features.readiness_report()["competitive_advantage_count"] >= 7
     assert low_code_features.readiness_report()["jhipster_superset_ok"] is True
+    capability_status = {item["key"]: item["status"] for item in low_code_features.capability_matrix()}
+    assert capability_status["platform.jhipster"] == "implemented"
+    assert capability_status["platform.competitive-benchmark"] == "implemented"
+    assert capability_status["platform.jhipster-superiority"] == "implemented"
     assert low_code_features.jhipster_competitive_report()["ok"] is True
     assert low_code_features.jhipster_competitive_report()["superset_scorecard"]["ok"] is True
     assert low_code_features.jhipster_capability_benchmark()["ok"] is True
