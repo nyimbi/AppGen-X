@@ -1885,6 +1885,26 @@ def target_adapters():
     return form_designer.component_target_adapter_contract(COMPONENT)
 
 
+def state_model():
+    """Return lifecycle state behavior for this component."""
+    return form_designer.component_state_model_contract(COMPONENT)
+
+
+def serialization_contract():
+    """Return design/resource streaming behavior for this component."""
+    return form_designer.component_serialization_contract(COMPONENT)
+
+
+def binding_surface():
+    """Return bindable properties and binding modes for this component."""
+    return form_designer.component_binding_surface_contract(COMPONENT)
+
+
+def designer_metadata():
+    """Return palette, inspector, and canvas metadata for this component."""
+    return form_designer.component_designer_metadata_contract(COMPONENT)
+
+
 def dispatch_event(event_name):
     """Return event dispatch metadata for a named event."""
     dispatch = form_designer.component_event_dispatch_contract(COMPONENT)
@@ -1911,6 +1931,10 @@ def test_plan():
             "validation_rules_declared",
             "behavior_contract_ok",
             "target_adapters_declared",
+            "state_model_declared",
+            "serialization_contract_declared",
+            "binding_surface_declared",
+            "designer_metadata_declared",
             "event_dispatch_declared",
         ),
     }}
@@ -26503,6 +26527,7 @@ def component_runtime_contract(component_type):
         "events": _component_events(component_type, category),
         "bindings": {{
             "data_bound": category in ("input", "choice", "calendar", "data", "analytics", "reports", "relationship", "media"),
+            "field_types": _component_field_types(category),
             "binding_modes": ("read", "write") if category not in ("container", "menu", "effects", "three_d", "nonvisual") else (),
         }},
         "validation_rules": _component_validation_rules(component_type, category),
@@ -26602,18 +26627,93 @@ def component_target_adapter_contract(component_type):
     }}
 
 
+def component_state_model_contract(component_type):
+    """Return the design/runtime state machine for one generated component."""
+    contract = component_runtime_contract(component_type)
+    interactive = contract["category"] in {{"input", "choice", "action", "data", "navigation", "mobile"}}
+    states = ("created", "loaded", "visible", "enabled", "focused", "invalid") if interactive else ("created", "loaded", "visible", "enabled")
+    return {{
+        "format": "appgen.generated-component-state-model-contract.v1",
+        "component": component_type,
+        "states": states,
+        "transitions": (
+            {{"from": "created", "to": "loaded", "event": "attach_to_form"}},
+            {{"from": "loaded", "to": "visible", "event": "show"}},
+            {{"from": "visible", "to": "enabled", "event": "enable"}},
+            {{"from": "enabled", "to": "focused", "event": "focus"}} if interactive else {{"from": "enabled", "to": "visible", "event": "refresh"}},
+            {{"from": "focused", "to": "invalid", "event": "validation_failed"}} if interactive else {{"from": "visible", "to": "loaded", "event": "hide"}},
+        ),
+        "guards": ("stable_component_id", "state_changes_emit_designer_event", "runtime_state_round_trips"),
+        "side_effects": (),
+    }}
+
+
+def component_serialization_contract(component_type):
+    """Return the property/resource streaming contract for one generated component."""
+    contract = component_runtime_contract(component_type)
+    asset_props = tuple(prop for prop in contract["default_props"] if prop in {{"source", "mesh", "material", "report"}})
+    return {{
+        "format": "appgen.generated-component-serialization-contract.v1",
+        "component": component_type,
+        "streams": ("text_design_stream", "json_design_stream", "binary_resource_stream"),
+        "property_stream": tuple(sorted(contract["default_props"])),
+        "asset_stream": asset_props,
+        "resource_fingerprints": tuple(f"{{prop}}_sha256" for prop in asset_props),
+        "round_trip_guards": ("unknown_properties_preserved", "property_order_stable", "resource_hash_recorded", "component_identity_preserved"),
+        "side_effects": (),
+    }}
+
+
+def component_binding_surface_contract(component_type):
+    """Return data/command binding surfaces for one generated component."""
+    contract = component_runtime_contract(component_type)
+    bindable_props = tuple(prop for prop in contract["default_props"] if prop in {{"label", "caption", "checked", "items", "data_source", "source", "text", "value", "columns", "series", "url"}})
+    return {{
+        "format": "appgen.generated-component-binding-surface-contract.v1",
+        "component": component_type,
+        "data_bound": contract["bindings"]["data_bound"],
+        "field_types": contract["bindings"]["field_types"],
+        "binding_modes": contract["bindings"]["binding_modes"] or ("command", "event"),
+        "bindable_properties": bindable_props or tuple(contract["default_props"])[:1],
+        "converter_hooks": ("format", "parse", "coerce", "validate"),
+        "validator_hooks": ("required", "range", "pattern", "custom"),
+        "side_effects": (),
+    }}
+
+
+def component_designer_metadata_contract(component_type):
+    """Return design-time metadata required by generated palette, canvas, and inspector tooling."""
+    contract = component_runtime_contract(component_type)
+    return {{
+        "format": "appgen.generated-component-designer-metadata-contract.v1",
+        "component": component_type,
+        "palette": {{"category": contract["category"], "glyph": _module_name(component_type), "default_size": contract["default_size"]}},
+        "inspector": {{"tabs": ("Properties", "Events", "Bindings", "Layout", "Accessibility"), "property_editors": contract["property_editors"], "event_editors": contract["events"]}},
+        "canvas": {{"drop_constraints": ("snap_to_grid", "no_overlap", "within_bounds"), "resize_handles": ("n", "e", "s", "w", "ne", "se", "sw", "nw"), "supports_nested_children": contract["category"] in {{"container", "menu", "three_d"}}}},
+        "side_effects": (),
+    }}
+
+
 def component_behavior_contract(component_type):
     """Return behavior evidence for one generated built-in component."""
     render = component_render_contract(component_type)
     validation = component_prop_validation_contract(component_type)
     events = component_event_dispatch_contract(component_type)
     adapters = component_target_adapter_contract(component_type)
+    state_model = component_state_model_contract(component_type)
+    serialization = component_serialization_contract(component_type)
+    binding_surface = component_binding_surface_contract(component_type)
+    designer_metadata = component_designer_metadata_contract(component_type)
     checks = (
         {{"id": "render_nodes", "ok": {{"web", "mobile", "desktop"}} <= {{node["target"] for node in render["nodes"]}} and not render["side_effects"], "evidence": render}},
         {{"id": "property_validation", "ok": validation["ok"] and not validation["side_effects"], "evidence": validation}},
         {{"id": "event_dispatch", "ok": bool(events["handlers"]) and all(not handler["side_effects"] for handler in events["handlers"]), "evidence": events}},
         {{"id": "target_adapters", "ok": all({{"create", "update", "validate", "destroy"}} <= set(adapter["lifecycle"]) and not adapter["side_effects"] for adapter in adapters["adapters"]), "evidence": adapters}},
         {{"id": "accessibility_preview", "ok": "label_source" in render["accessibility"], "evidence": render["accessibility"]}},
+        {{"id": "state_model", "ok": {{"created", "loaded"}} <= set(state_model["states"]) and not state_model["side_effects"], "evidence": state_model}},
+        {{"id": "design_serialization", "ok": bool(serialization["property_stream"]) and not serialization["side_effects"], "evidence": serialization}},
+        {{"id": "binding_surface", "ok": bool(binding_surface["bindable_properties"]) and not binding_surface["side_effects"], "evidence": binding_surface}},
+        {{"id": "designer_metadata", "ok": bool(designer_metadata["inspector"]["property_editors"]) and not designer_metadata["side_effects"], "evidence": designer_metadata}},
     )
     ok = all(check["ok"] for check in checks)
     return {{
@@ -26624,6 +26724,10 @@ def component_behavior_contract(component_type):
         "validation": validation,
         "events": events,
         "adapters": adapters,
+        "state_model": state_model,
+        "serialization": serialization,
+        "binding_surface": binding_surface,
+        "designer_metadata": designer_metadata,
         "checks": checks,
         "blocking_gaps": tuple(check for check in checks if not check["ok"]),
     }}
@@ -26638,6 +26742,7 @@ def component_behavior_workbench():
         {{"id": "validation_behavior", "ok": all(any(check["id"] == "property_validation" and check["ok"] for check in item["checks"]) for item in behaviors), "evidence": tuple(item["validation"] for item in behaviors)}},
         {{"id": "event_behavior", "ok": all(any(check["id"] == "event_dispatch" and check["ok"] for check in item["checks"]) for item in behaviors), "evidence": tuple(item["events"] for item in behaviors)}},
         {{"id": "target_adapter_behavior", "ok": all(any(check["id"] == "target_adapters" and check["ok"] for check in item["checks"]) for item in behaviors), "evidence": tuple(item["adapters"] for item in behaviors)}},
+        {{"id": "implementation_depth", "ok": all({{"state_model", "design_serialization", "binding_surface", "designer_metadata"}} <= {{check["id"] for check in item["checks"] if check["ok"]}} for item in behaviors), "evidence": tuple((item["component"], item["state_model"]["states"], item["serialization"]["streams"], item["binding_surface"]["binding_modes"]) for item in behaviors)}},
     )
     ok = all(check["ok"] for check in checks)
     return {{
@@ -26673,6 +26778,10 @@ def component_file_manifest(existing_paths=None):
                 "preview",
                 "behavior_contract",
                 "target_adapters",
+                "state_model",
+                "serialization_contract",
+                "binding_surface",
+                "designer_metadata",
                 "dispatch_event",
                 "test_plan",
             ),
@@ -26722,7 +26831,7 @@ def component_usability_workbench(existing_paths=None):
         {{"id": "validation_rules", "ok": all(item["validation_rules"] for item in contracts), "evidence": tuple((item["component"], item["validation_rules"]) for item in contracts)}},
         {{"id": "drop_defaults", "ok": all(item["default_size"]["w"] > 0 and item["default_size"]["h"] > 0 for item in contracts), "evidence": tuple((item["component"], item["default_size"]) for item in contracts)}},
         {{"id": "preview_contracts", "ok": all(item["preview"]["available"] and item["usable"] for item in contracts), "evidence": tuple((item["component"], item["preview"]["preview_kind"]) for item in contracts)}},
-        {{"id": "per_component_files", "ok": len(component_files) == len(contracts) and all(item["exists"] and {{"contract", "render", "validate_props", "preview", "behavior_contract", "target_adapters", "dispatch_event", "test_plan"}} <= set(item["exports"]) for item in component_files), "evidence": component_files}},
+        {{"id": "per_component_files", "ok": len(component_files) == len(contracts) and all(item["exists"] and {{"contract", "render", "validate_props", "preview", "behavior_contract", "target_adapters", "state_model", "serialization_contract", "binding_surface", "designer_metadata", "dispatch_event", "test_plan"}} <= set(item["exports"]) for item in component_files), "evidence": component_files}},
         {{"id": "per_package_files", "ok": len(package_files) == len(THIRD_PARTY_COMPONENT_SUITES) and all(item["exists"] for item in package_files), "evidence": package_files}},
         {{"id": "requested_analog_coverage", "ok": analog_workbench["ok"], "evidence": analog_workbench}},
         {{"id": "component_behavior", "ok": behavior_workbench["ok"], "evidence": behavior_workbench}},
@@ -27574,6 +27683,23 @@ def _component_properties(component_type, category):
         "data_access": ("driver", "connection_name", "table", "fields", "offline_cache"),
     }}
     return tuple(dict.fromkeys(common + by_category.get(category, ("props",))))
+
+
+def _component_field_types(category):
+    by_category = {{
+        "input": ("string", "int", "decimal", "text"),
+        "choice": ("string", "int", "enum", "bool"),
+        "calendar": ("date", "datetime", "time"),
+        "media": ("image", "file"),
+        "relationship": ("relation", "int"),
+        "navigation": ("relation", "tree"),
+        "data": ("dataset", "relation"),
+        "analytics": ("dataset", "relation"),
+        "reports": ("dataset", "relation"),
+        "mobile": ("image", "file", "geo", "sensor", "json", "string"),
+        "data_access": ("dataset", "relation"),
+    }}
+    return by_category.get(category, ())
 
 
 def _property_editor_type(name):

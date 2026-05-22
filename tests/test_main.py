@@ -1006,6 +1006,13 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     } == {check["id"] for check in usability["checks"]}
     assert usability["behavior_workbench"]["ok"] is True
     assert usability["behavior_workbench"]["component_count"] == len(palette)
+    assert "implementation_depth" in {
+        check["id"] for check in usability["behavior_workbench"]["checks"]
+    }
+    assert all(
+        {"state_model", "serialization", "binding_surface", "designer_metadata"} <= set(item)
+        for item in usability["behavior_workbench"]["behaviors"]
+    )
     assert all({"web", "mobile", "desktop"} <= set(item["renderers"]) for item in usability["components"])
     assert all(item["path"].startswith("app/component_contracts/") for item in usability["component_files"])
     assert all(item["path"].startswith("app/component_packages/") for item in usability["package_files"])
@@ -8945,6 +8952,13 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert generated_usability["component_count"] == len(form_designer.component_palette())
     assert generated_usability["behavior_workbench"]["ok"] is True
     assert generated_usability["behavior_workbench"]["component_count"] == len(form_designer.component_palette())
+    assert "implementation_depth" in {
+        check["id"] for check in generated_usability["behavior_workbench"]["checks"]
+    }
+    assert all(
+        {"state_model", "serialization", "binding_surface", "designer_metadata"} <= set(item)
+        for item in generated_usability["behavior_workbench"]["behaviors"]
+    )
     assert all(
         {"web", "mobile", "desktop"} <= set(item["renderers"])
         for item in generated_usability["components"]
@@ -8963,6 +8977,10 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert text_box_component.validate_props({"unknown": True})["ok"] is False
     assert text_box_component.behavior_contract()["ok"] is True
     assert text_box_component.target_adapters()["adapters"]
+    assert {"created", "loaded"} <= set(text_box_component.state_model()["states"])
+    assert text_box_component.serialization_contract()["property_stream"]
+    assert text_box_component.binding_surface()["bindable_properties"]
+    assert "Properties" in text_box_component.designer_metadata()["inspector"]["tabs"]
     assert text_box_component.dispatch_event("OnCreate")["ok"] is True
     assert "preview_renders" in text_box_component.test_plan()["tests"]
     assert "behavior_contract_ok" in text_box_component.test_plan()["tests"]
