@@ -176,7 +176,10 @@ workbench, and release-gate contracts.
 Run `appgen --security-release-audit` to prove package-level RBAC, authorization
 audit events, OIDC/SAML/LDAP/Active Directory/AWS Cognito SSO contracts,
 tenant/RLS policy SQL, session hardening, compliance/privacy controls, secret
-scanning, and generated security artifact coverage before release.
+scanning, and generated security artifact coverage before release. The audit
+also generates a temporary app from the security DSL sample, compiles generated
+security-facing modules, and exercises generated RBAC, runtime-security,
+identity, tenancy, RLS, compliance, workbench, and release-gate contracts.
 Run `appgen --config-release-audit` to prove the package-level configuration
 editor contract has roadmap-required FAB API flags, whitelisted editable keys,
 production safety checks, and environment export coverage.

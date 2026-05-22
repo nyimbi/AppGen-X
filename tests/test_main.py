@@ -135,6 +135,7 @@ from pyAppGen.security import compliance_contract as package_compliance_contract
 from pyAppGen.security import normalize_principal as package_normalize_principal
 from pyAppGen.security import role_policy_catalog as package_role_policy_catalog
 from pyAppGen.security import secret_exposure_scan as package_secret_exposure_scan
+from pyAppGen.security import security_generation_smoke_audit
 from pyAppGen.security import security_release_audit
 from pyAppGen.security import session_hardening_policy
 from pyAppGen.security import sso_provider_catalog
@@ -950,7 +951,29 @@ def test_package_security_audit_covers_auth_identity_and_compliance(
         "compliance_privacy",
         "secret_exposure_scan",
         "artifact_contract",
+        "generation_smoke",
     } == {gate["id"] for gate in audit["gates"]}
+    assert audit["generation_smoke"]["ok"] is True
+
+    smoke = security_generation_smoke_audit()
+    assert smoke["format"] == "appgen.security-generation-smoke-audit.v1"
+    assert smoke["ok"] is True
+    assert {
+        "app/security.py",
+        "app/runtime_security.py",
+        "app/identity.py",
+        "app/tenancy.py",
+        "app/rls.py",
+        "app/compliance.py",
+    } <= set(smoke["required_artifacts"])
+    assert {
+        "app/security.py",
+        "app/runtime_security.py",
+        "app/identity.py",
+        "app/tenancy.py",
+        "app/rls.py",
+        "app/compliance.py",
+    } <= set(smoke["compiled_artifacts"])
 
     missing = security_release_audit(existing_paths={"app/security.py"})
     assert missing["ok"] is False
