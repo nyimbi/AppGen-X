@@ -80,6 +80,20 @@ def test_schema_source_audit_cli_reports_all_sources(runner: CliRunner) -> None:
     )
 
 
+def test_dsl_antlr_report_cli_proves_generated_parser_sync(runner: CliRunner) -> None:
+    """The CLI exposes the grammar/generated-parser integrity report."""
+    result = runner.invoke(__main__.main, ["--dsl-antlr-report"])
+
+    assert result.exit_code == 0
+    report = json.loads(result.output)
+    assert report["format"] == "appgen.dsl-antlr-integrity.v1"
+    assert report["ok"] is True
+    assert report["grammar"] == "lang/appgen.g4"
+    assert report["missing_parser_rules"] == []
+    assert report["missing_parser_tokens"] == []
+    assert report["missing_lexer_tokens"] == []
+
+
 def test_dsl_linter_reports_semantic_feedback(runner: CliRunner, tmp_path) -> None:
     """The DSL linter validates syntax, semantics, and CLI JSON output."""
     source = """

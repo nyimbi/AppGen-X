@@ -98,6 +98,8 @@ adapters, and verifies that every family produces an `AppSchema` with tables,
 relations, fingerprints, fidelity reports, and generation commands.
 Run `appgen --schema-source-audit` to emit the same release proof as JSON from
 the command line.
+Run `appgen --dsl-antlr-report` before grammar releases to prove the canonical
+grammar, generated lexer, and generated parser remain synchronized.
 
 Use `required` for fields that must be entered. Use `search` on fields that
 should appear in generated search contracts. Use `hidden` for generated or

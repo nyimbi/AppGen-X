@@ -184,6 +184,12 @@ The same proof is available from the CLI:
 appgen --schema-source-audit
 ```
 
+Check that the ANTLR grammar and generated parser artifacts are synchronized:
+
+```console
+appgen --dsl-antlr-report
+```
+
 ## Shape
 
 - `table` defines persistent data models.

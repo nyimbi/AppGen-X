@@ -46817,6 +46817,14 @@ def get_metadata(idb):
         "normalize correctly."
     ),
 )
+@click.option(
+    "--dsl-antlr-report",
+    is_flag=True,
+    help=(
+        "Print JSON proof that the ANTLR grammar, lexer, and parser are "
+        "synchronized."
+    ),
+)
 @click.pass_context
 def main(
     ctx,
@@ -46832,6 +46840,7 @@ def main(
     fix_dsl_path,
     format_dsl_path,
     schema_source_audit,
+    dsl_antlr_report,
 ):
     """Generate a Flask-AppBuilder app package from a database schema."""
     schema_sources = [
@@ -46842,6 +46851,7 @@ def main(
         fix_dsl_path,
         format_dsl_path,
         schema_source_audit,
+        dsl_antlr_report,
     ]
     if not any(
         [writedir, database_url, idatabase, wdatabase, *utility_options, *schema_sources]
@@ -46870,6 +46880,30 @@ def main(
         click.echo(json.dumps(result, indent=2, sort_keys=True, default=list))
         ctx.exit(0 if result["ok"] else 1)
 
+    if dsl_antlr_report:
+        if any(
+            [
+                writedir,
+                database_url,
+                idatabase,
+                wdatabase,
+                lint_dsl_path,
+                fix_dsl_path,
+                format_dsl_path,
+                schema_source_audit,
+                *schema_sources,
+            ]
+        ):
+            raise click.UsageError(
+                "--dsl-antlr-report cannot be combined with generation or DSL "
+                "utility options."
+            )
+        from .dsl import dsl_antlr_integrity_report
+
+        result = dsl_antlr_integrity_report()
+        click.echo(json.dumps(result, indent=2, sort_keys=True, default=list))
+        ctx.exit(0 if result["ok"] else 1)
+
     if lint_dsl_path is not None:
         if any(
             [
@@ -46880,6 +46914,7 @@ def main(
                 fix_dsl_path,
                 format_dsl_path,
                 schema_source_audit,
+                dsl_antlr_report,
                 *schema_sources,
             ]
         ):
@@ -46899,6 +46934,7 @@ def main(
                 wdatabase,
                 format_dsl_path,
                 schema_source_audit,
+                dsl_antlr_report,
                 *schema_sources,
             ]
         ):
@@ -46922,6 +46958,7 @@ def main(
                 idatabase,
                 wdatabase,
                 schema_source_audit,
+                dsl_antlr_report,
                 *schema_sources,
             ]
         ):
