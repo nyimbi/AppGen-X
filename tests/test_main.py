@@ -2388,6 +2388,9 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     components_template = (output_dir / "templates" / "appgen_components.html").read_text()
     assert "Generated component and widget contracts" in components_template
     assert "Release Gate JSON" in components_template
+    view_composition_template = (output_dir / "templates" / "appgen_view_composition.html").read_text()
+    assert "View Composition" in view_composition_template
+    assert "Release Gate JSON" in view_composition_template
     assert "Keyword Budget" in (output_dir / "templates" / "appgen_dsl_reference.html").read_text()
     assert "Reference JSON" in (output_dir / "templates" / "appgen_dsl_reference.html").read_text()
     assert "Language Quality JSON" in (output_dir / "templates" / "appgen_dsl_reference.html").read_text()
@@ -5004,6 +5007,20 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert view_composition.view_composition_check(
         {"app/views.py", "app/view_composition.py", "app/templates/appgen_view_composition.html"}
     )["ok"] is True
+    view_composition_gate = view_composition.view_composition_release_gate(
+        {"app/views.py", "app/view_composition.py", "app/templates/appgen_view_composition.html"}
+    )
+    assert view_composition_gate["format"] == "appgen.view-composition-release-gate.v1"
+    assert view_composition_gate["ok"] is True
+    assert {
+        "artifact_coverage",
+        "master_detail_contracts",
+        "multiple_view_contracts",
+        "chart_view_contracts",
+        "catalog_shape",
+        "generated_view_classes",
+    } <= {check["gate"] for check in view_composition_gate["checks"]}
+    assert view_composition.view_composition_release_gate({"app/view_composition.py"})["ok"] is False
     assert any(item["type"] == "TextBox" for item in form_designer.component_palette())
     assert any(item["type"] == "DateTimePicker" for item in form_designer.component_palette())
     assert form_designer.field_component("Author", "birth_date")["type"] == "DatePicker"

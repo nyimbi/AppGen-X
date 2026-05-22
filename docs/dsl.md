@@ -681,7 +681,10 @@ apps include:
   payload readiness, and required component artifacts.
 - `view_composition.py` and `appgen_view_composition.html` with generated
   MasterDetailView, MultipleView, and ChartView contracts derived from schema
-  relationships and visible fields.
+  relationships and visible fields. The generated
+  `view_composition_release_gate()` proves required artifacts, master/detail
+  contracts, optional MultipleView group integrity, ChartView field coverage,
+  aggregate catalog shape, and generated FAB view-class support.
 - `tabbed_views.py` and `appgen_tabbed_views.html` with generated tabbed view
   contracts and role-aware permissions per tab. View sections become tabs, and
   declared role permissions on the view table decide which roles can see them.

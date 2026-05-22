@@ -5495,7 +5495,10 @@ def write_view_composition_template(output_dir):
       <h1 class="agvc-title">View Composition</h1>
       <p class="agvc-note">Generated MasterDetailView, MultipleView, and ChartView contracts for relationship-aware application screens.</p>
     </div>
-    <a class="btn btn-default" href="{{ url_for('ViewCompositionView.catalog_json') }}">Catalog JSON</a>
+    <div>
+      <a class="btn btn-default" href="{{ url_for('ViewCompositionView.catalog_json') }}">Catalog JSON</a>
+      <a class="btn btn-default" href="{{ url_for('ViewCompositionView.release_gate_json') }}">Release Gate JSON</a>
+    </div>
   </div>
   <div class="agvc-grid">
     {% for item in master_detail %}
@@ -20815,6 +20818,65 @@ def view_composition_check(existing_paths):
     }}
 
 
+def view_composition_release_gate(existing_paths=()):
+    """Return deterministic release evidence for generated composed views."""
+    existing = set(existing_paths)
+    required = {{"app/views.py", "app/view_composition.py", "app/templates/appgen_view_composition.html"}}
+    catalog = view_composition_catalog()
+    checks = (
+        {{
+            "gate": "artifact_coverage",
+            "ok": required.issubset(existing),
+            "required": tuple(sorted(required)),
+            "missing": tuple(sorted(required - existing)),
+        }},
+        {{
+            "gate": "master_detail_contracts",
+            "ok": all(
+                item.get("name")
+                and item.get("master")
+                and item.get("detail")
+                and item.get("foreign_key")
+                and item.get("target_key")
+                for item in MASTER_DETAIL_VIEWS
+            ),
+            "count": len(MASTER_DETAIL_VIEWS),
+        }},
+        {{
+            "gate": "multiple_view_contracts",
+            "ok": all(
+                item.get("name") and item.get("table") and len(item.get("related_views", ())) > 1
+                for item in MULTIPLE_VIEWS
+            ),
+            "count": len(MULTIPLE_VIEWS),
+        }},
+        {{
+            "gate": "chart_view_contracts",
+            "ok": bool(CHART_VIEWS)
+            and all(item.get("view_class") == "ChartView" and item.get("fields") for item in CHART_VIEWS),
+            "count": len(CHART_VIEWS),
+        }},
+        {{
+            "gate": "catalog_shape",
+            "ok": set(catalog) == {{"master_detail", "multiple", "charts"}}
+            and catalog["master_detail"] == MASTER_DETAIL_VIEWS
+            and catalog["multiple"] == MULTIPLE_VIEWS
+            and catalog["charts"] == CHART_VIEWS,
+            "sections": tuple(catalog),
+        }},
+        {{
+            "gate": "generated_view_classes",
+            "ok": "app/views.py" in existing and bool(CHART_VIEWS),
+            "required_classes": ("MasterDetailView", "MultipleView", "ChartView"),
+        }},
+    )
+    return {{
+        "format": "appgen.view-composition-release-gate.v1",
+        "ok": all(check["ok"] for check in checks),
+        "checks": checks,
+    }}
+
+
 class ViewCompositionView(BaseView):
     route_base = "/view-composition"
     default_view = "index"
@@ -20831,6 +20893,10 @@ class ViewCompositionView(BaseView):
     @expose("/catalog.json")
     def catalog_json(self):
         return jsonify(view_composition_catalog())
+
+    @expose("/release-gate.json")
+    def release_gate_json(self):
+        return jsonify(view_composition_release_gate({{"app/views.py", "app/view_composition.py", "app/templates/appgen_view_composition.html"}}))
 
 
 def register_view_composition(appbuilder):
@@ -37513,12 +37579,14 @@ def validate_view_composition_artifacts() -> None:
     contract = (ROOT / "app" / "view_composition.py").read_text()
     if "master_detail_catalog" not in contract or "multiple_view_catalog" not in contract or "chart_view_catalog" not in contract:
         fail("view composition contract must expose master-detail, multiple, and chart catalogs")
+    if "view_composition_release_gate" not in contract or "appgen.view-composition-release-gate.v1" not in contract or '@expose("/release-gate.json")' not in contract:
+        fail("view composition contract must expose generated release evidence")
     views = (ROOT / "app" / "views.py").read_text()
     if "MasterDetailView" not in views or "MultipleView" not in views or "ChartView" not in views:
         fail("generated views.py must include MasterDetailView, MultipleView, and ChartView support")
     template = (ROOT / "app" / "templates" / "appgen_view_composition.html").read_text()
-    if "View Composition" not in template or "MasterDetailView" not in template or "ChartView" not in template:
-        fail("view composition template must expose generated view composition catalog")
+    if "View Composition" not in template or "MasterDetailView" not in template or "ChartView" not in template or "Release Gate JSON" not in template:
+        fail("view composition template must expose generated view composition catalog and release evidence")
 
 
 def validate_tabbed_view_artifacts() -> None:
@@ -39110,6 +39178,13 @@ def test_generated_runtime_helpers():
     assert view_composition.view_composition_check(
         {"app/views.py", "app/view_composition.py", "app/templates/appgen_view_composition.html"}
     )["ok"] is True
+    assert view_composition.view_composition_release_gate(
+        {"app/views.py", "app/view_composition.py", "app/templates/appgen_view_composition.html"}
+    )["format"] == "appgen.view-composition-release-gate.v1"
+    assert view_composition.view_composition_release_gate(
+        {"app/views.py", "app/view_composition.py", "app/templates/appgen_view_composition.html"}
+    )["ok"] is True
+    assert view_composition.view_composition_release_gate({"app/view_composition.py"})["ok"] is False
     first_tabbed_view = tabbed_views.tabbed_view_catalog()[0]
     first_tab = first_tabbed_view["tabs"][0]
     assert tabbed_views.tab_policy(first_tabbed_view["view"], first_tab["id"])["required_action"] == "read"

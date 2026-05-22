@@ -174,6 +174,12 @@ wide enough for business forms, the canvas contract is stable, fields map to
 appropriate components, dropped components include property-inspector metadata,
 and overlap detection blocks invalid layouts.
 
+Use `/view-composition/release-gate.json` or
+`view_composition_release_gate()` before publishing composed screens. The gate
+proves MasterDetailView contracts, optional MultipleView group integrity,
+ChartView field coverage, aggregate catalog shape, generated FAB view-class
+support, and required artifacts.
+
 ## Choosing Targets
 
 Supported targets are `web`, `pwa`, `mobile`, `desktop`, and `chatbot`.
