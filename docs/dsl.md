@@ -460,7 +460,10 @@ apps include:
 - `view_experience.py`, `appgen_view_experience.html`, and
   `appgen-view-experience.js` with generated base-view contracts for offline
   field state, active viewers on the same page, chatbot/help actions, access log
-  events, app version footer context, time-on-page, and current-user display.
+  events, polished page shells, layout-preserving loading skeletons,
+  actionable empty states, recoverable error states, app version footer context,
+  time-on-page, current-user display, view state matrices, and a
+  view-experience release gate.
 - `support_center.py` and `appgen_support_center.html` with generated
   knowledge-base topics, tutorials, onboarding checklists, searchable support
   entries, support-ticket payloads, and sample DSL applications.

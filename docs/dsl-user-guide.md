@@ -368,7 +368,13 @@ Generated apps include `branding.py`, `appgen_branding.html`, and
   review evidence;
 - a visual regression plan that lists screenshot targets and state coverage;
 - a visual test matrix for home, list, form, and dashboard surfaces across
-  mobile, tablet, desktop, and wide viewports;
+  generated viewports.
+
+Generated apps also include `view_experience.py` for view-level polish. Use
+`/view-experience/states.json` and `/view-experience/release-gate.json` to
+verify each generated page has a stable shell, layout-preserving loading state,
+actionable empty state, recoverable error state, footer context, offline status,
+and chatbot/help affordance.
 - accessibility audit plans for focus order, landmarks, touch targets, and
   WCAG-oriented checks.
 

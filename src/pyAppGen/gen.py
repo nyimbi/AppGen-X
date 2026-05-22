@@ -5694,11 +5694,13 @@ def write_view_experience_template(output_dir):
   <div class="agvx-head">
     <div>
       <h1 class="agvx-title">View Experience</h1>
-      <p class="agvx-note">Generated base-view contracts for offline field status, active viewers, access logging, chatbot help, app version, time-on-page, and current-user footer context.</p>
+      <p class="agvx-note">Generated base-view contracts for offline field status, active viewers, access logging, chatbot help, polished loading, empty, and error states, app version, time-on-page, and current-user footer context.</p>
     </div>
     <div>
       <a class="btn btn-default" href="{{ url_for('ViewExperienceView.catalog_json') }}">Experience JSON</a>
       <a class="btn btn-default" href="{{ url_for('ViewExperienceView.presence_json') }}">Presence JSON</a>
+      <a class="btn btn-default" href="{{ url_for('ViewExperienceView.states_json') }}">View States JSON</a>
+      <a class="btn btn-default" href="{{ url_for('ViewExperienceView.release_gate_json') }}">Release Gate JSON</a>
     </div>
   </div>
   <div class="agvx-grid">
@@ -21670,6 +21672,12 @@ BASEVIEW_FEATURES = (
         "description": "App version, current user, offline state, and time-on-page footer context.",
         "artifacts": ("view_footer_context", "APP_VERSION"),
     }},
+    {{
+        "key": "polished-states",
+        "label": "Polished view states",
+        "description": "Consistent shell, loading, empty, and error recovery contracts for every generated page.",
+        "artifacts": ("view_shell_contract", "loading_state_contract", "empty_state_contract", "error_state_contract"),
+    }},
 )
 
 
@@ -21804,6 +21812,98 @@ def help_action(path, user=None, message=""):
     }}
 
 
+def view_shell_contract(path="/", title=None, actions=()):
+    """Return the generated page shell contract for a polished view."""
+    resource = resource_for_path(path)
+    page_title = title or resource["table"]
+    default_actions = ("create", "export", "refresh") if resource["table"] != "AppGen" else ("open_studio", "view_docs")
+    selected_actions = tuple(actions or default_actions)
+    return {{
+        "format": "appgen.view-shell.v1",
+        "path": path or "/",
+        "resource": resource["table"],
+        "title": page_title,
+        "landmarks": ("main", "toolbar", "status", "footer"),
+        "density": {{"mobile": "touch", "tablet": "comfortable", "desktop": "comfortable"}},
+        "actions": tuple({{"id": action, "label": action.replace("_", " ").title(), "placement": "toolbar"}} for action in selected_actions),
+        "responsive": {{
+            "mobile": "title, status, actions wrap in one column",
+            "desktop": "title and actions share the header row",
+        }},
+        "accessibility": ("skip_to_content", "visible_focus", "aria_status_region"),
+    }}
+
+
+def loading_state_contract(path="/", operation="load"):
+    """Return deterministic loading-state metadata for generated views."""
+    resource = resource_for_path(path)
+    return {{
+        "format": "appgen.view-loading-state.v1",
+        "resource": resource["table"],
+        "operation": operation,
+        "aria_busy": True,
+        "skeleton": {{
+            "rows": 3 if resource["fields"] else 1,
+            "fields": resource["fields"][:4],
+            "preserve_layout": True,
+        }},
+        "timeout_ms": 10000,
+        "recovery": ("show_retry", "open_diagnostics", "ask_chatbot"),
+    }}
+
+
+def empty_state_contract(path="/", action="create"):
+    """Return actionable empty-state metadata for generated list and detail views."""
+    resource = resource_for_path(path)
+    label = resource["table"]
+    return {{
+        "format": "appgen.view-empty-state.v1",
+        "resource": label,
+        "headline": f"No {{label}} records yet",
+        "body": f"Create the first {{label}} record or import data through the generated data exchange tools.",
+        "actions": (
+            {{"id": action, "label": action.replace("_", " ").title(), "href": resource["route"]}},
+            {{"id": "import_data", "label": "Import Data", "href": "/data-exchange/"}},
+            {{"id": "ask_help", "label": "Ask Help", "href": "/chatbot/"}},
+        ),
+        "illustration": "data-aware-empty-state",
+        "requires_action": True,
+    }}
+
+
+def error_state_contract(path="/", status=500, message=""):
+    """Return recoverable error-state metadata for generated views."""
+    resource = resource_for_path(path)
+    status_code = int(status or 500)
+    return {{
+        "format": "appgen.view-error-state.v1",
+        "resource": resource["table"],
+        "status": status_code,
+        "message": message or "The generated view could not finish the request.",
+        "severity": "warning" if status_code < 500 else "error",
+        "recovery_actions": (
+            {{"id": "retry", "label": "Retry", "side_effect": "repeat_request"}},
+            {{"id": "diagnostics", "label": "Open Diagnostics", "href": "/diagnostics/"}},
+            {{"id": "support", "label": "Ask Help", "href": "/chatbot/"}},
+        ),
+        "log_payload": access_log_event(path, "system", status=status_code),
+        "requires_operator_review": status_code >= 500,
+    }}
+
+
+def view_state_matrix(path="/"):
+    """Return generated shell, loading, empty, error, and footer states for a view."""
+    return {{
+        "format": "appgen.view-state-matrix.v1",
+        "path": path or "/",
+        "shell": view_shell_contract(path),
+        "loading": loading_state_contract(path),
+        "empty": empty_state_contract(path),
+        "error": error_state_contract(path),
+        "footer": view_footer_context(path=path),
+    }}
+
+
 def view_footer_context(user=None, path="/", started_at=None, now=None):
     """Return footer context for version, time-on-page, user, help, and offline state."""
     current = now or datetime.now(timezone.utc)
@@ -21837,6 +21937,7 @@ def baseview_experience_check(existing_paths):
     )
     missing = tuple(path for path in required if path not in existing)
     feature_keys = {{item["key"] for item in BASEVIEW_FEATURES}}
+    states = view_state_matrix(VIEW_RESOURCES[0]["route"] if VIEW_RESOURCES else "/")
     return {{
         "ok": not missing and {{
             "offline-fields",
@@ -21844,9 +21945,33 @@ def baseview_experience_check(existing_paths):
             "help-chatbot",
             "access-log",
             "footer-context",
-        }} <= feature_keys,
+            "polished-states",
+        }} <= feature_keys and states["shell"]["format"] == "appgen.view-shell.v1",
         "missing": missing,
         "features": tuple(feature_keys),
+        "states": states,
+    }}
+
+
+def view_experience_release_gate(existing_paths=()):
+    """Return release evidence for polished generated view behavior."""
+    check = baseview_experience_check(existing_paths)
+    sample_path = VIEW_RESOURCES[0]["route"] if VIEW_RESOURCES else "/"
+    states = view_state_matrix(sample_path)
+    gates = (
+        {{"gate": "artifacts", "ok": check["ok"], "details": check}},
+        {{"gate": "shell", "ok": states["shell"]["format"] == "appgen.view-shell.v1" and "main" in states["shell"]["landmarks"], "details": states["shell"]}},
+        {{"gate": "loading", "ok": states["loading"]["aria_busy"] is True and states["loading"]["skeleton"]["preserve_layout"], "details": states["loading"]}},
+        {{"gate": "empty", "ok": states["empty"]["requires_action"] and len(states["empty"]["actions"]) >= 2, "details": states["empty"]}},
+        {{"gate": "error", "ok": states["error"]["requires_operator_review"] and len(states["error"]["recovery_actions"]) >= 2, "details": states["error"]}},
+        {{"gate": "footer", "ok": states["footer"]["offline_ready"] and states["footer"]["help"]["href"] == "/chatbot/", "details": states["footer"]}},
+    )
+    return {{
+        "format": "appgen.view-experience-release-gate.v1",
+        "ok": all(gate["ok"] for gate in gates),
+        "gates": gates,
+        "blocking_gaps": tuple(gate for gate in gates if not gate["ok"]),
+        "state_matrix": states,
     }}
 
 
@@ -21867,6 +21992,14 @@ class ViewExperienceView(BaseView):
         path = request.args.get("path", "/")
         event = presence_event(path, request.args.get("user", "anonymous"))
         return jsonify({{"event": event, "active": list(active_viewers(path, (event,)) )}})
+
+    @expose("/states.json")
+    def states_json(self):
+        return jsonify(view_state_matrix(request.args.get("path", "/")))
+
+    @expose("/release-gate.json")
+    def release_gate_json(self):
+        return jsonify(view_experience_release_gate())
 
     @expose("/access-log", methods=("POST",))
     def access_log_json(self):
@@ -33836,14 +33969,20 @@ def validate_view_experience_artifacts() -> None:
         "access_log_event",
         "access_log_summary",
         "help_action",
+        "view_shell_contract",
+        "loading_state_contract",
+        "empty_state_contract",
+        "error_state_contract",
+        "view_state_matrix",
         "view_footer_context",
         "baseview_experience_check",
+        "view_experience_release_gate",
     )
     if not all(item in contract for item in required):
-        fail("view experience must expose offline, presence, access-log, help, footer, and time-on-page helpers")
+        fail("view experience must expose offline, presence, access-log, help, polished state, footer, and time-on-page helpers")
     template = (ROOT / "app" / "templates" / "appgen_view_experience.html").read_text()
-    if "View Experience" not in template or "Presence JSON" not in template or "time-on-page" not in template:
-        fail("view experience cockpit must expose base-view feature catalog")
+    if "View Experience" not in template or "Presence JSON" not in template or "View States JSON" not in template or "Release Gate JSON" not in template or "time-on-page" not in template:
+        fail("view experience cockpit must expose base-view feature catalog, state matrix, and release gate")
     script = (ROOT / "app" / "static" / "appgen-view-experience.js").read_text()
     if "data-appgen-time-on-page" not in script or "offline-ready" not in script:
         fail("view experience script must expose time-on-page and offline state updates")
@@ -35992,6 +36131,21 @@ def test_generated_runtime_helpers():
     assert view_experience.active_viewers("/Book/list/", (presence,))
     assert view_experience.access_log_summary((view_experience.access_log_event("/Book/list/", "ada"),))["unique_users"] == 1
     assert view_experience.view_footer_context("ada", "/Book/list/")["help"]["href"] == "/chatbot/"
+    shell = view_experience.view_shell_contract("/Book/list/")
+    assert shell["format"] == "appgen.view-shell.v1"
+    assert "main" in shell["landmarks"]
+    loading = view_experience.loading_state_contract("/Book/list/")
+    assert loading["aria_busy"] is True
+    assert loading["skeleton"]["preserve_layout"] is True
+    empty = view_experience.empty_state_contract("/Book/list/")
+    assert empty["requires_action"] is True
+    assert any(action["href"] == "/data-exchange/" for action in empty["actions"])
+    error = view_experience.error_state_contract("/Book/list/", status=503)
+    assert error["requires_operator_review"] is True
+    assert error["log_payload"]["status"] == 503
+    matrix = view_experience.view_state_matrix("/Book/list/")
+    assert matrix["format"] == "appgen.view-state-matrix.v1"
+    assert matrix["empty"]["format"] == "appgen.view-empty-state.v1"
     assert view_experience.baseview_experience_check(
         {
             "app/view_experience.py",
@@ -35999,6 +36153,16 @@ def test_generated_runtime_helpers():
             "app/static/appgen-view-experience.js",
         }
     )["ok"] is True
+    experience_gate = view_experience.view_experience_release_gate(
+        {
+            "app/view_experience.py",
+            "app/templates/appgen_view_experience.html",
+            "app/static/appgen-view-experience.js",
+        }
+    )
+    assert experience_gate["format"] == "appgen.view-experience-release-gate.v1"
+    assert experience_gate["ok"] is True
+    assert {"shell", "loading", "empty", "error", "footer"} <= {gate["gate"] for gate in experience_gate["gates"]}
     assert support_center.support_topic_catalog()
     assert support_center.tutorial_catalog()
     assert support_center.sample_application_catalog()

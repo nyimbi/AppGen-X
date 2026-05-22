@@ -2366,6 +2366,8 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert "Authoring Gate JSON" in (output_dir / "templates" / "appgen_dsl_reference.html").read_text()
     assert "View Experience" in (output_dir / "templates" / "appgen_view_experience.html").read_text()
     assert "Presence JSON" in (output_dir / "templates" / "appgen_view_experience.html").read_text()
+    assert "View States JSON" in (output_dir / "templates" / "appgen_view_experience.html").read_text()
+    assert "Release Gate JSON" in (output_dir / "templates" / "appgen_view_experience.html").read_text()
     assert "data-appgen-time-on-page" in (output_dir / "static" / "appgen-view-experience.js").read_text()
     assert "Support Center" in (output_dir / "templates" / "appgen_support_center.html").read_text()
     assert "Tutorials JSON" in (output_dir / "templates" / "appgen_support_center.html").read_text()
@@ -4865,6 +4867,21 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert footer["version"] == "0.1.0"
     assert footer["offline_ready"] is True
     assert footer["help"]["href"] == "/chatbot/"
+    shell = view_experience.view_shell_contract("/Book/list/")
+    assert shell["format"] == "appgen.view-shell.v1"
+    assert "main" in shell["landmarks"]
+    loading = view_experience.loading_state_contract("/Book/list/")
+    assert loading["aria_busy"] is True
+    assert loading["skeleton"]["preserve_layout"] is True
+    empty = view_experience.empty_state_contract("/Book/list/")
+    assert empty["requires_action"] is True
+    assert any(action["href"] == "/data-exchange/" for action in empty["actions"])
+    error = view_experience.error_state_contract("/Book/list/", status=503)
+    assert error["requires_operator_review"] is True
+    assert error["log_payload"]["status"] == 503
+    matrix = view_experience.view_state_matrix("/Book/list/")
+    assert matrix["format"] == "appgen.view-state-matrix.v1"
+    assert matrix["empty"]["format"] == "appgen.view-empty-state.v1"
     assert view_experience.baseview_experience_check(
         {
             "app/view_experience.py",
@@ -4872,6 +4889,16 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
             "app/static/appgen-view-experience.js",
         }
     )["ok"] is True
+    experience_gate = view_experience.view_experience_release_gate(
+        {
+            "app/view_experience.py",
+            "app/templates/appgen_view_experience.html",
+            "app/static/appgen-view-experience.js",
+        }
+    )
+    assert experience_gate["format"] == "appgen.view-experience-release-gate.v1"
+    assert experience_gate["ok"] is True
+    assert {"shell", "loading", "empty", "error", "footer"} <= {gate["gate"] for gate in experience_gate["gates"]}
     assert "getting-started" in {item["key"] for item in support_center.support_topic_catalog()}
     assert support_center.tutorial_catalog()[0]["key"] == "first-app"
     sample_dsl = support_center.sample_application_catalog()[0]["dsl"]
