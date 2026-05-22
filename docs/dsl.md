@@ -674,7 +674,11 @@ apps include:
   visual builders. Date, datetime, and time fields produce calendar-aware
   widget contracts with web, mobile, and desktop renderer hints. Custom widgets
   produce reviewable registration plans, renderer mappings, palette entries,
-  preview payloads, and accessibility contracts before they are installed.
+  preview payloads, and accessibility contracts before they are installed. The
+  generated `component_release_gate()` proves component catalog coverage,
+  widget registry depth, platform renderers, lookup contracts, calendar
+  widgets, layout contracts, custom-widget extension points, visual-builder
+  payload readiness, and required component artifacts.
 - `view_composition.py` and `appgen_view_composition.html` with generated
   MasterDetailView, MultipleView, and ChartView contracts derived from schema
   relationships and visible fields.

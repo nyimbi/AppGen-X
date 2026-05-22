@@ -5450,6 +5450,7 @@ def write_components_template(output_dir):
     <div>
       <a class="btn btn-default" href="{{ url_for('ComponentView.catalog_json') }}">Catalog JSON</a>
       <a class="btn btn-default" href="{{ url_for('ComponentView.custom_widget_json') }}">Custom Widget JSON</a>
+      <a class="btn btn-default" href="{{ url_for('ComponentView.release_gate_json') }}">Release Gate JSON</a>
     </div>
   </div>
   <div class="agx-grid">
@@ -30028,6 +30029,102 @@ def visual_builder_payload():
     }}
 
 
+def component_release_gate(existing_paths=()):
+    """Return deterministic release evidence for generated component readiness."""
+    existing = set(existing_paths)
+    required = {{"app/components.py", "app/templates/appgen_components.html"}}
+    catalog = component_catalog()
+    widgets = widget_registry()
+    palette = component_palette()
+    lookup_count = sum(len(lookup_fields(table_name)) for table_name in COMPONENT_TABLES)
+    calendar_count = sum(len(calendar_fields(table_name)) for table_name in COMPONENT_TABLES)
+    table_contracts = tuple(component_contract(table_name) for table_name in COMPONENT_TABLES)
+    custom_widget = custom_widget_contract("Release Gate Widget")
+    custom_plan = custom_widget_registration_plan(custom_widget)
+    custom_preview = custom_widget_preview(custom_widget)
+    visual_builder = visual_builder_payload()
+    checks = (
+        {{
+            "gate": "artifact_coverage",
+            "ok": required.issubset(existing),
+            "required": tuple(sorted(required)),
+            "missing": tuple(sorted(required - existing)),
+        }},
+        {{
+            "gate": "component_catalog",
+            "ok": bool(catalog)
+            and all({{"form", "list", "detail", "card"}}.issubset(set(item["components"])) for item in catalog),
+            "tables": tuple(item["table"] for item in catalog),
+        }},
+        {{
+            "gate": "widget_registry",
+            "ok": bool(widgets)
+            and bool(palette)
+            and all(item.get("component") for item in widgets)
+            and all(item.get("input_type") for item in widgets),
+            "widgets": tuple(item["widget"] for item in widgets),
+        }},
+        {{
+            "gate": "platform_renderers",
+            "ok": all(
+                {{"web", "mobile", "desktop"}}.issubset(set(item.get("platform_renderers", {{}})))
+                for item in widgets
+            ),
+            "platforms": ("web", "mobile", "desktop"),
+        }},
+        {{
+            "gate": "lookup_contracts",
+            "ok": all(
+                field.get("lookup") and field["lookup"].get("target_table") and field["lookup"].get("label_fields")
+                for table_name in COMPONENT_TABLES
+                for field in lookup_fields(table_name)
+            ),
+            "lookup_fields": lookup_count,
+        }},
+        {{
+            "gate": "calendar_widgets",
+            "ok": all(
+                field.get("component") in {{"DatePicker", "DateTimePicker", "TimePicker"}}
+                and field.get("input_type") in {{"date", "datetime-local", "time"}}
+                for table_name in COMPONENT_TABLES
+                for field in calendar_fields(table_name)
+            ),
+            "calendar_fields": calendar_count,
+        }},
+        {{
+            "gate": "layout_contracts",
+            "ok": all(
+                contract["form"]["fields"]
+                and contract["list"]["fields"]
+                and contract["detail"]["fields"]
+                and contract["card"]["fields"]
+                for contract in table_contracts
+            ),
+            "contract_count": len(table_contracts),
+        }},
+        {{
+            "gate": "custom_widget_extension",
+            "ok": custom_plan["requires_review"]
+            and custom_preview["format"] == "appgen.custom-widget-preview.v1"
+            and {{"web", "mobile", "desktop"}}.issubset(set(custom_widget["targets"])),
+            "extension_points": CUSTOM_WIDGET_EXTENSION_POINTS,
+        }},
+        {{
+            "gate": "visual_builder_payload",
+            "ok": bool(visual_builder["tables"])
+            and bool(visual_builder["widgets"])
+            and bool(visual_builder["palette"])
+            and bool(visual_builder["custom_widget_extension_points"]),
+            "palette_size": len(visual_builder["palette"]),
+        }},
+    )
+    return {{
+        "format": "appgen.component-release-gate.v1",
+        "ok": all(check["ok"] for check in checks),
+        "checks": checks,
+    }}
+
+
 class ComponentView(BaseView):
     route_base = "/components"
     default_view = "index"
@@ -30047,6 +30144,10 @@ class ComponentView(BaseView):
     @expose("/custom-widget.json")
     def custom_widget_json(self):
         return jsonify(custom_widget_registration_plan("Custom Widget"))
+
+    @expose("/release-gate.json")
+    def release_gate_json(self):
+        return jsonify(component_release_gate({{"app/components.py", "app/templates/appgen_components.html"}}))
 
 
 def register_components(appbuilder):
@@ -37401,9 +37502,11 @@ def validate_component_artifacts() -> None:
         fail("component contract must expose calendar-aware, platform-specific widget contracts")
     if "custom_widget_contract" not in contract or "custom_widget_registration_plan" not in contract or "custom_widget_preview" not in contract:
         fail("component contract must expose reviewable custom widget registration and preview helpers")
+    if "component_release_gate" not in contract or "appgen.component-release-gate.v1" not in contract or '@expose("/release-gate.json")' not in contract:
+        fail("component contract must expose generated component release evidence")
     template = (ROOT / "app" / "templates" / "appgen_components.html").read_text()
-    if "Generated component and widget contracts" not in template or "Custom Widget JSON" not in template:
-        fail("component template must expose generated and custom component contracts")
+    if "Generated component and widget contracts" not in template or "Custom Widget JSON" not in template or "Release Gate JSON" not in template:
+        fail("component template must expose generated and custom component contracts plus release evidence")
 
 
 def validate_view_composition_artifacts() -> None:
@@ -39000,6 +39103,9 @@ def test_generated_runtime_helpers():
     custom_widget = components.custom_widget_contract("Signature Pad")
     assert components.custom_widget_registration_plan(custom_widget)["requires_review"] is True
     assert components.custom_widget_preview(custom_widget)["format"] == "appgen.custom-widget-preview.v1"
+    assert components.component_release_gate({"app/components.py", "app/templates/appgen_components.html"})["format"] == "appgen.component-release-gate.v1"
+    assert components.component_release_gate({"app/components.py", "app/templates/appgen_components.html"})["ok"] is True
+    assert components.component_release_gate({"app/components.py"})["ok"] is False
     assert view_composition.chart_view_catalog()
     assert view_composition.view_composition_check(
         {"app/views.py", "app/view_composition.py", "app/templates/appgen_view_composition.html"}

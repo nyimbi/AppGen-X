@@ -2385,9 +2385,9 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     code_review_template = (output_dir / "templates" / "appgen_code_review.html").read_text()
     assert "Generated automated code-review findings" in code_review_template
     assert "Release Gate JSON" in code_review_template
-    assert "Generated component and widget contracts" in (
-        output_dir / "templates" / "appgen_components.html"
-    ).read_text()
+    components_template = (output_dir / "templates" / "appgen_components.html").read_text()
+    assert "Generated component and widget contracts" in components_template
+    assert "Release Gate JSON" in components_template
     assert "Keyword Budget" in (output_dir / "templates" / "appgen_dsl_reference.html").read_text()
     assert "Reference JSON" in (output_dir / "templates" / "appgen_dsl_reference.html").read_text()
     assert "Language Quality JSON" in (output_dir / "templates" / "appgen_dsl_reference.html").read_text()
@@ -4984,6 +4984,21 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert custom_preview["props"]["penColor"] == "#111111"
     assert components.custom_widget_palette_entry(custom_widget)["custom"] is True
     assert "custom_widget_extension_points" in components.visual_builder_payload()
+    component_gate = components.component_release_gate({"app/components.py", "app/templates/appgen_components.html"})
+    assert component_gate["format"] == "appgen.component-release-gate.v1"
+    assert component_gate["ok"] is True
+    assert {
+        "artifact_coverage",
+        "component_catalog",
+        "widget_registry",
+        "platform_renderers",
+        "lookup_contracts",
+        "calendar_widgets",
+        "layout_contracts",
+        "custom_widget_extension",
+        "visual_builder_payload",
+    } <= {check["gate"] for check in component_gate["checks"]}
+    assert components.component_release_gate({"app/components.py"})["ok"] is False
     assert any(item["master"] == "Book" and item["detail"] == "Author" for item in view_composition.master_detail_catalog())
     assert view_composition.chart_view_catalog()
     assert view_composition.view_composition_check(
