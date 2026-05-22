@@ -3873,6 +3873,7 @@ def write_rules_template(output_dir):
     <div>
       <a class="btn btn-primary" href="{{ url_for('RulesView.catalog_json') }}">Rules JSON</a>
       <a class="btn btn-default" href="{{ url_for('RulesView.decision_trees_json') }}">Decision Trees JSON</a>
+      <a class="btn btn-default" href="{{ url_for('RulesView.workbench_json') }}">Workbench JSON</a>
       <a class="btn btn-default" href="{{ url_for('RulesView.release_gate_json') }}">Release Gate JSON</a>
     </div>
   </div>
@@ -9632,6 +9633,52 @@ def rules_release_gate(existing_paths=()):
     }}
 
 
+def rules_workbench(existing_paths=()):
+    """Return consolidated business-rule evidence for generated IDEs."""
+    release_gate = rules_release_gate(existing_paths)
+    routes = (
+        "/rules/catalog.json",
+        "/rules/table/<table_name>.json",
+        "/rules/decision-trees.json",
+        "/rules/workbench.json",
+        "/rules/release-gate.json",
+    )
+    rule_samples = tuple(
+        {{
+            "rule": rule["name"],
+            "table": rule["table"],
+            "passing_row": _passing_sample_row(rule),
+            "failing_row": _failing_sample_row(rule),
+            "validation": validate_row(rule["table"], _passing_sample_row(rule)),
+            "decision_plan": decision_plan(rule["table"], _passing_sample_row(rule)),
+            "decision_tree": rule_decision_tree(rule["name"]),
+            "decision_trace": decision_trace(rule["table"], _passing_sample_row(rule)),
+        }}
+        for rule in rules_catalog()
+    )
+    checks = (
+        {{"id": "artifact_coverage", "ok": rules_check(existing_paths)["ok"], "evidence": rules_check(existing_paths)}},
+        {{"id": "rule_catalog", "ok": bool(rules_catalog()), "evidence": rules_catalog()}},
+        {{"id": "validation_contracts", "ok": bool(rule_samples) and all(item["validation"]["ok"] for item in rule_samples), "evidence": tuple(item["validation"] for item in rule_samples)}},
+        {{"id": "decision_plans", "ok": bool(rule_samples) and all(set(item["decision_plan"]) >= {{"table", "decisions", "results"}} for item in rule_samples), "evidence": tuple(item["decision_plan"] for item in rule_samples)}},
+        {{"id": "decision_trees", "ok": bool(rule_samples) and all(item["decision_tree"]["format"] == "appgen.decision-tree.v1" for item in rule_samples), "evidence": decision_tree_catalog()}},
+        {{"id": "decision_traces", "ok": bool(rule_samples) and all(item["decision_trace"]["format"] == "appgen.decision-trace.v1" for item in rule_samples), "evidence": tuple(item["decision_trace"] for item in rule_samples)}},
+        {{"id": "release_gate", "ok": release_gate["ok"], "evidence": release_gate["decision"]}},
+        {{"id": "route_surface", "ok": all(route.startswith("/rules/") for route in routes), "evidence": {{"routes": routes}}}},
+    )
+    ok = all(check["ok"] for check in checks)
+    return {{
+        "format": "appgen.rules-workbench.v1",
+        "ok": ok,
+        "decision": "approved" if ok else "blocked",
+        "rules": rules_catalog(),
+        "samples": rule_samples,
+        "routes": routes,
+        "release_gate": release_gate,
+        "checks": checks,
+    }}
+
+
 class RulesView(BaseView):
     route_base = "/rules"
     default_view = "index"
@@ -9651,6 +9698,10 @@ class RulesView(BaseView):
     @expose("/decision-trees.json")
     def decision_trees_json(self):
         return jsonify(list(decision_tree_catalog()))
+
+    @expose("/workbench.json")
+    def workbench_json(self):
+        return jsonify(rules_workbench({{"app/rules.py", "app/templates/appgen_rules.html"}}))
 
     @expose("/release-gate.json")
     def release_gate_json(self):

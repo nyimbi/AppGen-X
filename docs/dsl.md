@@ -258,7 +258,9 @@ apps include:
   decision traces. The generated `rules_release_gate()` proves required
   artifacts, rule catalogs, validation success/error contracts, decision plans,
   decision-tree exports, and decision traces before customization readiness is
-  claimed.
+  claimed. `rules_workbench()` adds IDE-ready evidence for artifact coverage,
+  rule catalogs, validation contracts, decision plans, decision trees, decision
+  traces, release decisions, and `/rules/workbench.json` route coverage.
 - `validation.py` with schema-driven payload, field, enum, type, required-field,
   relationship, and UI validation contracts for forms, APIs, imports, and
   chatbots. The generated `validation_release_gate()` proves table validation

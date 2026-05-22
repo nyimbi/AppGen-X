@@ -1115,6 +1115,7 @@ def test_generate_app_from_sqlite_schema_compiles(tmp_path) -> None:
     assert capabilities_by_key["workflow.automation"]["status"] == "implemented"
     assert capabilities_by_key["workflow.statecharts"]["status"] == "implemented"
     assert "logic.business-rules" in {item["key"] for item in manifest["capabilities"]}
+    assert capabilities_by_key["logic.business-rules"]["status"] == "implemented"
     assert "ops.monitoring" in {item["key"] for item in manifest["capabilities"]}
     assert "ops.resilience" in {item["key"] for item in manifest["capabilities"]}
     assert "ops.performance" in {item["key"] for item in manifest["capabilities"]}
@@ -2368,7 +2369,9 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     resilience_template = (output_dir / "templates" / "appgen_resilience.html").read_text()
     assert "Error Handling JSON" in resilience_template
     assert "Release Gate JSON" in resilience_template
-    assert "Business Rules" in (output_dir / "templates" / "appgen_rules.html").read_text()
+    rules_template = (output_dir / "templates" / "appgen_rules.html").read_text()
+    assert "Business Rules" in rules_template
+    assert "Workbench JSON" in rules_template
     assert "OpenAPI JSON" in (output_dir / "templates" / "appgen_openapi.html").read_text()
     performance_template = (output_dir / "templates" / "appgen_performance.html").read_text()
     assert "Generated performance budgets" in performance_template
@@ -2879,6 +2882,24 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert {"rule_catalog", "validation_contracts", "decision_contracts"} <= {
         check["gate"] for check in rules_gate["checks"]
     }
+    rules_workbench = rules.rules_workbench({"app/rules.py", "app/templates/appgen_rules.html"})
+    assert rules_workbench["format"] == "appgen.rules-workbench.v1"
+    assert rules_workbench["ok"] is True
+    assert rules_workbench["release_gate"]["ok"] is True
+    assert {
+        "artifact_coverage",
+        "rule_catalog",
+        "validation_contracts",
+        "decision_plans",
+        "decision_trees",
+        "decision_traces",
+        "release_gate",
+        "route_surface",
+    } == {check["id"] for check in rules_workbench["checks"]}
+    assert "/rules/workbench.json" in next(
+        check["evidence"]["routes"] for check in rules_workbench["checks"] if check["id"] == "route_surface"
+    )
+    assert rules.rules_workbench({"app/rules.py"})["ok"] is False
     assert rules.rules_release_gate({"app/rules.py"})["ok"] is False
     assert validation.table_validation_contract("Book")["name"] == "Book"
     assert validation.field_validation_contract("Book", "status")["enum_values"] == ("draft", "published", "archived")
