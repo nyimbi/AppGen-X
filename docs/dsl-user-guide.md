@@ -131,6 +131,9 @@ management, and application lifecycle management before any app is generated.
 Run `appgen --config-release-audit` to prove the package-level configuration
 editor contract has roadmap-required FAB API flags, whitelisted editable keys,
 production safety checks, and environment export coverage.
+Run `appgen --distribution-release-audit` to prove publishable package
+metadata, Cookiecutter templates, Flask-AppBuilder extension hooks, generated
+coverage tests, and seed-script contracts are present before release.
 
 Use `required` for fields that must be entered. Use `search` on fields that
 should appear in generated search contracts. Use `hidden` for generated or

@@ -29,6 +29,12 @@ from pyAppGen.config_admin import config_editor_release_audit
 from pyAppGen.config_admin import parse_config_assignments
 from pyAppGen.config_admin import render_config
 from pyAppGen.config_admin import update_config_source
+from pyAppGen.distribution import cookiecutter_template_manifest
+from pyAppGen.distribution import distribution_artifact_manifest
+from pyAppGen.distribution import distribution_release_audit
+from pyAppGen.distribution import fab_extension_manifest
+from pyAppGen.distribution import generated_coverage_manifest
+from pyAppGen.distribution import seed_script_manifest
 from pyAppGen.gen import generate_app_from_database
 from pyAppGen.gen import generate_app_from_schema
 from pyAppGen.dsl import apply_lint_fixes
@@ -259,6 +265,7 @@ def test_package_goal_audit_cli_aggregates_objective_evidence(
         "natural_language_evolution",
         "robust_ide",
         "config_editor",
+        "publishable_distribution",
         "source_document_scope",
     } == {gate["id"] for gate in direct_report["gates"]}
     assert direct_report["stop_condition"] == (
@@ -278,6 +285,7 @@ def test_package_goal_audit_cli_aggregates_objective_evidence(
     assert cli_report["audits"]["natural_language_evolution"]["ok"] is True
     assert cli_report["audits"]["studio"]["ok"] is True
     assert cli_report["audits"]["config_editor"]["ok"] is True
+    assert cli_report["audits"]["distribution"]["ok"] is True
 
 
 def test_package_erp_templates_export_generatable_dsl(
@@ -493,6 +501,56 @@ def test_package_config_editor_audit_covers_safe_setup(
     report = json.loads(result.output)
     assert report["ok"] is True
     assert "FAB_API_SWAGGER_UI=true" in report["env_export"]
+
+
+def test_package_distribution_audit_covers_publishable_templates(
+    runner: CliRunner,
+) -> None:
+    """The package proves publishable, template, extension, seed, and coverage lanes."""
+    package = distribution_artifact_manifest("FinanceDesk")
+    assert package["format"] == "appgen.package-distribution-artifacts.v1"
+    assert "appgen_package.py" in package["artifacts"]
+    assert "python -m build" in package["package_commands"]
+
+    cookiecutter = cookiecutter_template_manifest("FinanceDesk")
+    assert cookiecutter["format"] == "appgen.cookiecutter-template.v1"
+    assert "project_slug" in cookiecutter["variables"]
+    assert any("cookiecutter.json" in artifact for artifact in cookiecutter["artifacts"])
+
+    fab = fab_extension_manifest()
+    assert fab["format"] == "appgen.fab-extension-package.v1"
+    assert "register_appgen_views" in fab["entrypoints"]
+    assert "custom_code" in fab["extension_points"]
+
+    coverage = generated_coverage_manifest()
+    assert coverage["minimum_generated_tests"] >= 7
+    assert "tests/test_generated_coverage.py" in coverage["artifacts"]
+    assert "package_goal_audit" in coverage["coverage_targets"]
+
+    seed = seed_script_manifest()
+    assert seed["format"] == "appgen.seed-script-manifest.v1"
+    assert "idempotent_upsert" in seed["seed_modes"]
+
+    audit = distribution_release_audit()
+    assert audit["format"] == "appgen.package-distribution-release-audit.v1"
+    assert audit["ok"] is True
+    assert {
+        "publishable_package",
+        "cookiecutter_template",
+        "fab_extension",
+        "generated_test_coverage",
+        "seed_scripts",
+    } == {gate["id"] for gate in audit["gates"]}
+
+    missing_cookiecutter = distribution_release_audit(existing_paths={"appgen_package.py"})
+    assert missing_cookiecutter["ok"] is False
+    assert any(gate["id"] == "cookiecutter_template" for gate in missing_cookiecutter["blocking_gaps"])
+
+    result = runner.invoke(__main__.main, ["--distribution-release-audit"])
+    assert result.exit_code == 0
+    report = json.loads(result.output)
+    assert report["ok"] is True
+    assert "appgen_package.py" in report["manifests"]["package"]["artifacts"]
 
 
 def test_dsl_linter_reports_semantic_feedback(runner: CliRunner, tmp_path) -> None:

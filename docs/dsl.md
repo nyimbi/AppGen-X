@@ -274,6 +274,17 @@ The config audit proves roadmap-required `FAB_API_SHOW_STACKTRACE` and
 warnings, environment export, and generated `config.py`/`config_admin.py`/
 template artifact expectations.
 
+Audit the package-level distribution contract before claiming AppGen is a
+publishable generator with reusable templates:
+
+```console
+appgen --distribution-release-audit
+```
+
+The distribution audit covers publishable package metadata, Cookiecutter
+template artifacts, Flask-AppBuilder extension hooks, generated coverage tests,
+and idempotent seed-script expectations.
+
 ## Shape
 
 - `table` defines persistent data models.

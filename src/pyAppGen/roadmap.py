@@ -504,6 +504,7 @@ def generated_app_excellence_audit() -> dict:
 def package_goal_audit(root: Path | str | None = None) -> dict:
     """Return aggregate package evidence for the active AppGen objective."""
     from .config_admin import config_editor_release_audit
+    from .distribution import distribution_release_audit
     from .erp import erp_template_release_audit
     from .nl import nl_evolution_release_audit
     from .studio import studio_release_audit
@@ -515,6 +516,7 @@ def package_goal_audit(root: Path | str | None = None) -> dict:
     nl_evolution = nl_evolution_release_audit()
     studio = studio_release_audit()
     config_editor = config_editor_release_audit()
+    distribution = distribution_release_audit()
     gates = (
         {
             "id": "roadmap_traceability",
@@ -552,6 +554,11 @@ def package_goal_audit(root: Path | str | None = None) -> dict:
             "format": config_editor["format"],
         },
         {
+            "id": "publishable_distribution",
+            "ok": distribution["ok"],
+            "format": distribution["format"],
+        },
+        {
             "id": "source_document_scope",
             "ok": {"docs/ideas.md", "docs/base_features.md", "docs/Lo-code features.md"}
             <= {document["path"] for document in roadmap["documents"]},
@@ -573,6 +580,7 @@ def package_goal_audit(root: Path | str | None = None) -> dict:
             "natural_language_evolution": nl_evolution,
             "studio": studio,
             "config_editor": config_editor,
+            "distribution": distribution,
         },
         "blocking_gaps": tuple(gate for gate in gates if not gate["ok"]),
         "stop_condition": "do-not-mark-active-goal-complete-unless-ok-is-true",
