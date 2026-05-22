@@ -577,7 +577,10 @@ apps include:
   support bundles, API smoke plans, and load-test plans.
 - `tests/test_generated_coverage.py` with a generated per-table pytest coverage
   matrix for schema, API, UI, reports, security, and data exchange/backup
-  flows.
+  flows, plus view-experience, accessibility, diagnostics, release-gate, and
+  generated-test artifact coverage. A generated coverage release gate proves
+  table areas, workflow areas, experience cases, quality cases, minimum case
+  counts, and required quality artifacts before test coverage is claimed.
 - `code_review.py` and `appgen_code_review.html` with generated automated
   schema and artifact review findings for quality gates.
 - `components.py` and `appgen_components.html` with generated reusable form,

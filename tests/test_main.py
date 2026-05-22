@@ -2894,8 +2894,16 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     )
     assert generated_coverage.coverage_summary()["ok"] is True
     assert generated_coverage.coverage_summary()["workflows"] == 1
+    assert set(generated_coverage.coverage_area_catalog()["table_areas"]) >= {"experience", "quality"}
     assert generated_coverage.uncovered_requirements() == {}
     assert generated_coverage.uncovered_workflow_requirements() == {}
+    coverage_gate = generated_coverage.coverage_release_gate()
+    assert coverage_gate["format"] == "appgen.coverage-release-gate.v1"
+    assert coverage_gate["ok"] is True
+    assert {"experience_cases", "quality_cases", "artifact_coverage"} <= {gate["gate"] for gate in coverage_gate["gates"]}
+    author_coverage = generated_coverage.coverage_matrix()["Author"]
+    assert {"shell", "loading", "empty", "error", "footer"} <= set(author_coverage["experience"]["view_states"])
+    assert "app/runtime_assurance.py" in author_coverage["quality"]["release_gates"]
     assert health.status()["tables"] == 2
     assert monitoring.liveness()["live"] is True
     assert monitoring.readiness()["ready"] is True

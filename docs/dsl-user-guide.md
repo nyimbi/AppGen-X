@@ -383,6 +383,10 @@ and `/branding/ui-release-gate.json` as the aggregate ship gate when validating
 that generated applications are polished across web, mobile, and desktop-sized
 viewports. `/branding/visual-regression.json` remains the screenshot checklist
 for browser-driven visual QA.
+Use the generated `coverage_release_gate()` in
+`tests/test_generated_coverage.py` to prove table, workflow, view-experience,
+quality, diagnostics, and release-gate coverage before claiming generated test
+coverage is complete.
 
 Use `/runtime-assurance/excellence-gate.json` as the final generated-app
 quality decision. It aggregates the release gate into seven explicit product

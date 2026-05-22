@@ -34776,16 +34776,19 @@ def validate_test_coverage_artifacts() -> None:
         "REQUIRED_WORKFLOW_AREAS",
         "workflow_coverage_matrix",
         "coverage_summary",
+        "coverage_area_catalog",
         "uncovered_requirements",
         "uncovered_workflow_requirements",
+        "coverage_release_gate",
         "test_manifest_tables_have_generated_coverage",
         "test_manifest_workflows_have_generated_coverage",
         "test_every_workflow_has_transition_statechart_automation_and_wizard_cases",
+        "test_coverage_release_gate_is_ready",
     )
     if not all(item in coverage for item in required):
         fail("generated coverage tests must expose per-table and workflow coverage matrices plus pytest checks")
-    if "schema" not in coverage or "api" not in coverage or "security" not in coverage or "reports" not in coverage:
-        fail("generated coverage tests must cover schema, API, security, and reports")
+    if "schema" not in coverage or "api" not in coverage or "security" not in coverage or "reports" not in coverage or "experience" not in coverage or "quality" not in coverage:
+        fail("generated coverage tests must cover schema, API, security, reports, experience, and quality")
     if "statechart" not in coverage or "automation" not in coverage or "wizard" not in coverage:
         fail("generated coverage tests must cover workflow statecharts, automation, and wizards")
 
@@ -35575,6 +35578,16 @@ def _generated_coverage_test_text(schema: AppSchema) -> str:
                 "exchange": True,
                 "backup": True,
             },
+            "experience": {
+                "view_states": ("shell", "loading", "empty", "error", "footer"),
+                "offline": True,
+                "accessibility": ("landmarks", "visible_focus", "help_action"),
+            },
+            "quality": {
+                "generated_tests": ("tests/test_generated_coverage.py", "tests/test_generated_contract.py"),
+                "release_gates": ("app/runtime_assurance.py", "app/view_experience.py", "app/branding.py"),
+                "diagnostics": True,
+            },
         }
     workflow_cases = {
         flow.name: {
@@ -35615,8 +35628,19 @@ import pathlib
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 COVERAGE_MATRIX = {table_cases!r}
 WORKFLOW_COVERAGE = {workflow_cases!r}
-REQUIRED_AREAS = ("schema", "api", "ui", "reports", "security", "data")
+REQUIRED_AREAS = ("schema", "api", "ui", "reports", "security", "data", "experience", "quality")
 REQUIRED_WORKFLOW_AREAS = ("transitions", "statechart", "automation", "wizard")
+REQUIRED_ARTIFACTS = (
+    "app/appgen.json",
+    "app/runtime_assurance.py",
+    "app/view_experience.py",
+    "app/branding.py",
+    "app/api_testing.py",
+    "app/diagnostics.py",
+    "tests/test_generated_coverage.py",
+    "tests/test_generated_contract.py",
+    "scripts/appgen_quality.py",
+)
 
 
 def coverage_matrix():
@@ -35653,6 +35677,16 @@ def coverage_summary():
     }}
 
 
+def coverage_area_catalog():
+    """Return generated table and workflow coverage areas."""
+    return {{
+        "format": "appgen.coverage-area-catalog.v1",
+        "table_areas": REQUIRED_AREAS,
+        "workflow_areas": REQUIRED_WORKFLOW_AREAS,
+        "required_artifacts": REQUIRED_ARTIFACTS,
+    }}
+
+
 def uncovered_requirements():
     """Return missing coverage areas per table."""
     missing = {{}}
@@ -35671,6 +35705,28 @@ def uncovered_workflow_requirements():
         if absent:
             missing[flow_name] = absent
     return missing
+
+
+def coverage_release_gate(existing_paths=()):
+    """Return release evidence for generated test-coverage breadth."""
+    existing = set(existing_paths or REQUIRED_ARTIFACTS)
+    missing = tuple(path for path in REQUIRED_ARTIFACTS if path not in existing)
+    summary = coverage_summary()
+    gates = (
+        {{"gate": "table_area_coverage", "ok": not uncovered_requirements(), "details": REQUIRED_AREAS}},
+        {{"gate": "workflow_area_coverage", "ok": not uncovered_workflow_requirements(), "details": REQUIRED_WORKFLOW_AREAS}},
+        {{"gate": "minimum_case_count", "ok": summary["ok"], "details": summary}},
+        {{"gate": "experience_cases", "ok": all("experience" in areas for areas in COVERAGE_MATRIX.values()), "details": tuple(COVERAGE_MATRIX)}},
+        {{"gate": "quality_cases", "ok": all("quality" in areas for areas in COVERAGE_MATRIX.values()), "details": tuple(COVERAGE_MATRIX)}},
+        {{"gate": "artifact_coverage", "ok": not missing, "details": missing}},
+    )
+    return {{
+        "format": "appgen.coverage-release-gate.v1",
+        "ok": all(gate["ok"] for gate in gates),
+        "gates": gates,
+        "blocking_gaps": tuple(gate for gate in gates if not gate["ok"]),
+        "summary": summary,
+    }}
 
 
 def test_manifest_tables_have_generated_coverage():
@@ -35698,6 +35754,10 @@ def test_every_table_has_api_ui_report_security_and_data_cases():
         assert set(("rbac", "runtime_headers", "csrf")) <= set(areas["security"]["checks"])
         assert areas["data"]["exchange"] is True
         assert areas["data"]["backup"] is True
+        assert {"shell", "loading", "empty", "error", "footer"} <= set(areas["experience"]["view_states"])
+        assert areas["experience"]["offline"] is True
+        assert areas["quality"]["diagnostics"] is True
+        assert "app/runtime_assurance.py" in areas["quality"]["release_gates"]
 
 
 def test_every_workflow_has_transition_statechart_automation_and_wizard_cases():
@@ -35715,6 +35775,13 @@ def test_coverage_summary_meets_generated_minimum():
     summary = coverage_summary()
     assert summary["ok"] is True
     assert summary["case_count"] >= summary["minimum_expected_cases"]
+
+
+def test_coverage_release_gate_is_ready():
+    gate = coverage_release_gate()
+    assert gate["format"] == "appgen.coverage-release-gate.v1"
+    assert gate["ok"] is True
+    assert {{"experience_cases", "quality_cases", "artifact_coverage"}} <= {{item["gate"] for item in gate["gates"]}}
 '''
 
 
