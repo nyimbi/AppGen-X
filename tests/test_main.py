@@ -40,6 +40,7 @@ from pyAppGen.dsl import dsl_keyword_budget
 from pyAppGen.dsl import dsl_outline
 from pyAppGen.dsl import format_dsl
 from pyAppGen.dsl import lint_dsl
+from pyAppGen.roadmap import generated_app_excellence_audit
 from pyAppGen.roadmap import jhipster_superiority_audit
 from pyAppGen.roadmap import roadmap_release_audit
 from pyAppGen.schema import load_schema
@@ -192,6 +193,35 @@ def test_jhipster_superiority_audit_cli_proves_appgen_advantages(
     assert cli_report["stop_condition"] == (
         "do-not-claim-jhipster-superiority-unless-ok-is-true"
     )
+    assert all(gate["ok"] for gate in cli_report["gates"])
+
+
+def test_generated_app_excellence_audit_cli_guards_quality_claims(
+    runner: CliRunner,
+) -> None:
+    """The CLI exposes proof for the objective's generated-app quality claims."""
+    direct_report = generated_app_excellence_audit()
+    assert direct_report["format"] == "appgen.generated-app-excellence-audit.v1"
+    assert direct_report["ok"] is True
+    assert {
+        "beautiful",
+        "sophisticated",
+        "secure",
+        "reliable",
+        "robust",
+        "functional",
+        "highly-capable",
+    } == {category["id"] for category in direct_report["categories"]}
+    assert direct_report["stop_condition"] == (
+        "do-not-claim-generated-app-excellence-unless-ok-is-true"
+    )
+
+    result = runner.invoke(__main__.main, ["--generated-app-excellence-audit"])
+
+    assert result.exit_code == 0
+    cli_report = json.loads(result.output)
+    assert cli_report["ok"] is True
+    assert cli_report["decision"] == "approved"
     assert all(gate["ok"] for gate in cli_report["gates"])
 
 

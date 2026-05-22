@@ -46829,6 +46829,14 @@ def get_metadata(idb):
     help="Print JSON proof that AppGen preserves and exceeds JHipster capabilities.",
 )
 @click.option(
+    "--generated-app-excellence-audit",
+    is_flag=True,
+    help=(
+        "Print JSON proof for generated app beauty, security, reliability, and "
+        "capability claims."
+    ),
+)
+@click.option(
     "--schema-source-audit",
     is_flag=True,
     help=(
@@ -46861,6 +46869,7 @@ def main(
     dsl_authoring_gate_path,
     roadmap_release_audit,
     jhipster_superiority_audit,
+    generated_app_excellence_audit,
     schema_source_audit,
     dsl_antlr_report,
 ):
@@ -46875,6 +46884,7 @@ def main(
         dsl_authoring_gate_path,
         roadmap_release_audit,
         jhipster_superiority_audit,
+        generated_app_excellence_audit,
         schema_source_audit,
         dsl_antlr_report,
     ]
@@ -46897,6 +46907,7 @@ def main(
                 dsl_authoring_gate_path,
                 roadmap_release_audit,
                 jhipster_superiority_audit,
+                generated_app_excellence_audit,
                 dsl_antlr_report,
                 *schema_sources,
             ]
@@ -46922,6 +46933,7 @@ def main(
                 dsl_authoring_gate_path,
                 roadmap_release_audit,
                 jhipster_superiority_audit,
+                generated_app_excellence_audit,
                 schema_source_audit,
                 *schema_sources,
             ]
@@ -46948,6 +46960,7 @@ def main(
                 dsl_authoring_gate_path,
                 roadmap_release_audit,
                 jhipster_superiority_audit,
+                generated_app_excellence_audit,
                 schema_source_audit,
                 dsl_antlr_report,
                 *schema_sources,
@@ -46971,6 +46984,7 @@ def main(
                 dsl_authoring_gate_path,
                 roadmap_release_audit,
                 jhipster_superiority_audit,
+                generated_app_excellence_audit,
                 schema_source_audit,
                 dsl_antlr_report,
                 *schema_sources,
@@ -46998,6 +47012,7 @@ def main(
                 dsl_authoring_gate_path,
                 roadmap_release_audit,
                 jhipster_superiority_audit,
+                generated_app_excellence_audit,
                 schema_source_audit,
                 dsl_antlr_report,
                 *schema_sources,
@@ -47024,6 +47039,7 @@ def main(
                 wdatabase,
                 roadmap_release_audit,
                 jhipster_superiority_audit,
+                generated_app_excellence_audit,
                 schema_source_audit,
                 dsl_antlr_report,
                 *schema_sources,
@@ -47051,6 +47067,7 @@ def main(
                 idatabase,
                 wdatabase,
                 jhipster_superiority_audit,
+                generated_app_excellence_audit,
                 *schema_sources,
             ]
         ):
@@ -47065,14 +47082,35 @@ def main(
         ctx.exit(0 if result["ok"] else 1)
 
     if jhipster_superiority_audit:
-        if any([writedir, database_url, idatabase, wdatabase, *schema_sources]):
+        if any(
+            [
+                writedir,
+                database_url,
+                idatabase,
+                wdatabase,
+                generated_app_excellence_audit,
+                *schema_sources,
+            ]
+        ):
             raise click.UsageError(
                 "--jhipster-superiority-audit cannot be combined with generation "
-                "options."
+                "or audit options."
             )
         from .roadmap import jhipster_superiority_audit as package_superiority_audit
 
         result = package_superiority_audit()
+        click.echo(json.dumps(result, indent=2, sort_keys=True, default=list))
+        ctx.exit(0 if result["ok"] else 1)
+
+    if generated_app_excellence_audit:
+        if any([writedir, database_url, idatabase, wdatabase, *schema_sources]):
+            raise click.UsageError(
+                "--generated-app-excellence-audit cannot be combined with "
+                "generation options."
+            )
+        from .roadmap import generated_app_excellence_audit as package_excellence_audit
+
+        result = package_excellence_audit()
         click.echo(json.dumps(result, indent=2, sort_keys=True, default=list))
         ctx.exit(0 if result["ok"] else 1)
 

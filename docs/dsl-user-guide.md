@@ -109,6 +109,9 @@ capability map still satisfies `docs/ideas.md`, `docs/base_features.md`, and
 Run `appgen --jhipster-superiority-audit` before making product claims that
 AppGen is more capable than JHipster; it checks preserved baseline capabilities
 and AppGen-only advantage areas.
+Run `appgen --generated-app-excellence-audit` before claiming generated apps are
+beautiful, sophisticated, secure, reliable, robust, functional, and highly
+capable.
 
 Use `required` for fields that must be entered. Use `search` on fields that
 should appear in generated search contracts. Use `hidden` for generated or

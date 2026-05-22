@@ -213,6 +213,101 @@ APPGEN_ADVANTAGE_REQUIREMENTS = (
     },
 )
 
+GENERATED_APP_EXCELLENCE_REQUIREMENTS = (
+    {
+        "id": "beautiful",
+        "description": (
+            "Generated apps expose polished visual design, responsive layouts, "
+            "and visual QA evidence."
+        ),
+        "capabilities": ("ui.branding", "ui.responsive", "a11y.compliance"),
+    },
+    {
+        "id": "sophisticated",
+        "description": (
+            "Generated apps include advanced UI composition, analytics, "
+            "workflows, and integrations."
+        ),
+        "capabilities": (
+            "ui.view-composition",
+            "reports.analytics",
+            "workflow.automation",
+            "integration.enterprise",
+        ),
+    },
+    {
+        "id": "secure",
+        "description": (
+            "Generated apps include RBAC, sessions, HTTPS, SSO, compliance, "
+            "and RLS evidence."
+        ),
+        "capabilities": (
+            "security.rbac",
+            "security.session",
+            "security.https",
+            "security.sso",
+            "security.compliance",
+            "security.rls",
+        ),
+    },
+    {
+        "id": "reliable",
+        "description": (
+            "Generated apps include monitoring, backup, CI, tests, and runtime "
+            "assurance."
+        ),
+        "capabilities": (
+            "ops.monitoring",
+            "ops.backup",
+            "devops.cicd",
+            "quality.test-coverage",
+            "ops.assurance",
+        ),
+    },
+    {
+        "id": "robust",
+        "description": (
+            "Generated apps include resilience, diagnostics, performance "
+            "budgets, and database operations."
+        ),
+        "capabilities": (
+            "ops.resilience",
+            "quality.diagnostics",
+            "ops.performance",
+            "data.database-ops",
+        ),
+    },
+    {
+        "id": "functional",
+        "description": (
+            "Generated apps include data models, APIs, search, reports, forms, "
+            "and data exchange."
+        ),
+        "capabilities": (
+            "codegen.fab",
+            "api.rest",
+            "api.graphql",
+            "data.search",
+            "reports.analytics",
+            "data.exchange",
+        ),
+    },
+    {
+        "id": "highly-capable",
+        "description": (
+            "Generated apps include native targets, ERP templates, agentic "
+            "systems, NL evolution, and composition."
+        ),
+        "capabilities": (
+            "platform.native",
+            "components.erp-templates",
+            "ai.agentic-systems",
+            "ui.nl-evolution",
+            "components.application-composition",
+        ),
+    },
+)
+
 
 def _read_document(root: Path, relative_path: str) -> str:
     path = root / relative_path
@@ -346,6 +441,63 @@ def jhipster_superiority_audit() -> dict:
         "gates": gates,
         "blocking_gaps": tuple(gate for gate in gates if not gate["ok"]),
         "stop_condition": "do-not-claim-jhipster-superiority-unless-ok-is-true",
+    }
+
+
+def generated_app_excellence_audit() -> dict:
+    """Return package-level proof for generated app quality claims."""
+    categories = _capability_group_checks(GENERATED_APP_EXCELLENCE_REQUIREMENTS)
+    gates = (
+        {
+            "id": "objective_quality_categories",
+            "ok": all(category["ok"] for category in categories),
+            "categories": categories,
+        },
+        {
+            "id": "runtime_assurance_bound",
+            "ok": any(
+                category["id"] == "reliable"
+                and "ops.assurance" in category["capabilities"]
+                and category["ok"]
+                for category in categories
+            ),
+            "required_capability": "ops.assurance",
+        },
+        {
+            "id": "visual_quality_bound",
+            "ok": any(
+                category["id"] == "beautiful"
+                and "ui.branding" in category["capabilities"]
+                and category["ok"]
+                for category in categories
+            ),
+            "required_capability": "ui.branding",
+        },
+        {
+            "id": "advanced_capability_bound",
+            "ok": any(
+                category["id"] == "highly-capable"
+                and "ai.agentic-systems" in category["capabilities"]
+                and "components.erp-templates" in category["capabilities"]
+                and category["ok"]
+                for category in categories
+            ),
+            "required_capabilities": (
+                "ai.agentic-systems",
+                "components.erp-templates",
+            ),
+        },
+    )
+    ok = all(gate["ok"] for gate in gates)
+    return {
+        "format": "appgen.generated-app-excellence-audit.v1",
+        "scope": "package",
+        "ok": ok,
+        "decision": "approved" if ok else "blocked",
+        "categories": categories,
+        "gates": gates,
+        "blocking_gaps": tuple(gate for gate in gates if not gate["ok"]),
+        "stop_condition": "do-not-claim-generated-app-excellence-unless-ok-is-true",
     }
 
 

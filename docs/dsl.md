@@ -211,6 +211,14 @@ capable than JHipster:
 appgen --jhipster-superiority-audit
 ```
 
+Run the generated-app excellence audit before claiming generated apps are
+beautiful, sophisticated, secure, reliable, robust, functional, and highly
+capable:
+
+```console
+appgen --generated-app-excellence-audit
+```
+
 ## Shape
 
 - `table` defines persistent data models.
