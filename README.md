@@ -328,9 +328,12 @@ Generated apps include Studio contracts for:
   suites, plus reviewed package import/install plans for additional vendors.
 - A design-time package manager workbench proves install session phases,
   compatibility matrices, palette/inspector/binding registration, isolated
-  loading, rollback plans, and side-effect guards.
+  loading, rollback plans, package behavior contracts, adapter smoke tests,
+  dependency lockfile metadata, preview-load lifecycles, and side-effect guards.
 - Generated package modules under `app/component_packages/<package>.py` export
-  `package_contract()`, `install_plan()`, `load_policy()`, and `test_plan()`.
+  `package_contract()`, `install_plan()`, `load_policy()`,
+  `dependency_graph()`, `adapter_smoke()`, `preview_load()`,
+  `behavior_contract()`, and `test_plan()`.
 - Natural-language evolution review queues.
 - Generation plans for web, PWA, mobile, desktop, and chatbot targets.
 - Release gates, app history, snapshots, restore points, and capability matrix.

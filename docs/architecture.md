@@ -228,7 +228,9 @@ Visual design is split into two related capabilities:
   runtime fallbacks.
 - `design_time_package_manager_workbench()` validates package install sessions,
   compatibility matrices, palette/inspector/binding registration, isolated
-  loading, rollback plans, and side-effect guards.
+  loading, rollback plans, package behavior contracts, dependency lockfile
+  metadata, adapter smoke tests, isolated preview-load lifecycles, and
+  side-effect guards.
 - `visual_modeling.py` handles database graph nodes, relationships, ERD export,
   DBML/SQL/PonyORM export, schema proposals, and migration preview.
 - `branding.py` handles brand/theme contracts, splash-screen configuration,

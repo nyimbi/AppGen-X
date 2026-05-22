@@ -1955,6 +1955,26 @@ def adapter_contract():
     return package_contract()["adapters"]
 
 
+def dependency_graph():
+    """Return dependency and lockfile metadata for this package."""
+    return form_designer.component_package_dependency_graph((PACKAGE_ID,))
+
+
+def adapter_smoke():
+    """Return adapter smoke-test evidence for this package."""
+    return form_designer.component_package_adapter_smoke_contract(PACKAGE_ID)
+
+
+def preview_load():
+    """Return isolated preview-load evidence for this package."""
+    return form_designer.component_package_preview_load_contract(PACKAGE_ID)
+
+
+def behavior_contract():
+    """Return behavior evidence for this package."""
+    return form_designer.component_package_behavior_contract(PACKAGE_ID)
+
+
 def validate_load_request(request=None):
     """Validate a design-time package load request without side effects."""
     return form_designer.validate_component_package_load(PACKAGE_ID, request or {{}})
@@ -1971,6 +1991,10 @@ def test_plan():
             "license_review_required",
             "load_policy_declares_guards",
             "adapter_contract_declared",
+            "dependency_graph_declared",
+            "adapter_smoke_passes",
+            "isolated_preview_loads",
+            "behavior_contract_ok",
             "load_request_validation_blocks_missing_checks",
         ),
     }}
@@ -25572,6 +25596,145 @@ def validate_component_package_load(package_id, request=None):
     }}
 
 
+def component_package_dependency_graph(package_ids=()):
+    """Return deterministic dependency and lockfile metadata for package loading."""
+    install_plan = third_party_component_install_plan(package_ids)
+    nodes = tuple(
+        {{
+            "id": package["id"],
+            "vendor": package["vendor"],
+            "components": package["components"],
+            "categories": package["categories"],
+            "version": "pinned-by-project",
+        }}
+        for package in install_plan["packages"]
+    )
+    edges = tuple(
+        {{
+            "from": package["id"],
+            "to": f"adapter:{{_module_name(package['id'])}}",
+            "kind": "package_to_adapter",
+        }}
+        for package in install_plan["packages"]
+    )
+    return {{
+        "format": "appgen.generated-component-package-dependency-graph.v1",
+        "ok": install_plan["ok"] and not install_plan["unknown"] and bool(nodes),
+        "nodes": nodes,
+        "edges": edges,
+        "lockfile": {{
+            "required": True,
+            "fields": ("package_id", "vendor", "version", "checksum", "adapter_module"),
+        }},
+        "unknown": install_plan["unknown"],
+        "side_effects": (),
+    }}
+
+
+def component_package_adapter_smoke_contract(package_id):
+    """Return adapter smoke-test evidence for one package."""
+    contract = component_package_contract(package_id)
+    probes = tuple(
+        {{
+            "component": adapter["component"],
+            "adapter": adapter["adapter"],
+            "checks": ("property_bridge", "event_bridge", "binding_bridge", "designer_preview", "runtime_target_map"),
+            "ok": {{"designer", "preview", "runtime"}} <= set(adapter["render_targets"])
+            and adapter["property_bridge"] == "published_properties_to_inspector"
+            and adapter["event_bridge"] == "published_events_to_handlers"
+            and adapter["binding_bridge"] == "component_bindings_to_visual_graph",
+            "side_effects": (),
+        }}
+        for adapter in contract["adapters"]
+    )
+    return {{
+        "format": "appgen.generated-component-package-adapter-smoke-contract.v1",
+        "package_id": package_id,
+        "ok": bool(probes) and all(probe["ok"] and not probe["side_effects"] for probe in probes),
+        "probes": probes,
+        "side_effects": (),
+    }}
+
+
+def component_package_preview_load_contract(package_id):
+    """Return isolated preview-load evidence for one package."""
+    contract = component_package_contract(package_id)
+    previews = tuple(
+        {{
+            "component": adapter["component"],
+            "loader": "sandboxed_loader",
+            "lifecycle": ("load_adapter", "instantiate_preview", "validate_property_bridge", "validate_event_bridge", "unload_adapter"),
+            "targets": adapter["render_targets"],
+            "side_effects": (),
+        }}
+        for adapter in contract["adapters"]
+    )
+    return {{
+        "format": "appgen.generated-component-package-preview-load-contract.v1",
+        "package_id": package_id,
+        "ok": bool(previews)
+        and all({{"load_adapter", "instantiate_preview", "unload_adapter"}} <= set(preview["lifecycle"]) and not preview["side_effects"] for preview in previews),
+        "previews": previews,
+        "isolation": contract["load_policy"]["isolation"],
+        "side_effects": (),
+    }}
+
+
+def component_package_behavior_contract(package_id):
+    """Return behavior evidence for one design-time component package."""
+    dependencies = component_package_dependency_graph((package_id,))
+    adapter_smoke = component_package_adapter_smoke_contract(package_id)
+    preview_load = component_package_preview_load_contract(package_id)
+    load_policy = component_package_load_policy(package_id)
+    rollback = component_package_rollback_contract((package_id,))
+    validation = validate_component_package_load(package_id, {{"accepted": load_policy["checks"]}})
+    checks = (
+        {{"id": "dependency_resolution", "ok": dependencies["ok"] and not dependencies["side_effects"], "evidence": dependencies}},
+        {{"id": "adapter_smoke", "ok": adapter_smoke["ok"] and not adapter_smoke["side_effects"], "evidence": adapter_smoke}},
+        {{"id": "isolated_preview_load", "ok": preview_load["ok"] and {{"sandboxed_loader", "per-project_manifest"}} <= set(preview_load["isolation"]), "evidence": preview_load}},
+        {{"id": "load_validation", "ok": validation["ok"] and not validation["side_effects"], "evidence": validation}},
+        {{"id": "rollback_ready", "ok": {{"unload_adapters", "restore_registry", "restore_lockfile"}} <= set(rollback["snapshot"]["restore_order"]) and not rollback["side_effects"], "evidence": rollback}},
+    )
+    ok = all(check["ok"] for check in checks)
+    return {{
+        "format": "appgen.generated-component-package-behavior-contract.v1",
+        "package_id": package_id,
+        "ok": ok,
+        "dependencies": dependencies,
+        "adapter_smoke": adapter_smoke,
+        "preview_load": preview_load,
+        "load_validation": validation,
+        "rollback": rollback,
+        "checks": checks,
+        "blocking_gaps": tuple(check for check in checks if not check["ok"]),
+    }}
+
+
+def component_package_behavior_workbench(package_ids=()):
+    """Prove design-time packages can be installed, previewed, tested, and rolled back."""
+    selected = tuple(package_ids or tuple(package["id"] for package in THIRD_PARTY_COMPONENT_SUITES))
+    behaviors = tuple(component_package_behavior_contract(package_id) for package_id in selected)
+    dependency_graph = component_package_dependency_graph(package_ids)
+    checks = (
+        {{"id": "dependency_graph", "ok": dependency_graph["ok"] and len(dependency_graph["nodes"]) == len(selected), "evidence": dependency_graph}},
+        {{"id": "all_packages_have_behavior", "ok": len(behaviors) == len(selected) and all(item["ok"] for item in behaviors), "evidence": tuple(item["package_id"] for item in behaviors)}},
+        {{"id": "adapter_smoke_tests", "ok": all(item["adapter_smoke"]["ok"] for item in behaviors), "evidence": tuple(item["adapter_smoke"] for item in behaviors)}},
+        {{"id": "isolated_preview_loads", "ok": all(item["preview_load"]["ok"] and not item["preview_load"]["side_effects"] for item in behaviors), "evidence": tuple(item["preview_load"] for item in behaviors)}},
+        {{"id": "rollback_behaviors", "ok": all(any(check["id"] == "rollback_ready" and check["ok"] for check in item["checks"]) for item in behaviors), "evidence": tuple(item["rollback"] for item in behaviors)}},
+    )
+    ok = all(check["ok"] for check in checks)
+    return {{
+        "format": "appgen.generated-component-package-behavior-workbench.v1",
+        "ok": ok,
+        "decision": "approved" if ok else "blocked",
+        "package_count": len(behaviors),
+        "dependency_graph": dependency_graph,
+        "behaviors": behaviors,
+        "checks": checks,
+        "blocking_gaps": tuple(check for check in checks if not check["ok"]),
+    }}
+
+
 def design_time_package_install_session(package_ids=()):
     """Return a reviewable design-time package installation session."""
     install_plan = third_party_component_install_plan(package_ids)
@@ -25649,12 +25812,14 @@ def design_time_package_manager_workbench(package_ids=()):
     registration = component_palette_registration_contract(package_ids)
     rollback = component_package_rollback_contract(package_ids)
     load_policies = tuple(component_package_load_policy(package_id) for package_id in session["packages"])
+    behavior = component_package_behavior_workbench(package_ids)
     checks = (
         {{"id": "install_session_phases", "ok": {{"resolve_metadata", "sandbox_load", "adapter_compile", "palette_registration", "rollback_snapshot"}} <= set(session["phases"]), "evidence": session}},
         {{"id": "compatibility_matrix", "ok": bool(compatibility) and all(item["compatible"] and {{"form-designer", "object-inspector", "binding-designer"}} <= set(item["design_surfaces"]) for item in compatibility), "evidence": compatibility}},
         {{"id": "palette_registration", "ok": bool(registration["entries"]) and {{"palette", "object_inspector", "live_bindings", "preview_renderer"}} <= set(registration["registration_points"]), "evidence": registration}},
         {{"id": "load_isolation", "ok": all({{"sandboxed_loader", "no_global_install_without_review", "per-project_manifest"}} <= set(policy["isolation"]) for policy in load_policies), "evidence": load_policies}},
         {{"id": "rollback_plan", "ok": {{"unload_adapters", "restore_registry", "restore_lockfile", "refresh_designer"}} <= set(rollback["snapshot"]["restore_order"]) and {{"rollback_snapshot_available", "unload_before_replace"}} <= set(rollback["guards"]), "evidence": rollback}},
+        {{"id": "package_behavior", "ok": behavior["ok"], "evidence": behavior}},
         {{"id": "side_effect_guards", "ok": not session["side_effects"] and not registration["side_effects"] and not rollback["side_effects"], "evidence": {{"session": session["side_effects"], "registration": registration["side_effects"], "rollback": rollback["side_effects"]}}}},
     )
     ok = all(check["ok"] for check in checks)
@@ -25666,6 +25831,7 @@ def design_time_package_manager_workbench(package_ids=()):
         "compatibility": compatibility,
         "registration": registration,
         "rollback": rollback,
+        "behavior": behavior,
         "checks": checks,
         "blocking_gaps": tuple(check for check in checks if not check["ok"]),
     }}
@@ -25676,6 +25842,7 @@ def component_package_workbench(existing_paths=None):
     contracts = tuple(component_package_contract(package["id"]) for package in THIRD_PARTY_COMPONENT_SUITES)
     install_plan = third_party_component_install_plan()
     package_manager = design_time_package_manager_workbench()
+    behavior_workbench = component_package_behavior_workbench()
     package_files = component_package_file_manifest(existing_paths)
     checks = (
         {{"id": "registry_coverage", "ok": len(contracts) == len(THIRD_PARTY_COMPONENT_SUITES) and {{contract["package"]["id"] for contract in contracts}} == {{package["id"] for package in THIRD_PARTY_COMPONENT_SUITES}}, "evidence": tuple(contract["package"]["id"] for contract in contracts)}},
@@ -25683,7 +25850,8 @@ def component_package_workbench(existing_paths=None):
         {{"id": "load_policy_guards", "ok": all(contract["load_policy"]["requires_review"] and not contract["load_policy"]["side_effects"] and contract["load_policy"]["checks"] for contract in contracts), "evidence": tuple((contract["package"]["id"], contract["load_policy"]["checks"]) for contract in contracts)}},
         {{"id": "install_plan_review", "ok": install_plan["ok"] and install_plan["requires_review"] and not install_plan["side_effects"], "evidence": install_plan}},
         {{"id": "package_manager_workbench", "ok": package_manager["ok"], "evidence": package_manager}},
-        {{"id": "package_file_exports", "ok": all({{"package_contract", "install_plan", "load_policy", "adapter_contract", "validate_load_request", "test_plan"}} <= set(item["exports"]) for item in package_files), "evidence": package_files}},
+        {{"id": "package_behavior_workbench", "ok": behavior_workbench["ok"], "evidence": behavior_workbench}},
+        {{"id": "package_file_exports", "ok": all({{"package_contract", "install_plan", "load_policy", "adapter_contract", "dependency_graph", "adapter_smoke", "preview_load", "behavior_contract", "validate_load_request", "test_plan"}} <= set(item["exports"]) for item in package_files), "evidence": package_files}},
         {{"id": "generated_package_files", "ok": existing_paths is None or all(item["exists"] for item in package_files), "evidence": package_files}},
     )
     ok = all(check["ok"] for check in checks)
@@ -25694,6 +25862,7 @@ def component_package_workbench(existing_paths=None):
         "package_count": len(contracts),
         "contracts": contracts,
         "package_manager": package_manager,
+        "behavior_workbench": behavior_workbench,
         "checks": checks,
         "blocking_gaps": tuple(check for check in checks if not check["ok"]),
     }}
@@ -26367,7 +26536,18 @@ def component_package_file_manifest(existing_paths=None):
             "package": package["id"],
             "path": path,
             "exists": path in paths,
-            "exports": ("package_contract", "install_plan", "load_policy", "adapter_contract", "validate_load_request", "test_plan"),
+            "exports": (
+                "package_contract",
+                "install_plan",
+                "load_policy",
+                "adapter_contract",
+                "dependency_graph",
+                "adapter_smoke",
+                "preview_load",
+                "behavior_contract",
+                "validate_load_request",
+                "test_plan",
+            ),
             "requires_review": True,
         }})
     return tuple(manifest)

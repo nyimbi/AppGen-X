@@ -77,7 +77,12 @@ from pyAppGen.form_designer import apply_drop
 from pyAppGen.form_designer import component_analog_matrix
 from pyAppGen.form_designer import component_analog_workbench
 from pyAppGen.form_designer import component_package_contract
+from pyAppGen.form_designer import component_package_adapter_smoke_contract
+from pyAppGen.form_designer import component_package_behavior_contract
+from pyAppGen.form_designer import component_package_behavior_workbench
+from pyAppGen.form_designer import component_package_dependency_graph
 from pyAppGen.form_designer import component_package_load_policy
+from pyAppGen.form_designer import component_package_preview_load_contract
 from pyAppGen.form_designer import component_package_workbench
 from pyAppGen.form_designer import component_palette
 from pyAppGen.form_designer import component_usability_workbench
@@ -888,6 +893,24 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     assert package_contract["format"] == "appgen.component-package-contract.v1"
     assert package_contract["implemented"] is True
     assert package_contract["adapters"]
+    dependency_graph = component_package_dependency_graph(("devexpress-native",))
+    assert dependency_graph["ok"] is True
+    assert dependency_graph["lockfile"]["required"] is True
+    adapter_smoke = component_package_adapter_smoke_contract("devexpress-native")
+    assert adapter_smoke["ok"] is True
+    assert adapter_smoke["probes"]
+    preview_load = component_package_preview_load_contract("devexpress-native")
+    assert preview_load["ok"] is True
+    assert {"sandboxed_loader", "per-project_manifest"} <= set(preview_load["isolation"])
+    package_behavior = component_package_behavior_contract("devexpress-native")
+    assert package_behavior["ok"] is True
+    assert {
+        "dependency_resolution",
+        "adapter_smoke",
+        "isolated_preview_load",
+        "load_validation",
+        "rollback_ready",
+    } == {check["id"] for check in package_behavior["checks"]}
     package_policy = component_package_load_policy("devexpress-native")
     assert package_policy["requires_review"] is True
     assert package_policy["side_effects"] == ()
@@ -899,6 +922,17 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     assert package_workbench["format"] == "appgen.component-package-workbench.v1"
     assert package_workbench["ok"] is True
     assert "package_manager_workbench" in {check["id"] for check in package_workbench["checks"]}
+    assert package_workbench["behavior_workbench"]["ok"] is True
+    behavior_workbench = component_package_behavior_workbench()
+    assert behavior_workbench["format"] == "appgen.component-package-behavior-workbench.v1"
+    assert behavior_workbench["ok"] is True
+    assert {
+        "dependency_graph",
+        "all_packages_have_behavior",
+        "adapter_smoke_tests",
+        "isolated_preview_loads",
+        "rollback_behaviors",
+    } == {check["id"] for check in behavior_workbench["checks"]}
     package_manager = design_time_package_manager_workbench()
     assert package_manager["format"] == "appgen.design-time-package-manager-workbench.v1"
     assert package_manager["ok"] is True
@@ -908,6 +942,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "palette_registration",
         "load_isolation",
         "rollback_plan",
+        "package_behavior",
         "side_effect_guards",
     } == {check["id"] for check in package_manager["checks"]}
     assert third_party_component_import_contract(
@@ -8765,9 +8800,10 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     generated_package_manager = form_designer.design_time_package_manager_workbench()
     assert generated_package_manager["format"] == "appgen.generated-design-time-package-manager-workbench.v1"
     assert generated_package_manager["ok"] is True
-    assert {"install_session_phases", "palette_registration", "rollback_plan"} <= {
+    assert {"install_session_phases", "palette_registration", "rollback_plan", "package_behavior"} <= {
         check["id"] for check in generated_package_manager["checks"]
     }
+    assert generated_package_manager["behavior"]["ok"] is True
     assert form_designer.dfm_streaming_contract()["stream_formats"][0] == "text-dfm"
     assert form_designer.dfm_round_trip("Book")["ok"] is True
     generated_runtime = form_designer.pascal_runtime_workbench("Book")
@@ -8857,11 +8893,16 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert component_package.install_plan()["side_effects"] == ()
     assert component_package.load_policy()["requires_review"] is True
     assert component_package.adapter_contract()
+    assert component_package.dependency_graph()["ok"] is True
+    assert component_package.adapter_smoke()["ok"] is True
+    assert component_package.preview_load()["ok"] is True
+    assert component_package.behavior_contract()["ok"] is True
     assert component_package.validate_load_request()["ok"] is False
     assert component_package.validate_load_request(
         {"accepted": component_package.load_policy()["checks"]}
     )["ok"] is True
     assert "adapter_contract_declared" in component_package.test_plan()["tests"]
+    assert "behavior_contract_ok" in component_package.test_plan()["tests"]
     assert len(workbench["forms"]) >= 2
     assert any(item["type"] == "DatePicker" for item in workbench["field_mappings"])
     assert form_designer.form_designer_workbench({"app/form_designer.py"})["ok"] is False
