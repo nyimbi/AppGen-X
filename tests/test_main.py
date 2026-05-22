@@ -4092,6 +4092,19 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert intelligence.assign_variant(experiment_id, "ada") in {"control", "compact", "guided"}
     assert intelligence.predictive_maintenance({"p95_ms": 900, "error_rate": 0.03})["healthy"] is False
     assert intelligence.intelligence_check({"app/intelligence.py", "app/templates/appgen_intelligence.html"})["ok"] is True
+    intelligence_gate = intelligence.intelligence_release_gate({"app/intelligence.py", "app/templates/appgen_intelligence.html"})
+    assert intelligence_gate["format"] == "appgen.intelligence-release-gate.v1"
+    assert intelligence_gate["ok"] is True
+    assert {
+        "artifact_coverage",
+        "feature_catalog",
+        "anomaly_and_recommendations",
+        "nlp_helpers",
+        "vision_contracts",
+        "experiments",
+        "predictive_maintenance",
+    } <= {check["gate"] for check in intelligence_gate["checks"]}
+    assert intelligence.intelligence_release_gate({"app/intelligence.py"})["ok"] is False
     chatbot_intents = {item["intent"]: item for item in chatbot.chatbot_catalog()}
     assert "create_book" in chatbot_intents
     book_chat = chatbot.start_conversation("create_book")

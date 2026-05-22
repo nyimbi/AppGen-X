@@ -4498,7 +4498,10 @@ def write_intelligence_template(output_dir):
         while giving ML adapters stable table and feature metadata.
       </p>
     </div>
-    <a class="btn btn-default" href="{{ url_for('IntelligenceView.catalog_json') }}">Intelligence JSON</a>
+    <div>
+      <a class="btn btn-default" href="{{ url_for('IntelligenceView.catalog_json') }}">Intelligence JSON</a>
+      <a class="btn btn-default" href="{{ url_for('IntelligenceView.release_gate_json') }}">Release Gate JSON</a>
+    </div>
   </div>
   <div class="agi-grid">
     {% for item in tables %}
@@ -19201,6 +19204,81 @@ def intelligence_check(existing_paths=()):
     }}
 
 
+def intelligence_release_gate(existing_paths=()):
+    """Return a release decision for generated intelligence helpers."""
+    existing = set(existing_paths)
+    required = {{"app/intelligence.py", "app/templates/appgen_intelligence.html"}}
+    missing = tuple(sorted(required - existing))
+    tables = intelligence_catalog()
+    first_table = tables[0]["table"] if tables else None
+    sample_row = {{
+        field["field"]: ("good success" if field["category"] == "text" else 1)
+        for field in feature_catalog(first_table)["fields"]
+    }} if first_table else {{}}
+    features = preprocess_row(first_table, sample_row) if first_table else {{}}
+    anomaly = anomaly_score(first_table, {{}}) if first_table else {{}}
+    recommendations = recommendation_plan(first_table, {{}}) if first_table else ()
+    media_fields = media_intelligence_catalog()
+    media_field = media_fields[0] if media_fields else None
+    vision_plan = (
+        vision_analysis_plan(media_field["table"], media_field["field"], provider="opencv", task=media_field["tasks"][0])
+        if media_field
+        else None
+    )
+    api_vision_plan = (
+        object_detection_plan(media_field["table"], media_field["field"], provider="google_vision", environ={{}})
+        if media_field and "object_detection" in media_field["tasks"]
+        else None
+    )
+    experiment = experiment_catalog()[0] if experiment_catalog() else None
+    variant = assign_variant(experiment["id"], "release-gate") if experiment else None
+    maintenance = predictive_maintenance({{"p95_ms": 900, "error_rate": 0.03, "queue_depth": 120}})
+    checks = (
+        {{
+            "gate": "artifact_coverage",
+            "ok": not missing,
+            "evidence": {{"required": tuple(sorted(required)), "missing": missing}},
+        }},
+        {{
+            "gate": "feature_catalog",
+            "ok": bool(first_table) and bool(features) and bool(feature_catalog(first_table)["feature_fields"]),
+            "evidence": {{"table": first_table, "features": tuple(features)}},
+        }},
+        {{
+            "gate": "anomaly_and_recommendations",
+            "ok": anomaly.get("anomalous") is True and bool(recommendations),
+            "evidence": {{"anomaly": anomaly, "recommendations": recommendations}},
+        }},
+        {{
+            "gate": "nlp_helpers",
+            "ok": sentiment("good success")["label"] == "positive" and classify_text("invoice payment failed")["label"] == "finance" and bool(extract_entities("Ada Lovelace approved the plan")),
+            "evidence": {{"sentiment": sentiment("good success"), "classification": classify_text("invoice payment failed"), "entities": extract_entities("Ada Lovelace approved the plan")}},
+        }},
+        {{
+            "gate": "vision_contracts",
+            "ok": media_field is None or (vision_plan and vision_plan.get("configured") is True and api_vision_plan and api_vision_plan.get("review_required") is True and "GOOGLE_APPLICATION_CREDENTIALS" in api_vision_plan.get("missing", ())),
+            "evidence": {{"media_field": media_field, "local_plan": vision_plan, "api_plan": api_vision_plan}},
+        }},
+        {{
+            "gate": "experiments",
+            "ok": bool(experiment) and variant in tuple(experiment.get("variants", ())),
+            "evidence": {{"experiment": experiment, "variant": variant}},
+        }},
+        {{
+            "gate": "predictive_maintenance",
+            "ok": maintenance.get("healthy") is False and {{"latency", "errors", "backlog"}} <= set(maintenance.get("risks", ())),
+            "evidence": maintenance,
+        }},
+    )
+    ok = all(check["ok"] for check in checks)
+    return {{
+        "format": "appgen.intelligence-release-gate.v1",
+        "ok": ok,
+        "decision": "approved" if ok else "blocked",
+        "checks": checks,
+    }}
+
+
 class IntelligenceView(BaseView):
     route_base = "/intelligence"
     default_view = "index"
@@ -19216,6 +19294,10 @@ class IntelligenceView(BaseView):
     @expose("/catalog.json")
     def catalog_json(self):
         return jsonify({{"tables": list(intelligence_catalog()), "experiments": list(experiment_catalog())}})
+
+    @expose("/release-gate.json")
+    def release_gate_json(self):
+        return jsonify(intelligence_release_gate({{"app/intelligence.py", "app/templates/appgen_intelligence.html"}}))
 
 
 def register_intelligence(appbuilder):
@@ -35587,12 +35669,15 @@ def validate_intelligence_artifacts() -> None:
         "experiment_catalog",
         "assign_variant",
         "predictive_maintenance",
+        "intelligence_release_gate",
     )
     if not all(item in contract for item in required):
         fail("intelligence contract must expose AI analytics, computer vision, NLP, recommendation, A/B testing, and maintenance helpers")
+    if "appgen.intelligence-release-gate.v1" not in contract or '@expose("/release-gate.json")' not in contract:
+        fail("intelligence contract must expose release readiness checks and route")
     template = (ROOT / "app" / "templates" / "appgen_intelligence.html").read_text()
-    if "Intelligence" not in template or "Intelligence JSON" not in template:
-        fail("intelligence template must expose generated AI analytics catalog")
+    if "Intelligence" not in template or "Intelligence JSON" not in template or "Release Gate JSON" not in template:
+        fail("intelligence template must expose generated AI analytics catalog and release readiness")
 
 
 def validate_identity_artifacts() -> None:
@@ -37983,6 +38068,9 @@ def test_generated_runtime_helpers():
     assert intelligence.assign_variant(first_experiment, "subject-1") in {"control", "compact", "guided"}
     assert intelligence.predictive_maintenance({"p95_ms": 900})["healthy"] is False
     assert intelligence.intelligence_check({"app/intelligence.py", "app/templates/appgen_intelligence.html"})["ok"] is True
+    assert intelligence.intelligence_release_gate({"app/intelligence.py", "app/templates/appgen_intelligence.html"})["format"] == "appgen.intelligence-release-gate.v1"
+    assert intelligence.intelligence_release_gate({"app/intelligence.py", "app/templates/appgen_intelligence.html"})["ok"] is True
+    assert intelligence.intelligence_release_gate({"app/intelligence.py"})["ok"] is False
     first_chatbot_intent = chatbot.chatbot_catalog()[0]["intent"]
     chatbot_state = chatbot.start_conversation(first_chatbot_intent)
     assert chatbot_state["next_prompt"]

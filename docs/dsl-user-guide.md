@@ -300,6 +300,12 @@ Generated apps expose `/agents/release-gate.json` to verify local/API-key
 provider coverage, environment-variable secret policy, agent/provider links,
 tool allowlists, and execution-plan readiness without making live LLM calls.
 
+Use `/intelligence/release-gate.json` or `intelligence_release_gate()` before
+shipping generated AI analytics. The gate proves table feature catalogs,
+anomaly and recommendation behavior, NLP helpers, local and API vision plans,
+A/B assignment, predictive-maintenance signals, and required cockpit artifacts
+without invoking external model APIs.
+
 Use `/guided-chatbot/release-gate.json` or `chatbot_release_gate()` before
 shipping generated in-app chatbots. The gate proves generated intents exist,
 field prompts cover required values, incomplete conversations block create

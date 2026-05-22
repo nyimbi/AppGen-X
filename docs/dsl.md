@@ -451,7 +451,10 @@ apps include:
 - `intelligence.py` and `appgen_intelligence.html` with generated AI analytics,
   preprocessing, anomaly detection, image/video analysis plans, OCR,
   classification, object-detection contracts, NLP, recommendation, A/B testing,
-  and predictive-maintenance contracts.
+  and predictive-maintenance contracts. The generated
+  `intelligence_release_gate()` proves feature catalogs, anomaly and
+  recommendation checks, NLP helpers, local/API vision plans, A/B assignment,
+  predictive-maintenance signals, and required intelligence cockpit artifacts.
 - `chatbot.py` and `appgen_chatbot.html` with in-app guided chatbot flows that
   ask for generated view fields, track missing required answers, and prepare
   create payloads. The generated `chatbot_release_gate()` proves artifact
