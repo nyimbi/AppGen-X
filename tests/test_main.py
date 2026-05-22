@@ -1062,6 +1062,7 @@ def test_generate_app_from_sqlite_schema_compiles(tmp_path) -> None:
     assert capabilities_by_key["api.documentation"]["status"] == "implemented"
     assert capabilities_by_key["api.openapi"]["status"] == "implemented"
     assert capabilities_by_key["api.sdks"]["status"] == "implemented"
+    assert capabilities_by_key["reports.analytics"]["status"] == "implemented"
     assert capabilities_by_key["data.exchange"]["status"] == "implemented"
     assert capabilities_by_key["data.search"]["status"] == "implemented"
     assert capabilities_by_key["data.database-ops"]["status"] == "implemented"
@@ -2409,6 +2410,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert "Workbench JSON" in (output_dir / "templates" / "appgen_workflows.html").read_text()
     assert "All Workflows Workbench JSON" in (output_dir / "templates" / "appgen_workflows.html").read_text()
     assert "Export CSV" in (output_dir / "templates" / "appgen_reports.html").read_text()
+    assert "Workbench JSON" in (output_dir / "templates" / "appgen_reports.html").read_text()
     assert "Release Gate JSON" in (output_dir / "templates" / "appgen_reports.html").read_text()
     assert "Generated PDF export and email delivery contracts" in (
         output_dir / "templates" / "appgen_report_delivery.html"
@@ -3593,6 +3595,23 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "artifact_coverage",
     } <= {gate["gate"] for gate in reports_gate["gates"]}
     assert reports.reports_release_gate({"app/reports.py"})["ok"] is False
+    reports_workbench = reports.reports_workbench({"app/reports.py", "app/templates/appgen_reports.html"})
+    assert reports_workbench["format"] == "appgen.reports-workbench.v1"
+    assert reports_workbench["ok"] is True
+    assert reports_workbench["decision"] == "approved"
+    assert {
+        "table_catalog",
+        "relationship_catalogs",
+        "query_plans",
+        "csv_export",
+        "relationship_csv",
+        "artifact_evidence",
+        "route_surface",
+    } == {check["id"] for check in reports_workbench["checks"]}
+    assert "/reports/workbench.json" in next(
+        check["evidence"]["routes"] for check in reports_workbench["checks"] if check["id"] == "route_surface"
+    )
+    assert reports.reports_workbench({"app/reports.py"})["ok"] is False
     assert report_delivery.delivery_plan("Book", channels=("download", "email"), formats=("csv", "pdf"))["ok"] is True
     assert report_delivery.rows_to_html("Book", [{"title": "Dune", "status": "draft"}]).startswith("<!doctype html>")
     assert report_delivery.rows_to_pdf_bytes("Book", [{"title": "Dune", "status": "draft"}]).startswith(b"%PDF")

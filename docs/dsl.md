@@ -345,7 +345,10 @@ apps include:
   exports for every table plus relationship-aware join reports and three-way
   table-set reports derived from the schema relation graph. A generated reports
   release gate proves table catalogs, CSV exports, join and three-way reports,
-  relationship CSV output, query plans, and required report artifacts.
+  relationship CSV output, query plans, and required report artifacts. The
+  generated `reports_workbench()` exposes IDE-ready report catalogs, query
+  plans, CSV export previews, relationship CSV evidence, artifact readiness,
+  and route-surface evidence.
 - `report_delivery.py` and `appgen_report_delivery.html` with generated PDF
   exports and email delivery payloads for reports, plus a release gate proving
   delivery catalog coverage, CSV/PDF format coverage, download/email channel

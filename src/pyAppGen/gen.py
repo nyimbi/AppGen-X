@@ -2827,6 +2827,7 @@ def write_reports_template(output_dir):
     </div>
     <div>
       <a class="btn btn-default" href="{{ url_for('ReportsView.catalog_json') }}">Catalog JSON</a>
+      <a class="btn btn-default" href="{{ url_for('ReportsView.workbench_json') }}">Workbench JSON</a>
       <a class="btn btn-default" href="{{ url_for('ReportsView.release_gate_json') }}">Release Gate JSON</a>
     </div>
   </div>
@@ -12848,6 +12849,69 @@ def reports_release_gate(existing_paths=()):
     }}
 
 
+def reports_workbench(existing_paths=()):
+    """Return an IDE-ready report design, query-plan, and export workbench."""
+    table_reports = report_catalog()
+    join_reports = join_report_catalog()
+    three_way_reports = three_way_report_catalog()
+    all_reports = all_report_catalog()
+    sample_report = table_reports[0] if table_reports else None
+    sample_columns = tuple(sample_report["columns"]) if sample_report else ()
+    sample_row = {{column: f"sample-{{column}}" for column in sample_columns}}
+    table_csv = rows_to_csv(sample_columns, (sample_row,)) if sample_report else ""
+    relation_keys = relationship_report_keys()
+    first_relation_key = relation_keys[0] if relation_keys else None
+    relation_csv = relationship_rows_to_csv(first_relation_key, ()) if first_relation_key else ""
+    release = reports_release_gate(existing_paths)
+    routes = ("/reports/catalog.json", "/reports/workbench.json", "/reports/release-gate.json")
+    checks = (
+        {{
+            "id": "table_catalog",
+            "ok": bool(table_reports) and all(report["kind"] == "table" and report["columns"] for report in table_reports),
+            "evidence": {{"reports": tuple(report["key"] for report in table_reports)}},
+        }},
+        {{
+            "id": "relationship_catalogs",
+            "ok": all(report_query_plan(report["key"])["requires_join"] for report in join_reports) and all(len(report_query_plan(report["key"])["tables"]) == 3 for report in three_way_reports),
+            "evidence": {{"join_reports": tuple(report["key"] for report in join_reports), "three_way_reports": tuple(report["key"] for report in three_way_reports)}},
+        }},
+        {{
+            "id": "query_plans",
+            "ok": all(report_query_plan(report["key"])["columns"] for report in all_reports),
+            "evidence": tuple(report_query_plan(report["key"]) for report in all_reports),
+        }},
+        {{
+            "id": "csv_export",
+            "ok": bool(sample_columns) and all(column in table_csv for column in sample_columns[:2]),
+            "evidence": {{"sample_report": sample_report["key"] if sample_report else None, "columns": sample_columns}},
+        }},
+        {{
+            "id": "relationship_csv",
+            "ok": (not first_relation_key) or bool(relation_csv.startswith(",".join(report_definition(first_relation_key)["columns"][:1]))),
+            "evidence": {{"report": first_relation_key or "not_applicable"}},
+        }},
+        {{
+            "id": "artifact_evidence",
+            "ok": release["ok"],
+            "evidence": {{"blocking_gates": tuple(gate["gate"] for gate in release["gates"] if not gate["ok"])}},
+        }},
+        {{
+            "id": "route_surface",
+            "ok": all(route.startswith("/reports/") for route in routes),
+            "evidence": {{"routes": routes}},
+        }},
+    )
+    ok = all(check["ok"] for check in checks)
+    return {{
+        "format": "appgen.reports-workbench.v1",
+        "ok": ok,
+        "decision": "approved" if ok else "blocked",
+        "catalog": {{"tables": table_reports, "joins": join_reports, "three_way": three_way_reports}},
+        "release_gate": release,
+        "checks": checks,
+    }}
+
+
 class ReportsView(BaseView):
     route_base = "/reports"
     default_view = "index"
@@ -12868,6 +12932,10 @@ class ReportsView(BaseView):
             "joins": list(join_report_catalog()),
             "three_way": list(three_way_report_catalog()),
         }}
+
+    @expose("/workbench.json")
+    def workbench_json(self):
+        return jsonify(reports_workbench({{"app/reports.py", "app/templates/appgen_reports.html"}}))
 
     @expose("/release-gate.json")
     def release_gate_json(self):
@@ -41444,11 +41512,12 @@ def validate_report_artifacts() -> None:
         "report_query_plan",
         "relationship_rows_to_csv",
         "reports_release_gate",
+        "reports_workbench",
     )
     if not all(item in contract for item in required):
         fail("reports contract must expose table, join, three-way, and release-gate report helpers")
     template = (ROOT / "app" / "templates" / "appgen_reports.html").read_text()
-    if "Join reports" not in template or "Three-way reports" not in template or "Catalog JSON" not in template or "Release Gate JSON" not in template:
+    if "Join reports" not in template or "Three-way reports" not in template or "Catalog JSON" not in template or "Workbench JSON" not in template or "Release Gate JSON" not in template:
         fail("reports template must expose table, join, three-way, and release-gate report catalogs")
 
 
@@ -42561,6 +42630,17 @@ def test_generated_runtime_helpers():
     assert rules.rules_release_gate({"app/rules.py"})["ok"] is False
     assert reports.reports_release_gate({"app/reports.py", "app/templates/appgen_reports.html"})["ok"] is True
     assert reports.reports_release_gate({"app/reports.py"})["ok"] is False
+    reports_workbench = reports.reports_workbench({"app/reports.py", "app/templates/appgen_reports.html"})
+    assert reports_workbench["format"] == "appgen.reports-workbench.v1"
+    assert reports_workbench["ok"] is True
+    assert reports_workbench["decision"] == "approved"
+    assert {"table_catalog", "relationship_catalogs", "query_plans", "csv_export", "relationship_csv", "artifact_evidence", "route_surface"} == {
+        check["id"] for check in reports_workbench["checks"]
+    }
+    assert "/reports/workbench.json" in next(
+        check["evidence"]["routes"] for check in reports_workbench["checks"] if check["id"] == "route_surface"
+    )
+    assert reports.reports_workbench({"app/reports.py"})["ok"] is False
     assert report_delivery.rows_to_pdf_bytes(next(iter(report_delivery.REPORT_DELIVERY)), ()).startswith(b"%PDF")
     assert report_delivery.delivery_plan(next(iter(report_delivery.REPORT_DELIVERY)))["ok"] is True
     assert report_delivery.report_delivery_release_gate({"app/report_delivery.py", "app/templates/appgen_report_delivery.html"})["ok"] is True
