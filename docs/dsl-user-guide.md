@@ -606,6 +606,10 @@ Use `/integrations/release-gate.json` to verify REST/webhook/enterprise
 connector coverage, first-class Entando and Invenio contracts, signed webhook
 delivery, payment/SMS/email request plans, outbox auditability, and required
 integration artifacts before custom connector code sends data.
+Use `node_red_release_gate()` before promoting generated automation. The gate
+proves Node-RED is present as the default local automation runtime, validates
+the generated flow export, confirms table and workflow webhook endpoints, and
+checks the Docker Compose service plan for the generated `node-red` service.
 Use `/project-management/release-gate.json` to verify generated backlog,
 sprint, release-control, traceability, Jira/GitHub/Azure Boards/GitLab export,
 and project-management artifact coverage before handing a generated app to a

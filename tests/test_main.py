@@ -898,6 +898,13 @@ def test_generate_app_from_sqlite_schema_compiles(tmp_path) -> None:
     flow_export = json.loads((tmp_path / "automation" / "node-red" / "flows.json").read_text())
     assert node_red.validate_flow_export(flow_export)["ok"] is True
     assert node_red.validate_flow_export(flow_export)["runtime"]["port"] == 1880
+    node_red_gate = node_red.node_red_release_gate(
+        {"automation/appgen_node_red.py", "automation/node-red/flows.json", "docker-compose.yml"},
+        flow_export,
+    )
+    assert node_red_gate["format"] == "appgen.node-red-release-gate.v1"
+    assert node_red_gate["ok"] is True
+    assert node_red.node_red_release_gate({"automation/appgen_node_red.py"}, flow_export)["ok"] is False
     assert node_red.workflow_events() == ()
     assert any(node.get("type") == "http in" and node.get("name") == "book.created" for node in flow_export)
     manifest = json.loads((output_dir / "appgen.json").read_text())
@@ -5287,6 +5294,20 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert node_red.runtime_readiness({"automation/node-red/flows.json", "docker-compose.yml"})["run"] == (
         "docker compose up node-red"
     )
+    node_red_gate = node_red.node_red_release_gate(
+        {"automation/appgen_node_red.py", "automation/node-red/flows.json", "docker-compose.yml"},
+        flow_export,
+    )
+    assert node_red_gate["format"] == "appgen.node-red-release-gate.v1"
+    assert node_red_gate["ok"] is True
+    assert {
+        "artifact_coverage",
+        "event_topic_coverage",
+        "webhook_contracts",
+        "default_runtime",
+        "compose_service",
+    } <= {check["gate"] for check in node_red_gate["checks"]}
+    assert node_red.node_red_release_gate({"automation/appgen_node_red.py"}, flow_export)["ok"] is False
     assert validation["workflow_events"] == (
         "workflow.Publish.draft.published",
         "workflow.Publish.published.archived",

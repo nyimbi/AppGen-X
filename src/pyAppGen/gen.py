@@ -34272,6 +34272,71 @@ def validate_flow_export(flow_export):
         "runtime": node_red_runtime_service(),
         "missing": missing,
     }}
+
+
+def node_red_release_gate(existing_paths=(), flow_export=None):
+    """Return a release decision for the generated Node-RED automation runtime."""
+    existing = set(existing_paths or ())
+    required = {{"automation/appgen_node_red.py", "automation/node-red/flows.json", "docker-compose.yml"}}
+    missing = tuple(sorted(required - existing))
+    events = automation_events()
+    flow_validation = validate_flow_export(flow_export) if flow_export is not None else {{
+        "ok": False,
+        "missing": tuple(event["topic"] for event in events),
+        "http_inputs": 0,
+        "runtime": node_red_runtime_service(),
+    }}
+    runtime = runtime_readiness(existing)
+    table_webhooks = tuple(
+        webhook_plan(event["table"], event["action"])
+        for event in node_red_events()
+    )
+    workflow_webhooks = tuple(
+        workflow_webhook_plan(event["workflow"], event["source"], event["target"])
+        for event in workflow_events()
+    )
+    checks = (
+        {{
+            "gate": "artifact_coverage",
+            "ok": not missing,
+            "evidence": {{"required": tuple(sorted(required)), "missing": missing}},
+        }},
+        {{
+            "gate": "event_topic_coverage",
+            "ok": bool(events) and flow_validation["ok"],
+            "evidence": {{
+                "events": tuple(event["topic"] for event in events),
+                "missing": flow_validation.get("missing", ()),
+                "http_inputs": flow_validation.get("http_inputs", 0),
+            }},
+        }},
+        {{
+            "gate": "webhook_contracts",
+            "ok": len(table_webhooks) == len(node_red_events()) and len(workflow_webhooks) == len(workflow_events()),
+            "evidence": {{
+                "table_webhooks": table_webhooks,
+                "workflow_webhooks": workflow_webhooks,
+            }},
+        }},
+        {{
+            "gate": "default_runtime",
+            "ok": runtime["ok"] and runtime["default_service"] == "node-red" and runtime["port"] == 1880,
+            "evidence": runtime,
+        }},
+        {{
+            "gate": "compose_service",
+            "ok": compose_service_plan()["image"].startswith("nodered/node-red") and compose_service_plan()["ports"] == ("1880:1880",),
+            "evidence": compose_service_plan(),
+        }},
+    )
+    ok = all(check["ok"] for check in checks)
+    return {{
+        "format": "appgen.node-red-release-gate.v1",
+        "ok": ok,
+        "decision": "approved" if ok else "blocked",
+        "checks": checks,
+        "runtime": node_red_runtime_service(),
+    }}
 '''
 
 
@@ -36057,6 +36122,8 @@ def validate_node_red_artifacts() -> None:
         fail("Node-RED contract helper must expose default runtime service readiness")
     if "workflow_events" not in contract or "workflow_webhook_plan" not in contract:
         fail("Node-RED contract helper must expose workflow automation helpers")
+    if "node_red_release_gate" not in contract or "appgen.node-red-release-gate.v1" not in contract:
+        fail("Node-RED contract helper must expose a release gate")
     compose = (ROOT / "docker-compose.yml").read_text()
     if "nodered/node-red:3.1" not in compose or "1880:1880" not in compose:
         fail("Docker Compose must include Node-RED as a default runtime service")
@@ -38439,6 +38506,10 @@ def test_generated_runtime_helpers():
     flow_export = json.loads((ROOT / "automation" / "node-red" / "flows.json").read_text())
     assert isinstance(node_red.node_red_events(), tuple)
     assert node_red.validate_flow_export(flow_export)["ok"] is True
+    assert node_red.node_red_release_gate(
+        {"automation/appgen_node_red.py", "automation/node-red/flows.json", "docker-compose.yml"},
+        flow_export,
+    )["ok"] is True
     assert backup.backup_payload({})["format"] == "appgen.backup.v1"
     assert isinstance(backup.restore_plan(backup.backup_json({})), dict)
     manifest_record = backup.backup_manifest(backup.backup_json({}), created_at="2026-01-01T02:00:00+00:00")
