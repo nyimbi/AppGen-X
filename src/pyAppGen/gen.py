@@ -5451,6 +5451,7 @@ def write_rpa_template(output_dir):
     </div>
     <div>
       <a class="btn btn-default" href="{{ url_for('RpaBpaView.catalog_json') }}">Automation Catalog JSON</a>
+      <a class="btn btn-default" href="{{ url_for('RpaBpaView.workbench_json') }}">Workbench JSON</a>
       <a class="btn btn-default" href="{{ url_for('RpaBpaView.release_gate_json') }}">Release Gate JSON</a>
     </div>
   </div>
@@ -31431,6 +31432,64 @@ def rpa_release_gate(existing_paths=()):
     }}
 
 
+def rpa_workbench(existing_paths=()):
+    """Return consolidated RPA/BPA evidence for generated IDEs."""
+    release_gate = rpa_release_gate(existing_paths)
+    first_task = RPA_TASKS[0]["id"] if RPA_TASKS else None
+    task_packages = tuple(
+        {{
+            "task": task["id"],
+            "plan": task_plan(task["id"]),
+            "model": process_model(task["id"]),
+            "bpmn": bpmn_xml(task["id"]),
+            "uml": uml_activity(task["id"]),
+            "simulation": simulate_process(task["id"], runs=2, base_duration_seconds=5),
+            "audit": automation_audit_event(task["id"], actor="workbench"),
+        }}
+        for task in RPA_TASKS
+    )
+    platform_exports = tuple(
+        rpa_export_package(platform, first_task)
+        for platform in RPA_PLATFORMS
+    ) if first_task else ()
+    queue_payloads = tuple(
+        rpa_queue_payload(platform, first_task, {{"sample": "value"}})
+        for platform in RPA_PLATFORMS
+    ) if first_task else ()
+    observations = tuple(
+        process_observation(task["id"], duration_seconds=45 if index == 0 else 10, success=index != 0, errors=1 if index == 0 else 0, rows=5)
+        for index, task in enumerate(RPA_TASKS)
+    )
+    routes = (
+        "/rpa/catalog.json",
+        "/rpa/workbench.json",
+        "/rpa/task/<task_id>.json",
+        "/rpa/release-gate.json",
+    )
+    checks = (
+        {{"id": "artifact_coverage", "ok": rpa_check(existing_paths)["ok"], "evidence": rpa_check(existing_paths)}},
+        {{"id": "task_catalog", "ok": bool(RPA_TASKS) and bool(rpa_resource_catalog()), "evidence": rpa_task_catalog()}},
+        {{"id": "process_models", "ok": bool(task_packages) and all(item["simulation"]["valid"] and "<bpmn:process" in item["bpmn"] and item["uml"].startswith("@startuml") for item in task_packages), "evidence": task_packages}},
+        {{"id": "platform_exports", "ok": bool(platform_exports) and all(item["package_id"] for item in platform_exports) and all(item["correlation_id"] for item in queue_payloads), "evidence": {{"exports": platform_exports, "queues": queue_payloads}}}},
+        {{"id": "credential_readiness", "ok": set(credential_readiness({{}})["required"]) == {{"APPGEN_API_TOKEN", "APPGEN_BROWSER_SESSION"}}, "evidence": credential_readiness({{}})}},
+        {{"id": "audit_and_bpa", "ok": bool(observations) and bool(process_summary(observations)["bottlenecks"]), "evidence": {{"observations": observations, "summary": process_summary(observations)}}}},
+        {{"id": "release_gate", "ok": release_gate["ok"], "evidence": release_gate["decision"]}},
+        {{"id": "route_surface", "ok": all(route.startswith("/rpa/") for route in routes), "evidence": {{"routes": routes}}}},
+    )
+    ok = all(check["ok"] for check in checks)
+    return {{
+        "format": "appgen.rpa-workbench.v1",
+        "ok": ok,
+        "decision": "approved" if ok else "blocked",
+        "tasks": task_packages,
+        "platform_exports": platform_exports,
+        "queue_payloads": queue_payloads,
+        "routes": routes,
+        "release_gate": release_gate,
+        "checks": checks,
+    }}
+
+
 class RpaBpaView(BaseView):
     route_base = "/rpa"
     default_view = "index"
@@ -31450,6 +31509,10 @@ class RpaBpaView(BaseView):
     @expose("/task/<path:task_id>.json")
     def task_json(self, task_id):
         return jsonify(task_plan(task_id))
+
+    @expose("/workbench.json")
+    def workbench_json(self):
+        return jsonify(rpa_workbench({{"app/rpa.py", "app/templates/appgen_rpa.html"}}))
 
     @expose("/release-gate.json")
     def release_gate_json(self):

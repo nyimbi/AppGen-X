@@ -1089,6 +1089,7 @@ def test_generate_app_from_sqlite_schema_compiles(tmp_path) -> None:
     assert "automation.cep" in {item["key"] for item in manifest["capabilities"]}
     assert capabilities_by_key["automation.cep"]["status"] == "implemented"
     assert "automation.rpa-bpa" in {item["key"] for item in manifest["capabilities"]}
+    assert capabilities_by_key["automation.rpa-bpa"]["status"] == "implemented"
     assert "team.collaboration" in {item["key"] for item in manifest["capabilities"]}
     assert "team.version-control" in {item["key"] for item in manifest["capabilities"]}
     assert "team.realtime" in {item["key"] for item in manifest["capabilities"]}
@@ -2542,7 +2543,9 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     events_template = (output_dir / "templates" / "appgen_events.html").read_text()
     assert "complex event processing" in events_template
     assert "Workbench JSON" in events_template
-    assert "RPA &amp; BPA" in (output_dir / "templates" / "appgen_rpa.html").read_text()
+    rpa_template = (output_dir / "templates" / "appgen_rpa.html").read_text()
+    assert "RPA &amp; BPA" in rpa_template
+    assert "Workbench JSON" in rpa_template
     assert "runtime self-tests" in (output_dir / "templates" / "appgen_diagnostics.html").read_text()
     assert "automated API testing" in (output_dir / "templates" / "appgen_api_testing.html").read_text()
     assert "Release Gate JSON" in (output_dir / "templates" / "appgen_api_testing.html").read_text()
@@ -5273,6 +5276,24 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert {"process_models", "platform_exports", "credential_readiness", "audit_and_bpa"} <= {
         gate["gate"] for gate in rpa_gate["gates"]
     }
+    rpa_workbench = rpa.rpa_workbench({"app/rpa.py", "app/templates/appgen_rpa.html"})
+    assert rpa_workbench["format"] == "appgen.rpa-workbench.v1"
+    assert rpa_workbench["ok"] is True
+    assert rpa_workbench["release_gate"]["ok"] is True
+    assert {
+        "artifact_coverage",
+        "task_catalog",
+        "process_models",
+        "platform_exports",
+        "credential_readiness",
+        "audit_and_bpa",
+        "release_gate",
+        "route_surface",
+    } == {check["id"] for check in rpa_workbench["checks"]}
+    assert "/rpa/workbench.json" in next(
+        check["evidence"]["routes"] for check in rpa_workbench["checks"] if check["id"] == "route_surface"
+    )
+    assert rpa.rpa_workbench({"app/rpa.py"})["ok"] is False
     assert rpa.rpa_release_gate({"app/rpa.py"})["ok"] is False
     proposal = collaboration.change_proposal(
         "Book",

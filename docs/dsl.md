@@ -711,7 +711,10 @@ apps include:
   browser/API work. A generated RPA/BPA release gate proves task catalogs,
   process models, BPMN/UML exports, simulations, platform exports, queue
   payloads, credential contracts, audit events, business-process observations,
-  and required automation artifacts.
+  and required automation artifacts. `rpa_workbench()` adds generated IDE
+  evidence for task catalogs, process models, platform export packages, queue
+  payloads, credentials, audit/BPA observations, release decisions, and
+  `/rpa/workbench.json` route coverage.
 - `collaboration.py` and `appgen_collaboration.html` with generated revision
   metadata, change proposals, review decisions, merge plans, conflict reports,
   merge queues, and conflict-resolution plans for concurrent low-code work. A
