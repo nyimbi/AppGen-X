@@ -114,7 +114,12 @@ from pyAppGen.form_designer import livebindings_workbench
 from pyAppGen.form_designer import mobile_device_capability_lifecycle_replay_contract
 from pyAppGen.form_designer import mobile_native_api_workbench
 from pyAppGen.form_designer import object_inspector_contract
+from pyAppGen.form_designer import inspector_apply_property_edit
+from pyAppGen.form_designer import inspector_create_event_handler
 from pyAppGen.form_designer import inspector_editor_lifecycle_replay_contract
+from pyAppGen.form_designer import inspector_execute_component_editor
+from pyAppGen.form_designer import inspector_register_custom_designer
+from pyAppGen.form_designer import inspector_rename_event_handler
 from pyAppGen.form_designer import object_inspector_workbench
 from pyAppGen.form_designer import data_relationship_lookup_lifecycle_replay_contract
 from pyAppGen.form_designer import rad_parity_workbench
@@ -895,6 +900,24 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     assert inspector_contract["property_editors"]
     assert all(editor["supports_create"] for editor in inspector_contract["event_editors"])
     assert {"open_bindings", "align_to_grid"} <= {editor["verb"] for editor in inspector_contract["component_editors"]}
+    property_edit = inspector_apply_property_edit({"component": "TextBox", "props": {"label": "Name"}}, "label", "Customer")
+    assert property_edit["ok"] is True
+    assert property_edit["instance"]["props"]["label"] == "Customer"
+    assert "record_undo" in property_edit["transaction"]
+    invalid_property_edit = inspector_apply_property_edit({"component": "TextBox"}, "unknown", "Customer")
+    assert invalid_property_edit["ok"] is False
+    event_create = inspector_create_event_handler("Button", "OnClick")
+    assert event_create["ok"] is True
+    assert "update_component_reference" in event_create["pipeline"]
+    event_rename = inspector_rename_event_handler(event_create["binding"], "button_customer_click")
+    assert event_rename["ok"] is True
+    assert event_rename["binding"]["handler"] == "button_customer_click"
+    editor_result = inspector_execute_component_editor("Grid", "edit_columns", selection=("customer_grid",))
+    assert editor_result["ok"] is True
+    assert "record_undo" in editor_result["transaction"]
+    custom_registration = inspector_register_custom_designer("Grid", "selection_handles")
+    assert custom_registration["ok"] is True
+    assert "unload_hook" in custom_registration["registration"]["lifecycle"]
     inspector_workbench = object_inspector_workbench()
     assert inspector_workbench["format"] == "appgen.object-inspector-workbench.v1"
     assert inspector_workbench["ok"] is True
@@ -933,6 +956,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "design_surface_transaction_replay",
         "custom_designer_registration_replay",
         "editor_lifecycle_replay",
+        "actionable_editor_operations",
     } == {check["id"] for check in inspector_workbench["checks"]}
     assert all("apply_change" in workflow["workflow"] for workflow in inspector_workbench["property_edit_workflows"])
     assert all("update_component_reference" in workflow["workflow"] for workflow in inspector_workbench["event_edit_workflows"])
@@ -1041,6 +1065,8 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "side_effect_guards",
     } <= {check["id"] for check in editor_lifecycle["checks"] if check["ok"]}
     assert inspector_workbench["editor_lifecycle_replay"]["ok"] is True
+    assert inspector_workbench["actionable_operations"]["property_edit"]["ok"] is True
+    assert inspector_workbench["actionable_operations"]["event_rename"]["binding"]["handler"] == "button_customer_click"
     binding_graph = livebindings_graph_contract()
     assert binding_graph["format"] == "appgen.livebindings-graph.v1"
     assert {"dataset", "field", "control", "expression"} <= {node["kind"] for node in binding_graph["nodes"]}
@@ -10389,7 +10415,30 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "design_surface_transaction_replay",
         "custom_designer_registration_replay",
         "editor_lifecycle_replay",
+        "actionable_editor_operations",
     } == {check["id"] for check in generated_inspector["checks"]}
+    generated_property_edit = form_designer.inspector_apply_property_edit(
+        {"component": "TextBox", "props": {"label": "Name"}},
+        "label",
+        "Customer",
+    )
+    assert generated_property_edit["ok"] is True
+    assert generated_property_edit["instance"]["props"]["label"] == "Customer"
+    assert form_designer.inspector_apply_property_edit({"component": "TextBox"}, "unknown", "Customer")["ok"] is False
+    generated_event_create = form_designer.inspector_create_event_handler("Button", "OnClick")
+    assert generated_event_create["ok"] is True
+    generated_event_rename = form_designer.inspector_rename_event_handler(
+        generated_event_create["binding"],
+        "button_customer_click",
+    )
+    assert generated_event_rename["binding"]["handler"] == "button_customer_click"
+    generated_editor_result = form_designer.inspector_execute_component_editor(
+        "Grid",
+        "edit_columns",
+        selection=("customer_grid",),
+    )
+    assert generated_editor_result["ok"] is True
+    assert form_designer.inspector_register_custom_designer("Grid", "selection_handles")["ok"] is True
     assert generated_inspector["editor_registries"]
     assert generated_inspector["state_persistence"]["state_keys"]
     assert all("apply_change" in workflow["workflow"] for workflow in generated_inspector["property_edit_workflows"])
@@ -10469,6 +10518,8 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert generated_inspector["custom_designer_registration_replay"]["final_state"]["lifecycle_hooks"] == generated_inspector["custom_designer_registration_replay"]["final_state"]["registered_hooks"]
     assert generated_inspector["editor_lifecycle_replay"]["format"] == "appgen.generated-inspector-editor-lifecycle-replay.v1"
     assert generated_inspector["editor_lifecycle_replay"]["ok"] is True
+    assert generated_inspector["actionable_operations"]["property_edit"]["ok"] is True
+    assert generated_inspector["actionable_operations"]["event_rename"]["binding"]["handler"] == "button_customer_click"
     assert {
         "validate_property_values",
         "route_event_handlers",

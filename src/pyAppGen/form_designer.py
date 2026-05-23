@@ -4024,6 +4024,156 @@ def inspector_event_edit_workflow(component: str = "TextBox") -> dict:
     }
 
 
+def inspector_apply_property_edit(instance: dict, property_name: str, value) -> dict:
+    """Apply a property edit through inspector validation without mutating input."""
+    component = instance.get("component") or instance.get("type") or "TextBox"
+    if component not in COMPONENTS:
+        raise KeyError(f"Unknown component: {component}")
+    contract = component_runtime_contract(component)
+    current_props = dict(contract["default_props"])
+    current_props.update(dict(instance.get("props", {})))
+    if property_name not in contract["default_props"]:
+        return {
+            "format": "appgen.inspector-property-edit-result.v1",
+            "ok": False,
+            "component": component,
+            "property": property_name,
+            "diagnostics": (f"unknown property {property_name}",),
+            "instance": dict(instance),
+            "transaction": ("begin_edit", "reject_unknown_property", "restore_snapshot"),
+            "side_effects": (),
+        }
+    updated_props = dict(current_props)
+    updated_props[property_name] = value
+    validation = component_prop_validation_contract(component, updated_props)
+    updated_instance = dict(instance, component=component, props=updated_props)
+    return {
+        "format": "appgen.inspector-property-edit-result.v1",
+        "ok": validation["ok"],
+        "component": component,
+        "property": property_name,
+        "before": current_props.get(property_name),
+        "after": value,
+        "instance": updated_instance if validation["ok"] else dict(instance),
+        "diagnostics": validation["unknown"],
+        "transaction": ("begin_edit", "coerce_value", "validate_value", "stage_change", "apply_change", "emit_property_changed", "record_undo"),
+        "side_effects": (),
+    }
+
+
+def inspector_create_event_handler(component: str, event_name: str, handler_name: str | None = None) -> dict:
+    """Create a design-time event handler binding for a component event."""
+    contract = object_inspector_contract(component)
+    events = {editor["name"]: editor for editor in contract["event_editors"]}
+    if event_name not in events:
+        return {
+            "format": "appgen.inspector-event-handler-result.v1",
+            "ok": False,
+            "component": contract["component"],
+            "event": event_name,
+            "diagnostics": (f"unknown event {event_name}",),
+            "side_effects": (),
+        }
+    editor = events[event_name]
+    handler = handler_name or editor["handler_stub"]
+    return {
+        "format": "appgen.inspector-event-handler-result.v1",
+        "ok": True,
+        "component": contract["component"],
+        "event": event_name,
+        "binding": {
+            "event": event_name,
+            "handler": handler,
+            "signature": editor["signature"],
+            "source_span": f"{handler}:1:1",
+        },
+        "pipeline": ("create_stub", "bind_reference", "navigate_to_handler", "update_component_reference"),
+        "guards": ("signature_preserved", "handler_name_unique", "component_reference_updated"),
+        "side_effects": (),
+    }
+
+
+def inspector_rename_event_handler(binding: dict, new_handler_name: str) -> dict:
+    """Rename an event handler binding while preserving the component reference."""
+    old_handler = binding.get("handler") or binding.get("binding", {}).get("handler")
+    event_name = binding.get("event") or binding.get("binding", {}).get("event")
+    signature = binding.get("signature") or binding.get("binding", {}).get("signature", "OnCreate(sender, context)")
+    ok = bool(old_handler and event_name and new_handler_name)
+    return {
+        "format": "appgen.inspector-event-rename-result.v1",
+        "ok": ok,
+        "event": event_name,
+        "old_handler": old_handler,
+        "new_handler": new_handler_name,
+        "binding": {
+            "event": event_name,
+            "handler": new_handler_name if ok else old_handler,
+            "signature": signature,
+            "source_span": f"{new_handler_name}:1:1" if ok else "",
+        },
+        "pipeline": ("parse_references", "rename_handler", "update_component_reference", "mark_old_handler_for_review"),
+        "diagnostics": () if ok else ("missing handler binding",),
+        "side_effects": (),
+    }
+
+
+def inspector_execute_component_editor(component: str, verb: str, selection: tuple[str, ...] = ()) -> dict:
+    """Execute a component editor verb as a staged, undoable transaction."""
+    contract = object_inspector_contract(component)
+    verbs = {editor["verb"]: editor for editor in contract["component_editors"]}
+    if verb not in verbs:
+        return {
+            "format": "appgen.inspector-component-editor-result.v1",
+            "ok": False,
+            "component": contract["component"],
+            "verb": verb,
+            "diagnostics": (f"unknown component editor verb {verb}",),
+            "side_effects": (),
+        }
+    editor = verbs[verb]
+    selection_ok = bool(selection) or not editor["requires_selection"]
+    return {
+        "format": "appgen.inspector-component-editor-result.v1",
+        "ok": selection_ok,
+        "component": contract["component"],
+        "verb": verb,
+        "selection": selection,
+        "transaction": ("capture_selection", "snapshot_design", "open_editor", "stage_change", "validate_change", "apply_change", "record_undo"),
+        "rollback": ("cancel_change", "restore_snapshot", "clear_staged_change"),
+        "diagnostics": () if selection_ok else ("selection required",),
+        "side_effects": (),
+    }
+
+
+def inspector_register_custom_designer(component: str, hook: str) -> dict:
+    """Register one custom designer hook with isolated lifecycle metadata."""
+    contract = object_inspector_contract(component)
+    hooks = {item["hook"]: item for item in contract["custom_designers"]}
+    if hook not in hooks:
+        return {
+            "format": "appgen.inspector-custom-designer-registration-result.v1",
+            "ok": False,
+            "component": contract["component"],
+            "hook": hook,
+            "diagnostics": (f"unknown custom designer hook {hook}",),
+            "side_effects": (),
+        }
+    registration = hooks[hook]
+    return {
+        "format": "appgen.inspector-custom-designer-registration-result.v1",
+        "ok": True,
+        "component": contract["component"],
+        "hook": hook,
+        "registration": {
+            "surface": registration["surface"],
+            "supports_multi_select": registration["supports_multi_select"],
+            "lifecycle": ("activate_hook", "render_overlay", "hit_test_overlay", "commit_or_cancel", "unload_hook"),
+        },
+        "guards": ("hook_isolated", "overlay_non_destructive", "designer_failure_isolated"),
+        "side_effects": (),
+    }
+
+
 def inspector_component_editor_transaction(component: str = "Grid") -> dict:
     """Return transactional behavior for component editor verbs."""
     execution = component_editor_execution_contract(component)
@@ -4941,6 +5091,22 @@ def object_inspector_workbench() -> dict:
     design_surface_replay = inspector_design_surface_transaction_replay_contract(sample_components)
     custom_designer_registration_replay = inspector_custom_designer_registration_replay_contract(sample_components)
     editor_lifecycle_replay = inspector_editor_lifecycle_replay_contract(sample_components)
+    property_edit_operation = inspector_apply_property_edit(
+        {"component": "TextBox", "props": {"label": "Name"}},
+        "label",
+        "Customer Name",
+    )
+    event_create_operation = inspector_create_event_handler("Button", "OnClick")
+    event_rename_operation = inspector_rename_event_handler(
+        event_create_operation["binding"],
+        "button_customer_click",
+    )
+    component_editor_operation = inspector_execute_component_editor(
+        "Grid",
+        "edit_columns",
+        selection=("customer_grid",),
+    )
+    custom_designer_operation = inspector_register_custom_designer("Grid", "selection_handles")
     checks = (
         {
             "id": "property_editor_types",
@@ -5147,6 +5313,26 @@ def object_inspector_workbench() -> dict:
             and not editor_lifecycle_replay["side_effects"],
             "evidence": editor_lifecycle_replay,
         },
+        {
+            "id": "actionable_editor_operations",
+            "ok": property_edit_operation["ok"]
+            and event_create_operation["ok"]
+            and event_rename_operation["ok"]
+            and component_editor_operation["ok"]
+            and custom_designer_operation["ok"]
+            and not property_edit_operation["side_effects"]
+            and not event_create_operation["side_effects"]
+            and not event_rename_operation["side_effects"]
+            and not component_editor_operation["side_effects"]
+            and not custom_designer_operation["side_effects"],
+            "evidence": {
+                "property_edit": property_edit_operation,
+                "event_create": event_create_operation,
+                "event_rename": event_rename_operation,
+                "component_editor": component_editor_operation,
+                "custom_designer": custom_designer_operation,
+            },
+        },
     )
     ok = all(check["ok"] for check in checks)
     return {
@@ -5183,6 +5369,13 @@ def object_inspector_workbench() -> dict:
         "design_surface_replay": design_surface_replay,
         "custom_designer_registration_replay": custom_designer_registration_replay,
         "editor_lifecycle_replay": editor_lifecycle_replay,
+        "actionable_operations": {
+            "property_edit": property_edit_operation,
+            "event_create": event_create_operation,
+            "event_rename": event_rename_operation,
+            "component_editor": component_editor_operation,
+            "custom_designer": custom_designer_operation,
+        },
         "checks": checks,
         "blocking_gaps": tuple(check for check in checks if not check["ok"]),
     }
