@@ -1743,6 +1743,7 @@ def write_form_designer_file(output_dir, schema: AppSchema):
     output_dir.mkdir(parents=True, exist_ok=True)
     (output_dir / "form_designer.py").write_text(_form_designer_text(schema))
     (output_dir / "runtime_operations.py").write_text(_native_runtime_operations_text())
+    (output_dir / "native_form_runtime.py").write_text(_native_form_runtime_text())
     (output_dir / "mobile_device_runtime.py").write_text(_mobile_device_runtime_text())
     (output_dir / "visual_runtime_assets.py").write_text(_visual_runtime_assets_text())
     (output_dir / "data_tooling_runtime.py").write_text(_data_tooling_runtime_text())
@@ -2672,6 +2673,136 @@ def smoke_test():
         "ok": validation["ok"],
         "validation": validation,
         "checks": tuple(item["id"] for item in validation["checks"]),
+    }
+'''
+
+
+def _native_form_runtime_text() -> str:
+    return '''"""Generated side-effect-free native form streaming and runtime manifest."""
+
+from __future__ import annotations
+
+import importlib.util
+from pathlib import Path
+
+
+def _load_form_designer():
+    """Load the sibling generated form designer module without requiring package install."""
+    module_path = Path(__file__).with_name("form_designer.py")
+    spec = importlib.util.spec_from_file_location("generated_native_form_runtime_designer", module_path)
+    module = importlib.util.module_from_spec(spec)
+    if spec.loader is None:
+        raise RuntimeError("Could not load generated form designer module.")
+    spec.loader.exec_module(module)
+    return module
+
+
+def native_form_runtime_manifest(table_name=None):
+    """Return form stream, unit, resource, compile, and load replay evidence."""
+    form_designer = _load_form_designer()
+    workbench = form_designer.pascal_runtime_workbench(table_name)
+    streaming = form_designer.dfm_streaming_contract()
+    check_ids = {check["id"] for check in workbench["checks"] if check["ok"]}
+    required_checks = {
+        "dfm_serialization",
+        "dfm_parse_round_trip",
+        "binary_stream_codec",
+        "stream_variant_round_trip",
+        "pascal_unit_generation",
+        "compiler_pipeline",
+        "resource_streaming",
+        "runtime_lifecycle",
+        "runtime_artifact_parity",
+        "form_stream_schema",
+        "runtime_session_replay",
+        "design_edit_session_replay",
+    }
+    return {
+        "format": "appgen.generated-native-form-runtime-manifest.v1",
+        "ok": workbench["ok"]
+        and required_checks <= check_ids
+        and {"text-dfm", "binary-dfm", "json-form-model"} <= set(streaming["stream_formats"])
+        and "{$R *.dfm}" in workbench["unit"]["unit_source"]
+        and workbench["runtime_replay"]["ok"]
+        and workbench["design_edit_replay"]["ok"]
+        and not workbench["runtime_replay"]["side_effects"]
+        and not workbench["design_edit_replay"]["side_effects"],
+        "table": table_name,
+        "streaming": streaming,
+        "unit": workbench["unit"],
+        "compiler": workbench["compiler"],
+        "unit_parse": workbench["unit_parse"],
+        "resources": workbench["resources"],
+        "form_stream_schema": workbench["form_stream_schema"],
+        "artifact_parity": workbench["artifact_parity"],
+        "runtime_replay": workbench["runtime_replay"],
+        "design_edit_replay": workbench["design_edit_replay"],
+        "runtime_memory_model": workbench["runtime_memory_model"],
+        "checks": tuple(check["id"] for check in workbench["checks"]),
+        "required_checks": tuple(sorted(required_checks)),
+        "guards": (
+            "text_binary_json_streams_round_trip",
+            "unit_declares_resource_stream",
+            "resources_link_before_runtime_load",
+            "design_edits_preserve_unknown_properties",
+            "runtime_replay_is_side_effect_free",
+        ),
+    }
+
+
+def replay_native_form_runtime(table_name=None):
+    """Replay generated form stream load without invoking host compilers or UI."""
+    manifest = native_form_runtime_manifest(table_name)
+    runtime_phases = tuple(item["phase"] for item in manifest["runtime_replay"]["replay"])
+    design_phases = tuple(item["phase"] for item in manifest["design_edit_replay"]["replay"])
+    return {
+        "format": "appgen.generated-native-form-runtime-replay.v1",
+        "ok": manifest["ok"]
+        and {"stream_decode", "semantic_static_analysis", "target_emit", "runtime_load"} <= set(runtime_phases)
+        and {"open_design_stream", "apply_property_edit", "reload_runtime_preview"} <= set(design_phases),
+        "table": table_name,
+        "runtime_phases": runtime_phases,
+        "design_phases": design_phases,
+        "unit": manifest["unit"]["unit_name"],
+        "resource_count": len(manifest["resources"]["resources"]),
+        "component_count": manifest["artifact_parity"]["evidence"]["component_count"],
+        "side_effects": (),
+    }
+
+
+def validate_native_form_runtime(table_name=None):
+    """Validate generated native form streaming and runtime readiness."""
+    manifest = native_form_runtime_manifest(table_name)
+    replay = replay_native_form_runtime(table_name)
+    checks = (
+        {"id": "manifest_ok", "ok": manifest["ok"]},
+        {"id": "stream_formats_supported", "ok": {"text-dfm", "binary-dfm", "json-form-model"} <= set(manifest["streaming"]["stream_formats"])},
+        {"id": "unit_resource_directive", "ok": "{$R *.dfm}" in manifest["unit"]["unit_source"]},
+        {"id": "compiler_pipeline_declared", "ok": {"parse_units", "type_check", "resource_link", "emit_target"} <= set(manifest["compiler"]["stages"])},
+        {"id": "form_stream_schema_complete", "ok": manifest["form_stream_schema"]["ok"]},
+        {"id": "runtime_replay_side_effect_free", "ok": manifest["runtime_replay"]["ok"] and not manifest["runtime_replay"]["side_effects"]},
+        {"id": "design_edit_replay_side_effect_free", "ok": manifest["design_edit_replay"]["ok"] and not manifest["design_edit_replay"]["side_effects"]},
+        {"id": "artifact_parity_declared", "ok": "runtime_diff_visible" in manifest["artifact_parity"]["guards"]},
+        {"id": "runtime_load_replay", "ok": replay["ok"] and not replay["side_effects"]},
+    )
+    return {
+        "format": "appgen.generated-native-form-runtime-validation.v1",
+        "ok": all(check["ok"] for check in checks),
+        "checks": checks,
+        "manifest": manifest,
+        "replay": replay,
+        "blocking_gaps": tuple(check for check in checks if not check["ok"]),
+    }
+
+
+def smoke_test(table_name=None):
+    """Run side-effect-free native form stream/runtime smoke checks."""
+    validation = validate_native_form_runtime(table_name)
+    return {
+        "format": "appgen.generated-native-form-runtime-smoke.v1",
+        "ok": validation["ok"],
+        "validation": validation,
+        "checks": tuple(check["id"] for check in validation["checks"]),
     }
 '''
 

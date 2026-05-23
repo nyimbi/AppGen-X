@@ -14137,6 +14137,7 @@ def form_designer_generation_smoke_audit(source: str = FORM_DESIGNER_SAMPLE_DSL)
         "app/visual_runtime_assets.py",
         "app/data_tooling_runtime.py",
         "app/runtime_operations.py",
+        "app/native_form_runtime.py",
         "app/mobile_device_runtime.py",
         "app/templates/appgen_form_designer.html",
         "app/models.py",
@@ -14152,6 +14153,7 @@ def form_designer_generation_smoke_audit(source: str = FORM_DESIGNER_SAMPLE_DSL)
         "app/visual_runtime_assets.py",
         "app/data_tooling_runtime.py",
         "app/runtime_operations.py",
+        "app/native_form_runtime.py",
         "app/mobile_device_runtime.py",
         "app/models.py",
         "app/views.py",
@@ -14198,6 +14200,12 @@ def form_designer_generation_smoke_audit(source: str = FORM_DESIGNER_SAMPLE_DSL)
         )
         generated_runtime_ops = importlib.util.module_from_spec(runtime_ops_spec)
         runtime_ops_spec.loader.exec_module(generated_runtime_ops)
+        native_runtime_path = output_dir / "native_form_runtime.py"
+        native_runtime_spec = importlib.util.spec_from_file_location(
+            "generated_native_form_runtime_smoke", native_runtime_path
+        )
+        generated_native_runtime = importlib.util.module_from_spec(native_runtime_spec)
+        native_runtime_spec.loader.exec_module(generated_native_runtime)
         mobile_runtime_path = output_dir / "mobile_device_runtime.py"
         mobile_runtime_spec = importlib.util.spec_from_file_location(
             "generated_mobile_device_runtime_smoke", mobile_runtime_path
@@ -14240,6 +14248,7 @@ def form_designer_generation_smoke_audit(source: str = FORM_DESIGNER_SAMPLE_DSL)
         workbench = generated_form_designer.form_designer_workbench(existing_paths)
         usability = generated_form_designer.component_usability_workbench(existing_paths)
         runtime_operation_smoke = generated_runtime_ops.smoke_test(first_table)
+        native_form_runtime_smoke = generated_native_runtime.smoke_test(first_table)
         mobile_device_smoke = generated_mobile_runtime.smoke_test()
 
     checks = (
@@ -14304,6 +14313,24 @@ def form_designer_generation_smoke_audit(source: str = FORM_DESIGNER_SAMPLE_DSL)
             }
             <= set(runtime_operation_smoke["checks"]),
             "smoke": runtime_operation_smoke,
+        },
+        {
+            "id": "generated_native_form_runtime",
+            "ok": native_form_runtime_smoke["ok"]
+            and native_form_runtime_smoke["format"] == "appgen.generated-native-form-runtime-smoke.v1"
+            and {
+                "manifest_ok",
+                "stream_formats_supported",
+                "unit_resource_directive",
+                "compiler_pipeline_declared",
+                "form_stream_schema_complete",
+                "runtime_replay_side_effect_free",
+                "design_edit_replay_side_effect_free",
+                "artifact_parity_declared",
+                "runtime_load_replay",
+            }
+            <= set(native_form_runtime_smoke["checks"]),
+            "smoke": native_form_runtime_smoke,
         },
         {
             "id": "generated_mobile_device_runtime",

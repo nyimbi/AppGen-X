@@ -2491,6 +2491,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "app/visual_runtime_assets.py",
         "app/data_tooling_runtime.py",
         "app/runtime_operations.py",
+        "app/native_form_runtime.py",
         "app/mobile_device_runtime.py",
         "app/templates/appgen_form_designer.html",
         "app/models.py",
@@ -2512,6 +2513,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "app/visual_runtime_assets.py",
         "app/data_tooling_runtime.py",
         "app/runtime_operations.py",
+        "app/native_form_runtime.py",
         "app/mobile_device_runtime.py",
         "app/models.py",
     } <= set(smoke["compiled_artifacts"])
@@ -11103,6 +11105,28 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     } <= set(runtime_operations_smoke["checks"])
     assert runtime_operations.run_runtime_operation("compile_preview", "Book")["ok"] is True
     assert runtime_operations.run_runtime_operation("missing", "Book")["ok"] is False
+    native_runtime_file = output_dir / "native_form_runtime.py"
+    assert native_runtime_file.exists()
+    py_compile.compile(str(native_runtime_file), doraise=True)
+    native_runtime = _load_module(native_runtime_file, "generated_native_form_runtime")
+    native_runtime_smoke = native_runtime.smoke_test("Book")
+    assert native_runtime_smoke["format"] == "appgen.generated-native-form-runtime-smoke.v1"
+    assert native_runtime_smoke["ok"] is True
+    assert {
+        "manifest_ok",
+        "stream_formats_supported",
+        "unit_resource_directive",
+        "compiler_pipeline_declared",
+        "form_stream_schema_complete",
+        "runtime_replay_side_effect_free",
+        "design_edit_replay_side_effect_free",
+        "artifact_parity_declared",
+        "runtime_load_replay",
+    } <= set(native_runtime_smoke["checks"])
+    native_replay = native_runtime.replay_native_form_runtime("Book")
+    assert native_replay["ok"] is True
+    assert "runtime_load" in native_replay["runtime_phases"]
+    assert native_replay["side_effects"] == ()
     generated_mobile = form_designer.mobile_native_api_workbench()
     assert generated_mobile["format"] == "appgen.generated-mobile-native-api-workbench.v1"
     assert generated_mobile["ok"] is True
