@@ -2761,12 +2761,56 @@ def transaction_runtime_manifest():
     }
 
 
+def relationship_lookup_runtime_manifest():
+    """Return generated multi-hop relationship lookup runtime metadata."""
+    tooling = form_designer.rad_data_tooling_workbench()
+    lifecycle = tooling["relationship_lookup_lifecycle"]
+    return {
+        "format": "appgen.generated-data-relationship-lookup-runtime-manifest.v1",
+        "ok": lifecycle["ok"]
+        and {"generate_lookup_editors", "preview_multi_hop_joins", "bind_runtime_artifacts", "publish_lookup_endpoints"}
+        <= {item["phase"] for item in lifecycle["replay"]}
+        and {"all_foreign_keys_get_lookup_editors", "multi_hop_chain_preserved", "lookup_preview_before_publish", "runtime_artifacts_declared"}
+        <= set(lifecycle["guards"])
+        and not lifecycle["side_effects"],
+        "chain_path": lifecycle["chain_path"],
+        "replay": lifecycle["replay"],
+        "checks": lifecycle["checks"],
+        "guards": lifecycle["guards"],
+    }
+
+
+def data_module_runtime_manifest():
+    """Return generated data module, stored routine, and runtime smoke metadata."""
+    tooling = form_designer.rad_data_tooling_workbench()
+    return {
+        "format": "appgen.generated-data-module-runtime-manifest.v1",
+        "ok": tooling["data_modules"]["ok"]
+        and tooling["module_runtime_smoke"]["ok"]
+        and tooling["stored_procedures"]["ok"]
+        and {"connection_module", "dataset_module", "service_proxy_module", "offline_module"} <= {artifact["name"] for artifact in tooling["data_modules"]["artifacts"]}
+        and all("rollback_preview" in workflow["pipeline"] for workflow in tooling["stored_procedures"]["workflows"])
+        and not tooling["module_runtime_smoke"]["side_effects"],
+        "modules": tooling["data_modules"],
+        "module_smoke": tooling["module_runtime_smoke"],
+        "stored_procedures": tooling["stored_procedures"],
+        "guards": (
+            "module_imports_are_required",
+            "read_only_probe_required",
+            "typed_parameters_required",
+            "rollback_preview_required",
+        ),
+    }
+
+
 def data_tooling_runtime_manifest():
     """Return the complete generated data tooling runtime manifest."""
     connection = connection_runtime_manifest()
     dataset = dataset_runtime_manifest()
     service = service_runtime_manifest()
     transactions = transaction_runtime_manifest()
+    relationships = relationship_lookup_runtime_manifest()
+    modules = data_module_runtime_manifest()
     tooling = form_designer.rad_data_tooling_workbench()
     return {
         "format": "appgen.generated-data-tooling-runtime-manifest.v1",
@@ -2774,40 +2818,80 @@ def data_tooling_runtime_manifest():
         and connection["ok"]
         and dataset["ok"]
         and service["ok"]
-        and transactions["ok"],
+        and transactions["ok"]
+        and relationships["ok"]
+        and modules["ok"],
         "connection": connection,
         "dataset": dataset,
         "service": service,
         "transactions": transactions,
+        "relationships": relationships,
+        "modules": modules,
         "tooling": tooling,
         "guards": (
             "connection_runtime_declared",
             "dataset_lookup_runtime_declared",
             "service_contract_runtime_declared",
             "transaction_replay_runtime_declared",
+            "relationship_lookup_runtime_declared",
+            "data_module_runtime_declared",
         ),
+    }
+
+
+def replay_data_tooling_runtime():
+    """Replay generated data tooling runtime paths without persisting writes."""
+    manifest = data_tooling_runtime_manifest()
+    runtime_ops = tuple(item["op"] for item in manifest["transactions"]["runtime_replay"]["trace"])
+    design_phases = tuple(item["phase"] for item in manifest["transactions"]["design_runtime_replay"]["replay"])
+    publish_phases = tuple(item["phase"] for item in manifest["transactions"]["publish_replay"]["replay"])
+    failover_phases = tuple(item["phase"] for item in manifest["transactions"]["failover_replay"]["replay"])
+    relationship_phases = tuple(item["phase"] for item in manifest["relationships"]["replay"])
+    return {
+        "format": "appgen.generated-data-tooling-runtime-replay.v1",
+        "ok": manifest["ok"]
+        and {"connection_probe", "query_preview", "service_invocation", "offline_replay"} <= set(runtime_ops)
+        and {"schema_introspection", "lookup_generation", "runtime_replay"} <= set(design_phases)
+        and {"generate_service_artifacts", "publish_resources_and_telemetry", "stage_local_store_and_offline_queue"} <= set(publish_phases)
+        and {"quarantine_and_route_failover", "manual_review_offline_replay", "smoke_after_failover"} <= set(failover_phases)
+        and {"generate_lookup_editors", "preview_multi_hop_joins", "publish_lookup_endpoints"} <= set(relationship_phases)
+        and manifest["transactions"]["failover_replay"]["final_state"]["persisted_writes"] == 0
+        and manifest["transactions"]["runtime_replay"]["final_state"]["persisted_writes"] == 0,
+        "runtime_ops": runtime_ops,
+        "design_phases": design_phases,
+        "publish_phases": publish_phases,
+        "failover_phases": failover_phases,
+        "relationship_phases": relationship_phases,
+        "side_effects": (),
     }
 
 
 def validate_data_tooling_runtime():
     """Validate generated data tooling runtime assets before release."""
     manifest = data_tooling_runtime_manifest()
+    replay = replay_data_tooling_runtime()
     checks = (
         {"id": "connections", "ok": manifest["connection"]["ok"]},
         {"id": "datasets_and_lookups", "ok": manifest["dataset"]["ok"]},
         {"id": "services", "ok": manifest["service"]["ok"]},
         {"id": "transaction_replays", "ok": manifest["transactions"]["ok"]},
+        {"id": "relationship_lookup_replay", "ok": manifest["relationships"]["ok"]},
+        {"id": "data_module_smoke", "ok": manifest["modules"]["ok"]},
+        {"id": "publish_transaction_replay", "ok": manifest["transactions"]["publish_replay"]["ok"] and not manifest["transactions"]["publish_replay"]["side_effects"]},
+        {"id": "failover_transaction_replay", "ok": manifest["transactions"]["failover_replay"]["ok"] and not manifest["transactions"]["failover_replay"]["side_effects"]},
         {
             "id": "no_persisted_writes",
             "ok": manifest["transactions"]["failover_replay"]["final_state"]["persisted_writes"] == 0
             and manifest["transactions"]["runtime_replay"]["final_state"]["persisted_writes"] == 0,
         },
+        {"id": "runtime_replay", "ok": replay["ok"] and not replay["side_effects"]},
     )
     return {
         "format": "appgen.generated-data-tooling-runtime-validation.v1",
         "ok": manifest["ok"] and all(item["ok"] for item in checks),
         "checks": checks,
         "manifest": manifest,
+        "replay": replay,
         "blocking_gaps": tuple(item for item in checks if not item["ok"]),
     }
 

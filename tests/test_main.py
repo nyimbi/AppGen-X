@@ -11112,8 +11112,25 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert data_runtime.dataset_runtime_manifest()["ok"] is True
     assert data_runtime.service_runtime_manifest()["ok"] is True
     assert data_runtime.transaction_runtime_manifest()["ok"] is True
+    relationship_runtime = data_runtime.relationship_lookup_runtime_manifest()
+    assert relationship_runtime["ok"] is True
+    assert relationship_runtime["chain_path"] == ("InventoryMove", "InvoiceLine", "Invoice", "Account", "Ledger")
+    assert data_runtime.data_module_runtime_manifest()["ok"] is True
+    data_runtime_replay = data_runtime.replay_data_tooling_runtime()
+    assert data_runtime_replay["ok"] is True
+    assert {"service_invocation", "offline_replay"} <= set(data_runtime_replay["runtime_ops"])
+    assert {"quarantine_and_route_failover", "manual_review_offline_replay"} <= set(data_runtime_replay["failover_phases"])
+    assert data_runtime_replay["side_effects"] == ()
     assert data_runtime.validate_data_tooling_runtime()["ok"] is True
-    assert data_runtime.smoke_test()["ok"] is True
+    data_runtime_smoke = data_runtime.smoke_test()
+    assert {
+        "relationship_lookup_replay",
+        "data_module_smoke",
+        "publish_transaction_replay",
+        "failover_transaction_replay",
+        "runtime_replay",
+    } <= set(data_runtime_smoke["checks"])
+    assert data_runtime_smoke["ok"] is True
     component_parity_runtime_file = output_dir / "component_parity_runtime.py"
     assert component_parity_runtime_file.exists()
     py_compile.compile(str(component_parity_runtime_file), doraise=True)
