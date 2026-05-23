@@ -26845,6 +26845,121 @@ def inspector_state_restore_workflow():
     }}
 
 
+def inspector_property_grouping_contract(component_type="Grid"):
+    """Return generated property grouping, filtering, favorites, and search evidence."""
+    contract = object_inspector_contract(component_type)
+    editors = contract["property_editors"]
+    groups = {{
+        "Layout": tuple(editor["name"] for editor in editors if editor["name"] in {{"x", "y", "w", "h", "align", "padding", "gap"}}),
+        "Data": tuple(editor["name"] for editor in editors if editor["supports_binding"]),
+        "Appearance": tuple(editor["name"] for editor in editors if editor["editor"] in {{"color", "resource", "choice"}}),
+        "Behavior": tuple(editor["name"] for editor in editors if editor["editor"] not in {{"color", "resource"}}),
+    }}
+    return {{
+        "format": "appgen.generated-inspector-property-grouping-contract.v1",
+        "component": contract["component"],
+        "groups": groups,
+        "filters": contract["state"]["filters"],
+        "search": {{"indexes": ("property_name", "category", "editor_type"), "min_chars": 1}},
+        "favorites": {{"scope": "per-user-per-project", "operations": ("pin", "unpin", "restore")}},
+        "ok": bool(editors) and {{"all", "modified", "favorites", "data_bound", "events"}} <= set(contract["state"]["filters"]) and any(groups.values()),
+        "side_effects": (),
+    }}
+
+
+def inspector_editor_surface_contract(component_type="Grid"):
+    """Return generated inline, dropdown, collection, resource, and binding editor surface evidence."""
+    registry = inspector_editor_registry(component_type)
+    surfaces = tuple(
+        {{
+            "property": editor["property"],
+            "editor": editor["editor"],
+            "surface": "modal" if editor["editor"] in {{"collection", "resource", "binding"}} else "inline",
+            "commands": ("open", "apply", "reset", "cancel"),
+            "supports_binding": editor["supports_binding"],
+        }}
+        for editor in registry["property_editors"]
+    )
+    surface_types = {{surface["surface"] for surface in surfaces}}
+    return {{
+        "format": "appgen.generated-inspector-editor-surface-contract.v1",
+        "component": component_type,
+        "surfaces": surfaces,
+        "ok": bool(surfaces)
+        and "inline" in surface_types
+        and all({{"open", "apply", "cancel"}} <= set(surface["commands"]) for surface in surfaces),
+        "guards": ("modal_changes_staged", "inline_changes_validated", "reset_uses_default_value", "binding_picker_cycle_checked"),
+        "side_effects": (),
+    }}
+
+
+def inspector_event_signature_routing_contract(component_type="Grid"):
+    """Return generated event signature routing and handler-reference evidence."""
+    lifecycle = inspector_event_lifecycle_contract(component_type)
+    routes = tuple(
+        {{
+            "event": action["event"],
+            "handler": action["handler"],
+            "signature": action["signature"],
+            "routes": ("unit_editor", "method_index", "component_reference"),
+            "commands": action["actions"],
+        }}
+        for action in lifecycle["actions"]
+    )
+    return {{
+        "format": "appgen.generated-inspector-event-signature-routing-contract.v1",
+        "component": component_type,
+        "routes": routes,
+        "ok": bool(routes)
+        and all("sender, context" in route["signature"] for route in routes)
+        and all({{"unit_editor", "component_reference"}} <= set(route["routes"]) for route in routes),
+        "guards": lifecycle["guards"] + ("handler_name_unique", "orphan_review_visible"),
+        "side_effects": (),
+    }}
+
+
+def inspector_component_editor_history_contract(component_type="Grid"):
+    """Return generated undo, redo, and cancel history evidence for component editor verbs."""
+    transaction = inspector_component_editor_transaction(component_type)
+    history = tuple(
+        {{"verb": verb, "history": ("snapshot_before", "stage_delta", "apply_delta", "record_undo", "enable_redo"), "rollback": transaction["rollback"]}}
+        for verb in transaction["verbs"]
+    )
+    return {{
+        "format": "appgen.generated-inspector-component-editor-history-contract.v1",
+        "component": component_type,
+        "history": history,
+        "ok": bool(history)
+        and all({{"record_undo", "enable_redo"}} <= set(item["history"]) for item in history)
+        and all("restore_snapshot" in item["rollback"] for item in history),
+        "guards": transaction["guards"] + ("redo_invalidated_after_new_edit", "bulk_change_summarized"),
+        "side_effects": (),
+    }}
+
+
+def inspector_custom_designer_hit_test_contract(component_type="Grid"):
+    """Return generated hit-test, overlay, and verb routing evidence for custom designers."""
+    render = inspector_custom_designer_render_workflow(component_type)
+    hit_tests = tuple(
+        {{
+            "hook": hook,
+            "hit_targets": ("selection_handle", "smart_tag", "verb_menu", "inline_preview"),
+            "route": ("resolve_hit_target", "focus_component", "open_context_action"),
+        }}
+        for hook in render["hooks"]
+    )
+    return {{
+        "format": "appgen.generated-inspector-custom-designer-hit-test-contract.v1",
+        "component": component_type,
+        "hit_tests": hit_tests,
+        "ok": bool(hit_tests)
+        and "publish_hit_targets" in render["render_pass"]
+        and all({{"resolve_hit_target", "open_context_action"}} <= set(item["route"]) for item in hit_tests),
+        "guards": render["isolation"] + ("overlay_z_order_stable", "hit_targets_do_not_mutate_design"),
+        "side_effects": (),
+    }}
+
+
 def object_inspector_workbench():
     """Prove property, event, component-editor, and custom-designer coverage."""
     sample_components = ("TextBox", "Grid", "Rectangle", "StyleBook", "GestureManager", "Viewport3D", "DatabaseConnection")
@@ -26861,6 +26976,11 @@ def object_inspector_workbench():
     component_transactions = tuple(inspector_component_editor_transaction(component) for component in sample_components)
     custom_render_workflows = tuple(inspector_custom_designer_render_workflow(component) for component in sample_components)
     state_restore = inspector_state_restore_workflow()
+    property_grouping = tuple(inspector_property_grouping_contract(component) for component in sample_components)
+    editor_surfaces = tuple(inspector_editor_surface_contract(component) for component in sample_components)
+    event_signature_routing = tuple(inspector_event_signature_routing_contract(component) for component in sample_components)
+    component_editor_history = tuple(inspector_component_editor_history_contract(component) for component in sample_components)
+    custom_designer_hit_tests = tuple(inspector_custom_designer_hit_test_contract(component) for component in sample_components)
     checks = (
         {{"id": "property_editor_types", "ok": {{"string", "boolean", "number"}} <= observed_editor_types and bool({{"collection", "choice", "binding", "color", "resource"}} & observed_editor_types), "evidence": tuple(sorted(observed_editor_types))}},
         {{"id": "event_editor_lifecycle", "ok": all(editor["supports_create"] and editor["supports_navigate"] and editor["supports_detach"] for contract in contracts for editor in contract["event_editors"]), "evidence": tuple((contract["component"], tuple(editor["name"] for editor in contract["event_editors"])) for contract in contracts)}},
@@ -26878,6 +26998,11 @@ def object_inspector_workbench():
         {{"id": "component_editor_transaction", "ok": all({{"snapshot_design", "apply_change", "record_undo"}} <= set(transaction["transaction"]) and {{"restore_snapshot"}} <= set(transaction["rollback"]) and not transaction["side_effects"] for transaction in component_transactions), "evidence": component_transactions}},
         {{"id": "custom_designer_render_workflow", "ok": all({{"render_overlay", "render_selection_handles", "publish_hit_targets"}} <= set(workflow["render_pass"]) and not workflow["side_effects"] for workflow in custom_render_workflows), "evidence": custom_render_workflows}},
         {{"id": "state_restore_workflow", "ok": {{"load_workspace_state", "restore_selected_tab", "persist_after_change"}} <= set(state_restore["workflow"]) and not state_restore["side_effects"], "evidence": state_restore}},
+        {{"id": "property_grouping", "ok": all(contract["ok"] and not contract["side_effects"] for contract in property_grouping), "evidence": property_grouping}},
+        {{"id": "editor_surfaces", "ok": all(contract["ok"] and not contract["side_effects"] for contract in editor_surfaces) and any(surface["surface"] == "modal" or surface["editor"] in {{"collection", "resource", "binding", "color", "choice"}} for contract in editor_surfaces for surface in contract["surfaces"]), "evidence": editor_surfaces}},
+        {{"id": "event_signature_routing", "ok": all(contract["ok"] and not contract["side_effects"] for contract in event_signature_routing), "evidence": event_signature_routing}},
+        {{"id": "component_editor_history", "ok": all(contract["ok"] and not contract["side_effects"] for contract in component_editor_history), "evidence": component_editor_history}},
+        {{"id": "custom_designer_hit_testing", "ok": all(contract["ok"] and not contract["side_effects"] for contract in custom_designer_hit_tests), "evidence": custom_designer_hit_tests}},
     )
     ok = all(check["ok"] for check in checks)
     return {{
@@ -26896,6 +27021,11 @@ def object_inspector_workbench():
         "component_transactions": component_transactions,
         "custom_render_workflows": custom_render_workflows,
         "state_restore": state_restore,
+        "property_grouping": property_grouping,
+        "editor_surfaces": editor_surfaces,
+        "event_signature_routing": event_signature_routing,
+        "component_editor_history": component_editor_history,
+        "custom_designer_hit_tests": custom_designer_hit_tests,
         "checks": checks,
         "blocking_gaps": tuple(check for check in checks if not check["ok"]),
     }}

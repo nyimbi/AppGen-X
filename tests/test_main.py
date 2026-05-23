@@ -855,12 +855,27 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "component_editor_transaction",
         "custom_designer_render_workflow",
         "state_restore_workflow",
+        "property_grouping",
+        "editor_surfaces",
+        "event_signature_routing",
+        "component_editor_history",
+        "custom_designer_hit_testing",
     } == {check["id"] for check in inspector_workbench["checks"]}
     assert all("apply_change" in workflow["workflow"] for workflow in inspector_workbench["property_edit_workflows"])
     assert all("update_component_reference" in workflow["workflow"] for workflow in inspector_workbench["event_edit_workflows"])
     assert all("record_undo" in transaction["transaction"] for transaction in inspector_workbench["component_transactions"])
     assert all("publish_hit_targets" in workflow["render_pass"] for workflow in inspector_workbench["custom_render_workflows"])
     assert "restore_selected_tab" in inspector_workbench["state_restore"]["workflow"]
+    assert all("favorites" in grouping["filters"] for grouping in inspector_workbench["property_grouping"])
+    assert all("property_name" in surface["search"]["indexes"] for surface in inspector_workbench["property_grouping"])
+    assert all(surface["surfaces"] for surface in inspector_workbench["editor_surfaces"])
+    assert all(route["routes"] for routing in inspector_workbench["event_signature_routing"] for route in routing["routes"])
+    assert all("enable_redo" in item["history"] for history in inspector_workbench["component_editor_history"] for item in history["history"])
+    assert all(
+        "open_context_action" in item["route"]
+        for hit_test in inspector_workbench["custom_designer_hit_tests"]
+        for item in hit_test["hit_tests"]
+    )
     binding_graph = livebindings_graph_contract()
     assert binding_graph["format"] == "appgen.livebindings-graph.v1"
     assert {"dataset", "field", "control", "expression"} <= {node["kind"] for node in binding_graph["nodes"]}
@@ -9217,6 +9232,11 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "component_editor_transaction",
         "custom_designer_render_workflow",
         "state_restore_workflow",
+        "property_grouping",
+        "editor_surfaces",
+        "event_signature_routing",
+        "component_editor_history",
+        "custom_designer_hit_testing",
     } == {check["id"] for check in generated_inspector["checks"]}
     assert generated_inspector["editor_registries"]
     assert generated_inspector["state_persistence"]["state_keys"]
@@ -9225,6 +9245,16 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert all("record_undo" in transaction["transaction"] for transaction in generated_inspector["component_transactions"])
     assert all("publish_hit_targets" in workflow["render_pass"] for workflow in generated_inspector["custom_render_workflows"])
     assert "restore_selected_tab" in generated_inspector["state_restore"]["workflow"]
+    assert all("favorites" in grouping["filters"] for grouping in generated_inspector["property_grouping"])
+    assert all("property_name" in surface["search"]["indexes"] for surface in generated_inspector["property_grouping"])
+    assert all(surface["surfaces"] for surface in generated_inspector["editor_surfaces"])
+    assert all(route["routes"] for routing in generated_inspector["event_signature_routing"] for route in routing["routes"])
+    assert all("enable_redo" in item["history"] for history in generated_inspector["component_editor_history"] for item in history["history"])
+    assert all(
+        "open_context_action" in item["route"]
+        for hit_test in generated_inspector["custom_designer_hit_tests"]
+        for item in hit_test["hit_tests"]
+    )
     generated_usability = form_designer.component_usability_workbench()
     assert generated_usability["format"] == "appgen.generated-component-usability-workbench.v1"
     assert generated_usability["ok"] is True
