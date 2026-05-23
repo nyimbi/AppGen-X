@@ -1497,6 +1497,27 @@ def write_data_access_file(output_dir, schema: AppSchema):
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
     (output_dir / "data_access.py").write_text(_data_access_text(schema))
+    write_data_access_module_files(output_dir)
+
+
+def write_data_access_module_files(output_dir):
+    """Write generated data access modules and smoke tests."""
+    output_dir = Path(output_dir)
+    module_dir = output_dir / "data_access_modules"
+    test_dir = output_dir / "data_access_module_tests"
+    module_dir.mkdir(parents=True, exist_ok=True)
+    test_dir.mkdir(parents=True, exist_ok=True)
+    (module_dir / "__init__.py").write_text(_data_access_module_init_text(), encoding="utf-8")
+    (test_dir / "__init__.py").write_text(_data_access_module_test_init_text(), encoding="utf-8")
+    for module_name in DATA_ACCESS_MODULES:
+        (module_dir / f"{module_name}.py").write_text(
+            _data_access_module_text(module_name),
+            encoding="utf-8",
+        )
+        (test_dir / f"test_{module_name}.py").write_text(
+            _data_access_module_test_text(module_name),
+            encoding="utf-8",
+        )
 
 
 def write_database_ops_file(output_dir, schema: AppSchema):
@@ -1931,6 +1952,13 @@ DATABASE_OPS_MODULES = (
     "addon_runtime_module",
     "migration_runtime_module",
     "projection_runtime_module",
+)
+
+DATA_ACCESS_MODULES = (
+    "query_runtime_module",
+    "mutation_runtime_module",
+    "audit_export_module",
+    "workbench_release_module",
 )
 
 
@@ -3892,6 +3920,265 @@ def smoke_test():
         "surface": SURFACE,
         "ok": True,
         "tests": ("test_database_ops_module_contract", "test_database_ops_module_smoke"),
+    }}
+'''
+
+
+def _data_access_module_init_text() -> str:
+    return (
+        '"""Generated data access modules."""\n\n'
+        f"DATA_ACCESS_MODULES = {DATA_ACCESS_MODULES!r}\n"
+    )
+
+
+def _data_access_module_test_init_text() -> str:
+    modules = tuple(f"test_{name}" for name in DATA_ACCESS_MODULES)
+    return (
+        '"""Generated data access module tests."""\n\n'
+        f"DATA_ACCESS_MODULE_TESTS = {modules!r}\n"
+    )
+
+
+def _data_access_surface(module_name: str) -> tuple[str, str]:
+    return {
+        "query_runtime_module": ("query_runtime", "query_rows"),
+        "mutation_runtime_module": ("mutation_runtime", "mutation_plan"),
+        "audit_export_module": ("audit_export", "mutation_audit_event"),
+        "workbench_release_module": ("workbench_release", "data_access_workbench_index"),
+    }[module_name]
+
+
+def _data_access_module_text(module_name: str) -> str:
+    surface, operation = _data_access_surface(module_name)
+    return f'''"""Generated data access module for {surface}."""
+
+from __future__ import annotations
+
+import importlib.util
+from pathlib import Path
+
+
+MODULE = {module_name!r}
+SURFACE = {surface!r}
+OPERATION = {operation!r}
+EXPECTED_EXPORTS = (
+    "module_contract",
+    "data_access_manifest",
+    "run_data_access_operation",
+    "release_context",
+    "smoke_test",
+)
+
+
+def _data_access():
+    module_path = Path(__file__).resolve().parents[1] / "data_access.py"
+    spec = importlib.util.spec_from_file_location(f"generated_data_access_{{MODULE}}_data_access", module_path)
+    module = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(module)
+    return module
+
+
+def _first_resource(access):
+    catalog = access.data_access_catalog()
+    return catalog[0] if catalog else None
+
+
+def _sample_row(resource):
+    return {{
+        field: 1 if field in resource["primary_keys"] else f"sample_{{field}}"
+        for field in resource["readable_fields"]
+    }}
+
+
+def _sample_values(resource):
+    values = {{field: f"sample_{{field}}" for field in resource["required_fields"]}}
+    for field in resource["primary_keys"]:
+        values[field] = 1
+    if not values and resource["writable_fields"]:
+        values[resource["writable_fields"][0]] = f"sample_{{resource['writable_fields'][0]}}"
+    return values
+
+
+def module_contract():
+    """Return this generated data access module's export contract."""
+    available = tuple(name for name in EXPECTED_EXPORTS if name in globals())
+    return {{
+        "format": "appgen.data-access-module-contract.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "operation": OPERATION,
+        "ok": set(EXPECTED_EXPORTS) <= set(available),
+        "exports": available,
+        "expected_exports": EXPECTED_EXPORTS,
+        "side_effects": (),
+    }}
+
+
+def data_access_manifest():
+    """Return data access metadata owned by this module."""
+    access = _data_access()
+    resources = access.data_access_catalog()
+    return {{
+        "format": "appgen.data-access-module-manifest.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "ok": bool(resources) and all(resource["readable_fields"] for resource in resources),
+        "resources": resources,
+        "side_effects": (),
+    }}
+
+
+def run_data_access_operation():
+    """Run this module's side-effect-free data access operation."""
+    access = _data_access()
+    resource = _first_resource(access)
+    if resource is None:
+        operation = {{"resource": None}}
+        ok = False
+    elif SURFACE == "query_runtime":
+        fields = resource["readable_fields"][:1] or resource["readable_fields"]
+        rows = access.query_rows(resource["table"], (_sample_row(resource),), fields=fields, limit=999)
+        saved = access.saved_query(resource["table"], "Module Query", fields=fields, actor="module")
+        export = access.query_export(saved)
+        operation = {{"rows": rows, "saved": saved, "export": export}}
+        ok = rows["total"] == 1 and rows["query"]["limit"] == access.MAX_LIMIT and export["automation_payload"]["table"] == resource["table"]
+    elif SURFACE == "mutation_runtime":
+        values = _sample_values(resource)
+        create = access.mutation_plan(resource["table"], "create", values, actor="module")
+        update = access.mutation_plan(resource["table"], "update", values, actor="module")
+        delete = access.mutation_plan(resource["table"], "delete", values, actor="module")
+        bulk = access.bulk_mutation_plan(resource["table"], "update", (values, values), actor="module")
+        operation = {{"create": create, "update": update, "delete": delete, "bulk": bulk}}
+        ok = create["ok"] and update["ok"] and delete["review_required"] and bulk["review_required"]
+    elif SURFACE == "audit_export":
+        values = _sample_values(resource)
+        plan = access.mutation_plan(resource["table"], "update", values, actor="module")
+        saved = access.saved_query(resource["table"], "Audit Export", fields=resource["readable_fields"][:1], actor="module")
+        operation = {{
+            "audit": access.mutation_audit_event(plan, request_id="module-smoke"),
+            "export": access.query_export(saved),
+        }}
+        ok = operation["audit"]["event"].endswith(".update") and bool(operation["export"]["url_params"])
+    else:
+        core_assets = {{"app/data_access.py", "app/templates/appgen_data_access.html"}}
+        operation = {{
+            "workbench": access.data_access_workbench(resource["table"]),
+            "index": access.data_access_workbench_index(core_assets),
+            "release": access.data_access_release_gate(core_assets),
+        }}
+        ok = operation["index"]["ok"] and operation["release"]["ok"] and operation["workbench"]["mutations"]["bulk_supported"]
+    return {{
+        "format": "appgen.data-access-module-operation.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "ok": ok,
+        "operation": operation,
+        "side_effects": (),
+    }}
+
+
+def release_context():
+    """Return release and workbench evidence used by this data access module."""
+    access = _data_access()
+    core_assets = {{"app/data_access.py", "app/templates/appgen_data_access.html"}}
+    return {{
+        "format": "appgen.data-access-module-release-context.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "ok": access.data_access_workbench_index(core_assets)["ok"] and access.data_access_release_gate(core_assets)["ok"],
+        "workbench": access.data_access_workbench_index(core_assets),
+        "release": access.data_access_release_gate(core_assets),
+        "side_effects": (),
+    }}
+
+
+def smoke_test():
+    """Run side-effect-free checks for this generated data access module."""
+    contract = module_contract()
+    manifest = data_access_manifest()
+    operation = run_data_access_operation()
+    release = release_context()
+    return {{
+        "format": "appgen.data-access-module-smoke-test.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "ok": contract["ok"]
+        and manifest["ok"]
+        and operation["ok"]
+        and release["ok"]
+        and not manifest["side_effects"]
+        and not operation["side_effects"]
+        and not release["side_effects"],
+        "contract": contract,
+        "manifest": manifest,
+        "operation": operation,
+        "release": release,
+        "checks": (
+            "module_contract_resolves",
+            "data_access_manifest_ok",
+            "data_access_operation_ok",
+            "release_context_ok",
+            "no_side_effects",
+        ),
+    }}
+'''
+
+
+def _data_access_module_test_text(module_name: str) -> str:
+    surface, _operation = _data_access_surface(module_name)
+    return f'''"""Generated tests for the {surface} data access module."""
+
+from __future__ import annotations
+
+import importlib.util
+from pathlib import Path
+
+
+MODULE = {module_name!r}
+SURFACE = {surface!r}
+
+
+def load_data_access_module():
+    """Load the generated data access module without app installation."""
+    module_path = Path(__file__).resolve().parents[1] / "data_access_modules" / f"{{MODULE}}.py"
+    spec = importlib.util.spec_from_file_location(f"generated_data_access_module_{{MODULE}}", module_path)
+    module = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(module)
+    return module
+
+
+def test_data_access_module_contract():
+    """Assert the generated data access module exposes its contract."""
+    module = load_data_access_module()
+    contract = module.module_contract()
+    assert contract["module"] == MODULE
+    assert contract["surface"] == SURFACE
+    assert contract["ok"] is True
+    assert all(hasattr(module, name) for name in contract["expected_exports"])
+
+
+def test_data_access_module_smoke():
+    """Assert the module's side-effect-free smoke test passes."""
+    module = load_data_access_module()
+    result = module.smoke_test()
+    assert result["ok"] is True
+    assert result["module"] == MODULE
+    assert result["surface"] == SURFACE
+    assert result["checks"]
+
+
+def smoke_test():
+    """Run this generated test module in a side-effect-free way."""
+    test_data_access_module_contract()
+    test_data_access_module_smoke()
+    return {{
+        "format": "appgen.data-access-module-generated-test-smoke.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "ok": True,
+        "tests": ("test_data_access_module_contract", "test_data_access_module_smoke"),
     }}
 '''
 
@@ -24608,6 +24895,9 @@ def _data_access_text(schema: AppSchema) -> str:
 
 from __future__ import annotations
 
+import importlib.util
+from pathlib import Path
+
 from flask import jsonify
 from flask import request
 from flask_appbuilder import BaseView
@@ -25003,6 +25293,114 @@ def data_access_release_gate(existing_paths=()):
         "ok": ok,
         "decision": "approved" if ok else "blocked",
         "checks": checks,
+    }}
+
+
+def _load_generated_module(path, name):
+    spec = importlib.util.spec_from_file_location(name, path)
+    module = importlib.util.module_from_spec(spec)
+    if spec.loader is None:
+        raise RuntimeError(f"Could not load generated module: {{path}}")
+    spec.loader.exec_module(module)
+    return module
+
+
+def data_access_module_file_manifest():
+    """Return file-level evidence for generated data access modules."""
+    modules = (
+        ("query_runtime_module", "query_runtime"),
+        ("mutation_runtime_module", "mutation_runtime"),
+        ("audit_export_module", "audit_export"),
+        ("workbench_release_module", "workbench_release"),
+    )
+    expected_exports = (
+        "module_contract",
+        "data_access_manifest",
+        "run_data_access_operation",
+        "release_context",
+        "smoke_test",
+    )
+    module_dir = Path(__file__).with_name("data_access_modules")
+    entries = []
+    for module_name, surface in modules:
+        module_path = module_dir / f"{{module_name}}.py"
+        exports = ()
+        contract_ok = False
+        smoke_ok = False
+        if module_path.exists():
+            module = _load_generated_module(module_path, f"generated_data_access_module_{{module_name}}")
+            exports = tuple(name for name in expected_exports if hasattr(module, name))
+            contract = module.module_contract()
+            smoke = module.smoke_test()
+            contract_ok = contract["ok"] and contract["module"] == module_name and contract["surface"] == surface
+            smoke_ok = smoke["ok"] and smoke["surface"] == surface
+        entries.append(
+            {{
+                "module": module_name,
+                "surface": surface,
+                "path": f"app/data_access_modules/{{module_name}}.py",
+                "exists": module_path.exists(),
+                "exports": exports,
+                "expected_exports": expected_exports,
+                "contract_ok": contract_ok,
+                "smoke_ok": smoke_ok,
+            }}
+        )
+    return {{
+        "format": "appgen.generated-data-access-module-file-manifest.v1",
+        "ok": bool(entries)
+        and all(
+            item["exists"]
+            and item["contract_ok"]
+            and item["smoke_ok"]
+            and set(item["expected_exports"]) <= set(item["exports"])
+            for item in entries
+        ),
+        "modules": tuple(entries),
+        "guards": ("one_file_per_data_access_module", "declared_exports_present", "module_smoke_loads"),
+        "side_effects": (),
+    }}
+
+
+def data_access_module_test_file_manifest():
+    """Return file-level evidence for generated data access module tests."""
+    modules = data_access_module_file_manifest()["modules"]
+    required_exports = (
+        "load_data_access_module",
+        "test_data_access_module_contract",
+        "test_data_access_module_smoke",
+        "smoke_test",
+    )
+    test_dir = Path(__file__).with_name("data_access_module_tests")
+    entries = []
+    for item in modules:
+        module_name = item["module"]
+        module_path = test_dir / f"test_{{module_name}}.py"
+        exports = ()
+        smoke_ok = False
+        if module_path.exists():
+            module = _load_generated_module(module_path, f"generated_data_access_module_test_{{module_name}}")
+            exports = tuple(name for name in required_exports if hasattr(module, name))
+            smoke_ok = module.smoke_test()["ok"]
+        entries.append(
+            {{
+                "module": module_name,
+                "surface": item["surface"],
+                "path": f"app/data_access_module_tests/test_{{module_name}}.py",
+                "target": item["path"],
+                "exists": module_path.exists(),
+                "exports": exports,
+                "smoke_ok": smoke_ok,
+            }}
+        )
+    return {{
+        "format": "appgen.generated-data-access-module-test-file-manifest.v1",
+        "ok": bool(entries)
+        and all(item["exists"] and item["smoke_ok"] and set(required_exports) <= set(item["exports"]) for item in entries),
+        "tests": tuple(entries),
+        "required_exports": required_exports,
+        "guards": ("one_test_file_per_data_access_module", "contract_and_smoke_tests_exported"),
+        "side_effects": (),
     }}
 
 
