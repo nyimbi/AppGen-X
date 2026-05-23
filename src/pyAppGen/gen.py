@@ -1741,6 +1741,27 @@ def write_emerging_file(output_dir, schema: AppSchema):
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
     (output_dir / "emerging.py").write_text(_emerging_text(schema))
+    write_emerging_module_files(output_dir)
+
+
+def write_emerging_module_files(output_dir):
+    """Write generated emerging technology modules and smoke tests."""
+    output_dir = Path(output_dir)
+    module_dir = output_dir / "emerging_modules"
+    test_dir = output_dir / "emerging_module_tests"
+    module_dir.mkdir(parents=True, exist_ok=True)
+    test_dir.mkdir(parents=True, exist_ok=True)
+    (module_dir / "__init__.py").write_text(_emerging_module_init_text(), encoding="utf-8")
+    (test_dir / "__init__.py").write_text(_emerging_module_test_init_text(), encoding="utf-8")
+    for module_name in EMERGING_MODULES:
+        (module_dir / f"{module_name}.py").write_text(
+            _emerging_module_text(module_name),
+            encoding="utf-8",
+        )
+        (test_dir / f"test_{module_name}.py").write_text(
+            _emerging_module_test_text(module_name),
+            encoding="utf-8",
+        )
 
 
 def write_tenancy_file(output_dir, schema: AppSchema):
@@ -2157,6 +2178,15 @@ LIFECYCLE_MODULES = (
     "maintenance_update_module",
     "feedback_issue_module",
     "workbench_release_module",
+)
+
+EMERGING_MODULES = (
+    "device_telemetry_module",
+    "device_command_module",
+    "blockchain_anchor_module",
+    "smart_contract_module",
+    "edge_sync_module",
+    "emerging_workbench_module",
 )
 
 
@@ -6116,6 +6146,245 @@ def smoke_test():
         "surface": SURFACE,
         "ok": True,
         "tests": ("test_lifecycle_module_contract", "test_lifecycle_module_smoke"),
+    }}
+'''
+
+
+def _emerging_module_init_text() -> str:
+    return (
+        '"""Generated emerging technology modules."""\n\n'
+        f"EMERGING_MODULES = {EMERGING_MODULES!r}\n"
+    )
+
+
+def _emerging_module_test_init_text() -> str:
+    modules = tuple(f"test_{name}" for name in EMERGING_MODULES)
+    return (
+        '"""Generated emerging technology module tests."""\n\n'
+        f"EMERGING_MODULE_TESTS = {modules!r}\n"
+    )
+
+
+def _emerging_surface(module_name: str) -> tuple[str, str]:
+    return {
+        "device_telemetry_module": ("device_telemetry", "telemetry_event"),
+        "device_command_module": ("device_command", "command_payload"),
+        "blockchain_anchor_module": ("blockchain_anchor", "blockchain_anchor"),
+        "smart_contract_module": ("smart_contract", "smart_contract_plan"),
+        "edge_sync_module": ("edge_sync", "edge_sync_plan"),
+        "emerging_workbench_module": ("emerging_workbench", "emerging_release_gate"),
+    }[module_name]
+
+
+def _emerging_module_text(module_name: str) -> str:
+    surface, operation = _emerging_surface(module_name)
+    return f'''"""Generated emerging technology module for {surface}."""
+
+from __future__ import annotations
+
+import importlib.util
+from pathlib import Path
+
+
+MODULE = {module_name!r}
+SURFACE = {surface!r}
+OPERATION = {operation!r}
+EXPECTED_EXPORTS = (
+    "module_contract",
+    "emerging_manifest_contract",
+    "run_emerging_operation",
+    "release_context",
+    "smoke_test",
+)
+
+
+def _emerging():
+    module_path = Path(__file__).resolve().parents[1] / "emerging.py"
+    spec = importlib.util.spec_from_file_location(f"generated_emerging_{{MODULE}}_emerging", module_path)
+    module = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(module)
+    return module
+
+
+def _first_device(emerging):
+    devices = emerging.device_catalog()
+    if not devices:
+        raise AssertionError("generated emerging module requires at least one device contract")
+    return devices[0]
+
+
+def module_contract():
+    """Return this generated emerging module's export contract."""
+    available = tuple(name for name in EXPECTED_EXPORTS if name in globals())
+    return {{
+        "format": "appgen.emerging-module-contract.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "operation": OPERATION,
+        "ok": set(EXPECTED_EXPORTS) <= set(available),
+        "exports": available,
+        "expected_exports": EXPECTED_EXPORTS,
+        "side_effects": (),
+    }}
+
+
+def emerging_manifest_contract():
+    """Return generated emerging metadata owned by this module."""
+    emerging = _emerging()
+    devices = emerging.device_catalog()
+    networks = dict(emerging.BLOCKCHAIN_NETWORKS)
+    return {{
+        "format": "appgen.emerging-module-manifest.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "ok": bool(devices)
+        and all(item["telemetry_topic"] and item["command_topic"] and item["metrics"] for item in devices)
+        and {{"ethereum", "hyperledger", "polygon"}} <= set(networks),
+        "devices": devices,
+        "networks": networks,
+        "side_effects": (),
+    }}
+
+
+def run_emerging_operation():
+    """Run this module's side-effect-free emerging technology operation."""
+    emerging = _emerging()
+    device = _first_device(emerging)
+    metric = device["metrics"][0]
+    if SURFACE == "device_telemetry":
+        operation = emerging.telemetry_event(device["name"], {{metric: 1}}, device_id="device-1")
+        ok = emerging.validate_telemetry(operation)["ok"] and operation["topic"] == device["telemetry_topic"]
+    elif SURFACE == "device_command":
+        operation = emerging.command_payload(device["name"], "sync", requested_by="designer")
+        ok = operation["topic"] == device["command_topic"] and operation["command"] == "sync"
+    elif SURFACE == "blockchain_anchor":
+        operation = emerging.blockchain_anchor(device["table"], {{"id": 1}}, network="ethereum", actor="designer")
+        ok = operation["anchor_mode"] == "hash-only" and emerging.verify_anchor(operation, {{"id": 1}})["ok"]
+    elif SURFACE == "smart_contract":
+        operation = emerging.smart_contract_plan(device["table"], network="hyperledger")
+        ok = operation["anchor_mode"] == "private-channel" and bool(operation["events"]) and bool(operation["methods"])
+    elif SURFACE == "edge_sync":
+        operation = emerging.edge_sync_plan(device["name"])
+        ok = operation["offline"] is True and operation["buffer"] == "sqlite" and operation["retry"]["max_attempts"] >= 3
+    else:
+        core_assets = {{"app/emerging.py", "app/templates/appgen_emerging.html"}}
+        operation = {{
+            "release": emerging.emerging_release_gate(core_assets),
+            "workbench": emerging.emerging_workbench(core_assets),
+        }}
+        ok = operation["release"]["ok"] and operation["workbench"]["ok"]
+    return {{
+        "format": "appgen.emerging-module-operation.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "ok": ok,
+        "operation": operation,
+        "side_effects": (),
+    }}
+
+
+def release_context():
+    """Return release evidence used by this emerging module."""
+    emerging = _emerging()
+    core_assets = {{"app/emerging.py", "app/templates/appgen_emerging.html"}}
+    return {{
+        "format": "appgen.emerging-module-release-context.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "ok": emerging.emerging_release_gate(core_assets)["ok"] and emerging.emerging_workbench(core_assets)["ok"],
+        "release": emerging.emerging_release_gate(core_assets),
+        "workbench": emerging.emerging_workbench(core_assets),
+        "side_effects": (),
+    }}
+
+
+def smoke_test():
+    """Run side-effect-free checks for this generated emerging module."""
+    contract = module_contract()
+    manifest = emerging_manifest_contract()
+    operation = run_emerging_operation()
+    release = release_context()
+    return {{
+        "format": "appgen.emerging-module-smoke-test.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "ok": contract["ok"]
+        and manifest["ok"]
+        and operation["ok"]
+        and release["ok"]
+        and not manifest["side_effects"]
+        and not operation["side_effects"]
+        and not release["side_effects"],
+        "contract": contract,
+        "manifest": manifest,
+        "operation": operation,
+        "release": release,
+        "checks": (
+            "module_contract_resolves",
+            "emerging_manifest_contract_ok",
+            "emerging_operation_ok",
+            "release_context_ok",
+            "no_side_effects",
+        ),
+    }}
+'''
+
+
+def _emerging_module_test_text(module_name: str) -> str:
+    surface, _operation = _emerging_surface(module_name)
+    return f'''"""Generated tests for the {surface} emerging module."""
+
+from __future__ import annotations
+
+import importlib.util
+from pathlib import Path
+
+
+MODULE = {module_name!r}
+SURFACE = {surface!r}
+
+
+def load_emerging_module():
+    """Load the generated emerging module without app installation."""
+    module_path = Path(__file__).resolve().parents[1] / "emerging_modules" / f"{{MODULE}}.py"
+    spec = importlib.util.spec_from_file_location(f"generated_emerging_module_{{MODULE}}", module_path)
+    module = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(module)
+    return module
+
+
+def test_emerging_module_contract():
+    """Assert the generated emerging module exposes its contract."""
+    module = load_emerging_module()
+    contract = module.module_contract()
+    assert contract["module"] == MODULE
+    assert contract["surface"] == SURFACE
+    assert contract["ok"] is True
+    assert all(hasattr(module, name) for name in contract["expected_exports"])
+
+
+def test_emerging_module_smoke():
+    """Assert the module's side-effect-free smoke test passes."""
+    module = load_emerging_module()
+    result = module.smoke_test()
+    assert result["ok"] is True
+    assert result["module"] == MODULE
+    assert result["surface"] == SURFACE
+    assert result["checks"]
+
+
+def smoke_test():
+    """Run this generated test module in a side-effect-free way."""
+    test_emerging_module_contract()
+    test_emerging_module_smoke()
+    return {{
+        "format": "appgen.emerging-module-generated-test-smoke.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "ok": True,
+        "tests": ("test_emerging_module_contract", "test_emerging_module_smoke"),
     }}
 '''
 
@@ -25751,7 +26020,9 @@ from __future__ import annotations
 from datetime import datetime
 from datetime import timezone
 from hashlib import sha256
+import importlib.util
 import json
+from pathlib import Path
 
 from flask import jsonify
 from flask_appbuilder import BaseView
@@ -30815,7 +31086,9 @@ from __future__ import annotations
 from datetime import datetime
 from datetime import timezone
 from hashlib import sha256
+import importlib.util
 import json
+from pathlib import Path
 
 from flask import jsonify
 from flask_appbuilder import BaseView
@@ -30828,6 +31101,73 @@ BLOCKCHAIN_NETWORKS = {{
     "hyperledger": {{"label": "Hyperledger Fabric", "anchor_mode": "private-channel"}},
     "polygon": {{"label": "Polygon", "anchor_mode": "hash-only"}},
 }}
+EMERGING_MODULES = (
+    "device_telemetry_module",
+    "device_command_module",
+    "blockchain_anchor_module",
+    "smart_contract_module",
+    "edge_sync_module",
+    "emerging_workbench_module",
+)
+
+
+def _load_generated_module(module_path, module_name):
+    """Load a generated emerging helper module without installing the app."""
+    spec = importlib.util.spec_from_file_location(module_name, module_path)
+    module = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(module)
+    return module
+
+
+def emerging_module_file_manifest():
+    """Return independently importable generated emerging module files."""
+    root = Path(__file__).resolve().parent
+    modules = []
+    for module_name in EMERGING_MODULES:
+        module_path = root / "emerging_modules" / f"{{module_name}}.py"
+        module = _load_generated_module(module_path, f"generated_emerging_module_{{module_name}}")
+        contract = module.module_contract()
+        modules.append(
+            {{
+                "module": module_name,
+                "surface": contract["surface"],
+                "path": f"app/emerging_modules/{{module_name}}.py",
+                "exists": module_path.exists(),
+                "ok": contract["ok"] and module.smoke_test()["ok"],
+                "exports": contract["exports"],
+            }}
+        )
+    return {{
+        "format": "appgen.emerging-module-file-manifest.v1",
+        "ok": len(modules) == len(EMERGING_MODULES) and all(item["ok"] and item["exists"] for item in modules),
+        "modules": tuple(modules),
+    }}
+
+
+def emerging_module_test_file_manifest():
+    """Return generated tests for the emerging module files."""
+    root = Path(__file__).resolve().parent
+    tests = []
+    for module_name in EMERGING_MODULES:
+        test_path = root / "emerging_module_tests" / f"test_{{module_name}}.py"
+        module = _load_generated_module(test_path, f"generated_emerging_module_test_{{module_name}}")
+        result = module.smoke_test()
+        tests.append(
+            {{
+                "module": f"test_{{module_name}}",
+                "surface": result["surface"],
+                "path": f"app/emerging_module_tests/test_{{module_name}}.py",
+                "exists": test_path.exists(),
+                "ok": result["ok"],
+                "tests": result["tests"],
+            }}
+        )
+    return {{
+        "format": "appgen.emerging-module-test-file-manifest.v1",
+        "ok": len(tests) == len(EMERGING_MODULES) and all(item["ok"] and item["exists"] for item in tests),
+        "tests": tuple(tests),
+    }}
 
 
 def device_catalog():

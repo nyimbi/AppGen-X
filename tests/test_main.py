@@ -9161,6 +9161,40 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert "/emerging/workbench.json" in emerging_workbench["routes"]
     assert emerging.emerging_workbench({"app/emerging.py"})["ok"] is False
     assert emerging.emerging_release_gate({"app/emerging.py"})["ok"] is False
+    emerging_module_files = emerging.emerging_module_file_manifest()
+    emerging_module_tests = emerging.emerging_module_test_file_manifest()
+    assert emerging_module_files["ok"] is True
+    assert emerging_module_tests["ok"] is True
+    assert {item["surface"] for item in emerging_module_files["modules"]} == {
+        "device_telemetry",
+        "device_command",
+        "blockchain_anchor",
+        "smart_contract",
+        "edge_sync",
+        "emerging_workbench",
+    }
+    assert {item["surface"] for item in emerging_module_tests["tests"]} == {
+        "device_telemetry",
+        "device_command",
+        "blockchain_anchor",
+        "smart_contract",
+        "edge_sync",
+        "emerging_workbench",
+    }
+    for item in emerging_module_files["modules"]:
+        module_path = output_dir / item["path"].replace("app/", "")
+        py_compile.compile(str(module_path), doraise=True)
+        module = _load_module(module_path, f"generated_emerging_module_{item['module']}")
+        assert module.module_contract()["ok"] is True
+        assert module.emerging_manifest_contract()["ok"] is True
+        assert module.run_emerging_operation()["ok"] is True
+        assert module.release_context()["ok"] is True
+        assert module.smoke_test()["ok"] is True
+    for item in emerging_module_tests["tests"]:
+        test_path = output_dir / item["path"].replace("app/", "")
+        py_compile.compile(str(test_path), doraise=True)
+        module = _load_module(test_path, f"generated_emerging_module_test_{item['module']}")
+        assert module.smoke_test()["ok"] is True
     assert tenancy.is_tenant_scoped("Book") is False
     assert tenancy.tenant_filter_kwargs("Book", "acme") == {}
     assert tenancy.tenant_context({"X-AppGen-Tenant": "acme"}, {}, {}) == {"tenant_id": "acme"}
