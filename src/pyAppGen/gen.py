@@ -2007,6 +2007,27 @@ def write_rpa_file(output_dir, schema: AppSchema):
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
     (output_dir / "rpa.py").write_text(_rpa_text(schema))
+    write_rpa_module_files(output_dir)
+
+
+def write_rpa_module_files(output_dir):
+    """Write generated RPA/BPA modules and smoke tests."""
+    output_dir = Path(output_dir)
+    module_dir = output_dir / "rpa_modules"
+    test_dir = output_dir / "rpa_module_tests"
+    module_dir.mkdir(parents=True, exist_ok=True)
+    test_dir.mkdir(parents=True, exist_ok=True)
+    (module_dir / "__init__.py").write_text(_rpa_module_init_text(), encoding="utf-8")
+    (test_dir / "__init__.py").write_text(_rpa_module_test_init_text(), encoding="utf-8")
+    for module_name in RPA_MODULES:
+        (module_dir / f"{module_name}.py").write_text(
+            _rpa_module_text(module_name),
+            encoding="utf-8",
+        )
+        (test_dir / f"test_{module_name}.py").write_text(
+            _rpa_module_test_text(module_name),
+            encoding="utf-8",
+        )
 
 
 def write_diagnostics_file(output_dir, schema: AppSchema):
@@ -2336,6 +2357,15 @@ EVENT_MODULES = (
     "event_retry_dead_letter_module",
     "event_alert_workflow_module",
     "event_release_workbench_module",
+)
+
+RPA_MODULES = (
+    "task_catalog_module",
+    "browser_task_module",
+    "credential_audit_module",
+    "process_model_module",
+    "rpa_export_module",
+    "rpa_release_workbench_module",
 )
 
 
@@ -7813,6 +7843,267 @@ def smoke_test():
         "surface": SURFACE,
         "ok": True,
         "tests": ("test_event_module_contract", "test_event_module_smoke"),
+    }}
+'''
+
+
+def _rpa_module_init_text() -> str:
+    return (
+        '"""Generated RPA/BPA modules."""\n\n'
+        f"RPA_MODULES = {RPA_MODULES!r}\n"
+    )
+
+
+def _rpa_module_test_init_text() -> str:
+    modules = tuple(f"test_{name}" for name in RPA_MODULES)
+    return (
+        '"""Generated RPA/BPA module tests."""\n\n'
+        f"RPA_MODULE_TESTS = {modules!r}\n"
+    )
+
+
+def _rpa_surface(module_name: str) -> tuple[str, str]:
+    return {
+        "task_catalog_module": ("task_catalog", "rpa_task_catalog"),
+        "browser_task_module": ("browser_task_plan", "task_plan"),
+        "credential_audit_module": ("credential_audit", "credential_readiness"),
+        "process_model_module": ("process_model", "process_model"),
+        "rpa_export_module": ("rpa_export", "rpa_export_package"),
+        "rpa_release_workbench_module": ("rpa_release_workbench", "rpa_release_gate"),
+    }[module_name]
+
+
+def _rpa_module_text(module_name: str) -> str:
+    surface, operation = _rpa_surface(module_name)
+    return f'''"""Generated RPA/BPA module for {surface}."""
+
+from __future__ import annotations
+
+import importlib.util
+from pathlib import Path
+
+
+MODULE = {module_name!r}
+SURFACE = {surface!r}
+OPERATION = {operation!r}
+EXPECTED_EXPORTS = (
+    "module_contract",
+    "rpa_manifest_contract",
+    "run_rpa_operation",
+    "release_context",
+    "smoke_test",
+)
+
+
+def _rpa():
+    module_path = Path(__file__).resolve().parents[1] / "rpa.py"
+    spec = importlib.util.spec_from_file_location(f"generated_rpa_{{MODULE}}_rpa", module_path)
+    module = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(module)
+    return module
+
+
+def _assets():
+    return {{"app/rpa.py", "app/templates/appgen_rpa.html"}}
+
+
+def _first_task(rpa):
+    tasks = rpa.rpa_task_catalog()
+    if not tasks:
+        raise AssertionError("generated RPA module requires at least one automation task")
+    return tasks[0]["id"]
+
+
+def module_contract():
+    """Return this generated RPA/BPA module's export contract."""
+    available = tuple(name for name in EXPECTED_EXPORTS if name in globals())
+    return {{
+        "format": "appgen.rpa-module-contract.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "operation": OPERATION,
+        "ok": set(EXPECTED_EXPORTS) <= set(available),
+        "exports": available,
+        "expected_exports": EXPECTED_EXPORTS,
+        "side_effects": (),
+    }}
+
+
+def rpa_manifest_contract():
+    """Return generated automation metadata owned by this module."""
+    rpa = _rpa()
+    resources = rpa.rpa_resource_catalog()
+    tasks = rpa.rpa_task_catalog()
+    return {{
+        "format": "appgen.rpa-module-manifest.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "ok": bool(resources)
+        and bool(tasks)
+        and rpa.rpa_check(_assets())["ok"]
+        and set(rpa.credential_readiness({{}})["required"]) == {{"APPGEN_API_TOKEN", "APPGEN_BROWSER_SESSION"}},
+        "resources": resources,
+        "tasks": tasks,
+        "platforms": rpa.rpa_platform_catalog({{}}),
+        "metrics": rpa.PROCESS_METRICS,
+        "side_effects": (),
+    }}
+
+
+def run_rpa_operation():
+    """Run this module's side-effect-free automation operation."""
+    rpa = _rpa()
+    task_id = _first_task(rpa)
+    if SURFACE == "task_catalog":
+        operation = {{
+            "resources": rpa.rpa_resource_catalog(),
+            "tasks": rpa.rpa_task_catalog(),
+        }}
+        ok = bool(operation["resources"]) and bool(operation["tasks"]) and operation["tasks"][0]["id"] == task_id
+    elif SURFACE == "browser_task_plan":
+        operation = rpa.task_plan(task_id, {{"sample": "value"}})
+        ok = operation["id"] == task_id and operation["actions"][0]["action"] == "navigate"
+    elif SURFACE == "credential_audit":
+        operation = {{
+            "readiness": rpa.credential_readiness({{}}),
+            "audit": rpa.automation_audit_event(task_id, actor="module"),
+            "summary": rpa.process_summary((rpa.process_observation(task_id, duration_seconds=45, success=False, errors=1),)),
+        }}
+        ok = bool(operation["audit"]["id"]) and task_id in operation["summary"]["bottlenecks"]
+    elif SURFACE == "process_model":
+        operation = {{
+            "model": rpa.process_model(task_id),
+            "bpmn": rpa.bpmn_xml(task_id),
+            "uml": rpa.uml_activity(task_id),
+            "validation": rpa.validate_process_model(task_id),
+            "simulation": rpa.simulate_process(task_id, runs=2, base_duration_seconds=5),
+        }}
+        ok = operation["validation"]["ok"] and "<bpmn:process" in operation["bpmn"] and operation["uml"].startswith("@startuml") and operation["simulation"]["valid"]
+    elif SURFACE == "rpa_export":
+        platform = rpa.rpa_platform_catalog({{}})[0]["platform"]
+        operation = {{
+            "plan": rpa.rpa_platform_plan(platform, task_id),
+            "export": rpa.rpa_export_package(platform, task_id),
+            "queue": rpa.rpa_queue_payload(platform, task_id, {{"sample": "value"}}),
+        }}
+        ok = operation["plan"]["task_id"] == task_id and operation["export"]["task_id"] == task_id and operation["queue"]["task_id"] == task_id
+    else:
+        operation = {{
+            "release": rpa.rpa_release_gate(_assets()),
+            "workbench": rpa.rpa_workbench(_assets()),
+        }}
+        ok = operation["release"]["ok"] and operation["workbench"]["ok"]
+    return {{
+        "format": "appgen.rpa-module-operation.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "ok": ok,
+        "operation": operation,
+        "side_effects": (),
+    }}
+
+
+def release_context():
+    """Return release evidence used by this RPA/BPA module."""
+    rpa = _rpa()
+    return {{
+        "format": "appgen.rpa-module-release-context.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "ok": rpa.rpa_release_gate(_assets())["ok"] and rpa.rpa_workbench(_assets())["ok"],
+        "release": rpa.rpa_release_gate(_assets()),
+        "workbench": rpa.rpa_workbench(_assets()),
+        "side_effects": (),
+    }}
+
+
+def smoke_test():
+    """Run side-effect-free checks for this generated RPA/BPA module."""
+    contract = module_contract()
+    manifest = rpa_manifest_contract()
+    operation = run_rpa_operation()
+    release = release_context()
+    return {{
+        "format": "appgen.rpa-module-smoke-test.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "ok": contract["ok"]
+        and manifest["ok"]
+        and operation["ok"]
+        and release["ok"]
+        and not manifest["side_effects"]
+        and not operation["side_effects"]
+        and not release["side_effects"],
+        "contract": contract,
+        "manifest": manifest,
+        "operation": operation,
+        "release": release,
+        "checks": (
+            "module_contract_resolves",
+            "rpa_manifest_contract_ok",
+            "rpa_operation_ok",
+            "release_context_ok",
+            "no_side_effects",
+        ),
+    }}
+'''
+
+
+def _rpa_module_test_text(module_name: str) -> str:
+    surface, _operation = _rpa_surface(module_name)
+    return f'''"""Generated tests for the {surface} RPA/BPA module."""
+
+from __future__ import annotations
+
+import importlib.util
+from pathlib import Path
+
+
+MODULE = {module_name!r}
+SURFACE = {surface!r}
+
+
+def load_rpa_module():
+    """Load the generated RPA/BPA module without app installation."""
+    module_path = Path(__file__).resolve().parents[1] / "rpa_modules" / f"{{MODULE}}.py"
+    spec = importlib.util.spec_from_file_location(f"generated_rpa_module_{{MODULE}}", module_path)
+    module = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(module)
+    return module
+
+
+def test_rpa_module_contract():
+    """Assert the generated RPA/BPA module exposes its contract."""
+    module = load_rpa_module()
+    contract = module.module_contract()
+    assert contract["module"] == MODULE
+    assert contract["surface"] == SURFACE
+    assert contract["ok"] is True
+    assert all(hasattr(module, name) for name in contract["expected_exports"])
+
+
+def test_rpa_module_smoke():
+    """Assert the module's side-effect-free smoke test passes."""
+    module = load_rpa_module()
+    result = module.smoke_test()
+    assert result["ok"] is True
+    assert result["module"] == MODULE
+    assert result["surface"] == SURFACE
+    assert result["checks"]
+
+
+def smoke_test():
+    """Run this generated test module in a side-effect-free way."""
+    test_rpa_module_contract()
+    test_rpa_module_smoke()
+    return {{
+        "format": "appgen.rpa-module-generated-test-smoke.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "ok": True,
+        "tests": ("test_rpa_module_contract", "test_rpa_module_smoke"),
     }}
 '''
 
@@ -56438,7 +56729,9 @@ from __future__ import annotations
 from datetime import datetime
 from datetime import timezone
 from hashlib import sha256
+import importlib.util
 import json
+from pathlib import Path
 
 from flask import jsonify
 from flask_appbuilder import BaseView
@@ -56471,6 +56764,73 @@ RPA_PLATFORMS = {{
         "queue_key": "work_item_queue",
     }},
 }}
+RPA_MODULES = (
+    "task_catalog_module",
+    "browser_task_module",
+    "credential_audit_module",
+    "process_model_module",
+    "rpa_export_module",
+    "rpa_release_workbench_module",
+)
+
+
+def _load_generated_module(module_path, module_name):
+    """Load a generated RPA/BPA module without installing the app."""
+    spec = importlib.util.spec_from_file_location(module_name, module_path)
+    module = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(module)
+    return module
+
+
+def rpa_module_file_manifest():
+    """Return independently importable generated RPA/BPA module files."""
+    root = Path(__file__).resolve().parent
+    modules = []
+    for module_name in RPA_MODULES:
+        module_path = root / "rpa_modules" / f"{{module_name}}.py"
+        module = _load_generated_module(module_path, f"generated_rpa_module_{{module_name}}")
+        contract = module.module_contract()
+        modules.append(
+            {{
+                "module": module_name,
+                "surface": contract["surface"],
+                "path": f"app/rpa_modules/{{module_name}}.py",
+                "exists": module_path.exists(),
+                "ok": contract["ok"] and module.smoke_test()["ok"],
+                "exports": contract["exports"],
+            }}
+        )
+    return {{
+        "format": "appgen.rpa-module-file-manifest.v1",
+        "ok": len(modules) == len(RPA_MODULES) and all(item["ok"] and item["exists"] for item in modules),
+        "modules": tuple(modules),
+    }}
+
+
+def rpa_module_test_file_manifest():
+    """Return generated tests for the RPA/BPA module files."""
+    root = Path(__file__).resolve().parent
+    tests = []
+    for module_name in RPA_MODULES:
+        test_path = root / "rpa_module_tests" / f"test_{{module_name}}.py"
+        module = _load_generated_module(test_path, f"generated_rpa_module_test_{{module_name}}")
+        result = module.smoke_test()
+        tests.append(
+            {{
+                "module": f"test_{{module_name}}",
+                "surface": result["surface"],
+                "path": f"app/rpa_module_tests/test_{{module_name}}.py",
+                "exists": test_path.exists(),
+                "ok": result["ok"],
+                "tests": result["tests"],
+            }}
+        )
+    return {{
+        "format": "appgen.rpa-module-test-file-manifest.v1",
+        "ok": len(tests) == len(RPA_MODULES) and all(item["ok"] and item["exists"] for item in tests),
+        "tests": tuple(tests),
+    }}
 
 
 def rpa_task_catalog():
@@ -67135,6 +67495,9 @@ def validate_rpa_artifacts() -> None:
         "rpa_export_package",
         "rpa_queue_payload",
         "rpa_release_gate",
+        "rpa_module_file_manifest",
+        "rpa_module_test_file_manifest",
+        "RPA_MODULES",
         "uipath",
         "blue_prism",
         "automation_anywhere",

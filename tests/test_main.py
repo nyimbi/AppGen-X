@@ -10242,6 +10242,34 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     )
     assert rpa.rpa_workbench({"app/rpa.py"})["ok"] is False
     assert rpa.rpa_release_gate({"app/rpa.py"})["ok"] is False
+    rpa_module_files = rpa.rpa_module_file_manifest()
+    rpa_module_tests = rpa.rpa_module_test_file_manifest()
+    assert rpa_module_files["format"] == "appgen.rpa-module-file-manifest.v1"
+    assert rpa_module_files["ok"] is True
+    assert rpa_module_tests["format"] == "appgen.rpa-module-test-file-manifest.v1"
+    assert rpa_module_tests["ok"] is True
+    assert {
+        "task_catalog",
+        "browser_task_plan",
+        "credential_audit",
+        "process_model",
+        "rpa_export",
+        "rpa_release_workbench",
+    } == {item["surface"] for item in rpa_module_files["modules"]}
+    for item in rpa_module_files["modules"]:
+        module_path = output_dir / item["path"].replace("app/", "")
+        py_compile.compile(str(module_path), doraise=True)
+        module = _load_module(module_path, f"generated_rpa_module_{item['module']}")
+        assert module.module_contract()["ok"] is True
+        assert module.rpa_manifest_contract()["ok"] is True
+        assert module.run_rpa_operation()["ok"] is True
+        assert module.release_context()["ok"] is True
+        assert module.smoke_test()["ok"] is True
+    for item in rpa_module_tests["tests"]:
+        test_path = output_dir / item["path"].replace("app/", "")
+        py_compile.compile(str(test_path), doraise=True)
+        module = _load_module(test_path, f"generated_rpa_module_test_{item['module']}")
+        assert module.smoke_test()["ok"] is True
     proposal = collaboration.change_proposal(
         "Book",
         {"title": "Dune"},
