@@ -101,6 +101,7 @@ Build a complete AppGen IDE and generation platform with:
 | 2026-05-24 | `ffe2b57` | Added generated emerging capability modules and generated tests for device telemetry, device commands, hash anchors, smart-contract plans, edge sync, and release workbench surfaces. | Py compile; focused generated-app/form-designer/package-goal tests; staged hygiene scan passed. |
 | 2026-05-24 | `2d99fa5` | Added generated platform target modules and generated tests for web, PWA, mobile, desktop, chatbot, and target release workbench surfaces. | Py compile; focused generated-app/form-designer/package-goal tests; staged hygiene scan passed. |
 | 2026-05-24 | `4c8b5c7` | Added generated PWA modules and generated tests for asset catalogs, manifest contracts, service-worker behavior, offline shell proof, and installability release gates. | Py compile; focused generated-app/form-designer/package-goal tests; staged hygiene scan passed. |
+| 2026-05-24 | `73ae57e` | Added generated microservice modules and generated tests for service catalogs, gateway routes, event routes, relationship resolution, mesh/scaling, and release workbench surfaces. | Py compile; focused generated-app/form-designer/package-goal tests; staged hygiene scan passed. |
 
 ## Current Working Slice
 
@@ -159,6 +160,10 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   that prove static asset catalogs, manifest contracts, service-worker
   behavior, offline shell readiness, installability checks, and release gates
   without starting a browser or network runtime.
+- Generated applications now include standalone microservice modules and
+  generated tests that prove service catalogs, gateway routes, event routes,
+  cross-service relationship resolution, mesh/scaling policy, canary rollback,
+  and release workbench evidence without deploying services.
 - Generated applications now include a standalone mobile device runtime module
   that validates permission manifests, component adapters, simulator fixtures,
   lifecycle replay, and unsupported target handling without touching hardware.
