@@ -5,6 +5,7 @@ const navItems = [
   { label: 'Database', icon: 'database' as const },
   { label: 'Agents', icon: 'agent' as const },
   { label: 'Reports', icon: 'report' as const },
+  { label: 'Packages', icon: 'package' as const },
   { label: 'Targets', icon: 'mobile' as const },
 ]
 

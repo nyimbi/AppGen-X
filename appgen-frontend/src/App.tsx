@@ -3,6 +3,7 @@ import './App.css'
 import { ComponentPalette } from './ComponentPalette'
 import { DesignerCanvas } from './DesignerCanvas'
 import { InspectorPanel } from './InspectorPanel'
+import { PackageManager } from './PackageManager'
 import { StatusRail } from './StatusRail'
 import { StudioChrome } from './StudioChrome'
 import type { ComponentCategory } from './componentCatalog'
@@ -24,6 +25,7 @@ function App() {
         <DesignerCanvas />
         <InspectorPanel />
       </section>
+      <PackageManager />
       <StatusRail />
     </div>
   )

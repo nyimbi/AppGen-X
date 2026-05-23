@@ -5,6 +5,7 @@ const catalogAudit = studioCatalogAudit()
 const bindingAudit = catalogAudit.bindingAudit
 const iconAudit = catalogAudit.componentAudit
 const inspectorAudit = catalogAudit.inspectorAudit
+const packageAudit = catalogAudit.packageAudit
 
 const statuses = [
   { label: 'DSL lint', value: 'Clean', icon: 'check' as const },
@@ -14,6 +15,11 @@ const statuses = [
     icon: 'database' as const,
   },
   { label: 'Targets', value: '3 ready', icon: 'desktop' as const },
+  {
+    label: 'Packages',
+    value: packageAudit.ok ? `${packageAudit.totalPackages} packs` : 'Review',
+    icon: 'package' as const,
+  },
   { label: 'Agents', value: '2 staged', icon: 'agent' as const },
   {
     label: 'Editors',

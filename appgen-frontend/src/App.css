@@ -81,7 +81,7 @@
 
 .workspace-nav {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(6, minmax(0, 1fr));
   gap: 4px;
   min-height: 58px;
   padding: 6px;
@@ -1070,9 +1070,127 @@ h2 {
   font-size: 12px;
 }
 
+.package-manager {
+  margin-top: 12px;
+}
+
+.package-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.package-card {
+  --package-state: var(--brand);
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+  border: 1px solid var(--line-soft);
+  border-radius: 7px;
+  padding: 10px;
+  background:
+    linear-gradient(180deg, #ffffff, var(--surface-subtle)),
+    #ffffff;
+}
+
+.package-card-title,
+.package-footer {
+  display: grid;
+  align-items: center;
+  min-width: 0;
+}
+
+.package-card-title {
+  grid-template-columns: 34px minmax(0, 1fr) auto;
+  gap: 9px;
+}
+
+.package-card-title span,
+.package-card-title strong,
+.package-card-title small,
+.package-card-title em {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.package-card-title strong,
+.package-card-title small {
+  display: block;
+}
+
+.package-card-title small {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.package-card-title em {
+  border-radius: 999px;
+  padding: 3px 7px;
+  color: #ffffff;
+  background: var(--package-state);
+  font-size: 10px;
+  font-style: normal;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.package-available {
+  --package-state: #315da8;
+}
+
+.package-update {
+  --package-state: #b7791f;
+}
+
+.package-components {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.package-components span {
+  border: 1px solid #e7edf5;
+  border-radius: 999px;
+  padding: 3px 7px;
+  color: #40566f;
+  background: #ffffff;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.package-footer {
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+}
+
+.package-footer span,
+.package-footer button {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  min-height: 30px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.package-footer span {
+  min-width: 0;
+  color: var(--brand-strong);
+}
+
+.package-footer button {
+  border: 0;
+  padding: 0 10px;
+  color: #ffffff;
+  background: var(--package-state);
+}
+
 .status-rail {
   display: grid;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
+  grid-template-columns: repeat(7, minmax(0, 1fr));
   gap: 12px;
   margin-top: 12px;
 }
@@ -1137,6 +1255,10 @@ h2 {
   }
 
   .surface-workbenches {
+    grid-template-columns: 1fr;
+  }
+
+  .package-grid {
     grid-template-columns: 1fr;
   }
 }

@@ -49,6 +49,7 @@ export type IconName =
   | 'mobile'
   | 'motion'
   | 'orientation'
+  | 'package'
   | 'panel'
   | 'path'
   | 'pathAnimation'
@@ -391,6 +392,14 @@ const paths: Record<IconName, JSX.Element> = {
     <>
       <rect x="8" y="3" width="8" height="14" rx="2" />
       <path d="M5 17c2 3 12 3 14 0M12 14h.01" />
+    </>
+  ),
+  package: (
+    <>
+      <path d="m12 3 8 4.5v9L12 21l-8-4.5v-9z" />
+      <path d="M4 7.5 12 12l8-4.5" />
+      <path d="M12 12v9" />
+      <path d="m8 5.5 8 4.5" />
     </>
   ),
   panel: (
