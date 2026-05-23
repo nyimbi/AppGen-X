@@ -353,7 +353,9 @@ Generated apps include Studio contracts for:
 - A design-time package manager workbench proves install session phases,
   compatibility matrices, palette/inspector/binding registration, isolated
   loading, rollback plans, package behavior contracts, adapter smoke tests,
-  dependency lockfile metadata, preview-load lifecycles, and side-effect guards.
+  dependency lockfile metadata, preview-load lifecycles, failure containment,
+  uninstall cleanup, and one ordered lifecycle transaction replay with
+  side-effect guards.
 - Generated package modules under `app/component_packages/<package>.py` export
   `package_contract()`, `install_plan()`, `load_policy()`,
   `dependency_graph()`, `adapter_smoke()`, `preview_load()`,

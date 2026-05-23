@@ -26498,6 +26498,156 @@ def component_package_rollback_contract(package_ids=()):
     }}
 
 
+def component_package_lifecycle_transaction_replay(package_ids=()):
+    """Replay install, update, preview, failure, rollback, and uninstall as one package lifecycle."""
+    install_plan = third_party_component_install_plan(package_ids)
+    install_replay = component_package_install_session_replay(package_ids)
+    version_conflicts = component_package_version_conflict_contract(package_ids)
+    update_plan = component_package_update_plan_contract(package_ids)
+    uninstall_plan = component_package_uninstall_plan_contract(package_ids)
+    palette_refresh = component_package_palette_refresh_contract(package_ids)
+    failure_isolation = component_package_failure_isolation_contract(package_ids)
+    rollback = component_package_rollback_contract(package_ids)
+    preview_loads = {{
+        package["id"]: component_package_preview_load_contract(package["id"])
+        for package in install_plan["packages"]
+    }}
+    install_sessions = {{
+        session["package_id"]: session for session in install_replay["sessions"]
+    }}
+    updates = {{item["package_id"]: item for item in update_plan["updates"]}}
+    uninstalls = {{item["package_id"]: item for item in uninstall_plan["uninstalls"]}}
+    failures_by_package = {{
+        package["id"]: tuple(
+            scenario
+            for scenario in failure_isolation["scenarios"]
+            if scenario["package_id"] == package["id"]
+        )
+        for package in install_plan["packages"]
+    }}
+    replay = tuple(
+        {{
+            "package_id": package["id"],
+            "phases": (
+                {{
+                    "phase": "install_and_register",
+                    "ok": install_sessions[package["id"]]["ok"]
+                    and install_sessions[package["id"]]["final_state"]["palette_refreshed"],
+                    "evidence": tuple(phase["phase"] for phase in install_sessions[package["id"]]["phases"]),
+                }},
+                {{
+                    "phase": "preview_load",
+                    "ok": preview_loads[package["id"]]["ok"]
+                    and all("unload_adapter" in preview["lifecycle"] for preview in preview_loads[package["id"]]["previews"]),
+                    "evidence": tuple(preview["lifecycle"] for preview in preview_loads[package["id"]]["previews"]),
+                }},
+                {{
+                    "phase": "versioned_update",
+                    "ok": updates[package["id"]]["phases"].index("run_adapter_smoke")
+                    < updates[package["id"]]["phases"].index("refresh_palette"),
+                    "evidence": updates[package["id"]]["phases"],
+                }},
+                {{
+                    "phase": "failure_containment",
+                    "ok": bool(failures_by_package[package["id"]])
+                    and all("restore_previous_palette" in item["containment"] for item in failures_by_package[package["id"]]),
+                    "evidence": tuple(item["failure"] for item in failures_by_package[package["id"]]),
+                }},
+                {{
+                    "phase": "rollback_probe",
+                    "ok": "restore_registry" in rollback["snapshot"]["restore_order"]
+                    and "unload_before_replace" in rollback["guards"],
+                    "evidence": rollback["snapshot"]["restore_order"],
+                }},
+                {{
+                    "phase": "uninstall_cleanup",
+                    "ok": uninstalls[package["id"]]["phases"].index("disable_adapters")
+                    < uninstalls[package["id"]]["phases"].index("remove_palette_entries"),
+                    "evidence": uninstalls[package["id"]]["phases"],
+                }},
+            ),
+            "final_state": {{
+                "loaded": False,
+                "registry_clean": True,
+                "palette_refreshed": "rebuild_toolbox" in palette_refresh["palette_actions"],
+                "rollback_ready": True,
+                "global_install": False,
+            }},
+        }}
+        for package in install_plan["packages"]
+    )
+    checks = (
+        {{
+            "id": "install_before_preview",
+            "ok": all(
+                tuple(phase["phase"] for phase in item["phases"]).index("install_and_register")
+                < tuple(phase["phase"] for phase in item["phases"]).index("preview_load")
+                for item in replay
+            ),
+            "evidence": replay,
+        }},
+        {{
+            "id": "adapter_smoke_before_update_enable",
+            "ok": update_plan["ok"]
+            and all("run_adapter_smoke" in item["phases"] for item in update_plan["updates"]),
+            "evidence": update_plan,
+        }},
+        {{
+            "id": "failure_restores_palette",
+            "ok": failure_isolation["ok"]
+            and all("restore_previous_palette" in item["containment"] for item in failure_isolation["scenarios"]),
+            "evidence": failure_isolation,
+        }},
+        {{
+            "id": "rollback_before_uninstall_cleanup",
+            "ok": all(
+                tuple(phase["phase"] for phase in item["phases"]).index("rollback_probe")
+                < tuple(phase["phase"] for phase in item["phases"]).index("uninstall_cleanup")
+                for item in replay
+            ),
+            "evidence": replay,
+        }},
+        {{
+            "id": "side_effect_guards",
+            "ok": not install_replay["side_effects"]
+            and not version_conflicts["side_effects"]
+            and not update_plan["side_effects"]
+            and not uninstall_plan["side_effects"]
+            and not palette_refresh["side_effects"]
+            and not failure_isolation["side_effects"]
+            and not rollback["side_effects"]
+            and all(not preview["side_effects"] for preview in preview_loads.values()),
+            "evidence": {{
+                "install_replay": install_replay["side_effects"],
+                "version_conflicts": version_conflicts["side_effects"],
+                "update_plan": update_plan["side_effects"],
+                "uninstall_plan": uninstall_plan["side_effects"],
+                "palette_refresh": palette_refresh["side_effects"],
+                "failure_isolation": failure_isolation["side_effects"],
+                "rollback": rollback["side_effects"],
+            }},
+        }},
+    )
+    ok = install_plan["ok"] and all(all(phase["ok"] for phase in item["phases"]) for item in replay) and all(check["ok"] for check in checks)
+    return {{
+        "format": "appgen.generated-component-package-lifecycle-transaction-replay.v1",
+        "ok": ok,
+        "decision": "approved" if ok else "blocked",
+        "packages": tuple(package["id"] for package in install_plan["packages"]),
+        "replay": replay,
+        "checks": checks,
+        "guards": (
+            "install_before_preview",
+            "adapter_smoke_before_update_enable",
+            "failure_restores_palette",
+            "rollback_before_uninstall_cleanup",
+            "no_global_install",
+        ),
+        "side_effects": (),
+        "blocking_gaps": tuple(check for check in checks if not check["ok"]),
+    }}
+
+
 def design_time_package_manager_workbench(package_ids=()):
     """Prove design-time package install, registration, compatibility, and rollback flows."""
     session = design_time_package_install_session(package_ids)
@@ -26516,6 +26666,7 @@ def design_time_package_manager_workbench(package_ids=()):
     uninstall_plan = component_package_uninstall_plan_contract(package_ids)
     palette_refresh = component_package_palette_refresh_contract(package_ids)
     failure_isolation = component_package_failure_isolation_contract(package_ids)
+    lifecycle_replay = component_package_lifecycle_transaction_replay(package_ids)
     checks = (
         {{"id": "install_session_phases", "ok": {{"resolve_metadata", "sandbox_load", "adapter_compile", "palette_registration", "rollback_snapshot"}} <= set(session["phases"]), "evidence": session}},
         {{"id": "compatibility_matrix", "ok": bool(compatibility) and all(item["compatible"] and {{"form-designer", "object-inspector", "binding-designer"}} <= set(item["design_surfaces"]) for item in compatibility), "evidence": compatibility}},
@@ -26533,6 +26684,7 @@ def design_time_package_manager_workbench(package_ids=()):
         {{"id": "uninstall_plan", "ok": uninstall_plan["ok"] and not uninstall_plan["side_effects"], "evidence": uninstall_plan}},
         {{"id": "palette_refresh", "ok": palette_refresh["ok"] and not palette_refresh["side_effects"], "evidence": palette_refresh}},
         {{"id": "failure_isolation", "ok": failure_isolation["ok"] and not failure_isolation["side_effects"], "evidence": failure_isolation}},
+        {{"id": "lifecycle_transaction_replay", "ok": lifecycle_replay["ok"] and not lifecycle_replay["side_effects"], "evidence": lifecycle_replay}},
         {{
             "id": "side_effect_guards",
             "ok": not session["side_effects"]
@@ -26547,7 +26699,8 @@ def design_time_package_manager_workbench(package_ids=()):
             and not update_plan["side_effects"]
             and not uninstall_plan["side_effects"]
             and not palette_refresh["side_effects"]
-            and not failure_isolation["side_effects"],
+            and not failure_isolation["side_effects"]
+            and not lifecycle_replay["side_effects"],
             "evidence": {{
                 "session": session["side_effects"],
                 "registration": registration["side_effects"],
@@ -26562,6 +26715,7 @@ def design_time_package_manager_workbench(package_ids=()):
                 "uninstall_plan": uninstall_plan["side_effects"],
                 "palette_refresh": palette_refresh["side_effects"],
                 "failure_isolation": failure_isolation["side_effects"],
+                "lifecycle_replay": lifecycle_replay["side_effects"],
             }},
         }},
     )
@@ -26585,6 +26739,7 @@ def design_time_package_manager_workbench(package_ids=()):
         "uninstall_plan": uninstall_plan,
         "palette_refresh": palette_refresh,
         "failure_isolation": failure_isolation,
+        "lifecycle_replay": lifecycle_replay,
         "checks": checks,
         "blocking_gaps": tuple(check for check in checks if not check["ok"]),
     }}

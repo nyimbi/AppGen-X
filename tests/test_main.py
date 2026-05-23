@@ -85,6 +85,7 @@ from pyAppGen.form_designer import component_package_compatibility_smoke_suite
 from pyAppGen.form_designer import component_package_dependency_graph
 from pyAppGen.form_designer import component_package_dependency_order_contract
 from pyAppGen.form_designer import component_package_install_session_replay
+from pyAppGen.form_designer import component_package_lifecycle_transaction_replay
 from pyAppGen.form_designer import component_package_lockfile_integrity_contract
 from pyAppGen.form_designer import component_package_load_policy
 from pyAppGen.form_designer import component_package_preview_load_contract
@@ -1533,6 +1534,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "uninstall_plan",
         "palette_refresh",
         "failure_isolation",
+        "lifecycle_transaction_replay",
         "side_effect_guards",
     } == {check["id"] for check in package_manager["checks"]}
     assert package_manager["version_conflicts"]["ok"] is True
@@ -1540,6 +1542,17 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     assert all("find_palette_references" in item["phases"] for item in package_manager["uninstall_plan"]["uninstalls"])
     assert "invalidate_cache" in package_manager["palette_refresh"]["palette_actions"]
     assert all("record_diagnostic" in scenario["containment"] for scenario in package_manager["failure_isolation"]["scenarios"])
+    lifecycle_replay = component_package_lifecycle_transaction_replay()
+    assert lifecycle_replay["format"] == "appgen.component-package-lifecycle-transaction-replay.v1"
+    assert lifecycle_replay["ok"] is True
+    assert {
+        "install_before_preview",
+        "adapter_smoke_before_update_enable",
+        "failure_restores_palette",
+        "rollback_before_uninstall_cleanup",
+    } <= {check["id"] for check in lifecycle_replay["checks"] if check["ok"]}
+    assert all(item["final_state"]["registry_clean"] for item in lifecycle_replay["replay"])
+    assert all(not item["final_state"]["global_install"] for item in lifecycle_replay["replay"])
     assert third_party_component_import_contract(
         {
             "id": "custom-suite",
@@ -9527,6 +9540,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "uninstall_plan",
         "palette_refresh",
         "failure_isolation",
+        "lifecycle_transaction_replay",
     } <= {
         check["id"] for check in generated_package_manager["checks"]
     }
@@ -9536,6 +9550,14 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert all("disable_adapters" in item["phases"] for item in generated_package_manager["uninstall_plan"]["uninstalls"])
     assert "rebuild_toolbox" in generated_package_manager["palette_refresh"]["palette_actions"]
     assert all("disable_package" in scenario["containment"] for scenario in generated_package_manager["failure_isolation"]["scenarios"])
+    assert generated_package_manager["lifecycle_replay"]["ok"] is True
+    assert generated_package_manager["lifecycle_replay"]["format"] == "appgen.generated-component-package-lifecycle-transaction-replay.v1"
+    assert all(
+        {"install_and_register", "preview_load", "versioned_update", "failure_containment", "rollback_probe", "uninstall_cleanup"}
+        <= {phase["phase"] for phase in item["phases"]}
+        for item in generated_package_manager["lifecycle_replay"]["replay"]
+    )
+    assert all(not item["final_state"]["global_install"] for item in generated_package_manager["lifecycle_replay"]["replay"])
     assert form_designer.dfm_streaming_contract()["stream_formats"][0] == "text-dfm"
     assert form_designer.dfm_round_trip("Book")["ok"] is True
     generated_dfm = form_designer.form_design_to_dfm("Book")

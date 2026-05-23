@@ -102,7 +102,9 @@ A generated app can include:
 - `design_time_package_manager_workbench()` proves install session phases,
   compatibility matrices, palette/inspector/binding registration, isolated
   loading, rollback plans, package behavior contracts, adapter smoke tests,
-  dependency lockfile metadata, preview-load lifecycles, and side-effect guards.
+  dependency lockfile metadata, preview-load lifecycles, failure containment,
+  uninstall cleanup, and one ordered package lifecycle transaction replay with
+  side-effect guards.
 - `app/designer.py` for visual database design and ERD exports.
 - `app/agents.py` for LLM providers and agent plans.
 - `app/platforms.py`, `native/mobile`, `native/desktop`, PWA assets, and
