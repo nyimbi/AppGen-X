@@ -2506,6 +2506,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "app/inspector_runtime.py",
         "app/binding_runtime.py",
         "app/visual_runtime_assets.py",
+        "app/visual_depth_runtime.py",
         "app/data_tooling_runtime.py",
         "app/runtime_operations.py",
         "app/native_form_runtime.py",
@@ -2530,6 +2531,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "app/inspector_runtime.py",
         "app/binding_runtime.py",
         "app/visual_runtime_assets.py",
+        "app/visual_depth_runtime.py",
         "app/data_tooling_runtime.py",
         "app/runtime_operations.py",
         "app/native_form_runtime.py",
@@ -11463,6 +11465,29 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     } <= {check["id"] for check in generated_visual_package["checks"] if check["ok"]}
     assert generated_visual_depth["runtime_package"]["ok"] is True
     assert "scene_materials_packaged" in generated_visual_depth["runtime_package"]["guards"]
+    visual_depth_runtime_file = output_dir / "visual_depth_runtime.py"
+    assert visual_depth_runtime_file.exists()
+    py_compile.compile(str(visual_depth_runtime_file), doraise=True)
+    visual_depth_runtime = _load_module(visual_depth_runtime_file, "generated_visual_depth_runtime")
+    visual_depth_runtime_smoke = visual_depth_runtime.smoke_test()
+    assert visual_depth_runtime_smoke["format"] == "appgen.generated-visual-depth-runtime-smoke.v1"
+    assert visual_depth_runtime_smoke["ok"] is True
+    assert {
+        "manifest_ok",
+        "style_runtime_ready",
+        "timeline_runtime_ready",
+        "effect_runtime_ready",
+        "scene_runtime_ready",
+        "component_specs_ready",
+        "runtime_package_ready",
+        "runtime_replay_ready",
+    } <= set(visual_depth_runtime_smoke["checks"])
+    visual_depth_replay = visual_depth_runtime.replay_visual_depth_runtime()
+    assert visual_depth_replay["ok"] is True
+    assert {"style_resolution", "timeline_interpolation", "scene_transform_sync"} <= set(
+        visual_depth_replay["runtime_phases"]
+    )
+    assert visual_depth_replay["side_effects"] == ()
     visual_assets_file = output_dir / "visual_runtime_assets.py"
     assert visual_assets_file.exists()
     py_compile.compile(str(visual_assets_file), doraise=True)

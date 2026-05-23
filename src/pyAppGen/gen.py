@@ -1748,6 +1748,7 @@ def write_form_designer_file(output_dir, schema: AppSchema):
     (output_dir / "native_form_runtime.py").write_text(_native_form_runtime_text())
     (output_dir / "mobile_device_runtime.py").write_text(_mobile_device_runtime_text())
     (output_dir / "visual_runtime_assets.py").write_text(_visual_runtime_assets_text())
+    (output_dir / "visual_depth_runtime.py").write_text(_visual_depth_runtime_text())
     (output_dir / "data_tooling_runtime.py").write_text(_data_tooling_runtime_text())
     write_component_contract_files(output_dir)
 
@@ -2505,6 +2506,148 @@ def smoke_test():
         "ok": validation["ok"],
         "validation": validation,
         "checks": tuple(item["id"] for item in validation["checks"]),
+    }
+'''
+
+
+def _visual_depth_runtime_text() -> str:
+    return '''"""Generated side-effect-free visual depth runtime validation surface."""
+
+from __future__ import annotations
+
+import importlib.util
+from pathlib import Path
+
+
+def _load_form_designer():
+    """Load the sibling generated form designer module without requiring package install."""
+    module_path = Path(__file__).with_name("form_designer.py")
+    spec = importlib.util.spec_from_file_location("generated_visual_depth_form_designer", module_path)
+    module = importlib.util.module_from_spec(spec)
+    if spec.loader is None:
+        raise RuntimeError("Could not load generated form designer module.")
+    spec.loader.exec_module(module)
+    return module
+
+
+def visual_depth_runtime_manifest():
+    """Return generated style, animation, effects, scene, and release evidence."""
+    form_designer = _load_form_designer()
+    workbench = form_designer.cross_target_visual_depth_workbench()
+    contract = form_designer.cross_target_visual_depth_contract()
+    component_specs = form_designer.cross_target_visual_component_spec_contract()
+    runtime_package = form_designer.cross_target_visual_runtime_package_contract()
+    check_ids = {check["id"] for check in workbench["checks"] if check["ok"]}
+    required_checks = {
+        "style_resources",
+        "animation_state_graph",
+        "effects_pipeline",
+        "scene_designer",
+        "runtime_guards",
+        "style_resolution_workflow",
+        "timeline_playback_workflow",
+        "effect_render_workflow",
+        "scene_validation_workflow",
+        "timeline_interpolation_runtime",
+        "effect_fallback_matrix",
+        "scene_transform_gizmos",
+        "visual_runtime_replay",
+        "visual_designer_transaction_replay",
+        "visual_lifecycle_replay",
+        "visual_runtime_package",
+        "visual_component_specs",
+        "actionable_visual_operations",
+    }
+    return {
+        "format": "appgen.generated-visual-depth-runtime-manifest.v1",
+        "ok": workbench["ok"]
+        and required_checks <= check_ids
+        and {"state", "timeline", "path_animation"} <= {node["kind"] for node in contract["state_graph"]["nodes"]}
+        and {"shadow", "blur", "glow", "reflection", "shader_hook"} <= set(contract["effects_pipeline"]["effects"])
+        and {"viewport3d", "camera", "light", "mesh", "material"} <= {node["kind"] for node in contract["scene_designer"]["scene_graph"]}
+        and component_specs["ok"]
+        and runtime_package["ok"]
+        and {"web", "mobile", "desktop", "pwa"} <= set(runtime_package["targets"]),
+        "contract": contract,
+        "checks": tuple(check["id"] for check in workbench["checks"]),
+        "required_checks": tuple(sorted(required_checks)),
+        "style_resolution": workbench["style_resolution"],
+        "timeline_playback": workbench["timeline_playback"],
+        "effect_render": workbench["effect_render"],
+        "scene_validation": workbench["scene_validation"],
+        "timeline_interpolation": workbench["timeline_interpolation"],
+        "effect_fallback_matrix": workbench["effect_fallback_matrix"],
+        "scene_transform_gizmos": workbench["scene_transform_gizmos"],
+        "runtime_replay": workbench["runtime_replay"],
+        "designer_transaction_replay": workbench["designer_transaction_replay"],
+        "lifecycle_replay": workbench["lifecycle_replay"],
+        "runtime_package": runtime_package,
+        "component_specs": component_specs,
+        "actionable_operations": workbench["actionable_operations"],
+        "guards": (
+            "style_tokens_resolve_before_runtime",
+            "timeline_samples_match_preview",
+            "effects_have_target_fallbacks",
+            "scene_hit_tests_sync_inspector",
+            "runtime_package_targets_declared",
+        ),
+    }
+
+
+def replay_visual_depth_runtime():
+    """Replay generated visual runtime phases without host rendering or device access."""
+    manifest = visual_depth_runtime_manifest()
+    runtime_phases = tuple(item["phase"] for item in manifest["runtime_replay"]["replay"])
+    designer_phases = tuple(item["phase"] for item in manifest["designer_transaction_replay"]["replay"])
+    lifecycle_phases = tuple(item["phase"] for item in manifest["lifecycle_replay"]["replay"])
+    action_names = tuple(manifest["actionable_operations"]["operations"])
+    return {
+        "format": "appgen.generated-visual-depth-runtime-replay.v1",
+        "ok": manifest["ok"]
+        and {"style_resolution", "timeline_interpolation", "effect_fallback", "scene_hit_testing", "scene_transform_sync"} <= set(runtime_phases)
+        and {"author_style_override", "author_timeline", "validate_effect_stack", "author_scene_graph", "runtime_replay"} <= set(designer_phases)
+        and {"validate_style_tokens", "export_timeline_runtime", "assign_effect_fallbacks", "validate_scene_materials", "runtime_and_designer_replay"} <= set(lifecycle_phases)
+        and {"author_style", "author_timeline", "validate_effect_stack", "author_scene", "hit_test_transform", "validate_visual_component"} <= set(action_names),
+        "runtime_phases": runtime_phases,
+        "designer_phases": designer_phases,
+        "lifecycle_phases": lifecycle_phases,
+        "action_names": action_names,
+        "side_effects": (),
+    }
+
+
+def validate_visual_depth_runtime():
+    """Validate generated visual depth runtime readiness."""
+    manifest = visual_depth_runtime_manifest()
+    replay = replay_visual_depth_runtime()
+    checks = (
+        {"id": "manifest_ok", "ok": manifest["ok"]},
+        {"id": "style_runtime_ready", "ok": manifest["style_resolution"]["ordered_layers"][0] == "base_theme" and not manifest["style_resolution"]["side_effects"]},
+        {"id": "timeline_runtime_ready", "ok": "sample_keyframes" in manifest["timeline_playback"]["playback_steps"] and manifest["timeline_interpolation"]["ok"] and not manifest["timeline_interpolation"]["side_effects"]},
+        {"id": "effect_runtime_ready", "ok": "select_fallback" in manifest["effect_render"]["render_steps"] and manifest["effect_fallback_matrix"]["ok"] and not manifest["effect_fallback_matrix"]["side_effects"]},
+        {"id": "scene_runtime_ready", "ok": manifest["scene_validation"]["ok"] and manifest["scene_transform_gizmos"]["ok"] and not manifest["scene_transform_gizmos"]["side_effects"]},
+        {"id": "component_specs_ready", "ok": manifest["component_specs"]["ok"] and all(spec["design_tools"] and spec["runtime_artifacts"] for spec in manifest["component_specs"]["specs"])},
+        {"id": "runtime_package_ready", "ok": manifest["runtime_package"]["ok"] and {"web", "mobile", "desktop", "pwa"} <= set(manifest["runtime_package"]["targets"])},
+        {"id": "runtime_replay_ready", "ok": replay["ok"] and not replay["side_effects"]},
+    )
+    return {
+        "format": "appgen.generated-visual-depth-runtime-validation.v1",
+        "ok": all(check["ok"] for check in checks),
+        "checks": checks,
+        "manifest": manifest,
+        "replay": replay,
+        "blocking_gaps": tuple(check for check in checks if not check["ok"]),
+    }
+
+
+def smoke_test():
+    """Run side-effect-free visual depth runtime smoke checks."""
+    validation = validate_visual_depth_runtime()
+    return {
+        "format": "appgen.generated-visual-depth-runtime-smoke.v1",
+        "ok": validation["ok"],
+        "validation": validation,
+        "checks": tuple(check["id"] for check in validation["checks"]),
     }
 '''
 
