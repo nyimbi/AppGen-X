@@ -11122,6 +11122,44 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert relationship_runtime["ok"] is True
     assert relationship_runtime["chain_path"] == ("InventoryMove", "InvoiceLine", "Invoice", "Account", "Ledger")
     assert data_runtime.data_module_runtime_manifest()["ok"] is True
+    data_module_files = data_runtime.data_tooling_module_file_manifest()
+    data_module_tests = data_runtime.data_tooling_module_test_file_manifest()
+    assert data_module_files["ok"] is True
+    assert data_module_tests["ok"] is True
+    assert {item["module"] for item in data_module_files["modules"]} == {
+        "connection_module",
+        "dataset_module",
+        "service_proxy_module",
+        "offline_module",
+    }
+    assert {item["module"] for item in data_module_tests["tests"]} == {
+        "connection_module",
+        "dataset_module",
+        "service_proxy_module",
+        "offline_module",
+    }
+    connection_module = _load_module(output_dir / "data_tooling_modules" / "connection_module.py", "generated_connection_data_module")
+    assert connection_module.smoke_test()["ok"] is True
+    assert connection_module.connection_catalog()["ok"] is True
+    dataset_module = _load_module(output_dir / "data_tooling_modules" / "dataset_module.py", "generated_dataset_data_module")
+    assert dataset_module.smoke_test()["ok"] is True
+    assert dataset_module.field_catalog()["ok"] is True
+    service_module = _load_module(output_dir / "data_tooling_modules" / "service_proxy_module.py", "generated_service_data_module")
+    assert service_module.smoke_test()["ok"] is True
+    assert service_module.contract_tests()["ok"] is True
+    offline_module = _load_module(output_dir / "data_tooling_modules" / "offline_module.py", "generated_offline_data_module")
+    assert offline_module.smoke_test()["ok"] is True
+    assert offline_module.queue_integrity()["ok"] is True
+    for item in data_module_files["modules"]:
+        module_path = output_dir / item["path"].replace("app/", "")
+        py_compile.compile(str(module_path), doraise=True)
+        module = _load_module(module_path, f"generated_data_module_{item['module']}")
+        assert module.smoke_test()["ok"] is True
+    for item in data_module_tests["tests"]:
+        test_path = output_dir / item["path"].replace("app/", "")
+        py_compile.compile(str(test_path), doraise=True)
+        module = _load_module(test_path, f"generated_data_module_test_{item['module']}")
+        assert module.smoke_test()["ok"] is True
     data_runtime_replay = data_runtime.replay_data_tooling_runtime()
     assert data_runtime_replay["ok"] is True
     assert {"service_invocation", "offline_replay"} <= set(data_runtime_replay["runtime_ops"])
@@ -11132,6 +11170,8 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert {
         "relationship_lookup_replay",
         "data_module_smoke",
+        "data_module_files_ready",
+        "data_module_tests_ready",
         "publish_transaction_replay",
         "failover_transaction_replay",
         "runtime_replay",

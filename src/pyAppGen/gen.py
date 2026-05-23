@@ -1755,6 +1755,7 @@ def write_form_designer_file(output_dir, schema: AppSchema):
     write_component_contract_files(output_dir)
     write_device_api_component_files(output_dir)
     write_visual_component_files(output_dir)
+    write_data_tooling_module_files(output_dir)
 
 
 DEVICE_API_COMPONENTS = (
@@ -1797,6 +1798,13 @@ VISUAL_DEPTH_COMPONENTS = (
     "Camera3D",
     "Light3D",
     "Mesh3D",
+)
+
+DATA_TOOLING_MODULES = (
+    "connection_module",
+    "dataset_module",
+    "service_proxy_module",
+    "offline_module",
 )
 
 
@@ -1907,6 +1915,26 @@ def write_visual_component_files(output_dir):
         )
 
 
+def write_data_tooling_module_files(output_dir):
+    """Write generated native data tooling modules and smoke tests."""
+    output_dir = Path(output_dir)
+    module_dir = output_dir / "data_tooling_modules"
+    test_dir = output_dir / "data_tooling_module_tests"
+    module_dir.mkdir(parents=True, exist_ok=True)
+    test_dir.mkdir(parents=True, exist_ok=True)
+    (module_dir / "__init__.py").write_text(_data_tooling_module_init_text(), encoding="utf-8")
+    (test_dir / "__init__.py").write_text(_data_tooling_module_test_init_text(), encoding="utf-8")
+    for module_name in DATA_TOOLING_MODULES:
+        (module_dir / f"{module_name}.py").write_text(
+            _data_tooling_module_text(module_name),
+            encoding="utf-8",
+        )
+        (test_dir / f"test_{module_name}.py").write_text(
+            _data_tooling_module_test_text(module_name),
+            encoding="utf-8",
+        )
+
+
 def _module_name(name: str) -> str:
     """Return a stable snake-case module name for a component or package."""
     chars = []
@@ -1947,6 +1975,252 @@ def _visual_component_test_init_text() -> str:
         '"""Generated visual-depth component test modules."""\n\n'
         f"VISUAL_COMPONENT_TEST_MODULES = {modules!r}\n"
     )
+
+
+def _data_tooling_module_init_text() -> str:
+    return (
+        '"""Generated native data tooling modules."""\n\n'
+        f"DATA_TOOLING_MODULES = {DATA_TOOLING_MODULES!r}\n"
+    )
+
+
+def _data_tooling_module_test_init_text() -> str:
+    modules = tuple(f"test_{name}" for name in DATA_TOOLING_MODULES)
+    return (
+        '"""Generated native data tooling module tests."""\n\n'
+        f"DATA_TOOLING_MODULE_TESTS = {modules!r}\n"
+    )
+
+
+def _data_tooling_module_text(module_name: str) -> str:
+    return f'''"""Generated native data tooling module for {module_name}."""
+
+from __future__ import annotations
+
+import importlib.util
+from pathlib import Path
+
+
+MODULE = {module_name!r}
+
+
+def _load_sibling(module_name):
+    module_path = Path(__file__).resolve().parents[1] / f"{{module_name}}.py"
+    spec = importlib.util.spec_from_file_location(f"generated_data_tooling_{{MODULE}}_{{module_name}}", module_path)
+    module = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(module)
+    return module
+
+
+def _form_designer():
+    return _load_sibling("form_designer")
+
+
+def _runtime():
+    return _load_sibling("data_tooling_runtime")
+
+
+def module_contract():
+    """Return this generated module's export contract."""
+    contract = _form_designer().data_module_generation_contract()
+    artifact = next((item for item in contract["artifacts"] if item["name"] == MODULE), None)
+    return {{
+        "format": "appgen.data-tooling-module-contract.v1",
+        "module": MODULE,
+        "ok": artifact is not None and bool(artifact["exports"]),
+        "artifact": artifact,
+        "exports": artifact["exports"] if artifact else (),
+    }}
+
+
+def smoke_plan():
+    """Return side-effect-free smoke metadata for this data tooling module."""
+    smoke = _form_designer().data_module_runtime_smoke_contract()
+    test = next((item for item in smoke["smoke_tests"] if item["module"] == MODULE), None)
+    return {{
+        "format": "appgen.data-tooling-module-smoke-plan.v1",
+        "module": MODULE,
+        "ok": test is not None and {{"import_module", "run_read_only_probe", "verify_no_side_effects"}} <= set(test["smoke"]),
+        "test": test,
+    }}
+
+
+def connection_catalog():
+    """Return generated connection runtime metadata."""
+    return _runtime().connection_runtime_manifest()
+
+
+def test_connection():
+    """Return generated read-only connection probe metadata."""
+    return _form_designer().data_tooling_test_connection()
+
+
+def transaction_scope():
+    """Return no-write transaction replay metadata."""
+    return _runtime().transaction_runtime_manifest()
+
+
+def field_catalog():
+    """Return generated dataset field metadata."""
+    return _runtime().dataset_runtime_manifest()
+
+
+def open_dataset():
+    """Return generated dataset designer metadata."""
+    return _form_designer().data_tooling_design_dataset_operation()
+
+
+def post_changes():
+    """Return generated publish transaction metadata."""
+    return _runtime().transaction_runtime_manifest()["publish_replay"]
+
+
+def reconcile_errors():
+    """Return generated offline and failover reconciliation metadata."""
+    return _runtime().transaction_runtime_manifest()["failover_replay"]
+
+
+def client_proxy():
+    """Return generated service proxy metadata."""
+    return _runtime().service_runtime_manifest()
+
+
+def request_validator():
+    """Return generated service security metadata."""
+    return _runtime().service_runtime_manifest()["security"]
+
+
+def response_mapper():
+    """Return generated service invocation trace metadata."""
+    return _form_designer().data_service_invocation_trace_contract()
+
+
+def contract_tests():
+    """Return generated service contract tests."""
+    tests = _runtime().service_runtime_manifest()["service_tests"]
+    return {{
+        "format": "appgen.data-tooling-service-contract-tests.v1",
+        "ok": bool(tests["tests"]) and all(item["assertions"] for item in tests["tests"]),
+        "tests": tests["tests"],
+        "guards": tests["guards"],
+    }}
+
+
+def operation_log():
+    """Return generated offline runtime trace metadata."""
+    return _runtime().transaction_runtime_manifest()["runtime_replay"]
+
+
+def replay_plan():
+    """Return generated offline replay plan metadata."""
+    return _form_designer().data_tooling_rehearse_offline_replay_operation()
+
+
+def conflict_review():
+    """Return generated conflict review metadata."""
+    return _form_designer().data_conflict_review_contract()
+
+
+def queue_integrity():
+    """Return generated offline queue integrity metadata."""
+    return _runtime().dataset_runtime_manifest()["offline_queue"]
+
+
+def run_read_only_probe():
+    """Run the module's generated side-effect-free smoke probe."""
+    contract = module_contract()
+    plan = smoke_plan()
+    runtime = _runtime().data_tooling_runtime_manifest()
+    export_results = tuple(
+        {{
+            "export": name,
+            "available": name in globals(),
+        }}
+        for name in contract["exports"]
+    )
+    return {{
+        "format": "appgen.data-tooling-module-read-only-probe.v1",
+        "module": MODULE,
+        "ok": contract["ok"]
+        and plan["ok"]
+        and runtime["ok"]
+        and all(item["available"] for item in export_results),
+        "exports": export_results,
+        "side_effects": (),
+    }}
+
+
+def smoke_test():
+    """Run side-effect-free checks for this generated data tooling module."""
+    probe = run_read_only_probe()
+    return {{
+        "format": "appgen.data-tooling-module-smoke-test.v1",
+        "module": MODULE,
+        "ok": probe["ok"] and not probe["side_effects"],
+        "probe": probe,
+        "checks": (
+            "module_contract_resolves",
+            "exports_are_callable",
+            "runtime_manifest_ok",
+            "read_only_probe_ok",
+            "no_side_effects",
+        ),
+    }}
+'''
+
+
+def _data_tooling_module_test_text(module_name: str) -> str:
+    return f'''"""Generated tests for the {module_name} data tooling module."""
+
+from __future__ import annotations
+
+import importlib.util
+from pathlib import Path
+
+
+MODULE = {module_name!r}
+
+
+def load_data_tooling_module():
+    """Load the generated data tooling module without app installation."""
+    module_path = Path(__file__).resolve().parents[1] / "data_tooling_modules" / f"{{MODULE}}.py"
+    spec = importlib.util.spec_from_file_location(f"generated_data_tooling_module_{{MODULE}}", module_path)
+    module = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(module)
+    return module
+
+
+def test_data_tooling_module_contract():
+    """Assert the generated data tooling module exposes its exports."""
+    module = load_data_tooling_module()
+    contract = module.module_contract()
+    assert contract["module"] == MODULE
+    assert contract["ok"] is True
+    assert all(hasattr(module, name) for name in contract["exports"])
+
+
+def test_data_tooling_module_smoke():
+    """Assert the module's own read-only smoke test passes."""
+    module = load_data_tooling_module()
+    result = module.smoke_test()
+    assert result["ok"] is True
+    assert result["module"] == MODULE
+    assert result["checks"]
+
+
+def smoke_test():
+    """Run this generated test module in a side-effect-free way."""
+    test_data_tooling_module_contract()
+    test_data_tooling_module_smoke()
+    return {{
+        "format": "appgen.data-tooling-module-generated-test-smoke.v1",
+        "module": MODULE,
+        "ok": True,
+        "tests": ("test_data_tooling_module_contract", "test_data_tooling_module_smoke"),
+    }}
+'''
 
 
 def _visual_component_module_text(component: str) -> str:
@@ -3311,6 +3585,81 @@ except ImportError:  # pragma: no cover - direct module smoke loading
     spec.loader.exec_module(form_designer)
 
 
+def _load_generated_module(path, name):
+    spec = importlib.util.spec_from_file_location(name, path)
+    module = importlib.util.module_from_spec(spec)
+    if spec.loader is None:
+        raise RuntimeError(f"Could not load generated module: {path}")
+    spec.loader.exec_module(module)
+    return module
+
+
+def data_tooling_module_file_manifest():
+    """Return file-level evidence for generated data tooling modules."""
+    modules = form_designer.data_module_generation_contract()["artifacts"]
+    module_dir = Path(__file__).with_name("data_tooling_modules")
+    entries = []
+    for item in modules:
+        module_name = item["name"]
+        module_path = module_dir / f"{module_name}.py"
+        exports = ()
+        contract_ok = False
+        if module_path.exists():
+            module = _load_generated_module(module_path, f"generated_data_tooling_module_{module_name}")
+            exports = tuple(name for name in item["exports"] if hasattr(module, name))
+            contract = module.module_contract()
+            contract_ok = contract["ok"] and contract["module"] == module_name
+        entries.append(
+            {
+                "module": module_name,
+                "path": f"app/data_tooling_modules/{module_name}.py",
+                "exists": module_path.exists(),
+                "exports": exports,
+                "expected_exports": item["exports"],
+                "contract_ok": contract_ok,
+            }
+        )
+    return {
+        "format": "appgen.generated-data-tooling-module-file-manifest.v1",
+        "ok": bool(entries)
+        and all(item["exists"] and item["contract_ok"] and set(item["expected_exports"]) <= set(item["exports"]) for item in entries),
+        "modules": tuple(entries),
+        "guards": ("one_file_per_data_module", "declared_exports_present", "module_contract_loads"),
+        "side_effects": (),
+    }
+
+
+def data_tooling_module_test_file_manifest():
+    """Return file-level evidence for generated data tooling module tests."""
+    modules = form_designer.data_module_generation_contract()["artifacts"]
+    test_dir = Path(__file__).with_name("data_tooling_module_tests")
+    entries = []
+    required_exports = ("load_data_tooling_module", "test_data_tooling_module_contract", "test_data_tooling_module_smoke", "smoke_test")
+    for item in modules:
+        module_name = item["name"]
+        module_path = test_dir / f"test_{module_name}.py"
+        exports = ()
+        if module_path.exists():
+            module = _load_generated_module(module_path, f"generated_data_tooling_module_test_{module_name}")
+            exports = tuple(name for name in required_exports if hasattr(module, name))
+        entries.append(
+            {
+                "module": module_name,
+                "path": f"app/data_tooling_module_tests/test_{module_name}.py",
+                "exists": module_path.exists(),
+                "exports": exports,
+            }
+        )
+    return {
+        "format": "appgen.generated-data-tooling-module-test-file-manifest.v1",
+        "ok": bool(entries) and all(item["exists"] and set(required_exports) <= set(item["exports"]) for item in entries),
+        "tests": tuple(entries),
+        "required_exports": required_exports,
+        "guards": ("one_test_file_per_data_module", "contract_and_smoke_tests_exported"),
+        "side_effects": (),
+    }
+
+
 def connection_runtime_manifest():
     """Return generated connection probe, failover, and pooling runtime metadata."""
     tooling = form_designer.rad_data_tooling_workbench()
@@ -3423,6 +3772,8 @@ def relationship_lookup_runtime_manifest():
 def data_module_runtime_manifest():
     """Return generated data module, stored routine, and runtime smoke metadata."""
     tooling = form_designer.rad_data_tooling_workbench()
+    module_files = data_tooling_module_file_manifest()
+    module_tests = data_tooling_module_test_file_manifest()
     return {
         "format": "appgen.generated-data-module-runtime-manifest.v1",
         "ok": tooling["data_modules"]["ok"]
@@ -3430,15 +3781,21 @@ def data_module_runtime_manifest():
         and tooling["stored_procedures"]["ok"]
         and {"connection_module", "dataset_module", "service_proxy_module", "offline_module"} <= {artifact["name"] for artifact in tooling["data_modules"]["artifacts"]}
         and all("rollback_preview" in workflow["pipeline"] for workflow in tooling["stored_procedures"]["workflows"])
-        and not tooling["module_runtime_smoke"]["side_effects"],
+        and not tooling["module_runtime_smoke"]["side_effects"]
+        and module_files["ok"]
+        and module_tests["ok"],
         "modules": tooling["data_modules"],
         "module_smoke": tooling["module_runtime_smoke"],
         "stored_procedures": tooling["stored_procedures"],
+        "module_files": module_files,
+        "module_tests": module_tests,
         "guards": (
             "module_imports_are_required",
             "read_only_probe_required",
             "typed_parameters_required",
             "rollback_preview_required",
+            "one_file_per_data_module",
+            "one_test_file_per_data_module",
         ),
     }
 
@@ -3517,6 +3874,8 @@ def validate_data_tooling_runtime():
         {"id": "transaction_replays", "ok": manifest["transactions"]["ok"]},
         {"id": "relationship_lookup_replay", "ok": manifest["relationships"]["ok"]},
         {"id": "data_module_smoke", "ok": manifest["modules"]["ok"]},
+        {"id": "data_module_files_ready", "ok": manifest["modules"]["module_files"]["ok"]},
+        {"id": "data_module_tests_ready", "ok": manifest["modules"]["module_tests"]["ok"]},
         {"id": "publish_transaction_replay", "ok": manifest["transactions"]["publish_replay"]["ok"] and not manifest["transactions"]["publish_replay"]["side_effects"]},
         {"id": "failover_transaction_replay", "ok": manifest["transactions"]["failover_replay"]["ok"] and not manifest["transactions"]["failover_replay"]["side_effects"]},
         {

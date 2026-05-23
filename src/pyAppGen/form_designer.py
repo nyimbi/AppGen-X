@@ -13911,6 +13911,33 @@ def visual_component_test_file_manifest() -> tuple[dict, ...]:
     )
 
 
+def data_tooling_module_file_manifest() -> tuple[dict, ...]:
+    """Return generated data tooling module files expected in generated apps."""
+    return tuple(
+        {
+            "module": item["name"],
+            "path": f"app/data_tooling_modules/{item['name']}.py",
+            "exports": item["exports"],
+            "ok": bool(item["exports"]),
+        }
+        for item in data_module_generation_contract()["artifacts"]
+    )
+
+
+def data_tooling_module_test_file_manifest() -> tuple[dict, ...]:
+    """Return generated data tooling module test files expected in generated apps."""
+    return tuple(
+        {
+            "module": item["module"],
+            "path": item["path"].replace("app/data_tooling_modules/", "app/data_tooling_module_tests/test_"),
+            "target": item["path"],
+            "exports": ("load_data_tooling_module", "test_data_tooling_module_contract", "test_data_tooling_module_smoke", "smoke_test"),
+            "ok": item["ok"],
+        }
+        for item in data_tooling_module_file_manifest()
+    )
+
+
 def component_package_module_implementation_contract(package_id: str) -> dict:
     """Return required exports and smoke tests for one component package module."""
     package = component_package_contract(package_id)
@@ -14219,6 +14246,8 @@ def form_designer_generation_smoke_audit(source: str = FORM_DESIGNER_SAMPLE_DSL)
     device_component_test_artifacts = tuple(item["path"] for item in device_api_component_test_file_manifest())
     visual_component_artifacts = tuple(item["path"] for item in visual_component_file_manifest())
     visual_component_test_artifacts = tuple(item["path"] for item in visual_component_test_file_manifest())
+    data_module_artifacts = tuple(item["path"] for item in data_tooling_module_file_manifest())
+    data_module_test_artifacts = tuple(item["path"] for item in data_tooling_module_test_file_manifest())
     required_artifacts = (
         "app/form_designer.py",
         "app/component_parity_runtime.py",
@@ -14243,6 +14272,8 @@ def form_designer_generation_smoke_audit(source: str = FORM_DESIGNER_SAMPLE_DSL)
         *device_component_test_artifacts,
         *visual_component_artifacts,
         *visual_component_test_artifacts,
+        *data_module_artifacts,
+        *data_module_test_artifacts,
     )
     compile_artifacts = (
         "app/form_designer.py",
@@ -14267,6 +14298,8 @@ def form_designer_generation_smoke_audit(source: str = FORM_DESIGNER_SAMPLE_DSL)
         *device_component_test_artifacts,
         *visual_component_artifacts,
         *visual_component_test_artifacts,
+        *data_module_artifacts,
+        *data_module_test_artifacts,
     )
 
     with tempfile.TemporaryDirectory(prefix="appgen-form-designer-smoke-") as tmp:
@@ -14329,6 +14362,12 @@ def form_designer_generation_smoke_audit(source: str = FORM_DESIGNER_SAMPLE_DSL)
         )
         generated_visual_depth_runtime = importlib.util.module_from_spec(visual_depth_runtime_spec)
         visual_depth_runtime_spec.loader.exec_module(generated_visual_depth_runtime)
+        data_runtime_path = output_dir / "data_tooling_runtime.py"
+        data_runtime_spec = importlib.util.spec_from_file_location(
+            "generated_data_tooling_runtime_smoke", data_runtime_path
+        )
+        generated_data_runtime = importlib.util.module_from_spec(data_runtime_spec)
+        data_runtime_spec.loader.exec_module(generated_data_runtime)
         runtime_ops_path = output_dir / "runtime_operations.py"
         runtime_ops_spec = importlib.util.spec_from_file_location(
             "generated_runtime_operations_smoke", runtime_ops_path
@@ -14387,6 +14426,7 @@ def form_designer_generation_smoke_audit(source: str = FORM_DESIGNER_SAMPLE_DSL)
         binding_runtime_smoke = generated_binding_runtime.smoke_test()
         package_manager_runtime_smoke = generated_package_manager_runtime.smoke_test()
         visual_depth_runtime_smoke = generated_visual_depth_runtime.smoke_test()
+        data_runtime_smoke = generated_data_runtime.smoke_test()
         runtime_operation_smoke = generated_runtime_ops.smoke_test(first_table)
         native_form_runtime_smoke = generated_native_runtime.smoke_test(first_table)
         mobile_device_smoke = generated_mobile_runtime.smoke_test()
@@ -14418,13 +14458,17 @@ def form_designer_generation_smoke_audit(source: str = FORM_DESIGNER_SAMPLE_DSL)
             and len(device_component_artifacts) == len(mobile_device_component_spec_contract()["specs"])
             and len(device_component_test_artifacts) == len(mobile_device_component_spec_contract()["specs"])
             and len(visual_component_artifacts) == len(cross_target_visual_component_spec_contract()["specs"])
-            and len(visual_component_test_artifacts) == len(cross_target_visual_component_spec_contract()["specs"]),
+            and len(visual_component_test_artifacts) == len(cross_target_visual_component_spec_contract()["specs"])
+            and len(data_module_artifacts) == len(data_module_generation_contract()["artifacts"])
+            and len(data_module_test_artifacts) == len(data_module_generation_contract()["artifacts"]),
             "component_test_count": len(component_test_artifacts),
             "package_test_count": len(package_test_artifacts),
             "device_component_count": len(device_component_artifacts),
             "device_component_test_count": len(device_component_test_artifacts),
             "visual_component_count": len(visual_component_artifacts),
             "visual_component_test_count": len(visual_component_test_artifacts),
+            "data_module_count": len(data_module_artifacts),
+            "data_module_test_count": len(data_module_test_artifacts),
             "component_count": len(component_artifacts),
             "package_count": len(package_artifacts),
         },
@@ -14541,6 +14585,26 @@ def form_designer_generation_smoke_audit(source: str = FORM_DESIGNER_SAMPLE_DSL)
             }
             <= set(visual_depth_runtime_smoke["checks"]),
             "smoke": visual_depth_runtime_smoke,
+        },
+        {
+            "id": "generated_data_tooling_runtime",
+            "ok": data_runtime_smoke["ok"]
+            and data_runtime_smoke["format"] == "appgen.generated-data-tooling-runtime-smoke.v1"
+            and {
+                "connections",
+                "datasets_and_lookups",
+                "services",
+                "transaction_replays",
+                "relationship_lookup_replay",
+                "data_module_smoke",
+                "data_module_files_ready",
+                "data_module_tests_ready",
+                "publish_transaction_replay",
+                "failover_transaction_replay",
+                "runtime_replay",
+            }
+            <= set(data_runtime_smoke["checks"]),
+            "smoke": data_runtime_smoke,
         },
         {
             "id": "generated_runtime_operations",
