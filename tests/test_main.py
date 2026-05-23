@@ -6941,6 +6941,35 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         check["evidence"]["routes"] for check in customization["checks"] if check["id"] == "route_surface"
     )
     assert branding.ui_customization_workbench({"app/branding.py"})["ok"] is False
+    ui_chrome_files = branding.ui_chrome_module_file_manifest()
+    ui_chrome_tests = branding.ui_chrome_module_test_file_manifest()
+    assert ui_chrome_files["ok"] is True
+    assert ui_chrome_tests["ok"] is True
+    assert {item["surface"] for item in ui_chrome_files["modules"]} == {
+        "splash_screen",
+        "menu_editor",
+        "context_menu",
+        "ui_fine_tuning",
+    }
+    assert {item["surface"] for item in ui_chrome_tests["tests"]} == {
+        "splash_screen",
+        "menu_editor",
+        "context_menu",
+        "ui_fine_tuning",
+    }
+    for item in ui_chrome_files["modules"]:
+        module_path = output_dir / item["path"].replace("app/", "")
+        py_compile.compile(str(module_path), doraise=True)
+        module = _load_module(module_path, f"generated_ui_chrome_module_{item['module']}")
+        assert module.module_contract()["ok"] is True
+        assert module.run_design_operation()["ok"] is True
+        assert module.runtime_manifest()["ok"] is True
+        assert module.smoke_test()["ok"] is True
+    for item in ui_chrome_tests["tests"]:
+        test_path = output_dir / item["path"].replace("app/", "")
+        py_compile.compile(str(test_path), doraise=True)
+        module = _load_module(test_path, f"generated_ui_chrome_module_test_{item['module']}")
+        assert module.smoke_test()["ok"] is True
     assert branding.contrast_ratio("#14213d", "#f8fafc") >= 4.5
     assert branding.palette_balance_report()["ok"] is True
     assert branding.visual_experience_quality_report()["format"] == "appgen.visual-experience-quality.v1"

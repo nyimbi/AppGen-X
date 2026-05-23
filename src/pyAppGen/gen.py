@@ -1891,6 +1891,13 @@ DEEP_RUNTIME_MODULES = (
     "runtime_memory_model_module",
 )
 
+UI_CHROME_MODULES = (
+    "splash_module",
+    "menu_editor_module",
+    "context_menu_module",
+    "ui_fine_tuning_module",
+)
+
 
 def write_pbc_runtime_file(output_dir, schema: AppSchema):
     """Write generated composable capability runtime helpers."""
@@ -3160,6 +3167,208 @@ def smoke_test(table_name=None):
         "table": table_name,
         "ok": True,
         "tests": ("test_deep_runtime_module_contract", "test_deep_runtime_module_smoke"),
+    }}
+'''
+
+
+def _ui_chrome_module_init_text() -> str:
+    return (
+        '"""Generated UI chrome modules."""\n\n'
+        f"UI_CHROME_MODULES = {UI_CHROME_MODULES!r}\n"
+    )
+
+
+def _ui_chrome_module_test_init_text() -> str:
+    modules = tuple(f"test_{name}" for name in UI_CHROME_MODULES)
+    return (
+        '"""Generated UI chrome module tests."""\n\n'
+        f"UI_CHROME_MODULE_TESTS = {modules!r}\n"
+    )
+
+
+def _ui_chrome_surface(module_name: str) -> tuple[str, str]:
+    return {
+        "splash_module": ("splash_screen", "splash_screen_contract"),
+        "menu_editor_module": ("menu_editor", "menu_edit_plan"),
+        "context_menu_module": ("context_menu", "context_menu_action_plan"),
+        "ui_fine_tuning_module": ("ui_fine_tuning", "design_tokens"),
+    }[module_name]
+
+
+def _ui_chrome_module_text(module_name: str) -> str:
+    surface, operation = _ui_chrome_surface(module_name)
+    return f'''"""Generated UI chrome module for {surface}."""
+
+from __future__ import annotations
+
+import importlib.util
+from pathlib import Path
+
+
+MODULE = {module_name!r}
+SURFACE = {surface!r}
+OPERATION = {operation!r}
+EXPECTED_EXPORTS = (
+    "module_contract",
+    "runtime_manifest",
+    "run_design_operation",
+    "smoke_test",
+)
+
+
+def _branding():
+    module_path = Path(__file__).resolve().parents[1] / "branding.py"
+    spec = importlib.util.spec_from_file_location(f"generated_ui_chrome_{{MODULE}}_branding", module_path)
+    module = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(module)
+    return module
+
+
+def module_contract():
+    """Return this generated UI chrome module's export contract."""
+    available = tuple(name for name in EXPECTED_EXPORTS if name in globals())
+    return {{
+        "format": "appgen.ui-chrome-module-contract.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "operation": OPERATION,
+        "ok": set(EXPECTED_EXPORTS) <= set(available),
+        "exports": available,
+        "expected_exports": EXPECTED_EXPORTS,
+        "side_effects": (),
+    }}
+
+
+def run_design_operation():
+    """Run the side-effect-free design operation owned by this module."""
+    branding = _branding()
+    if SURFACE == "splash_screen":
+        operation = branding.splash_screen_contract()
+        ok = operation["min_duration_ms"] < operation["max_duration_ms"] and "reduced_motion" in operation["motion"]
+    elif SURFACE == "menu_editor":
+        valid = branding.menu_edit_plan(({{"menu": "primary", "item": "reports", "fields": ("label",), "route": "/reports/"}},))
+        invalid = branding.menu_edit_plan(({{"menu": "primary", "item": "bad", "fields": ("unsafe",), "route": "https://example.test"}},))
+        operation = {{"catalog": branding.menu_catalog(), "schema": branding.menu_edit_schema(), "valid": valid, "invalid": invalid}}
+        ok = valid["ok"] and not invalid["ok"] and operation["schema"]["review_required"]
+    elif SURFACE == "context_menu":
+        catalog = branding.context_menu_catalog()
+        reviewed = branding.context_menu_action_plan("designer-canvas", "add-component")
+        operation = {{"catalog": catalog, "reviewed_action": reviewed}}
+        ok = bool(catalog) and all(item["trigger"] == "contextmenu" for item in catalog) and reviewed["requires_review"]
+    else:
+        operation = {{
+            "tokens": branding.design_tokens(),
+            "layouts": branding.layout_contract(),
+            "states": branding.component_state_matrix(),
+            "viewports": branding.viewport_contract(),
+            "component_styles": branding.component_style_contract(),
+        }}
+        ok = bool(operation["tokens"]) and bool(operation["states"]) and bool(operation["viewports"])
+    return {{
+        "format": "appgen.ui-chrome-module-operation.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "ok": ok,
+        "operation": operation,
+        "side_effects": (),
+    }}
+
+
+def runtime_manifest():
+    """Return the UI customization runtime evidence used by this module."""
+    branding = _branding()
+    core_assets = {{"app/branding.py", "app/static/appgen-theme.css", "app/templates/appgen_branding.html"}}
+    workbench = branding.ui_customization_workbench(core_assets)
+    release = branding.ui_experience_release_gate(core_assets)
+    return {{
+        "format": "appgen.ui-chrome-module-runtime-manifest.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "ok": workbench["ok"] and release["ok"],
+        "workbench": workbench,
+        "release": release,
+        "side_effects": (),
+    }}
+
+
+def smoke_test():
+    """Run side-effect-free checks for this generated UI chrome module."""
+    contract = module_contract()
+    operation = run_design_operation()
+    runtime = runtime_manifest()
+    return {{
+        "format": "appgen.ui-chrome-module-smoke-test.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "ok": contract["ok"] and operation["ok"] and runtime["ok"] and not operation["side_effects"] and not runtime["side_effects"],
+        "contract": contract,
+        "operation": operation,
+        "runtime": runtime,
+        "checks": (
+            "module_contract_resolves",
+            "design_operation_ok",
+            "ui_customization_runtime_ok",
+            "no_side_effects",
+        ),
+    }}
+'''
+
+
+def _ui_chrome_module_test_text(module_name: str) -> str:
+    surface, _operation = _ui_chrome_surface(module_name)
+    return f'''"""Generated tests for the {surface} UI chrome module."""
+
+from __future__ import annotations
+
+import importlib.util
+from pathlib import Path
+
+
+MODULE = {module_name!r}
+SURFACE = {surface!r}
+
+
+def load_ui_chrome_module():
+    """Load the generated UI chrome module without app installation."""
+    module_path = Path(__file__).resolve().parents[1] / "ui_chrome_modules" / f"{{MODULE}}.py"
+    spec = importlib.util.spec_from_file_location(f"generated_ui_chrome_module_{{MODULE}}", module_path)
+    module = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(module)
+    return module
+
+
+def test_ui_chrome_module_contract():
+    """Assert the generated UI chrome module exposes its contract."""
+    module = load_ui_chrome_module()
+    contract = module.module_contract()
+    assert contract["module"] == MODULE
+    assert contract["surface"] == SURFACE
+    assert contract["ok"] is True
+    assert all(hasattr(module, name) for name in contract["expected_exports"])
+
+
+def test_ui_chrome_module_smoke():
+    """Assert the module's side-effect-free smoke test passes."""
+    module = load_ui_chrome_module()
+    result = module.smoke_test()
+    assert result["ok"] is True
+    assert result["module"] == MODULE
+    assert result["surface"] == SURFACE
+    assert result["checks"]
+
+
+def smoke_test():
+    """Run this generated test module in a side-effect-free way."""
+    test_ui_chrome_module_contract()
+    test_ui_chrome_module_smoke()
+    return {{
+        "format": "appgen.ui-chrome-module-generated-test-smoke.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "ok": True,
+        "tests": ("test_ui_chrome_module_contract", "test_ui_chrome_module_smoke"),
     }}
 '''
 
@@ -8218,6 +8427,27 @@ def write_branding_file(output_dir, schema: AppSchema):
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
     (output_dir / "branding.py").write_text(_branding_text(schema))
+    write_ui_chrome_module_files(output_dir)
+
+
+def write_ui_chrome_module_files(output_dir):
+    """Write generated UI chrome modules and smoke tests."""
+    output_dir = Path(output_dir)
+    module_dir = output_dir / "ui_chrome_modules"
+    test_dir = output_dir / "ui_chrome_module_tests"
+    module_dir.mkdir(parents=True, exist_ok=True)
+    test_dir.mkdir(parents=True, exist_ok=True)
+    (module_dir / "__init__.py").write_text(_ui_chrome_module_init_text(), encoding="utf-8")
+    (test_dir / "__init__.py").write_text(_ui_chrome_module_test_init_text(), encoding="utf-8")
+    for module_name in UI_CHROME_MODULES:
+        (module_dir / f"{module_name}.py").write_text(
+            _ui_chrome_module_text(module_name),
+            encoding="utf-8",
+        )
+        (test_dir / f"test_{module_name}.py").write_text(
+            _ui_chrome_module_test_text(module_name),
+            encoding="utf-8",
+        )
 
 
 def write_extensions_file(output_dir, schema: AppSchema):
@@ -17388,6 +17618,9 @@ def _branding_text(schema: AppSchema) -> str:
 
 from __future__ import annotations
 
+import importlib.util
+from pathlib import Path
+
 from flask import jsonify
 from flask_appbuilder import BaseView
 from flask_appbuilder import expose
@@ -17803,6 +18036,108 @@ def ui_customization_workbench(existing_paths=None):
             "states": component_state_matrix(),
             "viewports": viewport_contract(),
         }},
+    }}
+
+
+def _load_generated_module(path, name):
+    spec = importlib.util.spec_from_file_location(name, path)
+    module = importlib.util.module_from_spec(spec)
+    if spec.loader is None:
+        raise RuntimeError(f"Could not load generated module: {{path}}")
+    spec.loader.exec_module(module)
+    return module
+
+
+def ui_chrome_module_file_manifest():
+    """Return file-level evidence for generated UI chrome modules."""
+    modules = (
+        ("splash_module", "splash_screen"),
+        ("menu_editor_module", "menu_editor"),
+        ("context_menu_module", "context_menu"),
+        ("ui_fine_tuning_module", "ui_fine_tuning"),
+    )
+    expected_exports = ("module_contract", "runtime_manifest", "run_design_operation", "smoke_test")
+    module_dir = Path(__file__).with_name("ui_chrome_modules")
+    entries = []
+    for module_name, surface in modules:
+        module_path = module_dir / f"{{module_name}}.py"
+        exports = ()
+        contract_ok = False
+        smoke_ok = False
+        if module_path.exists():
+            module = _load_generated_module(module_path, f"generated_ui_chrome_module_{{module_name}}")
+            exports = tuple(name for name in expected_exports if hasattr(module, name))
+            contract = module.module_contract()
+            smoke = module.smoke_test()
+            contract_ok = contract["ok"] and contract["module"] == module_name and contract["surface"] == surface
+            smoke_ok = smoke["ok"] and smoke["surface"] == surface
+        entries.append(
+            {{
+                "module": module_name,
+                "surface": surface,
+                "path": f"app/ui_chrome_modules/{{module_name}}.py",
+                "exists": module_path.exists(),
+                "exports": exports,
+                "expected_exports": expected_exports,
+                "contract_ok": contract_ok,
+                "smoke_ok": smoke_ok,
+            }}
+        )
+    return {{
+        "format": "appgen.generated-ui-chrome-module-file-manifest.v1",
+        "ok": bool(entries)
+        and all(
+            item["exists"]
+            and item["contract_ok"]
+            and item["smoke_ok"]
+            and set(item["expected_exports"]) <= set(item["exports"])
+            for item in entries
+        ),
+        "modules": tuple(entries),
+        "guards": ("one_file_per_ui_chrome_module", "declared_exports_present", "module_smoke_loads"),
+        "side_effects": (),
+    }}
+
+
+def ui_chrome_module_test_file_manifest():
+    """Return file-level evidence for generated UI chrome module tests."""
+    modules = ui_chrome_module_file_manifest()["modules"]
+    required_exports = (
+        "load_ui_chrome_module",
+        "test_ui_chrome_module_contract",
+        "test_ui_chrome_module_smoke",
+        "smoke_test",
+    )
+    test_dir = Path(__file__).with_name("ui_chrome_module_tests")
+    entries = []
+    for item in modules:
+        module_name = item["module"]
+        module_path = test_dir / f"test_{{module_name}}.py"
+        exports = ()
+        smoke_ok = False
+        if module_path.exists():
+            module = _load_generated_module(module_path, f"generated_ui_chrome_module_test_{{module_name}}")
+            exports = tuple(name for name in required_exports if hasattr(module, name))
+            smoke_ok = module.smoke_test()["ok"]
+        entries.append(
+            {{
+                "module": module_name,
+                "surface": item["surface"],
+                "path": f"app/ui_chrome_module_tests/test_{{module_name}}.py",
+                "target": item["path"],
+                "exists": module_path.exists(),
+                "exports": exports,
+                "smoke_ok": smoke_ok,
+            }}
+        )
+    return {{
+        "format": "appgen.generated-ui-chrome-module-test-file-manifest.v1",
+        "ok": bool(entries)
+        and all(item["exists"] and item["smoke_ok"] and set(required_exports) <= set(item["exports"]) for item in entries),
+        "tests": tuple(entries),
+        "required_exports": required_exports,
+        "guards": ("one_test_file_per_ui_chrome_module", "contract_and_smoke_tests_exported"),
+        "side_effects": (),
     }}
 
 
