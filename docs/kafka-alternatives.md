@@ -19,7 +19,7 @@ engine for ordinary generated applications. The generated path is:
 4. Put handlers in the generated PBC `events.py` or equivalent generated
    service file.
 5. Omit `stream_processor` from the manifest unless the workload is a documented
-   exception.
+   exception with machine-checkable `stream_exception_evidence`.
 
 The processor names are platform profile IDs, not an invitation to hand-code
 library-specific integrations in every PBC. Generated code should depend on the
@@ -100,15 +100,16 @@ outside the generated adapter layer.
 
 ## Exception Evidence
 
-Any PBC using `quix_streams` or `bytewax` must document:
+Any PBC using `quix_streams` or `bytewax` must include
+`stream_exception_evidence` in its manifest with:
 
 - `workload_name`: the named stream workload;
 - `throughput_or_latency_reason`: why the default is not enough;
 - `state_shape`: what state is kept and how it is recovered;
 - `operational_owner`: who owns runtime operations and incidents.
 
-This evidence belongs in the PBC package docs and can be summarized in the
-PBC manifest comments or package README.
+This evidence belongs in the PBC manifest and should also be explained in the
+package docs or package README.
 
 If the evidence is absent, the PBC must use `faust_streaming` and the release
 audit should fail any attempted exception.
@@ -174,6 +175,12 @@ def register_pbc() -> dict:
         "description": "Ingest and aggregate equipment telemetry windows.",
         "datastore_backend": "postgresql",
         "stream_processor": "quix_streams",
+        "stream_exception_evidence": {
+            "workload_name": "equipment telemetry windows",
+            "throughput_or_latency_reason": "high-volume time-series ingestion",
+            "state_shape": "per-machine rolling windows persisted by watermark",
+            "operational_owner": "opsmfg telemetry platform team",
+        },
         "tables": ("telemetry_sample", "telemetry_window"),
         "apis": ("POST /telemetry", "GET /telemetry-windows"),
         "emits": ("TelemetryWindowCalculated",),
@@ -189,8 +196,9 @@ The executable policy lives in `src/pyAppGen/pbc.py`:
   decision tree, required exception evidence, and prohibited patterns.
 - `select_acp_stream_processor()` maps a workload description to the default
   or an exception profile.
-- `validate_pbc_manifest()` rejects unsupported profiles and normalizes missing
-  profiles to the default.
+- `validate_pbc_manifest()` rejects unsupported profiles, normalizes missing
+  profiles to the default, and blocks exception profiles without
+  `stream_exception_evidence`.
 - `pbc_release_audit()` includes an `opinionated_stream_processing_policy`
   release gate.
 

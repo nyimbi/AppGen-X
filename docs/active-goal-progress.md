@@ -59,6 +59,7 @@ Build a complete AppGen IDE and generation platform with:
 | 2026-05-23 | `46ddf5f` | Restored the Studio's full Object Inspector heading after the remote browser smoke report showed that exact rendered text was missing. | Remote report artifact inspected; frontend build and hygiene scans passed. |
 | 2026-05-23 | `0c8a9de` | Verified the Studio browser smoke workflow succeeds remotely after the rendered inspector heading fix. | GitHub Actions run `26336140848` completed with conclusion `success` for commit `4510d44`. |
 | 2026-05-23 | `493a02c` | Added generated runtime operations as an independently importable native runtime surface. | Py compile; generated app test; focused form-designer, Studio, agentic, and aggregate package-goal tests; hygiene scan passed. |
+| 2026-05-23 | `pending` | Enforced machine-checkable stream exception evidence for PBC manifests. | Py compile; focused PBC catalog test; aggregate package-goal test; hygiene scan passed. |
 
 ## Current Working Slice
 
@@ -72,8 +73,8 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
 - Runtime smoke checks and binary adapter transcript audits cover produced package artifacts when available.
 - PBC package loading is implemented for local source directories, importable modules, and package index files.
 - PBC event-processing guidance now tells developers to use the default
-  generated event adapter path and reserve exception profiles for documented
-  high-volume or complex dataflow workloads.
+  generated event adapter path and reserve exception profiles for documented,
+  machine-checkable high-volume or complex dataflow workloads.
 
 ## Open Completion Areas
 

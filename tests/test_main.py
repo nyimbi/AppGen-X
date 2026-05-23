@@ -769,8 +769,34 @@ def test_package_pbc_catalog_composes_enterprise_apps(runner: CliRunner) -> None
     assert validation["publishable"] is True
     assert validation["normalized_descriptor"]["datastore_backend"] == "postgresql"
     assert validation["normalized_descriptor"]["stream_processor"] == "faust_streaming"
+    assert validation["stream_processor_decision"] == "default"
     assert validate_pbc_manifest({**manifest, "datastore_backend": "oracle"})["ok"] is False
     assert validate_pbc_manifest({**manifest, "stream_processor": "unknown"})["ok"] is False
+    missing_exception = validate_pbc_manifest({**manifest, "pbc": "machine_telemetry", "stream_processor": "quix_streams"})
+    assert missing_exception["ok"] is False
+    assert missing_exception["stream_processor_decision"] == "exception"
+    assert set(missing_exception["missing_stream_exception_evidence"]) == {
+        "workload_name",
+        "throughput_or_latency_reason",
+        "state_shape",
+        "operational_owner",
+    }
+    valid_exception = validate_pbc_manifest(
+        {
+            **manifest,
+            "pbc": "machine_telemetry",
+            "stream_processor": "quix_streams",
+            "stream_exception_evidence": {
+                "workload_name": "equipment telemetry windows",
+                "throughput_or_latency_reason": "high-volume time-series ingestion",
+                "state_shape": "per-machine rolling windows",
+                "operational_owner": "operations platform team",
+            },
+        }
+    )
+    assert valid_exception["ok"] is True
+    assert valid_exception["stream_processor_decision"] == "exception"
+    assert valid_exception["normalized_descriptor"]["stream_exception_evidence"]["workload_name"] == "equipment telemetry windows"
     registration = register_pbc_manifest(manifest)
     assert registration["ok"] is True
     assert registration["catalog_patch"]["warranty_claims"]["datastore_backend"] == "postgresql"
@@ -885,6 +911,9 @@ def test_package_pbc_catalog_composes_enterprise_apps(runner: CliRunner) -> None
     assert audit["topology"]["ok"] is True
     assert audit["acp_coverage"]["ok"] is True
     assert audit["package_loading"]["ok"] is True
+    stream_gate = next(gate for gate in audit["gates"] if gate["id"] == "opinionated_stream_processing_policy")
+    assert stream_gate["invalid_exception"]["ok"] is False
+    assert stream_gate["valid_exception"]["ok"] is True
 
     result = runner.invoke(__main__.main, ["--pbc-release-audit"])
     assert result.exit_code == 0

@@ -33,6 +33,7 @@ PBC_MANIFEST_OPTIONAL_FIELDS = (
     "owner",
     "version",
     "stream_processor",
+    "stream_exception_evidence",
     "ui_fragments",
     "permissions",
     "configuration",
@@ -809,6 +810,11 @@ def pbc_manifest_schema() -> dict:
                 + ", ".join(sorted(ACP_STREAM_PROCESSORS))
                 + "."
             ),
+            "stream_exception_evidence": (
+                "Required only when stream_processor is an exception profile. "
+                "Must include workload_name, throughput_or_latency_reason, "
+                "state_shape, and operational_owner."
+            ),
             "ui_fragments": "Optional generated UI fragment descriptors for the composition canvas.",
             "permissions": "Optional RBAC/ABAC permission strings exposed by the PBC.",
             "configuration": "Optional environment/configuration keys required at install time.",
@@ -852,6 +858,26 @@ def validate_pbc_manifest(manifest: dict, *, existing_catalog: dict[str, dict] |
             "stream_processor must be one of "
             + ", ".join(sorted(ACP_STREAM_PROCESSORS))
         )
+    normalized_stream_processor = stream_processor or ACP_DEFAULT_STREAM_PROCESSOR
+    exception_required = normalized_stream_processor != ACP_DEFAULT_STREAM_PROCESSOR
+    evidence = manifest.get("stream_exception_evidence", {})
+    if exception_required:
+        if not isinstance(evidence, dict):
+            invalid.append("stream_exception_evidence must be an object for exception stream processors")
+            missing_exception_evidence = ACP_STREAM_PROCESSING_POLICY["exception_required_evidence"]
+        else:
+            missing_exception_evidence = tuple(
+                field
+                for field in ACP_STREAM_PROCESSING_POLICY["exception_required_evidence"]
+                if not evidence.get(field)
+            )
+            if missing_exception_evidence:
+                invalid.append(
+                    "stream_exception_evidence missing required fields: "
+                    + ", ".join(missing_exception_evidence)
+                )
+    else:
+        missing_exception_evidence = ()
     if key and key in catalog:
         invalid.append(f"pbc key already registered: {key}")
     for field in ("tables", "apis", "emits", "consumes"):
@@ -871,6 +897,8 @@ def validate_pbc_manifest(manifest: dict, *, existing_catalog: dict[str, dict] |
         "manifest": manifest,
         "missing_fields": missing,
         "invalid": tuple(invalid),
+        "stream_processor_decision": "default" if not exception_required else "exception",
+        "missing_stream_exception_evidence": missing_exception_evidence,
         "missing_publish_artifacts": missing_publish_artifacts,
         "datastore": datastore,
         "normalized_descriptor": _pbc_descriptor_from_manifest(manifest) if not missing and not invalid else None,
@@ -903,6 +931,7 @@ def register_pbc_manifest(manifest: dict, *, existing_catalog: dict[str, dict] |
                 "tables": descriptor["tables"],
                 "datastore_backend": descriptor["datastore_backend"],
                 "stream_processor": descriptor["stream_processor"],
+                "stream_exception_evidence": descriptor["stream_exception_evidence"],
                 "apis": descriptor["apis"],
                 "emits": descriptor["emits"],
                 "consumes": descriptor["consumes"],
@@ -1222,6 +1251,30 @@ def example_pbc_manifest() -> dict:
     }
 
 
+def example_stream_exception_manifest() -> dict:
+    """Return a valid PBC manifest that uses a stream-processing exception profile."""
+    return {
+        **example_pbc_manifest(),
+        "pbc": "machine_telemetry",
+        "label": "Machine Telemetry",
+        "mesh": "opsmfg",
+        "description": "Ingest and aggregate equipment telemetry windows.",
+        "stream_processor": "quix_streams",
+        "tables": ("telemetry_sample", "telemetry_window"),
+        "apis": ("POST /telemetry", "GET /telemetry-windows"),
+        "emits": ("TelemetryWindowCalculated",),
+        "consumes": ("MachineSignalReceived",),
+        "stream_exception_evidence": {
+            "workload_name": "equipment telemetry windows",
+            "throughput_or_latency_reason": "high-volume time-series ingestion with windowed operational metrics",
+            "state_shape": "per-machine rolling windows persisted by watermark",
+            "operational_owner": "opsmfg telemetry platform team",
+        },
+        "tests": ("tests/test_machine_telemetry_contract.py",),
+        "docs": ("docs/machine-telemetry.md",),
+    }
+
+
 def application_composition_topology() -> dict:
     """Return the ACP runtime topology required for composable apps."""
     layers = (
@@ -1459,6 +1512,14 @@ def pbc_release_audit() -> dict:
     topology = application_composition_topology()
     acp_coverage = acp_capability_coverage()
     stream_policy = acp_stream_processing_policy()
+    invalid_exception = validate_pbc_manifest(
+        {
+            **example_pbc_manifest(),
+            "pbc": "machine_telemetry_missing_evidence",
+            "stream_processor": "quix_streams",
+        }
+    )
+    valid_exception = validate_pbc_manifest(example_stream_exception_manifest())
     package_loading = pbc_package_loading_smoke_audit()
     nl_selection = pbc_selection_from_prompt(
         "Build an enterprise ERP back office with GL, AP, AR, inventory, people, and order management"
@@ -1534,10 +1595,15 @@ def pbc_release_audit() -> dict:
             "ok": stream_policy["default"] == "faust_streaming"
             and stream_policy["allowed_processors"] == ("bytewax", "quix_streams", "faust_streaming")
             and all(item["use"] in stream_policy["allowed_processors"] for item in stream_policy["decision_tree"])
-            and "adding a fourth processor without a platform architecture decision" in stream_policy["prohibited"],
+            and "adding a fourth processor without a platform architecture decision" in stream_policy["prohibited"]
+            and not invalid_exception["ok"]
+            and valid_exception["ok"]
+            and valid_exception["stream_processor_decision"] == "exception",
             "default": stream_policy["default"],
             "allowed_processors": stream_policy["allowed_processors"],
             "decision_tree": stream_policy["decision_tree"],
+            "invalid_exception": invalid_exception,
+            "valid_exception": valid_exception,
         },
         {
             "id": "composition_plan",
@@ -1678,6 +1744,7 @@ def _pbc_descriptor(key: str, pbc: dict) -> dict:
         "datastore": f"{key}_store",
         "datastore_backend": pbc.get("datastore_backend", "postgresql"),
         "stream_processor": pbc.get("stream_processor", "faust_streaming"),
+        "stream_exception_evidence": dict(pbc.get("stream_exception_evidence", {})),
         "tables": pbc["tables"],
         "apis": pbc["apis"],
         "emits": pbc["emits"],
@@ -1698,6 +1765,7 @@ def _pbc_descriptor_from_manifest(manifest: dict) -> dict:
         "datastore": f"{key}_store",
         "datastore_backend": manifest["datastore_backend"],
         "stream_processor": manifest.get("stream_processor", "faust_streaming"),
+        "stream_exception_evidence": dict(manifest.get("stream_exception_evidence", {})),
         "tables": tuple(manifest["tables"]),
         "apis": tuple(manifest["apis"]),
         "emits": tuple(manifest["emits"]),

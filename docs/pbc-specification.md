@@ -87,8 +87,8 @@ def register_pbc() -> dict:
 - `consumes`: domain events consumed from other PBCs or external systems.
 
 Optional fields include `template`, `owner`, `version`, `ui_fragments`,
-`stream_processor`, `permissions`, `configuration`, `migrations`, `seed_data`,
-`tests`, and `docs`.
+`stream_processor`, `stream_exception_evidence`, `permissions`,
+`configuration`, `migrations`, `seed_data`, `tests`, and `docs`.
 
 `stream_processor` is intentionally opinionated to prevent a combinatorial
 backend matrix. Use `faust_streaming` by default and omit the field for ordinary
@@ -111,9 +111,10 @@ Do not introduce additional stream processors for ordinary PBC work. The
 platform release audit treats the three-profile decision matrix as the supported
 surface.
 
-Exception profiles must include written evidence in the PBC package docs:
-`workload_name`, `throughput_or_latency_reason`, `state_shape`, and
-`operational_owner`. The complete platform policy is documented in
+Exception profiles must include machine-checkable `stream_exception_evidence`
+in the manifest with `workload_name`, `throughput_or_latency_reason`,
+`state_shape`, and `operational_owner`. The same evidence should be explained
+in the PBC package docs. The complete platform policy is documented in
 [Opinionated Event Processing Guidance](kafka-alternatives.md) and exposed by
 `acp_stream_processing_policy()`.
 
