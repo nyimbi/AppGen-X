@@ -14232,6 +14232,57 @@ def compiler_runtime_module_test_file_manifest() -> tuple[dict, ...]:
     )
 
 
+def deep_runtime_module_file_manifest() -> tuple[dict, ...]:
+    """Return generated deep runtime module files expected in apps."""
+    modules = (
+        ("package_target_matrix_module", "package_target_matrix"),
+        ("language_frontend_module", "language_frontend"),
+        ("static_analysis_module", "static_analysis"),
+        ("compiler_recovery_module", "compiler_recovery"),
+        ("form_stream_schema_module", "form_stream_schema"),
+        ("stream_migration_module", "stream_migration"),
+        ("debug_symbol_module", "debug_symbols"),
+        ("runtime_memory_model_module", "runtime_memory_model"),
+    )
+    exports = (
+        "module_contract",
+        "runtime_manifest",
+        "run_runtime_surface",
+        "runtime_workbench",
+        "smoke_test",
+    )
+    return tuple(
+        {
+            "module": module,
+            "surface": surface,
+            "path": f"app/deep_runtime_modules/{module}.py",
+            "exports": exports,
+            "ok": bool(module) and bool(surface),
+        }
+        for module, surface in modules
+    )
+
+
+def deep_runtime_module_test_file_manifest() -> tuple[dict, ...]:
+    """Return generated deep runtime test files expected in apps."""
+    return tuple(
+        {
+            "module": item["module"],
+            "surface": item["surface"],
+            "path": item["path"].replace("app/deep_runtime_modules/", "app/deep_runtime_module_tests/test_"),
+            "target": item["path"],
+            "exports": (
+                "load_deep_runtime_module",
+                "test_deep_runtime_module_contract",
+                "test_deep_runtime_module_smoke",
+                "smoke_test",
+            ),
+            "ok": item["ok"],
+        }
+        for item in deep_runtime_module_file_manifest()
+    )
+
+
 def component_package_module_implementation_contract(package_id: str) -> dict:
     """Return required exports and smoke tests for one component package module."""
     package = component_package_contract(package_id)
@@ -14554,6 +14605,8 @@ def form_designer_generation_smoke_audit(source: str = FORM_DESIGNER_SAMPLE_DSL)
     runtime_operation_module_test_artifacts = tuple(item["path"] for item in runtime_operation_module_test_file_manifest())
     compiler_runtime_module_artifacts = tuple(item["path"] for item in compiler_runtime_module_file_manifest())
     compiler_runtime_module_test_artifacts = tuple(item["path"] for item in compiler_runtime_module_test_file_manifest())
+    deep_runtime_module_artifacts = tuple(item["path"] for item in deep_runtime_module_file_manifest())
+    deep_runtime_module_test_artifacts = tuple(item["path"] for item in deep_runtime_module_test_file_manifest())
     required_artifacts = (
         "app/form_designer.py",
         "app/component_parity_runtime.py",
@@ -14592,6 +14645,8 @@ def form_designer_generation_smoke_audit(source: str = FORM_DESIGNER_SAMPLE_DSL)
         *runtime_operation_module_test_artifacts,
         *compiler_runtime_module_artifacts,
         *compiler_runtime_module_test_artifacts,
+        *deep_runtime_module_artifacts,
+        *deep_runtime_module_test_artifacts,
     )
     compile_artifacts = (
         "app/form_designer.py",
@@ -14630,6 +14685,8 @@ def form_designer_generation_smoke_audit(source: str = FORM_DESIGNER_SAMPLE_DSL)
         *runtime_operation_module_test_artifacts,
         *compiler_runtime_module_artifacts,
         *compiler_runtime_module_test_artifacts,
+        *deep_runtime_module_artifacts,
+        *deep_runtime_module_test_artifacts,
     )
 
     with tempfile.TemporaryDirectory(prefix="appgen-form-designer-smoke-") as tmp:
@@ -14802,7 +14859,9 @@ def form_designer_generation_smoke_audit(source: str = FORM_DESIGNER_SAMPLE_DSL)
             and len(runtime_operation_module_artifacts) == 6
             and len(runtime_operation_module_test_artifacts) == 6
             and len(compiler_runtime_module_artifacts) == 6
-            and len(compiler_runtime_module_test_artifacts) == 6,
+            and len(compiler_runtime_module_test_artifacts) == 6
+            and len(deep_runtime_module_artifacts) == 8
+            and len(deep_runtime_module_test_artifacts) == 8,
             "component_test_count": len(component_test_artifacts),
             "package_test_count": len(package_test_artifacts),
             "device_component_count": len(device_component_artifacts),
@@ -14823,6 +14882,8 @@ def form_designer_generation_smoke_audit(source: str = FORM_DESIGNER_SAMPLE_DSL)
             "runtime_operation_module_test_count": len(runtime_operation_module_test_artifacts),
             "compiler_runtime_module_count": len(compiler_runtime_module_artifacts),
             "compiler_runtime_module_test_count": len(compiler_runtime_module_test_artifacts),
+            "deep_runtime_module_count": len(deep_runtime_module_artifacts),
+            "deep_runtime_module_test_count": len(deep_runtime_module_test_artifacts),
             "component_count": len(component_artifacts),
             "package_count": len(package_artifacts),
         },
@@ -14999,6 +15060,8 @@ def form_designer_generation_smoke_audit(source: str = FORM_DESIGNER_SAMPLE_DSL)
                 "native_form_module_tests_ready",
                 "compiler_runtime_modules_ready",
                 "compiler_runtime_module_tests_ready",
+                "deep_runtime_modules_ready",
+                "deep_runtime_module_tests_ready",
                 "runtime_load_replay",
             }
             <= set(native_form_runtime_smoke["checks"]),

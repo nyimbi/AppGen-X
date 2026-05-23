@@ -1762,6 +1762,7 @@ def write_form_designer_file(output_dir, schema: AppSchema):
     write_native_form_module_files(output_dir)
     write_runtime_operation_module_files(output_dir)
     write_compiler_runtime_module_files(output_dir)
+    write_deep_runtime_module_files(output_dir)
 
 
 DEVICE_API_COMPONENTS = (
@@ -1865,6 +1866,17 @@ COMPILER_RUNTIME_MODULES = (
     "incremental_compile_module",
     "diagnostic_mapping_module",
     "toolchain_adapter_module",
+)
+
+DEEP_RUNTIME_MODULES = (
+    "package_target_matrix_module",
+    "language_frontend_module",
+    "static_analysis_module",
+    "compiler_recovery_module",
+    "form_stream_schema_module",
+    "stream_migration_module",
+    "debug_symbol_module",
+    "runtime_memory_model_module",
 )
 
 
@@ -2111,6 +2123,26 @@ def write_compiler_runtime_module_files(output_dir):
         )
         (test_dir / f"test_{module_name}.py").write_text(
             _compiler_runtime_module_test_text(module_name),
+            encoding="utf-8",
+        )
+
+
+def write_deep_runtime_module_files(output_dir):
+    """Write generated deep native runtime modules and smoke tests."""
+    output_dir = Path(output_dir)
+    module_dir = output_dir / "deep_runtime_modules"
+    test_dir = output_dir / "deep_runtime_module_tests"
+    module_dir.mkdir(parents=True, exist_ok=True)
+    test_dir.mkdir(parents=True, exist_ok=True)
+    (module_dir / "__init__.py").write_text(_deep_runtime_module_init_text(), encoding="utf-8")
+    (test_dir / "__init__.py").write_text(_deep_runtime_module_test_init_text(), encoding="utf-8")
+    for module_name in DEEP_RUNTIME_MODULES:
+        (module_dir / f"{module_name}.py").write_text(
+            _deep_runtime_module_text(module_name),
+            encoding="utf-8",
+        )
+        (test_dir / f"test_{module_name}.py").write_text(
+            _deep_runtime_module_test_text(module_name),
             encoding="utf-8",
         )
 
@@ -2866,6 +2898,221 @@ def smoke_test(table_name=None):
         "table": table_name,
         "ok": True,
         "tests": ("test_compiler_runtime_module_contract", "test_compiler_runtime_module_smoke"),
+    }}
+'''
+
+
+def _deep_runtime_surface(module_name: str) -> tuple[str, str]:
+    return {
+        "package_target_matrix_module": ("package_target_matrix", "package_target_matrix"),
+        "language_frontend_module": ("language_frontend", "language_frontend"),
+        "static_analysis_module": ("static_analysis", "static_analysis"),
+        "compiler_recovery_module": ("compiler_recovery", "compiler_recovery"),
+        "form_stream_schema_module": ("form_stream_schema", "form_stream_schema"),
+        "stream_migration_module": ("stream_migration", "stream_migration"),
+        "debug_symbol_module": ("debug_symbols", "debug_symbols"),
+        "runtime_memory_model_module": ("runtime_memory_model", "runtime_memory_model"),
+    }[module_name]
+
+
+def _deep_runtime_module_init_text() -> str:
+    return (
+        '"""Generated deep native runtime modules."""\n\n'
+        f"DEEP_RUNTIME_MODULES = {DEEP_RUNTIME_MODULES!r}\n"
+    )
+
+
+def _deep_runtime_module_test_init_text() -> str:
+    modules = tuple(f"test_{name}" for name in DEEP_RUNTIME_MODULES)
+    return (
+        '"""Generated deep native runtime module tests."""\n\n'
+        f"DEEP_RUNTIME_MODULE_TESTS = {modules!r}\n"
+    )
+
+
+def _deep_runtime_module_text(module_name: str) -> str:
+    surface, workbench_key = _deep_runtime_surface(module_name)
+    return f'''"""Generated deep native runtime module for {surface}."""
+
+from __future__ import annotations
+
+import importlib.util
+from pathlib import Path
+
+
+MODULE = {module_name!r}
+SURFACE = {surface!r}
+WORKBENCH_KEY = {workbench_key!r}
+EXPECTED_EXPORTS = (
+    "module_contract",
+    "runtime_manifest",
+    "run_runtime_surface",
+    "runtime_workbench",
+    "smoke_test",
+)
+
+
+def _load_form_designer():
+    module_path = Path(__file__).resolve().parents[1] / "form_designer.py"
+    spec = importlib.util.spec_from_file_location(f"generated_deep_runtime_{{MODULE}}_designer", module_path)
+    module = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(module)
+    return module
+
+
+def module_contract():
+    """Return this generated deep runtime module's export contract."""
+    available = tuple(name for name in EXPECTED_EXPORTS if name in globals())
+    return {{
+        "format": "appgen.deep-runtime-module-contract.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "ok": set(EXPECTED_EXPORTS) <= set(available),
+        "exports": available,
+        "expected_exports": EXPECTED_EXPORTS,
+        "side_effects": (),
+    }}
+
+
+def runtime_workbench(table_name=None):
+    """Return the aggregate native runtime workbench."""
+    return _load_form_designer().pascal_runtime_workbench(table_name)
+
+
+def runtime_manifest(table_name=None):
+    """Return this deep runtime surface manifest."""
+    workbench = runtime_workbench(table_name)
+    payload = workbench[WORKBENCH_KEY]
+    return {{
+        "format": "appgen.deep-runtime-module-manifest.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "table": table_name,
+        "ok": workbench["ok"] and bool(payload) and not payload.get("side_effects", ()),
+        "payload": payload,
+        "workbench_checks": tuple(check["id"] for check in workbench["checks"]),
+        "side_effects": (),
+    }}
+
+
+def run_runtime_surface(table_name=None):
+    """Replay this deep runtime surface without host toolchain execution."""
+    manifest = runtime_manifest(table_name)
+    payload = manifest["payload"]
+    surface_ok = bool(payload)
+    if SURFACE == "package_target_matrix":
+        surface_ok = payload["ok"] and all("resource_bundle" in item["artifacts"] for item in payload["targets"])
+    elif SURFACE == "language_frontend":
+        surface_ok = payload["ok"] and "symbol_table_reviewable" in payload["guards"]
+    elif SURFACE == "static_analysis":
+        surface_ok = payload["ok"] and all(edge["assignable"] for edge in payload["type_edges"])
+    elif SURFACE == "compiler_recovery":
+        surface_ok = payload["ok"] and any(item["blocks_emit"] for item in payload["scenarios"])
+    elif SURFACE == "form_stream_schema":
+        surface_ok = payload["ok"] and all(item["streamed"] for item in payload["schema"])
+    elif SURFACE == "stream_migration":
+        surface_ok = payload["ok"] and all(item["rollback"] for item in payload["migrations"])
+    elif SURFACE == "debug_symbols":
+        surface_ok = payload["ok"] and all("source_span" in item for item in payload["symbols"])
+    elif SURFACE == "runtime_memory_model":
+        surface_ok = payload["ok"] and all(item["release"] for item in payload["ownership"])
+    return {{
+        "format": "appgen.deep-runtime-module-result.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "table": table_name,
+        "ok": manifest["ok"] and surface_ok and not manifest["side_effects"],
+        "payload": payload,
+        "side_effects": (),
+    }}
+
+
+def smoke_test(table_name=None):
+    """Run side-effect-free checks for this generated deep runtime module."""
+    contract = module_contract()
+    manifest = runtime_manifest(table_name)
+    result = run_runtime_surface(table_name)
+    workbench = runtime_workbench(table_name)
+    return {{
+        "format": "appgen.deep-runtime-module-smoke-test.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "ok": contract["ok"]
+        and manifest["ok"]
+        and result["ok"]
+        and workbench["ok"]
+        and not manifest["side_effects"]
+        and not result["side_effects"],
+        "checks": (
+            "module_contract_resolves",
+            "runtime_manifest_resolves",
+            "runtime_surface_replays",
+            "runtime_workbench_ok",
+            "no_side_effects",
+        ),
+    }}
+'''
+
+
+def _deep_runtime_module_test_text(module_name: str) -> str:
+    surface, _ = _deep_runtime_surface(module_name)
+    return f'''"""Generated tests for the {surface} deep runtime module."""
+
+from __future__ import annotations
+
+import importlib.util
+from pathlib import Path
+
+
+MODULE = {module_name!r}
+SURFACE = {surface!r}
+
+
+def load_deep_runtime_module():
+    """Load the generated deep runtime module without app installation."""
+    module_path = Path(__file__).resolve().parents[1] / "deep_runtime_modules" / f"{{MODULE}}.py"
+    spec = importlib.util.spec_from_file_location(f"generated_deep_runtime_module_{{MODULE}}", module_path)
+    module = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(module)
+    return module
+
+
+def test_deep_runtime_module_contract():
+    """Assert the generated deep runtime module exposes its contract."""
+    module = load_deep_runtime_module()
+    contract = module.module_contract()
+    assert contract["module"] == MODULE
+    assert contract["surface"] == SURFACE
+    assert contract["ok"] is True
+    assert all(hasattr(module, name) for name in contract["expected_exports"])
+
+
+def _assert_deep_runtime_module_smoke(table_name=None):
+    module = load_deep_runtime_module()
+    result = module.smoke_test(table_name)
+    assert result["ok"] is True
+    assert result["module"] == MODULE
+    assert result["surface"] == SURFACE
+
+
+def test_deep_runtime_module_smoke():
+    """Assert the module's side-effect-free smoke test passes."""
+    _assert_deep_runtime_module_smoke()
+
+
+def smoke_test(table_name=None):
+    """Run this generated test module in a side-effect-free way."""
+    test_deep_runtime_module_contract()
+    _assert_deep_runtime_module_smoke(table_name)
+    return {{
+        "format": "appgen.deep-runtime-module-generated-test-smoke.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "table": table_name,
+        "ok": True,
+        "tests": ("test_deep_runtime_module_contract", "test_deep_runtime_module_smoke"),
     }}
 '''
 
@@ -6598,6 +6845,111 @@ def compiler_runtime_module_test_file_manifest(table_name=None):
     }
 
 
+def deep_runtime_module_file_manifest(table_name=None):
+    """Return file-level evidence for generated deep runtime modules."""
+    module_map = {
+        "package_target_matrix_module": "package_target_matrix",
+        "language_frontend_module": "language_frontend",
+        "static_analysis_module": "static_analysis",
+        "compiler_recovery_module": "compiler_recovery",
+        "form_stream_schema_module": "form_stream_schema",
+        "stream_migration_module": "stream_migration",
+        "debug_symbol_module": "debug_symbols",
+        "runtime_memory_model_module": "runtime_memory_model",
+    }
+    required_exports = (
+        "module_contract",
+        "runtime_manifest",
+        "run_runtime_surface",
+        "runtime_workbench",
+        "smoke_test",
+    )
+    module_dir = Path(__file__).with_name("deep_runtime_modules")
+    entries = []
+    for module_name, surface in module_map.items():
+        module_path = module_dir / f"{module_name}.py"
+        exports = ()
+        contract_ok = False
+        smoke_ok = False
+        if module_path.exists():
+            module = _load_generated_module(module_path, f"generated_deep_runtime_module_{module_name}")
+            exports = tuple(name for name in required_exports if hasattr(module, name))
+            contract = module.module_contract()
+            smoke = module.smoke_test(table_name)
+            contract_ok = contract["ok"] and contract["module"] == module_name and contract["surface"] == surface
+            smoke_ok = smoke["ok"] and smoke["module"] == module_name and smoke["surface"] == surface
+        entries.append(
+            {
+                "module": module_name,
+                "surface": surface,
+                "path": f"app/deep_runtime_modules/{module_name}.py",
+                "exists": module_path.exists(),
+                "exports": exports,
+                "expected_exports": required_exports,
+                "contract_ok": contract_ok,
+                "smoke_ok": smoke_ok,
+            }
+        )
+    return {
+        "format": "appgen.generated-deep-runtime-module-file-manifest.v1",
+        "ok": bool(entries)
+        and all(item["exists"] and item["contract_ok"] and item["smoke_ok"] and set(item["expected_exports"]) <= set(item["exports"]) for item in entries),
+        "modules": tuple(entries),
+        "guards": ("one_file_per_deep_runtime_surface", "declared_exports_present", "deep_runtime_module_smoke_replays"),
+        "side_effects": (),
+    }
+
+
+def deep_runtime_module_test_file_manifest(table_name=None):
+    """Return file-level evidence for generated deep runtime module tests."""
+    module_map = {
+        "package_target_matrix_module": "package_target_matrix",
+        "language_frontend_module": "language_frontend",
+        "static_analysis_module": "static_analysis",
+        "compiler_recovery_module": "compiler_recovery",
+        "form_stream_schema_module": "form_stream_schema",
+        "stream_migration_module": "stream_migration",
+        "debug_symbol_module": "debug_symbols",
+        "runtime_memory_model_module": "runtime_memory_model",
+    }
+    required_exports = (
+        "load_deep_runtime_module",
+        "test_deep_runtime_module_contract",
+        "test_deep_runtime_module_smoke",
+        "smoke_test",
+    )
+    test_dir = Path(__file__).with_name("deep_runtime_module_tests")
+    entries = []
+    for module_name, surface in module_map.items():
+        module_path = test_dir / f"test_{module_name}.py"
+        exports = ()
+        smoke_ok = False
+        if module_path.exists():
+            module = _load_generated_module(module_path, f"generated_deep_runtime_module_test_{module_name}")
+            exports = tuple(name for name in required_exports if hasattr(module, name))
+            smoke = module.smoke_test(table_name)
+            smoke_ok = smoke["ok"] and smoke["module"] == module_name and smoke["surface"] == surface
+        entries.append(
+            {
+                "module": module_name,
+                "surface": surface,
+                "path": f"app/deep_runtime_module_tests/test_{module_name}.py",
+                "exists": module_path.exists(),
+                "exports": exports,
+                "required_exports": required_exports,
+                "smoke_ok": smoke_ok,
+            }
+        )
+    return {
+        "format": "appgen.generated-deep-runtime-module-test-file-manifest.v1",
+        "ok": bool(entries) and all(item["exists"] and item["smoke_ok"] and set(item["required_exports"]) <= set(item["exports"]) for item in entries),
+        "tests": tuple(entries),
+        "required_exports": required_exports,
+        "guards": ("one_test_file_per_deep_runtime_surface", "contract_and_smoke_tests_exported"),
+        "side_effects": (),
+    }
+
+
 def native_form_runtime_manifest(table_name=None):
     """Return form stream, unit, resource, compile, and load replay evidence."""
     form_designer = _load_form_designer()
@@ -6679,6 +7031,8 @@ def validate_native_form_runtime(table_name=None):
     module_tests = native_form_module_test_file_manifest(table_name)
     compiler_modules = compiler_runtime_module_file_manifest(table_name)
     compiler_module_tests = compiler_runtime_module_test_file_manifest(table_name)
+    deep_modules = deep_runtime_module_file_manifest(table_name)
+    deep_module_tests = deep_runtime_module_test_file_manifest(table_name)
     checks = (
         {"id": "manifest_ok", "ok": manifest["ok"]},
         {"id": "stream_formats_supported", "ok": {"text-dfm", "binary-dfm", "json-form-model"} <= set(manifest["streaming"]["stream_formats"])},
@@ -6692,6 +7046,8 @@ def validate_native_form_runtime(table_name=None):
         {"id": "native_form_module_tests_ready", "ok": module_tests["ok"] and not module_tests["side_effects"]},
         {"id": "compiler_runtime_modules_ready", "ok": compiler_modules["ok"] and not compiler_modules["side_effects"]},
         {"id": "compiler_runtime_module_tests_ready", "ok": compiler_module_tests["ok"] and not compiler_module_tests["side_effects"]},
+        {"id": "deep_runtime_modules_ready", "ok": deep_modules["ok"] and not deep_modules["side_effects"]},
+        {"id": "deep_runtime_module_tests_ready", "ok": deep_module_tests["ok"] and not deep_module_tests["side_effects"]},
         {"id": "runtime_load_replay", "ok": replay["ok"] and not replay["side_effects"]},
     )
     return {
@@ -6703,6 +7059,8 @@ def validate_native_form_runtime(table_name=None):
         "module_tests": module_tests,
         "compiler_modules": compiler_modules,
         "compiler_module_tests": compiler_module_tests,
+        "deep_modules": deep_modules,
+        "deep_module_tests": deep_module_tests,
         "replay": replay,
         "blocking_gaps": tuple(check for check in checks if not check["ok"]),
     }

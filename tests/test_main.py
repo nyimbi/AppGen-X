@@ -11443,6 +11443,8 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "native_form_module_tests_ready",
         "compiler_runtime_modules_ready",
         "compiler_runtime_module_tests_ready",
+        "deep_runtime_modules_ready",
+        "deep_runtime_module_tests_ready",
         "runtime_load_replay",
     } <= set(native_runtime_smoke["checks"])
     native_form_module_files = native_runtime.native_form_module_file_manifest("Book")
@@ -11506,6 +11508,41 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         test_path = output_dir / item["path"].replace("app/", "")
         py_compile.compile(str(test_path), doraise=True)
         module = _load_module(test_path, f"generated_compiler_runtime_module_test_{item['module']}")
+        assert module.smoke_test("Book")["ok"] is True
+    deep_runtime_module_files = native_runtime.deep_runtime_module_file_manifest("Book")
+    deep_runtime_module_tests = native_runtime.deep_runtime_module_test_file_manifest("Book")
+    assert deep_runtime_module_files["ok"] is True
+    assert deep_runtime_module_tests["ok"] is True
+    assert {item["surface"] for item in deep_runtime_module_files["modules"]} == {
+        "package_target_matrix",
+        "language_frontend",
+        "static_analysis",
+        "compiler_recovery",
+        "form_stream_schema",
+        "stream_migration",
+        "debug_symbols",
+        "runtime_memory_model",
+    }
+    assert {item["surface"] for item in deep_runtime_module_tests["tests"]} == {
+        "package_target_matrix",
+        "language_frontend",
+        "static_analysis",
+        "compiler_recovery",
+        "form_stream_schema",
+        "stream_migration",
+        "debug_symbols",
+        "runtime_memory_model",
+    }
+    for item in deep_runtime_module_files["modules"]:
+        module_path = output_dir / item["path"].replace("app/", "")
+        py_compile.compile(str(module_path), doraise=True)
+        module = _load_module(module_path, f"generated_deep_runtime_module_{item['module']}")
+        assert module.smoke_test("Book")["ok"] is True
+        assert module.module_contract()["ok"] is True
+    for item in deep_runtime_module_tests["tests"]:
+        test_path = output_dir / item["path"].replace("app/", "")
+        py_compile.compile(str(test_path), doraise=True)
+        module = _load_module(test_path, f"generated_deep_runtime_module_test_{item['module']}")
         assert module.smoke_test("Book")["ok"] is True
     native_replay = native_runtime.replay_native_form_runtime("Book")
     assert native_replay["ok"] is True
