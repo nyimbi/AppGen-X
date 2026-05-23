@@ -848,6 +848,10 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     assert {"Grid", "TreeView", "MainMenu", "PopupMenu", "CameraView", "Viewport3D"} <= {
         item["component"] for item in palette
     }
+    assert all(item["icon"].startswith("fa-") for item in palette)
+    assert {"fa-table", "fa-keyboard-o", "fa-cube", "fa-database"} <= {
+        item["icon"] for item in palette
+    }
     assert REQUESTED_COMPONENT_ANALOGS <= {item["component"] for item in palette}
     analog_matrix = component_analog_matrix()
     assert {item["source"] for item in analog_matrix} == REQUESTED_COMPONENT_ANALOG_SOURCES
@@ -9560,6 +9564,10 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert view_composition.view_composition_release_gate({"app/view_composition.py"})["ok"] is False
     assert any(item["type"] == "TextBox" for item in form_designer.component_palette())
     assert any(item["type"] == "DateTimePicker" for item in form_designer.component_palette())
+    assert all(item["icon"].startswith("fa-") for item in form_designer.component_palette())
+    assert {"fa-table", "fa-keyboard-o", "fa-cube", "fa-database"} <= {
+        item["icon"] for item in form_designer.component_palette()
+    }
     assert form_designer.field_component("Author", "birth_date")["type"] == "DatePicker"
     assert form_designer.field_component("Author", "last_seen_at")["type"] == "DateTimePicker"
     assert form_designer.field_component("Author", "appointment_time")["type"] == "TimePicker"
@@ -9586,6 +9594,9 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert suggestion["component"]["y"] > max(component["y"] for component in design["components"])
     assert "getBoundingClientRect" in (output_dir / "templates" / "appgen_form_designer.html").read_text()
     assert "Inspector" in (output_dir / "templates" / "appgen_form_designer.html").read_text()
+    assert "agfd-icon" in (output_dir / "templates" / "appgen_form_designer.html").read_text()
+    assert "data-component-icon" in (output_dir / "templates" / "appgen_form_designer.html").read_text()
+    assert "agfd-node" in (output_dir / "templates" / "appgen_form_designer.html").read_text()
     assert "Workbench JSON" in (output_dir / "templates" / "appgen_form_designer.html").read_text()
     assert "RAD Parity JSON" in (output_dir / "templates" / "appgen_form_designer.html").read_text()
     assert "Third-party Components JSON" in (output_dir / "templates" / "appgen_form_designer.html").read_text()

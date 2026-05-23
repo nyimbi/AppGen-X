@@ -6417,18 +6417,37 @@ def write_form_designer_template(output_dir):
         """{% extends "appbuilder/base.html" %}
 {% block content %}
 <style>
-  .agfd-wrap { margin: 18px 0 32px; }
-  .agfd-head { display: flex; justify-content: space-between; gap: 16px; align-items: flex-start; margin-bottom: 18px; }
-  .agfd-title { margin: 0; font-size: 28px; font-weight: 700; color: #14213d; }
-  .agfd-note { color: #52616b; max-width: 820px; line-height: 1.5; }
-  .agfd-shell { display: grid; grid-template-columns: 240px minmax(0, 1fr); gap: 14px; }
-  .agfd-panel, .agfd-canvas { border: 1px solid #d9e2ec; background: #fff; padding: 14px; }
-  .agfd-tool { display: block; width: 100%; border: 1px solid #cbd5e1; background: #f8fafc; padding: 8px; margin-bottom: 8px; text-align: left; cursor: grab; }
-  .agfd-grid { min-height: 360px; background-image: linear-gradient(#edf2f7 1px, transparent 1px), linear-gradient(90deg, #edf2f7 1px, transparent 1px); background-size: 32px 32px; }
-  .agfd-form { border: 1px dashed #94a3b8; min-height: 160px; margin-bottom: 12px; padding: 10px; }
-  .agfd-chip { display: inline-block; border: 1px solid #cbd5e1; padding: 4px 7px; margin: 3px; background: #fff; }
-  .agfd-props { border-top: 1px solid #d9e2ec; margin-top: 12px; padding-top: 12px; }
-  @media (max-width: 860px) { .agfd-head, .agfd-shell { display: block; } .agfd-panel { margin-bottom: 12px; } }
+  .agfd-wrap { margin: 18px 0 32px; color: #1f2937; }
+  .agfd-head { display: grid; grid-template-columns: minmax(260px, 1fr) auto; gap: 18px; align-items: start; margin-bottom: 14px; }
+  .agfd-title { margin: 0; font-size: 26px; font-weight: 700; color: #14213d; letter-spacing: 0; }
+  .agfd-note { color: #52616b; max-width: 880px; line-height: 1.45; margin: 6px 0 0; }
+  .agfd-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 6px; max-width: 620px; }
+  .agfd-actions .btn { border-radius: 4px; padding: 6px 9px; }
+  .agfd-shell { display: grid; grid-template-columns: 288px minmax(420px, 1fr) 300px; gap: 12px; align-items: start; }
+  .agfd-panel, .agfd-canvas, .agfd-inspector { border: 1px solid #d7dee8; background: #fff; border-radius: 6px; box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05); }
+  .agfd-panel, .agfd-inspector { padding: 12px; }
+  .agfd-canvas { padding: 12px; min-width: 0; }
+  .agfd-pane-title { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 0 0 10px; color: #243b53; font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 0; }
+  .agfd-count { color: #64748b; font-weight: 600; }
+  .agfd-group { border-top: 1px solid #e5ebf2; padding-top: 9px; margin-top: 9px; }
+  .agfd-group:first-of-type { border-top: 0; padding-top: 0; margin-top: 0; }
+  .agfd-group-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; color: #52616b; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0; }
+  .agfd-tool { display: grid; grid-template-columns: 30px minmax(0, 1fr) auto; gap: 8px; align-items: center; width: 100%; border: 1px solid #d7dee8; border-radius: 6px; background: #f8fafc; padding: 7px; margin-bottom: 6px; text-align: left; cursor: grab; }
+  .agfd-tool:hover, .agfd-tool:focus { border-color: #6d8fbe; background: #eef6ff; outline: 2px solid transparent; }
+  .agfd-icon { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 5px; background: #e7eef8; color: #2f6f5e; }
+  .agfd-tool-label { display: block; color: #102a43; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .agfd-tool-meta { display: block; color: #64748b; font-size: 11px; text-transform: capitalize; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .agfd-size { color: #64748b; font-size: 11px; font-weight: 700; }
+  .agfd-grid { min-height: 430px; background-color: #fbfdff; background-image: linear-gradient(#e8eef6 1px, transparent 1px), linear-gradient(90deg, #e8eef6 1px, transparent 1px); background-size: 32px 32px; }
+  .agfd-form { position: relative; border: 1px dashed #94a3b8; border-radius: 6px; min-height: 190px; margin-bottom: 12px; padding: 10px; overflow: hidden; }
+  .agfd-form h3 { margin: 0 0 8px; color: #14213d; font-size: 18px; }
+  .agfd-chip { display: inline-block; border: 1px solid #cbd5e1; border-radius: 999px; padding: 3px 8px; margin: 2px 4px 8px 0; background: #fff; color: #52616b; font-size: 12px; font-weight: 700; }
+  .agfd-node { position: absolute; display: flex; align-items: center; gap: 7px; min-width: 118px; max-width: 190px; height: 34px; border: 1px solid #6d8fbe; border-radius: 5px; background: #fff; color: #102a43; padding: 5px 8px; box-shadow: 0 3px 8px rgba(15, 23, 42, 0.12); overflow: hidden; }
+  .agfd-node span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .agfd-props { min-height: 170px; max-height: 360px; overflow: auto; border: 1px solid #e5ebf2; border-radius: 5px; background: #f8fafc; padding: 8px; font-size: 12px; }
+  .agfd-output { max-height: 260px; overflow: auto; border: 1px solid #e5ebf2; border-radius: 5px; background: #0f172a; color: #e2e8f0; padding: 10px; font-size: 12px; }
+  @media (max-width: 1120px) { .agfd-shell { grid-template-columns: 260px minmax(0, 1fr); } .agfd-inspector { grid-column: 1 / -1; } }
+  @media (max-width: 760px) { .agfd-head, .agfd-shell { display: block; } .agfd-actions { justify-content: flex-start; margin-top: 10px; } .agfd-panel, .agfd-canvas, .agfd-inspector { margin-bottom: 12px; } }
 </style>
 <section class="agfd-wrap">
   <div class="agfd-head">
@@ -6436,7 +6455,7 @@ def write_form_designer_template(output_dir):
       <h1 class="agfd-title">Form Designer</h1>
       <p class="agfd-note">RAD-style drag-and-drop form canvas with component palette, stable drop proposals, and generated form JSON.</p>
     </div>
-    <div>
+    <div class="agfd-actions" aria-label="Form designer evidence">
       <a class="btn btn-default" href="{{ url_for('FormDesignerView.forms_json') }}">Forms JSON</a>
       <a class="btn btn-default" href="{{ url_for('FormDesignerView.workbench_json') }}">Workbench JSON</a>
       <a class="btn btn-default" href="{{ url_for('FormDesignerView.rad_parity_json') }}">RAD Parity JSON</a>
@@ -6452,23 +6471,37 @@ def write_form_designer_template(output_dir):
   </div>
   <div class="agfd-shell">
     <aside class="agfd-panel">
-      {% for component in palette %}
-      <button class="agfd-tool" draggable="true" data-component="{{ component.type }}">{{ component.label }}</button>
+      <h2 class="agfd-pane-title">Toolbox <span class="agfd-count">{{ palette|length }}</span></h2>
+      {% for group in palette|groupby('category') %}
+      <section class="agfd-group">
+        <div class="agfd-group-head"><span>{{ group.grouper|replace('_', ' ') }}</span><span>{{ group.list|length }}</span></div>
+        {% for component in group.list %}
+        <button class="agfd-tool" draggable="true" data-component="{{ component.type }}" data-component-label="{{ component.label }}" data-component-icon="{{ component.icon }}" title="{{ component.label }}">
+          <span class="agfd-icon"><i class="fa {{ component.icon }}" aria-hidden="true"></i></span>
+          <span>
+            <span class="agfd-tool-label">{{ component.label }}</span>
+            <span class="agfd-tool-meta">{{ component.category|replace('_', ' ') }}</span>
+          </span>
+          <span class="agfd-size">{{ component.defaults.w }}x{{ component.defaults.h }}</span>
+        </button>
+        {% endfor %}
+      </section>
       {% endfor %}
-      <div class="agfd-props">
-        <strong>Inspector</strong>
-        <pre id="afd-props"></pre>
-      </div>
     </aside>
     <main class="agfd-canvas">
+      <h2 class="agfd-pane-title">Design Surface <span class="agfd-count">32px grid</span></h2>
       {% for form in forms %}
       <section class="agfd-form agfd-grid" data-table="{{ form.table }}" data-cell-size="32">
         <h3>{{ form.label }}</h3>
         <span class="agfd-chip">{{ form.field_count }} fields</span>
       </section>
       {% endfor %}
-      <pre id="afd-output"></pre>
+      <pre id="afd-output" class="agfd-output"></pre>
     </main>
+    <aside class="agfd-inspector">
+      <h2 class="agfd-pane-title">Inspector <span class="agfd-count">Selection</span></h2>
+      <pre id="afd-props" class="agfd-props"></pre>
+    </aside>
   </div>
 </section>
 <script>
@@ -6494,6 +6527,13 @@ def write_form_designer_template(output_dir):
       const proposal = await response.json();
       document.getElementById('afd-output').textContent = JSON.stringify(proposal, null, 2);
       document.getElementById('afd-props').textContent = JSON.stringify(proposal.properties || [], null, 2);
+      const tool = document.querySelector(`[data-component="${draggedComponent}"]`);
+      const node = document.createElement('div');
+      node.className = 'agfd-node';
+      node.style.left = `${Math.max(8, x * cellSize)}px`;
+      node.style.top = `${Math.max(48, y * cellSize)}px`;
+      node.innerHTML = `<i class="fa ${(tool && tool.dataset.componentIcon) || 'fa-puzzle-piece'}" aria-hidden="true"></i><span>${(tool && tool.dataset.componentLabel) || draggedComponent}</span>`;
+      canvas.appendChild(node);
     });
   });
 </script>
@@ -25652,10 +25692,48 @@ CANVAS_COLUMNS = 12
 MIN_CANVAS_ROWS = 12
 GRID_SIZE = 8
 
+COMPONENT_ICON_OVERRIDES = dict(
+    Label="fa-font", TextBox="fa-keyboard-o", EmailInput="fa-envelope-o", TextArea="fa-align-left",
+    DatePicker="fa-calendar", DateTimePicker="fa-calendar", TimePicker="fa-clock-o", NumberInput="fa-hashtag",
+    ImageUpload="fa-image", FileUpload="fa-upload", RelationshipPicker="fa-link", Button="fa-hand-pointer-o",
+    Section="fa-window-maximize", Tabs="fa-columns", Panel="fa-window-maximize", GroupBox="fa-object-group",
+    RadioGroup="fa-dot-circle-o", RadioButton="fa-dot-circle-o", ListBox="fa-th-list", ListView="fa-list-alt",
+    TreeView="fa-sitemap", Grid="fa-table", StringGrid="fa-table", PageControl="fa-columns", Layout="fa-th-large",
+    ScrollBox="fa-arrows-v", FlowLayout="fa-exchange", GridLayout="fa-th", VerticalBoxLayout="fa-bars",
+    HorizontalBoxLayout="fa-ellipsis-h", MainMenu="fa-bars", PopupMenu="fa-mouse-pointer", ToolBar="fa-wrench",
+    ActionList="fa-bolt", Image="fa-image", Shape="fa-square-o", PathShape="fa-code-fork", Rectangle="fa-square",
+    Ellipse="fa-circle-o", Line="fa-minus", Bitmap="fa-picture-o", Chart="fa-bar-chart",
+    ReportViewer="fa-file-text-o", WebBrowser="fa-globe", Timer="fa-clock-o", DataSource="fa-database",
+    BindingSource="fa-random", RESTClient="fa-cloud", CameraView="fa-camera", LocationSensor="fa-location-arrow",
+    MotionSensor="fa-compass", OrientationSensor="fa-compass", NotificationCenter="fa-bell", PhotoPicker="fa-picture-o",
+    BiometricAuth="fa-lock", ContactsPicker="fa-address-book-o", CalendarEvents="fa-calendar-check-o",
+    SecureStore="fa-shield", PushClient="fa-paper-plane", BluetoothClient="fa-bluetooth-b", NfcReader="fa-wifi",
+    FilePicker="fa-folder-open", ShareSheet="fa-share-alt", BackgroundTask="fa-refresh", Animation="fa-play",
+    FloatAnimation="fa-arrows-h", ColorAnimation="fa-paint-brush", PathAnimation="fa-road", Effect="fa-magic",
+    StyleBook="fa-book", StyleManager="fa-sliders", GestureManager="fa-hand-paper-o", Gesture="fa-hand-pointer-o",
+    Viewport3D="fa-cube", Dummy3D="fa-crosshairs", Camera3D="fa-video-camera", Light3D="fa-lightbulb-o",
+    Mesh3D="fa-cubes", DatabaseConnection="fa-plug", TableAdapter="fa-table", ClientDataSet="fa-database",
+)
+
+CATEGORY_ICON_DEFAULTS = dict(
+    action="fa-bolt", analytics="fa-bar-chart", calendar="fa-calendar", choice="fa-check-square-o",
+    container="fa-window-maximize", data="fa-table", data_access="fa-database", display="fa-font",
+    effects="fa-magic", gesture="fa-hand-paper-o", graphics="fa-paint-brush", input="fa-keyboard-o",
+    integration="fa-cloud", media="fa-image", menu="fa-bars", mobile="fa-mobile", navigation="fa-sitemap",
+    nonvisual="fa-cog", relationship="fa-link", reports="fa-file-text-o", theme="fa-paint-brush",
+    three_d="fa-cube",
+)
+
+
+def _component_icon(component_type):
+    """Return the icon class used by generated IDE palettes."""
+    category = _component_category(component_type)
+    return COMPONENT_ICON_OVERRIDES.get(component_type, CATEGORY_ICON_DEFAULTS.get(category, "fa-puzzle-piece"))
+
 
 def component_palette():
     """Return draggable RAD-style form components."""
-    return PALETTE
+    return tuple(dict(item, category=_component_category(item["type"]), icon=_component_icon(item["type"])) for item in PALETTE)
 
 
 def component_analog_matrix():

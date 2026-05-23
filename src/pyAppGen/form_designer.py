@@ -494,6 +494,119 @@ COMPONENTS = {
     },
 }
 
+COMPONENT_ICON_OVERRIDES = dict(
+    Label="fa-font",
+    TextBox="fa-keyboard-o",
+    EmailInput="fa-envelope-o",
+    TextArea="fa-align-left",
+    DatePicker="fa-calendar",
+    Lookup="fa-search",
+    Select="fa-list",
+    Checkbox="fa-check-square-o",
+    FileUpload="fa-upload",
+    Button="fa-hand-pointer-o",
+    GroupBox="fa-object-group",
+    RadioGroup="fa-dot-circle-o",
+    RadioButton="fa-dot-circle-o",
+    ListBox="fa-th-list",
+    ListView="fa-list-alt",
+    TreeView="fa-sitemap",
+    Grid="fa-table",
+    StringGrid="fa-table",
+    PageControl="fa-columns",
+    ScrollBox="fa-arrows-v",
+    FlowLayout="fa-exchange",
+    GridLayout="fa-th",
+    VerticalBoxLayout="fa-bars",
+    HorizontalBoxLayout="fa-ellipsis-h",
+    MainMenu="fa-bars",
+    PopupMenu="fa-mouse-pointer",
+    ToolBar="fa-wrench",
+    ActionList="fa-bolt",
+    Image="fa-image",
+    Shape="fa-square-o",
+    PathShape="fa-code-fork",
+    Rectangle="fa-square",
+    Ellipse="fa-circle-o",
+    Line="fa-minus",
+    Bitmap="fa-picture-o",
+    Chart="fa-bar-chart",
+    ReportViewer="fa-file-text-o",
+    WebBrowser="fa-globe",
+    Timer="fa-clock-o",
+    DataSource="fa-database",
+    BindingSource="fa-random",
+    RESTClient="fa-cloud",
+    CameraView="fa-camera",
+    LocationSensor="fa-location-arrow",
+    MotionSensor="fa-compass",
+    OrientationSensor="fa-compass",
+    NotificationCenter="fa-bell",
+    PhotoPicker="fa-picture-o",
+    BiometricAuth="fa-lock",
+    ContactsPicker="fa-address-book-o",
+    CalendarEvents="fa-calendar-check-o",
+    SecureStore="fa-shield",
+    PushClient="fa-paper-plane",
+    BluetoothClient="fa-bluetooth-b",
+    NfcReader="fa-wifi",
+    FilePicker="fa-folder-open",
+    ShareSheet="fa-share-alt",
+    BackgroundTask="fa-refresh",
+    Animation="fa-play",
+    FloatAnimation="fa-arrows-h",
+    ColorAnimation="fa-paint-brush",
+    PathAnimation="fa-road",
+    Effect="fa-magic",
+    StyleBook="fa-book",
+    StyleManager="fa-sliders",
+    GestureManager="fa-hand-paper-o",
+    Gesture="fa-hand-pointer-o",
+    Viewport3D="fa-cube",
+    Dummy3D="fa-crosshairs",
+    Camera3D="fa-video-camera",
+    Light3D="fa-lightbulb-o",
+    Mesh3D="fa-cubes",
+    DatabaseConnection="fa-plug",
+    TableAdapter="fa-table",
+    ClientDataSet="fa-database",
+)
+
+CATEGORY_ICON_DEFAULTS = dict(
+    action="fa-bolt",
+    analytics="fa-bar-chart",
+    calendar="fa-calendar",
+    choice="fa-check-square-o",
+    container="fa-window-maximize",
+    data="fa-table",
+    data_access="fa-database",
+    display="fa-font",
+    effects="fa-magic",
+    gesture="fa-hand-paper-o",
+    graphics="fa-paint-brush",
+    input="fa-keyboard-o",
+    integration="fa-cloud",
+    media="fa-image",
+    menu="fa-bars",
+    mobile="fa-mobile",
+    navigation="fa-sitemap",
+    nonvisual="fa-cog",
+    relationship="fa-link",
+    reports="fa-file-text-o",
+    theme="fa-paint-brush",
+    three_d="fa-cube",
+)
+
+
+def component_icon(component_type: str) -> str:
+    """Return the icon class used by generated IDE palettes."""
+    spec = COMPONENTS.get(component_type, {})
+    return COMPONENT_ICON_OVERRIDES.get(
+        component_type,
+        CATEGORY_ICON_DEFAULTS.get(spec.get("category", "custom"), "fa-puzzle-piece"),
+    )
+
+
 COMPONENT_ANALOG_REQUIREMENTS = (
     {"group": "cross-target-ui", "source": "TButton", "analog": "Button"},
     {"group": "cross-target-ui", "source": "TEdit", "analog": "TextBox"},
@@ -650,7 +763,14 @@ RAD_PARITY_REQUIREMENTS = (
 
 def component_palette() -> tuple[dict, ...]:
     """Return draggable RAD-style form components."""
-    return tuple({"component": name, **spec} for name, spec in COMPONENTS.items())
+    return tuple(
+        {
+            "component": name,
+            "icon": component_icon(name),
+            **spec,
+        }
+        for name, spec in COMPONENTS.items()
+    )
 
 
 def component_analog_matrix() -> tuple[dict, ...]:
