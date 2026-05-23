@@ -332,7 +332,10 @@ Generated apps include Studio contracts for:
   offline replay, runtime propagation, and rollback recovery.
 - A native data tooling workbench proves connection catalogs, query designer
   metadata, server method/client proxy generation, secured resource tooling,
-  embedded local database support, offline sync policies, and conflict guards.
+  embedded local database support, offline sync policies, conflict guards, and
+  an ordered publish transaction from connection profiling through schema/query
+  planning, dataset publishing, service artifacts, offline queues, telemetry,
+  runtime smoke, and no-write replay.
 - A mobile/native API workbench proves every listed device API has permission
   metadata, a design-time/runtime component adapter, simulator fixtures,
   platform targets, side-effect guards, and ordered designer transaction replay

@@ -31139,6 +31139,92 @@ def data_tooling_design_runtime_session_replay_contract():
     }}
 
 
+def data_tooling_publish_transaction_replay_contract():
+    """Replay one generated data tooling publish transaction from connection design to runtime smoke."""
+    connection = data_connection_test_contract()
+    driver_matrix = data_driver_capability_matrix()
+    pooling = data_connection_pool_contract()
+    failover = data_connection_failover_contract()
+    schema_browser = data_schema_browser_contract()
+    parameter_binding = data_parameter_binding_contract()
+    query_plan = data_query_plan_visualizer_contract()
+    sql_safety = data_sql_authoring_safety_contract()
+    schema_diff = data_schema_adapter_diff_contract()
+    migration = data_migration_rehearsal_contract()
+    checkpoints = data_schema_checkpoint_contract()
+    dataset_designer = data_dataset_designer_workflow_contract()
+    dataset_state = data_dataset_state_machine_contract()
+    lookup_editor = data_lookup_editor_pipeline_contract()
+    modules = data_module_generation_contract()
+    method_invocation = data_server_method_invocation_contract()
+    service_tests = data_service_contract_test_plan()
+    service_traces = data_service_invocation_trace_contract()
+    service_security = data_service_security_contract()
+    service_versioning = data_service_versioning_contract()
+    resource_publish = data_resource_publish_contract()
+    telemetry = data_service_telemetry_contract()
+    local_maintenance = local_database_maintenance_contract()
+    backup_restore = local_backup_restore_verification_contract()
+    offline_integrity = data_offline_queue_integrity_contract()
+    offline_replay = data_offline_replay_contract()
+    conflict_review = offline_conflict_review_contract()
+    lineage = data_change_capture_lineage_contract()
+    runtime_replay = data_tooling_runtime_replay_contract()
+    module_smoke = data_module_runtime_smoke_contract()
+    replication = data_replication_monitor_contract()
+    state = {{
+        "connections": len(driver_matrix["rows"]),
+        "schema_objects": len(schema_browser["objects"]),
+        "query_plan_nodes": len(query_plan["plan_nodes"]),
+        "dataset_operations": len(dataset_designer["operations"]),
+        "lookup_editors": len(lookup_editor["editors"]),
+        "service_artifacts": len(modules["artifacts"]),
+        "service_traces": len(service_traces["traces"]),
+        "offline_entries": len(offline_integrity["entries"]),
+        "conflict_strategies": len(conflict_review["strategies"]),
+        "telemetry_signals": sum(len(item["signals"]) for item in telemetry["telemetry"]),
+        "runtime_steps": len(runtime_replay["trace"]),
+        "module_smokes": len(module_smoke["smoke_tests"]),
+        "side_effects": (),
+    }}
+    replay = (
+        {{"phase": "profile_connections", "pipeline": connection["steps"] + pooling["guards"] + failover["guards"], "ok": connection["ok"] and connection["steps"][-1] == "rollback_test_transaction" and driver_matrix["ok"] and pooling["ok"] and failover["ok"]}},
+        {{"phase": "introspect_schema_and_plan_queries", "pipeline": schema_browser["operations"] + tuple(binding["name"] for binding in parameter_binding["bindings"]), "ok": (schema_browser["ok"] if "ok" in schema_browser else {{"browse_tables", "trace_relations"}} <= set(schema_browser["operations"]) and not schema_browser["side_effects"]) and parameter_binding["ok"] and query_plan["ok"] and sql_safety["ok"] and "parameterization_required" in sql_safety["guards"]}},
+        {{"phase": "rehearse_schema_and_dataset", "pipeline": migration["dry_run"] + tuple(operation["op"] for operation in dataset_designer["operations"]), "ok": "rollback_script" in schema_diff["preview"] and migration["ok"] and checkpoints["ok"] and dataset_designer["ok"] and dataset_state["ok"] and lookup_editor["ok"]}},
+        {{"phase": "generate_service_artifacts", "pipeline": tuple(artifact["name"] for artifact in modules["artifacts"]) + method_invocation["pipeline"], "ok": modules["ok"] and {{"client_proxy", "server_method_stub", "response_mapper"}} <= set(method_invocation["pipeline"]) and all(test["assertions"] for test in service_tests["tests"]) and service_traces["ok"] and service_security["ok"] and service_versioning["ok"]}},
+        {{"phase": "publish_resources_and_telemetry", "pipeline": resource_publish["pipeline"] + telemetry["guards"], "ok": resource_publish["ok"] and {{"attach_security", "register_analytics"}} <= set(resource_publish["pipeline"]) and telemetry["ok"] and "latency_budget_recorded" in telemetry["guards"]}},
+        {{"phase": "stage_local_store_and_offline_queue", "pipeline": tuple(workflow["name"] for workflow in local_maintenance["workflows"]) + offline_replay["replay_flow"], "ok": {{"backup", "restore", "change_view_sync"}} <= {{workflow["name"] for workflow in local_maintenance["workflows"]}} and backup_restore["ok"] and offline_integrity["ok"] and {{"dedupe_by_idempotency_key", "pause_for_manual_review"}} <= set(offline_replay["replay_flow"]) and "write_audit_log" in conflict_review["review_flow"] and lineage["ok"]}},
+        {{"phase": "runtime_smoke_and_monitoring", "pipeline": tuple(item["op"] for item in runtime_replay["trace"]) + tuple(monitor["watermark"] for monitor in replication["monitors"]), "ok": runtime_replay["ok"] and runtime_replay["final_state"]["persisted_writes"] == 0 and module_smoke["ok"] and replication["ok"] and all("verify_no_side_effects" in test["smoke"] for test in module_smoke["smoke_tests"])}},
+    )
+    return {{
+        "format": "appgen.generated-data-tooling-publish-transaction-replay-contract.v1",
+        "ok": all(item["ok"] for item in replay)
+        and state["connections"] > 0
+        and state["schema_objects"] > 0
+        and state["query_plan_nodes"] > 0
+        and state["dataset_operations"] > 0
+        and state["lookup_editors"] > 0
+        and state["service_artifacts"] > 0
+        and state["offline_entries"] > 0
+        and state["telemetry_signals"] > 0
+        and state["runtime_steps"] > 0
+        and state["module_smokes"] > 0
+        and state["side_effects"] == (),
+        "replay": replay,
+        "final_state": state,
+        "guards": (
+            "connection_profile_before_schema_introspection",
+            "parameterized_queries_before_preview",
+            "schema_rehearsal_before_dataset_publish",
+            "service_contract_tests_before_resource_publish",
+            "offline_integrity_before_runtime_replay",
+            "telemetry_registered_before_runtime_smoke",
+            "runtime_smoke_proves_no_persisted_writes",
+        ),
+        "side_effects": (),
+    }}
+
+
 def rad_data_tooling_workbench():
     """Prove native data-service tooling depth across connections, queries, services, and local sync."""
     contract = rad_data_tooling_contract()
@@ -31180,6 +31266,7 @@ def rad_data_tooling_workbench():
     module_runtime_smoke = data_module_runtime_smoke_contract()
     runtime_replay = data_tooling_runtime_replay_contract()
     design_runtime_replay = data_tooling_design_runtime_session_replay_contract()
+    publish_transaction_replay = data_tooling_publish_transaction_replay_contract()
     checks = (
         {{"id": "connection_catalog", "ok": bool(contract["connection_catalog"]) and all(item["secret_policy"] in ("externalized", "local_keychain") for item in contract["connection_catalog"]), "evidence": contract["connection_catalog"]}},
         {{"id": "query_designer", "ok": {{"sql_builder", "stored_procedure_browser", "schema_adapter"}} <= set(contract["query_designer"]["surfaces"]) and "parameterized_sql_only" in contract["query_designer"]["guards"], "evidence": contract["query_designer"]}},
@@ -31226,9 +31313,10 @@ def rad_data_tooling_workbench():
         {{"id": "data_module_runtime_smoke", "ok": module_runtime_smoke["ok"] and {{"module_imports_are_required", "read_only_probe_required"}} <= set(module_runtime_smoke["guards"]) and not module_runtime_smoke["side_effects"], "evidence": module_runtime_smoke}},
         {{"id": "data_tooling_runtime_replay", "ok": runtime_replay["ok"] and {{"connection_probe_rolls_back", "offline_replay_pauses_for_review"}} <= set(runtime_replay["guards"]) and not runtime_replay["side_effects"], "evidence": runtime_replay}},
         {{"id": "data_tooling_design_runtime_session_replay", "ok": design_runtime_replay["ok"] and {{"schema_rehearsal_before_dataset_publish", "runtime_operations_are_monitored"}} <= set(design_runtime_replay["guards"]) and not design_runtime_replay["side_effects"], "evidence": design_runtime_replay}},
+        {{"id": "data_tooling_publish_transaction_replay", "ok": publish_transaction_replay["ok"] and {{"service_contract_tests_before_resource_publish", "runtime_smoke_proves_no_persisted_writes"}} <= set(publish_transaction_replay["guards"]) and not publish_transaction_replay["side_effects"], "evidence": publish_transaction_replay}},
     )
     ok = all(check["ok"] for check in checks)
-    return {{"format": "appgen.generated-rad-data-tooling-workbench.v1", "ok": ok, "decision": "approved" if ok else "blocked", "contract": contract, "connection_test": connection_test, "query_preview": query_preview, "method_invocation": method_invocation, "resource_publish": resource_publish, "local_maintenance": local_maintenance, "conflict_review": conflict_review, "driver_matrix": driver_matrix, "schema_diff": schema_diff, "transaction_rehearsal": transaction_rehearsal, "offline_replay": offline_replay, "service_tests": service_tests, "schema_browser": schema_browser, "parameter_binding": parameter_binding, "dataset_fields": dataset_fields, "service_security": service_security, "offline_queue_integrity": offline_queue_integrity, "migration_rehearsal": migration_rehearsal, "dataset_designer": dataset_designer, "service_invocation_traces": service_invocation_traces, "maintenance_schedule": maintenance_schedule, "schema_checkpoints": schema_checkpoints, "data_modules": data_modules, "query_plan_visualizer": query_plan_visualizer, "relationship_navigation": relationship_navigation, "service_versioning": service_versioning, "connection_failover": connection_failover, "change_capture_lineage": change_capture_lineage, "connection_pooling": connection_pooling, "stored_procedures": stored_procedures, "sql_authoring_safety": sql_authoring_safety, "backup_restore_verification": backup_restore_verification, "replication_monitor": replication_monitor, "service_telemetry": service_telemetry, "dataset_state_machine": dataset_state_machine, "lookup_editor_pipeline": lookup_editor_pipeline, "module_runtime_smoke": module_runtime_smoke, "runtime_replay": runtime_replay, "design_runtime_replay": design_runtime_replay, "checks": checks, "blocking_gaps": tuple(check for check in checks if not check["ok"])}}
+    return {{"format": "appgen.generated-rad-data-tooling-workbench.v1", "ok": ok, "decision": "approved" if ok else "blocked", "contract": contract, "connection_test": connection_test, "query_preview": query_preview, "method_invocation": method_invocation, "resource_publish": resource_publish, "local_maintenance": local_maintenance, "conflict_review": conflict_review, "driver_matrix": driver_matrix, "schema_diff": schema_diff, "transaction_rehearsal": transaction_rehearsal, "offline_replay": offline_replay, "service_tests": service_tests, "schema_browser": schema_browser, "parameter_binding": parameter_binding, "dataset_fields": dataset_fields, "service_security": service_security, "offline_queue_integrity": offline_queue_integrity, "migration_rehearsal": migration_rehearsal, "dataset_designer": dataset_designer, "service_invocation_traces": service_invocation_traces, "maintenance_schedule": maintenance_schedule, "schema_checkpoints": schema_checkpoints, "data_modules": data_modules, "query_plan_visualizer": query_plan_visualizer, "relationship_navigation": relationship_navigation, "service_versioning": service_versioning, "connection_failover": connection_failover, "change_capture_lineage": change_capture_lineage, "connection_pooling": connection_pooling, "stored_procedures": stored_procedures, "sql_authoring_safety": sql_authoring_safety, "backup_restore_verification": backup_restore_verification, "replication_monitor": replication_monitor, "service_telemetry": service_telemetry, "dataset_state_machine": dataset_state_machine, "lookup_editor_pipeline": lookup_editor_pipeline, "module_runtime_smoke": module_runtime_smoke, "runtime_replay": runtime_replay, "design_runtime_replay": design_runtime_replay, "publish_transaction_replay": publish_transaction_replay, "checks": checks, "blocking_gaps": tuple(check for check in checks if not check["ok"])}}
 
 
 def mobile_native_api_contract():

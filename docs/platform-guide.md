@@ -78,7 +78,10 @@ A generated app can include:
 - `rad_data_tooling_workbench()` proves connection catalogs, query designer
   metadata, server method and client proxy tooling, secured resource tooling,
   embedded local database support, offline sync policies, conflict handling, and
-  side-effect guards.
+  side-effect guards. Its publish transaction replay ties connection profiling,
+  schema/query planning, dataset publishing, service artifacts, local/offline
+  queues, conflict review, telemetry, runtime smoke, and no-write replay into
+  one ordered flow.
 - `mobile_native_api_workbench()` proves device API breadth with full coverage:
   every listed API has generated permission metadata, a design-time/runtime
   component adapter, simulator fixtures, platform targets, and permission
