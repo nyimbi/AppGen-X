@@ -19,7 +19,7 @@ export function InspectorPanel() {
       <div className="panel-title-row">
         <div>
           <p className="eyebrow">Selection</p>
-          <h2>Inspector</h2>
+          <h2>Object Inspector</h2>
         </div>
         <Icon name="dataGrid" className="panel-title-icon" />
       </div>
