@@ -8426,6 +8426,36 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         check["evidence"]["routes"] for check in database_ops_workbench["checks"] if check["id"] == "route_surface"
     )
     assert database_ops.database_ops_workbench({"app/database_ops.py"})["ok"] is False
+    database_ops_module_files = database_ops.database_ops_module_file_manifest()
+    database_ops_module_tests = database_ops.database_ops_module_test_file_manifest()
+    assert database_ops_module_files["ok"] is True
+    assert database_ops_module_tests["ok"] is True
+    assert {item["surface"] for item in database_ops_module_files["modules"]} == {
+        "provider_runtime",
+        "addon_runtime",
+        "migration_runtime",
+        "projection_runtime",
+    }
+    assert {item["surface"] for item in database_ops_module_tests["tests"]} == {
+        "provider_runtime",
+        "addon_runtime",
+        "migration_runtime",
+        "projection_runtime",
+    }
+    for item in database_ops_module_files["modules"]:
+        module_path = output_dir / item["path"].replace("app/", "")
+        py_compile.compile(str(module_path), doraise=True)
+        module = _load_module(module_path, f"generated_database_ops_module_{item['module']}")
+        assert module.module_contract()["ok"] is True
+        assert module.ops_manifest()["ok"] is True
+        assert module.run_database_operation()["ok"] is True
+        assert module.release_context()["ok"] is True
+        assert module.smoke_test()["ok"] is True
+    for item in database_ops_module_tests["tests"]:
+        test_path = output_dir / item["path"].replace("app/", "")
+        py_compile.compile(str(test_path), doraise=True)
+        module = _load_module(test_path, f"generated_database_ops_module_test_{item['module']}")
+        assert module.smoke_test()["ok"] is True
     assert {item["kind"] for item in schema_import.schema_source_catalog()} == {
         "dbml",
         "sql",

@@ -1504,6 +1504,27 @@ def write_database_ops_file(output_dir, schema: AppSchema):
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
     (output_dir / "database_ops.py").write_text(_database_ops_text(schema))
+    write_database_ops_module_files(output_dir)
+
+
+def write_database_ops_module_files(output_dir):
+    """Write generated database operations modules and smoke tests."""
+    output_dir = Path(output_dir)
+    module_dir = output_dir / "database_ops_modules"
+    test_dir = output_dir / "database_ops_module_tests"
+    module_dir.mkdir(parents=True, exist_ok=True)
+    test_dir.mkdir(parents=True, exist_ok=True)
+    (module_dir / "__init__.py").write_text(_database_ops_module_init_text(), encoding="utf-8")
+    (test_dir / "__init__.py").write_text(_database_ops_module_test_init_text(), encoding="utf-8")
+    for module_name in DATABASE_OPS_MODULES:
+        (module_dir / f"{module_name}.py").write_text(
+            _database_ops_module_text(module_name),
+            encoding="utf-8",
+        )
+        (test_dir / f"test_{module_name}.py").write_text(
+            _database_ops_module_test_text(module_name),
+            encoding="utf-8",
+        )
 
 
 def write_schema_import_file(output_dir, schema: AppSchema):
@@ -1903,6 +1924,13 @@ WIZARD_MODULES = (
     "workflow_wizard_module",
     "validation_session_module",
     "submission_plan_module",
+)
+
+DATABASE_OPS_MODULES = (
+    "provider_runtime_module",
+    "addon_runtime_module",
+    "migration_runtime_module",
+    "projection_runtime_module",
 )
 
 
@@ -3621,6 +3649,249 @@ def smoke_test():
         "surface": SURFACE,
         "ok": True,
         "tests": ("test_wizard_module_contract", "test_wizard_module_smoke"),
+    }}
+'''
+
+
+def _database_ops_module_init_text() -> str:
+    return (
+        '"""Generated database operations modules."""\n\n'
+        f"DATABASE_OPS_MODULES = {DATABASE_OPS_MODULES!r}\n"
+    )
+
+
+def _database_ops_module_test_init_text() -> str:
+    modules = tuple(f"test_{name}" for name in DATABASE_OPS_MODULES)
+    return (
+        '"""Generated database operations module tests."""\n\n'
+        f"DATABASE_OPS_MODULE_TESTS = {modules!r}\n"
+    )
+
+
+def _database_ops_surface(module_name: str) -> tuple[str, str]:
+    return {
+        "provider_runtime_module": ("provider_runtime", "database_provider_catalog"),
+        "addon_runtime_module": ("addon_runtime", "database_addon_catalog"),
+        "migration_runtime_module": ("migration_runtime", "migration_cutover_plan"),
+        "projection_runtime_module": ("projection_runtime", "document_projection_matrix"),
+    }[module_name]
+
+
+def _database_ops_module_text(module_name: str) -> str:
+    surface, operation = _database_ops_surface(module_name)
+    return f'''"""Generated database operations module for {surface}."""
+
+from __future__ import annotations
+
+import importlib.util
+from pathlib import Path
+
+
+MODULE = {module_name!r}
+SURFACE = {surface!r}
+OPERATION = {operation!r}
+EXPECTED_EXPORTS = (
+    "module_contract",
+    "ops_manifest",
+    "run_database_operation",
+    "release_context",
+    "smoke_test",
+)
+
+
+def _database_ops():
+    module_path = Path(__file__).resolve().parents[1] / "database_ops.py"
+    spec = importlib.util.spec_from_file_location(f"generated_database_ops_{{MODULE}}_database_ops", module_path)
+    module = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(module)
+    return module
+
+
+def module_contract():
+    """Return this generated database operations module's export contract."""
+    available = tuple(name for name in EXPECTED_EXPORTS if name in globals())
+    return {{
+        "format": "appgen.database-ops-module-contract.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "operation": OPERATION,
+        "ok": set(EXPECTED_EXPORTS) <= set(available),
+        "exports": available,
+        "expected_exports": EXPECTED_EXPORTS,
+        "side_effects": (),
+    }}
+
+
+def ops_manifest():
+    """Return database operations metadata owned by this module."""
+    ops = _database_ops()
+    providers = ops.database_provider_catalog()
+    addons = ops.database_addon_catalog()
+    return {{
+        "format": "appgen.database-ops-module-manifest.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "ok": bool(providers)
+        and bool(addons)
+        and (bool(ops.schema_inventory()) if SURFACE in ("migration_runtime", "projection_runtime") else True),
+        "providers": providers,
+        "addons": addons,
+        "inventory": ops.schema_inventory(),
+        "side_effects": (),
+    }}
+
+
+def run_database_operation():
+    """Run this module's side-effect-free database operations probe."""
+    ops = _database_ops()
+    if SURFACE == "provider_runtime":
+        operation = {{
+            "providers": ops.database_provider_catalog(),
+            "relational": ops.relational_provider_catalog(),
+            "document": ops.nosql_provider_catalog(),
+            "compose": tuple(ops.compose_service_plan(provider) for provider in ("postgresql", "mysql", "mongodb")),
+            "statefulsets": tuple(ops.kubernetes_statefulset_plan(provider) for provider in ("postgresql", "mysql", "mongodb")),
+        }}
+        ok = {{"postgresql", "mysql", "sqlite", "mongodb"}} <= {{item["provider"] for item in operation["providers"]}}
+    elif SURFACE == "addon_runtime":
+        core_assets = {{"app/database_ops.py", "app/templates/appgen_database_ops.html", "docker-compose.yml", "deploy/k8s.yaml"}}
+        operation = {{
+            "addons": ops.database_addon_catalog(),
+            "ha": ops.patroni_cluster_plan(),
+            "graphql": ops.postgraphile_schema_plan(),
+            "search": ops.zombodb_index_plan(),
+            "release": ops.database_addon_release_gate(core_assets),
+        }}
+        ok = operation["release"]["ok"] and {{"patroni", "postgraphile", "zombodb"}} <= {{item["addon"] for item in operation["addons"]}}
+    elif SURFACE == "migration_runtime":
+        operation = {{
+            "targets": ops.migration_target_matrix(),
+            "inventory": ops.schema_inventory(),
+            "risk": ops.migration_risk_assessment({{"provider": "postgresql", "tables": ()}}),
+            "cutover": ops.migration_cutover_plan({{"provider": "postgresql", "tables": ()}}, "postgresql"),
+        }}
+        ok = bool(operation["targets"]) and bool(operation["inventory"]) and operation["cutover"]["requires_review"] is True
+    else:
+        operation = {{
+            "projections": ops.document_projection_matrix(),
+            "nosql": ops.nosql_provider_catalog(),
+            "sample": ops.document_projection(ops.schema_inventory()[0]["table"]) if ops.schema_inventory() else None,
+        }}
+        ok = bool(operation["projections"]) and bool(operation["nosql"]) and operation["sample"] is not None
+    return {{
+        "format": "appgen.database-ops-module-operation.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "ok": ok,
+        "operation": operation,
+        "side_effects": (),
+    }}
+
+
+def release_context():
+    """Return release and workbench evidence used by this database operations module."""
+    ops = _database_ops()
+    core_assets = {{"app/database_ops.py", "app/templates/appgen_database_ops.html", "docker-compose.yml", "deploy/k8s.yaml"}}
+    workbench = ops.database_ops_workbench(core_assets)
+    check = ops.database_ops_check(core_assets)
+    return {{
+        "format": "appgen.database-ops-module-release-context.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "ok": workbench["ok"] and check["ok"],
+        "workbench": workbench,
+        "check": check,
+        "side_effects": (),
+    }}
+
+
+def smoke_test():
+    """Run side-effect-free checks for this generated database operations module."""
+    contract = module_contract()
+    manifest = ops_manifest()
+    operation = run_database_operation()
+    release = release_context()
+    return {{
+        "format": "appgen.database-ops-module-smoke-test.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "ok": contract["ok"]
+        and manifest["ok"]
+        and operation["ok"]
+        and release["ok"]
+        and not manifest["side_effects"]
+        and not operation["side_effects"]
+        and not release["side_effects"],
+        "contract": contract,
+        "manifest": manifest,
+        "operation": operation,
+        "release": release,
+        "checks": (
+            "module_contract_resolves",
+            "ops_manifest_ok",
+            "database_operation_ok",
+            "release_context_ok",
+            "no_side_effects",
+        ),
+    }}
+'''
+
+
+def _database_ops_module_test_text(module_name: str) -> str:
+    surface, _operation = _database_ops_surface(module_name)
+    return f'''"""Generated tests for the {surface} database operations module."""
+
+from __future__ import annotations
+
+import importlib.util
+from pathlib import Path
+
+
+MODULE = {module_name!r}
+SURFACE = {surface!r}
+
+
+def load_database_ops_module():
+    """Load the generated database operations module without app installation."""
+    module_path = Path(__file__).resolve().parents[1] / "database_ops_modules" / f"{{MODULE}}.py"
+    spec = importlib.util.spec_from_file_location(f"generated_database_ops_module_{{MODULE}}", module_path)
+    module = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(module)
+    return module
+
+
+def test_database_ops_module_contract():
+    """Assert the generated database operations module exposes its contract."""
+    module = load_database_ops_module()
+    contract = module.module_contract()
+    assert contract["module"] == MODULE
+    assert contract["surface"] == SURFACE
+    assert contract["ok"] is True
+    assert all(hasattr(module, name) for name in contract["expected_exports"])
+
+
+def test_database_ops_module_smoke():
+    """Assert the module's side-effect-free smoke test passes."""
+    module = load_database_ops_module()
+    result = module.smoke_test()
+    assert result["ok"] is True
+    assert result["module"] == MODULE
+    assert result["surface"] == SURFACE
+    assert result["checks"]
+
+
+def smoke_test():
+    """Run this generated test module in a side-effect-free way."""
+    test_database_ops_module_contract()
+    test_database_ops_module_smoke()
+    return {{
+        "format": "appgen.database-ops-module-generated-test-smoke.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "ok": True,
+        "tests": ("test_database_ops_module_contract", "test_database_ops_module_smoke"),
     }}
 '''
 
@@ -25288,6 +25559,9 @@ def _database_ops_text(schema: AppSchema) -> str:
 
 from __future__ import annotations
 
+import importlib.util
+from pathlib import Path
+
 from flask import jsonify
 from flask_appbuilder import BaseView
 from flask_appbuilder import expose
@@ -25756,6 +26030,108 @@ def database_ops_workbench(existing_paths=(), environ=None):
         "addons": database_addon_catalog(),
         "routes": routes,
         "checks": checks,
+    }}
+
+
+def _load_generated_module(path, name):
+    spec = importlib.util.spec_from_file_location(name, path)
+    module = importlib.util.module_from_spec(spec)
+    if spec.loader is None:
+        raise RuntimeError(f"Could not load generated module: {{path}}")
+    spec.loader.exec_module(module)
+    return module
+
+
+def database_ops_module_file_manifest():
+    """Return file-level evidence for generated database operations modules."""
+    modules = (
+        ("provider_runtime_module", "provider_runtime"),
+        ("addon_runtime_module", "addon_runtime"),
+        ("migration_runtime_module", "migration_runtime"),
+        ("projection_runtime_module", "projection_runtime"),
+    )
+    expected_exports = ("module_contract", "ops_manifest", "run_database_operation", "release_context", "smoke_test")
+    module_dir = Path(__file__).with_name("database_ops_modules")
+    entries = []
+    for module_name, surface in modules:
+        module_path = module_dir / f"{{module_name}}.py"
+        exports = ()
+        contract_ok = False
+        smoke_ok = False
+        if module_path.exists():
+            module = _load_generated_module(module_path, f"generated_database_ops_module_{{module_name}}")
+            exports = tuple(name for name in expected_exports if hasattr(module, name))
+            contract = module.module_contract()
+            smoke = module.smoke_test()
+            contract_ok = contract["ok"] and contract["module"] == module_name and contract["surface"] == surface
+            smoke_ok = smoke["ok"] and smoke["surface"] == surface
+        entries.append(
+            {{
+                "module": module_name,
+                "surface": surface,
+                "path": f"app/database_ops_modules/{{module_name}}.py",
+                "exists": module_path.exists(),
+                "exports": exports,
+                "expected_exports": expected_exports,
+                "contract_ok": contract_ok,
+                "smoke_ok": smoke_ok,
+            }}
+        )
+    return {{
+        "format": "appgen.generated-database-ops-module-file-manifest.v1",
+        "ok": bool(entries)
+        and all(
+            item["exists"]
+            and item["contract_ok"]
+            and item["smoke_ok"]
+            and set(item["expected_exports"]) <= set(item["exports"])
+            for item in entries
+        ),
+        "modules": tuple(entries),
+        "guards": ("one_file_per_database_ops_module", "declared_exports_present", "module_smoke_loads"),
+        "side_effects": (),
+    }}
+
+
+def database_ops_module_test_file_manifest():
+    """Return file-level evidence for generated database operations module tests."""
+    modules = database_ops_module_file_manifest()["modules"]
+    required_exports = (
+        "load_database_ops_module",
+        "test_database_ops_module_contract",
+        "test_database_ops_module_smoke",
+        "smoke_test",
+    )
+    test_dir = Path(__file__).with_name("database_ops_module_tests")
+    entries = []
+    for item in modules:
+        module_name = item["module"]
+        module_path = test_dir / f"test_{{module_name}}.py"
+        exports = ()
+        smoke_ok = False
+        if module_path.exists():
+            module = _load_generated_module(module_path, f"generated_database_ops_module_test_{{module_name}}")
+            exports = tuple(name for name in required_exports if hasattr(module, name))
+            smoke_ok = module.smoke_test()["ok"]
+        entries.append(
+            {{
+                "module": module_name,
+                "surface": item["surface"],
+                "path": f"app/database_ops_module_tests/test_{{module_name}}.py",
+                "target": item["path"],
+                "exists": module_path.exists(),
+                "exports": exports,
+                "smoke_ok": smoke_ok,
+            }}
+        )
+    return {{
+        "format": "appgen.generated-database-ops-module-test-file-manifest.v1",
+        "ok": bool(entries)
+        and all(item["exists"] and item["smoke_ok"] and set(required_exports) <= set(item["exports"]) for item in entries),
+        "tests": tuple(entries),
+        "required_exports": required_exports,
+        "guards": ("one_test_file_per_database_ops_module", "contract_and_smoke_tests_exported"),
+        "side_effects": (),
     }}
 
 
