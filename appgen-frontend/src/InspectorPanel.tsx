@@ -1,4 +1,6 @@
 import { Icon } from './Icon'
+import { inspectorEditors, inspectorKindIcons } from './inspectorCatalog'
+import type { InspectorEditorKind } from './inspectorCatalog'
 
 const properties = [
   ['Name', 'LineItemsGrid'],
@@ -8,6 +10,8 @@ const properties = [
   ['Validation', 'Required rows'],
   ['Target', 'Web, mobile, desktop'],
 ]
+
+const editorKinds: InspectorEditorKind[] = ['Property', 'Event', 'Component', 'Custom Designer']
 
 export function InspectorPanel() {
   return (
@@ -37,6 +41,32 @@ export function InspectorPanel() {
             <strong>{value}</strong>
           </div>
         ))}
+      </div>
+
+      <div className="inspector-editor-stack" aria-label="Inspector editors">
+        {editorKinds.map((kind) => {
+          const editors = inspectorEditors.filter((editor) => editor.kind === kind)
+
+          return (
+            <section className="inspector-editor-group" key={kind}>
+              <div className="inspector-editor-title">
+                <Icon name={inspectorKindIcons[kind]} />
+                <span>{kind}</span>
+                <strong>{editors.length}</strong>
+              </div>
+              {editors.map((editor) => (
+                <button className="inspector-editor-row" key={`${editor.kind}-${editor.name}`} type="button">
+                  <Icon name={editor.icon} />
+                  <span>
+                    <strong>{editor.name}</strong>
+                    <small>{editor.value}</small>
+                  </span>
+                  <em>{editor.action}</em>
+                </button>
+              ))}
+            </section>
+          )
+        })}
       </div>
 
       <div className="inspector-actions">
