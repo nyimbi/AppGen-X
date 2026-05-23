@@ -1043,6 +1043,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "dataset_state_machine",
         "lookup_editor_pipeline",
         "data_module_runtime_smoke",
+        "data_tooling_runtime_replay",
     } == {check["id"] for check in data_workbench["checks"]}
     assert data_workbench["connection_test"]["steps"][-1] == "rollback_test_transaction"
     assert "explain_plan" in data_workbench["query_preview"]["plan"]
@@ -1095,6 +1096,15 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     assert all("validate_fields" in transition["pipeline"] or transition["event"] != "before_post" for transition in data_workbench["dataset_state_machine"]["transitions"])
     assert all("generate_lookup_dataset" in editor["pipeline"] for editor in data_workbench["lookup_editor_pipeline"]["editors"])
     assert all("run_read_only_probe" in test["smoke"] for test in data_workbench["module_runtime_smoke"]["smoke_tests"])
+    assert {
+        "connection_probe",
+        "query_preview",
+        "service_invocation",
+        "local_backup",
+        "offline_replay",
+        "rollback_probe",
+    } <= {item["op"] for item in data_workbench["runtime_replay"]["trace"]}
+    assert data_workbench["runtime_replay"]["final_state"]["persisted_writes"] == 0
     mobile_workbench = mobile_native_api_workbench()
     assert mobile_workbench["format"] == "appgen.mobile-native-api-workbench.v1"
     assert mobile_workbench["ok"] is True
@@ -9482,6 +9492,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "dataset_state_machine",
         "lookup_editor_pipeline",
         "data_module_runtime_smoke",
+        "data_tooling_runtime_replay",
     } == {check["id"] for check in generated_data_tooling["checks"]}
     assert generated_data_tooling["connection_test"]["steps"][-1] == "rollback_test_transaction"
     assert "explain_plan" in generated_data_tooling["query_preview"]["plan"]
@@ -9534,6 +9545,15 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert "reconcile_errors_visible" in generated_data_tooling["dataset_state_machine"]["guards"]
     assert all("bind_value_member" in editor["pipeline"] for editor in generated_data_tooling["lookup_editor_pipeline"]["editors"])
     assert all("verify_no_side_effects" in test["smoke"] for test in generated_data_tooling["module_runtime_smoke"]["smoke_tests"])
+    assert {
+        "connection_probe",
+        "query_preview",
+        "service_invocation",
+        "local_backup",
+        "offline_replay",
+        "rollback_probe",
+    } <= {item["op"] for item in generated_data_tooling["runtime_replay"]["trace"]}
+    assert generated_data_tooling["runtime_replay"]["final_state"]["queue_status"] == "manual_review"
     generated_mobile = form_designer.mobile_native_api_workbench()
     assert generated_mobile["format"] == "appgen.generated-mobile-native-api-workbench.v1"
     assert generated_mobile["ok"] is True

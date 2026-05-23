@@ -6015,6 +6015,74 @@ def data_module_runtime_smoke_contract() -> dict:
     }
 
 
+def data_tooling_runtime_replay_contract() -> dict:
+    """Replay connection, query, service, local store, offline, and rollback flows."""
+    connection = data_connection_test_contract()
+    query = data_query_preview_contract()
+    method = data_server_method_invocation_contract()
+    local = local_database_maintenance_contract()
+    offline = data_offline_replay_contract()
+    state = {
+        "connection": "closed",
+        "transaction": "none",
+        "preview_rows": (),
+        "service_response": None,
+        "local_backup": None,
+        "queue_status": "pending",
+        "persisted_writes": 0,
+    }
+    trace: list[dict] = []
+
+    def snapshot() -> dict:
+        return {
+            "connection": state["connection"],
+            "transaction": state["transaction"],
+            "preview_rows": state["preview_rows"],
+            "service_response": state["service_response"],
+            "local_backup": state["local_backup"],
+            "queue_status": state["queue_status"],
+            "persisted_writes": state["persisted_writes"],
+        }
+
+    for step in (
+        {"op": "connection_probe", "pipeline": connection["steps"]},
+        {"op": "query_preview", "pipeline": query["plan"]},
+        {"op": "service_invocation", "pipeline": method["pipeline"]},
+        {"op": "local_backup", "pipeline": next(workflow["steps"] for workflow in local["workflows"] if workflow["name"] == "backup")},
+        {"op": "offline_replay", "pipeline": offline["replay_flow"]},
+        {"op": "rollback_probe", "pipeline": ("begin_transaction", "apply_mutation_batch", "rollback_transaction", "assert_no_persisted_changes")},
+    ):
+        before = snapshot()
+        if step["op"] == "connection_probe":
+            state["connection"] = "open"
+            state["transaction"] = "rolled_back"
+        elif step["op"] == "query_preview":
+            state["preview_rows"] = ({"id": 1, "name": "Ada"},)
+        elif step["op"] == "service_invocation":
+            state["service_response"] = {"status": 200, "mapped": True}
+        elif step["op"] == "local_backup":
+            state["local_backup"] = {"manifest": "backup-manifest", "checksum": "sha256:backup"}
+        elif step["op"] == "offline_replay":
+            state["queue_status"] = "manual_review"
+        else:
+            state["transaction"] = "rolled_back"
+            state["persisted_writes"] = 0
+        trace.append({"op": step["op"], "before": before, "after": snapshot(), "pipeline": tuple(step["pipeline"])})
+    return {
+        "format": "appgen.data-tooling-runtime-replay-contract.v1",
+        "ok": bool(trace)
+        and state["persisted_writes"] == 0
+        and any("assert_no_persisted_changes" in item["pipeline"] for item in trace)
+        and any("dedupe_by_idempotency_key" in item["pipeline"] for item in trace)
+        and state["service_response"]["mapped"] is True
+        and state["local_backup"]["checksum"].startswith("sha256:"),
+        "trace": tuple(trace),
+        "final_state": snapshot(),
+        "guards": ("connection_probe_rolls_back", "query_preview_is_read_only", "service_response_mapped", "offline_replay_pauses_for_review", "local_backup_checksum_verified"),
+        "side_effects": (),
+    }
+
+
 def rad_data_tooling_workbench() -> dict:
     """Prove native data-service tooling depth across connections, queries, services, and local sync."""
     contract = rad_data_tooling_contract()
@@ -6054,6 +6122,7 @@ def rad_data_tooling_workbench() -> dict:
     dataset_state_machine = data_dataset_state_machine_contract()
     lookup_editor_pipeline = data_lookup_editor_pipeline_contract()
     module_runtime_smoke = data_module_runtime_smoke_contract()
+    runtime_replay = data_tooling_runtime_replay_contract()
     checks = (
         {
             "id": "connection_catalog",
@@ -6320,6 +6389,13 @@ def rad_data_tooling_workbench() -> dict:
             and not module_runtime_smoke["side_effects"],
             "evidence": module_runtime_smoke,
         },
+        {
+            "id": "data_tooling_runtime_replay",
+            "ok": runtime_replay["ok"]
+            and {"connection_probe_rolls_back", "offline_replay_pauses_for_review"} <= set(runtime_replay["guards"])
+            and not runtime_replay["side_effects"],
+            "evidence": runtime_replay,
+        },
     )
     ok = all(check["ok"] for check in checks)
     return {
@@ -6363,6 +6439,7 @@ def rad_data_tooling_workbench() -> dict:
         "dataset_state_machine": dataset_state_machine,
         "lookup_editor_pipeline": lookup_editor_pipeline,
         "module_runtime_smoke": module_runtime_smoke,
+        "runtime_replay": runtime_replay,
         "checks": checks,
         "blocking_gaps": tuple(check for check in checks if not check["ok"]),
     }
