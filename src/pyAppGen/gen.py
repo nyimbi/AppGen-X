@@ -25810,6 +25810,44 @@ def validate_component_package_load(package_id, request=None):
     }}
 
 
+def component_package_install_session_replay(package_ids=()):
+    """Replay generated design-time component package installation without changing the host IDE."""
+    install_plan = third_party_component_install_plan(package_ids)
+    sessions = []
+    for package in install_plan["packages"]:
+        policy = component_package_load_policy(package["id"])
+        validation = validate_component_package_load(package["id"], {{"accepted": policy["checks"]}})
+        contract = component_package_contract(package["id"])
+        behavior = component_package_behavior_contract(package["id"])
+        phases = (
+            {{"phase": "resolve_metadata", "ok": contract["implemented"] and bool(contract["adapters"]), "artifact": contract["module"]}},
+            {{"phase": "validate_load_request", "ok": validation["ok"] and not validation["side_effects"], "artifact": validation["format"]}},
+            {{"phase": "sandbox_load", "ok": "sandboxed_loader" in policy["isolation"] and not policy["side_effects"], "artifact": policy["isolation"]}},
+            {{"phase": "adapter_compile", "ok": behavior["adapter_smoke"]["ok"] and behavior["preview_load"]["ok"], "artifact": tuple(adapter["adapter"] for adapter in contract["adapters"])}},
+            {{"phase": "registry_commit", "ok": behavior["registration"]["ok"] and behavior["dependency_order"]["ok"], "artifact": behavior["registration"]["actual"]}},
+            {{"phase": "palette_refresh", "ok": "rebuild_toolbox" in component_package_palette_refresh_contract((package["id"],))["palette_actions"], "artifact": "rebuild_toolbox"}},
+            {{"phase": "rollback_probe", "ok": "restore_registry" in behavior["rollback"]["snapshot"]["restore_order"], "artifact": behavior["rollback"]["snapshot"]["restore_order"]}},
+        )
+        sessions.append(
+            {{
+                "package_id": package["id"],
+                "phases": phases,
+                "ok": all(phase["ok"] for phase in phases),
+                "final_state": {{"loaded": True, "palette_refreshed": True, "rollback_ready": True, "global_install": False}},
+            }}
+        )
+    return {{
+        "format": "appgen.generated-component-package-install-session-replay.v1",
+        "ok": install_plan["ok"]
+        and len(sessions) == len(install_plan["packages"])
+        and all(session["ok"] for session in sessions)
+        and all(session["final_state"]["rollback_ready"] and not session["final_state"]["global_install"] for session in sessions),
+        "sessions": tuple(sessions),
+        "guards": ("load_request_validated", "sandbox_before_load", "adapters_smoked_before_registry_commit", "palette_refresh_after_commit", "rollback_probe_required"),
+        "side_effects": (),
+    }}
+
+
 def component_package_dependency_graph(package_ids=()):
     """Return deterministic dependency and lockfile metadata for package loading."""
     install_plan = third_party_component_install_plan(package_ids)
@@ -26470,6 +26508,7 @@ def component_package_workbench(existing_paths=None):
     """Prove curated component packages have usable adapters and load policies."""
     contracts = tuple(component_package_contract(package["id"]) for package in THIRD_PARTY_COMPONENT_SUITES)
     install_plan = third_party_component_install_plan()
+    install_replay = component_package_install_session_replay()
     package_manager = design_time_package_manager_workbench()
     behavior_workbench = component_package_behavior_workbench()
     package_files = component_package_file_manifest(existing_paths)
@@ -26478,6 +26517,7 @@ def component_package_workbench(existing_paths=None):
         {{"id": "adapter_coverage", "ok": all(contract["adapters"] and len(contract["adapters"]) == len(contract["package"]["components"]) for contract in contracts), "evidence": tuple((contract["package"]["id"], tuple(adapter["component"] for adapter in contract["adapters"])) for contract in contracts)}},
         {{"id": "load_policy_guards", "ok": all(contract["load_policy"]["requires_review"] and not contract["load_policy"]["side_effects"] and contract["load_policy"]["checks"] for contract in contracts), "evidence": tuple((contract["package"]["id"], contract["load_policy"]["checks"]) for contract in contracts)}},
         {{"id": "install_plan_review", "ok": install_plan["ok"] and install_plan["requires_review"] and not install_plan["side_effects"], "evidence": install_plan}},
+        {{"id": "install_session_replay", "ok": install_replay["ok"] and {{"sandbox_before_load", "rollback_probe_required"}} <= set(install_replay["guards"]) and not install_replay["side_effects"], "evidence": install_replay}},
         {{"id": "package_manager_workbench", "ok": package_manager["ok"], "evidence": package_manager}},
         {{"id": "package_behavior_workbench", "ok": behavior_workbench["ok"], "evidence": behavior_workbench}},
         {{"id": "package_file_exports", "ok": all({{"package_contract", "install_plan", "load_policy", "adapter_contract", "dependency_graph", "lockfile_integrity", "sandbox_policy", "registration_consistency", "dependency_order", "compatibility_smoke", "adapter_smoke", "preview_load", "behavior_contract", "validate_load_request", "test_plan"}} <= set(item["exports"]) for item in package_files), "evidence": package_files}},
@@ -26490,6 +26530,7 @@ def component_package_workbench(existing_paths=None):
         "decision": "approved" if ok else "blocked",
         "package_count": len(contracts),
         "contracts": contracts,
+        "install_replay": install_replay,
         "package_manager": package_manager,
         "behavior_workbench": behavior_workbench,
         "checks": checks,

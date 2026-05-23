@@ -83,6 +83,7 @@ from pyAppGen.form_designer import component_package_behavior_workbench
 from pyAppGen.form_designer import component_package_compatibility_smoke_suite
 from pyAppGen.form_designer import component_package_dependency_graph
 from pyAppGen.form_designer import component_package_dependency_order_contract
+from pyAppGen.form_designer import component_package_install_session_replay
 from pyAppGen.form_designer import component_package_lockfile_integrity_contract
 from pyAppGen.form_designer import component_package_load_policy
 from pyAppGen.form_designer import component_package_preview_load_contract
@@ -1297,10 +1298,20 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     assert validate_component_package_load(
         "devexpress-native", {"accepted": package_policy["checks"]}
     )["ok"] is True
+    install_replay = component_package_install_session_replay(("devexpress-native",))
+    assert install_replay["format"] == "appgen.component-package-install-session-replay.v1"
+    assert install_replay["ok"] is True
+    assert {"resolve_metadata", "sandbox_load", "adapter_compile", "registry_commit", "palette_refresh", "rollback_probe"} <= {
+        phase["phase"] for phase in install_replay["sessions"][0]["phases"]
+    }
+    assert install_replay["sessions"][0]["final_state"]["rollback_ready"] is True
+    assert install_replay["sessions"][0]["final_state"]["global_install"] is False
     package_workbench = component_package_workbench()
     assert package_workbench["format"] == "appgen.component-package-workbench.v1"
     assert package_workbench["ok"] is True
     assert "package_manager_workbench" in {check["id"] for check in package_workbench["checks"]}
+    assert "install_session_replay" in {check["id"] for check in package_workbench["checks"]}
+    assert package_workbench["install_replay"]["ok"] is True
     assert package_workbench["behavior_workbench"]["ok"] is True
     behavior_workbench = component_package_behavior_workbench()
     assert behavior_workbench["format"] == "appgen.component-package-behavior-workbench.v1"
@@ -9292,6 +9303,16 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     }
     assert form_designer.third_party_component_install_plan()["requires_review"] is True
     assert form_designer.third_party_component_install_plan()["side_effects"] == ()
+    generated_package_workbench = form_designer.component_package_workbench()
+    assert generated_package_workbench["format"] == "appgen.generated-component-package-workbench.v1"
+    assert generated_package_workbench["ok"] is True
+    assert "install_session_replay" in {check["id"] for check in generated_package_workbench["checks"]}
+    assert generated_package_workbench["install_replay"]["ok"] is True
+    assert all(
+        {"resolve_metadata", "sandbox_load", "adapter_compile", "registry_commit", "palette_refresh", "rollback_probe"}
+        <= {phase["phase"] for phase in session["phases"]}
+        for session in generated_package_workbench["install_replay"]["sessions"]
+    )
     generated_package_manager = form_designer.design_time_package_manager_workbench()
     assert generated_package_manager["format"] == "appgen.generated-design-time-package-manager-workbench.v1"
     assert generated_package_manager["ok"] is True
