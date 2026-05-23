@@ -365,6 +365,9 @@ Generated apps include Studio contracts for:
   runtime replay, inspector and binding transactions, data-service publishing,
   package installation, device capability validation, and cross-target visual
   depth into one ordered release contract.
+- A platform parity requirement audit maps every explicit parity requirement to
+  concrete subsystem evidence and the ordered lifecycle replay, so gaps fail by
+  requirement instead of being hidden inside aggregate release checks.
 - Generated package modules under `app/component_packages/<package>.py` export
   `package_contract()`, `install_plan()`, `load_policy()`,
   `dependency_graph()`, `adapter_smoke()`, `preview_load()`,

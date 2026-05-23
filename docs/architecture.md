@@ -271,6 +271,10 @@ Visual design is split into two related capabilities:
   inspector and binding transactions, data-service publishing, package
   installation, device capability validation, and cross-target visual depth in
   one ordered contract.
+- `platform_parity_requirement_audit_contract()` validates each explicit parity
+  requirement against subsystem workbench evidence plus the ordered lifecycle
+  replay, so release readiness can be traced by requirement instead of only by
+  aggregate checks.
 - `visual_modeling.py` handles database graph nodes, relationships, ERD export,
   DBML/SQL/PonyORM export, schema proposals, and migration preview.
 - `branding.py` handles brand/theme contracts, splash-screen configuration,

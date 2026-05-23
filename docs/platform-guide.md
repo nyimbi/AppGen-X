@@ -115,6 +115,9 @@ A generated app can include:
   streaming, runtime replay, inspector and binding transactions, data-service
   publishing, package installation, device capability validation, and
   cross-target visual depth into one ordered release contract.
+- `platform_parity_requirement_audit_contract()` maps every explicit parity
+  requirement to concrete subsystem evidence and the ordered lifecycle replay,
+  making missing or weak evidence visible by requirement.
 - `app/designer.py` for visual database design and ERD exports.
 - `app/agents.py` for LLM providers and agent plans.
 - `app/platforms.py`, `native/mobile`, `native/desktop`, PWA assets, and

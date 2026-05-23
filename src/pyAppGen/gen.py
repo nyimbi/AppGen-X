@@ -33921,6 +33921,48 @@ def platform_parity_lifecycle_replay_contract():
     }}
 
 
+def platform_parity_requirement_audit_contract():
+    """Map each requested generated IDE parity requirement to concrete subsystem evidence."""
+    analog_groups = component_analog_group_audit()
+    runtime = pascal_runtime_workbench()
+    inspector = object_inspector_workbench()
+    bindings = livebindings_workbench()
+    data_tooling = rad_data_tooling_workbench()
+    package_manager = design_time_package_manager_workbench()
+    package_lifecycle = component_package_lifecycle_transaction_replay()
+    mobile = mobile_native_api_workbench()
+    mobile_lifecycle = mobile_device_capability_lifecycle_replay_contract()
+    visual = cross_target_visual_depth_workbench()
+    visual_lifecycle = cross_target_visual_lifecycle_replay_contract()
+    lifecycle = platform_parity_lifecycle_replay_contract()
+    requirements = (
+        {{"id": "component_parity", "ok": analog_groups["ok"] and {{"cross-target-ui", "layouts", "data-display", "graphics", "animations", "styles-theming", "gestures", "sensors", "three-d", "data-access"}} == {{group["group"] for group in analog_groups["groups"]}}, "evidence": analog_groups}},
+        {{"id": "native_runtime_streaming", "ok": runtime["ok"] and {{"form_stream_schema", "runtime_session_replay", "design_edit_session_replay"}} <= {{check["id"] for check in runtime["checks"]}}, "evidence": runtime}},
+        {{"id": "inspector_design_surface", "ok": inspector["ok"] and {{"property_editor_types", "event_editor_lifecycle", "component_editor_transaction", "custom_designer_registration_replay"}} <= {{check["id"] for check in inspector["checks"]}}, "evidence": inspector}},
+        {{"id": "visual_binding_designer", "ok": bindings["ok"] and bindings["designer_transaction_replay"]["ok"] and bindings["design_runtime_replay"]["ok"], "evidence": bindings}},
+        {{"id": "native_data_service_tooling", "ok": data_tooling["ok"] and data_tooling["runtime_replay"]["ok"] and data_tooling["publish_transaction_replay"]["ok"], "evidence": data_tooling}},
+        {{"id": "package_installation_ecosystem", "ok": package_manager["ok"] and package_lifecycle["ok"] and "lifecycle_transaction_replay" in {{check["id"] for check in package_manager["checks"]}}, "evidence": {{"manager": package_manager, "lifecycle": package_lifecycle}}}},
+        {{"id": "device_api_component_coverage", "ok": mobile["ok"] and mobile_lifecycle["ok"] and "runtime_and_designer_replay_aligned" in mobile_lifecycle["guards"], "evidence": {{"workbench": mobile, "lifecycle": mobile_lifecycle}}}},
+        {{"id": "cross_target_visual_depth", "ok": visual["ok"] and visual_lifecycle["ok"] and {{"visual_runtime_replay", "visual_lifecycle_replay"}} <= {{check["id"] for check in visual["checks"]}}, "evidence": {{"workbench": visual, "lifecycle": visual_lifecycle}}}},
+    )
+    checks = (
+        {{"id": "all_requirements_have_evidence", "ok": all("evidence" in requirement and requirement["evidence"] for requirement in requirements), "evidence": tuple(requirement["id"] for requirement in requirements)}},
+        {{"id": "all_requirements_pass", "ok": all(requirement["ok"] for requirement in requirements), "evidence": requirements}},
+        {{"id": "lifecycle_replay_aligned", "ok": lifecycle["ok"] and "all_subsystems_replayed" in {{check["id"] for check in lifecycle["checks"] if check["ok"]}}, "evidence": lifecycle}},
+    )
+    ok = all(check["ok"] for check in checks)
+    return {{
+        "format": "appgen.generated-platform-parity-requirement-audit.v1",
+        "ok": ok,
+        "decision": "approved" if ok else "blocked",
+        "requirements": requirements,
+        "checks": checks,
+        "lifecycle_replay": lifecycle,
+        "blocking_gaps": tuple(requirement for requirement in requirements if not requirement["ok"]),
+        "side_effects": (),
+    }}
+
+
 def rad_parity_workbench(existing_paths=()):
     """Return evidence for RAD native desktop and cross-target UI, DFM, Object Inspector, data, mobile, and third-party parity."""
     existing = set(existing_paths)
@@ -33929,6 +33971,7 @@ def rad_parity_workbench(existing_paths=()):
     install_plan = third_party_component_install_plan()
     package_workbench = component_package_workbench()
     platform_lifecycle = platform_parity_lifecycle_replay_contract()
+    requirement_audit = platform_parity_requirement_audit_contract()
     categories = {{category for suite in THIRD_PARTY_COMPONENT_SUITES for category in suite["categories"]}}
     palette_types = {{item["type"] for item in PALETTE}}
     checks = (
@@ -33945,6 +33988,7 @@ def rad_parity_workbench(existing_paths=()):
         {{"id": "cross_target_animation_effects_3d_depth", "ok": bool(cross_target_visual_depth_contract()["animation"]) and bool(cross_target_visual_depth_contract()["three_d"]) and cross_target_visual_depth_workbench()["ok"], "evidence": {{"contract": cross_target_visual_depth_contract(), "workbench": cross_target_visual_depth_workbench()}}}},
         {{"id": "third_party_component_ecosystem", "ok": install_plan["ok"] and {{"grid", "reports", "charts", "database", "network", "animation"}} <= categories and package_workbench["ok"], "evidence": {{"packages": install_plan["packages"], "categories": tuple(sorted(categories)), "package_workbench": package_workbench}}}},
         {{"id": "platform_parity_lifecycle_replay", "ok": platform_lifecycle["ok"] and {{"component_baseline_before_runtime", "target_validation_before_release_claim"}} <= set(platform_lifecycle["guards"]) and not platform_lifecycle["side_effects"], "evidence": platform_lifecycle}},
+        {{"id": "platform_parity_requirement_audit", "ok": requirement_audit["ok"] and not requirement_audit["side_effects"], "evidence": requirement_audit}},
         {{"id": "route_surface", "ok": not missing, "evidence": {{"routes": ("/form-designer/rad-parity.json", "/form-designer/third-party-components.json", "/form-designer/component-usability.json", "/form-designer/component-analogs.json", "/form-designer/object-inspector.json", "/form-designer/livebindings.json", "/form-designer/data-tooling.json", "/form-designer/pascal-runtime.json")}}}},
     )
     ok = all(check["ok"] for check in checks)
@@ -33954,6 +33998,7 @@ def rad_parity_workbench(existing_paths=()):
         "decision": "approved" if ok else "blocked",
         "checks": checks,
         "lifecycle_replay": platform_lifecycle,
+        "requirement_audit": requirement_audit,
         "third_party_registry": THIRD_PARTY_COMPONENT_SUITES,
         "blocking_gaps": tuple(check for check in checks if not check["ok"]),
         "stop_condition": "do-not-claim-full-rad-parity-unless-every-check-is-proven",

@@ -121,6 +121,7 @@ from pyAppGen.form_designer import pascal_runtime_workbench
 from pyAppGen.form_designer import pascal_unit_contract
 from pyAppGen.form_designer import placement_suggestions
 from pyAppGen.form_designer import platform_parity_lifecycle_replay_contract
+from pyAppGen.form_designer import platform_parity_requirement_audit_contract
 from pyAppGen.form_designer import property_inspector
 from pyAppGen.form_designer import rad_data_tooling_workbench
 from pyAppGen.form_designer import snap_drop
@@ -1805,6 +1806,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "cross_target_animation_effects_3d_depth",
         "third_party_component_ecosystem",
         "platform_parity_lifecycle_replay",
+        "platform_parity_requirement_audit",
         "artifact_contract",
     } == {check["id"] for check in rad_parity_workbench()["checks"]}
     platform_lifecycle = platform_parity_lifecycle_replay_contract()
@@ -1827,6 +1829,24 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "target_validation_before_release_claim",
         "all_subsystems_replayed",
     } <= {check["id"] for check in platform_lifecycle["checks"] if check["ok"]}
+    requirement_audit = platform_parity_requirement_audit_contract()
+    assert requirement_audit["format"] == "appgen.platform-parity-requirement-audit.v1"
+    assert requirement_audit["ok"] is True
+    assert {
+        "component_parity",
+        "native_runtime_streaming",
+        "inspector_design_surface",
+        "visual_binding_designer",
+        "native_data_service_tooling",
+        "package_installation_ecosystem",
+        "device_api_component_coverage",
+        "cross_target_visual_depth",
+    } == {requirement["id"] for requirement in requirement_audit["requirements"]}
+    assert {
+        "all_requirements_have_evidence",
+        "all_requirements_pass",
+        "lifecycle_replay_aligned",
+    } <= {check["id"] for check in requirement_audit["checks"] if check["ok"]}
 
     smoke = form_designer_generation_smoke_audit()
     assert smoke["format"] == "appgen.form-designer-generation-smoke-audit.v1"
@@ -9567,6 +9587,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert generated_rad["format"] == "appgen.generated-rad-parity-workbench.v1"
     assert generated_rad["ok"] is True
     assert "platform_parity_lifecycle_replay" in {check["id"] for check in generated_rad["checks"]}
+    assert "platform_parity_requirement_audit" in {check["id"] for check in generated_rad["checks"]}
     assert generated_rad["lifecycle_replay"]["format"] == "appgen.generated-platform-parity-lifecycle-replay.v1"
     assert generated_rad["lifecycle_replay"]["ok"] is True
     assert {
@@ -9586,6 +9607,23 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "target_validation_before_release_claim",
         "all_subsystems_replayed",
     } <= {check["id"] for check in generated_rad["lifecycle_replay"]["checks"] if check["ok"]}
+    assert generated_rad["requirement_audit"]["format"] == "appgen.generated-platform-parity-requirement-audit.v1"
+    assert generated_rad["requirement_audit"]["ok"] is True
+    assert {
+        "component_parity",
+        "native_runtime_streaming",
+        "inspector_design_surface",
+        "visual_binding_designer",
+        "native_data_service_tooling",
+        "package_installation_ecosystem",
+        "device_api_component_coverage",
+        "cross_target_visual_depth",
+    } == {requirement["id"] for requirement in generated_rad["requirement_audit"]["requirements"]}
+    assert {
+        "all_requirements_have_evidence",
+        "all_requirements_pass",
+        "lifecycle_replay_aligned",
+    } <= {check["id"] for check in generated_rad["requirement_audit"]["checks"] if check["ok"]}
     assert {"devexpress-native", "tms-fnc", "fastreport", "teechart", "indy"} <= {
         item["id"] for item in form_designer.third_party_component_registry()
     }
