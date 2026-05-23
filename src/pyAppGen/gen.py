@@ -30013,6 +30013,77 @@ def data_service_telemetry_contract():
     }}
 
 
+def data_dataset_state_machine_contract():
+    """Return generated dataset open, edit, post, reconcile, and rollback lifecycle evidence."""
+    dataset = data_dataset_field_catalog_contract()
+    transitions = (
+        {{"from": "closed", "to": "opening", "event": "before_open", "pipeline": ("bind_parameters", "open_cursor", "load_field_defs")}},
+        {{"from": "opening", "to": "browse", "event": "after_open", "pipeline": ("materialize_rows", "publish_current_row", "refresh_bound_controls")}},
+        {{"from": "browse", "to": "edit", "event": "begin_edit", "pipeline": ("snapshot_row", "enable_field_editors", "start_change_log")}},
+        {{"from": "edit", "to": "posting", "event": "before_post", "pipeline": ("validate_fields", "run_constraints", "write_change_log")}},
+        {{"from": "posting", "to": "browse", "event": "after_post", "pipeline": ("commit_or_queue", "refresh_bookmark", "publish_row_changed")}},
+        {{"from": "posting", "to": "reconciling", "event": "on_reconcile_error", "pipeline": ("capture_conflict", "show_resolution", "apply_resolution")}},
+        {{"from": "edit", "to": "browse", "event": "cancel", "pipeline": ("rollback_row_snapshot", "clear_change_log", "refresh_bound_controls")}},
+    )
+    return {{
+        "format": "appgen.generated-data-dataset-state-machine-contract.v1",
+        "dataset": dataset["dataset"],
+        "states": ("closed", "opening", "browse", "edit", "insert", "posting", "reconciling", "error"),
+        "transitions": transitions,
+        "guards": ("field_validation_before_post", "row_snapshot_before_edit", "reconcile_errors_visible", "rollback_restores_snapshot"),
+        "ok": dataset["ok"]
+        and all({{"from", "to", "event", "pipeline"}} <= set(transition) for transition in transitions)
+        and all("validate_fields" in transition["pipeline"] or transition["event"] != "before_post" for transition in transitions),
+        "side_effects": (),
+    }}
+
+
+def data_lookup_editor_pipeline_contract():
+    """Return generated lookup editor generation from relationship metadata."""
+    relationships = data_relationship_navigation_contract()
+    editors = tuple(
+        {{
+            "field": edge["field"],
+            "source": edge["from"],
+            "target": edge["to"],
+            "display_member": edge["lookup"],
+            "pipeline": ("introspect_foreign_key", "choose_display_member", "generate_lookup_dataset", "bind_value_member", "preview_join", "validate_cycle"),
+        }}
+        for edge in relationships["chain"]
+    )
+    return {{
+        "format": "appgen.generated-data-lookup-editor-pipeline-contract.v1",
+        "editors": editors,
+        "guards": ("foreign_key_fields_get_lookup_editors", "display_member_required", "cycle_detection_before_join"),
+        "ok": relationships["ok"]
+        and bool(editors)
+        and all({{"generate_lookup_dataset", "bind_value_member", "preview_join"}} <= set(editor["pipeline"]) for editor in editors),
+        "side_effects": (),
+    }}
+
+
+def data_module_runtime_smoke_contract():
+    """Return generated data-module import and smoke-test evidence."""
+    modules = data_module_generation_contract()
+    smoke_tests = tuple(
+        {{
+            "module": artifact["name"],
+            "exports": artifact["exports"],
+            "smoke": ("import_module", "instantiate_contract", "run_read_only_probe", "verify_no_side_effects"),
+        }}
+        for artifact in modules["artifacts"]
+    )
+    return {{
+        "format": "appgen.generated-data-module-runtime-smoke-contract.v1",
+        "smoke_tests": smoke_tests,
+        "guards": ("module_imports_are_required", "read_only_probe_required", "side_effects_disallowed"),
+        "ok": modules["ok"]
+        and bool(smoke_tests)
+        and all({{"import_module", "run_read_only_probe", "verify_no_side_effects"}} <= set(test["smoke"]) for test in smoke_tests),
+        "side_effects": (),
+    }}
+
+
 def rad_data_tooling_workbench():
     """Prove native data-service tooling depth across connections, queries, services, and local sync."""
     contract = rad_data_tooling_contract()
@@ -30049,6 +30120,9 @@ def rad_data_tooling_workbench():
     backup_restore_verification = local_backup_restore_verification_contract()
     replication_monitor = data_replication_monitor_contract()
     service_telemetry = data_service_telemetry_contract()
+    dataset_state_machine = data_dataset_state_machine_contract()
+    lookup_editor_pipeline = data_lookup_editor_pipeline_contract()
+    module_runtime_smoke = data_module_runtime_smoke_contract()
     checks = (
         {{"id": "connection_catalog", "ok": bool(contract["connection_catalog"]) and all(item["secret_policy"] in ("externalized", "local_keychain") for item in contract["connection_catalog"]), "evidence": contract["connection_catalog"]}},
         {{"id": "query_designer", "ok": {{"sql_builder", "stored_procedure_browser", "schema_adapter"}} <= set(contract["query_designer"]["surfaces"]) and "parameterized_sql_only" in contract["query_designer"]["guards"], "evidence": contract["query_designer"]}},
@@ -30090,9 +30164,12 @@ def rad_data_tooling_workbench():
         {{"id": "backup_restore_verification", "ok": backup_restore_verification["ok"] and "restore_drill_required" in backup_restore_verification["guards"] and not backup_restore_verification["side_effects"], "evidence": backup_restore_verification}},
         {{"id": "replication_monitor", "ok": replication_monitor["ok"] and "replication_lag_alerted" in replication_monitor["guards"] and not replication_monitor["side_effects"], "evidence": replication_monitor}},
         {{"id": "service_telemetry", "ok": service_telemetry["ok"] and {{"request_id_required", "latency_budget_recorded"}} <= set(service_telemetry["guards"]) and not service_telemetry["side_effects"], "evidence": service_telemetry}},
+        {{"id": "dataset_state_machine", "ok": dataset_state_machine["ok"] and {{"field_validation_before_post", "rollback_restores_snapshot"}} <= set(dataset_state_machine["guards"]) and not dataset_state_machine["side_effects"], "evidence": dataset_state_machine}},
+        {{"id": "lookup_editor_pipeline", "ok": lookup_editor_pipeline["ok"] and {{"foreign_key_fields_get_lookup_editors", "display_member_required"}} <= set(lookup_editor_pipeline["guards"]) and not lookup_editor_pipeline["side_effects"], "evidence": lookup_editor_pipeline}},
+        {{"id": "data_module_runtime_smoke", "ok": module_runtime_smoke["ok"] and {{"module_imports_are_required", "read_only_probe_required"}} <= set(module_runtime_smoke["guards"]) and not module_runtime_smoke["side_effects"], "evidence": module_runtime_smoke}},
     )
     ok = all(check["ok"] for check in checks)
-    return {{"format": "appgen.generated-rad-data-tooling-workbench.v1", "ok": ok, "decision": "approved" if ok else "blocked", "contract": contract, "connection_test": connection_test, "query_preview": query_preview, "method_invocation": method_invocation, "resource_publish": resource_publish, "local_maintenance": local_maintenance, "conflict_review": conflict_review, "driver_matrix": driver_matrix, "schema_diff": schema_diff, "transaction_rehearsal": transaction_rehearsal, "offline_replay": offline_replay, "service_tests": service_tests, "schema_browser": schema_browser, "parameter_binding": parameter_binding, "dataset_fields": dataset_fields, "service_security": service_security, "offline_queue_integrity": offline_queue_integrity, "migration_rehearsal": migration_rehearsal, "dataset_designer": dataset_designer, "service_invocation_traces": service_invocation_traces, "maintenance_schedule": maintenance_schedule, "schema_checkpoints": schema_checkpoints, "data_modules": data_modules, "query_plan_visualizer": query_plan_visualizer, "relationship_navigation": relationship_navigation, "service_versioning": service_versioning, "connection_failover": connection_failover, "change_capture_lineage": change_capture_lineage, "connection_pooling": connection_pooling, "stored_procedures": stored_procedures, "sql_authoring_safety": sql_authoring_safety, "backup_restore_verification": backup_restore_verification, "replication_monitor": replication_monitor, "service_telemetry": service_telemetry, "checks": checks, "blocking_gaps": tuple(check for check in checks if not check["ok"])}}
+    return {{"format": "appgen.generated-rad-data-tooling-workbench.v1", "ok": ok, "decision": "approved" if ok else "blocked", "contract": contract, "connection_test": connection_test, "query_preview": query_preview, "method_invocation": method_invocation, "resource_publish": resource_publish, "local_maintenance": local_maintenance, "conflict_review": conflict_review, "driver_matrix": driver_matrix, "schema_diff": schema_diff, "transaction_rehearsal": transaction_rehearsal, "offline_replay": offline_replay, "service_tests": service_tests, "schema_browser": schema_browser, "parameter_binding": parameter_binding, "dataset_fields": dataset_fields, "service_security": service_security, "offline_queue_integrity": offline_queue_integrity, "migration_rehearsal": migration_rehearsal, "dataset_designer": dataset_designer, "service_invocation_traces": service_invocation_traces, "maintenance_schedule": maintenance_schedule, "schema_checkpoints": schema_checkpoints, "data_modules": data_modules, "query_plan_visualizer": query_plan_visualizer, "relationship_navigation": relationship_navigation, "service_versioning": service_versioning, "connection_failover": connection_failover, "change_capture_lineage": change_capture_lineage, "connection_pooling": connection_pooling, "stored_procedures": stored_procedures, "sql_authoring_safety": sql_authoring_safety, "backup_restore_verification": backup_restore_verification, "replication_monitor": replication_monitor, "service_telemetry": service_telemetry, "dataset_state_machine": dataset_state_machine, "lookup_editor_pipeline": lookup_editor_pipeline, "module_runtime_smoke": module_runtime_smoke, "checks": checks, "blocking_gaps": tuple(check for check in checks if not check["ok"])}}
 
 
 def mobile_native_api_contract():

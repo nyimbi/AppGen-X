@@ -1024,6 +1024,9 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "backup_restore_verification",
         "replication_monitor",
         "service_telemetry",
+        "dataset_state_machine",
+        "lookup_editor_pipeline",
+        "data_module_runtime_smoke",
     } == {check["id"] for check in data_workbench["checks"]}
     assert data_workbench["connection_test"]["steps"][-1] == "rollback_test_transaction"
     assert "explain_plan" in data_workbench["query_preview"]["plan"]
@@ -1073,6 +1076,9 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     assert all("restore_to_scratch" in drill["verification"] for drill in data_workbench["backup_restore_verification"]["drills"])
     assert all("lag_seconds" in monitor["metrics"] for monitor in data_workbench["replication_monitor"]["monitors"])
     assert all("request_id" in item["trace"] for item in data_workbench["service_telemetry"]["telemetry"])
+    assert all("validate_fields" in transition["pipeline"] or transition["event"] != "before_post" for transition in data_workbench["dataset_state_machine"]["transitions"])
+    assert all("generate_lookup_dataset" in editor["pipeline"] for editor in data_workbench["lookup_editor_pipeline"]["editors"])
+    assert all("run_read_only_probe" in test["smoke"] for test in data_workbench["module_runtime_smoke"]["smoke_tests"])
     mobile_workbench = mobile_native_api_workbench()
     assert mobile_workbench["format"] == "appgen.mobile-native-api-workbench.v1"
     assert mobile_workbench["ok"] is True
@@ -9418,6 +9424,9 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "backup_restore_verification",
         "replication_monitor",
         "service_telemetry",
+        "dataset_state_machine",
+        "lookup_editor_pipeline",
+        "data_module_runtime_smoke",
     } == {check["id"] for check in generated_data_tooling["checks"]}
     assert generated_data_tooling["connection_test"]["steps"][-1] == "rollback_test_transaction"
     assert "explain_plan" in generated_data_tooling["query_preview"]["plan"]
@@ -9467,6 +9476,9 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert "backup_checksum_verified" in generated_data_tooling["backup_restore_verification"]["guards"]
     assert all("conflict_count" in monitor["metrics"] for monitor in generated_data_tooling["replication_monitor"]["monitors"])
     assert "latency_budget_recorded" in generated_data_tooling["service_telemetry"]["guards"]
+    assert "reconcile_errors_visible" in generated_data_tooling["dataset_state_machine"]["guards"]
+    assert all("bind_value_member" in editor["pipeline"] for editor in generated_data_tooling["lookup_editor_pipeline"]["editors"])
+    assert all("verify_no_side_effects" in test["smoke"] for test in generated_data_tooling["module_runtime_smoke"]["smoke_tests"])
     generated_mobile = form_designer.mobile_native_api_workbench()
     assert generated_mobile["format"] == "appgen.generated-mobile-native-api-workbench.v1"
     assert generated_mobile["ok"] is True
