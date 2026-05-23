@@ -319,10 +319,13 @@ Generated apps include Studio contracts for:
 - An Object Inspector workbench proves property editor types, event-handler
   lifecycle actions, component editor verbs, custom designer hooks, editor
   registration, property validation, staged verb execution, custom designer
-  activation, and persisted inspector state. It also replays design-surface
-  transactions across tree and canvas selection, multi-select edits, component
-  editor changes, custom overlays, dependent-property refresh, diagnostics,
-  undo/redo, reference synchronization, and custom designer registration from
+  activation, and persisted inspector state. Its editor lifecycle replay proves
+  property validation, event routing, component editor transactions, custom
+  designer lifecycle, dependency refresh, metadata round trip, design-surface
+  replay, and custom designer registration in release order. It also replays
+  design-surface transactions across tree and canvas selection, multi-select
+  edits, component editor changes, custom overlays, dependent-property refresh,
+  diagnostics, undo/redo, reference synchronization, and custom designer registration from
   metadata through activation, overlays, hit targets, lifecycle, and metadata
   round trip.
 - A visual data-binding workbench proves binding graph nodes/edges, expression

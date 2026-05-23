@@ -113,6 +113,7 @@ from pyAppGen.form_designer import livebindings_workbench
 from pyAppGen.form_designer import mobile_device_capability_lifecycle_replay_contract
 from pyAppGen.form_designer import mobile_native_api_workbench
 from pyAppGen.form_designer import object_inspector_contract
+from pyAppGen.form_designer import inspector_editor_lifecycle_replay_contract
 from pyAppGen.form_designer import object_inspector_workbench
 from pyAppGen.form_designer import data_relationship_lookup_lifecycle_replay_contract
 from pyAppGen.form_designer import rad_parity_workbench
@@ -926,6 +927,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "cross_component_session_replay",
         "design_surface_transaction_replay",
         "custom_designer_registration_replay",
+        "editor_lifecycle_replay",
     } == {check["id"] for check in inspector_workbench["checks"]}
     assert all("apply_change" in workflow["workflow"] for workflow in inspector_workbench["property_edit_workflows"])
     assert all("update_component_reference" in workflow["workflow"] for workflow in inspector_workbench["event_edit_workflows"])
@@ -1012,6 +1014,28 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     assert inspector_workbench["custom_designer_registration_replay"]["final_state"]["metadata_round_trips"] == len(
         inspector_workbench["custom_designer_registration_replay"]["components"]
     )
+    editor_lifecycle = inspector_editor_lifecycle_replay_contract()
+    assert editor_lifecycle["format"] == "appgen.inspector-editor-lifecycle-replay.v1"
+    assert editor_lifecycle["ok"] is True
+    assert {
+        "validate_property_values",
+        "route_event_handlers",
+        "run_component_editor_transactions",
+        "activate_custom_designers",
+        "refresh_property_dependencies",
+        "round_trip_metadata",
+        "replay_design_surface",
+        "replay_custom_designer_registration",
+    } <= {item["phase"] for item in editor_lifecycle["replay"]}
+    assert {
+        "property_validation_before_commit",
+        "event_routes_before_design_surface",
+        "component_transactions_before_surface_replay",
+        "custom_designers_before_registration_replay",
+        "metadata_round_trip_before_release",
+        "side_effect_guards",
+    } <= {check["id"] for check in editor_lifecycle["checks"] if check["ok"]}
+    assert inspector_workbench["editor_lifecycle_replay"]["ok"] is True
     binding_graph = livebindings_graph_contract()
     assert binding_graph["format"] == "appgen.livebindings-graph.v1"
     assert {"dataset", "field", "control", "expression"} <= {node["kind"] for node in binding_graph["nodes"]}
@@ -10297,6 +10321,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "cross_component_session_replay",
         "design_surface_transaction_replay",
         "custom_designer_registration_replay",
+        "editor_lifecycle_replay",
     } == {check["id"] for check in generated_inspector["checks"]}
     assert generated_inspector["editor_registries"]
     assert generated_inspector["state_persistence"]["state_keys"]
@@ -10375,6 +10400,26 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     } <= {item["phase"] for item in generated_inspector["custom_designer_registration_replay"]["replay"]}
     assert generated_inspector["custom_designer_registration_replay"]["final_state"]["hit_targets"] > 0
     assert generated_inspector["custom_designer_registration_replay"]["final_state"]["lifecycle_hooks"] == generated_inspector["custom_designer_registration_replay"]["final_state"]["registered_hooks"]
+    assert generated_inspector["editor_lifecycle_replay"]["format"] == "appgen.generated-inspector-editor-lifecycle-replay.v1"
+    assert generated_inspector["editor_lifecycle_replay"]["ok"] is True
+    assert {
+        "validate_property_values",
+        "route_event_handlers",
+        "run_component_editor_transactions",
+        "activate_custom_designers",
+        "refresh_property_dependencies",
+        "round_trip_metadata",
+        "replay_design_surface",
+        "replay_custom_designer_registration",
+    } <= {item["phase"] for item in generated_inspector["editor_lifecycle_replay"]["replay"]}
+    assert {
+        "property_validation_before_commit",
+        "event_routes_before_design_surface",
+        "component_transactions_before_surface_replay",
+        "custom_designers_before_registration_replay",
+        "metadata_round_trip_before_release",
+        "side_effect_guards",
+    } <= {check["id"] for check in generated_inspector["editor_lifecycle_replay"]["checks"] if check["ok"]}
     generated_usability = form_designer.component_usability_workbench()
     assert generated_usability["format"] == "appgen.generated-component-usability-workbench.v1"
     assert generated_usability["ok"] is True

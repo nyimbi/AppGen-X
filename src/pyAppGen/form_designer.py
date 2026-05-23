@@ -4630,6 +4630,150 @@ def inspector_custom_designer_registration_replay_contract(components: tuple[str
     }
 
 
+def inspector_editor_lifecycle_replay_contract(components: tuple[str, ...] = ()) -> dict:
+    """Replay the ordered Object Inspector editor lifecycle across design surfaces."""
+    selected = components or (
+        "TextBox",
+        "Grid",
+        "Rectangle",
+        "StyleBook",
+        "GestureManager",
+        "Viewport3D",
+        "DatabaseConnection",
+    )
+    component = "Grid" if "Grid" in selected else selected[0]
+    property_pipeline = inspector_property_value_pipeline_contract(component)
+    event_signatures = inspector_event_handler_signature_contract(component)
+    component_transaction = inspector_component_editor_transaction(component)
+    custom_lifecycle = inspector_custom_designer_lifecycle_contract(component)
+    dependencies = inspector_property_dependency_contract(component)
+    round_trip = inspector_round_trip_contract(component)
+    design_surface_replay = inspector_design_surface_transaction_replay_contract(selected)
+    custom_registration_replay = inspector_custom_designer_registration_replay_contract(selected)
+    replay = (
+        {
+            "phase": "validate_property_values",
+            "pipeline": tuple(stage for item in property_pipeline["pipelines"] for stage in item["stages"]),
+            "ok": property_pipeline["ok"]
+            and all("commit_change" in item["stages"] for item in property_pipeline["pipelines"]),
+        },
+        {
+            "phase": "route_event_handlers",
+            "pipeline": tuple(stage for item in event_signatures["handlers"] for stage in item["pipeline"]),
+            "ok": event_signatures["ok"]
+            and all({"rename_references", "cleanup_detached_handler"} & set(item["pipeline"]) for item in event_signatures["handlers"]),
+        },
+        {
+            "phase": "run_component_editor_transactions",
+            "pipeline": component_transaction["transaction"] + component_transaction["rollback"],
+            "ok": {"snapshot_design", "apply_change", "record_undo"} <= set(component_transaction["transaction"])
+            and "restore_snapshot" in component_transaction["rollback"],
+        },
+        {
+            "phase": "activate_custom_designers",
+            "pipeline": tuple(step for item in custom_lifecycle["lifecycle"] for step in item["lifecycle"]),
+            "ok": custom_lifecycle["ok"]
+            and all("commit_or_cancel" in item["lifecycle"] for item in custom_lifecycle["lifecycle"]),
+        },
+        {
+            "phase": "refresh_property_dependencies",
+            "pipeline": tuple(step for item in dependencies["recalculations"] for step in item["stage"]),
+            "ok": dependencies["ok"]
+            and all("refresh_inspector" in item["stage"] for item in dependencies["recalculations"]),
+        },
+        {
+            "phase": "round_trip_metadata",
+            "pipeline": round_trip["exported"]["properties"] + round_trip["exported"]["events"],
+            "ok": round_trip["ok"] and "custom_designer_metadata_preserved" in round_trip["guards"],
+        },
+        {
+            "phase": "replay_design_surface",
+            "pipeline": tuple(item["phase"] for item in design_surface_replay["replay"]),
+            "ok": design_surface_replay["ok"]
+            and {"selection_before_edit", "event_references_sync_after_rename"} <= set(design_surface_replay["guards"]),
+        },
+        {
+            "phase": "replay_custom_designer_registration",
+            "pipeline": tuple(item["phase"] for item in custom_registration_replay["replay"]),
+            "ok": custom_registration_replay["ok"]
+            and {"custom_designers_registered_before_activation", "metadata_round_trips_custom_designers"}
+            <= set(custom_registration_replay["guards"]),
+        },
+    )
+    checks = (
+        {
+            "id": "property_validation_before_commit",
+            "ok": replay[0]["ok"] and replay[0]["phase"] == "validate_property_values",
+            "evidence": property_pipeline,
+        },
+        {
+            "id": "event_routes_before_design_surface",
+            "ok": replay[1]["ok"]
+            and tuple(item["phase"] for item in replay).index("route_event_handlers")
+            < tuple(item["phase"] for item in replay).index("replay_design_surface"),
+            "evidence": event_signatures,
+        },
+        {
+            "id": "component_transactions_before_surface_replay",
+            "ok": replay[2]["ok"]
+            and tuple(item["phase"] for item in replay).index("run_component_editor_transactions")
+            < tuple(item["phase"] for item in replay).index("replay_design_surface"),
+            "evidence": component_transaction,
+        },
+        {
+            "id": "custom_designers_before_registration_replay",
+            "ok": replay[3]["ok"]
+            and tuple(item["phase"] for item in replay).index("activate_custom_designers")
+            < tuple(item["phase"] for item in replay).index("replay_custom_designer_registration"),
+            "evidence": custom_lifecycle,
+        },
+        {
+            "id": "metadata_round_trip_before_release",
+            "ok": replay[5]["ok"]
+            and tuple(item["phase"] for item in replay).index("round_trip_metadata")
+            < tuple(item["phase"] for item in replay).index("replay_custom_designer_registration"),
+            "evidence": round_trip,
+        },
+        {
+            "id": "side_effect_guards",
+            "ok": not any(
+                contract["side_effects"]
+                for contract in (
+                    property_pipeline,
+                    event_signatures,
+                    component_transaction,
+                    custom_lifecycle,
+                    dependencies,
+                    round_trip,
+                    design_surface_replay,
+                    custom_registration_replay,
+                )
+            ),
+            "evidence": (),
+        },
+    )
+    ok = all(item["ok"] for item in replay) and all(check["ok"] for check in checks)
+    return {
+        "format": "appgen.inspector-editor-lifecycle-replay.v1",
+        "ok": ok,
+        "decision": "approved" if ok else "blocked",
+        "component": component,
+        "components": selected,
+        "replay": replay,
+        "checks": checks,
+        "guards": (
+            "property_values_validate_before_commit",
+            "event_references_route_before_surface_replay",
+            "component_transactions_are_undoable_before_release",
+            "custom_designer_lifecycle_precedes_registration_replay",
+            "metadata_round_trips_before_release",
+            "editor_lifecycle_has_no_side_effects",
+        ),
+        "side_effects": (),
+        "blocking_gaps": tuple(check for check in checks if not check["ok"]),
+    }
+
+
 def object_inspector_workbench() -> dict:
     """Prove property, event, component-editor, and custom-designer coverage."""
     sample_components = (
@@ -4676,6 +4820,7 @@ def object_inspector_workbench() -> dict:
     cross_component_replay = inspector_cross_component_session_replay_contract(sample_components)
     design_surface_replay = inspector_design_surface_transaction_replay_contract(sample_components)
     custom_designer_registration_replay = inspector_custom_designer_registration_replay_contract(sample_components)
+    editor_lifecycle_replay = inspector_editor_lifecycle_replay_contract(sample_components)
     checks = (
         {
             "id": "property_editor_types",
@@ -4874,6 +5019,14 @@ def object_inspector_workbench() -> dict:
             and not custom_designer_registration_replay["side_effects"],
             "evidence": custom_designer_registration_replay,
         },
+        {
+            "id": "editor_lifecycle_replay",
+            "ok": editor_lifecycle_replay["ok"]
+            and {"property_values_validate_before_commit", "metadata_round_trips_before_release"}
+            <= set(editor_lifecycle_replay["guards"])
+            and not editor_lifecycle_replay["side_effects"],
+            "evidence": editor_lifecycle_replay,
+        },
     )
     ok = all(check["ok"] for check in checks)
     return {
@@ -4909,6 +5062,7 @@ def object_inspector_workbench() -> dict:
         "cross_component_replay": cross_component_replay,
         "design_surface_replay": design_surface_replay,
         "custom_designer_registration_replay": custom_designer_registration_replay,
+        "editor_lifecycle_replay": editor_lifecycle_replay,
         "checks": checks,
         "blocking_gaps": tuple(check for check in checks if not check["ok"]),
     }
@@ -10473,7 +10627,13 @@ def platform_parity_requirement_audit_contract() -> dict:
                 "event_editor_lifecycle",
                 "component_editor_transaction",
                 "custom_designer_registration_replay",
+                "editor_lifecycle_replay",
             } <= {check["id"] for check in inspector["checks"]},
+            "deep_checks": (
+                "editor_lifecycle_replay",
+                "design_surface_transaction_replay",
+                "custom_designer_registration_replay",
+            ),
             "evidence": inspector,
         },
         {

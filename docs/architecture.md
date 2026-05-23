@@ -217,11 +217,15 @@ Visual design is split into two related capabilities:
   property editors, event handler lifecycle, component verbs, custom designer
   hooks, editor registration, property validation, staged verb execution,
   custom designer activation, filtering/sorting modes, and persisted inspector
-  state. Its design-surface transaction replay validates ordered selection,
-  multi-select edit, component-editor, overlay, dependency refresh, diagnostic,
-  undo/redo, and reference-sync behavior. Its custom designer registration
-  replay validates registration, activation, overlay rendering, hit-target
-  routing, lifecycle commit/cancel behavior, and metadata round trip.
+  state. Its editor lifecycle replay validates property value pipelines, event
+  handler routing, component-editor transactions, custom designer lifecycle,
+  dependency refresh, metadata round trip, design-surface replay, and custom
+  designer registration in one release-ordered flow. Its design-surface
+  transaction replay validates ordered selection, multi-select edit,
+  component-editor, overlay, dependency refresh, diagnostic, undo/redo, and
+  reference-sync behavior. Its custom designer registration replay validates
+  registration, activation, overlay rendering, hit-target routing, lifecycle
+  commit/cancel behavior, and metadata round trip.
 - `component_analog_workbench()` validates requested component analog coverage
   across controls, layouts, data display, graphics, animation, theming,
   gestures, sensors, 3D scene primitives, and data access. It records the

@@ -65,9 +65,13 @@ A generated app can include:
 - `object_inspector_workbench()` proves property editors, event editors,
   component editor verbs, custom designer hooks, editor registration, property
   validation, staged verb execution, custom designer activation, filtering,
-  sorting, inspector state persistence, and ordered design-surface transactions
-  across selection, multi-select edits, overlays, diagnostics, undo/redo, and
-  reference synchronization. Its custom designer registration replay carries
+  sorting, inspector state persistence, and one ordered editor lifecycle replay
+  across property validation, event routing, component editor transactions,
+  custom designer lifecycle, dependency refresh, metadata round trip,
+  design-surface replay, and custom designer registration. It also proves
+  ordered design-surface transactions across selection, multi-select edits,
+  overlays, diagnostics, undo/redo, and reference synchronization. Its custom
+  designer registration replay carries
   metadata registration through activation, overlay rendering, hit-target
   routing, lifecycle commit/cancel behavior, and metadata round trip.
 - `livebindings_workbench()` proves visual data-binding graph nodes and edges,
