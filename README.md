@@ -349,7 +349,10 @@ Generated apps include Studio contracts for:
   asset import budgets, preview/runtime parity, runtime fallbacks, and an
   ordered designer transaction replay across style overrides, timeline
   authoring, effect fallback, scene editing, asset preview, hit testing,
-  transform sync, and runtime delivery.
+  transform sync, and runtime delivery. Its visual lifecycle replay ties style
+  validation, timeline export, effect fallbacks, scene/material validation,
+  asset preview diffs, hit-test routing, transform sync, runtime replay, and
+  designer replay into one ordered contract.
 - Curated third-party component registry for useful commercial and open-source
   suites, plus reviewed package import/install plans for additional vendors.
 - A design-time package manager workbench proves install session phases,

@@ -255,6 +255,10 @@ Visual design is split into two related capabilities:
   fallbacks. Its designer transaction replay ties style overrides, timeline
   authoring, effect fallback, scene editing, asset preview, hit testing,
   transform synchronization, and runtime delivery into one ordered contract.
+  Its visual lifecycle replay ties style validation, timeline export, effect
+  fallbacks, scene/material validation, asset preview diffs, hit-test routing,
+  transform synchronization, runtime replay, and designer replay into one
+  ordered contract.
 - `design_time_package_manager_workbench()` validates package install sessions,
   compatibility matrices, palette/inspector/binding registration, isolated
   loading, rollback plans, package behavior contracts, dependency lockfile

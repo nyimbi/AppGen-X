@@ -9756,6 +9756,162 @@ def cross_target_visual_designer_transaction_replay_contract() -> dict:
     }
 
 
+def cross_target_visual_lifecycle_replay_contract() -> dict:
+    """Replay visual authoring assets through preview, runtime, and designer synchronization."""
+    style_tokens = cross_target_style_token_validation_contract()
+    style_inheritance = cross_target_style_inheritance_trace_contract()
+    timeline_scrub = cross_target_timeline_scrub_contract()
+    timeline_export = cross_target_timeline_runtime_export_contract()
+    effect_budget = cross_target_effect_budget_contract()
+    effect_fallback = cross_target_effect_fallback_matrix_contract()
+    scene_integrity = cross_target_scene_graph_integrity_contract()
+    material_binding = cross_target_material_binding_contract()
+    shader_editor = cross_target_shader_material_editor_contract()
+    asset_import = cross_target_asset_import_workflow()
+    preview_diff = cross_target_preview_runtime_diff_workflow()
+    hit_testing = cross_target_scene_hit_test_contract()
+    transforms = cross_target_scene_transform_gizmo_contract()
+    runtime_replay = cross_target_visual_runtime_replay_contract()
+    designer_replay = cross_target_visual_designer_transaction_replay_contract()
+    replay = (
+        {
+            "phase": "validate_style_tokens",
+            "ok": style_tokens["ok"]
+            and style_inheritance["ok"]
+            and "effective_value_traceable" in style_inheritance["guards"],
+            "evidence": {
+                "tokens": style_tokens["tokens"],
+                "inheritance": tuple(trace["token"] for trace in style_inheritance["traces"]),
+            },
+        },
+        {
+            "phase": "export_timeline_runtime",
+            "ok": timeline_scrub["ok"]
+            and timeline_export["ok"]
+            and all("native_timeline" in export["artifacts"] for export in timeline_export["exports"]),
+            "evidence": {
+                "tracks": tuple(sample["track"] for sample in timeline_scrub["samples"]),
+                "exports": tuple(export["track"] for export in timeline_export["exports"]),
+            },
+        },
+        {
+            "phase": "assign_effect_fallbacks",
+            "ok": effect_budget["ok"]
+            and effect_fallback["ok"]
+            and any(row["decision"] == "use_fallback" for row in effect_fallback["rows"]),
+            "evidence": {
+                "budget": effect_budget["mobile_budget"],
+                "fallbacks": tuple(row["effect"] for row in effect_fallback["rows"] if row["decision"] == "use_fallback"),
+            },
+        },
+        {
+            "phase": "validate_scene_materials",
+            "ok": scene_integrity["ok"]
+            and material_binding["ok"]
+            and shader_editor["ok"]
+            and "assign_material" in shader_editor["operations"],
+            "evidence": {
+                "nodes": tuple(node["id"] for node in scene_integrity["nodes"]),
+                "materials": tuple(binding["material"] for binding in material_binding["bindings"]),
+            },
+        },
+        {
+            "phase": "import_assets_and_diff_preview",
+            "ok": asset_import["ok"]
+            and preview_diff["diff_result"]["ok"]
+            and {"fingerprint_asset", "write_asset_manifest"} <= set(asset_import["pipeline"])
+            and "report_visible_diff" in preview_diff["diff_steps"],
+            "evidence": {
+                "asset_pipeline": asset_import["pipeline"],
+                "diff_steps": preview_diff["diff_steps"],
+            },
+        },
+        {
+            "phase": "route_hit_tests_and_transforms",
+            "ok": hit_testing["ok"]
+            and transforms["ok"]
+            and all("open_inspector" in item["route"] for item in hit_testing["hit_tests"])
+            and all("sync_inspector" in item["pipeline"] for item in transforms["transforms"]),
+            "evidence": {
+                "hit_tests": tuple(item["node"] for item in hit_testing["hit_tests"]),
+                "transforms": tuple(item["node"] for item in transforms["transforms"]),
+            },
+        },
+        {
+            "phase": "runtime_and_designer_replay",
+            "ok": runtime_replay["ok"]
+            and designer_replay["ok"]
+            and "runtime_replay_matches_designer_state" in designer_replay["guards"],
+            "evidence": {
+                "runtime_phases": tuple(item["phase"] for item in runtime_replay["replay"]),
+                "designer_phases": tuple(item["phase"] for item in designer_replay["replay"]),
+            },
+        },
+    )
+    checks = (
+        {
+            "id": "style_before_timeline",
+            "ok": tuple(item["phase"] for item in replay).index("validate_style_tokens")
+            < tuple(item["phase"] for item in replay).index("export_timeline_runtime"),
+            "evidence": replay,
+        },
+        {
+            "id": "effects_before_runtime",
+            "ok": tuple(item["phase"] for item in replay).index("assign_effect_fallbacks")
+            < tuple(item["phase"] for item in replay).index("runtime_and_designer_replay"),
+            "evidence": replay,
+        },
+        {
+            "id": "scene_assets_before_preview_diff",
+            "ok": tuple(item["phase"] for item in replay).index("validate_scene_materials")
+            < tuple(item["phase"] for item in replay).index("import_assets_and_diff_preview"),
+            "evidence": replay,
+        },
+        {
+            "id": "hit_tests_before_designer_replay",
+            "ok": tuple(item["phase"] for item in replay).index("route_hit_tests_and_transforms")
+            < tuple(item["phase"] for item in replay).index("runtime_and_designer_replay"),
+            "evidence": replay,
+        },
+        {
+            "id": "side_effect_guards",
+            "ok": not style_tokens["side_effects"]
+            and not style_inheritance["side_effects"]
+            and not timeline_scrub["side_effects"]
+            and not timeline_export["side_effects"]
+            and not effect_budget["side_effects"]
+            and not effect_fallback["side_effects"]
+            and not scene_integrity["side_effects"]
+            and not material_binding["side_effects"]
+            and not shader_editor["side_effects"]
+            and not asset_import["side_effects"]
+            and not preview_diff["side_effects"]
+            and not hit_testing["side_effects"]
+            and not transforms["side_effects"]
+            and not runtime_replay["side_effects"]
+            and not designer_replay["side_effects"],
+            "evidence": (),
+        },
+    )
+    ok = all(item["ok"] for item in replay) and all(check["ok"] for check in checks)
+    return {
+        "format": "appgen.cross-target-visual-lifecycle-replay.v1",
+        "ok": ok,
+        "decision": "approved" if ok else "blocked",
+        "replay": replay,
+        "checks": checks,
+        "guards": (
+            "style_before_timeline",
+            "effects_before_runtime",
+            "scene_assets_before_preview_diff",
+            "hit_tests_before_designer_replay",
+            "no_side_effects",
+        ),
+        "side_effects": (),
+        "blocking_gaps": tuple(check for check in checks if not check["ok"]),
+    }
+
+
 def cross_target_visual_depth_workbench() -> dict:
     """Prove animation, styling, effects, and 3D designer depth."""
     contract = cross_target_visual_depth_contract()
@@ -9779,6 +9935,7 @@ def cross_target_visual_depth_workbench() -> dict:
     scene_transform_gizmos = cross_target_scene_transform_gizmo_contract()
     runtime_replay = cross_target_visual_runtime_replay_contract()
     designer_transaction_replay = cross_target_visual_designer_transaction_replay_contract()
+    lifecycle_replay = cross_target_visual_lifecycle_replay_contract()
     checks = (
         {
             "id": "style_resources",
@@ -9976,6 +10133,13 @@ def cross_target_visual_depth_workbench() -> dict:
             and not designer_transaction_replay["side_effects"],
             "evidence": designer_transaction_replay,
         },
+        {
+            "id": "visual_lifecycle_replay",
+            "ok": lifecycle_replay["ok"]
+            and {"style_before_timeline", "hit_tests_before_designer_replay"} <= set(lifecycle_replay["guards"])
+            and not lifecycle_replay["side_effects"],
+            "evidence": lifecycle_replay,
+        },
     )
     ok = all(check["ok"] for check in checks)
     return {
@@ -10003,6 +10167,7 @@ def cross_target_visual_depth_workbench() -> dict:
         "scene_transform_gizmos": scene_transform_gizmos,
         "runtime_replay": runtime_replay,
         "designer_transaction_replay": designer_transaction_replay,
+        "lifecycle_replay": lifecycle_replay,
         "checks": checks,
         "blocking_gaps": tuple(check for check in checks if not check["ok"]),
     }

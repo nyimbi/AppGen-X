@@ -95,6 +95,7 @@ from pyAppGen.form_designer import component_package_workbench
 from pyAppGen.form_designer import component_palette
 from pyAppGen.form_designer import component_usability_workbench
 from pyAppGen.form_designer import cross_target_visual_depth_workbench
+from pyAppGen.form_designer import cross_target_visual_lifecycle_replay_contract
 from pyAppGen.form_designer import design_time_package_manager_workbench
 from pyAppGen.form_designer import detect_overlaps
 from pyAppGen.form_designer import decode_dfm_binary_stream
@@ -1392,6 +1393,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "scene_transform_gizmos",
         "visual_runtime_replay",
         "visual_designer_transaction_replay",
+        "visual_lifecycle_replay",
     } == {check["id"] for check in visual_depth["checks"]}
     assert {"inspect_effective_value", "revert_override"} <= set(visual_depth["contract"]["style_cascade"]["operations"])
     assert {"add_keyframe", "scrub_preview"} <= set(visual_depth["contract"]["timeline_authoring"]["operations"])
@@ -1435,6 +1437,24 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     } <= {item["phase"] for item in visual_depth["designer_transaction_replay"]["replay"]}
     assert visual_depth["designer_transaction_replay"]["final_state"]["timeline_samples"] > 0
     assert visual_depth["designer_transaction_replay"]["final_state"]["transform_syncs"] > 0
+    visual_lifecycle = cross_target_visual_lifecycle_replay_contract()
+    assert visual_lifecycle["format"] == "appgen.cross-target-visual-lifecycle-replay.v1"
+    assert visual_lifecycle["ok"] is True
+    assert {
+        "style_before_timeline",
+        "effects_before_runtime",
+        "scene_assets_before_preview_diff",
+        "hit_tests_before_designer_replay",
+    } <= {check["id"] for check in visual_lifecycle["checks"] if check["ok"]}
+    assert {
+        "validate_style_tokens",
+        "export_timeline_runtime",
+        "assign_effect_fallbacks",
+        "validate_scene_materials",
+        "import_assets_and_diff_preview",
+        "route_hit_tests_and_transforms",
+        "runtime_and_designer_replay",
+    } <= {item["phase"] for item in visual_lifecycle["replay"]}
     third_party_registry = third_party_component_registry()
     assert {"devexpress-native", "tms-fnc", "fastreport", "teechart", "indy"} <= {
         item["id"] for item in third_party_registry
@@ -10034,6 +10054,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "scene_transform_gizmos",
         "visual_runtime_replay",
         "visual_designer_transaction_replay",
+        "visual_lifecycle_replay",
     } == {check["id"] for check in generated_visual_depth["checks"]}
     assert generated_visual_depth["contract"]["asset_import"]["budgets"]["max_mesh_triangles"] > 0
     assert generated_visual_depth["style_resolution"]["ordered_layers"][0] == "base_theme"
@@ -10072,6 +10093,17 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     } <= {item["phase"] for item in generated_visual_depth["designer_transaction_replay"]["replay"]}
     assert generated_visual_depth["designer_transaction_replay"]["final_state"]["effect_fallbacks"] >= 1
     assert generated_visual_depth["designer_transaction_replay"]["final_state"]["scene_hits"] > 0
+    assert generated_visual_depth["lifecycle_replay"]["ok"] is True
+    assert generated_visual_depth["lifecycle_replay"]["format"] == "appgen.generated-cross-target-visual-lifecycle-replay.v1"
+    assert {
+        "validate_style_tokens",
+        "export_timeline_runtime",
+        "assign_effect_fallbacks",
+        "validate_scene_materials",
+        "import_assets_and_diff_preview",
+        "route_hit_tests_and_transforms",
+        "runtime_and_designer_replay",
+    } <= {item["phase"] for item in generated_visual_depth["lifecycle_replay"]["replay"]}
     generated_analogs = form_designer.component_analog_workbench()
     assert generated_analogs["format"] == "appgen.generated-component-analog-workbench.v1"
     assert generated_analogs["ok"] is True

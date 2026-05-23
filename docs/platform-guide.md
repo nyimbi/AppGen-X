@@ -97,7 +97,10 @@ A generated app can include:
   asset import budgets, preview/runtime parity, runtime fallbacks, and an
   ordered designer transaction replay that carries style overrides, timeline
   authoring, effect fallback, scene editing, asset preview, hit testing,
-  transform sync, and runtime delivery through one verifiable flow.
+  transform sync, and runtime delivery through one verifiable flow. Its visual
+  lifecycle replay ties style validation, timeline export, effect fallbacks,
+  scene/material validation, asset preview diffs, hit-test routing, transform
+  sync, runtime replay, and designer replay into one ordered contract.
 - `app/component_packages/<package>.py` gives every curated component package
   its own reviewed package contract with `package_contract()`, `install_plan()`,
   `load_policy()`, `dependency_graph()`, `adapter_smoke()`, `preview_load()`,
