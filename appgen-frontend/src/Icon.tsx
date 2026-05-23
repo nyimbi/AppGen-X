@@ -20,10 +20,12 @@ export type IconName =
   | 'cube3d'
   | 'dataset'
   | 'data'
+  | 'dataGrid'
   | 'database'
   | 'desktop'
   | 'drag'
   | 'ellipse'
+  | 'file'
   | 'form'
   | 'flow'
   | 'floatAnimation'
@@ -37,6 +39,7 @@ export type IconName =
   | 'layout'
   | 'line'
   | 'list'
+  | 'listView'
   | 'light3d'
   | 'location'
   | 'lock'
@@ -68,6 +71,7 @@ export type IconName =
   | 'textarea'
   | 'toolbar'
   | 'tree'
+  | 'treeView'
   | 'upload'
   | 'video'
   | 'viewport3d'
@@ -194,6 +198,13 @@ const paths: Record<IconName, JSX.Element> = {
       <path d="M4 10h16M9 5v14" />
     </>
   ),
+  dataGrid: (
+    <>
+      <rect x="3.5" y="5" width="17" height="14" rx="2" />
+      <path d="M3.5 9h17M3.5 14h17M9 5v14M15 5v14" />
+      <path d="m7 17 1.5 1.5L11 16" />
+    </>
+  ),
   database: (
     <>
       <ellipse cx="12" cy="6" rx="7" ry="3" />
@@ -223,6 +234,12 @@ const paths: Record<IconName, JSX.Element> = {
   ellipse: (
     <>
       <ellipse cx="12" cy="12" rx="8" ry="5" />
+    </>
+  ),
+  file: (
+    <>
+      <path d="M7 3h7l4 4v14H7z" />
+      <path d="M14 3v5h4M9 13h6M9 17h4" />
     </>
   ),
   form: (
@@ -309,6 +326,15 @@ const paths: Record<IconName, JSX.Element> = {
     <>
       <path d="M8 7h12M8 12h12M8 17h12" />
       <path d="M4 7h.01M4 12h.01M4 17h.01" />
+    </>
+  ),
+  listView: (
+    <>
+      <rect x="4" y="5" width="16" height="14" rx="2" />
+      <path d="M9 9h8M9 13h8M9 17h6" />
+      <rect x="6" y="8" width="1.5" height="1.5" rx=".3" />
+      <rect x="6" y="12" width="1.5" height="1.5" rx=".3" />
+      <rect x="6" y="16" width="1.5" height="1.5" rx=".3" />
     </>
   ),
   light3d: (
@@ -508,6 +534,13 @@ const paths: Record<IconName, JSX.Element> = {
       <circle cx="12" cy="5" r="2" />
       <circle cx="7" cy="15" r="2" />
       <circle cx="17" cy="19" r="2" />
+    </>
+  ),
+  treeView: (
+    <>
+      <path d="M8 6h9M8 12h9M8 18h9" />
+      <path d="M5 6v12M5 12h3M5 18h3" />
+      <path d="m3.5 5 1.5 1.5L6.5 5" />
     </>
   ),
   upload: (

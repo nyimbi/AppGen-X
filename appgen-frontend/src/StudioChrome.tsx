@@ -12,7 +12,9 @@ export function StudioChrome() {
   return (
     <header className="studio-chrome">
       <div className="brand-block">
-        <div className="brand-mark">AG</div>
+        <div className="brand-mark" aria-hidden="true">
+          <Icon name="layout" />
+        </div>
         <div>
           <strong>AppGen Studio</strong>
           <span>Low-code application workbench</span>

@@ -17,12 +17,12 @@ export function InspectorPanel() {
           <p className="eyebrow">Selection</p>
           <h2>Inspector</h2>
         </div>
-        <Icon name="grid" className="panel-title-icon" />
+        <Icon name="dataGrid" className="panel-title-icon" />
       </div>
 
       <div className="selected-card">
         <span className="component-icon category-data">
-          <Icon name="grid" />
+          <Icon name="dataGrid" />
         </span>
         <div>
           <strong>Line Items</strong>

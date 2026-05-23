@@ -5,7 +5,7 @@ const placedComponents = [
   { name: 'Customer Name', icon: 'input' as const, x: 7, y: 16, w: 36, tone: 'inputs' },
   { name: 'Account Lookup', icon: 'lookup' as const, x: 48, y: 16, w: 26, tone: 'choice' },
   { name: 'Invoice Date', icon: 'calendar' as const, x: 77, y: 16, w: 19, tone: 'inputs' },
-  { name: 'Line Items', icon: 'grid' as const, x: 7, y: 35, w: 67, tone: 'data' },
+  { name: 'Line Items', icon: 'dataGrid' as const, x: 7, y: 35, w: 67, tone: 'data' },
   { name: 'Popup Actions', icon: 'popup' as const, x: 78, y: 35, w: 18, tone: 'navigation' },
   { name: 'Approval Agent', icon: 'agent' as const, x: 78, y: 49, w: 18, tone: 'automation' },
   { name: 'Totals Chart', icon: 'chart' as const, x: 7, y: 73, w: 30, tone: 'data' },

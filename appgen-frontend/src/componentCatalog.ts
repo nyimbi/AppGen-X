@@ -48,7 +48,7 @@ export const paletteComponents: PaletteComponent[] = [
   { name: 'Date Picker', category: 'Inputs', icon: 'calendar', size: '4 x 1', description: 'Date, time, and timestamp entry.' },
   { name: 'Number Field', category: 'Inputs', icon: 'hash', size: '3 x 1', description: 'Decimal, currency, quantity, and calculated entry.' },
   { name: 'Button', category: 'Inputs', icon: 'button', size: '2 x 1', description: 'Commands, workflow actions, and submits.' },
-  { name: 'File Upload', category: 'Inputs', icon: 'upload', size: '5 x 2', description: 'Documents, images, and attachment capture.' },
+  { name: 'File Upload', category: 'Inputs', icon: 'file', size: '5 x 2', description: 'Documents, images, and attachment capture.' },
   { name: 'Check Box', category: 'Choice', icon: 'check', size: '2 x 1', description: 'Boolean fields and toggle options.' },
   { name: 'Radio Button', category: 'Choice', icon: 'radio', size: '3 x 1', description: 'Exclusive option selection.' },
   { name: 'Combo Box', category: 'Choice', icon: 'combo', size: '4 x 1', description: 'Lookup and enumerated value picker.' },
@@ -63,10 +63,10 @@ export const paletteComponents: PaletteComponent[] = [
   { name: 'Horizontal Stack', category: 'Layouts', icon: 'hstack', size: '8 x 2', description: 'Left-to-right command or field grouping.' },
   { name: 'Panel', category: 'Layouts', icon: 'panel', size: '12 x 3', description: 'Grouped visual region for related fields.' },
   { name: 'Tab Control', category: 'Layouts', icon: 'tabs', size: '12 x 6', description: 'Tabbed pages for complex master records.' },
-  { name: 'Data Grid', category: 'Data', icon: 'grid', size: '12 x 6', description: 'Editable tabular data with sort and filter.' },
+  { name: 'Data Grid', category: 'Data', icon: 'dataGrid', size: '12 x 6', description: 'Editable tabular data with sort and filter.' },
   { name: 'String Grid', category: 'Data', icon: 'table', size: '12 x 6', description: 'Spreadsheet-like matrix for structured values.' },
-  { name: 'List View', category: 'Data', icon: 'list', size: '6 x 6', description: 'Virtualized record list with icons and actions.' },
-  { name: 'Tree View', category: 'Data', icon: 'tree', size: '4 x 6', description: 'Hierarchical navigation and master records.' },
+  { name: 'List View', category: 'Data', icon: 'listView', size: '6 x 6', description: 'Virtualized record list with icons and actions.' },
+  { name: 'Tree View', category: 'Data', icon: 'treeView', size: '4 x 6', description: 'Hierarchical navigation and master records.' },
   { name: 'Chart', category: 'Data', icon: 'chart', size: '8 x 5', description: 'Operational metrics and dashboard visuals.' },
   { name: 'Database Source', category: 'Data', icon: 'database', size: '3 x 1', description: 'Dataset, query, and binding source.' },
   { name: 'Query', category: 'Data', icon: 'query', size: '4 x 1', description: 'Read model, filter, and parameterized SQL contract.' },
@@ -118,9 +118,20 @@ export const paletteComponents: PaletteComponent[] = [
 
 export const paletteCategories = Array.from(new Set(paletteComponents.map((component) => component.category)))
 
+const specificIconExpectations: Record<string, IconName> = {
+  'Data Grid': 'dataGrid',
+  'File Upload': 'file',
+  'List View': 'listView',
+  'Tree View': 'treeView',
+}
+
 export function componentIconAudit() {
   const registeredIcons = new Set(iconNames)
   const missingIcons = paletteComponents.filter((component) => !registeredIcons.has(component.icon))
+  const genericIconMismatches = paletteComponents.filter((component) => {
+    const expectedIcon = specificIconExpectations[component.name]
+    return expectedIcon !== undefined && component.icon !== expectedIcon
+  })
   const categoryCoverage = paletteCategories.map((category) => {
     const components = paletteComponents.filter((component) => component.category === category)
     return {
@@ -131,10 +142,14 @@ export function componentIconAudit() {
   })
 
   return {
-    ok: missingIcons.length === 0 && categoryCoverage.every((item) => item.count > 0 && item.icons.length > 0),
+    ok:
+      missingIcons.length === 0 &&
+      genericIconMismatches.length === 0 &&
+      categoryCoverage.every((item) => item.count > 0 && item.icons.length > 0),
     totalComponents: paletteComponents.length,
     totalIcons: iconNames.length,
     missingIcons,
+    genericIconMismatches,
     categoryCoverage,
   }
 }
