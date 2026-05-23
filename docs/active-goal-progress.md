@@ -46,7 +46,7 @@ Build a complete AppGen IDE and generation platform with:
 | 2026-05-23 | `2fef403` | Added generated visual runtime asset manifests for style, animation, effects, scenes, and assets. | Py compile; form-designer audit test; generated app compile test; aggregate package-goal test; staged hygiene scans. |
 | 2026-05-23 | `9aa0e3c` | Added generated data tooling runtime manifests for connection, schema, lookup, service publishing, and failover proof. | Py compile; form-designer audit test; generated app compile test; aggregate package-goal test; staged hygiene scans. |
 | 2026-05-23 | `96a104c` | Added generated PBC runtime manifests for catalog selection, self-registration, composition workbench, and stream-policy proof. | Py compile; focused PBC test; PBC generation smoke; aggregate package-goal test; staged hygiene scans. |
-| 2026-05-23 | `pending` | Added side-effect-free PBC package loading from local source directories and importable modules. | Py compile; focused PBC test; aggregate package-goal test; staged hygiene scans. |
+| 2026-05-23 | `e32d201` | Added side-effect-free PBC package loading from local source directories and importable modules. | Py compile; focused PBC test; aggregate package-goal test; staged hygiene scans. |
 
 ## Current Working Slice
 
