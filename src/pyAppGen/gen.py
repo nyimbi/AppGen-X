@@ -1962,6 +1962,11 @@ def designer_metadata():
     return form_designer.component_designer_metadata_contract(COMPONENT)
 
 
+def design_surface():
+    """Return toolbox, drop preview, context menu, and gesture metadata."""
+    return form_designer.component_design_surface_contract(COMPONENT)
+
+
 def dispatch_event(event_name):
     """Return event dispatch metadata for a named event."""
     dispatch = form_designer.component_event_dispatch_contract(COMPONENT)
@@ -1997,6 +2002,7 @@ def test_plan():
             "serialization_snapshot_declared",
             "property_apply_declared",
             "designer_metadata_declared",
+            "design_surface_declared",
             "event_dispatch_declared",
         ),
     }}
@@ -2035,6 +2041,8 @@ def smoke_test():
             and serialized["bounds"]["w"] == current["default_size"]["w"]
             and applied["ok"]
             and designer_metadata()["inspector"]["property_editors"]
+            and design_surface()["toolbox"]["icon"].startswith("fa-")
+            and design_surface()["context_menu"]
             and event_result["ok"]
         ),
         "checks": test_plan()["tests"],
@@ -29284,6 +29292,91 @@ def component_designer_metadata_contract(component_type):
     }}
 
 
+def component_design_surface_contract(component_type):
+    """Return toolbox, drop preview, context menu, and gesture metadata."""
+    contract = component_runtime_contract(component_type)
+    metadata = component_designer_metadata_contract(component_type)
+    category = contract["category"]
+    common_actions = (
+        "inspect",
+        "edit_bindings",
+        "align_to_grid",
+        "bring_to_front",
+        "send_to_back",
+        "duplicate",
+        "delete",
+    )
+    category_actions = {{
+        "action": ("edit_action", "assign_shortcut"),
+        "analytics": ("edit_series", "preview_chart"),
+        "calendar": ("edit_display_format", "validate_range"),
+        "choice": ("edit_items", "toggle_multi_select"),
+        "container": ("edit_children", "set_layout"),
+        "data": ("bind_dataset", "preview_rows"),
+        "data_access": ("edit_connection", "preview_rows"),
+        "effects": ("edit_timeline", "preview_motion"),
+        "gesture": ("edit_recognizer", "test_gesture"),
+        "graphics": ("edit_shape", "export_vector"),
+        "integration": ("edit_endpoint", "test_request"),
+        "media": ("select_asset", "clear_asset"),
+        "menu": ("edit_menu_items", "assign_roles"),
+        "mobile": ("edit_permission", "simulate_device_event"),
+        "navigation": ("edit_nodes", "preview_lazy_load"),
+        "nonvisual": ("configure_service", "show_status"),
+        "relationship": ("edit_lookup", "preview_candidates"),
+        "reports": ("edit_report", "export_preview"),
+        "theme": ("edit_resources", "apply_variant"),
+        "three_d": ("edit_scene", "open_transform_gizmo"),
+    }}
+    gestures = (
+        "drag_from_toolbox",
+        "drop_on_canvas",
+        "resize_handles",
+        "keyboard_nudge",
+        "copy_paste",
+        "context_menu",
+    )
+    if metadata["canvas"]["supports_nested_children"]:
+        gestures += ("drop_child", "reorder_children")
+    if category in {{"graphics", "three_d"}}:
+        gestures += ("direct_manipulation", "hit_test_overlay")
+    if category in {{"data", "data_access", "relationship"}}:
+        gestures += ("drag_field_binding", "open_lookup_designer")
+    icon = _component_icon(component_type)
+    context_actions = tuple(
+        {{"id": action, "label": action.replace("_", " ").title()}}
+        for action in common_actions + category_actions.get(category, ())
+    )
+    return {{
+        "format": "appgen.generated-component-design-surface-contract.v1",
+        "component": component_type,
+        "ok": icon.startswith("fa-") and bool(context_actions) and bool(gestures),
+        "toolbox": {{
+            "icon": icon,
+            "label": component_type,
+            "category": category,
+            "tooltip": f"Drop {{component_type}} on the form",
+            "drag_payload": {{"component": component_type, "default_size": contract["default_size"]}},
+            "data_attributes": {{
+                "data-component": component_type,
+                "data-component-icon": icon,
+                "data-component-category": category,
+            }},
+        }},
+        "drop_preview": {{
+            "node_class": "agfd-node",
+            "icon": icon,
+            "label": component_type,
+            "bounds": contract["default_size"],
+            "preview_kind": contract["preview"]["preview_kind"],
+        }},
+        "context_menu": context_actions,
+        "gestures": gestures,
+        "routes": ("object_inspector", "binding_designer", "component_tree", "property_grid"),
+        "side_effects": (),
+    }}
+
+
 def component_behavior_contract(component_type):
     """Return behavior evidence for one generated built-in component."""
     render = component_render_contract(component_type)
@@ -29295,6 +29388,7 @@ def component_behavior_contract(component_type):
     binding_surface = component_binding_surface_contract(component_type)
     capabilities = component_capability_contract(component_type)
     designer_metadata = component_designer_metadata_contract(component_type)
+    design_surface = component_design_surface_contract(component_type)
     checks = (
         {{"id": "render_nodes", "ok": {{"web", "mobile", "desktop"}} <= {{node["target"] for node in render["nodes"]}} and not render["side_effects"], "evidence": render}},
         {{"id": "property_validation", "ok": validation["ok"] and not validation["side_effects"], "evidence": validation}},
@@ -29306,6 +29400,7 @@ def component_behavior_contract(component_type):
         {{"id": "binding_surface", "ok": bool(binding_surface["bindable_properties"]) and not binding_surface["side_effects"], "evidence": binding_surface}},
         {{"id": "category_capabilities", "ok": capabilities["ok"] and not capabilities["side_effects"], "evidence": capabilities}},
         {{"id": "designer_metadata", "ok": bool(designer_metadata["inspector"]["property_editors"]) and not designer_metadata["side_effects"], "evidence": designer_metadata}},
+        {{"id": "design_surface_actions", "ok": design_surface["ok"] and design_surface["toolbox"]["icon"].startswith("fa-") and "context_menu" in design_surface["gestures"] and not design_surface["side_effects"], "evidence": design_surface}},
     )
     ok = all(check["ok"] for check in checks)
     return {{
@@ -29321,6 +29416,7 @@ def component_behavior_contract(component_type):
         "binding_surface": binding_surface,
         "capabilities": capabilities,
         "designer_metadata": designer_metadata,
+        "design_surface": design_surface,
         "checks": checks,
         "blocking_gaps": tuple(check for check in checks if not check["ok"]),
     }}
@@ -29336,7 +29432,8 @@ def component_behavior_workbench():
         {{"id": "event_behavior", "ok": all(any(check["id"] == "event_dispatch" and check["ok"] for check in item["checks"]) for item in behaviors), "evidence": tuple(item["events"] for item in behaviors)}},
         {{"id": "target_adapter_behavior", "ok": all(any(check["id"] == "target_adapters" and check["ok"] for check in item["checks"]) for item in behaviors), "evidence": tuple(item["adapters"] for item in behaviors)}},
         {{"id": "category_capability_behavior", "ok": all(any(check["id"] == "category_capabilities" and check["ok"] for check in item["checks"]) for item in behaviors), "evidence": tuple(item["capabilities"] for item in behaviors)}},
-        {{"id": "implementation_depth", "ok": all({{"state_model", "design_serialization", "binding_surface", "category_capabilities", "designer_metadata"}} <= {{check["id"] for check in item["checks"] if check["ok"]}} for item in behaviors), "evidence": tuple((item["component"], item["state_model"]["states"], item["serialization"]["streams"], item["binding_surface"]["binding_modes"], item["capabilities"]["operations"]) for item in behaviors)}},
+        {{"id": "design_surface_behavior", "ok": all(any(check["id"] == "design_surface_actions" and check["ok"] for check in item["checks"]) for item in behaviors), "evidence": tuple(item["design_surface"] for item in behaviors)}},
+        {{"id": "implementation_depth", "ok": all({{"state_model", "design_serialization", "binding_surface", "category_capabilities", "designer_metadata", "design_surface_actions"}} <= {{check["id"] for check in item["checks"] if check["ok"]}} for item in behaviors), "evidence": tuple((item["component"], item["state_model"]["states"], item["serialization"]["streams"], item["binding_surface"]["binding_modes"], item["capabilities"]["operations"], item["design_surface"]["gestures"]) for item in behaviors)}},
     )
     ok = all(check["ok"] for check in checks)
     return {{
@@ -29374,6 +29471,7 @@ def component_module_implementation_contract(component_type):
         "serialize_instance",
         "apply_property",
         "designer_metadata",
+        "design_surface",
         "dispatch_event",
         "test_plan",
         "smoke_test",
@@ -29395,6 +29493,7 @@ def component_module_implementation_contract(component_type):
         "serialization_snapshot_declared",
         "property_apply_declared",
         "designer_metadata_declared",
+        "design_surface_declared",
         "event_dispatch_declared",
     )
     return {{
@@ -29506,7 +29605,8 @@ def component_usability_workbench(existing_paths=None):
         {{"id": "validation_rules", "ok": all(item["validation_rules"] for item in contracts), "evidence": tuple((item["component"], item["validation_rules"]) for item in contracts)}},
         {{"id": "drop_defaults", "ok": all(item["default_size"]["w"] > 0 and item["default_size"]["h"] > 0 for item in contracts), "evidence": tuple((item["component"], item["default_size"]) for item in contracts)}},
         {{"id": "preview_contracts", "ok": all(item["preview"]["available"] and item["usable"] for item in contracts), "evidence": tuple((item["component"], item["preview"]["preview_kind"]) for item in contracts)}},
-        {{"id": "per_component_files", "ok": len(component_files) == len(contracts) and all(item["exists"] and {{"contract", "render", "validate_props", "preview", "behavior_contract", "target_adapters", "state_model", "serialization_contract", "binding_surface", "object_inspector", "drop_instance", "serialize_instance", "apply_property", "designer_metadata", "dispatch_event", "test_plan", "smoke_test"}} <= set(item["exports"]) and item["module_contract"]["ok"] for item in component_files), "evidence": component_files}},
+        {{"id": "design_surface_actions", "ok": all(item["design_surface"]["ok"] and item["design_surface"]["toolbox"]["icon"].startswith("fa-") and item["design_surface"]["context_menu"] for item in behavior_workbench["behaviors"]), "evidence": tuple((item["component"], item["design_surface"]) for item in behavior_workbench["behaviors"])}},
+        {{"id": "per_component_files", "ok": len(component_files) == len(contracts) and all(item["exists"] and {{"contract", "render", "validate_props", "preview", "behavior_contract", "target_adapters", "state_model", "serialization_contract", "binding_surface", "object_inspector", "drop_instance", "serialize_instance", "apply_property", "designer_metadata", "design_surface", "dispatch_event", "test_plan", "smoke_test"}} <= set(item["exports"]) and item["module_contract"]["ok"] for item in component_files), "evidence": component_files}},
         {{"id": "per_package_files", "ok": len(package_files) == len(THIRD_PARTY_COMPONENT_SUITES) and all(item["exists"] and {{"package_contract", "install_plan", "load_policy", "test_plan", "smoke_test"}} <= set(item["exports"]) and item["module_contract"]["ok"] for item in package_files), "evidence": package_files}},
         {{"id": "module_smoke_tests", "ok": all("smoke_test" in item["exports"] and item["module_contract"]["smoke_tests"] for item in component_files) and all("smoke_test" in item["exports"] and item["module_contract"]["smoke_tests"] for item in package_files), "evidence": {{"components": tuple((item["component"], item["module_contract"]["smoke_tests"]) for item in component_files), "packages": tuple((item["package"], item["module_contract"]["smoke_tests"]) for item in package_files)}}}},
         {{"id": "requested_analog_coverage", "ok": analog_workbench["ok"], "evidence": analog_workbench}},

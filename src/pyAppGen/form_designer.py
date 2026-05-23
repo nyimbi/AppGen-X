@@ -11523,6 +11523,91 @@ def component_designer_metadata_contract(component: str) -> dict:
     }
 
 
+def component_design_surface_contract(component: str) -> dict:
+    """Return toolbox, drop preview, context menu, and gesture metadata."""
+    contract = component_runtime_contract(component)
+    metadata = component_designer_metadata_contract(component)
+    category = contract["category"]
+    common_actions = (
+        "inspect",
+        "edit_bindings",
+        "align_to_grid",
+        "bring_to_front",
+        "send_to_back",
+        "duplicate",
+        "delete",
+    )
+    category_actions = {
+        "action": ("edit_action", "assign_shortcut"),
+        "analytics": ("edit_series", "preview_chart"),
+        "calendar": ("edit_display_format", "validate_range"),
+        "choice": ("edit_items", "toggle_multi_select"),
+        "container": ("edit_children", "set_layout"),
+        "data": ("bind_dataset", "preview_rows"),
+        "data_access": ("edit_connection", "preview_rows"),
+        "effects": ("edit_timeline", "preview_motion"),
+        "gesture": ("edit_recognizer", "test_gesture"),
+        "graphics": ("edit_shape", "export_vector"),
+        "integration": ("edit_endpoint", "test_request"),
+        "media": ("select_asset", "clear_asset"),
+        "menu": ("edit_menu_items", "assign_roles"),
+        "mobile": ("edit_permission", "simulate_device_event"),
+        "navigation": ("edit_nodes", "preview_lazy_load"),
+        "nonvisual": ("configure_service", "show_status"),
+        "relationship": ("edit_lookup", "preview_candidates"),
+        "reports": ("edit_report", "export_preview"),
+        "theme": ("edit_resources", "apply_variant"),
+        "three_d": ("edit_scene", "open_transform_gizmo"),
+    }
+    gestures = (
+        "drag_from_toolbox",
+        "drop_on_canvas",
+        "resize_handles",
+        "keyboard_nudge",
+        "copy_paste",
+        "context_menu",
+    )
+    if metadata["canvas"]["supports_nested_children"]:
+        gestures += ("drop_child", "reorder_children")
+    if category in {"graphics", "three_d"}:
+        gestures += ("direct_manipulation", "hit_test_overlay")
+    if category in {"data", "data_access", "relationship"}:
+        gestures += ("drag_field_binding", "open_lookup_designer")
+    icon = component_icon(component)
+    context_actions = tuple(
+        {"id": action, "label": action.replace("_", " ").title()}
+        for action in common_actions + category_actions.get(category, ())
+    )
+    return {
+        "format": "appgen.component-design-surface-contract.v1",
+        "component": component,
+        "ok": icon.startswith("fa-") and bool(context_actions) and bool(gestures),
+        "toolbox": {
+            "icon": icon,
+            "label": component,
+            "category": category,
+            "tooltip": f"Drop {component} on the form",
+            "drag_payload": {"component": component, "default_size": contract["default_size"]},
+            "data_attributes": {
+                "data-component": component,
+                "data-component-icon": icon,
+                "data-component-category": category,
+            },
+        },
+        "drop_preview": {
+            "node_class": "agfd-node",
+            "icon": icon,
+            "label": component,
+            "bounds": contract["default_size"],
+            "preview_kind": contract["preview"]["preview_kind"],
+        },
+        "context_menu": context_actions,
+        "gestures": gestures,
+        "routes": ("object_inspector", "binding_designer", "component_tree", "property_grid"),
+        "side_effects": (),
+    }
+
+
 def component_behavior_contract(component: str) -> dict:
     """Return executable behavior evidence for one built-in component."""
     render = component_render_contract(component)
@@ -11534,6 +11619,7 @@ def component_behavior_contract(component: str) -> dict:
     binding_surface = component_binding_surface_contract(component)
     capabilities = component_capability_contract(component)
     designer_metadata = component_designer_metadata_contract(component)
+    design_surface = component_design_surface_contract(component)
     checks = (
         {"id": "render_nodes", "ok": {"web", "mobile", "desktop"} <= {node["target"] for node in render["nodes"]} and not render["side_effects"], "evidence": render},
         {"id": "property_validation", "ok": validation["ok"] and not validation["side_effects"], "evidence": validation},
@@ -11545,6 +11631,14 @@ def component_behavior_contract(component: str) -> dict:
         {"id": "binding_surface", "ok": bool(binding_surface["bindable_properties"]) and not binding_surface["side_effects"], "evidence": binding_surface},
         {"id": "category_capabilities", "ok": capabilities["ok"] and not capabilities["side_effects"], "evidence": capabilities},
         {"id": "designer_metadata", "ok": bool(designer_metadata["inspector"]["property_editors"]) and not designer_metadata["side_effects"], "evidence": designer_metadata},
+        {
+            "id": "design_surface_actions",
+            "ok": design_surface["ok"]
+            and design_surface["toolbox"]["icon"].startswith("fa-")
+            and "context_menu" in design_surface["gestures"]
+            and not design_surface["side_effects"],
+            "evidence": design_surface,
+        },
     )
     ok = all(check["ok"] for check in checks)
     return {
@@ -11560,6 +11654,7 @@ def component_behavior_contract(component: str) -> dict:
         "binding_surface": binding_surface,
         "capabilities": capabilities,
         "designer_metadata": designer_metadata,
+        "design_surface": design_surface,
         "checks": checks,
         "blocking_gaps": tuple(check for check in checks if not check["ok"]),
     }
@@ -11575,7 +11670,8 @@ def component_behavior_workbench() -> dict:
         {"id": "event_behavior", "ok": all(any(check["id"] == "event_dispatch" and check["ok"] for check in item["checks"]) for item in behaviors), "evidence": tuple(item["events"] for item in behaviors)},
         {"id": "target_adapter_behavior", "ok": all(any(check["id"] == "target_adapters" and check["ok"] for check in item["checks"]) for item in behaviors), "evidence": tuple(item["adapters"] for item in behaviors)},
         {"id": "category_capability_behavior", "ok": all(any(check["id"] == "category_capabilities" and check["ok"] for check in item["checks"]) for item in behaviors), "evidence": tuple(item["capabilities"] for item in behaviors)},
-        {"id": "implementation_depth", "ok": all({"state_model", "design_serialization", "binding_surface", "category_capabilities", "designer_metadata"} <= {check["id"] for check in item["checks"] if check["ok"]} for item in behaviors), "evidence": tuple((item["component"], item["state_model"]["states"], item["serialization"]["streams"], item["binding_surface"]["binding_modes"], item["capabilities"]["operations"]) for item in behaviors)},
+        {"id": "design_surface_behavior", "ok": all(any(check["id"] == "design_surface_actions" and check["ok"] for check in item["checks"]) for item in behaviors), "evidence": tuple(item["design_surface"] for item in behaviors)},
+        {"id": "implementation_depth", "ok": all({"state_model", "design_serialization", "binding_surface", "category_capabilities", "designer_metadata", "design_surface_actions"} <= {check["id"] for check in item["checks"] if check["ok"]} for item in behaviors), "evidence": tuple((item["component"], item["state_model"]["states"], item["serialization"]["streams"], item["binding_surface"]["binding_modes"], item["capabilities"]["operations"], item["design_surface"]["gestures"]) for item in behaviors)},
     )
     ok = all(check["ok"] for check in checks)
     return {
@@ -11613,6 +11709,7 @@ def component_module_implementation_contract(component: str) -> dict:
         "serialize_instance",
         "apply_property",
         "designer_metadata",
+        "design_surface",
         "dispatch_event",
         "test_plan",
         "smoke_test",
@@ -11634,6 +11731,7 @@ def component_module_implementation_contract(component: str) -> dict:
         "serialization_snapshot_declared",
         "property_apply_declared",
         "designer_metadata_declared",
+        "design_surface_declared",
         "event_dispatch_declared",
     )
     return {
@@ -11767,6 +11865,16 @@ def component_usability_workbench() -> dict:
             "evidence": tuple((item["component"], item["preview"]["preview_kind"]) for item in contracts),
         },
         {
+            "id": "design_surface_actions",
+            "ok": all(
+                item["design_surface"]["ok"]
+                and item["design_surface"]["toolbox"]["icon"].startswith("fa-")
+                and item["design_surface"]["context_menu"]
+                for item in behavior_workbench["behaviors"]
+            ),
+            "evidence": tuple((item["component"], item["design_surface"]) for item in behavior_workbench["behaviors"]),
+        },
+        {
             "id": "per_component_files",
             "ok": len(component_file_manifest()) == len(contracts)
             and all(
@@ -11786,6 +11894,7 @@ def component_usability_workbench() -> dict:
                     "serialize_instance",
                     "apply_property",
                     "designer_metadata",
+                    "design_surface",
                     "dispatch_event",
                     "test_plan",
                     "smoke_test",

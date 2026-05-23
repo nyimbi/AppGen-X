@@ -1686,6 +1686,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "validation_rules",
         "drop_defaults",
         "preview_contracts",
+        "design_surface_actions",
         "per_component_files",
         "per_package_files",
         "module_smoke_tests",
@@ -1700,10 +1701,15 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     assert "category_capability_behavior" in {
         check["id"] for check in usability["behavior_workbench"]["checks"]
     }
+    assert "design_surface_behavior" in {
+        check["id"] for check in usability["behavior_workbench"]["checks"]
+    }
     assert all(
-        {"state_model", "serialization", "binding_surface", "capabilities", "designer_metadata"} <= set(item)
+        {"state_model", "serialization", "binding_surface", "capabilities", "designer_metadata", "design_surface"} <= set(item)
         for item in usability["behavior_workbench"]["behaviors"]
     )
+    assert all(item["design_surface"]["toolbox"]["icon"].startswith("fa-") for item in usability["behavior_workbench"]["behaviors"])
+    assert all(item["design_surface"]["context_menu"] for item in usability["behavior_workbench"]["behaviors"])
     assert all(item["capabilities"]["ok"] for item in usability["behavior_workbench"]["behaviors"])
     assert all(item["capabilities"]["operations"] for item in usability["behavior_workbench"]["behaviors"])
     assert all({"web", "mobile", "desktop"} <= set(item["renderers"]) for item in usability["components"])
@@ -1714,6 +1720,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     assert all("drop_instance" in item["exports"] for item in usability["component_files"])
     assert all("serialize_instance" in item["exports"] for item in usability["component_files"])
     assert all("apply_property" in item["exports"] for item in usability["component_files"])
+    assert all("design_surface" in item["exports"] for item in usability["component_files"])
     assert all("smoke_test" in item["exports"] for item in usability["component_files"])
     assert all(item["module_contract"]["ok"] for item in usability["component_files"])
     assert all("smoke_test" in item["exports"] for item in usability["package_files"])
@@ -10492,10 +10499,18 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert "category_capability_behavior" in {
         check["id"] for check in generated_usability["behavior_workbench"]["checks"]
     }
+    assert "design_surface_behavior" in {
+        check["id"] for check in generated_usability["behavior_workbench"]["checks"]
+    }
     assert all(
-        {"state_model", "serialization", "binding_surface", "capabilities", "designer_metadata"} <= set(item)
+        {"state_model", "serialization", "binding_surface", "capabilities", "designer_metadata", "design_surface"} <= set(item)
         for item in generated_usability["behavior_workbench"]["behaviors"]
     )
+    assert all(
+        item["design_surface"]["toolbox"]["icon"].startswith("fa-")
+        for item in generated_usability["behavior_workbench"]["behaviors"]
+    )
+    assert all(item["design_surface"]["context_menu"] for item in generated_usability["behavior_workbench"]["behaviors"])
     assert all(item["capabilities"]["ok"] for item in generated_usability["behavior_workbench"]["behaviors"])
     assert all(item["capabilities"]["operations"] for item in generated_usability["behavior_workbench"]["behaviors"])
     assert all(
@@ -10509,6 +10524,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert all("drop_instance" in item["exports"] for item in generated_usability["component_files"])
     assert all("serialize_instance" in item["exports"] for item in generated_usability["component_files"])
     assert all("apply_property" in item["exports"] for item in generated_usability["component_files"])
+    assert all("design_surface" in item["exports"] for item in generated_usability["component_files"])
     assert "module_smoke_tests" in {
         check["id"] for check in generated_usability["checks"]
     }
@@ -10547,6 +10563,8 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert text_box_component.serialize_instance(dropped)["bounds"]["w"] == text_box_component.contract()["default_size"]["w"]
     assert text_box_component.apply_property("label", "Customer")["ok"] is True
     assert "Properties" in text_box_component.designer_metadata()["inspector"]["tabs"]
+    assert text_box_component.design_surface()["toolbox"]["icon"].startswith("fa-")
+    assert text_box_component.design_surface()["context_menu"]
     assert text_box_component.dispatch_event("OnCreate")["ok"] is True
     assert "preview_renders" in text_box_component.test_plan()["tests"]
     assert "behavior_contract_ok" in text_box_component.test_plan()["tests"]
@@ -10555,6 +10573,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert "drop_instance_declared" in text_box_component.test_plan()["tests"]
     assert "serialization_snapshot_declared" in text_box_component.test_plan()["tests"]
     assert "property_apply_declared" in text_box_component.test_plan()["tests"]
+    assert "design_surface_declared" in text_box_component.test_plan()["tests"]
     component_package = _load_module(package_file, "generated_component_package")
     assert component_package.package_contract()["package"]["id"] == "devexpress-native"
     assert component_package.install_plan()["side_effects"] == ()
