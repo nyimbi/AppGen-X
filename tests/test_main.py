@@ -1534,6 +1534,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "runtime_memory_model",
         "toolchain_adapters",
         "runtime_session_replay",
+        "design_edit_session_replay",
     } == {check["id"] for check in runtime["checks"]}
     assert runtime["incremental"]["outputs"][0] == "diagnostic_delta"
     assert runtime["binary_round_trip"]["decoded"] == dfm_text
@@ -1563,6 +1564,19 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     }
     assert runtime["runtime_replay"]["final_state"]["components_streamed"] == len(design["components"])
     assert runtime["runtime_replay"]["final_state"]["compiled_targets"] >= 1
+    assert runtime["design_edit_replay"]["ok"] is True
+    assert {
+        "open_design_stream",
+        "apply_property_edit",
+        "preserve_extension_data",
+        "update_event_stub",
+        "refresh_resource_manifest",
+        "invalidate_compile_cache",
+        "route_diagnostics",
+        "reload_runtime_preview",
+    } <= {item["phase"] for item in runtime["design_edit_replay"]["replay"]}
+    assert runtime["design_edit_replay"]["final_state"]["extension_properties_preserved"] > 0
+    assert runtime["design_edit_replay"]["final_state"]["runtime_phases"] > 0
 
     matrix = field_component_matrix()
     assert matrix
@@ -9438,6 +9452,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "runtime_memory_model",
         "toolchain_adapters",
         "runtime_session_replay",
+        "design_edit_session_replay",
     } <= {
         check["id"] for check in generated_runtime["checks"]
     }
@@ -9480,6 +9495,19 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         generated_runtime["round_trip"]["round_trip_components"]
     )
     assert generated_runtime["runtime_replay"]["final_state"]["diagnostics_normalized"] >= 1
+    assert generated_runtime["design_edit_replay"]["ok"] is True
+    assert {
+        "open_design_stream",
+        "apply_property_edit",
+        "preserve_extension_data",
+        "update_event_stub",
+        "refresh_resource_manifest",
+        "invalidate_compile_cache",
+        "route_diagnostics",
+        "reload_runtime_preview",
+    } <= {item["phase"] for item in generated_runtime["design_edit_replay"]["replay"]}
+    assert generated_runtime["design_edit_replay"]["final_state"]["property_edits"] > 0
+    assert generated_runtime["design_edit_replay"]["final_state"]["cache_invalidations"] > 0
     assert "control_to_field" in form_designer.livebindings_contract()["binding_edges"]
     generated_bindings = form_designer.livebindings_workbench()
     assert generated_bindings["format"] == "appgen.generated-livebindings-workbench.v1"

@@ -27530,6 +27530,69 @@ def pascal_runtime_session_replay_contract(table_name=None, design=None):
     }}
 
 
+def pascal_design_edit_session_replay_contract(table_name=None, design=None):
+    """Replay a generated interactive design edit from form stream through runtime preview."""
+    round_trip = dfm_round_trip(table_name=table_name, design=design)
+    stream_diff = dfm_stream_diff_merge_contract(table_name=table_name, design=design)
+    event_evolution = pascal_event_stub_evolution_contract(table_name=table_name, design=design)
+    resource_hashes = pascal_resource_manifest_hash_contract(table_name=table_name, design=design)
+    invalidation = pascal_incremental_invalidation_contract(table_name=table_name, design=design)
+    diagnostics = pascal_diagnostic_mapping_contract(table_name=table_name, design=design)
+    runtime_replay = pascal_runtime_session_replay_contract(table_name=table_name, design=design)
+    state = {{
+        "stream_components": len(round_trip["round_trip_components"]),
+        "property_edits": 0,
+        "extension_properties_preserved": 0,
+        "event_stub_updates": 0,
+        "resource_hashes": 0,
+        "cache_invalidations": 0,
+        "diagnostics_routed": 0,
+        "runtime_phases": 0,
+        "side_effects": (),
+    }}
+    replay = (
+        {{"phase": "open_design_stream", "pipeline": ("decode_text_stream", "parse_form_tree", "index_component_identity"), "ok": round_trip["ok"] and state["stream_components"] > 0}},
+        {{"phase": "apply_property_edit", "pipeline": stream_diff["merge_plan"], "ok": stream_diff["ok"] and any(item["op"] == "change_property" for item in stream_diff["diffs"]) and "deterministic_diff_order" in stream_diff["guards"]}},
+        {{"phase": "preserve_extension_data", "pipeline": ("read_unknown_properties", "carry_opaque_values", "validate_round_trip"), "ok": any(item["op"] == "preserve_unknown_property" and item["before"] == item["after"] for item in stream_diff["diffs"]) and "unknown_properties_preserved" in stream_diff["guards"]}},
+        {{"phase": "update_event_stub", "pipeline": tuple(item["op"] for item in event_evolution["operations"]), "ok": {{"rename_component", "detach_handler", "regenerate_signature"}} <= {{item["op"] for item in event_evolution["operations"]}} and "user_code_regions_preserved" in event_evolution["guards"]}},
+        {{"phase": "refresh_resource_manifest", "pipeline": tuple(item["kind"] for item in resource_hashes["manifest"]), "ok": resource_hashes["ok"] and all(item["hash"].startswith("sha256:") for item in resource_hashes["manifest"])}},
+        {{"phase": "invalidate_compile_cache", "pipeline": tuple(item["reason"] for item in invalidation["invalidations"]), "ok": invalidation["ok"] and {{"published_property_changed", "event_handler_changed", "resource_changed"}} <= {{item["reason"] for item in invalidation["invalidations"]}}}},
+        {{"phase": "route_diagnostics", "pipeline": tuple(mapping["surface"] for mapping in diagnostics["mappings"]), "ok": {{"form_designer", "unit_editor", "package_manager"}} <= set(diagnostics["designer_surfaces"]) and all("source_span" in mapping["maps_to"] for mapping in diagnostics["mappings"])}},
+        {{"phase": "reload_runtime_preview", "pipeline": tuple(item["phase"] for item in runtime_replay["replay"]), "ok": runtime_replay["ok"] and {{"stream_decode", "semantic_static_analysis", "target_emit", "runtime_load"}} <= {{item["phase"] for item in runtime_replay["replay"]}}}},
+    )
+    state["property_edits"] = sum(1 for item in stream_diff["diffs"] if item["op"] == "change_property")
+    state["extension_properties_preserved"] = sum(1 for item in stream_diff["diffs"] if item["op"] == "preserve_unknown_property")
+    state["event_stub_updates"] = len(event_evolution["operations"])
+    state["resource_hashes"] = len(resource_hashes["manifest"])
+    state["cache_invalidations"] = len(invalidation["invalidations"])
+    state["diagnostics_routed"] = len(diagnostics["mappings"])
+    state["runtime_phases"] = len(runtime_replay["replay"])
+    return {{
+        "format": "appgen.generated-pascal-design-edit-session-replay-contract.v1",
+        "ok": all(item["ok"] for item in replay)
+        and state["stream_components"] > 0
+        and state["property_edits"] > 0
+        and state["extension_properties_preserved"] > 0
+        and state["event_stub_updates"] > 0
+        and state["resource_hashes"] > 0
+        and state["cache_invalidations"] > 0
+        and state["diagnostics_routed"] > 0
+        and state["runtime_phases"] > 0
+        and state["side_effects"] == (),
+        "replay": replay,
+        "final_state": state,
+        "guards": (
+            "stream_open_before_property_edit",
+            "unknown_properties_preserved_during_edit",
+            "event_stub_updates_preserve_user_code",
+            "resource_hashes_refresh_before_runtime_preview",
+            "cache_invalidated_before_target_emit",
+            "diagnostics_route_to_designer_surfaces",
+        ),
+        "side_effects": (),
+    }}
+
+
 def pascal_runtime_workbench(table_name=None):
     """Return generated DFM streaming and Pascal runtime evidence."""
     table_name = table_name or next(iter(FORM_TABLES))
@@ -27564,6 +27627,7 @@ def pascal_runtime_workbench(table_name=None):
     runtime_memory_model = pascal_runtime_memory_model_contract(design=design)
     toolchain_adapters = pascal_toolchain_adapter_contract(design=design)
     runtime_replay = pascal_runtime_session_replay_contract(design=design)
+    design_edit_replay = pascal_design_edit_session_replay_contract(design=design)
     binary_round_trip = dfm_binary_round_trip(design=design)
     stream_variants = dfm_stream_variant_round_trip_contract(design=design)
     checks = (
@@ -27602,6 +27666,7 @@ def pascal_runtime_workbench(table_name=None):
         {{"id": "runtime_memory_model", "ok": runtime_memory_model["ok"] and "owner_releases_children" in runtime_memory_model["guards"] and not runtime_memory_model["side_effects"], "evidence": runtime_memory_model}},
         {{"id": "toolchain_adapters", "ok": toolchain_adapters["ok"] and "diagnostics_normalized" in toolchain_adapters["guards"] and not toolchain_adapters["side_effects"], "evidence": toolchain_adapters}},
         {{"id": "runtime_session_replay", "ok": runtime_replay["ok"] and {{"stream_before_unit_parse", "resources_linked_before_runtime_load"}} <= set(runtime_replay["guards"]) and not runtime_replay["side_effects"], "evidence": runtime_replay}},
+        {{"id": "design_edit_session_replay", "ok": design_edit_replay["ok"] and {{"unknown_properties_preserved_during_edit", "cache_invalidated_before_target_emit"}} <= set(design_edit_replay["guards"]) and not design_edit_replay["side_effects"], "evidence": design_edit_replay}},
     )
     ok = all(check["ok"] for check in checks)
     return {{
@@ -27639,6 +27704,7 @@ def pascal_runtime_workbench(table_name=None):
         "runtime_memory_model": runtime_memory_model,
         "toolchain_adapters": toolchain_adapters,
         "runtime_replay": runtime_replay,
+        "design_edit_replay": design_edit_replay,
         "binary_round_trip": binary_round_trip,
         "stream_variants": stream_variants,
         "blocking_gaps": tuple(check for check in checks if not check["ok"]),

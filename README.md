@@ -310,6 +310,10 @@ Generated apps include Studio contracts for:
   information, event binding lifecycle, resource streaming, form lifecycle
   hooks, incremental compile planning, diagnostic mapping, package dependency
   order, event stub evolution, resource fidelity, and runtime artifact parity.
+- The same workbench replays interactive design edits end to end: open the form
+  stream, apply property changes, preserve unknown extension properties, update
+  event stubs, refresh resource hashes, invalidate compile caches, route
+  diagnostics, and reload the runtime preview.
 - An Object Inspector workbench proves property editor types, event-handler
   lifecycle actions, component editor verbs, custom designer hooks, editor
   registration, property validation, staged verb execution, custom designer

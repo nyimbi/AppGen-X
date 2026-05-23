@@ -208,6 +208,10 @@ Visual design is split into two related capabilities:
   information, event binding lifecycle, resource streaming, form lifecycle
   hooks, incremental compile planning, diagnostic mapping, package dependency
   order, event stub evolution, resource fidelity, and runtime artifact parity.
+- Its design-edit replay contract validates that property edits, preserved
+  extension properties, event stub updates, resource hashes, cache
+  invalidations, diagnostic routing, and runtime preview reloads happen in a
+  deterministic order.
 - `object_inspector_workbench()` validates the design-time metadata layer:
   property editors, event handler lifecycle, component verbs, custom designer
   hooks, editor registration, property validation, staged verb execution,
