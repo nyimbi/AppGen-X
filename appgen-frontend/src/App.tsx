@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import './App.css'
 import { ComponentPalette } from './ComponentPalette'
+import { DataServiceWorkbench } from './DataServiceWorkbench'
 import { DesignerCanvas } from './DesignerCanvas'
 import { DeviceApiWorkbench } from './DeviceApiWorkbench'
 import { InspectorPanel } from './InspectorPanel'
@@ -28,6 +29,7 @@ function App() {
       </section>
       <PackageManager />
       <DeviceApiWorkbench />
+      <DataServiceWorkbench />
       <StatusRail />
     </div>
   )

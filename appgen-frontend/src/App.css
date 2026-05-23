@@ -1078,6 +1078,10 @@ h2 {
   margin-top: 12px;
 }
 
+.data-service-workbench {
+  margin-top: 12px;
+}
+
 .package-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -1294,9 +1298,96 @@ h2 {
   line-height: 1.35;
 }
 
+.data-service-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.data-service-lane {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+  border: 1px solid var(--line-soft);
+  border-radius: 7px;
+  padding: 10px;
+  background: #ffffff;
+}
+
+.data-service-lane header {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: space-between;
+  color: var(--brand-strong);
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.data-service-lane header span {
+  display: grid;
+  place-items: center;
+  min-width: 24px;
+  height: 24px;
+  border-radius: 999px;
+  color: #ffffff;
+  background: #bf6a2a;
+  font-size: 11px;
+}
+
+.data-service-list {
+  display: grid;
+  gap: 8px;
+}
+
+.data-service-card {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr);
+  gap: 8px;
+  align-items: start;
+  min-width: 0;
+  border: 1px solid #e7edf5;
+  border-radius: 7px;
+  padding: 8px;
+  color: var(--text);
+  background: var(--surface-subtle);
+  text-align: left;
+}
+
+.data-service-card strong,
+.data-service-card small,
+.data-service-card em {
+  min-width: 0;
+}
+
+.data-service-card strong,
+.data-service-card small,
+.data-service-card em {
+  display: block;
+}
+
+.data-service-card small,
+.data-service-card em {
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+.data-service-card em {
+  grid-column: 2;
+  border-top: 1px solid #e7edf5;
+  padding-top: 7px;
+  font-style: normal;
+  font-weight: 800;
+}
+
+.data-service-card > small {
+  grid-column: 2;
+}
+
 .status-rail {
   display: grid;
-  grid-template-columns: repeat(8, minmax(0, 1fr));
+  grid-template-columns: repeat(9, minmax(0, 1fr));
   gap: 12px;
   margin-top: 12px;
 }
@@ -1365,7 +1456,8 @@ h2 {
   }
 
   .package-grid,
-  .device-api-grid {
+  .device-api-grid,
+  .data-service-grid {
     grid-template-columns: 1fr;
   }
 }
