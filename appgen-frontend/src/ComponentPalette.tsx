@@ -15,28 +15,9 @@ export function ComponentPalette({
   onCategoryChange,
   onQueryChange,
 }: ComponentPaletteProps) {
-  const normalizedQuery = query.trim().toLowerCase()
-  const visibleComponents = paletteComponents.filter((component) => {
-    const matchesCategory = activeCategory === 'All' || component.category === activeCategory
-    const matchesQuery =
-      !normalizedQuery ||
-      component.name.toLowerCase().includes(normalizedQuery) ||
-      component.description.toLowerCase().includes(normalizedQuery)
-
-    return matchesCategory && matchesQuery
-  })
-  const visibleGroups = paletteCategories
-    .map((category) => ({
-      category,
-      components: visibleComponents.filter((component) => component.category === category),
-    }))
-    .filter((group) => group.components.length > 0)
-  const categoryCounts = Object.fromEntries(
-    paletteCategories.map((category) => [
-      category,
-      paletteComponents.filter((component) => component.category === category).length,
-    ]),
-  ) as Record<ComponentCategory, number>
+  const visibleComponents = filterPaletteComponents(activeCategory, query)
+  const visibleGroups = groupPaletteComponents(visibleComponents)
+  const categoryCounts = paletteCategoryCounts()
   const categoryClassName = (category: ComponentCategory) => `category-${category.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`
 
   return (
@@ -92,8 +73,9 @@ export function ComponentPalette({
               <button
                 aria-label={`${component.name}: ${component.description}`}
                 className={`component-tile ${categoryClassName(component.category)}-tile`}
-                data-component={component.name}
-                data-component-icon={component.icon}
+                data-component={componentDragPayload(component).component}
+                data-component-category={componentDragPayload(component).category}
+                data-component-icon={componentDragPayload(component).icon}
                 draggable
                 key={component.name}
                 title={component.description}
@@ -127,4 +109,46 @@ export function ComponentPalette({
       </div>
     </aside>
   )
+}
+
+export function filterPaletteComponents(activeCategory: ComponentCategory | 'All', query: string) {
+  const normalizedQuery = query.trim().toLowerCase()
+
+  return paletteComponents.filter((component) => {
+    const matchesCategory = activeCategory === 'All' || component.category === activeCategory
+    const matchesQuery =
+      !normalizedQuery ||
+      component.name.toLowerCase().includes(normalizedQuery) ||
+      component.description.toLowerCase().includes(normalizedQuery)
+
+    return matchesCategory && matchesQuery
+  })
+}
+
+export function groupPaletteComponents(components = paletteComponents) {
+  return paletteCategories
+    .map((category) => ({
+      category,
+      components: components.filter((component) => component.category === category),
+    }))
+    .filter((group) => group.components.length > 0)
+}
+
+export function paletteCategoryCounts() {
+  return Object.fromEntries(
+    paletteCategories.map((category) => [
+      category,
+      paletteComponents.filter((component) => component.category === category).length,
+    ]),
+  ) as Record<ComponentCategory, number>
+}
+
+export function componentDragPayload(component: (typeof paletteComponents)[number]) {
+  return {
+    component: component.name,
+    category: component.category,
+    icon: component.icon,
+    size: component.size,
+    draggable: true,
+  }
 }

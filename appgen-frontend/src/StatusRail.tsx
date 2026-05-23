@@ -7,6 +7,7 @@ const dataAudit = catalogAudit.dataAudit
 const deviceAudit = catalogAudit.deviceAudit
 const iconAudit = catalogAudit.componentAudit
 const inspectorAudit = catalogAudit.inspectorAudit
+const interactionAudit = catalogAudit.interactionAudit
 const packageAudit = catalogAudit.packageAudit
 
 const statuses = [
@@ -37,6 +38,11 @@ const statuses = [
     label: 'Editors',
     value: inspectorAudit.ok ? `${inspectorAudit.totalEditors} mapped` : 'Review',
     icon: 'style' as const,
+  },
+  {
+    label: 'Interactions',
+    value: interactionAudit.ok ? `${interactionAudit.totalScenarios} checks` : 'Review',
+    icon: 'workflow' as const,
   },
   { label: 'Icons', value: iconAudit.ok ? `${iconAudit.totalComponents} mapped` : 'Review', icon: 'shape' as const },
 ]

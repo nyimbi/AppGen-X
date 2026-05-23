@@ -2,6 +2,7 @@ import { visualBindingAudit } from './bindingCatalog'
 import { componentIconAudit } from './componentCatalog'
 import { dataServiceAudit } from './dataServiceCatalog'
 import { deviceApiAudit } from './deviceApiCatalog'
+import { studioInteractionAudit } from './interactionAudit'
 import { inspectorEditorAudit } from './inspectorCatalog'
 import { packageInstallAudit } from './packageCatalog'
 
@@ -11,6 +12,7 @@ export function studioCatalogAudit() {
   const dataAudit = dataServiceAudit()
   const deviceAudit = deviceApiAudit()
   const inspectorAudit = inspectorEditorAudit()
+  const interactionAudit = studioInteractionAudit()
   const packageAudit = packageInstallAudit()
 
   return {
@@ -20,12 +22,14 @@ export function studioCatalogAudit() {
       dataAudit.ok &&
       deviceAudit.ok &&
       inspectorAudit.ok &&
+      interactionAudit.ok &&
       packageAudit.ok,
     bindingAudit,
     componentAudit,
     dataAudit,
     deviceAudit,
     inspectorAudit,
+    interactionAudit,
     packageAudit,
   }
 }
