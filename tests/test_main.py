@@ -120,6 +120,7 @@ from pyAppGen.form_designer import parse_dfm_text
 from pyAppGen.form_designer import pascal_runtime_workbench
 from pyAppGen.form_designer import pascal_unit_contract
 from pyAppGen.form_designer import placement_suggestions
+from pyAppGen.form_designer import platform_parity_lifecycle_replay_contract
 from pyAppGen.form_designer import property_inspector
 from pyAppGen.form_designer import rad_data_tooling_workbench
 from pyAppGen.form_designer import snap_drop
@@ -1803,8 +1804,29 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "mobile_native_device_api_coverage",
         "cross_target_animation_effects_3d_depth",
         "third_party_component_ecosystem",
+        "platform_parity_lifecycle_replay",
         "artifact_contract",
     } == {check["id"] for check in rad_parity_workbench()["checks"]}
+    platform_lifecycle = platform_parity_lifecycle_replay_contract()
+    assert platform_lifecycle["format"] == "appgen.platform-parity-lifecycle-replay.v1"
+    assert platform_lifecycle["ok"] is True
+    assert {
+        "component_surface_baseline",
+        "stream_runtime_model",
+        "inspect_and_bind_design",
+        "publish_data_services",
+        "install_component_packages",
+        "validate_device_capabilities",
+        "validate_visual_depth",
+    } <= {item["phase"] for item in platform_lifecycle["replay"]}
+    assert {
+        "component_baseline_before_runtime",
+        "runtime_before_design_transactions",
+        "design_transactions_before_data_publish",
+        "packages_before_target_validation",
+        "target_validation_before_release_claim",
+        "all_subsystems_replayed",
+    } <= {check["id"] for check in platform_lifecycle["checks"] if check["ok"]}
 
     smoke = form_designer_generation_smoke_audit()
     assert smoke["format"] == "appgen.form-designer-generation-smoke-audit.v1"
@@ -9544,6 +9566,26 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     )
     assert generated_rad["format"] == "appgen.generated-rad-parity-workbench.v1"
     assert generated_rad["ok"] is True
+    assert "platform_parity_lifecycle_replay" in {check["id"] for check in generated_rad["checks"]}
+    assert generated_rad["lifecycle_replay"]["format"] == "appgen.generated-platform-parity-lifecycle-replay.v1"
+    assert generated_rad["lifecycle_replay"]["ok"] is True
+    assert {
+        "component_surface_baseline",
+        "stream_runtime_model",
+        "inspect_and_bind_design",
+        "publish_data_services",
+        "install_component_packages",
+        "validate_device_capabilities",
+        "validate_visual_depth",
+    } <= {item["phase"] for item in generated_rad["lifecycle_replay"]["replay"]}
+    assert {
+        "component_baseline_before_runtime",
+        "runtime_before_design_transactions",
+        "design_transactions_before_data_publish",
+        "packages_before_target_validation",
+        "target_validation_before_release_claim",
+        "all_subsystems_replayed",
+    } <= {check["id"] for check in generated_rad["lifecycle_replay"]["checks"] if check["ok"]}
     assert {"devexpress-native", "tms-fnc", "fastreport", "teechart", "indy"} <= {
         item["id"] for item in form_designer.third_party_component_registry()
     }

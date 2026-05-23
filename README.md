@@ -361,6 +361,10 @@ Generated apps include Studio contracts for:
   dependency lockfile metadata, preview-load lifecycles, failure containment,
   uninstall cleanup, and one ordered lifecycle transaction replay with
   side-effect guards.
+- A platform parity lifecycle replay ties component coverage, form streaming,
+  runtime replay, inspector and binding transactions, data-service publishing,
+  package installation, device capability validation, and cross-target visual
+  depth into one ordered release contract.
 - Generated package modules under `app/component_packages/<package>.py` export
   `package_contract()`, `install_plan()`, `load_policy()`,
   `dependency_graph()`, `adapter_smoke()`, `preview_load()`,

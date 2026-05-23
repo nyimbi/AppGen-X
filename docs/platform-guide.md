@@ -111,6 +111,10 @@ A generated app can include:
   dependency lockfile metadata, preview-load lifecycles, failure containment,
   uninstall cleanup, and one ordered package lifecycle transaction replay with
   side-effect guards.
+- `platform_parity_lifecycle_replay_contract()` ties component coverage, form
+  streaming, runtime replay, inspector and binding transactions, data-service
+  publishing, package installation, device capability validation, and
+  cross-target visual depth into one ordered release contract.
 - `app/designer.py` for visual database design and ERD exports.
 - `app/agents.py` for LLM providers and agent plans.
 - `app/platforms.py`, `native/mobile`, `native/desktop`, PWA assets, and

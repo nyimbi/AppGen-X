@@ -266,6 +266,11 @@ Visual design is split into two related capabilities:
   containment, uninstall cleanup, side-effect guards, and one ordered lifecycle
   transaction replay that proves install, preview, update, failure recovery,
   rollback, and unload behavior together.
+- `platform_parity_lifecycle_replay_contract()` validates the whole IDE parity
+  flow by replaying component coverage, form streaming, runtime replay,
+  inspector and binding transactions, data-service publishing, package
+  installation, device capability validation, and cross-target visual depth in
+  one ordered contract.
 - `visual_modeling.py` handles database graph nodes, relationships, ERD export,
   DBML/SQL/PonyORM export, schema proposals, and migration preview.
 - `branding.py` handles brand/theme contracts, splash-screen configuration,

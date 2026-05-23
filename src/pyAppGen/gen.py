@@ -33875,6 +33875,52 @@ def form_designer_check(existing_paths):
     return {{"ok": not missing, "missing": missing, "palette": tuple(item["type"] for item in PALETTE)}}
 
 
+def platform_parity_lifecycle_replay_contract():
+    """Replay generated IDE parity surfaces from palette coverage to target runtime delivery."""
+    analog_groups = component_analog_group_audit()
+    usability = component_usability_workbench()
+    runtime = pascal_runtime_workbench()
+    inspector = object_inspector_workbench()
+    bindings = livebindings_workbench()
+    data_tooling = rad_data_tooling_workbench()
+    package_manager = design_time_package_manager_workbench()
+    package_lifecycle = component_package_lifecycle_transaction_replay()
+    mobile = mobile_native_api_workbench()
+    mobile_lifecycle = mobile_device_capability_lifecycle_replay_contract()
+    visual = cross_target_visual_depth_workbench()
+    visual_lifecycle = cross_target_visual_lifecycle_replay_contract()
+    mobile_lifecycle_phases = tuple(phase["phase"] for item in mobile_lifecycle["replay"] for phase in item["phases"])
+    replay = (
+        {{"phase": "component_surface_baseline", "ok": analog_groups["ok"] and usability["ok"], "evidence": {{"groups": tuple(group["group"] for group in analog_groups["groups"]), "component_count": usability["component_count"]}}}},
+        {{"phase": "stream_runtime_model", "ok": runtime["ok"] and {{"form_stream_schema", "runtime_session_replay", "event_binding_lifecycle"}} <= {{check["id"] for check in runtime["checks"]}}, "evidence": {{"checks": tuple(check["id"] for check in runtime["checks"]), "runtime_state": runtime["runtime_replay"]["final_state"]}}}},
+        {{"phase": "inspect_and_bind_design", "ok": inspector["ok"] and bindings["ok"] and inspector["cross_component_replay"]["ok"] and bindings["designer_transaction_replay"]["ok"], "evidence": {{"inspector_checks": tuple(check["id"] for check in inspector["checks"]), "binding_checks": tuple(check["id"] for check in bindings["checks"])}}}},
+        {{"phase": "publish_data_services", "ok": data_tooling["ok"] and data_tooling["publish_transaction_replay"]["ok"] and {{"schema_rehearsal_before_dataset_publish", "service_contract_tests_before_resource_publish", "offline_integrity_before_runtime_replay"}} <= set(data_tooling["publish_transaction_replay"]["guards"]), "evidence": {{"checks": tuple(check["id"] for check in data_tooling["checks"]), "publish_state": data_tooling["publish_transaction_replay"]["final_state"]}}}},
+        {{"phase": "install_component_packages", "ok": package_manager["ok"] and package_lifecycle["ok"] and all(item["final_state"]["registry_clean"] for item in package_lifecycle["replay"]), "evidence": {{"manager_checks": tuple(check["id"] for check in package_manager["checks"]), "packages": package_lifecycle["packages"]}}}},
+        {{"phase": "validate_device_capabilities", "ok": mobile["ok"] and mobile_lifecycle["ok"] and "runtime_and_designer_replay_aligned" in mobile_lifecycle["guards"], "evidence": {{"apis": tuple(adapter["api"] for adapter in mobile["contract"]["component_adapters"]["adapters"]), "lifecycle_phases": mobile_lifecycle_phases}}}},
+        {{"phase": "validate_visual_depth", "ok": visual["ok"] and visual_lifecycle["ok"] and "hit_tests_before_designer_replay" in visual_lifecycle["guards"], "evidence": {{"checks": tuple(check["id"] for check in visual["checks"]), "lifecycle_phases": tuple(item["phase"] for item in visual_lifecycle["replay"])}}}},
+    )
+    phase_names = tuple(item["phase"] for item in replay)
+    checks = (
+        {{"id": "component_baseline_before_runtime", "ok": phase_names.index("component_surface_baseline") < phase_names.index("stream_runtime_model"), "evidence": phase_names}},
+        {{"id": "runtime_before_design_transactions", "ok": phase_names.index("stream_runtime_model") < phase_names.index("inspect_and_bind_design"), "evidence": phase_names}},
+        {{"id": "design_transactions_before_data_publish", "ok": phase_names.index("inspect_and_bind_design") < phase_names.index("publish_data_services"), "evidence": phase_names}},
+        {{"id": "packages_before_target_validation", "ok": phase_names.index("install_component_packages") < phase_names.index("validate_device_capabilities"), "evidence": phase_names}},
+        {{"id": "target_validation_before_release_claim", "ok": phase_names.index("validate_device_capabilities") < phase_names.index("validate_visual_depth"), "evidence": phase_names}},
+        {{"id": "all_subsystems_replayed", "ok": all(item["ok"] for item in replay), "evidence": replay}},
+    )
+    ok = all(item["ok"] for item in replay) and all(check["ok"] for check in checks)
+    return {{
+        "format": "appgen.generated-platform-parity-lifecycle-replay.v1",
+        "ok": ok,
+        "decision": "approved" if ok else "blocked",
+        "replay": replay,
+        "checks": checks,
+        "guards": ("component_baseline_before_runtime", "runtime_before_design_transactions", "design_transactions_before_data_publish", "packages_before_target_validation", "target_validation_before_release_claim"),
+        "side_effects": (),
+        "blocking_gaps": tuple(check for check in checks if not check["ok"]),
+    }}
+
+
 def rad_parity_workbench(existing_paths=()):
     """Return evidence for RAD native desktop and cross-target UI, DFM, Object Inspector, data, mobile, and third-party parity."""
     existing = set(existing_paths)
@@ -33882,6 +33928,7 @@ def rad_parity_workbench(existing_paths=()):
     missing = tuple(path for path in required if path not in existing)
     install_plan = third_party_component_install_plan()
     package_workbench = component_package_workbench()
+    platform_lifecycle = platform_parity_lifecycle_replay_contract()
     categories = {{category for suite in THIRD_PARTY_COMPONENT_SUITES for category in suite["categories"]}}
     palette_types = {{item["type"] for item in PALETTE}}
     checks = (
@@ -33897,6 +33944,7 @@ def rad_parity_workbench(existing_paths=()):
         {{"id": "mobile_native_device_api_coverage", "ok": {{"camera", "location", "push_notifications", "secure_storage"}} <= set(mobile_native_api_contract()["apis"]) and mobile_native_api_workbench()["ok"], "evidence": {{"contract": mobile_native_api_contract(), "workbench": mobile_native_api_workbench()}}}},
         {{"id": "cross_target_animation_effects_3d_depth", "ok": bool(cross_target_visual_depth_contract()["animation"]) and bool(cross_target_visual_depth_contract()["three_d"]) and cross_target_visual_depth_workbench()["ok"], "evidence": {{"contract": cross_target_visual_depth_contract(), "workbench": cross_target_visual_depth_workbench()}}}},
         {{"id": "third_party_component_ecosystem", "ok": install_plan["ok"] and {{"grid", "reports", "charts", "database", "network", "animation"}} <= categories and package_workbench["ok"], "evidence": {{"packages": install_plan["packages"], "categories": tuple(sorted(categories)), "package_workbench": package_workbench}}}},
+        {{"id": "platform_parity_lifecycle_replay", "ok": platform_lifecycle["ok"] and {{"component_baseline_before_runtime", "target_validation_before_release_claim"}} <= set(platform_lifecycle["guards"]) and not platform_lifecycle["side_effects"], "evidence": platform_lifecycle}},
         {{"id": "route_surface", "ok": not missing, "evidence": {{"routes": ("/form-designer/rad-parity.json", "/form-designer/third-party-components.json", "/form-designer/component-usability.json", "/form-designer/component-analogs.json", "/form-designer/object-inspector.json", "/form-designer/livebindings.json", "/form-designer/data-tooling.json", "/form-designer/pascal-runtime.json")}}}},
     )
     ok = all(check["ok"] for check in checks)
@@ -33905,6 +33953,7 @@ def rad_parity_workbench(existing_paths=()):
         "ok": ok,
         "decision": "approved" if ok else "blocked",
         "checks": checks,
+        "lifecycle_replay": platform_lifecycle,
         "third_party_registry": THIRD_PARTY_COMPONENT_SUITES,
         "blocking_gaps": tuple(check for check in checks if not check["ok"]),
         "stop_condition": "do-not-claim-full-rad-parity-unless-every-check-is-proven",
