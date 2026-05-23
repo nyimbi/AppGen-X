@@ -197,9 +197,10 @@ Visual design is split into two related capabilities:
   are generated alongside the form designer so every component and package has a
   discrete, importable contract, renderer/loader surface, validation evidence,
   and test plan.
-- `component_analog_workbench()` sits above the raw palette and proves requested
-  native-style analog coverage across controls, layouts, graphics, animation,
-  theming, gestures, sensors, 3D primitives, and data access.
+- `component_analog_workbench()` and `component_analog_group_audit()` sit above
+  the raw palette and prove requested native-style analog coverage across
+  controls, layouts, data display, graphics, animation, theming, gestures,
+  sensors, 3D primitives, and data access.
 - `component_behavior_workbench()` proves each component is more than catalog
   metadata: it has render nodes, property validation, event dispatch metadata,
   target adapters, accessibility metadata, and side-effect-free preview behavior.
@@ -223,8 +224,10 @@ Visual design is split into two related capabilities:
   routing, lifecycle commit/cancel behavior, and metadata round trip.
 - `component_analog_workbench()` validates requested component analog coverage
   across controls, layouts, data display, graphics, animation, theming,
-  gestures, sensors, 3D scene primitives, and data access. It now records the
-  runtime adapter class for each analog before replaying behavior contracts.
+  gestures, sensors, 3D scene primitives, and data access. It records the
+  runtime adapter class for each analog before replaying behavior contracts;
+  `component_analog_group_audit()` then groups that evidence by requested
+  category so package and generated-app tests can prove the full list at once.
 - `livebindings_workbench()` validates visual data-binding graphs, expression
   safety, converter/validator catalogs, designer interactions, and runtime
   update modes, plus link authoring operations, conflict checks, preview

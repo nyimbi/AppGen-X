@@ -74,6 +74,7 @@ from pyAppGen.erp import erp_starter_manifest
 from pyAppGen.erp import erp_template_catalog
 from pyAppGen.erp import erp_template_release_audit
 from pyAppGen.form_designer import apply_drop
+from pyAppGen.form_designer import component_analog_group_audit
 from pyAppGen.form_designer import component_analog_matrix
 from pyAppGen.form_designer import component_analog_workbench
 from pyAppGen.form_designer import component_package_contract
@@ -857,6 +858,25 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         <= {check["id"] for check in item["checks"] if check["ok"]}
         for item in analog_workbench["behavior_replay"]
     )
+    analog_group_audit = component_analog_group_audit()
+    assert analog_group_audit["format"] == "appgen.component-analog-group-audit.v1"
+    assert analog_group_audit["ok"] is True
+    assert {
+        "cross-target-ui",
+        "layouts",
+        "data-display",
+        "graphics",
+        "animations",
+        "styles-theming",
+        "gestures",
+        "sensors",
+        "three-d",
+        "data-access",
+    } == {item["group"] for item in analog_group_audit["groups"]}
+    assert all(item["ok"] for item in analog_group_audit["groups"])
+    assert {"requested_sources_complete", "behavior_replay_per_requested_analog"} <= {
+        check["id"] for check in analog_group_audit["checks"] if check["ok"]
+    }
     inspector_contract = object_inspector_contract("Grid")
     assert inspector_contract["format"] == "appgen.object-inspector-contract.v1"
     assert {"Properties", "Events", "Data", "Actions"} <= set(inspector_contract["tabs"])
@@ -10023,6 +10043,27 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         <= {check["id"] for check in item["checks"] if check["ok"]}
         for item in generated_analogs["behavior_replay"]
     )
+    generated_analog_groups = form_designer.component_analog_group_audit()
+    assert generated_analog_groups["format"] == "appgen.generated-component-analog-group-audit.v1"
+    assert generated_analog_groups["ok"] is True
+    assert {
+        "cross-target-ui",
+        "layouts",
+        "data-display",
+        "graphics",
+        "animations",
+        "styles-theming",
+        "gestures",
+        "sensors",
+        "three-d",
+        "data-access",
+    } == {item["group"] for item in generated_analog_groups["groups"]}
+    assert all(item["ok"] for item in generated_analog_groups["groups"])
+    assert REQUESTED_COMPONENT_ANALOG_SOURCES == {
+        source
+        for group in generated_analog_groups["groups"]
+        for source in group["sources"]
+    }
     generated_inspector = form_designer.object_inspector_workbench()
     assert generated_inspector["format"] == "appgen.generated-object-inspector-workbench.v1"
     assert generated_inspector["ok"] is True

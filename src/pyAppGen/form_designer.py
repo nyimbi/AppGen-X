@@ -738,6 +738,90 @@ def component_analog_workbench() -> dict:
     }
 
 
+def component_analog_group_audit() -> dict:
+    """Return grouped coverage evidence for requested native component analogs."""
+    matrix = component_analog_matrix()
+    workbench = component_analog_workbench()
+    required_groups = tuple(
+        sorted({requirement["group"] for requirement in COMPONENT_ANALOG_REQUIREMENTS})
+    )
+    behavior_by_component = {
+        item["component"]: item for item in workbench["behavior_replay"]
+    }
+    grouped = tuple(
+        {
+            "group": group,
+            "sources": tuple(item["source"] for item in matrix if item["group"] == group),
+            "analogs": tuple(item["analog"] for item in matrix if item["group"] == group),
+            "runtime_adapters": tuple(
+                item["runtime_adapter"] for item in matrix if item["group"] == group
+            ),
+            "behavior_checks": tuple(
+                {
+                    "component": item["analog"],
+                    "checks": tuple(
+                        check["id"]
+                        for check in behavior_by_component[item["analog"]]["checks"]
+                        if check["ok"]
+                    ),
+                }
+                for item in matrix
+                if item["group"] == group and item["analog"] in behavior_by_component
+            ),
+            "ok": all(
+                item["implemented"]
+                and item["contract"]
+                and item["contract"]["usable"]
+                and behavior_by_component.get(item["analog"], {}).get("ok") is True
+                for item in matrix
+                if item["group"] == group
+            ),
+        }
+        for group in required_groups
+    )
+    requested_sources = {requirement["source"] for requirement in COMPONENT_ANALOG_REQUIREMENTS}
+    checks = (
+        {
+            "id": "requested_groups_complete",
+            "ok": set(required_groups) == {item["group"] for item in grouped},
+            "evidence": required_groups,
+        },
+        {
+            "id": "requested_sources_complete",
+            "ok": requested_sources == {item["source"] for item in matrix},
+            "evidence": tuple(sorted(requested_sources)),
+        },
+        {
+            "id": "grouped_analogs_usable",
+            "ok": all(item["ok"] for item in grouped),
+            "evidence": tuple(
+                {
+                    "group": item["group"],
+                    "analogs": item["analogs"],
+                    "runtime_adapters": item["runtime_adapters"],
+                }
+                for item in grouped
+            ),
+        },
+        {
+            "id": "behavior_replay_per_requested_analog",
+            "ok": len(workbench["behavior_replay"]) == len(matrix)
+            and all(item["ok"] for item in workbench["behavior_replay"]),
+            "evidence": tuple(sorted(behavior_by_component)),
+        },
+    )
+    ok = workbench["ok"] and all(check["ok"] for check in checks)
+    return {
+        "format": "appgen.component-analog-group-audit.v1",
+        "ok": ok,
+        "decision": "approved" if ok else "blocked",
+        "groups": grouped,
+        "checks": checks,
+        "workbench": workbench,
+        "blocking_gaps": tuple(check for check in checks if not check["ok"]),
+    }
+
+
 def third_party_component_registry() -> tuple[dict, ...]:
     """Return useful third-party RAD component suites the IDE can model."""
     return THIRD_PARTY_COMPONENT_SUITES

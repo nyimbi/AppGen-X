@@ -52,10 +52,11 @@ A generated app can include:
   own implementation contract with `contract()`, `render()`, `validate_props()`,
   `preview()`, `behavior_contract()`, `target_adapters()`, `dispatch_event()`,
   and `test_plan()` exports.
-- `component_analog_workbench()` proves analog coverage for cross-target
-  controls, layout containers, data display, graphics, animations, theming,
-  gestures, sensors, 3D scene primitives, and data-access components, including
-  runtime adapter declarations for each analog.
+- `component_analog_workbench()` and `component_analog_group_audit()` prove
+  analog coverage for cross-target controls, layout containers, data display,
+  graphics, animations, theming, gestures, sensors, 3D scene primitives, and
+  data-access components, including runtime adapter declarations and grouped
+  behavior replay evidence for each requested category.
 - `pascal_runtime_workbench()` proves deterministic form streaming, generated
   units, package manifests, compiler pipeline metadata, runtime type
   information, event binding lifecycle, resource streaming, form lifecycle
