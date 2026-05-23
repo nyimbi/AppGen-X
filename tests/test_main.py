@@ -2488,6 +2488,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     assert smoke["ok"] is True
     assert {
         "app/form_designer.py",
+        "app/inspector_runtime.py",
         "app/visual_runtime_assets.py",
         "app/data_tooling_runtime.py",
         "app/runtime_operations.py",
@@ -2510,6 +2511,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     } <= set(smoke["required_artifacts"])
     assert {
         "app/form_designer.py",
+        "app/inspector_runtime.py",
         "app/visual_runtime_assets.py",
         "app/data_tooling_runtime.py",
         "app/runtime_operations.py",
@@ -11089,6 +11091,30 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert data_runtime.transaction_runtime_manifest()["ok"] is True
     assert data_runtime.validate_data_tooling_runtime()["ok"] is True
     assert data_runtime.smoke_test()["ok"] is True
+    inspector_runtime_file = output_dir / "inspector_runtime.py"
+    assert inspector_runtime_file.exists()
+    py_compile.compile(str(inspector_runtime_file), doraise=True)
+    inspector_runtime = _load_module(inspector_runtime_file, "generated_inspector_runtime")
+    inspector_runtime_smoke = inspector_runtime.smoke_test("Grid")
+    assert inspector_runtime_smoke["format"] == "appgen.generated-inspector-runtime-smoke.v1"
+    assert inspector_runtime_smoke["ok"] is True
+    assert {
+        "manifest_ok",
+        "property_editors_present",
+        "event_editors_lifecycle_ready",
+        "component_editors_present",
+        "custom_designers_present",
+        "editor_lifecycle_replay",
+        "design_surface_replay",
+        "custom_registration_replay",
+        "binding_bridge_replay",
+        "handler_invocation_policy",
+        "runtime_replay",
+    } <= set(inspector_runtime_smoke["checks"])
+    inspector_replay = inspector_runtime.replay_inspector_runtime("Grid")
+    assert inspector_replay["ok"] is True
+    assert {"property_edit", "event_rename", "component_editor"} <= set(inspector_replay["edit_ops"])
+    assert inspector_replay["side_effects"] == ()
     runtime_operations_file = output_dir / "runtime_operations.py"
     assert runtime_operations_file.exists()
     py_compile.compile(str(runtime_operations_file), doraise=True)

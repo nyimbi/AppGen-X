@@ -1742,6 +1742,7 @@ def write_form_designer_file(output_dir, schema: AppSchema):
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
     (output_dir / "form_designer.py").write_text(_form_designer_text(schema))
+    (output_dir / "inspector_runtime.py").write_text(_inspector_runtime_text())
     (output_dir / "runtime_operations.py").write_text(_native_runtime_operations_text())
     (output_dir / "native_form_runtime.py").write_text(_native_form_runtime_text())
     (output_dir / "mobile_device_runtime.py").write_text(_mobile_device_runtime_text())
@@ -2673,6 +2674,154 @@ def smoke_test():
         "ok": validation["ok"],
         "validation": validation,
         "checks": tuple(item["id"] for item in validation["checks"]),
+    }
+'''
+
+
+def _inspector_runtime_text() -> str:
+    return '''"""Generated side-effect-free Object Inspector runtime validation surface."""
+
+from __future__ import annotations
+
+import importlib.util
+from pathlib import Path
+
+
+def _load_form_designer():
+    """Load the sibling generated form designer module without requiring package install."""
+    module_path = Path(__file__).with_name("form_designer.py")
+    spec = importlib.util.spec_from_file_location("generated_inspector_runtime_designer", module_path)
+    module = importlib.util.module_from_spec(spec)
+    if spec.loader is None:
+        raise RuntimeError("Could not load generated form designer module.")
+    spec.loader.exec_module(module)
+    return module
+
+
+def inspector_runtime_manifest(component="Grid"):
+    """Return generated inspector editors, handlers, designers, and replay evidence."""
+    form_designer = _load_form_designer()
+    workbench = form_designer.object_inspector_workbench()
+    contract = form_designer.object_inspector_contract(component)
+    check_ids = {check["id"] for check in workbench["checks"] if check["ok"]}
+    required_checks = {
+        "property_editor_types",
+        "event_editor_lifecycle",
+        "component_editor_verbs",
+        "custom_designer_hooks",
+        "component_editor_transaction",
+        "custom_designer_registration_replay",
+        "editor_lifecycle_replay",
+        "inspector_binding_bridge",
+        "handler_action_registry",
+        "cross_handler_invocation_policy",
+        "actionable_editor_operations",
+    }
+    actionables = workbench["actionable_operations"]
+    return {
+        "format": "appgen.generated-inspector-runtime-manifest.v1",
+        "ok": workbench["ok"]
+        and required_checks <= check_ids
+        and {"Properties", "Events", "Data", "Actions"} <= set(contract["tabs"])
+        and bool(contract["property_editors"])
+        and all(editor["supports_create"] and editor["supports_navigate"] and editor["supports_detach"] for editor in contract["event_editors"])
+        and bool(contract["component_editors"])
+        and bool(contract["custom_designers"])
+        and all(operation["ok"] and not operation["side_effects"] for operation in actionables.values())
+        and workbench["editor_lifecycle_replay"]["ok"]
+        and workbench["custom_designer_registration_replay"]["ok"]
+        and workbench["inspector_binding_bridge"]["ok"],
+        "component": component,
+        "contract": contract,
+        "workbench_format": workbench["format"],
+        "checks": tuple(check["id"] for check in workbench["checks"]),
+        "required_checks": tuple(sorted(required_checks)),
+        "edit_session_replay": workbench["edit_session_replay"],
+        "design_surface_replay": workbench["design_surface_replay"],
+        "custom_designer_registration_replay": workbench["custom_designer_registration_replay"],
+        "editor_lifecycle_replay": workbench["editor_lifecycle_replay"],
+        "inspector_binding_bridge": workbench["inspector_binding_bridge"],
+        "action_registry": workbench["action_registry"],
+        "cross_handler_invocation": workbench["cross_handler_invocation"],
+        "actionable_operations": actionables,
+        "guards": (
+            "property_editors_registered",
+            "event_editors_manage_lifecycle",
+            "component_editors_are_transactional",
+            "custom_designers_register_before_activation",
+            "handler_invocation_has_cycle_guard",
+            "binding_bridge_replays_after_property_commit",
+        ),
+    }
+
+
+def replay_inspector_runtime(component="Grid"):
+    """Replay generated inspector edit/session behavior without touching host UI."""
+    manifest = inspector_runtime_manifest(component)
+    actionables = manifest["actionable_operations"]
+    edit_ops = tuple(item["op"] for item in manifest["edit_session_replay"]["trace"])
+    design_phases = tuple(item["phase"] for item in manifest["design_surface_replay"]["replay"])
+    registration_phases = tuple(item["phase"] for item in manifest["custom_designer_registration_replay"]["replay"])
+    lifecycle_phases = tuple(item["phase"] for item in manifest["editor_lifecycle_replay"]["replay"])
+    binding_phases = tuple(item["phase"] for item in manifest["inspector_binding_bridge"]["replay"])
+    return {
+        "format": "appgen.generated-inspector-runtime-replay.v1",
+        "ok": manifest["ok"]
+        and {"property_edit", "event_rename", "component_editor", "custom_designer_overlay", "undo", "redo"} <= set(edit_ops)
+        and {"run_component_editor_transaction", "route_custom_designer_overlay", "surface_diagnostics"} <= set(design_phases)
+        and {"register_custom_designers", "activate_hooks", "round_trip_metadata"} <= set(registration_phases)
+        and {"route_event_handlers", "run_component_editor_transactions", "replay_custom_designer_registration"} <= set(lifecycle_phases)
+        and {"inspector_property_commit", "binding_link_commit", "runtime_wiring_refresh"} <= set(binding_phases)
+        and actionables["property_edit"]["ok"]
+        and actionables["event_rename"]["ok"]
+        and actionables["handler_invoke"]["ok"]
+        and actionables["component_editor"]["ok"]
+        and actionables["custom_designer"]["ok"],
+        "component": component,
+        "edit_ops": edit_ops,
+        "design_phases": design_phases,
+        "registration_phases": registration_phases,
+        "lifecycle_phases": lifecycle_phases,
+        "binding_phases": binding_phases,
+        "side_effects": (),
+    }
+
+
+def validate_inspector_runtime(component="Grid"):
+    """Validate generated inspector runtime readiness."""
+    manifest = inspector_runtime_manifest(component)
+    replay = replay_inspector_runtime(component)
+    checks = (
+        {"id": "manifest_ok", "ok": manifest["ok"]},
+        {"id": "property_editors_present", "ok": bool(manifest["contract"]["property_editors"])},
+        {"id": "event_editors_lifecycle_ready", "ok": all(editor["supports_create"] and editor["supports_navigate"] and editor["supports_detach"] for editor in manifest["contract"]["event_editors"])},
+        {"id": "component_editors_present", "ok": bool(manifest["contract"]["component_editors"])},
+        {"id": "custom_designers_present", "ok": bool(manifest["contract"]["custom_designers"])},
+        {"id": "editor_lifecycle_replay", "ok": manifest["editor_lifecycle_replay"]["ok"] and not manifest["editor_lifecycle_replay"]["side_effects"]},
+        {"id": "design_surface_replay", "ok": manifest["design_surface_replay"]["ok"] and not manifest["design_surface_replay"]["side_effects"]},
+        {"id": "custom_registration_replay", "ok": manifest["custom_designer_registration_replay"]["ok"] and not manifest["custom_designer_registration_replay"]["side_effects"]},
+        {"id": "binding_bridge_replay", "ok": manifest["inspector_binding_bridge"]["ok"] and not manifest["inspector_binding_bridge"]["side_effects"]},
+        {"id": "handler_invocation_policy", "ok": manifest["cross_handler_invocation"]["ok"] and "cycle_guard_required" in manifest["cross_handler_invocation"]["guards"]},
+        {"id": "runtime_replay", "ok": replay["ok"] and not replay["side_effects"]},
+    )
+    return {
+        "format": "appgen.generated-inspector-runtime-validation.v1",
+        "ok": all(check["ok"] for check in checks),
+        "checks": checks,
+        "manifest": manifest,
+        "replay": replay,
+        "blocking_gaps": tuple(check for check in checks if not check["ok"]),
+    }
+
+
+def smoke_test(component="Grid"):
+    """Run side-effect-free inspector runtime smoke checks."""
+    validation = validate_inspector_runtime(component)
+    return {
+        "format": "appgen.generated-inspector-runtime-smoke.v1",
+        "ok": validation["ok"],
+        "validation": validation,
+        "checks": tuple(check["id"] for check in validation["checks"]),
     }
 '''
 

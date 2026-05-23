@@ -14134,6 +14134,7 @@ def form_designer_generation_smoke_audit(source: str = FORM_DESIGNER_SAMPLE_DSL)
     package_test_artifacts = tuple(item["path"] for item in component_package_test_file_manifest())
     required_artifacts = (
         "app/form_designer.py",
+        "app/inspector_runtime.py",
         "app/visual_runtime_assets.py",
         "app/data_tooling_runtime.py",
         "app/runtime_operations.py",
@@ -14150,6 +14151,7 @@ def form_designer_generation_smoke_audit(source: str = FORM_DESIGNER_SAMPLE_DSL)
     )
     compile_artifacts = (
         "app/form_designer.py",
+        "app/inspector_runtime.py",
         "app/visual_runtime_assets.py",
         "app/data_tooling_runtime.py",
         "app/runtime_operations.py",
@@ -14194,6 +14196,12 @@ def form_designer_generation_smoke_audit(source: str = FORM_DESIGNER_SAMPLE_DSL)
         )
         generated_form_designer = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(generated_form_designer)
+        inspector_runtime_path = output_dir / "inspector_runtime.py"
+        inspector_runtime_spec = importlib.util.spec_from_file_location(
+            "generated_inspector_runtime_smoke", inspector_runtime_path
+        )
+        generated_inspector_runtime = importlib.util.module_from_spec(inspector_runtime_spec)
+        inspector_runtime_spec.loader.exec_module(generated_inspector_runtime)
         runtime_ops_path = output_dir / "runtime_operations.py"
         runtime_ops_spec = importlib.util.spec_from_file_location(
             "generated_runtime_operations_smoke", runtime_ops_path
@@ -14247,6 +14255,7 @@ def form_designer_generation_smoke_audit(source: str = FORM_DESIGNER_SAMPLE_DSL)
         release_gate = generated_form_designer.form_designer_release_gate(existing_paths)
         workbench = generated_form_designer.form_designer_workbench(existing_paths)
         usability = generated_form_designer.component_usability_workbench(existing_paths)
+        inspector_runtime_smoke = generated_inspector_runtime.smoke_test("Grid")
         runtime_operation_smoke = generated_runtime_ops.smoke_test(first_table)
         native_form_runtime_smoke = generated_native_runtime.smoke_test(first_table)
         mobile_device_smoke = generated_mobile_runtime.smoke_test()
@@ -14299,6 +14308,26 @@ def form_designer_generation_smoke_audit(source: str = FORM_DESIGNER_SAMPLE_DSL)
             "ok": release_gate["ok"] and workbench["ok"],
             "release_gate": release_gate["format"],
             "workbench": workbench["format"],
+        },
+        {
+            "id": "generated_inspector_runtime",
+            "ok": inspector_runtime_smoke["ok"]
+            and inspector_runtime_smoke["format"] == "appgen.generated-inspector-runtime-smoke.v1"
+            and {
+                "manifest_ok",
+                "property_editors_present",
+                "event_editors_lifecycle_ready",
+                "component_editors_present",
+                "custom_designers_present",
+                "editor_lifecycle_replay",
+                "design_surface_replay",
+                "custom_registration_replay",
+                "binding_bridge_replay",
+                "handler_invocation_policy",
+                "runtime_replay",
+            }
+            <= set(inspector_runtime_smoke["checks"]),
+            "smoke": inspector_runtime_smoke,
         },
         {
             "id": "generated_runtime_operations",
