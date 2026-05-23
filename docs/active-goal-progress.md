@@ -70,7 +70,7 @@ Build a complete AppGen IDE and generation platform with:
 | 2026-05-23 | `9f21a27` | Added generated package-manager runtime manifest and replay validation as an independently importable artifact. | Py compile; generated package-manager runtime smoke probe; focused generated-app/form-designer/package-goal tests; staged hygiene scan passed. |
 | 2026-05-23 | `fbefe5c` | Added generated component-parity runtime manifest and replay validation as an independently importable artifact. | Py compile; generated component-parity runtime smoke probe; focused generated-app/form-designer/package-goal tests; staged hygiene scan passed. |
 | 2026-05-23 | `48d8f10` | Strengthened generated data tooling runtime validation for relationship lookups, module smoke, publish replay, and failover replay. | Py compile; generated data tooling runtime smoke probe; focused generated-app/form-designer/package-goal tests; staged hygiene scan passed. |
-| 2026-05-23 | `pending` | Tightened event-processing guidance into one generated outbox/inbox adapter path with one default profile and two audited exceptions. | Py compile, focused PBC policy test, documentation diff check, and staged hygiene scan pending. |
+| 2026-05-23 | `f942954` | Tightened event-processing guidance into one generated outbox/inbox adapter path with one default profile and two audited exceptions. | Py compile, focused PBC policy test, documentation diff check, and staged hygiene scan passed. |
 
 ## Current Working Slice
 
