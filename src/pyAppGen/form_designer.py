@@ -13938,6 +13938,57 @@ def data_tooling_module_test_file_manifest() -> tuple[dict, ...]:
     )
 
 
+def deep_data_tooling_module_file_manifest() -> tuple[dict, ...]:
+    """Return generated deep data tooling module files expected in generated apps."""
+    modules = (
+        ("schema_browser_module", "schema_browser"),
+        ("schema_diff_module", "schema_diff"),
+        ("lookup_editor_module", "lookup_editor"),
+        ("dataset_designer_module", "dataset_designer"),
+        ("resource_publish_module", "resource_publish"),
+        ("offline_replay_module", "offline_replay"),
+        ("replication_monitor_module", "replication_monitor"),
+        ("module_smoke_module", "module_smoke"),
+    )
+    exports = (
+        "module_contract",
+        "operation_manifest",
+        "run_data_operation",
+        "runtime_context",
+        "smoke_test",
+    )
+    return tuple(
+        {
+            "module": module,
+            "surface": surface,
+            "path": f"app/deep_data_tooling_modules/{module}.py",
+            "exports": exports,
+            "ok": bool(module) and bool(surface),
+        }
+        for module, surface in modules
+    )
+
+
+def deep_data_tooling_module_test_file_manifest() -> tuple[dict, ...]:
+    """Return generated deep data tooling module test files expected in generated apps."""
+    return tuple(
+        {
+            "module": item["module"],
+            "surface": item["surface"],
+            "path": item["path"].replace("app/deep_data_tooling_modules/", "app/deep_data_tooling_module_tests/test_"),
+            "target": item["path"],
+            "exports": (
+                "load_deep_data_tooling_module",
+                "test_deep_data_tooling_module_contract",
+                "test_deep_data_tooling_module_smoke",
+                "smoke_test",
+            ),
+            "ok": item["ok"],
+        }
+        for item in deep_data_tooling_module_file_manifest()
+    )
+
+
 def inspector_module_file_manifest() -> tuple[dict, ...]:
     """Return generated Object Inspector editor module files expected in apps."""
     modules = (
@@ -14593,6 +14644,8 @@ def form_designer_generation_smoke_audit(source: str = FORM_DESIGNER_SAMPLE_DSL)
     visual_component_test_artifacts = tuple(item["path"] for item in visual_component_test_file_manifest())
     data_module_artifacts = tuple(item["path"] for item in data_tooling_module_file_manifest())
     data_module_test_artifacts = tuple(item["path"] for item in data_tooling_module_test_file_manifest())
+    deep_data_tooling_module_artifacts = tuple(item["path"] for item in deep_data_tooling_module_file_manifest())
+    deep_data_tooling_module_test_artifacts = tuple(item["path"] for item in deep_data_tooling_module_test_file_manifest())
     inspector_module_artifacts = tuple(item["path"] for item in inspector_module_file_manifest())
     inspector_module_test_artifacts = tuple(item["path"] for item in inspector_module_test_file_manifest())
     binding_module_artifacts = tuple(item["path"] for item in binding_module_file_manifest())
@@ -14633,6 +14686,8 @@ def form_designer_generation_smoke_audit(source: str = FORM_DESIGNER_SAMPLE_DSL)
         *visual_component_test_artifacts,
         *data_module_artifacts,
         *data_module_test_artifacts,
+        *deep_data_tooling_module_artifacts,
+        *deep_data_tooling_module_test_artifacts,
         *inspector_module_artifacts,
         *inspector_module_test_artifacts,
         *binding_module_artifacts,
@@ -14673,6 +14728,8 @@ def form_designer_generation_smoke_audit(source: str = FORM_DESIGNER_SAMPLE_DSL)
         *visual_component_test_artifacts,
         *data_module_artifacts,
         *data_module_test_artifacts,
+        *deep_data_tooling_module_artifacts,
+        *deep_data_tooling_module_test_artifacts,
         *inspector_module_artifacts,
         *inspector_module_test_artifacts,
         *binding_module_artifacts,
@@ -14848,6 +14905,8 @@ def form_designer_generation_smoke_audit(source: str = FORM_DESIGNER_SAMPLE_DSL)
             and len(visual_component_test_artifacts) == len(cross_target_visual_component_spec_contract()["specs"])
             and len(data_module_artifacts) == len(data_module_generation_contract()["artifacts"])
             and len(data_module_test_artifacts) == len(data_module_generation_contract()["artifacts"])
+            and len(deep_data_tooling_module_artifacts) == 8
+            and len(deep_data_tooling_module_test_artifacts) == 8
             and len(inspector_module_artifacts) == 6
             and len(inspector_module_test_artifacts) == 6
             and len(binding_module_artifacts) == 6
@@ -14870,6 +14929,8 @@ def form_designer_generation_smoke_audit(source: str = FORM_DESIGNER_SAMPLE_DSL)
             "visual_component_test_count": len(visual_component_test_artifacts),
             "data_module_count": len(data_module_artifacts),
             "data_module_test_count": len(data_module_test_artifacts),
+            "deep_data_tooling_module_count": len(deep_data_tooling_module_artifacts),
+            "deep_data_tooling_module_test_count": len(deep_data_tooling_module_test_artifacts),
             "inspector_module_count": len(inspector_module_artifacts),
             "inspector_module_test_count": len(inspector_module_test_artifacts),
             "binding_module_count": len(binding_module_artifacts),
@@ -15020,6 +15081,8 @@ def form_designer_generation_smoke_audit(source: str = FORM_DESIGNER_SAMPLE_DSL)
                 "data_module_smoke",
                 "data_module_files_ready",
                 "data_module_tests_ready",
+                "deep_data_tooling_modules_ready",
+                "deep_data_tooling_module_tests_ready",
                 "publish_transaction_replay",
                 "failover_transaction_replay",
                 "runtime_replay",

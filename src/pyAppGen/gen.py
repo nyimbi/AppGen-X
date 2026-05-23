@@ -1756,6 +1756,7 @@ def write_form_designer_file(output_dir, schema: AppSchema):
     write_device_api_component_files(output_dir)
     write_visual_component_files(output_dir)
     write_data_tooling_module_files(output_dir)
+    write_deep_data_tooling_module_files(output_dir)
     write_inspector_module_files(output_dir)
     write_binding_module_files(output_dir)
     write_package_manager_module_files(output_dir)
@@ -1812,6 +1813,17 @@ DATA_TOOLING_MODULES = (
     "dataset_module",
     "service_proxy_module",
     "offline_module",
+)
+
+DEEP_DATA_TOOLING_MODULES = (
+    "schema_browser_module",
+    "schema_diff_module",
+    "lookup_editor_module",
+    "dataset_designer_module",
+    "resource_publish_module",
+    "offline_replay_module",
+    "replication_monitor_module",
+    "module_smoke_module",
 )
 
 INSPECTOR_MODULES = (
@@ -2003,6 +2015,26 @@ def write_data_tooling_module_files(output_dir):
         )
         (test_dir / f"test_{module_name}.py").write_text(
             _data_tooling_module_test_text(module_name),
+            encoding="utf-8",
+        )
+
+
+def write_deep_data_tooling_module_files(output_dir):
+    """Write generated deep native data tooling modules and smoke tests."""
+    output_dir = Path(output_dir)
+    module_dir = output_dir / "deep_data_tooling_modules"
+    test_dir = output_dir / "deep_data_tooling_module_tests"
+    module_dir.mkdir(parents=True, exist_ok=True)
+    test_dir.mkdir(parents=True, exist_ok=True)
+    (module_dir / "__init__.py").write_text(_deep_data_tooling_module_init_text(), encoding="utf-8")
+    (test_dir / "__init__.py").write_text(_deep_data_tooling_module_test_init_text(), encoding="utf-8")
+    for module_name in DEEP_DATA_TOOLING_MODULES:
+        (module_dir / f"{module_name}.py").write_text(
+            _deep_data_tooling_module_text(module_name),
+            encoding="utf-8",
+        )
+        (test_dir / f"test_{module_name}.py").write_text(
+            _deep_data_tooling_module_test_text(module_name),
             encoding="utf-8",
         )
 
@@ -2201,6 +2233,21 @@ def _data_tooling_module_test_init_text() -> str:
     return (
         '"""Generated native data tooling module tests."""\n\n'
         f"DATA_TOOLING_MODULE_TESTS = {modules!r}\n"
+    )
+
+
+def _deep_data_tooling_module_init_text() -> str:
+    return (
+        '"""Generated deep native data tooling modules."""\n\n'
+        f"DEEP_DATA_TOOLING_MODULES = {DEEP_DATA_TOOLING_MODULES!r}\n"
+    )
+
+
+def _deep_data_tooling_module_test_init_text() -> str:
+    modules = tuple(f"test_{name}" for name in DEEP_DATA_TOOLING_MODULES)
+    return (
+        '"""Generated deep native data tooling module tests."""\n\n'
+        f"DEEP_DATA_TOOLING_MODULE_TESTS = {modules!r}\n"
     )
 
 
@@ -3991,6 +4038,274 @@ def smoke_test():
 '''
 
 
+def _deep_data_tooling_surface(module_name: str) -> tuple[str, str, str, str]:
+    surfaces = {
+        "schema_browser_module": (
+            "schema_browser",
+            "data_tooling_browse_schema_operation",
+            "dataset_runtime_manifest",
+            "trace_relations",
+        ),
+        "schema_diff_module": (
+            "schema_diff",
+            "data_tooling_preview_schema_diff",
+            "dataset_runtime_manifest",
+            "approval_required",
+        ),
+        "lookup_editor_module": (
+            "lookup_editor",
+            "data_tooling_generate_lookup_editors",
+            "relationship_lookup_runtime_manifest",
+            "chain_path",
+        ),
+        "dataset_designer_module": (
+            "dataset_designer",
+            "data_tooling_design_dataset_operation",
+            "dataset_runtime_manifest",
+            "transitions",
+        ),
+        "resource_publish_module": (
+            "resource_publish",
+            "data_tooling_publish_resource",
+            "service_runtime_manifest",
+            "route",
+        ),
+        "offline_replay_module": (
+            "offline_replay",
+            "data_tooling_rehearse_offline_replay_operation",
+            "transaction_runtime_manifest",
+            "review_flow",
+        ),
+        "replication_monitor_module": (
+            "replication_monitor",
+            "data_tooling_monitor_replication_operation",
+            "service_runtime_manifest",
+            "monitors",
+        ),
+        "module_smoke_module": (
+            "module_smoke",
+            "data_tooling_run_module_smoke_operation",
+            "data_module_runtime_manifest",
+            "smoke_tests",
+        ),
+    }
+    return surfaces[module_name]
+
+
+def _deep_data_tooling_module_text(module_name: str) -> str:
+    surface, operation, runtime_manifest, check_key = _deep_data_tooling_surface(module_name)
+    return f'''"""Generated deep native data tooling module for {surface}."""
+
+from __future__ import annotations
+
+import importlib.util
+from pathlib import Path
+
+
+MODULE = {module_name!r}
+SURFACE = {surface!r}
+OPERATION = {operation!r}
+RUNTIME_MANIFEST = {runtime_manifest!r}
+CHECK_KEY = {check_key!r}
+
+
+def _load_sibling(module_name):
+    module_path = Path(__file__).resolve().parents[1] / f"{{module_name}}.py"
+    spec = importlib.util.spec_from_file_location(f"generated_deep_data_tooling_{{MODULE}}_{{module_name}}", module_path)
+    module = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(module)
+    return module
+
+
+def _form_designer():
+    return _load_sibling("form_designer")
+
+
+def _runtime():
+    return _load_sibling("data_tooling_runtime")
+
+
+def module_contract():
+    """Return this deep data tooling module's export contract."""
+    exports = (
+        "module_contract",
+        "operation_manifest",
+        "run_data_operation",
+        "runtime_context",
+        "smoke_test",
+    )
+    return {{
+        "format": "appgen.deep-data-tooling-module-contract.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "operation": OPERATION,
+        "runtime_manifest": RUNTIME_MANIFEST,
+        "expected_exports": exports,
+        "ok": all(name in globals() for name in exports),
+        "side_effects": (),
+    }}
+
+
+def operation_manifest():
+    """Return the read-only IDE operation metadata represented by this module."""
+    operation = run_data_operation()
+    return {{
+        "format": "appgen.deep-data-tooling-operation-manifest.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "operation": OPERATION,
+        "ok": operation["ok"] and not operation["side_effects"],
+        "pipeline": operation.get("pipeline", ()),
+        "guards": operation.get("guards", ()),
+        "side_effects": operation.get("side_effects", ()),
+    }}
+
+
+def run_data_operation():
+    """Run the generated side-effect-free IDE data operation."""
+    fn = getattr(_form_designer(), OPERATION)
+    return fn()
+
+
+def runtime_context():
+    """Return the narrow runtime slice used to validate this data-tooling surface."""
+    runtime = getattr(_runtime(), RUNTIME_MANIFEST)()
+    return {{
+        "format": "appgen.deep-data-tooling-runtime-context.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "runtime_manifest": RUNTIME_MANIFEST,
+        "ok": runtime["ok"],
+        "runtime": runtime,
+        "side_effects": (),
+    }}
+
+
+def surface_checks(operation):
+    """Return surface-specific checks for this module."""
+    if SURFACE == "schema_browser":
+        ok = CHECK_KEY in operation["pipeline"] and bool(operation["objects"])
+        evidence = operation["objects"]
+    elif SURFACE == "schema_diff":
+        ok = CHECK_KEY in operation["guards"] and "rollback" in operation
+        evidence = operation["rollback"]
+    elif SURFACE == "lookup_editor":
+        ok = bool(operation["editors"]) and CHECK_KEY in operation
+        evidence = operation["chain_path"]
+    elif SURFACE == "dataset_designer":
+        ok = bool(operation["operations"]) and CHECK_KEY in operation
+        evidence = operation["transitions"]
+    elif SURFACE == "resource_publish":
+        ok = CHECK_KEY in operation and bool(operation["tests"])
+        evidence = operation["tests"]
+    elif SURFACE == "offline_replay":
+        ok = bool(operation["queue"]) and CHECK_KEY in operation
+        evidence = operation["review_flow"]
+    elif SURFACE == "replication_monitor":
+        ok = CHECK_KEY in operation and bool(operation["telemetry"])
+        evidence = operation["monitors"]
+    else:
+        ok = bool(operation["modules"]) and CHECK_KEY in operation
+        evidence = operation["smoke_tests"]
+    return {{
+        "format": "appgen.deep-data-tooling-surface-checks.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "ok": ok,
+        "evidence": evidence,
+    }}
+
+
+def smoke_test():
+    """Run side-effect-free checks for this generated deep data tooling module."""
+    contract = module_contract()
+    operation = operation_manifest()
+    runtime = runtime_context()
+    checks = surface_checks(run_data_operation())
+    return {{
+        "format": "appgen.deep-data-tooling-module-smoke-test.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "ok": contract["ok"]
+        and operation["ok"]
+        and runtime["ok"]
+        and checks["ok"]
+        and not operation["side_effects"]
+        and not runtime["side_effects"],
+        "contract": contract,
+        "operation": operation,
+        "runtime": runtime,
+        "surface_checks": checks,
+        "checks": (
+            "module_contract_resolves",
+            "operation_manifest_ok",
+            "narrow_runtime_context_ok",
+            "surface_specific_checks_ok",
+            "no_side_effects",
+        ),
+    }}
+'''
+
+
+def _deep_data_tooling_module_test_text(module_name: str) -> str:
+    surface, _operation, _runtime_manifest, _check_key = _deep_data_tooling_surface(module_name)
+    return f'''"""Generated tests for the {surface} deep data tooling module."""
+
+from __future__ import annotations
+
+import importlib.util
+from pathlib import Path
+
+
+MODULE = {module_name!r}
+SURFACE = {surface!r}
+
+
+def load_deep_data_tooling_module():
+    """Load the generated deep data tooling module without app installation."""
+    module_path = Path(__file__).resolve().parents[1] / "deep_data_tooling_modules" / f"{{MODULE}}.py"
+    spec = importlib.util.spec_from_file_location(f"generated_deep_data_tooling_module_{{MODULE}}", module_path)
+    module = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(module)
+    return module
+
+
+def test_deep_data_tooling_module_contract():
+    """Assert the generated deep data tooling module exposes its contract."""
+    module = load_deep_data_tooling_module()
+    contract = module.module_contract()
+    assert contract["module"] == MODULE
+    assert contract["surface"] == SURFACE
+    assert contract["ok"] is True
+    assert all(hasattr(module, name) for name in contract["expected_exports"])
+
+
+def test_deep_data_tooling_module_smoke():
+    """Assert the module's side-effect-free smoke test passes."""
+    module = load_deep_data_tooling_module()
+    result = module.smoke_test()
+    assert result["ok"] is True
+    assert result["module"] == MODULE
+    assert result["surface"] == SURFACE
+    assert result["checks"]
+
+
+def smoke_test():
+    """Run this generated test module in a side-effect-free way."""
+    test_deep_data_tooling_module_contract()
+    test_deep_data_tooling_module_smoke()
+    return {{
+        "format": "appgen.deep-data-tooling-module-generated-test-smoke.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "ok": True,
+        "tests": ("test_deep_data_tooling_module_contract", "test_deep_data_tooling_module_smoke"),
+    }}
+'''
+
+
 def _visual_component_module_text(component: str) -> str:
     module_name = _module_name(component)
     return f'''"""Generated visual-depth component module for {component}."""
@@ -5428,6 +5743,93 @@ def data_tooling_module_test_file_manifest():
     }
 
 
+def deep_data_tooling_module_file_manifest():
+    """Return file-level evidence for generated deep data tooling modules."""
+    modules = form_designer.deep_data_tooling_module_file_manifest()
+    module_dir = Path(__file__).with_name("deep_data_tooling_modules")
+    entries = []
+    for item in modules:
+        module_name = item["module"]
+        module_path = module_dir / f"{module_name}.py"
+        exports = ()
+        contract_ok = False
+        smoke_ok = False
+        if module_path.exists():
+            module = _load_generated_module(module_path, f"generated_deep_data_tooling_module_{module_name}")
+            exports = tuple(name for name in item["exports"] if hasattr(module, name))
+            contract = module.module_contract()
+            smoke = module.smoke_test()
+            contract_ok = contract["ok"] and contract["module"] == module_name and contract["surface"] == item["surface"]
+            smoke_ok = smoke["ok"] and smoke["surface"] == item["surface"]
+        entries.append(
+            {
+                "module": module_name,
+                "surface": item["surface"],
+                "path": item["path"],
+                "exists": module_path.exists(),
+                "exports": exports,
+                "expected_exports": item["exports"],
+                "contract_ok": contract_ok,
+                "smoke_ok": smoke_ok,
+            }
+        )
+    return {
+        "format": "appgen.generated-deep-data-tooling-module-file-manifest.v1",
+        "ok": bool(entries)
+        and all(
+            item["exists"]
+            and item["contract_ok"]
+            and item["smoke_ok"]
+            and set(item["expected_exports"]) <= set(item["exports"])
+            for item in entries
+        ),
+        "modules": tuple(entries),
+        "guards": ("one_file_per_deep_data_tooling_module", "declared_exports_present", "module_smoke_loads"),
+        "side_effects": (),
+    }
+
+
+def deep_data_tooling_module_test_file_manifest():
+    """Return file-level evidence for generated deep data tooling module tests."""
+    modules = form_designer.deep_data_tooling_module_file_manifest()
+    test_dir = Path(__file__).with_name("deep_data_tooling_module_tests")
+    entries = []
+    required_exports = (
+        "load_deep_data_tooling_module",
+        "test_deep_data_tooling_module_contract",
+        "test_deep_data_tooling_module_smoke",
+        "smoke_test",
+    )
+    for item in modules:
+        module_name = item["module"]
+        module_path = test_dir / f"test_{module_name}.py"
+        exports = ()
+        smoke_ok = False
+        if module_path.exists():
+            module = _load_generated_module(module_path, f"generated_deep_data_tooling_module_test_{module_name}")
+            exports = tuple(name for name in required_exports if hasattr(module, name))
+            smoke_ok = module.smoke_test()["ok"]
+        entries.append(
+            {
+                "module": module_name,
+                "surface": item["surface"],
+                "path": f"app/deep_data_tooling_module_tests/test_{module_name}.py",
+                "exists": module_path.exists(),
+                "exports": exports,
+                "smoke_ok": smoke_ok,
+            }
+        )
+    return {
+        "format": "appgen.generated-deep-data-tooling-module-test-file-manifest.v1",
+        "ok": bool(entries)
+        and all(item["exists"] and item["smoke_ok"] and set(required_exports) <= set(item["exports"]) for item in entries),
+        "tests": tuple(entries),
+        "required_exports": required_exports,
+        "guards": ("one_test_file_per_deep_data_tooling_module", "contract_and_smoke_tests_exported"),
+        "side_effects": (),
+    }
+
+
 def connection_runtime_manifest():
     """Return generated connection probe, failover, and pooling runtime metadata."""
     tooling = form_designer.rad_data_tooling_workbench()
@@ -5576,6 +5978,8 @@ def data_tooling_runtime_manifest():
     transactions = transaction_runtime_manifest()
     relationships = relationship_lookup_runtime_manifest()
     modules = data_module_runtime_manifest()
+    deep_modules = deep_data_tooling_module_file_manifest()
+    deep_module_tests = deep_data_tooling_module_test_file_manifest()
     tooling = form_designer.rad_data_tooling_workbench()
     return {
         "format": "appgen.generated-data-tooling-runtime-manifest.v1",
@@ -5585,13 +5989,17 @@ def data_tooling_runtime_manifest():
         and service["ok"]
         and transactions["ok"]
         and relationships["ok"]
-        and modules["ok"],
+        and modules["ok"]
+        and deep_modules["ok"]
+        and deep_module_tests["ok"],
         "connection": connection,
         "dataset": dataset,
         "service": service,
         "transactions": transactions,
         "relationships": relationships,
         "modules": modules,
+        "deep_modules": deep_modules,
+        "deep_module_tests": deep_module_tests,
         "tooling": tooling,
         "guards": (
             "connection_runtime_declared",
@@ -5600,6 +6008,7 @@ def data_tooling_runtime_manifest():
             "transaction_replay_runtime_declared",
             "relationship_lookup_runtime_declared",
             "data_module_runtime_declared",
+            "deep_data_tooling_modules_declared",
         ),
     }
 
@@ -5644,6 +6053,8 @@ def validate_data_tooling_runtime():
         {"id": "data_module_smoke", "ok": manifest["modules"]["ok"]},
         {"id": "data_module_files_ready", "ok": manifest["modules"]["module_files"]["ok"]},
         {"id": "data_module_tests_ready", "ok": manifest["modules"]["module_tests"]["ok"]},
+        {"id": "deep_data_tooling_modules_ready", "ok": manifest["deep_modules"]["ok"]},
+        {"id": "deep_data_tooling_module_tests_ready", "ok": manifest["deep_module_tests"]["ok"]},
         {"id": "publish_transaction_replay", "ok": manifest["transactions"]["publish_replay"]["ok"] and not manifest["transactions"]["publish_replay"]["side_effects"]},
         {"id": "failover_transaction_replay", "ok": manifest["transactions"]["failover_replay"]["ok"] and not manifest["transactions"]["failover_replay"]["side_effects"]},
         {
@@ -37962,6 +38373,84 @@ def data_module_generation_contract():
         "ok": all({{"exports", "name"}} <= set(artifact) and artifact["exports"] for artifact in artifacts),
         "side_effects": (),
     }}
+
+
+def data_tooling_module_file_manifest():
+    """Return generated data tooling module files expected in generated apps."""
+    return tuple(
+        {{
+            "module": item["name"],
+            "path": f"app/data_tooling_modules/{{item['name']}}.py",
+            "exports": item["exports"],
+            "ok": bool(item["exports"]),
+        }}
+        for item in data_module_generation_contract()["artifacts"]
+    )
+
+
+def data_tooling_module_test_file_manifest():
+    """Return generated data tooling module test files expected in generated apps."""
+    return tuple(
+        {{
+            "module": item["module"],
+            "path": item["path"].replace("app/data_tooling_modules/", "app/data_tooling_module_tests/test_"),
+            "target": item["path"],
+            "exports": ("load_data_tooling_module", "test_data_tooling_module_contract", "test_data_tooling_module_smoke", "smoke_test"),
+            "ok": item["ok"],
+        }}
+        for item in data_tooling_module_file_manifest()
+    )
+
+
+def deep_data_tooling_module_file_manifest():
+    """Return generated deep data tooling module files expected in generated apps."""
+    modules = (
+        ("schema_browser_module", "schema_browser"),
+        ("schema_diff_module", "schema_diff"),
+        ("lookup_editor_module", "lookup_editor"),
+        ("dataset_designer_module", "dataset_designer"),
+        ("resource_publish_module", "resource_publish"),
+        ("offline_replay_module", "offline_replay"),
+        ("replication_monitor_module", "replication_monitor"),
+        ("module_smoke_module", "module_smoke"),
+    )
+    exports = (
+        "module_contract",
+        "operation_manifest",
+        "run_data_operation",
+        "runtime_context",
+        "smoke_test",
+    )
+    return tuple(
+        {{
+            "module": module,
+            "surface": surface,
+            "path": f"app/deep_data_tooling_modules/{{module}}.py",
+            "exports": exports,
+            "ok": bool(module) and bool(surface),
+        }}
+        for module, surface in modules
+    )
+
+
+def deep_data_tooling_module_test_file_manifest():
+    """Return generated deep data tooling module test files expected in generated apps."""
+    return tuple(
+        {{
+            "module": item["module"],
+            "surface": item["surface"],
+            "path": item["path"].replace("app/deep_data_tooling_modules/", "app/deep_data_tooling_module_tests/test_"),
+            "target": item["path"],
+            "exports": (
+                "load_deep_data_tooling_module",
+                "test_deep_data_tooling_module_contract",
+                "test_deep_data_tooling_module_smoke",
+                "smoke_test",
+            ),
+            "ok": item["ok"],
+        }}
+        for item in deep_data_tooling_module_file_manifest()
+    )
 
 
 def data_query_plan_visualizer_contract():
