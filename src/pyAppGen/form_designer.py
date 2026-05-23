@@ -14136,6 +14136,7 @@ def form_designer_generation_smoke_audit(source: str = FORM_DESIGNER_SAMPLE_DSL)
         "app/form_designer.py",
         "app/visual_runtime_assets.py",
         "app/data_tooling_runtime.py",
+        "app/runtime_operations.py",
         "app/templates/appgen_form_designer.html",
         "app/models.py",
         "app/views.py",
@@ -14149,6 +14150,7 @@ def form_designer_generation_smoke_audit(source: str = FORM_DESIGNER_SAMPLE_DSL)
         "app/form_designer.py",
         "app/visual_runtime_assets.py",
         "app/data_tooling_runtime.py",
+        "app/runtime_operations.py",
         "app/models.py",
         "app/views.py",
         "app/dsl_reference.py",
@@ -14188,6 +14190,12 @@ def form_designer_generation_smoke_audit(source: str = FORM_DESIGNER_SAMPLE_DSL)
         )
         generated_form_designer = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(generated_form_designer)
+        runtime_ops_path = output_dir / "runtime_operations.py"
+        runtime_ops_spec = importlib.util.spec_from_file_location(
+            "generated_runtime_operations_smoke", runtime_ops_path
+        )
+        generated_runtime_ops = importlib.util.module_from_spec(runtime_ops_spec)
+        runtime_ops_spec.loader.exec_module(generated_runtime_ops)
         existing_paths = {
             str(path.relative_to(project_dir))
             for path in output_dir.rglob("*.py")
@@ -14223,6 +14231,7 @@ def form_designer_generation_smoke_audit(source: str = FORM_DESIGNER_SAMPLE_DSL)
         release_gate = generated_form_designer.form_designer_release_gate(existing_paths)
         workbench = generated_form_designer.form_designer_workbench(existing_paths)
         usability = generated_form_designer.component_usability_workbench(existing_paths)
+        runtime_operation_smoke = generated_runtime_ops.smoke_test(first_table)
 
     checks = (
         {
@@ -14272,6 +14281,20 @@ def form_designer_generation_smoke_audit(source: str = FORM_DESIGNER_SAMPLE_DSL)
             "ok": release_gate["ok"] and workbench["ok"],
             "release_gate": release_gate["format"],
             "workbench": workbench["format"],
+        },
+        {
+            "id": "generated_runtime_operations",
+            "ok": runtime_operation_smoke["ok"]
+            and runtime_operation_smoke["format"] == "appgen.generated-native-runtime-operations-smoke.v1"
+            and {
+                "manifest_ok",
+                "required_operations_present",
+                "operations_are_callable",
+                "runtime_replay_complete",
+                "design_edit_replay_complete",
+            }
+            <= set(runtime_operation_smoke["checks"]),
+            "smoke": runtime_operation_smoke,
         },
     )
     ok = all(check["ok"] for check in checks)

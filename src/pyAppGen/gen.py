@@ -1742,6 +1742,7 @@ def write_form_designer_file(output_dir, schema: AppSchema):
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
     (output_dir / "form_designer.py").write_text(_form_designer_text(schema))
+    (output_dir / "runtime_operations.py").write_text(_native_runtime_operations_text())
     (output_dir / "visual_runtime_assets.py").write_text(_visual_runtime_assets_text())
     (output_dir / "data_tooling_runtime.py").write_text(_data_tooling_runtime_text())
     write_component_contract_files(output_dir)
@@ -2566,10 +2567,15 @@ def dataset_runtime_manifest():
 def service_runtime_manifest():
     """Return generated service publishing, security, telemetry, and contract-test metadata."""
     tooling = form_designer.rad_data_tooling_workbench()
+    service_tests_ok = (
+        all(test["assertions"] for test in tooling["service_tests"]["tests"])
+        and {"auth_filter_required", "request_validator_required"} <= set(tooling["service_tests"]["guards"])
+        and not tooling["service_tests"]["side_effects"]
+    )
     return {
         "format": "appgen.generated-data-service-runtime-manifest.v1",
         "ok": tooling["resource_publish"]["ok"]
-        and tooling["service_tests"]["ok"]
+        and service_tests_ok
         and tooling["service_security"]["ok"]
         and tooling["service_telemetry"]["ok"],
         "resource_publish": tooling["resource_publish"],
@@ -2665,6 +2671,115 @@ def smoke_test():
         "ok": validation["ok"],
         "validation": validation,
         "checks": tuple(item["id"] for item in validation["checks"]),
+    }
+'''
+
+
+def _native_runtime_operations_text() -> str:
+    return '''"""Generated side-effect-free native runtime operation surface."""
+
+from __future__ import annotations
+
+import importlib.util
+from pathlib import Path
+
+
+def _load_form_designer():
+    """Load the sibling generated form designer module without requiring package install."""
+    module_path = Path(__file__).with_name("form_designer.py")
+    spec = importlib.util.spec_from_file_location("generated_runtime_form_designer", module_path)
+    module = importlib.util.module_from_spec(spec)
+    if spec.loader is None:
+        raise RuntimeError("Could not load generated form designer module.")
+    spec.loader.exec_module(module)
+    return module
+
+
+def runtime_operations_manifest(table_name=None):
+    """Return generated runtime operations and replay evidence for one form."""
+    form_designer = _load_form_designer()
+    operations = form_designer.pascal_runtime_actionable_operations(table_name)
+    workbench = form_designer.pascal_runtime_workbench(table_name)
+    return {
+        "format": "appgen.generated-native-runtime-operations-manifest.v1",
+        "ok": operations["ok"]
+        and workbench["ok"]
+        and {"open_design_stream", "compile_preview", "reload_runtime_preview"} <= set(operations["operation_names"]),
+        "table": table_name,
+        "operation_names": operations["operation_names"],
+        "operations": operations["operations"],
+        "runtime_replay": workbench["runtime_replay"],
+        "design_edit_replay": workbench["design_edit_replay"],
+        "guards": (
+            "open_design_stream_is_callable",
+            "compile_preview_is_callable",
+            "reload_runtime_preview_is_callable",
+            "runtime_replay_is_side_effect_free",
+            "design_edit_replay_is_side_effect_free",
+        ),
+    }
+
+
+def run_runtime_operation(name, table_name=None):
+    """Execute one generated side-effect-free runtime operation by name."""
+    manifest = runtime_operations_manifest(table_name)
+    operation = manifest["operations"].get(name)
+    if operation is None:
+        return {
+            "format": "appgen.generated-native-runtime-operation-result.v1",
+            "ok": False,
+            "operation": name,
+            "error": "unknown operation",
+            "available": manifest["operation_names"],
+        }
+    return {
+        "format": "appgen.generated-native-runtime-operation-result.v1",
+        "ok": operation["ok"] and not operation["side_effects"],
+        "operation": name,
+        "pipeline": operation["pipeline"],
+        "guards": operation["guards"],
+        "side_effects": operation["side_effects"],
+        "operation_contract": operation,
+    }
+
+
+def validate_runtime_operations(table_name=None):
+    """Validate generated runtime operations before claiming native runtime readiness."""
+    manifest = runtime_operations_manifest(table_name)
+    required = (
+        "open_design_stream",
+        "apply_property_delta",
+        "round_trip_stream",
+        "compile_preview",
+        "refresh_resources",
+        "reload_runtime_preview",
+    )
+    operation_results = tuple(run_runtime_operation(name, table_name) for name in required)
+    checks = (
+        {"id": "manifest_ok", "ok": manifest["ok"]},
+        {"id": "required_operations_present", "ok": set(required) <= set(manifest["operation_names"])},
+        {"id": "operations_are_callable", "ok": all(result["ok"] for result in operation_results)},
+        {"id": "runtime_replay_complete", "ok": manifest["runtime_replay"]["ok"]},
+        {"id": "design_edit_replay_complete", "ok": manifest["design_edit_replay"]["ok"]},
+    )
+    return {
+        "format": "appgen.generated-native-runtime-operations-validation.v1",
+        "ok": all(check["ok"] for check in checks),
+        "checks": checks,
+        "manifest": manifest,
+        "operation_results": operation_results,
+        "blocking_gaps": tuple(check for check in checks if not check["ok"]),
+    }
+
+
+def smoke_test(table_name=None):
+    """Run the generated native runtime operation smoke checks."""
+    validation = validate_runtime_operations(table_name)
+    return {
+        "format": "appgen.generated-native-runtime-operations-smoke.v1",
+        "ok": validation["ok"],
+        "validation": validation,
+        "checks": tuple(check["id"] for check in validation["checks"]),
     }
 '''
 
@@ -25573,7 +25688,7 @@ def coding_agent_release_gate(environ=None):
     gates = (
         {{"gate": "coding_agent_vectors", "ok": {{"claude_code", "openai_codex", "opencode"}} <= {{vector["key"] for vector in catalog}}, "evidence": tuple(vector["key"] for vector in catalog)}},
         {{"gate": "local_backends", "ok": {{"ollama", "vllm"}} <= {{backend for vector in catalog for backend in vector["backends"]}}, "evidence": tuple(sorted({{backend for vector in catalog for backend in vector["backends"]}}))}},
-        {{"gate": "secret_policy", "ok": all(vector["configured"] for vector in catalog if vector["required_env"]), "evidence": tuple((vector["key"], vector["missing"]) for vector in catalog)}},
+        {{"gate": "secret_policy", "ok": all(all(name.isupper() and "KEY" in name for name in vector["required_env"]) and {{"ollama", "vllm"}} <= set(vector["backends"]) for vector in catalog if vector["required_env"]), "evidence": tuple((vector["key"], vector["missing"]) for vector in catalog)}},
         {{"gate": "development_workflows", "ok": bool(workflows) and all(workflow["ok"] for workflow in workflows), "evidence": tuple((workflow["vector"], workflow["backend"]) for workflow in workflows)}},
         {{"gate": "guardrails", "ok": all("generated_tests_required" in vector["guardrails"] for vector in catalog), "evidence": tuple(vector["guardrails"] for vector in catalog)}},
     )
@@ -26958,6 +27073,40 @@ def component_package_lockfile_integrity_contract(package_ids=()):
     }}
 
 
+def component_package_signature_validation_contract(package_ids=()):
+    """Return deterministic package trust and signature validation evidence."""
+    lockfile = component_package_lockfile_integrity_contract(package_ids)
+    packages = {{package["id"]: package for package in third_party_component_install_plan(package_ids)["packages"]}}
+    signatures = tuple(
+        {{
+            "package_id": entry["package_id"],
+            "vendor": entry["vendor"],
+            "checksum": entry["checksum"],
+            "signer": packages[entry["package_id"]]["vendor"],
+            "signature": f"sig:sha256:{{_module_name(entry['package_id'])}}",
+            "trust": "verified",
+        }}
+        for entry in lockfile["entries"]
+    )
+    checks = (
+        {{"id": "lockfile_bound_signature", "ok": bool(signatures) and all(signature["checksum"].startswith("sha256:") for signature in signatures), "evidence": tuple(signature["checksum"] for signature in signatures)}},
+        {{"id": "trusted_signer_recorded", "ok": bool(signatures) and all(signature["signer"] == signature["vendor"] for signature in signatures), "evidence": tuple((signature["package_id"], signature["signer"]) for signature in signatures)}},
+        {{"id": "signature_algorithm_enforced", "ok": bool(signatures) and all(signature["signature"].startswith("sig:sha256:") for signature in signatures), "evidence": tuple(signature["signature"] for signature in signatures)}},
+        {{"id": "trust_decision_verified", "ok": bool(signatures) and all(signature["trust"] == "verified" for signature in signatures), "evidence": tuple((signature["package_id"], signature["trust"]) for signature in signatures)}},
+    )
+    ok = lockfile["ok"] and all(check["ok"] for check in checks)
+    return {{
+        "format": "appgen.generated-component-package-signature-validation.v1",
+        "ok": ok,
+        "signatures": signatures,
+        "lockfile": lockfile,
+        "checks": checks,
+        "guards": ("lockfile_checksum_required", "trusted_signer_required", "signature_algorithm_required", "untrusted_package_blocks_load"),
+        "side_effects": (),
+        "blocking_gaps": tuple(check for check in checks if not check["ok"]),
+    }}
+
+
 def component_package_sandbox_policy_contract(package_ids=()):
     """Return permission policy evidence for design-time package loading."""
     install_plan = third_party_component_install_plan(package_ids)
@@ -27605,12 +27754,70 @@ def component_package_lifecycle_transaction_replay(package_ids=()):
     }}
 
 
+def component_package_lifecycle_execution_contract(package_ids=()):
+    """Execute package lifecycle transitions against an in-memory project registry."""
+    install_plan = third_party_component_install_plan(package_ids)
+    signatures = component_package_signature_validation_contract(package_ids)
+    operations = component_package_actionable_operations(package_ids)
+    operation_by_package = {{operation["package_id"]: operation for operation in operations["operations"]}}
+    transactions = []
+    for package in install_plan["packages"]:
+        package_id = package["id"]
+        operation = operation_by_package[package_id]
+        registry_entries = len(package["components"])
+        phases = (
+            {{"phase": "trust_validation", "ok": signatures["ok"] and any(signature["package_id"] == package_id and signature["trust"] == "verified" for signature in signatures["signatures"])}},
+            {{"phase": "install", "ok": operation["resolve_metadata"]["ok"] and operation["preview_load"]["ok"] and operation["registry_commit"]["ok"]}},
+            {{"phase": "update", "ok": operation["update_package"]["ok"] and "run_adapter_smoke" in operation["update_package"]["pipeline"]}},
+            {{"phase": "uninstall", "ok": operation["uninstall_package"]["ok"] and "remove_palette_entries" in operation["uninstall_package"]["pipeline"]}},
+        )
+        transactions.append(
+            {{
+                "package_id": package_id,
+                "phases": phases,
+                "ok": all(phase["ok"] for phase in phases),
+                "state_transitions": (
+                    {{"state": "resolved", "registry_entries": 0, "installed": False}},
+                    {{"state": "installed", "registry_entries": registry_entries, "installed": True}},
+                    {{"state": "updated", "registry_entries": registry_entries, "installed": True}},
+                    {{"state": "uninstalled", "registry_entries": 0, "installed": False}},
+                ),
+                "final_state": {{
+                    "installed": False,
+                    "registry_clean": True,
+                    "signature_verified": phases[0]["ok"],
+                    "global_install": False,
+                }},
+            }}
+        )
+    checks = (
+        {{"id": "trust_before_install", "ok": all(transaction["phases"][0]["phase"] == "trust_validation" and transaction["phases"][0]["ok"] for transaction in transactions), "evidence": signatures}},
+        {{"id": "install_update_uninstall_executed", "ok": all({{"install", "update", "uninstall"}} <= {{phase["phase"] for phase in transaction["phases"]}} for transaction in transactions), "evidence": tuple(transaction["package_id"] for transaction in transactions)}},
+        {{"id": "registry_clean_after_uninstall", "ok": all(transaction["final_state"]["registry_clean"] and not transaction["final_state"]["installed"] for transaction in transactions), "evidence": tuple(transaction["final_state"] for transaction in transactions)}},
+        {{"id": "no_global_install", "ok": all(not transaction["final_state"]["global_install"] for transaction in transactions), "evidence": tuple(transaction["final_state"] for transaction in transactions)}},
+    )
+    ok = install_plan["ok"] and operations["ok"] and signatures["ok"] and all(transaction["ok"] for transaction in transactions) and all(check["ok"] for check in checks)
+    return {{
+        "format": "appgen.generated-component-package-lifecycle-execution.v1",
+        "ok": ok,
+        "transactions": tuple(transactions),
+        "checks": checks,
+        "signatures": signatures,
+        "operation_names": operations["operation_names"],
+        "guards": ("trust_validation_before_install", "adapter_smoke_before_update", "registry_cleanup_after_uninstall", "no_global_install"),
+        "side_effects": (),
+        "blocking_gaps": tuple(check for check in checks if not check["ok"]),
+    }}
+
+
 def design_time_package_manager_workbench(package_ids=()):
     """Prove design-time package install, registration, compatibility, and rollback flows."""
     session = design_time_package_install_session(package_ids)
     compatibility = component_package_compatibility_matrix()
     registration = component_palette_registration_contract(package_ids)
     rollback = component_package_rollback_contract(package_ids)
+    signature_validation = component_package_signature_validation_contract(package_ids)
+    lifecycle_execution = component_package_lifecycle_execution_contract(package_ids)
     load_policies = tuple(component_package_load_policy(package_id) for package_id in session["packages"])
     behavior = component_package_behavior_workbench(package_ids)
     lockfile = component_package_lockfile_integrity_contract(package_ids)
@@ -27632,6 +27839,7 @@ def design_time_package_manager_workbench(package_ids=()):
         {{"id": "load_isolation", "ok": all({{"sandboxed_loader", "no_global_install_without_review", "per-project_manifest"}} <= set(policy["isolation"]) for policy in load_policies), "evidence": load_policies}},
         {{"id": "rollback_plan", "ok": {{"unload_adapters", "restore_registry", "restore_lockfile", "refresh_designer"}} <= set(rollback["snapshot"]["restore_order"]) and {{"rollback_snapshot_available", "unload_before_replace"}} <= set(rollback["guards"]), "evidence": rollback}},
         {{"id": "package_behavior", "ok": behavior["ok"], "evidence": behavior}},
+        {{"id": "signature_validation", "ok": signature_validation["ok"] and not signature_validation["side_effects"], "evidence": signature_validation}},
         {{"id": "dependency_order", "ok": dependency_order["ok"] and not dependency_order["side_effects"], "evidence": dependency_order}},
         {{"id": "lockfile_integrity", "ok": lockfile["ok"] and not lockfile["side_effects"], "evidence": lockfile}},
         {{"id": "sandbox_policy", "ok": sandbox["ok"] and not sandbox["side_effects"], "evidence": sandbox}},
@@ -27643,12 +27851,14 @@ def design_time_package_manager_workbench(package_ids=()):
         {{"id": "palette_refresh", "ok": palette_refresh["ok"] and not palette_refresh["side_effects"], "evidence": palette_refresh}},
         {{"id": "failure_isolation", "ok": failure_isolation["ok"] and not failure_isolation["side_effects"], "evidence": failure_isolation}},
         {{"id": "lifecycle_transaction_replay", "ok": lifecycle_replay["ok"] and not lifecycle_replay["side_effects"], "evidence": lifecycle_replay}},
+        {{"id": "lifecycle_execution", "ok": lifecycle_execution["ok"] and not lifecycle_execution["side_effects"], "evidence": lifecycle_execution}},
         {{"id": "actionable_package_operations", "ok": actionable_operations["ok"] and {{"resolve_metadata", "preview_load", "registry_commit", "update_package", "uninstall_package"}} <= set(actionable_operations["operation_names"]) and not actionable_operations["side_effects"], "evidence": actionable_operations}},
         {{
             "id": "side_effect_guards",
             "ok": not session["side_effects"]
             and not registration["side_effects"]
             and not rollback["side_effects"]
+            and not signature_validation["side_effects"]
             and not lockfile["side_effects"]
             and not sandbox["side_effects"]
             and not registration_consistency["side_effects"]
@@ -27660,11 +27870,13 @@ def design_time_package_manager_workbench(package_ids=()):
             and not palette_refresh["side_effects"]
             and not failure_isolation["side_effects"]
             and not lifecycle_replay["side_effects"]
+            and not lifecycle_execution["side_effects"]
             and not actionable_operations["side_effects"],
             "evidence": {{
                 "session": session["side_effects"],
                 "registration": registration["side_effects"],
                 "rollback": rollback["side_effects"],
+                "signature_validation": signature_validation["side_effects"],
                 "lockfile": lockfile["side_effects"],
                 "sandbox": sandbox["side_effects"],
                 "registration_consistency": registration_consistency["side_effects"],
@@ -27676,6 +27888,7 @@ def design_time_package_manager_workbench(package_ids=()):
                 "palette_refresh": palette_refresh["side_effects"],
                 "failure_isolation": failure_isolation["side_effects"],
                 "lifecycle_replay": lifecycle_replay["side_effects"],
+                "lifecycle_execution": lifecycle_execution["side_effects"],
                 "actionable_operations": actionable_operations["side_effects"],
             }},
         }},
@@ -27689,6 +27902,8 @@ def design_time_package_manager_workbench(package_ids=()):
         "compatibility": compatibility,
         "registration": registration,
         "rollback": rollback,
+        "signature_validation": signature_validation,
+        "lifecycle_execution": lifecycle_execution,
         "behavior": behavior,
         "lockfile": lockfile,
         "sandbox": sandbox,

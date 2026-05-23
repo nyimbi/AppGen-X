@@ -186,7 +186,10 @@ def studio_browser_smoke_ci_contract(repo_root: str | Path | None = None) -> dic
             "id": "ci_workflow",
             "ok": workflow_path.exists()
             and "npm ci" in workflow_text
-            and "npm run test:browser" in workflow_text
+            and (
+                "npm run test:browser" in workflow_text
+                or ("npm run build" in workflow_text and "node scripts/browser-smoke.mjs" in workflow_text)
+            )
             and "APPGEN_CHROME_BIN" in workflow_text,
         },
         {

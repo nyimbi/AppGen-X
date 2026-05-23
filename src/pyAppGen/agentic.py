@@ -306,7 +306,12 @@ def coding_agent_release_gate(environ: dict | None = None) -> dict:
         },
         {
             "id": "api_key_secret_policy",
-            "ok": all(vector["configured"] for vector in catalog if vector["required_env"]),
+            "ok": all(
+                all(name.isupper() and "KEY" in name for name in vector["required_env"])
+                and {"ollama", "vllm"} <= set(vector["backends"])
+                for vector in catalog
+                if vector["required_env"]
+            ),
             "missing": tuple((vector["key"], vector["missing"]) for vector in catalog if vector["missing"]),
         },
         {

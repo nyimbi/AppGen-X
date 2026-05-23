@@ -2461,6 +2461,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "app/form_designer.py",
         "app/visual_runtime_assets.py",
         "app/data_tooling_runtime.py",
+        "app/runtime_operations.py",
         "app/templates/appgen_form_designer.html",
         "app/models.py",
     } <= set(smoke["required_artifacts"])
@@ -2480,6 +2481,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "app/form_designer.py",
         "app/visual_runtime_assets.py",
         "app/data_tooling_runtime.py",
+        "app/runtime_operations.py",
         "app/models.py",
     } <= set(smoke["compiled_artifacts"])
     assert {
@@ -9315,6 +9317,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "agent_catalog",
         "tool_policy",
         "execution_matrix",
+        "coding_agent_vectors",
         "release_gate",
         "route_surface",
     } == {check["id"] for check in agentic_workbench["checks"]}
@@ -11053,6 +11056,22 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert data_runtime.transaction_runtime_manifest()["ok"] is True
     assert data_runtime.validate_data_tooling_runtime()["ok"] is True
     assert data_runtime.smoke_test()["ok"] is True
+    runtime_operations_file = output_dir / "runtime_operations.py"
+    assert runtime_operations_file.exists()
+    py_compile.compile(str(runtime_operations_file), doraise=True)
+    runtime_operations = _load_module(runtime_operations_file, "generated_runtime_operations")
+    runtime_operations_smoke = runtime_operations.smoke_test("Book")
+    assert runtime_operations_smoke["format"] == "appgen.generated-native-runtime-operations-smoke.v1"
+    assert runtime_operations_smoke["ok"] is True
+    assert {
+        "manifest_ok",
+        "required_operations_present",
+        "operations_are_callable",
+        "runtime_replay_complete",
+        "design_edit_replay_complete",
+    } <= set(runtime_operations_smoke["checks"])
+    assert runtime_operations.run_runtime_operation("compile_preview", "Book")["ok"] is True
+    assert runtime_operations.run_runtime_operation("missing", "Book")["ok"] is False
     generated_mobile = form_designer.mobile_native_api_workbench()
     assert generated_mobile["format"] == "appgen.generated-mobile-native-api-workbench.v1"
     assert generated_mobile["ok"] is True
