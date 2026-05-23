@@ -93,6 +93,7 @@ Build a complete AppGen IDE and generation platform with:
 | 2026-05-23 | `4919a1b` | Added generated schema import modules and generated tests for source catalog, normalization, roundtrip diff, and apply/release surfaces. | Py compile; focused generated-app/form-designer/package-goal tests; staged hygiene scan passed. |
 | 2026-05-23 | `19ea2dd` | Added generated backup modules and generated tests for payload export, integrity manifests, schedule/retention, and recovery/release surfaces. | Py compile; focused generated-app/form-designer/package-goal tests; staged hygiene scan passed. |
 | 2026-05-23 | `ea50549` | Reworked the event-processing alternatives note into one developer-facing standard with one default generated path and two audited exceptions. | Focused PBC policy test, documentation diff check, and staged hygiene scan passed. |
+| 2026-05-23 | `ca3fd90` | Added generated seed/fixture modules and generated tests for plan/order, fixture export, validation/anonymization, and workbench/release surfaces. | Py compile; focused generated-app/form-designer/package-goal tests; staged hygiene scan passed. |
 
 ## Current Working Slice
 
@@ -119,6 +120,10 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   use: generated transactional outbox/inbox tables, the AppGen-X event adapter,
   the default service-runtime profile, and evidence-gated exceptions only for
   telemetry/time-series or complex dataflow workloads.
+- Generated applications now include standalone seed/fixture modules and
+  generated tests that prove seed plans, dependency order, fixture exports,
+  validation/anonymization, and release workbench evidence without touching a
+  database.
 - Generated applications now include a standalone mobile device runtime module
   that validates permission manifests, component adapters, simulator fixtures,
   lifecycle replay, and unsupported target handling without touching hardware.
