@@ -114,6 +114,7 @@ from pyAppGen.form_designer import mobile_device_capability_lifecycle_replay_con
 from pyAppGen.form_designer import mobile_native_api_workbench
 from pyAppGen.form_designer import object_inspector_contract
 from pyAppGen.form_designer import object_inspector_workbench
+from pyAppGen.form_designer import data_relationship_lookup_lifecycle_replay_contract
 from pyAppGen.form_designer import rad_parity_workbench
 from pyAppGen.form_designer import palette_categories
 from pyAppGen.form_designer import parse_dfm_text
@@ -1164,6 +1165,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "service_telemetry",
         "dataset_state_machine",
         "lookup_editor_pipeline",
+        "relationship_lookup_lifecycle_replay",
         "data_module_runtime_smoke",
         "data_tooling_runtime_replay",
         "data_tooling_design_runtime_session_replay",
@@ -1219,6 +1221,23 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     assert all("request_id" in item["trace"] for item in data_workbench["service_telemetry"]["telemetry"])
     assert all("validate_fields" in transition["pipeline"] or transition["event"] != "before_post" for transition in data_workbench["dataset_state_machine"]["transitions"])
     assert all("generate_lookup_dataset" in editor["pipeline"] for editor in data_workbench["lookup_editor_pipeline"]["editors"])
+    relationship_lookup_lifecycle = data_relationship_lookup_lifecycle_replay_contract()
+    assert relationship_lookup_lifecycle["format"] == "appgen.data-relationship-lookup-lifecycle-replay.v1"
+    assert relationship_lookup_lifecycle["ok"] is True
+    assert relationship_lookup_lifecycle["chain_path"] == ("InventoryMove", "InvoiceLine", "Invoice", "Account", "Ledger")
+    assert {
+        "introspect_foreign_keys",
+        "generate_lookup_editors",
+        "preview_multi_hop_joins",
+        "bind_runtime_artifacts",
+        "publish_lookup_endpoints",
+    } <= {item["phase"] for item in relationship_lookup_lifecycle["replay"]}
+    assert {
+        "all_foreign_keys_get_lookup_editors",
+        "multi_hop_chain_preserved",
+        "lookup_preview_before_publish",
+        "runtime_artifacts_declared",
+    } <= {check["id"] for check in relationship_lookup_lifecycle["checks"] if check["ok"]}
     assert all("run_read_only_probe" in test["smoke"] for test in data_workbench["module_runtime_smoke"]["smoke_tests"])
     assert {
         "connection_probe",
@@ -9904,6 +9923,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "service_telemetry",
         "dataset_state_machine",
         "lookup_editor_pipeline",
+        "relationship_lookup_lifecycle_replay",
         "data_module_runtime_smoke",
         "data_tooling_runtime_replay",
         "data_tooling_design_runtime_session_replay",
@@ -9959,6 +9979,22 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert "latency_budget_recorded" in generated_data_tooling["service_telemetry"]["guards"]
     assert "reconcile_errors_visible" in generated_data_tooling["dataset_state_machine"]["guards"]
     assert all("bind_value_member" in editor["pipeline"] for editor in generated_data_tooling["lookup_editor_pipeline"]["editors"])
+    assert generated_data_tooling["relationship_lookup_lifecycle"]["format"] == "appgen.generated-data-relationship-lookup-lifecycle-replay.v1"
+    assert generated_data_tooling["relationship_lookup_lifecycle"]["ok"] is True
+    assert generated_data_tooling["relationship_lookup_lifecycle"]["chain_path"] == (
+        "InventoryMove",
+        "InvoiceLine",
+        "Invoice",
+        "Account",
+        "Ledger",
+    )
+    assert {
+        "introspect_foreign_keys",
+        "generate_lookup_editors",
+        "preview_multi_hop_joins",
+        "bind_runtime_artifacts",
+        "publish_lookup_endpoints",
+    } <= {item["phase"] for item in generated_data_tooling["relationship_lookup_lifecycle"]["replay"]}
     assert all("verify_no_side_effects" in test["smoke"] for test in generated_data_tooling["module_runtime_smoke"]["smoke_tests"])
     assert {
         "connection_probe",

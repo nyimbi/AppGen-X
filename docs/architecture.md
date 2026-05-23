@@ -240,7 +240,10 @@ Visual design is split into two related capabilities:
   offline sync policies, conflict handling, and side-effect guards. Its publish
   transaction replay validates connection profiling, schema/query planning,
   dataset publishing, service artifacts, local/offline queues, conflict review,
-  telemetry, runtime smoke, and no-write replay in one ordered flow.
+  telemetry, runtime smoke, and no-write replay in one ordered flow. Its
+  relationship lookup lifecycle replay validates multi-hop relationship chains,
+  lookup editor generation, previewed joins, runtime lookup artifacts, and
+  published lookup endpoints together.
 - `mobile_native_api_workbench()` validates full listed-device-API coverage:
   permission manifests, design-time/runtime component adapters, simulator
   fixtures, platform targets, runtime permission guardrails, and an ordered

@@ -336,7 +336,9 @@ Generated apps include Studio contracts for:
   embedded local database support, offline sync policies, conflict guards, and
   an ordered publish transaction from connection profiling through schema/query
   planning, dataset publishing, service artifacts, offline queues, telemetry,
-  runtime smoke, and no-write replay.
+  runtime smoke, and no-write replay. Its relationship lookup lifecycle replay
+  proves multi-hop relationship chains get lookup editors, previewed joins,
+  runtime lookup artifacts, and published lookup endpoints.
 - A mobile/native API workbench proves every listed device API has permission
   metadata, a design-time/runtime component adapter, simulator fixtures,
   platform targets, side-effect guards, and ordered designer transaction replay

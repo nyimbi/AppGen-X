@@ -82,7 +82,9 @@ A generated app can include:
   side-effect guards. Its publish transaction replay ties connection profiling,
   schema/query planning, dataset publishing, service artifacts, local/offline
   queues, conflict review, telemetry, runtime smoke, and no-write replay into
-  one ordered flow.
+  one ordered flow. Its relationship lookup lifecycle replay proves multi-hop
+  relationship chains get lookup editors, previewed joins, runtime lookup
+  artifacts, and published lookup endpoints.
 - `mobile_native_api_workbench()` proves device API breadth with full coverage:
   every listed API has generated permission metadata, a design-time/runtime
   component adapter, simulator fixtures, platform targets, and permission

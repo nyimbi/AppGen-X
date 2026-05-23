@@ -31214,6 +31214,43 @@ def data_lookup_editor_pipeline_contract():
     }}
 
 
+def data_relationship_lookup_lifecycle_replay_contract():
+    """Replay generated multi-hop relationship lookup generation from schema metadata to published endpoints."""
+    relationships = data_relationship_navigation_contract()
+    lookup_editor = data_lookup_editor_pipeline_contract()
+    design_runtime = data_tooling_design_runtime_session_replay_contract()
+    publish_replay = data_tooling_publish_transaction_replay_contract()
+    editor_by_field = {{editor["field"]: editor for editor in lookup_editor["editors"]}}
+    chain_path = tuple(reversed(tuple(edge["from"] for edge in relationships["chain"]))) + (relationships["chain"][0]["to"],)
+    replay = (
+        {{"phase": "introspect_foreign_keys", "ok": relationships["ok"] and len(relationships["chain"]) >= 4 and all(edge["field"] in editor_by_field for edge in relationships["chain"]), "evidence": relationships["chain"]}},
+        {{"phase": "generate_lookup_editors", "ok": lookup_editor["ok"] and all("generate_lookup_dataset" in editor["pipeline"] for editor in lookup_editor["editors"]), "evidence": lookup_editor["editors"]}},
+        {{"phase": "preview_multi_hop_joins", "ok": relationships["ok"] and all("preview_join" in item["designer_actions"] for item in relationships["navigation"]) and all("preview_join" in editor["pipeline"] for editor in lookup_editor["editors"]), "evidence": relationships["navigation"]}},
+        {{"phase": "bind_runtime_artifacts", "ok": all({{"relationship_loader", "lookup_endpoint", "display_member", "value_member"}} <= set(item["runtime_artifacts"]) for item in relationships["navigation"]) and all("bind_value_member" in editor["pipeline"] for editor in lookup_editor["editors"]), "evidence": tuple(item["runtime_artifacts"] for item in relationships["navigation"])}},
+        {{"phase": "publish_lookup_endpoints", "ok": design_runtime["ok"] and publish_replay["ok"] and design_runtime["final_state"]["lookup_editors"] == len(lookup_editor["editors"]) and publish_replay["final_state"]["lookup_editors"] == len(lookup_editor["editors"]), "evidence": {{"design_runtime": design_runtime["final_state"], "publish": publish_replay["final_state"]}}}},
+    )
+    phase_names = tuple(item["phase"] for item in replay)
+    checks = (
+        {{"id": "all_foreign_keys_get_lookup_editors", "ok": {{edge["field"] for edge in relationships["chain"]}} == {{editor["field"] for editor in lookup_editor["editors"]}}, "evidence": tuple((edge["from"], edge["field"], edge["to"]) for edge in relationships["chain"])}},
+        {{"id": "multi_hop_chain_preserved", "ok": chain_path == ("InventoryMove", "InvoiceLine", "Invoice", "Account", "Ledger"), "evidence": chain_path}},
+        {{"id": "lookup_preview_before_publish", "ok": phase_names.index("preview_multi_hop_joins") < phase_names.index("publish_lookup_endpoints"), "evidence": phase_names}},
+        {{"id": "runtime_artifacts_declared", "ok": all("lookup_endpoint" in item["runtime_artifacts"] for item in relationships["navigation"]), "evidence": relationships["navigation"]}},
+        {{"id": "side_effect_guards", "ok": not relationships["side_effects"] and not lookup_editor["side_effects"] and not design_runtime["side_effects"] and not publish_replay["side_effects"], "evidence": ()}},
+    )
+    ok = all(item["ok"] for item in replay) and all(check["ok"] for check in checks)
+    return {{
+        "format": "appgen.generated-data-relationship-lookup-lifecycle-replay.v1",
+        "ok": ok,
+        "decision": "approved" if ok else "blocked",
+        "chain_path": chain_path,
+        "replay": replay,
+        "checks": checks,
+        "guards": ("all_foreign_keys_get_lookup_editors", "multi_hop_chain_preserved", "lookup_preview_before_publish", "runtime_artifacts_declared", "side_effect_guards"),
+        "side_effects": (),
+        "blocking_gaps": tuple(check for check in checks if not check["ok"]),
+    }}
+
+
 def data_module_runtime_smoke_contract():
     """Return generated data-module import and smoke-test evidence."""
     modules = data_module_generation_contract()
@@ -31502,6 +31539,7 @@ def rad_data_tooling_workbench():
     service_telemetry = data_service_telemetry_contract()
     dataset_state_machine = data_dataset_state_machine_contract()
     lookup_editor_pipeline = data_lookup_editor_pipeline_contract()
+    relationship_lookup_lifecycle = data_relationship_lookup_lifecycle_replay_contract()
     module_runtime_smoke = data_module_runtime_smoke_contract()
     runtime_replay = data_tooling_runtime_replay_contract()
     design_runtime_replay = data_tooling_design_runtime_session_replay_contract()
@@ -31549,13 +31587,14 @@ def rad_data_tooling_workbench():
         {{"id": "service_telemetry", "ok": service_telemetry["ok"] and {{"request_id_required", "latency_budget_recorded"}} <= set(service_telemetry["guards"]) and not service_telemetry["side_effects"], "evidence": service_telemetry}},
         {{"id": "dataset_state_machine", "ok": dataset_state_machine["ok"] and {{"field_validation_before_post", "rollback_restores_snapshot"}} <= set(dataset_state_machine["guards"]) and not dataset_state_machine["side_effects"], "evidence": dataset_state_machine}},
         {{"id": "lookup_editor_pipeline", "ok": lookup_editor_pipeline["ok"] and {{"foreign_key_fields_get_lookup_editors", "display_member_required"}} <= set(lookup_editor_pipeline["guards"]) and not lookup_editor_pipeline["side_effects"], "evidence": lookup_editor_pipeline}},
+        {{"id": "relationship_lookup_lifecycle_replay", "ok": relationship_lookup_lifecycle["ok"] and {{"multi_hop_chain_preserved", "lookup_preview_before_publish"}} <= set(relationship_lookup_lifecycle["guards"]) and not relationship_lookup_lifecycle["side_effects"], "evidence": relationship_lookup_lifecycle}},
         {{"id": "data_module_runtime_smoke", "ok": module_runtime_smoke["ok"] and {{"module_imports_are_required", "read_only_probe_required"}} <= set(module_runtime_smoke["guards"]) and not module_runtime_smoke["side_effects"], "evidence": module_runtime_smoke}},
         {{"id": "data_tooling_runtime_replay", "ok": runtime_replay["ok"] and {{"connection_probe_rolls_back", "offline_replay_pauses_for_review"}} <= set(runtime_replay["guards"]) and not runtime_replay["side_effects"], "evidence": runtime_replay}},
         {{"id": "data_tooling_design_runtime_session_replay", "ok": design_runtime_replay["ok"] and {{"schema_rehearsal_before_dataset_publish", "runtime_operations_are_monitored"}} <= set(design_runtime_replay["guards"]) and not design_runtime_replay["side_effects"], "evidence": design_runtime_replay}},
         {{"id": "data_tooling_publish_transaction_replay", "ok": publish_transaction_replay["ok"] and {{"service_contract_tests_before_resource_publish", "runtime_smoke_proves_no_persisted_writes"}} <= set(publish_transaction_replay["guards"]) and not publish_transaction_replay["side_effects"], "evidence": publish_transaction_replay}},
     )
     ok = all(check["ok"] for check in checks)
-    return {{"format": "appgen.generated-rad-data-tooling-workbench.v1", "ok": ok, "decision": "approved" if ok else "blocked", "contract": contract, "connection_test": connection_test, "query_preview": query_preview, "method_invocation": method_invocation, "resource_publish": resource_publish, "local_maintenance": local_maintenance, "conflict_review": conflict_review, "driver_matrix": driver_matrix, "schema_diff": schema_diff, "transaction_rehearsal": transaction_rehearsal, "offline_replay": offline_replay, "service_tests": service_tests, "schema_browser": schema_browser, "parameter_binding": parameter_binding, "dataset_fields": dataset_fields, "service_security": service_security, "offline_queue_integrity": offline_queue_integrity, "migration_rehearsal": migration_rehearsal, "dataset_designer": dataset_designer, "service_invocation_traces": service_invocation_traces, "maintenance_schedule": maintenance_schedule, "schema_checkpoints": schema_checkpoints, "data_modules": data_modules, "query_plan_visualizer": query_plan_visualizer, "relationship_navigation": relationship_navigation, "service_versioning": service_versioning, "connection_failover": connection_failover, "change_capture_lineage": change_capture_lineage, "connection_pooling": connection_pooling, "stored_procedures": stored_procedures, "sql_authoring_safety": sql_authoring_safety, "backup_restore_verification": backup_restore_verification, "replication_monitor": replication_monitor, "service_telemetry": service_telemetry, "dataset_state_machine": dataset_state_machine, "lookup_editor_pipeline": lookup_editor_pipeline, "module_runtime_smoke": module_runtime_smoke, "runtime_replay": runtime_replay, "design_runtime_replay": design_runtime_replay, "publish_transaction_replay": publish_transaction_replay, "checks": checks, "blocking_gaps": tuple(check for check in checks if not check["ok"])}}
+    return {{"format": "appgen.generated-rad-data-tooling-workbench.v1", "ok": ok, "decision": "approved" if ok else "blocked", "contract": contract, "connection_test": connection_test, "query_preview": query_preview, "method_invocation": method_invocation, "resource_publish": resource_publish, "local_maintenance": local_maintenance, "conflict_review": conflict_review, "driver_matrix": driver_matrix, "schema_diff": schema_diff, "transaction_rehearsal": transaction_rehearsal, "offline_replay": offline_replay, "service_tests": service_tests, "schema_browser": schema_browser, "parameter_binding": parameter_binding, "dataset_fields": dataset_fields, "service_security": service_security, "offline_queue_integrity": offline_queue_integrity, "migration_rehearsal": migration_rehearsal, "dataset_designer": dataset_designer, "service_invocation_traces": service_invocation_traces, "maintenance_schedule": maintenance_schedule, "schema_checkpoints": schema_checkpoints, "data_modules": data_modules, "query_plan_visualizer": query_plan_visualizer, "relationship_navigation": relationship_navigation, "service_versioning": service_versioning, "connection_failover": connection_failover, "change_capture_lineage": change_capture_lineage, "connection_pooling": connection_pooling, "stored_procedures": stored_procedures, "sql_authoring_safety": sql_authoring_safety, "backup_restore_verification": backup_restore_verification, "replication_monitor": replication_monitor, "service_telemetry": service_telemetry, "dataset_state_machine": dataset_state_machine, "lookup_editor_pipeline": lookup_editor_pipeline, "relationship_lookup_lifecycle": relationship_lookup_lifecycle, "module_runtime_smoke": module_runtime_smoke, "runtime_replay": runtime_replay, "design_runtime_replay": design_runtime_replay, "publish_transaction_replay": publish_transaction_replay, "checks": checks, "blocking_gaps": tuple(check for check in checks if not check["ok"])}}
 
 
 def mobile_native_api_contract():
@@ -33940,7 +33979,7 @@ def platform_parity_requirement_audit_contract():
         {{"id": "native_runtime_streaming", "ok": runtime["ok"] and {{"form_stream_schema", "runtime_session_replay", "design_edit_session_replay"}} <= {{check["id"] for check in runtime["checks"]}}, "evidence": runtime}},
         {{"id": "inspector_design_surface", "ok": inspector["ok"] and {{"property_editor_types", "event_editor_lifecycle", "component_editor_transaction", "custom_designer_registration_replay"}} <= {{check["id"] for check in inspector["checks"]}}, "evidence": inspector}},
         {{"id": "visual_binding_designer", "ok": bindings["ok"] and bindings["designer_transaction_replay"]["ok"] and bindings["design_runtime_replay"]["ok"], "evidence": bindings}},
-        {{"id": "native_data_service_tooling", "ok": data_tooling["ok"] and data_tooling["runtime_replay"]["ok"] and data_tooling["publish_transaction_replay"]["ok"], "evidence": data_tooling}},
+        {{"id": "native_data_service_tooling", "ok": data_tooling["ok"] and data_tooling["runtime_replay"]["ok"] and data_tooling["publish_transaction_replay"]["ok"] and "relationship_lookup_lifecycle_replay" in {{check["id"] for check in data_tooling["checks"]}}, "deep_checks": ("relationship_lookup_lifecycle_replay", "data_tooling_design_runtime_session_replay", "data_tooling_publish_transaction_replay"), "evidence": data_tooling}},
         {{"id": "package_installation_ecosystem", "ok": package_manager["ok"] and package_lifecycle["ok"] and "lifecycle_transaction_replay" in {{check["id"] for check in package_manager["checks"]}}, "evidence": {{"manager": package_manager, "lifecycle": package_lifecycle}}}},
         {{"id": "device_api_component_coverage", "ok": mobile["ok"] and mobile_lifecycle["ok"] and "runtime_and_designer_replay_aligned" in mobile_lifecycle["guards"], "evidence": {{"workbench": mobile, "lifecycle": mobile_lifecycle}}}},
         {{"id": "cross_target_visual_depth", "ok": visual["ok"] and visual_lifecycle["ok"] and {{"visual_runtime_replay", "visual_lifecycle_replay"}} <= {{check["id"] for check in visual["checks"]}}, "evidence": {{"workbench": visual, "lifecycle": visual_lifecycle}}}},
