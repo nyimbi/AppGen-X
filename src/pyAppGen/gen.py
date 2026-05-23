@@ -31547,6 +31547,106 @@ def data_tooling_publish_resource(resource="tables"):
     }}
 
 
+def data_tooling_browse_schema_operation():
+    """Return the generated IDE operation for browsing schema objects and relationship paths."""
+    schema = data_schema_browser_contract()
+    relationships = data_relationship_navigation_contract()
+    return {{
+        "format": "appgen.generated-data-tooling-browse-schema-operation.v1",
+        "ok": bool(schema["objects"])
+        and relationships["ok"]
+        and {{"browse_tables", "inspect_fields", "trace_relations"}} <= set(schema["operations"])
+        and len(relationships["chain"]) >= 4,
+        "pipeline": ("browse_tables", "inspect_fields", "trace_relations", "preview_multi_hop_join", "publish_schema_tree"),
+        "objects": schema["objects"],
+        "relationships": relationships["navigation"],
+        "chain_path": tuple(reversed(tuple(edge["from"] for edge in relationships["chain"]))) + (relationships["chain"][0]["to"],),
+        "guards": ("schema_introspection_is_read_only", "multi_hop_filter_previewed", "lookup_generated_for_foreign_key"),
+        "side_effects": (),
+    }}
+
+
+def data_tooling_design_dataset_operation():
+    """Return the generated IDE operation for dataset field design, lifecycle events, and preview rows."""
+    fields = data_dataset_field_catalog_contract()
+    designer = data_dataset_designer_workflow_contract()
+    state_machine = data_dataset_state_machine_contract()
+    return {{
+        "format": "appgen.generated-data-tooling-design-dataset-operation.v1",
+        "ok": fields["ok"]
+        and designer["ok"]
+        and state_machine["ok"]
+        and {{"add_lookup_field", "wire_dataset_event", "preview_dataset_rows"}} <= {{operation["op"] for operation in designer["operations"]}},
+        "pipeline": ("load_field_catalog", "add_lookup_field", "wire_dataset_event", "preview_dataset_rows", "validate_dataset_state_machine"),
+        "fields": fields["fields"],
+        "operations": designer["operations"],
+        "transitions": state_machine["transitions"],
+        "guards": ("undoable_schema_edits", "read_only_preview", "field_validation_before_post", "rollback_restores_snapshot"),
+        "side_effects": (),
+    }}
+
+
+def data_tooling_rehearse_offline_replay_operation():
+    """Return the generated IDE operation for rehearsing offline queue replay and conflict review."""
+    offline = data_offline_replay_contract()
+    integrity = data_offline_queue_integrity_contract()
+    conflict_review = offline_conflict_review_contract()
+    return {{
+        "format": "appgen.generated-data-tooling-rehearse-offline-replay-operation.v1",
+        "ok": {{"load_queue", "dedupe_by_idempotency_key", "pause_for_manual_review", "mark_replayed"}} <= set(offline["replay_flow"])
+        and integrity["ok"]
+        and {{"detect_conflict", "approve_resolution", "write_audit_log"}} <= set(conflict_review["review_flow"])
+        and all(entry["encrypted"] and entry["checksum"].startswith("sha256:") for entry in integrity["entries"]),
+        "pipeline": ("load_offline_queue", "dedupe_by_idempotency_key", "detect_conflict", "pause_for_manual_review", "write_audit_log", "mark_replayed"),
+        "queue": integrity["entries"],
+        "review_flow": conflict_review["review_flow"],
+        "guards": ("idempotency_keys_required", "encrypted_queue", "manual_review_before_conflict_replay"),
+        "side_effects": (),
+    }}
+
+
+def data_tooling_monitor_replication_operation():
+    """Return the generated IDE operation for monitoring change capture, replication, and telemetry health."""
+    lineage = data_change_capture_lineage_contract()
+    replication = data_replication_monitor_contract()
+    telemetry = data_service_telemetry_contract()
+    return {{
+        "format": "appgen.generated-data-tooling-monitor-replication-operation.v1",
+        "ok": lineage["ok"]
+        and replication["ok"]
+        and telemetry["ok"]
+        and all("conflict_count" in monitor["metrics"] for monitor in replication["monitors"])
+        and all("request_id" in item["trace"] for item in telemetry["telemetry"]),
+        "pipeline": ("read_change_watermarks", "sample_replication_lag", "collect_service_telemetry", "surface_conflict_alerts"),
+        "lineage": lineage["lineage"],
+        "monitors": replication["monitors"],
+        "telemetry": telemetry["telemetry"],
+        "guards": ("watermarks_required", "replication_lag_alerted", "latency_budget_recorded"),
+        "side_effects": (),
+    }}
+
+
+def data_tooling_run_module_smoke_operation():
+    """Return the generated IDE operation for data-module smoke probes."""
+    modules = data_module_generation_contract()
+    smoke = data_module_runtime_smoke_contract()
+    runtime = data_tooling_runtime_replay_contract()
+    return {{
+        "format": "appgen.generated-data-tooling-run-module-smoke-operation.v1",
+        "ok": modules["ok"]
+        and smoke["ok"]
+        and runtime["ok"]
+        and all("run_read_only_probe" in test["smoke"] for test in smoke["smoke_tests"])
+        and runtime["final_state"]["persisted_writes"] == 0,
+        "pipeline": ("import_module", "instantiate_contract", "run_read_only_probe", "verify_no_side_effects", "record_runtime_replay"),
+        "modules": modules["artifacts"],
+        "smoke_tests": smoke["smoke_tests"],
+        "runtime_final_state": runtime["final_state"],
+        "guards": ("module_imports_are_required", "read_only_probe_required", "runtime_smoke_proves_no_persisted_writes"),
+        "side_effects": (),
+    }}
+
+
 def data_tooling_actionable_operations():
     """Return callable generated data tooling operations used by IDE screens."""
     operations = {{
@@ -31555,6 +31655,11 @@ def data_tooling_actionable_operations():
         "preview_schema_diff": data_tooling_preview_schema_diff(),
         "generate_lookup_editors": data_tooling_generate_lookup_editors(),
         "publish_resource": data_tooling_publish_resource(),
+        "browse_schema": data_tooling_browse_schema_operation(),
+        "design_dataset": data_tooling_design_dataset_operation(),
+        "rehearse_offline_replay": data_tooling_rehearse_offline_replay_operation(),
+        "monitor_replication": data_tooling_monitor_replication_operation(),
+        "run_module_smoke": data_tooling_run_module_smoke_operation(),
     }}
     return {{
         "format": "appgen.generated-data-tooling-actionable-operations.v1",
@@ -32551,7 +32656,7 @@ def rad_data_tooling_workbench():
         {{"id": "query_preview_workflow", "ok": {{"bind_parameters", "explain_plan"}} <= set(query_preview["plan"]) and not query_preview["side_effects"], "evidence": query_preview}},
         {{"id": "server_method_invocation_workflow", "ok": {{"client_proxy", "server_method_stub", "response_mapper"}} <= set(method_invocation["pipeline"]) and not method_invocation["side_effects"], "evidence": method_invocation}},
         {{"id": "resource_publish_workflow", "ok": resource_publish["ok"] and {{"attach_security", "register_analytics"}} <= set(resource_publish["pipeline"]) and not resource_publish["side_effects"], "evidence": resource_publish}},
-        {{"id": "actionable_data_tooling_operations", "ok": actionable_operations["ok"] and {{"test_connection", "preview_query", "preview_schema_diff", "generate_lookup_editors", "publish_resource"}} <= set(actionable_operations["operations"]) and not actionable_operations["side_effects"], "evidence": actionable_operations}},
+        {{"id": "actionable_data_tooling_operations", "ok": actionable_operations["ok"] and {{"test_connection", "preview_query", "preview_schema_diff", "generate_lookup_editors", "publish_resource", "browse_schema", "design_dataset", "rehearse_offline_replay", "monitor_replication", "run_module_smoke"}} <= set(actionable_operations["operations"]) and not actionable_operations["side_effects"], "evidence": actionable_operations}},
         {{"id": "local_database_maintenance_workflow", "ok": {{"backup", "restore", "change_view_sync"}} <= {{workflow["name"] for workflow in local_maintenance["workflows"]}} and not local_maintenance["side_effects"], "evidence": local_maintenance}},
         {{"id": "offline_conflict_review_workflow", "ok": {{"detect_conflict", "approve_resolution", "write_audit_log"}} <= set(conflict_review["review_flow"]) and not conflict_review["side_effects"], "evidence": conflict_review}},
         {{"id": "driver_capability_matrix", "ok": driver_matrix["ok"] and all(row["secrets_externalized"] for row in driver_matrix["rows"]) and not driver_matrix["side_effects"], "evidence": driver_matrix}},

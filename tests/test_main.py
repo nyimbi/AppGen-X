@@ -149,10 +149,15 @@ from pyAppGen.form_designer import inspector_rename_event_handler
 from pyAppGen.form_designer import object_inspector_workbench
 from pyAppGen.form_designer import data_relationship_lookup_lifecycle_replay_contract
 from pyAppGen.form_designer import data_tooling_actionable_operations
+from pyAppGen.form_designer import data_tooling_browse_schema_operation
+from pyAppGen.form_designer import data_tooling_design_dataset_operation
 from pyAppGen.form_designer import data_tooling_generate_lookup_editors
+from pyAppGen.form_designer import data_tooling_monitor_replication_operation
 from pyAppGen.form_designer import data_tooling_preview_query
 from pyAppGen.form_designer import data_tooling_preview_schema_diff
 from pyAppGen.form_designer import data_tooling_publish_resource
+from pyAppGen.form_designer import data_tooling_rehearse_offline_replay_operation
+from pyAppGen.form_designer import data_tooling_run_module_smoke_operation
 from pyAppGen.form_designer import data_tooling_test_connection
 from pyAppGen.form_designer import rad_parity_workbench
 from pyAppGen.form_designer import palette_categories
@@ -1308,9 +1313,19 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     assert "rollback_script" in data_tooling_preview_schema_diff()["preview"]
     assert data_tooling_generate_lookup_editors()["chain_path"] == ("InventoryMove", "InvoiceLine", "Invoice", "Account", "Ledger")
     assert "run_contract_tests" in data_tooling_publish_resource()["pipeline"]
+    assert "publish_schema_tree" in data_tooling_browse_schema_operation()["pipeline"]
+    assert "validate_dataset_state_machine" in data_tooling_design_dataset_operation()["pipeline"]
+    assert "pause_for_manual_review" in data_tooling_rehearse_offline_replay_operation()["pipeline"]
+    assert "surface_conflict_alerts" in data_tooling_monitor_replication_operation()["pipeline"]
+    assert "verify_no_side_effects" in data_tooling_run_module_smoke_operation()["pipeline"]
     assert data_tooling_actionable_operations()["ok"] is True
     assert data_workbench["actionable_operations"]["operations"]["publish_resource"]["ok"] is True
     assert data_workbench["actionable_operations"]["operations"]["generate_lookup_editors"]["editors"]
+    assert data_workbench["actionable_operations"]["operations"]["browse_schema"]["objects"]
+    assert data_workbench["actionable_operations"]["operations"]["design_dataset"]["transitions"]
+    assert data_workbench["actionable_operations"]["operations"]["rehearse_offline_replay"]["queue"]
+    assert data_workbench["actionable_operations"]["operations"]["monitor_replication"]["monitors"]
+    assert data_workbench["actionable_operations"]["operations"]["run_module_smoke"]["smoke_tests"]
     assert data_workbench["connection_test"]["steps"][-1] == "rollback_test_transaction"
     assert "explain_plan" in data_workbench["query_preview"]["plan"]
     assert "response_mapper" in data_workbench["method_invocation"]["pipeline"]
@@ -10195,6 +10210,16 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert "run_contract_tests" in form_designer.data_tooling_publish_resource()["pipeline"]
     assert generated_data_tooling["actionable_operations"]["ok"] is True
     assert generated_data_tooling["actionable_operations"]["operations"]["preview_query"]["rows"]
+    assert "publish_schema_tree" in form_designer.data_tooling_browse_schema_operation()["pipeline"]
+    assert "validate_dataset_state_machine" in form_designer.data_tooling_design_dataset_operation()["pipeline"]
+    assert "pause_for_manual_review" in form_designer.data_tooling_rehearse_offline_replay_operation()["pipeline"]
+    assert "surface_conflict_alerts" in form_designer.data_tooling_monitor_replication_operation()["pipeline"]
+    assert "verify_no_side_effects" in form_designer.data_tooling_run_module_smoke_operation()["pipeline"]
+    assert generated_data_tooling["actionable_operations"]["operations"]["browse_schema"]["objects"]
+    assert generated_data_tooling["actionable_operations"]["operations"]["design_dataset"]["transitions"]
+    assert generated_data_tooling["actionable_operations"]["operations"]["rehearse_offline_replay"]["queue"]
+    assert generated_data_tooling["actionable_operations"]["operations"]["monitor_replication"]["monitors"]
+    assert generated_data_tooling["actionable_operations"]["operations"]["run_module_smoke"]["smoke_tests"]
     assert generated_data_tooling["connection_test"]["steps"][-1] == "rollback_test_transaction"
     assert "explain_plan" in generated_data_tooling["query_preview"]["plan"]
     assert "response_mapper" in generated_data_tooling["method_invocation"]["pipeline"]
