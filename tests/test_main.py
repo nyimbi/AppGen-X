@@ -11578,9 +11578,39 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "effect_runtime_ready",
         "scene_runtime_ready",
         "component_specs_ready",
+        "visual_component_modules_ready",
+        "visual_component_tests_ready",
         "runtime_package_ready",
         "runtime_replay_ready",
     } <= set(visual_depth_runtime_smoke["checks"])
+    visual_module_manifest = visual_depth_runtime.visual_component_module_manifest()
+    visual_test_manifest = visual_depth_runtime.visual_component_test_module_manifest()
+    assert visual_module_manifest["ok"] is True
+    assert visual_test_manifest["ok"] is True
+    assert {item["component"] for item in visual_module_manifest["components"]} == {
+        spec["component"] for spec in generated_visual_specs["specs"]
+    }
+    assert {item["component"] for item in visual_test_manifest["tests"]} == {
+        spec["component"] for spec in generated_visual_specs["specs"]
+    }
+    viewport_component = _load_module(output_dir / "visual_components" / "viewport3_d.py", "generated_viewport_visual_component")
+    viewport_smoke = viewport_component.smoke_test()
+    assert viewport_smoke["format"] == "appgen.visual-component-smoke-test.v1"
+    assert viewport_smoke["ok"] is True
+    assert viewport_component.validation_operation()["ok"] is True
+    assert viewport_component.replay()["ok"] is True
+    style_component = _load_module(output_dir / "visual_components" / "style_book.py", "generated_style_visual_component")
+    assert style_component.smoke_test()["ok"] is True
+    for item in visual_module_manifest["components"]:
+        component_path = output_dir / item["path"].replace("app/", "")
+        py_compile.compile(str(component_path), doraise=True)
+        module = _load_module(component_path, f"generated_visual_component_{item['component']}")
+        assert module.smoke_test()["ok"] is True
+    for item in visual_test_manifest["tests"]:
+        test_path = output_dir / item["path"].replace("app/", "")
+        py_compile.compile(str(test_path), doraise=True)
+        module = _load_module(test_path, f"generated_visual_component_test_{item['component']}")
+        assert module.smoke_test()["ok"] is True
     visual_depth_replay = visual_depth_runtime.replay_visual_depth_runtime()
     assert visual_depth_replay["ok"] is True
     assert {"style_resolution", "timeline_interpolation", "scene_transform_sync"} <= set(

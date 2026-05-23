@@ -1754,6 +1754,7 @@ def write_form_designer_file(output_dir, schema: AppSchema):
     (output_dir / "data_tooling_runtime.py").write_text(_data_tooling_runtime_text())
     write_component_contract_files(output_dir)
     write_device_api_component_files(output_dir)
+    write_visual_component_files(output_dir)
 
 
 DEVICE_API_COMPONENTS = (
@@ -1784,6 +1785,18 @@ DEVICE_API_COMPONENTS = (
     "device_info",
     "maps",
     "screen_capture",
+)
+
+VISUAL_DEPTH_COMPONENTS = (
+    "StyleBook",
+    "FloatAnimation",
+    "ColorAnimation",
+    "PathAnimation",
+    "Effect",
+    "Viewport3D",
+    "Camera3D",
+    "Light3D",
+    "Mesh3D",
 )
 
 
@@ -1873,6 +1886,27 @@ def write_device_api_component_files(output_dir):
         )
 
 
+def write_visual_component_files(output_dir):
+    """Write one generated design/runtime module per visual-depth component."""
+    output_dir = Path(output_dir)
+    component_dir = output_dir / "visual_components"
+    test_dir = output_dir / "visual_component_tests"
+    component_dir.mkdir(parents=True, exist_ok=True)
+    test_dir.mkdir(parents=True, exist_ok=True)
+    (component_dir / "__init__.py").write_text(_visual_component_init_text(), encoding="utf-8")
+    (test_dir / "__init__.py").write_text(_visual_component_test_init_text(), encoding="utf-8")
+    for component in VISUAL_DEPTH_COMPONENTS:
+        module_name = _module_name(component)
+        (component_dir / f"{module_name}.py").write_text(
+            _visual_component_module_text(component),
+            encoding="utf-8",
+        )
+        (test_dir / f"test_{module_name}.py").write_text(
+            _visual_component_test_module_text(component),
+            encoding="utf-8",
+        )
+
+
 def _module_name(name: str) -> str:
     """Return a stable snake-case module name for a component or package."""
     chars = []
@@ -1897,6 +1931,226 @@ def _device_api_component_test_init_text() -> str:
         '"""Generated per-device-API component test modules."""\n\n'
         f"DEVICE_API_COMPONENT_TEST_MODULES = {modules!r}\n"
     )
+
+
+def _visual_component_init_text() -> str:
+    modules = tuple(_module_name(component) for component in VISUAL_DEPTH_COMPONENTS)
+    return (
+        '"""Generated visual-depth component modules."""\n\n'
+        f"VISUAL_COMPONENT_MODULES = {modules!r}\n"
+    )
+
+
+def _visual_component_test_init_text() -> str:
+    modules = tuple(f"test_{_module_name(component)}" for component in VISUAL_DEPTH_COMPONENTS)
+    return (
+        '"""Generated visual-depth component test modules."""\n\n'
+        f"VISUAL_COMPONENT_TEST_MODULES = {modules!r}\n"
+    )
+
+
+def _visual_component_module_text(component: str) -> str:
+    module_name = _module_name(component)
+    return f'''"""Generated visual-depth component module for {component}."""
+
+from __future__ import annotations
+
+import importlib.util
+from pathlib import Path
+
+
+COMPONENT = {component!r}
+MODULE = {module_name!r}
+
+
+def _load_sibling(module_name):
+    module_path = Path(__file__).resolve().parents[1] / f"{{module_name}}.py"
+    spec = importlib.util.spec_from_file_location(f"generated_visual_component_{{MODULE}}_{{module_name}}", module_path)
+    module = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(module)
+    return module
+
+
+def _form_designer():
+    return _load_sibling("form_designer")
+
+
+def _visual_runtime():
+    return _load_sibling("visual_depth_runtime")
+
+
+def spec():
+    """Return the visual-depth IDE component specification."""
+    specs = _form_designer().cross_target_visual_component_spec_contract()
+    match = next((item for item in specs["specs"] if item["component"] == COMPONENT), None)
+    return {{
+        "format": "appgen.visual-component-spec.v1",
+        "component": COMPONENT,
+        "ok": match is not None and bool(match["properties"]) and bool(match["design_tools"]) and bool(match["runtime_artifacts"]),
+        "spec": match,
+    }}
+
+
+def render(props=None):
+    """Return a deterministic visual design preview node."""
+    current = spec()["spec"]
+    defaults = {{name: None for name in current["properties"]}}
+    defaults.update(dict(props or {{}}))
+    return {{
+        "format": "appgen.visual-component-render-node.v1",
+        "component": COMPONENT,
+        "family": current["family"],
+        "icon": current["icon"],
+        "props": defaults,
+        "design_tools": current["design_tools"],
+        "runtime_artifacts": current["runtime_artifacts"],
+    }}
+
+
+def validate_props(props=None):
+    """Validate props against the generated visual component property surface."""
+    current = spec()["spec"]
+    allowed = set(current["properties"])
+    supplied = set((props or {{}}).keys())
+    unknown = tuple(sorted(supplied - allowed))
+    return {{
+        "format": "appgen.visual-component-prop-validation.v1",
+        "component": COMPONENT,
+        "ok": not unknown,
+        "unknown": unknown,
+        "properties": current["properties"],
+    }}
+
+
+def validation_operation():
+    """Return the side-effect-free IDE validation operation for this component."""
+    return _form_designer().cross_target_validate_visual_component_operation(COMPONENT)
+
+
+def authoring_operation():
+    """Return the primary authoring operation for this component family."""
+    family = spec()["spec"]["family"]
+    designer = _form_designer()
+    if family == "styling":
+        return designer.cross_target_author_style_operation(COMPONENT)
+    if family == "animation":
+        return designer.cross_target_author_timeline_operation(f"timeline.{{MODULE}}")
+    if family == "effects":
+        return designer.cross_target_validate_effect_stack_operation()
+    return designer.cross_target_author_scene_operation()
+
+
+def runtime_manifest():
+    """Return the generated visual runtime manifest used by this component."""
+    return _visual_runtime().visual_depth_runtime_manifest()
+
+
+def replay():
+    """Replay the generated visual runtime without host rendering."""
+    return _visual_runtime().replay_visual_depth_runtime()
+
+
+def design_tools():
+    """Return design tools and runtime artifacts for the visual component."""
+    current = spec()["spec"]
+    return {{
+        "format": "appgen.visual-component-design-tools.v1",
+        "component": COMPONENT,
+        "tools": current["design_tools"],
+        "runtime_artifacts": current["runtime_artifacts"],
+        "ok": bool(current["design_tools"]) and bool(current["runtime_artifacts"]),
+    }}
+
+
+def smoke_test():
+    """Run side-effect-free checks proving this visual component is usable."""
+    current = spec()
+    rendered = render()
+    valid = validate_props(rendered["props"])
+    invalid = validate_props({{"__unknown__": True}})
+    validation = validation_operation()
+    authoring = authoring_operation()
+    replay_result = replay()
+    tools = design_tools()
+    return {{
+        "format": "appgen.visual-component-smoke-test.v1",
+        "component": COMPONENT,
+        "ok": current["ok"]
+        and rendered["component"] == COMPONENT
+        and valid["ok"]
+        and not invalid["ok"]
+        and validation["ok"]
+        and authoring["ok"]
+        and replay_result["ok"]
+        and tools["ok"],
+        "checks": (
+            "spec_resolves",
+            "preview_renders",
+            "props_validate",
+            "validation_operation_succeeds",
+            "authoring_operation_succeeds",
+            "runtime_replay_succeeds",
+            "design_tools_present",
+        ),
+    }}
+'''
+
+
+def _visual_component_test_module_text(component: str) -> str:
+    module_name = _module_name(component)
+    return f'''"""Generated tests for the {component} visual-depth component."""
+
+from __future__ import annotations
+
+import importlib.util
+from pathlib import Path
+
+
+COMPONENT = {component!r}
+MODULE = {module_name!r}
+
+
+def load_visual_component_module():
+    """Load the generated visual component module without app installation."""
+    module_path = Path(__file__).resolve().parents[1] / "visual_components" / f"{{MODULE}}.py"
+    spec = importlib.util.spec_from_file_location(f"generated_visual_component_{{MODULE}}", module_path)
+    module = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(module)
+    return module
+
+
+def test_visual_component_contract():
+    """Assert the generated visual component exposes its design/runtime contract."""
+    module = load_visual_component_module()
+    contract = module.spec()
+    assert contract["component"] == COMPONENT
+    assert contract["ok"] is True
+    assert module.render()["component"] == COMPONENT
+    assert module.validation_operation()["ok"] is True
+
+
+def test_visual_component_smoke():
+    """Assert the module's own side-effect-free smoke test passes."""
+    module = load_visual_component_module()
+    result = module.smoke_test()
+    assert result["ok"] is True
+    assert result["component"] == COMPONENT
+    assert result["checks"]
+
+
+def smoke_test():
+    """Run this generated test module in a side-effect-free way."""
+    test_visual_component_contract()
+    test_visual_component_smoke()
+    return {{
+        "format": "appgen.visual-component-generated-test-smoke.v1",
+        "component": COMPONENT,
+        "ok": True,
+        "tests": ("test_visual_component_contract", "test_visual_component_smoke"),
+    }}
+'''
 
 
 def _device_api_component_module_text(api: str) -> str:
@@ -2818,6 +3072,96 @@ def _load_form_designer():
     return module
 
 
+def _module_name(name):
+    """Return the generated snake-case module name for a visual component."""
+    chars = []
+    for index, char in enumerate(name.replace("-", "_")):
+        if char.isupper() and index and (not name[index - 1].isupper()):
+            chars.append("_")
+        chars.append(char.lower() if char.isalnum() else "_")
+    return "_".join(part for part in "".join(chars).split("_") if part)
+
+
+def _load_generated_module(path, name):
+    spec = importlib.util.spec_from_file_location(name, path)
+    module = importlib.util.module_from_spec(spec)
+    if spec.loader is None:
+        raise RuntimeError(f"Could not load generated module: {path}")
+    spec.loader.exec_module(module)
+    return module
+
+
+def visual_component_module_manifest():
+    """Return file-level evidence for generated visual-depth component modules."""
+    form_designer = _load_form_designer()
+    specs = form_designer.cross_target_visual_component_spec_contract()["specs"]
+    component_dir = Path(__file__).with_name("visual_components")
+    entries = []
+    for item in specs:
+        module_name = _module_name(item["component"])
+        module_path = component_dir / f"{module_name}.py"
+        exports = ()
+        contract_ok = False
+        if module_path.exists():
+            module = _load_generated_module(module_path, f"generated_visual_component_{module_name}")
+            exports = tuple(name for name in ("spec", "render", "validate_props", "validation_operation", "authoring_operation", "runtime_manifest", "replay", "design_tools", "smoke_test") if hasattr(module, name))
+            contract = module.spec()
+            contract_ok = contract["ok"] and contract["component"] == item["component"]
+        entries.append(
+            {
+                "component": item["component"],
+                "family": item["family"],
+                "path": f"app/visual_components/{module_name}.py",
+                "exists": module_path.exists(),
+                "exports": exports,
+                "contract_ok": contract_ok,
+            }
+        )
+    required_exports = {"spec", "render", "validate_props", "validation_operation", "authoring_operation", "runtime_manifest", "replay", "design_tools", "smoke_test"}
+    return {
+        "format": "appgen.generated-visual-component-module-manifest.v1",
+        "ok": bool(entries)
+        and all(item["exists"] and item["contract_ok"] and required_exports <= set(item["exports"]) for item in entries),
+        "components": tuple(entries),
+        "required_exports": tuple(sorted(required_exports)),
+        "guards": ("one_module_per_visual_component", "style_animation_effect_scene_specs_bound", "runtime_replay_exported"),
+        "side_effects": (),
+    }
+
+
+def visual_component_test_module_manifest():
+    """Return file-level evidence for generated visual-depth component test modules."""
+    form_designer = _load_form_designer()
+    specs = form_designer.cross_target_visual_component_spec_contract()["specs"]
+    test_dir = Path(__file__).with_name("visual_component_tests")
+    entries = []
+    for item in specs:
+        module_name = _module_name(item["component"])
+        module_path = test_dir / f"test_{module_name}.py"
+        exports = ()
+        if module_path.exists():
+            module = _load_generated_module(module_path, f"generated_visual_component_test_{module_name}")
+            exports = tuple(name for name in ("load_visual_component_module", "test_visual_component_contract", "test_visual_component_smoke", "smoke_test") if hasattr(module, name))
+        entries.append(
+            {
+                "component": item["component"],
+                "family": item["family"],
+                "path": f"app/visual_component_tests/test_{module_name}.py",
+                "exists": module_path.exists(),
+                "exports": exports,
+            }
+        )
+    required_exports = {"load_visual_component_module", "test_visual_component_contract", "test_visual_component_smoke", "smoke_test"}
+    return {
+        "format": "appgen.generated-visual-component-test-module-manifest.v1",
+        "ok": bool(entries) and all(item["exists"] and required_exports <= set(item["exports"]) for item in entries),
+        "tests": tuple(entries),
+        "required_exports": tuple(sorted(required_exports)),
+        "guards": ("one_test_module_per_visual_component", "contract_and_smoke_tests_exported"),
+        "side_effects": (),
+    }
+
+
 def visual_depth_runtime_manifest():
     """Return generated style, animation, effects, scene, and release evidence."""
     form_designer = _load_form_designer()
@@ -2825,6 +3169,8 @@ def visual_depth_runtime_manifest():
     contract = form_designer.cross_target_visual_depth_contract()
     component_specs = form_designer.cross_target_visual_component_spec_contract()
     runtime_package = form_designer.cross_target_visual_runtime_package_contract()
+    component_modules = visual_component_module_manifest()
+    component_tests = visual_component_test_module_manifest()
     check_ids = {check["id"] for check in workbench["checks"] if check["ok"]}
     required_checks = {
         "style_resources",
@@ -2855,7 +3201,9 @@ def visual_depth_runtime_manifest():
         and {"viewport3d", "camera", "light", "mesh", "material"} <= {node["kind"] for node in contract["scene_designer"]["scene_graph"]}
         and component_specs["ok"]
         and runtime_package["ok"]
-        and {"web", "mobile", "desktop", "pwa"} <= set(runtime_package["targets"]),
+        and {"web", "mobile", "desktop", "pwa"} <= set(runtime_package["targets"])
+        and component_modules["ok"]
+        and component_tests["ok"],
         "contract": contract,
         "checks": tuple(check["id"] for check in workbench["checks"]),
         "required_checks": tuple(sorted(required_checks)),
@@ -2871,6 +3219,8 @@ def visual_depth_runtime_manifest():
         "lifecycle_replay": workbench["lifecycle_replay"],
         "runtime_package": runtime_package,
         "component_specs": component_specs,
+        "visual_component_modules": component_modules,
+        "visual_component_tests": component_tests,
         "actionable_operations": workbench["actionable_operations"],
         "guards": (
             "style_tokens_resolve_before_runtime",
@@ -2878,6 +3228,8 @@ def visual_depth_runtime_manifest():
             "effects_have_target_fallbacks",
             "scene_hit_tests_sync_inspector",
             "runtime_package_targets_declared",
+            "one_module_per_visual_component",
+            "one_test_module_per_visual_component",
         ),
     }
 
@@ -2915,6 +3267,8 @@ def validate_visual_depth_runtime():
         {"id": "effect_runtime_ready", "ok": "select_fallback" in manifest["effect_render"]["render_steps"] and manifest["effect_fallback_matrix"]["ok"] and not manifest["effect_fallback_matrix"]["side_effects"]},
         {"id": "scene_runtime_ready", "ok": manifest["scene_validation"]["ok"] and manifest["scene_transform_gizmos"]["ok"] and not manifest["scene_transform_gizmos"]["side_effects"]},
         {"id": "component_specs_ready", "ok": manifest["component_specs"]["ok"] and all(spec["design_tools"] and spec["runtime_artifacts"] for spec in manifest["component_specs"]["specs"])},
+        {"id": "visual_component_modules_ready", "ok": manifest["visual_component_modules"]["ok"]},
+        {"id": "visual_component_tests_ready", "ok": manifest["visual_component_tests"]["ok"]},
         {"id": "runtime_package_ready", "ok": manifest["runtime_package"]["ok"] and {"web", "mobile", "desktop", "pwa"} <= set(manifest["runtime_package"]["targets"])},
         {"id": "runtime_replay_ready", "ok": replay["ok"] and not replay["side_effects"]},
     )
