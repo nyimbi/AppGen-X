@@ -218,7 +218,9 @@ Visual design is split into two related capabilities:
   custom designer activation, filtering/sorting modes, and persisted inspector
   state. Its design-surface transaction replay validates ordered selection,
   multi-select edit, component-editor, overlay, dependency refresh, diagnostic,
-  undo/redo, and reference-sync behavior.
+  undo/redo, and reference-sync behavior. Its custom designer registration
+  replay validates registration, activation, overlay rendering, hit-target
+  routing, lifecycle commit/cancel behavior, and metadata round trip.
 - `component_analog_workbench()` validates requested component analog coverage
   across controls, layouts, data display, graphics, animation, theming,
   gestures, sensors, 3D scene primitives, and data access. It now records the

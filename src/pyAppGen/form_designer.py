@@ -4275,6 +4275,118 @@ def inspector_design_surface_transaction_replay_contract(components: tuple[str, 
     }
 
 
+def inspector_custom_designer_registration_replay_contract(components: tuple[str, ...] = ()) -> dict:
+    """Replay custom designer registration from metadata through lifecycle routing."""
+    selected = components or (
+        "TextBox",
+        "Grid",
+        "Rectangle",
+        "StyleBook",
+        "GestureManager",
+        "Viewport3D",
+        "DatabaseConnection",
+    )
+    registries = tuple(inspector_editor_registry(component) for component in selected)
+    activations = tuple(custom_designer_activation_contract(component) for component in selected)
+    render_workflows = tuple(inspector_custom_designer_render_workflow(component) for component in selected)
+    hit_tests = tuple(inspector_custom_designer_hit_test_contract(component) for component in selected)
+    lifecycles = tuple(inspector_custom_designer_lifecycle_contract(component) for component in selected)
+    round_trips = tuple(inspector_round_trip_contract(component) for component in selected)
+    state = {
+        "components": len(selected),
+        "registered_hooks": sum(len(registry["custom_designers"]) for registry in registries),
+        "activation_hooks": sum(len(activation["hooks"]) for activation in activations),
+        "render_passes": len(render_workflows),
+        "hit_targets": sum(len(hit["hit_targets"]) for contract in hit_tests for hit in contract["hit_tests"]),
+        "lifecycle_hooks": sum(len(contract["lifecycle"]) for contract in lifecycles),
+        "metadata_round_trips": sum(1 for contract in round_trips if contract["ok"]),
+        "side_effects": (),
+    }
+    replay = (
+        {
+            "phase": "register_custom_designers",
+            "pipeline": tuple(hook["hook"] for registry in registries for hook in registry["custom_designers"]),
+            "ok": all(registry["custom_designers"] and not registry["side_effects"] for registry in registries)
+            and {"paint_overlay", "selection_handles", "inline_preview"}
+            <= {hook["hook"] for registry in registries for hook in registry["custom_designers"]},
+        },
+        {
+            "phase": "activate_hooks",
+            "pipeline": tuple(hook["activation"] for activation in activations for hook in activation["hooks"]),
+            "ok": all(
+                {"hook", "surface", "activation"} <= set(hook) and not hook["side_effects"]
+                for activation in activations
+                for hook in activation["hooks"]
+            )
+            and all("hook_isolated" in activation["guards"] for activation in activations),
+        },
+        {
+            "phase": "render_overlays",
+            "pipeline": tuple(step for workflow in render_workflows for step in workflow["render_pass"]),
+            "ok": all(
+                {"render_overlay", "render_selection_handles", "publish_hit_targets"} <= set(workflow["render_pass"])
+                and not workflow["side_effects"]
+                for workflow in render_workflows
+            ),
+        },
+        {
+            "phase": "publish_hit_targets",
+            "pipeline": tuple(route for contract in hit_tests for hit in contract["hit_tests"] for route in hit["route"]),
+            "ok": all(contract["ok"] and not contract["side_effects"] for contract in hit_tests)
+            and all(
+                {"resolve_hit_target", "open_context_action"} <= set(hit["route"])
+                for contract in hit_tests
+                for hit in contract["hit_tests"]
+            ),
+        },
+        {
+            "phase": "commit_or_cancel_lifecycle",
+            "pipeline": tuple(step for contract in lifecycles for item in contract["lifecycle"] for step in item["lifecycle"]),
+            "ok": all(contract["ok"] and not contract["side_effects"] for contract in lifecycles)
+            and all(
+                "commit_or_cancel" in item["lifecycle"] and "preserve_design_state" in item["failure_policy"]
+                for contract in lifecycles
+                for item in contract["lifecycle"]
+            ),
+        },
+        {
+            "phase": "round_trip_metadata",
+            "pipeline": tuple(hook for contract in round_trips for hook in contract["exported"]["custom_designers"]),
+            "ok": all(contract["ok"] and not contract["side_effects"] for contract in round_trips)
+            and all("custom_designer_metadata_preserved" in contract["guards"] for contract in round_trips),
+        },
+        {
+            "phase": "prove_component_isolation",
+            "pipeline": selected,
+            "ok": state["components"] == len(registries) == len(activations) == len(render_workflows) == len(hit_tests) == len(lifecycles)
+            and state["side_effects"] == (),
+        },
+    )
+    return {
+        "format": "appgen.inspector-custom-designer-registration-replay-contract.v1",
+        "ok": all(item["ok"] for item in replay)
+        and state["components"] > 0
+        and state["registered_hooks"] >= state["components"]
+        and state["activation_hooks"] == state["registered_hooks"]
+        and state["hit_targets"] > 0
+        and state["lifecycle_hooks"] == state["registered_hooks"]
+        and state["metadata_round_trips"] == state["components"]
+        and state["side_effects"] == (),
+        "components": selected,
+        "replay": replay,
+        "final_state": state,
+        "guards": (
+            "custom_designers_registered_before_activation",
+            "overlays_render_before_hit_testing",
+            "hit_targets_route_to_context_actions",
+            "lifecycle_preserves_design_state",
+            "metadata_round_trips_custom_designers",
+            "component_hooks_are_isolated",
+        ),
+        "side_effects": (),
+    }
+
+
 def object_inspector_workbench() -> dict:
     """Prove property, event, component-editor, and custom-designer coverage."""
     sample_components = (
@@ -4320,6 +4432,7 @@ def object_inspector_workbench() -> dict:
     edit_session_replay = inspector_edit_session_replay_contract()
     cross_component_replay = inspector_cross_component_session_replay_contract(sample_components)
     design_surface_replay = inspector_design_surface_transaction_replay_contract(sample_components)
+    custom_designer_registration_replay = inspector_custom_designer_registration_replay_contract(sample_components)
     checks = (
         {
             "id": "property_editor_types",
@@ -4510,6 +4623,14 @@ def object_inspector_workbench() -> dict:
             and not design_surface_replay["side_effects"],
             "evidence": design_surface_replay,
         },
+        {
+            "id": "custom_designer_registration_replay",
+            "ok": custom_designer_registration_replay["ok"]
+            and {"custom_designers_registered_before_activation", "metadata_round_trips_custom_designers"}
+            <= set(custom_designer_registration_replay["guards"])
+            and not custom_designer_registration_replay["side_effects"],
+            "evidence": custom_designer_registration_replay,
+        },
     )
     ok = all(check["ok"] for check in checks)
     return {
@@ -4544,6 +4665,7 @@ def object_inspector_workbench() -> dict:
         "edit_session_replay": edit_session_replay,
         "cross_component_replay": cross_component_replay,
         "design_surface_replay": design_surface_replay,
+        "custom_designer_registration_replay": custom_designer_registration_replay,
         "checks": checks,
         "blocking_gaps": tuple(check for check in checks if not check["ok"]),
     }

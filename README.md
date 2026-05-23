@@ -321,7 +321,9 @@ Generated apps include Studio contracts for:
   activation, and persisted inspector state. It also replays design-surface
   transactions across tree and canvas selection, multi-select edits, component
   editor changes, custom overlays, dependent-property refresh, diagnostics,
-  undo/redo, and reference synchronization.
+  undo/redo, reference synchronization, and custom designer registration from
+  metadata through activation, overlays, hit targets, lifecycle, and metadata
+  round trip.
 - A visual data-binding workbench proves binding graph nodes/edges, expression
   validation, converter and validator catalogs, designer gestures, and runtime
   binding modes, plus link authoring operations, conflict checks, preview

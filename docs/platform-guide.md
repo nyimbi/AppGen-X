@@ -66,7 +66,9 @@ A generated app can include:
   validation, staged verb execution, custom designer activation, filtering,
   sorting, inspector state persistence, and ordered design-surface transactions
   across selection, multi-select edits, overlays, diagnostics, undo/redo, and
-  reference synchronization.
+  reference synchronization. Its custom designer registration replay carries
+  metadata registration through activation, overlay rendering, hit-target
+  routing, lifecycle commit/cancel behavior, and metadata round trip.
 - `livebindings_workbench()` proves visual data-binding graph nodes and edges,
   expression validation, converters, validators, designer gestures, and runtime
   update modes, plus link authoring operations, conflict checks, preview
