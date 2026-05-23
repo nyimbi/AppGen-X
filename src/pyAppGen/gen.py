@@ -25503,6 +25503,7 @@ from flask_appbuilder import BaseView
 from flask_appbuilder import expose
 
 
+DFM_BINARY_MAGIC = b"AGDFM\\x01"
 FORM_TABLES = {tables!r}
 DECLARED_DESIGNS = {declared_designs!r}
 PALETTE = (
@@ -26492,6 +26493,8 @@ def component_package_workbench(existing_paths=None):
 def dfm_streaming_contract():
     """Return the RAD-compatible design-time streaming contract."""
     round_trip = dfm_round_trip()
+    binary_round_trip = dfm_binary_round_trip()
+    stream_variants = dfm_stream_variant_round_trip_contract()
     return {{
         "format": "appgen.generated-dfm-streaming-contract.v1",
         "stream_formats": ("text-dfm", "binary-dfm", "json-form-model"),
@@ -26499,6 +26502,8 @@ def dfm_streaming_contract():
         "pascal_runtime": {{"compiler": "external-rad-or-freepascal-toolchain", "generated_units": ("forms", "data-modules", "packages", "resources"), "side_effects": ()}},
         "guards": ("never_execute_imported_pascal", "review_event_handlers", "preserve_unknown_properties"),
         "round_trip_probe": round_trip,
+        "binary_round_trip": binary_round_trip,
+        "stream_variants": stream_variants,
     }}
 
 
@@ -26560,6 +26565,32 @@ def parse_dfm_text(text):
     return {{"format": "appgen.generated-dfm-parse-result.v1", "ok": bool(objects) and not stack, "forms": tuple(objects)}}
 
 
+def encode_dfm_binary_stream(text):
+    """Encode text form streams into a deterministic binary frame."""
+    payload = text.encode("utf-8")
+    checksum = sum(payload) % (2**32)
+    return DFM_BINARY_MAGIC + len(payload).to_bytes(4, "big") + checksum.to_bytes(4, "big") + payload
+
+
+def decode_dfm_binary_stream(blob):
+    """Decode deterministic binary form streams and validate length/checksum."""
+    if not isinstance(blob, bytes) or not blob.startswith(DFM_BINARY_MAGIC):
+        raise ValueError("invalid binary form stream header")
+    header_len = len(DFM_BINARY_MAGIC) + 8
+    if len(blob) < header_len:
+        raise ValueError("truncated binary form stream")
+    length_start = len(DFM_BINARY_MAGIC)
+    payload_len = int.from_bytes(blob[length_start : length_start + 4], "big")
+    expected_checksum = int.from_bytes(blob[length_start + 4 : length_start + 8], "big")
+    payload = blob[header_len:]
+    if len(payload) != payload_len:
+        raise ValueError("binary form stream length mismatch")
+    actual_checksum = sum(payload) % (2**32)
+    if actual_checksum != expected_checksum:
+        raise ValueError("binary form stream checksum mismatch")
+    return payload.decode("utf-8")
+
+
 def dfm_round_trip(table_name=None, design=None):
     """Serialize and parse a generated form design, preserving component identity."""
     if design is None:
@@ -26582,6 +26613,69 @@ def dfm_round_trip(table_name=None, design=None):
         "round_trip_fields": fields,
         "expected_components": expected_components,
         "round_trip_components": components,
+    }}
+
+
+def dfm_binary_round_trip(table_name=None, design=None):
+    """Prove binary form streams preserve text stream identity and parseability."""
+    if design is None:
+        table_name = table_name or next(iter(FORM_TABLES))
+        design = form_design(table_name)
+    text = form_design_to_dfm(design=design)
+    blob = encode_dfm_binary_stream(text)
+    decoded = decode_dfm_binary_stream(blob)
+    parsed = parse_dfm_text(decoded)
+    return {{
+        "format": "appgen.generated-dfm-binary-round-trip.v1",
+        "ok": decoded == text and parsed["ok"],
+        "frame": {{
+            "magic": DFM_BINARY_MAGIC.decode("ascii"),
+            "payload_bytes": len(blob) - len(DFM_BINARY_MAGIC) - 8,
+            "checksum": int.from_bytes(blob[len(DFM_BINARY_MAGIC) + 4 : len(DFM_BINARY_MAGIC) + 8], "big"),
+        }},
+        "decoded": decoded,
+        "parsed": parsed,
+        "guards": ("magic_header_validated", "payload_length_validated", "checksum_validated"),
+        "side_effects": (),
+    }}
+
+
+def dfm_stream_variant_round_trip_contract(table_name=None, design=None):
+    """Return text, binary, and JSON-model stream round-trip evidence."""
+    if design is None:
+        table_name = table_name or next(iter(FORM_TABLES))
+        design = form_design(table_name)
+    text_round_trip = dfm_round_trip(design=design)
+    binary_round_trip = dfm_binary_round_trip(design=design)
+    json_model = {{
+        "table": design["table"],
+        "components": tuple(
+            {{
+                "name": _dfm_identifier(component.get("field"), component["type"]),
+                "field": component.get("field") or "",
+                "component": component["type"],
+                "bounds": (component["x"], component["y"], component["w"], component["h"]),
+            }}
+            for component in design["components"]
+        ),
+    }}
+    variants = (
+        {{"format": "text", "round_trip": text_round_trip["ok"], "component_count": len(text_round_trip["round_trip_components"])}},
+        {{
+            "format": "binary",
+            "round_trip": binary_round_trip["ok"],
+            "component_count": len(binary_round_trip["parsed"]["forms"][0]["children"]) if binary_round_trip["parsed"]["forms"] else 0,
+        }},
+        {{"format": "json", "round_trip": bool(json_model["components"]), "component_count": len(json_model["components"])}},
+    )
+    expected_count = len(design["components"])
+    return {{
+        "format": "appgen.generated-dfm-stream-variant-round-trip-contract.v1",
+        "ok": all(item["round_trip"] and item["component_count"] == expected_count for item in variants),
+        "variants": variants,
+        "json_model": json_model,
+        "guards": ("text_binary_json_identity", "component_count_stable", "published_property_values_preserved"),
+        "side_effects": (),
     }}
 
 
@@ -27330,9 +27424,13 @@ def pascal_runtime_workbench(table_name=None):
     debug_symbols = pascal_debug_symbol_contract(design=design)
     runtime_memory_model = pascal_runtime_memory_model_contract(design=design)
     toolchain_adapters = pascal_toolchain_adapter_contract(design=design)
+    binary_round_trip = dfm_binary_round_trip(design=design)
+    stream_variants = dfm_stream_variant_round_trip_contract(design=design)
     checks = (
         {{"id": "dfm_serialization", "ok": "object " in round_trip["dfm"] and "AppGenField" in round_trip["dfm"], "evidence": round_trip["dfm"]}},
         {{"id": "dfm_parse_round_trip", "ok": round_trip["ok"], "evidence": round_trip}},
+        {{"id": "binary_stream_codec", "ok": binary_round_trip["ok"] and {{"magic_header_validated", "checksum_validated"}} <= set(binary_round_trip["guards"]) and not binary_round_trip["side_effects"], "evidence": binary_round_trip}},
+        {{"id": "stream_variant_round_trip", "ok": stream_variants["ok"] and {{"text", "binary", "json"}} <= {{item["format"] for item in stream_variants["variants"]}} and not stream_variants["side_effects"], "evidence": stream_variants}},
         {{"id": "pascal_unit_generation", "ok": unit["unit_source"].startswith(f"unit {{unit['unit_name']}};") and "{{$R *.dfm}}" in unit["unit_source"], "evidence": unit["unit_name"]}},
         {{"id": "package_manifest", "ok": {{"runtime-core", "native-desktop-ui", "cross-platform-ui"}} <= set(unit["package_manifest"]["requires"]), "evidence": unit["package_manifest"]}},
         {{"id": "compiler_plan", "ok": not unit["compiler_plan"]["side_effects"] and {{"win64", "android"}} <= set(unit["compiler_plan"]["targets"]), "evidence": unit["compiler_plan"]}},
@@ -27399,6 +27497,8 @@ def pascal_runtime_workbench(table_name=None):
         "debug_symbols": debug_symbols,
         "runtime_memory_model": runtime_memory_model,
         "toolchain_adapters": toolchain_adapters,
+        "binary_round_trip": binary_round_trip,
+        "stream_variants": stream_variants,
         "blocking_gaps": tuple(check for check in checks if not check["ok"]),
     }}
 

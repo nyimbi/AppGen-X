@@ -94,7 +94,10 @@ from pyAppGen.form_designer import component_usability_workbench
 from pyAppGen.form_designer import cross_target_visual_depth_workbench
 from pyAppGen.form_designer import design_time_package_manager_workbench
 from pyAppGen.form_designer import detect_overlaps
+from pyAppGen.form_designer import decode_dfm_binary_stream
+from pyAppGen.form_designer import dfm_binary_round_trip
 from pyAppGen.form_designer import dfm_round_trip
+from pyAppGen.form_designer import encode_dfm_binary_stream
 from pyAppGen.form_designer import field_component_matrix
 from pyAppGen.form_designer import form_canvas
 from pyAppGen.form_designer import form_design as package_form_design
@@ -1389,6 +1392,9 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     parsed_dfm = parse_dfm_text(dfm_text)
     assert parsed_dfm["ok"] is True
     assert dfm_round_trip(design)["ok"] is True
+    binary_blob = encode_dfm_binary_stream(dfm_text)
+    assert decode_dfm_binary_stream(binary_blob) == dfm_text
+    assert dfm_binary_round_trip(design)["ok"] is True
     unit = pascal_unit_contract(design)
     assert unit["unit_source"].startswith("unit CustomerFormUnit;")
     assert "{$R *.dfm}" in unit["unit_source"]
@@ -1401,6 +1407,8 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     assert {
         "dfm_serialization",
         "dfm_parse_round_trip",
+        "binary_stream_codec",
+        "stream_variant_round_trip",
         "pascal_unit_generation",
         "package_manifest",
         "compiler_plan",
@@ -1433,6 +1441,8 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "toolchain_adapters",
     } == {check["id"] for check in runtime["checks"]}
     assert runtime["incremental"]["outputs"][0] == "diagnostic_delta"
+    assert runtime["binary_round_trip"]["decoded"] == dfm_text
+    assert {"text", "binary", "json"} <= {item["format"] for item in runtime["stream_variants"]["variants"]}
     assert "package_manager" in runtime["diagnostics"]["designer_surfaces"]
     assert runtime["package_dependencies"]["load_order"][-1] == unit["package_manifest"]["name"]
     assert "user_code_regions_preserved" in runtime["event_evolution"]["guards"]
@@ -9281,12 +9291,18 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert all("disable_package" in scenario["containment"] for scenario in generated_package_manager["failure_isolation"]["scenarios"])
     assert form_designer.dfm_streaming_contract()["stream_formats"][0] == "text-dfm"
     assert form_designer.dfm_round_trip("Book")["ok"] is True
+    generated_dfm = form_designer.form_design_to_dfm("Book")
+    generated_blob = form_designer.encode_dfm_binary_stream(generated_dfm)
+    assert form_designer.decode_dfm_binary_stream(generated_blob) == generated_dfm
+    assert form_designer.dfm_binary_round_trip("Book")["ok"] is True
     generated_runtime = form_designer.pascal_runtime_workbench("Book")
     assert generated_runtime["format"] == "appgen.generated-pascal-runtime-workbench.v1"
     assert generated_runtime["ok"] is True
     assert "{$R *.dfm}" in generated_runtime["unit"]["unit_source"]
     assert {
         "compiler_pipeline",
+        "binary_stream_codec",
+        "stream_variant_round_trip",
         "unit_parse_validation",
         "semantic_cross_check",
         "runtime_type_info",
@@ -9324,6 +9340,10 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert generated_runtime["semantic_validation"]["ok"] is True
     assert not generated_runtime["semantic_validation"]["diagnostics"]
     assert generated_runtime["incremental"]["cache_keys"]
+    assert generated_runtime["binary_round_trip"]["decoded"] == generated_dfm
+    assert {"text", "binary", "json"} <= {
+        item["format"] for item in generated_runtime["stream_variants"]["variants"]
+    }
     assert generated_runtime["artifact_parity"]["evidence"]["component_count"] == len(generated_runtime["round_trip"]["round_trip_components"])
     assert all(item["declared_in_unit"] for item in generated_runtime["component_inheritance"]["components"])
     assert all("method_lookup" in route["dispatch"] for route in generated_runtime["event_handler_wiring"]["routes"])
