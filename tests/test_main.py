@@ -1171,6 +1171,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "preview_contracts",
         "per_component_files",
         "per_package_files",
+        "module_smoke_tests",
         "requested_analog_coverage",
         "component_behavior",
     } == {check["id"] for check in usability["checks"]}
@@ -1186,6 +1187,10 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     assert all({"web", "mobile", "desktop"} <= set(item["renderers"]) for item in usability["components"])
     assert all(item["path"].startswith("app/component_contracts/") for item in usability["component_files"])
     assert all(item["path"].startswith("app/component_packages/") for item in usability["package_files"])
+    assert all("smoke_test" in item["exports"] for item in usability["component_files"])
+    assert all(item["module_contract"]["ok"] for item in usability["component_files"])
+    assert all("smoke_test" in item["exports"] for item in usability["package_files"])
+    assert all(item["module_contract"]["ok"] for item in usability["package_files"])
 
     canvas = form_canvas("Customer")
     assert canvas["format"] == "appgen.package-form-canvas.v1"
@@ -9357,17 +9362,31 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     )
     assert all(item["exists"] for item in generated_usability["component_files"])
     assert all(item["exists"] for item in generated_usability["package_files"])
+    assert "module_smoke_tests" in {
+        check["id"] for check in generated_usability["checks"]
+    }
     text_box_file = output_dir / "component_contracts" / "text_box.py"
     package_file = output_dir / "component_packages" / "devexpress_native.py"
     assert text_box_file.exists()
     assert package_file.exists()
-    py_compile.compile(str(text_box_file), doraise=True)
-    py_compile.compile(str(package_file), doraise=True)
+    component_files = tuple((output_dir / item["path"].replace("app/", "")) for item in generated_usability["component_files"])
+    package_files = tuple((output_dir / item["path"].replace("app/", "")) for item in generated_usability["package_files"])
+    assert all(path.exists() for path in component_files)
+    assert all(path.exists() for path in package_files)
+    for path in (*component_files, *package_files):
+        py_compile.compile(str(path), doraise=True)
     text_box_component = _load_module(text_box_file, "generated_text_box_component")
     assert text_box_component.contract()["component"] == "TextBox"
     assert text_box_component.render()["format"] == "appgen.component-render-node.v1"
     assert text_box_component.validate_props({"unknown": True})["ok"] is False
     assert text_box_component.behavior_contract()["ok"] is True
+    assert text_box_component.smoke_test()["ok"] is True
+    for index, item in enumerate(generated_usability["component_files"]):
+        module = _load_module(output_dir / item["path"].replace("app/", ""), f"generated_component_smoke_{index}")
+        assert module.smoke_test()["ok"] is True
+    for index, item in enumerate(generated_usability["package_files"]):
+        module = _load_module(output_dir / item["path"].replace("app/", ""), f"generated_package_smoke_{index}")
+        assert module.smoke_test()["ok"] is True
     assert text_box_component.target_adapters()["adapters"]
     assert {"created", "loaded"} <= set(text_box_component.state_model()["states"])
     assert text_box_component.serialization_contract()["property_stream"]

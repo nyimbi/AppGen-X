@@ -5575,30 +5575,110 @@ def component_implementation_catalog() -> tuple[dict, ...]:
     return tuple(component_runtime_contract(component) for component in sorted(COMPONENTS))
 
 
+def component_module_implementation_contract(component: str) -> dict:
+    """Return the required exports and smoke tests for one component module."""
+    contract = component_runtime_contract(component)
+    exports = (
+        "contract",
+        "render",
+        "validate_props",
+        "preview",
+        "behavior_contract",
+        "target_adapters",
+        "state_model",
+        "serialization_contract",
+        "binding_surface",
+        "designer_metadata",
+        "dispatch_event",
+        "test_plan",
+        "smoke_test",
+    )
+    smoke_tests = (
+        "contract_has_renderers",
+        "render_returns_virtual_node",
+        "default_props_validate",
+        "unknown_props_fail_validation",
+        "preview_renders",
+        "behavior_contract_ok",
+        "target_adapters_declared",
+        "state_model_declared",
+        "serialization_contract_declared",
+        "binding_surface_declared",
+        "designer_metadata_declared",
+        "event_dispatch_declared",
+    )
+    return {
+        "format": "appgen.component-module-implementation-contract.v1",
+        "component": component,
+        "path": f"app/component_contracts/{_module_name(component)}.py",
+        "exports": exports,
+        "smoke_tests": smoke_tests,
+        "ok": contract["usable"] and {"web", "mobile", "desktop"} <= set(contract["renderers"]) and "smoke_test" in exports,
+        "side_effects": (),
+    }
+
+
 def component_file_manifest() -> tuple[dict, ...]:
     """Return the per-component implementation files expected in generated apps."""
     return tuple(
         {
             "component": contract["component"],
-            "path": f"app/component_contracts/{_module_name(contract['component'])}.py",
-            "exports": (
-                "contract",
-                "render",
-                "validate_props",
-                "preview",
-                "behavior_contract",
-                "target_adapters",
-                "state_model",
-                "serialization_contract",
-                "binding_surface",
-                "designer_metadata",
-                "dispatch_event",
-                "test_plan",
-            ),
+            "path": module_contract["path"],
+            "exports": module_contract["exports"],
             "test_plan": contract["preview"]["sample_payload"],
+            "module_contract": module_contract,
         }
         for contract in component_implementation_catalog()
+        for module_contract in (component_module_implementation_contract(contract["component"]),)
     )
+
+
+def component_package_module_implementation_contract(package_id: str) -> dict:
+    """Return required exports and smoke tests for one component package module."""
+    package = component_package_contract(package_id)
+    exports = (
+        "package_contract",
+        "install_plan",
+        "load_policy",
+        "adapter_contract",
+        "dependency_graph",
+        "lockfile_integrity",
+        "sandbox_policy",
+        "registration_consistency",
+        "dependency_order",
+        "compatibility_smoke",
+        "adapter_smoke",
+        "preview_load",
+        "behavior_contract",
+        "validate_load_request",
+        "test_plan",
+        "smoke_test",
+    )
+    smoke_tests = (
+        "package_contract_resolves",
+        "install_plan_has_no_side_effects",
+        "load_policy_declares_guards",
+        "adapter_contract_declared",
+        "dependency_graph_declared",
+        "lockfile_integrity_ok",
+        "sandbox_policy_ok",
+        "registration_consistency_ok",
+        "dependency_order_ok",
+        "compatibility_smoke_ok",
+        "adapter_smoke_passes",
+        "isolated_preview_loads",
+        "behavior_contract_ok",
+        "load_request_validation_blocks_missing_checks",
+    )
+    return {
+        "format": "appgen.component-package-module-implementation-contract.v1",
+        "package": package_id,
+        "path": f"app/component_packages/{_module_name(package_id)}.py",
+        "exports": exports,
+        "smoke_tests": smoke_tests,
+        "ok": bool(package["adapters"]) and "smoke_test" in exports,
+        "side_effects": (),
+    }
 
 
 def component_package_file_manifest() -> tuple[dict, ...]:
@@ -5606,27 +5686,13 @@ def component_package_file_manifest() -> tuple[dict, ...]:
     return tuple(
         {
             "package": package["id"],
-            "path": f"app/component_packages/{_module_name(package['id'])}.py",
-            "exports": (
-                "package_contract",
-                "install_plan",
-                "load_policy",
-                "adapter_contract",
-                "dependency_graph",
-                "lockfile_integrity",
-                "sandbox_policy",
-                "registration_consistency",
-                "dependency_order",
-                "compatibility_smoke",
-                "adapter_smoke",
-                "preview_load",
-                "behavior_contract",
-                "validate_load_request",
-                "test_plan",
-            ),
+            "path": module_contract["path"],
+            "exports": module_contract["exports"],
             "requires_review": True,
+            "module_contract": module_contract,
         }
         for package in THIRD_PARTY_COMPONENT_SUITES
+        for module_contract in (component_package_module_implementation_contract(package["id"]),)
     )
 
 
@@ -5688,8 +5754,10 @@ def component_usability_workbench() -> dict:
                     "designer_metadata",
                     "dispatch_event",
                     "test_plan",
+                    "smoke_test",
                 }
                 <= set(item["exports"])
+                and item["module_contract"]["ok"]
                 for item in component_file_manifest()
             ),
             "evidence": component_file_manifest(),
@@ -5697,8 +5765,21 @@ def component_usability_workbench() -> dict:
         {
             "id": "per_package_files",
             "ok": len(component_package_file_manifest()) == len(THIRD_PARTY_COMPONENT_SUITES)
-            and all({"package_contract", "install_plan", "load_policy", "test_plan"} <= set(item["exports"]) for item in component_package_file_manifest()),
+            and all(
+                {"package_contract", "install_plan", "load_policy", "test_plan", "smoke_test"} <= set(item["exports"])
+                and item["module_contract"]["ok"]
+                for item in component_package_file_manifest()
+            ),
             "evidence": component_package_file_manifest(),
+        },
+        {
+            "id": "module_smoke_tests",
+            "ok": all("smoke_test" in item["exports"] and item["module_contract"]["smoke_tests"] for item in component_file_manifest())
+            and all("smoke_test" in item["exports"] and item["module_contract"]["smoke_tests"] for item in component_package_file_manifest()),
+            "evidence": {
+                "components": tuple((item["component"], item["module_contract"]["smoke_tests"]) for item in component_file_manifest()),
+                "packages": tuple((item["package"], item["module_contract"]["smoke_tests"]) for item in component_package_file_manifest()),
+            },
         },
         {
             "id": "requested_analog_coverage",
