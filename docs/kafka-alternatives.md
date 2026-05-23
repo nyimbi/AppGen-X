@@ -14,6 +14,30 @@ Use faust_streaming behind that adapter for ordinary generated work.
 Do not import stream libraries from generated business logic.
 ```
 
+## The Developer Answer
+
+When a developer, Studio user, DSL author, or coding agent asks "what should I
+use?", answer with this rule:
+
+```text
+Use the generated AppGen-X event contract.
+Do not choose a stream engine unless you are building one of the two audited
+exception workloads.
+```
+
+That means ordinary applications, generated PBCs, ERP workflows, integrations,
+chatbots, and agentic systems all use the same default:
+
+1. declare commands and events in the DSL or manifest;
+2. generate owned tables plus transactional outbox/inbox tables;
+3. write handlers against the AppGen-X event adapter API;
+4. let the platform select the default service-runtime profile;
+5. use release validation to prove idempotency, retry, dead-letter, and owner
+   coverage.
+
+Do not start by comparing stream-processing products. Start by modeling the
+business event contract. The platform owns the runtime choice.
+
 This document is the developer-facing companion to the executable policy in
 `src/pyAppGen/pbc.py`.
 
@@ -110,6 +134,40 @@ generator code:
 The default answer is not "choose a Kafka alternative." The default answer is
 "generate the AppGen-X outbox/inbox contract and route through the platform
 adapter."
+
+## Copy-Paste Rules For Generated PBCs
+
+Use these rules in PBC authoring guides, package templates, Studio help text,
+and coding-agent prompts:
+
+```text
+For normal generated applications:
+- omit stream_processor from the PBC manifest;
+- model commands, events, handlers, retries, idempotency, and dead-letter flows;
+- keep event logic behind the AppGen-X event adapter;
+- use PostgreSQL by default, or MySQL/MariaDB when that is the project standard;
+- never import stream-engine libraries from generated domain services.
+
+For telemetry or time-series workloads:
+- split the workload into its own PBC;
+- use quix_streams only with stream_exception_evidence.
+
+For complex parallel dataflow workloads:
+- split the workload into its own PBC;
+- use bytewax only with stream_exception_evidence.
+```
+
+Small local models should receive this compressed instruction:
+
+```text
+Generate AppGen-X outbox/inbox events. Omit stream_processor unless this is a
+telemetry/time-series PBC or a complex parallel dataflow PBC. Never compare
+stream engines in generated app code.
+```
+
+This keeps natural-language generation token-efficient and prevents an
+exponential combination of stream engines, backends, adapters, and deployment
+profiles.
 
 ## Exception Evidence
 
