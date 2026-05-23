@@ -102,6 +102,7 @@ Build a complete AppGen IDE and generation platform with:
 | 2026-05-24 | `2d99fa5` | Added generated platform target modules and generated tests for web, PWA, mobile, desktop, chatbot, and target release workbench surfaces. | Py compile; focused generated-app/form-designer/package-goal tests; staged hygiene scan passed. |
 | 2026-05-24 | `4c8b5c7` | Added generated PWA modules and generated tests for asset catalogs, manifest contracts, service-worker behavior, offline shell proof, and installability release gates. | Py compile; focused generated-app/form-designer/package-goal tests; staged hygiene scan passed. |
 | 2026-05-24 | `73ae57e` | Added generated microservice modules and generated tests for service catalogs, gateway routes, event routes, relationship resolution, mesh/scaling, and release workbench surfaces. | Py compile; focused generated-app/form-designer/package-goal tests; staged hygiene scan passed. |
+| 2026-05-24 | `b9836bf` | Added generated realtime modules and generated tests for topic catalogs, event payloads, SSE frames, collaboration messages, replay plans, and release workbench surfaces. | Py compile; focused generated-app/form-designer/package-goal tests; staged hygiene scan passed. |
 
 ## Current Working Slice
 
@@ -164,6 +165,10 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   generated tests that prove service catalogs, gateway routes, event routes,
   cross-service relationship resolution, mesh/scaling policy, canary rollback,
   and release workbench evidence without deploying services.
+- Generated applications now include standalone realtime modules and generated
+  tests that prove topic catalogs, event envelopes, SSE frames, collaboration
+  messages, replay plans, and release workbench evidence without starting a
+  websocket or queue runtime.
 - Generated applications now include a standalone mobile device runtime module
   that validates permission manifests, component adapters, simulator fixtures,
   lifecycle replay, and unsupported target handling without touching hardware.
