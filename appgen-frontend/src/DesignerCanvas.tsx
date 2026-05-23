@@ -13,6 +13,25 @@ const placedComponents = [
   { name: 'Mobile Target', icon: 'mobile' as const, x: 69, y: 73, w: 27 },
 ]
 
+const timelineTracks = [
+  { name: 'Fade totals panel', icon: 'floatAnimation' as const, duration: '180ms', target: 'Totals Chart' },
+  { name: 'Accent color shift', icon: 'colorAnimation' as const, duration: '240ms', target: 'Line Items' },
+  { name: 'Receipt path reveal', icon: 'pathAnimation' as const, duration: '420ms', target: 'Receipt Camera' },
+]
+
+const styleTokens = [
+  { name: 'Field focus', icon: 'style' as const, value: '#246b61' },
+  { name: 'Error state', icon: 'rule' as const, value: '#b42318' },
+  { name: 'Panel fill', icon: 'rectangle' as const, value: '#f8fafc' },
+]
+
+const sceneNodes = [
+  { name: 'Preview viewport', icon: 'viewport3d' as const, state: 'Active' },
+  { name: 'Invoice camera', icon: 'camera3d' as const, state: '35mm' },
+  { name: 'Key light', icon: 'light3d' as const, state: 'Soft' },
+  { name: 'Product mesh', icon: 'mesh3d' as const, state: 'Bound' },
+]
+
 export function DesignerCanvas() {
   return (
     <main className="panel designer-canvas" aria-label="Application designer">
@@ -66,6 +85,57 @@ export function DesignerCanvas() {
               <span>{component.name}</span>
             </button>
           ))}
+        </div>
+      </section>
+
+      <section className="surface-workbenches" aria-label="Advanced design surfaces">
+        <div className="surface-lane">
+          <div className="surface-lane-title">
+            <Icon name="animation" />
+            <span>Timeline</span>
+          </div>
+          <div className="timeline-stack">
+            {timelineTracks.map((track) => (
+              <button className="timeline-track" key={track.name} type="button" title={track.target}>
+                <Icon name={track.icon} />
+                <span>{track.name}</span>
+                <strong>{track.duration}</strong>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="surface-lane">
+          <div className="surface-lane-title">
+            <Icon name="style" />
+            <span>Style Tokens</span>
+          </div>
+          <div className="token-stack">
+            {styleTokens.map((token) => (
+              <button className="token-row" key={token.name} type="button">
+                <span className="token-swatch" style={{ background: token.value }} />
+                <Icon name={token.icon} />
+                <span>{token.name}</span>
+                <strong>{token.value}</strong>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="surface-lane">
+          <div className="surface-lane-title">
+            <Icon name="viewport3d" />
+            <span>3D Scene</span>
+          </div>
+          <div className="scene-node-stack">
+            {sceneNodes.map((node) => (
+              <button className="scene-node" key={node.name} type="button">
+                <Icon name={node.icon} />
+                <span>{node.name}</span>
+                <strong>{node.state}</strong>
+              </button>
+            ))}
+          </div>
         </div>
       </section>
     </main>

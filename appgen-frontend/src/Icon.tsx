@@ -551,6 +551,8 @@ const paths: Record<IconName, JSX.Element> = {
   ),
 }
 
+export const iconNames = Object.keys(paths) as IconName[]
+
 type IconProps = SVGProps<SVGSVGElement> & {
   name: IconName
 }

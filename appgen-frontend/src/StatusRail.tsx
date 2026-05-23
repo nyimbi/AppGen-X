@@ -1,10 +1,14 @@
 import { Icon } from './Icon'
+import { componentIconAudit } from './componentCatalog'
+
+const iconAudit = componentIconAudit()
 
 const statuses = [
   { label: 'DSL lint', value: 'Clean', icon: 'check' as const },
   { label: 'Bindings', value: '8 links', icon: 'database' as const },
   { label: 'Targets', value: '3 ready', icon: 'desktop' as const },
   { label: 'Agents', value: '2 staged', icon: 'agent' as const },
+  { label: 'Icons', value: iconAudit.ok ? `${iconAudit.totalComponents} mapped` : 'Review', icon: 'shape' as const },
 ]
 
 export function StatusRail() {

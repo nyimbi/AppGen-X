@@ -1,3 +1,4 @@
+import { iconNames } from './Icon'
 import type { IconName } from './Icon'
 
 export type ComponentCategory =
@@ -116,3 +117,24 @@ export const paletteComponents: PaletteComponent[] = [
 ]
 
 export const paletteCategories = Array.from(new Set(paletteComponents.map((component) => component.category)))
+
+export function componentIconAudit() {
+  const registeredIcons = new Set(iconNames)
+  const missingIcons = paletteComponents.filter((component) => !registeredIcons.has(component.icon))
+  const categoryCoverage = paletteCategories.map((category) => {
+    const components = paletteComponents.filter((component) => component.category === category)
+    return {
+      category,
+      count: components.length,
+      icons: Array.from(new Set(components.map((component) => component.icon))),
+    }
+  })
+
+  return {
+    ok: missingIcons.length === 0 && categoryCoverage.every((item) => item.count > 0 && item.icons.length > 0),
+    totalComponents: paletteComponents.length,
+    totalIcons: iconNames.length,
+    missingIcons,
+    categoryCoverage,
+  }
+}
