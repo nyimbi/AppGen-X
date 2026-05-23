@@ -80,6 +80,7 @@ Build a complete AppGen IDE and generation platform with:
 | 2026-05-23 | `4626b9a` | Added generated package-manager modules and generated tests for install, preview, registry, lifecycle, update, and rollback surfaces. | Py compile; generated package-manager module smoke probe; focused generated-app/form-designer/package-goal tests; staged hygiene scan passed. |
 | 2026-05-23 | `5f5e3d8` | Made event processing a required platform decision instead of a developer-facing stream-engine choice. | Focused PBC policy test, documentation diff check, and staged hygiene scan passed. |
 | 2026-05-23 | `88380b9` | Added generated native form runtime modules and generated tests for stream, unit, resource, compile, runtime-load, and design-edit surfaces. | Py compile; focused generated-app/form-designer/package-goal tests; staged hygiene scan passed. |
+| 2026-05-23 | `1179c08` | Added generated native runtime operation modules and generated tests for open stream, property delta, stream round-trip, compile preview, resource refresh, and runtime reload operations. | Py compile; focused generated-app/form-designer/package-goal tests; staged hygiene scan passed. |
 
 ## Current Working Slice
 
@@ -159,6 +160,10 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   one generated test module for stream, unit, resource, compile, runtime-load,
   and design-edit surfaces, with the native form runtime validating module and
   test coverage.
+- Generated applications now emit one importable native runtime operation
+  module and one generated test module for open stream, property delta, stream
+  round-trip, compile preview, resource refresh, and runtime reload operations,
+  with the runtime operation surface validating module and test coverage.
 - Generated applications now emit one importable Object Inspector module and
   one generated test module for property editors, event editors, component
   editors, custom designers, handler invocation, and binding bridge surfaces,
