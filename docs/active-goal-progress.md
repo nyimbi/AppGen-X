@@ -61,7 +61,7 @@ Build a complete AppGen IDE and generation platform with:
 | 2026-05-23 | `493a02c` | Added generated runtime operations as an independently importable native runtime surface. | Py compile; generated app test; focused form-designer, Studio, agentic, and aggregate package-goal tests; hygiene scan passed. |
 | 2026-05-23 | `423a8e6` | Enforced machine-checkable stream exception evidence for PBC manifests. | Py compile; focused PBC catalog test; aggregate package-goal test; hygiene scan passed. |
 | 2026-05-23 | `309f260` | Tightened the event-processing standard into one default generated stack with audited exception workflows. | Py compile; focused PBC catalog test; documentation diff check; staged hygiene scan passed. |
-| 2026-05-23 | `pending` | Added generated mobile device runtime as an independently importable side-effect-free device API replay surface. | Pending py compile, focused generated-app/form-designer/package-goal tests, and staged hygiene scan. |
+| 2026-05-23 | `df3500d` | Added generated mobile device runtime as an independently importable side-effect-free device API replay surface. | Py compile; focused generated-app/form-designer/package-goal tests; staged hygiene scan passed. |
 
 ## Current Working Slice
 
