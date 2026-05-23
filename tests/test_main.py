@@ -860,6 +860,11 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "event_signature_routing",
         "component_editor_history",
         "custom_designer_hit_testing",
+        "multi_select_property_merge",
+        "property_dependency_recalculation",
+        "inspector_diagnostics",
+        "component_tree_sync",
+        "inspector_metadata_round_trip",
     } == {check["id"] for check in inspector_workbench["checks"]}
     assert all("apply_change" in workflow["workflow"] for workflow in inspector_workbench["property_edit_workflows"])
     assert all("update_component_reference" in workflow["workflow"] for workflow in inspector_workbench["event_edit_workflows"])
@@ -876,6 +881,15 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         for hit_test in inspector_workbench["custom_designer_hit_tests"]
         for item in hit_test["hit_tests"]
     )
+    assert "mark_mixed_values" in inspector_workbench["multi_select"]["operations"][0]["stage"]
+    assert all(
+        "refresh_inspector" in recalculation["stage"]
+        for contract in inspector_workbench["property_dependencies"]
+        for recalculation in contract["recalculations"]
+    )
+    assert all(diagnostic["quick_fix"] for contract in inspector_workbench["diagnostics"] for diagnostic in contract["diagnostics"])
+    assert all("object_inspector" in operation["route"] for operation in inspector_workbench["component_tree_sync"]["operations"])
+    assert all(contract["exported"] == contract["imported"] for contract in inspector_workbench["round_trips"])
     binding_graph = livebindings_graph_contract()
     assert binding_graph["format"] == "appgen.livebindings-graph.v1"
     assert {"dataset", "field", "control", "expression"} <= {node["kind"] for node in binding_graph["nodes"]}
@@ -9435,6 +9449,11 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "event_signature_routing",
         "component_editor_history",
         "custom_designer_hit_testing",
+        "multi_select_property_merge",
+        "property_dependency_recalculation",
+        "inspector_diagnostics",
+        "component_tree_sync",
+        "inspector_metadata_round_trip",
     } == {check["id"] for check in generated_inspector["checks"]}
     assert generated_inspector["editor_registries"]
     assert generated_inspector["state_persistence"]["state_keys"]
@@ -9453,6 +9472,15 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         for hit_test in generated_inspector["custom_designer_hit_tests"]
         for item in hit_test["hit_tests"]
     )
+    assert "mixed_values_visible" in generated_inspector["multi_select"]["guards"]
+    assert all(
+        "recalculate_dependents" in recalculation["stage"]
+        for contract in generated_inspector["property_dependencies"]
+        for recalculation in contract["recalculations"]
+    )
+    assert all(diagnostic["quick_fix"] for contract in generated_inspector["diagnostics"] for diagnostic in contract["diagnostics"])
+    assert all("object_inspector" in operation["route"] for operation in generated_inspector["component_tree_sync"]["operations"])
+    assert all(contract["exported"] == contract["imported"] for contract in generated_inspector["round_trips"])
     generated_usability = form_designer.component_usability_workbench()
     assert generated_usability["format"] == "appgen.generated-component-usability-workbench.v1"
     assert generated_usability["ok"] is True

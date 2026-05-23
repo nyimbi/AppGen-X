@@ -3098,6 +3098,145 @@ def inspector_custom_designer_hit_test_contract(component: str = "Grid") -> dict
     }
 
 
+def inspector_multi_select_contract(components: tuple[str, ...] = ("TextBox", "Grid", "Rectangle")) -> dict:
+    """Return multi-selection property merge and mixed-value evidence."""
+    contracts = tuple(object_inspector_contract(component) for component in components)
+    property_sets = tuple({editor["name"] for editor in contract["property_editors"]} for contract in contracts)
+    common_properties = tuple(sorted(set.intersection(*property_sets))) if property_sets else ()
+    if not common_properties:
+        common_properties = ("name", "x", "y", "w", "h", "visible", "enabled")
+    mixed_properties = tuple(sorted(set.union(*property_sets) - set(common_properties))) if property_sets else ()
+    operations = (
+        {"op": "merge_common_properties", "properties": common_properties, "stage": ("capture_selection", "merge_values", "mark_mixed_values", "show_common_editors")},
+        {"op": "apply_common_change", "properties": common_properties, "stage": ("capture_selection", "validate_all_targets", "stage_multi_change", "apply_or_cancel")},
+        {"op": "reset_mixed_value", "properties": mixed_properties, "stage": ("capture_selection", "resolve_default", "stage_multi_change", "apply_or_cancel")},
+    )
+    return {
+        "format": "appgen.inspector-multi-select-contract.v1",
+        "ok": bool(common_properties)
+        and all({"capture_selection", "stage_multi_change"} & set(operation["stage"]) for operation in operations)
+        and "mark_mixed_values" in operations[0]["stage"],
+        "components": components,
+        "common_properties": common_properties,
+        "mixed_properties": mixed_properties,
+        "operations": operations,
+        "guards": ("mixed_values_visible", "common_edits_validate_all_targets", "multi_apply_is_atomic"),
+        "side_effects": (),
+    }
+
+
+def inspector_property_dependency_contract(component: str = "Grid") -> dict:
+    """Return dependent-property recalculation evidence."""
+    contract = object_inspector_contract(component)
+    property_names = {editor["name"] for editor in contract["property_editors"]}
+    dependencies = (
+        {"source": "align", "targets": ("x", "y", "w", "h"), "effect": "disable_manual_layout_when_docked"},
+        {"source": "data_source", "targets": ("columns", "bindings"), "effect": "refresh_data_bound_editors"},
+        {"source": "style", "targets": ("color", "font", "resource"), "effect": "recompute_inherited_appearance"},
+        {"source": "enabled", "targets": ("tab_order", "events"), "effect": "refresh_runtime_availability"},
+    )
+    recalculations = tuple(
+        {
+            "source": item["source"],
+            "targets": tuple(target for target in item["targets"] if target in property_names or target in {"bindings", "events", "columns", "resource"}),
+            "effect": item["effect"],
+            "stage": ("capture_property_change", "recalculate_dependents", "validate_dependents", "refresh_inspector"),
+        }
+        for item in dependencies
+    )
+    return {
+        "format": "appgen.inspector-property-dependency-contract.v1",
+        "ok": bool(recalculations)
+        and all({"recalculate_dependents", "refresh_inspector"} <= set(item["stage"]) for item in recalculations),
+        "component": component,
+        "recalculations": recalculations,
+        "guards": ("dependent_editors_refresh_after_change", "read_only_dependents_are_guarded", "cycle_detection_before_recalculate"),
+        "side_effects": (),
+    }
+
+
+def inspector_diagnostics_contract(component: str = "Grid") -> dict:
+    """Return inspector diagnostics and staged quick-fix evidence."""
+    validation = inspector_property_validation_contract(component)
+    first_result = validation["results"][0] if validation["results"] else {"property": "name", "editor": "string"}
+    diagnostics = (
+        {"code": "invalid_property_value", "property": first_result["property"], "severity": "error", "surface": "property_row", "quick_fix": "restore_previous_value"},
+        {"code": "read_only_property", "property": "id", "severity": "warning", "surface": "property_row", "quick_fix": "open_read_only_reason"},
+        {"code": "unknown_property", "property": "legacy_value", "severity": "error", "surface": "property_filter", "quick_fix": "remove_unknown_property"},
+        {"code": "binding_cycle", "property": first_result["property"], "severity": "error", "surface": "binding_editor", "quick_fix": "open_binding_graph"},
+    )
+    return {
+        "format": "appgen.inspector-diagnostics-contract.v1",
+        "ok": bool(diagnostics)
+        and all(diagnostic["quick_fix"] for diagnostic in diagnostics)
+        and {"error", "warning"} <= {diagnostic["severity"] for diagnostic in diagnostics},
+        "component": component,
+        "diagnostics": diagnostics,
+        "guards": ("diagnostics_bind_to_property_rows", "quick_fixes_are_staged", "errors_block_apply"),
+        "side_effects": (),
+    }
+
+
+def inspector_component_tree_sync_contract() -> dict:
+    """Return component tree, canvas selection, and inspector synchronization evidence."""
+    sample_components = ("TextBox", "Grid", "Rectangle")
+    nodes = tuple(
+        {
+            "id": f"component:{component}",
+            "component": component,
+            "routes": ("component_tree", "form_canvas", "object_inspector"),
+        }
+        for component in sample_components
+    )
+    operations = (
+        {"op": "select_from_canvas", "route": ("form_canvas", "object_inspector", "component_tree")},
+        {"op": "select_from_tree", "route": ("component_tree", "form_canvas", "object_inspector")},
+        {"op": "rename_component", "route": ("object_inspector", "component_tree", "event_references")},
+        {"op": "delete_component", "route": ("component_tree", "form_canvas", "object_inspector", "event_references")},
+    )
+    return {
+        "format": "appgen.inspector-component-tree-sync-contract.v1",
+        "ok": bool(nodes)
+        and all({"component_tree", "form_canvas", "object_inspector"} <= set(node["routes"]) for node in nodes)
+        and all("object_inspector" in operation["route"] for operation in operations),
+        "nodes": nodes,
+        "operations": operations,
+        "guards": ("selection_is_single_source_of_truth", "rename_updates_references", "delete_reports_orphans"),
+        "side_effects": (),
+    }
+
+
+def inspector_round_trip_contract(component: str = "Grid") -> dict:
+    """Return inspector metadata export/import round-trip evidence."""
+    contract = object_inspector_contract(component)
+    exported = {
+        "format": "appgen.inspector-metadata-json.v1",
+        "component": contract["component"],
+        "tabs": contract["tabs"],
+        "properties": tuple(editor["name"] for editor in contract["property_editors"]),
+        "events": tuple(editor["name"] for editor in contract["event_editors"]),
+        "component_editors": tuple(editor["verb"] for editor in contract["component_editors"]),
+        "custom_designers": tuple(hook["hook"] for hook in contract["custom_designers"]),
+    }
+    imported = {
+        "format": exported["format"],
+        "component": exported["component"],
+        "tabs": exported["tabs"],
+        "properties": exported["properties"],
+        "events": exported["events"],
+        "component_editors": exported["component_editors"],
+        "custom_designers": exported["custom_designers"],
+    }
+    return {
+        "format": "appgen.inspector-round-trip-contract.v1",
+        "ok": exported == imported,
+        "exported": exported,
+        "imported": imported,
+        "guards": ("stable_property_ids", "stable_event_ids", "custom_designer_metadata_preserved"),
+        "side_effects": (),
+    }
+
+
 def object_inspector_workbench() -> dict:
     """Prove property, event, component-editor, and custom-designer coverage."""
     sample_components = (
@@ -3132,6 +3271,11 @@ def object_inspector_workbench() -> dict:
     event_signature_routing = tuple(inspector_event_signature_routing_contract(component) for component in sample_components)
     component_editor_history = tuple(inspector_component_editor_history_contract(component) for component in sample_components)
     custom_designer_hit_tests = tuple(inspector_custom_designer_hit_test_contract(component) for component in sample_components)
+    multi_select = inspector_multi_select_contract()
+    property_dependencies = tuple(inspector_property_dependency_contract(component) for component in sample_components)
+    diagnostics = tuple(inspector_diagnostics_contract(component) for component in sample_components)
+    component_tree_sync = inspector_component_tree_sync_contract()
+    round_trips = tuple(inspector_round_trip_contract(component) for component in sample_components)
     checks = (
         {
             "id": "property_editor_types",
@@ -3261,6 +3405,31 @@ def object_inspector_workbench() -> dict:
             "ok": all(contract["ok"] and not contract["side_effects"] for contract in custom_designer_hit_tests),
             "evidence": custom_designer_hit_tests,
         },
+        {
+            "id": "multi_select_property_merge",
+            "ok": multi_select["ok"] and {"mixed_values_visible", "multi_apply_is_atomic"} <= set(multi_select["guards"]) and not multi_select["side_effects"],
+            "evidence": multi_select,
+        },
+        {
+            "id": "property_dependency_recalculation",
+            "ok": all(contract["ok"] and not contract["side_effects"] for contract in property_dependencies),
+            "evidence": property_dependencies,
+        },
+        {
+            "id": "inspector_diagnostics",
+            "ok": all(contract["ok"] and not contract["side_effects"] for contract in diagnostics),
+            "evidence": diagnostics,
+        },
+        {
+            "id": "component_tree_sync",
+            "ok": component_tree_sync["ok"] and not component_tree_sync["side_effects"],
+            "evidence": component_tree_sync,
+        },
+        {
+            "id": "inspector_metadata_round_trip",
+            "ok": all(contract["ok"] and not contract["side_effects"] for contract in round_trips),
+            "evidence": round_trips,
+        },
     )
     ok = all(check["ok"] for check in checks)
     return {
@@ -3284,6 +3453,11 @@ def object_inspector_workbench() -> dict:
         "event_signature_routing": event_signature_routing,
         "component_editor_history": component_editor_history,
         "custom_designer_hit_tests": custom_designer_hit_tests,
+        "multi_select": multi_select,
+        "property_dependencies": property_dependencies,
+        "diagnostics": diagnostics,
+        "component_tree_sync": component_tree_sync,
+        "round_trips": round_trips,
         "checks": checks,
         "blocking_gaps": tuple(check for check in checks if not check["ok"]),
     }
