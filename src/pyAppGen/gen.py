@@ -2063,6 +2063,27 @@ def write_api_testing_file(output_dir, schema: AppSchema):
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
     (output_dir / "api_testing.py").write_text(_api_testing_text(schema))
+    write_api_testing_module_files(output_dir)
+
+
+def write_api_testing_module_files(output_dir):
+    """Write generated API testing modules and smoke tests."""
+    output_dir = Path(output_dir)
+    module_dir = output_dir / "api_testing_modules"
+    test_dir = output_dir / "api_testing_module_tests"
+    module_dir.mkdir(parents=True, exist_ok=True)
+    test_dir.mkdir(parents=True, exist_ok=True)
+    (module_dir / "__init__.py").write_text(_api_testing_module_init_text(), encoding="utf-8")
+    (test_dir / "__init__.py").write_text(_api_testing_module_test_init_text(), encoding="utf-8")
+    for module_name in API_TESTING_MODULES:
+        (module_dir / f"{module_name}.py").write_text(
+            _api_testing_module_text(module_name),
+            encoding="utf-8",
+        )
+        (test_dir / f"test_{module_name}.py").write_text(
+            _api_testing_module_test_text(module_name),
+            encoding="utf-8",
+        )
 
 
 def write_code_review_file(output_dir, schema: AppSchema):
@@ -2396,6 +2417,15 @@ DIAGNOSTICS_MODULES = (
     "remediation_support_module",
     "api_load_plan_module",
     "diagnostics_release_workbench_module",
+)
+
+API_TESTING_MODULES = (
+    "request_matrix_module",
+    "response_validation_module",
+    "fixture_strategy_module",
+    "ui_smoke_module",
+    "synthetic_monitor_module",
+    "api_testing_release_workbench_module",
 )
 
 
@@ -8386,6 +8416,273 @@ def smoke_test():
         "surface": SURFACE,
         "ok": True,
         "tests": ("test_diagnostics_module_contract", "test_diagnostics_module_smoke"),
+    }}
+'''
+
+
+def _api_testing_module_init_text() -> str:
+    return (
+        '"""Generated API testing modules."""\n\n'
+        f"API_TESTING_MODULES = {API_TESTING_MODULES!r}\n"
+    )
+
+
+def _api_testing_module_test_init_text() -> str:
+    modules = tuple(f"test_{name}" for name in API_TESTING_MODULES)
+    return (
+        '"""Generated API testing module tests."""\n\n'
+        f"API_TESTING_MODULE_TESTS = {modules!r}\n"
+    )
+
+
+def _api_testing_surface(module_name: str) -> tuple[str, str]:
+    return {
+        "request_matrix_module": ("request_matrix", "request_plan"),
+        "response_validation_module": ("response_validation", "validate_response"),
+        "fixture_strategy_module": ("fixture_strategy", "fixture_strategy"),
+        "ui_smoke_module": ("ui_smoke", "ui_smoke_plan"),
+        "synthetic_monitor_module": ("synthetic_monitor", "synthetic_monitor_plan"),
+        "api_testing_release_workbench_module": ("api_testing_release_workbench", "api_testing_release_gate"),
+    }[module_name]
+
+
+def _api_testing_module_text(module_name: str) -> str:
+    surface, operation = _api_testing_surface(module_name)
+    return f'''"""Generated API testing module for {surface}."""
+
+from __future__ import annotations
+
+import importlib.util
+from pathlib import Path
+
+
+MODULE = {module_name!r}
+SURFACE = {surface!r}
+OPERATION = {operation!r}
+EXPECTED_EXPORTS = (
+    "module_contract",
+    "api_testing_manifest_contract",
+    "run_api_testing_operation",
+    "release_context",
+    "smoke_test",
+)
+
+
+def _api_testing():
+    module_path = Path(__file__).resolve().parents[1] / "api_testing.py"
+    spec = importlib.util.spec_from_file_location(f"generated_api_testing_{{MODULE}}_api_testing", module_path)
+    module = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(module)
+    return module
+
+
+def _assets():
+    return {{"app/api_testing.py", "app/templates/appgen_api_testing.html", "docs/openapi.json"}}
+
+
+def _openapi_paths(api_testing):
+    return tuple(request["path_template"] for request in api_testing.request_plan())
+
+
+def _first_request(api_testing):
+    requests = api_testing.request_plan()
+    if not requests:
+        raise AssertionError("generated API testing module requires at least one request")
+    return requests[0]
+
+
+def module_contract():
+    """Return this generated API testing module's export contract."""
+    available = tuple(name for name in EXPECTED_EXPORTS if name in globals())
+    return {{
+        "format": "appgen.api-testing-module-contract.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "operation": OPERATION,
+        "ok": set(EXPECTED_EXPORTS) <= set(available),
+        "exports": available,
+        "expected_exports": EXPECTED_EXPORTS,
+        "side_effects": (),
+    }}
+
+
+def api_testing_manifest_contract():
+    """Return generated API testing metadata owned by this module."""
+    api_testing = _api_testing()
+    requests = api_testing.request_plan()
+    coverage = api_testing.contract_coverage(_openapi_paths(api_testing))
+    return {{
+        "format": "appgen.api-testing-module-manifest.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "ok": bool(api_testing.api_test_catalog())
+        and bool(requests)
+        and api_testing.api_testing_check(_assets())["ok"]
+        and coverage["ok"],
+        "catalog": api_testing.api_test_catalog(),
+        "requests": requests,
+        "fixtures": api_testing.fixture_strategy(),
+        "coverage": coverage,
+        "side_effects": (),
+    }}
+
+
+def run_api_testing_operation():
+    """Run this module's side-effect-free API testing operation."""
+    api_testing = _api_testing()
+    first_request = _first_request(api_testing)
+    if SURFACE == "request_matrix":
+        operation = {{
+            "catalog": api_testing.api_test_catalog(),
+            "requests": api_testing.request_plan(),
+            "pytest_cases": api_testing.pytest_case_matrix(),
+            "rendered": api_testing.render_pytest_module(),
+        }}
+        ok = bool(operation["requests"]) and operation["pytest_cases"][0]["id"] == first_request["name"] and "test_generated_api_contracts" in operation["rendered"]
+    elif SURFACE == "response_validation":
+        operation = {{
+            "valid": api_testing.validate_response(first_request["name"], first_request["expected_status"][0]),
+            "synthetic": api_testing.synthetic_check_results({{first_request["name"]: first_request["expected_status"][0]}}),
+        }}
+        ok = operation["valid"]["ok"] and operation["synthetic"]["ok"]
+    elif SURFACE == "fixture_strategy":
+        operation = {{
+            "fixtures": api_testing.fixture_strategy(),
+            "execution": api_testing.test_execution_plan(),
+        }}
+        ok = operation["fixtures"]["source"] == "seed.py" and operation["execution"]["fixture_source"] == "seed.py"
+    elif SURFACE == "ui_smoke":
+        first_ui = api_testing.ui_smoke_plan()[0]
+        operation = {{
+            "plan": api_testing.ui_smoke_plan(base_url="https://app.example.test"),
+            "result": api_testing.ui_smoke_result(first_ui["name"], status_code=first_ui["expected_status"][0], text=" ".join(first_ui["assert_text"]), selectors=first_ui["assert_selectors"], accessibility=first_ui["accessibility"]),
+            "rendered": api_testing.render_playwright_smoke_module(),
+        }}
+        ok = operation["result"]["ok"] and "test_generated_ui_smoke" in operation["rendered"]
+    elif SURFACE == "synthetic_monitor":
+        operation = {{
+            "monitor": api_testing.synthetic_monitor_plan(interval_seconds=1),
+            "coverage": api_testing.contract_coverage(_openapi_paths(api_testing)),
+        }}
+        ok = operation["monitor"]["interval_seconds"] == 15 and operation["coverage"]["ok"]
+    else:
+        operation = {{
+            "release": api_testing.api_testing_release_gate(_assets(), _openapi_paths(api_testing)),
+            "workbench": api_testing.api_testing_workbench(_assets(), _openapi_paths(api_testing)),
+        }}
+        ok = operation["release"]["ok"] and operation["workbench"]["ok"]
+    return {{
+        "format": "appgen.api-testing-module-operation.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "ok": ok,
+        "operation": operation,
+        "side_effects": (),
+    }}
+
+
+def release_context():
+    """Return release evidence used by this API testing module."""
+    api_testing = _api_testing()
+    paths = _openapi_paths(api_testing)
+    return {{
+        "format": "appgen.api-testing-module-release-context.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "ok": api_testing.api_testing_release_gate(_assets(), paths)["ok"] and api_testing.api_testing_workbench(_assets(), paths)["ok"],
+        "release": api_testing.api_testing_release_gate(_assets(), paths),
+        "workbench": api_testing.api_testing_workbench(_assets(), paths),
+        "side_effects": (),
+    }}
+
+
+def smoke_test():
+    """Run side-effect-free checks for this generated API testing module."""
+    contract = module_contract()
+    manifest = api_testing_manifest_contract()
+    operation = run_api_testing_operation()
+    release = release_context()
+    return {{
+        "format": "appgen.api-testing-module-smoke-test.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "ok": contract["ok"]
+        and manifest["ok"]
+        and operation["ok"]
+        and release["ok"]
+        and not manifest["side_effects"]
+        and not operation["side_effects"]
+        and not release["side_effects"],
+        "contract": contract,
+        "manifest": manifest,
+        "operation": operation,
+        "release": release,
+        "checks": (
+            "module_contract_resolves",
+            "api_testing_manifest_contract_ok",
+            "api_testing_operation_ok",
+            "release_context_ok",
+            "no_side_effects",
+        ),
+    }}
+'''
+
+
+def _api_testing_module_test_text(module_name: str) -> str:
+    surface, _operation = _api_testing_surface(module_name)
+    return f'''"""Generated tests for the {surface} API testing module."""
+
+from __future__ import annotations
+
+import importlib.util
+from pathlib import Path
+
+
+MODULE = {module_name!r}
+SURFACE = {surface!r}
+
+
+def load_api_testing_module():
+    """Load the generated API testing module without app installation."""
+    module_path = Path(__file__).resolve().parents[1] / "api_testing_modules" / f"{{MODULE}}.py"
+    spec = importlib.util.spec_from_file_location(f"generated_api_testing_module_{{MODULE}}", module_path)
+    module = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(module)
+    return module
+
+
+def test_api_testing_module_contract():
+    """Assert the generated API testing module exposes its contract."""
+    module = load_api_testing_module()
+    contract = module.module_contract()
+    assert contract["module"] == MODULE
+    assert contract["surface"] == SURFACE
+    assert contract["ok"] is True
+    assert all(hasattr(module, name) for name in contract["expected_exports"])
+
+
+def test_api_testing_module_smoke():
+    """Assert the module's side-effect-free smoke test passes."""
+    module = load_api_testing_module()
+    result = module.smoke_test()
+    assert result["ok"] is True
+    assert result["module"] == MODULE
+    assert result["surface"] == SURFACE
+    assert result["checks"]
+
+
+def smoke_test():
+    """Run this generated test module in a side-effect-free way."""
+    test_api_testing_module_contract()
+    test_api_testing_module_smoke()
+    return {{
+        "format": "appgen.api-testing-module-generated-test-smoke.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "ok": True,
+        "tests": ("test_api_testing_module_contract", "test_api_testing_module_smoke"),
     }}
 '''
 
@@ -58054,6 +58351,8 @@ from __future__ import annotations
 
 from datetime import datetime
 from datetime import timezone
+import importlib.util
+from pathlib import Path
 
 from flask import jsonify
 from flask_appbuilder import BaseView
@@ -58063,6 +58362,73 @@ from flask_appbuilder import expose
 API_TESTS = {tests!r}
 UI_SMOKE_TESTS = {tuple(ui_smoke)!r}
 SEED_FIXTURE_SCENARIOS = ("demo", "smoke", "load")
+API_TESTING_MODULES = (
+    "request_matrix_module",
+    "response_validation_module",
+    "fixture_strategy_module",
+    "ui_smoke_module",
+    "synthetic_monitor_module",
+    "api_testing_release_workbench_module",
+)
+
+
+def _load_generated_module(module_path, module_name):
+    """Load a generated API testing module without installing the app."""
+    spec = importlib.util.spec_from_file_location(module_name, module_path)
+    module = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(module)
+    return module
+
+
+def api_testing_module_file_manifest():
+    """Return independently importable generated API testing module files."""
+    root = Path(__file__).resolve().parent
+    modules = []
+    for module_name in API_TESTING_MODULES:
+        module_path = root / "api_testing_modules" / f"{{module_name}}.py"
+        module = _load_generated_module(module_path, f"generated_api_testing_module_{{module_name}}")
+        contract = module.module_contract()
+        modules.append(
+            {{
+                "module": module_name,
+                "surface": contract["surface"],
+                "path": f"app/api_testing_modules/{{module_name}}.py",
+                "exists": module_path.exists(),
+                "ok": contract["ok"] and module.smoke_test()["ok"],
+                "exports": contract["exports"],
+            }}
+        )
+    return {{
+        "format": "appgen.api-testing-module-file-manifest.v1",
+        "ok": len(modules) == len(API_TESTING_MODULES) and all(item["ok"] and item["exists"] for item in modules),
+        "modules": tuple(modules),
+    }}
+
+
+def api_testing_module_test_file_manifest():
+    """Return generated tests for the API testing module files."""
+    root = Path(__file__).resolve().parent
+    tests = []
+    for module_name in API_TESTING_MODULES:
+        test_path = root / "api_testing_module_tests" / f"test_{{module_name}}.py"
+        module = _load_generated_module(test_path, f"generated_api_testing_module_test_{{module_name}}")
+        result = module.smoke_test()
+        tests.append(
+            {{
+                "module": f"test_{{module_name}}",
+                "surface": result["surface"],
+                "path": f"app/api_testing_module_tests/test_{{module_name}}.py",
+                "exists": test_path.exists(),
+                "ok": result["ok"],
+                "tests": result["tests"],
+            }}
+        )
+    return {{
+        "format": "appgen.api-testing-module-test-file-manifest.v1",
+        "ok": len(tests) == len(API_TESTING_MODULES) and all(item["ok"] and item["exists"] for item in tests),
+        "tests": tuple(tests),
+    }}
 
 
 def api_test_catalog():
@@ -67876,6 +68242,8 @@ def validate_api_testing_artifacts() -> None:
         fail("API testing contract must expose generated UI smoke tests and result evaluation")
     if "contract_coverage" not in contract or "api_testing_check" not in contract or "api_testing_release_gate" not in contract or "api_testing_workbench" not in contract or "render_pytest_module" not in contract or "test_execution_plan" not in contract:
         fail("API testing contract must expose OpenAPI coverage, pytest rendering, execution plans, workbench, release gates, and readiness helpers")
+    if "api_testing_module_file_manifest" not in contract or "api_testing_module_test_file_manifest" not in contract or "API_TESTING_MODULES" not in contract:
+        fail("API testing contract must expose generated module manifests and module-test manifests")
     if "appgen.api-testing-workbench.v1" not in contract or '@expose("/workbench.json")' not in contract:
         fail("API testing contract must expose a versioned workbench route")
     if "fixture_strategy" not in contract or "seed_fixture_export('smoke')" not in contract or "fixture_scenario" not in contract:
