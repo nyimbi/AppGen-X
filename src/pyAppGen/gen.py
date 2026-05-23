@@ -1756,6 +1756,7 @@ def write_form_designer_file(output_dir, schema: AppSchema):
     write_device_api_component_files(output_dir)
     write_visual_component_files(output_dir)
     write_data_tooling_module_files(output_dir)
+    write_inspector_module_files(output_dir)
 
 
 DEVICE_API_COMPONENTS = (
@@ -1805,6 +1806,15 @@ DATA_TOOLING_MODULES = (
     "dataset_module",
     "service_proxy_module",
     "offline_module",
+)
+
+INSPECTOR_MODULES = (
+    "property_editor_module",
+    "event_editor_module",
+    "component_editor_module",
+    "custom_designer_module",
+    "handler_invocation_module",
+    "binding_bridge_module",
 )
 
 
@@ -1935,6 +1945,26 @@ def write_data_tooling_module_files(output_dir):
         )
 
 
+def write_inspector_module_files(output_dir):
+    """Write generated Object Inspector editor modules and smoke tests."""
+    output_dir = Path(output_dir)
+    module_dir = output_dir / "inspector_modules"
+    test_dir = output_dir / "inspector_module_tests"
+    module_dir.mkdir(parents=True, exist_ok=True)
+    test_dir.mkdir(parents=True, exist_ok=True)
+    (module_dir / "__init__.py").write_text(_inspector_module_init_text(), encoding="utf-8")
+    (test_dir / "__init__.py").write_text(_inspector_module_test_init_text(), encoding="utf-8")
+    for module_name in INSPECTOR_MODULES:
+        (module_dir / f"{module_name}.py").write_text(
+            _inspector_module_text(module_name),
+            encoding="utf-8",
+        )
+        (test_dir / f"test_{module_name}.py").write_text(
+            _inspector_module_test_text(module_name),
+            encoding="utf-8",
+        )
+
+
 def _module_name(name: str) -> str:
     """Return a stable snake-case module name for a component or package."""
     chars = []
@@ -1990,6 +2020,218 @@ def _data_tooling_module_test_init_text() -> str:
         '"""Generated native data tooling module tests."""\n\n'
         f"DATA_TOOLING_MODULE_TESTS = {modules!r}\n"
     )
+
+
+def _inspector_module_init_text() -> str:
+    return (
+        '"""Generated Object Inspector editor modules."""\n\n'
+        f"INSPECTOR_MODULES = {INSPECTOR_MODULES!r}\n"
+    )
+
+
+def _inspector_module_test_init_text() -> str:
+    modules = tuple(f"test_{name}" for name in INSPECTOR_MODULES)
+    return (
+        '"""Generated Object Inspector editor module tests."""\n\n'
+        f"INSPECTOR_MODULE_TESTS = {modules!r}\n"
+    )
+
+
+def _inspector_module_text(module_name: str) -> str:
+    return f'''"""Generated Object Inspector editor module for {module_name}."""
+
+from __future__ import annotations
+
+import importlib.util
+from pathlib import Path
+
+
+MODULE = {module_name!r}
+EXPECTED_EXPORTS = (
+    "module_contract",
+    "editor_manifest",
+    "run_editor_operation",
+    "runtime_manifest",
+    "smoke_test",
+)
+
+
+def _load_sibling(module_name):
+    module_path = Path(__file__).resolve().parents[1] / f"{{module_name}}.py"
+    spec = importlib.util.spec_from_file_location(f"generated_inspector_{{MODULE}}_{{module_name}}", module_path)
+    module = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(module)
+    return module
+
+
+def _form_designer():
+    return _load_sibling("form_designer")
+
+
+def _runtime():
+    return _load_sibling("inspector_runtime")
+
+
+def _module_kind():
+    return {{
+        "property_editor_module": "property_editors",
+        "event_editor_module": "event_editors",
+        "component_editor_module": "component_editors",
+        "custom_designer_module": "custom_designers",
+        "handler_invocation_module": "handler_invocation",
+        "binding_bridge_module": "binding_bridge",
+    }}[MODULE]
+
+
+def module_contract():
+    """Return this inspector module's export and responsibility contract."""
+    available = tuple(name for name in EXPECTED_EXPORTS if name in globals())
+    return {{
+        "format": "appgen.inspector-module-contract.v1",
+        "module": MODULE,
+        "kind": _module_kind(),
+        "ok": set(EXPECTED_EXPORTS) <= set(available),
+        "exports": available,
+        "expected_exports": EXPECTED_EXPORTS,
+        "side_effects": (),
+    }}
+
+
+def editor_manifest(component="Grid"):
+    """Return the editor metadata owned by this generated inspector module."""
+    designer = _form_designer()
+    runtime = _runtime()
+    runtime_manifest_data = runtime.inspector_runtime_manifest(component)
+    contract = runtime_manifest_data["contract"]
+    workbench = designer.object_inspector_workbench()
+    kind = _module_kind()
+    if kind in {{"property_editors", "event_editors", "component_editors", "custom_designers"}}:
+        payload = contract[kind]
+    elif kind == "handler_invocation":
+        payload = workbench["cross_handler_invocation"]
+    else:
+        payload = workbench["inspector_binding_bridge"]
+    return {{
+        "format": "appgen.inspector-module-editor-manifest.v1",
+        "module": MODULE,
+        "kind": kind,
+        "component": component,
+        "ok": bool(payload) and runtime_manifest_data["ok"],
+        "payload": payload,
+        "runtime_checks": runtime_manifest_data["checks"],
+        "side_effects": (),
+    }}
+
+
+def run_editor_operation(component="Grid"):
+    """Run this module's side-effect-free inspector operation."""
+    designer = _form_designer()
+    runtime_manifest_data = _runtime().inspector_runtime_manifest(component)
+    actionables = runtime_manifest_data["actionable_operations"]
+    kind = _module_kind()
+    operation = {{
+        "property_editors": actionables["property_edit"],
+        "event_editors": actionables["event_rename"],
+        "component_editors": actionables["component_editor"],
+        "custom_designers": actionables["custom_designer"],
+        "handler_invocation": actionables["handler_invoke"],
+        "binding_bridge": designer.inspector_binding_designer_bridge_contract(),
+    }}[kind]
+    return {{
+        "format": "appgen.inspector-module-operation.v1",
+        "module": MODULE,
+        "kind": kind,
+        "component": component,
+        "ok": operation["ok"] and not operation["side_effects"],
+        "operation": operation,
+        "side_effects": (),
+    }}
+
+
+def runtime_manifest(component="Grid"):
+    """Return the aggregate inspector runtime manifest used by this module."""
+    return _runtime().inspector_runtime_manifest(component)
+
+
+def smoke_test(component="Grid"):
+    """Run side-effect-free checks for this generated inspector module."""
+    contract = module_contract()
+    manifest = editor_manifest(component)
+    operation = run_editor_operation(component)
+    runtime = runtime_manifest(component)
+    return {{
+        "format": "appgen.inspector-module-smoke-test.v1",
+        "module": MODULE,
+        "kind": contract["kind"],
+        "ok": contract["ok"]
+        and manifest["ok"]
+        and operation["ok"]
+        and runtime["ok"]
+        and not manifest["side_effects"]
+        and not operation["side_effects"],
+        "checks": (
+            "module_contract_resolves",
+            "editor_manifest_resolves",
+            "editor_operation_replays",
+            "runtime_manifest_ok",
+            "no_side_effects",
+        ),
+    }}
+'''
+
+
+def _inspector_module_test_text(module_name: str) -> str:
+    return f'''"""Generated tests for the {module_name} Object Inspector module."""
+
+from __future__ import annotations
+
+import importlib.util
+from pathlib import Path
+
+
+MODULE = {module_name!r}
+
+
+def load_inspector_module():
+    """Load the generated inspector module without app installation."""
+    module_path = Path(__file__).resolve().parents[1] / "inspector_modules" / f"{{MODULE}}.py"
+    spec = importlib.util.spec_from_file_location(f"generated_inspector_module_{{MODULE}}", module_path)
+    module = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(module)
+    return module
+
+
+def test_inspector_module_contract():
+    """Assert the generated inspector module exposes its contract."""
+    module = load_inspector_module()
+    contract = module.module_contract()
+    assert contract["module"] == MODULE
+    assert contract["ok"] is True
+    assert all(hasattr(module, name) for name in contract["expected_exports"])
+
+
+def test_inspector_module_smoke():
+    """Assert the module's side-effect-free smoke test passes."""
+    module = load_inspector_module()
+    result = module.smoke_test("Grid")
+    assert result["ok"] is True
+    assert result["module"] == MODULE
+    assert result["checks"]
+
+
+def smoke_test():
+    """Run this generated test module in a side-effect-free way."""
+    test_inspector_module_contract()
+    test_inspector_module_smoke()
+    return {{
+        "format": "appgen.inspector-module-generated-test-smoke.v1",
+        "module": MODULE,
+        "ok": True,
+        "tests": ("test_inspector_module_contract", "test_inspector_module_smoke"),
+    }}
+'''
 
 
 def _data_tooling_module_text(module_name: str) -> str:
@@ -4378,6 +4620,114 @@ def _load_form_designer():
     return module
 
 
+def _load_generated_module(module_path, module_name):
+    spec = importlib.util.spec_from_file_location(module_name, module_path)
+    module = importlib.util.module_from_spec(spec)
+    if spec.loader is None:
+        raise RuntimeError(f"Could not load generated module: {module_path}")
+    spec.loader.exec_module(module)
+    return module
+
+
+def inspector_module_file_manifest(component="Grid"):
+    """Return file-level evidence for generated inspector editor modules."""
+    module_names = (
+        "property_editor_module",
+        "event_editor_module",
+        "component_editor_module",
+        "custom_designer_module",
+        "handler_invocation_module",
+        "binding_bridge_module",
+    )
+    required_exports = (
+        "module_contract",
+        "editor_manifest",
+        "run_editor_operation",
+        "runtime_manifest",
+        "smoke_test",
+    )
+    module_dir = Path(__file__).with_name("inspector_modules")
+    entries = []
+    for module_name in module_names:
+        module_path = module_dir / f"{module_name}.py"
+        exports = ()
+        contract_ok = False
+        smoke_ok = False
+        if module_path.exists():
+            module = _load_generated_module(module_path, f"generated_inspector_module_{module_name}")
+            exports = tuple(name for name in required_exports if hasattr(module, name))
+            contract = module.module_contract()
+            smoke = module.smoke_test(component)
+            contract_ok = contract["ok"] and contract["module"] == module_name
+            smoke_ok = smoke["ok"] and smoke["module"] == module_name
+        entries.append(
+            {
+                "module": module_name,
+                "path": f"app/inspector_modules/{module_name}.py",
+                "exists": module_path.exists(),
+                "exports": exports,
+                "expected_exports": required_exports,
+                "contract_ok": contract_ok,
+                "smoke_ok": smoke_ok,
+            }
+        )
+    return {
+        "format": "appgen.generated-inspector-module-file-manifest.v1",
+        "ok": bool(entries)
+        and all(item["exists"] and item["contract_ok"] and item["smoke_ok"] and set(item["expected_exports"]) <= set(item["exports"]) for item in entries),
+        "modules": tuple(entries),
+        "guards": ("one_file_per_inspector_surface", "declared_exports_present", "module_smoke_replays"),
+        "side_effects": (),
+    }
+
+
+def inspector_module_test_file_manifest(component="Grid"):
+    """Return file-level evidence for generated inspector module tests."""
+    module_names = (
+        "property_editor_module",
+        "event_editor_module",
+        "component_editor_module",
+        "custom_designer_module",
+        "handler_invocation_module",
+        "binding_bridge_module",
+    )
+    required_exports = (
+        "load_inspector_module",
+        "test_inspector_module_contract",
+        "test_inspector_module_smoke",
+        "smoke_test",
+    )
+    test_dir = Path(__file__).with_name("inspector_module_tests")
+    entries = []
+    for module_name in module_names:
+        module_path = test_dir / f"test_{module_name}.py"
+        exports = ()
+        smoke_ok = False
+        if module_path.exists():
+            module = _load_generated_module(module_path, f"generated_inspector_module_test_{module_name}")
+            exports = tuple(name for name in required_exports if hasattr(module, name))
+            smoke = module.smoke_test()
+            smoke_ok = smoke["ok"] and smoke["module"] == module_name
+        entries.append(
+            {
+                "module": module_name,
+                "path": f"app/inspector_module_tests/test_{module_name}.py",
+                "exists": module_path.exists(),
+                "exports": exports,
+                "required_exports": required_exports,
+                "smoke_ok": smoke_ok,
+            }
+        )
+    return {
+        "format": "appgen.generated-inspector-module-test-file-manifest.v1",
+        "ok": bool(entries) and all(item["exists"] and item["smoke_ok"] and set(item["required_exports"]) <= set(item["exports"]) for item in entries),
+        "tests": tuple(entries),
+        "required_exports": required_exports,
+        "guards": ("one_test_file_per_inspector_surface", "contract_and_smoke_tests_exported"),
+        "side_effects": (),
+    }
+
+
 def inspector_runtime_manifest(component="Grid"):
     """Return generated inspector editors, handlers, designers, and replay evidence."""
     form_designer = _load_form_designer()
@@ -4471,6 +4821,8 @@ def validate_inspector_runtime(component="Grid"):
     """Validate generated inspector runtime readiness."""
     manifest = inspector_runtime_manifest(component)
     replay = replay_inspector_runtime(component)
+    module_files = inspector_module_file_manifest(component)
+    module_tests = inspector_module_test_file_manifest(component)
     checks = (
         {"id": "manifest_ok", "ok": manifest["ok"]},
         {"id": "property_editors_present", "ok": bool(manifest["contract"]["property_editors"])},
@@ -4482,6 +4834,8 @@ def validate_inspector_runtime(component="Grid"):
         {"id": "custom_registration_replay", "ok": manifest["custom_designer_registration_replay"]["ok"] and not manifest["custom_designer_registration_replay"]["side_effects"]},
         {"id": "binding_bridge_replay", "ok": manifest["inspector_binding_bridge"]["ok"] and not manifest["inspector_binding_bridge"]["side_effects"]},
         {"id": "handler_invocation_policy", "ok": manifest["cross_handler_invocation"]["ok"] and "cycle_guard_required" in manifest["cross_handler_invocation"]["guards"]},
+        {"id": "inspector_modules_ready", "ok": module_files["ok"] and not module_files["side_effects"]},
+        {"id": "inspector_module_tests_ready", "ok": module_tests["ok"] and not module_tests["side_effects"]},
         {"id": "runtime_replay", "ok": replay["ok"] and not replay["side_effects"]},
     )
     return {
@@ -4489,6 +4843,8 @@ def validate_inspector_runtime(component="Grid"):
         "ok": all(check["ok"] for check in checks),
         "checks": checks,
         "manifest": manifest,
+        "module_files": module_files,
+        "module_tests": module_tests,
         "replay": replay,
         "blocking_gaps": tuple(check for check in checks if not check["ok"]),
     }

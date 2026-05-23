@@ -11221,8 +11221,41 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "custom_registration_replay",
         "binding_bridge_replay",
         "handler_invocation_policy",
+        "inspector_modules_ready",
+        "inspector_module_tests_ready",
         "runtime_replay",
     } <= set(inspector_runtime_smoke["checks"])
+    inspector_module_files = inspector_runtime.inspector_module_file_manifest("Grid")
+    inspector_module_tests = inspector_runtime.inspector_module_test_file_manifest("Grid")
+    assert inspector_module_files["ok"] is True
+    assert inspector_module_tests["ok"] is True
+    assert {item["module"] for item in inspector_module_files["modules"]} == {
+        "property_editor_module",
+        "event_editor_module",
+        "component_editor_module",
+        "custom_designer_module",
+        "handler_invocation_module",
+        "binding_bridge_module",
+    }
+    assert {item["module"] for item in inspector_module_tests["tests"]} == {
+        "property_editor_module",
+        "event_editor_module",
+        "component_editor_module",
+        "custom_designer_module",
+        "handler_invocation_module",
+        "binding_bridge_module",
+    }
+    for item in inspector_module_files["modules"]:
+        module_path = output_dir / item["path"].replace("app/", "")
+        py_compile.compile(str(module_path), doraise=True)
+        module = _load_module(module_path, f"generated_inspector_module_{item['module']}")
+        assert module.smoke_test("Grid")["ok"] is True
+        assert module.module_contract()["ok"] is True
+    for item in inspector_module_tests["tests"]:
+        test_path = output_dir / item["path"].replace("app/", "")
+        py_compile.compile(str(test_path), doraise=True)
+        module = _load_module(test_path, f"generated_inspector_module_test_{item['module']}")
+        assert module.smoke_test()["ok"] is True
     inspector_replay = inspector_runtime.replay_inspector_runtime("Grid")
     assert inspector_replay["ok"] is True
     assert {"property_edit", "event_rename", "component_editor"} <= set(inspector_replay["edit_ops"])
