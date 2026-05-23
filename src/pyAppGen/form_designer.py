@@ -4004,6 +4004,53 @@ def inspector_edit_session_replay_contract(component: str = "Grid") -> dict:
     }
 
 
+def inspector_cross_component_session_replay_contract(components: tuple[str, ...] = ()) -> dict:
+    """Replay inspector edit sessions across representative component categories."""
+    selected = components or (
+        "TextBox",
+        "Grid",
+        "Rectangle",
+        "StyleBook",
+        "GestureManager",
+        "Viewport3D",
+        "DatabaseConnection",
+    )
+    sessions = tuple(inspector_edit_session_replay_contract(component) for component in selected)
+    required_ops = {"property_edit", "event_rename", "component_editor", "custom_designer_overlay", "undo", "redo"}
+    operation_matrix = tuple(
+        {
+            "component": session["component"],
+            "ops": tuple(item["op"] for item in session["trace"]),
+            "pipelines": tuple(item["pipeline"] for item in session["trace"]),
+            "final_history_depth": session["trace"][-1]["history_depth"] if session["trace"] else 0,
+            "final_redo_depth": session["trace"][-1]["redo_depth"] if session["trace"] else 0,
+            "event_references": tuple(session["final_state"]["events"].values()),
+            "ok": session["ok"]
+            and required_ops <= {item["op"] for item in session["trace"]}
+            and any("refresh_inspector" in item["pipeline"] for item in session["trace"])
+            and any("record_undo" in item["pipeline"] for item in session["trace"]),
+        }
+        for session in sessions
+    )
+    return {
+        "format": "appgen.inspector-cross-component-session-replay-contract.v1",
+        "ok": len(sessions) == len(selected)
+        and all(item["ok"] for item in operation_matrix)
+        and all(item["final_history_depth"] >= 1 for item in operation_matrix)
+        and all(item["event_references"] for item in operation_matrix),
+        "components": selected,
+        "sessions": sessions,
+        "operation_matrix": operation_matrix,
+        "guards": (
+            "all_sample_components_replayed",
+            "editor_state_isolated_per_component",
+            "history_rebuilt_after_each_component",
+            "event_references_stable",
+        ),
+        "side_effects": (),
+    }
+
+
 def object_inspector_workbench() -> dict:
     """Prove property, event, component-editor, and custom-designer coverage."""
     sample_components = (
@@ -4047,6 +4094,7 @@ def object_inspector_workbench() -> dict:
     component_tree_sync = inspector_component_tree_sync_contract()
     round_trips = tuple(inspector_round_trip_contract(component) for component in sample_components)
     edit_session_replay = inspector_edit_session_replay_contract()
+    cross_component_replay = inspector_cross_component_session_replay_contract(sample_components)
     checks = (
         {
             "id": "property_editor_types",
@@ -4223,6 +4271,13 @@ def object_inspector_workbench() -> dict:
             and not edit_session_replay["side_effects"],
             "evidence": edit_session_replay,
         },
+        {
+            "id": "cross_component_session_replay",
+            "ok": cross_component_replay["ok"]
+            and {"all_sample_components_replayed", "event_references_stable"} <= set(cross_component_replay["guards"])
+            and not cross_component_replay["side_effects"],
+            "evidence": cross_component_replay,
+        },
     )
     ok = all(check["ok"] for check in checks)
     return {
@@ -4255,6 +4310,7 @@ def object_inspector_workbench() -> dict:
         "component_tree_sync": component_tree_sync,
         "round_trips": round_trips,
         "edit_session_replay": edit_session_replay,
+        "cross_component_replay": cross_component_replay,
         "checks": checks,
         "blocking_gaps": tuple(check for check in checks if not check["ok"]),
     }

@@ -880,6 +880,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "component_tree_sync",
         "inspector_metadata_round_trip",
         "edit_session_replay",
+        "cross_component_session_replay",
     } == {check["id"] for check in inspector_workbench["checks"]}
     assert all("apply_change" in workflow["workflow"] for workflow in inspector_workbench["property_edit_workflows"])
     assert all("update_component_reference" in workflow["workflow"] for workflow in inspector_workbench["event_edit_workflows"])
@@ -923,6 +924,21 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     assert {"property_edit", "event_rename", "component_editor", "custom_designer_overlay", "undo", "redo"} <= {
         item["op"] for item in inspector_workbench["edit_session_replay"]["trace"]
     }
+    assert inspector_workbench["cross_component_replay"]["ok"] is True
+    assert {
+        "TextBox",
+        "Grid",
+        "Rectangle",
+        "StyleBook",
+        "GestureManager",
+        "Viewport3D",
+        "DatabaseConnection",
+    } == set(inspector_workbench["cross_component_replay"]["components"])
+    assert all(
+        {"property_edit", "event_rename", "component_editor", "custom_designer_overlay", "undo", "redo"} <= set(item["ops"])
+        for item in inspector_workbench["cross_component_replay"]["operation_matrix"]
+    )
+    assert all(item["final_history_depth"] >= 1 for item in inspector_workbench["cross_component_replay"]["operation_matrix"])
     assert any("enable_redo" in item["pipeline"] for item in inspector_workbench["edit_session_replay"]["trace"])
     binding_graph = livebindings_graph_contract()
     assert binding_graph["format"] == "appgen.livebindings-graph.v1"
@@ -9802,6 +9818,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "component_tree_sync",
         "inspector_metadata_round_trip",
         "edit_session_replay",
+        "cross_component_session_replay",
     } == {check["id"] for check in generated_inspector["checks"]}
     assert generated_inspector["editor_registries"]
     assert generated_inspector["state_persistence"]["state_keys"]
@@ -9848,6 +9865,13 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         item["op"] for item in generated_inspector["edit_session_replay"]["trace"]
     }
     assert any("record_undo" in item["pipeline"] for item in generated_inspector["edit_session_replay"]["trace"])
+    assert generated_inspector["cross_component_replay"]["ok"] is True
+    assert "all_sample_components_replayed" in generated_inspector["cross_component_replay"]["guards"]
+    assert all(
+        {"property_edit", "event_rename", "component_editor", "custom_designer_overlay", "undo", "redo"} <= set(item["ops"])
+        for item in generated_inspector["cross_component_replay"]["operation_matrix"]
+    )
+    assert all(item["event_references"] for item in generated_inspector["cross_component_replay"]["operation_matrix"])
     generated_usability = form_designer.component_usability_workbench()
     assert generated_usability["format"] == "appgen.generated-component-usability-workbench.v1"
     assert generated_usability["ok"] is True
