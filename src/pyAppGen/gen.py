@@ -2824,8 +2824,10 @@ def write_project_scaffold(output_dir, schema: AppSchema):
     desktop_dir.mkdir(parents=True, exist_ok=True)
     (native_dir / "appgen_native.py").write_text(_native_contract_text(schema, app_name))
     (mobile_dir / "pyproject.toml").write_text(_native_pyproject_text(app_name, "mobile"))
+    (mobile_dir / "buildozer.spec").write_text(_mobile_buildozer_spec_text(app_name))
     (mobile_dir / "app.py").write_text(_kivy_mobile_text(schema, app_name))
     (desktop_dir / "pyproject.toml").write_text(_native_pyproject_text(app_name, "desktop"))
+    (desktop_dir / "briefcase.toml").write_text(_desktop_briefcase_toml_text(app_name))
     (desktop_dir / "app.py").write_text(_beeware_desktop_text(schema, app_name))
 
     jhipster_dir = output_dir / "jhipster"
@@ -51353,6 +51355,23 @@ NATIVE_CONTRACT = {{
     "tables": {tables!r},
 }}
 
+NATIVE_PACKAGING = {{
+    "mobile": {{
+        "adapters": ("buildozer", "python-build"),
+        "files": ("native/mobile/pyproject.toml", "native/mobile/buildozer.spec", "native/mobile/app.py"),
+        "commands": ("python -m build", "buildozer android debug", "buildozer android release"),
+        "artifacts": ("android-debug.apk", "android-release.aab"),
+        "signing": ("keystore", "version_code", "release_notes"),
+    }},
+    "desktop": {{
+        "adapters": ("briefcase", "python-build"),
+        "files": ("native/desktop/pyproject.toml", "native/desktop/briefcase.toml", "native/desktop/app.py"),
+        "commands": ("python -m build", "briefcase create", "briefcase build", "briefcase package"),
+        "artifacts": ("macOS app bundle", "Windows MSI", "Linux AppImage"),
+        "signing": ("bundle_id", "entitlements", "notarization"),
+    }},
+}}
+
 
 def native_targets():
     """Return generated native app targets."""
@@ -51418,6 +51437,17 @@ def native_capability_plan(target):
     return plan
 
 
+def native_packaging_plan(target):
+    """Return installable package adapter commands and expected release artifacts."""
+    if target not in NATIVE_PACKAGING:
+        raise KeyError(f"Unknown native target: {{target}}")
+    plan = dict(NATIVE_PACKAGING[target])
+    plan["target"] = target
+    plan["selected"] = target in SELECTED_NATIVE_TARGETS
+    plan["review_required"] = True
+    return plan
+
+
 def scaffold_check(existing_paths):
     """Return readiness for generated native scaffold files."""
     existing = set(existing_paths)
@@ -51431,9 +51461,54 @@ def scaffold_check(existing_paths):
     return {{"ok": not missing, "missing": missing, "targets": native_targets()}}
 
 
+def native_packaging_release_gate(existing_paths=()):
+    """Return readiness for generated installable mobile and desktop packages."""
+    existing = set(existing_paths)
+    selected = set(native_targets())
+    plans = tuple(native_packaging_plan(target) for target in sorted(selected))
+    missing_files = tuple(
+        path
+        for plan in plans
+        for path in plan["files"]
+        if path not in existing
+    )
+    checks = (
+        {{
+            "gate": "packaging_adapter_files",
+            "ok": not missing_files and bool(plans),
+            "missing": missing_files,
+        }},
+        {{
+            "gate": "packaging_commands_reviewable",
+            "ok": all("python -m build" in plan["commands"] and any("package" in command or "release" in command for command in plan["commands"]) for plan in plans),
+            "commands": tuple((plan["target"], plan["commands"]) for plan in plans),
+        }},
+        {{
+            "gate": "installable_artifacts_declared",
+            "ok": all(plan["artifacts"] for plan in plans),
+            "artifacts": tuple((plan["target"], plan["artifacts"]) for plan in plans),
+        }},
+        {{
+            "gate": "signing_review_required",
+            "ok": all(plan["review_required"] and plan["signing"] for plan in plans),
+            "signing": tuple((plan["target"], plan["signing"]) for plan in plans),
+        }},
+    )
+    ok = all(check["ok"] for check in checks)
+    return {{
+        "format": "appgen.native-packaging-release-gate.v1",
+        "ok": ok,
+        "decision": "approved" if ok else "blocked",
+        "plans": plans,
+        "checks": checks,
+        "blocking_gaps": tuple(check for check in checks if not check["ok"]),
+    }}
+
+
 def native_release_gate(existing_paths=()):
     """Return release readiness for generated mobile and desktop targets."""
     scaffold = scaffold_check(existing_paths)
+    packaging = native_packaging_release_gate(existing_paths)
     selected = set(native_targets())
     mobile_permissions = native_permission_manifest("mobile") if "mobile" in selected else {{}}
     desktop_permissions = native_permission_manifest("desktop") if "desktop" in selected else {{}}
@@ -51466,6 +51541,7 @@ def native_release_gate(existing_paths=()):
             ),
             "capability": desktop_capability,
         }},
+        {{"gate": "native_packaging_adapters", "ok": packaging["ok"], "packaging": packaging}},
     )
     ok = all(check["ok"] for check in checks)
     return {{
@@ -51474,6 +51550,7 @@ def native_release_gate(existing_paths=()):
         "decision": "approved" if ok else "blocked",
         "checks": checks,
         "feature_matrix": native_feature_matrix(),
+        "packaging": packaging,
         "scaffold": scaffold,
     }}
 '''
@@ -51491,6 +51568,62 @@ dependencies = ["{dependency}", "httpx>=0.27,<1"]
 
 [project.scripts]
 appgen-{target} = "app:main"
+"""
+
+
+def _mobile_buildozer_spec_text(app_name: str) -> str:
+    package_name = underscore(app_name).replace("_", "-")
+    package_domain = f"org.appgen.{underscore(app_name).replace('_', '')}"
+    return f"""[app]
+title = {app_name}
+package.name = {package_name}
+package.domain = {package_domain}
+source.dir = .
+source.include_exts = py,json,kv,png,svg
+version = 0.1.0
+requirements = python3,kivy,httpx
+orientation = portrait
+fullscreen = 0
+android.permissions = CAMERA,ACCESS_FINE_LOCATION,POST_NOTIFICATIONS,INTERNET
+android.api = 35
+android.minapi = 23
+android.archs = arm64-v8a, armeabi-v7a
+android.release_artifact = aab
+ios.kivy_ios_url = https://github.com/kivy/kivy-ios
+
+[buildozer]
+log_level = 2
+warn_on_root = 1
+"""
+
+
+def _desktop_briefcase_toml_text(app_name: str) -> str:
+    package_name = underscore(app_name).replace("_", "-")
+    bundle_id = f"org.appgen.{underscore(app_name).replace('_', '')}"
+    return f"""[tool.briefcase]
+project_name = "{app_name}"
+bundle = "{bundle_id}"
+version = "0.1.0"
+url = "https://appgen.local/{package_name}"
+license = "Proprietary"
+author = "AppGen"
+author_email = "noreply@appgen.local"
+
+[tool.briefcase.app.{package_name}]
+formal_name = "{app_name}"
+description = "Generated installable desktop shell for {app_name}."
+sources = ["."]
+requires = ["toga>=0.4,<1", "httpx>=0.27,<1"]
+
+[tool.briefcase.app.{package_name}.macOS]
+requires = ["toga-cocoa>=0.4,<1"]
+entitlement."com.apple.security.files.user-selected.read-write" = true
+
+[tool.briefcase.app.{package_name}.windows]
+requires = ["toga-winforms>=0.4,<1"]
+
+[tool.briefcase.app.{package_name}.linux]
+requires = ["toga-gtk>=0.4,<1"]
 """
 
 
@@ -52957,8 +53090,10 @@ REQUIRED_PATHS = (
     "sdks/csharp/AppGenClient.cs",
     "native/appgen_native.py",
     "native/mobile/pyproject.toml",
+    "native/mobile/buildozer.spec",
     "native/mobile/app.py",
     "native/desktop/pyproject.toml",
+    "native/desktop/briefcase.toml",
     "native/desktop/app.py",
     "jhipster/appgen_jhipster.py",
     "jhipster/app.jdl",

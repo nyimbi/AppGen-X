@@ -3008,11 +3008,26 @@ def test_package_target_audit_covers_web_mobile_desktop_generation(
         "desktop_package_hook",
         "native_release_gate",
         "generated_runtime_smoke",
+        "native_packaging_adapters",
     } == {check["id"] for check in packaging["checks"]}
+    assert packaging["native_packaging"]["format"] == "appgen.native-packaging-release-gate.v1"
+    assert packaging["native_packaging"]["ok"] is True
     assert packaging["runtime_smoke"]["format"] == "appgen.target-generated-runtime-smoke.v1"
     assert packaging["runtime_smoke"]["ok"] is True
     assert any(package["target"] == "mobile" and "kivy>=2.3,<3" in package["dependencies"] for package in packaging["packages"])
     assert any(package["target"] == "desktop" and "toga>=0.4,<1" in package["dependencies"] for package in packaging["packages"])
+    assert any(
+        package["target"] == "mobile"
+        and "native/mobile/buildozer.spec" in package["adapter_files"]
+        and "buildozer android release" in package["commands"]
+        for package in packaging["packages"]
+    )
+    assert any(
+        package["target"] == "desktop"
+        and "native/desktop/briefcase.toml" in package["adapter_files"]
+        and "briefcase package" in package["commands"]
+        for package in packaging["packages"]
+    )
 
     runtime = target_generated_runtime_smoke()
     assert runtime["format"] == "appgen.target-generated-runtime-smoke.v1"
@@ -4026,11 +4041,26 @@ def test_generate_app_from_sqlite_schema_compiles(tmp_path) -> None:
     native_artifacts = {
         "native/appgen_native.py",
         "native/mobile/pyproject.toml",
+        "native/mobile/buildozer.spec",
         "native/mobile/app.py",
         "native/desktop/pyproject.toml",
+        "native/desktop/briefcase.toml",
         "native/desktop/app.py",
     }
+    assert (tmp_path / "native" / "mobile" / "buildozer.spec").exists()
+    assert (tmp_path / "native" / "desktop" / "briefcase.toml").exists()
     assert native.scaffold_check(native_artifacts)["ok"] is True
+    native_packaging = native.native_packaging_release_gate(native_artifacts)
+    assert native_packaging["format"] == "appgen.native-packaging-release-gate.v1"
+    assert native_packaging["ok"] is True
+    assert {
+        "packaging_adapter_files",
+        "packaging_commands_reviewable",
+        "installable_artifacts_declared",
+        "signing_review_required",
+    } == {check["gate"] for check in native_packaging["checks"]}
+    assert "buildozer android release" in native.native_packaging_plan("mobile")["commands"]
+    assert "briefcase package" in native.native_packaging_plan("desktop")["commands"]
     native_gate = native.native_release_gate(native_artifacts)
     assert native_gate["format"] == "appgen.native-release-gate.v1"
     assert native_gate["ok"] is True
@@ -4038,6 +4068,7 @@ def test_generate_app_from_sqlite_schema_compiles(tmp_path) -> None:
         "mobile_permissions",
         "mobile_offline_sync",
         "desktop_cache_replay",
+        "native_packaging_adapters",
     }
     assert native.native_release_gate({"native/appgen_native.py"})["ok"] is False
     assert "android.permission.CAMERA" in native.native_permission_manifest("mobile")["android"]

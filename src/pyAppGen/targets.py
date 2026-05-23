@@ -25,12 +25,12 @@ TARGETS = {
     },
     "mobile": {
         "runtime": "Kivy",
-        "artifacts": ("native/mobile/app.py", "native/mobile/pyproject.toml"),
+        "artifacts": ("native/mobile/app.py", "native/mobile/pyproject.toml", "native/mobile/buildozer.spec"),
         "capabilities": ("camera", "location", "push", "offline_queue"),
     },
     "desktop": {
         "runtime": "BeeWare",
-        "artifacts": ("native/desktop/app.py", "native/desktop/pyproject.toml"),
+        "artifacts": ("native/desktop/app.py", "native/desktop/pyproject.toml", "native/desktop/briefcase.toml"),
         "capabilities": ("local_files", "offline_cache", "keyboard_navigation", "sync_replay"),
     },
     "chatbot": {
@@ -234,8 +234,13 @@ def target_runtime_packaging_proof(source: str = TARGET_SAMPLE_DSL) -> dict:
         desktop_project = tomllib.loads(
             (project_dir / "native/desktop/pyproject.toml").read_text(encoding="utf-8")
         )
+        mobile_buildozer = (project_dir / "native/mobile/buildozer.spec").read_text(encoding="utf-8")
+        desktop_briefcase = tomllib.loads(
+            (project_dir / "native/desktop/briefcase.toml").read_text(encoding="utf-8")
+        )
         home_text = (project_dir / "app/templates/my_index.html").read_text(encoding="utf-8")
         runtime_smoke = _target_generated_runtime_smoke(project_dir, existing_paths)
+        native_packaging = native_module.native_packaging_release_gate(existing_paths)
 
     web_package = {
         "target": "web",
@@ -249,16 +254,27 @@ def target_runtime_packaging_proof(source: str = TARGET_SAMPLE_DSL) -> dict:
         "name": mobile_project["project"]["name"],
         "dependencies": tuple(mobile_project["project"]["dependencies"]),
         "scripts": mobile_project["project"]["scripts"],
+        "adapters": ("buildozer", "python-build"),
+        "adapter_files": ("native/mobile/buildozer.spec", "native/mobile/pyproject.toml"),
+        "commands": native_module.native_packaging_plan("mobile")["commands"],
         "ok": "kivy>=2.3,<3" in mobile_project["project"]["dependencies"]
-        and mobile_project["project"]["scripts"].get("appgen-mobile") == "app:main",
+        and mobile_project["project"]["scripts"].get("appgen-mobile") == "app:main"
+        and "android.release_artifact = aab" in mobile_buildozer
+        and "android.permissions = CAMERA,ACCESS_FINE_LOCATION,POST_NOTIFICATIONS,INTERNET" in mobile_buildozer,
     }
+    desktop_app_key = next(iter(desktop_briefcase["tool"]["briefcase"]["app"]))
     desktop_package = {
         "target": "desktop",
         "name": desktop_project["project"]["name"],
         "dependencies": tuple(desktop_project["project"]["dependencies"]),
         "scripts": desktop_project["project"]["scripts"],
+        "adapters": ("briefcase", "python-build"),
+        "adapter_files": ("native/desktop/briefcase.toml", "native/desktop/pyproject.toml"),
+        "commands": native_module.native_packaging_plan("desktop")["commands"],
         "ok": "toga>=0.4,<1" in desktop_project["project"]["dependencies"]
-        and desktop_project["project"]["scripts"].get("appgen-desktop") == "app:main",
+        and desktop_project["project"]["scripts"].get("appgen-desktop") == "app:main"
+        and desktop_briefcase["tool"]["briefcase"]["project_name"] == manifest["app_name"]
+        and "macOS" in desktop_briefcase["tool"]["briefcase"]["app"][desktop_app_key],
     }
     checks = (
         {
@@ -301,6 +317,11 @@ def target_runtime_packaging_proof(source: str = TARGET_SAMPLE_DSL) -> dict:
             "ok": runtime_smoke["ok"],
             "checks": runtime_smoke["checks"],
         },
+        {
+            "id": "native_packaging_adapters",
+            "ok": native_packaging["ok"],
+            "checks": native_packaging["checks"],
+        },
     )
     return {
         "format": "appgen.target-runtime-packaging-proof.v1",
@@ -309,6 +330,7 @@ def target_runtime_packaging_proof(source: str = TARGET_SAMPLE_DSL) -> dict:
         "manifest_targets": tuple(manifest["platform_targets"]),
         "packages": (web_package, mobile_package, desktop_package),
         "native_release_gate": native_gate,
+        "native_packaging": native_packaging,
         "runtime_smoke": runtime_smoke,
         "checks": checks,
         "existing_paths": existing_paths,
