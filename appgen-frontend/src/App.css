@@ -9,7 +9,12 @@
   grid-template-columns: 260px minmax(420px, 1fr) minmax(420px, 600px);
   gap: 12px;
   align-items: center;
+  position: sticky;
+  top: 0;
+  z-index: 5;
   margin-bottom: 12px;
+  background: rgba(244, 247, 251, 0.92);
+  backdrop-filter: blur(10px);
 }
 
 .brand-block,
@@ -86,6 +91,16 @@
 .workspace-nav button:hover {
   color: #17463f;
   background: #e5f2ef;
+}
+
+.workspace-nav button:focus-visible,
+.category-tabs button:focus-visible,
+.component-tile:focus-visible,
+.toolbar-actions button:focus-visible,
+.primary-action:focus-visible,
+.inspector-actions button:focus-visible {
+  outline: 2px solid #2f80ed;
+  outline-offset: 2px;
 }
 
 .command-strip {
@@ -239,10 +254,25 @@ h2 {
   height: 15px;
 }
 
+.category-tabs strong {
+  min-width: 18px;
+  border-radius: 999px;
+  padding: 2px 5px;
+  color: #64748b;
+  background: #edf2f7;
+  font-size: 10px;
+  text-align: center;
+}
+
 .category-tabs button.selected {
   border-color: #246b61;
   color: #17463f;
   background: #e5f2ef;
+}
+
+.category-tabs button.selected strong {
+  color: #ffffff;
+  background: #246b61;
 }
 
 .component-list {
@@ -285,6 +315,7 @@ h2 {
 }
 
 .component-tile {
+  position: relative;
   display: grid;
   grid-template-columns: 34px minmax(0, 1fr) auto;
   gap: 9px;
@@ -295,11 +326,24 @@ h2 {
   padding: 8px;
   color: #172033;
   background: #f8fafc;
+  cursor: grab;
   text-align: left;
   transition:
     border-color 120ms ease,
     background-color 120ms ease,
+    box-shadow 120ms ease,
     transform 120ms ease;
+}
+
+.component-tile::before {
+  position: absolute;
+  top: 8px;
+  bottom: 8px;
+  left: 0;
+  width: 3px;
+  border-radius: 0 3px 3px 0;
+  background: #246b61;
+  content: "";
 }
 
 .component-tile:hover,
@@ -309,6 +353,7 @@ h2 {
 }
 
 .component-tile:hover {
+  box-shadow: 0 8px 18px rgba(31, 41, 55, 0.1);
   transform: translateY(-1px);
 }
 
@@ -318,6 +363,11 @@ h2 {
   width: 34px;
   height: 34px;
   border-radius: 7px;
+  color: #17463f;
+  background: #e5f2ef;
+}
+
+.category-inputs {
   color: #17463f;
   background: #e5f2ef;
 }
@@ -357,6 +407,21 @@ h2 {
   background: #eee9fb;
 }
 
+.category-effects {
+  color: #813d25;
+  background: #fff0e8;
+}
+
+.category-sensors {
+  color: #15506f;
+  background: #e5f3fb;
+}
+
+.category-3d {
+  color: #39447a;
+  background: #ecefff;
+}
+
 .category-device {
   color: #15506f;
   background: #e5f3fb;
@@ -389,9 +454,14 @@ h2 {
 }
 
 .component-size {
+  border: 1px solid #d7e0ec;
+  border-radius: 999px;
+  padding: 3px 6px;
   color: #64748b;
+  background: #ffffff;
   font-size: 11px;
   font-weight: 800;
+  white-space: nowrap;
 }
 
 .empty-palette {
@@ -501,6 +571,11 @@ h2 {
   background: #ffffff;
   box-shadow: 0 8px 20px rgba(31, 41, 55, 0.12);
   font-weight: 800;
+}
+
+.placed-component svg {
+  flex: 0 0 auto;
+  color: #246b61;
 }
 
 .placed-component span {

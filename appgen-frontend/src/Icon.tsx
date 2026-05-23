@@ -2,6 +2,7 @@ import type { SVGProps } from 'react'
 
 export type IconName =
   | 'agent'
+  | 'animation'
   | 'api'
   | 'audio'
   | 'bell'
@@ -11,9 +12,12 @@ export type IconName =
   | 'button'
   | 'calendar'
   | 'camera'
+  | 'camera3d'
   | 'chart'
   | 'check'
+  | 'colorAnimation'
   | 'combo'
+  | 'cube3d'
   | 'dataset'
   | 'data'
   | 'database'
@@ -21,6 +25,8 @@ export type IconName =
   | 'ellipse'
   | 'form'
   | 'flow'
+  | 'floatAnimation'
+  | 'gesture'
   | 'grid'
   | 'hash'
   | 'hstack'
@@ -30,15 +36,18 @@ export type IconName =
   | 'layout'
   | 'line'
   | 'list'
+  | 'light3d'
   | 'location'
   | 'lock'
   | 'lookup'
   | 'menu'
+  | 'mesh3d'
   | 'mobile'
   | 'motion'
   | 'orientation'
   | 'panel'
   | 'path'
+  | 'pathAnimation'
   | 'popup'
   | 'query'
   | 'radio'
@@ -54,11 +63,13 @@ export type IconName =
   | 'switch'
   | 'table'
   | 'tabs'
+  | 'tap'
   | 'textarea'
   | 'toolbar'
   | 'tree'
   | 'upload'
   | 'video'
+  | 'viewport3d'
   | 'vstack'
   | 'web'
   | 'workflow'
@@ -70,6 +81,14 @@ const paths: Record<IconName, JSX.Element> = {
       <path d="M12 4v3" />
       <rect x="5" y="7" width="14" height="11" rx="3" />
       <path d="M8 12h.01M16 12h.01M9 16h6" />
+    </>
+  ),
+  animation: (
+    <>
+      <path d="M5 16c2.5-8 6.5 8 9-2 1-4 3-5 5-5" />
+      <path d="M5 20h14" />
+      <circle cx="5" cy="16" r="2" />
+      <circle cx="19" cy="9" r="2" />
     </>
   ),
   api: (
@@ -128,6 +147,13 @@ const paths: Record<IconName, JSX.Element> = {
       <circle cx="12" cy="13" r="3" />
     </>
   ),
+  camera3d: (
+    <>
+      <path d="M6 8h7l3 3v6H6z" />
+      <path d="m16 12 4-3v10l-4-3" />
+      <path d="M8 20h8M12 17v3" />
+    </>
+  ),
   chart: (
     <>
       <path d="M5 19V5" />
@@ -139,6 +165,13 @@ const paths: Record<IconName, JSX.Element> = {
     <>
       <rect x="5" y="5" width="14" height="14" rx="3" />
       <path d="m8.5 12 2.5 2.5 4.5-5" />
+    </>
+  ),
+  colorAnimation: (
+    <>
+      <path d="M12 4s6 6.2 6 10a6 6 0 0 1-12 0c0-3.8 6-10 6-10z" />
+      <path d="M6 17c3 1.5 9 1.5 12 0" />
+      <circle cx="17" cy="6" r="2" />
     </>
   ),
   combo: (
@@ -167,6 +200,12 @@ const paths: Record<IconName, JSX.Element> = {
       <path d="M5 10c0 1.7 3.1 3 7 3s7-1.3 7-3" />
     </>
   ),
+  cube3d: (
+    <>
+      <path d="m12 3 8 4.5v9L12 21l-8-4.5v-9z" />
+      <path d="M12 12 4 7.5M12 12l8-4.5M12 12v9" />
+    </>
+  ),
   desktop: (
     <>
       <rect x="4" y="5" width="16" height="12" rx="2" />
@@ -190,6 +229,21 @@ const paths: Record<IconName, JSX.Element> = {
       <rect x="14" y="5" width="6" height="4" rx="1" />
       <rect x="9" y="15" width="6" height="4" rx="1" />
       <path d="M10 7h4M17 9v3l-5 3M7 9v3l5 3" />
+    </>
+  ),
+  floatAnimation: (
+    <>
+      <path d="M6 18V6" />
+      <path d="m3 9 3-3 3 3" />
+      <path d="m3 15 3 3 3-3" />
+      <path d="M13 7h6M13 12h4M13 17h6" />
+    </>
+  ),
+  gesture: (
+    <>
+      <path d="M7 12V8a2 2 0 0 1 4 0v4" />
+      <path d="M11 12V6a2 2 0 0 1 4 0v6" />
+      <path d="M15 13v-3a2 2 0 0 1 4 0v5c0 4-3 6-6 6h-1c-3 0-6-3-6-6v-2" />
     </>
   ),
   grid: (
@@ -249,6 +303,13 @@ const paths: Record<IconName, JSX.Element> = {
       <path d="M4 7h.01M4 12h.01M4 17h.01" />
     </>
   ),
+  light3d: (
+    <>
+      <circle cx="12" cy="10" r="4" />
+      <path d="M12 2v3M12 15v3M4 10H2M22 10h-2M6.3 4.3 8 6M16 14l1.7 1.7M17.7 4.3 16 6M8 14l-1.7 1.7" />
+      <path d="M9 21h6" />
+    </>
+  ),
   location: (
     <>
       <path d="M12 21s7-6 7-12a7 7 0 0 0-14 0c0 6 7 12 7 12z" />
@@ -272,6 +333,12 @@ const paths: Record<IconName, JSX.Element> = {
   menu: (
     <>
       <path d="M5 7h14M5 12h14M5 17h14" />
+    </>
+  ),
+  mesh3d: (
+    <>
+      <path d="M4 17 8 5h8l4 12-8 4z" />
+      <path d="M8 5 12 21M16 5l-4 16M4 17h16M6 11h12" />
     </>
   ),
   mobile: (
@@ -301,6 +368,15 @@ const paths: Record<IconName, JSX.Element> = {
   path: (
     <>
       <path d="M5 18c5-13 9 13 14-1" />
+      <circle cx="5" cy="18" r="2" />
+      <circle cx="19" cy="17" r="2" />
+    </>
+  ),
+  pathAnimation: (
+    <>
+      <path d="M5 18c5-13 9 13 14-1" />
+      <path d="M8 8h8" />
+      <path d="m13 5 3 3-3 3" />
       <circle cx="5" cy="18" r="2" />
       <circle cx="19" cy="17" r="2" />
     </>
@@ -398,6 +474,14 @@ const paths: Record<IconName, JSX.Element> = {
       <path d="M5 8V5h5l2 3" />
     </>
   ),
+  tap: (
+    <>
+      <circle cx="12" cy="8" r="3" />
+      <path d="M12 11v5" />
+      <path d="M8 16h8l-1.5 5h-5z" />
+      <path d="M4 8a8 8 0 0 1 16 0" />
+    </>
+  ),
   textarea: (
     <>
       <rect x="4" y="5" width="16" height="14" rx="2" />
@@ -429,6 +513,13 @@ const paths: Record<IconName, JSX.Element> = {
     <>
       <rect x="4" y="6" width="11" height="12" rx="2" />
       <path d="m15 10 5-3v10l-5-3z" />
+    </>
+  ),
+  viewport3d: (
+    <>
+      <rect x="4" y="5" width="16" height="14" rx="2" />
+      <path d="m12 8 5 3v5l-5 3-5-3v-5z" />
+      <path d="M12 8v5l5 3M12 13l-5 3" />
     </>
   ),
   vstack: (

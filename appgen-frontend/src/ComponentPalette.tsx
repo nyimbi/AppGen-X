@@ -31,6 +31,12 @@ export function ComponentPalette({
       components: visibleComponents.filter((component) => component.category === category),
     }))
     .filter((group) => group.components.length > 0)
+  const categoryCounts = Object.fromEntries(
+    paletteCategories.map((category) => [
+      category,
+      paletteComponents.filter((component) => component.category === category).length,
+    ]),
+  ) as Record<ComponentCategory, number>
 
   return (
     <aside className="panel component-palette" aria-label="Component palette">
@@ -64,9 +70,11 @@ export function ComponentPalette({
             key={category}
             onClick={() => onCategoryChange(category)}
             type="button"
+            title={`${categoryCounts[category]} ${category.toLowerCase()} components`}
           >
             <Icon name={categoryIcons[category]} />
             <span>{category}</span>
+            <strong>{categoryCounts[category]}</strong>
           </button>
         ))}
       </div>
@@ -80,7 +88,16 @@ export function ComponentPalette({
               <strong>{group.components.length}</strong>
             </div>
             {group.components.map((component) => (
-              <button className="component-tile" draggable key={component.name} title={component.description} type="button">
+              <button
+                aria-label={`${component.name}: ${component.description}`}
+                className="component-tile"
+                data-component={component.name}
+                data-component-icon={component.icon}
+                draggable
+                key={component.name}
+                title={component.description}
+                type="button"
+              >
                 <span className={`component-icon category-${component.category.toLowerCase()}`}>
                   <Icon name={component.icon} />
                 </span>

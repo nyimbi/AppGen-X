@@ -9,6 +9,9 @@ export type ComponentCategory =
   | 'Media'
   | 'Navigation'
   | 'Automation'
+  | 'Effects'
+  | 'Sensors'
+  | '3D'
   | 'Device'
   | 'Targets'
 
@@ -30,6 +33,9 @@ export const categoryIcons: Record<ComponentCategory | 'All', IconName> = {
   Media: 'image',
   Navigation: 'menu',
   Automation: 'agent',
+  Effects: 'animation',
+  Sensors: 'gesture',
+  '3D': 'viewport3d',
   Device: 'mobile',
   Targets: 'desktop',
 }
@@ -87,9 +93,20 @@ export const paletteComponents: PaletteComponent[] = [
   { name: 'Workflow', category: 'Automation', icon: 'workflow', size: '6 x 4', description: 'Stateful approvals and process logic.' },
   { name: 'Rule Set', category: 'Automation', icon: 'rule', size: '5 x 3', description: 'Validations, routing conditions, and policy checks.' },
   { name: 'Scheduler', category: 'Automation', icon: 'scheduler', size: '4 x 2', description: 'Timed jobs, reminders, and background triggers.' },
-  { name: 'Location Sensor', category: 'Device', icon: 'location', size: '3 x 1', description: 'GPS, geofence, and map coordinate capture.' },
-  { name: 'Motion Sensor', category: 'Device', icon: 'motion', size: '3 x 1', description: 'Accelerometer and movement stream binding.' },
-  { name: 'Orientation Sensor', category: 'Device', icon: 'orientation', size: '3 x 1', description: 'Device rotation and heading changes.' },
+  { name: 'Float Animation', category: 'Effects', icon: 'floatAnimation', size: '4 x 1', description: 'Numeric property tween with easing and preview scrubber.' },
+  { name: 'Color Animation', category: 'Effects', icon: 'colorAnimation', size: '4 x 1', description: 'Theme and fill color transition with keyframes.' },
+  { name: 'Path Animation', category: 'Effects', icon: 'pathAnimation', size: '4 x 2', description: 'Motion path animation for shapes and components.' },
+  { name: 'Animation Timeline', category: 'Effects', icon: 'animation', size: '8 x 2', description: 'Reusable timeline for coordinated UI transitions.' },
+  { name: 'Gesture Manager', category: 'Sensors', icon: 'gesture', size: '4 x 2', description: 'Gesture recognizer registry with conflict handling.' },
+  { name: 'Tap Gesture', category: 'Sensors', icon: 'tap', size: '3 x 1', description: 'Tap, double-tap, and long-press recognizer.' },
+  { name: 'Location Sensor', category: 'Sensors', icon: 'location', size: '3 x 1', description: 'GPS, geofence, and map coordinate capture.' },
+  { name: 'Motion Sensor', category: 'Sensors', icon: 'motion', size: '3 x 1', description: 'Accelerometer and movement stream binding.' },
+  { name: 'Orientation Sensor', category: 'Sensors', icon: 'orientation', size: '3 x 1', description: 'Device rotation and heading changes.' },
+  { name: '3D Viewport', category: '3D', icon: 'viewport3d', size: '12 x 8', description: 'Scene viewport with camera, lighting, and transforms.' },
+  { name: '3D Camera', category: '3D', icon: 'camera3d', size: '3 x 2', description: 'Perspective or orthographic camera control.' },
+  { name: '3D Light', category: '3D', icon: 'light3d', size: '3 x 2', description: 'Directional, point, or ambient scene light.' },
+  { name: '3D Mesh', category: '3D', icon: 'mesh3d', size: '4 x 4', description: 'Mesh primitive or imported model with material binding.' },
+  { name: '3D Anchor', category: '3D', icon: 'cube3d', size: '3 x 3', description: 'Invisible transform node for grouping scene objects.' },
   { name: 'Biometrics', category: 'Device', icon: 'lock', size: '3 x 1', description: 'Face, fingerprint, and platform authentication.' },
   { name: 'Push Notification', category: 'Device', icon: 'bell', size: '4 x 1', description: 'User notification channel and permission contract.' },
   { name: 'API Service', category: 'Targets', icon: 'api', size: 'target', description: 'Generated service endpoint and integration boundary.' },
