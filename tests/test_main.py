@@ -1325,6 +1325,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "effect_fallback_matrix",
         "scene_transform_gizmos",
         "visual_runtime_replay",
+        "visual_designer_transaction_replay",
     } == {check["id"] for check in visual_depth["checks"]}
     assert {"inspect_effective_value", "revert_override"} <= set(visual_depth["contract"]["style_cascade"]["operations"])
     assert {"add_keyframe", "scrub_preview"} <= set(visual_depth["contract"]["timeline_authoring"]["operations"])
@@ -1356,6 +1357,18 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     }
     assert visual_depth["runtime_replay"]["final_state"]["timeline_samples"] > 0
     assert visual_depth["runtime_replay"]["final_state"]["inspector_syncs"] > 0
+    assert visual_depth["designer_transaction_replay"]["ok"] is True
+    assert {
+        "author_style_override",
+        "author_timeline",
+        "validate_effect_stack",
+        "author_scene_graph",
+        "import_assets_and_preview",
+        "hit_test_and_transform",
+        "runtime_replay",
+    } <= {item["phase"] for item in visual_depth["designer_transaction_replay"]["replay"]}
+    assert visual_depth["designer_transaction_replay"]["final_state"]["timeline_samples"] > 0
+    assert visual_depth["designer_transaction_replay"]["final_state"]["transform_syncs"] > 0
     third_party_registry = third_party_component_registry()
     assert {"devexpress-native", "tms-fnc", "fastreport", "teechart", "indy"} <= {
         item["id"] for item in third_party_registry
@@ -9911,6 +9924,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "effect_fallback_matrix",
         "scene_transform_gizmos",
         "visual_runtime_replay",
+        "visual_designer_transaction_replay",
     } == {check["id"] for check in generated_visual_depth["checks"]}
     assert generated_visual_depth["contract"]["asset_import"]["budgets"]["max_mesh_triangles"] > 0
     assert generated_visual_depth["style_resolution"]["ordered_layers"][0] == "base_theme"
@@ -9937,6 +9951,18 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     }
     assert generated_visual_depth["runtime_replay"]["final_state"]["effect_fallbacks"] >= 1
     assert generated_visual_depth["runtime_replay"]["final_state"]["scene_hits"] > 0
+    assert generated_visual_depth["designer_transaction_replay"]["ok"] is True
+    assert {
+        "author_style_override",
+        "author_timeline",
+        "validate_effect_stack",
+        "author_scene_graph",
+        "import_assets_and_preview",
+        "hit_test_and_transform",
+        "runtime_replay",
+    } <= {item["phase"] for item in generated_visual_depth["designer_transaction_replay"]["replay"]}
+    assert generated_visual_depth["designer_transaction_replay"]["final_state"]["effect_fallbacks"] >= 1
+    assert generated_visual_depth["designer_transaction_replay"]["final_state"]["scene_hits"] > 0
     generated_analogs = form_designer.component_analog_workbench()
     assert generated_analogs["format"] == "appgen.generated-component-analog-workbench.v1"
     assert generated_analogs["ok"] is True

@@ -85,7 +85,10 @@ A generated app can include:
   bridge recovery, and runtime dispatch.
 - `cross_target_visual_depth_workbench()` proves style resources, style cascade
   authoring, animation timelines, effect-stack validation, 3D scene authoring,
-  asset import budgets, preview/runtime parity, and runtime fallbacks.
+  asset import budgets, preview/runtime parity, runtime fallbacks, and an
+  ordered designer transaction replay that carries style overrides, timeline
+  authoring, effect fallback, scene editing, asset preview, hit testing,
+  transform sync, and runtime delivery through one verifiable flow.
 - `app/component_packages/<package>.py` gives every curated component package
   its own reviewed package contract with `package_contract()`, `install_plan()`,
   `load_policy()`, `dependency_graph()`, `adapter_smoke()`, `preview_load()`,

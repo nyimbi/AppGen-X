@@ -241,7 +241,9 @@ Visual design is split into two related capabilities:
 - `cross_target_visual_depth_workbench()` validates style resources, style
   cascade authoring, animation timelines, effect-stack validation, 3D scene
   authoring, asset import budgets, preview/runtime parity, and runtime
-  fallbacks.
+  fallbacks. Its designer transaction replay ties style overrides, timeline
+  authoring, effect fallback, scene editing, asset preview, hit testing,
+  transform synchronization, and runtime delivery into one ordered contract.
 - `design_time_package_manager_workbench()` validates package install sessions,
   compatibility matrices, palette/inspector/binding registration, isolated
   loading, rollback plans, package behavior contracts, dependency lockfile

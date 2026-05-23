@@ -8931,6 +8931,126 @@ def cross_target_visual_runtime_replay_contract() -> dict:
     }
 
 
+def cross_target_visual_designer_transaction_replay_contract() -> dict:
+    """Replay one ordered visual designer transaction from authoring to runtime."""
+    contract = cross_target_visual_depth_contract()
+    style_resolution = cross_target_style_resolution_workflow()
+    timeline_playback = cross_target_timeline_playback_workflow()
+    effect_render = cross_target_effect_render_workflow()
+    scene_validation = cross_target_scene_validation_workflow()
+    asset_import = cross_target_asset_import_workflow()
+    preview_diff = cross_target_preview_runtime_diff_workflow()
+    style_tokens = cross_target_style_token_validation_contract()
+    timeline_scrub = cross_target_timeline_scrub_contract()
+    effect_budget = cross_target_effect_budget_contract()
+    scene_integrity = cross_target_scene_graph_integrity_contract()
+    material_binding = cross_target_material_binding_contract()
+    timeline_runtime_export = cross_target_timeline_runtime_export_contract()
+    shader_material_editor = cross_target_shader_material_editor_contract()
+    scene_hit_testing = cross_target_scene_hit_test_contract()
+    timeline_interpolation = cross_target_timeline_interpolation_contract()
+    effect_fallback_matrix = cross_target_effect_fallback_matrix_contract()
+    scene_transform_gizmos = cross_target_scene_transform_gizmo_contract()
+    runtime_replay = cross_target_visual_runtime_replay_contract()
+    state = {
+        "style_layers": len(contract["style_cascade"]["layers"]),
+        "timeline_tracks": len(contract["timeline_authoring"]["tracks"]),
+        "effect_stack": len(contract["effect_stack"]["stack"]),
+        "scene_nodes": len(contract["scene_designer"]["scene_graph"]),
+        "asset_formats": len(contract["asset_import"]["formats"]),
+        "timeline_samples": sum(len(sample["runtime_samples"]) for sample in timeline_interpolation["samples"]),
+        "effect_fallbacks": sum(1 for row in effect_fallback_matrix["rows"] if row["decision"] == "use_fallback"),
+        "scene_hits": len(scene_hit_testing["hit_tests"]),
+        "transform_syncs": len(scene_transform_gizmos["transforms"]),
+        "side_effects": (),
+    }
+    replay = (
+        {
+            "phase": "author_style_override",
+            "pipeline": style_resolution["resolution_steps"],
+            "ok": {"base_theme", "state_override", "platform_override", "local_override"}
+            <= {layer["layer"] for layer in contract["style_cascade"]["layers"]}
+            and {"inspect_effective_value", "revert_override"} <= set(contract["style_cascade"]["operations"])
+            and style_resolution["ordered_layers"][0] == "base_theme"
+            and style_tokens["ok"],
+        },
+        {
+            "phase": "author_timeline",
+            "pipeline": timeline_playback["playback_steps"],
+            "ok": bool(contract["timeline_authoring"]["tracks"])
+            and {"add_keyframe", "scrub_preview"} <= set(contract["timeline_authoring"]["operations"])
+            and bool(timeline_scrub["samples"])
+            and timeline_interpolation["ok"]
+            and timeline_runtime_export["ok"]
+            and all("native_timeline" in export["artifacts"] for export in timeline_runtime_export["exports"]),
+        },
+        {
+            "phase": "validate_effect_stack",
+            "pipeline": effect_render["render_steps"],
+            "ok": {"shadow", "blur", "glow", "shader_hook"} <= {item["effect"] for item in contract["effect_stack"]["stack"]}
+            and effect_budget["ok"]
+            and effect_fallback_matrix["ok"]
+            and any(row["decision"] == "use_fallback" for row in effect_fallback_matrix["rows"])
+            and "select_fallback" in effect_render["render_steps"],
+        },
+        {
+            "phase": "author_scene_graph",
+            "pipeline": tuple(item["op"] for item in contract["scene_authoring"]["operations"]),
+            "ok": {"add_mesh", "position_camera", "edit_light", "assign_material"}
+            <= {item["op"] for item in contract["scene_authoring"]["operations"]}
+            and scene_validation["ok"]
+            and scene_integrity["ok"]
+            and material_binding["ok"]
+            and shader_material_editor["ok"],
+        },
+        {
+            "phase": "import_assets_and_preview",
+            "pipeline": asset_import["pipeline"] + preview_diff["diff_steps"],
+            "ok": asset_import["ok"]
+            and {"fingerprint_asset", "generate_fallback_thumbnail"} <= set(asset_import["pipeline"])
+            and preview_diff["diff_result"]["ok"]
+            and "report_visible_diff" in preview_diff["diff_steps"],
+        },
+        {
+            "phase": "hit_test_and_transform",
+            "pipeline": scene_hit_testing["guards"] + scene_transform_gizmos["guards"],
+            "ok": scene_hit_testing["ok"]
+            and all("open_inspector" in item["route"] for item in scene_hit_testing["hit_tests"])
+            and scene_transform_gizmos["ok"]
+            and all("sync_inspector" in item["pipeline"] for item in scene_transform_gizmos["transforms"]),
+        },
+        {
+            "phase": "runtime_replay",
+            "pipeline": tuple(item["phase"] for item in runtime_replay["replay"]),
+            "ok": runtime_replay["ok"]
+            and {"style_resolution", "timeline_interpolation", "effect_fallback", "scene_hit_testing", "scene_transform_sync"}
+            <= {item["phase"] for item in runtime_replay["replay"]},
+        },
+    )
+    return {
+        "format": "appgen.cross-target-visual-designer-transaction-replay-contract.v1",
+        "ok": all(item["ok"] for item in replay)
+        and state["style_layers"] >= 4
+        and state["timeline_samples"] > 0
+        and state["effect_fallbacks"] > 0
+        and state["scene_hits"] > 0
+        and state["transform_syncs"] > 0
+        and state["side_effects"] == (),
+        "replay": replay,
+        "final_state": state,
+        "guards": (
+            "style_before_preview",
+            "timeline_export_before_runtime",
+            "effect_budget_before_runtime",
+            "scene_graph_validated_before_transform",
+            "assets_fingerprinted_before_preview",
+            "hit_tests_route_to_inspector",
+            "runtime_replay_matches_designer_state",
+        ),
+        "side_effects": (),
+    }
+
+
 def cross_target_visual_depth_workbench() -> dict:
     """Prove animation, styling, effects, and 3D designer depth."""
     contract = cross_target_visual_depth_contract()
@@ -8953,6 +9073,7 @@ def cross_target_visual_depth_workbench() -> dict:
     effect_fallback_matrix = cross_target_effect_fallback_matrix_contract()
     scene_transform_gizmos = cross_target_scene_transform_gizmo_contract()
     runtime_replay = cross_target_visual_runtime_replay_contract()
+    designer_transaction_replay = cross_target_visual_designer_transaction_replay_contract()
     checks = (
         {
             "id": "style_resources",
@@ -9143,6 +9264,13 @@ def cross_target_visual_depth_workbench() -> dict:
             and not runtime_replay["side_effects"],
             "evidence": runtime_replay,
         },
+        {
+            "id": "visual_designer_transaction_replay",
+            "ok": designer_transaction_replay["ok"]
+            and "runtime_replay_matches_designer_state" in designer_transaction_replay["guards"]
+            and not designer_transaction_replay["side_effects"],
+            "evidence": designer_transaction_replay,
+        },
     )
     ok = all(check["ok"] for check in checks)
     return {
@@ -9169,6 +9297,7 @@ def cross_target_visual_depth_workbench() -> dict:
         "effect_fallback_matrix": effect_fallback_matrix,
         "scene_transform_gizmos": scene_transform_gizmos,
         "runtime_replay": runtime_replay,
+        "designer_transaction_replay": designer_transaction_replay,
         "checks": checks,
         "blocking_gaps": tuple(check for check in checks if not check["ok"]),
     }

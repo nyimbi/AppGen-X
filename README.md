@@ -338,7 +338,10 @@ Generated apps include Studio contracts for:
   runtime dispatch.
 - A cross-target visual depth workbench proves style resources, style cascade
   authoring, animation timelines, effect-stack validation, 3D scene authoring,
-  asset import budgets, preview/runtime parity, and runtime fallbacks.
+  asset import budgets, preview/runtime parity, runtime fallbacks, and an
+  ordered designer transaction replay across style overrides, timeline
+  authoring, effect fallback, scene editing, asset preview, hit testing,
+  transform sync, and runtime delivery.
 - Curated third-party component registry for useful commercial and open-source
   suites, plus reviewed package import/install plans for additional vendors.
 - A design-time package manager workbench proves install session phases,
