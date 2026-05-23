@@ -3023,6 +3023,127 @@ def binding_history_contract(design: dict | None = None) -> dict:
     }
 
 
+def binding_graph_editing_surface_contract(design: dict | None = None) -> dict:
+    """Return visual graph editing operations beyond initial link creation."""
+    graph = livebindings_graph_contract(design)
+    first_edge = graph["edges"][0]
+    operations = (
+        {"op": "reroute_edge", "edge": first_edge, "gesture": "drag_bendpoint", "stage": ("capture_graph", "preview_route", "validate_graph", "commit_or_rollback")},
+        {"op": "delete_edge", "edge": first_edge, "gesture": "delete_key", "stage": ("capture_graph", "remove_edge", "validate_required_bindings", "commit_or_rollback")},
+        {"op": "disable_edge", "edge": first_edge, "gesture": "toggle_enabled", "stage": ("capture_graph", "mark_disabled", "validate_runtime_gate", "commit_or_rollback")},
+        {"op": "inspect_node", "node": graph["nodes"][0], "gesture": "double_click", "stage": ("select_node", "open_inspector", "sync_property_sheet")},
+    )
+    return {
+        "format": "appgen.binding-graph-editing-surface-contract.v1",
+        "operations": operations,
+        "ok": {"reroute_edge", "delete_edge", "disable_edge", "inspect_node"} <= {operation["op"] for operation in operations}
+        and all("commit_or_rollback" in operation["stage"] or operation["op"] == "inspect_node" for operation in operations),
+        "guards": ("required_binding_warning", "route_preview_visible", "disabled_binding_runtime_gate"),
+        "side_effects": (),
+    }
+
+
+def binding_lookup_contract(design: dict | None = None) -> dict:
+    """Return lookup binding evidence for relationship-style fields."""
+    graph = livebindings_graph_contract(design)
+    table = graph["table"]
+    lookup_nodes = tuple(
+        {
+            "id": f"lookup:{node['field']}",
+            "kind": "lookup",
+            "source_field": node["field"],
+            "value_member": f"{node['field']}_id",
+            "display_member": "name",
+            "expression": f"lookup({node['field']}, 'name')",
+            "validator": validate_binding_expression(f"lookup({node['field']}, 'name')"),
+        }
+        for node in graph["nodes"]
+        if node["kind"] == "field"
+    )
+    lookup_edges = tuple(
+        {"from": node["id"], "to": f"field:{node['source_field']}", "kind": "lookup_to_field", "mode": "read"}
+        for node in lookup_nodes
+    )
+    return {
+        "format": "appgen.binding-lookup-contract.v1",
+        "table": table,
+        "nodes": lookup_nodes,
+        "edges": lookup_edges,
+        "ok": bool(lookup_nodes)
+        and all(node["validator"]["ok"] for node in lookup_nodes)
+        and all(edge["kind"] == "lookup_to_field" for edge in lookup_edges),
+        "guards": ("target_lookup_before_write", "display_member_required", "stale_lookup_invalidated"),
+        "side_effects": (),
+    }
+
+
+def binding_pipeline_contract(design: dict | None = None) -> dict:
+    """Return converter and validator pipeline evidence for runtime binding execution."""
+    graph = livebindings_graph_contract(design)
+    pipelines = tuple(
+        {
+            "edge": edge,
+            "pipeline": ("read_source", "apply_converter", "run_validators", "write_target", "publish_errors"),
+            "converter_catalog": tuple(converter["name"] for converter in graph["converters"]),
+            "validator_catalog": tuple(validator["name"] for validator in graph["validators"]),
+        }
+        for edge in graph["edges"]
+        if edge["kind"] in {"field_to_control", "control_to_field", "expression_to_property"}
+    )
+    return {
+        "format": "appgen.binding-pipeline-contract.v1",
+        "pipelines": pipelines,
+        "ok": bool(pipelines)
+        and all({"apply_converter", "run_validators", "publish_errors"} <= set(item["pipeline"]) for item in pipelines)
+        and all(item["converter_catalog"] and item["validator_catalog"] for item in pipelines),
+        "guards": ("converter_missing_blocks_apply", "validator_failure_blocks_write", "errors_surface_to_inspector"),
+        "side_effects": (),
+    }
+
+
+def binding_hit_testing_contract(design: dict | None = None) -> dict:
+    """Return hit-test and selection routing evidence for the visual binding designer."""
+    graph = livebindings_graph_contract(design)
+    hit_targets = tuple(
+        {
+            "target": node["id"],
+            "kind": node["kind"],
+            "actions": ("select", "open_inspector", "preview_value", "show_context_menu"),
+        }
+        for node in graph["nodes"]
+    )
+    return {
+        "format": "appgen.binding-hit-testing-contract.v1",
+        "hit_targets": hit_targets,
+        "ok": bool(hit_targets)
+        and {"dataset", "field", "control", "expression"} <= {target["kind"] for target in hit_targets}
+        and all({"select", "open_inspector"} <= set(target["actions"]) for target in hit_targets),
+        "guards": ("stable_hit_regions", "selection_syncs_with_object_inspector", "context_menu_uses_current_edge"),
+        "side_effects": (),
+    }
+
+
+def binding_runtime_gate_contract(design: dict | None = None) -> dict:
+    """Return runtime gates for disabled, required, and invalid bindings."""
+    graph = livebindings_graph_contract(design)
+    gates = tuple(
+        {
+            "edge": edge,
+            "gates": ("enabled", "source_available", "target_writable", "validator_ok", "converter_ok"),
+            "failure_surface": "field_error" if edge["kind"] == "control_to_field" else "binding_log",
+        }
+        for edge in graph["edges"]
+        if edge["kind"] in {"field_to_control", "control_to_field", "expression_to_property"}
+    )
+    return {
+        "format": "appgen.binding-runtime-gate-contract.v1",
+        "gates": gates,
+        "ok": bool(gates) and all({"enabled", "validator_ok", "converter_ok"} <= set(gate["gates"]) for gate in gates),
+        "guards": ("disabled_binding_skipped", "required_binding_warns", "invalid_binding_blocks_write"),
+        "side_effects": (),
+    }
+
+
 def livebindings_converter_catalog() -> tuple[dict, ...]:
     """Return generated converters available to the visual binding designer."""
     return (
@@ -3056,6 +3177,11 @@ def livebindings_workbench() -> dict:
     runtime_wiring = binding_runtime_wiring_contract()
     preview_runtime_parity = binding_preview_runtime_parity_contract()
     history = binding_history_contract()
+    graph_editing = binding_graph_editing_surface_contract()
+    lookup_bindings = binding_lookup_contract()
+    pipelines = binding_pipeline_contract()
+    hit_testing = binding_hit_testing_contract()
+    runtime_gates = binding_runtime_gate_contract()
     checks = (
         {
             "id": "graph_nodes",
@@ -3140,6 +3266,31 @@ def livebindings_workbench() -> dict:
             and not history["side_effects"],
             "evidence": history,
         },
+        {
+            "id": "graph_editing_surface",
+            "ok": graph_editing["ok"] and not graph_editing["side_effects"],
+            "evidence": graph_editing,
+        },
+        {
+            "id": "lookup_bindings",
+            "ok": lookup_bindings["ok"] and not lookup_bindings["side_effects"],
+            "evidence": lookup_bindings,
+        },
+        {
+            "id": "converter_validator_pipeline",
+            "ok": pipelines["ok"] and not pipelines["side_effects"],
+            "evidence": pipelines,
+        },
+        {
+            "id": "designer_hit_testing",
+            "ok": hit_testing["ok"] and not hit_testing["side_effects"],
+            "evidence": hit_testing,
+        },
+        {
+            "id": "runtime_binding_gates",
+            "ok": runtime_gates["ok"] and not runtime_gates["side_effects"],
+            "evidence": runtime_gates,
+        },
     )
     ok = all(check["ok"] for check in checks)
     return {
@@ -3155,6 +3306,11 @@ def livebindings_workbench() -> dict:
         "runtime_wiring": runtime_wiring,
         "preview_runtime_parity": preview_runtime_parity,
         "history": history,
+        "graph_editing": graph_editing,
+        "lookup_bindings": lookup_bindings,
+        "pipelines": pipelines,
+        "hit_testing": hit_testing,
+        "runtime_gates": runtime_gates,
         "checks": checks,
         "blocking_gaps": tuple(check for check in checks if not check["ok"]),
     }

@@ -900,11 +900,23 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "runtime_wiring",
         "preview_runtime_parity",
         "history_undo_redo",
+        "graph_editing_surface",
+        "lookup_bindings",
+        "converter_validator_pipeline",
+        "designer_hit_testing",
+        "runtime_binding_gates",
     } == {check["id"] for check in binding_workbench["checks"]}
     assert binding_workbench["graph_validation"]["ok"] is True
     assert binding_workbench["edit_transactions"]["validation"]["ok"] is True
     assert all("commit_or_rollback" in operation["stage"] for operation in binding_workbench["edit_transactions"]["operations"])
     assert binding_workbench["preview_runtime_parity"]["ok"] is True
+    assert {"reroute_edge", "delete_edge", "disable_edge"} <= {
+        operation["op"] for operation in binding_workbench["graph_editing"]["operations"]
+    }
+    assert binding_workbench["lookup_bindings"]["nodes"]
+    assert all("apply_converter" in pipeline["pipeline"] for pipeline in binding_workbench["pipelines"]["pipelines"])
+    assert all("open_inspector" in target["actions"] for target in binding_workbench["hit_testing"]["hit_targets"])
+    assert all("disabled_binding_skipped" in binding_workbench["runtime_gates"]["guards"] for _ in binding_workbench["runtime_gates"]["gates"])
     data_workbench = rad_data_tooling_workbench()
     assert data_workbench["format"] == "appgen.rad-data-tooling-workbench.v1"
     assert data_workbench["ok"] is True
@@ -9069,10 +9081,22 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "edit_transactions",
         "runtime_wiring",
         "preview_runtime_parity",
+        "graph_editing_surface",
+        "lookup_bindings",
+        "converter_validator_pipeline",
+        "designer_hit_testing",
+        "runtime_binding_gates",
     } <= {
         check["id"] for check in generated_bindings["checks"]
     }
     assert generated_bindings["authoring"]["operations"]
+    assert {"reroute_edge", "delete_edge", "disable_edge"} <= {
+        operation["op"] for operation in generated_bindings["graph_editing"]["operations"]
+    }
+    assert generated_bindings["lookup_bindings"]["nodes"]
+    assert all("apply_converter" in pipeline["pipeline"] for pipeline in generated_bindings["pipelines"]["pipelines"])
+    assert all("open_inspector" in target["actions"] for target in generated_bindings["hit_testing"]["hit_targets"])
+    assert all("disabled_binding_skipped" in generated_bindings["runtime_gates"]["guards"] for _ in generated_bindings["runtime_gates"]["gates"])
     assert generated_bindings["graph_validation"]["ok"] is True
     assert generated_bindings["edit_transactions"]["validation"]["ok"] is True
     assert generated_bindings["runtime_wiring"]["artifacts"]
