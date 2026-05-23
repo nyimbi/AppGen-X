@@ -1713,6 +1713,27 @@ def write_lifecycle_file(output_dir, schema: AppSchema):
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
     (output_dir / "lifecycle.py").write_text(_lifecycle_text(schema, _app_name(schema)))
+    write_lifecycle_module_files(output_dir)
+
+
+def write_lifecycle_module_files(output_dir):
+    """Write generated lifecycle modules and smoke tests."""
+    output_dir = Path(output_dir)
+    module_dir = output_dir / "lifecycle_modules"
+    test_dir = output_dir / "lifecycle_module_tests"
+    module_dir.mkdir(parents=True, exist_ok=True)
+    test_dir.mkdir(parents=True, exist_ok=True)
+    (module_dir / "__init__.py").write_text(_lifecycle_module_init_text(), encoding="utf-8")
+    (test_dir / "__init__.py").write_text(_lifecycle_module_test_init_text(), encoding="utf-8")
+    for module_name in LIFECYCLE_MODULES:
+        (module_dir / f"{module_name}.py").write_text(
+            _lifecycle_module_text(module_name),
+            encoding="utf-8",
+        )
+        (test_dir / f"test_{module_name}.py").write_text(
+            _lifecycle_module_test_text(module_name),
+            encoding="utf-8",
+        )
 
 
 def write_emerging_file(output_dir, schema: AppSchema):
@@ -2128,6 +2149,14 @@ PRODUCTIVITY_MODULES = (
     "spreadsheet_export_module",
     "calendar_task_module",
     "release_workbench_module",
+)
+
+LIFECYCLE_MODULES = (
+    "environment_release_module",
+    "promotion_domain_module",
+    "maintenance_update_module",
+    "feedback_issue_module",
+    "workbench_release_module",
 )
 
 
@@ -5844,6 +5873,249 @@ def smoke_test():
         "surface": SURFACE,
         "ok": True,
         "tests": ("test_productivity_module_contract", "test_productivity_module_smoke"),
+    }}
+'''
+
+
+def _lifecycle_module_init_text() -> str:
+    return (
+        '"""Generated lifecycle modules."""\n\n'
+        f"LIFECYCLE_MODULES = {LIFECYCLE_MODULES!r}\n"
+    )
+
+
+def _lifecycle_module_test_init_text() -> str:
+    modules = tuple(f"test_{name}" for name in LIFECYCLE_MODULES)
+    return (
+        '"""Generated lifecycle module tests."""\n\n'
+        f"LIFECYCLE_MODULE_TESTS = {modules!r}\n"
+    )
+
+
+def _lifecycle_surface(module_name: str) -> tuple[str, str]:
+    return {
+        "environment_release_module": ("environment_release", "environment_catalog"),
+        "promotion_domain_module": ("promotion_domain", "promotion_plan"),
+        "maintenance_update_module": ("maintenance_update", "maintenance_window"),
+        "feedback_issue_module": ("feedback_issue", "feedback_item"),
+        "workbench_release_module": ("workbench_release", "lifecycle_release_gate"),
+    }[module_name]
+
+
+def _lifecycle_module_text(module_name: str) -> str:
+    surface, operation = _lifecycle_surface(module_name)
+    return f'''"""Generated lifecycle module for {surface}."""
+
+from __future__ import annotations
+
+import importlib.util
+from pathlib import Path
+
+
+MODULE = {module_name!r}
+SURFACE = {surface!r}
+OPERATION = {operation!r}
+EXPECTED_EXPORTS = (
+    "module_contract",
+    "lifecycle_manifest_contract",
+    "run_lifecycle_operation",
+    "release_context",
+    "smoke_test",
+)
+
+
+def _lifecycle():
+    module_path = Path(__file__).resolve().parents[1] / "lifecycle.py"
+    spec = importlib.util.spec_from_file_location(f"generated_lifecycle_{{MODULE}}_lifecycle", module_path)
+    module = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(module)
+    return module
+
+
+def module_contract():
+    """Return this generated lifecycle module's export contract."""
+    available = tuple(name for name in EXPECTED_EXPORTS if name in globals())
+    return {{
+        "format": "appgen.lifecycle-module-contract.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "operation": OPERATION,
+        "ok": set(EXPECTED_EXPORTS) <= set(available),
+        "exports": available,
+        "expected_exports": EXPECTED_EXPORTS,
+        "side_effects": (),
+    }}
+
+
+def lifecycle_manifest_contract():
+    """Return generated lifecycle metadata owned by this module."""
+    lifecycle = _lifecycle()
+    environments = lifecycle.environment_catalog()
+    return {{
+        "format": "appgen.lifecycle-module-manifest.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "ok": {{"development", "testing", "staging", "production"}} <= {{item["name"] for item in environments}}
+        and {{"quality", "tests", "security", "backup", "migration", "custom_domain", "monitoring"}} <= set(lifecycle.RELEASE_GATES),
+        "environments": environments,
+        "release_gates": lifecycle.RELEASE_GATES,
+        "side_effects": (),
+    }}
+
+
+def run_lifecycle_operation():
+    """Run this module's side-effect-free lifecycle operation."""
+    lifecycle = _lifecycle()
+    sample_env = {{
+        "SECRET_KEY": "configured",
+        "APPGEN_DOMAIN": "app.example.test",
+        "DATABASE_URL": "postgresql://appgen.example/db",
+    }}
+    if SURFACE == "environment_release":
+        operation = {{
+            "catalog": lifecycle.environment_catalog(),
+            "production": lifecycle.environment_status("production", sample_env),
+            "checklist": lifecycle.release_checklist("production"),
+        }}
+        ok = operation["production"]["ready"] and bool(operation["checklist"]["required_artifacts"])
+    elif SURFACE == "promotion_domain":
+        operation = {{
+            "promotion": lifecycle.promotion_plan("staging", manifest_revision="rev-1"),
+            "domain": lifecycle.custom_domain_plan("production", "app.example.test"),
+        }}
+        ok = operation["promotion"]["target"] == "production" and operation["domain"]["tls"]["auto_https"]
+    elif SURFACE == "maintenance_update":
+        operation = {{
+            "maintenance": lifecycle.maintenance_window(duration_minutes=45),
+            "update": lifecycle.update_plan("1.2.3", migration_required=True),
+        }}
+        ok = operation["maintenance"]["duration_minutes"] == 45 and "apply_migrations" in operation["update"]["steps"] and bool(operation["update"]["rollback"])
+    elif SURFACE == "feedback_issue":
+        operation = {{
+            "feedback": lifecycle.feedback_item("Needs work", rating=2),
+            "user_test": lifecycle.user_test_session("Onboarding"),
+            "issue": lifecycle.issue_report("Broken form", severity="high"),
+        }}
+        ok = operation["feedback"]["id"].startswith("fb-") and operation["user_test"]["metrics"] and operation["issue"]["status"] == "open"
+    else:
+        core_assets = {{"app/lifecycle.py", "app/templates/appgen_lifecycle.html"}}
+        operation = {{
+            "release": lifecycle.lifecycle_release_gate(core_assets),
+            "workbench": lifecycle.lifecycle_workbench(core_assets),
+        }}
+        ok = operation["release"]["ok"] and operation["workbench"]["ok"]
+    return {{
+        "format": "appgen.lifecycle-module-operation.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "ok": ok,
+        "operation": operation,
+        "side_effects": (),
+    }}
+
+
+def release_context():
+    """Return release evidence used by this lifecycle module."""
+    lifecycle = _lifecycle()
+    core_assets = {{"app/lifecycle.py", "app/templates/appgen_lifecycle.html"}}
+    return {{
+        "format": "appgen.lifecycle-module-release-context.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "ok": lifecycle.lifecycle_release_gate(core_assets)["ok"] and lifecycle.lifecycle_workbench(core_assets)["ok"],
+        "release": lifecycle.lifecycle_release_gate(core_assets),
+        "workbench": lifecycle.lifecycle_workbench(core_assets),
+        "side_effects": (),
+    }}
+
+
+def smoke_test():
+    """Run side-effect-free checks for this generated lifecycle module."""
+    contract = module_contract()
+    manifest = lifecycle_manifest_contract()
+    operation = run_lifecycle_operation()
+    release = release_context()
+    return {{
+        "format": "appgen.lifecycle-module-smoke-test.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "ok": contract["ok"]
+        and manifest["ok"]
+        and operation["ok"]
+        and release["ok"]
+        and not manifest["side_effects"]
+        and not operation["side_effects"]
+        and not release["side_effects"],
+        "contract": contract,
+        "manifest": manifest,
+        "operation": operation,
+        "release": release,
+        "checks": (
+            "module_contract_resolves",
+            "lifecycle_manifest_contract_ok",
+            "lifecycle_operation_ok",
+            "release_context_ok",
+            "no_side_effects",
+        ),
+    }}
+'''
+
+
+def _lifecycle_module_test_text(module_name: str) -> str:
+    surface, _operation = _lifecycle_surface(module_name)
+    return f'''"""Generated tests for the {surface} lifecycle module."""
+
+from __future__ import annotations
+
+import importlib.util
+from pathlib import Path
+
+
+MODULE = {module_name!r}
+SURFACE = {surface!r}
+
+
+def load_lifecycle_module():
+    """Load the generated lifecycle module without app installation."""
+    module_path = Path(__file__).resolve().parents[1] / "lifecycle_modules" / f"{{MODULE}}.py"
+    spec = importlib.util.spec_from_file_location(f"generated_lifecycle_module_{{MODULE}}", module_path)
+    module = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(module)
+    return module
+
+
+def test_lifecycle_module_contract():
+    """Assert the generated lifecycle module exposes its contract."""
+    module = load_lifecycle_module()
+    contract = module.module_contract()
+    assert contract["module"] == MODULE
+    assert contract["surface"] == SURFACE
+    assert contract["ok"] is True
+    assert all(hasattr(module, name) for name in contract["expected_exports"])
+
+
+def test_lifecycle_module_smoke():
+    """Assert the module's side-effect-free smoke test passes."""
+    module = load_lifecycle_module()
+    result = module.smoke_test()
+    assert result["ok"] is True
+    assert result["module"] == MODULE
+    assert result["surface"] == SURFACE
+    assert result["checks"]
+
+
+def smoke_test():
+    """Run this generated test module in a side-effect-free way."""
+    test_lifecycle_module_contract()
+    test_lifecycle_module_smoke()
+    return {{
+        "format": "appgen.lifecycle-module-generated-test-smoke.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "ok": True,
+        "tests": ("test_lifecycle_module_contract", "test_lifecycle_module_smoke"),
     }}
 '''
 
@@ -24669,7 +24941,9 @@ from __future__ import annotations
 from datetime import datetime
 from datetime import timezone
 from hashlib import sha256
+import importlib.util
 import json
+from pathlib import Path
 
 from flask import jsonify
 from flask_appbuilder import BaseView
@@ -25052,7 +25326,9 @@ from __future__ import annotations
 from datetime import datetime
 from datetime import timezone
 from hashlib import sha256
+import importlib.util
 import json
+from pathlib import Path
 
 from flask import jsonify
 from flask_appbuilder import BaseView
@@ -30072,7 +30348,9 @@ from __future__ import annotations
 from datetime import datetime
 from datetime import timezone
 from hashlib import sha256
+import importlib.util
 import json
+from pathlib import Path
 
 from flask import jsonify
 from flask_appbuilder import BaseView
@@ -30112,6 +30390,72 @@ ENVIRONMENTS = {{
     }},
 }}
 RELEASE_GATES = {release_gates!r}
+LIFECYCLE_MODULES = (
+    "environment_release_module",
+    "promotion_domain_module",
+    "maintenance_update_module",
+    "feedback_issue_module",
+    "workbench_release_module",
+)
+
+
+def _load_generated_module(module_path, module_name):
+    """Load a generated lifecycle helper module without installing the app."""
+    spec = importlib.util.spec_from_file_location(module_name, module_path)
+    module = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(module)
+    return module
+
+
+def lifecycle_module_file_manifest():
+    """Return independently importable generated lifecycle module files."""
+    root = Path(__file__).resolve().parent
+    modules = []
+    for module_name in LIFECYCLE_MODULES:
+        module_path = root / "lifecycle_modules" / f"{{module_name}}.py"
+        module = _load_generated_module(module_path, f"generated_lifecycle_module_{{module_name}}")
+        contract = module.module_contract()
+        modules.append(
+            {{
+                "module": module_name,
+                "surface": contract["surface"],
+                "path": f"app/lifecycle_modules/{{module_name}}.py",
+                "exists": module_path.exists(),
+                "ok": contract["ok"] and module.smoke_test()["ok"],
+                "exports": contract["exports"],
+            }}
+        )
+    return {{
+        "format": "appgen.lifecycle-module-file-manifest.v1",
+        "ok": len(modules) == len(LIFECYCLE_MODULES) and all(item["ok"] and item["exists"] for item in modules),
+        "modules": tuple(modules),
+    }}
+
+
+def lifecycle_module_test_file_manifest():
+    """Return generated tests for the lifecycle module files."""
+    root = Path(__file__).resolve().parent
+    tests = []
+    for module_name in LIFECYCLE_MODULES:
+        test_path = root / "lifecycle_module_tests" / f"test_{{module_name}}.py"
+        module = _load_generated_module(test_path, f"generated_lifecycle_module_test_{{module_name}}")
+        result = module.smoke_test()
+        tests.append(
+            {{
+                "module": f"test_{{module_name}}",
+                "surface": result["surface"],
+                "path": f"app/lifecycle_module_tests/test_{{module_name}}.py",
+                "exists": test_path.exists(),
+                "ok": result["ok"],
+                "tests": result["tests"],
+            }}
+        )
+    return {{
+        "format": "appgen.lifecycle-module-test-file-manifest.v1",
+        "ok": len(tests) == len(LIFECYCLE_MODULES) and all(item["ok"] and item["exists"] for item in tests),
+        "tests": tuple(tests),
+    }}
 
 
 def environment_catalog():

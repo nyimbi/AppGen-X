@@ -9089,6 +9089,38 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert "/lifecycle/workbench.json" in lifecycle_workbench["routes"]
     assert lifecycle.lifecycle_workbench({"app/lifecycle.py"})["ok"] is False
     assert lifecycle.lifecycle_release_gate({"app/lifecycle.py"})["ok"] is False
+    lifecycle_module_files = lifecycle.lifecycle_module_file_manifest()
+    lifecycle_module_tests = lifecycle.lifecycle_module_test_file_manifest()
+    assert lifecycle_module_files["ok"] is True
+    assert lifecycle_module_tests["ok"] is True
+    assert {item["surface"] for item in lifecycle_module_files["modules"]} == {
+        "environment_release",
+        "promotion_domain",
+        "maintenance_update",
+        "feedback_issue",
+        "workbench_release",
+    }
+    assert {item["surface"] for item in lifecycle_module_tests["tests"]} == {
+        "environment_release",
+        "promotion_domain",
+        "maintenance_update",
+        "feedback_issue",
+        "workbench_release",
+    }
+    for item in lifecycle_module_files["modules"]:
+        module_path = output_dir / item["path"].replace("app/", "")
+        py_compile.compile(str(module_path), doraise=True)
+        module = _load_module(module_path, f"generated_lifecycle_module_{item['module']}")
+        assert module.module_contract()["ok"] is True
+        assert module.lifecycle_manifest_contract()["ok"] is True
+        assert module.run_lifecycle_operation()["ok"] is True
+        assert module.release_context()["ok"] is True
+        assert module.smoke_test()["ok"] is True
+    for item in lifecycle_module_tests["tests"]:
+        test_path = output_dir / item["path"].replace("app/", "")
+        py_compile.compile(str(test_path), doraise=True)
+        module = _load_module(test_path, f"generated_lifecycle_module_test_{item['module']}")
+        assert module.smoke_test()["ok"] is True
     first_device = emerging.device_catalog()[0]
     telemetry = emerging.telemetry_event(first_device["name"], {first_device["metrics"][0]: 1}, device_id="device-1")
     assert telemetry["topic"] == first_device["telemetry_topic"]
