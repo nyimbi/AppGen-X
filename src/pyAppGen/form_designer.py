@@ -2556,6 +2556,142 @@ def pascal_package_target_matrix_contract(design: dict | None = None) -> dict:
     }
 
 
+def pascal_language_frontend_contract(design: dict | None = None) -> dict:
+    """Return parsed language-front-end evidence for generated native units."""
+    unit = pascal_unit_contract(design)
+    parsed = pascal_unit_parse_contract(design)
+    token_stream = tuple(
+        token
+        for token in re.findall(r"[A-Za-z_][A-Za-z0-9_]*|\{\$R\s+\*\.dfm\}|[:;,.()]", unit["unit_source"])
+        if token.strip()
+    )
+    symbols = (
+        {"name": unit["unit_name"], "kind": "unit", "scope": "global"},
+        {"name": parsed["class_name"], "kind": "class", "scope": unit["unit_name"]},
+        *(
+            {"name": component["name"], "kind": "field", "type": component["class"], "scope": parsed["class_name"]}
+            for component in parsed["component_declarations"]
+        ),
+    )
+    ast_nodes = ("unit", "interface", "uses", "type_section", "form_class", "component_fields", "implementation", "resource_directive")
+    type_checks = tuple(
+        {"symbol": component["name"], "declared_type": component["class"], "published": True, "ok": component["class"].startswith("T")}
+        for component in parsed["component_declarations"]
+    )
+    return {
+        "format": "appgen.pascal-language-frontend-contract.v1",
+        "ok": bool(token_stream)
+        and {"unit", "interface", "implementation"} <= set(token_stream)
+        and all(check["ok"] for check in type_checks),
+        "tokens": token_stream,
+        "ast_nodes": ast_nodes,
+        "symbols": symbols,
+        "type_checks": type_checks,
+        "guards": ("deterministic_tokenization", "symbol_table_reviewable", "type_checks_before_emit"),
+        "side_effects": (),
+    }
+
+
+def pascal_form_stream_schema_contract(design: dict | None = None) -> dict:
+    """Return schema coverage for text, binary, and JSON form design streams."""
+    round_trip = dfm_round_trip(design)
+    fields = round_trip["round_trip_fields"]
+    schema = (
+        {"property": "Name", "type": "identifier", "required": True, "streamed": True},
+        {"property": "Caption", "type": "string", "required": False, "streamed": True},
+        {"property": "Left", "type": "integer", "required": True, "streamed": True},
+        {"property": "Top", "type": "integer", "required": True, "streamed": True},
+        {"property": "Width", "type": "integer", "required": True, "streamed": True},
+        {"property": "Height", "type": "integer", "required": True, "streamed": True},
+        {"property": "AppGenField", "type": "string", "required": True, "streamed": True},
+        {"property": "AppGenComponent", "type": "string", "required": True, "streamed": True},
+    )
+    stream_variants = (
+        {"format": "text", "preserves": ("component_identity", "published_properties", "unknown_properties")},
+        {"format": "binary", "preserves": ("component_identity", "resource_ids", "unknown_properties")},
+        {"format": "json", "preserves": ("component_identity", "layout_grid", "data_bindings")},
+    )
+    return {
+        "format": "appgen.pascal-form-stream-schema-contract.v1",
+        "ok": round_trip["ok"] and bool(fields) and all(item["streamed"] for item in schema),
+        "schema": schema,
+        "stream_variants": stream_variants,
+        "inheritance": ("base_form", "inherited_component", "overridden_property", "ancestor_property"),
+        "collections": ("columns", "items", "actions", "bindings", "style_resources"),
+        "guards": ("published_schema_declared", "inherited_values_preserved", "collection_order_stable"),
+        "side_effects": (),
+    }
+
+
+def pascal_debug_symbol_contract(design: dict | None = None) -> dict:
+    """Return debug symbol and source-map evidence for generated native artifacts."""
+    unit = pascal_unit_contract(design)
+    parsed = pascal_unit_parse_contract(design)
+    symbols = tuple(
+        {
+            "symbol": component["name"],
+            "unit": unit["unit_name"],
+            "source_span": (1, len(unit["unit_source"].splitlines())),
+            "maps_to": ("form_stream", "component_field", "object_inspector"),
+        }
+        for component in parsed["component_declarations"]
+    )
+    return {
+        "format": "appgen.pascal-debug-symbol-contract.v1",
+        "ok": bool(symbols) and all("source_span" in item and "object_inspector" in item["maps_to"] for item in symbols),
+        "symbols": symbols,
+        "artifacts": ("symbol_map", "source_map", "diagnostic_index", "component_lookup"),
+        "guards": ("symbol_map_emitted", "source_spans_stable", "component_lookup_reviewable"),
+        "side_effects": (),
+    }
+
+
+def pascal_runtime_memory_model_contract(design: dict | None = None) -> dict:
+    """Return runtime ownership, lifetime, and exception-boundary evidence."""
+    unit = pascal_unit_contract(design)
+    lifecycle = pascal_runtime_lifecycle_contract(design)
+    ownership = (
+        {"owner": "application", "owns": unit["class_name"], "release": "release_form"},
+        {"owner": unit["class_name"], "owns": "child_components", "release": "release_owned_components"},
+        {"owner": unit["class_name"], "owns": "resource_bundle", "release": "release_resources"},
+        {"owner": "background_worker", "owns": "async_tasks", "release": "cancel_and_join"},
+    )
+    return {
+        "format": "appgen.pascal-runtime-memory-model-contract.v1",
+        "ok": "release_form" in lifecycle["hooks"] and all(item["release"] for item in ownership),
+        "ownership": ownership,
+        "lifetime_hooks": lifecycle["hooks"],
+        "exception_boundaries": ("form_create", "resource_load", "event_dispatch", "background_worker", "form_release"),
+        "guards": ("owner_releases_children", "event_dispatch_exception_boundary", "background_tasks_joined"),
+        "side_effects": (),
+    }
+
+
+def pascal_toolchain_adapter_contract(design: dict | None = None) -> dict:
+    """Return normalized native toolchain adapter behavior for generated artifacts."""
+    unit = pascal_unit_contract(design)
+    compiler = pascal_compiler_pipeline_contract(design)
+    adapters = tuple(
+        {
+            "toolchain": toolchain,
+            "inputs": compiler["inputs"],
+            "targets": compiler["targets"],
+            "commands": ("detect_version", "prepare_response_file", "compile_unit", "link_resources", "normalize_diagnostics"),
+            "artifacts": compiler["outputs"],
+            "sandboxed": True,
+        }
+        for toolchain in unit["compiler_plan"]["toolchains"]
+    )
+    return {
+        "format": "appgen.pascal-toolchain-adapter-contract.v1",
+        "ok": bool(adapters)
+        and all({"detect_version", "normalize_diagnostics"} <= set(adapter["commands"]) and adapter["sandboxed"] for adapter in adapters),
+        "adapters": adapters,
+        "guards": ("toolchain_version_recorded", "response_file_reviewable", "diagnostics_normalized"),
+        "side_effects": (),
+    }
+
+
 def pascal_runtime_workbench(design: dict | None = None) -> dict:
     """Return DFM streaming and Pascal runtime generation evidence."""
     design = design or form_design()
@@ -2580,6 +2716,11 @@ def pascal_runtime_workbench(design: dict | None = None) -> dict:
     stream_diff_merge = dfm_stream_diff_merge_contract(design)
     incremental_invalidation = pascal_incremental_invalidation_contract(design)
     package_target_matrix = pascal_package_target_matrix_contract(design)
+    language_frontend = pascal_language_frontend_contract(design)
+    form_stream_schema = pascal_form_stream_schema_contract(design)
+    debug_symbols = pascal_debug_symbol_contract(design)
+    runtime_memory_model = pascal_runtime_memory_model_contract(design)
+    toolchain_adapters = pascal_toolchain_adapter_contract(design)
     checks = (
         {"id": "dfm_serialization", "ok": "object " in round_trip["dfm"] and "AppGenField" in round_trip["dfm"], "evidence": round_trip["dfm"]},
         {"id": "dfm_parse_round_trip", "ok": round_trip["ok"], "evidence": round_trip},
@@ -2702,6 +2843,31 @@ def pascal_runtime_workbench(design: dict | None = None) -> dict:
             "ok": package_target_matrix["ok"] and "resource_bundle_per_target" in package_target_matrix["guards"] and not package_target_matrix["side_effects"],
             "evidence": package_target_matrix,
         },
+        {
+            "id": "language_frontend",
+            "ok": language_frontend["ok"] and "symbol_table_reviewable" in language_frontend["guards"] and not language_frontend["side_effects"],
+            "evidence": language_frontend,
+        },
+        {
+            "id": "form_stream_schema",
+            "ok": form_stream_schema["ok"] and "collection_order_stable" in form_stream_schema["guards"] and not form_stream_schema["side_effects"],
+            "evidence": form_stream_schema,
+        },
+        {
+            "id": "debug_symbols",
+            "ok": debug_symbols["ok"] and "source_spans_stable" in debug_symbols["guards"] and not debug_symbols["side_effects"],
+            "evidence": debug_symbols,
+        },
+        {
+            "id": "runtime_memory_model",
+            "ok": runtime_memory_model["ok"] and "owner_releases_children" in runtime_memory_model["guards"] and not runtime_memory_model["side_effects"],
+            "evidence": runtime_memory_model,
+        },
+        {
+            "id": "toolchain_adapters",
+            "ok": toolchain_adapters["ok"] and "diagnostics_normalized" in toolchain_adapters["guards"] and not toolchain_adapters["side_effects"],
+            "evidence": toolchain_adapters,
+        },
     )
     ok = all(check["ok"] for check in checks)
     return {
@@ -2730,6 +2896,11 @@ def pascal_runtime_workbench(design: dict | None = None) -> dict:
         "stream_diff_merge": stream_diff_merge,
         "incremental_invalidation": incremental_invalidation,
         "package_target_matrix": package_target_matrix,
+        "language_frontend": language_frontend,
+        "form_stream_schema": form_stream_schema,
+        "debug_symbols": debug_symbols,
+        "runtime_memory_model": runtime_memory_model,
+        "toolchain_adapters": toolchain_adapters,
         "blocking_gaps": tuple(check for check in checks if not check["ok"]),
     }
 

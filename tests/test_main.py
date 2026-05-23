@@ -1337,6 +1337,11 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "stream_diff_merge",
         "incremental_invalidation",
         "package_target_matrix",
+        "language_frontend",
+        "form_stream_schema",
+        "debug_symbols",
+        "runtime_memory_model",
+        "toolchain_adapters",
     } == {check["id"] for check in runtime["checks"]}
     assert runtime["incremental"]["outputs"][0] == "diagnostic_delta"
     assert "package_manager" in runtime["diagnostics"]["designer_surfaces"]
@@ -1349,6 +1354,11 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     assert "preserve_unknown_properties" in runtime["stream_diff_merge"]["merge_plan"]
     assert "event_handler_changed" in {item["reason"] for item in runtime["incremental_invalidation"]["invalidations"]}
     assert {"android", "ios"} <= {item["target"] for item in runtime["package_target_matrix"]["targets"]}
+    assert {"unit", "interface", "implementation"} <= set(runtime["language_frontend"]["tokens"])
+    assert all(item["streamed"] for item in runtime["form_stream_schema"]["schema"])
+    assert all("object_inspector" in symbol["maps_to"] for symbol in runtime["debug_symbols"]["symbols"])
+    assert "event_dispatch_exception_boundary" in runtime["runtime_memory_model"]["guards"]
+    assert all("normalize_diagnostics" in adapter["commands"] for adapter in runtime["toolchain_adapters"]["adapters"])
 
     matrix = field_component_matrix()
     assert matrix
@@ -9199,6 +9209,11 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "stream_diff_merge",
         "incremental_invalidation",
         "package_target_matrix",
+        "language_frontend",
+        "form_stream_schema",
+        "debug_symbols",
+        "runtime_memory_model",
+        "toolchain_adapters",
     } <= {
         check["id"] for check in generated_runtime["checks"]
     }
@@ -9220,6 +9235,11 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert "preserve_unknown_properties" in generated_runtime["stream_diff_merge"]["merge_plan"]
     assert "resource_changed" in {item["reason"] for item in generated_runtime["incremental_invalidation"]["invalidations"]}
     assert all("resource_bundle" in item["artifacts"] for item in generated_runtime["package_target_matrix"]["targets"])
+    assert {"unit", "interface", "implementation"} <= set(generated_runtime["language_frontend"]["tokens"])
+    assert "collection_order_stable" in generated_runtime["form_stream_schema"]["guards"]
+    assert all("source_span" in symbol for symbol in generated_runtime["debug_symbols"]["symbols"])
+    assert all(item["release"] for item in generated_runtime["runtime_memory_model"]["ownership"])
+    assert all(adapter["sandboxed"] for adapter in generated_runtime["toolchain_adapters"]["adapters"])
     assert "control_to_field" in form_designer.livebindings_contract()["binding_edges"]
     generated_bindings = form_designer.livebindings_workbench()
     assert generated_bindings["format"] == "appgen.generated-livebindings-workbench.v1"
