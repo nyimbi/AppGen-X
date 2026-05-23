@@ -840,6 +840,7 @@ def package_goal_audit(root: Path | str | None = None) -> dict:
     from .integrations import integration_release_audit
     from .nl import nl_evolution_release_audit
     from .ops import ops_release_audit
+    from .pbc import pbc_release_audit
     from .reporting import reporting_release_audit
     from .security import security_release_audit
     from .source_intake import source_intake_release_audit
@@ -867,6 +868,7 @@ def package_goal_audit(root: Path | str | None = None) -> dict:
     integrations = integration_release_audit()
     agentic = agentic_release_audit()
     targets = target_release_audit()
+    pbc = pbc_release_audit()
     gates = (
         {
             "id": "roadmap_traceability",
@@ -969,6 +971,11 @@ def package_goal_audit(root: Path | str | None = None) -> dict:
             "format": targets["format"],
         },
         {
+            "id": "composable_pbc_catalog",
+            "ok": pbc["ok"],
+            "format": pbc["format"],
+        },
+        {
             "id": "source_document_scope",
             "ok": {"docs/ideas.md", "docs/base_features.md", "docs/Lo-code features.md"}
             <= {document["path"] for document in roadmap["documents"]},
@@ -1003,6 +1010,7 @@ def package_goal_audit(root: Path | str | None = None) -> dict:
             "integrations": integrations,
             "agentic": agentic,
             "targets": targets,
+            "pbc": pbc,
         },
         "blocking_gaps": tuple(gate for gate in gates if not gate["ok"]),
         "stop_condition": "do-not-mark-active-goal-complete-unless-ok-is-true",

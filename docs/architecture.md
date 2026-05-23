@@ -336,6 +336,34 @@ provides:
 Templates should stay composable. A project can start with invoicing, inventory,
 or HR and later add related modules through DSL or natural-language evolution.
 
+## Composable PBC Architecture
+
+Packaged Business Capabilities are the platform's higher-level composition
+unit for enterprise applications. `pbc.py` keeps the catalog executable instead
+of prose-only: each PBC declares its mesh, owned datastore, approved
+open-source datastore backend, command APIs, emitted events, consumed events,
+generated tables, and optional ERP template bridge.
+
+The composition path is:
+
+1. Resolve a natural-language prompt, explicit selection, or starter stack to
+   PBC keys.
+2. Build a composition plan with one deployment unit, datastore, and approved
+   datastore backend per PBC.
+3. Resolve internal event dependencies and record external event obligations.
+4. Select a Python-native stream processor profile for event-heavy PBCs.
+   `faust_streaming` is the default for service/workflow meshes. Use
+   `quix_streams` only for high-throughput event/time-series processing, and
+   `bytewax` only for complex parallel dataflow transformations.
+5. Render compact AppGen DSL for workbench views, outbox tables, and target
+   selection.
+6. Generate and compile the application shell as part of the PBC release audit.
+
+This keeps composable applications from collapsing into a shared database
+module while still letting users select finance, supply-chain, people,
+manufacturing, commerce, and customer-experience capabilities into one
+application.
+
 ## Deployment Architecture
 
 Deployment support is generated as explicit files and workbench contracts:

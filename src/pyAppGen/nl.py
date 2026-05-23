@@ -21,6 +21,11 @@ SUPPORTED_TARGETS = ("web", "pwa", "mobile", "desktop", "chatbot")
 DEFAULT_TARGETS = ("web",)
 DEFAULT_TABLE = "Ticket"
 LLM_PROVIDER_NAME = "LocalModel"
+SMALL_MODEL_PROFILES = {
+    "qwen3.5-2b": {"max_prompt_tokens": 900, "max_patch_tokens": 1400, "backend": "ollama"},
+    "qwen3.5-4b": {"max_prompt_tokens": 1200, "max_patch_tokens": 1800, "backend": "ollama"},
+    "local-4b-vllm": {"max_prompt_tokens": 1200, "max_patch_tokens": 1800, "backend": "vllm"},
+}
 
 
 def evolution_capabilities() -> dict:
@@ -221,6 +226,113 @@ def evolution_changeset(prompt: str, base_dsl: str = "") -> dict:
     }
 
 
+def estimate_compact_tokens(text: str) -> int:
+    """Return a conservative model-agnostic token estimate for compact prompts."""
+    normalized = re.sub(r"\s+", " ", text.strip())
+    return max(1, (len(normalized) + 3) // 4)
+
+
+def small_model_profile_catalog() -> tuple[dict, ...]:
+    """Return small local model profiles supported by compact NL generation."""
+    return tuple({"model": model, **profile} for model, profile in SMALL_MODEL_PROFILES.items())
+
+
+def compact_generation_brief(prompt: str, *, model: str = "qwen3.5-2b") -> dict:
+    """Return a token-budgeted brief that small local models can complete."""
+    profile = SMALL_MODEL_PROFILES[model]
+    plan = evolution_plan(prompt)
+    compact_spec = {
+        "app": "EvolvedApp",
+        "table": plan["table"],
+        "targets": _proposal_targets(plan["proposals"]) or DEFAULT_TARGETS,
+        "ops": tuple(item["kind"] for item in plan["proposals"]),
+        "fields": tuple(
+            {
+                "name": item["name"],
+                "type": item["type"],
+                "required": item["required"],
+            }
+            for item in plan["proposals"]
+            if item.get("kind") == "add_field"
+        ),
+        "outputs": ("dsl_patch", "tests", "migration_impact", "rollback_plan"),
+        "guards": ("no_delete_without_approval", "lint_before_generate", "review_diff"),
+    }
+    system_brief = (
+        "You are an AppGen-X DSL compiler. Emit only compact AppGen DSL plus a JSON summary. "
+        "Use terse names, no prose, and never emit secrets."
+    )
+    developer_brief = {
+        "profile": model,
+        "budget": profile,
+        "schema": "app/table/view/flow/rule/llm/agent",
+        "spec": compact_spec,
+    }
+    rendered = f"{system_brief}\n{developer_brief}"
+    patch = proposals_to_dsl(plan)
+    return {
+        "format": "appgen.compact-generation-brief.v1",
+        "ok": estimate_compact_tokens(rendered) <= profile["max_prompt_tokens"]
+        and estimate_compact_tokens(patch) <= profile["max_patch_tokens"],
+        "model": model,
+        "backend": profile["backend"],
+        "prompt_tokens": estimate_compact_tokens(rendered),
+        "patch_tokens": estimate_compact_tokens(patch),
+        "system_brief": system_brief,
+        "developer_brief": developer_brief,
+        "dsl_patch": patch,
+        "plan": plan,
+    }
+
+
+def compact_full_app_generation_gate(prompt: str | None = None) -> dict:
+    """Prove a compact NL request can generate a full app under small-model budgets."""
+    sample = prompt or _sample_prompt()
+    profiles = tuple(compact_generation_brief(sample, model=model) for model in SMALL_MODEL_PROFILES)
+    smoke = nl_generation_smoke_audit(sample)
+    checks = (
+        {
+            "id": "small_model_profiles",
+            "ok": {"qwen3.5-2b", "qwen3.5-4b"} <= {profile["model"] for profile in profiles},
+            "profiles": tuple(profile["model"] for profile in profiles),
+        },
+        {
+            "id": "token_budget",
+            "ok": all(profile["ok"] for profile in profiles),
+            "tokens": tuple(
+                {
+                    "model": profile["model"],
+                    "prompt": profile["prompt_tokens"],
+                    "patch": profile["patch_tokens"],
+                }
+                for profile in profiles
+            ),
+        },
+        {
+            "id": "full_app_generation",
+            "ok": smoke["ok"],
+            "checks": smoke["checks"],
+        },
+        {
+            "id": "deterministic_outputs",
+            "ok": all(
+                {"dsl_patch", "tests", "migration_impact", "rollback_plan"}
+                <= set(profile["developer_brief"]["spec"]["outputs"])
+                for profile in profiles
+            ),
+        },
+    )
+    return {
+        "format": "appgen.compact-full-app-generation-gate.v1",
+        "ok": all(check["ok"] for check in checks),
+        "profiles": profiles,
+        "generation_smoke": smoke,
+        "checks": checks,
+        "blocking_gaps": tuple(check for check in checks if not check["ok"]),
+        "stop_condition": "do-not-claim-small-model-nl-generation-unless-ok-is-true",
+    }
+
+
 def migration_impact(plan: dict) -> dict:
     """Summarize schema and application impact for a plan."""
     proposals = tuple(plan.get("proposals", ()))
@@ -352,6 +464,7 @@ def nl_evolution_release_audit() -> dict:
     dsl_patch = proposals_to_dsl(plan)
     destructive = destructive_intent_report("remove field title from Ticket and drop table OldTicket")
     smoke = nl_generation_smoke_audit(sample)
+    compact_gate = compact_full_app_generation_gate(sample)
     required_kinds = {
         "add_table",
         "add_field",
@@ -384,6 +497,11 @@ def nl_evolution_release_audit() -> dict:
             and "table ap_bill" in dsl_patch,
         },
         {"id": "generation_smoke", "ok": smoke["ok"], "checks": smoke["checks"]},
+        {
+            "id": "compact_small_model_generation",
+            "ok": compact_gate["ok"],
+            "checks": tuple(check["id"] for check in compact_gate["checks"]),
+        },
     )
     ok = all(gate["ok"] for gate in gates)
     return {
@@ -395,6 +513,7 @@ def nl_evolution_release_audit() -> dict:
         "sample_plan": plan,
         "sample_dsl": dsl_patch,
         "generation_smoke": smoke,
+        "compact_generation": compact_gate,
         "blocking_gaps": tuple(gate for gate in gates if not gate["ok"]),
     }
 

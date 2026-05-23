@@ -31,6 +31,9 @@ validating, evolving, and packaging the application.
 - **Build enterprise apps faster:** ERP starter modules cover ledgers, accounts,
   invoicing, AP, AR, inventory, purchasing, sales, HR, payroll, CRM, projects,
   assets, tax, reporting, and approvals.
+- **Compose business capabilities:** select packaged business capabilities
+  across finance, supply chain, people, manufacturing, commerce, and customer
+  experience, then generate an application from the chosen bounded contexts.
 - **Use agents deliberately:** model local or API-backed LLM providers, agents,
   tools, execution policy, and release checks in the same source language.
 - **Prove readiness:** release audits verify source intake, DSL quality,
@@ -126,6 +129,29 @@ Natural-language evolution produces reviewable plans and DSL patches:
 ```console
 appgen --nl-plan "Add support tickets, a TicketForm, a SupportAgent, and targets web mobile desktop"
 appgen --nl-dsl "Add support tickets, a TicketForm, a SupportAgent, and targets web mobile desktop"
+```
+
+Composable PBC helpers let the platform resolve enterprise requests to
+bounded-context selections, composition plans, and generated DSL starters:
+
+```python
+from pyAppGen.pbc import pbc_selection_from_prompt
+
+selection = pbc_selection_from_prompt(
+    "Build an enterprise ERP back office with GL, AP, AR, inventory, people, and order management"
+)
+assert selection["composition"]["ok"]
+```
+
+PBC packages can also self-register through a manifest entrypoint. Start with
+the [PBC Specification](docs/pbc-specification.md), validate the manifest, and
+run the PBC release audit before publishing:
+
+```console
+appgen --pbc-catalog
+appgen --pbc-topology
+appgen --pbc-release-audit
+appgen --pbc-dsl application_composition_platform > acp.appgen
 ```
 
 ERP starters can be exported and generated immediately:
@@ -284,6 +310,8 @@ before larger changes.
 - [App Generation Guide](docs/app-generation-guide.md)
 - [Language Tutorials](docs/language-tutorials.md)
 - [Deployment Guide](docs/deployment-guide.md)
+- [Composable PBC Applications](docs/composable-pbc-apps.md)
+- [PBC Specification](docs/pbc-specification.md)
 - [DSL Reference](docs/dsl.md)
 - [DSL Grammar](docs/dsl-grammar.md)
 - [DSL User Guide](docs/dsl-user-guide.md)

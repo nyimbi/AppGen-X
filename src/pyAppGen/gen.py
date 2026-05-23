@@ -24809,6 +24809,32 @@ from flask_appbuilder import expose
 
 LLM_PROVIDERS = {providers!r}
 AGENTS = {agents!r}
+CODING_AGENT_VECTORS = {{
+    "claude_code": {{
+        "label": "Claude Code",
+        "launcher": "claude",
+        "backends": ("api-key", "ollama", "vllm"),
+        "surfaces": ("dsl", "database", "forms", "workflows", "agents", "tests", "docs"),
+        "outputs": ("dsl_patch", "schema_diff", "form_update", "agent_update", "test_plan", "migration_plan"),
+        "required_env": ("ANTHROPIC_API_KEY",),
+    }},
+    "openai_codex": {{
+        "label": "OpenAI Codex",
+        "launcher": "codex",
+        "backends": ("api-key", "ollama", "vllm"),
+        "surfaces": ("dsl", "database", "forms", "workflows", "agents", "tests", "docs"),
+        "outputs": ("dsl_patch", "schema_diff", "form_update", "agent_update", "test_plan", "migration_plan"),
+        "required_env": ("OPENAI_API_KEY",),
+    }},
+    "opencode": {{
+        "label": "OpenCode",
+        "launcher": "opencode",
+        "backends": ("ollama", "vllm", "api-key"),
+        "surfaces": ("dsl", "database", "forms", "workflows", "agents", "tests", "docs"),
+        "outputs": ("dsl_patch", "schema_diff", "form_update", "agent_update", "test_plan", "migration_plan"),
+        "required_env": (),
+    }},
+}}
 
 
 def provider_catalog(environ=None):
@@ -24848,6 +24874,75 @@ def provider_connection_matrix(environ=None):
         "ok": bool(rows) and all(row["secret_safe"] for row in rows),
         "providers": tuple(rows),
         "modes": tuple(sorted({{row["mode"] for row in rows}})),
+    }}
+
+
+def coding_agent_vector_catalog(environ=None):
+    """Return coding-agent vectors that can drive AppGen app development."""
+    env = os.environ if environ is None else environ
+    rows = []
+    for key, vector in CODING_AGENT_VECTORS.items():
+        missing = tuple(name for name in vector["required_env"] if not env.get(name))
+        rows.append(dict(vector, key=key, configured=not missing, missing=missing, guardrails=(
+            "dsl_lint_before_apply",
+            "schema_diff_review",
+            "generated_tests_required",
+            "human_approval_for_destructive_changes",
+            "secret_redaction",
+        )))
+    return tuple(rows)
+
+
+def coding_agent_development_workflow(vector_key="openai_codex", backend="ollama"):
+    """Return reviewed AppGen development stages for a coding-agent vector."""
+    vector = CODING_AGENT_VECTORS[vector_key]
+    if backend not in vector["backends"]:
+        raise KeyError(f"Unsupported backend for {{vector_key}}: {{backend}}")
+    stages = (
+        {{"stage": "ingest_goal", "outputs": ("change_intent",)}},
+        {{"stage": "draft_dsl_patch", "outputs": ("dsl_patch", "schema_diff")}},
+        {{"stage": "preview_application_changes", "outputs": ("forms", "tables", "agents", "tests")}},
+        {{"stage": "run_quality_gates", "outputs": ("lint", "tests", "release_audit")}},
+        {{"stage": "review_and_apply", "outputs": ("approved_commit_plan",)}},
+    )
+    return {{
+        "format": "appgen.coding-agent-development-workflow.v1",
+        "ok": bool(stages),
+        "vector": vector_key,
+        "launcher": vector["launcher"],
+        "backend": backend,
+        "stages": stages,
+        "guardrails": ("no_direct_database_mutation", "generated_diff_required", "rollback_plan_required"),
+        "appgen_surfaces": vector["surfaces"],
+    }}
+
+
+def coding_agent_release_gate(environ=None):
+    """Return generated-app readiness for coding-agent development vectors."""
+    env = dict(environ or {{"OPENAI_API_KEY": "configured", "ANTHROPIC_API_KEY": "configured"}})
+    catalog = coding_agent_vector_catalog(env)
+    workflows = tuple(
+        coding_agent_development_workflow(vector["key"], backend=backend)
+        for vector in catalog
+        for backend in ("ollama", "vllm")
+        if backend in vector["backends"]
+    )
+    gates = (
+        {{"gate": "coding_agent_vectors", "ok": {{"claude_code", "openai_codex", "opencode"}} <= {{vector["key"] for vector in catalog}}, "evidence": tuple(vector["key"] for vector in catalog)}},
+        {{"gate": "local_backends", "ok": {{"ollama", "vllm"}} <= {{backend for vector in catalog for backend in vector["backends"]}}, "evidence": tuple(sorted({{backend for vector in catalog for backend in vector["backends"]}}))}},
+        {{"gate": "secret_policy", "ok": all(vector["configured"] for vector in catalog if vector["required_env"]), "evidence": tuple((vector["key"], vector["missing"]) for vector in catalog)}},
+        {{"gate": "development_workflows", "ok": bool(workflows) and all(workflow["ok"] for workflow in workflows), "evidence": tuple((workflow["vector"], workflow["backend"]) for workflow in workflows)}},
+        {{"gate": "guardrails", "ok": all("generated_tests_required" in vector["guardrails"] for vector in catalog), "evidence": tuple(vector["guardrails"] for vector in catalog)}},
+    )
+    ok = all(gate["ok"] for gate in gates)
+    return {{
+        "format": "appgen.coding-agent-release-gate.v1",
+        "ok": ok,
+        "decision": "approved" if ok else "blocked",
+        "catalog": catalog,
+        "workflows": workflows,
+        "gates": gates,
+        "blocking_gaps": tuple(gate["gate"] for gate in gates if not gate["ok"]),
     }}
 
 
@@ -24926,6 +25021,7 @@ def agentic_release_gate(existing_paths=(), environ=None):
     providers = provider_connection_matrix(environ)
     tools = agent_tool_policy()
     execution = agent_execution_matrix(environ=environ)
+    coding_agents = coding_agent_release_gate(environ)
     provider_names = {{provider["name"] for provider in provider_catalog(environ)}}
     gates = (
         {{"gate": "artifacts", "ok": not missing, "evidence": required, "missing": missing}},
@@ -24934,6 +25030,7 @@ def agentic_release_gate(existing_paths=(), environ=None):
         {{"gate": "agent_provider_links", "ok": all(agent["provider"] in provider_names for agent in agent_catalog()), "evidence": tuple((agent["name"], agent["provider"]) for agent in agent_catalog())}},
         {{"gate": "tool_policy", "ok": tools["ok"], "evidence": tools["policies"]}},
         {{"gate": "execution_plans", "ok": execution["ok"], "evidence": execution["plans"]}},
+        {{"gate": "coding_agent_vectors", "ok": coding_agents["ok"], "evidence": coding_agents["gates"]}},
     )
     return {{
         "format": "appgen.agentic-release-gate.v1",
@@ -24941,6 +25038,7 @@ def agentic_release_gate(existing_paths=(), environ=None):
         "providers": providers,
         "tools": tools,
         "execution": execution,
+        "coding_agents": coding_agents,
         "gates": gates,
         "blocking_gaps": tuple(gate["gate"] for gate in gates if not gate["ok"]),
     }}
@@ -24956,6 +25054,7 @@ def agentic_workbench(existing_paths=(), environ=None):
     catalog = agent_catalog()
     tools = agent_tool_policy()
     execution = agent_execution_matrix(task="review generated app evolution", environ=env)
+    coding_agents = coding_agent_release_gate(env)
     release = agentic_release_gate(existing, environ=env)
     provider_names = {{provider["name"] for provider in provider_catalog(env)}}
     missing_api_env = provider_catalog({{}})
@@ -24967,6 +25066,7 @@ def agentic_workbench(existing_paths=(), environ=None):
         {{"id": "agent_catalog", "ok": bool(catalog) and all(agent["provider"] in provider_names and agent["max_steps"] > 0 for agent in catalog), "evidence": catalog}},
         {{"id": "tool_policy", "ok": tools["ok"] and all(policy["requires_review"] for policy in tools["policies"]), "evidence": tools}},
         {{"id": "execution_matrix", "ok": execution["ok"] and all(plan["ready"] for plan in execution["plans"]), "evidence": execution}},
+        {{"id": "coding_agent_vectors", "ok": coding_agents["ok"], "evidence": coding_agents}},
         {{"id": "release_gate", "ok": release["ok"], "evidence": {{"format": release["format"], "blocking_gaps": release["blocking_gaps"]}}}},
         {{"id": "route_surface", "ok": not missing, "evidence": {{"routes": ("/agents/", "/agents/catalog.json", "/agents/workbench.json", "/agents/release-gate.json", "/agents/<agent_name>.json")}}}},
     )
@@ -24980,6 +25080,7 @@ def agentic_workbench(existing_paths=(), environ=None):
         "agents": catalog,
         "tools": tools,
         "execution": execution,
+        "coding_agents": coding_agents,
         "release_gate": release,
     }}
 
@@ -51535,6 +51636,53 @@ def native_packager_execution_plan(target, output_dir="dist/native"):
     }}
 
 
+def native_package_artifact_gate(artifacts=()):
+    """Validate produced native package artifact manifests after host packaging."""
+    normalized = tuple(dict(item) for item in artifacts)
+    required = {{
+        "mobile": ("android-debug.apk", "android-release.aab"),
+        "desktop": ("macOS app bundle", "Windows MSI", "Linux AppImage"),
+    }}
+    suffixes = {{
+        "android-debug.apk": ".apk",
+        "android-release.aab": ".aab",
+        "macOS app bundle": ".app",
+        "Windows MSI": ".msi",
+        "Linux AppImage": ".AppImage",
+    }}
+    checks = []
+    for target in native_targets():
+        target_artifacts = tuple(item for item in normalized if item.get("target") == target)
+        expected = required[target]
+        produced = tuple(item.get("kind") for item in target_artifacts)
+        missing = tuple(kind for kind in expected if kind not in produced)
+        checks.append({{"gate": f"{{target}}_artifact_kinds", "ok": not missing, "missing": missing, "produced": produced}})
+        checks.append({{
+            "gate": f"{{target}}_artifact_paths",
+            "ok": all(str(item.get("path", "")).endswith(suffixes.get(item.get("kind"), "")) for item in target_artifacts),
+            "paths": tuple(item.get("path") for item in target_artifacts),
+        }})
+        checks.append({{
+            "gate": f"{{target}}_artifact_integrity",
+            "ok": bool(target_artifacts) and all(str(item.get("sha256", "")).strip() and int(item.get("bytes", 0)) > 0 for item in target_artifacts),
+            "artifacts": tuple((item.get("kind"), item.get("sha256"), item.get("bytes")) for item in target_artifacts),
+        }})
+        checks.append({{
+            "gate": f"{{target}}_signing_review",
+            "ok": all(item.get("signing_reviewed") is True for item in target_artifacts),
+            "artifacts": tuple(item.get("kind") for item in target_artifacts),
+        }})
+    ok = all(check["ok"] for check in checks)
+    return {{
+        "format": "appgen.native-package-artifact-gate.v1",
+        "ok": ok,
+        "decision": "approved" if ok else "blocked",
+        "artifacts": normalized,
+        "checks": tuple(checks),
+        "blocking_gaps": tuple(check for check in checks if not check["ok"]),
+    }}
+
+
 def native_release_gate(existing_paths=()):
     """Return release readiness for generated mobile and desktop targets."""
     scaffold = scaffold_check(existing_paths)
@@ -58212,6 +58360,30 @@ def get_metadata(idb):
     help="Print JSON proof that package web, PWA, mobile, desktop, and chatbot targets are ready.",
 )
 @click.option(
+    "--pbc-catalog",
+    is_flag=True,
+    help="Print JSON catalog of composable Packaged Business Capabilities.",
+)
+@click.option(
+    "--pbc-topology",
+    is_flag=True,
+    help="Print JSON topology for the Application Composition Platform fabric.",
+)
+@click.option(
+    "--pbc-release-audit",
+    is_flag=True,
+    help="Print JSON proof that package-level application composition is ready.",
+)
+@click.option(
+    "--pbc-dsl",
+    "pbc_dsl_selection",
+    multiple=True,
+    help=(
+        "Print AppGen DSL for selected PBC keys or one starter stack. "
+        "Can be repeated, for example --pbc-dsl gl_core --pbc-dsl ap_automation."
+    ),
+)
+@click.option(
     "--schema-source-audit",
     is_flag=True,
     help=(
@@ -58270,6 +58442,10 @@ def main(
     integration_release_audit,
     agentic_release_audit,
     target_release_audit,
+    pbc_catalog,
+    pbc_topology,
+    pbc_release_audit,
+    pbc_dsl_selection,
     schema_source_audit,
     dsl_release_audit,
     dsl_antlr_report,
@@ -58293,6 +58469,10 @@ def main(
         integration_release_audit,
         agentic_release_audit,
         target_release_audit,
+        pbc_catalog,
+        pbc_topology,
+        pbc_release_audit,
+        *pbc_dsl_selection,
     ]
     utility_options = [
         lint_dsl_path,
@@ -58755,6 +58935,161 @@ def main(
         try:
             click.echo(erp_module_dsl(erp_template_module), nl=False)
         except KeyError as exc:
+            raise click.UsageError(str(exc)) from exc
+        ctx.exit(0)
+
+    if pbc_catalog:
+        if any(
+            [
+                writedir,
+                database_url,
+                idatabase,
+                wdatabase,
+                pbc_topology,
+                pbc_release_audit,
+                *pbc_dsl_selection,
+                *nl_options,
+                studio_release_audit,
+                form_designer_release_audit,
+                visual_modeling_release_audit,
+                security_release_audit,
+                source_intake_release_audit,
+                config_release_audit,
+                distribution_release_audit,
+                reporting_release_audit,
+                ops_release_audit,
+                integration_release_audit,
+                agentic_release_audit,
+                target_release_audit,
+                *schema_sources,
+            ]
+        ):
+            raise click.UsageError(
+                "--pbc-catalog cannot be combined with generation or audit options."
+            )
+        from .pbc import pbc_catalog as package_pbc_catalog
+        from .pbc import pbc_mesh_catalog
+        from .pbc import pbc_starter_stacks
+
+        result = {
+            "format": "appgen.pbc-catalog-report.v1",
+            "ok": True,
+            "meshes": pbc_mesh_catalog(),
+            "catalog": package_pbc_catalog(),
+            "starter_stacks": pbc_starter_stacks(),
+        }
+        click.echo(json.dumps(result, indent=2, sort_keys=True, default=list))
+        ctx.exit(0)
+
+    if pbc_topology:
+        if any(
+            [
+                writedir,
+                database_url,
+                idatabase,
+                wdatabase,
+                pbc_release_audit,
+                *pbc_dsl_selection,
+                *nl_options,
+                studio_release_audit,
+                form_designer_release_audit,
+                visual_modeling_release_audit,
+                security_release_audit,
+                source_intake_release_audit,
+                config_release_audit,
+                distribution_release_audit,
+                reporting_release_audit,
+                ops_release_audit,
+                integration_release_audit,
+                agentic_release_audit,
+                target_release_audit,
+                *schema_sources,
+            ]
+        ):
+            raise click.UsageError(
+                "--pbc-topology cannot be combined with generation or audit options."
+            )
+        from .pbc import acp_capability_coverage
+        from .pbc import application_composition_topology
+
+        result = {
+            "format": "appgen.pbc-topology-report.v1",
+            "ok": True,
+            "topology": application_composition_topology(),
+            "coverage": acp_capability_coverage(),
+        }
+        result["ok"] = result["topology"]["ok"] and result["coverage"]["ok"]
+        click.echo(json.dumps(result, indent=2, sort_keys=True, default=list))
+        ctx.exit(0 if result["ok"] else 1)
+
+    if pbc_release_audit:
+        if any(
+            [
+                writedir,
+                database_url,
+                idatabase,
+                wdatabase,
+                *pbc_dsl_selection,
+                *nl_options,
+                studio_release_audit,
+                form_designer_release_audit,
+                visual_modeling_release_audit,
+                security_release_audit,
+                source_intake_release_audit,
+                config_release_audit,
+                distribution_release_audit,
+                reporting_release_audit,
+                ops_release_audit,
+                integration_release_audit,
+                agentic_release_audit,
+                target_release_audit,
+                *schema_sources,
+            ]
+        ):
+            raise click.UsageError(
+                "--pbc-release-audit cannot be combined with generation or audit options."
+            )
+        from .pbc import pbc_release_audit as package_pbc_release_audit
+
+        result = package_pbc_release_audit()
+        click.echo(json.dumps(result, indent=2, sort_keys=True, default=list))
+        ctx.exit(0 if result["ok"] else 1)
+
+    if pbc_dsl_selection:
+        if any(
+            [
+                writedir,
+                database_url,
+                idatabase,
+                wdatabase,
+                *nl_options,
+                studio_release_audit,
+                form_designer_release_audit,
+                visual_modeling_release_audit,
+                security_release_audit,
+                source_intake_release_audit,
+                config_release_audit,
+                distribution_release_audit,
+                reporting_release_audit,
+                ops_release_audit,
+                integration_release_audit,
+                agentic_release_audit,
+                target_release_audit,
+                *schema_sources,
+            ]
+        ):
+            raise click.UsageError(
+                "--pbc-dsl cannot be combined with generation or audit options."
+            )
+        from .pbc import PBC_STARTER_STACKS
+        from .pbc import pbc_composition_dsl
+
+        selected = tuple(pbc_dsl_selection)
+        if len(selected) == 1 and selected[0] in PBC_STARTER_STACKS:
+            selected = PBC_STARTER_STACKS[selected[0]]
+        try:
+            click.echo(pbc_composition_dsl(selected), nl=False)
+        except ValueError as exc:
             raise click.UsageError(str(exc)) from exc
         ctx.exit(0)
 

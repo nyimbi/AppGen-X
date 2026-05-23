@@ -84,6 +84,43 @@ PROVIDERS = {
         "api_key_env": "ANTHROPIC_API_KEY",
         "env": ("ANTHROPIC_API_KEY",),
     },
+    "VllmLocal": {
+        "provider": "vllm",
+        "mode": "local",
+        "model": "open-model",
+        "endpoint": "http://localhost:8000/v1",
+        "env": (),
+    },
+}
+
+CODING_AGENT_VECTORS = {
+    "claude_code": {
+        "label": "Claude Code",
+        "launcher": "claude",
+        "provider": "ClaudeModel",
+        "backends": ("api-key", "ollama", "vllm"),
+        "surfaces": ("dsl", "database", "forms", "workflows", "agents", "tests", "docs"),
+        "outputs": ("dsl_patch", "schema_diff", "form_update", "agent_update", "test_plan", "migration_plan"),
+        "required_env": ("ANTHROPIC_API_KEY",),
+    },
+    "openai_codex": {
+        "label": "OpenAI Codex",
+        "launcher": "codex",
+        "provider": "ApiModel",
+        "backends": ("api-key", "ollama", "vllm"),
+        "surfaces": ("dsl", "database", "forms", "workflows", "agents", "tests", "docs"),
+        "outputs": ("dsl_patch", "schema_diff", "form_update", "agent_update", "test_plan", "migration_plan"),
+        "required_env": ("OPENAI_API_KEY",),
+    },
+    "opencode": {
+        "label": "OpenCode",
+        "launcher": "opencode",
+        "provider": "LocalModel",
+        "backends": ("ollama", "vllm", "api-key"),
+        "surfaces": ("dsl", "database", "forms", "workflows", "agents", "tests", "docs"),
+        "outputs": ("dsl_patch", "schema_diff", "form_update", "agent_update", "test_plan", "migration_plan"),
+        "required_env": (),
+    },
 }
 
 AGENTS = {
@@ -165,6 +202,141 @@ def provider_connection_matrix(environ: dict | None = None) -> dict:
     }
 
 
+def coding_agent_vector_catalog(environ: dict | None = None) -> tuple[dict, ...]:
+    """Return first-class coding-agent vectors for building AppGen apps."""
+    env = environ or {}
+    rows = []
+    for key, vector in CODING_AGENT_VECTORS.items():
+        missing = tuple(name for name in vector["required_env"] if not env.get(name))
+        rows.append(
+            {
+                "key": key,
+                **vector,
+                "configured": not missing,
+                "missing": missing,
+                "guardrails": (
+                    "dsl_lint_before_apply",
+                    "schema_diff_review",
+                    "generated_tests_required",
+                    "human_approval_for_destructive_changes",
+                    "secret_redaction",
+                ),
+            }
+        )
+    return tuple(rows)
+
+
+def coding_agent_backend_matrix(environ: dict | None = None) -> dict:
+    """Return local/API backend readiness for coding-agent vectors."""
+    env = environ or {}
+    vectors = coding_agent_vector_catalog(env)
+    backend_rows = []
+    for vector in vectors:
+        for backend in vector["backends"]:
+            backend_rows.append(
+                {
+                    "vector": vector["key"],
+                    "backend": backend,
+                    "local": backend in {"ollama", "vllm"},
+                    "secret_required": backend == "api-key",
+                    "ready": backend != "api-key" or vector["configured"],
+                    "endpoint": "http://localhost:11434" if backend == "ollama" else "http://localhost:8000/v1" if backend == "vllm" else None,
+                }
+            )
+    return {
+        "format": "appgen.coding-agent-backend-matrix.v1",
+        "ok": {"claude_code", "openai_codex", "opencode"} <= {vector["key"] for vector in vectors}
+        and {"ollama", "vllm", "api-key"} <= {row["backend"] for row in backend_rows}
+        and all(row["ready"] for row in backend_rows if row["secret_required"]),
+        "vectors": vectors,
+        "backends": tuple(backend_rows),
+    }
+
+
+def coding_agent_development_workflow(vector_key: str = "openai_codex", *, backend: str = "ollama") -> dict:
+    """Return the reviewed app-development workflow for a coding-agent vector."""
+    vector = CODING_AGENT_VECTORS[vector_key]
+    if backend not in vector["backends"]:
+        raise KeyError(f"Unsupported backend for {vector_key}: {backend}")
+    stages = (
+        {"stage": "ingest_goal", "inputs": ("natural_language", "dsl", "existing_schema"), "outputs": ("change_intent",)},
+        {"stage": "draft_dsl_patch", "inputs": ("change_intent", "component_catalog"), "outputs": ("dsl_patch", "schema_diff")},
+        {"stage": "preview_application_changes", "inputs": ("dsl_patch",), "outputs": ("forms", "tables", "agents", "tests")},
+        {"stage": "run_quality_gates", "inputs": ("generated_project",), "outputs": ("lint", "tests", "release_audit")},
+        {"stage": "review_and_apply", "inputs": ("diff", "audit"), "outputs": ("approved_commit_plan",)},
+    )
+    return {
+        "format": "appgen.coding-agent-development-workflow.v1",
+        "ok": bool(stages) and backend in {"ollama", "vllm", "api-key"},
+        "vector": vector_key,
+        "launcher": vector["launcher"],
+        "backend": backend,
+        "stages": stages,
+        "guardrails": (
+            "no_direct_database_mutation",
+            "no_unreviewed_file_deletion",
+            "generated_diff_required",
+            "rollback_plan_required",
+        ),
+        "appgen_surfaces": vector["surfaces"],
+    }
+
+
+def coding_agent_release_gate(environ: dict | None = None) -> dict:
+    """Return release readiness for coding-agent development vectors."""
+    env = environ or {"OPENAI_API_KEY": "configured", "ANTHROPIC_API_KEY": "configured"}
+    catalog = coding_agent_vector_catalog(env)
+    backend_matrix = coding_agent_backend_matrix(env)
+    workflows = tuple(
+        coding_agent_development_workflow(vector["key"], backend=backend)
+        for vector in catalog
+        for backend in ("ollama", "vllm")
+        if backend in vector["backends"]
+    )
+    gates = (
+        {
+            "id": "coding_agent_vectors",
+            "ok": {"claude_code", "openai_codex", "opencode"} <= {vector["key"] for vector in catalog},
+            "vectors": tuple(vector["key"] for vector in catalog),
+        },
+        {
+            "id": "local_backend_vectors",
+            "ok": {"ollama", "vllm"} <= {backend for vector in catalog for backend in vector["backends"]},
+            "backends": tuple(sorted({backend for vector in catalog for backend in vector["backends"]})),
+        },
+        {
+            "id": "api_key_secret_policy",
+            "ok": all(vector["configured"] for vector in catalog if vector["required_env"]),
+            "missing": tuple((vector["key"], vector["missing"]) for vector in catalog if vector["missing"]),
+        },
+        {
+            "id": "backend_matrix",
+            "ok": backend_matrix["ok"],
+            "format": backend_matrix["format"],
+        },
+        {
+            "id": "development_workflows",
+            "ok": bool(workflows) and all(workflow["ok"] for workflow in workflows),
+            "workflows": tuple((workflow["vector"], workflow["backend"]) for workflow in workflows),
+        },
+        {
+            "id": "guardrails",
+            "ok": all("generated_tests_required" in vector["guardrails"] for vector in catalog)
+            and all("rollback_plan_required" in workflow["guardrails"] for workflow in workflows),
+        },
+    )
+    return {
+        "format": "appgen.coding-agent-release-gate.v1",
+        "ok": all(gate["ok"] for gate in gates),
+        "decision": "approved" if all(gate["ok"] for gate in gates) else "blocked",
+        "catalog": catalog,
+        "backend_matrix": backend_matrix,
+        "workflows": workflows,
+        "gates": gates,
+        "blocking_gaps": tuple(gate for gate in gates if not gate["ok"]),
+    }
+
+
 def agent_tool_policy(agent_name: str | None = None) -> dict:
     """Return reviewed tool policy for one or all generated agents."""
     selected = (
@@ -238,7 +410,10 @@ def agentic_generation_smoke_audit(source: str = AGENTIC_SAMPLE_DSL) -> dict:
         "app/views.py",
     )
     existing_paths = {"app/agents.py", "app/templates/appgen_agents.html"}
-    env = {"OPENAI_API_KEY": "configured-for-generated-smoke"}
+    env = {
+        "OPENAI_API_KEY": "configured-for-generated-smoke",
+        "ANTHROPIC_API_KEY": "configured-for-generated-smoke",
+    }
 
     with tempfile.TemporaryDirectory(prefix="appgen-agentic-smoke-") as tmp:
         project_dir = Path(tmp)
@@ -380,6 +555,7 @@ def agentic_release_audit(
     tool_policy = agent_tool_policy()
     execution = agent_execution_matrix(environ=audit_env)
     generation_smoke = agentic_generation_smoke_audit()
+    coding_agents = coding_agent_release_gate(audit_env)
     agent_providers = {agent["provider"] for agent in agent_catalog()}
     provider_names = {provider["name"] for provider in provider_catalog(audit_env)}
     gates = (
@@ -417,6 +593,11 @@ def agentic_release_audit(
             "ok": execution["ok"],
         },
         {
+            "id": "coding_agent_vectors",
+            "ok": coding_agents["ok"],
+            "checks": tuple(gate["id"] for gate in coding_agents["gates"]),
+        },
+        {
             "id": "artifact_contract",
             "ok": {"app/agents.py", "app/templates/appgen_agents.html"} <= existing,
         },
@@ -438,6 +619,7 @@ def agentic_release_audit(
         "agents": agent_catalog(),
         "tool_policy": tool_policy,
         "execution": execution,
+        "coding_agents": coding_agents,
         "generation_smoke": generation_smoke,
         "gates": gates,
         "blocking_gaps": tuple(gate for gate in gates if not gate["ok"]),

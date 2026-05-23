@@ -17,6 +17,9 @@ Build a complete AppGen IDE and generation platform with:
 - Design-time package and component installation ecosystem.
 - Full mobile/native device API component coverage.
 - Animation, styling, effects, and 3D design-surface depth.
+- First-class Application Composition Platform support with selectable PBCs,
+  self-registering PBC packages, opinionated event processing guidance, and
+  natural-language composition.
 
 ## Progress Ledger
 
@@ -37,6 +40,7 @@ Build a complete AppGen IDE and generation platform with:
 | 2026-05-23 | `a1e5956` | Added dependency-free browser-rendered Studio smoke harness with deterministic URL state. | Frontend production build, browser script syntax check, staged hygiene scans; sandbox blocked Chrome crashpad before page load. |
 | 2026-05-23 | `35d2075` | Added generated mobile and desktop packaging adapter descriptors and release gates. | Py compile, generated target test, focused target audit test, package-goal aggregation test, staged hygiene scans. |
 | 2026-05-23 | `ee4abf7` | Added host-capable native packager execution plans and tool preflight reporting. | Py compile, generated app test, focused target audit test, package-goal aggregation test, staged hygiene scans; local host lacks native packager commands. |
+| 2026-05-23 | pending | Added APC/PBC catalog, self-registration spec, CLI access, compact NL/coding-agent generation, and native package artifact audits. | Py compile; PBC focused test; coding-agent, NL, target, generated-app, and aggregate package-goal tests; PBC topology/release CLI checks. |
 
 ## Current Working Slice
 
@@ -46,6 +50,8 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
 - CI or prepared-host execution of desktop packaging adapters.
 - CI or prepared-host execution of mobile packaging adapters.
 - Runtime smoke checks against produced package artifacts when available.
+- Generated app runtime modules for the APC/PBC catalog, registration, and composition workbench.
+- Real PBC package loading from installed packages or local source directories.
 
 ## Open Completion Areas
 

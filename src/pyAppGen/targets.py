@@ -596,6 +596,70 @@ def target_packager_execution_preflight(
     }
 
 
+def target_package_artifact_audit(
+    artifacts: tuple[dict, ...] = (),
+    source: str = TARGET_SAMPLE_DSL,
+) -> dict:
+    """Validate produced native package artifact manifests against generated plans."""
+    from .gen import generate_app_from_schema
+
+    with tempfile.TemporaryDirectory(prefix="appgen-target-package-artifacts-") as raw_workdir:
+        project_dir = Path(raw_workdir) / "target-package-artifacts"
+        app_dir = project_dir / "app"
+        generate_app_from_schema(
+            schema_from_dsl(source, source_name="target-package-artifacts.appgen"),
+            app_dir,
+        )
+        native_module = _load_generated_module(
+            project_dir / "native/appgen_native.py",
+            "appgen_generated_native_package_artifacts",
+        )
+        execution_plans = tuple(
+            native_module.native_packager_execution_plan(target)
+            for target in native_module.native_targets()
+        )
+        artifact_gate = native_module.native_package_artifact_gate(artifacts)
+
+    expected_kinds = tuple(
+        (plan["target"], plan["expected_artifacts"])
+        for plan in execution_plans
+    )
+    checks = (
+        {
+            "id": "execution_plans",
+            "ok": bool(execution_plans) and all(plan["ok"] for plan in execution_plans),
+            "expected": expected_kinds,
+        },
+        {
+            "id": "artifact_gate",
+            "ok": artifact_gate["ok"],
+            "checks": artifact_gate["checks"],
+        },
+        {
+            "id": "artifact_plan_alignment",
+            "ok": all(
+                any(
+                    item.get("target") == target
+                    and item.get("kind") in kinds
+                    for item in artifacts
+                )
+                for target, kinds in expected_kinds
+            ),
+            "expected": expected_kinds,
+        },
+    )
+    return {
+        "format": "appgen.target-package-artifact-audit.v1",
+        "scope": "package",
+        "ok": all(check["ok"] for check in checks),
+        "execution_plans": execution_plans,
+        "artifact_gate": artifact_gate,
+        "checks": checks,
+        "blocking_gaps": tuple(check for check in checks if not check["ok"]),
+        "stop_condition": "do-not-claim-produced-package-artifacts-unless-ok-is-true",
+    }
+
+
 def dsl_target_contract(source: str = TARGET_SAMPLE_DSL) -> dict:
     """Parse the DSL and summarize target selection."""
     schema = schema_from_dsl(source, source_name="target-audit.appgen")

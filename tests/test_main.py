@@ -29,6 +29,10 @@ from pyAppGen.agentic import agent_execution_matrix
 from pyAppGen.agentic import agent_tool_policy
 from pyAppGen.agentic import agentic_generation_smoke_audit
 from pyAppGen.agentic import agentic_release_audit
+from pyAppGen.agentic import coding_agent_backend_matrix
+from pyAppGen.agentic import coding_agent_development_workflow
+from pyAppGen.agentic import coding_agent_release_gate
+from pyAppGen.agentic import coding_agent_vector_catalog
 from pyAppGen.agentic import dsl_agentic_contract
 from pyAppGen.agentic import provider_catalog as agentic_provider_catalog
 from pyAppGen.agentic import provider_connection_matrix
@@ -211,9 +215,29 @@ from pyAppGen.integrations import signed_webhook_plan
 from pyAppGen.integrations import validate_webhook_signature
 from pyAppGen.nl import evolution_changeset
 from pyAppGen.nl import evolution_plan
+from pyAppGen.nl import compact_full_app_generation_gate
+from pyAppGen.nl import compact_generation_brief
 from pyAppGen.nl import nl_generation_smoke_audit
 from pyAppGen.nl import nl_evolution_release_audit
 from pyAppGen.nl import proposals_to_dsl
+from pyAppGen.nl import small_model_profile_catalog
+from pyAppGen.pbc import pbc_catalog
+from pyAppGen.pbc import pbc_composition_dsl
+from pyAppGen.pbc import pbc_composition_plan
+from pyAppGen.pbc import acp_stream_processor_catalog
+from pyAppGen.pbc import pbc_manifest_schema
+from pyAppGen.pbc import pbc_package_contract
+from pyAppGen.pbc import pbc_generation_smoke_audit
+from pyAppGen.pbc import pbc_mesh_catalog
+from pyAppGen.pbc import pbc_release_audit
+from pyAppGen.pbc import example_pbc_manifest
+from pyAppGen.pbc import register_pbc_manifest
+from pyAppGen.pbc import pbc_selection_from_prompt
+from pyAppGen.pbc import pbc_starter_stacks
+from pyAppGen.pbc import select_acp_stream_processor
+from pyAppGen.pbc import validate_pbc_manifest
+from pyAppGen.pbc import acp_capability_coverage
+from pyAppGen.pbc import application_composition_topology
 from pyAppGen.ops import database_ops_contract
 from pyAppGen.ops import deployment_contract
 from pyAppGen.ops import node_red_contract
@@ -270,6 +294,7 @@ from pyAppGen.targets import target_catalog
 from pyAppGen.targets import target_contract
 from pyAppGen.targets import target_generated_runtime_smoke
 from pyAppGen.targets import target_generation_smoke_audit
+from pyAppGen.targets import target_package_artifact_audit
 from pyAppGen.targets import target_package_matrix
 from pyAppGen.targets import target_packager_execution_preflight
 from pyAppGen.targets import target_release_audit
@@ -643,6 +668,7 @@ def test_package_goal_audit_cli_aggregates_objective_evidence(
         "enterprise_integrations",
         "agentic_systems",
         "multi_target_generation",
+        "composable_pbc_catalog",
         "source_document_scope",
     } == {gate["id"] for gate in direct_report["gates"]}
     assert direct_report["stop_condition"] == (
@@ -675,6 +701,147 @@ def test_package_goal_audit_cli_aggregates_objective_evidence(
     assert cli_report["audits"]["integrations"]["ok"] is True
     assert cli_report["audits"]["agentic"]["ok"] is True
     assert cli_report["audits"]["targets"]["ok"] is True
+    assert cli_report["audits"]["pbc"]["ok"] is True
+
+
+def test_package_pbc_catalog_composes_enterprise_apps(runner: CliRunner) -> None:
+    """The package exposes selectable PBCs as bounded, composable app slices."""
+    meshes = pbc_mesh_catalog()
+    assert {"finops", "scl", "hcm", "opsmfg", "cx", "platform", "commerce", "content", "relationship", "intelligence"} <= {
+        item["mesh"] for item in meshes
+    }
+    assert sum(item["pbc_count"] for item in meshes) >= 46
+
+    catalog = pbc_catalog()
+    assert len(catalog) >= 46
+    assert all(item["datastore"].endswith("_store") for item in catalog)
+    assert all(
+        item["datastore_backend"]
+        in {"postgresql", "mysql", "mariadb", "sqlite", "duckdb", "clickhouse", "mongodb", "opensearch"}
+        for item in catalog
+    )
+    assert all(item["stream_processor"] in {"bytewax", "quix_streams", "faust_streaming"} for item in catalog)
+    assert all(item["apis"] and item["emits"] and item["tables"] for item in catalog)
+
+    stream_processors = acp_stream_processor_catalog()
+    assert {item["processor"] for item in stream_processors} == {
+        "bytewax",
+        "quix_streams",
+        "faust_streaming",
+    }
+    assert select_acp_stream_processor("complex parallel dataflow transformations")["selected"] == "bytewax"
+    assert select_acp_stream_processor("high-throughput telemetry time-series ingestion")["selected"] == "quix_streams"
+    default_selection = select_acp_stream_processor("event-driven async workflow services")
+    assert default_selection["selected"] == "faust_streaming"
+    assert default_selection["decision"] == "default"
+    assert default_selection["default"] == "faust_streaming"
+
+    manifest_schema = pbc_manifest_schema()
+    assert manifest_schema["format"] == "appgen.pbc-manifest-schema.v1"
+    assert "datastore_backend" in manifest_schema["required_fields"]
+    manifest = example_pbc_manifest()
+    validation = validate_pbc_manifest(manifest)
+    assert validation["ok"] is True
+    assert validation["publishable"] is True
+    assert validation["normalized_descriptor"]["datastore_backend"] == "postgresql"
+    assert validation["normalized_descriptor"]["stream_processor"] == "faust_streaming"
+    assert validate_pbc_manifest({**manifest, "datastore_backend": "oracle"})["ok"] is False
+    assert validate_pbc_manifest({**manifest, "stream_processor": "unknown"})["ok"] is False
+    registration = register_pbc_manifest(manifest)
+    assert registration["ok"] is True
+    assert registration["catalog_patch"]["warranty_claims"]["datastore_backend"] == "postgresql"
+    assert registration["catalog_patch"]["warranty_claims"]["stream_processor"] == "faust_streaming"
+    package_contract = pbc_package_contract("warranty_claims_pbc", manifest)
+    assert package_contract["usable"] is True
+
+    stacks = {item["stack"]: item for item in pbc_starter_stacks()}
+    assert {
+        "finance_mesh",
+        "distribution_mesh",
+        "people_mesh",
+        "manufacturing_mesh",
+        "enterprise_core",
+        "application_composition_platform",
+        "digital_commerce_platform",
+        "customer_intelligence_platform",
+    } <= set(stacks)
+    assert {"finops", "scl", "hcm", "cx"} <= set(stacks["enterprise_core"]["meshes"])
+    assert stacks["application_composition_platform"]["meshes"] == ("platform",)
+
+    topology = application_composition_topology()
+    assert topology["format"] == "appgen.application-composition-topology.v1"
+    assert topology["ok"] is True
+    assert topology["stream_processor_default"] == "faust_streaming"
+    assert {
+        "composed_digital_experience",
+        "composition_layer",
+        "event_backbone_gateway_fabric",
+        "domain_meshes",
+    } == {item["layer"] for item in topology["layers"]}
+
+    acp_coverage = acp_capability_coverage()
+    assert acp_coverage["format"] == "appgen.acp-capability-coverage.v1"
+    assert acp_coverage["ok"] is True
+    assert {"platform", "commerce", "content", "relationship", "intelligence"} == {
+        item["mesh"] for item in acp_coverage["coverage"]
+    }
+
+    acp_selection = pbc_selection_from_prompt("Build a full APC for composing enterprise applications")
+    assert {"federated_iam", "api_gateway_mesh", "schema_registry", "composition_engine"} <= set(acp_selection["pbcs"])
+    assert acp_selection["composition"]["ok"] is True
+
+    selection = pbc_selection_from_prompt(
+        "Build an enterprise ERP back office with GL, AP, AR, inventory, people, and order management"
+    )
+    assert selection["matched"] is True
+    assert {"gl_core", "ap_automation", "ar_credit", "inventory_positioning", "personnel_identity", "dom"} <= set(
+        selection["pbcs"]
+    )
+    assert selection["composition"]["ok"] is True
+
+    plan = pbc_composition_plan(
+        ("gl_core", "ap_automation", "ar_credit", "inventory_positioning", "personnel_identity", "dom"),
+        app_name="EnterpriseCore",
+    )
+    assert plan["format"] == "appgen.pbc-composition-plan.v1"
+    assert plan["ok"] is True
+    assert not plan["shared_datastores"]
+    assert len({service["datastore"] for service in plan["services"]}) == len(plan["services"])
+    assert {service["pbc"] for service in plan["services"]} == set(plan["pbcs"])
+    assert any(item["provider"] == "inventory_positioning" for item in plan["dependencies"])
+
+    dsl = pbc_composition_dsl(("gl_core", "ap_automation", "inventory_positioning"), app_name="ComposableOps")
+    assert "app ComposableOps" in dsl
+    assert "table gl_core_journal_entry" in dsl
+    assert "view InventoryPositioningWorkbench" in dsl
+
+    smoke = pbc_generation_smoke_audit(("gl_core", "ap_automation", "inventory_positioning"))
+    assert smoke["format"] == "appgen.pbc-generation-smoke-audit.v1"
+    assert smoke["ok"] is True
+
+    audit = pbc_release_audit()
+    assert audit["format"] == "appgen.pbc-release-audit.v1"
+    assert audit["ok"] is True
+    assert {
+        "catalog_depth",
+        "bounded_context_contracts",
+        "starter_stacks",
+        "acp_platform_fabric",
+        "self_registering_pbc_spec",
+        "open_source_datastore_backends",
+        "stream_processor_abstraction",
+        "composition_plan",
+        "natural_language_selection",
+        "generation_smoke",
+    } == {gate["id"] for gate in audit["gates"]}
+    assert audit["topology"]["ok"] is True
+    assert audit["acp_coverage"]["ok"] is True
+
+    result = runner.invoke(__main__.main, ["--pbc-release-audit"])
+    assert result.exit_code == 0
+    cli_report = json.loads(result.output)
+    assert cli_report["ok"] is True
+    assert cli_report["acp_coverage"]["ok"] is True
 
 
 def test_package_erp_templates_export_generatable_dsl(
@@ -806,6 +973,24 @@ def test_package_natural_language_evolution_generates_parseable_dsl(
     assert changeset["migration_impact"]["tables_added"] == ("Ticket",)
     assert "dsl_patch" in changeset
 
+    small_profiles = small_model_profile_catalog()
+    assert {"qwen3.5-2b", "qwen3.5-4b"} <= {profile["model"] for profile in small_profiles}
+    compact_brief = compact_generation_brief(prompt, model="qwen3.5-2b")
+    assert compact_brief["format"] == "appgen.compact-generation-brief.v1"
+    assert compact_brief["ok"] is True
+    assert compact_brief["prompt_tokens"] <= compact_brief["developer_brief"]["budget"]["max_prompt_tokens"]
+    assert compact_brief["patch_tokens"] <= compact_brief["developer_brief"]["budget"]["max_patch_tokens"]
+    assert "table Ticket" in compact_brief["dsl_patch"]
+    compact_gate = compact_full_app_generation_gate(prompt)
+    assert compact_gate["format"] == "appgen.compact-full-app-generation-gate.v1"
+    assert compact_gate["ok"] is True
+    assert {
+        "small_model_profiles",
+        "token_budget",
+        "full_app_generation",
+        "deterministic_outputs",
+    } == {check["id"] for check in compact_gate["checks"]}
+
     smoke = nl_generation_smoke_audit(f"{prompt} ERP accounts payable")
     assert smoke["format"] == "appgen.nl-generation-smoke-audit.v1"
     assert smoke["ok"] is True
@@ -816,6 +1001,8 @@ def test_package_natural_language_evolution_generates_parseable_dsl(
     assert audit["format"] == "appgen.nl-evolution-release-audit.v1"
     assert audit["ok"] is True
     assert all(gate["ok"] for gate in audit["gates"])
+    assert audit["compact_generation"]["ok"] is True
+    assert "compact_small_model_generation" in {gate["id"] for gate in audit["gates"]}
 
     plan_result = runner.invoke(__main__.main, ["--nl-plan", prompt])
     assert plan_result.exit_code == 0
@@ -2903,6 +3090,46 @@ def test_package_agentic_audit_covers_llm_providers_and_agents(
     assert execution["ok"] is True
     assert all(plan["review_required"] for plan in execution["plans"])
 
+    coding_vectors = coding_agent_vector_catalog(
+        {"OPENAI_API_KEY": "test", "ANTHROPIC_API_KEY": "test"}
+    )
+    assert {vector["key"] for vector in coding_vectors} == {
+        "claude_code",
+        "openai_codex",
+        "opencode",
+    }
+    assert all({"dsl", "database", "forms", "agents", "tests"} <= set(vector["surfaces"]) for vector in coding_vectors)
+    assert all({"ollama", "vllm"} <= set(vector["backends"]) for vector in coding_vectors)
+    backend_matrix = coding_agent_backend_matrix(
+        {"OPENAI_API_KEY": "test", "ANTHROPIC_API_KEY": "test"}
+    )
+    assert backend_matrix["format"] == "appgen.coding-agent-backend-matrix.v1"
+    assert backend_matrix["ok"] is True
+    assert {"ollama", "vllm", "api-key"} <= {row["backend"] for row in backend_matrix["backends"]}
+    workflow = coding_agent_development_workflow("openai_codex", backend="ollama")
+    assert workflow["format"] == "appgen.coding-agent-development-workflow.v1"
+    assert workflow["ok"] is True
+    assert [stage["stage"] for stage in workflow["stages"]] == [
+        "ingest_goal",
+        "draft_dsl_patch",
+        "preview_application_changes",
+        "run_quality_gates",
+        "review_and_apply",
+    ]
+    coding_gate = coding_agent_release_gate(
+        {"OPENAI_API_KEY": "test", "ANTHROPIC_API_KEY": "test"}
+    )
+    assert coding_gate["format"] == "appgen.coding-agent-release-gate.v1"
+    assert coding_gate["ok"] is True
+    assert {
+        "coding_agent_vectors",
+        "local_backend_vectors",
+        "api_key_secret_policy",
+        "backend_matrix",
+        "development_workflows",
+        "guardrails",
+    } == {gate["id"] for gate in coding_gate["gates"]}
+
     audit = agentic_release_audit()
     assert audit["format"] == "appgen.package-agentic-release-audit.v1"
     assert audit["ok"] is True
@@ -2914,9 +3141,11 @@ def test_package_agentic_audit_covers_llm_providers_and_agents(
         "agent_provider_links",
         "tool_policy",
         "execution_matrix",
+        "coding_agent_vectors",
         "artifact_contract",
         "generation_smoke",
     } == {gate["id"] for gate in audit["gates"]}
+    assert audit["coding_agents"]["ok"] is True
     assert audit["generation_smoke"]["ok"] is True
 
     smoke = agentic_generation_smoke_audit()
@@ -3052,6 +3281,59 @@ def test_package_target_audit_covers_web_mobile_desktop_generation(
         and any(command["command"] == "briefcase package" for command in row["commands"])
         for row in ready_packagers["rows"]
     )
+    artifact_audit = target_package_artifact_audit(
+        (
+            {
+                "target": "mobile",
+                "kind": "android-debug.apk",
+                "path": "dist/native/mobile/android-debug.apk",
+                "sha256": "0" * 64,
+                "bytes": 1024,
+                "signing_reviewed": True,
+            },
+            {
+                "target": "mobile",
+                "kind": "android-release.aab",
+                "path": "dist/native/mobile/android-release.aab",
+                "sha256": "1" * 64,
+                "bytes": 2048,
+                "signing_reviewed": True,
+            },
+            {
+                "target": "desktop",
+                "kind": "macOS app bundle",
+                "path": "dist/native/desktop/TargetAudit.app",
+                "sha256": "2" * 64,
+                "bytes": 4096,
+                "signing_reviewed": True,
+            },
+            {
+                "target": "desktop",
+                "kind": "Windows MSI",
+                "path": "dist/native/desktop/TargetAudit.msi",
+                "sha256": "3" * 64,
+                "bytes": 8192,
+                "signing_reviewed": True,
+            },
+            {
+                "target": "desktop",
+                "kind": "Linux AppImage",
+                "path": "dist/native/desktop/TargetAudit.AppImage",
+                "sha256": "4" * 64,
+                "bytes": 16384,
+                "signing_reviewed": True,
+            },
+        )
+    )
+    assert artifact_audit["format"] == "appgen.target-package-artifact-audit.v1"
+    assert artifact_audit["ok"] is True
+    assert artifact_audit["artifact_gate"]["format"] == "appgen.native-package-artifact-gate.v1"
+    assert {"execution_plans", "artifact_gate", "artifact_plan_alignment"} == {
+        check["id"] for check in artifact_audit["checks"]
+    }
+    missing_artifact_audit = target_package_artifact_audit(())
+    assert missing_artifact_audit["ok"] is False
+    assert any(check["id"] == "artifact_gate" for check in missing_artifact_audit["blocking_gaps"])
 
     runtime = target_generated_runtime_smoke()
     assert runtime["format"] == "appgen.target-generated-runtime-smoke.v1"
@@ -4092,6 +4374,53 @@ def test_generate_app_from_sqlite_schema_compiles(tmp_path) -> None:
     assert desktop_execution["ok"] is True
     assert "build_directory" in mobile_execution["side_effects"]
     assert any(command["requires_review"] for command in desktop_execution["commands"])
+    artifact_gate = native.native_package_artifact_gate(
+        (
+            {
+                "target": "mobile",
+                "kind": "android-debug.apk",
+                "path": "dist/native/mobile/app.apk",
+                "sha256": "a" * 64,
+                "bytes": 100,
+                "signing_reviewed": True,
+            },
+            {
+                "target": "mobile",
+                "kind": "android-release.aab",
+                "path": "dist/native/mobile/app.aab",
+                "sha256": "b" * 64,
+                "bytes": 100,
+                "signing_reviewed": True,
+            },
+            {
+                "target": "desktop",
+                "kind": "macOS app bundle",
+                "path": "dist/native/desktop/app.app",
+                "sha256": "c" * 64,
+                "bytes": 100,
+                "signing_reviewed": True,
+            },
+            {
+                "target": "desktop",
+                "kind": "Windows MSI",
+                "path": "dist/native/desktop/app.msi",
+                "sha256": "d" * 64,
+                "bytes": 100,
+                "signing_reviewed": True,
+            },
+            {
+                "target": "desktop",
+                "kind": "Linux AppImage",
+                "path": "dist/native/desktop/app.AppImage",
+                "sha256": "e" * 64,
+                "bytes": 100,
+                "signing_reviewed": True,
+            },
+        )
+    )
+    assert artifact_gate["format"] == "appgen.native-package-artifact-gate.v1"
+    assert artifact_gate["ok"] is True
+    assert native.native_package_artifact_gate(())["ok"] is False
     native_gate = native.native_release_gate(native_artifacts)
     assert native_gate["format"] == "appgen.native-release-gate.v1"
     assert native_gate["ok"] is True
