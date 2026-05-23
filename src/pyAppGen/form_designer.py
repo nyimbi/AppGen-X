@@ -13813,6 +13813,21 @@ def component_file_manifest() -> tuple[dict, ...]:
     )
 
 
+def component_test_file_manifest() -> tuple[dict, ...]:
+    """Return the per-component generated test files expected in generated apps."""
+    return tuple(
+        {
+            "component": item["component"],
+            "path": item["path"].replace("app/component_contracts/", "app/component_tests/test_"),
+            "target": item["path"],
+            "exports": ("load_component_module", "test_component_contract", "test_component_smoke", "smoke_test"),
+            "smoke_tests": item["module_contract"]["smoke_tests"],
+            "ok": item["module_contract"]["ok"] and bool(item["module_contract"]["smoke_tests"]),
+        }
+        for item in component_file_manifest()
+    )
+
+
 def component_package_module_implementation_contract(package_id: str) -> dict:
     """Return required exports and smoke tests for one component package module."""
     package = component_package_contract(package_id)
@@ -13873,6 +13888,21 @@ def component_package_file_manifest() -> tuple[dict, ...]:
         }
         for package in THIRD_PARTY_COMPONENT_SUITES
         for module_contract in (component_package_module_implementation_contract(package["id"]),)
+    )
+
+
+def component_package_test_file_manifest() -> tuple[dict, ...]:
+    """Return the per-package generated test files expected in generated apps."""
+    return tuple(
+        {
+            "package": item["package"],
+            "path": item["path"].replace("app/component_packages/", "app/component_package_tests/test_"),
+            "target": item["path"],
+            "exports": ("load_package_module", "test_package_contract", "test_package_smoke", "smoke_test"),
+            "smoke_tests": item["module_contract"]["smoke_tests"],
+            "ok": item["module_contract"]["ok"] and bool(item["module_contract"]["smoke_tests"]),
+        }
+        for item in component_package_file_manifest()
     )
 
 
@@ -13969,6 +13999,26 @@ def component_usability_workbench() -> dict:
             "evidence": component_package_file_manifest(),
         },
         {
+            "id": "per_component_test_files",
+            "ok": len(component_test_file_manifest()) == len(contracts)
+            and all(
+                {"test_component_contract", "test_component_smoke", "smoke_test"} <= set(item["exports"])
+                and item["ok"]
+                for item in component_test_file_manifest()
+            ),
+            "evidence": component_test_file_manifest(),
+        },
+        {
+            "id": "per_package_test_files",
+            "ok": len(component_package_test_file_manifest()) == len(THIRD_PARTY_COMPONENT_SUITES)
+            and all(
+                {"test_package_contract", "test_package_smoke", "smoke_test"} <= set(item["exports"])
+                and item["ok"]
+                for item in component_package_test_file_manifest()
+            ),
+            "evidence": component_package_test_file_manifest(),
+        },
+        {
             "id": "module_smoke_tests",
             "ok": all("smoke_test" in item["exports"] and item["module_contract"]["smoke_tests"] for item in component_file_manifest())
             and all("smoke_test" in item["exports"] and item["module_contract"]["smoke_tests"] for item in component_package_file_manifest()),
@@ -13997,6 +14047,8 @@ def component_usability_workbench() -> dict:
         "components": contracts,
         "component_files": component_file_manifest(),
         "package_files": component_package_file_manifest(),
+        "component_test_files": component_test_file_manifest(),
+        "package_test_files": component_package_test_file_manifest(),
         "analog_workbench": analog_workbench,
         "behavior_workbench": behavior_workbench,
         "checks": checks,
@@ -14078,6 +14130,8 @@ def form_designer_generation_smoke_audit(source: str = FORM_DESIGNER_SAMPLE_DSL)
 
     component_artifacts = tuple(item["path"] for item in component_file_manifest())
     package_artifacts = tuple(item["path"] for item in component_package_file_manifest())
+    component_test_artifacts = tuple(item["path"] for item in component_test_file_manifest())
+    package_test_artifacts = tuple(item["path"] for item in component_package_test_file_manifest())
     required_artifacts = (
         "app/form_designer.py",
         "app/templates/appgen_form_designer.html",
@@ -14086,6 +14140,8 @@ def form_designer_generation_smoke_audit(source: str = FORM_DESIGNER_SAMPLE_DSL)
         "app/dsl_reference.py",
         *component_artifacts,
         *package_artifacts,
+        *component_test_artifacts,
+        *package_test_artifacts,
     )
     compile_artifacts = (
         "app/form_designer.py",
@@ -14094,6 +14150,8 @@ def form_designer_generation_smoke_audit(source: str = FORM_DESIGNER_SAMPLE_DSL)
         "app/dsl_reference.py",
         *component_artifacts,
         *package_artifacts,
+        *component_test_artifacts,
+        *package_test_artifacts,
     )
 
     with tempfile.TemporaryDirectory(prefix="appgen-form-designer-smoke-") as tmp:
@@ -14180,8 +14238,14 @@ def form_designer_generation_smoke_audit(source: str = FORM_DESIGNER_SAMPLE_DSL)
             "ok": usability["ok"]
             and set(component_artifacts) <= {item["path"] for item in usability["component_files"]}
             and set(package_artifacts) <= {item["path"] for item in usability["package_files"]}
+            and set(component_test_artifacts) <= {item["path"] for item in usability["component_test_files"]}
+            and set(package_test_artifacts) <= {item["path"] for item in usability["package_test_files"]}
             and all(item["exists"] for item in usability["component_files"])
-            and all(item["exists"] for item in usability["package_files"]),
+            and all(item["exists"] for item in usability["package_files"])
+            and all(item["exists"] for item in usability["component_test_files"])
+            and all(item["exists"] for item in usability["package_test_files"]),
+            "component_test_count": len(component_test_artifacts),
+            "package_test_count": len(package_test_artifacts),
             "component_count": len(component_artifacts),
             "package_count": len(package_artifacts),
         },

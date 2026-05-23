@@ -1750,8 +1750,12 @@ def write_component_contract_files(output_dir):
     output_dir = Path(output_dir)
     component_dir = output_dir / "component_contracts"
     package_dir = output_dir / "component_packages"
+    component_test_dir = output_dir / "component_tests"
+    package_test_dir = output_dir / "component_package_tests"
     component_dir.mkdir(parents=True, exist_ok=True)
     package_dir.mkdir(parents=True, exist_ok=True)
+    component_test_dir.mkdir(parents=True, exist_ok=True)
+    package_test_dir.mkdir(parents=True, exist_ok=True)
     component_names = (
         "Label", "TextBox", "EmailInput", "TextArea", "Select", "Checkbox",
         "Lookup",
@@ -1777,14 +1781,24 @@ def write_component_contract_files(output_dir):
     )
     (component_dir / "__init__.py").write_text(_component_contract_init_text(component_names), encoding="utf-8")
     (package_dir / "__init__.py").write_text(_component_package_init_text(package_ids), encoding="utf-8")
+    (component_test_dir / "__init__.py").write_text(_component_test_init_text(component_names), encoding="utf-8")
+    (package_test_dir / "__init__.py").write_text(_component_package_test_init_text(package_ids), encoding="utf-8")
     for component_name in component_names:
         (component_dir / f"{_module_name(component_name)}.py").write_text(
             _component_contract_module_text(component_name),
             encoding="utf-8",
         )
+        (component_test_dir / f"test_{_module_name(component_name)}.py").write_text(
+            _component_test_module_text(component_name),
+            encoding="utf-8",
+        )
     for package_id in package_ids:
         (package_dir / f"{_module_name(package_id)}.py").write_text(
             _component_package_module_text(package_id),
+            encoding="utf-8",
+        )
+        (package_test_dir / f"test_{_module_name(package_id)}.py").write_text(
+            _component_package_test_module_text(package_id),
             encoding="utf-8",
         )
 
@@ -1812,6 +1826,22 @@ def _component_package_init_text(package_ids: tuple[str, ...]) -> str:
     return (
         '"""Generated per-package implementation modules."""\n\n'
         f"PACKAGE_MODULES = {modules!r}\n"
+    )
+
+
+def _component_test_init_text(component_names: tuple[str, ...]) -> str:
+    modules = tuple(f"test_{_module_name(name)}" for name in component_names)
+    return (
+        '"""Generated per-component test modules."""\n\n'
+        f"COMPONENT_TEST_MODULES = {modules!r}\n"
+    )
+
+
+def _component_package_test_init_text(package_ids: tuple[str, ...]) -> str:
+    modules = tuple(f"test_{_module_name(package_id)}" for package_id in package_ids)
+    return (
+        '"""Generated per-package test modules."""\n\n'
+        f"PACKAGE_TEST_MODULES = {modules!r}\n"
     )
 
 
@@ -2201,6 +2231,117 @@ def smoke_test():
             and not blocked_request["ok"]
         ),
         "checks": test_plan()["tests"],
+    }}
+'''
+
+
+def _component_test_module_text(component_name: str) -> str:
+    module_name = _module_name(component_name)
+    return f'''"""Generated tests for the {component_name} component module."""
+
+from __future__ import annotations
+
+import importlib.util
+from pathlib import Path
+
+
+COMPONENT = {component_name!r}
+COMPONENT_MODULE = {module_name!r}
+
+
+def load_component_module():
+    """Load the generated component module without requiring app installation."""
+    module_path = Path(__file__).resolve().parents[1] / "component_contracts" / f"{{COMPONENT_MODULE}}.py"
+    spec = importlib.util.spec_from_file_location(f"generated_component_{{COMPONENT_MODULE}}", module_path)
+    module = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(module)
+    return module
+
+
+def test_component_contract():
+    """Assert the generated component module exposes the required contract."""
+    module = load_component_module()
+    contract = module.contract()
+    assert contract["component"] == COMPONENT
+    assert {{"web", "mobile", "desktop"}} <= set(contract["renderers"])
+    assert module.validate_props(contract["default_props"])["ok"] is True
+    assert module.render()["component"] == COMPONENT
+
+
+def test_component_smoke():
+    """Assert the module's own smoke test passes."""
+    module = load_component_module()
+    result = module.smoke_test()
+    assert result["ok"] is True
+    assert result["component"] == COMPONENT
+    assert result["checks"]
+
+
+def smoke_test():
+    """Run this generated test module in a side-effect-free way."""
+    test_component_contract()
+    test_component_smoke()
+    return {{
+        "format": "appgen.component-generated-test-smoke.v1",
+        "component": COMPONENT,
+        "ok": True,
+        "tests": ("test_component_contract", "test_component_smoke"),
+    }}
+'''
+
+
+def _component_package_test_module_text(package_id: str) -> str:
+    module_name = _module_name(package_id)
+    return f'''"""Generated tests for the {package_id} component package module."""
+
+from __future__ import annotations
+
+import importlib.util
+from pathlib import Path
+
+
+PACKAGE_ID = {package_id!r}
+PACKAGE_MODULE = {module_name!r}
+
+
+def load_package_module():
+    """Load the generated package module without requiring app installation."""
+    module_path = Path(__file__).resolve().parents[1] / "component_packages" / f"{{PACKAGE_MODULE}}.py"
+    spec = importlib.util.spec_from_file_location(f"generated_component_package_{{PACKAGE_MODULE}}", module_path)
+    module = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(module)
+    return module
+
+
+def test_package_contract():
+    """Assert the generated package module exposes the required contract."""
+    module = load_package_module()
+    contract = module.package_contract()
+    assert contract["package"]["id"] == PACKAGE_ID
+    assert module.load_policy()["guards"]
+    assert module.adapter_contract()
+
+
+def test_package_smoke():
+    """Assert the package module's own smoke test passes."""
+    module = load_package_module()
+    result = module.smoke_test()
+    assert result["ok"] is True
+    assert result["package_id"] == PACKAGE_ID
+    assert result["checks"]
+
+
+def smoke_test():
+    """Run this generated package test module in a side-effect-free way."""
+    test_package_contract()
+    test_package_smoke()
+    return {{
+        "format": "appgen.component-package-generated-test-smoke.v1",
+        "package_id": PACKAGE_ID,
+        "ok": True,
+        "tests": ("test_package_contract", "test_package_smoke"),
     }}
 '''
 
@@ -30211,6 +30352,24 @@ def component_file_manifest(existing_paths=None):
     return tuple(manifest)
 
 
+def component_test_file_manifest(existing_paths=None):
+    """Return per-component test files and whether they exist."""
+    paths = set(existing_paths) if existing_paths is not None else _local_component_paths()
+    manifest = []
+    for item in component_file_manifest(existing_paths):
+        path = item["path"].replace("app/component_contracts/", "app/component_tests/test_")
+        manifest.append({{
+            "component": item["component"],
+            "path": path,
+            "exists": path in paths,
+            "target": item["path"],
+            "exports": ("load_component_module", "test_component_contract", "test_component_smoke", "smoke_test"),
+            "smoke_tests": item["module_contract"]["smoke_tests"],
+            "ok": item["module_contract"]["ok"] and bool(item["module_contract"]["smoke_tests"]),
+        }})
+    return tuple(manifest)
+
+
 def component_package_module_implementation_contract(package_id):
     """Return required exports and smoke tests for one generated component package module."""
     package = component_package_contract(package_id)
@@ -30277,11 +30436,31 @@ def component_package_file_manifest(existing_paths=None):
     return tuple(manifest)
 
 
+def component_package_test_file_manifest(existing_paths=None):
+    """Return per-package test files and whether they exist."""
+    paths = set(existing_paths) if existing_paths is not None else _local_component_paths()
+    manifest = []
+    for item in component_package_file_manifest(existing_paths):
+        path = item["path"].replace("app/component_packages/", "app/component_package_tests/test_")
+        manifest.append({{
+            "package": item["package"],
+            "path": path,
+            "exists": path in paths,
+            "target": item["path"],
+            "exports": ("load_package_module", "test_package_contract", "test_package_smoke", "smoke_test"),
+            "smoke_tests": item["module_contract"]["smoke_tests"],
+            "ok": item["module_contract"]["ok"] and bool(item["module_contract"]["smoke_tests"]),
+        }})
+    return tuple(manifest)
+
+
 def component_usability_workbench(existing_paths=None):
     """Prove every generated built-in component has enough metadata to be usable."""
     contracts = component_implementation_catalog()
     component_files = component_file_manifest(existing_paths)
     package_files = component_package_file_manifest(existing_paths)
+    component_test_files = component_test_file_manifest(existing_paths)
+    package_test_files = component_package_test_file_manifest(existing_paths)
     analog_workbench = component_analog_workbench()
     behavior_workbench = component_behavior_workbench()
     checks = (
@@ -30295,6 +30474,8 @@ def component_usability_workbench(existing_paths=None):
         {{"id": "design_surface_actions", "ok": all(item["design_surface"]["ok"] and item["design_surface"]["toolbox"]["icon"].startswith("fa-") and item["design_surface"]["context_menu"] for item in behavior_workbench["behaviors"]), "evidence": tuple((item["component"], item["design_surface"]) for item in behavior_workbench["behaviors"])}},
         {{"id": "per_component_files", "ok": len(component_files) == len(contracts) and all(item["exists"] and {{"contract", "render", "validate_props", "preview", "behavior_contract", "target_adapters", "state_model", "serialization_contract", "binding_surface", "object_inspector", "drop_instance", "serialize_instance", "apply_property", "designer_metadata", "design_surface", "dispatch_event", "test_plan", "smoke_test"}} <= set(item["exports"]) and item["module_contract"]["ok"] for item in component_files), "evidence": component_files}},
         {{"id": "per_package_files", "ok": len(package_files) == len(THIRD_PARTY_COMPONENT_SUITES) and all(item["exists"] and {{"package_contract", "install_plan", "load_policy", "test_plan", "smoke_test"}} <= set(item["exports"]) and item["module_contract"]["ok"] for item in package_files), "evidence": package_files}},
+        {{"id": "per_component_test_files", "ok": len(component_test_files) == len(contracts) and all(item["exists"] and {{"test_component_contract", "test_component_smoke", "smoke_test"}} <= set(item["exports"]) and item["ok"] for item in component_test_files), "evidence": component_test_files}},
+        {{"id": "per_package_test_files", "ok": len(package_test_files) == len(THIRD_PARTY_COMPONENT_SUITES) and all(item["exists"] and {{"test_package_contract", "test_package_smoke", "smoke_test"}} <= set(item["exports"]) and item["ok"] for item in package_test_files), "evidence": package_test_files}},
         {{"id": "module_smoke_tests", "ok": all("smoke_test" in item["exports"] and item["module_contract"]["smoke_tests"] for item in component_files) and all("smoke_test" in item["exports"] and item["module_contract"]["smoke_tests"] for item in package_files), "evidence": {{"components": tuple((item["component"], item["module_contract"]["smoke_tests"]) for item in component_files), "packages": tuple((item["package"], item["module_contract"]["smoke_tests"]) for item in package_files)}}}},
         {{"id": "requested_analog_coverage", "ok": analog_workbench["ok"], "evidence": analog_workbench}},
         {{"id": "component_behavior", "ok": behavior_workbench["ok"], "evidence": behavior_workbench}},
@@ -30308,6 +30489,8 @@ def component_usability_workbench(existing_paths=None):
         "components": contracts,
         "component_files": component_files,
         "package_files": package_files,
+        "component_test_files": component_test_files,
+        "package_test_files": package_test_files,
         "analog_workbench": analog_workbench,
         "behavior_workbench": behavior_workbench,
         "checks": checks,
@@ -35644,7 +35827,7 @@ def _binding_property(component_type):
 def _local_component_paths():
     root = Path(__file__).resolve().parent
     paths = set()
-    for folder in ("component_contracts", "component_packages"):
+    for folder in ("component_contracts", "component_packages", "component_tests", "component_package_tests"):
         base = root / folder
         if not base.exists():
             continue
