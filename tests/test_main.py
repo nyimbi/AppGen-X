@@ -1492,6 +1492,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "debug_symbols",
         "runtime_memory_model",
         "toolchain_adapters",
+        "runtime_session_replay",
     } == {check["id"] for check in runtime["checks"]}
     assert runtime["incremental"]["outputs"][0] == "diagnostic_delta"
     assert runtime["binary_round_trip"]["decoded"] == dfm_text
@@ -1515,6 +1516,12 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     assert all("object_inspector" in symbol["maps_to"] for symbol in runtime["debug_symbols"]["symbols"])
     assert "event_dispatch_exception_boundary" in runtime["runtime_memory_model"]["guards"]
     assert all("normalize_diagnostics" in adapter["commands"] for adapter in runtime["toolchain_adapters"]["adapters"])
+    assert runtime["runtime_replay"]["ok"] is True
+    assert {"stream_decode", "unit_frontend", "target_emit", "runtime_load"} <= {
+        item["phase"] for item in runtime["runtime_replay"]["replay"]
+    }
+    assert runtime["runtime_replay"]["final_state"]["components_streamed"] == len(design["components"])
+    assert runtime["runtime_replay"]["final_state"]["compiled_targets"] >= 1
 
     matrix = field_component_matrix()
     assert matrix
@@ -9389,6 +9396,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "debug_symbols",
         "runtime_memory_model",
         "toolchain_adapters",
+        "runtime_session_replay",
     } <= {
         check["id"] for check in generated_runtime["checks"]
     }
@@ -9423,6 +9431,14 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert all("source_span" in symbol for symbol in generated_runtime["debug_symbols"]["symbols"])
     assert all(item["release"] for item in generated_runtime["runtime_memory_model"]["ownership"])
     assert all(adapter["sandboxed"] for adapter in generated_runtime["toolchain_adapters"]["adapters"])
+    assert generated_runtime["runtime_replay"]["ok"] is True
+    assert {"stream_decode", "unit_frontend", "target_emit", "runtime_load"} <= {
+        item["phase"] for item in generated_runtime["runtime_replay"]["replay"]
+    }
+    assert generated_runtime["runtime_replay"]["final_state"]["components_streamed"] == len(
+        generated_runtime["round_trip"]["round_trip_components"]
+    )
+    assert generated_runtime["runtime_replay"]["final_state"]["diagnostics_normalized"] >= 1
     assert "control_to_field" in form_designer.livebindings_contract()["binding_edges"]
     generated_bindings = form_designer.livebindings_workbench()
     assert generated_bindings["format"] == "appgen.generated-livebindings-workbench.v1"

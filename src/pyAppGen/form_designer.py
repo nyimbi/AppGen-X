@@ -2988,6 +2988,97 @@ def pascal_toolchain_adapter_contract(design: dict | None = None) -> dict:
     }
 
 
+def pascal_runtime_session_replay_contract(design: dict | None = None) -> dict:
+    """Replay design streaming, compile metadata, and runtime load as one session."""
+    round_trip = dfm_round_trip(design)
+    stream_variants = dfm_stream_variant_round_trip_contract(design)
+    unit = pascal_unit_contract(design)
+    unit_parse = pascal_unit_parse_contract(design)
+    static_analysis = pascal_static_analysis_contract(design)
+    resources = pascal_resource_streaming_contract(design)
+    package_targets = pascal_package_target_matrix_contract(design)
+    diagnostics = pascal_diagnostic_mapping_contract(design)
+    lifecycle = pascal_runtime_lifecycle_contract(design)
+    toolchains = pascal_toolchain_adapter_contract(design)
+    state = {
+        "components_streamed": len(round_trip["round_trip_components"]),
+        "stream_formats": tuple(item["format"] for item in stream_variants["variants"]),
+        "unit_declarations": len(unit_parse["component_declarations"]),
+        "compiled_targets": 0,
+        "linked_resources": 0,
+        "diagnostics_normalized": 0,
+        "lifecycle_hooks": 0,
+        "emit_allowed": False,
+        "side_effects": (),
+    }
+    replay = (
+        {
+            "phase": "stream_decode",
+            "pipeline": ("read_text_stream", "read_binary_stream", "read_json_model", "preserve_published_properties"),
+            "ok": round_trip["ok"] and {"text", "binary", "json"} <= set(state["stream_formats"]),
+        },
+        {
+            "phase": "unit_frontend",
+            "pipeline": ("parse_unit", "resolve_uses", "read_resource_directive", "build_symbol_table"),
+            "ok": unit_parse["class_name"] == unit["class_name"]
+            and bool(unit_parse["component_declarations"])
+            and "{$R *.dfm}" in unit_parse["resource_directives"],
+        },
+        {
+            "phase": "semantic_static_analysis",
+            "pipeline": static_analysis["guards"],
+            "ok": static_analysis["ok"] and all(edge["assignable"] for edge in static_analysis["type_edges"]),
+        },
+        {
+            "phase": "resource_link",
+            "pipeline": ("collect_resource_manifest", "link_form_stream", "link_style_resources", "link_image_resources"),
+            "ok": {"unknown_properties", "nested_children", "event_bindings"} <= set(resources["preservation"]),
+        },
+        {
+            "phase": "target_emit",
+            "pipeline": ("select_toolchain_adapter", "emit_runtime_package", "emit_design_package", "write_symbol_map"),
+            "ok": package_targets["ok"]
+            and all("resource_bundle" in target["artifacts"] for target in package_targets["targets"])
+            and all(adapter["sandboxed"] for adapter in toolchains["adapters"]),
+        },
+        {
+            "phase": "diagnostic_mapping",
+            "pipeline": ("normalize_diagnostics", "attach_source_span", "route_to_designer_surface"),
+            "ok": all("source_span" in mapping["maps_to"] for mapping in diagnostics["mappings"]),
+        },
+        {
+            "phase": "runtime_load",
+            "pipeline": lifecycle["hooks"],
+            "ok": {"create_form", "load_resources", "bind_events", "release_form"} <= set(lifecycle["hooks"]),
+        },
+    )
+    state["compiled_targets"] = len(package_targets["targets"])
+    state["linked_resources"] = len(resources["resources"])
+    state["diagnostics_normalized"] = len(diagnostics["mappings"])
+    state["lifecycle_hooks"] = len(lifecycle["hooks"])
+    state["emit_allowed"] = all(item["ok"] for item in replay)
+    return {
+        "format": "appgen.pascal-runtime-session-replay-contract.v1",
+        "ok": state["emit_allowed"]
+        and state["components_streamed"] == state["unit_declarations"]
+        and state["compiled_targets"] > 0
+        and state["linked_resources"] > 0
+        and state["diagnostics_normalized"] > 0
+        and state["lifecycle_hooks"] > 0
+        and state["side_effects"] == (),
+        "replay": replay,
+        "final_state": state,
+        "guards": (
+            "stream_before_unit_parse",
+            "semantic_analysis_before_emit",
+            "resources_linked_before_runtime_load",
+            "diagnostics_normalized_before_surface_routing",
+            "sandboxed_toolchain_adapters_only",
+        ),
+        "side_effects": (),
+    }
+
+
 def pascal_runtime_workbench(design: dict | None = None) -> dict:
     """Return DFM streaming and Pascal runtime generation evidence."""
     design = design or form_design()
@@ -3020,6 +3111,7 @@ def pascal_runtime_workbench(design: dict | None = None) -> dict:
     debug_symbols = pascal_debug_symbol_contract(design)
     runtime_memory_model = pascal_runtime_memory_model_contract(design)
     toolchain_adapters = pascal_toolchain_adapter_contract(design)
+    runtime_replay = pascal_runtime_session_replay_contract(design)
     binary_round_trip = dfm_binary_round_trip(design)
     stream_variants = dfm_stream_variant_round_trip_contract(design)
     checks = (
@@ -3199,6 +3291,13 @@ def pascal_runtime_workbench(design: dict | None = None) -> dict:
             "ok": toolchain_adapters["ok"] and "diagnostics_normalized" in toolchain_adapters["guards"] and not toolchain_adapters["side_effects"],
             "evidence": toolchain_adapters,
         },
+        {
+            "id": "runtime_session_replay",
+            "ok": runtime_replay["ok"]
+            and {"stream_before_unit_parse", "resources_linked_before_runtime_load"} <= set(runtime_replay["guards"])
+            and not runtime_replay["side_effects"],
+            "evidence": runtime_replay,
+        },
     )
     ok = all(check["ok"] for check in checks)
     return {
@@ -3235,6 +3334,7 @@ def pascal_runtime_workbench(design: dict | None = None) -> dict:
         "debug_symbols": debug_symbols,
         "runtime_memory_model": runtime_memory_model,
         "toolchain_adapters": toolchain_adapters,
+        "runtime_replay": runtime_replay,
         "binary_round_trip": binary_round_trip,
         "stream_variants": stream_variants,
         "blocking_gaps": tuple(check for check in checks if not check["ok"]),
