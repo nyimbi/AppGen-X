@@ -78,6 +78,7 @@ Build a complete AppGen IDE and generation platform with:
 | 2026-05-23 | `7e6be50` | Added generated Object Inspector editor modules and generated tests for property, event, component, custom designer, handler invocation, and binding bridge surfaces. | Py compile; generated inspector module smoke probe; focused generated-app/form-designer/package-goal tests; staged hygiene scan passed. |
 | 2026-05-23 | `3aed9d5` | Added generated visual binding modules and generated tests for graph, expression, designer, runtime wiring, propagation, and lifecycle surfaces. | Py compile; generated binding module smoke probe; focused generated-app/form-designer/package-goal tests; staged hygiene scan passed. |
 | 2026-05-23 | `4626b9a` | Added generated package-manager modules and generated tests for install, preview, registry, lifecycle, update, and rollback surfaces. | Py compile; generated package-manager module smoke probe; focused generated-app/form-designer/package-goal tests; staged hygiene scan passed. |
+| 2026-05-23 | `5f5e3d8` | Made event processing a required platform decision instead of a developer-facing stream-engine choice. | Focused PBC policy test, documentation diff check, and staged hygiene scan passed. |
 
 ## Current Working Slice
 
@@ -149,6 +150,10 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
 - The stream-processing policy now exposes a `developer_guidance` contract so
   Studio controls, DSL linting, natural-language generation, and coding agents
   all use the same default event adapter path and audited exception workflow.
+- The event-processing standard now starts with the normative platform
+  decision: ordinary generated apps, PBCs, workflows, agents, and integrations
+  use the AppGen-X outbox/inbox adapter with the default service-runtime
+  profile, while exceptions require machine-checkable evidence.
 - Generated applications now emit one importable Object Inspector module and
   one generated test module for property editors, event editors, component
   editors, custom designers, handler invocation, and binding bridge surfaces,
