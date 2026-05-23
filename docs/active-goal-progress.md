@@ -44,7 +44,7 @@ Build a complete AppGen IDE and generation platform with:
 | 2026-05-23 | `75097cd` | Added opinionated PBC event-processing policy and full generated component/package module coverage. | Py compile; focused PBC test; PBC release CLI; form-designer audit test; generated app compile test; aggregate package-goal test; staged hygiene scans. |
 | 2026-05-23 | `825c2e9` | Added generated per-component and per-package test modules for component implementation proof. | Py compile; form-designer audit test; generated app compile test; aggregate package-goal test; staged hygiene scans. |
 | 2026-05-23 | `2fef403` | Added generated visual runtime asset manifests for style, animation, effects, scenes, and assets. | Py compile; form-designer audit test; generated app compile test; aggregate package-goal test; staged hygiene scans. |
-| 2026-05-23 | `pending` | Added generated data tooling runtime manifests for connection, schema, lookup, service publishing, and failover proof. | Py compile; form-designer audit test; generated app compile test; aggregate package-goal test; staged hygiene scans. |
+| 2026-05-23 | `9aa0e3c` | Added generated data tooling runtime manifests for connection, schema, lookup, service publishing, and failover proof. | Py compile; form-designer audit test; generated app compile test; aggregate package-goal test; staged hygiene scans. |
 
 ## Current Working Slice
 
