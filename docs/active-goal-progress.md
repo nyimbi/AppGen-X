@@ -60,6 +60,7 @@ Build a complete AppGen IDE and generation platform with:
 | 2026-05-23 | `0c8a9de` | Verified the Studio browser smoke workflow succeeds remotely after the rendered inspector heading fix. | GitHub Actions run `26336140848` completed with conclusion `success` for commit `4510d44`. |
 | 2026-05-23 | `493a02c` | Added generated runtime operations as an independently importable native runtime surface. | Py compile; generated app test; focused form-designer, Studio, agentic, and aggregate package-goal tests; hygiene scan passed. |
 | 2026-05-23 | `423a8e6` | Enforced machine-checkable stream exception evidence for PBC manifests. | Py compile; focused PBC catalog test; aggregate package-goal test; hygiene scan passed. |
+| 2026-05-23 | `pending` | Tightened the event-processing standard into one default generated stack with audited exception workflows. | Pending py compile, focused PBC test, documentation diff check, and hygiene scan. |
 
 ## Current Working Slice
 
@@ -75,6 +76,10 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
 - PBC event-processing guidance now tells developers to use the default
   generated event adapter path and reserve exception profiles for documented,
   machine-checkable high-volume or complex dataflow workloads.
+- The event-processing standard now tells developers and coding agents to use
+  the generated outbox/inbox contract with the default service-runtime profile,
+  while treating telemetry/time-series and complex dataflow profiles as audited
+  exceptions rather than selectable preferences.
 
 ## Open Completion Areas
 

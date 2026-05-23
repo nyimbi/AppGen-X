@@ -114,14 +114,32 @@ ACP_STREAM_PROCESSOR_DECISION_RULES = (
 ACP_STREAM_PROCESSING_POLICY = {
     "default": ACP_DEFAULT_STREAM_PROCESSOR,
     "allowed_processors": tuple(ACP_STREAM_PROCESSORS),
+    "opinionated_stack": {
+        "development": "appgen_in_memory_event_bus_with_generated_outbox_inbox",
+        "production": "appgen_event_backbone_adapter_with_generated_outbox_inbox",
+        "service_runtime": ACP_DEFAULT_STREAM_PROCESSOR,
+        "state_boundary": "owned_by_one_pbc_datastore",
+        "selection_mode": "platform_default_unless_exception_evidence_is_present",
+    },
     "developer_rule": (
-        "Use the default processor for ordinary PBC event handling. Select an "
-        "exception processor only when the workload matches a documented "
-        "exception profile."
+        "Do not choose a stream engine for ordinary generated applications. "
+        "Use the platform event contract, generated outbox/inbox adapters, "
+        "and the default processor. Select an exception processor only when "
+        "the workload matches a documented exception profile and includes "
+        "machine-checkable evidence."
     ),
     "generation_rule": (
         "Generated manifests omit stream_processor unless they need an "
         "exception. Validation normalizes missing values to the default."
+    ),
+    "generator_outputs": (
+        "transactional_outbox",
+        "transactional_inbox",
+        "typed_event_handlers",
+        "idempotency_keys",
+        "retry_policy_names",
+        "dead_letter_contracts",
+        "release_audit_evidence",
     ),
     "exception_required_evidence": (
         "workload_name",
@@ -134,6 +152,8 @@ ACP_STREAM_PROCESSING_POLICY = {
         "mixing multiple processors inside one PBC",
         "shared stream-state stores across PBC datastore boundaries",
         "adding a fourth processor without a platform architecture decision",
+        "asking natural-language generation to compare stream libraries",
+        "exposing a free-form stream-engine selector in the IDE",
     ),
     "decision_tree": (
         {
@@ -753,6 +773,8 @@ def acp_stream_processing_policy() -> dict:
         "allowed_processors": ACP_STREAM_PROCESSING_POLICY["allowed_processors"],
         "developer_rule": ACP_STREAM_PROCESSING_POLICY["developer_rule"],
         "generation_rule": ACP_STREAM_PROCESSING_POLICY["generation_rule"],
+        "opinionated_stack": ACP_STREAM_PROCESSING_POLICY["opinionated_stack"],
+        "generator_outputs": ACP_STREAM_PROCESSING_POLICY["generator_outputs"],
         "exception_required_evidence": ACP_STREAM_PROCESSING_POLICY["exception_required_evidence"],
         "prohibited": ACP_STREAM_PROCESSING_POLICY["prohibited"],
         "decision_tree": ACP_STREAM_PROCESSING_POLICY["decision_tree"],

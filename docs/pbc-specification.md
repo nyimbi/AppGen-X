@@ -93,9 +93,11 @@ Optional fields include `template`, `owner`, `version`, `ui_fragments`,
 `stream_processor` is intentionally opinionated to prevent a combinatorial
 backend matrix. Use `faust_streaming` by default and omit the field for ordinary
 PBCs. The validator normalizes the missing field to the default, and generated
-code should route through AppGen-X outbox/inbox adapters instead of importing a
-stream library directly in business logic. Only choose another processor when
-the workload clearly matches an exception rule.
+code must route through AppGen-X outbox/inbox adapters instead of importing a
+stream library directly in business logic. Developers and coding agents should
+model event contracts, handlers, retry policies, idempotency keys, and
+dead-letter behavior; they should not choose a stream library for normal
+generated applications.
 
 Allowed values:
 
@@ -122,6 +124,18 @@ The IDE and natural-language generator should not expose a free-form
 stream-engine selector. They should show the default as a generated decision and
 open an exception workflow only when the PBC author supplies the required
 evidence.
+
+For ordinary generated applications, the standard event stack is:
+
+- generated transactional outbox and inbox tables;
+- platform event backbone adapter;
+- `faust_streaming` service-runtime profile behind that adapter;
+- PBC-owned datastore state only;
+- generated release-audit evidence.
+
+The backing broker and adapter implementation are platform infrastructure
+concerns. PBC packages declare events and handlers; they do not own a custom
+broker, topic client, or state-store selection.
 
 ## Validation
 

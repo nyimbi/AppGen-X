@@ -158,8 +158,11 @@ Event processing is intentionally opinionated: generated PBCs use
 `faust_streaming` by default. Developers should omit `stream_processor` in
 ordinary manifests and let the platform normalize the profile, generate the
 outbox/inbox contracts, and wire handlers through the generated event adapter.
-`quix_streams` and `bytewax` are documented exception profiles only. See the
-[Opinionated Event Processing Guidance](docs/kafka-alternatives.md) before
+The Studio and natural-language generator should not ask users to compare stream
+libraries; they should model events, handlers, retries, idempotency, and
+dead-letter behavior while the platform owns the adapter choice. `quix_streams`
+and `bytewax` are documented exception profiles only. See the
+[Opinionated Event Processing Standard](docs/kafka-alternatives.md) before
 adding a stream-heavy PBC. Exception profiles must carry
 `stream_exception_evidence` in the manifest, so generated agents can reject
 unsupported choices without asking the user to compare stream libraries.
