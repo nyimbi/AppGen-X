@@ -10,4 +10,5 @@
 /docs/_build/
 /data/
 /src/*.egg-info/
+/appgen-frontend/browser-smoke-report.json
 __pycache__/

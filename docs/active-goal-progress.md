@@ -55,6 +55,7 @@ Build a complete AppGen IDE and generation platform with:
 | 2026-05-23 | `75e886b` | Observed remote CI for native transcript and Studio browser workflows, then fixed the native Python mismatch and hardened the browser runner. | Remote run metadata observed; local editable install, frontend build, CLI audit, script syntax check, local browser blocked by sandboxed Chrome crash handling, hygiene scans passed. |
 | 2026-05-23 | `99db421` | Added a fallback browser headless mode for the Studio browser smoke runner after the remote rerun still failed at browser execution. | Native transcript workflow passed remotely; frontend build and script syntax check passed; local browser still blocked by sandboxed Chrome crash handling; hygiene scans passed. |
 | 2026-05-23 | `2f4ee10` | Split the Studio browser workflow into separate build and browser-render steps so remote metadata can isolate failures. | Frontend build, workflow diff check, and hygiene scan passed. |
+| 2026-05-23 | `pending` | Added structured Studio browser smoke reports and artifact upload for remote failure diagnostics. | Remote split run showed build success and browser-step failure; local build, script syntax, local failure-report generation, and hygiene scans passed. |
 
 ## Current Working Slice
 

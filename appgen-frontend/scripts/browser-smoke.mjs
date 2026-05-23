@@ -1,11 +1,12 @@
 import { createServer } from 'node:http'
-import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs'
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { extname, join, resolve } from 'node:path'
 import { spawn } from 'node:child_process'
 
 const root = resolve(new URL('..', import.meta.url).pathname)
 const distDir = join(root, 'dist')
+const reportPath = join(root, 'browser-smoke-report.json')
 
 const contentTypes = {
   '.css': 'text/css',
@@ -193,15 +194,22 @@ async function main() {
     server.close()
   }
 
-  console.log(JSON.stringify({
+  const report = {
     format: 'appgen.studio-browser-smoke.v1',
     ok: results.every((result) => result.ok),
     browser: chrome,
     scenarios: results,
-  }, null, 2))
+  }
+  writeFileSync(reportPath, JSON.stringify(report, null, 2))
+  console.log(JSON.stringify(report, null, 2))
 }
 
 main().catch((error) => {
+  writeFileSync(reportPath, JSON.stringify({
+    format: 'appgen.studio-browser-smoke.v1',
+    ok: false,
+    error: error.message,
+  }, null, 2))
   console.error(error.message)
   process.exit(1)
 })

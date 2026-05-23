@@ -46,3 +46,11 @@ jobs:
 
       - name: Run Studio browser smoke
         run: node scripts/browser-smoke.mjs
+
+      - name: Upload Studio browser smoke report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: studio-browser-smoke-report
+          path: appgen-frontend/browser-smoke-report.json
+          if-no-files-found: ignore
