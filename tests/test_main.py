@@ -1015,6 +1015,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "accessibility_routes",
         "runtime_propagation_replay",
         "design_runtime_session_replay",
+        "designer_transaction_replay",
     } == {check["id"] for check in binding_workbench["checks"]}
     assert binding_workbench["graph_validation"]["ok"] is True
     assert binding_workbench["edit_transactions"]["validation"]["ok"] is True
@@ -1063,6 +1064,20 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     } <= {item["phase"] for item in binding_workbench["design_runtime_replay"]["replay"]}
     assert binding_workbench["design_runtime_replay"]["final_state"]["offline_items_replayed"] > 0
     assert binding_workbench["design_runtime_replay"]["final_state"]["runtime_errors"] > 0
+    assert binding_workbench["designer_transaction_replay"]["ok"] is True
+    assert {
+        "author_visual_link",
+        "edit_graph_surface",
+        "stage_transaction",
+        "preview_and_hit_test",
+        "schedule_dependencies",
+        "surface_diagnostics_and_conflicts",
+        "replay_offline_queue",
+        "exercise_accessibility_routes",
+        "propagate_runtime_and_recover",
+    } <= {item["phase"] for item in binding_workbench["designer_transaction_replay"]["replay"]}
+    assert binding_workbench["designer_transaction_replay"]["final_state"]["graph_edit_ops"] > 0
+    assert binding_workbench["designer_transaction_replay"]["final_state"]["runtime_trace"] > 0
     data_workbench = rad_data_tooling_workbench()
     assert data_workbench["format"] == "appgen.rad-data-tooling-workbench.v1"
     assert data_workbench["ok"] is True
@@ -9572,6 +9587,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "accessibility_routes",
         "runtime_propagation_replay",
         "design_runtime_session_replay",
+        "designer_transaction_replay",
     } <= {
         check["id"] for check in generated_bindings["checks"]
     }
@@ -9613,6 +9629,20 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     } <= {item["phase"] for item in generated_bindings["design_runtime_replay"]["replay"]}
     assert generated_bindings["design_runtime_replay"]["final_state"]["runtime_notifications"] > 0
     assert generated_bindings["design_runtime_replay"]["final_state"]["runtime_errors"] > 0
+    assert generated_bindings["designer_transaction_replay"]["ok"] is True
+    assert {
+        "author_visual_link",
+        "edit_graph_surface",
+        "stage_transaction",
+        "preview_and_hit_test",
+        "schedule_dependencies",
+        "surface_diagnostics_and_conflicts",
+        "replay_offline_queue",
+        "exercise_accessibility_routes",
+        "propagate_runtime_and_recover",
+    } <= {item["phase"] for item in generated_bindings["designer_transaction_replay"]["replay"]}
+    assert generated_bindings["designer_transaction_replay"]["final_state"]["accessibility_routes"] > 0
+    assert generated_bindings["designer_transaction_replay"]["final_state"]["offline_replays"] > 0
     generated_data_tooling = form_designer.rad_data_tooling_workbench()
     assert generated_data_tooling["format"] == "appgen.generated-rad-data-tooling-workbench.v1"
     assert generated_data_tooling["ok"] is True

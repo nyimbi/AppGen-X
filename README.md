@@ -325,7 +325,9 @@ Generated apps include Studio contracts for:
 - A visual data-binding workbench proves binding graph nodes/edges, expression
   validation, converter and validator catalogs, designer gestures, and runtime
   binding modes, plus link authoring operations, conflict checks, preview
-  evaluation, generated runtime wiring, and undo/redo history.
+  evaluation, generated runtime wiring, undo/redo history, and ordered designer
+  transaction replay through graph edits, preview, diagnostics, accessibility,
+  offline replay, runtime propagation, and rollback recovery.
 - A native data tooling workbench proves connection catalogs, query designer
   metadata, server method/client proxy generation, secured resource tooling,
   embedded local database support, offline sync policies, and conflict guards.
