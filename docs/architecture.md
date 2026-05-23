@@ -219,6 +219,10 @@ Visual design is split into two related capabilities:
   state. Its design-surface transaction replay validates ordered selection,
   multi-select edit, component-editor, overlay, dependency refresh, diagnostic,
   undo/redo, and reference-sync behavior.
+- `component_analog_workbench()` validates requested component analog coverage
+  across controls, layouts, data display, graphics, animation, theming,
+  gestures, sensors, 3D scene primitives, and data access. It now records the
+  runtime adapter class for each analog before replaying behavior contracts.
 - `livebindings_workbench()` validates visual data-binding graphs, expression
   safety, converter/validator catalogs, designer interactions, and runtime
   update modes, plus link authoring operations, conflict checks, preview

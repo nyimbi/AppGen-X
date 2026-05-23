@@ -242,6 +242,20 @@ REQUESTED_COMPONENT_ANALOGS = {
     "DatabaseConnection", "TableAdapter", "ClientDataSet",
 }
 
+REQUESTED_COMPONENT_RUNTIME_ADAPTERS = {
+    "TButton", "TEdit", "TLabel", "TListBox", "TComboBox", "TCheckBox", "TRadioButton",
+    "TLayout", "TScrollBox", "TFlowLayout", "TGridLayout", "TVerticalBoxLayout",
+    "THorizontalBoxLayout",
+    "TStringGrid", "TListView", "TTreeView",
+    "TShape", "TPath", "TRectangle", "TEllipse", "TLine", "TImage", "TBitmap",
+    "TFloatAnimation", "TColorAnimation", "TPathAnimation",
+    "TStyleBook", "TStyleManager",
+    "TGestureManager", "TGesture",
+    "TLocationSensor", "TMotionSensor", "TOrientationSensor",
+    "TViewPort3D", "TDummy3D", "TCamera3D", "TLight3D", "TMesh3D",
+    "TDatabase", "TTable", "TClientDataSet",
+}
+
 
 @pytest.fixture
 def runner() -> CliRunner:
@@ -829,10 +843,13 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     analog_matrix = component_analog_matrix()
     assert {item["source"] for item in analog_matrix} == REQUESTED_COMPONENT_ANALOG_SOURCES
     assert {item["analog"] for item in analog_matrix} == REQUESTED_COMPONENT_ANALOGS
+    assert {item["runtime_adapter"] for item in analog_matrix} == REQUESTED_COMPONENT_RUNTIME_ADAPTERS
     analog_workbench = component_analog_workbench()
     assert analog_workbench["format"] == "appgen.component-analog-workbench.v1"
     assert analog_workbench["ok"] is True
-    assert "requested_analog_behavior_replay" in {check["id"] for check in analog_workbench["checks"]}
+    assert {"requested_analog_behavior_replay", "runtime_adapters_declared"} <= {
+        check["id"] for check in analog_workbench["checks"]
+    }
     assert {"layouts", "graphics", "sensors", "three-d", "data-access"} <= set(analog_workbench["groups"])
     assert REQUESTED_COMPONENT_ANALOGS == {item["component"] for item in analog_workbench["behavior_replay"]}
     assert all(
@@ -9869,6 +9886,9 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     }
     assert REQUESTED_COMPONENT_ANALOGS == {
         item["analog"] for item in generated_analogs["matrix"]
+    }
+    assert REQUESTED_COMPONENT_RUNTIME_ADAPTERS == {
+        item["runtime_adapter"] for item in generated_analogs["matrix"]
     }
     assert REQUESTED_COMPONENT_ANALOGS == {item["component"] for item in generated_analogs["behavior_replay"]}
     assert all(

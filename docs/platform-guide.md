@@ -54,7 +54,8 @@ A generated app can include:
   and `test_plan()` exports.
 - `component_analog_workbench()` proves analog coverage for cross-target
   controls, layout containers, data display, graphics, animations, theming,
-  gestures, sensors, 3D scene primitives, and data-access components.
+  gestures, sensors, 3D scene primitives, and data-access components, including
+  runtime adapter declarations for each analog.
 - `pascal_runtime_workbench()` proves deterministic form streaming, generated
   units, package manifests, compiler pipeline metadata, runtime type
   information, event binding lifecycle, resource streaming, form lifecycle

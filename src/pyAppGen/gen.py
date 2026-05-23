@@ -25665,6 +25665,7 @@ def component_analog_matrix():
         {{
             **requirement,
             "implemented": requirement["analog"] in palette_types,
+            "runtime_adapter": _dfm_component_class(requirement["analog"]),
             "contract": component_runtime_contract(requirement["analog"]) if requirement["analog"] in palette_types else None,
         }}
         for requirement in COMPONENT_ANALOG_REQUIREMENTS
@@ -25683,6 +25684,7 @@ def component_analog_workbench():
     checks = (
         {{"id": "all_requested_analogs_present", "ok": all(item["implemented"] for item in matrix), "evidence": tuple(item for item in matrix if not item["implemented"])}},
         {{"id": "all_requested_analogs_usable", "ok": all(item["contract"] and item["contract"]["usable"] for item in matrix), "evidence": tuple((item["source"], item["analog"]) for item in matrix if item["contract"] and item["contract"]["usable"])}},
+        {{"id": "runtime_adapters_declared", "ok": all(item["runtime_adapter"].startswith("T") for item in matrix), "evidence": tuple((item["source"], item["analog"], item["runtime_adapter"]) for item in matrix)}},
         {{"id": "requested_analog_behavior_replay", "ok": len(behavior_replay) == len(matrix) and all(item["ok"] for item in behavior_replay) and all({{"render_nodes", "property_validation", "event_dispatch", "target_adapters", "binding_surface", "category_capabilities"}} <= {{check["id"] for check in item["checks"] if check["ok"]}} for item in behavior_replay), "evidence": tuple({{"component": item["component"], "checks": tuple(check["id"] for check in item["checks"] if check["ok"])}} for item in behavior_replay)}},
         {{"id": "groups_covered", "ok": {{"cross-target-ui", "layouts", "data-display", "graphics", "animations", "styles-theming", "gestures", "sensors", "three-d", "data-access"}} <= set(groups), "evidence": groups}},
     )
@@ -32411,7 +32413,7 @@ def _dfm_component_class(component_type):
         "StyleManager": "TStyleManager",
         "GestureManager": "TGestureManager",
         "Gesture": "TGesture",
-        "Viewport3D": "TViewport3D",
+        "Viewport3D": "TViewPort3D",
         "Dummy3D": "TDummy3D",
         "Camera3D": "TCamera3D",
         "Light3D": "TLight3D",

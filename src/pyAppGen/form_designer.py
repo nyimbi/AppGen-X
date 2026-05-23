@@ -659,6 +659,7 @@ def component_analog_matrix() -> tuple[dict, ...]:
         {
             **requirement,
             "implemented": requirement["analog"] in COMPONENTS,
+            "runtime_adapter": _dfm_component_class(requirement["analog"]),
             "contract": component_runtime_contract(requirement["analog"]) if requirement["analog"] in COMPONENTS else None,
         }
         for requirement in COMPONENT_ANALOG_REQUIREMENTS
@@ -684,6 +685,11 @@ def component_analog_workbench() -> dict:
             "id": "all_requested_analogs_usable",
             "ok": all(item["contract"] and item["contract"]["usable"] for item in matrix),
             "evidence": tuple((item["source"], item["analog"]) for item in matrix if item["contract"] and item["contract"]["usable"]),
+        },
+        {
+            "id": "runtime_adapters_declared",
+            "ok": all(item["runtime_adapter"].startswith("T") for item in matrix),
+            "evidence": tuple((item["source"], item["analog"], item["runtime_adapter"]) for item in matrix),
         },
         {
             "id": "requested_analog_behavior_replay",
@@ -10077,7 +10083,7 @@ def _dfm_component_class(component: str) -> str:
         "StyleManager": "TStyleManager",
         "GestureManager": "TGestureManager",
         "Gesture": "TGesture",
-        "Viewport3D": "TViewport3D",
+        "Viewport3D": "TViewPort3D",
         "Dummy3D": "TDummy3D",
         "Camera3D": "TCamera3D",
         "Light3D": "TLight3D",

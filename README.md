@@ -304,7 +304,8 @@ Generated apps include Studio contracts for:
   `test_plan()` for each built-in component.
 - A component analog workbench covers requested cross-target controls, layouts,
   data display, graphics, animation, theming, gestures, sensors, 3D surfaces,
-  and data-access components with usable generated contracts.
+  and data-access components with usable generated contracts and declared
+  runtime adapters.
 - A native language/runtime workbench proves deterministic form streaming,
   generated units, package manifests, compiler pipeline metadata, runtime type
   information, event binding lifecycle, resource streaming, form lifecycle
