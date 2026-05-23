@@ -255,8 +255,9 @@ source.
 2. Keep owned tables scoped to the PBC.
 3. Choose `postgresql`, `mysql`, or another approved open-source backend.
 4. Define API contracts with HTTP method and path.
-5. Choose a stream processor profile when the PBC owns event handling:
-   `faust_streaming`, `quix_streams`, or `bytewax`.
+5. Omit `stream_processor` for ordinary event handling and let validation use
+   the default. Add `quix_streams` or `bytewax` only through the audited
+   exception workflow with `stream_exception_evidence`.
 6. Define emitted and consumed event names.
 7. Add UI fragments for the composition canvas if the PBC has a user surface.
 8. Add permissions and configuration keys.
@@ -285,8 +286,9 @@ criteria:
 - Include docs and tests so `publishable` is true.
 - Do not share another PBC's datastore or tables.
 - Use only approved open-source datastore backends.
-- Pick one of the supported Python-native stream processor profiles when event
-  handling is needed.
+- Omit `stream_processor` for ordinary event handling; use an exception profile
+  only when the workload and `stream_exception_evidence` satisfy the platform
+  policy.
 - Use events for cross-PBC communication.
 - Include UI fragments, permissions, configuration, migrations, and seed data
   when relevant.

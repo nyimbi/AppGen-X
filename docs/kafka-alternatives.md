@@ -5,6 +5,38 @@ application. That creates an exponential support matrix and makes PBC packages
 hard to reason about. The platform therefore supports one default event
 processor profile and two narrow exception profiles.
 
+## Platform Recommendation
+
+For developers using AppGen-X, the answer is:
+
+```text
+Do not choose Kafka, a broker client, or a stream-processing library in
+generated business code.
+
+Generate the AppGen-X transactional outbox/inbox contract.
+Generate handlers against the AppGen-X event adapter.
+Let the platform run the faust_streaming service-runtime profile behind that
+adapter.
+```
+
+This is the ordinary path for generated applications, PBCs, ERP capabilities,
+agents, chatbots, approvals, workflow sagas, integration handlers, and
+natural-language-generated changes. The developer models the event contract;
+the platform owns the stream runtime decision.
+
+The only selectable path is an audited exception workflow:
+
+| Workload | Platform profile |
+| --- | --- |
+| Normal business events, PBC handlers, workflows, approvals, agents, chatbots, and integrations | Default: generated outbox/inbox plus `faust_streaming` behind the adapter. |
+| Telemetry, time-series ingestion, large event ingestion, or windowed operational metrics | Exception: `quix_streams` with `stream_exception_evidence`. |
+| Complex parallel dataflow, CPU-heavy transformations, or multi-stage analytical pipelines | Exception: `bytewax` with `stream_exception_evidence`. |
+
+Do not add a fourth profile for a project. Do not let the IDE, DSL, natural
+language planner, or coding-agent prompt expose a general stream-engine picker.
+If an exception cannot name its workload, measurable constraint, state shape,
+and operational owner, it is not an exception.
+
 ## Normative Platform Decision
 
 Use `faust_streaming` behind the AppGen-X generated event adapter.
