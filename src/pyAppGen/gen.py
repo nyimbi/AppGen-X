@@ -34704,6 +34704,111 @@ def cross_target_visual_lifecycle_replay_contract():
     }}
 
 
+def cross_target_visual_runtime_package_contract():
+    """Return generated target-ready visual runtime package artifacts."""
+    style_resources = cross_target_style_resource_contract()
+    timeline_export = cross_target_timeline_runtime_export_contract()
+    effect_fallback = cross_target_effect_fallback_matrix_contract()
+    scene_integrity = cross_target_scene_graph_integrity_contract()
+    material_binding = cross_target_material_binding_contract()
+    shader_editor = cross_target_shader_material_editor_contract()
+    asset_import = cross_target_asset_import_workflow()
+    preview_diff = cross_target_preview_runtime_diff_workflow()
+    runtime_replay = cross_target_visual_runtime_replay_contract()
+    targets = ("web", "mobile", "desktop", "pwa")
+    artifacts = tuple(
+        {{
+            "target": target,
+            "style_bundle": f"{{target}}/styles/appgen-stylebook.json",
+            "timeline_bundle": f"{{target}}/animations/appgen-timelines.json",
+            "effect_bundle": f"{{target}}/effects/appgen-effects.json",
+            "scene_manifest": f"{{target}}/scene/appgen-scene.json",
+            "asset_manifest": f"{{target}}/assets/appgen-assets.json",
+            "adapters": ("style_loader", "timeline_player", "effect_fallback_resolver", "scene_renderer", "asset_resolver"),
+            "fallbacks": tuple(row["fallback"] for row in effect_fallback["rows"] if row["target"] == target),
+        }}
+        for target in targets
+    )
+    checks = (
+        {{
+            "id": "target_artifacts_complete",
+            "ok": all(
+                {{"style_bundle", "timeline_bundle", "effect_bundle", "scene_manifest", "asset_manifest", "adapters"}} <= set(artifact)
+                and {{"style_loader", "timeline_player", "scene_renderer"}} <= set(artifact["adapters"])
+                for artifact in artifacts
+            ),
+            "evidence": artifacts,
+        }},
+        {{
+            "id": "style_and_timeline_packaged",
+            "ok": {{"stylebook", "theme_tokens"}} <= set(style_resources["resources"])
+            and timeline_export["ok"]
+            and all("native_timeline" in export["artifacts"] for export in timeline_export["exports"]),
+            "evidence": {{"style_resources": style_resources["resources"], "timeline_exports": timeline_export["exports"]}},
+        }},
+        {{
+            "id": "effect_fallbacks_packaged",
+            "ok": effect_fallback["ok"]
+            and all(artifact["fallbacks"] for artifact in artifacts)
+            and any(row["decision"] == "use_fallback" for row in effect_fallback["rows"]),
+            "evidence": effect_fallback["rows"],
+        }},
+        {{
+            "id": "scene_materials_packaged",
+            "ok": scene_integrity["ok"]
+            and material_binding["ok"]
+            and shader_editor["ok"]
+            and asset_import["ok"]
+            and {{"write_asset_manifest", "generate_fallback_thumbnail"}} <= set(asset_import["pipeline"]),
+            "evidence": {{
+                "scene_nodes": tuple(node["id"] for node in scene_integrity["nodes"]),
+                "materials": material_binding["bindings"],
+                "asset_pipeline": asset_import["pipeline"],
+            }},
+        }},
+        {{
+            "id": "preview_runtime_diff_packaged",
+            "ok": preview_diff["diff_result"]["ok"]
+            and "report_visible_diff" in preview_diff["diff_steps"]
+            and runtime_replay["ok"]
+            and runtime_replay["final_state"]["timeline_samples"] > 0,
+            "evidence": {{"diff_steps": preview_diff["diff_steps"], "runtime_state": runtime_replay["final_state"]}},
+        }},
+        {{
+            "id": "side_effect_guards",
+            "ok": not style_resources.get("side_effects", ())
+            and not timeline_export["side_effects"]
+            and not effect_fallback["side_effects"]
+            and not scene_integrity["side_effects"]
+            and not material_binding["side_effects"]
+            and not shader_editor["side_effects"]
+            and not asset_import["side_effects"]
+            and not preview_diff["side_effects"]
+            and not runtime_replay["side_effects"],
+            "evidence": (),
+        }},
+    )
+    ok = all(check["ok"] for check in checks)
+    return {{
+        "format": "appgen.generated-cross-target-visual-runtime-package.v1",
+        "ok": ok,
+        "decision": "approved" if ok else "blocked",
+        "targets": targets,
+        "artifacts": artifacts,
+        "checks": checks,
+        "guards": (
+            "target_artifacts_complete",
+            "style_and_timeline_packaged",
+            "effect_fallbacks_packaged",
+            "scene_materials_packaged",
+            "preview_runtime_diff_packaged",
+            "no_side_effects",
+        ),
+        "side_effects": (),
+        "blocking_gaps": tuple(check for check in checks if not check["ok"]),
+    }}
+
+
 def cross_target_author_style_operation(component="Button"):
     """Return a callable generated IDE operation for authoring and previewing style overrides."""
     resolution = cross_target_style_resolution_workflow(component)
@@ -35003,6 +35108,7 @@ def cross_target_visual_depth_workbench():
     runtime_replay = cross_target_visual_runtime_replay_contract()
     designer_transaction_replay = cross_target_visual_designer_transaction_replay_contract()
     lifecycle_replay = cross_target_visual_lifecycle_replay_contract()
+    runtime_package = cross_target_visual_runtime_package_contract()
     actionable_operations = cross_target_visual_actionable_operations()
     visual_component_specs = cross_target_visual_component_spec_contract()
     checks = (
@@ -35038,11 +35144,12 @@ def cross_target_visual_depth_workbench():
         {{"id": "visual_runtime_replay", "ok": runtime_replay["ok"] and {{"timeline_samples_match_preview", "transforms_sync_inspector"}} <= set(runtime_replay["guards"]) and not runtime_replay["side_effects"], "evidence": runtime_replay}},
         {{"id": "visual_designer_transaction_replay", "ok": designer_transaction_replay["ok"] and "runtime_replay_matches_designer_state" in designer_transaction_replay["guards"] and not designer_transaction_replay["side_effects"], "evidence": designer_transaction_replay}},
         {{"id": "visual_lifecycle_replay", "ok": lifecycle_replay["ok"] and {{"style_before_timeline", "hit_tests_before_designer_replay"}} <= set(lifecycle_replay["guards"]) and not lifecycle_replay["side_effects"], "evidence": lifecycle_replay}},
+        {{"id": "visual_runtime_package", "ok": runtime_package["ok"] and {{"web", "mobile", "desktop", "pwa"}} <= set(runtime_package["targets"]) and {{"target_artifacts_complete", "scene_materials_packaged"}} <= set(runtime_package["guards"]) and not runtime_package["side_effects"], "evidence": runtime_package}},
         {{"id": "visual_component_specs", "ok": visual_component_specs["ok"] and {{"StyleBook", "FloatAnimation", "ColorAnimation", "PathAnimation", "Effect", "Viewport3D", "Camera3D", "Light3D", "Mesh3D"}} <= {{spec["component"] for spec in visual_component_specs["specs"]}} and all(spec["design_tools"] and spec["runtime_artifacts"] for spec in visual_component_specs["specs"]) and not visual_component_specs["side_effects"], "evidence": visual_component_specs}},
         {{"id": "actionable_visual_operations", "ok": actionable_operations["ok"] and {{"author_style", "author_timeline", "validate_effect_stack", "author_scene", "import_visual_asset", "hit_test_transform", "validate_visual_component"}} <= set(actionable_operations["operations"]) and not actionable_operations["side_effects"], "evidence": actionable_operations}},
     )
     ok = all(check["ok"] for check in checks)
-    return {{"format": "appgen.generated-cross-target-visual-depth-workbench.v1", "ok": ok, "decision": "approved" if ok else "blocked", "contract": contract, "style_resolution": style_resolution, "timeline_playback": timeline_playback, "effect_render": effect_render, "scene_validation": scene_validation, "asset_import_workflow": asset_import, "preview_diff": preview_diff, "style_tokens": style_tokens, "timeline_scrub": timeline_scrub, "effect_budget": effect_budget, "scene_integrity": scene_integrity, "material_binding": material_binding, "timeline_runtime_export": timeline_runtime_export, "shader_material_editor": shader_material_editor, "scene_hit_testing": scene_hit_testing, "style_inheritance_trace": style_inheritance_trace, "timeline_interpolation": timeline_interpolation, "effect_fallback_matrix": effect_fallback_matrix, "scene_transform_gizmos": scene_transform_gizmos, "runtime_replay": runtime_replay, "designer_transaction_replay": designer_transaction_replay, "lifecycle_replay": lifecycle_replay, "visual_component_specs": visual_component_specs, "actionable_operations": actionable_operations, "checks": checks, "blocking_gaps": tuple(check for check in checks if not check["ok"])}}
+    return {{"format": "appgen.generated-cross-target-visual-depth-workbench.v1", "ok": ok, "decision": "approved" if ok else "blocked", "contract": contract, "style_resolution": style_resolution, "timeline_playback": timeline_playback, "effect_render": effect_render, "scene_validation": scene_validation, "asset_import_workflow": asset_import, "preview_diff": preview_diff, "style_tokens": style_tokens, "timeline_scrub": timeline_scrub, "effect_budget": effect_budget, "scene_integrity": scene_integrity, "material_binding": material_binding, "timeline_runtime_export": timeline_runtime_export, "shader_material_editor": shader_material_editor, "scene_hit_testing": scene_hit_testing, "style_inheritance_trace": style_inheritance_trace, "timeline_interpolation": timeline_interpolation, "effect_fallback_matrix": effect_fallback_matrix, "scene_transform_gizmos": scene_transform_gizmos, "runtime_replay": runtime_replay, "designer_transaction_replay": designer_transaction_replay, "lifecycle_replay": lifecycle_replay, "runtime_package": runtime_package, "visual_component_specs": visual_component_specs, "actionable_operations": actionable_operations, "checks": checks, "blocking_gaps": tuple(check for check in checks if not check["ok"])}}
 
 
 def snap_to_grid(value, minimum=0):

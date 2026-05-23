@@ -111,6 +111,7 @@ from pyAppGen.form_designer import cross_target_visual_actionable_operations
 from pyAppGen.form_designer import cross_target_visual_component_spec_contract
 from pyAppGen.form_designer import cross_target_visual_depth_workbench
 from pyAppGen.form_designer import cross_target_visual_lifecycle_replay_contract
+from pyAppGen.form_designer import cross_target_visual_runtime_package_contract
 from pyAppGen.form_designer import design_time_package_manager_workbench
 from pyAppGen.form_designer import detect_overlaps
 from pyAppGen.form_designer import decode_dfm_binary_stream
@@ -1610,6 +1611,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "visual_runtime_replay",
         "visual_designer_transaction_replay",
         "visual_lifecycle_replay",
+        "visual_runtime_package",
         "visual_component_specs",
         "actionable_visual_operations",
     } == {check["id"] for check in visual_depth["checks"]}
@@ -1691,6 +1693,24 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "route_hit_tests_and_transforms",
         "runtime_and_designer_replay",
     } <= {item["phase"] for item in visual_lifecycle["replay"]}
+    visual_runtime_package = cross_target_visual_runtime_package_contract()
+    assert visual_runtime_package["format"] == "appgen.cross-target-visual-runtime-package.v1"
+    assert visual_runtime_package["ok"] is True
+    assert {"web", "mobile", "desktop", "pwa"} <= set(visual_runtime_package["targets"])
+    assert all(
+        {"style_loader", "timeline_player", "effect_fallback_resolver", "scene_renderer", "asset_resolver"}
+        <= set(artifact["adapters"])
+        for artifact in visual_runtime_package["artifacts"]
+    )
+    assert {
+        "target_artifacts_complete",
+        "style_and_timeline_packaged",
+        "effect_fallbacks_packaged",
+        "scene_materials_packaged",
+        "preview_runtime_diff_packaged",
+    } <= {check["id"] for check in visual_runtime_package["checks"] if check["ok"]}
+    assert visual_depth["runtime_package"]["ok"] is True
+    assert "scene_materials_packaged" in visual_depth["runtime_package"]["guards"]
     third_party_registry = third_party_component_registry()
     assert {"devexpress-native", "tms-fnc", "fastreport", "teechart", "indy"} <= {
         item["id"] for item in third_party_registry
@@ -10526,6 +10546,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "visual_runtime_replay",
         "visual_designer_transaction_replay",
         "visual_lifecycle_replay",
+        "visual_runtime_package",
         "visual_component_specs",
         "actionable_visual_operations",
     } == {check["id"] for check in generated_visual_depth["checks"]}
@@ -10594,6 +10615,20 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "route_hit_tests_and_transforms",
         "runtime_and_designer_replay",
     } <= {item["phase"] for item in generated_visual_depth["lifecycle_replay"]["replay"]}
+    generated_visual_package = form_designer.cross_target_visual_runtime_package_contract()
+    assert generated_visual_package["format"] == "appgen.generated-cross-target-visual-runtime-package.v1"
+    assert generated_visual_package["ok"] is True
+    assert {"web", "mobile", "desktop", "pwa"} <= set(generated_visual_package["targets"])
+    assert all(artifact["style_bundle"].endswith("appgen-stylebook.json") for artifact in generated_visual_package["artifacts"])
+    assert {
+        "target_artifacts_complete",
+        "style_and_timeline_packaged",
+        "effect_fallbacks_packaged",
+        "scene_materials_packaged",
+        "preview_runtime_diff_packaged",
+    } <= {check["id"] for check in generated_visual_package["checks"] if check["ok"]}
+    assert generated_visual_depth["runtime_package"]["ok"] is True
+    assert "scene_materials_packaged" in generated_visual_depth["runtime_package"]["guards"]
     generated_analogs = form_designer.component_analog_workbench()
     assert generated_analogs["format"] == "appgen.generated-component-analog-workbench.v1"
     assert generated_analogs["ok"] is True
