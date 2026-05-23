@@ -1,104 +1,51 @@
-# AppGen
+# AppGen-X
 
-AppGen is a Python low-code/no-code application generator and DSL toolchain for
-building secure, capable business applications from existing schemas, a compact
-ANTLR-backed language, or natural-language evolution prompts.
+**AppGen-X is an open-source application composition platform for generating
+business applications from models, databases, DSL, and natural language.**
 
-It can generate Flask-AppBuilder web applications, PWA assets, mobile and
-desktop starters, chatbot exports, ERP starter modules, Studio/IDE workbenches,
-database design tools, reporting surfaces, deployment assets, and agentic
-systems backed by local or API-key LLM providers.
+It turns a compact source definition into a working application package with
+web screens, APIs, data models, visual design metadata, mobile and desktop
+starters, deployment assets, ERP templates, agentic systems, and release
+audits. The current Python package and CLI are still named `appgen`.
 
 [![PyPI](https://img.shields.io/pypi/v/appgen.svg)][pypi_]
-[![Status](https://img.shields.io/pypi/status/appgen.svg)][status]
 [![Python Version](https://img.shields.io/pypi/pyversions/appgen)][python version]
 [![License](https://img.shields.io/pypi/l/appgen)][license]
+[![Tests](https://github.com/nyimbi/AppGen-X/actions/workflows/tests.yml/badge.svg)][tests]
 
-[![Read the documentation at https://appgen.readthedocs.io/](https://img.shields.io/readthedocs/appgen/latest.svg?label=Read%20the%20Docs)][read the docs]
-[![Tests](https://github.com/nyimbi/appgen/workflows/Tests/badge.svg)][tests]
-[![Codecov](https://codecov.io/gh/nyimbi/appgen/branch/main/graph/badge.svg)][codecov]
+## Why AppGen-X
 
-[![pre-commit](https://img.shields.io/badge/pre--commit-enabled-brightgreen?logo=pre-commit&logoColor=white)][pre-commit]
-[![Black](https://img.shields.io/badge/code%20style-black-000000.svg)][black]
+Most generators stop at scaffolding. AppGen-X is designed to keep generating,
+validating, evolving, and packaging the application.
 
-## What AppGen Builds
-
-AppGen turns a source model into a generated application package. The source can
-be:
-
-- AppGen DSL files.
-- DBML files.
-- SQL DDL files.
-- PonyORM entity scripts.
-- Live SQLAlchemy database URLs.
-- Natural-language prompts that produce reviewable DSL changes.
-
-Generated packages include:
-
-- Flask-AppBuilder models, views, forms, APIs, GraphQL, templates, and config.
-- A generated Studio/IDE for managing applications, DSL, database designs,
-  form layouts, natural-language evolution, releases, and audits.
-- RAD-style visual form designer contracts with drop zones, components,
-  property inspectors, layout validation, and renderer metadata.
-- Native data tooling contracts for connection profiles, query design, server
-  methods, generated client proxies, secured resources, embedded local storage,
-  offline sync, conflict handling, and side-effect guards.
-- Splash-screen, editable-menu, right-click/context-menu, and UI fine-tuning
-  contracts in the generated branding workbench.
-- Visual database modeling exports for Mermaid ERD, DBML, SQL DDL, PonyORM, and
-  migration previews.
-- Web, PWA, mobile, desktop, and chatbot target artifacts.
-- Agentic-system contracts with local LLM providers, API-key LLM providers,
-  agents, tool policy, execution plans, and release gates.
-- ERP starter modules for ledgers, accounts, invoicing, AP, AR, inventory,
-  purchasing, sales, HR, payroll, CRM, projects, assets, tax, reporting, and
-  approval workflows.
-- Deployment and operations assets for Docker, Compose, Kubernetes, Terraform,
-  HTTPS, search, Node-RED automation, backups, and release validation.
+- **Start from what you have:** DSL, DBML, SQL DDL, PonyORM entities, a live
+  SQLAlchemy database URL, ERP templates, or a natural-language change request.
+- **Generate real application surfaces:** Flask-AppBuilder models, views, APIs,
+  GraphQL, templates, config, reports, dashboards, workflow surfaces, and
+  security policies.
+- **Design visually:** generated Studio workbenches cover DSL editing, database
+  design, visual form layout, component drops, property inspectors, data
+  bindings, package management, device APIs, and target packaging.
+- **Target more than the browser:** web, PWA, mobile, desktop, and chatbot
+  artifacts are generated from the same source model.
+- **Build enterprise apps faster:** ERP starter modules cover ledgers, accounts,
+  invoicing, AP, AR, inventory, purchasing, sales, HR, payroll, CRM, projects,
+  assets, tax, reporting, and approvals.
+- **Use agents deliberately:** model local or API-backed LLM providers, agents,
+  tools, execution policy, and release checks in the same source language.
+- **Prove readiness:** release audits verify source intake, DSL quality,
+  Studio/IDE readiness, form design, data tooling, security, deployment,
+  integrations, targets, packages, and generated-app excellence.
 
 ## Quick Start
 
-Install AppGen:
+Install the CLI:
 
 ```console
 pip install appgen
 ```
 
-Generate from a DSL file:
-
-```console
-appgen --dsl invoice.appgen --writedir generated/invoice/app
-```
-
-Generate from an existing schema:
-
-```console
-appgen --dbml schema.dbml --writedir generated/dbml-app/app
-appgen --sql schema.sql --writedir generated/sql-app/app
-appgen --pony entities.py --writedir generated/pony-app/app
-appgen --database-url sqlite:///existing.db --writedir generated/db-app/app
-```
-
-Lint and format DSL before generation:
-
-```console
-appgen --lint-dsl invoice.appgen
-appgen --format-dsl invoice.appgen
-appgen --dsl-authoring-gate invoice.appgen
-```
-
-Run the aggregate readiness audit:
-
-```console
-appgen --package-goal-audit
-```
-
-The package goal audit aggregates roadmap traceability, DSL quality, source
-intake, ERP templates, Studio/IDE readiness, RAD-style form design, visual
-modeling, security, reporting, deployment, integrations, agentic systems,
-multi-target generation, and generated-app excellence.
-
-## Minimal DSL Example
+Create `invoice.appgen`:
 
 ```appgen
 app InvoiceDesk { theme: sage; targets: web, pwa, mobile, desktop, chatbot }
@@ -152,78 +99,185 @@ agent InvoiceReviewer {
 }
 ```
 
-Generate it:
+Lint and generate:
 
 ```console
+appgen --lint-dsl invoice.appgen
 appgen --dsl invoice.appgen --writedir generated/invoice/app
 ```
 
-## Command Guide
-
-Generation commands:
+Run the aggregate readiness audit:
 
 ```console
-appgen --dsl app.appgen --writedir generated/app/app
-appgen --dbml schema.dbml --writedir generated/app/app
-appgen --sql schema.sql --writedir generated/app/app
-appgen --pony entities.py --writedir generated/app/app
-appgen --database-url postgresql+psycopg2://user@host/db --writedir generated/app/app
-```
-
-DSL authoring commands:
-
-```console
-appgen --lint-dsl app.appgen
-appgen --fix-dsl app.appgen
-appgen --format-dsl app.appgen
-appgen --dsl-authoring-gate app.appgen
-appgen --dsl-antlr-report
-appgen --dsl-release-audit
-```
-
-Natural-language evolution commands:
-
-```console
-appgen --nl-plan "Add customer support tickets, a TicketForm, and a SupportAgent"
-appgen --nl-dsl "Add customer support tickets, a TicketForm, and a SupportAgent"
-appgen --nl-release-audit
-```
-
-ERP template commands:
-
-```console
-appgen --erp-template-catalog
-appgen --erp-template invoicing
-appgen --erp-template inventory
-```
-
-Release/audit commands:
-
-```console
-appgen --schema-source-audit
-appgen --source-intake-release-audit
-appgen --roadmap-release-audit
-appgen --ideas-release-audit
-appgen --base-features-release-audit
-appgen --generated-app-excellence-audit
-appgen --jhipster-superiority-audit
-appgen --studio-release-audit
-appgen --form-designer-release-audit
-appgen --visual-modeling-release-audit
-appgen --security-release-audit
-appgen --config-release-audit
-appgen --distribution-release-audit
-appgen --reporting-release-audit
-appgen --ops-release-audit
-appgen --integration-release-audit
-appgen --agentic-release-audit
-appgen --target-release-audit
 appgen --package-goal-audit
 ```
 
-## Documentation
+## Generate From Existing Sources
 
-Core documentation:
+```console
+appgen --dbml schema.dbml --writedir generated/dbml-app/app
+appgen --sql schema.sql --writedir generated/sql-app/app
+appgen --pony entities.py --writedir generated/pony-app/app
+appgen --database-url sqlite:///existing.db --writedir generated/db-app/app
+```
+
+Natural-language evolution produces reviewable plans and DSL patches:
+
+```console
+appgen --nl-plan "Add support tickets, a TicketForm, a SupportAgent, and targets web mobile desktop"
+appgen --nl-dsl "Add support tickets, a TicketForm, a SupportAgent, and targets web mobile desktop"
+```
+
+ERP starters can be exported and generated immediately:
+
+```console
+appgen --erp-template-catalog
+appgen --erp-template invoicing > invoicing.appgen
+appgen --dsl invoicing.appgen --writedir generated/invoicing/app
+```
+
+## What Gets Generated
+
+A generated AppGen-X package can include:
+
+- `app/models.py`, `app/views.py`, `app/api.py`, `app/gql.py`, templates, and
+  Flask-AppBuilder config.
+- `app/studio.py` for generated IDE and application-management contracts.
+- `app/dsl_reference.py` for generated language guidance and linter helpers.
+- `app/form_designer.py` for visual form layout, component metadata,
+  design-time streaming, property inspectors, event handlers, and designer
+  release gates.
+- `app/designer.py` for visual database modeling, ERD export, schema refactors,
+  migration previews, and source regeneration.
+- `app/data_access.py` and related modules for connection profiles, query
+  design, service publishing, local storage, offline queues, and replay guards.
+- `app/branding.py` for themes, splash screens, menus, context menus, layout
+  tuning, accessibility, and visual release gates.
+- `app/agents.py` for local/API LLM provider contracts, agents, tool policy,
+  execution plans, and release checks.
+- `app/component_contracts/` and `app/component_packages/` for generated
+  component and package metadata.
+- `native/mobile/`, `native/desktop/`, PWA assets, chatbot exports, front-end
+  starter packages, SDKs, deployment assets, and generated tests.
+
+## Platform Highlights
+
+### Visual App Studio
+
+AppGen-X is building toward a full generated IDE, not just a command line. The
+Studio contracts cover:
+
+- Application portfolio and version history.
+- DSL editor state, diagnostics, code actions, snippets, and formatting.
+- Visual database design, schema diffs, relationship lookups, and migration
+  previews.
+- Component palette, form canvas, property inspectors, event editors, custom
+  designers, and safe handler invocation.
+- Visual data-binding graphs, converters, validators, conflict checks, runtime
+  wiring, undo/redo, offline replay, and rollback.
+- Data service publishing, local embedded storage contracts, failover, retry,
+  replay, and generated lookup editors.
+- Device API permissions, privacy metadata, target bridges, simulator fixtures,
+  lifecycle replay, and designer transactions.
+- Style resources, animation timelines, effect stacks, 3D scene metadata, asset
+  budgets, preview/runtime parity, and runtime fallbacks.
+- Package installation, trust validation, signature checks, adapter smoke
+  tests, lifecycle execution, failure isolation, and rollback.
+
+### Multi-Target Output
+
+AppGen-X can generate contracts and starter artifacts for:
+
+- **Web:** Flask-AppBuilder screens, REST APIs, GraphQL, templates, and role
+  policies.
+- **PWA:** manifest, service worker, offline shell, app icons, and install
+  contracts.
+- **Mobile:** native starter package, permissions, offline queue contracts,
+  device capability metadata, and sync plans.
+- **Desktop:** native starter package, local file/cache contracts, keyboard
+  navigation, and sync replay.
+- **Chatbots:** provider exports, required-field prompts, guided creation, and
+  handoff flows.
+
+### Verification-First Generation
+
+The project treats every major capability as something that must be provable.
+Useful gates include:
+
+```console
+appgen --dsl-release-audit
+appgen --source-intake-release-audit
+appgen --studio-release-audit
+appgen --form-designer-release-audit
+appgen --target-release-audit
+appgen --agentic-release-audit
+appgen --distribution-release-audit
+appgen --package-goal-audit
+```
+
+## Repository Development
+
+Clone and set up a development environment:
+
+```console
+git clone https://github.com/nyimbi/AppGen-X.git
+cd AppGen-X
+python -m venv .venv
+source .venv/bin/activate
+pip install -e .[test]
+```
+
+Run the main test suite:
+
+```console
+pytest
+```
+
+Run focused checks while working on platform features:
+
+```console
+python -m py_compile src/pyAppGen/*.py
+pytest tests/test_main.py::test_package_goal_audit_cli_aggregates_objective_evidence
+appgen --package-goal-audit
+```
+
+Frontend Studio prototype:
+
+```console
+cd appgen-frontend
+npm install
+npm run build
+npm run dev
+```
+
+## Contributor Guide
+
+AppGen-X needs contributors across language design, code generation, frontend
+Studio work, databases, ERP, security, deployment, and documentation.
+
+Good first contribution areas:
+
+- Add DSL examples and tutorials for real business domains.
+- Improve generated templates and UI workbenches.
+- Add source-intake fixtures for DBML, SQL, PonyORM, or live database schemas.
+- Expand ERP starter modules and reports.
+- Add focused release-gate tests for a missing generator contract.
+- Improve generated mobile, desktop, PWA, and chatbot starter artifacts.
+- Harden package lifecycle, trust, rollback, and signature validation evidence.
+- Polish documentation for users who are new to model-driven generation.
+
+Before opening a pull request:
+
+1. Keep generated capability claims backed by tests or release audits.
+2. Prefer existing generator patterns before adding new abstractions.
+3. Keep handwritten extensions separate from generated files.
+4. Run the focused tests for the area you changed.
+5. Include the command output or audit result that proves the change.
+
+Read the [Contributor Guide](docs/contributing.md) and [Architecture](docs/architecture.md)
+before larger changes.
+
+## Documentation
 
 - [Platform Guide](docs/platform-guide.md)
 - [Architecture](docs/architecture.md)
@@ -235,244 +289,35 @@ Core documentation:
 - [DSL User Guide](docs/dsl-user-guide.md)
 - [DSL Tutorial](docs/dsl-tutorial.md)
 - [DSL Linter Guide](docs/dsl-linter.md)
-
-Roadmap/source documents:
-
-- [Original Ideas Roadmap](docs/ideas.md)
-- [Base Features](docs/base_features.md)
-- [Low-Code Features](docs/Lo-code%20features.md)
 - [ERP Features](docs/erp-features.md)
+- [Low-Code Features](docs/Lo-code%20features.md)
 
-## Platform Concepts
+## Current Status
 
-AppGen has four major layers:
-
-1. Source adapters normalize DSL, DBML, SQL, PonyORM, and live databases into a
-   common schema model.
-2. The generator writes application code, metadata, workbenches, native target
-   starters, automation, deployment files, and release gates.
-3. The generated Studio/IDE exposes DSL authoring, visual form design,
-   database design, generation queues, natural-language change proposals,
-   release management, and runtime audits.
-4. Package and generated-app audits prove readiness before capability claims
-   are treated as complete.
-
-This means AppGen is not only a scaffolder. It is a model-driven application
-composition platform with generated proof surfaces for the language, generated
-apps, deployment artifacts, and enterprise capabilities.
-
-## DSL Design Goals
-
-The DSL is designed to be compact, learnable, and powerful. Its canonical
-keyword vocabulary covers application declarations, tables, views, workflows,
-roles, rules, LLM providers, and agents without forcing users into verbose
-boilerplate.
-
-The language supports:
-
-- Tables, fields, enums, defaults, uniqueness, hidden/search fields, arrays,
-  derived fields, and relationships.
-- View sections and RAD-style component placement with coordinates.
-- Workflows and transition graphs.
-- Roles and rule policies.
-- Local/API LLM providers and agent definitions.
-- App-level target selection for web, PWA, mobile, desktop, and chatbot output.
-- Beginner-friendly aliases that the linter can normalize to canonical syntax.
-
-The grammar is ANTLR-backed, and the generated parser is checked by
-`appgen --dsl-antlr-report`.
-
-## Generated Studio/IDE
-
-Generated apps include Studio contracts for:
-
-- Application portfolio management.
-- DSL editor state, syntax diagnostics, code actions, snippets, and formatting.
-- Visual database catalog, ERD export, schema refactors, and migration preview.
-- RAD-style form design with component palette and property inspector.
-- native desktop and cross-target UI RAD parity contracts: DFM-style streaming, Object
-  Inspector metadata, LiveBindings-style binding graphs, native data-service
-  tooling, mobile device APIs, animation/effects, and 3D surface descriptors.
-- A component usability gate that requires every built-in component to carry
-  renderer targets, default properties, property editors, events, validation
-  rules, drop defaults, binding metadata, preview contracts, and behavior
-  evidence for render nodes, prop validation, event dispatch, target adapters,
-  accessibility metadata, and side-effect-free previews.
-- Generated component modules under `app/component_contracts/<component>.py`
-  export `contract()`, `render()`, `validate_props()`, `preview()`, and
-  `behavior_contract()`, `target_adapters()`, `dispatch_event()`, and
-  `test_plan()` for each built-in component.
-- A component analog workbench and grouped audit cover requested cross-target
-  controls, layouts, data display, graphics, animation, theming, gestures,
-  sensors, 3D surfaces, and data-access components with usable generated
-  contracts, declared runtime adapters, and per-category behavior replay
-  evidence.
-- A native language/runtime workbench proves deterministic form streaming,
-  generated units, package manifests, compiler pipeline metadata, runtime type
-  information, event binding lifecycle, resource streaming, form lifecycle
-  hooks, incremental compile planning, diagnostic mapping, package dependency
-  order, event stub evolution, resource fidelity, and runtime artifact parity.
-- The same workbench replays interactive design edits end to end: open the form
-  stream, apply property changes, preserve unknown extension properties, update
-  event stubs, refresh resource hashes, invalidate compile caches, route
-  diagnostics, and reload the runtime preview.
-- An Object Inspector workbench proves property editor types, event-handler
-  lifecycle actions, component editor verbs, custom designer hooks, editor
-  registration, property validation, staged verb execution, custom designer
-  activation, and persisted inspector state. Its editor lifecycle replay proves
-  property validation, event routing, component editor transactions, custom
-  designer lifecycle, dependency refresh, metadata round trip, design-surface
-  replay, and custom designer registration in release order. It also replays
-  design-surface transactions across tree and canvas selection, multi-select
-  edits, component editor changes, custom overlays, dependent-property refresh,
-  diagnostics, undo/redo, reference synchronization, and custom designer registration from
-  metadata through activation, overlays, hit targets, lifecycle, and metadata
-  round trip.
-- A visual data-binding workbench proves binding graph nodes/edges, expression
-  validation, converter and validator catalogs, designer gestures, and runtime
-  binding modes, plus link authoring operations, conflict checks, preview
-  evaluation, generated runtime wiring, undo/redo history, and ordered designer
-  transaction replay through graph edits, preview, diagnostics, accessibility,
-  offline replay, runtime propagation, and rollback recovery. Its release
-  lifecycle replay orders graph authoring, validation, staged transactions,
-  diagnostics/conflicts, generated wiring, offline replay, accessibility routes,
-  runtime propagation, and design/runtime replays before release approval.
-- A native data tooling workbench proves connection catalogs, query designer
-  metadata, server method/client proxy generation, secured resource tooling,
-  embedded local database support, offline sync policies, conflict guards, and
-  an ordered publish transaction from connection profiling through schema/query
-  planning, dataset publishing, service artifacts, offline queues, telemetry,
-  runtime smoke, and no-write replay. Its relationship lookup lifecycle replay
-  proves multi-hop relationship chains get lookup editors, previewed joins,
-  runtime lookup artifacts, and published lookup endpoints.
-- A mobile/native API workbench proves every listed device API has permission
-  metadata, a design-time/runtime component adapter, simulator fixtures,
-  platform targets, side-effect guards, and ordered designer transaction replay
-  through privacy review, revocation, lifecycle delivery, bridge recovery, and
-  runtime dispatch. Its capability lifecycle replay checks each API through
-  privacy metadata, permission transitions, simulator fixtures, target bridges,
-  API-specific pipelines, recovery, runtime events, and designer replay.
-- A cross-target visual depth workbench proves style resources, style cascade
-  authoring, animation timelines, effect-stack validation, 3D scene authoring,
-  asset import budgets, preview/runtime parity, runtime fallbacks, and an
-  ordered designer transaction replay across style overrides, timeline
-  authoring, effect fallback, scene editing, asset preview, hit testing,
-  transform sync, and runtime delivery. Its visual lifecycle replay ties style
-  validation, timeline export, effect fallbacks, scene/material validation,
-  asset preview diffs, hit-test routing, transform sync, runtime replay, and
-  designer replay into one ordered contract.
-- Curated third-party component registry for useful commercial and open-source
-  suites, plus reviewed package import/install plans for additional vendors.
-- A design-time package manager workbench proves install session phases,
-  compatibility matrices, palette/inspector/binding registration, isolated
-  loading, rollback plans, package behavior contracts, adapter smoke tests,
-  dependency lockfile metadata, preview-load lifecycles, failure containment,
-  uninstall cleanup, and one ordered lifecycle transaction replay with
-  side-effect guards.
-- A platform parity lifecycle replay ties component coverage, form streaming,
-  runtime replay, inspector and binding transactions, data-service publishing,
-  package installation, device capability validation, and cross-target visual
-  depth into one ordered release contract.
-- A platform parity requirement audit maps every explicit parity requirement to
-  concrete subsystem evidence and the ordered lifecycle replay, so gaps fail by
-  requirement instead of being hidden inside aggregate release checks.
-- Generated package modules under `app/component_packages/<package>.py` export
-  `package_contract()`, `install_plan()`, `load_policy()`,
-  `dependency_graph()`, `adapter_smoke()`, `preview_load()`,
-  `behavior_contract()`, and `test_plan()`.
-- Natural-language evolution review queues.
-- Generation plans for web, PWA, mobile, desktop, and chatbot targets.
-- Release gates, app history, snapshots, restore points, and capability matrix.
-
-The package-level Studio readiness check is:
-
-```console
-appgen --studio-release-audit
-```
-
-## Agentic Systems
-
-AppGen DSL supports `llm` and `agent` blocks. A provider can be local, such as
-Ollama, or API-backed, such as OpenAI, with secrets referenced through
-environment variable names rather than literal keys.
-
-Generated agent contracts include:
-
-- Provider readiness.
-- Missing-secret checks.
-- Agent/provider links.
-- Tool policy.
-- Execution plans.
-- Release gates and workbench payloads.
-
-The package-level check is:
-
-```console
-appgen --agentic-release-audit
-```
-
-## Deployment
-
-Generated apps include deployment and operations assets such as Dockerfile,
-Compose, Kubernetes, autoscaling, Terraform stubs, HTTPS helpers, search,
-Node-RED automation, backup contracts, and release checks.
-
-Review generated deployment readiness with:
-
-```console
-appgen --ops-release-audit
-appgen --distribution-release-audit
-```
-
-See [Deployment Guide](docs/deployment-guide.md) for the deployment workflow.
-
-## Development
-
-Install the project in a local environment:
-
-```console
-python -m venv .venv
-source .venv/bin/activate
-pip install -e .[test]
-```
-
-Run tests:
-
-```console
-pytest
-```
-
-Run focused proof commands during platform work:
-
-```console
-python -m py_compile src/pyAppGen/*.py
-pytest tests/test_main.py
-python -m pyAppGen.gen --package-goal-audit
-```
-
-## Contributing
-
-Contributions are welcome. Read the [Contributor Guide] and keep changes
-aligned with the existing generator patterns, tests, and audit contracts.
+AppGen-X is under active development. The repository already contains a large
+Python generator, DSL parser, release-audit suite, documentation set, generated
+target contracts, and a React-based Studio prototype. Some generated target
+outputs are starter packages and proof contracts rather than production-ready
+native applications. The direction is clear: keep replacing aspirational
+metadata with executable generation, tests, release gates, and usable IDE
+surfaces.
 
 ## License
 
-Distributed under the terms of the [MIT license][license], AppGen is free and
-open source software.
+Distributed under the terms of the [MIT license][license], AppGen-X is free and
+open-source software.
 
 ## Issues
 
-If you encounter a problem, [file an issue] with the source file or prompt,
-generation command, expected output, actual output, and relevant audit result.
+Please [file an issue] with:
+
+- The source file, schema, prompt, or command you used.
+- Expected output and actual output.
+- The relevant generated files.
+- Any release-audit or test result that failed.
 
 [pypi_]: https://pypi.org/project/appgen/
-[status]: https://pypi.org/project/appgen/
 [python version]: https://pypi.org/project/appgen
-[read the docs]: https://appgen.readthedocs.io/
-[tests]: https://github.com/nyimbi/appgen/actions?workflow=Tests
-[codecov]: https://app.codecov.io/gh/nyimbi/appgen
-[pre-commit]: https://github.com/pre-commit/pre-commit
-[black]: https://github.com/psf/black
-[file an issue]: https://github.com/nyimbi/appgen/issues
-[license]: https://github.com/nyimbi/appgen/blob/main/LICENSE
-[contributor guide]: https://github.com/nyimbi/appgen/blob/main/CONTRIBUTING.md
+[tests]: https://github.com/nyimbi/AppGen-X/actions
+[file an issue]: https://github.com/nyimbi/AppGen-X/issues
+[license]: https://github.com/nyimbi/AppGen-X/blob/main/LICENSE
