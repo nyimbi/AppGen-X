@@ -3260,6 +3260,81 @@ def inspector_custom_designer_render_workflow(component: str = "Grid") -> dict:
     }
 
 
+def inspector_property_value_pipeline_contract(component: str = "Grid") -> dict:
+    """Return parse, preview, apply, and rollback behavior for property values."""
+    validation = inspector_property_validation_contract(component)
+    editors = tuple(result for result in validation["results"] if result["ok"])
+    pipelines = tuple(
+        {
+            "property": result["property"],
+            "editor": result["editor"],
+            "stages": ("read_current_value", "parse_input", "coerce_value", "validate_value", "preview_change", "commit_change"),
+            "rollback": ("reject_invalid_value", "restore_previous_value", "clear_preview"),
+            "guards": ("editor_values_type_checked", "invalid_values_block_apply", "preview_before_commit"),
+        }
+        for result in editors
+    )
+    return {
+        "format": "appgen.inspector-property-value-pipeline-contract.v1",
+        "component": component,
+        "pipelines": pipelines,
+        "ok": bool(pipelines)
+        and all({"parse_input", "validate_value", "preview_change", "commit_change"} <= set(pipeline["stages"]) for pipeline in pipelines)
+        and all("restore_previous_value" in pipeline["rollback"] for pipeline in pipelines),
+        "guards": validation["guards"] + ("editor_values_type_checked", "invalid_values_block_apply", "preview_before_commit"),
+        "side_effects": (),
+    }
+
+
+def inspector_event_handler_signature_contract(component: str = "Grid") -> dict:
+    """Return event handler signature, stub, rename, and cleanup evidence."""
+    routing = inspector_event_signature_routing_contract(component)
+    handlers = tuple(
+        {
+            "event": route["event"],
+            "handler": route["handler"],
+            "signature": route["signature"],
+            "source_span": f"{route['handler']}:1:1",
+            "pipeline": ("parse_signature", "generate_stub", "bind_reference", "navigate_source", "rename_references", "cleanup_detached_handler"),
+            "guards": ("sender_context_signature", "handler_name_unique", "stale_handler_cleanup"),
+        }
+        for route in routing["routes"]
+    )
+    return {
+        "format": "appgen.inspector-event-handler-signature-contract.v1",
+        "component": component,
+        "handlers": handlers,
+        "ok": bool(handlers)
+        and all("sender, context" in handler["signature"] for handler in handlers)
+        and all({"generate_stub", "rename_references", "cleanup_detached_handler"} <= set(handler["pipeline"]) for handler in handlers),
+        "guards": routing["guards"] + ("source_span_mapped", "stale_handler_cleanup"),
+        "side_effects": (),
+    }
+
+
+def inspector_custom_designer_lifecycle_contract(component: str = "Grid") -> dict:
+    """Return activate, render, hit-test, commit, and unload behavior for designers."""
+    render = inspector_custom_designer_render_workflow(component)
+    lifecycle = tuple(
+        {
+            "hook": hook,
+            "lifecycle": ("activate_hook", "render_overlay", "hit_test_overlay", "stage_overlay_change", "commit_or_cancel", "unload_hook"),
+            "failure_policy": ("isolate_exception", "clear_overlay", "preserve_design_state"),
+        }
+        for hook in render["hooks"]
+    )
+    return {
+        "format": "appgen.inspector-custom-designer-lifecycle-contract.v1",
+        "component": component,
+        "lifecycle": lifecycle,
+        "ok": bool(lifecycle)
+        and all({"activate_hook", "hit_test_overlay", "commit_or_cancel", "unload_hook"} <= set(item["lifecycle"]) for item in lifecycle)
+        and all("preserve_design_state" in item["failure_policy"] for item in lifecycle),
+        "guards": render["isolation"] + ("designer_failure_isolated", "overlay_commit_is_transactional"),
+        "side_effects": (),
+    }
+
+
 def inspector_state_restore_workflow() -> dict:
     """Return inspector state save/restore workflow evidence."""
     state = inspector_state_persistence_contract()
@@ -3567,6 +3642,9 @@ def object_inspector_workbench() -> dict:
     event_signature_routing = tuple(inspector_event_signature_routing_contract(component) for component in sample_components)
     component_editor_history = tuple(inspector_component_editor_history_contract(component) for component in sample_components)
     custom_designer_hit_tests = tuple(inspector_custom_designer_hit_test_contract(component) for component in sample_components)
+    property_value_pipelines = tuple(inspector_property_value_pipeline_contract(component) for component in sample_components)
+    event_handler_signatures = tuple(inspector_event_handler_signature_contract(component) for component in sample_components)
+    custom_designer_lifecycle = tuple(inspector_custom_designer_lifecycle_contract(component) for component in sample_components)
     multi_select = inspector_multi_select_contract()
     property_dependencies = tuple(inspector_property_dependency_contract(component) for component in sample_components)
     diagnostics = tuple(inspector_diagnostics_contract(component) for component in sample_components)
@@ -3702,6 +3780,21 @@ def object_inspector_workbench() -> dict:
             "evidence": custom_designer_hit_tests,
         },
         {
+            "id": "property_value_pipeline",
+            "ok": all(contract["ok"] and not contract["side_effects"] for contract in property_value_pipelines),
+            "evidence": property_value_pipelines,
+        },
+        {
+            "id": "event_handler_signature_pipeline",
+            "ok": all(contract["ok"] and not contract["side_effects"] for contract in event_handler_signatures),
+            "evidence": event_handler_signatures,
+        },
+        {
+            "id": "custom_designer_lifecycle",
+            "ok": all(contract["ok"] and not contract["side_effects"] for contract in custom_designer_lifecycle),
+            "evidence": custom_designer_lifecycle,
+        },
+        {
             "id": "multi_select_property_merge",
             "ok": multi_select["ok"] and {"mixed_values_visible", "multi_apply_is_atomic"} <= set(multi_select["guards"]) and not multi_select["side_effects"],
             "evidence": multi_select,
@@ -3749,6 +3842,9 @@ def object_inspector_workbench() -> dict:
         "event_signature_routing": event_signature_routing,
         "component_editor_history": component_editor_history,
         "custom_designer_hit_tests": custom_designer_hit_tests,
+        "property_value_pipelines": property_value_pipelines,
+        "event_handler_signatures": event_handler_signatures,
+        "custom_designer_lifecycle": custom_designer_lifecycle,
         "multi_select": multi_select,
         "property_dependencies": property_dependencies,
         "diagnostics": diagnostics,

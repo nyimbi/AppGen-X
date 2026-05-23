@@ -860,6 +860,9 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "event_signature_routing",
         "component_editor_history",
         "custom_designer_hit_testing",
+        "property_value_pipeline",
+        "event_handler_signature_pipeline",
+        "custom_designer_lifecycle",
         "multi_select_property_merge",
         "property_dependency_recalculation",
         "inspector_diagnostics",
@@ -880,6 +883,21 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "open_context_action" in item["route"]
         for hit_test in inspector_workbench["custom_designer_hit_tests"]
         for item in hit_test["hit_tests"]
+    )
+    assert all(
+        "commit_change" in pipeline["stages"]
+        for contract in inspector_workbench["property_value_pipelines"]
+        for pipeline in contract["pipelines"]
+    )
+    assert all(
+        "cleanup_detached_handler" in handler["pipeline"]
+        for contract in inspector_workbench["event_handler_signatures"]
+        for handler in contract["handlers"]
+    )
+    assert all(
+        "unload_hook" in item["lifecycle"]
+        for contract in inspector_workbench["custom_designer_lifecycle"]
+        for item in contract["lifecycle"]
     )
     assert "mark_mixed_values" in inspector_workbench["multi_select"]["operations"][0]["stage"]
     assert all(
@@ -9593,6 +9611,9 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "event_signature_routing",
         "component_editor_history",
         "custom_designer_hit_testing",
+        "property_value_pipeline",
+        "event_handler_signature_pipeline",
+        "custom_designer_lifecycle",
         "multi_select_property_merge",
         "property_dependency_recalculation",
         "inspector_diagnostics",
@@ -9615,6 +9636,21 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "open_context_action" in item["route"]
         for hit_test in generated_inspector["custom_designer_hit_tests"]
         for item in hit_test["hit_tests"]
+    )
+    assert all(
+        "preview_change" in pipeline["stages"]
+        for contract in generated_inspector["property_value_pipelines"]
+        for pipeline in contract["pipelines"]
+    )
+    assert all(
+        "rename_references" in handler["pipeline"]
+        for contract in generated_inspector["event_handler_signatures"]
+        for handler in contract["handlers"]
+    )
+    assert all(
+        "preserve_design_state" in item["failure_policy"]
+        for contract in generated_inspector["custom_designer_lifecycle"]
+        for item in contract["lifecycle"]
     )
     assert "mixed_values_visible" in generated_inspector["multi_select"]["guards"]
     assert all(
