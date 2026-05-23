@@ -834,6 +834,16 @@ def test_package_pbc_catalog_composes_enterprise_apps(runner: CliRunner) -> None
     smoke = pbc_generation_smoke_audit(("gl_core", "ap_automation", "inventory_positioning"))
     assert smoke["format"] == "appgen.pbc-generation-smoke-audit.v1"
     assert smoke["ok"] is True
+    assert "app/pbc_runtime.py" in {
+        path for check in smoke["checks"] for path in check.get("compiled", ())
+    }
+    runtime_check = next(check for check in smoke["checks"] if check["id"] == "generated_pbc_runtime")
+    assert runtime_check["ok"] is True
+    assert runtime_check["manifest"]["format"] == "appgen.generated-pbc-runtime-manifest.v1"
+    assert runtime_check["manifest"]["selected_pbcs"] == ("gl_core", "ap_automation", "inventory_positioning")
+    assert runtime_check["workbench"]["ok"] is True
+    assert runtime_check["registration"]["ok"] is True
+    assert runtime_check["smoke"]["ok"] is True
 
     audit = pbc_release_audit()
     assert audit["format"] == "appgen.pbc-release-audit.v1"

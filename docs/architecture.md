@@ -370,7 +370,10 @@ The composition path is:
    generated apps do not drift into an uncontrolled processor matrix.
 5. Render compact AppGen DSL for workbench views, outbox tables, and target
    selection.
-6. Generate and compile the application shell as part of the PBC release audit.
+6. Generate `pbc_runtime.py` into the produced application so the selected
+   catalog entries, self-registration validator, composition workbench, and
+   stream policy can be compiled and smoke-tested inside the app artifact.
+7. Generate and compile the application shell as part of the PBC release audit.
 
 This keeps composable applications from collapsing into a shared database
 module while still letting users select finance, supply-chain, people,

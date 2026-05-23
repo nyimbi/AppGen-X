@@ -1747,6 +1747,13 @@ def write_form_designer_file(output_dir, schema: AppSchema):
     write_component_contract_files(output_dir)
 
 
+def write_pbc_runtime_file(output_dir, schema: AppSchema):
+    """Write generated composable capability runtime helpers."""
+    output_dir = Path(output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    (output_dir / "pbc_runtime.py").write_text(_pbc_runtime_text(schema))
+
+
 def write_component_contract_files(output_dir):
     """Write one generated implementation module per built-in component and package."""
     output_dir = Path(output_dir)
@@ -2659,6 +2666,182 @@ def smoke_test():
         "validation": validation,
         "checks": tuple(item["id"] for item in validation["checks"]),
     }
+'''
+
+
+def _pbc_runtime_text(schema: AppSchema) -> str:
+    from .pbc import PBC_ALLOWED_DATASTORE_BACKENDS
+    from .pbc import acp_stream_processing_policy
+    from .pbc import pbc_catalog
+    from .pbc import pbc_composition_plan
+    from .pbc import pbc_manifest_schema
+    from .pbc import pbc_mesh_catalog
+    from .pbc import pbc_starter_stacks
+
+    generated_tables = tuple(table.name for table in schema.tables)
+    catalog = pbc_catalog()
+    selected = tuple(
+        item["pbc"]
+        for item in catalog
+        if any(table in generated_tables for table in (f"{item['pbc']}_{name}" for name in item["tables"]))
+        or f"{item['pbc']}_event_outbox" in generated_tables
+    )
+    composition = (
+        pbc_composition_plan(selected, app_name=schema.app_name or "GeneratedComposableApp")
+        if selected
+        else {
+            "format": "appgen.pbc-composition-plan.v1",
+            "ok": True,
+            "app_name": schema.app_name or "GeneratedComposableApp",
+            "pbcs": (),
+            "services": (),
+            "dependencies": (),
+            "shared_datastores": (),
+            "missing_pbcs": (),
+        }
+    )
+    payload = {
+        "catalog": catalog,
+        "meshes": pbc_mesh_catalog(),
+        "starter_stacks": pbc_starter_stacks(),
+        "manifest_schema": pbc_manifest_schema(),
+        "stream_policy": acp_stream_processing_policy(),
+        "allowed_backends": PBC_ALLOWED_DATASTORE_BACKENDS,
+        "generated_tables": generated_tables,
+        "selected_pbcs": selected,
+        "composition": composition,
+    }
+    return f'''"""Generated composable capability runtime manifest for this app."""
+
+from __future__ import annotations
+
+PBC_RUNTIME = {payload!r}
+
+
+def pbc_runtime_manifest():
+    """Return the generated catalog, selection, and policy manifest."""
+    return {{
+        "format": "appgen.generated-pbc-runtime-manifest.v1",
+        "ok": bool(PBC_RUNTIME["catalog"])
+        and PBC_RUNTIME["composition"]["ok"]
+        and PBC_RUNTIME["stream_policy"]["default"] == "faust_streaming",
+        "catalog": PBC_RUNTIME["catalog"],
+        "meshes": PBC_RUNTIME["meshes"],
+        "starter_stacks": PBC_RUNTIME["starter_stacks"],
+        "manifest_schema": PBC_RUNTIME["manifest_schema"],
+        "stream_policy": PBC_RUNTIME["stream_policy"],
+        "allowed_backends": PBC_RUNTIME["allowed_backends"],
+        "generated_tables": PBC_RUNTIME["generated_tables"],
+        "selected_pbcs": PBC_RUNTIME["selected_pbcs"],
+        "composition": PBC_RUNTIME["composition"],
+    }}
+
+
+def selected_pbc_keys():
+    """Return PBC keys detected in this generated application."""
+    return PBC_RUNTIME["selected_pbcs"]
+
+
+def selected_pbc_services():
+    """Return generated service contracts for selected PBCs."""
+    return PBC_RUNTIME["composition"].get("services", ())
+
+
+def register_generated_pbc_package(manifest):
+    """Validate a self-registering PBC manifest without mutating the runtime catalog."""
+    schema = PBC_RUNTIME["manifest_schema"]
+    missing = tuple(field for field in schema["required_fields"] if not manifest.get(field))
+    invalid = []
+    key = manifest.get("pbc")
+    if key and (not key.replace("_", "").isalnum() or key != key.lower()):
+        invalid.append("pbc key must be lower snake case")
+    if manifest.get("mesh") not in {{item["mesh"] for item in PBC_RUNTIME["meshes"]}}:
+        invalid.append("unknown mesh")
+    if manifest.get("datastore_backend") not in PBC_RUNTIME["allowed_backends"]:
+        invalid.append("unsupported datastore backend")
+    if manifest.get("stream_processor", "faust_streaming") not in PBC_RUNTIME["stream_policy"]["allowed_processors"]:
+        invalid.append("unsupported stream processor")
+    duplicate = key in {{item["pbc"] for item in PBC_RUNTIME["catalog"]}}
+    ok = not missing and not invalid and not duplicate
+    descriptor = {{
+        "pbc": key,
+        "label": manifest.get("label"),
+        "mesh": manifest.get("mesh"),
+        "description": manifest.get("description"),
+        "datastore": f"{{key}}_store" if key else None,
+        "datastore_backend": manifest.get("datastore_backend"),
+        "stream_processor": manifest.get("stream_processor", "faust_streaming"),
+        "tables": tuple(manifest.get("tables", ())),
+        "apis": tuple(manifest.get("apis", ())),
+        "emits": tuple(manifest.get("emits", ())),
+        "consumes": tuple(manifest.get("consumes", ())),
+    }}
+    return {{
+        "format": "appgen.generated-pbc-registration-plan.v1",
+        "ok": ok,
+        "publishable": ok and bool(manifest.get("tests")) and bool(manifest.get("docs")),
+        "missing": missing,
+        "invalid": tuple(invalid),
+        "duplicate": duplicate,
+        "catalog_patch": {{key: descriptor}} if ok else {{}},
+        "descriptor": descriptor,
+    }}
+
+
+def pbc_composition_runtime_workbench():
+    """Return the generated composition workbench for selected PBCs."""
+    manifest = pbc_runtime_manifest()
+    services = selected_pbc_services()
+    selected = selected_pbc_keys()
+    service_keys = {{service["pbc"] for service in services}}
+    return {{
+        "format": "appgen.generated-pbc-composition-runtime-workbench.v1",
+        "ok": manifest["ok"] and set(selected) == service_keys,
+        "selected_pbcs": selected,
+        "services": services,
+        "dependencies": manifest["composition"].get("dependencies", ()),
+        "datastores": tuple(service["datastore"] for service in services),
+        "event_topics": tuple(service["event_topic"] for service in services),
+        "stream_processor_default": manifest["stream_policy"]["default"],
+        "guards": (
+            "each_selected_pbc_has_service_contract",
+            "each_service_owns_datastore",
+            "default_stream_policy_declared",
+            "self_registration_is_side_effect_free",
+        ),
+    }}
+
+
+def validate_pbc_runtime():
+    """Validate generated PBC runtime evidence before release."""
+    manifest = pbc_runtime_manifest()
+    workbench = pbc_composition_runtime_workbench()
+    checks = (
+        {{"id": "catalog_available", "ok": bool(manifest["catalog"])}},
+        {{"id": "manifest_schema_available", "ok": bool(manifest["manifest_schema"]["required_fields"])}},
+        {{"id": "composition_valid", "ok": manifest["composition"]["ok"]}},
+        {{"id": "selected_services_match", "ok": workbench["ok"]}},
+        {{"id": "stream_policy_opinionated", "ok": manifest["stream_policy"]["default"] == "faust_streaming"}},
+    )
+    return {{
+        "format": "appgen.generated-pbc-runtime-validation.v1",
+        "ok": all(item["ok"] for item in checks),
+        "checks": checks,
+        "manifest": manifest,
+        "workbench": workbench,
+        "blocking_gaps": tuple(item for item in checks if not item["ok"]),
+    }}
+
+
+def smoke_test():
+    """Run side-effect-free generated PBC runtime checks."""
+    validation = validate_pbc_runtime()
+    return {{
+        "format": "appgen.generated-pbc-runtime-smoke.v1",
+        "ok": validation["ok"],
+        "validation": validation,
+        "checks": tuple(item["id"] for item in validation["checks"]),
+    }}
 '''
 
 
@@ -8045,6 +8228,7 @@ def generate_app_from_database(database_url, output_dir, *, config_database_url=
     write_view_composition_file(output_dir, app_schema)
     write_tabbed_views_file(output_dir, app_schema)
     write_form_designer_file(output_dir, app_schema)
+    write_pbc_runtime_file(output_dir, app_schema)
     write_nl_evolution_file(output_dir, app_schema)
     write_dsl_reference_file(output_dir, app_schema)
     write_view_experience_file(output_dir, app_schema)
@@ -8213,6 +8397,7 @@ def generate_app_from_schema(schema: AppSchema, output_dir, *, config_database_u
     write_view_composition_file(output_dir, schema)
     write_tabbed_views_file(output_dir, schema)
     write_form_designer_file(output_dir, schema)
+    write_pbc_runtime_file(output_dir, schema)
     write_nl_evolution_file(output_dir, schema)
     write_dsl_reference_file(output_dir, schema)
     write_view_experience_file(output_dir, schema)

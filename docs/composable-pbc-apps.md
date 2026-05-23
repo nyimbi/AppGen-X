@@ -60,6 +60,8 @@ The executable catalog lives in `src/pyAppGen/pbc.py` and exposes:
 - `pbc_selection_from_prompt()` for natural-language PBC selection.
 - `pbc_composition_plan()` for datastore, API, event, and dependency evidence.
 - `pbc_composition_dsl()` for a generated AppGen DSL starter.
+- Generated `pbc_runtime.py` in produced apps for catalog, selected-service,
+  self-registration, composition workbench, and stream-policy smoke evidence.
 - `pbc_release_audit()` for package-level readiness evidence.
 
 The aggregate package goal audit includes the PBC release audit, so composable

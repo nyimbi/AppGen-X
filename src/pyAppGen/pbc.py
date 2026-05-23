@@ -8,6 +8,7 @@ event contracts, generated tables, and dependency evidence.
 
 from __future__ import annotations
 
+import importlib.util
 import py_compile
 import re
 import tempfile
@@ -1331,12 +1332,13 @@ def pbc_generation_smoke_audit(selected_pbcs: tuple[str, ...] | list[str] | None
     schema = schema_from_dsl(dsl, source_name="pbc-composition.appgen")
     with tempfile.TemporaryDirectory(prefix="appgen-pbc-composition-") as raw_workdir:
         project_dir = Path(raw_workdir) / "pbc-smoke"
-        generate_app_from_schema(schema, project_dir / "app")
-        artifacts = ("app/models.py", "app/views.py", "app/appgen.json", "docs/schema.md")
+        output_dir = project_dir / "app"
+        generate_app_from_schema(schema, output_dir)
+        artifacts = ("app/models.py", "app/views.py", "app/pbc_runtime.py", "app/appgen.json", "docs/schema.md")
         missing = tuple(path for path in artifacts if not (project_dir / path).exists())
         compiled = []
         compile_failures = []
-        for relative in ("app/models.py", "app/views.py"):
+        for relative in ("app/models.py", "app/views.py", "app/pbc_runtime.py"):
             path = project_dir / relative
             try:
                 py_compile.compile(str(path), doraise=True)
@@ -1344,6 +1346,30 @@ def pbc_generation_smoke_audit(selected_pbcs: tuple[str, ...] | list[str] | None
                 compile_failures.append({"path": relative, "error": str(exc)})
             else:
                 compiled.append(relative)
+        runtime_smoke = {"ok": False, "error": "app/pbc_runtime.py was not loaded"}
+        runtime_manifest = {}
+        runtime_workbench = {}
+        runtime_registration = {}
+        runtime_path = output_dir / "pbc_runtime.py"
+        if runtime_path.exists() and not any(item["path"] == "app/pbc_runtime.py" for item in compile_failures):
+            try:
+                spec = importlib.util.spec_from_file_location("generated_pbc_runtime_smoke", runtime_path)
+                generated_pbc_runtime = importlib.util.module_from_spec(spec)
+                assert spec.loader is not None
+                spec.loader.exec_module(generated_pbc_runtime)
+                runtime_manifest = generated_pbc_runtime.pbc_runtime_manifest()
+                runtime_workbench = generated_pbc_runtime.pbc_composition_runtime_workbench()
+                runtime_registration = generated_pbc_runtime.register_generated_pbc_package(
+                    {
+                        **example_pbc_manifest(),
+                        "pbc": "generated_warranty_claims",
+                        "tests": ("tests/test_generated_warranty_claims.py",),
+                        "docs": ("README.md",),
+                    }
+                )
+                runtime_smoke = generated_pbc_runtime.smoke_test()
+            except Exception as exc:  # pragma: no cover - reported in audit payload
+                runtime_smoke = {"ok": False, "error": str(exc)}
     checks = (
         {
             "id": "dsl_tables",
@@ -1357,9 +1383,21 @@ def pbc_generation_smoke_audit(selected_pbcs: tuple[str, ...] | list[str] | None
         },
         {
             "id": "compiled_artifacts",
-            "ok": not compile_failures and set(compiled) == {"app/models.py", "app/views.py"},
+            "ok": not compile_failures and set(compiled) == {"app/models.py", "app/views.py", "app/pbc_runtime.py"},
             "compiled": tuple(compiled),
             "failures": tuple(compile_failures),
+        },
+        {
+            "id": "generated_pbc_runtime",
+            "ok": runtime_smoke["ok"]
+            and runtime_manifest.get("format") == "appgen.generated-pbc-runtime-manifest.v1"
+            and tuple(selected) == tuple(runtime_manifest.get("selected_pbcs", ()))
+            and runtime_workbench.get("ok") is True
+            and runtime_registration.get("ok") is True,
+            "manifest": runtime_manifest,
+            "workbench": runtime_workbench,
+            "registration": runtime_registration,
+            "smoke": runtime_smoke,
         },
     )
     return {
