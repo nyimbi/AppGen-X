@@ -10141,6 +10141,40 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     )
     assert events.event_workbench({"app/events.py"})["ok"] is False
     assert events.event_release_gate({"app/events.py"})["ok"] is False
+    event_module_files = events.event_module_file_manifest()
+    event_module_tests = events.event_module_test_file_manifest()
+    assert event_module_files["ok"] is True
+    assert event_module_tests["ok"] is True
+    assert {item["surface"] for item in event_module_files["modules"]} == {
+        "event_topic_catalog",
+        "event_envelope",
+        "event_processing_action",
+        "event_retry_dead_letter",
+        "event_alert_workflow",
+        "event_release_workbench",
+    }
+    assert {item["surface"] for item in event_module_tests["tests"]} == {
+        "event_topic_catalog",
+        "event_envelope",
+        "event_processing_action",
+        "event_retry_dead_letter",
+        "event_alert_workflow",
+        "event_release_workbench",
+    }
+    for item in event_module_files["modules"]:
+        module_path = output_dir / item["path"].replace("app/", "")
+        py_compile.compile(str(module_path), doraise=True)
+        module = _load_module(module_path, f"generated_event_module_{item['module']}")
+        assert module.module_contract()["ok"] is True
+        assert module.event_manifest_contract()["ok"] is True
+        assert module.run_event_operation()["ok"] is True
+        assert module.release_context()["ok"] is True
+        assert module.smoke_test()["ok"] is True
+    for item in event_module_tests["tests"]:
+        test_path = output_dir / item["path"].replace("app/", "")
+        py_compile.compile(str(test_path), doraise=True)
+        module = _load_module(test_path, f"generated_event_module_test_{item['module']}")
+        assert module.smoke_test()["ok"] is True
     rpa_tasks = {task["id"]: task for task in rpa.rpa_task_catalog()}
     assert "book.create_record" in rpa_tasks
     book_task_plan = rpa.task_plan("book.create_record", {"title": "Dune"})

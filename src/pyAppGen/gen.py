@@ -1979,6 +1979,27 @@ def write_events_file(output_dir, schema: AppSchema):
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
     (output_dir / "events.py").write_text(_events_text(schema))
+    write_event_module_files(output_dir)
+
+
+def write_event_module_files(output_dir):
+    """Write generated event-processing modules and smoke tests."""
+    output_dir = Path(output_dir)
+    module_dir = output_dir / "event_modules"
+    test_dir = output_dir / "event_module_tests"
+    module_dir.mkdir(parents=True, exist_ok=True)
+    test_dir.mkdir(parents=True, exist_ok=True)
+    (module_dir / "__init__.py").write_text(_event_module_init_text(), encoding="utf-8")
+    (test_dir / "__init__.py").write_text(_event_module_test_init_text(), encoding="utf-8")
+    for module_name in EVENT_MODULES:
+        (module_dir / f"{module_name}.py").write_text(
+            _event_module_text(module_name),
+            encoding="utf-8",
+        )
+        (test_dir / f"test_{module_name}.py").write_text(
+            _event_module_test_text(module_name),
+            encoding="utf-8",
+        )
 
 
 def write_rpa_file(output_dir, schema: AppSchema):
@@ -2306,6 +2327,15 @@ REALTIME_MODULES = (
     "collaboration_message_module",
     "replay_plan_module",
     "realtime_release_workbench_module",
+)
+
+EVENT_MODULES = (
+    "event_topic_catalog_module",
+    "event_envelope_module",
+    "event_processing_action_module",
+    "event_retry_dead_letter_module",
+    "event_alert_workflow_module",
+    "event_release_workbench_module",
 )
 
 
@@ -7530,6 +7560,259 @@ def smoke_test():
         "surface": SURFACE,
         "ok": True,
         "tests": ("test_realtime_module_contract", "test_realtime_module_smoke"),
+    }}
+'''
+
+
+def _event_module_init_text() -> str:
+    return (
+        '"""Generated event-processing modules."""\n\n'
+        f"EVENT_MODULES = {EVENT_MODULES!r}\n"
+    )
+
+
+def _event_module_test_init_text() -> str:
+    modules = tuple(f"test_{name}" for name in EVENT_MODULES)
+    return (
+        '"""Generated event-processing module tests."""\n\n'
+        f"EVENT_MODULE_TESTS = {modules!r}\n"
+    )
+
+
+def _event_surface(module_name: str) -> tuple[str, str]:
+    return {
+        "event_topic_catalog_module": ("event_topic_catalog", "event_catalog"),
+        "event_envelope_module": ("event_envelope", "normalize_event"),
+        "event_processing_action_module": ("event_processing_action", "process_event"),
+        "event_retry_dead_letter_module": ("event_retry_dead_letter", "retry_plan"),
+        "event_alert_workflow_module": ("event_alert_workflow", "alert_payload"),
+        "event_release_workbench_module": ("event_release_workbench", "event_release_gate"),
+    }[module_name]
+
+
+def _event_module_text(module_name: str) -> str:
+    surface, operation = _event_surface(module_name)
+    return f'''"""Generated event-processing module for {surface}."""
+
+from __future__ import annotations
+
+import importlib.util
+from pathlib import Path
+
+
+MODULE = {module_name!r}
+SURFACE = {surface!r}
+OPERATION = {operation!r}
+EXPECTED_EXPORTS = (
+    "module_contract",
+    "event_manifest_contract",
+    "run_event_operation",
+    "release_context",
+    "smoke_test",
+)
+
+
+def _events():
+    module_path = Path(__file__).resolve().parents[1] / "events.py"
+    spec = importlib.util.spec_from_file_location(f"generated_event_{{MODULE}}_events", module_path)
+    module = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(module)
+    return module
+
+
+def _assets():
+    return {{"app/events.py", "app/templates/appgen_events.html"}}
+
+
+def _first_table_topic(events):
+    topic = next((item for item in events.all_topics() if not item.startswith("workflow.")), None)
+    if topic is None:
+        raise AssertionError("generated event module requires at least one table topic")
+    return topic
+
+
+def module_contract():
+    """Return this generated event-processing module's export contract."""
+    available = tuple(name for name in EXPECTED_EXPORTS if name in globals())
+    return {{
+        "format": "appgen.event-module-contract.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "operation": OPERATION,
+        "ok": set(EXPECTED_EXPORTS) <= set(available),
+        "exports": available,
+        "expected_exports": EXPECTED_EXPORTS,
+        "side_effects": (),
+    }}
+
+
+def event_manifest_contract():
+    """Return generated event-processing metadata owned by this module."""
+    events = _events()
+    catalog = events.event_catalog()
+    return {{
+        "format": "appgen.event-module-manifest.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "ok": bool(events.all_topics())
+        and bool(catalog["tables"])
+        and events.cep_check(_assets())["ok"]
+        and events.RETRY_POLICY["max_attempts"] >= 3,
+        "catalog": catalog,
+        "topics": events.all_topics(),
+        "retry_policy": events.RETRY_POLICY,
+        "side_effects": (),
+    }}
+
+
+def run_event_operation():
+    """Run this module's side-effect-free event-processing operation."""
+    events = _events()
+    topic = _first_table_topic(events)
+    event = events.normalize_event(topic, {{"sample": True}}, actor="module", tenant_id="tenant")
+    failed_topic = next((item for item in events.all_topics() if item.endswith(".failed")), topic)
+    failed_event = events.normalize_event(failed_topic, {{"sample": True}}, severity="error")
+    if SURFACE == "event_topic_catalog":
+        operation = events.event_catalog()
+        ok = bool(operation["tables"]) and topic in events.all_topics()
+    elif SURFACE == "event_envelope":
+        operation = event
+        ok = operation["topic"] == topic and operation["actor"] == "module" and bool(operation["id"])
+    elif SURFACE == "event_processing_action":
+        operation = events.process_event(event)
+        ok = operation["audit"] is True and operation["notify"] is True and operation["realtime"] is True
+    elif SURFACE == "event_retry_dead_letter":
+        operation = {{
+            "retry": events.retry_plan(event, attempt=1),
+            "dead_letter": events.dead_letter_event(failed_event, "module failure", attempt=events.RETRY_POLICY["max_attempts"]),
+        }}
+        ok = operation["retry"]["retry"] is True and operation["dead_letter"]["error"] == "module failure"
+    elif SURFACE == "event_alert_workflow":
+        workflow_topic = next((item for item in events.all_topics() if item.startswith("workflow.")), None)
+        workflow_event = events.normalize_event(workflow_topic, {{"transition": True}}, actor="module") if workflow_topic else None
+        operation = {{
+            "failed_plan": events.process_event(failed_event),
+            "alert": events.alert_payload(failed_event, message="module alert"),
+            "workflow": events.process_event(workflow_event) if workflow_event else None,
+        }}
+        ok = operation["failed_plan"]["dead_letter"] is True and operation["alert"]["severity"] == "error" and (operation["workflow"] is None or operation["workflow"]["realtime"] is True)
+    else:
+        operation = {{
+            "release": events.event_release_gate(_assets()),
+            "workbench": events.event_workbench(_assets()),
+        }}
+        ok = operation["release"]["ok"] and operation["workbench"]["ok"]
+    return {{
+        "format": "appgen.event-module-operation.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "ok": ok,
+        "operation": operation,
+        "side_effects": (),
+    }}
+
+
+def release_context():
+    """Return release evidence used by this event-processing module."""
+    events = _events()
+    return {{
+        "format": "appgen.event-module-release-context.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "ok": events.event_release_gate(_assets())["ok"] and events.event_workbench(_assets())["ok"],
+        "release": events.event_release_gate(_assets()),
+        "workbench": events.event_workbench(_assets()),
+        "side_effects": (),
+    }}
+
+
+def smoke_test():
+    """Run side-effect-free checks for this generated event-processing module."""
+    contract = module_contract()
+    manifest = event_manifest_contract()
+    operation = run_event_operation()
+    release = release_context()
+    return {{
+        "format": "appgen.event-module-smoke-test.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "ok": contract["ok"]
+        and manifest["ok"]
+        and operation["ok"]
+        and release["ok"]
+        and not manifest["side_effects"]
+        and not operation["side_effects"]
+        and not release["side_effects"],
+        "contract": contract,
+        "manifest": manifest,
+        "operation": operation,
+        "release": release,
+        "checks": (
+            "module_contract_resolves",
+            "event_manifest_contract_ok",
+            "event_operation_ok",
+            "release_context_ok",
+            "no_side_effects",
+        ),
+    }}
+'''
+
+
+def _event_module_test_text(module_name: str) -> str:
+    surface, _operation = _event_surface(module_name)
+    return f'''"""Generated tests for the {surface} event-processing module."""
+
+from __future__ import annotations
+
+import importlib.util
+from pathlib import Path
+
+
+MODULE = {module_name!r}
+SURFACE = {surface!r}
+
+
+def load_event_module():
+    """Load the generated event-processing module without app installation."""
+    module_path = Path(__file__).resolve().parents[1] / "event_modules" / f"{{MODULE}}.py"
+    spec = importlib.util.spec_from_file_location(f"generated_event_module_{{MODULE}}", module_path)
+    module = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(module)
+    return module
+
+
+def test_event_module_contract():
+    """Assert the generated event-processing module exposes its contract."""
+    module = load_event_module()
+    contract = module.module_contract()
+    assert contract["module"] == MODULE
+    assert contract["surface"] == SURFACE
+    assert contract["ok"] is True
+    assert all(hasattr(module, name) for name in contract["expected_exports"])
+
+
+def test_event_module_smoke():
+    """Assert the module's side-effect-free smoke test passes."""
+    module = load_event_module()
+    result = module.smoke_test()
+    assert result["ok"] is True
+    assert result["module"] == MODULE
+    assert result["surface"] == SURFACE
+    assert result["checks"]
+
+
+def smoke_test():
+    """Run this generated test module in a side-effect-free way."""
+    test_event_module_contract()
+    test_event_module_smoke()
+    return {{
+        "format": "appgen.event-module-generated-test-smoke.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "ok": True,
+        "tests": ("test_event_module_contract", "test_event_module_smoke"),
     }}
 '''
 
@@ -54859,7 +55142,9 @@ from __future__ import annotations
 from datetime import datetime
 from datetime import timezone
 from hashlib import sha256
+import importlib.util
 import json
+from pathlib import Path
 
 from flask import jsonify
 from flask_appbuilder import BaseView
@@ -55178,7 +55463,9 @@ from __future__ import annotations
 from datetime import datetime
 from datetime import timezone
 from hashlib import sha256
+import importlib.util
 import json
+from pathlib import Path
 
 from flask import jsonify
 from flask_appbuilder import BaseView
@@ -55715,7 +56002,9 @@ from __future__ import annotations
 from datetime import datetime
 from datetime import timezone
 from hashlib import sha256
+import importlib.util
 import json
+from pathlib import Path
 
 from flask import jsonify
 from flask_appbuilder import BaseView
@@ -55732,6 +56021,73 @@ EVENT_ACTIONS = {{
     "workflow": ("audit", "notify", "realtime"),
 }}
 RETRY_POLICY = {{"max_attempts": 3, "backoff_seconds": (5, 30, 120)}}
+EVENT_MODULES = (
+    "event_topic_catalog_module",
+    "event_envelope_module",
+    "event_processing_action_module",
+    "event_retry_dead_letter_module",
+    "event_alert_workflow_module",
+    "event_release_workbench_module",
+)
+
+
+def _load_generated_module(module_path, module_name):
+    """Load a generated event-processing module without installing the app."""
+    spec = importlib.util.spec_from_file_location(module_name, module_path)
+    module = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(module)
+    return module
+
+
+def event_module_file_manifest():
+    """Return independently importable generated event-processing module files."""
+    root = Path(__file__).resolve().parent
+    modules = []
+    for module_name in EVENT_MODULES:
+        module_path = root / "event_modules" / f"{{module_name}}.py"
+        module = _load_generated_module(module_path, f"generated_event_module_{{module_name}}")
+        contract = module.module_contract()
+        modules.append(
+            {{
+                "module": module_name,
+                "surface": contract["surface"],
+                "path": f"app/event_modules/{{module_name}}.py",
+                "exists": module_path.exists(),
+                "ok": contract["ok"] and module.smoke_test()["ok"],
+                "exports": contract["exports"],
+            }}
+        )
+    return {{
+        "format": "appgen.event-module-file-manifest.v1",
+        "ok": len(modules) == len(EVENT_MODULES) and all(item["ok"] and item["exists"] for item in modules),
+        "modules": tuple(modules),
+    }}
+
+
+def event_module_test_file_manifest():
+    """Return generated tests for the event-processing module files."""
+    root = Path(__file__).resolve().parent
+    tests = []
+    for module_name in EVENT_MODULES:
+        test_path = root / "event_module_tests" / f"test_{{module_name}}.py"
+        module = _load_generated_module(test_path, f"generated_event_module_test_{{module_name}}")
+        result = module.smoke_test()
+        tests.append(
+            {{
+                "module": f"test_{{module_name}}",
+                "surface": result["surface"],
+                "path": f"app/event_module_tests/test_{{module_name}}.py",
+                "exists": test_path.exists(),
+                "ok": result["ok"],
+                "tests": result["tests"],
+            }}
+        )
+    return {{
+        "format": "appgen.event-module-test-file-manifest.v1",
+        "ok": len(tests) == len(EVENT_MODULES) and all(item["ok"] and item["exists"] for item in tests),
+        "tests": tuple(tests),
+    }}
 
 
 def _event_id(topic, data):
