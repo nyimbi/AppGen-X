@@ -2,12 +2,17 @@ import { Icon } from './Icon'
 import { studioCatalogAudit } from './catalogAudit'
 
 const catalogAudit = studioCatalogAudit()
+const bindingAudit = catalogAudit.bindingAudit
 const iconAudit = catalogAudit.componentAudit
 const inspectorAudit = catalogAudit.inspectorAudit
 
 const statuses = [
   { label: 'DSL lint', value: 'Clean', icon: 'check' as const },
-  { label: 'Bindings', value: '8 links', icon: 'database' as const },
+  {
+    label: 'Bindings',
+    value: bindingAudit.ok ? `${bindingAudit.totalBindings} links` : 'Review',
+    icon: 'database' as const,
+  },
   { label: 'Targets', value: '3 ready', icon: 'desktop' as const },
   { label: 'Agents', value: '2 staged', icon: 'agent' as const },
   {

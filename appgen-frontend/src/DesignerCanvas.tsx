@@ -1,4 +1,5 @@
 import { Icon } from './Icon'
+import { visualBindings } from './bindingCatalog'
 
 const placedComponents = [
   { name: 'Main Menu', icon: 'menu' as const, x: 4, y: 4, w: 92, tone: 'navigation' },
@@ -89,6 +90,30 @@ export function DesignerCanvas() {
       </section>
 
       <section className="surface-workbenches" aria-label="Advanced design surfaces">
+        <div className="surface-lane binding-lane">
+          <div className="surface-lane-title">
+            <Icon name="database" />
+            <span>Bindings</span>
+          </div>
+          <div className="binding-stack">
+            {visualBindings.map((binding) => (
+              <button
+                className={`binding-row binding-${binding.state}`}
+                key={`${binding.source}-${binding.target}`}
+                type="button"
+                title={binding.expression}
+              >
+                <Icon name={binding.icon} />
+                <span>
+                  <strong>{binding.source}</strong>
+                  <small>{binding.target}</small>
+                </span>
+                <em>{binding.state}</em>
+              </button>
+            ))}
+          </div>
+        </div>
+
         <div className="surface-lane">
           <div className="surface-lane-title">
             <Icon name="animation" />

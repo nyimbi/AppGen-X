@@ -1,12 +1,15 @@
+import { visualBindingAudit } from './bindingCatalog'
 import { componentIconAudit } from './componentCatalog'
 import { inspectorEditorAudit } from './inspectorCatalog'
 
 export function studioCatalogAudit() {
+  const bindingAudit = visualBindingAudit()
   const componentAudit = componentIconAudit()
   const inspectorAudit = inspectorEditorAudit()
 
   return {
-    ok: componentAudit.ok && inspectorAudit.ok,
+    ok: bindingAudit.ok && componentAudit.ok && inspectorAudit.ok,
+    bindingAudit,
     componentAudit,
     inspectorAudit,
   }

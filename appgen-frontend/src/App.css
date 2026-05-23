@@ -747,7 +747,7 @@ h2 {
 
 .surface-workbenches {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 10px;
   margin-top: 12px;
 }
@@ -762,6 +762,7 @@ h2 {
 
 .surface-lane-title,
 .timeline-track,
+.binding-row,
 .token-row,
 .scene-node {
   display: grid;
@@ -781,6 +782,7 @@ h2 {
 }
 
 .timeline-stack,
+.binding-stack,
 .token-stack,
 .scene-node-stack {
   display: grid;
@@ -788,6 +790,7 @@ h2 {
 }
 
 .timeline-track,
+.binding-row,
 .token-row,
 .scene-node {
   grid-template-columns: 22px minmax(0, 1fr) auto;
@@ -800,18 +803,21 @@ h2 {
 }
 
 .timeline-track:last-child,
+.binding-row:last-child,
 .token-row:last-child,
 .scene-node:last-child {
   border-bottom: 0;
 }
 
 .timeline-track:hover,
+.binding-row:hover,
 .token-row:hover,
 .scene-node:hover {
   background: var(--brand-soft);
 }
 
 .timeline-track span,
+.binding-row span,
 .token-row span,
 .scene-node span {
   min-width: 0;
@@ -821,10 +827,69 @@ h2 {
 }
 
 .timeline-track strong,
+.binding-row strong,
 .token-row strong,
 .scene-node strong {
   color: #64748b;
   font-size: 11px;
+}
+
+.binding-row {
+  --binding-state: var(--brand);
+  position: relative;
+  grid-template-columns: 22px minmax(0, 1fr) auto;
+}
+
+.binding-row::before {
+  position: absolute;
+  top: 8px;
+  bottom: 8px;
+  left: 0;
+  width: 3px;
+  border-radius: 0 3px 3px 0;
+  background: var(--binding-state);
+  content: "";
+}
+
+.binding-row svg {
+  color: var(--binding-state);
+}
+
+.binding-row span {
+  display: grid;
+  gap: 2px;
+}
+
+.binding-row small,
+.binding-row em {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.binding-row small {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.binding-row em {
+  border-radius: 999px;
+  padding: 2px 6px;
+  color: #ffffff;
+  background: var(--binding-state);
+  font-size: 10px;
+  font-style: normal;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.binding-warning {
+  --binding-state: #b7791f;
+}
+
+.binding-review {
+  --binding-state: #7654b7;
 }
 
 .token-row {
