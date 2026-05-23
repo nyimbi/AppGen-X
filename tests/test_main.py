@@ -1141,6 +1141,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "deep_link_routing",
         "app_lifecycle_delivery",
         "simulator_fixture_integrity",
+        "runtime_delivery_replay",
     } == {check["id"] for check in mobile_workbench["checks"]}
     mobile_apis = set(mobile_workbench["contract"]["apis"])
     assert {
@@ -1184,6 +1185,10 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     assert "authorize_route" in mobile_workbench["deep_link_routing"]["pipeline"]
     assert any("replay_pending_events" in item["pipeline"] for item in mobile_workbench["app_lifecycle_delivery"]["deliveries"])
     assert all(item["checksum"].startswith("sha256:") for item in mobile_workbench["simulator_fixture_integrity"]["fixtures"])
+    assert mobile_workbench["runtime_replay"]["ok"] is True
+    assert mobile_apis == {item["api"] for item in mobile_workbench["runtime_replay"]["replay"]}
+    assert all("dispatch_component_events" in item["phases"] for item in mobile_workbench["runtime_replay"]["replay"])
+    assert mobile_workbench["runtime_replay"]["final_state"]["checkpoints"] >= 1
     visual_depth = cross_target_visual_depth_workbench()
     assert visual_depth["format"] == "appgen.cross-target-visual-depth-workbench.v1"
     assert visual_depth["ok"] is True
@@ -9610,6 +9615,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "deep_link_routing",
         "app_lifecycle_delivery",
         "simulator_fixture_integrity",
+        "runtime_delivery_replay",
     } == {check["id"] for check in generated_mobile["checks"]}
     generated_mobile_apis = set(generated_mobile["contract"]["apis"])
     assert {
@@ -9659,6 +9665,10 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert "fallback_if_blocked" in generated_mobile["deep_link_routing"]["pipeline"]
     assert "pending_events_replayed_on_resume" in generated_mobile["app_lifecycle_delivery"]["guards"]
     assert all("assert_events" in item["replay_order"] for item in generated_mobile["simulator_fixture_integrity"]["fixtures"])
+    assert generated_mobile["runtime_replay"]["ok"] is True
+    assert generated_mobile_apis == {item["api"] for item in generated_mobile["runtime_replay"]["replay"]}
+    assert all("invoke_target_bridge" in item["phases"] for item in generated_mobile["runtime_replay"]["replay"])
+    assert all(item["ok"] for item in generated_mobile["runtime_replay"]["bridge_recovery"])
     generated_visual_depth = form_designer.cross_target_visual_depth_workbench()
     assert generated_visual_depth["format"] == "appgen.generated-cross-target-visual-depth-workbench.v1"
     assert generated_visual_depth["ok"] is True

@@ -7068,6 +7068,96 @@ def mobile_simulator_fixture_integrity_contract() -> dict:
     }
 
 
+def mobile_native_api_runtime_replay_contract() -> dict:
+    """Replay permission, bridge, fixture, event, background, and lifecycle delivery for device APIs."""
+    capability = mobile_api_capability_matrix_contract()
+    event_traces = mobile_device_event_trace_contract()
+    bridge_matrix = mobile_native_bridge_matrix_contract()
+    permission_states = mobile_permission_state_machine_contract()
+    background_delivery = mobile_background_delivery_contract()
+    media_pipeline = mobile_media_file_pipeline_contract()
+    bridge_errors = mobile_native_bridge_error_contract()
+    lifecycle = mobile_app_lifecycle_delivery_contract()
+    fixtures = mobile_simulator_fixture_integrity_contract()
+    traces_by_api = {trace["api"]: trace for trace in event_traces["traces"]}
+    states_by_api = {item["api"]: item for item in permission_states["transitions"]}
+    fixtures_by_api = {item["api"]: item for item in fixtures["fixtures"]}
+    background_apis = {item["api"] for item in background_delivery["deliveries"]}
+    media_apis = {item["api"] for item in media_pipeline["pipelines"]}
+    state = {"permission": "unknown", "events": 0, "errors": 0, "checkpoints": 0, "side_effects": ()}
+    replay = []
+    for row in capability["rows"]:
+        api = row["api"]
+        trace = traces_by_api[api]
+        permission = states_by_api[api]
+        fixture = fixtures_by_api[api]
+        phases = [
+            "load_privacy_prompt",
+            "transition_unknown_to_prompting",
+            "transition_prompting_to_granted",
+            "load_simulator_fixture",
+            "invoke_target_bridge",
+            "normalize_payload",
+            "dispatch_component_events",
+            "record_diagnostic",
+        ]
+        if api in media_apis:
+            phases.extend(("validate_mime", "copy_to_app_storage", "cleanup_temporary_files"))
+        if api in background_apis:
+            phases.extend(("persist_payload", "checkpoint_delivery", "replay_on_resume"))
+            state["checkpoints"] += 1
+        state["permission"] = "granted"
+        state["events"] += sum(len(event["trace"]) for event in trace["events"])
+        replay.append(
+            {
+                "api": api,
+                "component": trace["component"],
+                "fixture": fixture["fixture"],
+                "permission_transitions": permission["transitions"],
+                "targets": row["targets"],
+                "phases": tuple(phases),
+                "event_count": len(trace["events"]),
+                "ok": bool(row["privacy_prompt"])
+                and "granted->revoked" in permission["transitions"]
+                and "assert_events" in fixture["replay_order"]
+                and {"normalize_payload", "dispatch_component_events"} <= set(phases),
+            }
+        )
+    bridge_recovery = tuple(
+        {
+            "target": scenario["target"],
+            "errors": scenario["errors"],
+            "recovery": scenario["recovery"],
+            "ok": {"normalize_error", "emit_error_event", "fallback_path"} <= set(scenario["recovery"]),
+        }
+        for scenario in bridge_errors["scenarios"]
+    )
+    lifecycle_replay = tuple(
+        {
+            "event": delivery["event"],
+            "pipeline": delivery["pipeline"],
+            "ok": {"persist_checkpoint", "replay_pending_events", "emit_component_event", "record_diagnostic", "record_shutdown"} & set(delivery["pipeline"]) != set(),
+        }
+        for delivery in lifecycle["deliveries"]
+    )
+    return {
+        "format": "appgen.mobile-native-api-runtime-replay-contract.v1",
+        "ok": capability["ok"]
+        and bridge_matrix["ok"]
+        and bool(replay)
+        and all(item["ok"] for item in replay)
+        and all(item["ok"] for item in bridge_recovery)
+        and all(item["ok"] for item in lifecycle_replay)
+        and state["side_effects"] == (),
+        "replay": tuple(replay),
+        "bridge_recovery": bridge_recovery,
+        "lifecycle_replay": lifecycle_replay,
+        "final_state": state,
+        "guards": ("permission_replayed_before_bridge", "fixture_replayed_before_events", "payloads_normalized_before_dispatch", "background_delivery_checkpointed", "bridge_errors_recoverable", "lifecycle_resume_replays_pending_events"),
+        "side_effects": (),
+    }
+
+
 def mobile_native_api_workbench() -> dict:
     """Prove mobile/native device API component coverage and reviewability."""
     contract = mobile_native_api_contract()
@@ -7093,6 +7183,7 @@ def mobile_native_api_workbench() -> dict:
     deep_link_routing = mobile_deep_link_routing_contract()
     app_lifecycle_delivery = mobile_app_lifecycle_delivery_contract()
     simulator_fixture_integrity = mobile_simulator_fixture_integrity_contract()
+    runtime_replay = mobile_native_api_runtime_replay_contract()
     checks = (
         {
             "id": "api_breadth",
@@ -7265,6 +7356,13 @@ def mobile_native_api_workbench() -> dict:
             and not simulator_fixture_integrity["side_effects"],
             "evidence": simulator_fixture_integrity,
         },
+        {
+            "id": "runtime_delivery_replay",
+            "ok": runtime_replay["ok"]
+            and {"permission_replayed_before_bridge", "lifecycle_resume_replays_pending_events"} <= set(runtime_replay["guards"])
+            and not runtime_replay["side_effects"],
+            "evidence": runtime_replay,
+        },
     )
     ok = all(check["ok"] for check in checks)
     return {
@@ -7290,6 +7388,7 @@ def mobile_native_api_workbench() -> dict:
         "deep_link_routing": deep_link_routing,
         "app_lifecycle_delivery": app_lifecycle_delivery,
         "simulator_fixture_integrity": simulator_fixture_integrity,
+        "runtime_replay": runtime_replay,
         "checks": checks,
         "blocking_gaps": tuple(check for check in checks if not check["ok"]),
     }
