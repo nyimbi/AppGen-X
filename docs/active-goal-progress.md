@@ -52,7 +52,7 @@ Build a complete AppGen IDE and generation platform with:
 | 2026-05-23 | `c7269ce` | Added prepared-host binary adapter transcript audits for native package execution. | Py compile; focused target test; aggregate package-goal test; staged hygiene scans. |
 | 2026-05-23 | `656b486` | Sharpened developer guidance for the opinionated PBC event-processing choice. | Documentation diff check and hygiene scans passed. |
 | 2026-05-23 | `30b230f` | Added CI and CLI entry points for native package binary adapter transcript audits. | Py compile, focused target test, aggregate package-goal test, CLI audit, and staged hygiene scans passed. |
-| 2026-05-23 | `pending` | Observed remote CI for native transcript and Studio browser workflows, then fixed the native Python mismatch and hardened the browser runner. | Remote run metadata observed; local editable install, frontend build, CLI audit, script syntax check, local browser blocked by sandboxed Chrome crash handling, hygiene scans passed. |
+| 2026-05-23 | `75e886b` | Observed remote CI for native transcript and Studio browser workflows, then fixed the native Python mismatch and hardened the browser runner. | Remote run metadata observed; local editable install, frontend build, CLI audit, script syntax check, local browser blocked by sandboxed Chrome crash handling, hygiene scans passed. |
 
 ## Current Working Slice
 
