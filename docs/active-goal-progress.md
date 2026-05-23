@@ -57,6 +57,7 @@ Build a complete AppGen IDE and generation platform with:
 | 2026-05-23 | `2f4ee10` | Split the Studio browser workflow into separate build and browser-render steps so remote metadata can isolate failures. | Frontend build, workflow diff check, and hygiene scan passed. |
 | 2026-05-23 | `e122dfd` | Added structured Studio browser smoke reports and artifact upload for remote failure diagnostics. | Remote split run showed build success and browser-step failure; local build, script syntax, local failure-report generation, and hygiene scans passed. |
 | 2026-05-23 | `46ddf5f` | Restored the Studio's full Object Inspector heading after the remote browser smoke report showed that exact rendered text was missing. | Remote report artifact inspected; frontend build and hygiene scans passed. |
+| 2026-05-23 | `pending` | Verified the Studio browser smoke workflow succeeds remotely after the rendered inspector heading fix. | GitHub Actions run `26336140848` completed with conclusion `success` for commit `4510d44`. |
 
 ## Current Working Slice
 
@@ -75,5 +76,5 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
 
 ## Open Completion Areas
 
-- Re-run `.github/workflows/studio-browser-smoke.yml` after the browser runner
-  hardening and verify remote browser rendering reaches completion.
+- Continue replacing proof contracts with runnable implementation and remote
+  evidence for the remaining native/runtime parity areas.
