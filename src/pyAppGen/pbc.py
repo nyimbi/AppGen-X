@@ -114,6 +114,37 @@ ACP_STREAM_PROCESSOR_DECISION_RULES = (
 ACP_STREAM_PROCESSING_POLICY = {
     "default": ACP_DEFAULT_STREAM_PROCESSOR,
     "allowed_processors": tuple(ACP_STREAM_PROCESSORS),
+    "developer_guidance": {
+        "standard_answer": (
+            "Use generated transactional outbox/inbox tables, the AppGen-X "
+            "event adapter, and the faust_streaming service-runtime profile."
+        ),
+        "normal_workloads": (
+            "ERP, CRM, HR, finance, inventory, commerce, approvals, workflow "
+            "sagas, chatbot events, agent task routing, and PBC integration "
+            "handlers."
+        ),
+        "manifest_rule": (
+            "Omit stream_processor for ordinary PBCs; validation normalizes "
+            "the manifest to faust_streaming."
+        ),
+        "ide_rule": (
+            "Do not render a stream-engine picker for ordinary app generation; "
+            "show the selected profile as read-only generated metadata."
+        ),
+        "agent_rule": (
+            "Coding agents must generate event contracts and adapter calls, "
+            "not direct stream-library imports."
+        ),
+        "exception_gate": (
+            "Open the exception workflow only for telemetry/time-series "
+            "ingestion or complex parallel dataflow workloads with evidence."
+        ),
+        "split_rule": (
+            "If a PBC needs both ordinary domain events and specialized stream "
+            "processing, split the specialized workload into its own PBC."
+        ),
+    },
     "decision_card": {
         "answer": "Use the AppGen-X generated outbox/inbox event contract with faust_streaming behind the platform adapter.",
         "default_profile": ACP_DEFAULT_STREAM_PROCESSOR,
@@ -810,6 +841,7 @@ def acp_stream_processing_policy() -> dict:
         "ok": True,
         "default": ACP_STREAM_PROCESSING_POLICY["default"],
         "allowed_processors": ACP_STREAM_PROCESSING_POLICY["allowed_processors"],
+        "developer_guidance": ACP_STREAM_PROCESSING_POLICY["developer_guidance"],
         "decision_card": ACP_STREAM_PROCESSING_POLICY["decision_card"],
         "developer_rule": ACP_STREAM_PROCESSING_POLICY["developer_rule"],
         "generation_rule": ACP_STREAM_PROCESSING_POLICY["generation_rule"],

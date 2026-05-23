@@ -130,6 +130,11 @@ The IDE and natural-language generator should not expose a free-form
 stream-engine selector. They should show the default as a generated decision and
 open an exception workflow only when the PBC author supplies the required
 evidence.
+The executable policy's `developer_guidance` field is the source of truth for
+Studio controls, DSL lint rules, natural-language generation, and coding-agent
+prompts. It tells those tools to generate the standard outbox/inbox adapter
+path for ordinary work, hide stream-engine selection, and require exception
+evidence before `quix_streams` or `bytewax` can enter a manifest.
 
 For ordinary generated applications, the standard event stack is:
 

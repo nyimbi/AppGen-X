@@ -64,6 +64,41 @@ deployments, but generated PBC code still targets the AppGen-X adapter. Do not
 add broker-specific clients or profile-specific imports to command handlers,
 form actions, chatbot tools, agents, or generated UI code.
 
+## Developer Guidance Contract
+
+This document is not a comparison matrix for application developers. It is a
+platform policy that narrows the generated event-processing surface to one
+ordinary path:
+
+```text
+Use generated transactional outbox/inbox tables.
+Use the AppGen-X event adapter.
+Use the faust_streaming service-runtime profile behind that adapter.
+Do not expose a stream-engine picker for ordinary application generation.
+```
+
+Apply that answer to ERP, CRM, HR, finance, inventory, commerce, approvals,
+workflow sagas, chatbot events, agent task routing, and PBC integration
+handlers. The manifest should normally omit `stream_processor`; validation
+normalizes the missing field to `faust_streaming`.
+
+The IDE, DSL linter, natural-language generator, and coding-agent prompts must
+treat the stream profile as generated metadata, not as a design-time choice.
+They should ask the developer to model commands, events, handlers,
+idempotency, retry policies, dead-letter behavior, and operational ownership.
+They should not ask the developer to choose a stream library.
+
+The only exception workflow is evidence driven:
+
+| Exception request | Profile | Required evidence |
+| --- | --- | --- |
+| Telemetry, time-series ingestion, large event ingestion, or windowed operational metrics | `quix_streams` | workload name, throughput or latency reason, state shape, operational owner |
+| Complex parallel transformations, CPU-heavy stream processing, stateful analytical pipelines, or multi-stage dataflow graphs | `bytewax` | workload name, throughput or latency reason, state shape, operational owner |
+
+If a PBC has normal business events plus one specialized stream workload, split
+the specialized workload into its own PBC or generated integration capability.
+Do not mix profiles inside one PBC.
+
 ## Required Choice
 
 Use `faust_streaming`.

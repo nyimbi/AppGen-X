@@ -753,6 +753,11 @@ def test_package_pbc_catalog_composes_enterprise_apps(runner: CliRunner) -> None
     assert stream_policy["format"] == "appgen.acp-stream-processing-policy.v1"
     assert stream_policy["default"] == "faust_streaming"
     assert stream_policy["allowed_processors"] == ("faust_streaming", "quix_streams", "bytewax")
+    assert stream_policy["developer_guidance"]["standard_answer"].startswith("Use generated transactional outbox/inbox")
+    assert stream_policy["developer_guidance"]["manifest_rule"].startswith("Omit stream_processor")
+    assert "Do not render a stream-engine picker" in stream_policy["developer_guidance"]["ide_rule"]
+    assert stream_policy["developer_guidance"]["exception_gate"].endswith("with evidence.")
+    assert "split the specialized workload into its own PBC" in stream_policy["developer_guidance"]["split_rule"]
     assert stream_policy["decision_card"]["answer"].startswith("Use the AppGen-X generated outbox/inbox event contract")
     assert stream_policy["decision_card"]["do_not_ask_users_to_choose"] is True
     assert stream_policy["decision_card"]["choice_contract"] == "one_default_two_audited_exceptions"

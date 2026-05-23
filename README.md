@@ -171,6 +171,10 @@ and `bytewax` are documented exception profiles only. See the
 adding a stream-heavy PBC. Exception profiles must carry
 `stream_exception_evidence` in the manifest, so generated agents can reject
 unsupported choices without asking the user to compare stream libraries.
+The executable policy also exposes `developer_guidance`, which is the contract
+for Studio controls, DSL linting, natural-language generation, and external
+coding agents: ordinary apps get one generated adapter path; exceptions are
+evidence-driven release-audit workflows.
 
 ERP starters can be exported and generated immediately:
 
