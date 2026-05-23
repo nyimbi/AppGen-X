@@ -13828,6 +13828,48 @@ def component_test_file_manifest() -> tuple[dict, ...]:
     )
 
 
+def device_api_component_file_manifest() -> tuple[dict, ...]:
+    """Return per-device-API component files expected in generated apps."""
+    specs = mobile_device_component_spec_contract()
+    exports = (
+        "spec",
+        "permission_manifest",
+        "simulator_fixture",
+        "render",
+        "validate_props",
+        "request_permission",
+        "replay",
+        "dispatch_event",
+        "design_tools",
+        "smoke_test",
+    )
+    return tuple(
+        {
+            "api": item["api"],
+            "component": item["component"],
+            "path": f"app/device_api_components/{_module_name(item['api'])}.py",
+            "exports": exports,
+            "ok": item["permission"] is not None and item["fixture"] is not None and bool(item["events"]),
+        }
+        for item in specs["specs"]
+    )
+
+
+def device_api_component_test_file_manifest() -> tuple[dict, ...]:
+    """Return per-device-API generated test files expected in generated apps."""
+    return tuple(
+        {
+            "api": item["api"],
+            "component": item["component"],
+            "path": item["path"].replace("app/device_api_components/", "app/device_api_component_tests/test_"),
+            "target": item["path"],
+            "exports": ("load_device_component_module", "test_device_component_contract", "test_device_component_smoke", "smoke_test"),
+            "ok": item["ok"],
+        }
+        for item in device_api_component_file_manifest()
+    )
+
+
 def component_package_module_implementation_contract(package_id: str) -> dict:
     """Return required exports and smoke tests for one component package module."""
     package = component_package_contract(package_id)
@@ -14132,6 +14174,8 @@ def form_designer_generation_smoke_audit(source: str = FORM_DESIGNER_SAMPLE_DSL)
     package_artifacts = tuple(item["path"] for item in component_package_file_manifest())
     component_test_artifacts = tuple(item["path"] for item in component_test_file_manifest())
     package_test_artifacts = tuple(item["path"] for item in component_package_test_file_manifest())
+    device_component_artifacts = tuple(item["path"] for item in device_api_component_file_manifest())
+    device_component_test_artifacts = tuple(item["path"] for item in device_api_component_test_file_manifest())
     required_artifacts = (
         "app/form_designer.py",
         "app/component_parity_runtime.py",
@@ -14152,6 +14196,8 @@ def form_designer_generation_smoke_audit(source: str = FORM_DESIGNER_SAMPLE_DSL)
         *package_artifacts,
         *component_test_artifacts,
         *package_test_artifacts,
+        *device_component_artifacts,
+        *device_component_test_artifacts,
     )
     compile_artifacts = (
         "app/form_designer.py",
@@ -14172,6 +14218,8 @@ def form_designer_generation_smoke_audit(source: str = FORM_DESIGNER_SAMPLE_DSL)
         *package_artifacts,
         *component_test_artifacts,
         *package_test_artifacts,
+        *device_component_artifacts,
+        *device_component_test_artifacts,
     )
 
     with tempfile.TemporaryDirectory(prefix="appgen-form-designer-smoke-") as tmp:
@@ -14319,9 +14367,13 @@ def form_designer_generation_smoke_audit(source: str = FORM_DESIGNER_SAMPLE_DSL)
             and all(item["exists"] for item in usability["component_files"])
             and all(item["exists"] for item in usability["package_files"])
             and all(item["exists"] for item in usability["component_test_files"])
-            and all(item["exists"] for item in usability["package_test_files"]),
+            and all(item["exists"] for item in usability["package_test_files"])
+            and len(device_component_artifacts) == len(mobile_device_component_spec_contract()["specs"])
+            and len(device_component_test_artifacts) == len(mobile_device_component_spec_contract()["specs"]),
             "component_test_count": len(component_test_artifacts),
             "package_test_count": len(package_test_artifacts),
+            "device_component_count": len(device_component_artifacts),
+            "device_component_test_count": len(device_component_test_artifacts),
             "component_count": len(component_artifacts),
             "package_count": len(package_artifacts),
         },
@@ -14483,6 +14535,8 @@ def form_designer_generation_smoke_audit(source: str = FORM_DESIGNER_SAMPLE_DSL)
                 "runtime_replay_complete",
                 "designer_replay_complete",
                 "capability_lifecycle_complete",
+                "device_component_modules_ready",
+                "device_component_tests_ready",
             }
             <= set(mobile_device_smoke["checks"]),
             "smoke": mobile_device_smoke,

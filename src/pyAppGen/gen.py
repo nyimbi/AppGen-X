@@ -1753,6 +1753,38 @@ def write_form_designer_file(output_dir, schema: AppSchema):
     (output_dir / "visual_depth_runtime.py").write_text(_visual_depth_runtime_text())
     (output_dir / "data_tooling_runtime.py").write_text(_data_tooling_runtime_text())
     write_component_contract_files(output_dir)
+    write_device_api_component_files(output_dir)
+
+
+DEVICE_API_COMPONENTS = (
+    "camera",
+    "photos",
+    "location",
+    "sensors",
+    "biometrics",
+    "push_notifications",
+    "contacts",
+    "calendar",
+    "secure_storage",
+    "bluetooth",
+    "nfc",
+    "file_picker",
+    "share_sheet",
+    "background_tasks",
+    "microphone",
+    "audio_player",
+    "video_player",
+    "haptics",
+    "vibration",
+    "clipboard",
+    "deep_links",
+    "app_lifecycle",
+    "network_status",
+    "filesystem",
+    "device_info",
+    "maps",
+    "screen_capture",
+)
 
 
 def write_pbc_runtime_file(output_dir, schema: AppSchema):
@@ -1820,6 +1852,27 @@ def write_component_contract_files(output_dir):
         )
 
 
+def write_device_api_component_files(output_dir):
+    """Write one generated design/runtime component module per native device API."""
+    output_dir = Path(output_dir)
+    component_dir = output_dir / "device_api_components"
+    test_dir = output_dir / "device_api_component_tests"
+    component_dir.mkdir(parents=True, exist_ok=True)
+    test_dir.mkdir(parents=True, exist_ok=True)
+    (component_dir / "__init__.py").write_text(_device_api_component_init_text(), encoding="utf-8")
+    (test_dir / "__init__.py").write_text(_device_api_component_test_init_text(), encoding="utf-8")
+    for api in DEVICE_API_COMPONENTS:
+        module_name = _module_name(api)
+        (component_dir / f"{module_name}.py").write_text(
+            _device_api_component_module_text(api),
+            encoding="utf-8",
+        )
+        (test_dir / f"test_{module_name}.py").write_text(
+            _device_api_component_test_module_text(api),
+            encoding="utf-8",
+        )
+
+
 def _module_name(name: str) -> str:
     """Return a stable snake-case module name for a component or package."""
     chars = []
@@ -1828,6 +1881,239 @@ def _module_name(name: str) -> str:
             chars.append("_")
         chars.append(char.lower() if char.isalnum() else "_")
     return "_".join(part for part in "".join(chars).split("_") if part)
+
+
+def _device_api_component_init_text() -> str:
+    modules = tuple(_module_name(api) for api in DEVICE_API_COMPONENTS)
+    return (
+        '"""Generated per-device-API component modules."""\n\n'
+        f"DEVICE_API_COMPONENT_MODULES = {modules!r}\n"
+    )
+
+
+def _device_api_component_test_init_text() -> str:
+    modules = tuple(f"test_{_module_name(api)}" for api in DEVICE_API_COMPONENTS)
+    return (
+        '"""Generated per-device-API component test modules."""\n\n'
+        f"DEVICE_API_COMPONENT_TEST_MODULES = {modules!r}\n"
+    )
+
+
+def _device_api_component_module_text(api: str) -> str:
+    component_module = _module_name(api)
+    return f'''"""Generated native device API component module for {api}."""
+
+from __future__ import annotations
+
+import importlib.util
+from pathlib import Path
+
+
+API = {api!r}
+MODULE = {component_module!r}
+
+
+def _load_sibling(module_name):
+    module_path = Path(__file__).resolve().parents[1] / f"{{module_name}}.py"
+    spec = importlib.util.spec_from_file_location(f"generated_device_api_{{MODULE}}_{{module_name}}", module_path)
+    module = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(module)
+    return module
+
+
+def _form_designer():
+    return _load_sibling("form_designer")
+
+
+def _mobile_runtime():
+    return _load_sibling("mobile_device_runtime")
+
+
+def spec():
+    """Return the IDE component spec for this native device API."""
+    specs = _form_designer().mobile_device_component_spec_contract()
+    match = next((item for item in specs["specs"] if item["api"] == API), None)
+    return {{
+        "format": "appgen.device-api-component-spec.v1",
+        "api": API,
+        "ok": match is not None and bool(match["permission"]) and bool(match["fixture"]) and bool(match["events"]),
+        "spec": match,
+    }}
+
+
+def permission_manifest():
+    """Return the generated permission entry for this component."""
+    current = spec()["spec"]
+    return current["permission"] if current else None
+
+
+def simulator_fixture():
+    """Return the simulator fixture bound to this component."""
+    current = spec()["spec"]
+    return current["fixture"] if current else None
+
+
+def render(props=None):
+    """Return a deterministic design-surface preview node."""
+    current = spec()["spec"]
+    merged = {{}}
+    for prop in current["props"]:
+        if "default" in prop:
+            merged[prop["name"]] = prop["default"]
+    merged.update(dict(props or {{}}))
+    return {{
+        "format": "appgen.device-api-component-render-node.v1",
+        "api": API,
+        "component": current["component"],
+        "icon": current["icon"],
+        "props": merged,
+        "events": current["events"],
+        "preview": current["preview"],
+    }}
+
+
+def validate_props(props=None):
+    """Validate props against the generated device component property editors."""
+    current = spec()["spec"]
+    allowed = {{prop["name"] for prop in current["props"]}}
+    supplied = set((props or {{}}).keys())
+    unknown = tuple(sorted(supplied - allowed))
+    return {{
+        "format": "appgen.device-api-component-prop-validation.v1",
+        "api": API,
+        "ok": not unknown,
+        "unknown": unknown,
+        "property_editors": current["props"],
+    }}
+
+
+def request_permission():
+    """Return the side-effect-free permission request operation for this API."""
+    return _form_designer().mobile_request_permission_operation(API)
+
+
+def replay(target="android"):
+    """Replay this component through the generated mobile runtime."""
+    return _mobile_runtime().replay_device_api(API, target)
+
+
+def dispatch_event(event=None):
+    """Return dispatch metadata for a generated device component event."""
+    current = spec()["spec"]
+    event_name = event or current["events"][0]
+    return {{
+        "format": "appgen.device-api-component-event-dispatch.v1",
+        "api": API,
+        "event": event_name,
+        "ok": event_name in current["events"],
+        "pipeline": current["runtime_pipeline"],
+    }}
+
+
+def design_tools():
+    """Return design-time tools exposed for this API component."""
+    current = spec()["spec"]
+    return {{
+        "format": "appgen.device-api-component-design-tools.v1",
+        "api": API,
+        "tools": current["design_tools"],
+        "ok": {{"property_inspector", "permission_editor", "simulator_fixture_picker", "event_trace_viewer"}}
+        <= set(current["design_tools"]),
+    }}
+
+
+def smoke_test():
+    """Run side-effect-free checks proving this device API component is usable."""
+    current = spec()
+    rendered = render()
+    valid = validate_props(rendered["props"])
+    invalid = validate_props({{"__unknown__": True}})
+    permission = request_permission()
+    replay_result = replay()
+    dispatch = dispatch_event()
+    tools = design_tools()
+    return {{
+        "format": "appgen.device-api-component-smoke-test.v1",
+        "api": API,
+        "ok": current["ok"]
+        and rendered["api"] == API
+        and valid["ok"]
+        and not invalid["ok"]
+        and permission["ok"]
+        and replay_result["ok"]
+        and dispatch["ok"]
+        and tools["ok"],
+        "checks": (
+            "spec_resolves",
+            "permission_manifest_bound",
+            "simulator_fixture_bound",
+            "preview_renders",
+            "props_validate",
+            "permission_request_replays",
+            "runtime_replay_succeeds",
+            "event_dispatch_declared",
+            "design_tools_present",
+        ),
+    }}
+'''
+
+
+def _device_api_component_test_module_text(api: str) -> str:
+    module_name = _module_name(api)
+    return f'''"""Generated tests for the {api} native device API component."""
+
+from __future__ import annotations
+
+import importlib.util
+from pathlib import Path
+
+
+API = {api!r}
+MODULE = {module_name!r}
+
+
+def load_device_component_module():
+    """Load the generated device API component module without app installation."""
+    module_path = Path(__file__).resolve().parents[1] / "device_api_components" / f"{{MODULE}}.py"
+    spec = importlib.util.spec_from_file_location(f"generated_device_api_component_{{MODULE}}", module_path)
+    module = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(module)
+    return module
+
+
+def test_device_component_contract():
+    """Assert the generated device API component exposes its design contract."""
+    module = load_device_component_module()
+    contract = module.spec()
+    assert contract["api"] == API
+    assert contract["ok"] is True
+    assert module.permission_manifest()["api"] == API
+    assert module.simulator_fixture()["api"] == API
+    assert module.render()["api"] == API
+
+
+def test_device_component_smoke():
+    """Assert the module's own side-effect-free smoke test passes."""
+    module = load_device_component_module()
+    result = module.smoke_test()
+    assert result["ok"] is True
+    assert result["api"] == API
+    assert result["checks"]
+
+
+def smoke_test():
+    """Run this generated test module in a side-effect-free way."""
+    test_device_component_contract()
+    test_device_component_smoke()
+    return {{
+        "format": "appgen.device-api-component-generated-test-smoke.v1",
+        "api": API,
+        "ok": True,
+        "tests": ("test_device_component_contract", "test_device_component_smoke"),
+    }}
+'''
 
 
 def _component_contract_init_text(component_names: tuple[str, ...]) -> str:
@@ -3766,12 +4052,98 @@ def _load_form_designer():
     return module
 
 
+def _module_name(name):
+    """Return the generated snake-case module name for an API key."""
+    return "_".join(part for part in name.replace("-", "_").lower().split("_") if part)
+
+
+def _load_generated_module(path, name):
+    spec = importlib.util.spec_from_file_location(name, path)
+    module = importlib.util.module_from_spec(spec)
+    if spec.loader is None:
+        raise RuntimeError(f"Could not load generated module: {path}")
+    spec.loader.exec_module(module)
+    return module
+
+
+def device_api_component_module_manifest():
+    """Return file-level evidence for generated device API component modules."""
+    form_designer = _load_form_designer()
+    specs = form_designer.mobile_device_component_spec_contract()["specs"]
+    component_dir = Path(__file__).with_name("device_api_components")
+    entries = []
+    for item in specs:
+        module_name = _module_name(item["api"])
+        module_path = component_dir / f"{module_name}.py"
+        exports = ()
+        contract_ok = False
+        if module_path.exists():
+            module = _load_generated_module(module_path, f"generated_device_api_component_{module_name}")
+            exports = tuple(name for name in ("spec", "permission_manifest", "simulator_fixture", "render", "validate_props", "request_permission", "replay", "dispatch_event", "design_tools", "smoke_test") if hasattr(module, name))
+            contract = module.spec()
+            contract_ok = contract["ok"] and contract["api"] == item["api"]
+        entries.append(
+            {
+                "api": item["api"],
+                "component": item["component"],
+                "path": f"app/device_api_components/{module_name}.py",
+                "exists": module_path.exists(),
+                "exports": exports,
+                "contract_ok": contract_ok,
+            }
+        )
+    required_exports = {"spec", "permission_manifest", "simulator_fixture", "render", "validate_props", "request_permission", "replay", "dispatch_event", "design_tools", "smoke_test"}
+    return {
+        "format": "appgen.generated-device-api-component-module-manifest.v1",
+        "ok": bool(entries)
+        and all(item["exists"] and item["contract_ok"] and required_exports <= set(item["exports"]) for item in entries),
+        "components": tuple(entries),
+        "required_exports": tuple(sorted(required_exports)),
+        "guards": ("one_module_per_device_api", "permission_fixture_and_events_bound", "runtime_replay_exported"),
+        "side_effects": (),
+    }
+
+
+def device_api_component_test_module_manifest():
+    """Return file-level evidence for generated device API component test modules."""
+    form_designer = _load_form_designer()
+    specs = form_designer.mobile_device_component_spec_contract()["specs"]
+    test_dir = Path(__file__).with_name("device_api_component_tests")
+    entries = []
+    for item in specs:
+        module_name = _module_name(item["api"])
+        module_path = test_dir / f"test_{module_name}.py"
+        exports = ()
+        if module_path.exists():
+            module = _load_generated_module(module_path, f"generated_device_api_component_test_{module_name}")
+            exports = tuple(name for name in ("load_device_component_module", "test_device_component_contract", "test_device_component_smoke", "smoke_test") if hasattr(module, name))
+        entries.append(
+            {
+                "api": item["api"],
+                "path": f"app/device_api_component_tests/test_{module_name}.py",
+                "exists": module_path.exists(),
+                "exports": exports,
+            }
+        )
+    required_exports = {"load_device_component_module", "test_device_component_contract", "test_device_component_smoke", "smoke_test"}
+    return {
+        "format": "appgen.generated-device-api-component-test-module-manifest.v1",
+        "ok": bool(entries) and all(item["exists"] and required_exports <= set(item["exports"]) for item in entries),
+        "tests": tuple(entries),
+        "required_exports": tuple(sorted(required_exports)),
+        "guards": ("one_test_module_per_device_api", "contract_and_smoke_tests_exported"),
+        "side_effects": (),
+    }
+
+
 def mobile_device_runtime_manifest():
     """Return generated device APIs, permissions, adapters, fixtures, and replay evidence."""
     form_designer = _load_form_designer()
     workbench = form_designer.mobile_native_api_workbench()
     contract = workbench["contract"]
     api_set = set(contract["apis"])
+    component_modules = device_api_component_module_manifest()
+    component_tests = device_api_component_test_module_manifest()
     return {
         "format": "appgen.generated-mobile-device-runtime-manifest.v1",
         "ok": workbench["ok"]
@@ -3779,7 +4151,9 @@ def mobile_device_runtime_manifest():
         and api_set == {adapter["api"] for adapter in contract["component_adapters"]["adapters"]}
         and api_set == {fixture["api"] for fixture in contract["simulator"]["fixtures"]}
         and workbench["runtime_replay"]["ok"]
-        and workbench["designer_transaction_replay"]["ok"],
+        and workbench["designer_transaction_replay"]["ok"]
+        and component_modules["ok"]
+        and component_tests["ok"],
         "apis": contract["apis"],
         "targets": contract["targets"],
         "permissions": contract["permission_manifest"]["permissions"],
@@ -3788,12 +4162,16 @@ def mobile_device_runtime_manifest():
         "runtime_replay": workbench["runtime_replay"],
         "designer_transaction_replay": workbench["designer_transaction_replay"],
         "capability_lifecycle_replay": workbench["capability_lifecycle_replay"],
+        "device_component_modules": component_modules,
+        "device_component_tests": component_tests,
         "guards": (
             "permission_manifest_generated",
             "adapter_declared_per_api",
             "simulator_fixture_declared_per_api",
             "runtime_replay_covers_all_device_apis",
             "designer_transaction_replay_covers_all_device_apis",
+            "one_component_module_per_device_api",
+            "one_test_module_per_device_api",
         ),
     }
 
@@ -3875,6 +4253,8 @@ def validate_mobile_device_runtime():
         {"id": "runtime_replay_complete", "ok": manifest["runtime_replay"]["ok"]},
         {"id": "designer_replay_complete", "ok": manifest["designer_transaction_replay"]["ok"]},
         {"id": "capability_lifecycle_complete", "ok": manifest["capability_lifecycle_replay"]["ok"]},
+        {"id": "device_component_modules_ready", "ok": manifest["device_component_modules"]["ok"]},
+        {"id": "device_component_tests_ready", "ok": manifest["device_component_tests"]["ok"]},
     )
     return {
         "format": "appgen.generated-mobile-device-runtime-validation.v1",

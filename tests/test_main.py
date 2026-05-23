@@ -11410,7 +11410,35 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "runtime_replay_complete",
         "designer_replay_complete",
         "capability_lifecycle_complete",
+        "device_component_modules_ready",
+        "device_component_tests_ready",
     } <= set(mobile_runtime_smoke["checks"])
+    device_module_manifest = mobile_runtime.device_api_component_module_manifest()
+    device_test_manifest = mobile_runtime.device_api_component_test_module_manifest()
+    assert device_module_manifest["ok"] is True
+    assert device_test_manifest["ok"] is True
+    assert {item["api"] for item in device_module_manifest["components"]} == generated_mobile_apis
+    assert {item["api"] for item in device_test_manifest["tests"]} == generated_mobile_apis
+    camera_device_component = _load_module(output_dir / "device_api_components" / "camera.py", "generated_camera_device_component")
+    camera_component_smoke = camera_device_component.smoke_test()
+    assert camera_component_smoke["format"] == "appgen.device-api-component-smoke-test.v1"
+    assert camera_component_smoke["ok"] is True
+    assert camera_device_component.permission_manifest()["api"] == "camera"
+    assert camera_device_component.simulator_fixture()["api"] == "camera"
+    assert camera_device_component.replay("android")["ok"] is True
+    nfc_device_component = _load_module(output_dir / "device_api_components" / "nfc.py", "generated_nfc_device_component")
+    assert nfc_device_component.replay("web-pwa")["decision"] == "blocked_unsupported_target"
+    assert nfc_device_component.replay("web-pwa")["ok"] is False
+    for item in device_module_manifest["components"]:
+        component_path = output_dir / item["path"].replace("app/", "")
+        py_compile.compile(str(component_path), doraise=True)
+        module = _load_module(component_path, f"generated_device_component_{item['api']}")
+        assert module.smoke_test()["ok"] is True
+    for item in device_test_manifest["tests"]:
+        test_path = output_dir / item["path"].replace("app/", "")
+        py_compile.compile(str(test_path), doraise=True)
+        module = _load_module(test_path, f"generated_device_component_test_{item['api']}")
+        assert module.smoke_test()["ok"] is True
     assert mobile_runtime.replay_device_api("camera", "android")["ok"] is True
     unsupported_replay = mobile_runtime.replay_device_api("nfc", "web-pwa")
     assert unsupported_replay["ok"] is False
