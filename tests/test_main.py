@@ -163,6 +163,7 @@ from pyAppGen.form_designer import data_tooling_preview_query
 from pyAppGen.form_designer import data_tooling_preview_schema_diff
 from pyAppGen.form_designer import data_tooling_publish_resource
 from pyAppGen.form_designer import data_tooling_rehearse_offline_replay_operation
+from pyAppGen.form_designer import data_tooling_failover_transaction_replay_contract
 from pyAppGen.form_designer import data_tooling_run_module_smoke_operation
 from pyAppGen.form_designer import data_tooling_test_connection
 from pyAppGen.form_designer import rad_parity_workbench
@@ -1328,6 +1329,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "data_tooling_runtime_replay",
         "data_tooling_design_runtime_session_replay",
         "data_tooling_publish_transaction_replay",
+        "data_tooling_failover_transaction_replay",
     } == {check["id"] for check in data_workbench["checks"]}
     assert data_tooling_test_connection()["ok"] is True
     assert data_tooling_test_connection()["pipeline"][-1] == "rollback_test_transaction"
@@ -1449,6 +1451,27 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     } <= {item["phase"] for item in data_workbench["publish_transaction_replay"]["replay"]}
     assert data_workbench["publish_transaction_replay"]["final_state"]["service_artifacts"] > 0
     assert data_workbench["publish_transaction_replay"]["final_state"]["runtime_steps"] > 0
+    failover_replay = data_tooling_failover_transaction_replay_contract()
+    assert failover_replay["format"] == "appgen.data-tooling-failover-transaction-replay.v1"
+    assert failover_replay["ok"] is True
+    assert {
+        "probe_and_pool_connection",
+        "quarantine_and_route_failover",
+        "rollback_preview_sql_and_routines",
+        "verify_restore_drill",
+        "surface_replication_and_telemetry",
+        "manual_review_offline_replay",
+        "smoke_after_failover",
+    } <= {item["phase"] for item in failover_replay["replay"]}
+    assert failover_replay["final_state"]["active_route"] == "local_embedded"
+    assert failover_replay["final_state"]["persisted_writes"] == 0
+    assert {
+        "failed_route_quarantined_before_retry",
+        "sql_and_routines_previewed_with_rollback",
+        "offline_replay_pauses_for_manual_review",
+    } <= set(failover_replay["guards"])
+    assert data_workbench["failover_transaction_replay"]["ok"] is True
+    assert data_workbench["failover_transaction_replay"]["final_state"]["manual_review"] is True
     mobile_workbench = mobile_native_api_workbench()
     assert mobile_workbench["format"] == "appgen.mobile-native-api-workbench.v1"
     assert mobile_workbench["ok"] is True
@@ -10259,6 +10282,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "data_tooling_runtime_replay",
         "data_tooling_design_runtime_session_replay",
         "data_tooling_publish_transaction_replay",
+        "data_tooling_failover_transaction_replay",
     } == {check["id"] for check in generated_data_tooling["checks"]}
     generated_connection = form_designer.data_tooling_test_connection()
     assert generated_connection["ok"] is True
@@ -10385,6 +10409,23 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     } <= {item["phase"] for item in generated_data_tooling["publish_transaction_replay"]["replay"]}
     assert generated_data_tooling["publish_transaction_replay"]["final_state"]["offline_entries"] > 0
     assert generated_data_tooling["publish_transaction_replay"]["final_state"]["module_smokes"] > 0
+    generated_failover_replay = form_designer.data_tooling_failover_transaction_replay_contract()
+    assert generated_failover_replay["format"] == "appgen.generated-data-tooling-failover-transaction-replay.v1"
+    assert generated_failover_replay["ok"] is True
+    assert {
+        "probe_and_pool_connection",
+        "quarantine_and_route_failover",
+        "rollback_preview_sql_and_routines",
+        "verify_restore_drill",
+        "surface_replication_and_telemetry",
+        "manual_review_offline_replay",
+        "smoke_after_failover",
+    } <= {item["phase"] for item in generated_failover_replay["replay"]}
+    assert generated_failover_replay["final_state"]["active_route"] == "local_embedded"
+    assert generated_failover_replay["final_state"]["persisted_writes"] == 0
+    assert "failed_route_quarantined_before_retry" in generated_failover_replay["guards"]
+    assert generated_data_tooling["failover_transaction_replay"]["ok"] is True
+    assert generated_data_tooling["failover_transaction_replay"]["final_state"]["manual_review"] is True
     generated_mobile = form_designer.mobile_native_api_workbench()
     assert generated_mobile["format"] == "appgen.generated-mobile-native-api-workbench.v1"
     assert generated_mobile["ok"] is True
