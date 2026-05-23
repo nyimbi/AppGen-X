@@ -1759,6 +1759,7 @@ def write_form_designer_file(output_dir, schema: AppSchema):
     write_inspector_module_files(output_dir)
     write_binding_module_files(output_dir)
     write_package_manager_module_files(output_dir)
+    write_native_form_module_files(output_dir)
 
 
 DEVICE_API_COMPONENTS = (
@@ -1835,6 +1836,15 @@ PACKAGE_MANAGER_MODULES = (
     "package_lifecycle_module",
     "package_update_module",
     "package_rollback_module",
+)
+
+NATIVE_FORM_MODULES = (
+    "native_stream_module",
+    "native_unit_module",
+    "native_resource_module",
+    "native_compile_module",
+    "native_runtime_load_module",
+    "native_design_edit_module",
 )
 
 
@@ -2025,6 +2035,26 @@ def write_package_manager_module_files(output_dir):
         )
 
 
+def write_native_form_module_files(output_dir):
+    """Write generated native form stream/runtime modules and smoke tests."""
+    output_dir = Path(output_dir)
+    module_dir = output_dir / "native_form_modules"
+    test_dir = output_dir / "native_form_module_tests"
+    module_dir.mkdir(parents=True, exist_ok=True)
+    test_dir.mkdir(parents=True, exist_ok=True)
+    (module_dir / "__init__.py").write_text(_native_form_module_init_text(), encoding="utf-8")
+    (test_dir / "__init__.py").write_text(_native_form_module_test_init_text(), encoding="utf-8")
+    for module_name in NATIVE_FORM_MODULES:
+        (module_dir / f"{module_name}.py").write_text(
+            _native_form_module_text(module_name),
+            encoding="utf-8",
+        )
+        (test_dir / f"test_{module_name}.py").write_text(
+            _native_form_module_test_text(module_name),
+            encoding="utf-8",
+        )
+
+
 def _module_name(name: str) -> str:
     """Return a stable snake-case module name for a component or package."""
     chars = []
@@ -2125,6 +2155,248 @@ def _package_manager_module_test_init_text() -> str:
         '"""Generated package manager module tests."""\n\n'
         f"PACKAGE_MANAGER_MODULE_TESTS = {modules!r}\n"
     )
+
+
+def _native_form_module_init_text() -> str:
+    return (
+        '"""Generated native form stream/runtime modules."""\n\n'
+        f"NATIVE_FORM_MODULES = {NATIVE_FORM_MODULES!r}\n"
+    )
+
+
+def _native_form_module_test_init_text() -> str:
+    modules = tuple(f"test_{name}" for name in NATIVE_FORM_MODULES)
+    return (
+        '"""Generated native form stream/runtime module tests."""\n\n'
+        f"NATIVE_FORM_MODULE_TESTS = {modules!r}\n"
+    )
+
+
+def _native_form_module_text(module_name: str) -> str:
+    return f'''"""Generated native form stream/runtime module for {module_name}."""
+
+from __future__ import annotations
+
+import importlib.util
+from pathlib import Path
+
+
+MODULE = {module_name!r}
+EXPECTED_EXPORTS = (
+    "module_contract",
+    "native_form_manifest",
+    "run_native_form_operation",
+    "runtime_manifest",
+    "smoke_test",
+)
+
+
+def _load_sibling(module_name):
+    module_path = Path(__file__).resolve().parents[1] / f"{{module_name}}.py"
+    spec = importlib.util.spec_from_file_location(f"generated_native_form_{{MODULE}}_{{module_name}}", module_path)
+    module = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(module)
+    return module
+
+
+def _form_designer():
+    return _load_sibling("form_designer")
+
+
+def _runtime():
+    return _load_sibling("native_form_runtime")
+
+
+def _operations():
+    return _load_sibling("runtime_operations")
+
+
+def _module_kind():
+    return {{
+        "native_stream_module": "stream",
+        "native_unit_module": "unit",
+        "native_resource_module": "resource",
+        "native_compile_module": "compile",
+        "native_runtime_load_module": "runtime_load",
+        "native_design_edit_module": "design_edit",
+    }}[MODULE]
+
+
+def module_contract():
+    """Return this generated native form module's export contract."""
+    available = tuple(name for name in EXPECTED_EXPORTS if name in globals())
+    return {{
+        "format": "appgen.native-form-module-contract.v1",
+        "module": MODULE,
+        "kind": _module_kind(),
+        "ok": set(EXPECTED_EXPORTS) <= set(available),
+        "exports": available,
+        "expected_exports": EXPECTED_EXPORTS,
+        "side_effects": (),
+    }}
+
+
+def native_form_manifest(table_name=None):
+    """Return the native form metadata owned by this generated module."""
+    designer = _form_designer()
+    runtime_manifest_data = _runtime().native_form_runtime_manifest(table_name)
+    operations_manifest = _operations().runtime_operations_manifest(table_name)
+    kind = _module_kind()
+    payload = {{
+        "stream": {{
+            "streaming": runtime_manifest_data["streaming"],
+            "text_round_trip": designer.dfm_round_trip(table_name),
+            "binary_round_trip": designer.dfm_binary_round_trip(table_name),
+            "stream_variants": designer.dfm_stream_variant_round_trip_contract(table_name),
+        }},
+        "unit": {{
+            "unit": runtime_manifest_data["unit"],
+            "unit_parse": runtime_manifest_data["unit_parse"],
+            "form_stream_schema": runtime_manifest_data["form_stream_schema"],
+        }},
+        "resource": {{
+            "resources": runtime_manifest_data["resources"],
+            "artifact_parity": runtime_manifest_data["artifact_parity"],
+        }},
+        "compile": {{
+            "compiler": runtime_manifest_data["compiler"],
+            "compile_preview": operations_manifest["operations"]["compile_preview"],
+        }},
+        "runtime_load": {{
+            "runtime_replay": runtime_manifest_data["runtime_replay"],
+            "runtime_memory_model": runtime_manifest_data["runtime_memory_model"],
+            "reload_runtime_preview": operations_manifest["operations"]["reload_runtime_preview"],
+        }},
+        "design_edit": {{
+            "design_edit_replay": runtime_manifest_data["design_edit_replay"],
+            "open_design_stream": operations_manifest["operations"]["open_design_stream"],
+            "apply_property_delta": operations_manifest["operations"]["apply_property_delta"],
+        }},
+    }}[kind]
+    return {{
+        "format": "appgen.native-form-module-manifest.v1",
+        "module": MODULE,
+        "kind": kind,
+        "table": table_name,
+        "ok": bool(payload) and runtime_manifest_data["ok"] and operations_manifest["ok"],
+        "payload": payload,
+        "runtime_checks": runtime_manifest_data["checks"],
+        "operation_names": operations_manifest["operation_names"],
+        "side_effects": (),
+    }}
+
+
+def run_native_form_operation(table_name=None):
+    """Run this module's side-effect-free native form operation."""
+    runtime = _runtime()
+    operations = _operations()
+    kind = _module_kind()
+    operation = {{
+        "stream": operations.run_runtime_operation("round_trip_stream", table_name),
+        "unit": runtime.native_form_runtime_manifest(table_name)["unit_parse"],
+        "resource": operations.run_runtime_operation("refresh_resources", table_name),
+        "compile": operations.run_runtime_operation("compile_preview", table_name),
+        "runtime_load": operations.run_runtime_operation("reload_runtime_preview", table_name),
+        "design_edit": operations.run_runtime_operation("apply_property_delta", table_name),
+    }}[kind]
+    operation_ok = operation["ok"] if isinstance(operation, dict) and "ok" in operation else bool(operation)
+    side_effects = operation.get("side_effects", ()) if isinstance(operation, dict) else ()
+    return {{
+        "format": "appgen.native-form-module-operation.v1",
+        "module": MODULE,
+        "kind": kind,
+        "table": table_name,
+        "ok": operation_ok and not side_effects and runtime.replay_native_form_runtime(table_name)["ok"],
+        "operation": operation,
+        "side_effects": (),
+    }}
+
+
+def runtime_manifest(table_name=None):
+    """Return the aggregate native form runtime manifest used by this module."""
+    return _runtime().native_form_runtime_manifest(table_name)
+
+
+def smoke_test(table_name=None):
+    """Run side-effect-free checks for this generated native form module."""
+    contract = module_contract()
+    manifest = native_form_manifest(table_name)
+    operation = run_native_form_operation(table_name)
+    runtime = runtime_manifest(table_name)
+    return {{
+        "format": "appgen.native-form-module-smoke-test.v1",
+        "module": MODULE,
+        "kind": contract["kind"],
+        "ok": contract["ok"]
+        and manifest["ok"]
+        and operation["ok"]
+        and runtime["ok"]
+        and not manifest["side_effects"]
+        and not operation["side_effects"],
+        "checks": (
+            "module_contract_resolves",
+            "native_form_manifest_resolves",
+            "native_form_operation_replays",
+            "runtime_manifest_ok",
+            "no_side_effects",
+        ),
+    }}
+'''
+
+
+def _native_form_module_test_text(module_name: str) -> str:
+    return f'''"""Generated tests for the {module_name} native form module."""
+
+from __future__ import annotations
+
+import importlib.util
+from pathlib import Path
+
+
+MODULE = {module_name!r}
+
+
+def load_native_form_module():
+    """Load the generated native form module without app installation."""
+    module_path = Path(__file__).resolve().parents[1] / "native_form_modules" / f"{{MODULE}}.py"
+    spec = importlib.util.spec_from_file_location(f"generated_native_form_module_{{MODULE}}", module_path)
+    module = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(module)
+    return module
+
+
+def test_native_form_module_contract():
+    """Assert the generated native form module exposes its contract."""
+    module = load_native_form_module()
+    contract = module.module_contract()
+    assert contract["module"] == MODULE
+    assert contract["ok"] is True
+    assert all(hasattr(module, name) for name in contract["expected_exports"])
+
+
+def test_native_form_module_smoke(table_name=None):
+    """Assert the module's side-effect-free smoke test passes."""
+    module = load_native_form_module()
+    result = module.smoke_test(table_name)
+    assert result["ok"] is True
+    assert result["module"] == MODULE
+    assert result["checks"]
+
+
+def smoke_test(table_name=None):
+    """Run this generated test module in a side-effect-free way."""
+    test_native_form_module_contract()
+    test_native_form_module_smoke(table_name)
+    return {{
+        "format": "appgen.native-form-module-generated-test-smoke.v1",
+        "module": MODULE,
+        "table": table_name,
+        "ok": True,
+        "tests": ("test_native_form_module_contract", "test_native_form_module_smoke"),
+    }}
+'''
 
 
 def _package_manager_module_text(module_name: str) -> str:
@@ -5646,6 +5918,114 @@ def _load_form_designer():
     return module
 
 
+def _load_generated_module(module_path, module_name):
+    spec = importlib.util.spec_from_file_location(module_name, module_path)
+    module = importlib.util.module_from_spec(spec)
+    if spec.loader is None:
+        raise RuntimeError(f"Could not load generated module: {module_path}")
+    spec.loader.exec_module(module)
+    return module
+
+
+def native_form_module_file_manifest(table_name=None):
+    """Return file-level evidence for generated native form modules."""
+    module_names = (
+        "native_stream_module",
+        "native_unit_module",
+        "native_resource_module",
+        "native_compile_module",
+        "native_runtime_load_module",
+        "native_design_edit_module",
+    )
+    required_exports = (
+        "module_contract",
+        "native_form_manifest",
+        "run_native_form_operation",
+        "runtime_manifest",
+        "smoke_test",
+    )
+    module_dir = Path(__file__).with_name("native_form_modules")
+    entries = []
+    for module_name in module_names:
+        module_path = module_dir / f"{module_name}.py"
+        exports = ()
+        contract_ok = False
+        smoke_ok = False
+        if module_path.exists():
+            module = _load_generated_module(module_path, f"generated_native_form_module_{module_name}")
+            exports = tuple(name for name in required_exports if hasattr(module, name))
+            contract = module.module_contract()
+            smoke = module.smoke_test(table_name)
+            contract_ok = contract["ok"] and contract["module"] == module_name
+            smoke_ok = smoke["ok"] and smoke["module"] == module_name
+        entries.append(
+            {
+                "module": module_name,
+                "path": f"app/native_form_modules/{module_name}.py",
+                "exists": module_path.exists(),
+                "exports": exports,
+                "expected_exports": required_exports,
+                "contract_ok": contract_ok,
+                "smoke_ok": smoke_ok,
+            }
+        )
+    return {
+        "format": "appgen.generated-native-form-module-file-manifest.v1",
+        "ok": bool(entries)
+        and all(item["exists"] and item["contract_ok"] and item["smoke_ok"] and set(item["expected_exports"]) <= set(item["exports"]) for item in entries),
+        "modules": tuple(entries),
+        "guards": ("one_file_per_native_form_surface", "declared_exports_present", "module_smoke_replays"),
+        "side_effects": (),
+    }
+
+
+def native_form_module_test_file_manifest(table_name=None):
+    """Return file-level evidence for generated native form module tests."""
+    module_names = (
+        "native_stream_module",
+        "native_unit_module",
+        "native_resource_module",
+        "native_compile_module",
+        "native_runtime_load_module",
+        "native_design_edit_module",
+    )
+    required_exports = (
+        "load_native_form_module",
+        "test_native_form_module_contract",
+        "test_native_form_module_smoke",
+        "smoke_test",
+    )
+    test_dir = Path(__file__).with_name("native_form_module_tests")
+    entries = []
+    for module_name in module_names:
+        module_path = test_dir / f"test_{module_name}.py"
+        exports = ()
+        smoke_ok = False
+        if module_path.exists():
+            module = _load_generated_module(module_path, f"generated_native_form_module_test_{module_name}")
+            exports = tuple(name for name in required_exports if hasattr(module, name))
+            smoke = module.smoke_test(table_name)
+            smoke_ok = smoke["ok"] and smoke["module"] == module_name
+        entries.append(
+            {
+                "module": module_name,
+                "path": f"app/native_form_module_tests/test_{module_name}.py",
+                "exists": module_path.exists(),
+                "exports": exports,
+                "required_exports": required_exports,
+                "smoke_ok": smoke_ok,
+            }
+        )
+    return {
+        "format": "appgen.generated-native-form-module-test-file-manifest.v1",
+        "ok": bool(entries) and all(item["exists"] and item["smoke_ok"] and set(item["required_exports"]) <= set(item["exports"]) for item in entries),
+        "tests": tuple(entries),
+        "required_exports": required_exports,
+        "guards": ("one_test_file_per_native_form_surface", "contract_and_smoke_tests_exported"),
+        "side_effects": (),
+    }
+
+
 def native_form_runtime_manifest(table_name=None):
     """Return form stream, unit, resource, compile, and load replay evidence."""
     form_designer = _load_form_designer()
@@ -5723,6 +6103,8 @@ def validate_native_form_runtime(table_name=None):
     """Validate generated native form streaming and runtime readiness."""
     manifest = native_form_runtime_manifest(table_name)
     replay = replay_native_form_runtime(table_name)
+    module_files = native_form_module_file_manifest(table_name)
+    module_tests = native_form_module_test_file_manifest(table_name)
     checks = (
         {"id": "manifest_ok", "ok": manifest["ok"]},
         {"id": "stream_formats_supported", "ok": {"text-dfm", "binary-dfm", "json-form-model"} <= set(manifest["streaming"]["stream_formats"])},
@@ -5732,6 +6114,8 @@ def validate_native_form_runtime(table_name=None):
         {"id": "runtime_replay_side_effect_free", "ok": manifest["runtime_replay"]["ok"] and not manifest["runtime_replay"]["side_effects"]},
         {"id": "design_edit_replay_side_effect_free", "ok": manifest["design_edit_replay"]["ok"] and not manifest["design_edit_replay"]["side_effects"]},
         {"id": "artifact_parity_declared", "ok": "runtime_diff_visible" in manifest["artifact_parity"]["guards"]},
+        {"id": "native_form_modules_ready", "ok": module_files["ok"] and not module_files["side_effects"]},
+        {"id": "native_form_module_tests_ready", "ok": module_tests["ok"] and not module_tests["side_effects"]},
         {"id": "runtime_load_replay", "ok": replay["ok"] and not replay["side_effects"]},
     )
     return {
@@ -5739,6 +6123,8 @@ def validate_native_form_runtime(table_name=None):
         "ok": all(check["ok"] for check in checks),
         "checks": checks,
         "manifest": manifest,
+        "module_files": module_files,
+        "module_tests": module_tests,
         "replay": replay,
         "blocking_gaps": tuple(check for check in checks if not check["ok"]),
     }

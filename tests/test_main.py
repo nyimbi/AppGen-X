@@ -11406,8 +11406,41 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "runtime_replay_side_effect_free",
         "design_edit_replay_side_effect_free",
         "artifact_parity_declared",
+        "native_form_modules_ready",
+        "native_form_module_tests_ready",
         "runtime_load_replay",
     } <= set(native_runtime_smoke["checks"])
+    native_form_module_files = native_runtime.native_form_module_file_manifest("Book")
+    native_form_module_tests = native_runtime.native_form_module_test_file_manifest("Book")
+    assert native_form_module_files["ok"] is True
+    assert native_form_module_tests["ok"] is True
+    assert {item["module"] for item in native_form_module_files["modules"]} == {
+        "native_stream_module",
+        "native_unit_module",
+        "native_resource_module",
+        "native_compile_module",
+        "native_runtime_load_module",
+        "native_design_edit_module",
+    }
+    assert {item["module"] for item in native_form_module_tests["tests"]} == {
+        "native_stream_module",
+        "native_unit_module",
+        "native_resource_module",
+        "native_compile_module",
+        "native_runtime_load_module",
+        "native_design_edit_module",
+    }
+    for item in native_form_module_files["modules"]:
+        module_path = output_dir / item["path"].replace("app/", "")
+        py_compile.compile(str(module_path), doraise=True)
+        module = _load_module(module_path, f"generated_native_form_module_{item['module']}")
+        assert module.smoke_test("Book")["ok"] is True
+        assert module.module_contract()["ok"] is True
+    for item in native_form_module_tests["tests"]:
+        test_path = output_dir / item["path"].replace("app/", "")
+        py_compile.compile(str(test_path), doraise=True)
+        module = _load_module(test_path, f"generated_native_form_module_test_{item['module']}")
+        assert module.smoke_test("Book")["ok"] is True
     native_replay = native_runtime.replay_native_form_runtime("Book")
     assert native_replay["ok"] is True
     assert "runtime_load" in native_replay["runtime_phases"]
