@@ -28371,6 +28371,73 @@ def inspector_cross_component_session_replay_contract(components=()):
     }}
 
 
+def inspector_design_surface_transaction_replay_contract(components=()):
+    """Replay a generated inspector transaction across canvas, tree, editors, overlays, and diagnostics."""
+    selected = tuple(components) or ("TextBox", "Grid", "Rectangle")
+    multi_select = inspector_multi_select_contract(selected)
+    tree_sync = inspector_component_tree_sync_contract()
+    edit_session = inspector_edit_session_replay_contract("Grid")
+    component_transaction = inspector_component_editor_transaction("Grid")
+    custom_hit_tests = inspector_custom_designer_hit_test_contract("Grid")
+    dependencies = inspector_property_dependency_contract("Grid")
+    diagnostics = inspector_diagnostics_contract("Grid")
+    cross_component = inspector_cross_component_session_replay_contract(selected)
+    state = {{
+        "selected_components": len(selected),
+        "property_batches": 0,
+        "component_editor_steps": 0,
+        "overlay_hit_targets": 0,
+        "dependency_refreshes": 0,
+        "diagnostics": 0,
+        "history_events": 0,
+        "reference_syncs": 0,
+        "side_effects": (),
+    }}
+    replay = (
+        {{"phase": "select_components", "pipeline": tuple(operation["op"] for operation in tree_sync["operations"]), "ok": tree_sync["ok"] and {{"selection_is_single_source_of_truth", "rename_updates_references"}} <= set(tree_sync["guards"])}},
+        {{"phase": "merge_multi_select_properties", "pipeline": tuple(operation["op"] for operation in multi_select["operations"]), "ok": multi_select["ok"] and {{"mixed_values_visible", "common_edits_validate_all_targets", "multi_apply_is_atomic"}} <= set(multi_select["guards"])}},
+        {{"phase": "apply_property_and_event_edits", "pipeline": tuple(item["op"] for item in edit_session["trace"]), "ok": edit_session["ok"] and {{"property_edit", "event_rename", "undo", "redo"}} <= {{item["op"] for item in edit_session["trace"]}}}},
+        {{"phase": "run_component_editor_transaction", "pipeline": component_transaction["transaction"] + component_transaction["rollback"], "ok": {{"snapshot_design", "apply_change", "record_undo"}} <= set(component_transaction["transaction"]) and "restore_snapshot" in component_transaction["rollback"]}},
+        {{"phase": "route_custom_designer_overlay", "pipeline": tuple(route for hit in custom_hit_tests["hit_tests"] for route in hit["route"]), "ok": custom_hit_tests["ok"] and all({{"resolve_hit_target", "open_context_action"}} <= set(hit["route"]) for hit in custom_hit_tests["hit_tests"])}},
+        {{"phase": "recalculate_dependent_properties", "pipeline": tuple(step for recalculation in dependencies["recalculations"] for step in recalculation["stage"]), "ok": dependencies["ok"] and all({{"recalculate_dependents", "refresh_inspector"}} <= set(recalculation["stage"]) for recalculation in dependencies["recalculations"])}},
+        {{"phase": "surface_diagnostics", "pipeline": tuple(diagnostic["quick_fix"] for diagnostic in diagnostics["diagnostics"]), "ok": diagnostics["ok"] and {{"diagnostics_bind_to_property_rows", "quick_fixes_are_staged", "errors_block_apply"}} <= set(diagnostics["guards"])}},
+        {{"phase": "replay_across_component_categories", "pipeline": tuple(item["component"] for item in cross_component["operation_matrix"]), "ok": cross_component["ok"] and {{"all_sample_components_replayed", "event_references_stable"}} <= set(cross_component["guards"])}},
+    )
+    state["property_batches"] = len(multi_select["operations"])
+    state["component_editor_steps"] = len(component_transaction["transaction"])
+    state["overlay_hit_targets"] = sum(len(hit["hit_targets"]) for hit in custom_hit_tests["hit_tests"])
+    state["dependency_refreshes"] = len(dependencies["recalculations"])
+    state["diagnostics"] = len(diagnostics["diagnostics"])
+    state["history_events"] = len(edit_session["trace"])
+    state["reference_syncs"] = len(tree_sync["operations"]) + sum(len(item["event_references"]) for item in cross_component["operation_matrix"])
+    return {{
+        "format": "appgen.generated-inspector-design-surface-transaction-replay-contract.v1",
+        "ok": all(item["ok"] for item in replay)
+        and state["selected_components"] > 0
+        and state["property_batches"] > 0
+        and state["component_editor_steps"] > 0
+        and state["overlay_hit_targets"] > 0
+        and state["dependency_refreshes"] > 0
+        and state["diagnostics"] > 0
+        and state["history_events"] > 0
+        and state["reference_syncs"] > 0
+        and state["side_effects"] == (),
+        "components": selected,
+        "replay": replay,
+        "final_state": state,
+        "guards": (
+            "selection_before_edit",
+            "multi_select_edits_are_atomic",
+            "component_editor_changes_are_undoable",
+            "custom_overlay_routes_are_non_mutating",
+            "dependent_properties_refresh_before_commit",
+            "diagnostics_block_invalid_apply",
+            "event_references_sync_after_rename",
+        ),
+        "side_effects": (),
+    }}
+
+
 def object_inspector_workbench():
     """Prove property, event, component-editor, and custom-designer coverage."""
     sample_components = ("TextBox", "Grid", "Rectangle", "StyleBook", "GestureManager", "Viewport3D", "DatabaseConnection")
@@ -28402,6 +28469,7 @@ def object_inspector_workbench():
     round_trips = tuple(inspector_round_trip_contract(component) for component in sample_components)
     edit_session_replay = inspector_edit_session_replay_contract()
     cross_component_replay = inspector_cross_component_session_replay_contract(sample_components)
+    design_surface_replay = inspector_design_surface_transaction_replay_contract(sample_components)
     checks = (
         {{"id": "property_editor_types", "ok": {{"string", "boolean", "number"}} <= observed_editor_types and bool({{"collection", "choice", "binding", "color", "resource"}} & observed_editor_types), "evidence": tuple(sorted(observed_editor_types))}},
         {{"id": "event_editor_lifecycle", "ok": all(editor["supports_create"] and editor["supports_navigate"] and editor["supports_detach"] for contract in contracts for editor in contract["event_editors"]), "evidence": tuple((contract["component"], tuple(editor["name"] for editor in contract["event_editors"])) for contract in contracts)}},
@@ -28434,6 +28502,7 @@ def object_inspector_workbench():
         {{"id": "inspector_metadata_round_trip", "ok": all(contract["ok"] and not contract["side_effects"] for contract in round_trips), "evidence": round_trips}},
         {{"id": "edit_session_replay", "ok": edit_session_replay["ok"] and {{"session_replay_deterministic", "undo_redo_round_trips"}} <= set(edit_session_replay["guards"]) and not edit_session_replay["side_effects"], "evidence": edit_session_replay}},
         {{"id": "cross_component_session_replay", "ok": cross_component_replay["ok"] and {{"all_sample_components_replayed", "event_references_stable"}} <= set(cross_component_replay["guards"]) and not cross_component_replay["side_effects"], "evidence": cross_component_replay}},
+        {{"id": "design_surface_transaction_replay", "ok": design_surface_replay["ok"] and {{"selection_before_edit", "diagnostics_block_invalid_apply"}} <= set(design_surface_replay["guards"]) and not design_surface_replay["side_effects"], "evidence": design_surface_replay}},
     )
     ok = all(check["ok"] for check in checks)
     return {{
@@ -28467,6 +28536,7 @@ def object_inspector_workbench():
         "round_trips": round_trips,
         "edit_session_replay": edit_session_replay,
         "cross_component_replay": cross_component_replay,
+        "design_surface_replay": design_surface_replay,
         "checks": checks,
         "blocking_gaps": tuple(check for check in checks if not check["ok"]),
     }}

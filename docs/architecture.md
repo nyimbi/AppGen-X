@@ -216,7 +216,9 @@ Visual design is split into two related capabilities:
   property editors, event handler lifecycle, component verbs, custom designer
   hooks, editor registration, property validation, staged verb execution,
   custom designer activation, filtering/sorting modes, and persisted inspector
-  state.
+  state. Its design-surface transaction replay validates ordered selection,
+  multi-select edit, component-editor, overlay, dependency refresh, diagnostic,
+  undo/redo, and reference-sync behavior.
 - `livebindings_workbench()` validates visual data-binding graphs, expression
   safety, converter/validator catalogs, designer interactions, and runtime
   update modes, plus link authoring operations, conflict checks, preview

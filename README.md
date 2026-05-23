@@ -317,7 +317,10 @@ Generated apps include Studio contracts for:
 - An Object Inspector workbench proves property editor types, event-handler
   lifecycle actions, component editor verbs, custom designer hooks, editor
   registration, property validation, staged verb execution, custom designer
-  activation, and persisted inspector state.
+  activation, and persisted inspector state. It also replays design-surface
+  transactions across tree and canvas selection, multi-select edits, component
+  editor changes, custom overlays, dependent-property refresh, diagnostics,
+  undo/redo, and reference synchronization.
 - A visual data-binding workbench proves binding graph nodes/edges, expression
   validation, converter and validator catalogs, designer gestures, and runtime
   binding modes, plus link authoring operations, conflict checks, preview

@@ -881,6 +881,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "inspector_metadata_round_trip",
         "edit_session_replay",
         "cross_component_session_replay",
+        "design_surface_transaction_replay",
     } == {check["id"] for check in inspector_workbench["checks"]}
     assert all("apply_change" in workflow["workflow"] for workflow in inspector_workbench["property_edit_workflows"])
     assert all("update_component_reference" in workflow["workflow"] for workflow in inspector_workbench["event_edit_workflows"])
@@ -940,6 +941,19 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     )
     assert all(item["final_history_depth"] >= 1 for item in inspector_workbench["cross_component_replay"]["operation_matrix"])
     assert any("enable_redo" in item["pipeline"] for item in inspector_workbench["edit_session_replay"]["trace"])
+    assert inspector_workbench["design_surface_replay"]["ok"] is True
+    assert {
+        "select_components",
+        "merge_multi_select_properties",
+        "apply_property_and_event_edits",
+        "run_component_editor_transaction",
+        "route_custom_designer_overlay",
+        "recalculate_dependent_properties",
+        "surface_diagnostics",
+        "replay_across_component_categories",
+    } <= {item["phase"] for item in inspector_workbench["design_surface_replay"]["replay"]}
+    assert inspector_workbench["design_surface_replay"]["final_state"]["overlay_hit_targets"] > 0
+    assert inspector_workbench["design_surface_replay"]["final_state"]["reference_syncs"] > 0
     binding_graph = livebindings_graph_contract()
     assert binding_graph["format"] == "appgen.livebindings-graph.v1"
     assert {"dataset", "field", "control", "expression"} <= {node["kind"] for node in binding_graph["nodes"]}
@@ -9897,6 +9911,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "inspector_metadata_round_trip",
         "edit_session_replay",
         "cross_component_session_replay",
+        "design_surface_transaction_replay",
     } == {check["id"] for check in generated_inspector["checks"]}
     assert generated_inspector["editor_registries"]
     assert generated_inspector["state_persistence"]["state_keys"]
@@ -9950,6 +9965,19 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         for item in generated_inspector["cross_component_replay"]["operation_matrix"]
     )
     assert all(item["event_references"] for item in generated_inspector["cross_component_replay"]["operation_matrix"])
+    assert generated_inspector["design_surface_replay"]["ok"] is True
+    assert {
+        "select_components",
+        "merge_multi_select_properties",
+        "apply_property_and_event_edits",
+        "run_component_editor_transaction",
+        "route_custom_designer_overlay",
+        "recalculate_dependent_properties",
+        "surface_diagnostics",
+        "replay_across_component_categories",
+    } <= {item["phase"] for item in generated_inspector["design_surface_replay"]["replay"]}
+    assert generated_inspector["design_surface_replay"]["final_state"]["property_batches"] > 0
+    assert generated_inspector["design_surface_replay"]["final_state"]["diagnostics"] > 0
     generated_usability = form_designer.component_usability_workbench()
     assert generated_usability["format"] == "appgen.generated-component-usability-workbench.v1"
     assert generated_usability["ok"] is True

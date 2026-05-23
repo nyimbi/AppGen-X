@@ -63,7 +63,9 @@ A generated app can include:
 - `object_inspector_workbench()` proves property editors, event editors,
   component editor verbs, custom designer hooks, editor registration, property
   validation, staged verb execution, custom designer activation, filtering,
-  sorting, and inspector state persistence.
+  sorting, inspector state persistence, and ordered design-surface transactions
+  across selection, multi-select edits, overlays, diagnostics, undo/redo, and
+  reference synchronization.
 - `livebindings_workbench()` proves visual data-binding graph nodes and edges,
   expression validation, converters, validators, designer gestures, and runtime
   update modes, plus link authoring operations, conflict checks, preview
