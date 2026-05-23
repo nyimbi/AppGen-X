@@ -8,11 +8,32 @@ import { InspectorPanel } from './InspectorPanel'
 import { PackageManager } from './PackageManager'
 import { StatusRail } from './StatusRail'
 import { StudioChrome } from './StudioChrome'
+import { paletteCategories } from './componentCatalog'
 import type { ComponentCategory } from './componentCatalog'
 
+type StudioInitialState = {
+  category: ComponentCategory | 'All'
+  query: string
+}
+
+export function readStudioInitialState(search = typeof window === 'undefined' ? '' : window.location.search): StudioInitialState {
+  const params = new URLSearchParams(search)
+  const requestedCategory = params.get('studioCategory')
+  const category =
+    requestedCategory && paletteCategories.includes(requestedCategory as ComponentCategory)
+      ? (requestedCategory as ComponentCategory)
+      : 'All'
+
+  return {
+    category,
+    query: params.get('studioQuery') ?? '',
+  }
+}
+
 function App() {
-  const [activeCategory, setActiveCategory] = useState<ComponentCategory | 'All'>('All')
-  const [query, setQuery] = useState('')
+  const initialState = readStudioInitialState()
+  const [activeCategory, setActiveCategory] = useState<ComponentCategory | 'All'>(initialState.category)
+  const [query, setQuery] = useState(initialState.query)
 
   return (
     <div className="app-shell">
