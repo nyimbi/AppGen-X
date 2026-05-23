@@ -985,6 +985,9 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "platform_fallback_workflow",
         "privacy_review_workflow",
         "background_resume_workflow",
+        "api_capability_matrix",
+        "device_event_traces",
+        "native_bridge_matrix",
     } == {check["id"] for check in mobile_workbench["checks"]}
     mobile_apis = set(mobile_workbench["contract"]["apis"])
     assert {
@@ -1014,6 +1017,11 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     assert "designer_warning_visible" in mobile_workbench["platform_fallback"]["guards"]
     assert "least_privilege" in mobile_workbench["privacy_review"]["review_items"]
     assert "resume_foreground" in mobile_workbench["background_resume"]["schedule"]
+    assert all(row["ok"] and row["privacy_prompt"] for row in mobile_workbench["capability_matrix"]["rows"])
+    assert all(trace["events"] for trace in mobile_workbench["event_traces"]["traces"])
+    assert {"android", "ios", "desktop", "web-pwa"} <= {
+        bridge["target"] for bridge in mobile_workbench["bridge_matrix"]["bridges"]
+    }
     visual_depth = cross_target_visual_depth_workbench()
     assert visual_depth["format"] == "appgen.cross-target-visual-depth-workbench.v1"
     assert visual_depth["ok"] is True
@@ -1040,6 +1048,9 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "effect_budget_validation",
         "scene_graph_integrity",
         "material_binding",
+        "timeline_runtime_export",
+        "shader_material_editor",
+        "scene_hit_testing",
     } == {check["id"] for check in visual_depth["checks"]}
     assert {"inspect_effective_value", "revert_override"} <= set(visual_depth["contract"]["style_cascade"]["operations"])
     assert {"add_keyframe", "scrub_preview"} <= set(visual_depth["contract"]["timeline_authoring"]["operations"])
@@ -1055,6 +1066,9 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     assert visual_depth["effect_budget"]["ok"] is True
     assert visual_depth["scene_integrity"]["ok"] is True
     assert visual_depth["material_binding"]["ok"] is True
+    assert all("native_timeline" in export["artifacts"] for export in visual_depth["timeline_runtime_export"]["exports"])
+    assert "compile_fallback" in visual_depth["shader_material_editor"]["operations"]
+    assert all("open_inspector" in item["route"] for item in visual_depth["scene_hit_testing"]["hit_tests"])
     third_party_registry = third_party_component_registry()
     assert {"devexpress-native", "tms-fnc", "fastreport", "teechart", "indy"} <= {
         item["id"] for item in third_party_registry
@@ -9217,6 +9231,9 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "platform_fallback_workflow",
         "privacy_review_workflow",
         "background_resume_workflow",
+        "api_capability_matrix",
+        "device_event_traces",
+        "native_bridge_matrix",
     } == {check["id"] for check in generated_mobile["checks"]}
     generated_mobile_apis = set(generated_mobile["contract"]["apis"])
     assert {
@@ -9252,6 +9269,11 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert "designer_warning_visible" in generated_mobile["platform_fallback"]["guards"]
     assert "least_privilege" in generated_mobile["privacy_review"]["review_items"]
     assert "resume_foreground" in generated_mobile["background_resume"]["schedule"]
+    assert all(row["ok"] and row["privacy_prompt"] for row in generated_mobile["capability_matrix"]["rows"])
+    assert all(trace["events"] for trace in generated_mobile["event_traces"]["traces"])
+    assert {"android", "ios", "desktop", "web-pwa"} <= {
+        bridge["target"] for bridge in generated_mobile["bridge_matrix"]["bridges"]
+    }
     generated_visual_depth = form_designer.cross_target_visual_depth_workbench()
     assert generated_visual_depth["format"] == "appgen.generated-cross-target-visual-depth-workbench.v1"
     assert generated_visual_depth["ok"] is True
@@ -9278,6 +9300,9 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "effect_budget_validation",
         "scene_graph_integrity",
         "material_binding",
+        "timeline_runtime_export",
+        "shader_material_editor",
+        "scene_hit_testing",
     } == {check["id"] for check in generated_visual_depth["checks"]}
     assert generated_visual_depth["contract"]["asset_import"]["budgets"]["max_mesh_triangles"] > 0
     assert generated_visual_depth["style_resolution"]["ordered_layers"][0] == "base_theme"
@@ -9291,6 +9316,9 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert generated_visual_depth["scene_validation"]["ok"] is True
     assert "write_asset_manifest" in generated_visual_depth["asset_import_workflow"]["pipeline"]
     assert generated_visual_depth["preview_diff"]["diff_result"]["ok"] is True
+    assert all("native_timeline" in export["artifacts"] for export in generated_visual_depth["timeline_runtime_export"]["exports"])
+    assert "compile_fallback" in generated_visual_depth["shader_material_editor"]["operations"]
+    assert all("open_inspector" in item["route"] for item in generated_visual_depth["scene_hit_testing"]["hit_tests"])
     generated_analogs = form_designer.component_analog_workbench()
     assert generated_analogs["format"] == "appgen.generated-component-analog-workbench.v1"
     assert generated_analogs["ok"] is True

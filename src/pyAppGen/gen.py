@@ -28746,6 +28746,80 @@ def mobile_background_resume_workflow():
     }}
 
 
+def mobile_api_capability_matrix_contract():
+    """Return per-API capability, permission, adapter, and simulator coverage."""
+    contract = mobile_native_api_contract()
+    permissions = {{item["api"]: item for item in contract["permission_manifest"]["permissions"]}}
+    adapters = {{item["api"]: item for item in contract["component_adapters"]["adapters"]}}
+    fixtures = {{item["api"]: item for item in contract["simulator"]["fixtures"]}}
+    rows = tuple(
+        {{
+            "api": api,
+            "permission": permissions.get(api),
+            "adapter": adapters.get(api),
+            "fixture": fixtures.get(api),
+            "targets": adapters.get(api, {{}}).get("targets", ()),
+            "privacy_prompt": permissions.get(api, {{}}).get("prompt", ""),
+            "offline_simulatable": api in fixtures,
+            "ok": api in permissions and api in adapters and api in fixtures,
+        }}
+        for api in contract["apis"]
+    )
+    return {{
+        "format": "appgen.generated-mobile-api-capability-matrix-contract.v1",
+        "ok": bool(rows) and all(row["ok"] and row["privacy_prompt"] for row in rows),
+        "rows": rows,
+        "guards": ("least_privilege", "adapter_event_declared", "simulator_fixture_declared", "privacy_prompt_declared"),
+        "side_effects": (),
+    }}
+
+
+def mobile_device_event_trace_contract():
+    """Return replayable event traces for native device API adapters."""
+    adapters = mobile_component_adapter_contract()["adapters"]
+    fixtures = {{item["api"]: item for item in mobile_device_simulator_contract()["fixtures"]}}
+    traces = tuple(
+        {{
+            "api": adapter["api"],
+            "component": adapter["component"],
+            "fixture": fixtures.get(adapter["api"]),
+            "events": tuple(
+                {{
+                    "event": event,
+                    "trace": ("load_fixture", "check_permission", "invoke_adapter", "normalize_payload", event),
+                    "payload_shape": ("ok", "timestamp", "target", "value"),
+                }}
+                for event in adapter["events"]
+            ),
+        }}
+        for adapter in adapters
+    )
+    return {{
+        "format": "appgen.generated-mobile-device-event-trace-contract.v1",
+        "ok": bool(traces) and all(trace["fixture"] and trace["events"] for trace in traces),
+        "traces": traces,
+        "guards": ("permission_checked_before_event", "payload_normalized", "replayable_fixture", "error_event_declared"),
+        "side_effects": (),
+    }}
+
+
+def mobile_native_bridge_matrix_contract():
+    """Return bridge lifecycle evidence for mobile, desktop, and web runtime targets."""
+    bridges = (
+        {{"target": "android", "bridge": "kotlin_adapter", "lifecycle": ("request_permission", "invoke_intent", "normalize_result", "emit_event")}},
+        {{"target": "ios", "bridge": "swift_adapter", "lifecycle": ("request_permission", "invoke_controller", "normalize_result", "emit_event")}},
+        {{"target": "desktop", "bridge": "desktop_service_adapter", "lifecycle": ("check_capability", "invoke_service", "normalize_result", "emit_event")}},
+        {{"target": "web-pwa", "bridge": "browser_capability_adapter", "lifecycle": ("check_capability", "invoke_browser_api", "normalize_result", "emit_event")}},
+    )
+    return {{
+        "format": "appgen.generated-mobile-native-bridge-matrix-contract.v1",
+        "ok": all({{"normalize_result", "emit_event"}} <= set(bridge["lifecycle"]) for bridge in bridges),
+        "bridges": bridges,
+        "guards": ("capability_checked_per_target", "permission_checked_before_invocation", "normalized_payloads", "fallback_paths_declared"),
+        "side_effects": (),
+    }}
+
+
 def mobile_native_api_workbench():
     """Prove mobile/native device API component coverage and reviewability."""
     contract = mobile_native_api_contract()
@@ -28759,6 +28833,9 @@ def mobile_native_api_workbench():
     platform_fallback = mobile_platform_fallback_workflow()
     privacy_review = mobile_privacy_review_workflow()
     background_resume = mobile_background_resume_workflow()
+    capability_matrix = mobile_api_capability_matrix_contract()
+    event_traces = mobile_device_event_trace_contract()
+    bridge_matrix = mobile_native_bridge_matrix_contract()
     checks = (
         {{"id": "api_breadth", "ok": {{"camera", "photos", "location", "sensors", "biometrics", "push_notifications", "contacts", "calendar", "secure_storage", "bluetooth", "nfc", "file_picker", "share_sheet", "background_tasks", "microphone", "audio_player", "video_player", "haptics", "vibration", "clipboard", "deep_links", "app_lifecycle", "network_status", "filesystem", "device_info", "maps", "screen_capture"}} <= api_set, "evidence": contract["apis"]}},
         {{"id": "permission_manifest", "ok": api_set <= permission_apis and "least_privilege" in contract["permission_manifest"]["guards"], "evidence": contract["permission_manifest"]}},
@@ -28772,9 +28849,12 @@ def mobile_native_api_workbench():
         {{"id": "platform_fallback_workflow", "ok": platform_fallback["ok"] and "designer_warning_visible" in platform_fallback["guards"] and not platform_fallback["side_effects"], "evidence": platform_fallback}},
         {{"id": "privacy_review_workflow", "ok": api_set <= set(privacy_review["apis"]) and {{"purpose_string", "least_privilege"}} <= set(privacy_review["review_items"]) and not privacy_review["side_effects"], "evidence": privacy_review}},
         {{"id": "background_resume_workflow", "ok": {{"persist_checkpoint", "resume_foreground"}} <= set(background_resume["schedule"]) and not background_resume["side_effects"], "evidence": background_resume}},
+        {{"id": "api_capability_matrix", "ok": capability_matrix["ok"] and api_set <= {{row["api"] for row in capability_matrix["rows"]}} and not capability_matrix["side_effects"], "evidence": capability_matrix}},
+        {{"id": "device_event_traces", "ok": event_traces["ok"] and {{"payload_normalized", "replayable_fixture"}} <= set(event_traces["guards"]) and not event_traces["side_effects"], "evidence": event_traces}},
+        {{"id": "native_bridge_matrix", "ok": bridge_matrix["ok"] and {{"android", "ios", "desktop", "web-pwa"}} <= {{bridge["target"] for bridge in bridge_matrix["bridges"]}} and not bridge_matrix["side_effects"], "evidence": bridge_matrix}},
     )
     ok = all(check["ok"] for check in checks)
-    return {{"format": "appgen.generated-mobile-native-api-workbench.v1", "ok": ok, "decision": "approved" if ok else "blocked", "contract": contract, "permission_workflow": permission_workflow, "adapter_dispatch": adapter_dispatch, "simulator_replay": simulator_replay, "platform_fallback": platform_fallback, "privacy_review": privacy_review, "background_resume": background_resume, "checks": checks, "blocking_gaps": tuple(check for check in checks if not check["ok"])}}
+    return {{"format": "appgen.generated-mobile-native-api-workbench.v1", "ok": ok, "decision": "approved" if ok else "blocked", "contract": contract, "permission_workflow": permission_workflow, "adapter_dispatch": adapter_dispatch, "simulator_replay": simulator_replay, "platform_fallback": platform_fallback, "privacy_review": privacy_review, "background_resume": background_resume, "capability_matrix": capability_matrix, "event_traces": event_traces, "bridge_matrix": bridge_matrix, "checks": checks, "blocking_gaps": tuple(check for check in checks if not check["ok"])}}
 
 
 def cross_target_visual_depth_contract():
@@ -29155,6 +29235,68 @@ def cross_target_material_binding_contract():
     }}
 
 
+def cross_target_timeline_runtime_export_contract():
+    """Return exported runtime timeline artifacts for animation tracks."""
+    timeline = cross_target_animation_timeline_contract()
+    exports = tuple(
+        {{
+            "track": track["id"],
+            "property": track["property"],
+            "artifacts": ("json_timeline", "css_keyframes", "native_timeline"),
+            "duration_ms": track["keyframes"][-1][0],
+            "reduced_motion_value": track["keyframes"][-1][1],
+        }}
+        for track in timeline["tracks"]
+    )
+    return {{
+        "format": "appgen.generated-cross-target-timeline-runtime-export-contract.v1",
+        "ok": bool(exports) and all(export["duration_ms"] <= 5000 and "native_timeline" in export["artifacts"] for export in exports),
+        "exports": exports,
+        "guards": ("bounded_duration", "reduced_motion_fallback", "runtime_timeline_exported", "deterministic_timeline_ids"),
+        "side_effects": (),
+    }}
+
+
+def cross_target_shader_material_editor_contract():
+    """Return material and shader graph editing evidence for the 3D designer."""
+    graph = (
+        {{"id": "texture.basecolor", "kind": "texture", "outputs": ("color",)}},
+        {{"id": "texture.normal", "kind": "texture", "outputs": ("normal",)}},
+        {{"id": "shader.lit", "kind": "shader", "inputs": ("color", "normal", "roughness")}},
+        {{"id": "material.primary", "kind": "material", "inputs": ("shader.lit",)}},
+    )
+    operations = ("bind_texture", "edit_uniform", "preview_shader", "compile_fallback", "assign_material")
+    return {{
+        "format": "appgen.generated-cross-target-shader-material-editor-contract.v1",
+        "ok": {{"texture", "shader", "material"}} <= {{node["kind"] for node in graph}} and "compile_fallback" in operations,
+        "graph": graph,
+        "operations": operations,
+        "guards": ("shader_review_required", "fallback_thumbnail", "texture_size_budget", "material_editor_review"),
+        "side_effects": (),
+    }}
+
+
+def cross_target_scene_hit_test_contract():
+    """Return hit testing and inspector routing evidence for the 3D scene surface."""
+    scene = cross_target_3d_scene_contract()
+    hit_tests = tuple(
+        {{
+            "node": node["id"],
+            "kind": node["kind"],
+            "route": ("raycast", "select_node", "open_inspector", "show_gizmo"),
+            "inspector_tab": "Materials" if node["kind"] == "material" else "Properties",
+        }}
+        for node in scene["scene_graph"]
+    )
+    return {{
+        "format": "appgen.generated-cross-target-scene-hit-test-contract.v1",
+        "ok": bool(hit_tests) and all("open_inspector" in item["route"] for item in hit_tests),
+        "hit_tests": hit_tests,
+        "guards": ("stable_node_ids", "selection_round_trips", "inspector_route_declared", "gizmo_matches_node_kind"),
+        "side_effects": (),
+    }}
+
+
 def cross_target_visual_depth_workbench():
     """Prove animation, styling, effects, and 3D designer depth."""
     contract = cross_target_visual_depth_contract()
@@ -29169,6 +29311,9 @@ def cross_target_visual_depth_workbench():
     effect_budget = cross_target_effect_budget_contract()
     scene_integrity = cross_target_scene_graph_integrity_contract()
     material_binding = cross_target_material_binding_contract()
+    timeline_runtime_export = cross_target_timeline_runtime_export_contract()
+    shader_material_editor = cross_target_shader_material_editor_contract()
+    scene_hit_testing = cross_target_scene_hit_test_contract()
     checks = (
         {{"id": "style_resources", "ok": {{"stylebook", "theme_tokens", "state_triggers", "multi_resolution_bitmaps"}} <= set(contract["style_resources"]["resources"]) and {{"normal", "pressed", "focused", "disabled"}} <= set(contract["style_resources"]["states"]), "evidence": contract["style_resources"]}},
         {{"id": "animation_state_graph", "ok": {{"state", "timeline", "path_animation"}} <= {{node["kind"] for node in contract["state_graph"]["nodes"]}} and {{"ease_in", "ease_out", "spring"}} <= set(contract["state_graph"]["easing"]), "evidence": contract["state_graph"]}},
@@ -29192,9 +29337,12 @@ def cross_target_visual_depth_workbench():
         {{"id": "effect_budget_validation", "ok": effect_budget["ok"] and {{"mobile_frame_budget", "fallback_required"}} <= set(effect_budget["guards"]) and not effect_budget["side_effects"], "evidence": effect_budget}},
         {{"id": "scene_graph_integrity", "ok": scene_integrity["ok"] and {{"single_active_camera", "material_bound_to_mesh"}} <= set(scene_integrity["guards"]) and not scene_integrity["side_effects"], "evidence": scene_integrity}},
         {{"id": "material_binding", "ok": material_binding["ok"] and {{"texture_size_budget", "material_editor_review"}} <= set(material_binding["guards"]) and not material_binding["side_effects"], "evidence": material_binding}},
+        {{"id": "timeline_runtime_export", "ok": timeline_runtime_export["ok"] and {{"runtime_timeline_exported", "reduced_motion_fallback"}} <= set(timeline_runtime_export["guards"]) and not timeline_runtime_export["side_effects"], "evidence": timeline_runtime_export}},
+        {{"id": "shader_material_editor", "ok": shader_material_editor["ok"] and {{"shader_review_required", "material_editor_review"}} <= set(shader_material_editor["guards"]) and not shader_material_editor["side_effects"], "evidence": shader_material_editor}},
+        {{"id": "scene_hit_testing", "ok": scene_hit_testing["ok"] and {{"inspector_route_declared", "selection_round_trips"}} <= set(scene_hit_testing["guards"]) and not scene_hit_testing["side_effects"], "evidence": scene_hit_testing}},
     )
     ok = all(check["ok"] for check in checks)
-    return {{"format": "appgen.generated-cross-target-visual-depth-workbench.v1", "ok": ok, "decision": "approved" if ok else "blocked", "contract": contract, "style_resolution": style_resolution, "timeline_playback": timeline_playback, "effect_render": effect_render, "scene_validation": scene_validation, "asset_import_workflow": asset_import, "preview_diff": preview_diff, "style_tokens": style_tokens, "timeline_scrub": timeline_scrub, "effect_budget": effect_budget, "scene_integrity": scene_integrity, "material_binding": material_binding, "checks": checks, "blocking_gaps": tuple(check for check in checks if not check["ok"])}}
+    return {{"format": "appgen.generated-cross-target-visual-depth-workbench.v1", "ok": ok, "decision": "approved" if ok else "blocked", "contract": contract, "style_resolution": style_resolution, "timeline_playback": timeline_playback, "effect_render": effect_render, "scene_validation": scene_validation, "asset_import_workflow": asset_import, "preview_diff": preview_diff, "style_tokens": style_tokens, "timeline_scrub": timeline_scrub, "effect_budget": effect_budget, "scene_integrity": scene_integrity, "material_binding": material_binding, "timeline_runtime_export": timeline_runtime_export, "shader_material_editor": shader_material_editor, "scene_hit_testing": scene_hit_testing, "checks": checks, "blocking_gaps": tuple(check for check in checks if not check["ok"])}}
 
 
 def snap_to_grid(value, minimum=0):
