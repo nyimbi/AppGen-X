@@ -333,7 +333,10 @@ Generated apps include Studio contracts for:
   binding modes, plus link authoring operations, conflict checks, preview
   evaluation, generated runtime wiring, undo/redo history, and ordered designer
   transaction replay through graph edits, preview, diagnostics, accessibility,
-  offline replay, runtime propagation, and rollback recovery.
+  offline replay, runtime propagation, and rollback recovery. Its release
+  lifecycle replay orders graph authoring, validation, staged transactions,
+  diagnostics/conflicts, generated wiring, offline replay, accessibility routes,
+  runtime propagation, and design/runtime replays before release approval.
 - A native data tooling workbench proves connection catalogs, query designer
   metadata, server method/client proxy generation, secured resource tooling,
   embedded local database support, offline sync policies, conflict guards, and

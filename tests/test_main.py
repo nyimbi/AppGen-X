@@ -109,6 +109,7 @@ from pyAppGen.form_designer import form_design_to_dfm
 from pyAppGen.form_designer import form_designer_generation_smoke_audit
 from pyAppGen.form_designer import form_designer_release_audit
 from pyAppGen.form_designer import livebindings_graph_contract
+from pyAppGen.form_designer import binding_lifecycle_release_replay_contract
 from pyAppGen.form_designer import livebindings_workbench
 from pyAppGen.form_designer import mobile_device_capability_lifecycle_replay_contract
 from pyAppGen.form_designer import mobile_native_api_workbench
@@ -1081,6 +1082,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "runtime_propagation_replay",
         "design_runtime_session_replay",
         "designer_transaction_replay",
+        "binding_lifecycle_release_replay",
     } == {check["id"] for check in binding_workbench["checks"]}
     assert binding_workbench["graph_validation"]["ok"] is True
     assert binding_workbench["edit_transactions"]["validation"]["ok"] is True
@@ -1143,6 +1145,30 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     } <= {item["phase"] for item in binding_workbench["designer_transaction_replay"]["replay"]}
     assert binding_workbench["designer_transaction_replay"]["final_state"]["graph_edit_ops"] > 0
     assert binding_workbench["designer_transaction_replay"]["final_state"]["runtime_trace"] > 0
+    binding_lifecycle = binding_lifecycle_release_replay_contract()
+    assert binding_lifecycle["format"] == "appgen.binding-lifecycle-release-replay.v1"
+    assert binding_lifecycle["ok"] is True
+    assert {
+        "author_binding_graph",
+        "validate_before_transaction",
+        "stage_graph_transactions",
+        "surface_diagnostics_and_conflicts",
+        "generate_runtime_wiring",
+        "replay_offline_queue",
+        "verify_accessibility_routes",
+        "propagate_runtime_values",
+        "replay_design_runtime_session",
+        "replay_designer_transaction",
+    } <= {item["phase"] for item in binding_lifecycle["replay"]}
+    assert {
+        "graph_authoring_precedes_validation",
+        "validation_precedes_transaction_commit",
+        "diagnostics_precede_runtime_wiring",
+        "offline_and_accessibility_precede_runtime",
+        "design_runtime_and_designer_replays_complete",
+        "side_effect_guards",
+    } <= {check["id"] for check in binding_lifecycle["checks"] if check["ok"]}
+    assert binding_workbench["lifecycle_release_replay"]["ok"] is True
     data_workbench = rad_data_tooling_workbench()
     assert data_workbench["format"] == "appgen.rad-data-tooling-workbench.v1"
     assert data_workbench["ok"] is True
@@ -9846,6 +9872,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "runtime_propagation_replay",
         "design_runtime_session_replay",
         "designer_transaction_replay",
+        "binding_lifecycle_release_replay",
     } <= {
         check["id"] for check in generated_bindings["checks"]
     }
@@ -9901,6 +9928,28 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     } <= {item["phase"] for item in generated_bindings["designer_transaction_replay"]["replay"]}
     assert generated_bindings["designer_transaction_replay"]["final_state"]["accessibility_routes"] > 0
     assert generated_bindings["designer_transaction_replay"]["final_state"]["offline_replays"] > 0
+    assert generated_bindings["lifecycle_release_replay"]["format"] == "appgen.generated-binding-lifecycle-release-replay.v1"
+    assert generated_bindings["lifecycle_release_replay"]["ok"] is True
+    assert {
+        "author_binding_graph",
+        "validate_before_transaction",
+        "stage_graph_transactions",
+        "surface_diagnostics_and_conflicts",
+        "generate_runtime_wiring",
+        "replay_offline_queue",
+        "verify_accessibility_routes",
+        "propagate_runtime_values",
+        "replay_design_runtime_session",
+        "replay_designer_transaction",
+    } <= {item["phase"] for item in generated_bindings["lifecycle_release_replay"]["replay"]}
+    assert {
+        "graph_authoring_precedes_validation",
+        "validation_precedes_transaction_commit",
+        "diagnostics_precede_runtime_wiring",
+        "offline_and_accessibility_precede_runtime",
+        "design_runtime_and_designer_replays_complete",
+        "side_effect_guards",
+    } <= {check["id"] for check in generated_bindings["lifecycle_release_replay"]["checks"] if check["ok"]}
     generated_data_tooling = form_designer.rad_data_tooling_workbench()
     assert generated_data_tooling["format"] == "appgen.generated-rad-data-tooling-workbench.v1"
     assert generated_data_tooling["ok"] is True

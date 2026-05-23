@@ -79,7 +79,10 @@ A generated app can include:
   update modes, plus link authoring operations, conflict checks, preview
   evaluation, generated runtime wiring, undo/redo history, and ordered designer
   transaction replay across graph edits, preview, diagnostics, accessibility,
-  offline replay, runtime propagation, and rollback recovery.
+  offline replay, runtime propagation, and rollback recovery. Its release
+  lifecycle replay orders graph authoring, validation, staged transactions,
+  diagnostics/conflicts, generated wiring, offline replay, accessibility routes,
+  runtime propagation, and design/runtime replays before release approval.
 - `rad_data_tooling_workbench()` proves connection catalogs, query designer
   metadata, server method and client proxy tooling, secured resource tooling,
   embedded local database support, offline sync policies, conflict handling, and
