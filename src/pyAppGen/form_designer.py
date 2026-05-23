@@ -9087,6 +9087,111 @@ def mobile_background_resume_workflow() -> dict:
     }
 
 
+def mobile_request_permission_operation(api: str = "camera") -> dict:
+    """Return a callable IDE operation for requesting and recording one permission."""
+    workflow = mobile_permission_prompt_workflow(api)
+    return {
+        "format": "appgen.mobile-request-permission-operation.v1",
+        "ok": workflow["ok"] and workflow["steps"][-1] == "dispatch_result",
+        "api": api,
+        "permission": workflow["permission"],
+        "pipeline": workflow["steps"],
+        "outcomes": workflow["outcomes"],
+        "guards": ("reviewable_prompt_required", "privacy_audit_recorded", "result_dispatched_to_component"),
+        "side_effects": (),
+    }
+
+
+def mobile_dispatch_adapter_operation(api: str = "camera") -> dict:
+    """Return a callable IDE operation for dispatching a native adapter."""
+    workflow = mobile_adapter_dispatch_workflow(api)
+    return {
+        "format": "appgen.mobile-dispatch-adapter-operation.v1",
+        "ok": workflow["ok"] and {"check_permission", "emit_component_event"} <= set(workflow["pipeline"]),
+        "api": api,
+        "adapter": workflow["adapter"],
+        "pipeline": workflow["pipeline"],
+        "error_paths": workflow["error_paths"],
+        "guards": ("permission_checked_before_invoke", "payload_normalized", "component_event_emitted"),
+        "side_effects": (),
+    }
+
+
+def mobile_replay_simulator_operation(api: str = "location") -> dict:
+    """Return a callable IDE operation for replaying simulator fixtures."""
+    workflow = mobile_simulator_replay_workflow(api)
+    return {
+        "format": "appgen.mobile-replay-simulator-operation.v1",
+        "ok": workflow["ok"] and {"load_fixture", "assert_component_events"} <= set(workflow["scenario"]),
+        "api": api,
+        "fixture": workflow["fixture"],
+        "pipeline": workflow["scenario"],
+        "profiles": workflow["profiles"],
+        "guards": ("fixture_loaded_before_replay", "permissions_simulated", "component_events_asserted"),
+        "side_effects": (),
+    }
+
+
+def mobile_review_platform_fallback_operation(api: str = "nfc") -> dict:
+    """Return a callable IDE operation for reviewing unsupported target fallbacks."""
+    workflow = mobile_platform_fallback_workflow(api)
+    return {
+        "format": "appgen.mobile-platform-fallback-operation.v1",
+        "ok": workflow["ok"] and "designer_warning_visible" in workflow["guards"],
+        "api": api,
+        "fallbacks": workflow["fallbacks"],
+        "unavailable_targets": workflow["unavailable_targets"],
+        "guards": workflow["guards"],
+        "side_effects": (),
+    }
+
+
+def mobile_review_privacy_operation() -> dict:
+    """Return a callable IDE operation for reviewing privacy metadata."""
+    workflow = mobile_privacy_review_workflow()
+    return {
+        "format": "appgen.mobile-privacy-review-operation.v1",
+        "ok": bool(workflow["apis"]) and {"purpose_string", "least_privilege"} <= set(workflow["review_items"]),
+        "apis": workflow["apis"],
+        "review_items": workflow["review_items"],
+        "prompts": workflow["prompts"],
+        "guards": workflow["guards"],
+        "side_effects": (),
+    }
+
+
+def mobile_resume_background_operation() -> dict:
+    """Return a callable IDE operation for background checkpoint and resume flows."""
+    workflow = mobile_background_resume_workflow()
+    return {
+        "format": "appgen.mobile-background-resume-operation.v1",
+        "ok": {"persist_checkpoint", "resume_foreground"} <= set(workflow["schedule"]),
+        "api": workflow["api"],
+        "pipeline": workflow["schedule"],
+        "resume_payload": workflow["resume_payload"],
+        "guards": workflow["guards"],
+        "side_effects": (),
+    }
+
+
+def mobile_native_api_actionable_operations() -> dict:
+    """Return callable mobile/native operations used by the generated IDE."""
+    operations = {
+        "request_permission": mobile_request_permission_operation(),
+        "dispatch_adapter": mobile_dispatch_adapter_operation(),
+        "replay_simulator": mobile_replay_simulator_operation(),
+        "review_platform_fallback": mobile_review_platform_fallback_operation(),
+        "review_privacy": mobile_review_privacy_operation(),
+        "resume_background": mobile_resume_background_operation(),
+    }
+    return {
+        "format": "appgen.mobile-native-api-actionable-operations.v1",
+        "ok": all(operation["ok"] for operation in operations.values()),
+        "operations": operations,
+        "side_effects": (),
+    }
+
+
 def mobile_api_capability_matrix_contract() -> dict:
     """Return per-API capability, permission, adapter, and simulator coverage."""
     contract = mobile_native_api_contract()
@@ -9776,6 +9881,7 @@ def mobile_native_api_workbench() -> dict:
     platform_fallback = mobile_platform_fallback_workflow()
     privacy_review = mobile_privacy_review_workflow()
     background_resume = mobile_background_resume_workflow()
+    actionable_operations = mobile_native_api_actionable_operations()
     capability_matrix = mobile_api_capability_matrix_contract()
     event_traces = mobile_device_event_trace_contract()
     bridge_matrix = mobile_native_bridge_matrix_contract()
@@ -9891,6 +9997,21 @@ def mobile_native_api_workbench() -> dict:
             "evidence": background_resume,
         },
         {
+            "id": "actionable_mobile_api_operations",
+            "ok": actionable_operations["ok"]
+            and {
+                "request_permission",
+                "dispatch_adapter",
+                "replay_simulator",
+                "review_platform_fallback",
+                "review_privacy",
+                "resume_background",
+            }
+            <= set(actionable_operations["operations"])
+            and not actionable_operations["side_effects"],
+            "evidence": actionable_operations,
+        },
+        {
             "id": "api_capability_matrix",
             "ok": capability_matrix["ok"] and api_set <= {row["api"] for row in capability_matrix["rows"]}
             and not capability_matrix["side_effects"],
@@ -9997,6 +10118,7 @@ def mobile_native_api_workbench() -> dict:
         "platform_fallback": platform_fallback,
         "privacy_review": privacy_review,
         "background_resume": background_resume,
+        "actionable_operations": actionable_operations,
         "capability_matrix": capability_matrix,
         "event_traces": event_traces,
         "bridge_matrix": bridge_matrix,

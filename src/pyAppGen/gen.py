@@ -32516,6 +32516,111 @@ def mobile_background_resume_workflow():
     }}
 
 
+def mobile_request_permission_operation(api="camera"):
+    """Return a callable generated IDE operation for requesting and recording one permission."""
+    workflow = mobile_permission_prompt_workflow(api)
+    return {{
+        "format": "appgen.generated-mobile-request-permission-operation.v1",
+        "ok": workflow["ok"] and workflow["steps"][-1] == "dispatch_result",
+        "api": api,
+        "permission": workflow["permission"],
+        "pipeline": workflow["steps"],
+        "outcomes": workflow["outcomes"],
+        "guards": ("reviewable_prompt_required", "privacy_audit_recorded", "result_dispatched_to_component"),
+        "side_effects": (),
+    }}
+
+
+def mobile_dispatch_adapter_operation(api="camera"):
+    """Return a callable generated IDE operation for dispatching a native adapter."""
+    workflow = mobile_adapter_dispatch_workflow(api)
+    return {{
+        "format": "appgen.generated-mobile-dispatch-adapter-operation.v1",
+        "ok": workflow["ok"] and {{"check_permission", "emit_component_event"}} <= set(workflow["pipeline"]),
+        "api": api,
+        "adapter": workflow["adapter"],
+        "pipeline": workflow["pipeline"],
+        "error_paths": workflow["error_paths"],
+        "guards": ("permission_checked_before_invoke", "payload_normalized", "component_event_emitted"),
+        "side_effects": (),
+    }}
+
+
+def mobile_replay_simulator_operation(api="location"):
+    """Return a callable generated IDE operation for replaying simulator fixtures."""
+    workflow = mobile_simulator_replay_workflow(api)
+    return {{
+        "format": "appgen.generated-mobile-replay-simulator-operation.v1",
+        "ok": workflow["ok"] and {{"load_fixture", "assert_component_events"}} <= set(workflow["scenario"]),
+        "api": api,
+        "fixture": workflow["fixture"],
+        "pipeline": workflow["scenario"],
+        "profiles": workflow["profiles"],
+        "guards": ("fixture_loaded_before_replay", "permissions_simulated", "component_events_asserted"),
+        "side_effects": (),
+    }}
+
+
+def mobile_review_platform_fallback_operation(api="nfc"):
+    """Return a callable generated IDE operation for reviewing unsupported target fallbacks."""
+    workflow = mobile_platform_fallback_workflow(api)
+    return {{
+        "format": "appgen.generated-mobile-platform-fallback-operation.v1",
+        "ok": workflow["ok"] and "designer_warning_visible" in workflow["guards"],
+        "api": api,
+        "fallbacks": workflow["fallbacks"],
+        "unavailable_targets": workflow["unavailable_targets"],
+        "guards": workflow["guards"],
+        "side_effects": (),
+    }}
+
+
+def mobile_review_privacy_operation():
+    """Return a callable generated IDE operation for reviewing privacy metadata."""
+    workflow = mobile_privacy_review_workflow()
+    return {{
+        "format": "appgen.generated-mobile-privacy-review-operation.v1",
+        "ok": bool(workflow["apis"]) and {{"purpose_string", "least_privilege"}} <= set(workflow["review_items"]),
+        "apis": workflow["apis"],
+        "review_items": workflow["review_items"],
+        "prompts": workflow["prompts"],
+        "guards": workflow["guards"],
+        "side_effects": (),
+    }}
+
+
+def mobile_resume_background_operation():
+    """Return a callable generated IDE operation for background checkpoint and resume flows."""
+    workflow = mobile_background_resume_workflow()
+    return {{
+        "format": "appgen.generated-mobile-background-resume-operation.v1",
+        "ok": {{"persist_checkpoint", "resume_foreground"}} <= set(workflow["schedule"]),
+        "api": workflow["api"],
+        "pipeline": workflow["schedule"],
+        "resume_payload": workflow["resume_payload"],
+        "guards": workflow["guards"],
+        "side_effects": (),
+    }}
+
+
+def mobile_native_api_actionable_operations():
+    """Return callable generated mobile/native operations used by the IDE."""
+    operations = {{
+        "request_permission": mobile_request_permission_operation(),
+        "dispatch_adapter": mobile_dispatch_adapter_operation(),
+        "replay_simulator": mobile_replay_simulator_operation(),
+        "review_platform_fallback": mobile_review_platform_fallback_operation(),
+        "review_privacy": mobile_review_privacy_operation(),
+        "resume_background": mobile_resume_background_operation(),
+    }}
+    return {{
+        "format": "appgen.generated-mobile-native-api-actionable-operations.v1",
+        "ok": all(operation["ok"] for operation in operations.values()),
+        "operations": operations,
+        "side_effects": (),
+    }}
+
+
 def mobile_api_capability_matrix_contract():
     """Return per-API capability, permission, adapter, and simulator coverage."""
     contract = mobile_native_api_contract()
@@ -33204,6 +33309,7 @@ def mobile_native_api_workbench():
     platform_fallback = mobile_platform_fallback_workflow()
     privacy_review = mobile_privacy_review_workflow()
     background_resume = mobile_background_resume_workflow()
+    actionable_operations = mobile_native_api_actionable_operations()
     capability_matrix = mobile_api_capability_matrix_contract()
     event_traces = mobile_device_event_trace_contract()
     bridge_matrix = mobile_native_bridge_matrix_contract()
@@ -33232,6 +33338,7 @@ def mobile_native_api_workbench():
         {{"id": "platform_fallback_workflow", "ok": platform_fallback["ok"] and "designer_warning_visible" in platform_fallback["guards"] and not platform_fallback["side_effects"], "evidence": platform_fallback}},
         {{"id": "privacy_review_workflow", "ok": api_set <= set(privacy_review["apis"]) and {{"purpose_string", "least_privilege"}} <= set(privacy_review["review_items"]) and not privacy_review["side_effects"], "evidence": privacy_review}},
         {{"id": "background_resume_workflow", "ok": {{"persist_checkpoint", "resume_foreground"}} <= set(background_resume["schedule"]) and not background_resume["side_effects"], "evidence": background_resume}},
+        {{"id": "actionable_mobile_api_operations", "ok": actionable_operations["ok"] and {{"request_permission", "dispatch_adapter", "replay_simulator", "review_platform_fallback", "review_privacy", "resume_background"}} <= set(actionable_operations["operations"]) and not actionable_operations["side_effects"], "evidence": actionable_operations}},
         {{"id": "api_capability_matrix", "ok": capability_matrix["ok"] and api_set <= {{row["api"] for row in capability_matrix["rows"]}} and not capability_matrix["side_effects"], "evidence": capability_matrix}},
         {{"id": "device_event_traces", "ok": event_traces["ok"] and {{"payload_normalized", "replayable_fixture"}} <= set(event_traces["guards"]) and not event_traces["side_effects"], "evidence": event_traces}},
         {{"id": "native_bridge_matrix", "ok": bridge_matrix["ok"] and {{"android", "ios", "desktop", "web-pwa"}} <= {{bridge["target"] for bridge in bridge_matrix["bridges"]}} and not bridge_matrix["side_effects"], "evidence": bridge_matrix}},
@@ -33249,7 +33356,7 @@ def mobile_native_api_workbench():
         {{"id": "capability_lifecycle_replay", "ok": capability_lifecycle_replay["ok"] and {{"privacy_before_permission", "runtime_and_designer_replay_aligned"}} <= set(capability_lifecycle_replay["guards"]) and not capability_lifecycle_replay["side_effects"], "evidence": capability_lifecycle_replay}},
     )
     ok = all(check["ok"] for check in checks)
-    return {{"format": "appgen.generated-mobile-native-api-workbench.v1", "ok": ok, "decision": "approved" if ok else "blocked", "contract": contract, "permission_workflow": permission_workflow, "adapter_dispatch": adapter_dispatch, "simulator_replay": simulator_replay, "platform_fallback": platform_fallback, "privacy_review": privacy_review, "background_resume": background_resume, "capability_matrix": capability_matrix, "event_traces": event_traces, "bridge_matrix": bridge_matrix, "permission_revocation": permission_revocation, "background_delivery": background_delivery, "media_file_pipeline": media_file_pipeline, "bridge_errors": bridge_errors, "store_privacy_manifest": store_privacy_manifest, "permission_state_machine": permission_state_machine, "deep_link_routing": deep_link_routing, "app_lifecycle_delivery": app_lifecycle_delivery, "simulator_fixture_integrity": simulator_fixture_integrity, "runtime_replay": runtime_replay, "designer_transaction_replay": designer_transaction_replay, "capability_lifecycle_replay": capability_lifecycle_replay, "checks": checks, "blocking_gaps": tuple(check for check in checks if not check["ok"])}}
+    return {{"format": "appgen.generated-mobile-native-api-workbench.v1", "ok": ok, "decision": "approved" if ok else "blocked", "contract": contract, "permission_workflow": permission_workflow, "adapter_dispatch": adapter_dispatch, "simulator_replay": simulator_replay, "platform_fallback": platform_fallback, "privacy_review": privacy_review, "background_resume": background_resume, "actionable_operations": actionable_operations, "capability_matrix": capability_matrix, "event_traces": event_traces, "bridge_matrix": bridge_matrix, "permission_revocation": permission_revocation, "background_delivery": background_delivery, "media_file_pipeline": media_file_pipeline, "bridge_errors": bridge_errors, "store_privacy_manifest": store_privacy_manifest, "permission_state_machine": permission_state_machine, "deep_link_routing": deep_link_routing, "app_lifecycle_delivery": app_lifecycle_delivery, "simulator_fixture_integrity": simulator_fixture_integrity, "runtime_replay": runtime_replay, "designer_transaction_replay": designer_transaction_replay, "capability_lifecycle_replay": capability_lifecycle_replay, "checks": checks, "blocking_gaps": tuple(check for check in checks if not check["ok"])}}
 
 
 def cross_target_visual_depth_contract():

@@ -118,7 +118,14 @@ from pyAppGen.form_designer import livebindings_reroute_link
 from pyAppGen.form_designer import binding_lifecycle_release_replay_contract
 from pyAppGen.form_designer import livebindings_workbench
 from pyAppGen.form_designer import mobile_device_capability_lifecycle_replay_contract
+from pyAppGen.form_designer import mobile_dispatch_adapter_operation
+from pyAppGen.form_designer import mobile_native_api_actionable_operations
 from pyAppGen.form_designer import mobile_native_api_workbench
+from pyAppGen.form_designer import mobile_replay_simulator_operation
+from pyAppGen.form_designer import mobile_request_permission_operation
+from pyAppGen.form_designer import mobile_resume_background_operation
+from pyAppGen.form_designer import mobile_review_platform_fallback_operation
+from pyAppGen.form_designer import mobile_review_privacy_operation
 from pyAppGen.form_designer import object_inspector_contract
 from pyAppGen.form_designer import inspector_apply_property_edit
 from pyAppGen.form_designer import inspector_create_event_handler
@@ -1401,6 +1408,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "platform_fallback_workflow",
         "privacy_review_workflow",
         "background_resume_workflow",
+        "actionable_mobile_api_operations",
         "api_capability_matrix",
         "device_event_traces",
         "native_bridge_matrix",
@@ -1445,6 +1453,15 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     assert "designer_warning_visible" in mobile_workbench["platform_fallback"]["guards"]
     assert "least_privilege" in mobile_workbench["privacy_review"]["review_items"]
     assert "resume_foreground" in mobile_workbench["background_resume"]["schedule"]
+    assert mobile_request_permission_operation()["pipeline"][-1] == "dispatch_result"
+    assert "emit_component_event" in mobile_dispatch_adapter_operation()["pipeline"]
+    assert "assert_component_events" in mobile_replay_simulator_operation()["pipeline"]
+    assert "designer_warning_visible" in mobile_review_platform_fallback_operation()["guards"]
+    assert "least_privilege" in mobile_review_privacy_operation()["review_items"]
+    assert "resume_foreground" in mobile_resume_background_operation()["pipeline"]
+    assert mobile_native_api_actionable_operations()["ok"] is True
+    assert mobile_workbench["actionable_operations"]["operations"]["dispatch_adapter"]["ok"] is True
+    assert mobile_workbench["actionable_operations"]["operations"]["review_privacy"]["prompts"]
     assert all(row["ok"] and row["privacy_prompt"] for row in mobile_workbench["capability_matrix"]["rows"])
     assert all(trace["events"] for trace in mobile_workbench["event_traces"]["traces"])
     assert {"android", "ios", "desktop", "web-pwa"} <= {
@@ -10221,6 +10238,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "platform_fallback_workflow",
         "privacy_review_workflow",
         "background_resume_workflow",
+        "actionable_mobile_api_operations",
         "api_capability_matrix",
         "device_event_traces",
         "native_bridge_matrix",
@@ -10271,6 +10289,15 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert "designer_warning_visible" in generated_mobile["platform_fallback"]["guards"]
     assert "least_privilege" in generated_mobile["privacy_review"]["review_items"]
     assert "resume_foreground" in generated_mobile["background_resume"]["schedule"]
+    assert form_designer.mobile_request_permission_operation()["pipeline"][-1] == "dispatch_result"
+    assert "emit_component_event" in form_designer.mobile_dispatch_adapter_operation()["pipeline"]
+    assert "assert_component_events" in form_designer.mobile_replay_simulator_operation()["pipeline"]
+    assert "designer_warning_visible" in form_designer.mobile_review_platform_fallback_operation()["guards"]
+    assert "least_privilege" in form_designer.mobile_review_privacy_operation()["review_items"]
+    assert "resume_foreground" in form_designer.mobile_resume_background_operation()["pipeline"]
+    assert generated_mobile["actionable_operations"]["ok"] is True
+    assert generated_mobile["actionable_operations"]["operations"]["request_permission"]["ok"] is True
+    assert generated_mobile["actionable_operations"]["operations"]["replay_simulator"]["fixture"]
     assert all(row["ok"] and row["privacy_prompt"] for row in generated_mobile["capability_matrix"]["rows"])
     assert all(trace["events"] for trace in generated_mobile["event_traces"]["traces"])
     assert {"android", "ios", "desktop", "web-pwa"} <= {
