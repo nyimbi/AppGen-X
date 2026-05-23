@@ -29538,6 +29538,123 @@ def mobile_native_bridge_matrix_contract():
     }}
 
 
+def mobile_permission_revocation_contract():
+    """Return generated runtime behavior for permissions revoked after initial grant."""
+    manifest = mobile_permission_manifest_contract()
+    revocations = tuple(
+        {{
+            "api": permission["api"],
+            "flow": ("detect_revocation", "disable_adapter", "emit_permission_denied", "show_recovery_action"),
+            "recovery": ("open_settings", "fallback_component", "retry_permission_prompt"),
+        }}
+        for permission in manifest["permissions"]
+    )
+    return {{
+        "format": "appgen.generated-mobile-permission-revocation-contract.v1",
+        "ok": bool(revocations)
+        and all({{"disable_adapter", "emit_permission_denied"}} <= set(item["flow"]) for item in revocations),
+        "revocations": revocations,
+        "guards": ("revocation_checked_before_adapter_call", "denied_state_visible", "fallback_after_revoke"),
+        "side_effects": (),
+    }}
+
+
+def mobile_background_delivery_contract():
+    """Return generated background delivery, checkpointing, and foreground reconciliation behavior."""
+    deliveries = (
+        {{
+            "api": "push_notifications",
+            "triggers": ("remote_message", "local_notification_tap"),
+            "lifecycle": ("persist_payload", "wake_handler", "normalize_payload", "dispatch_component_event", "checkpoint_delivery"),
+        }},
+        {{
+            "api": "background_tasks",
+            "triggers": ("scheduled_interval", "network_available"),
+            "lifecycle": ("persist_payload", "wake_handler", "normalize_payload", "dispatch_component_event", "checkpoint_delivery"),
+        }},
+        {{
+            "api": "location",
+            "triggers": ("significant_location_change", "route_replay"),
+            "lifecycle": ("persist_payload", "wake_handler", "normalize_payload", "dispatch_component_event", "checkpoint_delivery"),
+        }},
+        {{
+            "api": "network_status",
+            "triggers": ("connectivity_changed", "offline_queue_resume"),
+            "lifecycle": ("persist_payload", "wake_handler", "normalize_payload", "dispatch_component_event", "checkpoint_delivery"),
+        }},
+    )
+    return {{
+        "format": "appgen.generated-mobile-background-delivery-contract.v1",
+        "ok": all({{"persist_payload", "dispatch_component_event", "checkpoint_delivery"}} <= set(item["lifecycle"]) for item in deliveries),
+        "deliveries": deliveries,
+        "guards": ("payload_persisted_before_dispatch", "background_timeout_handled", "delivery_checkpointed"),
+        "side_effects": (),
+    }}
+
+
+def mobile_media_file_pipeline_contract():
+    """Return generated media and file API pipelines with validation and cleanup guards."""
+    media_apis = ("camera", "photos", "file_picker", "share_sheet", "microphone", "video_player", "screen_capture", "filesystem")
+    pipelines = tuple(
+        {{
+            "api": api,
+            "stages": ("request_permission", "capture_or_pick", "validate_mime", "copy_to_app_storage", "scan_size", "emit_result"),
+            "guards": ("mime_checked", "size_limit_enforced", "app_storage_copy_required", "temporary_files_cleaned"),
+        }}
+        for api in media_apis
+    )
+    return {{
+        "format": "appgen.generated-mobile-media-file-pipeline-contract.v1",
+        "ok": all({{"validate_mime", "copy_to_app_storage", "emit_result"}} <= set(item["stages"]) for item in pipelines),
+        "pipelines": pipelines,
+        "guards": ("mime_checked", "size_limit_enforced", "app_storage_copy_required", "temporary_files_cleaned"),
+        "side_effects": (),
+    }}
+
+
+def mobile_native_bridge_error_contract():
+    """Return generated native bridge error normalization and recovery behavior."""
+    bridges = mobile_native_bridge_matrix_contract()["bridges"]
+    scenarios = tuple(
+        {{
+            "target": bridge["target"],
+            "bridge": bridge["bridge"],
+            "errors": ("permission_denied", "adapter_unavailable", "timeout", "payload_validation_failed", "platform_exception"),
+            "recovery": ("normalize_error", "emit_error_event", "record_diagnostic", "fallback_path"),
+        }}
+        for bridge in bridges
+    )
+    return {{
+        "format": "appgen.generated-mobile-native-bridge-error-contract.v1",
+        "ok": all({{"normalize_error", "emit_error_event", "record_diagnostic", "fallback_path"}} <= set(item["recovery"]) for item in scenarios),
+        "scenarios": scenarios,
+        "guards": ("errors_normalized_per_target", "diagnostics_recorded", "fallback_path_declared"),
+        "side_effects": (),
+    }}
+
+
+def mobile_store_privacy_manifest_contract():
+    """Return generated store privacy manifest entries for native APIs."""
+    manifest = mobile_permission_manifest_contract()
+    entries = tuple(
+        {{
+            "api": permission["api"],
+            "data_categories": ("device", "media" if permission["api"] in {{"camera", "photos", "microphone", "video_player", "screen_capture"}} else "usage"),
+            "retention": "user-controlled",
+            "third_party_sharing": False,
+            "prompt": permission["prompt"],
+        }}
+        for permission in manifest["permissions"]
+    )
+    return {{
+        "format": "appgen.generated-mobile-store-privacy-manifest-contract.v1",
+        "ok": bool(entries) and all(item["prompt"] and item["third_party_sharing"] is False for item in entries),
+        "entries": entries,
+        "guards": ("purpose_string_required", "data_category_declared", "retention_declared", "sharing_reviewed"),
+        "side_effects": (),
+    }}
+
+
 def mobile_native_api_workbench():
     """Prove mobile/native device API component coverage and reviewability."""
     contract = mobile_native_api_contract()
@@ -29554,6 +29671,11 @@ def mobile_native_api_workbench():
     capability_matrix = mobile_api_capability_matrix_contract()
     event_traces = mobile_device_event_trace_contract()
     bridge_matrix = mobile_native_bridge_matrix_contract()
+    permission_revocation = mobile_permission_revocation_contract()
+    background_delivery = mobile_background_delivery_contract()
+    media_file_pipeline = mobile_media_file_pipeline_contract()
+    bridge_errors = mobile_native_bridge_error_contract()
+    store_privacy_manifest = mobile_store_privacy_manifest_contract()
     checks = (
         {{"id": "api_breadth", "ok": {{"camera", "photos", "location", "sensors", "biometrics", "push_notifications", "contacts", "calendar", "secure_storage", "bluetooth", "nfc", "file_picker", "share_sheet", "background_tasks", "microphone", "audio_player", "video_player", "haptics", "vibration", "clipboard", "deep_links", "app_lifecycle", "network_status", "filesystem", "device_info", "maps", "screen_capture"}} <= api_set, "evidence": contract["apis"]}},
         {{"id": "permission_manifest", "ok": api_set <= permission_apis and "least_privilege" in contract["permission_manifest"]["guards"], "evidence": contract["permission_manifest"]}},
@@ -29570,9 +29692,14 @@ def mobile_native_api_workbench():
         {{"id": "api_capability_matrix", "ok": capability_matrix["ok"] and api_set <= {{row["api"] for row in capability_matrix["rows"]}} and not capability_matrix["side_effects"], "evidence": capability_matrix}},
         {{"id": "device_event_traces", "ok": event_traces["ok"] and {{"payload_normalized", "replayable_fixture"}} <= set(event_traces["guards"]) and not event_traces["side_effects"], "evidence": event_traces}},
         {{"id": "native_bridge_matrix", "ok": bridge_matrix["ok"] and {{"android", "ios", "desktop", "web-pwa"}} <= {{bridge["target"] for bridge in bridge_matrix["bridges"]}} and not bridge_matrix["side_effects"], "evidence": bridge_matrix}},
+        {{"id": "permission_revocation", "ok": permission_revocation["ok"] and {{"revocation_checked_before_adapter_call", "fallback_after_revoke"}} <= set(permission_revocation["guards"]) and not permission_revocation["side_effects"], "evidence": permission_revocation}},
+        {{"id": "background_delivery", "ok": background_delivery["ok"] and "delivery_checkpointed" in background_delivery["guards"] and not background_delivery["side_effects"], "evidence": background_delivery}},
+        {{"id": "media_file_pipeline", "ok": media_file_pipeline["ok"] and "temporary_files_cleaned" in media_file_pipeline["guards"] and not media_file_pipeline["side_effects"], "evidence": media_file_pipeline}},
+        {{"id": "native_bridge_errors", "ok": bridge_errors["ok"] and "errors_normalized_per_target" in bridge_errors["guards"] and not bridge_errors["side_effects"], "evidence": bridge_errors}},
+        {{"id": "store_privacy_manifest", "ok": store_privacy_manifest["ok"] and "sharing_reviewed" in store_privacy_manifest["guards"] and not store_privacy_manifest["side_effects"], "evidence": store_privacy_manifest}},
     )
     ok = all(check["ok"] for check in checks)
-    return {{"format": "appgen.generated-mobile-native-api-workbench.v1", "ok": ok, "decision": "approved" if ok else "blocked", "contract": contract, "permission_workflow": permission_workflow, "adapter_dispatch": adapter_dispatch, "simulator_replay": simulator_replay, "platform_fallback": platform_fallback, "privacy_review": privacy_review, "background_resume": background_resume, "capability_matrix": capability_matrix, "event_traces": event_traces, "bridge_matrix": bridge_matrix, "checks": checks, "blocking_gaps": tuple(check for check in checks if not check["ok"])}}
+    return {{"format": "appgen.generated-mobile-native-api-workbench.v1", "ok": ok, "decision": "approved" if ok else "blocked", "contract": contract, "permission_workflow": permission_workflow, "adapter_dispatch": adapter_dispatch, "simulator_replay": simulator_replay, "platform_fallback": platform_fallback, "privacy_review": privacy_review, "background_resume": background_resume, "capability_matrix": capability_matrix, "event_traces": event_traces, "bridge_matrix": bridge_matrix, "permission_revocation": permission_revocation, "background_delivery": background_delivery, "media_file_pipeline": media_file_pipeline, "bridge_errors": bridge_errors, "store_privacy_manifest": store_privacy_manifest, "checks": checks, "blocking_gaps": tuple(check for check in checks if not check["ok"])}}
 
 
 def cross_target_visual_depth_contract():

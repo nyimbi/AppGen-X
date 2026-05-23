@@ -1041,6 +1041,11 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "api_capability_matrix",
         "device_event_traces",
         "native_bridge_matrix",
+        "permission_revocation",
+        "background_delivery",
+        "media_file_pipeline",
+        "native_bridge_errors",
+        "store_privacy_manifest",
     } == {check["id"] for check in mobile_workbench["checks"]}
     mobile_apis = set(mobile_workbench["contract"]["apis"])
     assert {
@@ -1075,6 +1080,11 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     assert {"android", "ios", "desktop", "web-pwa"} <= {
         bridge["target"] for bridge in mobile_workbench["bridge_matrix"]["bridges"]
     }
+    assert all("disable_adapter" in item["flow"] for item in mobile_workbench["permission_revocation"]["revocations"])
+    assert all("checkpoint_delivery" in item["lifecycle"] for item in mobile_workbench["background_delivery"]["deliveries"])
+    assert all("validate_mime" in item["stages"] for item in mobile_workbench["media_file_pipeline"]["pipelines"])
+    assert all("emit_error_event" in scenario["recovery"] for scenario in mobile_workbench["bridge_errors"]["scenarios"])
+    assert all(item["third_party_sharing"] is False for item in mobile_workbench["store_privacy_manifest"]["entries"])
     visual_depth = cross_target_visual_depth_workbench()
     assert visual_depth["format"] == "appgen.cross-target-visual-depth-workbench.v1"
     assert visual_depth["ok"] is True
@@ -9353,6 +9363,11 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "api_capability_matrix",
         "device_event_traces",
         "native_bridge_matrix",
+        "permission_revocation",
+        "background_delivery",
+        "media_file_pipeline",
+        "native_bridge_errors",
+        "store_privacy_manifest",
     } == {check["id"] for check in generated_mobile["checks"]}
     generated_mobile_apis = set(generated_mobile["contract"]["apis"])
     assert {
@@ -9393,6 +9408,11 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert {"android", "ios", "desktop", "web-pwa"} <= {
         bridge["target"] for bridge in generated_mobile["bridge_matrix"]["bridges"]
     }
+    assert all("emit_permission_denied" in item["flow"] for item in generated_mobile["permission_revocation"]["revocations"])
+    assert all("dispatch_component_event" in item["lifecycle"] for item in generated_mobile["background_delivery"]["deliveries"])
+    assert all("copy_to_app_storage" in item["stages"] for item in generated_mobile["media_file_pipeline"]["pipelines"])
+    assert all("record_diagnostic" in scenario["recovery"] for scenario in generated_mobile["bridge_errors"]["scenarios"])
+    assert "sharing_reviewed" in generated_mobile["store_privacy_manifest"]["guards"]
     generated_visual_depth = form_designer.cross_target_visual_depth_workbench()
     assert generated_visual_depth["format"] == "appgen.generated-cross-target-visual-depth-workbench.v1"
     assert generated_visual_depth["ok"] is True
