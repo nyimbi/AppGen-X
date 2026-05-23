@@ -116,9 +116,14 @@ ACP_STREAM_PROCESSING_POLICY = {
     "allowed_processors": tuple(ACP_STREAM_PROCESSORS),
     "developer_guidance": {
         "standard_answer": (
-            "Use generated transactional outbox/inbox tables, the AppGen-X "
-            "event adapter, and the faust_streaming service-runtime profile."
+            "Use the generated AppGen-X event contract: transactional "
+            "outbox/inbox tables, typed handlers, retries, idempotency, "
+            "dead-letter flows, and the platform event adapter. Do not choose "
+            "a stream engine for ordinary work."
         ),
+        "visible_developer_choice": "appgen_event_contract",
+        "visible_choice_count": 1,
+        "hidden_runtime_profile": ACP_DEFAULT_STREAM_PROCESSOR,
         "normal_workloads": (
             "ERP, CRM, HR, finance, inventory, commerce, approvals, workflow "
             "sagas, chatbot events, agent task routing, and PBC integration "
@@ -146,9 +151,11 @@ ACP_STREAM_PROCESSING_POLICY = {
         ),
     },
     "decision_card": {
-        "answer": "Use the AppGen-X generated outbox/inbox event contract with faust_streaming behind the platform adapter.",
+        "answer": "Use the AppGen-X generated outbox/inbox event contract; the platform keeps faust_streaming behind the adapter for ordinary work.",
         "default_profile": ACP_DEFAULT_STREAM_PROCESSOR,
         "choice_contract": "one_default_two_audited_exceptions",
+        "ordinary_developer_choices": ("appgen_event_contract",),
+        "ordinary_developer_choice_count": 1,
         "selection_mode": "read_only_default_with_audited_exceptions",
         "do_not_ask_users_to_choose": True,
         "developer_selection": "not_user_selectable_for_ordinary_app_generation",

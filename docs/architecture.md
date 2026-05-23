@@ -366,14 +366,14 @@ The composition path is:
 2. Build a composition plan with one deployment unit, datastore, and approved
    datastore backend per PBC.
 3. Resolve internal event dependencies and record external event obligations.
-4. Select a Python-native stream processor profile for event-heavy PBCs.
-   `faust_streaming` is the default for service/workflow meshes, and normal
-   generated manifests omit the field so validation can normalize the platform
-   decision. The generated implementation path is fixed: transactional
-   outbox/inbox tables, the AppGen-X event adapter, the default service-runtime
-   profile, and generated retry/idempotency/dead-letter/release audit
-   contracts. Use `quix_streams` only for high-throughput event/time-series
-   processing, and `bytewax` only for complex parallel dataflow transformations.
+4. Apply the platform event-runtime decision. Normal PBCs do not select a
+   Python stream processor; they use the generated AppGen-X event contract and
+   omit `stream_processor` so validation can normalize the platform decision.
+   The generated implementation path is fixed: transactional outbox/inbox
+   tables, the AppGen-X event adapter, the default service-runtime profile, and
+   generated retry/idempotency/dead-letter/release audit contracts. Use
+   `quix_streams` only for high-throughput event/time-series processing, and
+   `bytewax` only for complex parallel dataflow transformations.
    Business logic depends on generated outbox/inbox and event-handler
    contracts; profile-specific adapters and broker choices stay behind the
    platform event layer. The Studio and natural-language generator present this

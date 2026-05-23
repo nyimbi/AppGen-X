@@ -14,16 +14,17 @@ stacks, then generate a working application shell from the composition.
   default to PostgreSQL; third-party PBCs may use PostgreSQL, MySQL, MariaDB,
   SQLite, DuckDB, ClickHouse, MongoDB, or OpenSearch.
 - Each PBC declares command APIs and emitted/consumed events.
-- Ordinary PBCs do not choose a stream processor. They omit
+- Ordinary PBCs do not choose a stream processor. They have one visible
+  developer choice: use the generated AppGen-X event contract. They omit
   `stream_processor`, generate the platform outbox/inbox and event-handler
-  contracts, and let validation normalize the runtime profile to
-  `faust_streaming`. `quix_streams` is allowed only for telemetry,
-  time-series, large ingestion, or windowed metrics with
-  `stream_exception_evidence`; `bytewax` is allowed only for complex parallel
-  dataflow or CPU-heavy transformations with the same evidence. Generated
-  business logic should use the platform adapter, not profile-specific client
-  code. The canonical policy is exposed by `acp_stream_processing_policy()` and
-  documented in [Opinionated Event Processing Guidance](kafka-alternatives.md).
+  contracts, and let validation normalize the runtime profile behind the
+  adapter. `quix_streams` is allowed only for telemetry, time-series, large
+  ingestion, or windowed metrics with `stream_exception_evidence`; `bytewax` is
+  allowed only for complex parallel dataflow or CPU-heavy transformations with
+  the same evidence. Generated business logic should use the platform adapter,
+  not profile-specific client code. The canonical policy is exposed by
+  `acp_stream_processing_policy()` and documented in
+  [Opinionated Event Processing Guidance](kafka-alternatives.md).
 - Composition is event-first: dependencies are explicit event contracts, with
   unresolved external events recorded as integration obligations.
 - Generated applications include service folders, outbox tables, workbench

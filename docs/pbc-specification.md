@@ -91,25 +91,25 @@ Optional fields include `template`, `owner`, `version`, `ui_fragments`,
 `configuration`, `migrations`, `seed_data`, `tests`, and `docs`.
 
 `stream_processor` is intentionally opinionated to prevent a combinatorial
-backend matrix. Use `faust_streaming` by default and omit the field for ordinary
-PBCs. The validator normalizes the missing field to the default, and generated
-code must route through AppGen-X outbox/inbox adapters instead of importing a
-stream library directly in business logic. Developers and coding agents should
-model event contracts, handlers, retry policies, idempotency keys, and
-dead-letter behavior; they should not choose a stream library for normal
-generated applications.
+backend matrix. For ordinary PBCs, developers have one visible choice: use the
+generated AppGen-X event contract and omit the field. The validator normalizes
+the missing field to the platform default, and generated code must route
+through AppGen-X outbox/inbox adapters instead of importing a stream library
+directly in business logic. Developers and coding agents should model event
+contracts, handlers, retry policies, idempotency keys, and dead-letter behavior;
+they should not choose a stream library for normal generated applications.
 
 The generated implementation is fixed for ordinary work: transactional
-outbox/inbox tables, the AppGen-X event adapter, the `faust_streaming`
+outbox/inbox tables, the AppGen-X event adapter, the platform default
 service-runtime profile, and generated retry/idempotency/dead-letter/release
 audit contracts. The IDE and natural-language generator may show that decision
 as read-only metadata, but they must not render a stream-engine picker.
 
 Allowed values:
 
-- `faust_streaming`: default for event-driven microservices, actor-style
-  services, asynchronous workflows, saga orchestration, and service-owned local
-  state.
+- `faust_streaming`: platform default behind the event adapter for
+  event-driven microservices, actor-style services, asynchronous workflows,
+  saga orchestration, and service-owned local state.
 - `quix_streams`: exception for high-throughput event streams, telemetry,
   time-series streams, large ingestion, and windowed operational metrics.
 - `bytewax`: exception for complex parallel transformations, stateful dataflow
@@ -136,11 +136,12 @@ prompts. It tells those tools to generate the standard outbox/inbox adapter
 path for ordinary work, hide stream-engine selection, and require exception
 evidence before `quix_streams` or `bytewax` can enter a manifest.
 
-For ordinary generated applications, the standard event stack is:
+For ordinary generated applications, the developer-facing standard event stack
+is:
 
 - generated transactional outbox and inbox tables;
 - platform event backbone adapter;
-- `faust_streaming` service-runtime profile behind that adapter;
+- read-only platform default service-runtime profile behind that adapter;
 - PBC-owned datastore state only;
 - generated release-audit evidence.
 

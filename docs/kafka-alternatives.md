@@ -5,13 +5,13 @@ coding agents, or Studio users to choose among stream-processing engines for
 ordinary generated applications. That choice would create a support matrix that
 grows faster than the platform can validate.
 
-The platform choice is:
+The platform choice is one visible developer option:
 
 ```text
-Use generated transactional outbox/inbox tables.
-Use the AppGen-X event adapter.
-Use faust_streaming behind that adapter for ordinary generated work.
-Do not import stream libraries from generated business logic.
+Use the generated AppGen-X event contract.
+Generate transactional outbox/inbox tables and typed handlers.
+Route through the AppGen-X event adapter.
+Do not choose or import a stream engine for ordinary generated work.
 ```
 
 ## The Developer Answer
@@ -21,8 +21,10 @@ use?", answer with this rule:
 
 ```text
 Use the generated AppGen-X event contract.
-Do not choose a stream engine unless you are building one of the two audited
-exception workloads.
+Do not compare Kafka alternatives.
+Do not choose a stream engine for ordinary generated applications.
+Open the exception workflow only for telemetry/time-series or complex
+parallel dataflow workloads with evidence.
 ```
 
 That means ordinary applications, generated PBCs, ERP workflows, integrations,
@@ -31,7 +33,7 @@ chatbots, and agentic systems all use the same default:
 1. declare commands and events in the DSL or manifest;
 2. generate owned tables plus transactional outbox/inbox tables;
 3. write handlers against the AppGen-X event adapter API;
-4. let the platform select the default service-runtime profile;
+4. let the platform keep the service-runtime profile behind the adapter;
 5. use release validation to prove idempotency, retry, dead-letter, and owner
    coverage.
 
@@ -41,9 +43,12 @@ business event contract. The platform owns the runtime choice.
 This document is the developer-facing companion to the executable policy in
 `src/pyAppGen/pbc.py`.
 
-## Required Default
+## Required Default For Developers
 
-Use `faust_streaming` for ordinary generated applications and PBCs.
+Use the generated AppGen-X event contract for ordinary generated applications
+and PBCs. The platform currently backs that contract with the
+`faust_streaming` service-runtime profile, but developers should treat that as
+read-only platform metadata, not as a design choice.
 
 Ordinary work includes:
 
@@ -55,7 +60,7 @@ Ordinary work includes:
 - form actions and generated UI actions that emit business events.
 
 Generated manifests should normally omit `stream_processor`. Validation
-normalizes the missing value to `faust_streaming`.
+normalizes the missing value to the platform default.
 
 ```python
 def register_pbc() -> dict:
@@ -72,7 +77,8 @@ def register_pbc() -> dict:
     }
 ```
 
-The explicit default is accepted, but it is not required:
+The explicit default is accepted only for generated metadata and compatibility,
+but it is not required:
 
 ```python
 "stream_processor": "faust_streaming"
@@ -80,8 +86,9 @@ The explicit default is accepted, but it is not required:
 
 ## What Developers Actually Use
 
-Developers and agents build against the AppGen-X event contract, not a broker
-or stream library. Generate the same surface for normal PBCs every time:
+Developers and agents build against the AppGen-X event contract, not a broker,
+Kafka alternative, stream library, topic client, or state store. Generate the
+same surface for normal PBCs every time:
 
 | File or surface | Generated responsibility |
 | --- | --- |
@@ -89,12 +96,16 @@ or stream library. Generate the same surface for normal PBCs every time:
 | `services.py` | Command handlers that mutate owned state and enqueue events. |
 | `events.py` | Typed handlers, idempotency keys, retry policies, and dead-letter contracts. |
 | `api.py` | Synchronous command/query routes. |
-| `pbc_runtime.py` | Manifest, topic names, selected profile metadata, and release-audit evidence. |
+| `pbc_runtime.py` | Manifest, topic names, read-only selected profile metadata, and release-audit evidence. |
 | package docs | Event contracts, handler ownership, operational owner, and exception evidence when present. |
 
 Generated business logic must not import `faust_streaming`, `quix_streams`, or
 `bytewax` directly. Profile-specific dependencies belong behind platform
 adapter modules.
+
+The visible choice count for ordinary work is one: `appgen_event_contract`.
+This is the rule the IDE, DSL linter, natural-language generator, package
+templates, and coding-agent prompts should expose.
 
 ## Allowed Profiles
 
@@ -102,13 +113,14 @@ AppGen-X allows one default and two audited exceptions.
 
 | Profile | Decision | Use only when |
 | --- | --- | --- |
-| `faust_streaming` | Default | The PBC is an event-driven service, workflow participant, saga orchestrator, outbox consumer, integration handler, or agent task handler. |
+| `faust_streaming` | Platform default behind the adapter | The PBC is an event-driven service, workflow participant, saga orchestrator, outbox consumer, integration handler, or agent task handler. |
 | `quix_streams` | Exception | The PBC owns high-throughput telemetry, time-series streams, large ingestion, or windowed operational metrics. |
 | `bytewax` | Exception | The PBC owns complex parallel dataflow, CPU-heavy transformation graphs, stateful analytical pipelines, or multi-stage transformations. |
 
 Do not add another profile for a project. A fourth option requires a platform
 architecture decision, executable validation, release-audit coverage, generated
-documentation, and tests.
+documentation, and tests. Until that exists, the answer remains
+`appgen_event_contract` plus the two audited exception workflows.
 
 Do not mix profiles inside one PBC. If a capability has ordinary business
 events plus a specialized telemetry or dataflow workload, split the specialized
