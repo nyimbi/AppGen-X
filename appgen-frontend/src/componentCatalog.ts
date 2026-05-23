@@ -110,6 +110,14 @@ export const paletteComponents: PaletteComponent[] = [
   { name: '3D Anchor', category: '3D', icon: 'cube3d', size: '3 x 3', description: 'Invisible transform node for grouping scene objects.' },
   { name: 'Biometrics', category: 'Device', icon: 'lock', size: '3 x 1', description: 'Face, fingerprint, and platform authentication.' },
   { name: 'Push Notification', category: 'Device', icon: 'bell', size: '4 x 1', description: 'User notification channel and permission contract.' },
+  { name: 'Microphone', category: 'Device', icon: 'microphone', size: '3 x 1', description: 'Voice capture, recording, and consent-aware audio input.' },
+  { name: 'Bluetooth', category: 'Device', icon: 'bluetooth', size: '3 x 1', description: 'Peripheral discovery, pairing, and device data exchange.' },
+  { name: 'NFC', category: 'Device', icon: 'nfc', size: '3 x 1', description: 'Near-field tag reads, writes, and tap-to-identify workflows.' },
+  { name: 'Secure Storage', category: 'Device', icon: 'lock', size: '4 x 1', description: 'Encrypted secrets, tokens, and offline credentials.' },
+  { name: 'File Storage', category: 'Device', icon: 'storage', size: '4 x 1', description: 'Local files, sandbox documents, and sync-ready cache data.' },
+  { name: 'Background Sync', category: 'Device', icon: 'scheduler', size: '4 x 1', description: 'Deferred uploads, retries, and offline replay tasks.' },
+  { name: 'Network State', category: 'Device', icon: 'api', size: '3 x 1', description: 'Connectivity detection with online, offline, and metered states.' },
+  { name: 'Share Sheet', category: 'Device', icon: 'upload', size: '3 x 1', description: 'Platform sharing and document handoff workflows.' },
   { name: 'API Service', category: 'Targets', icon: 'api', size: 'target', description: 'Generated service endpoint and integration boundary.' },
   { name: 'Web App', category: 'Targets', icon: 'web', size: 'target', description: 'Generated responsive browser application.' },
   { name: 'Mobile App', category: 'Targets', icon: 'mobile', size: 'target', description: 'Generated phone and tablet application.' },
@@ -121,7 +129,11 @@ export const paletteCategories = Array.from(new Set(paletteComponents.map((compo
 const specificIconExpectations: Record<string, IconName> = {
   'Data Grid': 'dataGrid',
   'File Upload': 'file',
+  Bluetooth: 'bluetooth',
   'List View': 'listView',
+  Microphone: 'microphone',
+  NFC: 'nfc',
+  'File Storage': 'storage',
   'Tree View': 'treeView',
 }
 

@@ -3,6 +3,7 @@ import { studioCatalogAudit } from './catalogAudit'
 
 const catalogAudit = studioCatalogAudit()
 const bindingAudit = catalogAudit.bindingAudit
+const deviceAudit = catalogAudit.deviceAudit
 const iconAudit = catalogAudit.componentAudit
 const inspectorAudit = catalogAudit.inspectorAudit
 const packageAudit = catalogAudit.packageAudit
@@ -19,6 +20,11 @@ const statuses = [
     label: 'Packages',
     value: packageAudit.ok ? `${packageAudit.totalPackages} packs` : 'Review',
     icon: 'package' as const,
+  },
+  {
+    label: 'Device APIs',
+    value: deviceAudit.ok ? `${deviceAudit.totalCapabilities} ready` : 'Review',
+    icon: 'mobile' as const,
   },
   { label: 'Agents', value: '2 staged', icon: 'agent' as const },
   {

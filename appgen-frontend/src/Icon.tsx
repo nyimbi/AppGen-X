@@ -7,6 +7,7 @@ export type IconName =
   | 'audio'
   | 'bell'
   | 'bitmap'
+  | 'bluetooth'
   | 'bot'
   | 'breadcrumb'
   | 'button'
@@ -46,8 +47,10 @@ export type IconName =
   | 'lookup'
   | 'menu'
   | 'mesh3d'
+  | 'microphone'
   | 'mobile'
   | 'motion'
+  | 'nfc'
   | 'orientation'
   | 'package'
   | 'panel'
@@ -64,6 +67,7 @@ export type IconName =
   | 'service'
   | 'shape'
   | 'scroll'
+  | 'storage'
   | 'style'
   | 'switch'
   | 'table'
@@ -120,6 +124,12 @@ const paths: Record<IconName, JSX.Element> = {
     <>
       <rect x="5" y="5" width="14" height="14" rx="2" />
       <path d="M9 5v14M15 5v14M5 9h14M5 15h14" />
+    </>
+  ),
+  bluetooth: (
+    <>
+      <path d="M12 3v18l6-5-6-4 6-4z" />
+      <path d="m7 8 5 4-5 4" />
     </>
   ),
   bot: (
@@ -376,6 +386,12 @@ const paths: Record<IconName, JSX.Element> = {
       <path d="M8 5 12 21M16 5l-4 16M4 17h16M6 11h12" />
     </>
   ),
+  microphone: (
+    <>
+      <rect x="9" y="3" width="6" height="11" rx="3" />
+      <path d="M5 11a7 7 0 0 0 14 0M12 18v3M8 21h8" />
+    </>
+  ),
   mobile: (
     <>
       <rect x="7" y="3" width="10" height="18" rx="2" />
@@ -386,6 +402,12 @@ const paths: Record<IconName, JSX.Element> = {
     <>
       <path d="M4 12h4l2-5 4 10 2-5h4" />
       <path d="M6 18c2 2 10 2 12 0" />
+    </>
+  ),
+  nfc: (
+    <>
+      <path d="M6 8c4-4 8-4 12 0M8.5 11c2.3-2 4.7-2 7 0M11 14h2" />
+      <rect x="4" y="4" width="16" height="16" rx="3" />
     </>
   ),
   orientation: (
@@ -490,6 +512,13 @@ const paths: Record<IconName, JSX.Element> = {
       <rect x="5" y="4" width="14" height="16" rx="2" />
       <path d="M16 7v10M16 14l2 2 2-2" />
       <path d="M8 8h5M8 12h4M8 16h5" />
+    </>
+  ),
+  storage: (
+    <>
+      <rect x="4" y="5" width="16" height="14" rx="2" />
+      <path d="M7 9h10M7 13h10M9 17h6" />
+      <path d="M5 5l2-2h10l2 2" />
     </>
   ),
   style: (

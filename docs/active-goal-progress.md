@@ -30,13 +30,13 @@ Build a complete AppGen IDE and generation platform with:
 
 ## Current Working Slice
 
-Standardize button and component handler architecture by adding:
+Expose mobile/native device API coverage in the IDE by adding:
 
-- Shared action registry contracts.
-- Explicit handler signature and context API.
-- Guarded cross-handler invocation policy.
-- Safe component-handler invocation operation.
-- Generated parity and tests.
+- Typed capability catalog with permissions, adapters, privacy controls, and
+  fallbacks.
+- Visible workbench for native capability review.
+- Palette entries and icons for device-specific components.
+- Studio audit and status-rail coverage.
 
 ## Open Completion Areas
 

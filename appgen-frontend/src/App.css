@@ -1074,6 +1074,10 @@ h2 {
   margin-top: 12px;
 }
 
+.device-api-workbench {
+  margin-top: 12px;
+}
+
 .package-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -1188,9 +1192,111 @@ h2 {
   background: var(--package-state);
 }
 
+.device-api-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.device-api-group {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+  border: 1px solid var(--line-soft);
+  border-radius: 7px;
+  padding: 10px;
+  background: #ffffff;
+}
+
+.device-api-group header {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: space-between;
+  min-width: 0;
+  color: var(--brand-strong);
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.device-api-group header span {
+  display: grid;
+  place-items: center;
+  min-width: 24px;
+  height: 24px;
+  border-radius: 999px;
+  color: #ffffff;
+  background: #315da8;
+  font-size: 11px;
+}
+
+.device-api-list {
+  display: grid;
+  gap: 8px;
+}
+
+.device-api-card {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: start;
+  min-width: 0;
+  border: 1px solid #e7edf5;
+  border-radius: 7px;
+  padding: 8px;
+  background: var(--surface-subtle);
+}
+
+.device-api-card strong,
+.device-api-card small,
+.device-api-card em,
+.device-api-card p,
+.device-api-fallback {
+  min-width: 0;
+}
+
+.device-api-card strong,
+.device-api-card small {
+  display: block;
+}
+
+.device-api-card small,
+.device-api-card p,
+.device-api-fallback {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.device-api-card em {
+  border-radius: 999px;
+  padding: 3px 7px;
+  color: #17463f;
+  background: var(--brand-soft);
+  font-size: 10px;
+  font-style: normal;
+  font-weight: 900;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.device-api-card p {
+  grid-column: 2 / 4;
+  margin: 0;
+  line-height: 1.35;
+}
+
+.device-api-fallback {
+  grid-column: 2 / 4;
+  display: block;
+  border-top: 1px solid #e7edf5;
+  padding-top: 7px;
+  font-weight: 800;
+  line-height: 1.35;
+}
+
 .status-rail {
   display: grid;
-  grid-template-columns: repeat(7, minmax(0, 1fr));
+  grid-template-columns: repeat(8, minmax(0, 1fr));
   gap: 12px;
   margin-top: 12px;
 }
@@ -1258,7 +1364,8 @@ h2 {
     grid-template-columns: 1fr;
   }
 
-  .package-grid {
+  .package-grid,
+  .device-api-grid {
     grid-template-columns: 1fr;
   }
 }

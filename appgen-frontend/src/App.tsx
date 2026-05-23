@@ -2,6 +2,7 @@ import { useState } from 'react'
 import './App.css'
 import { ComponentPalette } from './ComponentPalette'
 import { DesignerCanvas } from './DesignerCanvas'
+import { DeviceApiWorkbench } from './DeviceApiWorkbench'
 import { InspectorPanel } from './InspectorPanel'
 import { PackageManager } from './PackageManager'
 import { StatusRail } from './StatusRail'
@@ -26,6 +27,7 @@ function App() {
         <InspectorPanel />
       </section>
       <PackageManager />
+      <DeviceApiWorkbench />
       <StatusRail />
     </div>
   )
