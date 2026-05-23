@@ -114,6 +114,15 @@ ACP_STREAM_PROCESSOR_DECISION_RULES = (
 ACP_STREAM_PROCESSING_POLICY = {
     "default": ACP_DEFAULT_STREAM_PROCESSOR,
     "allowed_processors": tuple(ACP_STREAM_PROCESSORS),
+    "decision_card": {
+        "answer": "Use the AppGen-X generated outbox/inbox event contract with faust_streaming behind the platform adapter.",
+        "default_profile": ACP_DEFAULT_STREAM_PROCESSOR,
+        "selection_mode": "read_only_default_with_audited_exceptions",
+        "do_not_ask_users_to_choose": True,
+        "ide_behavior": "show the generated default profile and open an exception request only when evidence is supplied",
+        "nl_generator_behavior": "choose the default for ordinary business, workflow, chatbot, agent, and ERP prompts",
+        "business_logic_rule": "generated business logic imports the AppGen-X event adapter, not profile-specific stream libraries",
+    },
     "opinionated_stack": {
         "development": "appgen_in_memory_event_bus_with_generated_outbox_inbox",
         "production": "appgen_event_backbone_adapter_with_generated_outbox_inbox",
@@ -141,6 +150,18 @@ ACP_STREAM_PROCESSING_POLICY = {
         "dead_letter_contracts",
         "release_audit_evidence",
     ),
+    "workload_defaults": (
+        {"workload": "erp_crm_hr_finance_inventory_commerce", "processor": ACP_DEFAULT_STREAM_PROCESSOR, "decision": "default"},
+        {"workload": "workflow_saga_approval_agent_task_routing", "processor": ACP_DEFAULT_STREAM_PROCESSOR, "decision": "default"},
+        {"workload": "chatbot_agentic_application_events", "processor": ACP_DEFAULT_STREAM_PROCESSOR, "decision": "default"},
+        {"workload": "telemetry_time_series_large_ingestion", "processor": "quix_streams", "decision": "exception"},
+        {"workload": "complex_parallel_dataflow_cpu_heavy_transform", "processor": "bytewax", "decision": "exception"},
+    ),
+    "exception_prompts": (
+        "What named workload requires the exception?",
+        "What throughput, latency, state, or recovery constraint makes the default insufficient?",
+        "Who owns runtime operations and incidents for this specialized workload?",
+    ),
     "exception_required_evidence": (
         "workload_name",
         "throughput_or_latency_reason",
@@ -154,6 +175,7 @@ ACP_STREAM_PROCESSING_POLICY = {
         "adding a fourth processor without a platform architecture decision",
         "asking natural-language generation to compare stream libraries",
         "exposing a free-form stream-engine selector in the IDE",
+        "importing profile-specific stream libraries from generated business logic",
     ),
     "decision_tree": (
         {
@@ -771,10 +793,13 @@ def acp_stream_processing_policy() -> dict:
         "ok": True,
         "default": ACP_STREAM_PROCESSING_POLICY["default"],
         "allowed_processors": ACP_STREAM_PROCESSING_POLICY["allowed_processors"],
+        "decision_card": ACP_STREAM_PROCESSING_POLICY["decision_card"],
         "developer_rule": ACP_STREAM_PROCESSING_POLICY["developer_rule"],
         "generation_rule": ACP_STREAM_PROCESSING_POLICY["generation_rule"],
         "opinionated_stack": ACP_STREAM_PROCESSING_POLICY["opinionated_stack"],
         "generator_outputs": ACP_STREAM_PROCESSING_POLICY["generator_outputs"],
+        "workload_defaults": ACP_STREAM_PROCESSING_POLICY["workload_defaults"],
+        "exception_prompts": ACP_STREAM_PROCESSING_POLICY["exception_prompts"],
         "exception_required_evidence": ACP_STREAM_PROCESSING_POLICY["exception_required_evidence"],
         "prohibited": ACP_STREAM_PROCESSING_POLICY["prohibited"],
         "decision_tree": ACP_STREAM_PROCESSING_POLICY["decision_tree"],

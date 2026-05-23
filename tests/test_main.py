@@ -752,12 +752,27 @@ def test_package_pbc_catalog_composes_enterprise_apps(runner: CliRunner) -> None
     assert stream_policy["format"] == "appgen.acp-stream-processing-policy.v1"
     assert stream_policy["default"] == "faust_streaming"
     assert stream_policy["allowed_processors"] == ("bytewax", "quix_streams", "faust_streaming")
+    assert stream_policy["decision_card"]["answer"].startswith("Use the AppGen-X generated outbox/inbox event contract")
+    assert stream_policy["decision_card"]["do_not_ask_users_to_choose"] is True
+    assert stream_policy["decision_card"]["selection_mode"] == "read_only_default_with_audited_exceptions"
+    assert stream_policy["decision_card"]["default_profile"] == "faust_streaming"
+    assert stream_policy["decision_card"]["business_logic_rule"].endswith("not profile-specific stream libraries")
+    assert {
+        "erp_crm_hr_finance_inventory_commerce",
+        "workflow_saga_approval_agent_task_routing",
+        "chatbot_agentic_application_events",
+    } <= {item["workload"] for item in stream_policy["workload_defaults"] if item["processor"] == "faust_streaming"}
+    assert {"telemetry_time_series_large_ingestion", "complex_parallel_dataflow_cpu_heavy_transform"} <= {
+        item["workload"] for item in stream_policy["workload_defaults"] if item["decision"] == "exception"
+    }
+    assert len(stream_policy["exception_prompts"]) == 3
     assert {item["use"] for item in stream_policy["decision_tree"]} == {
         "bytewax",
         "quix_streams",
         "faust_streaming",
     }
     assert "mixing multiple processors inside one PBC" in stream_policy["prohibited"]
+    assert "importing profile-specific stream libraries from generated business logic" in stream_policy["prohibited"]
 
     manifest_schema = pbc_manifest_schema()
     assert manifest_schema["format"] == "appgen.pbc-manifest-schema.v1"

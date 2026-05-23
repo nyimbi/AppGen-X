@@ -65,6 +65,7 @@ Build a complete AppGen IDE and generation platform with:
 | 2026-05-23 | `56a6c03` | Added generated native form runtime manifest and replay validation as an independently importable artifact. | Py compile; focused generated-app/form-designer/package-goal tests; staged hygiene scan passed. |
 | 2026-05-23 | `cd926e8` | Added generated inspector runtime manifest and replay validation as an independently importable artifact. | Py compile; focused generated-app/form-designer/package-goal tests; staged hygiene scan passed. |
 | 2026-05-23 | `0fb322e` | Added generated binding runtime manifest and replay validation as an independently importable artifact. | Py compile; focused generated-app/form-designer/package-goal tests; staged hygiene scan passed. |
+| 2026-05-23 | `pending` | Tightened event-processing guidance into one read-only default choice with audited exceptions. | Py compile and focused PBC policy test passed; pending staged hygiene scan. |
 
 ## Current Working Slice
 
@@ -84,6 +85,9 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   the generated outbox/inbox contract with the default service-runtime profile,
   while treating telemetry/time-series and complex dataflow profiles as audited
   exceptions rather than selectable preferences.
+- The PBC stream-processing policy now exposes a decision card, workload
+  defaults, and exception prompts so the IDE, natural-language generator, and
+  coding agents use the same default instead of expanding the option matrix.
 - Generated applications now include a standalone mobile device runtime module
   that validates permission manifests, component adapters, simulator fixtures,
   lifecycle replay, and unsupported target handling without touching hardware.

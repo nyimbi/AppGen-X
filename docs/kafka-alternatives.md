@@ -5,6 +5,31 @@ application. That creates an exponential support matrix and makes PBC packages
 hard to reason about. The platform therefore supports one default event
 processor profile and two narrow exception profiles.
 
+## Decision Card
+
+If you are building with AppGen-X, use this answer:
+
+```text
+Use the generated outbox/inbox event contract.
+Use faust_streaming behind the AppGen-X event adapter.
+Do not import stream libraries from generated business logic.
+Do not expose a stream-engine picker in the IDE or natural-language flow.
+Use exceptions only for telemetry/time-series or complex parallel dataflow
+workloads with release-audit evidence.
+```
+
+This is a platform decision, not a developer preference. Ordinary generated
+business applications, ERP PBCs, approval workflows, agents, chatbots, and
+integration handlers all use the same default profile. The IDE may display the
+profile as generated metadata, but the editable work is the event model:
+commands, emitted events, consumed events, handler ownership, retries,
+idempotency keys, dead-letter behavior, and operational runbooks.
+
+The AppGen-X event backbone may use different infrastructure in different
+deployments, but generated PBC code still targets the AppGen-X adapter. Do not
+add broker-specific clients or profile-specific imports to command handlers,
+form actions, chatbot tools, agents, or generated UI code.
+
 ## Required Choice
 
 Use `faust_streaming`.
@@ -35,6 +60,39 @@ Use faust_streaming behind the platform adapter.
 Do not expose a stream-engine picker.
 Escalate only telemetry/time-series or complex dataflow workloads.
 ```
+
+## Workload Defaults
+
+| Workload | What to use | Why |
+| --- | --- | --- |
+| ERP, CRM, HR, finance, inventory, commerce, workflow, approval, chatbot, and agentic application events | `faust_streaming` through the AppGen-X event adapter | Predictable Python-native event services, local state, saga routing, and generated outbox/inbox behavior. |
+| PBC command handlers, outbox consumers, API-to-event adapters, human approval tasks, and agent task routing | `faust_streaming` through the AppGen-X event adapter | This is the standard generated service model. |
+| High-throughput telemetry, time-series ingestion, large event ingestion, and windowed operational metrics | `quix_streams`, only as an audited exception | The workload is stream-volume and time-window oriented rather than normal domain-event orchestration. |
+| Complex parallel dataflow, CPU-heavy transformations, stateful transformation graphs, and analytical pipelines | `bytewax`, only as an audited exception | The workload is a specialized dataflow capability that should normally be split from the core PBC. |
+
+When in doubt, use `faust_streaming`. If the exception reason cannot be written
+as measurable evidence, it is not an exception.
+
+## Generator And IDE Contract
+
+Natural-language generation, DSL generation, PBC package validation, and the
+IDE must all apply the same behavior:
+
+- For ordinary app prompts, omit `stream_processor` and let validation normalize
+  it to `faust_streaming`.
+- Show the selected profile as read-only generated metadata in normal PBCs.
+- Open an exception workflow only after the developer describes a specialized
+  workload.
+- Ask for exception evidence, not library preference.
+- Fail release validation when an exception profile has no evidence.
+- Keep profile-specific dependencies behind AppGen-X adapter modules.
+
+The exception workflow asks only three questions:
+
+1. What named workload requires the exception?
+2. What throughput, latency, state, or recovery constraint makes the default
+   insufficient?
+3. Who owns runtime operations and incidents for this specialized workload?
 
 ## Platform Stack
 
