@@ -1881,6 +1881,27 @@ def write_pwa_file(output_dir, schema: AppSchema):
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
     (output_dir / "pwa.py").write_text(_pwa_text(schema))
+    write_pwa_module_files(output_dir)
+
+
+def write_pwa_module_files(output_dir):
+    """Write generated PWA modules and smoke tests."""
+    output_dir = Path(output_dir)
+    module_dir = output_dir / "pwa_modules"
+    test_dir = output_dir / "pwa_module_tests"
+    module_dir.mkdir(parents=True, exist_ok=True)
+    test_dir.mkdir(parents=True, exist_ok=True)
+    (module_dir / "__init__.py").write_text(_pwa_module_init_text(), encoding="utf-8")
+    (test_dir / "__init__.py").write_text(_pwa_module_test_init_text(), encoding="utf-8")
+    for module_name in PWA_MODULES:
+        (module_dir / f"{module_name}.py").write_text(
+            _pwa_module_text(module_name),
+            encoding="utf-8",
+        )
+        (test_dir / f"test_{module_name}.py").write_text(
+            _pwa_module_test_text(module_name),
+            encoding="utf-8",
+        )
 
 
 def write_microservices_file(output_dir, schema: AppSchema):
@@ -2217,6 +2238,14 @@ PLATFORM_MODULES = (
     "desktop_target_module",
     "chatbot_target_module",
     "target_release_workbench_module",
+)
+
+PWA_MODULES = (
+    "asset_catalog_module",
+    "manifest_contract_module",
+    "service_worker_module",
+    "offline_shell_module",
+    "installability_release_module",
 )
 
 
@@ -6707,6 +6736,243 @@ def smoke_test():
         "target": TARGET,
         "ok": True,
         "tests": ("test_platform_module_contract", "test_platform_module_smoke"),
+    }}
+'''
+
+
+def _pwa_module_init_text() -> str:
+    return (
+        '"""Generated PWA modules."""\n\n'
+        f"PWA_MODULES = {PWA_MODULES!r}\n"
+    )
+
+
+def _pwa_module_test_init_text() -> str:
+    modules = tuple(f"test_{name}" for name in PWA_MODULES)
+    return (
+        '"""Generated PWA module tests."""\n\n'
+        f"PWA_MODULE_TESTS = {modules!r}\n"
+    )
+
+
+def _pwa_surface(module_name: str) -> tuple[str, str]:
+    return {
+        "asset_catalog_module": ("asset_catalog", "pwa_asset_catalog"),
+        "manifest_contract_module": ("manifest_contract", "manifest_contract"),
+        "service_worker_module": ("service_worker", "service_worker_contract"),
+        "offline_shell_module": ("offline_shell", "offline_shell_contract"),
+        "installability_release_module": ("installability_release", "pwa_release_gate"),
+    }[module_name]
+
+
+def _pwa_module_text(module_name: str) -> str:
+    surface, operation = _pwa_surface(module_name)
+    return f'''"""Generated PWA module for {surface}."""
+
+from __future__ import annotations
+
+import importlib.util
+from pathlib import Path
+
+
+MODULE = {module_name!r}
+SURFACE = {surface!r}
+OPERATION = {operation!r}
+EXPECTED_EXPORTS = (
+    "module_contract",
+    "pwa_manifest_contract",
+    "run_pwa_operation",
+    "release_context",
+    "smoke_test",
+)
+
+
+def _pwa():
+    module_path = Path(__file__).resolve().parents[1] / "pwa.py"
+    spec = importlib.util.spec_from_file_location(f"generated_pwa_{{MODULE}}_pwa", module_path)
+    module = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(module)
+    return module
+
+
+def _assets():
+    return {{
+        "app/static/appgen.webmanifest",
+        "app/static/appgen-sw.js",
+        "app/static/appgen-offline.html",
+        "app/static/appgen-icon.svg",
+        "app/static/appgen-theme.css",
+    }}
+
+
+def module_contract():
+    """Return this generated PWA module's export contract."""
+    available = tuple(name for name in EXPECTED_EXPORTS if name in globals())
+    return {{
+        "format": "appgen.pwa-module-contract.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "operation": OPERATION,
+        "ok": set(EXPECTED_EXPORTS) <= set(available),
+        "exports": available,
+        "expected_exports": EXPECTED_EXPORTS,
+        "side_effects": (),
+    }}
+
+
+def pwa_manifest_contract():
+    """Return generated PWA metadata owned by this module."""
+    pwa = _pwa()
+    assets = pwa.pwa_asset_catalog()
+    manifest = pwa.manifest_contract()
+    worker = pwa.service_worker_contract()
+    return {{
+        "format": "appgen.pwa-module-manifest.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "ok": "pwa" in pwa.SELECTED_TARGETS
+        and bool(assets)
+        and manifest["display"] == "standalone"
+        and worker["offline_fallback"] == "/static/appgen-offline.html",
+        "assets": assets,
+        "manifest": manifest,
+        "service_worker": worker,
+        "side_effects": (),
+    }}
+
+
+def run_pwa_operation():
+    """Run this module's side-effect-free PWA operation."""
+    pwa = _pwa()
+    if SURFACE == "asset_catalog":
+        operation = pwa.pwa_asset_catalog()
+        ok = bool(operation) and all(item["path"].startswith("app/static/") for item in operation)
+    elif SURFACE == "manifest_contract":
+        operation = pwa.manifest_contract()
+        ok = operation["display"] == "standalone" and operation["start_url"] == "/" and bool(operation["icons"])
+    elif SURFACE == "service_worker":
+        operation = pwa.service_worker_contract()
+        ok = operation["offline_fallback"] in operation["precache_urls"] and "POST" in operation["ignored_methods"]
+    elif SURFACE == "offline_shell":
+        operation = pwa.offline_shell_contract()
+        ok = operation["registered_from_home"] and operation["path"].endswith("appgen-offline.html")
+    else:
+        operation = {{
+            "installability": pwa.installability_matrix(_assets()),
+            "release": pwa.pwa_release_gate(_assets()),
+        }}
+        ok = operation["installability"]["ok"] and operation["release"]["ok"]
+    return {{
+        "format": "appgen.pwa-module-operation.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "ok": ok,
+        "operation": operation,
+        "side_effects": (),
+    }}
+
+
+def release_context():
+    """Return release evidence used by this PWA module."""
+    pwa = _pwa()
+    return {{
+        "format": "appgen.pwa-module-release-context.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "ok": pwa.installability_matrix(_assets())["ok"] and pwa.pwa_release_gate(_assets())["ok"],
+        "installability": pwa.installability_matrix(_assets()),
+        "release": pwa.pwa_release_gate(_assets()),
+        "side_effects": (),
+    }}
+
+
+def smoke_test():
+    """Run side-effect-free checks for this generated PWA module."""
+    contract = module_contract()
+    manifest = pwa_manifest_contract()
+    operation = run_pwa_operation()
+    release = release_context()
+    return {{
+        "format": "appgen.pwa-module-smoke-test.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "ok": contract["ok"]
+        and manifest["ok"]
+        and operation["ok"]
+        and release["ok"]
+        and not manifest["side_effects"]
+        and not operation["side_effects"]
+        and not release["side_effects"],
+        "contract": contract,
+        "manifest": manifest,
+        "operation": operation,
+        "release": release,
+        "checks": (
+            "module_contract_resolves",
+            "pwa_manifest_contract_ok",
+            "pwa_operation_ok",
+            "release_context_ok",
+            "no_side_effects",
+        ),
+    }}
+'''
+
+
+def _pwa_module_test_text(module_name: str) -> str:
+    surface, _operation = _pwa_surface(module_name)
+    return f'''"""Generated tests for the {surface} PWA module."""
+
+from __future__ import annotations
+
+import importlib.util
+from pathlib import Path
+
+
+MODULE = {module_name!r}
+SURFACE = {surface!r}
+
+
+def load_pwa_module():
+    """Load the generated PWA module without app installation."""
+    module_path = Path(__file__).resolve().parents[1] / "pwa_modules" / f"{{MODULE}}.py"
+    spec = importlib.util.spec_from_file_location(f"generated_pwa_module_{{MODULE}}", module_path)
+    module = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(module)
+    return module
+
+
+def test_pwa_module_contract():
+    """Assert the generated PWA module exposes its contract."""
+    module = load_pwa_module()
+    contract = module.module_contract()
+    assert contract["module"] == MODULE
+    assert contract["surface"] == SURFACE
+    assert contract["ok"] is True
+    assert all(hasattr(module, name) for name in contract["expected_exports"])
+
+
+def test_pwa_module_smoke():
+    """Assert the module's side-effect-free smoke test passes."""
+    module = load_pwa_module()
+    result = module.smoke_test()
+    assert result["ok"] is True
+    assert result["module"] == MODULE
+    assert result["surface"] == SURFACE
+    assert result["checks"]
+
+
+def smoke_test():
+    """Run this generated test module in a side-effect-free way."""
+    test_pwa_module_contract()
+    test_pwa_module_smoke()
+    return {{
+        "format": "appgen.pwa-module-generated-test-smoke.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "ok": True,
+        "tests": ("test_pwa_module_contract", "test_pwa_module_smoke"),
     }}
 '''
 
@@ -53254,6 +53520,9 @@ def _pwa_text(schema: AppSchema) -> str:
 
 from __future__ import annotations
 
+import importlib.util
+from pathlib import Path
+
 from flask import jsonify
 from flask_appbuilder import BaseView
 from flask_appbuilder import expose
@@ -53286,6 +53555,72 @@ SERVICE_WORKER_CONTRACT = {{
     "offline_fallback": "/static/appgen-offline.html",
     "ignored_methods": ("POST", "PUT", "PATCH", "DELETE"),
 }}
+PWA_MODULES = (
+    "asset_catalog_module",
+    "manifest_contract_module",
+    "service_worker_module",
+    "offline_shell_module",
+    "installability_release_module",
+)
+
+
+def _load_generated_module(module_path, module_name):
+    """Load a generated PWA module without installing the app."""
+    spec = importlib.util.spec_from_file_location(module_name, module_path)
+    module = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(module)
+    return module
+
+
+def pwa_module_file_manifest():
+    """Return independently importable generated PWA module files."""
+    root = Path(__file__).resolve().parent
+    modules = []
+    for module_name in PWA_MODULES:
+        module_path = root / "pwa_modules" / f"{{module_name}}.py"
+        module = _load_generated_module(module_path, f"generated_pwa_module_{{module_name}}")
+        contract = module.module_contract()
+        modules.append(
+            {{
+                "module": module_name,
+                "surface": contract["surface"],
+                "path": f"app/pwa_modules/{{module_name}}.py",
+                "exists": module_path.exists(),
+                "ok": contract["ok"] and module.smoke_test()["ok"],
+                "exports": contract["exports"],
+            }}
+        )
+    return {{
+        "format": "appgen.pwa-module-file-manifest.v1",
+        "ok": len(modules) == len(PWA_MODULES) and all(item["ok"] and item["exists"] for item in modules),
+        "modules": tuple(modules),
+    }}
+
+
+def pwa_module_test_file_manifest():
+    """Return generated tests for the PWA module files."""
+    root = Path(__file__).resolve().parent
+    tests = []
+    for module_name in PWA_MODULES:
+        test_path = root / "pwa_module_tests" / f"test_{{module_name}}.py"
+        module = _load_generated_module(test_path, f"generated_pwa_module_test_{{module_name}}")
+        result = module.smoke_test()
+        tests.append(
+            {{
+                "module": f"test_{{module_name}}",
+                "surface": result["surface"],
+                "path": f"app/pwa_module_tests/test_{{module_name}}.py",
+                "exists": test_path.exists(),
+                "ok": result["ok"],
+                "tests": result["tests"],
+            }}
+        )
+    return {{
+        "format": "appgen.pwa-module-test-file-manifest.v1",
+        "ok": len(tests) == len(PWA_MODULES) and all(item["ok"] and item["exists"] for item in tests),
+        "tests": tuple(tests),
+    }}
 
 
 def pwa_asset_catalog():

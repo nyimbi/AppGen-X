@@ -6550,6 +6550,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     text_quality = _load_module(output_dir / "text_quality.py", "generated_text_quality")
     notifications = _load_module(output_dir / "notifications.py", "generated_notifications")
     platforms = _load_module(output_dir / "platforms.py", "generated_platforms")
+    pwa = _load_module(output_dir / "pwa.py", "generated_pwa")
     microservices = _load_module(output_dir / "microservices.py", "generated_microservices")
     sdks = _load_module(tmp_path / "sdks" / "appgen_sdks.py", "generated_sdks")
     collaboration = _load_module(output_dir / "collaboration.py", "generated_collaboration")
@@ -9836,6 +9837,48 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         test_path = output_dir / item["path"].replace("app/", "")
         py_compile.compile(str(test_path), doraise=True)
         module = _load_module(test_path, f"generated_platform_module_test_{item['module']}")
+        assert module.smoke_test()["ok"] is True
+    pwa_artifacts = {
+        "app/static/appgen.webmanifest",
+        "app/static/appgen-sw.js",
+        "app/static/appgen-offline.html",
+        "app/static/appgen-icon.svg",
+        "app/static/appgen-theme.css",
+    }
+    assert pwa.installability_matrix(pwa_artifacts)["ok"] is True
+    assert pwa.pwa_release_gate(pwa_artifacts)["ok"] is True
+    assert pwa.pwa_release_gate({"app/static/appgen.webmanifest"})["ok"] is False
+    pwa_module_files = pwa.pwa_module_file_manifest()
+    pwa_module_tests = pwa.pwa_module_test_file_manifest()
+    assert pwa_module_files["ok"] is True
+    assert pwa_module_tests["ok"] is True
+    assert {item["surface"] for item in pwa_module_files["modules"]} == {
+        "asset_catalog",
+        "manifest_contract",
+        "service_worker",
+        "offline_shell",
+        "installability_release",
+    }
+    assert {item["surface"] for item in pwa_module_tests["tests"]} == {
+        "asset_catalog",
+        "manifest_contract",
+        "service_worker",
+        "offline_shell",
+        "installability_release",
+    }
+    for item in pwa_module_files["modules"]:
+        module_path = output_dir / item["path"].replace("app/", "")
+        py_compile.compile(str(module_path), doraise=True)
+        module = _load_module(module_path, f"generated_pwa_module_{item['module']}")
+        assert module.module_contract()["ok"] is True
+        assert module.pwa_manifest_contract()["ok"] is True
+        assert module.run_pwa_operation()["ok"] is True
+        assert module.release_context()["ok"] is True
+        assert module.smoke_test()["ok"] is True
+    for item in pwa_module_tests["tests"]:
+        test_path = output_dir / item["path"].replace("app/", "")
+        py_compile.compile(str(test_path), doraise=True)
+        module = _load_module(test_path, f"generated_pwa_module_test_{item['module']}")
         assert module.smoke_test()["ok"] is True
     assert "api-gateway" in microservices.service_names()
     assert microservices.service_for_table("Book")["name"] == "book-service"
