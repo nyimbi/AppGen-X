@@ -70,6 +70,7 @@ Build a complete AppGen IDE and generation platform with:
 | 2026-05-23 | `9f21a27` | Added generated package-manager runtime manifest and replay validation as an independently importable artifact. | Py compile; generated package-manager runtime smoke probe; focused generated-app/form-designer/package-goal tests; staged hygiene scan passed. |
 | 2026-05-23 | `fbefe5c` | Added generated component-parity runtime manifest and replay validation as an independently importable artifact. | Py compile; generated component-parity runtime smoke probe; focused generated-app/form-designer/package-goal tests; staged hygiene scan passed. |
 | 2026-05-23 | `48d8f10` | Strengthened generated data tooling runtime validation for relationship lookups, module smoke, publish replay, and failover replay. | Py compile; generated data tooling runtime smoke probe; focused generated-app/form-designer/package-goal tests; staged hygiene scan passed. |
+| 2026-05-23 | `pending` | Tightened event-processing guidance into one generated outbox/inbox adapter path with one default profile and two audited exceptions. | Py compile, focused PBC policy test, documentation diff check, and staged hygiene scan pending. |
 
 ## Current Working Slice
 
@@ -122,6 +123,10 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
 - Generated data tooling runtime validation now exposes relationship lookup
   lifecycle, module runtime smoke, publish transaction replay, failover
   transaction replay, and no-write replay evidence as first-class checks.
+- Event-processing guidance now tells developers, the Studio, natural-language
+  generation, and coding agents to use one generated outbox/inbox adapter path
+  with the default service-runtime profile unless audited exception evidence is
+  present.
 
 ## Open Completion Areas
 

@@ -99,6 +99,12 @@ model event contracts, handlers, retry policies, idempotency keys, and
 dead-letter behavior; they should not choose a stream library for normal
 generated applications.
 
+The generated implementation is fixed for ordinary work: transactional
+outbox/inbox tables, the AppGen-X event adapter, the `faust_streaming`
+service-runtime profile, and generated retry/idempotency/dead-letter/release
+audit contracts. The IDE and natural-language generator may show that decision
+as read-only metadata, but they must not render a stream-engine picker.
+
 Allowed values:
 
 - `faust_streaming`: default for event-driven microservices, actor-style
@@ -110,8 +116,8 @@ Allowed values:
   graphs, CPU-heavy stream transforms, and multi-stage analytical pipelines.
 
 Do not introduce additional stream processors for ordinary PBC work. The
-platform release audit treats the three-profile decision matrix as the supported
-surface.
+platform release audit treats this as one default implementation path with two
+audited exception profiles, not a three-way preference matrix.
 
 Exception profiles must include machine-checkable `stream_exception_evidence`
 in the manifest with `workload_name`, `throughput_or_latency_reason`,

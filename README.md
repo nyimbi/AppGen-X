@@ -158,6 +158,11 @@ Event processing is intentionally opinionated: generated PBCs use
 `faust_streaming` by default. Developers should omit `stream_processor` in
 ordinary manifests and let the platform normalize the profile, generate the
 outbox/inbox contracts, and wire handlers through the generated event adapter.
+The implementation path is fixed for normal work: generated transactional
+outbox/inbox tables, the AppGen-X event adapter, the `faust_streaming`
+service-runtime profile, and generated retry/idempotency/dead-letter/release
+audit contracts. Broker or runtime details below that adapter are platform
+infrastructure, not a user-facing design choice.
 The Studio and natural-language generator should not ask users to compare stream
 libraries; they should model events, handlers, retries, idempotency, and
 dead-letter behavior while the platform owns the adapter choice. `quix_streams`

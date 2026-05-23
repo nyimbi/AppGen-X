@@ -53,13 +53,13 @@ PBC_ALLOWED_DATASTORE_BACKENDS = (
     "opensearch",
 )
 ACP_STREAM_PROCESSORS: dict[str, dict] = {
-    "bytewax": {
-        "label": "Bytewax",
-        "core_architecture": "rust_core_python_dataflow_api",
-        "state_preservation": "local_in_memory_distributed_recovery",
-        "primary_use_case": "complex_parallel_transformations_and_stateful_pipelines",
-        "concurrency_model": "rust_multithreaded_execution_threads",
-        "best_for": ("parallel_dataflow", "stateful_pipeline", "complex_transform"),
+    "faust_streaming": {
+        "label": "Faust-Streaming",
+        "core_architecture": "pure_python_asyncio_actor_mesh",
+        "state_preservation": "embedded_rocksdb_or_in_memory",
+        "primary_use_case": "event_driven_microservices_and_asynchronous_workflows",
+        "concurrency_model": "asyncio_event_loops",
+        "best_for": ("event_driven_service", "async_workflow", "saga_orchestration"),
     },
     "quix_streams": {
         "label": "Quix Streams",
@@ -69,13 +69,13 @@ ACP_STREAM_PROCESSORS: dict[str, dict] = {
         "concurrency_model": "python_multiprocessing_threads",
         "best_for": ("time_series", "event_processing", "high_throughput_ingestion"),
     },
-    "faust_streaming": {
-        "label": "Faust-Streaming",
-        "core_architecture": "pure_python_asyncio_actor_mesh",
-        "state_preservation": "embedded_rocksdb_or_in_memory",
-        "primary_use_case": "event_driven_microservices_and_asynchronous_workflows",
-        "concurrency_model": "asyncio_event_loops",
-        "best_for": ("event_driven_service", "async_workflow", "saga_orchestration"),
+    "bytewax": {
+        "label": "Bytewax",
+        "core_architecture": "rust_core_python_dataflow_api",
+        "state_preservation": "local_in_memory_distributed_recovery",
+        "primary_use_case": "complex_parallel_transformations_and_stateful_pipelines",
+        "concurrency_model": "rust_multithreaded_execution_threads",
+        "best_for": ("parallel_dataflow", "stateful_pipeline", "complex_transform"),
     },
 }
 ACP_DEFAULT_STREAM_PROCESSOR = "faust_streaming"
@@ -117,13 +117,16 @@ ACP_STREAM_PROCESSING_POLICY = {
     "decision_card": {
         "answer": "Use the AppGen-X generated outbox/inbox event contract with faust_streaming behind the platform adapter.",
         "default_profile": ACP_DEFAULT_STREAM_PROCESSOR,
+        "choice_contract": "one_default_two_audited_exceptions",
         "selection_mode": "read_only_default_with_audited_exceptions",
         "do_not_ask_users_to_choose": True,
+        "developer_selection": "not_user_selectable_for_ordinary_app_generation",
         "ide_behavior": "show the generated default profile and open an exception request only when evidence is supplied",
         "nl_generator_behavior": "choose the default for ordinary business, workflow, chatbot, agent, and ERP prompts",
         "business_logic_rule": "generated business logic imports the AppGen-X event adapter, not profile-specific stream libraries",
     },
     "opinionated_stack": {
+        "default_event_adapter": "appgen_outbox_inbox_faust_streaming",
         "development": "appgen_in_memory_event_bus_with_generated_outbox_inbox",
         "production": "appgen_event_backbone_adapter_with_generated_outbox_inbox",
         "service_runtime": ACP_DEFAULT_STREAM_PROCESSOR,
@@ -141,6 +144,13 @@ ACP_STREAM_PROCESSING_POLICY = {
         "Generated manifests omit stream_processor unless they need an "
         "exception. Validation normalizes missing values to the default."
     ),
+    "implementation_directive": (
+        "Generate transactional outbox/inbox tables, typed event handlers, "
+        "idempotency keys, retry policies, dead-letter contracts, and release "
+        "audit evidence. Do not generate direct imports of faust_streaming, "
+        "quix_streams, or bytewax in PBC business logic; profile-specific code "
+        "belongs only in platform adapter modules."
+    ),
     "generator_outputs": (
         "transactional_outbox",
         "transactional_inbox",
@@ -149,6 +159,13 @@ ACP_STREAM_PROCESSING_POLICY = {
         "retry_policy_names",
         "dead_letter_contracts",
         "release_audit_evidence",
+    ),
+    "decision_ladder": (
+        "omit_stream_processor_for_ordinary_apps",
+        "normalize_missing_profile_to_faust_streaming",
+        "require_exception_evidence_for_quix_streams_or_bytewax",
+        "split_specialized_stream_workloads_into_their_own_pbc",
+        "block_release_when_exception_evidence_is_missing",
     ),
     "workload_defaults": (
         {"workload": "erp_crm_hr_finance_inventory_commerce", "processor": ACP_DEFAULT_STREAM_PROCESSOR, "decision": "default"},
@@ -796,8 +813,10 @@ def acp_stream_processing_policy() -> dict:
         "decision_card": ACP_STREAM_PROCESSING_POLICY["decision_card"],
         "developer_rule": ACP_STREAM_PROCESSING_POLICY["developer_rule"],
         "generation_rule": ACP_STREAM_PROCESSING_POLICY["generation_rule"],
+        "implementation_directive": ACP_STREAM_PROCESSING_POLICY["implementation_directive"],
         "opinionated_stack": ACP_STREAM_PROCESSING_POLICY["opinionated_stack"],
         "generator_outputs": ACP_STREAM_PROCESSING_POLICY["generator_outputs"],
+        "decision_ladder": ACP_STREAM_PROCESSING_POLICY["decision_ladder"],
         "workload_defaults": ACP_STREAM_PROCESSING_POLICY["workload_defaults"],
         "exception_prompts": ACP_STREAM_PROCESSING_POLICY["exception_prompts"],
         "exception_required_evidence": ACP_STREAM_PROCESSING_POLICY["exception_required_evidence"],
@@ -1640,7 +1659,10 @@ def pbc_release_audit() -> dict:
         {
             "id": "opinionated_stream_processing_policy",
             "ok": stream_policy["default"] == "faust_streaming"
-            and stream_policy["allowed_processors"] == ("bytewax", "quix_streams", "faust_streaming")
+            and stream_policy["allowed_processors"] == ("faust_streaming", "quix_streams", "bytewax")
+            and stream_policy["decision_card"]["choice_contract"] == "one_default_two_audited_exceptions"
+            and stream_policy["opinionated_stack"]["default_event_adapter"] == "appgen_outbox_inbox_faust_streaming"
+            and stream_policy["decision_ladder"][0] == "omit_stream_processor_for_ordinary_apps"
             and all(item["use"] in stream_policy["allowed_processors"] for item in stream_policy["decision_tree"])
             and "adding a fourth processor without a platform architecture decision" in stream_policy["prohibited"]
             and not invalid_exception["ok"]

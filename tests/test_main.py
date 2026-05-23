@@ -742,6 +742,7 @@ def test_package_pbc_catalog_composes_enterprise_apps(runner: CliRunner) -> None
         "quix_streams",
         "faust_streaming",
     }
+    assert tuple(item["processor"] for item in stream_processors) == ("faust_streaming", "quix_streams", "bytewax")
     assert select_acp_stream_processor("complex parallel dataflow transformations")["selected"] == "bytewax"
     assert select_acp_stream_processor("high-throughput telemetry time-series ingestion")["selected"] == "quix_streams"
     default_selection = select_acp_stream_processor("event-driven async workflow services")
@@ -751,12 +752,17 @@ def test_package_pbc_catalog_composes_enterprise_apps(runner: CliRunner) -> None
     stream_policy = acp_stream_processing_policy()
     assert stream_policy["format"] == "appgen.acp-stream-processing-policy.v1"
     assert stream_policy["default"] == "faust_streaming"
-    assert stream_policy["allowed_processors"] == ("bytewax", "quix_streams", "faust_streaming")
+    assert stream_policy["allowed_processors"] == ("faust_streaming", "quix_streams", "bytewax")
     assert stream_policy["decision_card"]["answer"].startswith("Use the AppGen-X generated outbox/inbox event contract")
     assert stream_policy["decision_card"]["do_not_ask_users_to_choose"] is True
+    assert stream_policy["decision_card"]["choice_contract"] == "one_default_two_audited_exceptions"
+    assert stream_policy["decision_card"]["developer_selection"] == "not_user_selectable_for_ordinary_app_generation"
     assert stream_policy["decision_card"]["selection_mode"] == "read_only_default_with_audited_exceptions"
     assert stream_policy["decision_card"]["default_profile"] == "faust_streaming"
     assert stream_policy["decision_card"]["business_logic_rule"].endswith("not profile-specific stream libraries")
+    assert stream_policy["opinionated_stack"]["default_event_adapter"] == "appgen_outbox_inbox_faust_streaming"
+    assert "Do not generate direct imports" in stream_policy["implementation_directive"]
+    assert stream_policy["decision_ladder"][0] == "omit_stream_processor_for_ordinary_apps"
     assert {
         "erp_crm_hr_finance_inventory_commerce",
         "workflow_saga_approval_agent_task_routing",

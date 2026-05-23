@@ -5,6 +5,40 @@ application. That creates an exponential support matrix and makes PBC packages
 hard to reason about. The platform therefore supports one default event
 processor profile and two narrow exception profiles.
 
+## What To Actually Use
+
+For generated applications, PBCs, ERP modules, agents, chatbots, workflows, and
+integrations, use exactly this stack:
+
+```text
+Generated transactional outbox/inbox tables
+AppGen-X event adapter
+faust_streaming service-runtime profile
+PBC-owned PostgreSQL/MySQL-family datastore boundary
+Generated retry, idempotency, dead-letter, and release-audit contracts
+```
+
+Do not let developers, users, natural-language generators, or coding agents
+choose between stream engines for normal application work. The editable design
+surface is the event contract: commands, events, handlers, retries,
+idempotency keys, dead-letter behavior, and ownership. The stream profile is a
+read-only platform decision unless the PBC opens an audited exception workflow.
+
+The practical rule is:
+
+| Situation | Platform choice |
+| --- | --- |
+| Normal business app, PBC, ERP capability, workflow, approval, integration handler, chatbot, or agent task | Omit `stream_processor`; validation normalizes to `faust_streaming`. |
+| Local development and generated tests | Use the AppGen-X in-memory event bus with generated outbox/inbox adapters. |
+| Production deployment | Use the same generated event contract; operations configures the platform event backbone behind the adapter. |
+| Telemetry, time-series ingestion, or large windowed metrics | Use `quix_streams` only with `stream_exception_evidence`. |
+| Complex parallel dataflow or CPU-heavy transformation graph | Use `bytewax` only with `stream_exception_evidence`. |
+
+This means the default answer is not "Kafka vs. alternatives." The default
+answer is "AppGen-X outbox/inbox plus the platform adapter." Any broker,
+runtime, or state-store detail below that adapter is infrastructure, not
+generated business-logic API.
+
 ## Decision Card
 
 If you are building with AppGen-X, use this answer:

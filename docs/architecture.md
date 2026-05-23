@@ -369,7 +369,10 @@ The composition path is:
 4. Select a Python-native stream processor profile for event-heavy PBCs.
    `faust_streaming` is the default for service/workflow meshes, and normal
    generated manifests omit the field so validation can normalize the platform
-   decision. Use `quix_streams` only for high-throughput event/time-series
+   decision. The generated implementation path is fixed: transactional
+   outbox/inbox tables, the AppGen-X event adapter, the default service-runtime
+   profile, and generated retry/idempotency/dead-letter/release audit
+   contracts. Use `quix_streams` only for high-throughput event/time-series
    processing, and `bytewax` only for complex parallel dataflow transformations.
    Business logic depends on generated outbox/inbox and event-handler
    contracts; profile-specific adapters and broker choices stay behind the
