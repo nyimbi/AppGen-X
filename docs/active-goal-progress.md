@@ -76,6 +76,7 @@ Build a complete AppGen IDE and generation platform with:
 | 2026-05-23 | `1c8b05a` | Added generated native data tooling modules and tests for connection, dataset, service proxy, and offline runtime coverage. | Py compile; generated data-tooling runtime smoke probe; focused generated-app/form-designer/package-goal tests; staged hygiene scan passed. |
 | 2026-05-23 | `832890e` | Made event-runtime developer guidance executable through the PBC policy and mirrored it in developer docs. | Py compile; focused PBC catalog/policy test; staged hygiene scan passed. |
 | 2026-05-23 | `7e6be50` | Added generated Object Inspector editor modules and generated tests for property, event, component, custom designer, handler invocation, and binding bridge surfaces. | Py compile; generated inspector module smoke probe; focused generated-app/form-designer/package-goal tests; staged hygiene scan passed. |
+| 2026-05-23 | `3aed9d5` | Added generated visual binding modules and generated tests for graph, expression, designer, runtime wiring, propagation, and lifecycle surfaces. | Py compile; generated binding module smoke probe; focused generated-app/form-designer/package-goal tests; staged hygiene scan passed. |
 
 ## Current Working Slice
 
@@ -151,6 +152,10 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   one generated test module for property editors, event editors, component
   editors, custom designers, handler invocation, and binding bridge surfaces,
   with the inspector runtime validating module and test coverage.
+- Generated applications now emit one importable visual binding module and one
+  generated test module for graph, expression, designer, runtime wiring,
+  propagation, and lifecycle surfaces, with the binding runtime validating
+  module and test coverage.
 
 ## Open Completion Areas
 
