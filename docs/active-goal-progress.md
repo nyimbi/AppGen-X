@@ -65,7 +65,7 @@ Build a complete AppGen IDE and generation platform with:
 | 2026-05-23 | `56a6c03` | Added generated native form runtime manifest and replay validation as an independently importable artifact. | Py compile; focused generated-app/form-designer/package-goal tests; staged hygiene scan passed. |
 | 2026-05-23 | `cd926e8` | Added generated inspector runtime manifest and replay validation as an independently importable artifact. | Py compile; focused generated-app/form-designer/package-goal tests; staged hygiene scan passed. |
 | 2026-05-23 | `0fb322e` | Added generated binding runtime manifest and replay validation as an independently importable artifact. | Py compile; focused generated-app/form-designer/package-goal tests; staged hygiene scan passed. |
-| 2026-05-23 | `pending` | Tightened event-processing guidance into one read-only default choice with audited exceptions. | Py compile and focused PBC policy test passed; pending staged hygiene scan. |
+| 2026-05-23 | `89b8763` | Tightened event-processing guidance into one read-only default choice with audited exceptions. | Py compile, focused PBC policy test, and staged hygiene scan passed. |
 
 ## Current Working Slice
 
