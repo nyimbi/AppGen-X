@@ -74,6 +74,7 @@ Build a complete AppGen IDE and generation platform with:
 | 2026-05-23 | `a53cac2` | Added generated per-device-API component modules and tests for native mobile API coverage. | Py compile; generated mobile-device runtime smoke probe; focused generated-app/form-designer/package-goal tests; staged hygiene scan passed. |
 | 2026-05-23 | `7c672d5` | Added generated per-visual-depth component modules and tests for styling, animation, effects, and 3D coverage. | Py compile; generated visual-depth runtime smoke probe; focused generated-app/form-designer/package-goal tests; staged hygiene scan passed. |
 | 2026-05-23 | `1c8b05a` | Added generated native data tooling modules and tests for connection, dataset, service proxy, and offline runtime coverage. | Py compile; generated data-tooling runtime smoke probe; focused generated-app/form-designer/package-goal tests; staged hygiene scan passed. |
+| 2026-05-23 | `832890e` | Made event-runtime developer guidance executable through the PBC policy and mirrored it in developer docs. | Py compile; focused PBC catalog/policy test; staged hygiene scan passed. |
 
 ## Current Working Slice
 
@@ -142,6 +143,9 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   and one generated test module for connection, dataset, service proxy, and
   offline runtime surfaces, with the data runtime validating file coverage
   alongside relationship lookup, publish, failover, and replay evidence.
+- The stream-processing policy now exposes a `developer_guidance` contract so
+  Studio controls, DSL linting, natural-language generation, and coding agents
+  all use the same default event adapter path and audited exception workflow.
 
 ## Open Completion Areas
 
