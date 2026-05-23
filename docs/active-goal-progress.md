@@ -26,7 +26,7 @@ Build a complete AppGen IDE and generation platform with:
 | 2026-05-23 | `291c458` | Added first-class inspector editor lanes. | Frontend production build, catalog audit integration. |
 | 2026-05-23 | `50c5fd7` | Added visual data-binding lane and binding audit. | Frontend production build, dev shell probe. |
 | 2026-05-23 | `89641d5` | Added design-time package manager and package audit. | Frontend production build, dev shell probe. |
-| 2026-05-23 | pending | Standard action registry and guarded handler invocation. | Py compile, focused tests, and full Python suite passed. |
+| 2026-05-23 | `3f7997c` | Standard action registry and guarded handler invocation. | Py compile, focused tests, and full Python suite passed. |
 
 ## Current Working Slice
 
