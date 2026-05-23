@@ -1513,6 +1513,26 @@ def write_backup_module_files(output_dir):
         )
 
 
+def write_seed_module_files(output_dir):
+    """Write generated seed/fixture modules and smoke tests."""
+    output_dir = Path(output_dir)
+    module_dir = output_dir / "seed_modules"
+    test_dir = output_dir / "seed_module_tests"
+    module_dir.mkdir(parents=True, exist_ok=True)
+    test_dir.mkdir(parents=True, exist_ok=True)
+    (module_dir / "__init__.py").write_text(_seed_module_init_text(), encoding="utf-8")
+    (test_dir / "__init__.py").write_text(_seed_module_test_init_text(), encoding="utf-8")
+    for module_name in SEED_MODULES:
+        (module_dir / f"{module_name}.py").write_text(
+            _seed_module_text(module_name),
+            encoding="utf-8",
+        )
+        (test_dir / f"test_{module_name}.py").write_text(
+            _seed_module_test_text(module_name),
+            encoding="utf-8",
+        )
+
+
 def write_data_access_file(output_dir, schema: AppSchema):
     """Write generated low-code query and mutation contracts."""
     output_dir = Path(output_dir)
@@ -2043,6 +2063,13 @@ BACKUP_MODULES = (
     "integrity_manifest_module",
     "schedule_retention_module",
     "recovery_release_module",
+)
+
+SEED_MODULES = (
+    "plan_order_module",
+    "fixture_export_module",
+    "validation_anonymization_module",
+    "workbench_release_module",
 )
 
 
@@ -5002,6 +5029,249 @@ def smoke_test():
         "surface": SURFACE,
         "ok": True,
         "tests": ("test_backup_module_contract", "test_backup_module_smoke"),
+    }}
+'''
+
+
+def _seed_module_init_text() -> str:
+    return (
+        '"""Generated seed and fixture modules."""\n\n'
+        f"SEED_MODULES = {SEED_MODULES!r}\n"
+    )
+
+
+def _seed_module_test_init_text() -> str:
+    modules = tuple(f"test_{name}" for name in SEED_MODULES)
+    return (
+        '"""Generated seed and fixture module tests."""\n\n'
+        f"SEED_MODULE_TESTS = {modules!r}\n"
+    )
+
+
+def _seed_surface(module_name: str) -> tuple[str, str]:
+    return {
+        "plan_order_module": ("plan_order", "seed_plan"),
+        "fixture_export_module": ("fixture_export", "seed_fixture_export"),
+        "validation_anonymization_module": ("validation_anonymization", "validate_seed_data"),
+        "workbench_release_module": ("workbench_release", "seed_release_gate"),
+    }[module_name]
+
+
+def _seed_module_text(module_name: str) -> str:
+    surface, operation = _seed_surface(module_name)
+    return f'''"""Generated seed and fixture module for {surface}."""
+
+from __future__ import annotations
+
+import importlib.util
+from pathlib import Path
+
+
+MODULE = {module_name!r}
+SURFACE = {surface!r}
+OPERATION = {operation!r}
+EXPECTED_EXPORTS = (
+    "module_contract",
+    "seed_manifest_contract",
+    "run_seed_operation",
+    "release_context",
+    "smoke_test",
+)
+
+
+def _seed():
+    module_path = Path(__file__).resolve().parents[1] / "seed.py"
+    spec = importlib.util.spec_from_file_location(f"generated_seed_{{MODULE}}_seed", module_path)
+    module = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(module)
+    return module
+
+
+def module_contract():
+    """Return this generated seed module's export contract."""
+    available = tuple(name for name in EXPECTED_EXPORTS if name in globals())
+    return {{
+        "format": "appgen.seed-module-contract.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "operation": OPERATION,
+        "ok": set(EXPECTED_EXPORTS) <= set(available),
+        "exports": available,
+        "expected_exports": EXPECTED_EXPORTS,
+        "side_effects": (),
+    }}
+
+
+def seed_manifest_contract():
+    """Return generated seed metadata owned by this module."""
+    seed = _seed()
+    plan = seed.seed_plan()
+    scenarios = seed.seed_scenarios()
+    return {{
+        "format": "appgen.seed-module-manifest.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "ok": plan["format"] == "appgen.seed-plan.v1" and {{"demo", "smoke", "load"}} <= {{item["name"] for item in scenarios}},
+        "insert_order": seed.seed_insert_order(),
+        "scenarios": scenarios,
+        "plan": plan,
+        "side_effects": (),
+    }}
+
+
+def run_seed_operation():
+    """Run this module's side-effect-free seed or fixture operation."""
+    seed = _seed()
+    if SURFACE == "plan_order":
+        plan = seed.seed_plan()
+        order = seed.seed_insert_order()
+        order_index = {{table_name: index for index, table_name in enumerate(order)}}
+        dependency_order_ok = all(
+            dependency not in order_index or order_index[dependency] < order_index[table_name]
+            for table_name, dependencies in seed.SEED_DEPENDENCIES.items()
+            if table_name in order_index
+            for dependency in dependencies
+        )
+        operation = {{"plan": plan, "insert_order": order, "dependency_order_ok": dependency_order_ok}}
+        ok = plan["format"] == "appgen.seed-plan.v1" and dependency_order_ok
+    elif SURFACE == "fixture_export":
+        fixture = seed.seed_fixture_export("smoke")
+        operation = {{
+            "fixture": fixture,
+            "scenario_matrix": seed.seed_scenario_matrix(),
+            "pytest_ready": "def appgen_seed_data" in fixture["pytest"],
+            "sql_ready": "INSERT INTO" in fixture["sql"] or not seed.SEED_DATA,
+        }}
+        ok = fixture["format"] == "appgen.seed-fixture.v1" and fixture["validation"]["ok"] and operation["pytest_ready"]
+    elif SURFACE == "validation_anonymization":
+        invalid = seed.validate_seed_data({{"Generated": [{{}}]}})
+        anonymized = seed.anonymized_seed_data({{"User": [{{"email": "ada@example.test", "name": "Ada"}}]}})
+        operation = {{
+            "validation": seed.validate_seed_data(),
+            "invalid": invalid,
+            "anonymized": anonymized,
+            "json": seed.seed_json(anonymize=True),
+        }}
+        ok = operation["validation"]["ok"] and anonymized["User"][0]["email"] == "[redacted]" and '"format": "appgen.seed.v1"' in operation["json"]
+    else:
+        core_assets = {{"seed.py", "tests/test_generated_coverage.py", "scripts/appgen_quality.py"}}
+        operation = {{
+            "release": seed.seed_release_gate(core_assets),
+            "workbench": seed.seed_workbench(core_assets),
+        }}
+        ok = operation["release"]["ok"] and operation["workbench"]["ok"]
+    return {{
+        "format": "appgen.seed-module-operation.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "ok": ok,
+        "operation": operation,
+        "side_effects": (),
+    }}
+
+
+def release_context():
+    """Return release evidence used by this seed module."""
+    seed = _seed()
+    core_assets = {{"seed.py", "tests/test_generated_coverage.py", "scripts/appgen_quality.py"}}
+    return {{
+        "format": "appgen.seed-module-release-context.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "ok": seed.seed_release_gate(core_assets)["ok"] and seed.seed_workbench(core_assets)["ok"],
+        "release": seed.seed_release_gate(core_assets),
+        "workbench": seed.seed_workbench(core_assets),
+        "side_effects": (),
+    }}
+
+
+def smoke_test():
+    """Run side-effect-free checks for this generated seed module."""
+    contract = module_contract()
+    manifest = seed_manifest_contract()
+    operation = run_seed_operation()
+    release = release_context()
+    return {{
+        "format": "appgen.seed-module-smoke-test.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "ok": contract["ok"]
+        and manifest["ok"]
+        and operation["ok"]
+        and release["ok"]
+        and not manifest["side_effects"]
+        and not operation["side_effects"]
+        and not release["side_effects"],
+        "contract": contract,
+        "manifest": manifest,
+        "operation": operation,
+        "release": release,
+        "checks": (
+            "module_contract_resolves",
+            "seed_manifest_contract_ok",
+            "seed_operation_ok",
+            "release_context_ok",
+            "no_side_effects",
+        ),
+    }}
+'''
+
+
+def _seed_module_test_text(module_name: str) -> str:
+    surface, _operation = _seed_surface(module_name)
+    return f'''"""Generated tests for the {surface} seed module."""
+
+from __future__ import annotations
+
+import importlib.util
+from pathlib import Path
+
+
+MODULE = {module_name!r}
+SURFACE = {surface!r}
+
+
+def load_seed_module():
+    """Load the generated seed module without app installation."""
+    module_path = Path(__file__).resolve().parents[1] / "seed_modules" / f"{{MODULE}}.py"
+    spec = importlib.util.spec_from_file_location(f"generated_seed_module_{{MODULE}}", module_path)
+    module = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(module)
+    return module
+
+
+def test_seed_module_contract():
+    """Assert the generated seed module exposes its contract."""
+    module = load_seed_module()
+    contract = module.module_contract()
+    assert contract["module"] == MODULE
+    assert contract["surface"] == SURFACE
+    assert contract["ok"] is True
+    assert all(hasattr(module, name) for name in contract["expected_exports"])
+
+
+def test_seed_module_smoke():
+    """Assert the module's side-effect-free smoke test passes."""
+    module = load_seed_module()
+    result = module.smoke_test()
+    assert result["ok"] is True
+    assert result["module"] == MODULE
+    assert result["surface"] == SURFACE
+    assert result["checks"]
+
+
+def smoke_test():
+    """Run this generated test module in a side-effect-free way."""
+    test_seed_module_contract()
+    test_seed_module_smoke()
+    return {{
+        "format": "appgen.seed-module-generated-test-smoke.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "ok": True,
+        "tests": ("test_seed_module_contract", "test_seed_module_smoke"),
     }}
 '''
 
@@ -10595,6 +10865,7 @@ def write_project_scaffold(output_dir, schema: AppSchema):
     (output_dir / "config.py").write_text(_config_text(app_name))
     (output_dir / "babel.cfg").write_text(_babel_config_text())
     (output_dir / "seed.py").write_text(_seed_text(schema))
+    write_seed_module_files(output_dir)
     (output_dir / "Dockerfile").write_text(_dockerfile_text())
     (output_dir / "docker-compose.yml").write_text(_compose_text(app_name))
 
@@ -20996,13 +21267,75 @@ def _seed_text(schema: AppSchema) -> str:
 from __future__ import annotations
 
 import json
+import importlib.util
 from copy import deepcopy
+from pathlib import Path
 
 
 SEED_DATA = {seed_data!r}
 REQUIRED_SEED_FIELDS = {required_fields!r}
 SEED_PRIMARY_KEYS = {table_primary_keys!r}
 SEED_DEPENDENCIES = {table_dependencies!r}
+SEED_MODULES = {SEED_MODULES!r}
+
+
+def _load_generated_module(module_path, module_name):
+    """Load a generated seed helper module without installing the app."""
+    spec = importlib.util.spec_from_file_location(module_name, module_path)
+    module = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(module)
+    return module
+
+
+def seed_module_file_manifest():
+    """Return independently importable generated seed module files."""
+    root = Path(__file__).resolve().parent
+    modules = []
+    for module_name in SEED_MODULES:
+        module_path = root / "seed_modules" / f"{{module_name}}.py"
+        module = _load_generated_module(module_path, f"generated_seed_module_{{module_name}}")
+        contract = module.module_contract()
+        modules.append(
+            {{
+                "module": module_name,
+                "surface": contract["surface"],
+                "path": f"seed_modules/{{module_name}}.py",
+                "exists": module_path.exists(),
+                "ok": contract["ok"] and module.smoke_test()["ok"],
+                "exports": contract["exports"],
+            }}
+        )
+    return {{
+        "format": "appgen.seed-module-file-manifest.v1",
+        "ok": len(modules) == len(SEED_MODULES) and all(item["ok"] and item["exists"] for item in modules),
+        "modules": tuple(modules),
+    }}
+
+
+def seed_module_test_file_manifest():
+    """Return generated tests for the seed module files."""
+    root = Path(__file__).resolve().parent
+    tests = []
+    for module_name in SEED_MODULES:
+        test_path = root / "seed_module_tests" / f"test_{{module_name}}.py"
+        module = _load_generated_module(test_path, f"generated_seed_module_test_{{module_name}}")
+        result = module.smoke_test()
+        tests.append(
+            {{
+                "module": f"test_{{module_name}}",
+                "surface": result["surface"],
+                "path": f"seed_module_tests/test_{{module_name}}.py",
+                "exists": test_path.exists(),
+                "ok": result["ok"],
+                "tests": result["tests"],
+            }}
+        )
+    return {{
+        "format": "appgen.seed-module-test-file-manifest.v1",
+        "ok": len(tests) == len(SEED_MODULES) and all(item["ok"] and item["exists"] for item in tests),
+        "tests": tuple(tests),
+    }}
 
 
 def seed_insert_order():

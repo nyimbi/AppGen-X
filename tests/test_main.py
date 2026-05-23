@@ -8776,6 +8776,36 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert 'INSERT INTO "Author"' in seed_sql
     assert 'INSERT INTO "Book"' in seed_sql
     assert seed_sql.index('INSERT INTO "Author"') < seed_sql.index('INSERT INTO "Book"')
+    seed_module_files = seed.seed_module_file_manifest()
+    seed_module_tests = seed.seed_module_test_file_manifest()
+    assert seed_module_files["ok"] is True
+    assert seed_module_tests["ok"] is True
+    assert {item["surface"] for item in seed_module_files["modules"]} == {
+        "plan_order",
+        "fixture_export",
+        "validation_anonymization",
+        "workbench_release",
+    }
+    assert {item["surface"] for item in seed_module_tests["tests"]} == {
+        "plan_order",
+        "fixture_export",
+        "validation_anonymization",
+        "workbench_release",
+    }
+    for item in seed_module_files["modules"]:
+        module_path = tmp_path / item["path"]
+        py_compile.compile(str(module_path), doraise=True)
+        module = _load_module(module_path, f"generated_seed_module_{item['module']}")
+        assert module.module_contract()["ok"] is True
+        assert module.seed_manifest_contract()["ok"] is True
+        assert module.run_seed_operation()["ok"] is True
+        assert module.release_context()["ok"] is True
+        assert module.smoke_test()["ok"] is True
+    for item in seed_module_tests["tests"]:
+        test_path = tmp_path / item["path"]
+        py_compile.compile(str(test_path), doraise=True)
+        module = _load_module(test_path, f"generated_seed_module_test_{item['module']}")
+        assert module.smoke_test()["ok"] is True
     catalog = integrations.integration_catalog({})
     assert {item["name"] for item in catalog} == {
         "rest",
