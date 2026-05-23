@@ -87,6 +87,7 @@ Build a complete AppGen IDE and generation platform with:
 | 2026-05-23 | `e3bc9c3` | Added generated UI chrome modules and generated tests for splash configuration, menu editing, context menu actions, and UI fine-tuning surfaces. | Py compile; focused generated-app/form-designer/package-goal tests; staged hygiene scan passed. |
 | 2026-05-23 | `ad818ea` | Added generated wizard modules and generated tests for table wizard design, workflow wizard progression, validation/session handling, and submission planning surfaces. | Py compile; focused generated-app/form-designer/package-goal tests; staged hygiene scan passed. |
 | 2026-05-23 | `bb87c02` | Added generated database operations modules and generated tests for provider runtime, database add-on runtime, migration planning, and document projection surfaces. | Py compile; focused generated-app/form-designer/package-goal tests; staged hygiene scan passed. |
+| 2026-05-23 | `e23f9ce` | Made event-processing guidance a fixed platform choice for generated apps and PBCs, with exception profiles gated by evidence instead of developer preference. | Documentation diff check and staged hygiene scan passed. |
 
 ## Current Working Slice
 
@@ -208,6 +209,10 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   and one generated test module for provider runtime, database add-on runtime,
   migration planning, and document projection surfaces, with generated database
   operations manifests validating module and test coverage.
+- Event-processing guidance now gives platform developers one ordinary answer:
+  generate outbox/inbox event contracts against the AppGen-X adapter, keep the
+  default runtime profile behind that adapter, and allow telemetry or complex
+  dataflow profiles only through audited exception evidence.
 
 ## Open Completion Areas
 
