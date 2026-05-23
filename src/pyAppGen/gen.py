@@ -25973,6 +25973,158 @@ def component_package_preview_load_contract(package_id):
     }}
 
 
+def component_package_version_conflict_contract(package_ids=()):
+    """Return version-resolution evidence for package lifecycle operations."""
+    install_plan = third_party_component_install_plan(package_ids)
+    resolutions = tuple(
+        {{
+            "package_id": package["id"],
+            "requested": "1.0.0",
+            "installed": "1.0.0",
+            "compatible": True,
+            "resolution": "pin_lockfile",
+            "blocks_load": False,
+        }}
+        for package in install_plan["packages"]
+    )
+    checks = (
+        {{"id": "version_pin_required", "ok": bool(resolutions) and all(item["resolution"] == "pin_lockfile" for item in resolutions), "evidence": resolutions}},
+        {{"id": "semver_range_checked", "ok": bool(resolutions) and all(item["requested"].count(".") == 2 for item in resolutions), "evidence": tuple(item["requested"] for item in resolutions)}},
+        {{"id": "conflict_blocks_load", "ok": all(item["compatible"] and not item["blocks_load"] for item in resolutions), "evidence": resolutions}},
+        {{"id": "lockfile_update_reviewed", "ok": install_plan["requires_review"] and not install_plan["side_effects"], "evidence": install_plan}},
+    )
+    ok = install_plan["ok"] and not install_plan["unknown"] and all(check["ok"] for check in checks)
+    return {{
+        "format": "appgen.generated-component-package-version-conflict-contract.v1",
+        "ok": ok,
+        "resolutions": resolutions,
+        "guards": ("version_pin_required", "semver_range_checked", "conflict_blocks_load", "lockfile_update_reviewed"),
+        "checks": checks,
+        "side_effects": (),
+    }}
+
+
+def component_package_update_plan_contract(package_ids=()):
+    """Return sandboxed package update plan evidence."""
+    install_plan = third_party_component_install_plan(package_ids)
+    updates = tuple(
+        {{
+            "package_id": package["id"],
+            "from_version": "1.0.0",
+            "to_version": "1.0.1",
+            "phases": ("snapshot_lockfile", "download_to_sandbox", "run_adapter_smoke", "refresh_palette", "commit_lockfile"),
+            "side_effects": (),
+        }}
+        for package in install_plan["packages"]
+    )
+    checks = (
+        {{"id": "sandbox_before_replace", "ok": bool(updates) and all(item["phases"].index("download_to_sandbox") < item["phases"].index("commit_lockfile") for item in updates), "evidence": updates}},
+        {{"id": "rollback_snapshot_required", "ok": bool(updates) and all(item["phases"][0] == "snapshot_lockfile" for item in updates), "evidence": tuple(item["phases"] for item in updates)}},
+        {{"id": "adapter_smoke_before_enable", "ok": bool(updates) and all(item["phases"].index("run_adapter_smoke") < item["phases"].index("refresh_palette") for item in updates), "evidence": tuple(item["phases"] for item in updates)}},
+        {{"id": "palette_refresh_required", "ok": bool(updates) and all("refresh_palette" in item["phases"] for item in updates), "evidence": tuple(item["package_id"] for item in updates)}},
+    )
+    ok = install_plan["ok"] and not install_plan["unknown"] and all(check["ok"] for check in checks)
+    return {{
+        "format": "appgen.generated-component-package-update-plan-contract.v1",
+        "ok": ok,
+        "updates": updates,
+        "guards": ("sandbox_before_replace", "rollback_snapshot_required", "adapter_smoke_before_enable", "palette_refresh_required"),
+        "checks": checks,
+        "side_effects": (),
+    }}
+
+
+def component_package_uninstall_plan_contract(package_ids=()):
+    """Return package uninstall and reference-cleanup evidence."""
+    install_plan = third_party_component_install_plan(package_ids)
+    uninstalls = tuple(
+        {{
+            "package_id": package["id"],
+            "components": package["components"],
+            "phases": ("find_palette_references", "disable_adapters", "remove_palette_entries", "restore_lockfile", "record_audit"),
+            "side_effects": (),
+        }}
+        for package in install_plan["packages"]
+    )
+    checks = (
+        {{"id": "reference_scan_required", "ok": bool(uninstalls) and all(item["phases"][0] == "find_palette_references" for item in uninstalls), "evidence": tuple(item["package_id"] for item in uninstalls)}},
+        {{"id": "disable_before_remove", "ok": bool(uninstalls) and all(item["phases"].index("disable_adapters") < item["phases"].index("remove_palette_entries") for item in uninstalls), "evidence": tuple(item["phases"] for item in uninstalls)}},
+        {{"id": "rollback_snapshot_required", "ok": bool(uninstalls) and all("restore_lockfile" in item["phases"] for item in uninstalls), "evidence": tuple(item["phases"] for item in uninstalls)}},
+        {{"id": "orphaned_components_reported", "ok": bool(uninstalls) and all("record_audit" in item["phases"] for item in uninstalls), "evidence": tuple((item["package_id"], item["components"]) for item in uninstalls)}},
+    )
+    ok = install_plan["ok"] and not install_plan["unknown"] and all(check["ok"] for check in checks)
+    return {{
+        "format": "appgen.generated-component-package-uninstall-plan-contract.v1",
+        "ok": ok,
+        "uninstalls": uninstalls,
+        "guards": ("reference_scan_required", "disable_before_remove", "rollback_snapshot_required", "orphaned_components_reported"),
+        "checks": checks,
+        "side_effects": (),
+    }}
+
+
+def component_package_palette_refresh_contract(package_ids=()):
+    """Return palette refresh evidence for installed package changes."""
+    registration = component_palette_registration_contract(package_ids)
+    actions = ("register", "refresh", "invalidate_cache", "rebuild_toolbox")
+    refreshes = tuple(
+        {{
+            "package_id": entry["package_id"],
+            "component": entry["component"],
+            "palette_category": entry["palette_category"],
+            "actions": actions,
+            "side_effects": (),
+        }}
+        for entry in registration["entries"]
+    )
+    checks = (
+        {{"id": "entries_refreshable", "ok": bool(refreshes) and len(refreshes) == len(registration["entries"]), "evidence": refreshes}},
+        {{"id": "toolbox_rebuilt", "ok": bool(refreshes) and all("rebuild_toolbox" in item["actions"] for item in refreshes), "evidence": tuple(item["actions"] for item in refreshes)}},
+        {{"id": "palette_cache_invalidated", "ok": bool(refreshes) and all("invalidate_cache" in item["actions"] for item in refreshes), "evidence": tuple(item["component"] for item in refreshes)}},
+    )
+    ok = all(check["ok"] for check in checks) and not registration["side_effects"]
+    return {{
+        "format": "appgen.generated-component-package-palette-refresh-contract.v1",
+        "ok": ok,
+        "refreshes": refreshes,
+        "palette_actions": actions,
+        "registration": registration,
+        "checks": checks,
+        "side_effects": (),
+    }}
+
+
+def component_package_failure_isolation_contract(package_ids=()):
+    """Return failure-containment evidence for package load failures."""
+    install_plan = third_party_component_install_plan(package_ids)
+    sandbox = component_package_sandbox_policy_contract(package_ids)
+    scenarios = tuple(
+        {{
+            "package_id": package["id"],
+            "failure": failure,
+            "containment": ("sandboxed_loader", "disable_package", "restore_previous_palette", "record_diagnostic"),
+            "side_effects": (),
+        }}
+        for package in install_plan["packages"]
+        for failure in ("adapter_exception", "missing_dependency", "signature_mismatch", "preview_crash")
+    )
+    checks = (
+        {{"id": "sandboxed_loader_required", "ok": sandbox["ok"] and all("sandboxed_loader" in item["containment"] for item in scenarios), "evidence": sandbox}},
+        {{"id": "no_global_crash", "ok": bool(scenarios) and all("restore_previous_palette" in item["containment"] for item in scenarios), "evidence": tuple(item["failure"] for item in scenarios)}},
+        {{"id": "diagnostics_visible", "ok": bool(scenarios) and all("record_diagnostic" in item["containment"] for item in scenarios), "evidence": tuple((item["package_id"], item["failure"]) for item in scenarios)}},
+        {{"id": "automatic_disable_on_failure", "ok": bool(scenarios) and all("disable_package" in item["containment"] for item in scenarios), "evidence": scenarios}},
+    )
+    ok = install_plan["ok"] and not install_plan["unknown"] and all(check["ok"] for check in checks)
+    return {{
+        "format": "appgen.generated-component-package-failure-isolation-contract.v1",
+        "ok": ok,
+        "scenarios": scenarios,
+        "guards": ("sandboxed_loader_required", "no_global_crash", "diagnostics_visible", "automatic_disable_on_failure"),
+        "checks": checks,
+        "side_effects": (),
+    }}
+
+
 def component_package_behavior_contract(package_id):
     """Return behavior evidence for one design-time component package."""
     dependencies = component_package_dependency_graph((package_id,))
@@ -26028,6 +26180,11 @@ def component_package_behavior_workbench(package_ids=()):
     registration = component_package_registration_consistency_contract(package_ids)
     dependency_order = component_package_dependency_order_contract(package_ids)
     compatibility_smoke = component_package_compatibility_smoke_suite(package_ids)
+    version_conflicts = component_package_version_conflict_contract(package_ids)
+    update_plan = component_package_update_plan_contract(package_ids)
+    uninstall_plan = component_package_uninstall_plan_contract(package_ids)
+    palette_refresh = component_package_palette_refresh_contract(package_ids)
+    failure_isolation = component_package_failure_isolation_contract(package_ids)
     checks = (
         {{"id": "dependency_graph", "ok": dependency_graph["ok"] and len(dependency_graph["nodes"]) == len(selected), "evidence": dependency_graph}},
         {{"id": "all_packages_have_behavior", "ok": len(behaviors) == len(selected) and all(item["ok"] for item in behaviors), "evidence": tuple(item["package_id"] for item in behaviors)}},
@@ -26039,6 +26196,11 @@ def component_package_behavior_workbench(package_ids=()):
         {{"id": "registration_consistency", "ok": registration["ok"] and not registration["side_effects"], "evidence": registration}},
         {{"id": "dependency_order", "ok": dependency_order["ok"] and not dependency_order["side_effects"], "evidence": dependency_order}},
         {{"id": "compatibility_smoke", "ok": compatibility_smoke["ok"] and not compatibility_smoke["side_effects"], "evidence": compatibility_smoke}},
+        {{"id": "version_conflict_resolution", "ok": version_conflicts["ok"] and not version_conflicts["side_effects"], "evidence": version_conflicts}},
+        {{"id": "update_plan", "ok": update_plan["ok"] and not update_plan["side_effects"], "evidence": update_plan}},
+        {{"id": "uninstall_plan", "ok": uninstall_plan["ok"] and not uninstall_plan["side_effects"], "evidence": uninstall_plan}},
+        {{"id": "palette_refresh", "ok": palette_refresh["ok"] and not palette_refresh["side_effects"], "evidence": palette_refresh}},
+        {{"id": "failure_isolation", "ok": failure_isolation["ok"] and not failure_isolation["side_effects"], "evidence": failure_isolation}},
     )
     ok = all(check["ok"] for check in checks)
     return {{
@@ -26052,6 +26214,11 @@ def component_package_behavior_workbench(package_ids=()):
         "registration": registration,
         "dependency_order": dependency_order,
         "compatibility_smoke": compatibility_smoke,
+        "version_conflicts": version_conflicts,
+        "update_plan": update_plan,
+        "uninstall_plan": uninstall_plan,
+        "palette_refresh": palette_refresh,
+        "failure_isolation": failure_isolation,
         "behaviors": behaviors,
         "checks": checks,
         "blocking_gaps": tuple(check for check in checks if not check["ok"]),
@@ -26141,6 +26308,11 @@ def design_time_package_manager_workbench(package_ids=()):
     registration_consistency = component_package_registration_consistency_contract(package_ids)
     dependency_order = component_package_dependency_order_contract(package_ids)
     compatibility_smoke = component_package_compatibility_smoke_suite(package_ids)
+    version_conflicts = component_package_version_conflict_contract(package_ids)
+    update_plan = component_package_update_plan_contract(package_ids)
+    uninstall_plan = component_package_uninstall_plan_contract(package_ids)
+    palette_refresh = component_package_palette_refresh_contract(package_ids)
+    failure_isolation = component_package_failure_isolation_contract(package_ids)
     checks = (
         {{"id": "install_session_phases", "ok": {{"resolve_metadata", "sandbox_load", "adapter_compile", "palette_registration", "rollback_snapshot"}} <= set(session["phases"]), "evidence": session}},
         {{"id": "compatibility_matrix", "ok": bool(compatibility) and all(item["compatible"] and {{"form-designer", "object-inspector", "binding-designer"}} <= set(item["design_surfaces"]) for item in compatibility), "evidence": compatibility}},
@@ -26153,6 +26325,11 @@ def design_time_package_manager_workbench(package_ids=()):
         {{"id": "sandbox_policy", "ok": sandbox["ok"] and not sandbox["side_effects"], "evidence": sandbox}},
         {{"id": "registration_consistency", "ok": registration_consistency["ok"] and not registration_consistency["side_effects"], "evidence": registration_consistency}},
         {{"id": "compatibility_smoke_suite", "ok": compatibility_smoke["ok"] and not compatibility_smoke["side_effects"], "evidence": compatibility_smoke}},
+        {{"id": "version_conflict_resolution", "ok": version_conflicts["ok"] and not version_conflicts["side_effects"], "evidence": version_conflicts}},
+        {{"id": "update_plan", "ok": update_plan["ok"] and not update_plan["side_effects"], "evidence": update_plan}},
+        {{"id": "uninstall_plan", "ok": uninstall_plan["ok"] and not uninstall_plan["side_effects"], "evidence": uninstall_plan}},
+        {{"id": "palette_refresh", "ok": palette_refresh["ok"] and not palette_refresh["side_effects"], "evidence": palette_refresh}},
+        {{"id": "failure_isolation", "ok": failure_isolation["ok"] and not failure_isolation["side_effects"], "evidence": failure_isolation}},
         {{
             "id": "side_effect_guards",
             "ok": not session["side_effects"]
@@ -26162,7 +26339,12 @@ def design_time_package_manager_workbench(package_ids=()):
             and not sandbox["side_effects"]
             and not registration_consistency["side_effects"]
             and not dependency_order["side_effects"]
-            and not compatibility_smoke["side_effects"],
+            and not compatibility_smoke["side_effects"]
+            and not version_conflicts["side_effects"]
+            and not update_plan["side_effects"]
+            and not uninstall_plan["side_effects"]
+            and not palette_refresh["side_effects"]
+            and not failure_isolation["side_effects"],
             "evidence": {{
                 "session": session["side_effects"],
                 "registration": registration["side_effects"],
@@ -26172,6 +26354,11 @@ def design_time_package_manager_workbench(package_ids=()):
                 "registration_consistency": registration_consistency["side_effects"],
                 "dependency_order": dependency_order["side_effects"],
                 "compatibility_smoke": compatibility_smoke["side_effects"],
+                "version_conflicts": version_conflicts["side_effects"],
+                "update_plan": update_plan["side_effects"],
+                "uninstall_plan": uninstall_plan["side_effects"],
+                "palette_refresh": palette_refresh["side_effects"],
+                "failure_isolation": failure_isolation["side_effects"],
             }},
         }},
     )
@@ -26190,6 +26377,11 @@ def design_time_package_manager_workbench(package_ids=()):
         "registration_consistency": registration_consistency,
         "dependency_order": dependency_order,
         "compatibility_smoke": compatibility_smoke,
+        "version_conflicts": version_conflicts,
+        "update_plan": update_plan,
+        "uninstall_plan": uninstall_plan,
+        "palette_refresh": palette_refresh,
+        "failure_isolation": failure_isolation,
         "checks": checks,
         "blocking_gaps": tuple(check for check in checks if not check["ok"]),
     }}

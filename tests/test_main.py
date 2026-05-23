@@ -1160,7 +1160,17 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "registration_consistency",
         "dependency_order",
         "compatibility_smoke",
+        "version_conflict_resolution",
+        "update_plan",
+        "uninstall_plan",
+        "palette_refresh",
+        "failure_isolation",
     } == {check["id"] for check in behavior_workbench["checks"]}
+    assert behavior_workbench["version_conflicts"]["ok"] is True
+    assert all("run_adapter_smoke" in update["phases"] for update in behavior_workbench["update_plan"]["updates"])
+    assert all("disable_adapters" in item["phases"] for item in behavior_workbench["uninstall_plan"]["uninstalls"])
+    assert "rebuild_toolbox" in behavior_workbench["palette_refresh"]["palette_actions"]
+    assert all("disable_package" in scenario["containment"] for scenario in behavior_workbench["failure_isolation"]["scenarios"])
     package_manager = design_time_package_manager_workbench()
     assert package_manager["format"] == "appgen.design-time-package-manager-workbench.v1"
     assert package_manager["ok"] is True
@@ -1176,8 +1186,18 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "sandbox_policy",
         "registration_consistency",
         "compatibility_smoke_suite",
+        "version_conflict_resolution",
+        "update_plan",
+        "uninstall_plan",
+        "palette_refresh",
+        "failure_isolation",
         "side_effect_guards",
     } == {check["id"] for check in package_manager["checks"]}
+    assert package_manager["version_conflicts"]["ok"] is True
+    assert all("refresh_palette" in update["phases"] for update in package_manager["update_plan"]["updates"])
+    assert all("find_palette_references" in item["phases"] for item in package_manager["uninstall_plan"]["uninstalls"])
+    assert "invalidate_cache" in package_manager["palette_refresh"]["palette_actions"]
+    assert all("record_diagnostic" in scenario["containment"] for scenario in package_manager["failure_isolation"]["scenarios"])
     assert third_party_component_import_contract(
         {
             "id": "custom-suite",
@@ -9095,10 +9115,20 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "registration_consistency",
         "dependency_order",
         "compatibility_smoke_suite",
+        "version_conflict_resolution",
+        "update_plan",
+        "uninstall_plan",
+        "palette_refresh",
+        "failure_isolation",
     } <= {
         check["id"] for check in generated_package_manager["checks"]
     }
     assert generated_package_manager["behavior"]["ok"] is True
+    assert generated_package_manager["version_conflicts"]["ok"] is True
+    assert all("run_adapter_smoke" in update["phases"] for update in generated_package_manager["update_plan"]["updates"])
+    assert all("disable_adapters" in item["phases"] for item in generated_package_manager["uninstall_plan"]["uninstalls"])
+    assert "rebuild_toolbox" in generated_package_manager["palette_refresh"]["palette_actions"]
+    assert all("disable_package" in scenario["containment"] for scenario in generated_package_manager["failure_isolation"]["scenarios"])
     assert form_designer.dfm_streaming_contract()["stream_formats"][0] == "text-dfm"
     assert form_designer.dfm_round_trip("Book")["ok"] is True
     generated_runtime = form_designer.pascal_runtime_workbench("Book")
