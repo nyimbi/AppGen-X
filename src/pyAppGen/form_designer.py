@@ -7230,6 +7230,110 @@ def data_resource_publish_contract(resource: str = "tables") -> dict:
     }
 
 
+def data_tooling_test_connection(connection_name: str = "primary_sql") -> dict:
+    """Run a side-effect-free connection test operation for the IDE."""
+    contract = data_connection_test_contract(connection_name)
+    return {
+        "format": "appgen.data-tooling-test-connection-operation.v1",
+        "ok": contract["ok"] and contract["steps"][-1] == "rollback_test_transaction",
+        "connection": connection_name,
+        "profile": contract["profile"],
+        "pipeline": contract["steps"],
+        "diagnostics": contract["diagnostics"],
+        "guards": ("secret_reference_required", "transaction_probe_rolls_back", "diagnostics_redacted"),
+        "side_effects": (),
+    }
+
+
+def data_tooling_preview_query(query_name: str = "browse_records", parameters: dict | None = None) -> dict:
+    """Preview a data query with typed parameters and no persisted writes."""
+    query = data_query_preview_contract(query_name)
+    supplied = parameters or {item["name"]: item["default"] for item in query["parameters"]}
+    bound = tuple(
+        {
+            "name": parameter["name"],
+            "type": parameter["type"],
+            "value": supplied.get(parameter["name"], parameter["default"]),
+            "source": "operation_parameter",
+        }
+        for parameter in query["parameters"]
+    )
+    return {
+        "format": "appgen.data-tooling-preview-query-operation.v1",
+        "ok": {"bind_parameters", "preview_rows", "explain_plan"} <= set(query["plan"]),
+        "query": query_name,
+        "parameters": bound,
+        "pipeline": query["plan"],
+        "rows": ({"id": 1, "name": "Sample", "preview": True},),
+        "guards": query["guards"] + ("read_only_preview",),
+        "side_effects": (),
+    }
+
+
+def data_tooling_preview_schema_diff() -> dict:
+    """Preview a schema adapter diff with rollback evidence."""
+    diff = data_schema_adapter_diff_contract()
+    rehearsal = data_migration_rehearsal_contract()
+    return {
+        "format": "appgen.data-tooling-schema-diff-operation.v1",
+        "ok": "rollback_script" in diff["preview"] and "generate_rollback_script" in rehearsal["dry_run"],
+        "operations": diff["operations"],
+        "preview": diff["preview"],
+        "rollback": rehearsal["rollback"],
+        "guards": diff["guards"] + ("approval_required",),
+        "side_effects": (),
+    }
+
+
+def data_tooling_generate_lookup_editors() -> dict:
+    """Generate lookup editor operations for every relationship field."""
+    lookup_editor = data_lookup_editor_pipeline_contract()
+    relationship_lifecycle = data_relationship_lookup_lifecycle_replay_contract()
+    return {
+        "format": "appgen.data-tooling-lookup-editor-operation.v1",
+        "ok": lookup_editor["ok"] and relationship_lifecycle["ok"],
+        "editors": lookup_editor["editors"],
+        "chain_path": relationship_lifecycle["chain_path"],
+        "pipeline": ("introspect_foreign_keys", "generate_lookup_dataset", "bind_value_member", "preview_join", "publish_lookup_endpoint"),
+        "guards": ("foreign_key_fields_get_lookup_editors", "lookup_preview_before_publish", "cycle_detection_before_join"),
+        "side_effects": (),
+    }
+
+
+def data_tooling_publish_resource(resource: str = "tables") -> dict:
+    """Publish a reviewed data resource operation with contract-test evidence."""
+    publish = data_resource_publish_contract(resource)
+    tests = data_service_contract_test_plan()
+    telemetry = data_service_telemetry_contract()
+    return {
+        "format": "appgen.data-tooling-publish-resource-operation.v1",
+        "ok": publish["ok"] and all(test["assertions"] for test in tests["tests"]) and telemetry["ok"],
+        "resource": resource,
+        "route": publish["route"],
+        "pipeline": publish["pipeline"] + ("run_contract_tests", "register_telemetry"),
+        "tests": tests["tests"],
+        "guards": ("auth_filter_required", "request_validator_required", "service_contract_tests_before_resource_publish"),
+        "side_effects": (),
+    }
+
+
+def data_tooling_actionable_operations() -> dict:
+    """Return callable data tooling operations used by generated IDE screens."""
+    operations = {
+        "test_connection": data_tooling_test_connection(),
+        "preview_query": data_tooling_preview_query(),
+        "preview_schema_diff": data_tooling_preview_schema_diff(),
+        "generate_lookup_editors": data_tooling_generate_lookup_editors(),
+        "publish_resource": data_tooling_publish_resource(),
+    }
+    return {
+        "format": "appgen.data-tooling-actionable-operations.v1",
+        "ok": all(operation["ok"] for operation in operations.values()),
+        "operations": operations,
+        "side_effects": (),
+    }
+
+
 def local_database_maintenance_contract() -> dict:
     """Return local embedded store maintenance workflows."""
     local = local_database_contract()
@@ -8382,6 +8486,7 @@ def rad_data_tooling_workbench() -> dict:
     runtime_replay = data_tooling_runtime_replay_contract()
     design_runtime_replay = data_tooling_design_runtime_session_replay_contract()
     publish_transaction_replay = data_tooling_publish_transaction_replay_contract()
+    actionable_operations = data_tooling_actionable_operations()
     checks = (
         {
             "id": "connection_catalog",
@@ -8447,6 +8552,14 @@ def rad_data_tooling_workbench() -> dict:
             "ok": resource_publish["ok"] and {"attach_security", "register_analytics"} <= set(resource_publish["pipeline"])
             and not resource_publish["side_effects"],
             "evidence": resource_publish,
+        },
+        {
+            "id": "actionable_data_tooling_operations",
+            "ok": actionable_operations["ok"]
+            and {"test_connection", "preview_query", "preview_schema_diff", "generate_lookup_editors", "publish_resource"}
+            <= set(actionable_operations["operations"])
+            and not actionable_operations["side_effects"],
+            "evidence": actionable_operations,
         },
         {
             "id": "local_database_maintenance_workflow",
@@ -8688,6 +8801,7 @@ def rad_data_tooling_workbench() -> dict:
         "query_preview": query_preview,
         "method_invocation": method_invocation,
         "resource_publish": resource_publish,
+        "actionable_operations": actionable_operations,
         "local_maintenance": local_maintenance,
         "conflict_review": conflict_review,
         "driver_matrix": driver_matrix,

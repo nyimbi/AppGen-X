@@ -128,6 +128,12 @@ from pyAppGen.form_designer import inspector_register_custom_designer
 from pyAppGen.form_designer import inspector_rename_event_handler
 from pyAppGen.form_designer import object_inspector_workbench
 from pyAppGen.form_designer import data_relationship_lookup_lifecycle_replay_contract
+from pyAppGen.form_designer import data_tooling_actionable_operations
+from pyAppGen.form_designer import data_tooling_generate_lookup_editors
+from pyAppGen.form_designer import data_tooling_preview_query
+from pyAppGen.form_designer import data_tooling_preview_schema_diff
+from pyAppGen.form_designer import data_tooling_publish_resource
+from pyAppGen.form_designer import data_tooling_test_connection
 from pyAppGen.form_designer import rad_parity_workbench
 from pyAppGen.form_designer import palette_categories
 from pyAppGen.form_designer import parse_dfm_text
@@ -1231,6 +1237,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "query_preview_workflow",
         "server_method_invocation_workflow",
         "resource_publish_workflow",
+        "actionable_data_tooling_operations",
         "local_database_maintenance_workflow",
         "offline_conflict_review_workflow",
         "driver_capability_matrix",
@@ -1268,6 +1275,15 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "data_tooling_design_runtime_session_replay",
         "data_tooling_publish_transaction_replay",
     } == {check["id"] for check in data_workbench["checks"]}
+    assert data_tooling_test_connection()["ok"] is True
+    assert data_tooling_test_connection()["pipeline"][-1] == "rollback_test_transaction"
+    assert "explain_plan" in data_tooling_preview_query()["pipeline"]
+    assert "rollback_script" in data_tooling_preview_schema_diff()["preview"]
+    assert data_tooling_generate_lookup_editors()["chain_path"] == ("InventoryMove", "InvoiceLine", "Invoice", "Account", "Ledger")
+    assert "run_contract_tests" in data_tooling_publish_resource()["pipeline"]
+    assert data_tooling_actionable_operations()["ok"] is True
+    assert data_workbench["actionable_operations"]["operations"]["publish_resource"]["ok"] is True
+    assert data_workbench["actionable_operations"]["operations"]["generate_lookup_editors"]["editors"]
     assert data_workbench["connection_test"]["steps"][-1] == "rollback_test_transaction"
     assert "explain_plan" in data_workbench["query_preview"]["plan"]
     assert "response_mapper" in data_workbench["method_invocation"]["pipeline"]
@@ -10036,6 +10052,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "query_preview_workflow",
         "server_method_invocation_workflow",
         "resource_publish_workflow",
+        "actionable_data_tooling_operations",
         "local_database_maintenance_workflow",
         "offline_conflict_review_workflow",
         "driver_capability_matrix",
@@ -10073,6 +10090,21 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "data_tooling_design_runtime_session_replay",
         "data_tooling_publish_transaction_replay",
     } == {check["id"] for check in generated_data_tooling["checks"]}
+    generated_connection = form_designer.data_tooling_test_connection()
+    assert generated_connection["ok"] is True
+    assert generated_connection["pipeline"][-1] == "rollback_test_transaction"
+    assert "explain_plan" in form_designer.data_tooling_preview_query()["pipeline"]
+    assert "rollback_script" in form_designer.data_tooling_preview_schema_diff()["preview"]
+    assert form_designer.data_tooling_generate_lookup_editors()["chain_path"] == (
+        "InventoryMove",
+        "InvoiceLine",
+        "Invoice",
+        "Account",
+        "Ledger",
+    )
+    assert "run_contract_tests" in form_designer.data_tooling_publish_resource()["pipeline"]
+    assert generated_data_tooling["actionable_operations"]["ok"] is True
+    assert generated_data_tooling["actionable_operations"]["operations"]["preview_query"]["rows"]
     assert generated_data_tooling["connection_test"]["steps"][-1] == "rollback_test_transaction"
     assert "explain_plan" in generated_data_tooling["query_preview"]["plan"]
     assert "response_mapper" in generated_data_tooling["method_invocation"]["pipeline"]

@@ -31170,6 +31170,110 @@ def data_resource_publish_contract(resource="tables"):
     }}
 
 
+def data_tooling_test_connection(connection_name="primary_sql"):
+    """Run a side-effect-free generated connection test operation for the IDE."""
+    contract = data_connection_test_contract(connection_name)
+    return {{
+        "format": "appgen.generated-data-tooling-test-connection-operation.v1",
+        "ok": contract["ok"] and contract["steps"][-1] == "rollback_test_transaction",
+        "connection": connection_name,
+        "profile": contract["profile"],
+        "pipeline": contract["steps"],
+        "diagnostics": contract["diagnostics"],
+        "guards": ("secret_reference_required", "transaction_probe_rolls_back", "diagnostics_redacted"),
+        "side_effects": (),
+    }}
+
+
+def data_tooling_preview_query(query_name="browse_records", parameters=None):
+    """Preview a generated data query with typed parameters and no persisted writes."""
+    query = data_query_preview_contract(query_name)
+    supplied = parameters or {{item["name"]: item["default"] for item in query["parameters"]}}
+    bound = tuple(
+        {{
+            "name": parameter["name"],
+            "type": parameter["type"],
+            "value": supplied.get(parameter["name"], parameter["default"]),
+            "source": "operation_parameter",
+        }}
+        for parameter in query["parameters"]
+    )
+    return {{
+        "format": "appgen.generated-data-tooling-preview-query-operation.v1",
+        "ok": {{"bind_parameters", "preview_rows", "explain_plan"}} <= set(query["plan"]),
+        "query": query_name,
+        "parameters": bound,
+        "pipeline": query["plan"],
+        "rows": ({{"id": 1, "name": "Sample", "preview": True}},),
+        "guards": query["guards"] + ("read_only_preview",),
+        "side_effects": (),
+    }}
+
+
+def data_tooling_preview_schema_diff():
+    """Preview a generated schema adapter diff with rollback evidence."""
+    diff = data_schema_adapter_diff_contract()
+    rehearsal = data_migration_rehearsal_contract()
+    return {{
+        "format": "appgen.generated-data-tooling-schema-diff-operation.v1",
+        "ok": "rollback_script" in diff["preview"] and "generate_rollback_script" in rehearsal["dry_run"],
+        "operations": diff["operations"],
+        "preview": diff["preview"],
+        "rollback": rehearsal["rollback"],
+        "guards": diff["guards"] + ("approval_required",),
+        "side_effects": (),
+    }}
+
+
+def data_tooling_generate_lookup_editors():
+    """Generate lookup editor operations for every generated relationship field."""
+    lookup_editor = data_lookup_editor_pipeline_contract()
+    relationship_lifecycle = data_relationship_lookup_lifecycle_replay_contract()
+    return {{
+        "format": "appgen.generated-data-tooling-lookup-editor-operation.v1",
+        "ok": lookup_editor["ok"] and relationship_lifecycle["ok"],
+        "editors": lookup_editor["editors"],
+        "chain_path": relationship_lifecycle["chain_path"],
+        "pipeline": ("introspect_foreign_keys", "generate_lookup_dataset", "bind_value_member", "preview_join", "publish_lookup_endpoint"),
+        "guards": ("foreign_key_fields_get_lookup_editors", "lookup_preview_before_publish", "cycle_detection_before_join"),
+        "side_effects": (),
+    }}
+
+
+def data_tooling_publish_resource(resource="tables"):
+    """Publish a reviewed generated data resource operation with contract-test evidence."""
+    publish = data_resource_publish_contract(resource)
+    tests = data_service_contract_test_plan()
+    telemetry = data_service_telemetry_contract()
+    return {{
+        "format": "appgen.generated-data-tooling-publish-resource-operation.v1",
+        "ok": publish["ok"] and all(test["assertions"] for test in tests["tests"]) and telemetry["ok"],
+        "resource": resource,
+        "route": publish["route"],
+        "pipeline": publish["pipeline"] + ("run_contract_tests", "register_telemetry"),
+        "tests": tests["tests"],
+        "guards": ("auth_filter_required", "request_validator_required", "service_contract_tests_before_resource_publish"),
+        "side_effects": (),
+    }}
+
+
+def data_tooling_actionable_operations():
+    """Return callable generated data tooling operations used by IDE screens."""
+    operations = {{
+        "test_connection": data_tooling_test_connection(),
+        "preview_query": data_tooling_preview_query(),
+        "preview_schema_diff": data_tooling_preview_schema_diff(),
+        "generate_lookup_editors": data_tooling_generate_lookup_editors(),
+        "publish_resource": data_tooling_publish_resource(),
+    }}
+    return {{
+        "format": "appgen.generated-data-tooling-actionable-operations.v1",
+        "ok": all(operation["ok"] for operation in operations.values()),
+        "operations": operations,
+        "side_effects": (),
+    }}
+
+
 def local_database_maintenance_contract():
     """Return generated local embedded store maintenance workflows."""
     local = local_database_contract()
@@ -32144,6 +32248,7 @@ def rad_data_tooling_workbench():
     runtime_replay = data_tooling_runtime_replay_contract()
     design_runtime_replay = data_tooling_design_runtime_session_replay_contract()
     publish_transaction_replay = data_tooling_publish_transaction_replay_contract()
+    actionable_operations = data_tooling_actionable_operations()
     checks = (
         {{"id": "connection_catalog", "ok": bool(contract["connection_catalog"]) and all(item["secret_policy"] in ("externalized", "local_keychain") for item in contract["connection_catalog"]), "evidence": contract["connection_catalog"]}},
         {{"id": "query_designer", "ok": {{"sql_builder", "stored_procedure_browser", "schema_adapter"}} <= set(contract["query_designer"]["surfaces"]) and "parameterized_sql_only" in contract["query_designer"]["guards"], "evidence": contract["query_designer"]}},
@@ -32156,6 +32261,7 @@ def rad_data_tooling_workbench():
         {{"id": "query_preview_workflow", "ok": {{"bind_parameters", "explain_plan"}} <= set(query_preview["plan"]) and not query_preview["side_effects"], "evidence": query_preview}},
         {{"id": "server_method_invocation_workflow", "ok": {{"client_proxy", "server_method_stub", "response_mapper"}} <= set(method_invocation["pipeline"]) and not method_invocation["side_effects"], "evidence": method_invocation}},
         {{"id": "resource_publish_workflow", "ok": resource_publish["ok"] and {{"attach_security", "register_analytics"}} <= set(resource_publish["pipeline"]) and not resource_publish["side_effects"], "evidence": resource_publish}},
+        {{"id": "actionable_data_tooling_operations", "ok": actionable_operations["ok"] and {{"test_connection", "preview_query", "preview_schema_diff", "generate_lookup_editors", "publish_resource"}} <= set(actionable_operations["operations"]) and not actionable_operations["side_effects"], "evidence": actionable_operations}},
         {{"id": "local_database_maintenance_workflow", "ok": {{"backup", "restore", "change_view_sync"}} <= {{workflow["name"] for workflow in local_maintenance["workflows"]}} and not local_maintenance["side_effects"], "evidence": local_maintenance}},
         {{"id": "offline_conflict_review_workflow", "ok": {{"detect_conflict", "approve_resolution", "write_audit_log"}} <= set(conflict_review["review_flow"]) and not conflict_review["side_effects"], "evidence": conflict_review}},
         {{"id": "driver_capability_matrix", "ok": driver_matrix["ok"] and all(row["secrets_externalized"] for row in driver_matrix["rows"]) and not driver_matrix["side_effects"], "evidence": driver_matrix}},
@@ -32194,7 +32300,7 @@ def rad_data_tooling_workbench():
         {{"id": "data_tooling_publish_transaction_replay", "ok": publish_transaction_replay["ok"] and {{"service_contract_tests_before_resource_publish", "runtime_smoke_proves_no_persisted_writes"}} <= set(publish_transaction_replay["guards"]) and not publish_transaction_replay["side_effects"], "evidence": publish_transaction_replay}},
     )
     ok = all(check["ok"] for check in checks)
-    return {{"format": "appgen.generated-rad-data-tooling-workbench.v1", "ok": ok, "decision": "approved" if ok else "blocked", "contract": contract, "connection_test": connection_test, "query_preview": query_preview, "method_invocation": method_invocation, "resource_publish": resource_publish, "local_maintenance": local_maintenance, "conflict_review": conflict_review, "driver_matrix": driver_matrix, "schema_diff": schema_diff, "transaction_rehearsal": transaction_rehearsal, "offline_replay": offline_replay, "service_tests": service_tests, "schema_browser": schema_browser, "parameter_binding": parameter_binding, "dataset_fields": dataset_fields, "service_security": service_security, "offline_queue_integrity": offline_queue_integrity, "migration_rehearsal": migration_rehearsal, "dataset_designer": dataset_designer, "service_invocation_traces": service_invocation_traces, "maintenance_schedule": maintenance_schedule, "schema_checkpoints": schema_checkpoints, "data_modules": data_modules, "query_plan_visualizer": query_plan_visualizer, "relationship_navigation": relationship_navigation, "service_versioning": service_versioning, "connection_failover": connection_failover, "change_capture_lineage": change_capture_lineage, "connection_pooling": connection_pooling, "stored_procedures": stored_procedures, "sql_authoring_safety": sql_authoring_safety, "backup_restore_verification": backup_restore_verification, "replication_monitor": replication_monitor, "service_telemetry": service_telemetry, "dataset_state_machine": dataset_state_machine, "lookup_editor_pipeline": lookup_editor_pipeline, "relationship_lookup_lifecycle": relationship_lookup_lifecycle, "module_runtime_smoke": module_runtime_smoke, "runtime_replay": runtime_replay, "design_runtime_replay": design_runtime_replay, "publish_transaction_replay": publish_transaction_replay, "checks": checks, "blocking_gaps": tuple(check for check in checks if not check["ok"])}}
+    return {{"format": "appgen.generated-rad-data-tooling-workbench.v1", "ok": ok, "decision": "approved" if ok else "blocked", "contract": contract, "connection_test": connection_test, "query_preview": query_preview, "method_invocation": method_invocation, "resource_publish": resource_publish, "actionable_operations": actionable_operations, "local_maintenance": local_maintenance, "conflict_review": conflict_review, "driver_matrix": driver_matrix, "schema_diff": schema_diff, "transaction_rehearsal": transaction_rehearsal, "offline_replay": offline_replay, "service_tests": service_tests, "schema_browser": schema_browser, "parameter_binding": parameter_binding, "dataset_fields": dataset_fields, "service_security": service_security, "offline_queue_integrity": offline_queue_integrity, "migration_rehearsal": migration_rehearsal, "dataset_designer": dataset_designer, "service_invocation_traces": service_invocation_traces, "maintenance_schedule": maintenance_schedule, "schema_checkpoints": schema_checkpoints, "data_modules": data_modules, "query_plan_visualizer": query_plan_visualizer, "relationship_navigation": relationship_navigation, "service_versioning": service_versioning, "connection_failover": connection_failover, "change_capture_lineage": change_capture_lineage, "connection_pooling": connection_pooling, "stored_procedures": stored_procedures, "sql_authoring_safety": sql_authoring_safety, "backup_restore_verification": backup_restore_verification, "replication_monitor": replication_monitor, "service_telemetry": service_telemetry, "dataset_state_machine": dataset_state_machine, "lookup_editor_pipeline": lookup_editor_pipeline, "relationship_lookup_lifecycle": relationship_lookup_lifecycle, "module_runtime_smoke": module_runtime_smoke, "runtime_replay": runtime_replay, "design_runtime_replay": design_runtime_replay, "publish_transaction_replay": publish_transaction_replay, "checks": checks, "blocking_gaps": tuple(check for check in checks if not check["ok"])}}
 
 
 def mobile_native_api_contract():
