@@ -86,6 +86,7 @@ from pyAppGen.form_designer import component_package_compatibility_smoke_suite
 from pyAppGen.form_designer import component_package_dependency_graph
 from pyAppGen.form_designer import component_package_dependency_order_contract
 from pyAppGen.form_designer import component_package_install_session_replay
+from pyAppGen.form_designer import component_package_lifecycle_execution_contract
 from pyAppGen.form_designer import component_package_lifecycle_transaction_replay
 from pyAppGen.form_designer import component_package_lockfile_integrity_contract
 from pyAppGen.form_designer import component_package_load_policy
@@ -94,6 +95,7 @@ from pyAppGen.form_designer import component_package_registration_consistency_co
 from pyAppGen.form_designer import component_package_registry_commit_operation
 from pyAppGen.form_designer import component_package_resolve_metadata_operation
 from pyAppGen.form_designer import component_package_sandbox_policy_contract
+from pyAppGen.form_designer import component_package_signature_validation_contract
 from pyAppGen.form_designer import component_package_uninstall_operation
 from pyAppGen.form_designer import component_package_update_operation
 from pyAppGen.form_designer import component_package_workbench
@@ -1776,6 +1778,11 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     lockfile = component_package_lockfile_integrity_contract(("devexpress-native",))
     assert lockfile["ok"] is True
     assert lockfile["entries"][0]["checksum"].startswith("sha256:")
+    signature_validation = component_package_signature_validation_contract(("devexpress-native",))
+    assert signature_validation["format"] == "appgen.component-package-signature-validation.v1"
+    assert signature_validation["ok"] is True
+    assert signature_validation["signatures"][0]["signature"].startswith("sig:sha256:")
+    assert "trust_decision_verified" in {check["id"] for check in signature_validation["checks"] if check["ok"]}
     sandbox = component_package_sandbox_policy_contract(("devexpress-native",))
     assert sandbox["ok"] is True
     assert "global_install" in sandbox["permissions"][0]["deny"]
@@ -1876,6 +1883,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "package_behavior",
         "dependency_order",
         "lockfile_integrity",
+        "signature_validation",
         "sandbox_policy",
         "registration_consistency",
         "compatibility_smoke_suite",
@@ -1885,6 +1893,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "palette_refresh",
         "failure_isolation",
         "lifecycle_transaction_replay",
+        "lifecycle_execution",
         "actionable_package_operations",
         "side_effect_guards",
     } == {check["id"] for check in package_manager["checks"]}
@@ -1908,6 +1917,16 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     } <= {check["id"] for check in lifecycle_replay["checks"] if check["ok"]}
     assert all(item["final_state"]["registry_clean"] for item in lifecycle_replay["replay"])
     assert all(not item["final_state"]["global_install"] for item in lifecycle_replay["replay"])
+    lifecycle_execution = component_package_lifecycle_execution_contract(("devexpress-native",))
+    assert lifecycle_execution["format"] == "appgen.component-package-lifecycle-execution.v1"
+    assert lifecycle_execution["ok"] is True
+    assert {
+        "trust_before_install",
+        "install_update_uninstall_executed",
+        "registry_clean_after_uninstall",
+        "no_global_install",
+    } == {check["id"] for check in lifecycle_execution["checks"]}
+    assert lifecycle_execution["transactions"][0]["final_state"]["signature_verified"] is True
     assert third_party_component_import_contract(
         {
             "id": "custom-suite",
@@ -10014,6 +10033,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "rollback_plan",
         "package_behavior",
         "lockfile_integrity",
+        "signature_validation",
         "sandbox_policy",
         "registration_consistency",
         "dependency_order",
@@ -10024,6 +10044,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "palette_refresh",
         "failure_isolation",
         "lifecycle_transaction_replay",
+        "lifecycle_execution",
         "actionable_package_operations",
     } <= {
         check["id"] for check in generated_package_manager["checks"]

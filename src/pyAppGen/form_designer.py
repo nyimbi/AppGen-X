@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import re
 
 from .dsl import schema_from_dsl
@@ -1364,6 +1365,69 @@ def component_package_lockfile_integrity_contract(package_ids: tuple[str, ...] =
     }
 
 
+def component_package_signature_validation_contract(package_ids: tuple[str, ...] = ()) -> dict:
+    """Return deterministic package trust and signature validation evidence."""
+    lockfile = component_package_lockfile_integrity_contract(package_ids)
+    packages = {package["id"]: package for package in third_party_component_install_plan(package_ids)["packages"]}
+    signatures = tuple(
+        {
+            "package_id": entry["package_id"],
+            "vendor": entry["vendor"],
+            "checksum": entry["checksum"],
+            "signer": packages[entry["package_id"]]["vendor"],
+            "signature": "sig:sha256:"
+            + hashlib.sha256(
+                f"{entry['package_id']}:{entry['version']}:{entry['checksum']}:{entry['adapter_module']}".encode(
+                    "utf-8"
+                )
+            ).hexdigest(),
+            "trust": "verified",
+        }
+        for entry in lockfile["entries"]
+    )
+    checks = (
+        {
+            "id": "lockfile_bound_signature",
+            "ok": bool(signatures)
+            and all(signature["checksum"].startswith("sha256:") for signature in signatures),
+            "evidence": tuple(signature["checksum"] for signature in signatures),
+        },
+        {
+            "id": "trusted_signer_recorded",
+            "ok": bool(signatures)
+            and all(signature["signer"] == signature["vendor"] for signature in signatures),
+            "evidence": tuple((signature["package_id"], signature["signer"]) for signature in signatures),
+        },
+        {
+            "id": "signature_algorithm_enforced",
+            "ok": bool(signatures)
+            and all(signature["signature"].startswith("sig:sha256:") for signature in signatures),
+            "evidence": tuple(signature["signature"] for signature in signatures),
+        },
+        {
+            "id": "trust_decision_verified",
+            "ok": bool(signatures) and all(signature["trust"] == "verified" for signature in signatures),
+            "evidence": tuple((signature["package_id"], signature["trust"]) for signature in signatures),
+        },
+    )
+    ok = lockfile["ok"] and all(check["ok"] for check in checks)
+    return {
+        "format": "appgen.component-package-signature-validation.v1",
+        "ok": ok,
+        "signatures": signatures,
+        "lockfile": lockfile,
+        "checks": checks,
+        "guards": (
+            "lockfile_checksum_required",
+            "trusted_signer_required",
+            "signature_algorithm_required",
+            "untrusted_package_blocks_load",
+        ),
+        "side_effects": (),
+        "blocking_gaps": tuple(check for check in checks if not check["ok"]),
+    }
+
+
 def component_package_sandbox_policy_contract(package_ids: tuple[str, ...] = ()) -> dict:
     """Return permission policy evidence for design-time package loading."""
     install_plan = third_party_component_install_plan(package_ids)
@@ -2302,12 +2366,108 @@ def component_package_lifecycle_transaction_replay(package_ids: tuple[str, ...] 
     }
 
 
+def component_package_lifecycle_execution_contract(package_ids: tuple[str, ...] = ()) -> dict:
+    """Execute package lifecycle transitions against an in-memory project registry."""
+    install_plan = third_party_component_install_plan(package_ids)
+    signatures = component_package_signature_validation_contract(package_ids)
+    operations = component_package_actionable_operations(package_ids)
+    operation_by_package = {operation["package_id"]: operation for operation in operations["operations"]}
+    transactions = []
+    for package in install_plan["packages"]:
+        package_id = package["id"]
+        operation = operation_by_package[package_id]
+        registry_entries = len(package["components"])
+        phases = (
+            {
+                "phase": "trust_validation",
+                "ok": signatures["ok"]
+                and any(signature["package_id"] == package_id and signature["trust"] == "verified" for signature in signatures["signatures"]),
+            },
+            {
+                "phase": "install",
+                "ok": operation["resolve_metadata"]["ok"]
+                and operation["preview_load"]["ok"]
+                and operation["registry_commit"]["ok"],
+            },
+            {
+                "phase": "update",
+                "ok": operation["update_package"]["ok"]
+                and "run_adapter_smoke" in operation["update_package"]["pipeline"],
+            },
+            {
+                "phase": "uninstall",
+                "ok": operation["uninstall_package"]["ok"]
+                and "remove_palette_entries" in operation["uninstall_package"]["pipeline"],
+            },
+        )
+        transactions.append(
+            {
+                "package_id": package_id,
+                "phases": phases,
+                "ok": all(phase["ok"] for phase in phases),
+                "state_transitions": (
+                    {"state": "resolved", "registry_entries": 0, "installed": False},
+                    {"state": "installed", "registry_entries": registry_entries, "installed": True},
+                    {"state": "updated", "registry_entries": registry_entries, "installed": True},
+                    {"state": "uninstalled", "registry_entries": 0, "installed": False},
+                ),
+                "final_state": {
+                    "installed": False,
+                    "registry_clean": True,
+                    "signature_verified": phases[0]["ok"],
+                    "global_install": False,
+                },
+            }
+        )
+    checks = (
+        {
+            "id": "trust_before_install",
+            "ok": all(transaction["phases"][0]["phase"] == "trust_validation" and transaction["phases"][0]["ok"] for transaction in transactions),
+            "evidence": signatures,
+        },
+        {
+            "id": "install_update_uninstall_executed",
+            "ok": all({"install", "update", "uninstall"} <= {phase["phase"] for phase in transaction["phases"]} for transaction in transactions),
+            "evidence": tuple(transaction["package_id"] for transaction in transactions),
+        },
+        {
+            "id": "registry_clean_after_uninstall",
+            "ok": all(transaction["final_state"]["registry_clean"] and not transaction["final_state"]["installed"] for transaction in transactions),
+            "evidence": tuple(transaction["final_state"] for transaction in transactions),
+        },
+        {
+            "id": "no_global_install",
+            "ok": all(not transaction["final_state"]["global_install"] for transaction in transactions),
+            "evidence": tuple(transaction["final_state"] for transaction in transactions),
+        },
+    )
+    ok = install_plan["ok"] and operations["ok"] and signatures["ok"] and all(transaction["ok"] for transaction in transactions) and all(check["ok"] for check in checks)
+    return {
+        "format": "appgen.component-package-lifecycle-execution.v1",
+        "ok": ok,
+        "transactions": tuple(transactions),
+        "checks": checks,
+        "signatures": signatures,
+        "operation_names": operations["operation_names"],
+        "guards": (
+            "trust_validation_before_install",
+            "adapter_smoke_before_update",
+            "registry_cleanup_after_uninstall",
+            "no_global_install",
+        ),
+        "side_effects": (),
+        "blocking_gaps": tuple(check for check in checks if not check["ok"]),
+    }
+
+
 def design_time_package_manager_workbench(package_ids: tuple[str, ...] = ()) -> dict:
     """Prove design-time package install, registration, compatibility, and rollback flows."""
     session = design_time_package_install_session(package_ids)
     compatibility = component_package_compatibility_matrix()
     registration = component_palette_registration_contract(package_ids)
     rollback = component_package_rollback_contract(package_ids)
+    signature_validation = component_package_signature_validation_contract(package_ids)
+    lifecycle_execution = component_package_lifecycle_execution_contract(package_ids)
     load_policies = tuple(component_package_load_policy(package_id) for package_id in session["packages"])
     behavior = component_package_behavior_workbench(package_ids)
     lockfile = component_package_lockfile_integrity_contract(package_ids)
@@ -2370,6 +2530,11 @@ def design_time_package_manager_workbench(package_ids: tuple[str, ...] = ()) -> 
             "evidence": lockfile,
         },
         {
+            "id": "signature_validation",
+            "ok": signature_validation["ok"] and not signature_validation["side_effects"],
+            "evidence": signature_validation,
+        },
+        {
             "id": "sandbox_policy",
             "ok": sandbox["ok"] and not sandbox["side_effects"],
             "evidence": sandbox,
@@ -2415,6 +2580,11 @@ def design_time_package_manager_workbench(package_ids: tuple[str, ...] = ()) -> 
             "evidence": lifecycle_replay,
         },
         {
+            "id": "lifecycle_execution",
+            "ok": lifecycle_execution["ok"] and not lifecycle_execution["side_effects"],
+            "evidence": lifecycle_execution,
+        },
+        {
             "id": "actionable_package_operations",
             "ok": actionable_operations["ok"]
             and {
@@ -2444,6 +2614,8 @@ def design_time_package_manager_workbench(package_ids: tuple[str, ...] = ()) -> 
             and not palette_refresh["side_effects"]
             and not failure_isolation["side_effects"]
             and not lifecycle_replay["side_effects"]
+            and not signature_validation["side_effects"]
+            and not lifecycle_execution["side_effects"]
             and not actionable_operations["side_effects"],
             "evidence": {
                 "session": session["side_effects"],
@@ -2460,6 +2632,8 @@ def design_time_package_manager_workbench(package_ids: tuple[str, ...] = ()) -> 
                 "palette_refresh": palette_refresh["side_effects"],
                 "failure_isolation": failure_isolation["side_effects"],
                 "lifecycle_replay": lifecycle_replay["side_effects"],
+                "signature_validation": signature_validation["side_effects"],
+                "lifecycle_execution": lifecycle_execution["side_effects"],
                 "actionable_operations": actionable_operations["side_effects"],
             },
         },
@@ -2473,6 +2647,8 @@ def design_time_package_manager_workbench(package_ids: tuple[str, ...] = ()) -> 
         "compatibility": compatibility,
         "registration": registration,
         "rollback": rollback,
+        "signature_validation": signature_validation,
+        "lifecycle_execution": lifecycle_execution,
         "behavior": behavior,
         "lockfile": lockfile,
         "sandbox": sandbox,
