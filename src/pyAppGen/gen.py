@@ -1905,6 +1905,58 @@ def component_capabilities():
     return form_designer.component_capability_contract(COMPONENT)
 
 
+def object_inspector():
+    """Return inspector metadata for this component module."""
+    return form_designer.object_inspector_contract(COMPONENT)
+
+
+def drop_instance(x=0, y=0, props=None):
+    """Return a deterministic design-surface drop payload for this component."""
+    current = contract()
+    size = current["default_size"]
+    merged = dict(current["default_props"])
+    merged.update(dict(props or {{}}))
+    return {{
+        "format": "appgen.component-drop-instance.v1",
+        "component": COMPONENT,
+        "x": x,
+        "y": y,
+        "w": size["w"],
+        "h": size["h"],
+        "props": merged,
+        "inspector": object_inspector(),
+    }}
+
+
+def serialize_instance(instance=None):
+    """Return a stable persisted design snapshot for this component."""
+    current = instance or drop_instance()
+    return {{
+        "format": "appgen.component-instance-json.v1",
+        "component": COMPONENT,
+        "version": 1,
+        "bounds": {{"x": current["x"], "y": current["y"], "w": current["w"], "h": current["h"]}},
+        "props": dict(current["props"]),
+        "events": contract()["events"],
+    }}
+
+
+def apply_property(name, value):
+    """Apply one property through validation and return the staged instance."""
+    base = drop_instance()
+    updated = dict(base["props"])
+    updated[name] = value
+    validation = validate_props(updated)
+    return {{
+        "format": "appgen.component-property-apply-result.v1",
+        "component": COMPONENT,
+        "property": name,
+        "ok": validation["ok"],
+        "instance": drop_instance(props=updated) if validation["ok"] else base,
+        "diagnostics": validation["unknown"],
+    }}
+
+
 def designer_metadata():
     """Return palette, inspector, and canvas metadata for this component."""
     return form_designer.component_designer_metadata_contract(COMPONENT)
@@ -1940,6 +1992,10 @@ def test_plan():
             "serialization_contract_declared",
             "binding_surface_declared",
             "component_capabilities_declared",
+            "object_inspector_declared",
+            "drop_instance_declared",
+            "serialization_snapshot_declared",
+            "property_apply_declared",
             "designer_metadata_declared",
             "event_dispatch_declared",
         ),
@@ -1955,6 +2011,10 @@ def smoke_test():
     event_name = current["events"][0] if current["events"] else "__none__"
     event_result = dispatch_event(event_name)
     behavior = behavior_contract()
+    dropped = drop_instance()
+    serialized = serialize_instance(dropped)
+    property_name = next(iter(current["default_props"]))
+    applied = apply_property(property_name, current["default_props"][property_name])
     return {{
         "format": "appgen.component-module-smoke-test.v1",
         "component": COMPONENT,
@@ -1970,6 +2030,10 @@ def smoke_test():
             and serialization_contract()["property_stream"]
             and binding_surface()["bindable_properties"]
             and component_capabilities()["ok"]
+            and object_inspector()["property_editors"]
+            and dropped["component"] == COMPONENT
+            and serialized["bounds"]["w"] == current["default_size"]["w"]
+            and applied["ok"]
             and designer_metadata()["inspector"]["property_editors"]
             and event_result["ok"]
         ),
@@ -28314,6 +28378,10 @@ def component_module_implementation_contract(component_type):
         "serialization_contract",
         "binding_surface",
         "component_capabilities",
+        "object_inspector",
+        "drop_instance",
+        "serialize_instance",
+        "apply_property",
         "designer_metadata",
         "dispatch_event",
         "test_plan",
@@ -28331,6 +28399,10 @@ def component_module_implementation_contract(component_type):
         "serialization_contract_declared",
         "binding_surface_declared",
         "component_capabilities_declared",
+        "object_inspector_declared",
+        "drop_instance_declared",
+        "serialization_snapshot_declared",
+        "property_apply_declared",
         "designer_metadata_declared",
         "event_dispatch_declared",
     )
@@ -28443,7 +28515,7 @@ def component_usability_workbench(existing_paths=None):
         {{"id": "validation_rules", "ok": all(item["validation_rules"] for item in contracts), "evidence": tuple((item["component"], item["validation_rules"]) for item in contracts)}},
         {{"id": "drop_defaults", "ok": all(item["default_size"]["w"] > 0 and item["default_size"]["h"] > 0 for item in contracts), "evidence": tuple((item["component"], item["default_size"]) for item in contracts)}},
         {{"id": "preview_contracts", "ok": all(item["preview"]["available"] and item["usable"] for item in contracts), "evidence": tuple((item["component"], item["preview"]["preview_kind"]) for item in contracts)}},
-        {{"id": "per_component_files", "ok": len(component_files) == len(contracts) and all(item["exists"] and {{"contract", "render", "validate_props", "preview", "behavior_contract", "target_adapters", "state_model", "serialization_contract", "binding_surface", "designer_metadata", "dispatch_event", "test_plan", "smoke_test"}} <= set(item["exports"]) and item["module_contract"]["ok"] for item in component_files), "evidence": component_files}},
+        {{"id": "per_component_files", "ok": len(component_files) == len(contracts) and all(item["exists"] and {{"contract", "render", "validate_props", "preview", "behavior_contract", "target_adapters", "state_model", "serialization_contract", "binding_surface", "object_inspector", "drop_instance", "serialize_instance", "apply_property", "designer_metadata", "dispatch_event", "test_plan", "smoke_test"}} <= set(item["exports"]) and item["module_contract"]["ok"] for item in component_files), "evidence": component_files}},
         {{"id": "per_package_files", "ok": len(package_files) == len(THIRD_PARTY_COMPONENT_SUITES) and all(item["exists"] and {{"package_contract", "install_plan", "load_policy", "test_plan", "smoke_test"}} <= set(item["exports"]) and item["module_contract"]["ok"] for item in package_files), "evidence": package_files}},
         {{"id": "module_smoke_tests", "ok": all("smoke_test" in item["exports"] and item["module_contract"]["smoke_tests"] for item in component_files) and all("smoke_test" in item["exports"] and item["module_contract"]["smoke_tests"] for item in package_files), "evidence": {{"components": tuple((item["component"], item["module_contract"]["smoke_tests"]) for item in component_files), "packages": tuple((item["package"], item["module_contract"]["smoke_tests"]) for item in package_files)}}}},
         {{"id": "requested_analog_coverage", "ok": analog_workbench["ok"], "evidence": analog_workbench}},

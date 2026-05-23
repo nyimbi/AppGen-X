@@ -1341,6 +1341,10 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     assert all(item["path"].startswith("app/component_contracts/") for item in usability["component_files"])
     assert all(item["path"].startswith("app/component_packages/") for item in usability["package_files"])
     assert all("component_capabilities" in item["exports"] for item in usability["component_files"])
+    assert all("object_inspector" in item["exports"] for item in usability["component_files"])
+    assert all("drop_instance" in item["exports"] for item in usability["component_files"])
+    assert all("serialize_instance" in item["exports"] for item in usability["component_files"])
+    assert all("apply_property" in item["exports"] for item in usability["component_files"])
     assert all("smoke_test" in item["exports"] for item in usability["component_files"])
     assert all(item["module_contract"]["ok"] for item in usability["component_files"])
     assert all("smoke_test" in item["exports"] for item in usability["package_files"])
@@ -9686,6 +9690,10 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert all(item["exists"] for item in generated_usability["component_files"])
     assert all(item["exists"] for item in generated_usability["package_files"])
     assert all("component_capabilities" in item["exports"] for item in generated_usability["component_files"])
+    assert all("object_inspector" in item["exports"] for item in generated_usability["component_files"])
+    assert all("drop_instance" in item["exports"] for item in generated_usability["component_files"])
+    assert all("serialize_instance" in item["exports"] for item in generated_usability["component_files"])
+    assert all("apply_property" in item["exports"] for item in generated_usability["component_files"])
     assert "module_smoke_tests" in {
         check["id"] for check in generated_usability["checks"]
     }
@@ -9717,11 +9725,21 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert text_box_component.binding_surface()["bindable_properties"]
     assert text_box_component.component_capabilities()["ok"] is True
     assert "set_value" in text_box_component.component_capabilities()["operations"]
+    assert text_box_component.object_inspector()["property_editors"]
+    dropped = text_box_component.drop_instance(4, 8, {"label": "Customer"})
+    assert dropped["component"] == "TextBox"
+    assert dropped["x"] == 4
+    assert text_box_component.serialize_instance(dropped)["bounds"]["w"] == text_box_component.contract()["default_size"]["w"]
+    assert text_box_component.apply_property("label", "Customer")["ok"] is True
     assert "Properties" in text_box_component.designer_metadata()["inspector"]["tabs"]
     assert text_box_component.dispatch_event("OnCreate")["ok"] is True
     assert "preview_renders" in text_box_component.test_plan()["tests"]
     assert "behavior_contract_ok" in text_box_component.test_plan()["tests"]
     assert "component_capabilities_declared" in text_box_component.test_plan()["tests"]
+    assert "object_inspector_declared" in text_box_component.test_plan()["tests"]
+    assert "drop_instance_declared" in text_box_component.test_plan()["tests"]
+    assert "serialization_snapshot_declared" in text_box_component.test_plan()["tests"]
+    assert "property_apply_declared" in text_box_component.test_plan()["tests"]
     component_package = _load_module(package_file, "generated_component_package")
     assert component_package.package_contract()["package"]["id"] == "devexpress-native"
     assert component_package.install_plan()["side_effects"] == ()
