@@ -669,6 +669,11 @@ def component_analog_workbench() -> dict:
     """Prove all requested component analogs are present and usable."""
     matrix = component_analog_matrix()
     groups = tuple(sorted({item["group"] for item in matrix}))
+    behavior_replay = tuple(
+        component_behavior_contract(item["analog"])
+        for item in matrix
+        if item["implemented"]
+    )
     checks = (
         {
             "id": "all_requested_analogs_present",
@@ -679,6 +684,23 @@ def component_analog_workbench() -> dict:
             "id": "all_requested_analogs_usable",
             "ok": all(item["contract"] and item["contract"]["usable"] for item in matrix),
             "evidence": tuple((item["source"], item["analog"]) for item in matrix if item["contract"] and item["contract"]["usable"]),
+        },
+        {
+            "id": "requested_analog_behavior_replay",
+            "ok": len(behavior_replay) == len(matrix)
+            and all(item["ok"] for item in behavior_replay)
+            and all(
+                {"render_nodes", "property_validation", "event_dispatch", "target_adapters", "binding_surface", "category_capabilities"}
+                <= {check["id"] for check in item["checks"] if check["ok"]}
+                for item in behavior_replay
+            ),
+            "evidence": tuple(
+                {
+                    "component": item["component"],
+                    "checks": tuple(check["id"] for check in item["checks"] if check["ok"]),
+                }
+                for item in behavior_replay
+            ),
         },
         {
             "id": "groups_covered",
@@ -704,6 +726,7 @@ def component_analog_workbench() -> dict:
         "decision": "approved" if ok else "blocked",
         "matrix": matrix,
         "groups": groups,
+        "behavior_replay": behavior_replay,
         "checks": checks,
         "blocking_gaps": tuple(check for check in checks if not check["ok"]),
     }

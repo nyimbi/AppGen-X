@@ -831,7 +831,14 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     analog_workbench = component_analog_workbench()
     assert analog_workbench["format"] == "appgen.component-analog-workbench.v1"
     assert analog_workbench["ok"] is True
+    assert "requested_analog_behavior_replay" in {check["id"] for check in analog_workbench["checks"]}
     assert {"layouts", "graphics", "sensors", "three-d", "data-access"} <= set(analog_workbench["groups"])
+    assert REQUESTED_COMPONENT_ANALOGS == {item["component"] for item in analog_workbench["behavior_replay"]}
+    assert all(
+        {"render_nodes", "property_validation", "event_dispatch", "target_adapters", "binding_surface", "category_capabilities"}
+        <= {check["id"] for check in item["checks"] if check["ok"]}
+        for item in analog_workbench["behavior_replay"]
+    )
     inspector_contract = object_inspector_contract("Grid")
     assert inspector_contract["format"] == "appgen.object-inspector-contract.v1"
     assert {"Properties", "Events", "Data", "Actions"} <= set(inspector_contract["tabs"])
@@ -9687,12 +9694,19 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     generated_analogs = form_designer.component_analog_workbench()
     assert generated_analogs["format"] == "appgen.generated-component-analog-workbench.v1"
     assert generated_analogs["ok"] is True
+    assert "requested_analog_behavior_replay" in {check["id"] for check in generated_analogs["checks"]}
     assert REQUESTED_COMPONENT_ANALOG_SOURCES == {
         item["source"] for item in generated_analogs["matrix"]
     }
     assert REQUESTED_COMPONENT_ANALOGS == {
         item["analog"] for item in generated_analogs["matrix"]
     }
+    assert REQUESTED_COMPONENT_ANALOGS == {item["component"] for item in generated_analogs["behavior_replay"]}
+    assert all(
+        {"render_nodes", "property_validation", "event_dispatch", "target_adapters", "binding_surface", "category_capabilities"}
+        <= {check["id"] for check in item["checks"] if check["ok"]}
+        for item in generated_analogs["behavior_replay"]
+    )
     generated_inspector = form_designer.object_inspector_workbench()
     assert generated_inspector["format"] == "appgen.generated-object-inspector-workbench.v1"
     assert generated_inspector["ok"] is True
