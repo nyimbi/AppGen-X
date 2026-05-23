@@ -1761,6 +1761,7 @@ def write_form_designer_file(output_dir, schema: AppSchema):
     write_package_manager_module_files(output_dir)
     write_native_form_module_files(output_dir)
     write_runtime_operation_module_files(output_dir)
+    write_compiler_runtime_module_files(output_dir)
 
 
 DEVICE_API_COMPONENTS = (
@@ -1855,6 +1856,15 @@ RUNTIME_OPERATION_MODULES = (
     "compile_preview_operation",
     "refresh_resources_operation",
     "reload_runtime_preview_operation",
+)
+
+COMPILER_RUNTIME_MODULES = (
+    "compiler_pipeline_module",
+    "unit_parse_module",
+    "semantic_validation_module",
+    "incremental_compile_module",
+    "diagnostic_mapping_module",
+    "toolchain_adapter_module",
 )
 
 
@@ -2081,6 +2091,26 @@ def write_runtime_operation_module_files(output_dir):
         )
         (test_dir / f"test_{module_name}.py").write_text(
             _runtime_operation_module_test_text(module_name),
+            encoding="utf-8",
+        )
+
+
+def write_compiler_runtime_module_files(output_dir):
+    """Write generated native compiler/runtime modules and smoke tests."""
+    output_dir = Path(output_dir)
+    module_dir = output_dir / "compiler_runtime_modules"
+    test_dir = output_dir / "compiler_runtime_module_tests"
+    module_dir.mkdir(parents=True, exist_ok=True)
+    test_dir.mkdir(parents=True, exist_ok=True)
+    (module_dir / "__init__.py").write_text(_compiler_runtime_module_init_text(), encoding="utf-8")
+    (test_dir / "__init__.py").write_text(_compiler_runtime_module_test_init_text(), encoding="utf-8")
+    for module_name in COMPILER_RUNTIME_MODULES:
+        (module_dir / f"{module_name}.py").write_text(
+            _compiler_runtime_module_text(module_name),
+            encoding="utf-8",
+        )
+        (test_dir / f"test_{module_name}.py").write_text(
+            _compiler_runtime_module_test_text(module_name),
             encoding="utf-8",
         )
 
@@ -2627,6 +2657,215 @@ def smoke_test(table_name=None):
         "table": table_name,
         "ok": True,
         "tests": ("test_runtime_operation_module_contract", "test_runtime_operation_module_smoke"),
+    }}
+'''
+
+
+def _compiler_runtime_surface(module_name: str) -> tuple[str, str]:
+    return {
+        "compiler_pipeline_module": ("compiler_pipeline", "compiler"),
+        "unit_parse_module": ("unit_parse", "unit_parse"),
+        "semantic_validation_module": ("semantic_validation", "semantic_validation"),
+        "incremental_compile_module": ("incremental_compile", "incremental"),
+        "diagnostic_mapping_module": ("diagnostic_mapping", "diagnostics"),
+        "toolchain_adapter_module": ("toolchain_adapter", "toolchain_adapters"),
+    }[module_name]
+
+
+def _compiler_runtime_module_init_text() -> str:
+    return (
+        '"""Generated native compiler/runtime modules."""\n\n'
+        f"COMPILER_RUNTIME_MODULES = {COMPILER_RUNTIME_MODULES!r}\n"
+    )
+
+
+def _compiler_runtime_module_test_init_text() -> str:
+    modules = tuple(f"test_{name}" for name in COMPILER_RUNTIME_MODULES)
+    return (
+        '"""Generated native compiler/runtime module tests."""\n\n'
+        f"COMPILER_RUNTIME_MODULE_TESTS = {modules!r}\n"
+    )
+
+
+def _compiler_runtime_module_text(module_name: str) -> str:
+    surface, workbench_key = _compiler_runtime_surface(module_name)
+    return f'''"""Generated native compiler/runtime module for {surface}."""
+
+from __future__ import annotations
+
+import importlib.util
+from pathlib import Path
+
+
+MODULE = {module_name!r}
+SURFACE = {surface!r}
+WORKBENCH_KEY = {workbench_key!r}
+EXPECTED_EXPORTS = (
+    "module_contract",
+    "compiler_manifest",
+    "run_compiler_surface",
+    "runtime_workbench",
+    "smoke_test",
+)
+
+
+def _load_form_designer():
+    module_path = Path(__file__).resolve().parents[1] / "form_designer.py"
+    spec = importlib.util.spec_from_file_location(f"generated_compiler_runtime_{{MODULE}}_designer", module_path)
+    module = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(module)
+    return module
+
+
+def module_contract():
+    """Return this generated compiler/runtime module's export contract."""
+    available = tuple(name for name in EXPECTED_EXPORTS if name in globals())
+    return {{
+        "format": "appgen.compiler-runtime-module-contract.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "ok": set(EXPECTED_EXPORTS) <= set(available),
+        "exports": available,
+        "expected_exports": EXPECTED_EXPORTS,
+        "side_effects": (),
+    }}
+
+
+def runtime_workbench(table_name=None):
+    """Return the aggregate native compiler/runtime workbench."""
+    return _load_form_designer().pascal_runtime_workbench(table_name)
+
+
+def compiler_manifest(table_name=None):
+    """Return this compiler/runtime surface manifest."""
+    workbench = runtime_workbench(table_name)
+    payload = workbench[WORKBENCH_KEY]
+    return {{
+        "format": "appgen.compiler-runtime-module-manifest.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "table": table_name,
+        "ok": workbench["ok"] and bool(payload) and not payload.get("side_effects", ()),
+        "payload": payload,
+        "workbench_checks": tuple(check["id"] for check in workbench["checks"]),
+        "side_effects": (),
+    }}
+
+
+def run_compiler_surface(table_name=None):
+    """Replay this compiler/runtime surface without invoking host toolchains."""
+    manifest = compiler_manifest(table_name)
+    payload = manifest["payload"]
+    surface_ok = bool(payload)
+    if SURFACE == "compiler_pipeline":
+        surface_ok = {{"parse_units", "type_check", "resource_link", "emit_target"}} <= set(payload["stages"])
+    elif SURFACE == "unit_parse":
+        surface_ok = bool(payload["component_declarations"]) and "AppGen.Forms" in payload["uses"]
+    elif SURFACE == "semantic_validation":
+        surface_ok = payload["ok"] and not payload["diagnostics"]
+    elif SURFACE == "incremental_compile":
+        surface_ok = {{"unit_source_hash", "dfm_hash", "resource_hash"}} <= set(payload["cache_keys"])
+    elif SURFACE == "diagnostic_mapping":
+        surface_ok = all("source_span" in mapping["maps_to"] for mapping in payload["mappings"])
+    elif SURFACE == "toolchain_adapter":
+        surface_ok = payload["ok"] and all(adapter["sandboxed"] for adapter in payload["adapters"])
+    return {{
+        "format": "appgen.compiler-runtime-module-result.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "table": table_name,
+        "ok": manifest["ok"] and surface_ok and not manifest["side_effects"],
+        "payload": payload,
+        "side_effects": (),
+    }}
+
+
+def smoke_test(table_name=None):
+    """Run side-effect-free checks for this generated compiler/runtime module."""
+    contract = module_contract()
+    manifest = compiler_manifest(table_name)
+    result = run_compiler_surface(table_name)
+    workbench = runtime_workbench(table_name)
+    return {{
+        "format": "appgen.compiler-runtime-module-smoke-test.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "ok": contract["ok"]
+        and manifest["ok"]
+        and result["ok"]
+        and workbench["ok"]
+        and not manifest["side_effects"]
+        and not result["side_effects"],
+        "checks": (
+            "module_contract_resolves",
+            "compiler_manifest_resolves",
+            "compiler_surface_replays",
+            "runtime_workbench_ok",
+            "no_side_effects",
+        ),
+    }}
+'''
+
+
+def _compiler_runtime_module_test_text(module_name: str) -> str:
+    surface, _ = _compiler_runtime_surface(module_name)
+    return f'''"""Generated tests for the {surface} compiler/runtime module."""
+
+from __future__ import annotations
+
+import importlib.util
+from pathlib import Path
+
+
+MODULE = {module_name!r}
+SURFACE = {surface!r}
+
+
+def load_compiler_runtime_module():
+    """Load the generated compiler/runtime module without app installation."""
+    module_path = Path(__file__).resolve().parents[1] / "compiler_runtime_modules" / f"{{MODULE}}.py"
+    spec = importlib.util.spec_from_file_location(f"generated_compiler_runtime_module_{{MODULE}}", module_path)
+    module = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(module)
+    return module
+
+
+def test_compiler_runtime_module_contract():
+    """Assert the generated compiler/runtime module exposes its contract."""
+    module = load_compiler_runtime_module()
+    contract = module.module_contract()
+    assert contract["module"] == MODULE
+    assert contract["surface"] == SURFACE
+    assert contract["ok"] is True
+    assert all(hasattr(module, name) for name in contract["expected_exports"])
+
+
+def _assert_compiler_runtime_module_smoke(table_name=None):
+    module = load_compiler_runtime_module()
+    result = module.smoke_test(table_name)
+    assert result["ok"] is True
+    assert result["module"] == MODULE
+    assert result["surface"] == SURFACE
+
+
+def test_compiler_runtime_module_smoke():
+    """Assert the module's side-effect-free smoke test passes."""
+    _assert_compiler_runtime_module_smoke()
+
+
+def smoke_test(table_name=None):
+    """Run this generated test module in a side-effect-free way."""
+    test_compiler_runtime_module_contract()
+    _assert_compiler_runtime_module_smoke(table_name)
+    return {{
+        "format": "appgen.compiler-runtime-module-generated-test-smoke.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "table": table_name,
+        "ok": True,
+        "tests": ("test_compiler_runtime_module_contract", "test_compiler_runtime_module_smoke"),
     }}
 '''
 
@@ -6258,6 +6497,107 @@ def native_form_module_test_file_manifest(table_name=None):
     }
 
 
+def compiler_runtime_module_file_manifest(table_name=None):
+    """Return file-level evidence for generated compiler/runtime modules."""
+    module_map = {
+        "compiler_pipeline_module": "compiler_pipeline",
+        "unit_parse_module": "unit_parse",
+        "semantic_validation_module": "semantic_validation",
+        "incremental_compile_module": "incremental_compile",
+        "diagnostic_mapping_module": "diagnostic_mapping",
+        "toolchain_adapter_module": "toolchain_adapter",
+    }
+    required_exports = (
+        "module_contract",
+        "compiler_manifest",
+        "run_compiler_surface",
+        "runtime_workbench",
+        "smoke_test",
+    )
+    module_dir = Path(__file__).with_name("compiler_runtime_modules")
+    entries = []
+    for module_name, surface in module_map.items():
+        module_path = module_dir / f"{module_name}.py"
+        exports = ()
+        contract_ok = False
+        smoke_ok = False
+        if module_path.exists():
+            module = _load_generated_module(module_path, f"generated_compiler_runtime_module_{module_name}")
+            exports = tuple(name for name in required_exports if hasattr(module, name))
+            contract = module.module_contract()
+            smoke = module.smoke_test(table_name)
+            contract_ok = contract["ok"] and contract["module"] == module_name and contract["surface"] == surface
+            smoke_ok = smoke["ok"] and smoke["module"] == module_name and smoke["surface"] == surface
+        entries.append(
+            {
+                "module": module_name,
+                "surface": surface,
+                "path": f"app/compiler_runtime_modules/{module_name}.py",
+                "exists": module_path.exists(),
+                "exports": exports,
+                "expected_exports": required_exports,
+                "contract_ok": contract_ok,
+                "smoke_ok": smoke_ok,
+            }
+        )
+    return {
+        "format": "appgen.generated-compiler-runtime-module-file-manifest.v1",
+        "ok": bool(entries)
+        and all(item["exists"] and item["contract_ok"] and item["smoke_ok"] and set(item["expected_exports"]) <= set(item["exports"]) for item in entries),
+        "modules": tuple(entries),
+        "guards": ("one_file_per_compiler_surface", "declared_exports_present", "compiler_module_smoke_replays"),
+        "side_effects": (),
+    }
+
+
+def compiler_runtime_module_test_file_manifest(table_name=None):
+    """Return file-level evidence for generated compiler/runtime module tests."""
+    module_map = {
+        "compiler_pipeline_module": "compiler_pipeline",
+        "unit_parse_module": "unit_parse",
+        "semantic_validation_module": "semantic_validation",
+        "incremental_compile_module": "incremental_compile",
+        "diagnostic_mapping_module": "diagnostic_mapping",
+        "toolchain_adapter_module": "toolchain_adapter",
+    }
+    required_exports = (
+        "load_compiler_runtime_module",
+        "test_compiler_runtime_module_contract",
+        "test_compiler_runtime_module_smoke",
+        "smoke_test",
+    )
+    test_dir = Path(__file__).with_name("compiler_runtime_module_tests")
+    entries = []
+    for module_name, surface in module_map.items():
+        module_path = test_dir / f"test_{module_name}.py"
+        exports = ()
+        smoke_ok = False
+        if module_path.exists():
+            module = _load_generated_module(module_path, f"generated_compiler_runtime_module_test_{module_name}")
+            exports = tuple(name for name in required_exports if hasattr(module, name))
+            smoke = module.smoke_test(table_name)
+            smoke_ok = smoke["ok"] and smoke["module"] == module_name and smoke["surface"] == surface
+        entries.append(
+            {
+                "module": module_name,
+                "surface": surface,
+                "path": f"app/compiler_runtime_module_tests/test_{module_name}.py",
+                "exists": module_path.exists(),
+                "exports": exports,
+                "required_exports": required_exports,
+                "smoke_ok": smoke_ok,
+            }
+        )
+    return {
+        "format": "appgen.generated-compiler-runtime-module-test-file-manifest.v1",
+        "ok": bool(entries) and all(item["exists"] and item["smoke_ok"] and set(item["required_exports"]) <= set(item["exports"]) for item in entries),
+        "tests": tuple(entries),
+        "required_exports": required_exports,
+        "guards": ("one_test_file_per_compiler_surface", "contract_and_smoke_tests_exported"),
+        "side_effects": (),
+    }
+
+
 def native_form_runtime_manifest(table_name=None):
     """Return form stream, unit, resource, compile, and load replay evidence."""
     form_designer = _load_form_designer()
@@ -6337,6 +6677,8 @@ def validate_native_form_runtime(table_name=None):
     replay = replay_native_form_runtime(table_name)
     module_files = native_form_module_file_manifest(table_name)
     module_tests = native_form_module_test_file_manifest(table_name)
+    compiler_modules = compiler_runtime_module_file_manifest(table_name)
+    compiler_module_tests = compiler_runtime_module_test_file_manifest(table_name)
     checks = (
         {"id": "manifest_ok", "ok": manifest["ok"]},
         {"id": "stream_formats_supported", "ok": {"text-dfm", "binary-dfm", "json-form-model"} <= set(manifest["streaming"]["stream_formats"])},
@@ -6348,6 +6690,8 @@ def validate_native_form_runtime(table_name=None):
         {"id": "artifact_parity_declared", "ok": "runtime_diff_visible" in manifest["artifact_parity"]["guards"]},
         {"id": "native_form_modules_ready", "ok": module_files["ok"] and not module_files["side_effects"]},
         {"id": "native_form_module_tests_ready", "ok": module_tests["ok"] and not module_tests["side_effects"]},
+        {"id": "compiler_runtime_modules_ready", "ok": compiler_modules["ok"] and not compiler_modules["side_effects"]},
+        {"id": "compiler_runtime_module_tests_ready", "ok": compiler_module_tests["ok"] and not compiler_module_tests["side_effects"]},
         {"id": "runtime_load_replay", "ok": replay["ok"] and not replay["side_effects"]},
     )
     return {
@@ -6357,6 +6701,8 @@ def validate_native_form_runtime(table_name=None):
         "manifest": manifest,
         "module_files": module_files,
         "module_tests": module_tests,
+        "compiler_modules": compiler_modules,
+        "compiler_module_tests": compiler_module_tests,
         "replay": replay,
         "blocking_gaps": tuple(check for check in checks if not check["ok"]),
     }
