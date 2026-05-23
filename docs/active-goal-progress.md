@@ -34,12 +34,13 @@ Build a complete AppGen IDE and generation platform with:
 | 2026-05-23 | `d4c240a` | Added frontend Studio interaction audit coverage for palette, drag payload, workbench, and status inputs. | Frontend production build and staged hygiene scans. |
 | 2026-05-23 | `e0c5878` | Reworked the README as the AppGen-X entry point for users and contributors. | README local documentation links, staged diff checks, and staged hygiene scans. |
 | 2026-05-23 | `69db387` | Added generated target runtime smoke proof for mobile, desktop, PWA, and chatbot outputs. | Py compile, focused target audit test, package-goal aggregation test, staged hygiene scans. |
+| 2026-05-23 | `a1e5956` | Added dependency-free browser-rendered Studio smoke harness with deterministic URL state. | Frontend production build, browser script syntax check, staged hygiene scans; sandbox blocked Chrome crashpad before page load. |
 
 ## Current Working Slice
 
 Extend generated target outputs beyond dependency-free runtime contracts by adding:
 
-- Browser-level Studio interaction tests.
+- Browser-level Studio interaction tests that pass in CI or another browser-capable sandbox.
 - Installable desktop packaging proof.
 - Mobile packaging proof beyond starter metadata.
 - Runtime smoke checks against real binary packaging adapters when available.
@@ -47,4 +48,4 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
 ## Open Completion Areas
 
 - Extend package lifecycle proof to real binary adapters when available.
-- Broaden frontend IDE interaction proof with browser-level rendering checks.
+- Run the Studio browser smoke harness in CI or another browser-capable sandbox and wire it into the required frontend verification path.
