@@ -59,11 +59,11 @@ function listen(server) {
   })
 }
 
-function dumpDom(chrome, url) {
+function dumpDomWithHeadlessMode(chrome, url, headlessMode) {
   return new Promise((resolveDump, rejectDump) => {
     const userDataDir = mkdtempSync(join(tmpdir(), 'appgen-studio-chrome-'))
     const browser = spawn(chrome, [
-      '--headless=new',
+      headlessMode,
       '--no-sandbox',
       '--disable-setuid-sandbox',
       '--disable-gpu',
@@ -121,6 +121,18 @@ function dumpDom(chrome, url) {
       resolveDump(stdout)
     })
   })
+}
+
+async function dumpDom(chrome, url) {
+  const errors = []
+  for (const headlessMode of ['--headless=new', '--headless']) {
+    try {
+      return await dumpDomWithHeadlessMode(chrome, url, headlessMode)
+    } catch (error) {
+      errors.push(`${headlessMode}: ${error.message}`)
+    }
+  }
+  throw new Error(`Chrome dump failed for ${url}\n${errors.join('\n')}`)
 }
 
 function assertIncludes(dom, expected, scenario) {
