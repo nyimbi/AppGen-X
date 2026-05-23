@@ -54,6 +54,7 @@ Build a complete AppGen IDE and generation platform with:
 | 2026-05-23 | `30b230f` | Added CI and CLI entry points for native package binary adapter transcript audits. | Py compile, focused target test, aggregate package-goal test, CLI audit, and staged hygiene scans passed. |
 | 2026-05-23 | `75e886b` | Observed remote CI for native transcript and Studio browser workflows, then fixed the native Python mismatch and hardened the browser runner. | Remote run metadata observed; local editable install, frontend build, CLI audit, script syntax check, local browser blocked by sandboxed Chrome crash handling, hygiene scans passed. |
 | 2026-05-23 | `99db421` | Added a fallback browser headless mode for the Studio browser smoke runner after the remote rerun still failed at browser execution. | Native transcript workflow passed remotely; frontend build and script syntax check passed; local browser still blocked by sandboxed Chrome crash handling; hygiene scans passed. |
+| 2026-05-23 | `pending` | Split the Studio browser workflow into separate build and browser-render steps so remote metadata can isolate failures. | Frontend build, workflow diff check, and hygiene scan passed. |
 
 ## Current Working Slice
 

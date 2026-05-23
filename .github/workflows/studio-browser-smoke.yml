@@ -41,5 +41,8 @@ jobs:
       - name: Install frontend dependencies
         run: npm ci
 
+      - name: Build Studio frontend
+        run: npm run build
+
       - name: Run Studio browser smoke
-        run: npm run test:browser
+        run: node scripts/browser-smoke.mjs
