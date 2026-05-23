@@ -51,14 +51,17 @@ Build a complete AppGen IDE and generation platform with:
 | 2026-05-23 | `d23e61d` | Wired the Studio browser smoke harness into CI and the package Studio release audit. | Py compile; focused Studio test; aggregate package-goal test; frontend build; local browser smoke blocked by sandboxed Chrome crash handler; staged hygiene scans. |
 | 2026-05-23 | `c7269ce` | Added prepared-host binary adapter transcript audits for native package execution. | Py compile; focused target test; aggregate package-goal test; staged hygiene scans. |
 | 2026-05-23 | `656b486` | Sharpened developer guidance for the opinionated PBC event-processing choice. | Documentation diff check and hygiene scans passed. |
+| 2026-05-23 | `pending` | Added CI and CLI entry points for native package binary adapter transcript audits. | Py compile, focused target test, aggregate package-goal test, CLI audit, and staged hygiene scans pending. |
 
 ## Current Working Slice
 
 Extend generated target outputs beyond dependency-free runtime contracts by adding:
 
 - Browser-level Studio interaction tests are wired into CI and the package Studio release audit.
-- CI or prepared-host execution of desktop packaging adapters.
-- CI or prepared-host execution of mobile packaging adapters.
+- CI and CLI entry points now exercise prepared-host desktop packaging adapter
+  transcript audits.
+- CI and CLI entry points now exercise prepared-host mobile packaging adapter
+  transcript audits.
 - Runtime smoke checks and binary adapter transcript audits cover produced package artifacts when available.
 - PBC package loading is implemented for local source directories, importable modules, and package index files.
 - PBC event-processing guidance now tells developers to use the default
@@ -68,4 +71,6 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
 ## Open Completion Areas
 
 - Observe prepared-host binary adapter transcripts from a real CI/package runner.
+- Observe `.github/workflows/native-package-transcripts.yml` in a real remote CI
+  run.
 - Confirm Studio browser smoke execution in a browser-capable CI run.

@@ -843,6 +843,41 @@ def target_sample_binary_adapter_executions() -> tuple[dict, ...]:
     )
 
 
+def target_binary_adapter_ci_contract(repo_root: str | Path | None = None) -> dict:
+    """Return CI/prepared-host evidence for native package transcript audits."""
+    root = Path(repo_root) if repo_root is not None else Path(__file__).resolve().parents[2]
+    workflow_path = root / ".github" / "workflows" / "native-package-transcripts.yml"
+    cli_path = root / "src" / "pyAppGen" / "gen.py"
+    workflow_text = workflow_path.read_text(encoding="utf-8") if workflow_path.exists() else ""
+    cli_text = cli_path.read_text(encoding="utf-8") if cli_path.exists() else ""
+    checks = (
+        {
+            "id": "ci_workflow",
+            "ok": workflow_path.exists()
+            and "appgen --target-binary-adapter-audit" in workflow_text
+            and "workflow_dispatch" in workflow_text,
+        },
+        {
+            "id": "cli_surface",
+            "ok": "--target-binary-adapter-audit" in cli_text
+            and "target_binary_adapter_execution_audit" in cli_text,
+        },
+        {
+            "id": "audit_schema",
+            "ok": target_binary_adapter_transcript_schema()["format"]
+            == "appgen.target-binary-adapter-transcript-schema.v1",
+        },
+    )
+    return {
+        "format": "appgen.target-binary-adapter-ci-contract.v1",
+        "ok": all(check["ok"] for check in checks),
+        "workflow": str(workflow_path),
+        "command": "appgen --target-binary-adapter-audit",
+        "checks": checks,
+        "blocking_gaps": tuple(check for check in checks if not check["ok"]),
+    }
+
+
 def dsl_target_contract(source: str = TARGET_SAMPLE_DSL) -> dict:
     """Parse the DSL and summarize target selection."""
     schema = schema_from_dsl(source, source_name="target-audit.appgen")
@@ -906,6 +941,7 @@ def target_release_audit(existing_paths: set[str] | None = None) -> dict:
         target_sample_binary_adapter_executions(),
         target_sample_binary_adapter_artifacts(),
     )
+    binary_adapter_ci = target_binary_adapter_ci_contract()
     catalog_targets = {item["target"] for item in target_catalog()}
     gates = (
         {
@@ -954,6 +990,11 @@ def target_release_audit(existing_paths: set[str] | None = None) -> dict:
             "checks": binary_adapter_execution["checks"],
         },
         {
+            "id": "binary_adapter_ci",
+            "ok": binary_adapter_ci["ok"],
+            "checks": binary_adapter_ci["checks"],
+        },
+        {
             "id": "artifact_contract",
             "ok": expected_artifacts <= existing,
         },
@@ -973,6 +1014,7 @@ def target_release_audit(existing_paths: set[str] | None = None) -> dict:
         "runtime_packaging": packaging,
         "generated_runtime_smoke": generated_runtime,
         "binary_adapter_execution": binary_adapter_execution,
+        "binary_adapter_ci": binary_adapter_ci,
         "gates": gates,
         "blocking_gaps": tuple(gate for gate in gates if not gate["ok"]),
         "stop_condition": "do-not-claim-multi-target-generation-unless-ok-is-true",

@@ -244,6 +244,7 @@ appgen --source-intake-release-audit
 appgen --studio-release-audit
 appgen --form-designer-release-audit
 appgen --target-release-audit
+appgen --target-binary-adapter-audit
 appgen --agentic-release-audit
 appgen --distribution-release-audit
 appgen --package-goal-audit

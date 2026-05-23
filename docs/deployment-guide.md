@@ -145,7 +145,13 @@ Run:
 
 ```console
 appgen --target-release-audit
+appgen --target-binary-adapter-audit
 ```
+
+CI can run the transcript audit directly through
+`.github/workflows/native-package-transcripts.yml`. Use that workflow on
+prepared hosts that can install the package and validate the generated binary
+adapter transcript contract before publishing native artifacts.
 
 ## Agentic Runtime Configuration
 

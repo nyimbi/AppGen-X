@@ -59046,6 +59046,11 @@ def get_metadata(idb):
     help="Print JSON proof that package web, PWA, mobile, desktop, and chatbot targets are ready.",
 )
 @click.option(
+    "--target-binary-adapter-audit",
+    is_flag=True,
+    help="Print JSON proof that native package binary adapter transcripts match generated plans.",
+)
+@click.option(
     "--pbc-catalog",
     is_flag=True,
     help="Print JSON catalog of composable Packaged Business Capabilities.",
@@ -59128,6 +59133,7 @@ def main(
     integration_release_audit,
     agentic_release_audit,
     target_release_audit,
+    target_binary_adapter_audit,
     pbc_catalog,
     pbc_topology,
     pbc_release_audit,
@@ -59155,6 +59161,7 @@ def main(
         integration_release_audit,
         agentic_release_audit,
         target_release_audit,
+        target_binary_adapter_audit,
         pbc_catalog,
         pbc_topology,
         pbc_release_audit,
@@ -59647,6 +59654,7 @@ def main(
                 integration_release_audit,
                 agentic_release_audit,
                 target_release_audit,
+                target_binary_adapter_audit,
                 *schema_sources,
             ]
         ):
@@ -59689,6 +59697,7 @@ def main(
                 integration_release_audit,
                 agentic_release_audit,
                 target_release_audit,
+                target_binary_adapter_audit,
                 *schema_sources,
             ]
         ):
@@ -59729,6 +59738,7 @@ def main(
                 integration_release_audit,
                 agentic_release_audit,
                 target_release_audit,
+                target_binary_adapter_audit,
                 *schema_sources,
             ]
         ):
@@ -59761,6 +59771,7 @@ def main(
                 integration_release_audit,
                 agentic_release_audit,
                 target_release_audit,
+                target_binary_adapter_audit,
                 *schema_sources,
             ]
         ):
@@ -59800,6 +59811,7 @@ def main(
                 integration_release_audit,
                 agentic_release_audit,
                 target_release_audit,
+                target_binary_adapter_audit,
                 *schema_sources,
             ]
         ):
@@ -59832,6 +59844,7 @@ def main(
                 integration_release_audit,
                 agentic_release_audit,
                 target_release_audit,
+                target_binary_adapter_audit,
                 *schema_sources,
             ]
         ):
@@ -59863,6 +59876,7 @@ def main(
                 integration_release_audit,
                 agentic_release_audit,
                 target_release_audit,
+                target_binary_adapter_audit,
                 *schema_sources,
             ]
         ):
@@ -59893,6 +59907,7 @@ def main(
                 integration_release_audit,
                 agentic_release_audit,
                 target_release_audit,
+                target_binary_adapter_audit,
                 *schema_sources,
             ]
         ):
@@ -59921,6 +59936,7 @@ def main(
                 integration_release_audit,
                 agentic_release_audit,
                 target_release_audit,
+                target_binary_adapter_audit,
                 *schema_sources,
             ]
         ):
@@ -59951,6 +59967,7 @@ def main(
                 integration_release_audit,
                 agentic_release_audit,
                 target_release_audit,
+                target_binary_adapter_audit,
                 *schema_sources,
             ]
         ):
@@ -59980,6 +59997,7 @@ def main(
                 integration_release_audit,
                 agentic_release_audit,
                 target_release_audit,
+                target_binary_adapter_audit,
                 *schema_sources,
             ]
         ):
@@ -60006,6 +60024,7 @@ def main(
                 integration_release_audit,
                 agentic_release_audit,
                 target_release_audit,
+                target_binary_adapter_audit,
                 *schema_sources,
             ]
         ):
@@ -60036,6 +60055,7 @@ def main(
                 integration_release_audit,
                 agentic_release_audit,
                 target_release_audit,
+                target_binary_adapter_audit,
                 *schema_sources,
             ]
         ):
@@ -60063,6 +60083,7 @@ def main(
                 visual_modeling_release_audit,
                 security_release_audit,
                 target_release_audit,
+                target_binary_adapter_audit,
                 *schema_sources,
             ]
         ):
@@ -60089,6 +60110,7 @@ def main(
                 visual_modeling_release_audit,
                 security_release_audit,
                 target_release_audit,
+                target_binary_adapter_audit,
                 *schema_sources,
             ]
         ):
@@ -60114,6 +60136,7 @@ def main(
                 visual_modeling_release_audit,
                 security_release_audit,
                 target_release_audit,
+                target_binary_adapter_audit,
                 *schema_sources,
             ]
         ):
@@ -60135,6 +60158,7 @@ def main(
                 wdatabase,
                 agentic_release_audit,
                 target_release_audit,
+                target_binary_adapter_audit,
                 form_designer_release_audit,
                 visual_modeling_release_audit,
                 security_release_audit,
@@ -60160,6 +60184,7 @@ def main(
                 idatabase,
                 wdatabase,
                 target_release_audit,
+                target_binary_adapter_audit,
                 *schema_sources,
             ]
         ):
@@ -60181,6 +60206,7 @@ def main(
                 wdatabase,
                 form_designer_release_audit,
                 visual_modeling_release_audit,
+                target_binary_adapter_audit,
                 *schema_sources,
             ]
         ):
@@ -60190,6 +60216,32 @@ def main(
         from .targets import target_release_audit as package_target_release_audit
 
         result = package_target_release_audit()
+        click.echo(json.dumps(result, indent=2, sort_keys=True, default=list))
+        ctx.exit(0 if result["ok"] else 1)
+
+    if target_binary_adapter_audit:
+        if any(
+            [
+                writedir,
+                database_url,
+                idatabase,
+                wdatabase,
+                form_designer_release_audit,
+                visual_modeling_release_audit,
+                *schema_sources,
+            ]
+        ):
+            raise click.UsageError(
+                "--target-binary-adapter-audit cannot be combined with generation options."
+            )
+        from .targets import target_binary_adapter_execution_audit
+        from .targets import target_sample_binary_adapter_artifacts
+        from .targets import target_sample_binary_adapter_executions
+
+        result = target_binary_adapter_execution_audit(
+            target_sample_binary_adapter_executions(),
+            target_sample_binary_adapter_artifacts(),
+        )
         click.echo(json.dumps(result, indent=2, sort_keys=True, default=list))
         ctx.exit(0 if result["ok"] else 1)
 

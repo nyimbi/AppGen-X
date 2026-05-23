@@ -299,6 +299,7 @@ from pyAppGen.targets import dsl_target_contract
 from pyAppGen.targets import generation_matrix as package_generation_matrix
 from pyAppGen.targets import mobile_capability_contract
 from pyAppGen.targets import target_catalog
+from pyAppGen.targets import target_binary_adapter_ci_contract
 from pyAppGen.targets import target_binary_adapter_execution_audit
 from pyAppGen.targets import target_binary_adapter_transcript_schema
 from pyAppGen.targets import target_contract
@@ -3454,6 +3455,10 @@ def test_package_target_audit_covers_web_mobile_desktop_generation(
         "commands_succeeded",
         "artifact_manifest_alignment",
     } == {check["id"] for check in binary_execution["checks"]}
+    binary_ci = target_binary_adapter_ci_contract()
+    assert binary_ci["format"] == "appgen.target-binary-adapter-ci-contract.v1"
+    assert binary_ci["ok"] is True
+    assert binary_ci["command"] == "appgen --target-binary-adapter-audit"
 
     runtime = target_generated_runtime_smoke()
     assert runtime["format"] == "appgen.target-generated-runtime-smoke.v1"
@@ -3487,9 +3492,11 @@ def test_package_target_audit_covers_web_mobile_desktop_generation(
         "runtime_packaging_proof",
         "generated_runtime_smoke",
         "binary_adapter_execution",
+        "binary_adapter_ci",
         "artifact_contract",
     } == {gate["id"] for gate in audit["gates"]}
     assert audit["binary_adapter_execution"]["ok"] is True
+    assert audit["binary_adapter_ci"]["ok"] is True
 
     missing = target_release_audit(existing_paths={"app/views.py"})
     assert missing["ok"] is False
@@ -3498,6 +3505,11 @@ def test_package_target_audit_covers_web_mobile_desktop_generation(
     result = runner.invoke(__main__.main, ["--target-release-audit"])
     assert result.exit_code == 0
     report = json.loads(result.output)
+    binary_result = runner.invoke(__main__.main, ["--target-binary-adapter-audit"])
+    assert binary_result.exit_code == 0
+    binary_report = json.loads(binary_result.output)
+    assert binary_report["format"] == "appgen.target-binary-adapter-execution-audit.v1"
+    assert binary_report["ok"] is True
     assert report["ok"] is True
     assert {item["target"] for item in report["catalog"]} == {
         "web",

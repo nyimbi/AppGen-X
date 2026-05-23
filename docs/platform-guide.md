@@ -211,7 +211,15 @@ appgen --package-goal-audit
 For prepared-host native packaging, capture binary adapter transcripts and
 artifact manifests. `target_binary_adapter_execution_audit()` validates that
 packager commands match generated plans, exit successfully, and align with the
-produced package artifact manifests.
+produced package artifact manifests. The same proof is exposed for CI and
+package runners through:
+
+```console
+appgen --target-binary-adapter-audit
+```
+
+The repository workflow `.github/workflows/native-package-transcripts.yml` runs
+that command so prepared hosts have a stable audit entry point.
 
 The aggregate audit should return `ok: true` and `decision: approved`.
 
