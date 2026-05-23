@@ -14134,6 +14134,7 @@ def form_designer_generation_smoke_audit(source: str = FORM_DESIGNER_SAMPLE_DSL)
     package_test_artifacts = tuple(item["path"] for item in component_package_test_file_manifest())
     required_artifacts = (
         "app/form_designer.py",
+        "app/component_parity_runtime.py",
         "app/inspector_runtime.py",
         "app/binding_runtime.py",
         "app/package_manager_runtime.py",
@@ -14154,6 +14155,7 @@ def form_designer_generation_smoke_audit(source: str = FORM_DESIGNER_SAMPLE_DSL)
     )
     compile_artifacts = (
         "app/form_designer.py",
+        "app/component_parity_runtime.py",
         "app/inspector_runtime.py",
         "app/binding_runtime.py",
         "app/package_manager_runtime.py",
@@ -14202,6 +14204,12 @@ def form_designer_generation_smoke_audit(source: str = FORM_DESIGNER_SAMPLE_DSL)
         )
         generated_form_designer = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(generated_form_designer)
+        component_parity_runtime_path = output_dir / "component_parity_runtime.py"
+        component_parity_runtime_spec = importlib.util.spec_from_file_location(
+            "generated_component_parity_runtime_smoke", component_parity_runtime_path
+        )
+        generated_component_parity_runtime = importlib.util.module_from_spec(component_parity_runtime_spec)
+        component_parity_runtime_spec.loader.exec_module(generated_component_parity_runtime)
         inspector_runtime_path = output_dir / "inspector_runtime.py"
         inspector_runtime_spec = importlib.util.spec_from_file_location(
             "generated_inspector_runtime_smoke", inspector_runtime_path
@@ -14279,6 +14287,7 @@ def form_designer_generation_smoke_audit(source: str = FORM_DESIGNER_SAMPLE_DSL)
         release_gate = generated_form_designer.form_designer_release_gate(existing_paths)
         workbench = generated_form_designer.form_designer_workbench(existing_paths)
         usability = generated_form_designer.component_usability_workbench(existing_paths)
+        component_parity_runtime_smoke = generated_component_parity_runtime.smoke_test()
         inspector_runtime_smoke = generated_inspector_runtime.smoke_test("Grid")
         binding_runtime_smoke = generated_binding_runtime.smoke_test()
         package_manager_runtime_smoke = generated_package_manager_runtime.smoke_test()
@@ -14335,6 +14344,23 @@ def form_designer_generation_smoke_audit(source: str = FORM_DESIGNER_SAMPLE_DSL)
             "ok": release_gate["ok"] and workbench["ok"],
             "release_gate": release_gate["format"],
             "workbench": workbench["format"],
+        },
+        {
+            "id": "generated_component_parity_runtime",
+            "ok": component_parity_runtime_smoke["ok"]
+            and component_parity_runtime_smoke["format"] == "appgen.generated-component-parity-runtime-smoke.v1"
+            and {
+                "manifest_ok",
+                "requested_groups_ready",
+                "requested_analogs_ready",
+                "behavior_replay_ready",
+                "component_modules_ready",
+                "package_modules_ready",
+                "component_tests_ready",
+                "runtime_replay_ready",
+            }
+            <= set(component_parity_runtime_smoke["checks"]),
+            "smoke": component_parity_runtime_smoke,
         },
         {
             "id": "generated_inspector_runtime",

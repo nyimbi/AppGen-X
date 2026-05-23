@@ -68,6 +68,7 @@ Build a complete AppGen IDE and generation platform with:
 | 2026-05-23 | `89b8763` | Tightened event-processing guidance into one read-only default choice with audited exceptions. | Py compile, focused PBC policy test, and staged hygiene scan passed. |
 | 2026-05-23 | `1ebac8e` | Added generated visual-depth runtime manifest and replay validation as an independently importable artifact. | Py compile; generated visual-depth runtime smoke probe; focused generated-app/form-designer/package-goal tests; staged hygiene scan passed. |
 | 2026-05-23 | `9f21a27` | Added generated package-manager runtime manifest and replay validation as an independently importable artifact. | Py compile; generated package-manager runtime smoke probe; focused generated-app/form-designer/package-goal tests; staged hygiene scan passed. |
+| 2026-05-23 | `pending` | Added generated component-parity runtime manifest and replay validation as an independently importable artifact. | Py compile; generated component-parity runtime smoke probe; focused generated-app/form-designer/package-goal tests; pending staged hygiene scan. |
 
 ## Current Working Slice
 
@@ -113,6 +114,10 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   module that validates reviewed installs, sandbox preview loading, registry
   commits, update/uninstall plans, lifecycle replay, lifecycle execution,
   rollback, and side-effect free package-manager operations.
+- Generated applications now include a standalone component-parity runtime
+  module that validates requested analog coverage, grouped component families,
+  behavior replay, per-component modules, per-package modules, generated tests,
+  and side-effect free component parity replay.
 
 ## Open Completion Areas
 

@@ -1742,6 +1742,7 @@ def write_form_designer_file(output_dir, schema: AppSchema):
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
     (output_dir / "form_designer.py").write_text(_form_designer_text(schema))
+    (output_dir / "component_parity_runtime.py").write_text(_component_parity_runtime_text())
     (output_dir / "inspector_runtime.py").write_text(_inspector_runtime_text())
     (output_dir / "binding_runtime.py").write_text(_binding_runtime_text())
     (output_dir / "package_manager_runtime.py").write_text(_package_manager_runtime_text())
@@ -2961,6 +2962,163 @@ def smoke_test():
     validation = validate_binding_runtime()
     return {
         "format": "appgen.generated-binding-runtime-smoke.v1",
+        "ok": validation["ok"],
+        "validation": validation,
+        "checks": tuple(check["id"] for check in validation["checks"]),
+    }
+'''
+
+
+def _component_parity_runtime_text() -> str:
+    return '''"""Generated side-effect-free component parity runtime validation surface."""
+
+from __future__ import annotations
+
+import importlib.util
+from pathlib import Path
+
+
+def _load_form_designer():
+    """Load the sibling generated form designer module without requiring package install."""
+    module_path = Path(__file__).with_name("form_designer.py")
+    spec = importlib.util.spec_from_file_location("generated_component_parity_form_designer", module_path)
+    module = importlib.util.module_from_spec(spec)
+    if spec.loader is None:
+        raise RuntimeError("Could not load generated form designer module.")
+    spec.loader.exec_module(module)
+    return module
+
+
+def component_parity_runtime_manifest():
+    """Return generated component analog, behavior, usability, and module evidence."""
+    form_designer = _load_form_designer()
+    analogs = form_designer.component_analog_workbench()
+    groups = form_designer.component_analog_group_audit()
+    behavior = form_designer.component_behavior_workbench()
+    usability = form_designer.component_usability_workbench()
+    required_groups = {
+        "cross-target-ui",
+        "layouts",
+        "data-display",
+        "graphics",
+        "animations",
+        "styles-theming",
+        "gestures",
+        "sensors",
+        "three-d",
+        "data-access",
+    }
+    required_behavior_checks = {
+        "render_nodes",
+        "property_validation",
+        "event_dispatch",
+        "target_adapters",
+        "binding_surface",
+        "category_capabilities",
+        "designer_metadata",
+        "design_surface_actions",
+    }
+    required_usability_checks = {
+        "complete_catalog",
+        "runtime_renderers",
+        "property_editors",
+        "events",
+        "validation_rules",
+        "drop_defaults",
+        "preview_contracts",
+        "design_surface_actions",
+        "per_component_files",
+        "per_package_files",
+        "per_component_test_files",
+        "per_package_test_files",
+        "module_smoke_tests",
+        "requested_analog_coverage",
+        "component_behavior",
+    }
+    return {
+        "format": "appgen.generated-component-parity-runtime-manifest.v1",
+        "ok": analogs["ok"]
+        and groups["ok"]
+        and behavior["ok"]
+        and usability["ok"]
+        and required_groups <= set(analogs["groups"])
+        and required_groups <= {item["group"] for item in groups["groups"]}
+        and all(item["implemented"] and item["contract"]["usable"] for item in analogs["matrix"])
+        and all(required_behavior_checks <= {check["id"] for check in item["checks"] if check["ok"]} for item in analogs["behavior_replay"])
+        and required_usability_checks <= {check["id"] for check in usability["checks"] if check["ok"]},
+        "analog_count": len(analogs["matrix"]),
+        "component_count": usability["component_count"],
+        "groups": groups,
+        "analogs": analogs,
+        "behavior": behavior,
+        "usability": usability,
+        "required_groups": tuple(sorted(required_groups)),
+        "required_behavior_checks": tuple(sorted(required_behavior_checks)),
+        "required_usability_checks": tuple(sorted(required_usability_checks)),
+        "guards": (
+            "all_requested_analogs_present",
+            "runtime_adapters_declared",
+            "behavior_replay_per_requested_analog",
+            "per_component_files_smoke_tested",
+            "design_surface_actions_available",
+        ),
+    }
+
+
+def replay_component_parity_runtime():
+    """Replay generated component parity behavior without host UI execution."""
+    manifest = component_parity_runtime_manifest()
+    analog_components = tuple(item["analog"] for item in manifest["analogs"]["matrix"])
+    behavior_components = tuple(item["component"] for item in manifest["analogs"]["behavior_replay"])
+    group_names = tuple(item["group"] for item in manifest["groups"]["groups"])
+    module_paths = tuple(item["path"] for item in manifest["usability"]["component_files"])
+    package_paths = tuple(item["path"] for item in manifest["usability"]["package_files"])
+    return {
+        "format": "appgen.generated-component-parity-runtime-replay.v1",
+        "ok": manifest["ok"]
+        and set(analog_components) == set(behavior_components)
+        and set(manifest["required_groups"]) <= set(group_names)
+        and all(path.startswith("app/component_contracts/") for path in module_paths)
+        and all(path.startswith("app/component_packages/") for path in package_paths)
+        and manifest["component_count"] >= manifest["analog_count"],
+        "analog_components": analog_components,
+        "behavior_components": behavior_components,
+        "group_names": group_names,
+        "module_paths": module_paths,
+        "package_paths": package_paths,
+        "side_effects": (),
+    }
+
+
+def validate_component_parity_runtime():
+    """Validate generated component parity runtime readiness."""
+    manifest = component_parity_runtime_manifest()
+    replay = replay_component_parity_runtime()
+    checks = (
+        {"id": "manifest_ok", "ok": manifest["ok"]},
+        {"id": "requested_groups_ready", "ok": set(manifest["required_groups"]) <= set(replay["group_names"])},
+        {"id": "requested_analogs_ready", "ok": set(replay["analog_components"]) == set(replay["behavior_components"]) and replay["analog_components"]},
+        {"id": "behavior_replay_ready", "ok": manifest["behavior"]["ok"] and all(item["ok"] for item in manifest["behavior"]["behaviors"])},
+        {"id": "component_modules_ready", "ok": all(item["module_contract"]["ok"] for item in manifest["usability"]["component_files"]) and all("smoke_test" in item["exports"] for item in manifest["usability"]["component_files"])},
+        {"id": "package_modules_ready", "ok": all(item["module_contract"]["ok"] for item in manifest["usability"]["package_files"]) and all("smoke_test" in item["exports"] for item in manifest["usability"]["package_files"])},
+        {"id": "component_tests_ready", "ok": all(item["ok"] for item in manifest["usability"]["component_test_files"]) and all(item["ok"] for item in manifest["usability"]["package_test_files"])},
+        {"id": "runtime_replay_ready", "ok": replay["ok"] and not replay["side_effects"]},
+    )
+    return {
+        "format": "appgen.generated-component-parity-runtime-validation.v1",
+        "ok": all(check["ok"] for check in checks),
+        "checks": checks,
+        "manifest": manifest,
+        "replay": replay,
+        "blocking_gaps": tuple(check for check in checks if not check["ok"]),
+    }
+
+
+def smoke_test():
+    """Run side-effect-free component parity runtime smoke checks."""
+    validation = validate_component_parity_runtime()
+    return {
+        "format": "appgen.generated-component-parity-runtime-smoke.v1",
         "ok": validation["ok"],
         "validation": validation,
         "checks": tuple(check["id"] for check in validation["checks"]),

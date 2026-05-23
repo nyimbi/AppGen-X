@@ -2503,6 +2503,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     assert smoke["ok"] is True
     assert {
         "app/form_designer.py",
+        "app/component_parity_runtime.py",
         "app/inspector_runtime.py",
         "app/binding_runtime.py",
         "app/package_manager_runtime.py",
@@ -2529,6 +2530,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     } <= set(smoke["required_artifacts"])
     assert {
         "app/form_designer.py",
+        "app/component_parity_runtime.py",
         "app/inspector_runtime.py",
         "app/binding_runtime.py",
         "app/package_manager_runtime.py",
@@ -11112,6 +11114,27 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert data_runtime.transaction_runtime_manifest()["ok"] is True
     assert data_runtime.validate_data_tooling_runtime()["ok"] is True
     assert data_runtime.smoke_test()["ok"] is True
+    component_parity_runtime_file = output_dir / "component_parity_runtime.py"
+    assert component_parity_runtime_file.exists()
+    py_compile.compile(str(component_parity_runtime_file), doraise=True)
+    component_parity_runtime = _load_module(component_parity_runtime_file, "generated_component_parity_runtime")
+    component_parity_smoke = component_parity_runtime.smoke_test()
+    assert component_parity_smoke["format"] == "appgen.generated-component-parity-runtime-smoke.v1"
+    assert component_parity_smoke["ok"] is True
+    assert {
+        "manifest_ok",
+        "requested_groups_ready",
+        "requested_analogs_ready",
+        "behavior_replay_ready",
+        "component_modules_ready",
+        "package_modules_ready",
+        "component_tests_ready",
+        "runtime_replay_ready",
+    } <= set(component_parity_smoke["checks"])
+    component_parity_replay = component_parity_runtime.replay_component_parity_runtime()
+    assert component_parity_replay["ok"] is True
+    assert REQUESTED_COMPONENT_ANALOGS == set(component_parity_replay["analog_components"])
+    assert component_parity_replay["side_effects"] == ()
     inspector_runtime_file = output_dir / "inspector_runtime.py"
     assert inspector_runtime_file.exists()
     py_compile.compile(str(inspector_runtime_file), doraise=True)
