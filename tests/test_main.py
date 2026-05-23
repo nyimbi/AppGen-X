@@ -1222,6 +1222,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "timeline_interpolation_runtime",
         "effect_fallback_matrix",
         "scene_transform_gizmos",
+        "visual_runtime_replay",
     } == {check["id"] for check in visual_depth["checks"]}
     assert {"inspect_effective_value", "revert_override"} <= set(visual_depth["contract"]["style_cascade"]["operations"])
     assert {"add_keyframe", "scrub_preview"} <= set(visual_depth["contract"]["timeline_authoring"]["operations"])
@@ -1247,6 +1248,12 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     )
     assert any(row["decision"] == "use_fallback" for row in visual_depth["effect_fallback_matrix"]["rows"])
     assert all("sync_inspector" in item["pipeline"] for item in visual_depth["scene_transform_gizmos"]["transforms"])
+    assert visual_depth["runtime_replay"]["ok"] is True
+    assert {"style_resolution", "timeline_interpolation", "effect_fallback", "scene_hit_testing", "scene_transform_sync"} <= {
+        item["phase"] for item in visual_depth["runtime_replay"]["replay"]
+    }
+    assert visual_depth["runtime_replay"]["final_state"]["timeline_samples"] > 0
+    assert visual_depth["runtime_replay"]["final_state"]["inspector_syncs"] > 0
     third_party_registry = third_party_component_registry()
     assert {"devexpress-native", "tms-fnc", "fastreport", "teechart", "indy"} <= {
         item["id"] for item in third_party_registry
@@ -9702,6 +9709,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "timeline_interpolation_runtime",
         "effect_fallback_matrix",
         "scene_transform_gizmos",
+        "visual_runtime_replay",
     } == {check["id"] for check in generated_visual_depth["checks"]}
     assert generated_visual_depth["contract"]["asset_import"]["budgets"]["max_mesh_triangles"] > 0
     assert generated_visual_depth["style_resolution"]["ordered_layers"][0] == "base_theme"
@@ -9722,6 +9730,12 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert "runtime_samples_match_preview" in generated_visual_depth["timeline_interpolation"]["guards"]
     assert any(row["decision"] == "use_fallback" for row in generated_visual_depth["effect_fallback_matrix"]["rows"])
     assert "inspector_sync_after_transform" in generated_visual_depth["scene_transform_gizmos"]["guards"]
+    assert generated_visual_depth["runtime_replay"]["ok"] is True
+    assert {"style_resolution", "timeline_interpolation", "effect_fallback", "scene_hit_testing", "scene_transform_sync"} <= {
+        item["phase"] for item in generated_visual_depth["runtime_replay"]["replay"]
+    }
+    assert generated_visual_depth["runtime_replay"]["final_state"]["effect_fallbacks"] >= 1
+    assert generated_visual_depth["runtime_replay"]["final_state"]["scene_hits"] > 0
     generated_analogs = form_designer.component_analog_workbench()
     assert generated_analogs["format"] == "appgen.generated-component-analog-workbench.v1"
     assert generated_analogs["ok"] is True

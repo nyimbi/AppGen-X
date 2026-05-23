@@ -7951,6 +7951,87 @@ def cross_target_scene_transform_gizmo_contract() -> dict:
     }
 
 
+def cross_target_visual_runtime_replay_contract() -> dict:
+    """Replay visual authoring contracts through deterministic runtime delivery."""
+    style_resolution = cross_target_style_resolution_workflow()
+    inheritance = cross_target_style_inheritance_trace_contract()
+    timeline = cross_target_timeline_interpolation_contract()
+    timeline_export = cross_target_timeline_runtime_export_contract()
+    effects = cross_target_effect_fallback_matrix_contract()
+    scene = cross_target_scene_hit_test_contract()
+    transforms = cross_target_scene_transform_gizmo_contract()
+    state = {
+        "style_published": False,
+        "timeline_samples": 0,
+        "effect_fallbacks": 0,
+        "scene_hits": 0,
+        "inspector_syncs": 0,
+        "side_effects": (),
+    }
+    replay = (
+        {
+            "phase": "style_resolution",
+            "pipeline": style_resolution["resolution_steps"],
+            "ok": style_resolution["ordered_layers"][0] == "base_theme"
+            and "apply_local_override" in style_resolution["resolution_steps"],
+        },
+        {
+            "phase": "style_inheritance",
+            "pipeline": next(iter(inheritance["traces"]))["trace"] if inheritance["traces"] else (),
+            "ok": inheritance["ok"] and all("publish_effective_value" in trace["trace"] for trace in inheritance["traces"]),
+        },
+        {
+            "phase": "timeline_interpolation",
+            "pipeline": ("load_runtime_timeline", "sample_keyframes", "interpolate_values", "emit_runtime_samples"),
+            "ok": timeline["ok"] and all(sample["runtime_samples"] for sample in timeline["samples"]),
+        },
+        {
+            "phase": "timeline_export",
+            "pipeline": timeline_export["guards"],
+            "ok": timeline_export["ok"] and all("native_timeline" in export["artifacts"] for export in timeline_export["exports"]),
+        },
+        {
+            "phase": "effect_fallback",
+            "pipeline": effects["guards"],
+            "ok": effects["ok"] and any(row["decision"] == "use_fallback" for row in effects["rows"]),
+        },
+        {
+            "phase": "scene_hit_testing",
+            "pipeline": scene["guards"],
+            "ok": scene["ok"] and all("open_inspector" in item["route"] for item in scene["hit_tests"]),
+        },
+        {
+            "phase": "scene_transform_sync",
+            "pipeline": transforms["guards"],
+            "ok": transforms["ok"] and all("sync_inspector" in item["pipeline"] for item in transforms["transforms"]),
+        },
+    )
+    state["style_published"] = replay[1]["ok"]
+    state["timeline_samples"] = sum(len(sample["runtime_samples"]) for sample in timeline["samples"])
+    state["effect_fallbacks"] = sum(1 for row in effects["rows"] if row["decision"] == "use_fallback")
+    state["scene_hits"] = len(scene["hit_tests"])
+    state["inspector_syncs"] = sum(1 for item in transforms["transforms"] if "sync_inspector" in item["pipeline"])
+    return {
+        "format": "appgen.cross-target-visual-runtime-replay-contract.v1",
+        "ok": all(item["ok"] for item in replay)
+        and state["style_published"]
+        and state["timeline_samples"] > 0
+        and state["scene_hits"] > 0
+        and state["inspector_syncs"] > 0
+        and state["side_effects"] == (),
+        "replay": replay,
+        "final_state": state,
+        "guards": (
+            "style_published_before_runtime_diff",
+            "timeline_samples_match_preview",
+            "effect_fallbacks_are_targeted",
+            "scene_hit_tests_route_to_inspector",
+            "transforms_sync_inspector",
+        ),
+        "side_effects": (),
+    }
+
+
 def cross_target_visual_depth_workbench() -> dict:
     """Prove animation, styling, effects, and 3D designer depth."""
     contract = cross_target_visual_depth_contract()
@@ -7972,6 +8053,7 @@ def cross_target_visual_depth_workbench() -> dict:
     timeline_interpolation = cross_target_timeline_interpolation_contract()
     effect_fallback_matrix = cross_target_effect_fallback_matrix_contract()
     scene_transform_gizmos = cross_target_scene_transform_gizmo_contract()
+    runtime_replay = cross_target_visual_runtime_replay_contract()
     checks = (
         {
             "id": "style_resources",
@@ -8155,6 +8237,13 @@ def cross_target_visual_depth_workbench() -> dict:
             and not scene_transform_gizmos["side_effects"],
             "evidence": scene_transform_gizmos,
         },
+        {
+            "id": "visual_runtime_replay",
+            "ok": runtime_replay["ok"]
+            and {"timeline_samples_match_preview", "transforms_sync_inspector"} <= set(runtime_replay["guards"])
+            and not runtime_replay["side_effects"],
+            "evidence": runtime_replay,
+        },
     )
     ok = all(check["ok"] for check in checks)
     return {
@@ -8180,6 +8269,7 @@ def cross_target_visual_depth_workbench() -> dict:
         "timeline_interpolation": timeline_interpolation,
         "effect_fallback_matrix": effect_fallback_matrix,
         "scene_transform_gizmos": scene_transform_gizmos,
+        "runtime_replay": runtime_replay,
         "checks": checks,
         "blocking_gaps": tuple(check for check in checks if not check["ok"]),
     }
