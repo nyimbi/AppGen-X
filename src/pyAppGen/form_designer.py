@@ -7351,6 +7351,71 @@ def component_binding_surface_contract(component: str) -> dict:
     }
 
 
+def _component_capability_operations(component: str, category: str) -> tuple[str, ...]:
+    """Return category-specific operations a component must support."""
+    by_category = {
+        "display": ("render_text", "resolve_style", "publish_accessible_label"),
+        "input": ("set_value", "validate_value", "commit_value", "emit_change"),
+        "choice": ("load_items", "select_item", "validate_selection", "emit_change"),
+        "calendar": ("open_picker", "select_date", "format_value", "validate_range"),
+        "media": ("select_asset", "validate_asset", "render_preview", "clear_asset"),
+        "relationship": ("open_lookup", "filter_candidates", "select_record", "sync_foreign_key"),
+        "action": ("evaluate_enabled", "execute_action", "dispatch_command", "record_result"),
+        "container": ("measure_children", "arrange_children", "resolve_constraints", "publish_drop_zones"),
+        "navigation": ("load_nodes", "expand_node", "select_node", "sync_selection"),
+        "data": ("bind_dataset", "refresh_rows", "track_selection", "commit_edits"),
+        "menu": ("build_items", "resolve_shortcuts", "open_menu", "dispatch_menu_action"),
+        "analytics": ("bind_series", "refresh_chart", "select_data_point", "export_snapshot"),
+        "reports": ("bind_parameters", "preview_report", "export_report", "print_report"),
+        "integration": ("prepare_request", "send_request", "map_response", "surface_error"),
+        "nonvisual": ("start_service", "stop_service", "emit_tick", "surface_status"),
+        "mobile": ("request_permission", "start_capture", "read_device_value", "handle_denied"),
+        "effects": ("build_timeline", "start_animation", "pause_animation", "apply_final_state"),
+        "graphics": ("build_draw_path", "paint_surface", "hit_test_shape", "export_vector"),
+        "theme": ("load_resources", "resolve_token", "apply_theme", "publish_variant"),
+        "gesture": ("register_recognizer", "resolve_conflict", "recognize_input", "dispatch_gesture"),
+        "three_d": ("load_scene_node", "bind_material", "render_frame", "hit_test_scene"),
+        "data_access": ("open_connection", "prepare_query", "fetch_rows", "sync_offline_cache"),
+    }
+    return by_category.get(category, ("load_custom_component", "render_custom_component", "validate_custom_component"))
+
+
+def component_capability_contract(component: str) -> dict:
+    """Return category-specific execution capabilities for one component."""
+    contract = component_runtime_contract(component)
+    category = contract["category"]
+    operations = _component_capability_operations(component, category)
+    required_guards = (
+        "side_effects_declared",
+        "designer_preview_supported",
+        "runtime_adapter_mapped",
+        "smoke_probe_declared",
+    )
+    probes = tuple(
+        {
+            "operation": operation,
+            "targets": tuple(contract["renderers"]),
+            "requires_binding": operation in {"commit_value", "sync_foreign_key", "bind_dataset", "fetch_rows", "sync_offline_cache"},
+            "side_effects": (),
+        }
+        for operation in operations
+    )
+    return {
+        "format": "appgen.component-capability-contract.v1",
+        "component": component,
+        "category": category,
+        "operations": operations,
+        "probes": probes,
+        "guards": required_guards,
+        "ok": bool(operations)
+        and all({"web", "mobile", "desktop"} <= set(probe["targets"]) for probe in probes)
+        and all(not probe["side_effects"] for probe in probes)
+        and set(required_guards)
+        == {"side_effects_declared", "designer_preview_supported", "runtime_adapter_mapped", "smoke_probe_declared"},
+        "side_effects": (),
+    }
+
+
 def component_designer_metadata_contract(component: str) -> dict:
     """Return design-time metadata required by palette, canvas, and inspector tooling."""
     contract = component_runtime_contract(component)
@@ -7385,6 +7450,7 @@ def component_behavior_contract(component: str) -> dict:
     state_model = component_state_model_contract(component)
     serialization = component_serialization_contract(component)
     binding_surface = component_binding_surface_contract(component)
+    capabilities = component_capability_contract(component)
     designer_metadata = component_designer_metadata_contract(component)
     checks = (
         {"id": "render_nodes", "ok": {"web", "mobile", "desktop"} <= {node["target"] for node in render["nodes"]} and not render["side_effects"], "evidence": render},
@@ -7395,6 +7461,7 @@ def component_behavior_contract(component: str) -> dict:
         {"id": "state_model", "ok": {"created", "loaded"} <= set(state_model["states"]) and not state_model["side_effects"], "evidence": state_model},
         {"id": "design_serialization", "ok": bool(serialization["property_stream"]) and not serialization["side_effects"], "evidence": serialization},
         {"id": "binding_surface", "ok": bool(binding_surface["bindable_properties"]) and not binding_surface["side_effects"], "evidence": binding_surface},
+        {"id": "category_capabilities", "ok": capabilities["ok"] and not capabilities["side_effects"], "evidence": capabilities},
         {"id": "designer_metadata", "ok": bool(designer_metadata["inspector"]["property_editors"]) and not designer_metadata["side_effects"], "evidence": designer_metadata},
     )
     ok = all(check["ok"] for check in checks)
@@ -7409,6 +7476,7 @@ def component_behavior_contract(component: str) -> dict:
         "state_model": state_model,
         "serialization": serialization,
         "binding_surface": binding_surface,
+        "capabilities": capabilities,
         "designer_metadata": designer_metadata,
         "checks": checks,
         "blocking_gaps": tuple(check for check in checks if not check["ok"]),
@@ -7424,7 +7492,8 @@ def component_behavior_workbench() -> dict:
         {"id": "validation_behavior", "ok": all(any(check["id"] == "property_validation" and check["ok"] for check in item["checks"]) for item in behaviors), "evidence": tuple(item["validation"] for item in behaviors)},
         {"id": "event_behavior", "ok": all(any(check["id"] == "event_dispatch" and check["ok"] for check in item["checks"]) for item in behaviors), "evidence": tuple(item["events"] for item in behaviors)},
         {"id": "target_adapter_behavior", "ok": all(any(check["id"] == "target_adapters" and check["ok"] for check in item["checks"]) for item in behaviors), "evidence": tuple(item["adapters"] for item in behaviors)},
-        {"id": "implementation_depth", "ok": all({"state_model", "design_serialization", "binding_surface", "designer_metadata"} <= {check["id"] for check in item["checks"] if check["ok"]} for item in behaviors), "evidence": tuple((item["component"], item["state_model"]["states"], item["serialization"]["streams"], item["binding_surface"]["binding_modes"]) for item in behaviors)},
+        {"id": "category_capability_behavior", "ok": all(any(check["id"] == "category_capabilities" and check["ok"] for check in item["checks"]) for item in behaviors), "evidence": tuple(item["capabilities"] for item in behaviors)},
+        {"id": "implementation_depth", "ok": all({"state_model", "design_serialization", "binding_surface", "category_capabilities", "designer_metadata"} <= {check["id"] for check in item["checks"] if check["ok"]} for item in behaviors), "evidence": tuple((item["component"], item["state_model"]["states"], item["serialization"]["streams"], item["binding_surface"]["binding_modes"], item["capabilities"]["operations"]) for item in behaviors)},
     )
     ok = all(check["ok"] for check in checks)
     return {
@@ -7456,6 +7525,7 @@ def component_module_implementation_contract(component: str) -> dict:
         "state_model",
         "serialization_contract",
         "binding_surface",
+        "component_capabilities",
         "designer_metadata",
         "dispatch_event",
         "test_plan",
@@ -7472,6 +7542,7 @@ def component_module_implementation_contract(component: str) -> dict:
         "state_model_declared",
         "serialization_contract_declared",
         "binding_surface_declared",
+        "component_capabilities_declared",
         "designer_metadata_declared",
         "event_dispatch_declared",
     )

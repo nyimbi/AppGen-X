@@ -1304,13 +1304,19 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     assert "implementation_depth" in {
         check["id"] for check in usability["behavior_workbench"]["checks"]
     }
+    assert "category_capability_behavior" in {
+        check["id"] for check in usability["behavior_workbench"]["checks"]
+    }
     assert all(
-        {"state_model", "serialization", "binding_surface", "designer_metadata"} <= set(item)
+        {"state_model", "serialization", "binding_surface", "capabilities", "designer_metadata"} <= set(item)
         for item in usability["behavior_workbench"]["behaviors"]
     )
+    assert all(item["capabilities"]["ok"] for item in usability["behavior_workbench"]["behaviors"])
+    assert all(item["capabilities"]["operations"] for item in usability["behavior_workbench"]["behaviors"])
     assert all({"web", "mobile", "desktop"} <= set(item["renderers"]) for item in usability["components"])
     assert all(item["path"].startswith("app/component_contracts/") for item in usability["component_files"])
     assert all(item["path"].startswith("app/component_packages/") for item in usability["package_files"])
+    assert all("component_capabilities" in item["exports"] for item in usability["component_files"])
     assert all("smoke_test" in item["exports"] for item in usability["component_files"])
     assert all(item["module_contract"]["ok"] for item in usability["component_files"])
     assert all("smoke_test" in item["exports"] for item in usability["package_files"])
@@ -9602,16 +9608,22 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert "implementation_depth" in {
         check["id"] for check in generated_usability["behavior_workbench"]["checks"]
     }
+    assert "category_capability_behavior" in {
+        check["id"] for check in generated_usability["behavior_workbench"]["checks"]
+    }
     assert all(
-        {"state_model", "serialization", "binding_surface", "designer_metadata"} <= set(item)
+        {"state_model", "serialization", "binding_surface", "capabilities", "designer_metadata"} <= set(item)
         for item in generated_usability["behavior_workbench"]["behaviors"]
     )
+    assert all(item["capabilities"]["ok"] for item in generated_usability["behavior_workbench"]["behaviors"])
+    assert all(item["capabilities"]["operations"] for item in generated_usability["behavior_workbench"]["behaviors"])
     assert all(
         {"web", "mobile", "desktop"} <= set(item["renderers"])
         for item in generated_usability["components"]
     )
     assert all(item["exists"] for item in generated_usability["component_files"])
     assert all(item["exists"] for item in generated_usability["package_files"])
+    assert all("component_capabilities" in item["exports"] for item in generated_usability["component_files"])
     assert "module_smoke_tests" in {
         check["id"] for check in generated_usability["checks"]
     }
@@ -9641,10 +9653,13 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert {"created", "loaded"} <= set(text_box_component.state_model()["states"])
     assert text_box_component.serialization_contract()["property_stream"]
     assert text_box_component.binding_surface()["bindable_properties"]
+    assert text_box_component.component_capabilities()["ok"] is True
+    assert "set_value" in text_box_component.component_capabilities()["operations"]
     assert "Properties" in text_box_component.designer_metadata()["inspector"]["tabs"]
     assert text_box_component.dispatch_event("OnCreate")["ok"] is True
     assert "preview_renders" in text_box_component.test_plan()["tests"]
     assert "behavior_contract_ok" in text_box_component.test_plan()["tests"]
+    assert "component_capabilities_declared" in text_box_component.test_plan()["tests"]
     component_package = _load_module(package_file, "generated_component_package")
     assert component_package.package_contract()["package"]["id"] == "devexpress-native"
     assert component_package.install_plan()["side_effects"] == ()
