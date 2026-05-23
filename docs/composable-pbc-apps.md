@@ -17,7 +17,9 @@ stacks, then generate a working application shell from the composition.
 - Event-heavy PBCs declare one Python-native stream processor profile. The
   default is `faust_streaming`. Use `quix_streams` only for high-throughput
   event/time-series workloads, and use `bytewax` only for complex parallel
-  dataflow transformations.
+  dataflow transformations. The canonical policy is exposed by
+  `acp_stream_processing_policy()` and documented in
+  [Opinionated Event Processing Guidance](kafka-alternatives.md).
 - Composition is event-first: dependencies are explicit event contracts, with
   unresolved external events recorded as integration obligations.
 - Generated applications include service folders, outbox tables, workbench

@@ -104,6 +104,8 @@ from pyAppGen.form_designer import component_package_uninstall_operation
 from pyAppGen.form_designer import component_package_update_operation
 from pyAppGen.form_designer import component_package_workbench
 from pyAppGen.form_designer import component_package_preview_load_operation
+from pyAppGen.form_designer import component_file_manifest
+from pyAppGen.form_designer import component_package_file_manifest
 from pyAppGen.form_designer import component_palette
 from pyAppGen.form_designer import component_usability_workbench
 from pyAppGen.form_designer import cross_target_author_scene_operation
@@ -225,6 +227,7 @@ from pyAppGen.pbc import pbc_catalog
 from pyAppGen.pbc import pbc_composition_dsl
 from pyAppGen.pbc import pbc_composition_plan
 from pyAppGen.pbc import acp_stream_processor_catalog
+from pyAppGen.pbc import acp_stream_processing_policy
 from pyAppGen.pbc import pbc_manifest_schema
 from pyAppGen.pbc import pbc_package_contract
 from pyAppGen.pbc import pbc_generation_smoke_audit
@@ -735,10 +738,21 @@ def test_package_pbc_catalog_composes_enterprise_apps(runner: CliRunner) -> None
     assert default_selection["selected"] == "faust_streaming"
     assert default_selection["decision"] == "default"
     assert default_selection["default"] == "faust_streaming"
+    stream_policy = acp_stream_processing_policy()
+    assert stream_policy["format"] == "appgen.acp-stream-processing-policy.v1"
+    assert stream_policy["default"] == "faust_streaming"
+    assert stream_policy["allowed_processors"] == ("bytewax", "quix_streams", "faust_streaming")
+    assert {item["use"] for item in stream_policy["decision_tree"]} == {
+        "bytewax",
+        "quix_streams",
+        "faust_streaming",
+    }
+    assert "mixing multiple processors inside one PBC" in stream_policy["prohibited"]
 
     manifest_schema = pbc_manifest_schema()
     assert manifest_schema["format"] == "appgen.pbc-manifest-schema.v1"
     assert "datastore_backend" in manifest_schema["required_fields"]
+    assert manifest_schema["stream_processing_policy"]["default"] == "faust_streaming"
     manifest = example_pbc_manifest()
     validation = validate_pbc_manifest(manifest)
     assert validation["ok"] is True
@@ -830,6 +844,7 @@ def test_package_pbc_catalog_composes_enterprise_apps(runner: CliRunner) -> None
         "self_registering_pbc_spec",
         "open_source_datastore_backends",
         "stream_processor_abstraction",
+        "opinionated_stream_processing_policy",
         "composition_plan",
         "natural_language_selection",
         "generation_smoke",
@@ -2396,7 +2411,25 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "app/templates/appgen_form_designer.html",
         "app/models.py",
     } <= set(smoke["required_artifacts"])
+    assert {
+        item["path"] for item in component_file_manifest()
+    } <= set(smoke["required_artifacts"])
+    assert {
+        item["path"] for item in component_package_file_manifest()
+    } <= set(smoke["required_artifacts"])
     assert {"app/form_designer.py", "app/models.py"} <= set(smoke["compiled_artifacts"])
+    assert {
+        item["path"] for item in component_file_manifest()
+    } <= set(smoke["compiled_artifacts"])
+    assert {
+        item["path"] for item in component_package_file_manifest()
+    } <= set(smoke["compiled_artifacts"])
+    assert "generated_component_file_coverage" in {
+        check["id"] for check in smoke["checks"]
+    }
+    coverage = next(check for check in smoke["checks"] if check["id"] == "generated_component_file_coverage")
+    assert coverage["component_count"] == len(component_file_manifest())
+    assert coverage["package_count"] == len(component_package_file_manifest())
 
     missing = form_designer_release_audit(existing_paths={"app/form_designer.py"})
     assert missing["ok"] is False

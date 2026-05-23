@@ -154,6 +154,12 @@ appgen --pbc-release-audit
 appgen --pbc-dsl application_composition_platform > acp.appgen
 ```
 
+Event processing is intentionally opinionated: generated PBCs use
+`faust_streaming` by default, with `quix_streams` and `bytewax` reserved for
+documented exception workloads. See the
+[Opinionated Event Processing Guidance](docs/kafka-alternatives.md) before
+adding a stream-heavy PBC.
+
 ERP starters can be exported and generated immediately:
 
 ```console

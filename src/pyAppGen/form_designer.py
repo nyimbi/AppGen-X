@@ -14076,26 +14076,24 @@ def form_designer_generation_smoke_audit(source: str = FORM_DESIGNER_SAMPLE_DSL)
     from .gen import generate_app_from_schema
     from .schema import load_schema
 
+    component_artifacts = tuple(item["path"] for item in component_file_manifest())
+    package_artifacts = tuple(item["path"] for item in component_package_file_manifest())
     required_artifacts = (
         "app/form_designer.py",
         "app/templates/appgen_form_designer.html",
-        "app/component_contracts/text_box.py",
-        "app/component_contracts/grid.py",
-        "app/component_contracts/viewport3_d.py",
-        "app/component_packages/devexpress_native.py",
         "app/models.py",
         "app/views.py",
         "app/dsl_reference.py",
+        *component_artifacts,
+        *package_artifacts,
     )
     compile_artifacts = (
         "app/form_designer.py",
-        "app/component_contracts/text_box.py",
-        "app/component_contracts/grid.py",
-        "app/component_contracts/viewport3_d.py",
-        "app/component_packages/devexpress_native.py",
         "app/models.py",
         "app/views.py",
         "app/dsl_reference.py",
+        *component_artifacts,
+        *package_artifacts,
     )
 
     with tempfile.TemporaryDirectory(prefix="appgen-form-designer-smoke-") as tmp:
@@ -14162,6 +14160,7 @@ def form_designer_generation_smoke_audit(source: str = FORM_DESIGNER_SAMPLE_DSL)
         )
         release_gate = generated_form_designer.form_designer_release_gate(existing_paths)
         workbench = generated_form_designer.form_designer_workbench(existing_paths)
+        usability = generated_form_designer.component_usability_workbench(existing_paths)
 
     checks = (
         {
@@ -14175,6 +14174,16 @@ def form_designer_generation_smoke_audit(source: str = FORM_DESIGNER_SAMPLE_DSL)
             "ok": not compile_failures and set(compiled) == set(compile_artifacts),
             "compiled": tuple(compiled),
             "failures": tuple(compile_failures),
+        },
+        {
+            "id": "generated_component_file_coverage",
+            "ok": usability["ok"]
+            and set(component_artifacts) <= {item["path"] for item in usability["component_files"]}
+            and set(package_artifacts) <= {item["path"] for item in usability["package_files"]}
+            and all(item["exists"] for item in usability["component_files"])
+            and all(item["exists"] for item in usability["package_files"]),
+            "component_count": len(component_artifacts),
+            "package_count": len(package_artifacts),
         },
         {
             "id": "palette_and_catalog",

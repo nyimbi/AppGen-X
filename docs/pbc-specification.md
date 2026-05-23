@@ -108,6 +108,12 @@ Do not introduce additional stream processors for ordinary PBC work. The
 platform release audit treats the three-profile decision matrix as the supported
 surface.
 
+Exception profiles must include written evidence in the PBC package docs:
+`workload_name`, `throughput_or_latency_reason`, `state_shape`, and
+`operational_owner`. The complete platform policy is documented in
+[Opinionated Event Processing Guidance](kafka-alternatives.md) and exposed by
+`acp_stream_processing_policy()`.
+
 ## Validation
 
 Use the platform validator before publishing:

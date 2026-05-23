@@ -1754,6 +1754,7 @@ def write_component_contract_files(output_dir):
     package_dir.mkdir(parents=True, exist_ok=True)
     component_names = (
         "Label", "TextBox", "EmailInput", "TextArea", "Select", "Checkbox",
+        "Lookup",
         "DatePicker", "DateTimePicker", "TimePicker", "NumberInput",
         "ImageUpload", "FileUpload", "RelationshipPicker", "Button",
         "Section", "Tabs", "Panel", "GroupBox", "RadioGroup", "RadioButton", "ListBox",
@@ -25664,6 +25665,7 @@ PALETTE = (
     {{"type": "TextArea", "label": "Text Area", "defaults": {{"w": 6, "h": 3}}}},
     {{"type": "Select", "label": "Select", "defaults": {{"w": 4, "h": 1}}}},
     {{"type": "Checkbox", "label": "Checkbox", "defaults": {{"w": 2, "h": 1}}}},
+    {{"type": "Lookup", "label": "Lookup", "defaults": {{"w": 4, "h": 1}}}},
     {{"type": "DatePicker", "label": "Date Picker", "defaults": {{"w": 3, "h": 1}}}},
     {{"type": "DateTimePicker", "label": "Date Time Picker", "defaults": {{"w": 4, "h": 1}}}},
     {{"type": "TimePicker", "label": "Time Picker", "defaults": {{"w": 3, "h": 1}}}},
@@ -25806,7 +25808,7 @@ GRID_SIZE = 8
 COMPONENT_ICON_OVERRIDES = dict(
     Label="fa-font", TextBox="fa-keyboard-o", EmailInput="fa-envelope-o", TextArea="fa-align-left",
     DatePicker="fa-calendar", DateTimePicker="fa-calendar", TimePicker="fa-clock-o", NumberInput="fa-hashtag",
-    ImageUpload="fa-image", FileUpload="fa-upload", RelationshipPicker="fa-link", Button="fa-hand-pointer-o",
+    ImageUpload="fa-image", FileUpload="fa-upload", Lookup="fa-search", RelationshipPicker="fa-link", Button="fa-hand-pointer-o",
     Section="fa-window-maximize", Tabs="fa-columns", Panel="fa-window-maximize", GroupBox="fa-object-group",
     RadioGroup="fa-dot-circle-o", RadioButton="fa-dot-circle-o", ListBox="fa-th-list", ListView="fa-list-alt",
     TreeView="fa-sitemap", Grid="fa-table", StringGrid="fa-table", PageControl="fa-columns", Layout="fa-th-large",
@@ -35655,7 +35657,7 @@ def _local_component_paths():
 
 def _component_category(component_type):
     category_map = {{
-        "Label": "display", "TextBox": "input", "EmailInput": "input", "TextArea": "input", "Select": "choice", "Checkbox": "choice",
+        "Label": "display", "TextBox": "input", "EmailInput": "input", "TextArea": "input", "Select": "choice", "Checkbox": "choice", "Lookup": "relationship",
         "DatePicker": "calendar", "DateTimePicker": "calendar", "TimePicker": "calendar", "NumberInput": "input",
         "ImageUpload": "media", "FileUpload": "media", "RelationshipPicker": "relationship", "Button": "action",
         "Section": "container", "Tabs": "container", "Panel": "container", "GroupBox": "container", "RadioGroup": "choice",

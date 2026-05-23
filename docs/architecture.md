@@ -355,6 +355,9 @@ The composition path is:
    `faust_streaming` is the default for service/workflow meshes. Use
    `quix_streams` only for high-throughput event/time-series processing, and
    `bytewax` only for complex parallel dataflow transformations.
+   `acp_stream_processing_policy()` is the canonical policy surface and the
+   release audit includes an `opinionated_stream_processing_policy` gate so
+   generated apps do not drift into an uncontrolled processor matrix.
 5. Render compact AppGen DSL for workbench views, outbox tables, and target
    selection.
 6. Generate and compile the application shell as part of the PBC release audit.

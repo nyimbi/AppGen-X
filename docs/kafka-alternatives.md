@@ -1,132 +1,143 @@
-When engineering an **Application Composition Platform** (ACP) in Python, relying on native, Python-centric abstractions can dramatically reduce the operational footprint of your development environment compared to Java/JVM-heavy systems like Apache Kafka.
+# Opinionated Event Processing Guidance
 
-When evaluating "Python-native alternatives," we must distinguish between **Stream Processing Engines** (which run natively in Python but consume from brokers) and **Python-Centric Application Frameworks** that replace Kafka's architectural paradigm with simpler asynchronous patterns.
+AppGen-X does not expose every stream-processing option to every generated
+application. That creates an exponential support matrix and makes PBC packages
+hard to reason about. The platform therefore supports one default event
+processor profile and two narrow exception profiles.
 
----
+## Platform Decision
 
-## 1. Bytewax: Rust-Powered Python Stream Processing
+Use `faust_streaming` for ordinary PBC event handling.
 
-For stateful stream processing, **Bytewax** is a powerful Python native solution. It bypasses the JVM entirely by structuring its core execution engine in Rust, while exposing a clean Python API for dataflow composition.
+This is the default for:
 
-### Architectural Blueprint
+- command/event handlers;
+- outbox consumers;
+- workflow and saga orchestration;
+- agent task routing;
+- service-owned local state;
+- API-to-event adapters;
+- human approval workflows;
+- normal ERP, CRM, inventory, HR, finance, and commerce events.
 
-Bytewax allows you to build stateful **dataflow graphs** (similar to Kafka Streams or Apache Flink) that can ingest from simple files, web sockets, or local queues, execute parallel transformations, and maintain partitioned state natively without an external cluster.
+Generated manifests should omit `stream_processor` unless they need an
+exception. The validator normalizes missing values to `faust_streaming`.
+
+## Allowed Profiles
+
+| Profile | Decision | Use only when |
+| --- | --- | --- |
+| `faust_streaming` | Default | The PBC is an event-driven service, workflow participant, saga orchestrator, outbox consumer, or agent task handler. |
+| `quix_streams` | Exception | The PBC owns high-throughput telemetry, time-series streams, large ingestion, or windowed operational metrics. |
+| `bytewax` | Exception | The PBC owns complex parallel dataflow, CPU-heavy transformation graphs, stateful analytical pipelines, or multi-stage transformations. |
+
+Do not add another profile for a single PBC. A fourth option requires a
+platform architecture decision and a new release-audit gate.
+
+## Developer Rule
+
+Start with `faust_streaming`. Move away from it only when the workload has a
+measurable reason that matches an exception.
+
+Use this decision tree:
+
+1. Is this ordinary domain-event handling, outbox delivery, workflow
+   orchestration, approval routing, or agent task execution? Use
+   `faust_streaming`.
+2. Is the workload primarily telemetry, time-series, high-volume ingestion, or
+   windowed operational metrics? Use `quix_streams`.
+3. Is the workload primarily complex parallel transformation, CPU-heavy stream
+   processing, or a multi-stage stateful dataflow graph? Use `bytewax`.
+4. If none of those exception cases are clearly true, use `faust_streaming`.
+
+## Exception Evidence
+
+Any PBC using `quix_streams` or `bytewax` must document:
+
+- `workload_name`: the named stream workload;
+- `throughput_or_latency_reason`: why the default is not enough;
+- `state_shape`: what state is kept and how it is recovered;
+- `operational_owner`: who owns runtime operations and incidents.
+
+This evidence belongs in the PBC package docs and can be summarized in the
+PBC manifest comments or package README.
+
+## What Is Prohibited
+
+- Per-PBC custom stream engines.
+- Mixing multiple stream processors inside one PBC.
+- Sharing stream-state stores across PBC datastore boundaries.
+- Selecting an exception profile because it is newer, faster in theory, or
+  preferred by a developer.
+- Adding a fourth profile without updating `pbc.py`, the PBC specification,
+  generated docs, tests, and release audits.
+
+## Why This Is The Default
+
+Most AppGen-X applications are generated from natural language, DSL, visual
+composition, or PBC selection. They need predictable event contracts more than
+an open-ended infrastructure menu. The default profile keeps generated services
+small, Python-native, testable, and consistent with the PBC model: each
+capability owns its datastore, API, events, and local event-processing state.
+
+The exception profiles exist for specialized workloads that would otherwise
+distort the default service model.
+
+## Manifest Examples
+
+Default PBCs should either omit the field:
 
 ```python
-"""
-Bytewax Stateful Dataflow: Real-Time Inventory Level Aggregation.
-Combines Python ease-of-use with Rust runtime performance characteristics.
-"""
-
-from bytewax.dataflow import Dataflow
-from bytewax.connectors.stdio import StdOutSink
-from bytewax.connectors.files import FileSource
-
-# 1. Instantiate the dataflow graph topology
-flow = Dataflow("erp_inventory_mesh")
-
-# 2. Ingest continuous raw event strings from an enterprise ledger text stream
-# Input shape: "sku_101,5" or "sku_102,-2"
-flow.input("inp", FileSource("raw_warehouse_mutations.txt"))
-
-def parse_line(line: str):
-    sku, qty = line.strip().split(",")
-    return sku, int(qty)
-
-flow.map("parse", parse_line)
-
-# 3. Define state preservation logic for stateful reductions
-def update_inventory_balance(running_balance: int, incoming_mutation: int):
-    if running_balance is None:
-        running_balance = 0
-    updated_balance = running_balance + incoming_mutation
-    return updated_balance, updated_balance
-
-# Partition stream by key (SKU string) and accumulate state across the cluster
-flow.stateful_map("running_total", lambda: 0, update_inventory_balance)
-
-# 4. Direct output streams down to physical sinks
-flow.output("out", StdOutSink())
-
+def register_pbc() -> dict:
+    return {
+        "pbc": "warranty_claims",
+        "label": "Warranty Claims",
+        "mesh": "relationship",
+        "description": "Manage warranty intake and claim resolution.",
+        "datastore_backend": "postgresql",
+        "tables": ("warranty_claim", "claim_line"),
+        "apis": ("POST /warranty-claims", "GET /claim-status"),
+        "emits": ("WarrantyClaimOpened",),
+        "consumes": ("OrderShipped", "CustomerUpdated"),
+    }
 ```
 
----
-
-## 2. Quix Streams: Pure Python Stream Processing Framework
-
-**Quix Streams** is a modern, high-performance library designed specifically to replicate the capabilities of **Kafka Streams** within an idiomatic Python environment. It includes built-in state management using an embedded **RocksDB** storage engine, allowing it to perform high-throughput event processing without requiring a separate Java stack.
-
-### Key Capabilities
-
-* **Time-Series Optimization:** Optimized for fast sequential processing, making it well-suited for tracking ERP audit logs or telemetry data.
-* **Local State Isolation:** Uses an embedded database to manage streaming joins and windowed aggregations without needing a centralized cache layer.
-
----
-
-## 3. Faust-Streaming: The Python Equivalent of Kafka Streams
-
-Originally developed by Robinhood and maintained by the open-source community as `faust-streaming`, **Faust** brings the design patterns of **Kafka Streams** directly to Python using `asyncio`.
-
-### Architectural Blueprint
-
-Faust uses an actor-model design where applications define worker nodes that consume from topics, route messages through asynchronous streams, and maintain local state using tables.
+Or state the default explicitly:
 
 ```python
-"""
-Faust-Streaming Application: Live Order Validation Agent.
-Implements asynchronous stream routing topologies natively in Python.
-"""
-
-import faust
-
-# Define an isolated streaming execution block
-app = faust.App(
-    'order_processing_mesh',
-    broker='redis://localhost:6379/0', # Can run cleanly over Redis or AMQP
-    store='rocksdb://'                 # Persistent local state engine
-)
-
-# Enforce strict domain models using Python typed records
-class OrderRecord(faust.Record):
-    order_id: str
-    customer_id: str
-    net_amount_cents: int
-
-# Establish a distributed stream channel abstraction
-order_topic = app.topic('erp.orders.v1', value_type=OrderRecord)
-
-# Define a localized, high-performance state storage map
-account_credit_table = app.table('account_credit_balances', default=int)
-
-@app.agent(order_topic)
-async def process_incoming_orders(orders):
-    """
-    Asynchronous event processing agent loop.
-    Maintains manual control over context switching loops.
-    """
-    async for order in orders:
-        current_balance = account_credit_table[order.customer_id]
-
-        if current_balance >= order.net_amount_cents:
-            # Execute atomic state modification loops
-            account_credit_table[order.customer_id] -= order.net_amount_cents
-            print(f"Order {order.order_id} Verified Natively via Async Channel.")
-        else:
-            print(f"Order {order.order_id} Isolated: Insufficient Credit Profile.")
-
+"stream_processor": "faust_streaming"
 ```
 
----
+Use an exception only with matching evidence:
 
-## 4. Operational Comparison Matrix
+```python
+def register_pbc() -> dict:
+    return {
+        "pbc": "machine_telemetry",
+        "label": "Machine Telemetry",
+        "mesh": "opsmfg",
+        "description": "Ingest and aggregate equipment telemetry windows.",
+        "datastore_backend": "postgresql",
+        "stream_processor": "quix_streams",
+        "tables": ("telemetry_sample", "telemetry_window"),
+        "apis": ("POST /telemetry", "GET /telemetry-windows"),
+        "emits": ("TelemetryWindowCalculated",),
+        "consumes": ("MachineSignalReceived",),
+    }
+```
 
-When selecting a Python-native abstraction for your Application Composition Platform, consider the following structural tradeoffs:
+## Platform Enforcement
 
-| Dimension | Bytewax | Quix Streams | Faust-Streaming |
-| --- | --- | --- | --- |
-| **Core Architecture** | Rust Core, Python Dataflow API | Pure Python, RocksDB State Backend | Pure Python, `asyncio` Actor Mesh |
-| **State Preservation** | Local In-Memory / Distributed Recovery | Embedded RocksDB on Disk | Embedded RocksDB / In-Memory |
-| **Primary Use Case** | Complex parallel transformations & stateful pipelines | High-throughput time-series & event data processing | Event-driven microservices & asynchronous workflows |
-| **Concurrency Model** | Rust Multi-threaded Execution Threads | Python Multiprocessing / Threads | Asyncio Event Loops |
+The executable policy lives in `src/pyAppGen/pbc.py`:
 
-Using these frameworks allows you to build an event-driven Application Composition Platform while keeping your development workflow entirely within the Python ecosystem. This simplifies debugging and integration across your modular enterprise applications.
+- `acp_stream_processing_policy()` returns the default, allowed profiles,
+  decision tree, required exception evidence, and prohibited patterns.
+- `select_acp_stream_processor()` maps a workload description to the default
+  or an exception profile.
+- `validate_pbc_manifest()` rejects unsupported profiles and normalizes missing
+  profiles to the default.
+- `pbc_release_audit()` includes an `opinionated_stream_processing_policy`
+  release gate.
+
+This means the recommendation is part of the platform contract, not only
+documentation.

@@ -107,6 +107,45 @@ ACP_STREAM_PROCESSOR_DECISION_RULES = (
         ),
     },
 )
+ACP_STREAM_PROCESSING_POLICY = {
+    "default": ACP_DEFAULT_STREAM_PROCESSOR,
+    "allowed_processors": tuple(ACP_STREAM_PROCESSORS),
+    "developer_rule": (
+        "Use the default processor for ordinary PBC event handling. Select an "
+        "exception processor only when the workload matches a documented "
+        "exception profile."
+    ),
+    "generation_rule": (
+        "Generated manifests omit stream_processor unless they need an "
+        "exception. Validation normalizes missing values to the default."
+    ),
+    "exception_required_evidence": (
+        "workload_name",
+        "throughput_or_latency_reason",
+        "state_shape",
+        "operational_owner",
+    ),
+    "prohibited": (
+        "per-PBC custom stream engines",
+        "mixing multiple processors inside one PBC",
+        "shared stream-state stores across PBC datastore boundaries",
+        "adding a fourth processor without a platform architecture decision",
+    ),
+    "decision_tree": (
+        {
+            "when": "ordinary domain events, commands, sagas, outbox handlers, workflow services, or agent tasks",
+            "use": ACP_DEFAULT_STREAM_PROCESSOR,
+        },
+        {
+            "when": "high-throughput telemetry, time-series streams, large ingestion, or windowed operational metrics",
+            "use": "quix_streams",
+        },
+        {
+            "when": "complex parallel dataflows, CPU-heavy transforms, stateful transformation graphs, or analytical pipelines",
+            "use": "bytewax",
+        },
+    ),
+}
 
 
 PBC_MESHES: dict[str, dict] = {
@@ -701,6 +740,23 @@ def acp_stream_processor_catalog() -> tuple[dict, ...]:
     )
 
 
+def acp_stream_processing_policy() -> dict:
+    """Return the platform's opinionated stream-processing choice policy."""
+    return {
+        "format": "appgen.acp-stream-processing-policy.v1",
+        "ok": True,
+        "default": ACP_STREAM_PROCESSING_POLICY["default"],
+        "allowed_processors": ACP_STREAM_PROCESSING_POLICY["allowed_processors"],
+        "developer_rule": ACP_STREAM_PROCESSING_POLICY["developer_rule"],
+        "generation_rule": ACP_STREAM_PROCESSING_POLICY["generation_rule"],
+        "exception_required_evidence": ACP_STREAM_PROCESSING_POLICY["exception_required_evidence"],
+        "prohibited": ACP_STREAM_PROCESSING_POLICY["prohibited"],
+        "decision_tree": ACP_STREAM_PROCESSING_POLICY["decision_tree"],
+        "profiles": acp_stream_processor_catalog(),
+        "rules": ACP_STREAM_PROCESSOR_DECISION_RULES,
+    }
+
+
 def select_acp_stream_processor(workload: str) -> dict:
     """Select a stream processor profile for an APC workload description."""
     text = workload.lower().replace("-", "_")
@@ -759,6 +815,7 @@ def pbc_manifest_schema() -> dict:
             "docs": "Optional documentation artifact paths for builders and operators.",
         },
         "self_registration_entrypoint": "register_pbc() -> dict",
+        "stream_processing_policy": acp_stream_processing_policy(),
         "registration_rules": (
             "Return a manifest matching this schema.",
             "Never share a datastore key with another PBC.",
@@ -1148,6 +1205,7 @@ def pbc_release_audit() -> dict:
     acp_composition = pbc_composition_plan(PBC_STARTER_STACKS["application_composition_platform"], app_name="AppCompositionPlatform")
     topology = application_composition_topology()
     acp_coverage = acp_capability_coverage()
+    stream_policy = acp_stream_processing_policy()
     nl_selection = pbc_selection_from_prompt(
         "Build an enterprise ERP back office with GL, AP, AR, inventory, people, and order management"
     )
@@ -1211,6 +1269,16 @@ def pbc_release_audit() -> dict:
             "processors": tuple(item["processor"] for item in acp_stream_processor_catalog()),
             "default": ACP_DEFAULT_STREAM_PROCESSOR,
             "decision_rules": ACP_STREAM_PROCESSOR_DECISION_RULES,
+        },
+        {
+            "id": "opinionated_stream_processing_policy",
+            "ok": stream_policy["default"] == "faust_streaming"
+            and stream_policy["allowed_processors"] == ("bytewax", "quix_streams", "faust_streaming")
+            and all(item["use"] in stream_policy["allowed_processors"] for item in stream_policy["decision_tree"])
+            and "adding a fourth processor without a platform architecture decision" in stream_policy["prohibited"],
+            "default": stream_policy["default"],
+            "allowed_processors": stream_policy["allowed_processors"],
+            "decision_tree": stream_policy["decision_tree"],
         },
         {
             "id": "composition_plan",
