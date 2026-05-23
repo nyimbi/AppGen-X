@@ -63,7 +63,7 @@ Build a complete AppGen IDE and generation platform with:
 | 2026-05-23 | `309f260` | Tightened the event-processing standard into one default generated stack with audited exception workflows. | Py compile; focused PBC catalog test; documentation diff check; staged hygiene scan passed. |
 | 2026-05-23 | `df3500d` | Added generated mobile device runtime as an independently importable side-effect-free device API replay surface. | Py compile; focused generated-app/form-designer/package-goal tests; staged hygiene scan passed. |
 | 2026-05-23 | `56a6c03` | Added generated native form runtime manifest and replay validation as an independently importable artifact. | Py compile; focused generated-app/form-designer/package-goal tests; staged hygiene scan passed. |
-| 2026-05-23 | `pending` | Added generated inspector runtime manifest and replay validation as an independently importable artifact. | Pending py compile, focused generated-app/form-designer/package-goal tests, and staged hygiene scan. |
+| 2026-05-23 | `cd926e8` | Added generated inspector runtime manifest and replay validation as an independently importable artifact. | Py compile; focused generated-app/form-designer/package-goal tests; staged hygiene scan passed. |
 
 ## Current Working Slice
 
