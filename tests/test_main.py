@@ -10059,6 +10059,40 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     )
     assert realtime.realtime_workbench({"app/realtime.py"})["ok"] is False
     assert realtime.realtime_release_gate({"app/realtime.py"})["ok"] is False
+    realtime_module_files = realtime.realtime_module_file_manifest()
+    realtime_module_tests = realtime.realtime_module_test_file_manifest()
+    assert realtime_module_files["ok"] is True
+    assert realtime_module_tests["ok"] is True
+    assert {item["surface"] for item in realtime_module_files["modules"]} == {
+        "topic_catalog",
+        "event_payload",
+        "sse_frame",
+        "collaboration_message",
+        "replay_plan",
+        "realtime_release_workbench",
+    }
+    assert {item["surface"] for item in realtime_module_tests["tests"]} == {
+        "topic_catalog",
+        "event_payload",
+        "sse_frame",
+        "collaboration_message",
+        "replay_plan",
+        "realtime_release_workbench",
+    }
+    for item in realtime_module_files["modules"]:
+        module_path = output_dir / item["path"].replace("app/", "")
+        py_compile.compile(str(module_path), doraise=True)
+        module = _load_module(module_path, f"generated_realtime_module_{item['module']}")
+        assert module.module_contract()["ok"] is True
+        assert module.realtime_manifest_contract()["ok"] is True
+        assert module.run_realtime_operation()["ok"] is True
+        assert module.release_context()["ok"] is True
+        assert module.smoke_test()["ok"] is True
+    for item in realtime_module_tests["tests"]:
+        test_path = output_dir / item["path"].replace("app/", "")
+        py_compile.compile(str(test_path), doraise=True)
+        module = _load_module(test_path, f"generated_realtime_module_test_{item['module']}")
+        assert module.smoke_test()["ok"] is True
     event_catalog = events.event_catalog()
     assert any("Book.created" in item["topics"] for item in event_catalog["tables"])
     workflow_topic = "workflow.Publish.draft.published"

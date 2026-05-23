@@ -1951,6 +1951,27 @@ def write_realtime_file(output_dir, schema: AppSchema):
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
     (output_dir / "realtime.py").write_text(_realtime_text(schema))
+    write_realtime_module_files(output_dir)
+
+
+def write_realtime_module_files(output_dir):
+    """Write generated realtime modules and smoke tests."""
+    output_dir = Path(output_dir)
+    module_dir = output_dir / "realtime_modules"
+    test_dir = output_dir / "realtime_module_tests"
+    module_dir.mkdir(parents=True, exist_ok=True)
+    test_dir.mkdir(parents=True, exist_ok=True)
+    (module_dir / "__init__.py").write_text(_realtime_module_init_text(), encoding="utf-8")
+    (test_dir / "__init__.py").write_text(_realtime_module_test_init_text(), encoding="utf-8")
+    for module_name in REALTIME_MODULES:
+        (module_dir / f"{module_name}.py").write_text(
+            _realtime_module_text(module_name),
+            encoding="utf-8",
+        )
+        (test_dir / f"test_{module_name}.py").write_text(
+            _realtime_module_test_text(module_name),
+            encoding="utf-8",
+        )
 
 
 def write_events_file(output_dir, schema: AppSchema):
@@ -2276,6 +2297,15 @@ MICROSERVICE_MODULES = (
     "relationship_resolver_module",
     "mesh_scaling_module",
     "microservice_release_workbench_module",
+)
+
+REALTIME_MODULES = (
+    "topic_catalog_module",
+    "event_payload_module",
+    "sse_frame_module",
+    "collaboration_message_module",
+    "replay_plan_module",
+    "realtime_release_workbench_module",
 )
 
 
@@ -7260,6 +7290,246 @@ def smoke_test():
         "surface": SURFACE,
         "ok": True,
         "tests": ("test_microservice_module_contract", "test_microservice_module_smoke"),
+    }}
+'''
+
+
+def _realtime_module_init_text() -> str:
+    return (
+        '"""Generated realtime modules."""\n\n'
+        f"REALTIME_MODULES = {REALTIME_MODULES!r}\n"
+    )
+
+
+def _realtime_module_test_init_text() -> str:
+    modules = tuple(f"test_{name}" for name in REALTIME_MODULES)
+    return (
+        '"""Generated realtime module tests."""\n\n'
+        f"REALTIME_MODULE_TESTS = {modules!r}\n"
+    )
+
+
+def _realtime_surface(module_name: str) -> tuple[str, str]:
+    return {
+        "topic_catalog_module": ("topic_catalog", "realtime_topics"),
+        "event_payload_module": ("event_payload", "event_payload"),
+        "sse_frame_module": ("sse_frame", "sse_frame"),
+        "collaboration_message_module": ("collaboration_message", "collaboration_message"),
+        "replay_plan_module": ("replay_plan", "replay_plan"),
+        "realtime_release_workbench_module": ("realtime_release_workbench", "realtime_release_gate"),
+    }[module_name]
+
+
+def _realtime_module_text(module_name: str) -> str:
+    surface, operation = _realtime_surface(module_name)
+    return f'''"""Generated realtime module for {surface}."""
+
+from __future__ import annotations
+
+import importlib.util
+from pathlib import Path
+
+
+MODULE = {module_name!r}
+SURFACE = {surface!r}
+OPERATION = {operation!r}
+EXPECTED_EXPORTS = (
+    "module_contract",
+    "realtime_manifest_contract",
+    "run_realtime_operation",
+    "release_context",
+    "smoke_test",
+)
+
+
+def _realtime():
+    module_path = Path(__file__).resolve().parents[1] / "realtime.py"
+    spec = importlib.util.spec_from_file_location(f"generated_realtime_{{MODULE}}_realtime", module_path)
+    module = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(module)
+    return module
+
+
+def _assets():
+    return {{"app/realtime.py", "app/templates/appgen_realtime.html"}}
+
+
+def _first_topic(realtime):
+    topics = realtime.realtime_topics()
+    if not topics:
+        raise AssertionError("generated realtime module requires at least one topic")
+    return topics[0]["topics"][0]
+
+
+def module_contract():
+    """Return this generated realtime module's export contract."""
+    available = tuple(name for name in EXPECTED_EXPORTS if name in globals())
+    return {{
+        "format": "appgen.realtime-module-contract.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "operation": OPERATION,
+        "ok": set(EXPECTED_EXPORTS) <= set(available),
+        "exports": available,
+        "expected_exports": EXPECTED_EXPORTS,
+        "side_effects": (),
+    }}
+
+
+def realtime_manifest_contract():
+    """Return generated realtime metadata owned by this module."""
+    realtime = _realtime()
+    topics = realtime.realtime_topics()
+    return {{
+        "format": "appgen.realtime-module-manifest.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "ok": bool(topics)
+        and all(item["topics"] for item in topics)
+        and realtime.realtime_check(_assets())["ok"],
+        "topics": topics,
+        "readiness": realtime.realtime_check(_assets()),
+        "side_effects": (),
+    }}
+
+
+def run_realtime_operation():
+    """Run this module's side-effect-free realtime operation."""
+    realtime = _realtime()
+    topic = _first_topic(realtime)
+    if SURFACE == "topic_catalog":
+        operation = realtime.realtime_topics()
+        ok = bool(operation) and all(item["topics"] for item in operation)
+    elif SURFACE == "event_payload":
+        operation = realtime.event_payload(topic, {{"sample": True}}, actor="module", event_id="evt-module")
+        ok = operation["topic"] == topic and operation["actor"] == "module" and operation["data"]["sample"] is True
+    elif SURFACE == "sse_frame":
+        event = realtime.event_payload(topic, {{"sample": True}}, actor="module", event_id="evt-module")
+        operation = realtime.sse_frame(event)
+        ok = operation.startswith("id: evt-module\\nevent: ") and operation.endswith("\\n\\n")
+    elif SURFACE == "collaboration_message":
+        operation = realtime.collaboration_message("module-room", "module", "Ready", metadata={{"topic": topic}})
+        ok = operation["room"] == "module-room" and operation["metadata"]["topic"] == topic
+    elif SURFACE == "replay_plan":
+        operation = realtime.replay_plan(last_event_id="evt-module", limit=5000)
+        ok = operation["last_event_id"] == "evt-module" and operation["limit"] == 1000 and topic in operation["topics"]
+    else:
+        operation = {{
+            "release": realtime.realtime_release_gate(_assets()),
+            "workbench": realtime.realtime_workbench(_assets()),
+        }}
+        ok = operation["release"]["ok"] and operation["workbench"]["ok"]
+    return {{
+        "format": "appgen.realtime-module-operation.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "ok": ok,
+        "operation": operation,
+        "side_effects": (),
+    }}
+
+
+def release_context():
+    """Return release evidence used by this realtime module."""
+    realtime = _realtime()
+    return {{
+        "format": "appgen.realtime-module-release-context.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "ok": realtime.realtime_release_gate(_assets())["ok"] and realtime.realtime_workbench(_assets())["ok"],
+        "release": realtime.realtime_release_gate(_assets()),
+        "workbench": realtime.realtime_workbench(_assets()),
+        "side_effects": (),
+    }}
+
+
+def smoke_test():
+    """Run side-effect-free checks for this generated realtime module."""
+    contract = module_contract()
+    manifest = realtime_manifest_contract()
+    operation = run_realtime_operation()
+    release = release_context()
+    return {{
+        "format": "appgen.realtime-module-smoke-test.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "ok": contract["ok"]
+        and manifest["ok"]
+        and operation["ok"]
+        and release["ok"]
+        and not manifest["side_effects"]
+        and not operation["side_effects"]
+        and not release["side_effects"],
+        "contract": contract,
+        "manifest": manifest,
+        "operation": operation,
+        "release": release,
+        "checks": (
+            "module_contract_resolves",
+            "realtime_manifest_contract_ok",
+            "realtime_operation_ok",
+            "release_context_ok",
+            "no_side_effects",
+        ),
+    }}
+'''
+
+
+def _realtime_module_test_text(module_name: str) -> str:
+    surface, _operation = _realtime_surface(module_name)
+    return f'''"""Generated tests for the {surface} realtime module."""
+
+from __future__ import annotations
+
+import importlib.util
+from pathlib import Path
+
+
+MODULE = {module_name!r}
+SURFACE = {surface!r}
+
+
+def load_realtime_module():
+    """Load the generated realtime module without app installation."""
+    module_path = Path(__file__).resolve().parents[1] / "realtime_modules" / f"{{MODULE}}.py"
+    spec = importlib.util.spec_from_file_location(f"generated_realtime_module_{{MODULE}}", module_path)
+    module = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(module)
+    return module
+
+
+def test_realtime_module_contract():
+    """Assert the generated realtime module exposes its contract."""
+    module = load_realtime_module()
+    contract = module.module_contract()
+    assert contract["module"] == MODULE
+    assert contract["surface"] == SURFACE
+    assert contract["ok"] is True
+    assert all(hasattr(module, name) for name in contract["expected_exports"])
+
+
+def test_realtime_module_smoke():
+    """Assert the module's side-effect-free smoke test passes."""
+    module = load_realtime_module()
+    result = module.smoke_test()
+    assert result["ok"] is True
+    assert result["module"] == MODULE
+    assert result["surface"] == SURFACE
+    assert result["checks"]
+
+
+def smoke_test():
+    """Run this generated test module in a side-effect-free way."""
+    test_realtime_module_contract()
+    test_realtime_module_smoke()
+    return {{
+        "format": "appgen.realtime-module-generated-test-smoke.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "ok": True,
+        "tests": ("test_realtime_module_contract", "test_realtime_module_smoke"),
     }}
 '''
 
@@ -55178,7 +55448,9 @@ from __future__ import annotations
 
 from datetime import datetime
 from datetime import timezone
+import importlib.util
 import json
+from pathlib import Path
 
 from flask import jsonify
 from flask_appbuilder import BaseView
@@ -55186,6 +55458,73 @@ from flask_appbuilder import expose
 
 
 REALTIME_TOPICS = {topics!r}
+REALTIME_MODULES = (
+    "topic_catalog_module",
+    "event_payload_module",
+    "sse_frame_module",
+    "collaboration_message_module",
+    "replay_plan_module",
+    "realtime_release_workbench_module",
+)
+
+
+def _load_generated_module(module_path, module_name):
+    """Load a generated realtime module without installing the app."""
+    spec = importlib.util.spec_from_file_location(module_name, module_path)
+    module = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(module)
+    return module
+
+
+def realtime_module_file_manifest():
+    """Return independently importable generated realtime module files."""
+    root = Path(__file__).resolve().parent
+    modules = []
+    for module_name in REALTIME_MODULES:
+        module_path = root / "realtime_modules" / f"{{module_name}}.py"
+        module = _load_generated_module(module_path, f"generated_realtime_module_{{module_name}}")
+        contract = module.module_contract()
+        modules.append(
+            {{
+                "module": module_name,
+                "surface": contract["surface"],
+                "path": f"app/realtime_modules/{{module_name}}.py",
+                "exists": module_path.exists(),
+                "ok": contract["ok"] and module.smoke_test()["ok"],
+                "exports": contract["exports"],
+            }}
+        )
+    return {{
+        "format": "appgen.realtime-module-file-manifest.v1",
+        "ok": len(modules) == len(REALTIME_MODULES) and all(item["ok"] and item["exists"] for item in modules),
+        "modules": tuple(modules),
+    }}
+
+
+def realtime_module_test_file_manifest():
+    """Return generated tests for the realtime module files."""
+    root = Path(__file__).resolve().parent
+    tests = []
+    for module_name in REALTIME_MODULES:
+        test_path = root / "realtime_module_tests" / f"test_{{module_name}}.py"
+        module = _load_generated_module(test_path, f"generated_realtime_module_test_{{module_name}}")
+        result = module.smoke_test()
+        tests.append(
+            {{
+                "module": f"test_{{module_name}}",
+                "surface": result["surface"],
+                "path": f"app/realtime_module_tests/test_{{module_name}}.py",
+                "exists": test_path.exists(),
+                "ok": result["ok"],
+                "tests": result["tests"],
+            }}
+        )
+    return {{
+        "format": "appgen.realtime-module-test-file-manifest.v1",
+        "ok": len(tests) == len(REALTIME_MODULES) and all(item["ok"] and item["exists"] for item in tests),
+        "tests": tuple(tests),
+    }}
 
 
 def realtime_topics():
