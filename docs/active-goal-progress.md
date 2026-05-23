@@ -30,18 +30,18 @@ Build a complete AppGen IDE and generation platform with:
 | 2026-05-23 | `75f2049` | Added native device API catalog, workbench, palette entries, icons, and audit coverage. | Frontend production build, dev shell probe, staged hygiene scans. |
 | 2026-05-23 | `14489d2` | Added data-service catalog, workbench, palette entries, and audit coverage. | Frontend production build, dev shell probe, staged hygiene scans. |
 | 2026-05-23 | `06f42f1` | Added generated runtime packaging proof for web, mobile, and desktop target outputs. | Py compile, target audit test, package-goal aggregation test, staged hygiene scans. |
+| 2026-05-23 | `8446561` | Added side-effect-free package signature validation and lifecycle execution proof. | Py compile, form-designer audit test, package-goal aggregation test, staged hygiene scans. |
 
 ## Current Working Slice
 
-Continue package lifecycle depth beyond catalog and UI by adding:
+Broaden frontend IDE interaction tests beyond build-level verification by
+adding:
 
-- Install/update/uninstall execution paths where safe.
-- Signature and trust validation proof.
-- Package failure isolation tests.
-- Generated package artifact verification.
+- Component palette smoke coverage.
+- Device/data workbench render checks.
+- Status-rail audit assertions.
+- Interaction-level proof for core IDE controls.
 
 ## Open Completion Areas
 
-- Broaden frontend IDE interaction tests beyond build-level verification.
-- Continue package lifecycle depth beyond catalog and UI into install/update
-  execution and signature validation.
+- Extend package lifecycle proof to real binary adapters when available.
