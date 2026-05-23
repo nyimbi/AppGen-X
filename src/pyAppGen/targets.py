@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+import importlib.util
 import json
 import py_compile
 import tempfile
+import tomllib
 from pathlib import Path
 
 from .dsl import schema_from_dsl
@@ -130,6 +132,15 @@ def _json_target_artifacts(project_dir: Path) -> tuple[dict, ...]:
     return tuple(results)
 
 
+def _load_generated_module(path: Path, module_name: str):
+    spec = importlib.util.spec_from_file_location(module_name, path)
+    if spec is None or spec.loader is None:
+        raise ImportError(f"Cannot load generated module: {path}")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
 def target_generation_smoke_audit() -> dict:
     """Generate every application target and verify emitted artifacts."""
     from .gen import generate_app_from_schema
@@ -194,6 +205,110 @@ def target_generation_smoke_audit() -> dict:
     }
 
 
+def target_runtime_packaging_proof(source: str = TARGET_SAMPLE_DSL) -> dict:
+    """Generate target packages and verify executable packaging hooks."""
+    from .gen import generate_app_from_schema
+
+    with tempfile.TemporaryDirectory(prefix="appgen-target-packaging-") as raw_workdir:
+        project_dir = Path(raw_workdir) / "target-packaging"
+        app_dir = project_dir / "app"
+        generate_app_from_schema(
+            schema_from_dsl(source, source_name="target-packaging.appgen"),
+            app_dir,
+        )
+        existing_paths = tuple(
+            sorted(str(path.relative_to(project_dir)) for path in project_dir.rglob("*") if path.is_file())
+        )
+        existing = set(existing_paths)
+        manifest = json.loads((app_dir / "appgen.json").read_text(encoding="utf-8"))
+        compile_results = _compile_target_artifacts(project_dir)
+        json_results = _json_target_artifacts(project_dir)
+        native_module = _load_generated_module(
+            project_dir / "native/appgen_native.py",
+            "appgen_generated_native_packaging_proof",
+        )
+        native_gate = native_module.native_release_gate(existing_paths)
+        mobile_project = tomllib.loads(
+            (project_dir / "native/mobile/pyproject.toml").read_text(encoding="utf-8")
+        )
+        desktop_project = tomllib.loads(
+            (project_dir / "native/desktop/pyproject.toml").read_text(encoding="utf-8")
+        )
+        home_text = (project_dir / "app/templates/my_index.html").read_text(encoding="utf-8")
+
+    web_package = {
+        "target": "web",
+        "entrypoints": ("app/__init__.py", "app/views.py", "app/api.py", "app/gql.py"),
+        "assets": ("app/templates/my_index.html", "app/static/appgen.webmanifest"),
+        "ok": {"app/__init__.py", "app/views.py", "app/api.py", "app/gql.py"} <= existing
+        and "/static/appgen.webmanifest" in home_text,
+    }
+    mobile_package = {
+        "target": "mobile",
+        "name": mobile_project["project"]["name"],
+        "dependencies": tuple(mobile_project["project"]["dependencies"]),
+        "scripts": mobile_project["project"]["scripts"],
+        "ok": "kivy>=2.3,<3" in mobile_project["project"]["dependencies"]
+        and mobile_project["project"]["scripts"].get("appgen-mobile") == "app:main",
+    }
+    desktop_package = {
+        "target": "desktop",
+        "name": desktop_project["project"]["name"],
+        "dependencies": tuple(desktop_project["project"]["dependencies"]),
+        "scripts": desktop_project["project"]["scripts"],
+        "ok": "toga>=0.4,<1" in desktop_project["project"]["dependencies"]
+        and desktop_project["project"]["scripts"].get("appgen-desktop") == "app:main",
+    }
+    checks = (
+        {
+            "id": "manifest_targets",
+            "ok": {"web", "pwa", "mobile", "desktop", "chatbot"}
+            <= set(manifest["platform_targets"]),
+        },
+        {
+            "id": "compiled_target_artifacts",
+            "ok": all(item["ok"] for item in compile_results),
+            "artifacts": tuple(item["path"] for item in compile_results),
+        },
+        {
+            "id": "json_target_artifacts",
+            "ok": all(item["ok"] for item in json_results),
+            "artifacts": tuple(item["path"] for item in json_results),
+        },
+        {
+            "id": "web_package_hook",
+            "ok": web_package["ok"],
+            "package": web_package,
+        },
+        {
+            "id": "mobile_package_hook",
+            "ok": mobile_package["ok"],
+            "package": mobile_package,
+        },
+        {
+            "id": "desktop_package_hook",
+            "ok": desktop_package["ok"],
+            "package": desktop_package,
+        },
+        {
+            "id": "native_release_gate",
+            "ok": native_gate["ok"],
+            "checks": native_gate["checks"],
+        },
+    )
+    return {
+        "format": "appgen.target-runtime-packaging-proof.v1",
+        "scope": "package",
+        "ok": all(check["ok"] for check in checks),
+        "manifest_targets": tuple(manifest["platform_targets"]),
+        "packages": (web_package, mobile_package, desktop_package),
+        "native_release_gate": native_gate,
+        "checks": checks,
+        "existing_paths": existing_paths,
+        "stop_condition": "do-not-claim-target-packaging-unless-ok-is-true",
+    }
+
+
 def dsl_target_contract(source: str = TARGET_SAMPLE_DSL) -> dict:
     """Parse the DSL and summarize target selection."""
     schema = schema_from_dsl(source, source_name="target-audit.appgen")
@@ -251,6 +366,7 @@ def target_release_audit(existing_paths: set[str] | None = None) -> dict:
     mobile = mobile_capability_contract()
     desktop = desktop_capability_contract()
     smoke = target_generation_smoke_audit()
+    packaging = target_runtime_packaging_proof()
     catalog_targets = {item["target"] for item in target_catalog()}
     gates = (
         {
@@ -284,6 +400,11 @@ def target_release_audit(existing_paths: set[str] | None = None) -> dict:
             "checks": smoke["checks"],
         },
         {
+            "id": "runtime_packaging_proof",
+            "ok": packaging["ok"],
+            "checks": packaging["checks"],
+        },
+        {
             "id": "artifact_contract",
             "ok": expected_artifacts <= existing,
         },
@@ -300,6 +421,7 @@ def target_release_audit(existing_paths: set[str] | None = None) -> dict:
         "mobile": mobile,
         "desktop": desktop,
         "generation_smoke": smoke,
+        "runtime_packaging": packaging,
         "gates": gates,
         "blocking_gaps": tuple(gate for gate in gates if not gate["ok"]),
         "stop_condition": "do-not-claim-multi-target-generation-unless-ok-is-true",

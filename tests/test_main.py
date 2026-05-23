@@ -269,6 +269,7 @@ from pyAppGen.targets import target_contract
 from pyAppGen.targets import target_generation_smoke_audit
 from pyAppGen.targets import target_package_matrix
 from pyAppGen.targets import target_release_audit
+from pyAppGen.targets import target_runtime_packaging_proof
 from pyAppGen.visual_modeling import code_generation_plan
 from pyAppGen.visual_modeling import erd_mermaid as package_erd_mermaid
 from pyAppGen.visual_modeling import field_proposal as visual_field_proposal
@@ -2972,6 +2973,24 @@ def test_package_target_audit_covers_web_mobile_desktop_generation(
     assert all(item["ok"] for item in smoke["compiled"])
     assert all(item["ok"] for item in smoke["json_artifacts"])
 
+    packaging = target_runtime_packaging_proof()
+    assert packaging["format"] == "appgen.target-runtime-packaging-proof.v1"
+    assert packaging["ok"] is True
+    assert {"web", "pwa", "mobile", "desktop", "chatbot"} <= set(packaging["manifest_targets"])
+    assert {"web", "mobile", "desktop"} == {package["target"] for package in packaging["packages"]}
+    assert packaging["native_release_gate"]["ok"] is True
+    assert {
+        "manifest_targets",
+        "compiled_target_artifacts",
+        "json_target_artifacts",
+        "web_package_hook",
+        "mobile_package_hook",
+        "desktop_package_hook",
+        "native_release_gate",
+    } == {check["id"] for check in packaging["checks"]}
+    assert any(package["target"] == "mobile" and "kivy>=2.3,<3" in package["dependencies"] for package in packaging["packages"])
+    assert any(package["target"] == "desktop" and "toga>=0.4,<1" in package["dependencies"] for package in packaging["packages"])
+
     audit = target_release_audit()
     assert audit["format"] == "appgen.package-target-release-audit.v1"
     assert audit["ok"] is True
@@ -2983,6 +3002,7 @@ def test_package_target_audit_covers_web_mobile_desktop_generation(
         "desktop_contract",
         "pwa_chatbot_contracts",
         "target_generation_smoke",
+        "runtime_packaging_proof",
         "artifact_contract",
     } == {gate["id"] for gate in audit["gates"]}
 
