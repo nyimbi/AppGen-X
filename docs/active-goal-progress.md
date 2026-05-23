@@ -98,6 +98,7 @@ Build a complete AppGen IDE and generation platform with:
 | 2026-05-24 | `85d0ed7` | Added generated productivity modules and generated tests for provider catalogs, document merge, spreadsheet export, calendar/task payloads, and release workbench surfaces. | Py compile; focused generated-app/form-designer/package-goal tests; staged hygiene scan passed. |
 | 2026-05-24 | `e53ee4a` | Added generated lifecycle modules and generated tests for environment/release readiness, promotion/domain planning, maintenance/update planning, feedback/issues, and lifecycle workbench surfaces. | Py compile; focused generated-app/form-designer/package-goal tests; staged hygiene scan passed. |
 | 2026-05-24 | `2a7733e` | Made event-processing guidance give developers one default generated AppGen-X event contract instead of a stream-engine selection matrix. | Focused PBC policy test, documentation diff check, and staged hygiene scan passed. |
+| 2026-05-24 | `ffe2b57` | Added generated emerging capability modules and generated tests for device telemetry, device commands, hash anchors, smart-contract plans, edge sync, and release workbench surfaces. | Py compile; focused generated-app/form-designer/package-goal tests; staged hygiene scan passed. |
 
 ## Current Working Slice
 
@@ -144,6 +145,10 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   generate AppGen-X outbox/inbox events through the platform adapter, omit
   stream runtime selection for ordinary work, and require evidence-gated
   exceptions only for telemetry/time-series or complex parallel dataflow PBCs.
+- Generated applications now include standalone emerging capability modules and
+  generated tests that prove device telemetry validation, device command
+  payloads, hash-only audit anchors, smart-contract plans, edge sync, and
+  release workbench evidence without external networks or hardware.
 - Generated applications now include a standalone mobile device runtime module
   that validates permission manifests, component adapters, simulator fixtures,
   lifecycle replay, and unsupported target handling without touching hardware.
