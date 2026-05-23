@@ -5414,6 +5414,7 @@ def object_inspector_workbench() -> dict:
     design_surface_replay = inspector_design_surface_transaction_replay_contract(sample_components)
     custom_designer_registration_replay = inspector_custom_designer_registration_replay_contract(sample_components)
     editor_lifecycle_replay = inspector_editor_lifecycle_replay_contract(sample_components)
+    inspector_binding_bridge = inspector_binding_designer_bridge_contract()
     property_edit_operation = inspector_apply_property_edit(
         {"component": "TextBox", "props": {"label": "Name"}},
         "label",
@@ -5637,6 +5638,14 @@ def object_inspector_workbench() -> dict:
             "evidence": editor_lifecycle_replay,
         },
         {
+            "id": "inspector_binding_bridge",
+            "ok": inspector_binding_bridge["ok"]
+            and {"inspector_property_commit", "binding_link_commit", "runtime_wiring_refresh"} <= {item["phase"] for item in inspector_binding_bridge["replay"]}
+            and {"property_change_refreshes_binding_preview", "binding_errors_surface_in_inspector"} <= set(inspector_binding_bridge["guards"])
+            and not inspector_binding_bridge["side_effects"],
+            "evidence": inspector_binding_bridge,
+        },
+        {
             "id": "actionable_editor_operations",
             "ok": property_edit_operation["ok"]
             and event_create_operation["ok"]
@@ -5692,6 +5701,7 @@ def object_inspector_workbench() -> dict:
         "design_surface_replay": design_surface_replay,
         "custom_designer_registration_replay": custom_designer_registration_replay,
         "editor_lifecycle_replay": editor_lifecycle_replay,
+        "inspector_binding_bridge": inspector_binding_bridge,
         "actionable_operations": {
             "property_edit": property_edit_operation,
             "event_create": event_create_operation,
@@ -5964,6 +5974,78 @@ def livebindings_actionable_operations(design: dict | None = None) -> dict:
         "ok": all(operation["ok"] for operation in operations.values()),
         "operations": operations,
         "side_effects": (),
+    }
+
+
+def inspector_binding_designer_bridge_contract(design: dict | None = None) -> dict:
+    """Replay inspector edits through binding graph refresh, diagnostics, and runtime wiring."""
+    property_edit = inspector_apply_property_edit(
+        {"component": "TextBox", "props": {"label": "Name"}},
+        "label",
+        "Customer Name",
+    )
+    event_create = inspector_create_event_handler("Button", "OnClick")
+    event_rename = inspector_rename_event_handler(event_create["binding"], "button_customer_click")
+    binding_link = livebindings_create_link(design)
+    binding_reroute = livebindings_reroute_link(binding_link["edge"], via=("bend:inspector", "bend:binding-graph"))
+    preview = livebindings_preview_value(binding_link["edge"], property_edit["after"])
+    conflicts = livebindings_detect_conflicts()
+    diagnostics = binding_diagnostics_contract(design)
+    runtime_wiring = livebindings_emit_runtime_wiring()
+    replay = (
+        {
+            "phase": "inspector_property_commit",
+            "ok": property_edit["ok"] and {"apply_change", "emit_property_changed", "record_undo"} <= set(property_edit["transaction"]),
+            "evidence": property_edit,
+        },
+        {
+            "phase": "binding_link_commit",
+            "ok": binding_link["ok"] and {"validate_link", "commit_link", "record_undo"} <= set(binding_link["pipeline"]),
+            "evidence": binding_link,
+        },
+        {
+            "phase": "binding_route_refresh",
+            "ok": binding_reroute["ok"] and "reroute_edge" in binding_reroute["pipeline"],
+            "evidence": binding_reroute,
+        },
+        {
+            "phase": "binding_preview_refresh",
+            "ok": preview["ok"] and {"apply_converter", "publish_preview"} <= set(preview["pipeline"]),
+            "evidence": preview,
+        },
+        {
+            "phase": "event_reference_sync",
+            "ok": event_create["ok"]
+            and event_rename["ok"]
+            and "update_component_reference" in event_rename["pipeline"],
+            "evidence": {"create": event_create, "rename": event_rename},
+        },
+        {
+            "phase": "diagnostic_surface_sync",
+            "ok": conflicts["ok"]
+            and diagnostics["ok"]
+            and {"diagnostics_map_to_graph_selection", "quick_fixes_are_staged"} <= set(diagnostics["guards"]),
+            "evidence": {"conflicts": conflicts, "diagnostics": diagnostics},
+        },
+        {
+            "phase": "runtime_wiring_refresh",
+            "ok": runtime_wiring["ok"] and {"attach_listeners", "sync_updates"} <= set(runtime_wiring["lifecycle"]),
+            "evidence": runtime_wiring,
+        },
+    )
+    return {
+        "format": "appgen.inspector-binding-designer-bridge.v1",
+        "ok": all(item["ok"] for item in replay)
+        and not any(contract["side_effects"] for contract in (property_edit, event_create, event_rename, binding_link, binding_reroute, preview, conflicts, diagnostics, runtime_wiring)),
+        "replay": replay,
+        "guards": (
+            "property_change_refreshes_binding_preview",
+            "binding_errors_surface_in_inspector",
+            "event_references_sync_with_binding_routes",
+            "runtime_wiring_refreshes_after_inspector_commit",
+        ),
+        "side_effects": (),
+        "blocking_gaps": tuple(item for item in replay if not item["ok"]),
     }
 
 
@@ -7117,6 +7199,7 @@ def livebindings_workbench() -> dict:
     designer_transaction_replay = binding_designer_transaction_replay_contract()
     lifecycle_release_replay = binding_lifecycle_release_replay_contract()
     actionable_operations = livebindings_actionable_operations()
+    inspector_binding_bridge = inspector_binding_designer_bridge_contract()
     checks = (
         {
             "id": "graph_nodes",
@@ -7336,6 +7419,14 @@ def livebindings_workbench() -> dict:
             and not lifecycle_release_replay["side_effects"],
             "evidence": lifecycle_release_replay,
         },
+        {
+            "id": "inspector_binding_bridge",
+            "ok": inspector_binding_bridge["ok"]
+            and {"binding_preview_refresh", "runtime_wiring_refresh"} <= {item["phase"] for item in inspector_binding_bridge["replay"]}
+            and "runtime_wiring_refreshes_after_inspector_commit" in inspector_binding_bridge["guards"]
+            and not inspector_binding_bridge["side_effects"],
+            "evidence": inspector_binding_bridge,
+        },
     )
     ok = all(check["ok"] for check in checks)
     return {
@@ -7374,6 +7465,7 @@ def livebindings_workbench() -> dict:
         "design_runtime_replay": design_runtime_replay,
         "designer_transaction_replay": designer_transaction_replay,
         "lifecycle_release_replay": lifecycle_release_replay,
+        "inspector_binding_bridge": inspector_binding_bridge,
         "checks": checks,
         "blocking_gaps": tuple(check for check in checks if not check["ok"]),
     }

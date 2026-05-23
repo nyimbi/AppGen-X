@@ -148,6 +148,7 @@ from pyAppGen.form_designer import inspector_apply_property_edit
 from pyAppGen.form_designer import inspector_create_event_handler
 from pyAppGen.form_designer import inspector_editor_lifecycle_replay_contract
 from pyAppGen.form_designer import inspector_execute_component_editor
+from pyAppGen.form_designer import inspector_binding_designer_bridge_contract
 from pyAppGen.form_designer import inspector_register_custom_designer
 from pyAppGen.form_designer import inspector_rename_event_handler
 from pyAppGen.form_designer import object_inspector_workbench
@@ -1004,6 +1005,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "design_surface_transaction_replay",
         "custom_designer_registration_replay",
         "editor_lifecycle_replay",
+        "inspector_binding_bridge",
         "actionable_editor_operations",
     } == {check["id"] for check in inspector_workbench["checks"]}
     assert all("apply_change" in workflow["workflow"] for workflow in inspector_workbench["property_edit_workflows"])
@@ -1091,6 +1093,16 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     assert inspector_workbench["custom_designer_registration_replay"]["final_state"]["metadata_round_trips"] == len(
         inspector_workbench["custom_designer_registration_replay"]["components"]
     )
+    inspector_binding_bridge = inspector_binding_designer_bridge_contract()
+    assert inspector_binding_bridge["ok"] is True
+    assert {"inspector_property_commit", "binding_link_commit", "runtime_wiring_refresh"} <= {
+        item["phase"] for item in inspector_binding_bridge["replay"]
+    }
+    assert "property_change_refreshes_binding_preview" in inspector_binding_bridge["guards"]
+    assert inspector_workbench["inspector_binding_bridge"]["ok"] is True
+    assert "binding_preview_refresh" in {
+        item["phase"] for item in inspector_workbench["inspector_binding_bridge"]["replay"]
+    }
     editor_lifecycle = inspector_editor_lifecycle_replay_contract()
     assert editor_lifecycle["format"] == "appgen.inspector-editor-lifecycle-replay.v1"
     assert editor_lifecycle["ok"] is True
@@ -1162,6 +1174,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "design_runtime_session_replay",
         "designer_transaction_replay",
         "binding_lifecycle_release_replay",
+        "inspector_binding_bridge",
     } == {check["id"] for check in binding_workbench["checks"]}
     create_link = livebindings_create_link()
     assert create_link["ok"] is True
@@ -1258,6 +1271,10 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "side_effect_guards",
     } <= {check["id"] for check in binding_lifecycle["checks"] if check["ok"]}
     assert binding_workbench["lifecycle_release_replay"]["ok"] is True
+    assert binding_workbench["inspector_binding_bridge"]["ok"] is True
+    assert "runtime_wiring_refresh" in {
+        item["phase"] for item in binding_workbench["inspector_binding_bridge"]["replay"]
+    }
     data_workbench = rad_data_tooling_workbench()
     assert data_workbench["format"] == "appgen.rad-data-tooling-workbench.v1"
     assert data_workbench["ok"] is True
@@ -10079,6 +10096,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "design_runtime_session_replay",
         "designer_transaction_replay",
         "binding_lifecycle_release_replay",
+        "inspector_binding_bridge",
     } <= {
         check["id"] for check in generated_bindings["checks"]
     }
@@ -10165,6 +10183,10 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "design_runtime_and_designer_replays_complete",
         "side_effect_guards",
     } <= {check["id"] for check in generated_bindings["lifecycle_release_replay"]["checks"] if check["ok"]}
+    assert generated_bindings["inspector_binding_bridge"]["ok"] is True
+    assert "runtime_wiring_refresh" in {
+        item["phase"] for item in generated_bindings["inspector_binding_bridge"]["replay"]
+    }
     generated_data_tooling = form_designer.rad_data_tooling_workbench()
     assert generated_data_tooling["format"] == "appgen.generated-rad-data-tooling-workbench.v1"
     assert generated_data_tooling["ok"] is True
@@ -10650,6 +10672,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "design_surface_transaction_replay",
         "custom_designer_registration_replay",
         "editor_lifecycle_replay",
+        "inspector_binding_bridge",
         "actionable_editor_operations",
     } == {check["id"] for check in generated_inspector["checks"]}
     generated_property_edit = form_designer.inspector_apply_property_edit(
@@ -10755,6 +10778,17 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert generated_inspector["editor_lifecycle_replay"]["ok"] is True
     assert generated_inspector["actionable_operations"]["property_edit"]["ok"] is True
     assert generated_inspector["actionable_operations"]["event_rename"]["binding"]["handler"] == "button_customer_click"
+    generated_inspector_bridge = form_designer.inspector_binding_designer_bridge_contract()
+    assert generated_inspector_bridge["format"] == "appgen.generated-inspector-binding-designer-bridge.v1"
+    assert generated_inspector_bridge["ok"] is True
+    assert {"inspector_property_commit", "binding_link_commit", "runtime_wiring_refresh"} <= {
+        item["phase"] for item in generated_inspector_bridge["replay"]
+    }
+    assert "property_change_refreshes_binding_preview" in generated_inspector_bridge["guards"]
+    assert generated_inspector["inspector_binding_bridge"]["ok"] is True
+    assert "binding_preview_refresh" in {
+        item["phase"] for item in generated_inspector["inspector_binding_bridge"]["replay"]
+    }
     assert {
         "validate_property_values",
         "route_event_handlers",
