@@ -1657,6 +1657,27 @@ def write_integrations_file(output_dir):
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
     (output_dir / "integrations.py").write_text(_integrations_text())
+    write_integration_module_files(output_dir)
+
+
+def write_integration_module_files(output_dir):
+    """Write generated integration modules and smoke tests."""
+    output_dir = Path(output_dir)
+    module_dir = output_dir / "integration_modules"
+    test_dir = output_dir / "integration_module_tests"
+    module_dir.mkdir(parents=True, exist_ok=True)
+    test_dir.mkdir(parents=True, exist_ok=True)
+    (module_dir / "__init__.py").write_text(_integration_module_init_text(), encoding="utf-8")
+    (test_dir / "__init__.py").write_text(_integration_module_test_init_text(), encoding="utf-8")
+    for module_name in INTEGRATION_MODULES:
+        (module_dir / f"{module_name}.py").write_text(
+            _integration_module_text(module_name),
+            encoding="utf-8",
+        )
+        (test_dir / f"test_{module_name}.py").write_text(
+            _integration_module_test_text(module_name),
+            encoding="utf-8",
+        )
 
 
 def write_productivity_file(output_dir, schema: AppSchema):
@@ -2070,6 +2091,14 @@ SEED_MODULES = (
     "fixture_export_module",
     "validation_anonymization_module",
     "workbench_release_module",
+)
+
+INTEGRATION_MODULES = (
+    "connector_catalog_module",
+    "webhook_delivery_module",
+    "commercial_channels_module",
+    "portal_repository_module",
+    "release_workbench_module",
 )
 
 
@@ -5272,6 +5301,268 @@ def smoke_test():
         "surface": SURFACE,
         "ok": True,
         "tests": ("test_seed_module_contract", "test_seed_module_smoke"),
+    }}
+'''
+
+
+def _integration_module_init_text() -> str:
+    return (
+        '"""Generated integration modules."""\n\n'
+        f"INTEGRATION_MODULES = {INTEGRATION_MODULES!r}\n"
+    )
+
+
+def _integration_module_test_init_text() -> str:
+    modules = tuple(f"test_{name}" for name in INTEGRATION_MODULES)
+    return (
+        '"""Generated integration module tests."""\n\n'
+        f"INTEGRATION_MODULE_TESTS = {modules!r}\n"
+    )
+
+
+def _integration_surface(module_name: str) -> tuple[str, str]:
+    return {
+        "connector_catalog_module": ("connector_catalog", "integration_catalog"),
+        "webhook_delivery_module": ("webhook_delivery", "signed_webhook_plan"),
+        "commercial_channels_module": ("commercial_channels", "payment_request_plan"),
+        "portal_repository_module": ("portal_repository", "generated_integration_contracts"),
+        "release_workbench_module": ("release_workbench", "integration_release_gate"),
+    }[module_name]
+
+
+def _integration_module_text(module_name: str) -> str:
+    surface, operation = _integration_surface(module_name)
+    return f'''"""Generated integration module for {surface}."""
+
+from __future__ import annotations
+
+import importlib.util
+from pathlib import Path
+
+
+MODULE = {module_name!r}
+SURFACE = {surface!r}
+OPERATION = {operation!r}
+EXPECTED_EXPORTS = (
+    "module_contract",
+    "integration_manifest_contract",
+    "run_integration_operation",
+    "release_context",
+    "smoke_test",
+)
+
+
+def _integrations():
+    module_path = Path(__file__).resolve().parents[1] / "integrations.py"
+    spec = importlib.util.spec_from_file_location(f"generated_integration_{{MODULE}}_integrations", module_path)
+    module = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(module)
+    return module
+
+
+def _sample_envs():
+    return {{
+        "webhook": {{"APPGEN_WEBHOOK_URL": "https://hooks.example.test/appgen", "APPGEN_WEBHOOK_SECRET": "secret"}},
+        "payment": {{"STRIPE_API_KEY": "sk_test", "STRIPE_WEBHOOK_SECRET": "whsec"}},
+        "sms": {{"TWILIO_ACCOUNT_SID": "sid", "TWILIO_AUTH_TOKEN": "token", "TWILIO_FROM_NUMBER": "+10000000000"}},
+        "email": {{"SENDGRID_API_KEY": "key", "APPGEN_EMAIL_FROM": "noreply@example.test"}},
+        "portal": {{"ENTANDO_BASE_URL": "https://portal.example.test", "ENTANDO_CLIENT_ID": "client", "ENTANDO_CLIENT_SECRET": "secret"}},
+        "repository": {{"INVENIO_BASE_URL": "https://repo.example.test", "INVENIO_ACCESS_TOKEN": "token"}},
+    }}
+
+
+def module_contract():
+    """Return this generated integration module's export contract."""
+    available = tuple(name for name in EXPECTED_EXPORTS if name in globals())
+    return {{
+        "format": "appgen.integration-module-contract.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "operation": OPERATION,
+        "ok": set(EXPECTED_EXPORTS) <= set(available),
+        "exports": available,
+        "expected_exports": EXPECTED_EXPORTS,
+        "side_effects": (),
+    }}
+
+
+def integration_manifest_contract():
+    """Return generated connector metadata owned by this module."""
+    integrations = _integrations()
+    catalog = integrations.integration_catalog({{}})
+    contracts = integrations.generated_integration_contracts()
+    return {{
+        "format": "appgen.integration-module-manifest.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "ok": bool(catalog)
+        and {{"entando", "invenio"}} <= {{contract["integration"] for contract in contracts}}
+        and {{"payment", "sms", "email", "low_code_portal", "repository"}} <= {{item["kind"] for item in catalog}},
+        "catalog": catalog,
+        "contracts": contracts,
+        "side_effects": (),
+    }}
+
+
+def run_integration_operation():
+    """Run this module's side-effect-free integration operation."""
+    integrations = _integrations()
+    envs = _sample_envs()
+    if SURFACE == "connector_catalog":
+        catalog = integrations.integration_catalog({{}})
+        operation = {{
+            "catalog": catalog,
+            "payments": integrations.integrations_by_kind("payment", envs["payment"]),
+            "configured_rest": integrations.integration_config("rest", {{
+                "APPGEN_REST_BASE_URL": "https://api.example.test",
+                "APPGEN_REST_TOKEN": "token",
+            }}),
+        }}
+        ok = {{"rest", "webhook", "stripe", "twilio_sms", "sendgrid_email"}} <= {{item["name"] for item in catalog}}
+    elif SURFACE == "webhook_delivery":
+        plan = integrations.signed_webhook_plan("Book.created", {{"id": 1}}, environ=envs["webhook"])
+        outbox = integrations.integration_outbox_entry(plan)
+        audit = integrations.delivery_audit_event(outbox, status="queued")
+        operation = {{
+            "plan": plan,
+            "outbox": outbox,
+            "audit": audit,
+            "signature_ok": integrations.validate_webhook_signature({{"id": 1}}, plan["signature"], "secret"),
+        }}
+        ok = operation["signature_ok"] and outbox["id"].startswith("outbox-") and audit["event"] == "integration.delivery.queued"
+    elif SURFACE == "commercial_channels":
+        operation = {{
+            "payment": integrations.payment_request_plan("stripe", amount=42, currency="usd", reference="INV-1", environ=envs["payment"]),
+            "sms": integrations.sms_request_plan("twilio_sms", to="+15551234567", body="Ready", environ=envs["sms"]),
+            "email": integrations.email_request_plan("sendgrid_email", to="ada@example.test", subject="Ready", body="Report ready.", environ=envs["email"]),
+        }}
+        ok = all(item["review_required"] for item in operation.values()) and {{item["side_effect"] for item in operation.values()}} == {{"external_payment", "external_sms", "external_email"}}
+    elif SURFACE == "portal_repository":
+        operation = {{
+            "portal": integrations.low_code_portal_plan(microfrontend="book-list", route="/books", environ=envs["portal"]),
+            "repository": integrations.repository_deposit_plan(record={{"title": "Dune"}}, files=("dune.pdf",), environ=envs["repository"]),
+            "contracts": integrations.generated_integration_contracts(),
+        }}
+        ok = operation["portal"]["contract"] == "appgen.integration.entando.v1" and operation["repository"]["contract"] == "appgen.integration.invenio.v1"
+    else:
+        core_assets = {{"app/integrations.py", "app/templates/appgen_integrations.html"}}
+        operation = {{
+            "release": integrations.integration_release_gate(core_assets),
+            "workbench": integrations.integration_workbench(core_assets),
+        }}
+        ok = operation["release"]["ok"] and operation["workbench"]["ok"]
+    return {{
+        "format": "appgen.integration-module-operation.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "ok": ok,
+        "operation": operation,
+        "side_effects": (),
+    }}
+
+
+def release_context():
+    """Return release evidence used by this integration module."""
+    integrations = _integrations()
+    core_assets = {{"app/integrations.py", "app/templates/appgen_integrations.html"}}
+    return {{
+        "format": "appgen.integration-module-release-context.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "ok": integrations.integration_release_gate(core_assets)["ok"] and integrations.integration_workbench(core_assets)["ok"],
+        "release": integrations.integration_release_gate(core_assets),
+        "workbench": integrations.integration_workbench(core_assets),
+        "side_effects": (),
+    }}
+
+
+def smoke_test():
+    """Run side-effect-free checks for this generated integration module."""
+    contract = module_contract()
+    manifest = integration_manifest_contract()
+    operation = run_integration_operation()
+    release = release_context()
+    return {{
+        "format": "appgen.integration-module-smoke-test.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "ok": contract["ok"]
+        and manifest["ok"]
+        and operation["ok"]
+        and release["ok"]
+        and not manifest["side_effects"]
+        and not operation["side_effects"]
+        and not release["side_effects"],
+        "contract": contract,
+        "manifest": manifest,
+        "operation": operation,
+        "release": release,
+        "checks": (
+            "module_contract_resolves",
+            "integration_manifest_contract_ok",
+            "integration_operation_ok",
+            "release_context_ok",
+            "no_side_effects",
+        ),
+    }}
+'''
+
+
+def _integration_module_test_text(module_name: str) -> str:
+    surface, _operation = _integration_surface(module_name)
+    return f'''"""Generated tests for the {surface} integration module."""
+
+from __future__ import annotations
+
+import importlib.util
+from pathlib import Path
+
+
+MODULE = {module_name!r}
+SURFACE = {surface!r}
+
+
+def load_integration_module():
+    """Load the generated integration module without app installation."""
+    module_path = Path(__file__).resolve().parents[1] / "integration_modules" / f"{{MODULE}}.py"
+    spec = importlib.util.spec_from_file_location(f"generated_integration_module_{{MODULE}}", module_path)
+    module = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(module)
+    return module
+
+
+def test_integration_module_contract():
+    """Assert the generated integration module exposes its contract."""
+    module = load_integration_module()
+    contract = module.module_contract()
+    assert contract["module"] == MODULE
+    assert contract["surface"] == SURFACE
+    assert contract["ok"] is True
+    assert all(hasattr(module, name) for name in contract["expected_exports"])
+
+
+def test_integration_module_smoke():
+    """Assert the module's side-effect-free smoke test passes."""
+    module = load_integration_module()
+    result = module.smoke_test()
+    assert result["ok"] is True
+    assert result["module"] == MODULE
+    assert result["surface"] == SURFACE
+    assert result["checks"]
+
+
+def smoke_test():
+    """Run this generated test module in a side-effect-free way."""
+    test_integration_module_contract()
+    test_integration_module_smoke()
+    return {{
+        "format": "appgen.integration-module-generated-test-smoke.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "ok": True,
+        "tests": ("test_integration_module_contract", "test_integration_module_smoke"),
     }}
 '''
 
@@ -28504,8 +28795,10 @@ from datetime import datetime
 from datetime import timezone
 from hashlib import sha256
 import hmac
+import importlib.util
 import json
 import os
+from pathlib import Path
 
 from flask import jsonify
 from flask_appbuilder import BaseView
@@ -28610,6 +28903,73 @@ INTEGRATION_CONTRACTS = {
         "events": ("repository.deposit.create", "repository.record.publish", "repository.file.attach"),
     },
 }
+
+INTEGRATION_MODULES = (
+    "connector_catalog_module",
+    "webhook_delivery_module",
+    "commercial_channels_module",
+    "portal_repository_module",
+    "release_workbench_module",
+)
+
+
+def _load_generated_module(module_path, module_name):
+    """Load a generated integration helper module without installing the app."""
+    spec = importlib.util.spec_from_file_location(module_name, module_path)
+    module = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(module)
+    return module
+
+
+def integration_module_file_manifest():
+    """Return independently importable generated integration module files."""
+    root = Path(__file__).resolve().parent
+    modules = []
+    for module_name in INTEGRATION_MODULES:
+        module_path = root / "integration_modules" / f"{module_name}.py"
+        module = _load_generated_module(module_path, f"generated_integration_module_{module_name}")
+        contract = module.module_contract()
+        modules.append(
+            {
+                "module": module_name,
+                "surface": contract["surface"],
+                "path": f"app/integration_modules/{module_name}.py",
+                "exists": module_path.exists(),
+                "ok": contract["ok"] and module.smoke_test()["ok"],
+                "exports": contract["exports"],
+            }
+        )
+    return {
+        "format": "appgen.integration-module-file-manifest.v1",
+        "ok": len(modules) == len(INTEGRATION_MODULES) and all(item["ok"] and item["exists"] for item in modules),
+        "modules": tuple(modules),
+    }
+
+
+def integration_module_test_file_manifest():
+    """Return generated tests for the integration module files."""
+    root = Path(__file__).resolve().parent
+    tests = []
+    for module_name in INTEGRATION_MODULES:
+        test_path = root / "integration_module_tests" / f"test_{module_name}.py"
+        module = _load_generated_module(test_path, f"generated_integration_module_test_{module_name}")
+        result = module.smoke_test()
+        tests.append(
+            {
+                "module": f"test_{module_name}",
+                "surface": result["surface"],
+                "path": f"app/integration_module_tests/test_{module_name}.py",
+                "exists": test_path.exists(),
+                "ok": result["ok"],
+                "tests": result["tests"],
+            }
+        )
+    return {
+        "format": "appgen.integration-module-test-file-manifest.v1",
+        "ok": len(tests) == len(INTEGRATION_MODULES) and all(item["ok"] and item["exists"] for item in tests),
+        "tests": tuple(tests),
+    }
 
 
 def integration_config(name, environ=None):

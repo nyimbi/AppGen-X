@@ -8926,6 +8926,38 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert integration_workbench["portal_repository"]["invenio"]["contract"] == "appgen.integration.invenio.v1"
     assert integrations.integration_workbench({"app/integrations.py"})["ok"] is False
     assert integrations.integration_release_gate({"app/integrations.py"})["ok"] is False
+    integration_module_files = integrations.integration_module_file_manifest()
+    integration_module_tests = integrations.integration_module_test_file_manifest()
+    assert integration_module_files["ok"] is True
+    assert integration_module_tests["ok"] is True
+    assert {item["surface"] for item in integration_module_files["modules"]} == {
+        "connector_catalog",
+        "webhook_delivery",
+        "commercial_channels",
+        "portal_repository",
+        "release_workbench",
+    }
+    assert {item["surface"] for item in integration_module_tests["tests"]} == {
+        "connector_catalog",
+        "webhook_delivery",
+        "commercial_channels",
+        "portal_repository",
+        "release_workbench",
+    }
+    for item in integration_module_files["modules"]:
+        module_path = output_dir / item["path"].replace("app/", "")
+        py_compile.compile(str(module_path), doraise=True)
+        module = _load_module(module_path, f"generated_integration_module_{item['module']}")
+        assert module.module_contract()["ok"] is True
+        assert module.integration_manifest_contract()["ok"] is True
+        assert module.run_integration_operation()["ok"] is True
+        assert module.release_context()["ok"] is True
+        assert module.smoke_test()["ok"] is True
+    for item in integration_module_tests["tests"]:
+        test_path = output_dir / item["path"].replace("app/", "")
+        py_compile.compile(str(test_path), doraise=True)
+        module = _load_module(test_path, f"generated_integration_module_test_{item['module']}")
+        assert module.smoke_test()["ok"] is True
     productivity_providers = {item["provider"]: item for item in productivity.provider_catalog({})}
     assert set(productivity_providers) == {"microsoft365", "google_workspace"}
     assert productivity_providers["microsoft365"]["configured"] is False
