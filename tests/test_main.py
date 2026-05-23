@@ -1103,6 +1103,10 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "media_file_pipeline",
         "native_bridge_errors",
         "store_privacy_manifest",
+        "permission_state_machine",
+        "deep_link_routing",
+        "app_lifecycle_delivery",
+        "simulator_fixture_integrity",
     } == {check["id"] for check in mobile_workbench["checks"]}
     mobile_apis = set(mobile_workbench["contract"]["apis"])
     assert {
@@ -1142,6 +1146,10 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     assert all("validate_mime" in item["stages"] for item in mobile_workbench["media_file_pipeline"]["pipelines"])
     assert all("emit_error_event" in scenario["recovery"] for scenario in mobile_workbench["bridge_errors"]["scenarios"])
     assert all(item["third_party_sharing"] is False for item in mobile_workbench["store_privacy_manifest"]["entries"])
+    assert all("granted->revoked" in item["transitions"] for item in mobile_workbench["permission_state_machine"]["transitions"])
+    assert "authorize_route" in mobile_workbench["deep_link_routing"]["pipeline"]
+    assert any("replay_pending_events" in item["pipeline"] for item in mobile_workbench["app_lifecycle_delivery"]["deliveries"])
+    assert all(item["checksum"].startswith("sha256:") for item in mobile_workbench["simulator_fixture_integrity"]["fixtures"])
     visual_depth = cross_target_visual_depth_workbench()
     assert visual_depth["format"] == "appgen.cross-target-visual-depth-workbench.v1"
     assert visual_depth["ok"] is True
@@ -9503,6 +9511,10 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "media_file_pipeline",
         "native_bridge_errors",
         "store_privacy_manifest",
+        "permission_state_machine",
+        "deep_link_routing",
+        "app_lifecycle_delivery",
+        "simulator_fixture_integrity",
     } == {check["id"] for check in generated_mobile["checks"]}
     generated_mobile_apis = set(generated_mobile["contract"]["apis"])
     assert {
@@ -9548,6 +9560,10 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert all("copy_to_app_storage" in item["stages"] for item in generated_mobile["media_file_pipeline"]["pipelines"])
     assert all("record_diagnostic" in scenario["recovery"] for scenario in generated_mobile["bridge_errors"]["scenarios"])
     assert "sharing_reviewed" in generated_mobile["store_privacy_manifest"]["guards"]
+    assert "revocation_is_runtime_visible" in generated_mobile["permission_state_machine"]["guards"]
+    assert "fallback_if_blocked" in generated_mobile["deep_link_routing"]["pipeline"]
+    assert "pending_events_replayed_on_resume" in generated_mobile["app_lifecycle_delivery"]["guards"]
+    assert all("assert_events" in item["replay_order"] for item in generated_mobile["simulator_fixture_integrity"]["fixtures"])
     generated_visual_depth = form_designer.cross_target_visual_depth_workbench()
     assert generated_visual_depth["format"] == "appgen.generated-cross-target-visual-depth-workbench.v1"
     assert generated_visual_depth["ok"] is True

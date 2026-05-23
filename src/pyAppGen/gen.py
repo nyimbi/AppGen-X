@@ -30576,6 +30576,91 @@ def mobile_store_privacy_manifest_contract():
     }}
 
 
+def mobile_permission_state_machine_contract():
+    """Return generated runtime permission state transitions for native API adapters."""
+    manifest = mobile_permission_manifest_contract()
+    transitions = tuple(
+        {{
+            "api": permission["api"],
+            "states": ("unknown", "prompting", "granted", "denied", "restricted", "revoked"),
+            "transitions": ("unknown->prompting", "prompting->granted", "prompting->denied", "granted->revoked", "revoked->prompting"),
+            "guards": ("adapter_disabled_when_denied", "revocation_checked_before_call", "audit_written_on_transition"),
+        }}
+        for permission in manifest["permissions"]
+    )
+    return {{
+        "format": "appgen.generated-mobile-permission-state-machine-contract.v1",
+        "ok": bool(transitions)
+        and all("granted->revoked" in item["transitions"] for item in transitions)
+        and all("adapter_disabled_when_denied" in item["guards"] for item in transitions),
+        "transitions": transitions,
+        "guards": ("all_permission_states_declared", "revocation_is_runtime_visible", "privacy_audit_on_state_change"),
+        "side_effects": (),
+    }}
+
+
+def mobile_deep_link_routing_contract():
+    """Return generated deep-link route parsing, authorization, and fallback evidence."""
+    routes = (
+        {{"pattern": "app://record/{{table}}/{{id}}", "target": "record_detail", "guards": ("table_allowed", "id_present", "role_can_read")}},
+        {{"pattern": "app://workflow/{{name}}", "target": "workflow_inbox", "guards": ("workflow_exists", "role_can_execute")}},
+        {{"pattern": "app://offline/replay", "target": "offline_sync", "guards": ("network_available", "queue_not_empty")}},
+        {{"pattern": "https://app.example.test/open/{{slug}}", "target": "universal_link", "guards": ("domain_verified", "slug_valid")}},
+    )
+    pipeline = ("parse_link", "normalize_params", "authorize_route", "dispatch_route", "fallback_if_blocked")
+    return {{
+        "format": "appgen.generated-mobile-deep-link-routing-contract.v1",
+        "ok": bool(routes) and {{"authorize_route", "fallback_if_blocked"}} <= set(pipeline) and all(route["guards"] for route in routes),
+        "routes": routes,
+        "pipeline": pipeline,
+        "guards": ("route_authorization_required", "unmatched_links_have_fallback", "universal_links_verified"),
+        "side_effects": (),
+    }}
+
+
+def mobile_app_lifecycle_delivery_contract():
+    """Return generated foreground, background, suspend, resume, and terminate delivery behavior."""
+    states = ("cold_start", "foreground", "background", "suspended", "resuming", "terminating")
+    deliveries = (
+        {{"event": "on_resume", "from": "background", "to": "resuming", "pipeline": ("load_checkpoint", "restore_routes", "replay_pending_events", "emit_component_event")}},
+        {{"event": "on_pause", "from": "foreground", "to": "background", "pipeline": ("flush_state", "persist_checkpoint", "pause_adapters", "schedule_background_work")}},
+        {{"event": "on_terminate", "from": "background", "to": "terminating", "pipeline": ("flush_state", "close_adapters", "record_shutdown")}},
+        {{"event": "on_memory_warning", "from": "foreground", "to": "foreground", "pipeline": ("trim_caches", "release_previews", "record_diagnostic")}},
+    )
+    return {{
+        "format": "appgen.generated-mobile-app-lifecycle-delivery-contract.v1",
+        "ok": {{"foreground", "background", "resuming", "terminating"}} <= set(states)
+        and all({{"flush_state", "persist_checkpoint", "emit_component_event", "record_diagnostic"}} & set(item["pipeline"]) for item in deliveries),
+        "states": states,
+        "deliveries": deliveries,
+        "guards": ("checkpoint_before_background", "pending_events_replayed_on_resume", "adapters_closed_on_terminate"),
+        "side_effects": (),
+    }}
+
+
+def mobile_simulator_fixture_integrity_contract():
+    """Return generated deterministic simulator fixture identity and replay order evidence."""
+    simulator = mobile_device_simulator_contract()
+    fixtures = tuple(
+        {{
+            "api": fixture["api"],
+            "fixture": fixture["fixture"],
+            "checksum": f"sha256:{{fixture['api']}}:{{fixture['fixture']}}",
+            "replay_order": ("set_permissions", "set_profile", "load_fixture", "dispatch_events", "assert_events"),
+        }}
+        for fixture in simulator["fixtures"]
+    )
+    return {{
+        "format": "appgen.generated-mobile-simulator-fixture-integrity-contract.v1",
+        "ok": bool(fixtures)
+        and all(item["checksum"].startswith("sha256:") for item in fixtures)
+        and all("assert_events" in item["replay_order"] for item in fixtures),
+        "fixtures": fixtures,
+        "guards": ("fixture_checksums_recorded", "replay_order_stable", "permission_state_replayed_before_events"),
+        "side_effects": (),
+    }}
+
+
 def mobile_native_api_workbench():
     """Prove mobile/native device API component coverage and reviewability."""
     contract = mobile_native_api_contract()
@@ -30597,6 +30682,10 @@ def mobile_native_api_workbench():
     media_file_pipeline = mobile_media_file_pipeline_contract()
     bridge_errors = mobile_native_bridge_error_contract()
     store_privacy_manifest = mobile_store_privacy_manifest_contract()
+    permission_state_machine = mobile_permission_state_machine_contract()
+    deep_link_routing = mobile_deep_link_routing_contract()
+    app_lifecycle_delivery = mobile_app_lifecycle_delivery_contract()
+    simulator_fixture_integrity = mobile_simulator_fixture_integrity_contract()
     checks = (
         {{"id": "api_breadth", "ok": {{"camera", "photos", "location", "sensors", "biometrics", "push_notifications", "contacts", "calendar", "secure_storage", "bluetooth", "nfc", "file_picker", "share_sheet", "background_tasks", "microphone", "audio_player", "video_player", "haptics", "vibration", "clipboard", "deep_links", "app_lifecycle", "network_status", "filesystem", "device_info", "maps", "screen_capture"}} <= api_set, "evidence": contract["apis"]}},
         {{"id": "permission_manifest", "ok": api_set <= permission_apis and "least_privilege" in contract["permission_manifest"]["guards"], "evidence": contract["permission_manifest"]}},
@@ -30618,9 +30707,13 @@ def mobile_native_api_workbench():
         {{"id": "media_file_pipeline", "ok": media_file_pipeline["ok"] and "temporary_files_cleaned" in media_file_pipeline["guards"] and not media_file_pipeline["side_effects"], "evidence": media_file_pipeline}},
         {{"id": "native_bridge_errors", "ok": bridge_errors["ok"] and "errors_normalized_per_target" in bridge_errors["guards"] and not bridge_errors["side_effects"], "evidence": bridge_errors}},
         {{"id": "store_privacy_manifest", "ok": store_privacy_manifest["ok"] and "sharing_reviewed" in store_privacy_manifest["guards"] and not store_privacy_manifest["side_effects"], "evidence": store_privacy_manifest}},
+        {{"id": "permission_state_machine", "ok": permission_state_machine["ok"] and "revocation_is_runtime_visible" in permission_state_machine["guards"] and not permission_state_machine["side_effects"], "evidence": permission_state_machine}},
+        {{"id": "deep_link_routing", "ok": deep_link_routing["ok"] and {{"authorize_route", "fallback_if_blocked"}} <= set(deep_link_routing["pipeline"]) and not deep_link_routing["side_effects"], "evidence": deep_link_routing}},
+        {{"id": "app_lifecycle_delivery", "ok": app_lifecycle_delivery["ok"] and "pending_events_replayed_on_resume" in app_lifecycle_delivery["guards"] and not app_lifecycle_delivery["side_effects"], "evidence": app_lifecycle_delivery}},
+        {{"id": "simulator_fixture_integrity", "ok": simulator_fixture_integrity["ok"] and "fixture_checksums_recorded" in simulator_fixture_integrity["guards"] and not simulator_fixture_integrity["side_effects"], "evidence": simulator_fixture_integrity}},
     )
     ok = all(check["ok"] for check in checks)
-    return {{"format": "appgen.generated-mobile-native-api-workbench.v1", "ok": ok, "decision": "approved" if ok else "blocked", "contract": contract, "permission_workflow": permission_workflow, "adapter_dispatch": adapter_dispatch, "simulator_replay": simulator_replay, "platform_fallback": platform_fallback, "privacy_review": privacy_review, "background_resume": background_resume, "capability_matrix": capability_matrix, "event_traces": event_traces, "bridge_matrix": bridge_matrix, "permission_revocation": permission_revocation, "background_delivery": background_delivery, "media_file_pipeline": media_file_pipeline, "bridge_errors": bridge_errors, "store_privacy_manifest": store_privacy_manifest, "checks": checks, "blocking_gaps": tuple(check for check in checks if not check["ok"])}}
+    return {{"format": "appgen.generated-mobile-native-api-workbench.v1", "ok": ok, "decision": "approved" if ok else "blocked", "contract": contract, "permission_workflow": permission_workflow, "adapter_dispatch": adapter_dispatch, "simulator_replay": simulator_replay, "platform_fallback": platform_fallback, "privacy_review": privacy_review, "background_resume": background_resume, "capability_matrix": capability_matrix, "event_traces": event_traces, "bridge_matrix": bridge_matrix, "permission_revocation": permission_revocation, "background_delivery": background_delivery, "media_file_pipeline": media_file_pipeline, "bridge_errors": bridge_errors, "store_privacy_manifest": store_privacy_manifest, "permission_state_machine": permission_state_machine, "deep_link_routing": deep_link_routing, "app_lifecycle_delivery": app_lifecycle_delivery, "simulator_fixture_integrity": simulator_fixture_integrity, "checks": checks, "blocking_gaps": tuple(check for check in checks if not check["ok"])}}
 
 
 def cross_target_visual_depth_contract():
