@@ -958,6 +958,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "conflict_resolution_workflow",
         "offline_replay",
         "accessibility_routes",
+        "runtime_propagation_replay",
     } == {check["id"] for check in binding_workbench["checks"]}
     assert binding_workbench["graph_validation"]["ok"] is True
     assert binding_workbench["edit_transactions"]["validation"]["ok"] is True
@@ -988,6 +989,13 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     assert {"create_link", "delete_edge", "inspect_node", "preview_value"} <= {
         shortcut["command"] for shortcut in binding_workbench["accessibility"]["shortcuts"]
     }
+    assert {"dataset_to_field", "field_to_control", "expression_to_property", "control_to_field", "validator_failure"} <= {
+        item["op"] for item in binding_workbench["runtime_propagation_replay"]["trace"]
+    }
+    assert any(
+        "rollback_target_write" in item["pipeline"]
+        for item in binding_workbench["runtime_propagation_replay"]["trace"]
+    )
     data_workbench = rad_data_tooling_workbench()
     assert data_workbench["format"] == "appgen.rad-data-tooling-workbench.v1"
     assert data_workbench["ok"] is True
@@ -9396,6 +9404,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "conflict_resolution_workflow",
         "offline_replay",
         "accessibility_routes",
+        "runtime_propagation_replay",
     } <= {
         check["id"] for check in generated_bindings["checks"]
     }
@@ -9424,6 +9433,8 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert all("validate_graph" in resolution["workflow"] for resolution in generated_bindings["conflict_resolution"]["resolutions"])
     assert all(item["idempotency_key"] for item in generated_bindings["offline_replay"]["queue_items"])
     assert all(announcement["label"] for announcement in generated_bindings["accessibility"]["announcements"])
+    assert any("rollback_target_write" in item["pipeline"] for item in generated_bindings["runtime_propagation_replay"]["trace"])
+    assert generated_bindings["runtime_propagation_replay"]["final_state"]["errors"]
     generated_data_tooling = form_designer.rad_data_tooling_workbench()
     assert generated_data_tooling["format"] == "appgen.generated-rad-data-tooling-workbench.v1"
     assert generated_data_tooling["ok"] is True

@@ -29364,6 +29364,81 @@ def binding_accessibility_contract():
     }}
 
 
+def binding_runtime_propagation_replay_contract():
+    """Replay generated runtime binding propagation across dataset, controls, expressions, and rollback."""
+    graph = livebindings_graph_contract()
+    first_field = next(node for node in graph["nodes"] if node["kind"] == "field")
+    field = first_field["field"]
+    dataset_id = f"dataset:{{graph['table']}}"
+    field_id = f"field:{{field}}"
+    control_id = f"control:{{field}}"
+    expression_id = f"expression:{{field}}:display"
+    state = {{
+        dataset_id: {{field: "Ada"}},
+        field_id: {{"value": "Ada"}},
+        control_id: {{"value": "", "display": ""}},
+        expression_id: {{"value": ""}},
+        "errors": (),
+        "notifications": (),
+    }}
+    trace = []
+
+    def snapshot():
+        return {{
+            dataset_id: dict(state[dataset_id]),
+            field_id: dict(state[field_id]),
+            control_id: dict(state[control_id]),
+            expression_id: dict(state[expression_id]),
+            "errors": state["errors"],
+            "notifications": state["notifications"],
+        }}
+
+    for step in (
+        {{"op": "dataset_to_field", "value": state[dataset_id][field]}},
+        {{"op": "field_to_control"}},
+        {{"op": "expression_to_property"}},
+        {{"op": "control_to_field", "value": "Grace"}},
+        {{"op": "validator_failure", "value": ""}},
+    ):
+        before = snapshot()
+        if step["op"] == "dataset_to_field":
+            state[field_id]["value"] = step["value"]
+            pipeline = ("read_dataset", "publish_field_change", "queue_downstream_updates", "publish_notifications")
+        elif step["op"] == "field_to_control":
+            state[control_id]["value"] = state[field_id]["value"]
+            pipeline = ("read_field", "apply_converter", "write_control", "publish_notifications")
+        elif step["op"] == "expression_to_property":
+            state[expression_id]["value"] = state[field_id]["value"] or ""
+            state[control_id]["display"] = state[expression_id]["value"]
+            pipeline = ("evaluate_expression", "write_property", "publish_notifications")
+        elif step["op"] == "control_to_field":
+            state[control_id]["value"] = step["value"]
+            state[field_id]["value"] = step["value"]
+            state[dataset_id][field] = step["value"]
+            pipeline = ("read_control", "run_validators", "write_field", "write_dataset", "publish_notifications")
+        else:
+            previous = state[field_id]["value"]
+            state[control_id]["value"] = step["value"]
+            state["errors"] = ({{"field": field, "code": "required", "value": step["value"]}},)
+            state[control_id]["value"] = previous
+            pipeline = ("read_control", "run_validators", "rollback_target_write", "publish_error_surface", "record_diagnostic")
+        state["notifications"] = state["notifications"] + ({{"op": step["op"], "target": control_id}},)
+        trace.append({{"op": step["op"], "before": before, "after": snapshot(), "pipeline": pipeline}})
+    return {{
+        "format": "appgen.generated-binding-runtime-propagation-replay-contract.v1",
+        "ok": bool(trace)
+        and all("publish_notifications" in item["pipeline"] or "publish_error_surface" in item["pipeline"] for item in trace)
+        and any("rollback_target_write" in item["pipeline"] for item in trace)
+        and state[dataset_id][field] == "Grace"
+        and state[control_id]["value"] == "Grace",
+        "field": field,
+        "trace": tuple(trace),
+        "final_state": snapshot(),
+        "guards": ("dataset_field_control_propagation", "expression_property_updates", "validator_failures_roll_back", "notifications_batched"),
+        "side_effects": (),
+    }}
+
+
 def livebindings_converter_catalog():
     """Return generated converters available to the visual binding designer."""
     return (
@@ -29415,6 +29490,7 @@ def livebindings_workbench():
     conflict_resolution = binding_conflict_resolution_workflow()
     offline_replay = binding_offline_replay_contract()
     accessibility = binding_accessibility_contract()
+    runtime_propagation_replay = binding_runtime_propagation_replay_contract()
     checks = (
         {{"id": "graph_nodes", "ok": {{"dataset", "field", "control", "expression"}} <= {{node["kind"] for node in graph["nodes"]}}, "evidence": tuple((node["id"], node["kind"]) for node in graph["nodes"])}},
         {{"id": "graph_edges", "ok": {{"dataset_to_field", "field_to_control", "control_to_field", "expression_to_property"}} <= {{edge["kind"] for edge in graph["edges"]}}, "evidence": graph["edges"]}},
@@ -29448,9 +29524,10 @@ def livebindings_workbench():
         {{"id": "conflict_resolution_workflow", "ok": conflict_resolution["ok"] and "graph_revalidated_after_resolution" in conflict_resolution["guards"] and not conflict_resolution["side_effects"], "evidence": conflict_resolution}},
         {{"id": "offline_replay", "ok": offline_replay["ok"] and "idempotency_key_required" in offline_replay["guards"] and not offline_replay["side_effects"], "evidence": offline_replay}},
         {{"id": "accessibility_routes", "ok": accessibility["ok"] and "keyboard_authoring_complete" in accessibility["guards"] and not accessibility["side_effects"], "evidence": accessibility}},
+        {{"id": "runtime_propagation_replay", "ok": runtime_propagation_replay["ok"] and {{"dataset_field_control_propagation", "validator_failures_roll_back"}} <= set(runtime_propagation_replay["guards"]) and not runtime_propagation_replay["side_effects"], "evidence": runtime_propagation_replay}},
     )
     ok = all(check["ok"] for check in checks)
-    return {{"format": "appgen.generated-livebindings-workbench.v1", "ok": ok, "decision": "approved" if ok else "blocked", "contract": contract, "authoring": authoring, "conflicts": conflicts, "graph_validation": graph_validation, "edit_transactions": edit_transactions, "previews": previews, "runtime_wiring": runtime_wiring, "preview_runtime_parity": preview_runtime_parity, "history": history, "graph_editing": graph_editing, "lookup_bindings": lookup_bindings, "pipelines": pipelines, "hit_testing": hit_testing, "runtime_gates": runtime_gates, "master_detail": master_detail, "scope_contexts": scope_contexts, "bulk_edits": bulk_edits, "diagnostics": diagnostics, "round_trip": round_trip, "update_scheduler": update_scheduler, "dependency_execution": dependency_execution, "expression_sandbox": expression_sandbox, "runtime_failure_recovery": runtime_failure_recovery, "cursor_sync": cursor_sync, "conflict_resolution": conflict_resolution, "offline_replay": offline_replay, "accessibility": accessibility, "checks": checks, "blocking_gaps": tuple(check for check in checks if not check["ok"])}}
+    return {{"format": "appgen.generated-livebindings-workbench.v1", "ok": ok, "decision": "approved" if ok else "blocked", "contract": contract, "authoring": authoring, "conflicts": conflicts, "graph_validation": graph_validation, "edit_transactions": edit_transactions, "previews": previews, "runtime_wiring": runtime_wiring, "preview_runtime_parity": preview_runtime_parity, "history": history, "graph_editing": graph_editing, "lookup_bindings": lookup_bindings, "pipelines": pipelines, "hit_testing": hit_testing, "runtime_gates": runtime_gates, "master_detail": master_detail, "scope_contexts": scope_contexts, "bulk_edits": bulk_edits, "diagnostics": diagnostics, "round_trip": round_trip, "update_scheduler": update_scheduler, "dependency_execution": dependency_execution, "expression_sandbox": expression_sandbox, "runtime_failure_recovery": runtime_failure_recovery, "cursor_sync": cursor_sync, "conflict_resolution": conflict_resolution, "offline_replay": offline_replay, "accessibility": accessibility, "runtime_propagation_replay": runtime_propagation_replay, "checks": checks, "blocking_gaps": tuple(check for check in checks if not check["ok"])}}
 
 
 def rad_data_tooling_contract():
