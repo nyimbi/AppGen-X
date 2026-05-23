@@ -5,6 +5,27 @@ application. That creates an exponential support matrix and makes PBC packages
 hard to reason about. The platform therefore supports one default event
 processor profile and two narrow exception profiles.
 
+## Short Answer For Developers
+
+Use `faust_streaming`.
+
+Do not ask the application user, coding agent, or PBC author to choose a stream
+engine for ordinary generated applications. The generated path is:
+
+1. Write domain data through the PBC's normal repository/service layer.
+2. Record integration events in the generated transactional outbox table.
+3. Let the generated event adapter publish and consume events through the
+   platform event backbone.
+4. Put handlers in the generated PBC `events.py` or equivalent generated
+   service file.
+5. Omit `stream_processor` from the manifest unless the workload is a documented
+   exception.
+
+The processor names are platform profile IDs, not an invitation to hand-code
+library-specific integrations in every PBC. Generated code should depend on the
+AppGen-X event contract first; profile-specific adapters sit behind that
+contract.
+
 ## Platform Decision
 
 Use `faust_streaming` for ordinary PBC event handling.
@@ -22,6 +43,10 @@ This is the default for:
 
 Generated manifests should omit `stream_processor` unless they need an
 exception. The validator normalizes missing values to `faust_streaming`.
+
+The platform UI should show the selected profile as a read-only generated
+decision for normal PBCs. It should expose an exception workflow only when the
+developer provides the evidence listed below.
 
 ## Allowed Profiles
 
@@ -50,6 +75,29 @@ Use this decision tree:
    processing, or a multi-stage stateful dataflow graph? Use `bytewax`.
 4. If none of those exception cases are clearly true, use `faust_streaming`.
 
+For generated ERP, CRM, HR, inventory, finance, workflow, chatbot, and agentic
+application logic, the answer is almost always `faust_streaming`.
+
+## Generated Implementation Recipe
+
+For a normal PBC, generate this structure:
+
+- `models.py`: owned tables plus an outbox table or generated outbox mapping.
+- `services.py`: command handlers that mutate owned state and enqueue events.
+- `events.py`: typed event handlers, retry policy names, and idempotency keys.
+- `api.py`: synchronous command/query routes.
+- `pbc_runtime.py`: manifest, stream profile, topic names, and release-audit
+  evidence.
+
+Handlers should be deterministic, idempotent, and scoped to the owning PBC's
+datastore. Cross-PBC changes happen by emitting events or calling declared APIs;
+handlers must not reach into another PBC's tables.
+
+For local development and generated smoke tests, use the platform event
+backbone abstraction and the generated outbox/inbox adapters. PBC packages
+should not hardcode a broker, topic client, or state-store implementation
+outside the generated adapter layer.
+
 ## Exception Evidence
 
 Any PBC using `quix_streams` or `bytewax` must document:
@@ -62,6 +110,9 @@ Any PBC using `quix_streams` or `bytewax` must document:
 This evidence belongs in the PBC package docs and can be summarized in the
 PBC manifest comments or package README.
 
+If the evidence is absent, the PBC must use `faust_streaming` and the release
+audit should fail any attempted exception.
+
 ## What Is Prohibited
 
 - Per-PBC custom stream engines.
@@ -71,6 +122,10 @@ PBC manifest comments or package README.
   preferred by a developer.
 - Adding a fourth profile without updating `pbc.py`, the PBC specification,
   generated docs, tests, and release audits.
+- Exposing a free-form stream-engine selector in the IDE or natural-language
+  generator.
+- Importing profile-specific stream libraries directly in generated business
+  logic.
 
 ## Why This Is The Default
 

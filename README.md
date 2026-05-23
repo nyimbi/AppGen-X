@@ -155,8 +155,10 @@ appgen --pbc-dsl application_composition_platform > acp.appgen
 ```
 
 Event processing is intentionally opinionated: generated PBCs use
-`faust_streaming` by default, with `quix_streams` and `bytewax` reserved for
-documented exception workloads. See the
+`faust_streaming` by default. Developers should omit `stream_processor` in
+ordinary manifests and let the platform normalize the profile, generate the
+outbox/inbox contracts, and wire handlers through the generated event adapter.
+`quix_streams` and `bytewax` are documented exception profiles only. See the
 [Opinionated Event Processing Guidance](docs/kafka-alternatives.md) before
 adding a stream-heavy PBC.
 

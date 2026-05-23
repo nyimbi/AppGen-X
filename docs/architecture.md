@@ -367,9 +367,12 @@ The composition path is:
    datastore backend per PBC.
 3. Resolve internal event dependencies and record external event obligations.
 4. Select a Python-native stream processor profile for event-heavy PBCs.
-   `faust_streaming` is the default for service/workflow meshes. Use
-   `quix_streams` only for high-throughput event/time-series processing, and
-   `bytewax` only for complex parallel dataflow transformations.
+   `faust_streaming` is the default for service/workflow meshes, and normal
+   generated manifests omit the field so validation can normalize the platform
+   decision. Use `quix_streams` only for high-throughput event/time-series
+   processing, and `bytewax` only for complex parallel dataflow transformations.
+   Business logic depends on generated outbox/inbox and event-handler
+   contracts; profile-specific adapters stay behind the platform event layer.
    `acp_stream_processing_policy()` is the canonical policy surface and the
    release audit includes an `opinionated_stream_processing_policy` gate so
    generated apps do not drift into an uncontrolled processor matrix.

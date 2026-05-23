@@ -15,9 +15,12 @@ stacks, then generate a working application shell from the composition.
   SQLite, DuckDB, ClickHouse, MongoDB, or OpenSearch.
 - Each PBC declares command APIs and emitted/consumed events.
 - Event-heavy PBCs declare one Python-native stream processor profile. The
-  default is `faust_streaming`. Use `quix_streams` only for high-throughput
-  event/time-series workloads, and use `bytewax` only for complex parallel
-  dataflow transformations. The canonical policy is exposed by
+  default is `faust_streaming`, and normal manifests should omit the field so
+  validation can normalize the platform choice. Use `quix_streams` only for
+  high-throughput event/time-series workloads, and use `bytewax` only for
+  complex parallel dataflow transformations. Generated business logic should
+  use the platform outbox/inbox and event-handler contracts, not profile-specific
+  client code. The canonical policy is exposed by
   `acp_stream_processing_policy()` and documented in
   [Opinionated Event Processing Guidance](kafka-alternatives.md).
 - Composition is event-first: dependencies are explicit event contracts, with

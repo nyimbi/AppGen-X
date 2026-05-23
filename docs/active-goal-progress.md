@@ -50,6 +50,7 @@ Build a complete AppGen IDE and generation platform with:
 | 2026-05-23 | `7a54620` | Added PBC package index discovery for reusable package catalogs. | Py compile; focused PBC test; aggregate package-goal test; staged hygiene scans. |
 | 2026-05-23 | `d23e61d` | Wired the Studio browser smoke harness into CI and the package Studio release audit. | Py compile; focused Studio test; aggregate package-goal test; frontend build; local browser smoke blocked by sandboxed Chrome crash handler; staged hygiene scans. |
 | 2026-05-23 | `c7269ce` | Added prepared-host binary adapter transcript audits for native package execution. | Py compile; focused target test; aggregate package-goal test; staged hygiene scans. |
+| 2026-05-23 | `pending` | Sharpened developer guidance for the opinionated PBC event-processing choice. | Documentation diff check and hygiene scans passed. |
 
 ## Current Working Slice
 
@@ -60,6 +61,9 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
 - CI or prepared-host execution of mobile packaging adapters.
 - Runtime smoke checks and binary adapter transcript audits cover produced package artifacts when available.
 - PBC package loading is implemented for local source directories, importable modules, and package index files.
+- PBC event-processing guidance now tells developers to use the default
+  generated event adapter path and reserve exception profiles for documented
+  high-volume or complex dataflow workloads.
 
 ## Open Completion Areas
 

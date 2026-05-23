@@ -91,8 +91,11 @@ Optional fields include `template`, `owner`, `version`, `ui_fragments`,
 `tests`, and `docs`.
 
 `stream_processor` is intentionally opinionated to prevent a combinatorial
-backend matrix. Use `faust_streaming` by default. Only choose another processor
-when the workload clearly matches an exception rule.
+backend matrix. Use `faust_streaming` by default and omit the field for ordinary
+PBCs. The validator normalizes the missing field to the default, and generated
+code should route through AppGen-X outbox/inbox adapters instead of importing a
+stream library directly in business logic. Only choose another processor when
+the workload clearly matches an exception rule.
 
 Allowed values:
 
@@ -113,6 +116,11 @@ Exception profiles must include written evidence in the PBC package docs:
 `operational_owner`. The complete platform policy is documented in
 [Opinionated Event Processing Guidance](kafka-alternatives.md) and exposed by
 `acp_stream_processing_policy()`.
+
+The IDE and natural-language generator should not expose a free-form
+stream-engine selector. They should show the default as a generated decision and
+open an exception workflow only when the PBC author supplies the required
+evidence.
 
 ## Validation
 
