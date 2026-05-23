@@ -28,20 +28,21 @@ Build a complete AppGen IDE and generation platform with:
 | 2026-05-23 | `89641d5` | Added design-time package manager and package audit. | Frontend production build, dev shell probe. |
 | 2026-05-23 | `3f7997c` | Standard action registry and guarded handler invocation. | Py compile, focused tests, and full Python suite passed. |
 | 2026-05-23 | `75f2049` | Added native device API catalog, workbench, palette entries, icons, and audit coverage. | Frontend production build, dev shell probe, staged hygiene scans. |
+| 2026-05-23 | `14489d2` | Added data-service catalog, workbench, palette entries, and audit coverage. | Frontend production build, dev shell probe, staged hygiene scans. |
 
 ## Current Working Slice
 
-Deepen data access and service-publishing tooling in the IDE by adding:
+Expand runtime/compiler proof from metadata contracts toward executable
+integration by adding:
 
-- Data source and query design workbench.
-- Service endpoint publishing surface.
-- Embedded database workflow status.
-- Failover, retry, and replay visibility.
+- Generated runtime contract tests for form/component metadata.
+- DSL-to-runtime smoke fixtures for representative applications.
+- Compiler/runtime capability matrix checks.
+- Packaging proof hooks for web, mobile, and desktop outputs.
 
 ## Open Completion Areas
 
 - Broaden frontend IDE interaction tests beyond build-level verification.
-- Deepen data access and service-publishing tooling in the IDE.
 - Expand runtime/compiler proof from metadata contracts toward executable
   integration where available.
 - Continue package lifecycle depth beyond catalog and UI into install/update
