@@ -14135,6 +14135,7 @@ def form_designer_generation_smoke_audit(source: str = FORM_DESIGNER_SAMPLE_DSL)
     required_artifacts = (
         "app/form_designer.py",
         "app/visual_runtime_assets.py",
+        "app/data_tooling_runtime.py",
         "app/templates/appgen_form_designer.html",
         "app/models.py",
         "app/views.py",
@@ -14147,6 +14148,7 @@ def form_designer_generation_smoke_audit(source: str = FORM_DESIGNER_SAMPLE_DSL)
     compile_artifacts = (
         "app/form_designer.py",
         "app/visual_runtime_assets.py",
+        "app/data_tooling_runtime.py",
         "app/models.py",
         "app/views.py",
         "app/dsl_reference.py",

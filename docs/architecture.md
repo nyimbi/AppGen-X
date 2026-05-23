@@ -204,6 +204,9 @@ Visual design is split into two related capabilities:
 - `visual_runtime_assets.py` is generated beside the form designer so style
   bundles, animation timelines, effect fallback bundles, scene manifests, and
   visual asset manifests have a dedicated runtime validation surface.
+- `data_tooling_runtime.py` is generated beside the form designer so connection
+  probes, schema and lookup metadata, service publish plans, and failover replay
+  contracts have a dedicated runtime validation surface.
 - `component_analog_workbench()` and `component_analog_group_audit()` sit above
   the raw palette and prove requested native-style analog coverage across
   controls, layouts, data display, graphics, animation, theming, gestures,

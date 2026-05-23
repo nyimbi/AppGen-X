@@ -2419,6 +2419,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     assert {
         "app/form_designer.py",
         "app/visual_runtime_assets.py",
+        "app/data_tooling_runtime.py",
         "app/templates/appgen_form_designer.html",
         "app/models.py",
     } <= set(smoke["required_artifacts"])
@@ -2434,7 +2435,12 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     assert {
         item["path"] for item in component_package_test_file_manifest()
     } <= set(smoke["required_artifacts"])
-    assert {"app/form_designer.py", "app/visual_runtime_assets.py", "app/models.py"} <= set(smoke["compiled_artifacts"])
+    assert {
+        "app/form_designer.py",
+        "app/visual_runtime_assets.py",
+        "app/data_tooling_runtime.py",
+        "app/models.py",
+    } <= set(smoke["compiled_artifacts"])
     assert {
         item["path"] for item in component_file_manifest()
     } <= set(smoke["compiled_artifacts"])
@@ -10378,6 +10384,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     generated_form_designer_paths = {
         "app/form_designer.py",
         "app/visual_runtime_assets.py",
+        "app/data_tooling_runtime.py",
         "app/templates/appgen_form_designer.html",
     }
     generated_form_designer_paths.update(
@@ -10963,6 +10970,19 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert "failed_route_quarantined_before_retry" in generated_failover_replay["guards"]
     assert generated_data_tooling["failover_transaction_replay"]["ok"] is True
     assert generated_data_tooling["failover_transaction_replay"]["final_state"]["manual_review"] is True
+    data_runtime_file = output_dir / "data_tooling_runtime.py"
+    assert data_runtime_file.exists()
+    py_compile.compile(str(data_runtime_file), doraise=True)
+    data_runtime = _load_module(data_runtime_file, "generated_data_tooling_runtime")
+    data_manifest = data_runtime.data_tooling_runtime_manifest()
+    assert data_manifest["format"] == "appgen.generated-data-tooling-runtime-manifest.v1"
+    assert data_manifest["ok"] is True
+    assert data_runtime.connection_runtime_manifest()["ok"] is True
+    assert data_runtime.dataset_runtime_manifest()["ok"] is True
+    assert data_runtime.service_runtime_manifest()["ok"] is True
+    assert data_runtime.transaction_runtime_manifest()["ok"] is True
+    assert data_runtime.validate_data_tooling_runtime()["ok"] is True
+    assert data_runtime.smoke_test()["ok"] is True
     generated_mobile = form_designer.mobile_native_api_workbench()
     assert generated_mobile["format"] == "appgen.generated-mobile-native-api-workbench.v1"
     assert generated_mobile["ok"] is True

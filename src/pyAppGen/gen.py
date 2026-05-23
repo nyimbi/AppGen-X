@@ -1743,6 +1743,7 @@ def write_form_designer_file(output_dir, schema: AppSchema):
     output_dir.mkdir(parents=True, exist_ok=True)
     (output_dir / "form_designer.py").write_text(_form_designer_text(schema))
     (output_dir / "visual_runtime_assets.py").write_text(_visual_runtime_assets_text())
+    (output_dir / "data_tooling_runtime.py").write_text(_data_tooling_runtime_text())
     write_component_contract_files(output_dir)
 
 
@@ -2489,6 +2490,171 @@ def smoke_test():
     validation = validate_runtime_assets()
     return {
         "format": "appgen.generated-visual-runtime-assets-smoke.v1",
+        "ok": validation["ok"],
+        "validation": validation,
+        "checks": tuple(item["id"] for item in validation["checks"]),
+    }
+'''
+
+
+def _data_tooling_runtime_text() -> str:
+    return '''"""Generated native data tooling runtime manifest for connection, dataset, and service workflows."""
+
+from __future__ import annotations
+
+import importlib.util
+from pathlib import Path
+
+try:
+    from app import form_designer
+except ImportError:  # pragma: no cover - direct module smoke loading
+    spec = importlib.util.spec_from_file_location("generated_data_tooling_form_designer", Path(__file__).resolve().parent / "form_designer.py")
+    form_designer = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(form_designer)
+
+
+def connection_runtime_manifest():
+    """Return generated connection probe, failover, and pooling runtime metadata."""
+    tooling = form_designer.rad_data_tooling_workbench()
+    return {
+        "format": "appgen.generated-data-connection-runtime-manifest.v1",
+        "ok": tooling["connection_test"]["ok"]
+        and tooling["connection_failover"]["ok"]
+        and tooling["connection_pooling"]["ok"],
+        "connection_test": tooling["connection_test"],
+        "failover": tooling["connection_failover"],
+        "pooling": tooling["connection_pooling"],
+        "guards": (
+            "connection_probe_rolls_back",
+            "failed_route_quarantined_before_retry",
+            "reset_session_before_reuse",
+        ),
+    }
+
+
+def dataset_runtime_manifest():
+    """Return generated dataset, lookup, schema, and offline runtime metadata."""
+    tooling = form_designer.rad_data_tooling_workbench()
+    return {
+        "format": "appgen.generated-dataset-runtime-manifest.v1",
+        "ok": tooling["dataset_fields"]["ok"]
+        and tooling["dataset_designer"]["ok"]
+        and tooling["lookup_editor_pipeline"]["ok"]
+        and tooling["relationship_lookup_lifecycle"]["ok"]
+        and tooling["offline_queue_integrity"]["ok"],
+        "fields": tooling["dataset_fields"]["fields"],
+        "designer": tooling["dataset_designer"],
+        "lookups": tooling["lookup_editor_pipeline"],
+        "relationship_lifecycle": tooling["relationship_lookup_lifecycle"],
+        "offline_queue": tooling["offline_queue_integrity"],
+        "guards": (
+            "foreign_key_fields_get_lookup_editors",
+            "lookup_preview_before_publish",
+            "offline_queue_replay_is_idempotent",
+        ),
+    }
+
+
+def service_runtime_manifest():
+    """Return generated service publishing, security, telemetry, and contract-test metadata."""
+    tooling = form_designer.rad_data_tooling_workbench()
+    return {
+        "format": "appgen.generated-data-service-runtime-manifest.v1",
+        "ok": tooling["resource_publish"]["ok"]
+        and tooling["service_tests"]["ok"]
+        and tooling["service_security"]["ok"]
+        and tooling["service_telemetry"]["ok"],
+        "resource_publish": tooling["resource_publish"],
+        "service_tests": tooling["service_tests"],
+        "security": tooling["service_security"],
+        "telemetry": tooling["service_telemetry"],
+        "guards": (
+            "contract_tests_before_publish",
+            "security_filters_before_exposure",
+            "latency_budget_recorded",
+        ),
+    }
+
+
+def transaction_runtime_manifest():
+    """Return generated publish, failover, and no-write replay metadata."""
+    tooling = form_designer.rad_data_tooling_workbench()
+    return {
+        "format": "appgen.generated-data-transaction-runtime-manifest.v1",
+        "ok": tooling["runtime_replay"]["ok"]
+        and tooling["design_runtime_replay"]["ok"]
+        and tooling["publish_transaction_replay"]["ok"]
+        and tooling["failover_transaction_replay"]["ok"],
+        "runtime_replay": tooling["runtime_replay"],
+        "design_runtime_replay": tooling["design_runtime_replay"],
+        "publish_replay": tooling["publish_transaction_replay"],
+        "failover_replay": tooling["failover_transaction_replay"],
+        "guards": (
+            "runtime_operations_are_monitored",
+            "service_contract_tests_before_resource_publish",
+            "runtime_smoke_proves_no_persisted_writes",
+            "offline_replay_pauses_for_manual_review",
+        ),
+    }
+
+
+def data_tooling_runtime_manifest():
+    """Return the complete generated data tooling runtime manifest."""
+    connection = connection_runtime_manifest()
+    dataset = dataset_runtime_manifest()
+    service = service_runtime_manifest()
+    transactions = transaction_runtime_manifest()
+    tooling = form_designer.rad_data_tooling_workbench()
+    return {
+        "format": "appgen.generated-data-tooling-runtime-manifest.v1",
+        "ok": tooling["ok"]
+        and connection["ok"]
+        and dataset["ok"]
+        and service["ok"]
+        and transactions["ok"],
+        "connection": connection,
+        "dataset": dataset,
+        "service": service,
+        "transactions": transactions,
+        "tooling": tooling,
+        "guards": (
+            "connection_runtime_declared",
+            "dataset_lookup_runtime_declared",
+            "service_contract_runtime_declared",
+            "transaction_replay_runtime_declared",
+        ),
+    }
+
+
+def validate_data_tooling_runtime():
+    """Validate generated data tooling runtime assets before release."""
+    manifest = data_tooling_runtime_manifest()
+    checks = (
+        {"id": "connections", "ok": manifest["connection"]["ok"]},
+        {"id": "datasets_and_lookups", "ok": manifest["dataset"]["ok"]},
+        {"id": "services", "ok": manifest["service"]["ok"]},
+        {"id": "transaction_replays", "ok": manifest["transactions"]["ok"]},
+        {
+            "id": "no_persisted_writes",
+            "ok": manifest["transactions"]["failover_replay"]["final_state"]["persisted_writes"] == 0
+            and manifest["transactions"]["runtime_replay"]["final_state"]["persisted_writes"] == 0,
+        },
+    )
+    return {
+        "format": "appgen.generated-data-tooling-runtime-validation.v1",
+        "ok": manifest["ok"] and all(item["ok"] for item in checks),
+        "checks": checks,
+        "manifest": manifest,
+        "blocking_gaps": tuple(item for item in checks if not item["ok"]),
+    }
+
+
+def smoke_test():
+    """Run side-effect-free data tooling runtime checks."""
+    validation = validate_data_tooling_runtime()
+    return {
+        "format": "appgen.generated-data-tooling-runtime-smoke.v1",
         "ok": validation["ok"],
         "validation": validation,
         "checks": tuple(item["id"] for item in validation["checks"]),
