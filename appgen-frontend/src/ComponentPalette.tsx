@@ -37,6 +37,7 @@ export function ComponentPalette({
       paletteComponents.filter((component) => component.category === category).length,
     ]),
   ) as Record<ComponentCategory, number>
+  const categoryClassName = (category: ComponentCategory) => `category-${category.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`
 
   return (
     <aside className="panel component-palette" aria-label="Component palette">
@@ -90,7 +91,7 @@ export function ComponentPalette({
             {group.components.map((component) => (
               <button
                 aria-label={`${component.name}: ${component.description}`}
-                className="component-tile"
+                className={`component-tile ${categoryClassName(component.category)}-tile`}
                 data-component={component.name}
                 data-component-icon={component.icon}
                 draggable
@@ -98,12 +99,19 @@ export function ComponentPalette({
                 title={component.description}
                 type="button"
               >
-                <span className={`component-icon category-${component.category.toLowerCase()}`}>
+                <span className={`component-icon ${categoryClassName(component.category)}`}>
                   <Icon name={component.icon} />
                 </span>
                 <span className="component-copy">
-                  <span className="component-name">{component.name}</span>
+                  <span className="component-name-row">
+                    <span className="component-name">{component.name}</span>
+                    <Icon name="drag" className="component-drag-icon" />
+                  </span>
                   <span className="component-description">{component.description}</span>
+                  <span className="component-meta">
+                    <Icon name={categoryIcons[component.category]} />
+                    <span>{component.category}</span>
+                  </span>
                 </span>
                 <span className="component-size">{component.size}</span>
               </button>

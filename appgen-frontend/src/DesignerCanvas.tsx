@@ -1,16 +1,16 @@
 import { Icon } from './Icon'
 
 const placedComponents = [
-  { name: 'Main Menu', icon: 'menu' as const, x: 4, y: 4, w: 92 },
-  { name: 'Customer Name', icon: 'input' as const, x: 7, y: 16, w: 36 },
-  { name: 'Account Lookup', icon: 'lookup' as const, x: 48, y: 16, w: 26 },
-  { name: 'Invoice Date', icon: 'calendar' as const, x: 77, y: 16, w: 19 },
-  { name: 'Line Items', icon: 'grid' as const, x: 7, y: 35, w: 67 },
-  { name: 'Popup Actions', icon: 'popup' as const, x: 78, y: 35, w: 18 },
-  { name: 'Approval Agent', icon: 'agent' as const, x: 78, y: 49, w: 18 },
-  { name: 'Totals Chart', icon: 'chart' as const, x: 7, y: 73, w: 30 },
-  { name: 'Receipt Camera', icon: 'camera' as const, x: 41, y: 73, w: 24 },
-  { name: 'Mobile Target', icon: 'mobile' as const, x: 69, y: 73, w: 27 },
+  { name: 'Main Menu', icon: 'menu' as const, x: 4, y: 4, w: 92, tone: 'navigation' },
+  { name: 'Customer Name', icon: 'input' as const, x: 7, y: 16, w: 36, tone: 'inputs' },
+  { name: 'Account Lookup', icon: 'lookup' as const, x: 48, y: 16, w: 26, tone: 'choice' },
+  { name: 'Invoice Date', icon: 'calendar' as const, x: 77, y: 16, w: 19, tone: 'inputs' },
+  { name: 'Line Items', icon: 'grid' as const, x: 7, y: 35, w: 67, tone: 'data' },
+  { name: 'Popup Actions', icon: 'popup' as const, x: 78, y: 35, w: 18, tone: 'navigation' },
+  { name: 'Approval Agent', icon: 'agent' as const, x: 78, y: 49, w: 18, tone: 'automation' },
+  { name: 'Totals Chart', icon: 'chart' as const, x: 7, y: 73, w: 30, tone: 'data' },
+  { name: 'Receipt Camera', icon: 'camera' as const, x: 41, y: 73, w: 24, tone: 'media' },
+  { name: 'Mobile Target', icon: 'mobile' as const, x: 69, y: 73, w: 27, tone: 'targets' },
 ]
 
 const timelineTracks = [
@@ -76,7 +76,7 @@ export function DesignerCanvas() {
           </div>
           {placedComponents.map((component) => (
             <button
-              className="placed-component"
+              className={`placed-component placed-${component.tone}`}
               key={component.name}
               style={{ left: `${component.x}%`, top: `${component.y}%`, width: `${component.w}%` }}
               type="button"

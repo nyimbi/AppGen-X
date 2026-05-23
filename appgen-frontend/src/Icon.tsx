@@ -22,6 +22,7 @@ export type IconName =
   | 'data'
   | 'database'
   | 'desktop'
+  | 'drag'
   | 'ellipse'
   | 'form'
   | 'flow'
@@ -210,6 +211,13 @@ const paths: Record<IconName, JSX.Element> = {
     <>
       <rect x="4" y="5" width="16" height="12" rx="2" />
       <path d="M9 21h6M12 17v4" />
+    </>
+  ),
+  drag: (
+    <>
+      <path d="M8 6h.01M12 6h.01M16 6h.01" />
+      <path d="M8 12h.01M12 12h.01M16 12h.01" />
+      <path d="M8 18h.01M12 18h.01M16 18h.01" />
     </>
   ),
   ellipse: (
