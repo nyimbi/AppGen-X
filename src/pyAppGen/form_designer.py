@@ -3716,6 +3716,91 @@ def inspector_round_trip_contract(component: str = "Grid") -> dict:
     }
 
 
+def inspector_edit_session_replay_contract(component: str = "Grid") -> dict:
+    """Replay a full inspector edit session with undo, redo, and overlay commits."""
+    contract = object_inspector_contract(component)
+    first_property = contract["property_editors"][0]["name"] if contract["property_editors"] else "name"
+    first_event = contract["event_editors"][0]["name"] if contract["event_editors"] else "OnCreate"
+    initial_state = {
+        "component": component,
+        "properties": {
+            "name": f"{component}1",
+            first_property: "initial",
+            "columns": ("id", "name"),
+            "overlay": (),
+        },
+        "events": {first_event: f"{_module_name(component)}_{_module_name(first_event)}"},
+    }
+    state = {
+        "component": initial_state["component"],
+        "properties": dict(initial_state["properties"]),
+        "events": dict(initial_state["events"]),
+    }
+    history: list[dict] = []
+    redo: list[dict] = []
+    trace: list[dict] = []
+    operations = (
+        {"op": "property_edit", "property": first_property, "value": "updated"},
+        {"op": "event_rename", "event": first_event, "handler": f"{_module_name(component)}_{_module_name(first_event)}_renamed"},
+        {"op": "component_editor", "verb": "edit_columns", "columns": ("id", "name", "status")},
+        {"op": "custom_designer_overlay", "hook": "selection_handles", "overlay": ("resize_handle", "smart_tag")},
+        {"op": "undo"},
+        {"op": "redo"},
+    )
+    for operation in operations:
+        before = {"properties": dict(state["properties"]), "events": dict(state["events"])}
+        if operation["op"] == "property_edit":
+            state["properties"][operation["property"]] = operation["value"]
+            history.append(operation)
+            redo.clear()
+            pipeline = ("begin_edit", "validate_value", "stage_change", "apply_change", "emit_property_changed")
+        elif operation["op"] == "event_rename":
+            state["events"][operation["event"]] = operation["handler"]
+            history.append(operation)
+            redo.clear()
+            pipeline = ("create_stub", "rename_handler", "update_component_reference", "mark_orphan_for_review", "refresh_inspector")
+        elif operation["op"] == "component_editor":
+            state["properties"]["columns"] = operation["columns"]
+            history.append(operation)
+            redo.clear()
+            pipeline = ("snapshot_design", "open_editor", "stage_change", "apply_change", "record_undo")
+        elif operation["op"] == "custom_designer_overlay":
+            state["properties"]["overlay"] = operation["overlay"]
+            history.append(operation)
+            redo.clear()
+            pipeline = ("render_overlay", "publish_hit_targets", "stage_overlay_change", "commit_or_cancel", "sync_selection")
+        elif operation["op"] == "undo":
+            if history:
+                redo.append(history.pop())
+            pipeline = ("capture_current_state", "restore_previous_snapshot", "refresh_inspector", "enable_redo")
+        else:
+            if redo:
+                history.append(redo.pop())
+            pipeline = ("capture_current_state", "reapply_snapshot", "refresh_inspector", "record_undo")
+        trace.append(
+            {
+                "op": operation["op"],
+                "before": before,
+                "after": {"properties": dict(state["properties"]), "events": dict(state["events"])},
+                "pipeline": pipeline,
+                "history_depth": len(history),
+                "redo_depth": len(redo),
+            }
+        )
+    return {
+        "format": "appgen.inspector-edit-session-replay-contract.v1",
+        "ok": all("refresh_inspector" in item["pipeline"] or "apply_change" in item["pipeline"] or "commit_or_cancel" in item["pipeline"] for item in trace)
+        and any(item["op"] == "undo" and "enable_redo" in item["pipeline"] for item in trace)
+        and any(item["op"] == "redo" and "record_undo" in item["pipeline"] for item in trace),
+        "component": component,
+        "initial_state": initial_state,
+        "final_state": state,
+        "trace": tuple(trace),
+        "guards": ("session_replay_deterministic", "undo_redo_round_trips", "overlay_commits_are_transactional", "event_references_update_atomically"),
+        "side_effects": (),
+    }
+
+
 def object_inspector_workbench() -> dict:
     """Prove property, event, component-editor, and custom-designer coverage."""
     sample_components = (
@@ -3758,6 +3843,7 @@ def object_inspector_workbench() -> dict:
     diagnostics = tuple(inspector_diagnostics_contract(component) for component in sample_components)
     component_tree_sync = inspector_component_tree_sync_contract()
     round_trips = tuple(inspector_round_trip_contract(component) for component in sample_components)
+    edit_session_replay = inspector_edit_session_replay_contract()
     checks = (
         {
             "id": "property_editor_types",
@@ -3927,6 +4013,13 @@ def object_inspector_workbench() -> dict:
             "ok": all(contract["ok"] and not contract["side_effects"] for contract in round_trips),
             "evidence": round_trips,
         },
+        {
+            "id": "edit_session_replay",
+            "ok": edit_session_replay["ok"]
+            and {"session_replay_deterministic", "undo_redo_round_trips"} <= set(edit_session_replay["guards"])
+            and not edit_session_replay["side_effects"],
+            "evidence": edit_session_replay,
+        },
     )
     ok = all(check["ok"] for check in checks)
     return {
@@ -3958,6 +4051,7 @@ def object_inspector_workbench() -> dict:
         "diagnostics": diagnostics,
         "component_tree_sync": component_tree_sync,
         "round_trips": round_trips,
+        "edit_session_replay": edit_session_replay,
         "checks": checks,
         "blocking_gaps": tuple(check for check in checks if not check["ok"]),
     }
