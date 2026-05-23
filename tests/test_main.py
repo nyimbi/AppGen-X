@@ -974,6 +974,11 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "local_maintenance_schedule",
         "schema_checkpoints",
         "data_module_generation",
+        "query_plan_visualizer",
+        "relationship_navigation",
+        "service_versioning",
+        "connection_failover",
+        "change_capture_lineage",
     } == {check["id"] for check in data_workbench["checks"]}
     assert data_workbench["connection_test"]["steps"][-1] == "rollback_test_transaction"
     assert "explain_plan" in data_workbench["query_preview"]["plan"]
@@ -1009,6 +1014,14 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     assert {"connection_module", "dataset_module", "service_proxy_module", "offline_module"} <= {
         artifact["name"] for artifact in data_workbench["data_modules"]["artifacts"]
     }
+    assert all(item["cost"] >= 0 for item in data_workbench["query_plan_visualizer"]["plan_nodes"])
+    assert all(
+        "generate_picker" in item["designer_actions"]
+        for item in data_workbench["relationship_navigation"]["navigation"]
+    )
+    assert all("v2" in item["versions"] for item in data_workbench["service_versioning"]["versions"])
+    assert all("circuit_breaker" in item["retry_policy"] for item in data_workbench["connection_failover"]["routes"])
+    assert all(item["watermark"] for item in data_workbench["change_capture_lineage"]["lineage"])
     mobile_workbench = mobile_native_api_workbench()
     assert mobile_workbench["format"] == "appgen.mobile-native-api-workbench.v1"
     assert mobile_workbench["ok"] is True
@@ -9273,6 +9286,11 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "local_maintenance_schedule",
         "schema_checkpoints",
         "data_module_generation",
+        "query_plan_visualizer",
+        "relationship_navigation",
+        "service_versioning",
+        "connection_failover",
+        "change_capture_lineage",
     } == {check["id"] for check in generated_data_tooling["checks"]}
     assert generated_data_tooling["connection_test"]["steps"][-1] == "rollback_test_transaction"
     assert "explain_plan" in generated_data_tooling["query_preview"]["plan"]
@@ -9311,6 +9329,11 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert {"connection_module", "dataset_module", "service_proxy_module", "offline_module"} <= {
         artifact["name"] for artifact in generated_data_tooling["data_modules"]["artifacts"]
     }
+    assert all(item["review_required"] for item in generated_data_tooling["query_plan_visualizer"]["recommendations"])
+    assert len(generated_data_tooling["relationship_navigation"]["chain"]) >= 4
+    assert all("traffic_shadow" in item["deprecation"] for item in generated_data_tooling["service_versioning"]["versions"])
+    assert all(item["transaction_policy"] for item in generated_data_tooling["connection_failover"]["routes"])
+    assert "audit_lineage_preserved" in generated_data_tooling["change_capture_lineage"]["guards"]
     generated_mobile = form_designer.mobile_native_api_workbench()
     assert generated_mobile["format"] == "appgen.generated-mobile-native-api-workbench.v1"
     assert generated_mobile["ok"] is True

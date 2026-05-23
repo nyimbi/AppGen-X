@@ -4730,6 +4730,126 @@ def data_module_generation_contract() -> dict:
     }
 
 
+def data_query_plan_visualizer_contract() -> dict:
+    """Return visual query-plan, cost, and index recommendation evidence."""
+    preview = data_query_preview_contract()
+    plan_nodes = (
+        {"id": "scan:customer", "kind": "table_scan", "cost": 12, "warnings": ()},
+        {"id": "filter:customer_email", "kind": "filter", "cost": 4, "warnings": ("index_recommended",)},
+        {"id": "sort:updated_at", "kind": "sort", "cost": 7, "warnings": ()},
+        {"id": "project:columns", "kind": "projection", "cost": 2, "warnings": ()},
+    )
+    recommendations = (
+        {"target": "Customer.email", "kind": "index", "reason": "filter_selectivity", "review_required": True},
+        {"target": "Customer.updated_at", "kind": "covering_index", "reason": "sort_cost", "review_required": True},
+    )
+    return {
+        "format": "appgen.data-query-plan-visualizer-contract.v1",
+        "ok": "explain_plan" in preview["plan"]
+        and bool(plan_nodes)
+        and all(item["cost"] >= 0 for item in plan_nodes)
+        and all(item["review_required"] for item in recommendations),
+        "query": preview["query"],
+        "plan_nodes": plan_nodes,
+        "recommendations": recommendations,
+        "guards": ("read_only_explain", "index_recommendations_require_review", "parameter_values_redacted"),
+        "side_effects": (),
+    }
+
+
+def data_relationship_navigation_contract() -> dict:
+    """Return multi-hop relationship navigation and lookup generation evidence."""
+    chain = (
+        {"from": "Account", "field": "ledger_id", "to": "Ledger", "lookup": "Ledger.name"},
+        {"from": "Invoice", "field": "account_id", "to": "Account", "lookup": "Account.name"},
+        {"from": "InvoiceLine", "field": "invoice_id", "to": "Invoice", "lookup": "Invoice.number"},
+        {"from": "InventoryMove", "field": "line_id", "to": "InvoiceLine", "lookup": "InvoiceLine.description"},
+    )
+    navigation = tuple(
+        {
+            "edge": edge,
+            "designer_actions": ("open_lookup_editor", "preview_join", "generate_picker", "validate_filter"),
+            "runtime_artifacts": ("relationship_loader", "lookup_endpoint", "display_member", "value_member"),
+        }
+        for edge in chain
+    )
+    return {
+        "format": "appgen.data-relationship-navigation-contract.v1",
+        "ok": len(chain) >= 4
+        and all({"generate_picker", "preview_join"} <= set(item["designer_actions"]) for item in navigation)
+        and all({"display_member", "value_member"} <= set(item["runtime_artifacts"]) for item in navigation),
+        "chain": chain,
+        "navigation": navigation,
+        "guards": ("cycle_detection_before_join", "lookup_generated_for_foreign_key", "multi_hop_filter_previewed"),
+        "side_effects": (),
+    }
+
+
+def data_service_versioning_contract() -> dict:
+    """Return service versioning and compatibility evidence for generated data APIs."""
+    resources = data_service_resource_contract()
+    versions = tuple(
+        {
+            "resource": resource,
+            "versions": ("v1", "v2"),
+            "compatibility": ("request_shape", "response_shape", "error_shape", "pagination_shape"),
+            "deprecation": ("announce", "dual_run", "traffic_shadow", "retire_after_review"),
+        }
+        for resource in resources["resources"]
+    )
+    return {
+        "format": "appgen.data-service-versioning-contract.v1",
+        "ok": bool(versions)
+        and all({"v1", "v2"} <= set(item["versions"]) for item in versions)
+        and all("traffic_shadow" in item["deprecation"] for item in versions),
+        "versions": versions,
+        "guards": ("versioned_routes_required", "compatibility_tests_required", "deprecation_requires_review"),
+        "side_effects": (),
+    }
+
+
+def data_connection_failover_contract() -> dict:
+    """Return connection failover, retry, and transaction-safety evidence."""
+    profiles = rad_data_connection_catalog()
+    routes = tuple(
+        {
+            "connection": profile["name"],
+            "health_probe": ("open_connection", "read_schema_version", "rollback_probe"),
+            "retry_policy": ("retry_transient", "backoff", "circuit_breaker", "fallback_read_only"),
+            "transaction_policy": "rollback_before_failover" if "transactions" in profile["capabilities"] else "read_only_probe",
+        }
+        for profile in profiles
+    )
+    return {
+        "format": "appgen.data-connection-failover-contract.v1",
+        "ok": bool(routes)
+        and all("circuit_breaker" in item["retry_policy"] for item in routes)
+        and all(item["transaction_policy"] for item in routes),
+        "routes": routes,
+        "guards": ("no_retry_after_partial_commit", "read_only_fallback_visible", "secret_values_never_logged"),
+        "side_effects": (),
+    }
+
+
+def data_change_capture_lineage_contract() -> dict:
+    """Return change-capture, lineage, and replay watermark evidence."""
+    sync = data_offline_sync_contract()
+    lineage = (
+        {"source": "Customer", "capture": "change_view", "watermark": "updated_at", "targets": ("offline_queue", "audit_log", "analytics")},
+        {"source": "Invoice", "capture": "operation_log", "watermark": "sequence_id", "targets": ("offline_queue", "audit_log", "reports")},
+        {"source": "InventoryMove", "capture": "event_stream", "watermark": "event_id", "targets": ("offline_queue", "analytics", "reconciliation")},
+    )
+    return {
+        "format": "appgen.data-change-capture-lineage-contract.v1",
+        "ok": "operation_log" in sync["queue"]
+        and bool(lineage)
+        and all(item["watermark"] and {"offline_queue", "audit_log"} & set(item["targets"]) for item in lineage),
+        "lineage": lineage,
+        "guards": ("watermarks_required", "replay_order_recorded", "audit_lineage_preserved"),
+        "side_effects": (),
+    }
+
+
 def rad_data_tooling_workbench() -> dict:
     """Prove native data-service tooling depth across connections, queries, services, and local sync."""
     contract = rad_data_tooling_contract()
@@ -4755,6 +4875,11 @@ def rad_data_tooling_workbench() -> dict:
     maintenance_schedule = local_database_maintenance_schedule_contract()
     schema_checkpoints = data_schema_checkpoint_contract()
     data_modules = data_module_generation_contract()
+    query_plan_visualizer = data_query_plan_visualizer_contract()
+    relationship_navigation = data_relationship_navigation_contract()
+    service_versioning = data_service_versioning_contract()
+    connection_failover = data_connection_failover_contract()
+    change_capture_lineage = data_change_capture_lineage_contract()
     checks = (
         {
             "id": "connection_catalog",
@@ -4937,6 +5062,36 @@ def rad_data_tooling_workbench() -> dict:
             and not data_modules["side_effects"],
             "evidence": data_modules,
         },
+        {
+            "id": "query_plan_visualizer",
+            "ok": query_plan_visualizer["ok"] and {"read_only_explain", "index_recommendations_require_review"} <= set(query_plan_visualizer["guards"])
+            and not query_plan_visualizer["side_effects"],
+            "evidence": query_plan_visualizer,
+        },
+        {
+            "id": "relationship_navigation",
+            "ok": relationship_navigation["ok"] and {"lookup_generated_for_foreign_key", "multi_hop_filter_previewed"} <= set(relationship_navigation["guards"])
+            and not relationship_navigation["side_effects"],
+            "evidence": relationship_navigation,
+        },
+        {
+            "id": "service_versioning",
+            "ok": service_versioning["ok"] and {"versioned_routes_required", "compatibility_tests_required"} <= set(service_versioning["guards"])
+            and not service_versioning["side_effects"],
+            "evidence": service_versioning,
+        },
+        {
+            "id": "connection_failover",
+            "ok": connection_failover["ok"] and {"no_retry_after_partial_commit", "read_only_fallback_visible"} <= set(connection_failover["guards"])
+            and not connection_failover["side_effects"],
+            "evidence": connection_failover,
+        },
+        {
+            "id": "change_capture_lineage",
+            "ok": change_capture_lineage["ok"] and {"watermarks_required", "audit_lineage_preserved"} <= set(change_capture_lineage["guards"])
+            and not change_capture_lineage["side_effects"],
+            "evidence": change_capture_lineage,
+        },
     )
     ok = all(check["ok"] for check in checks)
     return {
@@ -4966,6 +5121,11 @@ def rad_data_tooling_workbench() -> dict:
         "maintenance_schedule": maintenance_schedule,
         "schema_checkpoints": schema_checkpoints,
         "data_modules": data_modules,
+        "query_plan_visualizer": query_plan_visualizer,
+        "relationship_navigation": relationship_navigation,
+        "service_versioning": service_versioning,
+        "connection_failover": connection_failover,
+        "change_capture_lineage": change_capture_lineage,
         "checks": checks,
         "blocking_gaps": tuple(check for check in checks if not check["ok"]),
     }
