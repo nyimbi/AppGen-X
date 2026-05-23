@@ -91,6 +91,7 @@ Build a complete AppGen IDE and generation platform with:
 | 2026-05-23 | `3448257` | Added generated data access modules and generated tests for query runtime, mutation runtime, audit/export, and workbench/release surfaces. | Py compile; focused generated-app/form-designer/package-goal tests; staged hygiene scan passed. |
 | 2026-05-23 | `d00fed8` | Added generated data exchange modules and generated tests for template/export, import validation, migration batching, and workbench/release surfaces. | Py compile; focused generated-app/form-designer/package-goal tests; staged hygiene scan passed. |
 | 2026-05-23 | `4919a1b` | Added generated schema import modules and generated tests for source catalog, normalization, roundtrip diff, and apply/release surfaces. | Py compile; focused generated-app/form-designer/package-goal tests; staged hygiene scan passed. |
+| 2026-05-23 | `19ea2dd` | Added generated backup modules and generated tests for payload export, integrity manifests, schedule/retention, and recovery/release surfaces. | Py compile; focused generated-app/form-designer/package-goal tests; staged hygiene scan passed. |
 
 ## Current Working Slice
 
@@ -228,6 +229,10 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   generated test module for source catalog, normalization, roundtrip diff, and
   apply/release surfaces, with generated schema-import manifests validating
   module and test coverage.
+- Generated applications now emit one importable backup/recovery module and one
+  generated test module for payload export, integrity manifests,
+  schedule/retention, and recovery/release surfaces, with generated backup
+  manifests validating module and test coverage.
 
 ## Open Completion Areas
 
