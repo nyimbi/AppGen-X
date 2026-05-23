@@ -28646,6 +28646,114 @@ def binding_round_trip_contract():
     }}
 
 
+def binding_update_scheduler_contract():
+    """Return generated deterministic runtime scheduling for binding graph propagation."""
+    graph = livebindings_graph_contract()
+    phases = (
+        {{"phase": "read_sources", "edge_kinds": ("dataset_to_field",), "order": 10}},
+        {{"phase": "evaluate_expressions", "edge_kinds": ("expression_to_property",), "order": 20}},
+        {{"phase": "apply_converters", "edge_kinds": ("field_to_control", "control_to_field"), "order": 30}},
+        {{"phase": "run_validators", "edge_kinds": ("field_to_control", "control_to_field", "expression_to_property"), "order": 40}},
+        {{"phase": "write_targets", "edge_kinds": ("field_to_control", "control_to_field", "expression_to_property"), "order": 50}},
+        {{"phase": "publish_notifications", "edge_kinds": tuple(sorted({{edge["kind"] for edge in graph["edges"]}})), "order": 60}},
+    )
+    return {{
+        "format": "appgen.generated-binding-update-scheduler-contract.v1",
+        "ok": tuple(phase["order"] for phase in phases) == tuple(sorted(phase["order"] for phase in phases)) and all(phase["edge_kinds"] for phase in phases),
+        "phases": phases,
+        "queue_policy": ("coalesce_duplicate_updates", "topological_order", "defer_reentrant_writes", "batch_notifications"),
+        "guards": ("no_reentrant_write_loop", "topological_order_required", "notification_batching_required"),
+        "side_effects": (),
+    }}
+
+
+def binding_dataset_cursor_sync_contract():
+    """Return generated dataset cursor, selection, and bound-control synchronization evidence."""
+    graph = livebindings_graph_contract()
+    table = graph["table"]
+    field_ids = tuple(node["id"] for node in graph["nodes"] if node["kind"] == "field")
+    flows = (
+        {{"event": "dataset_after_scroll", "pipeline": ("capture_bookmark", "read_current_row", "refresh_fields", "refresh_controls", "restore_selection")}},
+        {{"event": "control_enter", "pipeline": ("select_control", "resolve_field", "sync_dataset_bookmark", "open_editor")}},
+        {{"event": "dataset_refresh", "pipeline": ("preserve_bookmark", "reload_rows", "rebind_fields", "refresh_controls")}},
+        {{"event": "row_deleted", "pipeline": ("detect_missing_bookmark", "move_to_nearest_row", "clear_orphaned_controls", "publish_selection_change")}},
+    )
+    return {{
+        "format": "appgen.generated-binding-dataset-cursor-sync-contract.v1",
+        "ok": bool(field_ids)
+        and all({{"refresh_controls", "preserve_bookmark", "sync_dataset_bookmark", "clear_orphaned_controls"}} & set(flow["pipeline"]) for flow in flows),
+        "dataset": f"dataset:{{table}}",
+        "fields": field_ids,
+        "flows": flows,
+        "guards": ("bookmark_preserved_across_refresh", "orphaned_controls_cleared", "selection_syncs_with_dataset"),
+        "side_effects": (),
+    }}
+
+
+def binding_conflict_resolution_workflow():
+    """Return generated reviewable conflict resolution workflows for visual binding edits."""
+    conflicts = binding_conflict_validation_contract()
+    graph = livebindings_graph_contract()
+    first_edge = graph["edges"][0]
+    resolutions = (
+        {{"conflict": "multiple_writers", "target": first_edge["to"], "workflow": ("detect_conflict", "show_conflict_badge", "choose_authoritative_edge", "disable_other_writers", "validate_graph")}},
+        {{"conflict": "missing_converter", "target": first_edge["to"], "workflow": ("detect_type_mismatch", "suggest_converter", "preview_conversion", "attach_converter", "validate_graph")}},
+        {{"conflict": "unsafe_expression", "target": "expression", "workflow": ("detect_blocked_token", "highlight_expression", "offer_safe_rewrite", "validate_expression", "validate_graph")}},
+        {{"conflict": "disabled_required_binding", "target": first_edge["to"], "workflow": ("detect_required_field", "show_required_warning", "enable_binding_or_mark_optional", "validate_graph")}},
+    )
+    return {{
+        "format": "appgen.generated-binding-conflict-resolution-workflow.v1",
+        "ok": conflicts["ok"] and all("validate_graph" in resolution["workflow"] for resolution in resolutions),
+        "resolutions": resolutions,
+        "guards": ("conflicts_visible_before_commit", "resolution_preview_required", "graph_revalidated_after_resolution"),
+        "side_effects": (),
+    }}
+
+
+def binding_offline_replay_contract():
+    """Return generated offline binding queue replay and reconciliation evidence."""
+    graph = livebindings_graph_contract()
+    write_edges = tuple(edge for edge in graph["edges"] if edge["kind"] == "control_to_field")
+    queue_items = tuple(
+        {{
+            "edge": edge,
+            "idempotency_key": f"{{edge['from']}}->{{edge['to']}}",
+            "replay": ("load_pending_value", "revalidate_value", "apply_converter", "write_dataset", "mark_replayed"),
+        }}
+        for edge in write_edges
+    )
+    return {{
+        "format": "appgen.generated-binding-offline-replay-contract.v1",
+        "ok": bool(queue_items) and all({{"revalidate_value", "mark_replayed"}} <= set(item["replay"]) and item["idempotency_key"] for item in queue_items),
+        "queue_items": queue_items,
+        "conflict_policy": ("server_wins_by_default", "manual_review_for_dirty_field", "preserve_user_value_until_review"),
+        "guards": ("idempotency_key_required", "revalidate_before_replay", "manual_review_for_conflicts"),
+        "side_effects": (),
+    }}
+
+
+def binding_accessibility_contract():
+    """Return generated keyboard and assistive-technology routes for the visual binding designer."""
+    graph = livebindings_graph_contract()
+    shortcuts = (
+        {{"command": "create_link", "keys": ("Enter",), "route": ("focus_source", "choose_target", "confirm_link")}},
+        {{"command": "delete_edge", "keys": ("Delete",), "route": ("focus_edge", "confirm_delete", "validate_graph")}},
+        {{"command": "inspect_node", "keys": ("Enter",), "route": ("focus_node", "open_inspector")}},
+        {{"command": "preview_value", "keys": ("Space",), "route": ("focus_expression", "announce_preview")}},
+    )
+    announcements = tuple({{"target": node["id"], "label": f"{{node['kind']}} {{node['id']}}", "role": "treeitem"}} for node in graph["nodes"])
+    return {{
+        "format": "appgen.generated-binding-accessibility-contract.v1",
+        "ok": bool(announcements)
+        and all(shortcut["route"] for shortcut in shortcuts)
+        and {{"create_link", "delete_edge", "inspect_node", "preview_value"}} <= {{shortcut["command"] for shortcut in shortcuts}},
+        "shortcuts": shortcuts,
+        "announcements": announcements,
+        "guards": ("keyboard_authoring_complete", "screen_reader_labels_present", "focus_order_matches_graph_selection"),
+        "side_effects": (),
+    }}
+
+
 def livebindings_converter_catalog():
     """Return generated converters available to the visual binding designer."""
     return (
@@ -28689,6 +28797,11 @@ def livebindings_workbench():
     bulk_edits = binding_bulk_edit_contract()
     diagnostics = binding_diagnostics_contract()
     round_trip = binding_round_trip_contract()
+    update_scheduler = binding_update_scheduler_contract()
+    cursor_sync = binding_dataset_cursor_sync_contract()
+    conflict_resolution = binding_conflict_resolution_workflow()
+    offline_replay = binding_offline_replay_contract()
+    accessibility = binding_accessibility_contract()
     checks = (
         {{"id": "graph_nodes", "ok": {{"dataset", "field", "control", "expression"}} <= {{node["kind"] for node in graph["nodes"]}}, "evidence": tuple((node["id"], node["kind"]) for node in graph["nodes"])}},
         {{"id": "graph_edges", "ok": {{"dataset_to_field", "field_to_control", "control_to_field", "expression_to_property"}} <= {{edge["kind"] for edge in graph["edges"]}}, "evidence": graph["edges"]}},
@@ -28714,9 +28827,14 @@ def livebindings_workbench():
         {{"id": "bulk_graph_edits", "ok": bulk_edits["ok"] and not bulk_edits["side_effects"], "evidence": bulk_edits}},
         {{"id": "diagnostics_quick_fixes", "ok": diagnostics["ok"] and {{"diagnostics_map_to_graph_selection", "quick_fixes_are_staged"}} <= set(diagnostics["guards"]) and not diagnostics["side_effects"], "evidence": diagnostics}},
         {{"id": "graph_import_export_round_trip", "ok": round_trip["ok"] and not round_trip["side_effects"], "evidence": round_trip}},
+        {{"id": "update_scheduler", "ok": update_scheduler["ok"] and "topological_order_required" in update_scheduler["guards"] and not update_scheduler["side_effects"], "evidence": update_scheduler}},
+        {{"id": "dataset_cursor_sync", "ok": cursor_sync["ok"] and "bookmark_preserved_across_refresh" in cursor_sync["guards"] and not cursor_sync["side_effects"], "evidence": cursor_sync}},
+        {{"id": "conflict_resolution_workflow", "ok": conflict_resolution["ok"] and "graph_revalidated_after_resolution" in conflict_resolution["guards"] and not conflict_resolution["side_effects"], "evidence": conflict_resolution}},
+        {{"id": "offline_replay", "ok": offline_replay["ok"] and "idempotency_key_required" in offline_replay["guards"] and not offline_replay["side_effects"], "evidence": offline_replay}},
+        {{"id": "accessibility_routes", "ok": accessibility["ok"] and "keyboard_authoring_complete" in accessibility["guards"] and not accessibility["side_effects"], "evidence": accessibility}},
     )
     ok = all(check["ok"] for check in checks)
-    return {{"format": "appgen.generated-livebindings-workbench.v1", "ok": ok, "decision": "approved" if ok else "blocked", "contract": contract, "authoring": authoring, "conflicts": conflicts, "graph_validation": graph_validation, "edit_transactions": edit_transactions, "previews": previews, "runtime_wiring": runtime_wiring, "preview_runtime_parity": preview_runtime_parity, "history": history, "graph_editing": graph_editing, "lookup_bindings": lookup_bindings, "pipelines": pipelines, "hit_testing": hit_testing, "runtime_gates": runtime_gates, "master_detail": master_detail, "scope_contexts": scope_contexts, "bulk_edits": bulk_edits, "diagnostics": diagnostics, "round_trip": round_trip, "checks": checks, "blocking_gaps": tuple(check for check in checks if not check["ok"])}}
+    return {{"format": "appgen.generated-livebindings-workbench.v1", "ok": ok, "decision": "approved" if ok else "blocked", "contract": contract, "authoring": authoring, "conflicts": conflicts, "graph_validation": graph_validation, "edit_transactions": edit_transactions, "previews": previews, "runtime_wiring": runtime_wiring, "preview_runtime_parity": preview_runtime_parity, "history": history, "graph_editing": graph_editing, "lookup_bindings": lookup_bindings, "pipelines": pipelines, "hit_testing": hit_testing, "runtime_gates": runtime_gates, "master_detail": master_detail, "scope_contexts": scope_contexts, "bulk_edits": bulk_edits, "diagnostics": diagnostics, "round_trip": round_trip, "update_scheduler": update_scheduler, "cursor_sync": cursor_sync, "conflict_resolution": conflict_resolution, "offline_replay": offline_replay, "accessibility": accessibility, "checks": checks, "blocking_gaps": tuple(check for check in checks if not check["ok"])}}
 
 
 def rad_data_tooling_contract():

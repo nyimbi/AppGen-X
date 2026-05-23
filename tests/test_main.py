@@ -924,6 +924,11 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "bulk_graph_edits",
         "diagnostics_quick_fixes",
         "graph_import_export_round_trip",
+        "update_scheduler",
+        "dataset_cursor_sync",
+        "conflict_resolution_workflow",
+        "offline_replay",
+        "accessibility_routes",
     } == {check["id"] for check in binding_workbench["checks"]}
     assert binding_workbench["graph_validation"]["ok"] is True
     assert binding_workbench["edit_transactions"]["validation"]["ok"] is True
@@ -941,6 +946,16 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     assert all("commit_or_rollback" in operation["stage"] for operation in binding_workbench["bulk_edits"]["operations"])
     assert all(diagnostic["quick_fix"] for diagnostic in binding_workbench["diagnostics"]["diagnostics"])
     assert binding_workbench["round_trip"]["exported"]["nodes"] == binding_workbench["round_trip"]["imported"]["nodes"]
+    assert binding_workbench["update_scheduler"]["phases"][-1]["phase"] == "publish_notifications"
+    assert all(
+        {"refresh_controls", "preserve_bookmark", "sync_dataset_bookmark", "clear_orphaned_controls"} & set(flow["pipeline"])
+        for flow in binding_workbench["cursor_sync"]["flows"]
+    )
+    assert all("validate_graph" in resolution["workflow"] for resolution in binding_workbench["conflict_resolution"]["resolutions"])
+    assert all("mark_replayed" in item["replay"] for item in binding_workbench["offline_replay"]["queue_items"])
+    assert {"create_link", "delete_edge", "inspect_node", "preview_value"} <= {
+        shortcut["command"] for shortcut in binding_workbench["accessibility"]["shortcuts"]
+    }
     data_workbench = rad_data_tooling_workbench()
     assert data_workbench["format"] == "appgen.rad-data-tooling-workbench.v1"
     assert data_workbench["ok"] is True
@@ -9263,6 +9278,11 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "bulk_graph_edits",
         "diagnostics_quick_fixes",
         "graph_import_export_round_trip",
+        "update_scheduler",
+        "dataset_cursor_sync",
+        "conflict_resolution_workflow",
+        "offline_replay",
+        "accessibility_routes",
     } <= {
         check["id"] for check in generated_bindings["checks"]
     }
@@ -9283,6 +9303,11 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert all("validate_graph" in operation["stage"] for operation in generated_bindings["bulk_edits"]["operations"])
     assert all(diagnostic["quick_fix"] for diagnostic in generated_bindings["diagnostics"]["diagnostics"])
     assert generated_bindings["round_trip"]["exported"]["edges"] == generated_bindings["round_trip"]["imported"]["edges"]
+    assert "topological_order_required" in generated_bindings["update_scheduler"]["guards"]
+    assert generated_bindings["cursor_sync"]["fields"]
+    assert all("validate_graph" in resolution["workflow"] for resolution in generated_bindings["conflict_resolution"]["resolutions"])
+    assert all(item["idempotency_key"] for item in generated_bindings["offline_replay"]["queue_items"])
+    assert all(announcement["label"] for announcement in generated_bindings["accessibility"]["announcements"])
     generated_data_tooling = form_designer.rad_data_tooling_workbench()
     assert generated_data_tooling["format"] == "appgen.generated-rad-data-tooling-workbench.v1"
     assert generated_data_tooling["ok"] is True
