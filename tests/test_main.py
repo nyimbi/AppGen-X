@@ -108,7 +108,13 @@ from pyAppGen.form_designer import form_design as package_form_design
 from pyAppGen.form_designer import form_design_to_dfm
 from pyAppGen.form_designer import form_designer_generation_smoke_audit
 from pyAppGen.form_designer import form_designer_release_audit
+from pyAppGen.form_designer import livebindings_actionable_operations
+from pyAppGen.form_designer import livebindings_create_link
+from pyAppGen.form_designer import livebindings_detect_conflicts
+from pyAppGen.form_designer import livebindings_emit_runtime_wiring
 from pyAppGen.form_designer import livebindings_graph_contract
+from pyAppGen.form_designer import livebindings_preview_value
+from pyAppGen.form_designer import livebindings_reroute_link
 from pyAppGen.form_designer import binding_lifecycle_release_replay_contract
 from pyAppGen.form_designer import livebindings_workbench
 from pyAppGen.form_designer import mobile_device_capability_lifecycle_replay_contract
@@ -1084,6 +1090,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "designer_surface",
         "runtime_modes",
         "authoring_operations",
+        "actionable_binding_operations",
         "conflict_validation",
         "graph_validation",
         "edit_transactions",
@@ -1114,6 +1121,16 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "designer_transaction_replay",
         "binding_lifecycle_release_replay",
     } == {check["id"] for check in binding_workbench["checks"]}
+    create_link = livebindings_create_link()
+    assert create_link["ok"] is True
+    assert "record_undo" in create_link["pipeline"]
+    assert livebindings_reroute_link(create_link["edge"], via=("bend:midpoint",))["ok"] is True
+    assert "publish_preview" in livebindings_preview_value(create_link["edge"], "Sample")["pipeline"]
+    assert livebindings_detect_conflicts()["ok"] is True
+    assert "attach_listeners" in livebindings_emit_runtime_wiring()["lifecycle"]
+    assert livebindings_actionable_operations()["ok"] is True
+    assert binding_workbench["actionable_operations"]["operations"]["create_link"]["ok"] is True
+    assert binding_workbench["actionable_operations"]["operations"]["runtime_wiring"]["bindings"]
     assert binding_workbench["graph_validation"]["ok"] is True
     assert binding_workbench["edit_transactions"]["validation"]["ok"] is True
     assert all("commit_or_rollback" in operation["stage"] for operation in binding_workbench["edit_transactions"]["operations"])
@@ -9891,6 +9908,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "graph_edges",
         "expression_validation",
         "authoring_operations",
+        "actionable_binding_operations",
         "graph_validation",
         "edit_transactions",
         "runtime_wiring",
@@ -9921,6 +9939,15 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         check["id"] for check in generated_bindings["checks"]
     }
     assert generated_bindings["authoring"]["operations"]
+    generated_link = form_designer.livebindings_create_link()
+    assert generated_link["ok"] is True
+    assert "record_undo" in generated_link["pipeline"]
+    assert form_designer.livebindings_reroute_link(generated_link["edge"], via=("bend:midpoint",))["ok"] is True
+    assert "publish_preview" in form_designer.livebindings_preview_value(generated_link["edge"], "Sample")["pipeline"]
+    assert form_designer.livebindings_detect_conflicts()["ok"] is True
+    assert "attach_listeners" in form_designer.livebindings_emit_runtime_wiring()["lifecycle"]
+    assert generated_bindings["actionable_operations"]["ok"] is True
+    assert generated_bindings["actionable_operations"]["operations"]["runtime_wiring"]["bindings"]
     assert {"reroute_edge", "delete_edge", "disable_edge"} <= {
         operation["op"] for operation in generated_bindings["graph_editing"]["operations"]
     }

@@ -29892,6 +29892,145 @@ def binding_authoring_session():
     }}
 
 
+def livebindings_create_link(design=None, source=None, target=None, kind="field_to_control", mode="read"):
+    """Create a staged visual binding link with endpoint validation."""
+    graph = livebindings_graph_contract(design=design)
+    default_edge = next((edge for edge in graph["edges"] if edge["kind"] == kind), graph["edges"][0])
+    source = source or default_edge["from"]
+    target = target or default_edge["to"]
+    node_ids = {{node["id"] for node in graph["nodes"]}}
+    edge_kinds = {{edge["kind"] for edge in graph["edges"]}}
+    diagnostics = tuple(
+        item
+        for item in (
+            {{"code": "missing_source", "node": source}} if source not in node_ids else None,
+            {{"code": "missing_target", "node": target}} if target not in node_ids else None,
+            {{"code": "unsupported_edge_kind", "kind": kind}} if kind not in edge_kinds else None,
+        )
+        if item
+    )
+    edge = {{"from": source, "to": target, "kind": kind, "mode": mode}}
+    return {{
+        "format": "appgen.generated-livebindings-link-operation.v1",
+        "ok": not diagnostics,
+        "edge": edge,
+        "pipeline": ("select_source_node", "drag_link", "validate_link", "stage_link", "commit_link", "record_undo"),
+        "diagnostics": diagnostics,
+        "review_required": True,
+        "side_effects": (),
+    }}
+
+
+def livebindings_reroute_link(edge, via=()):
+    """Return a staged route edit for an existing visual binding edge."""
+    required = {{"from", "to", "kind"}}
+    missing = tuple(sorted(required - set(edge)))
+    route = (edge.get("from"),) + tuple(via) + (edge.get("to"),)
+    return {{
+        "format": "appgen.generated-livebindings-reroute-operation.v1",
+        "ok": not missing and all(route),
+        "edge": edge,
+        "route": route,
+        "pipeline": ("capture_edge", "reroute_edge", "validate_route", "commit_route", "record_undo"),
+        "diagnostics": tuple({{"code": "missing_edge_key", "key": key}} for key in missing),
+        "side_effects": (),
+    }}
+
+
+def livebindings_preview_value(binding=None, value=None):
+    """Preview a binding value through converter and validator stages."""
+    graph = livebindings_graph_contract()
+    binding = binding or next(edge for edge in graph["edges"] if edge["kind"] == "expression_to_property")
+    source = binding.get("from", "")
+    expression = ""
+    for node in graph["nodes"]:
+        if node["id"] == source and node["kind"] == "expression":
+            expression = node["expression"]
+            break
+    validator = validate_binding_expression(expression or "coalesce(value, '')")
+    preview_input = "" if value is None else value
+    return {{
+        "format": "appgen.generated-livebindings-preview-operation.v1",
+        "ok": validator["ok"],
+        "binding": binding,
+        "input": preview_input,
+        "output": str(preview_input),
+        "converter": livebindings_converter_catalog()[0],
+        "validator": validator,
+        "pipeline": ("read_design_value", "apply_converter", "run_validators", "publish_preview"),
+        "side_effects": (),
+    }}
+
+
+def livebindings_detect_conflicts(edges=None):
+    """Detect duplicate and competing write bindings before commit."""
+    graph = livebindings_graph_contract()
+    edges = edges or graph["edges"]
+    edge_keys = tuple((edge.get("from"), edge.get("to"), edge.get("kind")) for edge in edges)
+    duplicate_edges = tuple(sorted({{key for key in edge_keys if edge_keys.count(key) > 1}}))
+    write_targets = tuple(edge.get("to") for edge in edges if edge.get("kind") == "control_to_field" or edge.get("mode") == "write")
+    duplicate_writes = tuple(sorted({{target for target in write_targets if write_targets.count(target) > 1}}))
+    conflicts = tuple(
+        {{"type": "duplicate_edge", "edge": key}}
+        for key in duplicate_edges
+    ) + tuple(
+        {{"type": "multiple_writers", "target": target}}
+        for target in duplicate_writes
+    )
+    return {{
+        "format": "appgen.generated-livebindings-conflict-operation.v1",
+        "ok": not conflicts,
+        "conflicts": conflicts,
+        "guards": ("duplicate_edges_block_commit", "multiple_writers_require_review", "conflicts_surface_to_designer"),
+        "side_effects": (),
+    }}
+
+
+def livebindings_emit_runtime_wiring(graph=None):
+    """Emit runtime wiring from the visual binding graph."""
+    graph = graph or livebindings_graph_contract()
+    bindings = tuple(
+        {{
+            "source": edge["from"],
+            "target": edge["to"],
+            "kind": edge["kind"],
+            "handler": f"sync_{{edge['kind']}}_{{index}}",
+            "mode": edge.get("mode", "read"),
+        }}
+        for index, edge in enumerate(graph["edges"])
+    )
+    return {{
+        "format": "appgen.generated-livebindings-runtime-wiring-operation.v1",
+        "ok": bool(graph["nodes"]) and bool(bindings),
+        "bindings": bindings,
+        "lifecycle": ("initialize_sources", "attach_listeners", "apply_initial_values", "sync_updates", "detach_listeners"),
+        "side_effects": (),
+    }}
+
+
+def livebindings_actionable_operations(design=None):
+    """Return callable visual binding operations used by the generated IDE."""
+    graph = livebindings_graph_contract(design=design)
+    create_link = livebindings_create_link(design=design)
+    reroute_link = livebindings_reroute_link(create_link["edge"], via=("bend:midpoint",))
+    preview_value = livebindings_preview_value(create_link["edge"], "Sample")
+    conflict_check = livebindings_detect_conflicts(graph["edges"])
+    runtime_wiring = livebindings_emit_runtime_wiring(graph)
+    operations = {{
+        "create_link": create_link,
+        "reroute_link": reroute_link,
+        "preview_value": preview_value,
+        "detect_conflicts": conflict_check,
+        "runtime_wiring": runtime_wiring,
+    }}
+    return {{
+        "format": "appgen.generated-livebindings-actionable-operations.v1",
+        "ok": all(operation["ok"] for operation in operations.values()),
+        "operations": operations,
+        "side_effects": (),
+    }}
+
+
 def binding_conflict_validation_contract():
     """Return binding conflict checks for visual graph edits."""
     graph = livebindings_graph_contract()
@@ -30834,6 +30973,7 @@ def livebindings_workbench():
     design_runtime_replay = binding_design_runtime_session_replay_contract()
     designer_transaction_replay = binding_designer_transaction_replay_contract()
     lifecycle_release_replay = binding_lifecycle_release_replay_contract()
+    actionable_operations = livebindings_actionable_operations()
     checks = (
         {{"id": "graph_nodes", "ok": {{"dataset", "field", "control", "expression"}} <= {{node["kind"] for node in graph["nodes"]}}, "evidence": tuple((node["id"], node["kind"]) for node in graph["nodes"])}},
         {{"id": "graph_edges", "ok": {{"dataset_to_field", "field_to_control", "control_to_field", "expression_to_property"}} <= {{edge["kind"] for edge in graph["edges"]}}, "evidence": graph["edges"]}},
@@ -30842,6 +30982,7 @@ def livebindings_workbench():
         {{"id": "designer_surface", "ok": {{"drag_link", "preview_value", "disable_binding"}} <= set(contract["designer"]["gestures"]), "evidence": contract["designer"]}},
         {{"id": "runtime_modes", "ok": {{"one_way", "two_way", "command"}} <= set(contract["runtime"]["modes"]), "evidence": contract["runtime"]}},
         {{"id": "authoring_operations", "ok": {{"create_link", "make_two_way", "attach_expression", "preview_value", "disable_binding"}} <= {{operation["op"] for operation in authoring["operations"]}} and not authoring["side_effects"], "evidence": authoring}},
+        {{"id": "actionable_binding_operations", "ok": actionable_operations["ok"] and {{"create_link", "reroute_link", "preview_value", "detect_conflicts", "runtime_wiring"}} <= set(actionable_operations["operations"]) and not actionable_operations["side_effects"], "evidence": actionable_operations}},
         {{"id": "conflict_validation", "ok": conflicts["ok"] and {{"duplicate_edges", "multiple_writers", "unsafe_expression"}} <= set(conflicts["checks"]) and not conflicts["side_effects"], "evidence": conflicts}},
         {{"id": "graph_validation", "ok": graph_validation["ok"] and {{"all_edge_endpoints_exist", "acyclic_runtime_dependencies"}} <= set(graph_validation["guards"]) and not graph_validation["side_effects"], "evidence": graph_validation}},
         {{"id": "edit_transactions", "ok": bool(edit_transactions["operations"]) and all({{"capture_graph", "validate_graph", "commit_or_rollback"}} <= set(operation["stage"]) for operation in edit_transactions["operations"]) and edit_transactions["validation"]["ok"] and not edit_transactions["side_effects"], "evidence": edit_transactions}},
@@ -30873,7 +31014,7 @@ def livebindings_workbench():
         {{"id": "binding_lifecycle_release_replay", "ok": lifecycle_release_replay["ok"] and {{"graph_authoring_precedes_validation", "design_runtime_and_designer_replays_complete"}} <= set(lifecycle_release_replay["guards"]) and not lifecycle_release_replay["side_effects"], "evidence": lifecycle_release_replay}},
     )
     ok = all(check["ok"] for check in checks)
-    return {{"format": "appgen.generated-livebindings-workbench.v1", "ok": ok, "decision": "approved" if ok else "blocked", "contract": contract, "authoring": authoring, "conflicts": conflicts, "graph_validation": graph_validation, "edit_transactions": edit_transactions, "previews": previews, "runtime_wiring": runtime_wiring, "preview_runtime_parity": preview_runtime_parity, "history": history, "graph_editing": graph_editing, "lookup_bindings": lookup_bindings, "pipelines": pipelines, "hit_testing": hit_testing, "runtime_gates": runtime_gates, "master_detail": master_detail, "scope_contexts": scope_contexts, "bulk_edits": bulk_edits, "diagnostics": diagnostics, "round_trip": round_trip, "update_scheduler": update_scheduler, "dependency_execution": dependency_execution, "expression_sandbox": expression_sandbox, "runtime_failure_recovery": runtime_failure_recovery, "cursor_sync": cursor_sync, "conflict_resolution": conflict_resolution, "offline_replay": offline_replay, "accessibility": accessibility, "runtime_propagation_replay": runtime_propagation_replay, "design_runtime_replay": design_runtime_replay, "designer_transaction_replay": designer_transaction_replay, "lifecycle_release_replay": lifecycle_release_replay, "checks": checks, "blocking_gaps": tuple(check for check in checks if not check["ok"])}}
+    return {{"format": "appgen.generated-livebindings-workbench.v1", "ok": ok, "decision": "approved" if ok else "blocked", "contract": contract, "authoring": authoring, "actionable_operations": actionable_operations, "conflicts": conflicts, "graph_validation": graph_validation, "edit_transactions": edit_transactions, "previews": previews, "runtime_wiring": runtime_wiring, "preview_runtime_parity": preview_runtime_parity, "history": history, "graph_editing": graph_editing, "lookup_bindings": lookup_bindings, "pipelines": pipelines, "hit_testing": hit_testing, "runtime_gates": runtime_gates, "master_detail": master_detail, "scope_contexts": scope_contexts, "bulk_edits": bulk_edits, "diagnostics": diagnostics, "round_trip": round_trip, "update_scheduler": update_scheduler, "dependency_execution": dependency_execution, "expression_sandbox": expression_sandbox, "runtime_failure_recovery": runtime_failure_recovery, "cursor_sync": cursor_sync, "conflict_resolution": conflict_resolution, "offline_replay": offline_replay, "accessibility": accessibility, "runtime_propagation_replay": runtime_propagation_replay, "design_runtime_replay": design_runtime_replay, "designer_transaction_replay": designer_transaction_replay, "lifecycle_release_replay": lifecycle_release_replay, "checks": checks, "blocking_gaps": tuple(check for check in checks if not check["ok"])}}
 
 
 def rad_data_tooling_contract():
