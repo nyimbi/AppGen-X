@@ -1742,6 +1742,7 @@ def write_form_designer_file(output_dir, schema: AppSchema):
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
     (output_dir / "form_designer.py").write_text(_form_designer_text(schema))
+    (output_dir / "visual_runtime_assets.py").write_text(_visual_runtime_assets_text())
     write_component_contract_files(output_dir)
 
 
@@ -2343,6 +2344,155 @@ def smoke_test():
         "ok": True,
         "tests": ("test_package_contract", "test_package_smoke"),
     }}
+'''
+
+
+def _visual_runtime_assets_text() -> str:
+    return '''"""Generated visual runtime asset manifest for style, animation, effects, and 3D output."""
+
+from __future__ import annotations
+
+import importlib.util
+from pathlib import Path
+
+try:
+    from app import form_designer
+except ImportError:  # pragma: no cover - direct module smoke loading
+    spec = importlib.util.spec_from_file_location("generated_visual_form_designer", Path(__file__).resolve().parent / "form_designer.py")
+    form_designer = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(form_designer)
+
+
+def style_runtime_assets():
+    """Return target style bundles and token resources."""
+    package = form_designer.cross_target_visual_runtime_package_contract()
+    resources = form_designer.cross_target_style_resource_contract()
+    return {
+        "format": "appgen.generated-style-runtime-assets.v1",
+        "ok": package["ok"] and {"stylebook", "theme_tokens"} <= set(resources["resources"]),
+        "resources": resources["resources"],
+        "targets": tuple(item["target"] for item in package["artifacts"]),
+        "bundles": tuple(item["style_bundle"] for item in package["artifacts"]),
+        "guards": resources["guards"],
+    }
+
+
+def timeline_runtime_assets():
+    """Return exported runtime timelines for generated animation tracks."""
+    export = form_designer.cross_target_timeline_runtime_export_contract()
+    package = form_designer.cross_target_visual_runtime_package_contract()
+    return {
+        "format": "appgen.generated-timeline-runtime-assets.v1",
+        "ok": export["ok"] and all("native_timeline" in item["artifacts"] for item in export["exports"]),
+        "tracks": export["exports"],
+        "bundles": tuple(item["timeline_bundle"] for item in package["artifacts"]),
+        "guards": export["guards"],
+    }
+
+
+def effect_runtime_assets():
+    """Return effect stack bundles and target fallback decisions."""
+    fallback = form_designer.cross_target_effect_fallback_matrix_contract()
+    package = form_designer.cross_target_visual_runtime_package_contract()
+    return {
+        "format": "appgen.generated-effect-runtime-assets.v1",
+        "ok": fallback["ok"] and any(row["decision"] == "use_fallback" for row in fallback["rows"]),
+        "fallbacks": fallback["rows"],
+        "bundles": tuple(item["effect_bundle"] for item in package["artifacts"]),
+        "guards": fallback["guards"],
+    }
+
+
+def scene_runtime_assets():
+    """Return scene graph, material, and asset manifests for runtime delivery."""
+    scene = form_designer.cross_target_scene_graph_integrity_contract()
+    material = form_designer.cross_target_material_binding_contract()
+    package = form_designer.cross_target_visual_runtime_package_contract()
+    return {
+        "format": "appgen.generated-scene-runtime-assets.v1",
+        "ok": scene["ok"] and material["ok"],
+        "nodes": scene["nodes"],
+        "edges": scene["edges"],
+        "materials": material["bindings"],
+        "scene_manifests": tuple(item["scene_manifest"] for item in package["artifacts"]),
+        "asset_manifests": tuple(item["asset_manifest"] for item in package["artifacts"]),
+        "guards": scene["guards"] + material["guards"],
+    }
+
+
+def visual_asset_manifest():
+    """Return the complete generated visual runtime asset manifest."""
+    style = style_runtime_assets()
+    timeline = timeline_runtime_assets()
+    effects = effect_runtime_assets()
+    scene = scene_runtime_assets()
+    package = form_designer.cross_target_visual_runtime_package_contract()
+    return {
+        "format": "appgen.generated-visual-runtime-asset-manifest.v1",
+        "ok": style["ok"] and timeline["ok"] and effects["ok"] and scene["ok"] and package["ok"],
+        "style": style,
+        "timeline": timeline,
+        "effects": effects,
+        "scene": scene,
+        "package": package,
+        "artifacts": package["artifacts"],
+        "guards": (
+            "style_bundles_declared",
+            "timeline_bundles_declared",
+            "effect_fallbacks_declared",
+            "scene_materials_declared",
+            "asset_manifests_declared",
+        ),
+    }
+
+
+def validate_runtime_assets():
+    """Validate that generated visual runtime assets are complete and target-ready."""
+    manifest = visual_asset_manifest()
+    checks = (
+        {
+            "id": "style_bundles",
+            "ok": manifest["style"]["ok"] and bool(manifest["style"]["bundles"]),
+        },
+        {
+            "id": "timeline_bundles",
+            "ok": manifest["timeline"]["ok"] and bool(manifest["timeline"]["bundles"]),
+        },
+        {
+            "id": "effect_bundles",
+            "ok": manifest["effects"]["ok"] and bool(manifest["effects"]["bundles"]),
+        },
+        {
+            "id": "scene_and_assets",
+            "ok": manifest["scene"]["ok"]
+            and bool(manifest["scene"]["scene_manifests"])
+            and bool(manifest["scene"]["asset_manifests"]),
+        },
+        {
+            "id": "target_package",
+            "ok": manifest["package"]["ok"]
+            and {"web", "mobile", "desktop", "pwa"} <= {item["target"] for item in manifest["artifacts"]},
+        },
+    )
+    return {
+        "format": "appgen.generated-visual-runtime-asset-validation.v1",
+        "ok": manifest["ok"] and all(item["ok"] for item in checks),
+        "checks": checks,
+        "manifest": manifest,
+        "blocking_gaps": tuple(item for item in checks if not item["ok"]),
+    }
+
+
+def smoke_test():
+    """Run side-effect-free visual runtime asset checks."""
+    validation = validate_runtime_assets()
+    return {
+        "format": "appgen.generated-visual-runtime-assets-smoke.v1",
+        "ok": validation["ok"],
+        "validation": validation,
+        "checks": tuple(item["id"] for item in validation["checks"]),
+    }
 '''
 
 

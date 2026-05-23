@@ -2418,6 +2418,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     assert smoke["ok"] is True
     assert {
         "app/form_designer.py",
+        "app/visual_runtime_assets.py",
         "app/templates/appgen_form_designer.html",
         "app/models.py",
     } <= set(smoke["required_artifacts"])
@@ -2433,7 +2434,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     assert {
         item["path"] for item in component_package_test_file_manifest()
     } <= set(smoke["required_artifacts"])
-    assert {"app/form_designer.py", "app/models.py"} <= set(smoke["compiled_artifacts"])
+    assert {"app/form_designer.py", "app/visual_runtime_assets.py", "app/models.py"} <= set(smoke["compiled_artifacts"])
     assert {
         item["path"] for item in component_file_manifest()
     } <= set(smoke["compiled_artifacts"])
@@ -10376,6 +10377,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert "Pascal Runtime JSON" in (output_dir / "templates" / "appgen_form_designer.html").read_text()
     generated_form_designer_paths = {
         "app/form_designer.py",
+        "app/visual_runtime_assets.py",
         "app/templates/appgen_form_designer.html",
     }
     generated_form_designer_paths.update(
@@ -11205,6 +11207,20 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     } <= {check["id"] for check in generated_visual_package["checks"] if check["ok"]}
     assert generated_visual_depth["runtime_package"]["ok"] is True
     assert "scene_materials_packaged" in generated_visual_depth["runtime_package"]["guards"]
+    visual_assets_file = output_dir / "visual_runtime_assets.py"
+    assert visual_assets_file.exists()
+    py_compile.compile(str(visual_assets_file), doraise=True)
+    visual_assets = _load_module(visual_assets_file, "generated_visual_runtime_assets")
+    visual_manifest = visual_assets.visual_asset_manifest()
+    assert visual_manifest["format"] == "appgen.generated-visual-runtime-asset-manifest.v1"
+    assert visual_manifest["ok"] is True
+    assert {"web", "mobile", "desktop", "pwa"} <= {item["target"] for item in visual_manifest["artifacts"]}
+    assert visual_assets.style_runtime_assets()["bundles"]
+    assert visual_assets.timeline_runtime_assets()["tracks"]
+    assert any(row["decision"] == "use_fallback" for row in visual_assets.effect_runtime_assets()["fallbacks"])
+    assert visual_assets.scene_runtime_assets()["scene_manifests"]
+    assert visual_assets.validate_runtime_assets()["ok"] is True
+    assert visual_assets.smoke_test()["ok"] is True
     generated_analogs = form_designer.component_analog_workbench()
     assert generated_analogs["format"] == "appgen.generated-component-analog-workbench.v1"
     assert generated_analogs["ok"] is True

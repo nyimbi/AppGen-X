@@ -201,6 +201,9 @@ Visual design is split into two related capabilities:
   `component_package_tests/test_<package>.py` are generated beside those
   modules so each component and package has its own importable test surface that
   loads the generated module, asserts its contract, and runs its smoke test.
+- `visual_runtime_assets.py` is generated beside the form designer so style
+  bundles, animation timelines, effect fallback bundles, scene manifests, and
+  visual asset manifests have a dedicated runtime validation surface.
 - `component_analog_workbench()` and `component_analog_group_audit()` sit above
   the raw palette and prove requested native-style analog coverage across
   controls, layouts, data display, graphics, animation, theming, gestures,

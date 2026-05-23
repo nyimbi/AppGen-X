@@ -14134,6 +14134,7 @@ def form_designer_generation_smoke_audit(source: str = FORM_DESIGNER_SAMPLE_DSL)
     package_test_artifacts = tuple(item["path"] for item in component_package_test_file_manifest())
     required_artifacts = (
         "app/form_designer.py",
+        "app/visual_runtime_assets.py",
         "app/templates/appgen_form_designer.html",
         "app/models.py",
         "app/views.py",
@@ -14145,6 +14146,7 @@ def form_designer_generation_smoke_audit(source: str = FORM_DESIGNER_SAMPLE_DSL)
     )
     compile_artifacts = (
         "app/form_designer.py",
+        "app/visual_runtime_assets.py",
         "app/models.py",
         "app/views.py",
         "app/dsl_reference.py",
