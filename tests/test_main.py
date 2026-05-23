@@ -994,6 +994,12 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "service_versioning",
         "connection_failover",
         "change_capture_lineage",
+        "connection_pooling",
+        "stored_procedure_workflow",
+        "sql_authoring_safety",
+        "backup_restore_verification",
+        "replication_monitor",
+        "service_telemetry",
     } == {check["id"] for check in data_workbench["checks"]}
     assert data_workbench["connection_test"]["steps"][-1] == "rollback_test_transaction"
     assert "explain_plan" in data_workbench["query_preview"]["plan"]
@@ -1037,6 +1043,12 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     assert all("v2" in item["versions"] for item in data_workbench["service_versioning"]["versions"])
     assert all("circuit_breaker" in item["retry_policy"] for item in data_workbench["connection_failover"]["routes"])
     assert all(item["watermark"] for item in data_workbench["change_capture_lineage"]["lineage"])
+    assert all("leak_detection" in pool["pool"] for pool in data_workbench["connection_pooling"]["pools"])
+    assert all("map_result_sets" in workflow["pipeline"] for workflow in data_workbench["stored_procedures"]["workflows"])
+    assert all(rule["quick_fix"] for rule in data_workbench["sql_authoring_safety"]["lint_rules"])
+    assert all("restore_to_scratch" in drill["verification"] for drill in data_workbench["backup_restore_verification"]["drills"])
+    assert all("lag_seconds" in monitor["metrics"] for monitor in data_workbench["replication_monitor"]["monitors"])
+    assert all("request_id" in item["trace"] for item in data_workbench["service_telemetry"]["telemetry"])
     mobile_workbench = mobile_native_api_workbench()
     assert mobile_workbench["format"] == "appgen.mobile-native-api-workbench.v1"
     assert mobile_workbench["ok"] is True
@@ -9346,6 +9358,12 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "service_versioning",
         "connection_failover",
         "change_capture_lineage",
+        "connection_pooling",
+        "stored_procedure_workflow",
+        "sql_authoring_safety",
+        "backup_restore_verification",
+        "replication_monitor",
+        "service_telemetry",
     } == {check["id"] for check in generated_data_tooling["checks"]}
     assert generated_data_tooling["connection_test"]["steps"][-1] == "rollback_test_transaction"
     assert "explain_plan" in generated_data_tooling["query_preview"]["plan"]
@@ -9389,6 +9407,12 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert all("traffic_shadow" in item["deprecation"] for item in generated_data_tooling["service_versioning"]["versions"])
     assert all(item["transaction_policy"] for item in generated_data_tooling["connection_failover"]["routes"])
     assert "audit_lineage_preserved" in generated_data_tooling["change_capture_lineage"]["guards"]
+    assert all("reset_session" in pool["session_lifecycle"] for pool in generated_data_tooling["connection_pooling"]["pools"])
+    assert all("rollback_preview" in workflow["pipeline"] for workflow in generated_data_tooling["stored_procedures"]["workflows"])
+    assert "parameterization_required" in generated_data_tooling["sql_authoring_safety"]["guards"]
+    assert "backup_checksum_verified" in generated_data_tooling["backup_restore_verification"]["guards"]
+    assert all("conflict_count" in monitor["metrics"] for monitor in generated_data_tooling["replication_monitor"]["monitors"])
+    assert "latency_budget_recorded" in generated_data_tooling["service_telemetry"]["guards"]
     generated_mobile = form_designer.mobile_native_api_workbench()
     assert generated_mobile["format"] == "appgen.generated-mobile-native-api-workbench.v1"
     assert generated_mobile["ok"] is True

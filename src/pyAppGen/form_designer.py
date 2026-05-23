@@ -5190,6 +5190,143 @@ def data_change_capture_lineage_contract() -> dict:
     }
 
 
+def data_connection_pool_contract() -> dict:
+    """Return connection pooling, session lifecycle, and leak-detection evidence."""
+    profiles = rad_data_connection_catalog()
+    pools = tuple(
+        {
+            "connection": profile["name"],
+            "pool": ("min_size", "max_size", "idle_timeout", "health_check", "leak_detection"),
+            "session_lifecycle": ("checkout", "begin_scope", "execute", "commit_or_rollback", "reset_session", "return_to_pool"),
+            "secret_policy": profile["secret_policy"],
+        }
+        for profile in profiles
+    )
+    return {
+        "format": "appgen.data-connection-pool-contract.v1",
+        "ok": bool(pools)
+        and all({"health_check", "leak_detection"} <= set(pool["pool"]) for pool in pools)
+        and all("commit_or_rollback" in pool["session_lifecycle"] for pool in pools),
+        "pools": pools,
+        "guards": ("pool_health_checked", "session_reset_before_reuse", "leak_detection_enabled", "secret_values_redacted"),
+        "side_effects": (),
+    }
+
+
+def data_stored_procedure_workflow_contract() -> dict:
+    """Return stored routine browsing, parameter binding, and result mapping evidence."""
+    browser = data_schema_browser_contract()
+    routines = tuple(item for item in browser["objects"] if item["kind"] == "stored_procedure")
+    workflows = tuple(
+        {
+            "routine": routine["name"],
+            "parameters": routine["parameters"],
+            "pipeline": ("browse_signature", "bind_parameters", "open_transaction_scope", "execute_routine", "map_result_sets", "rollback_preview"),
+            "result_sets": ("rows", "out_parameters", "diagnostics"),
+        }
+        for routine in routines
+    )
+    return {
+        "format": "appgen.data-stored-procedure-workflow-contract.v1",
+        "ok": bool(workflows)
+        and all({"bind_parameters", "map_result_sets", "rollback_preview"} <= set(workflow["pipeline"]) for workflow in workflows),
+        "workflows": workflows,
+        "guards": ("routine_signature_read_only", "typed_parameters_required", "preview_rolls_back_transaction"),
+        "side_effects": (),
+    }
+
+
+def data_sql_authoring_safety_contract() -> dict:
+    """Return SQL editor linting, parameterization, and mutation-safety evidence."""
+    preview = data_query_preview_contract()
+    lint_rules = (
+        {"rule": "no_string_interpolation", "severity": "error", "quick_fix": "convert_to_parameter"},
+        {"rule": "where_required_for_update_delete", "severity": "error", "quick_fix": "add_where_clause"},
+        {"rule": "limit_required_for_preview", "severity": "warning", "quick_fix": "add_limit_parameter"},
+        {"rule": "schema_qualified_names", "severity": "warning", "quick_fix": "qualify_table_name"},
+    )
+    workflows = (
+        {"op": "lint_query", "steps": ("parse_sql", "detect_mutation", "validate_parameters", "publish_diagnostics")},
+        {"op": "preview_mutation", "steps": ("open_transaction", "run_statement", "collect_row_counts", "rollback_transaction")},
+        {"op": "apply_parameter_fix", "steps": ("select_literal", "create_parameter", "replace_literal", "validate_parameters")},
+    )
+    return {
+        "format": "appgen.data-sql-authoring-safety-contract.v1",
+        "ok": "bind_parameters" in preview["plan"]
+        and all(rule["quick_fix"] for rule in lint_rules)
+        and all("validate_parameters" in workflow["steps"] or "rollback_transaction" in workflow["steps"] for workflow in workflows),
+        "lint_rules": lint_rules,
+        "workflows": workflows,
+        "guards": ("parameterization_required", "mutations_previewed_in_transaction", "unsafe_sql_blocks_publish"),
+        "side_effects": (),
+    }
+
+
+def local_backup_restore_verification_contract() -> dict:
+    """Return local backup restore drills, checksums, and encryption verification evidence."""
+    maintenance = local_database_maintenance_contract()
+    drills = tuple(
+        {
+            "workflow": workflow["name"],
+            "verification": ("verify_checksum", "verify_encryption", "restore_to_scratch", "compare_schema_hash", "record_drill_result"),
+        }
+        for workflow in maintenance["workflows"]
+        if workflow["name"] in {"backup", "restore"}
+    )
+    return {
+        "format": "appgen.local-backup-restore-verification-contract.v1",
+        "ok": {"backup", "restore"} <= {drill["workflow"] for drill in drills}
+        and all({"verify_checksum", "restore_to_scratch", "compare_schema_hash"} <= set(drill["verification"]) for drill in drills),
+        "drills": drills,
+        "guards": ("backup_checksum_verified", "restore_drill_required", "encrypted_manifest_verified"),
+        "side_effects": (),
+    }
+
+
+def data_replication_monitor_contract() -> dict:
+    """Return replication lag, conflict, and replay health monitoring evidence."""
+    lineage = data_change_capture_lineage_contract()
+    monitors = tuple(
+        {
+            "source": item["source"],
+            "watermark": item["watermark"],
+            "metrics": ("lag_seconds", "queued_operations", "conflict_count", "last_replay_id"),
+            "alerts": ("lag_threshold_exceeded", "conflict_queue_growing", "watermark_stalled"),
+        }
+        for item in lineage["lineage"]
+    )
+    return {
+        "format": "appgen.data-replication-monitor-contract.v1",
+        "ok": lineage["ok"]
+        and all({"lag_seconds", "queued_operations", "conflict_count"} <= set(monitor["metrics"]) for monitor in monitors),
+        "monitors": monitors,
+        "guards": ("watermark_monitored", "replication_lag_alerted", "conflict_growth_alerted"),
+        "side_effects": (),
+    }
+
+
+def data_service_telemetry_contract() -> dict:
+    """Return service analytics, tracing, and error-budget evidence."""
+    resources = data_service_resource_contract()
+    telemetry = tuple(
+        {
+            "resource": resource,
+            "signals": ("request_count", "latency_p95", "error_rate", "auth_failures", "rate_limit_hits"),
+            "trace": ("request_id", "auth_subject", "resource", "method", "status", "duration_ms"),
+        }
+        for resource in resources["resources"]
+    )
+    return {
+        "format": "appgen.data-service-telemetry-contract.v1",
+        "ok": bool(telemetry)
+        and all({"latency_p95", "error_rate"} <= set(item["signals"]) for item in telemetry)
+        and all("request_id" in item["trace"] for item in telemetry),
+        "telemetry": telemetry,
+        "guards": ("request_id_required", "latency_budget_recorded", "errors_mapped_to_resource"),
+        "side_effects": (),
+    }
+
+
 def rad_data_tooling_workbench() -> dict:
     """Prove native data-service tooling depth across connections, queries, services, and local sync."""
     contract = rad_data_tooling_contract()
@@ -5220,6 +5357,12 @@ def rad_data_tooling_workbench() -> dict:
     service_versioning = data_service_versioning_contract()
     connection_failover = data_connection_failover_contract()
     change_capture_lineage = data_change_capture_lineage_contract()
+    connection_pooling = data_connection_pool_contract()
+    stored_procedures = data_stored_procedure_workflow_contract()
+    sql_authoring_safety = data_sql_authoring_safety_contract()
+    backup_restore_verification = local_backup_restore_verification_contract()
+    replication_monitor = data_replication_monitor_contract()
+    service_telemetry = data_service_telemetry_contract()
     checks = (
         {
             "id": "connection_catalog",
@@ -5432,6 +5575,42 @@ def rad_data_tooling_workbench() -> dict:
             and not change_capture_lineage["side_effects"],
             "evidence": change_capture_lineage,
         },
+        {
+            "id": "connection_pooling",
+            "ok": connection_pooling["ok"] and {"session_reset_before_reuse", "leak_detection_enabled"} <= set(connection_pooling["guards"])
+            and not connection_pooling["side_effects"],
+            "evidence": connection_pooling,
+        },
+        {
+            "id": "stored_procedure_workflow",
+            "ok": stored_procedures["ok"] and "typed_parameters_required" in stored_procedures["guards"]
+            and not stored_procedures["side_effects"],
+            "evidence": stored_procedures,
+        },
+        {
+            "id": "sql_authoring_safety",
+            "ok": sql_authoring_safety["ok"] and "unsafe_sql_blocks_publish" in sql_authoring_safety["guards"]
+            and not sql_authoring_safety["side_effects"],
+            "evidence": sql_authoring_safety,
+        },
+        {
+            "id": "backup_restore_verification",
+            "ok": backup_restore_verification["ok"] and "restore_drill_required" in backup_restore_verification["guards"]
+            and not backup_restore_verification["side_effects"],
+            "evidence": backup_restore_verification,
+        },
+        {
+            "id": "replication_monitor",
+            "ok": replication_monitor["ok"] and "replication_lag_alerted" in replication_monitor["guards"]
+            and not replication_monitor["side_effects"],
+            "evidence": replication_monitor,
+        },
+        {
+            "id": "service_telemetry",
+            "ok": service_telemetry["ok"] and {"request_id_required", "latency_budget_recorded"} <= set(service_telemetry["guards"])
+            and not service_telemetry["side_effects"],
+            "evidence": service_telemetry,
+        },
     )
     ok = all(check["ok"] for check in checks)
     return {
@@ -5466,6 +5645,12 @@ def rad_data_tooling_workbench() -> dict:
         "service_versioning": service_versioning,
         "connection_failover": connection_failover,
         "change_capture_lineage": change_capture_lineage,
+        "connection_pooling": connection_pooling,
+        "stored_procedures": stored_procedures,
+        "sql_authoring_safety": sql_authoring_safety,
+        "backup_restore_verification": backup_restore_verification,
+        "replication_monitor": replication_monitor,
+        "service_telemetry": service_telemetry,
         "checks": checks,
         "blocking_gaps": tuple(check for check in checks if not check["ok"]),
     }
