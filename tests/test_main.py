@@ -77,6 +77,7 @@ from pyAppGen.form_designer import apply_drop
 from pyAppGen.form_designer import component_analog_group_audit
 from pyAppGen.form_designer import component_analog_matrix
 from pyAppGen.form_designer import component_analog_workbench
+from pyAppGen.form_designer import component_package_actionable_operations
 from pyAppGen.form_designer import component_package_contract
 from pyAppGen.form_designer import component_package_adapter_smoke_contract
 from pyAppGen.form_designer import component_package_behavior_contract
@@ -90,8 +91,13 @@ from pyAppGen.form_designer import component_package_lockfile_integrity_contract
 from pyAppGen.form_designer import component_package_load_policy
 from pyAppGen.form_designer import component_package_preview_load_contract
 from pyAppGen.form_designer import component_package_registration_consistency_contract
+from pyAppGen.form_designer import component_package_registry_commit_operation
+from pyAppGen.form_designer import component_package_resolve_metadata_operation
 from pyAppGen.form_designer import component_package_sandbox_policy_contract
+from pyAppGen.form_designer import component_package_uninstall_operation
+from pyAppGen.form_designer import component_package_update_operation
 from pyAppGen.form_designer import component_package_workbench
+from pyAppGen.form_designer import component_package_preview_load_operation
 from pyAppGen.form_designer import component_palette
 from pyAppGen.form_designer import component_usability_workbench
 from pyAppGen.form_designer import cross_target_visual_depth_workbench
@@ -1670,13 +1676,23 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     }
     assert install_replay["sessions"][0]["final_state"]["rollback_ready"] is True
     assert install_replay["sessions"][0]["final_state"]["global_install"] is False
+    assert component_package_resolve_metadata_operation("devexpress-native")["pipeline"][-1] == "prepare_lockfile_entry"
+    assert "run_adapter_smoke" in component_package_preview_load_operation("devexpress-native")["pipeline"]
+    assert "register_inspector_editors" in component_package_registry_commit_operation("devexpress-native")["pipeline"]
+    assert "refresh_palette" in component_package_update_operation("devexpress-native")["pipeline"]
+    assert "remove_palette_entries" in component_package_uninstall_operation("devexpress-native")["pipeline"]
+    actionable_packages = component_package_actionable_operations(("devexpress-native",))
+    assert actionable_packages["ok"] is True
+    assert actionable_packages["operations"][0]["registry_commit"]["ok"] is True
     package_workbench = component_package_workbench()
     assert package_workbench["format"] == "appgen.component-package-workbench.v1"
     assert package_workbench["ok"] is True
     assert "package_manager_workbench" in {check["id"] for check in package_workbench["checks"]}
     assert "install_session_replay" in {check["id"] for check in package_workbench["checks"]}
+    assert "actionable_package_operations" in {check["id"] for check in package_workbench["checks"]}
     assert package_workbench["install_replay"]["ok"] is True
     assert package_workbench["behavior_workbench"]["ok"] is True
+    assert package_workbench["actionable_operations"]["ok"] is True
     behavior_workbench = component_package_behavior_workbench()
     assert behavior_workbench["format"] == "appgen.component-package-behavior-workbench.v1"
     assert behavior_workbench["ok"] is True
@@ -1723,6 +1739,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "palette_refresh",
         "failure_isolation",
         "lifecycle_transaction_replay",
+        "actionable_package_operations",
         "side_effect_guards",
     } == {check["id"] for check in package_manager["checks"]}
     assert package_manager["version_conflicts"]["ok"] is True
@@ -1730,6 +1747,10 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     assert all("find_palette_references" in item["phases"] for item in package_manager["uninstall_plan"]["uninstalls"])
     assert "invalidate_cache" in package_manager["palette_refresh"]["palette_actions"]
     assert all("record_diagnostic" in scenario["containment"] for scenario in package_manager["failure_isolation"]["scenarios"])
+    assert package_manager["actionable_operations"]["ok"] is True
+    assert {"resolve_metadata", "preview_load", "registry_commit", "update_package", "uninstall_package"} <= set(
+        package_manager["actionable_operations"]["operation_names"]
+    )
     lifecycle_replay = component_package_lifecycle_transaction_replay()
     assert lifecycle_replay["format"] == "appgen.component-package-lifecycle-transaction-replay.v1"
     assert lifecycle_replay["ok"] is True
@@ -9792,11 +9813,19 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     }
     assert form_designer.third_party_component_install_plan()["requires_review"] is True
     assert form_designer.third_party_component_install_plan()["side_effects"] == ()
+    assert form_designer.component_package_resolve_metadata_operation("devexpress-native")["pipeline"][-1] == "prepare_lockfile_entry"
+    assert "run_adapter_smoke" in form_designer.component_package_preview_load_operation("devexpress-native")["pipeline"]
+    assert "register_inspector_editors" in form_designer.component_package_registry_commit_operation("devexpress-native")["pipeline"]
+    assert "refresh_palette" in form_designer.component_package_update_operation("devexpress-native")["pipeline"]
+    assert "remove_palette_entries" in form_designer.component_package_uninstall_operation("devexpress-native")["pipeline"]
+    assert form_designer.component_package_actionable_operations(("devexpress-native",))["ok"] is True
     generated_package_workbench = form_designer.component_package_workbench()
     assert generated_package_workbench["format"] == "appgen.generated-component-package-workbench.v1"
     assert generated_package_workbench["ok"] is True
     assert "install_session_replay" in {check["id"] for check in generated_package_workbench["checks"]}
+    assert "actionable_package_operations" in {check["id"] for check in generated_package_workbench["checks"]}
     assert generated_package_workbench["install_replay"]["ok"] is True
+    assert generated_package_workbench["actionable_operations"]["ok"] is True
     assert all(
         {"resolve_metadata", "sandbox_load", "adapter_compile", "registry_commit", "palette_refresh", "rollback_probe"}
         <= {phase["phase"] for phase in session["phases"]}
@@ -9821,6 +9850,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "palette_refresh",
         "failure_isolation",
         "lifecycle_transaction_replay",
+        "actionable_package_operations",
     } <= {
         check["id"] for check in generated_package_manager["checks"]
     }
@@ -9830,6 +9860,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert all("disable_adapters" in item["phases"] for item in generated_package_manager["uninstall_plan"]["uninstalls"])
     assert "rebuild_toolbox" in generated_package_manager["palette_refresh"]["palette_actions"]
     assert all("disable_package" in scenario["containment"] for scenario in generated_package_manager["failure_isolation"]["scenarios"])
+    assert generated_package_manager["actionable_operations"]["operations"][0]["preview_load"]["ok"] is True
     assert generated_package_manager["lifecycle_replay"]["ok"] is True
     assert generated_package_manager["lifecycle_replay"]["format"] == "appgen.generated-component-package-lifecycle-transaction-replay.v1"
     assert all(

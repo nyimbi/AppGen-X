@@ -1063,6 +1063,153 @@ def validate_component_package_load(package_id: str, request: dict | None = None
     }
 
 
+def component_package_resolve_metadata_operation(package_id: str) -> dict:
+    """Return a callable IDE operation for resolving one package before install."""
+    contract = component_package_contract(package_id)
+    dependency_graph = component_package_dependency_graph((package_id,))
+    lockfile = component_package_lockfile_integrity_contract((package_id,))
+    return {
+        "format": "appgen.component-package-resolve-metadata-operation.v1",
+        "package_id": package_id,
+        "ok": contract["implemented"] and dependency_graph["ok"] and lockfile["ok"],
+        "pipeline": (
+            "read_package_manifest",
+            "validate_metadata",
+            "resolve_dependency_graph",
+            "prepare_lockfile_entry",
+        ),
+        "manifest": contract["module"],
+        "dependency_graph": dependency_graph,
+        "lockfile_entries": lockfile["entries"],
+        "side_effects": (),
+    }
+
+
+def component_package_preview_load_operation(package_id: str) -> dict:
+    """Return a callable IDE operation for sandboxed design-time preview loading."""
+    policy = component_package_load_policy(package_id)
+    validation = validate_component_package_load(package_id, {"accepted": policy["checks"]})
+    preview = component_package_preview_load_contract(package_id)
+    adapter_smoke = component_package_adapter_smoke_contract(package_id)
+    return {
+        "format": "appgen.component-package-preview-load-operation.v1",
+        "package_id": package_id,
+        "ok": validation["ok"] and preview["ok"] and adapter_smoke["ok"],
+        "pipeline": (
+            "validate_load_request",
+            "create_sandbox_loader",
+            "instantiate_preview_adapter",
+            "run_adapter_smoke",
+            "unload_preview",
+        ),
+        "validation": validation,
+        "preview": preview,
+        "adapter_smoke": adapter_smoke,
+        "guards": ("sandboxed_loader", "per-project_manifest", "preview_unloaded_after_probe"),
+        "side_effects": (),
+    }
+
+
+def component_package_registry_commit_operation(package_id: str) -> dict:
+    """Return a callable IDE operation for committing package registrations."""
+    registration = component_package_registration_consistency_contract((package_id,))
+    dependency_order = component_package_dependency_order_contract((package_id,))
+    palette_refresh = component_package_palette_refresh_contract((package_id,))
+    return {
+        "format": "appgen.component-package-registry-commit-operation.v1",
+        "package_id": package_id,
+        "ok": registration["ok"] and dependency_order["ok"] and palette_refresh["ok"],
+        "pipeline": (
+            "load_adapter",
+            "register_palette_entries",
+            "register_inspector_editors",
+            "register_binding_adapters",
+            "commit_project_manifest",
+            "refresh_palette",
+        ),
+        "registration": registration,
+        "dependency_order": dependency_order["load_order"],
+        "palette_actions": palette_refresh["palette_actions"],
+        "guards": ("adapter_before_registry_commit", "all_design_surfaces_registered", "palette_refreshed_after_commit"),
+        "side_effects": (),
+    }
+
+
+def component_package_update_operation(package_id: str) -> dict:
+    """Return a callable IDE operation for a reviewed package update."""
+    update_plan = component_package_update_plan_contract((package_id,))
+    updates = {
+        item["package_id"]: item
+        for item in update_plan["updates"]
+    }
+    update = updates[package_id]
+    return {
+        "format": "appgen.component-package-update-operation.v1",
+        "package_id": package_id,
+        "ok": "run_adapter_smoke" in update["phases"] and "refresh_palette" in update["phases"],
+        "pipeline": update["phases"],
+        "from_version": update["from_version"],
+        "to_version": update["to_version"],
+        "guards": update_plan["guards"],
+        "side_effects": (),
+    }
+
+
+def component_package_uninstall_operation(package_id: str) -> dict:
+    """Return a callable IDE operation for a reversible package uninstall."""
+    uninstall_plan = component_package_uninstall_plan_contract((package_id,))
+    uninstalls = {
+        item["package_id"]: item
+        for item in uninstall_plan["uninstalls"]
+    }
+    uninstall = uninstalls[package_id]
+    rollback = component_package_rollback_contract((package_id,))
+    return {
+        "format": "appgen.component-package-uninstall-operation.v1",
+        "package_id": package_id,
+        "ok": "disable_adapters" in uninstall["phases"]
+        and "remove_palette_entries" in uninstall["phases"]
+        and "restore_registry" in rollback["snapshot"]["restore_order"],
+        "pipeline": uninstall["phases"],
+        "rollback": rollback,
+        "guards": uninstall_plan["guards"] + ("rollback_snapshot_available",),
+        "side_effects": (),
+    }
+
+
+def component_package_actionable_operations(package_ids: tuple[str, ...] = ()) -> dict:
+    """Return callable package-manager operations used by the generated IDE."""
+    install_plan = third_party_component_install_plan(package_ids)
+    operations = tuple(
+        {
+            "package_id": package["id"],
+            "resolve_metadata": component_package_resolve_metadata_operation(package["id"]),
+            "preview_load": component_package_preview_load_operation(package["id"]),
+            "registry_commit": component_package_registry_commit_operation(package["id"]),
+            "update_package": component_package_update_operation(package["id"]),
+            "uninstall_package": component_package_uninstall_operation(package["id"]),
+        }
+        for package in install_plan["packages"]
+    )
+    operation_names = (
+        "resolve_metadata",
+        "preview_load",
+        "registry_commit",
+        "update_package",
+        "uninstall_package",
+    )
+    return {
+        "format": "appgen.component-package-actionable-operations.v1",
+        "ok": install_plan["ok"]
+        and not install_plan["unknown"]
+        and bool(operations)
+        and all(operation[name]["ok"] for operation in operations for name in operation_names),
+        "operations": operations,
+        "operation_names": operation_names,
+        "side_effects": (),
+    }
+
+
 def component_package_install_session_replay(package_ids: tuple[str, ...] = ()) -> dict:
     """Replay design-time component package installation without changing the host IDE."""
     install_plan = third_party_component_install_plan(package_ids)
@@ -2174,6 +2321,7 @@ def design_time_package_manager_workbench(package_ids: tuple[str, ...] = ()) -> 
     palette_refresh = component_package_palette_refresh_contract(package_ids)
     failure_isolation = component_package_failure_isolation_contract(package_ids)
     lifecycle_replay = component_package_lifecycle_transaction_replay(package_ids)
+    actionable_operations = component_package_actionable_operations(package_ids)
     checks = (
         {
             "id": "install_session_phases",
@@ -2267,6 +2415,20 @@ def design_time_package_manager_workbench(package_ids: tuple[str, ...] = ()) -> 
             "evidence": lifecycle_replay,
         },
         {
+            "id": "actionable_package_operations",
+            "ok": actionable_operations["ok"]
+            and {
+                "resolve_metadata",
+                "preview_load",
+                "registry_commit",
+                "update_package",
+                "uninstall_package",
+            }
+            <= set(actionable_operations["operation_names"])
+            and not actionable_operations["side_effects"],
+            "evidence": actionable_operations,
+        },
+        {
             "id": "side_effect_guards",
             "ok": not session["side_effects"]
             and not registration["side_effects"]
@@ -2281,7 +2443,8 @@ def design_time_package_manager_workbench(package_ids: tuple[str, ...] = ()) -> 
             and not uninstall_plan["side_effects"]
             and not palette_refresh["side_effects"]
             and not failure_isolation["side_effects"]
-            and not lifecycle_replay["side_effects"],
+            and not lifecycle_replay["side_effects"]
+            and not actionable_operations["side_effects"],
             "evidence": {
                 "session": session["side_effects"],
                 "registration": registration["side_effects"],
@@ -2297,6 +2460,7 @@ def design_time_package_manager_workbench(package_ids: tuple[str, ...] = ()) -> 
                 "palette_refresh": palette_refresh["side_effects"],
                 "failure_isolation": failure_isolation["side_effects"],
                 "lifecycle_replay": lifecycle_replay["side_effects"],
+                "actionable_operations": actionable_operations["side_effects"],
             },
         },
     )
@@ -2321,6 +2485,7 @@ def design_time_package_manager_workbench(package_ids: tuple[str, ...] = ()) -> 
         "palette_refresh": palette_refresh,
         "failure_isolation": failure_isolation,
         "lifecycle_replay": lifecycle_replay,
+        "actionable_operations": actionable_operations,
         "checks": checks,
         "blocking_gaps": tuple(check for check in checks if not check["ok"]),
     }
@@ -2333,6 +2498,7 @@ def component_package_workbench(existing_paths: set[str] | None = None) -> dict:
     install_replay = component_package_install_session_replay()
     package_manager = design_time_package_manager_workbench()
     behavior_workbench = component_package_behavior_workbench()
+    actionable_operations = component_package_actionable_operations()
     package_files = component_package_file_manifest()
     existing = set(existing_paths or ())
     checks = (
@@ -2375,6 +2541,11 @@ def component_package_workbench(existing_paths: set[str] | None = None) -> dict:
             "evidence": behavior_workbench,
         },
         {
+            "id": "actionable_package_operations",
+            "ok": actionable_operations["ok"] and not actionable_operations["side_effects"],
+            "evidence": actionable_operations,
+        },
+        {
             "id": "package_file_exports",
             "ok": all(
                 {
@@ -2415,6 +2586,7 @@ def component_package_workbench(existing_paths: set[str] | None = None) -> dict:
         "install_replay": install_replay,
         "package_manager": package_manager,
         "behavior_workbench": behavior_workbench,
+        "actionable_operations": actionable_operations,
         "checks": checks,
         "blocking_gaps": tuple(check for check in checks if not check["ok"]),
     }
