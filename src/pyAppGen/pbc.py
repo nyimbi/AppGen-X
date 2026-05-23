@@ -9,6 +9,7 @@ event contracts, generated tables, and dependency evidence.
 from __future__ import annotations
 
 import importlib.util
+import json
 import py_compile
 import re
 import sys
@@ -1034,6 +1035,90 @@ def discover_pbc_packages(package_refs: tuple[str | Path, ...] | list[str | Path
     }
 
 
+def pbc_package_index_schema() -> dict:
+    """Return the package index contract for reusable PBC packages."""
+    return {
+        "format": "appgen.pbc-package-index-schema.v1",
+        "required_fields": ("packages",),
+        "package_fields": {
+            "name": "Stable package name shown in the package catalog.",
+            "source": "Optional local directory or file path containing register_pbc().",
+            "module": "Optional importable module path exposing register_pbc().",
+            "version": "Optional semantic package version.",
+            "publisher": "Optional package publisher or owning team.",
+        },
+        "rules": (
+            "Each package entry must provide either source or module.",
+            "Relative source paths resolve from the index file directory.",
+            "Loading an index returns validation reports and catalog patches without mutating the built-in catalog.",
+        ),
+    }
+
+
+def discover_pbc_package_index(index_path: str | Path) -> dict:
+    """Load a package index file and validate each referenced PBC package."""
+    path = Path(index_path)
+    try:
+        index = json.loads(path.read_text(encoding="utf-8"))
+    except Exception as exc:
+        return {
+            "format": "appgen.pbc-package-index-discovery-report.v1",
+            "ok": False,
+            "index": str(index_path),
+            "schema": pbc_package_index_schema(),
+            "error": str(exc),
+            "loaded": (),
+            "blocking_gaps": ({"id": "index_read", "ok": False, "error": str(exc)},),
+        }
+    packages = index.get("packages", ())
+    if not isinstance(packages, list):
+        return {
+            "format": "appgen.pbc-package-index-discovery-report.v1",
+            "ok": False,
+            "index": str(index_path),
+            "schema": pbc_package_index_schema(),
+            "error": "packages must be a list",
+            "loaded": (),
+            "blocking_gaps": ({"id": "packages_list", "ok": False},),
+        }
+    loaded = []
+    invalid_entries = []
+    for position, entry in enumerate(packages):
+        if not isinstance(entry, dict) or (not entry.get("source") and not entry.get("module")):
+            invalid_entries.append({"position": position, "entry": entry, "error": "entry must provide source or module"})
+            continue
+        raw_ref = entry.get("source") or entry["module"]
+        if entry.get("source"):
+            candidate = Path(raw_ref)
+            package_ref = candidate if candidate.is_absolute() else path.parent / candidate
+        else:
+            package_ref = raw_ref
+        report = load_pbc_package(package_ref)
+        loaded.append(
+            {
+                "name": entry.get("name") or str(raw_ref),
+                "version": entry.get("version"),
+                "publisher": entry.get("publisher"),
+                "source_kind": "source" if entry.get("source") else "module",
+                "report": report,
+            }
+        )
+    blocking = tuple(invalid_entries) + tuple(item for item in loaded if not item["report"]["ok"])
+    return {
+        "format": "appgen.pbc-package-index-discovery-report.v1",
+        "ok": not blocking and bool(loaded),
+        "index": str(index_path),
+        "schema": pbc_package_index_schema(),
+        "loaded": tuple(loaded),
+        "catalog_patches": tuple(
+            item["report"]["registration"]["catalog_patch"]
+            for item in loaded
+            if item["report"].get("registration", {}).get("catalog_patch")
+        ),
+        "blocking_gaps": blocking,
+    }
+
+
 def pbc_package_loading_smoke_audit() -> dict:
     """Prove PBC packages can be loaded from local source and import paths."""
     source_manifest = {**example_pbc_manifest(), "pbc": "source_warranty_claims"}
@@ -1059,6 +1144,30 @@ def pbc_package_loading_smoke_audit() -> dict:
         try:
             sys.modules.pop("module_claims_pbc", None)
             module_report = load_pbc_package("module_claims_pbc")
+            index_path = root / "pbc-packages.json"
+            index_path.write_text(
+                json.dumps(
+                    {
+                        "packages": [
+                            {
+                                "name": "Source Claims",
+                                "source": "source_claims_pbc",
+                                "version": "1.0.0",
+                                "publisher": "appgen-tests",
+                            },
+                            {
+                                "name": "Module Claims",
+                                "module": "module_claims_pbc",
+                                "version": "1.0.0",
+                                "publisher": "appgen-tests",
+                            },
+                        ]
+                    },
+                    indent=2,
+                ),
+                encoding="utf-8",
+            )
+            index_discovery = discover_pbc_package_index(index_path)
         finally:
             try:
                 sys.path.remove(str(root))
@@ -1070,6 +1179,7 @@ def pbc_package_loading_smoke_audit() -> dict:
         {"id": "local_source_directory", "ok": source_report["ok"] and source_report["source_kind"] == "directory"},
         {"id": "importable_module", "ok": module_report["ok"] and module_report["source_kind"] == "module"},
         {"id": "discovery_aggregate", "ok": discovery["ok"] and bool(discovery["catalog_patches"])},
+        {"id": "package_index_discovery", "ok": index_discovery["ok"] and len(index_discovery["loaded"]) == 2},
         {
             "id": "side_effect_free_registration",
             "ok": source_report.get("registration", {}).get("decision") == "approved"
@@ -1082,6 +1192,7 @@ def pbc_package_loading_smoke_audit() -> dict:
         "source_report": source_report,
         "module_report": module_report,
         "discovery": discovery,
+        "index_discovery": index_discovery,
         "checks": checks,
         "blocking_gaps": tuple(check for check in checks if not check["ok"]),
     }

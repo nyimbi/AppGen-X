@@ -59,6 +59,8 @@ The executable catalog lives in `src/pyAppGen/pbc.py` and exposes:
 - `pbc_package_contract()` for installable package metadata.
 - `load_pbc_package()` and `discover_pbc_packages()` for loading package
   entrypoints from local source directories or importable modules.
+- `pbc_package_index_schema()` and `discover_pbc_package_index()` for loading
+  reusable package catalogs without mutating the built-in catalog.
 - `pbc_selection_from_prompt()` for natural-language PBC selection.
 - `pbc_composition_plan()` for datastore, API, event, and dependency evidence.
 - `pbc_composition_dsl()` for a generated AppGen DSL starter.

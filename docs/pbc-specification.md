@@ -180,6 +180,24 @@ For local development, pass a source directory containing `__init__.py` and a
 returned manifest, and returns a side-effect-free catalog patch instead of
 mutating the built-in catalog.
 
+A package index is a JSON file with a `packages` list. Each entry points to a
+local `source` path or an importable `module`:
+
+```json
+{
+  "packages": [
+    {
+      "name": "Claims",
+      "source": "claims_pbc",
+      "version": "1.0.0"
+    }
+  ]
+}
+```
+
+Use `discover_pbc_package_index(index_path)` to load every entry and return the
+validated package reports plus catalog patches.
+
 ## Composition Contract
 
 Once registered, the PBC can be selected by key, starter stack, or natural

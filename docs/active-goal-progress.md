@@ -47,6 +47,7 @@ Build a complete AppGen IDE and generation platform with:
 | 2026-05-23 | `9aa0e3c` | Added generated data tooling runtime manifests for connection, schema, lookup, service publishing, and failover proof. | Py compile; form-designer audit test; generated app compile test; aggregate package-goal test; staged hygiene scans. |
 | 2026-05-23 | `96a104c` | Added generated PBC runtime manifests for catalog selection, self-registration, composition workbench, and stream-policy proof. | Py compile; focused PBC test; PBC generation smoke; aggregate package-goal test; staged hygiene scans. |
 | 2026-05-23 | `e32d201` | Added side-effect-free PBC package loading from local source directories and importable modules. | Py compile; focused PBC test; aggregate package-goal test; staged hygiene scans. |
+| 2026-05-23 | `pending` | Added PBC package index discovery for reusable package catalogs. | Py compile; focused PBC test; aggregate package-goal test; staged hygiene scans. |
 
 ## Current Working Slice
 
@@ -56,7 +57,7 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
 - CI or prepared-host execution of desktop packaging adapters.
 - CI or prepared-host execution of mobile packaging adapters.
 - Runtime smoke checks against produced package artifacts when available.
-- Real PBC package loading is implemented for local source directories and importable modules; package index discovery remains future work.
+- PBC package loading is implemented for local source directories, importable modules, and package index files.
 
 ## Open Completion Areas
 

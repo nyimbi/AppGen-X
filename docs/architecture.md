@@ -375,7 +375,9 @@ The composition path is:
    stream policy can be compiled and smoke-tested inside the app artifact.
 7. Load package entrypoints from local source directories or importable modules,
    validate their manifests, and produce side-effect-free catalog patches.
-8. Generate and compile the application shell as part of the PBC release audit.
+8. Load package index files that point to local source packages or importable
+   modules, then validate every entry before exposing generated catalog patches.
+9. Generate and compile the application shell as part of the PBC release audit.
 
 This keeps composable applications from collapsing into a shared database
 module while still letting users select finance, supply-chain, people,
