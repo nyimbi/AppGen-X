@@ -3929,6 +3929,116 @@ def data_migration_rehearsal_contract() -> dict:
     }
 
 
+def data_dataset_designer_workflow_contract() -> dict:
+    """Return visual dataset designer operations for fields, lookups, and events."""
+    dataset = data_dataset_field_catalog_contract()
+    operations = (
+        {"op": "add_persistent_field", "target": "fields", "undoable": True, "validates": ("field_type", "required")},
+        {"op": "add_lookup_field", "target": "lookups", "undoable": True, "validates": ("target_table", "target_field")},
+        {"op": "add_calculated_field", "target": "expressions", "undoable": True, "validates": ("side_effect_free", "type")},
+        {"op": "wire_dataset_event", "target": "events", "undoable": True, "validates": ("handler_signature", "event_lifecycle")},
+        {"op": "preview_dataset_rows", "target": "preview", "undoable": False, "validates": ("read_only", "parameter_bindings")},
+    )
+    return {
+        "format": "appgen.data-dataset-designer-workflow-contract.v1",
+        "dataset": dataset["dataset"],
+        "fields": dataset["fields"],
+        "operations": operations,
+        "event_lifecycle": ("before_open", "after_open", "before_post", "after_post", "on_reconcile_error"),
+        "guards": ("undoable_schema_edits", "lookup_targets_checked", "calculated_fields_side_effect_free", "read_only_preview"),
+        "ok": dataset["ok"] and {"add_lookup_field", "wire_dataset_event", "preview_dataset_rows"} <= {item["op"] for item in operations},
+        "side_effects": (),
+    }
+
+
+def data_service_invocation_trace_contract() -> dict:
+    """Return replayable request/response traces for generated service methods."""
+    invocation = data_server_method_invocation_contract()
+    tests = data_service_contract_test_plan()
+    traces = tuple(
+        {
+            "test": test["name"],
+            "surface": test["surface"],
+            "pipeline": invocation["pipeline"],
+            "assertions": test["assertions"],
+            "trace": ("build_request", "apply_auth_filter", "validate_request", "invoke_method", "map_response", "assert_contract"),
+        }
+        for test in tests["tests"]
+    )
+    return {
+        "format": "appgen.data-service-invocation-trace-contract.v1",
+        "method": invocation["method"],
+        "traces": traces,
+        "guards": ("auth_filter_required", "request_validator_required", "response_shape_asserted", "errors_mapped"),
+        "ok": bool(traces) and all("assert_contract" in item["trace"] for item in traces),
+        "side_effects": (),
+    }
+
+
+def local_database_maintenance_schedule_contract() -> dict:
+    """Return scheduled local maintenance and verification windows."""
+    maintenance = local_database_maintenance_contract()
+    schedules = tuple(
+        {
+            "workflow": workflow["name"],
+            "frequency": "hourly" if workflow["name"] == "change_view_sync" else "daily",
+            "steps": workflow["steps"],
+            "verifies": ("checksum", "encrypted_manifest", "checkpoint") if workflow["name"] != "restore" else ("manifest", "schema_hash", "index_health"),
+        }
+        for workflow in maintenance["workflows"]
+    )
+    return {
+        "format": "appgen.local-database-maintenance-schedule-contract.v1",
+        "schedules": schedules,
+        "guards": ("backup_before_schema_change", "checksum_verified", "restore_rehearsed", "change_view_checkpointed"),
+        "ok": {"backup", "restore", "change_view_sync"} <= {item["workflow"] for item in schedules}
+        and all(item["verifies"] for item in schedules),
+        "side_effects": (),
+    }
+
+
+def data_schema_checkpoint_contract() -> dict:
+    """Return schema-diff checkpoints, approval gates, and rollback evidence."""
+    diff = data_schema_adapter_diff_contract()
+    rehearsal = data_migration_rehearsal_contract()
+    checkpoints = (
+        {"name": "before_diff", "captures": ("schema_hash", "field_catalog", "relationship_graph")},
+        {"name": "after_preview", "captures": ("migration_sql", "data_loss_report", "rollback_script")},
+        {"name": "after_rehearsal", "captures": ("scratch_result", "smoke_query_report", "approval_record")},
+    )
+    return {
+        "format": "appgen.data-schema-checkpoint-contract.v1",
+        "operations": diff["operations"],
+        "checkpoints": checkpoints,
+        "approval_gates": ("data_loss_review", "rollback_review", "smoke_query_review"),
+        "rollback": rehearsal["rollback"],
+        "guards": ("checkpoint_before_apply", "approval_required", "rollback_script_required", "schema_hash_recorded"),
+        "ok": all(checkpoint["captures"] for checkpoint in checkpoints) and "generate_rollback_script" in rehearsal["dry_run"],
+        "side_effects": (),
+    }
+
+
+def data_module_generation_contract() -> dict:
+    """Return generated data module artifacts for connections, datasets, and services."""
+    dataset = data_dataset_field_catalog_contract()
+    services = data_service_method_contract()
+    artifacts = (
+        {"name": "connection_module", "exports": ("connection_catalog", "test_connection", "transaction_scope")},
+        {"name": "dataset_module", "exports": ("field_catalog", "open_dataset", "post_changes", "reconcile_errors")},
+        {"name": "service_proxy_module", "exports": ("client_proxy", "request_validator", "response_mapper", "contract_tests")},
+        {"name": "offline_module", "exports": ("operation_log", "replay_plan", "conflict_review", "queue_integrity")},
+    )
+    return {
+        "format": "appgen.data-module-generation-contract.v1",
+        "dataset": dataset["dataset"],
+        "service_artifacts": services["generated_artifacts"],
+        "artifacts": artifacts,
+        "guards": ("connection_secrets_externalized", "dataset_events_declared", "service_contract_tests_generated", "offline_queue_integrity_checked"),
+        "ok": all({"exports", "name"} <= set(artifact) and artifact["exports"] for artifact in artifacts),
+        "side_effects": (),
+    }
+
+
 def rad_data_tooling_workbench() -> dict:
     """Prove native data-service tooling depth across connections, queries, services, and local sync."""
     contract = rad_data_tooling_contract()
@@ -3949,6 +4059,11 @@ def rad_data_tooling_workbench() -> dict:
     service_security = data_service_security_contract()
     offline_queue_integrity = data_offline_queue_integrity_contract()
     migration_rehearsal = data_migration_rehearsal_contract()
+    dataset_designer = data_dataset_designer_workflow_contract()
+    service_invocation_traces = data_service_invocation_trace_contract()
+    maintenance_schedule = local_database_maintenance_schedule_contract()
+    schema_checkpoints = data_schema_checkpoint_contract()
+    data_modules = data_module_generation_contract()
     checks = (
         {
             "id": "connection_catalog",
@@ -4101,6 +4216,36 @@ def rad_data_tooling_workbench() -> dict:
             and not migration_rehearsal["side_effects"],
             "evidence": migration_rehearsal,
         },
+        {
+            "id": "dataset_designer_workflow",
+            "ok": dataset_designer["ok"] and {"undoable_schema_edits", "read_only_preview"} <= set(dataset_designer["guards"])
+            and not dataset_designer["side_effects"],
+            "evidence": dataset_designer,
+        },
+        {
+            "id": "service_invocation_traces",
+            "ok": service_invocation_traces["ok"] and {"response_shape_asserted", "errors_mapped"} <= set(service_invocation_traces["guards"])
+            and not service_invocation_traces["side_effects"],
+            "evidence": service_invocation_traces,
+        },
+        {
+            "id": "local_maintenance_schedule",
+            "ok": maintenance_schedule["ok"] and {"restore_rehearsed", "change_view_checkpointed"} <= set(maintenance_schedule["guards"])
+            and not maintenance_schedule["side_effects"],
+            "evidence": maintenance_schedule,
+        },
+        {
+            "id": "schema_checkpoints",
+            "ok": schema_checkpoints["ok"] and {"approval_required", "schema_hash_recorded"} <= set(schema_checkpoints["guards"])
+            and not schema_checkpoints["side_effects"],
+            "evidence": schema_checkpoints,
+        },
+        {
+            "id": "data_module_generation",
+            "ok": data_modules["ok"] and {"dataset_events_declared", "service_contract_tests_generated"} <= set(data_modules["guards"])
+            and not data_modules["side_effects"],
+            "evidence": data_modules,
+        },
     )
     ok = all(check["ok"] for check in checks)
     return {
@@ -4125,6 +4270,11 @@ def rad_data_tooling_workbench() -> dict:
         "service_security": service_security,
         "offline_queue_integrity": offline_queue_integrity,
         "migration_rehearsal": migration_rehearsal,
+        "dataset_designer": dataset_designer,
+        "service_invocation_traces": service_invocation_traces,
+        "maintenance_schedule": maintenance_schedule,
+        "schema_checkpoints": schema_checkpoints,
+        "data_modules": data_modules,
         "checks": checks,
         "blocking_gaps": tuple(check for check in checks if not check["ok"]),
     }

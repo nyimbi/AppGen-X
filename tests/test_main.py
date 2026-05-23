@@ -945,6 +945,11 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "service_security_policy",
         "offline_queue_integrity",
         "migration_rehearsal",
+        "dataset_designer_workflow",
+        "service_invocation_traces",
+        "local_maintenance_schedule",
+        "schema_checkpoints",
+        "data_module_generation",
     } == {check["id"] for check in data_workbench["checks"]}
     assert data_workbench["connection_test"]["steps"][-1] == "rollback_test_transaction"
     assert "explain_plan" in data_workbench["query_preview"]["plan"]
@@ -969,6 +974,17 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     assert all("audit_log" in policy["filters"] for policy in data_workbench["service_security"]["policies"])
     assert all(entry["encrypted"] and entry["checksum"].startswith("sha256:") for entry in data_workbench["offline_queue_integrity"]["entries"])
     assert "run_data_loss_check" in data_workbench["migration_rehearsal"]["dry_run"]
+    assert {"add_lookup_field", "wire_dataset_event", "preview_dataset_rows"} <= {
+        operation["op"] for operation in data_workbench["dataset_designer"]["operations"]
+    }
+    assert all("assert_contract" in trace["trace"] for trace in data_workbench["service_invocation_traces"]["traces"])
+    assert {"backup", "restore", "change_view_sync"} <= {
+        item["workflow"] for item in data_workbench["maintenance_schedule"]["schedules"]
+    }
+    assert "approval_required" in data_workbench["schema_checkpoints"]["guards"]
+    assert {"connection_module", "dataset_module", "service_proxy_module", "offline_module"} <= {
+        artifact["name"] for artifact in data_workbench["data_modules"]["artifacts"]
+    }
     mobile_workbench = mobile_native_api_workbench()
     assert mobile_workbench["format"] == "appgen.mobile-native-api-workbench.v1"
     assert mobile_workbench["ok"] is True
@@ -9188,6 +9204,11 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "service_security_policy",
         "offline_queue_integrity",
         "migration_rehearsal",
+        "dataset_designer_workflow",
+        "service_invocation_traces",
+        "local_maintenance_schedule",
+        "schema_checkpoints",
+        "data_module_generation",
     } == {check["id"] for check in generated_data_tooling["checks"]}
     assert generated_data_tooling["connection_test"]["steps"][-1] == "rollback_test_transaction"
     assert "explain_plan" in generated_data_tooling["query_preview"]["plan"]
@@ -9215,6 +9236,17 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         for entry in generated_data_tooling["offline_queue_integrity"]["entries"]
     )
     assert "run_data_loss_check" in generated_data_tooling["migration_rehearsal"]["dry_run"]
+    assert {"add_lookup_field", "wire_dataset_event", "preview_dataset_rows"} <= {
+        operation["op"] for operation in generated_data_tooling["dataset_designer"]["operations"]
+    }
+    assert all("assert_contract" in trace["trace"] for trace in generated_data_tooling["service_invocation_traces"]["traces"])
+    assert {"backup", "restore", "change_view_sync"} <= {
+        item["workflow"] for item in generated_data_tooling["maintenance_schedule"]["schedules"]
+    }
+    assert "approval_required" in generated_data_tooling["schema_checkpoints"]["guards"]
+    assert {"connection_module", "dataset_module", "service_proxy_module", "offline_module"} <= {
+        artifact["name"] for artifact in generated_data_tooling["data_modules"]["artifacts"]
+    }
     generated_mobile = form_designer.mobile_native_api_workbench()
     assert generated_mobile["format"] == "appgen.generated-mobile-native-api-workbench.v1"
     assert generated_mobile["ok"] is True
