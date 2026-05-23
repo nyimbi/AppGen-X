@@ -1490,6 +1490,27 @@ def write_backup_file(output_dir, schema: AppSchema):
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
     (output_dir / "backup.py").write_text(_backup_text(schema))
+    write_backup_module_files(output_dir)
+
+
+def write_backup_module_files(output_dir):
+    """Write generated backup/recovery modules and smoke tests."""
+    output_dir = Path(output_dir)
+    module_dir = output_dir / "backup_modules"
+    test_dir = output_dir / "backup_module_tests"
+    module_dir.mkdir(parents=True, exist_ok=True)
+    test_dir.mkdir(parents=True, exist_ok=True)
+    (module_dir / "__init__.py").write_text(_backup_module_init_text(), encoding="utf-8")
+    (test_dir / "__init__.py").write_text(_backup_module_test_init_text(), encoding="utf-8")
+    for module_name in BACKUP_MODULES:
+        (module_dir / f"{module_name}.py").write_text(
+            _backup_module_text(module_name),
+            encoding="utf-8",
+        )
+        (test_dir / f"test_{module_name}.py").write_text(
+            _backup_module_test_text(module_name),
+            encoding="utf-8",
+        )
 
 
 def write_data_access_file(output_dir, schema: AppSchema):
@@ -2015,6 +2036,13 @@ SCHEMA_IMPORT_MODULES = (
     "normalization_module",
     "roundtrip_diff_module",
     "apply_release_module",
+)
+
+BACKUP_MODULES = (
+    "payload_export_module",
+    "integrity_manifest_module",
+    "schedule_retention_module",
+    "recovery_release_module",
 )
 
 
@@ -4714,6 +4742,266 @@ def smoke_test():
         "surface": SURFACE,
         "ok": True,
         "tests": ("test_schema_import_module_contract", "test_schema_import_module_smoke"),
+    }}
+'''
+
+
+def _backup_module_init_text() -> str:
+    return (
+        '"""Generated backup and recovery modules."""\n\n'
+        f"BACKUP_MODULES = {BACKUP_MODULES!r}\n"
+    )
+
+
+def _backup_module_test_init_text() -> str:
+    modules = tuple(f"test_{name}" for name in BACKUP_MODULES)
+    return (
+        '"""Generated backup and recovery module tests."""\n\n'
+        f"BACKUP_MODULE_TESTS = {modules!r}\n"
+    )
+
+
+def _backup_surface(module_name: str) -> tuple[str, str]:
+    return {
+        "payload_export_module": ("payload_export", "backup_json"),
+        "integrity_manifest_module": ("integrity_manifest", "backup_manifest"),
+        "schedule_retention_module": ("schedule_retention", "backup_schedule_plan"),
+        "recovery_release_module": ("recovery_release", "backup_release_gate"),
+    }[module_name]
+
+
+def _backup_module_text(module_name: str) -> str:
+    surface, operation = _backup_surface(module_name)
+    return f'''"""Generated backup and recovery module for {surface}."""
+
+from __future__ import annotations
+
+import importlib.util
+from pathlib import Path
+
+
+MODULE = {module_name!r}
+SURFACE = {surface!r}
+OPERATION = {operation!r}
+EXPECTED_EXPORTS = (
+    "module_contract",
+    "backup_manifest_contract",
+    "run_backup_operation",
+    "release_context",
+    "smoke_test",
+)
+
+
+def _backup():
+    module_path = Path(__file__).resolve().parents[1] / "backup.py"
+    spec = importlib.util.spec_from_file_location(f"generated_backup_{{MODULE}}_backup", module_path)
+    module = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(module)
+    return module
+
+
+def _sample_table(backup):
+    catalog = backup.backup_catalog()
+    return catalog[0] if catalog else None
+
+
+def _sample_payload(backup):
+    table = _sample_table(backup)
+    if table is None:
+        return backup.backup_json({{}})
+    row = {{column: f"sample_{{column}}" for column in table["columns"]}}
+    return backup.backup_json({{table["table"]: (row,)}})
+
+
+def module_contract():
+    """Return this generated backup module's export contract."""
+    available = tuple(name for name in EXPECTED_EXPORTS if name in globals())
+    return {{
+        "format": "appgen.backup-module-contract.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "operation": OPERATION,
+        "ok": set(EXPECTED_EXPORTS) <= set(available),
+        "exports": available,
+        "expected_exports": EXPECTED_EXPORTS,
+        "side_effects": (),
+    }}
+
+
+def backup_manifest_contract():
+    """Return generated backup metadata owned by this module."""
+    backup = _backup()
+    catalog = backup.backup_catalog()
+    payload = _sample_payload(backup)
+    manifest = backup.backup_manifest(payload, created_at="2026-01-01T02:00:00+00:00", actor="module")
+    return {{
+        "format": "appgen.backup-module-manifest.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "ok": bool(catalog) and manifest["backup_format"] == "appgen.backup.v1" and manifest["row_count"] >= 0,
+        "tables": catalog,
+        "manifest": manifest,
+        "side_effects": (),
+    }}
+
+
+def run_backup_operation():
+    """Run this module's side-effect-free backup or recovery operation."""
+    backup = _backup()
+    payload = _sample_payload(backup)
+    manifest = backup.backup_manifest(payload, created_at="2026-01-01T02:00:00+00:00", actor="module")
+    if SURFACE == "payload_export":
+        loaded = backup.load_backup_payload(payload)
+        operation = {{
+            "payload": loaded,
+            "restore": backup.restore_plan(loaded),
+            "digest": backup.payload_digest(loaded),
+        }}
+        ok = loaded["format"] == "appgen.backup.v1" and isinstance(operation["restore"], dict) and bool(operation["digest"])
+    elif SURFACE == "integrity_manifest":
+        tampered = backup.load_backup_payload(payload)
+        if tampered["tables"] and tampered["tables"][0]["rows"]:
+            tampered["tables"][0]["rows"][0]["__tampered__"] = True
+        operation = {{
+            "manifest": manifest,
+            "integrity": backup.backup_integrity_check(payload, manifest),
+            "tampered": backup.backup_integrity_check(tampered, manifest),
+        }}
+        ok = operation["integrity"]["ok"] is True and operation["tampered"]["ok"] is False
+    elif SURFACE == "schedule_retention":
+        manifests = tuple(
+            backup.backup_manifest(payload, created_at=f"2026-01-{{day:02d}}T02:00:00+00:00", actor="module")
+            for day in range(1, 31)
+        )
+        operation = {{
+            "policy": backup.autobackup_policy(),
+            "schedule": backup.backup_schedule_plan("2026-01-01T03:00:00+00:00"),
+            "retention": backup.retention_plan(manifests),
+        }}
+        ok = operation["policy"]["enabled"] and operation["schedule"]["job_id"] == "appgen.autobackup.daily" and operation["retention"]["review_required"]
+    else:
+        core_assets = {{"app/backup.py", "app/templates/appgen_backup.html"}}
+        operation = {{
+            "runbook": backup.recovery_runbook(payload, manifest),
+            "disaster_recovery": backup.disaster_recovery_plan(payload, manifest),
+            "release": backup.backup_release_gate(core_assets, payload, manifest),
+            "workbench": backup.backup_workbench(core_assets, payload, manifest),
+        }}
+        ok = operation["runbook"]["can_restore"] and operation["disaster_recovery"]["ok"] and operation["release"]["ok"] and operation["workbench"]["ok"]
+    return {{
+        "format": "appgen.backup-module-operation.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "ok": ok,
+        "operation": operation,
+        "side_effects": (),
+    }}
+
+
+def release_context():
+    """Return release evidence used by this backup module."""
+    backup = _backup()
+    payload = _sample_payload(backup)
+    manifest = backup.backup_manifest(payload, created_at="2026-01-01T02:00:00+00:00", actor="module")
+    core_assets = {{"app/backup.py", "app/templates/appgen_backup.html"}}
+    return {{
+        "format": "appgen.backup-module-release-context.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "ok": backup.backup_release_gate(core_assets, payload, manifest)["ok"] and backup.backup_workbench(core_assets, payload, manifest)["ok"],
+        "release": backup.backup_release_gate(core_assets, payload, manifest),
+        "workbench": backup.backup_workbench(core_assets, payload, manifest),
+        "side_effects": (),
+    }}
+
+
+def smoke_test():
+    """Run side-effect-free checks for this generated backup module."""
+    contract = module_contract()
+    manifest = backup_manifest_contract()
+    operation = run_backup_operation()
+    release = release_context()
+    return {{
+        "format": "appgen.backup-module-smoke-test.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "ok": contract["ok"]
+        and manifest["ok"]
+        and operation["ok"]
+        and release["ok"]
+        and not manifest["side_effects"]
+        and not operation["side_effects"]
+        and not release["side_effects"],
+        "contract": contract,
+        "manifest": manifest,
+        "operation": operation,
+        "release": release,
+        "checks": (
+            "module_contract_resolves",
+            "backup_manifest_contract_ok",
+            "backup_operation_ok",
+            "release_context_ok",
+            "no_side_effects",
+        ),
+    }}
+'''
+
+
+def _backup_module_test_text(module_name: str) -> str:
+    surface, _operation = _backup_surface(module_name)
+    return f'''"""Generated tests for the {surface} backup module."""
+
+from __future__ import annotations
+
+import importlib.util
+from pathlib import Path
+
+
+MODULE = {module_name!r}
+SURFACE = {surface!r}
+
+
+def load_backup_module():
+    """Load the generated backup module without app installation."""
+    module_path = Path(__file__).resolve().parents[1] / "backup_modules" / f"{{MODULE}}.py"
+    spec = importlib.util.spec_from_file_location(f"generated_backup_module_{{MODULE}}", module_path)
+    module = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(module)
+    return module
+
+
+def test_backup_module_contract():
+    """Assert the generated backup module exposes its contract."""
+    module = load_backup_module()
+    contract = module.module_contract()
+    assert contract["module"] == MODULE
+    assert contract["surface"] == SURFACE
+    assert contract["ok"] is True
+    assert all(hasattr(module, name) for name in contract["expected_exports"])
+
+
+def test_backup_module_smoke():
+    """Assert the module's side-effect-free smoke test passes."""
+    module = load_backup_module()
+    result = module.smoke_test()
+    assert result["ok"] is True
+    assert result["module"] == MODULE
+    assert result["surface"] == SURFACE
+    assert result["checks"]
+
+
+def smoke_test():
+    """Run this generated test module in a side-effect-free way."""
+    test_backup_module_contract()
+    test_backup_module_smoke()
+    return {{
+        "format": "appgen.backup-module-generated-test-smoke.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "ok": True,
+        "tests": ("test_backup_module_contract", "test_backup_module_smoke"),
     }}
 '''
 
@@ -25003,7 +25291,9 @@ from __future__ import annotations
 
 import datetime as _dt
 import hashlib
+import importlib.util
 import json
+from pathlib import Path
 
 from flask import Response
 from flask_appbuilder import BaseView, expose
@@ -25327,6 +25617,114 @@ def restore_payload(db, models, payload, *, dry_run=False):
     if not dry_run:
         db.session.commit()
     return restored
+
+
+def _load_generated_module(path, name):
+    spec = importlib.util.spec_from_file_location(name, path)
+    module = importlib.util.module_from_spec(spec)
+    if spec.loader is None:
+        raise RuntimeError(f"Could not load generated module: {{path}}")
+    spec.loader.exec_module(module)
+    return module
+
+
+def backup_module_file_manifest():
+    """Return file-level evidence for generated backup and recovery modules."""
+    modules = (
+        ("payload_export_module", "payload_export"),
+        ("integrity_manifest_module", "integrity_manifest"),
+        ("schedule_retention_module", "schedule_retention"),
+        ("recovery_release_module", "recovery_release"),
+    )
+    expected_exports = (
+        "module_contract",
+        "backup_manifest_contract",
+        "run_backup_operation",
+        "release_context",
+        "smoke_test",
+    )
+    module_dir = Path(__file__).with_name("backup_modules")
+    entries = []
+    for module_name, surface in modules:
+        module_path = module_dir / f"{{module_name}}.py"
+        exports = ()
+        contract_ok = False
+        smoke_ok = False
+        if module_path.exists():
+            module = _load_generated_module(module_path, f"generated_backup_module_{{module_name}}")
+            exports = tuple(name for name in expected_exports if hasattr(module, name))
+            contract = module.module_contract()
+            smoke = module.smoke_test()
+            contract_ok = contract["ok"] and contract["module"] == module_name and contract["surface"] == surface
+            smoke_ok = smoke["ok"] and smoke["surface"] == surface
+        entries.append(
+            {{
+                "module": module_name,
+                "surface": surface,
+                "path": f"app/backup_modules/{{module_name}}.py",
+                "exists": module_path.exists(),
+                "exports": exports,
+                "expected_exports": expected_exports,
+                "contract_ok": contract_ok,
+                "smoke_ok": smoke_ok,
+            }}
+        )
+    return {{
+        "format": "appgen.generated-backup-module-file-manifest.v1",
+        "ok": bool(entries)
+        and all(
+            item["exists"]
+            and item["contract_ok"]
+            and item["smoke_ok"]
+            and set(item["expected_exports"]) <= set(item["exports"])
+            for item in entries
+        ),
+        "modules": tuple(entries),
+        "guards": ("one_file_per_backup_module", "declared_exports_present", "module_smoke_loads"),
+        "side_effects": (),
+    }}
+
+
+def backup_module_test_file_manifest():
+    """Return file-level evidence for generated backup module tests."""
+    modules = backup_module_file_manifest()["modules"]
+    required_exports = (
+        "load_backup_module",
+        "test_backup_module_contract",
+        "test_backup_module_smoke",
+        "smoke_test",
+    )
+    test_dir = Path(__file__).with_name("backup_module_tests")
+    entries = []
+    for item in modules:
+        module_name = item["module"]
+        module_path = test_dir / f"test_{{module_name}}.py"
+        exports = ()
+        smoke_ok = False
+        if module_path.exists():
+            module = _load_generated_module(module_path, f"generated_backup_module_test_{{module_name}}")
+            exports = tuple(name for name in required_exports if hasattr(module, name))
+            smoke_ok = module.smoke_test()["ok"]
+        entries.append(
+            {{
+                "module": module_name,
+                "surface": item["surface"],
+                "path": f"app/backup_module_tests/test_{{module_name}}.py",
+                "target": item["path"],
+                "exists": module_path.exists(),
+                "exports": exports,
+                "smoke_ok": smoke_ok,
+            }}
+        )
+    return {{
+        "format": "appgen.generated-backup-module-test-file-manifest.v1",
+        "ok": bool(entries)
+        and all(item["exists"] and item["smoke_ok"] and set(required_exports) <= set(item["exports"]) for item in entries),
+        "tests": tuple(entries),
+        "required_exports": required_exports,
+        "guards": ("one_test_file_per_backup_module", "contract_and_smoke_tests_exported"),
+        "side_effects": (),
+    }}
 
 
 class BackupView(BaseView):

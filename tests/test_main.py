@@ -8690,6 +8690,36 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     }
     with pytest.raises(ValueError, match="Column mismatch"):
         backup.validate_backup_payload(bad_payload)
+    backup_module_files = backup.backup_module_file_manifest()
+    backup_module_tests = backup.backup_module_test_file_manifest()
+    assert backup_module_files["ok"] is True
+    assert backup_module_tests["ok"] is True
+    assert {item["surface"] for item in backup_module_files["modules"]} == {
+        "payload_export",
+        "integrity_manifest",
+        "schedule_retention",
+        "recovery_release",
+    }
+    assert {item["surface"] for item in backup_module_tests["tests"]} == {
+        "payload_export",
+        "integrity_manifest",
+        "schedule_retention",
+        "recovery_release",
+    }
+    for item in backup_module_files["modules"]:
+        module_path = output_dir / item["path"].replace("app/", "")
+        py_compile.compile(str(module_path), doraise=True)
+        module = _load_module(module_path, f"generated_backup_module_{item['module']}")
+        assert module.module_contract()["ok"] is True
+        assert module.backup_manifest_contract()["ok"] is True
+        assert module.run_backup_operation()["ok"] is True
+        assert module.release_context()["ok"] is True
+        assert module.smoke_test()["ok"] is True
+    for item in backup_module_tests["tests"]:
+        test_path = output_dir / item["path"].replace("app/", "")
+        py_compile.compile(str(test_path), doraise=True)
+        module = _load_module(test_path, f"generated_backup_module_test_{item['module']}")
+        assert module.smoke_test()["ok"] is True
     assert seed.SEED_DATA["Book"][0]["title"] == "Sample Title"
     assert seed.SEED_DATA["Book"][0]["author_id"] == 1
     assert "internal_code" not in seed.SEED_DATA["Book"][0]
