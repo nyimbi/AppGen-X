@@ -660,6 +660,189 @@ def target_package_artifact_audit(
     }
 
 
+def target_binary_adapter_transcript_schema() -> dict:
+    """Return the prepared-host binary adapter transcript contract."""
+    return {
+        "format": "appgen.target-binary-adapter-transcript-schema.v1",
+        "required_execution_fields": (
+            "target",
+            "tool",
+            "command",
+            "exit_code",
+            "working_dir",
+            "duration_seconds",
+            "artifact_paths",
+        ),
+        "required_artifact_fields": (
+            "target",
+            "kind",
+            "path",
+            "sha256",
+            "bytes",
+            "signing_reviewed",
+        ),
+        "rules": (
+            "Each transcript target must map to a generated execution plan.",
+            "Every command must exit with code 0.",
+            "Every produced artifact path must be represented in the artifact manifest.",
+            "Release/signing-sensitive artifacts must record signing_reviewed.",
+        ),
+    }
+
+
+def target_binary_adapter_execution_audit(
+    executions: tuple[dict, ...] = (),
+    artifacts: tuple[dict, ...] = (),
+    source: str = TARGET_SAMPLE_DSL,
+) -> dict:
+    """Validate prepared-host binary adapter execution transcripts."""
+    artifact_audit = target_package_artifact_audit(artifacts, source=source)
+    plans = {plan["target"]: plan for plan in artifact_audit["execution_plans"]}
+    artifacts_by_path = {artifact.get("path"): artifact for artifact in artifacts}
+    transcript_rows = []
+    for execution in executions:
+        target = execution.get("target")
+        plan = plans.get(target)
+        planned_commands = {item["command"] for item in plan["commands"]} if plan else set()
+        artifact_paths = tuple(execution.get("artifact_paths", ()))
+        missing_artifacts = tuple(path for path in artifact_paths if path not in artifacts_by_path)
+        transcript_rows.append(
+            {
+                "target": target,
+                "tool": execution.get("tool"),
+                "command": execution.get("command"),
+                "exit_code": execution.get("exit_code"),
+                "planned": execution.get("command") in planned_commands,
+                "artifact_paths": artifact_paths,
+                "missing_artifacts": missing_artifacts,
+                "ok": plan is not None
+                and execution.get("exit_code") == 0
+                and execution.get("command") in planned_commands
+                and bool(artifact_paths)
+                and not missing_artifacts,
+            }
+        )
+    expected_targets = set(plans)
+    executed_targets = {row["target"] for row in transcript_rows if row["ok"]}
+    checks = (
+        {
+            "id": "transcript_schema",
+            "ok": target_binary_adapter_transcript_schema()["format"]
+            == "appgen.target-binary-adapter-transcript-schema.v1",
+        },
+        {
+            "id": "executed_targets",
+            "ok": expected_targets <= executed_targets,
+            "expected": tuple(sorted(expected_targets)),
+            "executed": tuple(sorted(executed_targets)),
+        },
+        {
+            "id": "commands_match_plans",
+            "ok": bool(transcript_rows) and all(row["planned"] for row in transcript_rows),
+            "rows": transcript_rows,
+        },
+        {
+            "id": "commands_succeeded",
+            "ok": bool(transcript_rows) and all(row["exit_code"] == 0 for row in transcript_rows),
+        },
+        {
+            "id": "artifact_manifest_alignment",
+            "ok": artifact_audit["ok"] and all(not row["missing_artifacts"] for row in transcript_rows),
+            "artifact_checks": artifact_audit["checks"],
+        },
+    )
+    return {
+        "format": "appgen.target-binary-adapter-execution-audit.v1",
+        "scope": "package",
+        "ok": all(check["ok"] for check in checks),
+        "schema": target_binary_adapter_transcript_schema(),
+        "executions": executions,
+        "artifacts": artifacts,
+        "transcript_rows": tuple(transcript_rows),
+        "artifact_audit": artifact_audit,
+        "checks": checks,
+        "blocking_gaps": tuple(check for check in checks if not check["ok"]),
+        "stop_condition": "do-not-claim-binary-adapter-execution-unless-ok-is-true",
+    }
+
+
+def target_sample_binary_adapter_artifacts() -> tuple[dict, ...]:
+    """Return sample prepared-host package artifact manifests for audit tests."""
+    return (
+        {
+            "target": "mobile",
+            "kind": "android-debug.apk",
+            "path": "dist/native/mobile/android-debug.apk",
+            "sha256": "0" * 64,
+            "bytes": 1024,
+            "signing_reviewed": True,
+        },
+        {
+            "target": "mobile",
+            "kind": "android-release.aab",
+            "path": "dist/native/mobile/android-release.aab",
+            "sha256": "1" * 64,
+            "bytes": 2048,
+            "signing_reviewed": True,
+        },
+        {
+            "target": "desktop",
+            "kind": "macOS app bundle",
+            "path": "dist/native/desktop/TargetAudit.app",
+            "sha256": "2" * 64,
+            "bytes": 4096,
+            "signing_reviewed": True,
+        },
+        {
+            "target": "desktop",
+            "kind": "Windows MSI",
+            "path": "dist/native/desktop/TargetAudit.msi",
+            "sha256": "3" * 64,
+            "bytes": 8192,
+            "signing_reviewed": True,
+        },
+        {
+            "target": "desktop",
+            "kind": "Linux AppImage",
+            "path": "dist/native/desktop/TargetAudit.AppImage",
+            "sha256": "4" * 64,
+            "bytes": 16384,
+            "signing_reviewed": True,
+        },
+    )
+
+
+def target_sample_binary_adapter_executions() -> tuple[dict, ...]:
+    """Return sample prepared-host execution transcripts for audit tests."""
+    return (
+        {
+            "target": "mobile",
+            "tool": "buildozer",
+            "command": "buildozer android release",
+            "exit_code": 0,
+            "working_dir": "native/mobile",
+            "duration_seconds": 180,
+            "artifact_paths": (
+                "dist/native/mobile/android-debug.apk",
+                "dist/native/mobile/android-release.aab",
+            ),
+        },
+        {
+            "target": "desktop",
+            "tool": "briefcase",
+            "command": "briefcase package",
+            "exit_code": 0,
+            "working_dir": "native/desktop",
+            "duration_seconds": 240,
+            "artifact_paths": (
+                "dist/native/desktop/TargetAudit.app",
+                "dist/native/desktop/TargetAudit.msi",
+                "dist/native/desktop/TargetAudit.AppImage",
+            ),
+        },
+    )
+
+
 def dsl_target_contract(source: str = TARGET_SAMPLE_DSL) -> dict:
     """Parse the DSL and summarize target selection."""
     schema = schema_from_dsl(source, source_name="target-audit.appgen")
@@ -719,6 +902,10 @@ def target_release_audit(existing_paths: set[str] | None = None) -> dict:
     smoke = target_generation_smoke_audit()
     packaging = target_runtime_packaging_proof()
     generated_runtime = packaging["runtime_smoke"]
+    binary_adapter_execution = target_binary_adapter_execution_audit(
+        target_sample_binary_adapter_executions(),
+        target_sample_binary_adapter_artifacts(),
+    )
     catalog_targets = {item["target"] for item in target_catalog()}
     gates = (
         {
@@ -762,6 +949,11 @@ def target_release_audit(existing_paths: set[str] | None = None) -> dict:
             "checks": generated_runtime["checks"],
         },
         {
+            "id": "binary_adapter_execution",
+            "ok": binary_adapter_execution["ok"],
+            "checks": binary_adapter_execution["checks"],
+        },
+        {
             "id": "artifact_contract",
             "ok": expected_artifacts <= existing,
         },
@@ -780,6 +972,7 @@ def target_release_audit(existing_paths: set[str] | None = None) -> dict:
         "generation_smoke": smoke,
         "runtime_packaging": packaging,
         "generated_runtime_smoke": generated_runtime,
+        "binary_adapter_execution": binary_adapter_execution,
         "gates": gates,
         "blocking_gaps": tuple(gate for gate in gates if not gate["ok"]),
         "stop_condition": "do-not-claim-multi-target-generation-unless-ok-is-true",

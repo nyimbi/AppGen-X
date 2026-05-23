@@ -225,9 +225,9 @@ AppGen-X can generate contracts and starter artifacts for:
 - **PWA:** manifest, service worker, offline shell, app icons, and install
   contracts.
 - **Mobile:** native starter package, permissions, offline queue contracts,
-  device capability metadata, and sync plans.
+  device capability metadata, sync plans, and binary adapter transcript audits.
 - **Desktop:** native starter package, local file/cache contracts, keyboard
-  navigation, and sync replay.
+  navigation, sync replay, and produced artifact manifest checks.
 - **Chatbots:** provider exports, required-field prompts, guided creation, and
   handoff flows.
 

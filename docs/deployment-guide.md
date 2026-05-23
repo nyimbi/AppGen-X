@@ -135,6 +135,11 @@ Mobile release review should cover permissions, offline queues, push
 notifications, camera/location access, platform packaging, and API endpoints.
 Desktop release review should cover local cache, file access, sync replay,
 keyboard navigation, packaging, and update policy.
+Prepared-host native packaging should persist binary adapter transcripts with
+tool, command, exit code, working directory, duration, and artifact paths. Feed
+those transcripts plus artifact manifests into
+`target_binary_adapter_execution_audit()` before claiming native package
+execution succeeded.
 
 Run:
 

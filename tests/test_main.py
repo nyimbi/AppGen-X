@@ -299,6 +299,8 @@ from pyAppGen.targets import dsl_target_contract
 from pyAppGen.targets import generation_matrix as package_generation_matrix
 from pyAppGen.targets import mobile_capability_contract
 from pyAppGen.targets import target_catalog
+from pyAppGen.targets import target_binary_adapter_execution_audit
+from pyAppGen.targets import target_binary_adapter_transcript_schema
 from pyAppGen.targets import target_contract
 from pyAppGen.targets import target_generated_runtime_smoke
 from pyAppGen.targets import target_generation_smoke_audit
@@ -307,6 +309,8 @@ from pyAppGen.targets import target_package_matrix
 from pyAppGen.targets import target_packager_execution_preflight
 from pyAppGen.targets import target_release_audit
 from pyAppGen.targets import target_runtime_packaging_proof
+from pyAppGen.targets import target_sample_binary_adapter_artifacts
+from pyAppGen.targets import target_sample_binary_adapter_executions
 from pyAppGen.visual_modeling import code_generation_plan
 from pyAppGen.visual_modeling import erd_mermaid as package_erd_mermaid
 from pyAppGen.visual_modeling import field_proposal as visual_field_proposal
@@ -3434,6 +3438,22 @@ def test_package_target_audit_covers_web_mobile_desktop_generation(
     missing_artifact_audit = target_package_artifact_audit(())
     assert missing_artifact_audit["ok"] is False
     assert any(check["id"] == "artifact_gate" for check in missing_artifact_audit["blocking_gaps"])
+    transcript_schema = target_binary_adapter_transcript_schema()
+    assert transcript_schema["format"] == "appgen.target-binary-adapter-transcript-schema.v1"
+    binary_execution = target_binary_adapter_execution_audit(
+        target_sample_binary_adapter_executions(),
+        target_sample_binary_adapter_artifacts(),
+    )
+    assert binary_execution["format"] == "appgen.target-binary-adapter-execution-audit.v1"
+    assert binary_execution["ok"] is True
+    assert {"mobile", "desktop"} == {row["target"] for row in binary_execution["transcript_rows"]}
+    assert {
+        "transcript_schema",
+        "executed_targets",
+        "commands_match_plans",
+        "commands_succeeded",
+        "artifact_manifest_alignment",
+    } == {check["id"] for check in binary_execution["checks"]}
 
     runtime = target_generated_runtime_smoke()
     assert runtime["format"] == "appgen.target-generated-runtime-smoke.v1"
@@ -3466,8 +3486,10 @@ def test_package_target_audit_covers_web_mobile_desktop_generation(
         "target_generation_smoke",
         "runtime_packaging_proof",
         "generated_runtime_smoke",
+        "binary_adapter_execution",
         "artifact_contract",
     } == {gate["id"] for gate in audit["gates"]}
+    assert audit["binary_adapter_execution"]["ok"] is True
 
     missing = target_release_audit(existing_paths={"app/views.py"})
     assert missing["ok"] is False

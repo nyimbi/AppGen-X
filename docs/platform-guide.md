@@ -208,6 +208,11 @@ Use the aggregate audit before claiming platform readiness:
 appgen --package-goal-audit
 ```
 
+For prepared-host native packaging, capture binary adapter transcripts and
+artifact manifests. `target_binary_adapter_execution_audit()` validates that
+packager commands match generated plans, exit successfully, and align with the
+produced package artifact manifests.
+
 The aggregate audit should return `ok: true` and `decision: approved`.
 
 ## Recommended Project Layout
