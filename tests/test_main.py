@@ -8322,6 +8322,36 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     )
     assert data_exchange.data_exchange_workbench({"app/data_exchange.py"})["ok"] is False
     assert data_exchange.data_exchange_release_gate({"app/data_exchange.py"})["ok"] is False
+    data_exchange_module_files = data_exchange.data_exchange_module_file_manifest()
+    data_exchange_module_tests = data_exchange.data_exchange_module_test_file_manifest()
+    assert data_exchange_module_files["ok"] is True
+    assert data_exchange_module_tests["ok"] is True
+    assert {item["surface"] for item in data_exchange_module_files["modules"]} == {
+        "template_export",
+        "import_validation",
+        "migration_batch",
+        "workbench_release",
+    }
+    assert {item["surface"] for item in data_exchange_module_tests["tests"]} == {
+        "template_export",
+        "import_validation",
+        "migration_batch",
+        "workbench_release",
+    }
+    for item in data_exchange_module_files["modules"]:
+        module_path = output_dir / item["path"].replace("app/", "")
+        py_compile.compile(str(module_path), doraise=True)
+        module = _load_module(module_path, f"generated_data_exchange_module_{item['module']}")
+        assert module.module_contract()["ok"] is True
+        assert module.exchange_manifest()["ok"] is True
+        assert module.run_data_exchange_operation()["ok"] is True
+        assert module.release_context()["ok"] is True
+        assert module.smoke_test()["ok"] is True
+    for item in data_exchange_module_tests["tests"]:
+        test_path = output_dir / item["path"].replace("app/", "")
+        py_compile.compile(str(test_path), doraise=True)
+        module = _load_module(test_path, f"generated_data_exchange_module_test_{item['module']}")
+        assert module.smoke_test()["ok"] is True
     assert {item["provider"] for item in database_ops.database_provider_catalog()} == {
         "postgresql",
         "mysql",

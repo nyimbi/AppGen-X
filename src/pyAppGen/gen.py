@@ -1560,6 +1560,27 @@ def write_data_exchange_file(output_dir, schema: AppSchema):
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
     (output_dir / "data_exchange.py").write_text(_data_exchange_text(schema))
+    write_data_exchange_module_files(output_dir)
+
+
+def write_data_exchange_module_files(output_dir):
+    """Write generated data exchange modules and smoke tests."""
+    output_dir = Path(output_dir)
+    module_dir = output_dir / "data_exchange_modules"
+    test_dir = output_dir / "data_exchange_module_tests"
+    module_dir.mkdir(parents=True, exist_ok=True)
+    test_dir.mkdir(parents=True, exist_ok=True)
+    (module_dir / "__init__.py").write_text(_data_exchange_module_init_text(), encoding="utf-8")
+    (test_dir / "__init__.py").write_text(_data_exchange_module_test_init_text(), encoding="utf-8")
+    for module_name in DATA_EXCHANGE_MODULES:
+        (module_dir / f"{module_name}.py").write_text(
+            _data_exchange_module_text(module_name),
+            encoding="utf-8",
+        )
+        (test_dir / f"test_{module_name}.py").write_text(
+            _data_exchange_module_test_text(module_name),
+            encoding="utf-8",
+        )
 
 
 def write_config_admin_file(output_dir):
@@ -1958,6 +1979,13 @@ DATA_ACCESS_MODULES = (
     "query_runtime_module",
     "mutation_runtime_module",
     "audit_export_module",
+    "workbench_release_module",
+)
+
+DATA_EXCHANGE_MODULES = (
+    "template_export_module",
+    "import_validation_module",
+    "migration_batch_module",
     "workbench_release_module",
 )
 
@@ -4179,6 +4207,251 @@ def smoke_test():
         "surface": SURFACE,
         "ok": True,
         "tests": ("test_data_access_module_contract", "test_data_access_module_smoke"),
+    }}
+'''
+
+
+def _data_exchange_module_init_text() -> str:
+    return (
+        '"""Generated data exchange modules."""\n\n'
+        f"DATA_EXCHANGE_MODULES = {DATA_EXCHANGE_MODULES!r}\n"
+    )
+
+
+def _data_exchange_module_test_init_text() -> str:
+    modules = tuple(f"test_{name}" for name in DATA_EXCHANGE_MODULES)
+    return (
+        '"""Generated data exchange module tests."""\n\n'
+        f"DATA_EXCHANGE_MODULE_TESTS = {modules!r}\n"
+    )
+
+
+def _data_exchange_surface(module_name: str) -> tuple[str, str]:
+    return {
+        "template_export_module": ("template_export", "rows_to_csv"),
+        "import_validation_module": ("import_validation", "import_plan"),
+        "migration_batch_module": ("migration_batch", "migration_batch_plan"),
+        "workbench_release_module": ("workbench_release", "data_exchange_workbench"),
+    }[module_name]
+
+
+def _data_exchange_module_text(module_name: str) -> str:
+    surface, operation = _data_exchange_surface(module_name)
+    return f'''"""Generated data exchange module for {surface}."""
+
+from __future__ import annotations
+
+import importlib.util
+from pathlib import Path
+
+
+MODULE = {module_name!r}
+SURFACE = {surface!r}
+OPERATION = {operation!r}
+EXPECTED_EXPORTS = (
+    "module_contract",
+    "exchange_manifest",
+    "run_data_exchange_operation",
+    "release_context",
+    "smoke_test",
+)
+
+
+def _data_exchange():
+    module_path = Path(__file__).resolve().parents[1] / "data_exchange.py"
+    spec = importlib.util.spec_from_file_location(f"generated_data_exchange_{{MODULE}}_data_exchange", module_path)
+    module = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(module)
+    return module
+
+
+def _first_table(exchange):
+    catalog = exchange.exchange_catalog()
+    return catalog[0]["table"] if catalog else None
+
+
+def _sample_row(exchange, table_name):
+    return {{field: f"sample_{{field}}" for field in exchange.exchange_fields(table_name)}}
+
+
+def module_contract():
+    """Return this generated data exchange module's export contract."""
+    available = tuple(name for name in EXPECTED_EXPORTS if name in globals())
+    return {{
+        "format": "appgen.data-exchange-module-contract.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "operation": OPERATION,
+        "ok": set(EXPECTED_EXPORTS) <= set(available),
+        "exports": available,
+        "expected_exports": EXPECTED_EXPORTS,
+        "side_effects": (),
+    }}
+
+
+def exchange_manifest():
+    """Return generated data exchange metadata owned by this module."""
+    exchange = _data_exchange()
+    catalog = exchange.exchange_catalog()
+    return {{
+        "format": "appgen.data-exchange-module-manifest.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "ok": bool(catalog) and all(item["fields"] for item in catalog),
+        "tables": catalog,
+        "side_effects": (),
+    }}
+
+
+def run_data_exchange_operation():
+    """Run this module's side-effect-free data exchange operation."""
+    exchange = _data_exchange()
+    table_name = _first_table(exchange)
+    if table_name is None:
+        operation = {{"table": None}}
+        ok = False
+    elif SURFACE == "template_export":
+        row = _sample_row(exchange, table_name)
+        csv_body = exchange.rows_to_csv(table_name, (row,))
+        json_body = exchange.rows_to_json(table_name, (row,))
+        operation = {{
+            "template": exchange.csv_template(table_name),
+            "csv_rows": exchange.rows_from_csv(table_name, csv_body),
+            "json_rows": exchange.rows_from_json(table_name, json_body),
+        }}
+        ok = operation["template"].startswith(exchange.exchange_fields(table_name)[0]) and operation["csv_rows"][0] == row and operation["json_rows"][0] == row
+    elif SURFACE == "import_validation":
+        row = _sample_row(exchange, table_name)
+        valid = exchange.validate_import_row(table_name, row)
+        invalid = exchange.import_plan(table_name, exchange.rows_to_csv(table_name, ({{}},)))
+        operation = {{"valid": valid, "invalid": invalid}}
+        ok = valid["ok"] and not invalid["ready"] and bool(invalid["errors"])
+    elif SURFACE == "migration_batch":
+        row = _sample_row(exchange, table_name)
+        csv_body = exchange.rows_to_csv(table_name, (row,))
+        batch = exchange.migration_batch_plan(table_name, csv_body, batch_size=1)
+        body, status = exchange.migration_batch_request_plan(table_name, {{"content": csv_body, "batch_size": 1}})
+        operation = {{"batch": batch, "summary": exchange.migration_batch_summary(batch), "request": body, "status": status}}
+        ok = batch["format"] == "appgen.migration-batch.v1" and status == 200 and operation["summary"]["batch_count"] == 1
+    else:
+        core_assets = {{"app/data_exchange.py", "app/templates/appgen_data_exchange.html"}}
+        operation = {{
+            "workbench": exchange.data_exchange_workbench(core_assets),
+            "release": exchange.data_exchange_release_gate(core_assets),
+        }}
+        ok = operation["workbench"]["ok"] and operation["release"]["ok"]
+    return {{
+        "format": "appgen.data-exchange-module-operation.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "ok": ok,
+        "operation": operation,
+        "side_effects": (),
+    }}
+
+
+def release_context():
+    """Return release and workbench evidence used by this data exchange module."""
+    exchange = _data_exchange()
+    core_assets = {{"app/data_exchange.py", "app/templates/appgen_data_exchange.html"}}
+    return {{
+        "format": "appgen.data-exchange-module-release-context.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "ok": exchange.data_exchange_workbench(core_assets)["ok"] and exchange.data_exchange_release_gate(core_assets)["ok"],
+        "workbench": exchange.data_exchange_workbench(core_assets),
+        "release": exchange.data_exchange_release_gate(core_assets),
+        "side_effects": (),
+    }}
+
+
+def smoke_test():
+    """Run side-effect-free checks for this generated data exchange module."""
+    contract = module_contract()
+    manifest = exchange_manifest()
+    operation = run_data_exchange_operation()
+    release = release_context()
+    return {{
+        "format": "appgen.data-exchange-module-smoke-test.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "ok": contract["ok"]
+        and manifest["ok"]
+        and operation["ok"]
+        and release["ok"]
+        and not manifest["side_effects"]
+        and not operation["side_effects"]
+        and not release["side_effects"],
+        "contract": contract,
+        "manifest": manifest,
+        "operation": operation,
+        "release": release,
+        "checks": (
+            "module_contract_resolves",
+            "exchange_manifest_ok",
+            "data_exchange_operation_ok",
+            "release_context_ok",
+            "no_side_effects",
+        ),
+    }}
+'''
+
+
+def _data_exchange_module_test_text(module_name: str) -> str:
+    surface, _operation = _data_exchange_surface(module_name)
+    return f'''"""Generated tests for the {surface} data exchange module."""
+
+from __future__ import annotations
+
+import importlib.util
+from pathlib import Path
+
+
+MODULE = {module_name!r}
+SURFACE = {surface!r}
+
+
+def load_data_exchange_module():
+    """Load the generated data exchange module without app installation."""
+    module_path = Path(__file__).resolve().parents[1] / "data_exchange_modules" / f"{{MODULE}}.py"
+    spec = importlib.util.spec_from_file_location(f"generated_data_exchange_module_{{MODULE}}", module_path)
+    module = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(module)
+    return module
+
+
+def test_data_exchange_module_contract():
+    """Assert the generated data exchange module exposes its contract."""
+    module = load_data_exchange_module()
+    contract = module.module_contract()
+    assert contract["module"] == MODULE
+    assert contract["surface"] == SURFACE
+    assert contract["ok"] is True
+    assert all(hasattr(module, name) for name in contract["expected_exports"])
+
+
+def test_data_exchange_module_smoke():
+    """Assert the module's side-effect-free smoke test passes."""
+    module = load_data_exchange_module()
+    result = module.smoke_test()
+    assert result["ok"] is True
+    assert result["module"] == MODULE
+    assert result["surface"] == SURFACE
+    assert result["checks"]
+
+
+def smoke_test():
+    """Run this generated test module in a side-effect-free way."""
+    test_data_exchange_module_contract()
+    test_data_exchange_module_smoke()
+    return {{
+        "format": "appgen.data-exchange-module-generated-test-smoke.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "ok": True,
+        "tests": ("test_data_exchange_module_contract", "test_data_exchange_module_smoke"),
     }}
 '''
 
@@ -26628,8 +26901,10 @@ def _data_exchange_text(schema: AppSchema) -> str:
 from __future__ import annotations
 
 import csv
+import importlib.util
 import io
 import json
+from pathlib import Path
 
 from flask import Response
 from flask import jsonify
@@ -26964,6 +27239,114 @@ def data_exchange_workbench(existing_paths=()):
         "routes": routes,
         "release_gate": release_gate,
         "checks": checks,
+    }}
+
+
+def _load_generated_module(path, name):
+    spec = importlib.util.spec_from_file_location(name, path)
+    module = importlib.util.module_from_spec(spec)
+    if spec.loader is None:
+        raise RuntimeError(f"Could not load generated module: {{path}}")
+    spec.loader.exec_module(module)
+    return module
+
+
+def data_exchange_module_file_manifest():
+    """Return file-level evidence for generated data exchange modules."""
+    modules = (
+        ("template_export_module", "template_export"),
+        ("import_validation_module", "import_validation"),
+        ("migration_batch_module", "migration_batch"),
+        ("workbench_release_module", "workbench_release"),
+    )
+    expected_exports = (
+        "module_contract",
+        "exchange_manifest",
+        "run_data_exchange_operation",
+        "release_context",
+        "smoke_test",
+    )
+    module_dir = Path(__file__).with_name("data_exchange_modules")
+    entries = []
+    for module_name, surface in modules:
+        module_path = module_dir / f"{{module_name}}.py"
+        exports = ()
+        contract_ok = False
+        smoke_ok = False
+        if module_path.exists():
+            module = _load_generated_module(module_path, f"generated_data_exchange_module_{{module_name}}")
+            exports = tuple(name for name in expected_exports if hasattr(module, name))
+            contract = module.module_contract()
+            smoke = module.smoke_test()
+            contract_ok = contract["ok"] and contract["module"] == module_name and contract["surface"] == surface
+            smoke_ok = smoke["ok"] and smoke["surface"] == surface
+        entries.append(
+            {{
+                "module": module_name,
+                "surface": surface,
+                "path": f"app/data_exchange_modules/{{module_name}}.py",
+                "exists": module_path.exists(),
+                "exports": exports,
+                "expected_exports": expected_exports,
+                "contract_ok": contract_ok,
+                "smoke_ok": smoke_ok,
+            }}
+        )
+    return {{
+        "format": "appgen.generated-data-exchange-module-file-manifest.v1",
+        "ok": bool(entries)
+        and all(
+            item["exists"]
+            and item["contract_ok"]
+            and item["smoke_ok"]
+            and set(item["expected_exports"]) <= set(item["exports"])
+            for item in entries
+        ),
+        "modules": tuple(entries),
+        "guards": ("one_file_per_data_exchange_module", "declared_exports_present", "module_smoke_loads"),
+        "side_effects": (),
+    }}
+
+
+def data_exchange_module_test_file_manifest():
+    """Return file-level evidence for generated data exchange module tests."""
+    modules = data_exchange_module_file_manifest()["modules"]
+    required_exports = (
+        "load_data_exchange_module",
+        "test_data_exchange_module_contract",
+        "test_data_exchange_module_smoke",
+        "smoke_test",
+    )
+    test_dir = Path(__file__).with_name("data_exchange_module_tests")
+    entries = []
+    for item in modules:
+        module_name = item["module"]
+        module_path = test_dir / f"test_{{module_name}}.py"
+        exports = ()
+        smoke_ok = False
+        if module_path.exists():
+            module = _load_generated_module(module_path, f"generated_data_exchange_module_test_{{module_name}}")
+            exports = tuple(name for name in required_exports if hasattr(module, name))
+            smoke_ok = module.smoke_test()["ok"]
+        entries.append(
+            {{
+                "module": module_name,
+                "surface": item["surface"],
+                "path": f"app/data_exchange_module_tests/test_{{module_name}}.py",
+                "target": item["path"],
+                "exists": module_path.exists(),
+                "exports": exports,
+                "smoke_ok": smoke_ok,
+            }}
+        )
+    return {{
+        "format": "appgen.generated-data-exchange-module-test-file-manifest.v1",
+        "ok": bool(entries)
+        and all(item["exists"] and item["smoke_ok"] and set(required_exports) <= set(item["exports"]) for item in entries),
+        "tests": tuple(entries),
+        "required_exports": required_exports,
+        "guards": ("one_test_file_per_data_exchange_module", "contract_and_smoke_tests_exported"),
+        "side_effects": (),
     }}
 
 
