@@ -2505,6 +2505,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "app/form_designer.py",
         "app/inspector_runtime.py",
         "app/binding_runtime.py",
+        "app/package_manager_runtime.py",
         "app/visual_runtime_assets.py",
         "app/visual_depth_runtime.py",
         "app/data_tooling_runtime.py",
@@ -2530,6 +2531,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "app/form_designer.py",
         "app/inspector_runtime.py",
         "app/binding_runtime.py",
+        "app/package_manager_runtime.py",
         "app/visual_runtime_assets.py",
         "app/visual_depth_runtime.py",
         "app/data_tooling_runtime.py",
@@ -11159,6 +11161,29 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert binding_replay["ok"] is True
     assert {"dataset_to_field", "field_to_control", "control_to_field"} <= set(binding_replay["propagation_ops"])
     assert binding_replay["side_effects"] == ()
+    package_manager_runtime_file = output_dir / "package_manager_runtime.py"
+    assert package_manager_runtime_file.exists()
+    py_compile.compile(str(package_manager_runtime_file), doraise=True)
+    package_manager_runtime = _load_module(package_manager_runtime_file, "generated_package_manager_runtime")
+    package_manager_runtime_smoke = package_manager_runtime.smoke_test()
+    assert package_manager_runtime_smoke["format"] == "appgen.generated-package-manager-runtime-smoke.v1"
+    assert package_manager_runtime_smoke["ok"] is True
+    assert {
+        "manifest_ok",
+        "install_plan_reviewed",
+        "package_workbench_ready",
+        "actionable_operations_ready",
+        "lifecycle_replay_ready",
+        "lifecycle_execution_ready",
+        "rollback_and_uninstall_ready",
+        "runtime_replay_ready",
+    } <= set(package_manager_runtime_smoke["checks"])
+    package_manager_replay = package_manager_runtime.replay_package_manager_runtime()
+    assert package_manager_replay["ok"] is True
+    assert {"resolve_metadata", "preview_load", "registry_commit", "update_package", "uninstall_package"} <= set(
+        package_manager_replay["operation_names"]
+    )
+    assert package_manager_replay["side_effects"] == ()
     runtime_operations_file = output_dir / "runtime_operations.py"
     assert runtime_operations_file.exists()
     py_compile.compile(str(runtime_operations_file), doraise=True)

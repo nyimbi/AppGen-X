@@ -1744,6 +1744,7 @@ def write_form_designer_file(output_dir, schema: AppSchema):
     (output_dir / "form_designer.py").write_text(_form_designer_text(schema))
     (output_dir / "inspector_runtime.py").write_text(_inspector_runtime_text())
     (output_dir / "binding_runtime.py").write_text(_binding_runtime_text())
+    (output_dir / "package_manager_runtime.py").write_text(_package_manager_runtime_text())
     (output_dir / "runtime_operations.py").write_text(_native_runtime_operations_text())
     (output_dir / "native_form_runtime.py").write_text(_native_form_runtime_text())
     (output_dir / "mobile_device_runtime.py").write_text(_mobile_device_runtime_text())
@@ -2960,6 +2961,155 @@ def smoke_test():
     validation = validate_binding_runtime()
     return {
         "format": "appgen.generated-binding-runtime-smoke.v1",
+        "ok": validation["ok"],
+        "validation": validation,
+        "checks": tuple(check["id"] for check in validation["checks"]),
+    }
+'''
+
+
+def _package_manager_runtime_text() -> str:
+    return '''"""Generated side-effect-free package manager runtime validation surface."""
+
+from __future__ import annotations
+
+import importlib.util
+from pathlib import Path
+
+
+def _load_form_designer():
+    """Load the sibling generated form designer module without requiring package install."""
+    module_path = Path(__file__).with_name("form_designer.py")
+    spec = importlib.util.spec_from_file_location("generated_package_manager_form_designer", module_path)
+    module = importlib.util.module_from_spec(spec)
+    if spec.loader is None:
+        raise RuntimeError("Could not load generated form designer module.")
+    spec.loader.exec_module(module)
+    return module
+
+
+def package_manager_runtime_manifest(package_ids=()):
+    """Return generated package install, policy, lifecycle, and rollback evidence."""
+    form_designer = _load_form_designer()
+    manager = form_designer.design_time_package_manager_workbench(package_ids)
+    package_workbench = form_designer.component_package_workbench()
+    install_plan = form_designer.third_party_component_install_plan(package_ids)
+    check_ids = {check["id"] for check in manager["checks"] if check["ok"]}
+    required_checks = {
+        "install_session_phases",
+        "palette_registration",
+        "rollback_plan",
+        "package_behavior",
+        "lockfile_integrity",
+        "signature_validation",
+        "sandbox_policy",
+        "registration_consistency",
+        "dependency_order",
+        "compatibility_smoke_suite",
+        "version_conflict_resolution",
+        "update_plan",
+        "uninstall_plan",
+        "palette_refresh",
+        "failure_isolation",
+        "lifecycle_transaction_replay",
+        "lifecycle_execution",
+        "actionable_package_operations",
+        "side_effect_guards",
+    }
+    return {
+        "format": "appgen.generated-package-manager-runtime-manifest.v1",
+        "ok": manager["ok"]
+        and package_workbench["ok"]
+        and install_plan["ok"]
+        and install_plan["requires_review"]
+        and required_checks <= check_ids
+        and manager["lifecycle_replay"]["ok"]
+        and manager["lifecycle_execution"]["ok"]
+        and manager["actionable_operations"]["ok"],
+        "packages": tuple(package["id"] for package in install_plan["packages"]),
+        "manager": manager,
+        "package_workbench": package_workbench,
+        "install_plan": install_plan,
+        "required_checks": tuple(sorted(required_checks)),
+        "operation_names": manager["actionable_operations"]["operation_names"],
+        "guards": (
+            "license_acceptance_required",
+            "sandbox_before_global_install",
+            "trust_validation_before_install",
+            "adapter_smoke_before_update",
+            "rollback_before_uninstall_cleanup",
+            "no_global_install",
+        ),
+    }
+
+
+def replay_package_manager_runtime(package_ids=()):
+    """Replay package-manager lifecycle transitions without mutating the host IDE."""
+    manifest = package_manager_runtime_manifest(package_ids)
+    lifecycle_replay = manifest["manager"]["lifecycle_replay"]
+    lifecycle_execution = manifest["manager"]["lifecycle_execution"]
+    package_phases = tuple(
+        {
+            "package_id": item["package_id"],
+            "phases": tuple(phase["phase"] for phase in item["phases"]),
+            "final_state": item["final_state"],
+        }
+        for item in lifecycle_replay["replay"]
+    )
+    execution_phases = tuple(
+        {
+            "package_id": transaction["package_id"],
+            "phases": tuple(phase["phase"] for phase in transaction["phases"]),
+            "final_state": transaction["final_state"],
+        }
+        for transaction in lifecycle_execution["transactions"]
+    )
+    operation_names = set(manifest["operation_names"])
+    return {
+        "format": "appgen.generated-package-manager-runtime-replay.v1",
+        "ok": manifest["ok"]
+        and all({"install_and_register", "preview_load", "versioned_update", "failure_containment", "rollback_probe", "uninstall_cleanup"} <= set(item["phases"]) for item in package_phases)
+        and all({"trust_validation", "install", "update", "uninstall"} <= set(item["phases"]) for item in execution_phases)
+        and all(item["final_state"]["registry_clean"] and not item["final_state"]["global_install"] for item in package_phases)
+        and all(item["final_state"]["registry_clean"] and not item["final_state"]["global_install"] for item in execution_phases)
+        and {"resolve_metadata", "preview_load", "registry_commit", "update_package", "uninstall_package"} <= operation_names,
+        "package_phases": package_phases,
+        "execution_phases": execution_phases,
+        "operation_names": tuple(sorted(operation_names)),
+        "side_effects": (),
+    }
+
+
+def validate_package_manager_runtime(package_ids=()):
+    """Validate generated package manager runtime readiness."""
+    manifest = package_manager_runtime_manifest(package_ids)
+    replay = replay_package_manager_runtime(package_ids)
+    manager = manifest["manager"]
+    checks = (
+        {"id": "manifest_ok", "ok": manifest["ok"]},
+        {"id": "install_plan_reviewed", "ok": manifest["install_plan"]["requires_review"] and not manifest["install_plan"]["side_effects"]},
+        {"id": "package_workbench_ready", "ok": manifest["package_workbench"]["ok"] and manifest["package_workbench"]["install_replay"]["ok"]},
+        {"id": "actionable_operations_ready", "ok": manager["actionable_operations"]["ok"] and {"resolve_metadata", "preview_load", "registry_commit", "update_package", "uninstall_package"} <= set(manager["actionable_operations"]["operation_names"])},
+        {"id": "lifecycle_replay_ready", "ok": manager["lifecycle_replay"]["ok"] and not manager["lifecycle_replay"]["side_effects"]},
+        {"id": "lifecycle_execution_ready", "ok": manager["lifecycle_execution"]["ok"] and not manager["lifecycle_execution"]["side_effects"]},
+        {"id": "rollback_and_uninstall_ready", "ok": manager["rollback"]["snapshot"]["restore_order"][0] == "unload_adapters" and manager["uninstall_plan"]["ok"]},
+        {"id": "runtime_replay_ready", "ok": replay["ok"] and not replay["side_effects"]},
+    )
+    return {
+        "format": "appgen.generated-package-manager-runtime-validation.v1",
+        "ok": all(check["ok"] for check in checks),
+        "checks": checks,
+        "manifest": manifest,
+        "replay": replay,
+        "blocking_gaps": tuple(check for check in checks if not check["ok"]),
+    }
+
+
+def smoke_test(package_ids=()):
+    """Run side-effect-free package manager runtime smoke checks."""
+    validation = validate_package_manager_runtime(package_ids)
+    return {
+        "format": "appgen.generated-package-manager-runtime-smoke.v1",
         "ok": validation["ok"],
         "validation": validation,
         "checks": tuple(check["id"] for check in validation["checks"]),
