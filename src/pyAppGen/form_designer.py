@@ -9613,6 +9613,68 @@ def mobile_resume_background_operation() -> dict:
     }
 
 
+def mobile_device_component_spec_contract() -> dict:
+    """Return IDE component specs for native device APIs across props, events, permissions, and previews."""
+    contract = mobile_native_api_contract()
+    permissions = {item["api"]: item for item in contract["permission_manifest"]["permissions"]}
+    fixtures = {item["api"]: item for item in contract["simulator"]["fixtures"]}
+    bridge_matrix = mobile_native_bridge_matrix_contract()
+    bridge_targets = tuple(bridge["target"] for bridge in bridge_matrix["bridges"])
+    specs = tuple(
+        {
+            "component": adapter["component"],
+            "api": adapter["api"],
+            "category": "Device",
+            "icon": adapter["api"].replace("_", "-"),
+            "props": (
+                {"name": "enabled", "type": "boolean", "default": True, "editor": "checkbox"},
+                {"name": "permissionMode", "type": "enum", "values": ("prompt", "required", "optional"), "editor": "select"},
+                {"name": "timeoutMs", "type": "integer", "default": 30000, "editor": "number"},
+            ),
+            "events": adapter["events"],
+            "permission": permissions.get(adapter["api"]),
+            "fixture": fixtures.get(adapter["api"]),
+            "preview": adapter["preview"],
+            "targets": adapter["targets"],
+            "bridge_targets": bridge_targets,
+            "design_tools": ("property_inspector", "permission_editor", "simulator_fixture_picker", "target_fallback_review", "event_trace_viewer"),
+            "runtime_pipeline": ("validate_props", "check_permission", "invoke_platform_adapter", "normalize_payload", "emit_component_event"),
+        }
+        for adapter in contract["component_adapters"]["adapters"]
+    )
+    return {
+        "format": "appgen.mobile-device-component-spec-contract.v1",
+        "ok": bool(specs)
+        and len(specs) == len(contract["apis"])
+        and {spec["api"] for spec in specs} == set(contract["apis"])
+        and all(spec["permission"] and spec["fixture"] and spec["events"] for spec in specs)
+        and all({"permission_editor", "simulator_fixture_picker", "event_trace_viewer"} <= set(spec["design_tools"]) for spec in specs)
+        and all({"validate_props", "emit_component_event"} <= set(spec["runtime_pipeline"]) for spec in specs),
+        "specs": specs,
+        "guards": ("props_validated_before_bridge", "permission_editor_required", "simulator_fixture_bound", "event_trace_visible"),
+        "side_effects": (),
+    }
+
+
+def mobile_validate_device_component_operation(api: str = "camera") -> dict:
+    """Return a callable IDE operation for validating one native device component spec."""
+    specs = mobile_device_component_spec_contract()
+    spec = next((item for item in specs["specs"] if item["api"] == api), None)
+    return {
+        "format": "appgen.mobile-validate-device-component-operation.v1",
+        "ok": specs["ok"]
+        and spec is not None
+        and spec["permission"] is not None
+        and spec["fixture"] is not None
+        and {"check_permission", "emit_component_event"} <= set(spec["runtime_pipeline"]),
+        "api": api,
+        "component": spec,
+        "pipeline": ("load_component_spec", "validate_props", "bind_permission_editor", "bind_simulator_fixture", "verify_target_bridges", "emit_component_event"),
+        "guards": ("component_spec_required", "permission_and_fixture_required", "target_bridges_reviewed"),
+        "side_effects": (),
+    }
+
+
 def mobile_native_api_actionable_operations() -> dict:
     """Return callable mobile/native operations used by the generated IDE."""
     operations = {
@@ -9622,6 +9684,7 @@ def mobile_native_api_actionable_operations() -> dict:
         "review_platform_fallback": mobile_review_platform_fallback_operation(),
         "review_privacy": mobile_review_privacy_operation(),
         "resume_background": mobile_resume_background_operation(),
+        "validate_device_component": mobile_validate_device_component_operation(),
     }
     return {
         "format": "appgen.mobile-native-api-actionable-operations.v1",
@@ -10321,6 +10384,7 @@ def mobile_native_api_workbench() -> dict:
     privacy_review = mobile_privacy_review_workflow()
     background_resume = mobile_background_resume_workflow()
     actionable_operations = mobile_native_api_actionable_operations()
+    device_component_specs = mobile_device_component_spec_contract()
     capability_matrix = mobile_api_capability_matrix_contract()
     event_traces = mobile_device_event_trace_contract()
     bridge_matrix = mobile_native_bridge_matrix_contract()
@@ -10445,10 +10509,19 @@ def mobile_native_api_workbench() -> dict:
                 "review_platform_fallback",
                 "review_privacy",
                 "resume_background",
+                "validate_device_component",
             }
             <= set(actionable_operations["operations"])
             and not actionable_operations["side_effects"],
             "evidence": actionable_operations,
+        },
+        {
+            "id": "device_component_specs",
+            "ok": device_component_specs["ok"]
+            and api_set == {spec["api"] for spec in device_component_specs["specs"]}
+            and all({"permission_editor", "simulator_fixture_picker", "event_trace_viewer"} <= set(spec["design_tools"]) for spec in device_component_specs["specs"])
+            and not device_component_specs["side_effects"],
+            "evidence": device_component_specs,
         },
         {
             "id": "api_capability_matrix",
@@ -10558,6 +10631,7 @@ def mobile_native_api_workbench() -> dict:
         "privacy_review": privacy_review,
         "background_resume": background_resume,
         "actionable_operations": actionable_operations,
+        "device_component_specs": device_component_specs,
         "capability_matrix": capability_matrix,
         "event_traces": event_traces,
         "bridge_matrix": bridge_matrix,
