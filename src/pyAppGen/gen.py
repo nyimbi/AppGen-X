@@ -28593,6 +28593,99 @@ def inspector_rename_event_handler(binding, new_handler_name):
     }}
 
 
+def inspector_action_registry_contract(component_type="Button"):
+    """Return the generated shared action registry used by event handlers."""
+    event_binding = inspector_create_event_handler(component_type, "OnClick")
+    handler = event_binding.get("binding", {{}}).get("handler", f"{{_module_name(component_type)}}_on_click")
+    actions = (
+        {{
+            "action": "save_invoice",
+            "handler": handler,
+            "signature": "save_invoice(context)",
+            "callers": (handler, "save_and_close_button_onclick"),
+            "pipeline": ("validate_context", "run_command", "publish_result", "refresh_bindings"),
+        }},
+        {{
+            "action": "close_invoice",
+            "handler": "close_button_onclick",
+            "signature": "close_invoice(context)",
+            "callers": ("close_button_onclick", "save_and_close_button_onclick"),
+            "pipeline": ("validate_context", "confirm_dirty_state", "run_command", "close_form"),
+        }},
+        {{
+            "action": "validate_invoice",
+            "handler": "validate_button_onclick",
+            "signature": "validate_invoice(context)",
+            "callers": (handler, "validate_button_onclick"),
+            "pipeline": ("validate_context", "run_validation", "surface_diagnostics", "return_status"),
+        }},
+    )
+    return {{
+        "format": "appgen.generated-inspector-action-registry-contract.v1",
+        "component": component_type,
+        "actions": actions,
+        "handler_signature": "handler(sender, context)",
+        "context_api": ("sender", "component_tree", "action_registry", "binding_scope", "transaction"),
+        "guards": ("shared_actions_preferred", "handler_name_unique", "context_is_explicit", "user_code_regions_preserved"),
+        "ok": event_binding["ok"]
+        and all({{"validate_context", "run_command"}} & set(action["pipeline"]) for action in actions)
+        and all(action["callers"] for action in actions),
+        "side_effects": (),
+    }}
+
+
+def inspector_cross_handler_invocation_contract(component_type="Button"):
+    """Return generated safe rules for one component handler invoking another handler."""
+    registry = inspector_action_registry_contract(component_type)
+    routes = (
+        {{
+            "caller": "save_and_close_button_onclick",
+            "target_handler": registry["actions"][0]["handler"],
+            "preferred_action": "save_invoice",
+            "route": ("resolve_form_instance", "resolve_component_field", "lookup_event_binding", "cycle_guard", "invoke_handler"),
+            "context": ("sender", "transaction", "component_tree", "binding_scope"),
+        }},
+        {{
+            "caller": "validate_button_onclick",
+            "target_handler": registry["actions"][0]["handler"],
+            "preferred_action": "validate_invoice",
+            "route": ("resolve_form_instance", "resolve_component_field", "lookup_event_binding", "cycle_guard", "invoke_handler"),
+            "context": ("sender", "transaction", "component_tree", "binding_scope"),
+        }},
+    )
+    return {{
+        "format": "appgen.generated-inspector-cross-handler-invocation-contract.v1",
+        "component": component_type,
+        "routes": routes,
+        "policy": ("prefer_shared_action", "allow_mediated_handler_dispatch", "block_recursive_cycles", "preserve_sender_context"),
+        "guards": registry["guards"] + ("cycle_guard_required", "component_lookup_required", "transaction_context_forwarded"),
+        "ok": registry["ok"]
+        and all({{"lookup_event_binding", "cycle_guard", "invoke_handler"}} <= set(route["route"]) for route in routes)
+        and all("transaction" in route["context"] for route in routes),
+        "side_effects": (),
+    }}
+
+
+def inspector_invoke_component_handler(caller_handler, target_component, target_event, context=None):
+    """Plan a generated guarded component-handler invocation from another handler."""
+    target = inspector_create_event_handler(target_component, target_event)
+    context_keys = tuple(sorted((context or {{"transaction": "current", "sender": caller_handler}}).keys()))
+    ok = target["ok"] and bool(caller_handler) and "transaction" in context_keys
+    return {{
+        "format": "appgen.generated-inspector-component-handler-invocation.v1",
+        "ok": ok,
+        "caller": caller_handler,
+        "target_component": target_component,
+        "target_event": target_event,
+        "target_handler": target.get("binding", {{}}).get("handler", ""),
+        "dispatch": ("resolve_form_instance", "resolve_component_field", "lookup_event_binding", "cycle_guard", "invoke_handler"),
+        "context_keys": context_keys,
+        "guards": ("cycle_guard_required", "target_handler_must_exist", "transaction_context_required", "exceptions_surface_to_diagnostics"),
+        "diagnostics": () if ok else ("missing target handler or transaction context",),
+        "side_effects": (),
+    }}
+
+
 def inspector_execute_component_editor(component_type, verb, selection=()):
     """Execute a generated component editor verb as a staged, undoable transaction."""
     contract = object_inspector_contract(component_type)
@@ -29396,9 +29489,17 @@ def object_inspector_workbench():
     custom_designer_registration_replay = inspector_custom_designer_registration_replay_contract(sample_components)
     editor_lifecycle_replay = inspector_editor_lifecycle_replay_contract(sample_components)
     inspector_binding_bridge = inspector_binding_designer_bridge_contract()
+    action_registry = inspector_action_registry_contract("Button")
+    cross_handler_invocation = inspector_cross_handler_invocation_contract("Button")
     property_edit_operation = inspector_apply_property_edit({{"component": "TextBox", "props": {{"label": "Name"}}}}, "label", "Customer Name")
     event_create_operation = inspector_create_event_handler("Button", "OnClick")
     event_rename_operation = inspector_rename_event_handler(event_create_operation["binding"], "button_customer_click")
+    handler_invoke_operation = inspector_invoke_component_handler(
+        "save_and_close_button_onclick",
+        "Button",
+        "OnClick",
+        {{"sender": "save_and_close_button", "transaction": "current", "component_tree": "InvoiceForm"}},
+    )
     component_editor_operation = inspector_execute_component_editor("Grid", "edit_columns", selection=("customer_grid",))
     custom_designer_operation = inspector_register_custom_designer("Grid", "selection_handles")
     checks = (
@@ -29437,22 +29538,27 @@ def object_inspector_workbench():
         {{"id": "custom_designer_registration_replay", "ok": custom_designer_registration_replay["ok"] and {{"custom_designers_registered_before_activation", "metadata_round_trips_custom_designers"}} <= set(custom_designer_registration_replay["guards"]) and not custom_designer_registration_replay["side_effects"], "evidence": custom_designer_registration_replay}},
         {{"id": "editor_lifecycle_replay", "ok": editor_lifecycle_replay["ok"] and {{"property_values_validate_before_commit", "metadata_round_trips_before_release"}} <= set(editor_lifecycle_replay["guards"]) and not editor_lifecycle_replay["side_effects"], "evidence": editor_lifecycle_replay}},
         {{"id": "inspector_binding_bridge", "ok": inspector_binding_bridge["ok"] and {{"inspector_property_commit", "binding_link_commit", "runtime_wiring_refresh"}} <= {{item["phase"] for item in inspector_binding_bridge["replay"]}} and {{"property_change_refreshes_binding_preview", "binding_errors_surface_in_inspector"}} <= set(inspector_binding_bridge["guards"]) and not inspector_binding_bridge["side_effects"], "evidence": inspector_binding_bridge}},
+        {{"id": "handler_action_registry", "ok": action_registry["ok"] and "shared_actions_preferred" in action_registry["guards"] and all(action["callers"] for action in action_registry["actions"]) and not action_registry["side_effects"], "evidence": action_registry}},
+        {{"id": "cross_handler_invocation_policy", "ok": cross_handler_invocation["ok"] and handler_invoke_operation["ok"] and "cycle_guard_required" in cross_handler_invocation["guards"] and "invoke_handler" in handler_invoke_operation["dispatch"] and not cross_handler_invocation["side_effects"] and not handler_invoke_operation["side_effects"], "evidence": {{"policy": cross_handler_invocation, "operation": handler_invoke_operation}}}},
         {{
             "id": "actionable_editor_operations",
             "ok": property_edit_operation["ok"]
             and event_create_operation["ok"]
             and event_rename_operation["ok"]
+            and handler_invoke_operation["ok"]
             and component_editor_operation["ok"]
             and custom_designer_operation["ok"]
             and not property_edit_operation["side_effects"]
             and not event_create_operation["side_effects"]
             and not event_rename_operation["side_effects"]
+            and not handler_invoke_operation["side_effects"]
             and not component_editor_operation["side_effects"]
             and not custom_designer_operation["side_effects"],
             "evidence": {{
                 "property_edit": property_edit_operation,
                 "event_create": event_create_operation,
                 "event_rename": event_rename_operation,
+                "handler_invoke": handler_invoke_operation,
                 "component_editor": component_editor_operation,
                 "custom_designer": custom_designer_operation,
             }},
@@ -29494,10 +29600,13 @@ def object_inspector_workbench():
         "custom_designer_registration_replay": custom_designer_registration_replay,
         "editor_lifecycle_replay": editor_lifecycle_replay,
         "inspector_binding_bridge": inspector_binding_bridge,
+        "action_registry": action_registry,
+        "cross_handler_invocation": cross_handler_invocation,
         "actionable_operations": {{
             "property_edit": property_edit_operation,
             "event_create": event_create_operation,
             "event_rename": event_rename_operation,
+            "handler_invoke": handler_invoke_operation,
             "component_editor": component_editor_operation,
             "custom_designer": custom_designer_operation,
         }},

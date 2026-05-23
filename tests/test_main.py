@@ -146,9 +146,12 @@ from pyAppGen.form_designer import mobile_review_privacy_operation
 from pyAppGen.form_designer import mobile_validate_device_component_operation
 from pyAppGen.form_designer import object_inspector_contract
 from pyAppGen.form_designer import inspector_apply_property_edit
+from pyAppGen.form_designer import inspector_action_registry_contract
 from pyAppGen.form_designer import inspector_create_event_handler
+from pyAppGen.form_designer import inspector_cross_handler_invocation_contract
 from pyAppGen.form_designer import inspector_editor_lifecycle_replay_contract
 from pyAppGen.form_designer import inspector_execute_component_editor
+from pyAppGen.form_designer import inspector_invoke_component_handler
 from pyAppGen.form_designer import inspector_binding_designer_bridge_contract
 from pyAppGen.form_designer import inspector_register_custom_designer
 from pyAppGen.form_designer import inspector_rename_event_handler
@@ -963,6 +966,21 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     event_rename = inspector_rename_event_handler(event_create["binding"], "button_customer_click")
     assert event_rename["ok"] is True
     assert event_rename["binding"]["handler"] == "button_customer_click"
+    action_registry = inspector_action_registry_contract("Button")
+    assert action_registry["ok"] is True
+    assert "shared_actions_preferred" in action_registry["guards"]
+    assert any("save_and_close_button_onclick" in action["callers"] for action in action_registry["actions"])
+    cross_handler = inspector_cross_handler_invocation_contract("Button")
+    assert cross_handler["ok"] is True
+    assert all("cycle_guard" in route["route"] for route in cross_handler["routes"])
+    handler_invoke = inspector_invoke_component_handler(
+        "save_and_close_button_onclick",
+        "Button",
+        "OnClick",
+        {"sender": "save_and_close_button", "transaction": "current"},
+    )
+    assert handler_invoke["ok"] is True
+    assert "invoke_handler" in handler_invoke["dispatch"]
     editor_result = inspector_execute_component_editor("Grid", "edit_columns", selection=("customer_grid",))
     assert editor_result["ok"] is True
     assert "record_undo" in editor_result["transaction"]
@@ -1008,6 +1026,8 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "custom_designer_registration_replay",
         "editor_lifecycle_replay",
         "inspector_binding_bridge",
+        "handler_action_registry",
+        "cross_handler_invocation_policy",
         "actionable_editor_operations",
     } == {check["id"] for check in inspector_workbench["checks"]}
     assert all("apply_change" in workflow["workflow"] for workflow in inspector_workbench["property_edit_workflows"])
@@ -1127,8 +1147,11 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "side_effect_guards",
     } <= {check["id"] for check in editor_lifecycle["checks"] if check["ok"]}
     assert inspector_workbench["editor_lifecycle_replay"]["ok"] is True
+    assert inspector_workbench["action_registry"]["ok"] is True
+    assert inspector_workbench["cross_handler_invocation"]["ok"] is True
     assert inspector_workbench["actionable_operations"]["property_edit"]["ok"] is True
     assert inspector_workbench["actionable_operations"]["event_rename"]["binding"]["handler"] == "button_customer_click"
+    assert inspector_workbench["actionable_operations"]["handler_invoke"]["ok"] is True
     binding_graph = livebindings_graph_contract()
     assert binding_graph["format"] == "appgen.livebindings-graph.v1"
     assert {"dataset", "field", "control", "expression"} <= {node["kind"] for node in binding_graph["nodes"]}
@@ -10749,6 +10772,8 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "custom_designer_registration_replay",
         "editor_lifecycle_replay",
         "inspector_binding_bridge",
+        "handler_action_registry",
+        "cross_handler_invocation_policy",
         "actionable_editor_operations",
     } == {check["id"] for check in generated_inspector["checks"]}
     generated_property_edit = form_designer.inspector_apply_property_edit(
@@ -10766,6 +10791,19 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "button_customer_click",
     )
     assert generated_event_rename["binding"]["handler"] == "button_customer_click"
+    generated_action_registry = form_designer.inspector_action_registry_contract("Button")
+    assert generated_action_registry["ok"] is True
+    assert "shared_actions_preferred" in generated_action_registry["guards"]
+    generated_cross_handler = form_designer.inspector_cross_handler_invocation_contract("Button")
+    assert generated_cross_handler["ok"] is True
+    generated_handler_invoke = form_designer.inspector_invoke_component_handler(
+        "save_and_close_button_onclick",
+        "Button",
+        "OnClick",
+        {"sender": "save_and_close_button", "transaction": "current"},
+    )
+    assert generated_handler_invoke["ok"] is True
+    assert "cycle_guard" in generated_handler_invoke["dispatch"]
     generated_editor_result = form_designer.inspector_execute_component_editor(
         "Grid",
         "edit_columns",
@@ -10852,8 +10890,11 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert generated_inspector["custom_designer_registration_replay"]["final_state"]["lifecycle_hooks"] == generated_inspector["custom_designer_registration_replay"]["final_state"]["registered_hooks"]
     assert generated_inspector["editor_lifecycle_replay"]["format"] == "appgen.generated-inspector-editor-lifecycle-replay.v1"
     assert generated_inspector["editor_lifecycle_replay"]["ok"] is True
+    assert generated_inspector["action_registry"]["ok"] is True
+    assert generated_inspector["cross_handler_invocation"]["ok"] is True
     assert generated_inspector["actionable_operations"]["property_edit"]["ok"] is True
     assert generated_inspector["actionable_operations"]["event_rename"]["binding"]["handler"] == "button_customer_click"
+    assert generated_inspector["actionable_operations"]["handler_invoke"]["ok"] is True
     generated_inspector_bridge = form_designer.inspector_binding_designer_bridge_contract()
     assert generated_inspector_bridge["format"] == "appgen.generated-inspector-binding-designer-bridge.v1"
     assert generated_inspector_bridge["ok"] is True
