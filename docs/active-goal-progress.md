@@ -104,6 +104,7 @@ Build a complete AppGen IDE and generation platform with:
 | 2026-05-24 | `73ae57e` | Added generated microservice modules and generated tests for service catalogs, gateway routes, event routes, relationship resolution, mesh/scaling, and release workbench surfaces. | Py compile; focused generated-app/form-designer/package-goal tests; staged hygiene scan passed. |
 | 2026-05-24 | `b9836bf` | Added generated realtime modules and generated tests for topic catalogs, event payloads, SSE frames, collaboration messages, replay plans, and release workbench surfaces. | Py compile; focused generated-app/form-designer/package-goal tests; staged hygiene scan passed. |
 | 2026-05-24 | `2c29ea7` | Added generated event-processing modules and generated tests for topic catalogs, event envelopes, processing actions, retry/dead-letter behavior, alert/workflow handling, and release workbench surfaces. | Py compile; focused generated-app/form-designer/package-goal tests; staged hygiene scan passed. |
+| 2026-05-24 | `03f6032` | Collapsed event-runtime guidance to one visible developer choice: the generated AppGen-X event contract, with stream engines hidden behind the platform adapter unless audited exception evidence exists. | Py compile; focused PBC policy test; documentation diff check; staged hygiene scan passed. |
 
 ## Current Working Slice
 
@@ -130,6 +131,10 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   use: generated transactional outbox/inbox tables, the AppGen-X event adapter,
   the default service-runtime profile, and evidence-gated exceptions only for
   telemetry/time-series or complex dataflow workloads.
+- Event-runtime guidance now makes the ordinary developer choice count one:
+  use the generated AppGen-X event contract, hide stream-engine selection from
+  IDE and natural-language flows, and keep profile names as read-only platform
+  metadata unless audited exception evidence is supplied.
 - Generated applications now include standalone seed/fixture modules and
   generated tests that prove seed plans, dependency order, fixture exports,
   validation/anonymization, and release workbench evidence without touching a
