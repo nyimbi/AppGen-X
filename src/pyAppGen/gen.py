@@ -1685,6 +1685,27 @@ def write_productivity_file(output_dir, schema: AppSchema):
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
     (output_dir / "productivity.py").write_text(_productivity_text(schema))
+    write_productivity_module_files(output_dir)
+
+
+def write_productivity_module_files(output_dir):
+    """Write generated productivity modules and smoke tests."""
+    output_dir = Path(output_dir)
+    module_dir = output_dir / "productivity_modules"
+    test_dir = output_dir / "productivity_module_tests"
+    module_dir.mkdir(parents=True, exist_ok=True)
+    test_dir.mkdir(parents=True, exist_ok=True)
+    (module_dir / "__init__.py").write_text(_productivity_module_init_text(), encoding="utf-8")
+    (test_dir / "__init__.py").write_text(_productivity_module_test_init_text(), encoding="utf-8")
+    for module_name in PRODUCTIVITY_MODULES:
+        (module_dir / f"{module_name}.py").write_text(
+            _productivity_module_text(module_name),
+            encoding="utf-8",
+        )
+        (test_dir / f"test_{module_name}.py").write_text(
+            _productivity_module_test_text(module_name),
+            encoding="utf-8",
+        )
 
 
 def write_lifecycle_file(output_dir, schema: AppSchema):
@@ -2098,6 +2119,14 @@ INTEGRATION_MODULES = (
     "webhook_delivery_module",
     "commercial_channels_module",
     "portal_repository_module",
+    "release_workbench_module",
+)
+
+PRODUCTIVITY_MODULES = (
+    "provider_catalog_module",
+    "document_merge_module",
+    "spreadsheet_export_module",
+    "calendar_task_module",
     "release_workbench_module",
 )
 
@@ -5563,6 +5592,258 @@ def smoke_test():
         "surface": SURFACE,
         "ok": True,
         "tests": ("test_integration_module_contract", "test_integration_module_smoke"),
+    }}
+'''
+
+
+def _productivity_module_init_text() -> str:
+    return (
+        '"""Generated productivity modules."""\n\n'
+        f"PRODUCTIVITY_MODULES = {PRODUCTIVITY_MODULES!r}\n"
+    )
+
+
+def _productivity_module_test_init_text() -> str:
+    modules = tuple(f"test_{name}" for name in PRODUCTIVITY_MODULES)
+    return (
+        '"""Generated productivity module tests."""\n\n'
+        f"PRODUCTIVITY_MODULE_TESTS = {modules!r}\n"
+    )
+
+
+def _productivity_surface(module_name: str) -> tuple[str, str]:
+    return {
+        "provider_catalog_module": ("provider_catalog", "provider_catalog"),
+        "document_merge_module": ("document_merge", "document_merge_payload"),
+        "spreadsheet_export_module": ("spreadsheet_export", "spreadsheet_export_payload"),
+        "calendar_task_module": ("calendar_task", "calendar_event_payload"),
+        "release_workbench_module": ("release_workbench", "productivity_release_gate"),
+    }[module_name]
+
+
+def _productivity_module_text(module_name: str) -> str:
+    surface, operation = _productivity_surface(module_name)
+    return f'''"""Generated productivity module for {surface}."""
+
+from __future__ import annotations
+
+import importlib.util
+from pathlib import Path
+
+
+MODULE = {module_name!r}
+SURFACE = {surface!r}
+OPERATION = {operation!r}
+EXPECTED_EXPORTS = (
+    "module_contract",
+    "productivity_manifest_contract",
+    "run_productivity_operation",
+    "release_context",
+    "smoke_test",
+)
+
+
+def _productivity():
+    module_path = Path(__file__).resolve().parents[1] / "productivity.py"
+    spec = importlib.util.spec_from_file_location(f"generated_productivity_{{MODULE}}_productivity", module_path)
+    module = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(module)
+    return module
+
+
+def _sample_table(productivity):
+    templates = productivity.productivity_templates()
+    return templates[0]["table"] if templates else None
+
+
+def _sample_row(productivity, table_name):
+    template = productivity.PRODUCTIVITY_TEMPLATES.get(table_name, {{}})
+    return {{field: f"sample_{{field}}" for field in template.get("fields", ())}}
+
+
+def module_contract():
+    """Return this generated productivity module's export contract."""
+    available = tuple(name for name in EXPECTED_EXPORTS if name in globals())
+    return {{
+        "format": "appgen.productivity-module-contract.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "operation": OPERATION,
+        "ok": set(EXPECTED_EXPORTS) <= set(available),
+        "exports": available,
+        "expected_exports": EXPECTED_EXPORTS,
+        "side_effects": (),
+    }}
+
+
+def productivity_manifest_contract():
+    """Return generated productivity metadata owned by this module."""
+    productivity = _productivity()
+    providers = productivity.provider_catalog({{}})
+    templates = productivity.productivity_templates()
+    return {{
+        "format": "appgen.productivity-module-manifest.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "ok": {{"microsoft365", "google_workspace"}} <= {{provider["provider"] for provider in providers}} and bool(templates),
+        "providers": providers,
+        "templates": templates,
+        "side_effects": (),
+    }}
+
+
+def run_productivity_operation():
+    """Run this module's side-effect-free productivity operation."""
+    productivity = _productivity()
+    table_name = _sample_table(productivity)
+    row = _sample_row(productivity, table_name) if table_name else {{}}
+    if SURFACE == "provider_catalog":
+        operation = {{
+            "providers": productivity.provider_catalog({{}}),
+            "configured_google": productivity.provider_config("google_workspace", {{
+                "GOOGLE_WORKSPACE_CLIENT_ID": "client",
+                "GOOGLE_WORKSPACE_CLIENT_SECRET": "secret",
+                "GOOGLE_WORKSPACE_REFRESH_TOKEN": "refresh",
+            }}),
+        }}
+        ok = {{"microsoft365", "google_workspace"}} <= {{provider["provider"] for provider in operation["providers"]}} and operation["configured_google"]["configured"]
+    elif SURFACE == "document_merge":
+        payload = productivity.document_merge_payload(table_name, row)
+        operation = {{"payload": payload, "required_missing": payload["required_missing"]}}
+        ok = payload["target"] == "docs" and payload["table"] == table_name and not payload["required_missing"]
+    elif SURFACE == "spreadsheet_export":
+        payload = productivity.spreadsheet_export_payload(table_name, (row,), provider="microsoft365")
+        operation = {{"payload": payload}}
+        ok = payload["target"] == "excel" and payload["row_count"] == 1 and bool(payload["headers"])
+    elif SURFACE == "calendar_task":
+        required_row = {{
+            field: f"sample_{{field}}"
+            for field in productivity.PRODUCTIVITY_TEMPLATES.get(table_name, {{}}).get("required_fields", ())
+        }}
+        operation = {{
+            "calendar": productivity.calendar_event_payload(table_name, row),
+            "task": productivity.task_sync_payload(table_name, required_row),
+        }}
+        ok = operation["calendar"]["target"] == "calendar" and operation["task"]["target"] == "planner" and not operation["task"]["missing_required_fields"]
+    else:
+        core_assets = {{"app/productivity.py", "app/templates/appgen_productivity.html"}}
+        operation = {{
+            "release": productivity.productivity_release_gate(core_assets),
+            "workbench": productivity.productivity_workbench(core_assets),
+        }}
+        ok = operation["release"]["ok"] and operation["workbench"]["ok"]
+    return {{
+        "format": "appgen.productivity-module-operation.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "ok": ok,
+        "operation": operation,
+        "side_effects": (),
+    }}
+
+
+def release_context():
+    """Return release evidence used by this productivity module."""
+    productivity = _productivity()
+    core_assets = {{"app/productivity.py", "app/templates/appgen_productivity.html"}}
+    return {{
+        "format": "appgen.productivity-module-release-context.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "ok": productivity.productivity_release_gate(core_assets)["ok"] and productivity.productivity_workbench(core_assets)["ok"],
+        "release": productivity.productivity_release_gate(core_assets),
+        "workbench": productivity.productivity_workbench(core_assets),
+        "side_effects": (),
+    }}
+
+
+def smoke_test():
+    """Run side-effect-free checks for this generated productivity module."""
+    contract = module_contract()
+    manifest = productivity_manifest_contract()
+    operation = run_productivity_operation()
+    release = release_context()
+    return {{
+        "format": "appgen.productivity-module-smoke-test.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "ok": contract["ok"]
+        and manifest["ok"]
+        and operation["ok"]
+        and release["ok"]
+        and not manifest["side_effects"]
+        and not operation["side_effects"]
+        and not release["side_effects"],
+        "contract": contract,
+        "manifest": manifest,
+        "operation": operation,
+        "release": release,
+        "checks": (
+            "module_contract_resolves",
+            "productivity_manifest_contract_ok",
+            "productivity_operation_ok",
+            "release_context_ok",
+            "no_side_effects",
+        ),
+    }}
+'''
+
+
+def _productivity_module_test_text(module_name: str) -> str:
+    surface, _operation = _productivity_surface(module_name)
+    return f'''"""Generated tests for the {surface} productivity module."""
+
+from __future__ import annotations
+
+import importlib.util
+from pathlib import Path
+
+
+MODULE = {module_name!r}
+SURFACE = {surface!r}
+
+
+def load_productivity_module():
+    """Load the generated productivity module without app installation."""
+    module_path = Path(__file__).resolve().parents[1] / "productivity_modules" / f"{{MODULE}}.py"
+    spec = importlib.util.spec_from_file_location(f"generated_productivity_module_{{MODULE}}", module_path)
+    module = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(module)
+    return module
+
+
+def test_productivity_module_contract():
+    """Assert the generated productivity module exposes its contract."""
+    module = load_productivity_module()
+    contract = module.module_contract()
+    assert contract["module"] == MODULE
+    assert contract["surface"] == SURFACE
+    assert contract["ok"] is True
+    assert all(hasattr(module, name) for name in contract["expected_exports"])
+
+
+def test_productivity_module_smoke():
+    """Assert the module's side-effect-free smoke test passes."""
+    module = load_productivity_module()
+    result = module.smoke_test()
+    assert result["ok"] is True
+    assert result["module"] == MODULE
+    assert result["surface"] == SURFACE
+    assert result["checks"]
+
+
+def smoke_test():
+    """Run this generated test module in a side-effect-free way."""
+    test_productivity_module_contract()
+    test_productivity_module_smoke()
+    return {{
+        "format": "appgen.productivity-module-generated-test-smoke.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "ok": True,
+        "tests": ("test_productivity_module_contract", "test_productivity_module_smoke"),
     }}
 '''
 
@@ -29426,7 +29707,9 @@ def _productivity_text(schema: AppSchema) -> str:
 
 from __future__ import annotations
 
+import importlib.util
 import os
+from pathlib import Path
 
 from flask import jsonify
 from flask_appbuilder import BaseView
@@ -29454,6 +29737,72 @@ PRODUCTIVITY_PROVIDERS = {{
     }},
 }}
 PRODUCTIVITY_TEMPLATES = {templates!r}
+PRODUCTIVITY_MODULES = (
+    "provider_catalog_module",
+    "document_merge_module",
+    "spreadsheet_export_module",
+    "calendar_task_module",
+    "release_workbench_module",
+)
+
+
+def _load_generated_module(module_path, module_name):
+    """Load a generated productivity helper module without installing the app."""
+    spec = importlib.util.spec_from_file_location(module_name, module_path)
+    module = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(module)
+    return module
+
+
+def productivity_module_file_manifest():
+    """Return independently importable generated productivity module files."""
+    root = Path(__file__).resolve().parent
+    modules = []
+    for module_name in PRODUCTIVITY_MODULES:
+        module_path = root / "productivity_modules" / f"{{module_name}}.py"
+        module = _load_generated_module(module_path, f"generated_productivity_module_{{module_name}}")
+        contract = module.module_contract()
+        modules.append(
+            {{
+                "module": module_name,
+                "surface": contract["surface"],
+                "path": f"app/productivity_modules/{{module_name}}.py",
+                "exists": module_path.exists(),
+                "ok": contract["ok"] and module.smoke_test()["ok"],
+                "exports": contract["exports"],
+            }}
+        )
+    return {{
+        "format": "appgen.productivity-module-file-manifest.v1",
+        "ok": len(modules) == len(PRODUCTIVITY_MODULES) and all(item["ok"] and item["exists"] for item in modules),
+        "modules": tuple(modules),
+    }}
+
+
+def productivity_module_test_file_manifest():
+    """Return generated tests for the productivity module files."""
+    root = Path(__file__).resolve().parent
+    tests = []
+    for module_name in PRODUCTIVITY_MODULES:
+        test_path = root / "productivity_module_tests" / f"test_{{module_name}}.py"
+        module = _load_generated_module(test_path, f"generated_productivity_module_test_{{module_name}}")
+        result = module.smoke_test()
+        tests.append(
+            {{
+                "module": f"test_{{module_name}}",
+                "surface": result["surface"],
+                "path": f"app/productivity_module_tests/test_{{module_name}}.py",
+                "exists": test_path.exists(),
+                "ok": result["ok"],
+                "tests": result["tests"],
+            }}
+        )
+    return {{
+        "format": "appgen.productivity-module-test-file-manifest.v1",
+        "ok": len(tests) == len(PRODUCTIVITY_MODULES) and all(item["ok"] and item["exists"] for item in tests),
+        "tests": tuple(tests),
+    }}
 
 
 def provider_config(provider, environ=None):

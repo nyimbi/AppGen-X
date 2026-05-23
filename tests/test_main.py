@@ -9007,6 +9007,38 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert productivity_workbench["payloads"]["calendar"]["target"] == "calendar"
     assert productivity.productivity_workbench({"app/productivity.py"})["ok"] is False
     assert productivity.productivity_release_gate({"app/productivity.py"})["ok"] is False
+    productivity_module_files = productivity.productivity_module_file_manifest()
+    productivity_module_tests = productivity.productivity_module_test_file_manifest()
+    assert productivity_module_files["ok"] is True
+    assert productivity_module_tests["ok"] is True
+    assert {item["surface"] for item in productivity_module_files["modules"]} == {
+        "provider_catalog",
+        "document_merge",
+        "spreadsheet_export",
+        "calendar_task",
+        "release_workbench",
+    }
+    assert {item["surface"] for item in productivity_module_tests["tests"]} == {
+        "provider_catalog",
+        "document_merge",
+        "spreadsheet_export",
+        "calendar_task",
+        "release_workbench",
+    }
+    for item in productivity_module_files["modules"]:
+        module_path = output_dir / item["path"].replace("app/", "")
+        py_compile.compile(str(module_path), doraise=True)
+        module = _load_module(module_path, f"generated_productivity_module_{item['module']}")
+        assert module.module_contract()["ok"] is True
+        assert module.productivity_manifest_contract()["ok"] is True
+        assert module.run_productivity_operation()["ok"] is True
+        assert module.release_context()["ok"] is True
+        assert module.smoke_test()["ok"] is True
+    for item in productivity_module_tests["tests"]:
+        test_path = output_dir / item["path"].replace("app/", "")
+        py_compile.compile(str(test_path), doraise=True)
+        module = _load_module(test_path, f"generated_productivity_module_test_{item['module']}")
+        assert module.smoke_test()["ok"] is True
     assert {item["name"] for item in lifecycle.environment_catalog()} == {
         "development",
         "testing",
