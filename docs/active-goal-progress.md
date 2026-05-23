@@ -51,7 +51,7 @@ Build a complete AppGen IDE and generation platform with:
 | 2026-05-23 | `d23e61d` | Wired the Studio browser smoke harness into CI and the package Studio release audit. | Py compile; focused Studio test; aggregate package-goal test; frontend build; local browser smoke blocked by sandboxed Chrome crash handler; staged hygiene scans. |
 | 2026-05-23 | `c7269ce` | Added prepared-host binary adapter transcript audits for native package execution. | Py compile; focused target test; aggregate package-goal test; staged hygiene scans. |
 | 2026-05-23 | `656b486` | Sharpened developer guidance for the opinionated PBC event-processing choice. | Documentation diff check and hygiene scans passed. |
-| 2026-05-23 | `pending` | Added CI and CLI entry points for native package binary adapter transcript audits. | Py compile, focused target test, aggregate package-goal test, CLI audit, and staged hygiene scans pending. |
+| 2026-05-23 | `30b230f` | Added CI and CLI entry points for native package binary adapter transcript audits. | Py compile, focused target test, aggregate package-goal test, CLI audit, and staged hygiene scans passed. |
 
 ## Current Working Slice
 
