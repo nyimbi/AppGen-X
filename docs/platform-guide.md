@@ -80,7 +80,9 @@ A generated app can include:
 - `mobile_native_api_workbench()` proves device API breadth with full coverage:
   every listed API has generated permission metadata, a design-time/runtime
   component adapter, simulator fixtures, platform targets, and permission
-  guardrails.
+  guardrails. Its designer transaction replay covers permission generation,
+  simulator fixtures, privacy/fallback review, revocation, lifecycle delivery,
+  bridge recovery, and runtime dispatch.
 - `cross_target_visual_depth_workbench()` proves style resources, style cascade
   authoring, animation timelines, effect-stack validation, 3D scene authoring,
   asset import budgets, preview/runtime parity, and runtime fallbacks.

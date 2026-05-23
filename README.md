@@ -333,7 +333,9 @@ Generated apps include Studio contracts for:
   embedded local database support, offline sync policies, and conflict guards.
 - A mobile/native API workbench proves every listed device API has permission
   metadata, a design-time/runtime component adapter, simulator fixtures,
-  platform targets, and side-effect guards.
+  platform targets, side-effect guards, and ordered designer transaction replay
+  through privacy review, revocation, lifecycle delivery, bridge recovery, and
+  runtime dispatch.
 - A cross-target visual depth workbench proves style resources, style cascade
   authoring, animation timelines, effect-stack validation, 3D scene authoring,
   asset import budgets, preview/runtime parity, and runtime fallbacks.

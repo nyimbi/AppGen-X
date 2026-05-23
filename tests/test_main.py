@@ -1229,6 +1229,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "app_lifecycle_delivery",
         "simulator_fixture_integrity",
         "runtime_delivery_replay",
+        "designer_transaction_replay",
     } == {check["id"] for check in mobile_workbench["checks"]}
     mobile_apis = set(mobile_workbench["contract"]["apis"])
     assert {
@@ -1276,6 +1277,20 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     assert mobile_apis == {item["api"] for item in mobile_workbench["runtime_replay"]["replay"]}
     assert all("dispatch_component_events" in item["phases"] for item in mobile_workbench["runtime_replay"]["replay"])
     assert mobile_workbench["runtime_replay"]["final_state"]["checkpoints"] >= 1
+    assert mobile_workbench["designer_transaction_replay"]["ok"] is True
+    assert {
+        "author_device_components",
+        "generate_permission_manifest",
+        "configure_simulator_fixtures",
+        "preview_and_dispatch_adapter",
+        "validate_privacy_and_fallbacks",
+        "handle_permission_revocation",
+        "deliver_background_and_lifecycle",
+        "normalize_media_deep_link_and_bridge_errors",
+        "replay_runtime_delivery",
+    } <= {item["phase"] for item in mobile_workbench["designer_transaction_replay"]["replay"]}
+    assert mobile_workbench["designer_transaction_replay"]["final_state"]["runtime_replays"] == len(mobile_apis)
+    assert mobile_workbench["designer_transaction_replay"]["final_state"]["bridge_recoveries"] > 0
     visual_depth = cross_target_visual_depth_workbench()
     assert visual_depth["format"] == "appgen.cross-target-visual-depth-workbench.v1"
     assert visual_depth["ok"] is True
@@ -9794,6 +9809,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "app_lifecycle_delivery",
         "simulator_fixture_integrity",
         "runtime_delivery_replay",
+        "designer_transaction_replay",
     } == {check["id"] for check in generated_mobile["checks"]}
     generated_mobile_apis = set(generated_mobile["contract"]["apis"])
     assert {
@@ -9847,6 +9863,20 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert generated_mobile_apis == {item["api"] for item in generated_mobile["runtime_replay"]["replay"]}
     assert all("invoke_target_bridge" in item["phases"] for item in generated_mobile["runtime_replay"]["replay"])
     assert all(item["ok"] for item in generated_mobile["runtime_replay"]["bridge_recovery"])
+    assert generated_mobile["designer_transaction_replay"]["ok"] is True
+    assert {
+        "author_device_components",
+        "generate_permission_manifest",
+        "configure_simulator_fixtures",
+        "preview_and_dispatch_adapter",
+        "validate_privacy_and_fallbacks",
+        "handle_permission_revocation",
+        "deliver_background_and_lifecycle",
+        "normalize_media_deep_link_and_bridge_errors",
+        "replay_runtime_delivery",
+    } <= {item["phase"] for item in generated_mobile["designer_transaction_replay"]["replay"]}
+    assert generated_mobile["designer_transaction_replay"]["final_state"]["runtime_replays"] == len(generated_mobile_apis)
+    assert generated_mobile["designer_transaction_replay"]["final_state"]["privacy_entries"] == len(generated_mobile_apis)
     generated_visual_depth = form_designer.cross_target_visual_depth_workbench()
     assert generated_visual_depth["format"] == "appgen.generated-cross-target-visual-depth-workbench.v1"
     assert generated_visual_depth["ok"] is True
