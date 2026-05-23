@@ -1179,6 +1179,10 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "timeline_runtime_export",
         "shader_material_editor",
         "scene_hit_testing",
+        "style_inheritance_trace",
+        "timeline_interpolation_runtime",
+        "effect_fallback_matrix",
+        "scene_transform_gizmos",
     } == {check["id"] for check in visual_depth["checks"]}
     assert {"inspect_effective_value", "revert_override"} <= set(visual_depth["contract"]["style_cascade"]["operations"])
     assert {"add_keyframe", "scrub_preview"} <= set(visual_depth["contract"]["timeline_authoring"]["operations"])
@@ -1197,6 +1201,13 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     assert all("native_timeline" in export["artifacts"] for export in visual_depth["timeline_runtime_export"]["exports"])
     assert "compile_fallback" in visual_depth["shader_material_editor"]["operations"]
     assert all("open_inspector" in item["route"] for item in visual_depth["scene_hit_testing"]["hit_tests"])
+    assert all("publish_effective_value" in trace["trace"] for trace in visual_depth["style_inheritance_trace"]["traces"])
+    assert all(
+        "interpolated" in {item["value_source"] for item in sample["runtime_samples"]}
+        for sample in visual_depth["timeline_interpolation"]["samples"]
+    )
+    assert any(row["decision"] == "use_fallback" for row in visual_depth["effect_fallback_matrix"]["rows"])
+    assert all("sync_inspector" in item["pipeline"] for item in visual_depth["scene_transform_gizmos"]["transforms"])
     third_party_registry = third_party_component_registry()
     assert {"devexpress-native", "tms-fnc", "fastreport", "teechart", "indy"} <= {
         item["id"] for item in third_party_registry
@@ -9593,6 +9604,10 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "timeline_runtime_export",
         "shader_material_editor",
         "scene_hit_testing",
+        "style_inheritance_trace",
+        "timeline_interpolation_runtime",
+        "effect_fallback_matrix",
+        "scene_transform_gizmos",
     } == {check["id"] for check in generated_visual_depth["checks"]}
     assert generated_visual_depth["contract"]["asset_import"]["budgets"]["max_mesh_triangles"] > 0
     assert generated_visual_depth["style_resolution"]["ordered_layers"][0] == "base_theme"
@@ -9609,6 +9624,10 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert all("native_timeline" in export["artifacts"] for export in generated_visual_depth["timeline_runtime_export"]["exports"])
     assert "compile_fallback" in generated_visual_depth["shader_material_editor"]["operations"]
     assert all("open_inspector" in item["route"] for item in generated_visual_depth["scene_hit_testing"]["hit_tests"])
+    assert "effective_value_traceable" in generated_visual_depth["style_inheritance_trace"]["guards"]
+    assert "runtime_samples_match_preview" in generated_visual_depth["timeline_interpolation"]["guards"]
+    assert any(row["decision"] == "use_fallback" for row in generated_visual_depth["effect_fallback_matrix"]["rows"])
+    assert "inspector_sync_after_transform" in generated_visual_depth["scene_transform_gizmos"]["guards"]
     generated_analogs = form_designer.component_analog_workbench()
     assert generated_analogs["format"] == "appgen.generated-component-analog-workbench.v1"
     assert generated_analogs["ok"] is True

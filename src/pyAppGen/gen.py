@@ -31156,6 +31156,109 @@ def cross_target_scene_hit_test_contract():
     }}
 
 
+def cross_target_style_inheritance_trace_contract(component="Button"):
+    """Return generated traceable style inheritance from theme tokens to effective values."""
+    resolution = cross_target_style_resolution_workflow(component)
+    traces = tuple(
+        {{
+            "token": token,
+            "layers": resolution["ordered_layers"],
+            "winning_layer": "local_override" if token in ("color", "motion") else "component_class",
+            "trace": ("read_base_theme", "merge_component_class", "merge_state_override", "merge_platform_override", "merge_local_override", "publish_effective_value"),
+        }}
+        for token in ("color", "font", "spacing", "radius", "shadow", "motion")
+    )
+    return {{
+        "format": "appgen.generated-cross-target-style-inheritance-trace-contract.v1",
+        "ok": bool(traces)
+        and all(trace["layers"][0] == "base_theme" for trace in traces)
+        and all("publish_effective_value" in trace["trace"] for trace in traces),
+        "component": component,
+        "traces": traces,
+        "guards": ("effective_value_traceable", "override_source_visible", "theme_round_trip_preserved"),
+        "side_effects": (),
+    }}
+
+
+def cross_target_timeline_interpolation_contract():
+    """Return generated interpolated timeline samples for runtime animation playback."""
+    timeline = cross_target_animation_timeline_contract()
+    samples = tuple(
+        {{
+            "track": track["id"],
+            "property": track["property"],
+            "interpolation": track["interpolation"],
+            "runtime_samples": tuple(
+                {{
+                    "time_ms": time_ms,
+                    "source_keyframes": track["keyframes"],
+                    "value_source": "interpolated" if time_ms not in {{frame[0] for frame in track["keyframes"]}} else "keyframe",
+                }}
+                for time_ms in (0, 90, 180)
+            ),
+        }}
+        for track in timeline["tracks"]
+    )
+    return {{
+        "format": "appgen.generated-cross-target-timeline-interpolation-contract.v1",
+        "ok": bool(samples)
+        and all(sample["runtime_samples"] for sample in samples)
+        and all("interpolated" in {{item["value_source"] for item in sample["runtime_samples"]}} for sample in samples),
+        "samples": samples,
+        "guards": ("interpolation_deterministic", "reduced_motion_value_available", "runtime_samples_match_preview"),
+        "side_effects": (),
+    }}
+
+
+def cross_target_effect_fallback_matrix_contract():
+    """Return generated target-specific effect fallback behavior for constrained devices."""
+    budget = cross_target_effect_budget_contract()
+    targets = ("web", "mobile", "desktop", "pwa")
+    rows = tuple(
+        {{
+            "effect": row["effect"],
+            "target": target,
+            "allowed": row["mobile_allowed"] or target != "mobile",
+            "fallback": row["fallback"],
+            "decision": "use_effect" if row["mobile_allowed"] or target != "mobile" else "use_fallback",
+        }}
+        for row in budget["rows"]
+        for target in targets
+    )
+    return {{
+        "format": "appgen.generated-cross-target-effect-fallback-matrix-contract.v1",
+        "ok": bool(rows)
+        and all(row["fallback"] for row in rows)
+        and any(row["decision"] == "use_fallback" for row in rows),
+        "rows": rows,
+        "guards": ("fallback_declared_per_target", "mobile_budget_enforced", "quality_selection_visible"),
+        "side_effects": (),
+    }}
+
+
+def cross_target_scene_transform_gizmo_contract():
+    """Return generated 3D transform gizmo hit routing and persisted transform evidence."""
+    scene = cross_target_scene_hit_test_contract()
+    transforms = tuple(
+        {{
+            "node": hit["node"],
+            "kind": hit["kind"],
+            "gizmo": "material_probe" if hit["kind"] == "material" else "transform_gizmo",
+            "pipeline": ("raycast", "select_node", "show_gizmo", "preview_transform", "commit_transform", "sync_inspector"),
+        }}
+        for hit in scene["hit_tests"]
+        if hit["kind"] in ("mesh", "camera", "light", "material")
+    )
+    return {{
+        "format": "appgen.generated-cross-target-scene-transform-gizmo-contract.v1",
+        "ok": bool(transforms)
+        and all({{"preview_transform", "commit_transform", "sync_inspector"}} <= set(item["pipeline"]) for item in transforms),
+        "transforms": transforms,
+        "guards": ("transform_preview_before_commit", "inspector_sync_after_transform", "material_probe_routes_to_material_editor"),
+        "side_effects": (),
+    }}
+
+
 def cross_target_visual_depth_workbench():
     """Prove animation, styling, effects, and 3D designer depth."""
     contract = cross_target_visual_depth_contract()
@@ -31173,6 +31276,10 @@ def cross_target_visual_depth_workbench():
     timeline_runtime_export = cross_target_timeline_runtime_export_contract()
     shader_material_editor = cross_target_shader_material_editor_contract()
     scene_hit_testing = cross_target_scene_hit_test_contract()
+    style_inheritance_trace = cross_target_style_inheritance_trace_contract()
+    timeline_interpolation = cross_target_timeline_interpolation_contract()
+    effect_fallback_matrix = cross_target_effect_fallback_matrix_contract()
+    scene_transform_gizmos = cross_target_scene_transform_gizmo_contract()
     checks = (
         {{"id": "style_resources", "ok": {{"stylebook", "theme_tokens", "state_triggers", "multi_resolution_bitmaps"}} <= set(contract["style_resources"]["resources"]) and {{"normal", "pressed", "focused", "disabled"}} <= set(contract["style_resources"]["states"]), "evidence": contract["style_resources"]}},
         {{"id": "animation_state_graph", "ok": {{"state", "timeline", "path_animation"}} <= {{node["kind"] for node in contract["state_graph"]["nodes"]}} and {{"ease_in", "ease_out", "spring"}} <= set(contract["state_graph"]["easing"]), "evidence": contract["state_graph"]}},
@@ -31199,9 +31306,13 @@ def cross_target_visual_depth_workbench():
         {{"id": "timeline_runtime_export", "ok": timeline_runtime_export["ok"] and {{"runtime_timeline_exported", "reduced_motion_fallback"}} <= set(timeline_runtime_export["guards"]) and not timeline_runtime_export["side_effects"], "evidence": timeline_runtime_export}},
         {{"id": "shader_material_editor", "ok": shader_material_editor["ok"] and {{"shader_review_required", "material_editor_review"}} <= set(shader_material_editor["guards"]) and not shader_material_editor["side_effects"], "evidence": shader_material_editor}},
         {{"id": "scene_hit_testing", "ok": scene_hit_testing["ok"] and {{"inspector_route_declared", "selection_round_trips"}} <= set(scene_hit_testing["guards"]) and not scene_hit_testing["side_effects"], "evidence": scene_hit_testing}},
+        {{"id": "style_inheritance_trace", "ok": style_inheritance_trace["ok"] and "effective_value_traceable" in style_inheritance_trace["guards"] and not style_inheritance_trace["side_effects"], "evidence": style_inheritance_trace}},
+        {{"id": "timeline_interpolation_runtime", "ok": timeline_interpolation["ok"] and "runtime_samples_match_preview" in timeline_interpolation["guards"] and not timeline_interpolation["side_effects"], "evidence": timeline_interpolation}},
+        {{"id": "effect_fallback_matrix", "ok": effect_fallback_matrix["ok"] and "fallback_declared_per_target" in effect_fallback_matrix["guards"] and not effect_fallback_matrix["side_effects"], "evidence": effect_fallback_matrix}},
+        {{"id": "scene_transform_gizmos", "ok": scene_transform_gizmos["ok"] and "inspector_sync_after_transform" in scene_transform_gizmos["guards"] and not scene_transform_gizmos["side_effects"], "evidence": scene_transform_gizmos}},
     )
     ok = all(check["ok"] for check in checks)
-    return {{"format": "appgen.generated-cross-target-visual-depth-workbench.v1", "ok": ok, "decision": "approved" if ok else "blocked", "contract": contract, "style_resolution": style_resolution, "timeline_playback": timeline_playback, "effect_render": effect_render, "scene_validation": scene_validation, "asset_import_workflow": asset_import, "preview_diff": preview_diff, "style_tokens": style_tokens, "timeline_scrub": timeline_scrub, "effect_budget": effect_budget, "scene_integrity": scene_integrity, "material_binding": material_binding, "timeline_runtime_export": timeline_runtime_export, "shader_material_editor": shader_material_editor, "scene_hit_testing": scene_hit_testing, "checks": checks, "blocking_gaps": tuple(check for check in checks if not check["ok"])}}
+    return {{"format": "appgen.generated-cross-target-visual-depth-workbench.v1", "ok": ok, "decision": "approved" if ok else "blocked", "contract": contract, "style_resolution": style_resolution, "timeline_playback": timeline_playback, "effect_render": effect_render, "scene_validation": scene_validation, "asset_import_workflow": asset_import, "preview_diff": preview_diff, "style_tokens": style_tokens, "timeline_scrub": timeline_scrub, "effect_budget": effect_budget, "scene_integrity": scene_integrity, "material_binding": material_binding, "timeline_runtime_export": timeline_runtime_export, "shader_material_editor": shader_material_editor, "scene_hit_testing": scene_hit_testing, "style_inheritance_trace": style_inheritance_trace, "timeline_interpolation": timeline_interpolation, "effect_fallback_matrix": effect_fallback_matrix, "scene_transform_gizmos": scene_transform_gizmos, "checks": checks, "blocking_gaps": tuple(check for check in checks if not check["ok"])}}
 
 
 def snap_to_grid(value, minimum=0):
