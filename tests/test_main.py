@@ -10751,6 +10751,34 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     )
     assert diagnostics.diagnostics_workbench({"app/diagnostics.py"})["ok"] is False
     assert diagnostics.diagnostics_release_gate({"app/diagnostics.py"})["ok"] is False
+    diagnostics_module_files = diagnostics.diagnostics_module_file_manifest()
+    diagnostics_module_tests = diagnostics.diagnostics_module_test_file_manifest()
+    assert diagnostics_module_files["format"] == "appgen.diagnostics-module-file-manifest.v1"
+    assert diagnostics_module_files["ok"] is True
+    assert diagnostics_module_tests["format"] == "appgen.diagnostics-module-test-file-manifest.v1"
+    assert diagnostics_module_tests["ok"] is True
+    assert {
+        "schema_selftest",
+        "row_validation",
+        "debug_snapshot",
+        "remediation_support",
+        "api_load_plan",
+        "diagnostics_release_workbench",
+    } == {item["surface"] for item in diagnostics_module_files["modules"]}
+    for item in diagnostics_module_files["modules"]:
+        module_path = output_dir / item["path"].replace("app/", "")
+        py_compile.compile(str(module_path), doraise=True)
+        module = _load_module(module_path, f"generated_diagnostics_module_{item['module']}")
+        assert module.module_contract()["ok"] is True
+        assert module.diagnostics_manifest_contract()["ok"] is True
+        assert module.run_diagnostics_operation()["ok"] is True
+        assert module.release_context()["ok"] is True
+        assert module.smoke_test()["ok"] is True
+    for item in diagnostics_module_tests["tests"]:
+        test_path = output_dir / item["path"].replace("app/", "")
+        py_compile.compile(str(test_path), doraise=True)
+        module = _load_module(test_path, f"generated_diagnostics_module_test_{item['module']}")
+        assert module.smoke_test()["ok"] is True
     api_requests = api_testing.request_plan()
     assert any(request["name"] == "list_book" and request["path"] == "/api/v1/book/" for request in api_requests)
     assert api_testing.sample_payload("Book")["title"] == "sample_title"

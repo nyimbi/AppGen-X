@@ -2035,6 +2035,27 @@ def write_diagnostics_file(output_dir, schema: AppSchema):
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
     (output_dir / "diagnostics.py").write_text(_diagnostics_text(schema))
+    write_diagnostics_module_files(output_dir)
+
+
+def write_diagnostics_module_files(output_dir):
+    """Write generated diagnostics modules and smoke tests."""
+    output_dir = Path(output_dir)
+    module_dir = output_dir / "diagnostics_modules"
+    test_dir = output_dir / "diagnostics_module_tests"
+    module_dir.mkdir(parents=True, exist_ok=True)
+    test_dir.mkdir(parents=True, exist_ok=True)
+    (module_dir / "__init__.py").write_text(_diagnostics_module_init_text(), encoding="utf-8")
+    (test_dir / "__init__.py").write_text(_diagnostics_module_test_init_text(), encoding="utf-8")
+    for module_name in DIAGNOSTICS_MODULES:
+        (module_dir / f"{module_name}.py").write_text(
+            _diagnostics_module_text(module_name),
+            encoding="utf-8",
+        )
+        (test_dir / f"test_{module_name}.py").write_text(
+            _diagnostics_module_test_text(module_name),
+            encoding="utf-8",
+        )
 
 
 def write_api_testing_file(output_dir, schema: AppSchema):
@@ -2366,6 +2387,15 @@ RPA_MODULES = (
     "process_model_module",
     "rpa_export_module",
     "rpa_release_workbench_module",
+)
+
+DIAGNOSTICS_MODULES = (
+    "schema_selftest_module",
+    "row_validation_module",
+    "debug_snapshot_module",
+    "remediation_support_module",
+    "api_load_plan_module",
+    "diagnostics_release_workbench_module",
 )
 
 
@@ -8104,6 +8134,258 @@ def smoke_test():
         "surface": SURFACE,
         "ok": True,
         "tests": ("test_rpa_module_contract", "test_rpa_module_smoke"),
+    }}
+'''
+
+
+def _diagnostics_module_init_text() -> str:
+    return (
+        '"""Generated diagnostics modules."""\n\n'
+        f"DIAGNOSTICS_MODULES = {DIAGNOSTICS_MODULES!r}\n"
+    )
+
+
+def _diagnostics_module_test_init_text() -> str:
+    modules = tuple(f"test_{name}" for name in DIAGNOSTICS_MODULES)
+    return (
+        '"""Generated diagnostics module tests."""\n\n'
+        f"DIAGNOSTICS_MODULE_TESTS = {modules!r}\n"
+    )
+
+
+def _diagnostics_surface(module_name: str) -> tuple[str, str]:
+    return {
+        "schema_selftest_module": ("schema_selftest", "selftest"),
+        "row_validation_module": ("row_validation", "validate_row"),
+        "debug_snapshot_module": ("debug_snapshot", "debug_snapshot"),
+        "remediation_support_module": ("remediation_support", "support_bundle"),
+        "api_load_plan_module": ("api_load_plan", "api_smoke_plan"),
+        "diagnostics_release_workbench_module": ("diagnostics_release_workbench", "diagnostics_release_gate"),
+    }[module_name]
+
+
+def _diagnostics_module_text(module_name: str) -> str:
+    surface, operation = _diagnostics_surface(module_name)
+    return f'''"""Generated diagnostics module for {surface}."""
+
+from __future__ import annotations
+
+import importlib.util
+from pathlib import Path
+
+
+MODULE = {module_name!r}
+SURFACE = {surface!r}
+OPERATION = {operation!r}
+EXPECTED_EXPORTS = (
+    "module_contract",
+    "diagnostics_manifest_contract",
+    "run_diagnostics_operation",
+    "release_context",
+    "smoke_test",
+)
+
+
+def _diagnostics():
+    module_path = Path(__file__).resolve().parents[1] / "diagnostics.py"
+    spec = importlib.util.spec_from_file_location(f"generated_diagnostics_{{MODULE}}_diagnostics", module_path)
+    module = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(module)
+    return module
+
+
+def _assets():
+    return {{"app/diagnostics.py", "app/templates/appgen_diagnostics.html"}}
+
+
+def _first_table(diagnostics):
+    tables = tuple(diagnostics.DIAGNOSTIC_TABLES)
+    if not tables:
+        raise AssertionError("generated diagnostics module requires at least one table")
+    return tables[0]
+
+
+def module_contract():
+    """Return this generated diagnostics module's export contract."""
+    available = tuple(name for name in EXPECTED_EXPORTS if name in globals())
+    return {{
+        "format": "appgen.diagnostics-module-contract.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "operation": OPERATION,
+        "ok": set(EXPECTED_EXPORTS) <= set(available),
+        "exports": available,
+        "expected_exports": EXPECTED_EXPORTS,
+        "side_effects": (),
+    }}
+
+
+def diagnostics_manifest_contract():
+    """Return generated diagnostics metadata owned by this module."""
+    diagnostics = _diagnostics()
+    checks = diagnostics.selftest()
+    return {{
+        "format": "appgen.diagnostics-module-manifest.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "ok": bool(diagnostics.DIAGNOSTIC_TABLES)
+        and diagnostics.diagnostics_check(_assets())["ok"]
+        and checks["ok"]
+        and checks["summary"]["fail"] == 0,
+        "tables": tuple(diagnostics.DIAGNOSTIC_TABLES),
+        "checks": checks,
+        "api_smoke": diagnostics.api_smoke_plan(),
+        "side_effects": (),
+    }}
+
+
+def run_diagnostics_operation():
+    """Run this module's side-effect-free diagnostic operation."""
+    diagnostics = _diagnostics()
+    table = _first_table(diagnostics)
+    required = tuple(diagnostics.DIAGNOSTIC_TABLES[table]["required"])
+    if SURFACE == "schema_selftest":
+        operation = diagnostics.selftest()
+        ok = operation["ok"] and operation["summary"]["fail"] == 0
+    elif SURFACE == "row_validation":
+        operation = {{
+            "missing": diagnostics.validate_row(table, {{}}),
+            "present": diagnostics.validate_row(table, {{field: "sample" for field in required}}),
+        }}
+        ok = bool(operation["missing"]["missing"]) and operation["present"]["ok"] is True
+    elif SURFACE == "debug_snapshot":
+        operation = diagnostics.debug_snapshot({{"SECRET_KEY": "secret", "APP_NAME": "AppGen"}}, {{"PATH": "/bin"}})
+        ok = operation["config"]["SECRET_KEY"] == "[redacted]" and operation["config"]["APP_NAME"] == "AppGen" and "PATH" in operation["environment_keys"]
+    elif SURFACE == "remediation_support":
+        warning = ({{"name": f"{{table}} has primary key", "status": "warn", "details": ()}},)
+        operation = {{
+            "remediation": diagnostics.remediation_plan(warning),
+            "support": diagnostics.support_bundle({{"SECRET_KEY": "secret"}}, {{"PATH": "/bin"}}),
+        }}
+        ok = operation["remediation"]["actions"][0]["severity"] == "warning" and operation["support"]["snapshot"]["config"]["SECRET_KEY"] == "[redacted]"
+    elif SURFACE == "api_load_plan":
+        operation = {{
+            "smoke": diagnostics.api_smoke_plan(),
+            "load": diagnostics.load_test_plan(users=3, duration_seconds=5),
+        }}
+        ok = bool(operation["smoke"]) and operation["load"]["users"] == 3 and len(operation["load"]["scenarios"]) == len(operation["smoke"])
+    else:
+        operation = {{
+            "release": diagnostics.diagnostics_release_gate(_assets()),
+            "workbench": diagnostics.diagnostics_workbench(_assets()),
+        }}
+        ok = operation["release"]["ok"] and operation["workbench"]["ok"]
+    return {{
+        "format": "appgen.diagnostics-module-operation.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "ok": ok,
+        "operation": operation,
+        "side_effects": (),
+    }}
+
+
+def release_context():
+    """Return release evidence used by this diagnostics module."""
+    diagnostics = _diagnostics()
+    return {{
+        "format": "appgen.diagnostics-module-release-context.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "ok": diagnostics.diagnostics_release_gate(_assets())["ok"] and diagnostics.diagnostics_workbench(_assets())["ok"],
+        "release": diagnostics.diagnostics_release_gate(_assets()),
+        "workbench": diagnostics.diagnostics_workbench(_assets()),
+        "side_effects": (),
+    }}
+
+
+def smoke_test():
+    """Run side-effect-free checks for this generated diagnostics module."""
+    contract = module_contract()
+    manifest = diagnostics_manifest_contract()
+    operation = run_diagnostics_operation()
+    release = release_context()
+    return {{
+        "format": "appgen.diagnostics-module-smoke-test.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "ok": contract["ok"]
+        and manifest["ok"]
+        and operation["ok"]
+        and release["ok"]
+        and not manifest["side_effects"]
+        and not operation["side_effects"]
+        and not release["side_effects"],
+        "contract": contract,
+        "manifest": manifest,
+        "operation": operation,
+        "release": release,
+        "checks": (
+            "module_contract_resolves",
+            "diagnostics_manifest_contract_ok",
+            "diagnostics_operation_ok",
+            "release_context_ok",
+            "no_side_effects",
+        ),
+    }}
+'''
+
+
+def _diagnostics_module_test_text(module_name: str) -> str:
+    surface, _operation = _diagnostics_surface(module_name)
+    return f'''"""Generated tests for the {surface} diagnostics module."""
+
+from __future__ import annotations
+
+import importlib.util
+from pathlib import Path
+
+
+MODULE = {module_name!r}
+SURFACE = {surface!r}
+
+
+def load_diagnostics_module():
+    """Load the generated diagnostics module without app installation."""
+    module_path = Path(__file__).resolve().parents[1] / "diagnostics_modules" / f"{{MODULE}}.py"
+    spec = importlib.util.spec_from_file_location(f"generated_diagnostics_module_{{MODULE}}", module_path)
+    module = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(module)
+    return module
+
+
+def test_diagnostics_module_contract():
+    """Assert the generated diagnostics module exposes its contract."""
+    module = load_diagnostics_module()
+    contract = module.module_contract()
+    assert contract["module"] == MODULE
+    assert contract["surface"] == SURFACE
+    assert contract["ok"] is True
+    assert all(hasattr(module, name) for name in contract["expected_exports"])
+
+
+def test_diagnostics_module_smoke():
+    """Assert the module's side-effect-free smoke test passes."""
+    module = load_diagnostics_module()
+    result = module.smoke_test()
+    assert result["ok"] is True
+    assert result["module"] == MODULE
+    assert result["surface"] == SURFACE
+    assert result["checks"]
+
+
+def smoke_test():
+    """Run this generated test module in a side-effect-free way."""
+    test_diagnostics_module_contract()
+    test_diagnostics_module_smoke()
+    return {{
+        "format": "appgen.diagnostics-module-generated-test-smoke.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "ok": True,
+        "tests": ("test_diagnostics_module_contract", "test_diagnostics_module_smoke"),
     }}
 '''
 
@@ -57306,6 +57588,8 @@ from __future__ import annotations
 
 from datetime import datetime
 from datetime import timezone
+import importlib.util
+from pathlib import Path
 
 from flask import jsonify
 from flask_appbuilder import BaseView
@@ -57313,6 +57597,73 @@ from flask_appbuilder import expose
 
 
 DIAGNOSTIC_TABLES = {tables!r}
+DIAGNOSTICS_MODULES = (
+    "schema_selftest_module",
+    "row_validation_module",
+    "debug_snapshot_module",
+    "remediation_support_module",
+    "api_load_plan_module",
+    "diagnostics_release_workbench_module",
+)
+
+
+def _load_generated_module(module_path, module_name):
+    """Load a generated diagnostics module without installing the app."""
+    spec = importlib.util.spec_from_file_location(module_name, module_path)
+    module = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(module)
+    return module
+
+
+def diagnostics_module_file_manifest():
+    """Return independently importable generated diagnostics module files."""
+    root = Path(__file__).resolve().parent
+    modules = []
+    for module_name in DIAGNOSTICS_MODULES:
+        module_path = root / "diagnostics_modules" / f"{{module_name}}.py"
+        module = _load_generated_module(module_path, f"generated_diagnostics_module_{{module_name}}")
+        contract = module.module_contract()
+        modules.append(
+            {{
+                "module": module_name,
+                "surface": contract["surface"],
+                "path": f"app/diagnostics_modules/{{module_name}}.py",
+                "exists": module_path.exists(),
+                "ok": contract["ok"] and module.smoke_test()["ok"],
+                "exports": contract["exports"],
+            }}
+        )
+    return {{
+        "format": "appgen.diagnostics-module-file-manifest.v1",
+        "ok": len(modules) == len(DIAGNOSTICS_MODULES) and all(item["ok"] and item["exists"] for item in modules),
+        "modules": tuple(modules),
+    }}
+
+
+def diagnostics_module_test_file_manifest():
+    """Return generated tests for the diagnostics module files."""
+    root = Path(__file__).resolve().parent
+    tests = []
+    for module_name in DIAGNOSTICS_MODULES:
+        test_path = root / "diagnostics_module_tests" / f"test_{{module_name}}.py"
+        module = _load_generated_module(test_path, f"generated_diagnostics_module_test_{{module_name}}")
+        result = module.smoke_test()
+        tests.append(
+            {{
+                "module": f"test_{{module_name}}",
+                "surface": result["surface"],
+                "path": f"app/diagnostics_module_tests/test_{{module_name}}.py",
+                "exists": test_path.exists(),
+                "ok": result["ok"],
+                "tests": result["tests"],
+            }}
+        )
+    return {{
+        "format": "appgen.diagnostics-module-test-file-manifest.v1",
+        "ok": len(tests) == len(DIAGNOSTICS_MODULES) and all(item["ok"] and item["exists"] for item in tests),
+        "tests": tuple(tests),
+    }}
 
 
 def schema_invariants():
@@ -67568,6 +67919,9 @@ def validate_diagnostics_artifacts() -> None:
         "diagnostics_check",
         "diagnostics_release_gate",
         "diagnostics_workbench",
+        "diagnostics_module_file_manifest",
+        "diagnostics_module_test_file_manifest",
+        "DIAGNOSTICS_MODULES",
     )
     if not all(term in contract for term in required_terms):
         fail("diagnostics contract must expose schema checks, remediation, support bundles, workbench, smoke plans, and load tests")
