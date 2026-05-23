@@ -1,0 +1,45 @@
+name: Studio Browser Smoke
+
+on:
+  push:
+    paths:
+      - "appgen-frontend/**"
+      - ".github/workflows/studio-browser-smoke.yml"
+  pull_request:
+    paths:
+      - "appgen-frontend/**"
+      - ".github/workflows/studio-browser-smoke.yml"
+  workflow_dispatch:
+
+jobs:
+  studio-browser-smoke:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: appgen-frontend
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: appgen-frontend/package-lock.json
+
+      - name: Configure browser binary
+        run: |
+          BROWSER_BIN="$(command -v google-chrome || command -v chromium-browser || command -v chromium)"
+          if [ -z "$BROWSER_BIN" ]; then
+            echo "No Chrome-compatible browser found on runner." >&2
+            exit 1
+          fi
+          echo "APPGEN_CHROME_BIN=$BROWSER_BIN" >> "$GITHUB_ENV"
+
+      - name: Install frontend dependencies
+        run: npm ci
+
+      - name: Run Studio browser smoke
+        run: npm run test:browser

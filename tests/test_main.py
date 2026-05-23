@@ -290,6 +290,7 @@ from pyAppGen.security import tenant_rls_contract
 from pyAppGen.studio import database_design_workspace
 from pyAppGen.studio import dsl_editor_state
 from pyAppGen.studio import generation_job_manifest
+from pyAppGen.studio import studio_browser_smoke_ci_contract
 from pyAppGen.studio import studio_generation_smoke_audit
 from pyAppGen.studio import studio_release_audit
 from pyAppGen.studio import studio_workspace
@@ -1101,9 +1102,18 @@ def test_package_studio_audit_covers_ide_database_and_generation(
     assert audit["format"] == "appgen.package-studio-release-audit.v1"
     assert audit["ok"] is True
     assert audit["generation_smoke"]["ok"] is True
+    assert audit["browser_smoke"]["ok"] is True
     assert "generation_smoke" in {gate["id"] for gate in audit["gates"]}
+    assert "browser_smoke_ci" in {gate["id"] for gate in audit["gates"]}
     assert audit["stop_condition"] == "do-not-claim-robust-ide-unless-ok-is-true"
     assert all(gate["ok"] for gate in audit["gates"])
+    browser_smoke = studio_browser_smoke_ci_contract()
+    assert browser_smoke["format"] == "appgen.studio-browser-smoke-ci-contract.v1"
+    assert browser_smoke["ok"] is True
+    assert browser_smoke["command"] == "npm run test:browser"
+    assert {"studio_shell", "device_palette_filter", "storage_search_filter", "empty_palette_state"} <= set(
+        browser_smoke["scenarios"]
+    )
 
     smoke = studio_generation_smoke_audit()
     assert smoke["format"] == "appgen.studio-generation-smoke-audit.v1"

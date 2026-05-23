@@ -8,6 +8,8 @@ writing DSL, and managing application generation before an app exists.
 from __future__ import annotations
 
 import hashlib
+import json
+from pathlib import Path
 
 from .dsl import dsl_authoring_release_gate
 from .dsl import dsl_code_actions
@@ -156,6 +158,62 @@ def application_management_plan() -> dict:
     }
 
 
+def studio_browser_smoke_ci_contract(repo_root: str | Path | None = None) -> dict:
+    """Return CI/prepared-host evidence for the Studio browser smoke harness."""
+    root = Path(repo_root) if repo_root is not None else Path(__file__).resolve().parents[2]
+    frontend = root / "appgen-frontend"
+    package_path = frontend / "package.json"
+    smoke_script = frontend / "scripts" / "browser-smoke.mjs"
+    workflow_path = root / ".github" / "workflows" / "studio-browser-smoke.yml"
+    package = {}
+    if package_path.exists():
+        package = json.loads(package_path.read_text(encoding="utf-8"))
+    script_text = smoke_script.read_text(encoding="utf-8") if smoke_script.exists() else ""
+    workflow_text = workflow_path.read_text(encoding="utf-8") if workflow_path.exists() else ""
+    scenarios = ("studio_shell", "device_palette_filter", "storage_search_filter", "empty_palette_state")
+    checks = (
+        {
+            "id": "frontend_package_script",
+            "ok": package.get("scripts", {}).get("test:browser") == "npm run build && node scripts/browser-smoke.mjs",
+        },
+        {
+            "id": "browser_smoke_script",
+            "ok": smoke_script.exists()
+            and "appgen.studio-browser-smoke.v1" in script_text
+            and all(scenario in script_text for scenario in scenarios),
+        },
+        {
+            "id": "ci_workflow",
+            "ok": workflow_path.exists()
+            and "npm ci" in workflow_text
+            and "npm run test:browser" in workflow_text
+            and "APPGEN_CHROME_BIN" in workflow_text,
+        },
+        {
+            "id": "prepared_host_contract",
+            "ok": "Set APPGEN_CHROME_BIN" in script_text
+            and "--disable-crash-reporter" in script_text
+            and "--user-data-dir=" in script_text,
+        },
+    )
+    return {
+        "format": "appgen.studio-browser-smoke-ci-contract.v1",
+        "ok": all(check["ok"] for check in checks),
+        "frontend": str(frontend),
+        "command": "npm run test:browser",
+        "workflow": str(workflow_path),
+        "script": str(smoke_script),
+        "scenarios": scenarios,
+        "environment": {
+            "browser_binary": "APPGEN_CHROME_BIN",
+            "node": "20",
+            "working_directory": "appgen-frontend",
+        },
+        "checks": checks,
+        "blocking_gaps": tuple(check for check in checks if not check["ok"]),
+    }
+
+
 def studio_generation_smoke_audit(source: str = SAMPLE_DSL) -> dict:
     """Generate a temporary app and exercise its generated Studio contract."""
     import importlib.util
@@ -296,6 +354,7 @@ def studio_release_audit(source: str = SAMPLE_DSL) -> dict:
     jobs = workspace["generation_jobs"]
     management = workspace["application_management"]
     generation_smoke = studio_generation_smoke_audit(source)
+    browser_smoke = studio_browser_smoke_ci_contract()
     gates = (
         {
             "id": "workspace_sections",
@@ -318,6 +377,11 @@ def studio_release_audit(source: str = SAMPLE_DSL) -> dict:
             "ok": generation_smoke["ok"],
             "checks": tuple(check["id"] for check in generation_smoke["checks"]),
         },
+        {
+            "id": "browser_smoke_ci",
+            "ok": browser_smoke["ok"],
+            "checks": tuple(check["id"] for check in browser_smoke["checks"]),
+        },
     )
     ok = all(gate["ok"] for gate in gates)
     return {
@@ -327,6 +391,7 @@ def studio_release_audit(source: str = SAMPLE_DSL) -> dict:
         "decision": "approved" if ok else "blocked",
         "workspace": workspace,
         "generation_smoke": generation_smoke,
+        "browser_smoke": browser_smoke,
         "gates": gates,
         "blocking_gaps": tuple(gate for gate in gates if not gate["ok"]),
         "stop_condition": "do-not-claim-robust-ide-unless-ok-is-true",

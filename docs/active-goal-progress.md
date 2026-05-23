@@ -48,12 +48,13 @@ Build a complete AppGen IDE and generation platform with:
 | 2026-05-23 | `96a104c` | Added generated PBC runtime manifests for catalog selection, self-registration, composition workbench, and stream-policy proof. | Py compile; focused PBC test; PBC generation smoke; aggregate package-goal test; staged hygiene scans. |
 | 2026-05-23 | `e32d201` | Added side-effect-free PBC package loading from local source directories and importable modules. | Py compile; focused PBC test; aggregate package-goal test; staged hygiene scans. |
 | 2026-05-23 | `7a54620` | Added PBC package index discovery for reusable package catalogs. | Py compile; focused PBC test; aggregate package-goal test; staged hygiene scans. |
+| 2026-05-23 | `pending` | Wired the Studio browser smoke harness into CI and the package Studio release audit. | Py compile; focused Studio test; aggregate package-goal test; frontend build; local browser smoke blocked by sandboxed Chrome crash handler; staged hygiene scans. |
 
 ## Current Working Slice
 
 Extend generated target outputs beyond dependency-free runtime contracts by adding:
 
-- Browser-level Studio interaction tests that pass in CI or another browser-capable sandbox.
+- Browser-level Studio interaction tests are wired into CI and the package Studio release audit.
 - CI or prepared-host execution of desktop packaging adapters.
 - CI or prepared-host execution of mobile packaging adapters.
 - Runtime smoke checks against produced package artifacts when available.
@@ -62,4 +63,4 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
 ## Open Completion Areas
 
 - Extend package lifecycle proof to real binary adapters when available.
-- Run the Studio browser smoke harness in CI or another browser-capable sandbox and wire it into the required frontend verification path.
+- Confirm Studio browser smoke execution in a browser-capable CI run.

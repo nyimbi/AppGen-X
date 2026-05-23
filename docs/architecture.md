@@ -184,6 +184,11 @@ generated app. It is structured around workbench payloads:
 
 This workbench-first architecture lets a web IDE, desktop IDE, external plugin,
 or automated agent consume the same structured contracts.
+The React Studio prototype is also bound to `.github/workflows/studio-browser-smoke.yml`,
+which runs `npm run test:browser` against `appgen-frontend/scripts/browser-smoke.mjs`
+on a prepared CI host. `studio_browser_smoke_ci_contract()` is included in the
+package Studio release audit so the browser smoke command, workflow, scenarios,
+and prepared-host browser contract remain part of the required evidence.
 
 ## Visual Design Architecture
 

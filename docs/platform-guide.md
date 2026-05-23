@@ -162,6 +162,17 @@ Run the package-level Studio proof:
 appgen --studio-release-audit
 ```
 
+The frontend Studio prototype has its own browser smoke path:
+
+```console
+cd appgen-frontend
+npm run test:browser
+```
+
+CI runs the same command through `.github/workflows/studio-browser-smoke.yml`.
+Set `APPGEN_CHROME_BIN` on prepared hosts when the browser binary is not in a
+standard location.
+
 ## Enterprise Capabilities
 
 AppGen includes contracts and generated surfaces for:

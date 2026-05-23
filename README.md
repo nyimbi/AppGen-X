@@ -279,6 +279,7 @@ Frontend Studio prototype:
 cd appgen-frontend
 npm install
 npm run build
+npm run test:browser
 npm run dev
 ```
 
