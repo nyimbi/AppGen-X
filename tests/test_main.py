@@ -268,6 +268,7 @@ from pyAppGen.targets import generation_matrix as package_generation_matrix
 from pyAppGen.targets import mobile_capability_contract
 from pyAppGen.targets import target_catalog
 from pyAppGen.targets import target_contract
+from pyAppGen.targets import target_generated_runtime_smoke
 from pyAppGen.targets import target_generation_smoke_audit
 from pyAppGen.targets import target_package_matrix
 from pyAppGen.targets import target_release_audit
@@ -3006,9 +3007,30 @@ def test_package_target_audit_covers_web_mobile_desktop_generation(
         "mobile_package_hook",
         "desktop_package_hook",
         "native_release_gate",
+        "generated_runtime_smoke",
     } == {check["id"] for check in packaging["checks"]}
+    assert packaging["runtime_smoke"]["format"] == "appgen.target-generated-runtime-smoke.v1"
+    assert packaging["runtime_smoke"]["ok"] is True
     assert any(package["target"] == "mobile" and "kivy>=2.3,<3" in package["dependencies"] for package in packaging["packages"])
     assert any(package["target"] == "desktop" and "toga>=0.4,<1" in package["dependencies"] for package in packaging["packages"])
+
+    runtime = target_generated_runtime_smoke()
+    assert runtime["format"] == "appgen.target-generated-runtime-smoke.v1"
+    assert runtime["ok"] is True
+    assert {
+        "native_release_gate",
+        "mobile_runtime_contract",
+        "mobile_offline_runtime",
+        "mobile_device_plans",
+        "desktop_runtime_contract",
+        "desktop_offline_runtime",
+        "desktop_os_integration",
+        "pwa_runtime_smoke",
+        "chatbot_runtime_smoke",
+    } == {check["id"] for check in runtime["checks"]}
+    assert runtime["mobile"]["offline_record"]["sync_key"] == "ticket:1"
+    assert runtime["desktop"]["sync"]["steps"][0]["url"] == "https://api.example.test/api/v1/ticket/"
+    assert runtime["chatbot"]["conversation_plan"]["next_prompt"] == "What should title be?"
 
     audit = target_release_audit()
     assert audit["format"] == "appgen.package-target-release-audit.v1"
@@ -3022,6 +3044,7 @@ def test_package_target_audit_covers_web_mobile_desktop_generation(
         "pwa_chatbot_contracts",
         "target_generation_smoke",
         "runtime_packaging_proof",
+        "generated_runtime_smoke",
         "artifact_contract",
     } == {gate["id"] for gate in audit["gates"]}
 

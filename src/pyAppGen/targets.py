@@ -235,6 +235,7 @@ def target_runtime_packaging_proof(source: str = TARGET_SAMPLE_DSL) -> dict:
             (project_dir / "native/desktop/pyproject.toml").read_text(encoding="utf-8")
         )
         home_text = (project_dir / "app/templates/my_index.html").read_text(encoding="utf-8")
+        runtime_smoke = _target_generated_runtime_smoke(project_dir, existing_paths)
 
     web_package = {
         "target": "web",
@@ -295,6 +296,11 @@ def target_runtime_packaging_proof(source: str = TARGET_SAMPLE_DSL) -> dict:
             "ok": native_gate["ok"],
             "checks": native_gate["checks"],
         },
+        {
+            "id": "generated_runtime_smoke",
+            "ok": runtime_smoke["ok"],
+            "checks": runtime_smoke["checks"],
+        },
     )
     return {
         "format": "appgen.target-runtime-packaging-proof.v1",
@@ -303,10 +309,166 @@ def target_runtime_packaging_proof(source: str = TARGET_SAMPLE_DSL) -> dict:
         "manifest_targets": tuple(manifest["platform_targets"]),
         "packages": (web_package, mobile_package, desktop_package),
         "native_release_gate": native_gate,
+        "runtime_smoke": runtime_smoke,
         "checks": checks,
         "existing_paths": existing_paths,
         "stop_condition": "do-not-claim-target-packaging-unless-ok-is-true",
     }
+
+
+def _target_generated_runtime_smoke(project_dir: Path, existing_paths: tuple[str, ...]) -> dict:
+    native_module = _load_generated_module(
+        project_dir / "native/appgen_native.py",
+        "appgen_generated_native_runtime_smoke",
+    )
+    mobile_module = _load_generated_module(
+        project_dir / "native/mobile/app.py",
+        "appgen_generated_mobile_runtime_smoke",
+    )
+    desktop_module = _load_generated_module(
+        project_dir / "native/desktop/app.py",
+        "appgen_generated_desktop_runtime_smoke",
+    )
+    chatbot_module = _load_generated_module(
+        project_dir / "chatbots/appgen_chatbots.py",
+        "appgen_generated_chatbot_runtime_smoke",
+    )
+
+    native_gate = native_module.native_release_gate(existing_paths)
+    mobile_contract = mobile_module.mobile_contract()
+    mobile_offline_record = mobile_module.offline_record(
+        "Ticket",
+        {"id": 1, "title": "Escalation"},
+    )
+    mobile_sync_batch = mobile_module.offline_sync_batch((mobile_offline_record,))
+    mobile_replay = mobile_module.offline_replay_plan(
+        "https://api.example.test",
+        (mobile_offline_record,),
+    )
+    mobile_camera = mobile_module.camera_capture_plan("Ticket", "title")
+    mobile_location = mobile_module.location_capture_plan("Ticket")
+    mobile_push = mobile_module.push_notification_payload("Ready", "Ticket synced")
+
+    desktop_contract = desktop_module.desktop_contract()
+    desktop_cache = desktop_module.desktop_cache_snapshot(
+        "/tmp/appgen-cache",
+        {"Ticket": [{"id": 1}]},
+    )
+    desktop_change_set = desktop_module.desktop_change_set(
+        "Ticket",
+        ({"values": {"id": 1, "title": "Escalation"}},),
+    )
+    desktop_sync = desktop_module.desktop_sync_plan(
+        "https://api.example.test",
+        (desktop_change_set,),
+    )
+    desktop_file = desktop_module.desktop_file_action(
+        "/tmp/ticket.json",
+        table_name="Ticket",
+    )
+    desktop_notice = desktop_module.desktop_notification_payload("Ready", "Ticket synced")
+
+    chatbot_gate = chatbot_module.chatbot_provider_release_gate(existing_paths)
+    chatbot_plan = chatbot_module.conversation_plan("create_ticket", {})
+    service_worker = (project_dir / "app/static/appgen-sw.js").read_text(encoding="utf-8")
+    home_text = (project_dir / "app/templates/my_index.html").read_text(encoding="utf-8")
+    manifest = json.loads((project_dir / "app/static/appgen.webmanifest").read_text(encoding="utf-8"))
+
+    checks = (
+        {
+            "id": "native_release_gate",
+            "ok": native_gate["ok"],
+        },
+        {
+            "id": "mobile_runtime_contract",
+            "ok": mobile_contract["framework"] == "kivy"
+            and mobile_contract["tables"][0]["endpoint"] == "/api/v1/ticket/",
+        },
+        {
+            "id": "mobile_offline_runtime",
+            "ok": mobile_offline_record["status"] == "queued"
+            and mobile_sync_batch["tables"][0]["endpoint"] == "/api/v1/ticket/"
+            and mobile_replay["steps"][0]["conflict_policy"] == "manual_review",
+        },
+        {
+            "id": "mobile_device_plans",
+            "ok": mobile_camera["permission"] == "android.permission.CAMERA"
+            and mobile_location["permission"] == "android.permission.ACCESS_FINE_LOCATION"
+            and mobile_push["permission"] == "android.permission.POST_NOTIFICATIONS",
+        },
+        {
+            "id": "desktop_runtime_contract",
+            "ok": desktop_contract["framework"] == "beeware"
+            and desktop_contract["tables"][0]["endpoint"] == "/api/v1/ticket/",
+        },
+        {
+            "id": "desktop_offline_runtime",
+            "ok": desktop_cache["files"][0]["record_count"] == 1
+            and desktop_sync["steps"][0]["conflict_policy"] == "manual_review"
+            and desktop_change_set["requires_review"] is True,
+        },
+        {
+            "id": "desktop_os_integration",
+            "ok": desktop_file["review_required"] is True
+            and desktop_notice["title"] == "Ready",
+        },
+        {
+            "id": "pwa_runtime_smoke",
+            "ok": "APPGEN_CACHE" in service_worker
+            and "appgen-offline.html" in service_worker
+            and "/static/appgen.webmanifest" in home_text
+            and manifest.get("display") == "standalone",
+        },
+        {
+            "id": "chatbot_runtime_smoke",
+            "ok": chatbot_gate["ok"] is True
+            and chatbot_plan["ready"] is False
+            and chatbot_plan["next_prompt"] == "What should title be?",
+        },
+    )
+    return {
+        "format": "appgen.target-generated-runtime-smoke.v1",
+        "scope": "package",
+        "ok": all(check["ok"] for check in checks),
+        "checks": checks,
+        "mobile": {
+            "contract": mobile_contract,
+            "offline_record": mobile_offline_record,
+            "sync_batch": mobile_sync_batch,
+            "replay": mobile_replay,
+            "camera": mobile_camera,
+            "location": mobile_location,
+        },
+        "desktop": {
+            "contract": desktop_contract,
+            "cache": desktop_cache,
+            "change_set": desktop_change_set,
+            "sync": desktop_sync,
+            "file": desktop_file,
+        },
+        "chatbot": {
+            "release_gate": chatbot_gate,
+            "conversation_plan": chatbot_plan,
+        },
+        "stop_condition": "do-not-claim-generated-target-runtime-unless-ok-is-true",
+    }
+
+
+def target_generated_runtime_smoke(source: str = TARGET_SAMPLE_DSL) -> dict:
+    """Generate target apps and execute side-effect-free runtime smoke checks."""
+    from .gen import generate_app_from_schema
+
+    with tempfile.TemporaryDirectory(prefix="appgen-target-runtime-") as raw_workdir:
+        project_dir = Path(raw_workdir) / "target-runtime"
+        app_dir = project_dir / "app"
+        generate_app_from_schema(
+            schema_from_dsl(source, source_name="target-runtime.appgen"),
+            app_dir,
+        )
+        existing_paths = tuple(
+            sorted(str(path.relative_to(project_dir)) for path in project_dir.rglob("*") if path.is_file())
+        )
+        return _target_generated_runtime_smoke(project_dir, existing_paths)
 
 
 def dsl_target_contract(source: str = TARGET_SAMPLE_DSL) -> dict:
@@ -367,6 +529,7 @@ def target_release_audit(existing_paths: set[str] | None = None) -> dict:
     desktop = desktop_capability_contract()
     smoke = target_generation_smoke_audit()
     packaging = target_runtime_packaging_proof()
+    generated_runtime = packaging["runtime_smoke"]
     catalog_targets = {item["target"] for item in target_catalog()}
     gates = (
         {
@@ -405,6 +568,11 @@ def target_release_audit(existing_paths: set[str] | None = None) -> dict:
             "checks": packaging["checks"],
         },
         {
+            "id": "generated_runtime_smoke",
+            "ok": generated_runtime["ok"],
+            "checks": generated_runtime["checks"],
+        },
+        {
             "id": "artifact_contract",
             "ok": expected_artifacts <= existing,
         },
@@ -422,6 +590,7 @@ def target_release_audit(existing_paths: set[str] | None = None) -> dict:
         "desktop": desktop,
         "generation_smoke": smoke,
         "runtime_packaging": packaging,
+        "generated_runtime_smoke": generated_runtime,
         "gates": gates,
         "blocking_gaps": tuple(gate for gate in gates if not gate["ok"]),
         "stop_condition": "do-not-claim-multi-target-generation-unless-ok-is-true",
