@@ -33,15 +33,16 @@ Build a complete AppGen IDE and generation platform with:
 | 2026-05-23 | `8446561` | Added side-effect-free package signature validation and lifecycle execution proof. | Py compile, form-designer audit test, package-goal aggregation test, staged hygiene scans. |
 | 2026-05-23 | `d4c240a` | Added frontend Studio interaction audit coverage for palette, drag payload, workbench, and status inputs. | Frontend production build and staged hygiene scans. |
 | 2026-05-23 | `e0c5878` | Reworked the README as the AppGen-X entry point for users and contributors. | README local documentation links, staged diff checks, and staged hygiene scans. |
+| 2026-05-23 | `69db387` | Added generated target runtime smoke proof for mobile, desktop, PWA, and chatbot outputs. | Py compile, focused target audit test, package-goal aggregation test, staged hygiene scans. |
 
 ## Current Working Slice
 
-Extend generated target outputs beyond starter packages by adding:
+Extend generated target outputs beyond dependency-free runtime contracts by adding:
 
 - Browser-level Studio interaction tests.
 - Installable desktop packaging proof.
 - Mobile packaging proof beyond starter metadata.
-- Runtime smoke checks for generated target apps.
+- Runtime smoke checks against real binary packaging adapters when available.
 
 ## Open Completion Areas
 
