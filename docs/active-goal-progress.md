@@ -36,15 +36,16 @@ Build a complete AppGen IDE and generation platform with:
 | 2026-05-23 | `69db387` | Added generated target runtime smoke proof for mobile, desktop, PWA, and chatbot outputs. | Py compile, focused target audit test, package-goal aggregation test, staged hygiene scans. |
 | 2026-05-23 | `a1e5956` | Added dependency-free browser-rendered Studio smoke harness with deterministic URL state. | Frontend production build, browser script syntax check, staged hygiene scans; sandbox blocked Chrome crashpad before page load. |
 | 2026-05-23 | `35d2075` | Added generated mobile and desktop packaging adapter descriptors and release gates. | Py compile, generated target test, focused target audit test, package-goal aggregation test, staged hygiene scans. |
+| 2026-05-23 | `ee4abf7` | Added host-capable native packager execution plans and tool preflight reporting. | Py compile, generated app test, focused target audit test, package-goal aggregation test, staged hygiene scans; local host lacks native packager commands. |
 
 ## Current Working Slice
 
 Extend generated target outputs beyond dependency-free runtime contracts by adding:
 
 - Browser-level Studio interaction tests that pass in CI or another browser-capable sandbox.
-- Host-capable execution of desktop packaging adapters.
-- Host-capable execution of mobile packaging adapters.
-- Runtime smoke checks against real binary packaging adapters when available.
+- CI or prepared-host execution of desktop packaging adapters.
+- CI or prepared-host execution of mobile packaging adapters.
+- Runtime smoke checks against produced package artifacts when available.
 
 ## Open Completion Areas
 
