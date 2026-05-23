@@ -11333,8 +11333,41 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "lifecycle_replay_ready",
         "lifecycle_execution_ready",
         "rollback_and_uninstall_ready",
+        "package_manager_modules_ready",
+        "package_manager_module_tests_ready",
         "runtime_replay_ready",
     } <= set(package_manager_runtime_smoke["checks"])
+    package_manager_module_files = package_manager_runtime.package_manager_module_file_manifest()
+    package_manager_module_tests = package_manager_runtime.package_manager_module_test_file_manifest()
+    assert package_manager_module_files["ok"] is True
+    assert package_manager_module_tests["ok"] is True
+    assert {item["module"] for item in package_manager_module_files["modules"]} == {
+        "package_install_module",
+        "package_preview_module",
+        "package_registry_module",
+        "package_lifecycle_module",
+        "package_update_module",
+        "package_rollback_module",
+    }
+    assert {item["module"] for item in package_manager_module_tests["tests"]} == {
+        "package_install_module",
+        "package_preview_module",
+        "package_registry_module",
+        "package_lifecycle_module",
+        "package_update_module",
+        "package_rollback_module",
+    }
+    for item in package_manager_module_files["modules"]:
+        module_path = output_dir / item["path"].replace("app/", "")
+        py_compile.compile(str(module_path), doraise=True)
+        module = _load_module(module_path, f"generated_package_manager_module_{item['module']}")
+        assert module.smoke_test()["ok"] is True
+        assert module.module_contract()["ok"] is True
+    for item in package_manager_module_tests["tests"]:
+        test_path = output_dir / item["path"].replace("app/", "")
+        py_compile.compile(str(test_path), doraise=True)
+        module = _load_module(test_path, f"generated_package_manager_module_test_{item['module']}")
+        assert module.smoke_test()["ok"] is True
     package_manager_replay = package_manager_runtime.replay_package_manager_runtime()
     assert package_manager_replay["ok"] is True
     assert {"resolve_metadata", "preview_load", "registry_commit", "update_package", "uninstall_package"} <= set(

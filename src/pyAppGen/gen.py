@@ -1758,6 +1758,7 @@ def write_form_designer_file(output_dir, schema: AppSchema):
     write_data_tooling_module_files(output_dir)
     write_inspector_module_files(output_dir)
     write_binding_module_files(output_dir)
+    write_package_manager_module_files(output_dir)
 
 
 DEVICE_API_COMPONENTS = (
@@ -1825,6 +1826,15 @@ BINDING_MODULES = (
     "binding_runtime_wiring_module",
     "binding_propagation_module",
     "binding_lifecycle_module",
+)
+
+PACKAGE_MANAGER_MODULES = (
+    "package_install_module",
+    "package_preview_module",
+    "package_registry_module",
+    "package_lifecycle_module",
+    "package_update_module",
+    "package_rollback_module",
 )
 
 
@@ -1995,6 +2005,26 @@ def write_binding_module_files(output_dir):
         )
 
 
+def write_package_manager_module_files(output_dir):
+    """Write generated package manager modules and smoke tests."""
+    output_dir = Path(output_dir)
+    module_dir = output_dir / "package_manager_modules"
+    test_dir = output_dir / "package_manager_module_tests"
+    module_dir.mkdir(parents=True, exist_ok=True)
+    test_dir.mkdir(parents=True, exist_ok=True)
+    (module_dir / "__init__.py").write_text(_package_manager_module_init_text(), encoding="utf-8")
+    (test_dir / "__init__.py").write_text(_package_manager_module_test_init_text(), encoding="utf-8")
+    for module_name in PACKAGE_MANAGER_MODULES:
+        (module_dir / f"{module_name}.py").write_text(
+            _package_manager_module_text(module_name),
+            encoding="utf-8",
+        )
+        (test_dir / f"test_{module_name}.py").write_text(
+            _package_manager_module_test_text(module_name),
+            encoding="utf-8",
+        )
+
+
 def _module_name(name: str) -> str:
     """Return a stable snake-case module name for a component or package."""
     chars = []
@@ -2080,6 +2110,249 @@ def _binding_module_test_init_text() -> str:
         '"""Generated visual binding module tests."""\n\n'
         f"BINDING_MODULE_TESTS = {modules!r}\n"
     )
+
+
+def _package_manager_module_init_text() -> str:
+    return (
+        '"""Generated package manager modules."""\n\n'
+        f"PACKAGE_MANAGER_MODULES = {PACKAGE_MANAGER_MODULES!r}\n"
+    )
+
+
+def _package_manager_module_test_init_text() -> str:
+    modules = tuple(f"test_{name}" for name in PACKAGE_MANAGER_MODULES)
+    return (
+        '"""Generated package manager module tests."""\n\n'
+        f"PACKAGE_MANAGER_MODULE_TESTS = {modules!r}\n"
+    )
+
+
+def _package_manager_module_text(module_name: str) -> str:
+    return f'''"""Generated package manager module for {module_name}."""
+
+from __future__ import annotations
+
+import importlib.util
+from pathlib import Path
+
+
+MODULE = {module_name!r}
+EXPECTED_EXPORTS = (
+    "module_contract",
+    "package_manifest",
+    "run_package_operation",
+    "runtime_manifest",
+    "smoke_test",
+)
+
+
+def _load_sibling(module_name):
+    module_path = Path(__file__).resolve().parents[1] / f"{{module_name}}.py"
+    spec = importlib.util.spec_from_file_location(f"generated_package_manager_{{MODULE}}_{{module_name}}", module_path)
+    module = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(module)
+    return module
+
+
+def _form_designer():
+    return _load_sibling("form_designer")
+
+
+def _runtime():
+    return _load_sibling("package_manager_runtime")
+
+
+def _module_kind():
+    return {{
+        "package_install_module": "install",
+        "package_preview_module": "preview",
+        "package_registry_module": "registry",
+        "package_lifecycle_module": "lifecycle",
+        "package_update_module": "update",
+        "package_rollback_module": "rollback",
+    }}[MODULE]
+
+
+def module_contract():
+    """Return this generated package manager module's export contract."""
+    available = tuple(name for name in EXPECTED_EXPORTS if name in globals())
+    return {{
+        "format": "appgen.package-manager-module-contract.v1",
+        "module": MODULE,
+        "kind": _module_kind(),
+        "ok": set(EXPECTED_EXPORTS) <= set(available),
+        "exports": available,
+        "expected_exports": EXPECTED_EXPORTS,
+        "side_effects": (),
+    }}
+
+
+def package_manifest(package_ids=()):
+    """Return the package-manager metadata owned by this generated module."""
+    designer = _form_designer()
+    runtime = _runtime()
+    runtime_manifest_data = runtime.package_manager_runtime_manifest(package_ids)
+    manager = runtime_manifest_data["manager"]
+    package_workbench = runtime_manifest_data["package_workbench"]
+    kind = _module_kind()
+    payload = {{
+        "install": {{
+            "install_plan": runtime_manifest_data["install_plan"],
+            "install_replay": package_workbench["install_replay"],
+            "signature_validation": manager["signature_validation"],
+            "lockfile": manager["lockfile"],
+        }},
+        "preview": {{
+            "preview_loads": tuple(item["preview_load"] for item in manager["behavior"]["behaviors"]),
+            "sandbox_policy": manager["sandbox"],
+            "package_behavior": manager["behavior"],
+            "compatibility": manager["compatibility_smoke"],
+        }},
+        "registry": {{
+            "registration_consistency": manager["registration_consistency"],
+            "dependency_order": manager["dependency_order"],
+            "palette_refresh": manager["palette_refresh"],
+            "actionable_operations": manager["actionable_operations"],
+        }},
+        "lifecycle": {{
+            "lifecycle_replay": manager["lifecycle_replay"],
+            "lifecycle_execution": manager["lifecycle_execution"],
+            "failure_isolation": manager["failure_isolation"],
+        }},
+        "update": {{
+            "update_plan": manager["update_plan"],
+            "version_conflicts": manager["version_conflicts"],
+            "actionable_operations": manager["actionable_operations"],
+        }},
+        "rollback": {{
+            "rollback": manager["rollback"],
+            "uninstall_plan": manager["uninstall_plan"],
+            "lifecycle_replay": manager["lifecycle_replay"],
+        }},
+    }}[kind]
+    return {{
+        "format": "appgen.package-manager-module-manifest.v1",
+        "module": MODULE,
+        "kind": kind,
+        "ok": bool(payload) and runtime_manifest_data["ok"],
+        "payload": payload,
+        "runtime_checks": runtime_manifest_data["required_checks"],
+        "side_effects": (),
+    }}
+
+
+def run_package_operation(package_ids=()):
+    """Run this module's side-effect-free package manager operation."""
+    designer = _form_designer()
+    runtime_manifest_data = _runtime().package_manager_runtime_manifest(package_ids)
+    replay = _runtime().replay_package_manager_runtime(package_ids)
+    package_id = runtime_manifest_data["packages"][0] if runtime_manifest_data["packages"] else "devexpress-native"
+    kind = _module_kind()
+    operation = {{
+        "install": designer.component_package_resolve_metadata_operation(package_id),
+        "preview": designer.component_package_preview_load_operation(package_id),
+        "registry": designer.component_package_registry_commit_operation(package_id),
+        "lifecycle": runtime_manifest_data["manager"]["lifecycle_execution"],
+        "update": designer.component_package_update_operation(package_id),
+        "rollback": designer.component_package_uninstall_operation(package_id),
+    }}[kind]
+    operation_ok = operation["ok"] if isinstance(operation, dict) and "ok" in operation else bool(operation)
+    side_effects = operation.get("side_effects", ()) if isinstance(operation, dict) else ()
+    return {{
+        "format": "appgen.package-manager-module-operation.v1",
+        "module": MODULE,
+        "kind": kind,
+        "ok": operation_ok and not side_effects and replay["ok"],
+        "operation": operation,
+        "replay": replay,
+        "side_effects": (),
+    }}
+
+
+def runtime_manifest(package_ids=()):
+    """Return the aggregate package manager runtime manifest used by this module."""
+    return _runtime().package_manager_runtime_manifest(package_ids)
+
+
+def smoke_test(package_ids=()):
+    """Run side-effect-free checks for this generated package manager module."""
+    contract = module_contract()
+    manifest = package_manifest(package_ids)
+    operation = run_package_operation(package_ids)
+    runtime = runtime_manifest(package_ids)
+    return {{
+        "format": "appgen.package-manager-module-smoke-test.v1",
+        "module": MODULE,
+        "kind": contract["kind"],
+        "ok": contract["ok"]
+        and manifest["ok"]
+        and operation["ok"]
+        and runtime["ok"]
+        and not manifest["side_effects"]
+        and not operation["side_effects"],
+        "checks": (
+            "module_contract_resolves",
+            "package_manifest_resolves",
+            "package_operation_replays",
+            "runtime_manifest_ok",
+            "no_side_effects",
+        ),
+    }}
+'''
+
+
+def _package_manager_module_test_text(module_name: str) -> str:
+    return f'''"""Generated tests for the {module_name} package manager module."""
+
+from __future__ import annotations
+
+import importlib.util
+from pathlib import Path
+
+
+MODULE = {module_name!r}
+
+
+def load_package_manager_module():
+    """Load the generated package manager module without app installation."""
+    module_path = Path(__file__).resolve().parents[1] / "package_manager_modules" / f"{{MODULE}}.py"
+    spec = importlib.util.spec_from_file_location(f"generated_package_manager_module_{{MODULE}}", module_path)
+    module = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(module)
+    return module
+
+
+def test_package_manager_module_contract():
+    """Assert the generated package manager module exposes its contract."""
+    module = load_package_manager_module()
+    contract = module.module_contract()
+    assert contract["module"] == MODULE
+    assert contract["ok"] is True
+    assert all(hasattr(module, name) for name in contract["expected_exports"])
+
+
+def test_package_manager_module_smoke():
+    """Assert the module's side-effect-free smoke test passes."""
+    module = load_package_manager_module()
+    result = module.smoke_test()
+    assert result["ok"] is True
+    assert result["module"] == MODULE
+    assert result["checks"]
+
+
+def smoke_test():
+    """Run this generated test module in a side-effect-free way."""
+    test_package_manager_module_contract()
+    test_package_manager_module_smoke()
+    return {{
+        "format": "appgen.package-manager-module-generated-test-smoke.v1",
+        "module": MODULE,
+        "ok": True,
+        "tests": ("test_package_manager_module_contract", "test_package_manager_module_smoke"),
+    }}
+'''
 
 
 def _binding_module_text(module_name: str) -> str:
@@ -4848,6 +5121,114 @@ def _load_form_designer():
     return module
 
 
+def _load_generated_module(module_path, module_name):
+    spec = importlib.util.spec_from_file_location(module_name, module_path)
+    module = importlib.util.module_from_spec(spec)
+    if spec.loader is None:
+        raise RuntimeError(f"Could not load generated module: {module_path}")
+    spec.loader.exec_module(module)
+    return module
+
+
+def package_manager_module_file_manifest(package_ids=()):
+    """Return file-level evidence for generated package manager modules."""
+    module_names = (
+        "package_install_module",
+        "package_preview_module",
+        "package_registry_module",
+        "package_lifecycle_module",
+        "package_update_module",
+        "package_rollback_module",
+    )
+    required_exports = (
+        "module_contract",
+        "package_manifest",
+        "run_package_operation",
+        "runtime_manifest",
+        "smoke_test",
+    )
+    module_dir = Path(__file__).with_name("package_manager_modules")
+    entries = []
+    for module_name in module_names:
+        module_path = module_dir / f"{module_name}.py"
+        exports = ()
+        contract_ok = False
+        smoke_ok = False
+        if module_path.exists():
+            module = _load_generated_module(module_path, f"generated_package_manager_module_{module_name}")
+            exports = tuple(name for name in required_exports if hasattr(module, name))
+            contract = module.module_contract()
+            smoke = module.smoke_test(package_ids)
+            contract_ok = contract["ok"] and contract["module"] == module_name
+            smoke_ok = smoke["ok"] and smoke["module"] == module_name
+        entries.append(
+            {
+                "module": module_name,
+                "path": f"app/package_manager_modules/{module_name}.py",
+                "exists": module_path.exists(),
+                "exports": exports,
+                "expected_exports": required_exports,
+                "contract_ok": contract_ok,
+                "smoke_ok": smoke_ok,
+            }
+        )
+    return {
+        "format": "appgen.generated-package-manager-module-file-manifest.v1",
+        "ok": bool(entries)
+        and all(item["exists"] and item["contract_ok"] and item["smoke_ok"] and set(item["expected_exports"]) <= set(item["exports"]) for item in entries),
+        "modules": tuple(entries),
+        "guards": ("one_file_per_package_manager_surface", "declared_exports_present", "module_smoke_replays"),
+        "side_effects": (),
+    }
+
+
+def package_manager_module_test_file_manifest(package_ids=()):
+    """Return file-level evidence for generated package manager module tests."""
+    module_names = (
+        "package_install_module",
+        "package_preview_module",
+        "package_registry_module",
+        "package_lifecycle_module",
+        "package_update_module",
+        "package_rollback_module",
+    )
+    required_exports = (
+        "load_package_manager_module",
+        "test_package_manager_module_contract",
+        "test_package_manager_module_smoke",
+        "smoke_test",
+    )
+    test_dir = Path(__file__).with_name("package_manager_module_tests")
+    entries = []
+    for module_name in module_names:
+        module_path = test_dir / f"test_{module_name}.py"
+        exports = ()
+        smoke_ok = False
+        if module_path.exists():
+            module = _load_generated_module(module_path, f"generated_package_manager_module_test_{module_name}")
+            exports = tuple(name for name in required_exports if hasattr(module, name))
+            smoke = module.smoke_test()
+            smoke_ok = smoke["ok"] and smoke["module"] == module_name
+        entries.append(
+            {
+                "module": module_name,
+                "path": f"app/package_manager_module_tests/test_{module_name}.py",
+                "exists": module_path.exists(),
+                "exports": exports,
+                "required_exports": required_exports,
+                "smoke_ok": smoke_ok,
+            }
+        )
+    return {
+        "format": "appgen.generated-package-manager-module-test-file-manifest.v1",
+        "ok": bool(entries) and all(item["exists"] and item["smoke_ok"] and set(item["required_exports"]) <= set(item["exports"]) for item in entries),
+        "tests": tuple(entries),
+        "required_exports": required_exports,
+        "guards": ("one_test_file_per_package_manager_surface", "contract_and_smoke_tests_exported"),
+        "side_effects": (),
+    }
+
+
 def package_manager_runtime_manifest(package_ids=()):
     """Return generated package install, policy, lifecycle, and rollback evidence."""
     form_designer = _load_form_designer()
@@ -4945,6 +5326,8 @@ def validate_package_manager_runtime(package_ids=()):
     manifest = package_manager_runtime_manifest(package_ids)
     replay = replay_package_manager_runtime(package_ids)
     manager = manifest["manager"]
+    module_files = package_manager_module_file_manifest(package_ids)
+    module_tests = package_manager_module_test_file_manifest(package_ids)
     checks = (
         {"id": "manifest_ok", "ok": manifest["ok"]},
         {"id": "install_plan_reviewed", "ok": manifest["install_plan"]["requires_review"] and not manifest["install_plan"]["side_effects"]},
@@ -4953,6 +5336,8 @@ def validate_package_manager_runtime(package_ids=()):
         {"id": "lifecycle_replay_ready", "ok": manager["lifecycle_replay"]["ok"] and not manager["lifecycle_replay"]["side_effects"]},
         {"id": "lifecycle_execution_ready", "ok": manager["lifecycle_execution"]["ok"] and not manager["lifecycle_execution"]["side_effects"]},
         {"id": "rollback_and_uninstall_ready", "ok": manager["rollback"]["snapshot"]["restore_order"][0] == "unload_adapters" and manager["uninstall_plan"]["ok"]},
+        {"id": "package_manager_modules_ready", "ok": module_files["ok"] and not module_files["side_effects"]},
+        {"id": "package_manager_module_tests_ready", "ok": module_tests["ok"] and not module_tests["side_effects"]},
         {"id": "runtime_replay_ready", "ok": replay["ok"] and not replay["side_effects"]},
     )
     return {
@@ -4960,6 +5345,8 @@ def validate_package_manager_runtime(package_ids=()):
         "ok": all(check["ok"] for check in checks),
         "checks": checks,
         "manifest": manifest,
+        "module_files": module_files,
+        "module_tests": module_tests,
         "replay": replay,
         "blocking_gaps": tuple(check for check in checks if not check["ok"]),
     }
