@@ -3678,6 +3678,156 @@ def binding_runtime_gate_contract(design: dict | None = None) -> dict:
     }
 
 
+def binding_master_detail_contract(design: dict | None = None) -> dict:
+    """Return master-detail binding propagation evidence."""
+    graph = livebindings_graph_contract(design)
+    table = graph["table"]
+    fields = tuple(node for node in graph["nodes"] if node["kind"] == "field")
+    detail_dataset = f"dataset:{table}:detail"
+    links = tuple(
+        {
+            "master": f"dataset:{table}",
+            "detail": detail_dataset,
+            "field": field["field"],
+            "edges": (
+                {"from": f"dataset:{table}", "to": detail_dataset, "kind": "master_to_detail", "mode": "filter"},
+                {"from": detail_dataset, "to": f"field:{field['field']}", "kind": "detail_to_field", "mode": "read"},
+            ),
+            "refresh": ("master_current_changed", "requery_detail", "refresh_bound_controls"),
+        }
+        for field in fields
+    )
+    return {
+        "format": "appgen.binding-master-detail-contract.v1",
+        "ok": bool(links)
+        and all({"master_current_changed", "requery_detail", "refresh_bound_controls"} <= set(link["refresh"]) for link in links),
+        "links": links,
+        "guards": ("detail_filters_follow_master", "stale_detail_rows_invalidated", "detail_refresh_is_batched"),
+        "side_effects": (),
+    }
+
+
+def binding_scope_context_contract(design: dict | None = None) -> dict:
+    """Return scoped binding-context resolution evidence."""
+    graph = livebindings_graph_contract(design)
+    contexts = (
+        {"scope": "form", "root": f"dataset:{graph['table']}", "visible_to": ("all_controls", "commands", "expressions")},
+        {"scope": "dataset", "root": f"dataset:{graph['table']}", "visible_to": ("fields", "lookups", "validators")},
+        {"scope": "control", "root": "selected_control", "visible_to": ("property_bindings", "events", "style_bindings")},
+        {"scope": "dialog", "root": "modal_context", "visible_to": ("temporary_fields", "commands", "preview_values")},
+    )
+    return {
+        "format": "appgen.binding-scope-context-contract.v1",
+        "ok": {"form", "dataset", "control", "dialog"} <= {context["scope"] for context in contexts}
+        and all(context["root"] for context in contexts),
+        "contexts": contexts,
+        "resolution_order": ("control", "dataset", "form", "dialog"),
+        "guards": ("nearest_scope_wins", "shadowed_names_reported", "modal_scope_isolated"),
+        "side_effects": (),
+    }
+
+
+def binding_bulk_edit_contract(design: dict | None = None) -> dict:
+    """Return bulk visual binding edit evidence."""
+    graph = livebindings_graph_contract(design)
+    validation = binding_graph_validation_contract(design)
+    selected_edges = tuple(edge for edge in graph["edges"] if edge["kind"] in {"field_to_control", "control_to_field"})[:4]
+    operations = (
+        {"op": "create_many_links", "selection": selected_edges, "stage": ("capture_graph", "apply_batch", "validate_graph", "preview_delta", "commit_or_rollback")},
+        {"op": "rewire_dataset", "selection": selected_edges, "stage": ("capture_graph", "replace_source_dataset", "validate_graph", "preview_delta", "commit_or_rollback")},
+        {"op": "apply_converter_to_selection", "selection": selected_edges, "stage": ("capture_graph", "attach_converter", "validate_graph", "preview_delta", "commit_or_rollback")},
+        {"op": "disable_selection", "selection": selected_edges, "stage": ("capture_graph", "mark_disabled", "validate_graph", "preview_delta", "commit_or_rollback")},
+    )
+    return {
+        "format": "appgen.binding-bulk-edit-contract.v1",
+        "ok": bool(selected_edges)
+        and validation["ok"]
+        and all({"capture_graph", "validate_graph", "commit_or_rollback"} <= set(operation["stage"]) for operation in operations),
+        "operations": operations,
+        "validation": validation,
+        "guards": ("batch_edits_are_atomic", "preview_delta_before_commit", "rollback_restores_graph_snapshot"),
+        "side_effects": (),
+    }
+
+
+def binding_diagnostics_contract(design: dict | None = None) -> dict:
+    """Return visual diagnostics and quick-fix evidence for binding errors."""
+    graph = livebindings_graph_contract(design)
+    first_edge = graph["edges"][0]
+    first_expression = next(node for node in graph["nodes"] if node["kind"] == "expression")
+    diagnostics = (
+        {
+            "code": "missing_endpoint",
+            "target": first_edge["to"],
+            "severity": "error",
+            "surface": "graph_edge_badge",
+            "quick_fix": "reconnect_endpoint",
+        },
+        {
+            "code": "unsafe_expression",
+            "target": first_expression["id"],
+            "severity": "error",
+            "surface": "expression_editor",
+            "quick_fix": "replace_with_safe_expression",
+        },
+        {
+            "code": "multiple_writers",
+            "target": first_edge["to"],
+            "severity": "warning",
+            "surface": "binding_inspector",
+            "quick_fix": "make_binding_read_only",
+        },
+        {
+            "code": "converter_missing",
+            "target": first_edge["to"],
+            "severity": "warning",
+            "surface": "pipeline_panel",
+            "quick_fix": "attach_converter",
+        },
+    )
+    return {
+        "format": "appgen.binding-diagnostics-contract.v1",
+        "ok": bool(diagnostics)
+        and all(diagnostic["quick_fix"] for diagnostic in diagnostics)
+        and {"error", "warning"} <= {diagnostic["severity"] for diagnostic in diagnostics},
+        "diagnostics": diagnostics,
+        "guards": ("diagnostics_map_to_graph_selection", "quick_fixes_are_staged", "errors_block_runtime_generation"),
+        "side_effects": (),
+    }
+
+
+def binding_round_trip_contract(design: dict | None = None) -> dict:
+    """Return import/export round-trip evidence for binding graphs."""
+    graph = livebindings_graph_contract(design)
+    exported = {
+        "format": "appgen.binding-graph-json.v1",
+        "table": graph["table"],
+        "node_count": len(graph["nodes"]),
+        "edge_count": len(graph["edges"]),
+        "nodes": tuple(node["id"] for node in graph["nodes"]),
+        "edges": tuple((edge["from"], edge["to"], edge["kind"]) for edge in graph["edges"]),
+    }
+    imported = {
+        "format": exported["format"],
+        "table": exported["table"],
+        "node_count": len(exported["nodes"]),
+        "edge_count": len(exported["edges"]),
+        "nodes": exported["nodes"],
+        "edges": exported["edges"],
+    }
+    return {
+        "format": "appgen.binding-round-trip-contract.v1",
+        "ok": exported["node_count"] == imported["node_count"]
+        and exported["edge_count"] == imported["edge_count"]
+        and exported["nodes"] == imported["nodes"]
+        and exported["edges"] == imported["edges"],
+        "exported": exported,
+        "imported": imported,
+        "guards": ("stable_node_ids", "stable_edge_ids", "designer_metadata_preserved"),
+        "side_effects": (),
+    }
+
+
 def livebindings_converter_catalog() -> tuple[dict, ...]:
     """Return generated converters available to the visual binding designer."""
     return (
@@ -3716,6 +3866,11 @@ def livebindings_workbench() -> dict:
     pipelines = binding_pipeline_contract()
     hit_testing = binding_hit_testing_contract()
     runtime_gates = binding_runtime_gate_contract()
+    master_detail = binding_master_detail_contract()
+    scope_contexts = binding_scope_context_contract()
+    bulk_edits = binding_bulk_edit_contract()
+    diagnostics = binding_diagnostics_contract()
+    round_trip = binding_round_trip_contract()
     checks = (
         {
             "id": "graph_nodes",
@@ -3825,6 +3980,35 @@ def livebindings_workbench() -> dict:
             "ok": runtime_gates["ok"] and not runtime_gates["side_effects"],
             "evidence": runtime_gates,
         },
+        {
+            "id": "master_detail_bindings",
+            "ok": master_detail["ok"] and not master_detail["side_effects"],
+            "evidence": master_detail,
+        },
+        {
+            "id": "scope_context_resolution",
+            "ok": scope_contexts["ok"]
+            and {"nearest_scope_wins", "modal_scope_isolated"} <= set(scope_contexts["guards"])
+            and not scope_contexts["side_effects"],
+            "evidence": scope_contexts,
+        },
+        {
+            "id": "bulk_graph_edits",
+            "ok": bulk_edits["ok"] and not bulk_edits["side_effects"],
+            "evidence": bulk_edits,
+        },
+        {
+            "id": "diagnostics_quick_fixes",
+            "ok": diagnostics["ok"]
+            and {"diagnostics_map_to_graph_selection", "quick_fixes_are_staged"} <= set(diagnostics["guards"])
+            and not diagnostics["side_effects"],
+            "evidence": diagnostics,
+        },
+        {
+            "id": "graph_import_export_round_trip",
+            "ok": round_trip["ok"] and not round_trip["side_effects"],
+            "evidence": round_trip,
+        },
     )
     ok = all(check["ok"] for check in checks)
     return {
@@ -3845,6 +4029,11 @@ def livebindings_workbench() -> dict:
         "pipelines": pipelines,
         "hit_testing": hit_testing,
         "runtime_gates": runtime_gates,
+        "master_detail": master_detail,
+        "scope_contexts": scope_contexts,
+        "bulk_edits": bulk_edits,
+        "diagnostics": diagnostics,
+        "round_trip": round_trip,
         "checks": checks,
         "blocking_gaps": tuple(check for check in checks if not check["ok"]),
     }

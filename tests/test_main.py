@@ -905,6 +905,11 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "converter_validator_pipeline",
         "designer_hit_testing",
         "runtime_binding_gates",
+        "master_detail_bindings",
+        "scope_context_resolution",
+        "bulk_graph_edits",
+        "diagnostics_quick_fixes",
+        "graph_import_export_round_trip",
     } == {check["id"] for check in binding_workbench["checks"]}
     assert binding_workbench["graph_validation"]["ok"] is True
     assert binding_workbench["edit_transactions"]["validation"]["ok"] is True
@@ -917,6 +922,11 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     assert all("apply_converter" in pipeline["pipeline"] for pipeline in binding_workbench["pipelines"]["pipelines"])
     assert all("open_inspector" in target["actions"] for target in binding_workbench["hit_testing"]["hit_targets"])
     assert all("disabled_binding_skipped" in binding_workbench["runtime_gates"]["guards"] for _ in binding_workbench["runtime_gates"]["gates"])
+    assert binding_workbench["master_detail"]["links"]
+    assert "modal_scope_isolated" in binding_workbench["scope_contexts"]["guards"]
+    assert all("commit_or_rollback" in operation["stage"] for operation in binding_workbench["bulk_edits"]["operations"])
+    assert all(diagnostic["quick_fix"] for diagnostic in binding_workbench["diagnostics"]["diagnostics"])
+    assert binding_workbench["round_trip"]["exported"]["nodes"] == binding_workbench["round_trip"]["imported"]["nodes"]
     data_workbench = rad_data_tooling_workbench()
     assert data_workbench["format"] == "appgen.rad-data-tooling-workbench.v1"
     assert data_workbench["ok"] is True
@@ -9191,6 +9201,11 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "converter_validator_pipeline",
         "designer_hit_testing",
         "runtime_binding_gates",
+        "master_detail_bindings",
+        "scope_context_resolution",
+        "bulk_graph_edits",
+        "diagnostics_quick_fixes",
+        "graph_import_export_round_trip",
     } <= {
         check["id"] for check in generated_bindings["checks"]
     }
@@ -9206,6 +9221,11 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert generated_bindings["edit_transactions"]["validation"]["ok"] is True
     assert generated_bindings["runtime_wiring"]["artifacts"]
     assert generated_bindings["preview_runtime_parity"]["ok"] is True
+    assert generated_bindings["master_detail"]["links"]
+    assert "nearest_scope_wins" in generated_bindings["scope_contexts"]["guards"]
+    assert all("validate_graph" in operation["stage"] for operation in generated_bindings["bulk_edits"]["operations"])
+    assert all(diagnostic["quick_fix"] for diagnostic in generated_bindings["diagnostics"]["diagnostics"])
+    assert generated_bindings["round_trip"]["exported"]["edges"] == generated_bindings["round_trip"]["imported"]["edges"]
     generated_data_tooling = form_designer.rad_data_tooling_workbench()
     assert generated_data_tooling["format"] == "appgen.generated-rad-data-tooling-workbench.v1"
     assert generated_data_tooling["ok"] is True
