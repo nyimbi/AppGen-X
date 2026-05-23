@@ -82,6 +82,7 @@ Build a complete AppGen IDE and generation platform with:
 | 2026-05-23 | `88380b9` | Added generated native form runtime modules and generated tests for stream, unit, resource, compile, runtime-load, and design-edit surfaces. | Py compile; focused generated-app/form-designer/package-goal tests; staged hygiene scan passed. |
 | 2026-05-23 | `1179c08` | Added generated native runtime operation modules and generated tests for open stream, property delta, stream round-trip, compile preview, resource refresh, and runtime reload operations. | Py compile; focused generated-app/form-designer/package-goal tests; staged hygiene scan passed. |
 | 2026-05-23 | `dec16b6` | Added generated compiler/runtime modules and generated tests for compiler pipeline, unit parse, semantic validation, incremental compile, diagnostic mapping, and toolchain adapter surfaces. | Py compile; focused generated-app/form-designer/package-goal tests; staged hygiene scan passed. |
+| 2026-05-23 | `52e2939` | Added generated deep native runtime modules and generated tests for package targets, language frontend, static analysis, recovery, stream schema, stream migration, debug symbols, and memory model surfaces. | Py compile; focused generated-app/form-designer/package-goal tests; staged hygiene scan passed. |
 
 ## Current Working Slice
 
@@ -169,6 +170,11 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   one generated test module for compiler pipeline, unit parse, semantic
   validation, incremental compile, diagnostic mapping, and toolchain adapter
   surfaces, with native runtime validation enforcing module and test coverage.
+- Generated applications now emit one importable deep native runtime module and
+  one generated test module for package targets, language frontend, static
+  analysis, recovery, stream schema, stream migration, debug symbols, and
+  memory model surfaces, with native runtime validation enforcing module and
+  test coverage.
 - Generated applications now emit one importable Object Inspector module and
   one generated test module for property editors, event editors, component
   editors, custom designers, handler invocation, and binding bridge surfaces,
