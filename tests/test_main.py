@@ -2489,6 +2489,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     assert {
         "app/form_designer.py",
         "app/inspector_runtime.py",
+        "app/binding_runtime.py",
         "app/visual_runtime_assets.py",
         "app/data_tooling_runtime.py",
         "app/runtime_operations.py",
@@ -2512,6 +2513,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     assert {
         "app/form_designer.py",
         "app/inspector_runtime.py",
+        "app/binding_runtime.py",
         "app/visual_runtime_assets.py",
         "app/data_tooling_runtime.py",
         "app/runtime_operations.py",
@@ -11115,6 +11117,31 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert inspector_replay["ok"] is True
     assert {"property_edit", "event_rename", "component_editor"} <= set(inspector_replay["edit_ops"])
     assert inspector_replay["side_effects"] == ()
+    binding_runtime_file = output_dir / "binding_runtime.py"
+    assert binding_runtime_file.exists()
+    py_compile.compile(str(binding_runtime_file), doraise=True)
+    binding_runtime = _load_module(binding_runtime_file, "generated_binding_runtime")
+    binding_runtime_smoke = binding_runtime.smoke_test()
+    assert binding_runtime_smoke["format"] == "appgen.generated-binding-runtime-smoke.v1"
+    assert binding_runtime_smoke["ok"] is True
+    assert {
+        "manifest_ok",
+        "graph_nodes_present",
+        "graph_edges_present",
+        "actionable_operations_ready",
+        "runtime_wiring_ready",
+        "runtime_gates_ready",
+        "runtime_propagation_replay",
+        "design_runtime_replay",
+        "designer_transaction_replay",
+        "lifecycle_release_replay",
+        "inspector_bridge_replay",
+        "runtime_replay",
+    } <= set(binding_runtime_smoke["checks"])
+    binding_replay = binding_runtime.replay_binding_runtime()
+    assert binding_replay["ok"] is True
+    assert {"dataset_to_field", "field_to_control", "control_to_field"} <= set(binding_replay["propagation_ops"])
+    assert binding_replay["side_effects"] == ()
     runtime_operations_file = output_dir / "runtime_operations.py"
     assert runtime_operations_file.exists()
     py_compile.compile(str(runtime_operations_file), doraise=True)

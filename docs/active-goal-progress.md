@@ -64,6 +64,7 @@ Build a complete AppGen IDE and generation platform with:
 | 2026-05-23 | `df3500d` | Added generated mobile device runtime as an independently importable side-effect-free device API replay surface. | Py compile; focused generated-app/form-designer/package-goal tests; staged hygiene scan passed. |
 | 2026-05-23 | `56a6c03` | Added generated native form runtime manifest and replay validation as an independently importable artifact. | Py compile; focused generated-app/form-designer/package-goal tests; staged hygiene scan passed. |
 | 2026-05-23 | `cd926e8` | Added generated inspector runtime manifest and replay validation as an independently importable artifact. | Py compile; focused generated-app/form-designer/package-goal tests; staged hygiene scan passed. |
+| 2026-05-23 | `pending` | Added generated binding runtime manifest and replay validation as an independently importable artifact. | Py compile; focused generated-app/form-designer/package-goal tests; pending staged hygiene scan. |
 
 ## Current Working Slice
 
@@ -94,6 +95,10 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   that validates property editors, event editor lifecycle, component editor
   transactions, custom designer registration, binding bridge replay, and
   handler invocation policy.
+- Generated applications now include a standalone visual binding runtime module
+  that validates graph nodes and edges, runtime wiring, propagation replay,
+  design/runtime replay, designer transaction replay, lifecycle replay, and
+  inspector bridge replay without host UI execution.
 
 ## Open Completion Areas
 

@@ -1743,6 +1743,7 @@ def write_form_designer_file(output_dir, schema: AppSchema):
     output_dir.mkdir(parents=True, exist_ok=True)
     (output_dir / "form_designer.py").write_text(_form_designer_text(schema))
     (output_dir / "inspector_runtime.py").write_text(_inspector_runtime_text())
+    (output_dir / "binding_runtime.py").write_text(_binding_runtime_text())
     (output_dir / "runtime_operations.py").write_text(_native_runtime_operations_text())
     (output_dir / "native_form_runtime.py").write_text(_native_form_runtime_text())
     (output_dir / "mobile_device_runtime.py").write_text(_mobile_device_runtime_text())
@@ -2674,6 +2675,151 @@ def smoke_test():
         "ok": validation["ok"],
         "validation": validation,
         "checks": tuple(item["id"] for item in validation["checks"]),
+    }
+'''
+
+
+def _binding_runtime_text() -> str:
+    return '''"""Generated side-effect-free visual binding runtime validation surface."""
+
+from __future__ import annotations
+
+import importlib.util
+from pathlib import Path
+
+
+def _load_form_designer():
+    """Load the sibling generated form designer module without requiring package install."""
+    module_path = Path(__file__).with_name("form_designer.py")
+    spec = importlib.util.spec_from_file_location("generated_binding_runtime_designer", module_path)
+    module = importlib.util.module_from_spec(spec)
+    if spec.loader is None:
+        raise RuntimeError("Could not load generated form designer module.")
+    spec.loader.exec_module(module)
+    return module
+
+
+def binding_runtime_manifest():
+    """Return generated binding graph, runtime wiring, replay, and release evidence."""
+    form_designer = _load_form_designer()
+    workbench = form_designer.livebindings_workbench()
+    contract = form_designer.livebindings_contract()
+    graph = form_designer.livebindings_graph_contract()
+    check_ids = {check["id"] for check in workbench["checks"] if check["ok"]}
+    required_wiring_artifacts = {"binding_registry", "observer_hooks", "update_queue", "validation_pipeline", "converter_pipeline"}
+    required_checks = {
+        "graph_nodes",
+        "graph_edges",
+        "expression_validation",
+        "converter_validator_catalogs",
+        "designer_surface",
+        "runtime_modes",
+        "actionable_binding_operations",
+        "graph_validation",
+        "runtime_wiring",
+        "runtime_binding_gates",
+        "runtime_propagation_replay",
+        "design_runtime_session_replay",
+        "designer_transaction_replay",
+        "binding_lifecycle_release_replay",
+        "inspector_binding_bridge",
+    }
+    return {
+        "format": "appgen.generated-binding-runtime-manifest.v1",
+        "ok": workbench["ok"]
+        and required_checks <= check_ids
+        and {"dataset", "field", "control", "expression"} <= {node["kind"] for node in graph["nodes"]}
+        and {"dataset_to_field", "field_to_control", "control_to_field", "expression_to_property"} <= {edge["kind"] for edge in graph["edges"]}
+        and required_wiring_artifacts <= set(workbench["runtime_wiring"]["artifacts"])
+        and not workbench["runtime_wiring"]["side_effects"]
+        and workbench["runtime_propagation_replay"]["ok"]
+        and workbench["design_runtime_replay"]["ok"]
+        and workbench["designer_transaction_replay"]["ok"]
+        and workbench["lifecycle_release_replay"]["ok"],
+        "contract": contract,
+        "graph": graph,
+        "checks": tuple(check["id"] for check in workbench["checks"]),
+        "required_checks": tuple(sorted(required_checks)),
+        "required_wiring_artifacts": tuple(sorted(required_wiring_artifacts)),
+        "actionable_operations": workbench["actionable_operations"],
+        "runtime_wiring": workbench["runtime_wiring"],
+        "runtime_gates": workbench["runtime_gates"],
+        "runtime_propagation_replay": workbench["runtime_propagation_replay"],
+        "design_runtime_replay": workbench["design_runtime_replay"],
+        "designer_transaction_replay": workbench["designer_transaction_replay"],
+        "lifecycle_release_replay": workbench["lifecycle_release_replay"],
+        "inspector_binding_bridge": workbench["inspector_binding_bridge"],
+        "guards": (
+            "graph_validated_before_runtime",
+            "runtime_wiring_generated_before_release",
+            "designer_transactions_replay_before_release",
+            "runtime_errors_surface_to_designer",
+            "binding_bridge_refreshes_runtime_wiring",
+        ),
+    }
+
+
+def replay_binding_runtime():
+    """Replay generated binding propagation and designer transactions without host UI."""
+    manifest = binding_runtime_manifest()
+    propagation_ops = tuple(item["op"] for item in manifest["runtime_propagation_replay"]["trace"])
+    design_phases = tuple(item["phase"] for item in manifest["design_runtime_replay"]["replay"])
+    transaction_phases = tuple(item["phase"] for item in manifest["designer_transaction_replay"]["replay"])
+    lifecycle_phases = tuple(item["phase"] for item in manifest["lifecycle_release_replay"]["replay"])
+    bridge_phases = tuple(item["phase"] for item in manifest["inspector_binding_bridge"]["replay"])
+    return {
+        "format": "appgen.generated-binding-runtime-replay.v1",
+        "ok": manifest["ok"]
+        and {"dataset_to_field", "field_to_control", "expression_to_property", "control_to_field", "validator_failure"} <= set(propagation_ops)
+        and {"author_graph", "validate_graph", "execute_converter_validator_pipeline", "propagate_runtime_values"} <= set(design_phases)
+        and {"author_visual_link", "stage_transaction", "propagate_runtime_and_recover"} <= set(transaction_phases)
+        and {"author_binding_graph", "generate_runtime_wiring", "replay_design_runtime_session", "replay_designer_transaction"} <= set(lifecycle_phases)
+        and {"inspector_property_commit", "binding_link_commit", "runtime_wiring_refresh"} <= set(bridge_phases),
+        "propagation_ops": propagation_ops,
+        "design_phases": design_phases,
+        "transaction_phases": transaction_phases,
+        "lifecycle_phases": lifecycle_phases,
+        "bridge_phases": bridge_phases,
+        "side_effects": (),
+    }
+
+
+def validate_binding_runtime():
+    """Validate generated visual binding runtime readiness."""
+    manifest = binding_runtime_manifest()
+    replay = replay_binding_runtime()
+    checks = (
+        {"id": "manifest_ok", "ok": manifest["ok"]},
+        {"id": "graph_nodes_present", "ok": {"dataset", "field", "control", "expression"} <= {node["kind"] for node in manifest["graph"]["nodes"]}},
+        {"id": "graph_edges_present", "ok": {"dataset_to_field", "field_to_control", "control_to_field", "expression_to_property"} <= {edge["kind"] for edge in manifest["graph"]["edges"]}},
+        {"id": "actionable_operations_ready", "ok": manifest["actionable_operations"]["ok"] and {"create_link", "reroute_link", "preview_value", "detect_conflicts", "runtime_wiring"} <= set(manifest["actionable_operations"]["operations"])},
+        {"id": "runtime_wiring_ready", "ok": set(manifest["required_wiring_artifacts"]) <= set(manifest["runtime_wiring"]["artifacts"]) and not manifest["runtime_wiring"]["side_effects"]},
+        {"id": "runtime_gates_ready", "ok": manifest["runtime_gates"]["ok"] and not manifest["runtime_gates"]["side_effects"]},
+        {"id": "runtime_propagation_replay", "ok": manifest["runtime_propagation_replay"]["ok"] and not manifest["runtime_propagation_replay"]["side_effects"]},
+        {"id": "design_runtime_replay", "ok": manifest["design_runtime_replay"]["ok"] and not manifest["design_runtime_replay"]["side_effects"]},
+        {"id": "designer_transaction_replay", "ok": manifest["designer_transaction_replay"]["ok"] and not manifest["designer_transaction_replay"]["side_effects"]},
+        {"id": "lifecycle_release_replay", "ok": manifest["lifecycle_release_replay"]["ok"] and not manifest["lifecycle_release_replay"]["side_effects"]},
+        {"id": "inspector_bridge_replay", "ok": manifest["inspector_binding_bridge"]["ok"] and not manifest["inspector_binding_bridge"]["side_effects"]},
+        {"id": "runtime_replay", "ok": replay["ok"] and not replay["side_effects"]},
+    )
+    return {
+        "format": "appgen.generated-binding-runtime-validation.v1",
+        "ok": all(check["ok"] for check in checks),
+        "checks": checks,
+        "manifest": manifest,
+        "replay": replay,
+        "blocking_gaps": tuple(check for check in checks if not check["ok"]),
+    }
+
+
+def smoke_test():
+    """Run side-effect-free visual binding runtime smoke checks."""
+    validation = validate_binding_runtime()
+    return {
+        "format": "appgen.generated-binding-runtime-smoke.v1",
+        "ok": validation["ok"],
+        "validation": validation,
+        "checks": tuple(check["id"] for check in validation["checks"]),
     }
 '''
 

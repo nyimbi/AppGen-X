@@ -14135,6 +14135,7 @@ def form_designer_generation_smoke_audit(source: str = FORM_DESIGNER_SAMPLE_DSL)
     required_artifacts = (
         "app/form_designer.py",
         "app/inspector_runtime.py",
+        "app/binding_runtime.py",
         "app/visual_runtime_assets.py",
         "app/data_tooling_runtime.py",
         "app/runtime_operations.py",
@@ -14152,6 +14153,7 @@ def form_designer_generation_smoke_audit(source: str = FORM_DESIGNER_SAMPLE_DSL)
     compile_artifacts = (
         "app/form_designer.py",
         "app/inspector_runtime.py",
+        "app/binding_runtime.py",
         "app/visual_runtime_assets.py",
         "app/data_tooling_runtime.py",
         "app/runtime_operations.py",
@@ -14202,6 +14204,12 @@ def form_designer_generation_smoke_audit(source: str = FORM_DESIGNER_SAMPLE_DSL)
         )
         generated_inspector_runtime = importlib.util.module_from_spec(inspector_runtime_spec)
         inspector_runtime_spec.loader.exec_module(generated_inspector_runtime)
+        binding_runtime_path = output_dir / "binding_runtime.py"
+        binding_runtime_spec = importlib.util.spec_from_file_location(
+            "generated_binding_runtime_smoke", binding_runtime_path
+        )
+        generated_binding_runtime = importlib.util.module_from_spec(binding_runtime_spec)
+        binding_runtime_spec.loader.exec_module(generated_binding_runtime)
         runtime_ops_path = output_dir / "runtime_operations.py"
         runtime_ops_spec = importlib.util.spec_from_file_location(
             "generated_runtime_operations_smoke", runtime_ops_path
@@ -14256,6 +14264,7 @@ def form_designer_generation_smoke_audit(source: str = FORM_DESIGNER_SAMPLE_DSL)
         workbench = generated_form_designer.form_designer_workbench(existing_paths)
         usability = generated_form_designer.component_usability_workbench(existing_paths)
         inspector_runtime_smoke = generated_inspector_runtime.smoke_test("Grid")
+        binding_runtime_smoke = generated_binding_runtime.smoke_test()
         runtime_operation_smoke = generated_runtime_ops.smoke_test(first_table)
         native_form_runtime_smoke = generated_native_runtime.smoke_test(first_table)
         mobile_device_smoke = generated_mobile_runtime.smoke_test()
@@ -14328,6 +14337,27 @@ def form_designer_generation_smoke_audit(source: str = FORM_DESIGNER_SAMPLE_DSL)
             }
             <= set(inspector_runtime_smoke["checks"]),
             "smoke": inspector_runtime_smoke,
+        },
+        {
+            "id": "generated_binding_runtime",
+            "ok": binding_runtime_smoke["ok"]
+            and binding_runtime_smoke["format"] == "appgen.generated-binding-runtime-smoke.v1"
+            and {
+                "manifest_ok",
+                "graph_nodes_present",
+                "graph_edges_present",
+                "actionable_operations_ready",
+                "runtime_wiring_ready",
+                "runtime_gates_ready",
+                "runtime_propagation_replay",
+                "design_runtime_replay",
+                "designer_transaction_replay",
+                "lifecycle_release_replay",
+                "inspector_bridge_replay",
+                "runtime_replay",
+            }
+            <= set(binding_runtime_smoke["checks"]),
+            "smoke": binding_runtime_smoke,
         },
         {
             "id": "generated_runtime_operations",
