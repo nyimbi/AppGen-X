@@ -1743,6 +1743,7 @@ def write_form_designer_file(output_dir, schema: AppSchema):
     output_dir.mkdir(parents=True, exist_ok=True)
     (output_dir / "form_designer.py").write_text(_form_designer_text(schema))
     (output_dir / "runtime_operations.py").write_text(_native_runtime_operations_text())
+    (output_dir / "mobile_device_runtime.py").write_text(_mobile_device_runtime_text())
     (output_dir / "visual_runtime_assets.py").write_text(_visual_runtime_assets_text())
     (output_dir / "data_tooling_runtime.py").write_text(_data_tooling_runtime_text())
     write_component_contract_files(output_dir)
@@ -2777,6 +2778,158 @@ def smoke_test(table_name=None):
     validation = validate_runtime_operations(table_name)
     return {
         "format": "appgen.generated-native-runtime-operations-smoke.v1",
+        "ok": validation["ok"],
+        "validation": validation,
+        "checks": tuple(check["id"] for check in validation["checks"]),
+    }
+'''
+
+
+def _mobile_device_runtime_text() -> str:
+    return '''"""Generated side-effect-free mobile and device API runtime surface."""
+
+from __future__ import annotations
+
+import importlib.util
+from pathlib import Path
+
+
+def _load_form_designer():
+    """Load the sibling generated form designer module without requiring package install."""
+    module_path = Path(__file__).with_name("form_designer.py")
+    spec = importlib.util.spec_from_file_location("generated_mobile_device_form_designer", module_path)
+    module = importlib.util.module_from_spec(spec)
+    if spec.loader is None:
+        raise RuntimeError("Could not load generated form designer module.")
+    spec.loader.exec_module(module)
+    return module
+
+
+def mobile_device_runtime_manifest():
+    """Return generated device APIs, permissions, adapters, fixtures, and replay evidence."""
+    form_designer = _load_form_designer()
+    workbench = form_designer.mobile_native_api_workbench()
+    contract = workbench["contract"]
+    api_set = set(contract["apis"])
+    return {
+        "format": "appgen.generated-mobile-device-runtime-manifest.v1",
+        "ok": workbench["ok"]
+        and api_set == {permission["api"] for permission in contract["permission_manifest"]["permissions"]}
+        and api_set == {adapter["api"] for adapter in contract["component_adapters"]["adapters"]}
+        and api_set == {fixture["api"] for fixture in contract["simulator"]["fixtures"]}
+        and workbench["runtime_replay"]["ok"]
+        and workbench["designer_transaction_replay"]["ok"],
+        "apis": contract["apis"],
+        "targets": contract["targets"],
+        "permissions": contract["permission_manifest"]["permissions"],
+        "adapters": contract["component_adapters"]["adapters"],
+        "fixtures": contract["simulator"]["fixtures"],
+        "runtime_replay": workbench["runtime_replay"],
+        "designer_transaction_replay": workbench["designer_transaction_replay"],
+        "capability_lifecycle_replay": workbench["capability_lifecycle_replay"],
+        "guards": (
+            "permission_manifest_generated",
+            "adapter_declared_per_api",
+            "simulator_fixture_declared_per_api",
+            "runtime_replay_covers_all_device_apis",
+            "designer_transaction_replay_covers_all_device_apis",
+        ),
+    }
+
+
+def replay_device_api(api, target="android"):
+    """Replay one generated device API without touching hardware."""
+    manifest = mobile_device_runtime_manifest()
+    adapters = {adapter["api"]: adapter for adapter in manifest["adapters"]}
+    fixtures = {fixture["api"]: fixture for fixture in manifest["fixtures"]}
+    permissions = {permission["api"]: permission for permission in manifest["permissions"]}
+    runtime = {item["api"]: item for item in manifest["runtime_replay"]["replay"]}
+    adapter = adapters.get(api)
+    if adapter is None:
+        return {
+            "format": "appgen.generated-mobile-device-api-replay.v1",
+            "ok": False,
+            "api": api,
+            "target": target,
+            "error": "unknown api",
+            "available": manifest["apis"],
+        }
+    target_supported = target in adapter["targets"]
+    phases = (
+        "load_privacy_prompt",
+        "transition_permission",
+        "load_simulator_fixture",
+        "check_target_bridge",
+        "normalize_payload",
+        "dispatch_component_events",
+    )
+    if not target_supported:
+        phases = phases + ("disable_component_with_explanation",)
+    return {
+        "format": "appgen.generated-mobile-device-api-replay.v1",
+        "ok": target_supported
+        and bool(permissions.get(api))
+        and bool(fixtures.get(api))
+        and bool(runtime.get(api))
+        and "dispatch_component_events" in runtime[api]["phases"],
+        "api": api,
+        "target": target,
+        "target_supported": target_supported,
+        "permission": permissions.get(api),
+        "adapter": adapter,
+        "fixture": fixtures.get(api),
+        "runtime": runtime.get(api),
+        "phases": phases,
+        "decision": "replayed" if target_supported else "blocked_unsupported_target",
+        "side_effects": (),
+    }
+
+
+def validate_mobile_device_runtime():
+    """Validate generated device runtime coverage before mobile/native release claims."""
+    manifest = mobile_device_runtime_manifest()
+    required = (
+        "camera",
+        "location",
+        "push_notifications",
+        "secure_storage",
+        "biometrics",
+        "background_tasks",
+        "microphone",
+        "haptics",
+        "clipboard",
+        "deep_links",
+        "network_status",
+        "filesystem",
+        "device_info",
+    )
+    replays = tuple(replay_device_api(api) for api in required)
+    checks = (
+        {"id": "manifest_ok", "ok": manifest["ok"]},
+        {"id": "required_apis_present", "ok": set(required) <= set(manifest["apis"])},
+        {"id": "required_apis_replay", "ok": all(replay["ok"] and not replay["side_effects"] for replay in replays)},
+        {"id": "permissions_cover_all_apis", "ok": set(manifest["apis"]) == {item["api"] for item in manifest["permissions"]}},
+        {"id": "adapters_cover_all_apis", "ok": set(manifest["apis"]) == {item["api"] for item in manifest["adapters"]}},
+        {"id": "fixtures_cover_all_apis", "ok": set(manifest["apis"]) == {item["api"] for item in manifest["fixtures"]}},
+        {"id": "runtime_replay_complete", "ok": manifest["runtime_replay"]["ok"]},
+        {"id": "designer_replay_complete", "ok": manifest["designer_transaction_replay"]["ok"]},
+        {"id": "capability_lifecycle_complete", "ok": manifest["capability_lifecycle_replay"]["ok"]},
+    )
+    return {
+        "format": "appgen.generated-mobile-device-runtime-validation.v1",
+        "ok": all(check["ok"] for check in checks),
+        "checks": checks,
+        "manifest": manifest,
+        "replays": replays,
+        "blocking_gaps": tuple(check for check in checks if not check["ok"]),
+    }
+
+
+def smoke_test():
+    """Run the generated side-effect-free mobile/device runtime smoke checks."""
+    validation = validate_mobile_device_runtime()
+    return {
+        "format": "appgen.generated-mobile-device-runtime-smoke.v1",
         "ok": validation["ok"],
         "validation": validation,
         "checks": tuple(check["id"] for check in validation["checks"]),

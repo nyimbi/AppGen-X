@@ -2491,6 +2491,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "app/visual_runtime_assets.py",
         "app/data_tooling_runtime.py",
         "app/runtime_operations.py",
+        "app/mobile_device_runtime.py",
         "app/templates/appgen_form_designer.html",
         "app/models.py",
     } <= set(smoke["required_artifacts"])
@@ -2511,6 +2512,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "app/visual_runtime_assets.py",
         "app/data_tooling_runtime.py",
         "app/runtime_operations.py",
+        "app/mobile_device_runtime.py",
         "app/models.py",
     } <= set(smoke["compiled_artifacts"])
     assert {
@@ -11226,6 +11228,30 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         <= {phase["phase"] for phase in item["phases"]}
         for item in generated_mobile["capability_lifecycle_replay"]["replay"]
     )
+    mobile_runtime_file = output_dir / "mobile_device_runtime.py"
+    assert mobile_runtime_file.exists()
+    py_compile.compile(str(mobile_runtime_file), doraise=True)
+    mobile_runtime = _load_module(mobile_runtime_file, "generated_mobile_device_runtime")
+    mobile_runtime_smoke = mobile_runtime.smoke_test()
+    assert mobile_runtime_smoke["format"] == "appgen.generated-mobile-device-runtime-smoke.v1"
+    assert mobile_runtime_smoke["ok"] is True
+    assert {
+        "manifest_ok",
+        "required_apis_present",
+        "required_apis_replay",
+        "permissions_cover_all_apis",
+        "adapters_cover_all_apis",
+        "fixtures_cover_all_apis",
+        "runtime_replay_complete",
+        "designer_replay_complete",
+        "capability_lifecycle_complete",
+    } <= set(mobile_runtime_smoke["checks"])
+    assert mobile_runtime.replay_device_api("camera", "android")["ok"] is True
+    unsupported_replay = mobile_runtime.replay_device_api("nfc", "web-pwa")
+    assert unsupported_replay["ok"] is False
+    assert unsupported_replay["target_supported"] is False
+    assert unsupported_replay["decision"] == "blocked_unsupported_target"
+    assert mobile_runtime.replay_device_api("unknown", "android")["ok"] is False
     generated_visual_depth = form_designer.cross_target_visual_depth_workbench()
     assert generated_visual_depth["format"] == "appgen.generated-cross-target-visual-depth-workbench.v1"
     assert generated_visual_depth["ok"] is True

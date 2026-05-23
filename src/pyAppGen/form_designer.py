@@ -14137,6 +14137,7 @@ def form_designer_generation_smoke_audit(source: str = FORM_DESIGNER_SAMPLE_DSL)
         "app/visual_runtime_assets.py",
         "app/data_tooling_runtime.py",
         "app/runtime_operations.py",
+        "app/mobile_device_runtime.py",
         "app/templates/appgen_form_designer.html",
         "app/models.py",
         "app/views.py",
@@ -14151,6 +14152,7 @@ def form_designer_generation_smoke_audit(source: str = FORM_DESIGNER_SAMPLE_DSL)
         "app/visual_runtime_assets.py",
         "app/data_tooling_runtime.py",
         "app/runtime_operations.py",
+        "app/mobile_device_runtime.py",
         "app/models.py",
         "app/views.py",
         "app/dsl_reference.py",
@@ -14196,6 +14198,12 @@ def form_designer_generation_smoke_audit(source: str = FORM_DESIGNER_SAMPLE_DSL)
         )
         generated_runtime_ops = importlib.util.module_from_spec(runtime_ops_spec)
         runtime_ops_spec.loader.exec_module(generated_runtime_ops)
+        mobile_runtime_path = output_dir / "mobile_device_runtime.py"
+        mobile_runtime_spec = importlib.util.spec_from_file_location(
+            "generated_mobile_device_runtime_smoke", mobile_runtime_path
+        )
+        generated_mobile_runtime = importlib.util.module_from_spec(mobile_runtime_spec)
+        mobile_runtime_spec.loader.exec_module(generated_mobile_runtime)
         existing_paths = {
             str(path.relative_to(project_dir))
             for path in output_dir.rglob("*.py")
@@ -14232,6 +14240,7 @@ def form_designer_generation_smoke_audit(source: str = FORM_DESIGNER_SAMPLE_DSL)
         workbench = generated_form_designer.form_designer_workbench(existing_paths)
         usability = generated_form_designer.component_usability_workbench(existing_paths)
         runtime_operation_smoke = generated_runtime_ops.smoke_test(first_table)
+        mobile_device_smoke = generated_mobile_runtime.smoke_test()
 
     checks = (
         {
@@ -14295,6 +14304,24 @@ def form_designer_generation_smoke_audit(source: str = FORM_DESIGNER_SAMPLE_DSL)
             }
             <= set(runtime_operation_smoke["checks"]),
             "smoke": runtime_operation_smoke,
+        },
+        {
+            "id": "generated_mobile_device_runtime",
+            "ok": mobile_device_smoke["ok"]
+            and mobile_device_smoke["format"] == "appgen.generated-mobile-device-runtime-smoke.v1"
+            and {
+                "manifest_ok",
+                "required_apis_present",
+                "required_apis_replay",
+                "permissions_cover_all_apis",
+                "adapters_cover_all_apis",
+                "fixtures_cover_all_apis",
+                "runtime_replay_complete",
+                "designer_replay_complete",
+                "capability_lifecycle_complete",
+            }
+            <= set(mobile_device_smoke["checks"]),
+            "smoke": mobile_device_smoke,
         },
     )
     ok = all(check["ok"] for check in checks)
