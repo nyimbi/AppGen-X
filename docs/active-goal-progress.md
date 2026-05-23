@@ -96,6 +96,8 @@ Build a complete AppGen IDE and generation platform with:
 | 2026-05-23 | `ca3fd90` | Added generated seed/fixture modules and generated tests for plan/order, fixture export, validation/anonymization, and workbench/release surfaces. | Py compile; focused generated-app/form-designer/package-goal tests; staged hygiene scan passed. |
 | 2026-05-24 | `c39ec5d` | Added generated integration modules and generated tests for connector catalogs, webhook delivery, commercial channels, portal/repository contracts, and release workbench surfaces. | Py compile; focused generated-app/form-designer/package-goal tests; staged hygiene scan passed. |
 | 2026-05-24 | `85d0ed7` | Added generated productivity modules and generated tests for provider catalogs, document merge, spreadsheet export, calendar/task payloads, and release workbench surfaces. | Py compile; focused generated-app/form-designer/package-goal tests; staged hygiene scan passed. |
+| 2026-05-24 | `e53ee4a` | Added generated lifecycle modules and generated tests for environment/release readiness, promotion/domain planning, maintenance/update planning, feedback/issues, and lifecycle workbench surfaces. | Py compile; focused generated-app/form-designer/package-goal tests; staged hygiene scan passed. |
+| 2026-05-24 | `2a7733e` | Made event-processing guidance give developers one default generated AppGen-X event contract instead of a stream-engine selection matrix. | Focused PBC policy test, documentation diff check, and staged hygiene scan passed. |
 
 ## Current Working Slice
 
@@ -134,6 +136,14 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   generated tests that prove provider readiness, document merge, spreadsheet
   export, calendar/task payloads, and productivity release workbench evidence
   without external service calls.
+- Generated applications now include standalone lifecycle modules and generated
+  tests that prove environment readiness, promotion/domain planning,
+  maintenance/update planning, feedback/issues, and lifecycle release workbench
+  evidence without external deployment actions.
+- Event-processing guidance now gives developers and coding agents one answer:
+  generate AppGen-X outbox/inbox events through the platform adapter, omit
+  stream runtime selection for ordinary work, and require evidence-gated
+  exceptions only for telemetry/time-series or complex parallel dataflow PBCs.
 - Generated applications now include a standalone mobile device runtime module
   that validates permission manifests, component adapters, simulator fixtures,
   lifecycle replay, and unsupported target handling without touching hardware.
