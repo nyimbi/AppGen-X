@@ -5,6 +5,80 @@ application. That creates an exponential support matrix and makes PBC packages
 hard to reason about. The platform therefore supports one default event
 processor profile and two narrow exception profiles.
 
+## Normative Platform Decision
+
+Use `faust_streaming` behind the AppGen-X generated event adapter.
+
+That is the required answer for ordinary generated applications, PBCs, ERP
+modules, workflows, chatbots, agents, form actions, integration handlers, and
+natural-language-generated application changes. Developers should not evaluate
+stream libraries during normal app generation, and the IDE should not present a
+stream-engine selector.
+
+The generated surface is always:
+
+```text
+PBC-owned service/repository transaction
+generated transactional outbox/inbox tables
+AppGen-X event adapter
+faust_streaming service-runtime profile
+generated retry, idempotency, dead-letter, and release-audit contracts
+```
+
+The editable design surface is:
+
+- commands;
+- domain events;
+- handlers;
+- idempotency keys;
+- retry policies;
+- dead-letter behavior;
+- operational ownership.
+
+The non-editable platform decision is:
+
+```text
+stream_processor = faust_streaming
+```
+
+Generated manifests should normally omit `stream_processor`; validation
+normalizes the missing value to `faust_streaming`. If a generated manifest
+contains `quix_streams` or `bytewax`, it must also contain
+`stream_exception_evidence`, and release validation must treat that as an
+audited exception rather than a normal developer preference.
+
+## Guidance For Developers And Agents
+
+When building with AppGen-X, follow this rule:
+
+```text
+Do not choose a stream processor for ordinary application generation.
+Generate the AppGen-X outbox/inbox event contract.
+Generate handlers against the AppGen-X event adapter.
+Let platform validation normalize the runtime profile to faust_streaming.
+```
+
+Coding agents, natural-language generators, DSL tools, and the IDE must not ask
+the user to compare stream libraries. If a prompt says "build invoicing",
+"generate HR onboarding", "add an inventory workflow", "create an approval
+agent", or any equivalent ordinary business request, the generator uses the
+default profile silently and emits the standard event artifacts.
+
+Ask exception questions only when the workload is specifically telemetry,
+time-series ingestion, large windowed metrics, complex parallel transformation,
+or CPU-heavy dataflow. Even then, ask for evidence, not preference.
+
+The exception evidence is:
+
+```text
+workload_name
+throughput_or_latency_reason
+state_shape
+operational_owner
+```
+
+Without that evidence, use `faust_streaming`.
+
 ## What To Actually Use
 
 For generated applications, PBCs, ERP modules, agents, chatbots, workflows, and
