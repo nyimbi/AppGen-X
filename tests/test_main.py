@@ -1371,7 +1371,10 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "incremental_invalidation",
         "package_target_matrix",
         "language_frontend",
+        "static_analysis",
+        "compiler_recovery",
         "form_stream_schema",
+        "stream_migration",
         "debug_symbols",
         "runtime_memory_model",
         "toolchain_adapters",
@@ -1388,7 +1391,11 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     assert "event_handler_changed" in {item["reason"] for item in runtime["incremental_invalidation"]["invalidations"]}
     assert {"android", "ios"} <= {item["target"] for item in runtime["package_target_matrix"]["targets"]}
     assert {"unit", "interface", "implementation"} <= set(runtime["language_frontend"]["tokens"])
+    assert all(edge["assignable"] for edge in runtime["static_analysis"]["type_edges"])
+    assert all(item["signature_checked"] for item in runtime["static_analysis"]["event_signatures"])
+    assert any(item["blocks_emit"] for item in runtime["compiler_recovery"]["scenarios"])
     assert all(item["streamed"] for item in runtime["form_stream_schema"]["schema"])
+    assert all(item["rollback"] for item in runtime["stream_migration"]["migrations"])
     assert all("object_inspector" in symbol["maps_to"] for symbol in runtime["debug_symbols"]["symbols"])
     assert "event_dispatch_exception_boundary" in runtime["runtime_memory_model"]["guards"]
     assert all("normalize_diagnostics" in adapter["commands"] for adapter in runtime["toolchain_adapters"]["adapters"])
@@ -9243,7 +9250,10 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "incremental_invalidation",
         "package_target_matrix",
         "language_frontend",
+        "static_analysis",
+        "compiler_recovery",
         "form_stream_schema",
+        "stream_migration",
         "debug_symbols",
         "runtime_memory_model",
         "toolchain_adapters",
@@ -9269,7 +9279,11 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert "resource_changed" in {item["reason"] for item in generated_runtime["incremental_invalidation"]["invalidations"]}
     assert all("resource_bundle" in item["artifacts"] for item in generated_runtime["package_target_matrix"]["targets"])
     assert {"unit", "interface", "implementation"} <= set(generated_runtime["language_frontend"]["tokens"])
+    assert all(edge["assignable"] for edge in generated_runtime["static_analysis"]["type_edges"])
+    assert all(item["signature_checked"] for item in generated_runtime["static_analysis"]["event_signatures"])
+    assert any(item["blocks_emit"] for item in generated_runtime["compiler_recovery"]["scenarios"])
     assert "collection_order_stable" in generated_runtime["form_stream_schema"]["guards"]
+    assert all(item["rollback"] for item in generated_runtime["stream_migration"]["migrations"])
     assert all("source_span" in symbol for symbol in generated_runtime["debug_symbols"]["symbols"])
     assert all(item["release"] for item in generated_runtime["runtime_memory_model"]["ownership"])
     assert all(adapter["sandboxed"] for adapter in generated_runtime["toolchain_adapters"]["adapters"])

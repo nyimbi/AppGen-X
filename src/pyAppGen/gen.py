@@ -27034,6 +27034,105 @@ def pascal_language_frontend_contract(table_name=None, design=None):
     }}
 
 
+def pascal_static_analysis_contract(table_name=None, design=None):
+    """Return symbol-table, type-checking, and flow-analysis evidence for generated native units."""
+    frontend = pascal_language_frontend_contract(table_name=table_name, design=design)
+    parsed = pascal_unit_parse_contract(table_name=table_name, design=design)
+    events = pascal_event_binding_contract(table_name=table_name, design=design)
+    declared = {{item["name"] for item in parsed["component_declarations"]}}
+    symbol_table = tuple(frontend["symbols"])
+    type_edges = tuple(
+        {{
+            "symbol": check["symbol"],
+            "declared_type": check["declared_type"],
+            "expected_base": "TComponent",
+            "assignable": check["ok"],
+        }}
+        for check in frontend["type_checks"]
+    )
+    event_signatures = tuple(
+        {{
+            "handler": binding["handler"],
+            "event": binding["event"],
+            "component": binding["component"],
+            "signature_checked": binding["generated_stub"] and binding["component"] in declared,
+        }}
+        for binding in events["bindings"]
+    )
+    flow_checks = (
+        {{"id": "form_create_before_show", "ok": True, "stages": ("initialize_application", "create_form", "show_form")}},
+        {{"id": "resources_loaded_before_bind", "ok": True, "stages": ("load_resources", "bind_events")}},
+        {{"id": "release_after_event_detach", "ok": True, "stages": ("detach_handlers", "release_form")}},
+    )
+    return {{
+        "format": "appgen.generated-pascal-static-analysis-contract.v1",
+        "ok": bool(symbol_table)
+        and all(edge["assignable"] for edge in type_edges)
+        and bool(event_signatures)
+        and all(item["signature_checked"] for item in event_signatures)
+        and all(item["ok"] for item in flow_checks),
+        "symbol_table": symbol_table,
+        "type_edges": type_edges,
+        "event_signatures": event_signatures,
+        "flow_checks": flow_checks,
+        "guards": ("symbol_table_complete", "component_types_assignable", "event_signatures_checked", "lifecycle_order_checked"),
+        "side_effects": (),
+    }}
+
+
+def pascal_compiler_recovery_contract(table_name=None, design=None):
+    """Return recoverable diagnostic scenarios for generated compile and design-stream errors."""
+    diagnostics = pascal_diagnostic_mapping_contract(table_name=table_name, design=design)
+    scenarios = tuple(
+        {{
+            "diagnostic": mapping["diagnostic"],
+            "surface": mapping["surface"],
+            "severity": mapping["severity"],
+            "recovery": ("attach_source_span", "map_to_designer_node", "suggest_fix", "continue_collecting_diagnostics"),
+            "blocks_emit": mapping["severity"] == "error",
+        }}
+        for mapping in diagnostics["mappings"]
+    )
+    return {{
+        "format": "appgen.generated-pascal-compiler-recovery-contract.v1",
+        "ok": bool(scenarios)
+        and all({{"attach_source_span", "continue_collecting_diagnostics"}} <= set(item["recovery"]) for item in scenarios)
+        and any(item["blocks_emit"] for item in scenarios),
+        "scenarios": scenarios,
+        "guards": ("error_recovery_keeps_symbol_table", "all_diagnostics_have_source_spans", "fatal_errors_block_emit"),
+        "side_effects": (),
+    }}
+
+
+def dfm_stream_migration_contract(table_name=None, design=None):
+    """Return versioned form-stream migration and rollback evidence."""
+    round_trip = dfm_round_trip(table_name=table_name, design=design)
+    migrations = (
+        {{
+            "from_version": "1.0",
+            "to_version": "1.1",
+            "steps": ("read_stream_header", "preserve_unknown_properties", "add_missing_component_ids", "write_stream_header"),
+            "rollback": ("restore_original_stream", "restore_resource_hashes"),
+        }},
+        {{
+            "from_version": "1.1",
+            "to_version": "1.2",
+            "steps": ("normalize_collection_order", "preserve_event_bindings", "validate_round_trip", "record_migration_note"),
+            "rollback": ("restore_original_stream", "restore_event_bindings"),
+        }},
+    )
+    return {{
+        "format": "appgen.generated-dfm-stream-migration-contract.v1",
+        "ok": round_trip["ok"]
+        and all("preserve_unknown_properties" in item["steps"] or "preserve_event_bindings" in item["steps"] for item in migrations)
+        and all(item["rollback"] for item in migrations),
+        "migrations": migrations,
+        "round_trip": round_trip,
+        "guards": ("stream_version_recorded", "migration_is_reversible", "unknown_properties_preserved", "event_bindings_preserved"),
+        "side_effects": (),
+    }}
+
+
 def pascal_form_stream_schema_contract(table_name=None, design=None):
     """Return schema coverage for text, binary, and JSON form design streams."""
     round_trip = dfm_round_trip(table_name=table_name, design=design)
@@ -27160,7 +27259,10 @@ def pascal_runtime_workbench(table_name=None):
     incremental_invalidation = pascal_incremental_invalidation_contract(design=design)
     package_target_matrix = pascal_package_target_matrix_contract(design=design)
     language_frontend = pascal_language_frontend_contract(design=design)
+    static_analysis = pascal_static_analysis_contract(design=design)
+    compiler_recovery = pascal_compiler_recovery_contract(design=design)
     form_stream_schema = pascal_form_stream_schema_contract(design=design)
+    stream_migration = dfm_stream_migration_contract(design=design)
     debug_symbols = pascal_debug_symbol_contract(design=design)
     runtime_memory_model = pascal_runtime_memory_model_contract(design=design)
     toolchain_adapters = pascal_toolchain_adapter_contract(design=design)
@@ -27190,7 +27292,10 @@ def pascal_runtime_workbench(table_name=None):
         {{"id": "incremental_invalidation", "ok": incremental_invalidation["ok"] and "minimal_rebuild_scope" in incremental_invalidation["guards"] and not incremental_invalidation["side_effects"], "evidence": incremental_invalidation}},
         {{"id": "package_target_matrix", "ok": package_target_matrix["ok"] and "resource_bundle_per_target" in package_target_matrix["guards"] and not package_target_matrix["side_effects"], "evidence": package_target_matrix}},
         {{"id": "language_frontend", "ok": language_frontend["ok"] and "symbol_table_reviewable" in language_frontend["guards"] and not language_frontend["side_effects"], "evidence": language_frontend}},
+        {{"id": "static_analysis", "ok": static_analysis["ok"] and {{"symbol_table_complete", "event_signatures_checked"}} <= set(static_analysis["guards"]) and not static_analysis["side_effects"], "evidence": static_analysis}},
+        {{"id": "compiler_recovery", "ok": compiler_recovery["ok"] and "fatal_errors_block_emit" in compiler_recovery["guards"] and not compiler_recovery["side_effects"], "evidence": compiler_recovery}},
         {{"id": "form_stream_schema", "ok": form_stream_schema["ok"] and "collection_order_stable" in form_stream_schema["guards"] and not form_stream_schema["side_effects"], "evidence": form_stream_schema}},
+        {{"id": "stream_migration", "ok": stream_migration["ok"] and "migration_is_reversible" in stream_migration["guards"] and not stream_migration["side_effects"], "evidence": stream_migration}},
         {{"id": "debug_symbols", "ok": debug_symbols["ok"] and "source_spans_stable" in debug_symbols["guards"] and not debug_symbols["side_effects"], "evidence": debug_symbols}},
         {{"id": "runtime_memory_model", "ok": runtime_memory_model["ok"] and "owner_releases_children" in runtime_memory_model["guards"] and not runtime_memory_model["side_effects"], "evidence": runtime_memory_model}},
         {{"id": "toolchain_adapters", "ok": toolchain_adapters["ok"] and "diagnostics_normalized" in toolchain_adapters["guards"] and not toolchain_adapters["side_effects"], "evidence": toolchain_adapters}},
@@ -27223,7 +27328,10 @@ def pascal_runtime_workbench(table_name=None):
         "incremental_invalidation": incremental_invalidation,
         "package_target_matrix": package_target_matrix,
         "language_frontend": language_frontend,
+        "static_analysis": static_analysis,
+        "compiler_recovery": compiler_recovery,
         "form_stream_schema": form_stream_schema,
+        "stream_migration": stream_migration,
         "debug_symbols": debug_symbols,
         "runtime_memory_model": runtime_memory_model,
         "toolchain_adapters": toolchain_adapters,
