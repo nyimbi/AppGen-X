@@ -1760,6 +1760,7 @@ def write_form_designer_file(output_dir, schema: AppSchema):
     write_binding_module_files(output_dir)
     write_package_manager_module_files(output_dir)
     write_native_form_module_files(output_dir)
+    write_runtime_operation_module_files(output_dir)
 
 
 DEVICE_API_COMPONENTS = (
@@ -1845,6 +1846,15 @@ NATIVE_FORM_MODULES = (
     "native_compile_module",
     "native_runtime_load_module",
     "native_design_edit_module",
+)
+
+RUNTIME_OPERATION_MODULES = (
+    "open_design_stream_operation",
+    "apply_property_delta_operation",
+    "round_trip_stream_operation",
+    "compile_preview_operation",
+    "refresh_resources_operation",
+    "reload_runtime_preview_operation",
 )
 
 
@@ -2051,6 +2061,26 @@ def write_native_form_module_files(output_dir):
         )
         (test_dir / f"test_{module_name}.py").write_text(
             _native_form_module_test_text(module_name),
+            encoding="utf-8",
+        )
+
+
+def write_runtime_operation_module_files(output_dir):
+    """Write generated native runtime operation modules and smoke tests."""
+    output_dir = Path(output_dir)
+    module_dir = output_dir / "runtime_operation_modules"
+    test_dir = output_dir / "runtime_operation_module_tests"
+    module_dir.mkdir(parents=True, exist_ok=True)
+    test_dir.mkdir(parents=True, exist_ok=True)
+    (module_dir / "__init__.py").write_text(_runtime_operation_module_init_text(), encoding="utf-8")
+    (test_dir / "__init__.py").write_text(_runtime_operation_module_test_init_text(), encoding="utf-8")
+    for module_name in RUNTIME_OPERATION_MODULES:
+        (module_dir / f"{module_name}.py").write_text(
+            _runtime_operation_module_text(module_name),
+            encoding="utf-8",
+        )
+        (test_dir / f"test_{module_name}.py").write_text(
+            _runtime_operation_module_test_text(module_name),
             encoding="utf-8",
         )
 
@@ -2376,8 +2406,7 @@ def test_native_form_module_contract():
     assert all(hasattr(module, name) for name in contract["expected_exports"])
 
 
-def test_native_form_module_smoke(table_name=None):
-    """Assert the module's side-effect-free smoke test passes."""
+def _assert_native_form_module_smoke(table_name=None):
     module = load_native_form_module()
     result = module.smoke_test(table_name)
     assert result["ok"] is True
@@ -2385,16 +2414,219 @@ def test_native_form_module_smoke(table_name=None):
     assert result["checks"]
 
 
+def test_native_form_module_smoke():
+    """Assert the module's side-effect-free smoke test passes."""
+    _assert_native_form_module_smoke()
+
+
 def smoke_test(table_name=None):
     """Run this generated test module in a side-effect-free way."""
     test_native_form_module_contract()
-    test_native_form_module_smoke(table_name)
+    _assert_native_form_module_smoke(table_name)
     return {{
         "format": "appgen.native-form-module-generated-test-smoke.v1",
         "module": MODULE,
         "table": table_name,
         "ok": True,
         "tests": ("test_native_form_module_contract", "test_native_form_module_smoke"),
+    }}
+'''
+
+
+def _runtime_operation_name(module_name: str) -> str:
+    return {
+        "open_design_stream_operation": "open_design_stream",
+        "apply_property_delta_operation": "apply_property_delta",
+        "round_trip_stream_operation": "round_trip_stream",
+        "compile_preview_operation": "compile_preview",
+        "refresh_resources_operation": "refresh_resources",
+        "reload_runtime_preview_operation": "reload_runtime_preview",
+    }[module_name]
+
+
+def _runtime_operation_module_init_text() -> str:
+    return (
+        '"""Generated native runtime operation modules."""\n\n'
+        f"RUNTIME_OPERATION_MODULES = {RUNTIME_OPERATION_MODULES!r}\n"
+    )
+
+
+def _runtime_operation_module_test_init_text() -> str:
+    modules = tuple(f"test_{name}" for name in RUNTIME_OPERATION_MODULES)
+    return (
+        '"""Generated native runtime operation module tests."""\n\n'
+        f"RUNTIME_OPERATION_MODULE_TESTS = {modules!r}\n"
+    )
+
+
+def _runtime_operation_module_text(module_name: str) -> str:
+    operation_name = _runtime_operation_name(module_name)
+    return f'''"""Generated native runtime operation module for {operation_name}."""
+
+from __future__ import annotations
+
+import importlib.util
+from pathlib import Path
+
+
+MODULE = {module_name!r}
+OPERATION = {operation_name!r}
+EXPECTED_EXPORTS = (
+    "module_contract",
+    "operation_manifest",
+    "run_operation",
+    "runtime_manifest",
+    "smoke_test",
+)
+
+
+def _load_runtime_operations():
+    module_path = Path(__file__).resolve().parents[1] / "runtime_operations.py"
+    spec = importlib.util.spec_from_file_location(f"generated_runtime_operation_{{MODULE}}_runtime", module_path)
+    module = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(module)
+    return module
+
+
+def module_contract():
+    """Return this generated runtime operation module's export contract."""
+    available = tuple(name for name in EXPECTED_EXPORTS if name in globals())
+    return {{
+        "format": "appgen.runtime-operation-module-contract.v1",
+        "module": MODULE,
+        "operation": OPERATION,
+        "ok": set(EXPECTED_EXPORTS) <= set(available),
+        "exports": available,
+        "expected_exports": EXPECTED_EXPORTS,
+        "side_effects": (),
+    }}
+
+
+def operation_manifest(table_name=None):
+    """Return this operation's generated runtime contract and replay metadata."""
+    runtime = _load_runtime_operations()
+    manifest = runtime.runtime_operations_manifest(table_name)
+    operation = manifest["operations"].get(OPERATION)
+    return {{
+        "format": "appgen.runtime-operation-module-manifest.v1",
+        "module": MODULE,
+        "operation": OPERATION,
+        "table": table_name,
+        "ok": operation is not None and operation["ok"] and not operation["side_effects"],
+        "operation_contract": operation,
+        "available_operations": manifest["operation_names"],
+        "runtime_replay": manifest["runtime_replay"],
+        "design_edit_replay": manifest["design_edit_replay"],
+        "side_effects": (),
+    }}
+
+
+def run_operation(table_name=None):
+    """Run this generated side-effect-free runtime operation."""
+    result = _load_runtime_operations().run_runtime_operation(OPERATION, table_name)
+    return {{
+        "format": "appgen.runtime-operation-module-result.v1",
+        "module": MODULE,
+        "operation": OPERATION,
+        "table": table_name,
+        "ok": result["ok"] and not result.get("side_effects", ()),
+        "result": result,
+        "side_effects": (),
+    }}
+
+
+def runtime_manifest(table_name=None):
+    """Return the aggregate runtime-operation manifest this module belongs to."""
+    return _load_runtime_operations().runtime_operations_manifest(table_name)
+
+
+def smoke_test(table_name=None):
+    """Run side-effect-free checks for this generated runtime operation module."""
+    contract = module_contract()
+    manifest = operation_manifest(table_name)
+    operation = run_operation(table_name)
+    runtime = runtime_manifest(table_name)
+    return {{
+        "format": "appgen.runtime-operation-module-smoke-test.v1",
+        "module": MODULE,
+        "operation": OPERATION,
+        "ok": contract["ok"]
+        and manifest["ok"]
+        and operation["ok"]
+        and runtime["ok"]
+        and OPERATION in runtime["operation_names"]
+        and not manifest["side_effects"]
+        and not operation["side_effects"],
+        "checks": (
+            "module_contract_resolves",
+            "operation_manifest_resolves",
+            "operation_replays",
+            "runtime_manifest_ok",
+            "no_side_effects",
+        ),
+    }}
+'''
+
+
+def _runtime_operation_module_test_text(module_name: str) -> str:
+    operation_name = _runtime_operation_name(module_name)
+    return f'''"""Generated tests for the {operation_name} runtime operation module."""
+
+from __future__ import annotations
+
+import importlib.util
+from pathlib import Path
+
+
+MODULE = {module_name!r}
+OPERATION = {operation_name!r}
+
+
+def load_runtime_operation_module():
+    """Load the generated runtime operation module without app installation."""
+    module_path = Path(__file__).resolve().parents[1] / "runtime_operation_modules" / f"{{MODULE}}.py"
+    spec = importlib.util.spec_from_file_location(f"generated_runtime_operation_module_{{MODULE}}", module_path)
+    module = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(module)
+    return module
+
+
+def test_runtime_operation_module_contract():
+    """Assert the generated operation module exposes its contract."""
+    module = load_runtime_operation_module()
+    contract = module.module_contract()
+    assert contract["module"] == MODULE
+    assert contract["operation"] == OPERATION
+    assert contract["ok"] is True
+    assert all(hasattr(module, name) for name in contract["expected_exports"])
+
+
+def _assert_runtime_operation_module_smoke(table_name=None):
+    module = load_runtime_operation_module()
+    result = module.smoke_test(table_name)
+    assert result["ok"] is True
+    assert result["module"] == MODULE
+    assert result["operation"] == OPERATION
+
+
+def test_runtime_operation_module_smoke():
+    """Assert the module's side-effect-free smoke test passes."""
+    _assert_runtime_operation_module_smoke()
+
+
+def smoke_test(table_name=None):
+    """Run this generated test module in a side-effect-free way."""
+    test_runtime_operation_module_contract()
+    _assert_runtime_operation_module_smoke(table_name)
+    return {{
+        "format": "appgen.runtime-operation-module-generated-test-smoke.v1",
+        "module": MODULE,
+        "operation": OPERATION,
+        "table": table_name,
+        "ok": True,
+        "tests": ("test_runtime_operation_module_contract", "test_runtime_operation_module_smoke"),
     }}
 '''
 
@@ -6210,9 +6442,121 @@ def run_runtime_operation(name, table_name=None):
     }
 
 
+def _load_generated_module(module_path, module_name):
+    spec = importlib.util.spec_from_file_location(module_name, module_path)
+    module = importlib.util.module_from_spec(spec)
+    if spec.loader is None:
+        raise RuntimeError(f"Could not load generated module: {module_path}")
+    spec.loader.exec_module(module)
+    return module
+
+
+def runtime_operation_module_file_manifest(table_name=None):
+    """Return file-level evidence for generated runtime operation modules."""
+    module_map = {
+        "open_design_stream_operation": "open_design_stream",
+        "apply_property_delta_operation": "apply_property_delta",
+        "round_trip_stream_operation": "round_trip_stream",
+        "compile_preview_operation": "compile_preview",
+        "refresh_resources_operation": "refresh_resources",
+        "reload_runtime_preview_operation": "reload_runtime_preview",
+    }
+    required_exports = (
+        "module_contract",
+        "operation_manifest",
+        "run_operation",
+        "runtime_manifest",
+        "smoke_test",
+    )
+    module_dir = Path(__file__).with_name("runtime_operation_modules")
+    entries = []
+    for module_name, operation_name in module_map.items():
+        module_path = module_dir / f"{module_name}.py"
+        exports = ()
+        contract_ok = False
+        smoke_ok = False
+        if module_path.exists():
+            module = _load_generated_module(module_path, f"generated_runtime_operation_module_{module_name}")
+            exports = tuple(name for name in required_exports if hasattr(module, name))
+            contract = module.module_contract()
+            smoke = module.smoke_test(table_name)
+            contract_ok = contract["ok"] and contract["module"] == module_name and contract["operation"] == operation_name
+            smoke_ok = smoke["ok"] and smoke["module"] == module_name and smoke["operation"] == operation_name
+        entries.append(
+            {
+                "module": module_name,
+                "operation": operation_name,
+                "path": f"app/runtime_operation_modules/{module_name}.py",
+                "exists": module_path.exists(),
+                "exports": exports,
+                "expected_exports": required_exports,
+                "contract_ok": contract_ok,
+                "smoke_ok": smoke_ok,
+            }
+        )
+    return {
+        "format": "appgen.generated-runtime-operation-module-file-manifest.v1",
+        "ok": bool(entries)
+        and all(item["exists"] and item["contract_ok"] and item["smoke_ok"] and set(item["expected_exports"]) <= set(item["exports"]) for item in entries),
+        "modules": tuple(entries),
+        "guards": ("one_file_per_runtime_operation", "declared_exports_present", "operation_module_smoke_replays"),
+        "side_effects": (),
+    }
+
+
+def runtime_operation_module_test_file_manifest(table_name=None):
+    """Return file-level evidence for generated runtime operation module tests."""
+    module_map = {
+        "open_design_stream_operation": "open_design_stream",
+        "apply_property_delta_operation": "apply_property_delta",
+        "round_trip_stream_operation": "round_trip_stream",
+        "compile_preview_operation": "compile_preview",
+        "refresh_resources_operation": "refresh_resources",
+        "reload_runtime_preview_operation": "reload_runtime_preview",
+    }
+    required_exports = (
+        "load_runtime_operation_module",
+        "test_runtime_operation_module_contract",
+        "test_runtime_operation_module_smoke",
+        "smoke_test",
+    )
+    test_dir = Path(__file__).with_name("runtime_operation_module_tests")
+    entries = []
+    for module_name, operation_name in module_map.items():
+        module_path = test_dir / f"test_{module_name}.py"
+        exports = ()
+        smoke_ok = False
+        if module_path.exists():
+            module = _load_generated_module(module_path, f"generated_runtime_operation_module_test_{module_name}")
+            exports = tuple(name for name in required_exports if hasattr(module, name))
+            smoke = module.smoke_test(table_name)
+            smoke_ok = smoke["ok"] and smoke["module"] == module_name and smoke["operation"] == operation_name
+        entries.append(
+            {
+                "module": module_name,
+                "operation": operation_name,
+                "path": f"app/runtime_operation_module_tests/test_{module_name}.py",
+                "exists": module_path.exists(),
+                "exports": exports,
+                "required_exports": required_exports,
+                "smoke_ok": smoke_ok,
+            }
+        )
+    return {
+        "format": "appgen.generated-runtime-operation-module-test-file-manifest.v1",
+        "ok": bool(entries) and all(item["exists"] and item["smoke_ok"] and set(item["required_exports"]) <= set(item["exports"]) for item in entries),
+        "tests": tuple(entries),
+        "required_exports": required_exports,
+        "guards": ("one_test_file_per_runtime_operation", "contract_and_smoke_tests_exported"),
+        "side_effects": (),
+    }
+
+
 def validate_runtime_operations(table_name=None):
     """Validate generated runtime operations before claiming native runtime readiness."""
     manifest = runtime_operations_manifest(table_name)
+    module_files = runtime_operation_module_file_manifest(table_name)
+    module_tests = runtime_operation_module_test_file_manifest(table_name)
     required = (
         "open_design_stream",
         "apply_property_delta",
@@ -6228,12 +6572,16 @@ def validate_runtime_operations(table_name=None):
         {"id": "operations_are_callable", "ok": all(result["ok"] for result in operation_results)},
         {"id": "runtime_replay_complete", "ok": manifest["runtime_replay"]["ok"]},
         {"id": "design_edit_replay_complete", "ok": manifest["design_edit_replay"]["ok"]},
+        {"id": "runtime_operation_modules_ready", "ok": module_files["ok"] and not module_files["side_effects"]},
+        {"id": "runtime_operation_module_tests_ready", "ok": module_tests["ok"] and not module_tests["side_effects"]},
     )
     return {
         "format": "appgen.generated-native-runtime-operations-validation.v1",
         "ok": all(check["ok"] for check in checks),
         "checks": checks,
         "manifest": manifest,
+        "module_files": module_files,
+        "module_tests": module_tests,
         "operation_results": operation_results,
         "blocking_gaps": tuple(check for check in checks if not check["ok"]),
     }

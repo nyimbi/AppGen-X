@@ -11387,9 +11387,42 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "operations_are_callable",
         "runtime_replay_complete",
         "design_edit_replay_complete",
+        "runtime_operation_modules_ready",
+        "runtime_operation_module_tests_ready",
     } <= set(runtime_operations_smoke["checks"])
     assert runtime_operations.run_runtime_operation("compile_preview", "Book")["ok"] is True
     assert runtime_operations.run_runtime_operation("missing", "Book")["ok"] is False
+    runtime_operation_module_files = runtime_operations.runtime_operation_module_file_manifest("Book")
+    runtime_operation_module_tests = runtime_operations.runtime_operation_module_test_file_manifest("Book")
+    assert runtime_operation_module_files["ok"] is True
+    assert runtime_operation_module_tests["ok"] is True
+    assert {item["operation"] for item in runtime_operation_module_files["modules"]} == {
+        "open_design_stream",
+        "apply_property_delta",
+        "round_trip_stream",
+        "compile_preview",
+        "refresh_resources",
+        "reload_runtime_preview",
+    }
+    assert {item["operation"] for item in runtime_operation_module_tests["tests"]} == {
+        "open_design_stream",
+        "apply_property_delta",
+        "round_trip_stream",
+        "compile_preview",
+        "refresh_resources",
+        "reload_runtime_preview",
+    }
+    for item in runtime_operation_module_files["modules"]:
+        module_path = output_dir / item["path"].replace("app/", "")
+        py_compile.compile(str(module_path), doraise=True)
+        module = _load_module(module_path, f"generated_runtime_operation_module_{item['module']}")
+        assert module.smoke_test("Book")["ok"] is True
+        assert module.module_contract()["ok"] is True
+    for item in runtime_operation_module_tests["tests"]:
+        test_path = output_dir / item["path"].replace("app/", "")
+        py_compile.compile(str(test_path), doraise=True)
+        module = _load_module(test_path, f"generated_runtime_operation_module_test_{item['module']}")
+        assert module.smoke_test("Book")["ok"] is True
     native_runtime_file = output_dir / "native_form_runtime.py"
     assert native_runtime_file.exists()
     py_compile.compile(str(native_runtime_file), doraise=True)
