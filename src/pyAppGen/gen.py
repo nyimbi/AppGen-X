@@ -1853,6 +1853,27 @@ def write_platforms_file(output_dir, schema: AppSchema):
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
     (output_dir / "platforms.py").write_text(_platforms_text(schema))
+    write_platform_module_files(output_dir)
+
+
+def write_platform_module_files(output_dir):
+    """Write generated platform target modules and smoke tests."""
+    output_dir = Path(output_dir)
+    module_dir = output_dir / "platform_modules"
+    test_dir = output_dir / "platform_module_tests"
+    module_dir.mkdir(parents=True, exist_ok=True)
+    test_dir.mkdir(parents=True, exist_ok=True)
+    (module_dir / "__init__.py").write_text(_platform_module_init_text(), encoding="utf-8")
+    (test_dir / "__init__.py").write_text(_platform_module_test_init_text(), encoding="utf-8")
+    for module_name in PLATFORM_MODULES:
+        (module_dir / f"{module_name}.py").write_text(
+            _platform_module_text(module_name),
+            encoding="utf-8",
+        )
+        (test_dir / f"test_{module_name}.py").write_text(
+            _platform_module_test_text(module_name),
+            encoding="utf-8",
+        )
 
 
 def write_pwa_file(output_dir, schema: AppSchema):
@@ -2187,6 +2208,15 @@ EMERGING_MODULES = (
     "smart_contract_module",
     "edge_sync_module",
     "emerging_workbench_module",
+)
+
+PLATFORM_MODULES = (
+    "web_target_module",
+    "pwa_target_module",
+    "mobile_target_module",
+    "desktop_target_module",
+    "chatbot_target_module",
+    "target_release_workbench_module",
 )
 
 
@@ -6385,6 +6415,298 @@ def smoke_test():
         "surface": SURFACE,
         "ok": True,
         "tests": ("test_emerging_module_contract", "test_emerging_module_smoke"),
+    }}
+'''
+
+
+def _platform_module_init_text() -> str:
+    return (
+        '"""Generated platform target modules."""\n\n'
+        f"PLATFORM_MODULES = {PLATFORM_MODULES!r}\n"
+    )
+
+
+def _platform_module_test_init_text() -> str:
+    modules = tuple(f"test_{name}" for name in PLATFORM_MODULES)
+    return (
+        '"""Generated platform target module tests."""\n\n'
+        f"PLATFORM_MODULE_TESTS = {modules!r}\n"
+    )
+
+
+def _platform_surface(module_name: str) -> tuple[str, str]:
+    return {
+        "web_target_module": ("web_target", "platform_contract"),
+        "pwa_target_module": ("pwa_target", "platform_contract"),
+        "mobile_target_module": ("mobile_target", "platform_contract"),
+        "desktop_target_module": ("desktop_target", "platform_contract"),
+        "chatbot_target_module": ("chatbot_target", "chatbot_intents"),
+        "target_release_workbench_module": ("target_release_workbench", "platform_target_experience_gate"),
+    }[module_name]
+
+
+def _platform_target_for_surface(surface: str) -> str:
+    return {
+        "web_target": "web",
+        "pwa_target": "pwa",
+        "mobile_target": "mobile",
+        "desktop_target": "desktop",
+        "chatbot_target": "chatbot",
+        "target_release_workbench": "web",
+    }[surface]
+
+
+def _platform_module_text(module_name: str) -> str:
+    surface, operation = _platform_surface(module_name)
+    target = _platform_target_for_surface(surface)
+    return f'''"""Generated platform target module for {surface}."""
+
+from __future__ import annotations
+
+import importlib.util
+from pathlib import Path
+
+
+MODULE = {module_name!r}
+SURFACE = {surface!r}
+TARGET = {target!r}
+OPERATION = {operation!r}
+EXPECTED_EXPORTS = (
+    "module_contract",
+    "platform_manifest_contract",
+    "run_platform_operation",
+    "release_context",
+    "smoke_test",
+)
+
+
+def _platforms():
+    module_path = Path(__file__).resolve().parents[1] / "platforms.py"
+    spec = importlib.util.spec_from_file_location(f"generated_platform_{{MODULE}}_platforms", module_path)
+    module = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(module)
+    return module
+
+
+def module_contract():
+    """Return this generated platform module's export contract."""
+    available = tuple(name for name in EXPECTED_EXPORTS if name in globals())
+    return {{
+        "format": "appgen.platform-module-contract.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "target": TARGET,
+        "operation": OPERATION,
+        "ok": set(EXPECTED_EXPORTS) <= set(available),
+        "exports": available,
+        "expected_exports": EXPECTED_EXPORTS,
+        "side_effects": (),
+    }}
+
+
+def platform_manifest_contract():
+    """Return generated platform target metadata owned by this module."""
+    platforms = _platforms()
+    catalog = platforms.platform_catalog()
+    targets = tuple(item["target"] for item in catalog)
+    return {{
+        "format": "appgen.platform-module-manifest.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "target": TARGET,
+        "ok": bool(catalog)
+        and {{"web", "pwa", "mobile", "desktop", "chatbot"}} <= set(platforms.selected_platform_targets())
+        and TARGET in platforms.PLATFORM_TARGETS,
+        "catalog": catalog,
+        "selected_targets": platforms.selected_platform_targets(),
+        "targets": targets,
+        "side_effects": (),
+    }}
+
+
+def run_platform_operation():
+    """Run this module's side-effect-free platform target operation."""
+    platforms = _platforms()
+    if SURFACE == "target_release_workbench":
+        assets = {{
+            "app/views.py",
+            "app/api.py",
+            "app/gql.py",
+            "app/templates/my_index.html",
+            "frontends/react/package.json",
+            "frontends/vue/package.json",
+            "frontends/angular/package.json",
+            "frontends/svelte/package.json",
+            "frontends/htmx/package.json",
+            "frontends/express/package.json",
+            "app/static/appgen.webmanifest",
+            "app/static/appgen-sw.js",
+            "app/static/appgen-offline.html",
+            "native/mobile/app.py",
+            "native/mobile/pyproject.toml",
+            "native/desktop/app.py",
+            "native/desktop/pyproject.toml",
+            "app/chatbot.py",
+            "app/templates/appgen_chatbot.html",
+        }}
+        operation = {{
+            "release": platforms.platform_release_gate(assets),
+            "experience": platforms.platform_target_experience_gate(assets),
+            "matrix": platforms.target_package_matrix(),
+        }}
+        ok = operation["release"]["ok"] and operation["experience"]["ok"] and operation["matrix"]["ok"]
+    elif SURFACE == "chatbot_target":
+        operation = {{
+            "contract": platforms.platform_contract("chatbot"),
+            "intents": platforms.chatbot_intents(),
+        }}
+        ok = operation["contract"]["selected"] and bool(operation["intents"]) and operation["contract"]["target"] == "chatbot"
+    else:
+        operation = {{
+            "contract": platforms.platform_contract(TARGET),
+            "package_matrix": platforms.target_package_matrix((TARGET,)),
+        }}
+        ok = operation["contract"]["selected"] and operation["package_matrix"]["ok"] and operation["contract"]["target"] == TARGET
+    return {{
+        "format": "appgen.platform-module-operation.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "target": TARGET,
+        "ok": ok,
+        "operation": operation,
+        "side_effects": (),
+    }}
+
+
+def release_context():
+    """Return release evidence used by this platform target module."""
+    platforms = _platforms()
+    assets = {{
+        "app/views.py",
+        "app/api.py",
+        "app/gql.py",
+        "app/templates/my_index.html",
+        "frontends/react/package.json",
+        "frontends/vue/package.json",
+        "frontends/angular/package.json",
+        "frontends/svelte/package.json",
+        "frontends/htmx/package.json",
+        "frontends/express/package.json",
+        "app/static/appgen.webmanifest",
+        "app/static/appgen-sw.js",
+        "app/static/appgen-offline.html",
+        "native/mobile/app.py",
+        "native/mobile/pyproject.toml",
+        "native/desktop/app.py",
+        "native/desktop/pyproject.toml",
+        "app/chatbot.py",
+        "app/templates/appgen_chatbot.html",
+    }}
+    return {{
+        "format": "appgen.platform-module-release-context.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "target": TARGET,
+        "ok": platforms.platform_release_gate(assets)["ok"] and platforms.platform_target_experience_gate(assets)["ok"],
+        "release": platforms.platform_release_gate(assets),
+        "experience": platforms.platform_target_experience_gate(assets),
+        "side_effects": (),
+    }}
+
+
+def smoke_test():
+    """Run side-effect-free checks for this generated platform target module."""
+    contract = module_contract()
+    manifest = platform_manifest_contract()
+    operation = run_platform_operation()
+    release = release_context()
+    return {{
+        "format": "appgen.platform-module-smoke-test.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "target": TARGET,
+        "ok": contract["ok"]
+        and manifest["ok"]
+        and operation["ok"]
+        and release["ok"]
+        and not manifest["side_effects"]
+        and not operation["side_effects"]
+        and not release["side_effects"],
+        "contract": contract,
+        "manifest": manifest,
+        "operation": operation,
+        "release": release,
+        "checks": (
+            "module_contract_resolves",
+            "platform_manifest_contract_ok",
+            "platform_operation_ok",
+            "release_context_ok",
+            "no_side_effects",
+        ),
+    }}
+'''
+
+
+def _platform_module_test_text(module_name: str) -> str:
+    surface, _operation = _platform_surface(module_name)
+    target = _platform_target_for_surface(surface)
+    return f'''"""Generated tests for the {surface} platform module."""
+
+from __future__ import annotations
+
+import importlib.util
+from pathlib import Path
+
+
+MODULE = {module_name!r}
+SURFACE = {surface!r}
+TARGET = {target!r}
+
+
+def load_platform_module():
+    """Load the generated platform module without app installation."""
+    module_path = Path(__file__).resolve().parents[1] / "platform_modules" / f"{{MODULE}}.py"
+    spec = importlib.util.spec_from_file_location(f"generated_platform_module_{{MODULE}}", module_path)
+    module = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(module)
+    return module
+
+
+def test_platform_module_contract():
+    """Assert the generated platform module exposes its contract."""
+    module = load_platform_module()
+    contract = module.module_contract()
+    assert contract["module"] == MODULE
+    assert contract["surface"] == SURFACE
+    assert contract["target"] == TARGET
+    assert contract["ok"] is True
+    assert all(hasattr(module, name) for name in contract["expected_exports"])
+
+
+def test_platform_module_smoke():
+    """Assert the module's side-effect-free smoke test passes."""
+    module = load_platform_module()
+    result = module.smoke_test()
+    assert result["ok"] is True
+    assert result["module"] == MODULE
+    assert result["surface"] == SURFACE
+    assert result["target"] == TARGET
+    assert result["checks"]
+
+
+def smoke_test():
+    """Run this generated test module in a side-effect-free way."""
+    test_platform_module_contract()
+    test_platform_module_smoke()
+    return {{
+        "format": "appgen.platform-module-generated-test-smoke.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "target": TARGET,
+        "ok": True,
+        "tests": ("test_platform_module_contract", "test_platform_module_smoke"),
     }}
 '''
 
@@ -52528,6 +52850,9 @@ def _platforms_text(schema: AppSchema) -> str:
 
 from __future__ import annotations
 
+import importlib.util
+from pathlib import Path
+
 from flask import jsonify
 from flask_appbuilder import BaseView
 from flask_appbuilder import expose
@@ -52536,6 +52861,14 @@ from flask_appbuilder import expose
 APP_NAME = {app_name!r}
 PLATFORM_TABLES = {tables!r}
 SELECTED_TARGETS = {selected_targets!r}
+PLATFORM_MODULES = (
+    "web_target_module",
+    "pwa_target_module",
+    "mobile_target_module",
+    "desktop_target_module",
+    "chatbot_target_module",
+    "target_release_workbench_module",
+)
 PLATFORM_TARGETS = {{
     "web": {{
         "label": "Web",
@@ -52568,6 +52901,67 @@ PLATFORM_TARGETS = {{
         "capabilities": ("field-prompts", "workflow-intents", "handoff"),
     }},
 }}
+
+
+def _load_generated_module(module_path, module_name):
+    """Load a generated platform target module without installing the app."""
+    spec = importlib.util.spec_from_file_location(module_name, module_path)
+    module = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(module)
+    return module
+
+
+def platform_module_file_manifest():
+    """Return independently importable generated platform target module files."""
+    root = Path(__file__).resolve().parent
+    modules = []
+    for module_name in PLATFORM_MODULES:
+        module_path = root / "platform_modules" / f"{{module_name}}.py"
+        module = _load_generated_module(module_path, f"generated_platform_module_{{module_name}}")
+        contract = module.module_contract()
+        modules.append(
+            {{
+                "module": module_name,
+                "surface": contract["surface"],
+                "target": contract["target"],
+                "path": f"app/platform_modules/{{module_name}}.py",
+                "exists": module_path.exists(),
+                "ok": contract["ok"] and module.smoke_test()["ok"],
+                "exports": contract["exports"],
+            }}
+        )
+    return {{
+        "format": "appgen.platform-module-file-manifest.v1",
+        "ok": len(modules) == len(PLATFORM_MODULES) and all(item["ok"] and item["exists"] for item in modules),
+        "modules": tuple(modules),
+    }}
+
+
+def platform_module_test_file_manifest():
+    """Return generated tests for the platform target module files."""
+    root = Path(__file__).resolve().parent
+    tests = []
+    for module_name in PLATFORM_MODULES:
+        test_path = root / "platform_module_tests" / f"test_{{module_name}}.py"
+        module = _load_generated_module(test_path, f"generated_platform_module_test_{{module_name}}")
+        result = module.smoke_test()
+        tests.append(
+            {{
+                "module": f"test_{{module_name}}",
+                "surface": result["surface"],
+                "target": result["target"],
+                "path": f"app/platform_module_tests/test_{{module_name}}.py",
+                "exists": test_path.exists(),
+                "ok": result["ok"],
+                "tests": result["tests"],
+            }}
+        )
+    return {{
+        "format": "appgen.platform-module-test-file-manifest.v1",
+        "ok": len(tests) == len(PLATFORM_MODULES) and all(item["ok"] and item["exists"] for item in tests),
+        "tests": tuple(tests),
+    }}
 
 
 def platform_catalog():

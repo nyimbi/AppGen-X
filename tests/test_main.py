@@ -9803,6 +9803,40 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert mobile_contract["tables"][1]["table"] == "Book"
     assert "internal_code" not in mobile_contract["tables"][1]["fields"]
     assert platforms.mobile_capabilities()["location"] is True
+    platform_module_files = platforms.platform_module_file_manifest()
+    platform_module_tests = platforms.platform_module_test_file_manifest()
+    assert platform_module_files["ok"] is True
+    assert platform_module_tests["ok"] is True
+    assert {item["surface"] for item in platform_module_files["modules"]} == {
+        "web_target",
+        "pwa_target",
+        "mobile_target",
+        "desktop_target",
+        "chatbot_target",
+        "target_release_workbench",
+    }
+    assert {item["surface"] for item in platform_module_tests["tests"]} == {
+        "web_target",
+        "pwa_target",
+        "mobile_target",
+        "desktop_target",
+        "chatbot_target",
+        "target_release_workbench",
+    }
+    for item in platform_module_files["modules"]:
+        module_path = output_dir / item["path"].replace("app/", "")
+        py_compile.compile(str(module_path), doraise=True)
+        module = _load_module(module_path, f"generated_platform_module_{item['module']}")
+        assert module.module_contract()["ok"] is True
+        assert module.platform_manifest_contract()["ok"] is True
+        assert module.run_platform_operation()["ok"] is True
+        assert module.release_context()["ok"] is True
+        assert module.smoke_test()["ok"] is True
+    for item in platform_module_tests["tests"]:
+        test_path = output_dir / item["path"].replace("app/", "")
+        py_compile.compile(str(test_path), doraise=True)
+        module = _load_module(test_path, f"generated_platform_module_test_{item['module']}")
+        assert module.smoke_test()["ok"] is True
     assert "api-gateway" in microservices.service_names()
     assert microservices.service_for_table("Book")["name"] == "book-service"
     assert any(route["path"] == "/api/v1/book/" and route["service"] == "book-service" for route in microservices.api_gateway_routes())
