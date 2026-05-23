@@ -3722,6 +3722,147 @@ def pascal_design_edit_session_replay_contract(design: dict | None = None) -> di
     }
 
 
+def pascal_open_design_stream_operation(design: dict | None = None) -> dict:
+    """Return the IDE operation for opening and indexing a design stream."""
+    design = design or form_design()
+    text = form_design_to_dfm(design)
+    binary = encode_dfm_binary_stream(text)
+    parsed = parse_dfm_text(text)
+    decoded = decode_dfm_binary_stream(binary)
+    return {
+        "format": "appgen.pascal-open-design-stream-operation.v1",
+        "ok": parsed["ok"] and decoded == text,
+        "pipeline": ("read_text_stream", "parse_text_stream", "decode_binary_stream", "index_component_identity", "preserve_unknown_properties"),
+        "components": tuple(child["name"] for child in parsed["forms"][0]["children"]) if parsed["forms"] else (),
+        "stream": {"text_bytes": len(text.encode("utf-8")), "binary_bytes": len(binary)},
+        "guards": ("no_code_execution", "binary_checksum_validated", "unknown_properties_preserved"),
+        "side_effects": (),
+    }
+
+
+def pascal_apply_property_delta_operation(design: dict | None = None) -> dict:
+    """Return the IDE operation for staging a property edit against a design stream."""
+    design = design or form_design()
+    stream_diff = dfm_stream_diff_merge_contract(design)
+    diagnostics = pascal_diagnostic_mapping_contract(design)
+    return {
+        "format": "appgen.pascal-apply-property-delta-operation.v1",
+        "ok": stream_diff["ok"] and any(item["op"] == "change_property" for item in stream_diff["diffs"]),
+        "pipeline": ("capture_selection", "apply_property_delta", "preserve_unknown_properties", "validate_round_trip", "route_diagnostics"),
+        "diffs": stream_diff["diffs"],
+        "diagnostic_surfaces": diagnostics["designer_surfaces"],
+        "guards": ("deterministic_diff_order", "undo_snapshot_required", "diagnostics_route_to_designer_surfaces"),
+        "side_effects": (),
+    }
+
+
+def pascal_round_trip_stream_operation(design: dict | None = None) -> dict:
+    """Return the IDE operation for verifying text, binary, and JSON stream identity."""
+    design = design or form_design()
+    text_round_trip = dfm_round_trip(design)
+    binary_round_trip = dfm_binary_round_trip(design)
+    stream_variants = dfm_stream_variant_round_trip_contract(design)
+    return {
+        "format": "appgen.pascal-round-trip-stream-operation.v1",
+        "ok": text_round_trip["ok"] and binary_round_trip["ok"] and stream_variants["ok"],
+        "pipeline": ("serialize_text_stream", "decode_binary_stream", "compare_json_model", "validate_component_identity"),
+        "variants": stream_variants["variants"],
+        "component_count": len(text_round_trip["round_trip_components"]),
+        "guards": ("component_identity_preserved", "published_property_values_preserved", "binary_stream_hash_recorded"),
+        "side_effects": (),
+    }
+
+
+def pascal_compile_preview_operation(design: dict | None = None) -> dict:
+    """Return the IDE operation for building preview artifacts without invoking a compiler."""
+    design = design or form_design()
+    unit = pascal_unit_contract(design)
+    compiler = pascal_compiler_pipeline_contract(design)
+    language_frontend = pascal_language_frontend_contract(design)
+    static_analysis = pascal_static_analysis_contract(design)
+    package_targets = pascal_package_target_matrix_contract(design)
+    diagnostics = pascal_diagnostic_mapping_contract(design)
+    recovery = pascal_compiler_recovery_contract(design)
+    return {
+        "format": "appgen.pascal-compile-preview-operation.v1",
+        "ok": language_frontend["ok"]
+        and static_analysis["ok"]
+        and package_targets["ok"]
+        and all("source_span" in mapping["maps_to"] for mapping in diagnostics["mappings"]),
+        "pipeline": (
+            "build_unit",
+            "run_language_frontend",
+            "run_static_analysis",
+            "emit_target_packages",
+            "normalize_diagnostics",
+            "map_diagnostics_to_design_surface",
+        ),
+        "unit": unit["unit_name"],
+        "stages": compiler["stages"],
+        "targets": tuple(item["target"] for item in package_targets["targets"]),
+        "recovery": recovery["scenarios"],
+        "guards": ("response_file_reviewable", "fatal_errors_block_emit", "diagnostics_normalized"),
+        "side_effects": (),
+    }
+
+
+def pascal_refresh_resources_operation(design: dict | None = None) -> dict:
+    """Return the IDE operation for refreshing resource manifests after design edits."""
+    design = design or form_design()
+    resources = pascal_resource_streaming_contract(design)
+    hashes = pascal_resource_manifest_hash_contract(design)
+    fidelity = pascal_resource_round_trip_fidelity_contract(design)
+    return {
+        "format": "appgen.pascal-refresh-resources-operation.v1",
+        "ok": resources["side_effects"] == ()
+        and hashes["ok"]
+        and all(probe["preserves_identity"] and probe["hash_recorded"] for probe in fidelity["probes"]),
+        "pipeline": ("collect_resource_manifest", "refresh_resource_manifest", "record_resource_hashes", "validate_resource_round_trip"),
+        "resources": resources["resources"],
+        "manifest": hashes["manifest"],
+        "guards": ("deterministic_resource_names", "resource_hash_recorded", "asset_fingerprint_recorded"),
+        "side_effects": (),
+    }
+
+
+def pascal_reload_runtime_preview_operation(design: dict | None = None) -> dict:
+    """Return the IDE operation for reloading a preview after stream and compile updates."""
+    design = design or form_design()
+    runtime_replay = pascal_runtime_session_replay_contract(design)
+    design_replay = pascal_design_edit_session_replay_contract(design)
+    return {
+        "format": "appgen.pascal-reload-runtime-preview-operation.v1",
+        "ok": runtime_replay["ok"] and design_replay["ok"],
+        "pipeline": ("stream_decode", "unit_frontend", "resource_link", "target_emit", "diagnostic_mapping", "runtime_load"),
+        "runtime_phases": tuple(item["phase"] for item in runtime_replay["replay"]),
+        "design_phases": tuple(item["phase"] for item in design_replay["replay"]),
+        "final_state": runtime_replay["final_state"],
+        "guards": ("resources_linked_before_runtime_load", "diagnostics_normalized_before_surface_routing", "runtime_diff_visible"),
+        "side_effects": (),
+    }
+
+
+def pascal_runtime_actionable_operations(design: dict | None = None) -> dict:
+    """Return callable IDE operations for design streams, compile previews, and runtime reloads."""
+    design = design or form_design()
+    operations = {
+        "open_design_stream": pascal_open_design_stream_operation(design),
+        "apply_property_delta": pascal_apply_property_delta_operation(design),
+        "round_trip_stream": pascal_round_trip_stream_operation(design),
+        "compile_preview": pascal_compile_preview_operation(design),
+        "refresh_resources": pascal_refresh_resources_operation(design),
+        "reload_runtime_preview": pascal_reload_runtime_preview_operation(design),
+    }
+    return {
+        "format": "appgen.pascal-runtime-actionable-operations.v1",
+        "ok": all(operation["ok"] and not operation["side_effects"] for operation in operations.values()),
+        "operation_names": tuple(operations),
+        "operations": operations,
+        "guards": ("side_effects_declared", "diagnostics_route_to_designer_surfaces", "runtime_preview_reloadable"),
+        "side_effects": (),
+    }
+
+
 def pascal_runtime_workbench(design: dict | None = None) -> dict:
     """Return DFM streaming and Pascal runtime generation evidence."""
     design = design or form_design()
@@ -3756,6 +3897,7 @@ def pascal_runtime_workbench(design: dict | None = None) -> dict:
     toolchain_adapters = pascal_toolchain_adapter_contract(design)
     runtime_replay = pascal_runtime_session_replay_contract(design)
     design_edit_replay = pascal_design_edit_session_replay_contract(design)
+    actionable_operations = pascal_runtime_actionable_operations(design)
     binary_round_trip = dfm_binary_round_trip(design)
     stream_variants = dfm_stream_variant_round_trip_contract(design)
     checks = (
@@ -3949,6 +4091,14 @@ def pascal_runtime_workbench(design: dict | None = None) -> dict:
             and not design_edit_replay["side_effects"],
             "evidence": design_edit_replay,
         },
+        {
+            "id": "actionable_runtime_operations",
+            "ok": actionable_operations["ok"]
+            and {"open_design_stream", "apply_property_delta", "round_trip_stream", "compile_preview", "refresh_resources", "reload_runtime_preview"}
+            <= set(actionable_operations["operation_names"])
+            and not actionable_operations["side_effects"],
+            "evidence": actionable_operations,
+        },
     )
     ok = all(check["ok"] for check in checks)
     return {
@@ -3987,6 +4137,7 @@ def pascal_runtime_workbench(design: dict | None = None) -> dict:
         "toolchain_adapters": toolchain_adapters,
         "runtime_replay": runtime_replay,
         "design_edit_replay": design_edit_replay,
+        "actionable_operations": actionable_operations,
         "binary_round_trip": binary_round_trip,
         "stream_variants": stream_variants,
         "blocking_gaps": tuple(check for check in checks if not check["ok"]),

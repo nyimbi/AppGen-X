@@ -157,6 +157,13 @@ from pyAppGen.form_designer import data_tooling_test_connection
 from pyAppGen.form_designer import rad_parity_workbench
 from pyAppGen.form_designer import palette_categories
 from pyAppGen.form_designer import parse_dfm_text
+from pyAppGen.form_designer import pascal_apply_property_delta_operation
+from pyAppGen.form_designer import pascal_compile_preview_operation
+from pyAppGen.form_designer import pascal_open_design_stream_operation
+from pyAppGen.form_designer import pascal_refresh_resources_operation
+from pyAppGen.form_designer import pascal_reload_runtime_preview_operation
+from pyAppGen.form_designer import pascal_round_trip_stream_operation
+from pyAppGen.form_designer import pascal_runtime_actionable_operations
 from pyAppGen.form_designer import pascal_runtime_workbench
 from pyAppGen.form_designer import pascal_unit_contract
 from pyAppGen.form_designer import placement_suggestions
@@ -1903,6 +1910,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "toolchain_adapters",
         "runtime_session_replay",
         "design_edit_session_replay",
+        "actionable_runtime_operations",
     } == {check["id"] for check in runtime["checks"]}
     assert runtime["incremental"]["outputs"][0] == "diagnostic_delta"
     assert runtime["binary_round_trip"]["decoded"] == dfm_text
@@ -1945,6 +1953,14 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     } <= {item["phase"] for item in runtime["design_edit_replay"]["replay"]}
     assert runtime["design_edit_replay"]["final_state"]["extension_properties_preserved"] > 0
     assert runtime["design_edit_replay"]["final_state"]["runtime_phases"] > 0
+    assert "parse_text_stream" in pascal_open_design_stream_operation(design)["pipeline"]
+    assert "apply_property_delta" in pascal_apply_property_delta_operation(design)["pipeline"]
+    assert "decode_binary_stream" in pascal_round_trip_stream_operation(design)["pipeline"]
+    assert "run_static_analysis" in pascal_compile_preview_operation(design)["pipeline"]
+    assert "refresh_resource_manifest" in pascal_refresh_resources_operation(design)["pipeline"]
+    assert "runtime_load" in pascal_reload_runtime_preview_operation(design)["pipeline"]
+    assert pascal_runtime_actionable_operations(design)["ok"] is True
+    assert runtime["actionable_operations"]["operations"]["compile_preview"]["ok"] is True
 
     matrix = field_component_matrix()
     assert matrix
@@ -9925,6 +9941,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "toolchain_adapters",
         "runtime_session_replay",
         "design_edit_session_replay",
+        "actionable_runtime_operations",
     } <= {
         check["id"] for check in generated_runtime["checks"]
     }
@@ -9980,6 +9997,14 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     } <= {item["phase"] for item in generated_runtime["design_edit_replay"]["replay"]}
     assert generated_runtime["design_edit_replay"]["final_state"]["property_edits"] > 0
     assert generated_runtime["design_edit_replay"]["final_state"]["cache_invalidations"] > 0
+    assert "parse_text_stream" in form_designer.pascal_open_design_stream_operation("Book")["pipeline"]
+    assert "apply_property_delta" in form_designer.pascal_apply_property_delta_operation("Book")["pipeline"]
+    assert "decode_binary_stream" in form_designer.pascal_round_trip_stream_operation("Book")["pipeline"]
+    assert "run_static_analysis" in form_designer.pascal_compile_preview_operation("Book")["pipeline"]
+    assert "refresh_resource_manifest" in form_designer.pascal_refresh_resources_operation("Book")["pipeline"]
+    assert "runtime_load" in form_designer.pascal_reload_runtime_preview_operation("Book")["pipeline"]
+    assert form_designer.pascal_runtime_actionable_operations("Book")["ok"] is True
+    assert generated_runtime["actionable_operations"]["operations"]["compile_preview"]["ok"] is True
     assert "control_to_field" in form_designer.livebindings_contract()["binding_edges"]
     generated_bindings = form_designer.livebindings_workbench()
     assert generated_bindings["format"] == "appgen.generated-livebindings-workbench.v1"
