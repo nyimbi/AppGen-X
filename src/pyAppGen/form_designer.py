@@ -11710,6 +11710,143 @@ def cross_target_hit_test_transform_operation() -> dict:
     }
 
 
+def cross_target_visual_component_spec_contract() -> dict:
+    """Return IDE visual component specs for styling, animation, effects, and 3D authoring."""
+    contract = cross_target_visual_depth_contract()
+    style_tokens = cross_target_style_token_validation_contract()
+    timeline = cross_target_animation_timeline_contract()
+    effect_stack = cross_target_effect_stack_validation_contract()
+    scene = cross_target_3d_scene_contract()
+    material_binding = cross_target_material_binding_contract()
+    hit_testing = cross_target_scene_hit_test_contract()
+    transforms = cross_target_scene_transform_gizmo_contract()
+    preview = cross_target_visual_preview_runtime_contract()
+    specs = (
+        {
+            "component": "StyleBook",
+            "family": "styling",
+            "icon": "style",
+            "properties": ("theme", "resources", "states", "platform_overrides"),
+            "design_tools": ("style_inspector", "state_editor", "platform_override_editor", "contrast_checker"),
+            "runtime_artifacts": ("style_resources", "asset_manifest"),
+            "validation": ("token_names_stable", "contrast_checked", "effective_style_match"),
+        },
+        {
+            "component": "FloatAnimation",
+            "family": "animation",
+            "icon": "float-animation",
+            "properties": ("target", "property", "duration", "easing", "keyframes"),
+            "design_tools": ("timeline_editor", "keyframe_grid", "scrub_preview", "reduced_motion_preview"),
+            "runtime_artifacts": ("timeline_runtime",),
+            "validation": ("bounded_duration", "runtime_timeline_exported", "timeline_keyframes_match"),
+        },
+        {
+            "component": "ColorAnimation",
+            "family": "animation",
+            "icon": "color-animation",
+            "properties": ("target", "property", "from_color", "to_color", "keyframes"),
+            "design_tools": ("timeline_editor", "color_picker", "scrub_preview", "contrast_checker"),
+            "runtime_artifacts": ("timeline_runtime", "style_resources"),
+            "validation": ("bounded_duration", "contrast_checked", "timeline_keyframes_match"),
+        },
+        {
+            "component": "PathAnimation",
+            "family": "animation",
+            "icon": "path-animation",
+            "properties": ("target", "path_data", "duration", "easing", "orientation"),
+            "design_tools": ("path_editor", "timeline_editor", "scrub_preview", "runtime_export"),
+            "runtime_artifacts": ("timeline_runtime",),
+            "validation": ("deterministic_timeline_ids", "runtime_timeline_exported", "timeline_keyframes_match"),
+        },
+        {
+            "component": "Effect",
+            "family": "effects",
+            "icon": "effect",
+            "properties": ("target", "effect_stack", "quality_level", "fallback"),
+            "design_tools": ("effect_stack_editor", "budget_meter", "fallback_picker", "shader_review"),
+            "runtime_artifacts": ("effect_stack",),
+            "validation": ("mobile_frame_budget", "fallback_declared_per_target", "effect_fallback_match"),
+        },
+        {
+            "component": "Viewport3D",
+            "family": "three_d",
+            "icon": "viewport3d",
+            "properties": ("camera", "lights", "models", "materials", "hit_testing"),
+            "design_tools": ("scene_graph", "orbit_preview", "hit_test_router", "transform_gizmo"),
+            "runtime_artifacts": ("scene_graph", "asset_manifest"),
+            "validation": ("single_active_camera", "scene_graph_match", "selection_round_trips"),
+        },
+        {
+            "component": "Camera3D",
+            "family": "three_d",
+            "icon": "camera3d",
+            "properties": ("projection", "position", "target", "field_of_view"),
+            "design_tools": ("camera_preview", "orbit_preview", "transform_gizmo", "scene_graph"),
+            "runtime_artifacts": ("scene_graph",),
+            "validation": ("camera_present", "scene_graph_match", "transforms_sync_inspector"),
+        },
+        {
+            "component": "Light3D",
+            "family": "three_d",
+            "icon": "light3d",
+            "properties": ("light_type", "intensity", "color", "position"),
+            "design_tools": ("light_cone", "color_picker", "transform_gizmo", "scene_graph"),
+            "runtime_artifacts": ("scene_graph",),
+            "validation": ("validate_lights", "scene_graph_match", "transforms_sync_inspector"),
+        },
+        {
+            "component": "Mesh3D",
+            "family": "three_d",
+            "icon": "mesh3d",
+            "properties": ("mesh", "material", "transform", "texture"),
+            "design_tools": ("model_importer", "material_editor", "transform_gizmo", "hit_test_router"),
+            "runtime_artifacts": ("scene_graph", "asset_manifest"),
+            "validation": ("bounded_polygon_budget", "material_bound_to_mesh", "asset_fingerprint"),
+        },
+    )
+    known_resources = set(contract["style_resources"]["resources"])
+    runtime_artifacts = set(preview["runtime_artifacts"])
+    return {
+        "format": "appgen.cross-target-visual-component-spec-contract.v1",
+        "ok": bool(specs)
+        and {"stylebook", "theme_tokens"} <= known_resources
+        and bool(style_tokens["tokens"])
+        and bool(timeline["tracks"])
+        and bool(effect_stack["stack"])
+        and {"viewport3d", "camera", "light", "mesh", "material"} <= {node["kind"] for node in scene["scene_graph"]}
+        and material_binding["ok"]
+        and hit_testing["ok"]
+        and transforms["ok"]
+        and all(set(spec["runtime_artifacts"]) <= runtime_artifacts for spec in specs)
+        and all({"properties", "design_tools", "validation"} <= set(spec) for spec in specs),
+        "specs": specs,
+        "style_token_count": len(style_tokens["tokens"]),
+        "timeline_track_count": len(timeline["tracks"]),
+        "effect_count": len(effect_stack["stack"]),
+        "scene_node_count": len(scene["scene_graph"]),
+        "guards": ("visual_specs_cover_style_animation_effects_scene", "runtime_artifacts_declared", "hit_tests_and_transforms_bound"),
+        "side_effects": (),
+    }
+
+
+def cross_target_validate_visual_component_operation(component: str = "Viewport3D") -> dict:
+    """Return a callable IDE operation for validating one visual design component spec."""
+    specs = cross_target_visual_component_spec_contract()
+    spec = next((item for item in specs["specs"] if item["component"] == component), None)
+    return {
+        "format": "appgen.cross-target-validate-visual-component-operation.v1",
+        "ok": specs["ok"]
+        and spec is not None
+        and bool(spec["properties"])
+        and {"runtime_artifacts_declared", "hit_tests_and_transforms_bound"} <= set(specs["guards"]),
+        "component": component,
+        "spec": spec,
+        "pipeline": ("load_visual_component_spec", "validate_properties", "bind_design_tools", "verify_runtime_artifacts", "sync_preview", "record_validation"),
+        "guards": ("visual_component_spec_required", "design_tools_bound", "runtime_artifacts_declared"),
+        "side_effects": (),
+    }
+
+
 def cross_target_visual_actionable_operations() -> dict:
     """Return callable visual-depth operations used by the generated IDE."""
     operations = {
@@ -11719,6 +11856,7 @@ def cross_target_visual_actionable_operations() -> dict:
         "author_scene": cross_target_author_scene_operation(),
         "import_visual_asset": cross_target_import_visual_asset_operation(),
         "hit_test_transform": cross_target_hit_test_transform_operation(),
+        "validate_visual_component": cross_target_validate_visual_component_operation(),
     }
     return {
         "format": "appgen.cross-target-visual-actionable-operations.v1",
@@ -11753,6 +11891,7 @@ def cross_target_visual_depth_workbench() -> dict:
     designer_transaction_replay = cross_target_visual_designer_transaction_replay_contract()
     lifecycle_replay = cross_target_visual_lifecycle_replay_contract()
     actionable_operations = cross_target_visual_actionable_operations()
+    visual_component_specs = cross_target_visual_component_spec_contract()
     checks = (
         {
             "id": "style_resources",
@@ -11958,6 +12097,15 @@ def cross_target_visual_depth_workbench() -> dict:
             "evidence": lifecycle_replay,
         },
         {
+            "id": "visual_component_specs",
+            "ok": visual_component_specs["ok"]
+            and {"StyleBook", "FloatAnimation", "ColorAnimation", "PathAnimation", "Effect", "Viewport3D", "Camera3D", "Light3D", "Mesh3D"}
+            <= {spec["component"] for spec in visual_component_specs["specs"]}
+            and all(spec["design_tools"] and spec["runtime_artifacts"] for spec in visual_component_specs["specs"])
+            and not visual_component_specs["side_effects"],
+            "evidence": visual_component_specs,
+        },
+        {
             "id": "actionable_visual_operations",
             "ok": actionable_operations["ok"]
             and {
@@ -11967,6 +12115,7 @@ def cross_target_visual_depth_workbench() -> dict:
                 "author_scene",
                 "import_visual_asset",
                 "hit_test_transform",
+                "validate_visual_component",
             }
             <= set(actionable_operations["operations"])
             and not actionable_operations["side_effects"],
@@ -12000,6 +12149,7 @@ def cross_target_visual_depth_workbench() -> dict:
         "runtime_replay": runtime_replay,
         "designer_transaction_replay": designer_transaction_replay,
         "lifecycle_replay": lifecycle_replay,
+        "visual_component_specs": visual_component_specs,
         "actionable_operations": actionable_operations,
         "checks": checks,
         "blocking_gaps": tuple(check for check in checks if not check["ok"]),

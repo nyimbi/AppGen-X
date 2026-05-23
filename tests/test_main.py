@@ -106,7 +106,9 @@ from pyAppGen.form_designer import cross_target_author_timeline_operation
 from pyAppGen.form_designer import cross_target_hit_test_transform_operation
 from pyAppGen.form_designer import cross_target_import_visual_asset_operation
 from pyAppGen.form_designer import cross_target_validate_effect_stack_operation
+from pyAppGen.form_designer import cross_target_validate_visual_component_operation
 from pyAppGen.form_designer import cross_target_visual_actionable_operations
+from pyAppGen.form_designer import cross_target_visual_component_spec_contract
 from pyAppGen.form_designer import cross_target_visual_depth_workbench
 from pyAppGen.form_designer import cross_target_visual_lifecycle_replay_contract
 from pyAppGen.form_designer import design_time_package_manager_workbench
@@ -1591,6 +1593,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "visual_runtime_replay",
         "visual_designer_transaction_replay",
         "visual_lifecycle_replay",
+        "visual_component_specs",
         "actionable_visual_operations",
     } == {check["id"] for check in visual_depth["checks"]}
     assert {"inspect_effective_value", "revert_override"} <= set(visual_depth["contract"]["style_cascade"]["operations"])
@@ -1635,14 +1638,23 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     } <= {item["phase"] for item in visual_depth["designer_transaction_replay"]["replay"]}
     assert visual_depth["designer_transaction_replay"]["final_state"]["timeline_samples"] > 0
     assert visual_depth["designer_transaction_replay"]["final_state"]["transform_syncs"] > 0
+    visual_component_specs = cross_target_visual_component_spec_contract()
+    assert visual_component_specs["ok"] is True
+    assert {"StyleBook", "FloatAnimation", "ColorAnimation", "PathAnimation", "Effect", "Viewport3D", "Camera3D", "Light3D", "Mesh3D"} <= {
+        spec["component"] for spec in visual_component_specs["specs"]
+    }
+    assert all(spec["design_tools"] and spec["runtime_artifacts"] for spec in visual_component_specs["specs"])
     assert "publish_effective_value" in cross_target_author_style_operation()["pipeline"]
     assert "export_runtime_timeline" in cross_target_author_timeline_operation()["pipeline"]
     assert "compile_fallback" in cross_target_validate_effect_stack_operation()["pipeline"]
     assert "assign_material" in cross_target_author_scene_operation()["pipeline"]
     assert "write_asset_manifest" in cross_target_import_visual_asset_operation()["pipeline"]
     assert "sync_inspector" in cross_target_hit_test_transform_operation()["pipeline"]
+    assert "verify_runtime_artifacts" in cross_target_validate_visual_component_operation()["pipeline"]
     assert cross_target_visual_actionable_operations()["ok"] is True
     assert visual_depth["actionable_operations"]["operations"]["author_scene"]["ok"] is True
+    assert visual_depth["actionable_operations"]["operations"]["validate_visual_component"]["spec"]["component"] == "Viewport3D"
+    assert visual_depth["visual_component_specs"]["ok"] is True
     assert visual_depth["actionable_operations"]["operations"]["hit_test_transform"]["transforms"]
     visual_lifecycle = cross_target_visual_lifecycle_replay_contract()
     assert visual_lifecycle["format"] == "appgen.cross-target-visual-lifecycle-replay.v1"
@@ -10492,6 +10504,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "visual_runtime_replay",
         "visual_designer_transaction_replay",
         "visual_lifecycle_replay",
+        "visual_component_specs",
         "actionable_visual_operations",
     } == {check["id"] for check in generated_visual_depth["checks"]}
     assert generated_visual_depth["contract"]["asset_import"]["budgets"]["max_mesh_triangles"] > 0
@@ -10531,14 +10544,23 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     } <= {item["phase"] for item in generated_visual_depth["designer_transaction_replay"]["replay"]}
     assert generated_visual_depth["designer_transaction_replay"]["final_state"]["effect_fallbacks"] >= 1
     assert generated_visual_depth["designer_transaction_replay"]["final_state"]["scene_hits"] > 0
+    generated_visual_specs = form_designer.cross_target_visual_component_spec_contract()
+    assert generated_visual_specs["ok"] is True
+    assert {"StyleBook", "FloatAnimation", "ColorAnimation", "PathAnimation", "Effect", "Viewport3D", "Camera3D", "Light3D", "Mesh3D"} <= {
+        spec["component"] for spec in generated_visual_specs["specs"]
+    }
+    assert all(spec["design_tools"] and spec["runtime_artifacts"] for spec in generated_visual_specs["specs"])
     assert "publish_effective_value" in form_designer.cross_target_author_style_operation()["pipeline"]
     assert "export_runtime_timeline" in form_designer.cross_target_author_timeline_operation()["pipeline"]
     assert "compile_fallback" in form_designer.cross_target_validate_effect_stack_operation()["pipeline"]
     assert "assign_material" in form_designer.cross_target_author_scene_operation()["pipeline"]
     assert "write_asset_manifest" in form_designer.cross_target_import_visual_asset_operation()["pipeline"]
     assert "sync_inspector" in form_designer.cross_target_hit_test_transform_operation()["pipeline"]
+    assert "verify_runtime_artifacts" in form_designer.cross_target_validate_visual_component_operation()["pipeline"]
     assert generated_visual_depth["actionable_operations"]["ok"] is True
     assert generated_visual_depth["actionable_operations"]["operations"]["validate_effect_stack"]["fallback_matrix"]["ok"] is True
+    assert generated_visual_depth["actionable_operations"]["operations"]["validate_visual_component"]["spec"]["component"] == "Viewport3D"
+    assert generated_visual_depth["visual_component_specs"]["ok"] is True
     assert generated_visual_depth["lifecycle_replay"]["ok"] is True
     assert generated_visual_depth["lifecycle_replay"]["format"] == "appgen.generated-cross-target-visual-lifecycle-replay.v1"
     assert {
