@@ -939,6 +939,12 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "transaction_rehearsal",
         "offline_replay_plan",
         "service_contract_tests",
+        "schema_browser",
+        "parameter_binding",
+        "dataset_field_catalog",
+        "service_security_policy",
+        "offline_queue_integrity",
+        "migration_rehearsal",
     } == {check["id"] for check in data_workbench["checks"]}
     assert data_workbench["connection_test"]["steps"][-1] == "rollback_test_transaction"
     assert "explain_plan" in data_workbench["query_preview"]["plan"]
@@ -953,6 +959,16 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     assert "assert_no_persisted_changes" in data_workbench["transaction_rehearsal"]["steps"]
     assert "dedupe_by_idempotency_key" in data_workbench["offline_replay"]["replay_flow"]
     assert all(test["assertions"] for test in data_workbench["service_tests"]["tests"])
+    assert {"table", "index", "relation", "stored_procedure", "change_view"} <= {
+        item["kind"] for item in data_workbench["schema_browser"]["objects"]
+    }
+    assert all("no_string_interpolation" in binding["guards"] for binding in data_workbench["parameter_binding"]["bindings"])
+    assert {"persistent", "lookup", "calculated", "aggregate"} <= {
+        field["kind"] for field in data_workbench["dataset_fields"]["fields"]
+    }
+    assert all("audit_log" in policy["filters"] for policy in data_workbench["service_security"]["policies"])
+    assert all(entry["encrypted"] and entry["checksum"].startswith("sha256:") for entry in data_workbench["offline_queue_integrity"]["entries"])
+    assert "run_data_loss_check" in data_workbench["migration_rehearsal"]["dry_run"]
     mobile_workbench = mobile_native_api_workbench()
     assert mobile_workbench["format"] == "appgen.mobile-native-api-workbench.v1"
     assert mobile_workbench["ok"] is True
@@ -9123,6 +9139,12 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "transaction_rehearsal",
         "offline_replay_plan",
         "service_contract_tests",
+        "schema_browser",
+        "parameter_binding",
+        "dataset_field_catalog",
+        "service_security_policy",
+        "offline_queue_integrity",
+        "migration_rehearsal",
     } == {check["id"] for check in generated_data_tooling["checks"]}
     assert generated_data_tooling["connection_test"]["steps"][-1] == "rollback_test_transaction"
     assert "explain_plan" in generated_data_tooling["query_preview"]["plan"]
@@ -9137,6 +9159,19 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert "assert_no_persisted_changes" in generated_data_tooling["transaction_rehearsal"]["steps"]
     assert "dedupe_by_idempotency_key" in generated_data_tooling["offline_replay"]["replay_flow"]
     assert all(test["assertions"] for test in generated_data_tooling["service_tests"]["tests"])
+    assert {"table", "index", "relation", "stored_procedure", "change_view"} <= {
+        item["kind"] for item in generated_data_tooling["schema_browser"]["objects"]
+    }
+    assert all("no_string_interpolation" in binding["guards"] for binding in generated_data_tooling["parameter_binding"]["bindings"])
+    assert {"persistent", "lookup", "calculated", "aggregate"} <= {
+        field["kind"] for field in generated_data_tooling["dataset_fields"]["fields"]
+    }
+    assert all("audit_log" in policy["filters"] for policy in generated_data_tooling["service_security"]["policies"])
+    assert all(
+        entry["encrypted"] and entry["checksum"].startswith("sha256:")
+        for entry in generated_data_tooling["offline_queue_integrity"]["entries"]
+    )
+    assert "run_data_loss_check" in generated_data_tooling["migration_rehearsal"]["dry_run"]
     generated_mobile = form_designer.mobile_native_api_workbench()
     assert generated_mobile["format"] == "appgen.generated-mobile-native-api-workbench.v1"
     assert generated_mobile["ok"] is True

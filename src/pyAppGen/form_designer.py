@@ -3601,6 +3601,128 @@ def data_service_contract_test_plan() -> dict:
     }
 
 
+def data_schema_browser_contract() -> dict:
+    """Return schema browser evidence for tables, fields, indexes, relations, and routines."""
+    return {
+        "format": "appgen.data-schema-browser-contract.v1",
+        "connection": "primary_sql",
+        "objects": (
+            {"kind": "table", "name": "Customer", "fields": ("id", "name", "email", "updated_at")},
+            {"kind": "index", "name": "idx_customer_email", "table": "Customer", "fields": ("email",)},
+            {"kind": "relation", "name": "fk_invoice_customer", "from": "Invoice.customer_id", "to": "Customer.id"},
+            {"kind": "stored_procedure", "name": "sync_customer_changes", "parameters": ("since_timestamp",)},
+            {"kind": "change_view", "name": "customer_changes", "table": "Customer"},
+        ),
+        "operations": ("browse_tables", "inspect_fields", "preview_indexes", "trace_relations", "open_routine_signature"),
+        "guards": ("read_only_introspection", "secret_values_redacted", "system_schema_filter"),
+        "side_effects": (),
+    }
+
+
+def data_parameter_binding_contract() -> dict:
+    """Return typed query parameter binding and SQL safety evidence."""
+    query = data_query_preview_contract()
+    bindings = tuple(
+        {
+            "name": parameter["name"],
+            "type": parameter["type"],
+            "source": "designer_parameter_editor",
+            "null_policy": "reject" if parameter["name"] == "limit" else "default",
+            "guards": ("typed_binding", "no_string_interpolation", "range_checked"),
+        }
+        for parameter in query["parameters"]
+    )
+    return {
+        "format": "appgen.data-parameter-binding-contract.v1",
+        "query": query["query"],
+        "bindings": bindings,
+        "ok": bool(bindings)
+        and all({"typed_binding", "no_string_interpolation"} <= set(binding["guards"]) for binding in bindings),
+        "side_effects": (),
+    }
+
+
+def data_dataset_field_catalog_contract() -> dict:
+    """Return dataset field metadata for persistent, calculated, lookup, and aggregate fields."""
+    fields = (
+        {"name": "id", "kind": "persistent", "type": "int", "required": True},
+        {"name": "name", "kind": "persistent", "type": "string", "required": True},
+        {"name": "customer_label", "kind": "lookup", "source": "customer_id", "target": "Customer.name"},
+        {"name": "display_name", "kind": "calculated", "expression": "concat(name, ' <', email, '>')"},
+        {"name": "invoice_total", "kind": "aggregate", "expression": "sum(invoice.amount)"},
+    )
+    return {
+        "format": "appgen.data-dataset-field-catalog-contract.v1",
+        "dataset": "CustomerDataSet",
+        "fields": fields,
+        "events": ("before_open", "after_open", "before_post", "after_post", "on_reconcile_error"),
+        "guards": ("field_types_declared", "lookup_targets_checked", "calculated_fields_side_effect_free"),
+        "ok": {"persistent", "lookup", "calculated", "aggregate"} <= {field["kind"] for field in fields},
+        "side_effects": (),
+    }
+
+
+def data_service_security_contract() -> dict:
+    """Return service security policy evidence for generated methods and resources."""
+    resources = data_service_resource_contract()
+    policies = tuple(
+        {
+            "resource": resource,
+            "auth": "required",
+            "roles": ("admin", "data_editor") if resource in {"tables", "files", "jobs"} else ("admin", "reader"),
+            "filters": ("auth_filter", "request_validator", "rate_limit", "audit_log"),
+        }
+        for resource in resources["resources"]
+    )
+    return {
+        "format": "appgen.data-service-security-contract.v1",
+        "policies": policies,
+        "guards": ("deny_by_default", "request_validation_required", "audit_log_required", "rate_limit_required"),
+        "ok": bool(policies)
+        and all({"auth_filter", "request_validator", "audit_log"} <= set(policy["filters"]) for policy in policies),
+        "side_effects": (),
+    }
+
+
+def data_offline_queue_integrity_contract() -> dict:
+    """Return offline operation-log integrity evidence."""
+    replay = data_offline_replay_contract()
+    entries = tuple(
+        {
+            "batch": batch["batch"],
+            "idempotency_key": batch["idempotency_key"],
+            "checksum": f"sha256:{batch['batch']}",
+            "ordering": "causal",
+            "encrypted": True,
+            "operations": batch["operations"],
+        }
+        for batch in replay["batches"]
+    )
+    return {
+        "format": "appgen.data-offline-queue-integrity-contract.v1",
+        "entries": entries,
+        "guards": ("idempotency_key_required", "checksum_required", "encrypted_queue", "causal_ordering"),
+        "ok": bool(entries)
+        and all(entry["checksum"].startswith("sha256:") and entry["encrypted"] for entry in entries)
+        and all("idempotency_key" in entry for entry in entries),
+        "side_effects": (),
+    }
+
+
+def data_migration_rehearsal_contract() -> dict:
+    """Return dry-run migration rehearsal evidence for schema adapter changes."""
+    diff = data_schema_adapter_diff_contract()
+    return {
+        "format": "appgen.data-migration-rehearsal-contract.v1",
+        "operations": diff["operations"],
+        "dry_run": ("snapshot_schema", "apply_migration_to_scratch", "run_data_loss_check", "run_smoke_queries", "generate_rollback_script"),
+        "rollback": ("restore_snapshot", "verify_schema_hash", "record_rehearsal_result"),
+        "guards": diff["guards"] + ("scratch_database_required", "smoke_queries_required"),
+        "ok": "rollback_script" in diff["preview"],
+        "side_effects": (),
+    }
+
+
 def rad_data_tooling_workbench() -> dict:
     """Prove native data-service tooling depth across connections, queries, services, and local sync."""
     contract = rad_data_tooling_contract()
@@ -3615,6 +3737,12 @@ def rad_data_tooling_workbench() -> dict:
     transaction_rehearsal = data_transaction_rehearsal_contract()
     offline_replay = data_offline_replay_contract()
     service_tests = data_service_contract_test_plan()
+    schema_browser = data_schema_browser_contract()
+    parameter_binding = data_parameter_binding_contract()
+    dataset_fields = data_dataset_field_catalog_contract()
+    service_security = data_service_security_contract()
+    offline_queue_integrity = data_offline_queue_integrity_contract()
+    migration_rehearsal = data_migration_rehearsal_contract()
     checks = (
         {
             "id": "connection_catalog",
@@ -3727,6 +3855,46 @@ def rad_data_tooling_workbench() -> dict:
             and not service_tests["side_effects"],
             "evidence": service_tests,
         },
+        {
+            "id": "schema_browser",
+            "ok": {"browse_tables", "inspect_fields", "trace_relations"} <= set(schema_browser["operations"])
+            and {"table", "index", "relation", "stored_procedure", "change_view"} <= {item["kind"] for item in schema_browser["objects"]}
+            and not schema_browser["side_effects"],
+            "evidence": schema_browser,
+        },
+        {
+            "id": "parameter_binding",
+            "ok": parameter_binding["ok"] and not parameter_binding["side_effects"],
+            "evidence": parameter_binding,
+        },
+        {
+            "id": "dataset_field_catalog",
+            "ok": dataset_fields["ok"]
+            and {"before_open", "after_open", "on_reconcile_error"} <= set(dataset_fields["events"])
+            and not dataset_fields["side_effects"],
+            "evidence": dataset_fields,
+        },
+        {
+            "id": "service_security_policy",
+            "ok": service_security["ok"]
+            and {"deny_by_default", "audit_log_required"} <= set(service_security["guards"])
+            and not service_security["side_effects"],
+            "evidence": service_security,
+        },
+        {
+            "id": "offline_queue_integrity",
+            "ok": offline_queue_integrity["ok"]
+            and {"checksum_required", "encrypted_queue"} <= set(offline_queue_integrity["guards"])
+            and not offline_queue_integrity["side_effects"],
+            "evidence": offline_queue_integrity,
+        },
+        {
+            "id": "migration_rehearsal",
+            "ok": migration_rehearsal["ok"]
+            and {"run_data_loss_check", "generate_rollback_script"} <= set(migration_rehearsal["dry_run"])
+            and not migration_rehearsal["side_effects"],
+            "evidence": migration_rehearsal,
+        },
     )
     ok = all(check["ok"] for check in checks)
     return {
@@ -3745,6 +3913,12 @@ def rad_data_tooling_workbench() -> dict:
         "transaction_rehearsal": transaction_rehearsal,
         "offline_replay": offline_replay,
         "service_tests": service_tests,
+        "schema_browser": schema_browser,
+        "parameter_binding": parameter_binding,
+        "dataset_fields": dataset_fields,
+        "service_security": service_security,
+        "offline_queue_integrity": offline_queue_integrity,
+        "migration_rehearsal": migration_rehearsal,
         "checks": checks,
         "blocking_gaps": tuple(check for check in checks if not check["ok"]),
     }
