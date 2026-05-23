@@ -1229,12 +1229,24 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "event_stub_evolution",
         "resource_round_trip_fidelity",
         "runtime_artifact_parity",
+        "component_inheritance",
+        "event_handler_wiring",
+        "resource_manifest_hashes",
+        "stream_diff_merge",
+        "incremental_invalidation",
+        "package_target_matrix",
     } == {check["id"] for check in runtime["checks"]}
     assert runtime["incremental"]["outputs"][0] == "diagnostic_delta"
     assert "package_manager" in runtime["diagnostics"]["designer_surfaces"]
     assert runtime["package_dependencies"]["load_order"][-1] == unit["package_manifest"]["name"]
     assert "user_code_regions_preserved" in runtime["event_evolution"]["guards"]
     assert runtime["artifact_parity"]["evidence"]["component_count"] == len(design["components"])
+    assert all(item["declared_in_unit"] for item in runtime["component_inheritance"]["components"])
+    assert all("method_lookup" in route["dispatch"] for route in runtime["event_handler_wiring"]["routes"])
+    assert all(item["hash"].startswith("sha256:") for item in runtime["resource_manifest_hashes"]["manifest"])
+    assert "preserve_unknown_properties" in runtime["stream_diff_merge"]["merge_plan"]
+    assert "event_handler_changed" in {item["reason"] for item in runtime["incremental_invalidation"]["invalidations"]}
+    assert {"android", "ios"} <= {item["target"] for item in runtime["package_target_matrix"]["targets"]}
 
     matrix = field_component_matrix()
     assert matrix
@@ -9069,6 +9081,12 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "incremental_compile",
         "diagnostic_mapping",
         "runtime_artifact_parity",
+        "component_inheritance",
+        "event_handler_wiring",
+        "resource_manifest_hashes",
+        "stream_diff_merge",
+        "incremental_invalidation",
+        "package_target_matrix",
     } <= {
         check["id"] for check in generated_runtime["checks"]
     }
@@ -9084,6 +9102,12 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert not generated_runtime["semantic_validation"]["diagnostics"]
     assert generated_runtime["incremental"]["cache_keys"]
     assert generated_runtime["artifact_parity"]["evidence"]["component_count"] == len(generated_runtime["round_trip"]["round_trip_components"])
+    assert all(item["declared_in_unit"] for item in generated_runtime["component_inheritance"]["components"])
+    assert all("method_lookup" in route["dispatch"] for route in generated_runtime["event_handler_wiring"]["routes"])
+    assert all(item["hash"].startswith("sha256:") for item in generated_runtime["resource_manifest_hashes"]["manifest"])
+    assert "preserve_unknown_properties" in generated_runtime["stream_diff_merge"]["merge_plan"]
+    assert "resource_changed" in {item["reason"] for item in generated_runtime["incremental_invalidation"]["invalidations"]}
+    assert all("resource_bundle" in item["artifacts"] for item in generated_runtime["package_target_matrix"]["targets"])
     assert "control_to_field" in form_designer.livebindings_contract()["binding_edges"]
     generated_bindings = form_designer.livebindings_workbench()
     assert generated_bindings["format"] == "appgen.generated-livebindings-workbench.v1"

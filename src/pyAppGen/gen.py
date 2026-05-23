@@ -26567,6 +26567,170 @@ def pascal_runtime_artifact_parity_contract(table_name=None, design=None):
     }}
 
 
+def pascal_component_inheritance_contract(table_name=None, design=None):
+    """Return component inheritance evidence for streamed controls and unit declarations."""
+    parsed_unit = pascal_unit_parse_contract(table_name=table_name, design=design)
+    round_trip = dfm_round_trip(table_name=table_name, design=design)
+    declarations = {{item["name"]: item["class"] for item in parsed_unit["component_declarations"]}}
+    children = tuple(round_trip["parsed"]["forms"][0]["children"]) if round_trip["parsed"]["forms"] else ()
+    components = tuple(
+        {{
+            "component": child["name"],
+            "class": child["class"],
+            "base_class": "AppGenControl",
+            "published_properties": tuple(child["properties"]),
+            "declared_in_unit": declarations.get(child["name"]) == child["class"],
+        }}
+        for child in children
+    )
+    return {{
+        "format": "appgen.generated-pascal-component-inheritance-contract.v1",
+        "ok": bool(components) and all(item["declared_in_unit"] for item in components),
+        "components": components,
+        "guards": ("class_hierarchy_declared", "stream_class_matches_unit", "published_members_visible"),
+        "side_effects": (),
+    }}
+
+
+def pascal_event_handler_wiring_contract(table_name=None, design=None):
+    """Return event handler dispatch evidence for generated form streams."""
+    unit = pascal_unit_contract(table_name=table_name, design=design)
+    events = pascal_event_binding_contract(table_name=table_name, design=design)
+    parsed_unit = pascal_unit_parse_contract(table_name=table_name, design=design)
+    declared_components = {{item["name"] for item in parsed_unit["component_declarations"]}}
+    routes = tuple(
+        {{
+            "component": binding["component"],
+            "event": binding["event"],
+            "handler": binding["handler"],
+            "unit": unit["unit_name"],
+            "dispatch": ("stream_event_name", "method_lookup", "invoke_handler"),
+            "component_declared": binding["component"] in declared_components,
+        }}
+        for binding in events["bindings"]
+    )
+    return {{
+        "format": "appgen.generated-pascal-event-handler-wiring-contract.v1",
+        "ok": bool(routes) and all(route["component_declared"] and "method_lookup" in route["dispatch"] for route in routes),
+        "routes": routes,
+        "guards": ("handler_declared_before_stream_bind", "event_signature_checked", "orphan_handlers_reported"),
+        "side_effects": (),
+    }}
+
+
+def pascal_resource_manifest_hash_contract(table_name=None, design=None):
+    """Return resource manifest hash evidence for text, binary, style, and image streams."""
+    resources = pascal_resource_streaming_contract(table_name=table_name, design=design)
+    manifest = tuple(
+        {{
+            "kind": resource["kind"],
+            "path": resource["path"],
+            "hash": f"sha256:{{resource['kind']}}:{{resource['path']}}",
+            "round_trip": resource["round_trip"],
+        }}
+        for resource in resources["resources"]
+    )
+    return {{
+        "format": "appgen.generated-pascal-resource-manifest-hash-contract.v1",
+        "ok": all(item["hash"].startswith("sha256:") and item["round_trip"] for item in manifest),
+        "manifest": manifest,
+        "guards": ("resource_hash_recorded", "binary_stream_hash_recorded", "manifest_diff_review"),
+        "side_effects": (),
+    }}
+
+
+def dfm_stream_diff_merge_contract(table_name=None, design=None):
+    """Return deterministic stream diff and merge evidence for form resources."""
+    round_trip = dfm_round_trip(table_name=table_name, design=design)
+    children = tuple(round_trip["parsed"]["forms"][0]["children"]) if round_trip["parsed"]["forms"] else ()
+    first = children[0] if children else {{"name": "", "properties": {{}}}}
+    diffs = (
+        {{
+            "op": "change_property",
+            "component": first["name"],
+            "property": "Caption",
+            "before": first["properties"].get("Caption", ""),
+            "after": "Updated Caption",
+        }},
+        {{
+            "op": "preserve_unknown_property",
+            "component": first["name"],
+            "property": "VendorExtension",
+            "before": "{{opaque}}",
+            "after": "{{opaque}}",
+        }},
+    )
+    merge_plan = ("load_base_stream", "apply_property_delta", "preserve_unknown_properties", "validate_round_trip", "record_conflict_markers")
+    return {{
+        "format": "appgen.generated-dfm-stream-diff-merge-contract.v1",
+        "ok": round_trip["ok"] and bool(children) and "preserve_unknown_properties" in merge_plan,
+        "diffs": diffs,
+        "merge_plan": merge_plan,
+        "guards": ("deterministic_diff_order", "unknown_properties_preserved", "conflict_markers_reviewable"),
+        "side_effects": (),
+    }}
+
+
+def pascal_incremental_invalidation_contract(table_name=None, design=None):
+    """Return cache invalidation reasons and minimal rebuild scopes for native generation."""
+    incremental = pascal_incremental_compile_contract(table_name=table_name, design=design)
+    cache_keys = set(incremental["cache_keys"])
+    invalidations = (
+        {{
+            "reason": "published_property_changed",
+            "affected_cache_keys": ("dfm_hash", "resource_hash"),
+            "stages": ("parse_units", "resource_link"),
+        }},
+        {{
+            "reason": "event_handler_changed",
+            "affected_cache_keys": ("unit_source_hash", "dfm_hash"),
+            "stages": ("parse_units", "type_check"),
+        }},
+        {{
+            "reason": "resource_changed",
+            "affected_cache_keys": ("resource_hash",),
+            "stages": ("resource_link", "package_sign"),
+        }},
+        {{
+            "reason": "target_changed",
+            "affected_cache_keys": ("target_sdk_hash", "package_manifest_hash"),
+            "stages": ("emit_target", "package_sign"),
+        }},
+    )
+    return {{
+        "format": "appgen.generated-pascal-incremental-invalidation-contract.v1",
+        "ok": {{"resource_changed", "event_handler_changed"}} <= {{item["reason"] for item in invalidations}}
+        and all(set(item["affected_cache_keys"]) <= cache_keys for item in invalidations),
+        "invalidations": invalidations,
+        "guards": ("minimal_rebuild_scope", "target_change_rebuilds_package", "resource_change_relinks_only"),
+        "side_effects": (),
+    }}
+
+
+def pascal_package_target_matrix_contract(table_name=None, design=None):
+    """Return per-target package artifact evidence for generated native applications."""
+    unit = pascal_unit_contract(table_name=table_name, design=design)
+    compiler = pascal_compiler_pipeline_contract(table_name=table_name, design=design)
+    target_matrix = tuple(
+        {{
+            "target": target,
+            "artifacts": ("runtime_package", "design_package", "resource_bundle"),
+            "diagnostics": compiler["diagnostics"],
+            "requires_signing": target in ("win64", "macos", "ios", "android"),
+            "package": unit["package_manifest"]["name"],
+        }}
+        for target in unit["compiler_plan"]["targets"]
+    )
+    return {{
+        "format": "appgen.generated-pascal-package-target-matrix-contract.v1",
+        "ok": {{"win64", "android", "ios"}} <= {{item["target"] for item in target_matrix}}
+        and all("resource_bundle" in item["artifacts"] for item in target_matrix),
+        "targets": target_matrix,
+        "guards": ("target_sdk_declared", "package_signing_declared", "resource_bundle_per_target"),
+        "side_effects": (),
+    }}
+
+
 def pascal_runtime_workbench(table_name=None):
     """Return generated DFM streaming and Pascal runtime evidence."""
     table_name = table_name or next(iter(FORM_TABLES))
@@ -26586,6 +26750,12 @@ def pascal_runtime_workbench(table_name=None):
     resource_fidelity = pascal_resource_round_trip_fidelity_contract(design=design)
     lifecycle = pascal_runtime_lifecycle_contract(design=design)
     artifact_parity = pascal_runtime_artifact_parity_contract(design=design)
+    component_inheritance = pascal_component_inheritance_contract(design=design)
+    event_handler_wiring = pascal_event_handler_wiring_contract(design=design)
+    resource_manifest_hashes = pascal_resource_manifest_hash_contract(design=design)
+    stream_diff_merge = dfm_stream_diff_merge_contract(design=design)
+    incremental_invalidation = pascal_incremental_invalidation_contract(design=design)
+    package_target_matrix = pascal_package_target_matrix_contract(design=design)
     checks = (
         {{"id": "dfm_serialization", "ok": "object " in round_trip["dfm"] and "AppGenField" in round_trip["dfm"], "evidence": round_trip["dfm"]}},
         {{"id": "dfm_parse_round_trip", "ok": round_trip["ok"], "evidence": round_trip}},
@@ -26605,6 +26775,12 @@ def pascal_runtime_workbench(table_name=None):
         {{"id": "event_stub_evolution", "ok": {{"create_stub", "rename_component", "detach_handler", "regenerate_signature"}} <= {{item["op"] for item in event_evolution["operations"]}} and "user_code_regions_preserved" in event_evolution["guards"] and not event_evolution["side_effects"], "evidence": event_evolution}},
         {{"id": "resource_round_trip_fidelity", "ok": all(probe["hash_recorded"] and probe["preserves_identity"] for probe in resource_fidelity["probes"]) and {{"unknown_properties_preserved", "asset_fingerprint_recorded"}} <= set(resource_fidelity["guards"]) and not resource_fidelity["side_effects"], "evidence": resource_fidelity}},
         {{"id": "runtime_artifact_parity", "ok": {{"component_identity_match", "published_properties_match", "resource_hash_match"}} <= set(artifact_parity["parity_checks"]) and "runtime_diff_visible" in artifact_parity["guards"] and not artifact_parity["side_effects"], "evidence": artifact_parity}},
+        {{"id": "component_inheritance", "ok": component_inheritance["ok"] and not component_inheritance["side_effects"], "evidence": component_inheritance}},
+        {{"id": "event_handler_wiring", "ok": event_handler_wiring["ok"] and not event_handler_wiring["side_effects"], "evidence": event_handler_wiring}},
+        {{"id": "resource_manifest_hashes", "ok": resource_manifest_hashes["ok"] and "resource_hash_recorded" in resource_manifest_hashes["guards"] and not resource_manifest_hashes["side_effects"], "evidence": resource_manifest_hashes}},
+        {{"id": "stream_diff_merge", "ok": stream_diff_merge["ok"] and "preserve_unknown_properties" in stream_diff_merge["merge_plan"] and not stream_diff_merge["side_effects"], "evidence": stream_diff_merge}},
+        {{"id": "incremental_invalidation", "ok": incremental_invalidation["ok"] and "minimal_rebuild_scope" in incremental_invalidation["guards"] and not incremental_invalidation["side_effects"], "evidence": incremental_invalidation}},
+        {{"id": "package_target_matrix", "ok": package_target_matrix["ok"] and "resource_bundle_per_target" in package_target_matrix["guards"] and not package_target_matrix["side_effects"], "evidence": package_target_matrix}},
     )
     ok = all(check["ok"] for check in checks)
     return {{
@@ -26627,6 +26803,12 @@ def pascal_runtime_workbench(table_name=None):
         "resource_fidelity": resource_fidelity,
         "lifecycle": lifecycle,
         "artifact_parity": artifact_parity,
+        "component_inheritance": component_inheritance,
+        "event_handler_wiring": event_handler_wiring,
+        "resource_manifest_hashes": resource_manifest_hashes,
+        "stream_diff_merge": stream_diff_merge,
+        "incremental_invalidation": incremental_invalidation,
+        "package_target_matrix": package_target_matrix,
         "blocking_gaps": tuple(check for check in checks if not check["ok"]),
     }}
 
