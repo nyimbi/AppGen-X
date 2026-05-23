@@ -6448,6 +6448,129 @@ def data_tooling_runtime_replay_contract() -> dict:
     }
 
 
+def data_tooling_design_runtime_session_replay_contract() -> dict:
+    """Replay data tooling design, service, offline, and runtime operations as one session."""
+    connection = data_connection_test_contract()
+    schema_browser = data_schema_browser_contract()
+    schema_diff = data_schema_adapter_diff_contract()
+    migration = data_migration_rehearsal_contract()
+    dataset_designer = data_dataset_designer_workflow_contract()
+    lookup_editor = data_lookup_editor_pipeline_contract()
+    dataset_lifecycle = data_dataset_state_machine_contract()
+    service_traces = data_service_invocation_trace_contract()
+    service_tests = data_service_contract_test_plan()
+    offline_integrity = data_offline_queue_integrity_contract()
+    runtime_replay = data_tooling_runtime_replay_contract()
+    failover = data_connection_failover_contract()
+    backup_restore = local_backup_restore_verification_contract()
+    replication = data_replication_monitor_contract()
+    telemetry = data_service_telemetry_contract()
+    modules = data_module_runtime_smoke_contract()
+    state = {
+        "connections_verified": 0,
+        "schema_objects_seen": 0,
+        "dataset_ops": 0,
+        "lookup_editors": 0,
+        "service_traces": 0,
+        "offline_entries": 0,
+        "runtime_steps": 0,
+        "monitoring_signals": 0,
+        "side_effects": (),
+    }
+    replay = (
+        {
+            "phase": "connection_profile",
+            "pipeline": connection["steps"],
+            "ok": connection["ok"] and connection["steps"][-1] == "rollback_test_transaction",
+        },
+        {
+            "phase": "schema_introspection",
+            "pipeline": schema_browser["operations"],
+            "ok": {"browse_tables", "trace_relations"} <= set(schema_browser["operations"])
+            and {"table", "relation", "stored_procedure", "change_view"} <= {item["kind"] for item in schema_browser["objects"]}
+            and not schema_browser["side_effects"],
+        },
+        {
+            "phase": "schema_change_rehearsal",
+            "pipeline": migration["dry_run"],
+            "ok": {"migration_preview_required", "rollback_script_required"} <= set(schema_diff["guards"])
+            and "rollback_script" in schema_diff["preview"]
+            and migration["ok"]
+            and {"run_data_loss_check", "generate_rollback_script"} <= set(migration["dry_run"]),
+        },
+        {
+            "phase": "dataset_designer",
+            "pipeline": tuple(operation["op"] for operation in dataset_designer["operations"]),
+            "ok": dataset_designer["ok"] and {"add_lookup_field", "wire_dataset_event", "preview_dataset_rows"} <= {operation["op"] for operation in dataset_designer["operations"]},
+        },
+        {
+            "phase": "lookup_generation",
+            "pipeline": tuple(editor["pipeline"] for editor in lookup_editor["editors"]),
+            "ok": lookup_editor["ok"] and all("bind_value_member" in editor["pipeline"] for editor in lookup_editor["editors"]),
+        },
+        {
+            "phase": "dataset_lifecycle",
+            "pipeline": tuple(transition["event"] for transition in dataset_lifecycle["transitions"]),
+            "ok": dataset_lifecycle["ok"] and {"field_validation_before_post", "rollback_restores_snapshot"} <= set(dataset_lifecycle["guards"]),
+        },
+        {
+            "phase": "service_contract",
+            "pipeline": tuple(trace["trace"] for trace in service_traces["traces"]),
+            "ok": service_traces["ok"] and all(test["assertions"] for test in service_tests["tests"]),
+        },
+        {
+            "phase": "offline_integrity",
+            "pipeline": tuple(entry["idempotency_key"] for entry in offline_integrity["entries"]),
+            "ok": offline_integrity["ok"] and all(entry["encrypted"] and entry["checksum"].startswith("sha256:") for entry in offline_integrity["entries"]),
+        },
+        {
+            "phase": "runtime_replay",
+            "pipeline": tuple(item["op"] for item in runtime_replay["trace"]),
+            "ok": runtime_replay["ok"] and runtime_replay["final_state"]["queue_status"] == "manual_review",
+        },
+        {
+            "phase": "operational_monitoring",
+            "pipeline": ("failover_routes", "backup_restore_drills", "replication_monitors", "service_telemetry", "module_smoke"),
+            "ok": failover["ok"]
+            and backup_restore["ok"]
+            and replication["ok"]
+            and telemetry["ok"]
+            and modules["ok"],
+        },
+    )
+    state["connections_verified"] = 1 if connection["ok"] else 0
+    state["schema_objects_seen"] = len(schema_browser["objects"])
+    state["dataset_ops"] = len(dataset_designer["operations"])
+    state["lookup_editors"] = len(lookup_editor["editors"])
+    state["service_traces"] = len(service_traces["traces"])
+    state["offline_entries"] = len(offline_integrity["entries"])
+    state["runtime_steps"] = len(runtime_replay["trace"])
+    state["monitoring_signals"] = sum(len(item["signals"]) for item in telemetry["telemetry"])
+    return {
+        "format": "appgen.data-tooling-design-runtime-session-replay-contract.v1",
+        "ok": all(item["ok"] for item in replay)
+        and state["connections_verified"] > 0
+        and state["schema_objects_seen"] > 0
+        and state["dataset_ops"] > 0
+        and state["lookup_editors"] > 0
+        and state["service_traces"] > 0
+        and state["offline_entries"] > 0
+        and state["runtime_steps"] > 0
+        and state["monitoring_signals"] > 0
+        and state["side_effects"] == (),
+        "replay": replay,
+        "final_state": state,
+        "guards": (
+            "connection_probe_before_schema_introspection",
+            "schema_rehearsal_before_dataset_publish",
+            "lookup_editors_generated_for_relationships",
+            "offline_integrity_before_runtime_replay",
+            "runtime_operations_are_monitored",
+        ),
+        "side_effects": (),
+    }
+
+
 def rad_data_tooling_workbench() -> dict:
     """Prove native data-service tooling depth across connections, queries, services, and local sync."""
     contract = rad_data_tooling_contract()
@@ -6488,6 +6611,7 @@ def rad_data_tooling_workbench() -> dict:
     lookup_editor_pipeline = data_lookup_editor_pipeline_contract()
     module_runtime_smoke = data_module_runtime_smoke_contract()
     runtime_replay = data_tooling_runtime_replay_contract()
+    design_runtime_replay = data_tooling_design_runtime_session_replay_contract()
     checks = (
         {
             "id": "connection_catalog",
@@ -6761,6 +6885,13 @@ def rad_data_tooling_workbench() -> dict:
             and not runtime_replay["side_effects"],
             "evidence": runtime_replay,
         },
+        {
+            "id": "data_tooling_design_runtime_session_replay",
+            "ok": design_runtime_replay["ok"]
+            and {"schema_rehearsal_before_dataset_publish", "runtime_operations_are_monitored"} <= set(design_runtime_replay["guards"])
+            and not design_runtime_replay["side_effects"],
+            "evidence": design_runtime_replay,
+        },
     )
     ok = all(check["ok"] for check in checks)
     return {
@@ -6805,6 +6936,7 @@ def rad_data_tooling_workbench() -> dict:
         "lookup_editor_pipeline": lookup_editor_pipeline,
         "module_runtime_smoke": module_runtime_smoke,
         "runtime_replay": runtime_replay,
+        "design_runtime_replay": design_runtime_replay,
         "checks": checks,
         "blocking_gaps": tuple(check for check in checks if not check["ok"]),
     }

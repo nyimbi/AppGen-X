@@ -1080,6 +1080,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "lookup_editor_pipeline",
         "data_module_runtime_smoke",
         "data_tooling_runtime_replay",
+        "data_tooling_design_runtime_session_replay",
     } == {check["id"] for check in data_workbench["checks"]}
     assert data_workbench["connection_test"]["steps"][-1] == "rollback_test_transaction"
     assert "explain_plan" in data_workbench["query_preview"]["plan"]
@@ -1141,6 +1142,18 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "rollback_probe",
     } <= {item["op"] for item in data_workbench["runtime_replay"]["trace"]}
     assert data_workbench["runtime_replay"]["final_state"]["persisted_writes"] == 0
+    assert data_workbench["design_runtime_replay"]["ok"] is True
+    assert {
+        "connection_profile",
+        "schema_introspection",
+        "schema_change_rehearsal",
+        "dataset_designer",
+        "lookup_generation",
+        "runtime_replay",
+        "operational_monitoring",
+    } <= {item["phase"] for item in data_workbench["design_runtime_replay"]["replay"]}
+    assert data_workbench["design_runtime_replay"]["final_state"]["lookup_editors"] > 0
+    assert data_workbench["design_runtime_replay"]["final_state"]["runtime_steps"] > 0
     mobile_workbench = mobile_native_api_workbench()
     assert mobile_workbench["format"] == "appgen.mobile-native-api-workbench.v1"
     assert mobile_workbench["ok"] is True
@@ -9589,6 +9602,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "lookup_editor_pipeline",
         "data_module_runtime_smoke",
         "data_tooling_runtime_replay",
+        "data_tooling_design_runtime_session_replay",
     } == {check["id"] for check in generated_data_tooling["checks"]}
     assert generated_data_tooling["connection_test"]["steps"][-1] == "rollback_test_transaction"
     assert "explain_plan" in generated_data_tooling["query_preview"]["plan"]
@@ -9650,6 +9664,18 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "rollback_probe",
     } <= {item["op"] for item in generated_data_tooling["runtime_replay"]["trace"]}
     assert generated_data_tooling["runtime_replay"]["final_state"]["queue_status"] == "manual_review"
+    assert generated_data_tooling["design_runtime_replay"]["ok"] is True
+    assert {
+        "connection_profile",
+        "schema_introspection",
+        "schema_change_rehearsal",
+        "dataset_designer",
+        "lookup_generation",
+        "runtime_replay",
+        "operational_monitoring",
+    } <= {item["phase"] for item in generated_data_tooling["design_runtime_replay"]["replay"]}
+    assert generated_data_tooling["design_runtime_replay"]["final_state"]["offline_entries"] > 0
+    assert generated_data_tooling["design_runtime_replay"]["final_state"]["monitoring_signals"] > 0
     generated_mobile = form_designer.mobile_native_api_workbench()
     assert generated_mobile["format"] == "appgen.generated-mobile-native-api-workbench.v1"
     assert generated_mobile["ok"] is True
