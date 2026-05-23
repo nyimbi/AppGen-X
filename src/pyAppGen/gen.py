@@ -34299,6 +34299,143 @@ def cross_target_visual_lifecycle_replay_contract():
     }}
 
 
+def cross_target_author_style_operation(component="Button"):
+    """Return a callable generated IDE operation for authoring and previewing style overrides."""
+    resolution = cross_target_style_resolution_workflow(component)
+    tokens = cross_target_style_token_validation_contract()
+    inheritance = cross_target_style_inheritance_trace_contract(component)
+    return {{
+        "format": "appgen.generated-cross-target-author-style-operation.v1",
+        "ok": resolution["ordered_layers"][0] == "base_theme"
+        and "apply_local_override" in resolution["resolution_steps"]
+        and tokens["ok"]
+        and inheritance["ok"],
+        "component": component,
+        "pipeline": ("load_tokens", "inspect_effective_value", "apply_local_override", "publish_effective_value", "sync_preview"),
+        "effective_values": resolution["effective_values"],
+        "tokens": tokens["tokens"],
+        "inheritance": inheritance["traces"],
+        "guards": ("token_names_stable", "effective_value_traceable", "override_diff_visible"),
+        "side_effects": (),
+    }}
+
+
+def cross_target_author_timeline_operation(timeline_id="timeline.fade_in"):
+    """Return a callable generated IDE operation for timeline/keyframe authoring."""
+    playback = cross_target_timeline_playback_workflow(timeline_id)
+    scrub = cross_target_timeline_scrub_contract()
+    runtime_export = cross_target_timeline_runtime_export_contract()
+    return {{
+        "format": "appgen.generated-cross-target-author-timeline-operation.v1",
+        "ok": {{"sample_keyframes", "export_runtime_timeline"}} <= set(playback["playback_steps"])
+        and scrub["ok"]
+        and runtime_export["ok"],
+        "timeline": timeline_id,
+        "pipeline": ("add_keyframe", "scrub_preview", "sample_keyframes", "export_runtime_timeline", "publish_runtime_artifacts"),
+        "samples": scrub["samples"],
+        "exports": runtime_export["exports"],
+        "guards": ("bounded_duration", "reduced_motion_fallback", "runtime_timeline_exported"),
+        "side_effects": (),
+    }}
+
+
+def cross_target_validate_effect_stack_operation():
+    """Return a callable generated IDE operation for effect stack validation and fallback assignment."""
+    effect_render = cross_target_effect_render_workflow()
+    effect_budget = cross_target_effect_budget_contract()
+    fallback_matrix = cross_target_effect_fallback_matrix_contract()
+    shader_editor = cross_target_shader_material_editor_contract()
+    return {{
+        "format": "appgen.generated-cross-target-validate-effect-stack-operation.v1",
+        "ok": {{"apply_effect_stack", "select_fallback"}} <= set(effect_render["render_steps"])
+        and effect_budget["ok"]
+        and fallback_matrix["ok"]
+        and "compile_fallback" in shader_editor["operations"],
+        "pipeline": ("validate_budget", "assign_fallback", "apply_effect_stack", "select_fallback", "compile_fallback"),
+        "budget": effect_budget,
+        "fallback_matrix": fallback_matrix,
+        "shader_editor": shader_editor,
+        "guards": ("mobile_frame_budget", "fallback_declared_per_target", "shader_review_required"),
+        "side_effects": (),
+    }}
+
+
+def cross_target_author_scene_operation():
+    """Return a callable generated IDE operation for 3D scene graph and material authoring."""
+    scene_validation = cross_target_scene_validation_workflow()
+    scene_integrity = cross_target_scene_graph_integrity_contract()
+    material_binding = cross_target_material_binding_contract()
+    shader_editor = cross_target_shader_material_editor_contract()
+    return {{
+        "format": "appgen.generated-cross-target-author-scene-operation.v1",
+        "ok": scene_validation["ok"]
+        and scene_integrity["ok"]
+        and material_binding["ok"]
+        and {{"assign_material", "compile_fallback"}} <= set(shader_editor["operations"]),
+        "pipeline": ("add_mesh", "position_camera", "edit_light", "assign_material", "validate_scene", "compile_fallback"),
+        "scene_validation": scene_validation,
+        "scene_integrity": scene_integrity,
+        "material_binding": material_binding,
+        "shader_editor": shader_editor,
+        "guards": ("single_active_camera", "material_bound_to_mesh", "material_editor_review"),
+        "side_effects": (),
+    }}
+
+
+def cross_target_import_visual_asset_operation(asset="product.glb"):
+    """Return a callable generated IDE operation for visual asset import and preview diffing."""
+    import_workflow = cross_target_asset_import_workflow(asset)
+    preview_diff = cross_target_preview_runtime_diff_workflow()
+    return {{
+        "format": "appgen.generated-cross-target-import-visual-asset-operation.v1",
+        "ok": import_workflow["ok"]
+        and preview_diff["diff_result"]["ok"]
+        and {{"write_asset_manifest", "generate_fallback_thumbnail"}} <= set(import_workflow["pipeline"]),
+        "asset": asset,
+        "pipeline": import_workflow["pipeline"] + preview_diff["diff_steps"],
+        "import_workflow": import_workflow,
+        "preview_diff": preview_diff,
+        "guards": ("asset_fingerprint", "fallback_thumbnail", "runtime_diff_visible"),
+        "side_effects": (),
+    }}
+
+
+def cross_target_hit_test_transform_operation():
+    """Return a callable generated IDE operation for scene hit testing and transform synchronization."""
+    hit_testing = cross_target_scene_hit_test_contract()
+    transforms = cross_target_scene_transform_gizmo_contract()
+    return {{
+        "format": "appgen.generated-cross-target-hit-test-transform-operation.v1",
+        "ok": hit_testing["ok"]
+        and transforms["ok"]
+        and all("open_inspector" in item["route"] for item in hit_testing["hit_tests"])
+        and all("sync_inspector" in item["pipeline"] for item in transforms["transforms"]),
+        "pipeline": ("raycast", "select_node", "open_inspector", "preview_transform", "commit_transform", "sync_inspector"),
+        "hit_tests": hit_testing["hit_tests"],
+        "transforms": transforms["transforms"],
+        "guards": ("inspector_route_declared", "selection_round_trips", "inspector_sync_after_transform"),
+        "side_effects": (),
+    }}
+
+
+def cross_target_visual_actionable_operations():
+    """Return callable generated visual-depth operations used by the IDE."""
+    operations = {{
+        "author_style": cross_target_author_style_operation(),
+        "author_timeline": cross_target_author_timeline_operation(),
+        "validate_effect_stack": cross_target_validate_effect_stack_operation(),
+        "author_scene": cross_target_author_scene_operation(),
+        "import_visual_asset": cross_target_import_visual_asset_operation(),
+        "hit_test_transform": cross_target_hit_test_transform_operation(),
+    }}
+    return {{
+        "format": "appgen.generated-cross-target-visual-actionable-operations.v1",
+        "ok": all(operation["ok"] for operation in operations.values()),
+        "operations": operations,
+        "side_effects": (),
+    }}
+
+
 def cross_target_visual_depth_workbench():
     """Prove animation, styling, effects, and 3D designer depth."""
     contract = cross_target_visual_depth_contract()
@@ -34323,6 +34460,7 @@ def cross_target_visual_depth_workbench():
     runtime_replay = cross_target_visual_runtime_replay_contract()
     designer_transaction_replay = cross_target_visual_designer_transaction_replay_contract()
     lifecycle_replay = cross_target_visual_lifecycle_replay_contract()
+    actionable_operations = cross_target_visual_actionable_operations()
     checks = (
         {{"id": "style_resources", "ok": {{"stylebook", "theme_tokens", "state_triggers", "multi_resolution_bitmaps"}} <= set(contract["style_resources"]["resources"]) and {{"normal", "pressed", "focused", "disabled"}} <= set(contract["style_resources"]["states"]), "evidence": contract["style_resources"]}},
         {{"id": "animation_state_graph", "ok": {{"state", "timeline", "path_animation"}} <= {{node["kind"] for node in contract["state_graph"]["nodes"]}} and {{"ease_in", "ease_out", "spring"}} <= set(contract["state_graph"]["easing"]), "evidence": contract["state_graph"]}},
@@ -34356,9 +34494,10 @@ def cross_target_visual_depth_workbench():
         {{"id": "visual_runtime_replay", "ok": runtime_replay["ok"] and {{"timeline_samples_match_preview", "transforms_sync_inspector"}} <= set(runtime_replay["guards"]) and not runtime_replay["side_effects"], "evidence": runtime_replay}},
         {{"id": "visual_designer_transaction_replay", "ok": designer_transaction_replay["ok"] and "runtime_replay_matches_designer_state" in designer_transaction_replay["guards"] and not designer_transaction_replay["side_effects"], "evidence": designer_transaction_replay}},
         {{"id": "visual_lifecycle_replay", "ok": lifecycle_replay["ok"] and {{"style_before_timeline", "hit_tests_before_designer_replay"}} <= set(lifecycle_replay["guards"]) and not lifecycle_replay["side_effects"], "evidence": lifecycle_replay}},
+        {{"id": "actionable_visual_operations", "ok": actionable_operations["ok"] and {{"author_style", "author_timeline", "validate_effect_stack", "author_scene", "import_visual_asset", "hit_test_transform"}} <= set(actionable_operations["operations"]) and not actionable_operations["side_effects"], "evidence": actionable_operations}},
     )
     ok = all(check["ok"] for check in checks)
-    return {{"format": "appgen.generated-cross-target-visual-depth-workbench.v1", "ok": ok, "decision": "approved" if ok else "blocked", "contract": contract, "style_resolution": style_resolution, "timeline_playback": timeline_playback, "effect_render": effect_render, "scene_validation": scene_validation, "asset_import_workflow": asset_import, "preview_diff": preview_diff, "style_tokens": style_tokens, "timeline_scrub": timeline_scrub, "effect_budget": effect_budget, "scene_integrity": scene_integrity, "material_binding": material_binding, "timeline_runtime_export": timeline_runtime_export, "shader_material_editor": shader_material_editor, "scene_hit_testing": scene_hit_testing, "style_inheritance_trace": style_inheritance_trace, "timeline_interpolation": timeline_interpolation, "effect_fallback_matrix": effect_fallback_matrix, "scene_transform_gizmos": scene_transform_gizmos, "runtime_replay": runtime_replay, "designer_transaction_replay": designer_transaction_replay, "lifecycle_replay": lifecycle_replay, "checks": checks, "blocking_gaps": tuple(check for check in checks if not check["ok"])}}
+    return {{"format": "appgen.generated-cross-target-visual-depth-workbench.v1", "ok": ok, "decision": "approved" if ok else "blocked", "contract": contract, "style_resolution": style_resolution, "timeline_playback": timeline_playback, "effect_render": effect_render, "scene_validation": scene_validation, "asset_import_workflow": asset_import, "preview_diff": preview_diff, "style_tokens": style_tokens, "timeline_scrub": timeline_scrub, "effect_budget": effect_budget, "scene_integrity": scene_integrity, "material_binding": material_binding, "timeline_runtime_export": timeline_runtime_export, "shader_material_editor": shader_material_editor, "scene_hit_testing": scene_hit_testing, "style_inheritance_trace": style_inheritance_trace, "timeline_interpolation": timeline_interpolation, "effect_fallback_matrix": effect_fallback_matrix, "scene_transform_gizmos": scene_transform_gizmos, "runtime_replay": runtime_replay, "designer_transaction_replay": designer_transaction_replay, "lifecycle_replay": lifecycle_replay, "actionable_operations": actionable_operations, "checks": checks, "blocking_gaps": tuple(check for check in checks if not check["ok"])}}
 
 
 def snap_to_grid(value, minimum=0):

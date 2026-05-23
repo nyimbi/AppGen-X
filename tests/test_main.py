@@ -100,6 +100,13 @@ from pyAppGen.form_designer import component_package_workbench
 from pyAppGen.form_designer import component_package_preview_load_operation
 from pyAppGen.form_designer import component_palette
 from pyAppGen.form_designer import component_usability_workbench
+from pyAppGen.form_designer import cross_target_author_scene_operation
+from pyAppGen.form_designer import cross_target_author_style_operation
+from pyAppGen.form_designer import cross_target_author_timeline_operation
+from pyAppGen.form_designer import cross_target_hit_test_transform_operation
+from pyAppGen.form_designer import cross_target_import_visual_asset_operation
+from pyAppGen.form_designer import cross_target_validate_effect_stack_operation
+from pyAppGen.form_designer import cross_target_visual_actionable_operations
 from pyAppGen.form_designer import cross_target_visual_depth_workbench
 from pyAppGen.form_designer import cross_target_visual_lifecycle_replay_contract
 from pyAppGen.form_designer import design_time_package_manager_workbench
@@ -1551,6 +1558,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "visual_runtime_replay",
         "visual_designer_transaction_replay",
         "visual_lifecycle_replay",
+        "actionable_visual_operations",
     } == {check["id"] for check in visual_depth["checks"]}
     assert {"inspect_effective_value", "revert_override"} <= set(visual_depth["contract"]["style_cascade"]["operations"])
     assert {"add_keyframe", "scrub_preview"} <= set(visual_depth["contract"]["timeline_authoring"]["operations"])
@@ -1594,6 +1602,15 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     } <= {item["phase"] for item in visual_depth["designer_transaction_replay"]["replay"]}
     assert visual_depth["designer_transaction_replay"]["final_state"]["timeline_samples"] > 0
     assert visual_depth["designer_transaction_replay"]["final_state"]["transform_syncs"] > 0
+    assert "publish_effective_value" in cross_target_author_style_operation()["pipeline"]
+    assert "export_runtime_timeline" in cross_target_author_timeline_operation()["pipeline"]
+    assert "compile_fallback" in cross_target_validate_effect_stack_operation()["pipeline"]
+    assert "assign_material" in cross_target_author_scene_operation()["pipeline"]
+    assert "write_asset_manifest" in cross_target_import_visual_asset_operation()["pipeline"]
+    assert "sync_inspector" in cross_target_hit_test_transform_operation()["pipeline"]
+    assert cross_target_visual_actionable_operations()["ok"] is True
+    assert visual_depth["actionable_operations"]["operations"]["author_scene"]["ok"] is True
+    assert visual_depth["actionable_operations"]["operations"]["hit_test_transform"]["transforms"]
     visual_lifecycle = cross_target_visual_lifecycle_replay_contract()
     assert visual_lifecycle["format"] == "appgen.cross-target-visual-lifecycle-replay.v1"
     assert visual_lifecycle["ok"] is True
@@ -10405,6 +10422,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "visual_runtime_replay",
         "visual_designer_transaction_replay",
         "visual_lifecycle_replay",
+        "actionable_visual_operations",
     } == {check["id"] for check in generated_visual_depth["checks"]}
     assert generated_visual_depth["contract"]["asset_import"]["budgets"]["max_mesh_triangles"] > 0
     assert generated_visual_depth["style_resolution"]["ordered_layers"][0] == "base_theme"
@@ -10443,6 +10461,14 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     } <= {item["phase"] for item in generated_visual_depth["designer_transaction_replay"]["replay"]}
     assert generated_visual_depth["designer_transaction_replay"]["final_state"]["effect_fallbacks"] >= 1
     assert generated_visual_depth["designer_transaction_replay"]["final_state"]["scene_hits"] > 0
+    assert "publish_effective_value" in form_designer.cross_target_author_style_operation()["pipeline"]
+    assert "export_runtime_timeline" in form_designer.cross_target_author_timeline_operation()["pipeline"]
+    assert "compile_fallback" in form_designer.cross_target_validate_effect_stack_operation()["pipeline"]
+    assert "assign_material" in form_designer.cross_target_author_scene_operation()["pipeline"]
+    assert "write_asset_manifest" in form_designer.cross_target_import_visual_asset_operation()["pipeline"]
+    assert "sync_inspector" in form_designer.cross_target_hit_test_transform_operation()["pipeline"]
+    assert generated_visual_depth["actionable_operations"]["ok"] is True
+    assert generated_visual_depth["actionable_operations"]["operations"]["validate_effect_stack"]["fallback_matrix"]["ok"] is True
     assert generated_visual_depth["lifecycle_replay"]["ok"] is True
     assert generated_visual_depth["lifecycle_replay"]["format"] == "appgen.generated-cross-target-visual-lifecycle-replay.v1"
     assert {
