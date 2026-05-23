@@ -5,7 +5,7 @@ const navItems = [
   { label: 'Database', icon: 'database' as const },
   { label: 'Agents', icon: 'agent' as const },
   { label: 'Reports', icon: 'report' as const },
-  { label: 'Targets', icon: 'desktop' as const },
+  { label: 'Targets', icon: 'mobile' as const },
 ]
 
 export function StudioChrome() {
@@ -15,7 +15,7 @@ export function StudioChrome() {
         <div className="brand-mark">AG</div>
         <div>
           <strong>AppGen Studio</strong>
-          <span>Visual application builder</span>
+          <span>Low-code application workbench</span>
         </div>
       </div>
 
@@ -33,6 +33,20 @@ export function StudioChrome() {
           <Icon name="search" />
           <input aria-label="Command search" placeholder="Command or natural language change" />
         </label>
+        <div className="command-modes" aria-label="Generation modes">
+          <span>
+            <Icon name="database" />
+            Schema
+          </span>
+          <span>
+            <Icon name="form" />
+            UI
+          </span>
+          <span>
+            <Icon name="agent" />
+            Agents
+          </span>
+        </div>
         <button className="primary-action" type="button">
           <Icon name="workflow" />
           Generate

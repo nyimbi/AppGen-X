@@ -4,6 +4,7 @@ const properties = [
   ['Name', 'LineItemsGrid'],
   ['Data source', 'Invoice.lines'],
   ['Lookup mode', 'Auto generated'],
+  ['Context menu', 'PopupActions'],
   ['Validation', 'Required rows'],
   ['Target', 'Web, mobile, desktop'],
 ]
@@ -42,6 +43,10 @@ export function InspectorPanel() {
         <button type="button">
           <Icon name="database" />
           Bind Field
+        </button>
+        <button type="button">
+          <Icon name="popup" />
+          Menu
         </button>
         <button type="button">
           <Icon name="workflow" />

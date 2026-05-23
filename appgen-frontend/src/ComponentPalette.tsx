@@ -1,6 +1,6 @@
 import { Icon } from './Icon'
 import type { ComponentCategory } from './componentCatalog'
-import { paletteCategories, paletteComponents } from './componentCatalog'
+import { categoryIcons, paletteCategories, paletteComponents } from './componentCatalog'
 
 type ComponentPaletteProps = {
   activeCategory: ComponentCategory | 'All'
@@ -25,6 +25,12 @@ export function ComponentPalette({
 
     return matchesCategory && matchesQuery
   })
+  const visibleGroups = paletteCategories
+    .map((category) => ({
+      category,
+      components: visibleComponents.filter((component) => component.category === category),
+    }))
+    .filter((group) => group.components.length > 0)
 
   return (
     <aside className="panel component-palette" aria-label="Component palette">
@@ -49,7 +55,8 @@ export function ComponentPalette({
 
       <div className="category-tabs" aria-label="Component categories">
         <button className={activeCategory === 'All' ? 'selected' : ''} onClick={() => onCategoryChange('All')} type="button">
-          All
+          <Icon name={categoryIcons.All} />
+          <span>All</span>
         </button>
         {paletteCategories.map((category) => (
           <button
@@ -58,24 +65,40 @@ export function ComponentPalette({
             onClick={() => onCategoryChange(category)}
             type="button"
           >
-            {category}
+            <Icon name={categoryIcons[category]} />
+            <span>{category}</span>
           </button>
         ))}
       </div>
 
       <div className="component-list">
-        {visibleComponents.map((component) => (
-          <button className="component-tile" draggable key={component.name} title={component.description} type="button">
-            <span className={`component-icon category-${component.category.toLowerCase()}`}>
-              <Icon name={component.icon} />
-            </span>
-            <span className="component-copy">
-              <span className="component-name">{component.name}</span>
-              <span className="component-description">{component.description}</span>
-            </span>
-            <span className="component-size">{component.size}</span>
-          </button>
+        {visibleGroups.map((group) => (
+          <section className="component-group" key={group.category}>
+            <div className="component-group-title">
+              <Icon name={categoryIcons[group.category]} />
+              <span>{group.category}</span>
+              <strong>{group.components.length}</strong>
+            </div>
+            {group.components.map((component) => (
+              <button className="component-tile" draggable key={component.name} title={component.description} type="button">
+                <span className={`component-icon category-${component.category.toLowerCase()}`}>
+                  <Icon name={component.icon} />
+                </span>
+                <span className="component-copy">
+                  <span className="component-name">{component.name}</span>
+                  <span className="component-description">{component.description}</span>
+                </span>
+                <span className="component-size">{component.size}</span>
+              </button>
+            ))}
+          </section>
         ))}
+        {visibleComponents.length === 0 ? (
+          <div className="empty-palette" role="status">
+            <Icon name="search" />
+            <span>No matching components</span>
+          </div>
+        ) : null}
       </div>
     </aside>
   )
