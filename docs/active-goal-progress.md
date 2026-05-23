@@ -83,6 +83,7 @@ Build a complete AppGen IDE and generation platform with:
 | 2026-05-23 | `1179c08` | Added generated native runtime operation modules and generated tests for open stream, property delta, stream round-trip, compile preview, resource refresh, and runtime reload operations. | Py compile; focused generated-app/form-designer/package-goal tests; staged hygiene scan passed. |
 | 2026-05-23 | `dec16b6` | Added generated compiler/runtime modules and generated tests for compiler pipeline, unit parse, semantic validation, incremental compile, diagnostic mapping, and toolchain adapter surfaces. | Py compile; focused generated-app/form-designer/package-goal tests; staged hygiene scan passed. |
 | 2026-05-23 | `52e2939` | Added generated deep native runtime modules and generated tests for package targets, language frontend, static analysis, recovery, stream schema, stream migration, debug symbols, and memory model surfaces. | Py compile; focused generated-app/form-designer/package-goal tests; staged hygiene scan passed. |
+| 2026-05-23 | `91f4fb2` | Added generated deep data tooling modules and generated tests for schema browsing, schema diff preview, lookup editor generation, dataset design, resource publishing, offline replay, replication monitoring, and module smoke surfaces. | Py compile; focused generated-app/form-designer/package-goal tests; staged hygiene scan passed. |
 
 ## Current Working Slice
 
@@ -158,6 +159,11 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   decision: ordinary generated apps, PBCs, workflows, agents, and integrations
   use the AppGen-X outbox/inbox adapter with the default service-runtime
   profile, while exceptions require machine-checkable evidence.
+- Generated applications now emit one importable deep data tooling module and
+  one generated test module for schema browsing, schema diff preview, lookup
+  editor generation, dataset design, resource publishing, offline replay,
+  replication monitoring, and module smoke surfaces, with the data runtime
+  validating module and test coverage.
 - Generated applications now emit one importable native form runtime module and
   one generated test module for stream, unit, resource, compile, runtime-load,
   and design-edit surfaces, with the native form runtime validating module and
