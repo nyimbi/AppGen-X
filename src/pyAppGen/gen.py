@@ -1553,6 +1553,27 @@ def write_schema_import_file(output_dir, schema: AppSchema):
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
     (output_dir / "schema_import.py").write_text(_schema_import_text(schema))
+    write_schema_import_module_files(output_dir)
+
+
+def write_schema_import_module_files(output_dir):
+    """Write generated schema import modules and smoke tests."""
+    output_dir = Path(output_dir)
+    module_dir = output_dir / "schema_import_modules"
+    test_dir = output_dir / "schema_import_module_tests"
+    module_dir.mkdir(parents=True, exist_ok=True)
+    test_dir.mkdir(parents=True, exist_ok=True)
+    (module_dir / "__init__.py").write_text(_schema_import_module_init_text(), encoding="utf-8")
+    (test_dir / "__init__.py").write_text(_schema_import_module_test_init_text(), encoding="utf-8")
+    for module_name in SCHEMA_IMPORT_MODULES:
+        (module_dir / f"{module_name}.py").write_text(
+            _schema_import_module_text(module_name),
+            encoding="utf-8",
+        )
+        (test_dir / f"test_{module_name}.py").write_text(
+            _schema_import_module_test_text(module_name),
+            encoding="utf-8",
+        )
 
 
 def write_data_exchange_file(output_dir, schema: AppSchema):
@@ -1987,6 +2008,13 @@ DATA_EXCHANGE_MODULES = (
     "import_validation_module",
     "migration_batch_module",
     "workbench_release_module",
+)
+
+SCHEMA_IMPORT_MODULES = (
+    "source_catalog_module",
+    "normalization_module",
+    "roundtrip_diff_module",
+    "apply_release_module",
 )
 
 
@@ -4452,6 +4480,240 @@ def smoke_test():
         "surface": SURFACE,
         "ok": True,
         "tests": ("test_data_exchange_module_contract", "test_data_exchange_module_smoke"),
+    }}
+'''
+
+
+def _schema_import_module_init_text() -> str:
+    return (
+        '"""Generated schema import modules."""\n\n'
+        f"SCHEMA_IMPORT_MODULES = {SCHEMA_IMPORT_MODULES!r}\n"
+    )
+
+
+def _schema_import_module_test_init_text() -> str:
+    modules = tuple(f"test_{name}" for name in SCHEMA_IMPORT_MODULES)
+    return (
+        '"""Generated schema import module tests."""\n\n'
+        f"SCHEMA_IMPORT_MODULE_TESTS = {modules!r}\n"
+    )
+
+
+def _schema_import_surface(module_name: str) -> tuple[str, str]:
+    return {
+        "source_catalog_module": ("source_catalog", "schema_source_catalog"),
+        "normalization_module": ("normalization", "normalization_report"),
+        "roundtrip_diff_module": ("roundtrip_diff", "schema_roundtrip_diff"),
+        "apply_release_module": ("apply_release", "schema_import_release_gate"),
+    }[module_name]
+
+
+def _schema_import_module_text(module_name: str) -> str:
+    surface, operation = _schema_import_surface(module_name)
+    return f'''"""Generated schema import module for {surface}."""
+
+from __future__ import annotations
+
+import importlib.util
+from pathlib import Path
+
+
+MODULE = {module_name!r}
+SURFACE = {surface!r}
+OPERATION = {operation!r}
+EXPECTED_EXPORTS = (
+    "module_contract",
+    "schema_import_manifest",
+    "run_schema_import_operation",
+    "release_context",
+    "smoke_test",
+)
+
+
+def _schema_import():
+    module_path = Path(__file__).resolve().parents[1] / "schema_import.py"
+    spec = importlib.util.spec_from_file_location(f"generated_schema_import_{{MODULE}}_schema_import", module_path)
+    module = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(module)
+    return module
+
+
+def module_contract():
+    """Return this generated schema import module's export contract."""
+    available = tuple(name for name in EXPECTED_EXPORTS if name in globals())
+    return {{
+        "format": "appgen.schema-import-module-contract.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "operation": OPERATION,
+        "ok": set(EXPECTED_EXPORTS) <= set(available),
+        "exports": available,
+        "expected_exports": EXPECTED_EXPORTS,
+        "side_effects": (),
+    }}
+
+
+def schema_import_manifest():
+    """Return generated schema import metadata owned by this module."""
+    schema_import = _schema_import()
+    sources = schema_import.schema_source_catalog()
+    profile = schema_import.schema_source_profile()
+    return {{
+        "format": "appgen.schema-import-module-manifest.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "ok": bool(sources) and bool(profile.get("fingerprint")) and schema_import.schema_source_contract()["ok"],
+        "sources": sources,
+        "profile": profile,
+        "side_effects": (),
+    }}
+
+
+def run_schema_import_operation():
+    """Run this module's side-effect-free schema import operation."""
+    schema_import = _schema_import()
+    if SURFACE == "source_catalog":
+        operation = {{
+            "catalog": schema_import.schema_source_catalog(),
+            "profile": schema_import.schema_source_profile(),
+            "fidelity": schema_import.source_fidelity_report(),
+            "contract": schema_import.schema_source_contract(),
+        }}
+        ok = {{"dbml", "sql", "ponyorm", "database", "dsl"}} <= {{item["kind"] for item in operation["catalog"]}} and operation["contract"]["ok"] and operation["fidelity"]["ok"]
+    elif SURFACE == "normalization":
+        operation = {{
+            "normalization": schema_import.normalization_report(),
+            "sql_validation": schema_import.source_validation_plan("sql"),
+            "validations": schema_import.all_source_validation_plans(),
+        }}
+        ok = operation["normalization"]["canonical_contract"] == "AppSchema" and "preserve_composite_foreign_keys" in operation["sql_validation"]["checks"] and len(operation["validations"]) == 5
+    elif SURFACE == "roundtrip_diff":
+        operation = {{
+            "roundtrip": schema_import.source_roundtrip_plan("sql"),
+            "diff": schema_import.schema_roundtrip_diff("dbml", current_manifest={{"tables": ["LegacyTable"]}}),
+            "diffs": schema_import.all_schema_roundtrip_diffs(),
+        }}
+        ok = operation["roundtrip"]["to"] == "sql" and operation["diff"]["format"] == "appgen.schema-roundtrip-diff.v1" and len(operation["diffs"]) == 5
+    else:
+        core_assets = {{"app/schema_import.py", "app/templates/appgen_schema_import.html", "app/appgen.json"}}
+        operation = {{
+            "apply_plan": schema_import.import_apply_plan("sql", "schema.sql"),
+            "generation_proof": schema_import.source_generation_proof(core_assets),
+            "release": schema_import.schema_import_release_gate(core_assets),
+        }}
+        ok = operation["apply_plan"]["requires_review"] and operation["generation_proof"]["ok"] and operation["release"]["ok"]
+    return {{
+        "format": "appgen.schema-import-module-operation.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "ok": ok,
+        "operation": operation,
+        "side_effects": (),
+    }}
+
+
+def release_context():
+    """Return release evidence used by this schema import module."""
+    schema_import = _schema_import()
+    core_assets = {{"app/schema_import.py", "app/templates/appgen_schema_import.html", "app/appgen.json"}}
+    return {{
+        "format": "appgen.schema-import-module-release-context.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "ok": schema_import.source_generation_proof(core_assets)["ok"] and schema_import.schema_import_release_gate(core_assets)["ok"],
+        "generation_proof": schema_import.source_generation_proof(core_assets),
+        "release": schema_import.schema_import_release_gate(core_assets),
+        "side_effects": (),
+    }}
+
+
+def smoke_test():
+    """Run side-effect-free checks for this generated schema import module."""
+    contract = module_contract()
+    manifest = schema_import_manifest()
+    operation = run_schema_import_operation()
+    release = release_context()
+    return {{
+        "format": "appgen.schema-import-module-smoke-test.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "ok": contract["ok"]
+        and manifest["ok"]
+        and operation["ok"]
+        and release["ok"]
+        and not manifest["side_effects"]
+        and not operation["side_effects"]
+        and not release["side_effects"],
+        "contract": contract,
+        "manifest": manifest,
+        "operation": operation,
+        "release": release,
+        "checks": (
+            "module_contract_resolves",
+            "schema_import_manifest_ok",
+            "schema_import_operation_ok",
+            "release_context_ok",
+            "no_side_effects",
+        ),
+    }}
+'''
+
+
+def _schema_import_module_test_text(module_name: str) -> str:
+    surface, _operation = _schema_import_surface(module_name)
+    return f'''"""Generated tests for the {surface} schema import module."""
+
+from __future__ import annotations
+
+import importlib.util
+from pathlib import Path
+
+
+MODULE = {module_name!r}
+SURFACE = {surface!r}
+
+
+def load_schema_import_module():
+    """Load the generated schema import module without app installation."""
+    module_path = Path(__file__).resolve().parents[1] / "schema_import_modules" / f"{{MODULE}}.py"
+    spec = importlib.util.spec_from_file_location(f"generated_schema_import_module_{{MODULE}}", module_path)
+    module = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(module)
+    return module
+
+
+def test_schema_import_module_contract():
+    """Assert the generated schema import module exposes its contract."""
+    module = load_schema_import_module()
+    contract = module.module_contract()
+    assert contract["module"] == MODULE
+    assert contract["surface"] == SURFACE
+    assert contract["ok"] is True
+    assert all(hasattr(module, name) for name in contract["expected_exports"])
+
+
+def test_schema_import_module_smoke():
+    """Assert the module's side-effect-free smoke test passes."""
+    module = load_schema_import_module()
+    result = module.smoke_test()
+    assert result["ok"] is True
+    assert result["module"] == MODULE
+    assert result["surface"] == SURFACE
+    assert result["checks"]
+
+
+def smoke_test():
+    """Run this generated test module in a side-effect-free way."""
+    test_schema_import_module_contract()
+    test_schema_import_module_smoke()
+    return {{
+        "format": "appgen.schema-import-module-generated-test-smoke.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "ok": True,
+        "tests": ("test_schema_import_module_contract", "test_schema_import_module_smoke"),
     }}
 '''
 
@@ -25784,6 +26046,9 @@ def _schema_import_text(schema: AppSchema) -> str:
 
 from __future__ import annotations
 
+import importlib.util
+from pathlib import Path
+
 from flask import jsonify
 from flask_appbuilder import BaseView
 from flask_appbuilder import expose
@@ -26122,6 +26387,114 @@ def schema_import_release_gate(existing_paths=()):
         "sources": source_rows,
         "gates": gates,
         "blocking_gaps": tuple(gate for gate in gates if not gate["ok"]),
+    }}
+
+
+def _load_generated_module(path, name):
+    spec = importlib.util.spec_from_file_location(name, path)
+    module = importlib.util.module_from_spec(spec)
+    if spec.loader is None:
+        raise RuntimeError(f"Could not load generated module: {{path}}")
+    spec.loader.exec_module(module)
+    return module
+
+
+def schema_import_module_file_manifest():
+    """Return file-level evidence for generated schema import modules."""
+    modules = (
+        ("source_catalog_module", "source_catalog"),
+        ("normalization_module", "normalization"),
+        ("roundtrip_diff_module", "roundtrip_diff"),
+        ("apply_release_module", "apply_release"),
+    )
+    expected_exports = (
+        "module_contract",
+        "schema_import_manifest",
+        "run_schema_import_operation",
+        "release_context",
+        "smoke_test",
+    )
+    module_dir = Path(__file__).with_name("schema_import_modules")
+    entries = []
+    for module_name, surface in modules:
+        module_path = module_dir / f"{{module_name}}.py"
+        exports = ()
+        contract_ok = False
+        smoke_ok = False
+        if module_path.exists():
+            module = _load_generated_module(module_path, f"generated_schema_import_module_{{module_name}}")
+            exports = tuple(name for name in expected_exports if hasattr(module, name))
+            contract = module.module_contract()
+            smoke = module.smoke_test()
+            contract_ok = contract["ok"] and contract["module"] == module_name and contract["surface"] == surface
+            smoke_ok = smoke["ok"] and smoke["surface"] == surface
+        entries.append(
+            {{
+                "module": module_name,
+                "surface": surface,
+                "path": f"app/schema_import_modules/{{module_name}}.py",
+                "exists": module_path.exists(),
+                "exports": exports,
+                "expected_exports": expected_exports,
+                "contract_ok": contract_ok,
+                "smoke_ok": smoke_ok,
+            }}
+        )
+    return {{
+        "format": "appgen.generated-schema-import-module-file-manifest.v1",
+        "ok": bool(entries)
+        and all(
+            item["exists"]
+            and item["contract_ok"]
+            and item["smoke_ok"]
+            and set(item["expected_exports"]) <= set(item["exports"])
+            for item in entries
+        ),
+        "modules": tuple(entries),
+        "guards": ("one_file_per_schema_import_module", "declared_exports_present", "module_smoke_loads"),
+        "side_effects": (),
+    }}
+
+
+def schema_import_module_test_file_manifest():
+    """Return file-level evidence for generated schema import module tests."""
+    modules = schema_import_module_file_manifest()["modules"]
+    required_exports = (
+        "load_schema_import_module",
+        "test_schema_import_module_contract",
+        "test_schema_import_module_smoke",
+        "smoke_test",
+    )
+    test_dir = Path(__file__).with_name("schema_import_module_tests")
+    entries = []
+    for item in modules:
+        module_name = item["module"]
+        module_path = test_dir / f"test_{{module_name}}.py"
+        exports = ()
+        smoke_ok = False
+        if module_path.exists():
+            module = _load_generated_module(module_path, f"generated_schema_import_module_test_{{module_name}}")
+            exports = tuple(name for name in required_exports if hasattr(module, name))
+            smoke_ok = module.smoke_test()["ok"]
+        entries.append(
+            {{
+                "module": module_name,
+                "surface": item["surface"],
+                "path": f"app/schema_import_module_tests/test_{{module_name}}.py",
+                "target": item["path"],
+                "exists": module_path.exists(),
+                "exports": exports,
+                "smoke_ok": smoke_ok,
+            }}
+        )
+    return {{
+        "format": "appgen.generated-schema-import-module-test-file-manifest.v1",
+        "ok": bool(entries)
+        and all(item["exists"] and item["smoke_ok"] and set(required_exports) <= set(item["exports"]) for item in entries),
+        "tests": tuple(entries),
+        "required_exports": required_exports,
+        "guards": ("one_test_file_per_schema_import_module", "contract_and_smoke_tests_exported"),
+        "side_effects": (),
     }}
 
 
