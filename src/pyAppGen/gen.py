@@ -1909,6 +1909,27 @@ def write_microservices_file(output_dir, schema: AppSchema):
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
     (output_dir / "microservices.py").write_text(_microservices_text(schema, _app_name(schema)))
+    write_microservice_module_files(output_dir)
+
+
+def write_microservice_module_files(output_dir):
+    """Write generated microservice modules and smoke tests."""
+    output_dir = Path(output_dir)
+    module_dir = output_dir / "microservice_modules"
+    test_dir = output_dir / "microservice_module_tests"
+    module_dir.mkdir(parents=True, exist_ok=True)
+    test_dir.mkdir(parents=True, exist_ok=True)
+    (module_dir / "__init__.py").write_text(_microservice_module_init_text(), encoding="utf-8")
+    (test_dir / "__init__.py").write_text(_microservice_module_test_init_text(), encoding="utf-8")
+    for module_name in MICROSERVICE_MODULES:
+        (module_dir / f"{module_name}.py").write_text(
+            _microservice_module_text(module_name),
+            encoding="utf-8",
+        )
+        (test_dir / f"test_{module_name}.py").write_text(
+            _microservice_module_test_text(module_name),
+            encoding="utf-8",
+        )
 
 
 def write_collaboration_file(output_dir, schema: AppSchema):
@@ -2246,6 +2267,15 @@ PWA_MODULES = (
     "service_worker_module",
     "offline_shell_module",
     "installability_release_module",
+)
+
+MICROSERVICE_MODULES = (
+    "service_catalog_module",
+    "gateway_route_module",
+    "event_route_module",
+    "relationship_resolver_module",
+    "mesh_scaling_module",
+    "microservice_release_workbench_module",
 )
 
 
@@ -6973,6 +7003,263 @@ def smoke_test():
         "surface": SURFACE,
         "ok": True,
         "tests": ("test_pwa_module_contract", "test_pwa_module_smoke"),
+    }}
+'''
+
+
+def _microservice_module_init_text() -> str:
+    return (
+        '"""Generated microservice architecture modules."""\n\n'
+        f"MICROSERVICE_MODULES = {MICROSERVICE_MODULES!r}\n"
+    )
+
+
+def _microservice_module_test_init_text() -> str:
+    modules = tuple(f"test_{name}" for name in MICROSERVICE_MODULES)
+    return (
+        '"""Generated microservice architecture module tests."""\n\n'
+        f"MICROSERVICE_MODULE_TESTS = {modules!r}\n"
+    )
+
+
+def _microservice_surface(module_name: str) -> tuple[str, str]:
+    return {
+        "service_catalog_module": ("service_catalog", "service_catalog"),
+        "gateway_route_module": ("gateway_route", "api_gateway_routes"),
+        "event_route_module": ("event_route", "event_routes"),
+        "relationship_resolver_module": ("relationship_resolver", "relationship_resolver_plan"),
+        "mesh_scaling_module": ("mesh_scaling", "service_mesh_policy"),
+        "microservice_release_workbench_module": ("microservice_release_workbench", "microservice_release_gate"),
+    }[module_name]
+
+
+def _microservice_module_text(module_name: str) -> str:
+    surface, operation = _microservice_surface(module_name)
+    return f'''"""Generated microservice architecture module for {surface}."""
+
+from __future__ import annotations
+
+import importlib.util
+from pathlib import Path
+
+
+MODULE = {module_name!r}
+SURFACE = {surface!r}
+OPERATION = {operation!r}
+EXPECTED_EXPORTS = (
+    "module_contract",
+    "microservice_manifest_contract",
+    "run_microservice_operation",
+    "release_context",
+    "smoke_test",
+)
+
+
+def _microservices():
+    module_path = Path(__file__).resolve().parents[1] / "microservices.py"
+    spec = importlib.util.spec_from_file_location(f"generated_microservice_{{MODULE}}_microservices", module_path)
+    module = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(module)
+    return module
+
+
+def _assets():
+    return {{"app/microservices.py", "app/templates/appgen_microservices.html", "deploy/k8s.yaml"}}
+
+
+def _first_domain_service(microservices):
+    service = next((item for item in microservices.service_catalog() if item["kind"] == "domain"), None)
+    if service is None:
+        raise AssertionError("generated microservice module requires a domain service")
+    return service
+
+
+def module_contract():
+    """Return this generated microservice module's export contract."""
+    available = tuple(name for name in EXPECTED_EXPORTS if name in globals())
+    return {{
+        "format": "appgen.microservice-module-contract.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "operation": OPERATION,
+        "ok": set(EXPECTED_EXPORTS) <= set(available),
+        "exports": available,
+        "expected_exports": EXPECTED_EXPORTS,
+        "side_effects": (),
+    }}
+
+
+def microservice_manifest_contract():
+    """Return generated microservice metadata owned by this module."""
+    microservices = _microservices()
+    services = microservices.service_catalog()
+    return {{
+        "format": "appgen.microservice-module-manifest.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "ok": "api-gateway" in microservices.service_names()
+        and bool(services)
+        and bool(microservices.api_gateway_routes())
+        and microservices.service_mesh_policy()["mtls"] == "STRICT",
+        "services": services,
+        "gateway_routes": microservices.api_gateway_routes(),
+        "mesh": microservices.service_mesh_policy(),
+        "side_effects": (),
+    }}
+
+
+def run_microservice_operation():
+    """Run this module's side-effect-free microservice operation."""
+    microservices = _microservices()
+    domain = _first_domain_service(microservices)
+    if SURFACE == "service_catalog":
+        operation = microservices.service_catalog()
+        ok = "api-gateway" in microservices.service_names() and any(item["kind"] == "domain" for item in operation)
+    elif SURFACE == "gateway_route":
+        operation = microservices.api_gateway_routes()
+        ok = bool(operation) and all(item["upstream"].startswith("http://") for item in operation)
+    elif SURFACE == "event_route":
+        operation = microservices.event_routes()
+        ok = bool(operation) and all("." in item["topic"] for item in operation)
+    elif SURFACE == "relationship_resolver":
+        relationships = microservices.cross_service_relationships()
+        if relationships:
+            first = relationships[0]
+            operation = {{
+                "relationships": relationships,
+                "resolver": microservices.relationship_resolver_plan(first["source_table"], first["source_column"], 1),
+                "consistency": microservices.relationship_consistency_plan(),
+                "events": microservices.relationship_event_contracts(),
+            }}
+            ok = operation["resolver"]["format"] == "appgen.cross-service-relationship-resolver.v1" and bool(operation["events"])
+        else:
+            operation = {{"relationships": (), "resolver": None, "consistency": (), "events": ()}}
+            ok = True
+    elif SURFACE == "mesh_scaling":
+        operation = {{
+            "mesh": microservices.service_mesh_policy(),
+            "health": microservices.health_check_plan(),
+            "scaling": microservices.scaling_policy(domain["name"], cpu_percent=90),
+            "traffic": microservices.traffic_shift_plan("api-gateway", stable_weight=80, canary_weight=20),
+        }}
+        ok = operation["mesh"]["mtls"] == "STRICT" and operation["scaling"]["desired_replicas"] >= operation["scaling"]["min_replicas"] and operation["traffic"]["rollback"] == {{"stable": 100, "canary": 0}}
+    else:
+        operation = {{
+            "release": microservices.microservice_release_gate(_assets()),
+            "workbench": microservices.microservice_workbench(_assets()),
+        }}
+        ok = operation["release"]["ok"] and operation["workbench"]["ok"]
+    return {{
+        "format": "appgen.microservice-module-operation.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "ok": ok,
+        "operation": operation,
+        "side_effects": (),
+    }}
+
+
+def release_context():
+    """Return release evidence used by this microservice module."""
+    microservices = _microservices()
+    return {{
+        "format": "appgen.microservice-module-release-context.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "ok": microservices.microservice_release_gate(_assets())["ok"] and microservices.microservice_workbench(_assets())["ok"],
+        "release": microservices.microservice_release_gate(_assets()),
+        "workbench": microservices.microservice_workbench(_assets()),
+        "side_effects": (),
+    }}
+
+
+def smoke_test():
+    """Run side-effect-free checks for this generated microservice module."""
+    contract = module_contract()
+    manifest = microservice_manifest_contract()
+    operation = run_microservice_operation()
+    release = release_context()
+    return {{
+        "format": "appgen.microservice-module-smoke-test.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "ok": contract["ok"]
+        and manifest["ok"]
+        and operation["ok"]
+        and release["ok"]
+        and not manifest["side_effects"]
+        and not operation["side_effects"]
+        and not release["side_effects"],
+        "contract": contract,
+        "manifest": manifest,
+        "operation": operation,
+        "release": release,
+        "checks": (
+            "module_contract_resolves",
+            "microservice_manifest_contract_ok",
+            "microservice_operation_ok",
+            "release_context_ok",
+            "no_side_effects",
+        ),
+    }}
+'''
+
+
+def _microservice_module_test_text(module_name: str) -> str:
+    surface, _operation = _microservice_surface(module_name)
+    return f'''"""Generated tests for the {surface} microservice module."""
+
+from __future__ import annotations
+
+import importlib.util
+from pathlib import Path
+
+
+MODULE = {module_name!r}
+SURFACE = {surface!r}
+
+
+def load_microservice_module():
+    """Load the generated microservice module without app installation."""
+    module_path = Path(__file__).resolve().parents[1] / "microservice_modules" / f"{{MODULE}}.py"
+    spec = importlib.util.spec_from_file_location(f"generated_microservice_module_{{MODULE}}", module_path)
+    module = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(module)
+    return module
+
+
+def test_microservice_module_contract():
+    """Assert the generated microservice module exposes its contract."""
+    module = load_microservice_module()
+    contract = module.module_contract()
+    assert contract["module"] == MODULE
+    assert contract["surface"] == SURFACE
+    assert contract["ok"] is True
+    assert all(hasattr(module, name) for name in contract["expected_exports"])
+
+
+def test_microservice_module_smoke():
+    """Assert the module's side-effect-free smoke test passes."""
+    module = load_microservice_module()
+    result = module.smoke_test()
+    assert result["ok"] is True
+    assert result["module"] == MODULE
+    assert result["surface"] == SURFACE
+    assert result["checks"]
+
+
+def smoke_test():
+    """Run this generated test module in a side-effect-free way."""
+    test_microservice_module_contract()
+    test_microservice_module_smoke()
+    return {{
+        "format": "appgen.microservice-module-generated-test-smoke.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "ok": True,
+        "tests": ("test_microservice_module_contract", "test_microservice_module_smoke"),
     }}
 '''
 
@@ -53833,6 +54120,9 @@ def _microservices_text(schema: AppSchema, app_name: str) -> str:
 
 from __future__ import annotations
 
+import importlib.util
+from pathlib import Path
+
 from flask import jsonify
 from flask_appbuilder import BaseView
 from flask_appbuilder import expose
@@ -53842,6 +54132,73 @@ APP_NAME = {app_name!r}
 SERVICE_NAME = {service_name!r}
 SERVICES = {services!r}
 RELATIONSHIPS = {tuple(relationship_specs)!r}
+MICROSERVICE_MODULES = (
+    "service_catalog_module",
+    "gateway_route_module",
+    "event_route_module",
+    "relationship_resolver_module",
+    "mesh_scaling_module",
+    "microservice_release_workbench_module",
+)
+
+
+def _load_generated_module(module_path, module_name):
+    """Load a generated microservice module without installing the app."""
+    spec = importlib.util.spec_from_file_location(module_name, module_path)
+    module = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(module)
+    return module
+
+
+def microservice_module_file_manifest():
+    """Return independently importable generated microservice module files."""
+    root = Path(__file__).resolve().parent
+    modules = []
+    for module_name in MICROSERVICE_MODULES:
+        module_path = root / "microservice_modules" / f"{{module_name}}.py"
+        module = _load_generated_module(module_path, f"generated_microservice_module_{{module_name}}")
+        contract = module.module_contract()
+        modules.append(
+            {{
+                "module": module_name,
+                "surface": contract["surface"],
+                "path": f"app/microservice_modules/{{module_name}}.py",
+                "exists": module_path.exists(),
+                "ok": contract["ok"] and module.smoke_test()["ok"],
+                "exports": contract["exports"],
+            }}
+        )
+    return {{
+        "format": "appgen.microservice-module-file-manifest.v1",
+        "ok": len(modules) == len(MICROSERVICE_MODULES) and all(item["ok"] and item["exists"] for item in modules),
+        "modules": tuple(modules),
+    }}
+
+
+def microservice_module_test_file_manifest():
+    """Return generated tests for the microservice module files."""
+    root = Path(__file__).resolve().parent
+    tests = []
+    for module_name in MICROSERVICE_MODULES:
+        test_path = root / "microservice_module_tests" / f"test_{{module_name}}.py"
+        module = _load_generated_module(test_path, f"generated_microservice_module_test_{{module_name}}")
+        result = module.smoke_test()
+        tests.append(
+            {{
+                "module": f"test_{{module_name}}",
+                "surface": result["surface"],
+                "path": f"app/microservice_module_tests/test_{{module_name}}.py",
+                "exists": test_path.exists(),
+                "ok": result["ok"],
+                "tests": result["tests"],
+            }}
+        )
+    return {{
+        "format": "appgen.microservice-module-test-file-manifest.v1",
+        "ok": len(tests) == len(MICROSERVICE_MODULES) and all(item["ok"] and item["exists"] for item in tests),
+        "tests": tuple(tests),
+    }}
 
 
 def service_catalog():

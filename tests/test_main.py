@@ -9945,6 +9945,40 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     )
     assert microservices.microservice_workbench({"app/microservices.py"})["ok"] is False
     assert microservices.microservice_release_gate({"app/microservices.py"})["ok"] is False
+    microservice_module_files = microservices.microservice_module_file_manifest()
+    microservice_module_tests = microservices.microservice_module_test_file_manifest()
+    assert microservice_module_files["ok"] is True
+    assert microservice_module_tests["ok"] is True
+    assert {item["surface"] for item in microservice_module_files["modules"]} == {
+        "service_catalog",
+        "gateway_route",
+        "event_route",
+        "relationship_resolver",
+        "mesh_scaling",
+        "microservice_release_workbench",
+    }
+    assert {item["surface"] for item in microservice_module_tests["tests"]} == {
+        "service_catalog",
+        "gateway_route",
+        "event_route",
+        "relationship_resolver",
+        "mesh_scaling",
+        "microservice_release_workbench",
+    }
+    for item in microservice_module_files["modules"]:
+        module_path = output_dir / item["path"].replace("app/", "")
+        py_compile.compile(str(module_path), doraise=True)
+        module = _load_module(module_path, f"generated_microservice_module_{item['module']}")
+        assert module.module_contract()["ok"] is True
+        assert module.microservice_manifest_contract()["ok"] is True
+        assert module.run_microservice_operation()["ok"] is True
+        assert module.release_context()["ok"] is True
+        assert module.smoke_test()["ok"] is True
+    for item in microservice_module_tests["tests"]:
+        test_path = output_dir / item["path"].replace("app/", "")
+        py_compile.compile(str(test_path), doraise=True)
+        module = _load_module(test_path, f"generated_microservice_module_test_{item['module']}")
+        assert module.smoke_test()["ok"] is True
     intents = platforms.chatbot_intents()
     assert any(intent["intent"] == "create_book" for intent in intents)
     assert set(sdks.sdk_targets()) == {"python", "javascript", "java", "csharp"}
