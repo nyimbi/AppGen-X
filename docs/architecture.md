@@ -373,7 +373,9 @@ The composition path is:
 6. Generate `pbc_runtime.py` into the produced application so the selected
    catalog entries, self-registration validator, composition workbench, and
    stream policy can be compiled and smoke-tested inside the app artifact.
-7. Generate and compile the application shell as part of the PBC release audit.
+7. Load package entrypoints from local source directories or importable modules,
+   validate their manifests, and produce side-effect-free catalog patches.
+8. Generate and compile the application shell as part of the PBC release audit.
 
 This keeps composable applications from collapsing into a shared database
 module while still letting users select finance, supply-chain, people,

@@ -232,6 +232,7 @@ from pyAppGen.pbc import acp_stream_processor_catalog
 from pyAppGen.pbc import acp_stream_processing_policy
 from pyAppGen.pbc import pbc_manifest_schema
 from pyAppGen.pbc import pbc_package_contract
+from pyAppGen.pbc import pbc_package_loading_smoke_audit
 from pyAppGen.pbc import pbc_generation_smoke_audit
 from pyAppGen.pbc import pbc_mesh_catalog
 from pyAppGen.pbc import pbc_release_audit
@@ -769,6 +770,12 @@ def test_package_pbc_catalog_composes_enterprise_apps(runner: CliRunner) -> None
     assert registration["catalog_patch"]["warranty_claims"]["stream_processor"] == "faust_streaming"
     package_contract = pbc_package_contract("warranty_claims_pbc", manifest)
     assert package_contract["usable"] is True
+    package_loading = pbc_package_loading_smoke_audit()
+    assert package_loading["format"] == "appgen.pbc-package-loading-smoke-audit.v1"
+    assert package_loading["ok"] is True
+    assert package_loading["source_report"]["source_kind"] == "directory"
+    assert package_loading["module_report"]["source_kind"] == "module"
+    assert package_loading["discovery"]["ok"] is True
 
     stacks = {item["stack"]: item for item in pbc_starter_stacks()}
     assert {
@@ -854,6 +861,7 @@ def test_package_pbc_catalog_composes_enterprise_apps(runner: CliRunner) -> None
         "starter_stacks",
         "acp_platform_fabric",
         "self_registering_pbc_spec",
+        "pbc_package_loader",
         "open_source_datastore_backends",
         "stream_processor_abstraction",
         "opinionated_stream_processing_policy",
@@ -863,6 +871,7 @@ def test_package_pbc_catalog_composes_enterprise_apps(runner: CliRunner) -> None
     } == {gate["id"] for gate in audit["gates"]}
     assert audit["topology"]["ok"] is True
     assert audit["acp_coverage"]["ok"] is True
+    assert audit["package_loading"]["ok"] is True
 
     result = runner.invoke(__main__.main, ["--pbc-release-audit"])
     assert result.exit_code == 0

@@ -11,6 +11,7 @@ from __future__ import annotations
 import importlib.util
 import py_compile
 import re
+import sys
 import tempfile
 from pathlib import Path
 
@@ -946,6 +947,146 @@ def pbc_package_contract(package_name: str, manifest: dict) -> dict:
     }
 
 
+def load_pbc_package(package_ref: str | Path, *, existing_catalog: dict[str, dict] | None = None) -> dict:
+    """Load a PBC package entrypoint from an importable module or local path."""
+    ref = Path(package_ref) if not isinstance(package_ref, Path) else package_ref
+    source_kind = "module"
+    entrypoint = str(package_ref)
+    try:
+        if ref.exists():
+            source_kind = "directory" if ref.is_dir() else "file"
+            entry_file = ref / "__init__.py" if ref.is_dir() else ref
+            if not entry_file.exists():
+                return {
+                    "format": "appgen.pbc-package-load-report.v1",
+                    "ok": False,
+                    "source": str(package_ref),
+                    "source_kind": source_kind,
+                    "error": f"missing entry file: {entry_file}",
+                }
+            module_name = f"appgen_pbc_package_{abs(hash(str(entry_file.resolve())))}"
+            spec = importlib.util.spec_from_file_location(module_name, entry_file)
+            if spec is None or spec.loader is None:
+                raise ImportError(f"cannot create import spec for {entry_file}")
+            module = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(module)
+            entrypoint = f"{entry_file}:register_pbc"
+        else:
+            module = importlib.import_module(str(package_ref))
+            entrypoint = f"{package_ref}:register_pbc"
+        register = getattr(module, "register_pbc", None)
+        if not callable(register):
+            return {
+                "format": "appgen.pbc-package-load-report.v1",
+                "ok": False,
+                "source": str(package_ref),
+                "source_kind": source_kind,
+                "entrypoint": entrypoint,
+                "error": "register_pbc entrypoint is missing or not callable",
+            }
+        manifest = register()
+        if not isinstance(manifest, dict):
+            return {
+                "format": "appgen.pbc-package-load-report.v1",
+                "ok": False,
+                "source": str(package_ref),
+                "source_kind": source_kind,
+                "entrypoint": entrypoint,
+                "error": "register_pbc must return a manifest dict",
+            }
+        registration = register_pbc_manifest(manifest, existing_catalog=existing_catalog)
+        contract = pbc_package_contract(str(package_ref), manifest)
+        return {
+            "format": "appgen.pbc-package-load-report.v1",
+            "ok": registration["ok"],
+            "source": str(package_ref),
+            "source_kind": source_kind,
+            "entrypoint": entrypoint,
+            "manifest": manifest,
+            "registration": registration,
+            "contract": contract,
+            "descriptor": registration["validation"].get("normalized_descriptor"),
+        }
+    except Exception as exc:  # pragma: no cover - surfaced in returned report
+        return {
+            "format": "appgen.pbc-package-load-report.v1",
+            "ok": False,
+            "source": str(package_ref),
+            "source_kind": source_kind,
+            "entrypoint": entrypoint,
+            "error": str(exc),
+        }
+
+
+def discover_pbc_packages(package_refs: tuple[str | Path, ...] | list[str | Path]) -> dict:
+    """Load multiple PBC packages without mutating the built-in catalog."""
+    reports = tuple(load_pbc_package(ref) for ref in package_refs)
+    return {
+        "format": "appgen.pbc-package-discovery-report.v1",
+        "ok": all(report["ok"] for report in reports),
+        "loaded": reports,
+        "catalog_patches": tuple(
+            report["registration"]["catalog_patch"]
+            for report in reports
+            if report.get("registration", {}).get("catalog_patch")
+        ),
+        "blocking_gaps": tuple(report for report in reports if not report["ok"]),
+    }
+
+
+def pbc_package_loading_smoke_audit() -> dict:
+    """Prove PBC packages can be loaded from local source and import paths."""
+    source_manifest = {**example_pbc_manifest(), "pbc": "source_warranty_claims"}
+    module_manifest = {**example_pbc_manifest(), "pbc": "module_warranty_claims"}
+    with tempfile.TemporaryDirectory(prefix="appgen-pbc-package-load-") as raw_tmp:
+        root = Path(raw_tmp)
+        source_pkg = root / "source_claims_pbc"
+        source_pkg.mkdir()
+        source_pkg.joinpath("__init__.py").write_text(
+            "def register_pbc():\n"
+            f"    return {source_manifest!r}\n",
+            encoding="utf-8",
+        )
+        module_pkg = root / "module_claims_pbc"
+        module_pkg.mkdir()
+        module_pkg.joinpath("__init__.py").write_text(
+            "def register_pbc():\n"
+            f"    return {module_manifest!r}\n",
+            encoding="utf-8",
+        )
+        source_report = load_pbc_package(source_pkg)
+        sys.path.insert(0, str(root))
+        try:
+            sys.modules.pop("module_claims_pbc", None)
+            module_report = load_pbc_package("module_claims_pbc")
+        finally:
+            try:
+                sys.path.remove(str(root))
+            except ValueError:
+                pass
+            sys.modules.pop("module_claims_pbc", None)
+        discovery = discover_pbc_packages((source_pkg,))
+    checks = (
+        {"id": "local_source_directory", "ok": source_report["ok"] and source_report["source_kind"] == "directory"},
+        {"id": "importable_module", "ok": module_report["ok"] and module_report["source_kind"] == "module"},
+        {"id": "discovery_aggregate", "ok": discovery["ok"] and bool(discovery["catalog_patches"])},
+        {
+            "id": "side_effect_free_registration",
+            "ok": source_report.get("registration", {}).get("decision") == "approved"
+            and module_report.get("registration", {}).get("decision") == "approved",
+        },
+    )
+    return {
+        "format": "appgen.pbc-package-loading-smoke-audit.v1",
+        "ok": all(check["ok"] for check in checks),
+        "source_report": source_report,
+        "module_report": module_report,
+        "discovery": discovery,
+        "checks": checks,
+        "blocking_gaps": tuple(check for check in checks if not check["ok"]),
+    }
+
+
 def example_pbc_manifest() -> dict:
     """Return a minimal publishable PBC manifest for documentation and tests."""
     return {
@@ -1207,6 +1348,7 @@ def pbc_release_audit() -> dict:
     topology = application_composition_topology()
     acp_coverage = acp_capability_coverage()
     stream_policy = acp_stream_processing_policy()
+    package_loading = pbc_package_loading_smoke_audit()
     nl_selection = pbc_selection_from_prompt(
         "Build an enterprise ERP back office with GL, AP, AR, inventory, people, and order management"
     )
@@ -1249,6 +1391,11 @@ def pbc_release_audit() -> dict:
             "ok": register_pbc_manifest(example_pbc_manifest())["ok"]
             and pbc_package_contract("warranty_claims_pbc", example_pbc_manifest())["usable"],
             "schema": pbc_manifest_schema()["format"],
+        },
+        {
+            "id": "pbc_package_loader",
+            "ok": package_loading["ok"],
+            "checks": package_loading["checks"],
         },
         {
             "id": "open_source_datastore_backends",
@@ -1314,6 +1461,7 @@ def pbc_release_audit() -> dict:
         "stream_processors": acp_stream_processor_catalog(),
         "manifest_schema": pbc_manifest_schema(),
         "example_registration": register_pbc_manifest(example_pbc_manifest()),
+        "package_loading": package_loading,
         "sample_composition": composition,
         "nl_selection": nl_selection,
         "generation_smoke": smoke,

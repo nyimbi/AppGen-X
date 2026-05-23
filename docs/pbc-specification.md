@@ -167,6 +167,19 @@ The platform then uses the registration plan to expose:
 The registry step should not silently overwrite an existing PBC. A duplicate key
 or datastore is a blocking validation error.
 
+Packages can also be loaded directly by the platform:
+
+```python
+from pyAppGen.pbc import load_pbc_package
+
+report = load_pbc_package("my_claims_pbc")
+```
+
+For local development, pass a source directory containing `__init__.py` and a
+`register_pbc()` entrypoint. The loader imports the entrypoint, validates the
+returned manifest, and returns a side-effect-free catalog patch instead of
+mutating the built-in catalog.
+
 ## Composition Contract
 
 Once registered, the PBC can be selected by key, starter stack, or natural

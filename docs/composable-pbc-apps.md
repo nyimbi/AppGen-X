@@ -57,6 +57,8 @@ The executable catalog lives in `src/pyAppGen/pbc.py` and exposes:
 - `validate_pbc_manifest()` for package validation before registration.
 - `register_pbc_manifest()` for a side-effect-free registration plan.
 - `pbc_package_contract()` for installable package metadata.
+- `load_pbc_package()` and `discover_pbc_packages()` for loading package
+  entrypoints from local source directories or importable modules.
 - `pbc_selection_from_prompt()` for natural-language PBC selection.
 - `pbc_composition_plan()` for datastore, API, event, and dependency evidence.
 - `pbc_composition_dsl()` for a generated AppGen DSL starter.
