@@ -341,7 +341,9 @@ Generated apps include Studio contracts for:
   metadata, a design-time/runtime component adapter, simulator fixtures,
   platform targets, side-effect guards, and ordered designer transaction replay
   through privacy review, revocation, lifecycle delivery, bridge recovery, and
-  runtime dispatch.
+  runtime dispatch. Its capability lifecycle replay checks each API through
+  privacy metadata, permission transitions, simulator fixtures, target bridges,
+  API-specific pipelines, recovery, runtime events, and designer replay.
 - A cross-target visual depth workbench proves style resources, style cascade
   authoring, animation timelines, effect-stack validation, 3D scene authoring,
   asset import budgets, preview/runtime parity, runtime fallbacks, and an

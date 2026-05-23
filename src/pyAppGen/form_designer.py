@@ -8570,6 +8570,180 @@ def mobile_device_designer_transaction_replay_contract() -> dict:
     }
 
 
+def mobile_device_capability_lifecycle_replay_contract() -> dict:
+    """Replay every device API through privacy, permission, bridge, runtime, and designer lifecycle."""
+    contract = mobile_native_api_contract()
+    privacy = mobile_store_privacy_manifest_contract()
+    permission_states = mobile_permission_state_machine_contract()
+    simulator = mobile_simulator_fixture_integrity_contract()
+    bridge_matrix = mobile_native_bridge_matrix_contract()
+    permission_revocation = mobile_permission_revocation_contract()
+    background_delivery = mobile_background_delivery_contract()
+    media_pipeline = mobile_media_file_pipeline_contract()
+    deep_link_routing = mobile_deep_link_routing_contract()
+    app_lifecycle = mobile_app_lifecycle_delivery_contract()
+    bridge_errors = mobile_native_bridge_error_contract()
+    runtime_replay = mobile_native_api_runtime_replay_contract()
+    designer_replay = mobile_device_designer_transaction_replay_contract()
+    privacy_by_api = {item["api"]: item for item in privacy["entries"]}
+    permission_by_api = {item["api"]: item for item in permission_states["transitions"]}
+    fixture_by_api = {item["api"]: item for item in simulator["fixtures"]}
+    runtime_by_api = {item["api"]: item for item in runtime_replay["replay"]}
+    revocation_apis = {item["api"] for item in permission_revocation["revocations"]}
+    background_apis = {item["api"] for item in background_delivery["deliveries"]}
+    media_apis = {item["api"] for item in media_pipeline["pipelines"]}
+    target_bridges = {bridge["target"]: bridge for bridge in bridge_matrix["bridges"]}
+    replay = tuple(
+        {
+            "api": api,
+            "phases": (
+                {
+                    "phase": "declare_privacy",
+                    "ok": api in privacy_by_api
+                    and privacy_by_api[api]["third_party_sharing"] is False
+                    and bool(privacy_by_api[api]["prompt"]),
+                    "evidence": privacy_by_api.get(api),
+                },
+                {
+                    "phase": "transition_permission",
+                    "ok": api in permission_by_api
+                    and "granted->revoked" in permission_by_api[api]["transitions"]
+                    and "revocation_checked_before_call" in permission_by_api[api]["guards"],
+                    "evidence": permission_by_api.get(api),
+                },
+                {
+                    "phase": "load_simulator_fixture",
+                    "ok": api in fixture_by_api
+                    and "assert_events" in fixture_by_api[api]["replay_order"],
+                    "evidence": fixture_by_api.get(api),
+                },
+                {
+                    "phase": "invoke_target_bridges",
+                    "ok": {"android", "ios", "desktop", "web-pwa"} <= set(target_bridges)
+                    and all("emit_event" in bridge["lifecycle"] for bridge in target_bridges.values()),
+                    "evidence": tuple(target_bridges),
+                },
+                {
+                    "phase": "run_api_specific_pipeline",
+                    "ok": (
+                        api not in media_apis or media_pipeline["ok"]
+                    )
+                    and (
+                        api not in background_apis or background_delivery["ok"]
+                    )
+                    and (
+                        api != "deep_links" or deep_link_routing["ok"]
+                    )
+                    and (
+                        api != "app_lifecycle" or app_lifecycle["ok"]
+                    ),
+                    "evidence": {
+                        "media": api in media_apis,
+                        "background": api in background_apis,
+                        "deep_link": api == "deep_links",
+                        "app_lifecycle": api == "app_lifecycle",
+                    },
+                },
+                {
+                    "phase": "recover_revocation_or_bridge_error",
+                    "ok": api in revocation_apis
+                    and bridge_errors["ok"]
+                    and all("emit_error_event" in scenario["recovery"] for scenario in bridge_errors["scenarios"]),
+                    "evidence": {
+                        "revocation": api in revocation_apis,
+                        "bridge_errors": bridge_errors["guards"],
+                    },
+                },
+                {
+                    "phase": "dispatch_runtime_events",
+                    "ok": api in runtime_by_api
+                    and {"invoke_target_bridge", "dispatch_component_events"} <= set(runtime_by_api[api]["phases"]),
+                    "evidence": runtime_by_api.get(api),
+                },
+            ),
+        }
+        for api in contract["apis"]
+    )
+    checks = (
+        {
+            "id": "privacy_before_permission",
+            "ok": all(
+                tuple(phase["phase"] for phase in item["phases"]).index("declare_privacy")
+                < tuple(phase["phase"] for phase in item["phases"]).index("transition_permission")
+                for item in replay
+            ),
+            "evidence": replay,
+        },
+        {
+            "id": "simulator_before_bridge",
+            "ok": all(
+                tuple(phase["phase"] for phase in item["phases"]).index("load_simulator_fixture")
+                < tuple(phase["phase"] for phase in item["phases"]).index("invoke_target_bridges")
+                for item in replay
+            ),
+            "evidence": replay,
+        },
+        {
+            "id": "api_specific_pipelines_covered",
+            "ok": media_pipeline["ok"]
+            and background_delivery["ok"]
+            and deep_link_routing["ok"]
+            and app_lifecycle["ok"],
+            "evidence": {
+                "media": media_pipeline["guards"],
+                "background": background_delivery["guards"],
+                "deep_links": deep_link_routing["guards"],
+                "app_lifecycle": app_lifecycle["guards"],
+            },
+        },
+        {
+            "id": "runtime_and_designer_replay_aligned",
+            "ok": runtime_replay["ok"]
+            and designer_replay["ok"]
+            and {item["api"] for item in runtime_replay["replay"]} == set(contract["apis"])
+            and designer_replay["final_state"]["runtime_replays"] == len(contract["apis"]),
+            "evidence": {
+                "runtime_apis": tuple(item["api"] for item in runtime_replay["replay"]),
+                "designer_runtime_replays": designer_replay["final_state"]["runtime_replays"],
+            },
+        },
+        {
+            "id": "side_effect_guards",
+            "ok": not privacy["side_effects"]
+            and not permission_states["side_effects"]
+            and not simulator["side_effects"]
+            and not bridge_matrix["side_effects"]
+            and not permission_revocation["side_effects"]
+            and not background_delivery["side_effects"]
+            and not media_pipeline["side_effects"]
+            and not deep_link_routing["side_effects"]
+            and not app_lifecycle["side_effects"]
+            and not bridge_errors["side_effects"]
+            and not runtime_replay["side_effects"]
+            and not designer_replay["side_effects"],
+            "evidence": (),
+        },
+    )
+    ok = all(all(phase["ok"] for phase in item["phases"]) for item in replay) and all(check["ok"] for check in checks)
+    return {
+        "format": "appgen.mobile-device-capability-lifecycle-replay.v1",
+        "ok": ok,
+        "decision": "approved" if ok else "blocked",
+        "api_count": len(contract["apis"]),
+        "replay": replay,
+        "checks": checks,
+        "guards": (
+            "privacy_before_permission",
+            "simulator_before_bridge",
+            "api_specific_pipelines_covered",
+            "runtime_and_designer_replay_aligned",
+            "no_side_effects",
+        ),
+        "side_effects": (),
+        "blocking_gaps": tuple(check for check in checks if not check["ok"]),
+    }
+
+
 def mobile_native_api_workbench() -> dict:
     """Prove mobile/native device API component coverage and reviewability."""
     contract = mobile_native_api_contract()
@@ -8597,6 +8771,7 @@ def mobile_native_api_workbench() -> dict:
     simulator_fixture_integrity = mobile_simulator_fixture_integrity_contract()
     runtime_replay = mobile_native_api_runtime_replay_contract()
     designer_transaction_replay = mobile_device_designer_transaction_replay_contract()
+    capability_lifecycle_replay = mobile_device_capability_lifecycle_replay_contract()
     checks = (
         {
             "id": "api_breadth",
@@ -8783,6 +8958,13 @@ def mobile_native_api_workbench() -> dict:
             and not designer_transaction_replay["side_effects"],
             "evidence": designer_transaction_replay,
         },
+        {
+            "id": "capability_lifecycle_replay",
+            "ok": capability_lifecycle_replay["ok"]
+            and {"privacy_before_permission", "runtime_and_designer_replay_aligned"} <= set(capability_lifecycle_replay["guards"])
+            and not capability_lifecycle_replay["side_effects"],
+            "evidence": capability_lifecycle_replay,
+        },
     )
     ok = all(check["ok"] for check in checks)
     return {
@@ -8810,6 +8992,7 @@ def mobile_native_api_workbench() -> dict:
         "simulator_fixture_integrity": simulator_fixture_integrity,
         "runtime_replay": runtime_replay,
         "designer_transaction_replay": designer_transaction_replay,
+        "capability_lifecycle_replay": capability_lifecycle_replay,
         "checks": checks,
         "blocking_gaps": tuple(check for check in checks if not check["ok"]),
     }

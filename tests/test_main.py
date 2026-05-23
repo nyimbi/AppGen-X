@@ -109,6 +109,7 @@ from pyAppGen.form_designer import form_designer_generation_smoke_audit
 from pyAppGen.form_designer import form_designer_release_audit
 from pyAppGen.form_designer import livebindings_graph_contract
 from pyAppGen.form_designer import livebindings_workbench
+from pyAppGen.form_designer import mobile_device_capability_lifecycle_replay_contract
 from pyAppGen.form_designer import mobile_native_api_workbench
 from pyAppGen.form_designer import object_inspector_contract
 from pyAppGen.form_designer import object_inspector_workbench
@@ -1279,6 +1280,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "simulator_fixture_integrity",
         "runtime_delivery_replay",
         "designer_transaction_replay",
+        "capability_lifecycle_replay",
     } == {check["id"] for check in mobile_workbench["checks"]}
     mobile_apis = set(mobile_workbench["contract"]["apis"])
     assert {
@@ -1340,6 +1342,21 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     } <= {item["phase"] for item in mobile_workbench["designer_transaction_replay"]["replay"]}
     assert mobile_workbench["designer_transaction_replay"]["final_state"]["runtime_replays"] == len(mobile_apis)
     assert mobile_workbench["designer_transaction_replay"]["final_state"]["bridge_recoveries"] > 0
+    capability_lifecycle = mobile_device_capability_lifecycle_replay_contract()
+    assert capability_lifecycle["format"] == "appgen.mobile-device-capability-lifecycle-replay.v1"
+    assert capability_lifecycle["ok"] is True
+    assert capability_lifecycle["api_count"] == len(mobile_apis)
+    assert {
+        "privacy_before_permission",
+        "simulator_before_bridge",
+        "api_specific_pipelines_covered",
+        "runtime_and_designer_replay_aligned",
+    } <= {check["id"] for check in capability_lifecycle["checks"] if check["ok"]}
+    assert all(
+        {"declare_privacy", "transition_permission", "load_simulator_fixture", "invoke_target_bridges", "dispatch_runtime_events"}
+        <= {phase["phase"] for phase in item["phases"]}
+        for item in capability_lifecycle["replay"]
+    )
     visual_depth = cross_target_visual_depth_workbench()
     assert visual_depth["format"] == "appgen.cross-target-visual-depth-workbench.v1"
     assert visual_depth["ok"] is True
@@ -9906,6 +9923,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "simulator_fixture_integrity",
         "runtime_delivery_replay",
         "designer_transaction_replay",
+        "capability_lifecycle_replay",
     } == {check["id"] for check in generated_mobile["checks"]}
     generated_mobile_apis = set(generated_mobile["contract"]["apis"])
     assert {
@@ -9973,6 +9991,14 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     } <= {item["phase"] for item in generated_mobile["designer_transaction_replay"]["replay"]}
     assert generated_mobile["designer_transaction_replay"]["final_state"]["runtime_replays"] == len(generated_mobile_apis)
     assert generated_mobile["designer_transaction_replay"]["final_state"]["privacy_entries"] == len(generated_mobile_apis)
+    assert generated_mobile["capability_lifecycle_replay"]["ok"] is True
+    assert generated_mobile["capability_lifecycle_replay"]["format"] == "appgen.generated-mobile-device-capability-lifecycle-replay.v1"
+    assert generated_mobile["capability_lifecycle_replay"]["api_count"] == len(generated_mobile_apis)
+    assert all(
+        {"declare_privacy", "transition_permission", "load_simulator_fixture", "invoke_target_bridges", "dispatch_runtime_events"}
+        <= {phase["phase"] for phase in item["phases"]}
+        for item in generated_mobile["capability_lifecycle_replay"]["replay"]
+    )
     generated_visual_depth = form_designer.cross_target_visual_depth_workbench()
     assert generated_visual_depth["format"] == "appgen.generated-cross-target-visual-depth-workbench.v1"
     assert generated_visual_depth["ok"] is True

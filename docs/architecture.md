@@ -245,7 +245,10 @@ Visual design is split into two related capabilities:
   permission manifests, design-time/runtime component adapters, simulator
   fixtures, platform targets, runtime permission guardrails, and an ordered
   designer transaction that carries device components through privacy review,
-  revocation, lifecycle delivery, bridge recovery, and runtime dispatch.
+  revocation, lifecycle delivery, bridge recovery, and runtime dispatch. Its
+  capability lifecycle replay checks each API through privacy metadata,
+  permission transitions, simulator fixtures, target bridges, API-specific
+  pipelines, recovery, runtime events, and designer replay.
 - `cross_target_visual_depth_workbench()` validates style resources, style
   cascade authoring, animation timelines, effect-stack validation, 3D scene
   authoring, asset import budgets, preview/runtime parity, and runtime

@@ -88,7 +88,10 @@ A generated app can include:
   component adapter, simulator fixtures, platform targets, and permission
   guardrails. Its designer transaction replay covers permission generation,
   simulator fixtures, privacy/fallback review, revocation, lifecycle delivery,
-  bridge recovery, and runtime dispatch.
+  bridge recovery, and runtime dispatch. Its capability lifecycle replay checks
+  each API through privacy metadata, permission transitions, simulator fixtures,
+  target bridges, API-specific pipelines, recovery, runtime events, and
+  designer replay.
 - `cross_target_visual_depth_workbench()` proves style resources, style cascade
   authoring, animation timelines, effect-stack validation, 3D scene authoring,
   asset import budgets, preview/runtime parity, runtime fallbacks, and an
