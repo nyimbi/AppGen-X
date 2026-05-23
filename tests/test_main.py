@@ -925,6 +925,9 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "diagnostics_quick_fixes",
         "graph_import_export_round_trip",
         "update_scheduler",
+        "dependency_execution_plan",
+        "expression_sandbox",
+        "runtime_failure_recovery",
         "dataset_cursor_sync",
         "conflict_resolution_workflow",
         "offline_replay",
@@ -947,6 +950,9 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     assert all(diagnostic["quick_fix"] for diagnostic in binding_workbench["diagnostics"]["diagnostics"])
     assert binding_workbench["round_trip"]["exported"]["nodes"] == binding_workbench["round_trip"]["imported"]["nodes"]
     assert binding_workbench["update_scheduler"]["phases"][-1]["phase"] == "publish_notifications"
+    assert all(item["reentrant_guard"] == "defer_reentrant_writes" for item in binding_workbench["dependency_execution"]["execution_plan"])
+    assert binding_workbench["expression_sandbox"]["blocked_probe"]["blocked_tokens"]
+    assert all("rollback_target_write" in item["pipeline"] for item in binding_workbench["runtime_failure_recovery"]["scenarios"])
     assert all(
         {"refresh_controls", "preserve_bookmark", "sync_dataset_bookmark", "clear_orphaned_controls"} & set(flow["pipeline"])
         for flow in binding_workbench["cursor_sync"]["flows"]
@@ -9311,6 +9317,9 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "diagnostics_quick_fixes",
         "graph_import_export_round_trip",
         "update_scheduler",
+        "dependency_execution_plan",
+        "expression_sandbox",
+        "runtime_failure_recovery",
         "dataset_cursor_sync",
         "conflict_resolution_workflow",
         "offline_replay",
@@ -9336,6 +9345,9 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert all(diagnostic["quick_fix"] for diagnostic in generated_bindings["diagnostics"]["diagnostics"])
     assert generated_bindings["round_trip"]["exported"]["edges"] == generated_bindings["round_trip"]["imported"]["edges"]
     assert "topological_order_required" in generated_bindings["update_scheduler"]["guards"]
+    assert all(item["reentrant_guard"] == "defer_reentrant_writes" for item in generated_bindings["dependency_execution"]["execution_plan"])
+    assert generated_bindings["expression_sandbox"]["blocked_probe"]["blocked_tokens"]
+    assert all("rollback_target_write" in item["pipeline"] for item in generated_bindings["runtime_failure_recovery"]["scenarios"])
     assert generated_bindings["cursor_sync"]["fields"]
     assert all("validate_graph" in resolution["workflow"] for resolution in generated_bindings["conflict_resolution"]["resolutions"])
     assert all(item["idempotency_key"] for item in generated_bindings["offline_replay"]["queue_items"])

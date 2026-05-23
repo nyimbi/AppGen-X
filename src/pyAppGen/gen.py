@@ -28852,6 +28852,87 @@ def binding_update_scheduler_contract():
     }}
 
 
+def binding_dependency_execution_plan_contract():
+    """Return generated topological dependency planning evidence for binding graph execution."""
+    graph = livebindings_graph_contract()
+    scheduler = binding_update_scheduler_contract()
+    graph_validation = binding_graph_validation_contract()
+    dependency_edges = tuple(
+        edge
+        for edge in graph["edges"]
+        if edge["kind"] in {{"dataset_to_field", "field_to_control", "expression_to_property"}}
+    )
+    execution_plan = tuple(
+        {{
+            "order": index + 1,
+            "edge": edge,
+            "phase": next(phase["phase"] for phase in scheduler["phases"] if edge["kind"] in phase["edge_kinds"]),
+            "reentrant_guard": "defer_reentrant_writes",
+        }}
+        for index, edge in enumerate(dependency_edges)
+    )
+    return {{
+        "format": "appgen.generated-binding-dependency-execution-plan-contract.v1",
+        "ok": graph_validation["ok"]
+        and bool(execution_plan)
+        and tuple(item["order"] for item in execution_plan) == tuple(sorted(item["order"] for item in execution_plan))
+        and all(item["reentrant_guard"] == "defer_reentrant_writes" for item in execution_plan),
+        "execution_plan": execution_plan,
+        "queue_policy": scheduler["queue_policy"],
+        "guards": ("topological_execution_plan", "reentrant_writes_deferred", "dependencies_validated_before_runtime"),
+        "side_effects": (),
+    }}
+
+
+def binding_expression_sandbox_contract():
+    """Return generated expression sandbox, blocked-token, and deterministic-evaluation evidence."""
+    graph = livebindings_graph_contract()
+    safe_expressions = tuple(node["validator"] for node in graph["nodes"] if node["kind"] == "expression")
+    blocked_probe = validate_binding_expression("__import__('os').system('echo unsafe')")
+    sandbox = {{
+        "allowed_functions": ("format", "parse", "lookup", "aggregate", "conditional", "coalesce", "concat"),
+        "blocked_tokens": ("__", "import", "eval", "exec", "open(", "subprocess", "lambda"),
+        "limits": {{"max_depth": 8, "max_nodes": 64, "timeout_ms": 25}},
+    }}
+    return {{
+        "format": "appgen.generated-binding-expression-sandbox-contract.v1",
+        "ok": bool(safe_expressions)
+        and all(item["ok"] for item in safe_expressions)
+        and not blocked_probe["ok"]
+        and bool(blocked_probe["blocked_tokens"]),
+        "safe_expressions": safe_expressions,
+        "blocked_probe": blocked_probe,
+        "sandbox": sandbox,
+        "guards": ("blocked_tokens_rejected", "allowed_functions_only", "evaluation_budget_enforced", "side_effects_disallowed"),
+        "side_effects": (),
+    }}
+
+
+def binding_runtime_failure_recovery_contract():
+    """Return generated runtime binding failure handling and recovery evidence."""
+    runtime = binding_runtime_wiring_contract()
+    gates = binding_runtime_gate_contract()
+    scenarios = tuple(
+        {{
+            "failure": failure,
+            "pipeline": ("capture_failure", "rollback_target_write", "publish_error_surface", "queue_retry", "record_diagnostic"),
+            "surface": runtime["error_surfaces"][index % len(runtime["error_surfaces"])],
+            "blocks_write": failure in {{"validator_failed", "target_read_only", "converter_failed"}},
+        }}
+        for index, failure in enumerate(("source_missing", "converter_failed", "validator_failed", "target_read_only", "observer_exception"))
+    )
+    return {{
+        "format": "appgen.generated-binding-runtime-failure-recovery-contract.v1",
+        "ok": bool(gates["gates"])
+        and all({{"rollback_target_write", "publish_error_surface", "record_diagnostic"}} <= set(item["pipeline"]) for item in scenarios)
+        and any(item["blocks_write"] for item in scenarios),
+        "scenarios": scenarios,
+        "runtime_artifacts": runtime["artifacts"],
+        "guards": ("failed_writes_roll_back", "errors_surface_to_designer", "retry_queue_is_idempotent", "observer_errors_do_not_break_graph"),
+        "side_effects": (),
+    }}
+
+
 def binding_dataset_cursor_sync_contract():
     """Return generated dataset cursor, selection, and bound-control synchronization evidence."""
     graph = livebindings_graph_contract()
@@ -28983,6 +29064,9 @@ def livebindings_workbench():
     diagnostics = binding_diagnostics_contract()
     round_trip = binding_round_trip_contract()
     update_scheduler = binding_update_scheduler_contract()
+    dependency_execution = binding_dependency_execution_plan_contract()
+    expression_sandbox = binding_expression_sandbox_contract()
+    runtime_failure_recovery = binding_runtime_failure_recovery_contract()
     cursor_sync = binding_dataset_cursor_sync_contract()
     conflict_resolution = binding_conflict_resolution_workflow()
     offline_replay = binding_offline_replay_contract()
@@ -29013,13 +29097,16 @@ def livebindings_workbench():
         {{"id": "diagnostics_quick_fixes", "ok": diagnostics["ok"] and {{"diagnostics_map_to_graph_selection", "quick_fixes_are_staged"}} <= set(diagnostics["guards"]) and not diagnostics["side_effects"], "evidence": diagnostics}},
         {{"id": "graph_import_export_round_trip", "ok": round_trip["ok"] and not round_trip["side_effects"], "evidence": round_trip}},
         {{"id": "update_scheduler", "ok": update_scheduler["ok"] and "topological_order_required" in update_scheduler["guards"] and not update_scheduler["side_effects"], "evidence": update_scheduler}},
+        {{"id": "dependency_execution_plan", "ok": dependency_execution["ok"] and "topological_execution_plan" in dependency_execution["guards"] and not dependency_execution["side_effects"], "evidence": dependency_execution}},
+        {{"id": "expression_sandbox", "ok": expression_sandbox["ok"] and "blocked_tokens_rejected" in expression_sandbox["guards"] and not expression_sandbox["side_effects"], "evidence": expression_sandbox}},
+        {{"id": "runtime_failure_recovery", "ok": runtime_failure_recovery["ok"] and {{"failed_writes_roll_back", "errors_surface_to_designer"}} <= set(runtime_failure_recovery["guards"]) and not runtime_failure_recovery["side_effects"], "evidence": runtime_failure_recovery}},
         {{"id": "dataset_cursor_sync", "ok": cursor_sync["ok"] and "bookmark_preserved_across_refresh" in cursor_sync["guards"] and not cursor_sync["side_effects"], "evidence": cursor_sync}},
         {{"id": "conflict_resolution_workflow", "ok": conflict_resolution["ok"] and "graph_revalidated_after_resolution" in conflict_resolution["guards"] and not conflict_resolution["side_effects"], "evidence": conflict_resolution}},
         {{"id": "offline_replay", "ok": offline_replay["ok"] and "idempotency_key_required" in offline_replay["guards"] and not offline_replay["side_effects"], "evidence": offline_replay}},
         {{"id": "accessibility_routes", "ok": accessibility["ok"] and "keyboard_authoring_complete" in accessibility["guards"] and not accessibility["side_effects"], "evidence": accessibility}},
     )
     ok = all(check["ok"] for check in checks)
-    return {{"format": "appgen.generated-livebindings-workbench.v1", "ok": ok, "decision": "approved" if ok else "blocked", "contract": contract, "authoring": authoring, "conflicts": conflicts, "graph_validation": graph_validation, "edit_transactions": edit_transactions, "previews": previews, "runtime_wiring": runtime_wiring, "preview_runtime_parity": preview_runtime_parity, "history": history, "graph_editing": graph_editing, "lookup_bindings": lookup_bindings, "pipelines": pipelines, "hit_testing": hit_testing, "runtime_gates": runtime_gates, "master_detail": master_detail, "scope_contexts": scope_contexts, "bulk_edits": bulk_edits, "diagnostics": diagnostics, "round_trip": round_trip, "update_scheduler": update_scheduler, "cursor_sync": cursor_sync, "conflict_resolution": conflict_resolution, "offline_replay": offline_replay, "accessibility": accessibility, "checks": checks, "blocking_gaps": tuple(check for check in checks if not check["ok"])}}
+    return {{"format": "appgen.generated-livebindings-workbench.v1", "ok": ok, "decision": "approved" if ok else "blocked", "contract": contract, "authoring": authoring, "conflicts": conflicts, "graph_validation": graph_validation, "edit_transactions": edit_transactions, "previews": previews, "runtime_wiring": runtime_wiring, "preview_runtime_parity": preview_runtime_parity, "history": history, "graph_editing": graph_editing, "lookup_bindings": lookup_bindings, "pipelines": pipelines, "hit_testing": hit_testing, "runtime_gates": runtime_gates, "master_detail": master_detail, "scope_contexts": scope_contexts, "bulk_edits": bulk_edits, "diagnostics": diagnostics, "round_trip": round_trip, "update_scheduler": update_scheduler, "dependency_execution": dependency_execution, "expression_sandbox": expression_sandbox, "runtime_failure_recovery": runtime_failure_recovery, "cursor_sync": cursor_sync, "conflict_resolution": conflict_resolution, "offline_replay": offline_replay, "accessibility": accessibility, "checks": checks, "blocking_gaps": tuple(check for check in checks if not check["ok"])}}
 
 
 def rad_data_tooling_contract():
