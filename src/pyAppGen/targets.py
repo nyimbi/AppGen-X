@@ -5,6 +5,7 @@ from __future__ import annotations
 import importlib.util
 import json
 import py_compile
+import shutil
 import tempfile
 import tomllib
 from pathlib import Path
@@ -491,6 +492,108 @@ def target_generated_runtime_smoke(source: str = TARGET_SAMPLE_DSL) -> dict:
             sorted(str(path.relative_to(project_dir)) for path in project_dir.rglob("*") if path.is_file())
         )
         return _target_generated_runtime_smoke(project_dir, existing_paths)
+
+
+def _packager_tool_path(tool: str, tool_paths: dict[str, str] | None) -> str | None:
+    if tool_paths is not None:
+        return tool_paths.get(tool)
+    return shutil.which(tool)
+
+
+def _packager_tool_row(tool: str, tool_paths: dict[str, str] | None) -> dict:
+    path = _packager_tool_path(tool, tool_paths)
+    return {
+        "tool": tool,
+        "path": path,
+        "available": path is not None,
+    }
+
+
+def target_packager_execution_preflight(
+    source: str = TARGET_SAMPLE_DSL,
+    tool_paths: dict[str, str] | None = None,
+) -> dict:
+    """Generate native targets and report whether host packagers can execute."""
+    from .gen import generate_app_from_schema
+
+    with tempfile.TemporaryDirectory(prefix="appgen-target-packager-exec-") as raw_workdir:
+        project_dir = Path(raw_workdir) / "target-packager-exec"
+        app_dir = project_dir / "app"
+        generate_app_from_schema(
+            schema_from_dsl(source, source_name="target-packager-exec.appgen"),
+            app_dir,
+        )
+        existing_paths = tuple(
+            sorted(str(path.relative_to(project_dir)) for path in project_dir.rglob("*") if path.is_file())
+        )
+        native_module = _load_generated_module(
+            project_dir / "native/appgen_native.py",
+            "appgen_generated_native_packager_execution",
+        )
+        packaging = native_module.native_packaging_release_gate(existing_paths)
+        execution_plans = tuple(
+            native_module.native_packager_execution_plan(target)
+            for target in native_module.native_targets()
+        )
+
+    required_tools = {
+        "mobile": ("python", "buildozer"),
+        "desktop": ("python", "briefcase"),
+    }
+    rows = tuple(
+        {
+            "target": plan["target"],
+            "working_dir": plan["working_dir"],
+            "commands": plan["commands"],
+            "expected_artifacts": plan["expected_artifacts"],
+            "tools": tuple(
+                _packager_tool_row(tool, tool_paths)
+                for tool in required_tools[plan["target"]]
+            ),
+            "plan_ok": plan["ok"],
+        }
+        for plan in execution_plans
+    )
+    checks = (
+        {
+            "id": "adapter_release_gate",
+            "ok": packaging["ok"],
+            "checks": packaging["checks"],
+        },
+        {
+            "id": "execution_plans",
+            "ok": bool(execution_plans) and all(plan["ok"] for plan in execution_plans),
+            "targets": tuple(plan["target"] for plan in execution_plans),
+        },
+        {
+            "id": "host_tools_available",
+            "ok": all(tool["available"] for row in rows for tool in row["tools"]),
+            "missing": tuple(
+                (row["target"], tool["tool"])
+                for row in rows
+                for tool in row["tools"]
+                if not tool["available"]
+            ),
+        },
+        {
+            "id": "reviewed_side_effects",
+            "ok": all(
+                any(command["requires_review"] for command in row["commands"])
+                for row in rows
+            ),
+            "targets": tuple(row["target"] for row in rows),
+        },
+    )
+    return {
+        "format": "appgen.target-packager-execution-preflight.v1",
+        "scope": "package",
+        "ok": all(check["ok"] for check in checks),
+        "packaging": packaging,
+        "rows": rows,
+        "checks": checks,
+        "blocking_gaps": tuple(check for check in checks if not check["ok"]),
+        "stop_condition": "do-not-claim-host-packager-execution-unless-ok-is-true",
+    }
 
 
 def dsl_target_contract(source: str = TARGET_SAMPLE_DSL) -> dict:

@@ -51505,6 +51505,36 @@ def native_packaging_release_gate(existing_paths=()):
     }}
 
 
+def native_packager_execution_plan(target, output_dir="dist/native"):
+    """Return host-capable package execution phases without running toolchains."""
+    plan = native_packaging_plan(target)
+    phase_names = ("build_python_package",)
+    if target == "mobile":
+        phase_names = phase_names + ("build_debug_apk", "build_release_bundle")
+    elif target == "desktop":
+        phase_names = phase_names + ("create_app", "build_app", "package_app")
+    commands = tuple(
+        {{
+            "phase": phase,
+            "command": command,
+            "requires_review": "release" in command or "package" in command,
+        }}
+        for phase, command in zip(phase_names, plan["commands"])
+    )
+    return {{
+        "format": "appgen.native-packager-execution-plan.v1",
+        "ok": plan["selected"] and bool(commands) and bool(plan["artifacts"]),
+        "target": target,
+        "working_dir": plan["files"][0].rsplit("/", 1)[0],
+        "output_dir": output_dir.rstrip("/") + f"/{{target}}",
+        "commands": commands,
+        "expected_artifacts": plan["artifacts"],
+        "preflight": ("adapter_installed", "source_files_present", "signing_reviewed", "artifact_directory_writable"),
+        "side_effects": ("build_directory", "package_artifacts"),
+        "review_required": True,
+    }}
+
+
 def native_release_gate(existing_paths=()):
     """Return release readiness for generated mobile and desktop targets."""
     scaffold = scaffold_check(existing_paths)

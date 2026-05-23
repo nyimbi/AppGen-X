@@ -271,6 +271,7 @@ from pyAppGen.targets import target_contract
 from pyAppGen.targets import target_generated_runtime_smoke
 from pyAppGen.targets import target_generation_smoke_audit
 from pyAppGen.targets import target_package_matrix
+from pyAppGen.targets import target_packager_execution_preflight
 from pyAppGen.targets import target_release_audit
 from pyAppGen.targets import target_runtime_packaging_proof
 from pyAppGen.visual_modeling import code_generation_plan
@@ -3028,6 +3029,29 @@ def test_package_target_audit_covers_web_mobile_desktop_generation(
         and "briefcase package" in package["commands"]
         for package in packaging["packages"]
     )
+    missing_packagers = target_packager_execution_preflight(tool_paths={})
+    assert missing_packagers["format"] == "appgen.target-packager-execution-preflight.v1"
+    assert missing_packagers["ok"] is False
+    assert any(check["id"] == "host_tools_available" for check in missing_packagers["blocking_gaps"])
+    ready_packagers = target_packager_execution_preflight(
+        tool_paths={
+            "python": "/usr/bin/python",
+            "buildozer": "/opt/appgen/bin/buildozer",
+            "briefcase": "/opt/appgen/bin/briefcase",
+        }
+    )
+    assert ready_packagers["ok"] is True
+    assert {row["target"] for row in ready_packagers["rows"]} == {"mobile", "desktop"}
+    assert any(
+        row["target"] == "mobile"
+        and any(command["command"] == "buildozer android release" for command in row["commands"])
+        for row in ready_packagers["rows"]
+    )
+    assert any(
+        row["target"] == "desktop"
+        and any(command["command"] == "briefcase package" for command in row["commands"])
+        for row in ready_packagers["rows"]
+    )
 
     runtime = target_generated_runtime_smoke()
     assert runtime["format"] == "appgen.target-generated-runtime-smoke.v1"
@@ -4061,6 +4085,13 @@ def test_generate_app_from_sqlite_schema_compiles(tmp_path) -> None:
     } == {check["gate"] for check in native_packaging["checks"]}
     assert "buildozer android release" in native.native_packaging_plan("mobile")["commands"]
     assert "briefcase package" in native.native_packaging_plan("desktop")["commands"]
+    mobile_execution = native.native_packager_execution_plan("mobile")
+    desktop_execution = native.native_packager_execution_plan("desktop")
+    assert mobile_execution["format"] == "appgen.native-packager-execution-plan.v1"
+    assert mobile_execution["ok"] is True
+    assert desktop_execution["ok"] is True
+    assert "build_directory" in mobile_execution["side_effects"]
+    assert any(command["requires_review"] for command in desktop_execution["commands"])
     native_gate = native.native_release_gate(native_artifacts)
     assert native_gate["format"] == "appgen.native-release-gate.v1"
     assert native_gate["ok"] is True
