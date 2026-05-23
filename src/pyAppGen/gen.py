@@ -1757,6 +1757,7 @@ def write_form_designer_file(output_dir, schema: AppSchema):
     write_visual_component_files(output_dir)
     write_data_tooling_module_files(output_dir)
     write_inspector_module_files(output_dir)
+    write_binding_module_files(output_dir)
 
 
 DEVICE_API_COMPONENTS = (
@@ -1815,6 +1816,15 @@ INSPECTOR_MODULES = (
     "custom_designer_module",
     "handler_invocation_module",
     "binding_bridge_module",
+)
+
+BINDING_MODULES = (
+    "binding_graph_module",
+    "binding_expression_module",
+    "binding_designer_module",
+    "binding_runtime_wiring_module",
+    "binding_propagation_module",
+    "binding_lifecycle_module",
 )
 
 
@@ -1965,6 +1975,26 @@ def write_inspector_module_files(output_dir):
         )
 
 
+def write_binding_module_files(output_dir):
+    """Write generated visual binding modules and smoke tests."""
+    output_dir = Path(output_dir)
+    module_dir = output_dir / "binding_modules"
+    test_dir = output_dir / "binding_module_tests"
+    module_dir.mkdir(parents=True, exist_ok=True)
+    test_dir.mkdir(parents=True, exist_ok=True)
+    (module_dir / "__init__.py").write_text(_binding_module_init_text(), encoding="utf-8")
+    (test_dir / "__init__.py").write_text(_binding_module_test_init_text(), encoding="utf-8")
+    for module_name in BINDING_MODULES:
+        (module_dir / f"{module_name}.py").write_text(
+            _binding_module_text(module_name),
+            encoding="utf-8",
+        )
+        (test_dir / f"test_{module_name}.py").write_text(
+            _binding_module_test_text(module_name),
+            encoding="utf-8",
+        )
+
+
 def _module_name(name: str) -> str:
     """Return a stable snake-case module name for a component or package."""
     chars = []
@@ -2035,6 +2065,239 @@ def _inspector_module_test_init_text() -> str:
         '"""Generated Object Inspector editor module tests."""\n\n'
         f"INSPECTOR_MODULE_TESTS = {modules!r}\n"
     )
+
+
+def _binding_module_init_text() -> str:
+    return (
+        '"""Generated visual binding modules."""\n\n'
+        f"BINDING_MODULES = {BINDING_MODULES!r}\n"
+    )
+
+
+def _binding_module_test_init_text() -> str:
+    modules = tuple(f"test_{name}" for name in BINDING_MODULES)
+    return (
+        '"""Generated visual binding module tests."""\n\n'
+        f"BINDING_MODULE_TESTS = {modules!r}\n"
+    )
+
+
+def _binding_module_text(module_name: str) -> str:
+    return f'''"""Generated visual binding module for {module_name}."""
+
+from __future__ import annotations
+
+import importlib.util
+from pathlib import Path
+
+
+MODULE = {module_name!r}
+EXPECTED_EXPORTS = (
+    "module_contract",
+    "binding_manifest",
+    "run_binding_operation",
+    "runtime_manifest",
+    "smoke_test",
+)
+
+
+def _load_sibling(module_name):
+    module_path = Path(__file__).resolve().parents[1] / f"{{module_name}}.py"
+    spec = importlib.util.spec_from_file_location(f"generated_binding_{{MODULE}}_{{module_name}}", module_path)
+    module = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(module)
+    return module
+
+
+def _form_designer():
+    return _load_sibling("form_designer")
+
+
+def _runtime():
+    return _load_sibling("binding_runtime")
+
+
+def _module_kind():
+    return {{
+        "binding_graph_module": "graph",
+        "binding_expression_module": "expression",
+        "binding_designer_module": "designer",
+        "binding_runtime_wiring_module": "runtime_wiring",
+        "binding_propagation_module": "propagation",
+        "binding_lifecycle_module": "lifecycle",
+    }}[MODULE]
+
+
+def module_contract():
+    """Return this generated binding module's export contract."""
+    available = tuple(name for name in EXPECTED_EXPORTS if name in globals())
+    return {{
+        "format": "appgen.binding-module-contract.v1",
+        "module": MODULE,
+        "kind": _module_kind(),
+        "ok": set(EXPECTED_EXPORTS) <= set(available),
+        "exports": available,
+        "expected_exports": EXPECTED_EXPORTS,
+        "side_effects": (),
+    }}
+
+
+def binding_manifest():
+    """Return the binding metadata owned by this generated module."""
+    designer = _form_designer()
+    runtime = _runtime()
+    runtime_manifest_data = runtime.binding_runtime_manifest()
+    workbench = designer.livebindings_workbench()
+    kind = _module_kind()
+    payload = {{
+        "graph": runtime_manifest_data["graph"],
+        "expression": {{
+            "pipelines": workbench["pipelines"],
+            "sandbox": workbench["expression_sandbox"],
+            "converters": runtime_manifest_data["graph"]["converters"],
+            "validators": runtime_manifest_data["graph"]["validators"],
+        }},
+        "designer": {{
+            "graph_editing": workbench["graph_editing"],
+            "edit_transactions": workbench["edit_transactions"],
+            "actionable_operations": workbench["actionable_operations"],
+        }},
+        "runtime_wiring": {{
+            "runtime_wiring": runtime_manifest_data["runtime_wiring"],
+            "runtime_gates": runtime_manifest_data["runtime_gates"],
+        }},
+        "propagation": {{
+            "runtime_propagation": runtime_manifest_data["runtime_propagation_replay"],
+            "design_runtime": runtime_manifest_data["design_runtime_replay"],
+            "designer_transaction": runtime_manifest_data["designer_transaction_replay"],
+        }},
+        "lifecycle": {{
+            "lifecycle_release": runtime_manifest_data["lifecycle_release_replay"],
+            "inspector_bridge": runtime_manifest_data["inspector_binding_bridge"],
+        }},
+    }}[kind]
+    return {{
+        "format": "appgen.binding-module-manifest.v1",
+        "module": MODULE,
+        "kind": kind,
+        "ok": bool(payload) and runtime_manifest_data["ok"],
+        "payload": payload,
+        "runtime_checks": runtime_manifest_data["checks"],
+        "side_effects": (),
+    }}
+
+
+def run_binding_operation():
+    """Run this module's side-effect-free binding operation."""
+    designer = _form_designer()
+    runtime_manifest_data = _runtime().binding_runtime_manifest()
+    replay = _runtime().replay_binding_runtime()
+    kind = _module_kind()
+    operation = {{
+        "graph": designer.livebindings_graph_contract(),
+        "expression": designer.binding_expression_sandbox_contract(),
+        "designer": designer.binding_graph_editing_surface_contract(),
+        "runtime_wiring": designer.livebindings_emit_runtime_wiring(),
+        "propagation": runtime_manifest_data["runtime_propagation_replay"],
+        "lifecycle": runtime_manifest_data["lifecycle_release_replay"],
+    }}[kind]
+    operation_ok = operation["ok"] if isinstance(operation, dict) and "ok" in operation else bool(operation)
+    side_effects = operation.get("side_effects", ()) if isinstance(operation, dict) else ()
+    return {{
+        "format": "appgen.binding-module-operation.v1",
+        "module": MODULE,
+        "kind": kind,
+        "ok": operation_ok and not side_effects and replay["ok"],
+        "operation": operation,
+        "replay": replay,
+        "side_effects": (),
+    }}
+
+
+def runtime_manifest():
+    """Return the aggregate binding runtime manifest used by this module."""
+    return _runtime().binding_runtime_manifest()
+
+
+def smoke_test():
+    """Run side-effect-free checks for this generated binding module."""
+    contract = module_contract()
+    manifest = binding_manifest()
+    operation = run_binding_operation()
+    runtime = runtime_manifest()
+    return {{
+        "format": "appgen.binding-module-smoke-test.v1",
+        "module": MODULE,
+        "kind": contract["kind"],
+        "ok": contract["ok"]
+        and manifest["ok"]
+        and operation["ok"]
+        and runtime["ok"]
+        and not manifest["side_effects"]
+        and not operation["side_effects"],
+        "checks": (
+            "module_contract_resolves",
+            "binding_manifest_resolves",
+            "binding_operation_replays",
+            "runtime_manifest_ok",
+            "no_side_effects",
+        ),
+    }}
+'''
+
+
+def _binding_module_test_text(module_name: str) -> str:
+    return f'''"""Generated tests for the {module_name} visual binding module."""
+
+from __future__ import annotations
+
+import importlib.util
+from pathlib import Path
+
+
+MODULE = {module_name!r}
+
+
+def load_binding_module():
+    """Load the generated binding module without app installation."""
+    module_path = Path(__file__).resolve().parents[1] / "binding_modules" / f"{{MODULE}}.py"
+    spec = importlib.util.spec_from_file_location(f"generated_binding_module_{{MODULE}}", module_path)
+    module = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(module)
+    return module
+
+
+def test_binding_module_contract():
+    """Assert the generated binding module exposes its contract."""
+    module = load_binding_module()
+    contract = module.module_contract()
+    assert contract["module"] == MODULE
+    assert contract["ok"] is True
+    assert all(hasattr(module, name) for name in contract["expected_exports"])
+
+
+def test_binding_module_smoke():
+    """Assert the module's side-effect-free smoke test passes."""
+    module = load_binding_module()
+    result = module.smoke_test()
+    assert result["ok"] is True
+    assert result["module"] == MODULE
+    assert result["checks"]
+
+
+def smoke_test():
+    """Run this generated test module in a side-effect-free way."""
+    test_binding_module_contract()
+    test_binding_module_smoke()
+    return {{
+        "format": "appgen.binding-module-generated-test-smoke.v1",
+        "module": MODULE,
+        "ok": True,
+        "tests": ("test_binding_module_contract", "test_binding_module_smoke"),
+    }}
+'''
 
 
 def _inspector_module_text(module_name: str) -> str:
@@ -4169,6 +4432,114 @@ def _load_form_designer():
     return module
 
 
+def _load_generated_module(module_path, module_name):
+    spec = importlib.util.spec_from_file_location(module_name, module_path)
+    module = importlib.util.module_from_spec(spec)
+    if spec.loader is None:
+        raise RuntimeError(f"Could not load generated module: {module_path}")
+    spec.loader.exec_module(module)
+    return module
+
+
+def binding_module_file_manifest():
+    """Return file-level evidence for generated visual binding modules."""
+    module_names = (
+        "binding_graph_module",
+        "binding_expression_module",
+        "binding_designer_module",
+        "binding_runtime_wiring_module",
+        "binding_propagation_module",
+        "binding_lifecycle_module",
+    )
+    required_exports = (
+        "module_contract",
+        "binding_manifest",
+        "run_binding_operation",
+        "runtime_manifest",
+        "smoke_test",
+    )
+    module_dir = Path(__file__).with_name("binding_modules")
+    entries = []
+    for module_name in module_names:
+        module_path = module_dir / f"{module_name}.py"
+        exports = ()
+        contract_ok = False
+        smoke_ok = False
+        if module_path.exists():
+            module = _load_generated_module(module_path, f"generated_binding_module_{module_name}")
+            exports = tuple(name for name in required_exports if hasattr(module, name))
+            contract = module.module_contract()
+            smoke = module.smoke_test()
+            contract_ok = contract["ok"] and contract["module"] == module_name
+            smoke_ok = smoke["ok"] and smoke["module"] == module_name
+        entries.append(
+            {
+                "module": module_name,
+                "path": f"app/binding_modules/{module_name}.py",
+                "exists": module_path.exists(),
+                "exports": exports,
+                "expected_exports": required_exports,
+                "contract_ok": contract_ok,
+                "smoke_ok": smoke_ok,
+            }
+        )
+    return {
+        "format": "appgen.generated-binding-module-file-manifest.v1",
+        "ok": bool(entries)
+        and all(item["exists"] and item["contract_ok"] and item["smoke_ok"] and set(item["expected_exports"]) <= set(item["exports"]) for item in entries),
+        "modules": tuple(entries),
+        "guards": ("one_file_per_binding_surface", "declared_exports_present", "module_smoke_replays"),
+        "side_effects": (),
+    }
+
+
+def binding_module_test_file_manifest():
+    """Return file-level evidence for generated visual binding module tests."""
+    module_names = (
+        "binding_graph_module",
+        "binding_expression_module",
+        "binding_designer_module",
+        "binding_runtime_wiring_module",
+        "binding_propagation_module",
+        "binding_lifecycle_module",
+    )
+    required_exports = (
+        "load_binding_module",
+        "test_binding_module_contract",
+        "test_binding_module_smoke",
+        "smoke_test",
+    )
+    test_dir = Path(__file__).with_name("binding_module_tests")
+    entries = []
+    for module_name in module_names:
+        module_path = test_dir / f"test_{module_name}.py"
+        exports = ()
+        smoke_ok = False
+        if module_path.exists():
+            module = _load_generated_module(module_path, f"generated_binding_module_test_{module_name}")
+            exports = tuple(name for name in required_exports if hasattr(module, name))
+            smoke = module.smoke_test()
+            smoke_ok = smoke["ok"] and smoke["module"] == module_name
+        entries.append(
+            {
+                "module": module_name,
+                "path": f"app/binding_module_tests/test_{module_name}.py",
+                "exists": module_path.exists(),
+                "exports": exports,
+                "required_exports": required_exports,
+                "smoke_ok": smoke_ok,
+            }
+        )
+    return {
+        "format": "appgen.generated-binding-module-test-file-manifest.v1",
+        "ok": bool(entries) and all(item["exists"] and item["smoke_ok"] and set(item["required_exports"]) <= set(item["exports"]) for item in entries),
+        "tests": tuple(entries),
+        "required_exports": required_exports,
+        "guards": ("one_test_file_per_binding_surface", "contract_and_smoke_tests_exported"),
+        "side_effects": (),
+    }
+
+
 def binding_runtime_manifest():
     """Return generated binding graph, runtime wiring, replay, and release evidence."""
     form_designer = _load_form_designer()
@@ -4258,6 +4629,8 @@ def validate_binding_runtime():
     """Validate generated visual binding runtime readiness."""
     manifest = binding_runtime_manifest()
     replay = replay_binding_runtime()
+    module_files = binding_module_file_manifest()
+    module_tests = binding_module_test_file_manifest()
     checks = (
         {"id": "manifest_ok", "ok": manifest["ok"]},
         {"id": "graph_nodes_present", "ok": {"dataset", "field", "control", "expression"} <= {node["kind"] for node in manifest["graph"]["nodes"]}},
@@ -4270,6 +4643,8 @@ def validate_binding_runtime():
         {"id": "designer_transaction_replay", "ok": manifest["designer_transaction_replay"]["ok"] and not manifest["designer_transaction_replay"]["side_effects"]},
         {"id": "lifecycle_release_replay", "ok": manifest["lifecycle_release_replay"]["ok"] and not manifest["lifecycle_release_replay"]["side_effects"]},
         {"id": "inspector_bridge_replay", "ok": manifest["inspector_binding_bridge"]["ok"] and not manifest["inspector_binding_bridge"]["side_effects"]},
+        {"id": "binding_modules_ready", "ok": module_files["ok"] and not module_files["side_effects"]},
+        {"id": "binding_module_tests_ready", "ok": module_tests["ok"] and not module_tests["side_effects"]},
         {"id": "runtime_replay", "ok": replay["ok"] and not replay["side_effects"]},
     )
     return {
@@ -4277,6 +4652,8 @@ def validate_binding_runtime():
         "ok": all(check["ok"] for check in checks),
         "checks": checks,
         "manifest": manifest,
+        "module_files": module_files,
+        "module_tests": module_tests,
         "replay": replay,
         "blocking_gaps": tuple(check for check in checks if not check["ok"]),
     }

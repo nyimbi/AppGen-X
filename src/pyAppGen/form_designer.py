@@ -13987,6 +13987,55 @@ def inspector_module_test_file_manifest() -> tuple[dict, ...]:
     )
 
 
+def binding_module_file_manifest() -> tuple[dict, ...]:
+    """Return generated visual binding module files expected in apps."""
+    modules = (
+        ("binding_graph_module", "graph"),
+        ("binding_expression_module", "expression"),
+        ("binding_designer_module", "designer"),
+        ("binding_runtime_wiring_module", "runtime_wiring"),
+        ("binding_propagation_module", "propagation"),
+        ("binding_lifecycle_module", "lifecycle"),
+    )
+    exports = (
+        "module_contract",
+        "binding_manifest",
+        "run_binding_operation",
+        "runtime_manifest",
+        "smoke_test",
+    )
+    return tuple(
+        {
+            "module": module,
+            "kind": kind,
+            "path": f"app/binding_modules/{module}.py",
+            "exports": exports,
+            "ok": bool(module) and bool(kind),
+        }
+        for module, kind in modules
+    )
+
+
+def binding_module_test_file_manifest() -> tuple[dict, ...]:
+    """Return generated visual binding test files expected in apps."""
+    return tuple(
+        {
+            "module": item["module"],
+            "kind": item["kind"],
+            "path": item["path"].replace("app/binding_modules/", "app/binding_module_tests/test_"),
+            "target": item["path"],
+            "exports": (
+                "load_binding_module",
+                "test_binding_module_contract",
+                "test_binding_module_smoke",
+                "smoke_test",
+            ),
+            "ok": item["ok"],
+        }
+        for item in binding_module_file_manifest()
+    )
+
+
 def component_package_module_implementation_contract(package_id: str) -> dict:
     """Return required exports and smoke tests for one component package module."""
     package = component_package_contract(package_id)
@@ -14299,6 +14348,8 @@ def form_designer_generation_smoke_audit(source: str = FORM_DESIGNER_SAMPLE_DSL)
     data_module_test_artifacts = tuple(item["path"] for item in data_tooling_module_test_file_manifest())
     inspector_module_artifacts = tuple(item["path"] for item in inspector_module_file_manifest())
     inspector_module_test_artifacts = tuple(item["path"] for item in inspector_module_test_file_manifest())
+    binding_module_artifacts = tuple(item["path"] for item in binding_module_file_manifest())
+    binding_module_test_artifacts = tuple(item["path"] for item in binding_module_test_file_manifest())
     required_artifacts = (
         "app/form_designer.py",
         "app/component_parity_runtime.py",
@@ -14327,6 +14378,8 @@ def form_designer_generation_smoke_audit(source: str = FORM_DESIGNER_SAMPLE_DSL)
         *data_module_test_artifacts,
         *inspector_module_artifacts,
         *inspector_module_test_artifacts,
+        *binding_module_artifacts,
+        *binding_module_test_artifacts,
     )
     compile_artifacts = (
         "app/form_designer.py",
@@ -14355,6 +14408,8 @@ def form_designer_generation_smoke_audit(source: str = FORM_DESIGNER_SAMPLE_DSL)
         *data_module_test_artifacts,
         *inspector_module_artifacts,
         *inspector_module_test_artifacts,
+        *binding_module_artifacts,
+        *binding_module_test_artifacts,
     )
 
     with tempfile.TemporaryDirectory(prefix="appgen-form-designer-smoke-") as tmp:
@@ -14517,7 +14572,9 @@ def form_designer_generation_smoke_audit(source: str = FORM_DESIGNER_SAMPLE_DSL)
             and len(data_module_artifacts) == len(data_module_generation_contract()["artifacts"])
             and len(data_module_test_artifacts) == len(data_module_generation_contract()["artifacts"])
             and len(inspector_module_artifacts) == 6
-            and len(inspector_module_test_artifacts) == 6,
+            and len(inspector_module_test_artifacts) == 6
+            and len(binding_module_artifacts) == 6
+            and len(binding_module_test_artifacts) == 6,
             "component_test_count": len(component_test_artifacts),
             "package_test_count": len(package_test_artifacts),
             "device_component_count": len(device_component_artifacts),
@@ -14528,6 +14585,8 @@ def form_designer_generation_smoke_audit(source: str = FORM_DESIGNER_SAMPLE_DSL)
             "data_module_test_count": len(data_module_test_artifacts),
             "inspector_module_count": len(inspector_module_artifacts),
             "inspector_module_test_count": len(inspector_module_test_artifacts),
+            "binding_module_count": len(binding_module_artifacts),
+            "binding_module_test_count": len(binding_module_test_artifacts),
             "component_count": len(component_artifacts),
             "package_count": len(package_artifacts),
         },
@@ -14606,6 +14665,8 @@ def form_designer_generation_smoke_audit(source: str = FORM_DESIGNER_SAMPLE_DSL)
                 "designer_transaction_replay",
                 "lifecycle_release_replay",
                 "inspector_bridge_replay",
+                "binding_modules_ready",
+                "binding_module_tests_ready",
                 "runtime_replay",
             }
             <= set(binding_runtime_smoke["checks"]),

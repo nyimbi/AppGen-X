@@ -11279,8 +11279,41 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "designer_transaction_replay",
         "lifecycle_release_replay",
         "inspector_bridge_replay",
+        "binding_modules_ready",
+        "binding_module_tests_ready",
         "runtime_replay",
     } <= set(binding_runtime_smoke["checks"])
+    binding_module_files = binding_runtime.binding_module_file_manifest()
+    binding_module_tests = binding_runtime.binding_module_test_file_manifest()
+    assert binding_module_files["ok"] is True
+    assert binding_module_tests["ok"] is True
+    assert {item["module"] for item in binding_module_files["modules"]} == {
+        "binding_graph_module",
+        "binding_expression_module",
+        "binding_designer_module",
+        "binding_runtime_wiring_module",
+        "binding_propagation_module",
+        "binding_lifecycle_module",
+    }
+    assert {item["module"] for item in binding_module_tests["tests"]} == {
+        "binding_graph_module",
+        "binding_expression_module",
+        "binding_designer_module",
+        "binding_runtime_wiring_module",
+        "binding_propagation_module",
+        "binding_lifecycle_module",
+    }
+    for item in binding_module_files["modules"]:
+        module_path = output_dir / item["path"].replace("app/", "")
+        py_compile.compile(str(module_path), doraise=True)
+        module = _load_module(module_path, f"generated_binding_module_{item['module']}")
+        assert module.smoke_test()["ok"] is True
+        assert module.module_contract()["ok"] is True
+    for item in binding_module_tests["tests"]:
+        test_path = output_dir / item["path"].replace("app/", "")
+        py_compile.compile(str(test_path), doraise=True)
+        module = _load_module(test_path, f"generated_binding_module_test_{item['module']}")
+        assert module.smoke_test()["ok"] is True
     binding_replay = binding_runtime.replay_binding_runtime()
     assert binding_replay["ok"] is True
     assert {"dataset_to_field", "field_to_control", "control_to_field"} <= set(binding_replay["propagation_ops"])
