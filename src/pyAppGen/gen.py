@@ -1898,6 +1898,13 @@ UI_CHROME_MODULES = (
     "ui_fine_tuning_module",
 )
 
+WIZARD_MODULES = (
+    "table_wizard_module",
+    "workflow_wizard_module",
+    "validation_session_module",
+    "submission_plan_module",
+)
+
 
 def write_pbc_runtime_file(output_dir, schema: AppSchema):
     """Write generated composable capability runtime helpers."""
@@ -3369,6 +3376,251 @@ def smoke_test():
         "surface": SURFACE,
         "ok": True,
         "tests": ("test_ui_chrome_module_contract", "test_ui_chrome_module_smoke"),
+    }}
+'''
+
+
+def _wizard_module_init_text() -> str:
+    return (
+        '"""Generated wizard modules."""\n\n'
+        f"WIZARD_MODULES = {WIZARD_MODULES!r}\n"
+    )
+
+
+def _wizard_module_test_init_text() -> str:
+    modules = tuple(f"test_{name}" for name in WIZARD_MODULES)
+    return (
+        '"""Generated wizard module tests."""\n\n'
+        f"WIZARD_MODULE_TESTS = {modules!r}\n"
+    )
+
+
+def _wizard_surface(module_name: str) -> tuple[str, str]:
+    return {
+        "table_wizard_module": ("table_wizard", "wizard_plan"),
+        "workflow_wizard_module": ("workflow_wizard", "wizard_progress"),
+        "validation_session_module": ("validation_session", "wizard_session"),
+        "submission_plan_module": ("submission_plan", "wizard_submission_plan"),
+    }[module_name]
+
+
+def _wizard_module_text(module_name: str) -> str:
+    surface, operation = _wizard_surface(module_name)
+    return f'''"""Generated wizard module for {surface}."""
+
+from __future__ import annotations
+
+import importlib.util
+from pathlib import Path
+
+
+MODULE = {module_name!r}
+SURFACE = {surface!r}
+OPERATION = {operation!r}
+EXPECTED_EXPORTS = (
+    "module_contract",
+    "wizard_manifest",
+    "run_wizard_operation",
+    "release_context",
+    "smoke_test",
+)
+
+
+def _wizards():
+    module_path = Path(__file__).resolve().parents[1] / "wizards.py"
+    spec = importlib.util.spec_from_file_location(f"generated_wizard_{{MODULE}}_wizards", module_path)
+    module = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(module)
+    return module
+
+
+def _first_wizard(kind):
+    catalog = _wizards().wizard_catalog()
+    return next((item for item in catalog if item["kind"] == kind), None)
+
+
+def module_contract():
+    """Return this generated wizard module's export contract."""
+    available = tuple(name for name in EXPECTED_EXPORTS if name in globals())
+    return {{
+        "format": "appgen.wizard-module-contract.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "operation": OPERATION,
+        "ok": set(EXPECTED_EXPORTS) <= set(available),
+        "exports": available,
+        "expected_exports": EXPECTED_EXPORTS,
+        "side_effects": (),
+    }}
+
+
+def wizard_manifest():
+    """Return wizard metadata owned by this module."""
+    wizards = _wizards()
+    catalog = wizards.wizard_catalog()
+    table_wizards = tuple(item for item in catalog if item["kind"] == "table")
+    workflow_wizards = tuple(item for item in catalog if item["kind"] == "workflow")
+    return {{
+        "format": "appgen.wizard-module-manifest.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "ok": bool(catalog)
+        and (bool(table_wizards) if SURFACE in ("table_wizard", "validation_session", "submission_plan") else True)
+        and (bool(workflow_wizards) if SURFACE == "workflow_wizard" else True),
+        "catalog": catalog,
+        "table_wizards": table_wizards,
+        "workflow_wizards": workflow_wizards,
+        "side_effects": (),
+    }}
+
+
+def run_wizard_operation():
+    """Run this module's side-effect-free wizard operation."""
+    wizards = _wizards()
+    if SURFACE == "table_wizard":
+        wizard = _first_wizard("table")
+        operation = {{
+            "plan": wizards.wizard_plan(wizard["name"]) if wizard else None,
+            "questions": wizards.field_questions(wizard["name"]) if wizard else (),
+        }}
+        ok = bool(operation["plan"]) and bool(operation["questions"]) and operation["plan"]["kind"] == "table"
+    elif SURFACE == "workflow_wizard":
+        wizard = _first_wizard("workflow")
+        first_step = wizard["steps"][0]["name"] if wizard and wizard["steps"] else None
+        operation = {{
+            "plan": wizards.wizard_plan(wizard["name"]) if wizard else None,
+            "progress": wizards.wizard_progress(wizard["name"], (first_step,)) if wizard and first_step else {{"current": None}},
+        }}
+        ok = bool(operation["plan"]) and operation["plan"]["kind"] == "workflow" and operation["progress"]["current"] is not None
+    elif SURFACE == "validation_session":
+        wizard = _first_wizard("table")
+        questions = wizards.field_questions(wizard["name"]) if wizard else ()
+        values = {{question["field"]: question["choices"][0] if question.get("choices") else f"sample-{{question['field']}}" for question in questions}}
+        operation = {{
+            "session": wizards.wizard_session(wizard["name"], values) if wizard else None,
+            "empty_validation": wizards.validate_step(wizard["name"], wizard["steps"][0]["name"], {{}}) if wizard and wizard["steps"] else None,
+        }}
+        ok = bool(operation["session"]) and operation["session"]["can_advance"] is True and bool(operation["empty_validation"]["missing"])
+    else:
+        wizard = _first_wizard("table")
+        questions = wizards.field_questions(wizard["name"]) if wizard else ()
+        values = {{question["field"]: question["choices"][0] if question.get("choices") else f"sample-{{question['field']}}" for question in questions}}
+        operation = wizards.wizard_submission_plan(wizard["name"], values) if wizard else {{"ready": False}}
+        ok = operation["ready"] is True and operation["requires_review"] is True and bool(operation["side_effects"])
+    return {{
+        "format": "appgen.wizard-module-operation.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "ok": ok,
+        "operation": operation,
+        "side_effects": (),
+    }}
+
+
+def release_context():
+    """Return release and workbench evidence used by this wizard module."""
+    wizards = _wizards()
+    core_assets = {{"app/wizards.py", "app/templates/appgen_wizards.html"}}
+    workbench = wizards.wizard_workbench(core_assets)
+    release = wizards.wizard_release_gate(core_assets)
+    return {{
+        "format": "appgen.wizard-module-release-context.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "ok": workbench["ok"] and release["ok"],
+        "workbench": workbench,
+        "release": release,
+        "side_effects": (),
+    }}
+
+
+def smoke_test():
+    """Run side-effect-free checks for this generated wizard module."""
+    contract = module_contract()
+    manifest = wizard_manifest()
+    operation = run_wizard_operation()
+    release = release_context()
+    return {{
+        "format": "appgen.wizard-module-smoke-test.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "ok": contract["ok"]
+        and manifest["ok"]
+        and operation["ok"]
+        and release["ok"]
+        and not manifest["side_effects"]
+        and not operation["side_effects"]
+        and not release["side_effects"],
+        "contract": contract,
+        "manifest": manifest,
+        "operation": operation,
+        "release": release,
+        "checks": (
+            "module_contract_resolves",
+            "wizard_manifest_ok",
+            "wizard_operation_ok",
+            "release_context_ok",
+            "no_side_effects",
+        ),
+    }}
+'''
+
+
+def _wizard_module_test_text(module_name: str) -> str:
+    surface, _operation = _wizard_surface(module_name)
+    return f'''"""Generated tests for the {surface} wizard module."""
+
+from __future__ import annotations
+
+import importlib.util
+from pathlib import Path
+
+
+MODULE = {module_name!r}
+SURFACE = {surface!r}
+
+
+def load_wizard_module():
+    """Load the generated wizard module without app installation."""
+    module_path = Path(__file__).resolve().parents[1] / "wizard_modules" / f"{{MODULE}}.py"
+    spec = importlib.util.spec_from_file_location(f"generated_wizard_module_{{MODULE}}", module_path)
+    module = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(module)
+    return module
+
+
+def test_wizard_module_contract():
+    """Assert the generated wizard module exposes its contract."""
+    module = load_wizard_module()
+    contract = module.module_contract()
+    assert contract["module"] == MODULE
+    assert contract["surface"] == SURFACE
+    assert contract["ok"] is True
+    assert all(hasattr(module, name) for name in contract["expected_exports"])
+
+
+def test_wizard_module_smoke():
+    """Assert the module's side-effect-free smoke test passes."""
+    module = load_wizard_module()
+    result = module.smoke_test()
+    assert result["ok"] is True
+    assert result["module"] == MODULE
+    assert result["surface"] == SURFACE
+    assert result["checks"]
+
+
+def smoke_test():
+    """Run this generated test module in a side-effect-free way."""
+    test_wizard_module_contract()
+    test_wizard_module_smoke()
+    return {{
+        "format": "appgen.wizard-module-generated-test-smoke.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "ok": True,
+        "tests": ("test_wizard_module_contract", "test_wizard_module_smoke"),
     }}
 '''
 
@@ -8420,6 +8672,27 @@ def write_wizards_file(output_dir, schema: AppSchema):
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
     (output_dir / "wizards.py").write_text(_wizards_text(schema))
+    write_wizard_module_files(output_dir)
+
+
+def write_wizard_module_files(output_dir):
+    """Write generated wizard modules and smoke tests."""
+    output_dir = Path(output_dir)
+    module_dir = output_dir / "wizard_modules"
+    test_dir = output_dir / "wizard_module_tests"
+    module_dir.mkdir(parents=True, exist_ok=True)
+    test_dir.mkdir(parents=True, exist_ok=True)
+    (module_dir / "__init__.py").write_text(_wizard_module_init_text(), encoding="utf-8")
+    (test_dir / "__init__.py").write_text(_wizard_module_test_init_text(), encoding="utf-8")
+    for module_name in WIZARD_MODULES:
+        (module_dir / f"{module_name}.py").write_text(
+            _wizard_module_text(module_name),
+            encoding="utf-8",
+        )
+        (test_dir / f"test_{module_name}.py").write_text(
+            _wizard_module_test_text(module_name),
+            encoding="utf-8",
+        )
 
 
 def write_branding_file(output_dir, schema: AppSchema):
@@ -16327,6 +16600,9 @@ def _rules_text(schema: AppSchema) -> str:
     return f'''"""Generated business rule and decision helpers for AppGen apps."""
 
 from __future__ import annotations
+
+import importlib.util
+from pathlib import Path
 
 from flask import jsonify
 from flask_appbuilder import BaseView
@@ -52395,6 +52671,9 @@ def _wizards_text(schema: AppSchema) -> str:
 
 from __future__ import annotations
 
+import importlib.util
+from pathlib import Path
+
 from flask import jsonify
 from flask_appbuilder import BaseView
 from flask_appbuilder import expose
@@ -52597,6 +52876,108 @@ def wizard_workbench(existing_paths=()):
         "sample_session": table_session,
         "sample_submission": table_submission,
         "release_gate": release,
+    }}
+
+
+def _load_generated_module(path, name):
+    spec = importlib.util.spec_from_file_location(name, path)
+    module = importlib.util.module_from_spec(spec)
+    if spec.loader is None:
+        raise RuntimeError(f"Could not load generated module: {{path}}")
+    spec.loader.exec_module(module)
+    return module
+
+
+def wizard_module_file_manifest():
+    """Return file-level evidence for generated wizard modules."""
+    modules = (
+        ("table_wizard_module", "table_wizard"),
+        ("workflow_wizard_module", "workflow_wizard"),
+        ("validation_session_module", "validation_session"),
+        ("submission_plan_module", "submission_plan"),
+    )
+    expected_exports = ("module_contract", "wizard_manifest", "run_wizard_operation", "release_context", "smoke_test")
+    module_dir = Path(__file__).with_name("wizard_modules")
+    entries = []
+    for module_name, surface in modules:
+        module_path = module_dir / f"{{module_name}}.py"
+        exports = ()
+        contract_ok = False
+        smoke_ok = False
+        if module_path.exists():
+            module = _load_generated_module(module_path, f"generated_wizard_module_{{module_name}}")
+            exports = tuple(name for name in expected_exports if hasattr(module, name))
+            contract = module.module_contract()
+            smoke = module.smoke_test()
+            contract_ok = contract["ok"] and contract["module"] == module_name and contract["surface"] == surface
+            smoke_ok = smoke["ok"] and smoke["surface"] == surface
+        entries.append(
+            {{
+                "module": module_name,
+                "surface": surface,
+                "path": f"app/wizard_modules/{{module_name}}.py",
+                "exists": module_path.exists(),
+                "exports": exports,
+                "expected_exports": expected_exports,
+                "contract_ok": contract_ok,
+                "smoke_ok": smoke_ok,
+            }}
+        )
+    return {{
+        "format": "appgen.generated-wizard-module-file-manifest.v1",
+        "ok": bool(entries)
+        and all(
+            item["exists"]
+            and item["contract_ok"]
+            and item["smoke_ok"]
+            and set(item["expected_exports"]) <= set(item["exports"])
+            for item in entries
+        ),
+        "modules": tuple(entries),
+        "guards": ("one_file_per_wizard_module", "declared_exports_present", "module_smoke_loads"),
+        "side_effects": (),
+    }}
+
+
+def wizard_module_test_file_manifest():
+    """Return file-level evidence for generated wizard module tests."""
+    modules = wizard_module_file_manifest()["modules"]
+    required_exports = (
+        "load_wizard_module",
+        "test_wizard_module_contract",
+        "test_wizard_module_smoke",
+        "smoke_test",
+    )
+    test_dir = Path(__file__).with_name("wizard_module_tests")
+    entries = []
+    for item in modules:
+        module_name = item["module"]
+        module_path = test_dir / f"test_{{module_name}}.py"
+        exports = ()
+        smoke_ok = False
+        if module_path.exists():
+            module = _load_generated_module(module_path, f"generated_wizard_module_test_{{module_name}}")
+            exports = tuple(name for name in required_exports if hasattr(module, name))
+            smoke_ok = module.smoke_test()["ok"]
+        entries.append(
+            {{
+                "module": module_name,
+                "surface": item["surface"],
+                "path": f"app/wizard_module_tests/test_{{module_name}}.py",
+                "target": item["path"],
+                "exists": module_path.exists(),
+                "exports": exports,
+                "smoke_ok": smoke_ok,
+            }}
+        )
+    return {{
+        "format": "appgen.generated-wizard-module-test-file-manifest.v1",
+        "ok": bool(entries)
+        and all(item["exists"] and item["smoke_ok"] and set(required_exports) <= set(item["exports"]) for item in entries),
+        "tests": tuple(entries),
+        "required_exports": required_exports,
+        "guards": ("one_test_file_per_wizard_module", "contract_and_smoke_tests_exported"),
+        "side_effects": (),
     }}
 
 

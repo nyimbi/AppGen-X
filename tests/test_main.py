@@ -12954,6 +12954,36 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     )
     assert wizards.wizard_workbench({"app/wizards.py"})["ok"] is False
     assert wizards.wizard_release_gate({"app/wizards.py"})["ok"] is False
+    wizard_module_files = wizards.wizard_module_file_manifest()
+    wizard_module_tests = wizards.wizard_module_test_file_manifest()
+    assert wizard_module_files["ok"] is True
+    assert wizard_module_tests["ok"] is True
+    assert {item["surface"] for item in wizard_module_files["modules"]} == {
+        "table_wizard",
+        "workflow_wizard",
+        "validation_session",
+        "submission_plan",
+    }
+    assert {item["surface"] for item in wizard_module_tests["tests"]} == {
+        "table_wizard",
+        "workflow_wizard",
+        "validation_session",
+        "submission_plan",
+    }
+    for item in wizard_module_files["modules"]:
+        module_path = output_dir / item["path"].replace("app/", "")
+        py_compile.compile(str(module_path), doraise=True)
+        module = _load_module(module_path, f"generated_wizard_module_{item['module']}")
+        assert module.module_contract()["ok"] is True
+        assert module.wizard_manifest()["ok"] is True
+        assert module.run_wizard_operation()["ok"] is True
+        assert module.release_context()["ok"] is True
+        assert module.smoke_test()["ok"] is True
+    for item in wizard_module_tests["tests"]:
+        test_path = output_dir / item["path"].replace("app/", "")
+        py_compile.compile(str(test_path), doraise=True)
+        module = _load_module(test_path, f"generated_wizard_module_test_{item['module']}")
+        assert module.smoke_test()["ok"] is True
     flow_export = json.loads((tmp_path / "automation" / "node-red" / "flows.json").read_text())
     assert node_red.event_topic("Book", "updated") == "Book.updated"
     assert node_red.webhook_plan("Book", "updated", "https://example.test")["url"] == (
