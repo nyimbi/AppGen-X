@@ -84,6 +84,7 @@ Build a complete AppGen IDE and generation platform with:
 | 2026-05-23 | `dec16b6` | Added generated compiler/runtime modules and generated tests for compiler pipeline, unit parse, semantic validation, incremental compile, diagnostic mapping, and toolchain adapter surfaces. | Py compile; focused generated-app/form-designer/package-goal tests; staged hygiene scan passed. |
 | 2026-05-23 | `52e2939` | Added generated deep native runtime modules and generated tests for package targets, language frontend, static analysis, recovery, stream schema, stream migration, debug symbols, and memory model surfaces. | Py compile; focused generated-app/form-designer/package-goal tests; staged hygiene scan passed. |
 | 2026-05-23 | `91f4fb2` | Added generated deep data tooling modules and generated tests for schema browsing, schema diff preview, lookup editor generation, dataset design, resource publishing, offline replay, replication monitoring, and module smoke surfaces. | Py compile; focused generated-app/form-designer/package-goal tests; staged hygiene scan passed. |
+| 2026-05-23 | `e3bc9c3` | Added generated UI chrome modules and generated tests for splash configuration, menu editing, context menu actions, and UI fine-tuning surfaces. | Py compile; focused generated-app/form-designer/package-goal tests; staged hygiene scan passed. |
 
 ## Current Working Slice
 
@@ -193,6 +194,10 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   generated test module for install, preview, registry, lifecycle, update, and
   rollback surfaces, with the package manager runtime validating module and
   test coverage.
+- Generated applications now emit one importable UI chrome module and one
+  generated test module for splash configuration, menu editing, context menu
+  actions, and UI fine-tuning surfaces, with generated branding manifests
+  validating module and test coverage.
 
 ## Open Completion Areas
 
