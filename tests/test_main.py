@@ -3060,6 +3060,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "platform_parity_requirement_audit",
         "artifact_contract",
     } <= set(rad_parity_gate["passing_checks"])
+    assert set(rad_parity_gate["required_formats"]) <= set(rad_parity_gate["passing_formats"])
     lifecycle_gate = next(
         check for check in audit["rad_parity"]["checks"] if check["id"] == "platform_parity_lifecycle_replay"
     )

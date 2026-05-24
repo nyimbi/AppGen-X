@@ -17509,6 +17509,21 @@ def form_designer_release_audit(existing_paths: set[str] | None = None) -> dict:
         "platform_parity_requirement_audit",
         "artifact_contract",
     )
+    required_rad_parity_formats = (
+        ("workbench", "appgen.rad-parity-workbench.v1"),
+        ("lifecycle_replay", "appgen.platform-parity-lifecycle-replay.v1"),
+        ("requirement_audit", "appgen.platform-parity-requirement-audit.v1"),
+    )
+    passing_rad_parity_formats = tuple(
+        (surface, expected_format)
+        for surface, expected_format in required_rad_parity_formats
+        if (
+            rad_parity["format"]
+            if surface == "workbench"
+            else rad_parity[surface]["format"]
+        )
+        == expected_format
+    )
     gates = (
         {
             "id": "palette_breadth",
@@ -17595,9 +17610,12 @@ def form_designer_release_audit(existing_paths: set[str] | None = None) -> dict:
             and rad_parity["lifecycle_replay"]["ok"]
             and rad_parity["requirement_audit"]["ok"]
             and set(required_rad_parity_checks) <= rad_parity_passing_checks
+            and set(required_rad_parity_formats) <= set(passing_rad_parity_formats)
             and not rad_parity["blocking_gaps"],
             "required_checks": required_rad_parity_checks,
             "passing_checks": tuple(sorted(rad_parity_passing_checks)),
+            "required_formats": required_rad_parity_formats,
+            "passing_formats": passing_rad_parity_formats,
         },
     )
     ok = all(gate["ok"] for gate in gates)
