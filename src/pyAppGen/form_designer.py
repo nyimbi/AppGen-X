@@ -14044,6 +14044,13 @@ def platform_parity_lifecycle_replay_contract() -> dict:
         for item in mobile_lifecycle["replay"]
         for phase in item["phases"]
     )
+    runtime_passing_checks = {check["id"] for check in runtime["checks"] if check["ok"]}
+    inspector_passing_checks = {check["id"] for check in inspector["checks"] if check["ok"]}
+    binding_passing_checks = {check["id"] for check in bindings["checks"] if check["ok"]}
+    data_tooling_passing_checks = {check["id"] for check in data_tooling["checks"] if check["ok"]}
+    package_manager_passing_checks = {check["id"] for check in package_manager["checks"] if check["ok"]}
+    mobile_passing_checks = {check["id"] for check in mobile["checks"] if check["ok"]}
+    visual_passing_checks = {check["id"] for check in visual["checks"] if check["ok"]}
     replay = (
         {
             "phase": "component_surface_baseline",
@@ -14062,9 +14069,10 @@ def platform_parity_lifecycle_replay_contract() -> dict:
             "ok": runtime["ok"]
             and runtime_readiness["ok"]
             and "phase_order_ready" in {check["id"] for check in runtime_readiness["checks"] if check["ok"]}
-            and {"form_stream_schema", "runtime_session_replay", "event_binding_lifecycle"} <= {check["id"] for check in runtime["checks"]},
+            and {"form_stream_schema", "runtime_session_replay", "event_binding_lifecycle"} <= runtime_passing_checks,
             "evidence": {
                 "checks": tuple(check["id"] for check in runtime["checks"]),
+                "passing_checks": tuple(sorted(runtime_passing_checks)),
                 "runtime_state": runtime["runtime_replay"]["final_state"],
                 "readiness_phases": tuple(phase["phase"] for phase in runtime_readiness["phases"]),
             },
@@ -14078,10 +14086,23 @@ def platform_parity_lifecycle_replay_contract() -> dict:
             and inspector["cross_component_replay"]["ok"]
             and bindings["designer_transaction_replay"]["ok"]
             and "phase_order_ready" in {check["id"] for check in inspector_readiness["checks"] if check["ok"]}
-            and "phase_order_ready" in {check["id"] for check in binding_readiness["checks"] if check["ok"]},
+            and "phase_order_ready" in {check["id"] for check in binding_readiness["checks"] if check["ok"]}
+            and {
+                "component_editor_transaction",
+                "custom_designer_registration_replay",
+                "editor_lifecycle_replay",
+                "design_surface_transaction_replay",
+            } <= inspector_passing_checks
+            and {
+                "designer_transaction_replay",
+                "design_runtime_session_replay",
+                "binding_lifecycle_release_replay",
+            } <= binding_passing_checks,
             "evidence": {
                 "inspector_checks": tuple(check["id"] for check in inspector["checks"]),
+                "inspector_passing_checks": tuple(sorted(inspector_passing_checks)),
                 "binding_checks": tuple(check["id"] for check in bindings["checks"]),
+                "binding_passing_checks": tuple(sorted(binding_passing_checks)),
                 "inspector_readiness_phases": tuple(phase["phase"] for phase in inspector_readiness["phases"]),
                 "binding_readiness_phases": tuple(phase["phase"] for phase in binding_readiness["phases"]),
             },
@@ -14093,12 +14114,18 @@ def platform_parity_lifecycle_replay_contract() -> dict:
             and "phase_order_ready" in {check["id"] for check in data_readiness["checks"] if check["ok"]}
             and data_tooling["publish_transaction_replay"]["ok"]
             and {
+                "relationship_lookup_lifecycle_replay",
+                "data_tooling_design_runtime_session_replay",
+                "data_tooling_publish_transaction_replay",
+            } <= data_tooling_passing_checks
+            and {
                 "schema_rehearsal_before_dataset_publish",
                 "service_contract_tests_before_resource_publish",
                 "offline_integrity_before_runtime_replay",
             } <= set(data_tooling["publish_transaction_replay"]["guards"]),
             "evidence": {
                 "checks": tuple(check["id"] for check in data_tooling["checks"]),
+                "passing_checks": tuple(sorted(data_tooling_passing_checks)),
                 "publish_state": data_tooling["publish_transaction_replay"]["final_state"],
                 "readiness_phases": tuple(phase["phase"] for phase in data_readiness["phases"]),
             },
@@ -14109,9 +14136,15 @@ def platform_parity_lifecycle_replay_contract() -> dict:
             and package_lifecycle["ok"]
             and package_readiness["ok"]
             and "phase_order_ready" in {check["id"] for check in package_readiness["checks"] if check["ok"]}
+            and {
+                "lifecycle_transaction_replay",
+                "actionable_package_operations",
+                "package_manager_modules",
+            } <= package_manager_passing_checks
             and all(item["final_state"]["registry_clean"] for item in package_lifecycle["replay"]),
             "evidence": {
                 "manager_checks": tuple(check["id"] for check in package_manager["checks"]),
+                "manager_passing_checks": tuple(sorted(package_manager_passing_checks)),
                 "packages": package_lifecycle["packages"],
                 "readiness_phases": tuple(phase["phase"] for phase in package_readiness["phases"]),
             },
@@ -14122,9 +14155,15 @@ def platform_parity_lifecycle_replay_contract() -> dict:
             and mobile_readiness["ok"]
             and mobile_lifecycle["ok"]
             and "phase_order_ready" in {check["id"] for check in mobile_readiness["checks"] if check["ok"]}
+            and {
+                "capability_lifecycle_replay",
+                "device_component_modules",
+                "device_component_module_tests",
+            } <= mobile_passing_checks
             and "runtime_and_designer_replay_aligned" in mobile_lifecycle["guards"],
             "evidence": {
                 "apis": tuple(adapter["api"] for adapter in mobile["contract"]["component_adapters"]["adapters"]),
+                "passing_checks": tuple(sorted(mobile_passing_checks)),
                 "lifecycle_phases": mobile_lifecycle_phases,
                 "readiness_phases": tuple(phase["phase"] for phase in mobile_readiness["phases"]),
             },
@@ -14135,9 +14174,16 @@ def platform_parity_lifecycle_replay_contract() -> dict:
             and visual_readiness["ok"]
             and visual_lifecycle["ok"]
             and "phase_order_ready" in {check["id"] for check in visual_readiness["checks"] if check["ok"]}
+            and {
+                "visual_runtime_replay",
+                "visual_lifecycle_replay",
+                "visual_component_modules",
+                "visual_design_modules",
+            } <= visual_passing_checks
             and "hit_tests_before_designer_replay" in visual_lifecycle["guards"],
             "evidence": {
                 "checks": tuple(check["id"] for check in visual["checks"]),
+                "passing_checks": tuple(sorted(visual_passing_checks)),
                 "lifecycle_phases": tuple(item["phase"] for item in visual_lifecycle["replay"]),
                 "readiness_phases": tuple(phase["phase"] for phase in visual_readiness["phases"]),
             },

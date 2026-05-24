@@ -3003,6 +3003,11 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "normalize_diagnostics",
         "reload_runtime_preview",
     )
+    assert {
+        "form_stream_schema",
+        "runtime_session_replay",
+        "event_binding_lifecycle",
+    } <= set(lifecycle_by_phase["stream_runtime_model"]["evidence"]["passing_checks"])
     assert lifecycle_by_phase["inspect_and_bind_design"]["evidence"]["inspector_readiness_phases"] == (
         "register_editor_metadata",
         "validate_property_and_event_editors",
@@ -3020,6 +3025,17 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "prove_designer_and_release_replay",
         "bridge_inspector_and_bindings",
     )
+    assert {
+        "component_editor_transaction",
+        "custom_designer_registration_replay",
+        "editor_lifecycle_replay",
+        "design_surface_transaction_replay",
+    } <= set(lifecycle_by_phase["inspect_and_bind_design"]["evidence"]["inspector_passing_checks"])
+    assert {
+        "designer_transaction_replay",
+        "design_runtime_session_replay",
+        "binding_lifecycle_release_replay",
+    } <= set(lifecycle_by_phase["inspect_and_bind_design"]["evidence"]["binding_passing_checks"])
     assert lifecycle_by_phase["publish_data_services"]["evidence"]["readiness_phases"] == (
         "probe_connection",
         "design_dataset",
@@ -3028,6 +3044,11 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "monitor_replication_and_failover",
         "surface_runtime_diagnostics",
     )
+    assert {
+        "relationship_lookup_lifecycle_replay",
+        "data_tooling_design_runtime_session_replay",
+        "data_tooling_publish_transaction_replay",
+    } <= set(lifecycle_by_phase["publish_data_services"]["evidence"]["passing_checks"])
     assert lifecycle_by_phase["install_component_packages"]["evidence"]["readiness_phases"] == (
         "trust_and_lockfile",
         "sandbox_preview",
@@ -3036,6 +3057,11 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "failure_and_rollback",
         "uninstall_cleanup",
     )
+    assert {
+        "lifecycle_transaction_replay",
+        "actionable_package_operations",
+        "package_manager_modules",
+    } <= set(lifecycle_by_phase["install_component_packages"]["evidence"]["manager_passing_checks"])
     assert lifecycle_by_phase["validate_device_capabilities"]["evidence"]["readiness_phases"] == (
         "declare_privacy_and_permissions",
         "configure_simulator_fixtures",
@@ -3044,6 +3070,11 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "replay_runtime_delivery",
         "replay_designer_and_capabilities",
     )
+    assert {
+        "capability_lifecycle_replay",
+        "device_component_modules",
+        "device_component_module_tests",
+    } <= set(lifecycle_by_phase["validate_device_capabilities"]["evidence"]["passing_checks"])
     assert lifecycle_by_phase["validate_visual_depth"]["evidence"]["readiness_phases"] == (
         "author_style_resources",
         "author_animation_timeline",
@@ -3053,6 +3084,12 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "replay_runtime_and_designer",
         "package_runtime_targets",
     )
+    assert {
+        "visual_runtime_replay",
+        "visual_lifecycle_replay",
+        "visual_component_modules",
+        "visual_design_modules",
+    } <= set(lifecycle_by_phase["validate_visual_depth"]["evidence"]["passing_checks"])
     requirement_audit = platform_parity_requirement_audit_contract()
     assert requirement_audit["format"] == "appgen.platform-parity-requirement-audit.v1"
     assert requirement_audit["ok"] is True
@@ -12335,6 +12372,11 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "normalize_diagnostics",
         "reload_runtime_preview",
     )
+    assert {
+        "form_stream_schema",
+        "runtime_session_replay",
+        "event_binding_lifecycle",
+    } <= set(generated_lifecycle_by_phase["stream_runtime_model"]["evidence"]["passing_checks"])
     assert generated_lifecycle_by_phase["inspect_and_bind_design"]["evidence"]["inspector_readiness_phases"] == (
         "register_editor_metadata",
         "validate_property_and_event_editors",
@@ -12352,6 +12394,17 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "prove_designer_and_release_replay",
         "bridge_inspector_and_bindings",
     )
+    assert {
+        "component_editor_transaction",
+        "custom_designer_registration_replay",
+        "editor_lifecycle_replay",
+        "design_surface_transaction_replay",
+    } <= set(generated_lifecycle_by_phase["inspect_and_bind_design"]["evidence"]["inspector_passing_checks"])
+    assert {
+        "designer_transaction_replay",
+        "design_runtime_session_replay",
+        "binding_lifecycle_release_replay",
+    } <= set(generated_lifecycle_by_phase["inspect_and_bind_design"]["evidence"]["binding_passing_checks"])
     assert generated_lifecycle_by_phase["publish_data_services"]["evidence"]["readiness_phases"] == (
         "probe_connection",
         "design_dataset",
@@ -12360,6 +12413,11 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "monitor_replication_and_failover",
         "surface_runtime_diagnostics",
     )
+    assert {
+        "relationship_lookup_lifecycle_replay",
+        "data_tooling_design_runtime_session_replay",
+        "data_tooling_publish_transaction_replay",
+    } <= set(generated_lifecycle_by_phase["publish_data_services"]["evidence"]["passing_checks"])
     assert generated_lifecycle_by_phase["install_component_packages"]["evidence"]["readiness_phases"] == (
         "trust_and_lockfile",
         "sandbox_preview",
@@ -12368,6 +12426,11 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "failure_and_rollback",
         "uninstall_cleanup",
     )
+    assert {
+        "lifecycle_transaction_replay",
+        "actionable_package_operations",
+        "package_manager_modules",
+    } <= set(generated_lifecycle_by_phase["install_component_packages"]["evidence"]["manager_passing_checks"])
     assert generated_lifecycle_by_phase["validate_device_capabilities"]["evidence"]["readiness_phases"] == (
         "declare_privacy_and_permissions",
         "configure_simulator_fixtures",
@@ -12376,6 +12439,11 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "replay_runtime_delivery",
         "replay_designer_and_capabilities",
     )
+    assert {
+        "capability_lifecycle_replay",
+        "device_component_modules",
+        "device_component_module_tests",
+    } <= set(generated_lifecycle_by_phase["validate_device_capabilities"]["evidence"]["passing_checks"])
     assert generated_lifecycle_by_phase["validate_visual_depth"]["evidence"]["readiness_phases"] == (
         "author_style_resources",
         "author_animation_timeline",
@@ -12385,6 +12453,12 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "replay_runtime_and_designer",
         "package_runtime_targets",
     )
+    assert {
+        "visual_runtime_replay",
+        "visual_lifecycle_replay",
+        "visual_component_modules",
+        "visual_design_modules",
+    } <= set(generated_lifecycle_by_phase["validate_visual_depth"]["evidence"]["passing_checks"])
     assert generated_rad["requirement_audit"]["format"] == "appgen.generated-platform-parity-requirement-audit.v1"
     assert generated_rad["requirement_audit"]["ok"] is True
     assert {
