@@ -25,6 +25,7 @@ Build a complete AppGen IDE and generation platform with:
 
 | Date | Commit | Slice | Evidence |
 | --- | --- | --- | --- |
+| 2026-05-24 | `current` | Made the source form-designer package installation parity gate expose required and passing package IDs, install channels, and safety guards used for parity release evidence. | Py compile, focused generated form-designer parity smoke, scoped diff check, and scoped restricted-name scan passed. |
 | 2026-05-24 | `9a4f703` | Made the source form-designer visual-depth parity gate expose required and passing visual workbench checks used for parity release evidence. | Py compile, focused generated form-designer parity smoke, scoped diff check, and scoped restricted-name scan passed. |
 | 2026-05-24 | `b911207` | Made the source form-designer mobile device API parity gate expose required and passing mobile workbench checks used for parity release evidence. | Py compile, focused generated form-designer parity smoke, scoped diff check, and scoped restricted-name scan passed. |
 | 2026-05-24 | `b0aa614` | Made the source form-designer native data tooling parity gate expose required and passing data workbench checks used for parity release evidence. | Py compile, focused generated form-designer parity smoke, scoped diff check, and scoped restricted-name scan passed. |

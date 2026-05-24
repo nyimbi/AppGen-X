@@ -14988,6 +14988,28 @@ def rad_parity_workbench(existing_paths: set[str] | None = None) -> dict:
         "failure_and_rollback",
         "uninstall_cleanup",
     )
+    required_install_package_ids = (
+        "devexpress-native",
+        "tms-fnc",
+        "fastreport",
+        "teechart",
+        "skia4rad",
+        "jvcl-jcl",
+        "virtual-treeview",
+        "indy",
+        "devart-data-access",
+        "intraweb-unigui",
+    )
+    passing_install_package_ids = tuple(package["id"] for package in install_plan["packages"])
+    required_install_channels = ("getit", "vendor-installer", "source-package", "manual-bpl")
+    passing_install_channels = tuple(install_plan["install_channels"])
+    required_install_guards = (
+        "license_acceptance_required",
+        "version_pin_required",
+        "sandbox_before_global_install",
+        "design_time_packages_reviewed_before_load",
+    )
+    passing_install_guards = tuple(install_plan["guards"])
     passing_package_lifecycle_phases = tuple(
         phase["phase"] for phase in package_readiness["phases"] if phase["ok"]
     )
@@ -15153,9 +15175,18 @@ def rad_parity_workbench(existing_paths: set[str] | None = None) -> dict:
             "id": "design_time_package_installation",
             "ok": install_plan["ok"]
             and install_plan["requires_review"]
+            and set(required_install_package_ids) <= set(passing_install_package_ids)
+            and set(required_install_channels) <= set(passing_install_channels)
+            and set(required_install_guards) <= set(passing_install_guards)
             and package_readiness["ok"]
             and set(required_package_lifecycle_phases) <= set(passing_package_lifecycle_phases)
             and set(required_package_readiness_checks) <= set(passing_package_readiness_checks),
+            "required_packages": required_install_package_ids,
+            "passing_packages": passing_install_package_ids,
+            "required_channels": required_install_channels,
+            "passing_channels": passing_install_channels,
+            "required_guards": required_install_guards,
+            "passing_guards": passing_install_guards,
             "required_phases": required_package_lifecycle_phases,
             "passing_phases": passing_package_lifecycle_phases,
             "required_checks": required_package_readiness_checks,

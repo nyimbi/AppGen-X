@@ -3193,6 +3193,9 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         check for check in audit["rad_parity"]["checks"] if check["id"] == "design_time_package_installation"
     )
     assert package_gate["ok"] is True
+    assert set(package_gate["required_packages"]) <= set(package_gate["passing_packages"])
+    assert set(package_gate["required_channels"]) <= set(package_gate["passing_channels"])
+    assert set(package_gate["required_guards"]) <= set(package_gate["passing_guards"])
     assert set(package_gate["required_phases"]) <= set(package_gate["passing_phases"])
     assert set(package_gate["required_checks"]) <= set(package_gate["passing_checks"])
     mobile_gate = next(
