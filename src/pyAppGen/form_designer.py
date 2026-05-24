@@ -14706,6 +14706,7 @@ def rad_parity_workbench(existing_paths: set[str] | None = None) -> dict:
     streaming_contract = dfm_streaming_contract()
     runtime_workbench = pascal_runtime_workbench()
     inspector_workbench = object_inspector_workbench()
+    binding_contract = livebindings_contract()
     binding_workbench = livebindings_workbench()
     data_tooling_workbench = rad_data_tooling_workbench()
     mobile_workbench = mobile_native_api_workbench()
@@ -14826,8 +14827,52 @@ def rad_parity_workbench(existing_paths: set[str] | None = None) -> dict:
         for surface in required_inspector_editor_surfaces
         if contract[surface]
     )
+    binding_graph = binding_contract["graph"]
+    binding_readiness = binding_workbench["readiness"]
+    required_binding_nodes = tuple(binding_contract["binding_nodes"])
+    available_binding_node_kinds = {
+        node["kind"] for node in binding_graph["nodes"]
+    }
+    if binding_graph["converters"]:
+        available_binding_node_kinds.add("converter")
+    if binding_graph["validators"]:
+        available_binding_node_kinds.add("validator")
+    passing_binding_nodes = tuple(
+        node_kind for node_kind in required_binding_nodes if node_kind in available_binding_node_kinds
+    )
     required_binding_edges = ("control_to_field",)
-    passing_binding_edges = tuple(livebindings_contract()["binding_edges"])
+    passing_binding_edges = tuple(binding_contract["binding_edges"])
+    required_binding_surface_edges = (
+        "dataset_to_field",
+        "field_to_control",
+        "control_to_field",
+        "expression_to_property",
+    )
+    passing_binding_surface_edges = tuple(
+        edge_kind
+        for edge_kind in required_binding_surface_edges
+        if any(edge["kind"] == edge_kind for edge in binding_graph["edges"])
+    )
+    required_binding_runtime_artifacts = (
+        "binding_registry",
+        "observer_hooks",
+        "update_queue",
+        "validation_pipeline",
+        "converter_pipeline",
+    )
+    passing_binding_runtime_artifacts = tuple(binding_workbench["runtime_wiring"]["artifacts"])
+    required_binding_readiness_phases = (
+        "author_binding_graph",
+        "validate_and_stage_edits",
+        "preview_and_emit_runtime_wiring",
+        "surface_diagnostics_and_conflicts",
+        "replay_offline_accessible_runtime",
+        "prove_designer_and_release_replay",
+        "bridge_inspector_and_bindings",
+    )
+    passing_binding_readiness_phases = tuple(
+        phase["phase"] for phase in binding_readiness["phases"] if phase["ok"]
+    )
     required_binding_workbench_checks = (
         "graph_nodes",
         "graph_edges",
@@ -15243,12 +15288,24 @@ def rad_parity_workbench(existing_paths: set[str] | None = None) -> dict:
             "id": "livebindings_designer",
             "ok": set(required_binding_edges) <= set(passing_binding_edges)
             and binding_workbench["ok"]
-            and set(required_binding_workbench_checks) <= set(passing_binding_workbench_checks),
+            and set(required_binding_workbench_checks) <= set(passing_binding_workbench_checks)
+            and set(required_binding_nodes) <= set(passing_binding_nodes)
+            and set(required_binding_surface_edges) <= set(passing_binding_surface_edges)
+            and set(required_binding_runtime_artifacts) <= set(passing_binding_runtime_artifacts)
+            and set(required_binding_readiness_phases) <= set(passing_binding_readiness_phases),
+            "required_nodes": required_binding_nodes,
+            "passing_nodes": passing_binding_nodes,
             "required_edges": required_binding_edges,
             "passing_edges": passing_binding_edges,
+            "required_surface_edges": required_binding_surface_edges,
+            "passing_surface_edges": passing_binding_surface_edges,
+            "required_runtime_artifacts": required_binding_runtime_artifacts,
+            "passing_runtime_artifacts": passing_binding_runtime_artifacts,
+            "required_readiness_phases": required_binding_readiness_phases,
+            "passing_readiness_phases": passing_binding_readiness_phases,
             "required_checks": required_binding_workbench_checks,
             "passing_checks": passing_binding_workbench_checks,
-            "evidence": {"contract": livebindings_contract(), "workbench": binding_workbench},
+            "evidence": {"contract": binding_contract, "workbench": binding_workbench},
         },
         {
             "id": "firedac_datasnap_radserver_interbase_tooling",

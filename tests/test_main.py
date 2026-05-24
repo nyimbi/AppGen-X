@@ -3230,7 +3230,11 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         check for check in audit["rad_parity"]["checks"] if check["id"] == "livebindings_designer"
     )
     assert binding_gate["ok"] is True
+    assert set(binding_gate["required_nodes"]) <= set(binding_gate["passing_nodes"])
     assert set(binding_gate["required_edges"]) <= set(binding_gate["passing_edges"])
+    assert set(binding_gate["required_surface_edges"]) <= set(binding_gate["passing_surface_edges"])
+    assert set(binding_gate["required_runtime_artifacts"]) <= set(binding_gate["passing_runtime_artifacts"])
+    assert set(binding_gate["required_readiness_phases"]) <= set(binding_gate["passing_readiness_phases"])
     assert set(binding_gate["required_checks"]) <= set(binding_gate["passing_checks"])
     data_tooling_gate = next(
         check for check in audit["rad_parity"]["checks"] if check["id"] == "firedac_datasnap_radserver_interbase_tooling"
