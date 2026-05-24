@@ -1,5 +1,81 @@
 # Opinionated Event Processing Standard
 
+## Start Here: The Platform Choice
+
+AppGen-X makes the event-processing choice for application developers.
+Developers should not choose a Kafka alternative, stream engine, broker client,
+state store, or per-PBC runtime profile for ordinary generated applications.
+
+Use this for ordinary ERP, workflow, chatbot, agentic, integration, approval,
+and PBC event handling:
+
+```text
+Use appgen_event_contract.
+Omit stream_processor.
+Generate appgen_outbox_event and appgen_inbox_event.
+Generate typed command/event handlers through the AppGen-X event adapter.
+Use PostgreSQL by default, or MySQL/MariaDB when that is the project standard.
+```
+
+That is the developer-facing answer. The platform may record
+`faust_streaming` as read-only generated runtime metadata behind the adapter,
+but developers and coding agents must not author that as an ordinary manifest
+choice.
+
+The only exception lanes are evidence-gated specialized PBCs:
+
+| Workload | What to use | Required evidence |
+| --- | --- | --- |
+| Ordinary business events, ERP, workflow, approval, chatbot, agent, integration, or PBC event handling | `appgen_event_contract`; omit `stream_processor` | None |
+| Telemetry, time-series, high-volume ingestion, or windowed metrics | `quix_streams` exception profile | `stream_exception_evidence` |
+| Complex parallel dataflow, CPU-heavy transformations, or multi-stage analytical pipelines | `bytewax` exception profile | `stream_exception_evidence` |
+| Anything unclear | `appgen_event_contract`; omit `stream_processor` | None |
+
+This first-match rule is mandatory. If the request does not clearly name one
+of the two exception workloads and include evidence, generators must stop
+branching and produce the ordinary AppGen-X event contract.
+
+## Anti-Explosion Rule
+
+The support matrix is capped as a platform invariant:
+
+```text
+ordinary visible event contracts: 1
+ordinary visible stream-engine choices: 0
+ordinary visible runtime-profile choices: 0
+stream profiles per PBC: 1
+exception profiles: 2
+```
+
+Do not derive a product-selection matrix from the comparison background. The
+generator, IDE, DSL linter, natural-language flow, package template, and
+external coding-agent prompt must all read the same executable policy:
+
+```python
+from pyAppGen.pbc import acp_event_processing_developer_guidance
+
+guidance = acp_event_processing_developer_guidance()
+assert guidance["answer"] == "Use appgen_event_contract."
+assert guidance["ordinary_manifest_instruction"] == "Omit stream_processor."
+assert guidance["developer_action_contract"]["developer_visible_options"] == (
+    "appgen_event_contract",
+)
+```
+
+For token-constrained models, pass this exact prompt fragment:
+
+```text
+Use appgen_event_contract. Omit stream_processor. Generate outbox/inbox tables,
+typed handlers, retry, idempotency, dead-letter, and release evidence through
+the AppGen-X event adapter. Do not compare runtimes. Open an exception only for
+telemetry/time-series or complex dataflow with stream_exception_evidence.
+```
+
+Generated business logic imports only the AppGen-X event adapter. Direct
+imports of `faust_streaming`, `quix_streams`, `bytewax`, broker clients, or
+profile-specific state-store libraries belong in platform adapter modules, not
+in generated PBC services.
+
 ## Developer Default Stack
 
 Do not ask application developers which event-streaming runtime, broker client,
