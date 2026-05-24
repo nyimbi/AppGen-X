@@ -3008,6 +3008,28 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "platform_parity_requirement_audit",
         "artifact_contract",
     } <= set(rad_parity_gate["passing_checks"])
+    lifecycle_gate = next(
+        check for check in audit["rad_parity"]["checks"] if check["id"] == "platform_parity_lifecycle_replay"
+    )
+    assert lifecycle_gate["ok"] is True
+    assert {
+        "component_baseline_before_runtime",
+        "runtime_before_design_transactions",
+        "design_transactions_before_data_publish",
+        "packages_before_target_validation",
+        "target_validation_before_release_claim",
+        "all_subsystems_replayed",
+    } <= set(lifecycle_gate["passing_checks"])
+    requirement_audit_gate = next(
+        check for check in audit["rad_parity"]["checks"] if check["id"] == "platform_parity_requirement_audit"
+    )
+    assert requirement_audit_gate["ok"] is True
+    assert {
+        "all_requirements_have_evidence",
+        "all_requirements_pass",
+        "deep_checks_have_passing_evidence",
+        "lifecycle_replay_aligned",
+    } <= set(requirement_audit_gate["passing_checks"])
     assert rad_parity_workbench()["ok"] is True
     assert {
         "native_ui_parity_component_parity",

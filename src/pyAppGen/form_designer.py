@@ -14655,6 +14655,26 @@ def rad_parity_workbench(existing_paths: set[str] | None = None) -> dict:
     platform_lifecycle = platform_parity_lifecycle_replay_contract()
     requirement_audit = platform_parity_requirement_audit_contract()
     third_party_categories = set(third_party_component_categories())
+    platform_lifecycle_passing_checks = {
+        check["id"] for check in platform_lifecycle["checks"] if check["ok"]
+    }
+    requirement_audit_passing_checks = {
+        check["id"] for check in requirement_audit["checks"] if check["ok"]
+    }
+    required_platform_lifecycle_checks = (
+        "component_baseline_before_runtime",
+        "runtime_before_design_transactions",
+        "design_transactions_before_data_publish",
+        "packages_before_target_validation",
+        "target_validation_before_release_claim",
+        "all_subsystems_replayed",
+    )
+    required_requirement_audit_checks = (
+        "all_requirements_have_evidence",
+        "all_requirements_pass",
+        "deep_checks_have_passing_evidence",
+        "lifecycle_replay_aligned",
+    )
     checks = (
         {
             "id": "native_ui_parity_component_parity",
@@ -14728,13 +14748,24 @@ def rad_parity_workbench(existing_paths: set[str] | None = None) -> dict:
         {
             "id": "platform_parity_lifecycle_replay",
             "ok": platform_lifecycle["ok"]
+            and platform_lifecycle["decision"] == "approved"
+            and set(required_platform_lifecycle_checks) <= platform_lifecycle_passing_checks
             and {"component_baseline_before_runtime", "target_validation_before_release_claim"} <= set(platform_lifecycle["guards"])
+            and not platform_lifecycle["blocking_gaps"]
             and not platform_lifecycle["side_effects"],
+            "required_checks": required_platform_lifecycle_checks,
+            "passing_checks": tuple(sorted(platform_lifecycle_passing_checks)),
             "evidence": platform_lifecycle,
         },
         {
             "id": "platform_parity_requirement_audit",
-            "ok": requirement_audit["ok"] and not requirement_audit["side_effects"],
+            "ok": requirement_audit["ok"]
+            and requirement_audit["decision"] == "approved"
+            and set(required_requirement_audit_checks) <= requirement_audit_passing_checks
+            and not requirement_audit["blocking_gaps"]
+            and not requirement_audit["side_effects"],
+            "required_checks": required_requirement_audit_checks,
+            "passing_checks": tuple(sorted(requirement_audit_passing_checks)),
             "evidence": requirement_audit,
         },
         {
