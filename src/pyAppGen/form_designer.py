@@ -16793,6 +16793,7 @@ def form_designer_generation_smoke_audit(source: str = FORM_DESIGNER_SAMPLE_DSL)
         component_parity_runtime_passing_checks = set(component_parity_runtime_smoke["checks"])
         inspector_runtime_passing_checks = set(inspector_runtime_smoke["checks"])
         binding_runtime_passing_checks = set(binding_runtime_smoke["checks"])
+        package_manager_runtime_passing_checks = set(package_manager_runtime_smoke["checks"])
         native_form_runtime_passing_checks = set(native_form_runtime_smoke["checks"])
 
     required_generated_release_gate_checks = (
@@ -16891,6 +16892,18 @@ def form_designer_generation_smoke_audit(source: str = FORM_DESIGNER_SAMPLE_DSL)
         "binding_modules_ready",
         "binding_module_tests_ready",
         "runtime_replay",
+    )
+    required_package_manager_runtime_checks = (
+        "manifest_ok",
+        "install_plan_reviewed",
+        "package_workbench_ready",
+        "actionable_operations_ready",
+        "lifecycle_replay_ready",
+        "lifecycle_execution_ready",
+        "rollback_and_uninstall_ready",
+        "package_manager_modules_ready",
+        "package_manager_module_tests_ready",
+        "runtime_replay_ready",
     )
 
     checks = (
@@ -17040,19 +17053,9 @@ def form_designer_generation_smoke_audit(source: str = FORM_DESIGNER_SAMPLE_DSL)
             "id": "generated_package_manager_runtime",
             "ok": package_manager_runtime_smoke["ok"]
             and package_manager_runtime_smoke["format"] == "appgen.generated-package-manager-runtime-smoke.v1"
-            and {
-                "manifest_ok",
-                "install_plan_reviewed",
-                "package_workbench_ready",
-                "actionable_operations_ready",
-                "lifecycle_replay_ready",
-                "lifecycle_execution_ready",
-                "rollback_and_uninstall_ready",
-                "package_manager_modules_ready",
-                "package_manager_module_tests_ready",
-                "runtime_replay_ready",
-            }
-            <= set(package_manager_runtime_smoke["checks"]),
+            and set(required_package_manager_runtime_checks) <= package_manager_runtime_passing_checks,
+            "required_checks": required_package_manager_runtime_checks,
+            "passing_checks": tuple(sorted(package_manager_runtime_passing_checks)),
             "smoke": package_manager_runtime_smoke,
         },
         {
