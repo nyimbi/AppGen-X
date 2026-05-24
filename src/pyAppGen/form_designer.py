@@ -16795,6 +16795,7 @@ def form_designer_generation_smoke_audit(source: str = FORM_DESIGNER_SAMPLE_DSL)
         binding_runtime_passing_checks = set(binding_runtime_smoke["checks"])
         package_manager_runtime_passing_checks = set(package_manager_runtime_smoke["checks"])
         visual_depth_runtime_passing_checks = set(visual_depth_runtime_smoke["checks"])
+        visual_asset_runtime_passing_checks = set(visual_assets_smoke["checks"])
         data_tooling_runtime_passing_checks = set(data_runtime_smoke["checks"])
         runtime_operation_passing_checks = set(runtime_operation_smoke["checks"])
         native_form_runtime_passing_checks = set(native_form_runtime_smoke["checks"])
@@ -16920,6 +16921,13 @@ def form_designer_generation_smoke_audit(source: str = FORM_DESIGNER_SAMPLE_DSL)
         "visual_component_tests_ready",
         "runtime_package_ready",
         "runtime_replay_ready",
+    )
+    required_visual_asset_runtime_checks = (
+        "style_bundles",
+        "timeline_bundles",
+        "effect_bundles",
+        "scene_and_assets",
+        "target_package",
     )
     required_data_tooling_runtime_checks = (
         "connections",
@@ -17124,14 +17132,9 @@ def form_designer_generation_smoke_audit(source: str = FORM_DESIGNER_SAMPLE_DSL)
             "id": "generated_visual_runtime_assets",
             "ok": visual_assets_smoke["ok"]
             and visual_assets_smoke["format"] == "appgen.generated-visual-runtime-assets-smoke.v1"
-            and {
-                "style_bundles",
-                "timeline_bundles",
-                "effect_bundles",
-                "scene_and_assets",
-                "target_package",
-            }
-            <= set(visual_assets_smoke["checks"]),
+            and set(required_visual_asset_runtime_checks) <= visual_asset_runtime_passing_checks,
+            "required_checks": required_visual_asset_runtime_checks,
+            "passing_checks": tuple(sorted(visual_asset_runtime_passing_checks)),
             "smoke": visual_assets_smoke,
         },
         {

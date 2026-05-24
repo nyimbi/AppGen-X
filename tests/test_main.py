@@ -3513,6 +3513,15 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "runtime_package_ready",
         "runtime_replay_ready",
     } <= set(visual_depth_smoke["passing_checks"])
+    visual_asset_smoke = next(check for check in smoke["checks"] if check["id"] == "generated_visual_runtime_assets")
+    assert visual_asset_smoke["ok"] is True
+    assert {
+        "style_bundles",
+        "timeline_bundles",
+        "effect_bundles",
+        "scene_and_assets",
+        "target_package",
+    } <= set(visual_asset_smoke["passing_checks"])
     data_tooling_smoke = next(check for check in smoke["checks"] if check["id"] == "generated_data_tooling_runtime")
     assert data_tooling_smoke["ok"] is True
     assert {
