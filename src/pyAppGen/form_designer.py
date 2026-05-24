@@ -16791,6 +16791,7 @@ def form_designer_generation_smoke_audit(source: str = FORM_DESIGNER_SAMPLE_DSL)
             check["id"] for check in generated_platform_parity["checks"] if check["ok"]
         }
         component_parity_runtime_passing_checks = set(component_parity_runtime_smoke["checks"])
+        inspector_runtime_passing_checks = set(inspector_runtime_smoke["checks"])
         native_form_runtime_passing_checks = set(native_form_runtime_smoke["checks"])
 
     required_generated_release_gate_checks = (
@@ -16858,6 +16859,21 @@ def form_designer_generation_smoke_audit(source: str = FORM_DESIGNER_SAMPLE_DSL)
         "package_modules_ready",
         "component_tests_ready",
         "runtime_replay_ready",
+    )
+    required_inspector_runtime_checks = (
+        "manifest_ok",
+        "property_editors_present",
+        "event_editors_lifecycle_ready",
+        "component_editors_present",
+        "custom_designers_present",
+        "editor_lifecycle_replay",
+        "design_surface_replay",
+        "custom_registration_replay",
+        "binding_bridge_replay",
+        "handler_invocation_policy",
+        "inspector_modules_ready",
+        "inspector_module_tests_ready",
+        "runtime_replay",
     )
 
     checks = (
@@ -16989,22 +17005,9 @@ def form_designer_generation_smoke_audit(source: str = FORM_DESIGNER_SAMPLE_DSL)
             "id": "generated_inspector_runtime",
             "ok": inspector_runtime_smoke["ok"]
             and inspector_runtime_smoke["format"] == "appgen.generated-inspector-runtime-smoke.v1"
-            and {
-                "manifest_ok",
-                "property_editors_present",
-                "event_editors_lifecycle_ready",
-                "component_editors_present",
-                "custom_designers_present",
-                "editor_lifecycle_replay",
-                "design_surface_replay",
-                "custom_registration_replay",
-                "binding_bridge_replay",
-                "handler_invocation_policy",
-                "inspector_modules_ready",
-                "inspector_module_tests_ready",
-                "runtime_replay",
-            }
-            <= set(inspector_runtime_smoke["checks"]),
+            and set(required_inspector_runtime_checks) <= inspector_runtime_passing_checks,
+            "required_checks": required_inspector_runtime_checks,
+            "passing_checks": tuple(sorted(inspector_runtime_passing_checks)),
             "smoke": inspector_runtime_smoke,
         },
         {
