@@ -3215,6 +3215,8 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     )
     assert ecosystem_gate["ok"] is True
     assert set(ecosystem_gate["required_categories"]) <= set(ecosystem_gate["passing_categories"])
+    assert set(ecosystem_gate["required_packages"]) <= set(ecosystem_gate["passing_packages"])
+    assert set(ecosystem_gate["required_components"]) <= set(ecosystem_gate["passing_components"])
     assert set(ecosystem_gate["required_checks"]) <= set(ecosystem_gate["passing_checks"])
     rad_artifact_gate = next(
         check for check in audit["rad_parity"]["checks"] if check["id"] == "artifact_contract"

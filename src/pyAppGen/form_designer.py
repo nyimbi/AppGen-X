@@ -15082,6 +15082,52 @@ def rad_parity_workbench(existing_paths: set[str] | None = None) -> dict:
     passing_runtime_workbench_checks = tuple(check["id"] for check in runtime_workbench["checks"] if check["ok"])
     required_third_party_categories = ("grid", "reports", "charts", "database", "network", "animation")
     passing_third_party_categories = tuple(sorted(third_party_categories))
+    required_third_party_package_ids = required_install_package_ids
+    passing_third_party_package_ids = tuple(package["id"] for package in install_plan["packages"])
+    required_third_party_components = (
+        "CxGrid",
+        "CxRibbon",
+        "CxScheduler",
+        "CxSpreadsheet",
+        "CxPivotGrid",
+        "TTMSFNCGrid",
+        "TTMSFNCPlanner",
+        "TTMSFNCMaps",
+        "TTMSFNCChart",
+        "TReportReport",
+        "TReportDesigner",
+        "TReportPDFExport",
+        "TReportDBDataset",
+        "TChart",
+        "TGauge",
+        "TMapSeries",
+        "TDBChart",
+        "TSkPaintBox",
+        "TSkSvg",
+        "TSkAnimatedImage",
+        "TSkLabel",
+        "TUtilityFormStorage",
+        "TUtilityWizard",
+        "TUtilityInspector",
+        "TUtilityDBGrid",
+        "TVirtualStringTree",
+        "TVirtualDrawTree",
+        "TIdHTTP",
+        "TIdSMTP",
+        "TIdTCPClient",
+        "TIdTCPServer",
+        "TWebConnection",
+        "TWebQuery",
+        "TOraSession",
+        "TPgConnection",
+        "TWebAppForm",
+        "TWebForm",
+        "TWebDBGrid",
+        "TWebMainMenu",
+    )
+    passing_third_party_components = tuple(
+        component for package in install_plan["packages"] for component in package["components"]
+    )
     required_package_workbench_checks = (
         "registry_coverage",
         "adapter_coverage",
@@ -15092,6 +15138,7 @@ def rad_parity_workbench(existing_paths: set[str] | None = None) -> dict:
         "package_behavior_workbench",
         "actionable_package_operations",
         "package_file_exports",
+        "generated_package_files",
     )
     passing_package_workbench_checks = tuple(
         check["id"] for check in package_workbench["checks"] if check["ok"]
@@ -15219,10 +15266,16 @@ def rad_parity_workbench(existing_paths: set[str] | None = None) -> dict:
             "id": "third_party_component_ecosystem",
             "ok": install_plan["ok"]
             and set(required_third_party_categories) <= set(passing_third_party_categories)
+            and set(required_third_party_package_ids) <= set(passing_third_party_package_ids)
+            and set(required_third_party_components) <= set(passing_third_party_components)
             and set(required_package_workbench_checks) <= set(passing_package_workbench_checks)
             and package_workbench["ok"],
             "required_categories": required_third_party_categories,
             "passing_categories": passing_third_party_categories,
+            "required_packages": required_third_party_package_ids,
+            "passing_packages": passing_third_party_package_ids,
+            "required_components": required_third_party_components,
+            "passing_components": passing_third_party_components,
             "required_checks": required_package_workbench_checks,
             "passing_checks": passing_package_workbench_checks,
             "evidence": {
