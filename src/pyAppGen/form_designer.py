@@ -16792,6 +16792,7 @@ def form_designer_generation_smoke_audit(source: str = FORM_DESIGNER_SAMPLE_DSL)
         }
         component_parity_runtime_passing_checks = set(component_parity_runtime_smoke["checks"])
         inspector_runtime_passing_checks = set(inspector_runtime_smoke["checks"])
+        binding_runtime_passing_checks = set(binding_runtime_smoke["checks"])
         native_form_runtime_passing_checks = set(native_form_runtime_smoke["checks"])
 
     required_generated_release_gate_checks = (
@@ -16873,6 +16874,22 @@ def form_designer_generation_smoke_audit(source: str = FORM_DESIGNER_SAMPLE_DSL)
         "handler_invocation_policy",
         "inspector_modules_ready",
         "inspector_module_tests_ready",
+        "runtime_replay",
+    )
+    required_binding_runtime_checks = (
+        "manifest_ok",
+        "graph_nodes_present",
+        "graph_edges_present",
+        "actionable_operations_ready",
+        "runtime_wiring_ready",
+        "runtime_gates_ready",
+        "runtime_propagation_replay",
+        "design_runtime_replay",
+        "designer_transaction_replay",
+        "lifecycle_release_replay",
+        "inspector_bridge_replay",
+        "binding_modules_ready",
+        "binding_module_tests_ready",
         "runtime_replay",
     )
 
@@ -17014,23 +17031,9 @@ def form_designer_generation_smoke_audit(source: str = FORM_DESIGNER_SAMPLE_DSL)
             "id": "generated_binding_runtime",
             "ok": binding_runtime_smoke["ok"]
             and binding_runtime_smoke["format"] == "appgen.generated-binding-runtime-smoke.v1"
-            and {
-                "manifest_ok",
-                "graph_nodes_present",
-                "graph_edges_present",
-                "actionable_operations_ready",
-                "runtime_wiring_ready",
-                "runtime_gates_ready",
-                "runtime_propagation_replay",
-                "design_runtime_replay",
-                "designer_transaction_replay",
-                "lifecycle_release_replay",
-                "inspector_bridge_replay",
-                "binding_modules_ready",
-                "binding_module_tests_ready",
-                "runtime_replay",
-            }
-            <= set(binding_runtime_smoke["checks"]),
+            and set(required_binding_runtime_checks) <= binding_runtime_passing_checks,
+            "required_checks": required_binding_runtime_checks,
+            "passing_checks": tuple(sorted(binding_runtime_passing_checks)),
             "smoke": binding_runtime_smoke,
         },
         {
