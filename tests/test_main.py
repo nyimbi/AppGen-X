@@ -10874,6 +10874,33 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert "/tabbed-views/workbench.json" in next(
         check["evidence"]["routes"] for check in tab_workbench["checks"] if check["id"] == "route_surface"
     )
+    tabbed_module_files = tabbed_views.tabbed_view_module_file_manifest()
+    tabbed_module_tests = tabbed_views.tabbed_view_module_test_file_manifest()
+    assert tabbed_module_files["format"] == "appgen.tabbed-view-module-file-manifest.v1"
+    assert tabbed_module_files["ok"] is True
+    assert tabbed_module_tests["format"] == "appgen.tabbed-view-module-test-file-manifest.v1"
+    assert tabbed_module_tests["ok"] is True
+    assert {
+        "tab_catalog",
+        "tab_policy",
+        "visible_tabs",
+        "permission_matrix",
+        "release_workbench",
+    } == {item["surface"] for item in tabbed_module_files["modules"]}
+    for item in tabbed_module_files["modules"]:
+        module_path = output_dir / item["path"].replace("app/", "")
+        py_compile.compile(str(module_path), doraise=True)
+        module = _load_module(module_path, f"generated_tabbed_view_module_{item['module']}")
+        assert module.module_contract()["ok"] is True
+        assert module.tabbed_manifest()["ok"] is True
+        assert module.run_tabbed_operation()["ok"] is True
+        assert module.release_context()["ok"] is True
+        assert module.smoke_test()["ok"] is True
+    for item in tabbed_module_tests["tests"]:
+        test_path = output_dir / item["path"].replace("app/", "")
+        py_compile.compile(str(test_path), doraise=True)
+        module = _load_module(test_path, f"generated_tabbed_view_module_test_{item['module']}")
+        assert module.smoke_test()["ok"] is True
     assert tabbed_views.tabbed_views_workbench({"app/tabbed_views.py"})["ok"] is False
     assert tabbed_views.tabbed_views_release_gate({"app/tabbed_views.py"})["ok"] is False
     assert tabbed_views.tabbed_views_check(

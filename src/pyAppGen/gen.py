@@ -2217,6 +2217,27 @@ def write_tabbed_views_file(output_dir, schema: AppSchema):
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
     (output_dir / "tabbed_views.py").write_text(_tabbed_views_text(schema))
+    write_tabbed_view_module_files(output_dir)
+
+
+def write_tabbed_view_module_files(output_dir):
+    """Write generated tabbed-view modules and smoke tests."""
+    output_dir = Path(output_dir)
+    module_dir = output_dir / "tabbed_view_modules"
+    test_dir = output_dir / "tabbed_view_module_tests"
+    module_dir.mkdir(parents=True, exist_ok=True)
+    test_dir.mkdir(parents=True, exist_ok=True)
+    (module_dir / "__init__.py").write_text(_tabbed_view_module_init_text(), encoding="utf-8")
+    (test_dir / "__init__.py").write_text(_tabbed_view_module_test_init_text(), encoding="utf-8")
+    for module_name in TABBED_VIEW_MODULES:
+        (module_dir / f"{module_name}.py").write_text(
+            _tabbed_view_module_text(module_name),
+            encoding="utf-8",
+        )
+        (test_dir / f"test_{module_name}.py").write_text(
+            _tabbed_view_module_test_text(module_name),
+            encoding="utf-8",
+        )
 
 
 def write_form_designer_file(output_dir, schema: AppSchema):
@@ -2401,6 +2422,14 @@ VIEW_COMPOSITION_MODULES = (
     "multiple_view_module",
     "chart_view_module",
     "composition_release_workbench_module",
+)
+
+TABBED_VIEW_MODULES = (
+    "tab_catalog_module",
+    "tab_policy_module",
+    "visible_tabs_module",
+    "permission_matrix_module",
+    "tabbed_release_workbench_module",
 )
 
 DATABASE_OPS_MODULES = (
@@ -40543,6 +40572,251 @@ def register_view_composition(appbuilder):
 '''
 
 
+def _tabbed_view_module_init_text() -> str:
+    return (
+        '"""Generated tabbed-view modules."""\n\n'
+        f"TABBED_VIEW_MODULES = {TABBED_VIEW_MODULES!r}\n"
+    )
+
+
+def _tabbed_view_module_test_init_text() -> str:
+    modules = tuple(f"test_{name}" for name in TABBED_VIEW_MODULES)
+    return (
+        '"""Generated tabbed-view module tests."""\n\n'
+        f"TABBED_VIEW_MODULE_TESTS = {modules!r}\n"
+    )
+
+
+def _tabbed_view_surface(module_name: str) -> tuple[str, str]:
+    return {
+        "tab_catalog_module": ("tab_catalog", "tabbed_view_catalog"),
+        "tab_policy_module": ("tab_policy", "tab_policy"),
+        "visible_tabs_module": ("visible_tabs", "visible_tabs"),
+        "permission_matrix_module": ("permission_matrix", "tab_permission_matrix"),
+        "tabbed_release_workbench_module": ("release_workbench", "tabbed_views_release_gate"),
+    }[module_name]
+
+
+def _tabbed_view_module_text(module_name: str) -> str:
+    surface, operation = _tabbed_view_surface(module_name)
+    return f'''"""Generated tabbed-view module for {surface}."""
+
+from __future__ import annotations
+
+import importlib.util
+from pathlib import Path
+
+
+MODULE = {module_name!r}
+SURFACE = {surface!r}
+OPERATION = {operation!r}
+EXPECTED_EXPORTS = (
+    "module_contract",
+    "tabbed_manifest",
+    "run_tabbed_operation",
+    "release_context",
+    "smoke_test",
+)
+
+
+def _tabbed():
+    module_path = Path(__file__).resolve().parents[1] / "tabbed_views.py"
+    spec = importlib.util.spec_from_file_location(f"generated_tabbed_views_{{MODULE}}", module_path)
+    module = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(module)
+    return module
+
+
+def _assets():
+    return {{"app/tabbed_views.py", "app/templates/appgen_tabbed_views.html"}}
+
+
+def _first_view_and_tab(tabbed):
+    first_view = tabbed.tabbed_view_catalog()[0]
+    first_tab = first_view["tabs"][0]
+    return first_view, first_tab
+
+
+def module_contract():
+    """Return this generated tabbed-view module's export contract."""
+    available = tuple(name for name in EXPECTED_EXPORTS if name in globals())
+    return {{
+        "format": "appgen.tabbed-view-module-contract.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "operation": OPERATION,
+        "ok": set(EXPECTED_EXPORTS) <= set(available),
+        "exports": available,
+        "expected_exports": EXPECTED_EXPORTS,
+        "side_effects": (),
+    }}
+
+
+def tabbed_manifest():
+    """Return generated tabbed-view metadata owned by this module."""
+    tabbed = _tabbed()
+    catalog = tabbed.tabbed_view_catalog()
+    matrix = tabbed.tab_permission_matrix()
+    return {{
+        "format": "appgen.tabbed-view-module-manifest.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "ok": bool(catalog) and bool(matrix) and all(view["tabs"] for view in catalog),
+        "view_count": len(catalog),
+        "tab_count": sum(len(view["tabs"]) for view in catalog),
+        "policy_count": len(matrix),
+        "side_effects": (),
+    }}
+
+
+def run_tabbed_operation():
+    """Run this module's side-effect-free tabbed-view operation."""
+    tabbed = _tabbed()
+    first_view, first_tab = _first_view_and_tab(tabbed)
+    roles = tuple(first_tab.get("allowed_roles", ()))
+    if SURFACE == "tab_catalog":
+        operation = {{
+            "catalog": tabbed.tabbed_view_catalog(),
+            "view": tabbed.tabbed_view(first_view["view"]),
+            "tabs": tabbed.tabs_for_view(first_view["view"]),
+        }}
+        ok = bool(operation["catalog"]) and operation["view"]["view"] == first_view["view"] and bool(operation["tabs"])
+    elif SURFACE == "tab_policy":
+        operation = {{
+            "policy": tabbed.tab_policy(first_view["view"], first_tab["id"]),
+            "allowed": tabbed.can_access_tab(first_view["view"], first_tab["id"], roles),
+            "denied": tabbed.can_access_tab(first_view["view"], first_tab["id"], ("__unknown_role__",)),
+        }}
+        ok = operation["policy"]["allowed_roles"] == roles and operation["allowed"] is True and operation["denied"] is False
+    elif SURFACE == "visible_tabs":
+        operation = {{"visible": tabbed.visible_tabs(first_view["view"], roles)}}
+        ok = bool(operation["visible"]) and first_tab["id"] in tuple(tab["id"] for tab in operation["visible"])
+    elif SURFACE == "permission_matrix":
+        operation = {{"matrix": tabbed.tab_permission_matrix()}}
+        ok = bool(operation["matrix"]) and all(row["allowed_access_ok"] and row["unknown_role_denied"] for row in operation["matrix"])
+    else:
+        operation = {{
+            "release": tabbed.tabbed_views_release_gate(_assets()),
+            "workbench": tabbed.tabbed_views_workbench(_assets()),
+        }}
+        ok = operation["release"]["ok"] and operation["workbench"]["ok"]
+    return {{
+        "format": "appgen.tabbed-view-module-operation.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "ok": ok,
+        "operation": operation,
+        "side_effects": (),
+    }}
+
+
+def release_context():
+    """Return release evidence used by this tabbed-view module."""
+    tabbed = _tabbed()
+    release = tabbed.tabbed_views_release_gate(_assets())
+    workbench = tabbed.tabbed_views_workbench(_assets())
+    return {{
+        "format": "appgen.tabbed-view-module-release-context.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "ok": release["ok"] and workbench["ok"],
+        "release": release,
+        "workbench": workbench,
+        "side_effects": (),
+    }}
+
+
+def smoke_test():
+    """Run side-effect-free checks for this generated tabbed-view module."""
+    contract = module_contract()
+    manifest = tabbed_manifest()
+    operation = run_tabbed_operation()
+    release = release_context()
+    return {{
+        "format": "appgen.tabbed-view-module-smoke-test.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "ok": contract["ok"]
+        and manifest["ok"]
+        and operation["ok"]
+        and release["ok"]
+        and not manifest["side_effects"]
+        and not operation["side_effects"]
+        and not release["side_effects"],
+        "contract": contract,
+        "manifest": manifest,
+        "operation": operation,
+        "release": release,
+        "checks": (
+            "module_contract_resolves",
+            "tabbed_manifest_ok",
+            "tabbed_operation_ok",
+            "release_context_ok",
+            "no_side_effects",
+        ),
+    }}
+'''
+
+
+def _tabbed_view_module_test_text(module_name: str) -> str:
+    surface, _operation = _tabbed_view_surface(module_name)
+    return f'''"""Generated tests for the {surface} tabbed-view module."""
+
+from __future__ import annotations
+
+import importlib.util
+from pathlib import Path
+
+
+MODULE = {module_name!r}
+SURFACE = {surface!r}
+
+
+def load_tabbed_view_module():
+    """Load the generated tabbed-view module without app installation."""
+    module_path = Path(__file__).resolve().parents[1] / "tabbed_view_modules" / f"{{MODULE}}.py"
+    spec = importlib.util.spec_from_file_location(f"generated_tabbed_view_module_{{MODULE}}", module_path)
+    module = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(module)
+    return module
+
+
+def test_tabbed_view_module_contract():
+    """Assert the generated tabbed-view module exposes its contract."""
+    module = load_tabbed_view_module()
+    contract = module.module_contract()
+    assert contract["module"] == MODULE
+    assert contract["surface"] == SURFACE
+    assert contract["ok"] is True
+    assert all(hasattr(module, name) for name in contract["expected_exports"])
+
+
+def test_tabbed_view_module_smoke():
+    """Assert the module's side-effect-free smoke test passes."""
+    module = load_tabbed_view_module()
+    result = module.smoke_test()
+    assert result["ok"] is True
+    assert result["module"] == MODULE
+    assert result["surface"] == SURFACE
+    assert result["checks"]
+
+
+def smoke_test():
+    """Run this generated test module in a side-effect-free way."""
+    test_tabbed_view_module_contract()
+    test_tabbed_view_module_smoke()
+    return {{
+        "format": "appgen.tabbed-view-module-generated-test-smoke.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "ok": True,
+        "tests": ("test_tabbed_view_module_contract", "test_tabbed_view_module_smoke"),
+    }}
+'''
+
+
 def _tabbed_views_text(schema: AppSchema) -> str:
     role_permissions: dict[str, dict[str, set[str]]] = {}
     for role in schema.roles:
@@ -40615,12 +40889,96 @@ def _tabbed_views_text(schema: AppSchema) -> str:
 
 from __future__ import annotations
 
+import importlib.util
+from pathlib import Path
+
 from flask import jsonify
 from flask_appbuilder import BaseView
 from flask_appbuilder import expose
 
 
 TABBED_VIEWS = {tuple(views)!r}
+TABBED_VIEW_MODULES = {TABBED_VIEW_MODULES!r}
+
+
+def _load_generated_module(path, name):
+    spec = importlib.util.spec_from_file_location(name, path)
+    module = importlib.util.module_from_spec(spec)
+    if spec.loader is None:
+        raise RuntimeError(f"Could not load generated module: {{path}}")
+    spec.loader.exec_module(module)
+    return module
+
+
+def tabbed_view_module_file_manifest():
+    """Return file-level evidence for generated tabbed-view modules."""
+    module_dir = Path(__file__).with_name("tabbed_view_modules")
+    entries = []
+    for module_name in TABBED_VIEW_MODULES:
+        module_path = module_dir / f"{{module_name}}.py"
+        exports = ()
+        contract_ok = False
+        smoke_ok = False
+        surface = ""
+        if module_path.exists():
+            module = _load_generated_module(module_path, f"generated_tabbed_view_module_{{module_name}}")
+            contract = module.module_contract()
+            smoke = module.smoke_test()
+            exports = tuple(name for name in contract["expected_exports"] if hasattr(module, name))
+            contract_ok = contract["ok"] and contract["module"] == module_name
+            smoke_ok = smoke["ok"] and smoke["module"] == module_name
+            surface = contract["surface"]
+        entries.append(
+            {{
+                "module": module_name,
+                "surface": surface,
+                "path": f"app/tabbed_view_modules/{{module_name}}.py",
+                "exists": module_path.exists(),
+                "exports": exports,
+                "contract_ok": contract_ok,
+                "smoke_ok": smoke_ok,
+            }}
+        )
+    return {{
+        "format": "appgen.tabbed-view-module-file-manifest.v1",
+        "ok": bool(entries) and all(item["exists"] and item["contract_ok"] and item["smoke_ok"] for item in entries),
+        "modules": tuple(entries),
+        "side_effects": (),
+    }}
+
+
+def tabbed_view_module_test_file_manifest():
+    """Return file-level evidence for generated tabbed-view module tests."""
+    test_dir = Path(__file__).with_name("tabbed_view_module_tests")
+    entries = []
+    for item in tabbed_view_module_file_manifest()["modules"]:
+        module_name = item["module"]
+        module_path = test_dir / f"test_{{module_name}}.py"
+        exports = ()
+        smoke_ok = False
+        if module_path.exists():
+            module = _load_generated_module(module_path, f"generated_tabbed_view_module_test_{{module_name}}")
+            smoke = module.smoke_test()
+            expected = ("load_tabbed_view_module", "test_tabbed_view_module_contract", "test_tabbed_view_module_smoke", "smoke_test")
+            exports = tuple(name for name in expected if hasattr(module, name))
+            smoke_ok = smoke["ok"] and smoke["module"] == module_name
+        entries.append(
+            {{
+                "module": module_name,
+                "surface": item["surface"],
+                "path": f"app/tabbed_view_module_tests/test_{{module_name}}.py",
+                "target": item["path"],
+                "exists": module_path.exists(),
+                "exports": exports,
+                "smoke_ok": smoke_ok,
+            }}
+        )
+    return {{
+        "format": "appgen.tabbed-view-module-test-file-manifest.v1",
+        "ok": bool(entries) and all(item["exists"] and item["smoke_ok"] for item in entries),
+        "tests": tuple(entries),
+        "side_effects": (),
+    }}
 
 
 def tabbed_view_catalog():
@@ -72609,6 +72967,14 @@ def validate_tabbed_view_artifacts() -> None:
         fail("tabbed-view contract must expose tab catalogs and per-tab permission checks")
     if "visible_tabs" not in contract or "tabbed_views_check" not in contract or "tab_permission_matrix" not in contract or "tabbed_views_release_gate" not in contract:
         fail("tabbed-view contract must expose visible tab, permission matrix, and release readiness helpers")
+    if (
+        "TABBED_VIEW_MODULES" not in contract
+        or "tabbed_view_module_file_manifest" not in contract
+        or "tabbed_view_module_test_file_manifest" not in contract
+        or "appgen.tabbed-view-module-file-manifest.v1" not in contract
+        or "appgen.tabbed-view-module-test-file-manifest.v1" not in contract
+    ):
+        fail("tabbed-view contract must expose generated module and module-test manifests")
     template = (ROOT / "app" / "templates" / "appgen_tabbed_views.html").read_text()
     if "Tabbed Views" not in template or "permissions per tab" not in template or "Release Gate JSON" not in template:
         fail("tabbed-view template must expose per-tab permission metadata and release readiness")
