@@ -14615,6 +14615,10 @@ def platform_parity_requirement_audit_contract() -> dict:
         {
             "requirement": requirement["id"],
             "ok": not (set(requirement["deep_checks"]) - _passing_evidence_check_ids(requirement["evidence"])),
+            "required_deep_checks": requirement["deep_checks"],
+            "passing_deep_checks": tuple(
+                sorted(set(requirement["deep_checks"]) & _passing_evidence_check_ids(requirement["evidence"]))
+            ),
             "missing": tuple(sorted(set(requirement["deep_checks"]) - _passing_evidence_check_ids(requirement["evidence"]))),
             "passing_evidence": tuple(sorted(_passing_evidence_check_ids(requirement["evidence"]))),
         }
