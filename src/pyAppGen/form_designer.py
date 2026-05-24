@@ -16796,6 +16796,7 @@ def form_designer_generation_smoke_audit(source: str = FORM_DESIGNER_SAMPLE_DSL)
         package_manager_runtime_passing_checks = set(package_manager_runtime_smoke["checks"])
         visual_depth_runtime_passing_checks = set(visual_depth_runtime_smoke["checks"])
         data_tooling_runtime_passing_checks = set(data_runtime_smoke["checks"])
+        runtime_operation_passing_checks = set(runtime_operation_smoke["checks"])
         native_form_runtime_passing_checks = set(native_form_runtime_smoke["checks"])
 
     required_generated_release_gate_checks = (
@@ -16933,6 +16934,15 @@ def form_designer_generation_smoke_audit(source: str = FORM_DESIGNER_SAMPLE_DSL)
         "publish_transaction_replay",
         "failover_transaction_replay",
         "runtime_replay",
+    )
+    required_runtime_operation_checks = (
+        "manifest_ok",
+        "required_operations_present",
+        "operations_are_callable",
+        "runtime_replay_complete",
+        "design_edit_replay_complete",
+        "runtime_operation_modules_ready",
+        "runtime_operation_module_tests_ready",
     )
 
     checks = (
@@ -17123,16 +17133,9 @@ def form_designer_generation_smoke_audit(source: str = FORM_DESIGNER_SAMPLE_DSL)
             "id": "generated_runtime_operations",
             "ok": runtime_operation_smoke["ok"]
             and runtime_operation_smoke["format"] == "appgen.generated-native-runtime-operations-smoke.v1"
-            and {
-                "manifest_ok",
-                "required_operations_present",
-                "operations_are_callable",
-                "runtime_replay_complete",
-                "design_edit_replay_complete",
-                "runtime_operation_modules_ready",
-                "runtime_operation_module_tests_ready",
-            }
-            <= set(runtime_operation_smoke["checks"]),
+            and set(required_runtime_operation_checks) <= runtime_operation_passing_checks,
+            "required_checks": required_runtime_operation_checks,
+            "passing_checks": tuple(sorted(runtime_operation_passing_checks)),
             "smoke": runtime_operation_smoke,
         },
         {

@@ -3530,6 +3530,17 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "failover_transaction_replay",
         "runtime_replay",
     } <= set(data_tooling_smoke["passing_checks"])
+    runtime_operation_smoke = next(check for check in smoke["checks"] if check["id"] == "generated_runtime_operations")
+    assert runtime_operation_smoke["ok"] is True
+    assert {
+        "manifest_ok",
+        "required_operations_present",
+        "operations_are_callable",
+        "runtime_replay_complete",
+        "design_edit_replay_complete",
+        "runtime_operation_modules_ready",
+        "runtime_operation_module_tests_ready",
+    } <= set(runtime_operation_smoke["passing_checks"])
     coverage = next(check for check in smoke["checks"] if check["id"] == "generated_component_file_coverage")
     assert coverage["component_count"] == len(component_file_manifest())
     assert coverage["package_count"] == len(component_package_file_manifest())
