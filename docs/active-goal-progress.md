@@ -474,6 +474,11 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   proves design stream decoding, unit cross-checking, target compile planning,
   diagnostic routing, and runtime preview reload as one ordered executable
   path in both package and generated-app form designer surfaces.
+- Event-runtime guidance now exposes an executable `developer_use_policy` and
+  `choice_budget` so the IDE, DSL linter, natural-language generator, package
+  templates, and coding-agent prompts apply one ordinary event contract, zero
+  visible stream-engine choices, and only two evidence-gated exception
+  workflows.
 
 ## Open Completion Areas
 

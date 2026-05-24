@@ -806,6 +806,18 @@ def test_package_pbc_catalog_composes_enterprise_apps(runner: CliRunner) -> None
     assert stream_policy["developer_choice_algorithm"][1]["requires_evidence"] is True
     assert stream_policy["developer_choice_algorithm"][2]["runtime_profile"] == "bytewax"
     assert stream_policy["developer_choice_algorithm"][3]["if"] == "anything else or unclear"
+    assert stream_policy["developer_use_policy"]["ordinary_applications"]["use"] == "appgen_event_contract"
+    assert stream_policy["developer_use_policy"]["ordinary_applications"]["manifest_rule"] == "omit_stream_processor"
+    assert stream_policy["developer_use_policy"]["ordinary_applications"]["visible_developer_options"] == (
+        "appgen_event_contract",
+    )
+    assert "appgen_outbox_event" in stream_policy["developer_use_policy"]["ordinary_applications"]["generated_stack"]
+    assert stream_policy["developer_use_policy"]["telemetry_exception"]["requires_evidence"] is True
+    assert stream_policy["developer_use_policy"]["dataflow_exception"]["requires_evidence"] is True
+    assert stream_policy["choice_budget"]["ordinary_public_event_contracts"] == 1
+    assert stream_policy["choice_budget"]["ordinary_visible_stream_engine_choices"] == 0
+    assert stream_policy["choice_budget"]["exception_profiles"] == ("quix_streams", "bytewax")
+    assert "release_audit_gate" in stream_policy["choice_budget"]["additional_profile_requires"]
     assert stream_policy["ordinary_workload_contract"]["public_choice"] == "appgen_event_contract"
     assert stream_policy["ordinary_workload_contract"]["manifest_fields_to_omit"] == ("stream_processor",)
     assert "events.py" in stream_policy["ordinary_workload_contract"]["generated_files"]

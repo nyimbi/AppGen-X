@@ -101,6 +101,23 @@ prompts should read when they need the short answer. The long comparison is
 background. The product behavior is one default generated contract, one
 ordinary visible option, and two evidence-gated exception workflows.
 
+The executable policy also exposes `developer_use_policy` and `choice_budget`.
+Those fields are the platform's guardrail against exponential option growth:
+
+| Policy field | Required interpretation |
+| --- | --- |
+| `developer_use_policy.ordinary_applications.use` | Always `appgen_event_contract`. |
+| `developer_use_policy.ordinary_applications.manifest_rule` | Always omit `stream_processor`. |
+| `developer_use_policy.ordinary_applications.generated_stack` | Generate owned tables, outbox/inbox tables, typed handlers, retry, idempotency, dead-letter, and release evidence. |
+| `choice_budget.ordinary_public_event_contracts` | Exactly `1`. |
+| `choice_budget.ordinary_visible_stream_engine_choices` | Exactly `0`. |
+| `choice_budget.exception_profiles` | Only `quix_streams` and `bytewax`, and only with exception evidence. |
+
+Generators and IDE screens should not derive their own matrix from the
+comparison text. Read the policy object, apply the first matching rule, and
+stop. If the request is not clearly telemetry/time-series or complex dataflow,
+the answer remains `appgen_event_contract`.
+
 Use this manifest shape for ordinary work:
 
 ```python

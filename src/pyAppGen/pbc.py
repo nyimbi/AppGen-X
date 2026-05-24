@@ -284,6 +284,63 @@ ACP_STREAM_PROCESSING_POLICY = {
             "requires_evidence": False,
         },
     ),
+    "developer_use_policy": {
+        "ordinary_applications": {
+            "use": "appgen_event_contract",
+            "developer_instruction": (
+                "Generate transactional outbox/inbox tables and typed handlers "
+                "through the AppGen-X event adapter."
+            ),
+            "manifest_rule": "omit_stream_processor",
+            "datastore_rule": "postgresql_by_default_mysql_or_mariadb_when_project_standard",
+            "generated_stack": (
+                "owned_tables",
+                "appgen_outbox_event",
+                "appgen_inbox_event",
+                "typed_event_handlers",
+                "retry_policy",
+                "idempotency_keys",
+                "dead_letter_contract",
+                "release_audit_evidence",
+            ),
+            "visible_developer_options": ("appgen_event_contract",),
+        },
+        "telemetry_exception": {
+            "use": "quix_streams_exception_workflow",
+            "developer_instruction": (
+                "Split telemetry, time-series, high-volume ingestion, or "
+                "windowed metrics into a specialized PBC and provide evidence."
+            ),
+            "manifest_rule": "stream_processor=quix_streams_with_stream_exception_evidence",
+            "requires_evidence": True,
+        },
+        "dataflow_exception": {
+            "use": "bytewax_exception_workflow",
+            "developer_instruction": (
+                "Split complex parallel dataflow, CPU-heavy transforms, or "
+                "multi-stage analytical pipelines into a specialized PBC and "
+                "provide evidence."
+            ),
+            "manifest_rule": "stream_processor=bytewax_with_stream_exception_evidence",
+            "requires_evidence": True,
+        },
+    },
+    "choice_budget": {
+        "ordinary_public_event_contracts": 1,
+        "ordinary_visible_stream_engine_choices": 0,
+        "ordinary_visible_runtime_choices": ("appgen_event_contract",),
+        "exception_profiles": ("quix_streams", "bytewax"),
+        "exception_profile_count": 2,
+        "stream_profiles_per_pbc": 1,
+        "additional_profile_requires": (
+            "architecture_decision",
+            "executable_policy",
+            "manifest_validation",
+            "release_audit_gate",
+            "generated_tests",
+            "developer_documentation",
+        ),
+    },
     "ordinary_workload_contract": {
         "public_choice": "appgen_event_contract",
         "developer_prompt": (
@@ -1015,6 +1072,8 @@ def acp_stream_processing_policy() -> dict:
         "developer_decision_brief": ACP_STREAM_PROCESSING_POLICY["developer_decision_brief"],
         "decision_card": ACP_STREAM_PROCESSING_POLICY["decision_card"],
         "developer_choice_algorithm": ACP_STREAM_PROCESSING_POLICY["developer_choice_algorithm"],
+        "developer_use_policy": ACP_STREAM_PROCESSING_POLICY["developer_use_policy"],
+        "choice_budget": ACP_STREAM_PROCESSING_POLICY["choice_budget"],
         "ordinary_workload_contract": ACP_STREAM_PROCESSING_POLICY["ordinary_workload_contract"],
         "developer_rule": ACP_STREAM_PROCESSING_POLICY["developer_rule"],
         "generation_rule": ACP_STREAM_PROCESSING_POLICY["generation_rule"],
