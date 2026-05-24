@@ -3499,6 +3499,20 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "package_manager_module_tests_ready",
         "runtime_replay_ready",
     } <= set(package_runtime_smoke["passing_checks"])
+    visual_depth_smoke = next(check for check in smoke["checks"] if check["id"] == "generated_visual_depth_runtime")
+    assert visual_depth_smoke["ok"] is True
+    assert {
+        "manifest_ok",
+        "style_runtime_ready",
+        "timeline_runtime_ready",
+        "effect_runtime_ready",
+        "scene_runtime_ready",
+        "component_specs_ready",
+        "visual_component_modules_ready",
+        "visual_component_tests_ready",
+        "runtime_package_ready",
+        "runtime_replay_ready",
+    } <= set(visual_depth_smoke["passing_checks"])
     coverage = next(check for check in smoke["checks"] if check["id"] == "generated_component_file_coverage")
     assert coverage["component_count"] == len(component_file_manifest())
     assert coverage["package_count"] == len(component_package_file_manifest())

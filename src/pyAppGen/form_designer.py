@@ -16794,6 +16794,7 @@ def form_designer_generation_smoke_audit(source: str = FORM_DESIGNER_SAMPLE_DSL)
         inspector_runtime_passing_checks = set(inspector_runtime_smoke["checks"])
         binding_runtime_passing_checks = set(binding_runtime_smoke["checks"])
         package_manager_runtime_passing_checks = set(package_manager_runtime_smoke["checks"])
+        visual_depth_runtime_passing_checks = set(visual_depth_runtime_smoke["checks"])
         native_form_runtime_passing_checks = set(native_form_runtime_smoke["checks"])
 
     required_generated_release_gate_checks = (
@@ -16903,6 +16904,18 @@ def form_designer_generation_smoke_audit(source: str = FORM_DESIGNER_SAMPLE_DSL)
         "rollback_and_uninstall_ready",
         "package_manager_modules_ready",
         "package_manager_module_tests_ready",
+        "runtime_replay_ready",
+    )
+    required_visual_depth_runtime_checks = (
+        "manifest_ok",
+        "style_runtime_ready",
+        "timeline_runtime_ready",
+        "effect_runtime_ready",
+        "scene_runtime_ready",
+        "component_specs_ready",
+        "visual_component_modules_ready",
+        "visual_component_tests_ready",
+        "runtime_package_ready",
         "runtime_replay_ready",
     )
 
@@ -17062,19 +17075,9 @@ def form_designer_generation_smoke_audit(source: str = FORM_DESIGNER_SAMPLE_DSL)
             "id": "generated_visual_depth_runtime",
             "ok": visual_depth_runtime_smoke["ok"]
             and visual_depth_runtime_smoke["format"] == "appgen.generated-visual-depth-runtime-smoke.v1"
-            and {
-                "manifest_ok",
-                "style_runtime_ready",
-                "timeline_runtime_ready",
-                "effect_runtime_ready",
-                "scene_runtime_ready",
-                "component_specs_ready",
-                "visual_component_modules_ready",
-                "visual_component_tests_ready",
-                "runtime_package_ready",
-                "runtime_replay_ready",
-            }
-            <= set(visual_depth_runtime_smoke["checks"]),
+            and set(required_visual_depth_runtime_checks) <= visual_depth_runtime_passing_checks,
+            "required_checks": required_visual_depth_runtime_checks,
+            "passing_checks": tuple(sorted(visual_depth_runtime_passing_checks)),
             "smoke": visual_depth_runtime_smoke,
         },
         {
