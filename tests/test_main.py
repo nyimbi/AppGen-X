@@ -1869,6 +1869,10 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "lookup_editor_pipeline",
         "relationship_lookup_lifecycle_replay",
         "data_module_runtime_smoke",
+        "data_tooling_modules",
+        "data_tooling_module_tests",
+        "deep_data_tooling_modules",
+        "deep_data_tooling_module_tests",
         "data_tooling_runtime_replay",
         "data_tooling_design_runtime_session_replay",
         "data_tooling_publish_transaction_replay",
@@ -1962,6 +1966,23 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "runtime_artifacts_declared",
     } <= {check["id"] for check in relationship_lookup_lifecycle["checks"] if check["ok"]}
     assert all("run_read_only_probe" in test["smoke"] for test in data_workbench["module_runtime_smoke"]["smoke_tests"])
+    assert len(data_workbench["data_module_artifacts"]) == 4
+    assert len(data_workbench["data_module_test_artifacts"]) == 4
+    assert len(data_workbench["deep_data_tooling_module_artifacts"]) == 8
+    assert len(data_workbench["deep_data_tooling_module_test_artifacts"]) == 8
+    assert all(item["exports"] for item in data_workbench["data_module_artifacts"])
+    assert all(
+        "test_data_tooling_module_smoke" in item["exports"]
+        for item in data_workbench["data_module_test_artifacts"]
+    )
+    assert all(
+        "run_data_operation" in item["exports"]
+        for item in data_workbench["deep_data_tooling_module_artifacts"]
+    )
+    assert all(
+        "test_deep_data_tooling_module_smoke" in item["exports"]
+        for item in data_workbench["deep_data_tooling_module_test_artifacts"]
+    )
     assert {
         "connection_probe",
         "query_preview",
@@ -3000,7 +3021,13 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "binding_generated_module_tests",
         "phase_order_ready",
     } <= set(requirements_by_id["visual_binding_designer"]["deep_checks"])
-    assert "phase_order_ready" in requirements_by_id["native_data_service_tooling"]["deep_checks"]
+    assert {
+        "data_tooling_modules",
+        "data_tooling_module_tests",
+        "deep_data_tooling_modules",
+        "deep_data_tooling_module_tests",
+        "phase_order_ready",
+    } <= set(requirements_by_id["native_data_service_tooling"]["deep_checks"])
     assert "runtime_delivery_ready" in requirements_by_id["device_api_component_coverage"]["deep_checks"]
     assert "runtime_package_ready" in requirements_by_id["cross_target_visual_depth"]["deep_checks"]
 
@@ -12237,7 +12264,13 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "binding_generated_module_tests",
         "phase_order_ready",
     } <= set(generated_requirements_by_id["visual_binding_designer"]["deep_checks"])
-    assert "phase_order_ready" in generated_requirements_by_id["native_data_service_tooling"]["deep_checks"]
+    assert {
+        "data_tooling_modules",
+        "data_tooling_module_tests",
+        "deep_data_tooling_modules",
+        "deep_data_tooling_module_tests",
+        "phase_order_ready",
+    } <= set(generated_requirements_by_id["native_data_service_tooling"]["deep_checks"])
     assert "runtime_delivery_ready" in generated_requirements_by_id["device_api_component_coverage"]["deep_checks"]
     assert "runtime_package_ready" in generated_requirements_by_id["cross_target_visual_depth"]["deep_checks"]
     assert {"devexpress-native", "tms-fnc", "fastreport", "teechart", "indy"} <= {
@@ -12651,6 +12684,10 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "lookup_editor_pipeline",
         "relationship_lookup_lifecycle_replay",
         "data_module_runtime_smoke",
+        "data_tooling_modules",
+        "data_tooling_module_tests",
+        "deep_data_tooling_modules",
+        "deep_data_tooling_module_tests",
         "data_tooling_runtime_replay",
         "data_tooling_design_runtime_session_replay",
         "data_tooling_publish_transaction_replay",
@@ -12749,6 +12786,23 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "publish_lookup_endpoints",
     } <= {item["phase"] for item in generated_data_tooling["relationship_lookup_lifecycle"]["replay"]}
     assert all("verify_no_side_effects" in test["smoke"] for test in generated_data_tooling["module_runtime_smoke"]["smoke_tests"])
+    assert len(generated_data_tooling["data_module_artifacts"]) == 4
+    assert len(generated_data_tooling["data_module_test_artifacts"]) == 4
+    assert len(generated_data_tooling["deep_data_tooling_module_artifacts"]) == 8
+    assert len(generated_data_tooling["deep_data_tooling_module_test_artifacts"]) == 8
+    assert all(item["exports"] for item in generated_data_tooling["data_module_artifacts"])
+    assert all(
+        "test_data_tooling_module_smoke" in item["exports"]
+        for item in generated_data_tooling["data_module_test_artifacts"]
+    )
+    assert all(
+        "run_data_operation" in item["exports"]
+        for item in generated_data_tooling["deep_data_tooling_module_artifacts"]
+    )
+    assert all(
+        "test_deep_data_tooling_module_smoke" in item["exports"]
+        for item in generated_data_tooling["deep_data_tooling_module_test_artifacts"]
+    )
     assert {
         "connection_probe",
         "query_preview",

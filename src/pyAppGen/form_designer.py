@@ -10202,6 +10202,10 @@ def rad_data_tooling_workbench() -> dict:
     lookup_editor_pipeline = data_lookup_editor_pipeline_contract()
     relationship_lookup_lifecycle = data_relationship_lookup_lifecycle_replay_contract()
     module_runtime_smoke = data_module_runtime_smoke_contract()
+    data_module_artifacts = data_tooling_module_file_manifest()
+    data_module_test_artifacts = data_tooling_module_test_file_manifest()
+    deep_data_tooling_module_artifacts = deep_data_tooling_module_file_manifest()
+    deep_data_tooling_module_test_artifacts = deep_data_tooling_module_test_file_manifest()
     runtime_replay = data_tooling_runtime_replay_contract()
     design_runtime_replay = data_tooling_design_runtime_session_replay_contract()
     publish_transaction_replay = data_tooling_publish_transaction_replay_contract()
@@ -10501,6 +10505,36 @@ def rad_data_tooling_workbench() -> dict:
             "evidence": module_runtime_smoke,
         },
         {
+            "id": "data_tooling_modules",
+            "ok": len(data_module_artifacts) == 4
+            and all(item["ok"] and item["exports"] for item in data_module_artifacts),
+            "evidence": data_module_artifacts,
+        },
+        {
+            "id": "data_tooling_module_tests",
+            "ok": len(data_module_test_artifacts) == 4
+            and all(
+                item["ok"] and "test_data_tooling_module_smoke" in item["exports"]
+                for item in data_module_test_artifacts
+            ),
+            "evidence": data_module_test_artifacts,
+        },
+        {
+            "id": "deep_data_tooling_modules",
+            "ok": len(deep_data_tooling_module_artifacts) == 8
+            and all(item["ok"] and "run_data_operation" in item["exports"] for item in deep_data_tooling_module_artifacts),
+            "evidence": deep_data_tooling_module_artifacts,
+        },
+        {
+            "id": "deep_data_tooling_module_tests",
+            "ok": len(deep_data_tooling_module_test_artifacts) == 8
+            and all(
+                item["ok"] and "test_deep_data_tooling_module_smoke" in item["exports"]
+                for item in deep_data_tooling_module_test_artifacts
+            ),
+            "evidence": deep_data_tooling_module_test_artifacts,
+        },
+        {
             "id": "data_tooling_runtime_replay",
             "ok": runtime_replay["ok"]
             and {"connection_probe_rolls_back", "offline_replay_pauses_for_review"} <= set(runtime_replay["guards"])
@@ -10592,6 +10626,10 @@ def rad_data_tooling_workbench() -> dict:
         "lookup_editor_pipeline": lookup_editor_pipeline,
         "relationship_lookup_lifecycle": relationship_lookup_lifecycle,
         "module_runtime_smoke": module_runtime_smoke,
+        "data_module_artifacts": data_module_artifacts,
+        "data_module_test_artifacts": data_module_test_artifacts,
+        "deep_data_tooling_module_artifacts": deep_data_tooling_module_artifacts,
+        "deep_data_tooling_module_test_artifacts": deep_data_tooling_module_test_artifacts,
         "runtime_replay": runtime_replay,
         "design_runtime_replay": design_runtime_replay,
         "publish_transaction_replay": publish_transaction_replay,
@@ -14207,9 +14245,19 @@ def platform_parity_requirement_audit_contract() -> dict:
             <= {check["id"] for check in data_readiness["checks"] if check["ok"]}
             and data_tooling["runtime_replay"]["ok"]
             and data_tooling["publish_transaction_replay"]["ok"]
-            and "relationship_lookup_lifecycle_replay" in {check["id"] for check in data_tooling["checks"]},
+            and {
+                "relationship_lookup_lifecycle_replay",
+                "data_tooling_modules",
+                "data_tooling_module_tests",
+                "deep_data_tooling_modules",
+                "deep_data_tooling_module_tests",
+            } <= {check["id"] for check in data_tooling["checks"]},
             "deep_checks": (
                 "relationship_lookup_lifecycle_replay",
+                "data_tooling_modules",
+                "data_tooling_module_tests",
+                "deep_data_tooling_modules",
+                "deep_data_tooling_module_tests",
                 "data_tooling_design_runtime_session_replay",
                 "data_tooling_publish_transaction_replay",
                 "phase_order_ready",
