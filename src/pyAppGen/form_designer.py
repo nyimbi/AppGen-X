@@ -14937,6 +14937,49 @@ def rad_parity_workbench(existing_paths: set[str] | None = None) -> dict:
     passing_visual_depth_surfaces = tuple(
         surface for surface in required_visual_depth_surfaces if bool(visual_depth_contract[surface])
     )
+    required_visual_depth_checks = (
+        "style_resources",
+        "animation_state_graph",
+        "effects_pipeline",
+        "scene_designer",
+        "runtime_guards",
+        "style_cascade_authoring",
+        "timeline_authoring",
+        "effect_stack_validation",
+        "scene_authoring",
+        "asset_import_budgets",
+        "preview_runtime_parity",
+        "style_resolution_workflow",
+        "timeline_playback_workflow",
+        "effect_render_workflow",
+        "scene_validation_workflow",
+        "asset_import_workflow",
+        "preview_runtime_diff_workflow",
+        "style_token_validation",
+        "timeline_scrub_validation",
+        "effect_budget_validation",
+        "scene_graph_integrity",
+        "material_binding",
+        "timeline_runtime_export",
+        "shader_material_editor",
+        "scene_hit_testing",
+        "style_inheritance_trace",
+        "timeline_interpolation_runtime",
+        "effect_fallback_matrix",
+        "scene_transform_gizmos",
+        "visual_runtime_replay",
+        "visual_designer_transaction_replay",
+        "visual_lifecycle_replay",
+        "visual_runtime_package",
+        "visual_component_specs",
+        "visual_component_modules",
+        "visual_component_module_tests",
+        "visual_design_modules",
+        "visual_design_module_tests",
+        "actionable_visual_operations",
+        "visual_readiness_contract",
+    )
+    passing_visual_depth_checks = tuple(check["id"] for check in visual_depth_workbench["checks"] if check["ok"])
     required_package_lifecycle_phases = (
         "trust_and_lockfile",
         "sandbox_preview",
@@ -15133,9 +15176,12 @@ def rad_parity_workbench(existing_paths: set[str] | None = None) -> dict:
         {
             "id": "cross_target_animation_effects_3d_depth",
             "ok": set(required_visual_depth_surfaces) <= set(passing_visual_depth_surfaces)
-            and visual_depth_workbench["ok"],
+            and visual_depth_workbench["ok"]
+            and set(required_visual_depth_checks) <= set(passing_visual_depth_checks),
             "required_surfaces": required_visual_depth_surfaces,
             "passing_surfaces": passing_visual_depth_surfaces,
+            "required_checks": required_visual_depth_checks,
+            "passing_checks": passing_visual_depth_checks,
             "evidence": {"contract": visual_depth_contract, "workbench": visual_depth_workbench},
         },
         {
