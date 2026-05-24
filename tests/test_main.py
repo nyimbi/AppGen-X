@@ -2961,6 +2961,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "generated_binding_runtime",
         "generated_package_manager_runtime",
         "generated_visual_depth_runtime",
+        "generated_visual_runtime_assets",
         "generated_data_tooling_runtime",
         "generated_runtime_operations",
         "generated_native_form_runtime",

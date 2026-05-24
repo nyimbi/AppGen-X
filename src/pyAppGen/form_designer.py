@@ -16709,6 +16709,12 @@ def form_designer_generation_smoke_audit(source: str = FORM_DESIGNER_SAMPLE_DSL)
         )
         generated_visual_depth_runtime = importlib.util.module_from_spec(visual_depth_runtime_spec)
         visual_depth_runtime_spec.loader.exec_module(generated_visual_depth_runtime)
+        visual_assets_path = output_dir / "visual_runtime_assets.py"
+        visual_assets_spec = importlib.util.spec_from_file_location(
+            "generated_visual_runtime_assets_smoke", visual_assets_path
+        )
+        generated_visual_assets = importlib.util.module_from_spec(visual_assets_spec)
+        visual_assets_spec.loader.exec_module(generated_visual_assets)
         data_runtime_path = output_dir / "data_tooling_runtime.py"
         data_runtime_spec = importlib.util.spec_from_file_location(
             "generated_data_tooling_runtime_smoke", data_runtime_path
@@ -16774,6 +16780,7 @@ def form_designer_generation_smoke_audit(source: str = FORM_DESIGNER_SAMPLE_DSL)
         binding_runtime_smoke = generated_binding_runtime.smoke_test()
         package_manager_runtime_smoke = generated_package_manager_runtime.smoke_test()
         visual_depth_runtime_smoke = generated_visual_depth_runtime.smoke_test()
+        visual_assets_smoke = generated_visual_assets.smoke_test()
         data_runtime_smoke = generated_data_runtime.smoke_test()
         runtime_operation_smoke = generated_runtime_ops.smoke_test(first_table)
         native_form_runtime_smoke = generated_native_runtime.smoke_test(first_table)
@@ -16987,6 +16994,20 @@ def form_designer_generation_smoke_audit(source: str = FORM_DESIGNER_SAMPLE_DSL)
             "smoke": visual_depth_runtime_smoke,
         },
         {
+            "id": "generated_visual_runtime_assets",
+            "ok": visual_assets_smoke["ok"]
+            and visual_assets_smoke["format"] == "appgen.generated-visual-runtime-assets-smoke.v1"
+            and {
+                "style_bundles",
+                "timeline_bundles",
+                "effect_bundles",
+                "scene_and_assets",
+                "target_package",
+            }
+            <= set(visual_assets_smoke["checks"]),
+            "smoke": visual_assets_smoke,
+        },
+        {
             "id": "generated_data_tooling_runtime",
             "ok": data_runtime_smoke["ok"]
             and data_runtime_smoke["format"] == "appgen.generated-data-tooling-runtime-smoke.v1"
@@ -17109,6 +17130,7 @@ def form_designer_release_audit(existing_paths: set[str] | None = None) -> dict:
         "generated_binding_runtime",
         "generated_package_manager_runtime",
         "generated_visual_depth_runtime",
+        "generated_visual_runtime_assets",
         "generated_data_tooling_runtime",
         "generated_runtime_operations",
         "generated_native_form_runtime",
