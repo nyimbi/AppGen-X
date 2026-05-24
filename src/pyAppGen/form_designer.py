@@ -2637,6 +2637,8 @@ def design_time_package_manager_workbench(package_ids: tuple[str, ...] = ()) -> 
     failure_isolation = component_package_failure_isolation_contract(package_ids)
     lifecycle_replay = component_package_lifecycle_transaction_replay(package_ids)
     actionable_operations = component_package_actionable_operations(package_ids)
+    package_manager_module_artifacts = package_manager_module_file_manifest()
+    package_manager_module_test_artifacts = package_manager_module_test_file_manifest()
     readiness = component_package_readiness_contract(package_ids)
     checks = (
         {
@@ -2771,6 +2773,21 @@ def design_time_package_manager_workbench(package_ids: tuple[str, ...] = ()) -> 
             "evidence": readiness,
         },
         {
+            "id": "package_manager_modules",
+            "ok": len(package_manager_module_artifacts) == 6
+            and all(item["ok"] and "run_package_operation" in item["exports"] for item in package_manager_module_artifacts),
+            "evidence": package_manager_module_artifacts,
+        },
+        {
+            "id": "package_manager_module_tests",
+            "ok": len(package_manager_module_test_artifacts) == 6
+            and all(
+                item["ok"] and "test_package_manager_module_smoke" in item["exports"]
+                for item in package_manager_module_test_artifacts
+            ),
+            "evidence": package_manager_module_test_artifacts,
+        },
+        {
             "id": "side_effect_guards",
             "ok": not session["side_effects"]
             and not registration["side_effects"]
@@ -2834,6 +2851,8 @@ def design_time_package_manager_workbench(package_ids: tuple[str, ...] = ()) -> 
         "failure_isolation": failure_isolation,
         "lifecycle_replay": lifecycle_replay,
         "actionable_operations": actionable_operations,
+        "package_manager_module_artifacts": package_manager_module_artifacts,
+        "package_manager_module_test_artifacts": package_manager_module_test_artifacts,
         "package_readiness": readiness,
         "checks": checks,
         "blocking_gaps": tuple(check for check in checks if not check["ok"]),
@@ -14278,12 +14297,18 @@ def platform_parity_requirement_audit_contract() -> dict:
                 "phase_order_ready",
             }
             <= {check["id"] for check in package_readiness["checks"] if check["ok"]}
-            and "lifecycle_transaction_replay" in {check["id"] for check in package_manager["checks"]},
+            and {
+                "lifecycle_transaction_replay",
+                "package_manager_modules",
+                "package_manager_module_tests",
+            } <= {check["id"] for check in package_manager["checks"]},
             "deep_checks": (
                 "trust_before_preview",
                 "preview_before_registry_commit",
                 "registry_before_update",
                 "rollback_before_cleanup",
+                "package_manager_modules",
+                "package_manager_module_tests",
                 "phase_order_ready",
             ),
             "evidence": {"manager": package_manager, "lifecycle": package_lifecycle, "readiness": package_readiness},

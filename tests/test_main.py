@@ -2512,8 +2512,17 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "lifecycle_execution",
         "actionable_package_operations",
         "package_readiness_contract",
+        "package_manager_modules",
+        "package_manager_module_tests",
         "side_effect_guards",
     } == {check["id"] for check in package_manager["checks"]}
+    assert len(package_manager["package_manager_module_artifacts"]) == 6
+    assert len(package_manager["package_manager_module_test_artifacts"]) == 6
+    assert all("run_package_operation" in item["exports"] for item in package_manager["package_manager_module_artifacts"])
+    assert all(
+        "test_package_manager_module_smoke" in item["exports"]
+        for item in package_manager["package_manager_module_test_artifacts"]
+    )
     assert package_manager["version_conflicts"]["ok"] is True
     assert all("refresh_palette" in update["phases"] for update in package_manager["update_plan"]["updates"])
     assert all("find_palette_references" in item["phases"] for item in package_manager["uninstall_plan"]["uninstalls"])
@@ -3005,6 +3014,8 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "trust_before_preview",
         "registry_before_update",
         "rollback_before_cleanup",
+        "package_manager_modules",
+        "package_manager_module_tests",
     } <= set(requirements_by_id["package_installation_ecosystem"]["deep_checks"])
     assert {
         "runtime_preview_ready",
@@ -12248,7 +12259,11 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "appgen.generated-cross-target-visual-readiness-contract.v1"
     )
     assert "ide_release_ready" in generated_requirements_by_id["component_parity"]["deep_checks"]
-    assert "trust_before_preview" in generated_requirements_by_id["package_installation_ecosystem"]["deep_checks"]
+    assert {
+        "trust_before_preview",
+        "package_manager_modules",
+        "package_manager_module_tests",
+    } <= set(generated_requirements_by_id["package_installation_ecosystem"]["deep_checks"])
     assert {
         "runtime_preview_ready",
         "compiler_runtime_modules",
@@ -12318,6 +12333,8 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "lifecycle_transaction_replay",
         "lifecycle_execution",
         "actionable_package_operations",
+        "package_manager_modules",
+        "package_manager_module_tests",
     } <= {
         check["id"] for check in generated_package_manager["checks"]
     }
@@ -12336,7 +12353,19 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "package_readiness_contract",
         "lifecycle_execution",
         "actionable_package_operations",
+        "package_manager_modules",
+        "package_manager_module_tests",
     } <= {check["id"] for check in generated_package_manager["checks"]}
+    assert len(generated_package_manager["package_manager_module_artifacts"]) == 6
+    assert len(generated_package_manager["package_manager_module_test_artifacts"]) == 6
+    assert all(
+        "run_package_operation" in item["exports"]
+        for item in generated_package_manager["package_manager_module_artifacts"]
+    )
+    assert all(
+        "test_package_manager_module_smoke" in item["exports"]
+        for item in generated_package_manager["package_manager_module_test_artifacts"]
+    )
     assert tuple(phase["phase"] for phase in generated_package_manager["package_readiness"]["phases"]) == (
         "trust_and_lockfile",
         "sandbox_preview",
