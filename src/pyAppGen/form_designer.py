@@ -13642,6 +13642,10 @@ def cross_target_visual_depth_workbench() -> dict:
     runtime_package = cross_target_visual_runtime_package_contract()
     actionable_operations = cross_target_visual_actionable_operations()
     visual_component_specs = cross_target_visual_component_spec_contract()
+    visual_component_module_artifacts = visual_component_file_manifest()
+    visual_component_test_artifacts = visual_component_test_file_manifest()
+    visual_design_module_artifacts = visual_design_ide_module_file_manifest()
+    visual_design_test_artifacts = visual_design_ide_test_module_file_manifest()
     readiness = cross_target_visual_readiness_contract()
     checks = (
         {
@@ -13865,6 +13869,45 @@ def cross_target_visual_depth_workbench() -> dict:
             "evidence": visual_component_specs,
         },
         {
+            "id": "visual_component_modules",
+            "ok": len(visual_component_module_artifacts) == len(visual_component_specs["specs"])
+            and {item["component"] for item in visual_component_module_artifacts}
+            == {spec["component"] for spec in visual_component_specs["specs"]}
+            and all(item["ok"] and "replay" in item["exports"] for item in visual_component_module_artifacts),
+            "evidence": visual_component_module_artifacts,
+        },
+        {
+            "id": "visual_component_module_tests",
+            "ok": len(visual_component_test_artifacts) == len(visual_component_specs["specs"])
+            and {item["component"] for item in visual_component_test_artifacts}
+            == {spec["component"] for spec in visual_component_specs["specs"]}
+            and all("test_visual_component_smoke" in item["exports"] for item in visual_component_test_artifacts),
+            "evidence": visual_component_test_artifacts,
+        },
+        {
+            "id": "visual_design_modules",
+            "ok": len(visual_design_module_artifacts) >= 6
+            and {
+                "style_authoring",
+                "timeline_authoring",
+                "effect_stack",
+                "scene_authoring",
+                "asset_import",
+                "runtime_package",
+            }
+            <= {item["surface"] for item in visual_design_module_artifacts}
+            and all(item["ok"] and "run_visual_operation" in item["exports"] for item in visual_design_module_artifacts),
+            "evidence": visual_design_module_artifacts,
+        },
+        {
+            "id": "visual_design_module_tests",
+            "ok": len(visual_design_test_artifacts) == len(visual_design_module_artifacts)
+            and {item["surface"] for item in visual_design_test_artifacts}
+            == {item["surface"] for item in visual_design_module_artifacts}
+            and all("test_visual_design_ide_module_smoke" in item["exports"] for item in visual_design_test_artifacts),
+            "evidence": visual_design_test_artifacts,
+        },
+        {
             "id": "actionable_visual_operations",
             "ok": actionable_operations["ok"]
             and {
@@ -13928,6 +13971,10 @@ def cross_target_visual_depth_workbench() -> dict:
         "lifecycle_replay": lifecycle_replay,
         "runtime_package": runtime_package,
         "visual_component_specs": visual_component_specs,
+        "visual_component_module_artifacts": visual_component_module_artifacts,
+        "visual_component_test_artifacts": visual_component_test_artifacts,
+        "visual_design_module_artifacts": visual_design_module_artifacts,
+        "visual_design_test_artifacts": visual_design_test_artifacts,
         "actionable_operations": actionable_operations,
         "readiness": readiness,
         "checks": checks,
@@ -14381,7 +14428,13 @@ def platform_parity_requirement_audit_contract() -> dict:
                 "phase_order_ready",
             }
             <= {check["id"] for check in visual_readiness["checks"] if check["ok"]}
-            and {"visual_runtime_replay", "visual_lifecycle_replay"} <= {check["id"] for check in visual["checks"]},
+            and {"visual_runtime_replay", "visual_lifecycle_replay"} <= {check["id"] for check in visual["checks"]}
+            and {
+                "visual_component_modules",
+                "visual_component_module_tests",
+                "visual_design_modules",
+                "visual_design_module_tests",
+            } <= {check["id"] for check in visual["checks"]},
             "deep_checks": (
                 "style_ready",
                 "timeline_ready",
@@ -14389,6 +14442,10 @@ def platform_parity_requirement_audit_contract() -> dict:
                 "scene_assets_ready",
                 "runtime_designer_replay_ready",
                 "runtime_package_ready",
+                "visual_component_modules",
+                "visual_component_module_tests",
+                "visual_design_modules",
+                "visual_design_module_tests",
                 "phase_order_ready",
             ),
             "evidence": {"workbench": visual, "lifecycle": visual_lifecycle, "readiness": visual_readiness},
@@ -15473,6 +15530,55 @@ def visual_component_test_file_manifest() -> tuple[dict, ...]:
             "ok": item["ok"],
         }
         for item in visual_component_file_manifest()
+    )
+
+
+def visual_design_ide_module_file_manifest() -> tuple[dict, ...]:
+    """Return visual design-surface IDE modules expected in generated apps."""
+    modules = (
+        ("style_author_module", "style_authoring"),
+        ("timeline_author_module", "timeline_authoring"),
+        ("effect_stack_module", "effect_stack"),
+        ("scene_author_module", "scene_authoring"),
+        ("asset_import_module", "asset_import"),
+        ("runtime_package_module", "runtime_package"),
+    )
+    exports = (
+        "module_contract",
+        "visual_surface_manifest",
+        "run_visual_operation",
+        "runtime_context",
+        "smoke_test",
+    )
+    return tuple(
+        {
+            "module": module,
+            "surface": surface,
+            "path": f"app/visual_design_ide_modules/{module}.py",
+            "exports": exports,
+            "ok": bool(module) and bool(surface),
+        }
+        for module, surface in modules
+    )
+
+
+def visual_design_ide_test_module_file_manifest() -> tuple[dict, ...]:
+    """Return generated visual design-surface IDE test files expected in apps."""
+    return tuple(
+        {
+            "module": item["module"],
+            "surface": item["surface"],
+            "path": item["path"].replace("app/visual_design_ide_modules/", "app/visual_design_ide_module_tests/test_"),
+            "target": item["path"],
+            "exports": (
+                "load_visual_design_ide_module",
+                "test_visual_design_ide_module_contract",
+                "test_visual_design_ide_module_smoke",
+                "smoke_test",
+            ),
+            "ok": item["ok"],
+        }
+        for item in visual_design_ide_module_file_manifest()
     )
 
 

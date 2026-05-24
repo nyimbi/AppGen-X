@@ -2278,6 +2278,10 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "visual_lifecycle_replay",
         "visual_runtime_package",
         "visual_component_specs",
+        "visual_component_modules",
+        "visual_component_module_tests",
+        "visual_design_modules",
+        "visual_design_module_tests",
         "actionable_visual_operations",
         "visual_readiness_contract",
     } == {check["id"] for check in visual_depth["checks"]}
@@ -2377,6 +2381,32 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     } <= {check["id"] for check in visual_runtime_package["checks"] if check["ok"]}
     assert visual_depth["runtime_package"]["ok"] is True
     assert "scene_materials_packaged" in visual_depth["runtime_package"]["guards"]
+    assert len(visual_depth["visual_component_module_artifacts"]) == len(visual_component_specs["specs"])
+    assert len(visual_depth["visual_component_test_artifacts"]) == len(visual_component_specs["specs"])
+    assert {item["component"] for item in visual_depth["visual_component_module_artifacts"]} == {
+        spec["component"] for spec in visual_component_specs["specs"]
+    }
+    assert {item["component"] for item in visual_depth["visual_component_test_artifacts"]} == {
+        spec["component"] for spec in visual_component_specs["specs"]
+    }
+    assert all("replay" in item["exports"] for item in visual_depth["visual_component_module_artifacts"])
+    assert all("test_visual_component_smoke" in item["exports"] for item in visual_depth["visual_component_test_artifacts"])
+    assert {
+        "style_authoring",
+        "timeline_authoring",
+        "effect_stack",
+        "scene_authoring",
+        "asset_import",
+        "runtime_package",
+    } <= {item["surface"] for item in visual_depth["visual_design_module_artifacts"]}
+    assert {item["surface"] for item in visual_depth["visual_design_test_artifacts"]} == {
+        item["surface"] for item in visual_depth["visual_design_module_artifacts"]
+    }
+    assert all("run_visual_operation" in item["exports"] for item in visual_depth["visual_design_module_artifacts"])
+    assert all(
+        "test_visual_design_ide_module_smoke" in item["exports"]
+        for item in visual_depth["visual_design_test_artifacts"]
+    )
     visual_readiness = cross_target_visual_readiness_contract()
     assert visual_readiness["format"] == "appgen.cross-target-visual-readiness-contract.v1"
     assert visual_readiness["ok"] is True
@@ -3071,7 +3101,13 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "device_component_module_tests",
         "runtime_delivery_ready",
     } <= set(requirements_by_id["device_api_component_coverage"]["deep_checks"])
-    assert "runtime_package_ready" in requirements_by_id["cross_target_visual_depth"]["deep_checks"]
+    assert {
+        "runtime_package_ready",
+        "visual_component_modules",
+        "visual_component_module_tests",
+        "visual_design_modules",
+        "visual_design_module_tests",
+    } <= set(requirements_by_id["cross_target_visual_depth"]["deep_checks"])
 
     smoke = form_designer_generation_smoke_audit()
     assert smoke["format"] == "appgen.form-designer-generation-smoke-audit.v1"
@@ -12322,7 +12358,13 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "device_component_module_tests",
         "runtime_delivery_ready",
     } <= set(generated_requirements_by_id["device_api_component_coverage"]["deep_checks"])
-    assert "runtime_package_ready" in generated_requirements_by_id["cross_target_visual_depth"]["deep_checks"]
+    assert {
+        "runtime_package_ready",
+        "visual_component_modules",
+        "visual_component_module_tests",
+        "visual_design_modules",
+        "visual_design_module_tests",
+    } <= set(generated_requirements_by_id["cross_target_visual_depth"]["deep_checks"])
     assert {"devexpress-native", "tms-fnc", "fastreport", "teechart", "indy"} <= {
         item["id"] for item in form_designer.third_party_component_registry()
     }
@@ -13704,6 +13746,10 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "visual_lifecycle_replay",
         "visual_runtime_package",
         "visual_component_specs",
+        "visual_component_modules",
+        "visual_component_module_tests",
+        "visual_design_modules",
+        "visual_design_module_tests",
         "actionable_visual_operations",
         "visual_readiness_contract",
     } == {check["id"] for check in generated_visual_depth["checks"]}
@@ -13786,6 +13832,35 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     } <= {check["id"] for check in generated_visual_package["checks"] if check["ok"]}
     assert generated_visual_depth["runtime_package"]["ok"] is True
     assert "scene_materials_packaged" in generated_visual_depth["runtime_package"]["guards"]
+    assert len(generated_visual_depth["visual_component_module_artifacts"]) == len(generated_visual_specs["specs"])
+    assert len(generated_visual_depth["visual_component_test_artifacts"]) == len(generated_visual_specs["specs"])
+    assert {item["component"] for item in generated_visual_depth["visual_component_module_artifacts"]} == {
+        spec["component"] for spec in generated_visual_specs["specs"]
+    }
+    assert {item["component"] for item in generated_visual_depth["visual_component_test_artifacts"]} == {
+        spec["component"] for spec in generated_visual_specs["specs"]
+    }
+    assert all("replay" in item["exports"] for item in generated_visual_depth["visual_component_module_artifacts"])
+    assert all(
+        "test_visual_component_smoke" in item["exports"]
+        for item in generated_visual_depth["visual_component_test_artifacts"]
+    )
+    assert {
+        "style_authoring",
+        "timeline_authoring",
+        "effect_stack",
+        "scene_authoring",
+        "asset_import",
+        "runtime_package",
+    } <= {item["surface"] for item in generated_visual_depth["visual_design_module_artifacts"]}
+    assert {item["surface"] for item in generated_visual_depth["visual_design_test_artifacts"]} == {
+        item["surface"] for item in generated_visual_depth["visual_design_module_artifacts"]
+    }
+    assert all("run_visual_operation" in item["exports"] for item in generated_visual_depth["visual_design_module_artifacts"])
+    assert all(
+        "test_visual_design_ide_module_smoke" in item["exports"]
+        for item in generated_visual_depth["visual_design_test_artifacts"]
+    )
     generated_visual_readiness = form_designer.cross_target_visual_readiness_contract()
     assert generated_visual_readiness["format"] == "appgen.generated-cross-target-visual-readiness-contract.v1"
     assert generated_visual_readiness["ok"] is True
