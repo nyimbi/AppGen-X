@@ -2189,6 +2189,27 @@ def write_view_composition_file(output_dir, schema: AppSchema):
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
     (output_dir / "view_composition.py").write_text(_view_composition_text(schema))
+    write_view_composition_module_files(output_dir)
+
+
+def write_view_composition_module_files(output_dir):
+    """Write generated view-composition modules and smoke tests."""
+    output_dir = Path(output_dir)
+    module_dir = output_dir / "view_composition_modules"
+    test_dir = output_dir / "view_composition_module_tests"
+    module_dir.mkdir(parents=True, exist_ok=True)
+    test_dir.mkdir(parents=True, exist_ok=True)
+    (module_dir / "__init__.py").write_text(_view_composition_module_init_text(), encoding="utf-8")
+    (test_dir / "__init__.py").write_text(_view_composition_module_test_init_text(), encoding="utf-8")
+    for module_name in VIEW_COMPOSITION_MODULES:
+        (module_dir / f"{module_name}.py").write_text(
+            _view_composition_module_text(module_name),
+            encoding="utf-8",
+        )
+        (test_dir / f"test_{module_name}.py").write_text(
+            _view_composition_module_test_text(module_name),
+            encoding="utf-8",
+        )
 
 
 def write_tabbed_views_file(output_dir, schema: AppSchema):
@@ -2373,6 +2394,13 @@ COMPONENT_SURFACE_MODULES = (
     "template_package_module",
     "custom_widget_module",
     "component_release_workbench_module",
+)
+
+VIEW_COMPOSITION_MODULES = (
+    "master_detail_module",
+    "multiple_view_module",
+    "chart_view_module",
+    "composition_release_workbench_module",
 )
 
 DATABASE_OPS_MODULES = (
@@ -39992,6 +40020,230 @@ def register_agents(appbuilder):
 '''
 
 
+def _view_composition_module_init_text() -> str:
+    return (
+        '"""Generated view-composition modules."""\n\n'
+        f"VIEW_COMPOSITION_MODULES = {VIEW_COMPOSITION_MODULES!r}\n"
+    )
+
+
+def _view_composition_module_test_init_text() -> str:
+    modules = tuple(f"test_{name}" for name in VIEW_COMPOSITION_MODULES)
+    return (
+        '"""Generated view-composition module tests."""\n\n'
+        f"VIEW_COMPOSITION_MODULE_TESTS = {modules!r}\n"
+    )
+
+
+def _view_composition_surface(module_name: str) -> tuple[str, str]:
+    return {
+        "master_detail_module": ("master_detail", "master_detail_catalog"),
+        "multiple_view_module": ("multiple_view", "multiple_view_catalog"),
+        "chart_view_module": ("chart_view", "chart_view_catalog"),
+        "composition_release_workbench_module": ("release_workbench", "view_composition_release_gate"),
+    }[module_name]
+
+
+def _view_composition_module_text(module_name: str) -> str:
+    surface, operation = _view_composition_surface(module_name)
+    return f'''"""Generated view-composition module for {surface}."""
+
+from __future__ import annotations
+
+import importlib.util
+from pathlib import Path
+
+
+MODULE = {module_name!r}
+SURFACE = {surface!r}
+OPERATION = {operation!r}
+EXPECTED_EXPORTS = (
+    "module_contract",
+    "composition_manifest",
+    "run_composition_operation",
+    "release_context",
+    "smoke_test",
+)
+
+
+def _composition():
+    module_path = Path(__file__).resolve().parents[1] / "view_composition.py"
+    spec = importlib.util.spec_from_file_location(f"generated_view_composition_{{MODULE}}", module_path)
+    module = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(module)
+    return module
+
+
+def _assets():
+    return {{"app/views.py", "app/view_composition.py", "app/templates/appgen_view_composition.html"}}
+
+
+def module_contract():
+    """Return this generated view-composition module's export contract."""
+    available = tuple(name for name in EXPECTED_EXPORTS if name in globals())
+    return {{
+        "format": "appgen.view-composition-module-contract.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "operation": OPERATION,
+        "ok": set(EXPECTED_EXPORTS) <= set(available),
+        "exports": available,
+        "expected_exports": EXPECTED_EXPORTS,
+        "side_effects": (),
+    }}
+
+
+def composition_manifest():
+    """Return generated view-composition metadata owned by this module."""
+    composition = _composition()
+    catalog = composition.view_composition_catalog()
+    return {{
+        "format": "appgen.view-composition-module-manifest.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "ok": bool(catalog["charts"]) and set(catalog) == {{"master_detail", "multiple", "charts"}},
+        "master_detail_count": len(catalog["master_detail"]),
+        "multiple_count": len(catalog["multiple"]),
+        "chart_count": len(catalog["charts"]),
+        "side_effects": (),
+    }}
+
+
+def run_composition_operation():
+    """Run this module's side-effect-free view-composition operation."""
+    composition = _composition()
+    if SURFACE == "master_detail":
+        operation = {{"catalog": composition.master_detail_catalog()}}
+        ok = all(item.get("master") and item.get("detail") and item.get("foreign_key") for item in operation["catalog"])
+    elif SURFACE == "multiple_view":
+        operation = {{"catalog": composition.multiple_view_catalog()}}
+        ok = all(len(item.get("related_views", ())) > 1 for item in operation["catalog"])
+    elif SURFACE == "chart_view":
+        operation = {{"catalog": composition.chart_view_catalog()}}
+        ok = bool(operation["catalog"]) and all(item.get("view_class") == "ChartView" and item.get("fields") for item in operation["catalog"])
+    else:
+        operation = {{
+            "release": composition.view_composition_release_gate(_assets()),
+            "workbench": composition.view_composition_workbench(_assets()),
+        }}
+        ok = operation["release"]["ok"] and operation["workbench"]["ok"]
+    return {{
+        "format": "appgen.view-composition-module-operation.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "ok": ok,
+        "operation": operation,
+        "side_effects": (),
+    }}
+
+
+def release_context():
+    """Return release evidence used by this view-composition module."""
+    composition = _composition()
+    release = composition.view_composition_release_gate(_assets())
+    workbench = composition.view_composition_workbench(_assets())
+    return {{
+        "format": "appgen.view-composition-module-release-context.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "ok": release["ok"] and workbench["ok"],
+        "release": release,
+        "workbench": workbench,
+        "side_effects": (),
+    }}
+
+
+def smoke_test():
+    """Run side-effect-free checks for this generated view-composition module."""
+    contract = module_contract()
+    manifest = composition_manifest()
+    operation = run_composition_operation()
+    release = release_context()
+    return {{
+        "format": "appgen.view-composition-module-smoke-test.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "ok": contract["ok"]
+        and manifest["ok"]
+        and operation["ok"]
+        and release["ok"]
+        and not manifest["side_effects"]
+        and not operation["side_effects"]
+        and not release["side_effects"],
+        "contract": contract,
+        "manifest": manifest,
+        "operation": operation,
+        "release": release,
+        "checks": (
+            "module_contract_resolves",
+            "composition_manifest_ok",
+            "composition_operation_ok",
+            "release_context_ok",
+            "no_side_effects",
+        ),
+    }}
+'''
+
+
+def _view_composition_module_test_text(module_name: str) -> str:
+    surface, _operation = _view_composition_surface(module_name)
+    return f'''"""Generated tests for the {surface} view-composition module."""
+
+from __future__ import annotations
+
+import importlib.util
+from pathlib import Path
+
+
+MODULE = {module_name!r}
+SURFACE = {surface!r}
+
+
+def load_view_composition_module():
+    """Load the generated view-composition module without app installation."""
+    module_path = Path(__file__).resolve().parents[1] / "view_composition_modules" / f"{{MODULE}}.py"
+    spec = importlib.util.spec_from_file_location(f"generated_view_composition_module_{{MODULE}}", module_path)
+    module = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(module)
+    return module
+
+
+def test_view_composition_module_contract():
+    """Assert the generated view-composition module exposes its contract."""
+    module = load_view_composition_module()
+    contract = module.module_contract()
+    assert contract["module"] == MODULE
+    assert contract["surface"] == SURFACE
+    assert contract["ok"] is True
+    assert all(hasattr(module, name) for name in contract["expected_exports"])
+
+
+def test_view_composition_module_smoke():
+    """Assert the module's side-effect-free smoke test passes."""
+    module = load_view_composition_module()
+    result = module.smoke_test()
+    assert result["ok"] is True
+    assert result["module"] == MODULE
+    assert result["surface"] == SURFACE
+    assert result["checks"]
+
+
+def smoke_test():
+    """Run this generated test module in a side-effect-free way."""
+    test_view_composition_module_contract()
+    test_view_composition_module_smoke()
+    return {{
+        "format": "appgen.view-composition-module-generated-test-smoke.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "ok": True,
+        "tests": ("test_view_composition_module_contract", "test_view_composition_module_smoke"),
+    }}
+'''
+
+
 def _view_composition_text(schema: AppSchema) -> str:
     table_fields = {
         table.name: tuple(
@@ -40037,6 +40289,9 @@ def _view_composition_text(schema: AppSchema) -> str:
 
 from __future__ import annotations
 
+import importlib.util
+from pathlib import Path
+
 from flask import jsonify
 from flask_appbuilder import BaseView
 from flask_appbuilder import expose
@@ -40045,6 +40300,87 @@ from flask_appbuilder import expose
 MASTER_DETAIL_VIEWS = {master_detail!r}
 MULTIPLE_VIEWS = {multiple!r}
 CHART_VIEWS = {charts!r}
+VIEW_COMPOSITION_MODULES = {VIEW_COMPOSITION_MODULES!r}
+
+
+def _load_generated_module(path, name):
+    spec = importlib.util.spec_from_file_location(name, path)
+    module = importlib.util.module_from_spec(spec)
+    if spec.loader is None:
+        raise RuntimeError(f"Could not load generated module: {{path}}")
+    spec.loader.exec_module(module)
+    return module
+
+
+def view_composition_module_file_manifest():
+    """Return file-level evidence for generated view-composition modules."""
+    module_dir = Path(__file__).with_name("view_composition_modules")
+    entries = []
+    for module_name in VIEW_COMPOSITION_MODULES:
+        module_path = module_dir / f"{{module_name}}.py"
+        exports = ()
+        contract_ok = False
+        smoke_ok = False
+        surface = ""
+        if module_path.exists():
+            module = _load_generated_module(module_path, f"generated_view_composition_module_{{module_name}}")
+            contract = module.module_contract()
+            smoke = module.smoke_test()
+            exports = tuple(name for name in contract["expected_exports"] if hasattr(module, name))
+            contract_ok = contract["ok"] and contract["module"] == module_name
+            smoke_ok = smoke["ok"] and smoke["module"] == module_name
+            surface = contract["surface"]
+        entries.append(
+            {{
+                "module": module_name,
+                "surface": surface,
+                "path": f"app/view_composition_modules/{{module_name}}.py",
+                "exists": module_path.exists(),
+                "exports": exports,
+                "contract_ok": contract_ok,
+                "smoke_ok": smoke_ok,
+            }}
+        )
+    return {{
+        "format": "appgen.view-composition-module-file-manifest.v1",
+        "ok": bool(entries) and all(item["exists"] and item["contract_ok"] and item["smoke_ok"] for item in entries),
+        "modules": tuple(entries),
+        "side_effects": (),
+    }}
+
+
+def view_composition_module_test_file_manifest():
+    """Return file-level evidence for generated view-composition module tests."""
+    test_dir = Path(__file__).with_name("view_composition_module_tests")
+    entries = []
+    for item in view_composition_module_file_manifest()["modules"]:
+        module_name = item["module"]
+        module_path = test_dir / f"test_{{module_name}}.py"
+        exports = ()
+        smoke_ok = False
+        if module_path.exists():
+            module = _load_generated_module(module_path, f"generated_view_composition_module_test_{{module_name}}")
+            smoke = module.smoke_test()
+            expected = ("load_view_composition_module", "test_view_composition_module_contract", "test_view_composition_module_smoke", "smoke_test")
+            exports = tuple(name for name in expected if hasattr(module, name))
+            smoke_ok = smoke["ok"] and smoke["module"] == module_name
+        entries.append(
+            {{
+                "module": module_name,
+                "surface": item["surface"],
+                "path": f"app/view_composition_module_tests/test_{{module_name}}.py",
+                "target": item["path"],
+                "exists": module_path.exists(),
+                "exports": exports,
+                "smoke_ok": smoke_ok,
+            }}
+        )
+    return {{
+        "format": "appgen.view-composition-module-test-file-manifest.v1",
+        "ok": bool(entries) and all(item["exists"] and item["smoke_ok"] for item in entries),
+        "tests": tuple(entries),
+        "side_effects": (),
+    }}
 
 
 def master_detail_catalog():
@@ -72251,6 +72587,14 @@ def validate_view_composition_artifacts() -> None:
         fail("view composition contract must expose master-detail, multiple, and chart catalogs")
     if "view_composition_release_gate" not in contract or "appgen.view-composition-release-gate.v1" not in contract or '@expose("/release-gate.json")' not in contract:
         fail("view composition contract must expose generated release evidence")
+    if (
+        "VIEW_COMPOSITION_MODULES" not in contract
+        or "view_composition_module_file_manifest" not in contract
+        or "view_composition_module_test_file_manifest" not in contract
+        or "appgen.view-composition-module-file-manifest.v1" not in contract
+        or "appgen.view-composition-module-test-file-manifest.v1" not in contract
+    ):
+        fail("view composition contract must expose generated module and module-test manifests")
     views = (ROOT / "app" / "views.py").read_text()
     if "MasterDetailView" not in views or "MultipleView" not in views or "ChartView" not in views:
         fail("generated views.py must include MasterDetailView, MultipleView, and ChartView support")

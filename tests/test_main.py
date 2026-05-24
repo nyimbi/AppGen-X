@@ -11284,6 +11284,32 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     )
     assert view_composition_workbench["format"] == "appgen.view-composition-workbench.v1"
     assert view_composition_workbench["ok"] is True
+    view_composition_module_files = view_composition.view_composition_module_file_manifest()
+    view_composition_module_tests = view_composition.view_composition_module_test_file_manifest()
+    assert view_composition_module_files["format"] == "appgen.view-composition-module-file-manifest.v1"
+    assert view_composition_module_files["ok"] is True
+    assert view_composition_module_tests["format"] == "appgen.view-composition-module-test-file-manifest.v1"
+    assert view_composition_module_tests["ok"] is True
+    assert {
+        "master_detail",
+        "multiple_view",
+        "chart_view",
+        "release_workbench",
+    } == {item["surface"] for item in view_composition_module_files["modules"]}
+    for item in view_composition_module_files["modules"]:
+        module_path = output_dir / item["path"].replace("app/", "")
+        py_compile.compile(str(module_path), doraise=True)
+        module = _load_module(module_path, f"generated_view_composition_module_{item['module']}")
+        assert module.module_contract()["ok"] is True
+        assert module.composition_manifest()["ok"] is True
+        assert module.run_composition_operation()["ok"] is True
+        assert module.release_context()["ok"] is True
+        assert module.smoke_test()["ok"] is True
+    for item in view_composition_module_tests["tests"]:
+        test_path = output_dir / item["path"].replace("app/", "")
+        py_compile.compile(str(test_path), doraise=True)
+        module = _load_module(test_path, f"generated_view_composition_module_test_{item['module']}")
+        assert module.smoke_test()["ok"] is True
     assert view_composition_workbench["decision"] == "approved"
     assert {
         "artifact_coverage",
