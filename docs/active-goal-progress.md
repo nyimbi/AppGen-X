@@ -123,6 +123,7 @@ Build a complete AppGen IDE and generation platform with:
 | 2026-05-24 | `409ad39` | Added generated component surface modules and generated tests for widget registries, relationship lookups, layouts, template packages, custom widgets, and component release workbench surfaces. | Py compile; focused generated-app/form-designer/package-goal tests; staged hygiene scan passed. |
 | 2026-05-24 | `08a152b` | Added generated view-composition modules and generated tests for master-detail, multiple-view, chart-view, and release workbench surfaces. | Py compile; focused generated-app/form-designer/package-goal tests; staged hygiene scan passed. |
 | 2026-05-24 | `326cdaf` | Constrained event-runtime guidance to a first-match developer choice algorithm: ordinary apps generate the AppGen-X event contract, while stream profiles remain evidence-gated exceptions. | Py compile; focused PBC policy test; documentation diff check; staged hygiene scan passed. |
+| 2026-05-24 | `8965eb1` | Added generated tabbed-view modules and generated tests for tab catalogs, tab policies, visible tabs, permission matrices, and tabbed release workbench surfaces. | Py compile; focused generated-app/form-designer/package-goal tests; staged hygiene scan passed. |
 
 ## Current Working Slice
 
@@ -170,6 +171,10 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   generated tests for master-detail, multiple-view, chart-view, and release
   workbench surfaces, with generated view-composition manifests validating
   module and test coverage.
+- Generated applications now emit standalone tabbed-view modules and generated
+  tests for tab catalogs, tab policies, visible tabs, permission matrices, and
+  tabbed release workbench surfaces, with generated tabbed-view manifests
+  validating module and test coverage.
 - Event-runtime guidance now exposes a first-match developer choice algorithm:
   ordinary business, ERP, workflow, chatbot, agent, integration, and PBC event
   handling generate the AppGen-X event contract with `stream_processor`
