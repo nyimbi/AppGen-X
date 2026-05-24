@@ -16790,6 +16790,7 @@ def form_designer_generation_smoke_audit(source: str = FORM_DESIGNER_SAMPLE_DSL)
         generated_platform_parity_passing_checks = {
             check["id"] for check in generated_platform_parity["checks"] if check["ok"]
         }
+        component_parity_runtime_passing_checks = set(component_parity_runtime_smoke["checks"])
         native_form_runtime_passing_checks = set(native_form_runtime_smoke["checks"])
 
     required_generated_release_gate_checks = (
@@ -16847,6 +16848,16 @@ def form_designer_generation_smoke_audit(source: str = FORM_DESIGNER_SAMPLE_DSL)
         "deep_runtime_modules_ready",
         "deep_runtime_module_tests_ready",
         "runtime_load_replay",
+    )
+    required_component_parity_runtime_checks = (
+        "manifest_ok",
+        "requested_groups_ready",
+        "requested_analogs_ready",
+        "behavior_replay_ready",
+        "component_modules_ready",
+        "package_modules_ready",
+        "component_tests_ready",
+        "runtime_replay_ready",
     )
 
     checks = (
@@ -16969,17 +16980,9 @@ def form_designer_generation_smoke_audit(source: str = FORM_DESIGNER_SAMPLE_DSL)
             "id": "generated_component_parity_runtime",
             "ok": component_parity_runtime_smoke["ok"]
             and component_parity_runtime_smoke["format"] == "appgen.generated-component-parity-runtime-smoke.v1"
-            and {
-                "manifest_ok",
-                "requested_groups_ready",
-                "requested_analogs_ready",
-                "behavior_replay_ready",
-                "component_modules_ready",
-                "package_modules_ready",
-                "component_tests_ready",
-                "runtime_replay_ready",
-            }
-            <= set(component_parity_runtime_smoke["checks"]),
+            and set(required_component_parity_runtime_checks) <= component_parity_runtime_passing_checks,
+            "required_checks": required_component_parity_runtime_checks,
+            "passing_checks": tuple(sorted(component_parity_runtime_passing_checks)),
             "smoke": component_parity_runtime_smoke,
         },
         {

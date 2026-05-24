@@ -3438,6 +3438,18 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "deep_runtime_module_tests_ready",
         "runtime_load_replay",
     } <= set(native_runtime_smoke["passing_checks"])
+    component_runtime_smoke = next(check for check in smoke["checks"] if check["id"] == "generated_component_parity_runtime")
+    assert component_runtime_smoke["ok"] is True
+    assert {
+        "manifest_ok",
+        "requested_groups_ready",
+        "requested_analogs_ready",
+        "behavior_replay_ready",
+        "component_modules_ready",
+        "package_modules_ready",
+        "component_tests_ready",
+        "runtime_replay_ready",
+    } <= set(component_runtime_smoke["passing_checks"])
     coverage = next(check for check in smoke["checks"] if check["id"] == "generated_component_file_coverage")
     assert coverage["component_count"] == len(component_file_manifest())
     assert coverage["package_count"] == len(component_package_file_manifest())
