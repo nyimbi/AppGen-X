@@ -14720,6 +14720,12 @@ def rad_parity_workbench(existing_paths: set[str] | None = None) -> dict:
     passing_data_tooling_names = tuple(rad_data_tooling_contract()["tooling"])
     required_mobile_api_names = ("camera", "location", "push_notifications", "secure_storage")
     passing_mobile_api_names = tuple(mobile_native_api_contract()["apis"])
+    visual_depth_contract = cross_target_visual_depth_contract()
+    visual_depth_workbench = cross_target_visual_depth_workbench()
+    required_visual_depth_surfaces = ("styling", "animation", "effects", "three_d")
+    passing_visual_depth_surfaces = tuple(
+        surface for surface in required_visual_depth_surfaces if bool(visual_depth_contract[surface])
+    )
     checks = (
         {
             "id": "native_ui_parity_component_parity",
@@ -14786,10 +14792,11 @@ def rad_parity_workbench(existing_paths: set[str] | None = None) -> dict:
         },
         {
             "id": "cross_target_animation_effects_3d_depth",
-            "ok": bool(cross_target_visual_depth_contract()["animation"])
-            and bool(cross_target_visual_depth_contract()["three_d"])
-            and cross_target_visual_depth_workbench()["ok"],
-            "evidence": {"contract": cross_target_visual_depth_contract(), "workbench": cross_target_visual_depth_workbench()},
+            "ok": set(required_visual_depth_surfaces) <= set(passing_visual_depth_surfaces)
+            and visual_depth_workbench["ok"],
+            "required_surfaces": required_visual_depth_surfaces,
+            "passing_surfaces": passing_visual_depth_surfaces,
+            "evidence": {"contract": visual_depth_contract, "workbench": visual_depth_workbench},
         },
         {
             "id": "third_party_component_ecosystem",

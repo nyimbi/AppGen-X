@@ -3109,6 +3109,11 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     )
     assert mobile_gate["ok"] is True
     assert set(mobile_gate["required_apis"]) <= set(mobile_gate["passing_apis"])
+    visual_depth_gate = next(
+        check for check in audit["rad_parity"]["checks"] if check["id"] == "cross_target_animation_effects_3d_depth"
+    )
+    assert visual_depth_gate["ok"] is True
+    assert set(visual_depth_gate["required_surfaces"]) <= set(visual_depth_gate["passing_surfaces"])
     assert rad_parity_workbench()["ok"] is True
     assert {
         "native_ui_parity_component_parity",
