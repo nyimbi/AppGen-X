@@ -14692,6 +14692,7 @@ def rad_parity_workbench(existing_paths: set[str] | None = None) -> dict:
     package_readiness = component_package_readiness_contract()
     streaming_contract = dfm_streaming_contract()
     runtime_workbench = pascal_runtime_workbench()
+    inspector_workbench = object_inspector_workbench()
     platform_lifecycle = platform_parity_lifecycle_replay_contract()
     requirement_audit = platform_parity_requirement_audit_contract()
     third_party_categories = set(third_party_component_categories())
@@ -14741,6 +14742,50 @@ def rad_parity_workbench(existing_paths: set[str] | None = None) -> dict:
     )
     required_inspector_tabs = ("Properties", "Events")
     passing_inspector_tabs = tuple(object_inspector_contract()["tabs"])
+    required_inspector_workbench_checks = (
+        "property_editor_types",
+        "event_editor_lifecycle",
+        "component_editor_verbs",
+        "custom_designer_hooks",
+        "inspector_state",
+        "editor_registry",
+        "property_validation",
+        "event_lifecycle_actions",
+        "component_editor_execution",
+        "custom_designer_activation",
+        "state_persistence",
+        "property_edit_workflow",
+        "event_edit_workflow",
+        "component_editor_transaction",
+        "custom_designer_render_workflow",
+        "state_restore_workflow",
+        "property_grouping",
+        "editor_surfaces",
+        "event_signature_routing",
+        "component_editor_history",
+        "custom_designer_hit_testing",
+        "property_value_pipeline",
+        "event_handler_signature_pipeline",
+        "custom_designer_lifecycle",
+        "multi_select_property_merge",
+        "property_dependency_recalculation",
+        "inspector_diagnostics",
+        "component_tree_sync",
+        "inspector_metadata_round_trip",
+        "edit_session_replay",
+        "cross_component_session_replay",
+        "design_surface_transaction_replay",
+        "custom_designer_registration_replay",
+        "editor_lifecycle_replay",
+        "inspector_binding_bridge",
+        "handler_action_registry",
+        "cross_handler_invocation_policy",
+        "actionable_editor_operations",
+        "inspector_readiness_contract",
+        "inspector_generated_modules",
+        "inspector_generated_module_tests",
+    )
+    passing_inspector_workbench_checks = tuple(check["id"] for check in inspector_workbench["checks"] if check["ok"])
     required_binding_edges = ("control_to_field",)
     passing_binding_edges = tuple(livebindings_contract()["binding_edges"])
     required_data_tooling_names = ("FireDAC", "DataSnap", "RAD Server", "InterBase")
@@ -14892,10 +14937,13 @@ def rad_parity_workbench(existing_paths: set[str] | None = None) -> dict:
         {
             "id": "object_inspector_parity",
             "ok": set(required_inspector_tabs) <= set(passing_inspector_tabs)
-            and object_inspector_workbench()["ok"],
+            and inspector_workbench["ok"]
+            and set(required_inspector_workbench_checks) <= set(passing_inspector_workbench_checks),
             "required_tabs": required_inspector_tabs,
             "passing_tabs": passing_inspector_tabs,
-            "evidence": {"contract": object_inspector_contract(), "workbench": object_inspector_workbench()},
+            "required_checks": required_inspector_workbench_checks,
+            "passing_checks": passing_inspector_workbench_checks,
+            "evidence": {"contract": object_inspector_contract(), "workbench": inspector_workbench},
         },
         {
             "id": "livebindings_designer",
