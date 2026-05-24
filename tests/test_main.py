@@ -9596,6 +9596,34 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert "/voice/workbench.json" in next(
         check["evidence"]["routes"] for check in voice_workbench["checks"] if check["id"] == "route_surface"
     )
+    voice_module_files = voice.voice_module_file_manifest()
+    voice_module_tests = voice.voice_module_test_file_manifest()
+    assert voice_module_files["format"] == "appgen.voice-module-file-manifest.v1"
+    assert voice_module_files["ok"] is True
+    assert voice_module_tests["format"] == "appgen.voice-module-test-file-manifest.v1"
+    assert voice_module_tests["ok"] is True
+    assert {
+        "provider_catalog",
+        "intent_catalog",
+        "transcript_matching",
+        "slot_prompting",
+        "platform_exports",
+        "release_workbench",
+    } == {item["surface"] for item in voice_module_files["modules"]}
+    for item in voice_module_files["modules"]:
+        module_path = output_dir / item["path"].replace("app/", "")
+        py_compile.compile(str(module_path), doraise=True)
+        module = _load_module(module_path, f"generated_voice_module_{item['module']}")
+        assert module.module_contract()["ok"] is True
+        assert module.voice_manifest()["ok"] is True
+        assert module.run_voice_operation()["ok"] is True
+        assert module.release_context()["ok"] is True
+        assert module.smoke_test()["ok"] is True
+    for item in voice_module_tests["tests"]:
+        test_path = output_dir / item["path"].replace("app/", "")
+        py_compile.compile(str(test_path), doraise=True)
+        module = _load_module(test_path, f"generated_voice_module_test_{item['module']}")
+        assert module.smoke_test()["ok"] is True
     assert voice.voice_workbench({"app/voice.py"})["ok"] is False
     assert i18n.translate("Book", locale="en") == "Book"
     assert i18n.translate("Book", locale="es") == "Book"

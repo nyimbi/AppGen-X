@@ -1818,6 +1818,27 @@ def write_voice_file(output_dir, schema: AppSchema):
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
     (output_dir / "voice.py").write_text(_voice_text(schema, _app_name(schema)))
+    write_voice_module_files(output_dir)
+
+
+def write_voice_module_files(output_dir):
+    """Write generated voice assistant modules and smoke tests."""
+    output_dir = Path(output_dir)
+    module_dir = output_dir / "voice_modules"
+    test_dir = output_dir / "voice_module_tests"
+    module_dir.mkdir(parents=True, exist_ok=True)
+    test_dir.mkdir(parents=True, exist_ok=True)
+    (module_dir / "__init__.py").write_text(_voice_module_init_text(), encoding="utf-8")
+    (test_dir / "__init__.py").write_text(_voice_module_test_init_text(), encoding="utf-8")
+    for module_name in VOICE_MODULES:
+        (module_dir / f"{module_name}.py").write_text(
+            _voice_module_text(module_name),
+            encoding="utf-8",
+        )
+        (test_dir / f"test_{module_name}.py").write_text(
+            _voice_module_test_text(module_name),
+            encoding="utf-8",
+        )
 
 
 def write_agents_file(output_dir, schema: AppSchema):
@@ -2430,6 +2451,15 @@ TABBED_VIEW_MODULES = (
     "visible_tabs_module",
     "permission_matrix_module",
     "tabbed_release_workbench_module",
+)
+
+VOICE_MODULES = (
+    "provider_catalog_module",
+    "intent_catalog_module",
+    "transcript_matching_module",
+    "slot_prompting_module",
+    "platform_export_module",
+    "voice_release_workbench_module",
 )
 
 DATABASE_OPS_MODULES = (
@@ -38667,6 +38697,255 @@ def register_chatbot(appbuilder):
 '''
 
 
+def _voice_module_init_text() -> str:
+    return (
+        '"""Generated voice assistant modules."""\n\n'
+        f"VOICE_MODULES = {VOICE_MODULES!r}\n"
+    )
+
+
+def _voice_module_test_init_text() -> str:
+    modules = tuple(f"test_{name}" for name in VOICE_MODULES)
+    return (
+        '"""Generated voice assistant module tests."""\n\n'
+        f"VOICE_MODULE_TESTS = {modules!r}\n"
+    )
+
+
+def _voice_module_surface(module_name: str) -> tuple[str, str]:
+    return {
+        "provider_catalog_module": ("provider_catalog", "voice_provider_catalog"),
+        "intent_catalog_module": ("intent_catalog", "voice_intent_catalog"),
+        "transcript_matching_module": ("transcript_matching", "match_utterance"),
+        "slot_prompting_module": ("slot_prompting", "slot_fill_plan"),
+        "platform_export_module": ("platform_exports", "alexa_interaction_model"),
+        "voice_release_workbench_module": ("release_workbench", "voice_release_gate"),
+    }[module_name]
+
+
+def _voice_module_text(module_name: str) -> str:
+    surface, operation = _voice_module_surface(module_name)
+    return f'''"""Generated voice assistant module for {surface}."""
+
+from __future__ import annotations
+
+import importlib.util
+from pathlib import Path
+
+
+MODULE = {module_name!r}
+SURFACE = {surface!r}
+OPERATION = {operation!r}
+EXPECTED_EXPORTS = (
+    "module_contract",
+    "voice_manifest",
+    "run_voice_operation",
+    "release_context",
+    "smoke_test",
+)
+
+
+def _voice():
+    module_path = Path(__file__).resolve().parents[1] / "voice.py"
+    spec = importlib.util.spec_from_file_location(f"generated_voice_{{MODULE}}", module_path)
+    module = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(module)
+    return module
+
+
+def _assets():
+    return {{"app/voice.py", "app/templates/appgen_voice.html"}}
+
+
+def _first_intent(voice):
+    return voice.voice_intent_catalog()[0]
+
+
+def _required_values(intent):
+    return {{
+        slot["name"]: f"sample {{slot['name']}}"
+        for slot in intent["slots"]
+        if slot["required"]
+    }}
+
+
+def module_contract():
+    """Return this generated voice module's export contract."""
+    available = tuple(name for name in EXPECTED_EXPORTS if name in globals())
+    return {{
+        "format": "appgen.voice-module-contract.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "operation": OPERATION,
+        "ok": set(EXPECTED_EXPORTS) <= set(available),
+        "exports": available,
+        "expected_exports": EXPECTED_EXPORTS,
+        "side_effects": (),
+    }}
+
+
+def voice_manifest():
+    """Return generated voice metadata owned by this module."""
+    voice = _voice()
+    providers = voice.voice_provider_catalog()
+    intents = voice.voice_intent_catalog()
+    return {{
+        "format": "appgen.voice-module-manifest.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "ok": bool(providers) and bool(intents) and all(intent["utterances"] for intent in intents),
+        "provider_count": len(providers),
+        "intent_count": len(intents),
+        "slot_count": sum(len(intent["slots"]) for intent in intents),
+        "side_effects": (),
+    }}
+
+
+def run_voice_operation():
+    """Run this module's side-effect-free voice operation."""
+    voice = _voice()
+    first = _first_intent(voice)
+    values = _required_values(first)
+    first_phrase = first["utterances"][0]
+    if SURFACE == "provider_catalog":
+        operation = {{"providers": voice.voice_provider_catalog()}}
+        ok = {{"alexa", "google_assistant", "web_speech"}} <= {{item["provider"] for item in operation["providers"]}}
+    elif SURFACE == "intent_catalog":
+        operation = {{"intents": voice.voice_intent_catalog(), "phrases": voice.utterance_training_phrases(first["intent"])}}
+        ok = bool(operation["intents"]) and bool(operation["phrases"])
+    elif SURFACE == "transcript_matching":
+        operation = {{"phrase": first_phrase, "match": voice.match_utterance(f"please {{first_phrase}}")}}
+        ok = operation["match"]["matched"] is True and operation["match"]["intent"] == first["intent"]
+    elif SURFACE == "slot_prompting":
+        operation = {{
+            "empty": voice.slot_fill_plan(first["intent"], {{}}),
+            "ready": voice.slot_fill_plan(first["intent"], values),
+            "response": voice.voice_response(first["intent"], values),
+        }}
+        ok = operation["ready"]["ready"] is True and operation["response"]["ssml"].startswith("<speak>")
+    elif SURFACE == "platform_exports":
+        operation = {{"alexa": voice.alexa_interaction_model(), "google": voice.google_actions_model()}}
+        ok = bool(operation["alexa"]["interactionModel"]["languageModel"]["intents"]) and bool(operation["google"]["actions"])
+    else:
+        operation = {{"release": voice.voice_release_gate(_assets()), "workbench": voice.voice_workbench(_assets())}}
+        ok = operation["release"]["ok"] and operation["workbench"]["ok"]
+    return {{
+        "format": "appgen.voice-module-operation.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "ok": ok,
+        "operation": operation,
+        "side_effects": (),
+    }}
+
+
+def release_context():
+    """Return release evidence used by this voice module."""
+    voice = _voice()
+    release = voice.voice_release_gate(_assets())
+    workbench = voice.voice_workbench(_assets())
+    return {{
+        "format": "appgen.voice-module-release-context.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "ok": release["ok"] and workbench["ok"],
+        "release": release,
+        "workbench": workbench,
+        "side_effects": (),
+    }}
+
+
+def smoke_test():
+    """Run side-effect-free checks for this generated voice module."""
+    contract = module_contract()
+    manifest = voice_manifest()
+    operation = run_voice_operation()
+    release = release_context()
+    return {{
+        "format": "appgen.voice-module-smoke-test.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "ok": contract["ok"]
+        and manifest["ok"]
+        and operation["ok"]
+        and release["ok"]
+        and not manifest["side_effects"]
+        and not operation["side_effects"]
+        and not release["side_effects"],
+        "contract": contract,
+        "manifest": manifest,
+        "operation": operation,
+        "release": release,
+        "checks": (
+            "module_contract_resolves",
+            "voice_manifest_ok",
+            "voice_operation_ok",
+            "release_context_ok",
+            "no_side_effects",
+        ),
+    }}
+'''
+
+
+def _voice_module_test_text(module_name: str) -> str:
+    surface, _operation = _voice_module_surface(module_name)
+    return f'''"""Generated tests for the {surface} voice assistant module."""
+
+from __future__ import annotations
+
+import importlib.util
+from pathlib import Path
+
+
+MODULE = {module_name!r}
+SURFACE = {surface!r}
+
+
+def load_voice_module():
+    """Load the generated voice module without app installation."""
+    module_path = Path(__file__).resolve().parents[1] / "voice_modules" / f"{{MODULE}}.py"
+    spec = importlib.util.spec_from_file_location(f"generated_voice_module_{{MODULE}}", module_path)
+    module = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(module)
+    return module
+
+
+def test_voice_module_contract():
+    """Assert the generated voice module exposes its contract."""
+    module = load_voice_module()
+    contract = module.module_contract()
+    assert contract["module"] == MODULE
+    assert contract["surface"] == SURFACE
+    assert contract["ok"] is True
+    assert all(hasattr(module, name) for name in contract["expected_exports"])
+
+
+def test_voice_module_smoke():
+    """Assert the module's side-effect-free smoke test passes."""
+    module = load_voice_module()
+    result = module.smoke_test()
+    assert result["ok"] is True
+    assert result["module"] == MODULE
+    assert result["surface"] == SURFACE
+    assert result["checks"]
+
+
+def smoke_test():
+    """Run this generated test module in a side-effect-free way."""
+    test_voice_module_contract()
+    test_voice_module_smoke()
+    return {{
+        "format": "appgen.voice-module-generated-test-smoke.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "ok": True,
+        "tests": ("test_voice_module_contract", "test_voice_module_smoke"),
+    }}
+'''
+
+
 def _voice_text(schema: AppSchema, app_name: str) -> str:
     intents = []
     for intent in _chatbot_table_contracts(schema):
@@ -38701,7 +38980,9 @@ def _voice_text(schema: AppSchema, app_name: str) -> str:
 from __future__ import annotations
 
 import hashlib
+import importlib.util
 import re
+from pathlib import Path
 from xml.sax.saxutils import escape
 
 from flask import jsonify
@@ -38716,6 +38997,87 @@ VOICE_PROVIDERS = {{
     "web_speech": {{"export": "app/voice.py", "mode": "browser-speech-api"}},
 }}
 VOICE_INTENTS = {tuple(intents)!r}
+VOICE_MODULES = {VOICE_MODULES!r}
+
+
+def _load_generated_module(path, name):
+    spec = importlib.util.spec_from_file_location(name, path)
+    module = importlib.util.module_from_spec(spec)
+    if spec.loader is None:
+        raise RuntimeError(f"Could not load generated module: {{path}}")
+    spec.loader.exec_module(module)
+    return module
+
+
+def voice_module_file_manifest():
+    """Return file-level evidence for generated voice modules."""
+    module_dir = Path(__file__).with_name("voice_modules")
+    entries = []
+    for module_name in VOICE_MODULES:
+        module_path = module_dir / f"{{module_name}}.py"
+        exports = ()
+        contract_ok = False
+        smoke_ok = False
+        surface = ""
+        if module_path.exists():
+            module = _load_generated_module(module_path, f"generated_voice_module_{{module_name}}")
+            contract = module.module_contract()
+            smoke = module.smoke_test()
+            exports = tuple(name for name in contract["expected_exports"] if hasattr(module, name))
+            contract_ok = contract["ok"] and contract["module"] == module_name
+            smoke_ok = smoke["ok"] and smoke["module"] == module_name
+            surface = contract["surface"]
+        entries.append(
+            {{
+                "module": module_name,
+                "surface": surface,
+                "path": f"app/voice_modules/{{module_name}}.py",
+                "exists": module_path.exists(),
+                "exports": exports,
+                "contract_ok": contract_ok,
+                "smoke_ok": smoke_ok,
+            }}
+        )
+    return {{
+        "format": "appgen.voice-module-file-manifest.v1",
+        "ok": bool(entries) and all(item["exists"] and item["contract_ok"] and item["smoke_ok"] for item in entries),
+        "modules": tuple(entries),
+        "side_effects": (),
+    }}
+
+
+def voice_module_test_file_manifest():
+    """Return file-level evidence for generated voice module tests."""
+    test_dir = Path(__file__).with_name("voice_module_tests")
+    entries = []
+    for item in voice_module_file_manifest()["modules"]:
+        module_name = item["module"]
+        module_path = test_dir / f"test_{{module_name}}.py"
+        exports = ()
+        smoke_ok = False
+        if module_path.exists():
+            module = _load_generated_module(module_path, f"generated_voice_module_test_{{module_name}}")
+            smoke = module.smoke_test()
+            expected = ("load_voice_module", "test_voice_module_contract", "test_voice_module_smoke", "smoke_test")
+            exports = tuple(name for name in expected if hasattr(module, name))
+            smoke_ok = smoke["ok"] and smoke["module"] == module_name
+        entries.append(
+            {{
+                "module": module_name,
+                "surface": item["surface"],
+                "path": f"app/voice_module_tests/test_{{module_name}}.py",
+                "target": item["path"],
+                "exists": module_path.exists(),
+                "exports": exports,
+                "smoke_ok": smoke_ok,
+            }}
+        )
+    return {{
+        "format": "appgen.voice-module-test-file-manifest.v1",
+        "ok": bool(entries) and all(item["exists"] and item["smoke_ok"] for item in entries),
+        "tests": tuple(entries),
+        "side_effects": (),
+    }}
 
 
 def voice_provider_catalog():
@@ -72731,6 +73093,14 @@ def validate_voice_artifacts() -> None:
         fail("voice assistant contract must expose speech prompts, slots, SSML, and provider exports")
     if "appgen.voice-release-gate.v1" not in contract or "appgen.voice-workbench.v1" not in contract or '@expose("/workbench.json")' not in contract or '@expose("/release-gate.json")' not in contract:
         fail("voice assistant contract must expose release readiness checks and route")
+    if (
+        "VOICE_MODULES" not in contract
+        or "voice_module_file_manifest" not in contract
+        or "voice_module_test_file_manifest" not in contract
+        or "appgen.voice-module-file-manifest.v1" not in contract
+        or "appgen.voice-module-test-file-manifest.v1" not in contract
+    ):
+        fail("voice assistant contract must expose generated module and module-test manifests")
     template = (ROOT / "app" / "templates" / "appgen_voice.html").read_text()
     if "Voice Assistant" not in template or "Voice JSON" not in template or "Workbench JSON" not in template or "Release Gate JSON" not in template:
         fail("voice assistant cockpit must expose generated voice catalog and release readiness")
