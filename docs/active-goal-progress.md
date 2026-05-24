@@ -125,6 +125,7 @@ Build a complete AppGen IDE and generation platform with:
 | 2026-05-24 | `326cdaf` | Constrained event-runtime guidance to a first-match developer choice algorithm: ordinary apps generate the AppGen-X event contract, while stream profiles remain evidence-gated exceptions. | Py compile; focused PBC policy test; documentation diff check; staged hygiene scan passed. |
 | 2026-05-24 | `8965eb1` | Added generated tabbed-view modules and generated tests for tab catalogs, tab policies, visible tabs, permission matrices, and tabbed release workbench surfaces. | Py compile; focused generated-app/form-designer/package-goal tests; staged hygiene scan passed. |
 | 2026-05-24 | `8c12444` | Added generated voice assistant modules and generated tests for provider catalogs, intent catalogs, transcript matching, slot prompting, platform exports, and voice release workbench surfaces. | Py compile; focused generated-app/form-designer/package-goal tests; staged hygiene scan passed. |
+| 2026-05-24 | `67ea94d` | Added generated notification modules and generated tests for channel catalogs, event catalogs, payload contracts, queue metadata, secret policy, and notification release workbench surfaces. | Py compile; focused generated-app/form-designer/package-goal tests; staged hygiene scan passed. |
 
 ## Current Working Slice
 
@@ -180,6 +181,10 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   generated tests for provider catalogs, intent catalogs, transcript matching,
   slot prompting, platform exports, and voice release workbench surfaces, with
   generated voice manifests validating module and test coverage.
+- Generated applications now emit standalone notification modules and
+  generated tests for channel catalogs, event catalogs, payload contracts,
+  queue metadata, secret policy, and notification release workbench surfaces,
+  with generated notification manifests validating module and test coverage.
 - Event-runtime guidance now exposes a first-match developer choice algorithm:
   ordinary business, ERP, workflow, chatbot, agent, integration, and PBC event
   handling generate the AppGen-X event contract with `stream_processor`
