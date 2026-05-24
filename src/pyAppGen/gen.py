@@ -1867,6 +1867,27 @@ def write_notifications_file(output_dir, schema: AppSchema):
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
     (output_dir / "notifications.py").write_text(_notifications_text(schema))
+    write_notification_module_files(output_dir)
+
+
+def write_notification_module_files(output_dir):
+    """Write generated notification modules and smoke tests."""
+    output_dir = Path(output_dir)
+    module_dir = output_dir / "notification_modules"
+    test_dir = output_dir / "notification_module_tests"
+    module_dir.mkdir(parents=True, exist_ok=True)
+    test_dir.mkdir(parents=True, exist_ok=True)
+    (module_dir / "__init__.py").write_text(_notification_module_init_text(), encoding="utf-8")
+    (test_dir / "__init__.py").write_text(_notification_module_test_init_text(), encoding="utf-8")
+    for module_name in NOTIFICATION_MODULES:
+        (module_dir / f"{module_name}.py").write_text(
+            _notification_module_text(module_name),
+            encoding="utf-8",
+        )
+        (test_dir / f"test_{module_name}.py").write_text(
+            _notification_module_test_text(module_name),
+            encoding="utf-8",
+        )
 
 
 def write_platforms_file(output_dir, schema: AppSchema):
@@ -2460,6 +2481,15 @@ VOICE_MODULES = (
     "slot_prompting_module",
     "platform_export_module",
     "voice_release_workbench_module",
+)
+
+NOTIFICATION_MODULES = (
+    "channel_catalog_module",
+    "event_catalog_module",
+    "payload_contract_module",
+    "queue_metadata_module",
+    "secret_policy_module",
+    "notification_release_workbench_module",
 )
 
 DATABASE_OPS_MODULES = (
@@ -39705,6 +39735,242 @@ def register_text_quality(appbuilder):
 '''
 
 
+def _notification_module_init_text() -> str:
+    return (
+        '"""Generated notification modules."""\n\n'
+        f"NOTIFICATION_MODULES = {NOTIFICATION_MODULES!r}\n"
+    )
+
+
+def _notification_module_test_init_text() -> str:
+    modules = tuple(f"test_{name}" for name in NOTIFICATION_MODULES)
+    return (
+        '"""Generated notification module tests."""\n\n'
+        f"NOTIFICATION_MODULE_TESTS = {modules!r}\n"
+    )
+
+
+def _notification_module_surface(module_name: str) -> tuple[str, str]:
+    return {
+        "channel_catalog_module": ("channel_catalog", "channel_catalog"),
+        "event_catalog_module": ("event_catalog", "event_catalog"),
+        "payload_contract_module": ("payload_contract", "notification_payload"),
+        "queue_metadata_module": ("queue_metadata", "queue_event"),
+        "secret_policy_module": ("secret_policy", "channel_catalog"),
+        "notification_release_workbench_module": ("release_workbench", "notification_release_gate"),
+    }[module_name]
+
+
+def _notification_module_text(module_name: str) -> str:
+    surface, operation = _notification_module_surface(module_name)
+    return f'''"""Generated notification module for {surface}."""
+
+from __future__ import annotations
+
+import importlib.util
+from pathlib import Path
+
+
+MODULE = {module_name!r}
+SURFACE = {surface!r}
+OPERATION = {operation!r}
+EXPECTED_EXPORTS = (
+    "module_contract",
+    "notification_manifest",
+    "run_notification_operation",
+    "release_context",
+    "smoke_test",
+)
+
+
+def _notifications():
+    module_path = Path(__file__).resolve().parents[1] / "notifications.py"
+    spec = importlib.util.spec_from_file_location(f"generated_notifications_{{MODULE}}", module_path)
+    module = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(module)
+    return module
+
+
+def _assets():
+    return {{"app/notifications.py", "app/templates/appgen_notifications.html"}}
+
+
+def _first_table(notifications):
+    return notifications.event_catalog()[0]["table"]
+
+
+def module_contract():
+    """Return this generated notification module's export contract."""
+    available = tuple(name for name in EXPECTED_EXPORTS if name in globals())
+    return {{
+        "format": "appgen.notification-module-contract.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "operation": OPERATION,
+        "ok": set(EXPECTED_EXPORTS) <= set(available),
+        "exports": available,
+        "expected_exports": EXPECTED_EXPORTS,
+        "side_effects": (),
+    }}
+
+
+def notification_manifest():
+    """Return generated notification metadata owned by this module."""
+    notifications = _notifications()
+    channels = notifications.channel_catalog()
+    events = notifications.event_catalog()
+    return {{
+        "format": "appgen.notification-module-manifest.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "ok": bool(channels) and bool(events) and all(item["events"] for item in events),
+        "channel_count": len(channels),
+        "table_count": len(events),
+        "event_count": sum(len(item["events"]) for item in events),
+        "side_effects": (),
+    }}
+
+
+def run_notification_operation():
+    """Run this module's side-effect-free notification operation."""
+    notifications = _notifications()
+    table = _first_table(notifications)
+    if SURFACE == "channel_catalog":
+        operation = {{"channels": notifications.channel_catalog()}}
+        ok = {{"in_app", "email", "webhook", "push"}} <= {{item["channel"] for item in operation["channels"]}}
+    elif SURFACE == "event_catalog":
+        operation = {{"events": notifications.event_catalog(), "name": notifications.event_name(table, "created")}}
+        ok = operation["name"] == f"{{table}}.created" and bool(operation["events"])
+    elif SURFACE == "payload_contract":
+        operation = {{"payload": notifications.notification_payload("email", "Created", "Created", recipients=("ada@example.test",), event=f"{{table}}.created")}}
+        ok = operation["payload"]["channel"] == "email" and operation["payload"]["recipients"] == ("ada@example.test",)
+    elif SURFACE == "queue_metadata":
+        operation = {{"queued": notifications.queue_event(table, "created", {{"id": 1}}, channels=("in_app", "webhook"))}}
+        ok = [item["channel"] for item in operation["queued"]] == ["in_app", "webhook"] and all(item["metadata"]["table"] == table for item in operation["queued"])
+    elif SURFACE == "secret_policy":
+        channels = notifications.channel_catalog()
+        operation = {{"env": {{item["channel"]: item["env"] for item in channels}}}}
+        ok = all(item["channel"] == "in_app" or item["env"] for item in channels) and not operation["env"]["in_app"]
+    else:
+        operation = {{"release": notifications.notification_release_gate(_assets()), "workbench": notifications.notification_workbench(_assets())}}
+        ok = operation["release"]["ok"] and operation["workbench"]["ok"]
+    return {{
+        "format": "appgen.notification-module-operation.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "ok": ok,
+        "operation": operation,
+        "side_effects": (),
+    }}
+
+
+def release_context():
+    """Return release evidence used by this notification module."""
+    notifications = _notifications()
+    release = notifications.notification_release_gate(_assets())
+    workbench = notifications.notification_workbench(_assets())
+    return {{
+        "format": "appgen.notification-module-release-context.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "ok": release["ok"] and workbench["ok"],
+        "release": release,
+        "workbench": workbench,
+        "side_effects": (),
+    }}
+
+
+def smoke_test():
+    """Run side-effect-free checks for this generated notification module."""
+    contract = module_contract()
+    manifest = notification_manifest()
+    operation = run_notification_operation()
+    release = release_context()
+    return {{
+        "format": "appgen.notification-module-smoke-test.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "ok": contract["ok"]
+        and manifest["ok"]
+        and operation["ok"]
+        and release["ok"]
+        and not manifest["side_effects"]
+        and not operation["side_effects"]
+        and not release["side_effects"],
+        "contract": contract,
+        "manifest": manifest,
+        "operation": operation,
+        "release": release,
+        "checks": (
+            "module_contract_resolves",
+            "notification_manifest_ok",
+            "notification_operation_ok",
+            "release_context_ok",
+            "no_side_effects",
+        ),
+    }}
+'''
+
+
+def _notification_module_test_text(module_name: str) -> str:
+    surface, _operation = _notification_module_surface(module_name)
+    return f'''"""Generated tests for the {surface} notification module."""
+
+from __future__ import annotations
+
+import importlib.util
+from pathlib import Path
+
+
+MODULE = {module_name!r}
+SURFACE = {surface!r}
+
+
+def load_notification_module():
+    """Load the generated notification module without app installation."""
+    module_path = Path(__file__).resolve().parents[1] / "notification_modules" / f"{{MODULE}}.py"
+    spec = importlib.util.spec_from_file_location(f"generated_notification_module_{{MODULE}}", module_path)
+    module = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(module)
+    return module
+
+
+def test_notification_module_contract():
+    """Assert the generated notification module exposes its contract."""
+    module = load_notification_module()
+    contract = module.module_contract()
+    assert contract["module"] == MODULE
+    assert contract["surface"] == SURFACE
+    assert contract["ok"] is True
+    assert all(hasattr(module, name) for name in contract["expected_exports"])
+
+
+def test_notification_module_smoke():
+    """Assert the module's side-effect-free smoke test passes."""
+    module = load_notification_module()
+    result = module.smoke_test()
+    assert result["ok"] is True
+    assert result["module"] == MODULE
+    assert result["surface"] == SURFACE
+    assert result["checks"]
+
+
+def smoke_test():
+    """Run this generated test module in a side-effect-free way."""
+    test_notification_module_contract()
+    test_notification_module_smoke()
+    return {{
+        "format": "appgen.notification-module-generated-test-smoke.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "ok": True,
+        "tests": ("test_notification_module_contract", "test_notification_module_smoke"),
+    }}
+'''
+
+
 def _notifications_text(schema: AppSchema) -> str:
     table_events = {}
     for table in schema.tables:
@@ -39722,6 +39988,8 @@ from __future__ import annotations
 
 from datetime import datetime
 from datetime import timezone
+import importlib.util
+from pathlib import Path
 
 from flask import jsonify
 from flask_appbuilder import BaseView
@@ -39748,6 +40016,87 @@ NOTIFICATION_CHANNELS = {{
 }}
 
 NOTIFICATION_EVENTS = {table_events!r}
+NOTIFICATION_MODULES = {NOTIFICATION_MODULES!r}
+
+
+def _load_generated_module(path, name):
+    spec = importlib.util.spec_from_file_location(name, path)
+    module = importlib.util.module_from_spec(spec)
+    if spec.loader is None:
+        raise RuntimeError(f"Could not load generated module: {{path}}")
+    spec.loader.exec_module(module)
+    return module
+
+
+def notification_module_file_manifest():
+    """Return file-level evidence for generated notification modules."""
+    module_dir = Path(__file__).with_name("notification_modules")
+    entries = []
+    for module_name in NOTIFICATION_MODULES:
+        module_path = module_dir / f"{{module_name}}.py"
+        exports = ()
+        contract_ok = False
+        smoke_ok = False
+        surface = ""
+        if module_path.exists():
+            module = _load_generated_module(module_path, f"generated_notification_module_{{module_name}}")
+            contract = module.module_contract()
+            smoke = module.smoke_test()
+            exports = tuple(name for name in contract["expected_exports"] if hasattr(module, name))
+            contract_ok = contract["ok"] and contract["module"] == module_name
+            smoke_ok = smoke["ok"] and smoke["module"] == module_name
+            surface = contract["surface"]
+        entries.append(
+            {{
+                "module": module_name,
+                "surface": surface,
+                "path": f"app/notification_modules/{{module_name}}.py",
+                "exists": module_path.exists(),
+                "exports": exports,
+                "contract_ok": contract_ok,
+                "smoke_ok": smoke_ok,
+            }}
+        )
+    return {{
+        "format": "appgen.notification-module-file-manifest.v1",
+        "ok": bool(entries) and all(item["exists"] and item["contract_ok"] and item["smoke_ok"] for item in entries),
+        "modules": tuple(entries),
+        "side_effects": (),
+    }}
+
+
+def notification_module_test_file_manifest():
+    """Return file-level evidence for generated notification module tests."""
+    test_dir = Path(__file__).with_name("notification_module_tests")
+    entries = []
+    for item in notification_module_file_manifest()["modules"]:
+        module_name = item["module"]
+        module_path = test_dir / f"test_{{module_name}}.py"
+        exports = ()
+        smoke_ok = False
+        if module_path.exists():
+            module = _load_generated_module(module_path, f"generated_notification_module_test_{{module_name}}")
+            smoke = module.smoke_test()
+            expected = ("load_notification_module", "test_notification_module_contract", "test_notification_module_smoke", "smoke_test")
+            exports = tuple(name for name in expected if hasattr(module, name))
+            smoke_ok = smoke["ok"] and smoke["module"] == module_name
+        entries.append(
+            {{
+                "module": module_name,
+                "surface": item["surface"],
+                "path": f"app/notification_module_tests/test_{{module_name}}.py",
+                "target": item["path"],
+                "exists": module_path.exists(),
+                "exports": exports,
+                "smoke_ok": smoke_ok,
+            }}
+        )
+    return {{
+        "format": "appgen.notification-module-test-file-manifest.v1",
+        "ok": bool(entries) and all(item["exists"] and item["smoke_ok"] for item in entries),
+        "tests": tuple(entries),
+        "side_effects": (),
+    }}
 
 
 def channel_catalog():
@@ -72020,6 +72369,14 @@ def validate_notification_artifacts() -> None:
         fail("notification contract must expose channels, events, payloads, queues, and release readiness")
     if "appgen.notification-release-gate.v1" not in contract or '@expose("/release-gate.json")' not in contract:
         fail("notification contract must expose release readiness checks and route")
+    if (
+        "NOTIFICATION_MODULES" not in contract
+        or "notification_module_file_manifest" not in contract
+        or "notification_module_test_file_manifest" not in contract
+        or "appgen.notification-module-file-manifest.v1" not in contract
+        or "appgen.notification-module-test-file-manifest.v1" not in contract
+    ):
+        fail("notification contract must expose generated module and module-test manifests")
     template = (ROOT / "app" / "templates" / "appgen_notifications.html").read_text()
     if "Notifications" not in template or "Catalog JSON" not in template or "Release Gate JSON" not in template:
         fail("notification cockpit must expose generated notification catalog and release readiness")
