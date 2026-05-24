@@ -14716,6 +14716,8 @@ def rad_parity_workbench(existing_paths: set[str] | None = None) -> dict:
     passing_inspector_tabs = tuple(object_inspector_contract()["tabs"])
     required_binding_edges = ("control_to_field",)
     passing_binding_edges = tuple(livebindings_contract()["binding_edges"])
+    required_data_tooling_names = ("FireDAC", "DataSnap", "RAD Server", "InterBase")
+    passing_data_tooling_names = tuple(rad_data_tooling_contract()["tooling"])
     checks = (
         {
             "id": "native_ui_parity_component_parity",
@@ -14761,8 +14763,10 @@ def rad_parity_workbench(existing_paths: set[str] | None = None) -> dict:
         },
         {
             "id": "firedac_datasnap_radserver_interbase_tooling",
-            "ok": {"FireDAC", "DataSnap", "RAD Server", "InterBase"} <= set(rad_data_tooling_contract()["tooling"])
+            "ok": set(required_data_tooling_names) <= set(passing_data_tooling_names)
             and rad_data_tooling_workbench()["ok"],
+            "required_tooling": required_data_tooling_names,
+            "passing_tooling": passing_data_tooling_names,
             "evidence": {"contract": rad_data_tooling_contract(), "workbench": rad_data_tooling_workbench()},
         },
         {
