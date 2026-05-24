@@ -804,6 +804,16 @@ def test_package_pbc_catalog_composes_enterprise_apps(runner: CliRunner) -> None
     )
     assert stream_policy["developer_action_contract"]["id"] == "appgen.event-processing.developer-action.v1"
     assert stream_policy["developer_action_contract"]["answer"] == "Use appgen_event_contract."
+    assert stream_policy["developer_action_contract"]["use_this_stack"] == (
+        "postgresql_default_or_mysql_mariadb_project_standard",
+        "appgen_event_contract",
+        "appgen_outbox_event",
+        "appgen_inbox_event",
+        "typed_command_handlers",
+        "typed_event_handlers",
+        "appgen_event_adapter",
+        "generated_retry_idempotency_dead_letter_release_evidence",
+    )
     assert stream_policy["developer_action_contract"]["ordinary_manifest_rule"] == "omit_stream_processor"
     assert stream_policy["developer_action_contract"]["ordinary_backend_rule"] == (
         "postgresql_default_mysql_or_mariadb_project_standard"
@@ -812,9 +822,15 @@ def test_package_pbc_catalog_composes_enterprise_apps(runner: CliRunner) -> None
     assert stream_policy["developer_action_contract"]["choice_budget"]["ordinary_visible_stream_engine_choices"] == 0
     assert stream_policy["developer_action_contract"]["choice_budget"]["stream_profiles_per_pbc"] == 1
     assert "runtime_profile_picker" in stream_policy["developer_action_contract"]["do_not_expose"]
+    assert "runtime_comparison_prompts" in stream_policy["developer_action_contract"]["do_not_generate"]
     assert stream_policy["developer_action_contract"]["exception_paths"][0]["profile"] == "quix_streams"
     assert stream_policy["developer_action_contract"]["exception_paths"][1]["profile"] == "bytewax"
     assert stream_policy["developer_action_contract"]["fallback_rule"].endswith("omit stream_processor.")
+    assert stream_policy["developer_default_stack"]["id"] == "appgen.event-processing.default-stack.v1"
+    assert stream_policy["developer_default_stack"]["use"] == "appgen_event_contract"
+    assert stream_policy["developer_default_stack"]["ordinary_manifest"] == {"stream_processor": "omit"}
+    assert stream_policy["developer_default_stack"]["developer_choice_count"] == 1
+    assert "stream_engine" in stream_policy["developer_default_stack"]["blocked_expansion_axes"]
     assert stream_policy["developer_decision_brief"]["headline"] == "Use appgen_event_contract."
     assert stream_policy["developer_decision_brief"]["ordinary_manifest_rule"] == "Omit stream_processor."
     assert stream_policy["developer_decision_brief"]["developer_visible_options"] == ("appgen_event_contract",)
@@ -835,6 +851,7 @@ def test_package_pbc_catalog_composes_enterprise_apps(runner: CliRunner) -> None
     assert developer_guidance["decision_brief"]["ordinary_codegen_prompt"].startswith("Generate AppGen-X outbox/inbox events")
     assert developer_guidance["decision_brief"]["small_model_stop_rule"].startswith("When the request is ordinary business")
     assert "small_model_instruction" in developer_guidance
+    assert developer_guidance["developer_default_stack"]["small_model_prompt"].startswith("Use appgen_event_contract")
     assert developer_guidance["default_runtime_profile"] == "faust_streaming"
     ordinary_manifest = dict(example_pbc_manifest())
     ordinary_manifest.pop("stream_processor", None)

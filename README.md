@@ -179,6 +179,11 @@ evidence-driven release-audit workflows.
 For token-constrained tools and coding agents, consume
 `acp_event_processing_developer_guidance()` and use its short answer directly:
 `Use appgen_event_contract. Omit stream_processor.`
+The same helper returns `developer_default_stack`, which is the full
+developer-facing answer: PostgreSQL by default or MySQL/MariaDB when that is the
+project standard, generated `appgen_outbox_event` and `appgen_inbox_event`
+tables, typed command/event handlers, the AppGen-X event adapter, and generated
+idempotency/retry/dead-letter/release evidence.
 The returned `decision_brief` is the one-card contract for templates, DSL
 linting, Studio controls, and small local models: show the event contract
 designer, handler registry, retry/idempotency/dead-letter controls, and

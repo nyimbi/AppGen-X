@@ -1,5 +1,51 @@
 # Opinionated Event Processing Standard
 
+## Developer Default Stack
+
+Do not ask application developers which event-streaming runtime, broker client,
+or state store to use for ordinary generated applications. The platform answer
+is fixed:
+
+```text
+database: PostgreSQL by default, or MySQL/MariaDB when that is the project standard
+public contract: appgen_event_contract
+durability: appgen_outbox_event + appgen_inbox_event
+handlers: typed command handlers + typed event handlers
+integration API: AppGen-X event adapter
+operations: idempotency, retry, dead-letter, and release evidence
+manifest: omit stream_processor
+developer choice count: 1
+```
+
+This is the stack that the IDE, DSL linter, natural-language generator,
+package templates, and coding agents must generate for ordinary ERP, workflow,
+chatbot, agent, integration, approval, and PBC event handling. The runtime
+profile is read-only platform metadata. It is not a developer-authored
+manifest field and it is not a picker in the IDE.
+
+The platform intentionally blocks the expansion axes that create the support
+matrix explosion:
+
+- no stream-engine picker for ordinary applications;
+- no broker-client picker for ordinary applications;
+- no state-store picker for ordinary applications;
+- no per-PBC runtime preference for ordinary applications;
+- no direct imports of stream-processing libraries from generated business
+  logic;
+- no natural-language prompt that compares runtimes for ordinary generated
+  work.
+
+Use the executable contract when generating code:
+
+```python
+from pyAppGen.pbc import acp_event_processing_developer_guidance
+
+guidance = acp_event_processing_developer_guidance()
+stack = guidance["developer_default_stack"]
+assert stack["use"] == "appgen_event_contract"
+assert stack["ordinary_manifest"] == {"stream_processor": "omit"}
+```
+
 ## Implementation Decision
 
 Developers should use one answer for ordinary AppGen-X work:
