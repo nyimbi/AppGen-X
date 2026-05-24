@@ -25,7 +25,7 @@ Build a complete AppGen IDE and generation platform with:
 
 | Date | Commit | Slice | Evidence |
 | --- | --- | --- | --- |
-| 2026-05-24 | `current` | Made the source visual-depth parity gate expose required and passing styling, animation, effects, and 3D surfaces used for release evidence. | Py compile, focused generated form-designer parity smoke, scoped diff check, and scoped restricted-name scan passed. |
+| 2026-05-24 | `d883402` | Made the source visual-depth parity gate expose required and passing styling, animation, effects, and 3D surfaces used for release evidence. | Py compile, focused generated form-designer parity smoke, scoped diff check, and scoped restricted-name scan passed. |
 | 2026-05-24 | `6fca9c6` | Added a developer recommendation card for event processing so the docs, PBC policy, and tests state the single ordinary stack and evidence-gated exception exits. | Py compile, focused PBC policy test, scoped diff check, and scoped restricted-name scan passed. |
 | 2026-05-24 | `3c3672a` | Made the source mobile device API parity gate expose required and passing API names used for release evidence. | Py compile, focused generated form-designer parity smoke, scoped diff check, and scoped restricted-name scan passed. |
 | 2026-05-24 | `d80b7f9` | Made the source data-service tooling parity gate expose required and passing tooling names used for release evidence. | Py compile, focused generated form-designer parity smoke, scoped diff check, and scoped restricted-name scan passed. |
