@@ -3055,6 +3055,8 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     assert generation_smoke_gate["format"] == "appgen.form-designer-generation-smoke-audit.v1"
     assert generation_smoke_gate["decision"] == "approved"
     assert not audit["generation_smoke"]["blocking_gaps"]
+    assert generation_smoke_gate["passing_state"] == generation_smoke_gate["required_state"]
+    assert generation_smoke_gate["passing_artifact_state"] == generation_smoke_gate["required_artifact_state"]
     assert {
         "generated_artifacts",
         "generated_python_compiles",

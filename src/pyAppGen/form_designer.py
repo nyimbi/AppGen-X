@@ -18045,6 +18045,27 @@ def form_designer_release_audit(existing_paths: set[str] | None = None) -> dict:
     passing_generation_smoke_artifacts = tuple(
         item for item in generation_smoke["required_artifacts"] if item not in set(generation_artifact_check["missing"])
     )
+    required_generation_smoke_state = {
+        "format": "appgen.form-designer-generation-smoke-audit.v1",
+        "decision": "approved",
+        "blocking_gaps": (),
+    }
+    passing_generation_smoke_state = {
+        key: generation_smoke[key]
+        for key in required_generation_smoke_state
+        if generation_smoke.get(key) == required_generation_smoke_state[key]
+    }
+    required_generation_artifact_state = {
+        "id": "generated_artifacts",
+        "ok": True,
+        "missing": (),
+    }
+    passing_generation_artifact_state = {
+        key: (tuple(generation_artifact_check[key]) if key == "missing" else generation_artifact_check[key])
+        for key in required_generation_artifact_state
+        if (tuple(generation_artifact_check.get(key, ())) if key == "missing" else generation_artifact_check.get(key))
+        == required_generation_artifact_state[key]
+    }
     required_generation_smoke_checks = (
         "generated_artifacts",
         "generated_python_compiles",
@@ -18251,7 +18272,9 @@ def form_designer_release_audit(existing_paths: set[str] | None = None) -> dict:
             and generation_smoke["format"] == "appgen.form-designer-generation-smoke-audit.v1"
             and generation_smoke["decision"] == "approved"
             and set(required_generation_smoke_checks) <= generation_smoke_passing_checks
-            and not generation_smoke["blocking_gaps"],
+            and not generation_smoke["blocking_gaps"]
+            and passing_generation_smoke_state == required_generation_smoke_state
+            and passing_generation_artifact_state == required_generation_artifact_state,
             "format": generation_smoke["format"],
             "decision": generation_smoke["decision"],
             "required_checks": required_generation_smoke_checks,
@@ -18259,6 +18282,10 @@ def form_designer_release_audit(existing_paths: set[str] | None = None) -> dict:
             "checks": tuple(check["id"] for check in generation_smoke["checks"]),
             "required_artifacts": required_generation_smoke_artifacts,
             "passing_artifacts": passing_generation_smoke_artifacts,
+            "required_state": required_generation_smoke_state,
+            "passing_state": passing_generation_smoke_state,
+            "required_artifact_state": required_generation_artifact_state,
+            "passing_artifact_state": passing_generation_artifact_state,
             "blocking_gaps": generation_smoke["blocking_gaps"],
         },
         {
