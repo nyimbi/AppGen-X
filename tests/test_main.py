@@ -13721,6 +13721,35 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert "/prototyping/workbench.json" in next(
         check["evidence"]["routes"] for check in prototyping_workbench["checks"] if check["id"] == "route_surface"
     )
+    prototyping_module_files = prototyping.prototyping_module_file_manifest()
+    prototyping_module_tests = prototyping.prototyping_module_test_file_manifest()
+    assert prototyping_module_files["format"] == "appgen.prototyping-module-file-manifest.v1"
+    assert prototyping_module_files["ok"] is True
+    assert prototyping_module_tests["format"] == "appgen.prototyping-module-test-file-manifest.v1"
+    assert prototyping_module_tests["ok"] is True
+    assert {
+        "prototype_catalog",
+        "sample_data",
+        "screen_mockup",
+        "preview_package",
+        "experiment",
+        "backlog_promotion",
+        "release_workbench",
+    } == {item["surface"] for item in prototyping_module_files["modules"]}
+    for item in prototyping_module_files["modules"]:
+        module_path = output_dir / item["path"].replace("app/", "")
+        py_compile.compile(str(module_path), doraise=True)
+        module = _load_module(module_path, f"generated_prototyping_module_{item['module']}")
+        assert module.module_contract()["ok"] is True
+        assert module.prototyping_manifest()["ok"] is True
+        assert module.run_prototyping_operation()["ok"] is True
+        assert module.release_context()["ok"] is True
+        assert module.smoke_test()["ok"] is True
+    for item in prototyping_module_tests["tests"]:
+        test_path = output_dir / item["path"].replace("app/", "")
+        py_compile.compile(str(test_path), doraise=True)
+        module = _load_module(test_path, f"generated_prototyping_module_test_{item['module']}")
+        assert module.smoke_test()["ok"] is True
     assert prototyping.prototyping_workbench({"app/prototyping.py"})["ok"] is False
     assert prototyping.prototyping_release_gate({"app/prototyping.py"})["ok"] is False
     erp_modules = {item["module"] for item in erp_templates.erp_template_catalog()}

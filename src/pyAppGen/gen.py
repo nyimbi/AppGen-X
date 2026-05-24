@@ -2769,6 +2769,16 @@ STUDIO_MODULES = (
     "studio_release_workbench_module",
 )
 
+PROTOTYPING_MODULES = (
+    "prototype_catalog_module",
+    "sample_data_module",
+    "screen_mockup_module",
+    "preview_package_module",
+    "experiment_module",
+    "backlog_promotion_module",
+    "prototyping_release_workbench_module",
+)
+
 DESIGNER_MODULES = (
     "visual_graph_module",
     "schema_diagram_module",
@@ -15527,6 +15537,27 @@ def write_prototyping_file(output_dir, schema: AppSchema):
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
     (output_dir / "prototyping.py").write_text(_prototyping_text(schema, _app_name(schema)))
+    write_prototyping_module_files(output_dir)
+
+
+def write_prototyping_module_files(output_dir):
+    """Write generated rapid-prototyping modules and smoke tests."""
+    output_dir = Path(output_dir)
+    module_dir = output_dir / "prototyping_modules"
+    test_dir = output_dir / "prototyping_module_tests"
+    module_dir.mkdir(parents=True, exist_ok=True)
+    test_dir.mkdir(parents=True, exist_ok=True)
+    (module_dir / "__init__.py").write_text(_prototyping_module_init_text(), encoding="utf-8")
+    (test_dir / "__init__.py").write_text(_prototyping_module_test_init_text(), encoding="utf-8")
+    for module_name in PROTOTYPING_MODULES:
+        (module_dir / f"{module_name}.py").write_text(
+            _prototyping_module_text(module_name),
+            encoding="utf-8",
+        )
+        (test_dir / f"test_{module_name}.py").write_text(
+            _prototyping_module_test_text(module_name),
+            encoding="utf-8",
+        )
 
 
 def write_erp_templates_file(output_dir, schema: AppSchema):
@@ -57847,6 +57878,249 @@ def register_low_code_features(appbuilder):
 '''
 
 
+def _prototyping_module_init_text() -> str:
+    return (
+        '"""Generated rapid-prototyping modules."""\n\n'
+        f"PROTOTYPING_MODULES = {PROTOTYPING_MODULES!r}\n"
+    )
+
+
+def _prototyping_module_test_init_text() -> str:
+    modules = tuple(f"test_{name}" for name in PROTOTYPING_MODULES)
+    return (
+        '"""Generated rapid-prototyping module tests."""\n\n'
+        f"PROTOTYPING_MODULE_TESTS = {modules!r}\n"
+    )
+
+
+def _prototyping_module_surface(module_name: str) -> tuple[str, str]:
+    return {
+        "prototype_catalog_module": ("prototype_catalog", "prototype_catalog"),
+        "sample_data_module": ("sample_data", "sample_row"),
+        "screen_mockup_module": ("screen_mockup", "screen_mockup"),
+        "preview_package_module": ("preview_package", "preview_package"),
+        "experiment_module": ("experiment", "experiment_hypothesis"),
+        "backlog_promotion_module": ("backlog_promotion", "promote_to_backlog"),
+        "prototyping_release_workbench_module": ("release_workbench", "prototyping_release_gate"),
+    }[module_name]
+
+
+def _prototyping_module_text(module_name: str) -> str:
+    surface, operation = _prototyping_module_surface(module_name)
+    return f'''"""Generated rapid-prototyping module for {surface}."""
+
+from __future__ import annotations
+
+import importlib.util
+from pathlib import Path
+
+
+MODULE = {module_name!r}
+SURFACE = {surface!r}
+OPERATION = {operation!r}
+EXPECTED_EXPORTS = (
+    "module_contract",
+    "prototyping_manifest",
+    "run_prototyping_operation",
+    "release_context",
+    "smoke_test",
+)
+
+
+def _prototyping():
+    module_path = Path(__file__).resolve().parents[1] / "prototyping.py"
+    spec = importlib.util.spec_from_file_location(f"generated_prototyping_{{MODULE}}", module_path)
+    module = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(module)
+    return module
+
+
+def _assets():
+    return {{"app/prototyping.py", "app/templates/appgen_prototyping.html"}}
+
+
+def _first_resource(prototyping):
+    catalog = prototyping.prototype_catalog()
+    if not catalog:
+        raise AssertionError("generated rapid-prototyping module requires at least one prototype resource")
+    return catalog[0]["resource"]
+
+
+def module_contract():
+    """Return this generated rapid-prototyping module's export contract."""
+    available = tuple(name for name in EXPECTED_EXPORTS if name in globals())
+    return {{
+        "format": "appgen.prototyping-module-contract.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "operation": OPERATION,
+        "ok": set(EXPECTED_EXPORTS) <= set(available),
+        "exports": available,
+        "expected_exports": EXPECTED_EXPORTS,
+        "side_effects": (),
+    }}
+
+
+def prototyping_manifest():
+    """Return generated rapid-prototyping metadata owned by this module."""
+    prototyping = _prototyping()
+    catalog = prototyping.prototype_catalog()
+    return {{
+        "format": "appgen.prototyping-module-manifest.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "ok": bool(catalog)
+        and all(resource.get("fields") for resource in catalog)
+        and prototyping.prototyping_check(_assets())["ok"],
+        "resources": tuple(resource["resource"] for resource in catalog),
+        "stages": prototyping.PROTOTYPE_STAGES,
+        "side_effects": (),
+    }}
+
+
+def run_prototyping_operation():
+    """Run this module's side-effect-free rapid-prototyping operation."""
+    prototyping = _prototyping()
+    resource = _first_resource(prototyping)
+    if SURFACE == "prototype_catalog":
+        operation = {{"catalog": prototyping.prototype_catalog()}}
+        ok = bool(operation["catalog"]) and operation["catalog"][0]["resource"] == resource
+    elif SURFACE == "sample_data":
+        operation = {{"sample": prototyping.sample_row(resource)}}
+        ok = bool(operation["sample"])
+    elif SURFACE == "screen_mockup":
+        operation = {{"screen": prototyping.screen_mockup(resource, "create")}}
+        ok = operation["screen"]["layout"] == "form" and bool(operation["screen"]["fields"])
+    elif SURFACE == "preview_package":
+        operation = {{"preview": prototyping.preview_package(resource)}}
+        ok = operation["preview"]["format"] == "appgen-prototype-v1" and bool(operation["preview"]["screens"])
+    elif SURFACE == "experiment":
+        operation = {{"experiment": prototyping.experiment_hypothesis(resource, "shorter form")}}
+        ok = str(operation["experiment"]["id"]).startswith("proto-") and "prototype" in operation["experiment"]["variants"]
+    elif SURFACE == "backlog_promotion":
+        operation = {{"backlog": prototyping.promote_to_backlog(resource)}}
+        ok = bool(operation["backlog"]) and all(item["key"].startswith("PROTO-") for item in operation["backlog"])
+    else:
+        operation = {{
+            "release": prototyping.prototyping_release_gate(_assets()),
+            "workbench": prototyping.prototyping_workbench(_assets()),
+        }}
+        ok = operation["release"]["ok"] and operation["workbench"]["ok"]
+    return {{
+        "format": "appgen.prototyping-module-operation.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "ok": ok,
+        "operation": operation,
+        "side_effects": (),
+    }}
+
+
+def release_context():
+    """Return release evidence used by this rapid-prototyping module."""
+    prototyping = _prototyping()
+    return {{
+        "format": "appgen.prototyping-module-release-context.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "ok": prototyping.prototyping_release_gate(_assets())["ok"] and prototyping.prototyping_workbench(_assets())["ok"],
+        "release": prototyping.prototyping_release_gate(_assets()),
+        "workbench": prototyping.prototyping_workbench(_assets()),
+        "side_effects": (),
+    }}
+
+
+def smoke_test():
+    """Run side-effect-free checks for this generated rapid-prototyping module."""
+    contract = module_contract()
+    manifest = prototyping_manifest()
+    operation = run_prototyping_operation()
+    release = release_context()
+    return {{
+        "format": "appgen.prototyping-module-smoke-test.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "ok": contract["ok"]
+        and manifest["ok"]
+        and operation["ok"]
+        and release["ok"]
+        and not manifest["side_effects"]
+        and not operation["side_effects"]
+        and not release["side_effects"],
+        "contract": contract,
+        "manifest": manifest,
+        "operation": operation,
+        "release": release,
+        "checks": (
+            "module_contract_resolves",
+            "prototyping_manifest_ok",
+            "prototyping_operation_ok",
+            "release_context_ok",
+            "no_side_effects",
+        ),
+    }}
+'''
+
+
+def _prototyping_module_test_text(module_name: str) -> str:
+    surface, _operation = _prototyping_module_surface(module_name)
+    return f'''"""Generated tests for the {surface} rapid-prototyping module."""
+
+from __future__ import annotations
+
+import importlib.util
+from pathlib import Path
+
+
+MODULE = {module_name!r}
+SURFACE = {surface!r}
+
+
+def load_prototyping_module():
+    """Load the generated rapid-prototyping module without app installation."""
+    module_path = Path(__file__).resolve().parents[1] / "prototyping_modules" / f"{{MODULE}}.py"
+    spec = importlib.util.spec_from_file_location(f"generated_prototyping_module_{{MODULE}}", module_path)
+    module = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(module)
+    return module
+
+
+def test_prototyping_module_contract():
+    """Assert the generated rapid-prototyping module exposes its contract."""
+    module = load_prototyping_module()
+    contract = module.module_contract()
+    assert contract["module"] == MODULE
+    assert contract["surface"] == SURFACE
+    assert contract["ok"] is True
+    assert all(hasattr(module, name) for name in contract["expected_exports"])
+
+
+def test_prototyping_module_smoke():
+    """Assert the module's side-effect-free smoke test passes."""
+    module = load_prototyping_module()
+    result = module.smoke_test()
+    assert result["ok"] is True
+    assert result["module"] == MODULE
+    assert result["surface"] == SURFACE
+    assert result["checks"]
+
+
+def smoke_test():
+    """Run this generated test module in a side-effect-free way."""
+    test_prototyping_module_contract()
+    test_prototyping_module_smoke()
+    return {{
+        "format": "appgen.prototyping-module-generated-test-smoke.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "ok": True,
+        "tests": ("test_prototyping_module_contract", "test_prototyping_module_smoke"),
+    }}
+'''
+
+
 def _prototyping_text(schema: AppSchema, app_name: str) -> str:
     def sample_value(column: ColumnSchema):
         type_name = column.type_name.lower().split("(", 1)[0]
@@ -57902,6 +58176,8 @@ def _prototyping_text(schema: AppSchema, app_name: str) -> str:
 from __future__ import annotations
 
 from hashlib import sha1
+import importlib.util
+from pathlib import Path
 
 from flask import jsonify
 from flask_appbuilder import BaseView
@@ -57911,6 +58187,63 @@ from flask_appbuilder import expose
 APP_NAME = {app_name!r}
 PROTOTYPE_RESOURCES = {tuple(resources)!r}
 PROTOTYPE_STAGES = ("sketch", "clickable", "validated", "handoff")
+PROTOTYPING_MODULES = {PROTOTYPING_MODULES!r}
+
+
+def _load_generated_module(path, name):
+    spec = importlib.util.spec_from_file_location(name, path)
+    module = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(module)
+    return module
+
+
+def prototyping_module_file_manifest():
+    """Return independently importable generated rapid-prototyping module files."""
+    root = Path(__file__).resolve().parent
+    modules = []
+    for module_name in PROTOTYPING_MODULES:
+        path = root / "prototyping_modules" / f"{{module_name}}.py"
+        module = _load_generated_module(path, f"generated_prototyping_module_manifest_{{module_name}}")
+        contract = module.module_contract()
+        smoke = module.smoke_test()
+        modules.append({{
+            "module": module_name,
+            "surface": contract["surface"],
+            "path": f"app/prototyping_modules/{{module_name}}.py",
+            "ok": path.exists() and contract["ok"] and smoke["ok"],
+            "contract": contract["format"],
+            "smoke": smoke["format"],
+        }})
+    return {{
+        "format": "appgen.prototyping-module-file-manifest.v1",
+        "ok": all(item["ok"] for item in modules),
+        "modules": tuple(modules),
+        "side_effects": (),
+    }}
+
+
+def prototyping_module_test_file_manifest():
+    """Return generated tests for the rapid-prototyping module files."""
+    root = Path(__file__).resolve().parent
+    tests = []
+    for module_name in PROTOTYPING_MODULES:
+        path = root / "prototyping_module_tests" / f"test_{{module_name}}.py"
+        module = _load_generated_module(path, f"generated_prototyping_module_test_manifest_{{module_name}}")
+        smoke = module.smoke_test()
+        tests.append({{
+            "module": module_name,
+            "surface": smoke["surface"],
+            "path": f"app/prototyping_module_tests/test_{{module_name}}.py",
+            "ok": path.exists() and smoke["ok"],
+            "smoke": smoke["format"],
+        }})
+    return {{
+        "format": "appgen.prototyping-module-test-file-manifest.v1",
+        "ok": all(item["ok"] for item in tests),
+        "tests": tuple(tests),
+        "side_effects": (),
+    }}
 
 
 def prototype_catalog():
@@ -72955,6 +73288,14 @@ def validate_prototyping_artifacts() -> None:
     )
     if not all(item in contract for item in required):
         fail("rapid prototyping contract must expose mock screens, sample data, previews, experiments, backlog promotion, and release evidence")
+    if (
+        "PROTOTYPING_MODULES" not in contract
+        or "prototyping_module_file_manifest" not in contract
+        or "prototyping_module_test_file_manifest" not in contract
+        or "appgen.prototyping-module-file-manifest.v1" not in contract
+        or "appgen.prototyping-module-test-file-manifest.v1" not in contract
+    ):
+        fail("rapid prototyping contract must expose generated module and module-test manifests")
     template = (ROOT / "app" / "templates" / "appgen_prototyping.html").read_text()
     if "Rapid Prototyping" not in template or "Prototype JSON" not in template or "Release Gate JSON" not in template:
         fail("rapid prototyping cockpit must expose generated prototype catalog and release evidence")
