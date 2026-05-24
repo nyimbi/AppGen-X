@@ -3026,6 +3026,8 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     drop_gate = next(gate for gate in audit["gates"] if gate["id"] == "drop_snap_property_inspector")
     assert drop_gate["ok"] is True
     assert set(drop_gate["required_checks"]) <= set(drop_gate["passing_checks"])
+    assert drop_gate["passing_proposal"] == drop_gate["required_proposal"]
+    assert set(drop_gate["required_properties"]) <= set(drop_gate["passing_properties"])
     assert {"label", "help_text"} <= set(drop_gate["inspector_properties"])
     suggestion_gate = next(gate for gate in audit["gates"] if gate["id"] == "placement_suggestions")
     assert suggestion_gate["ok"] is True

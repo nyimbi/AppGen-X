@@ -17921,6 +17921,25 @@ def form_designer_release_audit(existing_paths: set[str] | None = None) -> dict:
         ("inspector_label_property", "label" in drop["property_inspector"]["properties"]),
         ("inspector_help_text_property", "help_text" in drop["property_inspector"]["properties"]),
     )
+    required_drop_proposal = {
+        "field": "generated_note",
+        "component": "TextBox",
+        "x": 2,
+        "y": 8,
+        "w": 6,
+        "h": 1,
+    }
+    passing_drop_proposal = {
+        key: drop["proposal"][key]
+        for key in required_drop_proposal
+        if drop["proposal"].get(key) == required_drop_proposal[key]
+    }
+    required_drop_properties = ("help_text", "label")
+    passing_drop_properties = tuple(
+        property_name
+        for property_name in required_drop_properties
+        if property_name in drop["property_inspector"]["properties"]
+    )
     required_drop_checks = tuple(check for check, _ in drop_checks)
     passing_drop_checks = tuple(check for check, ok in drop_checks if ok)
     valid_after_drop = validate_form_design(
@@ -18080,9 +18099,15 @@ def form_designer_release_audit(existing_paths: set[str] | None = None) -> dict:
         },
         {
             "id": "drop_snap_property_inspector",
-            "ok": set(required_drop_checks) <= set(passing_drop_checks),
+            "ok": set(required_drop_checks) <= set(passing_drop_checks)
+            and passing_drop_proposal == required_drop_proposal
+            and set(required_drop_properties) <= set(passing_drop_properties),
             "required_checks": required_drop_checks,
             "passing_checks": passing_drop_checks,
+            "required_proposal": required_drop_proposal,
+            "passing_proposal": passing_drop_proposal,
+            "required_properties": required_drop_properties,
+            "passing_properties": passing_drop_properties,
             "proposal": drop["proposal"],
             "inspector_properties": tuple(sorted(drop["property_inspector"]["properties"])),
         },
