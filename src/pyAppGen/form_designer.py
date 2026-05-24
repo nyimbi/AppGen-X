@@ -18157,6 +18157,27 @@ def form_designer_release_audit(existing_paths: set[str] | None = None) -> dict:
         )
         == expected_format
     )
+    required_rad_parity_state = {
+        "format": "appgen.rad-parity-workbench.v1",
+        "decision": "approved",
+        "blocking_gaps": (),
+    }
+    passing_rad_parity_state = {
+        key: rad_parity[key]
+        for key in required_rad_parity_state
+        if rad_parity.get(key) == required_rad_parity_state[key]
+    }
+    required_rad_nested_audit_state = (
+        ("lifecycle_replay", "appgen.platform-parity-lifecycle-replay.v1", "approved", ()),
+        ("requirement_audit", "appgen.platform-parity-requirement-audit.v1", "approved", ()),
+    )
+    passing_rad_nested_audit_state = tuple(
+        (surface, expected_format, expected_decision, expected_blocking_gaps)
+        for surface, expected_format, expected_decision, expected_blocking_gaps in required_rad_nested_audit_state
+        if rad_parity[surface]["format"] == expected_format
+        and rad_parity[surface]["decision"] == expected_decision
+        and rad_parity[surface]["blocking_gaps"] == expected_blocking_gaps
+    )
     gates = (
         {
             "id": "palette_breadth",
@@ -18308,11 +18329,17 @@ def form_designer_release_audit(existing_paths: set[str] | None = None) -> dict:
             and rad_parity["requirement_audit"]["ok"]
             and set(required_rad_parity_checks) <= rad_parity_passing_checks
             and set(required_rad_parity_formats) <= set(passing_rad_parity_formats)
+            and passing_rad_parity_state == required_rad_parity_state
+            and set(required_rad_nested_audit_state) <= set(passing_rad_nested_audit_state)
             and not rad_parity["blocking_gaps"],
             "required_checks": required_rad_parity_checks,
             "passing_checks": tuple(sorted(rad_parity_passing_checks)),
             "required_formats": required_rad_parity_formats,
             "passing_formats": passing_rad_parity_formats,
+            "required_state": required_rad_parity_state,
+            "passing_state": passing_rad_parity_state,
+            "required_nested_audit_state": required_rad_nested_audit_state,
+            "passing_nested_audit_state": passing_rad_nested_audit_state,
         },
     )
     ok = all(gate["ok"] for gate in gates)
