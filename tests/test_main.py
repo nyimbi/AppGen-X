@@ -3074,6 +3074,11 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     assert component_parity_gate["ok"] is True
     assert set(component_parity_gate["required_categories"]) <= set(component_parity_gate["passing_categories"])
     assert component_parity_gate["passing_component_count"] >= component_parity_gate["required_component_count"]
+    inspector_gate = next(
+        check for check in audit["rad_parity"]["checks"] if check["id"] == "object_inspector_parity"
+    )
+    assert inspector_gate["ok"] is True
+    assert set(inspector_gate["required_tabs"]) <= set(inspector_gate["passing_tabs"])
     assert rad_parity_workbench()["ok"] is True
     assert {
         "native_ui_parity_component_parity",

@@ -14712,6 +14712,8 @@ def rad_parity_workbench(existing_paths: set[str] | None = None) -> dict:
     )
     required_component_palette_categories = ("input", "calendar", "relationship", "media", "action")
     passing_component_palette_categories = tuple(sorted(set(palette_categories())))
+    required_inspector_tabs = ("Properties", "Events")
+    passing_inspector_tabs = tuple(object_inspector_contract()["tabs"])
     checks = (
         {
             "id": "native_ui_parity_component_parity",
@@ -14741,8 +14743,10 @@ def rad_parity_workbench(existing_paths: set[str] | None = None) -> dict:
         },
         {
             "id": "object_inspector_parity",
-            "ok": {"Properties", "Events"} <= set(object_inspector_contract()["tabs"])
+            "ok": set(required_inspector_tabs) <= set(passing_inspector_tabs)
             and object_inspector_workbench()["ok"],
+            "required_tabs": required_inspector_tabs,
+            "passing_tabs": passing_inspector_tabs,
             "evidence": {"contract": object_inspector_contract(), "workbench": object_inspector_workbench()},
         },
         {
