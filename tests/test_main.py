@@ -10417,6 +10417,34 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     )
     assert version_control.version_control_workbench({"app/version_control.py"})["ok"] is False
     assert version_control.version_control_release_gate({"app/version_control.py"})["ok"] is False
+    version_control_module_files = version_control.version_control_module_file_manifest()
+    version_control_module_tests = version_control.version_control_module_test_file_manifest()
+    assert version_control_module_files["format"] == "appgen.version-control-module-file-manifest.v1"
+    assert version_control_module_files["ok"] is True
+    assert version_control_module_tests["format"] == "appgen.version-control-module-test-file-manifest.v1"
+    assert version_control_module_tests["ok"] is True
+    assert {
+        "resource_catalog",
+        "snapshot_history",
+        "schema_diff",
+        "branch_plan",
+        "rollback_plan",
+        "version_control_release_workbench",
+    } == {item["surface"] for item in version_control_module_files["modules"]}
+    for item in version_control_module_files["modules"]:
+        module_path = output_dir / item["path"].replace("app/", "")
+        py_compile.compile(str(module_path), doraise=True)
+        module = _load_module(module_path, f"generated_version_control_module_{item['module']}")
+        assert module.module_contract()["ok"] is True
+        assert module.version_control_manifest_contract()["ok"] is True
+        assert module.run_version_control_operation()["ok"] is True
+        assert module.release_context()["ok"] is True
+        assert module.smoke_test()["ok"] is True
+    for item in version_control_module_tests["tests"]:
+        test_path = output_dir / item["path"].replace("app/", "")
+        py_compile.compile(str(test_path), doraise=True)
+        module = _load_module(test_path, f"generated_version_control_module_test_{item['module']}")
+        assert module.smoke_test()["ok"] is True
     assert {item["tool"] for item in devtools.devtool_catalog()} == {"vscode", "eclipse", "jetbrains"}
     assert devtools.vscode_launch_profile()["module"] == "flask"
     assert any(task["label"] == "AppGen quality" for task in devtools.vscode_tasks())

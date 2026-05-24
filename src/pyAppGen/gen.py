@@ -1965,6 +1965,27 @@ def write_version_control_file(output_dir, schema: AppSchema):
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
     (output_dir / "version_control.py").write_text(_version_control_text(schema))
+    write_version_control_module_files(output_dir)
+
+
+def write_version_control_module_files(output_dir):
+    """Write generated version-control modules and smoke tests."""
+    output_dir = Path(output_dir)
+    module_dir = output_dir / "version_control_modules"
+    test_dir = output_dir / "version_control_module_tests"
+    module_dir.mkdir(parents=True, exist_ok=True)
+    test_dir.mkdir(parents=True, exist_ok=True)
+    (module_dir / "__init__.py").write_text(_version_control_module_init_text(), encoding="utf-8")
+    (test_dir / "__init__.py").write_text(_version_control_module_test_init_text(), encoding="utf-8")
+    for module_name in VERSION_CONTROL_MODULES:
+        (module_dir / f"{module_name}.py").write_text(
+            _version_control_module_text(module_name),
+            encoding="utf-8",
+        )
+        (test_dir / f"test_{module_name}.py").write_text(
+            _version_control_module_test_text(module_name),
+            encoding="utf-8",
+        )
 
 
 def write_realtime_file(output_dir, schema: AppSchema):
@@ -2441,6 +2462,15 @@ COLLABORATION_MODULES = (
     "conflict_detection_module",
     "merge_queue_module",
     "collaboration_release_workbench_module",
+)
+
+VERSION_CONTROL_MODULES = (
+    "resource_catalog_module",
+    "snapshot_history_module",
+    "schema_diff_module",
+    "branch_plan_module",
+    "rollback_plan_module",
+    "version_control_release_workbench_module",
 )
 
 EVENT_MODULES = (
@@ -9251,6 +9281,254 @@ def smoke_test():
         "surface": SURFACE,
         "ok": True,
         "tests": ("test_collaboration_module_contract", "test_collaboration_module_smoke"),
+    }}
+'''
+
+
+def _version_control_module_init_text() -> str:
+    return (
+        '"""Generated version-control modules."""\n\n'
+        f"VERSION_CONTROL_MODULES = {VERSION_CONTROL_MODULES!r}\n"
+    )
+
+
+def _version_control_module_test_init_text() -> str:
+    modules = tuple(f"test_{name}" for name in VERSION_CONTROL_MODULES)
+    return (
+        '"""Generated version-control module tests."""\n\n'
+        f"VERSION_CONTROL_MODULE_TESTS = {modules!r}\n"
+    )
+
+
+def _version_control_surface(module_name: str) -> tuple[str, str]:
+    return {
+        "resource_catalog_module": ("resource_catalog", "version_resource_catalog"),
+        "snapshot_history_module": ("snapshot_history", "snapshot_manifest"),
+        "schema_diff_module": ("schema_diff", "diff_snapshots"),
+        "branch_plan_module": ("branch_plan", "branch_plan"),
+        "rollback_plan_module": ("rollback_plan", "rollback_plan"),
+        "version_control_release_workbench_module": ("version_control_release_workbench", "version_control_release_gate"),
+    }[module_name]
+
+
+def _version_control_module_text(module_name: str) -> str:
+    surface, operation = _version_control_surface(module_name)
+    return f'''"""Generated version-control module for {surface}."""
+
+from __future__ import annotations
+
+import importlib.util
+from pathlib import Path
+
+
+MODULE = {module_name!r}
+SURFACE = {surface!r}
+OPERATION = {operation!r}
+EXPECTED_EXPORTS = (
+    "module_contract",
+    "version_control_manifest_contract",
+    "run_version_control_operation",
+    "release_context",
+    "smoke_test",
+)
+
+
+def _version_control():
+    module_path = Path(__file__).resolve().parents[1] / "version_control.py"
+    spec = importlib.util.spec_from_file_location(f"generated_version_control_{{MODULE}}_version_control", module_path)
+    module = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(module)
+    return module
+
+
+def _assets():
+    return {{"app/version_control.py", "app/templates/appgen_version_control.html"}}
+
+
+def _sample_snapshots(version_control):
+    manifest = {{
+        "tables": ({{"name": "Book", "columns": ({{"name": "title", "type": "string"}},)}},),
+        "views": (),
+        "flows": (),
+    }}
+    changed = {{
+        "tables": ({{"name": "Book", "columns": ({{"name": "title", "type": "string"}}, {{"name": "edition", "type": "string"}})}},),
+        "views": (),
+        "flows": (),
+    }}
+    before = version_control.snapshot_manifest(manifest, author="module", message="baseline")
+    after = version_control.snapshot_manifest(changed, author="module", message="add edition")
+    return before, after
+
+
+def module_contract():
+    """Return this generated version-control module's export contract."""
+    available = tuple(name for name in EXPECTED_EXPORTS if name in globals())
+    return {{
+        "format": "appgen.version-control-module-contract.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "operation": OPERATION,
+        "ok": set(EXPECTED_EXPORTS) <= set(available),
+        "exports": available,
+        "expected_exports": EXPECTED_EXPORTS,
+        "side_effects": (),
+    }}
+
+
+def version_control_manifest_contract():
+    """Return generated version-control metadata owned by this module."""
+    version_control = _version_control()
+    catalog = version_control.version_resource_catalog()
+    return {{
+        "format": "appgen.version-control-module-manifest.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "ok": bool(catalog)
+        and any(item["resource"] == "manifest" for item in catalog)
+        and version_control.version_control_check(_assets())["ok"],
+        "catalog": catalog,
+        "resources": tuple(version_control.VERSION_RESOURCES),
+        "side_effects": (),
+    }}
+
+
+def run_version_control_operation():
+    """Run this module's side-effect-free version-control operation."""
+    version_control = _version_control()
+    before, after = _sample_snapshots(version_control)
+    if SURFACE == "resource_catalog":
+        operation = version_control.version_resource_catalog()
+        ok = bool(operation) and any(item["resource"] == "manifest" for item in operation)
+    elif SURFACE == "snapshot_history":
+        operation = (before, after)
+        ok = len(operation) == 2 and before["revision_id"] != after["revision_id"] and before["summary"]["tables"] == 1
+    elif SURFACE == "schema_diff":
+        operation = version_control.diff_snapshots(before, after)
+        ok = operation["change_count"] == 1 and operation["changes"][0]["kind"] == "field_added"
+    elif SURFACE == "branch_plan":
+        operation = version_control.branch_plan(before, "feature/module", author="module")
+        ok = operation["base_revision"] == before["revision_id"] and operation["branch"] == "feature/module" and bool(operation["branch_id"])
+    elif SURFACE == "rollback_plan":
+        operation = version_control.rollback_plan((before, after), before["revision_id"])
+        ok = operation["requires_review"] is True and operation["discarded_revisions"] == (after["revision_id"],)
+    else:
+        operation = {{
+            "release": version_control.version_control_release_gate(_assets()),
+            "workbench": version_control.version_control_workbench(_assets()),
+        }}
+        ok = operation["release"]["ok"] and operation["workbench"]["ok"]
+    return {{
+        "format": "appgen.version-control-module-operation.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "ok": ok,
+        "operation": operation,
+        "side_effects": (),
+    }}
+
+
+def release_context():
+    """Return release evidence used by this version-control module."""
+    version_control = _version_control()
+    return {{
+        "format": "appgen.version-control-module-release-context.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "ok": version_control.version_control_release_gate(_assets())["ok"] and version_control.version_control_workbench(_assets())["ok"],
+        "release": version_control.version_control_release_gate(_assets()),
+        "workbench": version_control.version_control_workbench(_assets()),
+        "side_effects": (),
+    }}
+
+
+def smoke_test():
+    """Run side-effect-free checks for this generated version-control module."""
+    contract = module_contract()
+    manifest = version_control_manifest_contract()
+    operation = run_version_control_operation()
+    release = release_context()
+    return {{
+        "format": "appgen.version-control-module-smoke-test.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "ok": contract["ok"]
+        and manifest["ok"]
+        and operation["ok"]
+        and release["ok"]
+        and not manifest["side_effects"]
+        and not operation["side_effects"]
+        and not release["side_effects"],
+        "contract": contract,
+        "manifest": manifest,
+        "operation": operation,
+        "release": release,
+        "checks": (
+            "module_contract_resolves",
+            "version_control_manifest_contract_ok",
+            "version_control_operation_ok",
+            "release_context_ok",
+            "no_side_effects",
+        ),
+    }}
+'''
+
+
+def _version_control_module_test_text(module_name: str) -> str:
+    surface, _operation = _version_control_surface(module_name)
+    return f'''"""Generated tests for the {surface} version-control module."""
+
+from __future__ import annotations
+
+import importlib.util
+from pathlib import Path
+
+
+MODULE = {module_name!r}
+SURFACE = {surface!r}
+
+
+def load_version_control_module():
+    """Load the generated version-control module without app installation."""
+    module_path = Path(__file__).resolve().parents[1] / "version_control_modules" / f"{{MODULE}}.py"
+    spec = importlib.util.spec_from_file_location(f"generated_version_control_module_{{MODULE}}", module_path)
+    module = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(module)
+    return module
+
+
+def test_version_control_module_contract():
+    """Assert the generated version-control module exposes its contract."""
+    module = load_version_control_module()
+    contract = module.module_contract()
+    assert contract["module"] == MODULE
+    assert contract["surface"] == SURFACE
+    assert contract["ok"] is True
+    assert all(hasattr(module, name) for name in contract["expected_exports"])
+
+
+def test_version_control_module_smoke():
+    """Assert the module's side-effect-free smoke test passes."""
+    module = load_version_control_module()
+    result = module.smoke_test()
+    assert result["ok"] is True
+    assert result["module"] == MODULE
+    assert result["surface"] == SURFACE
+    assert result["checks"]
+
+
+def smoke_test():
+    """Run this generated test module in a side-effect-free way."""
+    test_version_control_module_contract()
+    test_version_control_module_smoke()
+    return {{
+        "format": "appgen.version-control-module-generated-test-smoke.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "ok": True,
+        "tests": ("test_version_control_module_contract", "test_version_control_module_smoke"),
     }}
 '''
 
@@ -56978,6 +57256,73 @@ from flask_appbuilder import expose
 
 
 VERSION_RESOURCES = {resources!r}
+VERSION_CONTROL_MODULES = (
+    "resource_catalog_module",
+    "snapshot_history_module",
+    "schema_diff_module",
+    "branch_plan_module",
+    "rollback_plan_module",
+    "version_control_release_workbench_module",
+)
+
+
+def _load_generated_module(module_path, module_name):
+    """Load a generated version-control module without installing the app."""
+    spec = importlib.util.spec_from_file_location(module_name, module_path)
+    module = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(module)
+    return module
+
+
+def version_control_module_file_manifest():
+    """Return independently importable generated version-control module files."""
+    root = Path(__file__).resolve().parent
+    modules = []
+    for module_name in VERSION_CONTROL_MODULES:
+        module_path = root / "version_control_modules" / f"{{module_name}}.py"
+        module = _load_generated_module(module_path, f"generated_version_control_module_{{module_name}}")
+        contract = module.module_contract()
+        modules.append(
+            {{
+                "module": module_name,
+                "surface": contract["surface"],
+                "path": f"app/version_control_modules/{{module_name}}.py",
+                "exists": module_path.exists(),
+                "ok": contract["ok"] and module.smoke_test()["ok"],
+                "exports": contract["exports"],
+            }}
+        )
+    return {{
+        "format": "appgen.version-control-module-file-manifest.v1",
+        "ok": len(modules) == len(VERSION_CONTROL_MODULES) and all(item["ok"] and item["exists"] for item in modules),
+        "modules": tuple(modules),
+    }}
+
+
+def version_control_module_test_file_manifest():
+    """Return generated tests for version-control module files."""
+    root = Path(__file__).resolve().parent
+    tests = []
+    for module_name in VERSION_CONTROL_MODULES:
+        test_path = root / "version_control_module_tests" / f"test_{{module_name}}.py"
+        module = _load_generated_module(test_path, f"generated_version_control_module_test_{{module_name}}")
+        result = module.smoke_test()
+        tests.append(
+            {{
+                "module": f"test_{{module_name}}",
+                "surface": result["surface"],
+                "path": f"app/version_control_module_tests/test_{{module_name}}.py",
+                "exists": test_path.exists(),
+                "ok": result["ok"],
+                "tests": result["tests"],
+            }}
+        )
+    return {{
+        "format": "appgen.version-control-module-test-file-manifest.v1",
+        "ok": len(tests) == len(VERSION_CONTROL_MODULES) and all(item["ok"] and item["exists"] for item in tests),
+        "tests": tuple(tests),
+    }}
 
 
 def version_resource_catalog():
@@ -68880,6 +69225,8 @@ def validate_version_control_artifacts() -> None:
         fail("version-control contract must expose snapshots, diffs, and rollback plans")
     if "branch_plan" not in contract or "version_control_check" not in contract or "version_control_release_gate" not in contract or "version_control_workbench" not in contract:
         fail("version-control contract must expose branch, readiness, workbench, and release-gate helpers")
+    if "version_control_module_file_manifest" not in contract or "version_control_module_test_file_manifest" not in contract or "VERSION_CONTROL_MODULES" not in contract:
+        fail("version-control contract must expose generated module manifests and module-test manifests")
     if "appgen.version-control-workbench.v1" not in contract or '@expose("/workbench.json")' not in contract:
         fail("version-control contract must expose a versioned workbench route")
     template = (ROOT / "app" / "templates" / "appgen_version_control.html").read_text()
