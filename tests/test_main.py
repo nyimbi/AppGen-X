@@ -2969,6 +2969,24 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     } <= set(generated_runtime_gate["passing_checks"])
     assert audit["rad_parity"]["format"] == "appgen.rad-parity-workbench.v1"
     assert audit["rad_parity"]["ok"] is True
+    rad_parity_gate = next(gate for gate in audit["gates"] if gate["id"] == "rad_parity_workbench")
+    assert rad_parity_gate["ok"] is True
+    assert {
+        "native_ui_parity_component_parity",
+        "built_in_component_usability",
+        "pascal_runtime_and_dfm_streaming",
+        "pascal_runtime_workbench",
+        "object_inspector_parity",
+        "livebindings_designer",
+        "firedac_datasnap_radserver_interbase_tooling",
+        "design_time_package_installation",
+        "mobile_native_device_api_coverage",
+        "cross_target_animation_effects_3d_depth",
+        "third_party_component_ecosystem",
+        "platform_parity_lifecycle_replay",
+        "platform_parity_requirement_audit",
+        "artifact_contract",
+    } <= set(rad_parity_gate["passing_checks"])
     assert rad_parity_workbench()["ok"] is True
     assert {
         "native_ui_parity_component_parity",

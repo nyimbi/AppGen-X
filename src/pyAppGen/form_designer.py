@@ -17137,6 +17137,23 @@ def form_designer_release_audit(existing_paths: set[str] | None = None) -> dict:
         "generated_mobile_device_runtime",
     )
     rad_parity = rad_parity_workbench(existing)
+    rad_parity_passing_checks = {check["id"] for check in rad_parity["checks"] if check["ok"]}
+    required_rad_parity_checks = (
+        "native_ui_parity_component_parity",
+        "built_in_component_usability",
+        "pascal_runtime_and_dfm_streaming",
+        "pascal_runtime_workbench",
+        "object_inspector_parity",
+        "livebindings_designer",
+        "firedac_datasnap_radserver_interbase_tooling",
+        "design_time_package_installation",
+        "mobile_native_device_api_coverage",
+        "cross_target_animation_effects_3d_depth",
+        "third_party_component_ecosystem",
+        "platform_parity_lifecycle_replay",
+        "platform_parity_requirement_audit",
+        "artifact_contract",
+    )
     gates = (
         {
             "id": "palette_breadth",
@@ -17182,8 +17199,14 @@ def form_designer_release_audit(existing_paths: set[str] | None = None) -> dict:
         },
         {
             "id": "rad_parity_workbench",
-            "ok": rad_parity["ok"],
-            "checks": tuple(check["id"] for check in rad_parity["checks"]),
+            "ok": rad_parity["ok"]
+            and rad_parity["format"] == "appgen.rad-parity-workbench.v1"
+            and rad_parity["lifecycle_replay"]["ok"]
+            and rad_parity["requirement_audit"]["ok"]
+            and set(required_rad_parity_checks) <= rad_parity_passing_checks
+            and not rad_parity["blocking_gaps"],
+            "required_checks": required_rad_parity_checks,
+            "passing_checks": tuple(sorted(rad_parity_passing_checks)),
         },
     )
     ok = all(gate["ok"] for gate in gates)
