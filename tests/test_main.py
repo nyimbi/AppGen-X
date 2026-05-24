@@ -168,6 +168,7 @@ from pyAppGen.form_designer import inspector_invoke_component_handler
 from pyAppGen.form_designer import inspector_binding_designer_bridge_contract
 from pyAppGen.form_designer import inspector_register_custom_designer
 from pyAppGen.form_designer import inspector_rename_event_handler
+from pyAppGen.form_designer import object_inspector_readiness_contract
 from pyAppGen.form_designer import object_inspector_workbench
 from pyAppGen.form_designer import data_relationship_lookup_lifecycle_replay_contract
 from pyAppGen.form_designer import data_tooling_actionable_operations
@@ -1412,6 +1413,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "handler_action_registry",
         "cross_handler_invocation_policy",
         "actionable_editor_operations",
+        "inspector_readiness_contract",
     } == {check["id"] for check in inspector_workbench["checks"]}
     assert all("apply_change" in workflow["workflow"] for workflow in inspector_workbench["property_edit_workflows"])
     assert all("update_component_reference" in workflow["workflow"] for workflow in inspector_workbench["event_edit_workflows"])
@@ -1535,6 +1537,31 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     assert inspector_workbench["actionable_operations"]["property_edit"]["ok"] is True
     assert inspector_workbench["actionable_operations"]["event_rename"]["binding"]["handler"] == "button_customer_click"
     assert inspector_workbench["actionable_operations"]["handler_invoke"]["ok"] is True
+    inspector_readiness = object_inspector_readiness_contract()
+    assert inspector_readiness["format"] == "appgen.object-inspector-readiness-contract.v1"
+    assert inspector_readiness["ok"] is True
+    assert {
+        "register_editor_metadata",
+        "validate_property_and_event_editors",
+        "run_component_and_custom_designers",
+        "replay_state_and_design_surface",
+        "bridge_bindings_and_handlers",
+        "prove_lifecycle_and_round_trip",
+    } == {item["phase"] for item in inspector_readiness["phases"]}
+    assert {
+        "editor_metadata_ready",
+        "property_event_ready",
+        "component_custom_designer_ready",
+        "state_design_surface_ready",
+        "binding_handler_ready",
+        "lifecycle_round_trip_ready",
+        "operation_surface_ready",
+        "phase_order_ready",
+    } == {check["id"] for check in inspector_readiness["checks"]}
+    assert inspector_readiness["final_state"]["component_count"] == len(inspector_workbench["contracts"])
+    assert inspector_readiness["final_state"]["round_trips"] == len(inspector_workbench["contracts"])
+    assert inspector_workbench["readiness"]["ok"] is True
+    assert inspector_workbench["readiness"]["final_state"]["custom_designer_hooks"] > 0
     binding_graph = livebindings_graph_contract()
     assert binding_graph["format"] == "appgen.livebindings-graph.v1"
     assert {"dataset", "field", "control", "expression"} <= {node["kind"] for node in binding_graph["nodes"]}
@@ -13337,6 +13364,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "handler_action_registry",
         "cross_handler_invocation_policy",
         "actionable_editor_operations",
+        "inspector_readiness_contract",
     } == {check["id"] for check in generated_inspector["checks"]}
     generated_property_edit = form_designer.inspector_apply_property_edit(
         {"component": "TextBox", "props": {"label": "Name"}},
@@ -13486,6 +13514,31 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "metadata_round_trip_before_release",
         "side_effect_guards",
     } <= {check["id"] for check in generated_inspector["editor_lifecycle_replay"]["checks"] if check["ok"]}
+    generated_inspector_readiness = form_designer.object_inspector_readiness_contract()
+    assert generated_inspector_readiness["format"] == "appgen.generated-object-inspector-readiness-contract.v1"
+    assert generated_inspector_readiness["ok"] is True
+    assert {
+        "register_editor_metadata",
+        "validate_property_and_event_editors",
+        "run_component_and_custom_designers",
+        "replay_state_and_design_surface",
+        "bridge_bindings_and_handlers",
+        "prove_lifecycle_and_round_trip",
+    } == {item["phase"] for item in generated_inspector_readiness["phases"]}
+    assert {
+        "editor_metadata_ready",
+        "property_event_ready",
+        "component_custom_designer_ready",
+        "state_design_surface_ready",
+        "binding_handler_ready",
+        "lifecycle_round_trip_ready",
+        "operation_surface_ready",
+        "phase_order_ready",
+    } == {check["id"] for check in generated_inspector_readiness["checks"]}
+    assert generated_inspector_readiness["final_state"]["component_count"] == len(generated_inspector["contracts"])
+    assert generated_inspector_readiness["final_state"]["round_trips"] == len(generated_inspector["contracts"])
+    assert generated_inspector["readiness"]["ok"] is True
+    assert generated_inspector["readiness"]["final_state"]["custom_designer_hooks"] > 0
     generated_usability = form_designer.component_usability_workbench()
     assert generated_usability["format"] == "appgen.generated-component-usability-workbench.v1"
     assert generated_usability["ok"] is True

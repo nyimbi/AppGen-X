@@ -242,6 +242,11 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   privacy/permission review, simulator fixtures, bridge/component binding,
   fallback and lifecycle handling, runtime replay, and designer/capability
   replay as one ordered path in both package and generated-app workbenches.
+- Object Inspector work now exposes a readiness contract that proves editor
+  metadata registration, property/event editor validation, component-editor
+  transactions, custom designer lifecycle, state and design-surface replay,
+  binding/handler routing, and metadata round-tripping as one ordered path in
+  both package and generated-app workbenches.
 - Event-runtime guidance now exposes a first-match developer choice algorithm:
   ordinary business, ERP, workflow, chatbot, agent, integration, and PBC event
   handling generate the AppGen-X event contract with `stream_processor`

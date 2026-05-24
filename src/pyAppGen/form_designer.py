@@ -5747,6 +5747,173 @@ def inspector_editor_lifecycle_replay_contract(components: tuple[str, ...] = ())
     }
 
 
+def object_inspector_readiness_contract(components: tuple[str, ...] = ()) -> dict:
+    """Prove the Object Inspector path as one ordered readiness contract."""
+    selected = components or (
+        "TextBox",
+        "Grid",
+        "Rectangle",
+        "StyleBook",
+        "GestureManager",
+        "Viewport3D",
+        "DatabaseConnection",
+    )
+    contracts = tuple(object_inspector_contract(component) for component in selected)
+    editor_registries = tuple(inspector_editor_registry(component) for component in selected)
+    property_pipelines = tuple(inspector_property_value_pipeline_contract(component) for component in selected)
+    event_signatures = tuple(inspector_event_handler_signature_contract(component) for component in selected)
+    component_transactions = tuple(inspector_component_editor_transaction(component) for component in selected)
+    custom_lifecycle = tuple(inspector_custom_designer_lifecycle_contract(component) for component in selected)
+    state_restore = inspector_state_restore_workflow()
+    multi_select = inspector_multi_select_contract(tuple(selected[:3]))
+    design_surface_replay = inspector_design_surface_transaction_replay_contract(selected)
+    custom_registration_replay = inspector_custom_designer_registration_replay_contract(selected)
+    editor_lifecycle_replay = inspector_editor_lifecycle_replay_contract(selected)
+    round_trips = tuple(inspector_round_trip_contract(component) for component in selected)
+    binding_bridge = inspector_binding_designer_bridge_contract()
+    action_registry = inspector_action_registry_contract("Button")
+    cross_handler = inspector_cross_handler_invocation_contract("Button")
+    property_edit = inspector_apply_property_edit({"component": "TextBox", "props": {"label": "Name"}}, "label", "Customer")
+    event_create = inspector_create_event_handler("Button", "OnClick")
+    event_rename = inspector_rename_event_handler(event_create["binding"], "button_customer_click")
+    handler_invoke = inspector_invoke_component_handler(
+        "save_and_close_button_onclick",
+        "Button",
+        "OnClick",
+        {"sender": "save_and_close_button", "transaction": "current", "component_tree": "InvoiceForm"},
+    )
+    component_editor = inspector_execute_component_editor("Grid", "edit_columns", selection=("customer_grid",))
+    custom_designer = inspector_register_custom_designer("Grid", "selection_handles")
+    phases = (
+        {
+            "phase": "register_editor_metadata",
+            "pipeline": tuple(contract["component"] for contract in contracts)
+            + tuple(editor["editor"] for registry in editor_registries for editor in registry["property_editors"]),
+            "ok": bool(contracts)
+            and all(contract["property_editors"] and contract["event_editors"] for contract in contracts)
+            and all(registry["property_editors"] and registry["event_editors"] and not registry["side_effects"] for registry in editor_registries),
+        },
+        {
+            "phase": "validate_property_and_event_editors",
+            "pipeline": tuple(stage for contract in property_pipelines for item in contract["pipelines"] for stage in item["stages"])
+            + tuple(stage for contract in event_signatures for item in contract["handlers"] for stage in item["pipeline"]),
+            "ok": all(contract["ok"] and not contract["side_effects"] for contract in property_pipelines)
+            and all(contract["ok"] and not contract["side_effects"] for contract in event_signatures)
+            and all(any("commit_change" in item["stages"] for item in contract["pipelines"]) for contract in property_pipelines)
+            and all(any("rename_references" in item["pipeline"] for item in contract["handlers"]) for contract in event_signatures),
+        },
+        {
+            "phase": "run_component_and_custom_designers",
+            "pipeline": tuple(step for contract in component_transactions for step in contract["transaction"])
+            + tuple(step for contract in custom_lifecycle for item in contract["lifecycle"] for step in item["lifecycle"])
+            + tuple(item["phase"] for item in custom_registration_replay["replay"]),
+            "ok": all({"snapshot_design", "apply_change", "record_undo"} <= set(contract["transaction"]) for contract in component_transactions)
+            and all(contract["ok"] and not contract["side_effects"] for contract in custom_lifecycle)
+            and custom_registration_replay["ok"]
+            and "custom_designers_registered_before_activation" in custom_registration_replay["guards"],
+        },
+        {
+            "phase": "replay_state_and_design_surface",
+            "pipeline": state_restore["workflow"]
+            + tuple(operation["op"] for operation in multi_select["operations"])
+            + tuple(item["phase"] for item in design_surface_replay["replay"]),
+            "ok": "restore_selected_tab" in state_restore["workflow"]
+            and multi_select["ok"]
+            and design_surface_replay["ok"]
+            and {"selection_before_edit", "event_references_sync_after_rename"} <= set(design_surface_replay["guards"]),
+        },
+        {
+            "phase": "bridge_bindings_and_handlers",
+            "pipeline": tuple(item["phase"] for item in binding_bridge["replay"])
+            + tuple(action["action"] for action in action_registry["actions"])
+            + tuple(route["route"][-1] for route in cross_handler["routes"]),
+            "ok": binding_bridge["ok"]
+            and {"inspector_property_commit", "binding_link_commit", "runtime_wiring_refresh"} <= {item["phase"] for item in binding_bridge["replay"]}
+            and action_registry["ok"]
+            and cross_handler["ok"]
+            and handler_invoke["ok"],
+        },
+        {
+            "phase": "prove_lifecycle_and_round_trip",
+            "pipeline": tuple(item["phase"] for item in editor_lifecycle_replay["replay"])
+            + tuple(contract["exported"]["component"] for contract in round_trips),
+            "ok": editor_lifecycle_replay["ok"]
+            and all(contract["ok"] and contract["exported"] == contract["imported"] for contract in round_trips)
+            and {"metadata_round_trips_before_release", "editor_lifecycle_has_no_side_effects"} <= set(editor_lifecycle_replay["guards"]),
+        },
+    )
+    checks = (
+        {"id": "editor_metadata_ready", "ok": phases[0]["ok"], "evidence": {"contracts": contracts, "registries": editor_registries}},
+        {"id": "property_event_ready", "ok": phases[1]["ok"], "evidence": {"properties": property_pipelines, "events": event_signatures}},
+        {"id": "component_custom_designer_ready", "ok": phases[2]["ok"], "evidence": {"component_transactions": component_transactions, "custom_lifecycle": custom_lifecycle, "custom_registration": custom_registration_replay}},
+        {"id": "state_design_surface_ready", "ok": phases[3]["ok"], "evidence": {"state_restore": state_restore, "multi_select": multi_select, "design_surface": design_surface_replay}},
+        {"id": "binding_handler_ready", "ok": phases[4]["ok"], "evidence": {"binding_bridge": binding_bridge, "action_registry": action_registry, "cross_handler": cross_handler, "handler_invoke": handler_invoke}},
+        {"id": "lifecycle_round_trip_ready", "ok": phases[5]["ok"], "evidence": {"lifecycle": editor_lifecycle_replay, "round_trips": round_trips}},
+        {
+            "id": "operation_surface_ready",
+            "ok": property_edit["ok"]
+            and event_create["ok"]
+            and event_rename["ok"]
+            and handler_invoke["ok"]
+            and component_editor["ok"]
+            and custom_designer["ok"]
+            and not property_edit["side_effects"]
+            and not event_create["side_effects"]
+            and not event_rename["side_effects"]
+            and not handler_invoke["side_effects"]
+            and not component_editor["side_effects"]
+            and not custom_designer["side_effects"],
+            "evidence": {
+                "property_edit": property_edit,
+                "event_create": event_create,
+                "event_rename": event_rename,
+                "handler_invoke": handler_invoke,
+                "component_editor": component_editor,
+                "custom_designer": custom_designer,
+            },
+        },
+        {
+            "id": "phase_order_ready",
+            "ok": tuple(item["phase"] for item in phases)
+            == (
+                "register_editor_metadata",
+                "validate_property_and_event_editors",
+                "run_component_and_custom_designers",
+                "replay_state_and_design_surface",
+                "bridge_bindings_and_handlers",
+                "prove_lifecycle_and_round_trip",
+            ),
+            "evidence": tuple(item["phase"] for item in phases),
+        },
+    )
+    return {
+        "format": "appgen.object-inspector-readiness-contract.v1",
+        "ok": all(phase["ok"] for phase in phases) and all(check["ok"] for check in checks),
+        "components": selected,
+        "phases": phases,
+        "checks": checks,
+        "final_state": {
+            "component_count": len(selected),
+            "property_editors": sum(len(contract["property_editors"]) for contract in contracts),
+            "event_editors": sum(len(contract["event_editors"]) for contract in contracts),
+            "component_editor_transactions": len(component_transactions),
+            "custom_designer_hooks": custom_registration_replay["final_state"]["registered_hooks"],
+            "round_trips": sum(1 for contract in round_trips if contract["ok"]),
+            "handler_routes": len(cross_handler["routes"]),
+        },
+        "guards": (
+            "metadata_before_editor_validation",
+            "property_and_event_validation_before_design_surface_replay",
+            "component_transactions_before_custom_registration_claim",
+            "state_restore_before_binding_bridge",
+            "binding_bridge_before_release_claim",
+            "side_effect_free_readiness",
+        ),
+        "side_effects": (),
+        "blocking_gaps": tuple(check for check in checks if not check["ok"]),
+    }
+
+
 def object_inspector_workbench() -> dict:
     """Prove property, event, component-editor, and custom-designer coverage."""
     sample_components = (
@@ -5797,6 +5964,7 @@ def object_inspector_workbench() -> dict:
     inspector_binding_bridge = inspector_binding_designer_bridge_contract()
     action_registry = inspector_action_registry_contract("Button")
     cross_handler_invocation = inspector_cross_handler_invocation_contract("Button")
+    readiness = object_inspector_readiness_contract(sample_components)
     property_edit_operation = inspector_apply_property_edit(
         {"component": "TextBox", "props": {"label": "Name"}},
         "label",
@@ -6074,6 +6242,23 @@ def object_inspector_workbench() -> dict:
                 "custom_designer": custom_designer_operation,
             },
         },
+        {
+            "id": "inspector_readiness_contract",
+            "ok": readiness["ok"]
+            and {
+                "editor_metadata_ready",
+                "property_event_ready",
+                "component_custom_designer_ready",
+                "state_design_surface_ready",
+                "binding_handler_ready",
+                "lifecycle_round_trip_ready",
+                "operation_surface_ready",
+                "phase_order_ready",
+            }
+            <= {check["id"] for check in readiness["checks"] if check["ok"]}
+            and not readiness["side_effects"],
+            "evidence": readiness,
+        },
     )
     ok = all(check["ok"] for check in checks)
     return {
@@ -6113,6 +6298,7 @@ def object_inspector_workbench() -> dict:
         "inspector_binding_bridge": inspector_binding_bridge,
         "action_registry": action_registry,
         "cross_handler_invocation": cross_handler_invocation,
+        "readiness": readiness,
         "actionable_operations": {
             "property_edit": property_edit_operation,
             "event_create": event_create_operation,
