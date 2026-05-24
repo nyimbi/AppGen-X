@@ -534,6 +534,9 @@ def test_ideas_release_audit_maps_original_roadmap_items(
         "section_coverage",
         "generation_smoke",
     } == {gate["id"] for gate in audit["gates"]}
+    palette_gate = next(gate for gate in audit["gates"] if gate["id"] == "palette_breadth")
+    assert palette_gate["ok"] is True
+    assert set(palette_gate["required_categories"]) <= set(palette_gate["passing_categories"])
     assert audit["generation_smoke"]["ok"] is True
     smoke = ideas_generation_smoke_audit()
     assert smoke["format"] == "appgen.ideas-generation-smoke-audit.v1"

@@ -17389,6 +17389,19 @@ def form_designer_release_audit(existing_paths: set[str] | None = None) -> dict:
     )
     required_artifacts = ("app/form_designer.py", "app/templates/appgen_form_designer.html")
     passing_artifacts = tuple(sorted(set(required_artifacts) & existing))
+    required_palette_categories = (
+        "input",
+        "calendar",
+        "relationship",
+        "media",
+        "action",
+        "data",
+        "menu",
+        "mobile",
+        "effects",
+        "three_d",
+    )
+    passing_palette_categories = tuple(sorted(set(palette_categories())))
     design = form_design()
     matrix = field_component_matrix()
     drop = snap_drop("TextBox", 2.3, 7.7, field="generated_note")
@@ -17437,7 +17450,9 @@ def form_designer_release_audit(existing_paths: set[str] | None = None) -> dict:
     gates = (
         {
             "id": "palette_breadth",
-            "ok": {"input", "calendar", "relationship", "media", "action", "data", "menu", "mobile", "effects", "three_d"} <= set(palette_categories()),
+            "ok": set(required_palette_categories) <= set(passing_palette_categories),
+            "required_categories": required_palette_categories,
+            "passing_categories": passing_palette_categories,
         },
         {
             "id": "canvas_contract",
