@@ -3033,6 +3033,9 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     assert suggestion_gate["ok"] is True
     assert set(suggestion_gate["required_fields"]) <= set(suggestion_gate["passing_fields"])
     assert set(suggestion_gate["required_mappings"]) <= set(suggestion_gate["passing_mappings"])
+    assert set(suggestion_gate["required_drops"]) <= set(suggestion_gate["passing_drops"])
+    assert set(suggestion_gate["required_validations"]) <= set(suggestion_gate["passing_validations"])
+    assert ("phone", "TextBox", 0, 6, 6, 1) in suggestion_gate["passing_drops"]
     overlap_gate = next(gate for gate in audit["gates"] if gate["id"] == "overlap_guardrails")
     assert overlap_gate["ok"] is True
     assert set(overlap_gate["required_checks"]) <= set(overlap_gate["passing_checks"])

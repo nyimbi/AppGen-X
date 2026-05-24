@@ -17958,6 +17958,43 @@ def form_designer_release_audit(existing_paths: set[str] | None = None) -> dict:
         if column.name not in placed_fields and column.name != "id"
     )
     passing_suggestion_mappings = tuple((item["field"], item["component"]) for item in suggestions)
+    required_suggestion_drop_specs = []
+    required_suggestion_y = max(item["y"] + item["h"] for item in design["components"])
+    for column in schema.table(design["table"]).columns:
+        if column.name not in placed_fields and column.name != "id":
+            component = _component_for_type(column.type_name)
+            size = COMPONENTS[component]["default_size"]
+            required_suggestion_drop_specs.append(
+                (column.name, component, 0, required_suggestion_y, size["w"], size["h"])
+            )
+            required_suggestion_y += size["h"]
+    required_suggestion_drops = tuple(required_suggestion_drop_specs)
+    passing_suggestion_drops = tuple(
+        (
+            item["drop"]["field"],
+            item["drop"]["component"],
+            item["drop"]["x"],
+            item["drop"]["y"],
+            item["drop"]["w"],
+            item["drop"]["h"],
+        )
+        for item in suggestions
+        if (
+            item["drop"]["field"],
+            item["drop"]["component"],
+            item["drop"]["x"],
+            item["drop"]["y"],
+            item["drop"]["w"],
+            item["drop"]["h"],
+        )
+        in required_suggestion_drops
+    )
+    required_suggestion_validations = tuple(field for field, *_ in required_suggestion_drops)
+    passing_suggestion_validations = tuple(
+        item["field"]
+        for item in suggestions
+        if validate_form_design(apply_drop(design, item["drop"]))["ok"]
+    )
     overlap_case = tuple(design["components"]) + (
         {"field": "duplicate_name", "component": "TextBox", "x": 0, "y": 0, "w": 6, "h": 1},
     )
@@ -18114,11 +18151,17 @@ def form_designer_release_audit(existing_paths: set[str] | None = None) -> dict:
         {
             "id": "placement_suggestions",
             "ok": set(required_suggestion_fields) <= set(passing_suggestion_fields)
-            and set(required_suggestion_mappings) <= set(passing_suggestion_mappings),
+            and set(required_suggestion_mappings) <= set(passing_suggestion_mappings)
+            and set(required_suggestion_drops) <= set(passing_suggestion_drops)
+            and set(required_suggestion_validations) <= set(passing_suggestion_validations),
             "required_fields": required_suggestion_fields,
             "passing_fields": passing_suggestion_fields,
             "required_mappings": required_suggestion_mappings,
             "passing_mappings": passing_suggestion_mappings,
+            "required_drops": required_suggestion_drops,
+            "passing_drops": passing_suggestion_drops,
+            "required_validations": required_suggestion_validations,
+            "passing_validations": passing_suggestion_validations,
             "suggestions": suggestions,
         },
         {
