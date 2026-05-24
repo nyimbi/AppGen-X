@@ -2527,6 +2527,15 @@ DEVTOOLS_MODULES = (
     "devtools_release_workbench_module",
 )
 
+PROJECT_MANAGEMENT_MODULES = (
+    "provider_catalog_module",
+    "backlog_template_module",
+    "sprint_release_module",
+    "traceability_module",
+    "provider_export_module",
+    "project_management_release_workbench_module",
+)
+
 
 def write_pbc_runtime_file(output_dir, schema: AppSchema):
     """Write generated composable capability runtime helpers."""
@@ -9542,6 +9551,241 @@ def smoke_test():
 '''
 
 
+def _project_management_module_init_text() -> str:
+    return (
+        '"""Generated project-management modules."""\n\n'
+        f"PROJECT_MANAGEMENT_MODULES = {PROJECT_MANAGEMENT_MODULES!r}\n"
+    )
+
+
+def _project_management_module_test_init_text() -> str:
+    modules = tuple(f"test_{name}" for name in PROJECT_MANAGEMENT_MODULES)
+    return (
+        '"""Generated project-management module tests."""\n\n'
+        f"PROJECT_MANAGEMENT_MODULE_TESTS = {modules!r}\n"
+    )
+
+
+def _project_management_surface(module_name: str) -> tuple[str, str]:
+    return {
+        "provider_catalog_module": ("provider_catalog", "provider_catalog"),
+        "backlog_template_module": ("backlog_templates", "backlog_templates"),
+        "sprint_release_module": ("sprint_release", "sprint_plan"),
+        "traceability_module": ("traceability", "traceability_matrix"),
+        "provider_export_module": ("provider_export", "export_plan"),
+        "project_management_release_workbench_module": ("project_management_release_workbench", "project_management_release_gate"),
+    }[module_name]
+
+
+def _project_management_module_text(module_name: str) -> str:
+    surface, operation = _project_management_surface(module_name)
+    return f'''"""Generated project-management module for {surface}."""
+
+from __future__ import annotations
+
+import importlib.util
+from pathlib import Path
+
+
+MODULE = {module_name!r}
+SURFACE = {surface!r}
+OPERATION = {operation!r}
+EXPECTED_EXPORTS = (
+    "module_contract",
+    "project_management_manifest_contract",
+    "run_project_management_operation",
+    "release_context",
+    "smoke_test",
+)
+
+
+def _project_management():
+    module_path = Path(__file__).resolve().parents[1] / "project_management.py"
+    spec = importlib.util.spec_from_file_location(f"generated_project_management_{{MODULE}}_project_management", module_path)
+    module = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(module)
+    return module
+
+
+def _assets():
+    return {{"app/project_management.py", "app/templates/appgen_project_management.html"}}
+
+
+def module_contract():
+    """Return this generated project-management module's export contract."""
+    available = tuple(name for name in EXPECTED_EXPORTS if name in globals())
+    return {{
+        "format": "appgen.project-management-module-contract.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "operation": OPERATION,
+        "ok": set(EXPECTED_EXPORTS) <= set(available),
+        "exports": available,
+        "expected_exports": EXPECTED_EXPORTS,
+        "side_effects": (),
+    }}
+
+
+def project_management_manifest_contract():
+    """Return generated project-management metadata owned by this module."""
+    project_management = _project_management()
+    providers = project_management.provider_catalog({{}})
+    return {{
+        "format": "appgen.project-management-module-manifest.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "ok": bool(project_management.backlog_templates())
+        and bool(project_management.traceability_matrix())
+        and {{"jira", "github", "azure_boards", "gitlab"}} <= {{item["provider"] for item in providers}}
+        and project_management.project_management_check(_assets())["ok"],
+        "providers": providers,
+        "capabilities": project_management.project_capabilities(),
+        "side_effects": (),
+    }}
+
+
+def run_project_management_operation():
+    """Run this module's side-effect-free project-management operation."""
+    project_management = _project_management()
+    if SURFACE == "provider_catalog":
+        operation = project_management.provider_catalog({{}})
+        ok = {{"jira", "github", "azure_boards", "gitlab"}} <= {{item["provider"] for item in operation}}
+    elif SURFACE == "backlog_templates":
+        operation = project_management.backlog_templates()
+        ok = bool(operation) and any(item["kind"] == "epic" for item in operation) and any(item["key"].startswith("DATA-") for item in operation)
+    elif SURFACE == "sprint_release":
+        operation = {{
+            "sprint": project_management.sprint_plan(capacity=6),
+            "release": project_management.release_plan(),
+        }}
+        ok = bool(operation["sprint"]["items"]) and "appgen_quality" in operation["release"]["gates"] and bool(operation["release"]["rollback"])
+    elif SURFACE == "traceability":
+        operation = project_management.traceability_matrix()
+        ok = bool(operation) and all(item["story"].startswith("DATA-") and item["artifacts"] for item in operation)
+    elif SURFACE == "provider_export":
+        operation = project_management.export_plan("github")
+        ok = bool(operation) and operation[0]["provider"] == "github" and bool(operation[0]["description"])
+    else:
+        operation = {{
+            "release": project_management.project_management_release_gate(_assets()),
+            "workbench": project_management.project_management_workbench(_assets()),
+        }}
+        ok = operation["release"]["ok"] and operation["workbench"]["ok"]
+    return {{
+        "format": "appgen.project-management-module-operation.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "ok": ok,
+        "operation": operation,
+        "side_effects": (),
+    }}
+
+
+def release_context():
+    """Return release evidence used by this project-management module."""
+    project_management = _project_management()
+    return {{
+        "format": "appgen.project-management-module-release-context.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "ok": project_management.project_management_release_gate(_assets())["ok"] and project_management.project_management_workbench(_assets())["ok"],
+        "release": project_management.project_management_release_gate(_assets()),
+        "workbench": project_management.project_management_workbench(_assets()),
+        "side_effects": (),
+    }}
+
+
+def smoke_test():
+    """Run side-effect-free checks for this generated project-management module."""
+    contract = module_contract()
+    manifest = project_management_manifest_contract()
+    operation = run_project_management_operation()
+    release = release_context()
+    return {{
+        "format": "appgen.project-management-module-smoke-test.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "ok": contract["ok"]
+        and manifest["ok"]
+        and operation["ok"]
+        and release["ok"]
+        and not manifest["side_effects"]
+        and not operation["side_effects"]
+        and not release["side_effects"],
+        "contract": contract,
+        "manifest": manifest,
+        "operation": operation,
+        "release": release,
+        "checks": (
+            "module_contract_resolves",
+            "project_management_manifest_contract_ok",
+            "project_management_operation_ok",
+            "release_context_ok",
+            "no_side_effects",
+        ),
+    }}
+'''
+
+
+def _project_management_module_test_text(module_name: str) -> str:
+    surface, _operation = _project_management_surface(module_name)
+    return f'''"""Generated tests for the {surface} project-management module."""
+
+from __future__ import annotations
+
+import importlib.util
+from pathlib import Path
+
+
+MODULE = {module_name!r}
+SURFACE = {surface!r}
+
+
+def load_project_management_module():
+    """Load the generated project-management module without app installation."""
+    module_path = Path(__file__).resolve().parents[1] / "project_management_modules" / f"{{MODULE}}.py"
+    spec = importlib.util.spec_from_file_location(f"generated_project_management_module_{{MODULE}}", module_path)
+    module = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(module)
+    return module
+
+
+def test_project_management_module_contract():
+    """Assert the generated project-management module exposes its contract."""
+    module = load_project_management_module()
+    contract = module.module_contract()
+    assert contract["module"] == MODULE
+    assert contract["surface"] == SURFACE
+    assert contract["ok"] is True
+    assert all(hasattr(module, name) for name in contract["expected_exports"])
+
+
+def test_project_management_module_smoke():
+    """Assert the module's side-effect-free smoke test passes."""
+    module = load_project_management_module()
+    result = module.smoke_test()
+    assert result["ok"] is True
+    assert result["module"] == MODULE
+    assert result["surface"] == SURFACE
+    assert result["checks"]
+
+
+def smoke_test():
+    """Run this generated test module in a side-effect-free way."""
+    test_project_management_module_contract()
+    test_project_management_module_smoke()
+    return {{
+        "format": "appgen.project-management-module-generated-test-smoke.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "ok": True,
+        "tests": ("test_project_management_module_contract", "test_project_management_module_smoke"),
+    }}
+'''
+
+
 def _version_control_module_init_text() -> str:
     return (
         '"""Generated version-control modules."""\n\n'
@@ -14816,6 +15060,27 @@ def write_project_management_file(output_dir, schema: AppSchema):
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
     (output_dir / "project_management.py").write_text(_project_management_text(schema))
+    write_project_management_module_files(output_dir)
+
+
+def write_project_management_module_files(output_dir):
+    """Write generated project-management modules and smoke tests."""
+    output_dir = Path(output_dir)
+    module_dir = output_dir / "project_management_modules"
+    test_dir = output_dir / "project_management_module_tests"
+    module_dir.mkdir(parents=True, exist_ok=True)
+    test_dir.mkdir(parents=True, exist_ok=True)
+    (module_dir / "__init__.py").write_text(_project_management_module_init_text(), encoding="utf-8")
+    (test_dir / "__init__.py").write_text(_project_management_module_test_init_text(), encoding="utf-8")
+    for module_name in PROJECT_MANAGEMENT_MODULES:
+        (module_dir / f"{module_name}.py").write_text(
+            _project_management_module_text(module_name),
+            encoding="utf-8",
+        )
+        (test_dir / f"test_{module_name}.py").write_text(
+            _project_management_module_test_text(module_name),
+            encoding="utf-8",
+        )
 
 
 def write_devtools_file(output_dir, schema: AppSchema):
@@ -55664,6 +55929,8 @@ def _project_management_text(schema: AppSchema) -> str:
 from __future__ import annotations
 
 from datetime import date
+import importlib.util
+from pathlib import Path
 
 from flask import jsonify
 from flask_appbuilder import BaseView
@@ -55671,6 +55938,14 @@ from flask_appbuilder import expose
 
 
 APP_RESOURCES = {resources!r}
+PROJECT_MANAGEMENT_MODULES = (
+    "provider_catalog_module",
+    "backlog_template_module",
+    "sprint_release_module",
+    "traceability_module",
+    "provider_export_module",
+    "project_management_release_workbench_module",
+)
 TOOL_PROVIDERS = {{
     "jira": {{
         "label": "Jira",
@@ -55693,6 +55968,65 @@ TOOL_PROVIDERS = {{
         "issue_url": "{{base}}/-/issues/{{iid}}",
     }},
 }}
+
+
+def _load_generated_module(module_path, module_name):
+    """Load a generated project-management module without installing the app."""
+    spec = importlib.util.spec_from_file_location(module_name, module_path)
+    module = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(module)
+    return module
+
+
+def project_management_module_file_manifest():
+    """Return independently importable generated project-management module files."""
+    root = Path(__file__).resolve().parent
+    modules = []
+    for module_name in PROJECT_MANAGEMENT_MODULES:
+        module_path = root / "project_management_modules" / f"{{module_name}}.py"
+        module = _load_generated_module(module_path, f"generated_project_management_module_{{module_name}}")
+        contract = module.module_contract()
+        modules.append(
+            {{
+                "module": module_name,
+                "surface": contract["surface"],
+                "path": f"app/project_management_modules/{{module_name}}.py",
+                "exists": module_path.exists(),
+                "ok": contract["ok"] and module.smoke_test()["ok"],
+                "exports": contract["exports"],
+            }}
+        )
+    return {{
+        "format": "appgen.project-management-module-file-manifest.v1",
+        "ok": len(modules) == len(PROJECT_MANAGEMENT_MODULES) and all(item["ok"] and item["exists"] for item in modules),
+        "modules": tuple(modules),
+    }}
+
+
+def project_management_module_test_file_manifest():
+    """Return generated tests for project-management module files."""
+    root = Path(__file__).resolve().parent
+    tests = []
+    for module_name in PROJECT_MANAGEMENT_MODULES:
+        test_path = root / "project_management_module_tests" / f"test_{{module_name}}.py"
+        module = _load_generated_module(test_path, f"generated_project_management_module_test_{{module_name}}")
+        result = module.smoke_test()
+        tests.append(
+            {{
+                "module": f"test_{{module_name}}",
+                "surface": result["surface"],
+                "path": f"app/project_management_module_tests/test_{{module_name}}.py",
+                "exists": test_path.exists(),
+                "ok": result["ok"],
+                "tests": result["tests"],
+            }}
+        )
+    return {{
+        "format": "appgen.project-management-module-test-file-manifest.v1",
+        "ok": len(tests) == len(PROJECT_MANAGEMENT_MODULES) and all(item["ok"] and item["exists"] for item in tests),
+        "tests": tuple(tests),
+    }}
 
 
 def project_capabilities():
@@ -69175,6 +69509,8 @@ def validate_project_management_artifacts() -> None:
         fail("project-management contract must expose traceability and DevOps provider exports")
     if "project_management_release_gate" not in contract or "project_management_workbench" not in contract:
         fail("project-management contract must expose release-gate and workbench evidence")
+    if "project_management_module_file_manifest" not in contract or "project_management_module_test_file_manifest" not in contract or "PROJECT_MANAGEMENT_MODULES" not in contract:
+        fail("project-management contract must expose generated module manifests and module-test manifests")
     if "appgen.project-management-workbench.v1" not in contract or '@expose("/workbench.json")' not in contract:
         fail("project-management contract must expose a versioned workbench route")
     template = (ROOT / "app" / "templates" / "appgen_project_management.html").read_text()

@@ -13604,6 +13604,34 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     )
     assert project_management.project_management_workbench({"app/project_management.py"})["ok"] is False
     assert project_management.project_management_release_gate({"app/project_management.py"})["ok"] is False
+    project_management_module_files = project_management.project_management_module_file_manifest()
+    project_management_module_tests = project_management.project_management_module_test_file_manifest()
+    assert project_management_module_files["format"] == "appgen.project-management-module-file-manifest.v1"
+    assert project_management_module_files["ok"] is True
+    assert project_management_module_tests["format"] == "appgen.project-management-module-test-file-manifest.v1"
+    assert project_management_module_tests["ok"] is True
+    assert {
+        "provider_catalog",
+        "backlog_templates",
+        "sprint_release",
+        "traceability",
+        "provider_export",
+        "project_management_release_workbench",
+    } == {item["surface"] for item in project_management_module_files["modules"]}
+    for item in project_management_module_files["modules"]:
+        module_path = output_dir / item["path"].replace("app/", "")
+        py_compile.compile(str(module_path), doraise=True)
+        module = _load_module(module_path, f"generated_project_management_module_{item['module']}")
+        assert module.module_contract()["ok"] is True
+        assert module.project_management_manifest_contract()["ok"] is True
+        assert module.run_project_management_operation()["ok"] is True
+        assert module.release_context()["ok"] is True
+        assert module.smoke_test()["ok"] is True
+    for item in project_management_module_tests["tests"]:
+        test_path = output_dir / item["path"].replace("app/", "")
+        py_compile.compile(str(test_path), doraise=True)
+        module = _load_module(test_path, f"generated_project_management_module_test_{item['module']}")
+        assert module.smoke_test()["ok"] is True
     wizard_catalog = wizards.wizard_catalog()
     assert any(item["name"] == "BookCreate" and item["kind"] == "table" for item in wizard_catalog)
     assert any(item["name"] == "PublishWorkflow" and item["kind"] == "workflow" for item in wizard_catalog)
