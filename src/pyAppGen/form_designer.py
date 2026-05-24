@@ -14685,6 +14685,19 @@ def rad_parity_workbench(existing_paths: set[str] | None = None) -> dict:
     )
     required_artifacts = ("app/form_designer.py", "app/templates/appgen_form_designer.html")
     passing_artifacts = tuple(sorted(set(required_artifacts) & existing))
+    required_artifact_formats = (
+        ("app/form_designer.py", "python-source-module"),
+        ("app/templates/appgen_form_designer.html", "html-template"),
+    )
+    passing_artifact_formats = tuple(
+        (artifact, artifact_format)
+        for artifact, artifact_format in required_artifact_formats
+        if artifact in existing
+        and (
+            (artifact_format == "python-source-module" and artifact.endswith(".py"))
+            or (artifact_format == "html-template" and artifact.endswith(".html"))
+        )
+    )
     install_plan = third_party_component_install_plan()
     package_workbench = component_package_workbench()
     component_readiness = component_parity_readiness_contract()
@@ -15309,9 +15322,12 @@ def rad_parity_workbench(existing_paths: set[str] | None = None) -> dict:
         },
         {
             "id": "artifact_contract",
-            "ok": set(required_artifacts) <= set(passing_artifacts),
+            "ok": set(required_artifacts) <= set(passing_artifacts)
+            and set(required_artifact_formats) <= set(passing_artifact_formats),
             "required_artifacts": required_artifacts,
             "passing_artifacts": passing_artifacts,
+            "required_formats": required_artifact_formats,
+            "passing_formats": passing_artifact_formats,
             "evidence": {"existing": tuple(sorted(existing))},
         },
     )

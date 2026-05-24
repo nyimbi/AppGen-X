@@ -3223,6 +3223,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     )
     assert rad_artifact_gate["ok"] is True
     assert set(rad_artifact_gate["required_artifacts"]) <= set(rad_artifact_gate["passing_artifacts"])
+    assert set(rad_artifact_gate["required_formats"]) <= set(rad_artifact_gate["passing_formats"])
     assert rad_parity_workbench()["ok"] is True
     assert {
         "native_ui_parity_component_parity",
