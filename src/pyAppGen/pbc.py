@@ -222,6 +222,64 @@ ACP_STREAM_PROCESSING_POLICY = {
             "evidence."
         ),
     },
+    "developer_action_contract": {
+        "id": "appgen.event-processing.developer-action.v1",
+        "question": "What should platform developers actually use?",
+        "answer": "Use appgen_event_contract.",
+        "ordinary_manifest_rule": "omit_stream_processor",
+        "ordinary_codegen_rule": (
+            "Generate owned tables, appgen_outbox_event, appgen_inbox_event, "
+            "typed handlers, retry, idempotency, dead-letter, and release "
+            "evidence through the AppGen-X event adapter."
+        ),
+        "ordinary_backend_rule": "postgresql_default_mysql_or_mariadb_project_standard",
+        "developer_visible_options": ("appgen_event_contract",),
+        "do_not_expose": (
+            "stream_engine_picker",
+            "runtime_profile_picker",
+            "broker_picker",
+            "state_store_picker",
+            "per_pbc_runtime_preference",
+        ),
+        "ordinary_path": (
+            "declare_commands_and_events",
+            "generate_owned_tables",
+            "generate_appgen_outbox_event",
+            "generate_appgen_inbox_event",
+            "generate_typed_handlers",
+            "wire_handlers_through_appgen_event_adapter",
+            "prove_retry_idempotency_dead_letter_and_release_evidence",
+        ),
+        "exception_paths": (
+            {
+                "profile": "quix_streams",
+                "only_for": "telemetry_time_series_high_volume_windowed_metrics",
+                "requires": "stream_exception_evidence",
+            },
+            {
+                "profile": "bytewax",
+                "only_for": "complex_parallel_dataflow_cpu_heavy_transformations",
+                "requires": "stream_exception_evidence",
+            },
+        ),
+        "choice_budget": {
+            "ordinary_visible_event_contracts": 1,
+            "ordinary_visible_stream_engine_choices": 0,
+            "ordinary_visible_runtime_profile_choices": 0,
+            "exception_profiles": 2,
+            "stream_profiles_per_pbc": 1,
+        },
+        "fallback_rule": (
+            "If the exception workload and evidence are not explicit, generate "
+            "appgen_event_contract and omit stream_processor."
+        ),
+        "token_efficient_prompt": (
+            "Use appgen_event_contract. Omit stream_processor. Generate "
+            "outbox/inbox tables and typed handlers through the AppGen-X event "
+            "adapter. Do not compare runtimes. Open an exception only for "
+            "telemetry/time-series or complex dataflow with evidence."
+        ),
+    },
     "developer_decision_brief": {
         "headline": "Use appgen_event_contract.",
         "ordinary_answer": (
@@ -1133,6 +1191,7 @@ def acp_stream_processing_policy() -> dict:
         "allowed_processors": ACP_STREAM_PROCESSING_POLICY["allowed_processors"],
         "developer_guidance": ACP_STREAM_PROCESSING_POLICY["developer_guidance"],
         "developer_guidance_contract": ACP_STREAM_PROCESSING_POLICY["developer_guidance_contract"],
+        "developer_action_contract": ACP_STREAM_PROCESSING_POLICY["developer_action_contract"],
         "developer_decision_brief": ACP_STREAM_PROCESSING_POLICY["developer_decision_brief"],
         "decision_card": ACP_STREAM_PROCESSING_POLICY["decision_card"],
         "developer_choice_lock": ACP_STREAM_PROCESSING_POLICY["developer_choice_lock"],
@@ -1164,6 +1223,7 @@ def acp_event_processing_developer_guidance() -> dict:
         "format": "appgen.acp-event-processing-developer-guidance.v1",
         "ok": True,
         **contract,
+        "developer_action_contract": ACP_STREAM_PROCESSING_POLICY["developer_action_contract"],
         "decision_brief": ACP_STREAM_PROCESSING_POLICY["developer_decision_brief"],
         "choice_lock": ACP_STREAM_PROCESSING_POLICY["developer_choice_lock"],
         "policy_format": acp_stream_processing_policy()["format"],

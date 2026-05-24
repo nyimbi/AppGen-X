@@ -28,6 +28,47 @@ ordinary ERP, workflow, chatbot, agent, integration, approval, or PBC event
 handling, the generator must stop at `appgen_event_contract` and avoid stream
 runtime comparison.
 
+## Developer Action Contract
+
+When a developer, Studio screen, DSL linter, package template, natural-language
+generator, or external coding agent needs the short answer, use the executable
+`developer_action_contract` exposed by
+`acp_event_processing_developer_guidance()`:
+
+```text
+Use appgen_event_contract.
+Omit stream_processor.
+Generate owned tables, appgen_outbox_event, appgen_inbox_event, typed handlers,
+retry, idempotency, dead-letter, and release evidence through the AppGen-X
+event adapter.
+Use PostgreSQL by default, or MySQL/MariaDB when that is the project standard.
+Do not compare runtimes.
+```
+
+The ordinary choice budget is fixed:
+
+```text
+ordinary visible event contracts: 1
+ordinary visible stream-engine choices: 0
+ordinary visible runtime-profile choices: 0
+stream profiles per PBC: 1
+```
+
+Hide stream-engine, runtime-profile, broker, state-store, and per-PBC runtime
+preference controls on the ordinary generation path. Show the selected runtime
+profile only as read-only generated metadata after validation.
+
+Exception workflows are not preferences. They open only when the workload and
+evidence are explicit:
+
+- `quix_streams`: telemetry, time-series, high-volume ingestion, or windowed
+  metrics with `stream_exception_evidence`;
+- `bytewax`: complex parallel dataflow or CPU-heavy transformations with
+  `stream_exception_evidence`.
+
+If the exception workload and evidence are not explicit, generate
+`appgen_event_contract` and omit `stream_processor`.
+
 ## Developer Guidance
 
 Use the generated AppGen-X event contract.
@@ -592,7 +633,9 @@ generator code:
 3. Is the workload primarily complex parallel transformation, CPU-heavy stream
    processing, or a multi-stage stateful dataflow graph? Use `bytewax`, but
    only with exception evidence.
-4. If the exception case is not clear and measurable, use `faust_streaming`.
+4. If the exception case is not clear and measurable, generate
+   `appgen_event_contract`, omit `stream_processor`, and let validation record
+   the default runtime profile as read-only metadata.
 
 The default answer is not "choose a Kafka alternative." The default answer is
 "generate the AppGen-X outbox/inbox contract and route through the platform
@@ -785,6 +828,8 @@ The executable policy lives in `src/pyAppGen/pbc.py`:
 - `acp_event_processing_developer_guidance()` returns the compact one-answer
   guidance object that IDE controls, DSL linting, natural-language generation,
   package templates, and external coding-agent prompts should use.
+  Its `developer_action_contract` is the shortest authoritative contract for
+  platform developers and small coding models.
 - `select_acp_stream_processor()` classifies workload descriptions as default
   or exception candidates.
 - `validate_pbc_manifest()` rejects unsupported profiles, normalizes missing

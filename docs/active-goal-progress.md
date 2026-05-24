@@ -25,7 +25,8 @@ Build a complete AppGen IDE and generation platform with:
 
 | Date | Commit | Slice | Evidence |
 | --- | --- | --- | --- |
-| 2026-05-24 | `current` | Made package installation requirement evidence depend on generated package manager module and test manifests. | Py compile, focused generated form-designer parity smoke, scoped diff check, and scoped restricted-name scan passed. |
+| 2026-05-24 | `current` | Added a single developer action contract for event processing so platform developers, Studio, DSL tooling, package templates, natural-language generation, and coding agents get one ordinary event path instead of a runtime selection matrix. | Py compile, focused PBC policy test, scoped diff check, and scoped restricted-name scan passed. |
+| 2026-05-24 | `557eb3e` | Made package installation requirement evidence depend on generated package manager module and test manifests. | Py compile, focused generated form-designer parity smoke, scoped diff check, and scoped restricted-name scan passed. |
 | 2026-05-24 | `92698ab` | Made native data tooling requirement evidence depend on generated data module and deep data tooling module/test manifests. | Py compile, focused generated form-designer parity smoke, scoped diff check, and scoped restricted-name scan passed. |
 | 2026-05-24 | `5410f5d` | Made inspector and visual binding requirement evidence depend on generated module and generated test manifests. | Py compile, focused generated form-designer parity smoke, scoped diff check, and scoped restricted-name scan passed. |
 | 2026-05-24 | `a84529b` | Added a developer choice-lock to the event-processing policy so PBC authors, Studio, natural-language generators, and external coding agents get one ordinary event path and two evidence-gated exception paths. | Py compile, focused PBC policy test, scoped diff check, and scoped restricted-name scan passed. |
