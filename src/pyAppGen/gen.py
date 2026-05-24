@@ -2344,6 +2344,7 @@ def write_form_designer_file(output_dir, schema: AppSchema):
     write_visual_component_files(output_dir)
     write_data_tooling_module_files(output_dir)
     write_deep_data_tooling_module_files(output_dir)
+    write_enterprise_data_ide_module_files(output_dir)
     write_inspector_module_files(output_dir)
     write_binding_module_files(output_dir)
     write_package_manager_module_files(output_dir)
@@ -2411,6 +2412,15 @@ DEEP_DATA_TOOLING_MODULES = (
     "offline_replay_module",
     "replication_monitor_module",
     "module_smoke_module",
+)
+
+ENTERPRISE_DATA_IDE_MODULES = (
+    "connection_designer_module",
+    "dataset_state_module",
+    "service_publisher_module",
+    "embedded_store_module",
+    "failover_replay_module",
+    "relationship_lookup_module",
 )
 
 INSPECTOR_MODULES = (
@@ -2964,6 +2974,26 @@ def write_deep_data_tooling_module_files(output_dir):
         )
 
 
+def write_enterprise_data_ide_module_files(output_dir):
+    """Write generated enterprise data IDE modules and smoke tests."""
+    output_dir = Path(output_dir)
+    module_dir = output_dir / "enterprise_data_ide_modules"
+    test_dir = output_dir / "enterprise_data_ide_module_tests"
+    module_dir.mkdir(parents=True, exist_ok=True)
+    test_dir.mkdir(parents=True, exist_ok=True)
+    (module_dir / "__init__.py").write_text(_enterprise_data_ide_module_init_text(), encoding="utf-8")
+    (test_dir / "__init__.py").write_text(_enterprise_data_ide_module_test_init_text(), encoding="utf-8")
+    for module_name in ENTERPRISE_DATA_IDE_MODULES:
+        (module_dir / f"{module_name}.py").write_text(
+            _enterprise_data_ide_module_text(module_name),
+            encoding="utf-8",
+        )
+        (test_dir / f"test_{module_name}.py").write_text(
+            _enterprise_data_ide_module_test_text(module_name),
+            encoding="utf-8",
+        )
+
+
 def write_inspector_module_files(output_dir):
     """Write generated Object Inspector editor modules and smoke tests."""
     output_dir = Path(output_dir)
@@ -3173,6 +3203,21 @@ def _deep_data_tooling_module_test_init_text() -> str:
     return (
         '"""Generated deep native data tooling module tests."""\n\n'
         f"DEEP_DATA_TOOLING_MODULE_TESTS = {modules!r}\n"
+    )
+
+
+def _enterprise_data_ide_module_init_text() -> str:
+    return (
+        '"""Generated enterprise data IDE modules."""\n\n'
+        f"ENTERPRISE_DATA_IDE_MODULES = {ENTERPRISE_DATA_IDE_MODULES!r}\n"
+    )
+
+
+def _enterprise_data_ide_module_test_init_text() -> str:
+    modules = tuple(f"test_{name}" for name in ENTERPRISE_DATA_IDE_MODULES)
+    return (
+        '"""Generated enterprise data IDE module tests."""\n\n'
+        f"ENTERPRISE_DATA_IDE_MODULE_TESTS = {modules!r}\n"
     )
 
 
@@ -11696,6 +11741,240 @@ def smoke_test():
 '''
 
 
+def _enterprise_data_ide_surface(module_name: str) -> tuple[str, str]:
+    return {
+        "connection_designer_module": ("connection_designer", "connection_runtime_manifest"),
+        "dataset_state_module": ("dataset_state", "dataset_runtime_manifest"),
+        "service_publisher_module": ("service_publisher", "service_runtime_manifest"),
+        "embedded_store_module": ("embedded_store", "local_database_maintenance_contract"),
+        "failover_replay_module": ("failover_replay", "transaction_runtime_manifest"),
+        "relationship_lookup_module": ("relationship_lookup", "relationship_lookup_runtime_manifest"),
+    }[module_name]
+
+
+def _enterprise_data_ide_module_text(module_name: str) -> str:
+    surface, operation = _enterprise_data_ide_surface(module_name)
+    return f'''"""Generated enterprise data IDE module for {surface}."""
+
+from __future__ import annotations
+
+import importlib.util
+from pathlib import Path
+
+
+MODULE = {module_name!r}
+SURFACE = {surface!r}
+OPERATION = {operation!r}
+EXPECTED_EXPORTS = (
+    "module_contract",
+    "ide_surface_manifest",
+    "run_ide_operation",
+    "runtime_context",
+    "smoke_test",
+)
+
+
+def _load_sibling(module_name):
+    module_path = Path(__file__).resolve().parents[1] / f"{{module_name}}.py"
+    spec = importlib.util.spec_from_file_location(f"generated_enterprise_data_ide_{{MODULE}}_{{module_name}}", module_path)
+    module = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(module)
+    return module
+
+
+def _form_designer():
+    return _load_sibling("form_designer")
+
+
+def _runtime():
+    return _load_sibling("data_tooling_runtime")
+
+
+def module_contract():
+    """Return this generated enterprise data IDE module's export contract."""
+    available = tuple(name for name in EXPECTED_EXPORTS if name in globals())
+    return {{
+        "format": "appgen.enterprise-data-ide-module-contract.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "operation": OPERATION,
+        "ok": set(EXPECTED_EXPORTS) <= set(available),
+        "exports": available,
+        "expected_exports": EXPECTED_EXPORTS,
+        "side_effects": (),
+    }}
+
+
+def run_ide_operation():
+    """Run this enterprise data IDE operation without persisting writes."""
+    runtime = _runtime()
+    form_designer = _form_designer()
+    if SURFACE == "embedded_store":
+        local = form_designer.local_database_maintenance_contract()
+        restore = form_designer.local_backup_restore_verification_contract()
+        operation = {{
+            "format": "appgen.enterprise-data-ide-embedded-store-operation.v1",
+            "ok": {{"backup", "restore", "change_view_sync"}} <= {{item["name"] for item in local["workflows"]}}
+            and restore["ok"]
+            and "backup_before_schema_change" in local["guards"],
+            "local": local,
+            "restore": restore,
+            "pipeline": tuple(item["name"] for item in local["workflows"]),
+            "guards": local["guards"] + restore["guards"],
+            "side_effects": (),
+        }}
+    elif SURFACE == "failover_replay":
+        transactions = runtime.transaction_runtime_manifest()
+        replay = transactions["failover_replay"]
+        operation = {{
+            "format": "appgen.enterprise-data-ide-failover-replay-operation.v1",
+            "ok": transactions["ok"] and replay["ok"] and replay["final_state"]["persisted_writes"] == 0,
+            "replay": replay,
+            "pipeline": tuple(item["phase"] for item in replay["replay"]),
+            "guards": replay["guards"],
+            "side_effects": replay["side_effects"],
+        }}
+    else:
+        manifest = getattr(runtime, OPERATION)()
+        operation = {{
+            "format": "appgen.enterprise-data-ide-operation.v1",
+            "ok": manifest["ok"],
+            "runtime_manifest": manifest,
+            "pipeline": manifest.get("guards", ()),
+            "guards": manifest.get("guards", ()),
+            "side_effects": (),
+        }}
+    return operation
+
+
+def ide_surface_manifest():
+    """Return IDE-facing metadata for this enterprise data surface."""
+    operation = run_ide_operation()
+    return {{
+        "format": "appgen.enterprise-data-ide-surface-manifest.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "operation": OPERATION,
+        "ok": operation["ok"] and not operation["side_effects"],
+        "pipeline": operation.get("pipeline", ()),
+        "guards": operation.get("guards", ()),
+        "side_effects": operation.get("side_effects", ()),
+    }}
+
+
+def runtime_context():
+    """Return release context for this enterprise data IDE surface."""
+    runtime = _runtime()
+    form_designer = _form_designer()
+    context = {{
+        "connection": runtime.connection_runtime_manifest(),
+        "dataset": runtime.dataset_runtime_manifest(),
+        "service": runtime.service_runtime_manifest(),
+        "transactions": runtime.transaction_runtime_manifest(),
+        "relationships": runtime.relationship_lookup_runtime_manifest(),
+        "local_store": form_designer.local_database_maintenance_contract(),
+    }}
+    return {{
+        "format": "appgen.enterprise-data-ide-runtime-context.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "ok": all(item.get("ok", bool(item)) for item in context.values()),
+        "context": context,
+        "side_effects": (),
+    }}
+
+
+def smoke_test():
+    """Run side-effect-free checks for this enterprise data IDE module."""
+    contract = module_contract()
+    manifest = ide_surface_manifest()
+    operation = run_ide_operation()
+    context = runtime_context()
+    return {{
+        "format": "appgen.enterprise-data-ide-module-smoke-test.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "ok": contract["ok"]
+        and manifest["ok"]
+        and operation["ok"]
+        and context["ok"]
+        and not manifest["side_effects"]
+        and not operation["side_effects"]
+        and not context["side_effects"],
+        "contract": contract,
+        "manifest": manifest,
+        "operation": operation,
+        "context": context,
+        "checks": (
+            "module_contract_resolves",
+            "ide_surface_manifest_ok",
+            "operation_ok",
+            "runtime_context_ok",
+            "no_side_effects",
+        ),
+    }}
+'''
+
+
+def _enterprise_data_ide_module_test_text(module_name: str) -> str:
+    surface, _operation = _enterprise_data_ide_surface(module_name)
+    return f'''"""Generated tests for the {surface} enterprise data IDE module."""
+
+from __future__ import annotations
+
+import importlib.util
+from pathlib import Path
+
+
+MODULE = {module_name!r}
+SURFACE = {surface!r}
+
+
+def load_enterprise_data_ide_module():
+    """Load the generated enterprise data IDE module without app installation."""
+    module_path = Path(__file__).resolve().parents[1] / "enterprise_data_ide_modules" / f"{{MODULE}}.py"
+    spec = importlib.util.spec_from_file_location(f"generated_enterprise_data_ide_module_{{MODULE}}", module_path)
+    module = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(module)
+    return module
+
+
+def test_enterprise_data_ide_module_contract():
+    """Assert the generated enterprise data IDE module exposes its contract."""
+    module = load_enterprise_data_ide_module()
+    contract = module.module_contract()
+    assert contract["module"] == MODULE
+    assert contract["surface"] == SURFACE
+    assert contract["ok"] is True
+    assert all(hasattr(module, name) for name in contract["expected_exports"])
+
+
+def test_enterprise_data_ide_module_smoke():
+    """Assert the module's side-effect-free smoke test passes."""
+    module = load_enterprise_data_ide_module()
+    result = module.smoke_test()
+    assert result["ok"] is True
+    assert result["module"] == MODULE
+    assert result["surface"] == SURFACE
+    assert result["checks"]
+
+
+def smoke_test():
+    """Run this generated test module in a side-effect-free way."""
+    test_enterprise_data_ide_module_contract()
+    test_enterprise_data_ide_module_smoke()
+    return {{
+        "format": "appgen.enterprise-data-ide-module-generated-test-smoke.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "ok": True,
+        "tests": ("test_enterprise_data_ide_module_contract", "test_enterprise_data_ide_module_smoke"),
+    }}
+'''
+
+
 def _visual_component_module_text(component: str) -> str:
     module_name = _module_name(component)
     return f'''"""Generated visual-depth component module for {component}."""
@@ -13220,6 +13499,106 @@ def deep_data_tooling_module_test_file_manifest():
     }
 
 
+def enterprise_data_ide_module_file_manifest():
+    """Return file-level evidence for generated enterprise data IDE modules."""
+    modules = (
+        ("connection_designer_module", "connection_designer"),
+        ("dataset_state_module", "dataset_state"),
+        ("service_publisher_module", "service_publisher"),
+        ("embedded_store_module", "embedded_store"),
+        ("failover_replay_module", "failover_replay"),
+        ("relationship_lookup_module", "relationship_lookup"),
+    )
+    module_dir = Path(__file__).with_name("enterprise_data_ide_modules")
+    entries = []
+    expected_exports = (
+        "module_contract",
+        "ide_surface_manifest",
+        "run_ide_operation",
+        "runtime_context",
+        "smoke_test",
+    )
+    for module_name, surface in modules:
+        module_path = module_dir / f"{module_name}.py"
+        exports = ()
+        contract_ok = False
+        smoke_ok = False
+        if module_path.exists():
+            module = _load_generated_module(module_path, f"generated_enterprise_data_ide_module_{module_name}")
+            exports = tuple(name for name in expected_exports if hasattr(module, name))
+            contract = module.module_contract()
+            smoke = module.smoke_test()
+            contract_ok = contract["ok"] and contract["module"] == module_name and contract["surface"] == surface
+            smoke_ok = smoke["ok"] and smoke["surface"] == surface
+        entries.append(
+            {
+                "module": module_name,
+                "surface": surface,
+                "path": f"app/enterprise_data_ide_modules/{module_name}.py",
+                "exists": module_path.exists(),
+                "exports": exports,
+                "expected_exports": expected_exports,
+                "contract_ok": contract_ok,
+                "smoke_ok": smoke_ok,
+            }
+        )
+    return {
+        "format": "appgen.generated-enterprise-data-ide-module-file-manifest.v1",
+        "ok": bool(entries)
+        and all(
+            item["exists"]
+            and item["contract_ok"]
+            and item["smoke_ok"]
+            and set(item["expected_exports"]) <= set(item["exports"])
+            for item in entries
+        ),
+        "modules": tuple(entries),
+        "guards": ("one_file_per_enterprise_data_ide_module", "declared_exports_present", "module_smoke_loads"),
+        "side_effects": (),
+    }
+
+
+def enterprise_data_ide_module_test_file_manifest():
+    """Return file-level evidence for generated enterprise data IDE module tests."""
+    modules = enterprise_data_ide_module_file_manifest()["modules"]
+    test_dir = Path(__file__).with_name("enterprise_data_ide_module_tests")
+    entries = []
+    required_exports = (
+        "load_enterprise_data_ide_module",
+        "test_enterprise_data_ide_module_contract",
+        "test_enterprise_data_ide_module_smoke",
+        "smoke_test",
+    )
+    for item in modules:
+        module_name = item["module"]
+        module_path = test_dir / f"test_{module_name}.py"
+        exports = ()
+        smoke_ok = False
+        if module_path.exists():
+            module = _load_generated_module(module_path, f"generated_enterprise_data_ide_module_test_{module_name}")
+            exports = tuple(name for name in required_exports if hasattr(module, name))
+            smoke_ok = module.smoke_test()["ok"]
+        entries.append(
+            {
+                "module": module_name,
+                "surface": item["surface"],
+                "path": f"app/enterprise_data_ide_module_tests/test_{module_name}.py",
+                "exists": module_path.exists(),
+                "exports": exports,
+                "smoke_ok": smoke_ok,
+            }
+        )
+    return {
+        "format": "appgen.generated-enterprise-data-ide-module-test-file-manifest.v1",
+        "ok": bool(entries)
+        and all(item["exists"] and item["smoke_ok"] and set(required_exports) <= set(item["exports"]) for item in entries),
+        "tests": tuple(entries),
+        "required_exports": required_exports,
+        "guards": ("one_test_file_per_enterprise_data_ide_module", "contract_and_smoke_tests_exported"),
+        "side_effects": (),
+    }
+
+
 def connection_runtime_manifest():
     """Return generated connection probe, failover, and pooling runtime metadata."""
     tooling = form_designer.rad_data_tooling_workbench()
@@ -13370,6 +13749,8 @@ def data_tooling_runtime_manifest():
     modules = data_module_runtime_manifest()
     deep_modules = deep_data_tooling_module_file_manifest()
     deep_module_tests = deep_data_tooling_module_test_file_manifest()
+    enterprise_modules = enterprise_data_ide_module_file_manifest()
+    enterprise_module_tests = enterprise_data_ide_module_test_file_manifest()
     tooling = form_designer.rad_data_tooling_workbench()
     return {
         "format": "appgen.generated-data-tooling-runtime-manifest.v1",
@@ -13381,7 +13762,11 @@ def data_tooling_runtime_manifest():
         and relationships["ok"]
         and modules["ok"]
         and deep_modules["ok"]
-        and deep_module_tests["ok"],
+        and deep_module_tests["ok"]
+        and enterprise_modules["ok"]
+        and enterprise_module_tests["ok"],
+        "enterprise_modules": enterprise_modules,
+        "enterprise_module_tests": enterprise_module_tests,
         "connection": connection,
         "dataset": dataset,
         "service": service,
@@ -13399,6 +13784,7 @@ def data_tooling_runtime_manifest():
             "relationship_lookup_runtime_declared",
             "data_module_runtime_declared",
             "deep_data_tooling_modules_declared",
+            "enterprise_data_ide_modules_declared",
         ),
     }
 
@@ -13445,6 +13831,8 @@ def validate_data_tooling_runtime():
         {"id": "data_module_tests_ready", "ok": manifest["modules"]["module_tests"]["ok"]},
         {"id": "deep_data_tooling_modules_ready", "ok": manifest["deep_modules"]["ok"]},
         {"id": "deep_data_tooling_module_tests_ready", "ok": manifest["deep_module_tests"]["ok"]},
+        {"id": "enterprise_data_ide_modules_ready", "ok": manifest["enterprise_modules"]["ok"]},
+        {"id": "enterprise_data_ide_module_tests_ready", "ok": manifest["enterprise_module_tests"]["ok"]},
         {"id": "publish_transaction_replay", "ok": manifest["transactions"]["publish_replay"]["ok"] and not manifest["transactions"]["publish_replay"]["side_effects"]},
         {"id": "failover_transaction_replay", "ok": manifest["transactions"]["failover_replay"]["ok"] and not manifest["transactions"]["failover_replay"]["side_effects"]},
         {

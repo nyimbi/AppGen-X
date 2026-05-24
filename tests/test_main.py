@@ -12146,10 +12146,14 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     data_module_tests = data_runtime.data_tooling_module_test_file_manifest()
     deep_data_module_files = data_runtime.deep_data_tooling_module_file_manifest()
     deep_data_module_tests = data_runtime.deep_data_tooling_module_test_file_manifest()
+    enterprise_data_module_files = data_runtime.enterprise_data_ide_module_file_manifest()
+    enterprise_data_module_tests = data_runtime.enterprise_data_ide_module_test_file_manifest()
     assert data_module_files["ok"] is True
     assert data_module_tests["ok"] is True
     assert deep_data_module_files["ok"] is True
     assert deep_data_module_tests["ok"] is True
+    assert enterprise_data_module_files["ok"] is True
+    assert enterprise_data_module_tests["ok"] is True
     assert {item["module"] for item in data_module_files["modules"]} == {
         "connection_module",
         "dataset_module",
@@ -12181,6 +12185,22 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "offline_replay",
         "replication_monitor",
         "module_smoke",
+    }
+    assert {item["surface"] for item in enterprise_data_module_files["modules"]} == {
+        "connection_designer",
+        "dataset_state",
+        "service_publisher",
+        "embedded_store",
+        "failover_replay",
+        "relationship_lookup",
+    }
+    assert {item["surface"] for item in enterprise_data_module_tests["tests"]} == {
+        "connection_designer",
+        "dataset_state",
+        "service_publisher",
+        "embedded_store",
+        "failover_replay",
+        "relationship_lookup",
     }
     connection_module = _load_module(output_dir / "data_tooling_modules" / "connection_module.py", "generated_connection_data_module")
     assert connection_module.smoke_test()["ok"] is True
@@ -12217,6 +12237,20 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         py_compile.compile(str(test_path), doraise=True)
         module = _load_module(test_path, f"generated_deep_data_module_test_{item['module']}")
         assert module.smoke_test()["ok"] is True
+    for item in enterprise_data_module_files["modules"]:
+        module_path = output_dir / item["path"].replace("app/", "")
+        py_compile.compile(str(module_path), doraise=True)
+        module = _load_module(module_path, f"generated_enterprise_data_ide_module_{item['module']}")
+        assert module.module_contract()["ok"] is True
+        assert module.ide_surface_manifest()["ok"] is True
+        assert module.run_ide_operation()["ok"] is True
+        assert module.runtime_context()["ok"] is True
+        assert module.smoke_test()["ok"] is True
+    for item in enterprise_data_module_tests["tests"]:
+        test_path = output_dir / item["path"].replace("app/", "")
+        py_compile.compile(str(test_path), doraise=True)
+        module = _load_module(test_path, f"generated_enterprise_data_ide_module_test_{item['module']}")
+        assert module.smoke_test()["ok"] is True
     data_runtime_replay = data_runtime.replay_data_tooling_runtime()
     assert data_runtime_replay["ok"] is True
     assert {"service_invocation", "offline_replay"} <= set(data_runtime_replay["runtime_ops"])
@@ -12231,6 +12265,8 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "data_module_tests_ready",
         "deep_data_tooling_modules_ready",
         "deep_data_tooling_module_tests_ready",
+        "enterprise_data_ide_modules_ready",
+        "enterprise_data_ide_module_tests_ready",
         "publish_transaction_replay",
         "failover_transaction_replay",
         "runtime_replay",
