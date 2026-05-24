@@ -244,6 +244,7 @@ from pyAppGen.pbc import pbc_package_contract
 from pyAppGen.pbc import pbc_package_index_schema
 from pyAppGen.pbc import pbc_package_loading_smoke_audit
 from pyAppGen.pbc import pbc_generation_smoke_audit
+from pyAppGen.pbc import lint_pbc_eventing_choice
 from pyAppGen.pbc import pbc_mesh_catalog
 from pyAppGen.pbc import pbc_release_audit
 from pyAppGen.pbc import example_pbc_manifest
@@ -793,6 +794,23 @@ def test_package_pbc_catalog_composes_enterprise_apps(runner: CliRunner) -> None
     assert developer_guidance["decision_brief"]["small_model_stop_rule"].startswith("When the request is ordinary business")
     assert "small_model_instruction" in developer_guidance
     assert developer_guidance["default_runtime_profile"] == "faust_streaming"
+    ordinary_manifest = dict(example_pbc_manifest())
+    ordinary_manifest.pop("stream_processor", None)
+    ordinary_eventing_lint = lint_pbc_eventing_choice(ordinary_manifest)
+    assert ordinary_eventing_lint["format"] == "appgen.pbc-eventing-choice-lint.v1"
+    assert ordinary_eventing_lint["ok"] is True
+    assert ordinary_eventing_lint["developer_answer"] == "Use appgen_event_contract."
+    assert ordinary_eventing_lint["normal_form_manifest"].get("stream_processor") is None
+    branching_eventing_lint = lint_pbc_eventing_choice(
+        {**example_pbc_manifest(), "stream_processor": "faust_streaming"},
+        generated_imports=("faust_streaming",),
+    )
+    assert branching_eventing_lint["ok"] is False
+    assert {item["rule"] for item in branching_eventing_lint["diagnostics"]} == {
+        "ordinary_pbc_manifest_omits_stream_processor",
+        "generated_business_logic_imports_appgen_event_adapter_only",
+    }
+    assert branching_eventing_lint["quick_fixes"][0]["id"] == "remove_stream_processor"
     assert stream_policy["developer_guidance"]["implementation_recipe"] == (
         "declare_commands_and_events",
         "generate_owned_tables",
@@ -1021,6 +1039,7 @@ def test_package_pbc_catalog_composes_enterprise_apps(runner: CliRunner) -> None
         "open_source_datastore_backends",
         "stream_processor_abstraction",
         "opinionated_stream_processing_policy",
+        "eventing_choice_linter",
         "composition_plan",
         "natural_language_selection",
         "generation_smoke",

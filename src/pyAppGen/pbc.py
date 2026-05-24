@@ -1141,6 +1141,80 @@ def acp_event_processing_developer_guidance() -> dict:
     }
 
 
+def lint_pbc_eventing_choice(manifest: dict, *, generated_imports: tuple[str, ...] = ()) -> dict:
+    """Lint the developer-facing PBC eventing choice before generation."""
+    validation = validate_pbc_manifest(manifest, existing_catalog={})
+    stream_processor = manifest.get("stream_processor")
+    exception_profiles = set(ACP_STREAM_PROCESSING_POLICY["developer_guidance_contract"]["exception_options"])
+    forbidden_imports = ACP_STREAM_PROCESSING_POLICY["ordinary_workload_contract"]["forbidden_imports"]
+    diagnostics = []
+    quick_fixes = []
+    if stream_processor == ACP_DEFAULT_STREAM_PROCESSOR:
+        diagnostics.append(
+            {
+                "severity": "error",
+                "rule": "ordinary_pbc_manifest_omits_stream_processor",
+                "message": "Ordinary PBC manifests must omit stream_processor; the platform records the default profile as read-only metadata.",
+            }
+        )
+        quick_fixes.append(
+            {
+                "id": "remove_stream_processor",
+                "field": "stream_processor",
+                "replacement": None,
+            }
+        )
+    elif stream_processor and stream_processor not in exception_profiles:
+        diagnostics.append(
+            {
+                "severity": "error",
+                "rule": "unsupported_stream_processor",
+                "message": "Use appgen_event_contract for ordinary work; only audited exception profiles are accepted.",
+            }
+        )
+    elif stream_processor in exception_profiles and validation["missing_stream_exception_evidence"]:
+        diagnostics.append(
+            {
+                "severity": "error",
+                "rule": "exception_profiles_require_stream_exception_evidence",
+                "message": (
+                    "Exception profiles require workload_name, throughput_or_latency_reason, "
+                    "state_shape, and operational_owner."
+                ),
+            }
+        )
+    import_violations = tuple(
+        module
+        for module in generated_imports
+        if module.split(".", 1)[0] in forbidden_imports
+    )
+    if import_violations:
+        diagnostics.append(
+            {
+                "severity": "error",
+                "rule": "generated_business_logic_imports_appgen_event_adapter_only",
+                "message": "Generated business logic must import the AppGen-X event adapter, not profile-specific stream libraries.",
+                "imports": import_violations,
+            }
+        )
+    normal_form = dict(manifest)
+    if not stream_processor or stream_processor == ACP_DEFAULT_STREAM_PROCESSOR:
+        normal_form.pop("stream_processor", None)
+    return {
+        "format": "appgen.pbc-eventing-choice-lint.v1",
+        "ok": validation["ok"] and not diagnostics,
+        "developer_answer": "Use appgen_event_contract.",
+        "ordinary_manifest_rule": "omit_stream_processor",
+        "choice_budget": ACP_STREAM_PROCESSING_POLICY["choice_budget"],
+        "decision_ladder": ACP_STREAM_PROCESSING_POLICY["decision_ladder"],
+        "validation": validation,
+        "diagnostics": tuple(diagnostics),
+        "quick_fixes": tuple(quick_fixes),
+        "normal_form_manifest": normal_form,
+        "generated_imports": generated_imports,
+    }
+
+
 def select_acp_stream_processor(workload: str) -> dict:
     """Select a stream processor profile for an APC workload description."""
     text = workload.lower().replace("-", "_")
@@ -1900,6 +1974,16 @@ def pbc_release_audit() -> dict:
         }
     )
     valid_exception = validate_pbc_manifest(example_stream_exception_manifest())
+    ordinary_manifest = dict(example_pbc_manifest())
+    ordinary_manifest.pop("stream_processor", None)
+    ordinary_eventing_lint = lint_pbc_eventing_choice(ordinary_manifest)
+    branching_eventing_lint = lint_pbc_eventing_choice(
+        {
+            **example_pbc_manifest(),
+            "stream_processor": ACP_DEFAULT_STREAM_PROCESSOR,
+        },
+        generated_imports=("faust_streaming",),
+    )
     package_loading = pbc_package_loading_smoke_audit()
     nl_selection = pbc_selection_from_prompt(
         "Build an enterprise ERP back office with GL, AP, AR, inventory, people, and order management"
@@ -1989,6 +2073,15 @@ def pbc_release_audit() -> dict:
             "decision_tree": stream_policy["decision_tree"],
             "invalid_exception": invalid_exception,
             "valid_exception": valid_exception,
+        },
+        {
+            "id": "eventing_choice_linter",
+            "ok": ordinary_eventing_lint["ok"]
+            and not branching_eventing_lint["ok"]
+            and branching_eventing_lint["quick_fixes"][0]["id"] == "remove_stream_processor"
+            and branching_eventing_lint["diagnostics"][0]["rule"] == "ordinary_pbc_manifest_omits_stream_processor",
+            "ordinary": ordinary_eventing_lint,
+            "branching": branching_eventing_lint,
         },
         {
             "id": "composition_plan",

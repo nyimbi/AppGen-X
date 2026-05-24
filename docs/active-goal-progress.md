@@ -25,6 +25,7 @@ Build a complete AppGen IDE and generation platform with:
 
 | Date | Commit | Slice | Evidence |
 | --- | --- | --- | --- |
+| 2026-05-24 | `current` | Added an executable PBC eventing-choice linter so developers and coding agents get one ordinary answer instead of reopening stream-runtime selection. | Py compile, focused PBC policy test, scoped documentation diff check, and staged hygiene scan passed. |
 | 2026-05-23 | `35387ed` | Polished IDE palette and component icons. | Frontend production build, staged diff checks. |
 | 2026-05-23 | `291c458` | Added first-class inspector editor lanes. | Frontend production build, catalog audit integration. |
 | 2026-05-23 | `50c5fd7` | Added visual data-binding lane and binding audit. | Frontend production build, dev shell probe. |
@@ -210,6 +211,11 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   transactional outbox/inbox tables, write typed handlers through the AppGen-X
   event adapter, and use PostgreSQL unless the project standard is MySQL or
   MariaDB.
+- PBC eventing guidance now has an executable linter,
+  `lint_pbc_eventing_choice()`, that accepts the ordinary omitted
+  `stream_processor` contract, rejects hand-authored default profile fields,
+  blocks direct profile-specific imports in generated business logic, and
+  returns a quick fix that removes `stream_processor` from ordinary manifests.
 - Event-processing guidance now exposes `appgen.event-processing.standard.v1`
   as a mandatory decision record with a support-matrix cap: one ordinary event
   contract, zero visible stream-engine/runtime-profile choices, two audited

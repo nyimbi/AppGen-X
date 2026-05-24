@@ -29,6 +29,41 @@ If the workload is unclear, generate the ordinary contract and stop branching.
 This is how AppGen-X avoids multiplying every generated app by stream runtime,
 datastore, adapter, target package, deployment profile, and PBC variant.
 
+## What To Use
+
+The developer answer is not a product comparison. Use this every time for
+ordinary application generation:
+
+```text
+public contract: appgen_event_contract
+manifest: omit stream_processor
+generated durability: appgen_outbox_event and appgen_inbox_event
+generated handlers: typed command/event handlers through the AppGen-X adapter
+runtime profile: read-only platform metadata
+developer choice count: 1
+```
+
+Developers, Studio screens, DSL templates, and coding agents should call the
+same executable guardrail before generation:
+
+```python
+from pyAppGen.pbc import lint_pbc_eventing_choice
+
+report = lint_pbc_eventing_choice(register_pbc())
+assert report["ok"]
+```
+
+That linter is intentionally stricter than manifest normalization. A missing
+`stream_processor` is the correct ordinary manifest. A hand-written
+`stream_processor: faust_streaming` is treated as branching and receives the
+`remove_stream_processor` quick fix, because the runtime profile belongs to
+platform metadata after validation, not to the developer-authored contract.
+
+If generated business logic imports profile-specific stream libraries, the
+linter fails with `generated_business_logic_imports_appgen_event_adapter_only`.
+That is the practical rule that closes the exponential matrix: business code
+uses the AppGen-X adapter; platform adapter modules own runtime details.
+
 ## Normative Decision
 
 AppGen-X makes the event-processing choice for platform developers.

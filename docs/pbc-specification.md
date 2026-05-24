@@ -113,6 +113,11 @@ outbox/inbox tables, the AppGen-X event adapter, the platform default
 service-runtime profile, and generated retry/idempotency/dead-letter/release
 audit contracts. The IDE and natural-language generator may show that decision
 as read-only metadata, but they must not render a stream-engine picker.
+Use `lint_pbc_eventing_choice()` before generation to enforce that contract.
+The linter accepts an omitted `stream_processor`, rejects hand-authored default
+profile fields for ordinary manifests, blocks direct profile-specific imports
+from generated business logic, and returns a `remove_stream_processor` quick
+fix for ordinary manifests that start branching.
 
 Use the first matching rule:
 
