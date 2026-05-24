@@ -14687,6 +14687,8 @@ def rad_parity_workbench(existing_paths: set[str] | None = None) -> dict:
     package_workbench = component_package_workbench()
     component_readiness = component_parity_readiness_contract()
     package_readiness = component_package_readiness_contract()
+    streaming_contract = dfm_streaming_contract()
+    runtime_workbench = pascal_runtime_workbench()
     platform_lifecycle = platform_parity_lifecycle_replay_contract()
     requirement_audit = platform_parity_requirement_audit_contract()
     third_party_categories = set(third_party_component_categories())
@@ -14749,6 +14751,12 @@ def rad_parity_workbench(existing_paths: set[str] | None = None) -> dict:
     passing_package_readiness_checks = tuple(
         check["id"] for check in package_readiness["checks"] if check["ok"]
     )
+    required_stream_formats = ("text-dfm", "binary-dfm", "json-form-model")
+    passing_stream_formats = tuple(streaming_contract["stream_formats"])
+    required_compiler_stages = ("parse_units", "type_check", "resource_link", "emit_target")
+    passing_compiler_stages = tuple(runtime_workbench["compiler"]["stages"])
+    required_runtime_replay_phases = ("stream_decode", "semantic_static_analysis", "target_emit", "runtime_load")
+    passing_runtime_replay_phases = tuple(phase["phase"] for phase in runtime_workbench["runtime_replay"]["replay"])
     checks = (
         {
             "id": "native_ui_parity_component_parity",
@@ -14768,13 +14776,22 @@ def rad_parity_workbench(existing_paths: set[str] | None = None) -> dict:
         },
         {
             "id": "pascal_runtime_and_dfm_streaming",
-            "ok": "text-dfm" in dfm_streaming_contract()["stream_formats"] and pascal_runtime_workbench()["ok"],
-            "evidence": {"streaming": dfm_streaming_contract(), "runtime": pascal_runtime_workbench()},
+            "ok": set(required_stream_formats) <= set(passing_stream_formats)
+            and set(required_compiler_stages) <= set(passing_compiler_stages)
+            and set(required_runtime_replay_phases) <= set(passing_runtime_replay_phases)
+            and runtime_workbench["ok"],
+            "required_stream_formats": required_stream_formats,
+            "passing_stream_formats": passing_stream_formats,
+            "required_compiler_stages": required_compiler_stages,
+            "passing_compiler_stages": passing_compiler_stages,
+            "required_runtime_phases": required_runtime_replay_phases,
+            "passing_runtime_phases": passing_runtime_replay_phases,
+            "evidence": {"streaming": streaming_contract, "runtime": runtime_workbench},
         },
         {
             "id": "pascal_runtime_workbench",
-            "ok": pascal_runtime_workbench()["ok"],
-            "evidence": pascal_runtime_workbench(),
+            "ok": runtime_workbench["ok"],
+            "evidence": runtime_workbench,
         },
         {
             "id": "object_inspector_parity",
