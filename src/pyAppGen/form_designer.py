@@ -14164,6 +14164,7 @@ def platform_parity_requirement_audit_contract() -> dict:
     """Map each requested IDE parity requirement to concrete subsystem evidence."""
     analog_groups = component_analog_group_audit()
     component_readiness = component_parity_readiness_contract()
+    component_usability = component_usability_workbench()
     runtime = pascal_runtime_workbench()
     runtime_readiness = pascal_runtime_readiness_contract()
     inspector = object_inspector_workbench()
@@ -14187,6 +14188,7 @@ def platform_parity_requirement_audit_contract() -> dict:
             "id": "component_parity",
             "ok": analog_groups["ok"]
             and component_readiness["ok"]
+            and component_usability["ok"]
             and {
                 "analog_coverage_ready",
                 "palette_icons_ready",
@@ -14197,6 +14199,14 @@ def platform_parity_requirement_audit_contract() -> dict:
                 "phase_order_ready",
             }
             <= {check["id"] for check in component_readiness["checks"] if check["ok"]}
+            and {
+                "per_component_files",
+                "per_package_files",
+                "per_component_test_files",
+                "per_package_test_files",
+                "module_smoke_tests",
+                "component_parity_readiness",
+            } <= {check["id"] for check in component_usability["checks"] if check["ok"]}
             and {
                 "cross-target-ui",
                 "layouts",
@@ -14213,10 +14223,15 @@ def platform_parity_requirement_audit_contract() -> dict:
                 "analog_coverage_ready",
                 "generated_modules_ready",
                 "generated_tests_ready",
+                "per_component_files",
+                "per_package_files",
+                "per_component_test_files",
+                "per_package_test_files",
+                "module_smoke_tests",
                 "ide_release_ready",
                 "phase_order_ready",
             ),
-            "evidence": {"groups": analog_groups, "readiness": component_readiness},
+            "evidence": {"groups": analog_groups, "readiness": component_readiness, "usability": component_usability},
         },
         {
             "id": "native_runtime_streaming",

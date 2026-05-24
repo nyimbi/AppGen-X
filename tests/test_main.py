@@ -3065,8 +3065,21 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     assert {
         "generated_modules_ready",
         "generated_tests_ready",
+        "per_component_files",
+        "per_package_files",
+        "per_component_test_files",
+        "per_package_test_files",
+        "module_smoke_tests",
         "ide_release_ready",
     } <= set(requirements_by_id["component_parity"]["deep_checks"])
+    assert requirements_by_id["component_parity"]["evidence"]["usability"]["format"] == "appgen.component-usability-workbench.v1"
+    assert {
+        "per_component_files",
+        "per_package_files",
+        "per_component_test_files",
+        "per_package_test_files",
+        "module_smoke_tests",
+    } <= {check["id"] for check in requirements_by_id["component_parity"]["evidence"]["usability"]["checks"] if check["ok"]}
     assert {
         "trust_before_preview",
         "registry_before_update",
@@ -12325,7 +12338,30 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert generated_requirements_by_id["cross_target_visual_depth"]["evidence"]["readiness"]["format"] == (
         "appgen.generated-cross-target-visual-readiness-contract.v1"
     )
-    assert "ide_release_ready" in generated_requirements_by_id["component_parity"]["deep_checks"]
+    assert {
+        "generated_modules_ready",
+        "generated_tests_ready",
+        "per_component_files",
+        "per_package_files",
+        "per_component_test_files",
+        "per_package_test_files",
+        "module_smoke_tests",
+        "ide_release_ready",
+    } <= set(generated_requirements_by_id["component_parity"]["deep_checks"])
+    assert generated_requirements_by_id["component_parity"]["evidence"]["usability"]["format"] == (
+        "appgen.generated-component-usability-workbench.v1"
+    )
+    assert {
+        "per_component_files",
+        "per_package_files",
+        "per_component_test_files",
+        "per_package_test_files",
+        "module_smoke_tests",
+    } <= {
+        check["id"]
+        for check in generated_requirements_by_id["component_parity"]["evidence"]["usability"]["checks"]
+        if check["ok"]
+    }
     assert {
         "trust_before_preview",
         "package_manager_modules",
