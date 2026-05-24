@@ -21952,6 +21952,7 @@ def write_branding_template(output_dir):
 	      <a class="btn btn-default" href="{{ url_for('BrandingView.menus_json') }}">Menus JSON</a>
 	      <a class="btn btn-default" href="{{ url_for('BrandingView.context_menus_json') }}">Context Menus JSON</a>
 	      <a class="btn btn-default" href="{{ url_for('BrandingView.ui_customization_workbench_json') }}">UI Customization Workbench JSON</a>
+	      <a class="btn btn-default" href="{{ url_for('BrandingView.ui_chrome_readiness_json') }}">UI Chrome Readiness JSON</a>
 	      <a class="btn btn-default" href="{{ url_for('BrandingView.ui_release_gate_json') }}">UI Release Gate JSON</a>
 	    </div>
   </div>
@@ -26582,6 +26583,105 @@ def ui_chrome_module_test_file_manifest():
     }}
 
 
+def ui_chrome_readiness_contract(existing_paths=None):
+    """Prove generated splash, menu, context-menu, and fine-tuning chrome as one ordered path."""
+    existing = set(existing_paths or ())
+    required_assets = ("app/branding.py", "app/static/appgen-theme.css", "app/templates/appgen_branding.html")
+    missing_assets = tuple(path for path in required_assets if path not in existing) if existing_paths is not None else ()
+    splash = splash_screen_contract()
+    menus = menu_catalog()
+    menu_schema = menu_edit_schema()
+    valid_menu_plan = menu_edit_plan((
+        {{"menu": "primary", "item": "reports", "operation": "update", "fields": ("label", "order"), "route": "/reports/"}},
+    ))
+    invalid_menu_plan = menu_edit_plan((
+        {{"menu": "primary", "item": "external", "operation": "update", "fields": ("label", "unsafe"), "route": "http://example.test"}},
+    ))
+    context_menus = context_menu_catalog()
+    reviewed_actions = tuple(
+        context_menu_action_plan(item["surface"], next(action["id"] for action in item["actions"] if action["requires_review"]))
+        for item in context_menus
+        if any(action["requires_review"] for action in item["actions"])
+    )
+    customization = ui_customization_workbench(existing_paths)
+    module_manifest = ui_chrome_module_file_manifest()
+    test_manifest = ui_chrome_module_test_file_manifest()
+    release = ui_experience_release_gate(existing_paths)
+    phases = (
+        {{
+            "phase": "splash_screen",
+            "ok": splash["min_duration_ms"] < splash["max_duration_ms"]
+            and "reduced_motion" in splash["motion"]
+            and {{"web", "pwa", "mobile", "desktop"}} <= set(splash["targets"]),
+            "evidence": splash,
+        }},
+        {{
+            "phase": "menu_editor",
+            "ok": bool(menus)
+            and all(item["items"] for item in menus)
+            and menu_schema["review_required"]
+            and valid_menu_plan["ok"]
+            and not invalid_menu_plan["ok"],
+            "evidence": {{"menus": menus, "schema": menu_schema, "valid": valid_menu_plan, "invalid": invalid_menu_plan}},
+        }},
+        {{
+            "phase": "context_menu",
+            "ok": bool(context_menus)
+            and all(item["trigger"] == "contextmenu" and item["actions"] for item in context_menus)
+            and bool(reviewed_actions)
+            and all(item["requires_review"] for item in reviewed_actions),
+            "evidence": {{"menus": context_menus, "reviewed_actions": reviewed_actions}},
+        }},
+        {{
+            "phase": "ui_fine_tuning",
+            "ok": bool(design_tokens())
+            and bool(component_state_matrix())
+            and bool(viewport_contract())
+            and bool(layout_contract()),
+            "evidence": ("design_tokens", "component_state_matrix", "viewport_contract", "layout_contract"),
+        }},
+        {{
+            "phase": "generated_modules",
+            "ok": module_manifest["ok"]
+            and {{"splash_screen", "menu_editor", "context_menu", "ui_fine_tuning"}} == {{item["surface"] for item in module_manifest["modules"]}},
+            "evidence": module_manifest,
+        }},
+        {{
+            "phase": "generated_tests",
+            "ok": test_manifest["ok"]
+            and {{"splash_screen", "menu_editor", "context_menu", "ui_fine_tuning"}} == {{item["surface"] for item in test_manifest["tests"]}},
+            "evidence": test_manifest,
+        }},
+        {{
+            "phase": "release_gate",
+            "ok": customization["ok"] and release["ok"] and not release["blocking_gaps"],
+            "evidence": {{"customization": customization["format"], "release": release["format"]}},
+        }},
+    )
+    phase_names = tuple(item["phase"] for item in phases)
+    checks = (
+        {{"id": "artifact_coverage_ready", "ok": not missing_assets, "evidence": {{"required": required_assets, "missing": missing_assets}}}},
+        {{"id": "splash_before_menu_ready", "ok": phase_names.index("splash_screen") < phase_names.index("menu_editor"), "evidence": phase_names}},
+        {{"id": "menus_before_context_ready", "ok": phase_names.index("menu_editor") < phase_names.index("context_menu"), "evidence": phase_names}},
+        {{"id": "context_before_fine_tuning_ready", "ok": phase_names.index("context_menu") < phase_names.index("ui_fine_tuning"), "evidence": phase_names}},
+        {{"id": "generated_modules_ready", "ok": module_manifest["ok"], "evidence": module_manifest}},
+        {{"id": "generated_tests_ready", "ok": test_manifest["ok"], "evidence": test_manifest}},
+        {{"id": "release_gate_ready", "ok": release["ok"] and not release["blocking_gaps"], "evidence": release}},
+        {{"id": "phase_order_ready", "ok": phase_names == ("splash_screen", "menu_editor", "context_menu", "ui_fine_tuning", "generated_modules", "generated_tests", "release_gate"), "evidence": phase_names}},
+        {{"id": "side_effect_guard_ready", "ok": not module_manifest["side_effects"] and not test_manifest["side_effects"], "evidence": (module_manifest["side_effects"], test_manifest["side_effects"])}},
+    )
+    ok = all(item["ok"] for item in phases) and all(check["ok"] for check in checks)
+    return {{
+        "format": "appgen.ui-chrome-readiness-contract.v1",
+        "ok": ok,
+        "decision": "approved" if ok else "blocked",
+        "phases": phases,
+        "checks": checks,
+        "side_effects": (),
+        "blocking_gaps": tuple(check for check in checks if not check["ok"]) + tuple(phase for phase in phases if not phase["ok"]),
+    }}
+
+
 def component_style_contract(component=None):
     """Return generated component style contracts for app builders and extensions."""
     tokens = design_tokens()
@@ -26917,6 +27017,7 @@ def branding_workbench(existing_paths=None):
     palette = palette_balance_report()
     responsive = responsive_workbench(existing_paths)
     customization = ui_customization_workbench(existing_paths)
+    chrome_readiness = ui_chrome_readiness_contract(existing_paths)
     release = ui_experience_release_gate(existing_paths)
     checks = (
         {{
@@ -26960,6 +27061,13 @@ def branding_workbench(existing_paths=None):
             "evidence": customization["format"],
         }},
         {{
+            "id": "ui_chrome_readiness",
+            "ok": chrome_readiness["ok"]
+            and {{"generated_modules_ready", "generated_tests_ready", "release_gate_ready", "phase_order_ready"}}
+            <= {{check["id"] for check in chrome_readiness["checks"] if check["ok"]}},
+            "evidence": chrome_readiness,
+        }},
+        {{
             "id": "release_gate",
             "ok": release["ok"],
             "evidence": release["format"],
@@ -26989,6 +27097,7 @@ def branding_workbench(existing_paths=None):
         "design_system": design,
         "responsive": responsive,
         "customization": customization,
+        "ui_chrome_readiness": chrome_readiness,
         "release_gate": release,
     }}
 
@@ -27258,6 +27367,7 @@ def asset_check(existing_paths):
         "audit": accessibility_audit_plan(),
         "visual_regression": visual_regression_plan(),
         "ui_customization": ui_customization_workbench(existing),
+        "ui_chrome_readiness": ui_chrome_readiness_contract(existing),
         "ui_release_gate": ui_experience_release_gate(existing),
     }}
 
@@ -27329,6 +27439,10 @@ class BrandingView(BaseView):
     @expose("/ui-customization-workbench.json")
     def ui_customization_workbench_json(self):
         return jsonify(ui_customization_workbench({{"app/branding.py", "app/static/appgen-theme.css", "app/templates/appgen_branding.html"}}))
+
+    @expose("/ui-chrome-readiness.json")
+    def ui_chrome_readiness_json(self):
+        return jsonify(ui_chrome_readiness_contract({{"app/branding.py", "app/static/appgen-theme.css", "app/templates/appgen_branding.html"}}))
 
     @expose("/ui-release-gate.json")
     def ui_release_gate_json(self):
@@ -77109,6 +77223,9 @@ def validate_branding_artifacts() -> None:
         or "ui_experience_excellence_gate" not in contract
         or "visual_test_matrix" not in contract
         or "ui_experience_release_gate" not in contract
+        or "ui_chrome_readiness_contract" not in contract
+        or "appgen.ui-chrome-readiness-contract.v1" not in contract
+        or '@expose("/ui-chrome-readiness.json")' not in contract
         or "accessibility_theme_check" not in contract
         or "accessibility_audit_plan" not in contract
         or "accessibility_workbench" not in contract
@@ -77129,6 +77246,7 @@ def validate_branding_artifacts() -> None:
         or "Visual Regression JSON" not in template
         or "Experience Excellence JSON" not in template
         or "Accessibility Workbench JSON" not in template
+        or "UI Chrome Readiness JSON" not in template
         or "UI Release Gate JSON" not in template
         or "Viewport Contracts" not in template
         or "Component States" not in template

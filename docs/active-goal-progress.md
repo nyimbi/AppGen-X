@@ -528,6 +528,10 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   of a comparison: use the generated AppGen-X event contract, omit
   `stream_processor`, and open only evidence-backed telemetry or dataflow
   exception lanes.
+- Generated UI chrome now exposes an ordered readiness contract that proves
+  splash screens, editable menus, context menus, UI fine-tuning, generated
+  module files, generated test files, and release gates as one side-effect-free
+  path.
 
 ## Open Completion Areas
 

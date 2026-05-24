@@ -7199,6 +7199,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert "Menus JSON" in (output_dir / "templates" / "appgen_branding.html").read_text()
     assert "Context Menus JSON" in (output_dir / "templates" / "appgen_branding.html").read_text()
     assert "UI Customization Workbench JSON" in (output_dir / "templates" / "appgen_branding.html").read_text()
+    assert "UI Chrome Readiness JSON" in (output_dir / "templates" / "appgen_branding.html").read_text()
     responsive_workbench = branding.responsive_workbench(
         {"app/branding.py", "app/static/appgen-theme.css", "app/templates/appgen_branding.html"}
     )
@@ -7234,6 +7235,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "visual_quality",
         "responsive_workbench",
         "ui_customization",
+        "ui_chrome_readiness",
         "release_gate",
         "route_surface",
     } == {check["id"] for check in branding_workbench["checks"]}
@@ -7274,8 +7276,28 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert branding.ui_customization_workbench({"app/branding.py"})["ok"] is False
     ui_chrome_files = branding.ui_chrome_module_file_manifest()
     ui_chrome_tests = branding.ui_chrome_module_test_file_manifest()
+    ui_chrome_readiness = branding.ui_chrome_readiness_contract(
+        {"app/branding.py", "app/static/appgen-theme.css", "app/templates/appgen_branding.html"}
+    )
     assert ui_chrome_files["ok"] is True
     assert ui_chrome_tests["ok"] is True
+    assert ui_chrome_readiness["format"] == "appgen.ui-chrome-readiness-contract.v1"
+    assert ui_chrome_readiness["ok"] is True
+    assert tuple(phase["phase"] for phase in ui_chrome_readiness["phases"]) == (
+        "splash_screen",
+        "menu_editor",
+        "context_menu",
+        "ui_fine_tuning",
+        "generated_modules",
+        "generated_tests",
+        "release_gate",
+    )
+    assert {
+        "generated_modules_ready",
+        "generated_tests_ready",
+        "release_gate_ready",
+        "phase_order_ready",
+    } <= {check["id"] for check in ui_chrome_readiness["checks"] if check["ok"]}
     assert {item["surface"] for item in ui_chrome_files["modules"]} == {
         "splash_screen",
         "menu_editor",
