@@ -479,6 +479,10 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   templates, and coding-agent prompts apply one ordinary event contract, zero
   visible stream-engine choices, and only two evidence-gated exception
   workflows.
+- Native data tooling now exposes a readiness contract that proves connection
+  probing, dataset design, service resource publishing, offline replay,
+  replication/failover monitoring, and runtime diagnostics as one ordered,
+  side-effect-free path in both package and generated-app workbenches.
 
 ## Open Completion Areas
 

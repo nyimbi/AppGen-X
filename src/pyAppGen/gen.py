@@ -51187,6 +51187,75 @@ def data_tooling_failover_transaction_replay_contract():
     }}
 
 
+def data_tooling_readiness_contract():
+    """Prove the generated native data tooling path as one ordered readiness contract."""
+    connection = data_tooling_test_connection()
+    dataset = data_tooling_design_dataset_operation()
+    publish_resource = data_tooling_publish_resource()
+    offline_replay = data_tooling_rehearse_offline_replay_operation()
+    replication = data_tooling_monitor_replication_operation()
+    module_smoke = data_tooling_run_module_smoke_operation()
+    runtime_replay = data_tooling_runtime_replay_contract()
+    publish_replay = data_tooling_publish_transaction_replay_contract()
+    failover_replay = data_tooling_failover_transaction_replay_contract()
+    actionable_operations = data_tooling_actionable_operations()
+    phases = (
+        {{"phase": "probe_connection", "pipeline": connection["pipeline"], "ok": connection["ok"] and connection["pipeline"][-1] == "rollback_test_transaction"}},
+        {{"phase": "design_dataset", "pipeline": dataset["pipeline"], "ok": dataset["ok"] and "validate_dataset_state_machine" in dataset["pipeline"]}},
+        {{"phase": "publish_service_resources", "pipeline": publish_resource["pipeline"], "ok": publish_resource["ok"] and publish_replay["ok"] and {{"run_contract_tests", "attach_security", "register_analytics"}} <= set(publish_resource["pipeline"])}},
+        {{"phase": "rehearse_offline_replay", "pipeline": offline_replay["pipeline"], "ok": offline_replay["ok"] and {{"dedupe_by_idempotency_key", "pause_for_manual_review", "mark_replayed"}} <= set(offline_replay["pipeline"])}},
+        {{"phase": "monitor_replication_and_failover", "pipeline": replication["pipeline"] + tuple(item["phase"] for item in failover_replay["replay"]), "ok": replication["ok"] and failover_replay["ok"] and "surface_conflict_alerts" in replication["pipeline"] and failover_replay["final_state"]["persisted_writes"] == 0}},
+        {{"phase": "surface_runtime_diagnostics", "pipeline": module_smoke["pipeline"] + tuple(item["op"] for item in runtime_replay["trace"]), "ok": module_smoke["ok"] and runtime_replay["ok"] and "verify_no_side_effects" in module_smoke["pipeline"] and runtime_replay["final_state"]["queue_status"] == "manual_review"}},
+    )
+    checks = (
+        {{"id": "connection_ready", "ok": phases[0]["ok"], "evidence": connection}},
+        {{"id": "dataset_ready", "ok": phases[1]["ok"], "evidence": dataset}},
+        {{"id": "publish_ready", "ok": phases[2]["ok"], "evidence": {{"operation": publish_resource, "replay": publish_replay}}}},
+        {{"id": "offline_replay_ready", "ok": phases[3]["ok"], "evidence": offline_replay}},
+        {{"id": "replication_failover_ready", "ok": phases[4]["ok"], "evidence": {{"replication": replication, "failover": failover_replay}}}},
+        {{"id": "diagnostics_ready", "ok": phases[5]["ok"], "evidence": {{"module_smoke": module_smoke, "runtime_replay": runtime_replay}}}},
+        {{"id": "operation_surface_ready", "ok": actionable_operations["ok"] and not actionable_operations["side_effects"], "evidence": actionable_operations}},
+        {{
+            "id": "phase_order_ready",
+            "ok": tuple(item["phase"] for item in phases)
+            == (
+                "probe_connection",
+                "design_dataset",
+                "publish_service_resources",
+                "rehearse_offline_replay",
+                "monitor_replication_and_failover",
+                "surface_runtime_diagnostics",
+            ),
+            "evidence": tuple(item["phase"] for item in phases),
+        }},
+    )
+    return {{
+        "format": "appgen.generated-data-tooling-readiness-contract.v1",
+        "ok": all(check["ok"] for check in checks) and all(phase["ok"] for phase in phases),
+        "phases": phases,
+        "checks": checks,
+        "final_state": {{
+            "connection": "verified",
+            "dataset_transitions": len(dataset["transitions"]),
+            "published_resources": len(publish_resource["pipeline"]),
+            "offline_queue": len(offline_replay["queue"]),
+            "replication_monitors": len(replication["monitors"]),
+            "runtime_steps": len(runtime_replay["trace"]),
+            "persisted_writes": runtime_replay["final_state"]["persisted_writes"],
+        }},
+        "guards": (
+            "connection_probe_before_dataset_design",
+            "dataset_design_before_service_publish",
+            "service_publish_before_offline_replay",
+            "offline_replay_before_failover_monitoring",
+            "diagnostics_after_runtime_replay",
+            "side_effect_free_readiness",
+        ),
+        "side_effects": (),
+        "blocking_gaps": tuple(check for check in checks if not check["ok"]),
+    }}
+
+
 def rad_data_tooling_workbench():
     """Prove native data-service tooling depth across connections, queries, services, and local sync."""
     contract = rad_data_tooling_contract()
@@ -51231,6 +51300,7 @@ def rad_data_tooling_workbench():
     design_runtime_replay = data_tooling_design_runtime_session_replay_contract()
     publish_transaction_replay = data_tooling_publish_transaction_replay_contract()
     failover_transaction_replay = data_tooling_failover_transaction_replay_contract()
+    readiness = data_tooling_readiness_contract()
     actionable_operations = data_tooling_actionable_operations()
     checks = (
         {{"id": "connection_catalog", "ok": bool(contract["connection_catalog"]) and all(item["secret_policy"] in ("externalized", "local_keychain") for item in contract["connection_catalog"]), "evidence": contract["connection_catalog"]}},
@@ -51282,9 +51352,10 @@ def rad_data_tooling_workbench():
         {{"id": "data_tooling_design_runtime_session_replay", "ok": design_runtime_replay["ok"] and {{"schema_rehearsal_before_dataset_publish", "runtime_operations_are_monitored"}} <= set(design_runtime_replay["guards"]) and not design_runtime_replay["side_effects"], "evidence": design_runtime_replay}},
         {{"id": "data_tooling_publish_transaction_replay", "ok": publish_transaction_replay["ok"] and {{"service_contract_tests_before_resource_publish", "runtime_smoke_proves_no_persisted_writes"}} <= set(publish_transaction_replay["guards"]) and not publish_transaction_replay["side_effects"], "evidence": publish_transaction_replay}},
         {{"id": "data_tooling_failover_transaction_replay", "ok": failover_transaction_replay["ok"] and {{"failed_route_quarantined_before_retry", "offline_replay_pauses_for_manual_review"}} <= set(failover_transaction_replay["guards"]) and failover_transaction_replay["final_state"]["persisted_writes"] == 0 and not failover_transaction_replay["side_effects"], "evidence": failover_transaction_replay}},
+        {{"id": "data_tooling_readiness_contract", "ok": readiness["ok"] and {{"connection_ready", "dataset_ready", "publish_ready", "offline_replay_ready", "replication_failover_ready", "diagnostics_ready", "operation_surface_ready", "phase_order_ready"}} <= {{check["id"] for check in readiness["checks"] if check["ok"]}} and not readiness["side_effects"], "evidence": readiness}},
     )
     ok = all(check["ok"] for check in checks)
-    return {{"format": "appgen.generated-rad-data-tooling-workbench.v1", "ok": ok, "decision": "approved" if ok else "blocked", "contract": contract, "connection_test": connection_test, "query_preview": query_preview, "method_invocation": method_invocation, "resource_publish": resource_publish, "actionable_operations": actionable_operations, "local_maintenance": local_maintenance, "conflict_review": conflict_review, "driver_matrix": driver_matrix, "schema_diff": schema_diff, "transaction_rehearsal": transaction_rehearsal, "offline_replay": offline_replay, "service_tests": service_tests, "schema_browser": schema_browser, "parameter_binding": parameter_binding, "dataset_fields": dataset_fields, "service_security": service_security, "offline_queue_integrity": offline_queue_integrity, "migration_rehearsal": migration_rehearsal, "dataset_designer": dataset_designer, "service_invocation_traces": service_invocation_traces, "maintenance_schedule": maintenance_schedule, "schema_checkpoints": schema_checkpoints, "data_modules": data_modules, "query_plan_visualizer": query_plan_visualizer, "relationship_navigation": relationship_navigation, "service_versioning": service_versioning, "connection_failover": connection_failover, "change_capture_lineage": change_capture_lineage, "connection_pooling": connection_pooling, "stored_procedures": stored_procedures, "sql_authoring_safety": sql_authoring_safety, "backup_restore_verification": backup_restore_verification, "replication_monitor": replication_monitor, "service_telemetry": service_telemetry, "dataset_state_machine": dataset_state_machine, "lookup_editor_pipeline": lookup_editor_pipeline, "relationship_lookup_lifecycle": relationship_lookup_lifecycle, "module_runtime_smoke": module_runtime_smoke, "runtime_replay": runtime_replay, "design_runtime_replay": design_runtime_replay, "publish_transaction_replay": publish_transaction_replay, "failover_transaction_replay": failover_transaction_replay, "checks": checks, "blocking_gaps": tuple(check for check in checks if not check["ok"])}}
+    return {{"format": "appgen.generated-rad-data-tooling-workbench.v1", "ok": ok, "decision": "approved" if ok else "blocked", "contract": contract, "connection_test": connection_test, "query_preview": query_preview, "method_invocation": method_invocation, "resource_publish": resource_publish, "actionable_operations": actionable_operations, "local_maintenance": local_maintenance, "conflict_review": conflict_review, "driver_matrix": driver_matrix, "schema_diff": schema_diff, "transaction_rehearsal": transaction_rehearsal, "offline_replay": offline_replay, "service_tests": service_tests, "schema_browser": schema_browser, "parameter_binding": parameter_binding, "dataset_fields": dataset_fields, "service_security": service_security, "offline_queue_integrity": offline_queue_integrity, "migration_rehearsal": migration_rehearsal, "dataset_designer": dataset_designer, "service_invocation_traces": service_invocation_traces, "maintenance_schedule": maintenance_schedule, "schema_checkpoints": schema_checkpoints, "data_modules": data_modules, "query_plan_visualizer": query_plan_visualizer, "relationship_navigation": relationship_navigation, "service_versioning": service_versioning, "connection_failover": connection_failover, "change_capture_lineage": change_capture_lineage, "connection_pooling": connection_pooling, "stored_procedures": stored_procedures, "sql_authoring_safety": sql_authoring_safety, "backup_restore_verification": backup_restore_verification, "replication_monitor": replication_monitor, "service_telemetry": service_telemetry, "dataset_state_machine": dataset_state_machine, "lookup_editor_pipeline": lookup_editor_pipeline, "relationship_lookup_lifecycle": relationship_lookup_lifecycle, "module_runtime_smoke": module_runtime_smoke, "runtime_replay": runtime_replay, "design_runtime_replay": design_runtime_replay, "publish_transaction_replay": publish_transaction_replay, "failover_transaction_replay": failover_transaction_replay, "readiness": readiness, "checks": checks, "blocking_gaps": tuple(check for check in checks if not check["ok"])}}
 
 
 def mobile_native_api_contract():

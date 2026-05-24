@@ -9479,6 +9479,108 @@ def data_tooling_failover_transaction_replay_contract() -> dict:
     }
 
 
+def data_tooling_readiness_contract() -> dict:
+    """Prove the native data tooling path as one ordered readiness contract."""
+    connection = data_tooling_test_connection()
+    dataset = data_tooling_design_dataset_operation()
+    publish_resource = data_tooling_publish_resource()
+    offline_replay = data_tooling_rehearse_offline_replay_operation()
+    replication = data_tooling_monitor_replication_operation()
+    module_smoke = data_tooling_run_module_smoke_operation()
+    runtime_replay = data_tooling_runtime_replay_contract()
+    publish_replay = data_tooling_publish_transaction_replay_contract()
+    failover_replay = data_tooling_failover_transaction_replay_contract()
+    actionable_operations = data_tooling_actionable_operations()
+    phases = (
+        {
+            "phase": "probe_connection",
+            "pipeline": connection["pipeline"],
+            "ok": connection["ok"] and connection["pipeline"][-1] == "rollback_test_transaction",
+        },
+        {
+            "phase": "design_dataset",
+            "pipeline": dataset["pipeline"],
+            "ok": dataset["ok"] and "validate_dataset_state_machine" in dataset["pipeline"],
+        },
+        {
+            "phase": "publish_service_resources",
+            "pipeline": publish_resource["pipeline"],
+            "ok": publish_resource["ok"]
+            and publish_replay["ok"]
+            and {"run_contract_tests", "attach_security", "register_analytics"} <= set(publish_resource["pipeline"]),
+        },
+        {
+            "phase": "rehearse_offline_replay",
+            "pipeline": offline_replay["pipeline"],
+            "ok": offline_replay["ok"]
+            and {"dedupe_by_idempotency_key", "pause_for_manual_review", "mark_replayed"} <= set(offline_replay["pipeline"]),
+        },
+        {
+            "phase": "monitor_replication_and_failover",
+            "pipeline": replication["pipeline"] + tuple(item["phase"] for item in failover_replay["replay"]),
+            "ok": replication["ok"]
+            and failover_replay["ok"]
+            and "surface_conflict_alerts" in replication["pipeline"]
+            and failover_replay["final_state"]["persisted_writes"] == 0,
+        },
+        {
+            "phase": "surface_runtime_diagnostics",
+            "pipeline": module_smoke["pipeline"] + tuple(item["op"] for item in runtime_replay["trace"]),
+            "ok": module_smoke["ok"]
+            and runtime_replay["ok"]
+            and "verify_no_side_effects" in module_smoke["pipeline"]
+            and runtime_replay["final_state"]["queue_status"] == "manual_review",
+        },
+    )
+    checks = (
+        {"id": "connection_ready", "ok": phases[0]["ok"], "evidence": connection},
+        {"id": "dataset_ready", "ok": phases[1]["ok"], "evidence": dataset},
+        {"id": "publish_ready", "ok": phases[2]["ok"], "evidence": {"operation": publish_resource, "replay": publish_replay}},
+        {"id": "offline_replay_ready", "ok": phases[3]["ok"], "evidence": offline_replay},
+        {"id": "replication_failover_ready", "ok": phases[4]["ok"], "evidence": {"replication": replication, "failover": failover_replay}},
+        {"id": "diagnostics_ready", "ok": phases[5]["ok"], "evidence": {"module_smoke": module_smoke, "runtime_replay": runtime_replay}},
+        {"id": "operation_surface_ready", "ok": actionable_operations["ok"] and not actionable_operations["side_effects"], "evidence": actionable_operations},
+        {
+            "id": "phase_order_ready",
+            "ok": tuple(item["phase"] for item in phases)
+            == (
+                "probe_connection",
+                "design_dataset",
+                "publish_service_resources",
+                "rehearse_offline_replay",
+                "monitor_replication_and_failover",
+                "surface_runtime_diagnostics",
+            ),
+            "evidence": tuple(item["phase"] for item in phases),
+        },
+    )
+    return {
+        "format": "appgen.data-tooling-readiness-contract.v1",
+        "ok": all(check["ok"] for check in checks) and all(phase["ok"] for phase in phases),
+        "phases": phases,
+        "checks": checks,
+        "final_state": {
+            "connection": "verified",
+            "dataset_transitions": len(dataset["transitions"]),
+            "published_resources": len(publish_resource["pipeline"]),
+            "offline_queue": len(offline_replay["queue"]),
+            "replication_monitors": len(replication["monitors"]),
+            "runtime_steps": len(runtime_replay["trace"]),
+            "persisted_writes": runtime_replay["final_state"]["persisted_writes"],
+        },
+        "guards": (
+            "connection_probe_before_dataset_design",
+            "dataset_design_before_service_publish",
+            "service_publish_before_offline_replay",
+            "offline_replay_before_failover_monitoring",
+            "diagnostics_after_runtime_replay",
+            "side_effect_free_readiness",
+        ),
+        "side_effects": (),
+        "blocking_gaps": tuple(check for check in checks if not check["ok"]),
+    }
+
+
 def rad_data_tooling_workbench() -> dict:
     """Prove native data-service tooling depth across connections, queries, services, and local sync."""
     contract = rad_data_tooling_contract()
@@ -9523,6 +9625,7 @@ def rad_data_tooling_workbench() -> dict:
     design_runtime_replay = data_tooling_design_runtime_session_replay_contract()
     publish_transaction_replay = data_tooling_publish_transaction_replay_contract()
     failover_transaction_replay = data_tooling_failover_transaction_replay_contract()
+    readiness = data_tooling_readiness_contract()
     actionable_operations = data_tooling_actionable_operations()
     checks = (
         {
@@ -9846,6 +9949,23 @@ def rad_data_tooling_workbench() -> dict:
             and not failover_transaction_replay["side_effects"],
             "evidence": failover_transaction_replay,
         },
+        {
+            "id": "data_tooling_readiness_contract",
+            "ok": readiness["ok"]
+            and {
+                "connection_ready",
+                "dataset_ready",
+                "publish_ready",
+                "offline_replay_ready",
+                "replication_failover_ready",
+                "diagnostics_ready",
+                "operation_surface_ready",
+                "phase_order_ready",
+            }
+            <= {check["id"] for check in readiness["checks"] if check["ok"]}
+            and not readiness["side_effects"],
+            "evidence": readiness,
+        },
     )
     ok = all(check["ok"] for check in checks)
     return {
@@ -9895,6 +10015,7 @@ def rad_data_tooling_workbench() -> dict:
         "design_runtime_replay": design_runtime_replay,
         "publish_transaction_replay": publish_transaction_replay,
         "failover_transaction_replay": failover_transaction_replay,
+        "readiness": readiness,
         "checks": checks,
         "blocking_gaps": tuple(check for check in checks if not check["ok"]),
     }

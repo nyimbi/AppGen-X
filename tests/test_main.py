@@ -178,6 +178,7 @@ from pyAppGen.form_designer import data_tooling_preview_schema_diff
 from pyAppGen.form_designer import data_tooling_publish_resource
 from pyAppGen.form_designer import data_tooling_rehearse_offline_replay_operation
 from pyAppGen.form_designer import data_tooling_failover_transaction_replay_contract
+from pyAppGen.form_designer import data_tooling_readiness_contract
 from pyAppGen.form_designer import data_tooling_run_module_smoke_operation
 from pyAppGen.form_designer import data_tooling_test_connection
 from pyAppGen.form_designer import rad_parity_workbench
@@ -1733,6 +1734,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "data_tooling_design_runtime_session_replay",
         "data_tooling_publish_transaction_replay",
         "data_tooling_failover_transaction_replay",
+        "data_tooling_readiness_contract",
     } == {check["id"] for check in data_workbench["checks"]}
     assert data_tooling_test_connection()["ok"] is True
     assert data_tooling_test_connection()["pipeline"][-1] == "rollback_test_transaction"
@@ -1875,6 +1877,30 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     } <= set(failover_replay["guards"])
     assert data_workbench["failover_transaction_replay"]["ok"] is True
     assert data_workbench["failover_transaction_replay"]["final_state"]["manual_review"] is True
+    readiness = data_tooling_readiness_contract()
+    assert readiness["format"] == "appgen.data-tooling-readiness-contract.v1"
+    assert readiness["ok"] is True
+    assert {
+        "probe_connection",
+        "design_dataset",
+        "publish_service_resources",
+        "rehearse_offline_replay",
+        "monitor_replication_and_failover",
+        "surface_runtime_diagnostics",
+    } == {item["phase"] for item in readiness["phases"]}
+    assert {
+        "connection_ready",
+        "dataset_ready",
+        "publish_ready",
+        "offline_replay_ready",
+        "replication_failover_ready",
+        "diagnostics_ready",
+        "operation_surface_ready",
+        "phase_order_ready",
+    } == {check["id"] for check in readiness["checks"]}
+    assert readiness["final_state"]["persisted_writes"] == 0
+    assert data_workbench["readiness"]["ok"] is True
+    assert data_workbench["readiness"]["final_state"]["runtime_steps"] > 0
     mobile_workbench = mobile_native_api_workbench()
     assert mobile_workbench["format"] == "appgen.mobile-native-api-workbench.v1"
     assert mobile_workbench["ok"] is True
@@ -12043,6 +12069,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "data_tooling_design_runtime_session_replay",
         "data_tooling_publish_transaction_replay",
         "data_tooling_failover_transaction_replay",
+        "data_tooling_readiness_contract",
     } == {check["id"] for check in generated_data_tooling["checks"]}
     generated_connection = form_designer.data_tooling_test_connection()
     assert generated_connection["ok"] is True
@@ -12186,6 +12213,30 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert "failed_route_quarantined_before_retry" in generated_failover_replay["guards"]
     assert generated_data_tooling["failover_transaction_replay"]["ok"] is True
     assert generated_data_tooling["failover_transaction_replay"]["final_state"]["manual_review"] is True
+    generated_readiness = form_designer.data_tooling_readiness_contract()
+    assert generated_readiness["format"] == "appgen.generated-data-tooling-readiness-contract.v1"
+    assert generated_readiness["ok"] is True
+    assert {
+        "probe_connection",
+        "design_dataset",
+        "publish_service_resources",
+        "rehearse_offline_replay",
+        "monitor_replication_and_failover",
+        "surface_runtime_diagnostics",
+    } == {item["phase"] for item in generated_readiness["phases"]}
+    assert {
+        "connection_ready",
+        "dataset_ready",
+        "publish_ready",
+        "offline_replay_ready",
+        "replication_failover_ready",
+        "diagnostics_ready",
+        "operation_surface_ready",
+        "phase_order_ready",
+    } == {check["id"] for check in generated_readiness["checks"]}
+    assert generated_readiness["final_state"]["persisted_writes"] == 0
+    assert generated_data_tooling["readiness"]["ok"] is True
+    assert generated_data_tooling["readiness"]["final_state"]["runtime_steps"] > 0
     data_runtime_file = output_dir / "data_tooling_runtime.py"
     assert data_runtime_file.exists()
     py_compile.compile(str(data_runtime_file), doraise=True)
