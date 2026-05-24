@@ -14626,6 +14626,14 @@ def platform_parity_requirement_audit_contract() -> dict:
     )
     required_requirement_ids = tuple(requirement["id"] for requirement in requirements)
     passing_requirement_ids = tuple(requirement["id"] for requirement in requirements if requirement["ok"])
+    missing_requirement_ids = tuple(
+        requirement_id for requirement_id in required_requirement_ids if requirement_id not in passing_requirement_ids
+    )
+    missing_deep_checks = tuple(
+        {"requirement": item["requirement"], "missing": item["missing"]}
+        for item in deep_check_coverage
+        if item["missing"]
+    )
     checks = (
         {
             "id": "all_requirements_have_evidence",
@@ -14659,6 +14667,9 @@ def platform_parity_requirement_audit_contract() -> dict:
         "checks": checks,
         "required_requirements": required_requirement_ids,
         "passing_requirements": passing_requirement_ids,
+        "missing_requirements": missing_requirement_ids,
+        "deep_check_coverage": deep_check_coverage,
+        "missing_deep_checks": missing_deep_checks,
         "lifecycle_replay": lifecycle,
         "blocking_gaps": tuple(requirement for requirement in requirements if not requirement["ok"]),
         "side_effects": (),

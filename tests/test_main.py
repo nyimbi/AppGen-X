@@ -3058,10 +3058,13 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "device_api_component_coverage",
         "cross_target_visual_depth",
     } <= set(all_requirements["passing_requirements"])
+    assert requirement_audit_gate["evidence"]["missing_requirements"] == ()
+    assert requirement_audit_gate["evidence"]["missing_deep_checks"] == ()
     deep_coverage = next(
         check for check in requirement_audit_gate["evidence"]["checks"] if check["id"] == "deep_checks_have_passing_evidence"
     )
     assert deep_coverage["ok"] is True
+    assert requirement_audit_gate["evidence"]["deep_check_coverage"] == deep_coverage["evidence"]
     for item in deep_coverage["evidence"]:
         assert set(item["required_deep_checks"]) <= set(item["passing_deep_checks"])
         assert item["missing"] == ()
