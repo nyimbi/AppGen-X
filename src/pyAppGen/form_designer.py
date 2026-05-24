@@ -18004,6 +18004,20 @@ def form_designer_release_audit(existing_paths: set[str] | None = None) -> dict:
         ("valid_drop_has_no_overlaps", valid_after_drop["ok"] and not valid_after_drop["overlaps"]),
         ("valid_drop_in_bounds", valid_after_drop["ok"] and not valid_after_drop["out_of_bounds"]),
     )
+    required_overlap_pairs = ({"left": "name", "right": "duplicate_name"},)
+    passing_overlap_pairs = tuple(pair for pair in overlap_pairs if pair in required_overlap_pairs)
+    required_overlap_pair_keys = tuple(tuple(sorted(pair.items())) for pair in required_overlap_pairs)
+    passing_overlap_pair_keys = tuple(tuple(sorted(pair.items())) for pair in passing_overlap_pairs)
+    required_valid_drop_state = {
+        "ok": True,
+        "overlaps": (),
+        "out_of_bounds": (),
+    }
+    passing_valid_drop_state = {
+        key: valid_after_drop[key]
+        for key in required_valid_drop_state
+        if valid_after_drop.get(key) == required_valid_drop_state[key]
+    }
     required_overlap_checks = tuple(check for check, _ in overlap_checks)
     passing_overlap_checks = tuple(check for check, ok in overlap_checks if ok)
     generation_smoke = form_designer_generation_smoke_audit()
@@ -18166,9 +18180,17 @@ def form_designer_release_audit(existing_paths: set[str] | None = None) -> dict:
         },
         {
             "id": "overlap_guardrails",
-            "ok": set(required_overlap_checks) <= set(passing_overlap_checks),
+            "ok": set(required_overlap_checks) <= set(passing_overlap_checks)
+            and set(required_overlap_pair_keys) <= set(passing_overlap_pair_keys)
+            and passing_valid_drop_state == required_valid_drop_state,
             "required_checks": required_overlap_checks,
             "passing_checks": passing_overlap_checks,
+            "required_overlap_pairs": required_overlap_pairs,
+            "passing_overlap_pairs": passing_overlap_pairs,
+            "required_overlap_pair_keys": required_overlap_pair_keys,
+            "passing_overlap_pair_keys": passing_overlap_pair_keys,
+            "required_valid_drop_state": required_valid_drop_state,
+            "passing_valid_drop_state": passing_valid_drop_state,
             "overlap_pairs": overlap_pairs,
             "valid_after_drop": valid_after_drop,
         },
