@@ -2987,6 +2987,10 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     assert drop_gate["ok"] is True
     assert set(drop_gate["required_checks"]) <= set(drop_gate["passing_checks"])
     assert {"label", "help_text"} <= set(drop_gate["inspector_properties"])
+    suggestion_gate = next(gate for gate in audit["gates"] if gate["id"] == "placement_suggestions")
+    assert suggestion_gate["ok"] is True
+    assert set(suggestion_gate["required_fields"]) <= set(suggestion_gate["passing_fields"])
+    assert set(suggestion_gate["required_mappings"]) <= set(suggestion_gate["passing_mappings"])
     assert audit["generation_smoke"]["ok"] is True
     generation_smoke_gate = next(gate for gate in audit["gates"] if gate["id"] == "generation_smoke")
     assert generation_smoke_gate["ok"] is True

@@ -25,6 +25,7 @@ Build a complete AppGen IDE and generation platform with:
 
 | Date | Commit | Slice | Evidence |
 | --- | --- | --- | --- |
+| 2026-05-24 | `current` | Made the package form-designer placement-suggestion gate expose required and passing fields and component mappings used for release evidence. | Py compile, focused generated form-designer parity smoke, scoped diff check, and scoped restricted-name scan passed. |
 | 2026-05-24 | `14de99e` | Made the package form-designer drop/snap/property-inspector gate expose required and passing checks, snapped proposal evidence, and inspector properties used for release evidence. | Py compile, focused generated form-designer parity smoke, scoped diff check, and scoped restricted-name scan passed. |
 | 2026-05-24 | `a179c28` | Made the package form-designer field/component mapping gate expose required and passing fields and component mappings used for release evidence. | Py compile, focused generated form-designer parity smoke, scoped diff check, and scoped restricted-name scan passed. |
 | 2026-05-24 | `246fe1e` | Added an executable event-processing implementation playbook so platform developers have one checklist for Studio, DSL linting, natural-language generation, package templates, and coding-agent prompts. | Py compile, focused PBC policy test, scoped diff check, and scoped restricted-name scan passed. |

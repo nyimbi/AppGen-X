@@ -17425,6 +17425,19 @@ def form_designer_release_audit(existing_paths: set[str] | None = None) -> dict:
     valid_after_drop = validate_form_design(
         apply_drop(design, {**drop["proposal"], "field_type": "string"})  # type: ignore[arg-type]
     )
+    schema = schema_from_dsl(FORM_DESIGNER_SAMPLE_DSL, source_name="form-designer-audit.appgen")
+    placed_fields = {item["field"] for item in design["components"]}
+    required_suggestion_fields = tuple(
+        column.name for column in schema.table(design["table"]).columns if column.name not in placed_fields and column.name != "id"
+    )
+    suggestions = placement_suggestions()
+    passing_suggestion_fields = tuple(item["field"] for item in suggestions)
+    required_suggestion_mappings = tuple(
+        (column.name, _component_for_type(column.type_name))
+        for column in schema.table(design["table"]).columns
+        if column.name not in placed_fields and column.name != "id"
+    )
+    passing_suggestion_mappings = tuple((item["field"], item["component"]) for item in suggestions)
     overlap_case = tuple(design["components"]) + (
         {"field": "duplicate_name", "component": "TextBox", "x": 0, "y": 0, "w": 6, "h": 1},
     )
@@ -17499,7 +17512,13 @@ def form_designer_release_audit(existing_paths: set[str] | None = None) -> dict:
         },
         {
             "id": "placement_suggestions",
-            "ok": any(item["field"] == "phone" for item in placement_suggestions()),
+            "ok": set(required_suggestion_fields) <= set(passing_suggestion_fields)
+            and set(required_suggestion_mappings) <= set(passing_suggestion_mappings),
+            "required_fields": required_suggestion_fields,
+            "passing_fields": passing_suggestion_fields,
+            "required_mappings": required_suggestion_mappings,
+            "passing_mappings": passing_suggestion_mappings,
+            "suggestions": suggestions,
         },
         {
             "id": "overlap_guardrails",
