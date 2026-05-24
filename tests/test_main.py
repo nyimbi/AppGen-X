@@ -3013,6 +3013,20 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     )
     assert lifecycle_gate["ok"] is True
     assert {
+        "component_surface_baseline",
+        "stream_runtime_model",
+        "inspect_and_bind_design",
+        "publish_data_services",
+        "install_component_packages",
+        "validate_device_capabilities",
+        "validate_visual_depth",
+    } <= set(lifecycle_gate["evidence"]["passing_phases"])
+    all_subsystems = next(
+        check for check in lifecycle_gate["evidence"]["checks"] if check["id"] == "all_subsystems_replayed"
+    )
+    assert all_subsystems["ok"] is True
+    assert set(all_subsystems["required_phases"]) <= set(all_subsystems["passing_phases"])
+    assert {
         "component_baseline_before_runtime",
         "runtime_before_design_transactions",
         "design_transactions_before_data_publish",

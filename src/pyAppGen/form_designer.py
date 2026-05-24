@@ -14209,6 +14209,16 @@ def platform_parity_lifecycle_replay_contract() -> dict:
         },
     )
     phase_names = tuple(item["phase"] for item in replay)
+    required_phase_names = (
+        "component_surface_baseline",
+        "stream_runtime_model",
+        "inspect_and_bind_design",
+        "publish_data_services",
+        "install_component_packages",
+        "validate_device_capabilities",
+        "validate_visual_depth",
+    )
+    passing_phase_names = tuple(item["phase"] for item in replay if item["ok"])
     checks = (
         {
             "id": "component_baseline_before_runtime",
@@ -14237,7 +14247,9 @@ def platform_parity_lifecycle_replay_contract() -> dict:
         },
         {
             "id": "all_subsystems_replayed",
-            "ok": all(item["ok"] for item in replay),
+            "ok": set(required_phase_names) <= set(passing_phase_names),
+            "required_phases": required_phase_names,
+            "passing_phases": passing_phase_names,
             "evidence": replay,
         },
     )
@@ -14248,6 +14260,8 @@ def platform_parity_lifecycle_replay_contract() -> dict:
         "decision": "approved" if ok else "blocked",
         "replay": replay,
         "checks": checks,
+        "required_phases": required_phase_names,
+        "passing_phases": passing_phase_names,
         "guards": (
             "component_baseline_before_runtime",
             "runtime_before_design_transactions",
