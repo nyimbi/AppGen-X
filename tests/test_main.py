@@ -2996,6 +2996,21 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "generated_tests",
         "ide_catalog_release",
     )
+    assert {
+        "analog_coverage_ready",
+        "palette_icons_ready",
+        "behavior_surface_ready",
+        "generated_modules_ready",
+        "generated_tests_ready",
+        "ide_release_ready",
+    } <= set(lifecycle_by_phase["component_surface_baseline"]["evidence"]["readiness_passing_checks"])
+    assert {
+        "per_component_files",
+        "per_package_files",
+        "per_component_test_files",
+        "per_package_test_files",
+        "module_smoke_tests",
+    } <= set(lifecycle_by_phase["component_surface_baseline"]["evidence"]["usability_passing_checks"])
     assert lifecycle_by_phase["stream_runtime_model"]["evidence"]["readiness_phases"] == (
         "decode_design_stream",
         "parse_unit_and_cross_check",
@@ -12365,6 +12380,21 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "generated_tests",
         "ide_catalog_release",
     )
+    assert {
+        "analog_coverage_ready",
+        "palette_icons_ready",
+        "behavior_surface_ready",
+        "generated_modules_ready",
+        "generated_tests_ready",
+        "ide_release_ready",
+    } <= set(generated_lifecycle_by_phase["component_surface_baseline"]["evidence"]["readiness_passing_checks"])
+    assert {
+        "per_component_files",
+        "per_package_files",
+        "per_component_test_files",
+        "per_package_test_files",
+        "module_smoke_tests",
+    } <= set(generated_lifecycle_by_phase["component_surface_baseline"]["evidence"]["usability_passing_checks"])
     assert generated_lifecycle_by_phase["stream_runtime_model"]["evidence"]["readiness_phases"] == (
         "decode_design_stream",
         "parse_unit_and_cross_check",

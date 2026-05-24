@@ -14044,6 +14044,8 @@ def platform_parity_lifecycle_replay_contract() -> dict:
         for item in mobile_lifecycle["replay"]
         for phase in item["phases"]
     )
+    component_readiness_passing_checks = {check["id"] for check in component_readiness["checks"] if check["ok"]}
+    component_usability_passing_checks = {check["id"] for check in usability["checks"] if check["ok"]}
     runtime_passing_checks = {check["id"] for check in runtime["checks"] if check["ok"]}
     inspector_passing_checks = {check["id"] for check in inspector["checks"] if check["ok"]}
     binding_passing_checks = {check["id"] for check in bindings["checks"] if check["ok"]}
@@ -14057,10 +14059,27 @@ def platform_parity_lifecycle_replay_contract() -> dict:
             "ok": analog_groups["ok"]
             and usability["ok"]
             and component_readiness["ok"]
-            and "phase_order_ready" in {check["id"] for check in component_readiness["checks"] if check["ok"]},
+            and "phase_order_ready" in component_readiness_passing_checks
+            and {
+                "analog_coverage_ready",
+                "palette_icons_ready",
+                "behavior_surface_ready",
+                "generated_modules_ready",
+                "generated_tests_ready",
+                "ide_release_ready",
+            } <= component_readiness_passing_checks
+            and {
+                "per_component_files",
+                "per_package_files",
+                "per_component_test_files",
+                "per_package_test_files",
+                "module_smoke_tests",
+            } <= component_usability_passing_checks,
             "evidence": {
                 "groups": tuple(group["group"] for group in analog_groups["groups"]),
                 "component_count": usability["component_count"],
+                "readiness_passing_checks": tuple(sorted(component_readiness_passing_checks)),
+                "usability_passing_checks": tuple(sorted(component_usability_passing_checks)),
                 "readiness_phases": tuple(phase["phase"] for phase in component_readiness["phases"]),
             },
         },
