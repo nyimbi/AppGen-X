@@ -10794,6 +10794,34 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     }
     assert studio.ide_superiority_profile({"app/studio.py"})["ok"] is False
     assert studio.studio_release_gate({"app/studio.py"})["ok"] is False
+    studio_module_files = studio.studio_module_file_manifest()
+    studio_module_tests = studio.studio_module_test_file_manifest()
+    assert studio_module_files["format"] == "appgen.studio-module-file-manifest.v1"
+    assert studio_module_files["ok"] is True
+    assert studio_module_tests["format"] == "appgen.studio-module-test-file-manifest.v1"
+    assert studio_module_tests["ok"] is True
+    assert {
+        "workspace",
+        "dsl_authoring",
+        "database_design",
+        "generation_jobs",
+        "app_management",
+        "studio_release_workbench",
+    } == {item["surface"] for item in studio_module_files["modules"]}
+    for item in studio_module_files["modules"]:
+        module_path = output_dir / item["path"].replace("app/", "")
+        py_compile.compile(str(module_path), doraise=True)
+        module = _load_module(module_path, f"generated_studio_module_{item['module']}")
+        assert module.module_contract()["ok"] is True
+        assert module.studio_manifest_contract()["ok"] is True
+        assert module.run_studio_operation()["ok"] is True
+        assert module.release_context()["ok"] is True
+        assert module.smoke_test()["ok"] is True
+    for item in studio_module_tests["tests"]:
+        test_path = output_dir / item["path"].replace("app/", "")
+        py_compile.compile(str(test_path), doraise=True)
+        module = _load_module(test_path, f"generated_studio_module_test_{item['module']}")
+        assert module.smoke_test()["ok"] is True
     book_tabs = tabbed_views.tabbed_view("BookList")
     assert [tab["id"] for tab in book_tabs["tabs"]] == ["overview", "assets"]
     overview_policy = tabbed_views.tab_policy("BookList", "overview")

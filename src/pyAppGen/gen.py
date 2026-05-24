@@ -2553,6 +2553,15 @@ EXTENSION_MODULES = (
     "extension_release_workbench_module",
 )
 
+STUDIO_MODULES = (
+    "workspace_module",
+    "dsl_authoring_module",
+    "database_design_module",
+    "generation_jobs_module",
+    "app_management_module",
+    "studio_release_workbench_module",
+)
+
 
 def write_pbc_runtime_file(output_dir, schema: AppSchema):
     """Write generated composable capability runtime helpers."""
@@ -15394,6 +15403,27 @@ def write_studio_file(output_dir, schema: AppSchema):
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
     (output_dir / "studio.py").write_text(_studio_text(schema, _app_name(schema)))
+    write_studio_module_files(output_dir)
+
+
+def write_studio_module_files(output_dir):
+    """Write generated Studio modules and smoke tests."""
+    output_dir = Path(output_dir)
+    module_dir = output_dir / "studio_modules"
+    test_dir = output_dir / "studio_module_tests"
+    module_dir.mkdir(parents=True, exist_ok=True)
+    test_dir.mkdir(parents=True, exist_ok=True)
+    (module_dir / "__init__.py").write_text(_studio_module_init_text(), encoding="utf-8")
+    (test_dir / "__init__.py").write_text(_studio_module_test_init_text(), encoding="utf-8")
+    for module_name in STUDIO_MODULES:
+        (module_dir / f"{module_name}.py").write_text(
+            _studio_module_text(module_name),
+            encoding="utf-8",
+        )
+        (test_dir / f"test_{module_name}.py").write_text(
+            _studio_module_test_text(module_name),
+            encoding="utf-8",
+        )
 
 
 def write_wizards_file(output_dir, schema: AppSchema):
@@ -63689,6 +63719,265 @@ def register_devtools(appbuilder):
 '''
 
 
+def _studio_module_init_text() -> str:
+    return (
+        '"""Generated Studio modules."""\n\n'
+        f"STUDIO_MODULES = {STUDIO_MODULES!r}\n"
+    )
+
+
+def _studio_module_test_init_text() -> str:
+    modules = tuple(f"test_{name}" for name in STUDIO_MODULES)
+    return (
+        '"""Generated Studio module tests."""\n\n'
+        f"STUDIO_MODULE_TESTS = {modules!r}\n"
+    )
+
+
+def _studio_surface(module_name: str) -> tuple[str, str]:
+    return {
+        "workspace_module": ("workspace", "ide_workspace"),
+        "dsl_authoring_module": ("dsl_authoring", "dsl_editor_state"),
+        "database_design_module": ("database_design", "database_design_workspace"),
+        "generation_jobs_module": ("generation_jobs", "generation_job_queue"),
+        "app_management_module": ("app_management", "application_registry"),
+        "studio_release_workbench_module": ("studio_release_workbench", "studio_release_gate"),
+    }[module_name]
+
+
+def _studio_module_text(module_name: str) -> str:
+    surface, operation = _studio_surface(module_name)
+    return f'''"""Generated Studio module for {surface}."""
+
+from __future__ import annotations
+
+import importlib.util
+from pathlib import Path
+
+
+MODULE = {module_name!r}
+SURFACE = {surface!r}
+OPERATION = {operation!r}
+EXPECTED_EXPORTS = (
+    "module_contract",
+    "studio_manifest_contract",
+    "run_studio_operation",
+    "release_context",
+    "smoke_test",
+)
+
+
+def _studio():
+    module_path = Path(__file__).resolve().parents[1] / "studio.py"
+    spec = importlib.util.spec_from_file_location(f"generated_studio_{{MODULE}}_studio", module_path)
+    module = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(module)
+    return module
+
+
+def _assets():
+    return {{
+        "app/studio.py",
+        "app/templates/appgen_studio.html",
+        "app/dsl_reference.py",
+        "app/models.py",
+        "migrations/README.md",
+        "scripts/appgen_quality.py",
+    }}
+
+
+def module_contract():
+    """Return this generated Studio module's export contract."""
+    available = tuple(name for name in EXPECTED_EXPORTS if name in globals())
+    return {{
+        "format": "appgen.studio-module-contract.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "operation": OPERATION,
+        "ok": set(EXPECTED_EXPORTS) <= set(available),
+        "exports": available,
+        "expected_exports": EXPECTED_EXPORTS,
+        "side_effects": (),
+    }}
+
+
+def studio_manifest_contract():
+    """Return generated Studio metadata owned by this module."""
+    studio = _studio()
+    workspace = studio.ide_workspace()
+    matrix = studio.ide_capability_matrix()
+    return {{
+        "format": "appgen.studio-module-manifest.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "ok": bool(workspace)
+        and matrix["ok"]
+        and {{"dsl_authoring", "database_design", "application_generation", "application_management"}} <= {{item["capability"] for item in matrix["capabilities"]}},
+        "commands": tuple(item["command"] for item in studio.ide_command_palette()),
+        "capabilities": tuple(item["capability"] for item in matrix["capabilities"] if item["ok"]),
+        "side_effects": (),
+    }}
+
+
+def run_studio_operation():
+    """Run this module's side-effect-free Studio operation."""
+    studio = _studio()
+    if SURFACE == "workspace":
+        operation = studio.ide_workspace()
+        ok = {{"project_tree", "dsl_authoring", "database_workbench", "generation_jobs", "applications"}} <= set(operation)
+    elif SURFACE == "dsl_authoring":
+        operation = {{
+            "editor": studio.dsl_editor_state(text="app Bad {{ targets: web, toaster }} table Book {{ title: string ref Author.id }}"),
+            "actions": studio.dsl_code_actions("table Book {{ title: string ref Author.id }}"),
+            "budget": studio.dsl_keyword_budget(),
+        }}
+        ok = operation["budget"]["ok"] and any(action["id"] == "normalize_targets" for action in operation["editor"]["code_actions"])
+    elif SURFACE == "database_design":
+        operation = {{
+            "workspace": studio.database_design_workspace(),
+            "release": studio.database_design_release_gate(_assets()),
+            "sql": studio.sql_workbench_session(),
+        }}
+        ok = operation["release"]["ok"] and bool(operation["workspace"]["tables"]) and operation["sql"]["guard"]["read_only"]
+    elif SURFACE == "generation_jobs":
+        operation = {{
+            "plan": studio.generation_job_plan(targets=("web", "mobile"), changed_paths=("appgen.dsl",)),
+            "manifest": studio.generation_job_manifest(targets=("web", "mobile"), changed_paths=("appgen.dsl",)),
+            "queue": studio.generation_job_queue(),
+        }}
+        ok = operation["manifest"]["format"] == "appgen.generation-job.v1" and bool(operation["queue"]["jobs"])
+    elif SURFACE == "app_management":
+        operation = {{
+            "registry": studio.application_registry(),
+            "history": studio.application_version_history(),
+            "snapshot": studio.application_snapshot_plan(changed_paths=("appgen.dsl",)),
+            "restore": studio.application_restore_plan(studio.application_snapshot_plan(changed_paths=("appgen.dsl",))["snapshot_id"]),
+        }}
+        ok = operation["registry"]["format"] == "appgen.application-registry.v1" and operation["history"]["ok"] and operation["restore"]["requires_review"]
+    else:
+        operation = {{
+            "release": studio.studio_release_gate(_assets()),
+            "profile": studio.ide_superiority_profile(_assets()),
+            "diagnostics": studio.ide_diagnostics(_assets()),
+        }}
+        ok = operation["release"]["ok"] and operation["profile"]["ok"] and operation["diagnostics"]["ok"]
+    return {{
+        "format": "appgen.studio-module-operation.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "ok": ok,
+        "operation": operation,
+        "side_effects": (),
+    }}
+
+
+def release_context():
+    """Return release evidence used by this Studio module."""
+    studio = _studio()
+    release = studio.studio_release_gate(_assets())
+    profile = studio.ide_superiority_profile(_assets())
+    return {{
+        "format": "appgen.studio-module-release-context.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "ok": release["ok"] and profile["ok"],
+        "release": release,
+        "profile": profile,
+        "side_effects": (),
+    }}
+
+
+def smoke_test():
+    """Run side-effect-free checks for this generated Studio module."""
+    contract = module_contract()
+    manifest = studio_manifest_contract()
+    operation = run_studio_operation()
+    release = release_context()
+    return {{
+        "format": "appgen.studio-module-smoke-test.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "ok": contract["ok"]
+        and manifest["ok"]
+        and operation["ok"]
+        and release["ok"]
+        and not manifest["side_effects"]
+        and not operation["side_effects"]
+        and not release["side_effects"],
+        "contract": contract,
+        "manifest": manifest,
+        "operation": operation,
+        "release": release,
+        "checks": (
+            "module_contract_resolves",
+            "studio_manifest_contract_ok",
+            "studio_operation_ok",
+            "release_context_ok",
+            "no_side_effects",
+        ),
+    }}
+'''
+
+
+def _studio_module_test_text(module_name: str) -> str:
+    surface, _operation = _studio_surface(module_name)
+    return f'''"""Generated tests for the {surface} Studio module."""
+
+from __future__ import annotations
+
+import importlib.util
+from pathlib import Path
+
+
+MODULE = {module_name!r}
+SURFACE = {surface!r}
+
+
+def load_studio_module():
+    """Load the generated Studio module without app installation."""
+    module_path = Path(__file__).resolve().parents[1] / "studio_modules" / f"{{MODULE}}.py"
+    spec = importlib.util.spec_from_file_location(f"generated_studio_module_{{MODULE}}", module_path)
+    module = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(module)
+    return module
+
+
+def test_studio_module_contract():
+    """Assert the generated Studio module exposes its contract."""
+    module = load_studio_module()
+    contract = module.module_contract()
+    assert contract["module"] == MODULE
+    assert contract["surface"] == SURFACE
+    assert contract["ok"] is True
+    assert all(hasattr(module, name) for name in contract["expected_exports"])
+
+
+def test_studio_module_smoke():
+    """Assert the module's side-effect-free smoke test passes."""
+    module = load_studio_module()
+    result = module.smoke_test()
+    assert result["ok"] is True
+    assert result["module"] == MODULE
+    assert result["surface"] == SURFACE
+    assert result["checks"]
+
+
+def smoke_test():
+    """Run this generated test module in a side-effect-free way."""
+    test_studio_module_contract()
+    test_studio_module_smoke()
+    return {{
+        "format": "appgen.studio-module-generated-test-smoke.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "ok": True,
+        "tests": ("test_studio_module_contract", "test_studio_module_smoke"),
+    }}
+'''
+
+
 def _studio_text(schema: AppSchema, app_name: str) -> str:
     editable_files = (
         {"label": "Models", "path": "app/models.py", "language": "python", "kind": "schema", "editable": True},
@@ -63844,7 +64133,9 @@ def _studio_text(schema: AppSchema, app_name: str) -> str:
 from __future__ import annotations
 
 import hashlib
+import importlib.util
 import re
+from pathlib import Path
 
 from flask import jsonify
 from flask_appbuilder import BaseView
@@ -63862,6 +64153,7 @@ PROJECT_TREE = {project_tree!r}
 PLATFORM_TARGETS = {platform_targets!r}
 IDE_ACTIONS = {ide_actions!r}
 APPLICATION_REGISTRY = {application_registry!r}
+STUDIO_MODULES = {STUDIO_MODULES!r}
 SECRET_MARKERS = ("SECRET", "TOKEN", "PASSWORD", "API_KEY")
 DSL_KEYWORDS = (
     "app",
@@ -63899,6 +64191,65 @@ SOURCE_INTAKE_CATALOG = (
     {{"source_kind": "ponyorm", "label": "PonyORM", "example_path": "entities.py", "extension": ".py", "validations": ("static_ast_parse", "source_fidelity", "relation_preview")}},
     {{"source_kind": "database", "label": "Existing Database", "example_path": "sqlite:///existing.db", "extension": None, "validations": ("sqlalchemy_reflect", "source_fidelity", "schema_diff")}},
 )
+
+
+def _load_generated_module(module_path, module_name):
+    """Load a generated Studio module without installing the app."""
+    spec = importlib.util.spec_from_file_location(module_name, module_path)
+    module = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(module)
+    return module
+
+
+def studio_module_file_manifest():
+    """Return independently importable generated Studio module files."""
+    root = Path(__file__).resolve().parent
+    modules = []
+    for module_name in STUDIO_MODULES:
+        module_path = root / "studio_modules" / f"{{module_name}}.py"
+        module = _load_generated_module(module_path, f"generated_studio_module_{{module_name}}")
+        contract = module.module_contract()
+        modules.append(
+            {{
+                "module": module_name,
+                "surface": contract["surface"],
+                "path": f"app/studio_modules/{{module_name}}.py",
+                "exists": module_path.exists(),
+                "ok": contract["ok"] and module.smoke_test()["ok"],
+                "exports": contract["exports"],
+            }}
+        )
+    return {{
+        "format": "appgen.studio-module-file-manifest.v1",
+        "ok": len(modules) == len(STUDIO_MODULES) and all(item["ok"] and item["exists"] for item in modules),
+        "modules": tuple(modules),
+    }}
+
+
+def studio_module_test_file_manifest():
+    """Return generated tests for Studio module files."""
+    root = Path(__file__).resolve().parent
+    tests = []
+    for module_name in STUDIO_MODULES:
+        test_path = root / "studio_module_tests" / f"test_{{module_name}}.py"
+        module = _load_generated_module(test_path, f"generated_studio_module_test_{{module_name}}")
+        result = module.smoke_test()
+        tests.append(
+            {{
+                "module": f"test_{{module_name}}",
+                "surface": result["surface"],
+                "path": f"app/studio_module_tests/test_{{module_name}}.py",
+                "exists": test_path.exists(),
+                "ok": result["ok"],
+                "tests": result["tests"],
+            }}
+        )
+    return {{
+        "format": "appgen.studio-module-test-file-manifest.v1",
+        "ok": len(tests) == len(STUDIO_MODULES) and all(item["ok"] and item["exists"] for item in tests),
+        "tests": tuple(tests),
+    }}
 
 
 def editable_files():
@@ -70287,6 +70638,8 @@ def validate_studio_artifacts() -> None:
     )
     if not all(item in contract for item in required):
         fail("developer studio contract must expose IDE workspace, DSL, database design, generation, multi-application management, editing, debugging, dependencies, components, and cloning")
+    if "studio_module_file_manifest" not in contract or "studio_module_test_file_manifest" not in contract or "STUDIO_MODULES" not in contract:
+        fail("developer studio contract must expose generated module manifests and module-test manifests")
     template = (ROOT / "app" / "templates" / "appgen_studio.html").read_text()
     if (
         "Developer Studio" not in template
