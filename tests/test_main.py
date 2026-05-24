@@ -13629,6 +13629,34 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert "/view-experience/workbench.json" in next(
         check["evidence"]["routes"] for check in experience_workbench["checks"] if check["id"] == "route_surface"
     )
+    experience_module_files = view_experience.view_experience_module_file_manifest()
+    experience_module_tests = view_experience.view_experience_module_test_file_manifest()
+    assert experience_module_files["format"] == "appgen.view-experience-module-file-manifest.v1"
+    assert experience_module_files["ok"] is True
+    assert experience_module_tests["format"] == "appgen.view-experience-module-test-file-manifest.v1"
+    assert experience_module_tests["ok"] is True
+    assert {
+        "resource_catalog",
+        "offline_state",
+        "presence_access",
+        "help_footer",
+        "polished_states",
+        "release_workbench",
+    } == {item["surface"] for item in experience_module_files["modules"]}
+    for item in experience_module_files["modules"]:
+        module_path = output_dir / item["path"].replace("app/", "")
+        py_compile.compile(str(module_path), doraise=True)
+        module = _load_module(module_path, f"generated_view_experience_module_{item['module']}")
+        assert module.module_contract()["ok"] is True
+        assert module.view_experience_manifest()["ok"] is True
+        assert module.run_view_experience_operation()["ok"] is True
+        assert module.release_context()["ok"] is True
+        assert module.smoke_test()["ok"] is True
+    for item in experience_module_tests["tests"]:
+        test_path = output_dir / item["path"].replace("app/", "")
+        py_compile.compile(str(test_path), doraise=True)
+        module = _load_module(test_path, f"generated_view_experience_module_test_{item['module']}")
+        assert module.smoke_test()["ok"] is True
     assert view_experience.view_experience_workbench({"app/view_experience.py"})["ok"] is False
     assert "getting-started" in {item["key"] for item in support_center.support_topic_catalog()}
     assert support_center.tutorial_catalog()[0]["key"] == "first-app"

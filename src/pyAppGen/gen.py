@@ -2789,6 +2789,15 @@ SUPPORT_CENTER_MODULES = (
     "support_release_workbench_module",
 )
 
+VIEW_EXPERIENCE_MODULES = (
+    "resource_catalog_module",
+    "offline_state_module",
+    "presence_access_module",
+    "help_footer_module",
+    "polished_states_module",
+    "view_experience_release_workbench_module",
+)
+
 DESIGNER_MODULES = (
     "visual_graph_module",
     "schema_diagram_module",
@@ -15526,6 +15535,27 @@ def write_view_experience_file(output_dir, schema: AppSchema):
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
     (output_dir / "view_experience.py").write_text(_view_experience_text(schema, _app_name(schema)))
+    write_view_experience_module_files(output_dir)
+
+
+def write_view_experience_module_files(output_dir):
+    """Write generated view-experience modules and smoke tests."""
+    output_dir = Path(output_dir)
+    module_dir = output_dir / "view_experience_modules"
+    test_dir = output_dir / "view_experience_module_tests"
+    module_dir.mkdir(parents=True, exist_ok=True)
+    test_dir.mkdir(parents=True, exist_ok=True)
+    (module_dir / "__init__.py").write_text(_view_experience_module_init_text(), encoding="utf-8")
+    (test_dir / "__init__.py").write_text(_view_experience_module_test_init_text(), encoding="utf-8")
+    for module_name in VIEW_EXPERIENCE_MODULES:
+        (module_dir / f"{module_name}.py").write_text(
+            _view_experience_module_text(module_name),
+            encoding="utf-8",
+        )
+        (test_dir / f"test_{module_name}.py").write_text(
+            _view_experience_module_test_text(module_name),
+            encoding="utf-8",
+        )
 
 
 def write_support_center_file(output_dir, schema: AppSchema):
@@ -55283,6 +55313,263 @@ def register_dsl_reference(appbuilder):
 '''
 
 
+def _view_experience_module_init_text() -> str:
+    return (
+        '"""Generated view-experience modules."""\n\n'
+        f"VIEW_EXPERIENCE_MODULES = {VIEW_EXPERIENCE_MODULES!r}\n"
+    )
+
+
+def _view_experience_module_test_init_text() -> str:
+    modules = tuple(f"test_{name}" for name in VIEW_EXPERIENCE_MODULES)
+    return (
+        '"""Generated view-experience module tests."""\n\n'
+        f"VIEW_EXPERIENCE_MODULE_TESTS = {modules!r}\n"
+    )
+
+
+def _view_experience_module_surface(module_name: str) -> tuple[str, str]:
+    return {
+        "resource_catalog_module": ("resource_catalog", "view_resource_catalog"),
+        "offline_state_module": ("offline_state", "offline_field_state"),
+        "presence_access_module": ("presence_access", "presence_event"),
+        "help_footer_module": ("help_footer", "view_footer_context"),
+        "polished_states_module": ("polished_states", "view_state_matrix"),
+        "view_experience_release_workbench_module": ("release_workbench", "view_experience_release_gate"),
+    }[module_name]
+
+
+def _view_experience_module_text(module_name: str) -> str:
+    surface, operation = _view_experience_module_surface(module_name)
+    return f'''"""Generated view-experience module for {surface}."""
+
+from __future__ import annotations
+
+import importlib.util
+from pathlib import Path
+
+
+MODULE = {module_name!r}
+SURFACE = {surface!r}
+OPERATION = {operation!r}
+EXPECTED_EXPORTS = (
+    "module_contract",
+    "view_experience_manifest",
+    "run_view_experience_operation",
+    "release_context",
+    "smoke_test",
+)
+
+
+def _view_experience():
+    module_path = Path(__file__).resolve().parents[1] / "view_experience.py"
+    spec = importlib.util.spec_from_file_location(f"generated_view_experience_{{MODULE}}", module_path)
+    module = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(module)
+    return module
+
+
+def _assets():
+    return {{
+        "app/view_experience.py",
+        "app/templates/appgen_view_experience.html",
+        "app/static/appgen-view-experience.js",
+    }}
+
+
+def _sample_path(view_experience):
+    resources = view_experience.view_resource_catalog()
+    return resources[0]["route"] if resources else "/"
+
+
+def _sample_table(view_experience):
+    resources = view_experience.view_resource_catalog()
+    return resources[0]["table"] if resources else "AppGen"
+
+
+def _sample_values(view_experience):
+    resources = view_experience.view_resource_catalog()
+    if not resources:
+        return {{}}
+    return {{field: f"sample-{{field}}" for field in resources[0]["fields"][:2]}}
+
+
+def module_contract():
+    """Return this generated view-experience module's export contract."""
+    available = tuple(name for name in EXPECTED_EXPORTS if name in globals())
+    return {{
+        "format": "appgen.view-experience-module-contract.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "operation": OPERATION,
+        "ok": set(EXPECTED_EXPORTS) <= set(available),
+        "exports": available,
+        "expected_exports": EXPECTED_EXPORTS,
+        "side_effects": (),
+    }}
+
+
+def view_experience_manifest():
+    """Return generated view-experience metadata owned by this module."""
+    view_experience = _view_experience()
+    features = view_experience.baseview_feature_catalog()
+    resources = view_experience.view_resource_catalog()
+    return {{
+        "format": "appgen.view-experience-module-manifest.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "ok": bool(resources)
+        and bool(features)
+        and view_experience.baseview_experience_check(_assets())["ok"],
+        "resources": tuple(item["table"] for item in resources),
+        "features": tuple(item["key"] for item in features),
+        "side_effects": (),
+    }}
+
+
+def run_view_experience_operation():
+    """Run this module's side-effect-free view-experience operation."""
+    view_experience = _view_experience()
+    path = _sample_path(view_experience)
+    table = _sample_table(view_experience)
+    values = _sample_values(view_experience)
+    if SURFACE == "resource_catalog":
+        operation = {{"resources": view_experience.view_resource_catalog(), "features": view_experience.baseview_feature_catalog()}}
+        ok = bool(operation["resources"]) and "polished-states" in {{item["key"] for item in operation["features"]}}
+    elif SURFACE == "offline_state":
+        operation = {{"catalog": view_experience.offline_field_catalog(table), "states": view_experience.offline_field_state(table, values)}}
+        ok = bool(operation["catalog"]) and (bool(operation["states"]) if values else True)
+    elif SURFACE == "presence_access":
+        presence = view_experience.presence_event(path, "module")
+        access = view_experience.access_log_event(path, "module", duration_ms=25)
+        operation = {{"presence": presence, "active": view_experience.active_viewers(path, (presence,)), "access": access, "summary": view_experience.access_log_summary((access,))}}
+        ok = bool(operation["active"]) and operation["summary"]["unique_users"] == 1 and operation["access"]["resource"] == table
+    elif SURFACE == "help_footer":
+        footer = view_experience.view_footer_context("module", path)
+        operation = {{"help": view_experience.help_action(path, "module"), "footer": footer}}
+        ok = operation["help"]["href"] == "/chatbot/" and footer["offline_ready"] is True and footer["version"] == view_experience.APP_VERSION
+    elif SURFACE == "polished_states":
+        matrix = view_experience.view_state_matrix(path)
+        operation = {{"matrix": matrix}}
+        ok = matrix["shell"]["format"] == "appgen.view-shell.v1" and matrix["loading"]["skeleton"]["preserve_layout"] and matrix["empty"]["requires_action"] and matrix["error"]["requires_operator_review"]
+    else:
+        operation = {{"release": view_experience.view_experience_release_gate(_assets()), "workbench": view_experience.view_experience_workbench(_assets())}}
+        ok = operation["release"]["ok"] and operation["workbench"]["ok"]
+    return {{
+        "format": "appgen.view-experience-module-operation.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "ok": ok,
+        "operation": operation,
+        "side_effects": (),
+    }}
+
+
+def release_context():
+    """Return release evidence used by this view-experience module."""
+    view_experience = _view_experience()
+    return {{
+        "format": "appgen.view-experience-module-release-context.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "ok": view_experience.view_experience_release_gate(_assets())["ok"] and view_experience.view_experience_workbench(_assets())["ok"],
+        "release": view_experience.view_experience_release_gate(_assets()),
+        "workbench": view_experience.view_experience_workbench(_assets()),
+        "side_effects": (),
+    }}
+
+
+def smoke_test():
+    """Run side-effect-free checks for this generated view-experience module."""
+    contract = module_contract()
+    manifest = view_experience_manifest()
+    operation = run_view_experience_operation()
+    release = release_context()
+    return {{
+        "format": "appgen.view-experience-module-smoke-test.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "ok": contract["ok"]
+        and manifest["ok"]
+        and operation["ok"]
+        and release["ok"]
+        and not manifest["side_effects"]
+        and not operation["side_effects"]
+        and not release["side_effects"],
+        "contract": contract,
+        "manifest": manifest,
+        "operation": operation,
+        "release": release,
+        "checks": (
+            "module_contract_resolves",
+            "view_experience_manifest_ok",
+            "view_experience_operation_ok",
+            "release_context_ok",
+            "no_side_effects",
+        ),
+    }}
+'''
+
+
+def _view_experience_module_test_text(module_name: str) -> str:
+    surface, _operation = _view_experience_module_surface(module_name)
+    return f'''"""Generated tests for the {surface} view-experience module."""
+
+from __future__ import annotations
+
+import importlib.util
+from pathlib import Path
+
+
+MODULE = {module_name!r}
+SURFACE = {surface!r}
+
+
+def load_view_experience_module():
+    """Load the generated view-experience module without app installation."""
+    module_path = Path(__file__).resolve().parents[1] / "view_experience_modules" / f"{{MODULE}}.py"
+    spec = importlib.util.spec_from_file_location(f"generated_view_experience_module_{{MODULE}}", module_path)
+    module = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(module)
+    return module
+
+
+def test_view_experience_module_contract():
+    """Assert the generated view-experience module exposes its contract."""
+    module = load_view_experience_module()
+    contract = module.module_contract()
+    assert contract["module"] == MODULE
+    assert contract["surface"] == SURFACE
+    assert contract["ok"] is True
+    assert all(hasattr(module, name) for name in contract["expected_exports"])
+
+
+def test_view_experience_module_smoke():
+    """Assert the module's side-effect-free smoke test passes."""
+    module = load_view_experience_module()
+    result = module.smoke_test()
+    assert result["ok"] is True
+    assert result["module"] == MODULE
+    assert result["surface"] == SURFACE
+    assert result["checks"]
+
+
+def smoke_test():
+    """Run this generated test module in a side-effect-free way."""
+    test_view_experience_module_contract()
+    test_view_experience_module_smoke()
+    return {{
+        "format": "appgen.view-experience-module-generated-test-smoke.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "ok": True,
+        "tests": ("test_view_experience_module_contract", "test_view_experience_module_smoke"),
+    }}
+'''
+
+
 def _view_experience_text(schema: AppSchema, app_name: str) -> str:
     resources = tuple(
         {
@@ -55303,6 +55590,8 @@ from __future__ import annotations
 from datetime import datetime
 from datetime import timezone
 from hashlib import sha1
+import importlib.util
+from pathlib import Path
 
 from flask import jsonify
 from flask import request
@@ -55313,6 +55602,7 @@ from flask_appbuilder import expose
 APP_NAME = {app_name!r}
 APP_VERSION = "0.1.0"
 VIEW_RESOURCES = {resources!r}
+VIEW_EXPERIENCE_MODULES = {VIEW_EXPERIENCE_MODULES!r}
 BASEVIEW_FEATURES = (
     {{
         "key": "offline-fields",
@@ -55351,6 +55641,62 @@ BASEVIEW_FEATURES = (
         "artifacts": ("view_shell_contract", "loading_state_contract", "empty_state_contract", "error_state_contract"),
     }},
 )
+
+
+def _load_generated_module(path, name):
+    spec = importlib.util.spec_from_file_location(name, path)
+    module = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(module)
+    return module
+
+
+def view_experience_module_file_manifest():
+    """Return independently importable generated view-experience module files."""
+    root = Path(__file__).resolve().parent
+    modules = []
+    for module_name in VIEW_EXPERIENCE_MODULES:
+        path = root / "view_experience_modules" / f"{{module_name}}.py"
+        module = _load_generated_module(path, f"generated_view_experience_module_manifest_{{module_name}}")
+        contract = module.module_contract()
+        smoke = module.smoke_test()
+        modules.append({{
+            "module": module_name,
+            "surface": contract["surface"],
+            "path": f"app/view_experience_modules/{{module_name}}.py",
+            "ok": path.exists() and contract["ok"] and smoke["ok"],
+            "contract": contract["format"],
+            "smoke": smoke["format"],
+        }})
+    return {{
+        "format": "appgen.view-experience-module-file-manifest.v1",
+        "ok": all(item["ok"] for item in modules),
+        "modules": tuple(modules),
+        "side_effects": (),
+    }}
+
+
+def view_experience_module_test_file_manifest():
+    """Return generated tests for the view-experience module files."""
+    root = Path(__file__).resolve().parent
+    tests = []
+    for module_name in VIEW_EXPERIENCE_MODULES:
+        path = root / "view_experience_module_tests" / f"test_{{module_name}}.py"
+        module = _load_generated_module(path, f"generated_view_experience_module_test_manifest_{{module_name}}")
+        smoke = module.smoke_test()
+        tests.append({{
+            "module": module_name,
+            "surface": smoke["surface"],
+            "path": f"app/view_experience_module_tests/test_{{module_name}}.py",
+            "ok": path.exists() and smoke["ok"],
+            "smoke": smoke["format"],
+        }})
+    return {{
+        "format": "appgen.view-experience-module-test-file-manifest.v1",
+        "ok": all(item["ok"] for item in tests),
+        "tests": tuple(tests),
+        "side_effects": (),
+    }}
 
 
 def view_resource_catalog():
@@ -73530,6 +73876,14 @@ def validate_view_experience_artifacts() -> None:
     )
     if not all(item in contract for item in required):
         fail("view experience must expose offline, presence, access-log, help, polished state, footer, and time-on-page helpers")
+    if (
+        "VIEW_EXPERIENCE_MODULES" not in contract
+        or "view_experience_module_file_manifest" not in contract
+        or "view_experience_module_test_file_manifest" not in contract
+        or "appgen.view-experience-module-file-manifest.v1" not in contract
+        or "appgen.view-experience-module-test-file-manifest.v1" not in contract
+    ):
+        fail("view experience must expose generated module and module-test manifests")
     template = (ROOT / "app" / "templates" / "appgen_view_experience.html").read_text()
     if "View Experience" not in template or "Presence JSON" not in template or "View States JSON" not in template or "Release Gate JSON" not in template or "time-on-page" not in template:
         fail("view experience cockpit must expose base-view feature catalog, state matrix, and release gate")
