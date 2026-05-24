@@ -754,12 +754,23 @@ def test_package_pbc_catalog_composes_enterprise_apps(runner: CliRunner) -> None
     assert stream_policy["default"] == "faust_streaming"
     assert stream_policy["allowed_processors"] == ("faust_streaming", "quix_streams", "bytewax")
     assert stream_policy["developer_guidance"]["standard_answer"].startswith("Use the generated AppGen-X event contract")
+    assert stream_policy["developer_guidance"]["prescriptive_choice"] == "appgen_event_contract_only"
+    assert stream_policy["developer_guidance"]["developer_decision_count"] == 1
     assert stream_policy["developer_guidance"]["visible_developer_choice"] == "appgen_event_contract"
     assert stream_policy["developer_guidance"]["visible_choice_count"] == 1
     assert stream_policy["developer_guidance"]["hidden_runtime_profile"] == "faust_streaming"
+    assert stream_policy["developer_guidance"]["implementation_recipe"] == (
+        "declare_commands_and_events",
+        "generate_owned_tables",
+        "generate_transactional_outbox_inbox",
+        "generate_typed_handlers",
+        "wire_handlers_through_appgen_event_adapter",
+        "prove_retry_idempotency_dead_letter_and_release_audit",
+    )
     assert stream_policy["developer_guidance"]["manifest_rule"].startswith("Omit stream_processor")
     assert "Do not render a stream-engine picker" in stream_policy["developer_guidance"]["ide_rule"]
     assert stream_policy["developer_guidance"]["exception_gate"].endswith("with evidence.")
+    assert stream_policy["developer_guidance"]["exception_policy"] == "two_audited_exception_profiles_not_user_preferences"
     assert "split the specialized workload into its own PBC" in stream_policy["developer_guidance"]["split_rule"]
     assert stream_policy["decision_card"]["answer"].startswith("Use the AppGen-X generated outbox/inbox event contract")
     assert stream_policy["decision_card"]["ordinary_developer_choices"] == ("appgen_event_contract",)

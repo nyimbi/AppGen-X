@@ -155,9 +155,10 @@ appgen --pbc-dsl application_composition_platform > acp.appgen
 ```
 
 Event processing is intentionally opinionated: generated PBCs use
-`faust_streaming` by default. Developers should omit `stream_processor` in
-ordinary manifests and let the platform normalize the profile, generate the
-outbox/inbox contracts, and wire handlers through the generated event adapter.
+the AppGen-X event contract, and the runtime profile is platform-owned
+metadata. Developers should omit `stream_processor` in ordinary manifests and
+let the platform normalize the profile, generate the outbox/inbox contracts,
+and wire handlers through the generated event adapter.
 The implementation path is fixed for normal work: generated transactional
 outbox/inbox tables, the AppGen-X event adapter, the `faust_streaming`
 service-runtime profile, and generated retry/idempotency/dead-letter/release

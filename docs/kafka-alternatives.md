@@ -14,6 +14,32 @@ Route through the AppGen-X event adapter.
 Do not choose or import a stream engine for ordinary generated work.
 ```
 
+## Normative Platform Choice
+
+The standard answer is mandatory for ordinary generated work:
+
+| Question | Platform answer |
+| --- | --- |
+| What should a developer use? | `appgen_event_contract`. |
+| What should a manifest do? | Omit `stream_processor` unless this is an evidence-backed exception PBC. |
+| What should the generator emit? | Owned tables, transactional outbox/inbox tables, typed handlers, retry, idempotency, dead-letter, and release-audit evidence. |
+| What should generated business logic import? | The AppGen-X event adapter only. |
+| What should the IDE show? | Read-only generated profile metadata, not a stream-engine picker. |
+| What should small coding models receive? | A short instruction to generate outbox/inbox events through the AppGen-X adapter. |
+
+This is intentionally not a decision matrix. The platform has one ordinary
+implementation recipe:
+
+1. declare commands and events;
+2. generate owned tables;
+3. generate transactional outbox/inbox tables;
+4. generate typed handlers;
+5. wire handlers through the AppGen-X event adapter;
+6. prove retry, idempotency, dead-letter, and release-audit coverage.
+
+The profile names below are internal platform profiles. They are not ordinary
+developer preferences, UI options, or natural-language generation branches.
+
 ## The Developer Answer
 
 When a developer, Studio user, DSL author, or coding agent asks "what should I
@@ -107,9 +133,11 @@ The visible choice count for ordinary work is one: `appgen_event_contract`.
 This is the rule the IDE, DSL linter, natural-language generator, package
 templates, and coding-agent prompts should expose.
 
-## Allowed Profiles
+## Internal Runtime Profiles
 
-AppGen-X allows one default and two audited exceptions.
+AppGen-X carries one default runtime profile and two audited exception profiles
+behind the event adapter. Treat this table as platform routing metadata, not as
+a product-selection guide for application authors.
 
 | Profile | Decision | Use only when |
 | --- | --- | --- |

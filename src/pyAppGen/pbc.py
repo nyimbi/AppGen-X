@@ -121,9 +121,19 @@ ACP_STREAM_PROCESSING_POLICY = {
             "dead-letter flows, and the platform event adapter. Do not choose "
             "a stream engine for ordinary work."
         ),
+        "prescriptive_choice": "appgen_event_contract_only",
+        "developer_decision_count": 1,
         "visible_developer_choice": "appgen_event_contract",
         "visible_choice_count": 1,
         "hidden_runtime_profile": ACP_DEFAULT_STREAM_PROCESSOR,
+        "implementation_recipe": (
+            "declare_commands_and_events",
+            "generate_owned_tables",
+            "generate_transactional_outbox_inbox",
+            "generate_typed_handlers",
+            "wire_handlers_through_appgen_event_adapter",
+            "prove_retry_idempotency_dead_letter_and_release_audit",
+        ),
         "normal_workloads": (
             "ERP, CRM, HR, finance, inventory, commerce, approvals, workflow "
             "sagas, chatbot events, agent task routing, and PBC integration "
@@ -145,6 +155,7 @@ ACP_STREAM_PROCESSING_POLICY = {
             "Open the exception workflow only for telemetry/time-series "
             "ingestion or complex parallel dataflow workloads with evidence."
         ),
+        "exception_policy": "two_audited_exception_profiles_not_user_preferences",
         "split_rule": (
             "If a PBC needs both ordinary domain events and specialized stream "
             "processing, split the specialized workload into its own PBC."

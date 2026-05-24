@@ -98,6 +98,10 @@ through AppGen-X outbox/inbox adapters instead of importing a stream library
 directly in business logic. Developers and coding agents should model event
 contracts, handlers, retry policies, idempotency keys, and dead-letter behavior;
 they should not choose a stream library for normal generated applications.
+The implementation recipe is fixed: declare commands and events, generate owned
+tables, generate transactional outbox/inbox tables, generate typed handlers,
+wire handlers through the AppGen-X event adapter, and prove retry,
+idempotency, dead-letter, and release-audit coverage.
 
 The generated implementation is fixed for ordinary work: transactional
 outbox/inbox tables, the AppGen-X event adapter, the platform default
