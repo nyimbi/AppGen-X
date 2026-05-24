@@ -25,6 +25,7 @@ Build a complete AppGen IDE and generation platform with:
 
 | Date | Commit | Slice | Evidence |
 | --- | --- | --- | --- |
+| 2026-05-25 | `current` | Tightened the event-processing alternatives guidance into a developer decision card that names the ordinary AppGen-X event contract, hides runtime selection, and limits specialized profiles to evidence-gated split PBCs. | Focused PBC policy test, scoped documentation diff check, and scoped restricted-name scan passed. |
 | 2026-05-25 | `4ee8129` | Made the form-designer inspector parity gate expose required and passing per-component editor surface coverage and editor counts for properties, events, component verbs, and custom designer hooks. | Py compile, focused generated form-designer parity smoke, scoped diff check, and scoped restricted-name scan passed. |
 | 2026-05-25 | `e1b6335` | Made the package form-designer aggregate parity gate expose required and passing lifecycle phases, parity requirements, and deep-check coverage from nested audits. | Py compile, focused generated form-designer parity smoke, scoped diff check, and scoped restricted-name scan passed. |
 | 2026-05-25 | `34da273` | Made the package form-designer aggregate parity gate expose required and passing root approval state plus lifecycle and requirement nested-audit approval state. | Py compile, focused generated form-designer parity smoke, scoped diff check, and scoped restricted-name scan passed. |

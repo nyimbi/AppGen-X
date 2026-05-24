@@ -36,6 +36,23 @@ The platform currently records `faust_streaming` as the default internal
 service-runtime profile after validation. Treat it as platform metadata, not as
 a field ordinary developers choose or hand-author.
 
+## Developer Decision
+
+When a developer, Studio workflow, DSL generator, package template, or coding
+agent asks what to use, answer with this decision card:
+
+| Role | Use | Do not ask |
+| --- | --- | --- |
+| Application/PBC developer | `appgen_event_contract`, omitted `stream_processor`, generated outbox/inbox tables, typed handlers, retry/idempotency/dead-letter policy | Which stream engine, broker, state store, or runtime profile to choose |
+| Platform runtime maintainer | The generated event adapter backed by the validated internal service-runtime profile | Per-application runtime customization |
+| Telemetry/time-series PBC maintainer | Split specialized PBC with `quix_streams` and `stream_exception_evidence` | Mixing telemetry streams into an ordinary business PBC |
+| Parallel dataflow PBC maintainer | Split specialized PBC with `bytewax` and `stream_exception_evidence` | Using dataflow exceptions for ordinary workflow events |
+
+This is the platform's anti-explosion rule: ordinary generated applications
+have one public event contract, one generated implementation recipe, and zero
+developer-visible stream-runtime choices. Exception profiles are architecture
+exceptions with release evidence, not preferences.
+
 ## Why This Is Mandatory
 
 Every extra visible event runtime multiplies generated-app validation across:
@@ -126,6 +143,21 @@ else:
 
 If the request is unclear, use `appgen_event_contract` and omit
 `stream_processor`.
+
+## Default Runtime Interpretation
+
+The alternatives table is useful for platform maintainers, but it is not a
+developer selection menu. AppGen-X interprets it this way:
+
+| Profile | Platform interpretation |
+| --- | --- |
+| `faust_streaming` | Default internal service-runtime profile for ordinary event-driven microservices, actor-style handlers, asynchronous workflows, saga orchestration, and service-owned local state. It is recorded as read-only metadata after validation. |
+| `quix_streams` | Audited exception for telemetry, time-series, high-volume ingestion, and windowed operational metrics in a split specialized PBC. |
+| `bytewax` | Audited exception for complex parallel transformations, CPU-heavy stream transforms, and multi-stage analytical pipelines in a split specialized PBC. |
+
+Do not present these profiles as a three-way product choice. Present only the
+ordinary contract first. Open an exception workflow only after the workload
+clearly matches an exception lane and supplies machine-checkable evidence.
 
 ## Exception Lanes
 
