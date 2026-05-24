@@ -9705,6 +9705,34 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert "/text-quality/workbench.json" in next(
         check["evidence"]["routes"] for check in text_workbench["checks"] if check["id"] == "route_surface"
     )
+    text_module_files = text_quality.text_quality_module_file_manifest()
+    text_module_tests = text_quality.text_quality_module_test_file_manifest()
+    assert text_module_files["format"] == "appgen.text-quality-module-file-manifest.v1"
+    assert text_module_files["ok"] is True
+    assert text_module_tests["format"] == "appgen.text-quality-module-test-file-manifest.v1"
+    assert text_module_tests["ok"] is True
+    assert {
+        "field_catalog",
+        "counter_metrics",
+        "grammar_hints",
+        "quality_report",
+        "form_feedback",
+        "release_workbench",
+    } == {item["surface"] for item in text_module_files["modules"]}
+    for item in text_module_files["modules"]:
+        module_path = output_dir / item["path"].replace("app/", "")
+        py_compile.compile(str(module_path), doraise=True)
+        module = _load_module(module_path, f"generated_text_quality_module_{item['module']}")
+        assert module.module_contract()["ok"] is True
+        assert module.text_quality_manifest()["ok"] is True
+        assert module.run_text_quality_operation()["ok"] is True
+        assert module.release_context()["ok"] is True
+        assert module.smoke_test()["ok"] is True
+    for item in text_module_tests["tests"]:
+        test_path = output_dir / item["path"].replace("app/", "")
+        py_compile.compile(str(test_path), doraise=True)
+        module = _load_module(test_path, f"generated_text_quality_module_test_{item['module']}")
+        assert module.smoke_test()["ok"] is True
     assert text_quality.text_quality_workbench({"app/text_quality.py"})["ok"] is False
     assert text_quality.text_quality_check({"app/text_quality.py", "app/templates/appgen_text_quality.html"})[
         "ok"

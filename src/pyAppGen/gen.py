@@ -1881,6 +1881,27 @@ def write_text_quality_file(output_dir, schema: AppSchema):
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
     (output_dir / "text_quality.py").write_text(_text_quality_text(schema))
+    write_text_quality_module_files(output_dir)
+
+
+def write_text_quality_module_files(output_dir):
+    """Write generated text-quality modules and smoke tests."""
+    output_dir = Path(output_dir)
+    module_dir = output_dir / "text_quality_modules"
+    test_dir = output_dir / "text_quality_module_tests"
+    module_dir.mkdir(parents=True, exist_ok=True)
+    test_dir.mkdir(parents=True, exist_ok=True)
+    (module_dir / "__init__.py").write_text(_text_quality_module_init_text(), encoding="utf-8")
+    (test_dir / "__init__.py").write_text(_text_quality_module_test_init_text(), encoding="utf-8")
+    for module_name in TEXT_QUALITY_MODULES:
+        (module_dir / f"{module_name}.py").write_text(
+            _text_quality_module_text(module_name),
+            encoding="utf-8",
+        )
+        (test_dir / f"test_{module_name}.py").write_text(
+            _text_quality_module_test_text(module_name),
+            encoding="utf-8",
+        )
 
 
 def write_notifications_file(output_dir, schema: AppSchema):
@@ -2520,6 +2541,15 @@ AGENTIC_MODULES = (
     "execution_matrix_module",
     "coding_agent_vector_module",
     "agentic_release_workbench_module",
+)
+
+TEXT_QUALITY_MODULES = (
+    "field_catalog_module",
+    "counter_metrics_module",
+    "grammar_hints_module",
+    "quality_report_module",
+    "form_feedback_module",
+    "text_quality_release_workbench_module",
 )
 
 DATABASE_OPS_MODULES = (
@@ -39469,6 +39499,252 @@ def register_voice(appbuilder):
 '''
 
 
+def _text_quality_module_init_text() -> str:
+    return (
+        '"""Generated text-quality modules."""\n\n'
+        f"TEXT_QUALITY_MODULES = {TEXT_QUALITY_MODULES!r}\n"
+    )
+
+
+def _text_quality_module_test_init_text() -> str:
+    modules = tuple(f"test_{name}" for name in TEXT_QUALITY_MODULES)
+    return (
+        '"""Generated text-quality module tests."""\n\n'
+        f"TEXT_QUALITY_MODULE_TESTS = {modules!r}\n"
+    )
+
+
+def _text_quality_module_surface(module_name: str) -> tuple[str, str]:
+    return {
+        "field_catalog_module": ("field_catalog", "text_quality_catalog"),
+        "counter_metrics_module": ("counter_metrics", "character_count"),
+        "grammar_hints_module": ("grammar_hints", "grammar_hints"),
+        "quality_report_module": ("quality_report", "quality_report"),
+        "form_feedback_module": ("form_feedback", "form_text_quality"),
+        "text_quality_release_workbench_module": ("release_workbench", "text_quality_release_gate"),
+    }[module_name]
+
+
+def _text_quality_module_text(module_name: str) -> str:
+    surface, operation = _text_quality_module_surface(module_name)
+    return f'''"""Generated text-quality module for {surface}."""
+
+from __future__ import annotations
+
+import importlib.util
+from pathlib import Path
+
+
+MODULE = {module_name!r}
+SURFACE = {surface!r}
+OPERATION = {operation!r}
+EXPECTED_EXPORTS = (
+    "module_contract",
+    "text_quality_manifest",
+    "run_text_quality_operation",
+    "release_context",
+    "smoke_test",
+)
+
+
+def _text_quality():
+    module_path = Path(__file__).resolve().parents[1] / "text_quality.py"
+    spec = importlib.util.spec_from_file_location(f"generated_text_quality_{{MODULE}}", module_path)
+    module = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(module)
+    return module
+
+
+def _assets():
+    return {{"app/text_quality.py", "app/templates/appgen_text_quality.html"}}
+
+
+def _first_field(text_quality):
+    catalog = text_quality.text_quality_catalog()
+    if not catalog:
+        raise AssertionError("generated text-quality module requires at least one textarea field")
+    return catalog[0]
+
+
+def module_contract():
+    """Return this generated text-quality module's export contract."""
+    available = tuple(name for name in EXPECTED_EXPORTS if name in globals())
+    return {{
+        "format": "appgen.text-quality-module-contract.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "operation": OPERATION,
+        "ok": set(EXPECTED_EXPORTS) <= set(available),
+        "exports": available,
+        "expected_exports": EXPECTED_EXPORTS,
+        "side_effects": (),
+    }}
+
+
+def text_quality_manifest():
+    """Return generated text-quality metadata owned by this module."""
+    text_quality = _text_quality()
+    catalog = text_quality.text_quality_catalog()
+    return {{
+        "format": "appgen.text-quality-module-manifest.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "ok": bool(catalog)
+        and all(item["counter"] and item["spellcheck"] and item["grammar"] for item in catalog)
+        and text_quality.text_quality_check(_assets())["ok"],
+        "catalog": catalog,
+        "fields": tuple(f"{{item['table']}}.{{item['field']}}" for item in catalog),
+        "side_effects": (),
+    }}
+
+
+def run_text_quality_operation():
+    """Run this module's side-effect-free text-quality operation."""
+    text_quality = _text_quality()
+    field = _first_field(text_quality)
+    sample_text = "bad  grammar grammar"
+    if SURFACE == "field_catalog":
+        operation = {{
+            "catalog": text_quality.text_quality_catalog(),
+            "field": text_quality.text_field(field["table"], field["field"]),
+        }}
+        ok = bool(operation["catalog"]) and operation["field"]["field"] == field["field"]
+    elif SURFACE == "counter_metrics":
+        operation = {{"counts": text_quality.character_count(sample_text)}}
+        ok = operation["counts"] == {{"characters": 20, "words": 3}}
+    elif SURFACE == "grammar_hints":
+        operation = {{
+            "hints": text_quality.grammar_hints(sample_text),
+            "repeated": text_quality.repeated_words(sample_text),
+        }}
+        ok = {{"double_space", "capitalization", "terminal_punctuation", "repeated_words"}} <= set(operation["hints"]) and operation["repeated"] == ("grammar",)
+    elif SURFACE == "quality_report":
+        operation = {{"report": text_quality.quality_report(field["table"], field["field"], sample_text)}}
+        ok = operation["report"]["counts"]["characters"] == 20 and operation["report"]["remaining"] >= 0
+    elif SURFACE == "form_feedback":
+        operation = {{"feedback": text_quality.form_text_quality(field["table"], {{field["field"]: sample_text}})}}
+        ok = bool(operation["feedback"]) and all(item["remaining"] >= 0 for item in operation["feedback"])
+    else:
+        operation = {{
+            "release": text_quality.text_quality_release_gate(_assets()),
+            "workbench": text_quality.text_quality_workbench(_assets()),
+        }}
+        ok = operation["release"]["ok"] and operation["workbench"]["ok"]
+    return {{
+        "format": "appgen.text-quality-module-operation.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "ok": ok,
+        "operation": operation,
+        "side_effects": (),
+    }}
+
+
+def release_context():
+    """Return release evidence used by this text-quality module."""
+    text_quality = _text_quality()
+    return {{
+        "format": "appgen.text-quality-module-release-context.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "ok": text_quality.text_quality_release_gate(_assets())["ok"] and text_quality.text_quality_workbench(_assets())["ok"],
+        "release": text_quality.text_quality_release_gate(_assets()),
+        "workbench": text_quality.text_quality_workbench(_assets()),
+        "side_effects": (),
+    }}
+
+
+def smoke_test():
+    """Run side-effect-free checks for this generated text-quality module."""
+    contract = module_contract()
+    manifest = text_quality_manifest()
+    operation = run_text_quality_operation()
+    release = release_context()
+    return {{
+        "format": "appgen.text-quality-module-smoke-test.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "ok": contract["ok"]
+        and manifest["ok"]
+        and operation["ok"]
+        and release["ok"]
+        and not manifest["side_effects"]
+        and not operation["side_effects"]
+        and not release["side_effects"],
+        "contract": contract,
+        "manifest": manifest,
+        "operation": operation,
+        "release": release,
+        "checks": (
+            "module_contract_resolves",
+            "text_quality_manifest_ok",
+            "text_quality_operation_ok",
+            "release_context_ok",
+            "no_side_effects",
+        ),
+    }}
+'''
+
+
+def _text_quality_module_test_text(module_name: str) -> str:
+    surface, _operation = _text_quality_module_surface(module_name)
+    return f'''"""Generated tests for the {surface} text-quality module."""
+
+from __future__ import annotations
+
+import importlib.util
+from pathlib import Path
+
+
+MODULE = {module_name!r}
+SURFACE = {surface!r}
+
+
+def load_text_quality_module():
+    """Load the generated text-quality module without app installation."""
+    module_path = Path(__file__).resolve().parents[1] / "text_quality_modules" / f"{{MODULE}}.py"
+    spec = importlib.util.spec_from_file_location(f"generated_text_quality_module_{{MODULE}}", module_path)
+    module = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(module)
+    return module
+
+
+def test_text_quality_module_contract():
+    """Assert the generated text-quality module exposes its contract."""
+    module = load_text_quality_module()
+    contract = module.module_contract()
+    assert contract["module"] == MODULE
+    assert contract["surface"] == SURFACE
+    assert contract["ok"] is True
+    assert all(hasattr(module, name) for name in contract["expected_exports"])
+
+
+def test_text_quality_module_smoke():
+    """Assert the module's side-effect-free smoke test passes."""
+    module = load_text_quality_module()
+    result = module.smoke_test()
+    assert result["ok"] is True
+    assert result["module"] == MODULE
+    assert result["surface"] == SURFACE
+    assert result["checks"]
+
+
+def smoke_test():
+    """Run this generated test module in a side-effect-free way."""
+    test_text_quality_module_contract()
+    test_text_quality_module_smoke()
+    return {{
+        "format": "appgen.text-quality-module-generated-test-smoke.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "ok": True,
+        "tests": ("test_text_quality_module_contract", "test_text_quality_module_smoke"),
+    }}
+'''
+
+
 def _text_quality_text(schema: AppSchema) -> str:
     def is_text_area(column: ColumnSchema) -> bool:
         type_name = column.type_name.lower().split("(", 1)[0]
@@ -39501,6 +39777,8 @@ def _text_quality_text(schema: AppSchema) -> str:
 from __future__ import annotations
 
 from hashlib import sha1
+import importlib.util
+from pathlib import Path
 import re
 
 from flask import jsonify
@@ -39509,6 +39787,63 @@ from flask_appbuilder import expose
 
 
 TEXT_FIELDS = {fields!r}
+TEXT_QUALITY_MODULES = {TEXT_QUALITY_MODULES!r}
+
+
+def _load_generated_module(path, name):
+    spec = importlib.util.spec_from_file_location(name, path)
+    module = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(module)
+    return module
+
+
+def text_quality_module_file_manifest():
+    """Return independently importable generated text-quality module files."""
+    root = Path(__file__).resolve().parent
+    modules = []
+    for module_name in TEXT_QUALITY_MODULES:
+        path = root / "text_quality_modules" / f"{{module_name}}.py"
+        module = _load_generated_module(path, f"generated_text_quality_module_manifest_{{module_name}}")
+        contract = module.module_contract()
+        smoke = module.smoke_test()
+        modules.append({{
+            "module": module_name,
+            "surface": contract["surface"],
+            "path": f"app/text_quality_modules/{{module_name}}.py",
+            "ok": path.exists() and contract["ok"] and smoke["ok"],
+            "contract": contract["format"],
+            "smoke": smoke["format"],
+        }})
+    return {{
+        "format": "appgen.text-quality-module-file-manifest.v1",
+        "ok": all(item["ok"] for item in modules),
+        "modules": tuple(modules),
+        "side_effects": (),
+    }}
+
+
+def text_quality_module_test_file_manifest():
+    """Return generated tests for the text-quality module files."""
+    root = Path(__file__).resolve().parent
+    tests = []
+    for module_name in TEXT_QUALITY_MODULES:
+        path = root / "text_quality_module_tests" / f"test_{{module_name}}.py"
+        module = _load_generated_module(path, f"generated_text_quality_module_test_manifest_{{module_name}}")
+        smoke = module.smoke_test()
+        tests.append({{
+            "module": module_name,
+            "surface": smoke["surface"],
+            "path": f"app/text_quality_module_tests/test_{{module_name}}.py",
+            "ok": path.exists() and smoke["ok"],
+            "smoke": smoke["format"],
+        }})
+    return {{
+        "format": "appgen.text-quality-module-test-file-manifest.v1",
+        "ok": all(item["ok"] for item in tests),
+        "tests": tuple(tests),
+        "side_effects": (),
+    }}
 
 
 def text_quality_catalog():
@@ -72713,6 +73048,14 @@ def validate_text_quality_artifacts() -> None:
     )
     if not all(item in contract for item in required):
         fail("text quality contract must expose catalog, counts, grammar hints, per-field reports, form feedback, and release readiness")
+    if (
+        "TEXT_QUALITY_MODULES" not in contract
+        or "text_quality_module_file_manifest" not in contract
+        or "text_quality_module_test_file_manifest" not in contract
+        or "appgen.text-quality-module-file-manifest.v1" not in contract
+        or "appgen.text-quality-module-test-file-manifest.v1" not in contract
+    ):
+        fail("text quality contract must expose generated module and module-test manifests")
     if "appgen.text-quality-release-gate.v1" not in contract or '@expose("/release-gate.json")' not in contract:
         fail("text quality contract must expose release readiness checks and route")
     template = (ROOT / "app" / "templates" / "appgen_text_quality.html").read_text()
