@@ -16787,6 +16787,9 @@ def form_designer_generation_smoke_audit(source: str = FORM_DESIGNER_SAMPLE_DSL)
         mobile_device_smoke = generated_mobile_runtime.smoke_test()
         release_gate_passing_checks = {check["id"] for check in release_gate["checks"] if check["ok"]}
         workbench_passing_checks = {check["id"] for check in workbench["checks"] if check["ok"]}
+        generated_platform_parity_passing_checks = {
+            check["id"] for check in generated_platform_parity["checks"] if check["ok"]
+        }
 
     required_generated_release_gate_checks = (
         "artifact_coverage",
@@ -16809,6 +16812,23 @@ def form_designer_generation_smoke_audit(source: str = FORM_DESIGNER_SAMPLE_DSL)
         "conflict_guardrails",
         "route_surface",
         "rad_parity_workbench",
+    )
+    required_generated_platform_parity_checks = (
+        "native_ui_parity_component_parity",
+        "built_in_component_usability",
+        "pascal_runtime_and_dfm_streaming",
+        "pascal_runtime_workbench",
+        "object_inspector_parity",
+        "livebindings_designer",
+        "firedac_datasnap_radserver_interbase_tooling",
+        "design_time_package_installation",
+        "mobile_native_device_api_coverage",
+        "cross_target_animation_effects_3d_depth",
+        "third_party_component_ecosystem",
+        "platform_parity_lifecycle_replay",
+        "platform_parity_requirement_audit",
+        "artifact_coverage",
+        "route_surface",
     )
 
     checks = (
@@ -16921,12 +16941,10 @@ def form_designer_generation_smoke_audit(source: str = FORM_DESIGNER_SAMPLE_DSL)
             and generated_platform_parity["format"] == "appgen.generated-rad-parity-workbench.v1"
             and generated_platform_parity["lifecycle_replay"]["ok"]
             and generated_platform_parity["requirement_audit"]["ok"]
-            and {
-                "platform_parity_lifecycle_replay",
-                "platform_parity_requirement_audit",
-            }
-            <= {check["id"] for check in generated_platform_parity["checks"] if check["ok"]}
+            and set(required_generated_platform_parity_checks) <= generated_platform_parity_passing_checks
             and not generated_platform_parity["blocking_gaps"],
+            "required_checks": required_generated_platform_parity_checks,
+            "passing_checks": tuple(sorted(generated_platform_parity_passing_checks)),
             "workbench": generated_platform_parity,
         },
         {

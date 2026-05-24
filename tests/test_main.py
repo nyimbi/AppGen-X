@@ -3387,6 +3387,23 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     } <= set(release_contracts["passing_workbench_checks"])
     platform_smoke = next(check for check in smoke["checks"] if check["id"] == "generated_platform_parity_workbench")
     assert platform_smoke["ok"] is True
+    assert {
+        "native_ui_parity_component_parity",
+        "built_in_component_usability",
+        "pascal_runtime_and_dfm_streaming",
+        "pascal_runtime_workbench",
+        "object_inspector_parity",
+        "livebindings_designer",
+        "firedac_datasnap_radserver_interbase_tooling",
+        "design_time_package_installation",
+        "mobile_native_device_api_coverage",
+        "cross_target_animation_effects_3d_depth",
+        "third_party_component_ecosystem",
+        "platform_parity_lifecycle_replay",
+        "platform_parity_requirement_audit",
+        "artifact_coverage",
+        "route_surface",
+    } <= set(platform_smoke["passing_checks"])
     assert platform_smoke["workbench"]["lifecycle_replay"]["ok"] is True
     assert platform_smoke["workbench"]["requirement_audit"]["ok"] is True
     assert {
