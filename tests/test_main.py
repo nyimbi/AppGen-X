@@ -230,6 +230,7 @@ from pyAppGen.pbc import pbc_composition_dsl
 from pyAppGen.pbc import pbc_composition_plan
 from pyAppGen.pbc import acp_stream_processor_catalog
 from pyAppGen.pbc import acp_stream_processing_policy
+from pyAppGen.pbc import acp_event_processing_developer_guidance
 from pyAppGen.pbc import pbc_manifest_schema
 from pyAppGen.pbc import pbc_package_contract
 from pyAppGen.pbc import pbc_package_index_schema
@@ -762,6 +763,19 @@ def test_package_pbc_catalog_composes_enterprise_apps(runner: CliRunner) -> None
     assert stream_policy["developer_guidance"]["public_contract"].startswith("AppGen-X event contract")
     assert stream_policy["developer_guidance"]["runtime_owner"] == "platform_event_adapter"
     assert "multiplies generated-app validation" in stream_policy["developer_guidance"]["choice_limit_reason"]
+    assert stream_policy["developer_guidance_contract"]["answer"] == "Use appgen_event_contract."
+    assert stream_policy["developer_guidance_contract"]["visible_options"] == ("appgen_event_contract",)
+    assert stream_policy["developer_guidance_contract"]["visible_option_count"] == 1
+    assert stream_policy["developer_guidance_contract"]["ordinary_manifest_instruction"] == "Omit stream_processor."
+    assert stream_policy["developer_guidance_contract"]["hard_limits"]["ordinary_stream_engine_picker"] is False
+    assert stream_policy["developer_guidance_contract"]["hard_limits"]["stream_profiles_per_pbc"] == 1
+    developer_guidance = acp_event_processing_developer_guidance()
+    assert developer_guidance["format"] == "appgen.acp-event-processing-developer-guidance.v1"
+    assert developer_guidance["answer"] == "Use appgen_event_contract."
+    assert developer_guidance["visible_options"] == ("appgen_event_contract",)
+    assert developer_guidance["exception_options"] == ("quix_streams", "bytewax")
+    assert "small_model_instruction" in developer_guidance
+    assert developer_guidance["default_runtime_profile"] == "faust_streaming"
     assert stream_policy["developer_guidance"]["implementation_recipe"] == (
         "declare_commands_and_events",
         "generate_owned_tables",

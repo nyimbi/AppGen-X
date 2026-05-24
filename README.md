@@ -176,6 +176,9 @@ The executable policy also exposes `developer_guidance`, which is the contract
 for Studio controls, DSL linting, natural-language generation, and external
 coding agents: ordinary apps get one generated adapter path; exceptions are
 evidence-driven release-audit workflows.
+For token-constrained tools and coding agents, consume
+`acp_event_processing_developer_guidance()` and use its short answer directly:
+`Use appgen_event_contract. Omit stream_processor.`
 The policy also exposes a first-match `developer_choice_algorithm`: ordinary
 business, ERP, workflow, chatbot, agent, integration, and PBC event handling
 always generate the AppGen-X event contract with `stream_processor` omitted;

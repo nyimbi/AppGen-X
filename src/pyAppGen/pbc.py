@@ -171,6 +171,46 @@ ACP_STREAM_PROCESSING_POLICY = {
             "processing, split the specialized workload into its own PBC."
         ),
     },
+    "developer_guidance_contract": {
+        "question": "What should a developer actually use?",
+        "answer": "Use appgen_event_contract.",
+        "visible_options": ("appgen_event_contract",),
+        "visible_option_count": 1,
+        "ordinary_manifest_instruction": "Omit stream_processor.",
+        "ordinary_datastore_instruction": "Use PostgreSQL by default, or MySQL/MariaDB when that is the project standard.",
+        "ordinary_generation_instruction": (
+            "Generate owned tables, appgen_outbox_event, appgen_inbox_event, "
+            "typed handlers, idempotency keys, retry policies, dead-letter "
+            "envelopes, and release evidence through the AppGen-X event adapter."
+        ),
+        "small_model_instruction": (
+            "Use appgen_event_contract. Omit stream_processor. Generate "
+            "outbox/inbox tables and typed handlers through the AppGen-X "
+            "event adapter. Open an exception only for telemetry/time-series "
+            "or complex parallel dataflow with evidence."
+        ),
+        "exception_options": ("quix_streams", "bytewax"),
+        "exception_rule": (
+            "Exception profiles are audit workflows, not developer preferences; "
+            "split the specialized workload into its own PBC and require "
+            "stream_exception_evidence."
+        ),
+        "hard_limits": {
+            "ordinary_visible_choices": 1,
+            "stream_profiles_per_pbc": 1,
+            "ordinary_stream_engine_picker": False,
+            "direct_profile_imports_in_generated_business_logic": False,
+        },
+        "stop_generating_options_when": (
+            "The workload is ordinary business, ERP, workflow, chatbot, agent, "
+            "integration, approval, or PBC event handling."
+        ),
+        "route_to_exception_workflow_when": (
+            "The prompt names telemetry/time-series/high-volume windowing or "
+            "complex parallel dataflow/CPU-heavy transformation and includes "
+            "evidence."
+        ),
+    },
     "developer_choice_algorithm": (
         {
             "step": 1,
@@ -932,6 +972,7 @@ def acp_stream_processing_policy() -> dict:
         "default": ACP_STREAM_PROCESSING_POLICY["default"],
         "allowed_processors": ACP_STREAM_PROCESSING_POLICY["allowed_processors"],
         "developer_guidance": ACP_STREAM_PROCESSING_POLICY["developer_guidance"],
+        "developer_guidance_contract": ACP_STREAM_PROCESSING_POLICY["developer_guidance_contract"],
         "decision_card": ACP_STREAM_PROCESSING_POLICY["decision_card"],
         "developer_choice_algorithm": ACP_STREAM_PROCESSING_POLICY["developer_choice_algorithm"],
         "ordinary_workload_contract": ACP_STREAM_PROCESSING_POLICY["ordinary_workload_contract"],
@@ -948,6 +989,18 @@ def acp_stream_processing_policy() -> dict:
         "decision_tree": ACP_STREAM_PROCESSING_POLICY["decision_tree"],
         "profiles": acp_stream_processor_catalog(),
         "rules": ACP_STREAM_PROCESSOR_DECISION_RULES,
+    }
+
+
+def acp_event_processing_developer_guidance() -> dict:
+    """Return the one-answer event-processing guidance for app developers."""
+    contract = ACP_STREAM_PROCESSING_POLICY["developer_guidance_contract"]
+    return {
+        "format": "appgen.acp-event-processing-developer-guidance.v1",
+        "ok": True,
+        **contract,
+        "policy_format": acp_stream_processing_policy()["format"],
+        "default_runtime_profile": ACP_DEFAULT_STREAM_PROCESSOR,
     }
 
 

@@ -72,6 +72,23 @@ alternatives, Python stream libraries, state stores, brokers, topic clients,
 or per-target runtime combinations. The platform owns those choices behind the
 adapter.
 
+Tooling should consume the same compact contract exposed by
+`acp_event_processing_developer_guidance()`:
+
+| Field | Required value |
+| --- | --- |
+| `answer` | `Use appgen_event_contract.` |
+| `visible_options` | `("appgen_event_contract",)` |
+| `ordinary_manifest_instruction` | `Omit stream_processor.` |
+| `ordinary_datastore_instruction` | `Use PostgreSQL by default, or MySQL/MariaDB when that is the project standard.` |
+| `exception_options` | `("quix_streams", "bytewax")` |
+
+This compact guidance object is the source that IDE controls, DSL linting,
+natural-language generation, package templates, and external coding-agent
+prompts should read when they need the short answer. The long comparison is
+background. The product behavior is one default generated contract, one
+ordinary visible option, and two evidence-gated exception workflows.
+
 Use this manifest shape for ordinary work:
 
 ```python
@@ -551,6 +568,9 @@ The executable policy lives in `src/pyAppGen/pbc.py`:
 - `acp_stream_processing_policy()` returns the default, allowed profiles,
   decision card, developer guidance, generated outputs, decision tree, required
   exception evidence, and prohibited patterns.
+- `acp_event_processing_developer_guidance()` returns the compact one-answer
+  guidance object that IDE controls, DSL linting, natural-language generation,
+  package templates, and external coding-agent prompts should use.
 - `select_acp_stream_processor()` classifies workload descriptions as default
   or exception candidates.
 - `validate_pbc_manifest()` rejects unsupported profiles, normalizes missing
