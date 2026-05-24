@@ -3067,6 +3067,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     artifact_gate = next(gate for gate in audit["gates"] if gate["id"] == "artifact_contract")
     assert artifact_gate["ok"] is True
     assert set(artifact_gate["required_artifacts"]) <= set(artifact_gate["passing_artifacts"])
+    assert set(artifact_gate["required_formats"]) <= set(artifact_gate["passing_formats"])
     assert audit["rad_parity"]["format"] == "appgen.rad-parity-workbench.v1"
     assert audit["rad_parity"]["ok"] is True
     rad_parity_gate = next(gate for gate in audit["gates"] if gate["id"] == "rad_parity_workbench")
