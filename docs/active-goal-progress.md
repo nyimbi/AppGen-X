@@ -25,7 +25,7 @@ Build a complete AppGen IDE and generation platform with:
 
 | Date | Commit | Slice | Evidence |
 | --- | --- | --- | --- |
-| 2026-05-24 | `current` | Made the package form-designer generation-smoke gate expose required and passing generated artifacts plus blocking-gap evidence. | Py compile, focused generated form-designer parity smoke, scoped diff check, and scoped restricted-name scan passed. |
+| 2026-05-24 | `ce796eb` | Made the package form-designer generation-smoke gate expose required and passing generated artifacts plus blocking-gap evidence. | Py compile, focused generated form-designer parity smoke, scoped diff check, and scoped restricted-name scan passed. |
 | 2026-05-24 | `04fa527` | Made the package form-designer platform parity workbench gate expose required and passing nested workbench, lifecycle, and requirement-audit formats. | Py compile, focused generated form-designer parity smoke, scoped diff check, and scoped restricted-name scan passed. |
 | 2026-05-24 | `a590b42` | Made the package form-designer generated-runtime smoke gate expose required and passing stable smoke/workbench formats in addition to passing check IDs. | Py compile, focused generated form-designer parity smoke, scoped diff check, and scoped restricted-name scan passed. |
 | 2026-05-24 | `d76ac9d` | Made the package form-designer overlap-guardrail gate expose required and passing checks, detected overlap pairs, and valid-drop validation evidence. | Py compile, focused generated form-designer parity smoke, scoped diff check, and scoped restricted-name scan passed. |
