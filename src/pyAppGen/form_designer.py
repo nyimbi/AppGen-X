@@ -14718,6 +14718,8 @@ def rad_parity_workbench(existing_paths: set[str] | None = None) -> dict:
     passing_binding_edges = tuple(livebindings_contract()["binding_edges"])
     required_data_tooling_names = ("FireDAC", "DataSnap", "RAD Server", "InterBase")
     passing_data_tooling_names = tuple(rad_data_tooling_contract()["tooling"])
+    required_mobile_api_names = ("camera", "location", "push_notifications", "secure_storage")
+    passing_mobile_api_names = tuple(mobile_native_api_contract()["apis"])
     checks = (
         {
             "id": "native_ui_parity_component_parity",
@@ -14776,8 +14778,10 @@ def rad_parity_workbench(existing_paths: set[str] | None = None) -> dict:
         },
         {
             "id": "mobile_native_device_api_coverage",
-            "ok": {"camera", "location", "push_notifications", "secure_storage"} <= set(mobile_native_api_contract()["apis"])
+            "ok": set(required_mobile_api_names) <= set(passing_mobile_api_names)
             and mobile_native_api_workbench()["ok"],
+            "required_apis": required_mobile_api_names,
+            "passing_apis": passing_mobile_api_names,
             "evidence": {"contract": mobile_native_api_contract(), "workbench": mobile_native_api_workbench()},
         },
         {

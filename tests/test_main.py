@@ -3089,6 +3089,11 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     )
     assert data_tooling_gate["ok"] is True
     assert set(data_tooling_gate["required_tooling"]) <= set(data_tooling_gate["passing_tooling"])
+    mobile_gate = next(
+        check for check in audit["rad_parity"]["checks"] if check["id"] == "mobile_native_device_api_coverage"
+    )
+    assert mobile_gate["ok"] is True
+    assert set(mobile_gate["required_apis"]) <= set(mobile_gate["passing_apis"])
     assert rad_parity_workbench()["ok"] is True
     assert {
         "native_ui_parity_component_parity",
