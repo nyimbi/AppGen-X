@@ -17413,6 +17413,15 @@ def form_designer_release_audit(existing_paths: set[str] | None = None) -> dict:
     required_component_mappings = tuple((item["field"], item["component"]) for item in design["components"])
     passing_component_mappings = tuple((item["field"], item["component"]) for item in matrix if item["supported"])
     drop = snap_drop("TextBox", 2.3, 7.7, field="generated_note")
+    drop_checks = (
+        ("snapped_x", drop["proposal"]["x"] == 2),
+        ("snapped_y", drop["proposal"]["y"] == 8),
+        ("review_required", drop["review_required"] is True),
+        ("inspector_label_property", "label" in drop["property_inspector"]["properties"]),
+        ("inspector_help_text_property", "help_text" in drop["property_inspector"]["properties"]),
+    )
+    required_drop_checks = tuple(check for check, _ in drop_checks)
+    passing_drop_checks = tuple(check for check, ok in drop_checks if ok)
     valid_after_drop = validate_form_design(
         apply_drop(design, {**drop["proposal"], "field_type": "string"})  # type: ignore[arg-type]
     )
@@ -17482,9 +17491,11 @@ def form_designer_release_audit(existing_paths: set[str] | None = None) -> dict:
         },
         {
             "id": "drop_snap_property_inspector",
-            "ok": drop["proposal"]["x"] == 2
-            and drop["proposal"]["y"] == 8
-            and "label" in drop["property_inspector"]["properties"],
+            "ok": set(required_drop_checks) <= set(passing_drop_checks),
+            "required_checks": required_drop_checks,
+            "passing_checks": passing_drop_checks,
+            "proposal": drop["proposal"],
+            "inspector_properties": tuple(sorted(drop["property_inspector"]["properties"])),
         },
         {
             "id": "placement_suggestions",
