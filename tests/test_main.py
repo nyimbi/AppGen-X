@@ -537,6 +537,10 @@ def test_ideas_release_audit_maps_original_roadmap_items(
     palette_gate = next(gate for gate in audit["gates"] if gate["id"] == "palette_breadth")
     assert palette_gate["ok"] is True
     assert set(palette_gate["required_categories"]) <= set(palette_gate["passing_categories"])
+    canvas_gate = next(gate for gate in audit["gates"] if gate["id"] == "canvas_contract")
+    assert canvas_gate["ok"] is True
+    assert canvas_gate["passing_columns"] == canvas_gate["required_columns"]
+    assert set(canvas_gate["required_targets"]) <= set(canvas_gate["passing_targets"])
     assert audit["generation_smoke"]["ok"] is True
     smoke = ideas_generation_smoke_audit()
     assert smoke["format"] == "appgen.ideas-generation-smoke-audit.v1"

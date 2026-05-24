@@ -17403,6 +17403,10 @@ def form_designer_release_audit(existing_paths: set[str] | None = None) -> dict:
     )
     passing_palette_categories = tuple(sorted(set(palette_categories())))
     design = form_design()
+    required_canvas_columns = 12
+    passing_canvas_columns = design["canvas"]["grid"]["columns"]
+    required_canvas_targets = ("web", "mobile", "desktop")
+    passing_canvas_targets = tuple(design["canvas"]["render_targets"])
     matrix = field_component_matrix()
     drop = snap_drop("TextBox", 2.3, 7.7, field="generated_note")
     valid_after_drop = validate_form_design(
@@ -17456,8 +17460,12 @@ def form_designer_release_audit(existing_paths: set[str] | None = None) -> dict:
         },
         {
             "id": "canvas_contract",
-            "ok": design["canvas"]["grid"]["columns"] == 12
-            and {"web", "mobile", "desktop"} <= set(design["canvas"]["render_targets"]),
+            "ok": passing_canvas_columns == required_canvas_columns
+            and set(required_canvas_targets) <= set(passing_canvas_targets),
+            "required_columns": required_canvas_columns,
+            "passing_columns": passing_canvas_columns,
+            "required_targets": required_canvas_targets,
+            "passing_targets": passing_canvas_targets,
         },
         {
             "id": "field_component_mapping",

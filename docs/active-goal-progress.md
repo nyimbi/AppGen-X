@@ -25,6 +25,7 @@ Build a complete AppGen IDE and generation platform with:
 
 | Date | Commit | Slice | Evidence |
 | --- | --- | --- | --- |
+| 2026-05-24 | `current` | Made the package form-designer canvas gate expose required and passing grid columns and render targets used for release evidence. | Py compile, focused generated form-designer parity smoke, scoped diff check, and scoped restricted-name scan passed. |
 | 2026-05-24 | `145cef9` | Made the package form-designer palette breadth gate expose required and passing palette categories used for release evidence. | Py compile, focused generated form-designer parity smoke, scoped diff check, and scoped restricted-name scan passed. |
 | 2026-05-24 | `d2b620c` | Made the source and package form-designer artifact gates expose required and passing generated artifacts used for release evidence. | Py compile, focused generated form-designer parity smoke, scoped diff check, and scoped restricted-name scan passed. |
 | 2026-05-24 | `ba9666b` | Made the source third-party component ecosystem gate expose required and passing ecosystem categories and package workbench checks used for release evidence. | Py compile, focused generated form-designer parity smoke, scoped diff check, and scoped restricted-name scan passed. |
