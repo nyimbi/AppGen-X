@@ -2799,6 +2799,10 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "design_edit_session_replay",
         "actionable_runtime_operations",
         "runtime_readiness_contract",
+        "native_form_modules",
+        "native_form_module_tests",
+        "runtime_operation_modules",
+        "runtime_operation_module_tests",
         "compiler_runtime_modules",
         "compiler_runtime_module_tests",
         "deep_runtime_modules",
@@ -2871,10 +2875,21 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     assert "runtime_load" in pascal_reload_runtime_preview_operation(design)["pipeline"]
     assert pascal_runtime_actionable_operations(design)["ok"] is True
     assert runtime["actionable_operations"]["operations"]["compile_preview"]["ok"] is True
+    assert len(runtime["native_form_modules"]) == 6
+    assert len(runtime["native_form_module_tests"]) == 6
+    assert len(runtime["runtime_operation_modules"]) == 6
+    assert len(runtime["runtime_operation_module_tests"]) == 6
     assert len(runtime["compiler_runtime_modules"]) == 6
     assert len(runtime["compiler_runtime_module_tests"]) == 6
     assert len(runtime["deep_runtime_modules"]) == 8
     assert len(runtime["deep_runtime_module_tests"]) == 8
+    assert all("native_form_manifest" in item["exports"] for item in runtime["native_form_modules"])
+    assert all("test_native_form_module_smoke" in item["exports"] for item in runtime["native_form_module_tests"])
+    assert all("run_operation" in item["exports"] for item in runtime["runtime_operation_modules"])
+    assert all(
+        "test_runtime_operation_module_smoke" in item["exports"]
+        for item in runtime["runtime_operation_module_tests"]
+    )
     assert all("smoke_test" in item["exports"] for item in runtime["compiler_runtime_modules"])
     assert all("test_deep_runtime_module_smoke" in item["exports"] for item in runtime["deep_runtime_module_tests"])
 
@@ -3089,8 +3104,14 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     } <= set(requirements_by_id["package_installation_ecosystem"]["deep_checks"])
     assert {
         "runtime_preview_ready",
+        "native_form_modules",
+        "native_form_module_tests",
+        "runtime_operation_modules",
+        "runtime_operation_module_tests",
         "compiler_runtime_modules",
+        "compiler_runtime_module_tests",
         "deep_runtime_modules",
+        "deep_runtime_module_tests",
     } <= set(requirements_by_id["native_runtime_streaming"]["deep_checks"])
     assert {
         "inspector_generated_modules",
@@ -12369,8 +12390,14 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     } <= set(generated_requirements_by_id["package_installation_ecosystem"]["deep_checks"])
     assert {
         "runtime_preview_ready",
+        "native_form_modules",
+        "native_form_module_tests",
+        "runtime_operation_modules",
+        "runtime_operation_module_tests",
         "compiler_runtime_modules",
+        "compiler_runtime_module_tests",
         "deep_runtime_modules",
+        "deep_runtime_module_tests",
     } <= set(generated_requirements_by_id["native_runtime_streaming"]["deep_checks"])
     assert {
         "inspector_generated_modules",
@@ -12534,6 +12561,10 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "design_edit_session_replay",
         "actionable_runtime_operations",
         "runtime_readiness_contract",
+        "native_form_modules",
+        "native_form_module_tests",
+        "runtime_operation_modules",
+        "runtime_operation_module_tests",
         "compiler_runtime_modules",
         "compiler_runtime_module_tests",
         "deep_runtime_modules",
@@ -12607,10 +12638,16 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert "runtime_load" in form_designer.pascal_reload_runtime_preview_operation("Book")["pipeline"]
     assert form_designer.pascal_runtime_actionable_operations("Book")["ok"] is True
     assert generated_runtime["actionable_operations"]["operations"]["compile_preview"]["ok"] is True
+    assert generated_runtime["native_form_modules"]["ok"] is True
+    assert generated_runtime["native_form_module_tests"]["ok"] is True
+    assert generated_runtime["runtime_operation_modules"]["ok"] is True
+    assert generated_runtime["runtime_operation_module_tests"]["ok"] is True
     assert generated_runtime["compiler_runtime_modules"]["ok"] is True
     assert generated_runtime["compiler_runtime_module_tests"]["ok"] is True
     assert generated_runtime["deep_runtime_modules"]["ok"] is True
     assert generated_runtime["deep_runtime_module_tests"]["ok"] is True
+    assert len(generated_runtime["native_form_modules"]["modules"]) == 6
+    assert len(generated_runtime["runtime_operation_modules"]["modules"]) == 6
     assert len(generated_runtime["compiler_runtime_modules"]["modules"]) == 6
     assert len(generated_runtime["deep_runtime_modules"]["modules"]) == 8
     assert "control_to_field" in form_designer.livebindings_contract()["binding_edges"]

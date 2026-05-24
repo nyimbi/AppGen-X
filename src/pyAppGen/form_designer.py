@@ -4368,6 +4368,10 @@ def pascal_runtime_workbench(design: dict | None = None) -> dict:
     readiness = pascal_runtime_readiness_contract(design)
     binary_round_trip = dfm_binary_round_trip(design)
     stream_variants = dfm_stream_variant_round_trip_contract(design)
+    native_form_modules = native_form_module_file_manifest()
+    native_form_module_tests = native_form_module_test_file_manifest()
+    runtime_operation_modules = runtime_operation_module_file_manifest()
+    runtime_operation_module_tests = runtime_operation_module_test_file_manifest()
     compiler_runtime_modules = compiler_runtime_module_file_manifest()
     compiler_runtime_module_tests = compiler_runtime_module_test_file_manifest()
     deep_runtime_modules = deep_runtime_module_file_manifest()
@@ -4577,6 +4581,33 @@ def pascal_runtime_workbench(design: dict | None = None) -> dict:
             "evidence": readiness,
         },
         {
+            "id": "native_form_modules",
+            "ok": len(native_form_modules) == 6
+            and all(item["ok"] and "native_form_manifest" in item["exports"] for item in native_form_modules),
+            "evidence": native_form_modules,
+        },
+        {
+            "id": "native_form_module_tests",
+            "ok": len(native_form_module_tests) == 6
+            and all(item["ok"] and "test_native_form_module_smoke" in item["exports"] for item in native_form_module_tests),
+            "evidence": native_form_module_tests,
+        },
+        {
+            "id": "runtime_operation_modules",
+            "ok": len(runtime_operation_modules) == 6
+            and all(item["ok"] and "run_operation" in item["exports"] for item in runtime_operation_modules),
+            "evidence": runtime_operation_modules,
+        },
+        {
+            "id": "runtime_operation_module_tests",
+            "ok": len(runtime_operation_module_tests) == 6
+            and all(
+                item["ok"] and "test_runtime_operation_module_smoke" in item["exports"]
+                for item in runtime_operation_module_tests
+            ),
+            "evidence": runtime_operation_module_tests,
+        },
+        {
             "id": "compiler_runtime_modules",
             "ok": len(compiler_runtime_modules) == 6
             and all(item["ok"] and "smoke_test" in item["exports"] for item in compiler_runtime_modules),
@@ -4642,6 +4673,10 @@ def pascal_runtime_workbench(design: dict | None = None) -> dict:
         "readiness": readiness,
         "binary_round_trip": binary_round_trip,
         "stream_variants": stream_variants,
+        "native_form_modules": native_form_modules,
+        "native_form_module_tests": native_form_module_tests,
+        "runtime_operation_modules": runtime_operation_modules,
+        "runtime_operation_module_tests": runtime_operation_module_tests,
         "compiler_runtime_modules": compiler_runtime_modules,
         "compiler_runtime_module_tests": compiler_runtime_module_tests,
         "deep_runtime_modules": deep_runtime_modules,
@@ -14250,6 +14285,10 @@ def platform_parity_requirement_audit_contract() -> dict:
                 "form_stream_schema",
                 "runtime_session_replay",
                 "design_edit_session_replay",
+                "native_form_modules",
+                "native_form_module_tests",
+                "runtime_operation_modules",
+                "runtime_operation_module_tests",
                 "compiler_runtime_modules",
                 "compiler_runtime_module_tests",
                 "deep_runtime_modules",
@@ -14260,8 +14299,14 @@ def platform_parity_requirement_audit_contract() -> dict:
                 "compile_targets_ready",
                 "diagnostics_route_ready",
                 "runtime_preview_ready",
+                "native_form_modules",
+                "native_form_module_tests",
+                "runtime_operation_modules",
+                "runtime_operation_module_tests",
                 "compiler_runtime_modules",
+                "compiler_runtime_module_tests",
                 "deep_runtime_modules",
+                "deep_runtime_module_tests",
                 "phase_order_ready",
             ),
             "evidence": {"workbench": runtime, "readiness": runtime_readiness},
