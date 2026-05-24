@@ -14710,12 +14710,18 @@ def rad_parity_workbench(existing_paths: set[str] | None = None) -> dict:
         "deep_checks_have_passing_evidence",
         "lifecycle_replay_aligned",
     )
+    required_component_palette_categories = ("input", "calendar", "relationship", "media", "action")
+    passing_component_palette_categories = tuple(sorted(set(palette_categories())))
     checks = (
         {
             "id": "native_ui_parity_component_parity",
             "ok": len(component_palette()) >= 7
-            and {"input", "calendar", "relationship", "media", "action"} <= set(palette_categories())
+            and set(required_component_palette_categories) <= set(passing_component_palette_categories)
             and component_readiness["ok"],
+            "required_categories": required_component_palette_categories,
+            "passing_categories": passing_component_palette_categories,
+            "required_component_count": 7,
+            "passing_component_count": len(component_palette()),
             "evidence": {"components": tuple(item["component"] for item in component_palette()), "readiness": component_readiness},
         },
         {
