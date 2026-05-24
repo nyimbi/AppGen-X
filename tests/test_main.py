@@ -3513,6 +3513,23 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "runtime_package_ready",
         "runtime_replay_ready",
     } <= set(visual_depth_smoke["passing_checks"])
+    data_tooling_smoke = next(check for check in smoke["checks"] if check["id"] == "generated_data_tooling_runtime")
+    assert data_tooling_smoke["ok"] is True
+    assert {
+        "connections",
+        "datasets_and_lookups",
+        "services",
+        "transaction_replays",
+        "relationship_lookup_replay",
+        "data_module_smoke",
+        "data_module_files_ready",
+        "data_module_tests_ready",
+        "deep_data_tooling_modules_ready",
+        "deep_data_tooling_module_tests_ready",
+        "publish_transaction_replay",
+        "failover_transaction_replay",
+        "runtime_replay",
+    } <= set(data_tooling_smoke["passing_checks"])
     coverage = next(check for check in smoke["checks"] if check["id"] == "generated_component_file_coverage")
     assert coverage["component_count"] == len(component_file_manifest())
     assert coverage["package_count"] == len(component_package_file_manifest())

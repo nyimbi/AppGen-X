@@ -16795,6 +16795,7 @@ def form_designer_generation_smoke_audit(source: str = FORM_DESIGNER_SAMPLE_DSL)
         binding_runtime_passing_checks = set(binding_runtime_smoke["checks"])
         package_manager_runtime_passing_checks = set(package_manager_runtime_smoke["checks"])
         visual_depth_runtime_passing_checks = set(visual_depth_runtime_smoke["checks"])
+        data_tooling_runtime_passing_checks = set(data_runtime_smoke["checks"])
         native_form_runtime_passing_checks = set(native_form_runtime_smoke["checks"])
 
     required_generated_release_gate_checks = (
@@ -16917,6 +16918,21 @@ def form_designer_generation_smoke_audit(source: str = FORM_DESIGNER_SAMPLE_DSL)
         "visual_component_tests_ready",
         "runtime_package_ready",
         "runtime_replay_ready",
+    )
+    required_data_tooling_runtime_checks = (
+        "connections",
+        "datasets_and_lookups",
+        "services",
+        "transaction_replays",
+        "relationship_lookup_replay",
+        "data_module_smoke",
+        "data_module_files_ready",
+        "data_module_tests_ready",
+        "deep_data_tooling_modules_ready",
+        "deep_data_tooling_module_tests_ready",
+        "publish_transaction_replay",
+        "failover_transaction_replay",
+        "runtime_replay",
     )
 
     checks = (
@@ -17098,22 +17114,9 @@ def form_designer_generation_smoke_audit(source: str = FORM_DESIGNER_SAMPLE_DSL)
             "id": "generated_data_tooling_runtime",
             "ok": data_runtime_smoke["ok"]
             and data_runtime_smoke["format"] == "appgen.generated-data-tooling-runtime-smoke.v1"
-            and {
-                "connections",
-                "datasets_and_lookups",
-                "services",
-                "transaction_replays",
-                "relationship_lookup_replay",
-                "data_module_smoke",
-                "data_module_files_ready",
-                "data_module_tests_ready",
-                "deep_data_tooling_modules_ready",
-                "deep_data_tooling_module_tests_ready",
-                "publish_transaction_replay",
-                "failover_transaction_replay",
-                "runtime_replay",
-            }
-            <= set(data_runtime_smoke["checks"]),
+            and set(required_data_tooling_runtime_checks) <= data_tooling_runtime_passing_checks,
+            "required_checks": required_data_tooling_runtime_checks,
+            "passing_checks": tuple(sorted(data_tooling_runtime_passing_checks)),
             "smoke": data_runtime_smoke,
         },
         {
