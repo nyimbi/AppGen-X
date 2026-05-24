@@ -176,6 +176,11 @@ The executable policy also exposes `developer_guidance`, which is the contract
 for Studio controls, DSL linting, natural-language generation, and external
 coding agents: ordinary apps get one generated adapter path; exceptions are
 evidence-driven release-audit workflows.
+The policy also exposes a first-match `developer_choice_algorithm`: ordinary
+business, ERP, workflow, chatbot, agent, integration, and PBC event handling
+always generate the AppGen-X event contract with `stream_processor` omitted;
+only telemetry/time-series and complex dataflow PBCs can request audited
+exception profiles.
 
 ERP starters can be exported and generated immediately:
 

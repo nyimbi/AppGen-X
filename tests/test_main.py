@@ -775,6 +775,21 @@ def test_package_pbc_catalog_composes_enterprise_apps(runner: CliRunner) -> None
     assert stream_policy["developer_guidance"]["exception_gate"].endswith("with evidence.")
     assert stream_policy["developer_guidance"]["exception_policy"] == "two_audited_exception_profiles_not_user_preferences"
     assert "split the specialized workload into its own PBC" in stream_policy["developer_guidance"]["split_rule"]
+    assert stream_policy["developer_choice_algorithm"][0]["then"] == "generate the AppGen-X event contract"
+    assert stream_policy["developer_choice_algorithm"][0]["manifest"] == "omit stream_processor"
+    assert stream_policy["developer_choice_algorithm"][0]["requires_evidence"] is False
+    assert stream_policy["developer_choice_algorithm"][1]["runtime_profile"] == "quix_streams"
+    assert stream_policy["developer_choice_algorithm"][1]["requires_evidence"] is True
+    assert stream_policy["developer_choice_algorithm"][2]["runtime_profile"] == "bytewax"
+    assert stream_policy["developer_choice_algorithm"][3]["if"] == "anything else or unclear"
+    assert stream_policy["ordinary_workload_contract"]["public_choice"] == "appgen_event_contract"
+    assert stream_policy["ordinary_workload_contract"]["manifest_fields_to_omit"] == ("stream_processor",)
+    assert "events.py" in stream_policy["ordinary_workload_contract"]["generated_files"]
+    assert stream_policy["ordinary_workload_contract"]["forbidden_imports"] == (
+        "faust_streaming",
+        "quix_streams",
+        "bytewax",
+    )
     assert stream_policy["decision_card"]["answer"].startswith("Use the AppGen-X generated outbox/inbox event contract")
     assert stream_policy["decision_card"]["ordinary_developer_choices"] == ("appgen_event_contract",)
     assert stream_policy["decision_card"]["ordinary_developer_choice_count"] == 1
@@ -785,6 +800,7 @@ def test_package_pbc_catalog_composes_enterprise_apps(runner: CliRunner) -> None
     assert "render a stream-engine picker" in stream_policy["decision_card"]["do_not_do_this"]
     assert stream_policy["decision_card"]["developer_selection"] == "not_user_selectable_for_ordinary_app_generation"
     assert stream_policy["decision_card"]["selection_mode"] == "read_only_default_with_audited_exceptions"
+    assert stream_policy["decision_card"]["selection_algorithm"] == "first_matching_rule_from_developer_choice_algorithm"
     assert stream_policy["decision_card"]["default_profile"] == "faust_streaming"
     assert stream_policy["decision_card"]["business_logic_rule"].endswith("not profile-specific stream libraries")
     assert stream_policy["opinionated_stack"]["default_event_adapter"] == "appgen_outbox_inbox_faust_streaming"

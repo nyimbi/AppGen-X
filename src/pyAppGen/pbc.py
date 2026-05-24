@@ -171,6 +171,53 @@ ACP_STREAM_PROCESSING_POLICY = {
             "processing, split the specialized workload into its own PBC."
         ),
     },
+    "developer_choice_algorithm": (
+        {
+            "step": 1,
+            "if": "ordinary business, ERP, workflow, chatbot, agent, integration, or PBC event handling",
+            "then": "generate the AppGen-X event contract",
+            "manifest": "omit stream_processor",
+            "runtime_profile": ACP_DEFAULT_STREAM_PROCESSOR,
+            "requires_evidence": False,
+        },
+        {
+            "step": 2,
+            "if": "telemetry, time-series ingestion, high-volume ingestion, or windowed operational metrics",
+            "then": "split into a specialized PBC and request the telemetry exception profile",
+            "manifest": "stream_processor=quix_streams",
+            "runtime_profile": "quix_streams",
+            "requires_evidence": True,
+        },
+        {
+            "step": 3,
+            "if": "complex parallel dataflow, CPU-heavy stream transformation, or multi-stage analytical pipeline",
+            "then": "split into a specialized PBC and request the dataflow exception profile",
+            "manifest": "stream_processor=bytewax",
+            "runtime_profile": "bytewax",
+            "requires_evidence": True,
+        },
+        {
+            "step": 4,
+            "if": "anything else or unclear",
+            "then": "generate the AppGen-X event contract",
+            "manifest": "omit stream_processor",
+            "runtime_profile": ACP_DEFAULT_STREAM_PROCESSOR,
+            "requires_evidence": False,
+        },
+    ),
+    "ordinary_workload_contract": {
+        "public_choice": "appgen_event_contract",
+        "developer_prompt": (
+            "Generate commands, events, transactional outbox/inbox tables, "
+            "typed handlers, idempotency, retry, dead-letter, and release "
+            "evidence through the AppGen-X event adapter."
+        ),
+        "manifest_fields": ("commands", "events", "tables", "apis", "emits", "consumes"),
+        "manifest_fields_to_omit": ("stream_processor",),
+        "generated_files": ("models.py", "events.py", "services.py", "api.py", "pbc_runtime.py"),
+        "forbidden_imports": ("faust_streaming", "quix_streams", "bytewax"),
+        "studio_control": "read_only_runtime_profile_badge",
+    },
     "decision_card": {
         "answer": "Use the AppGen-X generated outbox/inbox event contract; the platform keeps faust_streaming behind the adapter for ordinary work.",
         "default_profile": ACP_DEFAULT_STREAM_PROCESSOR,
@@ -196,6 +243,7 @@ ACP_STREAM_PROCESSING_POLICY = {
         "ide_behavior": "show the generated default profile and open an exception request only when evidence is supplied",
         "nl_generator_behavior": "choose the default for ordinary business, workflow, chatbot, agent, and ERP prompts",
         "business_logic_rule": "generated business logic imports the AppGen-X event adapter, not profile-specific stream libraries",
+        "selection_algorithm": "first_matching_rule_from_developer_choice_algorithm",
     },
     "opinionated_stack": {
         "default_event_adapter": "appgen_outbox_inbox_faust_streaming",
@@ -885,6 +933,8 @@ def acp_stream_processing_policy() -> dict:
         "allowed_processors": ACP_STREAM_PROCESSING_POLICY["allowed_processors"],
         "developer_guidance": ACP_STREAM_PROCESSING_POLICY["developer_guidance"],
         "decision_card": ACP_STREAM_PROCESSING_POLICY["decision_card"],
+        "developer_choice_algorithm": ACP_STREAM_PROCESSING_POLICY["developer_choice_algorithm"],
+        "ordinary_workload_contract": ACP_STREAM_PROCESSING_POLICY["ordinary_workload_contract"],
         "developer_rule": ACP_STREAM_PROCESSING_POLICY["developer_rule"],
         "generation_rule": ACP_STREAM_PROCESSING_POLICY["generation_rule"],
         "implementation_directive": ACP_STREAM_PROCESSING_POLICY["implementation_directive"],

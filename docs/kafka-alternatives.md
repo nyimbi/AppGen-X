@@ -112,6 +112,41 @@ business event contract. The platform owns the runtime choice.
 This document is the developer-facing companion to the executable policy in
 `src/pyAppGen/pbc.py`.
 
+## Platform Selection Contract
+
+The platform uses a first-match contract. Developers do not score products,
+compare stream libraries, or vote on runtimes.
+
+| Step | Workload description | What to generate | Manifest rule | Evidence |
+| --- | --- | --- | --- | --- |
+| 1 | Ordinary business, ERP, workflow, chatbot, agent, integration, or PBC event handling | AppGen-X event contract | Omit `stream_processor` | None |
+| 2 | Telemetry, time-series ingestion, high-volume ingestion, or windowed operational metrics | Specialized telemetry PBC | `stream_processor: quix_streams` | Required |
+| 3 | Complex parallel dataflow, CPU-heavy stream transformation, or multi-stage analytical pipeline | Specialized dataflow PBC | `stream_processor: bytewax` | Required |
+| 4 | Anything else or unclear | AppGen-X event contract | Omit `stream_processor` | None |
+
+The ordinary-workload prompt contract is:
+
+```text
+Generate commands, events, transactional outbox/inbox tables, typed handlers,
+idempotency, retry, dead-letter, and release evidence through the AppGen-X event
+adapter. Omit stream_processor.
+```
+
+Generated ordinary PBCs should emit these files:
+
+```text
+models.py
+events.py
+services.py
+api.py
+pbc_runtime.py
+```
+
+Those files may mention the read-only selected profile in metadata, but domain
+services must not import `faust_streaming`, `quix_streams`, or `bytewax`
+directly. If a prompt is ambiguous, use the default contract and keep
+`stream_processor` out of the manifest.
+
 ## What To Actually Generate
 
 For every ordinary PBC, ERP module, workflow, chatbot, agent, integration, or
