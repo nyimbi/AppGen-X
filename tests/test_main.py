@@ -11179,6 +11179,34 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     component_gate = components.component_release_gate({"app/components.py", "app/templates/appgen_components.html"})
     assert component_gate["format"] == "appgen.component-release-gate.v1"
     assert component_gate["ok"] is True
+    component_module_files = components.component_module_file_manifest()
+    component_module_tests = components.component_module_test_file_manifest()
+    assert component_module_files["format"] == "appgen.component-module-file-manifest.v1"
+    assert component_module_files["ok"] is True
+    assert component_module_tests["format"] == "appgen.component-module-test-file-manifest.v1"
+    assert component_module_tests["ok"] is True
+    assert {
+        "widget_registry",
+        "lookup_contracts",
+        "layout_contracts",
+        "template_packages",
+        "custom_widgets",
+        "release_workbench",
+    } == {item["surface"] for item in component_module_files["modules"]}
+    for item in component_module_files["modules"]:
+        module_path = output_dir / item["path"].replace("app/", "")
+        py_compile.compile(str(module_path), doraise=True)
+        module = _load_module(module_path, f"generated_component_module_{item['module']}")
+        assert module.module_contract()["ok"] is True
+        assert module.component_manifest()["ok"] is True
+        assert module.run_component_operation()["ok"] is True
+        assert module.release_context()["ok"] is True
+        assert module.smoke_test()["ok"] is True
+    for item in component_module_tests["tests"]:
+        test_path = output_dir / item["path"].replace("app/", "")
+        py_compile.compile(str(test_path), doraise=True)
+        module = _load_module(test_path, f"generated_component_module_test_{item['module']}")
+        assert module.smoke_test()["ok"] is True
     assert {
         "artifact_coverage",
         "component_catalog",

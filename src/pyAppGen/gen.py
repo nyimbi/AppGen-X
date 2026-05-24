@@ -2161,6 +2161,27 @@ def write_components_file(output_dir, schema: AppSchema):
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
     (output_dir / "components.py").write_text(_components_text(schema))
+    write_component_surface_module_files(output_dir)
+
+
+def write_component_surface_module_files(output_dir):
+    """Write generated component workbench surface modules and smoke tests."""
+    output_dir = Path(output_dir)
+    module_dir = output_dir / "component_modules"
+    test_dir = output_dir / "component_module_tests"
+    module_dir.mkdir(parents=True, exist_ok=True)
+    test_dir.mkdir(parents=True, exist_ok=True)
+    (module_dir / "__init__.py").write_text(_component_surface_module_init_text(), encoding="utf-8")
+    (test_dir / "__init__.py").write_text(_component_surface_module_test_init_text(), encoding="utf-8")
+    for module_name in COMPONENT_SURFACE_MODULES:
+        (module_dir / f"{module_name}.py").write_text(
+            _component_surface_module_text(module_name),
+            encoding="utf-8",
+        )
+        (test_dir / f"test_{module_name}.py").write_text(
+            _component_surface_module_test_text(module_name),
+            encoding="utf-8",
+        )
 
 
 def write_view_composition_file(output_dir, schema: AppSchema):
@@ -2343,6 +2364,15 @@ WIZARD_MODULES = (
     "workflow_wizard_module",
     "validation_session_module",
     "submission_plan_module",
+)
+
+COMPONENT_SURFACE_MODULES = (
+    "widget_registry_module",
+    "lookup_contract_module",
+    "layout_contract_module",
+    "template_package_module",
+    "custom_widget_module",
+    "component_release_workbench_module",
 )
 
 DATABASE_OPS_MODULES = (
@@ -62199,6 +62229,273 @@ def register_wizards(appbuilder):
 '''
 
 
+def _component_surface_module_init_text() -> str:
+    return (
+        '"""Generated component workbench surface modules."""\n\n'
+        f"COMPONENT_SURFACE_MODULES = {COMPONENT_SURFACE_MODULES!r}\n"
+    )
+
+
+def _component_surface_module_test_init_text() -> str:
+    modules = tuple(f"test_{name}" for name in COMPONENT_SURFACE_MODULES)
+    return (
+        '"""Generated component workbench surface module tests."""\n\n'
+        f"COMPONENT_SURFACE_MODULE_TESTS = {modules!r}\n"
+    )
+
+
+def _component_surface(module_name: str) -> tuple[str, str]:
+    return {
+        "widget_registry_module": ("widget_registry", "widget_registry"),
+        "lookup_contract_module": ("lookup_contracts", "lookup_workbench"),
+        "layout_contract_module": ("layout_contracts", "layout_workbench"),
+        "template_package_module": ("template_packages", "component_template_workbench"),
+        "custom_widget_module": ("custom_widgets", "custom_widget_registration_plan"),
+        "component_release_workbench_module": ("release_workbench", "component_release_gate"),
+    }[module_name]
+
+
+def _component_surface_module_text(module_name: str) -> str:
+    surface, operation = _component_surface(module_name)
+    return f'''"""Generated component workbench module for {surface}."""
+
+from __future__ import annotations
+
+import importlib.util
+from pathlib import Path
+
+
+MODULE = {module_name!r}
+SURFACE = {surface!r}
+OPERATION = {operation!r}
+EXPECTED_EXPORTS = (
+    "module_contract",
+    "component_manifest",
+    "run_component_operation",
+    "release_context",
+    "smoke_test",
+)
+
+
+def _components():
+    module_path = Path(__file__).resolve().parents[1] / "components.py"
+    spec = importlib.util.spec_from_file_location(f"generated_components_{{MODULE}}", module_path)
+    module = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(module)
+    return module
+
+
+def _assets():
+    return {{"app/components.py", "app/templates/appgen_components.html"}}
+
+
+def _first_table(components):
+    return next(iter(components.COMPONENT_TABLES))
+
+
+def _first_lookup(components):
+    for table_name in components.COMPONENT_TABLES:
+        lookups = components.lookup_fields(table_name)
+        if lookups:
+            return table_name, lookups[0]["field"]
+    return _first_table(components), None
+
+
+def module_contract():
+    """Return this generated component module's export contract."""
+    available = tuple(name for name in EXPECTED_EXPORTS if name in globals())
+    return {{
+        "format": "appgen.component-module-contract.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "operation": OPERATION,
+        "ok": set(EXPECTED_EXPORTS) <= set(available),
+        "exports": available,
+        "expected_exports": EXPECTED_EXPORTS,
+        "side_effects": (),
+    }}
+
+
+def component_manifest():
+    """Return generated component metadata owned by this module."""
+    components = _components()
+    registry = components.widget_registry()
+    palette = components.component_palette()
+    catalog = components.component_catalog()
+    return {{
+        "format": "appgen.component-module-manifest.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "ok": bool(catalog) and bool(registry) and bool(palette),
+        "table_count": len(catalog),
+        "widget_count": len(registry),
+        "palette_count": len(palette),
+        "side_effects": (),
+    }}
+
+
+def run_component_operation():
+    """Run this module's side-effect-free component operation."""
+    components = _components()
+    table_name = _first_table(components)
+    lookup_table, lookup_field = _first_lookup(components)
+    if SURFACE == "widget_registry":
+        operation = {{
+            "registry": components.widget_registry(),
+            "palette": components.component_palette(),
+            "visual_builder": components.visual_builder_payload(),
+        }}
+        ok = bool(operation["registry"]) and bool(operation["palette"]) and bool(operation["visual_builder"]["tables"])
+    elif SURFACE == "lookup_contracts":
+        operation = {{
+            "workbench": components.lookup_workbench(_assets()),
+            "lookup": components.lookup_contract(lookup_table, lookup_field) if lookup_field else None,
+        }}
+        ok = operation["workbench"]["ok"] and (operation["lookup"] is None or bool(operation["lookup"]["target_table"]))
+    elif SURFACE == "layout_contracts":
+        operation = {{
+            "workbench": components.layout_workbench(_assets()),
+            "contract": components.component_contract(table_name),
+        }}
+        ok = operation["workbench"]["ok"] and bool(operation["contract"]["form"]["fields"])
+    elif SURFACE == "template_packages":
+        operation = {{
+            "workbench": components.component_template_workbench(_assets()),
+            "package": components.component_template_package(table_name),
+        }}
+        ok = operation["workbench"]["ok"] and len(operation["package"]["templates"]) == 4
+    elif SURFACE == "custom_widgets":
+        widget = components.custom_widget_contract("Generated Module Widget")
+        operation = {{
+            "widget": widget,
+            "plan": components.custom_widget_registration_plan(widget),
+            "preview": components.custom_widget_preview(widget),
+            "palette": components.custom_widget_palette_entry(widget),
+        }}
+        ok = operation["plan"]["requires_review"] and operation["preview"]["format"] == "appgen.custom-widget-preview.v1" and operation["palette"]["custom"] is True
+    else:
+        operation = {{
+            "release": components.component_release_gate(_assets()),
+            "lookup": components.lookup_workbench(_assets()),
+            "layout": components.layout_workbench(_assets()),
+            "templates": components.component_template_workbench(_assets()),
+        }}
+        ok = all(item["ok"] for item in operation.values())
+    return {{
+        "format": "appgen.component-module-operation.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "ok": ok,
+        "operation": operation,
+        "side_effects": (),
+    }}
+
+
+def release_context():
+    """Return release evidence used by this component module."""
+    components = _components()
+    release = components.component_release_gate(_assets())
+    return {{
+        "format": "appgen.component-module-release-context.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "ok": release["ok"],
+        "release": release,
+        "side_effects": (),
+    }}
+
+
+def smoke_test():
+    """Run side-effect-free checks for this generated component module."""
+    contract = module_contract()
+    manifest = component_manifest()
+    operation = run_component_operation()
+    release = release_context()
+    return {{
+        "format": "appgen.component-module-smoke-test.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "ok": contract["ok"]
+        and manifest["ok"]
+        and operation["ok"]
+        and release["ok"]
+        and not manifest["side_effects"]
+        and not operation["side_effects"]
+        and not release["side_effects"],
+        "contract": contract,
+        "manifest": manifest,
+        "operation": operation,
+        "release": release,
+        "checks": (
+            "module_contract_resolves",
+            "component_manifest_ok",
+            "component_operation_ok",
+            "release_context_ok",
+            "no_side_effects",
+        ),
+    }}
+'''
+
+
+def _component_surface_module_test_text(module_name: str) -> str:
+    surface, _operation = _component_surface(module_name)
+    return f'''"""Generated tests for the {surface} component module."""
+
+from __future__ import annotations
+
+import importlib.util
+from pathlib import Path
+
+
+MODULE = {module_name!r}
+SURFACE = {surface!r}
+
+
+def load_component_surface_module():
+    """Load the generated component module without app installation."""
+    module_path = Path(__file__).resolve().parents[1] / "component_modules" / f"{{MODULE}}.py"
+    spec = importlib.util.spec_from_file_location(f"generated_component_module_{{MODULE}}", module_path)
+    module = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(module)
+    return module
+
+
+def test_component_surface_module_contract():
+    """Assert the generated component module exposes its contract."""
+    module = load_component_surface_module()
+    contract = module.module_contract()
+    assert contract["module"] == MODULE
+    assert contract["surface"] == SURFACE
+    assert contract["ok"] is True
+    assert all(hasattr(module, name) for name in contract["expected_exports"])
+
+
+def test_component_surface_module_smoke():
+    """Assert the module's side-effect-free smoke test passes."""
+    module = load_component_surface_module()
+    result = module.smoke_test()
+    assert result["ok"] is True
+    assert result["module"] == MODULE
+    assert result["surface"] == SURFACE
+    assert result["checks"]
+
+
+def smoke_test():
+    """Run this generated test module in a side-effect-free way."""
+    test_component_surface_module_contract()
+    test_component_surface_module_smoke()
+    return {{
+        "format": "appgen.component-module-generated-test-smoke.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "ok": True,
+        "tests": ("test_component_surface_module_contract", "test_component_surface_module_smoke"),
+    }}
+'''
+
+
 def _components_text(schema: AppSchema) -> str:
     enum_values = {enum.name: tuple(enum.values) for enum in schema.enums}
 
@@ -62374,12 +62671,16 @@ def _components_text(schema: AppSchema) -> str:
 
 from __future__ import annotations
 
+import importlib.util
+from pathlib import Path
+
 from flask import jsonify
 from flask_appbuilder import BaseView
 from flask_appbuilder import expose
 
 
 COMPONENT_TABLES = {tables!r}
+COMPONENT_SURFACE_MODULES = {COMPONENT_SURFACE_MODULES!r}
 CUSTOM_WIDGET_EXTENSION_POINTS = (
     "component_registry",
     "form_designer_palette",
@@ -62389,6 +62690,86 @@ CUSTOM_WIDGET_EXTENSION_POINTS = (
     "validation_schema",
     "theme_tokens",
 )
+
+
+def _load_generated_module(path, name):
+    spec = importlib.util.spec_from_file_location(name, path)
+    module = importlib.util.module_from_spec(spec)
+    if spec.loader is None:
+        raise RuntimeError(f"Could not load generated module: {{path}}")
+    spec.loader.exec_module(module)
+    return module
+
+
+def component_module_file_manifest():
+    """Return file-level evidence for generated component workbench modules."""
+    module_dir = Path(__file__).with_name("component_modules")
+    entries = []
+    for module_name in COMPONENT_SURFACE_MODULES:
+        module_path = module_dir / f"{{module_name}}.py"
+        exports = ()
+        contract_ok = False
+        smoke_ok = False
+        surface = ""
+        if module_path.exists():
+            module = _load_generated_module(module_path, f"generated_component_module_{{module_name}}")
+            contract = module.module_contract()
+            smoke = module.smoke_test()
+            exports = tuple(name for name in contract["expected_exports"] if hasattr(module, name))
+            contract_ok = contract["ok"] and contract["module"] == module_name
+            smoke_ok = smoke["ok"] and smoke["module"] == module_name
+            surface = contract["surface"]
+        entries.append(
+            {{
+                "module": module_name,
+                "surface": surface,
+                "path": f"app/component_modules/{{module_name}}.py",
+                "exists": module_path.exists(),
+                "exports": exports,
+                "contract_ok": contract_ok,
+                "smoke_ok": smoke_ok,
+            }}
+        )
+    return {{
+        "format": "appgen.component-module-file-manifest.v1",
+        "ok": bool(entries) and all(item["exists"] and item["contract_ok"] and item["smoke_ok"] for item in entries),
+        "modules": tuple(entries),
+        "side_effects": (),
+    }}
+
+
+def component_module_test_file_manifest():
+    """Return file-level evidence for generated component module tests."""
+    test_dir = Path(__file__).with_name("component_module_tests")
+    entries = []
+    for item in component_module_file_manifest()["modules"]:
+        module_name = item["module"]
+        module_path = test_dir / f"test_{{module_name}}.py"
+        exports = ()
+        smoke_ok = False
+        if module_path.exists():
+            module = _load_generated_module(module_path, f"generated_component_module_test_{{module_name}}")
+            smoke = module.smoke_test()
+            exports = tuple(("load_component_surface_module", "test_component_surface_module_contract", "test_component_surface_module_smoke", "smoke_test"))
+            exports = tuple(name for name in exports if hasattr(module, name))
+            smoke_ok = smoke["ok"] and smoke["module"] == module_name
+        entries.append(
+            {{
+                "module": module_name,
+                "surface": item["surface"],
+                "path": f"app/component_module_tests/test_{{module_name}}.py",
+                "target": item["path"],
+                "exists": module_path.exists(),
+                "exports": exports,
+                "smoke_ok": smoke_ok,
+            }}
+        )
+    return {{
+        "format": "appgen.component-module-test-file-manifest.v1",
+        "ok": bool(entries) and all(item["exists"] and item["smoke_ok"] for item in entries),
+        "tests": tuple(entries),
+        "side_effects": (),
+    }}
 
 
 def component_catalog():
@@ -71851,6 +72232,14 @@ def validate_component_artifacts() -> None:
         fail("component contract must expose reviewable custom widget registration and preview helpers")
     if "component_release_gate" not in contract or "appgen.component-release-gate.v1" not in contract or '@expose("/release-gate.json")' not in contract:
         fail("component contract must expose generated component release evidence")
+    if (
+        "COMPONENT_SURFACE_MODULES" not in contract
+        or "component_module_file_manifest" not in contract
+        or "component_module_test_file_manifest" not in contract
+        or "appgen.component-module-file-manifest.v1" not in contract
+        or "appgen.component-module-test-file-manifest.v1" not in contract
+    ):
+        fail("component contract must expose generated component module and module-test manifests")
     template = (ROOT / "app" / "templates" / "appgen_components.html").read_text()
     if "Generated component and widget contracts" not in template or "Custom Widget JSON" not in template or "Release Gate JSON" not in template:
         fail("component template must expose generated and custom component contracts plus release evidence")
