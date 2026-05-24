@@ -189,6 +189,9 @@ linting, Studio controls, and small local models: show the event contract
 designer, handler registry, retry/idempotency/dead-letter controls, and
 read-only runtime profile badge; hide stream-engine pickers and per-PBC runtime
 preferences for ordinary generated work.
+The returned `implementation_playbook` is the contributor checklist: Studio,
+DSL linting, natural-language generation, package templates, and coding-agent
+prompts all build the same ordinary path and hide runtime matrices.
 The policy also returns `developer_decision_record` with the stable id
 `appgen.event-processing.standard.v1`. Treat it as the support-matrix cap:
 ordinary generated applications have one public event contract, zero visible

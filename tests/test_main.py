@@ -857,6 +857,14 @@ def test_package_pbc_catalog_composes_enterprise_apps(runner: CliRunner) -> None
     assert "stream_engine_picker" in stream_policy["developer_decision_brief"]["studio_controls_to_hide"]
     assert "ordinary_pbc_manifest_omits_stream_processor" in stream_policy["developer_decision_brief"]["linter_rules"]
     assert stream_policy["developer_decision_brief"]["allowed_exceptions"] == ("quix_streams", "bytewax")
+    playbook = stream_policy["developer_implementation_playbook"]
+    assert playbook["id"] == "appgen.event-processing.implementation-playbook.v1"
+    assert "hide_stream_engine_picker" in playbook["studio"]
+    assert "require_ordinary_manifests_to_omit_stream_processor" in playbook["dsl_linter"]
+    assert "avoid_runtime_comparison_prompts" in playbook["natural_language_generation"]
+    assert "include_appgen_outbox_event" in playbook["package_templates"]
+    assert playbook["coding_agent_prompt"].startswith("Use appgen_event_contract.")
+    assert "ordinary_manifest_has_no_stream_processor" in playbook["acceptance_criteria"]
     developer_guidance = acp_event_processing_developer_guidance()
     assert developer_guidance["format"] == "appgen.acp-event-processing-developer-guidance.v1"
     assert developer_guidance["answer"] == "Use appgen_event_contract."
@@ -867,6 +875,7 @@ def test_package_pbc_catalog_composes_enterprise_apps(runner: CliRunner) -> None
     assert developer_guidance["developer_action_contract"]["token_efficient_prompt"].startswith(
         "Use appgen_event_contract."
     )
+    assert developer_guidance["implementation_playbook"]["id"] == "appgen.event-processing.implementation-playbook.v1"
     assert developer_guidance["decision_brief"]["ordinary_codegen_prompt"].startswith("Generate AppGen-X outbox/inbox events")
     assert developer_guidance["decision_brief"]["small_model_stop_rule"].startswith("When the request is ordinary business")
     assert "small_model_instruction" in developer_guidance

@@ -336,6 +336,52 @@ ACP_STREAM_PROCESSING_POLICY = {
             "the ordinary answer."
         ),
     },
+    "developer_implementation_playbook": {
+        "id": "appgen.event-processing.implementation-playbook.v1",
+        "purpose": "tell platform developers exactly what to build for ordinary evented apps",
+        "studio": (
+            "show_event_contract_designer",
+            "show_handler_registry_editor",
+            "show_retry_idempotency_dead_letter_editor",
+            "show_read_only_runtime_profile_badge",
+            "hide_stream_engine_picker",
+            "hide_per_pbc_runtime_preference",
+        ),
+        "dsl_linter": (
+            "require_ordinary_manifests_to_omit_stream_processor",
+            "offer_remove_stream_processor_quick_fix",
+            "block_exception_profiles_without_stream_exception_evidence",
+            "block_profile_specific_imports_in_generated_business_logic",
+        ),
+        "natural_language_generation": (
+            "map_ordinary_business_prompts_to_appgen_event_contract",
+            "generate_outbox_inbox_tables_and_typed_handlers",
+            "avoid_runtime_comparison_prompts",
+            "open_exception_workflow_only_with_named_evidence",
+        ),
+        "package_templates": (
+            "include_appgen_outbox_event",
+            "include_appgen_inbox_event",
+            "include_event_adapter_bindings",
+            "include_retry_policy",
+            "include_idempotency_keys",
+            "include_dead_letter_contract",
+            "include_release_audit_evidence",
+        ),
+        "coding_agent_prompt": (
+            "Use appgen_event_contract. Omit stream_processor. Generate "
+            "outbox/inbox tables, typed handlers, retry, idempotency, "
+            "dead-letter, and release evidence through the AppGen-X event "
+            "adapter. Do not compare runtimes."
+        ),
+        "acceptance_criteria": (
+            "ordinary_manifest_has_no_stream_processor",
+            "generated_business_logic_imports_only_appgen_event_adapter",
+            "studio_has_no_stream_runtime_picker",
+            "exception_profiles_require_stream_exception_evidence",
+            "release_audit_records_event_contract_outputs",
+        ),
+    },
     "developer_choice_algorithm": (
         {
             "step": 1,
@@ -1281,6 +1327,7 @@ def acp_stream_processing_policy() -> dict:
         "developer_guidance_contract": ACP_STREAM_PROCESSING_POLICY["developer_guidance_contract"],
         "developer_action_contract": ACP_STREAM_PROCESSING_POLICY["developer_action_contract"],
         "developer_decision_brief": ACP_STREAM_PROCESSING_POLICY["developer_decision_brief"],
+        "developer_implementation_playbook": ACP_STREAM_PROCESSING_POLICY["developer_implementation_playbook"],
         "decision_card": ACP_STREAM_PROCESSING_POLICY["decision_card"],
         "developer_choice_lock": ACP_STREAM_PROCESSING_POLICY["developer_choice_lock"],
         "developer_decision_record": ACP_STREAM_PROCESSING_POLICY["developer_decision_record"],
@@ -1315,6 +1362,7 @@ def acp_event_processing_developer_guidance() -> dict:
         **contract,
         "developer_action_contract": ACP_STREAM_PROCESSING_POLICY["developer_action_contract"],
         "decision_brief": ACP_STREAM_PROCESSING_POLICY["developer_decision_brief"],
+        "implementation_playbook": ACP_STREAM_PROCESSING_POLICY["developer_implementation_playbook"],
         "choice_lock": ACP_STREAM_PROCESSING_POLICY["developer_choice_lock"],
         "developer_default_stack": ACP_STREAM_PROCESSING_POLICY["developer_default_stack"],
         "developer_recommendation_card": ACP_STREAM_PROCESSING_POLICY["developer_recommendation_card"],

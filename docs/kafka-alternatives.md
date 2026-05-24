@@ -293,6 +293,34 @@ linter fails with `generated_business_logic_imports_appgen_event_adapter_only`.
 That is the practical rule that closes the exponential matrix: business code
 uses the AppGen-X adapter; platform adapter modules own runtime details.
 
+## Platform Developer Playbook
+
+When adding event-processing support to AppGen-X surfaces, build the ordinary
+path and hide the runtime matrix.
+
+| Surface | Build this | Do not build this |
+| --- | --- | --- |
+| Studio | Event contract designer, handler registry editor, retry/idempotency/dead-letter editor, and read-only runtime profile badge | Stream-engine picker, broker picker, state-store picker, or per-PBC runtime preference |
+| DSL linter | `ordinary_pbc_manifest_omits_stream_processor`, `remove_stream_processor` quick fix, exception evidence gate, and profile-specific import blocker | Rules that ask ordinary PBC authors to select a stream runtime |
+| Natural-language generation | Map ordinary ERP, workflow, chatbot, agent, integration, approval, and PBC prompts to `appgen_event_contract` | Runtime comparison prompts or generated decision matrices |
+| Package templates | `appgen_outbox_event`, `appgen_inbox_event`, adapter bindings, retry policy, idempotency keys, dead-letter contract, and release evidence | Direct imports of profile-specific stream libraries in generated business logic |
+
+The executable source of truth is:
+
+```python
+from pyAppGen.pbc import acp_event_processing_developer_guidance
+
+playbook = acp_event_processing_developer_guidance()["implementation_playbook"]
+assert playbook["coding_agent_prompt"].startswith("Use appgen_event_contract.")
+assert "hide_stream_engine_picker" in playbook["studio"]
+assert "ordinary_manifest_has_no_stream_processor" in playbook["acceptance_criteria"]
+```
+
+Use the playbook as the acceptance checklist for pull requests that touch event
+processing. A change is not complete if ordinary generated business logic can
+import a stream runtime directly, if Studio exposes a runtime picker, or if an
+ordinary manifest keeps `stream_processor`.
+
 ## Normative Decision
 
 AppGen-X makes the event-processing choice for platform developers.
