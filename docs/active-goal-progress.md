@@ -25,7 +25,8 @@ Build a complete AppGen IDE and generation platform with:
 
 | Date | Commit | Slice | Evidence |
 | --- | --- | --- | --- |
-| 2026-05-24 | `current` | Made the source object-inspector parity gate expose required and passing inspector tabs used for release evidence. | Py compile, focused generated form-designer parity smoke, scoped diff check, and scoped restricted-name scan passed. |
+| 2026-05-24 | `current` | Made the source visual-binding parity gate expose required and passing binding edges used for release evidence. | Py compile, focused generated form-designer parity smoke, scoped diff check, and scoped restricted-name scan passed. |
+| 2026-05-24 | `bf58d53` | Made the source object-inspector parity gate expose required and passing inspector tabs used for release evidence. | Py compile, focused generated form-designer parity smoke, scoped diff check, and scoped restricted-name scan passed. |
 | 2026-05-24 | `1fb16a1` | Made the source component parity gate expose required and passing palette categories plus the component count threshold used for release evidence. | Py compile, focused generated form-designer parity smoke, scoped diff check, and scoped restricted-name scan passed. |
 | 2026-05-24 | `0596295` | Promoted requirement-audit coverage summaries to the audit root so missing requirements, missing deep checks, and per-requirement deep-check coverage are directly visible to release gates. | Py compile, focused generated form-designer parity smoke, scoped diff check, and scoped restricted-name scan passed. |
 | 2026-05-24 | `2cea27e` | Made platform deep-check coverage expose required and passing deep-check IDs per requirement, and made the release audit assert no detailed parity evidence is missing. | Py compile, focused generated form-designer parity smoke, scoped diff check, and scoped restricted-name scan passed. |

@@ -14714,6 +14714,8 @@ def rad_parity_workbench(existing_paths: set[str] | None = None) -> dict:
     passing_component_palette_categories = tuple(sorted(set(palette_categories())))
     required_inspector_tabs = ("Properties", "Events")
     passing_inspector_tabs = tuple(object_inspector_contract()["tabs"])
+    required_binding_edges = ("control_to_field",)
+    passing_binding_edges = tuple(livebindings_contract()["binding_edges"])
     checks = (
         {
             "id": "native_ui_parity_component_parity",
@@ -14751,8 +14753,10 @@ def rad_parity_workbench(existing_paths: set[str] | None = None) -> dict:
         },
         {
             "id": "livebindings_designer",
-            "ok": "control_to_field" in livebindings_contract()["binding_edges"]
+            "ok": set(required_binding_edges) <= set(passing_binding_edges)
             and livebindings_workbench()["ok"],
+            "required_edges": required_binding_edges,
+            "passing_edges": passing_binding_edges,
             "evidence": {"contract": livebindings_contract(), "workbench": livebindings_workbench()},
         },
         {
