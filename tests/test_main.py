@@ -2111,6 +2111,8 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "designer_transaction_replay",
         "capability_lifecycle_replay",
         "mobile_readiness_contract",
+        "device_component_modules",
+        "device_component_module_tests",
     } == {check["id"] for check in mobile_workbench["checks"]}
     mobile_apis = set(mobile_workbench["contract"]["apis"])
     assert {
@@ -2229,6 +2231,15 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     assert mobile_readiness["final_state"]["runtime_replays"] == len(mobile_apis)
     assert mobile_workbench["readiness"]["ok"] is True
     assert mobile_workbench["readiness"]["final_state"]["background_checkpoints"] >= 1
+    assert len(mobile_workbench["device_component_module_artifacts"]) == len(mobile_apis)
+    assert len(mobile_workbench["device_component_test_artifacts"]) == len(mobile_apis)
+    assert {item["api"] for item in mobile_workbench["device_component_module_artifacts"]} == mobile_apis
+    assert {item["api"] for item in mobile_workbench["device_component_test_artifacts"]} == mobile_apis
+    assert all("replay" in item["exports"] for item in mobile_workbench["device_component_module_artifacts"])
+    assert all(
+        "test_device_component_smoke" in item["exports"]
+        for item in mobile_workbench["device_component_test_artifacts"]
+    )
     visual_depth = cross_target_visual_depth_workbench()
     assert visual_depth["format"] == "appgen.cross-target-visual-depth-workbench.v1"
     assert visual_depth["ok"] is True
@@ -3055,7 +3066,11 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "deep_data_tooling_module_tests",
         "phase_order_ready",
     } <= set(requirements_by_id["native_data_service_tooling"]["deep_checks"])
-    assert "runtime_delivery_ready" in requirements_by_id["device_api_component_coverage"]["deep_checks"]
+    assert {
+        "device_component_modules",
+        "device_component_module_tests",
+        "runtime_delivery_ready",
+    } <= set(requirements_by_id["device_api_component_coverage"]["deep_checks"])
     assert "runtime_package_ready" in requirements_by_id["cross_target_visual_depth"]["deep_checks"]
 
     smoke = form_designer_generation_smoke_audit()
@@ -12302,7 +12317,11 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "deep_data_tooling_module_tests",
         "phase_order_ready",
     } <= set(generated_requirements_by_id["native_data_service_tooling"]["deep_checks"])
-    assert "runtime_delivery_ready" in generated_requirements_by_id["device_api_component_coverage"]["deep_checks"]
+    assert {
+        "device_component_modules",
+        "device_component_module_tests",
+        "runtime_delivery_ready",
+    } <= set(generated_requirements_by_id["device_api_component_coverage"]["deep_checks"])
     assert "runtime_package_ready" in generated_requirements_by_id["cross_target_visual_depth"]["deep_checks"]
     assert {"devexpress-native", "tms-fnc", "fastreport", "teechart", "indy"} <= {
         item["id"] for item in form_designer.third_party_component_registry()
@@ -13467,6 +13486,8 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "designer_transaction_replay",
         "capability_lifecycle_replay",
         "mobile_readiness_contract",
+        "device_component_modules",
+        "device_component_module_tests",
     } == {check["id"] for check in generated_mobile["checks"]}
     generated_mobile_apis = set(generated_mobile["contract"]["apis"])
     assert {
@@ -13584,6 +13605,15 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert generated_mobile_readiness["final_state"]["runtime_replays"] == len(generated_mobile_apis)
     assert generated_mobile["readiness"]["ok"] is True
     assert generated_mobile["readiness"]["final_state"]["background_checkpoints"] >= 1
+    assert len(generated_mobile["device_component_module_artifacts"]) == len(generated_mobile_apis)
+    assert len(generated_mobile["device_component_test_artifacts"]) == len(generated_mobile_apis)
+    assert {item["api"] for item in generated_mobile["device_component_module_artifacts"]} == generated_mobile_apis
+    assert {item["api"] for item in generated_mobile["device_component_test_artifacts"]} == generated_mobile_apis
+    assert all("replay" in item["exports"] for item in generated_mobile["device_component_module_artifacts"])
+    assert all(
+        "test_device_component_smoke" in item["exports"]
+        for item in generated_mobile["device_component_test_artifacts"]
+    )
     mobile_runtime_file = output_dir / "mobile_device_runtime.py"
     assert mobile_runtime_file.exists()
     py_compile.compile(str(mobile_runtime_file), doraise=True)

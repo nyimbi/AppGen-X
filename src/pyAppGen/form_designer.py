@@ -11886,6 +11886,8 @@ def mobile_native_api_workbench() -> dict:
     runtime_replay = mobile_native_api_runtime_replay_contract()
     designer_transaction_replay = mobile_device_designer_transaction_replay_contract()
     capability_lifecycle_replay = mobile_device_capability_lifecycle_replay_contract()
+    device_component_module_artifacts = device_api_component_module_file_manifest()
+    device_component_test_artifacts = device_api_component_test_module_file_manifest()
     readiness = mobile_native_api_readiness_contract()
     checks = (
         {
@@ -12121,6 +12123,23 @@ def mobile_native_api_workbench() -> dict:
             and not readiness["side_effects"],
             "evidence": readiness,
         },
+        {
+            "id": "device_component_modules",
+            "ok": len(device_component_module_artifacts) == len(api_set)
+            and api_set == {item["api"] for item in device_component_module_artifacts}
+            and all(item["ok"] and "replay" in item["exports"] for item in device_component_module_artifacts),
+            "evidence": device_component_module_artifacts,
+        },
+        {
+            "id": "device_component_module_tests",
+            "ok": len(device_component_test_artifacts) == len(api_set)
+            and api_set == {item["api"] for item in device_component_test_artifacts}
+            and all(
+                item["ok"] and "test_device_component_smoke" in item["exports"]
+                for item in device_component_test_artifacts
+            ),
+            "evidence": device_component_test_artifacts,
+        },
     )
     ok = all(check["ok"] for check in checks)
     return {
@@ -12151,6 +12170,8 @@ def mobile_native_api_workbench() -> dict:
         "runtime_replay": runtime_replay,
         "designer_transaction_replay": designer_transaction_replay,
         "capability_lifecycle_replay": capability_lifecycle_replay,
+        "device_component_module_artifacts": device_component_module_artifacts,
+        "device_component_test_artifacts": device_component_test_artifacts,
         "readiness": readiness,
         "checks": checks,
         "blocking_gaps": tuple(check for check in checks if not check["ok"]),
@@ -14328,12 +14349,18 @@ def platform_parity_requirement_audit_contract() -> dict:
                 "phase_order_ready",
             }
             <= {check["id"] for check in mobile_readiness["checks"] if check["ok"]}
-            and "runtime_and_designer_replay_aligned" in mobile_lifecycle["guards"],
+            and "runtime_and_designer_replay_aligned" in mobile_lifecycle["guards"]
+            and {
+                "device_component_modules",
+                "device_component_module_tests",
+            } <= {check["id"] for check in mobile["checks"]},
             "deep_checks": (
                 "privacy_permission_ready",
                 "bridge_component_ready",
                 "runtime_delivery_ready",
                 "designer_capability_ready",
+                "device_component_modules",
+                "device_component_module_tests",
                 "phase_order_ready",
             ),
             "evidence": {"workbench": mobile, "lifecycle": mobile_lifecycle, "readiness": mobile_readiness},
@@ -15671,6 +15698,52 @@ def package_manager_module_test_file_manifest() -> tuple[dict, ...]:
             "ok": item["ok"],
         }
         for item in package_manager_module_file_manifest()
+    )
+
+
+def device_api_component_module_file_manifest() -> tuple[dict, ...]:
+    """Return generated device API component module files expected in apps."""
+    exports = (
+        "spec",
+        "permission_manifest",
+        "simulator_fixture",
+        "render",
+        "validate_props",
+        "request_permission",
+        "replay",
+        "dispatch_event",
+        "design_tools",
+        "smoke_test",
+    )
+    return tuple(
+        {
+            "api": item["api"],
+            "component": item["component"],
+            "path": f"app/device_api_components/{_module_name(item['api'])}.py",
+            "exports": exports,
+            "ok": bool(item["api"]) and bool(item["component"]),
+        }
+        for item in mobile_device_component_spec_contract()["specs"]
+    )
+
+
+def device_api_component_test_module_file_manifest() -> tuple[dict, ...]:
+    """Return generated device API component test files expected in apps."""
+    return tuple(
+        {
+            "api": item["api"],
+            "component": item["component"],
+            "path": item["path"].replace("app/device_api_components/", "app/device_api_component_tests/test_"),
+            "target": item["path"],
+            "exports": (
+                "load_device_component_module",
+                "test_device_component_contract",
+                "test_device_component_smoke",
+                "smoke_test",
+            ),
+            "ok": item["ok"],
+        }
+        for item in device_api_component_module_file_manifest()
     )
 
 
