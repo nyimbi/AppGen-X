@@ -13791,12 +13791,14 @@ def platform_parity_lifecycle_replay_contract() -> dict:
     """Replay the full IDE parity surface from palette coverage to target runtime delivery."""
     analog_groups = component_analog_group_audit()
     usability = component_usability_workbench()
+    component_readiness = component_parity_readiness_contract()
     runtime = pascal_runtime_workbench()
     inspector = object_inspector_workbench()
     bindings = livebindings_workbench()
     data_tooling = rad_data_tooling_workbench()
     package_manager = design_time_package_manager_workbench()
     package_lifecycle = component_package_lifecycle_transaction_replay()
+    package_readiness = component_package_readiness_contract()
     mobile = mobile_native_api_workbench()
     mobile_lifecycle = mobile_device_capability_lifecycle_replay_contract()
     visual = cross_target_visual_depth_workbench()
@@ -13809,10 +13811,14 @@ def platform_parity_lifecycle_replay_contract() -> dict:
     replay = (
         {
             "phase": "component_surface_baseline",
-            "ok": analog_groups["ok"] and usability["ok"],
+            "ok": analog_groups["ok"]
+            and usability["ok"]
+            and component_readiness["ok"]
+            and "phase_order_ready" in {check["id"] for check in component_readiness["checks"] if check["ok"]},
             "evidence": {
                 "groups": tuple(group["group"] for group in analog_groups["groups"]),
                 "component_count": usability["component_count"],
+                "readiness_phases": tuple(phase["phase"] for phase in component_readiness["phases"]),
             },
         },
         {
@@ -13853,10 +13859,13 @@ def platform_parity_lifecycle_replay_contract() -> dict:
             "phase": "install_component_packages",
             "ok": package_manager["ok"]
             and package_lifecycle["ok"]
+            and package_readiness["ok"]
+            and "phase_order_ready" in {check["id"] for check in package_readiness["checks"] if check["ok"]}
             and all(item["final_state"]["registry_clean"] for item in package_lifecycle["replay"]),
             "evidence": {
                 "manager_checks": tuple(check["id"] for check in package_manager["checks"]),
                 "packages": package_lifecycle["packages"],
+                "readiness_phases": tuple(phase["phase"] for phase in package_readiness["phases"]),
             },
         },
         {
@@ -13935,12 +13944,14 @@ def platform_parity_lifecycle_replay_contract() -> dict:
 def platform_parity_requirement_audit_contract() -> dict:
     """Map each requested IDE parity requirement to concrete subsystem evidence."""
     analog_groups = component_analog_group_audit()
+    component_readiness = component_parity_readiness_contract()
     runtime = pascal_runtime_workbench()
     inspector = object_inspector_workbench()
     bindings = livebindings_workbench()
     data_tooling = rad_data_tooling_workbench()
     package_manager = design_time_package_manager_workbench()
     package_lifecycle = component_package_lifecycle_transaction_replay()
+    package_readiness = component_package_readiness_contract()
     mobile = mobile_native_api_workbench()
     mobile_lifecycle = mobile_device_capability_lifecycle_replay_contract()
     visual = cross_target_visual_depth_workbench()
@@ -13950,6 +13961,17 @@ def platform_parity_requirement_audit_contract() -> dict:
         {
             "id": "component_parity",
             "ok": analog_groups["ok"]
+            and component_readiness["ok"]
+            and {
+                "analog_coverage_ready",
+                "palette_icons_ready",
+                "behavior_surface_ready",
+                "generated_modules_ready",
+                "generated_tests_ready",
+                "ide_release_ready",
+                "phase_order_ready",
+            }
+            <= {check["id"] for check in component_readiness["checks"] if check["ok"]}
             and {
                 "cross-target-ui",
                 "layouts",
@@ -13962,7 +13984,14 @@ def platform_parity_requirement_audit_contract() -> dict:
                 "three-d",
                 "data-access",
             } == {group["group"] for group in analog_groups["groups"]},
-            "evidence": analog_groups,
+            "deep_checks": (
+                "analog_coverage_ready",
+                "generated_modules_ready",
+                "generated_tests_ready",
+                "ide_release_ready",
+                "phase_order_ready",
+            ),
+            "evidence": {"groups": analog_groups, "readiness": component_readiness},
         },
         {
             "id": "native_runtime_streaming",
@@ -14017,8 +14046,25 @@ def platform_parity_requirement_audit_contract() -> dict:
             "id": "package_installation_ecosystem",
             "ok": package_manager["ok"]
             and package_lifecycle["ok"]
+            and package_readiness["ok"]
+            and {
+                "trust_before_preview",
+                "preview_before_registry_commit",
+                "registry_before_update",
+                "rollback_before_cleanup",
+                "operation_surface_ready",
+                "phase_order_ready",
+            }
+            <= {check["id"] for check in package_readiness["checks"] if check["ok"]}
             and "lifecycle_transaction_replay" in {check["id"] for check in package_manager["checks"]},
-            "evidence": {"manager": package_manager, "lifecycle": package_lifecycle},
+            "deep_checks": (
+                "trust_before_preview",
+                "preview_before_registry_commit",
+                "registry_before_update",
+                "rollback_before_cleanup",
+                "phase_order_ready",
+            ),
+            "evidence": {"manager": package_manager, "lifecycle": package_lifecycle, "readiness": package_readiness},
         },
         {
             "id": "device_api_component_coverage",
@@ -14074,14 +14120,18 @@ def rad_parity_workbench(existing_paths: set[str] | None = None) -> dict:
     )
     install_plan = third_party_component_install_plan()
     package_workbench = component_package_workbench()
+    component_readiness = component_parity_readiness_contract()
+    package_readiness = component_package_readiness_contract()
     platform_lifecycle = platform_parity_lifecycle_replay_contract()
     requirement_audit = platform_parity_requirement_audit_contract()
     third_party_categories = set(third_party_component_categories())
     checks = (
         {
             "id": "native_ui_parity_component_parity",
-            "ok": len(component_palette()) >= 7 and {"input", "calendar", "relationship", "media", "action"} <= set(palette_categories()),
-            "evidence": {"components": tuple(item["component"] for item in component_palette())},
+            "ok": len(component_palette()) >= 7
+            and {"input", "calendar", "relationship", "media", "action"} <= set(palette_categories())
+            and component_readiness["ok"],
+            "evidence": {"components": tuple(item["component"] for item in component_palette()), "readiness": component_readiness},
         },
         {
             "id": "built_in_component_usability",
@@ -14118,8 +14168,8 @@ def rad_parity_workbench(existing_paths: set[str] | None = None) -> dict:
         },
         {
             "id": "design_time_package_installation",
-            "ok": install_plan["ok"] and install_plan["requires_review"],
-            "evidence": install_plan,
+            "ok": install_plan["ok"] and install_plan["requires_review"] and package_readiness["ok"],
+            "evidence": {"install_plan": install_plan, "readiness": package_readiness},
         },
         {
             "id": "mobile_native_device_api_coverage",

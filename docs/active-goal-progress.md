@@ -520,6 +520,10 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   and asset authoring, hit-test/component binding, runtime/designer replay, and
   target runtime packaging as one ordered path in both package and generated
   app workbenches.
+- Platform parity aggregation now consumes the component and package readiness
+  contracts directly, so top-level lifecycle and requirement audits prove the
+  ordered readiness paths instead of only relying on older subsystem workbench
+  checks.
 
 ## Open Completion Areas
 

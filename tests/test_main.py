@@ -2788,6 +2788,23 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "target_validation_before_release_claim",
         "all_subsystems_replayed",
     } <= {check["id"] for check in platform_lifecycle["checks"] if check["ok"]}
+    lifecycle_by_phase = {item["phase"]: item for item in platform_lifecycle["replay"]}
+    assert lifecycle_by_phase["component_surface_baseline"]["evidence"]["readiness_phases"] == (
+        "analog_coverage",
+        "palette_icon_surface",
+        "runtime_behavior",
+        "generated_modules",
+        "generated_tests",
+        "ide_catalog_release",
+    )
+    assert lifecycle_by_phase["install_component_packages"]["evidence"]["readiness_phases"] == (
+        "trust_and_lockfile",
+        "sandbox_preview",
+        "registry_commit",
+        "versioned_update",
+        "failure_and_rollback",
+        "uninstall_cleanup",
+    )
     requirement_audit = platform_parity_requirement_audit_contract()
     assert requirement_audit["format"] == "appgen.platform-parity-requirement-audit.v1"
     assert requirement_audit["ok"] is True
@@ -2806,6 +2823,21 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "all_requirements_pass",
         "lifecycle_replay_aligned",
     } <= {check["id"] for check in requirement_audit["checks"] if check["ok"]}
+    requirements_by_id = {requirement["id"]: requirement for requirement in requirement_audit["requirements"]}
+    assert requirements_by_id["component_parity"]["evidence"]["readiness"]["format"] == "appgen.component-parity-readiness-contract.v1"
+    assert requirements_by_id["package_installation_ecosystem"]["evidence"]["readiness"]["format"] == (
+        "appgen.component-package-readiness-contract.v1"
+    )
+    assert {
+        "generated_modules_ready",
+        "generated_tests_ready",
+        "ide_release_ready",
+    } <= set(requirements_by_id["component_parity"]["deep_checks"])
+    assert {
+        "trust_before_preview",
+        "registry_before_update",
+        "rollback_before_cleanup",
+    } <= set(requirements_by_id["package_installation_ecosystem"]["deep_checks"])
 
     smoke = form_designer_generation_smoke_audit()
     assert smoke["format"] == "appgen.form-designer-generation-smoke-audit.v1"
@@ -11799,6 +11831,16 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         for path in (output_dir / "component_packages").glob("*.py")
         if path.name != "__init__.py"
     )
+    generated_form_designer_paths.update(
+        f"app/component_tests/{path.name}"
+        for path in (output_dir / "component_tests").glob("*.py")
+        if path.name != "__init__.py"
+    )
+    generated_form_designer_paths.update(
+        f"app/component_package_tests/{path.name}"
+        for path in (output_dir / "component_package_tests").glob("*.py")
+        if path.name != "__init__.py"
+    )
     workbench = form_designer.form_designer_workbench(generated_form_designer_paths)
     assert workbench["format"] == "appgen.form-designer-workbench.v1"
     assert workbench["ok"] is True
@@ -11840,9 +11882,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert "/form-designer/pascal-runtime.json" in next(
         check["evidence"]["routes"] for check in workbench["checks"] if check["id"] == "route_surface"
     )
-    generated_rad = form_designer.rad_parity_workbench(
-        {"app/form_designer.py", "app/templates/appgen_form_designer.html"}
-    )
+    generated_rad = form_designer.rad_parity_workbench(generated_form_designer_paths)
     assert generated_rad["format"] == "appgen.generated-rad-parity-workbench.v1"
     assert generated_rad["ok"] is True
     assert "platform_parity_lifecycle_replay" in {check["id"] for check in generated_rad["checks"]}
@@ -11866,6 +11906,23 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "target_validation_before_release_claim",
         "all_subsystems_replayed",
     } <= {check["id"] for check in generated_rad["lifecycle_replay"]["checks"] if check["ok"]}
+    generated_lifecycle_by_phase = {item["phase"]: item for item in generated_rad["lifecycle_replay"]["replay"]}
+    assert generated_lifecycle_by_phase["component_surface_baseline"]["evidence"]["readiness_phases"] == (
+        "analog_coverage",
+        "palette_icon_surface",
+        "runtime_behavior",
+        "generated_modules",
+        "generated_tests",
+        "ide_catalog_release",
+    )
+    assert generated_lifecycle_by_phase["install_component_packages"]["evidence"]["readiness_phases"] == (
+        "trust_and_lockfile",
+        "sandbox_preview",
+        "registry_commit",
+        "versioned_update",
+        "failure_and_rollback",
+        "uninstall_cleanup",
+    )
     assert generated_rad["requirement_audit"]["format"] == "appgen.generated-platform-parity-requirement-audit.v1"
     assert generated_rad["requirement_audit"]["ok"] is True
     assert {
@@ -11883,6 +11940,17 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "all_requirements_pass",
         "lifecycle_replay_aligned",
     } <= {check["id"] for check in generated_rad["requirement_audit"]["checks"] if check["ok"]}
+    generated_requirements_by_id = {
+        requirement["id"]: requirement for requirement in generated_rad["requirement_audit"]["requirements"]
+    }
+    assert generated_requirements_by_id["component_parity"]["evidence"]["readiness"]["format"] == (
+        "appgen.generated-component-parity-readiness-contract.v1"
+    )
+    assert generated_requirements_by_id["package_installation_ecosystem"]["evidence"]["readiness"]["format"] == (
+        "appgen.generated-component-package-readiness-contract.v1"
+    )
+    assert "ide_release_ready" in generated_requirements_by_id["component_parity"]["deep_checks"]
+    assert "trust_before_preview" in generated_requirements_by_id["package_installation_ecosystem"]["deep_checks"]
     assert {"devexpress-native", "tms-fnc", "fastreport", "teechart", "indy"} <= {
         item["id"] for item in form_designer.third_party_component_registry()
     }
@@ -13827,9 +13895,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert len(workbench["forms"]) >= 2
     assert any(item["type"] == "DatePicker" for item in workbench["field_mappings"])
     assert form_designer.form_designer_workbench({"app/form_designer.py"})["ok"] is False
-    form_gate = form_designer.form_designer_release_gate(
-        {"app/form_designer.py", "app/templates/appgen_form_designer.html"}
-    )
+    form_gate = form_designer.form_designer_release_gate(generated_form_designer_paths)
     assert form_gate["format"] == "appgen.form-designer-release-gate.v1"
     assert form_gate["ok"] is True
     assert form_gate["decision"] == "approved"

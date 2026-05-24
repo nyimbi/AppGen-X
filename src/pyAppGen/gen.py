@@ -54699,23 +54699,25 @@ def platform_parity_lifecycle_replay_contract():
     """Replay generated IDE parity surfaces from palette coverage to target runtime delivery."""
     analog_groups = component_analog_group_audit()
     usability = component_usability_workbench()
+    component_readiness = component_parity_readiness_contract()
     runtime = pascal_runtime_workbench()
     inspector = object_inspector_workbench()
     bindings = livebindings_workbench()
     data_tooling = rad_data_tooling_workbench()
     package_manager = design_time_package_manager_workbench()
     package_lifecycle = component_package_lifecycle_transaction_replay()
+    package_readiness = component_package_readiness_contract()
     mobile = mobile_native_api_workbench()
     mobile_lifecycle = mobile_device_capability_lifecycle_replay_contract()
     visual = cross_target_visual_depth_workbench()
     visual_lifecycle = cross_target_visual_lifecycle_replay_contract()
     mobile_lifecycle_phases = tuple(phase["phase"] for item in mobile_lifecycle["replay"] for phase in item["phases"])
     replay = (
-        {{"phase": "component_surface_baseline", "ok": analog_groups["ok"] and usability["ok"], "evidence": {{"groups": tuple(group["group"] for group in analog_groups["groups"]), "component_count": usability["component_count"]}}}},
+        {{"phase": "component_surface_baseline", "ok": analog_groups["ok"] and usability["ok"] and component_readiness["ok"] and "phase_order_ready" in {{check["id"] for check in component_readiness["checks"] if check["ok"]}}, "evidence": {{"groups": tuple(group["group"] for group in analog_groups["groups"]), "component_count": usability["component_count"], "readiness_phases": tuple(phase["phase"] for phase in component_readiness["phases"])}}}},
         {{"phase": "stream_runtime_model", "ok": runtime["ok"] and {{"form_stream_schema", "runtime_session_replay", "event_binding_lifecycle"}} <= {{check["id"] for check in runtime["checks"]}}, "evidence": {{"checks": tuple(check["id"] for check in runtime["checks"]), "runtime_state": runtime["runtime_replay"]["final_state"]}}}},
         {{"phase": "inspect_and_bind_design", "ok": inspector["ok"] and bindings["ok"] and inspector["cross_component_replay"]["ok"] and bindings["designer_transaction_replay"]["ok"], "evidence": {{"inspector_checks": tuple(check["id"] for check in inspector["checks"]), "binding_checks": tuple(check["id"] for check in bindings["checks"])}}}},
         {{"phase": "publish_data_services", "ok": data_tooling["ok"] and data_tooling["publish_transaction_replay"]["ok"] and {{"schema_rehearsal_before_dataset_publish", "service_contract_tests_before_resource_publish", "offline_integrity_before_runtime_replay"}} <= set(data_tooling["publish_transaction_replay"]["guards"]), "evidence": {{"checks": tuple(check["id"] for check in data_tooling["checks"]), "publish_state": data_tooling["publish_transaction_replay"]["final_state"]}}}},
-        {{"phase": "install_component_packages", "ok": package_manager["ok"] and package_lifecycle["ok"] and all(item["final_state"]["registry_clean"] for item in package_lifecycle["replay"]), "evidence": {{"manager_checks": tuple(check["id"] for check in package_manager["checks"]), "packages": package_lifecycle["packages"]}}}},
+        {{"phase": "install_component_packages", "ok": package_manager["ok"] and package_lifecycle["ok"] and package_readiness["ok"] and "phase_order_ready" in {{check["id"] for check in package_readiness["checks"] if check["ok"]}} and all(item["final_state"]["registry_clean"] for item in package_lifecycle["replay"]), "evidence": {{"manager_checks": tuple(check["id"] for check in package_manager["checks"]), "packages": package_lifecycle["packages"], "readiness_phases": tuple(phase["phase"] for phase in package_readiness["phases"])}}}},
         {{"phase": "validate_device_capabilities", "ok": mobile["ok"] and mobile_lifecycle["ok"] and "runtime_and_designer_replay_aligned" in mobile_lifecycle["guards"], "evidence": {{"apis": tuple(adapter["api"] for adapter in mobile["contract"]["component_adapters"]["adapters"]), "lifecycle_phases": mobile_lifecycle_phases}}}},
         {{"phase": "validate_visual_depth", "ok": visual["ok"] and visual_lifecycle["ok"] and "hit_tests_before_designer_replay" in visual_lifecycle["guards"], "evidence": {{"checks": tuple(check["id"] for check in visual["checks"]), "lifecycle_phases": tuple(item["phase"] for item in visual_lifecycle["replay"])}}}},
     )
@@ -54744,24 +54746,26 @@ def platform_parity_lifecycle_replay_contract():
 def platform_parity_requirement_audit_contract():
     """Map each requested generated IDE parity requirement to concrete subsystem evidence."""
     analog_groups = component_analog_group_audit()
+    component_readiness = component_parity_readiness_contract()
     runtime = pascal_runtime_workbench()
     inspector = object_inspector_workbench()
     bindings = livebindings_workbench()
     data_tooling = rad_data_tooling_workbench()
     package_manager = design_time_package_manager_workbench()
     package_lifecycle = component_package_lifecycle_transaction_replay()
+    package_readiness = component_package_readiness_contract()
     mobile = mobile_native_api_workbench()
     mobile_lifecycle = mobile_device_capability_lifecycle_replay_contract()
     visual = cross_target_visual_depth_workbench()
     visual_lifecycle = cross_target_visual_lifecycle_replay_contract()
     lifecycle = platform_parity_lifecycle_replay_contract()
     requirements = (
-        {{"id": "component_parity", "ok": analog_groups["ok"] and {{"cross-target-ui", "layouts", "data-display", "graphics", "animations", "styles-theming", "gestures", "sensors", "three-d", "data-access"}} == {{group["group"] for group in analog_groups["groups"]}}, "evidence": analog_groups}},
+        {{"id": "component_parity", "ok": analog_groups["ok"] and component_readiness["ok"] and {{"analog_coverage_ready", "palette_icons_ready", "behavior_surface_ready", "generated_modules_ready", "generated_tests_ready", "ide_release_ready", "phase_order_ready"}} <= {{check["id"] for check in component_readiness["checks"] if check["ok"]}} and {{"cross-target-ui", "layouts", "data-display", "graphics", "animations", "styles-theming", "gestures", "sensors", "three-d", "data-access"}} == {{group["group"] for group in analog_groups["groups"]}}, "deep_checks": ("analog_coverage_ready", "generated_modules_ready", "generated_tests_ready", "ide_release_ready", "phase_order_ready"), "evidence": {{"groups": analog_groups, "readiness": component_readiness}}}},
         {{"id": "native_runtime_streaming", "ok": runtime["ok"] and {{"form_stream_schema", "runtime_session_replay", "design_edit_session_replay"}} <= {{check["id"] for check in runtime["checks"]}}, "evidence": runtime}},
         {{"id": "inspector_design_surface", "ok": inspector["ok"] and {{"property_editor_types", "event_editor_lifecycle", "component_editor_transaction", "custom_designer_registration_replay", "editor_lifecycle_replay"}} <= {{check["id"] for check in inspector["checks"]}}, "deep_checks": ("editor_lifecycle_replay", "design_surface_transaction_replay", "custom_designer_registration_replay"), "evidence": inspector}},
         {{"id": "visual_binding_designer", "ok": bindings["ok"] and bindings["designer_transaction_replay"]["ok"] and bindings["design_runtime_replay"]["ok"] and bindings["lifecycle_release_replay"]["ok"], "deep_checks": ("binding_lifecycle_release_replay", "design_runtime_session_replay", "designer_transaction_replay"), "evidence": bindings}},
         {{"id": "native_data_service_tooling", "ok": data_tooling["ok"] and data_tooling["runtime_replay"]["ok"] and data_tooling["publish_transaction_replay"]["ok"] and "relationship_lookup_lifecycle_replay" in {{check["id"] for check in data_tooling["checks"]}}, "deep_checks": ("relationship_lookup_lifecycle_replay", "data_tooling_design_runtime_session_replay", "data_tooling_publish_transaction_replay"), "evidence": data_tooling}},
-        {{"id": "package_installation_ecosystem", "ok": package_manager["ok"] and package_lifecycle["ok"] and "lifecycle_transaction_replay" in {{check["id"] for check in package_manager["checks"]}}, "evidence": {{"manager": package_manager, "lifecycle": package_lifecycle}}}},
+        {{"id": "package_installation_ecosystem", "ok": package_manager["ok"] and package_lifecycle["ok"] and package_readiness["ok"] and {{"trust_before_preview", "preview_before_registry_commit", "registry_before_update", "rollback_before_cleanup", "operation_surface_ready", "phase_order_ready"}} <= {{check["id"] for check in package_readiness["checks"] if check["ok"]}} and "lifecycle_transaction_replay" in {{check["id"] for check in package_manager["checks"]}}, "deep_checks": ("trust_before_preview", "preview_before_registry_commit", "registry_before_update", "rollback_before_cleanup", "phase_order_ready"), "evidence": {{"manager": package_manager, "lifecycle": package_lifecycle, "readiness": package_readiness}}}},
         {{"id": "device_api_component_coverage", "ok": mobile["ok"] and mobile_lifecycle["ok"] and "runtime_and_designer_replay_aligned" in mobile_lifecycle["guards"], "evidence": {{"workbench": mobile, "lifecycle": mobile_lifecycle}}}},
         {{"id": "cross_target_visual_depth", "ok": visual["ok"] and visual_lifecycle["ok"] and {{"visual_runtime_replay", "visual_lifecycle_replay"}} <= {{check["id"] for check in visual["checks"]}}, "evidence": {{"workbench": visual, "lifecycle": visual_lifecycle}}}},
     )
@@ -54790,20 +54794,22 @@ def rad_parity_workbench(existing_paths=()):
     missing = tuple(path for path in required if path not in existing)
     install_plan = third_party_component_install_plan()
     package_workbench = component_package_workbench()
+    component_readiness = component_parity_readiness_contract(existing_paths)
+    package_readiness = component_package_readiness_contract()
     platform_lifecycle = platform_parity_lifecycle_replay_contract()
     requirement_audit = platform_parity_requirement_audit_contract()
     categories = {{category for suite in THIRD_PARTY_COMPONENT_SUITES for category in suite["categories"]}}
     palette_types = {{item["type"] for item in PALETTE}}
     checks = (
         {{"id": "artifact_coverage", "ok": not missing, "evidence": {{"required": required, "missing": missing}}}},
-        {{"id": "native_ui_parity_component_parity", "ok": {{"Grid", "TreeView", "MainMenu", "PopupMenu", "DataSource", "RESTClient", "CameraView", "Viewport3D"}} <= palette_types, "evidence": tuple(sorted(palette_types))}},
+        {{"id": "native_ui_parity_component_parity", "ok": {{"Grid", "TreeView", "MainMenu", "PopupMenu", "DataSource", "RESTClient", "CameraView", "Viewport3D"}} <= palette_types and component_readiness["ok"], "evidence": {{"palette": tuple(sorted(palette_types)), "readiness": component_readiness}}}},
         {{"id": "built_in_component_usability", "ok": component_usability_workbench()["ok"], "evidence": component_usability_workbench()}},
         {{"id": "pascal_runtime_and_dfm_streaming", "ok": "text-dfm" in dfm_streaming_contract()["stream_formats"] and pascal_runtime_workbench()["ok"], "evidence": {{"streaming": dfm_streaming_contract(), "runtime": pascal_runtime_workbench()}}}},
         {{"id": "pascal_runtime_workbench", "ok": pascal_runtime_workbench()["ok"], "evidence": pascal_runtime_workbench()}},
         {{"id": "object_inspector_parity", "ok": {{"Properties", "Events"}} <= set(object_inspector_contract()["tabs"]) and object_inspector_workbench()["ok"], "evidence": {{"contract": object_inspector_contract(), "workbench": object_inspector_workbench()}}}},
         {{"id": "livebindings_designer", "ok": "control_to_field" in livebindings_contract()["binding_edges"] and livebindings_workbench()["ok"], "evidence": {{"contract": livebindings_contract(), "workbench": livebindings_workbench()}}}},
         {{"id": "firedac_datasnap_radserver_interbase_tooling", "ok": {{"FireDAC", "DataSnap", "RAD Server", "InterBase"}} <= set(rad_data_tooling_contract()["tooling"]) and rad_data_tooling_workbench()["ok"], "evidence": {{"contract": rad_data_tooling_contract(), "workbench": rad_data_tooling_workbench()}}}},
-        {{"id": "design_time_package_installation", "ok": install_plan["ok"] and install_plan["requires_review"], "evidence": install_plan}},
+        {{"id": "design_time_package_installation", "ok": install_plan["ok"] and install_plan["requires_review"] and package_readiness["ok"], "evidence": {{"install_plan": install_plan, "readiness": package_readiness}}}},
         {{"id": "mobile_native_device_api_coverage", "ok": {{"camera", "location", "push_notifications", "secure_storage"}} <= set(mobile_native_api_contract()["apis"]) and mobile_native_api_workbench()["ok"], "evidence": {{"contract": mobile_native_api_contract(), "workbench": mobile_native_api_workbench()}}}},
         {{"id": "cross_target_animation_effects_3d_depth", "ok": bool(cross_target_visual_depth_contract()["animation"]) and bool(cross_target_visual_depth_contract()["three_d"]) and cross_target_visual_depth_workbench()["ok"], "evidence": {{"contract": cross_target_visual_depth_contract(), "workbench": cross_target_visual_depth_workbench()}}}},
         {{"id": "third_party_component_ecosystem", "ok": install_plan["ok"] and {{"grid", "reports", "charts", "database", "network", "animation"}} <= categories and package_workbench["ok"], "evidence": {{"packages": install_plan["packages"], "categories": tuple(sorted(categories)), "package_workbench": package_workbench}}}},
