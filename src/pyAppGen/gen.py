@@ -2536,6 +2536,15 @@ PROJECT_MANAGEMENT_MODULES = (
     "project_management_release_workbench_module",
 )
 
+ERP_TEMPLATE_MODULES = (
+    "module_catalog_module",
+    "table_blueprint_module",
+    "starter_stack_module",
+    "domain_coverage_module",
+    "dsl_package_module",
+    "erp_release_workbench_module",
+)
+
 
 def write_pbc_runtime_file(output_dir, schema: AppSchema):
     """Write generated composable capability runtime helpers."""
@@ -9786,6 +9795,246 @@ def smoke_test():
 '''
 
 
+def _erp_template_module_init_text() -> str:
+    return (
+        '"""Generated ERP template modules."""\n\n'
+        f"ERP_TEMPLATE_MODULES = {ERP_TEMPLATE_MODULES!r}\n"
+    )
+
+
+def _erp_template_module_test_init_text() -> str:
+    modules = tuple(f"test_{name}" for name in ERP_TEMPLATE_MODULES)
+    return (
+        '"""Generated ERP template module tests."""\n\n'
+        f"ERP_TEMPLATE_MODULE_TESTS = {modules!r}\n"
+    )
+
+
+def _erp_template_surface(module_name: str) -> tuple[str, str]:
+    return {
+        "module_catalog_module": ("module_catalog", "erp_template_catalog"),
+        "table_blueprint_module": ("table_blueprints", "erp_table_blueprints"),
+        "starter_stack_module": ("starter_stacks", "erp_recommended_stacks"),
+        "domain_coverage_module": ("domain_coverage", "erp_domain_coverage_report"),
+        "dsl_package_module": ("dsl_package", "erp_module_package"),
+        "erp_release_workbench_module": ("erp_release_workbench", "erp_template_workbench"),
+    }[module_name]
+
+
+def _erp_template_module_text(module_name: str) -> str:
+    surface, operation = _erp_template_surface(module_name)
+    return f'''"""Generated ERP template module for {surface}."""
+
+from __future__ import annotations
+
+import importlib.util
+from pathlib import Path
+
+
+MODULE = {module_name!r}
+SURFACE = {surface!r}
+OPERATION = {operation!r}
+EXPECTED_EXPORTS = (
+    "module_contract",
+    "erp_template_manifest_contract",
+    "run_erp_template_operation",
+    "release_context",
+    "smoke_test",
+)
+
+
+def _erp_templates():
+    module_path = Path(__file__).resolve().parents[1] / "erp_templates.py"
+    spec = importlib.util.spec_from_file_location(f"generated_erp_templates_{{MODULE}}_erp_templates", module_path)
+    module = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(module)
+    return module
+
+
+def _assets():
+    return {{"app/erp_templates.py", "app/templates/appgen_erp_templates.html"}}
+
+
+def module_contract():
+    """Return this generated ERP template module's export contract."""
+    available = tuple(name for name in EXPECTED_EXPORTS if name in globals())
+    return {{
+        "format": "appgen.erp-template-module-contract.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "operation": OPERATION,
+        "ok": set(EXPECTED_EXPORTS) <= set(available),
+        "exports": available,
+        "expected_exports": EXPECTED_EXPORTS,
+        "side_effects": (),
+    }}
+
+
+def erp_template_manifest_contract():
+    """Return generated ERP template metadata owned by this module."""
+    erp_templates = _erp_templates()
+    catalog = erp_templates.erp_template_catalog()
+    return {{
+        "format": "appgen.erp-template-module-manifest.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "ok": bool(catalog)
+        and {{"general_ledger", "accounts_receivable", "accounts_payable", "inventory", "human_resources"}} <= {{item["module"] for item in catalog}}
+        and erp_templates.erp_templates_check(_assets())["ok"],
+        "catalog_size": len(catalog),
+        "stacks": tuple(item["stack"] for item in erp_templates.erp_recommended_stacks()),
+        "side_effects": (),
+    }}
+
+
+def run_erp_template_operation():
+    """Run this module's side-effect-free ERP template operation."""
+    erp_templates = _erp_templates()
+    if SURFACE == "module_catalog":
+        operation = erp_templates.erp_template_catalog()
+        ok = bool(operation) and any(item["module"] == "general_ledger" for item in operation)
+    elif SURFACE == "table_blueprints":
+        operation = erp_templates.erp_table_blueprints("general_ledger")
+        ok = bool(operation) and any(item["table"] == "ledger_account" for item in operation)
+    elif SURFACE == "starter_stacks":
+        operation = erp_templates.erp_recommended_stacks()
+        ok = {{"finance_core", "distribution_core", "people_core", "manufacturing_core", "full_erp"}} <= {{item["stack"] for item in operation}}
+    elif SURFACE == "domain_coverage":
+        operation = erp_templates.erp_domain_coverage_report(erp_templates.ERP_MODULE_RECOMMENDATIONS["full_erp"])
+        ok = {{"finance", "distribution", "people", "manufacturing", "governance"}} <= set(operation["covered_domains"])
+    elif SURFACE == "dsl_package":
+        operation = {{
+            "package": erp_templates.erp_module_package("accounts_receivable"),
+            "composite": erp_templates.erp_composite_dsl(("general_ledger", "invoicing"), app_name="FinanceDesk"),
+        }}
+        ok = (
+            "customer_invoice" in operation["package"]["dsl"]
+            and "app FinanceDesk" in operation["composite"]
+            and "table ledger_account" in operation["composite"]
+            and "table invoice_line" in operation["composite"]
+        )
+    else:
+        operation = {{
+            "workbench": erp_templates.erp_template_workbench(_assets()),
+            "release": erp_templates.erp_starter_release_gate(erp_templates.ERP_MODULE_RECOMMENDATIONS["finance_core"], existing_paths=_assets()),
+        }}
+        ok = operation["workbench"]["ok"] and operation["release"]["ok"]
+    return {{
+        "format": "appgen.erp-template-module-operation.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "ok": ok,
+        "operation": operation,
+        "side_effects": (),
+    }}
+
+
+def release_context():
+    """Return release evidence used by this ERP template module."""
+    erp_templates = _erp_templates()
+    return {{
+        "format": "appgen.erp-template-module-release-context.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "ok": erp_templates.erp_template_workbench(_assets())["ok"]
+        and erp_templates.erp_starter_release_gate(erp_templates.ERP_MODULE_RECOMMENDATIONS["finance_core"], existing_paths=_assets())["ok"],
+        "workbench": erp_templates.erp_template_workbench(_assets()),
+        "release": erp_templates.erp_starter_release_gate(erp_templates.ERP_MODULE_RECOMMENDATIONS["finance_core"], existing_paths=_assets()),
+        "side_effects": (),
+    }}
+
+
+def smoke_test():
+    """Run side-effect-free checks for this generated ERP template module."""
+    contract = module_contract()
+    manifest = erp_template_manifest_contract()
+    operation = run_erp_template_operation()
+    release = release_context()
+    return {{
+        "format": "appgen.erp-template-module-smoke-test.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "ok": contract["ok"]
+        and manifest["ok"]
+        and operation["ok"]
+        and release["ok"]
+        and not manifest["side_effects"]
+        and not operation["side_effects"]
+        and not release["side_effects"],
+        "contract": contract,
+        "manifest": manifest,
+        "operation": operation,
+        "release": release,
+        "checks": (
+            "module_contract_resolves",
+            "erp_template_manifest_contract_ok",
+            "erp_template_operation_ok",
+            "release_context_ok",
+            "no_side_effects",
+        ),
+    }}
+'''
+
+
+def _erp_template_module_test_text(module_name: str) -> str:
+    surface, _operation = _erp_template_surface(module_name)
+    return f'''"""Generated tests for the {surface} ERP template module."""
+
+from __future__ import annotations
+
+import importlib.util
+from pathlib import Path
+
+
+MODULE = {module_name!r}
+SURFACE = {surface!r}
+
+
+def load_erp_template_module():
+    """Load the generated ERP template module without app installation."""
+    module_path = Path(__file__).resolve().parents[1] / "erp_template_modules" / f"{{MODULE}}.py"
+    spec = importlib.util.spec_from_file_location(f"generated_erp_template_module_{{MODULE}}", module_path)
+    module = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(module)
+    return module
+
+
+def test_erp_template_module_contract():
+    """Assert the generated ERP template module exposes its contract."""
+    module = load_erp_template_module()
+    contract = module.module_contract()
+    assert contract["module"] == MODULE
+    assert contract["surface"] == SURFACE
+    assert contract["ok"] is True
+    assert all(hasattr(module, name) for name in contract["expected_exports"])
+
+
+def test_erp_template_module_smoke():
+    """Assert the module's side-effect-free smoke test passes."""
+    module = load_erp_template_module()
+    result = module.smoke_test()
+    assert result["ok"] is True
+    assert result["module"] == MODULE
+    assert result["surface"] == SURFACE
+    assert result["checks"]
+
+
+def smoke_test():
+    """Run this generated test module in a side-effect-free way."""
+    test_erp_template_module_contract()
+    test_erp_template_module_smoke()
+    return {{
+        "format": "appgen.erp-template-module-generated-test-smoke.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "ok": True,
+        "tests": ("test_erp_template_module_contract", "test_erp_template_module_smoke"),
+    }}
+'''
+
+
 def _version_control_module_init_text() -> str:
     return (
         '"""Generated version-control modules."""\n\n'
@@ -15053,6 +15302,27 @@ def write_erp_templates_file(output_dir, schema: AppSchema):
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
     (output_dir / "erp_templates.py").write_text(_erp_templates_text(schema))
+    write_erp_template_module_files(output_dir)
+
+
+def write_erp_template_module_files(output_dir):
+    """Write generated ERP template modules and smoke tests."""
+    output_dir = Path(output_dir)
+    module_dir = output_dir / "erp_template_modules"
+    test_dir = output_dir / "erp_template_module_tests"
+    module_dir.mkdir(parents=True, exist_ok=True)
+    test_dir.mkdir(parents=True, exist_ok=True)
+    (module_dir / "__init__.py").write_text(_erp_template_module_init_text(), encoding="utf-8")
+    (test_dir / "__init__.py").write_text(_erp_template_module_test_init_text(), encoding="utf-8")
+    for module_name in ERP_TEMPLATE_MODULES:
+        (module_dir / f"{module_name}.py").write_text(
+            _erp_template_module_text(module_name),
+            encoding="utf-8",
+        )
+        (test_dir / f"test_{module_name}.py").write_text(
+            _erp_template_module_test_text(module_name),
+            encoding="utf-8",
+        )
 
 
 def write_project_management_file(output_dir, schema: AppSchema):
@@ -55526,6 +55796,9 @@ def _erp_templates_text(schema: AppSchema) -> str:
 
 from __future__ import annotations
 
+import importlib.util
+from pathlib import Path
+
 from flask import jsonify
 from flask_appbuilder import BaseView
 from flask_appbuilder import expose
@@ -55548,6 +55821,66 @@ ERP_DOMAIN_REQUIREMENTS = {{
     "manufacturing": ("manufacturing", "quality_management", "maintenance", "inventory", "warehouse_management"),
     "governance": ("fixed_assets", "compliance_management", "document_management", "reporting"),
 }}
+ERP_TEMPLATE_MODULES = {ERP_TEMPLATE_MODULES!r}
+
+
+def _load_generated_module(module_path, module_name):
+    """Load a generated ERP template module without installing the app."""
+    spec = importlib.util.spec_from_file_location(module_name, module_path)
+    module = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(module)
+    return module
+
+
+def erp_template_module_file_manifest():
+    """Return independently importable generated ERP template module files."""
+    root = Path(__file__).resolve().parent
+    modules = []
+    for module_name in ERP_TEMPLATE_MODULES:
+        module_path = root / "erp_template_modules" / f"{{module_name}}.py"
+        module = _load_generated_module(module_path, f"generated_erp_template_module_{{module_name}}")
+        contract = module.module_contract()
+        modules.append(
+            {{
+                "module": module_name,
+                "surface": contract["surface"],
+                "path": f"app/erp_template_modules/{{module_name}}.py",
+                "exists": module_path.exists(),
+                "ok": contract["ok"] and module.smoke_test()["ok"],
+                "exports": contract["exports"],
+            }}
+        )
+    return {{
+        "format": "appgen.erp-template-module-file-manifest.v1",
+        "ok": len(modules) == len(ERP_TEMPLATE_MODULES) and all(item["ok"] and item["exists"] for item in modules),
+        "modules": tuple(modules),
+    }}
+
+
+def erp_template_module_test_file_manifest():
+    """Return generated tests for ERP template module files."""
+    root = Path(__file__).resolve().parent
+    tests = []
+    for module_name in ERP_TEMPLATE_MODULES:
+        test_path = root / "erp_template_module_tests" / f"test_{{module_name}}.py"
+        module = _load_generated_module(test_path, f"generated_erp_template_module_test_{{module_name}}")
+        result = module.smoke_test()
+        tests.append(
+            {{
+                "module": f"test_{{module_name}}",
+                "surface": result["surface"],
+                "path": f"app/erp_template_module_tests/test_{{module_name}}.py",
+                "exists": test_path.exists(),
+                "ok": result["ok"],
+                "tests": result["tests"],
+            }}
+        )
+    return {{
+        "format": "appgen.erp-template-module-test-file-manifest.v1",
+        "ok": len(tests) == len(ERP_TEMPLATE_MODULES) and all(item["ok"] and item["exists"] for item in tests),
+        "tests": tuple(tests),
+    }}
 
 
 def erp_template_catalog():
@@ -69405,6 +69738,12 @@ def validate_erp_template_artifacts() -> None:
         or "erp_data_migration_plan" not in contract
     ):
         fail("ERP templates must expose DSL, table blueprints, packages, fit-report, starter, generation, roadmap, release-gate, and migration helpers")
+    if (
+        "ERP_TEMPLATE_MODULES" not in contract
+        or "erp_template_module_file_manifest" not in contract
+        or "erp_template_module_test_file_manifest" not in contract
+    ):
+        fail("ERP template contract must expose generated module manifests and module-test manifests")
     if "journal_line_id" in contract or "_erp_field_syntax" not in contract or "invoice_line" not in contract:
         fail("ERP templates must include useful table-level fields and references")
     template = (ROOT / "app" / "templates" / "appgen_erp_templates.html").read_text()
