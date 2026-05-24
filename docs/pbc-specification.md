@@ -17,7 +17,7 @@ A PBC is a bounded business capability with:
 - emitted and consumed domain events;
 - optional UI fragments for the composition canvas;
 - optional permissions, configuration, migrations, seed data, tests, and docs.
-- optional stream processor profile for event handling.
+- no developer-selected stream processor for ordinary event handling.
 
 Do not model a PBC as a shared module that reaches into another PBC's tables.
 Cross-PBC integration happens through API calls, projections, or event
@@ -86,8 +86,10 @@ def register_pbc() -> dict:
 - `consumes`: domain events consumed from other PBCs or external systems.
 
 Optional fields include `template`, `owner`, `version`, `ui_fragments`,
-`stream_processor`, `stream_exception_evidence`, `permissions`,
-`configuration`, `migrations`, `seed_data`, `tests`, and `docs`.
+`stream_exception_evidence`, `permissions`, `configuration`, `migrations`,
+`seed_data`, `tests`, and `docs`. Ordinary PBC manifests must omit
+`stream_processor`; the platform records its runtime profile as read-only
+metadata after validation.
 
 `datastore_backend` is also opinionated for ordinary generated work. Prefer
 `postgresql`. Use `mysql` or `mariadb` only when that is the project standard.

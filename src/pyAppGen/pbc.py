@@ -201,6 +201,17 @@ ACP_STREAM_PROCESSING_POLICY = {
             "ordinary_stream_engine_picker": False,
             "direct_profile_imports_in_generated_business_logic": False,
         },
+        "developer_choice_lock": {
+            "default_action": "generate_appgen_event_contract",
+            "ordinary_manifest": {"stream_processor": "omit"},
+            "ordinary_runtime_selection": "not_developer_selectable",
+            "ide_surface": "show_event_contract_controls_only",
+            "natural_language_surface": "do_not_expand_into_stream_runtime_comparison",
+            "exception_unlocks": (
+                "telemetry_time_series_high_volume_windowing_with_evidence",
+                "complex_parallel_dataflow_with_evidence",
+            ),
+        },
         "stop_generating_options_when": (
             "The workload is ordinary business, ERP, workflow, chatbot, agent, "
             "integration, approval, or PBC event handling."
@@ -380,6 +391,23 @@ ACP_STREAM_PROCESSING_POLICY = {
         "nl_generator_behavior": "choose the default for ordinary business, workflow, chatbot, agent, and ERP prompts",
         "business_logic_rule": "generated business logic imports the AppGen-X event adapter, not profile-specific stream libraries",
         "selection_algorithm": "first_matching_rule_from_developer_choice_algorithm",
+    },
+    "developer_choice_lock": {
+        "id": "appgen.event-processing.choice-lock.v1",
+        "purpose": "limit_exponential_stream_runtime_choice_growth",
+        "ordinary_answer": "appgen_event_contract",
+        "ordinary_manifest_fields": {"stream_processor": "omit"},
+        "ordinary_visible_choices": ("appgen_event_contract",),
+        "ordinary_visible_choice_count": 1,
+        "developer_selectable_runtime_profiles": (),
+        "platform_owned_runtime_profile": ACP_DEFAULT_STREAM_PROCESSOR,
+        "exception_profiles": ("quix_streams", "bytewax"),
+        "exception_requires": "stream_exception_evidence",
+        "stop_rule": (
+            "If the prompt is ordinary business, ERP, workflow, chatbot, "
+            "agent, integration, approval, or PBC event handling, stop at "
+            "appgen_event_contract and do not compare stream runtimes."
+        ),
     },
     "developer_decision_record": {
         "id": "appgen.event-processing.standard.v1",
@@ -1107,6 +1135,7 @@ def acp_stream_processing_policy() -> dict:
         "developer_guidance_contract": ACP_STREAM_PROCESSING_POLICY["developer_guidance_contract"],
         "developer_decision_brief": ACP_STREAM_PROCESSING_POLICY["developer_decision_brief"],
         "decision_card": ACP_STREAM_PROCESSING_POLICY["decision_card"],
+        "developer_choice_lock": ACP_STREAM_PROCESSING_POLICY["developer_choice_lock"],
         "developer_decision_record": ACP_STREAM_PROCESSING_POLICY["developer_decision_record"],
         "developer_choice_algorithm": ACP_STREAM_PROCESSING_POLICY["developer_choice_algorithm"],
         "developer_use_policy": ACP_STREAM_PROCESSING_POLICY["developer_use_policy"],
@@ -1136,6 +1165,7 @@ def acp_event_processing_developer_guidance() -> dict:
         "ok": True,
         **contract,
         "decision_brief": ACP_STREAM_PROCESSING_POLICY["developer_decision_brief"],
+        "choice_lock": ACP_STREAM_PROCESSING_POLICY["developer_choice_lock"],
         "policy_format": acp_stream_processing_policy()["format"],
         "default_runtime_profile": ACP_DEFAULT_STREAM_PROCESSOR,
     }
@@ -1207,6 +1237,7 @@ def lint_pbc_eventing_choice(manifest: dict, *, generated_imports: tuple[str, ..
         "ordinary_manifest_rule": "omit_stream_processor",
         "choice_budget": ACP_STREAM_PROCESSING_POLICY["choice_budget"],
         "decision_ladder": ACP_STREAM_PROCESSING_POLICY["decision_ladder"],
+        "choice_lock": ACP_STREAM_PROCESSING_POLICY["developer_choice_lock"],
         "validation": validation,
         "diagnostics": tuple(diagnostics),
         "quick_fixes": tuple(quick_fixes),

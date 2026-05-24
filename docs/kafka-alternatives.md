@@ -1,5 +1,33 @@
 # Opinionated Event Processing Standard
 
+## Implementation Decision
+
+Developers should use one answer for ordinary AppGen-X work:
+
+```text
+Use appgen_event_contract.
+Omit stream_processor.
+Generate transactional outbox/inbox tables and typed handlers.
+Route handlers through the AppGen-X event adapter.
+```
+
+This is not a chooser. Studio, DSL templates, natural-language generation,
+PBC package templates, and external coding agents must not present stream
+runtime options for ordinary generated applications. The platform records its
+service-runtime profile as read-only metadata after validation.
+
+Only two exception workflows are available:
+
+| Workload evidence | Exception profile |
+| --- | --- |
+| Telemetry, time-series, high-volume ingestion, or windowed metrics | `quix_streams` |
+| Complex parallel dataflow, CPU-heavy transformations, or multi-stage analytical pipelines | `bytewax` |
+
+Both exception profiles require `stream_exception_evidence`. If the request is
+ordinary ERP, workflow, chatbot, agent, integration, approval, or PBC event
+handling, the generator must stop at `appgen_event_contract` and avoid stream
+runtime comparison.
+
 ## Developer Guidance
 
 Use the generated AppGen-X event contract.

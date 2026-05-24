@@ -25,10 +25,11 @@ Build a complete AppGen IDE and generation platform with:
 
 | Date | Commit | Slice | Evidence |
 | --- | --- | --- | --- |
-| 2026-05-24 | `current` | Wired compiler and deep runtime module/test manifests into native runtime workbench and requirement evidence. | Py compile, focused form-designer audit test, scoped diff check, and staged hygiene scan passed. |
+| 2026-05-24 | `current` | Added a developer choice-lock to the event-processing policy so PBC authors, Studio, natural-language generators, and external coding agents get one ordinary event path and two evidence-gated exception paths. | Py compile, focused PBC policy test, scoped diff check, and scoped restricted-name scan passed. |
+| 2026-05-24 | `98e0ff6` | Wired compiler and deep runtime module/test manifests into native runtime workbench and requirement evidence. | Py compile, focused form-designer audit test, scoped diff check, and staged hygiene scan passed. |
 | 2026-05-24 | `7e4036f` | Added the generated platform parity requirement map as a first-class package goal audit gate. | Py compile, focused package-goal audit test, scoped diff check, and staged hygiene scan passed. |
 | 2026-05-24 | `fa52a49` | Made generated form-designer smoke require the aggregate generated platform parity workbench, lifecycle replay, and requirement audit instead of only individual subsystem smokes. | Py compile, focused form-designer audit test, scoped diff check, and staged hygiene scan passed. |
-| 2026-05-24 | `current` | Added an executable PBC eventing-choice linter so developers and coding agents get one ordinary answer instead of reopening stream-runtime selection. | Py compile, focused PBC policy test, scoped documentation diff check, and staged hygiene scan passed. |
+| 2026-05-24 | `9f71c54` | Added an executable PBC eventing-choice linter so developers and coding agents get one ordinary answer instead of reopening stream-runtime selection. | Py compile, focused PBC policy test, scoped documentation diff check, and staged hygiene scan passed. |
 | 2026-05-23 | `35387ed` | Polished IDE palette and component icons. | Frontend production build, staged diff checks. |
 | 2026-05-23 | `291c458` | Added first-class inspector editor lanes. | Frontend production build, catalog audit integration. |
 | 2026-05-23 | `50c5fd7` | Added visual data-binding lane and binding audit. | Frontend production build, dev shell probe. |

@@ -793,6 +793,15 @@ def test_package_pbc_catalog_composes_enterprise_apps(runner: CliRunner) -> None
     assert stream_policy["developer_guidance_contract"]["ordinary_manifest_instruction"] == "Omit stream_processor."
     assert stream_policy["developer_guidance_contract"]["hard_limits"]["ordinary_stream_engine_picker"] is False
     assert stream_policy["developer_guidance_contract"]["hard_limits"]["stream_profiles_per_pbc"] == 1
+    assert stream_policy["developer_guidance_contract"]["developer_choice_lock"]["default_action"] == (
+        "generate_appgen_event_contract"
+    )
+    assert stream_policy["developer_guidance_contract"]["developer_choice_lock"]["ordinary_manifest"] == {
+        "stream_processor": "omit",
+    }
+    assert stream_policy["developer_guidance_contract"]["developer_choice_lock"]["ordinary_runtime_selection"] == (
+        "not_developer_selectable"
+    )
     assert stream_policy["developer_decision_brief"]["headline"] == "Use appgen_event_contract."
     assert stream_policy["developer_decision_brief"]["ordinary_manifest_rule"] == "Omit stream_processor."
     assert stream_policy["developer_decision_brief"]["developer_visible_options"] == ("appgen_event_contract",)
@@ -805,6 +814,8 @@ def test_package_pbc_catalog_composes_enterprise_apps(runner: CliRunner) -> None
     assert developer_guidance["answer"] == "Use appgen_event_contract."
     assert developer_guidance["visible_options"] == ("appgen_event_contract",)
     assert developer_guidance["exception_options"] == ("quix_streams", "bytewax")
+    assert developer_guidance["choice_lock"]["ordinary_answer"] == "appgen_event_contract"
+    assert developer_guidance["choice_lock"]["developer_selectable_runtime_profiles"] == ()
     assert developer_guidance["decision_brief"]["ordinary_codegen_prompt"].startswith("Generate AppGen-X outbox/inbox events")
     assert developer_guidance["decision_brief"]["small_model_stop_rule"].startswith("When the request is ordinary business")
     assert "small_model_instruction" in developer_guidance
@@ -816,6 +827,7 @@ def test_package_pbc_catalog_composes_enterprise_apps(runner: CliRunner) -> None
     assert ordinary_eventing_lint["ok"] is True
     assert ordinary_eventing_lint["developer_answer"] == "Use appgen_event_contract."
     assert ordinary_eventing_lint["normal_form_manifest"].get("stream_processor") is None
+    assert ordinary_eventing_lint["choice_lock"]["ordinary_visible_choice_count"] == 1
     branching_eventing_lint = lint_pbc_eventing_choice(
         {**example_pbc_manifest(), "stream_processor": "faust_streaming"},
         generated_imports=("faust_streaming",),
@@ -888,6 +900,12 @@ def test_package_pbc_catalog_composes_enterprise_apps(runner: CliRunner) -> None
     assert stream_policy["developer_decision_record"]["support_matrix_cap"]["ordinary_visible_stream_engines"] == 0
     assert stream_policy["developer_decision_record"]["support_matrix_cap"]["profiles_per_pbc"] == 1
     assert "hide_stream_engine_picker" in stream_policy["developer_decision_record"]["tooling_obligations"]
+    assert stream_policy["developer_choice_lock"]["id"] == "appgen.event-processing.choice-lock.v1"
+    assert stream_policy["developer_choice_lock"]["ordinary_manifest_fields"] == {"stream_processor": "omit"}
+    assert stream_policy["developer_choice_lock"]["ordinary_visible_choice_count"] == 1
+    assert stream_policy["developer_choice_lock"]["developer_selectable_runtime_profiles"] == ()
+    assert stream_policy["developer_choice_lock"]["platform_owned_runtime_profile"] == "faust_streaming"
+    assert stream_policy["developer_choice_lock"]["exception_profiles"] == ("quix_streams", "bytewax")
     assert stream_policy["opinionated_stack"]["default_event_adapter"] == "appgen_outbox_inbox_faust_streaming"
     assert stream_policy["opinionated_stack"]["visible_runtime_choices"] == ("appgen_event_contract",)
     assert "Do not generate direct imports" in stream_policy["implementation_directive"]
