@@ -497,6 +497,11 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   component to palette icons, target renderers, property editors, event handler
   routes, design-surface actions, generated component modules, generated tests,
   and smoke-test evidence for package and generated-app surfaces.
+- Component parity now exposes a readiness contract that proves analog
+  coverage, palette/icon surface, runtime behavior, generated component
+  modules, generated component tests, IDE catalog release, phase order, and
+  side-effect guards as one ordered path in both package and generated-app
+  workbenches.
 - Native form/runtime work now exposes a runtime readiness contract that
   proves design stream decoding, unit cross-checking, target compile planning,
   diagnostic routing, and runtime preview reload as one ordered executable

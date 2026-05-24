@@ -48491,6 +48491,78 @@ def component_ide_readiness_catalog(existing_paths=None):
     }}
 
 
+def component_parity_readiness_contract(existing_paths=None):
+    """Prove component parity is one ordered generated IDE readiness path."""
+    analog_workbench = component_analog_workbench()
+    analog_groups = component_analog_group_audit()
+    palette = component_palette()
+    behavior = component_behavior_workbench()
+    component_files = component_file_manifest(existing_paths)
+    component_tests = component_test_file_manifest(existing_paths)
+    ide_readiness = component_ide_readiness_catalog(existing_paths)
+    phases = (
+        {{
+            "phase": "analog_coverage",
+            "ok": analog_workbench["ok"] and analog_groups["ok"] and len(analog_workbench["behavior_replay"]) == len(component_analog_matrix()),
+            "evidence": {{"groups": analog_workbench["groups"], "analog_count": len(analog_workbench["matrix"])}},
+        }},
+        {{
+            "phase": "palette_icon_surface",
+            "ok": bool(palette) and all(item["icon"].startswith("fa-") for item in palette) and {{item["type"] for item in palette}} == {{item["type"] for item in PALETTE}},
+            "evidence": tuple((item["type"], item["icon"]) for item in palette),
+        }},
+        {{
+            "phase": "runtime_behavior",
+            "ok": behavior["ok"] and all({{"render_nodes", "property_validation", "event_dispatch", "target_adapters", "binding_surface", "category_capabilities", "designer_metadata", "design_surface_actions"}} <= {{check["id"] for check in item["checks"] if check["ok"]}} for item in behavior["behaviors"]),
+            "evidence": tuple(item["component"] for item in behavior["behaviors"]),
+        }},
+        {{
+            "phase": "generated_modules",
+            "ok": len(component_files) == len(PALETTE) and all(item["exists"] and item["module_contract"]["ok"] and {{"render", "validate_props", "preview", "object_inspector", "design_surface", "dispatch_event", "smoke_test"}} <= set(item["exports"]) for item in component_files),
+            "evidence": tuple(item["path"] for item in component_files),
+        }},
+        {{
+            "phase": "generated_tests",
+            "ok": len(component_tests) == len(PALETTE) and all(item["exists"] and item["ok"] and "smoke_test" in item["exports"] for item in component_tests),
+            "evidence": tuple(item["path"] for item in component_tests),
+        }},
+        {{
+            "phase": "ide_catalog_release",
+            "ok": ide_readiness["ok"] and len(ide_readiness["entries"]) == len(PALETTE) and all(item["ready"] for item in ide_readiness["entries"]),
+            "evidence": tuple(check["id"] for check in ide_readiness["checks"] if check["ok"]),
+        }},
+    )
+    phase_names = tuple(phase["phase"] for phase in phases)
+    checks = (
+        {{"id": "analog_coverage_ready", "ok": phases[0]["ok"], "evidence": phases[0]["evidence"]}},
+        {{"id": "palette_icons_ready", "ok": phases[1]["ok"] and phase_names.index("analog_coverage") < phase_names.index("palette_icon_surface"), "evidence": phases[1]["evidence"]}},
+        {{"id": "behavior_surface_ready", "ok": phases[2]["ok"] and phase_names.index("palette_icon_surface") < phase_names.index("runtime_behavior"), "evidence": phases[2]["evidence"]}},
+        {{"id": "generated_modules_ready", "ok": phases[3]["ok"] and phase_names.index("runtime_behavior") < phase_names.index("generated_modules"), "evidence": phases[3]["evidence"]}},
+        {{"id": "generated_tests_ready", "ok": phases[4]["ok"] and phase_names.index("generated_modules") < phase_names.index("generated_tests"), "evidence": phases[4]["evidence"]}},
+        {{"id": "ide_release_ready", "ok": phases[5]["ok"] and phase_names.index("generated_tests") < phase_names.index("ide_catalog_release"), "evidence": phases[5]["evidence"]}},
+        {{
+            "id": "phase_order_ready",
+            "ok": phase_names == ("analog_coverage", "palette_icon_surface", "runtime_behavior", "generated_modules", "generated_tests", "ide_catalog_release") and all(phase["ok"] for phase in phases),
+            "evidence": phase_names,
+        }},
+        {{
+            "id": "side_effect_guard_ready",
+            "ok": all(not contract["render"]["side_effects"] and not contract["validation"]["side_effects"] and all(not handler["side_effects"] for handler in contract["events"]["handlers"]) and all(not adapter["side_effects"] for adapter in contract["adapters"]["adapters"]) and not contract["state_model"]["side_effects"] and not contract["serialization"]["side_effects"] and not contract["binding_surface"]["side_effects"] and not contract["capabilities"]["side_effects"] and not contract["designer_metadata"]["side_effects"] and not contract["design_surface"]["side_effects"] for contract in behavior["behaviors"]),
+            "evidence": (),
+        }},
+    )
+    ok = all(phase["ok"] for phase in phases) and all(check["ok"] for check in checks)
+    return {{
+        "format": "appgen.generated-component-parity-readiness-contract.v1",
+        "ok": ok,
+        "decision": "approved" if ok else "blocked",
+        "phases": phases,
+        "checks": checks,
+        "side_effects": (),
+        "blocking_gaps": tuple(check for check in checks if not check["ok"]),
+    }}
+
+
 def component_package_module_implementation_contract(package_id):
     """Return required exports and smoke tests for one generated component package module."""
     package = component_package_contract(package_id)
@@ -48585,6 +48657,7 @@ def component_usability_workbench(existing_paths=None):
     analog_workbench = component_analog_workbench()
     behavior_workbench = component_behavior_workbench()
     ide_readiness = component_ide_readiness_catalog(existing_paths)
+    readiness = component_parity_readiness_contract(existing_paths)
     checks = (
         {{"id": "complete_catalog", "ok": len(contracts) == len(PALETTE), "evidence": {{"component_count": len(contracts)}}}},
         {{"id": "runtime_renderers", "ok": all({{"web", "mobile", "desktop"}} <= set(item["renderers"]) for item in contracts), "evidence": tuple((item["component"], tuple(item["renderers"])) for item in contracts)}},
@@ -48602,6 +48675,7 @@ def component_usability_workbench(existing_paths=None):
         {{"id": "requested_analog_coverage", "ok": analog_workbench["ok"], "evidence": analog_workbench}},
         {{"id": "component_behavior", "ok": behavior_workbench["ok"], "evidence": behavior_workbench}},
         {{"id": "ide_readiness_catalog", "ok": ide_readiness["ok"], "evidence": ide_readiness}},
+        {{"id": "component_parity_readiness", "ok": readiness["ok"] and {{"analog_coverage_ready", "palette_icons_ready", "behavior_surface_ready", "generated_modules_ready", "generated_tests_ready", "ide_release_ready", "phase_order_ready", "side_effect_guard_ready"}} <= {{check["id"] for check in readiness["checks"] if check["ok"]}} and not readiness["side_effects"], "evidence": readiness}},
     )
     ok = all(check["ok"] for check in checks)
     return {{
@@ -48617,6 +48691,7 @@ def component_usability_workbench(existing_paths=None):
         "analog_workbench": analog_workbench,
         "behavior_workbench": behavior_workbench,
         "ide_readiness": ide_readiness,
+        "component_readiness": readiness,
         "checks": checks,
         "blocking_gaps": tuple(check for check in checks if not check["ok"]),
     }}

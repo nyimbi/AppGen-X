@@ -106,6 +106,7 @@ from pyAppGen.form_designer import component_package_update_operation
 from pyAppGen.form_designer import component_package_workbench
 from pyAppGen.form_designer import component_package_preview_load_operation
 from pyAppGen.form_designer import component_file_manifest
+from pyAppGen.form_designer import component_parity_readiness_contract
 from pyAppGen.form_designer import component_package_file_manifest
 from pyAppGen.form_designer import component_package_test_file_manifest
 from pyAppGen.form_designer import component_test_file_manifest
@@ -2503,6 +2504,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "requested_analog_coverage",
         "component_behavior",
         "ide_readiness_catalog",
+        "component_parity_readiness",
     } == {check["id"] for check in usability["checks"]}
     assert usability["behavior_workbench"]["ok"] is True
     assert usability["behavior_workbench"]["component_count"] == len(palette)
@@ -2533,6 +2535,28 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     assert all(item["ready"] and item["icon"].startswith("fa-") for item in ide_readiness["entries"])
     assert all({"inspect", "edit_bindings", "delete"} <= set(item["design_actions"]) for item in ide_readiness["entries"])
     assert usability["ide_readiness"]["ok"] is True
+    component_readiness = component_parity_readiness_contract()
+    assert component_readiness["format"] == "appgen.component-parity-readiness-contract.v1"
+    assert component_readiness["ok"] is True
+    assert tuple(phase["phase"] for phase in component_readiness["phases"]) == (
+        "analog_coverage",
+        "palette_icon_surface",
+        "runtime_behavior",
+        "generated_modules",
+        "generated_tests",
+        "ide_catalog_release",
+    )
+    assert {
+        "analog_coverage_ready",
+        "palette_icons_ready",
+        "behavior_surface_ready",
+        "generated_modules_ready",
+        "generated_tests_ready",
+        "ide_release_ready",
+        "phase_order_ready",
+        "side_effect_guard_ready",
+    } == {check["id"] for check in component_readiness["checks"]}
+    assert usability["component_readiness"]["ok"] is True
     assert all({"web", "mobile", "desktop"} <= set(item["renderers"]) for item in usability["components"])
     assert all(item["path"].startswith("app/component_contracts/") for item in usability["component_files"])
     assert all(item["path"].startswith("app/component_packages/") for item in usability["package_files"])
@@ -13678,6 +13702,27 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     }
     assert all(item["ready"] and item["module_exists"] and item["test_exists"] for item in generated_ide_readiness["entries"])
     assert generated_usability["ide_readiness"]["ok"] is True
+    assert generated_usability["component_readiness"]["format"] == "appgen.generated-component-parity-readiness-contract.v1"
+    assert generated_usability["component_readiness"]["ok"] is True
+    assert "component_parity_readiness" in {check["id"] for check in generated_usability["checks"]}
+    assert tuple(phase["phase"] for phase in generated_usability["component_readiness"]["phases"]) == (
+        "analog_coverage",
+        "palette_icon_surface",
+        "runtime_behavior",
+        "generated_modules",
+        "generated_tests",
+        "ide_catalog_release",
+    )
+    assert {
+        "analog_coverage_ready",
+        "palette_icons_ready",
+        "behavior_surface_ready",
+        "generated_modules_ready",
+        "generated_tests_ready",
+        "ide_release_ready",
+        "phase_order_ready",
+        "side_effect_guard_ready",
+    } == {check["id"] for check in generated_usability["component_readiness"]["checks"]}
     assert all(
         {"web", "mobile", "desktop"} <= set(item["renderers"])
         for item in generated_usability["components"]
