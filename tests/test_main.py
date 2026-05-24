@@ -13677,6 +13677,35 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert "/support-center/workbench.json" in next(
         check["evidence"]["routes"] for check in support_workbench["checks"] if check["id"] == "route_surface"
     )
+    support_module_files = support_center.support_center_module_file_manifest()
+    support_module_tests = support_center.support_center_module_test_file_manifest()
+    assert support_module_files["format"] == "appgen.support-center-module-file-manifest.v1"
+    assert support_module_files["ok"] is True
+    assert support_module_tests["format"] == "appgen.support-center-module-test-file-manifest.v1"
+    assert support_module_tests["ok"] is True
+    assert {
+        "topic_catalog",
+        "tutorial_catalog",
+        "sample_application",
+        "onboarding_checklist",
+        "support_search",
+        "ticket_payload",
+        "release_workbench",
+    } == {item["surface"] for item in support_module_files["modules"]}
+    for item in support_module_files["modules"]:
+        module_path = output_dir / item["path"].replace("app/", "")
+        py_compile.compile(str(module_path), doraise=True)
+        module = _load_module(module_path, f"generated_support_center_module_{item['module']}")
+        assert module.module_contract()["ok"] is True
+        assert module.support_center_manifest()["ok"] is True
+        assert module.run_support_center_operation()["ok"] is True
+        assert module.release_context()["ok"] is True
+        assert module.smoke_test()["ok"] is True
+    for item in support_module_tests["tests"]:
+        test_path = output_dir / item["path"].replace("app/", "")
+        py_compile.compile(str(test_path), doraise=True)
+        module = _load_module(test_path, f"generated_support_center_module_test_{item['module']}")
+        assert module.smoke_test()["ok"] is True
     assert support_center.support_center_workbench({"app/support_center.py"})["ok"] is False
     first_prototype = prototyping.prototype_catalog()[0]["resource"]
     assert prototyping.sample_row(first_prototype)

@@ -2779,6 +2779,16 @@ PROTOTYPING_MODULES = (
     "prototyping_release_workbench_module",
 )
 
+SUPPORT_CENTER_MODULES = (
+    "topic_catalog_module",
+    "tutorial_catalog_module",
+    "sample_application_module",
+    "onboarding_checklist_module",
+    "support_search_module",
+    "ticket_payload_module",
+    "support_release_workbench_module",
+)
+
 DESIGNER_MODULES = (
     "visual_graph_module",
     "schema_diagram_module",
@@ -15523,6 +15533,27 @@ def write_support_center_file(output_dir, schema: AppSchema):
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
     (output_dir / "support_center.py").write_text(_support_center_text(schema, _app_name(schema)))
+    write_support_center_module_files(output_dir)
+
+
+def write_support_center_module_files(output_dir):
+    """Write generated support-center modules and smoke tests."""
+    output_dir = Path(output_dir)
+    module_dir = output_dir / "support_center_modules"
+    test_dir = output_dir / "support_center_module_tests"
+    module_dir.mkdir(parents=True, exist_ok=True)
+    test_dir.mkdir(parents=True, exist_ok=True)
+    (module_dir / "__init__.py").write_text(_support_center_module_init_text(), encoding="utf-8")
+    (test_dir / "__init__.py").write_text(_support_center_module_test_init_text(), encoding="utf-8")
+    for module_name in SUPPORT_CENTER_MODULES:
+        (module_dir / f"{module_name}.py").write_text(
+            _support_center_module_text(module_name),
+            encoding="utf-8",
+        )
+        (test_dir / f"test_{module_name}.py").write_text(
+            _support_center_module_test_text(module_name),
+            encoding="utf-8",
+        )
 
 
 def write_low_code_features_file(output_dir, schema: AppSchema):
@@ -55703,6 +55734,249 @@ def register_view_experience(appbuilder):
 '''
 
 
+def _support_center_module_init_text() -> str:
+    return (
+        '"""Generated support-center modules."""\n\n'
+        f"SUPPORT_CENTER_MODULES = {SUPPORT_CENTER_MODULES!r}\n"
+    )
+
+
+def _support_center_module_test_init_text() -> str:
+    modules = tuple(f"test_{name}" for name in SUPPORT_CENTER_MODULES)
+    return (
+        '"""Generated support-center module tests."""\n\n'
+        f"SUPPORT_CENTER_MODULE_TESTS = {modules!r}\n"
+    )
+
+
+def _support_center_module_surface(module_name: str) -> tuple[str, str]:
+    return {
+        "topic_catalog_module": ("topic_catalog", "support_topic_catalog"),
+        "tutorial_catalog_module": ("tutorial_catalog", "tutorial_catalog"),
+        "sample_application_module": ("sample_application", "sample_application_catalog"),
+        "onboarding_checklist_module": ("onboarding_checklist", "onboarding_checklist"),
+        "support_search_module": ("support_search", "search_support"),
+        "ticket_payload_module": ("ticket_payload", "support_ticket_payload"),
+        "support_release_workbench_module": ("release_workbench", "support_center_release_gate"),
+    }[module_name]
+
+
+def _support_center_module_text(module_name: str) -> str:
+    surface, operation = _support_center_module_surface(module_name)
+    return f'''"""Generated support-center module for {surface}."""
+
+from __future__ import annotations
+
+import importlib.util
+from pathlib import Path
+
+
+MODULE = {module_name!r}
+SURFACE = {surface!r}
+OPERATION = {operation!r}
+EXPECTED_EXPORTS = (
+    "module_contract",
+    "support_center_manifest",
+    "run_support_center_operation",
+    "release_context",
+    "smoke_test",
+)
+
+
+def _support_center():
+    module_path = Path(__file__).resolve().parents[1] / "support_center.py"
+    spec = importlib.util.spec_from_file_location(f"generated_support_center_{{MODULE}}", module_path)
+    module = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(module)
+    return module
+
+
+def _assets():
+    return {{"app/support_center.py", "app/templates/appgen_support_center.html"}}
+
+
+def module_contract():
+    """Return this generated support-center module's export contract."""
+    available = tuple(name for name in EXPECTED_EXPORTS if name in globals())
+    return {{
+        "format": "appgen.support-center-module-contract.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "operation": OPERATION,
+        "ok": set(EXPECTED_EXPORTS) <= set(available),
+        "exports": available,
+        "expected_exports": EXPECTED_EXPORTS,
+        "side_effects": (),
+    }}
+
+
+def support_center_manifest():
+    """Return generated support-center metadata owned by this module."""
+    support = _support_center()
+    topics = support.support_topic_catalog()
+    tutorials = support.tutorial_catalog()
+    samples = support.sample_application_catalog()
+    return {{
+        "format": "appgen.support-center-module-manifest.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "ok": bool(topics)
+        and bool(tutorials)
+        and bool(samples)
+        and support.support_center_check(_assets())["ok"],
+        "topics": tuple(item["key"] for item in topics),
+        "tutorials": tuple(item["key"] for item in tutorials),
+        "samples": tuple(item["key"] for item in samples),
+        "side_effects": (),
+    }}
+
+
+def run_support_center_operation():
+    """Run this module's side-effect-free support-center operation."""
+    support = _support_center()
+    if SURFACE == "topic_catalog":
+        operation = {{"topics": support.support_topic_catalog()}}
+        ok = "getting-started" in {{item["key"] for item in operation["topics"]}}
+    elif SURFACE == "tutorial_catalog":
+        operation = {{"tutorials": support.tutorial_catalog()}}
+        ok = bool(operation["tutorials"]) and all(item["steps"] for item in operation["tutorials"])
+    elif SURFACE == "sample_application":
+        operation = {{"samples": support.sample_application_catalog()}}
+        ok = bool(operation["samples"]) and "table " in operation["samples"][0]["dsl"] and "view " in operation["samples"][0]["dsl"]
+    elif SURFACE == "onboarding_checklist":
+        operation = {{
+            "builder": support.onboarding_checklist("builder"),
+            "admin": support.onboarding_checklist("admin"),
+            "end_user": support.onboarding_checklist("end_user"),
+        }}
+        ok = "read-dsl" in {{item["key"] for item in operation["builder"]}} and "security" in {{item["key"] for item in operation["admin"]}} and "help" in {{item["key"] for item in operation["end_user"]}}
+    elif SURFACE == "support_search":
+        operation = {{"security": support.search_support("security"), "import": support.search_support("import")}}
+        ok = bool(operation["security"]) and bool(operation["import"])
+    elif SURFACE == "ticket_payload":
+        operation = {{"ticket": support.support_ticket_payload("security", user="module", path="/identity/")}}
+        ok = operation["ticket"]["id"].startswith("support-") and operation["ticket"]["status"] == "open" and "security" in operation["ticket"]["related"]
+    else:
+        operation = {{
+            "release": support.support_center_release_gate(_assets()),
+            "workbench": support.support_center_workbench(_assets()),
+        }}
+        ok = operation["release"]["ok"] and operation["workbench"]["ok"]
+    return {{
+        "format": "appgen.support-center-module-operation.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "ok": ok,
+        "operation": operation,
+        "side_effects": (),
+    }}
+
+
+def release_context():
+    """Return release evidence used by this support-center module."""
+    support = _support_center()
+    return {{
+        "format": "appgen.support-center-module-release-context.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "ok": support.support_center_release_gate(_assets())["ok"] and support.support_center_workbench(_assets())["ok"],
+        "release": support.support_center_release_gate(_assets()),
+        "workbench": support.support_center_workbench(_assets()),
+        "side_effects": (),
+    }}
+
+
+def smoke_test():
+    """Run side-effect-free checks for this generated support-center module."""
+    contract = module_contract()
+    manifest = support_center_manifest()
+    operation = run_support_center_operation()
+    release = release_context()
+    return {{
+        "format": "appgen.support-center-module-smoke-test.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "ok": contract["ok"]
+        and manifest["ok"]
+        and operation["ok"]
+        and release["ok"]
+        and not manifest["side_effects"]
+        and not operation["side_effects"]
+        and not release["side_effects"],
+        "contract": contract,
+        "manifest": manifest,
+        "operation": operation,
+        "release": release,
+        "checks": (
+            "module_contract_resolves",
+            "support_center_manifest_ok",
+            "support_center_operation_ok",
+            "release_context_ok",
+            "no_side_effects",
+        ),
+    }}
+'''
+
+
+def _support_center_module_test_text(module_name: str) -> str:
+    surface, _operation = _support_center_module_surface(module_name)
+    return f'''"""Generated tests for the {surface} support-center module."""
+
+from __future__ import annotations
+
+import importlib.util
+from pathlib import Path
+
+
+MODULE = {module_name!r}
+SURFACE = {surface!r}
+
+
+def load_support_center_module():
+    """Load the generated support-center module without app installation."""
+    module_path = Path(__file__).resolve().parents[1] / "support_center_modules" / f"{{MODULE}}.py"
+    spec = importlib.util.spec_from_file_location(f"generated_support_center_module_{{MODULE}}", module_path)
+    module = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(module)
+    return module
+
+
+def test_support_center_module_contract():
+    """Assert the generated support-center module exposes its contract."""
+    module = load_support_center_module()
+    contract = module.module_contract()
+    assert contract["module"] == MODULE
+    assert contract["surface"] == SURFACE
+    assert contract["ok"] is True
+    assert all(hasattr(module, name) for name in contract["expected_exports"])
+
+
+def test_support_center_module_smoke():
+    """Assert the module's side-effect-free smoke test passes."""
+    module = load_support_center_module()
+    result = module.smoke_test()
+    assert result["ok"] is True
+    assert result["module"] == MODULE
+    assert result["surface"] == SURFACE
+    assert result["checks"]
+
+
+def smoke_test():
+    """Run this generated test module in a side-effect-free way."""
+    test_support_center_module_contract()
+    test_support_center_module_smoke()
+    return {{
+        "format": "appgen.support-center-module-generated-test-smoke.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "ok": True,
+        "tests": ("test_support_center_module_contract", "test_support_center_module_smoke"),
+    }}
+'''
+
+
 def _support_center_text(schema: AppSchema, app_name: str) -> str:
     resources = tuple(
         {
@@ -55732,6 +56006,8 @@ view {first['table']}QuickStart for {first['table']} {{
 from __future__ import annotations
 
 from hashlib import sha1
+import importlib.util
+from pathlib import Path
 
 from flask import jsonify
 from flask import request
@@ -55742,6 +56018,63 @@ from flask_appbuilder import expose
 APP_NAME = {app_name!r}
 SUPPORT_RESOURCES = {resources!r}
 SAMPLE_DSL = {sample_dsl!r}
+SUPPORT_CENTER_MODULES = {SUPPORT_CENTER_MODULES!r}
+
+
+def _load_generated_module(path, name):
+    spec = importlib.util.spec_from_file_location(name, path)
+    module = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(module)
+    return module
+
+
+def support_center_module_file_manifest():
+    """Return independently importable generated support-center module files."""
+    root = Path(__file__).resolve().parent
+    modules = []
+    for module_name in SUPPORT_CENTER_MODULES:
+        path = root / "support_center_modules" / f"{{module_name}}.py"
+        module = _load_generated_module(path, f"generated_support_center_module_manifest_{{module_name}}")
+        contract = module.module_contract()
+        smoke = module.smoke_test()
+        modules.append({{
+            "module": module_name,
+            "surface": contract["surface"],
+            "path": f"app/support_center_modules/{{module_name}}.py",
+            "ok": path.exists() and contract["ok"] and smoke["ok"],
+            "contract": contract["format"],
+            "smoke": smoke["format"],
+        }})
+    return {{
+        "format": "appgen.support-center-module-file-manifest.v1",
+        "ok": all(item["ok"] for item in modules),
+        "modules": tuple(modules),
+        "side_effects": (),
+    }}
+
+
+def support_center_module_test_file_manifest():
+    """Return generated tests for the support-center module files."""
+    root = Path(__file__).resolve().parent
+    tests = []
+    for module_name in SUPPORT_CENTER_MODULES:
+        path = root / "support_center_module_tests" / f"test_{{module_name}}.py"
+        module = _load_generated_module(path, f"generated_support_center_module_test_manifest_{{module_name}}")
+        smoke = module.smoke_test()
+        tests.append({{
+            "module": module_name,
+            "surface": smoke["surface"],
+            "path": f"app/support_center_module_tests/test_{{module_name}}.py",
+            "ok": path.exists() and smoke["ok"],
+            "smoke": smoke["format"],
+        }})
+    return {{
+        "format": "appgen.support-center-module-test-file-manifest.v1",
+        "ok": all(item["ok"] for item in tests),
+        "tests": tuple(tests),
+        "side_effects": (),
+    }}
 
 
 def support_topic_catalog():
@@ -73220,6 +73553,14 @@ def validate_support_center_artifacts() -> None:
     )
     if not all(item in contract for item in required):
         fail("support center must expose topics, tutorials, sample apps, onboarding, search, and ticket helpers")
+    if (
+        "SUPPORT_CENTER_MODULES" not in contract
+        or "support_center_module_file_manifest" not in contract
+        or "support_center_module_test_file_manifest" not in contract
+        or "appgen.support-center-module-file-manifest.v1" not in contract
+        or "appgen.support-center-module-test-file-manifest.v1" not in contract
+    ):
+        fail("support center must expose generated module and module-test manifests")
     if "appgen.support-center-release-gate.v1" not in contract or "appgen.support-center-workbench.v1" not in contract or '@expose("/workbench.json")' not in contract or '@expose("/release-gate.json")' not in contract:
         fail("support center must expose release readiness checks and route")
     template = (ROOT / "app" / "templates" / "appgen_support_center.html").read_text()
