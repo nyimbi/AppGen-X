@@ -110,6 +110,7 @@ Build a complete AppGen IDE and generation platform with:
 | 2026-05-24 | `8c33683` | Added generated API testing modules and generated tests for request matrices, response validation, fixture strategies, UI smoke tests, synthetic monitoring, and release workbench surfaces. | Py compile; focused generated-app test; focused generated-app/form-designer/package-goal tests; staged hygiene scan passed. |
 | 2026-05-24 | `9be010e` | Added generated code-review modules and generated tests for schema findings, artifact coverage, review summaries, primary-key checks, field-policy checks, and release workbench surfaces. | Py compile; focused generated-app test; focused generated-app/form-designer/package-goal tests; staged hygiene scan passed. |
 | 2026-05-24 | `e7c7c6c` | Added generated collaboration modules and generated tests for resource catalogs, proposals, reviews, merge plans, conflict detection, merge queues, and release workbench surfaces. | Py compile; focused generated-app test; focused generated-app/form-designer/package-goal tests; staged hygiene scan passed. |
+| 2026-05-24 | `43a2e83` | Made event-runtime guidance prescriptive: ordinary generated apps use the AppGen-X event contract, one implementation recipe, and read-only runtime metadata instead of a stream-engine selection matrix. | Py compile; focused PBC policy test; documentation diff check; staged hygiene scan passed. |
 
 ## Current Working Slice
 
@@ -309,6 +310,11 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   generate outbox/inbox event contracts against the AppGen-X adapter, keep the
   default runtime profile behind that adapter, and allow telemetry or complex
   dataflow profiles only through audited exception evidence.
+- Event-runtime guidance now exposes a fixed implementation recipe for
+  downstream tools: declare commands and events, generate owned tables and
+  transactional outbox/inbox tables, generate typed handlers, wire through the
+  AppGen-X event adapter, and prove retry, idempotency, dead-letter, and
+  release-audit coverage.
 - Generated applications now emit one importable data-access module and one
   generated test module for query runtime, mutation runtime, audit/export, and
   workbench/release surfaces, with generated data-access manifests validating
