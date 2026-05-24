@@ -14004,6 +14004,33 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     state = designer.designer_state(manifest)
     assert state["graph"]["nodes"]
     assert state["dsl"].startswith("app Library")
+    designer_module_files = designer.designer_module_file_manifest()
+    designer_module_tests = designer.designer_module_test_file_manifest()
+    assert designer_module_files["format"] == "appgen.designer-module-file-manifest.v1"
+    assert designer_module_files["ok"] is True
+    assert designer_module_tests["format"] == "appgen.designer-module-test-file-manifest.v1"
+    assert designer_module_tests["ok"] is True
+    assert {
+        "visual_graph",
+        "schema_diagram",
+        "proposal_modeling",
+        "migration_preview",
+        "visual_release_workbench",
+    } == {item["surface"] for item in designer_module_files["modules"]}
+    for item in designer_module_files["modules"]:
+        module_path = output_dir / item["path"].replace("app/", "")
+        py_compile.compile(str(module_path), doraise=True)
+        module = _load_module(module_path, f"generated_designer_module_{item['module']}")
+        assert module.module_contract()["ok"] is True
+        assert module.designer_manifest_contract()["ok"] is True
+        assert module.run_designer_operation()["ok"] is True
+        assert module.release_context()["ok"] is True
+        assert module.smoke_test()["ok"] is True
+    for item in designer_module_tests["tests"]:
+        test_path = output_dir / item["path"].replace("app/", "")
+        py_compile.compile(str(test_path), doraise=True)
+        module = _load_module(test_path, f"generated_designer_module_test_{item['module']}")
+        assert module.smoke_test()["ok"] is True
     assert "script_location = migrations" in (tmp_path / "alembic.ini").read_text()
 
 

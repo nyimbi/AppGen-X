@@ -2562,6 +2562,14 @@ STUDIO_MODULES = (
     "studio_release_workbench_module",
 )
 
+DESIGNER_MODULES = (
+    "visual_graph_module",
+    "schema_diagram_module",
+    "proposal_modeling_module",
+    "migration_preview_module",
+    "visual_release_workbench_module",
+)
+
 
 def write_pbc_runtime_file(output_dir, schema: AppSchema):
     """Write generated composable capability runtime helpers."""
@@ -15510,6 +15518,257 @@ def write_extension_module_files(output_dir):
         )
 
 
+def _designer_module_init_text() -> str:
+    return (
+        '"""Generated no-code designer modules."""\n\n'
+        f"DESIGNER_MODULES = {DESIGNER_MODULES!r}\n"
+    )
+
+
+def _designer_module_test_init_text() -> str:
+    modules = tuple(f"test_{name}" for name in DESIGNER_MODULES)
+    return (
+        '"""Generated no-code designer module tests."""\n\n'
+        f"DESIGNER_MODULE_TESTS = {modules!r}\n"
+    )
+
+
+def _designer_surface(module_name: str) -> tuple[str, str]:
+    return {
+        "visual_graph_module": ("visual_graph", "visual_model"),
+        "schema_diagram_module": ("schema_diagram", "schema_diagram_release_gate"),
+        "proposal_modeling_module": ("proposal_modeling", "proposal_from_payload"),
+        "migration_preview_module": ("migration_preview", "migration_preview"),
+        "visual_release_workbench_module": ("visual_release_workbench", "visual_modeling_release_gate"),
+    }[module_name]
+
+
+def _designer_module_text(module_name: str) -> str:
+    surface, operation = _designer_surface(module_name)
+    return f'''"""Generated no-code designer module for {surface}."""
+
+from __future__ import annotations
+
+import importlib.util
+from pathlib import Path
+
+
+MODULE = {module_name!r}
+SURFACE = {surface!r}
+OPERATION = {operation!r}
+EXPECTED_EXPORTS = (
+    "module_contract",
+    "designer_manifest_contract",
+    "run_designer_operation",
+    "release_context",
+    "smoke_test",
+)
+
+
+def _designer():
+    module_path = Path(__file__).resolve().parents[1] / "designer.py"
+    spec = importlib.util.spec_from_file_location(f"generated_designer_{{MODULE}}_designer", module_path)
+    module = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(module)
+    return module
+
+
+def _manifest(designer):
+    return designer.load_manifest()
+
+
+def _assets():
+    return {{"app/designer.py", "app/templates/appgen_designer.html", "app/appgen.json"}}
+
+
+def module_contract():
+    """Return this generated designer module's export contract."""
+    available = tuple(name for name in EXPECTED_EXPORTS if name in globals())
+    return {{
+        "format": "appgen.designer-module-contract.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "operation": OPERATION,
+        "ok": set(EXPECTED_EXPORTS) <= set(available),
+        "exports": available,
+        "expected_exports": EXPECTED_EXPORTS,
+        "side_effects": (),
+    }}
+
+
+def designer_manifest_contract():
+    """Return generated designer metadata owned by this module."""
+    designer = _designer()
+    manifest = _manifest(designer)
+    graph = designer.visual_model(manifest)
+    return {{
+        "format": "appgen.designer-module-manifest.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "ok": bool(manifest.get("tables")) and bool(graph["nodes"]) and designer.schema_diagram_check(manifest)["ok"],
+        "tables": tuple(table["name"] for table in manifest.get("tables", ())),
+        "node_count": len(graph["nodes"]),
+        "edge_count": len(graph["edges"]),
+        "side_effects": (),
+    }}
+
+
+def run_designer_operation():
+    """Run this module's side-effect-free designer operation."""
+    designer = _designer()
+    manifest = _manifest(designer)
+    table_name = manifest["tables"][0]["name"] if manifest.get("tables") else "Generated"
+    if SURFACE == "visual_graph":
+        operation = {{
+            "graph": designer.visual_model(manifest),
+            "erd": designer.erd_mermaid(manifest),
+            "relationships": designer.relationship_matrix(manifest),
+        }}
+        ok = bool(operation["graph"]["nodes"]) and operation["erd"].startswith("erDiagram")
+    elif SURFACE == "schema_diagram":
+        operation = designer.schema_diagram_release_gate(manifest, _assets())
+        ok = operation["ok"] and {{"visual_graph", "erd_export", "relationship_metadata", "migration_preview"}} <= {{check["gate"] for check in operation["checks"]}}
+    elif SURFACE == "proposal_modeling":
+        operation = {{
+            "table": designer.table_proposal("GeneratedModuleCheck"),
+            "field": designer.field_proposal(table_name, "generated_note", type_name="text", searchable=True),
+            "relationship": designer.relationship_proposal(table_name, "generated_parent_id", table_name),
+            "flow": designer.flow_step_proposal("GeneratedFlow", "draft", "approved"),
+        }}
+        ok = (
+            "table GeneratedModuleCheck" in designer.proposal_to_dsl(manifest, operation["table"])
+            and "generated_note: text search" in designer.proposal_to_dsl(manifest, operation["field"])
+            and "->" in designer.proposal_to_dsl(manifest, operation["relationship"])
+            and "draft -> approved" in designer.proposal_to_dsl(manifest, operation["flow"])
+        )
+    elif SURFACE == "migration_preview":
+        proposal = designer.field_proposal(table_name, "generated_note", type_name="text")
+        operation = designer.migration_preview(manifest, proposal)
+        ok = operation["format"] == "appgen.migration-preview.v1" and operation["operations"][0]["op"] == "add_column"
+    else:
+        operation = {{
+            "workbench": designer.visual_modeling_workbench(manifest),
+            "release": designer.visual_modeling_release_gate(manifest, _assets()),
+        }}
+        ok = operation["workbench"]["ok"] and operation["release"]["ok"]
+    return {{
+        "format": "appgen.designer-module-operation.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "ok": ok,
+        "operation": operation,
+        "side_effects": (),
+    }}
+
+
+def release_context():
+    """Return release evidence used by this designer module."""
+    designer = _designer()
+    manifest = _manifest(designer)
+    diagram = designer.schema_diagram_release_gate(manifest, _assets())
+    visual = designer.visual_modeling_release_gate(manifest, _assets())
+    return {{
+        "format": "appgen.designer-module-release-context.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "ok": diagram["ok"] and visual["ok"],
+        "diagram": diagram,
+        "visual": visual,
+        "side_effects": (),
+    }}
+
+
+def smoke_test():
+    """Run side-effect-free checks for this generated designer module."""
+    contract = module_contract()
+    manifest = designer_manifest_contract()
+    operation = run_designer_operation()
+    release = release_context()
+    return {{
+        "format": "appgen.designer-module-smoke-test.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "ok": contract["ok"]
+        and manifest["ok"]
+        and operation["ok"]
+        and release["ok"]
+        and not manifest["side_effects"]
+        and not operation["side_effects"]
+        and not release["side_effects"],
+        "contract": contract,
+        "manifest": manifest,
+        "operation": operation,
+        "release": release,
+        "checks": (
+            "module_contract_resolves",
+            "designer_manifest_contract_ok",
+            "designer_operation_ok",
+            "release_context_ok",
+            "no_side_effects",
+        ),
+    }}
+'''
+
+
+def _designer_module_test_text(module_name: str) -> str:
+    surface, _operation = _designer_surface(module_name)
+    return f'''"""Generated tests for the {surface} no-code designer module."""
+
+from __future__ import annotations
+
+import importlib.util
+from pathlib import Path
+
+
+MODULE = {module_name!r}
+SURFACE = {surface!r}
+
+
+def load_designer_module():
+    """Load the generated designer module without app installation."""
+    module_path = Path(__file__).resolve().parents[1] / "designer_modules" / f"{{MODULE}}.py"
+    spec = importlib.util.spec_from_file_location(f"generated_designer_module_{{MODULE}}", module_path)
+    module = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(module)
+    return module
+
+
+def test_designer_module_contract():
+    """Assert the generated designer module exposes its contract."""
+    module = load_designer_module()
+    contract = module.module_contract()
+    assert contract["module"] == MODULE
+    assert contract["surface"] == SURFACE
+    assert contract["ok"] is True
+    assert all(hasattr(module, name) for name in contract["expected_exports"])
+
+
+def test_designer_module_smoke():
+    """Assert the module's side-effect-free smoke test passes."""
+    module = load_designer_module()
+    result = module.smoke_test()
+    assert result["ok"] is True
+    assert result["module"] == MODULE
+    assert result["surface"] == SURFACE
+    assert result["checks"]
+
+
+def smoke_test():
+    """Run this generated test module in a side-effect-free way."""
+    test_designer_module_contract()
+    test_designer_module_smoke()
+    return {{
+        "format": "appgen.designer-module-generated-test-smoke.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "ok": True,
+        "tests": ("test_designer_module_contract", "test_designer_module_smoke"),
+    }}
+'''
+
+
 def write_designer_file(output_dir, schema: AppSchema):
     """Write a no-code designer cockpit backed by appgen.json."""
     output_dir = Path(output_dir)
@@ -15517,15 +15776,41 @@ def write_designer_file(output_dir, schema: AppSchema):
     with open(output_dir / "designer.py", "w") as f:
         f.write('"""Generated no-code designer view for AppGen apps."""\n\n')
         f.write("from __future__ import annotations\n\n")
+        f.write("import importlib.util\n")
         f.write("import json\n")
         f.write("from pathlib import Path\n\n")
         f.write("from flask import jsonify\n")
         f.write("from flask import request\n")
         f.write("from flask_appbuilder import BaseView, expose\n\n\n")
+        f.write(f"DESIGNER_MODULES = {DESIGNER_MODULES!r}\n\n\n")
         f.write("def manifest_path():\n")
         f.write("    return Path(__file__).resolve().parent / 'appgen.json'\n\n\n")
         f.write("def load_manifest():\n")
         f.write("    return json.loads(manifest_path().read_text())\n\n\n")
+        f.write("def _load_generated_module(module_path, module_name):\n")
+        f.write("    spec = importlib.util.spec_from_file_location(module_name, module_path)\n")
+        f.write("    module = importlib.util.module_from_spec(spec)\n")
+        f.write("    assert spec.loader is not None\n")
+        f.write("    spec.loader.exec_module(module)\n")
+        f.write("    return module\n\n\n")
+        f.write("def designer_module_file_manifest():\n")
+        f.write("    root = Path(__file__).resolve().parent\n")
+        f.write("    modules = []\n")
+        f.write("    for module_name in DESIGNER_MODULES:\n")
+        f.write("        module_path = root / 'designer_modules' / f'{module_name}.py'\n")
+        f.write("        loaded = _load_generated_module(module_path, f'appgen_designer_module_{module_name}')\n")
+        f.write("        contract = loaded.module_contract()\n")
+        f.write("        modules.append({'module': module_name, 'surface': contract['surface'], 'path': f'app/designer_modules/{module_name}.py', 'ok': contract['ok'], 'exports': contract['exports']})\n")
+        f.write("    return {'format': 'appgen.designer-module-file-manifest.v1', 'ok': all(item['ok'] for item in modules) and len(modules) == len(DESIGNER_MODULES), 'modules': tuple(modules)}\n\n\n")
+        f.write("def designer_module_test_file_manifest():\n")
+        f.write("    root = Path(__file__).resolve().parent\n")
+        f.write("    tests = []\n")
+        f.write("    for module_name in DESIGNER_MODULES:\n")
+        f.write("        test_path = root / 'designer_module_tests' / f'test_{module_name}.py'\n")
+        f.write("        loaded = _load_generated_module(test_path, f'appgen_designer_module_test_{module_name}')\n")
+        f.write("        smoke = loaded.smoke_test()\n")
+        f.write("        tests.append({'module': module_name, 'surface': smoke['surface'], 'path': f'app/designer_module_tests/test_{module_name}.py', 'ok': smoke['ok'], 'tests': smoke['tests']})\n")
+        f.write("    return {'format': 'appgen.designer-module-test-file-manifest.v1', 'ok': all(item['ok'] for item in tests) and len(tests) == len(DESIGNER_MODULES), 'tests': tuple(tests)}\n\n\n")
         f.write("def visual_model(manifest):\n")
         f.write("    \"\"\"Return graph nodes and edges for visual no-code modelers.\"\"\"\n")
         f.write("    nodes = []\n")
@@ -15977,6 +16262,27 @@ def write_designer_file(output_dir, schema: AppSchema):
         f.write("        icon='fa-object-group',\n")
         f.write("        category='AppGen',\n")
         f.write("    )\n")
+    write_designer_module_files(output_dir)
+
+
+def write_designer_module_files(output_dir):
+    """Write generated no-code designer modules and smoke tests."""
+    output_dir = Path(output_dir)
+    module_dir = output_dir / "designer_modules"
+    test_dir = output_dir / "designer_module_tests"
+    module_dir.mkdir(parents=True, exist_ok=True)
+    test_dir.mkdir(parents=True, exist_ok=True)
+    (module_dir / "__init__.py").write_text(_designer_module_init_text(), encoding="utf-8")
+    (test_dir / "__init__.py").write_text(_designer_module_test_init_text(), encoding="utf-8")
+    for module_name in DESIGNER_MODULES:
+        (module_dir / f"{module_name}.py").write_text(
+            _designer_module_text(module_name),
+            encoding="utf-8",
+        )
+        (test_dir / f"test_{module_name}.py").write_text(
+            _designer_module_test_text(module_name),
+            encoding="utf-8",
+        )
 
 
 def write_project_scaffold(output_dir, schema: AppSchema):
@@ -69957,6 +70263,14 @@ def validate_designer_artifacts() -> None:
         fail("designer must expose visual relationship proposals")
     if "proposal_from_payload" not in contract or "@expose('/proposal'" not in contract:
         fail("designer must expose browser proposal endpoint")
+    if (
+        "DESIGNER_MODULES" not in contract
+        or "designer_module_file_manifest" not in contract
+        or "designer_module_test_file_manifest" not in contract
+        or "appgen.designer-module-file-manifest.v1" not in contract
+        or "appgen.designer-module-test-file-manifest.v1" not in contract
+    ):
+        fail("designer must expose generated module and module-test manifests")
     template = (ROOT / "app" / "templates" / "appgen_designer.html").read_text()
     if (
         "Visual Graph" not in template
