@@ -2991,6 +2991,11 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     assert suggestion_gate["ok"] is True
     assert set(suggestion_gate["required_fields"]) <= set(suggestion_gate["passing_fields"])
     assert set(suggestion_gate["required_mappings"]) <= set(suggestion_gate["passing_mappings"])
+    overlap_gate = next(gate for gate in audit["gates"] if gate["id"] == "overlap_guardrails")
+    assert overlap_gate["ok"] is True
+    assert set(overlap_gate["required_checks"]) <= set(overlap_gate["passing_checks"])
+    assert {"left": "name", "right": "duplicate_name"} in overlap_gate["overlap_pairs"]
+    assert overlap_gate["valid_after_drop"]["ok"] is True
     assert audit["generation_smoke"]["ok"] is True
     generation_smoke_gate = next(gate for gate in audit["gates"] if gate["id"] == "generation_smoke")
     assert generation_smoke_gate["ok"] is True

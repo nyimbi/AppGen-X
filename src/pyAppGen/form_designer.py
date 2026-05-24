@@ -17441,6 +17441,14 @@ def form_designer_release_audit(existing_paths: set[str] | None = None) -> dict:
     overlap_case = tuple(design["components"]) + (
         {"field": "duplicate_name", "component": "TextBox", "x": 0, "y": 0, "w": 6, "h": 1},
     )
+    overlap_pairs = detect_overlaps(overlap_case)
+    overlap_checks = (
+        ("overlap_pair_detected", {"left": "name", "right": "duplicate_name"} in overlap_pairs),
+        ("valid_drop_has_no_overlaps", valid_after_drop["ok"] and not valid_after_drop["overlaps"]),
+        ("valid_drop_in_bounds", valid_after_drop["ok"] and not valid_after_drop["out_of_bounds"]),
+    )
+    required_overlap_checks = tuple(check for check, _ in overlap_checks)
+    passing_overlap_checks = tuple(check for check, ok in overlap_checks if ok)
     generation_smoke = form_designer_generation_smoke_audit()
     generation_smoke_passing_checks = {check["id"] for check in generation_smoke["checks"] if check["ok"]}
     required_generation_smoke_checks = (
@@ -17522,7 +17530,11 @@ def form_designer_release_audit(existing_paths: set[str] | None = None) -> dict:
         },
         {
             "id": "overlap_guardrails",
-            "ok": bool(detect_overlaps(overlap_case)) and valid_after_drop["ok"],
+            "ok": set(required_overlap_checks) <= set(passing_overlap_checks),
+            "required_checks": required_overlap_checks,
+            "passing_checks": passing_overlap_checks,
+            "overlap_pairs": overlap_pairs,
+            "valid_after_drop": valid_after_drop,
         },
         {
             "id": "artifact_contract",
