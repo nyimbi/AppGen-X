@@ -1469,6 +1469,53 @@ def select_acp_stream_processor(workload: str) -> dict:
     }
 
 
+def resolve_acp_event_processing_choice(workload: str, *, has_stream_exception_evidence: bool = False) -> dict:
+    """Return the developer-facing event-processing action for generation."""
+    candidate = select_acp_stream_processor(workload)
+    is_exception_candidate = candidate["decision"] == "exception"
+    exception_allowed = is_exception_candidate and has_stream_exception_evidence
+    if exception_allowed:
+        selected_profile = candidate["selected"]
+        return {
+            "format": "appgen.acp-event-processing-choice-resolution.v1",
+            "ok": True,
+            "workload": workload,
+            "action": "generate_exception_pbc",
+            "developer_answer": f"Use the {selected_profile} exception profile only for this split specialized PBC.",
+            "public_contract": "specialized_exception_pbc",
+            "manifest_rule": f"stream_processor={selected_profile}",
+            "selected_runtime_profile": selected_profile,
+            "candidate_profile": selected_profile,
+            "requires_stream_exception_evidence": True,
+            "missing_stream_exception_evidence": False,
+            "must_split_workload": True,
+            "developer_visible_options": ("appgen_event_contract",),
+            "choice_budget": ACP_STREAM_PROCESSING_POLICY["choice_budget"],
+            "do_not_compare_runtimes": True,
+            "generated_business_logic_import_rule": "appgen_event_adapter_only",
+        }
+    action = "fallback_to_appgen_event_contract" if is_exception_candidate else "generate_appgen_event_contract"
+    return {
+        "format": "appgen.acp-event-processing-choice-resolution.v1",
+        "ok": True,
+        "workload": workload,
+        "action": action,
+        "developer_answer": "Use appgen_event_contract.",
+        "public_contract": "appgen_event_contract",
+        "manifest_rule": "omit_stream_processor",
+        "selected_runtime_profile": ACP_DEFAULT_STREAM_PROCESSOR,
+        "candidate_profile": candidate["selected"],
+        "blocked_exception_profile": candidate["selected"] if is_exception_candidate else None,
+        "requires_stream_exception_evidence": is_exception_candidate,
+        "missing_stream_exception_evidence": is_exception_candidate,
+        "must_split_workload": False,
+        "developer_visible_options": ("appgen_event_contract",),
+        "choice_budget": ACP_STREAM_PROCESSING_POLICY["choice_budget"],
+        "do_not_compare_runtimes": True,
+        "generated_business_logic_import_rule": "appgen_event_adapter_only",
+    }
+
+
 def pbc_manifest_schema() -> dict:
     """Return the contract every self-registering PBC package must implement."""
     return {

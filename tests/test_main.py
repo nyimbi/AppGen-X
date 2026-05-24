@@ -252,6 +252,7 @@ from pyAppGen.pbc import register_pbc_manifest
 from pyAppGen.pbc import pbc_selection_from_prompt
 from pyAppGen.pbc import pbc_starter_stacks
 from pyAppGen.pbc import select_acp_stream_processor
+from pyAppGen.pbc import resolve_acp_event_processing_choice
 from pyAppGen.pbc import validate_pbc_manifest
 from pyAppGen.pbc import acp_capability_coverage
 from pyAppGen.pbc import application_composition_topology
@@ -781,6 +782,30 @@ def test_package_pbc_catalog_composes_enterprise_apps(runner: CliRunner) -> None
     assert default_selection["selected"] == "faust_streaming"
     assert default_selection["decision"] == "default"
     assert default_selection["default"] == "faust_streaming"
+    ordinary_resolution = resolve_acp_event_processing_choice("generate payroll approvals and agent tasks")
+    assert ordinary_resolution["format"] == "appgen.acp-event-processing-choice-resolution.v1"
+    assert ordinary_resolution["action"] == "generate_appgen_event_contract"
+    assert ordinary_resolution["developer_answer"] == "Use appgen_event_contract."
+    assert ordinary_resolution["manifest_rule"] == "omit_stream_processor"
+    assert ordinary_resolution["developer_visible_options"] == ("appgen_event_contract",)
+    assert ordinary_resolution["do_not_compare_runtimes"] is True
+    telemetry_without_evidence = resolve_acp_event_processing_choice("high-throughput telemetry time-series ingestion")
+    assert telemetry_without_evidence["action"] == "fallback_to_appgen_event_contract"
+    assert telemetry_without_evidence["blocked_exception_profile"] == "quix_streams"
+    assert telemetry_without_evidence["missing_stream_exception_evidence"] is True
+    telemetry_with_evidence = resolve_acp_event_processing_choice(
+        "high-throughput telemetry time-series ingestion",
+        has_stream_exception_evidence=True,
+    )
+    assert telemetry_with_evidence["action"] == "generate_exception_pbc"
+    assert telemetry_with_evidence["manifest_rule"] == "stream_processor=quix_streams"
+    assert telemetry_with_evidence["must_split_workload"] is True
+    dataflow_with_evidence = resolve_acp_event_processing_choice(
+        "complex parallel dataflow transformations",
+        has_stream_exception_evidence=True,
+    )
+    assert dataflow_with_evidence["selected_runtime_profile"] == "bytewax"
+    assert dataflow_with_evidence["developer_visible_options"] == ("appgen_event_contract",)
     stream_policy = acp_stream_processing_policy()
     assert stream_policy["format"] == "appgen.acp-stream-processing-policy.v1"
     assert stream_policy["default"] == "faust_streaming"

@@ -21,6 +21,28 @@ AppGen-X generates:
 - dead-letter contract
 - release-audit evidence
 
+The executable resolver for generators is:
+
+```python
+from pyAppGen.pbc import resolve_acp_event_processing_choice
+
+decision = resolve_acp_event_processing_choice("build invoicing approvals")
+assert decision["action"] == "generate_appgen_event_contract"
+assert decision["developer_answer"] == "Use appgen_event_contract."
+assert decision["manifest_rule"] == "omit_stream_processor"
+
+candidate = resolve_acp_event_processing_choice("high-throughput telemetry")
+assert candidate["action"] == "fallback_to_appgen_event_contract"
+assert candidate["missing_stream_exception_evidence"] is True
+
+exception = resolve_acp_event_processing_choice(
+    "high-throughput telemetry",
+    has_stream_exception_evidence=True,
+)
+assert exception["action"] == "generate_exception_pbc"
+assert exception["manifest_rule"] == "stream_processor=quix_streams"
+```
+
 Do not ask developers to choose a stream engine, broker client, state store, or
 per-PBC runtime profile for ordinary work. The service-runtime profile is
 platform-owned metadata behind the AppGen-X event adapter. It can be shown as a
@@ -1020,6 +1042,10 @@ The executable policy lives in `src/pyAppGen/pbc.py`:
   platform developers and small coding models.
 - `select_acp_stream_processor()` classifies workload descriptions as default
   or exception candidates.
+- `resolve_acp_event_processing_choice()` returns the action a generator should
+  take: ordinary contract, fallback to ordinary contract when exception
+  evidence is missing, or a split specialized exception PBC when evidence is
+  present.
 - `validate_pbc_manifest()` rejects unsupported profiles, normalizes missing
   profiles to the default, and blocks exception profiles without
   `stream_exception_evidence`.

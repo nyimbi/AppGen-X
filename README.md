@@ -202,6 +202,10 @@ business, ERP, workflow, chatbot, agent, integration, and PBC event handling
 always generate the AppGen-X event contract with `stream_processor` omitted;
 only telemetry/time-series and complex dataflow PBCs can request audited
 exception profiles.
+Generators should call `resolve_acp_event_processing_choice()` when they need
+the actual action: it returns the ordinary contract for normal work, falls back
+to the ordinary contract when an exception candidate lacks evidence, and opens a
+split specialized PBC only when `stream_exception_evidence` is present.
 
 ERP starters can be exported and generated immediately:
 
