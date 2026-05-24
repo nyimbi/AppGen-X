@@ -2518,6 +2518,15 @@ CODE_REVIEW_MODULES = (
     "code_review_release_workbench_module",
 )
 
+DEVTOOLS_MODULES = (
+    "tool_catalog_module",
+    "vscode_profile_module",
+    "jetbrains_profile_module",
+    "eclipse_pydev_module",
+    "source_map_module",
+    "devtools_release_workbench_module",
+)
+
 
 def write_pbc_runtime_file(output_dir, schema: AppSchema):
     """Write generated composable capability runtime helpers."""
@@ -9285,6 +9294,254 @@ def smoke_test():
 '''
 
 
+def _devtools_module_init_text() -> str:
+    return (
+        '"""Generated developer-tool integration modules."""\n\n'
+        f"DEVTOOLS_MODULES = {DEVTOOLS_MODULES!r}\n"
+    )
+
+
+def _devtools_module_test_init_text() -> str:
+    modules = tuple(f"test_{name}" for name in DEVTOOLS_MODULES)
+    return (
+        '"""Generated developer-tool module tests."""\n\n'
+        f"DEVTOOLS_MODULE_TESTS = {modules!r}\n"
+    )
+
+
+def _devtools_surface(module_name: str) -> tuple[str, str]:
+    return {
+        "tool_catalog_module": ("tool_catalog", "devtool_catalog"),
+        "vscode_profile_module": ("vscode_profile", "vscode_launch_profile"),
+        "jetbrains_profile_module": ("jetbrains_profile", "jetbrains_run_config"),
+        "eclipse_pydev_module": ("eclipse_pydev", "eclipse_project"),
+        "source_map_module": ("source_map", "source_map"),
+        "devtools_release_workbench_module": ("devtools_release_workbench", "devtools_release_gate"),
+    }[module_name]
+
+
+def _devtools_module_text(module_name: str) -> str:
+    surface, operation = _devtools_surface(module_name)
+    return f'''"""Generated developer-tool module for {surface}."""
+
+from __future__ import annotations
+
+import importlib.util
+from pathlib import Path
+
+
+MODULE = {module_name!r}
+SURFACE = {surface!r}
+OPERATION = {operation!r}
+EXPECTED_EXPORTS = (
+    "module_contract",
+    "devtools_manifest_contract",
+    "run_devtools_operation",
+    "release_context",
+    "smoke_test",
+)
+
+
+def _devtools():
+    module_path = Path(__file__).resolve().parents[1] / "devtools.py"
+    spec = importlib.util.spec_from_file_location(f"generated_devtools_{{MODULE}}_devtools", module_path)
+    module = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(module)
+    return module
+
+
+def _assets():
+    return {{
+        "app/devtools.py",
+        "app/templates/appgen_devtools.html",
+        ".vscode/launch.json",
+        ".vscode/tasks.json",
+        ".vscode/extensions.json",
+        ".project",
+        ".pydevproject",
+        ".idea/misc.xml",
+        ".idea/modules.xml",
+        ".idea/runConfigurations/AppGen_Flask.xml",
+    }}
+
+
+def module_contract():
+    """Return this generated developer-tool module's export contract."""
+    available = tuple(name for name in EXPECTED_EXPORTS if name in globals())
+    return {{
+        "format": "appgen.devtools-module-contract.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "operation": OPERATION,
+        "ok": set(EXPECTED_EXPORTS) <= set(available),
+        "exports": available,
+        "expected_exports": EXPECTED_EXPORTS,
+        "side_effects": (),
+    }}
+
+
+def devtools_manifest_contract():
+    """Return generated developer-tool metadata owned by this module."""
+    devtools = _devtools()
+    catalog = devtools.devtool_catalog()
+    return {{
+        "format": "appgen.devtools-module-manifest.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "ok": bool(catalog)
+        and {{"vscode", "eclipse", "jetbrains"}} <= {{item["tool"] for item in catalog}}
+        and devtools.devtools_check(_assets())["ok"],
+        "catalog": catalog,
+        "tools": tuple(devtools.DEVTOOLS),
+        "side_effects": (),
+    }}
+
+
+def run_devtools_operation():
+    """Run this module's side-effect-free developer-tool operation."""
+    devtools = _devtools()
+    if SURFACE == "tool_catalog":
+        operation = devtools.devtool_catalog()
+        ok = {{"vscode", "eclipse", "jetbrains"}} <= {{item["tool"] for item in operation}}
+    elif SURFACE == "vscode_profile":
+        operation = {{
+            "profile": devtools.vscode_launch_profile(),
+            "tasks": devtools.vscode_tasks(),
+        }}
+        ok = operation["profile"]["module"] == "flask" and any(task["label"] == "AppGen quality" for task in operation["tasks"])
+    elif SURFACE == "jetbrains_profile":
+        operation = {{
+            "profile": devtools.jetbrains_run_config(),
+            "tasks": devtools.jetbrains_tasks(),
+        }}
+        ok = operation["profile"]["type"] == "Python.FlaskServer" and any(task["name"] == "AppGen quality" for task in operation["tasks"])
+    elif SURFACE == "eclipse_pydev":
+        operation = devtools.eclipse_project()
+        ok = operation["nature"] == "org.python.pydev.pythonNature" and "app" in operation["source_paths"]
+    elif SURFACE == "source_map":
+        operation = devtools.source_map()
+        ok = bool(operation) and all({{"table", "model", "api", "fields", "files"}} <= set(item) for item in operation)
+    else:
+        operation = {{
+            "release": devtools.devtools_release_gate(_assets()),
+            "workbench": devtools.devtools_workbench(_assets()),
+        }}
+        ok = operation["release"]["ok"] and operation["workbench"]["ok"]
+    return {{
+        "format": "appgen.devtools-module-operation.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "ok": ok,
+        "operation": operation,
+        "side_effects": (),
+    }}
+
+
+def release_context():
+    """Return release evidence used by this developer-tool module."""
+    devtools = _devtools()
+    return {{
+        "format": "appgen.devtools-module-release-context.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "ok": devtools.devtools_release_gate(_assets())["ok"] and devtools.devtools_workbench(_assets())["ok"],
+        "release": devtools.devtools_release_gate(_assets()),
+        "workbench": devtools.devtools_workbench(_assets()),
+        "side_effects": (),
+    }}
+
+
+def smoke_test():
+    """Run side-effect-free checks for this generated developer-tool module."""
+    contract = module_contract()
+    manifest = devtools_manifest_contract()
+    operation = run_devtools_operation()
+    release = release_context()
+    return {{
+        "format": "appgen.devtools-module-smoke-test.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "ok": contract["ok"]
+        and manifest["ok"]
+        and operation["ok"]
+        and release["ok"]
+        and not manifest["side_effects"]
+        and not operation["side_effects"]
+        and not release["side_effects"],
+        "contract": contract,
+        "manifest": manifest,
+        "operation": operation,
+        "release": release,
+        "checks": (
+            "module_contract_resolves",
+            "devtools_manifest_contract_ok",
+            "devtools_operation_ok",
+            "release_context_ok",
+            "no_side_effects",
+        ),
+    }}
+'''
+
+
+def _devtools_module_test_text(module_name: str) -> str:
+    surface, _operation = _devtools_surface(module_name)
+    return f'''"""Generated tests for the {surface} developer-tool module."""
+
+from __future__ import annotations
+
+import importlib.util
+from pathlib import Path
+
+
+MODULE = {module_name!r}
+SURFACE = {surface!r}
+
+
+def load_devtools_module():
+    """Load the generated developer-tool module without app installation."""
+    module_path = Path(__file__).resolve().parents[1] / "devtools_modules" / f"{{MODULE}}.py"
+    spec = importlib.util.spec_from_file_location(f"generated_devtools_module_{{MODULE}}", module_path)
+    module = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(module)
+    return module
+
+
+def test_devtools_module_contract():
+    """Assert the generated developer-tool module exposes its contract."""
+    module = load_devtools_module()
+    contract = module.module_contract()
+    assert contract["module"] == MODULE
+    assert contract["surface"] == SURFACE
+    assert contract["ok"] is True
+    assert all(hasattr(module, name) for name in contract["expected_exports"])
+
+
+def test_devtools_module_smoke():
+    """Assert the module's side-effect-free smoke test passes."""
+    module = load_devtools_module()
+    result = module.smoke_test()
+    assert result["ok"] is True
+    assert result["module"] == MODULE
+    assert result["surface"] == SURFACE
+    assert result["checks"]
+
+
+def smoke_test():
+    """Run this generated test module in a side-effect-free way."""
+    test_devtools_module_contract()
+    test_devtools_module_smoke()
+    return {{
+        "format": "appgen.devtools-module-generated-test-smoke.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "ok": True,
+        "tests": ("test_devtools_module_contract", "test_devtools_module_smoke"),
+    }}
+'''
+
+
 def _version_control_module_init_text() -> str:
     return (
         '"""Generated version-control modules."""\n\n'
@@ -14566,6 +14823,27 @@ def write_devtools_file(output_dir, schema: AppSchema):
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
     (output_dir / "devtools.py").write_text(_devtools_text(schema, _app_name(schema)))
+    write_devtools_module_files(output_dir)
+
+
+def write_devtools_module_files(output_dir):
+    """Write generated developer-tool modules and smoke tests."""
+    output_dir = Path(output_dir)
+    module_dir = output_dir / "devtools_modules"
+    test_dir = output_dir / "devtools_module_tests"
+    module_dir.mkdir(parents=True, exist_ok=True)
+    test_dir.mkdir(parents=True, exist_ok=True)
+    (module_dir / "__init__.py").write_text(_devtools_module_init_text(), encoding="utf-8")
+    (test_dir / "__init__.py").write_text(_devtools_module_test_init_text(), encoding="utf-8")
+    for module_name in DEVTOOLS_MODULES:
+        (module_dir / f"{module_name}.py").write_text(
+            _devtools_module_text(module_name),
+            encoding="utf-8",
+        )
+        (test_dir / f"test_{module_name}.py").write_text(
+            _devtools_module_test_text(module_name),
+            encoding="utf-8",
+        )
 
 
 def write_studio_file(output_dir, schema: AppSchema):
@@ -62115,6 +62393,9 @@ def _devtools_text(schema: AppSchema, app_name: str) -> str:
 
 from __future__ import annotations
 
+import importlib.util
+from pathlib import Path
+
 from flask import jsonify
 from flask_appbuilder import BaseView
 from flask_appbuilder import expose
@@ -62123,6 +62404,73 @@ from flask_appbuilder import expose
 APP_NAME = {app_name!r}
 DEVTOOL_TABLES = {tables!r}
 DEVTOOLS = {tools!r}
+DEVTOOLS_MODULES = (
+    "tool_catalog_module",
+    "vscode_profile_module",
+    "jetbrains_profile_module",
+    "eclipse_pydev_module",
+    "source_map_module",
+    "devtools_release_workbench_module",
+)
+
+
+def _load_generated_module(module_path, module_name):
+    """Load a generated developer-tool module without installing the app."""
+    spec = importlib.util.spec_from_file_location(module_name, module_path)
+    module = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(module)
+    return module
+
+
+def devtools_module_file_manifest():
+    """Return independently importable generated developer-tool module files."""
+    root = Path(__file__).resolve().parent
+    modules = []
+    for module_name in DEVTOOLS_MODULES:
+        module_path = root / "devtools_modules" / f"{{module_name}}.py"
+        module = _load_generated_module(module_path, f"generated_devtools_module_{{module_name}}")
+        contract = module.module_contract()
+        modules.append(
+            {{
+                "module": module_name,
+                "surface": contract["surface"],
+                "path": f"app/devtools_modules/{{module_name}}.py",
+                "exists": module_path.exists(),
+                "ok": contract["ok"] and module.smoke_test()["ok"],
+                "exports": contract["exports"],
+            }}
+        )
+    return {{
+        "format": "appgen.devtools-module-file-manifest.v1",
+        "ok": len(modules) == len(DEVTOOLS_MODULES) and all(item["ok"] and item["exists"] for item in modules),
+        "modules": tuple(modules),
+    }}
+
+
+def devtools_module_test_file_manifest():
+    """Return generated tests for developer-tool module files."""
+    root = Path(__file__).resolve().parent
+    tests = []
+    for module_name in DEVTOOLS_MODULES:
+        test_path = root / "devtools_module_tests" / f"test_{{module_name}}.py"
+        module = _load_generated_module(test_path, f"generated_devtools_module_test_{{module_name}}")
+        result = module.smoke_test()
+        tests.append(
+            {{
+                "module": f"test_{{module_name}}",
+                "surface": result["surface"],
+                "path": f"app/devtools_module_tests/test_{{module_name}}.py",
+                "exists": test_path.exists(),
+                "ok": result["ok"],
+                "tests": result["tests"],
+            }}
+        )
+    return {{
+        "format": "appgen.devtools-module-test-file-manifest.v1",
+        "ok": len(tests) == len(DEVTOOLS_MODULES) and all(item["ok"] and item["exists"] for item in tests),
+        "tests": tuple(tests),
+    }}
 
 
 def devtool_catalog():
@@ -68842,6 +69190,8 @@ def validate_devtools_artifacts() -> None:
         fail("developer tools contract must expose JetBrains IDEA/PyCharm integration")
     if "source_map" not in contract or "devtools_check" not in contract or "devtools_release_gate" not in contract or "devtools_workbench" not in contract:
         fail("developer tools contract must expose schema source maps, readiness checks, workbenches, and release gates")
+    if "devtools_module_file_manifest" not in contract or "devtools_module_test_file_manifest" not in contract or "DEVTOOLS_MODULES" not in contract:
+        fail("developer tools contract must expose generated module manifests and module-test manifests")
     if "appgen.devtools-workbench.v1" not in contract or '@expose("/workbench.json")' not in contract:
         fail("developer tools contract must expose a versioned IDE workbench route")
     for path in (".vscode/launch.json", ".vscode/tasks.json", ".vscode/extensions.json"):

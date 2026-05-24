@@ -10516,6 +10516,34 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     )
     assert devtools.devtools_workbench({"app/devtools.py"})["ok"] is False
     assert devtools.devtools_release_gate({"app/devtools.py"})["ok"] is False
+    devtools_module_files = devtools.devtools_module_file_manifest()
+    devtools_module_tests = devtools.devtools_module_test_file_manifest()
+    assert devtools_module_files["format"] == "appgen.devtools-module-file-manifest.v1"
+    assert devtools_module_files["ok"] is True
+    assert devtools_module_tests["format"] == "appgen.devtools-module-test-file-manifest.v1"
+    assert devtools_module_tests["ok"] is True
+    assert {
+        "tool_catalog",
+        "vscode_profile",
+        "jetbrains_profile",
+        "eclipse_pydev",
+        "source_map",
+        "devtools_release_workbench",
+    } == {item["surface"] for item in devtools_module_files["modules"]}
+    for item in devtools_module_files["modules"]:
+        module_path = output_dir / item["path"].replace("app/", "")
+        py_compile.compile(str(module_path), doraise=True)
+        module = _load_module(module_path, f"generated_devtools_module_{item['module']}")
+        assert module.module_contract()["ok"] is True
+        assert module.devtools_manifest_contract()["ok"] is True
+        assert module.run_devtools_operation()["ok"] is True
+        assert module.release_context()["ok"] is True
+        assert module.smoke_test()["ok"] is True
+    for item in devtools_module_tests["tests"]:
+        test_path = output_dir / item["path"].replace("app/", "")
+        py_compile.compile(str(test_path), doraise=True)
+        module = _load_module(test_path, f"generated_devtools_module_test_{item['module']}")
+        assert module.smoke_test()["ok"] is True
     assert studio.editable_files()
     assert {"web", "mobile", "desktop"} <= set(studio.ide_workspace()["generation"]["targets"])
     assert "open_dsl" in {item["command"] for item in studio.ide_command_palette()}
