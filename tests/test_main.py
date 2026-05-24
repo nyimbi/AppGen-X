@@ -3241,6 +3241,18 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     )
     assert data_tooling_gate["ok"] is True
     assert set(data_tooling_gate["required_tooling"]) <= set(data_tooling_gate["passing_tooling"])
+    assert set(data_tooling_gate["required_connection_profiles"]) <= set(data_tooling_gate["passing_connection_profiles"])
+    assert set(data_tooling_gate["required_query_surfaces"]) <= set(data_tooling_gate["passing_query_surfaces"])
+    assert set(data_tooling_gate["required_service_artifacts"]) <= set(data_tooling_gate["passing_service_artifacts"])
+    assert set(data_tooling_gate["required_resource_surfaces"]) <= set(data_tooling_gate["passing_resource_surfaces"])
+    assert set(data_tooling_gate["required_local_features"]) <= set(data_tooling_gate["passing_local_features"])
+    assert set(data_tooling_gate["required_offline_queue_surfaces"]) <= set(data_tooling_gate["passing_offline_queue_surfaces"])
+    assert set(data_tooling_gate["required_module_names"]) <= set(data_tooling_gate["passing_module_names"])
+    assert set(data_tooling_gate["required_deep_data_surfaces"]) <= set(data_tooling_gate["passing_deep_data_surfaces"])
+    assert set(data_tooling_gate["required_runtime_ops"]) <= set(data_tooling_gate["passing_runtime_ops"])
+    assert set(data_tooling_gate["required_publish_phases"]) <= set(data_tooling_gate["passing_publish_phases"])
+    assert set(data_tooling_gate["required_failover_phases"]) <= set(data_tooling_gate["passing_failover_phases"])
+    assert set(data_tooling_gate["required_readiness_phases"]) <= set(data_tooling_gate["passing_readiness_phases"])
     assert set(data_tooling_gate["required_checks"]) <= set(data_tooling_gate["passing_checks"])
     package_gate = next(
         check for check in audit["rad_parity"]["checks"] if check["id"] == "design_time_package_installation"

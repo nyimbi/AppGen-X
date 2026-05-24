@@ -14708,6 +14708,7 @@ def rad_parity_workbench(existing_paths: set[str] | None = None) -> dict:
     inspector_workbench = object_inspector_workbench()
     binding_contract = livebindings_contract()
     binding_workbench = livebindings_workbench()
+    data_tooling_contract = rad_data_tooling_contract()
     data_tooling_workbench = rad_data_tooling_workbench()
     mobile_workbench = mobile_native_api_workbench()
     platform_lifecycle = platform_parity_lifecycle_replay_contract()
@@ -14918,7 +14919,112 @@ def rad_parity_workbench(existing_paths: set[str] | None = None) -> dict:
     )
     passing_binding_workbench_checks = tuple(check["id"] for check in binding_workbench["checks"] if check["ok"])
     required_data_tooling_names = ("FireDAC", "DataSnap", "RAD Server", "InterBase")
-    passing_data_tooling_names = tuple(rad_data_tooling_contract()["tooling"])
+    passing_data_tooling_names = tuple(data_tooling_contract["tooling"])
+    required_data_connection_profiles = ("primary_sql", "local_embedded", "rest_edge")
+    passing_data_connection_profiles = tuple(
+        connection["name"] for connection in data_tooling_contract["connection_catalog"]
+    )
+    required_data_query_surfaces = (
+        "sql_builder",
+        "parameter_editor",
+        "stored_procedure_browser",
+        "schema_adapter",
+        "migration_preview",
+    )
+    passing_data_query_surfaces = tuple(data_tooling_contract["query_designer"]["surfaces"])
+    required_data_service_artifacts = (
+        "server_method_stub",
+        "client_proxy",
+        "auth_filter",
+        "request_validator",
+        "integration_test",
+    )
+    passing_data_service_artifacts = tuple(data_tooling_contract["server_methods"]["generated_artifacts"])
+    required_data_resource_surfaces = ("tables", "reports", "files", "jobs", "health", "analytics")
+    passing_data_resource_surfaces = tuple(data_tooling_contract["resources"]["resources"])
+    required_data_local_features = (
+        "embedded_store",
+        "encryption",
+        "backup_restore",
+        "change_views",
+        "replication_queue",
+    )
+    passing_data_local_features = tuple(data_tooling_contract["local_database"]["features"])
+    required_data_offline_queue_surfaces = (
+        "operation_log",
+        "retry_policy",
+        "idempotency_keys",
+        "tombstones",
+    )
+    passing_data_offline_queue_surfaces = tuple(data_tooling_contract["offline_sync"]["queue"])
+    required_data_module_names = (
+        "connection_module",
+        "dataset_module",
+        "service_proxy_module",
+        "offline_module",
+    )
+    passing_data_module_names = tuple(
+        artifact["module"] for artifact in data_tooling_workbench["data_module_artifacts"] if artifact["ok"]
+    )
+    required_deep_data_surfaces = (
+        "schema_browser",
+        "schema_diff",
+        "lookup_editor",
+        "dataset_designer",
+        "resource_publish",
+        "offline_replay",
+        "replication_monitor",
+        "module_smoke",
+    )
+    passing_deep_data_surfaces = tuple(
+        artifact["surface"]
+        for artifact in data_tooling_workbench["deep_data_tooling_module_artifacts"]
+        if artifact["ok"]
+    )
+    required_data_runtime_ops = (
+        "connection_probe",
+        "query_preview",
+        "service_invocation",
+        "local_backup",
+        "offline_replay",
+        "rollback_probe",
+    )
+    passing_data_runtime_ops = tuple(step["op"] for step in data_tooling_workbench["runtime_replay"]["trace"])
+    required_data_publish_phases = (
+        "profile_connections",
+        "introspect_schema_and_plan_queries",
+        "rehearse_schema_and_dataset",
+        "generate_service_artifacts",
+        "publish_resources_and_telemetry",
+        "stage_local_store_and_offline_queue",
+        "runtime_smoke_and_monitoring",
+    )
+    passing_data_publish_phases = tuple(
+        phase["phase"] for phase in data_tooling_workbench["publish_transaction_replay"]["replay"] if phase["ok"]
+    )
+    required_data_failover_phases = (
+        "probe_and_pool_connection",
+        "quarantine_and_route_failover",
+        "rollback_preview_sql_and_routines",
+        "verify_restore_drill",
+        "surface_replication_and_telemetry",
+        "manual_review_offline_replay",
+        "smoke_after_failover",
+    )
+    passing_data_failover_phases = tuple(
+        phase["phase"] for phase in data_tooling_workbench["failover_transaction_replay"]["replay"] if phase["ok"]
+    )
+    required_data_readiness_phases = (
+        "probe_connection",
+        "design_dataset",
+        "publish_service_resources",
+        "rehearse_offline_replay",
+        "monitor_replication_and_failover",
+        "surface_runtime_diagnostics",
+    )
+    passing_data_readiness_phases = tuple(
+        phase["phase"] for phase in data_tooling_workbench["readiness"]["phases"] if phase["ok"]
+    )
     required_data_tooling_checks = (
         "connection_catalog",
         "query_designer",
@@ -15311,12 +15417,48 @@ def rad_parity_workbench(existing_paths: set[str] | None = None) -> dict:
             "id": "firedac_datasnap_radserver_interbase_tooling",
             "ok": set(required_data_tooling_names) <= set(passing_data_tooling_names)
             and data_tooling_workbench["ok"]
-            and set(required_data_tooling_checks) <= set(passing_data_tooling_checks),
+            and set(required_data_tooling_checks) <= set(passing_data_tooling_checks)
+            and set(required_data_connection_profiles) <= set(passing_data_connection_profiles)
+            and set(required_data_query_surfaces) <= set(passing_data_query_surfaces)
+            and set(required_data_service_artifacts) <= set(passing_data_service_artifacts)
+            and set(required_data_resource_surfaces) <= set(passing_data_resource_surfaces)
+            and set(required_data_local_features) <= set(passing_data_local_features)
+            and set(required_data_offline_queue_surfaces) <= set(passing_data_offline_queue_surfaces)
+            and set(required_data_module_names) <= set(passing_data_module_names)
+            and set(required_deep_data_surfaces) <= set(passing_deep_data_surfaces)
+            and set(required_data_runtime_ops) <= set(passing_data_runtime_ops)
+            and set(required_data_publish_phases) <= set(passing_data_publish_phases)
+            and set(required_data_failover_phases) <= set(passing_data_failover_phases)
+            and set(required_data_readiness_phases) <= set(passing_data_readiness_phases),
             "required_tooling": required_data_tooling_names,
             "passing_tooling": passing_data_tooling_names,
+            "required_connection_profiles": required_data_connection_profiles,
+            "passing_connection_profiles": passing_data_connection_profiles,
+            "required_query_surfaces": required_data_query_surfaces,
+            "passing_query_surfaces": passing_data_query_surfaces,
+            "required_service_artifacts": required_data_service_artifacts,
+            "passing_service_artifacts": passing_data_service_artifacts,
+            "required_resource_surfaces": required_data_resource_surfaces,
+            "passing_resource_surfaces": passing_data_resource_surfaces,
+            "required_local_features": required_data_local_features,
+            "passing_local_features": passing_data_local_features,
+            "required_offline_queue_surfaces": required_data_offline_queue_surfaces,
+            "passing_offline_queue_surfaces": passing_data_offline_queue_surfaces,
+            "required_module_names": required_data_module_names,
+            "passing_module_names": passing_data_module_names,
+            "required_deep_data_surfaces": required_deep_data_surfaces,
+            "passing_deep_data_surfaces": passing_deep_data_surfaces,
+            "required_runtime_ops": required_data_runtime_ops,
+            "passing_runtime_ops": passing_data_runtime_ops,
+            "required_publish_phases": required_data_publish_phases,
+            "passing_publish_phases": passing_data_publish_phases,
+            "required_failover_phases": required_data_failover_phases,
+            "passing_failover_phases": passing_data_failover_phases,
+            "required_readiness_phases": required_data_readiness_phases,
+            "passing_readiness_phases": passing_data_readiness_phases,
             "required_checks": required_data_tooling_checks,
             "passing_checks": passing_data_tooling_checks,
-            "evidence": {"contract": rad_data_tooling_contract(), "workbench": data_tooling_workbench},
+            "evidence": {"contract": data_tooling_contract, "workbench": data_tooling_workbench},
         },
         {
             "id": "design_time_package_installation",
