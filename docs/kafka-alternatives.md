@@ -2,6 +2,10 @@
 
 ## One Page Recommendation
 
+The platform decision is made: ordinary AppGen-X applications use the generated
+AppGen-X event contract. They do not choose Kafka alternatives, stream engines,
+topic clients, or state-store libraries.
+
 Use this:
 
 ```text
@@ -25,6 +29,17 @@ The developer-facing choice count is one: `appgen_event_contract`.
 Generated applications model commands, events, handlers, retries,
 idempotency, dead-letter behavior, and release evidence. The platform owns the
 runtime profile behind the adapter.
+
+The default generated stack is therefore:
+
+```text
+public API: appgen_event_contract
+generated durability: transactional outbox + transactional inbox
+generated code: typed handlers behind the AppGen-X event adapter
+hidden service profile: faust_streaming
+exception profiles: quix_streams or bytewax with evidence only
+developer selection UI: none for ordinary applications
+```
 
 AppGen-X does not ask application developers, natural-language generators,
 coding agents, or Studio users to choose among stream-processing engines for
@@ -97,6 +112,70 @@ business event contract. The platform owns the runtime choice.
 This document is the developer-facing companion to the executable policy in
 `src/pyAppGen/pbc.py`.
 
+## What To Actually Generate
+
+For every ordinary PBC, ERP module, workflow, chatbot, agent, integration, or
+generated UI action, generate the same event surface:
+
+```text
+models.py
+  - owned business tables
+  - appgen_outbox_event table
+  - appgen_inbox_event table
+
+events.py
+  - typed event dataclasses or schemas
+  - handler registry
+  - idempotency key derivation
+  - retry policy names
+  - dead-letter envelope shape
+
+services.py
+  - command functions
+  - one transaction per state mutation
+  - enqueue outbox event in the same transaction
+
+pbc_runtime.py
+  - read-only selected profile metadata
+  - event topic names
+  - release-audit evidence
+```
+
+Generated domain code imports only the AppGen-X event adapter. It must not
+import `faust_streaming`, `quix_streams`, `bytewax`, Kafka clients, or
+profile-specific state-store libraries. Adapter-specific code belongs in the
+platform runtime, not in generated business logic.
+
+The default datastore answer is equally narrow: use PostgreSQL unless the
+project standard is MySQL or MariaDB. Other open-source datastores can appear
+only as specialized platform services or explicitly modeled integration
+capabilities, not as a reason to branch the ordinary PBC generation path.
+
+## Generator And IDE Rules
+
+Natural-language generation, DSL linting, Studio controls, package templates,
+and external coding-agent prompts must apply these rules:
+
+1. Do not ask the user to choose a stream engine for ordinary generated work.
+2. Do not render a stream-engine picker on the ordinary PBC creation path.
+3. Omit `stream_processor` from ordinary manifests.
+4. Normalize the missing profile to the platform default during validation.
+5. Show the selected profile only as read-only metadata after generation.
+6. Open an exception form only when the workload is telemetry/time-series or
+   complex parallel dataflow.
+7. Require `stream_exception_evidence` before accepting an exception profile.
+8. Fail release validation when generated code imports profile-specific stream
+   libraries directly.
+
+For token-constrained coding agents, use this exact instruction:
+
+```text
+Generate commands, events, transactional outbox/inbox tables, typed handlers,
+idempotency, retry, dead-letter, and release evidence through the AppGen-X event
+adapter. Omit stream_processor unless the prompt names telemetry/time-series or
+complex parallel dataflow and includes exception evidence.
+```
+
 ## Required Default For Developers
 
 Use the generated AppGen-X event contract for ordinary generated applications
@@ -132,11 +211,15 @@ def register_pbc() -> dict:
 ```
 
 The explicit default is accepted only for generated metadata and compatibility,
-but it is not required:
+but do not write it by hand in ordinary PBC manifests:
 
 ```python
 "stream_processor": "faust_streaming"
 ```
+
+If a generator sees that value in ordinary generated metadata, it should treat
+it as read-only platform output. If a developer is authoring a normal PBC
+manifest, the field should be omitted.
 
 ## What Developers Actually Use
 
@@ -203,6 +286,30 @@ generator code:
 The default answer is not "choose a Kafka alternative." The default answer is
 "generate the AppGen-X outbox/inbox contract and route through the platform
 adapter."
+
+## Selection Algorithm
+
+The selection algorithm is intentionally small:
+
+```text
+if workload is ordinary business/workflow/integration/agent event handling:
+    public_contract = appgen_event_contract
+    stream_processor = omitted in manifest
+    runtime_profile = faust_streaming metadata after validation
+elif workload is telemetry/time-series/high-volume windowing:
+    require stream_exception_evidence
+    stream_processor = quix_streams
+elif workload is complex parallel dataflow or CPU-heavy transformation graph:
+    require stream_exception_evidence
+    stream_processor = bytewax
+else:
+    public_contract = appgen_event_contract
+    stream_processor = omitted in manifest
+```
+
+Do not add secondary scoring, library comparisons, developer preferences,
+per-environment overrides, or per-PBC runtime votes. Those reopen the
+exponential matrix this standard is meant to close.
 
 ## Exception Budget
 

@@ -56,7 +56,6 @@ def register_pbc() -> dict:
         "mesh": "relationship",
         "description": "Manage warranty intake, eligibility, adjudication, and claim resolution.",
         "datastore_backend": "postgresql",
-        "stream_processor": "faust_streaming",
         "tables": ("warranty_claim", "claim_line", "eligibility_check"),
         "apis": ("POST /warranty-claims", "POST /eligibility-checks", "GET /claim-status"),
         "emits": ("WarrantyClaimOpened", "WarrantyClaimApproved"),
@@ -90,6 +89,11 @@ Optional fields include `template`, `owner`, `version`, `ui_fragments`,
 `stream_processor`, `stream_exception_evidence`, `permissions`,
 `configuration`, `migrations`, `seed_data`, `tests`, and `docs`.
 
+`datastore_backend` is also opinionated for ordinary generated work. Prefer
+`postgresql`. Use `mysql` or `mariadb` only when that is the project standard.
+Other open-source backends are specialized platform-service or integration
+choices; they should not expand the ordinary PBC generation path.
+
 `stream_processor` is intentionally opinionated to prevent a combinatorial
 backend matrix. For ordinary PBCs, developers have one visible choice: use the
 generated AppGen-X event contract and omit the field. The validator normalizes
@@ -101,7 +105,8 @@ they should not choose a stream library for normal generated applications.
 The implementation recipe is fixed: declare commands and events, generate owned
 tables, generate transactional outbox/inbox tables, generate typed handlers,
 wire handlers through the AppGen-X event adapter, and prove retry,
-idempotency, dead-letter, and release-audit coverage.
+idempotency, dead-letter, and release-audit coverage. The complete developer
+standard lives in `docs/kafka-alternatives.md`.
 
 The generated implementation is fixed for ordinary work: transactional
 outbox/inbox tables, the AppGen-X event adapter, the platform default
