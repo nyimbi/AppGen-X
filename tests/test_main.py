@@ -3262,6 +3262,17 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     assert set(package_gate["required_channels"]) <= set(package_gate["passing_channels"])
     assert set(package_gate["required_guards"]) <= set(package_gate["passing_guards"])
     assert set(package_gate["required_phases"]) <= set(package_gate["passing_phases"])
+    assert set(package_gate["required_registration_points"]) <= set(package_gate["passing_registration_points"])
+    assert set(package_gate["required_operation_names"]) <= set(package_gate["passing_operation_names"])
+    assert set(package_gate["required_rollback_steps"]) <= set(package_gate["passing_rollback_steps"])
+    assert set(package_gate["required_uninstall_steps"]) <= set(package_gate["passing_uninstall_steps"])
+    assert set(package_gate["required_session_phases"]) <= set(package_gate["passing_session_phases"])
+    assert set(package_gate["required_session_outputs"]) <= set(package_gate["passing_session_outputs"])
+    assert set(package_gate["required_module_kinds"]) <= set(package_gate["passing_module_kinds"])
+    assert set(package_gate["required_module_test_kinds"]) <= set(package_gate["passing_module_test_kinds"])
+    assert set(package_gate["required_lifecycle_replay_phases"]) <= set(
+        package_gate["passing_lifecycle_replay_phases"]
+    )
     assert set(package_gate["required_checks"]) <= set(package_gate["passing_checks"])
     mobile_gate = next(
         check for check in audit["rad_parity"]["checks"] if check["id"] == "mobile_native_device_api_coverage"

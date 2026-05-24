@@ -15213,6 +15213,98 @@ def rad_parity_workbench(existing_paths: set[str] | None = None) -> dict:
     passing_package_readiness_checks = tuple(
         check["id"] for check in package_readiness["checks"] if check["ok"]
     )
+    registry_commit_phase = next(
+        phase for phase in package_readiness["phases"] if phase["phase"] == "registry_commit"
+    )
+    rollback_phase = next(
+        phase for phase in package_readiness["phases"] if phase["phase"] == "failure_and_rollback"
+    )
+    uninstall_phase = next(
+        phase for phase in package_readiness["phases"] if phase["phase"] == "uninstall_cleanup"
+    )
+    package_manager = package_workbench["package_manager"]
+    required_package_registration_points = (
+        "palette",
+        "object_inspector",
+        "live_bindings",
+        "component_editor",
+        "preview_renderer",
+    )
+    passing_package_registration_points = tuple(registry_commit_phase["evidence"]["registration_points"])
+    required_package_operation_names = (
+        "resolve_metadata",
+        "preview_load",
+        "registry_commit",
+        "update_package",
+        "uninstall_package",
+    )
+    passing_package_operation_names = tuple(registry_commit_phase["evidence"]["operation_names"])
+    required_package_rollback_steps = (
+        "unload_adapters",
+        "restore_registry",
+        "restore_lockfile",
+        "refresh_designer",
+    )
+    passing_package_rollback_steps = tuple(rollback_phase["evidence"]["restore_order"])
+    required_package_uninstall_steps = (
+        "find_palette_references",
+        "disable_adapters",
+        "remove_palette_entries",
+        "restore_lockfile",
+        "record_audit",
+    )
+    passing_package_uninstall_steps = tuple(uninstall_phase["evidence"]["uninstall_phases"][0])
+    required_package_session_phases = (
+        "resolve_metadata",
+        "license_review",
+        "dependency_plan",
+        "sandbox_load",
+        "adapter_compile",
+        "palette_registration",
+        "rollback_snapshot",
+    )
+    passing_package_session_phases = tuple(package_manager["session"]["phases"])
+    required_package_session_outputs = (
+        "package_manifest",
+        "adapter_modules",
+        "palette_entries",
+        "inspector_metadata",
+        "binding_metadata",
+        "rollback_plan",
+    )
+    passing_package_session_outputs = tuple(package_manager["session"]["outputs"])
+    required_package_manager_module_kinds = (
+        "install",
+        "preview",
+        "registry",
+        "lifecycle",
+        "update",
+        "rollback",
+    )
+    passing_package_manager_module_kinds = tuple(
+        artifact["kind"]
+        for artifact in package_manager["package_manager_module_artifacts"]
+        if artifact["ok"]
+    )
+    passing_package_manager_test_kinds = tuple(
+        artifact["kind"]
+        for artifact in package_manager["package_manager_module_test_artifacts"]
+        if artifact["ok"]
+    )
+    required_package_manager_lifecycle_phases = (
+        "install_and_register",
+        "preview_load",
+        "versioned_update",
+        "failure_containment",
+        "rollback_probe",
+        "uninstall_cleanup",
+    )
+    passing_package_manager_lifecycle_phases = tuple(
+        phase["phase"]
+        for replay in package_manager["lifecycle_replay"]["replay"]
+        for phase in replay["phases"]
+        if phase["ok"]
+    )
     required_stream_formats = ("text-dfm", "binary-dfm", "json-form-model")
     passing_stream_formats = tuple(streaming_contract["stream_formats"])
     required_compiler_stages = ("parse_units", "type_check", "resource_link", "emit_target")
@@ -15469,7 +15561,16 @@ def rad_parity_workbench(existing_paths: set[str] | None = None) -> dict:
             and set(required_install_guards) <= set(passing_install_guards)
             and package_readiness["ok"]
             and set(required_package_lifecycle_phases) <= set(passing_package_lifecycle_phases)
-            and set(required_package_readiness_checks) <= set(passing_package_readiness_checks),
+            and set(required_package_readiness_checks) <= set(passing_package_readiness_checks)
+            and set(required_package_registration_points) <= set(passing_package_registration_points)
+            and set(required_package_operation_names) <= set(passing_package_operation_names)
+            and set(required_package_rollback_steps) <= set(passing_package_rollback_steps)
+            and set(required_package_uninstall_steps) <= set(passing_package_uninstall_steps)
+            and set(required_package_session_phases) <= set(passing_package_session_phases)
+            and set(required_package_session_outputs) <= set(passing_package_session_outputs)
+            and set(required_package_manager_module_kinds) <= set(passing_package_manager_module_kinds)
+            and set(required_package_manager_module_kinds) <= set(passing_package_manager_test_kinds)
+            and set(required_package_manager_lifecycle_phases) <= set(passing_package_manager_lifecycle_phases),
             "required_packages": required_install_package_ids,
             "passing_packages": passing_install_package_ids,
             "required_channels": required_install_channels,
@@ -15478,9 +15579,31 @@ def rad_parity_workbench(existing_paths: set[str] | None = None) -> dict:
             "passing_guards": passing_install_guards,
             "required_phases": required_package_lifecycle_phases,
             "passing_phases": passing_package_lifecycle_phases,
+            "required_registration_points": required_package_registration_points,
+            "passing_registration_points": passing_package_registration_points,
+            "required_operation_names": required_package_operation_names,
+            "passing_operation_names": passing_package_operation_names,
+            "required_rollback_steps": required_package_rollback_steps,
+            "passing_rollback_steps": passing_package_rollback_steps,
+            "required_uninstall_steps": required_package_uninstall_steps,
+            "passing_uninstall_steps": passing_package_uninstall_steps,
+            "required_session_phases": required_package_session_phases,
+            "passing_session_phases": passing_package_session_phases,
+            "required_session_outputs": required_package_session_outputs,
+            "passing_session_outputs": passing_package_session_outputs,
+            "required_module_kinds": required_package_manager_module_kinds,
+            "passing_module_kinds": passing_package_manager_module_kinds,
+            "required_module_test_kinds": required_package_manager_module_kinds,
+            "passing_module_test_kinds": passing_package_manager_test_kinds,
+            "required_lifecycle_replay_phases": required_package_manager_lifecycle_phases,
+            "passing_lifecycle_replay_phases": passing_package_manager_lifecycle_phases,
             "required_checks": required_package_readiness_checks,
             "passing_checks": passing_package_readiness_checks,
-            "evidence": {"install_plan": install_plan, "readiness": package_readiness},
+            "evidence": {
+                "install_plan": install_plan,
+                "readiness": package_readiness,
+                "package_manager": package_manager,
+            },
         },
         {
             "id": "mobile_native_device_api_coverage",
