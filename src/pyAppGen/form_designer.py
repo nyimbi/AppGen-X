@@ -14726,6 +14726,29 @@ def rad_parity_workbench(existing_paths: set[str] | None = None) -> dict:
     passing_visual_depth_surfaces = tuple(
         surface for surface in required_visual_depth_surfaces if bool(visual_depth_contract[surface])
     )
+    required_package_lifecycle_phases = (
+        "trust_and_lockfile",
+        "sandbox_preview",
+        "registry_commit",
+        "versioned_update",
+        "failure_and_rollback",
+        "uninstall_cleanup",
+    )
+    passing_package_lifecycle_phases = tuple(
+        phase["phase"] for phase in package_readiness["phases"] if phase["ok"]
+    )
+    required_package_readiness_checks = (
+        "trust_before_preview",
+        "preview_before_registry_commit",
+        "registry_before_update",
+        "rollback_before_cleanup",
+        "operation_surface_ready",
+        "phase_order_ready",
+        "side_effect_guard_ready",
+    )
+    passing_package_readiness_checks = tuple(
+        check["id"] for check in package_readiness["checks"] if check["ok"]
+    )
     checks = (
         {
             "id": "native_ui_parity_component_parity",
@@ -14779,7 +14802,15 @@ def rad_parity_workbench(existing_paths: set[str] | None = None) -> dict:
         },
         {
             "id": "design_time_package_installation",
-            "ok": install_plan["ok"] and install_plan["requires_review"] and package_readiness["ok"],
+            "ok": install_plan["ok"]
+            and install_plan["requires_review"]
+            and package_readiness["ok"]
+            and set(required_package_lifecycle_phases) <= set(passing_package_lifecycle_phases)
+            and set(required_package_readiness_checks) <= set(passing_package_readiness_checks),
+            "required_phases": required_package_lifecycle_phases,
+            "passing_phases": passing_package_lifecycle_phases,
+            "required_checks": required_package_readiness_checks,
+            "passing_checks": passing_package_readiness_checks,
             "evidence": {"install_plan": install_plan, "readiness": package_readiness},
         },
         {

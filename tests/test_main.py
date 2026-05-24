@@ -3104,6 +3104,12 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     )
     assert data_tooling_gate["ok"] is True
     assert set(data_tooling_gate["required_tooling"]) <= set(data_tooling_gate["passing_tooling"])
+    package_gate = next(
+        check for check in audit["rad_parity"]["checks"] if check["id"] == "design_time_package_installation"
+    )
+    assert package_gate["ok"] is True
+    assert set(package_gate["required_phases"]) <= set(package_gate["passing_phases"])
+    assert set(package_gate["required_checks"]) <= set(package_gate["passing_checks"])
     mobile_gate = next(
         check for check in audit["rad_parity"]["checks"] if check["id"] == "mobile_native_device_api_coverage"
     )
