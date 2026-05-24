@@ -532,6 +532,9 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   splash screens, editable menus, context menus, UI fine-tuning, generated
   module files, generated test files, and release gates as one side-effect-free
   path.
+- Platform parity aggregation now also consumes native runtime, data tooling,
+  mobile API, and visual-depth readiness contracts directly, so the aggregate
+  lifecycle and requirement audits depend on their ordered readiness phases.
 
 ## Open Completion Areas
 

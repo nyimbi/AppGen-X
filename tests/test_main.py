@@ -2797,6 +2797,21 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "generated_tests",
         "ide_catalog_release",
     )
+    assert lifecycle_by_phase["stream_runtime_model"]["evidence"]["readiness_phases"] == (
+        "decode_design_stream",
+        "parse_unit_and_cross_check",
+        "plan_compile_and_targets",
+        "normalize_diagnostics",
+        "reload_runtime_preview",
+    )
+    assert lifecycle_by_phase["publish_data_services"]["evidence"]["readiness_phases"] == (
+        "probe_connection",
+        "design_dataset",
+        "publish_service_resources",
+        "rehearse_offline_replay",
+        "monitor_replication_and_failover",
+        "surface_runtime_diagnostics",
+    )
     assert lifecycle_by_phase["install_component_packages"]["evidence"]["readiness_phases"] == (
         "trust_and_lockfile",
         "sandbox_preview",
@@ -2804,6 +2819,23 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "versioned_update",
         "failure_and_rollback",
         "uninstall_cleanup",
+    )
+    assert lifecycle_by_phase["validate_device_capabilities"]["evidence"]["readiness_phases"] == (
+        "declare_privacy_and_permissions",
+        "configure_simulator_fixtures",
+        "bind_components_and_bridges",
+        "review_fallbacks_and_lifecycle",
+        "replay_runtime_delivery",
+        "replay_designer_and_capabilities",
+    )
+    assert lifecycle_by_phase["validate_visual_depth"]["evidence"]["readiness_phases"] == (
+        "author_style_resources",
+        "author_animation_timeline",
+        "validate_effect_stack",
+        "author_scene_and_assets",
+        "bind_hit_tests_and_components",
+        "replay_runtime_and_designer",
+        "package_runtime_targets",
     )
     requirement_audit = platform_parity_requirement_audit_contract()
     assert requirement_audit["format"] == "appgen.platform-parity-requirement-audit.v1"
@@ -2828,6 +2860,18 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     assert requirements_by_id["package_installation_ecosystem"]["evidence"]["readiness"]["format"] == (
         "appgen.component-package-readiness-contract.v1"
     )
+    assert requirements_by_id["native_runtime_streaming"]["evidence"]["readiness"]["format"] == (
+        "appgen.pascal-runtime-readiness-contract.v1"
+    )
+    assert requirements_by_id["native_data_service_tooling"]["evidence"]["readiness"]["format"] == (
+        "appgen.data-tooling-readiness-contract.v1"
+    )
+    assert requirements_by_id["device_api_component_coverage"]["evidence"]["readiness"]["format"] == (
+        "appgen.mobile-native-api-readiness-contract.v1"
+    )
+    assert requirements_by_id["cross_target_visual_depth"]["evidence"]["readiness"]["format"] == (
+        "appgen.cross-target-visual-readiness-contract.v1"
+    )
     assert {
         "generated_modules_ready",
         "generated_tests_ready",
@@ -2838,6 +2882,10 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "registry_before_update",
         "rollback_before_cleanup",
     } <= set(requirements_by_id["package_installation_ecosystem"]["deep_checks"])
+    assert "runtime_preview_ready" in requirements_by_id["native_runtime_streaming"]["deep_checks"]
+    assert "phase_order_ready" in requirements_by_id["native_data_service_tooling"]["deep_checks"]
+    assert "runtime_delivery_ready" in requirements_by_id["device_api_component_coverage"]["deep_checks"]
+    assert "runtime_package_ready" in requirements_by_id["cross_target_visual_depth"]["deep_checks"]
 
     smoke = form_designer_generation_smoke_audit()
     assert smoke["format"] == "appgen.form-designer-generation-smoke-audit.v1"
@@ -11937,6 +11985,21 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "generated_tests",
         "ide_catalog_release",
     )
+    assert generated_lifecycle_by_phase["stream_runtime_model"]["evidence"]["readiness_phases"] == (
+        "decode_design_stream",
+        "parse_unit_and_cross_check",
+        "plan_compile_and_targets",
+        "normalize_diagnostics",
+        "reload_runtime_preview",
+    )
+    assert generated_lifecycle_by_phase["publish_data_services"]["evidence"]["readiness_phases"] == (
+        "probe_connection",
+        "design_dataset",
+        "publish_service_resources",
+        "rehearse_offline_replay",
+        "monitor_replication_and_failover",
+        "surface_runtime_diagnostics",
+    )
     assert generated_lifecycle_by_phase["install_component_packages"]["evidence"]["readiness_phases"] == (
         "trust_and_lockfile",
         "sandbox_preview",
@@ -11944,6 +12007,23 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "versioned_update",
         "failure_and_rollback",
         "uninstall_cleanup",
+    )
+    assert generated_lifecycle_by_phase["validate_device_capabilities"]["evidence"]["readiness_phases"] == (
+        "declare_privacy_and_permissions",
+        "configure_simulator_fixtures",
+        "bind_components_and_bridges",
+        "review_fallbacks_and_lifecycle",
+        "replay_runtime_delivery",
+        "replay_designer_and_capabilities",
+    )
+    assert generated_lifecycle_by_phase["validate_visual_depth"]["evidence"]["readiness_phases"] == (
+        "author_style_resources",
+        "author_animation_timeline",
+        "validate_effect_stack",
+        "author_scene_and_assets",
+        "bind_hit_tests_and_components",
+        "replay_runtime_and_designer",
+        "package_runtime_targets",
     )
     assert generated_rad["requirement_audit"]["format"] == "appgen.generated-platform-parity-requirement-audit.v1"
     assert generated_rad["requirement_audit"]["ok"] is True
@@ -11971,8 +12051,24 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert generated_requirements_by_id["package_installation_ecosystem"]["evidence"]["readiness"]["format"] == (
         "appgen.generated-component-package-readiness-contract.v1"
     )
+    assert generated_requirements_by_id["native_runtime_streaming"]["evidence"]["readiness"]["format"] == (
+        "appgen.generated-pascal-runtime-readiness-contract.v1"
+    )
+    assert generated_requirements_by_id["native_data_service_tooling"]["evidence"]["readiness"]["format"] == (
+        "appgen.generated-data-tooling-readiness-contract.v1"
+    )
+    assert generated_requirements_by_id["device_api_component_coverage"]["evidence"]["readiness"]["format"] == (
+        "appgen.generated-mobile-native-api-readiness-contract.v1"
+    )
+    assert generated_requirements_by_id["cross_target_visual_depth"]["evidence"]["readiness"]["format"] == (
+        "appgen.generated-cross-target-visual-readiness-contract.v1"
+    )
     assert "ide_release_ready" in generated_requirements_by_id["component_parity"]["deep_checks"]
     assert "trust_before_preview" in generated_requirements_by_id["package_installation_ecosystem"]["deep_checks"]
+    assert "runtime_preview_ready" in generated_requirements_by_id["native_runtime_streaming"]["deep_checks"]
+    assert "phase_order_ready" in generated_requirements_by_id["native_data_service_tooling"]["deep_checks"]
+    assert "runtime_delivery_ready" in generated_requirements_by_id["device_api_component_coverage"]["deep_checks"]
+    assert "runtime_package_ready" in generated_requirements_by_id["cross_target_visual_depth"]["deep_checks"]
     assert {"devexpress-native", "tms-fnc", "fastreport", "teechart", "indy"} <= {
         item["id"] for item in form_designer.third_party_component_registry()
     }

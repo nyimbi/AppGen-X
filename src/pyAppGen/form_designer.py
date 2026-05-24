@@ -13793,16 +13793,20 @@ def platform_parity_lifecycle_replay_contract() -> dict:
     usability = component_usability_workbench()
     component_readiness = component_parity_readiness_contract()
     runtime = pascal_runtime_workbench()
+    runtime_readiness = pascal_runtime_readiness_contract()
     inspector = object_inspector_workbench()
     bindings = livebindings_workbench()
     data_tooling = rad_data_tooling_workbench()
+    data_readiness = data_tooling_readiness_contract()
     package_manager = design_time_package_manager_workbench()
     package_lifecycle = component_package_lifecycle_transaction_replay()
     package_readiness = component_package_readiness_contract()
     mobile = mobile_native_api_workbench()
     mobile_lifecycle = mobile_device_capability_lifecycle_replay_contract()
+    mobile_readiness = mobile_native_api_readiness_contract()
     visual = cross_target_visual_depth_workbench()
     visual_lifecycle = cross_target_visual_lifecycle_replay_contract()
+    visual_readiness = cross_target_visual_readiness_contract()
     mobile_lifecycle_phases = tuple(
         phase["phase"]
         for item in mobile_lifecycle["replay"]
@@ -13824,10 +13828,13 @@ def platform_parity_lifecycle_replay_contract() -> dict:
         {
             "phase": "stream_runtime_model",
             "ok": runtime["ok"]
+            and runtime_readiness["ok"]
+            and "phase_order_ready" in {check["id"] for check in runtime_readiness["checks"] if check["ok"]}
             and {"form_stream_schema", "runtime_session_replay", "event_binding_lifecycle"} <= {check["id"] for check in runtime["checks"]},
             "evidence": {
                 "checks": tuple(check["id"] for check in runtime["checks"]),
                 "runtime_state": runtime["runtime_replay"]["final_state"],
+                "readiness_phases": tuple(phase["phase"] for phase in runtime_readiness["phases"]),
             },
         },
         {
@@ -13844,6 +13851,8 @@ def platform_parity_lifecycle_replay_contract() -> dict:
         {
             "phase": "publish_data_services",
             "ok": data_tooling["ok"]
+            and data_readiness["ok"]
+            and "phase_order_ready" in {check["id"] for check in data_readiness["checks"] if check["ok"]}
             and data_tooling["publish_transaction_replay"]["ok"]
             and {
                 "schema_rehearsal_before_dataset_publish",
@@ -13853,6 +13862,7 @@ def platform_parity_lifecycle_replay_contract() -> dict:
             "evidence": {
                 "checks": tuple(check["id"] for check in data_tooling["checks"]),
                 "publish_state": data_tooling["publish_transaction_replay"]["final_state"],
+                "readiness_phases": tuple(phase["phase"] for phase in data_readiness["phases"]),
             },
         },
         {
@@ -13871,21 +13881,27 @@ def platform_parity_lifecycle_replay_contract() -> dict:
         {
             "phase": "validate_device_capabilities",
             "ok": mobile["ok"]
+            and mobile_readiness["ok"]
             and mobile_lifecycle["ok"]
+            and "phase_order_ready" in {check["id"] for check in mobile_readiness["checks"] if check["ok"]}
             and "runtime_and_designer_replay_aligned" in mobile_lifecycle["guards"],
             "evidence": {
                 "apis": tuple(adapter["api"] for adapter in mobile["contract"]["component_adapters"]["adapters"]),
                 "lifecycle_phases": mobile_lifecycle_phases,
+                "readiness_phases": tuple(phase["phase"] for phase in mobile_readiness["phases"]),
             },
         },
         {
             "phase": "validate_visual_depth",
             "ok": visual["ok"]
+            and visual_readiness["ok"]
             and visual_lifecycle["ok"]
+            and "phase_order_ready" in {check["id"] for check in visual_readiness["checks"] if check["ok"]}
             and "hit_tests_before_designer_replay" in visual_lifecycle["guards"],
             "evidence": {
                 "checks": tuple(check["id"] for check in visual["checks"]),
                 "lifecycle_phases": tuple(item["phase"] for item in visual_lifecycle["replay"]),
+                "readiness_phases": tuple(phase["phase"] for phase in visual_readiness["phases"]),
             },
         },
     )
@@ -13946,16 +13962,20 @@ def platform_parity_requirement_audit_contract() -> dict:
     analog_groups = component_analog_group_audit()
     component_readiness = component_parity_readiness_contract()
     runtime = pascal_runtime_workbench()
+    runtime_readiness = pascal_runtime_readiness_contract()
     inspector = object_inspector_workbench()
     bindings = livebindings_workbench()
     data_tooling = rad_data_tooling_workbench()
+    data_readiness = data_tooling_readiness_contract()
     package_manager = design_time_package_manager_workbench()
     package_lifecycle = component_package_lifecycle_transaction_replay()
     package_readiness = component_package_readiness_contract()
     mobile = mobile_native_api_workbench()
     mobile_lifecycle = mobile_device_capability_lifecycle_replay_contract()
+    mobile_readiness = mobile_native_api_readiness_contract()
     visual = cross_target_visual_depth_workbench()
     visual_lifecycle = cross_target_visual_lifecycle_replay_contract()
+    visual_readiness = cross_target_visual_readiness_contract()
     lifecycle = platform_parity_lifecycle_replay_contract()
     requirements = (
         {
@@ -13996,8 +14016,25 @@ def platform_parity_requirement_audit_contract() -> dict:
         {
             "id": "native_runtime_streaming",
             "ok": runtime["ok"]
+            and runtime_readiness["ok"]
+            and {
+                "stream_identity_ready",
+                "unit_semantics_ready",
+                "compile_targets_ready",
+                "diagnostics_route_ready",
+                "runtime_preview_ready",
+                "phase_order_ready",
+            }
+            <= {check["id"] for check in runtime_readiness["checks"] if check["ok"]}
             and {"form_stream_schema", "runtime_session_replay", "design_edit_session_replay"} <= {check["id"] for check in runtime["checks"]},
-            "evidence": runtime,
+            "deep_checks": (
+                "stream_identity_ready",
+                "compile_targets_ready",
+                "diagnostics_route_ready",
+                "runtime_preview_ready",
+                "phase_order_ready",
+            ),
+            "evidence": {"workbench": runtime, "readiness": runtime_readiness},
         },
         {
             "id": "inspector_design_surface",
@@ -14032,6 +14069,17 @@ def platform_parity_requirement_audit_contract() -> dict:
         {
             "id": "native_data_service_tooling",
             "ok": data_tooling["ok"]
+            and data_readiness["ok"]
+            and {
+                "connection_ready",
+                "dataset_ready",
+                "publish_ready",
+                "offline_replay_ready",
+                "replication_failover_ready",
+                "diagnostics_ready",
+                "phase_order_ready",
+            }
+            <= {check["id"] for check in data_readiness["checks"] if check["ok"]}
             and data_tooling["runtime_replay"]["ok"]
             and data_tooling["publish_transaction_replay"]["ok"]
             and "relationship_lookup_lifecycle_replay" in {check["id"] for check in data_tooling["checks"]},
@@ -14039,8 +14087,9 @@ def platform_parity_requirement_audit_contract() -> dict:
                 "relationship_lookup_lifecycle_replay",
                 "data_tooling_design_runtime_session_replay",
                 "data_tooling_publish_transaction_replay",
+                "phase_order_ready",
             ),
-            "evidence": data_tooling,
+            "evidence": {"workbench": data_tooling, "readiness": data_readiness},
         },
         {
             "id": "package_installation_ecosystem",
@@ -14069,16 +14118,55 @@ def platform_parity_requirement_audit_contract() -> dict:
         {
             "id": "device_api_component_coverage",
             "ok": mobile["ok"]
+            and mobile_readiness["ok"]
             and mobile_lifecycle["ok"]
+            and {
+                "privacy_permission_ready",
+                "simulator_ready",
+                "bridge_component_ready",
+                "fallback_lifecycle_ready",
+                "runtime_delivery_ready",
+                "designer_capability_ready",
+                "phase_order_ready",
+            }
+            <= {check["id"] for check in mobile_readiness["checks"] if check["ok"]}
             and "runtime_and_designer_replay_aligned" in mobile_lifecycle["guards"],
-            "evidence": {"workbench": mobile, "lifecycle": mobile_lifecycle},
+            "deep_checks": (
+                "privacy_permission_ready",
+                "bridge_component_ready",
+                "runtime_delivery_ready",
+                "designer_capability_ready",
+                "phase_order_ready",
+            ),
+            "evidence": {"workbench": mobile, "lifecycle": mobile_lifecycle, "readiness": mobile_readiness},
         },
         {
             "id": "cross_target_visual_depth",
             "ok": visual["ok"]
+            and visual_readiness["ok"]
             and visual_lifecycle["ok"]
+            and {
+                "style_ready",
+                "timeline_ready",
+                "effects_ready",
+                "scene_assets_ready",
+                "hit_test_component_ready",
+                "runtime_designer_replay_ready",
+                "runtime_package_ready",
+                "phase_order_ready",
+            }
+            <= {check["id"] for check in visual_readiness["checks"] if check["ok"]}
             and {"visual_runtime_replay", "visual_lifecycle_replay"} <= {check["id"] for check in visual["checks"]},
-            "evidence": {"workbench": visual, "lifecycle": visual_lifecycle},
+            "deep_checks": (
+                "style_ready",
+                "timeline_ready",
+                "effects_ready",
+                "scene_assets_ready",
+                "runtime_designer_replay_ready",
+                "runtime_package_ready",
+                "phase_order_ready",
+            ),
+            "evidence": {"workbench": visual, "lifecycle": visual_lifecycle, "readiness": visual_readiness},
         },
     )
     checks = (
