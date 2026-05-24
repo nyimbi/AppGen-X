@@ -211,6 +211,45 @@ ACP_STREAM_PROCESSING_POLICY = {
             "evidence."
         ),
     },
+    "developer_decision_brief": {
+        "headline": "Use appgen_event_contract.",
+        "ordinary_answer": (
+            "Generate the AppGen-X event contract with transactional "
+            "outbox/inbox tables, typed handlers, retries, idempotency, "
+            "dead-letter handling, and release evidence."
+        ),
+        "ordinary_manifest_rule": "Omit stream_processor.",
+        "ordinary_codegen_prompt": (
+            "Generate AppGen-X outbox/inbox events through the platform "
+            "adapter. Omit stream_processor. Do not compare stream engines."
+        ),
+        "developer_visible_options": ("appgen_event_contract",),
+        "developer_visible_option_count": 1,
+        "default_runtime_profile_visibility": "read_only_generated_metadata",
+        "studio_controls": (
+            "event_contract_designer",
+            "handler_registry_editor",
+            "retry_idempotency_dead_letter_editor",
+            "read_only_runtime_profile_badge",
+        ),
+        "studio_controls_to_hide": ("stream_engine_picker", "per_pbc_runtime_preference"),
+        "linter_rules": (
+            "ordinary_pbc_manifest_omits_stream_processor",
+            "generated_business_logic_imports_appgen_event_adapter_only",
+            "exception_profiles_require_stream_exception_evidence",
+            "one_stream_profile_per_pbc",
+        ),
+        "allowed_exceptions": ("quix_streams", "bytewax"),
+        "exception_gate": (
+            "Use an exception profile only for telemetry/time-series/high-volume "
+            "windowing or complex parallel dataflow with evidence."
+        ),
+        "small_model_stop_rule": (
+            "When the request is ordinary business, ERP, workflow, chatbot, "
+            "agent, integration, or PBC event handling, stop branching and use "
+            "the ordinary answer."
+        ),
+    },
     "developer_choice_algorithm": (
         {
             "step": 1,
@@ -973,6 +1012,7 @@ def acp_stream_processing_policy() -> dict:
         "allowed_processors": ACP_STREAM_PROCESSING_POLICY["allowed_processors"],
         "developer_guidance": ACP_STREAM_PROCESSING_POLICY["developer_guidance"],
         "developer_guidance_contract": ACP_STREAM_PROCESSING_POLICY["developer_guidance_contract"],
+        "developer_decision_brief": ACP_STREAM_PROCESSING_POLICY["developer_decision_brief"],
         "decision_card": ACP_STREAM_PROCESSING_POLICY["decision_card"],
         "developer_choice_algorithm": ACP_STREAM_PROCESSING_POLICY["developer_choice_algorithm"],
         "ordinary_workload_contract": ACP_STREAM_PROCESSING_POLICY["ordinary_workload_contract"],
@@ -999,6 +1039,7 @@ def acp_event_processing_developer_guidance() -> dict:
         "format": "appgen.acp-event-processing-developer-guidance.v1",
         "ok": True,
         **contract,
+        "decision_brief": ACP_STREAM_PROCESSING_POLICY["developer_decision_brief"],
         "policy_format": acp_stream_processing_policy()["format"],
         "default_runtime_profile": ACP_DEFAULT_STREAM_PROCESSOR,
     }
@@ -1838,6 +1879,8 @@ def pbc_release_audit() -> dict:
             "ok": stream_policy["default"] == "faust_streaming"
             and stream_policy["allowed_processors"] == ("faust_streaming", "quix_streams", "bytewax")
             and stream_policy["decision_card"]["choice_contract"] == "one_default_two_audited_exceptions"
+            and stream_policy["developer_decision_brief"]["developer_visible_options"] == ("appgen_event_contract",)
+            and "stream_engine_picker" in stream_policy["developer_decision_brief"]["studio_controls_to_hide"]
             and stream_policy["opinionated_stack"]["default_event_adapter"] == "appgen_outbox_inbox_faust_streaming"
             and stream_policy["decision_ladder"][0] == "omit_stream_processor_for_ordinary_apps"
             and all(item["use"] in stream_policy["allowed_processors"] for item in stream_policy["decision_tree"])

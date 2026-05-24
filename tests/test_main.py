@@ -769,11 +769,20 @@ def test_package_pbc_catalog_composes_enterprise_apps(runner: CliRunner) -> None
     assert stream_policy["developer_guidance_contract"]["ordinary_manifest_instruction"] == "Omit stream_processor."
     assert stream_policy["developer_guidance_contract"]["hard_limits"]["ordinary_stream_engine_picker"] is False
     assert stream_policy["developer_guidance_contract"]["hard_limits"]["stream_profiles_per_pbc"] == 1
+    assert stream_policy["developer_decision_brief"]["headline"] == "Use appgen_event_contract."
+    assert stream_policy["developer_decision_brief"]["ordinary_manifest_rule"] == "Omit stream_processor."
+    assert stream_policy["developer_decision_brief"]["developer_visible_options"] == ("appgen_event_contract",)
+    assert stream_policy["developer_decision_brief"]["developer_visible_option_count"] == 1
+    assert "stream_engine_picker" in stream_policy["developer_decision_brief"]["studio_controls_to_hide"]
+    assert "ordinary_pbc_manifest_omits_stream_processor" in stream_policy["developer_decision_brief"]["linter_rules"]
+    assert stream_policy["developer_decision_brief"]["allowed_exceptions"] == ("quix_streams", "bytewax")
     developer_guidance = acp_event_processing_developer_guidance()
     assert developer_guidance["format"] == "appgen.acp-event-processing-developer-guidance.v1"
     assert developer_guidance["answer"] == "Use appgen_event_contract."
     assert developer_guidance["visible_options"] == ("appgen_event_contract",)
     assert developer_guidance["exception_options"] == ("quix_streams", "bytewax")
+    assert developer_guidance["decision_brief"]["ordinary_codegen_prompt"].startswith("Generate AppGen-X outbox/inbox events")
+    assert developer_guidance["decision_brief"]["small_model_stop_rule"].startswith("When the request is ordinary business")
     assert "small_model_instruction" in developer_guidance
     assert developer_guidance["default_runtime_profile"] == "faust_streaming"
     assert stream_policy["developer_guidance"]["implementation_recipe"] == (

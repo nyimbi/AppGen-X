@@ -144,6 +144,11 @@ Studio controls, DSL lint rules, natural-language generation, and coding-agent
 prompts. It tells those tools to generate the standard outbox/inbox adapter
 path for ordinary work, hide stream-engine selection, and require exception
 evidence before `quix_streams` or `bytewax` can enter a manifest.
+For constrained generators, use `acp_event_processing_developer_guidance()`
+and read its `decision_brief`: it gives one headline, one ordinary manifest
+rule, the compact code-generation prompt, the IDE controls to show, and the
+stream-selection controls to hide. This prevents templates and agents from
+reopening the alternatives matrix.
 
 For ordinary generated applications, the developer-facing standard event stack
 is:

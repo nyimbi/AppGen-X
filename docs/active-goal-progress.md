@@ -434,6 +434,10 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   recommendation: generate the AppGen-X event contract, avoid stream-engine
   comparisons for ordinary work, keep runtime profiles as platform-owned
   metadata, and split evidence-backed exception workloads into their own PBCs.
+- Event-runtime guidance now exposes a compact `decision_brief` contract for
+  templates, DSL linting, Studio controls, and small local coding models:
+  use `appgen_event_contract`, omit `stream_processor`, show event-contract
+  controls, and hide stream-engine pickers for ordinary generated work.
 - Generated applications now emit one importable ERP template module and one
   generated test module for module catalogs, table blueprints, starter stacks,
   domain coverage, DSL packages, and release workbench surfaces, with generated

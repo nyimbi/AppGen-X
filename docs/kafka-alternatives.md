@@ -83,6 +83,18 @@ Tooling should consume the same compact contract exposed by
 | `ordinary_datastore_instruction` | `Use PostgreSQL by default, or MySQL/MariaDB when that is the project standard.` |
 | `exception_options` | `("quix_streams", "bytewax")` |
 
+The same object includes a `decision_brief` for token-constrained generators,
+DSL linting, package templates, and IDE controls. Use it as the single
+developer-facing card:
+
+```text
+headline: Use appgen_event_contract.
+ordinary_manifest_rule: Omit stream_processor.
+ordinary_codegen_prompt: Generate AppGen-X outbox/inbox events through the platform adapter. Omit stream_processor. Do not compare stream engines.
+developer_visible_options: appgen_event_contract
+studio_controls_to_hide: stream_engine_picker, per_pbc_runtime_preference
+```
+
 This compact guidance object is the source that IDE controls, DSL linting,
 natural-language generation, package templates, and external coding-agent
 prompts should read when they need the short answer. The long comparison is

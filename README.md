@@ -179,6 +179,11 @@ evidence-driven release-audit workflows.
 For token-constrained tools and coding agents, consume
 `acp_event_processing_developer_guidance()` and use its short answer directly:
 `Use appgen_event_contract. Omit stream_processor.`
+The returned `decision_brief` is the one-card contract for templates, DSL
+linting, Studio controls, and small local models: show the event contract
+designer, handler registry, retry/idempotency/dead-letter controls, and
+read-only runtime profile badge; hide stream-engine pickers and per-PBC runtime
+preferences for ordinary generated work.
 The policy also exposes a first-match `developer_choice_algorithm`: ordinary
 business, ERP, workflow, chatbot, agent, integration, and PBC event handling
 always generate the AppGen-X event contract with `stream_processor` omitted;
