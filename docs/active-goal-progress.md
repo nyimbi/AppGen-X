@@ -129,6 +129,7 @@ Build a complete AppGen IDE and generation platform with:
 | 2026-05-24 | `371e374` | Added generated agentic modules and generated tests for provider matrices, agent catalogs, tool policies, execution matrices, coding-agent vectors, and agentic release workbench surfaces. | Py compile; focused generated-app/form-designer/package-goal tests; staged hygiene scan passed. |
 | 2026-05-24 | `4a1b775` | Made the event-processing alternatives guide start with the ordinary developer answer and manifest recipe. | Focused PBC policy test, documentation diff check, and staged hygiene scan passed. |
 | 2026-05-24 | `f4d7c3c` | Added generated text-quality modules and generated tests for field catalogs, counter metrics, grammar hints, quality reports, form feedback, and text-quality release workbench surfaces. | Py compile; focused generated-app/form-designer/package-goal tests; staged hygiene scan passed. |
+| 2026-05-24 | `0cb5c5e` | Added generated rapid-prototyping modules and generated tests for prototype catalogs, sample data, screen mockups, preview packages, experiments, backlog promotion, and release workbench surfaces. | Py compile; focused generated-app/form-designer/package-goal tests; staged hygiene scan passed. |
 
 ## Current Working Slice
 
@@ -201,6 +202,10 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   generated tests for field catalogs, counter metrics, grammar hints, quality
   reports, form feedback, and text-quality release workbench surfaces, with
   generated text-quality manifests validating module and test coverage.
+- Generated applications now emit standalone rapid-prototyping modules and
+  generated tests for prototype catalogs, sample data, screen mockups, preview
+  packages, experiments, backlog promotion, and release workbench surfaces,
+  with generated prototyping manifests validating module and test coverage.
 - Event-runtime guidance now exposes a first-match developer choice algorithm:
   ordinary business, ERP, workflow, chatbot, agent, integration, and PBC event
   handling generate the AppGen-X event contract with `stream_processor`
