@@ -3003,6 +3003,9 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "generated_native_form_runtime",
         "generated_mobile_device_runtime",
     } <= set(generated_runtime_gate["passing_checks"])
+    artifact_gate = next(gate for gate in audit["gates"] if gate["id"] == "artifact_contract")
+    assert artifact_gate["ok"] is True
+    assert set(artifact_gate["required_artifacts"]) <= set(artifact_gate["passing_artifacts"])
     assert audit["rad_parity"]["format"] == "appgen.rad-parity-workbench.v1"
     assert audit["rad_parity"]["ok"] is True
     rad_parity_gate = next(gate for gate in audit["gates"] if gate["id"] == "rad_parity_workbench")
@@ -3138,6 +3141,11 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     assert ecosystem_gate["ok"] is True
     assert set(ecosystem_gate["required_categories"]) <= set(ecosystem_gate["passing_categories"])
     assert set(ecosystem_gate["required_checks"]) <= set(ecosystem_gate["passing_checks"])
+    rad_artifact_gate = next(
+        check for check in audit["rad_parity"]["checks"] if check["id"] == "artifact_contract"
+    )
+    assert rad_artifact_gate["ok"] is True
+    assert set(rad_artifact_gate["required_artifacts"]) <= set(rad_artifact_gate["passing_artifacts"])
     assert rad_parity_workbench()["ok"] is True
     assert {
         "native_ui_parity_component_parity",

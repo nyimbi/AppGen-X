@@ -14683,6 +14683,8 @@ def rad_parity_workbench(existing_paths: set[str] | None = None) -> dict:
         if existing_paths is None
         else existing_paths
     )
+    required_artifacts = ("app/form_designer.py", "app/templates/appgen_form_designer.html")
+    passing_artifacts = tuple(sorted(set(required_artifacts) & existing))
     install_plan = third_party_component_install_plan()
     package_workbench = component_package_workbench()
     component_readiness = component_parity_readiness_contract()
@@ -14929,7 +14931,9 @@ def rad_parity_workbench(existing_paths: set[str] | None = None) -> dict:
         },
         {
             "id": "artifact_contract",
-            "ok": {"app/form_designer.py", "app/templates/appgen_form_designer.html"} <= existing,
+            "ok": set(required_artifacts) <= set(passing_artifacts),
+            "required_artifacts": required_artifacts,
+            "passing_artifacts": passing_artifacts,
             "evidence": {"existing": tuple(sorted(existing))},
         },
     )
@@ -17383,6 +17387,8 @@ def form_designer_release_audit(existing_paths: set[str] | None = None) -> dict:
         if existing_paths is None
         else existing_paths
     )
+    required_artifacts = ("app/form_designer.py", "app/templates/appgen_form_designer.html")
+    passing_artifacts = tuple(sorted(set(required_artifacts) & existing))
     design = form_design()
     matrix = field_component_matrix()
     drop = snap_drop("TextBox", 2.3, 7.7, field="generated_note")
@@ -17458,7 +17464,9 @@ def form_designer_release_audit(existing_paths: set[str] | None = None) -> dict:
         },
         {
             "id": "artifact_contract",
-            "ok": {"app/form_designer.py", "app/templates/appgen_form_designer.html"} <= existing,
+            "ok": set(required_artifacts) <= set(passing_artifacts),
+            "required_artifacts": required_artifacts,
+            "passing_artifacts": passing_artifacts,
         },
         {
             "id": "generation_smoke",
