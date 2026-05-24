@@ -524,6 +524,10 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   contracts directly, so top-level lifecycle and requirement audits prove the
   ordered readiness paths instead of only relying on older subsystem workbench
   checks.
+- Event-processing guidance now starts with the developer instruction instead
+  of a comparison: use the generated AppGen-X event contract, omit
+  `stream_processor`, and open only evidence-backed telemetry or dataflow
+  exception lanes.
 
 ## Open Completion Areas
 

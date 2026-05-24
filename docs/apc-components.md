@@ -78,7 +78,7 @@ To scale effectively, the Application Composition Platform should structure thes
 └────────────────────────────────┬────────────────────────────────┘
                                  │
 ┌────────────────────────────────▼────────────────────────────────┐
-│      Event Backbone & Gateway Fabric (Kafka / Schema Registry)  │
+│ AppGen-X Event Contract & Gateway Fabric (Outbox/Inbox + Schema)│
 └────────────────────────────────┬────────────────────────────────┘
                                  │
 ┌────────────────────────────────▼────────────────────────────────┐

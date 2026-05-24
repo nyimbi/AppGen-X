@@ -1,5 +1,34 @@
 # Opinionated Event Processing Standard
 
+## Developer Guidance
+
+Use the generated AppGen-X event contract.
+
+For ordinary generated applications, ERP modules, workflows, chatbots, agents,
+integrations, and PBCs, developers do not select a broker, stream processor,
+state store, or library. They model commands and events; AppGen-X generates
+owned tables, transactional outbox/inbox tables, typed handlers, retry,
+idempotency, dead-letter, and release evidence behind the platform event
+adapter.
+
+The ordinary manifest rule is:
+
+```text
+Use appgen_event_contract.
+Omit stream_processor.
+```
+
+Only two exception lanes exist, and both require `stream_exception_evidence`:
+
+- telemetry, time-series, high-volume ingestion, or windowed metrics use the
+  telemetry exception profile;
+- complex parallel dataflow, CPU-heavy stream transforms, or multi-stage
+  analytical pipelines use the dataflow exception profile.
+
+If the workload is unclear, generate the ordinary contract and stop branching.
+This is how AppGen-X avoids multiplying every generated app by stream runtime,
+datastore, adapter, target package, deployment profile, and PBC variant.
+
 ## Normative Decision
 
 AppGen-X makes the event-processing choice for platform developers.
