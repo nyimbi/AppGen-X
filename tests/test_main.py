@@ -3089,6 +3089,11 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     assert component_parity_gate["ok"] is True
     assert set(component_parity_gate["required_categories"]) <= set(component_parity_gate["passing_categories"])
     assert component_parity_gate["passing_component_count"] >= component_parity_gate["required_component_count"]
+    usability_gate = next(
+        check for check in audit["rad_parity"]["checks"] if check["id"] == "built_in_component_usability"
+    )
+    assert usability_gate["ok"] is True
+    assert set(usability_gate["required_checks"]) <= set(usability_gate["passing_checks"])
     runtime_stream_gate = next(
         check for check in audit["rad_parity"]["checks"] if check["id"] == "pascal_runtime_and_dfm_streaming"
     )

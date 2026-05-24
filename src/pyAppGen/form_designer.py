@@ -14686,6 +14686,7 @@ def rad_parity_workbench(existing_paths: set[str] | None = None) -> dict:
     install_plan = third_party_component_install_plan()
     package_workbench = component_package_workbench()
     component_readiness = component_parity_readiness_contract()
+    usability_workbench = component_usability_workbench()
     package_readiness = component_package_readiness_contract()
     streaming_contract = dfm_streaming_contract()
     runtime_workbench = pascal_runtime_workbench()
@@ -14714,6 +14715,28 @@ def rad_parity_workbench(existing_paths: set[str] | None = None) -> dict:
     )
     required_component_palette_categories = ("input", "calendar", "relationship", "media", "action")
     passing_component_palette_categories = tuple(sorted(set(palette_categories())))
+    required_component_usability_checks = (
+        "complete_catalog",
+        "runtime_renderers",
+        "property_editors",
+        "events",
+        "validation_rules",
+        "drop_defaults",
+        "preview_contracts",
+        "design_surface_actions",
+        "per_component_files",
+        "per_package_files",
+        "per_component_test_files",
+        "per_package_test_files",
+        "module_smoke_tests",
+        "requested_analog_coverage",
+        "component_behavior",
+        "ide_readiness_catalog",
+        "component_parity_readiness",
+    )
+    passing_component_usability_checks = tuple(
+        check["id"] for check in usability_workbench["checks"] if check["ok"]
+    )
     required_inspector_tabs = ("Properties", "Events")
     passing_inspector_tabs = tuple(object_inspector_contract()["tabs"])
     required_binding_edges = ("control_to_field",)
@@ -14771,8 +14794,11 @@ def rad_parity_workbench(existing_paths: set[str] | None = None) -> dict:
         },
         {
             "id": "built_in_component_usability",
-            "ok": component_usability_workbench()["ok"],
-            "evidence": component_usability_workbench(),
+            "ok": usability_workbench["ok"]
+            and set(required_component_usability_checks) <= set(passing_component_usability_checks),
+            "required_checks": required_component_usability_checks,
+            "passing_checks": passing_component_usability_checks,
+            "evidence": usability_workbench,
         },
         {
             "id": "pascal_runtime_and_dfm_streaming",
