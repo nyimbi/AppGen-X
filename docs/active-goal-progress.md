@@ -25,7 +25,7 @@ Build a complete AppGen IDE and generation platform with:
 
 | Date | Commit | Slice | Evidence |
 | --- | --- | --- | --- |
-| 2026-05-24 | `current` | Made the source and package form-designer artifact gates expose required and passing generated artifacts used for release evidence. | Py compile, focused generated form-designer parity smoke, scoped diff check, and scoped restricted-name scan passed. |
+| 2026-05-24 | `d2b620c` | Made the source and package form-designer artifact gates expose required and passing generated artifacts used for release evidence. | Py compile, focused generated form-designer parity smoke, scoped diff check, and scoped restricted-name scan passed. |
 | 2026-05-24 | `ba9666b` | Made the source third-party component ecosystem gate expose required and passing ecosystem categories and package workbench checks used for release evidence. | Py compile, focused generated form-designer parity smoke, scoped diff check, and scoped restricted-name scan passed. |
 | 2026-05-24 | `604cddb` | Made the source built-in component usability gate expose required and passing usability checks used for release evidence. | Py compile, focused generated form-designer parity smoke, scoped diff check, and scoped restricted-name scan passed. |
 | 2026-05-24 | `24448e6` | Made the source native runtime and design-streaming gate expose required and passing stream formats, compiler stages, and runtime replay phases used for release evidence. | Py compile, focused generated form-designer parity smoke, scoped diff check, and scoped restricted-name scan passed. |
