@@ -122,6 +122,7 @@ from pyAppGen.form_designer import cross_target_visual_actionable_operations
 from pyAppGen.form_designer import cross_target_visual_component_spec_contract
 from pyAppGen.form_designer import cross_target_visual_depth_workbench
 from pyAppGen.form_designer import cross_target_visual_lifecycle_replay_contract
+from pyAppGen.form_designer import cross_target_visual_readiness_contract
 from pyAppGen.form_designer import cross_target_visual_runtime_package_contract
 from pyAppGen.form_designer import design_time_package_manager_workbench
 from pyAppGen.form_designer import detect_overlaps
@@ -2066,6 +2067,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "visual_runtime_package",
         "visual_component_specs",
         "actionable_visual_operations",
+        "visual_readiness_contract",
     } == {check["id"] for check in visual_depth["checks"]}
     assert {"inspect_effective_value", "revert_override"} <= set(visual_depth["contract"]["style_cascade"]["operations"])
     assert {"add_keyframe", "scrub_preview"} <= set(visual_depth["contract"]["timeline_authoring"]["operations"])
@@ -2163,6 +2165,32 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     } <= {check["id"] for check in visual_runtime_package["checks"] if check["ok"]}
     assert visual_depth["runtime_package"]["ok"] is True
     assert "scene_materials_packaged" in visual_depth["runtime_package"]["guards"]
+    visual_readiness = cross_target_visual_readiness_contract()
+    assert visual_readiness["format"] == "appgen.cross-target-visual-readiness-contract.v1"
+    assert visual_readiness["ok"] is True
+    assert {
+        "author_style_resources",
+        "author_animation_timeline",
+        "validate_effect_stack",
+        "author_scene_and_assets",
+        "bind_hit_tests_and_components",
+        "replay_runtime_and_designer",
+        "package_runtime_targets",
+    } == {item["phase"] for item in visual_readiness["phases"]}
+    assert {
+        "style_ready",
+        "timeline_ready",
+        "effects_ready",
+        "scene_assets_ready",
+        "hit_test_component_ready",
+        "runtime_designer_replay_ready",
+        "runtime_package_ready",
+        "operation_surface_ready",
+        "phase_order_ready",
+    } == {check["id"] for check in visual_readiness["checks"]}
+    assert visual_readiness["final_state"]["runtime_targets"] >= 4
+    assert visual_depth["readiness"]["ok"] is True
+    assert visual_depth["readiness"]["final_state"]["component_specs"] >= 9
     third_party_registry = third_party_component_registry()
     assert {"devexpress-native", "tms-fnc", "fastreport", "teechart", "indy"} <= {
         item["id"] for item in third_party_registry
@@ -12964,6 +12992,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "visual_runtime_package",
         "visual_component_specs",
         "actionable_visual_operations",
+        "visual_readiness_contract",
     } == {check["id"] for check in generated_visual_depth["checks"]}
     assert generated_visual_depth["contract"]["asset_import"]["budgets"]["max_mesh_triangles"] > 0
     assert generated_visual_depth["style_resolution"]["ordered_layers"][0] == "base_theme"
@@ -13044,6 +13073,32 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     } <= {check["id"] for check in generated_visual_package["checks"] if check["ok"]}
     assert generated_visual_depth["runtime_package"]["ok"] is True
     assert "scene_materials_packaged" in generated_visual_depth["runtime_package"]["guards"]
+    generated_visual_readiness = form_designer.cross_target_visual_readiness_contract()
+    assert generated_visual_readiness["format"] == "appgen.generated-cross-target-visual-readiness-contract.v1"
+    assert generated_visual_readiness["ok"] is True
+    assert {
+        "author_style_resources",
+        "author_animation_timeline",
+        "validate_effect_stack",
+        "author_scene_and_assets",
+        "bind_hit_tests_and_components",
+        "replay_runtime_and_designer",
+        "package_runtime_targets",
+    } == {item["phase"] for item in generated_visual_readiness["phases"]}
+    assert {
+        "style_ready",
+        "timeline_ready",
+        "effects_ready",
+        "scene_assets_ready",
+        "hit_test_component_ready",
+        "runtime_designer_replay_ready",
+        "runtime_package_ready",
+        "operation_surface_ready",
+        "phase_order_ready",
+    } == {check["id"] for check in generated_visual_readiness["checks"]}
+    assert generated_visual_readiness["final_state"]["runtime_targets"] >= 4
+    assert generated_visual_depth["readiness"]["ok"] is True
+    assert generated_visual_depth["readiness"]["final_state"]["component_specs"] >= 9
     visual_depth_runtime_file = output_dir / "visual_depth_runtime.py"
     assert visual_depth_runtime_file.exists()
     py_compile.compile(str(visual_depth_runtime_file), doraise=True)

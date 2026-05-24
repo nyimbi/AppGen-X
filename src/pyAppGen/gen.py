@@ -53667,6 +53667,81 @@ def cross_target_visual_actionable_operations():
     }}
 
 
+def cross_target_visual_readiness_contract():
+    """Prove the generated visual styling, animation, effects, and 3D path as one ordered contract."""
+    style = cross_target_author_style_operation()
+    timeline = cross_target_author_timeline_operation()
+    effects = cross_target_validate_effect_stack_operation()
+    scene = cross_target_author_scene_operation()
+    asset_import = cross_target_import_visual_asset_operation()
+    hit_test = cross_target_hit_test_transform_operation()
+    component_validation = cross_target_validate_visual_component_operation()
+    runtime_replay = cross_target_visual_runtime_replay_contract()
+    designer_replay = cross_target_visual_designer_transaction_replay_contract()
+    lifecycle = cross_target_visual_lifecycle_replay_contract()
+    runtime_package = cross_target_visual_runtime_package_contract()
+    component_specs = cross_target_visual_component_spec_contract()
+    actionable = cross_target_visual_actionable_operations()
+    phases = (
+        {{"phase": "author_style_resources", "pipeline": style["pipeline"], "ok": style["ok"] and {{"inspect_effective_value", "publish_effective_value"}} <= set(style["pipeline"])}},
+        {{"phase": "author_animation_timeline", "pipeline": timeline["pipeline"], "ok": timeline["ok"] and {{"scrub_preview", "export_runtime_timeline"}} <= set(timeline["pipeline"])}},
+        {{"phase": "validate_effect_stack", "pipeline": effects["pipeline"], "ok": effects["ok"] and {{"validate_budget", "compile_fallback"}} <= set(effects["pipeline"])}},
+        {{"phase": "author_scene_and_assets", "pipeline": scene["pipeline"] + asset_import["pipeline"], "ok": scene["ok"] and asset_import["ok"] and {{"assign_material", "validate_scene"}} <= set(scene["pipeline"]) and {{"write_asset_manifest", "generate_fallback_thumbnail"}} <= set(asset_import["pipeline"])}},
+        {{"phase": "bind_hit_tests_and_components", "pipeline": hit_test["pipeline"] + component_validation["pipeline"], "ok": hit_test["ok"] and component_validation["ok"] and "sync_inspector" in hit_test["pipeline"] and "verify_runtime_artifacts" in component_validation["pipeline"]}},
+        {{"phase": "replay_runtime_and_designer", "pipeline": tuple(item["phase"] for item in runtime_replay["replay"]) + tuple(item["phase"] for item in designer_replay["replay"]) + tuple(item["phase"] for item in lifecycle["replay"]), "ok": runtime_replay["ok"] and designer_replay["ok"] and lifecycle["ok"] and "runtime_replay_matches_designer_state" in designer_replay["guards"]}},
+        {{"phase": "package_runtime_targets", "pipeline": tuple(check["id"] for check in runtime_package["checks"]), "ok": runtime_package["ok"] and {{"web", "mobile", "desktop", "pwa"}} <= set(runtime_package["targets"]) and {{"target_artifacts_complete", "scene_materials_packaged"}} <= set(check["id"] for check in runtime_package["checks"] if check["ok"])}},
+    )
+    checks = (
+        {{"id": "style_ready", "ok": phases[0]["ok"], "evidence": style}},
+        {{"id": "timeline_ready", "ok": phases[1]["ok"], "evidence": timeline}},
+        {{"id": "effects_ready", "ok": phases[2]["ok"], "evidence": effects}},
+        {{"id": "scene_assets_ready", "ok": phases[3]["ok"], "evidence": {{"scene": scene, "asset_import": asset_import}}}},
+        {{"id": "hit_test_component_ready", "ok": phases[4]["ok"] and component_specs["ok"], "evidence": {{"hit_test": hit_test, "component_specs": component_specs}}}},
+        {{"id": "runtime_designer_replay_ready", "ok": phases[5]["ok"], "evidence": {{"runtime": runtime_replay, "designer": designer_replay, "lifecycle": lifecycle}}}},
+        {{"id": "runtime_package_ready", "ok": phases[6]["ok"], "evidence": runtime_package}},
+        {{"id": "operation_surface_ready", "ok": actionable["ok"] and not actionable["side_effects"], "evidence": actionable}},
+        {{
+            "id": "phase_order_ready",
+            "ok": tuple(item["phase"] for item in phases)
+            == (
+                "author_style_resources",
+                "author_animation_timeline",
+                "validate_effect_stack",
+                "author_scene_and_assets",
+                "bind_hit_tests_and_components",
+                "replay_runtime_and_designer",
+                "package_runtime_targets",
+            ),
+            "evidence": tuple(item["phase"] for item in phases),
+        }},
+    )
+    return {{
+        "format": "appgen.generated-cross-target-visual-readiness-contract.v1",
+        "ok": all(phase["ok"] for phase in phases) and all(check["ok"] for check in checks),
+        "phases": phases,
+        "checks": checks,
+        "final_state": {{
+            "style_tokens": len(style["tokens"]),
+            "timeline_samples": len(timeline["samples"]),
+            "effect_fallbacks": sum(1 for row in effects["fallback_matrix"]["rows"] if row["decision"] == "use_fallback"),
+            "scene_nodes": len(scene["scene_integrity"]["nodes"]),
+            "component_specs": len(component_specs["specs"]),
+            "runtime_targets": len(runtime_package["targets"]),
+            "runtime_steps": len(runtime_replay["replay"]),
+        }},
+        "guards": (
+            "style_before_animation",
+            "animation_before_effects",
+            "effects_before_scene_assets",
+            "scene_assets_before_runtime_replay",
+            "runtime_replay_before_package",
+            "side_effect_free_readiness",
+        ),
+        "side_effects": (),
+        "blocking_gaps": tuple(check for check in checks if not check["ok"]),
+    }}
+
+
 def cross_target_visual_depth_workbench():
     """Prove animation, styling, effects, and 3D designer depth."""
     contract = cross_target_visual_depth_contract()
@@ -53694,6 +53769,7 @@ def cross_target_visual_depth_workbench():
     runtime_package = cross_target_visual_runtime_package_contract()
     actionable_operations = cross_target_visual_actionable_operations()
     visual_component_specs = cross_target_visual_component_spec_contract()
+    readiness = cross_target_visual_readiness_contract()
     checks = (
         {{"id": "style_resources", "ok": {{"stylebook", "theme_tokens", "state_triggers", "multi_resolution_bitmaps"}} <= set(contract["style_resources"]["resources"]) and {{"normal", "pressed", "focused", "disabled"}} <= set(contract["style_resources"]["states"]), "evidence": contract["style_resources"]}},
         {{"id": "animation_state_graph", "ok": {{"state", "timeline", "path_animation"}} <= {{node["kind"] for node in contract["state_graph"]["nodes"]}} and {{"ease_in", "ease_out", "spring"}} <= set(contract["state_graph"]["easing"]), "evidence": contract["state_graph"]}},
@@ -53730,9 +53806,10 @@ def cross_target_visual_depth_workbench():
         {{"id": "visual_runtime_package", "ok": runtime_package["ok"] and {{"web", "mobile", "desktop", "pwa"}} <= set(runtime_package["targets"]) and {{"target_artifacts_complete", "scene_materials_packaged"}} <= set(runtime_package["guards"]) and not runtime_package["side_effects"], "evidence": runtime_package}},
         {{"id": "visual_component_specs", "ok": visual_component_specs["ok"] and {{"StyleBook", "FloatAnimation", "ColorAnimation", "PathAnimation", "Effect", "Viewport3D", "Camera3D", "Light3D", "Mesh3D"}} <= {{spec["component"] for spec in visual_component_specs["specs"]}} and all(spec["design_tools"] and spec["runtime_artifacts"] for spec in visual_component_specs["specs"]) and not visual_component_specs["side_effects"], "evidence": visual_component_specs}},
         {{"id": "actionable_visual_operations", "ok": actionable_operations["ok"] and {{"author_style", "author_timeline", "validate_effect_stack", "author_scene", "import_visual_asset", "hit_test_transform", "validate_visual_component"}} <= set(actionable_operations["operations"]) and not actionable_operations["side_effects"], "evidence": actionable_operations}},
+        {{"id": "visual_readiness_contract", "ok": readiness["ok"] and {{"style_ready", "timeline_ready", "effects_ready", "scene_assets_ready", "hit_test_component_ready", "runtime_designer_replay_ready", "runtime_package_ready", "operation_surface_ready", "phase_order_ready"}} <= set(check["id"] for check in readiness["checks"] if check["ok"]) and not readiness["side_effects"], "evidence": readiness}},
     )
     ok = all(check["ok"] for check in checks)
-    return {{"format": "appgen.generated-cross-target-visual-depth-workbench.v1", "ok": ok, "decision": "approved" if ok else "blocked", "contract": contract, "style_resolution": style_resolution, "timeline_playback": timeline_playback, "effect_render": effect_render, "scene_validation": scene_validation, "asset_import_workflow": asset_import, "preview_diff": preview_diff, "style_tokens": style_tokens, "timeline_scrub": timeline_scrub, "effect_budget": effect_budget, "scene_integrity": scene_integrity, "material_binding": material_binding, "timeline_runtime_export": timeline_runtime_export, "shader_material_editor": shader_material_editor, "scene_hit_testing": scene_hit_testing, "style_inheritance_trace": style_inheritance_trace, "timeline_interpolation": timeline_interpolation, "effect_fallback_matrix": effect_fallback_matrix, "scene_transform_gizmos": scene_transform_gizmos, "runtime_replay": runtime_replay, "designer_transaction_replay": designer_transaction_replay, "lifecycle_replay": lifecycle_replay, "runtime_package": runtime_package, "visual_component_specs": visual_component_specs, "actionable_operations": actionable_operations, "checks": checks, "blocking_gaps": tuple(check for check in checks if not check["ok"])}}
+    return {{"format": "appgen.generated-cross-target-visual-depth-workbench.v1", "ok": ok, "decision": "approved" if ok else "blocked", "contract": contract, "style_resolution": style_resolution, "timeline_playback": timeline_playback, "effect_render": effect_render, "scene_validation": scene_validation, "asset_import_workflow": asset_import, "preview_diff": preview_diff, "style_tokens": style_tokens, "timeline_scrub": timeline_scrub, "effect_budget": effect_budget, "scene_integrity": scene_integrity, "material_binding": material_binding, "timeline_runtime_export": timeline_runtime_export, "shader_material_editor": shader_material_editor, "scene_hit_testing": scene_hit_testing, "style_inheritance_trace": style_inheritance_trace, "timeline_interpolation": timeline_interpolation, "effect_fallback_matrix": effect_fallback_matrix, "scene_transform_gizmos": scene_transform_gizmos, "runtime_replay": runtime_replay, "designer_transaction_replay": designer_transaction_replay, "lifecycle_replay": lifecycle_replay, "runtime_package": runtime_package, "visual_component_specs": visual_component_specs, "actionable_operations": actionable_operations, "readiness": readiness, "checks": checks, "blocking_gaps": tuple(check for check in checks if not check["ok"])}}
 
 
 def snap_to_grid(value, minimum=0):

@@ -483,6 +483,11 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   probing, dataset design, service resource publishing, offline replay,
   replication/failover monitoring, and runtime diagnostics as one ordered,
   side-effect-free path in both package and generated-app workbenches.
+- Visual design depth now exposes a readiness contract that proves style
+  authoring, animation timeline export, effect fallback validation, 3D scene
+  and asset authoring, hit-test/component binding, runtime/designer replay, and
+  target runtime packaging as one ordered path in both package and generated
+  app workbenches.
 
 ## Open Completion Areas
 
