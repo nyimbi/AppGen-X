@@ -14780,6 +14780,22 @@ def rad_parity_workbench(existing_paths: set[str] | None = None) -> dict:
     passing_compiler_stages = tuple(runtime_workbench["compiler"]["stages"])
     required_runtime_replay_phases = ("stream_decode", "semantic_static_analysis", "target_emit", "runtime_load")
     passing_runtime_replay_phases = tuple(phase["phase"] for phase in runtime_workbench["runtime_replay"]["replay"])
+    required_third_party_categories = ("grid", "reports", "charts", "database", "network", "animation")
+    passing_third_party_categories = tuple(sorted(third_party_categories))
+    required_package_workbench_checks = (
+        "registry_coverage",
+        "adapter_coverage",
+        "load_policy_guards",
+        "install_plan_review",
+        "install_session_replay",
+        "package_manager_workbench",
+        "package_behavior_workbench",
+        "actionable_package_operations",
+        "package_file_exports",
+    )
+    passing_package_workbench_checks = tuple(
+        check["id"] for check in package_workbench["checks"] if check["ok"]
+    )
     checks = (
         {
             "id": "native_ui_parity_component_parity",
@@ -14875,11 +14891,16 @@ def rad_parity_workbench(existing_paths: set[str] | None = None) -> dict:
         {
             "id": "third_party_component_ecosystem",
             "ok": install_plan["ok"]
-            and {"grid", "reports", "charts", "database", "network", "animation"} <= third_party_categories
+            and set(required_third_party_categories) <= set(passing_third_party_categories)
+            and set(required_package_workbench_checks) <= set(passing_package_workbench_checks)
             and package_workbench["ok"],
+            "required_categories": required_third_party_categories,
+            "passing_categories": passing_third_party_categories,
+            "required_checks": required_package_workbench_checks,
+            "passing_checks": passing_package_workbench_checks,
             "evidence": {
                 "packages": install_plan["packages"],
-                "categories": tuple(sorted(third_party_categories)),
+                "categories": passing_third_party_categories,
                 "package_workbench": package_workbench,
             },
         },

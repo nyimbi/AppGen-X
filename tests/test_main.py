@@ -3132,6 +3132,12 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     )
     assert visual_depth_gate["ok"] is True
     assert set(visual_depth_gate["required_surfaces"]) <= set(visual_depth_gate["passing_surfaces"])
+    ecosystem_gate = next(
+        check for check in audit["rad_parity"]["checks"] if check["id"] == "third_party_component_ecosystem"
+    )
+    assert ecosystem_gate["ok"] is True
+    assert set(ecosystem_gate["required_categories"]) <= set(ecosystem_gate["passing_categories"])
+    assert set(ecosystem_gate["required_checks"]) <= set(ecosystem_gate["passing_checks"])
     assert rad_parity_workbench()["ok"] is True
     assert {
         "native_ui_parity_component_parity",
