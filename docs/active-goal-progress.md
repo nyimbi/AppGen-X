@@ -132,6 +132,8 @@ Build a complete AppGen IDE and generation platform with:
 | 2026-05-24 | `0cb5c5e` | Added generated rapid-prototyping modules and generated tests for prototype catalogs, sample data, screen mockups, preview packages, experiments, backlog promotion, and release workbench surfaces. | Py compile; focused generated-app/form-designer/package-goal tests; staged hygiene scan passed. |
 | 2026-05-24 | `358982a` | Added generated support-center modules and generated tests for knowledge topics, tutorials, sample apps, onboarding checklists, support search, ticket payloads, and support release workbench surfaces. | Py compile; focused generated-app/form-designer/package-goal tests; staged hygiene scan passed. |
 | 2026-05-24 | `0a8eee6` | Added generated view-experience modules and generated tests for resource catalogs, offline state, presence/access, help/footer context, polished view states, and view-experience release workbench surfaces. | Py compile; focused generated-app/form-designer/package-goal tests; staged hygiene scan passed. |
+| 2026-05-24 | `824f9a0` | Added generated natural-language evolution modules and generated tests for plan extraction, DSL rendering, migration impact, changesets, approval workflow, destructive guardrails, and release workbench surfaces. | Py compile; focused generated-app/form-designer/package-goal tests; staged hygiene scan passed. |
+| 2026-05-24 | `fd8788a` | Added a compact executable event-processing developer guidance contract so tools and coding agents get one answer instead of a stream-runtime selection matrix. | Py compile; focused PBC policy test; documentation diff check; staged hygiene scan passed. |
 
 ## Current Working Slice
 
@@ -167,6 +169,12 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   handlers, idempotency, retry, dead-letter, and release evidence through the
   AppGen-X event adapter, while omitting `stream_processor` unless an audited
   telemetry/time-series or complex dataflow exception is present.
+- Event-processing policy now exposes `acp_event_processing_developer_guidance()`
+  as the compact source for IDE controls, DSL linting, natural-language
+  generation, package templates, and coding-agent prompts: use
+  `appgen_event_contract`, omit `stream_processor`, and route only
+  evidence-backed telemetry/time-series or complex dataflow workloads into the
+  exception workflow.
 - Generated applications now emit standalone no-code designer modules and
   generated tests for visual graphs, schema diagrams, proposal modeling,
   migration previews, and visual modeling release workbench surfaces, with
