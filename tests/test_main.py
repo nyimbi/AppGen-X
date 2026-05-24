@@ -9855,6 +9855,34 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert "/agents/workbench.json" in next(
         check["evidence"]["routes"] for check in agentic_workbench["checks"] if check["id"] == "route_surface"
     )
+    agentic_module_files = agents.agentic_module_file_manifest()
+    agentic_module_tests = agents.agentic_module_test_file_manifest()
+    assert agentic_module_files["format"] == "appgen.agentic-module-file-manifest.v1"
+    assert agentic_module_files["ok"] is True
+    assert agentic_module_tests["format"] == "appgen.agentic-module-test-file-manifest.v1"
+    assert agentic_module_tests["ok"] is True
+    assert {
+        "provider_matrix",
+        "agent_catalog",
+        "tool_policy",
+        "execution_matrix",
+        "coding_agent_vectors",
+        "release_workbench",
+    } == {item["surface"] for item in agentic_module_files["modules"]}
+    for item in agentic_module_files["modules"]:
+        module_path = output_dir / item["path"].replace("app/", "")
+        py_compile.compile(str(module_path), doraise=True)
+        module = _load_module(module_path, f"generated_agentic_module_{item['module']}")
+        assert module.module_contract()["ok"] is True
+        assert module.agentic_manifest()["ok"] is True
+        assert module.run_agentic_operation()["ok"] is True
+        assert module.release_context()["ok"] is True
+        assert module.smoke_test()["ok"] is True
+    for item in agentic_module_tests["tests"]:
+        test_path = output_dir / item["path"].replace("app/", "")
+        py_compile.compile(str(test_path), doraise=True)
+        module = _load_module(test_path, f"generated_agentic_module_test_{item['module']}")
+        assert module.smoke_test()["ok"] is True
     assert agents.agentic_workbench({"app/agents.py"}, environ={"OPENAI_API_KEY": "test"})["ok"] is False
     assert {item["target"] for item in platforms.platform_catalog()} == {"web", "pwa", "mobile", "desktop", "chatbot"}
     mobile_contract = platforms.platform_contract("mobile")

@@ -1846,6 +1846,27 @@ def write_agents_file(output_dir, schema: AppSchema):
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
     (output_dir / "agents.py").write_text(_agents_text(schema))
+    write_agentic_module_files(output_dir)
+
+
+def write_agentic_module_files(output_dir):
+    """Write generated agentic system modules and smoke tests."""
+    output_dir = Path(output_dir)
+    module_dir = output_dir / "agentic_modules"
+    test_dir = output_dir / "agentic_module_tests"
+    module_dir.mkdir(parents=True, exist_ok=True)
+    test_dir.mkdir(parents=True, exist_ok=True)
+    (module_dir / "__init__.py").write_text(_agentic_module_init_text(), encoding="utf-8")
+    (test_dir / "__init__.py").write_text(_agentic_module_test_init_text(), encoding="utf-8")
+    for module_name in AGENTIC_MODULES:
+        (module_dir / f"{module_name}.py").write_text(
+            _agentic_module_text(module_name),
+            encoding="utf-8",
+        )
+        (test_dir / f"test_{module_name}.py").write_text(
+            _agentic_module_test_text(module_name),
+            encoding="utf-8",
+        )
 
 
 def write_i18n_file(output_dir, schema: AppSchema):
@@ -2490,6 +2511,15 @@ NOTIFICATION_MODULES = (
     "queue_metadata_module",
     "secret_policy_module",
     "notification_release_workbench_module",
+)
+
+AGENTIC_MODULES = (
+    "provider_matrix_module",
+    "agent_catalog_module",
+    "tool_policy_module",
+    "execution_matrix_module",
+    "coding_agent_vector_module",
+    "agentic_release_workbench_module",
 )
 
 DATABASE_OPS_MODULES = (
@@ -40369,6 +40399,251 @@ def register_notifications(appbuilder):
 '''
 
 
+def _agentic_module_init_text() -> str:
+    return (
+        '"""Generated agentic system modules."""\n\n'
+        f"AGENTIC_MODULES = {AGENTIC_MODULES!r}\n"
+    )
+
+
+def _agentic_module_test_init_text() -> str:
+    modules = tuple(f"test_{name}" for name in AGENTIC_MODULES)
+    return (
+        '"""Generated agentic system module tests."""\n\n'
+        f"AGENTIC_MODULE_TESTS = {modules!r}\n"
+    )
+
+
+def _agentic_module_surface(module_name: str) -> tuple[str, str]:
+    return {
+        "provider_matrix_module": ("provider_matrix", "provider_connection_matrix"),
+        "agent_catalog_module": ("agent_catalog", "agent_catalog"),
+        "tool_policy_module": ("tool_policy", "agent_tool_policy"),
+        "execution_matrix_module": ("execution_matrix", "agent_execution_matrix"),
+        "coding_agent_vector_module": ("coding_agent_vectors", "coding_agent_vector_catalog"),
+        "agentic_release_workbench_module": ("release_workbench", "agentic_release_gate"),
+    }[module_name]
+
+
+def _agentic_module_text(module_name: str) -> str:
+    surface, operation = _agentic_module_surface(module_name)
+    return f'''"""Generated agentic system module for {surface}."""
+
+from __future__ import annotations
+
+import importlib.util
+from pathlib import Path
+
+
+MODULE = {module_name!r}
+SURFACE = {surface!r}
+OPERATION = {operation!r}
+EXPECTED_EXPORTS = (
+    "module_contract",
+    "agentic_manifest",
+    "run_agentic_operation",
+    "release_context",
+    "smoke_test",
+)
+
+
+def _agents():
+    module_path = Path(__file__).resolve().parents[1] / "agents.py"
+    spec = importlib.util.spec_from_file_location(f"generated_agents_{{MODULE}}", module_path)
+    module = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(module)
+    return module
+
+
+def _assets():
+    return {{"app/agents.py", "app/templates/appgen_agents.html"}}
+
+
+def _env():
+    return {{"OPENAI_API_KEY": "test", "ANTHROPIC_API_KEY": "test"}}
+
+
+def _first_agent(agents):
+    return agents.agent_catalog()[0]["name"]
+
+
+def module_contract():
+    """Return this generated agentic module's export contract."""
+    available = tuple(name for name in EXPECTED_EXPORTS if name in globals())
+    return {{
+        "format": "appgen.agentic-module-contract.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "operation": OPERATION,
+        "ok": set(EXPECTED_EXPORTS) <= set(available),
+        "exports": available,
+        "expected_exports": EXPECTED_EXPORTS,
+        "side_effects": (),
+    }}
+
+
+def agentic_manifest():
+    """Return generated agentic metadata owned by this module."""
+    agents = _agents()
+    providers = agents.provider_catalog(_env())
+    catalog = agents.agent_catalog()
+    vectors = agents.coding_agent_vector_catalog(_env())
+    return {{
+        "format": "appgen.agentic-module-manifest.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "ok": bool(providers) and bool(catalog) and bool(vectors),
+        "provider_count": len(providers),
+        "agent_count": len(catalog),
+        "coding_vector_count": len(vectors),
+        "side_effects": (),
+    }}
+
+
+def run_agentic_operation():
+    """Run this module's side-effect-free agentic operation."""
+    agents = _agents()
+    env = _env()
+    first = _first_agent(agents)
+    if SURFACE == "provider_matrix":
+        operation = {{"matrix": agents.provider_connection_matrix(env)}}
+        ok = operation["matrix"]["ok"] and {{"local", "api"}} <= set(operation["matrix"]["modes"])
+    elif SURFACE == "agent_catalog":
+        operation = {{"catalog": agents.agent_catalog(), "plan": agents.agent_plan(first, "inspect", environ=env)}}
+        ok = bool(operation["catalog"]) and operation["plan"]["agent"] == first and operation["plan"]["ready"] is True
+    elif SURFACE == "tool_policy":
+        operation = {{"policy": agents.agent_tool_policy(first)}}
+        ok = operation["policy"]["ok"] and all(policy["requires_review"] for policy in operation["policy"]["policies"])
+    elif SURFACE == "execution_matrix":
+        operation = {{"matrix": agents.agent_execution_matrix(environ=env)}}
+        ok = operation["matrix"]["ok"] and all(plan["ready"] for plan in operation["matrix"]["plans"])
+    elif SURFACE == "coding_agent_vectors":
+        operation = {{
+            "catalog": agents.coding_agent_vector_catalog(env),
+            "release": agents.coding_agent_release_gate(env),
+            "workflow": agents.coding_agent_development_workflow("openai_codex", backend="ollama"),
+        }}
+        ok = operation["release"]["ok"] and operation["workflow"]["ok"] and {{"ollama", "vllm"}} <= {{backend for vector in operation["catalog"] for backend in vector["backends"]}}
+    else:
+        operation = {{"release": agents.agentic_release_gate(_assets(), environ=env), "workbench": agents.agentic_workbench(_assets(), environ=env)}}
+        ok = operation["release"]["ok"] and operation["workbench"]["ok"]
+    return {{
+        "format": "appgen.agentic-module-operation.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "ok": ok,
+        "operation": operation,
+        "side_effects": (),
+    }}
+
+
+def release_context():
+    """Return release evidence used by this agentic module."""
+    agents = _agents()
+    release = agents.agentic_release_gate(_assets(), environ=_env())
+    workbench = agents.agentic_workbench(_assets(), environ=_env())
+    return {{
+        "format": "appgen.agentic-module-release-context.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "ok": release["ok"] and workbench["ok"],
+        "release": release,
+        "workbench": workbench,
+        "side_effects": (),
+    }}
+
+
+def smoke_test():
+    """Run side-effect-free checks for this generated agentic module."""
+    contract = module_contract()
+    manifest = agentic_manifest()
+    operation = run_agentic_operation()
+    release = release_context()
+    return {{
+        "format": "appgen.agentic-module-smoke-test.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "ok": contract["ok"]
+        and manifest["ok"]
+        and operation["ok"]
+        and release["ok"]
+        and not manifest["side_effects"]
+        and not operation["side_effects"]
+        and not release["side_effects"],
+        "contract": contract,
+        "manifest": manifest,
+        "operation": operation,
+        "release": release,
+        "checks": (
+            "module_contract_resolves",
+            "agentic_manifest_ok",
+            "agentic_operation_ok",
+            "release_context_ok",
+            "no_side_effects",
+        ),
+    }}
+'''
+
+
+def _agentic_module_test_text(module_name: str) -> str:
+    surface, _operation = _agentic_module_surface(module_name)
+    return f'''"""Generated tests for the {surface} agentic system module."""
+
+from __future__ import annotations
+
+import importlib.util
+from pathlib import Path
+
+
+MODULE = {module_name!r}
+SURFACE = {surface!r}
+
+
+def load_agentic_module():
+    """Load the generated agentic module without app installation."""
+    module_path = Path(__file__).resolve().parents[1] / "agentic_modules" / f"{{MODULE}}.py"
+    spec = importlib.util.spec_from_file_location(f"generated_agentic_module_{{MODULE}}", module_path)
+    module = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(module)
+    return module
+
+
+def test_agentic_module_contract():
+    """Assert the generated agentic module exposes its contract."""
+    module = load_agentic_module()
+    contract = module.module_contract()
+    assert contract["module"] == MODULE
+    assert contract["surface"] == SURFACE
+    assert contract["ok"] is True
+    assert all(hasattr(module, name) for name in contract["expected_exports"])
+
+
+def test_agentic_module_smoke():
+    """Assert the module's side-effect-free smoke test passes."""
+    module = load_agentic_module()
+    result = module.smoke_test()
+    assert result["ok"] is True
+    assert result["module"] == MODULE
+    assert result["surface"] == SURFACE
+    assert result["checks"]
+
+
+def smoke_test():
+    """Run this generated test module in a side-effect-free way."""
+    test_agentic_module_contract()
+    test_agentic_module_smoke()
+    return {{
+        "format": "appgen.agentic-module-generated-test-smoke.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "ok": True,
+        "tests": ("test_agentic_module_contract", "test_agentic_module_smoke"),
+    }}
+'''
+
+
 def _agents_text(schema: AppSchema) -> str:
     providers = [
         {
@@ -40422,7 +40697,9 @@ def _agents_text(schema: AppSchema) -> str:
 
 from __future__ import annotations
 
+import importlib.util
 import os
+from pathlib import Path
 
 from flask import jsonify
 from flask_appbuilder import BaseView
@@ -40457,6 +40734,87 @@ CODING_AGENT_VECTORS = {{
         "required_env": (),
     }},
 }}
+AGENTIC_MODULES = {AGENTIC_MODULES!r}
+
+
+def _load_generated_module(path, name):
+    spec = importlib.util.spec_from_file_location(name, path)
+    module = importlib.util.module_from_spec(spec)
+    if spec.loader is None:
+        raise RuntimeError(f"Could not load generated module: {{path}}")
+    spec.loader.exec_module(module)
+    return module
+
+
+def agentic_module_file_manifest():
+    """Return file-level evidence for generated agentic modules."""
+    module_dir = Path(__file__).with_name("agentic_modules")
+    entries = []
+    for module_name in AGENTIC_MODULES:
+        module_path = module_dir / f"{{module_name}}.py"
+        exports = ()
+        contract_ok = False
+        smoke_ok = False
+        surface = ""
+        if module_path.exists():
+            module = _load_generated_module(module_path, f"generated_agentic_module_{{module_name}}")
+            contract = module.module_contract()
+            smoke = module.smoke_test()
+            exports = tuple(name for name in contract["expected_exports"] if hasattr(module, name))
+            contract_ok = contract["ok"] and contract["module"] == module_name
+            smoke_ok = smoke["ok"] and smoke["module"] == module_name
+            surface = contract["surface"]
+        entries.append(
+            {{
+                "module": module_name,
+                "surface": surface,
+                "path": f"app/agentic_modules/{{module_name}}.py",
+                "exists": module_path.exists(),
+                "exports": exports,
+                "contract_ok": contract_ok,
+                "smoke_ok": smoke_ok,
+            }}
+        )
+    return {{
+        "format": "appgen.agentic-module-file-manifest.v1",
+        "ok": bool(entries) and all(item["exists"] and item["contract_ok"] and item["smoke_ok"] for item in entries),
+        "modules": tuple(entries),
+        "side_effects": (),
+    }}
+
+
+def agentic_module_test_file_manifest():
+    """Return file-level evidence for generated agentic module tests."""
+    test_dir = Path(__file__).with_name("agentic_module_tests")
+    entries = []
+    for item in agentic_module_file_manifest()["modules"]:
+        module_name = item["module"]
+        module_path = test_dir / f"test_{{module_name}}.py"
+        exports = ()
+        smoke_ok = False
+        if module_path.exists():
+            module = _load_generated_module(module_path, f"generated_agentic_module_test_{{module_name}}")
+            smoke = module.smoke_test()
+            expected = ("load_agentic_module", "test_agentic_module_contract", "test_agentic_module_smoke", "smoke_test")
+            exports = tuple(name for name in expected if hasattr(module, name))
+            smoke_ok = smoke["ok"] and smoke["module"] == module_name
+        entries.append(
+            {{
+                "module": module_name,
+                "surface": item["surface"],
+                "path": f"app/agentic_module_tests/test_{{module_name}}.py",
+                "target": item["path"],
+                "exists": module_path.exists(),
+                "exports": exports,
+                "smoke_ok": smoke_ok,
+            }}
+        )
+    return {{
+        "format": "appgen.agentic-module-test-file-manifest.v1",
+        "ok": bool(entries) and all(item["exists"] and item["smoke_ok"] for item in entries),
+        "tests": tuple(entries),
+        "side_effects": (),
+    }}
 
 
 def provider_catalog(environ=None):
@@ -72279,6 +72637,14 @@ def validate_agentic_artifacts() -> None:
         or "api_key" not in contract
     ):
         fail("agentic contract must expose providers, agents, tool policies, execution matrices, release gates, and API-key readiness")
+    if (
+        "AGENTIC_MODULES" not in contract
+        or "agentic_module_file_manifest" not in contract
+        or "agentic_module_test_file_manifest" not in contract
+        or "appgen.agentic-module-file-manifest.v1" not in contract
+        or "appgen.agentic-module-test-file-manifest.v1" not in contract
+    ):
+        fail("agentic contract must expose generated module and module-test manifests")
     template = (ROOT / "app" / "templates" / "appgen_agents.html").read_text()
     if "Agentic Systems" not in template or "local models" not in template or "Release Gate JSON" not in template:
         fail("agentic template must expose local/API-key provider readiness and release gate")
