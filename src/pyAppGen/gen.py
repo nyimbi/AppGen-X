@@ -49716,6 +49716,49 @@ def binding_lifecycle_release_replay_contract():
     return {{"format": "appgen.generated-binding-lifecycle-release-replay.v1", "ok": ok, "decision": "approved" if ok else "blocked", "replay": replay, "checks": checks, "final_state": final_state, "guards": ("graph_authoring_precedes_validation", "validation_precedes_transaction_commit", "diagnostics_precede_runtime_wiring", "offline_and_accessibility_precede_runtime", "runtime_failures_roll_back_before_release", "design_runtime_and_designer_replays_complete"), "side_effects": (), "blocking_gaps": tuple(check for check in checks if not check["ok"])}}
 
 
+def livebindings_readiness_contract():
+    """Prove the generated visual binding designer path as one ordered readiness contract."""
+    contract = livebindings_contract()
+    graph = livebindings_graph_contract()
+    authoring = binding_authoring_session()
+    graph_validation = binding_graph_validation_contract()
+    edit_transactions = binding_edit_transaction_contract()
+    previews = binding_preview_evaluation_contract()
+    runtime_wiring = binding_runtime_wiring_contract()
+    preview_runtime_parity = binding_preview_runtime_parity_contract()
+    diagnostics = binding_diagnostics_contract()
+    conflict_resolution = binding_conflict_resolution_workflow()
+    offline_replay = binding_offline_replay_contract()
+    accessibility = binding_accessibility_contract()
+    runtime_propagation = binding_runtime_propagation_replay_contract()
+    design_runtime = binding_design_runtime_session_replay_contract()
+    designer_transaction = binding_designer_transaction_replay_contract()
+    lifecycle_release = binding_lifecycle_release_replay_contract()
+    inspector_bridge = inspector_binding_designer_bridge_contract()
+    actionable = livebindings_actionable_operations()
+    phases = (
+        {{"phase": "author_binding_graph", "pipeline": tuple(operation["op"] for operation in authoring["operations"]), "ok": {{"create_link", "make_two_way", "attach_expression", "disable_binding"}} <= {{operation["op"] for operation in authoring["operations"]}} and {{"dataset", "field", "control", "expression"}} <= {{node["kind"] for node in graph["nodes"]}}}},
+        {{"phase": "validate_and_stage_edits", "pipeline": graph_validation["guards"] + tuple(operation["op"] for operation in edit_transactions["operations"]), "ok": graph_validation["ok"] and edit_transactions["validation"]["ok"] and all("commit_or_rollback" in operation["stage"] for operation in edit_transactions["operations"])}},
+        {{"phase": "preview_and_emit_runtime_wiring", "pipeline": tuple(preview["node"] for preview in previews["previews"]) + runtime_wiring["artifacts"], "ok": bool(previews["previews"]) and all(preview["validator"]["ok"] for preview in previews["previews"]) and {{"binding_registry", "observer_hooks", "update_queue", "validation_pipeline"}} <= set(runtime_wiring["artifacts"]) and preview_runtime_parity["ok"]}},
+        {{"phase": "surface_diagnostics_and_conflicts", "pipeline": tuple(diagnostic["quick_fix"] for diagnostic in diagnostics["diagnostics"]) + tuple(resolution["conflict"] for resolution in conflict_resolution["resolutions"]), "ok": diagnostics["ok"] and conflict_resolution["ok"] and "quick_fixes_are_staged" in diagnostics["guards"] and "graph_revalidated_after_resolution" in conflict_resolution["guards"]}},
+        {{"phase": "replay_offline_accessible_runtime", "pipeline": tuple(item["idempotency_key"] for item in offline_replay["queue_items"]) + tuple(shortcut["command"] for shortcut in accessibility["shortcuts"]) + tuple(item["op"] for item in runtime_propagation["trace"]), "ok": offline_replay["ok"] and accessibility["ok"] and runtime_propagation["ok"] and any("rollback_target_write" in item["pipeline"] for item in runtime_propagation["trace"])}},
+        {{"phase": "prove_designer_and_release_replay", "pipeline": tuple(item["phase"] for item in design_runtime["replay"]) + tuple(item["phase"] for item in designer_transaction["replay"]) + tuple(item["phase"] for item in lifecycle_release["replay"]), "ok": design_runtime["ok"] and designer_transaction["ok"] and lifecycle_release["ok"] and {{"graph_authoring_precedes_validation", "design_runtime_and_designer_replays_complete"}} <= set(lifecycle_release["guards"])}},
+        {{"phase": "bridge_inspector_and_bindings", "pipeline": tuple(item["phase"] for item in inspector_bridge["replay"]), "ok": inspector_bridge["ok"] and {{"binding_preview_refresh", "runtime_wiring_refresh"}} <= {{item["phase"] for item in inspector_bridge["replay"]}} and "runtime_wiring_refreshes_after_inspector_commit" in inspector_bridge["guards"]}},
+    )
+    checks = (
+        {{"id": "graph_authoring_ready", "ok": phases[0]["ok"], "evidence": {{"contract": contract, "graph": graph, "authoring": authoring}}}},
+        {{"id": "validation_transaction_ready", "ok": phases[1]["ok"], "evidence": {{"graph_validation": graph_validation, "edit_transactions": edit_transactions}}}},
+        {{"id": "preview_runtime_ready", "ok": phases[2]["ok"], "evidence": {{"previews": previews, "runtime_wiring": runtime_wiring, "parity": preview_runtime_parity}}}},
+        {{"id": "diagnostics_conflict_ready", "ok": phases[3]["ok"], "evidence": {{"diagnostics": diagnostics, "conflict_resolution": conflict_resolution}}}},
+        {{"id": "offline_accessible_runtime_ready", "ok": phases[4]["ok"], "evidence": {{"offline": offline_replay, "accessibility": accessibility, "runtime": runtime_propagation}}}},
+        {{"id": "designer_release_replay_ready", "ok": phases[5]["ok"], "evidence": {{"design_runtime": design_runtime, "designer_transaction": designer_transaction, "lifecycle": lifecycle_release}}}},
+        {{"id": "inspector_bridge_ready", "ok": phases[6]["ok"], "evidence": inspector_bridge}},
+        {{"id": "operation_surface_ready", "ok": actionable["ok"] and not actionable["side_effects"], "evidence": actionable}},
+        {{"id": "phase_order_ready", "ok": tuple(item["phase"] for item in phases) == ("author_binding_graph", "validate_and_stage_edits", "preview_and_emit_runtime_wiring", "surface_diagnostics_and_conflicts", "replay_offline_accessible_runtime", "prove_designer_and_release_replay", "bridge_inspector_and_bindings"), "evidence": tuple(item["phase"] for item in phases)}},
+    )
+    return {{"format": "appgen.generated-livebindings-readiness-contract.v1", "ok": all(phase["ok"] for phase in phases) and all(check["ok"] for check in checks), "phases": phases, "checks": checks, "final_state": {{"node_count": len(graph["nodes"]), "edge_count": len(graph["edges"]), "authoring_ops": len(authoring["operations"]), "runtime_bindings": len(livebindings_emit_runtime_wiring(graph)["bindings"]), "offline_items": len(offline_replay["queue_items"]), "runtime_trace": len(runtime_propagation["trace"]), "release_phases": len(lifecycle_release["replay"])}}, "guards": ("graph_authoring_before_validation", "validation_before_runtime_wiring", "diagnostics_before_release", "offline_accessibility_before_runtime_claim", "designer_replay_before_release_claim", "inspector_bridge_before_readiness_claim", "side_effect_free_readiness"), "side_effects": (), "blocking_gaps": tuple(check for check in checks if not check["ok"])}}
+
+
 def livebindings_converter_catalog():
     """Return generated converters available to the visual binding designer."""
     return (
@@ -49773,6 +49816,7 @@ def livebindings_workbench():
     lifecycle_release_replay = binding_lifecycle_release_replay_contract()
     actionable_operations = livebindings_actionable_operations()
     inspector_binding_bridge = inspector_binding_designer_bridge_contract()
+    readiness = livebindings_readiness_contract()
     checks = (
         {{"id": "graph_nodes", "ok": {{"dataset", "field", "control", "expression"}} <= {{node["kind"] for node in graph["nodes"]}}, "evidence": tuple((node["id"], node["kind"]) for node in graph["nodes"])}},
         {{"id": "graph_edges", "ok": {{"dataset_to_field", "field_to_control", "control_to_field", "expression_to_property"}} <= {{edge["kind"] for edge in graph["edges"]}}, "evidence": graph["edges"]}},
@@ -49812,9 +49856,10 @@ def livebindings_workbench():
         {{"id": "designer_transaction_replay", "ok": designer_transaction_replay["ok"] and {{"graph_validation_before_commit", "runtime_failures_roll_back_to_designer"}} <= set(designer_transaction_replay["guards"]) and not designer_transaction_replay["side_effects"], "evidence": designer_transaction_replay}},
         {{"id": "binding_lifecycle_release_replay", "ok": lifecycle_release_replay["ok"] and {{"graph_authoring_precedes_validation", "design_runtime_and_designer_replays_complete"}} <= set(lifecycle_release_replay["guards"]) and not lifecycle_release_replay["side_effects"], "evidence": lifecycle_release_replay}},
         {{"id": "inspector_binding_bridge", "ok": inspector_binding_bridge["ok"] and {{"binding_preview_refresh", "runtime_wiring_refresh"}} <= {{item["phase"] for item in inspector_binding_bridge["replay"]}} and "runtime_wiring_refreshes_after_inspector_commit" in inspector_binding_bridge["guards"] and not inspector_binding_bridge["side_effects"], "evidence": inspector_binding_bridge}},
+        {{"id": "binding_readiness_contract", "ok": readiness["ok"] and {{"graph_authoring_ready", "validation_transaction_ready", "preview_runtime_ready", "diagnostics_conflict_ready", "offline_accessible_runtime_ready", "designer_release_replay_ready", "inspector_bridge_ready", "operation_surface_ready", "phase_order_ready"}} <= {{check["id"] for check in readiness["checks"] if check["ok"]}} and not readiness["side_effects"], "evidence": readiness}},
     )
     ok = all(check["ok"] for check in checks)
-    return {{"format": "appgen.generated-livebindings-workbench.v1", "ok": ok, "decision": "approved" if ok else "blocked", "contract": contract, "authoring": authoring, "actionable_operations": actionable_operations, "conflicts": conflicts, "graph_validation": graph_validation, "edit_transactions": edit_transactions, "previews": previews, "runtime_wiring": runtime_wiring, "preview_runtime_parity": preview_runtime_parity, "history": history, "graph_editing": graph_editing, "lookup_bindings": lookup_bindings, "pipelines": pipelines, "hit_testing": hit_testing, "runtime_gates": runtime_gates, "master_detail": master_detail, "scope_contexts": scope_contexts, "bulk_edits": bulk_edits, "diagnostics": diagnostics, "round_trip": round_trip, "update_scheduler": update_scheduler, "dependency_execution": dependency_execution, "expression_sandbox": expression_sandbox, "runtime_failure_recovery": runtime_failure_recovery, "cursor_sync": cursor_sync, "conflict_resolution": conflict_resolution, "offline_replay": offline_replay, "accessibility": accessibility, "runtime_propagation_replay": runtime_propagation_replay, "design_runtime_replay": design_runtime_replay, "designer_transaction_replay": designer_transaction_replay, "lifecycle_release_replay": lifecycle_release_replay, "inspector_binding_bridge": inspector_binding_bridge, "checks": checks, "blocking_gaps": tuple(check for check in checks if not check["ok"])}}
+    return {{"format": "appgen.generated-livebindings-workbench.v1", "ok": ok, "decision": "approved" if ok else "blocked", "contract": contract, "authoring": authoring, "actionable_operations": actionable_operations, "conflicts": conflicts, "graph_validation": graph_validation, "edit_transactions": edit_transactions, "previews": previews, "runtime_wiring": runtime_wiring, "preview_runtime_parity": preview_runtime_parity, "history": history, "graph_editing": graph_editing, "lookup_bindings": lookup_bindings, "pipelines": pipelines, "hit_testing": hit_testing, "runtime_gates": runtime_gates, "master_detail": master_detail, "scope_contexts": scope_contexts, "bulk_edits": bulk_edits, "diagnostics": diagnostics, "round_trip": round_trip, "update_scheduler": update_scheduler, "dependency_execution": dependency_execution, "expression_sandbox": expression_sandbox, "runtime_failure_recovery": runtime_failure_recovery, "cursor_sync": cursor_sync, "conflict_resolution": conflict_resolution, "offline_replay": offline_replay, "accessibility": accessibility, "runtime_propagation_replay": runtime_propagation_replay, "design_runtime_replay": design_runtime_replay, "designer_transaction_replay": designer_transaction_replay, "lifecycle_release_replay": lifecycle_release_replay, "inspector_binding_bridge": inspector_binding_bridge, "readiness": readiness, "checks": checks, "blocking_gaps": tuple(check for check in checks if not check["ok"])}}
 
 
 def rad_data_tooling_contract():

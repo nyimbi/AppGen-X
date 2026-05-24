@@ -247,6 +247,11 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   transactions, custom designer lifecycle, state and design-surface replay,
   binding/handler routing, and metadata round-tripping as one ordered path in
   both package and generated-app workbenches.
+- Visual binding work now exposes a readiness contract that proves graph
+  authoring, validation and staged edits, preview/runtime wiring,
+  diagnostics/conflict handling, offline and accessible runtime replay,
+  designer/release replay, and inspector bridge refresh as one ordered path in
+  both package and generated-app workbenches.
 - Event-runtime guidance now exposes a first-match developer choice algorithm:
   ordinary business, ERP, workflow, chatbot, agent, integration, and PBC event
   handling generate the AppGen-X event contract with `stream_processor`

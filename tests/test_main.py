@@ -142,6 +142,7 @@ from pyAppGen.form_designer import livebindings_detect_conflicts
 from pyAppGen.form_designer import livebindings_emit_runtime_wiring
 from pyAppGen.form_designer import livebindings_graph_contract
 from pyAppGen.form_designer import livebindings_preview_value
+from pyAppGen.form_designer import livebindings_readiness_contract
 from pyAppGen.form_designer import livebindings_reroute_link
 from pyAppGen.form_designer import binding_lifecycle_release_replay_contract
 from pyAppGen.form_designer import livebindings_workbench
@@ -1610,6 +1611,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "designer_transaction_replay",
         "binding_lifecycle_release_replay",
         "inspector_binding_bridge",
+        "binding_readiness_contract",
     } == {check["id"] for check in binding_workbench["checks"]}
     create_link = livebindings_create_link()
     assert create_link["ok"] is True
@@ -1710,6 +1712,33 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     assert "runtime_wiring_refresh" in {
         item["phase"] for item in binding_workbench["inspector_binding_bridge"]["replay"]
     }
+    binding_readiness = livebindings_readiness_contract()
+    assert binding_readiness["format"] == "appgen.livebindings-readiness-contract.v1"
+    assert binding_readiness["ok"] is True
+    assert {
+        "author_binding_graph",
+        "validate_and_stage_edits",
+        "preview_and_emit_runtime_wiring",
+        "surface_diagnostics_and_conflicts",
+        "replay_offline_accessible_runtime",
+        "prove_designer_and_release_replay",
+        "bridge_inspector_and_bindings",
+    } == {item["phase"] for item in binding_readiness["phases"]}
+    assert {
+        "graph_authoring_ready",
+        "validation_transaction_ready",
+        "preview_runtime_ready",
+        "diagnostics_conflict_ready",
+        "offline_accessible_runtime_ready",
+        "designer_release_replay_ready",
+        "inspector_bridge_ready",
+        "operation_surface_ready",
+        "phase_order_ready",
+    } == {check["id"] for check in binding_readiness["checks"]}
+    assert binding_readiness["final_state"]["node_count"] == len(binding_workbench["contract"]["graph"]["nodes"])
+    assert binding_readiness["final_state"]["edge_count"] == len(binding_workbench["contract"]["graph"]["edges"])
+    assert binding_workbench["readiness"]["ok"] is True
+    assert binding_workbench["readiness"]["final_state"]["runtime_trace"] > 0
     data_workbench = rad_data_tooling_workbench()
     assert data_workbench["format"] == "appgen.rad-data-tooling-workbench.v1"
     assert data_workbench["ok"] is True
@@ -12008,6 +12037,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "designer_transaction_replay",
         "binding_lifecycle_release_replay",
         "inspector_binding_bridge",
+        "binding_readiness_contract",
     } <= {
         check["id"] for check in generated_bindings["checks"]
     }
@@ -12098,6 +12128,33 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert "runtime_wiring_refresh" in {
         item["phase"] for item in generated_bindings["inspector_binding_bridge"]["replay"]
     }
+    generated_binding_readiness = form_designer.livebindings_readiness_contract()
+    assert generated_binding_readiness["format"] == "appgen.generated-livebindings-readiness-contract.v1"
+    assert generated_binding_readiness["ok"] is True
+    assert {
+        "author_binding_graph",
+        "validate_and_stage_edits",
+        "preview_and_emit_runtime_wiring",
+        "surface_diagnostics_and_conflicts",
+        "replay_offline_accessible_runtime",
+        "prove_designer_and_release_replay",
+        "bridge_inspector_and_bindings",
+    } == {item["phase"] for item in generated_binding_readiness["phases"]}
+    assert {
+        "graph_authoring_ready",
+        "validation_transaction_ready",
+        "preview_runtime_ready",
+        "diagnostics_conflict_ready",
+        "offline_accessible_runtime_ready",
+        "designer_release_replay_ready",
+        "inspector_bridge_ready",
+        "operation_surface_ready",
+        "phase_order_ready",
+    } == {check["id"] for check in generated_binding_readiness["checks"]}
+    assert generated_binding_readiness["final_state"]["node_count"] == len(generated_bindings["contract"]["graph"]["nodes"])
+    assert generated_binding_readiness["final_state"]["edge_count"] == len(generated_bindings["contract"]["graph"]["edges"])
+    assert generated_bindings["readiness"]["ok"] is True
+    assert generated_bindings["readiness"]["final_state"]["runtime_trace"] > 0
     generated_data_tooling = form_designer.rad_data_tooling_workbench()
     assert generated_data_tooling["format"] == "appgen.generated-rad-data-tooling-workbench.v1"
     assert generated_data_tooling["ok"] is True
