@@ -25,7 +25,7 @@ Build a complete AppGen IDE and generation platform with:
 
 | Date | Commit | Slice | Evidence |
 | --- | --- | --- | --- |
-| 2026-05-25 | `current` | Made the package form-designer aggregate parity gate expose required and passing lifecycle phases, parity requirements, and deep-check coverage from nested audits. | Py compile, focused generated form-designer parity smoke, scoped diff check, and scoped restricted-name scan passed. |
+| 2026-05-25 | `e1b6335` | Made the package form-designer aggregate parity gate expose required and passing lifecycle phases, parity requirements, and deep-check coverage from nested audits. | Py compile, focused generated form-designer parity smoke, scoped diff check, and scoped restricted-name scan passed. |
 | 2026-05-25 | `34da273` | Made the package form-designer aggregate parity gate expose required and passing root approval state plus lifecycle and requirement nested-audit approval state. | Py compile, focused generated form-designer parity smoke, scoped diff check, and scoped restricted-name scan passed. |
 | 2026-05-25 | `93e1cb5` | Made the package form-designer generation-smoke gate expose required and passing root approval state plus generated-artifact check state used for release approval evidence. | Py compile, focused generated form-designer parity smoke, scoped diff check, and scoped restricted-name scan passed. |
 | 2026-05-25 | `d3828c7` | Made the package form-designer generated-runtime-smoke gate expose required and passing evidence carriers plus runtime smoke formats for each generated runtime workbench/smoke payload. | Py compile, focused generated form-designer parity smoke, scoped diff check, and scoped restricted-name scan passed. |
