@@ -16798,6 +16798,7 @@ def form_designer_generation_smoke_audit(source: str = FORM_DESIGNER_SAMPLE_DSL)
         data_tooling_runtime_passing_checks = set(data_runtime_smoke["checks"])
         runtime_operation_passing_checks = set(runtime_operation_smoke["checks"])
         native_form_runtime_passing_checks = set(native_form_runtime_smoke["checks"])
+        mobile_device_runtime_passing_checks = set(mobile_device_smoke["checks"])
 
     required_generated_release_gate_checks = (
         "artifact_coverage",
@@ -16943,6 +16944,19 @@ def form_designer_generation_smoke_audit(source: str = FORM_DESIGNER_SAMPLE_DSL)
         "design_edit_replay_complete",
         "runtime_operation_modules_ready",
         "runtime_operation_module_tests_ready",
+    )
+    required_mobile_device_runtime_checks = (
+        "manifest_ok",
+        "required_apis_present",
+        "required_apis_replay",
+        "permissions_cover_all_apis",
+        "adapters_cover_all_apis",
+        "fixtures_cover_all_apis",
+        "runtime_replay_complete",
+        "designer_replay_complete",
+        "capability_lifecycle_complete",
+        "device_component_modules_ready",
+        "device_component_tests_ready",
     )
 
     checks = (
@@ -17151,20 +17165,9 @@ def form_designer_generation_smoke_audit(source: str = FORM_DESIGNER_SAMPLE_DSL)
             "id": "generated_mobile_device_runtime",
             "ok": mobile_device_smoke["ok"]
             and mobile_device_smoke["format"] == "appgen.generated-mobile-device-runtime-smoke.v1"
-            and {
-                "manifest_ok",
-                "required_apis_present",
-                "required_apis_replay",
-                "permissions_cover_all_apis",
-                "adapters_cover_all_apis",
-                "fixtures_cover_all_apis",
-                "runtime_replay_complete",
-                "designer_replay_complete",
-                "capability_lifecycle_complete",
-                "device_component_modules_ready",
-                "device_component_tests_ready",
-            }
-            <= set(mobile_device_smoke["checks"]),
+            and set(required_mobile_device_runtime_checks) <= mobile_device_runtime_passing_checks,
+            "required_checks": required_mobile_device_runtime_checks,
+            "passing_checks": tuple(sorted(mobile_device_runtime_passing_checks)),
             "smoke": mobile_device_smoke,
         },
     )

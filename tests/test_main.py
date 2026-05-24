@@ -3541,6 +3541,21 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "runtime_operation_modules_ready",
         "runtime_operation_module_tests_ready",
     } <= set(runtime_operation_smoke["passing_checks"])
+    mobile_device_smoke = next(check for check in smoke["checks"] if check["id"] == "generated_mobile_device_runtime")
+    assert mobile_device_smoke["ok"] is True
+    assert {
+        "manifest_ok",
+        "required_apis_present",
+        "required_apis_replay",
+        "permissions_cover_all_apis",
+        "adapters_cover_all_apis",
+        "fixtures_cover_all_apis",
+        "runtime_replay_complete",
+        "designer_replay_complete",
+        "capability_lifecycle_complete",
+        "device_component_modules_ready",
+        "device_component_tests_ready",
+    } <= set(mobile_device_smoke["passing_checks"])
     coverage = next(check for check in smoke["checks"] if check["id"] == "generated_component_file_coverage")
     assert coverage["component_count"] == len(component_file_manifest())
     assert coverage["package_count"] == len(component_package_file_manifest())
