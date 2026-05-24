@@ -14695,6 +14695,7 @@ def rad_parity_workbench(existing_paths: set[str] | None = None) -> dict:
     inspector_workbench = object_inspector_workbench()
     binding_workbench = livebindings_workbench()
     data_tooling_workbench = rad_data_tooling_workbench()
+    mobile_workbench = mobile_native_api_workbench()
     platform_lifecycle = platform_parity_lifecycle_replay_contract()
     requirement_audit = platform_parity_requirement_audit_contract()
     third_party_categories = set(third_party_component_categories())
@@ -14895,6 +14896,41 @@ def rad_parity_workbench(existing_paths: set[str] | None = None) -> dict:
     passing_data_tooling_checks = tuple(check["id"] for check in data_tooling_workbench["checks"] if check["ok"])
     required_mobile_api_names = ("camera", "location", "push_notifications", "secure_storage")
     passing_mobile_api_names = tuple(mobile_native_api_contract()["apis"])
+    required_mobile_workbench_checks = (
+        "api_breadth",
+        "permission_manifest",
+        "component_adapters",
+        "simulator_profiles",
+        "simulator_fixture_coverage",
+        "side_effect_guards",
+        "permission_prompt_workflow",
+        "adapter_dispatch_workflow",
+        "simulator_replay_workflow",
+        "platform_fallback_workflow",
+        "privacy_review_workflow",
+        "background_resume_workflow",
+        "actionable_mobile_api_operations",
+        "device_component_specs",
+        "api_capability_matrix",
+        "device_event_traces",
+        "native_bridge_matrix",
+        "permission_revocation",
+        "background_delivery",
+        "media_file_pipeline",
+        "native_bridge_errors",
+        "store_privacy_manifest",
+        "permission_state_machine",
+        "deep_link_routing",
+        "app_lifecycle_delivery",
+        "simulator_fixture_integrity",
+        "runtime_delivery_replay",
+        "designer_transaction_replay",
+        "capability_lifecycle_replay",
+        "mobile_readiness_contract",
+        "device_component_modules",
+        "device_component_module_tests",
+    )
+    passing_mobile_workbench_checks = tuple(check["id"] for check in mobile_workbench["checks"] if check["ok"])
     visual_depth_contract = cross_target_visual_depth_contract()
     visual_depth_workbench = cross_target_visual_depth_workbench()
     required_visual_depth_surfaces = ("styling", "animation", "effects", "three_d")
@@ -15086,10 +15122,13 @@ def rad_parity_workbench(existing_paths: set[str] | None = None) -> dict:
         {
             "id": "mobile_native_device_api_coverage",
             "ok": set(required_mobile_api_names) <= set(passing_mobile_api_names)
-            and mobile_native_api_workbench()["ok"],
+            and mobile_workbench["ok"]
+            and set(required_mobile_workbench_checks) <= set(passing_mobile_workbench_checks),
             "required_apis": required_mobile_api_names,
             "passing_apis": passing_mobile_api_names,
-            "evidence": {"contract": mobile_native_api_contract(), "workbench": mobile_native_api_workbench()},
+            "required_checks": required_mobile_workbench_checks,
+            "passing_checks": passing_mobile_workbench_checks,
+            "evidence": {"contract": mobile_native_api_contract(), "workbench": mobile_workbench},
         },
         {
             "id": "cross_target_animation_effects_3d_depth",
