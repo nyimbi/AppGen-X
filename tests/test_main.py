@@ -3009,6 +3009,14 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     assert set(palette_gate["required_categories"]) <= set(palette_gate["passing_categories"])
     assert set(palette_gate["required_components"]) <= set(palette_gate["passing_components"])
     assert palette_gate["passing_component_count"] >= palette_gate["required_component_count"]
+    canvas_gate = next(gate for gate in audit["gates"] if gate["id"] == "canvas_contract")
+    assert canvas_gate["ok"] is True
+    assert canvas_gate["passing_format"] == canvas_gate["required_format"]
+    assert canvas_gate["passing_columns"] == canvas_gate["required_columns"]
+    assert canvas_gate["passing_row_height"] == canvas_gate["required_row_height"]
+    assert canvas_gate["passing_snap"] == canvas_gate["required_snap"]
+    assert canvas_gate["passing_bounds"] == canvas_gate["required_bounds"]
+    assert set(canvas_gate["required_targets"]) <= set(canvas_gate["passing_targets"])
     mapping_gate = next(gate for gate in audit["gates"] if gate["id"] == "field_component_mapping")
     assert mapping_gate["ok"] is True
     assert set(mapping_gate["required_fields"]) <= set(mapping_gate["passing_fields"])

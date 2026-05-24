@@ -17890,8 +17890,16 @@ def form_designer_release_audit(existing_paths: set[str] | None = None) -> dict:
     )
     passing_palette_components = tuple(item["component"] for item in component_palette())
     design = form_design()
+    required_canvas_format = "appgen.package-form-canvas.v1"
+    passing_canvas_format = design["canvas"]["format"]
     required_canvas_columns = 12
     passing_canvas_columns = design["canvas"]["grid"]["columns"]
+    required_canvas_row_height = 40
+    passing_canvas_row_height = design["canvas"]["grid"]["row_height"]
+    required_canvas_snap = 1
+    passing_canvas_snap = design["canvas"]["grid"]["snap"]
+    required_canvas_bounds = {"x": 0, "y": 0, "w": 12, "h": 24}
+    passing_canvas_bounds = dict(design["canvas"]["bounds"])
     required_canvas_targets = ("web", "mobile", "desktop")
     passing_canvas_targets = tuple(design["canvas"]["render_targets"])
     matrix = field_component_matrix()
@@ -18030,10 +18038,22 @@ def form_designer_release_audit(existing_paths: set[str] | None = None) -> dict:
         },
         {
             "id": "canvas_contract",
-            "ok": passing_canvas_columns == required_canvas_columns
+            "ok": passing_canvas_format == required_canvas_format
+            and passing_canvas_columns == required_canvas_columns
+            and passing_canvas_row_height == required_canvas_row_height
+            and passing_canvas_snap == required_canvas_snap
+            and passing_canvas_bounds == required_canvas_bounds
             and set(required_canvas_targets) <= set(passing_canvas_targets),
+            "required_format": required_canvas_format,
+            "passing_format": passing_canvas_format,
             "required_columns": required_canvas_columns,
             "passing_columns": passing_canvas_columns,
+            "required_row_height": required_canvas_row_height,
+            "passing_row_height": passing_canvas_row_height,
+            "required_snap": required_canvas_snap,
+            "passing_snap": passing_canvas_snap,
+            "required_bounds": required_canvas_bounds,
+            "passing_bounds": passing_canvas_bounds,
             "required_targets": required_canvas_targets,
             "passing_targets": passing_canvas_targets,
         },
