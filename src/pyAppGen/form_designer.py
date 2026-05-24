@@ -2460,6 +2460,161 @@ def component_package_lifecycle_execution_contract(package_ids: tuple[str, ...] 
     }
 
 
+def component_package_readiness_contract(package_ids: tuple[str, ...] = ()) -> dict:
+    """Prove package installation is one ordered design-time lifecycle."""
+    signatures = component_package_signature_validation_contract(package_ids)
+    lockfile = component_package_lockfile_integrity_contract(package_ids)
+    sandbox = component_package_sandbox_policy_contract(package_ids)
+    dependency_order = component_package_dependency_order_contract(package_ids)
+    install_replay = component_package_install_session_replay(package_ids)
+    actionable_operations = component_package_actionable_operations(package_ids)
+    registration = component_package_registration_consistency_contract(package_ids)
+    version_conflicts = component_package_version_conflict_contract(package_ids)
+    update_plan = component_package_update_plan_contract(package_ids)
+    uninstall_plan = component_package_uninstall_plan_contract(package_ids)
+    failure_isolation = component_package_failure_isolation_contract(package_ids)
+    rollback = component_package_rollback_contract(package_ids)
+    lifecycle_replay = component_package_lifecycle_transaction_replay(package_ids)
+    lifecycle_execution = component_package_lifecycle_execution_contract(package_ids)
+    phases = (
+        {
+            "phase": "trust_and_lockfile",
+            "ok": signatures["ok"] and lockfile["ok"] and not signatures["side_effects"] and not lockfile["side_effects"],
+            "evidence": {
+                "signatures": tuple(signature["package_id"] for signature in signatures["signatures"]),
+                "lockfile_entries": tuple(entry["package_id"] for entry in lockfile["entries"]),
+            },
+        },
+        {
+            "phase": "sandbox_preview",
+            "ok": sandbox["ok"]
+            and install_replay["ok"]
+            and all("sandbox_load" in {phase["phase"] for phase in session["phases"]} for session in install_replay["sessions"]),
+            "evidence": {
+                "sandbox_packages": sandbox["packages"],
+                "install_sessions": tuple(session["package_id"] for session in install_replay["sessions"]),
+            },
+        },
+        {
+            "phase": "registry_commit",
+            "ok": registration["ok"]
+            and dependency_order["ok"]
+            and all(operation["registry_commit"]["ok"] for operation in actionable_operations["operations"]),
+            "evidence": {
+                "registration_points": registration["registration"]["registration_points"],
+                "operation_names": actionable_operations["operation_names"],
+            },
+        },
+        {
+            "phase": "versioned_update",
+            "ok": version_conflicts["ok"]
+            and update_plan["ok"]
+            and all(operation["update_package"]["ok"] for operation in actionable_operations["operations"]),
+            "evidence": tuple(update["phases"] for update in update_plan["updates"]),
+        },
+        {
+            "phase": "failure_and_rollback",
+            "ok": failure_isolation["ok"]
+            and "restore_registry" in rollback["snapshot"]["restore_order"]
+            and all("record_diagnostic" in scenario["containment"] for scenario in failure_isolation["scenarios"]),
+            "evidence": {
+                "failure_count": len(failure_isolation["scenarios"]),
+                "restore_order": rollback["snapshot"]["restore_order"],
+            },
+        },
+        {
+            "phase": "uninstall_cleanup",
+            "ok": uninstall_plan["ok"]
+            and lifecycle_replay["ok"]
+            and lifecycle_execution["ok"]
+            and all(transaction["final_state"]["registry_clean"] for transaction in lifecycle_execution["transactions"])
+            and all(not transaction["final_state"]["global_install"] for transaction in lifecycle_execution["transactions"]),
+            "evidence": {
+                "uninstall_phases": tuple(item["phases"] for item in uninstall_plan["uninstalls"]),
+                "lifecycle_packages": lifecycle_replay["packages"],
+            },
+        },
+    )
+    phase_names = tuple(phase["phase"] for phase in phases)
+    checks = (
+        {
+            "id": "trust_before_preview",
+            "ok": phase_names.index("trust_and_lockfile") < phase_names.index("sandbox_preview") and phases[0]["ok"],
+            "evidence": phase_names,
+        },
+        {
+            "id": "preview_before_registry_commit",
+            "ok": phase_names.index("sandbox_preview") < phase_names.index("registry_commit") and phases[1]["ok"],
+            "evidence": phase_names,
+        },
+        {
+            "id": "registry_before_update",
+            "ok": phase_names.index("registry_commit") < phase_names.index("versioned_update") and phases[2]["ok"],
+            "evidence": phase_names,
+        },
+        {
+            "id": "rollback_before_cleanup",
+            "ok": phase_names.index("failure_and_rollback") < phase_names.index("uninstall_cleanup") and phases[4]["ok"],
+            "evidence": phase_names,
+        },
+        {
+            "id": "operation_surface_ready",
+            "ok": actionable_operations["ok"]
+            and {
+                "resolve_metadata",
+                "preview_load",
+                "registry_commit",
+                "update_package",
+                "uninstall_package",
+            }
+            <= set(actionable_operations["operation_names"]),
+            "evidence": actionable_operations["operation_names"],
+        },
+        {
+            "id": "phase_order_ready",
+            "ok": phase_names
+            == (
+                "trust_and_lockfile",
+                "sandbox_preview",
+                "registry_commit",
+                "versioned_update",
+                "failure_and_rollback",
+                "uninstall_cleanup",
+            )
+            and all(phase["ok"] for phase in phases),
+            "evidence": phase_names,
+        },
+        {
+            "id": "side_effect_guard_ready",
+            "ok": not signatures["side_effects"]
+            and not lockfile["side_effects"]
+            and not sandbox["side_effects"]
+            and not dependency_order["side_effects"]
+            and not install_replay["side_effects"]
+            and not actionable_operations["side_effects"]
+            and not registration["side_effects"]
+            and not version_conflicts["side_effects"]
+            and not update_plan["side_effects"]
+            and not uninstall_plan["side_effects"]
+            and not failure_isolation["side_effects"]
+            and not rollback["side_effects"]
+            and not lifecycle_replay["side_effects"]
+            and not lifecycle_execution["side_effects"],
+            "evidence": (),
+        },
+    )
+    ok = all(phase["ok"] for phase in phases) and all(check["ok"] for check in checks)
+    return {
+        "format": "appgen.component-package-readiness-contract.v1",
+        "ok": ok,
+        "decision": "approved" if ok else "blocked",
+        "phases": phases,
+        "checks": checks,
+        "side_effects": (),
+        "blocking_gaps": tuple(check for check in checks if not check["ok"]),
+    }
+
+
 def design_time_package_manager_workbench(package_ids: tuple[str, ...] = ()) -> dict:
     """Prove design-time package install, registration, compatibility, and rollback flows."""
     session = design_time_package_install_session(package_ids)
@@ -2482,6 +2637,7 @@ def design_time_package_manager_workbench(package_ids: tuple[str, ...] = ()) -> 
     failure_isolation = component_package_failure_isolation_contract(package_ids)
     lifecycle_replay = component_package_lifecycle_transaction_replay(package_ids)
     actionable_operations = component_package_actionable_operations(package_ids)
+    readiness = component_package_readiness_contract(package_ids)
     checks = (
         {
             "id": "install_session_phases",
@@ -2599,6 +2755,22 @@ def design_time_package_manager_workbench(package_ids: tuple[str, ...] = ()) -> 
             "evidence": actionable_operations,
         },
         {
+            "id": "package_readiness_contract",
+            "ok": readiness["ok"]
+            and {
+                "trust_before_preview",
+                "preview_before_registry_commit",
+                "registry_before_update",
+                "rollback_before_cleanup",
+                "operation_surface_ready",
+                "phase_order_ready",
+                "side_effect_guard_ready",
+            }
+            <= {check["id"] for check in readiness["checks"] if check["ok"]}
+            and not readiness["side_effects"],
+            "evidence": readiness,
+        },
+        {
             "id": "side_effect_guards",
             "ok": not session["side_effects"]
             and not registration["side_effects"]
@@ -2662,6 +2834,7 @@ def design_time_package_manager_workbench(package_ids: tuple[str, ...] = ()) -> 
         "failure_isolation": failure_isolation,
         "lifecycle_replay": lifecycle_replay,
         "actionable_operations": actionable_operations,
+        "package_readiness": readiness,
         "checks": checks,
         "blocking_gaps": tuple(check for check in checks if not check["ok"]),
     }

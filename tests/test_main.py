@@ -95,6 +95,7 @@ from pyAppGen.form_designer import component_package_lifecycle_transaction_repla
 from pyAppGen.form_designer import component_package_lockfile_integrity_contract
 from pyAppGen.form_designer import component_package_load_policy
 from pyAppGen.form_designer import component_package_preview_load_contract
+from pyAppGen.form_designer import component_package_readiness_contract
 from pyAppGen.form_designer import component_package_registration_consistency_contract
 from pyAppGen.form_designer import component_package_registry_commit_operation
 from pyAppGen.form_designer import component_package_resolve_metadata_operation
@@ -2418,6 +2419,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "lifecycle_transaction_replay",
         "lifecycle_execution",
         "actionable_package_operations",
+        "package_readiness_contract",
         "side_effect_guards",
     } == {check["id"] for check in package_manager["checks"]}
     assert package_manager["version_conflicts"]["ok"] is True
@@ -2450,6 +2452,27 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "no_global_install",
     } == {check["id"] for check in lifecycle_execution["checks"]}
     assert lifecycle_execution["transactions"][0]["final_state"]["signature_verified"] is True
+    package_readiness = component_package_readiness_contract(("devexpress-native",))
+    assert package_readiness["format"] == "appgen.component-package-readiness-contract.v1"
+    assert package_readiness["ok"] is True
+    assert tuple(phase["phase"] for phase in package_readiness["phases"]) == (
+        "trust_and_lockfile",
+        "sandbox_preview",
+        "registry_commit",
+        "versioned_update",
+        "failure_and_rollback",
+        "uninstall_cleanup",
+    )
+    assert {
+        "trust_before_preview",
+        "preview_before_registry_commit",
+        "registry_before_update",
+        "rollback_before_cleanup",
+        "operation_surface_ready",
+        "phase_order_ready",
+        "side_effect_guard_ready",
+    } == {check["id"] for check in package_readiness["checks"]}
+    assert package_readiness["side_effects"] == ()
     assert third_party_component_import_contract(
         {
             "id": "custom-suite",
@@ -11893,6 +11916,21 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert generated_package_manager["actionable_operations"]["operations"][0]["preview_load"]["ok"] is True
     assert generated_package_manager["lifecycle_replay"]["ok"] is True
     assert generated_package_manager["lifecycle_replay"]["format"] == "appgen.generated-component-package-lifecycle-transaction-replay.v1"
+    assert generated_package_manager["package_readiness"]["format"] == "appgen.generated-component-package-readiness-contract.v1"
+    assert generated_package_manager["package_readiness"]["ok"] is True
+    assert {
+        "package_readiness_contract",
+        "lifecycle_execution",
+        "actionable_package_operations",
+    } <= {check["id"] for check in generated_package_manager["checks"]}
+    assert tuple(phase["phase"] for phase in generated_package_manager["package_readiness"]["phases"]) == (
+        "trust_and_lockfile",
+        "sandbox_preview",
+        "registry_commit",
+        "versioned_update",
+        "failure_and_rollback",
+        "uninstall_cleanup",
+    )
     assert all(
         {"install_and_register", "preview_load", "versioned_update", "failure_containment", "rollback_probe", "uninstall_cleanup"}
         <= {phase["phase"] for phase in item["phases"]}

@@ -418,6 +418,11 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   generated test module for install, preview, registry, lifecycle, update, and
   rollback surfaces, with the package manager runtime validating module and
   test coverage.
+- Package-manager work now exposes a readiness contract that proves trust and
+  lockfile validation, sandbox preview, registry commit, versioned update,
+  failure containment, rollback, uninstall cleanup, operation coverage, and
+  side-effect guards as one ordered path in both package and generated-app
+  workbenches.
 - Generated applications now emit one importable UI chrome module and one
   generated test module for splash configuration, menu editing, context menu
   actions, and UI fine-tuning surfaces, with generated branding manifests
