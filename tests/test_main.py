@@ -3361,6 +3361,30 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     assert "generated_component_file_coverage" in {
         check["id"] for check in smoke["checks"]
     }
+    release_contracts = next(check for check in smoke["checks"] if check["id"] == "generated_release_contracts")
+    assert release_contracts["ok"] is True
+    assert {
+        "artifact_coverage",
+        "palette_breadth",
+        "canvas_contract",
+        "field_component_mapping",
+        "drop_proposal_metadata",
+        "overlap_guardrails",
+        "rad_parity_contracts",
+    } <= set(release_contracts["passing_release_gate_checks"])
+    assert {
+        "artifact_coverage",
+        "palette_categories",
+        "table_form_catalog",
+        "field_mapping_matrix",
+        "snap_grid_bounds",
+        "property_inspector",
+        "proposal_application",
+        "placement_suggestions",
+        "conflict_guardrails",
+        "route_surface",
+        "rad_parity_workbench",
+    } <= set(release_contracts["passing_workbench_checks"])
     platform_smoke = next(check for check in smoke["checks"] if check["id"] == "generated_platform_parity_workbench")
     assert platform_smoke["ok"] is True
     assert platform_smoke["workbench"]["lifecycle_replay"]["ok"] is True

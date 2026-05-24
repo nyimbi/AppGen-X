@@ -55208,6 +55208,7 @@ def form_designer_release_gate(existing_paths=()):
         "ok": ok,
         "decision": "approved" if ok else "blocked",
         "checks": checks,
+        "blocking_gaps": tuple(check for check in checks if not check["ok"]),
         "forms": form_catalog(),
     }}
 
@@ -55319,6 +55320,7 @@ def form_designer_workbench(existing_paths=()):
         "ok": ok,
         "decision": "approved" if ok else "blocked",
         "checks": checks,
+        "blocking_gaps": tuple(check for check in checks if not check["ok"]),
         "palette": tuple(sorted(palette_types)),
         "forms": forms,
         "field_mappings": field_mappings,

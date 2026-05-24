@@ -16785,6 +16785,31 @@ def form_designer_generation_smoke_audit(source: str = FORM_DESIGNER_SAMPLE_DSL)
         runtime_operation_smoke = generated_runtime_ops.smoke_test(first_table)
         native_form_runtime_smoke = generated_native_runtime.smoke_test(first_table)
         mobile_device_smoke = generated_mobile_runtime.smoke_test()
+        release_gate_passing_checks = {check["id"] for check in release_gate["checks"] if check["ok"]}
+        workbench_passing_checks = {check["id"] for check in workbench["checks"] if check["ok"]}
+
+    required_generated_release_gate_checks = (
+        "artifact_coverage",
+        "palette_breadth",
+        "canvas_contract",
+        "field_component_mapping",
+        "drop_proposal_metadata",
+        "overlap_guardrails",
+        "rad_parity_contracts",
+    )
+    required_generated_workbench_checks = (
+        "artifact_coverage",
+        "palette_categories",
+        "table_form_catalog",
+        "field_mapping_matrix",
+        "snap_grid_bounds",
+        "property_inspector",
+        "proposal_application",
+        "placement_suggestions",
+        "conflict_guardrails",
+        "route_surface",
+        "rad_parity_workbench",
+    )
 
     checks = (
         {
@@ -16875,9 +16900,20 @@ def form_designer_generation_smoke_audit(source: str = FORM_DESIGNER_SAMPLE_DSL)
         },
         {
             "id": "generated_release_contracts",
-            "ok": release_gate["ok"] and workbench["ok"],
+            "ok": release_gate["ok"]
+            and workbench["ok"]
+            and release_gate["format"] == "appgen.form-designer-release-gate.v1"
+            and workbench["format"] == "appgen.form-designer-workbench.v1"
+            and set(required_generated_release_gate_checks) <= release_gate_passing_checks
+            and set(required_generated_workbench_checks) <= workbench_passing_checks
+            and not release_gate["blocking_gaps"]
+            and not workbench["blocking_gaps"],
             "release_gate": release_gate["format"],
             "workbench": workbench["format"],
+            "required_release_gate_checks": required_generated_release_gate_checks,
+            "passing_release_gate_checks": tuple(sorted(release_gate_passing_checks)),
+            "required_workbench_checks": required_generated_workbench_checks,
+            "passing_workbench_checks": tuple(sorted(workbench_passing_checks)),
         },
         {
             "id": "generated_platform_parity_workbench",
