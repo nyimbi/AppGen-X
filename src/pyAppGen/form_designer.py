@@ -14293,7 +14293,7 @@ def platform_parity_requirement_audit_contract() -> dict:
                 "compiler_runtime_module_tests",
                 "deep_runtime_modules",
                 "deep_runtime_module_tests",
-            } <= {check["id"] for check in runtime["checks"]},
+            } <= {check["id"] for check in runtime["checks"] if check["ok"]},
             "deep_checks": (
                 "stream_identity_ready",
                 "compile_targets_ready",
@@ -14333,7 +14333,7 @@ def platform_parity_requirement_audit_contract() -> dict:
                 "editor_lifecycle_replay",
                 "inspector_generated_modules",
                 "inspector_generated_module_tests",
-            } <= {check["id"] for check in inspector["checks"]},
+            } <= {check["id"] for check in inspector["checks"] if check["ok"]},
             "deep_checks": (
                 "editor_lifecycle_replay",
                 "design_surface_transaction_replay",
@@ -14365,7 +14365,7 @@ def platform_parity_requirement_audit_contract() -> dict:
             and {
                 "binding_generated_modules",
                 "binding_generated_module_tests",
-            } <= {check["id"] for check in bindings["checks"]},
+            } <= {check["id"] for check in bindings["checks"] if check["ok"]},
             "deep_checks": (
                 "binding_lifecycle_release_replay",
                 "design_runtime_session_replay",
@@ -14398,7 +14398,7 @@ def platform_parity_requirement_audit_contract() -> dict:
                 "data_tooling_module_tests",
                 "deep_data_tooling_modules",
                 "deep_data_tooling_module_tests",
-            } <= {check["id"] for check in data_tooling["checks"]},
+            } <= {check["id"] for check in data_tooling["checks"] if check["ok"]},
             "deep_checks": (
                 "relationship_lookup_lifecycle_replay",
                 "data_tooling_modules",
@@ -14429,7 +14429,7 @@ def platform_parity_requirement_audit_contract() -> dict:
                 "lifecycle_transaction_replay",
                 "package_manager_modules",
                 "package_manager_module_tests",
-            } <= {check["id"] for check in package_manager["checks"]},
+            } <= {check["id"] for check in package_manager["checks"] if check["ok"]},
             "deep_checks": (
                 "trust_before_preview",
                 "preview_before_registry_commit",
@@ -14460,7 +14460,7 @@ def platform_parity_requirement_audit_contract() -> dict:
             and {
                 "device_component_modules",
                 "device_component_module_tests",
-            } <= {check["id"] for check in mobile["checks"]},
+            } <= {check["id"] for check in mobile["checks"] if check["ok"]},
             "deep_checks": (
                 "privacy_permission_ready",
                 "bridge_component_ready",
@@ -14488,13 +14488,15 @@ def platform_parity_requirement_audit_contract() -> dict:
                 "phase_order_ready",
             }
             <= {check["id"] for check in visual_readiness["checks"] if check["ok"]}
-            and {"visual_runtime_replay", "visual_lifecycle_replay"} <= {check["id"] for check in visual["checks"]}
+            and {"visual_runtime_replay", "visual_lifecycle_replay"} <= {
+                check["id"] for check in visual["checks"] if check["ok"]
+            }
             and {
                 "visual_component_modules",
                 "visual_component_module_tests",
                 "visual_design_modules",
                 "visual_design_module_tests",
-            } <= {check["id"] for check in visual["checks"]},
+            } <= {check["id"] for check in visual["checks"] if check["ok"]},
             "deep_checks": (
                 "style_ready",
                 "timeline_ready",

@@ -3159,6 +3159,56 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "visual_design_modules",
         "visual_design_module_tests",
     } <= set(requirements_by_id["cross_target_visual_depth"]["deep_checks"])
+    source_required_passing_workbench_checks = (
+        (
+            "native_runtime_streaming",
+            "workbench",
+            {
+                "form_stream_schema",
+                "native_form_modules",
+                "runtime_operation_modules",
+                "compiler_runtime_modules",
+                "deep_runtime_modules",
+            },
+        ),
+        (
+            "inspector_design_surface",
+            "workbench",
+            {"inspector_generated_modules", "inspector_generated_module_tests"},
+        ),
+        (
+            "visual_binding_designer",
+            "workbench",
+            {"binding_generated_modules", "binding_generated_module_tests"},
+        ),
+        (
+            "native_data_service_tooling",
+            "workbench",
+            {"data_tooling_modules", "data_tooling_module_tests", "deep_data_tooling_modules"},
+        ),
+        (
+            "package_installation_ecosystem",
+            "manager",
+            {"lifecycle_transaction_replay", "package_manager_modules", "package_manager_module_tests"},
+        ),
+        (
+            "device_api_component_coverage",
+            "workbench",
+            {"device_component_modules", "device_component_module_tests"},
+        ),
+        (
+            "cross_target_visual_depth",
+            "workbench",
+            {"visual_runtime_replay", "visual_component_modules", "visual_design_modules"},
+        ),
+    )
+    for requirement_id, evidence_key, expected_checks in source_required_passing_workbench_checks:
+        passing_checks = {
+            check["id"]
+            for check in requirements_by_id[requirement_id]["evidence"][evidence_key]["checks"]
+            if check["ok"]
+        }
+        assert expected_checks <= passing_checks
 
     smoke = form_designer_generation_smoke_audit()
     assert smoke["format"] == "appgen.form-designer-generation-smoke-audit.v1"
@@ -12445,6 +12495,56 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "visual_design_modules",
         "visual_design_module_tests",
     } <= set(generated_requirements_by_id["cross_target_visual_depth"]["deep_checks"])
+    generated_required_passing_workbench_checks = (
+        (
+            "native_runtime_streaming",
+            "workbench",
+            {
+                "form_stream_schema",
+                "native_form_modules",
+                "runtime_operation_modules",
+                "compiler_runtime_modules",
+                "deep_runtime_modules",
+            },
+        ),
+        (
+            "inspector_design_surface",
+            "workbench",
+            {"inspector_generated_modules", "inspector_generated_module_tests"},
+        ),
+        (
+            "visual_binding_designer",
+            "workbench",
+            {"binding_generated_modules", "binding_generated_module_tests"},
+        ),
+        (
+            "native_data_service_tooling",
+            "workbench",
+            {"data_tooling_modules", "data_tooling_module_tests", "deep_data_tooling_modules"},
+        ),
+        (
+            "package_installation_ecosystem",
+            "manager",
+            {"lifecycle_transaction_replay", "package_manager_modules", "package_manager_module_tests"},
+        ),
+        (
+            "device_api_component_coverage",
+            "workbench",
+            {"device_component_modules", "device_component_module_tests"},
+        ),
+        (
+            "cross_target_visual_depth",
+            "workbench",
+            {"visual_runtime_replay", "visual_component_modules", "visual_design_modules"},
+        ),
+    )
+    for requirement_id, evidence_key, expected_checks in generated_required_passing_workbench_checks:
+        passing_checks = {
+            check["id"]
+            for check in generated_requirements_by_id[requirement_id]["evidence"][evidence_key]["checks"]
+            if check["ok"]
+        }
+        assert expected_checks <= passing_checks
     assert {"devexpress-native", "tms-fnc", "fastreport", "teechart", "indy"} <= {
         item["id"] for item in form_designer.third_party_component_registry()
     }
