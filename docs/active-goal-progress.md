@@ -118,6 +118,7 @@ Build a complete AppGen IDE and generation platform with:
 | 2026-05-24 | `00e2b97` | Added generated ERP template modules and generated tests for module catalogs, table blueprints, starter stacks, domain coverage, DSL packages, and release workbench surfaces. | Py compile; focused generated-app/form-designer/package-goal tests; staged hygiene scan passed. |
 | 2026-05-24 | `dcd6769` | Added generated extension ecosystem modules and generated tests for hook registries, rule dispatch, custom module contracts, packaging handoff, and release workbench surfaces. | Py compile; focused generated-app/form-designer/package-goal tests; staged hygiene scan passed. |
 | 2026-05-24 | `8709552` | Added generated Studio modules and generated tests for IDE workspace, DSL authoring, database design, generation jobs, app management, and release workbench surfaces. | Py compile; focused generated-app/form-designer/package-goal tests; staged hygiene scan passed. |
+| 2026-05-24 | `04e756f` | Made event-runtime guidance explicit for developers: ordinary generated apps use the AppGen-X event contract, omit `stream_processor`, import only the platform adapter, and reserve stream profiles for audited exceptions. | Focused PBC policy test, documentation diff check, and staged hygiene scan passed. |
 
 ## Current Working Slice
 
@@ -148,6 +149,11 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   use the generated AppGen-X event contract, hide stream-engine selection from
   IDE and natural-language flows, and keep profile names as read-only platform
   metadata unless audited exception evidence is supplied.
+- Event-runtime guidance now includes a direct generator contract for ordinary
+  PBCs: generate owned tables, transactional outbox/inbox tables, typed
+  handlers, idempotency, retry, dead-letter, and release evidence through the
+  AppGen-X event adapter, while omitting `stream_processor` unless an audited
+  telemetry/time-series or complex dataflow exception is present.
 - Generated applications now include standalone seed/fixture modules and
   generated tests that prove seed plans, dependency order, fixture exports,
   validation/anonymization, and release workbench evidence without touching a
