@@ -3419,6 +3419,25 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         requirement["id"]
         for requirement in platform_smoke["workbench"]["requirement_audit"]["requirements"]
     }
+    native_runtime_smoke = next(check for check in smoke["checks"] if check["id"] == "generated_native_form_runtime")
+    assert native_runtime_smoke["ok"] is True
+    assert {
+        "manifest_ok",
+        "stream_formats_supported",
+        "unit_resource_directive",
+        "compiler_pipeline_declared",
+        "form_stream_schema_complete",
+        "runtime_replay_side_effect_free",
+        "design_edit_replay_side_effect_free",
+        "artifact_parity_declared",
+        "native_form_modules_ready",
+        "native_form_module_tests_ready",
+        "compiler_runtime_modules_ready",
+        "compiler_runtime_module_tests_ready",
+        "deep_runtime_modules_ready",
+        "deep_runtime_module_tests_ready",
+        "runtime_load_replay",
+    } <= set(native_runtime_smoke["passing_checks"])
     coverage = next(check for check in smoke["checks"] if check["id"] == "generated_component_file_coverage")
     assert coverage["component_count"] == len(component_file_manifest())
     assert coverage["package_count"] == len(component_package_file_manifest())

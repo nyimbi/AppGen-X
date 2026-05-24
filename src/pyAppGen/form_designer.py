@@ -16790,6 +16790,7 @@ def form_designer_generation_smoke_audit(source: str = FORM_DESIGNER_SAMPLE_DSL)
         generated_platform_parity_passing_checks = {
             check["id"] for check in generated_platform_parity["checks"] if check["ok"]
         }
+        native_form_runtime_passing_checks = set(native_form_runtime_smoke["checks"])
 
     required_generated_release_gate_checks = (
         "artifact_coverage",
@@ -16829,6 +16830,23 @@ def form_designer_generation_smoke_audit(source: str = FORM_DESIGNER_SAMPLE_DSL)
         "platform_parity_requirement_audit",
         "artifact_coverage",
         "route_surface",
+    )
+    required_native_form_runtime_checks = (
+        "manifest_ok",
+        "stream_formats_supported",
+        "unit_resource_directive",
+        "compiler_pipeline_declared",
+        "form_stream_schema_complete",
+        "runtime_replay_side_effect_free",
+        "design_edit_replay_side_effect_free",
+        "artifact_parity_declared",
+        "native_form_modules_ready",
+        "native_form_module_tests_ready",
+        "compiler_runtime_modules_ready",
+        "compiler_runtime_module_tests_ready",
+        "deep_runtime_modules_ready",
+        "deep_runtime_module_tests_ready",
+        "runtime_load_replay",
     )
 
     checks = (
@@ -17103,24 +17121,9 @@ def form_designer_generation_smoke_audit(source: str = FORM_DESIGNER_SAMPLE_DSL)
             "id": "generated_native_form_runtime",
             "ok": native_form_runtime_smoke["ok"]
             and native_form_runtime_smoke["format"] == "appgen.generated-native-form-runtime-smoke.v1"
-            and {
-                "manifest_ok",
-                "stream_formats_supported",
-                "unit_resource_directive",
-                "compiler_pipeline_declared",
-                "form_stream_schema_complete",
-                "runtime_replay_side_effect_free",
-                "design_edit_replay_side_effect_free",
-                "artifact_parity_declared",
-                "native_form_modules_ready",
-                "native_form_module_tests_ready",
-                "compiler_runtime_modules_ready",
-                "compiler_runtime_module_tests_ready",
-                "deep_runtime_modules_ready",
-                "deep_runtime_module_tests_ready",
-                "runtime_load_replay",
-            }
-            <= set(native_form_runtime_smoke["checks"]),
+            and set(required_native_form_runtime_checks) <= native_form_runtime_passing_checks,
+            "required_checks": required_native_form_runtime_checks,
+            "passing_checks": tuple(sorted(native_form_runtime_passing_checks)),
             "smoke": native_form_runtime_smoke,
         },
         {
