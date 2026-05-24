@@ -17408,6 +17408,10 @@ def form_designer_release_audit(existing_paths: set[str] | None = None) -> dict:
     required_canvas_targets = ("web", "mobile", "desktop")
     passing_canvas_targets = tuple(design["canvas"]["render_targets"])
     matrix = field_component_matrix()
+    required_mapped_fields = tuple(item["field"] for item in design["components"])
+    passing_mapped_fields = tuple(item["field"] for item in matrix if item["supported"])
+    required_component_mappings = tuple((item["field"], item["component"]) for item in design["components"])
+    passing_component_mappings = tuple((item["field"], item["component"]) for item in matrix if item["supported"])
     drop = snap_drop("TextBox", 2.3, 7.7, field="generated_note")
     valid_after_drop = validate_form_design(
         apply_drop(design, {**drop["proposal"], "field_type": "string"})  # type: ignore[arg-type]
@@ -17469,7 +17473,12 @@ def form_designer_release_audit(existing_paths: set[str] | None = None) -> dict:
         },
         {
             "id": "field_component_mapping",
-            "ok": all(item["supported"] for item in matrix),
+            "ok": set(required_mapped_fields) <= set(passing_mapped_fields)
+            and set(required_component_mappings) <= set(passing_component_mappings),
+            "required_fields": required_mapped_fields,
+            "passing_fields": passing_mapped_fields,
+            "required_mappings": required_component_mappings,
+            "passing_mappings": passing_component_mappings,
         },
         {
             "id": "drop_snap_property_inspector",

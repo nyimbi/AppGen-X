@@ -2979,6 +2979,10 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "generated_runtime_smoke_evidence",
         "rad_parity_workbench",
     } == {gate["id"] for gate in audit["gates"]}
+    mapping_gate = next(gate for gate in audit["gates"] if gate["id"] == "field_component_mapping")
+    assert mapping_gate["ok"] is True
+    assert set(mapping_gate["required_fields"]) <= set(mapping_gate["passing_fields"])
+    assert set(mapping_gate["required_mappings"]) <= set(mapping_gate["passing_mappings"])
     assert audit["generation_smoke"]["ok"] is True
     generation_smoke_gate = next(gate for gate in audit["gates"] if gate["id"] == "generation_smoke")
     assert generation_smoke_gate["ok"] is True
