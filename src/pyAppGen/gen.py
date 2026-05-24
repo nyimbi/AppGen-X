@@ -2091,6 +2091,27 @@ def write_code_review_file(output_dir, schema: AppSchema):
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
     (output_dir / "code_review.py").write_text(_code_review_text(schema))
+    write_code_review_module_files(output_dir)
+
+
+def write_code_review_module_files(output_dir):
+    """Write generated code-review modules and smoke tests."""
+    output_dir = Path(output_dir)
+    module_dir = output_dir / "code_review_modules"
+    test_dir = output_dir / "code_review_module_tests"
+    module_dir.mkdir(parents=True, exist_ok=True)
+    test_dir.mkdir(parents=True, exist_ok=True)
+    (module_dir / "__init__.py").write_text(_code_review_module_init_text(), encoding="utf-8")
+    (test_dir / "__init__.py").write_text(_code_review_module_test_init_text(), encoding="utf-8")
+    for module_name in CODE_REVIEW_MODULES:
+        (module_dir / f"{module_name}.py").write_text(
+            _code_review_module_text(module_name),
+            encoding="utf-8",
+        )
+        (test_dir / f"test_{module_name}.py").write_text(
+            _code_review_module_test_text(module_name),
+            encoding="utf-8",
+        )
 
 
 def write_components_file(output_dir, schema: AppSchema):
@@ -2426,6 +2447,15 @@ API_TESTING_MODULES = (
     "ui_smoke_module",
     "synthetic_monitor_module",
     "api_testing_release_workbench_module",
+)
+
+CODE_REVIEW_MODULES = (
+    "schema_review_module",
+    "artifact_review_module",
+    "review_summary_module",
+    "primary_key_review_module",
+    "field_policy_review_module",
+    "code_review_release_workbench_module",
 )
 
 
@@ -8683,6 +8713,255 @@ def smoke_test():
         "surface": SURFACE,
         "ok": True,
         "tests": ("test_api_testing_module_contract", "test_api_testing_module_smoke"),
+    }}
+'''
+
+
+def _code_review_module_init_text() -> str:
+    return (
+        '"""Generated code-review modules."""\n\n'
+        f"CODE_REVIEW_MODULES = {CODE_REVIEW_MODULES!r}\n"
+    )
+
+
+def _code_review_module_test_init_text() -> str:
+    modules = tuple(f"test_{name}" for name in CODE_REVIEW_MODULES)
+    return (
+        '"""Generated code-review module tests."""\n\n'
+        f"CODE_REVIEW_MODULE_TESTS = {modules!r}\n"
+    )
+
+
+def _code_review_surface(module_name: str) -> tuple[str, str]:
+    return {
+        "schema_review_module": ("schema_review", "schema_review"),
+        "artifact_review_module": ("artifact_review", "artifact_review"),
+        "review_summary_module": ("review_summary", "review_summary"),
+        "primary_key_review_module": ("primary_key_review", "code_review_release_gate"),
+        "field_policy_review_module": ("field_policy_review", "schema_review"),
+        "code_review_release_workbench_module": ("code_review_release_workbench", "code_review_release_gate"),
+    }[module_name]
+
+
+def _code_review_module_text(module_name: str) -> str:
+    surface, operation = _code_review_surface(module_name)
+    return f'''"""Generated code-review module for {surface}."""
+
+from __future__ import annotations
+
+import importlib.util
+from pathlib import Path
+
+
+MODULE = {module_name!r}
+SURFACE = {surface!r}
+OPERATION = {operation!r}
+EXPECTED_EXPORTS = (
+    "module_contract",
+    "code_review_manifest_contract",
+    "run_code_review_operation",
+    "release_context",
+    "smoke_test",
+)
+
+
+def _code_review():
+    module_path = Path(__file__).resolve().parents[1] / "code_review.py"
+    spec = importlib.util.spec_from_file_location(f"generated_code_review_{{MODULE}}_code_review", module_path)
+    module = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(module)
+    return module
+
+
+def _assets(code_review):
+    return set(code_review.EXPECTED_ARTIFACTS)
+
+
+def module_contract():
+    """Return this generated code-review module's export contract."""
+    available = tuple(name for name in EXPECTED_EXPORTS if name in globals())
+    return {{
+        "format": "appgen.code-review-module-contract.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "operation": OPERATION,
+        "ok": set(EXPECTED_EXPORTS) <= set(available),
+        "exports": available,
+        "expected_exports": EXPECTED_EXPORTS,
+        "side_effects": (),
+    }}
+
+
+def code_review_manifest_contract():
+    """Return generated code-review metadata owned by this module."""
+    code_review = _code_review()
+    findings = code_review.schema_review()
+    summary = code_review.review_summary(_assets(code_review))
+    return {{
+        "format": "appgen.code-review-module-manifest.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "ok": bool(code_review.REVIEW_TABLES)
+        and bool(findings)
+        and summary["ok"]
+        and code_review.artifact_review(_assets(code_review))["ok"],
+        "tables": tuple(code_review.REVIEW_TABLES),
+        "findings": findings,
+        "summary": summary,
+        "side_effects": (),
+    }}
+
+
+def run_code_review_operation():
+    """Run this module's side-effect-free code-review operation."""
+    code_review = _code_review()
+    assets = _assets(code_review)
+    findings = code_review.schema_review()
+    if SURFACE == "schema_review":
+        operation = {{"findings": findings, "rules": tuple(sorted({{item["rule"] for item in findings}}))}}
+        ok = bool(operation["findings"]) and "primary-key" in operation["rules"] and "required-field" in operation["rules"]
+    elif SURFACE == "artifact_review":
+        operation = {{
+            "complete": code_review.artifact_review(assets),
+            "missing": code_review.artifact_review({{"app/models.py"}}),
+        }}
+        ok = operation["complete"]["ok"] and bool(operation["missing"]["missing"])
+    elif SURFACE == "review_summary":
+        operation = code_review.review_summary(assets)
+        ok = operation["ok"] and operation["artifacts"]["ok"] and not operation["blocking"]
+    elif SURFACE == "primary_key_review":
+        release = code_review.code_review_release_gate(assets)
+        primary_gate = next(item for item in release["checks"] if item["gate"] == "primary_key_review")
+        operation = {{"release": release, "primary_key_review": primary_gate}}
+        ok = primary_gate["ok"] and release["ok"]
+    elif SURFACE == "field_policy_review":
+        release = code_review.code_review_release_gate(assets)
+        required_gate = next(item for item in release["checks"] if item["gate"] == "required_field_review")
+        protected_gate = next(item for item in release["checks"] if item["gate"] == "protected_field_review")
+        operation = {{
+            "required_field_review": required_gate,
+            "protected_field_review": protected_gate,
+            "findings": findings,
+        }}
+        ok = required_gate["ok"] and protected_gate["ok"]
+    else:
+        operation = {{
+            "release": code_review.code_review_release_gate(assets),
+            "workbench": code_review.code_review_workbench(assets),
+        }}
+        ok = operation["release"]["ok"] and operation["workbench"]["ok"]
+    return {{
+        "format": "appgen.code-review-module-operation.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "ok": ok,
+        "operation": operation,
+        "side_effects": (),
+    }}
+
+
+def release_context():
+    """Return release evidence used by this code-review module."""
+    code_review = _code_review()
+    assets = _assets(code_review)
+    return {{
+        "format": "appgen.code-review-module-release-context.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "ok": code_review.code_review_release_gate(assets)["ok"] and code_review.code_review_workbench(assets)["ok"],
+        "release": code_review.code_review_release_gate(assets),
+        "workbench": code_review.code_review_workbench(assets),
+        "side_effects": (),
+    }}
+
+
+def smoke_test():
+    """Run side-effect-free checks for this generated code-review module."""
+    contract = module_contract()
+    manifest = code_review_manifest_contract()
+    operation = run_code_review_operation()
+    release = release_context()
+    return {{
+        "format": "appgen.code-review-module-smoke-test.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "ok": contract["ok"]
+        and manifest["ok"]
+        and operation["ok"]
+        and release["ok"]
+        and not manifest["side_effects"]
+        and not operation["side_effects"]
+        and not release["side_effects"],
+        "contract": contract,
+        "manifest": manifest,
+        "operation": operation,
+        "release": release,
+        "checks": (
+            "module_contract_resolves",
+            "code_review_manifest_contract_ok",
+            "code_review_operation_ok",
+            "release_context_ok",
+            "no_side_effects",
+        ),
+    }}
+'''
+
+
+def _code_review_module_test_text(module_name: str) -> str:
+    surface, _operation = _code_review_surface(module_name)
+    return f'''"""Generated tests for the {surface} code-review module."""
+
+from __future__ import annotations
+
+import importlib.util
+from pathlib import Path
+
+
+MODULE = {module_name!r}
+SURFACE = {surface!r}
+
+
+def load_code_review_module():
+    """Load the generated code-review module without app installation."""
+    module_path = Path(__file__).resolve().parents[1] / "code_review_modules" / f"{{MODULE}}.py"
+    spec = importlib.util.spec_from_file_location(f"generated_code_review_module_{{MODULE}}", module_path)
+    module = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(module)
+    return module
+
+
+def test_code_review_module_contract():
+    """Assert the generated code-review module exposes its contract."""
+    module = load_code_review_module()
+    contract = module.module_contract()
+    assert contract["module"] == MODULE
+    assert contract["surface"] == SURFACE
+    assert contract["ok"] is True
+    assert all(hasattr(module, name) for name in contract["expected_exports"])
+
+
+def test_code_review_module_smoke():
+    """Assert the module's side-effect-free smoke test passes."""
+    module = load_code_review_module()
+    result = module.smoke_test()
+    assert result["ok"] is True
+    assert result["module"] == MODULE
+    assert result["surface"] == SURFACE
+    assert result["checks"]
+
+
+def smoke_test():
+    """Run this generated test module in a side-effect-free way."""
+    test_code_review_module_contract()
+    test_code_review_module_smoke()
+    return {{
+        "format": "appgen.code-review-module-generated-test-smoke.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "ok": True,
+        "tests": ("test_code_review_module_contract", "test_code_review_module_smoke"),
     }}
 '''
 
@@ -58854,6 +59133,9 @@ def _code_review_text(schema: AppSchema) -> str:
 
 from __future__ import annotations
 
+import importlib.util
+from pathlib import Path
+
 from flask import jsonify
 from flask_appbuilder import BaseView
 from flask_appbuilder import expose
@@ -58861,6 +59143,73 @@ from flask_appbuilder import expose
 
 REVIEW_TABLES = {tables!r}
 EXPECTED_ARTIFACTS = {expected_artifacts!r}
+CODE_REVIEW_MODULES = (
+    "schema_review_module",
+    "artifact_review_module",
+    "review_summary_module",
+    "primary_key_review_module",
+    "field_policy_review_module",
+    "code_review_release_workbench_module",
+)
+
+
+def _load_generated_module(module_path, module_name):
+    """Load a generated code-review module without installing the app."""
+    spec = importlib.util.spec_from_file_location(module_name, module_path)
+    module = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(module)
+    return module
+
+
+def code_review_module_file_manifest():
+    """Return independently importable generated code-review module files."""
+    root = Path(__file__).resolve().parent
+    modules = []
+    for module_name in CODE_REVIEW_MODULES:
+        module_path = root / "code_review_modules" / f"{{module_name}}.py"
+        module = _load_generated_module(module_path, f"generated_code_review_module_{{module_name}}")
+        contract = module.module_contract()
+        modules.append(
+            {{
+                "module": module_name,
+                "surface": contract["surface"],
+                "path": f"app/code_review_modules/{{module_name}}.py",
+                "exists": module_path.exists(),
+                "ok": contract["ok"] and module.smoke_test()["ok"],
+                "exports": contract["exports"],
+            }}
+        )
+    return {{
+        "format": "appgen.code-review-module-file-manifest.v1",
+        "ok": len(modules) == len(CODE_REVIEW_MODULES) and all(item["ok"] and item["exists"] for item in modules),
+        "modules": tuple(modules),
+    }}
+
+
+def code_review_module_test_file_manifest():
+    """Return generated tests for the code-review module files."""
+    root = Path(__file__).resolve().parent
+    tests = []
+    for module_name in CODE_REVIEW_MODULES:
+        test_path = root / "code_review_module_tests" / f"test_{{module_name}}.py"
+        module = _load_generated_module(test_path, f"generated_code_review_module_test_{{module_name}}")
+        result = module.smoke_test()
+        tests.append(
+            {{
+                "module": f"test_{{module_name}}",
+                "surface": result["surface"],
+                "path": f"app/code_review_module_tests/test_{{module_name}}.py",
+                "exists": test_path.exists(),
+                "ok": result["ok"],
+                "tests": result["tests"],
+            }}
+        )
+    return {{
+        "format": "appgen.code-review-module-test-file-manifest.v1",
+        "ok": len(tests) == len(CODE_REVIEW_MODULES) and all(item["ok"] and item["exists"] for item in tests),
+        "tests": tuple(tests),
+    }}
 
 
 def schema_review():
