@@ -135,6 +135,7 @@ Build a complete AppGen IDE and generation platform with:
 | 2026-05-24 | `824f9a0` | Added generated natural-language evolution modules and generated tests for plan extraction, DSL rendering, migration impact, changesets, approval workflow, destructive guardrails, and release workbench surfaces. | Py compile; focused generated-app/form-designer/package-goal tests; staged hygiene scan passed. |
 | 2026-05-24 | `fd8788a` | Added a compact executable event-processing developer guidance contract so tools and coding agents get one answer instead of a stream-runtime selection matrix. | Py compile; focused PBC policy test; documentation diff check; staged hygiene scan passed. |
 | 2026-05-24 | `b442d2f` | Added generated enterprise data IDE modules and generated tests for connection design, dataset state, service publishing, embedded store maintenance, failover replay, and relationship lookup surfaces. | Py compile; focused generated-app/form-designer/package-goal tests; staged hygiene scan passed. |
+| 2026-05-24 | `e24e748` | Added generated visual design IDE modules and generated tests for style authoring, timeline authoring, effect-stack validation, scene authoring, asset import, and visual runtime packaging surfaces. | Py compile; focused generated-app/form-designer/package-goal tests; staged hygiene scan passed. |
 
 ## Current Working Slice
 
@@ -231,6 +232,11 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   generated tests for connection design, dataset state, service publishing,
   embedded store maintenance, failover replay, and relationship lookup
   surfaces, with generated data tooling runtime manifests validating module
+  and test coverage.
+- Generated applications now emit standalone visual design IDE modules and
+  generated tests for style authoring, timeline authoring, effect-stack
+  validation, scene authoring, asset import, and visual runtime packaging
+  surfaces, with generated visual-depth runtime manifests validating module
   and test coverage.
 - Event-runtime guidance now exposes a first-match developer choice algorithm:
   ordinary business, ERP, workflow, chatbot, agent, integration, and PBC event
