@@ -128,6 +128,7 @@ Build a complete AppGen IDE and generation platform with:
 | 2026-05-24 | `67ea94d` | Added generated notification modules and generated tests for channel catalogs, event catalogs, payload contracts, queue metadata, secret policy, and notification release workbench surfaces. | Py compile; focused generated-app/form-designer/package-goal tests; staged hygiene scan passed. |
 | 2026-05-24 | `371e374` | Added generated agentic modules and generated tests for provider matrices, agent catalogs, tool policies, execution matrices, coding-agent vectors, and agentic release workbench surfaces. | Py compile; focused generated-app/form-designer/package-goal tests; staged hygiene scan passed. |
 | 2026-05-24 | `4a1b775` | Made the event-processing alternatives guide start with the ordinary developer answer and manifest recipe. | Focused PBC policy test, documentation diff check, and staged hygiene scan passed. |
+| 2026-05-24 | `f4d7c3c` | Added generated text-quality modules and generated tests for field catalogs, counter metrics, grammar hints, quality reports, form feedback, and text-quality release workbench surfaces. | Py compile; focused generated-app/form-designer/package-goal tests; staged hygiene scan passed. |
 
 ## Current Working Slice
 
@@ -196,6 +197,10 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   transactional outbox/inbox tables, write typed handlers through the AppGen-X
   event adapter, and use PostgreSQL unless the project standard is MySQL or
   MariaDB.
+- Generated applications now emit standalone text-quality modules and
+  generated tests for field catalogs, counter metrics, grammar hints, quality
+  reports, form feedback, and text-quality release workbench surfaces, with
+  generated text-quality manifests validating module and test coverage.
 - Event-runtime guidance now exposes a first-match developer choice algorithm:
   ordinary business, ERP, workflow, chatbot, agent, integration, and PBC event
   handling generate the AppGen-X event contract with `stream_processor`
