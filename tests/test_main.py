@@ -3224,6 +3224,8 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     assert inspector_gate["ok"] is True
     assert set(inspector_gate["required_tabs"]) <= set(inspector_gate["passing_tabs"])
     assert set(inspector_gate["required_checks"]) <= set(inspector_gate["passing_checks"])
+    assert set(inspector_gate["required_component_surfaces"]) <= set(inspector_gate["passing_component_surfaces"])
+    assert set(inspector_gate["required_surface_counts"]) <= set(inspector_gate["passing_surface_counts"])
     binding_gate = next(
         check for check in audit["rad_parity"]["checks"] if check["id"] == "livebindings_designer"
     )

@@ -14802,6 +14802,30 @@ def rad_parity_workbench(existing_paths: set[str] | None = None) -> dict:
         "inspector_generated_module_tests",
     )
     passing_inspector_workbench_checks = tuple(check["id"] for check in inspector_workbench["checks"] if check["ok"])
+    inspector_contracts = tuple(inspector_workbench["contracts"])
+    required_inspector_editor_surfaces = ("property_editors", "event_editors", "component_editors", "custom_designers")
+    required_inspector_component_surfaces = tuple(
+        (contract["component"], surface)
+        for contract in inspector_contracts
+        for surface in required_inspector_editor_surfaces
+    )
+    passing_inspector_component_surfaces = tuple(
+        (contract["component"], surface)
+        for contract in inspector_contracts
+        for surface in required_inspector_editor_surfaces
+        if contract[surface]
+    )
+    required_inspector_surface_counts = tuple(
+        (contract["component"], surface, len(contract[surface]))
+        for contract in inspector_contracts
+        for surface in required_inspector_editor_surfaces
+    )
+    passing_inspector_surface_counts = tuple(
+        (contract["component"], surface, len(contract[surface]))
+        for contract in inspector_contracts
+        for surface in required_inspector_editor_surfaces
+        if contract[surface]
+    )
     required_binding_edges = ("control_to_field",)
     passing_binding_edges = tuple(livebindings_contract()["binding_edges"])
     required_binding_workbench_checks = (
@@ -15202,11 +15226,17 @@ def rad_parity_workbench(existing_paths: set[str] | None = None) -> dict:
             "id": "object_inspector_parity",
             "ok": set(required_inspector_tabs) <= set(passing_inspector_tabs)
             and inspector_workbench["ok"]
-            and set(required_inspector_workbench_checks) <= set(passing_inspector_workbench_checks),
+            and set(required_inspector_workbench_checks) <= set(passing_inspector_workbench_checks)
+            and set(required_inspector_component_surfaces) <= set(passing_inspector_component_surfaces)
+            and set(required_inspector_surface_counts) <= set(passing_inspector_surface_counts),
             "required_tabs": required_inspector_tabs,
             "passing_tabs": passing_inspector_tabs,
             "required_checks": required_inspector_workbench_checks,
             "passing_checks": passing_inspector_workbench_checks,
+            "required_component_surfaces": required_inspector_component_surfaces,
+            "passing_component_surfaces": passing_inspector_component_surfaces,
+            "required_surface_counts": required_inspector_surface_counts,
+            "passing_surface_counts": passing_inspector_surface_counts,
             "evidence": {"contract": object_inspector_contract(), "workbench": inspector_workbench},
         },
         {
