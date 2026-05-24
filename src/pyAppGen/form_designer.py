@@ -18075,15 +18075,33 @@ def form_designer_release_audit(existing_paths: set[str] | None = None) -> dict:
         ("generated_mobile_device_runtime", "appgen.generated-mobile-device-runtime-smoke.v1"),
     )
     runtime_smoke_format_by_id = {}
+    runtime_smoke_carrier_by_id = {}
     for check in generation_smoke["checks"]:
         evidence = check.get("smoke")
+        carrier = "smoke"
         if not isinstance(evidence, dict):
             evidence = check.get("workbench")
+            carrier = "workbench"
         runtime_smoke_format_by_id[check["id"]] = evidence.get("format") if isinstance(evidence, dict) else None
+        runtime_smoke_carrier_by_id[check["id"]] = carrier if isinstance(evidence, dict) else None
     passing_runtime_smoke_formats = tuple(
         (check_id, expected_format)
         for check_id, expected_format in required_runtime_smoke_formats
         if runtime_smoke_format_by_id.get(check_id) == expected_format
+    )
+    required_runtime_smoke_evidence = tuple(
+        (
+            check_id,
+            "workbench" if check_id == "generated_platform_parity_workbench" else "smoke",
+            expected_format,
+        )
+        for check_id, expected_format in required_runtime_smoke_formats
+    )
+    passing_runtime_smoke_evidence = tuple(
+        (check_id, carrier, expected_format)
+        for check_id, carrier, expected_format in required_runtime_smoke_evidence
+        if runtime_smoke_carrier_by_id.get(check_id) == carrier
+        and runtime_smoke_format_by_id.get(check_id) == expected_format
     )
     rad_parity = rad_parity_workbench(existing)
     rad_parity_passing_checks = {check["id"] for check in rad_parity["checks"] if check["ok"]}
@@ -18246,11 +18264,14 @@ def form_designer_release_audit(existing_paths: set[str] | None = None) -> dict:
         {
             "id": "generated_runtime_smoke_evidence",
             "ok": set(required_generation_smoke_checks) <= generation_smoke_passing_checks
-            and set(required_runtime_smoke_formats) <= set(passing_runtime_smoke_formats),
+            and set(required_runtime_smoke_formats) <= set(passing_runtime_smoke_formats)
+            and set(required_runtime_smoke_evidence) <= set(passing_runtime_smoke_evidence),
             "required_checks": required_generation_smoke_checks,
             "passing_checks": tuple(sorted(generation_smoke_passing_checks)),
             "required_formats": required_runtime_smoke_formats,
             "passing_formats": passing_runtime_smoke_formats,
+            "required_evidence": required_runtime_smoke_evidence,
+            "passing_evidence": passing_runtime_smoke_evidence,
         },
         {
             "id": "rad_parity_workbench",

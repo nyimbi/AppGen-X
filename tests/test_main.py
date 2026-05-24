@@ -3092,6 +3092,17 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "generated_mobile_device_runtime",
     } <= set(generated_runtime_gate["passing_checks"])
     assert set(generated_runtime_gate["required_formats"]) <= set(generated_runtime_gate["passing_formats"])
+    assert set(generated_runtime_gate["required_evidence"]) <= set(generated_runtime_gate["passing_evidence"])
+    assert (
+        "generated_platform_parity_workbench",
+        "workbench",
+        "appgen.generated-rad-parity-workbench.v1",
+    ) in generated_runtime_gate["passing_evidence"]
+    assert (
+        "generated_mobile_device_runtime",
+        "smoke",
+        "appgen.generated-mobile-device-runtime-smoke.v1",
+    ) in generated_runtime_gate["passing_evidence"]
     artifact_gate = next(gate for gate in audit["gates"] if gate["id"] == "artifact_contract")
     assert artifact_gate["ok"] is True
     assert set(artifact_gate["required_artifacts"]) <= set(artifact_gate["passing_artifacts"])
