@@ -6169,6 +6169,8 @@ def object_inspector_workbench() -> dict:
     inspector_binding_bridge = inspector_binding_designer_bridge_contract()
     action_registry = inspector_action_registry_contract("Button")
     cross_handler_invocation = inspector_cross_handler_invocation_contract("Button")
+    inspector_module_artifacts = inspector_module_file_manifest()
+    inspector_module_test_artifacts = inspector_module_test_file_manifest()
     readiness = object_inspector_readiness_contract(sample_components)
     property_edit_operation = inspector_apply_property_edit(
         {"component": "TextBox", "props": {"label": "Name"}},
@@ -6464,6 +6466,21 @@ def object_inspector_workbench() -> dict:
             and not readiness["side_effects"],
             "evidence": readiness,
         },
+        {
+            "id": "inspector_generated_modules",
+            "ok": len(inspector_module_artifacts) == 6
+            and all(item["ok"] and "run_editor_operation" in item["exports"] for item in inspector_module_artifacts),
+            "evidence": inspector_module_artifacts,
+        },
+        {
+            "id": "inspector_generated_module_tests",
+            "ok": len(inspector_module_test_artifacts) == 6
+            and all(
+                item["ok"] and "test_inspector_module_smoke" in item["exports"]
+                for item in inspector_module_test_artifacts
+            ),
+            "evidence": inspector_module_test_artifacts,
+        },
     )
     ok = all(check["ok"] for check in checks)
     return {
@@ -6503,6 +6520,8 @@ def object_inspector_workbench() -> dict:
         "inspector_binding_bridge": inspector_binding_bridge,
         "action_registry": action_registry,
         "cross_handler_invocation": cross_handler_invocation,
+        "inspector_module_artifacts": inspector_module_artifacts,
+        "inspector_module_test_artifacts": inspector_module_test_artifacts,
         "readiness": readiness,
         "actionable_operations": {
             "property_edit": property_edit_operation,
@@ -8135,6 +8154,8 @@ def livebindings_workbench() -> dict:
     lifecycle_release_replay = binding_lifecycle_release_replay_contract()
     actionable_operations = livebindings_actionable_operations()
     inspector_binding_bridge = inspector_binding_designer_bridge_contract()
+    binding_module_artifacts = binding_module_file_manifest()
+    binding_module_test_artifacts = binding_module_test_file_manifest()
     readiness = livebindings_readiness_contract()
     checks = (
         {
@@ -8381,6 +8402,21 @@ def livebindings_workbench() -> dict:
             and not readiness["side_effects"],
             "evidence": readiness,
         },
+        {
+            "id": "binding_generated_modules",
+            "ok": len(binding_module_artifacts) == 6
+            and all(item["ok"] and "run_binding_operation" in item["exports"] for item in binding_module_artifacts),
+            "evidence": binding_module_artifacts,
+        },
+        {
+            "id": "binding_generated_module_tests",
+            "ok": len(binding_module_test_artifacts) == 6
+            and all(
+                item["ok"] and "test_binding_module_smoke" in item["exports"]
+                for item in binding_module_test_artifacts
+            ),
+            "evidence": binding_module_test_artifacts,
+        },
     )
     ok = all(check["ok"] for check in checks)
     return {
@@ -8420,6 +8456,8 @@ def livebindings_workbench() -> dict:
         "designer_transaction_replay": designer_transaction_replay,
         "lifecycle_release_replay": lifecycle_release_replay,
         "inspector_binding_bridge": inspector_binding_bridge,
+        "binding_module_artifacts": binding_module_artifacts,
+        "binding_module_test_artifacts": binding_module_test_artifacts,
         "readiness": readiness,
         "checks": checks,
         "blocking_gaps": tuple(check for check in checks if not check["ok"]),
@@ -14108,11 +14146,15 @@ def platform_parity_requirement_audit_contract() -> dict:
                 "component_editor_transaction",
                 "custom_designer_registration_replay",
                 "editor_lifecycle_replay",
+                "inspector_generated_modules",
+                "inspector_generated_module_tests",
             } <= {check["id"] for check in inspector["checks"]},
             "deep_checks": (
                 "editor_lifecycle_replay",
                 "design_surface_transaction_replay",
                 "custom_designer_registration_replay",
+                "inspector_generated_modules",
+                "inspector_generated_module_tests",
                 "phase_order_ready",
             ),
             "evidence": {"workbench": inspector, "readiness": inspector_readiness},
@@ -14134,11 +14176,17 @@ def platform_parity_requirement_audit_contract() -> dict:
             <= {check["id"] for check in binding_readiness["checks"] if check["ok"]}
             and bindings["designer_transaction_replay"]["ok"]
             and bindings["design_runtime_replay"]["ok"]
-            and bindings["lifecycle_release_replay"]["ok"],
+            and bindings["lifecycle_release_replay"]["ok"]
+            and {
+                "binding_generated_modules",
+                "binding_generated_module_tests",
+            } <= {check["id"] for check in bindings["checks"]},
             "deep_checks": (
                 "binding_lifecycle_release_replay",
                 "design_runtime_session_replay",
                 "designer_transaction_replay",
+                "binding_generated_modules",
+                "binding_generated_module_tests",
                 "phase_order_ready",
             ),
             "evidence": {"workbench": bindings, "readiness": binding_readiness},

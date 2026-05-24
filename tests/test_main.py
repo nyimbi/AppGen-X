@@ -1478,6 +1478,8 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "cross_handler_invocation_policy",
         "actionable_editor_operations",
         "inspector_readiness_contract",
+        "inspector_generated_modules",
+        "inspector_generated_module_tests",
     } == {check["id"] for check in inspector_workbench["checks"]}
     assert all("apply_change" in workflow["workflow"] for workflow in inspector_workbench["property_edit_workflows"])
     assert all("update_component_reference" in workflow["workflow"] for workflow in inspector_workbench["event_edit_workflows"])
@@ -1626,6 +1628,13 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     assert inspector_readiness["final_state"]["round_trips"] == len(inspector_workbench["contracts"])
     assert inspector_workbench["readiness"]["ok"] is True
     assert inspector_workbench["readiness"]["final_state"]["custom_designer_hooks"] > 0
+    assert len(inspector_workbench["inspector_module_artifacts"]) == 6
+    assert len(inspector_workbench["inspector_module_test_artifacts"]) == 6
+    assert all("run_editor_operation" in item["exports"] for item in inspector_workbench["inspector_module_artifacts"])
+    assert all(
+        "test_inspector_module_smoke" in item["exports"]
+        for item in inspector_workbench["inspector_module_test_artifacts"]
+    )
     binding_graph = livebindings_graph_contract()
     assert binding_graph["format"] == "appgen.livebindings-graph.v1"
     assert {"dataset", "field", "control", "expression"} <= {node["kind"] for node in binding_graph["nodes"]}
@@ -1675,6 +1684,8 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "binding_lifecycle_release_replay",
         "inspector_binding_bridge",
         "binding_readiness_contract",
+        "binding_generated_modules",
+        "binding_generated_module_tests",
     } == {check["id"] for check in binding_workbench["checks"]}
     create_link = livebindings_create_link()
     assert create_link["ok"] is True
@@ -1802,6 +1813,13 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     assert binding_readiness["final_state"]["edge_count"] == len(binding_workbench["contract"]["graph"]["edges"])
     assert binding_workbench["readiness"]["ok"] is True
     assert binding_workbench["readiness"]["final_state"]["runtime_trace"] > 0
+    assert len(binding_workbench["binding_module_artifacts"]) == 6
+    assert len(binding_workbench["binding_module_test_artifacts"]) == 6
+    assert all("run_binding_operation" in item["exports"] for item in binding_workbench["binding_module_artifacts"])
+    assert all(
+        "test_binding_module_smoke" in item["exports"]
+        for item in binding_workbench["binding_module_test_artifacts"]
+    )
     data_workbench = rad_data_tooling_workbench()
     assert data_workbench["format"] == "appgen.rad-data-tooling-workbench.v1"
     assert data_workbench["ok"] is True
@@ -2972,8 +2990,16 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "compiler_runtime_modules",
         "deep_runtime_modules",
     } <= set(requirements_by_id["native_runtime_streaming"]["deep_checks"])
-    assert "phase_order_ready" in requirements_by_id["inspector_design_surface"]["deep_checks"]
-    assert "phase_order_ready" in requirements_by_id["visual_binding_designer"]["deep_checks"]
+    assert {
+        "inspector_generated_modules",
+        "inspector_generated_module_tests",
+        "phase_order_ready",
+    } <= set(requirements_by_id["inspector_design_surface"]["deep_checks"])
+    assert {
+        "binding_generated_modules",
+        "binding_generated_module_tests",
+        "phase_order_ready",
+    } <= set(requirements_by_id["visual_binding_designer"]["deep_checks"])
     assert "phase_order_ready" in requirements_by_id["native_data_service_tooling"]["deep_checks"]
     assert "runtime_delivery_ready" in requirements_by_id["device_api_component_coverage"]["deep_checks"]
     assert "runtime_package_ready" in requirements_by_id["cross_target_visual_depth"]["deep_checks"]
@@ -12201,8 +12227,16 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "compiler_runtime_modules",
         "deep_runtime_modules",
     } <= set(generated_requirements_by_id["native_runtime_streaming"]["deep_checks"])
-    assert "phase_order_ready" in generated_requirements_by_id["inspector_design_surface"]["deep_checks"]
-    assert "phase_order_ready" in generated_requirements_by_id["visual_binding_designer"]["deep_checks"]
+    assert {
+        "inspector_generated_modules",
+        "inspector_generated_module_tests",
+        "phase_order_ready",
+    } <= set(generated_requirements_by_id["inspector_design_surface"]["deep_checks"])
+    assert {
+        "binding_generated_modules",
+        "binding_generated_module_tests",
+        "phase_order_ready",
+    } <= set(generated_requirements_by_id["visual_binding_designer"]["deep_checks"])
     assert "phase_order_ready" in generated_requirements_by_id["native_data_service_tooling"]["deep_checks"]
     assert "runtime_delivery_ready" in generated_requirements_by_id["device_api_component_coverage"]["deep_checks"]
     assert "runtime_package_ready" in generated_requirements_by_id["cross_target_visual_depth"]["deep_checks"]
@@ -12442,6 +12476,8 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "binding_lifecycle_release_replay",
         "inspector_binding_bridge",
         "binding_readiness_contract",
+        "binding_generated_modules",
+        "binding_generated_module_tests",
     } <= {
         check["id"] for check in generated_bindings["checks"]
     }
@@ -12559,6 +12595,13 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert generated_binding_readiness["final_state"]["edge_count"] == len(generated_bindings["contract"]["graph"]["edges"])
     assert generated_bindings["readiness"]["ok"] is True
     assert generated_bindings["readiness"]["final_state"]["runtime_trace"] > 0
+    assert len(generated_bindings["binding_module_artifacts"]) == 6
+    assert len(generated_bindings["binding_module_test_artifacts"]) == 6
+    assert all("run_binding_operation" in item["exports"] for item in generated_bindings["binding_module_artifacts"])
+    assert all(
+        "test_binding_module_smoke" in item["exports"]
+        for item in generated_bindings["binding_module_test_artifacts"]
+    )
     generated_data_tooling = form_designer.rad_data_tooling_workbench()
     assert generated_data_tooling["format"] == "appgen.generated-rad-data-tooling-workbench.v1"
     assert generated_data_tooling["ok"] is True
@@ -13826,6 +13869,8 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "cross_handler_invocation_policy",
         "actionable_editor_operations",
         "inspector_readiness_contract",
+        "inspector_generated_modules",
+        "inspector_generated_module_tests",
     } == {check["id"] for check in generated_inspector["checks"]}
     generated_property_edit = form_designer.inspector_apply_property_edit(
         {"component": "TextBox", "props": {"label": "Name"}},
@@ -14000,6 +14045,13 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert generated_inspector_readiness["final_state"]["round_trips"] == len(generated_inspector["contracts"])
     assert generated_inspector["readiness"]["ok"] is True
     assert generated_inspector["readiness"]["final_state"]["custom_designer_hooks"] > 0
+    assert len(generated_inspector["inspector_module_artifacts"]) == 6
+    assert len(generated_inspector["inspector_module_test_artifacts"]) == 6
+    assert all("run_editor_operation" in item["exports"] for item in generated_inspector["inspector_module_artifacts"])
+    assert all(
+        "test_inspector_module_smoke" in item["exports"]
+        for item in generated_inspector["inspector_module_test_artifacts"]
+    )
     generated_usability = form_designer.component_usability_workbench()
     assert generated_usability["format"] == "appgen.generated-component-usability-workbench.v1"
     assert generated_usability["ok"] is True
