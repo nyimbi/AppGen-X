@@ -2342,6 +2342,7 @@ def write_form_designer_file(output_dir, schema: AppSchema):
     write_component_contract_files(output_dir)
     write_device_api_component_files(output_dir)
     write_visual_component_files(output_dir)
+    write_visual_design_ide_module_files(output_dir)
     write_data_tooling_module_files(output_dir)
     write_deep_data_tooling_module_files(output_dir)
     write_enterprise_data_ide_module_files(output_dir)
@@ -2394,6 +2395,15 @@ VISUAL_DEPTH_COMPONENTS = (
     "Camera3D",
     "Light3D",
     "Mesh3D",
+)
+
+VISUAL_DESIGN_IDE_MODULES = (
+    "style_author_module",
+    "timeline_author_module",
+    "effect_stack_module",
+    "scene_author_module",
+    "asset_import_module",
+    "runtime_package_module",
 )
 
 DATA_TOOLING_MODULES = (
@@ -2934,6 +2944,26 @@ def write_visual_component_files(output_dir):
         )
 
 
+def write_visual_design_ide_module_files(output_dir):
+    """Write generated visual design IDE modules and smoke tests."""
+    output_dir = Path(output_dir)
+    module_dir = output_dir / "visual_design_ide_modules"
+    test_dir = output_dir / "visual_design_ide_module_tests"
+    module_dir.mkdir(parents=True, exist_ok=True)
+    test_dir.mkdir(parents=True, exist_ok=True)
+    (module_dir / "__init__.py").write_text(_visual_design_ide_module_init_text(), encoding="utf-8")
+    (test_dir / "__init__.py").write_text(_visual_design_ide_module_test_init_text(), encoding="utf-8")
+    for module_name in VISUAL_DESIGN_IDE_MODULES:
+        (module_dir / f"{module_name}.py").write_text(
+            _visual_design_ide_module_text(module_name),
+            encoding="utf-8",
+        )
+        (test_dir / f"test_{module_name}.py").write_text(
+            _visual_design_ide_module_test_text(module_name),
+            encoding="utf-8",
+        )
+
+
 def write_data_tooling_module_files(output_dir):
     """Write generated native data tooling modules and smoke tests."""
     output_dir = Path(output_dir)
@@ -3173,6 +3203,21 @@ def _visual_component_test_init_text() -> str:
     return (
         '"""Generated visual-depth component test modules."""\n\n'
         f"VISUAL_COMPONENT_TEST_MODULES = {modules!r}\n"
+    )
+
+
+def _visual_design_ide_module_init_text() -> str:
+    return (
+        '"""Generated visual design IDE modules."""\n\n'
+        f"VISUAL_DESIGN_IDE_MODULES = {VISUAL_DESIGN_IDE_MODULES!r}\n"
+    )
+
+
+def _visual_design_ide_module_test_init_text() -> str:
+    modules = tuple(f"test_{name}" for name in VISUAL_DESIGN_IDE_MODULES)
+    return (
+        '"""Generated visual design IDE module tests."""\n\n'
+        f"VISUAL_DESIGN_IDE_MODULE_TESTS = {modules!r}\n"
     )
 
 
@@ -12179,6 +12224,210 @@ def smoke_test():
 '''
 
 
+def _visual_design_ide_surface(module_name: str) -> tuple[str, str]:
+    return {
+        "style_author_module": ("style_authoring", "cross_target_author_style_operation"),
+        "timeline_author_module": ("timeline_authoring", "cross_target_author_timeline_operation"),
+        "effect_stack_module": ("effect_stack", "cross_target_validate_effect_stack_operation"),
+        "scene_author_module": ("scene_authoring", "cross_target_author_scene_operation"),
+        "asset_import_module": ("asset_import", "cross_target_import_visual_asset_operation"),
+        "runtime_package_module": ("runtime_package", "cross_target_visual_runtime_package_contract"),
+    }[module_name]
+
+
+def _visual_design_ide_module_text(module_name: str) -> str:
+    surface, operation = _visual_design_ide_surface(module_name)
+    return f'''"""Generated visual design IDE module for {surface}."""
+
+from __future__ import annotations
+
+import importlib.util
+from pathlib import Path
+
+
+MODULE = {module_name!r}
+SURFACE = {surface!r}
+OPERATION = {operation!r}
+EXPECTED_EXPORTS = (
+    "module_contract",
+    "visual_surface_manifest",
+    "run_visual_operation",
+    "runtime_context",
+    "smoke_test",
+)
+
+
+def _load_sibling(module_name):
+    module_path = Path(__file__).resolve().parents[1] / f"{{module_name}}.py"
+    spec = importlib.util.spec_from_file_location(f"generated_visual_design_ide_{{MODULE}}_{{module_name}}", module_path)
+    module = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(module)
+    return module
+
+
+def _form_designer():
+    return _load_sibling("form_designer")
+
+
+def _runtime():
+    return _load_sibling("visual_depth_runtime")
+
+
+def module_contract():
+    """Return this generated visual design IDE module's export contract."""
+    available = tuple(name for name in EXPECTED_EXPORTS if name in globals())
+    return {{
+        "format": "appgen.visual-design-ide-module-contract.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "operation": OPERATION,
+        "ok": set(EXPECTED_EXPORTS) <= set(available),
+        "exports": available,
+        "expected_exports": EXPECTED_EXPORTS,
+        "side_effects": (),
+    }}
+
+
+def run_visual_operation():
+    """Run this side-effect-free visual design IDE operation."""
+    result = getattr(_form_designer(), OPERATION)()
+    return {{
+        "format": "appgen.visual-design-ide-operation.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "ok": result["ok"],
+        "operation": result,
+        "pipeline": result.get("pipeline", result.get("guards", ())),
+        "guards": result.get("guards", ()),
+        "side_effects": result.get("side_effects", ()),
+    }}
+
+
+def visual_surface_manifest():
+    """Return IDE-facing metadata for this visual design surface."""
+    operation = run_visual_operation()
+    return {{
+        "format": "appgen.visual-design-ide-surface-manifest.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "operation": OPERATION,
+        "ok": operation["ok"] and not operation["side_effects"],
+        "pipeline": operation["pipeline"],
+        "guards": operation["guards"],
+        "side_effects": operation["side_effects"],
+    }}
+
+
+def runtime_context():
+    """Return visual runtime context used by this design surface."""
+    form_designer = _form_designer()
+    workbench = form_designer.cross_target_visual_depth_workbench()
+    package = form_designer.cross_target_visual_runtime_package_contract()
+    return {{
+        "format": "appgen.visual-design-ide-runtime-context.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "ok": workbench["ok"] and package["ok"],
+        "workbench_format": workbench["format"],
+        "package_format": package["format"],
+        "runtime_phases": tuple(item["phase"] for item in workbench["runtime_replay"]["replay"]),
+        "designer_phases": tuple(item["phase"] for item in workbench["designer_transaction_replay"]["replay"]),
+        "lifecycle_phases": tuple(item["phase"] for item in workbench["lifecycle_replay"]["replay"]),
+        "side_effects": (),
+    }}
+
+
+def smoke_test():
+    """Run side-effect-free checks for this generated visual design IDE module."""
+    contract = module_contract()
+    manifest = visual_surface_manifest()
+    operation = run_visual_operation()
+    context = runtime_context()
+    return {{
+        "format": "appgen.visual-design-ide-module-smoke-test.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "ok": contract["ok"]
+        and manifest["ok"]
+        and operation["ok"]
+        and context["ok"]
+        and not manifest["side_effects"]
+        and not operation["side_effects"]
+        and not context["side_effects"],
+        "contract": contract,
+        "manifest": manifest,
+        "operation": operation,
+        "context": context,
+        "checks": (
+            "module_contract_resolves",
+            "visual_surface_manifest_ok",
+            "operation_ok",
+            "runtime_context_ok",
+            "no_side_effects",
+        ),
+    }}
+'''
+
+
+def _visual_design_ide_module_test_text(module_name: str) -> str:
+    surface, _operation = _visual_design_ide_surface(module_name)
+    return f'''"""Generated tests for the {surface} visual design IDE module."""
+
+from __future__ import annotations
+
+import importlib.util
+from pathlib import Path
+
+
+MODULE = {module_name!r}
+SURFACE = {surface!r}
+
+
+def load_visual_design_ide_module():
+    """Load the generated visual design IDE module without app installation."""
+    module_path = Path(__file__).resolve().parents[1] / "visual_design_ide_modules" / f"{{MODULE}}.py"
+    spec = importlib.util.spec_from_file_location(f"generated_visual_design_ide_module_{{MODULE}}", module_path)
+    module = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(module)
+    return module
+
+
+def test_visual_design_ide_module_contract():
+    """Assert the generated visual design IDE module exposes its contract."""
+    module = load_visual_design_ide_module()
+    contract = module.module_contract()
+    assert contract["module"] == MODULE
+    assert contract["surface"] == SURFACE
+    assert contract["ok"] is True
+    assert all(hasattr(module, name) for name in contract["expected_exports"])
+
+
+def test_visual_design_ide_module_smoke():
+    """Assert the module's side-effect-free smoke test passes."""
+    module = load_visual_design_ide_module()
+    result = module.smoke_test()
+    assert result["ok"] is True
+    assert result["module"] == MODULE
+    assert result["surface"] == SURFACE
+    assert result["checks"]
+
+
+def smoke_test():
+    """Run this generated test module in a side-effect-free way."""
+    test_visual_design_ide_module_contract()
+    test_visual_design_ide_module_smoke()
+    return {{
+        "format": "appgen.visual-design-ide-module-generated-test-smoke.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "ok": True,
+        "tests": ("test_visual_design_ide_module_contract", "test_visual_design_ide_module_smoke"),
+    }}
+'''
+
+
 def _device_api_component_module_text(api: str) -> str:
     component_module = _module_name(api)
     return f'''"""Generated native device API component module for {api}."""
@@ -13188,6 +13437,107 @@ def visual_component_test_module_manifest():
     }
 
 
+def visual_design_ide_module_manifest():
+    """Return file-level evidence for generated visual design IDE modules."""
+    module_map = {
+        "style_author_module": "style_authoring",
+        "timeline_author_module": "timeline_authoring",
+        "effect_stack_module": "effect_stack",
+        "scene_author_module": "scene_authoring",
+        "asset_import_module": "asset_import",
+        "runtime_package_module": "runtime_package",
+    }
+    module_dir = Path(__file__).with_name("visual_design_ide_modules")
+    required_exports = (
+        "module_contract",
+        "visual_surface_manifest",
+        "run_visual_operation",
+        "runtime_context",
+        "smoke_test",
+    )
+    entries = []
+    for module_name, surface in module_map.items():
+        module_path = module_dir / f"{module_name}.py"
+        exports = ()
+        contract_ok = False
+        smoke_ok = False
+        if module_path.exists():
+            module = _load_generated_module(module_path, f"generated_visual_design_ide_module_{module_name}")
+            exports = tuple(name for name in required_exports if hasattr(module, name))
+            contract = module.module_contract()
+            smoke = module.smoke_test()
+            contract_ok = contract["ok"] and contract["module"] == module_name and contract["surface"] == surface
+            smoke_ok = smoke["ok"] and smoke["surface"] == surface
+        entries.append(
+            {
+                "module": module_name,
+                "surface": surface,
+                "path": f"app/visual_design_ide_modules/{module_name}.py",
+                "exists": module_path.exists(),
+                "exports": exports,
+                "expected_exports": required_exports,
+                "contract_ok": contract_ok,
+                "smoke_ok": smoke_ok,
+            }
+        )
+    return {
+        "format": "appgen.generated-visual-design-ide-module-manifest.v1",
+        "ok": bool(entries)
+        and all(
+            item["exists"]
+            and item["contract_ok"]
+            and item["smoke_ok"]
+            and set(item["expected_exports"]) <= set(item["exports"])
+            for item in entries
+        ),
+        "modules": tuple(entries),
+        "guards": ("one_file_per_visual_design_surface", "declared_exports_present", "module_smoke_replays"),
+        "side_effects": (),
+    }
+
+
+def visual_design_ide_test_module_manifest():
+    """Return file-level evidence for generated visual design IDE module tests."""
+    modules = visual_design_ide_module_manifest()["modules"]
+    test_dir = Path(__file__).with_name("visual_design_ide_module_tests")
+    required_exports = (
+        "load_visual_design_ide_module",
+        "test_visual_design_ide_module_contract",
+        "test_visual_design_ide_module_smoke",
+        "smoke_test",
+    )
+    entries = []
+    for item in modules:
+        module_name = item["module"]
+        module_path = test_dir / f"test_{module_name}.py"
+        exports = ()
+        smoke_ok = False
+        if module_path.exists():
+            module = _load_generated_module(module_path, f"generated_visual_design_ide_module_test_{module_name}")
+            exports = tuple(name for name in required_exports if hasattr(module, name))
+            smoke = module.smoke_test()
+            smoke_ok = smoke["ok"] and smoke["module"] == module_name
+        entries.append(
+            {
+                "module": module_name,
+                "surface": item["surface"],
+                "path": f"app/visual_design_ide_module_tests/test_{module_name}.py",
+                "exists": module_path.exists(),
+                "exports": exports,
+                "smoke_ok": smoke_ok,
+            }
+        )
+    return {
+        "format": "appgen.generated-visual-design-ide-test-module-manifest.v1",
+        "ok": bool(entries)
+        and all(item["exists"] and item["smoke_ok"] and set(required_exports) <= set(item["exports"]) for item in entries),
+        "tests": tuple(entries),
+        "required_exports": required_exports,
+        "guards": ("one_test_file_per_visual_design_surface", "contract_and_smoke_tests_exported"),
+        "side_effects": (),
+    }
+
+
 def visual_depth_runtime_manifest():
     """Return generated style, animation, effects, scene, and release evidence."""
     form_designer = _load_form_designer()
@@ -13197,6 +13547,8 @@ def visual_depth_runtime_manifest():
     runtime_package = form_designer.cross_target_visual_runtime_package_contract()
     component_modules = visual_component_module_manifest()
     component_tests = visual_component_test_module_manifest()
+    design_modules = visual_design_ide_module_manifest()
+    design_tests = visual_design_ide_test_module_manifest()
     check_ids = {check["id"] for check in workbench["checks"] if check["ok"]}
     required_checks = {
         "style_resources",
@@ -13229,7 +13581,9 @@ def visual_depth_runtime_manifest():
         and runtime_package["ok"]
         and {"web", "mobile", "desktop", "pwa"} <= set(runtime_package["targets"])
         and component_modules["ok"]
-        and component_tests["ok"],
+        and component_tests["ok"]
+        and design_modules["ok"]
+        and design_tests["ok"],
         "contract": contract,
         "checks": tuple(check["id"] for check in workbench["checks"]),
         "required_checks": tuple(sorted(required_checks)),
@@ -13247,6 +13601,8 @@ def visual_depth_runtime_manifest():
         "component_specs": component_specs,
         "visual_component_modules": component_modules,
         "visual_component_tests": component_tests,
+        "visual_design_modules": design_modules,
+        "visual_design_tests": design_tests,
         "actionable_operations": workbench["actionable_operations"],
         "guards": (
             "style_tokens_resolve_before_runtime",
@@ -13256,6 +13612,8 @@ def visual_depth_runtime_manifest():
             "runtime_package_targets_declared",
             "one_module_per_visual_component",
             "one_test_module_per_visual_component",
+            "one_module_per_visual_design_surface",
+            "one_test_module_per_visual_design_surface",
         ),
     }
 
@@ -13295,6 +13653,8 @@ def validate_visual_depth_runtime():
         {"id": "component_specs_ready", "ok": manifest["component_specs"]["ok"] and all(spec["design_tools"] and spec["runtime_artifacts"] for spec in manifest["component_specs"]["specs"])},
         {"id": "visual_component_modules_ready", "ok": manifest["visual_component_modules"]["ok"]},
         {"id": "visual_component_tests_ready", "ok": manifest["visual_component_tests"]["ok"]},
+        {"id": "visual_design_modules_ready", "ok": manifest["visual_design_modules"]["ok"]},
+        {"id": "visual_design_tests_ready", "ok": manifest["visual_design_tests"]["ok"]},
         {"id": "runtime_package_ready", "ok": manifest["runtime_package"]["ok"] and {"web", "mobile", "desktop", "pwa"} <= set(manifest["runtime_package"]["targets"])},
         {"id": "runtime_replay_ready", "ok": replay["ok"] and not replay["side_effects"]},
     )

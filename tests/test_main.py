@@ -12950,18 +12950,40 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "component_specs_ready",
         "visual_component_modules_ready",
         "visual_component_tests_ready",
+        "visual_design_modules_ready",
+        "visual_design_tests_ready",
         "runtime_package_ready",
         "runtime_replay_ready",
     } <= set(visual_depth_runtime_smoke["checks"])
     visual_module_manifest = visual_depth_runtime.visual_component_module_manifest()
     visual_test_manifest = visual_depth_runtime.visual_component_test_module_manifest()
+    visual_design_manifest = visual_depth_runtime.visual_design_ide_module_manifest()
+    visual_design_test_manifest = visual_depth_runtime.visual_design_ide_test_module_manifest()
     assert visual_module_manifest["ok"] is True
     assert visual_test_manifest["ok"] is True
+    assert visual_design_manifest["ok"] is True
+    assert visual_design_test_manifest["ok"] is True
     assert {item["component"] for item in visual_module_manifest["components"]} == {
         spec["component"] for spec in generated_visual_specs["specs"]
     }
     assert {item["component"] for item in visual_test_manifest["tests"]} == {
         spec["component"] for spec in generated_visual_specs["specs"]
+    }
+    assert {item["surface"] for item in visual_design_manifest["modules"]} == {
+        "style_authoring",
+        "timeline_authoring",
+        "effect_stack",
+        "scene_authoring",
+        "asset_import",
+        "runtime_package",
+    }
+    assert {item["surface"] for item in visual_design_test_manifest["tests"]} == {
+        "style_authoring",
+        "timeline_authoring",
+        "effect_stack",
+        "scene_authoring",
+        "asset_import",
+        "runtime_package",
     }
     viewport_component = _load_module(output_dir / "visual_components" / "viewport3_d.py", "generated_viewport_visual_component")
     viewport_smoke = viewport_component.smoke_test()
@@ -12980,6 +13002,20 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         test_path = output_dir / item["path"].replace("app/", "")
         py_compile.compile(str(test_path), doraise=True)
         module = _load_module(test_path, f"generated_visual_component_test_{item['component']}")
+        assert module.smoke_test()["ok"] is True
+    for item in visual_design_manifest["modules"]:
+        module_path = output_dir / item["path"].replace("app/", "")
+        py_compile.compile(str(module_path), doraise=True)
+        module = _load_module(module_path, f"generated_visual_design_ide_module_{item['module']}")
+        assert module.module_contract()["ok"] is True
+        assert module.visual_surface_manifest()["ok"] is True
+        assert module.run_visual_operation()["ok"] is True
+        assert module.runtime_context()["ok"] is True
+        assert module.smoke_test()["ok"] is True
+    for item in visual_design_test_manifest["tests"]:
+        test_path = output_dir / item["path"].replace("app/", "")
+        py_compile.compile(str(test_path), doraise=True)
+        module = _load_module(test_path, f"generated_visual_design_ide_module_test_{item['module']}")
         assert module.smoke_test()["ok"] is True
     visual_depth_replay = visual_depth_runtime.replay_visual_depth_runtime()
     assert visual_depth_replay["ok"] is True
