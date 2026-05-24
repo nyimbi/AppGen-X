@@ -2545,6 +2545,14 @@ ERP_TEMPLATE_MODULES = (
     "erp_release_workbench_module",
 )
 
+EXTENSION_MODULES = (
+    "hook_registry_module",
+    "rule_dispatch_module",
+    "custom_module_contract_module",
+    "packaging_handoff_module",
+    "extension_release_workbench_module",
+)
+
 
 def write_pbc_runtime_file(output_dir, schema: AppSchema):
     """Write generated composable capability runtime helpers."""
@@ -15449,6 +15457,27 @@ def write_extensions_file(output_dir, schema: AppSchema):
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
     (output_dir / "extensions.py").write_text(_extensions_text(schema))
+    write_extension_module_files(output_dir)
+
+
+def write_extension_module_files(output_dir):
+    """Write generated extension ecosystem modules and smoke tests."""
+    output_dir = Path(output_dir)
+    module_dir = output_dir / "extension_modules"
+    test_dir = output_dir / "extension_module_tests"
+    module_dir.mkdir(parents=True, exist_ok=True)
+    test_dir.mkdir(parents=True, exist_ok=True)
+    (module_dir / "__init__.py").write_text(_extension_module_init_text(), encoding="utf-8")
+    (test_dir / "__init__.py").write_text(_extension_module_test_init_text(), encoding="utf-8")
+    for module_name in EXTENSION_MODULES:
+        (module_dir / f"{module_name}.py").write_text(
+            _extension_module_text(module_name),
+            encoding="utf-8",
+        )
+        (test_dir / f"test_{module_name}.py").write_text(
+            _extension_module_test_text(module_name),
+            encoding="utf-8",
+        )
 
 
 def write_designer_file(output_dir, schema: AppSchema):
@@ -25954,6 +25983,249 @@ def _extension_contracts(schema: AppSchema) -> tuple[dict, ...]:
     return tuple((*base_hooks, *table_hooks))
 
 
+def _extension_module_init_text() -> str:
+    return (
+        '"""Generated extension ecosystem modules."""\n\n'
+        f"EXTENSION_MODULES = {EXTENSION_MODULES!r}\n"
+    )
+
+
+def _extension_module_test_init_text() -> str:
+    modules = tuple(f"test_{name}" for name in EXTENSION_MODULES)
+    return (
+        '"""Generated extension ecosystem module tests."""\n\n'
+        f"EXTENSION_MODULE_TESTS = {modules!r}\n"
+    )
+
+
+def _extension_surface(module_name: str) -> tuple[str, str]:
+    return {
+        "hook_registry_module": ("hook_registry", "extension_points"),
+        "rule_dispatch_module": ("generated_rule_dispatch", "validate_row"),
+        "custom_module_contract_module": ("custom_module_contract", "extension_check"),
+        "packaging_handoff_module": ("packaging_handoff", "extension_release_gate"),
+        "extension_release_workbench_module": ("extension_release_workbench", "extension_workbench"),
+    }[module_name]
+
+
+def _extension_module_text(module_name: str) -> str:
+    surface, operation = _extension_surface(module_name)
+    return f'''"""Generated extension ecosystem module for {surface}."""
+
+from __future__ import annotations
+
+import importlib.util
+from pathlib import Path
+
+
+MODULE = {module_name!r}
+SURFACE = {surface!r}
+OPERATION = {operation!r}
+EXPECTED_EXPORTS = (
+    "module_contract",
+    "extension_manifest_contract",
+    "run_extension_operation",
+    "release_context",
+    "smoke_test",
+)
+
+
+def _extensions():
+    module_path = Path(__file__).resolve().parents[1] / "extensions.py"
+    spec = importlib.util.spec_from_file_location(f"generated_extensions_{{MODULE}}_extensions", module_path)
+    module = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(module)
+    return module
+
+
+def _assets():
+    return {{
+        "app/extensions.py",
+        "app/templates/appgen_extensions.html",
+        "app_custom/__init__.py",
+        "app_custom/extensions.py",
+        "appgen_package.py",
+    }}
+
+
+def _first_table(extensions):
+    table_names = tuple(
+        hook["table"]
+        for hook in extensions.extension_points()
+        if hook.get("table")
+    )
+    return table_names[0] if table_names else ""
+
+
+def module_contract():
+    """Return this generated extension module's export contract."""
+    available = tuple(name for name in EXPECTED_EXPORTS if name in globals())
+    return {{
+        "format": "appgen.extension-module-contract.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "operation": OPERATION,
+        "ok": set(EXPECTED_EXPORTS) <= set(available),
+        "exports": available,
+        "expected_exports": EXPECTED_EXPORTS,
+        "side_effects": (),
+    }}
+
+
+def extension_manifest_contract():
+    """Return generated extension metadata owned by this module."""
+    extensions = _extensions()
+    hooks = extensions.extension_points()
+    hook_names = {{hook["hook"] for hook in hooks}}
+    return {{
+        "format": "appgen.extension-module-manifest.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "ok": bool(hooks)
+        and {{"startup", "navigation_items", "template_context"}} <= hook_names
+        and extensions.extension_check(_assets())["ok"],
+        "hook_count": len(hooks),
+        "custom_module": extensions.CUSTOM_MODULE,
+        "side_effects": (),
+    }}
+
+
+def run_extension_operation():
+    """Run this module's side-effect-free extension operation."""
+    extensions = _extensions()
+    if SURFACE == "hook_registry":
+        operation = extensions.extension_points()
+        ok = bool(operation) and {{"startup", "template_context"}} <= {{item["hook"] for item in operation}}
+    elif SURFACE == "generated_rule_dispatch":
+        table_name = _first_table(extensions)
+        operation = extensions.validate_row(table_name, {{}}) if table_name else {{"ok": True, "errors": (), "rules": {{}}, "decisions": ()}}
+        ok = set(operation) >= {{"ok", "errors", "rules", "decisions"}}
+    elif SURFACE == "custom_module_contract":
+        operation = extensions.extension_check(_assets())
+        ok = operation["ok"] and operation["custom_module"] == "app_custom.extensions"
+    elif SURFACE == "packaging_handoff":
+        operation = extensions.extension_release_gate(_assets())
+        ok = operation["ok"] and any(check["gate"] == "packaging_handoff" and check["ok"] for check in operation["checks"])
+    else:
+        operation = extensions.extension_workbench(_assets())
+        ok = operation["ok"] and operation["decision"] == "approved"
+    return {{
+        "format": "appgen.extension-module-operation.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "ok": ok,
+        "operation": operation,
+        "side_effects": (),
+    }}
+
+
+def release_context():
+    """Return release evidence used by this extension module."""
+    extensions = _extensions()
+    release = extensions.extension_release_gate(_assets())
+    workbench = extensions.extension_workbench(_assets())
+    return {{
+        "format": "appgen.extension-module-release-context.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "ok": release["ok"] and workbench["ok"],
+        "release": release,
+        "workbench": workbench,
+        "side_effects": (),
+    }}
+
+
+def smoke_test():
+    """Run side-effect-free checks for this generated extension module."""
+    contract = module_contract()
+    manifest = extension_manifest_contract()
+    operation = run_extension_operation()
+    release = release_context()
+    return {{
+        "format": "appgen.extension-module-smoke-test.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "ok": contract["ok"]
+        and manifest["ok"]
+        and operation["ok"]
+        and release["ok"]
+        and not manifest["side_effects"]
+        and not operation["side_effects"]
+        and not release["side_effects"],
+        "contract": contract,
+        "manifest": manifest,
+        "operation": operation,
+        "release": release,
+        "checks": (
+            "module_contract_resolves",
+            "extension_manifest_contract_ok",
+            "extension_operation_ok",
+            "release_context_ok",
+            "no_side_effects",
+        ),
+    }}
+'''
+
+
+def _extension_module_test_text(module_name: str) -> str:
+    surface, _operation = _extension_surface(module_name)
+    return f'''"""Generated tests for the {surface} extension module."""
+
+from __future__ import annotations
+
+import importlib.util
+from pathlib import Path
+
+
+MODULE = {module_name!r}
+SURFACE = {surface!r}
+
+
+def load_extension_module():
+    """Load the generated extension module without app installation."""
+    module_path = Path(__file__).resolve().parents[1] / "extension_modules" / f"{{MODULE}}.py"
+    spec = importlib.util.spec_from_file_location(f"generated_extension_module_{{MODULE}}", module_path)
+    module = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(module)
+    return module
+
+
+def test_extension_module_contract():
+    """Assert the generated extension module exposes its contract."""
+    module = load_extension_module()
+    contract = module.module_contract()
+    assert contract["module"] == MODULE
+    assert contract["surface"] == SURFACE
+    assert contract["ok"] is True
+    assert all(hasattr(module, name) for name in contract["expected_exports"])
+
+
+def test_extension_module_smoke():
+    """Assert the module's side-effect-free smoke test passes."""
+    module = load_extension_module()
+    result = module.smoke_test()
+    assert result["ok"] is True
+    assert result["module"] == MODULE
+    assert result["surface"] == SURFACE
+    assert result["checks"]
+
+
+def smoke_test():
+    """Run this generated test module in a side-effect-free way."""
+    test_extension_module_contract()
+    test_extension_module_smoke()
+    return {{
+        "format": "appgen.extension-module-generated-test-smoke.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "ok": True,
+        "tests": ("test_extension_module_contract", "test_extension_module_smoke"),
+    }}
+'''
+
+
 def _extensions_text(schema: AppSchema) -> str:
     contracts = _extension_contracts(schema)
     return f'''"""Generated extension hook registry for AppGen apps."""
@@ -25971,6 +26243,66 @@ from flask_appbuilder import expose
 
 CUSTOM_MODULE = "app_custom.extensions"
 EXTENSION_HOOKS = {contracts!r}
+EXTENSION_MODULES = {EXTENSION_MODULES!r}
+
+
+def _load_generated_module(module_path, module_name):
+    """Load a generated extension module without installing the app."""
+    spec = importlib.util.spec_from_file_location(module_name, module_path)
+    module = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(module)
+    return module
+
+
+def extension_module_file_manifest():
+    """Return independently importable generated extension module files."""
+    root = Path(__file__).resolve().parent
+    modules = []
+    for module_name in EXTENSION_MODULES:
+        module_path = root / "extension_modules" / f"{{module_name}}.py"
+        module = _load_generated_module(module_path, f"generated_extension_module_{{module_name}}")
+        contract = module.module_contract()
+        modules.append(
+            {{
+                "module": module_name,
+                "surface": contract["surface"],
+                "path": f"app/extension_modules/{{module_name}}.py",
+                "exists": module_path.exists(),
+                "ok": contract["ok"] and module.smoke_test()["ok"],
+                "exports": contract["exports"],
+            }}
+        )
+    return {{
+        "format": "appgen.extension-module-file-manifest.v1",
+        "ok": len(modules) == len(EXTENSION_MODULES) and all(item["ok"] and item["exists"] for item in modules),
+        "modules": tuple(modules),
+    }}
+
+
+def extension_module_test_file_manifest():
+    """Return generated tests for extension module files."""
+    root = Path(__file__).resolve().parent
+    tests = []
+    for module_name in EXTENSION_MODULES:
+        test_path = root / "extension_module_tests" / f"test_{{module_name}}.py"
+        module = _load_generated_module(test_path, f"generated_extension_module_test_{{module_name}}")
+        result = module.smoke_test()
+        tests.append(
+            {{
+                "module": f"test_{{module_name}}",
+                "surface": result["surface"],
+                "path": f"app/extension_module_tests/test_{{module_name}}.py",
+                "exists": test_path.exists(),
+                "ok": result["ok"],
+                "tests": result["tests"],
+            }}
+        )
+    return {{
+        "format": "appgen.extension-module-test-file-manifest.v1",
+        "ok": len(tests) == len(EXTENSION_MODULES) and all(item["ok"] and item["exists"] for item in tests),
+        "tests": tuple(tests),
+    }}
 
 
 def extension_points():
@@ -70817,6 +71149,8 @@ def validate_extension_artifacts() -> None:
         fail("extension contract must enforce generated rules before save")
     if "extension_release_gate" not in contract:
         fail("extension contract must expose release readiness")
+    if "extension_module_file_manifest" not in contract or "extension_module_test_file_manifest" not in contract or "EXTENSION_MODULES" not in contract:
+        fail("extension contract must expose generated module manifests and module-test manifests")
     custom = (ROOT / "app_custom" / "extensions.py").read_text()
     if "def startup" not in custom or "def template_context" not in custom:
         fail("custom extension module must include stable hook stubs")

@@ -7358,6 +7358,33 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     )
     assert extensions.extension_workbench({"app/extensions.py"})["ok"] is False
     assert extensions.extension_release_gate({"app/extensions.py"})["ok"] is False
+    extension_module_files = extensions.extension_module_file_manifest()
+    extension_module_tests = extensions.extension_module_test_file_manifest()
+    assert extension_module_files["format"] == "appgen.extension-module-file-manifest.v1"
+    assert extension_module_files["ok"] is True
+    assert extension_module_tests["format"] == "appgen.extension-module-test-file-manifest.v1"
+    assert extension_module_tests["ok"] is True
+    assert {
+        "hook_registry",
+        "generated_rule_dispatch",
+        "custom_module_contract",
+        "packaging_handoff",
+        "extension_release_workbench",
+    } == {item["surface"] for item in extension_module_files["modules"]}
+    for item in extension_module_files["modules"]:
+        module_path = output_dir / item["path"].replace("app/", "")
+        py_compile.compile(str(module_path), doraise=True)
+        module = _load_module(module_path, f"generated_extension_module_{item['module']}")
+        assert module.module_contract()["ok"] is True
+        assert module.extension_manifest_contract()["ok"] is True
+        assert module.run_extension_operation()["ok"] is True
+        assert module.release_context()["ok"] is True
+        assert module.smoke_test()["ok"] is True
+    for item in extension_module_tests["tests"]:
+        test_path = output_dir / item["path"].replace("app/", "")
+        py_compile.compile(str(test_path), doraise=True)
+        module = _load_module(test_path, f"generated_extension_module_test_{item['module']}")
+        assert module.smoke_test()["ok"] is True
     assert appgen_package.package_metadata()["package_name"] == "appgen-library"
     assert appgen_package.fab_extension_contract()["custom_hooks"] == "app_custom.extensions"
     assert appgen_package.cookiecutter_context()["project_slug"] == "appgen_library"
