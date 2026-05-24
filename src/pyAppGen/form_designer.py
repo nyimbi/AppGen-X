@@ -14693,6 +14693,7 @@ def rad_parity_workbench(existing_paths: set[str] | None = None) -> dict:
     streaming_contract = dfm_streaming_contract()
     runtime_workbench = pascal_runtime_workbench()
     inspector_workbench = object_inspector_workbench()
+    binding_workbench = livebindings_workbench()
     platform_lifecycle = platform_parity_lifecycle_replay_contract()
     requirement_audit = platform_parity_requirement_audit_contract()
     third_party_categories = set(third_party_component_categories())
@@ -14788,6 +14789,50 @@ def rad_parity_workbench(existing_paths: set[str] | None = None) -> dict:
     passing_inspector_workbench_checks = tuple(check["id"] for check in inspector_workbench["checks"] if check["ok"])
     required_binding_edges = ("control_to_field",)
     passing_binding_edges = tuple(livebindings_contract()["binding_edges"])
+    required_binding_workbench_checks = (
+        "graph_nodes",
+        "graph_edges",
+        "expression_validation",
+        "converter_validator_catalogs",
+        "designer_surface",
+        "runtime_modes",
+        "authoring_operations",
+        "actionable_binding_operations",
+        "conflict_validation",
+        "graph_validation",
+        "edit_transactions",
+        "preview_evaluation",
+        "runtime_wiring",
+        "preview_runtime_parity",
+        "history_undo_redo",
+        "graph_editing_surface",
+        "lookup_bindings",
+        "converter_validator_pipeline",
+        "designer_hit_testing",
+        "runtime_binding_gates",
+        "master_detail_bindings",
+        "scope_context_resolution",
+        "bulk_graph_edits",
+        "diagnostics_quick_fixes",
+        "graph_import_export_round_trip",
+        "update_scheduler",
+        "dependency_execution_plan",
+        "expression_sandbox",
+        "runtime_failure_recovery",
+        "dataset_cursor_sync",
+        "conflict_resolution_workflow",
+        "offline_replay",
+        "accessibility_routes",
+        "runtime_propagation_replay",
+        "design_runtime_session_replay",
+        "designer_transaction_replay",
+        "binding_lifecycle_release_replay",
+        "inspector_binding_bridge",
+        "binding_readiness_contract",
+        "binding_generated_modules",
+        "binding_generated_module_tests",
+    )
+    passing_binding_workbench_checks = tuple(check["id"] for check in binding_workbench["checks"] if check["ok"])
     required_data_tooling_names = ("FireDAC", "DataSnap", "RAD Server", "InterBase")
     passing_data_tooling_names = tuple(rad_data_tooling_contract()["tooling"])
     required_mobile_api_names = ("camera", "location", "push_notifications", "secure_storage")
@@ -14948,10 +14993,13 @@ def rad_parity_workbench(existing_paths: set[str] | None = None) -> dict:
         {
             "id": "livebindings_designer",
             "ok": set(required_binding_edges) <= set(passing_binding_edges)
-            and livebindings_workbench()["ok"],
+            and binding_workbench["ok"]
+            and set(required_binding_workbench_checks) <= set(passing_binding_workbench_checks),
             "required_edges": required_binding_edges,
             "passing_edges": passing_binding_edges,
-            "evidence": {"contract": livebindings_contract(), "workbench": livebindings_workbench()},
+            "required_checks": required_binding_workbench_checks,
+            "passing_checks": passing_binding_workbench_checks,
+            "evidence": {"contract": livebindings_contract(), "workbench": binding_workbench},
         },
         {
             "id": "firedac_datasnap_radserver_interbase_tooling",

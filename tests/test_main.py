@@ -3157,6 +3157,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     )
     assert binding_gate["ok"] is True
     assert set(binding_gate["required_edges"]) <= set(binding_gate["passing_edges"])
+    assert set(binding_gate["required_checks"]) <= set(binding_gate["passing_checks"])
     data_tooling_gate = next(
         check for check in audit["rad_parity"]["checks"] if check["id"] == "firedac_datasnap_radserver_interbase_tooling"
     )
