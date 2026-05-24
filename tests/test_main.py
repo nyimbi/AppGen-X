@@ -13439,6 +13439,35 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert {"add_table", "add_agent", "add_chatbot", "add_erp_module", "set_targets"} <= {
         item["kind"] for item in nl_workbench["plan"]["proposals"]
     }
+    nl_module_files = nl_evolution.nl_evolution_module_file_manifest()
+    nl_module_tests = nl_evolution.nl_evolution_module_test_file_manifest()
+    assert nl_module_files["format"] == "appgen.nl-evolution-module-file-manifest.v1"
+    assert nl_module_files["ok"] is True
+    assert nl_module_tests["format"] == "appgen.nl-evolution-module-test-file-manifest.v1"
+    assert nl_module_tests["ok"] is True
+    assert {
+        "evolution_plan",
+        "dsl_render",
+        "migration_impact",
+        "changeset",
+        "approval_workflow",
+        "destructive_guardrails",
+        "release_workbench",
+    } == {item["surface"] for item in nl_module_files["modules"]}
+    for item in nl_module_files["modules"]:
+        module_path = output_dir / item["path"].replace("app/", "")
+        py_compile.compile(str(module_path), doraise=True)
+        module = _load_module(module_path, f"generated_nl_evolution_module_{item['module']}")
+        assert module.module_contract()["ok"] is True
+        assert module.nl_evolution_manifest()["ok"] is True
+        assert module.run_nl_evolution_operation()["ok"] is True
+        assert module.release_context()["ok"] is True
+        assert module.smoke_test()["ok"] is True
+    for item in nl_module_tests["tests"]:
+        test_path = output_dir / item["path"].replace("app/", "")
+        py_compile.compile(str(test_path), doraise=True)
+        module = _load_module(test_path, f"generated_nl_evolution_module_test_{item['module']}")
+        assert module.smoke_test()["ok"] is True
     assert nl_evolution.nl_evolution_workbench({"app/nl_evolution.py"})["ok"] is False
     nl_gate = nl_evolution.nl_evolution_release_gate({"app/nl_evolution.py", "app/templates/appgen_nl_evolution.html"})
     assert nl_gate["format"] == "appgen.nl-evolution-release-gate.v1"

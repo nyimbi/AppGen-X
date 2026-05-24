@@ -2798,6 +2798,16 @@ VIEW_EXPERIENCE_MODULES = (
     "view_experience_release_workbench_module",
 )
 
+NL_EVOLUTION_MODULES = (
+    "evolution_plan_module",
+    "dsl_render_module",
+    "migration_impact_module",
+    "changeset_module",
+    "approval_workflow_module",
+    "destructive_guardrails_module",
+    "nl_release_workbench_module",
+)
+
 DESIGNER_MODULES = (
     "visual_graph_module",
     "schema_diagram_module",
@@ -15521,6 +15531,27 @@ def write_nl_evolution_file(output_dir, schema: AppSchema):
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
     (output_dir / "nl_evolution.py").write_text(_nl_evolution_text(schema))
+    write_nl_evolution_module_files(output_dir)
+
+
+def write_nl_evolution_module_files(output_dir):
+    """Write generated natural-language evolution modules and smoke tests."""
+    output_dir = Path(output_dir)
+    module_dir = output_dir / "nl_evolution_modules"
+    test_dir = output_dir / "nl_evolution_module_tests"
+    module_dir.mkdir(parents=True, exist_ok=True)
+    test_dir.mkdir(parents=True, exist_ok=True)
+    (module_dir / "__init__.py").write_text(_nl_evolution_module_init_text(), encoding="utf-8")
+    (test_dir / "__init__.py").write_text(_nl_evolution_module_test_init_text(), encoding="utf-8")
+    for module_name in NL_EVOLUTION_MODULES:
+        (module_dir / f"{module_name}.py").write_text(
+            _nl_evolution_module_text(module_name),
+            encoding="utf-8",
+        )
+        (test_dir / f"test_{module_name}.py").write_text(
+            _nl_evolution_module_test_text(module_name),
+            encoding="utf-8",
+        )
 
 
 def write_dsl_reference_file(output_dir, schema: AppSchema):
@@ -53633,6 +53664,254 @@ def register_form_designer(appbuilder):
 '''
 
 
+def _nl_evolution_module_init_text() -> str:
+    return (
+        '"""Generated natural-language evolution modules."""\n\n'
+        f"NL_EVOLUTION_MODULES = {NL_EVOLUTION_MODULES!r}\n"
+    )
+
+
+def _nl_evolution_module_test_init_text() -> str:
+    modules = tuple(f"test_{name}" for name in NL_EVOLUTION_MODULES)
+    return (
+        '"""Generated natural-language evolution module tests."""\n\n'
+        f"NL_EVOLUTION_MODULE_TESTS = {modules!r}\n"
+    )
+
+
+def _nl_evolution_module_surface(module_name: str) -> tuple[str, str]:
+    return {
+        "evolution_plan_module": ("evolution_plan", "evolution_plan"),
+        "dsl_render_module": ("dsl_render", "proposals_to_dsl"),
+        "migration_impact_module": ("migration_impact", "migration_impact"),
+        "changeset_module": ("changeset", "evolution_changeset"),
+        "approval_workflow_module": ("approval_workflow", "approval_workflow"),
+        "destructive_guardrails_module": ("destructive_guardrails", "destructive_intent_report"),
+        "nl_release_workbench_module": ("release_workbench", "nl_evolution_release_gate"),
+    }[module_name]
+
+
+def _nl_evolution_module_text(module_name: str) -> str:
+    surface, operation = _nl_evolution_module_surface(module_name)
+    return f'''"""Generated natural-language evolution module for {surface}."""
+
+from __future__ import annotations
+
+import importlib.util
+from pathlib import Path
+
+
+MODULE = {module_name!r}
+SURFACE = {surface!r}
+OPERATION = {operation!r}
+EXPECTED_EXPORTS = (
+    "module_contract",
+    "nl_evolution_manifest",
+    "run_nl_evolution_operation",
+    "release_context",
+    "smoke_test",
+)
+SAMPLE_PROMPT = (
+    "create table Ticket with fields title, email unique, amount decimal, author_id references Author required "
+    "and form TicketForm workflow Triage from open to closed rule TicketPolicy "
+    "report TicketReport dashboard TicketDashboard chatbot SupportBot agent SupportAgent "
+    "generate ERP accounts payable and inventory targets web mobile desktop"
+)
+DESTRUCTIVE_PROMPT = "remove field title from Ticket and drop table OldTicket"
+BASE_DSL = "app Library {{ theme: sage }}\\n"
+DESTRUCTIVE_DSL = "app Library {{ targets: web }}\\n\\ntable Ticket {{\\n  id: int pk\\n  title: string\\n}}\\n"
+
+
+def _nl_evolution():
+    module_path = Path(__file__).resolve().parents[1] / "nl_evolution.py"
+    spec = importlib.util.spec_from_file_location(f"generated_nl_evolution_{{MODULE}}", module_path)
+    module = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(module)
+    return module
+
+
+def _assets():
+    return {{"app/nl_evolution.py", "app/templates/appgen_nl_evolution.html"}}
+
+
+def module_contract():
+    """Return this generated natural-language evolution module's export contract."""
+    available = tuple(name for name in EXPECTED_EXPORTS if name in globals())
+    return {{
+        "format": "appgen.nl-evolution-module-contract.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "operation": OPERATION,
+        "ok": set(EXPECTED_EXPORTS) <= set(available),
+        "exports": available,
+        "expected_exports": EXPECTED_EXPORTS,
+        "side_effects": (),
+    }}
+
+
+def nl_evolution_manifest():
+    """Return generated natural-language evolution metadata owned by this module."""
+    nl = _nl_evolution()
+    capabilities = nl.evolution_capabilities()
+    check = nl.nl_evolution_check(_assets())
+    return {{
+        "format": "appgen.nl-evolution-module-manifest.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "ok": check["ok"]
+        and {{"tables", "fields", "forms", "workflows", "rules", "reports", "dashboards", "chatbots", "agents", "targets", "erp_modules"}} <= set(capabilities),
+        "capabilities": capabilities,
+        "sample_kinds": check["sample_kinds"],
+        "side_effects": (),
+    }}
+
+
+def run_nl_evolution_operation():
+    """Run this module's side-effect-free natural-language evolution operation."""
+    nl = _nl_evolution()
+    plan = nl.evolution_plan(SAMPLE_PROMPT)
+    dsl = nl.proposals_to_dsl(plan)
+    changeset = nl.evolution_changeset(SAMPLE_PROMPT, BASE_DSL)
+    destructive = nl.evolution_changeset(DESTRUCTIVE_PROMPT, DESTRUCTIVE_DSL)
+    if SURFACE == "evolution_plan":
+        kinds = {{item["kind"] for item in plan["proposals"]}}
+        operation = {{"plan": plan, "kinds": tuple(sorted(kinds))}}
+        ok = {{"add_table", "add_field", "add_form", "add_workflow", "add_rule", "add_report", "add_dashboard", "add_chatbot", "add_agent", "add_erp_module", "set_targets"}} <= kinds
+    elif SURFACE == "dsl_render":
+        operation = {{"dsl": dsl}}
+        ok = all(fragment in dsl for fragment in ("table Ticket", "view TicketForm", "flow Triage", "agent SupportAgent", "targets: web, mobile, desktop", "erp_templates.erp_module_dsl('accounts_payable')"))
+    elif SURFACE == "migration_impact":
+        impact = nl.migration_impact(plan)
+        operation = {{"impact": impact}}
+        ok = impact["requires_review"] and any(item.get("action") == "create_table" for item in impact["ddl"]) and any(item.get("action") == "add_erp_module" for item in impact["review"])
+    elif SURFACE == "changeset":
+        operation = {{"changeset": changeset}}
+        ok = changeset["id"].startswith("nlchg-") and changeset["requires_approval"] and "table Ticket" in changeset["applied_preview"]
+    elif SURFACE == "approval_workflow":
+        approval = nl.approval_workflow(changeset, actor="module")
+        operation = {{"approval": approval}}
+        ok = approval["current"] == "review" and "rollback_plan" in approval["required_checks"]
+    elif SURFACE == "destructive_guardrails":
+        operation = {{"destructive": destructive}}
+        ok = destructive["destructive_intent"]["destructive"] and destructive["migration_impact"]["destructive"] and destructive["rollback"]["requires_backup"] and "data_backup_review" in destructive["test_plan"]["checks"]
+    else:
+        operation = {{"release": nl.nl_evolution_release_gate(_assets()), "workbench": nl.nl_evolution_workbench(_assets())}}
+        ok = operation["release"]["ok"] and operation["workbench"]["ok"]
+    return {{
+        "format": "appgen.nl-evolution-module-operation.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "ok": ok,
+        "operation": operation,
+        "side_effects": (),
+    }}
+
+
+def release_context():
+    """Return release evidence used by this natural-language evolution module."""
+    nl = _nl_evolution()
+    return {{
+        "format": "appgen.nl-evolution-module-release-context.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "ok": nl.nl_evolution_release_gate(_assets())["ok"] and nl.nl_evolution_workbench(_assets())["ok"],
+        "release": nl.nl_evolution_release_gate(_assets()),
+        "workbench": nl.nl_evolution_workbench(_assets()),
+        "side_effects": (),
+    }}
+
+
+def smoke_test():
+    """Run side-effect-free checks for this generated natural-language evolution module."""
+    contract = module_contract()
+    manifest = nl_evolution_manifest()
+    operation = run_nl_evolution_operation()
+    release = release_context()
+    return {{
+        "format": "appgen.nl-evolution-module-smoke-test.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "ok": contract["ok"]
+        and manifest["ok"]
+        and operation["ok"]
+        and release["ok"]
+        and not manifest["side_effects"]
+        and not operation["side_effects"]
+        and not release["side_effects"],
+        "contract": contract,
+        "manifest": manifest,
+        "operation": operation,
+        "release": release,
+        "checks": (
+            "module_contract_resolves",
+            "nl_evolution_manifest_ok",
+            "nl_evolution_operation_ok",
+            "release_context_ok",
+            "no_side_effects",
+        ),
+    }}
+'''
+
+
+def _nl_evolution_module_test_text(module_name: str) -> str:
+    surface, _operation = _nl_evolution_module_surface(module_name)
+    return f'''"""Generated tests for the {surface} natural-language evolution module."""
+
+from __future__ import annotations
+
+import importlib.util
+from pathlib import Path
+
+
+MODULE = {module_name!r}
+SURFACE = {surface!r}
+
+
+def load_nl_evolution_module():
+    """Load the generated natural-language evolution module without app installation."""
+    module_path = Path(__file__).resolve().parents[1] / "nl_evolution_modules" / f"{{MODULE}}.py"
+    spec = importlib.util.spec_from_file_location(f"generated_nl_evolution_module_{{MODULE}}", module_path)
+    module = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(module)
+    return module
+
+
+def test_nl_evolution_module_contract():
+    """Assert the generated natural-language evolution module exposes its contract."""
+    module = load_nl_evolution_module()
+    contract = module.module_contract()
+    assert contract["module"] == MODULE
+    assert contract["surface"] == SURFACE
+    assert contract["ok"] is True
+    assert all(hasattr(module, name) for name in contract["expected_exports"])
+
+
+def test_nl_evolution_module_smoke():
+    """Assert the module's side-effect-free smoke test passes."""
+    module = load_nl_evolution_module()
+    result = module.smoke_test()
+    assert result["ok"] is True
+    assert result["module"] == MODULE
+    assert result["surface"] == SURFACE
+    assert result["checks"]
+
+
+def smoke_test():
+    """Run this generated test module in a side-effect-free way."""
+    test_nl_evolution_module_contract()
+    test_nl_evolution_module_smoke()
+    return {{
+        "format": "appgen.nl-evolution-module-generated-test-smoke.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "ok": True,
+        "tests": ("test_nl_evolution_module_contract", "test_nl_evolution_module_smoke"),
+    }}
+'''
+
+
 def _nl_evolution_text(schema: AppSchema) -> str:
     tables = tuple(table.name for table in schema.tables)
     return f'''"""Generated natural-language application evolution helpers."""
@@ -53640,6 +53919,8 @@ def _nl_evolution_text(schema: AppSchema) -> str:
 from __future__ import annotations
 
 from hashlib import sha1
+import importlib.util
+from pathlib import Path
 import re
 
 from flask import jsonify
@@ -53649,6 +53930,7 @@ from flask_appbuilder import expose
 
 
 KNOWN_TABLES = {tables!r}
+NL_EVOLUTION_MODULES = {NL_EVOLUTION_MODULES!r}
 ERP_MODULE_ALIASES = {{
     "ledger": "general_ledger",
     "general ledger": "general_ledger",
@@ -53693,6 +53975,62 @@ ERP_STACKS = {{
     "people": ("human_resources", "payroll"),
     "full erp": tuple(sorted(set(ERP_MODULE_ALIASES.values()))),
 }}
+
+
+def _load_generated_module(path, name):
+    spec = importlib.util.spec_from_file_location(name, path)
+    module = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(module)
+    return module
+
+
+def nl_evolution_module_file_manifest():
+    """Return independently importable generated natural-language evolution module files."""
+    root = Path(__file__).resolve().parent
+    modules = []
+    for module_name in NL_EVOLUTION_MODULES:
+        path = root / "nl_evolution_modules" / f"{{module_name}}.py"
+        module = _load_generated_module(path, f"generated_nl_evolution_module_manifest_{{module_name}}")
+        contract = module.module_contract()
+        smoke = module.smoke_test()
+        modules.append({{
+            "module": module_name,
+            "surface": contract["surface"],
+            "path": f"app/nl_evolution_modules/{{module_name}}.py",
+            "ok": path.exists() and contract["ok"] and smoke["ok"],
+            "contract": contract["format"],
+            "smoke": smoke["format"],
+        }})
+    return {{
+        "format": "appgen.nl-evolution-module-file-manifest.v1",
+        "ok": all(item["ok"] for item in modules),
+        "modules": tuple(modules),
+        "side_effects": (),
+    }}
+
+
+def nl_evolution_module_test_file_manifest():
+    """Return generated tests for the natural-language evolution module files."""
+    root = Path(__file__).resolve().parent
+    tests = []
+    for module_name in NL_EVOLUTION_MODULES:
+        path = root / "nl_evolution_module_tests" / f"test_{{module_name}}.py"
+        module = _load_generated_module(path, f"generated_nl_evolution_module_test_manifest_{{module_name}}")
+        smoke = module.smoke_test()
+        tests.append({{
+            "module": module_name,
+            "surface": smoke["surface"],
+            "path": f"app/nl_evolution_module_tests/test_{{module_name}}.py",
+            "ok": path.exists() and smoke["ok"],
+            "smoke": smoke["format"],
+        }})
+    return {{
+        "format": "appgen.nl-evolution-module-test-file-manifest.v1",
+        "ok": all(item["ok"] for item in tests),
+        "tests": tuple(tests),
+        "side_effects": (),
+    }}
 
 
 def evolution_capabilities():
@@ -73811,6 +74149,14 @@ def validate_nl_evolution_artifacts() -> None:
         fail("natural-language evolution must expose proposal and DSL helpers")
     if "evolution_changeset" not in contract or "apply_changeset" not in contract or "migration_impact" not in contract or "approval_workflow" not in contract or "destructive_intent_report" not in contract or "evolution_test_plan" not in contract or "rollback_plan" not in contract:
         fail("natural-language evolution must expose approval-ready changesets, destructive-intent review, test plans, rollback, and migration impact")
+    if (
+        "NL_EVOLUTION_MODULES" not in contract
+        or "nl_evolution_module_file_manifest" not in contract
+        or "nl_evolution_module_test_file_manifest" not in contract
+        or "appgen.nl-evolution-module-file-manifest.v1" not in contract
+        or "appgen.nl-evolution-module-test-file-manifest.v1" not in contract
+    ):
+        fail("natural-language evolution must expose generated module and module-test manifests")
     if "nl_evolution_release_gate" not in contract or "appgen.nl-evolution-release-gate.v1" not in contract or '@expose("/release-gate.json")' not in contract:
         fail("natural-language evolution must expose a release gate contract and route")
     template = (ROOT / "app" / "templates" / "appgen_nl_evolution.html").read_text()
