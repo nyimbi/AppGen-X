@@ -210,6 +210,10 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   transactional outbox/inbox tables, write typed handlers through the AppGen-X
   event adapter, and use PostgreSQL unless the project standard is MySQL or
   MariaDB.
+- Event-processing guidance now exposes `appgen.event-processing.standard.v1`
+  as a mandatory decision record with a support-matrix cap: one ordinary event
+  contract, zero visible stream-engine/runtime-profile choices, two audited
+  exception profiles, and one stream profile per PBC.
 - Generated applications now emit standalone text-quality modules and
   generated tests for field catalogs, counter metrics, grammar hints, quality
   reports, form feedback, and text-quality release workbench surfaces, with

@@ -184,6 +184,11 @@ linting, Studio controls, and small local models: show the event contract
 designer, handler registry, retry/idempotency/dead-letter controls, and
 read-only runtime profile badge; hide stream-engine pickers and per-PBC runtime
 preferences for ordinary generated work.
+The policy also returns `developer_decision_record` with the stable id
+`appgen.event-processing.standard.v1`. Treat it as the support-matrix cap:
+ordinary generated applications have one public event contract, zero visible
+stream-engine choices, zero visible runtime-profile choices, two audited
+exception profiles, and one stream profile per PBC.
 The policy also exposes a first-match `developer_choice_algorithm`: ordinary
 business, ERP, workflow, chatbot, agent, integration, and PBC event handling
 always generate the AppGen-X event contract with `stream_processor` omitted;

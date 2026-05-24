@@ -844,6 +844,15 @@ def test_package_pbc_catalog_composes_enterprise_apps(runner: CliRunner) -> None
     assert stream_policy["decision_card"]["selection_algorithm"] == "first_matching_rule_from_developer_choice_algorithm"
     assert stream_policy["decision_card"]["default_profile"] == "faust_streaming"
     assert stream_policy["decision_card"]["business_logic_rule"].endswith("not profile-specific stream libraries")
+    assert stream_policy["developer_decision_record"]["id"] == "appgen.event-processing.standard.v1"
+    assert stream_policy["developer_decision_record"]["status"] == "mandatory"
+    assert stream_policy["developer_decision_record"]["developer_answer"] == (
+        "Use appgen_event_contract and omit stream_processor."
+    )
+    assert stream_policy["developer_decision_record"]["support_matrix_cap"]["ordinary_event_contracts"] == 1
+    assert stream_policy["developer_decision_record"]["support_matrix_cap"]["ordinary_visible_stream_engines"] == 0
+    assert stream_policy["developer_decision_record"]["support_matrix_cap"]["profiles_per_pbc"] == 1
+    assert "hide_stream_engine_picker" in stream_policy["developer_decision_record"]["tooling_obligations"]
     assert stream_policy["opinionated_stack"]["default_event_adapter"] == "appgen_outbox_inbox_faust_streaming"
     assert stream_policy["opinionated_stack"]["visible_runtime_choices"] == ("appgen_event_contract",)
     assert "Do not generate direct imports" in stream_policy["implementation_directive"]

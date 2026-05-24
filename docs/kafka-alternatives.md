@@ -38,6 +38,34 @@ enough. Without named workload evidence, measurable throughput or latency
 reasoning, state/recovery shape, and an operational owner, the generator must
 fall back to `appgen_event_contract`.
 
+## Platform Decision Record
+
+The executable decision record is `appgen.event-processing.standard.v1`.
+
+| Field | Value |
+| --- | --- |
+| Status | Mandatory |
+| Developer answer | Use `appgen_event_contract` and omit `stream_processor`. |
+| Ordinary event contracts | `1` |
+| Ordinary visible stream-engine choices | `0` |
+| Ordinary visible runtime profiles | `0` |
+| Exception profiles | `2`: `quix_streams`, `bytewax` |
+| Profiles per PBC | `1` |
+
+This is the support-matrix cap for the platform. The generator must not turn
+every PBC into a Cartesian product of event contracts, stream engines,
+datastores, generated targets, deployment profiles, and adapter variants.
+Ordinary generated applications get one event path: generated owned tables,
+transactional outbox/inbox tables, typed handlers, the AppGen-X event adapter,
+and read-only runtime profile metadata.
+
+Tooling must therefore:
+
+- hide stream-engine pickers for ordinary PBC creation;
+- lint ordinary manifests that set `stream_processor`;
+- block exception profiles without `stream_exception_evidence`;
+- fail generated business logic that imports profile-specific stream libraries.
+
 ## One Page Recommendation
 
 The platform decision is made: ordinary AppGen-X applications use the generated

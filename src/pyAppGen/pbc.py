@@ -381,6 +381,42 @@ ACP_STREAM_PROCESSING_POLICY = {
         "business_logic_rule": "generated business logic imports the AppGen-X event adapter, not profile-specific stream libraries",
         "selection_algorithm": "first_matching_rule_from_developer_choice_algorithm",
     },
+    "developer_decision_record": {
+        "id": "appgen.event-processing.standard.v1",
+        "status": "mandatory",
+        "decision": "ordinary_generated_applications_use_appgen_event_contract",
+        "developer_answer": "Use appgen_event_contract and omit stream_processor.",
+        "reason": (
+            "The platform can validate one ordinary event path across PBCs, "
+            "datastores, generated targets, adapters, tests, and release "
+            "audits. A user-facing stream-engine choice would multiply that "
+            "support matrix for every generated capability."
+        ),
+        "ordinary_path": (
+            "generate_owned_tables",
+            "generate_transactional_outbox_inbox",
+            "generate_typed_handlers",
+            "route_through_platform_event_adapter",
+            "record_runtime_profile_as_read_only_metadata",
+        ),
+        "support_matrix_cap": {
+            "ordinary_event_contracts": 1,
+            "ordinary_visible_stream_engines": 0,
+            "ordinary_visible_runtime_profiles": 0,
+            "exception_profiles": 2,
+            "profiles_per_pbc": 1,
+        },
+        "exception_gate": (
+            "Only telemetry/time-series or complex parallel dataflow workloads "
+            "may request an exception, and only with stream_exception_evidence."
+        ),
+        "tooling_obligations": (
+            "hide_stream_engine_picker",
+            "lint_ordinary_manifests_that_set_stream_processor",
+            "block_exception_profiles_without_evidence",
+            "fail_generated_business_logic_with_profile_specific_imports",
+        ),
+    },
     "opinionated_stack": {
         "default_event_adapter": "appgen_outbox_inbox_faust_streaming",
         "development": "appgen_in_memory_event_bus_with_generated_outbox_inbox",
@@ -1071,6 +1107,7 @@ def acp_stream_processing_policy() -> dict:
         "developer_guidance_contract": ACP_STREAM_PROCESSING_POLICY["developer_guidance_contract"],
         "developer_decision_brief": ACP_STREAM_PROCESSING_POLICY["developer_decision_brief"],
         "decision_card": ACP_STREAM_PROCESSING_POLICY["decision_card"],
+        "developer_decision_record": ACP_STREAM_PROCESSING_POLICY["developer_decision_record"],
         "developer_choice_algorithm": ACP_STREAM_PROCESSING_POLICY["developer_choice_algorithm"],
         "developer_use_policy": ACP_STREAM_PROCESSING_POLICY["developer_use_policy"],
         "choice_budget": ACP_STREAM_PROCESSING_POLICY["choice_budget"],
