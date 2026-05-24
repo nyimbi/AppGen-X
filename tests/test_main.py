@@ -3132,6 +3132,9 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     assert set(rad_parity_gate["required_formats"]) <= set(rad_parity_gate["passing_formats"])
     assert rad_parity_gate["passing_state"] == rad_parity_gate["required_state"]
     assert set(rad_parity_gate["required_nested_audit_state"]) <= set(rad_parity_gate["passing_nested_audit_state"])
+    assert set(rad_parity_gate["required_lifecycle_phases"]) <= set(rad_parity_gate["passing_lifecycle_phases"])
+    assert set(rad_parity_gate["required_requirements"]) <= set(rad_parity_gate["passing_requirements"])
+    assert set(rad_parity_gate["required_deep_coverage"]) <= set(rad_parity_gate["passing_deep_coverage"])
     lifecycle_gate = next(
         check for check in audit["rad_parity"]["checks"] if check["id"] == "platform_parity_lifecycle_replay"
     )

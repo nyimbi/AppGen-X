@@ -18178,6 +18178,22 @@ def form_designer_release_audit(existing_paths: set[str] | None = None) -> dict:
         and rad_parity[surface]["decision"] == expected_decision
         and rad_parity[surface]["blocking_gaps"] == expected_blocking_gaps
     )
+    lifecycle_phase_check = next(
+        check for check in rad_parity["lifecycle_replay"]["checks"] if check["id"] == "all_subsystems_replayed"
+    )
+    required_rad_lifecycle_phases = tuple(lifecycle_phase_check["required_phases"])
+    passing_rad_lifecycle_phases = tuple(lifecycle_phase_check["passing_phases"])
+    required_rad_requirements = tuple(rad_parity["requirement_audit"]["required_requirements"])
+    passing_rad_requirements = tuple(rad_parity["requirement_audit"]["passing_requirements"])
+    required_rad_deep_coverage = tuple(
+        (item["requirement"], tuple(sorted(item["required_deep_checks"])))
+        for item in rad_parity["requirement_audit"]["deep_check_coverage"]
+    )
+    passing_rad_deep_coverage = tuple(
+        (item["requirement"], tuple(item["passing_deep_checks"]))
+        for item in rad_parity["requirement_audit"]["deep_check_coverage"]
+        if not item["missing"]
+    )
     gates = (
         {
             "id": "palette_breadth",
@@ -18331,6 +18347,9 @@ def form_designer_release_audit(existing_paths: set[str] | None = None) -> dict:
             and set(required_rad_parity_formats) <= set(passing_rad_parity_formats)
             and passing_rad_parity_state == required_rad_parity_state
             and set(required_rad_nested_audit_state) <= set(passing_rad_nested_audit_state)
+            and set(required_rad_lifecycle_phases) <= set(passing_rad_lifecycle_phases)
+            and set(required_rad_requirements) <= set(passing_rad_requirements)
+            and set(required_rad_deep_coverage) <= set(passing_rad_deep_coverage)
             and not rad_parity["blocking_gaps"],
             "required_checks": required_rad_parity_checks,
             "passing_checks": tuple(sorted(rad_parity_passing_checks)),
@@ -18340,6 +18359,12 @@ def form_designer_release_audit(existing_paths: set[str] | None = None) -> dict:
             "passing_state": passing_rad_parity_state,
             "required_nested_audit_state": required_rad_nested_audit_state,
             "passing_nested_audit_state": passing_rad_nested_audit_state,
+            "required_lifecycle_phases": required_rad_lifecycle_phases,
+            "passing_lifecycle_phases": passing_rad_lifecycle_phases,
+            "required_requirements": required_rad_requirements,
+            "passing_requirements": passing_rad_requirements,
+            "required_deep_coverage": required_rad_deep_coverage,
+            "passing_deep_coverage": passing_rad_deep_coverage,
         },
     )
     ok = all(gate["ok"] for gate in gates)
