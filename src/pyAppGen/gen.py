@@ -1937,6 +1937,27 @@ def write_collaboration_file(output_dir, schema: AppSchema):
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
     (output_dir / "collaboration.py").write_text(_collaboration_text(schema))
+    write_collaboration_module_files(output_dir)
+
+
+def write_collaboration_module_files(output_dir):
+    """Write generated collaboration modules and smoke tests."""
+    output_dir = Path(output_dir)
+    module_dir = output_dir / "collaboration_modules"
+    test_dir = output_dir / "collaboration_module_tests"
+    module_dir.mkdir(parents=True, exist_ok=True)
+    test_dir.mkdir(parents=True, exist_ok=True)
+    (module_dir / "__init__.py").write_text(_collaboration_module_init_text(), encoding="utf-8")
+    (test_dir / "__init__.py").write_text(_collaboration_module_test_init_text(), encoding="utf-8")
+    for module_name in COLLABORATION_MODULES:
+        (module_dir / f"{module_name}.py").write_text(
+            _collaboration_module_text(module_name),
+            encoding="utf-8",
+        )
+        (test_dir / f"test_{module_name}.py").write_text(
+            _collaboration_module_test_text(module_name),
+            encoding="utf-8",
+        )
 
 
 def write_version_control_file(output_dir, schema: AppSchema):
@@ -2411,6 +2432,15 @@ REALTIME_MODULES = (
     "collaboration_message_module",
     "replay_plan_module",
     "realtime_release_workbench_module",
+)
+
+COLLABORATION_MODULES = (
+    "collaboration_catalog_module",
+    "proposal_review_module",
+    "merge_plan_module",
+    "conflict_detection_module",
+    "merge_queue_module",
+    "collaboration_release_workbench_module",
 )
 
 EVENT_MODULES = (
@@ -8962,6 +8992,265 @@ def smoke_test():
         "surface": SURFACE,
         "ok": True,
         "tests": ("test_code_review_module_contract", "test_code_review_module_smoke"),
+    }}
+'''
+
+
+def _collaboration_module_init_text() -> str:
+    return (
+        '"""Generated collaboration modules."""\n\n'
+        f"COLLABORATION_MODULES = {COLLABORATION_MODULES!r}\n"
+    )
+
+
+def _collaboration_module_test_init_text() -> str:
+    modules = tuple(f"test_{name}" for name in COLLABORATION_MODULES)
+    return (
+        '"""Generated collaboration module tests."""\n\n'
+        f"COLLABORATION_MODULE_TESTS = {modules!r}\n"
+    )
+
+
+def _collaboration_surface(module_name: str) -> tuple[str, str]:
+    return {
+        "collaboration_catalog_module": ("collaboration_catalog", "collaboration_catalog"),
+        "proposal_review_module": ("proposal_review", "change_proposal"),
+        "merge_plan_module": ("merge_plan", "merge_plan"),
+        "conflict_detection_module": ("conflict_detection", "proposal_conflict_report"),
+        "merge_queue_module": ("merge_queue", "merge_queue"),
+        "collaboration_release_workbench_module": ("collaboration_release_workbench", "collaboration_release_gate"),
+    }[module_name]
+
+
+def _collaboration_module_text(module_name: str) -> str:
+    surface, operation = _collaboration_surface(module_name)
+    return f'''"""Generated collaboration module for {surface}."""
+
+from __future__ import annotations
+
+import importlib.util
+from pathlib import Path
+
+
+MODULE = {module_name!r}
+SURFACE = {surface!r}
+OPERATION = {operation!r}
+EXPECTED_EXPORTS = (
+    "module_contract",
+    "collaboration_manifest_contract",
+    "run_collaboration_operation",
+    "release_context",
+    "smoke_test",
+)
+
+
+def _collaboration():
+    module_path = Path(__file__).resolve().parents[1] / "collaboration.py"
+    spec = importlib.util.spec_from_file_location(f"generated_collaboration_{{MODULE}}_collaboration", module_path)
+    module = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(module)
+    return module
+
+
+def _assets():
+    return {{"app/collaboration.py", "app/templates/appgen_collaboration.html"}}
+
+
+def _first_resource(collaboration):
+    catalog = collaboration.collaboration_catalog()
+    if not catalog:
+        raise AssertionError("generated collaboration module requires at least one resource")
+    return catalog[0]["table"]
+
+
+def _sample_proposals(collaboration):
+    resource = _first_resource(collaboration)
+    left = collaboration.change_proposal(resource, {{"title": "Old"}}, {{"title": "New"}}, author="module")
+    right = collaboration.change_proposal(resource, {{"title": "Old"}}, {{"title": "Other"}}, author="reviewer")
+    approved = collaboration.review_decision(left, "reviewer", "approved")
+    rejected = collaboration.review_decision(left, "reviewer", "changes_requested")
+    return resource, left, right, approved, rejected
+
+
+def module_contract():
+    """Return this generated collaboration module's export contract."""
+    available = tuple(name for name in EXPECTED_EXPORTS if name in globals())
+    return {{
+        "format": "appgen.collaboration-module-contract.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "operation": OPERATION,
+        "ok": set(EXPECTED_EXPORTS) <= set(available),
+        "exports": available,
+        "expected_exports": EXPECTED_EXPORTS,
+        "side_effects": (),
+    }}
+
+
+def collaboration_manifest_contract():
+    """Return generated collaboration metadata owned by this module."""
+    collaboration = _collaboration()
+    catalog = collaboration.collaboration_catalog()
+    return {{
+        "format": "appgen.collaboration-module-manifest.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "ok": bool(catalog)
+        and all(item["events"] for item in catalog)
+        and collaboration.collaboration_check(_assets())["ok"],
+        "catalog": catalog,
+        "tables": tuple(collaboration.COLLABORATION_TABLES),
+        "side_effects": (),
+    }}
+
+
+def run_collaboration_operation():
+    """Run this module's side-effect-free collaboration operation."""
+    collaboration = _collaboration()
+    _resource, left, right, approved, rejected = _sample_proposals(collaboration)
+    if SURFACE == "collaboration_catalog":
+        operation = collaboration.collaboration_catalog()
+        ok = bool(operation) and all(item["events"] for item in operation)
+    elif SURFACE == "proposal_review":
+        operation = {{
+            "proposal": left,
+            "approved": approved,
+            "rejected": rejected,
+        }}
+        ok = operation["proposal"]["changed_fields"] == ("title",) and operation["approved"]["decision"] == "approved" and operation["rejected"]["decision"] == "changes_requested"
+    elif SURFACE == "merge_plan":
+        operation = {{
+            "approved": collaboration.merge_plan(left, approved),
+            "rejected": collaboration.merge_plan(left, rejected),
+        }}
+        ok = operation["approved"]["applied"] is True and operation["rejected"]["applied"] is False
+    elif SURFACE == "conflict_detection":
+        report = collaboration.proposal_conflict_report((left, right))
+        operation = {{
+            "report": report,
+            "resolution": collaboration.conflict_resolution_plan(report["conflicts"][0], actor="module") if report["conflicts"] else {{}},
+        }}
+        ok = report["ok"] is False and bool(report["conflicts"]) and operation["resolution"].get("requires_review") is True
+    elif SURFACE == "merge_queue":
+        operation = collaboration.merge_queue((left, right), (approved,))
+        ok = bool(operation["blocked"]) and bool(operation["pending_review"]) and operation["conflicts"]["ok"] is False
+    else:
+        operation = {{
+            "release": collaboration.collaboration_release_gate(_assets()),
+            "workbench": collaboration.collaboration_workbench(_assets()),
+        }}
+        ok = operation["release"]["ok"] and operation["workbench"]["ok"]
+    return {{
+        "format": "appgen.collaboration-module-operation.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "ok": ok,
+        "operation": operation,
+        "side_effects": (),
+    }}
+
+
+def release_context():
+    """Return release evidence used by this collaboration module."""
+    collaboration = _collaboration()
+    return {{
+        "format": "appgen.collaboration-module-release-context.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "ok": collaboration.collaboration_release_gate(_assets())["ok"] and collaboration.collaboration_workbench(_assets())["ok"],
+        "release": collaboration.collaboration_release_gate(_assets()),
+        "workbench": collaboration.collaboration_workbench(_assets()),
+        "side_effects": (),
+    }}
+
+
+def smoke_test():
+    """Run side-effect-free checks for this generated collaboration module."""
+    contract = module_contract()
+    manifest = collaboration_manifest_contract()
+    operation = run_collaboration_operation()
+    release = release_context()
+    return {{
+        "format": "appgen.collaboration-module-smoke-test.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "ok": contract["ok"]
+        and manifest["ok"]
+        and operation["ok"]
+        and release["ok"]
+        and not manifest["side_effects"]
+        and not operation["side_effects"]
+        and not release["side_effects"],
+        "contract": contract,
+        "manifest": manifest,
+        "operation": operation,
+        "release": release,
+        "checks": (
+            "module_contract_resolves",
+            "collaboration_manifest_contract_ok",
+            "collaboration_operation_ok",
+            "release_context_ok",
+            "no_side_effects",
+        ),
+    }}
+'''
+
+
+def _collaboration_module_test_text(module_name: str) -> str:
+    surface, _operation = _collaboration_surface(module_name)
+    return f'''"""Generated tests for the {surface} collaboration module."""
+
+from __future__ import annotations
+
+import importlib.util
+from pathlib import Path
+
+
+MODULE = {module_name!r}
+SURFACE = {surface!r}
+
+
+def load_collaboration_module():
+    """Load the generated collaboration module without app installation."""
+    module_path = Path(__file__).resolve().parents[1] / "collaboration_modules" / f"{{MODULE}}.py"
+    spec = importlib.util.spec_from_file_location(f"generated_collaboration_module_{{MODULE}}", module_path)
+    module = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(module)
+    return module
+
+
+def test_collaboration_module_contract():
+    """Assert the generated collaboration module exposes its contract."""
+    module = load_collaboration_module()
+    contract = module.module_contract()
+    assert contract["module"] == MODULE
+    assert contract["surface"] == SURFACE
+    assert contract["ok"] is True
+    assert all(hasattr(module, name) for name in contract["expected_exports"])
+
+
+def test_collaboration_module_smoke():
+    """Assert the module's side-effect-free smoke test passes."""
+    module = load_collaboration_module()
+    result = module.smoke_test()
+    assert result["ok"] is True
+    assert result["module"] == MODULE
+    assert result["surface"] == SURFACE
+    assert result["checks"]
+
+
+def smoke_test():
+    """Run this generated test module in a side-effect-free way."""
+    test_collaboration_module_contract()
+    test_collaboration_module_smoke()
+    return {{
+        "format": "appgen.collaboration-module-generated-test-smoke.v1",
+        "module": MODULE,
+        "surface": SURFACE,
+        "ok": True,
+        "tests": ("test_collaboration_module_contract", "test_collaboration_module_smoke"),
     }}
 '''
 
@@ -56301,6 +56590,73 @@ from flask_appbuilder import expose
 
 
 COLLABORATION_TABLES = {tables!r}
+COLLABORATION_MODULES = (
+    "collaboration_catalog_module",
+    "proposal_review_module",
+    "merge_plan_module",
+    "conflict_detection_module",
+    "merge_queue_module",
+    "collaboration_release_workbench_module",
+)
+
+
+def _load_generated_module(module_path, module_name):
+    """Load a generated collaboration module without installing the app."""
+    spec = importlib.util.spec_from_file_location(module_name, module_path)
+    module = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(module)
+    return module
+
+
+def collaboration_module_file_manifest():
+    """Return independently importable generated collaboration module files."""
+    root = Path(__file__).resolve().parent
+    modules = []
+    for module_name in COLLABORATION_MODULES:
+        module_path = root / "collaboration_modules" / f"{{module_name}}.py"
+        module = _load_generated_module(module_path, f"generated_collaboration_module_{{module_name}}")
+        contract = module.module_contract()
+        modules.append(
+            {{
+                "module": module_name,
+                "surface": contract["surface"],
+                "path": f"app/collaboration_modules/{{module_name}}.py",
+                "exists": module_path.exists(),
+                "ok": contract["ok"] and module.smoke_test()["ok"],
+                "exports": contract["exports"],
+            }}
+        )
+    return {{
+        "format": "appgen.collaboration-module-file-manifest.v1",
+        "ok": len(modules) == len(COLLABORATION_MODULES) and all(item["ok"] and item["exists"] for item in modules),
+        "modules": tuple(modules),
+    }}
+
+
+def collaboration_module_test_file_manifest():
+    """Return generated tests for the collaboration module files."""
+    root = Path(__file__).resolve().parent
+    tests = []
+    for module_name in COLLABORATION_MODULES:
+        test_path = root / "collaboration_module_tests" / f"test_{{module_name}}.py"
+        module = _load_generated_module(test_path, f"generated_collaboration_module_test_{{module_name}}")
+        result = module.smoke_test()
+        tests.append(
+            {{
+                "module": f"test_{{module_name}}",
+                "surface": result["surface"],
+                "path": f"app/collaboration_module_tests/test_{{module_name}}.py",
+                "exists": test_path.exists(),
+                "ok": result["ok"],
+                "tests": result["tests"],
+            }}
+        )
+    return {{
+        "format": "appgen.collaboration-module-test-file-manifest.v1",
+        "ok": len(tests) == len(COLLABORATION_MODULES) and all(item["ok"] and item["exists"] for item in tests),
+        "tests": tuple(tests),
+    }}
 
 
 def collaboration_catalog():
@@ -68509,6 +68865,8 @@ def validate_collaboration_artifacts() -> None:
         fail("collaboration contract must expose conflict reports, merge queues, and resolution plans")
     if "collaboration_check" not in contract or "collaboration_release_gate" not in contract or "collaboration_workbench" not in contract:
         fail("collaboration contract must expose readiness, workbench, and release gates")
+    if "collaboration_module_file_manifest" not in contract or "collaboration_module_test_file_manifest" not in contract or "COLLABORATION_MODULES" not in contract:
+        fail("collaboration contract must expose generated module manifests and module-test manifests")
     if "appgen.collaboration-workbench.v1" not in contract or '@expose("/workbench.json")' not in contract:
         fail("collaboration contract must expose a versioned workbench route")
     template = (ROOT / "app" / "templates" / "appgen_collaboration.html").read_text()

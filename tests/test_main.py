@@ -10334,6 +10334,34 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     )
     assert collaboration.collaboration_workbench({"app/collaboration.py"})["ok"] is False
     assert collaboration.collaboration_release_gate({"app/collaboration.py"})["ok"] is False
+    collaboration_module_files = collaboration.collaboration_module_file_manifest()
+    collaboration_module_tests = collaboration.collaboration_module_test_file_manifest()
+    assert collaboration_module_files["format"] == "appgen.collaboration-module-file-manifest.v1"
+    assert collaboration_module_files["ok"] is True
+    assert collaboration_module_tests["format"] == "appgen.collaboration-module-test-file-manifest.v1"
+    assert collaboration_module_tests["ok"] is True
+    assert {
+        "collaboration_catalog",
+        "proposal_review",
+        "merge_plan",
+        "conflict_detection",
+        "merge_queue",
+        "collaboration_release_workbench",
+    } == {item["surface"] for item in collaboration_module_files["modules"]}
+    for item in collaboration_module_files["modules"]:
+        module_path = output_dir / item["path"].replace("app/", "")
+        py_compile.compile(str(module_path), doraise=True)
+        module = _load_module(module_path, f"generated_collaboration_module_{item['module']}")
+        assert module.module_contract()["ok"] is True
+        assert module.collaboration_manifest_contract()["ok"] is True
+        assert module.run_collaboration_operation()["ok"] is True
+        assert module.release_context()["ok"] is True
+        assert module.smoke_test()["ok"] is True
+    for item in collaboration_module_tests["tests"]:
+        test_path = output_dir / item["path"].replace("app/", "")
+        py_compile.compile(str(test_path), doraise=True)
+        module = _load_module(test_path, f"generated_collaboration_module_test_{item['module']}")
+        assert module.smoke_test()["ok"] is True
     assert any(item["resource"] == "manifest" for item in version_control.version_resource_catalog())
     before_snapshot = version_control.snapshot_manifest(manifest, author="ada", message="baseline")
     changed_manifest = json.loads(json.dumps(manifest))
