@@ -2949,6 +2949,27 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "rad_parity_workbench",
     } == {gate["id"] for gate in audit["gates"]}
     assert audit["generation_smoke"]["ok"] is True
+    generation_smoke_gate = next(gate for gate in audit["gates"] if gate["id"] == "generation_smoke")
+    assert generation_smoke_gate["ok"] is True
+    assert generation_smoke_gate["format"] == "appgen.form-designer-generation-smoke-audit.v1"
+    assert generation_smoke_gate["decision"] == "approved"
+    assert not audit["generation_smoke"]["blocking_gaps"]
+    assert {
+        "generated_artifacts",
+        "generated_python_compiles",
+        "generated_component_file_coverage",
+        "generated_platform_parity_workbench",
+        "generated_component_parity_runtime",
+        "generated_inspector_runtime",
+        "generated_binding_runtime",
+        "generated_package_manager_runtime",
+        "generated_visual_depth_runtime",
+        "generated_visual_runtime_assets",
+        "generated_data_tooling_runtime",
+        "generated_runtime_operations",
+        "generated_native_form_runtime",
+        "generated_mobile_device_runtime",
+    } <= set(generation_smoke_gate["passing_checks"])
     generated_runtime_gate = next(gate for gate in audit["gates"] if gate["id"] == "generated_runtime_smoke_evidence")
     assert generated_runtime_gate["ok"] is True
     assert {

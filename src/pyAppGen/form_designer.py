@@ -17272,7 +17272,15 @@ def form_designer_release_audit(existing_paths: set[str] | None = None) -> dict:
         },
         {
             "id": "generation_smoke",
-            "ok": generation_smoke["ok"],
+            "ok": generation_smoke["ok"]
+            and generation_smoke["format"] == "appgen.form-designer-generation-smoke-audit.v1"
+            and generation_smoke["decision"] == "approved"
+            and set(required_generation_smoke_checks) <= generation_smoke_passing_checks
+            and not generation_smoke["blocking_gaps"],
+            "format": generation_smoke["format"],
+            "decision": generation_smoke["decision"],
+            "required_checks": required_generation_smoke_checks,
+            "passing_checks": tuple(sorted(generation_smoke_passing_checks)),
             "checks": tuple(check["id"] for check in generation_smoke["checks"]),
         },
         {
