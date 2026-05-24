@@ -55,6 +55,51 @@ Route through the AppGen-X event adapter.
 Do not choose or import a stream engine for ordinary generated work.
 ```
 
+## Developer Start Here
+
+For a normal generated app or PBC, the instruction is deliberately short:
+
+```text
+Use appgen_event_contract.
+Omit stream_processor.
+Generate transactional outbox/inbox tables.
+Write typed handlers through the AppGen-X event adapter.
+Use PostgreSQL unless the project standard is MySQL or MariaDB.
+```
+
+That is the whole ordinary path. A developer should not decide between Kafka
+alternatives, Python stream libraries, state stores, brokers, topic clients,
+or per-target runtime combinations. The platform owns those choices behind the
+adapter.
+
+Use this manifest shape for ordinary work:
+
+```python
+def register_pbc() -> dict:
+    return {
+        "pbc": "invoicing",
+        "label": "Invoicing",
+        "mesh": "finops",
+        "description": "Issue invoices, post invoice events, and track payment status.",
+        "datastore_backend": "postgresql",
+        "tables": ("invoice", "invoice_line", "payment_allocation"),
+        "apis": ("POST /invoices", "GET /invoices/{id}"),
+        "emits": ("InvoiceIssued", "InvoicePaid"),
+        "consumes": ("OrderReleased", "PaymentReceived"),
+    }
+```
+
+Notice what is missing: there is no `stream_processor`. Validation records the
+platform runtime profile as generated metadata after the manifest has been
+accepted. Developers author the business contract; AppGen-X supplies the
+runtime adapter path.
+
+If a prompt, package template, or IDE screen cannot prove that the workload is
+telemetry/time-series or complex parallel dataflow, it must use the ordinary
+path above. This keeps the generated surface small enough for constrained
+coding agents and prevents the platform from multiplying every PBC by every
+possible stream runtime, datastore, packaging target, and deployment profile.
+
 ## Normative Platform Choice
 
 The standard answer is mandatory for ordinary generated work:
@@ -443,7 +488,9 @@ def register_pbc() -> dict:
     }
 ```
 
-Without the evidence, use `faust_streaming`.
+Without the evidence, return to the ordinary path: omit `stream_processor`,
+generate the AppGen-X event contract, and let validation record the default
+runtime profile as read-only platform metadata.
 
 ## IDE, DSL, And Agent Contract
 
