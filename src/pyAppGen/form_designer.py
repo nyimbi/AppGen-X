@@ -17451,6 +17451,11 @@ def form_designer_release_audit(existing_paths: set[str] | None = None) -> dict:
     passing_overlap_checks = tuple(check for check, ok in overlap_checks if ok)
     generation_smoke = form_designer_generation_smoke_audit()
     generation_smoke_passing_checks = {check["id"] for check in generation_smoke["checks"] if check["ok"]}
+    generation_artifact_check = next(check for check in generation_smoke["checks"] if check["id"] == "generated_artifacts")
+    required_generation_smoke_artifacts = tuple(generation_smoke["required_artifacts"])
+    passing_generation_smoke_artifacts = tuple(
+        item for item in generation_smoke["required_artifacts"] if item not in set(generation_artifact_check["missing"])
+    )
     required_generation_smoke_checks = (
         "generated_artifacts",
         "generated_python_compiles",
@@ -17593,6 +17598,9 @@ def form_designer_release_audit(existing_paths: set[str] | None = None) -> dict:
             "required_checks": required_generation_smoke_checks,
             "passing_checks": tuple(sorted(generation_smoke_passing_checks)),
             "checks": tuple(check["id"] for check in generation_smoke["checks"]),
+            "required_artifacts": required_generation_smoke_artifacts,
+            "passing_artifacts": passing_generation_smoke_artifacts,
+            "blocking_gaps": generation_smoke["blocking_gaps"],
         },
         {
             "id": "generated_runtime_smoke_evidence",

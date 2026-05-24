@@ -3018,6 +3018,8 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "generated_native_form_runtime",
         "generated_mobile_device_runtime",
     } <= set(generation_smoke_gate["passing_checks"])
+    assert set(generation_smoke_gate["required_artifacts"]) <= set(generation_smoke_gate["passing_artifacts"])
+    assert generation_smoke_gate["blocking_gaps"] == ()
     generated_runtime_gate = next(gate for gate in audit["gates"] if gate["id"] == "generated_runtime_smoke_evidence")
     assert generated_runtime_gate["ok"] is True
     assert {
