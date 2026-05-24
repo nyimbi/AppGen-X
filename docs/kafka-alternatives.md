@@ -1,5 +1,31 @@
 # Opinionated Event Processing Standard
 
+## One Page Recommendation
+
+Use this:
+
+```text
+AppGen-X event contract
+transactional outbox/inbox
+typed event handlers
+platform event adapter
+read-only runtime profile metadata
+```
+
+Do not use this for ordinary generated work:
+
+```text
+Kafka alternative comparison
+stream-engine picker
+per-PBC runtime preference
+direct imports of stream-processing libraries
+```
+
+The developer-facing choice count is one: `appgen_event_contract`.
+Generated applications model commands, events, handlers, retries,
+idempotency, dead-letter behavior, and release evidence. The platform owns the
+runtime profile behind the adapter.
+
 AppGen-X does not ask application developers, natural-language generators,
 coding agents, or Studio users to choose among stream-processing engines for
 ordinary generated applications. That choice would create a support matrix that
@@ -39,6 +65,8 @@ implementation recipe:
 
 The profile names below are internal platform profiles. They are not ordinary
 developer preferences, UI options, or natural-language generation branches.
+They exist so the platform can validate and package the generated adapter path
+without exposing a combinatorial design surface to users.
 
 ## The Developer Answer
 
@@ -162,7 +190,8 @@ generator code:
 
 1. Is this ordinary domain-event handling, outbox delivery, workflow
    orchestration, approval routing, integration handling, or agent task
-   execution? Use `faust_streaming`.
+   execution? Use `appgen_event_contract`; the platform records the default
+   runtime profile as read-only metadata.
 2. Is the workload primarily telemetry, time-series ingestion, high-volume
    event ingestion, or windowed operational metrics? Use `quix_streams`, but
    only with exception evidence.
@@ -174,6 +203,32 @@ generator code:
 The default answer is not "choose a Kafka alternative." The default answer is
 "generate the AppGen-X outbox/inbox contract and route through the platform
 adapter."
+
+## Exception Budget
+
+The platform deliberately has no open-ended stream-runtime extension point for
+ordinary generated applications. Every additional visible option multiplies the
+test matrix across datastore backend, packaging target, generated adapter,
+local development mode, deployment profile, PBC ownership, and release audit.
+
+To keep generated apps reliable and token-efficient:
+
+- ordinary generated work has exactly one public event contract;
+- profile names are platform-owned adapter metadata;
+- exception profiles are allowed only for the two documented workload classes;
+- a PBC may use at most one stream profile;
+- a specialized workload that needs an exception should be split into its own
+  PBC or generated integration capability;
+- adding a fourth profile requires a platform architecture decision, executable
+  validation, docs, release gates, and generated tests before it is exposed.
+
+This rule is also the small-model prompt contract:
+
+```text
+Generate AppGen-X outbox/inbox events through the platform adapter. Do not
+compare stream engines. Omit stream_processor unless exception evidence is
+provided for telemetry/time-series or complex parallel dataflow.
+```
 
 ## Copy-Paste Rules For Generated PBCs
 

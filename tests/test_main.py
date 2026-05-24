@@ -759,6 +759,9 @@ def test_package_pbc_catalog_composes_enterprise_apps(runner: CliRunner) -> None
     assert stream_policy["developer_guidance"]["visible_developer_choice"] == "appgen_event_contract"
     assert stream_policy["developer_guidance"]["visible_choice_count"] == 1
     assert stream_policy["developer_guidance"]["hidden_runtime_profile"] == "faust_streaming"
+    assert stream_policy["developer_guidance"]["public_contract"].startswith("AppGen-X event contract")
+    assert stream_policy["developer_guidance"]["runtime_owner"] == "platform_event_adapter"
+    assert "multiplies generated-app validation" in stream_policy["developer_guidance"]["choice_limit_reason"]
     assert stream_policy["developer_guidance"]["implementation_recipe"] == (
         "declare_commands_and_events",
         "generate_owned_tables",
@@ -777,11 +780,15 @@ def test_package_pbc_catalog_composes_enterprise_apps(runner: CliRunner) -> None
     assert stream_policy["decision_card"]["ordinary_developer_choice_count"] == 1
     assert stream_policy["decision_card"]["do_not_ask_users_to_choose"] is True
     assert stream_policy["decision_card"]["choice_contract"] == "one_default_two_audited_exceptions"
+    assert stream_policy["decision_card"]["public_contract"] == "appgen_event_contract"
+    assert "generate transactional outbox/inbox tables" in stream_policy["decision_card"]["do_this"]
+    assert "render a stream-engine picker" in stream_policy["decision_card"]["do_not_do_this"]
     assert stream_policy["decision_card"]["developer_selection"] == "not_user_selectable_for_ordinary_app_generation"
     assert stream_policy["decision_card"]["selection_mode"] == "read_only_default_with_audited_exceptions"
     assert stream_policy["decision_card"]["default_profile"] == "faust_streaming"
     assert stream_policy["decision_card"]["business_logic_rule"].endswith("not profile-specific stream libraries")
     assert stream_policy["opinionated_stack"]["default_event_adapter"] == "appgen_outbox_inbox_faust_streaming"
+    assert stream_policy["opinionated_stack"]["visible_runtime_choices"] == ("appgen_event_contract",)
     assert "Do not generate direct imports" in stream_policy["implementation_directive"]
     assert stream_policy["decision_ladder"][0] == "omit_stream_processor_for_ordinary_apps"
     assert {

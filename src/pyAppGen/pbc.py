@@ -126,6 +126,16 @@ ACP_STREAM_PROCESSING_POLICY = {
         "visible_developer_choice": "appgen_event_contract",
         "visible_choice_count": 1,
         "hidden_runtime_profile": ACP_DEFAULT_STREAM_PROCESSOR,
+        "public_contract": (
+            "AppGen-X event contract with generated transactional outbox/inbox, "
+            "typed handlers, retry, idempotency, dead-letter, and release evidence."
+        ),
+        "runtime_owner": "platform_event_adapter",
+        "choice_limit_reason": (
+            "Every extra visible stream option multiplies generated-app "
+            "validation across datastore, adapter, target package, deployment, "
+            "PBC ownership, and release-audit surfaces."
+        ),
         "implementation_recipe": (
             "declare_commands_and_events",
             "generate_owned_tables",
@@ -165,6 +175,19 @@ ACP_STREAM_PROCESSING_POLICY = {
         "answer": "Use the AppGen-X generated outbox/inbox event contract; the platform keeps faust_streaming behind the adapter for ordinary work.",
         "default_profile": ACP_DEFAULT_STREAM_PROCESSOR,
         "choice_contract": "one_default_two_audited_exceptions",
+        "public_contract": "appgen_event_contract",
+        "do_this": (
+            "model commands and events",
+            "generate transactional outbox/inbox tables",
+            "write typed handlers behind the AppGen-X event adapter",
+            "prove retry, idempotency, dead-letter, and release-audit coverage",
+        ),
+        "do_not_do_this": (
+            "compare Kafka alternatives for ordinary generated work",
+            "render a stream-engine picker",
+            "generate per-PBC runtime preferences",
+            "import stream-processing libraries directly from generated business logic",
+        ),
         "ordinary_developer_choices": ("appgen_event_contract",),
         "ordinary_developer_choice_count": 1,
         "selection_mode": "read_only_default_with_audited_exceptions",
@@ -181,6 +204,7 @@ ACP_STREAM_PROCESSING_POLICY = {
         "service_runtime": ACP_DEFAULT_STREAM_PROCESSOR,
         "state_boundary": "owned_by_one_pbc_datastore",
         "selection_mode": "platform_default_unless_exception_evidence_is_present",
+        "visible_runtime_choices": ("appgen_event_contract",),
     },
     "developer_rule": (
         "Do not choose a stream engine for ordinary generated applications. "
