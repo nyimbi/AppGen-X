@@ -17467,6 +17467,30 @@ def form_designer_release_audit(existing_paths: set[str] | None = None) -> dict:
         "generated_native_form_runtime",
         "generated_mobile_device_runtime",
     )
+    required_runtime_smoke_formats = (
+        ("generated_platform_parity_workbench", "appgen.generated-rad-parity-workbench.v1"),
+        ("generated_component_parity_runtime", "appgen.generated-component-parity-runtime-smoke.v1"),
+        ("generated_inspector_runtime", "appgen.generated-inspector-runtime-smoke.v1"),
+        ("generated_binding_runtime", "appgen.generated-binding-runtime-smoke.v1"),
+        ("generated_package_manager_runtime", "appgen.generated-package-manager-runtime-smoke.v1"),
+        ("generated_visual_depth_runtime", "appgen.generated-visual-depth-runtime-smoke.v1"),
+        ("generated_visual_runtime_assets", "appgen.generated-visual-runtime-assets-smoke.v1"),
+        ("generated_data_tooling_runtime", "appgen.generated-data-tooling-runtime-smoke.v1"),
+        ("generated_runtime_operations", "appgen.generated-native-runtime-operations-smoke.v1"),
+        ("generated_native_form_runtime", "appgen.generated-native-form-runtime-smoke.v1"),
+        ("generated_mobile_device_runtime", "appgen.generated-mobile-device-runtime-smoke.v1"),
+    )
+    runtime_smoke_format_by_id = {}
+    for check in generation_smoke["checks"]:
+        evidence = check.get("smoke")
+        if not isinstance(evidence, dict):
+            evidence = check.get("workbench")
+        runtime_smoke_format_by_id[check["id"]] = evidence.get("format") if isinstance(evidence, dict) else None
+    passing_runtime_smoke_formats = tuple(
+        (check_id, expected_format)
+        for check_id, expected_format in required_runtime_smoke_formats
+        if runtime_smoke_format_by_id.get(check_id) == expected_format
+    )
     rad_parity = rad_parity_workbench(existing)
     rad_parity_passing_checks = {check["id"] for check in rad_parity["checks"] if check["ok"]}
     required_rad_parity_checks = (
@@ -17557,9 +17581,12 @@ def form_designer_release_audit(existing_paths: set[str] | None = None) -> dict:
         },
         {
             "id": "generated_runtime_smoke_evidence",
-            "ok": set(required_generation_smoke_checks) <= generation_smoke_passing_checks,
+            "ok": set(required_generation_smoke_checks) <= generation_smoke_passing_checks
+            and set(required_runtime_smoke_formats) <= set(passing_runtime_smoke_formats),
             "required_checks": required_generation_smoke_checks,
             "passing_checks": tuple(sorted(generation_smoke_passing_checks)),
+            "required_formats": required_runtime_smoke_formats,
+            "passing_formats": passing_runtime_smoke_formats,
         },
         {
             "id": "rad_parity_workbench",
