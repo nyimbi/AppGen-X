@@ -17098,6 +17098,23 @@ def form_designer_release_audit(existing_paths: set[str] | None = None) -> dict:
         {"field": "duplicate_name", "component": "TextBox", "x": 0, "y": 0, "w": 6, "h": 1},
     )
     generation_smoke = form_designer_generation_smoke_audit()
+    generation_smoke_passing_checks = {check["id"] for check in generation_smoke["checks"] if check["ok"]}
+    required_generation_smoke_checks = (
+        "generated_artifacts",
+        "generated_python_compiles",
+        "generated_component_file_coverage",
+        "generated_platform_parity_workbench",
+        "generated_component_parity_runtime",
+        "generated_inspector_runtime",
+        "generated_binding_runtime",
+        "generated_package_manager_runtime",
+        "generated_visual_depth_runtime",
+        "generated_data_tooling_runtime",
+        "generated_runtime_operations",
+        "generated_native_form_runtime",
+        "generated_mobile_device_runtime",
+    )
+    rad_parity = rad_parity_workbench(existing)
     gates = (
         {
             "id": "palette_breadth",
@@ -17136,9 +17153,15 @@ def form_designer_release_audit(existing_paths: set[str] | None = None) -> dict:
             "checks": tuple(check["id"] for check in generation_smoke["checks"]),
         },
         {
+            "id": "generated_runtime_smoke_evidence",
+            "ok": set(required_generation_smoke_checks) <= generation_smoke_passing_checks,
+            "required_checks": required_generation_smoke_checks,
+            "passing_checks": tuple(sorted(generation_smoke_passing_checks)),
+        },
+        {
             "id": "rad_parity_workbench",
-            "ok": rad_parity_workbench(existing)["ok"],
-            "checks": tuple(check["id"] for check in rad_parity_workbench(existing)["checks"]),
+            "ok": rad_parity["ok"],
+            "checks": tuple(check["id"] for check in rad_parity["checks"]),
         },
     )
     ok = all(gate["ok"] for gate in gates)
@@ -17154,7 +17177,7 @@ def form_designer_release_audit(existing_paths: set[str] | None = None) -> dict:
         "suggestions": placement_suggestions(),
         "validation": validate_form_design(design),
         "generation_smoke": generation_smoke,
-        "rad_parity": rad_parity_workbench(existing),
+        "rad_parity": rad_parity,
         "gates": gates,
         "blocking_gaps": tuple(gate for gate in gates if not gate["ok"]),
         "stop_condition": "do-not-claim-rad-form-designer-unless-ok-is-true",

@@ -2945,9 +2945,27 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "overlap_guardrails",
         "artifact_contract",
         "generation_smoke",
+        "generated_runtime_smoke_evidence",
         "rad_parity_workbench",
     } == {gate["id"] for gate in audit["gates"]}
     assert audit["generation_smoke"]["ok"] is True
+    generated_runtime_gate = next(gate for gate in audit["gates"] if gate["id"] == "generated_runtime_smoke_evidence")
+    assert generated_runtime_gate["ok"] is True
+    assert {
+        "generated_artifacts",
+        "generated_python_compiles",
+        "generated_component_file_coverage",
+        "generated_platform_parity_workbench",
+        "generated_component_parity_runtime",
+        "generated_inspector_runtime",
+        "generated_binding_runtime",
+        "generated_package_manager_runtime",
+        "generated_visual_depth_runtime",
+        "generated_data_tooling_runtime",
+        "generated_runtime_operations",
+        "generated_native_form_runtime",
+        "generated_mobile_device_runtime",
+    } <= set(generated_runtime_gate["passing_checks"])
     assert audit["rad_parity"]["format"] == "appgen.rad-parity-workbench.v1"
     assert audit["rad_parity"]["ok"] is True
     assert rad_parity_workbench()["ok"] is True
