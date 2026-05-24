@@ -4349,6 +4349,10 @@ def pascal_runtime_workbench(design: dict | None = None) -> dict:
     readiness = pascal_runtime_readiness_contract(design)
     binary_round_trip = dfm_binary_round_trip(design)
     stream_variants = dfm_stream_variant_round_trip_contract(design)
+    compiler_runtime_modules = compiler_runtime_module_file_manifest()
+    compiler_runtime_module_tests = compiler_runtime_module_test_file_manifest()
+    deep_runtime_modules = deep_runtime_module_file_manifest()
+    deep_runtime_module_tests = deep_runtime_module_test_file_manifest()
     checks = (
         {"id": "dfm_serialization", "ok": "object " in round_trip["dfm"] and "AppGenField" in round_trip["dfm"], "evidence": round_trip["dfm"]},
         {"id": "dfm_parse_round_trip", "ok": round_trip["ok"], "evidence": round_trip},
@@ -4553,6 +4557,30 @@ def pascal_runtime_workbench(design: dict | None = None) -> dict:
             "ok": readiness["ok"] and "runtime_preview_ready" in {check["id"] for check in readiness["checks"] if check["ok"]},
             "evidence": readiness,
         },
+        {
+            "id": "compiler_runtime_modules",
+            "ok": len(compiler_runtime_modules) == 6
+            and all(item["ok"] and "smoke_test" in item["exports"] for item in compiler_runtime_modules),
+            "evidence": compiler_runtime_modules,
+        },
+        {
+            "id": "compiler_runtime_module_tests",
+            "ok": len(compiler_runtime_module_tests) == 6
+            and all(item["ok"] and "test_compiler_runtime_module_smoke" in item["exports"] for item in compiler_runtime_module_tests),
+            "evidence": compiler_runtime_module_tests,
+        },
+        {
+            "id": "deep_runtime_modules",
+            "ok": len(deep_runtime_modules) == 8
+            and all(item["ok"] and "runtime_workbench" in item["exports"] for item in deep_runtime_modules),
+            "evidence": deep_runtime_modules,
+        },
+        {
+            "id": "deep_runtime_module_tests",
+            "ok": len(deep_runtime_module_tests) == 8
+            and all(item["ok"] and "test_deep_runtime_module_smoke" in item["exports"] for item in deep_runtime_module_tests),
+            "evidence": deep_runtime_module_tests,
+        },
     )
     ok = all(check["ok"] for check in checks)
     return {
@@ -4595,6 +4623,10 @@ def pascal_runtime_workbench(design: dict | None = None) -> dict:
         "readiness": readiness,
         "binary_round_trip": binary_round_trip,
         "stream_variants": stream_variants,
+        "compiler_runtime_modules": compiler_runtime_modules,
+        "compiler_runtime_module_tests": compiler_runtime_module_tests,
+        "deep_runtime_modules": deep_runtime_modules,
+        "deep_runtime_module_tests": deep_runtime_module_tests,
         "blocking_gaps": tuple(check for check in checks if not check["ok"]),
     }
 
@@ -14036,12 +14068,22 @@ def platform_parity_requirement_audit_contract() -> dict:
                 "phase_order_ready",
             }
             <= {check["id"] for check in runtime_readiness["checks"] if check["ok"]}
-            and {"form_stream_schema", "runtime_session_replay", "design_edit_session_replay"} <= {check["id"] for check in runtime["checks"]},
+            and {
+                "form_stream_schema",
+                "runtime_session_replay",
+                "design_edit_session_replay",
+                "compiler_runtime_modules",
+                "compiler_runtime_module_tests",
+                "deep_runtime_modules",
+                "deep_runtime_module_tests",
+            } <= {check["id"] for check in runtime["checks"]},
             "deep_checks": (
                 "stream_identity_ready",
                 "compile_targets_ready",
                 "diagnostics_route_ready",
                 "runtime_preview_ready",
+                "compiler_runtime_modules",
+                "deep_runtime_modules",
                 "phase_order_ready",
             ),
             "evidence": {"workbench": runtime, "readiness": runtime_readiness},

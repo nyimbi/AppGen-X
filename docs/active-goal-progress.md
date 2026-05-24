@@ -25,7 +25,8 @@ Build a complete AppGen IDE and generation platform with:
 
 | Date | Commit | Slice | Evidence |
 | --- | --- | --- | --- |
-| 2026-05-24 | `current` | Added the generated platform parity requirement map as a first-class package goal audit gate. | Py compile, focused package-goal audit test, scoped diff check, and staged hygiene scan passed. |
+| 2026-05-24 | `current` | Wired compiler and deep runtime module/test manifests into native runtime workbench and requirement evidence. | Py compile, focused form-designer audit test, scoped diff check, and staged hygiene scan passed. |
+| 2026-05-24 | `7e4036f` | Added the generated platform parity requirement map as a first-class package goal audit gate. | Py compile, focused package-goal audit test, scoped diff check, and staged hygiene scan passed. |
 | 2026-05-24 | `fa52a49` | Made generated form-designer smoke require the aggregate generated platform parity workbench, lifecycle replay, and requirement audit instead of only individual subsystem smokes. | Py compile, focused form-designer audit test, scoped diff check, and staged hygiene scan passed. |
 | 2026-05-24 | `current` | Added an executable PBC eventing-choice linter so developers and coding agents get one ordinary answer instead of reopening stream-runtime selection. | Py compile, focused PBC policy test, scoped documentation diff check, and staged hygiene scan passed. |
 | 2026-05-23 | `35387ed` | Polished IDE palette and component icons. | Frontend production build, staged diff checks. |
@@ -555,6 +556,10 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   map as a first-class gate, so component parity, native runtime streaming,
   inspector design, visual binding, data tooling, package installation, device
   API coverage, and visual depth are visible at the top-level goal boundary.
+- Native runtime workbench evidence now includes generated compiler runtime
+  module manifests, deep runtime module manifests, and their generated test
+  manifests, and the native runtime requirement requires those module surfaces
+  before the aggregate parity audit passes.
 
 ## Open Completion Areas
 

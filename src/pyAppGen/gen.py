@@ -46563,6 +46563,32 @@ def pascal_runtime_workbench(table_name=None):
     readiness = pascal_runtime_readiness_contract(design=design)
     binary_round_trip = dfm_binary_round_trip(design=design)
     stream_variants = dfm_stream_variant_round_trip_contract(design=design)
+    compiler_runtime_module_map = {{
+        "compiler_pipeline_module": "compiler_pipeline",
+        "unit_parse_module": "unit_parse",
+        "semantic_validation_module": "semantic_validation",
+        "incremental_compile_module": "incremental_compile",
+        "diagnostic_mapping_module": "diagnostic_mapping",
+        "toolchain_adapter_module": "toolchain_adapter",
+    }}
+    deep_runtime_module_map = {{
+        "package_target_matrix_module": "package_target_matrix",
+        "language_frontend_module": "language_frontend",
+        "static_analysis_module": "static_analysis",
+        "compiler_recovery_module": "compiler_recovery",
+        "form_stream_schema_module": "form_stream_schema",
+        "stream_migration_module": "stream_migration",
+        "debug_symbol_module": "debug_symbols",
+        "runtime_memory_model_module": "runtime_memory_model",
+    }}
+    compiler_runtime_module_entries = tuple({{"module": name, "surface": surface, "path": f"app/compiler_runtime_modules/{{name}}.py", "exists": (Path(__file__).with_name("compiler_runtime_modules") / f"{{name}}.py").exists(), "exports": ("module_contract", "compiler_manifest", "run_compiler_surface", "runtime_workbench", "smoke_test")}} for name, surface in compiler_runtime_module_map.items())
+    compiler_runtime_module_test_entries = tuple({{"module": name, "surface": surface, "path": f"app/compiler_runtime_module_tests/test_{{name}}.py", "exists": (Path(__file__).with_name("compiler_runtime_module_tests") / f"test_{{name}}.py").exists(), "exports": ("load_compiler_runtime_module", "test_compiler_runtime_module_contract", "test_compiler_runtime_module_smoke", "smoke_test")}} for name, surface in compiler_runtime_module_map.items())
+    deep_runtime_module_entries = tuple({{"module": name, "surface": surface, "path": f"app/deep_runtime_modules/{{name}}.py", "exists": (Path(__file__).with_name("deep_runtime_modules") / f"{{name}}.py").exists(), "exports": ("module_contract", "runtime_manifest", "run_runtime_surface", "runtime_workbench", "smoke_test")}} for name, surface in deep_runtime_module_map.items())
+    deep_runtime_module_test_entries = tuple({{"module": name, "surface": surface, "path": f"app/deep_runtime_module_tests/test_{{name}}.py", "exists": (Path(__file__).with_name("deep_runtime_module_tests") / f"test_{{name}}.py").exists(), "exports": ("load_deep_runtime_module", "test_deep_runtime_module_contract", "test_deep_runtime_module_smoke", "smoke_test")}} for name, surface in deep_runtime_module_map.items())
+    compiler_runtime_modules = {{"format": "appgen.generated-compiler-runtime-module-file-manifest.v1", "ok": len(compiler_runtime_module_entries) == 6 and all(item["exists"] and "smoke_test" in item["exports"] for item in compiler_runtime_module_entries), "modules": compiler_runtime_module_entries, "side_effects": ()}}
+    compiler_runtime_module_tests = {{"format": "appgen.generated-compiler-runtime-module-test-file-manifest.v1", "ok": len(compiler_runtime_module_test_entries) == 6 and all(item["exists"] and "test_compiler_runtime_module_smoke" in item["exports"] for item in compiler_runtime_module_test_entries), "tests": compiler_runtime_module_test_entries, "side_effects": ()}}
+    deep_runtime_modules = {{"format": "appgen.generated-deep-runtime-module-file-manifest.v1", "ok": len(deep_runtime_module_entries) == 8 and all(item["exists"] and "runtime_workbench" in item["exports"] for item in deep_runtime_module_entries), "modules": deep_runtime_module_entries, "side_effects": ()}}
+    deep_runtime_module_tests = {{"format": "appgen.generated-deep-runtime-module-test-file-manifest.v1", "ok": len(deep_runtime_module_test_entries) == 8 and all(item["exists"] and "test_deep_runtime_module_smoke" in item["exports"] for item in deep_runtime_module_test_entries), "tests": deep_runtime_module_test_entries, "side_effects": ()}}
     checks = (
         {{"id": "dfm_serialization", "ok": "object " in round_trip["dfm"] and "AppGenField" in round_trip["dfm"], "evidence": round_trip["dfm"]}},
         {{"id": "dfm_parse_round_trip", "ok": round_trip["ok"], "evidence": round_trip}},
@@ -46602,6 +46628,10 @@ def pascal_runtime_workbench(table_name=None):
         {{"id": "design_edit_session_replay", "ok": design_edit_replay["ok"] and {{"unknown_properties_preserved_during_edit", "cache_invalidated_before_target_emit"}} <= set(design_edit_replay["guards"]) and not design_edit_replay["side_effects"], "evidence": design_edit_replay}},
         {{"id": "actionable_runtime_operations", "ok": actionable_operations["ok"] and {{"open_design_stream", "apply_property_delta", "round_trip_stream", "compile_preview", "refresh_resources", "reload_runtime_preview"}} <= set(actionable_operations["operation_names"]) and not actionable_operations["side_effects"], "evidence": actionable_operations}},
         {{"id": "runtime_readiness_contract", "ok": readiness["ok"] and "runtime_preview_ready" in {{check["id"] for check in readiness["checks"] if check["ok"]}}, "evidence": readiness}},
+        {{"id": "compiler_runtime_modules", "ok": compiler_runtime_modules["ok"] and len(compiler_runtime_modules["modules"]) == 6 and not compiler_runtime_modules["side_effects"], "evidence": compiler_runtime_modules}},
+        {{"id": "compiler_runtime_module_tests", "ok": compiler_runtime_module_tests["ok"] and len(compiler_runtime_module_tests["tests"]) == 6 and not compiler_runtime_module_tests["side_effects"], "evidence": compiler_runtime_module_tests}},
+        {{"id": "deep_runtime_modules", "ok": deep_runtime_modules["ok"] and len(deep_runtime_modules["modules"]) == 8 and not deep_runtime_modules["side_effects"], "evidence": deep_runtime_modules}},
+        {{"id": "deep_runtime_module_tests", "ok": deep_runtime_module_tests["ok"] and len(deep_runtime_module_tests["tests"]) == 8 and not deep_runtime_module_tests["side_effects"], "evidence": deep_runtime_module_tests}},
     )
     ok = all(check["ok"] for check in checks)
     return {{
@@ -46644,6 +46674,10 @@ def pascal_runtime_workbench(table_name=None):
         "readiness": readiness,
         "binary_round_trip": binary_round_trip,
         "stream_variants": stream_variants,
+        "compiler_runtime_modules": compiler_runtime_modules,
+        "compiler_runtime_module_tests": compiler_runtime_module_tests,
+        "deep_runtime_modules": deep_runtime_modules,
+        "deep_runtime_module_tests": deep_runtime_module_tests,
         "blocking_gaps": tuple(check for check in checks if not check["ok"]),
     }}
 
@@ -54887,7 +54921,7 @@ def platform_parity_requirement_audit_contract():
     lifecycle = platform_parity_lifecycle_replay_contract()
     requirements = (
         {{"id": "component_parity", "ok": analog_groups["ok"] and component_readiness["ok"] and {{"analog_coverage_ready", "palette_icons_ready", "behavior_surface_ready", "generated_modules_ready", "generated_tests_ready", "ide_release_ready", "phase_order_ready"}} <= {{check["id"] for check in component_readiness["checks"] if check["ok"]}} and {{"cross-target-ui", "layouts", "data-display", "graphics", "animations", "styles-theming", "gestures", "sensors", "three-d", "data-access"}} == {{group["group"] for group in analog_groups["groups"]}}, "deep_checks": ("analog_coverage_ready", "generated_modules_ready", "generated_tests_ready", "ide_release_ready", "phase_order_ready"), "evidence": {{"groups": analog_groups, "readiness": component_readiness}}}},
-        {{"id": "native_runtime_streaming", "ok": runtime["ok"] and runtime_readiness["ok"] and {{"stream_identity_ready", "unit_semantics_ready", "compile_targets_ready", "diagnostics_route_ready", "runtime_preview_ready", "phase_order_ready"}} <= {{check["id"] for check in runtime_readiness["checks"] if check["ok"]}} and {{"form_stream_schema", "runtime_session_replay", "design_edit_session_replay"}} <= {{check["id"] for check in runtime["checks"]}}, "deep_checks": ("stream_identity_ready", "compile_targets_ready", "diagnostics_route_ready", "runtime_preview_ready", "phase_order_ready"), "evidence": {{"workbench": runtime, "readiness": runtime_readiness}}}},
+        {{"id": "native_runtime_streaming", "ok": runtime["ok"] and runtime_readiness["ok"] and {{"stream_identity_ready", "unit_semantics_ready", "compile_targets_ready", "diagnostics_route_ready", "runtime_preview_ready", "phase_order_ready"}} <= {{check["id"] for check in runtime_readiness["checks"] if check["ok"]}} and {{"form_stream_schema", "runtime_session_replay", "design_edit_session_replay", "compiler_runtime_modules", "compiler_runtime_module_tests", "deep_runtime_modules", "deep_runtime_module_tests"}} <= {{check["id"] for check in runtime["checks"]}}, "deep_checks": ("stream_identity_ready", "compile_targets_ready", "diagnostics_route_ready", "runtime_preview_ready", "compiler_runtime_modules", "deep_runtime_modules", "phase_order_ready"), "evidence": {{"workbench": runtime, "readiness": runtime_readiness}}}},
         {{"id": "inspector_design_surface", "ok": inspector["ok"] and inspector_readiness["ok"] and {{"editor_metadata_ready", "property_event_ready", "component_custom_designer_ready", "state_design_surface_ready", "binding_handler_ready", "lifecycle_round_trip_ready", "phase_order_ready"}} <= {{check["id"] for check in inspector_readiness["checks"] if check["ok"]}} and {{"property_editor_types", "event_editor_lifecycle", "component_editor_transaction", "custom_designer_registration_replay", "editor_lifecycle_replay"}} <= {{check["id"] for check in inspector["checks"]}}, "deep_checks": ("editor_lifecycle_replay", "design_surface_transaction_replay", "custom_designer_registration_replay", "phase_order_ready"), "evidence": {{"workbench": inspector, "readiness": inspector_readiness}}}},
         {{"id": "visual_binding_designer", "ok": bindings["ok"] and binding_readiness["ok"] and {{"graph_authoring_ready", "validation_transaction_ready", "preview_runtime_ready", "diagnostics_conflict_ready", "offline_accessible_runtime_ready", "designer_release_replay_ready", "inspector_bridge_ready", "phase_order_ready"}} <= {{check["id"] for check in binding_readiness["checks"] if check["ok"]}} and bindings["designer_transaction_replay"]["ok"] and bindings["design_runtime_replay"]["ok"] and bindings["lifecycle_release_replay"]["ok"], "deep_checks": ("binding_lifecycle_release_replay", "design_runtime_session_replay", "designer_transaction_replay", "phase_order_ready"), "evidence": {{"workbench": bindings, "readiness": binding_readiness}}}},
         {{"id": "native_data_service_tooling", "ok": data_tooling["ok"] and data_readiness["ok"] and {{"connection_ready", "dataset_ready", "publish_ready", "offline_replay_ready", "replication_failover_ready", "diagnostics_ready", "phase_order_ready"}} <= {{check["id"] for check in data_readiness["checks"] if check["ok"]}} and data_tooling["runtime_replay"]["ok"] and data_tooling["publish_transaction_replay"]["ok"] and "relationship_lookup_lifecycle_replay" in {{check["id"] for check in data_tooling["checks"]}}, "deep_checks": ("relationship_lookup_lifecycle_replay", "data_tooling_design_runtime_session_replay", "data_tooling_publish_transaction_replay", "phase_order_ready"), "evidence": {{"workbench": data_tooling, "readiness": data_readiness}}}},
