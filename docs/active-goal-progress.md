@@ -238,6 +238,10 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   validation, scene authoring, asset import, and visual runtime packaging
   surfaces, with generated visual-depth runtime manifests validating module
   and test coverage.
+- Mobile/native device API work now exposes a readiness contract that proves
+  privacy/permission review, simulator fixtures, bridge/component binding,
+  fallback and lifecycle handling, runtime replay, and designer/capability
+  replay as one ordered path in both package and generated-app workbenches.
 - Event-runtime guidance now exposes a first-match developer choice algorithm:
   ordinary business, ERP, workflow, chatbot, agent, integration, and PBC event
   handling generate the AppGen-X event contract with `stream_processor`

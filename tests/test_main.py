@@ -149,6 +149,7 @@ from pyAppGen.form_designer import mobile_device_capability_lifecycle_replay_con
 from pyAppGen.form_designer import mobile_device_component_spec_contract
 from pyAppGen.form_designer import mobile_dispatch_adapter_operation
 from pyAppGen.form_designer import mobile_native_api_actionable_operations
+from pyAppGen.form_designer import mobile_native_api_readiness_contract
 from pyAppGen.form_designer import mobile_native_api_workbench
 from pyAppGen.form_designer import mobile_replay_simulator_operation
 from pyAppGen.form_designer import mobile_request_permission_operation
@@ -1935,6 +1936,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "runtime_delivery_replay",
         "designer_transaction_replay",
         "capability_lifecycle_replay",
+        "mobile_readiness_contract",
     } == {check["id"] for check in mobile_workbench["checks"]}
     mobile_apis = set(mobile_workbench["contract"]["apis"])
     assert {
@@ -2028,6 +2030,31 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         <= {phase["phase"] for phase in item["phases"]}
         for item in capability_lifecycle["replay"]
     )
+    mobile_readiness = mobile_native_api_readiness_contract()
+    assert mobile_readiness["format"] == "appgen.mobile-native-api-readiness-contract.v1"
+    assert mobile_readiness["ok"] is True
+    assert {
+        "declare_privacy_and_permissions",
+        "configure_simulator_fixtures",
+        "bind_components_and_bridges",
+        "review_fallbacks_and_lifecycle",
+        "replay_runtime_delivery",
+        "replay_designer_and_capabilities",
+    } == {item["phase"] for item in mobile_readiness["phases"]}
+    assert {
+        "privacy_permission_ready",
+        "simulator_ready",
+        "bridge_component_ready",
+        "fallback_lifecycle_ready",
+        "runtime_delivery_ready",
+        "designer_capability_ready",
+        "operation_surface_ready",
+        "phase_order_ready",
+    } == {check["id"] for check in mobile_readiness["checks"]}
+    assert mobile_readiness["final_state"]["api_count"] == len(mobile_apis)
+    assert mobile_readiness["final_state"]["runtime_replays"] == len(mobile_apis)
+    assert mobile_workbench["readiness"]["ok"] is True
+    assert mobile_workbench["readiness"]["final_state"]["background_checkpoints"] >= 1
     visual_depth = cross_target_visual_depth_workbench()
     assert visual_depth["format"] == "appgen.cross-target-visual-depth-workbench.v1"
     assert visual_depth["ok"] is True
@@ -12809,6 +12836,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "runtime_delivery_replay",
         "designer_transaction_replay",
         "capability_lifecycle_replay",
+        "mobile_readiness_contract",
     } == {check["id"] for check in generated_mobile["checks"]}
     generated_mobile_apis = set(generated_mobile["contract"]["apis"])
     assert {
@@ -12901,6 +12929,31 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         <= {phase["phase"] for phase in item["phases"]}
         for item in generated_mobile["capability_lifecycle_replay"]["replay"]
     )
+    generated_mobile_readiness = form_designer.mobile_native_api_readiness_contract()
+    assert generated_mobile_readiness["format"] == "appgen.generated-mobile-native-api-readiness-contract.v1"
+    assert generated_mobile_readiness["ok"] is True
+    assert {
+        "declare_privacy_and_permissions",
+        "configure_simulator_fixtures",
+        "bind_components_and_bridges",
+        "review_fallbacks_and_lifecycle",
+        "replay_runtime_delivery",
+        "replay_designer_and_capabilities",
+    } == {item["phase"] for item in generated_mobile_readiness["phases"]}
+    assert {
+        "privacy_permission_ready",
+        "simulator_ready",
+        "bridge_component_ready",
+        "fallback_lifecycle_ready",
+        "runtime_delivery_ready",
+        "designer_capability_ready",
+        "operation_surface_ready",
+        "phase_order_ready",
+    } == {check["id"] for check in generated_mobile_readiness["checks"]}
+    assert generated_mobile_readiness["final_state"]["api_count"] == len(generated_mobile_apis)
+    assert generated_mobile_readiness["final_state"]["runtime_replays"] == len(generated_mobile_apis)
+    assert generated_mobile["readiness"]["ok"] is True
+    assert generated_mobile["readiness"]["final_state"]["background_checkpoints"] >= 1
     mobile_runtime_file = output_dir / "mobile_device_runtime.py"
     assert mobile_runtime_file.exists()
     py_compile.compile(str(mobile_runtime_file), doraise=True)

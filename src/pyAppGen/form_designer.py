@@ -11109,6 +11109,115 @@ def mobile_device_capability_lifecycle_replay_contract() -> dict:
     }
 
 
+def mobile_native_api_readiness_contract() -> dict:
+    """Prove the mobile/native device API path as one ordered readiness contract."""
+    contract = mobile_native_api_contract()
+    permission = mobile_request_permission_operation()
+    simulator = mobile_replay_simulator_operation()
+    adapter = mobile_dispatch_adapter_operation()
+    privacy = mobile_review_privacy_operation()
+    fallback = mobile_review_platform_fallback_operation()
+    background = mobile_resume_background_operation()
+    component_validation = mobile_validate_device_component_operation()
+    runtime_replay = mobile_native_api_runtime_replay_contract()
+    designer_replay = mobile_device_designer_transaction_replay_contract()
+    lifecycle = mobile_device_capability_lifecycle_replay_contract()
+    actionable = mobile_native_api_actionable_operations()
+    phases = (
+        {
+            "phase": "declare_privacy_and_permissions",
+            "pipeline": privacy["review_items"] + permission["pipeline"],
+            "ok": privacy["ok"]
+            and permission["ok"]
+            and "least_privilege" in privacy["review_items"]
+            and "dispatch_result" in permission["pipeline"],
+        },
+        {
+            "phase": "configure_simulator_fixtures",
+            "pipeline": simulator["pipeline"],
+            "ok": simulator["ok"] and {"load_fixture", "assert_component_events"} <= set(simulator["pipeline"]),
+        },
+        {
+            "phase": "bind_components_and_bridges",
+            "pipeline": component_validation["pipeline"] + adapter["pipeline"],
+            "ok": component_validation["ok"]
+            and adapter["ok"]
+            and "bind_simulator_fixture" in component_validation["pipeline"]
+            and "emit_component_event" in adapter["pipeline"],
+        },
+        {
+            "phase": "review_fallbacks_and_lifecycle",
+            "pipeline": fallback["guards"] + background["pipeline"],
+            "ok": fallback["ok"]
+            and background["ok"]
+            and "designer_warning_visible" in fallback["guards"]
+            and "resume_foreground" in background["pipeline"],
+        },
+        {
+            "phase": "replay_runtime_delivery",
+            "pipeline": tuple(item["api"] for item in runtime_replay["replay"]),
+            "ok": runtime_replay["ok"]
+            and set(contract["apis"]) == {item["api"] for item in runtime_replay["replay"]}
+            and all("dispatch_component_events" in item["phases"] for item in runtime_replay["replay"]),
+        },
+        {
+            "phase": "replay_designer_and_capabilities",
+            "pipeline": tuple(item["phase"] for item in designer_replay["replay"])
+            + tuple(check["id"] for check in lifecycle["checks"]),
+            "ok": designer_replay["ok"]
+            and lifecycle["ok"]
+            and designer_replay["final_state"]["runtime_replays"] == len(contract["apis"])
+            and lifecycle["api_count"] == len(contract["apis"]),
+        },
+    )
+    checks = (
+        {"id": "privacy_permission_ready", "ok": phases[0]["ok"], "evidence": {"privacy": privacy, "permission": permission}},
+        {"id": "simulator_ready", "ok": phases[1]["ok"], "evidence": simulator},
+        {"id": "bridge_component_ready", "ok": phases[2]["ok"], "evidence": {"component_validation": component_validation, "adapter": adapter}},
+        {"id": "fallback_lifecycle_ready", "ok": phases[3]["ok"], "evidence": {"fallback": fallback, "background": background}},
+        {"id": "runtime_delivery_ready", "ok": phases[4]["ok"], "evidence": runtime_replay},
+        {"id": "designer_capability_ready", "ok": phases[5]["ok"], "evidence": {"designer": designer_replay, "lifecycle": lifecycle}},
+        {"id": "operation_surface_ready", "ok": actionable["ok"] and not actionable["side_effects"], "evidence": actionable},
+        {
+            "id": "phase_order_ready",
+            "ok": tuple(item["phase"] for item in phases)
+            == (
+                "declare_privacy_and_permissions",
+                "configure_simulator_fixtures",
+                "bind_components_and_bridges",
+                "review_fallbacks_and_lifecycle",
+                "replay_runtime_delivery",
+                "replay_designer_and_capabilities",
+            ),
+            "evidence": tuple(item["phase"] for item in phases),
+        },
+    )
+    return {
+        "format": "appgen.mobile-native-api-readiness-contract.v1",
+        "ok": all(phase["ok"] for phase in phases) and all(check["ok"] for check in checks),
+        "phases": phases,
+        "checks": checks,
+        "final_state": {
+            "api_count": len(contract["apis"]),
+            "permission": runtime_replay["final_state"]["permission"],
+            "runtime_replays": len(runtime_replay["replay"]),
+            "bridge_recoveries": len(runtime_replay["bridge_recovery"]),
+            "lifecycle_replays": len(runtime_replay["lifecycle_replay"]),
+            "background_checkpoints": runtime_replay["final_state"]["checkpoints"],
+        },
+        "guards": (
+            "privacy_before_permission",
+            "permission_before_simulator",
+            "simulator_before_bridge",
+            "fallbacks_before_runtime",
+            "runtime_before_designer_claim",
+            "side_effect_free_readiness",
+        ),
+        "side_effects": (),
+        "blocking_gaps": tuple(check for check in checks if not check["ok"]),
+    }
+
+
 def mobile_native_api_workbench() -> dict:
     """Prove mobile/native device API component coverage and reviewability."""
     contract = mobile_native_api_contract()
@@ -11139,6 +11248,7 @@ def mobile_native_api_workbench() -> dict:
     runtime_replay = mobile_native_api_runtime_replay_contract()
     designer_transaction_replay = mobile_device_designer_transaction_replay_contract()
     capability_lifecycle_replay = mobile_device_capability_lifecycle_replay_contract()
+    readiness = mobile_native_api_readiness_contract()
     checks = (
         {
             "id": "api_breadth",
@@ -11356,6 +11466,23 @@ def mobile_native_api_workbench() -> dict:
             and not capability_lifecycle_replay["side_effects"],
             "evidence": capability_lifecycle_replay,
         },
+        {
+            "id": "mobile_readiness_contract",
+            "ok": readiness["ok"]
+            and {
+                "privacy_permission_ready",
+                "simulator_ready",
+                "bridge_component_ready",
+                "fallback_lifecycle_ready",
+                "runtime_delivery_ready",
+                "designer_capability_ready",
+                "operation_surface_ready",
+                "phase_order_ready",
+            }
+            <= {check["id"] for check in readiness["checks"] if check["ok"]}
+            and not readiness["side_effects"],
+            "evidence": readiness,
+        },
     )
     ok = all(check["ok"] for check in checks)
     return {
@@ -11386,6 +11513,7 @@ def mobile_native_api_workbench() -> dict:
         "runtime_replay": runtime_replay,
         "designer_transaction_replay": designer_transaction_replay,
         "capability_lifecycle_replay": capability_lifecycle_replay,
+        "readiness": readiness,
         "checks": checks,
         "blocking_gaps": tuple(check for check in checks if not check["ok"]),
     }
