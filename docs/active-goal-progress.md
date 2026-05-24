@@ -117,6 +117,7 @@ Build a complete AppGen IDE and generation platform with:
 | 2026-05-24 | `ce23c47` | Made event-runtime guidance explicitly cap developer choice to the AppGen-X event contract, with profile names retained only as read-only platform metadata and audited exceptions. | Py compile; focused PBC policy test; documentation diff check; staged hygiene scan passed. |
 | 2026-05-24 | `00e2b97` | Added generated ERP template modules and generated tests for module catalogs, table blueprints, starter stacks, domain coverage, DSL packages, and release workbench surfaces. | Py compile; focused generated-app/form-designer/package-goal tests; staged hygiene scan passed. |
 | 2026-05-24 | `dcd6769` | Added generated extension ecosystem modules and generated tests for hook registries, rule dispatch, custom module contracts, packaging handoff, and release workbench surfaces. | Py compile; focused generated-app/form-designer/package-goal tests; staged hygiene scan passed. |
+| 2026-05-24 | `8709552` | Added generated Studio modules and generated tests for IDE workspace, DSL authoring, database design, generation jobs, app management, and release workbench surfaces. | Py compile; focused generated-app/form-designer/package-goal tests; staged hygiene scan passed. |
 
 ## Current Working Slice
 
@@ -346,6 +347,10 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   one generated test module for hook registries, generated rule dispatch,
   custom module contracts, packaging handoff, and release workbench surfaces,
   with generated extension manifests validating module and test coverage.
+- Generated applications now emit one importable Studio module and one
+  generated test module for IDE workspace, DSL authoring, database design,
+  generation jobs, app management, and release workbench surfaces, with
+  generated Studio manifests validating module and test coverage.
 - Generated applications now emit one importable data-access module and one
   generated test module for query runtime, mutation runtime, audit/export, and
   workbench/release surfaces, with generated data-access manifests validating
