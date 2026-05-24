@@ -131,6 +131,7 @@ Build a complete AppGen IDE and generation platform with:
 | 2026-05-24 | `f4d7c3c` | Added generated text-quality modules and generated tests for field catalogs, counter metrics, grammar hints, quality reports, form feedback, and text-quality release workbench surfaces. | Py compile; focused generated-app/form-designer/package-goal tests; staged hygiene scan passed. |
 | 2026-05-24 | `0cb5c5e` | Added generated rapid-prototyping modules and generated tests for prototype catalogs, sample data, screen mockups, preview packages, experiments, backlog promotion, and release workbench surfaces. | Py compile; focused generated-app/form-designer/package-goal tests; staged hygiene scan passed. |
 | 2026-05-24 | `358982a` | Added generated support-center modules and generated tests for knowledge topics, tutorials, sample apps, onboarding checklists, support search, ticket payloads, and support release workbench surfaces. | Py compile; focused generated-app/form-designer/package-goal tests; staged hygiene scan passed. |
+| 2026-05-24 | `0a8eee6` | Added generated view-experience modules and generated tests for resource catalogs, offline state, presence/access, help/footer context, polished view states, and view-experience release workbench surfaces. | Py compile; focused generated-app/form-designer/package-goal tests; staged hygiene scan passed. |
 
 ## Current Working Slice
 
@@ -212,6 +213,11 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   checklists, support search, ticket payloads, and support release workbench
   surfaces, with generated support-center manifests validating module and test
   coverage.
+- Generated applications now emit standalone view-experience modules and
+  generated tests for resource catalogs, offline state, presence/access,
+  help/footer context, polished view states, and view-experience release
+  workbench surfaces, with generated view-experience manifests validating
+  module and test coverage.
 - Event-runtime guidance now exposes a first-match developer choice algorithm:
   ordinary business, ERP, workflow, chatbot, agent, integration, and PBC event
   handling generate the AppGen-X event contract with `stream_processor`
