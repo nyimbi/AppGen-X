@@ -14218,6 +14218,25 @@ def platform_parity_requirement_audit_contract() -> dict:
     visual_lifecycle = cross_target_visual_lifecycle_replay_contract()
     visual_readiness = cross_target_visual_readiness_contract()
     lifecycle = platform_parity_lifecycle_replay_contract()
+
+    def _passing_evidence_check_ids(value: object) -> set[str]:
+        """Collect passing check ids from nested requirement evidence."""
+        passing: set[str] = set()
+        if isinstance(value, dict):
+            checks = value.get("checks", ())
+            if isinstance(checks, (tuple, list)):
+                passing.update(
+                    check["id"]
+                    for check in checks
+                    if isinstance(check, dict) and check.get("ok") and isinstance(check.get("id"), str)
+                )
+            for nested in value.values():
+                passing.update(_passing_evidence_check_ids(nested))
+        elif isinstance(value, (tuple, list)):
+            for nested in value:
+                passing.update(_passing_evidence_check_ids(nested))
+        return passing
+
     requirements = (
         {
             "id": "component_parity",
@@ -14513,6 +14532,15 @@ def platform_parity_requirement_audit_contract() -> dict:
             "evidence": {"workbench": visual, "lifecycle": visual_lifecycle, "readiness": visual_readiness},
         },
     )
+    deep_check_coverage = tuple(
+        {
+            "requirement": requirement["id"],
+            "ok": not (set(requirement["deep_checks"]) - _passing_evidence_check_ids(requirement["evidence"])),
+            "missing": tuple(sorted(set(requirement["deep_checks"]) - _passing_evidence_check_ids(requirement["evidence"]))),
+            "passing_evidence": tuple(sorted(_passing_evidence_check_ids(requirement["evidence"]))),
+        }
+        for requirement in requirements
+    )
     checks = (
         {
             "id": "all_requirements_have_evidence",
@@ -14523,6 +14551,11 @@ def platform_parity_requirement_audit_contract() -> dict:
             "id": "all_requirements_pass",
             "ok": all(requirement["ok"] for requirement in requirements),
             "evidence": requirements,
+        },
+        {
+            "id": "deep_checks_have_passing_evidence",
+            "ok": all(item["ok"] for item in deep_check_coverage),
+            "evidence": deep_check_coverage,
         },
         {
             "id": "lifecycle_replay_aligned",

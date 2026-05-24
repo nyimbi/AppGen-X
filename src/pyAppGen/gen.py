@@ -55028,6 +55028,18 @@ def platform_parity_requirement_audit_contract():
     visual_lifecycle = cross_target_visual_lifecycle_replay_contract()
     visual_readiness = cross_target_visual_readiness_contract()
     lifecycle = platform_parity_lifecycle_replay_contract()
+    def _passing_evidence_check_ids(value):
+        passing = set()
+        if isinstance(value, dict):
+            checks = value.get("checks", ())
+            if isinstance(checks, (tuple, list)):
+                passing.update(check["id"] for check in checks if isinstance(check, dict) and check.get("ok") and isinstance(check.get("id"), str))
+            for nested in value.values():
+                passing.update(_passing_evidence_check_ids(nested))
+        elif isinstance(value, (tuple, list)):
+            for nested in value:
+                passing.update(_passing_evidence_check_ids(nested))
+        return passing
     requirements = (
         {{"id": "component_parity", "ok": analog_groups["ok"] and component_readiness["ok"] and component_usability["ok"] and {{"analog_coverage_ready", "palette_icons_ready", "behavior_surface_ready", "generated_modules_ready", "generated_tests_ready", "ide_release_ready", "phase_order_ready"}} <= {{check["id"] for check in component_readiness["checks"] if check["ok"]}} and {{"per_component_files", "per_package_files", "per_component_test_files", "per_package_test_files", "module_smoke_tests", "component_parity_readiness"}} <= {{check["id"] for check in component_usability["checks"] if check["ok"]}} and {{"cross-target-ui", "layouts", "data-display", "graphics", "animations", "styles-theming", "gestures", "sensors", "three-d", "data-access"}} == {{group["group"] for group in analog_groups["groups"]}}, "deep_checks": ("analog_coverage_ready", "generated_modules_ready", "generated_tests_ready", "per_component_files", "per_package_files", "per_component_test_files", "per_package_test_files", "module_smoke_tests", "ide_release_ready", "phase_order_ready"), "evidence": {{"groups": analog_groups, "readiness": component_readiness, "usability": component_usability}}}},
         {{"id": "native_runtime_streaming", "ok": runtime["ok"] and runtime_readiness["ok"] and {{"stream_identity_ready", "unit_semantics_ready", "compile_targets_ready", "diagnostics_route_ready", "runtime_preview_ready", "phase_order_ready"}} <= {{check["id"] for check in runtime_readiness["checks"] if check["ok"]}} and {{"form_stream_schema", "runtime_session_replay", "design_edit_session_replay", "native_form_modules", "native_form_module_tests", "runtime_operation_modules", "runtime_operation_module_tests", "compiler_runtime_modules", "compiler_runtime_module_tests", "deep_runtime_modules", "deep_runtime_module_tests"}} <= {{check["id"] for check in runtime["checks"] if check["ok"]}}, "deep_checks": ("stream_identity_ready", "compile_targets_ready", "diagnostics_route_ready", "runtime_preview_ready", "native_form_modules", "native_form_module_tests", "runtime_operation_modules", "runtime_operation_module_tests", "compiler_runtime_modules", "compiler_runtime_module_tests", "deep_runtime_modules", "deep_runtime_module_tests", "phase_order_ready"), "evidence": {{"workbench": runtime, "readiness": runtime_readiness}}}},
@@ -55038,9 +55050,19 @@ def platform_parity_requirement_audit_contract():
         {{"id": "device_api_component_coverage", "ok": mobile["ok"] and mobile_readiness["ok"] and mobile_lifecycle["ok"] and {{"privacy_permission_ready", "simulator_ready", "bridge_component_ready", "fallback_lifecycle_ready", "runtime_delivery_ready", "designer_capability_ready", "phase_order_ready"}} <= {{check["id"] for check in mobile_readiness["checks"] if check["ok"]}} and "runtime_and_designer_replay_aligned" in mobile_lifecycle["guards"] and {{"device_component_modules", "device_component_module_tests"}} <= {{check["id"] for check in mobile["checks"] if check["ok"]}}, "deep_checks": ("privacy_permission_ready", "bridge_component_ready", "runtime_delivery_ready", "designer_capability_ready", "device_component_modules", "device_component_module_tests", "phase_order_ready"), "evidence": {{"workbench": mobile, "lifecycle": mobile_lifecycle, "readiness": mobile_readiness}}}},
         {{"id": "cross_target_visual_depth", "ok": visual["ok"] and visual_readiness["ok"] and visual_lifecycle["ok"] and {{"style_ready", "timeline_ready", "effects_ready", "scene_assets_ready", "hit_test_component_ready", "runtime_designer_replay_ready", "runtime_package_ready", "phase_order_ready"}} <= {{check["id"] for check in visual_readiness["checks"] if check["ok"]}} and {{"visual_runtime_replay", "visual_lifecycle_replay", "visual_component_modules", "visual_component_module_tests", "visual_design_modules", "visual_design_module_tests"}} <= {{check["id"] for check in visual["checks"] if check["ok"]}}, "deep_checks": ("style_ready", "timeline_ready", "effects_ready", "scene_assets_ready", "runtime_designer_replay_ready", "runtime_package_ready", "visual_component_modules", "visual_component_module_tests", "visual_design_modules", "visual_design_module_tests", "phase_order_ready"), "evidence": {{"workbench": visual, "lifecycle": visual_lifecycle, "readiness": visual_readiness}}}},
     )
+    deep_check_coverage = tuple(
+        {{
+            "requirement": requirement["id"],
+            "ok": not (set(requirement["deep_checks"]) - _passing_evidence_check_ids(requirement["evidence"])),
+            "missing": tuple(sorted(set(requirement["deep_checks"]) - _passing_evidence_check_ids(requirement["evidence"]))),
+            "passing_evidence": tuple(sorted(_passing_evidence_check_ids(requirement["evidence"]))),
+        }}
+        for requirement in requirements
+    )
     checks = (
         {{"id": "all_requirements_have_evidence", "ok": all("evidence" in requirement and requirement["evidence"] for requirement in requirements), "evidence": tuple(requirement["id"] for requirement in requirements)}},
         {{"id": "all_requirements_pass", "ok": all(requirement["ok"] for requirement in requirements), "evidence": requirements}},
+        {{"id": "deep_checks_have_passing_evidence", "ok": all(item["ok"] for item in deep_check_coverage), "evidence": deep_check_coverage}},
         {{"id": "lifecycle_replay_aligned", "ok": lifecycle["ok"] and "all_subsystems_replayed" in {{check["id"] for check in lifecycle["checks"] if check["ok"]}}, "evidence": lifecycle}},
     )
     ok = all(check["ok"] for check in checks)

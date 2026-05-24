@@ -3069,8 +3069,11 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     assert {
         "all_requirements_have_evidence",
         "all_requirements_pass",
+        "deep_checks_have_passing_evidence",
         "lifecycle_replay_aligned",
     } <= {check["id"] for check in requirement_audit["checks"] if check["ok"]}
+    deep_coverage = next(check for check in requirement_audit["checks"] if check["id"] == "deep_checks_have_passing_evidence")
+    assert all(item["ok"] and not item["missing"] for item in deep_coverage["evidence"])
     requirements_by_id = {requirement["id"]: requirement for requirement in requirement_audit["requirements"]}
     assert requirements_by_id["component_parity"]["evidence"]["readiness"]["format"] == "appgen.component-parity-readiness-contract.v1"
     assert requirements_by_id["package_installation_ecosystem"]["evidence"]["readiness"]["format"] == (
@@ -12397,8 +12400,15 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert {
         "all_requirements_have_evidence",
         "all_requirements_pass",
+        "deep_checks_have_passing_evidence",
         "lifecycle_replay_aligned",
     } <= {check["id"] for check in generated_rad["requirement_audit"]["checks"] if check["ok"]}
+    generated_deep_coverage = next(
+        check
+        for check in generated_rad["requirement_audit"]["checks"]
+        if check["id"] == "deep_checks_have_passing_evidence"
+    )
+    assert all(item["ok"] and not item["missing"] for item in generated_deep_coverage["evidence"])
     generated_requirements_by_id = {
         requirement["id"]: requirement for requirement in generated_rad["requirement_audit"]["requirements"]
     }
