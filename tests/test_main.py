@@ -3279,6 +3279,20 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     )
     assert mobile_gate["ok"] is True
     assert set(mobile_gate["required_apis"]) <= set(mobile_gate["passing_apis"])
+    assert set(mobile_gate["required_targets"]) <= set(mobile_gate["passing_targets"])
+    assert set(mobile_gate["required_permission_apis"]) <= set(mobile_gate["passing_permission_apis"])
+    assert set(mobile_gate["required_adapter_components"]) <= set(mobile_gate["passing_adapter_components"])
+    assert set(mobile_gate["required_simulator_profiles"]) <= set(mobile_gate["passing_simulator_profiles"])
+    assert set(mobile_gate["required_fixture_apis"]) <= set(mobile_gate["passing_fixture_apis"])
+    assert set(mobile_gate["required_bridge_targets"]) <= set(mobile_gate["passing_bridge_targets"])
+    assert set(mobile_gate["required_runtime_bridge_targets"]) <= set(mobile_gate["passing_runtime_bridge_targets"])
+    assert set(mobile_gate["required_runtime_apis"]) <= set(mobile_gate["passing_runtime_apis"])
+    assert set(mobile_gate["required_lifecycle_events"]) <= set(mobile_gate["passing_lifecycle_events"])
+    assert set(mobile_gate["required_designer_phases"]) <= set(mobile_gate["passing_designer_phases"])
+    assert set(mobile_gate["required_capability_phases"]) <= set(mobile_gate["passing_capability_phases"])
+    assert set(mobile_gate["required_readiness_phases"]) <= set(mobile_gate["passing_readiness_phases"])
+    assert set(mobile_gate["required_module_apis"]) <= set(mobile_gate["passing_module_apis"])
+    assert set(mobile_gate["required_module_test_apis"]) <= set(mobile_gate["passing_module_test_apis"])
     assert set(mobile_gate["required_checks"]) <= set(mobile_gate["passing_checks"])
     visual_depth_gate = next(
         check for check in audit["rad_parity"]["checks"] if check["id"] == "cross_target_animation_effects_3d_depth"

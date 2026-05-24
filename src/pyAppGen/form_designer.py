@@ -14710,6 +14710,7 @@ def rad_parity_workbench(existing_paths: set[str] | None = None) -> dict:
     binding_workbench = livebindings_workbench()
     data_tooling_contract = rad_data_tooling_contract()
     data_tooling_workbench = rad_data_tooling_workbench()
+    mobile_contract = mobile_native_api_contract()
     mobile_workbench = mobile_native_api_workbench()
     platform_lifecycle = platform_parity_lifecycle_replay_contract()
     requirement_audit = platform_parity_requirement_audit_contract()
@@ -15082,8 +15083,111 @@ def rad_parity_workbench(existing_paths: set[str] | None = None) -> dict:
         "data_tooling_readiness_contract",
     )
     passing_data_tooling_checks = tuple(check["id"] for check in data_tooling_workbench["checks"] if check["ok"])
-    required_mobile_api_names = ("camera", "location", "push_notifications", "secure_storage")
-    passing_mobile_api_names = tuple(mobile_native_api_contract()["apis"])
+    required_mobile_api_names = tuple(mobile_contract["apis"])
+    passing_mobile_api_names = tuple(
+        row["api"] for row in mobile_workbench["capability_matrix"]["rows"] if row["ok"]
+    )
+    required_mobile_targets = ("android", "ios", "desktop", "web-pwa")
+    passing_mobile_targets = tuple(mobile_contract["targets"])
+    required_mobile_permission_apis = tuple(mobile_contract["apis"])
+    passing_mobile_permission_apis = tuple(
+        permission["api"] for permission in mobile_contract["permission_manifest"]["permissions"]
+    )
+    required_mobile_adapter_components = tuple(
+        adapter["component"] for adapter in mobile_contract["component_adapters"]["adapters"]
+    )
+    passing_mobile_adapter_components = tuple(
+        row["adapter"]["component"] for row in mobile_workbench["capability_matrix"]["rows"] if row["ok"]
+    )
+    required_mobile_simulator_profiles = (
+        "phone_portrait",
+        "phone_landscape",
+        "tablet",
+        "desktop_touch",
+        "offline_pwa",
+    )
+    passing_mobile_simulator_profiles = tuple(mobile_contract["simulator"]["profiles"])
+    required_mobile_fixture_apis = tuple(mobile_contract["apis"])
+    passing_mobile_fixture_apis = tuple(
+        fixture["api"] for fixture in mobile_workbench["simulator_fixture_integrity"]["fixtures"]
+    )
+    required_mobile_bridge_targets = ("android", "ios", "desktop", "web-pwa")
+    passing_mobile_bridge_targets = tuple(
+        bridge["target"] for bridge in mobile_workbench["bridge_matrix"]["bridges"]
+    )
+    passing_mobile_runtime_bridge_targets = tuple(
+        bridge["target"]
+        for bridge in mobile_workbench["runtime_replay"]["bridge_recovery"]
+        if bridge["ok"]
+    )
+    required_mobile_runtime_apis = tuple(mobile_contract["apis"])
+    passing_mobile_runtime_apis = tuple(
+        replay["api"] for replay in mobile_workbench["runtime_replay"]["replay"] if replay["ok"]
+    )
+    required_mobile_lifecycle_events = (
+        "on_resume",
+        "on_pause",
+        "on_terminate",
+        "on_memory_warning",
+    )
+    passing_mobile_lifecycle_events = tuple(
+        event["event"]
+        for event in mobile_workbench["runtime_replay"]["lifecycle_replay"]
+        if event["ok"]
+    )
+    required_mobile_designer_phases = (
+        "author_device_components",
+        "generate_permission_manifest",
+        "configure_simulator_fixtures",
+        "preview_and_dispatch_adapter",
+        "validate_privacy_and_fallbacks",
+        "handle_permission_revocation",
+        "deliver_background_and_lifecycle",
+        "normalize_media_deep_link_and_bridge_errors",
+        "replay_runtime_delivery",
+    )
+    passing_mobile_designer_phases = tuple(
+        phase["phase"]
+        for phase in mobile_workbench["designer_transaction_replay"]["replay"]
+        if phase["ok"]
+    )
+    required_mobile_capability_phases = (
+        "declare_privacy",
+        "transition_permission",
+        "load_simulator_fixture",
+        "invoke_target_bridges",
+        "run_api_specific_pipeline",
+        "recover_revocation_or_bridge_error",
+        "dispatch_runtime_events",
+    )
+    passing_mobile_capability_phases = tuple(
+        phase["phase"]
+        for replay in mobile_workbench["capability_lifecycle_replay"]["replay"]
+        for phase in replay["phases"]
+        if phase["ok"]
+    )
+    required_mobile_readiness_phases = (
+        "declare_privacy_and_permissions",
+        "configure_simulator_fixtures",
+        "bind_components_and_bridges",
+        "review_fallbacks_and_lifecycle",
+        "replay_runtime_delivery",
+        "replay_designer_and_capabilities",
+    )
+    passing_mobile_readiness_phases = tuple(
+        phase["phase"] for phase in mobile_workbench["readiness"]["phases"] if phase["ok"]
+    )
+    required_mobile_module_apis = tuple(mobile_contract["apis"])
+    passing_mobile_module_apis = tuple(
+        artifact["api"]
+        for artifact in mobile_workbench["device_component_module_artifacts"]
+        if artifact["ok"]
+    )
+    passing_mobile_module_test_apis = tuple(
+        artifact["api"]
+        for artifact in mobile_workbench["device_component_test_artifacts"]
+        if artifact["ok"]
+    )
     required_mobile_workbench_checks = (
         "api_breadth",
         "permission_manifest",
@@ -15609,12 +15713,54 @@ def rad_parity_workbench(existing_paths: set[str] | None = None) -> dict:
             "id": "mobile_native_device_api_coverage",
             "ok": set(required_mobile_api_names) <= set(passing_mobile_api_names)
             and mobile_workbench["ok"]
-            and set(required_mobile_workbench_checks) <= set(passing_mobile_workbench_checks),
+            and set(required_mobile_workbench_checks) <= set(passing_mobile_workbench_checks)
+            and set(required_mobile_targets) <= set(passing_mobile_targets)
+            and set(required_mobile_permission_apis) <= set(passing_mobile_permission_apis)
+            and set(required_mobile_adapter_components) <= set(passing_mobile_adapter_components)
+            and set(required_mobile_simulator_profiles) <= set(passing_mobile_simulator_profiles)
+            and set(required_mobile_fixture_apis) <= set(passing_mobile_fixture_apis)
+            and set(required_mobile_bridge_targets) <= set(passing_mobile_bridge_targets)
+            and set(required_mobile_bridge_targets) <= set(passing_mobile_runtime_bridge_targets)
+            and set(required_mobile_runtime_apis) <= set(passing_mobile_runtime_apis)
+            and set(required_mobile_lifecycle_events) <= set(passing_mobile_lifecycle_events)
+            and set(required_mobile_designer_phases) <= set(passing_mobile_designer_phases)
+            and set(required_mobile_capability_phases) <= set(passing_mobile_capability_phases)
+            and set(required_mobile_readiness_phases) <= set(passing_mobile_readiness_phases)
+            and set(required_mobile_module_apis) <= set(passing_mobile_module_apis)
+            and set(required_mobile_module_apis) <= set(passing_mobile_module_test_apis),
             "required_apis": required_mobile_api_names,
             "passing_apis": passing_mobile_api_names,
+            "required_targets": required_mobile_targets,
+            "passing_targets": passing_mobile_targets,
+            "required_permission_apis": required_mobile_permission_apis,
+            "passing_permission_apis": passing_mobile_permission_apis,
+            "required_adapter_components": required_mobile_adapter_components,
+            "passing_adapter_components": passing_mobile_adapter_components,
+            "required_simulator_profiles": required_mobile_simulator_profiles,
+            "passing_simulator_profiles": passing_mobile_simulator_profiles,
+            "required_fixture_apis": required_mobile_fixture_apis,
+            "passing_fixture_apis": passing_mobile_fixture_apis,
+            "required_bridge_targets": required_mobile_bridge_targets,
+            "passing_bridge_targets": passing_mobile_bridge_targets,
+            "required_runtime_bridge_targets": required_mobile_bridge_targets,
+            "passing_runtime_bridge_targets": passing_mobile_runtime_bridge_targets,
+            "required_runtime_apis": required_mobile_runtime_apis,
+            "passing_runtime_apis": passing_mobile_runtime_apis,
+            "required_lifecycle_events": required_mobile_lifecycle_events,
+            "passing_lifecycle_events": passing_mobile_lifecycle_events,
+            "required_designer_phases": required_mobile_designer_phases,
+            "passing_designer_phases": passing_mobile_designer_phases,
+            "required_capability_phases": required_mobile_capability_phases,
+            "passing_capability_phases": passing_mobile_capability_phases,
+            "required_readiness_phases": required_mobile_readiness_phases,
+            "passing_readiness_phases": passing_mobile_readiness_phases,
+            "required_module_apis": required_mobile_module_apis,
+            "passing_module_apis": passing_mobile_module_apis,
+            "required_module_test_apis": required_mobile_module_apis,
+            "passing_module_test_apis": passing_mobile_module_test_apis,
             "required_checks": required_mobile_workbench_checks,
             "passing_checks": passing_mobile_workbench_checks,
-            "evidence": {"contract": mobile_native_api_contract(), "workbench": mobile_workbench},
+            "evidence": {"contract": mobile_contract, "workbench": mobile_workbench},
         },
         {
             "id": "cross_target_animation_effects_3d_depth",
