@@ -95,13 +95,13 @@ Other open-source backends are specialized platform-service or integration
 choices; they should not expand the ordinary PBC generation path.
 
 `stream_processor` is intentionally opinionated to prevent a combinatorial
-backend matrix. For ordinary PBCs, developers have one visible choice: use the
-generated AppGen-X event contract and omit the field. The validator normalizes
-the missing field to the platform default, and generated code must route
-through AppGen-X outbox/inbox adapters instead of importing a stream library
-directly in business logic. Developers and coding agents should model event
-contracts, handlers, retry policies, idempotency keys, and dead-letter behavior;
-they should not choose a stream library for normal generated applications.
+backend matrix. For ordinary PBCs, developers have one visible choice:
+`appgen_event_contract`. Omit the field. The validator normalizes the missing
+field to the platform default, and generated code must route through AppGen-X
+outbox/inbox adapters instead of importing a stream library directly in
+business logic. Developers and coding agents should model event contracts,
+handlers, retry policies, idempotency keys, and dead-letter behavior; they
+should not choose a stream library for normal generated applications.
 The implementation recipe is fixed: declare commands and events, generate owned
 tables, generate transactional outbox/inbox tables, generate typed handlers,
 wire handlers through the AppGen-X event adapter, and prove retry,
@@ -113,6 +113,15 @@ outbox/inbox tables, the AppGen-X event adapter, the platform default
 service-runtime profile, and generated retry/idempotency/dead-letter/release
 audit contracts. The IDE and natural-language generator may show that decision
 as read-only metadata, but they must not render a stream-engine picker.
+
+Use the first matching rule:
+
+| Workload | Result |
+| --- | --- |
+| Ordinary business, ERP, workflow, chatbot, agent, integration, approval, or PBC event handling | Generate `appgen_event_contract` and omit `stream_processor`. |
+| Telemetry, time-series, high-volume ingestion, or windowed metrics | Split into a specialized PBC and use `quix_streams` only with `stream_exception_evidence`. |
+| Complex parallel dataflow, CPU-heavy transforms, or multi-stage analytical pipelines | Split into a specialized PBC and use `bytewax` only with `stream_exception_evidence`. |
+| Anything unclear | Generate `appgen_event_contract` and omit `stream_processor`. |
 
 Allowed values:
 

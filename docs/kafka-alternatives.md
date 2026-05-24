@@ -1,5 +1,43 @@
 # Opinionated Event Processing Standard
 
+## Normative Decision
+
+AppGen-X makes the event-processing choice for platform developers.
+
+For ordinary generated applications and PBCs, use exactly this public contract:
+
+```text
+appgen_event_contract
+```
+
+That means:
+
+- generate transactional outbox/inbox tables;
+- generate typed command and event handlers;
+- generate retry, idempotency, dead-letter, and release-audit evidence;
+- route all event work through the AppGen-X event adapter;
+- omit `stream_processor` from ordinary PBC manifests;
+- show any selected runtime profile only as read-only generated metadata.
+
+Do not ask developers, Studio users, natural-language generators, or coding
+agents to choose between stream engines for ordinary work. The platform keeps
+`faust_streaming` behind the adapter as the default service-runtime profile.
+`quix_streams` and `bytewax` are exception profiles, not choices in a picker.
+
+The first-match rule is mandatory:
+
+| Workload | Developer-facing answer | Manifest rule |
+| --- | --- | --- |
+| Business events, ERP, workflow, approval, chatbot, agent, integration, or normal PBC event handling | `appgen_event_contract` | Omit `stream_processor` |
+| Telemetry, time-series, high-volume ingestion, or windowed metrics with evidence | Specialized telemetry PBC | `stream_processor: quix_streams` plus `stream_exception_evidence` |
+| Complex parallel dataflow, CPU-heavy stream transforms, or multi-stage analytical pipelines with evidence | Specialized dataflow PBC | `stream_processor: bytewax` plus `stream_exception_evidence` |
+| Anything unclear | `appgen_event_contract` | Omit `stream_processor` |
+
+The exception workflow must prove why the ordinary generated adapter is not
+enough. Without named workload evidence, measurable throughput or latency
+reasoning, state/recovery shape, and an operational owner, the generator must
+fall back to `appgen_event_contract`.
+
 ## One Page Recommendation
 
 The platform decision is made: ordinary AppGen-X applications use the generated
@@ -276,6 +314,33 @@ The default datastore answer is equally narrow: use PostgreSQL unless the
 project standard is MySQL or MariaDB. Other open-source datastores can appear
 only as specialized platform services or explicitly modeled integration
 capabilities, not as a reason to branch the ordinary PBC generation path.
+
+## Generator Guardrail
+
+Generated prompts, DSL linters, package templates, and IDE screens must treat
+the decision as a choice budget, not a comparison exercise:
+
+```text
+ordinary_visible_event_contracts = 1
+ordinary_visible_stream_engine_choices = 0
+exception_profiles = quix_streams, bytewax
+stream_profiles_per_pbc = 1
+```
+
+When a natural-language request says "build invoicing," "add onboarding,"
+"create inventory," "generate a support chatbot," "wire an approval agent," or
+anything similar, stop branching immediately and generate the ordinary event
+contract. Do not spend tokens comparing runtimes. Do not emit direct imports of
+`faust_streaming`, `quix_streams`, or `bytewax` in generated business logic.
+
+The smallest valid coding-agent instruction is:
+
+```text
+Use appgen_event_contract. Omit stream_processor. Generate outbox/inbox tables,
+typed handlers, retry, idempotency, dead-letter, and release evidence through
+the AppGen-X event adapter. Open an exception only for telemetry/time-series or
+complex dataflow with stream_exception_evidence.
+```
 
 ## Generator And IDE Rules
 

@@ -243,6 +243,10 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   handling generate the AppGen-X event contract with `stream_processor`
   omitted; only telemetry/time-series and complex dataflow PBCs can request
   audited exception profiles.
+- The event-processing guide now starts with a normative developer answer and
+  generator guardrail: ordinary generated work uses `appgen_event_contract`,
+  has zero visible stream-engine choices, and opens only the two evidence-gated
+  exception workflows for telemetry/time-series or complex dataflow PBCs.
 - Generated applications now include standalone seed/fixture modules and
   generated tests that prove seed plans, dependency order, fixture exports,
   validation/anonymization, and release workbench evidence without touching a
