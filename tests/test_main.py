@@ -3004,6 +3004,11 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "generated_runtime_smoke_evidence",
         "rad_parity_workbench",
     } == {gate["id"] for gate in audit["gates"]}
+    palette_gate = next(gate for gate in audit["gates"] if gate["id"] == "palette_breadth")
+    assert palette_gate["ok"] is True
+    assert set(palette_gate["required_categories"]) <= set(palette_gate["passing_categories"])
+    assert set(palette_gate["required_components"]) <= set(palette_gate["passing_components"])
+    assert palette_gate["passing_component_count"] >= palette_gate["required_component_count"]
     mapping_gate = next(gate for gate in audit["gates"] if gate["id"] == "field_component_mapping")
     assert mapping_gate["ok"] is True
     assert set(mapping_gate["required_fields"]) <= set(mapping_gate["passing_fields"])
