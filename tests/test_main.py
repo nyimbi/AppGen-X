@@ -681,6 +681,7 @@ def test_package_goal_audit_cli_aggregates_objective_evidence(
         "natural_language_evolution",
         "robust_ide",
         "rad_form_designer",
+        "platform_parity_requirement_map",
         "visual_modeling",
         "security_identity",
         "schema_source_intake",
@@ -697,6 +698,19 @@ def test_package_goal_audit_cli_aggregates_objective_evidence(
     assert direct_report["stop_condition"] == (
         "do-not-mark-active-goal-complete-unless-ok-is-true"
     )
+    parity_gate = next(gate for gate in direct_report["gates"] if gate["id"] == "platform_parity_requirement_map")
+    assert parity_gate["ok"] is True
+    assert {
+        "component_parity",
+        "native_runtime_streaming",
+        "inspector_design_surface",
+        "visual_binding_designer",
+        "native_data_service_tooling",
+        "package_installation_ecosystem",
+        "device_api_component_coverage",
+        "cross_target_visual_depth",
+    } == set(parity_gate["requirements"])
+    assert direct_report["platform_parity_requirements"]["ok"] is True
 
     result = runner.invoke(__main__.main, ["--package-goal-audit"])
 
@@ -725,6 +739,7 @@ def test_package_goal_audit_cli_aggregates_objective_evidence(
     assert cli_report["audits"]["agentic"]["ok"] is True
     assert cli_report["audits"]["targets"]["ok"] is True
     assert cli_report["audits"]["pbc"]["ok"] is True
+    assert cli_report["platform_parity_requirements"]["ok"] is True
 
 
 def test_package_pbc_catalog_composes_enterprise_apps(runner: CliRunner) -> None:

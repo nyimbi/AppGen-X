@@ -869,6 +869,10 @@ def package_goal_audit(root: Path | str | None = None) -> dict:
     agentic = agentic_release_audit()
     targets = target_release_audit()
     pbc = pbc_release_audit()
+    parity_requirement_audit = form_designer["rad_parity"]["requirement_audit"]
+    parity_requirement_ids = tuple(
+        requirement["id"] for requirement in parity_requirement_audit["requirements"]
+    )
     gates = (
         {
             "id": "roadmap_traceability",
@@ -919,6 +923,29 @@ def package_goal_audit(root: Path | str | None = None) -> dict:
             "id": "rad_form_designer",
             "ok": form_designer["ok"],
             "format": form_designer["format"],
+        },
+        {
+            "id": "platform_parity_requirement_map",
+            "ok": parity_requirement_audit["ok"]
+            and {
+                "component_parity",
+                "native_runtime_streaming",
+                "inspector_design_surface",
+                "visual_binding_designer",
+                "native_data_service_tooling",
+                "package_installation_ecosystem",
+                "device_api_component_coverage",
+                "cross_target_visual_depth",
+            }
+            == set(parity_requirement_ids)
+            and {
+                "all_requirements_have_evidence",
+                "all_requirements_pass",
+                "lifecycle_replay_aligned",
+            }
+            <= {check["id"] for check in parity_requirement_audit["checks"] if check["ok"]},
+            "format": parity_requirement_audit["format"],
+            "requirements": parity_requirement_ids,
         },
         {
             "id": "visual_modeling",
@@ -1012,6 +1039,7 @@ def package_goal_audit(root: Path | str | None = None) -> dict:
             "targets": targets,
             "pbc": pbc,
         },
+        "platform_parity_requirements": parity_requirement_audit,
         "blocking_gaps": tuple(gate for gate in gates if not gate["ok"]),
         "stop_condition": "do-not-mark-active-goal-complete-unless-ok-is-true",
     }

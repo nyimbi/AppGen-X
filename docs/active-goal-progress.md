@@ -25,7 +25,8 @@ Build a complete AppGen IDE and generation platform with:
 
 | Date | Commit | Slice | Evidence |
 | --- | --- | --- | --- |
-| 2026-05-24 | `current` | Made generated form-designer smoke require the aggregate generated platform parity workbench, lifecycle replay, and requirement audit instead of only individual subsystem smokes. | Py compile, focused form-designer audit test, scoped diff check, and staged hygiene scan passed. |
+| 2026-05-24 | `current` | Added the generated platform parity requirement map as a first-class package goal audit gate. | Py compile, focused package-goal audit test, scoped diff check, and staged hygiene scan passed. |
+| 2026-05-24 | `fa52a49` | Made generated form-designer smoke require the aggregate generated platform parity workbench, lifecycle replay, and requirement audit instead of only individual subsystem smokes. | Py compile, focused form-designer audit test, scoped diff check, and staged hygiene scan passed. |
 | 2026-05-24 | `current` | Added an executable PBC eventing-choice linter so developers and coding agents get one ordinary answer instead of reopening stream-runtime selection. | Py compile, focused PBC policy test, scoped documentation diff check, and staged hygiene scan passed. |
 | 2026-05-23 | `35387ed` | Polished IDE palette and component icons. | Frontend production build, staged diff checks. |
 | 2026-05-23 | `291c458` | Added first-class inspector editor lanes. | Frontend production build, catalog audit integration. |
@@ -550,6 +551,10 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   platform parity workbench directly, so generated apps must prove lifecycle
   replay and requirement-audit readiness at the smoke boundary rather than
   passing through isolated subsystem runtime checks alone.
+- The package goal audit now exposes the generated platform parity requirement
+  map as a first-class gate, so component parity, native runtime streaming,
+  inspector design, visual binding, data tooling, package installation, device
+  API coverage, and visual depth are visible at the top-level goal boundary.
 
 ## Open Completion Areas
 
