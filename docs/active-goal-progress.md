@@ -470,6 +470,10 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   component to palette icons, target renderers, property editors, event handler
   routes, design-surface actions, generated component modules, generated tests,
   and smoke-test evidence for package and generated-app surfaces.
+- Native form/runtime work now exposes a runtime readiness contract that
+  proves design stream decoding, unit cross-checking, target compile planning,
+  diagnostic routing, and runtime preview reload as one ordered executable
+  path in both package and generated-app form designer surfaces.
 
 ## Open Completion Areas
 

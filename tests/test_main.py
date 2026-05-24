@@ -2436,6 +2436,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "runtime_session_replay",
         "design_edit_session_replay",
         "actionable_runtime_operations",
+        "runtime_readiness_contract",
     } == {check["id"] for check in runtime["checks"]}
     assert runtime["incremental"]["outputs"][0] == "diagnostic_delta"
     assert runtime["binary_round_trip"]["decoded"] == dfm_text
@@ -2460,6 +2461,24 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     assert "event_dispatch_exception_boundary" in runtime["runtime_memory_model"]["guards"]
     assert all("normalize_diagnostics" in adapter["commands"] for adapter in runtime["toolchain_adapters"]["adapters"])
     assert runtime["runtime_replay"]["ok"] is True
+    assert runtime["readiness"]["format"] == "appgen.pascal-runtime-readiness-contract.v1"
+    assert runtime["readiness"]["ok"] is True
+    assert {
+        "decode_design_stream",
+        "parse_unit_and_cross_check",
+        "plan_compile_and_targets",
+        "normalize_diagnostics",
+        "reload_runtime_preview",
+    } == {item["phase"] for item in runtime["readiness"]["phases"]}
+    assert {
+        "stream_identity_ready",
+        "unit_semantics_ready",
+        "compile_targets_ready",
+        "diagnostics_route_ready",
+        "runtime_preview_ready",
+        "operation_surface_ready",
+        "phase_order_ready",
+    } == {check["id"] for check in runtime["readiness"]["checks"]}
     assert {"stream_decode", "unit_frontend", "target_emit", "runtime_load"} <= {
         item["phase"] for item in runtime["runtime_replay"]["replay"]
     }
@@ -11762,6 +11781,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "runtime_session_replay",
         "design_edit_session_replay",
         "actionable_runtime_operations",
+        "runtime_readiness_contract",
     } <= {
         check["id"] for check in generated_runtime["checks"]
     }
@@ -11805,6 +11825,12 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     )
     assert generated_runtime["runtime_replay"]["final_state"]["diagnostics_normalized"] >= 1
     assert generated_runtime["design_edit_replay"]["ok"] is True
+    assert generated_runtime["readiness"]["format"] == "appgen.generated-pascal-runtime-readiness-contract.v1"
+    assert generated_runtime["readiness"]["ok"] is True
+    assert "reload_runtime_preview" in {item["phase"] for item in generated_runtime["readiness"]["phases"]}
+    assert "runtime_preview_ready" in {
+        check["id"] for check in generated_runtime["readiness"]["checks"] if check["ok"]
+    }
     assert {
         "open_design_stream",
         "apply_property_edit",

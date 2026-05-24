@@ -46234,6 +46234,94 @@ def pascal_runtime_actionable_operations(table_name=None, design=None):
     }}
 
 
+def pascal_runtime_readiness_contract(table_name=None, design=None):
+    """Return generated end-to-end readiness for opening, compiling, and previewing a design stream."""
+    if design is None:
+        table_name = table_name or next(iter(FORM_TABLES))
+        design = form_design(table_name)
+    round_trip = dfm_round_trip(design=design)
+    binary_round_trip = dfm_binary_round_trip(design=design)
+    stream_variants = dfm_stream_variant_round_trip_contract(design=design)
+    unit = pascal_unit_contract(design=design)
+    unit_parse = pascal_unit_parse_contract(design=design)
+    semantic_validation = pascal_semantic_validation_contract(design=design)
+    compiler = pascal_compiler_pipeline_contract(design=design)
+    package_targets = pascal_package_target_matrix_contract(design=design)
+    diagnostics = pascal_diagnostic_mapping_contract(design=design)
+    runtime_replay = pascal_runtime_session_replay_contract(design=design)
+    design_edit_replay = pascal_design_edit_session_replay_contract(design=design)
+    operations = pascal_runtime_actionable_operations(design=design)
+    phases = (
+        {{
+            "phase": "decode_design_stream",
+            "ok": round_trip["ok"] and binary_round_trip["ok"] and stream_variants["ok"],
+            "evidence": {{"formats": tuple(item["format"] for item in stream_variants["variants"]), "component_count": len(round_trip["round_trip_components"])}},
+        }},
+        {{
+            "phase": "parse_unit_and_cross_check",
+            "ok": unit_parse["class_name"] == unit["class_name"] and semantic_validation["ok"],
+            "evidence": {{"unit": unit["unit_name"], "class": unit_parse["class_name"], "diagnostics": semantic_validation["diagnostics"]}},
+        }},
+        {{
+            "phase": "plan_compile_and_targets",
+            "ok": {{"parse_units", "type_check", "resource_link", "emit_target"}} <= set(compiler["stages"])
+            and {{"win64", "android", "ios"}} <= {{item["target"] for item in package_targets["targets"]}},
+            "evidence": {{"stages": compiler["stages"], "targets": tuple(item["target"] for item in package_targets["targets"])}},
+        }},
+        {{
+            "phase": "normalize_diagnostics",
+            "ok": {{"form_designer", "unit_editor", "package_manager"}} <= set(diagnostics["designer_surfaces"])
+            and all("source_span" in mapping["maps_to"] for mapping in diagnostics["mappings"]),
+            "evidence": {{"surfaces": diagnostics["designer_surfaces"], "mappings": diagnostics["mappings"]}},
+        }},
+        {{
+            "phase": "reload_runtime_preview",
+            "ok": runtime_replay["ok"] and design_edit_replay["ok"] and operations["operations"]["reload_runtime_preview"]["ok"],
+            "evidence": {{
+                "runtime": runtime_replay["final_state"],
+                "design": design_edit_replay["final_state"],
+                "operation": operations["operations"]["reload_runtime_preview"]["pipeline"],
+            }},
+        }},
+    )
+    checks = (
+        {{"id": "stream_identity_ready", "ok": phases[0]["ok"]}},
+        {{"id": "unit_semantics_ready", "ok": phases[1]["ok"]}},
+        {{"id": "compile_targets_ready", "ok": phases[2]["ok"]}},
+        {{"id": "diagnostics_route_ready", "ok": phases[3]["ok"]}},
+        {{"id": "runtime_preview_ready", "ok": phases[4]["ok"]}},
+        {{"id": "operation_surface_ready", "ok": operations["ok"]}},
+        {{
+            "id": "phase_order_ready",
+            "ok": tuple(item["phase"] for item in phases)
+            == (
+                "decode_design_stream",
+                "parse_unit_and_cross_check",
+                "plan_compile_and_targets",
+                "normalize_diagnostics",
+                "reload_runtime_preview",
+            ),
+        }},
+    )
+    ok = all(item["ok"] for item in phases) and all(check["ok"] for check in checks)
+    return {{
+        "format": "appgen.generated-pascal-runtime-readiness-contract.v1",
+        "ok": ok,
+        "decision": "approved" if ok else "blocked",
+        "phases": phases,
+        "checks": checks,
+        "guards": (
+            "stream_identity_before_unit_cross_check",
+            "unit_semantics_before_target_emit",
+            "diagnostics_before_runtime_preview",
+            "reload_preview_uses_actionable_operation",
+        ),
+        "side_effects": (),
+        "blocking_gaps": tuple(check for check in checks if not check["ok"])
+        + tuple({{"id": "phase_not_ready", "phase": item["phase"]}} for item in phases if not item["ok"]),
+    }}
+
+
 def pascal_runtime_workbench(table_name=None):
     """Return generated DFM streaming and Pascal runtime evidence."""
     table_name = table_name or next(iter(FORM_TABLES))
@@ -46270,6 +46358,7 @@ def pascal_runtime_workbench(table_name=None):
     runtime_replay = pascal_runtime_session_replay_contract(design=design)
     design_edit_replay = pascal_design_edit_session_replay_contract(design=design)
     actionable_operations = pascal_runtime_actionable_operations(design=design)
+    readiness = pascal_runtime_readiness_contract(design=design)
     binary_round_trip = dfm_binary_round_trip(design=design)
     stream_variants = dfm_stream_variant_round_trip_contract(design=design)
     checks = (
@@ -46310,6 +46399,7 @@ def pascal_runtime_workbench(table_name=None):
         {{"id": "runtime_session_replay", "ok": runtime_replay["ok"] and {{"stream_before_unit_parse", "resources_linked_before_runtime_load"}} <= set(runtime_replay["guards"]) and not runtime_replay["side_effects"], "evidence": runtime_replay}},
         {{"id": "design_edit_session_replay", "ok": design_edit_replay["ok"] and {{"unknown_properties_preserved_during_edit", "cache_invalidated_before_target_emit"}} <= set(design_edit_replay["guards"]) and not design_edit_replay["side_effects"], "evidence": design_edit_replay}},
         {{"id": "actionable_runtime_operations", "ok": actionable_operations["ok"] and {{"open_design_stream", "apply_property_delta", "round_trip_stream", "compile_preview", "refresh_resources", "reload_runtime_preview"}} <= set(actionable_operations["operation_names"]) and not actionable_operations["side_effects"], "evidence": actionable_operations}},
+        {{"id": "runtime_readiness_contract", "ok": readiness["ok"] and "runtime_preview_ready" in {{check["id"] for check in readiness["checks"] if check["ok"]}}, "evidence": readiness}},
     )
     ok = all(check["ok"] for check in checks)
     return {{
@@ -46349,6 +46439,7 @@ def pascal_runtime_workbench(table_name=None):
         "runtime_replay": runtime_replay,
         "design_edit_replay": design_edit_replay,
         "actionable_operations": actionable_operations,
+        "readiness": readiness,
         "binary_round_trip": binary_round_trip,
         "stream_variants": stream_variants,
         "blocking_gaps": tuple(check for check in checks if not check["ok"]),
