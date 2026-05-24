@@ -14620,6 +14620,8 @@ def platform_parity_requirement_audit_contract() -> dict:
         }
         for requirement in requirements
     )
+    required_requirement_ids = tuple(requirement["id"] for requirement in requirements)
+    passing_requirement_ids = tuple(requirement["id"] for requirement in requirements if requirement["ok"])
     checks = (
         {
             "id": "all_requirements_have_evidence",
@@ -14628,7 +14630,9 @@ def platform_parity_requirement_audit_contract() -> dict:
         },
         {
             "id": "all_requirements_pass",
-            "ok": all(requirement["ok"] for requirement in requirements),
+            "ok": set(required_requirement_ids) <= set(passing_requirement_ids),
+            "required_requirements": required_requirement_ids,
+            "passing_requirements": passing_requirement_ids,
             "evidence": requirements,
         },
         {
@@ -14649,6 +14653,8 @@ def platform_parity_requirement_audit_contract() -> dict:
         "decision": "approved" if ok else "blocked",
         "requirements": requirements,
         "checks": checks,
+        "required_requirements": required_requirement_ids,
+        "passing_requirements": passing_requirement_ids,
         "lifecycle_replay": lifecycle,
         "blocking_gaps": tuple(requirement for requirement in requirements if not requirement["ok"]),
         "side_effects": (),

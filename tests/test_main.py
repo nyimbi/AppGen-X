@@ -3044,6 +3044,20 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "deep_checks_have_passing_evidence",
         "lifecycle_replay_aligned",
     } <= set(requirement_audit_gate["passing_checks"])
+    all_requirements = next(
+        check for check in requirement_audit_gate["evidence"]["checks"] if check["id"] == "all_requirements_pass"
+    )
+    assert all_requirements["ok"] is True
+    assert {
+        "component_parity",
+        "native_runtime_streaming",
+        "inspector_design_surface",
+        "visual_binding_designer",
+        "native_data_service_tooling",
+        "package_installation_ecosystem",
+        "device_api_component_coverage",
+        "cross_target_visual_depth",
+    } <= set(all_requirements["passing_requirements"])
     assert rad_parity_workbench()["ok"] is True
     assert {
         "native_ui_parity_component_parity",
