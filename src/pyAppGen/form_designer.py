@@ -14782,6 +14782,55 @@ def rad_parity_workbench(existing_paths: set[str] | None = None) -> dict:
     passing_compiler_stages = tuple(runtime_workbench["compiler"]["stages"])
     required_runtime_replay_phases = ("stream_decode", "semantic_static_analysis", "target_emit", "runtime_load")
     passing_runtime_replay_phases = tuple(phase["phase"] for phase in runtime_workbench["runtime_replay"]["replay"])
+    required_runtime_workbench_checks = (
+        "dfm_serialization",
+        "dfm_parse_round_trip",
+        "binary_stream_codec",
+        "stream_variant_round_trip",
+        "pascal_unit_generation",
+        "package_manifest",
+        "compiler_plan",
+        "compiler_pipeline",
+        "unit_parse_validation",
+        "semantic_cross_check",
+        "runtime_type_info",
+        "event_binding_lifecycle",
+        "resource_streaming",
+        "runtime_lifecycle",
+        "incremental_compile",
+        "diagnostic_mapping",
+        "package_dependency_order",
+        "event_stub_evolution",
+        "resource_round_trip_fidelity",
+        "runtime_artifact_parity",
+        "component_inheritance",
+        "event_handler_wiring",
+        "resource_manifest_hashes",
+        "stream_diff_merge",
+        "incremental_invalidation",
+        "package_target_matrix",
+        "language_frontend",
+        "static_analysis",
+        "compiler_recovery",
+        "form_stream_schema",
+        "stream_migration",
+        "debug_symbols",
+        "runtime_memory_model",
+        "toolchain_adapters",
+        "runtime_session_replay",
+        "design_edit_session_replay",
+        "actionable_runtime_operations",
+        "runtime_readiness_contract",
+        "native_form_modules",
+        "native_form_module_tests",
+        "runtime_operation_modules",
+        "runtime_operation_module_tests",
+        "compiler_runtime_modules",
+        "compiler_runtime_module_tests",
+        "deep_runtime_modules",
+        "deep_runtime_module_tests",
+    )
+    passing_runtime_workbench_checks = tuple(check["id"] for check in runtime_workbench["checks"] if check["ok"])
     required_third_party_categories = ("grid", "reports", "charts", "database", "network", "animation")
     passing_third_party_categories = tuple(sorted(third_party_categories))
     required_package_workbench_checks = (
@@ -14834,7 +14883,10 @@ def rad_parity_workbench(existing_paths: set[str] | None = None) -> dict:
         },
         {
             "id": "pascal_runtime_workbench",
-            "ok": runtime_workbench["ok"],
+            "ok": runtime_workbench["ok"]
+            and set(required_runtime_workbench_checks) <= set(passing_runtime_workbench_checks),
+            "required_checks": required_runtime_workbench_checks,
+            "passing_checks": passing_runtime_workbench_checks,
             "evidence": runtime_workbench,
         },
         {

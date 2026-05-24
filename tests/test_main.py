@@ -3141,6 +3141,11 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     assert set(runtime_stream_gate["required_stream_formats"]) <= set(runtime_stream_gate["passing_stream_formats"])
     assert set(runtime_stream_gate["required_compiler_stages"]) <= set(runtime_stream_gate["passing_compiler_stages"])
     assert set(runtime_stream_gate["required_runtime_phases"]) <= set(runtime_stream_gate["passing_runtime_phases"])
+    runtime_workbench_gate = next(
+        check for check in audit["rad_parity"]["checks"] if check["id"] == "pascal_runtime_workbench"
+    )
+    assert runtime_workbench_gate["ok"] is True
+    assert set(runtime_workbench_gate["required_checks"]) <= set(runtime_workbench_gate["passing_checks"])
     inspector_gate = next(
         check for check in audit["rad_parity"]["checks"] if check["id"] == "object_inspector_parity"
     )
