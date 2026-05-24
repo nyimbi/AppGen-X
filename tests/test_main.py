@@ -3188,6 +3188,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     )
     assert data_tooling_gate["ok"] is True
     assert set(data_tooling_gate["required_tooling"]) <= set(data_tooling_gate["passing_tooling"])
+    assert set(data_tooling_gate["required_checks"]) <= set(data_tooling_gate["passing_checks"])
     package_gate = next(
         check for check in audit["rad_parity"]["checks"] if check["id"] == "design_time_package_installation"
     )

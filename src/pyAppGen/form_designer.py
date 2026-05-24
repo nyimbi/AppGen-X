@@ -14694,6 +14694,7 @@ def rad_parity_workbench(existing_paths: set[str] | None = None) -> dict:
     runtime_workbench = pascal_runtime_workbench()
     inspector_workbench = object_inspector_workbench()
     binding_workbench = livebindings_workbench()
+    data_tooling_workbench = rad_data_tooling_workbench()
     platform_lifecycle = platform_parity_lifecycle_replay_contract()
     requirement_audit = platform_parity_requirement_audit_contract()
     third_party_categories = set(third_party_component_categories())
@@ -14835,6 +14836,63 @@ def rad_parity_workbench(existing_paths: set[str] | None = None) -> dict:
     passing_binding_workbench_checks = tuple(check["id"] for check in binding_workbench["checks"] if check["ok"])
     required_data_tooling_names = ("FireDAC", "DataSnap", "RAD Server", "InterBase")
     passing_data_tooling_names = tuple(rad_data_tooling_contract()["tooling"])
+    required_data_tooling_checks = (
+        "connection_catalog",
+        "query_designer",
+        "server_method_tooling",
+        "resource_tooling",
+        "local_database_tooling",
+        "offline_sync_tooling",
+        "side_effect_guards",
+        "connection_test_workflow",
+        "query_preview_workflow",
+        "server_method_invocation_workflow",
+        "resource_publish_workflow",
+        "actionable_data_tooling_operations",
+        "local_database_maintenance_workflow",
+        "offline_conflict_review_workflow",
+        "driver_capability_matrix",
+        "schema_adapter_diff",
+        "transaction_rehearsal",
+        "offline_replay_plan",
+        "service_contract_tests",
+        "schema_browser",
+        "parameter_binding",
+        "dataset_field_catalog",
+        "service_security_policy",
+        "offline_queue_integrity",
+        "migration_rehearsal",
+        "dataset_designer_workflow",
+        "service_invocation_traces",
+        "local_maintenance_schedule",
+        "schema_checkpoints",
+        "data_module_generation",
+        "query_plan_visualizer",
+        "relationship_navigation",
+        "service_versioning",
+        "connection_failover",
+        "change_capture_lineage",
+        "connection_pooling",
+        "stored_procedure_workflow",
+        "sql_authoring_safety",
+        "backup_restore_verification",
+        "replication_monitor",
+        "service_telemetry",
+        "dataset_state_machine",
+        "lookup_editor_pipeline",
+        "relationship_lookup_lifecycle_replay",
+        "data_module_runtime_smoke",
+        "data_tooling_modules",
+        "data_tooling_module_tests",
+        "deep_data_tooling_modules",
+        "deep_data_tooling_module_tests",
+        "data_tooling_runtime_replay",
+        "data_tooling_design_runtime_session_replay",
+        "data_tooling_publish_transaction_replay",
+        "data_tooling_failover_transaction_replay",
+        "data_tooling_readiness_contract",
+    )
+    passing_data_tooling_checks = tuple(check["id"] for check in data_tooling_workbench["checks"] if check["ok"])
     required_mobile_api_names = ("camera", "location", "push_notifications", "secure_storage")
     passing_mobile_api_names = tuple(mobile_native_api_contract()["apis"])
     visual_depth_contract = cross_target_visual_depth_contract()
@@ -15004,10 +15062,13 @@ def rad_parity_workbench(existing_paths: set[str] | None = None) -> dict:
         {
             "id": "firedac_datasnap_radserver_interbase_tooling",
             "ok": set(required_data_tooling_names) <= set(passing_data_tooling_names)
-            and rad_data_tooling_workbench()["ok"],
+            and data_tooling_workbench["ok"]
+            and set(required_data_tooling_checks) <= set(passing_data_tooling_checks),
             "required_tooling": required_data_tooling_names,
             "passing_tooling": passing_data_tooling_names,
-            "evidence": {"contract": rad_data_tooling_contract(), "workbench": rad_data_tooling_workbench()},
+            "required_checks": required_data_tooling_checks,
+            "passing_checks": passing_data_tooling_checks,
+            "evidence": {"contract": rad_data_tooling_contract(), "workbench": data_tooling_workbench},
         },
         {
             "id": "design_time_package_installation",
