@@ -535,6 +535,10 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
 - Platform parity aggregation now also consumes native runtime, data tooling,
   mobile API, and visual-depth readiness contracts directly, so the aggregate
   lifecycle and requirement audits depend on their ordered readiness phases.
+- The inspect-and-bind parity phase now consumes Object Inspector and visual
+  binding readiness contracts directly, so editor metadata, property/event
+  editors, custom designers, binding graph authoring, runtime wiring, and
+  release replay must pass ordered readiness before aggregate parity passes.
 
 ## Open Completion Areas
 

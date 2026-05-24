@@ -2804,6 +2804,23 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "normalize_diagnostics",
         "reload_runtime_preview",
     )
+    assert lifecycle_by_phase["inspect_and_bind_design"]["evidence"]["inspector_readiness_phases"] == (
+        "register_editor_metadata",
+        "validate_property_and_event_editors",
+        "run_component_and_custom_designers",
+        "replay_state_and_design_surface",
+        "bridge_bindings_and_handlers",
+        "prove_lifecycle_and_round_trip",
+    )
+    assert lifecycle_by_phase["inspect_and_bind_design"]["evidence"]["binding_readiness_phases"] == (
+        "author_binding_graph",
+        "validate_and_stage_edits",
+        "preview_and_emit_runtime_wiring",
+        "surface_diagnostics_and_conflicts",
+        "replay_offline_accessible_runtime",
+        "prove_designer_and_release_replay",
+        "bridge_inspector_and_bindings",
+    )
     assert lifecycle_by_phase["publish_data_services"]["evidence"]["readiness_phases"] == (
         "probe_connection",
         "design_dataset",
@@ -2866,6 +2883,12 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     assert requirements_by_id["native_data_service_tooling"]["evidence"]["readiness"]["format"] == (
         "appgen.data-tooling-readiness-contract.v1"
     )
+    assert requirements_by_id["inspector_design_surface"]["evidence"]["readiness"]["format"] == (
+        "appgen.object-inspector-readiness-contract.v1"
+    )
+    assert requirements_by_id["visual_binding_designer"]["evidence"]["readiness"]["format"] == (
+        "appgen.livebindings-readiness-contract.v1"
+    )
     assert requirements_by_id["device_api_component_coverage"]["evidence"]["readiness"]["format"] == (
         "appgen.mobile-native-api-readiness-contract.v1"
     )
@@ -2883,6 +2906,8 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "rollback_before_cleanup",
     } <= set(requirements_by_id["package_installation_ecosystem"]["deep_checks"])
     assert "runtime_preview_ready" in requirements_by_id["native_runtime_streaming"]["deep_checks"]
+    assert "phase_order_ready" in requirements_by_id["inspector_design_surface"]["deep_checks"]
+    assert "phase_order_ready" in requirements_by_id["visual_binding_designer"]["deep_checks"]
     assert "phase_order_ready" in requirements_by_id["native_data_service_tooling"]["deep_checks"]
     assert "runtime_delivery_ready" in requirements_by_id["device_api_component_coverage"]["deep_checks"]
     assert "runtime_package_ready" in requirements_by_id["cross_target_visual_depth"]["deep_checks"]
@@ -11992,6 +12017,23 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "normalize_diagnostics",
         "reload_runtime_preview",
     )
+    assert generated_lifecycle_by_phase["inspect_and_bind_design"]["evidence"]["inspector_readiness_phases"] == (
+        "register_editor_metadata",
+        "validate_property_and_event_editors",
+        "run_component_and_custom_designers",
+        "replay_state_and_design_surface",
+        "bridge_bindings_and_handlers",
+        "prove_lifecycle_and_round_trip",
+    )
+    assert generated_lifecycle_by_phase["inspect_and_bind_design"]["evidence"]["binding_readiness_phases"] == (
+        "author_binding_graph",
+        "validate_and_stage_edits",
+        "preview_and_emit_runtime_wiring",
+        "surface_diagnostics_and_conflicts",
+        "replay_offline_accessible_runtime",
+        "prove_designer_and_release_replay",
+        "bridge_inspector_and_bindings",
+    )
     assert generated_lifecycle_by_phase["publish_data_services"]["evidence"]["readiness_phases"] == (
         "probe_connection",
         "design_dataset",
@@ -12057,6 +12099,12 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert generated_requirements_by_id["native_data_service_tooling"]["evidence"]["readiness"]["format"] == (
         "appgen.generated-data-tooling-readiness-contract.v1"
     )
+    assert generated_requirements_by_id["inspector_design_surface"]["evidence"]["readiness"]["format"] == (
+        "appgen.generated-object-inspector-readiness-contract.v1"
+    )
+    assert generated_requirements_by_id["visual_binding_designer"]["evidence"]["readiness"]["format"] == (
+        "appgen.generated-livebindings-readiness-contract.v1"
+    )
     assert generated_requirements_by_id["device_api_component_coverage"]["evidence"]["readiness"]["format"] == (
         "appgen.generated-mobile-native-api-readiness-contract.v1"
     )
@@ -12066,6 +12114,8 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert "ide_release_ready" in generated_requirements_by_id["component_parity"]["deep_checks"]
     assert "trust_before_preview" in generated_requirements_by_id["package_installation_ecosystem"]["deep_checks"]
     assert "runtime_preview_ready" in generated_requirements_by_id["native_runtime_streaming"]["deep_checks"]
+    assert "phase_order_ready" in generated_requirements_by_id["inspector_design_surface"]["deep_checks"]
+    assert "phase_order_ready" in generated_requirements_by_id["visual_binding_designer"]["deep_checks"]
     assert "phase_order_ready" in generated_requirements_by_id["native_data_service_tooling"]["deep_checks"]
     assert "runtime_delivery_ready" in generated_requirements_by_id["device_api_component_coverage"]["deep_checks"]
     assert "runtime_package_ready" in generated_requirements_by_id["cross_target_visual_depth"]["deep_checks"]

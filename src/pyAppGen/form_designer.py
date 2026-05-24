@@ -13795,7 +13795,9 @@ def platform_parity_lifecycle_replay_contract() -> dict:
     runtime = pascal_runtime_workbench()
     runtime_readiness = pascal_runtime_readiness_contract()
     inspector = object_inspector_workbench()
+    inspector_readiness = object_inspector_readiness_contract()
     bindings = livebindings_workbench()
+    binding_readiness = livebindings_readiness_contract()
     data_tooling = rad_data_tooling_workbench()
     data_readiness = data_tooling_readiness_contract()
     package_manager = design_time_package_manager_workbench()
@@ -13840,12 +13842,18 @@ def platform_parity_lifecycle_replay_contract() -> dict:
         {
             "phase": "inspect_and_bind_design",
             "ok": inspector["ok"]
+            and inspector_readiness["ok"]
             and bindings["ok"]
+            and binding_readiness["ok"]
             and inspector["cross_component_replay"]["ok"]
-            and bindings["designer_transaction_replay"]["ok"],
+            and bindings["designer_transaction_replay"]["ok"]
+            and "phase_order_ready" in {check["id"] for check in inspector_readiness["checks"] if check["ok"]}
+            and "phase_order_ready" in {check["id"] for check in binding_readiness["checks"] if check["ok"]},
             "evidence": {
                 "inspector_checks": tuple(check["id"] for check in inspector["checks"]),
                 "binding_checks": tuple(check["id"] for check in bindings["checks"]),
+                "inspector_readiness_phases": tuple(phase["phase"] for phase in inspector_readiness["phases"]),
+                "binding_readiness_phases": tuple(phase["phase"] for phase in binding_readiness["phases"]),
             },
         },
         {
@@ -13964,7 +13972,9 @@ def platform_parity_requirement_audit_contract() -> dict:
     runtime = pascal_runtime_workbench()
     runtime_readiness = pascal_runtime_readiness_contract()
     inspector = object_inspector_workbench()
+    inspector_readiness = object_inspector_readiness_contract()
     bindings = livebindings_workbench()
+    binding_readiness = livebindings_readiness_contract()
     data_tooling = rad_data_tooling_workbench()
     data_readiness = data_tooling_readiness_contract()
     package_manager = design_time_package_manager_workbench()
@@ -14039,6 +14049,17 @@ def platform_parity_requirement_audit_contract() -> dict:
         {
             "id": "inspector_design_surface",
             "ok": inspector["ok"]
+            and inspector_readiness["ok"]
+            and {
+                "editor_metadata_ready",
+                "property_event_ready",
+                "component_custom_designer_ready",
+                "state_design_surface_ready",
+                "binding_handler_ready",
+                "lifecycle_round_trip_ready",
+                "phase_order_ready",
+            }
+            <= {check["id"] for check in inspector_readiness["checks"] if check["ok"]}
             and {
                 "property_editor_types",
                 "event_editor_lifecycle",
@@ -14050,12 +14071,25 @@ def platform_parity_requirement_audit_contract() -> dict:
                 "editor_lifecycle_replay",
                 "design_surface_transaction_replay",
                 "custom_designer_registration_replay",
+                "phase_order_ready",
             ),
-            "evidence": inspector,
+            "evidence": {"workbench": inspector, "readiness": inspector_readiness},
         },
         {
             "id": "visual_binding_designer",
             "ok": bindings["ok"]
+            and binding_readiness["ok"]
+            and {
+                "graph_authoring_ready",
+                "validation_transaction_ready",
+                "preview_runtime_ready",
+                "diagnostics_conflict_ready",
+                "offline_accessible_runtime_ready",
+                "designer_release_replay_ready",
+                "inspector_bridge_ready",
+                "phase_order_ready",
+            }
+            <= {check["id"] for check in binding_readiness["checks"] if check["ok"]}
             and bindings["designer_transaction_replay"]["ok"]
             and bindings["design_runtime_replay"]["ok"]
             and bindings["lifecycle_release_replay"]["ok"],
@@ -14063,8 +14097,9 @@ def platform_parity_requirement_audit_contract() -> dict:
                 "binding_lifecycle_release_replay",
                 "design_runtime_session_replay",
                 "designer_transaction_replay",
+                "phase_order_ready",
             ),
-            "evidence": bindings,
+            "evidence": {"workbench": bindings, "readiness": binding_readiness},
         },
         {
             "id": "native_data_service_tooling",
