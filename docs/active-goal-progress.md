@@ -108,6 +108,7 @@ Build a complete AppGen IDE and generation platform with:
 | 2026-05-24 | `223fc9a` | Added generated RPA modules and generated tests for task catalogs, browser task plans, credential readiness, audit events, process models, platform exports, queues, and release workbench surfaces. | Py compile; focused generated-app test; focused generated-app/form-designer/package-goal tests; staged hygiene scan passed. |
 | 2026-05-24 | `b81ec05` | Added generated diagnostics modules and generated tests for schema self-tests, row validation, redacted snapshots, remediation/support bundles, API/load plans, and release workbench surfaces. | Py compile; focused generated-app test; focused generated-app/form-designer/package-goal tests; staged hygiene scan passed. |
 | 2026-05-24 | `8c33683` | Added generated API testing modules and generated tests for request matrices, response validation, fixture strategies, UI smoke tests, synthetic monitoring, and release workbench surfaces. | Py compile; focused generated-app test; focused generated-app/form-designer/package-goal tests; staged hygiene scan passed. |
+| 2026-05-24 | `9be010e` | Added generated code-review modules and generated tests for schema findings, artifact coverage, review summaries, primary-key checks, field-policy checks, and release workbench surfaces. | Py compile; focused generated-app test; focused generated-app/form-designer/package-goal tests; staged hygiene scan passed. |
 
 ## Current Working Slice
 
@@ -196,6 +197,10 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   strategies, UI smoke tests, synthetic monitoring, rendered test modules,
   contract coverage, and release workbench evidence without starting a test
   runner or browser.
+- Generated applications now include standalone code-review modules and
+  generated tests that prove schema findings, artifact coverage, review
+  summaries, primary-key checks, field-policy checks, and release workbench
+  evidence without invoking external review services.
 - Generated applications now include a standalone mobile device runtime module
   that validates permission manifests, component adapters, simulator fixtures,
   lifecycle replay, and unsupported target handling without touching hardware.
