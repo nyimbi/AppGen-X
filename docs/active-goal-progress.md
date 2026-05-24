@@ -25,7 +25,7 @@ Build a complete AppGen IDE and generation platform with:
 
 | Date | Commit | Slice | Evidence |
 | --- | --- | --- | --- |
-| 2026-05-24 | `current` | Added an executable event-processing choice resolver so generators use the ordinary event contract by default, fall back when exception evidence is missing, and open split specialized PBCs only with evidence. | Py compile, focused PBC policy test, scoped diff check, and scoped restricted-name scan passed. |
+| 2026-05-24 | `34eb180` | Added an executable event-processing choice resolver so generators use the ordinary event contract by default, fall back when exception evidence is missing, and open split specialized PBCs only with evidence. | Py compile, focused PBC policy test, scoped diff check, and scoped restricted-name scan passed. |
 | 2026-05-24 | `fd2e589` | Made the source form-designer visual binding parity gate expose required and passing binding workbench checks used for parity release evidence. | Py compile, focused generated form-designer parity smoke, scoped diff check, and scoped restricted-name scan passed. |
 | 2026-05-24 | `3928347` | Made the source form-designer inspector parity gate expose required and passing inspector workbench checks used for parity release evidence. | Py compile, focused generated form-designer parity smoke, scoped diff check, and scoped restricted-name scan passed. |
 | 2026-05-24 | `e6992c0` | Made the source form-designer runtime workbench gate expose required and passing runtime workbench checks used for parity release evidence. | Py compile, focused generated form-designer parity smoke, scoped diff check, and scoped restricted-name scan passed. |
