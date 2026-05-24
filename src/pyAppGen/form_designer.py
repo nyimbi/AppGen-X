@@ -16266,6 +16266,7 @@ def form_designer_generation_smoke_audit(source: str = FORM_DESIGNER_SAMPLE_DSL)
         release_gate = generated_form_designer.form_designer_release_gate(existing_paths)
         workbench = generated_form_designer.form_designer_workbench(existing_paths)
         usability = generated_form_designer.component_usability_workbench(existing_paths)
+        generated_platform_parity = generated_form_designer.rad_parity_workbench(existing_paths)
         component_parity_runtime_smoke = generated_component_parity_runtime.smoke_test()
         inspector_runtime_smoke = generated_inspector_runtime.smoke_test("Grid")
         binding_runtime_smoke = generated_binding_runtime.smoke_test()
@@ -16368,6 +16369,20 @@ def form_designer_generation_smoke_audit(source: str = FORM_DESIGNER_SAMPLE_DSL)
             "ok": release_gate["ok"] and workbench["ok"],
             "release_gate": release_gate["format"],
             "workbench": workbench["format"],
+        },
+        {
+            "id": "generated_platform_parity_workbench",
+            "ok": generated_platform_parity["ok"]
+            and generated_platform_parity["format"] == "appgen.generated-rad-parity-workbench.v1"
+            and generated_platform_parity["lifecycle_replay"]["ok"]
+            and generated_platform_parity["requirement_audit"]["ok"]
+            and {
+                "platform_parity_lifecycle_replay",
+                "platform_parity_requirement_audit",
+            }
+            <= {check["id"] for check in generated_platform_parity["checks"] if check["ok"]}
+            and not generated_platform_parity["blocking_gaps"],
+            "workbench": generated_platform_parity,
         },
         {
             "id": "generated_component_parity_runtime",

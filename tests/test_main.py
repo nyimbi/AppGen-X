@@ -2990,6 +2990,23 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     assert "generated_component_file_coverage" in {
         check["id"] for check in smoke["checks"]
     }
+    platform_smoke = next(check for check in smoke["checks"] if check["id"] == "generated_platform_parity_workbench")
+    assert platform_smoke["ok"] is True
+    assert platform_smoke["workbench"]["lifecycle_replay"]["ok"] is True
+    assert platform_smoke["workbench"]["requirement_audit"]["ok"] is True
+    assert {
+        "component_parity",
+        "native_runtime_streaming",
+        "inspector_design_surface",
+        "visual_binding_designer",
+        "native_data_service_tooling",
+        "package_installation_ecosystem",
+        "device_api_component_coverage",
+        "cross_target_visual_depth",
+    } == {
+        requirement["id"]
+        for requirement in platform_smoke["workbench"]["requirement_audit"]["requirements"]
+    }
     coverage = next(check for check in smoke["checks"] if check["id"] == "generated_component_file_coverage")
     assert coverage["component_count"] == len(component_file_manifest())
     assert coverage["package_count"] == len(component_package_file_manifest())
