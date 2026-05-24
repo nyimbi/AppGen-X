@@ -25,6 +25,7 @@ Build a complete AppGen IDE and generation platform with:
 
 | Date | Commit | Slice | Evidence |
 | --- | --- | --- | --- |
+| 2026-05-24 | `current` | Made the package form-designer field/component mapping gate expose required and passing field-type mappings and supported-field evidence used for parity release evidence. | Py compile, focused generated form-designer parity smoke, scoped diff check, and scoped restricted-name scan passed. |
 | 2026-05-24 | `b9a84c0` | Made the package form-designer canvas contract gate expose required and passing format, grid, snap, bounds, and render-target evidence used for parity release evidence. | Py compile, focused generated form-designer parity smoke, scoped diff check, and scoped restricted-name scan passed. |
 | 2026-05-24 | `25091a5` | Made the package form-designer palette breadth gate expose required and passing component names and component counts used for parity release evidence. | Py compile, focused generated form-designer parity smoke, scoped diff check, and scoped restricted-name scan passed. |
 | 2026-05-24 | `24def1c` | Made the package form-designer artifact gate expose required and passing source/template artifact formats used for parity release evidence. | Py compile, focused generated form-designer parity smoke, scoped diff check, and scoped restricted-name scan passed. |

@@ -3021,6 +3021,8 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     assert mapping_gate["ok"] is True
     assert set(mapping_gate["required_fields"]) <= set(mapping_gate["passing_fields"])
     assert set(mapping_gate["required_mappings"]) <= set(mapping_gate["passing_mappings"])
+    assert set(mapping_gate["required_type_mappings"]) <= set(mapping_gate["passing_type_mappings"])
+    assert set(mapping_gate["required_supported_fields"]) <= set(mapping_gate["passing_supported_fields"])
     drop_gate = next(gate for gate in audit["gates"] if gate["id"] == "drop_snap_property_inspector")
     assert drop_gate["ok"] is True
     assert set(drop_gate["required_checks"]) <= set(drop_gate["passing_checks"])

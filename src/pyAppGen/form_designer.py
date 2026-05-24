@@ -17907,6 +17907,12 @@ def form_designer_release_audit(existing_paths: set[str] | None = None) -> dict:
     passing_mapped_fields = tuple(item["field"] for item in matrix if item["supported"])
     required_component_mappings = tuple((item["field"], item["component"]) for item in design["components"])
     passing_component_mappings = tuple((item["field"], item["component"]) for item in matrix if item["supported"])
+    required_type_mappings = tuple((item["field"], item["field_type"], item["component"]) for item in design["components"])
+    passing_type_mappings = tuple(
+        (item["field"], item["field_type"], item["component"]) for item in matrix if item["supported"]
+    )
+    required_supported_fields = tuple(item["field"] for item in design["components"])
+    passing_supported_fields = tuple(item["field"] for item in matrix if item["supported"])
     drop = snap_drop("TextBox", 2.3, 7.7, field="generated_note")
     drop_checks = (
         ("snapped_x", drop["proposal"]["x"] == 2),
@@ -18060,11 +18066,17 @@ def form_designer_release_audit(existing_paths: set[str] | None = None) -> dict:
         {
             "id": "field_component_mapping",
             "ok": set(required_mapped_fields) <= set(passing_mapped_fields)
-            and set(required_component_mappings) <= set(passing_component_mappings),
+            and set(required_component_mappings) <= set(passing_component_mappings)
+            and set(required_type_mappings) <= set(passing_type_mappings)
+            and set(required_supported_fields) <= set(passing_supported_fields),
             "required_fields": required_mapped_fields,
             "passing_fields": passing_mapped_fields,
             "required_mappings": required_component_mappings,
             "passing_mappings": passing_component_mappings,
+            "required_type_mappings": required_type_mappings,
+            "passing_type_mappings": passing_type_mappings,
+            "required_supported_fields": required_supported_fields,
+            "passing_supported_fields": passing_supported_fields,
         },
         {
             "id": "drop_snap_property_inspector",
