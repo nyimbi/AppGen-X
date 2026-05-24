@@ -1,5 +1,43 @@
 # Opinionated Event Processing Standard
 
+## Developer Recommendation Card
+
+Use this answer for ordinary generated applications and PBCs:
+
+```text
+Use appgen_event_contract.
+Omit stream_processor.
+Use PostgreSQL by default, or MySQL/MariaDB when that is the project standard.
+```
+
+Developers write commands, events, business tables, and handler functions.
+AppGen-X generates:
+
+- `appgen_outbox_event`
+- `appgen_inbox_event`
+- event adapter bindings
+- retry policy
+- idempotency keys
+- dead-letter contract
+- release-audit evidence
+
+Do not ask developers to choose a stream engine, broker client, state store, or
+per-PBC runtime profile for ordinary work. The service-runtime profile is
+platform-owned metadata behind the AppGen-X event adapter. It can be shown as a
+read-only badge after generation, but it is not a manifest field, wizard
+question, or Studio picker.
+
+Only two exits exist:
+
+| Exit | When it is allowed | Required evidence |
+| --- | --- | --- |
+| Telemetry exception | Telemetry, time-series, high-volume ingestion, or windowed operational metrics | `stream_exception_evidence` |
+| Dataflow exception | Complex parallel dataflow, CPU-heavy transformations, or multi-stage analytical pipelines | `stream_exception_evidence` |
+
+If the prompt is unclear, ordinary business work, ERP, workflow, chatbot,
+agentic orchestration, integration, approval, or PBC event handling, use the
+ordinary answer and stop branching.
+
 ## Start Here: The Platform Choice
 
 AppGen-X makes the event-processing choice for application developers.

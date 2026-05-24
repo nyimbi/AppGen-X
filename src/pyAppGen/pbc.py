@@ -470,6 +470,47 @@ ACP_STREAM_PROCESSING_POLICY = {
             "direct_stream_library_import",
         ),
     },
+    "developer_recommendation_card": {
+        "id": "appgen.event-processing.recommendation-card.v1",
+        "title": "Use appgen_event_contract.",
+        "status": "mandatory_for_ordinary_generated_work",
+        "recommendation": (
+            "Use the AppGen-X event contract with generated outbox/inbox "
+            "tables and typed handlers. Developers author commands, events, "
+            "and handlers; the platform owns the runtime adapter."
+        ),
+        "developer_writes": (
+            "commands",
+            "events",
+            "handler_functions",
+            "business_tables",
+        ),
+        "platform_generates": (
+            "appgen_outbox_event",
+            "appgen_inbox_event",
+            "event_adapter_bindings",
+            "retry_policy",
+            "idempotency_keys",
+            "dead_letter_contract",
+            "release_audit_evidence",
+        ),
+        "ordinary_manifest": {"stream_processor": "omit"},
+        "ordinary_database_backends": ("postgresql", "mysql", "mariadb"),
+        "hidden_runtime_profile": ACP_DEFAULT_STREAM_PROCESSOR,
+        "visible_developer_options": ("appgen_event_contract",),
+        "visible_choice_count": 1,
+        "not_a_question_for_developers": (
+            "stream_engine",
+            "broker_client",
+            "state_store",
+            "per_pbc_runtime_profile",
+        ),
+        "exception_exit_criteria": (
+            "telemetry_time_series_high_volume_windowing_with_stream_exception_evidence",
+            "complex_parallel_dataflow_with_stream_exception_evidence",
+        ),
+        "fallback": "Use appgen_event_contract and omit stream_processor.",
+    },
     "decision_card": {
         "answer": "Use the AppGen-X generated outbox/inbox event contract; the platform keeps faust_streaming behind the adapter for ordinary work.",
         "default_profile": ACP_DEFAULT_STREAM_PROCESSOR,
@@ -1248,6 +1289,7 @@ def acp_stream_processing_policy() -> dict:
         "choice_budget": ACP_STREAM_PROCESSING_POLICY["choice_budget"],
         "ordinary_workload_contract": ACP_STREAM_PROCESSING_POLICY["ordinary_workload_contract"],
         "developer_default_stack": ACP_STREAM_PROCESSING_POLICY["developer_default_stack"],
+        "developer_recommendation_card": ACP_STREAM_PROCESSING_POLICY["developer_recommendation_card"],
         "developer_rule": ACP_STREAM_PROCESSING_POLICY["developer_rule"],
         "generation_rule": ACP_STREAM_PROCESSING_POLICY["generation_rule"],
         "implementation_directive": ACP_STREAM_PROCESSING_POLICY["implementation_directive"],
@@ -1275,6 +1317,7 @@ def acp_event_processing_developer_guidance() -> dict:
         "decision_brief": ACP_STREAM_PROCESSING_POLICY["developer_decision_brief"],
         "choice_lock": ACP_STREAM_PROCESSING_POLICY["developer_choice_lock"],
         "developer_default_stack": ACP_STREAM_PROCESSING_POLICY["developer_default_stack"],
+        "developer_recommendation_card": ACP_STREAM_PROCESSING_POLICY["developer_recommendation_card"],
         "policy_format": acp_stream_processing_policy()["format"],
         "default_runtime_profile": ACP_DEFAULT_STREAM_PROCESSOR,
     }

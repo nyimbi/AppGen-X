@@ -831,6 +831,18 @@ def test_package_pbc_catalog_composes_enterprise_apps(runner: CliRunner) -> None
     assert stream_policy["developer_default_stack"]["ordinary_manifest"] == {"stream_processor": "omit"}
     assert stream_policy["developer_default_stack"]["developer_choice_count"] == 1
     assert "stream_engine" in stream_policy["developer_default_stack"]["blocked_expansion_axes"]
+    assert stream_policy["developer_recommendation_card"]["id"] == "appgen.event-processing.recommendation-card.v1"
+    assert stream_policy["developer_recommendation_card"]["title"] == "Use appgen_event_contract."
+    assert stream_policy["developer_recommendation_card"]["ordinary_manifest"] == {"stream_processor": "omit"}
+    assert stream_policy["developer_recommendation_card"]["ordinary_database_backends"] == (
+        "postgresql",
+        "mysql",
+        "mariadb",
+    )
+    assert stream_policy["developer_recommendation_card"]["visible_developer_options"] == ("appgen_event_contract",)
+    assert stream_policy["developer_recommendation_card"]["visible_choice_count"] == 1
+    assert "appgen_outbox_event" in stream_policy["developer_recommendation_card"]["platform_generates"]
+    assert "stream_engine" in stream_policy["developer_recommendation_card"]["not_a_question_for_developers"]
     assert stream_policy["developer_decision_brief"]["headline"] == "Use appgen_event_contract."
     assert stream_policy["developer_decision_brief"]["ordinary_manifest_rule"] == "Omit stream_processor."
     assert stream_policy["developer_decision_brief"]["developer_visible_options"] == ("appgen_event_contract",)
@@ -852,6 +864,9 @@ def test_package_pbc_catalog_composes_enterprise_apps(runner: CliRunner) -> None
     assert developer_guidance["decision_brief"]["small_model_stop_rule"].startswith("When the request is ordinary business")
     assert "small_model_instruction" in developer_guidance
     assert developer_guidance["developer_default_stack"]["small_model_prompt"].startswith("Use appgen_event_contract")
+    assert developer_guidance["developer_recommendation_card"]["fallback"] == (
+        "Use appgen_event_contract and omit stream_processor."
+    )
     assert developer_guidance["default_runtime_profile"] == "faust_streaming"
     ordinary_manifest = dict(example_pbc_manifest())
     ordinary_manifest.pop("stream_processor", None)
