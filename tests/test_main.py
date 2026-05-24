@@ -3043,6 +3043,12 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     assert overlap_gate["passing_valid_drop_state"] == overlap_gate["required_valid_drop_state"]
     assert {"left": "name", "right": "duplicate_name"} in overlap_gate["overlap_pairs"]
     assert overlap_gate["valid_after_drop"]["ok"] is True
+    artifact_gate = next(gate for gate in audit["gates"] if gate["id"] == "artifact_contract")
+    assert artifact_gate["ok"] is True
+    assert set(artifact_gate["required_artifacts"]) <= set(artifact_gate["passing_artifacts"])
+    assert set(artifact_gate["required_formats"]) <= set(artifact_gate["passing_formats"])
+    assert set(artifact_gate["required_roles"]) <= set(artifact_gate["passing_roles"])
+    assert set(artifact_gate["required_extensions"]) <= set(artifact_gate["passing_extensions"])
     assert audit["generation_smoke"]["ok"] is True
     generation_smoke_gate = next(gate for gate in audit["gates"] if gate["id"] == "generation_smoke")
     assert generation_smoke_gate["ok"] is True

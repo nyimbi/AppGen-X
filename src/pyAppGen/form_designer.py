@@ -17796,6 +17796,24 @@ def form_designer_release_audit(existing_paths: set[str] | None = None) -> dict:
             or (artifact_format == "html-template" and artifact.endswith(".html"))
         )
     )
+    required_artifact_roles = (
+        ("designer_service_module", "app/form_designer.py", "python-source-module"),
+        ("designer_workspace_template", "app/templates/appgen_form_designer.html", "html-template"),
+    )
+    passing_artifact_roles = tuple(
+        (role, artifact, artifact_format)
+        for role, artifact, artifact_format in required_artifact_roles
+        if (artifact, artifact_format) in passing_artifact_formats
+    )
+    required_artifact_extensions = (
+        ("app/form_designer.py", ".py"),
+        ("app/templates/appgen_form_designer.html", ".html"),
+    )
+    passing_artifact_extensions = tuple(
+        (artifact, suffix)
+        for artifact, suffix in required_artifact_extensions
+        if artifact in existing and artifact.endswith(suffix)
+    )
     required_palette_categories = (
         "input",
         "calendar",
@@ -18197,11 +18215,17 @@ def form_designer_release_audit(existing_paths: set[str] | None = None) -> dict:
         {
             "id": "artifact_contract",
             "ok": set(required_artifacts) <= set(passing_artifacts)
-            and set(required_artifact_formats) <= set(passing_artifact_formats),
+            and set(required_artifact_formats) <= set(passing_artifact_formats)
+            and set(required_artifact_roles) <= set(passing_artifact_roles)
+            and set(required_artifact_extensions) <= set(passing_artifact_extensions),
             "required_artifacts": required_artifacts,
             "passing_artifacts": passing_artifacts,
             "required_formats": required_artifact_formats,
             "passing_formats": passing_artifact_formats,
+            "required_roles": required_artifact_roles,
+            "passing_roles": passing_artifact_roles,
+            "required_extensions": required_artifact_extensions,
+            "passing_extensions": passing_artifact_extensions,
         },
         {
             "id": "generation_smoke",

@@ -25,6 +25,7 @@ Build a complete AppGen IDE and generation platform with:
 
 | Date | Commit | Slice | Evidence |
 | --- | --- | --- | --- |
+| 2026-05-25 | `current` | Made the package form-designer artifact-contract gate expose required and passing artifact roles plus file-extension contracts for the designer service module and workspace template. | Py compile, focused generated form-designer parity smoke, scoped diff check, and scoped restricted-name scan passed. |
 | 2026-05-25 | `9a0c670` | Made the package form-designer overlap-guardrails gate expose required and passing overlap-pair evidence plus clean valid-drop validation state. | Py compile, focused generated form-designer parity smoke, scoped diff check, and scoped restricted-name scan passed. |
 | 2026-05-25 | `97eb47b` | Made the package form-designer placement-suggestions gate expose required and passing suggested drop coordinates plus validation evidence for generated field placement. | Py compile, focused generated form-designer parity smoke, scoped diff check, and scoped restricted-name scan passed. |
 | 2026-05-24 | `0530777` | Made the package form-designer drop/snap/property-inspector gate expose required and passing snapped proposal fields and inspector property evidence used for parity release evidence. | Py compile, focused generated form-designer parity smoke, scoped diff check, and scoped restricted-name scan passed. |
