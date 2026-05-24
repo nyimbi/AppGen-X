@@ -108,6 +108,7 @@ from pyAppGen.form_designer import component_file_manifest
 from pyAppGen.form_designer import component_package_file_manifest
 from pyAppGen.form_designer import component_package_test_file_manifest
 from pyAppGen.form_designer import component_test_file_manifest
+from pyAppGen.form_designer import component_ide_readiness_catalog
 from pyAppGen.form_designer import component_palette
 from pyAppGen.form_designer import component_usability_workbench
 from pyAppGen.form_designer import cross_target_author_scene_operation
@@ -2320,6 +2321,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "module_smoke_tests",
         "requested_analog_coverage",
         "component_behavior",
+        "ide_readiness_catalog",
     } == {check["id"] for check in usability["checks"]}
     assert usability["behavior_workbench"]["ok"] is True
     assert usability["behavior_workbench"]["component_count"] == len(palette)
@@ -2340,6 +2342,16 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     assert all(item["design_surface"]["context_menu"] for item in usability["behavior_workbench"]["behaviors"])
     assert all(item["capabilities"]["ok"] for item in usability["behavior_workbench"]["behaviors"])
     assert all(item["capabilities"]["operations"] for item in usability["behavior_workbench"]["behaviors"])
+    ide_readiness = component_ide_readiness_catalog()
+    assert ide_readiness["format"] == "appgen.component-ide-readiness-catalog.v1"
+    assert ide_readiness["ok"] is True
+    assert ide_readiness["component_count"] == len(palette)
+    assert {"icons_declared", "target_renderers_declared", "property_editors_declared", "event_handlers_declared"} <= {
+        check["id"] for check in ide_readiness["checks"] if check["ok"]
+    }
+    assert all(item["ready"] and item["icon"].startswith("fa-") for item in ide_readiness["entries"])
+    assert all({"inspect", "edit_bindings", "delete"} <= set(item["design_actions"]) for item in ide_readiness["entries"])
+    assert usability["ide_readiness"]["ok"] is True
     assert all({"web", "mobile", "desktop"} <= set(item["renderers"]) for item in usability["components"])
     assert all(item["path"].startswith("app/component_contracts/") for item in usability["component_files"])
     assert all(item["path"].startswith("app/component_packages/") for item in usability["package_files"])
@@ -13303,6 +13315,15 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert all(item["design_surface"]["context_menu"] for item in generated_usability["behavior_workbench"]["behaviors"])
     assert all(item["capabilities"]["ok"] for item in generated_usability["behavior_workbench"]["behaviors"])
     assert all(item["capabilities"]["operations"] for item in generated_usability["behavior_workbench"]["behaviors"])
+    generated_ide_readiness = form_designer.component_ide_readiness_catalog()
+    assert generated_ide_readiness["format"] == "appgen.generated-component-ide-readiness-catalog.v1"
+    assert generated_ide_readiness["ok"] is True
+    assert generated_ide_readiness["component_count"] == len(form_designer.component_palette())
+    assert {"icons_declared", "target_renderers_declared", "generated_modules_exist", "generated_tests_exist"} <= {
+        check["id"] for check in generated_ide_readiness["checks"] if check["ok"]
+    }
+    assert all(item["ready"] and item["module_exists"] and item["test_exists"] for item in generated_ide_readiness["entries"])
+    assert generated_usability["ide_readiness"]["ok"] is True
     assert all(
         {"web", "mobile", "desktop"} <= set(item["renderers"])
         for item in generated_usability["components"]
@@ -13318,6 +13339,9 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert all("apply_property" in item["exports"] for item in generated_usability["component_files"])
     assert all("design_surface" in item["exports"] for item in generated_usability["component_files"])
     assert "module_smoke_tests" in {
+        check["id"] for check in generated_usability["checks"]
+    }
+    assert "ide_readiness_catalog" in {
         check["id"] for check in generated_usability["checks"]
     }
     text_box_file = output_dir / "component_contracts" / "text_box.py"

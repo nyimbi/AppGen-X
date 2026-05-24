@@ -13828,6 +13828,57 @@ def component_test_file_manifest() -> tuple[dict, ...]:
     )
 
 
+def component_ide_readiness_catalog() -> dict:
+    """Return IDE readiness evidence for every built-in component."""
+    file_map = {item["component"]: item for item in component_file_manifest()}
+    test_map = {item["component"]: item for item in component_test_file_manifest()}
+    entries = tuple(
+        {
+            "component": component,
+            "category": runtime["category"],
+            "icon": design["toolbox"]["icon"],
+            "renderers": tuple(runtime["renderers"]),
+            "property_editors": tuple(runtime["property_editors"]),
+            "event_handlers": tuple(handler["handler"] for handler in behavior["events"]["handlers"]),
+            "design_actions": tuple(action["id"] for action in design["context_menu"]),
+            "gestures": design["gestures"],
+            "generated_module": file_map[component]["path"],
+            "generated_test": test_map[component]["path"],
+            "smoke_tests": file_map[component]["module_contract"]["smoke_tests"],
+            "ready": design["ok"]
+            and behavior["ok"]
+            and file_map[component]["module_contract"]["ok"]
+            and test_map[component]["ok"]
+            and {"web", "mobile", "desktop"} <= set(runtime["renderers"]),
+        }
+        for component in sorted(COMPONENTS)
+        for runtime in (component_runtime_contract(component),)
+        for behavior in (component_behavior_contract(component),)
+        for design in (behavior["design_surface"],)
+    )
+    checks = (
+        {"id": "all_components_listed", "ok": {item["component"] for item in entries} == set(COMPONENTS)},
+        {"id": "icons_declared", "ok": all(item["icon"].startswith("fa-") for item in entries)},
+        {"id": "target_renderers_declared", "ok": all({"web", "mobile", "desktop"} <= set(item["renderers"]) for item in entries)},
+        {"id": "property_editors_declared", "ok": all(item["property_editors"] for item in entries)},
+        {"id": "event_handlers_declared", "ok": all(item["event_handlers"] for item in entries)},
+        {"id": "design_actions_declared", "ok": all({"inspect", "edit_bindings", "delete"} <= set(item["design_actions"]) for item in entries)},
+        {"id": "generated_modules_declared", "ok": all(item["generated_module"].startswith("app/component_contracts/") for item in entries)},
+        {"id": "generated_tests_declared", "ok": all(item["generated_test"].startswith("app/component_tests/") for item in entries)},
+        {"id": "smoke_tests_declared", "ok": all(item["smoke_tests"] for item in entries)},
+    )
+    ok = all(check["ok"] for check in checks) and all(item["ready"] for item in entries)
+    return {
+        "format": "appgen.component-ide-readiness-catalog.v1",
+        "ok": ok,
+        "component_count": len(entries),
+        "entries": entries,
+        "checks": checks,
+        "blocking_gaps": tuple(check for check in checks if not check["ok"])
+        + tuple({"id": "component_not_ready", "component": item["component"]} for item in entries if not item["ready"]),
+    }
+
+
 def device_api_component_file_manifest() -> tuple[dict, ...]:
     """Return per-device-API component files expected in generated apps."""
     specs = mobile_device_component_spec_contract()
@@ -14417,6 +14468,7 @@ def component_usability_workbench() -> dict:
     contracts = component_implementation_catalog()
     analog_workbench = component_analog_workbench()
     behavior_workbench = component_behavior_workbench()
+    ide_readiness = component_ide_readiness_catalog()
     checks = (
         {
             "id": "complete_catalog",
@@ -14543,6 +14595,11 @@ def component_usability_workbench() -> dict:
             "ok": behavior_workbench["ok"],
             "evidence": behavior_workbench,
         },
+        {
+            "id": "ide_readiness_catalog",
+            "ok": ide_readiness["ok"],
+            "evidence": ide_readiness,
+        },
     )
     ok = all(check["ok"] for check in checks)
     return {
@@ -14557,6 +14614,7 @@ def component_usability_workbench() -> dict:
         "package_test_files": component_package_test_file_manifest(),
         "analog_workbench": analog_workbench,
         "behavior_workbench": behavior_workbench,
+        "ide_readiness": ide_readiness,
         "checks": checks,
         "blocking_gaps": tuple(check for check in checks if not check["ok"]),
     }

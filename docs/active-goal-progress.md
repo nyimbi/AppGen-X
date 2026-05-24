@@ -466,6 +466,10 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   generated test module for payload export, integrity manifests,
   schedule/retention, and recovery/release surfaces, with generated backup
   manifests validating module and test coverage.
+- Component parity now exposes an IDE readiness catalog tying every built-in
+  component to palette icons, target renderers, property editors, event handler
+  routes, design-surface actions, generated component modules, generated tests,
+  and smoke-test evidence for package and generated-app surfaces.
 
 ## Open Completion Areas
 

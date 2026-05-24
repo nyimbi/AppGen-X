@@ -48151,6 +48151,62 @@ def component_test_file_manifest(existing_paths=None):
     return tuple(manifest)
 
 
+def component_ide_readiness_catalog(existing_paths=None):
+    """Return IDE readiness evidence for every generated built-in component."""
+    file_map = {{item["component"]: item for item in component_file_manifest(existing_paths)}}
+    test_map = {{item["component"]: item for item in component_test_file_manifest(existing_paths)}}
+    entries = tuple(
+        {{
+            "component": component_type,
+            "category": runtime["category"],
+            "icon": design["toolbox"]["icon"],
+            "renderers": tuple(runtime["renderers"]),
+            "property_editors": tuple(runtime["property_editors"]),
+            "event_handlers": tuple(handler["handler"] for handler in behavior["events"]["handlers"]),
+            "design_actions": tuple(action["id"] for action in design["context_menu"]),
+            "gestures": design["gestures"],
+            "generated_module": file_map[component_type]["path"],
+            "generated_test": test_map[component_type]["path"],
+            "module_exists": file_map[component_type]["exists"],
+            "test_exists": test_map[component_type]["exists"],
+            "smoke_tests": file_map[component_type]["module_contract"]["smoke_tests"],
+            "ready": design["ok"]
+            and behavior["ok"]
+            and file_map[component_type]["module_contract"]["ok"]
+            and test_map[component_type]["ok"]
+            and {{"web", "mobile", "desktop"}} <= set(runtime["renderers"])
+            and file_map[component_type]["exists"]
+            and test_map[component_type]["exists"],
+        }}
+        for item in PALETTE
+        for component_type in (item["type"],)
+        for runtime in (component_runtime_contract(component_type),)
+        for behavior in (component_behavior_contract(component_type),)
+        for design in (behavior["design_surface"],)
+    )
+    checks = (
+        {{"id": "all_components_listed", "ok": len(entries) == len(PALETTE)}},
+        {{"id": "icons_declared", "ok": all(item["icon"].startswith("fa-") for item in entries)}},
+        {{"id": "target_renderers_declared", "ok": all({{"web", "mobile", "desktop"}} <= set(item["renderers"]) for item in entries)}},
+        {{"id": "property_editors_declared", "ok": all(item["property_editors"] for item in entries)}},
+        {{"id": "event_handlers_declared", "ok": all(item["event_handlers"] for item in entries)}},
+        {{"id": "design_actions_declared", "ok": all({{"inspect", "edit_bindings", "delete"}} <= set(item["design_actions"]) for item in entries)}},
+        {{"id": "generated_modules_exist", "ok": all(item["module_exists"] for item in entries)}},
+        {{"id": "generated_tests_exist", "ok": all(item["test_exists"] for item in entries)}},
+        {{"id": "smoke_tests_declared", "ok": all(item["smoke_tests"] for item in entries)}},
+    )
+    ok = all(check["ok"] for check in checks) and all(item["ready"] for item in entries)
+    return {{
+        "format": "appgen.generated-component-ide-readiness-catalog.v1",
+        "ok": ok,
+        "component_count": len(entries),
+        "entries": entries,
+        "checks": checks,
+        "blocking_gaps": tuple(check for check in checks if not check["ok"])
+        + tuple({{"id": "component_not_ready", "component": item["component"]}} for item in entries if not item["ready"]),
+    }}
+
+
 def component_package_module_implementation_contract(package_id):
     """Return required exports and smoke tests for one generated component package module."""
     package = component_package_contract(package_id)
@@ -48244,6 +48300,7 @@ def component_usability_workbench(existing_paths=None):
     package_test_files = component_package_test_file_manifest(existing_paths)
     analog_workbench = component_analog_workbench()
     behavior_workbench = component_behavior_workbench()
+    ide_readiness = component_ide_readiness_catalog(existing_paths)
     checks = (
         {{"id": "complete_catalog", "ok": len(contracts) == len(PALETTE), "evidence": {{"component_count": len(contracts)}}}},
         {{"id": "runtime_renderers", "ok": all({{"web", "mobile", "desktop"}} <= set(item["renderers"]) for item in contracts), "evidence": tuple((item["component"], tuple(item["renderers"])) for item in contracts)}},
@@ -48260,6 +48317,7 @@ def component_usability_workbench(existing_paths=None):
         {{"id": "module_smoke_tests", "ok": all("smoke_test" in item["exports"] and item["module_contract"]["smoke_tests"] for item in component_files) and all("smoke_test" in item["exports"] and item["module_contract"]["smoke_tests"] for item in package_files), "evidence": {{"components": tuple((item["component"], item["module_contract"]["smoke_tests"]) for item in component_files), "packages": tuple((item["package"], item["module_contract"]["smoke_tests"]) for item in package_files)}}}},
         {{"id": "requested_analog_coverage", "ok": analog_workbench["ok"], "evidence": analog_workbench}},
         {{"id": "component_behavior", "ok": behavior_workbench["ok"], "evidence": behavior_workbench}},
+        {{"id": "ide_readiness_catalog", "ok": ide_readiness["ok"], "evidence": ide_readiness}},
     )
     ok = all(check["ok"] for check in checks)
     return {{
@@ -48274,6 +48332,7 @@ def component_usability_workbench(existing_paths=None):
         "package_test_files": package_test_files,
         "analog_workbench": analog_workbench,
         "behavior_workbench": behavior_workbench,
+        "ide_readiness": ide_readiness,
         "checks": checks,
         "blocking_gaps": tuple(check for check in checks if not check["ok"]),
     }}
