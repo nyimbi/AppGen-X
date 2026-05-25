@@ -354,6 +354,40 @@ WMS_CORE_ADVANCED_CAPABILITY_KEYS = (
     "mathematical_optimization",
     "warehouse_mlops_governance",
 )
+PROCUREMENT_SOURCING_ADVANCED_CAPABILITY_KEYS = (
+    "event_sourced_source_to_order_lifecycle",
+    "graph_relational_supplier_topology",
+    "multi_tenant_procurement_isolation",
+    "schema_evolution_resilient_procurement_schema",
+    "probabilistic_supplier_award_confidence",
+    "real_time_sourcing_spend_analytics",
+    "counterfactual_sourcing_strategy_simulation",
+    "temporal_price_lead_time_forecasting",
+    "autonomous_supplier_selection",
+    "semantic_procurement_document_parsing",
+    "predictive_supplier_disruption_risk",
+    "self_healing_po_route_selection",
+    "zero_knowledge_supplier_compliance_proof",
+    "immutable_procurement_audit_trail",
+    "dynamic_procurement_policy_screening",
+    "automated_procurement_control_testing",
+    "universal_api_async_streaming",
+    "cross_system_procurement_federation",
+    "supplier_network_integration",
+    "decentralized_supplier_identity",
+    "chaos_engineered_supplier_route_tolerance",
+    "quantum_resistant_procurement_authorization",
+    "carbon_aware_sourcing_selection",
+    "algebraic_sourcing_award_optimization",
+    "mechanism_design_rfq_allocation",
+    "information_theoretic_bid_anomaly_detection",
+    "temporal_supply_exposure_stochastic_modeling",
+    "distributed_systems_engineering",
+    "probabilistic_ml_supplier_risk",
+    "cryptographic_engineering",
+    "mathematical_optimization",
+    "procurement_mlops_governance",
+)
 IMPLEMENTED_PBC_KEYS = (
     "gl_core",
     "ap_automation",
@@ -363,6 +397,7 @@ IMPLEMENTED_PBC_KEYS = (
     "tax_localization",
     "inventory_positioning",
     "wms_core",
+    "procurement_sourcing",
 )
 PBC_ALLOWED_DATASTORE_BACKENDS = (
     "postgresql",
@@ -2592,6 +2627,8 @@ def pbc_implementation_contract(key: str) -> dict:
         advanced_runtime = inventory_positioning_runtime_capabilities()
     elif key == "wms_core":
         advanced_runtime = wms_core_runtime_capabilities()
+    elif key == "procurement_sourcing":
+        advanced_runtime = procurement_sourcing_runtime_capabilities()
     else:
         advanced_runtime = {}
     source_package = _pbc_source_package_contract(key)
@@ -2876,6 +2913,7 @@ def pbc_implemented_capability_audit(selected_pbcs: tuple[str, ...] | list[str] 
         "tax_localization": len(TAX_LOCALIZATION_ADVANCED_CAPABILITY_KEYS),
         "inventory_positioning": len(INVENTORY_POSITIONING_ADVANCED_CAPABILITY_KEYS),
         "wms_core": len(WMS_CORE_ADVANCED_CAPABILITY_KEYS),
+        "procurement_sourcing": len(PROCUREMENT_SOURCING_ADVANCED_CAPABILITY_KEYS),
     }
     checks = []
     contracts = pbc_implementation_contracts(selected)
@@ -4457,3 +4495,20 @@ from .pbcs.wms_core import wms_core_register_warehouse  # noqa: E402,F401
 from .pbcs.wms_core import wms_core_runtime_capabilities  # noqa: E402,F401
 from .pbcs.wms_core import wms_core_runtime_smoke  # noqa: E402,F401
 from .pbcs.wms_core import wms_core_set_parameter  # noqa: E402,F401
+from .pbcs.procurement_sourcing import PROCUREMENT_SOURCING_RUNTIME_CAPABILITY_KEYS  # noqa: E402,F401
+from .pbcs.procurement_sourcing import PROCUREMENT_SOURCING_STANDARD_FEATURE_KEYS  # noqa: E402,F401
+from .pbcs.procurement_sourcing import procurement_sourcing_approve_requisition  # noqa: E402,F401
+from .pbcs.procurement_sourcing import procurement_sourcing_build_workbench_view  # noqa: E402,F401
+from .pbcs.procurement_sourcing import procurement_sourcing_capture_bid  # noqa: E402,F401
+from .pbcs.procurement_sourcing import procurement_sourcing_configure_runtime  # noqa: E402,F401
+from .pbcs.procurement_sourcing import procurement_sourcing_create_contract  # noqa: E402,F401
+from .pbcs.procurement_sourcing import procurement_sourcing_create_requisition  # noqa: E402,F401
+from .pbcs.procurement_sourcing import procurement_sourcing_create_rfq  # noqa: E402,F401
+from .pbcs.procurement_sourcing import procurement_sourcing_empty_state  # noqa: E402,F401
+from .pbcs.procurement_sourcing import procurement_sourcing_issue_purchase_order  # noqa: E402,F401
+from .pbcs.procurement_sourcing import procurement_sourcing_register_rule  # noqa: E402,F401
+from .pbcs.procurement_sourcing import procurement_sourcing_runtime_capabilities  # noqa: E402,F401
+from .pbcs.procurement_sourcing import procurement_sourcing_runtime_smoke  # noqa: E402,F401
+from .pbcs.procurement_sourcing import procurement_sourcing_score_suppliers  # noqa: E402,F401
+from .pbcs.procurement_sourcing import procurement_sourcing_select_supplier  # noqa: E402,F401
+from .pbcs.procurement_sourcing import procurement_sourcing_set_parameter  # noqa: E402,F401
