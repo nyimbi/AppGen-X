@@ -14309,6 +14309,23 @@ def replay():
     return _visual_runtime().replay_visual_depth_runtime()
 
 
+def run_scenario(target="desktop"):
+    """Run this visual component through authoring, packaging, and runtime replay."""
+    operation = _form_designer().cross_target_run_visual_component_scenario_operation(COMPONENT, target)
+    runtime = replay()
+    return {{
+        "format": "appgen.visual-component-scenario.v1",
+        "component": COMPONENT,
+        "target": target,
+        "ok": operation["ok"] and runtime["ok"],
+        "operation": operation,
+        "runtime": runtime,
+        "pipeline": operation["pipeline"],
+        "decision": operation["decision"],
+        "side_effects": (),
+    }}
+
+
 def design_tools():
     """Return design tools and runtime artifacts for the visual component."""
     current = spec()["spec"]
@@ -14330,6 +14347,7 @@ def smoke_test():
     validation = validation_operation()
     authoring = authoring_operation()
     replay_result = replay()
+    scenario = run_scenario()
     tools = design_tools()
     return {{
         "format": "appgen.visual-component-smoke-test.v1",
@@ -14341,6 +14359,7 @@ def smoke_test():
         and validation["ok"]
         and authoring["ok"]
         and replay_result["ok"]
+        and scenario["ok"]
         and tools["ok"],
         "checks": (
             "spec_resolves",
@@ -14349,6 +14368,7 @@ def smoke_test():
             "validation_operation_succeeds",
             "authoring_operation_succeeds",
             "runtime_replay_succeeds",
+            "visual_component_scenario_replays",
             "design_tools_present",
         ),
     }}
@@ -14387,6 +14407,7 @@ def test_visual_component_contract():
     assert contract["ok"] is True
     assert module.render()["component"] == COMPONENT
     assert module.validation_operation()["ok"] is True
+    assert module.run_scenario()["ok"] is True
 
 
 def test_visual_component_smoke():
@@ -14396,6 +14417,7 @@ def test_visual_component_smoke():
     assert result["ok"] is True
     assert result["component"] == COMPONENT
     assert result["checks"]
+    assert "visual_component_scenario_replays" in result["checks"]
 
 
 def smoke_test():
@@ -16039,7 +16061,7 @@ def visual_component_module_manifest():
         contract_ok = False
         if module_path.exists():
             module = _load_generated_module(module_path, f"generated_visual_component_{module_name}")
-            exports = tuple(name for name in ("spec", "render", "validate_props", "validation_operation", "authoring_operation", "runtime_manifest", "replay", "design_tools", "smoke_test") if hasattr(module, name))
+            exports = tuple(name for name in ("spec", "render", "validate_props", "validation_operation", "authoring_operation", "runtime_manifest", "replay", "run_scenario", "design_tools", "smoke_test") if hasattr(module, name))
             contract = module.spec()
             contract_ok = contract["ok"] and contract["component"] == item["component"]
         entries.append(
@@ -16052,7 +16074,7 @@ def visual_component_module_manifest():
                 "contract_ok": contract_ok,
             }
         )
-    required_exports = {"spec", "render", "validate_props", "validation_operation", "authoring_operation", "runtime_manifest", "replay", "design_tools", "smoke_test"}
+    required_exports = {"spec", "render", "validate_props", "validation_operation", "authoring_operation", "runtime_manifest", "replay", "run_scenario", "design_tools", "smoke_test"}
     return {
         "format": "appgen.generated-visual-component-module-manifest.v1",
         "ok": bool(entries)
@@ -59266,6 +59288,67 @@ def cross_target_validate_visual_component_operation(component="Viewport3D"):
     }}
 
 
+def cross_target_run_visual_component_scenario_operation(component="Viewport3D", target="desktop"):
+    """Return a callable generated IDE operation for running one visual component through authoring and runtime replay."""
+    validation = cross_target_validate_visual_component_operation(component)
+    spec = validation["spec"]
+    authoring = (
+        cross_target_author_style_operation(component)
+        if spec and spec["family"] == "styling"
+        else cross_target_author_timeline_operation(f"timeline.{{_module_name(component)}}")
+        if spec and spec["family"] == "animation"
+        else cross_target_validate_effect_stack_operation()
+        if spec and spec["family"] == "effects"
+        else cross_target_author_scene_operation()
+    )
+    runtime_package = cross_target_visual_runtime_package_contract()
+    runtime_replay = cross_target_visual_runtime_replay_contract()
+    supported = target in runtime_package["targets"]
+    runtime_artifacts = set(spec["runtime_artifacts"]) if spec else set()
+    packaged_artifacts = tuple(
+        artifact for artifact in runtime_package["artifacts"] if artifact["target"] == target
+    )
+    pipeline = (
+        "load_visual_component_spec",
+        "validate_properties",
+        "run_family_authoring_operation",
+        "verify_runtime_artifacts",
+        "package_target_runtime",
+        "replay_visual_runtime",
+        "sync_preview",
+    )
+    if not supported:
+        pipeline = pipeline + ("block_unsupported_target",)
+    return {{
+        "format": "appgen.generated-cross-target-run-visual-component-scenario-operation.v1",
+        "ok": validation["ok"]
+        and authoring["ok"]
+        and runtime_package["ok"]
+        and runtime_replay["ok"]
+        and supported
+        and bool(runtime_artifacts)
+        and bool(packaged_artifacts)
+        and {{"verify_runtime_artifacts", "replay_visual_runtime", "sync_preview"}} <= set(pipeline),
+        "component": component,
+        "target": target,
+        "target_supported": supported,
+        "spec": spec,
+        "authoring": authoring,
+        "runtime_artifacts": tuple(sorted(runtime_artifacts)),
+        "packaged_artifacts": packaged_artifacts,
+        "runtime_replay": runtime_replay,
+        "pipeline": pipeline,
+        "decision": "visual_scenario_replayed" if supported else "blocked_unsupported_target",
+        "guards": (
+            "component_spec_before_authoring",
+            "authoring_before_runtime_package",
+            "runtime_artifacts_before_replay",
+            "unsupported_targets_blocked",
+        ),
+        "side_effects": (),
+    }}
+
+
 def cross_target_visual_actionable_operations():
     """Return callable generated visual-depth operations used by the IDE."""
     operations = {{
@@ -59276,6 +59359,7 @@ def cross_target_visual_actionable_operations():
         "import_visual_asset": cross_target_import_visual_asset_operation(),
         "hit_test_transform": cross_target_hit_test_transform_operation(),
         "validate_visual_component": cross_target_validate_visual_component_operation(),
+        "run_visual_component_scenario": cross_target_run_visual_component_scenario_operation(),
     }}
     return {{
         "format": "appgen.generated-cross-target-visual-actionable-operations.v1",
@@ -59388,7 +59472,7 @@ def cross_target_visual_depth_workbench():
     actionable_operations = cross_target_visual_actionable_operations()
     visual_component_specs = cross_target_visual_component_spec_contract()
     visual_component_module_artifacts = tuple(
-        {{"component": item["component"], "family": item["family"], "path": f"app/visual_components/{{_module_name(item['component'])}}.py", "exports": ("spec", "render", "validate_props", "validation_operation", "authoring_operation", "runtime_manifest", "replay", "design_tools", "smoke_test"), "ok": True}}
+        {{"component": item["component"], "family": item["family"], "path": f"app/visual_components/{{_module_name(item['component'])}}.py", "exports": ("spec", "render", "validate_props", "validation_operation", "authoring_operation", "runtime_manifest", "replay", "run_scenario", "design_tools", "smoke_test"), "ok": True}}
         for item in cross_target_visual_component_spec_contract()["specs"]
     )
     visual_component_test_artifacts = tuple(
@@ -59460,7 +59544,7 @@ def cross_target_visual_depth_workbench():
         {{"id": "visual_design_module_tests", "ok": len(visual_design_test_artifacts) == len(visual_design_module_artifacts) and {{item["surface"] for item in visual_design_test_artifacts}} == {{item["surface"] for item in visual_design_module_artifacts}} and all("test_visual_design_ide_module_smoke" in item["exports"] for item in visual_design_test_artifacts), "evidence": visual_design_test_artifacts}},
         {{"id": "visual_runtime_pipeline_modules", "ok": len(visual_runtime_pipeline_artifacts) == 5 and {{"style_resolution", "timeline_playback", "effect_fallback", "scene_rendering", "asset_resolution"}} <= {{item["surface"] for item in visual_runtime_pipeline_artifacts}} and all(item["ok"] and "run_runtime_pipeline" in item["exports"] for item in visual_runtime_pipeline_artifacts), "evidence": visual_runtime_pipeline_artifacts}},
         {{"id": "visual_runtime_pipeline_module_tests", "ok": len(visual_runtime_pipeline_test_artifacts) == len(visual_runtime_pipeline_artifacts) and {{item["surface"] for item in visual_runtime_pipeline_test_artifacts}} == {{item["surface"] for item in visual_runtime_pipeline_artifacts}} and all("test_visual_runtime_pipeline_module_smoke" in item["exports"] for item in visual_runtime_pipeline_test_artifacts), "evidence": visual_runtime_pipeline_test_artifacts}},
-        {{"id": "actionable_visual_operations", "ok": actionable_operations["ok"] and {{"author_style", "author_timeline", "validate_effect_stack", "author_scene", "import_visual_asset", "hit_test_transform", "validate_visual_component"}} <= set(actionable_operations["operations"]) and not actionable_operations["side_effects"], "evidence": actionable_operations}},
+        {{"id": "actionable_visual_operations", "ok": actionable_operations["ok"] and {{"author_style", "author_timeline", "validate_effect_stack", "author_scene", "import_visual_asset", "hit_test_transform", "validate_visual_component", "run_visual_component_scenario"}} <= set(actionable_operations["operations"]) and not actionable_operations["side_effects"], "evidence": actionable_operations}},
         {{"id": "visual_readiness_contract", "ok": readiness["ok"] and {{"style_ready", "timeline_ready", "effects_ready", "scene_assets_ready", "hit_test_component_ready", "runtime_designer_replay_ready", "runtime_package_ready", "operation_surface_ready", "phase_order_ready"}} <= set(check["id"] for check in readiness["checks"] if check["ok"]) and not readiness["side_effects"], "evidence": readiness}},
     )
     ok = all(check["ok"] for check in checks)

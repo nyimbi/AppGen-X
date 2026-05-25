@@ -14194,6 +14194,67 @@ def cross_target_validate_visual_component_operation(component: str = "Viewport3
     }
 
 
+def cross_target_run_visual_component_scenario_operation(component: str = "Viewport3D", target: str = "desktop") -> dict:
+    """Return a callable IDE operation for running one visual component through authoring and runtime replay."""
+    validation = cross_target_validate_visual_component_operation(component)
+    spec = validation["spec"]
+    authoring = (
+        cross_target_author_style_operation(component)
+        if spec and spec["family"] == "styling"
+        else cross_target_author_timeline_operation(f"timeline.{_module_name(component)}")
+        if spec and spec["family"] == "animation"
+        else cross_target_validate_effect_stack_operation()
+        if spec and spec["family"] == "effects"
+        else cross_target_author_scene_operation()
+    )
+    runtime_package = cross_target_visual_runtime_package_contract()
+    runtime_replay = cross_target_visual_runtime_replay_contract()
+    supported = target in runtime_package["targets"]
+    runtime_artifacts = set(spec["runtime_artifacts"]) if spec else set()
+    packaged_artifacts = tuple(
+        artifact for artifact in runtime_package["artifacts"] if artifact["target"] == target
+    )
+    pipeline = (
+        "load_visual_component_spec",
+        "validate_properties",
+        "run_family_authoring_operation",
+        "verify_runtime_artifacts",
+        "package_target_runtime",
+        "replay_visual_runtime",
+        "sync_preview",
+    )
+    if not supported:
+        pipeline = pipeline + ("block_unsupported_target",)
+    return {
+        "format": "appgen.cross-target-run-visual-component-scenario-operation.v1",
+        "ok": validation["ok"]
+        and authoring["ok"]
+        and runtime_package["ok"]
+        and runtime_replay["ok"]
+        and supported
+        and bool(runtime_artifacts)
+        and bool(packaged_artifacts)
+        and {"verify_runtime_artifacts", "replay_visual_runtime", "sync_preview"} <= set(pipeline),
+        "component": component,
+        "target": target,
+        "target_supported": supported,
+        "spec": spec,
+        "authoring": authoring,
+        "runtime_artifacts": tuple(sorted(runtime_artifacts)),
+        "packaged_artifacts": packaged_artifacts,
+        "runtime_replay": runtime_replay,
+        "pipeline": pipeline,
+        "decision": "visual_scenario_replayed" if supported else "blocked_unsupported_target",
+        "guards": (
+            "component_spec_before_authoring",
+            "authoring_before_runtime_package",
+            "runtime_artifacts_before_replay",
+            "unsupported_targets_blocked",
+        ),
+        "side_effects": (),
+    }
+
+
 def cross_target_visual_actionable_operations() -> dict:
     """Return callable visual-depth operations used by the generated IDE."""
     operations = {
@@ -14204,6 +14265,7 @@ def cross_target_visual_actionable_operations() -> dict:
         "import_visual_asset": cross_target_import_visual_asset_operation(),
         "hit_test_transform": cross_target_hit_test_transform_operation(),
         "validate_visual_component": cross_target_validate_visual_component_operation(),
+        "run_visual_component_scenario": cross_target_run_visual_component_scenario_operation(),
     }
     return {
         "format": "appgen.cross-target-visual-actionable-operations.v1",
@@ -14661,6 +14723,7 @@ def cross_target_visual_depth_workbench() -> dict:
                 "import_visual_asset",
                 "hit_test_transform",
                 "validate_visual_component",
+                "run_visual_component_scenario",
             }
             <= set(actionable_operations["operations"])
             and not actionable_operations["side_effects"],
@@ -21407,6 +21470,7 @@ def visual_component_file_manifest() -> tuple[dict, ...]:
         "authoring_operation",
         "runtime_manifest",
         "replay",
+        "run_scenario",
         "design_tools",
         "smoke_test",
     )

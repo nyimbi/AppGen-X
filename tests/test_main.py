@@ -152,6 +152,7 @@ from pyAppGen.form_designer import cross_target_author_style_operation
 from pyAppGen.form_designer import cross_target_author_timeline_operation
 from pyAppGen.form_designer import cross_target_hit_test_transform_operation
 from pyAppGen.form_designer import cross_target_import_visual_asset_operation
+from pyAppGen.form_designer import cross_target_run_visual_component_scenario_operation
 from pyAppGen.form_designer import cross_target_validate_effect_stack_operation
 from pyAppGen.form_designer import cross_target_validate_visual_component_operation
 from pyAppGen.form_designer import cross_target_visual_actionable_operations
@@ -2829,9 +2830,14 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     assert "write_asset_manifest" in cross_target_import_visual_asset_operation()["pipeline"]
     assert "sync_inspector" in cross_target_hit_test_transform_operation()["pipeline"]
     assert "verify_runtime_artifacts" in cross_target_validate_visual_component_operation()["pipeline"]
+    assert cross_target_run_visual_component_scenario_operation()["decision"] == "visual_scenario_replayed"
+    assert "replay_visual_runtime" in cross_target_run_visual_component_scenario_operation()["pipeline"]
+    assert cross_target_run_visual_component_scenario_operation("Viewport3D", "watch")["decision"] == "blocked_unsupported_target"
     assert cross_target_visual_actionable_operations()["ok"] is True
+    assert "run_visual_component_scenario" in cross_target_visual_actionable_operations()["operations"]
     assert visual_depth["actionable_operations"]["operations"]["author_scene"]["ok"] is True
     assert visual_depth["actionable_operations"]["operations"]["validate_visual_component"]["spec"]["component"] == "Viewport3D"
+    assert visual_depth["actionable_operations"]["operations"]["run_visual_component_scenario"]["ok"] is True
     assert visual_depth["visual_component_specs"]["ok"] is True
     assert visual_depth["actionable_operations"]["operations"]["hit_test_transform"]["transforms"]
     visual_lifecycle = cross_target_visual_lifecycle_replay_contract()
@@ -2879,6 +2885,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         spec["component"] for spec in visual_component_specs["specs"]
     }
     assert all("replay" in item["exports"] for item in visual_depth["visual_component_module_artifacts"])
+    assert all("run_scenario" in item["exports"] for item in visual_depth["visual_component_module_artifacts"])
     assert all("test_visual_component_smoke" in item["exports"] for item in visual_depth["visual_component_test_artifacts"])
     assert {
         "style_authoring",
@@ -16467,9 +16474,16 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert "write_asset_manifest" in form_designer.cross_target_import_visual_asset_operation()["pipeline"]
     assert "sync_inspector" in form_designer.cross_target_hit_test_transform_operation()["pipeline"]
     assert "verify_runtime_artifacts" in form_designer.cross_target_validate_visual_component_operation()["pipeline"]
+    assert form_designer.cross_target_run_visual_component_scenario_operation()["decision"] == "visual_scenario_replayed"
+    assert "replay_visual_runtime" in form_designer.cross_target_run_visual_component_scenario_operation()["pipeline"]
+    assert (
+        form_designer.cross_target_run_visual_component_scenario_operation("Viewport3D", "watch")["decision"]
+        == "blocked_unsupported_target"
+    )
     assert generated_visual_depth["actionable_operations"]["ok"] is True
     assert generated_visual_depth["actionable_operations"]["operations"]["validate_effect_stack"]["fallback_matrix"]["ok"] is True
     assert generated_visual_depth["actionable_operations"]["operations"]["validate_visual_component"]["spec"]["component"] == "Viewport3D"
+    assert generated_visual_depth["actionable_operations"]["operations"]["run_visual_component_scenario"]["ok"] is True
     assert generated_visual_depth["visual_component_specs"]["ok"] is True
     assert generated_visual_depth["lifecycle_replay"]["ok"] is True
     assert generated_visual_depth["lifecycle_replay"]["format"] == "appgen.generated-cross-target-visual-lifecycle-replay.v1"
@@ -16505,6 +16519,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         spec["component"] for spec in generated_visual_specs["specs"]
     }
     assert all("replay" in item["exports"] for item in generated_visual_depth["visual_component_module_artifacts"])
+    assert all("run_scenario" in item["exports"] for item in generated_visual_depth["visual_component_module_artifacts"])
     assert all(
         "test_visual_component_smoke" in item["exports"]
         for item in generated_visual_depth["visual_component_test_artifacts"]
@@ -16645,10 +16660,14 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     viewport_smoke = viewport_component.smoke_test()
     assert viewport_smoke["format"] == "appgen.visual-component-smoke-test.v1"
     assert viewport_smoke["ok"] is True
+    assert "visual_component_scenario_replays" in viewport_smoke["checks"]
     assert viewport_component.validation_operation()["ok"] is True
     assert viewport_component.replay()["ok"] is True
+    assert viewport_component.run_scenario()["ok"] is True
+    assert viewport_component.run_scenario("watch")["decision"] == "blocked_unsupported_target"
     style_component = _load_module(output_dir / "visual_components" / "style_book.py", "generated_style_visual_component")
     assert style_component.smoke_test()["ok"] is True
+    assert style_component.run_scenario()["ok"] is True
     for item in visual_module_manifest["components"]:
         component_path = output_dir / item["path"].replace("app/", "")
         py_compile.compile(str(component_path), doraise=True)
