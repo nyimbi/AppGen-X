@@ -18407,6 +18407,7 @@ def native_form_runtime_manifest(table_name=None):
         "form_stream_schema",
         "runtime_session_replay",
         "design_edit_session_replay",
+        "runtime_authoring_scenario",
     }
     return {
         "format": "appgen.generated-native-form-runtime-manifest.v1",
@@ -18416,8 +18417,10 @@ def native_form_runtime_manifest(table_name=None):
         and "{$R *.dfm}" in workbench["unit"]["unit_source"]
         and workbench["runtime_replay"]["ok"]
         and workbench["design_edit_replay"]["ok"]
+        and workbench["authoring_scenario"]["ok"]
         and not workbench["runtime_replay"]["side_effects"]
-        and not workbench["design_edit_replay"]["side_effects"],
+        and not workbench["design_edit_replay"]["side_effects"]
+        and not workbench["authoring_scenario"]["side_effects"],
         "table": table_name,
         "streaming": streaming,
         "unit": workbench["unit"],
@@ -18428,6 +18431,7 @@ def native_form_runtime_manifest(table_name=None):
         "artifact_parity": workbench["artifact_parity"],
         "runtime_replay": workbench["runtime_replay"],
         "design_edit_replay": workbench["design_edit_replay"],
+        "authoring_scenario": workbench["authoring_scenario"],
         "runtime_memory_model": workbench["runtime_memory_model"],
         "checks": tuple(check["id"] for check in workbench["checks"]),
         "required_checks": tuple(sorted(required_checks)),
@@ -18436,6 +18440,7 @@ def native_form_runtime_manifest(table_name=None):
             "unit_declares_resource_stream",
             "resources_link_before_runtime_load",
             "design_edits_preserve_unknown_properties",
+            "authoring_scenario_replays_full_preview",
             "runtime_replay_is_side_effect_free",
         ),
     }
@@ -18446,14 +18451,17 @@ def replay_native_form_runtime(table_name=None):
     manifest = native_form_runtime_manifest(table_name)
     runtime_phases = tuple(item["phase"] for item in manifest["runtime_replay"]["replay"])
     design_phases = tuple(item["phase"] for item in manifest["design_edit_replay"]["replay"])
+    scenario_steps = manifest["authoring_scenario"]["pipeline"]
     return {
         "format": "appgen.generated-native-form-runtime-replay.v1",
         "ok": manifest["ok"]
         and {"stream_decode", "semantic_static_analysis", "target_emit", "runtime_load"} <= set(runtime_phases)
-        and {"open_design_stream", "apply_property_edit", "reload_runtime_preview"} <= set(design_phases),
+        and {"open_design_stream", "apply_property_edit", "reload_runtime_preview"} <= set(design_phases)
+        and {"open_design_stream", "compile_preview", "reload_runtime_preview", "start_debug_preview", "verify_runtime_state"} <= set(scenario_steps),
         "table": table_name,
         "runtime_phases": runtime_phases,
         "design_phases": design_phases,
+        "scenario_steps": scenario_steps,
         "unit": manifest["unit"]["unit_name"],
         "resource_count": len(manifest["resources"]["resources"]),
         "component_count": manifest["artifact_parity"]["evidence"]["component_count"],
@@ -18479,6 +18487,7 @@ def validate_native_form_runtime(table_name=None):
         {"id": "form_stream_schema_complete", "ok": manifest["form_stream_schema"]["ok"]},
         {"id": "runtime_replay_side_effect_free", "ok": manifest["runtime_replay"]["ok"] and not manifest["runtime_replay"]["side_effects"]},
         {"id": "design_edit_replay_side_effect_free", "ok": manifest["design_edit_replay"]["ok"] and not manifest["design_edit_replay"]["side_effects"]},
+        {"id": "authoring_scenario_replay", "ok": manifest["authoring_scenario"]["ok"] and not manifest["authoring_scenario"]["side_effects"]},
         {"id": "artifact_parity_declared", "ok": "runtime_diff_visible" in manifest["artifact_parity"]["guards"]},
         {"id": "native_form_modules_ready", "ok": module_files["ok"] and not module_files["side_effects"]},
         {"id": "native_form_module_tests_ready", "ok": module_tests["ok"] and not module_tests["side_effects"]},
@@ -49792,6 +49801,90 @@ def pascal_runtime_actionable_operations(table_name=None, design=None):
     }}
 
 
+def pascal_run_runtime_authoring_scenario_operation(table_name=None, design=None):
+    """Return one callable generated native runtime authoring scenario from stream open through debug preview."""
+    if design is None:
+        table_name = table_name or next(iter(FORM_TABLES))
+        design = form_design(table_name)
+    open_stream = pascal_open_design_stream_operation(design=design)
+    property_delta = pascal_apply_property_delta_operation(design=design)
+    round_trip = pascal_round_trip_stream_operation(design=design)
+    compile_preview = pascal_compile_preview_operation(design=design)
+    resource_refresh = pascal_refresh_resources_operation(design=design)
+    runtime_reload = pascal_reload_runtime_preview_operation(design=design)
+    debug_preview = pascal_start_debug_preview_operation(design=design)
+    runtime_replay = pascal_runtime_session_replay_contract(design=design)
+    design_replay = pascal_design_edit_session_replay_contract(design=design)
+    pipeline = (
+        "open_design_stream",
+        "apply_property_delta",
+        "round_trip_stream",
+        "refresh_resource_manifest",
+        "compile_preview",
+        "reload_runtime_preview",
+        "start_debug_preview",
+        "verify_runtime_state",
+    )
+    required = {{
+        "open_design_stream",
+        "apply_property_delta",
+        "round_trip_stream",
+        "refresh_resource_manifest",
+        "compile_preview",
+        "reload_runtime_preview",
+        "start_debug_preview",
+        "verify_runtime_state",
+    }}
+    return {{
+        "format": "appgen.generated-pascal-runtime-authoring-scenario-operation.v1",
+        "ok": open_stream["ok"]
+        and property_delta["ok"]
+        and round_trip["ok"]
+        and compile_preview["ok"]
+        and resource_refresh["ok"]
+        and runtime_reload["ok"]
+        and debug_preview["ok"]
+        and runtime_replay["ok"]
+        and design_replay["ok"]
+        and required <= set(pipeline)
+        and not open_stream["side_effects"]
+        and not property_delta["side_effects"]
+        and not round_trip["side_effects"]
+        and not compile_preview["side_effects"]
+        and not resource_refresh["side_effects"]
+        and not runtime_reload["side_effects"]
+        and not debug_preview["side_effects"]
+        and not runtime_replay["side_effects"]
+        and not design_replay["side_effects"],
+        "pipeline": pipeline,
+        "open_stream": open_stream,
+        "property_delta": property_delta,
+        "round_trip": round_trip,
+        "compile_preview": compile_preview,
+        "resource_refresh": resource_refresh,
+        "runtime_reload": runtime_reload,
+        "debug_preview": debug_preview,
+        "runtime_replay": runtime_replay,
+        "design_replay": design_replay,
+        "final_state": {{
+            "components_streamed": runtime_replay["final_state"]["components_streamed"],
+            "compiled_targets": runtime_replay["final_state"]["compiled_targets"],
+            "property_edits": design_replay["final_state"]["property_edits"],
+            "runtime_loaded": "runtime_load" in runtime_reload["pipeline"],
+            "debug_preview_started": "start_runtime_preview" in debug_preview["pipeline"],
+            "side_effects": (),
+        }},
+        "guards": (
+            "stream_open_before_property_delta",
+            "round_trip_before_compile_preview",
+            "resources_refreshed_before_runtime_reload",
+            "runtime_reload_before_debug_preview",
+            "scenario_has_no_side_effects",
+        ),
+        "side_effects": (),
+    }}
+
+
 def pascal_runtime_readiness_contract(table_name=None, design=None):
     """Return generated end-to-end readiness for opening, compiling, and previewing a design stream."""
     if design is None:
@@ -49810,6 +49903,7 @@ def pascal_runtime_readiness_contract(table_name=None, design=None):
     runtime_replay = pascal_runtime_session_replay_contract(design=design)
     design_edit_replay = pascal_design_edit_session_replay_contract(design=design)
     operations = pascal_runtime_actionable_operations(design=design)
+    authoring_scenario = pascal_run_runtime_authoring_scenario_operation(design=design)
     phases = (
         {{
             "phase": "decode_design_stream",
@@ -49864,6 +49958,7 @@ def pascal_runtime_readiness_contract(table_name=None, design=None):
         {{"id": "debug_preview_ready", "ok": phases[4]["ok"]}},
         {{"id": "runtime_preview_ready", "ok": phases[5]["ok"]}},
         {{"id": "operation_surface_ready", "ok": operations["ok"]}},
+        {{"id": "authoring_scenario_ready", "ok": authoring_scenario["ok"] and "verify_runtime_state" in authoring_scenario["pipeline"]}},
         {{
             "id": "phase_order_ready",
             "ok": tuple(item["phase"] for item in phases)
@@ -49884,6 +49979,7 @@ def pascal_runtime_readiness_contract(table_name=None, design=None):
         "decision": "approved" if ok else "blocked",
         "phases": phases,
         "checks": checks,
+        "authoring_scenario": authoring_scenario,
         "guards": (
             "stream_identity_before_unit_cross_check",
             "unit_semantics_before_target_emit",
@@ -49934,6 +50030,7 @@ def pascal_runtime_workbench(table_name=None):
     runtime_replay = pascal_runtime_session_replay_contract(design=design)
     design_edit_replay = pascal_design_edit_session_replay_contract(design=design)
     actionable_operations = pascal_runtime_actionable_operations(design=design)
+    authoring_scenario = pascal_run_runtime_authoring_scenario_operation(design=design)
     readiness = pascal_runtime_readiness_contract(design=design)
     binary_round_trip = dfm_binary_round_trip(design=design)
     stream_variants = dfm_stream_variant_round_trip_contract(design=design)
@@ -50027,7 +50124,12 @@ def pascal_runtime_workbench(table_name=None):
         {{"id": "runtime_session_replay", "ok": runtime_replay["ok"] and {{"stream_before_unit_parse", "resources_linked_before_runtime_load"}} <= set(runtime_replay["guards"]) and not runtime_replay["side_effects"], "evidence": runtime_replay}},
         {{"id": "design_edit_session_replay", "ok": design_edit_replay["ok"] and {{"unknown_properties_preserved_during_edit", "cache_invalidated_before_target_emit"}} <= set(design_edit_replay["guards"]) and not design_edit_replay["side_effects"], "evidence": design_edit_replay}},
         {{"id": "actionable_runtime_operations", "ok": actionable_operations["ok"] and {{"open_design_stream", "apply_property_delta", "round_trip_stream", "compile_preview", "refresh_resources", "reload_runtime_preview", "start_debug_preview"}} <= set(actionable_operations["operation_names"]) and not actionable_operations["side_effects"], "evidence": actionable_operations}},
-        {{"id": "runtime_readiness_contract", "ok": readiness["ok"] and "runtime_preview_ready" in {{check["id"] for check in readiness["checks"] if check["ok"]}}, "evidence": readiness}},
+        {{
+            "id": "runtime_authoring_scenario",
+            "ok": authoring_scenario["ok"] and {{"open_design_stream", "apply_property_delta", "round_trip_stream", "compile_preview", "reload_runtime_preview", "start_debug_preview", "verify_runtime_state"}} <= set(authoring_scenario["pipeline"]) and authoring_scenario["final_state"]["runtime_loaded"] and authoring_scenario["final_state"]["debug_preview_started"] and not authoring_scenario["side_effects"],
+            "evidence": authoring_scenario,
+        }},
+        {{"id": "runtime_readiness_contract", "ok": readiness["ok"] and {{"runtime_preview_ready", "authoring_scenario_ready"}} <= {{check["id"] for check in readiness["checks"] if check["ok"]}}, "evidence": readiness}},
         {{"id": "native_form_modules", "ok": native_form_modules["ok"] and len(native_form_modules["modules"]) == 6 and not native_form_modules["side_effects"], "evidence": native_form_modules}},
         {{"id": "native_form_module_tests", "ok": native_form_module_tests["ok"] and len(native_form_module_tests["tests"]) == 6 and not native_form_module_tests["side_effects"], "evidence": native_form_module_tests}},
         {{"id": "runtime_operation_modules", "ok": runtime_operation_modules["ok"] and len(runtime_operation_modules["modules"]) == 7 and not runtime_operation_modules["side_effects"], "evidence": runtime_operation_modules}},
@@ -50076,6 +50178,7 @@ def pascal_runtime_workbench(table_name=None):
         "runtime_replay": runtime_replay,
         "design_edit_replay": design_edit_replay,
         "actionable_operations": actionable_operations,
+        "authoring_scenario": authoring_scenario,
         "readiness": readiness,
         "binary_round_trip": binary_round_trip,
         "stream_variants": stream_variants,

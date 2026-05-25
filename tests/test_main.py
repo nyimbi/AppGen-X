@@ -241,6 +241,7 @@ from pyAppGen.form_designer import pascal_open_design_stream_operation
 from pyAppGen.form_designer import pascal_refresh_resources_operation
 from pyAppGen.form_designer import pascal_reload_runtime_preview_operation
 from pyAppGen.form_designer import pascal_runtime_debug_authoring_contract
+from pyAppGen.form_designer import pascal_run_runtime_authoring_scenario_operation
 from pyAppGen.form_designer import pascal_round_trip_stream_operation
 from pyAppGen.form_designer import pascal_start_debug_preview_operation
 from pyAppGen.form_designer import pascal_runtime_actionable_operations
@@ -3418,6 +3419,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "runtime_session_replay",
         "design_edit_session_replay",
         "actionable_runtime_operations",
+        "runtime_authoring_scenario",
         "runtime_readiness_contract",
         "native_form_modules",
         "native_form_module_tests",
@@ -3474,6 +3476,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "debug_preview_ready",
         "runtime_preview_ready",
         "operation_surface_ready",
+        "authoring_scenario_ready",
         "phase_order_ready",
     } == {check["id"] for check in runtime["readiness"]["checks"]}
     assert {"stream_decode", "unit_frontend", "target_emit", "runtime_load"} <= {
@@ -3501,8 +3504,23 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     assert "refresh_resource_manifest" in pascal_refresh_resources_operation(design)["pipeline"]
     assert "runtime_load" in pascal_reload_runtime_preview_operation(design)["pipeline"]
     assert "bind_breakpoints" in pascal_start_debug_preview_operation(design)["pipeline"]
+    runtime_authoring_scenario = pascal_run_runtime_authoring_scenario_operation(design)
+    assert runtime_authoring_scenario["format"] == "appgen.pascal-runtime-authoring-scenario-operation.v1"
+    assert runtime_authoring_scenario["ok"] is True
+    assert {
+        "open_design_stream",
+        "apply_property_delta",
+        "round_trip_stream",
+        "compile_preview",
+        "reload_runtime_preview",
+        "start_debug_preview",
+        "verify_runtime_state",
+    } <= set(runtime_authoring_scenario["pipeline"])
+    assert runtime_authoring_scenario["final_state"]["runtime_loaded"] is True
+    assert runtime_authoring_scenario["final_state"]["debug_preview_started"] is True
     assert pascal_runtime_debug_authoring_contract(design)["ok"] is True
     assert pascal_runtime_actionable_operations(design)["ok"] is True
+    assert runtime["authoring_scenario"]["ok"] is True
     assert runtime["actionable_operations"]["operations"]["compile_preview"]["ok"] is True
     assert len(runtime["native_form_modules"]) == 6
     assert len(runtime["native_form_module_tests"]) == 6
@@ -5126,6 +5144,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "form_stream_schema_complete",
         "runtime_replay_side_effect_free",
         "design_edit_replay_side_effect_free",
+        "authoring_scenario_replay",
         "artifact_parity_declared",
         "native_form_modules_ready",
         "native_form_module_tests_ready",
@@ -14960,6 +14979,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "runtime_session_replay",
         "design_edit_session_replay",
         "actionable_runtime_operations",
+        "runtime_authoring_scenario",
         "runtime_readiness_contract",
         "native_form_modules",
         "native_form_module_tests",
@@ -15024,6 +15044,9 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert "runtime_preview_ready" in {
         check["id"] for check in generated_runtime["readiness"]["checks"] if check["ok"]
     }
+    assert "authoring_scenario_ready" in {
+        check["id"] for check in generated_runtime["readiness"]["checks"] if check["ok"]
+    }
     assert "debug_preview_ready" in {
         check["id"] for check in generated_runtime["readiness"]["checks"] if check["ok"]
     }
@@ -15046,6 +15069,11 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert "refresh_resource_manifest" in form_designer.pascal_refresh_resources_operation("Book")["pipeline"]
     assert "runtime_load" in form_designer.pascal_reload_runtime_preview_operation("Book")["pipeline"]
     assert "bind_breakpoints" in form_designer.pascal_start_debug_preview_operation("Book")["pipeline"]
+    generated_authoring_scenario = form_designer.pascal_run_runtime_authoring_scenario_operation("Book")
+    assert generated_authoring_scenario["format"] == "appgen.generated-pascal-runtime-authoring-scenario-operation.v1"
+    assert generated_authoring_scenario["ok"] is True
+    assert "verify_runtime_state" in generated_authoring_scenario["pipeline"]
+    assert generated_runtime["authoring_scenario"]["ok"] is True
     assert form_designer.pascal_runtime_debug_authoring_contract("Book")["ok"] is True
     assert form_designer.pascal_runtime_actionable_operations("Book")["ok"] is True
     assert generated_runtime["actionable_operations"]["operations"]["compile_preview"]["ok"] is True
@@ -16088,6 +16116,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "form_stream_schema_complete",
         "runtime_replay_side_effect_free",
         "design_edit_replay_side_effect_free",
+        "authoring_scenario_replay",
         "artifact_parity_declared",
         "native_form_modules_ready",
         "native_form_module_tests_ready",
@@ -16197,6 +16226,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     native_replay = native_runtime.replay_native_form_runtime("Book")
     assert native_replay["ok"] is True
     assert "runtime_load" in native_replay["runtime_phases"]
+    assert "verify_runtime_state" in native_replay["scenario_steps"]
     assert native_replay["side_effects"] == ()
     generated_mobile = form_designer.mobile_native_api_workbench()
     assert generated_mobile["format"] == "appgen.generated-mobile-native-api-workbench.v1"

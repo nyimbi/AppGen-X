@@ -4606,6 +4606,88 @@ def pascal_runtime_actionable_operations(design: dict | None = None) -> dict:
     }
 
 
+def pascal_run_runtime_authoring_scenario_operation(design: dict | None = None) -> dict:
+    """Return one callable native runtime authoring scenario from stream open through debug preview."""
+    design = design or form_design()
+    open_stream = pascal_open_design_stream_operation(design)
+    property_delta = pascal_apply_property_delta_operation(design)
+    round_trip = pascal_round_trip_stream_operation(design)
+    compile_preview = pascal_compile_preview_operation(design)
+    resource_refresh = pascal_refresh_resources_operation(design)
+    runtime_reload = pascal_reload_runtime_preview_operation(design)
+    debug_preview = pascal_start_debug_preview_operation(design)
+    runtime_replay = pascal_runtime_session_replay_contract(design)
+    design_replay = pascal_design_edit_session_replay_contract(design)
+    pipeline = (
+        "open_design_stream",
+        "apply_property_delta",
+        "round_trip_stream",
+        "refresh_resource_manifest",
+        "compile_preview",
+        "reload_runtime_preview",
+        "start_debug_preview",
+        "verify_runtime_state",
+    )
+    required = {
+        "open_design_stream",
+        "apply_property_delta",
+        "round_trip_stream",
+        "refresh_resource_manifest",
+        "compile_preview",
+        "reload_runtime_preview",
+        "start_debug_preview",
+        "verify_runtime_state",
+    }
+    return {
+        "format": "appgen.pascal-runtime-authoring-scenario-operation.v1",
+        "ok": open_stream["ok"]
+        and property_delta["ok"]
+        and round_trip["ok"]
+        and compile_preview["ok"]
+        and resource_refresh["ok"]
+        and runtime_reload["ok"]
+        and debug_preview["ok"]
+        and runtime_replay["ok"]
+        and design_replay["ok"]
+        and required <= set(pipeline)
+        and not open_stream["side_effects"]
+        and not property_delta["side_effects"]
+        and not round_trip["side_effects"]
+        and not compile_preview["side_effects"]
+        and not resource_refresh["side_effects"]
+        and not runtime_reload["side_effects"]
+        and not debug_preview["side_effects"]
+        and not runtime_replay["side_effects"]
+        and not design_replay["side_effects"],
+        "pipeline": pipeline,
+        "open_stream": open_stream,
+        "property_delta": property_delta,
+        "round_trip": round_trip,
+        "compile_preview": compile_preview,
+        "resource_refresh": resource_refresh,
+        "runtime_reload": runtime_reload,
+        "debug_preview": debug_preview,
+        "runtime_replay": runtime_replay,
+        "design_replay": design_replay,
+        "final_state": {
+            "components_streamed": runtime_replay["final_state"]["components_streamed"],
+            "compiled_targets": runtime_replay["final_state"]["compiled_targets"],
+            "property_edits": design_replay["final_state"]["property_edits"],
+            "runtime_loaded": "runtime_load" in runtime_reload["pipeline"],
+            "debug_preview_started": "start_runtime_preview" in debug_preview["pipeline"],
+            "side_effects": (),
+        },
+        "guards": (
+            "stream_open_before_property_delta",
+            "round_trip_before_compile_preview",
+            "resources_refreshed_before_runtime_reload",
+            "runtime_reload_before_debug_preview",
+            "scenario_has_no_side_effects",
+        ),
+        "side_effects": (),
+    }
+
+
 def pascal_runtime_readiness_contract(design: dict | None = None) -> dict:
     """Return end-to-end readiness for opening, compiling, and previewing a design stream."""
     design = design or form_design()
@@ -4622,6 +4704,7 @@ def pascal_runtime_readiness_contract(design: dict | None = None) -> dict:
     runtime_replay = pascal_runtime_session_replay_contract(design)
     design_edit_replay = pascal_design_edit_session_replay_contract(design)
     operations = pascal_runtime_actionable_operations(design)
+    authoring_scenario = pascal_run_runtime_authoring_scenario_operation(design)
     phases = (
         {
             "phase": "decode_design_stream",
@@ -4689,6 +4772,7 @@ def pascal_runtime_readiness_contract(design: dict | None = None) -> dict:
         {"id": "debug_preview_ready", "ok": phases[4]["ok"]},
         {"id": "runtime_preview_ready", "ok": phases[5]["ok"]},
         {"id": "operation_surface_ready", "ok": operations["ok"]},
+        {"id": "authoring_scenario_ready", "ok": authoring_scenario["ok"] and "verify_runtime_state" in authoring_scenario["pipeline"]},
         {
             "id": "phase_order_ready",
             "ok": tuple(item["phase"] for item in phases)
@@ -4709,6 +4793,7 @@ def pascal_runtime_readiness_contract(design: dict | None = None) -> dict:
         "decision": "approved" if ok else "blocked",
         "phases": phases,
         "checks": checks,
+        "authoring_scenario": authoring_scenario,
         "guards": (
             "stream_identity_before_unit_cross_check",
             "unit_semantics_before_target_emit",
@@ -4758,6 +4843,7 @@ def pascal_runtime_workbench(design: dict | None = None) -> dict:
     runtime_replay = pascal_runtime_session_replay_contract(design)
     design_edit_replay = pascal_design_edit_session_replay_contract(design)
     actionable_operations = pascal_runtime_actionable_operations(design)
+    authoring_scenario = pascal_run_runtime_authoring_scenario_operation(design)
     readiness = pascal_runtime_readiness_contract(design)
     binary_round_trip = dfm_binary_round_trip(design)
     stream_variants = dfm_stream_variant_round_trip_contract(design)
@@ -4982,8 +5068,27 @@ def pascal_runtime_workbench(design: dict | None = None) -> dict:
             "evidence": actionable_operations,
         },
         {
+            "id": "runtime_authoring_scenario",
+            "ok": authoring_scenario["ok"]
+            and {
+                "open_design_stream",
+                "apply_property_delta",
+                "round_trip_stream",
+                "compile_preview",
+                "reload_runtime_preview",
+                "start_debug_preview",
+                "verify_runtime_state",
+            }
+            <= set(authoring_scenario["pipeline"])
+            and authoring_scenario["final_state"]["runtime_loaded"]
+            and authoring_scenario["final_state"]["debug_preview_started"]
+            and not authoring_scenario["side_effects"],
+            "evidence": authoring_scenario,
+        },
+        {
             "id": "runtime_readiness_contract",
-            "ok": readiness["ok"] and "runtime_preview_ready" in {check["id"] for check in readiness["checks"] if check["ok"]},
+            "ok": readiness["ok"]
+            and {"runtime_preview_ready", "authoring_scenario_ready"} <= {check["id"] for check in readiness["checks"] if check["ok"]},
             "evidence": readiness,
         },
         {
@@ -5077,6 +5182,7 @@ def pascal_runtime_workbench(design: dict | None = None) -> dict:
         "runtime_replay": runtime_replay,
         "design_edit_replay": design_edit_replay,
         "actionable_operations": actionable_operations,
+        "authoring_scenario": authoring_scenario,
         "readiness": readiness,
         "binary_round_trip": binary_round_trip,
         "stream_variants": stream_variants,
