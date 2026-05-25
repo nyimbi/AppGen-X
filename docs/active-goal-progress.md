@@ -774,6 +774,11 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   replayed as source and generated runtime evidence required by the package
   manager workbench, platform requirement audit, generated package runtime
   validation, and focused smoke tests.
+- `4926dee` promotes visual runtime pipeline modules into replay matrices:
+  style resolution, timeline playback, effect fallback, scene rendering, and
+  asset resolution modules are now replayed as source and generated runtime
+  evidence required by the visual-depth workbench, platform requirement audit,
+  generated visual runtime validation, and focused smoke tests.
 
 ## Open Completion Areas
 
