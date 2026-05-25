@@ -15640,6 +15640,306 @@ def rad_parity_workbench(existing_paths: set[str] | None = None) -> dict:
             }
         )
     )
+    required_binding_expression_functions = ("coalesce",)
+    passing_binding_expression_functions = tuple(
+        sorted(
+            {
+                function
+                for node in binding_graph["nodes"]
+                if node["kind"] == "expression"
+                for function in node["validator"]["functions"]
+            }
+        )
+    )
+    required_binding_converter_names = tuple(converter["name"] for converter in binding_graph["converters"])
+    passing_binding_converter_names = required_binding_converter_names
+    required_binding_validator_names = tuple(validator["name"] for validator in binding_graph["validators"])
+    passing_binding_validator_names = required_binding_validator_names
+    required_binding_graph_edit_ops = (
+        "reroute_edge",
+        "delete_edge",
+        "disable_edge",
+        "inspect_node",
+    )
+    passing_binding_graph_edit_ops = tuple(
+        operation["op"] for operation in binding_workbench["graph_editing"]["operations"]
+    )
+    required_binding_graph_edit_stages = (
+        "capture_graph",
+        "preview_route",
+        "validate_graph",
+        "commit_or_rollback",
+        "remove_edge",
+        "validate_required_bindings",
+        "mark_disabled",
+        "validate_runtime_gate",
+        "select_node",
+        "open_inspector",
+        "sync_property_sheet",
+    )
+    passing_binding_graph_edit_stages = tuple(
+        sorted(
+            {
+                stage
+                for operation in binding_workbench["graph_editing"]["operations"]
+                for stage in operation["stage"]
+            }
+        )
+    )
+    required_binding_lookup_node_ids = tuple(node["id"] for node in binding_workbench["lookup_bindings"]["nodes"])
+    passing_binding_lookup_node_ids = tuple(
+        node["id"] for node in binding_workbench["lookup_bindings"]["nodes"] if node["validator"]["ok"]
+    )
+    required_binding_lookup_guards = (
+        "target_lookup_before_write",
+        "display_member_required",
+        "stale_lookup_invalidated",
+    )
+    passing_binding_lookup_guards = tuple(binding_workbench["lookup_bindings"]["guards"])
+    required_binding_pipeline_steps = (
+        "read_source",
+        "apply_converter",
+        "run_validators",
+        "write_target",
+        "publish_errors",
+    )
+    passing_binding_pipeline_steps = tuple(
+        sorted(
+            {
+                step
+                for pipeline in binding_workbench["pipelines"]["pipelines"]
+                for step in pipeline["pipeline"]
+            }
+        )
+    )
+    required_binding_hit_test_actions = (
+        "select",
+        "open_inspector",
+        "preview_value",
+        "show_context_menu",
+    )
+    passing_binding_hit_test_actions = tuple(
+        sorted(
+            {
+                action
+                for target in binding_workbench["hit_testing"]["hit_targets"]
+                for action in target["actions"]
+            }
+        )
+    )
+    required_binding_runtime_gate_names = (
+        "enabled",
+        "source_available",
+        "target_writable",
+        "validator_ok",
+        "converter_ok",
+    )
+    passing_binding_runtime_gate_names = tuple(
+        sorted(
+            {
+                gate
+                for edge_gate in binding_workbench["runtime_gates"]["gates"]
+                for gate in edge_gate["gates"]
+            }
+        )
+    )
+    required_binding_master_detail_refresh_steps = (
+        "master_current_changed",
+        "requery_detail",
+        "refresh_bound_controls",
+    )
+    passing_binding_master_detail_refresh_steps = tuple(
+        sorted(
+            {
+                step
+                for link in binding_workbench["master_detail"]["links"]
+                for step in link["refresh"]
+            }
+        )
+    )
+    required_binding_bulk_edit_ops = (
+        "create_many_links",
+        "rewire_dataset",
+        "apply_converter_to_selection",
+        "disable_selection",
+    )
+    passing_binding_bulk_edit_ops = tuple(operation["op"] for operation in binding_workbench["bulk_edits"]["operations"])
+    required_binding_conflict_types = (
+        "multiple_writers",
+        "missing_converter",
+        "unsafe_expression",
+        "disabled_required_binding",
+    )
+    passing_binding_conflict_types = tuple(
+        resolution["conflict"] for resolution in binding_workbench["conflict_resolution"]["resolutions"]
+    )
+    required_binding_conflict_workflow_steps = (
+        "detect_conflict",
+        "show_conflict_badge",
+        "choose_authoritative_edge",
+        "disable_other_writers",
+        "validate_graph",
+        "detect_type_mismatch",
+        "suggest_converter",
+        "preview_conversion",
+        "attach_converter",
+        "detect_blocked_token",
+        "highlight_expression",
+        "offer_safe_rewrite",
+        "validate_expression",
+        "detect_required_field",
+        "show_required_warning",
+        "enable_binding_or_mark_optional",
+    )
+    passing_binding_conflict_workflow_steps = tuple(
+        sorted(
+            {
+                step
+                for resolution in binding_workbench["conflict_resolution"]["resolutions"]
+                for step in resolution["workflow"]
+            }
+        )
+    )
+    required_binding_diagnostic_codes = (
+        "missing_endpoint",
+        "unsafe_expression",
+        "multiple_writers",
+        "converter_missing",
+    )
+    passing_binding_diagnostic_codes = tuple(
+        diagnostic["code"] for diagnostic in binding_workbench["diagnostics"]["diagnostics"]
+    )
+    required_binding_diagnostic_quick_fixes = (
+        "reconnect_endpoint",
+        "replace_with_safe_expression",
+        "make_binding_read_only",
+        "attach_converter",
+    )
+    passing_binding_diagnostic_quick_fixes = tuple(
+        diagnostic["quick_fix"] for diagnostic in binding_workbench["diagnostics"]["diagnostics"]
+    )
+    required_binding_round_trip_formats = ("appgen.binding-graph-json.v1",)
+    passing_binding_round_trip_formats = tuple(
+        sorted(
+            {
+                binding_workbench["round_trip"]["exported"]["format"],
+                binding_workbench["round_trip"]["imported"]["format"],
+            }
+        )
+    )
+    required_binding_accessibility_commands = (
+        "create_link",
+        "delete_edge",
+        "inspect_node",
+        "preview_value",
+    )
+    passing_binding_accessibility_commands = tuple(
+        shortcut["command"] for shortcut in binding_workbench["accessibility"]["shortcuts"]
+    )
+    required_binding_accessibility_route_steps = (
+        "focus_source",
+        "choose_target",
+        "confirm_link",
+        "focus_edge",
+        "confirm_delete",
+        "validate_graph",
+        "focus_node",
+        "open_inspector",
+        "focus_expression",
+        "announce_preview",
+    )
+    passing_binding_accessibility_route_steps = tuple(
+        sorted(
+            {
+                step
+                for shortcut in binding_workbench["accessibility"]["shortcuts"]
+                for step in shortcut["route"]
+            }
+        )
+    )
+    required_binding_runtime_propagation_ops = (
+        "dataset_to_field",
+        "field_to_control",
+        "expression_to_property",
+        "control_to_field",
+        "validator_failure",
+    )
+    passing_binding_runtime_propagation_ops = tuple(
+        trace["op"] for trace in binding_workbench["runtime_propagation_replay"]["trace"]
+    )
+    required_binding_runtime_propagation_steps = (
+        "read_dataset",
+        "publish_field_change",
+        "queue_downstream_updates",
+        "read_field",
+        "apply_converter",
+        "write_control",
+        "evaluate_expression",
+        "write_property",
+        "read_control",
+        "run_validators",
+        "write_field",
+        "write_dataset",
+        "rollback_target_write",
+        "publish_error_surface",
+        "record_diagnostic",
+    )
+    passing_binding_runtime_propagation_steps = tuple(
+        sorted(
+            {
+                step
+                for trace in binding_workbench["runtime_propagation_replay"]["trace"]
+                for step in trace["pipeline"]
+            }
+        )
+    )
+    required_binding_cursor_events = (
+        "dataset_after_scroll",
+        "control_enter",
+        "dataset_refresh",
+        "row_deleted",
+    )
+    passing_binding_cursor_events = tuple(flow["event"] for flow in binding_workbench["cursor_sync"]["flows"])
+    required_binding_cursor_steps = (
+        "capture_bookmark",
+        "read_current_row",
+        "refresh_fields",
+        "refresh_controls",
+        "restore_selection",
+        "select_control",
+        "resolve_field",
+        "sync_dataset_bookmark",
+        "open_editor",
+        "preserve_bookmark",
+        "reload_rows",
+        "rebind_fields",
+        "detect_missing_bookmark",
+        "move_to_nearest_row",
+        "clear_orphaned_controls",
+        "publish_selection_change",
+    )
+    passing_binding_cursor_steps = tuple(
+        sorted(
+            {
+                step
+                for flow in binding_workbench["cursor_sync"]["flows"]
+                for step in flow["pipeline"]
+            }
+        )
+    )
+    required_binding_expression_sandbox_guards = (
+        "blocked_tokens_rejected",
+        "allowed_functions_only",
+        "evaluation_budget_enforced",
+        "side_effects_disallowed",
+    )
+    passing_binding_expression_sandbox_guards = tuple(binding_workbench["expression_sandbox"]["guards"])
+    required_binding_preview_runtime_checks = (
+        "expression_sources_match",
+        "validation_pipeline_shared",
+        "converter_pipeline_shared",
+    )
+    passing_binding_preview_runtime_checks = tuple(binding_workbench["preview_runtime_parity"]["parity_checks"])
     required_data_tooling_names = ("FireDAC", "DataSnap", "RAD Server", "InterBase")
     passing_data_tooling_names = tuple(data_tooling_contract["tooling"])
     required_data_connection_profiles = ("primary_sql", "local_embedded", "rest_edge")
@@ -17289,7 +17589,32 @@ def rad_parity_workbench(existing_paths: set[str] | None = None) -> dict:
             and set(required_binding_dependency_phases) <= set(passing_binding_dependency_phases)
             and set(required_binding_failure_recovery_scenarios) <= set(passing_binding_failure_recovery_scenarios)
             and set(required_binding_designer_transaction_phases) <= set(passing_binding_designer_transaction_phases)
-            and set(required_binding_offline_replay_steps) <= set(passing_binding_offline_replay_steps),
+            and set(required_binding_offline_replay_steps) <= set(passing_binding_offline_replay_steps)
+            and set(required_binding_expression_functions) <= set(passing_binding_expression_functions)
+            and set(required_binding_converter_names) <= set(passing_binding_converter_names)
+            and set(required_binding_validator_names) <= set(passing_binding_validator_names)
+            and set(required_binding_graph_edit_ops) <= set(passing_binding_graph_edit_ops)
+            and set(required_binding_graph_edit_stages) <= set(passing_binding_graph_edit_stages)
+            and set(required_binding_lookup_node_ids) <= set(passing_binding_lookup_node_ids)
+            and set(required_binding_lookup_guards) <= set(passing_binding_lookup_guards)
+            and set(required_binding_pipeline_steps) <= set(passing_binding_pipeline_steps)
+            and set(required_binding_hit_test_actions) <= set(passing_binding_hit_test_actions)
+            and set(required_binding_runtime_gate_names) <= set(passing_binding_runtime_gate_names)
+            and set(required_binding_master_detail_refresh_steps) <= set(passing_binding_master_detail_refresh_steps)
+            and set(required_binding_bulk_edit_ops) <= set(passing_binding_bulk_edit_ops)
+            and set(required_binding_conflict_types) <= set(passing_binding_conflict_types)
+            and set(required_binding_conflict_workflow_steps) <= set(passing_binding_conflict_workflow_steps)
+            and set(required_binding_diagnostic_codes) <= set(passing_binding_diagnostic_codes)
+            and set(required_binding_diagnostic_quick_fixes) <= set(passing_binding_diagnostic_quick_fixes)
+            and set(required_binding_round_trip_formats) <= set(passing_binding_round_trip_formats)
+            and set(required_binding_accessibility_commands) <= set(passing_binding_accessibility_commands)
+            and set(required_binding_accessibility_route_steps) <= set(passing_binding_accessibility_route_steps)
+            and set(required_binding_runtime_propagation_ops) <= set(passing_binding_runtime_propagation_ops)
+            and set(required_binding_runtime_propagation_steps) <= set(passing_binding_runtime_propagation_steps)
+            and set(required_binding_cursor_events) <= set(passing_binding_cursor_events)
+            and set(required_binding_cursor_steps) <= set(passing_binding_cursor_steps)
+            and set(required_binding_expression_sandbox_guards) <= set(passing_binding_expression_sandbox_guards)
+            and set(required_binding_preview_runtime_checks) <= set(passing_binding_preview_runtime_checks),
             "required_nodes": required_binding_nodes,
             "passing_nodes": passing_binding_nodes,
             "required_edges": required_binding_edges,
@@ -17322,6 +17647,56 @@ def rad_parity_workbench(existing_paths: set[str] | None = None) -> dict:
             "passing_designer_transaction_phases": passing_binding_designer_transaction_phases,
             "required_offline_replay_steps": required_binding_offline_replay_steps,
             "passing_offline_replay_steps": passing_binding_offline_replay_steps,
+            "required_expression_functions": required_binding_expression_functions,
+            "passing_expression_functions": passing_binding_expression_functions,
+            "required_converter_names": required_binding_converter_names,
+            "passing_converter_names": passing_binding_converter_names,
+            "required_validator_names": required_binding_validator_names,
+            "passing_validator_names": passing_binding_validator_names,
+            "required_graph_edit_ops": required_binding_graph_edit_ops,
+            "passing_graph_edit_ops": passing_binding_graph_edit_ops,
+            "required_graph_edit_stages": required_binding_graph_edit_stages,
+            "passing_graph_edit_stages": passing_binding_graph_edit_stages,
+            "required_lookup_node_ids": required_binding_lookup_node_ids,
+            "passing_lookup_node_ids": passing_binding_lookup_node_ids,
+            "required_lookup_guards": required_binding_lookup_guards,
+            "passing_lookup_guards": passing_binding_lookup_guards,
+            "required_pipeline_steps": required_binding_pipeline_steps,
+            "passing_pipeline_steps": passing_binding_pipeline_steps,
+            "required_hit_test_actions": required_binding_hit_test_actions,
+            "passing_hit_test_actions": passing_binding_hit_test_actions,
+            "required_runtime_gate_names": required_binding_runtime_gate_names,
+            "passing_runtime_gate_names": passing_binding_runtime_gate_names,
+            "required_master_detail_refresh_steps": required_binding_master_detail_refresh_steps,
+            "passing_master_detail_refresh_steps": passing_binding_master_detail_refresh_steps,
+            "required_bulk_edit_ops": required_binding_bulk_edit_ops,
+            "passing_bulk_edit_ops": passing_binding_bulk_edit_ops,
+            "required_conflict_types": required_binding_conflict_types,
+            "passing_conflict_types": passing_binding_conflict_types,
+            "required_conflict_workflow_steps": required_binding_conflict_workflow_steps,
+            "passing_conflict_workflow_steps": passing_binding_conflict_workflow_steps,
+            "required_diagnostic_codes": required_binding_diagnostic_codes,
+            "passing_diagnostic_codes": passing_binding_diagnostic_codes,
+            "required_diagnostic_quick_fixes": required_binding_diagnostic_quick_fixes,
+            "passing_diagnostic_quick_fixes": passing_binding_diagnostic_quick_fixes,
+            "required_round_trip_formats": required_binding_round_trip_formats,
+            "passing_round_trip_formats": passing_binding_round_trip_formats,
+            "required_accessibility_commands": required_binding_accessibility_commands,
+            "passing_accessibility_commands": passing_binding_accessibility_commands,
+            "required_accessibility_route_steps": required_binding_accessibility_route_steps,
+            "passing_accessibility_route_steps": passing_binding_accessibility_route_steps,
+            "required_runtime_propagation_ops": required_binding_runtime_propagation_ops,
+            "passing_runtime_propagation_ops": passing_binding_runtime_propagation_ops,
+            "required_runtime_propagation_steps": required_binding_runtime_propagation_steps,
+            "passing_runtime_propagation_steps": passing_binding_runtime_propagation_steps,
+            "required_cursor_events": required_binding_cursor_events,
+            "passing_cursor_events": passing_binding_cursor_events,
+            "required_cursor_steps": required_binding_cursor_steps,
+            "passing_cursor_steps": passing_binding_cursor_steps,
+            "required_expression_sandbox_guards": required_binding_expression_sandbox_guards,
+            "passing_expression_sandbox_guards": passing_binding_expression_sandbox_guards,
+            "required_preview_runtime_checks": required_binding_preview_runtime_checks,
+            "passing_preview_runtime_checks": passing_binding_preview_runtime_checks,
             "required_checks": required_binding_workbench_checks,
             "passing_checks": passing_binding_workbench_checks,
             "evidence": {"contract": binding_contract, "workbench": binding_workbench},

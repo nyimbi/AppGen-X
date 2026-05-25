@@ -3465,6 +3465,49 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         binding_gate["passing_designer_transaction_phases"]
     )
     assert set(binding_gate["required_offline_replay_steps"]) <= set(binding_gate["passing_offline_replay_steps"])
+    assert set(binding_gate["required_expression_functions"]) <= set(binding_gate["passing_expression_functions"])
+    assert set(binding_gate["required_converter_names"]) <= set(binding_gate["passing_converter_names"])
+    assert set(binding_gate["required_validator_names"]) <= set(binding_gate["passing_validator_names"])
+    assert set(binding_gate["required_graph_edit_ops"]) <= set(binding_gate["passing_graph_edit_ops"])
+    assert set(binding_gate["required_graph_edit_stages"]) <= set(binding_gate["passing_graph_edit_stages"])
+    assert set(binding_gate["required_lookup_node_ids"]) <= set(binding_gate["passing_lookup_node_ids"])
+    assert set(binding_gate["required_lookup_guards"]) <= set(binding_gate["passing_lookup_guards"])
+    assert set(binding_gate["required_pipeline_steps"]) <= set(binding_gate["passing_pipeline_steps"])
+    assert set(binding_gate["required_hit_test_actions"]) <= set(binding_gate["passing_hit_test_actions"])
+    assert set(binding_gate["required_runtime_gate_names"]) <= set(binding_gate["passing_runtime_gate_names"])
+    assert set(binding_gate["required_master_detail_refresh_steps"]) <= set(
+        binding_gate["passing_master_detail_refresh_steps"]
+    )
+    assert set(binding_gate["required_bulk_edit_ops"]) <= set(binding_gate["passing_bulk_edit_ops"])
+    assert set(binding_gate["required_conflict_types"]) <= set(binding_gate["passing_conflict_types"])
+    assert set(binding_gate["required_conflict_workflow_steps"]) <= set(
+        binding_gate["passing_conflict_workflow_steps"]
+    )
+    assert set(binding_gate["required_diagnostic_codes"]) <= set(binding_gate["passing_diagnostic_codes"])
+    assert set(binding_gate["required_diagnostic_quick_fixes"]) <= set(
+        binding_gate["passing_diagnostic_quick_fixes"]
+    )
+    assert set(binding_gate["required_round_trip_formats"]) <= set(binding_gate["passing_round_trip_formats"])
+    assert set(binding_gate["required_accessibility_commands"]) <= set(
+        binding_gate["passing_accessibility_commands"]
+    )
+    assert set(binding_gate["required_accessibility_route_steps"]) <= set(
+        binding_gate["passing_accessibility_route_steps"]
+    )
+    assert set(binding_gate["required_runtime_propagation_ops"]) <= set(
+        binding_gate["passing_runtime_propagation_ops"]
+    )
+    assert set(binding_gate["required_runtime_propagation_steps"]) <= set(
+        binding_gate["passing_runtime_propagation_steps"]
+    )
+    assert set(binding_gate["required_cursor_events"]) <= set(binding_gate["passing_cursor_events"])
+    assert set(binding_gate["required_cursor_steps"]) <= set(binding_gate["passing_cursor_steps"])
+    assert set(binding_gate["required_expression_sandbox_guards"]) <= set(
+        binding_gate["passing_expression_sandbox_guards"]
+    )
+    assert set(binding_gate["required_preview_runtime_checks"]) <= set(
+        binding_gate["passing_preview_runtime_checks"]
+    )
     assert set(binding_gate["required_checks"]) <= set(binding_gate["passing_checks"])
     data_tooling_gate = next(
         check for check in audit["rad_parity"]["checks"] if check["id"] == "firedac_datasnap_radserver_interbase_tooling"
