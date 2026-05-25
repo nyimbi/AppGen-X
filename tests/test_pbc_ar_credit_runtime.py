@@ -1,12 +1,22 @@
 from pyAppGen.pbc import AR_CREDIT_ADVANCED_CAPABILITY_KEYS
 from pyAppGen.pbc import ar_credit_apply_cash
+from pyAppGen.pbc import ar_credit_build_workbench_view
+from pyAppGen.pbc import ar_credit_calculate_aging
+from pyAppGen.pbc import ar_credit_create_credit_memo
+from pyAppGen.pbc import ar_credit_create_dunning_plan
 from pyAppGen.pbc import ar_credit_empty_state
+from pyAppGen.pbc import ar_credit_generate_customer_statement
 from pyAppGen.pbc import ar_credit_issue_invoice
+from pyAppGen.pbc import ar_credit_issue_refund
 from pyAppGen.pbc import ar_credit_onboard_customer
 from pyAppGen.pbc import ar_credit_parse_remittance
 from pyAppGen.pbc import ar_credit_record_delivery_confirmation
+from pyAppGen.pbc import ar_credit_record_unapplied_cash
+from pyAppGen.pbc import ar_credit_recognize_revenue_schedule
 from pyAppGen.pbc import ar_credit_runtime_capabilities
 from pyAppGen.pbc import ar_credit_runtime_smoke
+from pyAppGen.pbc import ar_credit_schedule_collection_action
+from pyAppGen.pbc import ar_credit_write_off_receivable
 from pyAppGen.pbc import pbc_implementation_contract
 from pyAppGen.pbc import pbc_implementation_release_audit
 from pyAppGen.pbc import pbc_release_audit
@@ -82,3 +92,104 @@ def test_ar_credit_runtime_handles_core_receivables_cash_application() -> None:
     assert cash["confidence"] == 0.99
     assert cash["state"]["invoices"]["ar_inv_beta"]["status"] == "cleared"
     assert cash["state"]["outbox"][-1]["idempotency_key"] == "ar_credit:PaymentReceived:ar_evt_000004"
+
+
+def test_ar_credit_runtime_covers_usual_ar_operations() -> None:
+    state = ar_credit_empty_state()
+    state = ar_credit_onboard_customer(
+        state,
+        {
+            "customer_id": "customer_ops",
+            "tenant": "tenant_ops",
+            "name": "Operations Buyer",
+            "parent": "holding_ops",
+            "beneficial_owners": ("owner_ops",),
+            "terms": {"net_days": 30},
+            "risk_signals": {"sanction_hits": 0, "payment_latency": 0.04, "industry_stress": 0.03},
+            "identity": {"did": "did:appgen:customer-ops", "issuer": "trusted_registry", "status": "active"},
+        },
+    )["state"]
+    state = ar_credit_issue_invoice(
+        state,
+        {
+            "invoice_id": "ar_inv_ops",
+            "tenant": "tenant_ops",
+            "customer_id": "customer_ops",
+            "currency": "USD",
+            "invoice_date": "2026-05-25",
+            "due_date": "2026-06-24",
+            "tax": {"jurisdiction": "US-NY", "amount": 40, "rate": 0.08},
+            "performance_obligations": ({"obligation": "deliver_service", "satisfied": True, "allocation": 500},),
+            "lines": ({"sku": "service", "quantity": 2, "unit_price": 250, "account": "revenue"},),
+        },
+    )["state"]
+    state = ar_credit_record_delivery_confirmation(
+        state,
+        {"delivery_id": "deliv_ops", "tenant": "tenant_ops", "invoice_id": "ar_inv_ops", "lines": ({"sku": "service", "quantity": 2},)},
+    )["state"]
+
+    partial = ar_credit_apply_cash(
+        state,
+        {
+            "receipt_id": "rcpt_partial",
+            "tenant": "tenant_ops",
+            "amount": 200,
+            "currency": "USD",
+            "remittance": ar_credit_parse_remittance("PAY ar_inv_ops amount 200 bank_ref BAI-003"),
+        },
+    )
+    assert partial["state"]["invoices"]["ar_inv_ops"]["open_amount"] == 340
+    assert partial["state"]["invoices"]["ar_inv_ops"]["status"] == "partial"
+    state = partial["state"]
+
+    state = ar_credit_record_unapplied_cash(
+        state,
+        {"receipt_id": "rcpt_unapplied", "tenant": "tenant_ops", "amount": 75, "currency": "USD", "reason": "missing_remittance"},
+    )["state"]
+    credit_memo = ar_credit_create_credit_memo(
+        state,
+        {"credit_memo_id": "cm_ops", "invoice_id": "ar_inv_ops", "customer_id": "customer_ops", "amount": 40, "reason": "service_adjustment"},
+    )
+    assert credit_memo["invoice"]["open_amount"] == 300
+    state = credit_memo["state"]
+
+    aging = ar_credit_calculate_aging(state, tenant="tenant_ops", as_of="2026-07-30")
+    assert aging["buckets"]["31_60"] == 300
+    dunning = ar_credit_create_dunning_plan(state, tenant="tenant_ops", as_of="2026-07-30")
+    assert dunning["notices"][0]["level"] == "standard"
+    state = ar_credit_schedule_collection_action(
+        state,
+        {
+            "tenant": "tenant_ops",
+            "customer_id": "customer_ops",
+            "invoice_id": "ar_inv_ops",
+            "channel": "portal",
+            "due_date": "2026-07-31",
+        },
+    )["state"]
+
+    statement = ar_credit_generate_customer_statement(state, customer_id="customer_ops", as_of="2026-07-30")
+    assert statement["statement"]["open_balance"] == 300
+    state = statement["state"]
+    revenue = ar_credit_recognize_revenue_schedule(state, "ar_inv_ops")
+    assert revenue["schedule"]["recognized_amount"] == 500
+    state = revenue["state"]
+
+    write_off = ar_credit_write_off_receivable(
+        state,
+        {"write_off_id": "wo_ops", "invoice_id": "ar_inv_ops", "amount": 300, "approved_by": "controller", "reason": "immaterial_balance"},
+    )
+    assert write_off["ok"] is True
+    assert write_off["invoice"]["status"] == "written_off"
+    state = write_off["state"]
+    refund = ar_credit_issue_refund(
+        state,
+        {"refund_id": "refund_ops", "tenant": "tenant_ops", "customer_id": "customer_ops", "amount": 25, "currency": "USD", "reason": "overpayment"},
+    )
+    assert refund["refund"]["status"] == "scheduled"
+    state = refund["state"]
+
+    workbench = ar_credit_build_workbench_view(state, tenant="tenant_ops", as_of="2026-07-30")
+    assert workbench["open_balance"] == 0
+    assert workbench["unapplied_cash_total"] == 75
+    assert workbench["collection_action_count"] == 1

@@ -79,8 +79,38 @@ def ar_credit_runtime_capabilities() -> dict:
             "negotiate_payment_terms",
             "detect_cash_application_anomaly",
             "model_temporal_receivable",
+            "create_credit_memo",
+            "write_off_receivable",
+            "issue_refund",
+            "record_unapplied_cash",
+            "generate_customer_statement",
+            "calculate_aging",
+            "create_dunning_plan",
+            "schedule_collection_action",
+            "recognize_revenue_schedule",
+            "build_workbench_view",
             "verify_formal_invariants",
             "register_governed_model",
+        ),
+        "ordinary_ar_features": (
+            "customer_master",
+            "invoice_generation",
+            "delivery_confirmation",
+            "cash_application",
+            "partial_payment",
+            "unapplied_cash",
+            "credit_memo",
+            "write_off",
+            "refund",
+            "aging",
+            "dunning",
+            "collection_actions",
+            "customer_statement",
+            "revenue_schedule",
+            "credit_limit",
+            "dispute_management",
+            "controls",
+            "workbench",
         ),
         "smoke": smoke,
     }
@@ -233,6 +263,13 @@ def ar_credit_empty_state() -> dict:
         "invoices": {},
         "deliveries": {},
         "receipts": {},
+        "unapplied_cash": {},
+        "credit_memos": {},
+        "write_offs": {},
+        "refunds": {},
+        "collection_actions": {},
+        "statements": {},
+        "revenue_schedules": {},
         "cash_pools": {},
         "schema_extensions": {},
         "crypto_epoch": {"epoch": 1, "algorithm": "sha3_256"},
@@ -315,6 +352,177 @@ def ar_credit_apply_cash(state: dict, receipt: dict) -> dict:
     }
     next_state = _append_event(next_state, "PaymentReceived", {"tenant": tenant, "receipt_id": receipt["receipt_id"], "invoice_id": invoice["invoice_id"]})
     return {"ok": True, "state": next_state, "decision": decision, "confidence": confidence, "cash_pool": cash_pool, "idempotency_key": f"ar_credit:PaymentReceived:{receipt['receipt_id']}"}
+
+
+def ar_credit_record_unapplied_cash(state: dict, receipt: dict) -> dict:
+    tenant = receipt["tenant"]
+    cash_pool = {**state["cash_pools"].get(tenant, {"tenant": tenant, "currency": receipt["currency"], "received_cash": 0.0})}
+    cash_pool["received_cash"] = round(cash_pool["received_cash"] + receipt["amount"], 2)
+    unapplied = {
+        **receipt,
+        "status": "unapplied",
+        "reason": receipt.get("reason", "missing_remittance"),
+    }
+    next_state = {
+        **state,
+        "unapplied_cash": {**state["unapplied_cash"], receipt["receipt_id"]: unapplied},
+        "cash_pools": {**state["cash_pools"], tenant: cash_pool},
+    }
+    next_state = _append_event(next_state, "UnappliedCashRecorded", {"tenant": tenant, "receipt_id": receipt["receipt_id"], "amount": receipt["amount"]})
+    return {"ok": True, "state": next_state, "unapplied_cash": unapplied}
+
+
+def ar_credit_create_credit_memo(state: dict, memo: dict) -> dict:
+    invoice = state["invoices"][memo["invoice_id"]]
+    amount = round(float(memo["amount"]), 2)
+    open_amount = round(max(0, invoice["open_amount"] - amount), 2)
+    updated_invoice = {**invoice, "open_amount": open_amount, "status": "credited" if open_amount else "cleared"}
+    credit_memo = {
+        **memo,
+        "credit_memo_id": memo.get("credit_memo_id", f"cm_{memo['invoice_id']}"),
+        "status": "issued",
+        "amount": amount,
+    }
+    next_state = {
+        **state,
+        "invoices": {**state["invoices"], invoice["invoice_id"]: updated_invoice},
+        "credit_memos": {**state["credit_memos"], credit_memo["credit_memo_id"]: credit_memo},
+    }
+    next_state = _append_event(next_state, "CreditMemoIssued", {"tenant": invoice["tenant"], "invoice_id": invoice["invoice_id"], "amount": amount})
+    return {"ok": True, "state": next_state, "credit_memo": credit_memo, "invoice": updated_invoice}
+
+
+def ar_credit_write_off_receivable(state: dict, write_off: dict) -> dict:
+    invoice = state["invoices"][write_off["invoice_id"]]
+    amount = round(float(write_off.get("amount", invoice["open_amount"])), 2)
+    if not write_off.get("approved_by"):
+        return {"ok": False, "error": "approval_required", "state": state}
+    open_amount = round(max(0, invoice["open_amount"] - amount), 2)
+    updated_invoice = {**invoice, "open_amount": open_amount, "status": "written_off" if open_amount == 0 else "partial_write_off"}
+    record = {
+        **write_off,
+        "write_off_id": write_off.get("write_off_id", f"wo_{invoice['invoice_id']}"),
+        "amount": amount,
+        "status": "posted",
+    }
+    next_state = {
+        **state,
+        "invoices": {**state["invoices"], invoice["invoice_id"]: updated_invoice},
+        "write_offs": {**state["write_offs"], record["write_off_id"]: record},
+    }
+    next_state = _append_event(next_state, "ReceivableWrittenOff", {"tenant": invoice["tenant"], "invoice_id": invoice["invoice_id"], "amount": amount})
+    return {"ok": True, "state": next_state, "write_off": record, "invoice": updated_invoice}
+
+
+def ar_credit_issue_refund(state: dict, refund: dict) -> dict:
+    if refund["amount"] <= 0:
+        return {"ok": False, "error": "invalid_refund_amount", "state": state}
+    record = {
+        **refund,
+        "refund_id": refund.get("refund_id", f"refund_{len(state['refunds']) + 1:06d}"),
+        "status": "scheduled",
+    }
+    next_state = {**state, "refunds": {**state["refunds"], record["refund_id"]: record}}
+    next_state = _append_event(next_state, "CustomerRefundScheduled", {"tenant": refund["tenant"], "refund_id": record["refund_id"], "amount": refund["amount"]})
+    return {"ok": True, "state": next_state, "refund": record}
+
+
+def ar_credit_calculate_aging(state: dict, *, tenant: str, as_of: str) -> dict:
+    buckets = {"current": 0.0, "1_30": 0.0, "31_60": 0.0, "61_90": 0.0, "90_plus": 0.0}
+    details = []
+    for invoice in state["invoices"].values():
+        if invoice["tenant"] != tenant or invoice["open_amount"] <= 0:
+            continue
+        days = _days_between(invoice["due_date"], as_of)
+        if days <= 0:
+            bucket = "current"
+        elif days <= 30:
+            bucket = "1_30"
+        elif days <= 60:
+            bucket = "31_60"
+        elif days <= 90:
+            bucket = "61_90"
+        else:
+            bucket = "90_plus"
+        buckets[bucket] = round(buckets[bucket] + invoice["open_amount"], 2)
+        details.append({"invoice_id": invoice["invoice_id"], "bucket": bucket, "open_amount": invoice["open_amount"], "days_past_due": max(0, days)})
+    return {"ok": True, "tenant": tenant, "as_of": as_of, "buckets": buckets, "details": tuple(details)}
+
+
+def ar_credit_create_dunning_plan(state: dict, *, tenant: str, as_of: str) -> dict:
+    aging = ar_credit_calculate_aging(state, tenant=tenant, as_of=as_of)
+    notices = []
+    for item in aging["details"]:
+        if item["days_past_due"] >= 1:
+            level = "final" if item["days_past_due"] > 60 else "standard"
+            notices.append({"invoice_id": item["invoice_id"], "level": level, "channel": "portal", "days_past_due": item["days_past_due"]})
+    return {"ok": True, "tenant": tenant, "as_of": as_of, "notices": tuple(notices)}
+
+
+def ar_credit_schedule_collection_action(state: dict, action: dict) -> dict:
+    record = {
+        **action,
+        "action_id": action.get("action_id", f"coll_{len(state['collection_actions']) + 1:06d}"),
+        "status": "scheduled",
+        "idempotency_key": f"ar_credit:CollectionAction:{action.get('invoice_id', action['customer_id'])}:{action.get('channel', 'portal')}",
+    }
+    next_state = {**state, "collection_actions": {**state["collection_actions"], record["action_id"]: record}}
+    next_state = _append_event(next_state, "CollectionActionScheduled", {"tenant": action["tenant"], "action_id": record["action_id"], "customer_id": action["customer_id"]})
+    return {"ok": True, "state": next_state, "action": record}
+
+
+def ar_credit_generate_customer_statement(state: dict, *, customer_id: str, as_of: str) -> dict:
+    invoices = tuple(invoice for invoice in state["invoices"].values() if invoice["customer_id"] == customer_id)
+    credit_memos = tuple(memo for memo in state["credit_memos"].values() if memo.get("customer_id") == customer_id or state["invoices"].get(memo["invoice_id"], {}).get("customer_id") == customer_id)
+    open_balance = round(sum(invoice["open_amount"] for invoice in invoices), 2)
+    statement = {
+        "statement_id": f"stmt_{customer_id}_{as_of.replace('-', '')}",
+        "customer_id": customer_id,
+        "as_of": as_of,
+        "open_balance": open_balance,
+        "invoice_count": len(invoices),
+        "credit_memo_count": len(credit_memos),
+        "lines": tuple({"invoice_id": invoice["invoice_id"], "open_amount": invoice["open_amount"], "status": invoice["status"]} for invoice in invoices),
+    }
+    next_state = {**state, "statements": {**state["statements"], statement["statement_id"]: statement}}
+    return {"ok": True, "state": next_state, "statement": statement}
+
+
+def ar_credit_recognize_revenue_schedule(state: dict, invoice_id: str) -> dict:
+    invoice = state["invoices"][invoice_id]
+    obligations = tuple(invoice.get("performance_obligations", ()))
+    schedule_lines = tuple(
+        {
+            "obligation": obligation["obligation"],
+            "amount": round(float(obligation.get("allocation", 0)), 2),
+            "recognized": bool(obligation.get("satisfied")),
+        }
+        for obligation in obligations
+    )
+    schedule = {
+        "schedule_id": f"rev_{invoice_id}",
+        "invoice_id": invoice_id,
+        "recognized_amount": round(sum(line["amount"] for line in schedule_lines if line["recognized"]), 2),
+        "deferred_amount": round(sum(line["amount"] for line in schedule_lines if not line["recognized"]), 2),
+        "lines": schedule_lines,
+    }
+    next_state = {**state, "revenue_schedules": {**state["revenue_schedules"], schedule["schedule_id"]: schedule}}
+    return {"ok": True, "state": next_state, "schedule": schedule}
+
+
+def ar_credit_build_workbench_view(state: dict, *, tenant: str, as_of: str) -> dict:
+    aging = ar_credit_calculate_aging(state, tenant=tenant, as_of=as_of)
+    open_invoices = tuple(invoice for invoice in state["invoices"].values() if invoice["tenant"] == tenant and invoice["open_amount"] > 0)
+    return {
+        "ok": True,
+        "tenant": tenant,
+        "as_of": as_of,
+        "open_invoice_count": len(open_invoices),
+        "open_balance": round(sum(invoice["open_amount"] for invoice in open_invoices), 2),
+        "aging": aging["buckets"],
+        "collection_action_count": len(tuple(action for action in state["collection_actions"].values() if action["tenant"] == tenant)),
+        "unapplied_cash_total": round(sum(item["amount"] for item in state["unapplied_cash"].values() if item["tenant"] == tenant), 2),
+    }
 
 
 def ar_credit_extend_credit(state: dict, customer_id: str, *, liquidity_forecast: tuple[float, ...], macro_risk: float) -> dict:
@@ -498,6 +706,12 @@ def _customer_risk_score(signals: dict, *, graph_degree: int) -> float:
         + max(0, graph_degree - 4) * 0.03
     )
     return round(min(score, 1.0), 4)
+
+
+def _days_between(start: str, end: str) -> int:
+    start_year, start_month, start_day = (int(part) for part in start.split("-"))
+    end_year, end_month, end_day = (int(part) for part in end.split("-"))
+    return (end_year - start_year) * 365 + (end_month - start_month) * 30 + (end_day - start_day)
 
 
 def _digest(payload: dict | tuple | list | str) -> str:
