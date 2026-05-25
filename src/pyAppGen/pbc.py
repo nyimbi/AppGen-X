@@ -558,6 +558,40 @@ PAYROLL_ENGINE_ADVANCED_CAPABILITY_KEYS = (
     "mathematical_optimization",
     "payroll_mlops_governance",
 )
+TALENT_ONBOARDING_ADVANCED_CAPABILITY_KEYS = (
+    "event_sourced_talent_lifecycle",
+    "graph_relational_hiring_topology",
+    "multi_tenant_talent_isolation",
+    "schema_evolution_resilient_talent_schema",
+    "probabilistic_candidate_match_compliance_scoring",
+    "real_time_pipeline_onboarding_analytics",
+    "counterfactual_hiring_policy_simulation",
+    "temporal_hiring_demand_cycle_forecasting",
+    "autonomous_candidate_exception_resolution",
+    "semantic_candidate_instruction_parsing",
+    "predictive_candidate_attrition_compliance_risk",
+    "self_healing_screening_provisioning_route_selection",
+    "zero_knowledge_candidate_eligibility_proof",
+    "immutable_talent_audit_trail",
+    "dynamic_talent_policy_screening",
+    "automated_talent_control_testing",
+    "universal_api_async_streaming",
+    "cross_system_talent_federation",
+    "identity_access_notification_integration",
+    "decentralized_candidate_identity",
+    "chaos_engineered_onboarding_tolerance",
+    "quantum_resistant_candidate_authorization",
+    "carbon_aware_interview_onboarding_scheduling",
+    "algebraic_pipeline_optimization",
+    "mechanism_design_interview_allocation",
+    "information_theoretic_hiring_anomaly_detection",
+    "temporal_hiring_exposure_stochastic_modeling",
+    "distributed_systems_engineering",
+    "probabilistic_ml_candidate_risk",
+    "cryptographic_engineering",
+    "mathematical_optimization",
+    "talent_mlops_governance",
+)
 IMPLEMENTED_PBC_KEYS = (
     "gl_core",
     "ap_automation",
@@ -573,6 +607,7 @@ IMPLEMENTED_PBC_KEYS = (
     "personnel_identity",
     "time_labor",
     "payroll_engine",
+    "talent_onboarding",
 )
 PBC_ALLOWED_DATASTORE_BACKENDS = (
     "postgresql",
@@ -2814,6 +2849,8 @@ def pbc_implementation_contract(key: str) -> dict:
         advanced_runtime = time_labor_runtime_capabilities()
     elif key == "payroll_engine":
         advanced_runtime = payroll_engine_runtime_capabilities()
+    elif key == "talent_onboarding":
+        advanced_runtime = talent_onboarding_runtime_capabilities()
     else:
         advanced_runtime = {}
     source_package = _pbc_source_package_contract(key)
@@ -3104,6 +3141,7 @@ def pbc_implemented_capability_audit(selected_pbcs: tuple[str, ...] | list[str] 
         "personnel_identity": len(PERSONNEL_IDENTITY_ADVANCED_CAPABILITY_KEYS),
         "time_labor": len(TIME_LABOR_ADVANCED_CAPABILITY_KEYS),
         "payroll_engine": len(PAYROLL_ENGINE_ADVANCED_CAPABILITY_KEYS),
+        "talent_onboarding": len(TALENT_ONBOARDING_ADVANCED_CAPABILITY_KEYS),
     }
     checks = []
     contracts = pbc_implementation_contracts(selected)
@@ -4789,3 +4827,24 @@ from .pbcs.payroll_engine import payroll_engine_runtime_smoke  # noqa: E402,F401
 from .pbcs.payroll_engine import payroll_engine_set_parameter  # noqa: E402,F401
 from .pbcs.payroll_engine import payroll_engine_ui_contract  # noqa: E402,F401
 from .pbcs.payroll_engine import payroll_engine_upsert_worker_projection  # noqa: E402,F401
+from .pbcs.talent_onboarding import TALENT_ONBOARDING_RUNTIME_CAPABILITY_KEYS  # noqa: E402,F401
+from .pbcs.talent_onboarding import TALENT_ONBOARDING_STANDARD_FEATURE_KEYS  # noqa: E402,F401
+from .pbcs.talent_onboarding import TALENT_ONBOARDING_UI_FRAGMENT_KEYS  # noqa: E402,F401
+from .pbcs.talent_onboarding import talent_onboarding_accept_offer  # noqa: E402,F401
+from .pbcs.talent_onboarding import talent_onboarding_advance_candidate_stage  # noqa: E402,F401
+from .pbcs.talent_onboarding import talent_onboarding_build_workbench_view  # noqa: E402,F401
+from .pbcs.talent_onboarding import talent_onboarding_complete_onboarding_task  # noqa: E402,F401
+from .pbcs.talent_onboarding import talent_onboarding_configure_runtime  # noqa: E402,F401
+from .pbcs.talent_onboarding import talent_onboarding_create_candidate  # noqa: E402,F401
+from .pbcs.talent_onboarding import talent_onboarding_create_job_requisition  # noqa: E402,F401
+from .pbcs.talent_onboarding import talent_onboarding_create_onboarding_task  # noqa: E402,F401
+from .pbcs.talent_onboarding import talent_onboarding_empty_state  # noqa: E402,F401
+from .pbcs.talent_onboarding import talent_onboarding_extend_offer  # noqa: E402,F401
+from .pbcs.talent_onboarding import talent_onboarding_provision_employee  # noqa: E402,F401
+from .pbcs.talent_onboarding import talent_onboarding_record_background_check  # noqa: E402,F401
+from .pbcs.talent_onboarding import talent_onboarding_register_rule  # noqa: E402,F401
+from .pbcs.talent_onboarding import talent_onboarding_render_workbench  # noqa: E402,F401
+from .pbcs.talent_onboarding import talent_onboarding_runtime_capabilities  # noqa: E402,F401
+from .pbcs.talent_onboarding import talent_onboarding_runtime_smoke  # noqa: E402,F401
+from .pbcs.talent_onboarding import talent_onboarding_set_parameter  # noqa: E402,F401
+from .pbcs.talent_onboarding import talent_onboarding_ui_contract  # noqa: E402,F401
