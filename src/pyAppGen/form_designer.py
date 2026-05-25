@@ -14860,6 +14860,158 @@ def rad_parity_workbench(existing_paths: set[str] | None = None) -> dict:
     passing_component_readiness_checks = tuple(
         check["id"] for check in component_readiness["checks"] if check["ok"]
     )
+    required_component_behavior_checks = (
+        "all_components_have_behavior",
+        "render_behavior",
+        "validation_behavior",
+        "event_behavior",
+        "target_adapter_behavior",
+        "category_capability_behavior",
+        "design_surface_behavior",
+        "implementation_depth",
+    )
+    passing_component_behavior_checks = tuple(
+        check["id"] for check in usability_workbench["behavior_workbench"]["checks"] if check["ok"]
+    )
+    required_component_icon_components = component_names
+    passing_component_icon_components = tuple(
+        entry["component"]
+        for entry in usability_workbench["ide_readiness"]["entries"]
+        if entry["icon"].startswith("fa-")
+    )
+    required_component_design_actions = (
+        "inspect",
+        "edit_bindings",
+        "align_to_grid",
+        "bring_to_front",
+        "send_to_back",
+        "duplicate",
+        "delete",
+    )
+    passing_component_design_actions = tuple(
+        sorted(
+            {
+                action["id"]
+                for behavior in usability_workbench["behavior_workbench"]["behaviors"]
+                for action in behavior["design_surface"]["context_menu"]
+            }
+        )
+    )
+    required_component_design_gestures = (
+        "drag_from_toolbox",
+        "drop_on_canvas",
+        "resize_handles",
+        "keyboard_nudge",
+        "copy_paste",
+        "context_menu",
+    )
+    passing_component_design_gestures = tuple(
+        sorted(
+            {
+                gesture
+                for behavior in usability_workbench["behavior_workbench"]["behaviors"]
+                for gesture in behavior["design_surface"]["gestures"]
+            }
+        )
+    )
+    required_component_state_components = component_names
+    required_component_state_names = (
+        "created",
+        "loaded",
+        "visible",
+        "enabled",
+        "focused",
+        "invalid",
+    )
+    passing_component_state_components = tuple(
+        behavior["component"]
+        for behavior in usability_workbench["behavior_workbench"]["behaviors"]
+        if behavior["state_model"]["states"] and "runtime_state_round_trips" in behavior["state_model"]["guards"]
+    )
+    passing_component_state_names = tuple(
+        sorted(
+            {
+                state
+                for behavior in usability_workbench["behavior_workbench"]["behaviors"]
+                for state in behavior["state_model"]["states"]
+            }
+        )
+    )
+    required_component_serialization_components = component_names
+    required_component_serialization_streams = (
+        "text_design_stream",
+        "json_design_stream",
+        "binary_resource_stream",
+    )
+    passing_component_serialization_components = tuple(
+        behavior["component"]
+        for behavior in usability_workbench["behavior_workbench"]["behaviors"]
+        if set(required_component_serialization_streams) <= set(behavior["serialization"]["streams"])
+    )
+    required_component_binding_modes = ("read", "write", "command", "event")
+    passing_component_binding_modes = tuple(
+        sorted(
+            {
+                mode
+                for behavior in usability_workbench["behavior_workbench"]["behaviors"]
+                for mode in behavior["binding_surface"]["binding_modes"]
+            }
+        )
+    )
+    required_component_module_exports = (
+        "contract",
+        "render",
+        "validate_props",
+        "preview",
+        "behavior_contract",
+        "target_adapters",
+        "state_model",
+        "serialization_contract",
+        "binding_surface",
+        "component_capabilities",
+        "object_inspector",
+        "drop_instance",
+        "serialize_instance",
+        "apply_property",
+        "designer_metadata",
+        "design_surface",
+        "dispatch_event",
+        "test_plan",
+        "smoke_test",
+    )
+    passing_component_module_exports = tuple(
+        sorted(set.intersection(*(set(artifact["exports"]) for artifact in usability_workbench["component_files"])))
+    )
+    required_component_module_smoke_tests = (
+        "contract_has_renderers",
+        "render_returns_virtual_node",
+        "default_props_validate",
+        "unknown_props_fail_validation",
+        "preview_renders",
+        "behavior_contract_ok",
+        "target_adapters_declared",
+        "state_model_declared",
+        "serialization_contract_declared",
+        "binding_surface_declared",
+        "component_capabilities_declared",
+        "object_inspector_declared",
+        "drop_instance_declared",
+        "serialization_snapshot_declared",
+        "property_apply_declared",
+        "designer_metadata_declared",
+        "design_surface_declared",
+        "event_dispatch_declared",
+    )
+    passing_component_module_smoke_tests = tuple(
+        sorted(
+            set.intersection(
+                *(
+                    set(artifact["module_contract"]["smoke_tests"])
+                    for artifact in usability_workbench["component_files"]
+                )
+            )
+        )
+    )
     required_inspector_tabs = ("Properties", "Events")
     passing_inspector_tabs = tuple(object_inspector_contract()["tabs"])
     required_inspector_workbench_checks = (
@@ -16633,7 +16785,17 @@ def rad_parity_workbench(existing_paths: set[str] | None = None) -> dict:
             and set(required_component_ide_components) <= set(passing_component_ide_components)
             and set(required_component_analog_groups) <= set(passing_component_analog_groups)
             and set(required_component_readiness_phases) <= set(passing_component_readiness_phases)
-            and set(required_component_readiness_checks) <= set(passing_component_readiness_checks),
+            and set(required_component_readiness_checks) <= set(passing_component_readiness_checks)
+            and set(required_component_behavior_checks) <= set(passing_component_behavior_checks)
+            and set(required_component_icon_components) <= set(passing_component_icon_components)
+            and set(required_component_design_actions) <= set(passing_component_design_actions)
+            and set(required_component_design_gestures) <= set(passing_component_design_gestures)
+            and set(required_component_state_components) <= set(passing_component_state_components)
+            and set(required_component_state_names) <= set(passing_component_state_names)
+            and set(required_component_serialization_components) <= set(passing_component_serialization_components)
+            and set(required_component_binding_modes) <= set(passing_component_binding_modes)
+            and set(required_component_module_exports) <= set(passing_component_module_exports)
+            and set(required_component_module_smoke_tests) <= set(passing_component_module_smoke_tests),
             "required_categories": required_component_palette_categories,
             "passing_categories": passing_component_palette_categories,
             "required_components": required_component_names,
@@ -16662,6 +16824,27 @@ def rad_parity_workbench(existing_paths: set[str] | None = None) -> dict:
             "passing_readiness_phases": passing_component_readiness_phases,
             "required_readiness_checks": required_component_readiness_checks,
             "passing_readiness_checks": passing_component_readiness_checks,
+            "required_behavior_checks": required_component_behavior_checks,
+            "passing_behavior_checks": passing_component_behavior_checks,
+            "required_icon_components": required_component_icon_components,
+            "passing_icon_components": passing_component_icon_components,
+            "required_design_actions": required_component_design_actions,
+            "passing_design_actions": passing_component_design_actions,
+            "required_design_gestures": required_component_design_gestures,
+            "passing_design_gestures": passing_component_design_gestures,
+            "required_state_components": required_component_state_components,
+            "passing_state_components": passing_component_state_components,
+            "required_state_names": required_component_state_names,
+            "passing_state_names": passing_component_state_names,
+            "required_serialization_components": required_component_serialization_components,
+            "passing_serialization_components": passing_component_serialization_components,
+            "required_serialization_streams": required_component_serialization_streams,
+            "required_binding_modes": required_component_binding_modes,
+            "passing_binding_modes": passing_component_binding_modes,
+            "required_module_exports": required_component_module_exports,
+            "passing_module_exports": passing_component_module_exports,
+            "required_module_smoke_tests": required_component_module_smoke_tests,
+            "passing_module_smoke_tests": passing_component_module_smoke_tests,
             "required_component_count": 7,
             "passing_component_count": len(component_palette()),
             "evidence": {

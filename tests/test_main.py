@@ -3244,6 +3244,34 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     assert set(component_parity_gate["required_readiness_checks"]) <= set(
         component_parity_gate["passing_readiness_checks"]
     )
+    assert set(component_parity_gate["required_behavior_checks"]) <= set(
+        component_parity_gate["passing_behavior_checks"]
+    )
+    assert set(component_parity_gate["required_icon_components"]) <= set(
+        component_parity_gate["passing_icon_components"]
+    )
+    assert set(component_parity_gate["required_design_actions"]) <= set(
+        component_parity_gate["passing_design_actions"]
+    )
+    assert set(component_parity_gate["required_design_gestures"]) <= set(
+        component_parity_gate["passing_design_gestures"]
+    )
+    assert set(component_parity_gate["required_state_components"]) <= set(
+        component_parity_gate["passing_state_components"]
+    )
+    assert set(component_parity_gate["required_state_names"]) <= set(component_parity_gate["passing_state_names"])
+    assert set(component_parity_gate["required_serialization_components"]) <= set(
+        component_parity_gate["passing_serialization_components"]
+    )
+    assert set(component_parity_gate["required_binding_modes"]) <= set(
+        component_parity_gate["passing_binding_modes"]
+    )
+    assert set(component_parity_gate["required_module_exports"]) <= set(
+        component_parity_gate["passing_module_exports"]
+    )
+    assert set(component_parity_gate["required_module_smoke_tests"]) <= set(
+        component_parity_gate["passing_module_smoke_tests"]
+    )
     assert component_parity_gate["passing_component_count"] >= component_parity_gate["required_component_count"]
     usability_gate = next(
         check for check in audit["rad_parity"]["checks"] if check["id"] == "built_in_component_usability"
