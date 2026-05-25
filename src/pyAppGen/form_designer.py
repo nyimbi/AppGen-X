@@ -15229,6 +15229,133 @@ def rad_parity_workbench(existing_paths: set[str] | None = None) -> dict:
     passing_visual_depth_surfaces = tuple(
         surface for surface in required_visual_depth_surfaces if bool(visual_depth_contract[surface])
     )
+    required_visual_style_resources = (
+        "stylebook",
+        "theme_tokens",
+        "state_triggers",
+        "multi_resolution_bitmaps",
+        "platform_overrides",
+    )
+    passing_visual_style_resources = tuple(visual_depth_contract["style_resources"]["resources"])
+    required_visual_animation_nodes = (
+        "card.normal",
+        "card.hover",
+        "card.expanded",
+        "timeline.fade_in",
+        "path.reveal",
+    )
+    passing_visual_animation_nodes = tuple(
+        node["id"] for node in visual_depth_contract["state_graph"]["nodes"]
+    )
+    required_visual_effects = ("shadow", "blur", "glow", "shader_hook")
+    passing_visual_effects = tuple(
+        effect["effect"] for effect in visual_depth_contract["effect_stack"]["stack"]
+    )
+    required_visual_scene_kinds = ("viewport3d", "camera", "light", "mesh", "material")
+    passing_visual_scene_kinds = tuple(
+        node["kind"] for node in visual_depth_contract["scene_designer"]["scene_graph"]
+    )
+    required_visual_asset_formats = ("png", "webp", "svg", "gltf", "glb", "obj")
+    passing_visual_asset_formats = tuple(visual_depth_contract["asset_import"]["formats"])
+    required_visual_runtime_artifacts = (
+        "style_resources",
+        "timeline_runtime",
+        "effect_stack",
+        "scene_graph",
+        "asset_manifest",
+    )
+    passing_visual_runtime_artifacts = tuple(visual_depth_contract["preview_runtime"]["runtime_artifacts"])
+    required_visual_runtime_phases = (
+        "style_resolution",
+        "style_inheritance",
+        "timeline_interpolation",
+        "timeline_export",
+        "effect_fallback",
+        "scene_hit_testing",
+        "scene_transform_sync",
+    )
+    passing_visual_runtime_phases = tuple(
+        phase["phase"] for phase in visual_depth_workbench["runtime_replay"]["replay"] if phase["ok"]
+    )
+    required_visual_designer_phases = (
+        "author_style_override",
+        "author_timeline",
+        "validate_effect_stack",
+        "author_scene_graph",
+        "import_assets_and_preview",
+        "hit_test_and_transform",
+        "runtime_replay",
+    )
+    passing_visual_designer_phases = tuple(
+        phase["phase"]
+        for phase in visual_depth_workbench["designer_transaction_replay"]["replay"]
+        if phase["ok"]
+    )
+    required_visual_lifecycle_phases = (
+        "validate_style_tokens",
+        "export_timeline_runtime",
+        "assign_effect_fallbacks",
+        "validate_scene_materials",
+        "import_assets_and_diff_preview",
+        "route_hit_tests_and_transforms",
+        "runtime_and_designer_replay",
+    )
+    passing_visual_lifecycle_phases = tuple(
+        phase["phase"] for phase in visual_depth_workbench["lifecycle_replay"]["replay"] if phase["ok"]
+    )
+    required_visual_runtime_targets = ("web", "mobile", "desktop", "pwa")
+    passing_visual_runtime_targets = tuple(visual_depth_workbench["runtime_package"]["targets"])
+    required_visual_component_names = (
+        "StyleBook",
+        "FloatAnimation",
+        "ColorAnimation",
+        "PathAnimation",
+        "Effect",
+        "Viewport3D",
+        "Camera3D",
+        "Light3D",
+        "Mesh3D",
+    )
+    passing_visual_component_names = tuple(
+        artifact["component"]
+        for artifact in visual_depth_workbench["visual_component_module_artifacts"]
+        if artifact["ok"]
+    )
+    passing_visual_component_test_names = tuple(
+        artifact["component"]
+        for artifact in visual_depth_workbench["visual_component_test_artifacts"]
+        if artifact["ok"]
+    )
+    required_visual_design_surfaces = (
+        "style_authoring",
+        "timeline_authoring",
+        "effect_stack",
+        "scene_authoring",
+        "asset_import",
+        "runtime_package",
+    )
+    passing_visual_design_surfaces = tuple(
+        artifact["surface"]
+        for artifact in visual_depth_workbench["visual_design_module_artifacts"]
+        if artifact["ok"]
+    )
+    passing_visual_design_test_surfaces = tuple(
+        artifact["surface"]
+        for artifact in visual_depth_workbench["visual_design_test_artifacts"]
+        if artifact["ok"]
+    )
+    required_visual_readiness_phases = (
+        "author_style_resources",
+        "author_animation_timeline",
+        "validate_effect_stack",
+        "author_scene_and_assets",
+        "bind_hit_tests_and_components",
+        "replay_runtime_and_designer",
+        "package_runtime_targets",
+    )
+    passing_visual_readiness_phases = tuple(
+        phase["phase"] for phase in visual_depth_workbench["readiness"]["phases"] if phase["ok"]
+    )
     required_visual_depth_checks = (
         "style_resources",
         "animation_state_graph",
@@ -15766,9 +15893,54 @@ def rad_parity_workbench(existing_paths: set[str] | None = None) -> dict:
             "id": "cross_target_animation_effects_3d_depth",
             "ok": set(required_visual_depth_surfaces) <= set(passing_visual_depth_surfaces)
             and visual_depth_workbench["ok"]
-            and set(required_visual_depth_checks) <= set(passing_visual_depth_checks),
+            and set(required_visual_depth_checks) <= set(passing_visual_depth_checks)
+            and set(required_visual_style_resources) <= set(passing_visual_style_resources)
+            and set(required_visual_animation_nodes) <= set(passing_visual_animation_nodes)
+            and set(required_visual_effects) <= set(passing_visual_effects)
+            and set(required_visual_scene_kinds) <= set(passing_visual_scene_kinds)
+            and set(required_visual_asset_formats) <= set(passing_visual_asset_formats)
+            and set(required_visual_runtime_artifacts) <= set(passing_visual_runtime_artifacts)
+            and set(required_visual_runtime_phases) <= set(passing_visual_runtime_phases)
+            and set(required_visual_designer_phases) <= set(passing_visual_designer_phases)
+            and set(required_visual_lifecycle_phases) <= set(passing_visual_lifecycle_phases)
+            and set(required_visual_runtime_targets) <= set(passing_visual_runtime_targets)
+            and set(required_visual_component_names) <= set(passing_visual_component_names)
+            and set(required_visual_component_names) <= set(passing_visual_component_test_names)
+            and set(required_visual_design_surfaces) <= set(passing_visual_design_surfaces)
+            and set(required_visual_design_surfaces) <= set(passing_visual_design_test_surfaces)
+            and set(required_visual_readiness_phases) <= set(passing_visual_readiness_phases),
             "required_surfaces": required_visual_depth_surfaces,
             "passing_surfaces": passing_visual_depth_surfaces,
+            "required_style_resources": required_visual_style_resources,
+            "passing_style_resources": passing_visual_style_resources,
+            "required_animation_nodes": required_visual_animation_nodes,
+            "passing_animation_nodes": passing_visual_animation_nodes,
+            "required_effects": required_visual_effects,
+            "passing_effects": passing_visual_effects,
+            "required_scene_kinds": required_visual_scene_kinds,
+            "passing_scene_kinds": passing_visual_scene_kinds,
+            "required_asset_formats": required_visual_asset_formats,
+            "passing_asset_formats": passing_visual_asset_formats,
+            "required_runtime_artifacts": required_visual_runtime_artifacts,
+            "passing_runtime_artifacts": passing_visual_runtime_artifacts,
+            "required_runtime_phases": required_visual_runtime_phases,
+            "passing_runtime_phases": passing_visual_runtime_phases,
+            "required_designer_phases": required_visual_designer_phases,
+            "passing_designer_phases": passing_visual_designer_phases,
+            "required_lifecycle_phases": required_visual_lifecycle_phases,
+            "passing_lifecycle_phases": passing_visual_lifecycle_phases,
+            "required_runtime_targets": required_visual_runtime_targets,
+            "passing_runtime_targets": passing_visual_runtime_targets,
+            "required_component_names": required_visual_component_names,
+            "passing_component_names": passing_visual_component_names,
+            "required_component_test_names": required_visual_component_names,
+            "passing_component_test_names": passing_visual_component_test_names,
+            "required_design_surfaces": required_visual_design_surfaces,
+            "passing_design_surfaces": passing_visual_design_surfaces,
+            "required_design_test_surfaces": required_visual_design_surfaces,
+            "passing_design_test_surfaces": passing_visual_design_test_surfaces,
+            "required_readiness_phases": required_visual_readiness_phases,
+            "passing_readiness_phases": passing_visual_readiness_phases,
             "required_checks": required_visual_depth_checks,
             "passing_checks": passing_visual_depth_checks,
             "evidence": {"contract": visual_depth_contract, "workbench": visual_depth_workbench},
