@@ -2863,7 +2863,7 @@ def write_component_contract_files(output_dir):
         "Section", "Tabs", "Panel", "GroupBox", "RadioGroup", "RadioButton", "ListBox",
         "ListView", "TreeView", "Grid", "StringGrid", "PageControl", "Layout",
         "ScrollBox", "FlowLayout", "GridLayout", "VerticalBoxLayout", "HorizontalBoxLayout",
-        "MainMenu", "PopupMenu", "ToolBar", "ActionList", "Image",
+        "MainMenu", "PopupMenu", "ToolBar", "ActionList", "SplashScreen", "Image",
         "Shape", "PathShape", "Rectangle", "Ellipse", "Line", "Bitmap", "Chart", "ReportViewer",
         "WebBrowser", "Timer", "DataSource", "BindingSource", "RESTClient",
         "CameraView", "LocationSensor", "MotionSensor", "OrientationSensor", "NotificationCenter",
@@ -43641,6 +43641,7 @@ PALETTE = (
     {{"type": "PopupMenu", "label": "Popup Menu", "defaults": {{"w": 4, "h": 1}}}},
     {{"type": "ToolBar", "label": "Tool Bar", "defaults": {{"w": 12, "h": 1}}}},
     {{"type": "ActionList", "label": "Action List", "defaults": {{"w": 4, "h": 1}}}},
+    {{"type": "SplashScreen", "label": "Splash Screen", "defaults": {{"w": 12, "h": 6}}}},
     {{"type": "Image", "label": "Image", "defaults": {{"w": 4, "h": 3}}}},
     {{"type": "Shape", "label": "Shape", "defaults": {{"w": 3, "h": 3}}}},
     {{"type": "PathShape", "label": "Path Shape", "defaults": {{"w": 4, "h": 3}}}},
@@ -43759,7 +43760,7 @@ COMPONENT_ICON_OVERRIDES = dict(
     TreeView="fa-sitemap", Grid="fa-table", StringGrid="fa-table", PageControl="fa-columns", Layout="fa-th-large",
     ScrollBox="fa-arrows-v", FlowLayout="fa-exchange", GridLayout="fa-th", VerticalBoxLayout="fa-bars",
     HorizontalBoxLayout="fa-ellipsis-h", MainMenu="fa-bars", PopupMenu="fa-mouse-pointer", ToolBar="fa-wrench",
-    ActionList="fa-bolt", Image="fa-image", Shape="fa-square-o", PathShape="fa-code-fork", Rectangle="fa-square",
+    ActionList="fa-bolt", SplashScreen="fa-desktop", Image="fa-image", Shape="fa-square-o", PathShape="fa-code-fork", Rectangle="fa-square",
     Ellipse="fa-circle-o", Line="fa-minus", Bitmap="fa-picture-o", Chart="fa-bar-chart",
     ReportViewer="fa-file-text-o", WebBrowser="fa-globe", Timer="fa-clock-o", DataSource="fa-database",
     BindingSource="fa-random", RESTClient="fa-cloud", CameraView="fa-camera", LocationSensor="fa-location-arrow",
@@ -43774,7 +43775,7 @@ COMPONENT_ICON_OVERRIDES = dict(
 )
 
 CATEGORY_ICON_DEFAULTS = dict(
-    action="fa-bolt", analytics="fa-bar-chart", calendar="fa-calendar", choice="fa-check-square-o",
+    action="fa-bolt", app_shell="fa-desktop", analytics="fa-bar-chart", calendar="fa-calendar", choice="fa-check-square-o",
     container="fa-window-maximize", data="fa-table", data_access="fa-database", display="fa-font",
     effects="fa-magic", gesture="fa-hand-paper-o", graphics="fa-paint-brush", input="fa-keyboard-o",
     integration="fa-cloud", media="fa-image", menu="fa-bars", mobile="fa-mobile", navigation="fa-sitemap",
@@ -48331,6 +48332,7 @@ def _component_capability_operations(component_type, category):
         "media": ("select_asset", "validate_asset", "render_preview", "clear_asset"),
         "relationship": ("open_lookup", "filter_candidates", "select_record", "sync_foreign_key"),
         "action": ("evaluate_enabled", "execute_action", "dispatch_command", "record_result"),
+        "app_shell": ("render_splash", "build_main_menu", "open_context_menu", "apply_ui_tuning"),
         "container": ("measure_children", "arrange_children", "resolve_constraints", "publish_drop_zones"),
         "navigation": ("load_nodes", "expand_node", "select_node", "sync_selection"),
         "data": ("bind_dataset", "refresh_rows", "track_selection", "commit_edits"),
@@ -48393,7 +48395,7 @@ def component_designer_metadata_contract(component_type):
         "component": component_type,
         "palette": {{"category": contract["category"], "glyph": _module_name(component_type), "default_size": contract["default_size"]}},
         "inspector": {{"tabs": ("Properties", "Events", "Bindings", "Layout", "Accessibility"), "property_editors": contract["property_editors"], "event_editors": contract["events"]}},
-        "canvas": {{"drop_constraints": ("snap_to_grid", "no_overlap", "within_bounds"), "resize_handles": ("n", "e", "s", "w", "ne", "se", "sw", "nw"), "supports_nested_children": contract["category"] in {{"container", "menu", "three_d"}}}},
+        "canvas": {{"drop_constraints": ("snap_to_grid", "no_overlap", "within_bounds"), "resize_handles": ("n", "e", "s", "w", "ne", "se", "sw", "nw"), "supports_nested_children": contract["category"] in {{"container", "menu", "three_d", "app_shell"}}}},
         "side_effects": (),
     }}
 
@@ -48414,6 +48416,7 @@ def component_design_surface_contract(component_type):
     )
     category_actions = {{
         "action": ("edit_action", "assign_shortcut"),
+        "app_shell": ("edit_splash", "edit_main_menu", "edit_context_menus", "fine_tune_ui"),
         "analytics": ("edit_series", "preview_chart"),
         "calendar": ("edit_display_format", "validate_range"),
         "choice": ("edit_items", "toggle_multi_select"),
@@ -48550,6 +48553,115 @@ def component_behavior_workbench():
         "behaviors": behaviors,
         "checks": checks,
         "blocking_gaps": tuple(check for check in checks if not check["ok"]),
+    }}
+
+
+def app_shell_chrome_contract():
+    """Return generated splash, menu, context-menu, and UI tuning evidence."""
+    palette_components = {{item["type"] for item in PALETTE}}
+    required_components = ("SplashScreen", "MainMenu", "PopupMenu", "ToolBar", "ActionList")
+    splash = {{
+        "component": "SplashScreen",
+        "targets": ("web", "mobile", "desktop"),
+        "assets": ("splash.svg", "splash@2x.png", "splash-dark.svg"),
+        "states": ("cold_start", "warm_start", "offline_restore", "migration_progress"),
+        "bindings": ("app_name", "version", "tenant_brand", "startup_progress"),
+        "preview": ("light", "dark", "high_contrast", "reduced_motion"),
+    }}
+    main_menu = {{
+        "component": "MainMenu",
+        "designer": "menu_tree_editor",
+        "nodes": (
+            {{"id": "file", "caption": "File", "children": ("new", "open", "save", "exit")}},
+            {{"id": "edit", "caption": "Edit", "children": ("undo", "redo", "cut", "copy", "paste")}},
+            {{"id": "view", "caption": "View", "children": ("command_palette", "object_inspector", "data_bindings")}},
+        ),
+        "guards": ("stable_menu_ids", "shortcut_conflicts_checked", "role_visibility_checked"),
+    }}
+    context_menus = (
+        {{
+            "surface": "canvas",
+            "trigger": "secondary_click",
+            "items": ("inspect", "paste", "align_to_grid", "bring_to_front", "send_to_back"),
+            "guards": ("selection_context_required", "undo_scope_declared"),
+        }},
+        {{
+            "surface": "component",
+            "trigger": "secondary_click",
+            "items": ("inspect", "edit_bindings", "duplicate", "delete"),
+            "guards": ("component_id_required", "destructive_actions_confirmed"),
+        }},
+        {{
+            "surface": "data_grid",
+            "trigger": "secondary_click",
+            "items": ("preview_rows", "edit_columns", "open_lookup_designer"),
+            "guards": ("dataset_context_required", "database_columns_checked"),
+        }},
+    )
+    ui_tuning = (
+        {{"surface": "canvas", "tools": ("alignment_guides", "snap_grid", "spacing_handles"), "preview": "live"}},
+        {{"surface": "menu", "tools": ("shortcut_editor", "role_visibility_editor", "icon_picker"), "preview": "live"}},
+        {{"surface": "splash", "tools": ("asset_picker", "theme_variant_picker", "progress_binding"), "preview": "target_matrix"}},
+        {{"surface": "context_menu", "tools": ("action_picker", "guard_editor", "shortcut_conflict_checker"), "preview": "live"}},
+    )
+    operations = (
+        "edit_splash_screen",
+        "edit_main_menu_tree",
+        "edit_context_menu_surface",
+        "bind_menu_action",
+        "detect_shortcut_conflicts",
+        "preview_target_chrome",
+        "record_undoable_ui_tuning",
+    )
+    checks = (
+        {{
+            "id": "required_components_in_palette",
+            "ok": set(required_components) <= palette_components,
+            "required": required_components,
+            "passing": tuple(component for component in required_components if component in palette_components),
+        }},
+        {{
+            "id": "splash_targets_and_assets",
+            "ok": {{"web", "mobile", "desktop"}} <= set(splash["targets"]) and bool(splash["assets"]),
+            "evidence": splash,
+        }},
+        {{
+            "id": "main_menu_tree_editable",
+            "ok": main_menu["designer"] == "menu_tree_editor" and all(node["children"] for node in main_menu["nodes"]),
+            "evidence": main_menu,
+        }},
+        {{
+            "id": "context_menus_scoped",
+            "ok": {{"canvas", "component", "data_grid"}} <= {{menu["surface"] for menu in context_menus}}
+            and all("secondary_click" == menu["trigger"] for menu in context_menus),
+            "evidence": context_menus,
+        }},
+        {{
+            "id": "ui_tuning_previewable",
+            "ok": {{"canvas", "menu", "splash", "context_menu"}} <= {{item["surface"] for item in ui_tuning}}
+            and all(item["preview"] for item in ui_tuning),
+            "evidence": ui_tuning,
+        }},
+        {{
+            "id": "action_routing_undoable",
+            "ok": {{"bind_menu_action", "record_undoable_ui_tuning"}} <= set(operations),
+            "evidence": operations,
+        }},
+    )
+    ok = all(check["ok"] for check in checks)
+    return {{
+        "format": "appgen.generated-app-shell-chrome-contract.v1",
+        "ok": ok,
+        "decision": "approved" if ok else "blocked",
+        "required_components": required_components,
+        "splash": splash,
+        "main_menu": main_menu,
+        "context_menus": context_menus,
+        "ui_tuning": ui_tuning,
+        "operations": operations,
+        "checks": checks,
+        "blocking_gaps": tuple(check for check in checks if not check["ok"]),
+        "side_effects": (),
     }}
 
 
@@ -54597,6 +54709,7 @@ def _dfm_component_class(component_type):
         "PopupMenu": "TPopupMenu",
         "ToolBar": "TToolBar",
         "ActionList": "TActionList",
+        "SplashScreen": "TAppGenSplashScreen",
         "Image": "TImage",
         "Shape": "TShape",
         "PathShape": "TPath",
@@ -54726,7 +54839,7 @@ def _component_category(component_type):
         "RadioButton": "choice", "ListBox": "choice", "ListView": "data", "TreeView": "navigation", "Grid": "data",
         "StringGrid": "data", "PageControl": "container", "Layout": "container", "ScrollBox": "container",
         "FlowLayout": "container", "GridLayout": "container", "VerticalBoxLayout": "container", "HorizontalBoxLayout": "container", "MainMenu": "menu",
-        "PopupMenu": "menu", "ToolBar": "action", "ActionList": "action", "Image": "media", "Chart": "analytics",
+        "PopupMenu": "menu", "ToolBar": "action", "ActionList": "action", "SplashScreen": "app_shell", "Image": "media", "Chart": "analytics",
         "Shape": "graphics", "PathShape": "graphics", "Rectangle": "graphics", "Ellipse": "graphics", "Line": "graphics", "Bitmap": "graphics",
         "ReportViewer": "reports", "WebBrowser": "integration", "Timer": "nonvisual", "DataSource": "data",
         "BindingSource": "data", "RESTClient": "integration", "CameraView": "mobile", "LocationSensor": "mobile",
@@ -54752,6 +54865,7 @@ def _component_properties(component_type, category):
         "media": ("source", "accept", "preview", "max_size_mb", "alt_text"),
         "relationship": ("target_table", "label_fields", "search", "required"),
         "action": ("actions", "caption", "shortcut", "confirm", "enabled_when"),
+        "app_shell": ("image", "title", "subtitle", "duration", "progress", "theme", "skip_when_warm"),
         "container": ("caption", "align", "padding", "children", "layout"),
         "navigation": ("data_source", "parent_field", "label_field", "lazy_load"),
         "data": ("dataset", "auto_open", "filters", "sort", "events"),
@@ -54778,6 +54892,7 @@ def _component_field_types(category):
         "calendar": ("date", "datetime", "time"),
         "media": ("image", "file"),
         "relationship": ("relation", "int"),
+        "app_shell": (),
         "navigation": ("relation", "tree"),
         "data": ("dataset", "relation"),
         "analytics": ("dataset", "relation"),
@@ -54829,6 +54944,7 @@ def _component_events(component_type, category):
         "navigation": ("OnSelect", "OnExpand", "OnCollapse"),
         "data": ("OnOpen", "OnDataChange", "OnError"),
         "menu": ("OnClick", "OnPopup", "OnShortcut"),
+        "app_shell": ("OnShow", "OnHide", "OnProgress", "OnMenuAction"),
         "analytics": ("OnRefresh", "OnPointClick", "OnExport"),
         "reports": ("OnPreview", "OnExport", "OnPrint"),
         "integration": ("OnRequest", "OnResponse", "OnError"),
@@ -54856,6 +54972,8 @@ def _component_validation_rules(component_type, category):
         rules.append("target_surface_declared")
     if category == "menu":
         rules.append("role_visibility_reviewed")
+    if category == "app_shell":
+        rules.append("startup_preview_reviewed")
     return tuple(rules)
 
 
@@ -55246,6 +55364,7 @@ def rad_parity_workbench(existing_paths=()):
     package_workbench = component_package_workbench()
     component_readiness = component_parity_readiness_contract(existing_paths)
     package_readiness = component_package_readiness_contract()
+    app_shell = app_shell_chrome_contract()
     platform_lifecycle = platform_parity_lifecycle_replay_contract()
     requirement_audit = platform_parity_requirement_audit_contract()
     categories = {{category for suite in THIRD_PARTY_COMPONENT_SUITES for category in suite["categories"]}}
@@ -55254,6 +55373,7 @@ def rad_parity_workbench(existing_paths=()):
         {{"id": "artifact_coverage", "ok": not missing, "evidence": {{"required": required, "missing": missing}}}},
         {{"id": "native_ui_parity_component_parity", "ok": {{"Grid", "TreeView", "MainMenu", "PopupMenu", "DataSource", "RESTClient", "CameraView", "Viewport3D"}} <= palette_types and component_readiness["ok"], "evidence": {{"palette": tuple(sorted(palette_types)), "readiness": component_readiness}}}},
         {{"id": "built_in_component_usability", "ok": component_usability_workbench()["ok"], "evidence": component_usability_workbench()}},
+        {{"id": "app_shell_chrome_designer", "ok": app_shell["ok"] and not app_shell["side_effects"], "evidence": app_shell}},
         {{"id": "pascal_runtime_and_dfm_streaming", "ok": "text-dfm" in dfm_streaming_contract()["stream_formats"] and pascal_runtime_workbench()["ok"], "evidence": {{"streaming": dfm_streaming_contract(), "runtime": pascal_runtime_workbench()}}}},
         {{"id": "pascal_runtime_workbench", "ok": pascal_runtime_workbench()["ok"], "evidence": pascal_runtime_workbench()}},
         {{"id": "object_inspector_parity", "ok": {{"Properties", "Events"}} <= set(object_inspector_contract()["tabs"]) and object_inspector_workbench()["ok"], "evidence": {{"contract": object_inspector_contract(), "workbench": object_inspector_workbench()}}}},

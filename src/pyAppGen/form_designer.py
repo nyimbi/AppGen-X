@@ -211,6 +211,12 @@ COMPONENTS = {
         "default_size": {"w": 4, "h": 1},
         "properties": ("actions", "shortcuts", "roles", "enabled_when", "confirm"),
     },
+    "SplashScreen": {
+        "category": "app_shell",
+        "field_types": (),
+        "default_size": {"w": 12, "h": 6},
+        "properties": ("image", "title", "subtitle", "duration", "progress", "theme", "skip_when_warm"),
+    },
     "Image": {
         "category": "media",
         "field_types": ("image", "file"),
@@ -524,6 +530,7 @@ COMPONENT_ICON_OVERRIDES = dict(
     PopupMenu="fa-mouse-pointer",
     ToolBar="fa-wrench",
     ActionList="fa-bolt",
+    SplashScreen="fa-desktop",
     Image="fa-image",
     Shape="fa-square-o",
     PathShape="fa-code-fork",
@@ -575,6 +582,7 @@ COMPONENT_ICON_OVERRIDES = dict(
 
 CATEGORY_ICON_DEFAULTS = dict(
     action="fa-bolt",
+    app_shell="fa-desktop",
     analytics="fa-bar-chart",
     calendar="fa-calendar",
     choice="fa-check-square-o",
@@ -14830,6 +14838,7 @@ def rad_parity_workbench(existing_paths: set[str] | None = None) -> dict:
     binding_workbench = livebindings_workbench()
     data_tooling_contract = rad_data_tooling_contract()
     data_tooling_workbench = rad_data_tooling_workbench()
+    app_shell = app_shell_chrome_contract()
     mobile_contract = mobile_native_api_contract()
     mobile_workbench = mobile_native_api_workbench()
     platform_lifecycle = platform_parity_lifecycle_replay_contract()
@@ -14855,7 +14864,7 @@ def rad_parity_workbench(existing_paths: set[str] | None = None) -> dict:
         "deep_checks_have_passing_evidence",
         "lifecycle_replay_aligned",
     )
-    required_component_palette_categories = ("input", "calendar", "relationship", "media", "action")
+    required_component_palette_categories = ("input", "calendar", "relationship", "media", "action", "app_shell")
     passing_component_palette_categories = tuple(sorted(set(palette_categories())))
     required_component_usability_checks = (
         "complete_catalog",
@@ -14876,6 +14885,15 @@ def rad_parity_workbench(existing_paths: set[str] | None = None) -> dict:
         "ide_readiness_catalog",
         "component_parity_readiness",
     )
+    required_app_shell_checks = (
+        "required_components_in_palette",
+        "splash_targets_and_assets",
+        "main_menu_tree_editable",
+        "context_menus_scoped",
+        "ui_tuning_previewable",
+        "action_routing_undoable",
+    )
+    passing_app_shell_checks = tuple(check["id"] for check in app_shell["checks"] if check["ok"])
     passing_component_usability_checks = tuple(
         check["id"] for check in usability_workbench["checks"] if check["ok"]
     )
@@ -18094,6 +18112,25 @@ def rad_parity_workbench(existing_paths: set[str] | None = None) -> dict:
             "evidence": usability_workbench,
         },
         {
+            "id": "app_shell_chrome_designer",
+            "ok": app_shell["ok"]
+            and set(required_app_shell_checks) <= set(passing_app_shell_checks)
+            and set(app_shell["required_components"]) <= set(component_names)
+            and not app_shell["side_effects"],
+            "required_checks": required_app_shell_checks,
+            "passing_checks": passing_app_shell_checks,
+            "required_components": app_shell["required_components"],
+            "passing_components": tuple(
+                component for component in app_shell["required_components"] if component in component_names
+            ),
+            "splash": app_shell["splash"],
+            "main_menu": app_shell["main_menu"],
+            "context_menus": app_shell["context_menus"],
+            "ui_tuning": app_shell["ui_tuning"],
+            "operations": app_shell["operations"],
+            "evidence": app_shell,
+        },
+        {
             "id": "pascal_runtime_and_dfm_streaming",
             "ok": set(required_stream_formats) <= set(passing_stream_formats)
             and set(required_compiler_stages) <= set(passing_compiler_stages)
@@ -19339,6 +19376,7 @@ def _component_capability_operations(component: str, category: str) -> tuple[str
         "media": ("select_asset", "validate_asset", "render_preview", "clear_asset"),
         "relationship": ("open_lookup", "filter_candidates", "select_record", "sync_foreign_key"),
         "action": ("evaluate_enabled", "execute_action", "dispatch_command", "record_result"),
+        "app_shell": ("render_splash", "build_main_menu", "open_context_menu", "apply_ui_tuning"),
         "container": ("measure_children", "arrange_children", "resolve_constraints", "publish_drop_zones"),
         "navigation": ("load_nodes", "expand_node", "select_node", "sync_selection"),
         "data": ("bind_dataset", "refresh_rows", "track_selection", "commit_edits"),
@@ -19413,7 +19451,7 @@ def component_designer_metadata_contract(component: str) -> dict:
         "canvas": {
             "drop_constraints": ("snap_to_grid", "no_overlap", "within_bounds"),
             "resize_handles": ("n", "e", "s", "w", "ne", "se", "sw", "nw"),
-            "supports_nested_children": contract["category"] in {"container", "menu", "three_d"},
+            "supports_nested_children": contract["category"] in {"container", "menu", "three_d", "app_shell"},
         },
         "side_effects": (),
     }
@@ -19435,6 +19473,7 @@ def component_design_surface_contract(component: str) -> dict:
     )
     category_actions = {
         "action": ("edit_action", "assign_shortcut"),
+        "app_shell": ("edit_splash", "edit_main_menu", "edit_context_menus", "fine_tune_ui"),
         "analytics": ("edit_series", "preview_chart"),
         "calendar": ("edit_display_format", "validate_range"),
         "choice": ("edit_items", "toggle_multi_select"),
@@ -19578,6 +19617,115 @@ def component_behavior_workbench() -> dict:
         "behaviors": behaviors,
         "checks": checks,
         "blocking_gaps": tuple(check for check in checks if not check["ok"]),
+    }
+
+
+def app_shell_chrome_contract() -> dict:
+    """Return first-class splash, menu, context-menu, and UI tuning evidence."""
+    palette_components = {item["component"] for item in component_palette()}
+    required_components = ("SplashScreen", "MainMenu", "PopupMenu", "ToolBar", "ActionList")
+    splash = {
+        "component": "SplashScreen",
+        "targets": ("web", "mobile", "desktop"),
+        "assets": ("splash.svg", "splash@2x.png", "splash-dark.svg"),
+        "states": ("cold_start", "warm_start", "offline_restore", "migration_progress"),
+        "bindings": ("app_name", "version", "tenant_brand", "startup_progress"),
+        "preview": ("light", "dark", "high_contrast", "reduced_motion"),
+    }
+    main_menu = {
+        "component": "MainMenu",
+        "designer": "menu_tree_editor",
+        "nodes": (
+            {"id": "file", "caption": "File", "children": ("new", "open", "save", "exit")},
+            {"id": "edit", "caption": "Edit", "children": ("undo", "redo", "cut", "copy", "paste")},
+            {"id": "view", "caption": "View", "children": ("command_palette", "object_inspector", "data_bindings")},
+        ),
+        "guards": ("stable_menu_ids", "shortcut_conflicts_checked", "role_visibility_checked"),
+    }
+    context_menus = (
+        {
+            "surface": "canvas",
+            "trigger": "secondary_click",
+            "items": ("inspect", "paste", "align_to_grid", "bring_to_front", "send_to_back"),
+            "guards": ("selection_context_required", "undo_scope_declared"),
+        },
+        {
+            "surface": "component",
+            "trigger": "secondary_click",
+            "items": ("inspect", "edit_bindings", "duplicate", "delete"),
+            "guards": ("component_id_required", "destructive_actions_confirmed"),
+        },
+        {
+            "surface": "data_grid",
+            "trigger": "secondary_click",
+            "items": ("preview_rows", "edit_columns", "open_lookup_designer"),
+            "guards": ("dataset_context_required", "database_columns_checked"),
+        },
+    )
+    ui_tuning = (
+        {"surface": "canvas", "tools": ("alignment_guides", "snap_grid", "spacing_handles"), "preview": "live"},
+        {"surface": "menu", "tools": ("shortcut_editor", "role_visibility_editor", "icon_picker"), "preview": "live"},
+        {"surface": "splash", "tools": ("asset_picker", "theme_variant_picker", "progress_binding"), "preview": "target_matrix"},
+        {"surface": "context_menu", "tools": ("action_picker", "guard_editor", "shortcut_conflict_checker"), "preview": "live"},
+    )
+    operations = (
+        "edit_splash_screen",
+        "edit_main_menu_tree",
+        "edit_context_menu_surface",
+        "bind_menu_action",
+        "detect_shortcut_conflicts",
+        "preview_target_chrome",
+        "record_undoable_ui_tuning",
+    )
+    checks = (
+        {
+            "id": "required_components_in_palette",
+            "ok": set(required_components) <= palette_components,
+            "required": required_components,
+            "passing": tuple(component for component in required_components if component in palette_components),
+        },
+        {
+            "id": "splash_targets_and_assets",
+            "ok": {"web", "mobile", "desktop"} <= set(splash["targets"]) and bool(splash["assets"]),
+            "evidence": splash,
+        },
+        {
+            "id": "main_menu_tree_editable",
+            "ok": main_menu["designer"] == "menu_tree_editor" and all(node["children"] for node in main_menu["nodes"]),
+            "evidence": main_menu,
+        },
+        {
+            "id": "context_menus_scoped",
+            "ok": {"canvas", "component", "data_grid"} <= {menu["surface"] for menu in context_menus}
+            and all("secondary_click" == menu["trigger"] for menu in context_menus),
+            "evidence": context_menus,
+        },
+        {
+            "id": "ui_tuning_previewable",
+            "ok": {"canvas", "menu", "splash", "context_menu"} <= {item["surface"] for item in ui_tuning}
+            and all(item["preview"] for item in ui_tuning),
+            "evidence": ui_tuning,
+        },
+        {
+            "id": "action_routing_undoable",
+            "ok": {"bind_menu_action", "record_undoable_ui_tuning"} <= set(operations),
+            "evidence": operations,
+        },
+    )
+    ok = all(check["ok"] for check in checks)
+    return {
+        "format": "appgen.app-shell-chrome-contract.v1",
+        "ok": ok,
+        "decision": "approved" if ok else "blocked",
+        "required_components": required_components,
+        "splash": splash,
+        "main_menu": main_menu,
+        "context_menus": context_menus,
+        "ui_tuning": ui_tuning,
+        "operations": operations,
+        "checks": checks,
+        "blocking_gaps": tuple(check for check in checks if not check["ok"]),
+        "side_effects": (),
     }
 
 
@@ -21173,6 +21321,7 @@ def form_designer_generation_smoke_audit(source: str = FORM_DESIGNER_SAMPLE_DSL)
     required_generated_platform_parity_checks = (
         "native_ui_parity_component_parity",
         "built_in_component_usability",
+        "app_shell_chrome_designer",
         "pascal_runtime_and_dfm_streaming",
         "pascal_runtime_workbench",
         "object_inspector_parity",
@@ -21592,6 +21741,7 @@ def form_designer_release_audit(existing_paths: set[str] | None = None) -> dict:
         "relationship",
         "media",
         "action",
+        "app_shell",
         "data",
         "menu",
         "mobile",
@@ -21630,6 +21780,7 @@ def form_designer_release_audit(existing_paths: set[str] | None = None) -> dict:
         "PopupMenu",
         "ToolBar",
         "ActionList",
+        "SplashScreen",
         "Image",
         "Shape",
         "PathShape",
@@ -22283,6 +22434,7 @@ def _dfm_component_class(component: str) -> str:
         "PopupMenu": "TPopupMenu",
         "ToolBar": "TToolBar",
         "ActionList": "TActionList",
+        "SplashScreen": "TAppGenSplashScreen",
         "Image": "TImage",
         "Shape": "TShape",
         "PathShape": "TPath",
@@ -22398,7 +22550,7 @@ def _default_property_value(name: str, component: str, category: str) -> object:
         return 1 if name != "duration" else 200
     if name in {"items", "actions", "tabs", "series", "bindings", "validators", "converters", "channels", "lights", "models", "materials", "export_formats", "headers", "children", "areas", "responsive_breakpoints", "style_books", "gestures", "targets", "recognizers", "conflicts", "axes", "fields", "indexes"}:
         return ()
-    if name in {"target", "source", "data_source", "dataset", "url", "base_url", "report", "camera", "group", "shape", "fill", "stroke", "path_data", "scale", "scale_mode", "cache_policy", "orientation_mode", "start_value", "end_value", "start_color", "end_color", "theme", "resources", "variants", "platform_overrides", "active_style", "platform_rules", "kind", "direction", "driver", "connection_name", "transaction", "table", "connection", "provider", "change_log", "merge_policy", "mesh", "material", "position", "rotation", "light_type", "color"}:
+    if name in {"target", "source", "data_source", "dataset", "url", "base_url", "report", "camera", "group", "shape", "fill", "stroke", "path_data", "scale", "scale_mode", "cache_policy", "orientation_mode", "start_value", "end_value", "start_color", "end_color", "theme", "resources", "variants", "platform_overrides", "active_style", "platform_rules", "kind", "direction", "driver", "connection_name", "transaction", "table", "connection", "provider", "change_log", "merge_policy", "mesh", "material", "position", "rotation", "light_type", "color", "image", "progress"}:
         return ""
     if name == "label":
         return component
@@ -22430,6 +22582,7 @@ def _component_events(component: str, category: str) -> tuple[str, ...]:
         "navigation": ("OnSelect", "OnExpand", "OnCollapse"),
         "data": ("OnOpen", "OnDataChange", "OnError"),
         "menu": ("OnClick", "OnPopup", "OnShortcut"),
+        "app_shell": ("OnShow", "OnHide", "OnProgress", "OnMenuAction"),
         "analytics": ("OnRefresh", "OnPointClick", "OnExport"),
         "reports": ("OnPreview", "OnExport", "OnPrint"),
         "integration": ("OnRequest", "OnResponse", "OnError"),
@@ -22457,6 +22610,8 @@ def _component_validation_rules(component: str, category: str) -> tuple[str, ...
         rules.append("target_surface_declared")
     if category == "menu":
         rules.append("role_visibility_reviewed")
+    if category == "app_shell":
+        rules.append("startup_preview_reviewed")
     return tuple(rules)
 
 

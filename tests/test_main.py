@@ -113,6 +113,7 @@ from pyAppGen.form_designer import component_test_file_manifest
 from pyAppGen.form_designer import component_ide_readiness_catalog
 from pyAppGen.form_designer import component_palette
 from pyAppGen.form_designer import component_usability_workbench
+from pyAppGen.form_designer import app_shell_chrome_contract
 from pyAppGen.form_designer import cross_target_author_scene_operation
 from pyAppGen.form_designer import cross_target_author_style_operation
 from pyAppGen.form_designer import cross_target_author_timeline_operation
@@ -1500,13 +1501,24 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     assert {"TextBox", "TextArea", "DatePicker", "Lookup", "FileUpload"} <= {
         item["component"] for item in palette
     }
-    assert {"Grid", "TreeView", "MainMenu", "PopupMenu", "CameraView", "Viewport3D"} <= {
+    assert {"Grid", "TreeView", "MainMenu", "PopupMenu", "SplashScreen", "CameraView", "Viewport3D"} <= {
         item["component"] for item in palette
     }
     assert all(item["icon"].startswith("fa-") for item in palette)
     assert {"fa-table", "fa-keyboard-o", "fa-cube", "fa-database"} <= {
         item["icon"] for item in palette
     }
+    app_shell = app_shell_chrome_contract()
+    assert app_shell["format"] == "appgen.app-shell-chrome-contract.v1"
+    assert app_shell["ok"] is True
+    assert {"SplashScreen", "MainMenu", "PopupMenu", "ToolBar", "ActionList"} <= set(
+        app_shell["required_components"]
+    )
+    assert {"web", "mobile", "desktop"} <= set(app_shell["splash"]["targets"])
+    assert {"canvas", "component", "data_grid"} <= {
+        menu["surface"] for menu in app_shell["context_menus"]
+    }
+    assert "bind_menu_action" in app_shell["operations"]
     assert REQUESTED_COMPONENT_ANALOGS <= {item["component"] for item in palette}
     analog_matrix = component_analog_matrix()
     assert {item["source"] for item in analog_matrix} == REQUESTED_COMPONENT_ANALOG_SOURCES
@@ -3245,6 +3257,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     assert {
         "native_ui_parity_component_parity",
         "built_in_component_usability",
+        "app_shell_chrome_designer",
         "pascal_runtime_and_dfm_streaming",
         "pascal_runtime_workbench",
         "object_inspector_parity",
@@ -3919,6 +3932,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     assert {
         "native_ui_parity_component_parity",
         "built_in_component_usability",
+        "app_shell_chrome_designer",
         "pascal_runtime_and_dfm_streaming",
         "pascal_runtime_workbench",
         "object_inspector_parity",
@@ -4318,6 +4332,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     assert {
         "native_ui_parity_component_parity",
         "built_in_component_usability",
+        "app_shell_chrome_designer",
         "pascal_runtime_and_dfm_streaming",
         "pascal_runtime_workbench",
         "object_inspector_parity",
@@ -13390,10 +13405,19 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert view_composition.view_composition_release_gate({"app/view_composition.py"})["ok"] is False
     assert any(item["type"] == "TextBox" for item in form_designer.component_palette())
     assert any(item["type"] == "DateTimePicker" for item in form_designer.component_palette())
+    assert any(item["type"] == "SplashScreen" for item in form_designer.component_palette())
     assert all(item["icon"].startswith("fa-") for item in form_designer.component_palette())
     assert {"fa-table", "fa-keyboard-o", "fa-cube", "fa-database"} <= {
         item["icon"] for item in form_designer.component_palette()
     }
+    generated_shell = form_designer.app_shell_chrome_contract()
+    assert generated_shell["format"] == "appgen.generated-app-shell-chrome-contract.v1"
+    assert generated_shell["ok"] is True
+    assert {"SplashScreen", "MainMenu", "PopupMenu", "ToolBar", "ActionList"} <= set(
+        generated_shell["required_components"]
+    )
+    assert {"web", "mobile", "desktop"} <= set(generated_shell["splash"]["targets"])
+    assert "record_undoable_ui_tuning" in generated_shell["operations"]
     assert form_designer.field_component("Author", "birth_date")["type"] == "DatePicker"
     assert form_designer.field_component("Author", "last_seen_at")["type"] == "DateTimePicker"
     assert form_designer.field_component("Author", "appointment_time")["type"] == "TimePicker"
