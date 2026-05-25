@@ -132,6 +132,8 @@ from pyAppGen.form_designer import cross_target_visual_depth_workbench
 from pyAppGen.form_designer import cross_target_visual_lifecycle_replay_contract
 from pyAppGen.form_designer import cross_target_visual_readiness_contract
 from pyAppGen.form_designer import cross_target_visual_runtime_package_contract
+from pyAppGen.form_designer import visual_runtime_pipeline_module_file_manifest
+from pyAppGen.form_designer import visual_runtime_pipeline_test_module_file_manifest
 from pyAppGen.form_designer import design_time_package_manager_workbench
 from pyAppGen.form_designer import detect_overlaps
 from pyAppGen.form_designer import database_backed_form_column_guard
@@ -2465,6 +2467,8 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "visual_component_module_tests",
         "visual_design_modules",
         "visual_design_module_tests",
+        "visual_runtime_pipeline_modules",
+        "visual_runtime_pipeline_module_tests",
         "actionable_visual_operations",
         "visual_readiness_contract",
     } == {check["id"] for check in visual_depth["checks"]}
@@ -2590,6 +2594,24 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "test_visual_design_ide_module_smoke" in item["exports"]
         for item in visual_depth["visual_design_test_artifacts"]
     )
+    assert len(visual_depth["visual_runtime_pipeline_artifacts"]) == 5
+    assert {
+        "style_resolution",
+        "timeline_playback",
+        "effect_fallback",
+        "scene_rendering",
+        "asset_resolution",
+    } == {item["surface"] for item in visual_depth["visual_runtime_pipeline_artifacts"]}
+    assert {item["surface"] for item in visual_depth["visual_runtime_pipeline_test_artifacts"]} == {
+        item["surface"] for item in visual_depth["visual_runtime_pipeline_artifacts"]
+    }
+    assert all("run_runtime_pipeline" in item["exports"] for item in visual_depth["visual_runtime_pipeline_artifacts"])
+    assert all(
+        "test_visual_runtime_pipeline_module_smoke" in item["exports"]
+        for item in visual_depth["visual_runtime_pipeline_test_artifacts"]
+    )
+    assert len(visual_runtime_pipeline_module_file_manifest()) == 5
+    assert len(visual_runtime_pipeline_test_module_file_manifest()) == 5
     visual_readiness = cross_target_visual_readiness_contract()
     assert visual_readiness["format"] == "appgen.cross-target-visual-readiness-contract.v1"
     assert visual_readiness["ok"] is True
@@ -4260,6 +4282,8 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "visual_component_module_tests",
         "visual_design_modules",
         "visual_design_module_tests",
+        "visual_runtime_pipeline_modules",
+        "visual_runtime_pipeline_module_tests",
     } <= set(requirements_by_id["cross_target_visual_depth"]["deep_checks"])
     source_required_passing_workbench_checks = (
         (
@@ -4392,6 +4416,12 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     assert {
         item["path"] for item in handler_architecture_module_test_file_manifest()
     } <= set(smoke["compiled_artifacts"])
+    assert {
+        item["path"] for item in visual_runtime_pipeline_module_file_manifest()
+    } <= set(smoke["compiled_artifacts"])
+    assert {
+        item["path"] for item in visual_runtime_pipeline_test_module_file_manifest()
+    } <= set(smoke["compiled_artifacts"])
     assert "generated_component_file_coverage" in {
         check["id"] for check in smoke["checks"]
     }
@@ -4400,6 +4430,8 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     assert coverage["component_wiring_module_test_count"] == 4
     assert coverage["handler_architecture_module_count"] == 4
     assert coverage["handler_architecture_module_test_count"] == 4
+    assert coverage["visual_runtime_pipeline_count"] == 5
+    assert coverage["visual_runtime_pipeline_test_count"] == 5
     release_contracts = next(check for check in smoke["checks"] if check["id"] == "generated_release_contracts")
     assert release_contracts["ok"] is True
     assert {
@@ -4551,6 +4583,10 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "component_specs_ready",
         "visual_component_modules_ready",
         "visual_component_tests_ready",
+        "visual_design_modules_ready",
+        "visual_design_tests_ready",
+        "visual_runtime_pipeline_modules_ready",
+        "visual_runtime_pipeline_tests_ready",
         "runtime_package_ready",
         "runtime_replay_ready",
     } <= set(visual_depth_smoke["passing_checks"])
@@ -13611,6 +13647,16 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         for path in (output_dir / "handler_architecture_module_tests").glob("*.py")
         if path.name != "__init__.py"
     )
+    generated_form_designer_paths.update(
+        f"app/visual_runtime_pipeline_modules/{path.name}"
+        for path in (output_dir / "visual_runtime_pipeline_modules").glob("*.py")
+        if path.name != "__init__.py"
+    )
+    generated_form_designer_paths.update(
+        f"app/visual_runtime_pipeline_module_tests/{path.name}"
+        for path in (output_dir / "visual_runtime_pipeline_module_tests").glob("*.py")
+        if path.name != "__init__.py"
+    )
     workbench = form_designer.form_designer_workbench(generated_form_designer_paths)
     assert workbench["format"] == "appgen.form-designer-workbench.v1"
     assert workbench["ok"] is True
@@ -13920,6 +13966,8 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "visual_component_module_tests",
         "visual_design_modules",
         "visual_design_module_tests",
+        "visual_runtime_pipeline_modules",
+        "visual_runtime_pipeline_module_tests",
     } <= set(generated_requirements_by_id["cross_target_visual_depth"]["deep_checks"])
     generated_required_passing_workbench_checks = (
         (
@@ -15431,6 +15479,8 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "visual_component_module_tests",
         "visual_design_modules",
         "visual_design_module_tests",
+        "visual_runtime_pipeline_modules",
+        "visual_runtime_pipeline_module_tests",
         "actionable_visual_operations",
         "visual_readiness_contract",
     } == {check["id"] for check in generated_visual_depth["checks"]}
@@ -15542,6 +15592,25 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "test_visual_design_ide_module_smoke" in item["exports"]
         for item in generated_visual_depth["visual_design_test_artifacts"]
     )
+    assert len(generated_visual_depth["visual_runtime_pipeline_artifacts"]) == 5
+    assert {
+        "style_resolution",
+        "timeline_playback",
+        "effect_fallback",
+        "scene_rendering",
+        "asset_resolution",
+    } == {item["surface"] for item in generated_visual_depth["visual_runtime_pipeline_artifacts"]}
+    assert {item["surface"] for item in generated_visual_depth["visual_runtime_pipeline_test_artifacts"]} == {
+        item["surface"] for item in generated_visual_depth["visual_runtime_pipeline_artifacts"]
+    }
+    assert all(
+        "run_runtime_pipeline" in item["exports"]
+        for item in generated_visual_depth["visual_runtime_pipeline_artifacts"]
+    )
+    assert all(
+        "test_visual_runtime_pipeline_module_smoke" in item["exports"]
+        for item in generated_visual_depth["visual_runtime_pipeline_test_artifacts"]
+    )
     generated_visual_readiness = form_designer.cross_target_visual_readiness_contract()
     assert generated_visual_readiness["format"] == "appgen.generated-cross-target-visual-readiness-contract.v1"
     assert generated_visual_readiness["ok"] is True
@@ -15586,6 +15655,8 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "visual_component_tests_ready",
         "visual_design_modules_ready",
         "visual_design_tests_ready",
+        "visual_runtime_pipeline_modules_ready",
+        "visual_runtime_pipeline_tests_ready",
         "runtime_package_ready",
         "runtime_replay_ready",
     } <= set(visual_depth_runtime_smoke["checks"])
@@ -15593,10 +15664,14 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     visual_test_manifest = visual_depth_runtime.visual_component_test_module_manifest()
     visual_design_manifest = visual_depth_runtime.visual_design_ide_module_manifest()
     visual_design_test_manifest = visual_depth_runtime.visual_design_ide_test_module_manifest()
+    visual_runtime_pipeline_manifest = visual_depth_runtime.visual_runtime_pipeline_module_manifest()
+    visual_runtime_pipeline_test_manifest = visual_depth_runtime.visual_runtime_pipeline_test_module_manifest()
     assert visual_module_manifest["ok"] is True
     assert visual_test_manifest["ok"] is True
     assert visual_design_manifest["ok"] is True
     assert visual_design_test_manifest["ok"] is True
+    assert visual_runtime_pipeline_manifest["ok"] is True
+    assert visual_runtime_pipeline_test_manifest["ok"] is True
     assert {item["component"] for item in visual_module_manifest["components"]} == {
         spec["component"] for spec in generated_visual_specs["specs"]
     }
@@ -15618,6 +15693,20 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "scene_authoring",
         "asset_import",
         "runtime_package",
+    }
+    assert {item["surface"] for item in visual_runtime_pipeline_manifest["modules"]} == {
+        "style_resolution",
+        "timeline_playback",
+        "effect_fallback",
+        "scene_rendering",
+        "asset_resolution",
+    }
+    assert {item["surface"] for item in visual_runtime_pipeline_test_manifest["tests"]} == {
+        "style_resolution",
+        "timeline_playback",
+        "effect_fallback",
+        "scene_rendering",
+        "asset_resolution",
     }
     viewport_component = _load_module(output_dir / "visual_components" / "viewport3_d.py", "generated_viewport_visual_component")
     viewport_smoke = viewport_component.smoke_test()
@@ -15650,6 +15739,21 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         test_path = output_dir / item["path"].replace("app/", "")
         py_compile.compile(str(test_path), doraise=True)
         module = _load_module(test_path, f"generated_visual_design_ide_module_test_{item['module']}")
+        assert module.smoke_test()["ok"] is True
+    for item in visual_runtime_pipeline_manifest["modules"]:
+        module_path = output_dir / item["path"].replace("app/", "")
+        py_compile.compile(str(module_path), doraise=True)
+        module = _load_module(module_path, f"generated_visual_runtime_pipeline_module_{item['module']}")
+        assert module.module_contract()["ok"] is True
+        assert module.visual_runtime_pipeline_manifest()["ok"] is True
+        assert module.run_runtime_pipeline()["ok"] is True
+        assert module.runtime_context()["ok"] is True
+        assert module.asset_context()["ok"] is True
+        assert module.smoke_test()["ok"] is True
+    for item in visual_runtime_pipeline_test_manifest["tests"]:
+        test_path = output_dir / item["path"].replace("app/", "")
+        py_compile.compile(str(test_path), doraise=True)
+        module = _load_module(test_path, f"generated_visual_runtime_pipeline_module_test_{item['module']}")
         assert module.smoke_test()["ok"] is True
     visual_depth_replay = visual_depth_runtime.replay_visual_depth_runtime()
     assert visual_depth_replay["ok"] is True

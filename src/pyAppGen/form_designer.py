@@ -13984,6 +13984,8 @@ def cross_target_visual_depth_workbench() -> dict:
     visual_component_test_artifacts = visual_component_test_file_manifest()
     visual_design_module_artifacts = visual_design_ide_module_file_manifest()
     visual_design_test_artifacts = visual_design_ide_test_module_file_manifest()
+    visual_runtime_pipeline_artifacts = visual_runtime_pipeline_module_file_manifest()
+    visual_runtime_pipeline_test_artifacts = visual_runtime_pipeline_test_module_file_manifest()
     readiness = cross_target_visual_readiness_contract()
     checks = (
         {
@@ -14246,6 +14248,31 @@ def cross_target_visual_depth_workbench() -> dict:
             "evidence": visual_design_test_artifacts,
         },
         {
+            "id": "visual_runtime_pipeline_modules",
+            "ok": len(visual_runtime_pipeline_artifacts) == 5
+            and {
+                "style_resolution",
+                "timeline_playback",
+                "effect_fallback",
+                "scene_rendering",
+                "asset_resolution",
+            }
+            <= {item["surface"] for item in visual_runtime_pipeline_artifacts}
+            and all(item["ok"] and "run_runtime_pipeline" in item["exports"] for item in visual_runtime_pipeline_artifacts),
+            "evidence": visual_runtime_pipeline_artifacts,
+        },
+        {
+            "id": "visual_runtime_pipeline_module_tests",
+            "ok": len(visual_runtime_pipeline_test_artifacts) == len(visual_runtime_pipeline_artifacts)
+            and {item["surface"] for item in visual_runtime_pipeline_test_artifacts}
+            == {item["surface"] for item in visual_runtime_pipeline_artifacts}
+            and all(
+                "test_visual_runtime_pipeline_module_smoke" in item["exports"]
+                for item in visual_runtime_pipeline_test_artifacts
+            ),
+            "evidence": visual_runtime_pipeline_test_artifacts,
+        },
+        {
             "id": "actionable_visual_operations",
             "ok": actionable_operations["ok"]
             and {
@@ -14313,6 +14340,8 @@ def cross_target_visual_depth_workbench() -> dict:
         "visual_component_test_artifacts": visual_component_test_artifacts,
         "visual_design_module_artifacts": visual_design_module_artifacts,
         "visual_design_test_artifacts": visual_design_test_artifacts,
+        "visual_runtime_pipeline_artifacts": visual_runtime_pipeline_artifacts,
+        "visual_runtime_pipeline_test_artifacts": visual_runtime_pipeline_test_artifacts,
         "actionable_operations": actionable_operations,
         "readiness": readiness,
         "checks": checks,
@@ -14501,6 +14530,7 @@ def platform_parity_lifecycle_replay_contract() -> dict:
                 "visual_lifecycle_replay",
                 "visual_component_modules",
                 "visual_design_modules",
+                "visual_runtime_pipeline_modules",
             } <= visual_passing_checks
             and "hit_tests_before_designer_replay" in visual_lifecycle["guards"],
             "evidence": {
@@ -14901,6 +14931,8 @@ def platform_parity_requirement_audit_contract() -> dict:
                 "visual_component_module_tests",
                 "visual_design_modules",
                 "visual_design_module_tests",
+                "visual_runtime_pipeline_modules",
+                "visual_runtime_pipeline_module_tests",
             } <= {check["id"] for check in visual["checks"] if check["ok"]},
             "deep_checks": (
                 "style_ready",
@@ -14913,6 +14945,8 @@ def platform_parity_requirement_audit_contract() -> dict:
                 "visual_component_module_tests",
                 "visual_design_modules",
                 "visual_design_module_tests",
+                "visual_runtime_pipeline_modules",
+                "visual_runtime_pipeline_module_tests",
                 "phase_order_ready",
             ),
             "evidence": {"workbench": visual, "lifecycle": visual_lifecycle, "readiness": visual_readiness},
@@ -17312,6 +17346,8 @@ def rad_parity_workbench(existing_paths: set[str] | None = None) -> dict:
         "visual_component_module_tests",
         "visual_design_modules",
         "visual_design_module_tests",
+        "visual_runtime_pipeline_modules",
+        "visual_runtime_pipeline_module_tests",
         "actionable_visual_operations",
         "visual_readiness_contract",
     )
@@ -20498,6 +20534,55 @@ def visual_design_ide_test_module_file_manifest() -> tuple[dict, ...]:
     )
 
 
+def visual_runtime_pipeline_module_file_manifest() -> tuple[dict, ...]:
+    """Return visual runtime pipeline modules expected in generated apps."""
+    modules = (
+        ("style_resolver_module", "style_resolution"),
+        ("timeline_player_module", "timeline_playback"),
+        ("effect_fallback_resolver_module", "effect_fallback"),
+        ("scene_renderer_module", "scene_rendering"),
+        ("asset_resolver_module", "asset_resolution"),
+    )
+    exports = (
+        "module_contract",
+        "visual_runtime_pipeline_manifest",
+        "run_runtime_pipeline",
+        "runtime_context",
+        "asset_context",
+        "smoke_test",
+    )
+    return tuple(
+        {
+            "module": module,
+            "surface": surface,
+            "path": f"app/visual_runtime_pipeline_modules/{module}.py",
+            "exports": exports,
+            "ok": bool(module) and bool(surface),
+        }
+        for module, surface in modules
+    )
+
+
+def visual_runtime_pipeline_test_module_file_manifest() -> tuple[dict, ...]:
+    """Return generated visual runtime pipeline test files expected in apps."""
+    return tuple(
+        {
+            "module": item["module"],
+            "surface": item["surface"],
+            "path": item["path"].replace("app/visual_runtime_pipeline_modules/", "app/visual_runtime_pipeline_module_tests/test_"),
+            "target": item["path"],
+            "exports": (
+                "load_visual_runtime_pipeline_module",
+                "test_visual_runtime_pipeline_module_contract",
+                "test_visual_runtime_pipeline_module_smoke",
+                "smoke_test",
+            ),
+            "ok": item["ok"],
+        }
+        for item in visual_runtime_pipeline_module_file_manifest()
+    )
+
+
 def data_tooling_module_file_manifest() -> tuple[dict, ...]:
     """Return generated data tooling module files expected in generated apps."""
     return tuple(
@@ -21467,6 +21552,8 @@ def form_designer_generation_smoke_audit(source: str = FORM_DESIGNER_SAMPLE_DSL)
     device_component_test_artifacts = tuple(item["path"] for item in device_api_component_test_file_manifest())
     visual_component_artifacts = tuple(item["path"] for item in visual_component_file_manifest())
     visual_component_test_artifacts = tuple(item["path"] for item in visual_component_test_file_manifest())
+    visual_runtime_pipeline_artifacts = tuple(item["path"] for item in visual_runtime_pipeline_module_file_manifest())
+    visual_runtime_pipeline_test_artifacts = tuple(item["path"] for item in visual_runtime_pipeline_test_module_file_manifest())
     data_module_artifacts = tuple(item["path"] for item in data_tooling_module_file_manifest())
     data_module_test_artifacts = tuple(item["path"] for item in data_tooling_module_test_file_manifest())
     deep_data_tooling_module_artifacts = tuple(item["path"] for item in deep_data_tooling_module_file_manifest())
@@ -21513,6 +21600,8 @@ def form_designer_generation_smoke_audit(source: str = FORM_DESIGNER_SAMPLE_DSL)
         *device_component_test_artifacts,
         *visual_component_artifacts,
         *visual_component_test_artifacts,
+        *visual_runtime_pipeline_artifacts,
+        *visual_runtime_pipeline_test_artifacts,
         *data_module_artifacts,
         *data_module_test_artifacts,
         *deep_data_tooling_module_artifacts,
@@ -21559,6 +21648,8 @@ def form_designer_generation_smoke_audit(source: str = FORM_DESIGNER_SAMPLE_DSL)
         *device_component_test_artifacts,
         *visual_component_artifacts,
         *visual_component_test_artifacts,
+        *visual_runtime_pipeline_artifacts,
+        *visual_runtime_pipeline_test_artifacts,
         *data_module_artifacts,
         *data_module_test_artifacts,
         *deep_data_tooling_module_artifacts,
@@ -21877,6 +21968,10 @@ def form_designer_generation_smoke_audit(source: str = FORM_DESIGNER_SAMPLE_DSL)
         "component_specs_ready",
         "visual_component_modules_ready",
         "visual_component_tests_ready",
+        "visual_design_modules_ready",
+        "visual_design_tests_ready",
+        "visual_runtime_pipeline_modules_ready",
+        "visual_runtime_pipeline_tests_ready",
         "runtime_package_ready",
         "runtime_replay_ready",
     )
@@ -21953,6 +22048,8 @@ def form_designer_generation_smoke_audit(source: str = FORM_DESIGNER_SAMPLE_DSL)
             and len(device_component_test_artifacts) == len(mobile_device_component_spec_contract()["specs"])
             and len(visual_component_artifacts) == len(cross_target_visual_component_spec_contract()["specs"])
             and len(visual_component_test_artifacts) == len(cross_target_visual_component_spec_contract()["specs"])
+            and len(visual_runtime_pipeline_artifacts) == 5
+            and len(visual_runtime_pipeline_test_artifacts) == 5
             and len(data_module_artifacts) == len(data_module_generation_contract()["artifacts"])
             and len(data_module_test_artifacts) == len(data_module_generation_contract()["artifacts"])
             and len(deep_data_tooling_module_artifacts) == 8
@@ -21981,6 +22078,8 @@ def form_designer_generation_smoke_audit(source: str = FORM_DESIGNER_SAMPLE_DSL)
             "device_component_test_count": len(device_component_test_artifacts),
             "visual_component_count": len(visual_component_artifacts),
             "visual_component_test_count": len(visual_component_test_artifacts),
+            "visual_runtime_pipeline_count": len(visual_runtime_pipeline_artifacts),
+            "visual_runtime_pipeline_test_count": len(visual_runtime_pipeline_test_artifacts),
             "data_module_count": len(data_module_artifacts),
             "data_module_test_count": len(data_module_test_artifacts),
             "deep_data_tooling_module_count": len(deep_data_tooling_module_artifacts),

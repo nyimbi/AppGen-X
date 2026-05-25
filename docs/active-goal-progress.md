@@ -685,6 +685,10 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   handler registry, handler context, handler dispatch, and cross-handler
   invocation, so handlers can be resolved, invoked, and composed through a
   tested shared surface.
+- Visual runtime depth now writes generated module and test files for style
+  resolution, timeline playback, effect fallback, scene rendering, and asset
+  resolution, so generated apps can package and smoke-test visual pipelines as
+  independent runtime modules.
 
 ## Open Completion Areas
 
