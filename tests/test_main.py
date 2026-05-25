@@ -94,6 +94,7 @@ from pyAppGen.form_designer import component_package_lifecycle_execution_contrac
 from pyAppGen.form_designer import component_package_lifecycle_transaction_replay
 from pyAppGen.form_designer import component_package_lockfile_integrity_contract
 from pyAppGen.form_designer import component_package_load_policy
+from pyAppGen.form_designer import component_package_marketplace_publication_contract
 from pyAppGen.form_designer import component_package_preview_load_contract
 from pyAppGen.form_designer import component_package_readiness_contract
 from pyAppGen.form_designer import component_package_registration_consistency_contract
@@ -2820,6 +2821,10 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     assert package_contract["format"] == "appgen.component-package-contract.v1"
     assert package_contract["implemented"] is True
     assert package_contract["adapters"]
+    assert package_contract["self_registration"]["entrypoint"].endswith(":register")
+    assert {"palette", "object_inspector", "binding_designer", "preview_renderer"} <= set(
+        package_contract["self_registration"]["surfaces"]
+    )
     dependency_graph = component_package_dependency_graph(("devexpress-native",))
     assert dependency_graph["ok"] is True
     assert dependency_graph["lockfile"]["required"] is True
@@ -2891,9 +2896,19 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     assert "package_manager_workbench" in {check["id"] for check in package_workbench["checks"]}
     assert "install_session_replay" in {check["id"] for check in package_workbench["checks"]}
     assert "actionable_package_operations" in {check["id"] for check in package_workbench["checks"]}
+    assert "marketplace_publication" in {check["id"] for check in package_workbench["checks"]}
     assert package_workbench["install_replay"]["ok"] is True
     assert package_workbench["behavior_workbench"]["ok"] is True
     assert package_workbench["actionable_operations"]["ok"] is True
+    marketplace = component_package_marketplace_publication_contract(("devexpress-native",))
+    assert marketplace["format"] == "appgen.component-package-marketplace-publication-contract.v1"
+    assert marketplace["ok"] is True
+    assert {"catalog_entries_present", "self_registration_entrypoints", "publication_pipeline_reviewed", "rollback_recipe_attached"} == {
+        check["id"] for check in marketplace["checks"]
+    }
+    assert "private-registry" in marketplace["entries"][0]["channels"]
+    assert "register_package_entrypoint" in marketplace["entries"][0]["publication_steps"]
+    assert marketplace["entries"][0]["self_registration"]["entrypoint"].endswith(":register")
     behavior_workbench = component_package_behavior_workbench()
     assert behavior_workbench["format"] == "appgen.component-package-behavior-workbench.v1"
     assert behavior_workbench["ok"] is True
@@ -2943,6 +2958,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "lifecycle_transaction_replay",
         "lifecycle_execution",
         "actionable_package_operations",
+        "marketplace_publication",
         "package_readiness_contract",
         "package_manager_modules",
         "package_manager_module_tests",
@@ -3001,6 +3017,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "preview_before_registry_commit",
         "registry_before_update",
         "rollback_before_cleanup",
+        "marketplace_publication_ready",
         "operation_surface_ready",
         "phase_order_ready",
         "side_effect_guard_ready",
@@ -4997,6 +5014,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "install_plan_reviewed",
         "package_workbench_ready",
         "actionable_operations_ready",
+        "marketplace_publication_ready",
         "lifecycle_replay_ready",
         "lifecycle_execution_ready",
         "rollback_and_uninstall_ready",
@@ -14611,8 +14629,11 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert generated_package_workbench["ok"] is True
     assert "install_session_replay" in {check["id"] for check in generated_package_workbench["checks"]}
     assert "actionable_package_operations" in {check["id"] for check in generated_package_workbench["checks"]}
+    assert "marketplace_publication" in {check["id"] for check in generated_package_workbench["checks"]}
     assert generated_package_workbench["install_replay"]["ok"] is True
     assert generated_package_workbench["actionable_operations"]["ok"] is True
+    assert generated_package_workbench["marketplace_publication"]["ok"] is True
+    assert generated_package_workbench["contracts"][0]["self_registration"]["entrypoint"].endswith(":register")
     assert all(
         {"resolve_metadata", "sandbox_load", "adapter_compile", "registry_commit", "palette_refresh", "rollback_probe"}
         <= {phase["phase"] for phase in session["phases"]}
@@ -14640,6 +14661,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "lifecycle_transaction_replay",
         "lifecycle_execution",
         "actionable_package_operations",
+        "marketplace_publication",
         "package_manager_modules",
         "package_manager_module_tests",
     } <= {
@@ -14656,10 +14678,14 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert generated_package_manager["lifecycle_replay"]["format"] == "appgen.generated-component-package-lifecycle-transaction-replay.v1"
     assert generated_package_manager["package_readiness"]["format"] == "appgen.generated-component-package-readiness-contract.v1"
     assert generated_package_manager["package_readiness"]["ok"] is True
+    assert "marketplace_publication_ready" in {
+        check["id"] for check in generated_package_manager["package_readiness"]["checks"]
+    }
     assert {
         "package_readiness_contract",
         "lifecycle_execution",
         "actionable_package_operations",
+        "marketplace_publication",
         "package_manager_modules",
         "package_manager_module_tests",
     } <= {check["id"] for check in generated_package_manager["checks"]}

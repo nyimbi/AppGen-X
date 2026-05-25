@@ -1021,14 +1021,95 @@ def component_package_contract(package_id: str) -> dict:
         }
         for component in package["components"]
     )
+    self_registration = {
+        "package_id": package["id"],
+        "manifest": f"app/component_packages/{module}.json",
+        "entrypoint": f"app.component_packages.{module}:register",
+        "surfaces": ("palette", "object_inspector", "binding_designer", "preview_renderer"),
+        "events": ("before_preview_load", "after_registry_commit", "before_uninstall"),
+        "guards": ("id_stable", "version_pinned", "signature_verified", "rollback_snapshot_available"),
+    }
     return {
         "format": "appgen.component-package-contract.v1",
         "package": package,
         "module": f"app.component_packages.{module}",
         "adapters": adapters,
+        "self_registration": self_registration,
         "load_policy": component_package_load_policy(package_id),
         "install_plan": third_party_component_install_plan((package_id,)),
-        "implemented": bool(adapters),
+        "implemented": bool(adapters) and bool(self_registration["entrypoint"]),
+    }
+
+
+def component_package_marketplace_publication_contract(package_ids: tuple[str, ...] = ()) -> dict:
+    """Return marketplace and self-registration evidence for component packages."""
+    install_plan = third_party_component_install_plan(package_ids)
+    entries = tuple(
+        {
+            "package_id": package["id"],
+            "vendor": package["vendor"],
+            "version": package.get("version", "pinned-by-project"),
+            "components": package["components"],
+            "categories": package["categories"],
+            "channels": ("curated", "private-registry", "offline-bundle"),
+            "publication_steps": (
+                "validate_manifest",
+                "verify_signature",
+                "publish_catalog_entry",
+                "register_package_entrypoint",
+                "index_components",
+                "attach_rollback_recipe",
+            ),
+            "self_registration": component_package_contract(package["id"])["self_registration"],
+            "review_gates": ("license_review", "signature_review", "adapter_smoke", "rollback_review"),
+            "rollback_recipe": ("unpublish_catalog_entry", "disable_entrypoint", "restore_previous_palette_index"),
+        }
+        for package in install_plan["packages"]
+    )
+    checks = (
+        {
+            "id": "catalog_entries_present",
+            "ok": bool(entries) and not install_plan["unknown"],
+            "evidence": tuple(entry["package_id"] for entry in entries),
+        },
+        {
+            "id": "self_registration_entrypoints",
+            "ok": bool(entries)
+            and all(entry["self_registration"]["entrypoint"].endswith(":register") for entry in entries)
+            and all({"palette", "object_inspector", "binding_designer", "preview_renderer"} <= set(entry["self_registration"]["surfaces"]) for entry in entries),
+            "evidence": tuple(entry["self_registration"] for entry in entries),
+        },
+        {
+            "id": "publication_pipeline_reviewed",
+            "ok": all(
+                {"validate_manifest", "verify_signature", "publish_catalog_entry", "register_package_entrypoint", "attach_rollback_recipe"}
+                <= set(entry["publication_steps"])
+                for entry in entries
+            ),
+            "evidence": tuple(entry["publication_steps"] for entry in entries),
+        },
+        {
+            "id": "rollback_recipe_attached",
+            "ok": all("restore_previous_palette_index" in entry["rollback_recipe"] for entry in entries),
+            "evidence": tuple(entry["rollback_recipe"] for entry in entries),
+        },
+    )
+    ok = all(check["ok"] for check in checks)
+    return {
+        "format": "appgen.component-package-marketplace-publication-contract.v1",
+        "ok": ok,
+        "decision": "approved" if ok else "blocked",
+        "entries": entries,
+        "checks": checks,
+        "guards": (
+            "manifest_validated_before_publish",
+            "signature_verified_before_catalog_entry",
+            "entrypoint_registered_before_palette_index",
+            "rollback_recipe_required",
+            "private_registry_supported",
+        ),
+        "side_effects": (),
+        "blocking_gaps": tuple(check for check in checks if not check["ok"]),
     }
 
 
@@ -2484,6 +2565,7 @@ def component_package_readiness_contract(package_ids: tuple[str, ...] = ()) -> d
     rollback = component_package_rollback_contract(package_ids)
     lifecycle_replay = component_package_lifecycle_transaction_replay(package_ids)
     lifecycle_execution = component_package_lifecycle_execution_contract(package_ids)
+    marketplace = component_package_marketplace_publication_contract(package_ids)
     phases = (
         {
             "phase": "trust_and_lockfile",
@@ -2579,6 +2661,14 @@ def component_package_readiness_contract(package_ids: tuple[str, ...] = ()) -> d
             "evidence": actionable_operations["operation_names"],
         },
         {
+            "id": "marketplace_publication_ready",
+            "ok": marketplace["ok"]
+            and {"self_registration_entrypoints", "publication_pipeline_reviewed", "rollback_recipe_attached"}
+            <= {check["id"] for check in marketplace["checks"] if check["ok"]}
+            and not marketplace["side_effects"],
+            "evidence": marketplace,
+        },
+        {
             "id": "phase_order_ready",
             "ok": phase_names
             == (
@@ -2607,7 +2697,8 @@ def component_package_readiness_contract(package_ids: tuple[str, ...] = ()) -> d
             and not failure_isolation["side_effects"]
             and not rollback["side_effects"]
             and not lifecycle_replay["side_effects"]
-            and not lifecycle_execution["side_effects"],
+            and not lifecycle_execution["side_effects"]
+            and not marketplace["side_effects"],
             "evidence": (),
         },
     )
@@ -2618,6 +2709,7 @@ def component_package_readiness_contract(package_ids: tuple[str, ...] = ()) -> d
         "decision": "approved" if ok else "blocked",
         "phases": phases,
         "checks": checks,
+        "marketplace_publication": marketplace,
         "side_effects": (),
         "blocking_gaps": tuple(check for check in checks if not check["ok"]),
     }
@@ -2645,6 +2737,7 @@ def design_time_package_manager_workbench(package_ids: tuple[str, ...] = ()) -> 
     failure_isolation = component_package_failure_isolation_contract(package_ids)
     lifecycle_replay = component_package_lifecycle_transaction_replay(package_ids)
     actionable_operations = component_package_actionable_operations(package_ids)
+    marketplace = component_package_marketplace_publication_contract(package_ids)
     package_manager_module_artifacts = package_manager_module_file_manifest()
     package_manager_module_test_artifacts = package_manager_module_test_file_manifest()
     readiness = component_package_readiness_contract(package_ids)
@@ -2765,6 +2858,14 @@ def design_time_package_manager_workbench(package_ids: tuple[str, ...] = ()) -> 
             "evidence": actionable_operations,
         },
         {
+            "id": "marketplace_publication",
+            "ok": marketplace["ok"]
+            and {"catalog_entries_present", "self_registration_entrypoints", "publication_pipeline_reviewed", "rollback_recipe_attached"}
+            <= {check["id"] for check in marketplace["checks"] if check["ok"]}
+            and not marketplace["side_effects"],
+            "evidence": marketplace,
+        },
+        {
             "id": "package_readiness_contract",
             "ok": readiness["ok"]
             and {
@@ -2772,6 +2873,7 @@ def design_time_package_manager_workbench(package_ids: tuple[str, ...] = ()) -> 
                 "preview_before_registry_commit",
                 "registry_before_update",
                 "rollback_before_cleanup",
+                "marketplace_publication_ready",
                 "operation_surface_ready",
                 "phase_order_ready",
                 "side_effect_guard_ready",
@@ -2813,7 +2915,8 @@ def design_time_package_manager_workbench(package_ids: tuple[str, ...] = ()) -> 
             and not lifecycle_replay["side_effects"]
             and not signature_validation["side_effects"]
             and not lifecycle_execution["side_effects"]
-            and not actionable_operations["side_effects"],
+            and not actionable_operations["side_effects"]
+            and not marketplace["side_effects"],
             "evidence": {
                 "session": session["side_effects"],
                 "registration": registration["side_effects"],
@@ -2832,6 +2935,7 @@ def design_time_package_manager_workbench(package_ids: tuple[str, ...] = ()) -> 
                 "signature_validation": signature_validation["side_effects"],
                 "lifecycle_execution": lifecycle_execution["side_effects"],
                 "actionable_operations": actionable_operations["side_effects"],
+                "marketplace_publication": marketplace["side_effects"],
             },
         },
     )
@@ -2859,6 +2963,7 @@ def design_time_package_manager_workbench(package_ids: tuple[str, ...] = ()) -> 
         "failure_isolation": failure_isolation,
         "lifecycle_replay": lifecycle_replay,
         "actionable_operations": actionable_operations,
+        "marketplace_publication": marketplace,
         "package_manager_module_artifacts": package_manager_module_artifacts,
         "package_manager_module_test_artifacts": package_manager_module_test_artifacts,
         "package_readiness": readiness,
@@ -2875,6 +2980,7 @@ def component_package_workbench(existing_paths: set[str] | None = None) -> dict:
     package_manager = design_time_package_manager_workbench()
     behavior_workbench = component_package_behavior_workbench()
     actionable_operations = component_package_actionable_operations()
+    marketplace = component_package_marketplace_publication_contract()
     package_files = component_package_file_manifest()
     existing = set(existing_paths or ())
     checks = (
@@ -2922,6 +3028,13 @@ def component_package_workbench(existing_paths: set[str] | None = None) -> dict:
             "evidence": actionable_operations,
         },
         {
+            "id": "marketplace_publication",
+            "ok": marketplace["ok"]
+            and all(entry["self_registration"]["entrypoint"].endswith(":register") for entry in marketplace["entries"])
+            and not marketplace["side_effects"],
+            "evidence": marketplace,
+        },
+        {
             "id": "package_file_exports",
             "ok": all(
                 {
@@ -2963,6 +3076,7 @@ def component_package_workbench(existing_paths: set[str] | None = None) -> dict:
         "package_manager": package_manager,
         "behavior_workbench": behavior_workbench,
         "actionable_operations": actionable_operations,
+        "marketplace_publication": marketplace,
         "checks": checks,
         "blocking_gaps": tuple(check for check in checks if not check["ok"]),
     }
@@ -14709,6 +14823,7 @@ def platform_parity_lifecycle_replay_contract() -> dict:
             and {
                 "lifecycle_transaction_replay",
                 "actionable_package_operations",
+                "marketplace_publication",
                 "package_manager_modules",
             } <= package_manager_passing_checks
             and all(item["final_state"]["registry_clean"] for item in package_lifecycle["replay"]),
@@ -15113,12 +15228,14 @@ def platform_parity_requirement_audit_contract() -> dict:
                 "preview_before_registry_commit",
                 "registry_before_update",
                 "rollback_before_cleanup",
+                "marketplace_publication_ready",
                 "operation_surface_ready",
                 "phase_order_ready",
             }
             <= {check["id"] for check in package_readiness["checks"] if check["ok"]}
             and {
                 "lifecycle_transaction_replay",
+                "marketplace_publication",
                 "package_manager_modules",
                 "package_manager_module_tests",
             } <= {check["id"] for check in package_manager["checks"] if check["ok"]},
@@ -15127,8 +15244,10 @@ def platform_parity_requirement_audit_contract() -> dict:
                 "preview_before_registry_commit",
                 "registry_before_update",
                 "rollback_before_cleanup",
+                "marketplace_publication_ready",
                 "package_manager_modules",
                 "package_manager_module_tests",
+                "marketplace_publication",
                 "phase_order_ready",
             ),
             "evidence": {"manager": package_manager, "lifecycle": package_lifecycle, "readiness": package_readiness},
@@ -17812,6 +17931,7 @@ def rad_parity_workbench(existing_paths: set[str] | None = None) -> dict:
         "preview_before_registry_commit",
         "registry_before_update",
         "rollback_before_cleanup",
+        "marketplace_publication_ready",
         "operation_surface_ready",
         "phase_order_ready",
         "side_effect_guard_ready",
@@ -17932,6 +18052,7 @@ def rad_parity_workbench(existing_paths: set[str] | None = None) -> dict:
         "lifecycle_transaction_replay",
         "lifecycle_execution",
         "actionable_package_operations",
+        "marketplace_publication",
         "package_readiness_contract",
         "package_manager_modules",
         "package_manager_module_tests",
@@ -18238,6 +18359,7 @@ def rad_parity_workbench(existing_paths: set[str] | None = None) -> dict:
         "preview_before_registry_commit",
         "registry_before_update",
         "rollback_before_cleanup",
+        "marketplace_publication_ready",
         "operation_surface_ready",
         "phase_order_ready",
         "side_effect_guard_ready",
@@ -18509,6 +18631,7 @@ def rad_parity_workbench(existing_paths: set[str] | None = None) -> dict:
         "package_manager_workbench",
         "package_behavior_workbench",
         "actionable_package_operations",
+        "marketplace_publication",
         "package_file_exports",
         "generated_package_files",
     )

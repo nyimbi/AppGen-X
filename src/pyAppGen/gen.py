@@ -17535,6 +17535,7 @@ def package_manager_runtime_manifest(package_ids=()):
         "lifecycle_transaction_replay",
         "lifecycle_execution",
         "actionable_package_operations",
+        "marketplace_publication",
         "side_effect_guards",
     }
     return {
@@ -17613,6 +17614,7 @@ def validate_package_manager_runtime(package_ids=()):
         {"id": "install_plan_reviewed", "ok": manifest["install_plan"]["requires_review"] and not manifest["install_plan"]["side_effects"]},
         {"id": "package_workbench_ready", "ok": manifest["package_workbench"]["ok"] and manifest["package_workbench"]["install_replay"]["ok"]},
         {"id": "actionable_operations_ready", "ok": manager["actionable_operations"]["ok"] and {"resolve_metadata", "preview_load", "registry_commit", "update_package", "uninstall_package"} <= set(manager["actionable_operations"]["operation_names"])},
+        {"id": "marketplace_publication_ready", "ok": manager["marketplace_publication"]["ok"] and manifest["package_workbench"]["marketplace_publication"]["ok"] and not manager["marketplace_publication"]["side_effects"]},
         {"id": "lifecycle_replay_ready", "ok": manager["lifecycle_replay"]["ok"] and not manager["lifecycle_replay"]["side_effects"]},
         {"id": "lifecycle_execution_ready", "ok": manager["lifecycle_execution"]["ok"] and not manager["lifecycle_execution"]["side_effects"]},
         {"id": "rollback_and_uninstall_ready", "ok": manager["rollback"]["snapshot"]["restore_order"][0] == "unload_adapters" and manager["uninstall_plan"]["ok"]},
@@ -46799,14 +46801,73 @@ def component_package_contract(package_id):
         }}
         for component in package["components"]
     )
+    self_registration = {{
+        "package_id": package["id"],
+        "manifest": f"app/component_packages/{{module}}.json",
+        "entrypoint": f"app.component_packages.{{module}}:register",
+        "surfaces": ("palette", "object_inspector", "binding_designer", "preview_renderer"),
+        "events": ("before_preview_load", "after_registry_commit", "before_uninstall"),
+        "guards": ("id_stable", "version_pinned", "signature_verified", "rollback_snapshot_available"),
+    }}
     return {{
         "format": "appgen.generated-component-package-contract.v1",
         "package": package,
         "module": f"app.component_packages.{{module}}",
         "adapters": adapters,
+        "self_registration": self_registration,
         "load_policy": component_package_load_policy(package_id),
         "install_plan": third_party_component_install_plan((package_id,)),
-        "implemented": bool(adapters),
+        "implemented": bool(adapters) and bool(self_registration["entrypoint"]),
+    }}
+
+
+def component_package_marketplace_publication_contract(package_ids=()):
+    """Return generated marketplace and self-registration evidence for component packages."""
+    install_plan = third_party_component_install_plan(package_ids)
+    entries = tuple(
+        {{
+            "package_id": package["id"],
+            "vendor": package["vendor"],
+            "version": package.get("version", "pinned-by-project"),
+            "components": package["components"],
+            "categories": package["categories"],
+            "channels": ("curated", "private-registry", "offline-bundle"),
+            "publication_steps": (
+                "validate_manifest",
+                "verify_signature",
+                "publish_catalog_entry",
+                "register_package_entrypoint",
+                "index_components",
+                "attach_rollback_recipe",
+            ),
+            "self_registration": component_package_contract(package["id"])["self_registration"],
+            "review_gates": ("license_review", "signature_review", "adapter_smoke", "rollback_review"),
+            "rollback_recipe": ("unpublish_catalog_entry", "disable_entrypoint", "restore_previous_palette_index"),
+        }}
+        for package in install_plan["packages"]
+    )
+    checks = (
+        {{"id": "catalog_entries_present", "ok": bool(entries) and not install_plan["unknown"], "evidence": tuple(entry["package_id"] for entry in entries)}},
+        {{"id": "self_registration_entrypoints", "ok": bool(entries) and all(entry["self_registration"]["entrypoint"].endswith(":register") for entry in entries) and all({{"palette", "object_inspector", "binding_designer", "preview_renderer"}} <= set(entry["self_registration"]["surfaces"]) for entry in entries), "evidence": tuple(entry["self_registration"] for entry in entries)}},
+        {{"id": "publication_pipeline_reviewed", "ok": all({{"validate_manifest", "verify_signature", "publish_catalog_entry", "register_package_entrypoint", "attach_rollback_recipe"}} <= set(entry["publication_steps"]) for entry in entries), "evidence": tuple(entry["publication_steps"] for entry in entries)}},
+        {{"id": "rollback_recipe_attached", "ok": all("restore_previous_palette_index" in entry["rollback_recipe"] for entry in entries), "evidence": tuple(entry["rollback_recipe"] for entry in entries)}},
+    )
+    ok = all(check["ok"] for check in checks)
+    return {{
+        "format": "appgen.generated-component-package-marketplace-publication-contract.v1",
+        "ok": ok,
+        "decision": "approved" if ok else "blocked",
+        "entries": entries,
+        "checks": checks,
+        "guards": (
+            "manifest_validated_before_publish",
+            "signature_verified_before_catalog_entry",
+            "entrypoint_registered_before_palette_index",
+            "rollback_recipe_required",
+            "private_registry_supported",
+        ),
+        "side_effects": (),
+        "blocking_gaps": tuple(check for check in checks if not check["ok"]),
     }}
 
 
@@ -47832,6 +47893,7 @@ def component_package_readiness_contract(package_ids=()):
     rollback = component_package_rollback_contract(package_ids)
     lifecycle_replay = component_package_lifecycle_transaction_replay(package_ids)
     lifecycle_execution = component_package_lifecycle_execution_contract(package_ids)
+    marketplace = component_package_marketplace_publication_contract(package_ids)
     phases = (
         {{
             "phase": "trust_and_lockfile",
@@ -47879,13 +47941,18 @@ def component_package_readiness_contract(package_ids=()):
             "evidence": actionable_operations["operation_names"],
         }},
         {{
+            "id": "marketplace_publication_ready",
+            "ok": marketplace["ok"] and {{"self_registration_entrypoints", "publication_pipeline_reviewed", "rollback_recipe_attached"}} <= {{check["id"] for check in marketplace["checks"] if check["ok"]}} and not marketplace["side_effects"],
+            "evidence": marketplace,
+        }},
+        {{
             "id": "phase_order_ready",
             "ok": phase_names == ("trust_and_lockfile", "sandbox_preview", "registry_commit", "versioned_update", "failure_and_rollback", "uninstall_cleanup") and all(phase["ok"] for phase in phases),
             "evidence": phase_names,
         }},
         {{
             "id": "side_effect_guard_ready",
-            "ok": not signatures["side_effects"] and not lockfile["side_effects"] and not sandbox["side_effects"] and not dependency_order["side_effects"] and not install_replay["side_effects"] and not actionable_operations["side_effects"] and not registration["side_effects"] and not version_conflicts["side_effects"] and not update_plan["side_effects"] and not uninstall_plan["side_effects"] and not failure_isolation["side_effects"] and not rollback["side_effects"] and not lifecycle_replay["side_effects"] and not lifecycle_execution["side_effects"],
+            "ok": not signatures["side_effects"] and not lockfile["side_effects"] and not sandbox["side_effects"] and not dependency_order["side_effects"] and not install_replay["side_effects"] and not actionable_operations["side_effects"] and not registration["side_effects"] and not version_conflicts["side_effects"] and not update_plan["side_effects"] and not uninstall_plan["side_effects"] and not failure_isolation["side_effects"] and not rollback["side_effects"] and not lifecycle_replay["side_effects"] and not lifecycle_execution["side_effects"] and not marketplace["side_effects"],
             "evidence": (),
         }},
     )
@@ -47896,6 +47963,7 @@ def component_package_readiness_contract(package_ids=()):
         "decision": "approved" if ok else "blocked",
         "phases": phases,
         "checks": checks,
+        "marketplace_publication": marketplace,
         "side_effects": (),
         "blocking_gaps": tuple(check for check in checks if not check["ok"]),
     }}
@@ -47923,6 +47991,7 @@ def design_time_package_manager_workbench(package_ids=()):
     failure_isolation = component_package_failure_isolation_contract(package_ids)
     lifecycle_replay = component_package_lifecycle_transaction_replay(package_ids)
     actionable_operations = component_package_actionable_operations(package_ids)
+    marketplace = component_package_marketplace_publication_contract(package_ids)
     package_manager_module_artifacts = tuple(
         {{"module": module, "path": f"app/package_manager_modules/{{module}}.py", "exports": ("module_contract", "package_manifest", "run_package_operation", "runtime_manifest", "smoke_test"), "ok": True}}
         for module in ("package_install_module", "package_preview_module", "package_registry_module", "package_lifecycle_module", "package_update_module", "package_rollback_module")
@@ -47953,7 +48022,8 @@ def design_time_package_manager_workbench(package_ids=()):
         {{"id": "lifecycle_transaction_replay", "ok": lifecycle_replay["ok"] and not lifecycle_replay["side_effects"], "evidence": lifecycle_replay}},
         {{"id": "lifecycle_execution", "ok": lifecycle_execution["ok"] and not lifecycle_execution["side_effects"], "evidence": lifecycle_execution}},
         {{"id": "actionable_package_operations", "ok": actionable_operations["ok"] and {{"resolve_metadata", "preview_load", "registry_commit", "update_package", "uninstall_package"}} <= set(actionable_operations["operation_names"]) and not actionable_operations["side_effects"], "evidence": actionable_operations}},
-        {{"id": "package_readiness_contract", "ok": readiness["ok"] and {{"trust_before_preview", "preview_before_registry_commit", "registry_before_update", "rollback_before_cleanup", "operation_surface_ready", "phase_order_ready", "side_effect_guard_ready"}} <= {{check["id"] for check in readiness["checks"] if check["ok"]}} and not readiness["side_effects"], "evidence": readiness}},
+        {{"id": "marketplace_publication", "ok": marketplace["ok"] and {{"catalog_entries_present", "self_registration_entrypoints", "publication_pipeline_reviewed", "rollback_recipe_attached"}} <= {{check["id"] for check in marketplace["checks"] if check["ok"]}} and not marketplace["side_effects"], "evidence": marketplace}},
+        {{"id": "package_readiness_contract", "ok": readiness["ok"] and {{"trust_before_preview", "preview_before_registry_commit", "registry_before_update", "rollback_before_cleanup", "marketplace_publication_ready", "operation_surface_ready", "phase_order_ready", "side_effect_guard_ready"}} <= {{check["id"] for check in readiness["checks"] if check["ok"]}} and not readiness["side_effects"], "evidence": readiness}},
         {{"id": "package_manager_modules", "ok": len(package_manager_module_artifacts) == 6 and all(item["ok"] and "run_package_operation" in item["exports"] for item in package_manager_module_artifacts), "evidence": package_manager_module_artifacts}},
         {{"id": "package_manager_module_tests", "ok": len(package_manager_module_test_artifacts) == 6 and all(item["ok"] and "test_package_manager_module_smoke" in item["exports"] for item in package_manager_module_test_artifacts), "evidence": package_manager_module_test_artifacts}},
         {{
@@ -47974,7 +48044,8 @@ def design_time_package_manager_workbench(package_ids=()):
             and not failure_isolation["side_effects"]
             and not lifecycle_replay["side_effects"]
             and not lifecycle_execution["side_effects"]
-            and not actionable_operations["side_effects"],
+            and not actionable_operations["side_effects"]
+            and not marketplace["side_effects"],
             "evidence": {{
                 "session": session["side_effects"],
                 "registration": registration["side_effects"],
@@ -47993,6 +48064,7 @@ def design_time_package_manager_workbench(package_ids=()):
                 "lifecycle_replay": lifecycle_replay["side_effects"],
                 "lifecycle_execution": lifecycle_execution["side_effects"],
                 "actionable_operations": actionable_operations["side_effects"],
+                "marketplace_publication": marketplace["side_effects"],
             }},
         }},
     )
@@ -48020,6 +48092,7 @@ def design_time_package_manager_workbench(package_ids=()):
         "failure_isolation": failure_isolation,
         "lifecycle_replay": lifecycle_replay,
         "actionable_operations": actionable_operations,
+        "marketplace_publication": marketplace,
         "package_manager_module_artifacts": package_manager_module_artifacts,
         "package_manager_module_test_artifacts": package_manager_module_test_artifacts,
         "package_readiness": readiness,
@@ -48036,6 +48109,7 @@ def component_package_workbench(existing_paths=None):
     package_manager = design_time_package_manager_workbench()
     behavior_workbench = component_package_behavior_workbench()
     actionable_operations = component_package_actionable_operations()
+    marketplace = component_package_marketplace_publication_contract()
     package_files = component_package_file_manifest(existing_paths)
     checks = (
         {{"id": "registry_coverage", "ok": len(contracts) == len(THIRD_PARTY_COMPONENT_SUITES) and {{contract["package"]["id"] for contract in contracts}} == {{package["id"] for package in THIRD_PARTY_COMPONENT_SUITES}}, "evidence": tuple(contract["package"]["id"] for contract in contracts)}},
@@ -48046,6 +48120,7 @@ def component_package_workbench(existing_paths=None):
         {{"id": "package_manager_workbench", "ok": package_manager["ok"], "evidence": package_manager}},
         {{"id": "package_behavior_workbench", "ok": behavior_workbench["ok"], "evidence": behavior_workbench}},
         {{"id": "actionable_package_operations", "ok": actionable_operations["ok"] and not actionable_operations["side_effects"], "evidence": actionable_operations}},
+        {{"id": "marketplace_publication", "ok": marketplace["ok"] and all(entry["self_registration"]["entrypoint"].endswith(":register") for entry in marketplace["entries"]) and not marketplace["side_effects"], "evidence": marketplace}},
         {{"id": "package_file_exports", "ok": all({{"package_contract", "install_plan", "load_policy", "adapter_contract", "dependency_graph", "lockfile_integrity", "sandbox_policy", "registration_consistency", "dependency_order", "compatibility_smoke", "adapter_smoke", "preview_load", "behavior_contract", "validate_load_request", "test_plan"}} <= set(item["exports"]) for item in package_files), "evidence": package_files}},
         {{"id": "generated_package_files", "ok": existing_paths is None or all(item["exists"] for item in package_files), "evidence": package_files}},
     )
@@ -48060,6 +48135,7 @@ def component_package_workbench(existing_paths=None):
         "package_manager": package_manager,
         "behavior_workbench": behavior_workbench,
         "actionable_operations": actionable_operations,
+        "marketplace_publication": marketplace,
         "checks": checks,
         "blocking_gaps": tuple(check for check in checks if not check["ok"]),
     }}
@@ -59630,7 +59706,7 @@ def platform_parity_lifecycle_replay_contract():
         {{"phase": "stream_runtime_model", "ok": runtime["ok"] and runtime_readiness["ok"] and "phase_order_ready" in {{check["id"] for check in runtime_readiness["checks"] if check["ok"]}} and {{"form_stream_schema", "runtime_session_replay", "event_binding_lifecycle"}} <= runtime_passing_checks, "evidence": {{"checks": tuple(check["id"] for check in runtime["checks"]), "passing_checks": tuple(sorted(runtime_passing_checks)), "runtime_state": runtime["runtime_replay"]["final_state"], "readiness_phases": tuple(phase["phase"] for phase in runtime_readiness["phases"])}}}},
         {{"phase": "inspect_and_bind_design", "ok": inspector["ok"] and inspector_readiness["ok"] and bindings["ok"] and binding_readiness["ok"] and inspector["cross_component_replay"]["ok"] and bindings["designer_transaction_replay"]["ok"] and "phase_order_ready" in {{check["id"] for check in inspector_readiness["checks"] if check["ok"]}} and "phase_order_ready" in {{check["id"] for check in binding_readiness["checks"] if check["ok"]}} and {{"component_editor_transaction", "custom_designer_registration_replay", "editor_lifecycle_replay", "design_surface_transaction_replay"}} <= inspector_passing_checks and {{"designer_transaction_replay", "design_runtime_session_replay", "binding_lifecycle_release_replay"}} <= binding_passing_checks, "evidence": {{"inspector_checks": tuple(check["id"] for check in inspector["checks"]), "inspector_passing_checks": tuple(sorted(inspector_passing_checks)), "binding_checks": tuple(check["id"] for check in bindings["checks"]), "binding_passing_checks": tuple(sorted(binding_passing_checks)), "inspector_readiness_phases": tuple(phase["phase"] for phase in inspector_readiness["phases"]), "binding_readiness_phases": tuple(phase["phase"] for phase in binding_readiness["phases"])}}}},
         {{"phase": "publish_data_services", "ok": data_tooling["ok"] and data_readiness["ok"] and "phase_order_ready" in {{check["id"] for check in data_readiness["checks"] if check["ok"]}} and data_tooling["publish_transaction_replay"]["ok"] and {{"relationship_lookup_lifecycle_replay", "data_tooling_design_runtime_session_replay", "data_tooling_publish_transaction_replay"}} <= data_tooling_passing_checks and {{"schema_rehearsal_before_dataset_publish", "service_contract_tests_before_resource_publish", "offline_integrity_before_runtime_replay"}} <= set(data_tooling["publish_transaction_replay"]["guards"]), "evidence": {{"checks": tuple(check["id"] for check in data_tooling["checks"]), "passing_checks": tuple(sorted(data_tooling_passing_checks)), "publish_state": data_tooling["publish_transaction_replay"]["final_state"], "readiness_phases": tuple(phase["phase"] for phase in data_readiness["phases"])}}}},
-        {{"phase": "install_component_packages", "ok": package_manager["ok"] and package_lifecycle["ok"] and package_readiness["ok"] and "phase_order_ready" in {{check["id"] for check in package_readiness["checks"] if check["ok"]}} and {{"lifecycle_transaction_replay", "actionable_package_operations", "package_manager_modules"}} <= package_manager_passing_checks and all(item["final_state"]["registry_clean"] for item in package_lifecycle["replay"]), "evidence": {{"manager_checks": tuple(check["id"] for check in package_manager["checks"]), "manager_passing_checks": tuple(sorted(package_manager_passing_checks)), "packages": package_lifecycle["packages"], "readiness_phases": tuple(phase["phase"] for phase in package_readiness["phases"])}}}},
+        {{"phase": "install_component_packages", "ok": package_manager["ok"] and package_lifecycle["ok"] and package_readiness["ok"] and "phase_order_ready" in {{check["id"] for check in package_readiness["checks"] if check["ok"]}} and {{"lifecycle_transaction_replay", "actionable_package_operations", "marketplace_publication", "package_manager_modules"}} <= package_manager_passing_checks and all(item["final_state"]["registry_clean"] for item in package_lifecycle["replay"]), "evidence": {{"manager_checks": tuple(check["id"] for check in package_manager["checks"]), "manager_passing_checks": tuple(sorted(package_manager_passing_checks)), "packages": package_lifecycle["packages"], "readiness_phases": tuple(phase["phase"] for phase in package_readiness["phases"])}}}},
         {{"phase": "validate_device_capabilities", "ok": mobile["ok"] and mobile_readiness["ok"] and mobile_lifecycle["ok"] and "phase_order_ready" in {{check["id"] for check in mobile_readiness["checks"] if check["ok"]}} and {{"capability_lifecycle_replay", "device_component_modules", "device_component_module_tests"}} <= mobile_passing_checks and "runtime_and_designer_replay_aligned" in mobile_lifecycle["guards"], "evidence": {{"apis": tuple(adapter["api"] for adapter in mobile["contract"]["component_adapters"]["adapters"]), "passing_checks": tuple(sorted(mobile_passing_checks)), "lifecycle_phases": mobile_lifecycle_phases, "readiness_phases": tuple(phase["phase"] for phase in mobile_readiness["phases"])}}}},
         {{"phase": "validate_visual_depth", "ok": visual["ok"] and visual_readiness["ok"] and visual_lifecycle["ok"] and "phase_order_ready" in {{check["id"] for check in visual_readiness["checks"] if check["ok"]}} and {{"visual_runtime_replay", "visual_lifecycle_replay", "visual_component_modules", "visual_design_modules", "visual_runtime_pipeline_modules"}} <= visual_passing_checks and "hit_tests_before_designer_replay" in visual_lifecycle["guards"], "evidence": {{"checks": tuple(check["id"] for check in visual["checks"]), "passing_checks": tuple(sorted(visual_passing_checks)), "lifecycle_phases": tuple(item["phase"] for item in visual_lifecycle["replay"]), "readiness_phases": tuple(phase["phase"] for phase in visual_readiness["phases"])}}}},
     )
@@ -59697,7 +59773,7 @@ def platform_parity_requirement_audit_contract():
         {{"id": "inspector_design_surface", "ok": inspector["ok"] and inspector_readiness["ok"] and {{"editor_metadata_ready", "property_event_ready", "component_custom_designer_ready", "state_design_surface_ready", "binding_handler_ready", "lifecycle_round_trip_ready", "phase_order_ready"}} <= {{check["id"] for check in inspector_readiness["checks"] if check["ok"]}} and {{"property_editor_types", "event_editor_lifecycle", "component_editor_transaction", "custom_designer_registration_replay", "editor_lifecycle_replay", "inspector_generated_modules", "inspector_generated_module_tests", "property_editor_family_contract", "property_editor_family_modules", "property_editor_family_module_tests", "event_editor_family_contract", "event_editor_family_modules", "event_editor_family_module_tests", "component_editor_family_contract", "component_editor_family_modules", "component_editor_family_module_tests", "custom_designer_family_contract", "custom_designer_family_modules", "custom_designer_family_module_tests"}} <= {{check["id"] for check in inspector["checks"] if check["ok"]}}, "deep_checks": ("editor_lifecycle_replay", "design_surface_transaction_replay", "custom_designer_registration_replay", "inspector_generated_modules", "inspector_generated_module_tests", "property_editor_family_contract", "property_editor_family_modules", "property_editor_family_module_tests", "event_editor_family_contract", "event_editor_family_modules", "event_editor_family_module_tests", "component_editor_family_contract", "component_editor_family_modules", "component_editor_family_module_tests", "custom_designer_family_contract", "custom_designer_family_modules", "custom_designer_family_module_tests", "phase_order_ready"), "evidence": {{"workbench": inspector, "readiness": inspector_readiness}}}},
         {{"id": "visual_binding_designer", "ok": bindings["ok"] and binding_readiness["ok"] and {{"graph_authoring_ready", "validation_transaction_ready", "preview_runtime_ready", "diagnostics_conflict_ready", "offline_accessible_runtime_ready", "designer_release_replay_ready", "inspector_bridge_ready", "phase_order_ready"}} <= {{check["id"] for check in binding_readiness["checks"] if check["ok"]}} and bindings["designer_transaction_replay"]["ok"] and bindings["design_runtime_replay"]["ok"] and bindings["lifecycle_release_replay"]["ok"] and {{"binding_generated_modules", "binding_generated_module_tests", "binding_designer_family_contract", "binding_designer_family_modules", "binding_designer_family_module_tests"}} <= {{check["id"] for check in bindings["checks"] if check["ok"]}}, "deep_checks": ("binding_lifecycle_release_replay", "design_runtime_session_replay", "designer_transaction_replay", "binding_generated_modules", "binding_generated_module_tests", "binding_designer_family_contract", "binding_designer_family_modules", "binding_designer_family_module_tests", "phase_order_ready"), "evidence": {{"workbench": bindings, "readiness": binding_readiness}}}},
         {{"id": "native_data_service_tooling", "ok": data_tooling["ok"] and data_readiness["ok"] and {{"connection_ready", "dataset_ready", "publish_ready", "offline_replay_ready", "replication_failover_ready", "diagnostics_ready", "phase_order_ready"}} <= {{check["id"] for check in data_readiness["checks"] if check["ok"]}} and data_tooling["runtime_replay"]["ok"] and data_tooling["publish_transaction_replay"]["ok"] and {{"relationship_lookup_lifecycle_replay", "data_tooling_modules", "data_tooling_module_tests", "deep_data_tooling_modules", "deep_data_tooling_module_tests", "enterprise_data_ide_modules", "enterprise_data_ide_module_tests"}} <= {{check["id"] for check in data_tooling["checks"] if check["ok"]}}, "deep_checks": ("relationship_lookup_lifecycle_replay", "data_tooling_modules", "data_tooling_module_tests", "deep_data_tooling_modules", "deep_data_tooling_module_tests", "enterprise_data_ide_modules", "enterprise_data_ide_module_tests", "data_tooling_design_runtime_session_replay", "data_tooling_publish_transaction_replay", "phase_order_ready"), "evidence": {{"workbench": data_tooling, "readiness": data_readiness}}}},
-        {{"id": "package_installation_ecosystem", "ok": package_manager["ok"] and package_lifecycle["ok"] and package_readiness["ok"] and {{"trust_before_preview", "preview_before_registry_commit", "registry_before_update", "rollback_before_cleanup", "operation_surface_ready", "phase_order_ready"}} <= {{check["id"] for check in package_readiness["checks"] if check["ok"]}} and {{"lifecycle_transaction_replay", "package_manager_modules", "package_manager_module_tests"}} <= {{check["id"] for check in package_manager["checks"] if check["ok"]}}, "deep_checks": ("trust_before_preview", "preview_before_registry_commit", "registry_before_update", "rollback_before_cleanup", "package_manager_modules", "package_manager_module_tests", "phase_order_ready"), "evidence": {{"manager": package_manager, "lifecycle": package_lifecycle, "readiness": package_readiness}}}},
+        {{"id": "package_installation_ecosystem", "ok": package_manager["ok"] and package_lifecycle["ok"] and package_readiness["ok"] and {{"trust_before_preview", "preview_before_registry_commit", "registry_before_update", "rollback_before_cleanup", "marketplace_publication_ready", "operation_surface_ready", "phase_order_ready"}} <= {{check["id"] for check in package_readiness["checks"] if check["ok"]}} and {{"lifecycle_transaction_replay", "marketplace_publication", "package_manager_modules", "package_manager_module_tests"}} <= {{check["id"] for check in package_manager["checks"] if check["ok"]}}, "deep_checks": ("trust_before_preview", "preview_before_registry_commit", "registry_before_update", "rollback_before_cleanup", "marketplace_publication_ready", "marketplace_publication", "package_manager_modules", "package_manager_module_tests", "phase_order_ready"), "evidence": {{"manager": package_manager, "lifecycle": package_lifecycle, "readiness": package_readiness}}}},
         {{"id": "device_api_component_coverage", "ok": mobile["ok"] and mobile_readiness["ok"] and mobile_lifecycle["ok"] and {{"privacy_permission_ready", "simulator_ready", "bridge_component_ready", "fallback_lifecycle_ready", "runtime_delivery_ready", "designer_capability_ready", "phase_order_ready"}} <= {{check["id"] for check in mobile_readiness["checks"] if check["ok"]}} and "runtime_and_designer_replay_aligned" in mobile_lifecycle["guards"] and {{"device_component_modules", "device_component_module_tests"}} <= {{check["id"] for check in mobile["checks"] if check["ok"]}}, "deep_checks": ("privacy_permission_ready", "bridge_component_ready", "runtime_delivery_ready", "designer_capability_ready", "device_component_modules", "device_component_module_tests", "phase_order_ready"), "evidence": {{"workbench": mobile, "lifecycle": mobile_lifecycle, "readiness": mobile_readiness}}}},
         {{"id": "cross_target_visual_depth", "ok": visual["ok"] and visual_readiness["ok"] and visual_lifecycle["ok"] and {{"style_ready", "timeline_ready", "effects_ready", "scene_assets_ready", "hit_test_component_ready", "runtime_designer_replay_ready", "runtime_package_ready", "phase_order_ready"}} <= {{check["id"] for check in visual_readiness["checks"] if check["ok"]}} and {{"visual_runtime_replay", "visual_lifecycle_replay", "visual_component_modules", "visual_component_module_tests", "visual_design_modules", "visual_design_module_tests", "visual_runtime_pipeline_modules", "visual_runtime_pipeline_module_tests"}} <= {{check["id"] for check in visual["checks"] if check["ok"]}}, "deep_checks": ("style_ready", "timeline_ready", "effects_ready", "scene_assets_ready", "runtime_designer_replay_ready", "runtime_package_ready", "visual_component_modules", "visual_component_module_tests", "visual_design_modules", "visual_design_module_tests", "visual_runtime_pipeline_modules", "visual_runtime_pipeline_module_tests", "phase_order_ready"), "evidence": {{"workbench": visual, "lifecycle": visual_lifecycle, "readiness": visual_readiness}}}},
     )
