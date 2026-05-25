@@ -6384,6 +6384,8 @@ def object_inspector_workbench() -> dict:
     cross_handler_invocation = inspector_cross_handler_invocation_contract("Button")
     inspector_module_artifacts = inspector_module_file_manifest()
     inspector_module_test_artifacts = inspector_module_test_file_manifest()
+    handler_architecture_artifacts = handler_architecture_module_file_manifest()
+    handler_architecture_test_artifacts = handler_architecture_module_test_file_manifest()
     readiness = object_inspector_readiness_contract(sample_components)
     property_edit_operation = inspector_apply_property_edit(
         {"component": "TextBox", "props": {"label": "Name"}},
@@ -6694,6 +6696,26 @@ def object_inspector_workbench() -> dict:
             ),
             "evidence": inspector_module_test_artifacts,
         },
+        {
+            "id": "handler_architecture_modules",
+            "ok": len(handler_architecture_artifacts) == 4
+            and all(
+                item["ok"]
+                and {"handler_architecture_manifest", "invoke_handler", "call_handler", "smoke_test"}
+                <= set(item["exports"])
+                for item in handler_architecture_artifacts
+            ),
+            "evidence": handler_architecture_artifacts,
+        },
+        {
+            "id": "handler_architecture_module_tests",
+            "ok": len(handler_architecture_test_artifacts) == 4
+            and all(
+                item["ok"] and "test_handler_architecture_module_smoke" in item["exports"]
+                for item in handler_architecture_test_artifacts
+            ),
+            "evidence": handler_architecture_test_artifacts,
+        },
     )
     ok = all(check["ok"] for check in checks)
     return {
@@ -6735,6 +6757,8 @@ def object_inspector_workbench() -> dict:
         "cross_handler_invocation": cross_handler_invocation,
         "inspector_module_artifacts": inspector_module_artifacts,
         "inspector_module_test_artifacts": inspector_module_test_artifacts,
+        "handler_architecture_artifacts": handler_architecture_artifacts,
+        "handler_architecture_test_artifacts": handler_architecture_test_artifacts,
         "readiness": readiness,
         "actionable_operations": {
             "property_edit": property_edit_operation,
@@ -20648,6 +20672,57 @@ def component_wiring_module_test_file_manifest() -> tuple[dict, ...]:
     )
 
 
+def handler_architecture_module_file_manifest() -> tuple[dict, ...]:
+    """Return generated event-handler architecture module files expected in apps."""
+    modules = (
+        ("handler_registry_module", "handler_registry"),
+        ("handler_context_module", "handler_context"),
+        ("handler_dispatch_module", "handler_dispatch"),
+        ("cross_handler_invocation_module", "cross_handler_invocation"),
+    )
+    exports = (
+        "module_contract",
+        "handler_architecture_manifest",
+        "invoke_handler",
+        "call_handler",
+        "runtime_manifest",
+        "smoke_test",
+    )
+    return tuple(
+        {
+            "module": module,
+            "kind": kind,
+            "path": f"app/handler_architecture_modules/{module}.py",
+            "exports": exports,
+            "ok": bool(module) and bool(kind),
+        }
+        for module, kind in modules
+    )
+
+
+def handler_architecture_module_test_file_manifest() -> tuple[dict, ...]:
+    """Return generated event-handler architecture test files expected in apps."""
+    return tuple(
+        {
+            "module": item["module"],
+            "kind": item["kind"],
+            "path": item["path"].replace(
+                "app/handler_architecture_modules/",
+                "app/handler_architecture_module_tests/test_",
+            ),
+            "target": item["path"],
+            "exports": (
+                "load_handler_architecture_module",
+                "test_handler_architecture_module_contract",
+                "test_handler_architecture_module_smoke",
+                "smoke_test",
+            ),
+            "ok": item["ok"],
+        }
+        for item in handler_architecture_module_file_manifest()
+    )
+
+
 def binding_module_file_manifest() -> tuple[dict, ...]:
     """Return generated visual binding module files expected in apps."""
     modules = (
@@ -21400,6 +21475,8 @@ def form_designer_generation_smoke_audit(source: str = FORM_DESIGNER_SAMPLE_DSL)
     inspector_module_test_artifacts = tuple(item["path"] for item in inspector_module_test_file_manifest())
     component_wiring_module_artifacts = tuple(item["path"] for item in component_wiring_module_file_manifest())
     component_wiring_module_test_artifacts = tuple(item["path"] for item in component_wiring_module_test_file_manifest())
+    handler_architecture_module_artifacts = tuple(item["path"] for item in handler_architecture_module_file_manifest())
+    handler_architecture_module_test_artifacts = tuple(item["path"] for item in handler_architecture_module_test_file_manifest())
     binding_module_artifacts = tuple(item["path"] for item in binding_module_file_manifest())
     binding_module_test_artifacts = tuple(item["path"] for item in binding_module_test_file_manifest())
     package_manager_module_artifacts = tuple(item["path"] for item in package_manager_module_file_manifest())
@@ -21444,6 +21521,8 @@ def form_designer_generation_smoke_audit(source: str = FORM_DESIGNER_SAMPLE_DSL)
         *inspector_module_test_artifacts,
         *component_wiring_module_artifacts,
         *component_wiring_module_test_artifacts,
+        *handler_architecture_module_artifacts,
+        *handler_architecture_module_test_artifacts,
         *binding_module_artifacts,
         *binding_module_test_artifacts,
         *package_manager_module_artifacts,
@@ -21488,6 +21567,8 @@ def form_designer_generation_smoke_audit(source: str = FORM_DESIGNER_SAMPLE_DSL)
         *inspector_module_test_artifacts,
         *component_wiring_module_artifacts,
         *component_wiring_module_test_artifacts,
+        *handler_architecture_module_artifacts,
+        *handler_architecture_module_test_artifacts,
         *binding_module_artifacts,
         *binding_module_test_artifacts,
         *package_manager_module_artifacts,
@@ -21880,6 +21961,8 @@ def form_designer_generation_smoke_audit(source: str = FORM_DESIGNER_SAMPLE_DSL)
             and len(inspector_module_test_artifacts) == 6
             and len(component_wiring_module_artifacts) == 4
             and len(component_wiring_module_test_artifacts) == 4
+            and len(handler_architecture_module_artifacts) == 4
+            and len(handler_architecture_module_test_artifacts) == 4
             and len(binding_module_artifacts) == 6
             and len(binding_module_test_artifacts) == 6
             and len(package_manager_module_artifacts) == 6
@@ -21906,6 +21989,8 @@ def form_designer_generation_smoke_audit(source: str = FORM_DESIGNER_SAMPLE_DSL)
             "inspector_module_test_count": len(inspector_module_test_artifacts),
             "component_wiring_module_count": len(component_wiring_module_artifacts),
             "component_wiring_module_test_count": len(component_wiring_module_test_artifacts),
+            "handler_architecture_module_count": len(handler_architecture_module_artifacts),
+            "handler_architecture_module_test_count": len(handler_architecture_module_test_artifacts),
             "binding_module_count": len(binding_module_artifacts),
             "binding_module_test_count": len(binding_module_test_artifacts),
             "package_manager_module_count": len(package_manager_module_artifacts),

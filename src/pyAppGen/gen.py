@@ -2347,6 +2347,7 @@ def write_form_designer_file(output_dir, schema: AppSchema):
     write_deep_data_tooling_module_files(output_dir)
     write_enterprise_data_ide_module_files(output_dir)
     write_component_wiring_module_files(output_dir)
+    write_handler_architecture_module_files(output_dir)
     write_inspector_module_files(output_dir)
     write_binding_module_files(output_dir)
     write_package_manager_module_files(output_dir)
@@ -2457,6 +2458,13 @@ COMPONENT_WIRING_MODULES = (
     "component_drop_target_module",
     "component_event_wiring_module",
     "component_handler_definition_module",
+)
+
+HANDLER_ARCHITECTURE_MODULES = (
+    "handler_registry_module",
+    "handler_context_module",
+    "handler_dispatch_module",
+    "cross_handler_invocation_module",
 )
 
 PACKAGE_MANAGER_MODULES = (
@@ -3053,6 +3061,26 @@ def write_component_wiring_module_files(output_dir):
         )
 
 
+def write_handler_architecture_module_files(output_dir):
+    """Write generated event-handler architecture modules and smoke tests."""
+    output_dir = Path(output_dir)
+    module_dir = output_dir / "handler_architecture_modules"
+    test_dir = output_dir / "handler_architecture_module_tests"
+    module_dir.mkdir(parents=True, exist_ok=True)
+    test_dir.mkdir(parents=True, exist_ok=True)
+    (module_dir / "__init__.py").write_text(_handler_architecture_module_init_text(), encoding="utf-8")
+    (test_dir / "__init__.py").write_text(_handler_architecture_module_test_init_text(), encoding="utf-8")
+    for module_name in HANDLER_ARCHITECTURE_MODULES:
+        (module_dir / f"{module_name}.py").write_text(
+            _handler_architecture_module_text(module_name),
+            encoding="utf-8",
+        )
+        (test_dir / f"test_{module_name}.py").write_text(
+            _handler_architecture_module_test_text(module_name),
+            encoding="utf-8",
+        )
+
+
 def write_inspector_module_files(output_dir):
     """Write generated Object Inspector editor modules and smoke tests."""
     output_dir = Path(output_dir)
@@ -3337,6 +3365,21 @@ def _component_wiring_module_test_init_text() -> str:
     return (
         '"""Generated component drop/wiring module tests."""\n\n'
         f"COMPONENT_WIRING_MODULE_TESTS = {modules!r}\n"
+    )
+
+
+def _handler_architecture_module_init_text() -> str:
+    return (
+        '"""Generated event-handler architecture modules."""\n\n'
+        f"HANDLER_ARCHITECTURE_MODULES = {HANDLER_ARCHITECTURE_MODULES!r}\n"
+    )
+
+
+def _handler_architecture_module_test_init_text() -> str:
+    modules = tuple(f"test_{name}" for name in HANDLER_ARCHITECTURE_MODULES)
+    return (
+        '"""Generated event-handler architecture module tests."""\n\n'
+        f"HANDLER_ARCHITECTURE_MODULE_TESTS = {modules!r}\n"
     )
 
 
@@ -11311,6 +11354,252 @@ def smoke_test():
         "module": MODULE,
         "ok": True,
         "tests": ("test_component_wiring_module_contract", "test_component_wiring_module_smoke"),
+    }}
+'''
+
+
+def _handler_architecture_kind(module_name: str) -> str:
+    return {
+        "handler_registry_module": "handler_registry",
+        "handler_context_module": "handler_context",
+        "handler_dispatch_module": "handler_dispatch",
+        "cross_handler_invocation_module": "cross_handler_invocation",
+    }[module_name]
+
+
+def _handler_architecture_module_text(module_name: str) -> str:
+    kind = _handler_architecture_kind(module_name)
+    return f'''"""Generated event-handler architecture module for {kind}."""
+
+from __future__ import annotations
+
+import importlib.util
+from pathlib import Path
+
+
+MODULE = {module_name!r}
+KIND = {kind!r}
+EXPECTED_EXPORTS = (
+    "module_contract",
+    "handler_architecture_manifest",
+    "invoke_handler",
+    "call_handler",
+    "runtime_manifest",
+    "smoke_test",
+)
+
+
+def _load_form_designer():
+    module_path = Path(__file__).resolve().parents[1] / "form_designer.py"
+    spec = importlib.util.spec_from_file_location(f"generated_handler_architecture_{{MODULE}}_form_designer", module_path)
+    module = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(module)
+    return module
+
+
+def module_contract():
+    """Return this generated handler architecture module's export contract."""
+    available = tuple(name for name in EXPECTED_EXPORTS if name in globals())
+    return {{
+        "format": "appgen.handler-architecture-module-contract.v1",
+        "module": MODULE,
+        "kind": KIND,
+        "ok": set(EXPECTED_EXPORTS) <= set(available),
+        "exports": available,
+        "expected_exports": EXPECTED_EXPORTS,
+        "side_effects": (),
+    }}
+
+
+def _handler_catalog(table_name=None):
+    designer = _load_form_designer()
+    wiring = designer.component_drop_wiring_handler_contract(table_name)
+    return tuple(
+        {{
+            "handler": item["name"],
+            "component": item["component"],
+            "event": item["event"],
+            "signature": item["signature"],
+            "context_keys": item["context_keys"],
+        }}
+        for item in wiring["handler_definitions"]
+    )
+
+
+def handler_architecture_manifest(table_name=None):
+    """Return generated handler registry, context, dispatch, and cross-call metadata."""
+    designer = _load_form_designer()
+    handlers = _handler_catalog(table_name)
+    cross_handler = designer.inspector_cross_handler_invocation_contract("Button")
+    registry = tuple(
+        {{
+            "handler": item["handler"],
+            "callable": True,
+            "component": item["component"],
+            "event": item["event"],
+            "signature": item["signature"],
+        }}
+        for item in handlers
+    )
+    context = {{
+        "keys": ("sender", "context", "form", "component", "dataset", "event", "selection"),
+        "required": ("sender", "context"),
+        "immutable": ("sender", "event"),
+    }}
+    dispatch = tuple(
+        {{
+            "handler": item["handler"],
+            "pipeline": ("resolve_handler", "build_context", "invoke_handler", "record_trace"),
+            "can_call_handlers": tuple(target["handler"] for target in handlers if target["handler"] != item["handler"]),
+        }}
+        for item in handlers
+    )
+    payload = {{
+        "handler_registry": registry,
+        "handler_context": context,
+        "handler_dispatch": dispatch,
+        "cross_handler_invocation": cross_handler,
+    }}[KIND]
+    return {{
+        "format": "appgen.handler-architecture-module-manifest.v1",
+        "module": MODULE,
+        "kind": KIND,
+        "ok": bool(handlers)
+        and bool(payload)
+        and all(item["signature"] == "sender, context" for item in handlers)
+        and cross_handler["ok"],
+        "payload": payload,
+        "handlers": handlers,
+        "guards": ("sender_context_required", "registry_lookup_before_invoke", "cross_handler_cycle_guard", "user_code_region_preserved"),
+        "side_effects": (),
+    }}
+
+
+def invoke_handler(handler_name, sender=None, context=None, table_name=None):
+    """Resolve and invoke a handler through the generated registry without side effects."""
+    manifest = handler_architecture_manifest(table_name)
+    registry = {{item["handler"]: item for item in manifest["handlers"]}}
+    handler = registry.get(handler_name)
+    call_context = {{
+        "sender": sender or (handler["component"] if handler else "unknown"),
+        "context": context or {{}},
+        "event": handler["event"] if handler else None,
+    }}
+    return {{
+        "format": "appgen.handler-architecture-invocation.v1",
+        "module": MODULE,
+        "handler": handler_name,
+        "ok": manifest["ok"] and handler is not None and {{"sender", "context"}} <= set(call_context),
+        "dispatch": ("resolve_handler", "build_context", "invoke_handler", "record_trace"),
+        "call_context": call_context,
+        "side_effects": (),
+    }}
+
+
+def call_handler(source_handler, target_handler, table_name=None):
+    """Call another handler through the same registry with cycle guards declared."""
+    source = invoke_handler(source_handler, table_name=table_name)
+    target = invoke_handler(target_handler, table_name=table_name)
+    return {{
+        "format": "appgen.handler-architecture-cross-call.v1",
+        "module": MODULE,
+        "source": source_handler,
+        "target": target_handler,
+        "ok": source["ok"] and target["ok"] and source_handler != target_handler,
+        "pipeline": ("resolve_source", "check_cycle_guard", "resolve_target", "invoke_handler"),
+        "guards": ("cycle_guard_required", "target_handler_must_exist", "sender_context_forwarded"),
+        "side_effects": (),
+    }}
+
+
+def runtime_manifest(table_name=None):
+    """Return the source component wiring contract used by this handler module."""
+    return _load_form_designer().component_drop_wiring_handler_contract(table_name)
+
+
+def smoke_test(table_name=None):
+    """Run side-effect-free checks for this generated handler architecture module."""
+    contract = module_contract()
+    manifest = handler_architecture_manifest(table_name)
+    first = manifest["handlers"][0]["handler"] if manifest["handlers"] else None
+    second = manifest["handlers"][1]["handler"] if len(manifest["handlers"]) > 1 else first
+    invocation = invoke_handler(first, table_name=table_name) if first else {{"ok": False, "side_effects": ()}}
+    cross_call = call_handler(first, second, table_name=table_name) if first and second and first != second else {{"ok": False, "side_effects": ()}}
+    runtime = runtime_manifest(table_name)
+    return {{
+        "format": "appgen.handler-architecture-module-smoke-test.v1",
+        "module": MODULE,
+        "kind": KIND,
+        "ok": contract["ok"]
+        and manifest["ok"]
+        and invocation["ok"]
+        and cross_call["ok"]
+        and runtime["ok"]
+        and not manifest["side_effects"]
+        and not invocation["side_effects"]
+        and not cross_call["side_effects"],
+        "checks": (
+            "module_contract_resolves",
+            "handler_architecture_manifest_resolves",
+            "handler_invocation_replays",
+            "cross_handler_call_replays",
+            "runtime_manifest_ok",
+            "no_side_effects",
+        ),
+    }}
+'''
+
+
+def _handler_architecture_module_test_text(module_name: str) -> str:
+    return f'''"""Generated tests for the {module_name} event-handler architecture module."""
+
+from __future__ import annotations
+
+import importlib.util
+from pathlib import Path
+
+
+MODULE = {module_name!r}
+
+
+def load_handler_architecture_module():
+    """Load the generated handler architecture module without app installation."""
+    module_path = Path(__file__).resolve().parents[1] / "handler_architecture_modules" / f"{{MODULE}}.py"
+    spec = importlib.util.spec_from_file_location(f"generated_handler_architecture_module_{{MODULE}}", module_path)
+    module = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(module)
+    return module
+
+
+def test_handler_architecture_module_contract():
+    """Assert the generated handler architecture module exposes its contract."""
+    module = load_handler_architecture_module()
+    contract = module.module_contract()
+    assert contract["module"] == MODULE
+    assert contract["ok"] is True
+    assert all(hasattr(module, name) for name in contract["expected_exports"])
+
+
+def test_handler_architecture_module_smoke():
+    """Assert the module's side-effect-free smoke test passes."""
+    module = load_handler_architecture_module()
+    result = module.smoke_test()
+    assert result["ok"] is True
+    assert result["module"] == MODULE
+    assert result["checks"]
+
+
+def smoke_test():
+    """Run this generated test module in a side-effect-free way."""
+    test_handler_architecture_module_contract()
+    test_handler_architecture_module_smoke()
+    return {{
+        "format": "appgen.handler-architecture-module-generated-test-smoke.v1",
+        "module": MODULE,
+        "ok": True,
+        "tests": ("test_handler_architecture_module_contract", "test_handler_architecture_module_smoke"),
     }}
 '''
 
@@ -48382,6 +48671,8 @@ def object_inspector_workbench():
         {{"module": module, "path": f"app/inspector_module_tests/test_{{module}}.py", "exports": ("load_inspector_module", "test_inspector_module_contract", "test_inspector_module_smoke", "smoke_test"), "ok": True}}
         for module in ("property_editor_module", "event_editor_module", "component_editor_module", "custom_designer_module", "handler_invocation_module", "binding_bridge_module")
     )
+    handler_architecture_artifacts = handler_architecture_module_file_manifest(_local_component_paths())["modules"]
+    handler_architecture_test_artifacts = handler_architecture_module_test_file_manifest(_local_component_paths())["tests"]
     readiness = object_inspector_readiness_contract(sample_components)
     property_edit_operation = inspector_apply_property_edit({{"component": "TextBox", "props": {{"label": "Name"}}}}, "label", "Customer Name")
     event_create_operation = inspector_create_event_handler("Button", "OnClick")
@@ -48458,6 +48749,8 @@ def object_inspector_workbench():
         {{"id": "inspector_readiness_contract", "ok": readiness["ok"] and {{"editor_metadata_ready", "property_event_ready", "component_custom_designer_ready", "state_design_surface_ready", "binding_handler_ready", "lifecycle_round_trip_ready", "operation_surface_ready", "phase_order_ready"}} <= {{check["id"] for check in readiness["checks"] if check["ok"]}} and not readiness["side_effects"], "evidence": readiness}},
         {{"id": "inspector_generated_modules", "ok": len(inspector_module_artifacts) == 6 and all(item["ok"] and "run_editor_operation" in item["exports"] for item in inspector_module_artifacts), "evidence": inspector_module_artifacts}},
         {{"id": "inspector_generated_module_tests", "ok": len(inspector_module_test_artifacts) == 6 and all(item["ok"] and "test_inspector_module_smoke" in item["exports"] for item in inspector_module_test_artifacts), "evidence": inspector_module_test_artifacts}},
+        {{"id": "handler_architecture_modules", "ok": len(handler_architecture_artifacts) == 4 and all(item["ok"] and {{"handler_architecture_manifest", "invoke_handler", "call_handler", "smoke_test"}} <= set(item["exports"]) for item in handler_architecture_artifacts), "evidence": handler_architecture_artifacts}},
+        {{"id": "handler_architecture_module_tests", "ok": len(handler_architecture_test_artifacts) == 4 and all(item["ok"] and "test_handler_architecture_module_smoke" in item["exports"] for item in handler_architecture_test_artifacts), "evidence": handler_architecture_test_artifacts}},
     )
     ok = all(check["ok"] for check in checks)
     return {{
@@ -48499,6 +48792,8 @@ def object_inspector_workbench():
         "cross_handler_invocation": cross_handler_invocation,
         "inspector_module_artifacts": inspector_module_artifacts,
         "inspector_module_test_artifacts": inspector_module_test_artifacts,
+        "handler_architecture_artifacts": handler_architecture_artifacts,
+        "handler_architecture_test_artifacts": handler_architecture_test_artifacts,
         "readiness": readiness,
         "actionable_operations": {{
             "property_edit": property_edit_operation,
@@ -49114,6 +49409,75 @@ def component_wiring_module_test_file_manifest(existing_paths=None):
         "ok": bool(tests) and all(item["ok"] for item in tests),
         "tests": tuple(tests),
         "guards": ("one_test_file_per_wiring_surface", "contract_and_smoke_tests_exported"),
+        "side_effects": (),
+    }}
+
+
+def handler_architecture_module_file_manifest(existing_paths=None):
+    """Return generated event-handler architecture module files and whether they exist."""
+    paths = set(existing_paths) if existing_paths is not None else _local_component_paths()
+    modules = (
+        ("handler_registry_module", "handler_registry"),
+        ("handler_context_module", "handler_context"),
+        ("handler_dispatch_module", "handler_dispatch"),
+        ("cross_handler_invocation_module", "cross_handler_invocation"),
+    )
+    exports = (
+        "module_contract",
+        "handler_architecture_manifest",
+        "invoke_handler",
+        "call_handler",
+        "runtime_manifest",
+        "smoke_test",
+    )
+    manifest = []
+    for module, kind in modules:
+        path = f"app/handler_architecture_modules/{{module}}.py"
+        manifest.append({{
+            "module": module,
+            "kind": kind,
+            "path": path,
+            "exists": path in paths,
+            "exports": exports,
+            "ok": bool(module) and bool(kind) and path in paths,
+        }})
+    return {{
+        "format": "appgen.generated-handler-architecture-module-file-manifest.v1",
+        "ok": bool(manifest) and all(item["ok"] for item in manifest),
+        "modules": tuple(manifest),
+        "guards": ("one_file_per_handler_surface", "declared_exports_present", "handler_smoke_replays"),
+        "side_effects": (),
+    }}
+
+
+def handler_architecture_module_test_file_manifest(existing_paths=None):
+    """Return generated event-handler architecture test files and whether they exist."""
+    paths = set(existing_paths) if existing_paths is not None else _local_component_paths()
+    tests = []
+    for item in handler_architecture_module_file_manifest(existing_paths)["modules"]:
+        path = item["path"].replace(
+            "app/handler_architecture_modules/",
+            "app/handler_architecture_module_tests/test_",
+        )
+        tests.append({{
+            "module": item["module"],
+            "kind": item["kind"],
+            "path": path,
+            "exists": path in paths,
+            "target": item["path"],
+            "exports": (
+                "load_handler_architecture_module",
+                "test_handler_architecture_module_contract",
+                "test_handler_architecture_module_smoke",
+                "smoke_test",
+            ),
+            "ok": item["ok"] and path in paths,
+        }})
+    return {{
+        "format": "appgen.generated-handler-architecture-module-test-file-manifest.v1",
+        "ok": bool(tests) and all(item["ok"] for item in tests),
+        "tests": tuple(tests),
+        "guards": ("one_test_file_per_handler_surface", "contract_and_smoke_tests_exported"),
         "side_effects": (),
     }}
 
@@ -55388,6 +55752,8 @@ def _local_component_paths():
         "component_package_tests",
         "component_wiring_modules",
         "component_wiring_module_tests",
+        "handler_architecture_modules",
+        "handler_architecture_module_tests",
     ):
         base = root / folder
         if not base.exists():

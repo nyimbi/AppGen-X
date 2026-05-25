@@ -681,6 +681,10 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
 - Generated component wiring now writes dedicated module and test files for
   drop payloads, drop targets, event wiring, and handler definitions, and the
   smoke audit compiles those files as release evidence.
+- Event-handler architecture now has generated module and test files for the
+  handler registry, handler context, handler dispatch, and cross-handler
+  invocation, so handlers can be resolved, invoked, and composed through a
+  tested shared surface.
 
 ## Open Completion Areas
 

@@ -108,6 +108,8 @@ from pyAppGen.form_designer import component_package_preview_load_operation
 from pyAppGen.form_designer import component_drop_wiring_handler_contract
 from pyAppGen.form_designer import component_wiring_module_file_manifest
 from pyAppGen.form_designer import component_wiring_module_test_file_manifest
+from pyAppGen.form_designer import handler_architecture_module_file_manifest
+from pyAppGen.form_designer import handler_architecture_module_test_file_manifest
 from pyAppGen.form_designer import component_file_manifest
 from pyAppGen.form_designer import component_parity_readiness_contract
 from pyAppGen.form_designer import component_package_file_manifest
@@ -1645,6 +1647,8 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "inspector_readiness_contract",
         "inspector_generated_modules",
         "inspector_generated_module_tests",
+        "handler_architecture_modules",
+        "handler_architecture_module_tests",
     } == {check["id"] for check in inspector_workbench["checks"]}
     assert all("apply_change" in workflow["workflow"] for workflow in inspector_workbench["property_edit_workflows"])
     assert all("update_component_reference" in workflow["workflow"] for workflow in inspector_workbench["event_edit_workflows"])
@@ -1795,11 +1799,23 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     assert inspector_workbench["readiness"]["final_state"]["custom_designer_hooks"] > 0
     assert len(inspector_workbench["inspector_module_artifacts"]) == 6
     assert len(inspector_workbench["inspector_module_test_artifacts"]) == 6
+    assert len(inspector_workbench["handler_architecture_artifacts"]) == 4
+    assert len(inspector_workbench["handler_architecture_test_artifacts"]) == 4
     assert all("run_editor_operation" in item["exports"] for item in inspector_workbench["inspector_module_artifacts"])
     assert all(
         "test_inspector_module_smoke" in item["exports"]
         for item in inspector_workbench["inspector_module_test_artifacts"]
     )
+    assert all(
+        {"handler_architecture_manifest", "invoke_handler", "call_handler"} <= set(item["exports"])
+        for item in inspector_workbench["handler_architecture_artifacts"]
+    )
+    assert {
+        item["kind"] for item in handler_architecture_module_file_manifest()
+    } == {"handler_registry", "handler_context", "handler_dispatch", "cross_handler_invocation"}
+    assert {
+        item["kind"] for item in handler_architecture_module_test_file_manifest()
+    } == {"handler_registry", "handler_context", "handler_dispatch", "cross_handler_invocation"}
     binding_graph = livebindings_graph_contract()
     assert binding_graph["format"] == "appgen.livebindings-graph.v1"
     assert {"dataset", "field", "control", "expression"} <= {node["kind"] for node in binding_graph["nodes"]}
@@ -4333,6 +4349,12 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         item["path"] for item in component_wiring_module_test_file_manifest()
     } <= set(smoke["required_artifacts"])
     assert {
+        item["path"] for item in handler_architecture_module_file_manifest()
+    } <= set(smoke["required_artifacts"])
+    assert {
+        item["path"] for item in handler_architecture_module_test_file_manifest()
+    } <= set(smoke["required_artifacts"])
+    assert {
         "app/form_designer.py",
         "app/component_parity_runtime.py",
         "app/inspector_runtime.py",
@@ -4364,12 +4386,20 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     assert {
         item["path"] for item in component_wiring_module_test_file_manifest()
     } <= set(smoke["compiled_artifacts"])
+    assert {
+        item["path"] for item in handler_architecture_module_file_manifest()
+    } <= set(smoke["compiled_artifacts"])
+    assert {
+        item["path"] for item in handler_architecture_module_test_file_manifest()
+    } <= set(smoke["compiled_artifacts"])
     assert "generated_component_file_coverage" in {
         check["id"] for check in smoke["checks"]
     }
     coverage = next(check for check in smoke["checks"] if check["id"] == "generated_component_file_coverage")
     assert coverage["component_wiring_module_count"] == 4
     assert coverage["component_wiring_module_test_count"] == 4
+    assert coverage["handler_architecture_module_count"] == 4
+    assert coverage["handler_architecture_module_test_count"] == 4
     release_contracts = next(check for check in smoke["checks"] if check["id"] == "generated_release_contracts")
     assert release_contracts["ok"] is True
     assert {
@@ -13571,6 +13601,16 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         for path in (output_dir / "component_wiring_module_tests").glob("*.py")
         if path.name != "__init__.py"
     )
+    generated_form_designer_paths.update(
+        f"app/handler_architecture_modules/{path.name}"
+        for path in (output_dir / "handler_architecture_modules").glob("*.py")
+        if path.name != "__init__.py"
+    )
+    generated_form_designer_paths.update(
+        f"app/handler_architecture_module_tests/{path.name}"
+        for path in (output_dir / "handler_architecture_module_tests").glob("*.py")
+        if path.name != "__init__.py"
+    )
     workbench = form_designer.form_designer_workbench(generated_form_designer_paths)
     assert workbench["format"] == "appgen.form-designer-workbench.v1"
     assert workbench["ok"] is True
@@ -15716,6 +15756,8 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "inspector_readiness_contract",
         "inspector_generated_modules",
         "inspector_generated_module_tests",
+        "handler_architecture_modules",
+        "handler_architecture_module_tests",
     } == {check["id"] for check in generated_inspector["checks"]}
     generated_property_edit = form_designer.inspector_apply_property_edit(
         {"component": "TextBox", "props": {"label": "Name"}},
@@ -15892,11 +15934,41 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert generated_inspector["readiness"]["final_state"]["custom_designer_hooks"] > 0
     assert len(generated_inspector["inspector_module_artifacts"]) == 6
     assert len(generated_inspector["inspector_module_test_artifacts"]) == 6
+    assert len(generated_inspector["handler_architecture_artifacts"]) == 4
+    assert len(generated_inspector["handler_architecture_test_artifacts"]) == 4
     assert all("run_editor_operation" in item["exports"] for item in generated_inspector["inspector_module_artifacts"])
     assert all(
         "test_inspector_module_smoke" in item["exports"]
         for item in generated_inspector["inspector_module_test_artifacts"]
     )
+    generated_handler_architecture_files = form_designer.handler_architecture_module_file_manifest(
+        generated_form_designer_paths
+    )
+    generated_handler_architecture_tests = form_designer.handler_architecture_module_test_file_manifest(
+        generated_form_designer_paths
+    )
+    assert generated_handler_architecture_files["ok"] is True
+    assert generated_handler_architecture_tests["ok"] is True
+    assert {item["kind"] for item in generated_handler_architecture_files["modules"]} == {
+        "handler_registry",
+        "handler_context",
+        "handler_dispatch",
+        "cross_handler_invocation",
+    }
+    for item in generated_handler_architecture_files["modules"]:
+        module_path = output_dir / item["path"].replace("app/", "")
+        py_compile.compile(str(module_path), doraise=True)
+        module = _load_module(module_path, f"generated_handler_architecture_module_{item['module']}")
+        assert module.smoke_test("Book")["ok"] is True
+        assert module.module_contract()["ok"] is True
+        handler_manifest = module.handler_architecture_manifest("Book")
+        assert handler_manifest["ok"] is True
+        assert {"sender_context_required", "cross_handler_cycle_guard"} <= set(handler_manifest["guards"])
+    for item in generated_handler_architecture_tests["tests"]:
+        test_path = output_dir / item["path"].replace("app/", "")
+        py_compile.compile(str(test_path), doraise=True)
+        module = _load_module(test_path, f"generated_handler_architecture_module_test_{item['module']}")
+        assert module.smoke_test()["ok"] is True
     generated_usability = form_designer.component_usability_workbench()
     assert generated_usability["format"] == "appgen.generated-component-usability-workbench.v1"
     assert generated_usability["ok"] is True
