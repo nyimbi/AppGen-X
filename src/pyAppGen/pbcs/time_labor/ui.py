@@ -1,0 +1,147 @@
+"""UI contract for the Time and Labor PBC."""
+
+from __future__ import annotations
+
+
+TIME_LABOR_UI_FRAGMENT_KEYS = (
+    "TimeLaborWorkbench",
+    "ShiftPlannerPanel",
+    "ClockExceptionQueue",
+    "AbsenceConsole",
+    "LaborApprovalBoard",
+    "TimeRuleStudio",
+    "TimeParameterConsole",
+    "TimeConfigurationPanel",
+)
+
+
+def time_labor_ui_contract() -> dict:
+    return {
+        "format": "appgen.time-labor-ui-contract.v1",
+        "ok": True,
+        "pbc": "time_labor",
+        "implementation_directory": "src/pyAppGen/pbcs/time_labor",
+        "fragments": TIME_LABOR_UI_FRAGMENT_KEYS,
+        "routes": (
+            "/workbench/pbcs/time_labor",
+            "/workbench/pbcs/time_labor/shifts",
+            "/workbench/pbcs/time_labor/clock-events",
+            "/workbench/pbcs/time_labor/absences",
+            "/workbench/pbcs/time_labor/approvals",
+            "/workbench/pbcs/time_labor/rules",
+            "/workbench/pbcs/time_labor/parameters",
+            "/workbench/pbcs/time_labor/configuration",
+        ),
+        "panels": (
+            {
+                "key": "shift_planner",
+                "fragment": "ShiftPlannerPanel",
+                "binds_to": ("shift", "employee_projection", "time_rule"),
+                "commands": ("create_shift", "simulate_schedule_policy", "optimize_schedule"),
+            },
+            {
+                "key": "clock_exceptions",
+                "fragment": "ClockExceptionQueue",
+                "binds_to": ("clock_event", "time_entry", "dead_letter"),
+                "commands": ("record_clock_event", "recommend_exception_resolution", "route_clock_source"),
+            },
+            {
+                "key": "absence_console",
+                "fragment": "AbsenceConsole",
+                "binds_to": ("absence", "time_rule", "employee_projection"),
+                "commands": ("record_absence", "screen_policy"),
+            },
+            {
+                "key": "approval_board",
+                "fragment": "LaborApprovalBoard",
+                "binds_to": ("labor_summary", "time_entry", "outbox"),
+                "commands": ("approve_labor_summary", "generate_hours_proof"),
+            },
+            {
+                "key": "governance_studio",
+                "fragment": "TimeRuleStudio",
+                "binds_to": ("rule", "parameter", "configuration"),
+                "commands": ("register_rule", "set_parameter", "configure_runtime", "run_control_tests"),
+            },
+        ),
+        "action_permissions": {
+            "create_shift": "time_labor.create",
+            "record_clock_event": "time_labor.clock",
+            "record_absence": "time_labor.absence",
+            "approve_labor_summary": "time_labor.approve",
+            "register_rule": "time_labor.admin",
+            "set_parameter": "time_labor.admin",
+            "configure_runtime": "time_labor.admin",
+            "run_control_tests": "time_labor.audit",
+        },
+        "configuration_editor": {
+            "required_fields": ("database_backend", "event_topic", "retry_limit", "default_timezone"),
+            "allowed_database_backends": ("postgresql", "mysql", "mariadb"),
+            "event_contract": "AppGen-X",
+        },
+        "parameter_editor": {
+            "numeric_parameters": (
+                "standard_daily_hours",
+                "weekly_overtime_threshold",
+                "break_minutes",
+                "rounding_interval_minutes",
+                "geofence_radius_meters",
+            ),
+        },
+        "rule_editor": {
+            "rule_types": ("time", "absence", "premium", "approval", "compliance"),
+            "required_fields": ("rule_id", "tenant", "rule_type", "eligible_roles", "status"),
+        },
+        "event_surfaces": {
+            "emits": ("LaborHoursApproved", "AbsenceRecorded"),
+            "consumes": ("EmployeeCreated", "RoleChanged"),
+            "outbox_status": "visible",
+            "dead_letter_status": "visible",
+        },
+    }
+
+
+def time_labor_render_workbench(
+    state: dict,
+    *,
+    tenant: str,
+    principal_permissions: tuple[str, ...],
+) -> dict:
+    contract = time_labor_ui_contract()
+    permissions = set(principal_permissions)
+    action_permissions = contract["action_permissions"]
+    visible_actions = tuple(
+        action
+        for action, required_permission in action_permissions.items()
+        if required_permission in permissions
+    )
+    tenant_shifts = tuple(shift for shift in state["shifts"].values() if shift["tenant"] == tenant)
+    tenant_entries = tuple(entry for entry in state["time_entries"].values() if entry["tenant"] == tenant)
+    tenant_absences = tuple(absence for absence in state["absences"].values() if absence["tenant"] == tenant)
+    tenant_summaries = tuple(summary for summary in state["summaries"].values() if summary["tenant"] == tenant)
+    tenant_exceptions = tuple(
+        event
+        for event in state["clock_events"].values()
+        if event["tenant"] == tenant and event["status"] == "exception"
+    )
+    cards = (
+        {"key": "scheduled_shifts", "value": len(tenant_shifts), "fragment": "ShiftPlannerPanel"},
+        {"key": "calculated_hours", "value": round(sum(entry["hours"] for entry in tenant_entries), 2), "fragment": "LaborApprovalBoard"},
+        {"key": "open_exceptions", "value": len(tenant_exceptions), "fragment": "ClockExceptionQueue"},
+        {"key": "recorded_absences", "value": len(tenant_absences), "fragment": "AbsenceConsole"},
+        {"key": "approved_summaries", "value": len(tuple(summary for summary in tenant_summaries if summary["status"] == "approved")), "fragment": "LaborApprovalBoard"},
+    )
+    return {
+        "format": "appgen.time-labor-workbench-render.v1",
+        "ok": True,
+        "tenant": tenant,
+        "route": "/workbench/pbcs/time_labor",
+        "fragments": contract["fragments"],
+        "cards": cards,
+        "visible_actions": visible_actions,
+        "locked_actions": tuple(action for action in action_permissions if action not in visible_actions),
+        "configuration_bound": bool(state["configuration"].get("ok")),
+        "rules_bound": tuple(sorted(state["rules"])),
+        "parameters_bound": tuple(sorted(state["parameters"])),
+        "event_outbox_count": len(state["outbox"]),
+    }
