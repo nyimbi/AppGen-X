@@ -2954,6 +2954,28 @@ def write_pbc_runtime_file(output_dir, schema: AppSchema):
     (output_dir / "pbc_runtime.py").write_text(_pbc_runtime_text(schema))
 
 
+def write_pbc_package_files(output_dir, schema: AppSchema):
+    """Write one generated implementation directory per selected PBC."""
+    from .pbc import pbc_implementation_contracts
+
+    output_dir = Path(output_dir)
+    selected = _selected_pbc_keys_from_schema(schema)
+    if not selected:
+        return
+    root = output_dir / "pbcs"
+    root.mkdir(parents=True, exist_ok=True)
+    for contract in pbc_implementation_contracts(selected):
+        if not contract["ok"]:
+            continue
+        pbc_dir = root / contract["pbc"]
+        (pbc_dir / "migrations").mkdir(parents=True, exist_ok=True)
+        (pbc_dir / "tests").mkdir(parents=True, exist_ok=True)
+        for relative, content in _pbc_package_file_contents(contract).items():
+            path = pbc_dir / relative
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(content, encoding="utf-8")
+
+
 def write_component_contract_files(output_dir):
     """Write one generated implementation module per built-in component and package."""
     output_dir = Path(output_dir)
@@ -18916,23 +18938,146 @@ def smoke_test():
 '''
 
 
+def _selected_pbc_keys_from_schema(schema: AppSchema) -> tuple[str, ...]:
+    from .pbc import pbc_catalog
+
+    generated_tables = tuple(table.name for table in schema.tables)
+    catalog = pbc_catalog()
+    return tuple(
+        item["pbc"]
+        for item in catalog
+        if any(table in generated_tables for table in (f"{item['pbc']}_{name}" for name in item["tables"]))
+        or f"{item['pbc']}_event_outbox" in generated_tables
+        or f"{item['pbc']}_appgen_outbox_event" in generated_tables
+    )
+
+
+def _pbc_package_file_contents(contract: dict) -> dict[str, str]:
+    pbc = contract["pbc"]
+    manifest = contract["manifest"]
+    routes = contract["apis"]
+    event_contract = contract["events"]
+    service_class = contract["services"]["class_name"]
+    methods = "\n".join(
+        f"    def {route['service_method']}(self, payload=None):\n"
+        f"        return self._command({route['service_method']!r}, payload or {{}})\n"
+        for route in routes
+    )
+    if not methods:
+        methods = "    pass\n"
+    route_rows = "\n".join(
+        f"    {{'method': {route['method']!r}, 'path': {route['route']!r}, 'handler': {route['handler']!r}, 'permission': {route['permission']!r}}},"
+        for route in routes
+    )
+    migration = contract["migrations"][0]["sql"]
+    release_lines = "\n".join(
+        f"- {check}" for check in contract["release_evidence"]["checks"]
+    )
+    return {
+        "__init__.py": (
+            f'"""Generated PBC package for {pbc}."""\n\n'
+            "from .manifest import PBC_MANIFEST\n\n\n"
+            "def register_pbc():\n"
+            "    \"\"\"Return a side-effect-free manifest for this generated PBC.\"\"\"\n"
+            "    return dict(PBC_MANIFEST)\n"
+        ),
+        "manifest.py": f"PBC_MANIFEST = {manifest!r}\n",
+        "models.py": (
+            f'"""Owned model metadata for the {pbc} PBC."""\n\n'
+            f"OWNED_SCHEMA = {contract['owned_schema']!r}\n"
+            f"MODELS = {contract['models']!r}\n"
+        ),
+        "services.py": (
+            f'"""Command service layer for the {pbc} PBC."""\n\n'
+            f"EVENT_CONTRACT = {event_contract!r}\n\n\n"
+            f"class {service_class}:\n"
+            "    \"\"\"Side-effect-free generated command facade.\"\"\"\n\n"
+            "    def _command(self, command_name, payload):\n"
+            "        event_type = EVENT_CONTRACT['emitted'][0]['event_type'] if EVENT_CONTRACT['emitted'] else 'CommandAccepted'\n"
+            "        return {\n"
+            "            'command': command_name,\n"
+            "            'payload': dict(payload),\n"
+            "            'transaction_boundary': 'owned_datastore_plus_outbox',\n"
+            "            'outbox_table': EVENT_CONTRACT['outbox_table'],\n"
+            "            'emits': (event_type,),\n"
+            "        }\n\n"
+            f"{methods}"
+        ),
+        "routes.py": (
+            f'"""API route contracts for the {pbc} PBC."""\n\n'
+            "ROUTES = (\n"
+            f"{route_rows}\n"
+            ")\n\n\n"
+            "def register_routes(app=None):\n"
+            "    \"\"\"Return route metadata without mutating an application object.\"\"\"\n"
+            "    return ROUTES\n"
+        ),
+        "events.py": (
+            f'"""AppGen-X event contract for the {pbc} PBC."""\n\n'
+            f"EVENT_CONTRACT = {event_contract!r}\n"
+            "EMITTED_EVENTS = EVENT_CONTRACT['emitted']\n"
+            "CONSUMED_EVENTS = EVENT_CONTRACT['consumed']\n"
+        ),
+        "handlers.py": (
+            f'"""Idempotent event handlers for the {pbc} PBC."""\n\n'
+            f"HANDLER_CONTRACTS = {contract['handlers']!r}\n"
+            "_PROCESSED_KEYS = set()\n\n\n"
+            "def dispatch_event(event):\n"
+            "    \"\"\"Process one event envelope idempotently.\"\"\"\n"
+            "    event_type = event.get('event_type')\n"
+            "    event_id = event.get('event_id')\n"
+            "    handler = next((item for item in HANDLER_CONTRACTS if item['event_type'] == event_type), None)\n"
+            "    if handler is None:\n"
+            "        return {'handled': False, 'reason': 'unregistered_event'}\n"
+            "    key = handler['idempotency_key'].format(event_id=event_id)\n"
+            "    if key in _PROCESSED_KEYS:\n"
+            "        return {'handled': True, 'duplicate': True, 'idempotency_key': key}\n"
+            "    _PROCESSED_KEYS.add(key)\n"
+            "    return {\n"
+            "        'handled': True,\n"
+            "        'duplicate': False,\n"
+            "        'idempotency_key': key,\n"
+            "        'retry_policy': handler['retry_policy'],\n"
+            "        'dead_letter_table': handler['dead_letter_table'],\n"
+            "    }\n"
+        ),
+        "ui.py": f"UI = {contract['ui']!r}\n",
+        "permissions.py": f"PERMISSIONS = {contract['permissions']!r}\n",
+        "config.py": f"CONFIG_SCHEMA = {contract['configuration']!r}\n",
+        "seed_data.py": f"SEED_DATA = {contract['seed_data']!r}\n",
+        "migrations/001_initial.sql": migration + "\n",
+        "tests/test_contract.py": (
+            f'"""Generated contract smoke tests for {pbc}."""\n\n'
+            "from ..manifest import PBC_MANIFEST\n"
+            "from ..events import EVENT_CONTRACT\n\n\n"
+            "def test_manifest_and_event_contract():\n"
+            f"    assert PBC_MANIFEST['pbc'] == {pbc!r}\n"
+            "    assert EVENT_CONTRACT['contract'] == 'appgen_event_contract'\n"
+            f"    assert EVENT_CONTRACT['outbox_table'].startswith({(pbc + '_')!r})\n"
+            f"    assert EVENT_CONTRACT['inbox_table'].startswith({(pbc + '_')!r})\n"
+        ),
+        "RELEASE_EVIDENCE.md": (
+            f"# {manifest['label']} Release Evidence\n\n"
+            f"Directory: `pbcs/{pbc}`\n\n"
+            "Generated checks:\n"
+            f"{release_lines}\n"
+        ),
+    }
+
+
 def _pbc_runtime_text(schema: AppSchema) -> str:
     from .pbc import PBC_ALLOWED_DATASTORE_BACKENDS
     from .pbc import acp_stream_processing_policy
     from .pbc import pbc_catalog
     from .pbc import pbc_composition_plan
+    from .pbc import pbc_implementation_contracts
     from .pbc import pbc_manifest_schema
     from .pbc import pbc_mesh_catalog
     from .pbc import pbc_starter_stacks
 
     generated_tables = tuple(table.name for table in schema.tables)
     catalog = pbc_catalog()
-    selected = tuple(
-        item["pbc"]
-        for item in catalog
-        if any(table in generated_tables for table in (f"{item['pbc']}_{name}" for name in item["tables"]))
-        or f"{item['pbc']}_event_outbox" in generated_tables
-    )
+    selected = _selected_pbc_keys_from_schema(schema)
     composition = (
         pbc_composition_plan(selected, app_name=schema.app_name or "GeneratedComposableApp")
         if selected
@@ -18957,6 +19102,7 @@ def _pbc_runtime_text(schema: AppSchema) -> str:
         "generated_tables": generated_tables,
         "selected_pbcs": selected,
         "composition": composition,
+        "implementation_contracts": pbc_implementation_contracts(selected),
     }
     return f'''"""Generated composable capability runtime manifest for this app."""
 
@@ -18981,6 +19127,7 @@ def pbc_runtime_manifest():
         "generated_tables": PBC_RUNTIME["generated_tables"],
         "selected_pbcs": PBC_RUNTIME["selected_pbcs"],
         "composition": PBC_RUNTIME["composition"],
+        "implementation_contracts": PBC_RUNTIME["implementation_contracts"],
     }}
 
 
@@ -19049,10 +19196,12 @@ def pbc_composition_runtime_workbench():
         "dependencies": manifest["composition"].get("dependencies", ()),
         "datastores": tuple(service["datastore"] for service in services),
         "event_topics": tuple(service["event_topic"] for service in services),
+        "package_directories": tuple(contract["directory"] for contract in PBC_RUNTIME["implementation_contracts"]),
         "stream_processor_default": manifest["stream_policy"]["default"],
         "guards": (
             "each_selected_pbc_has_service_contract",
             "each_service_owns_datastore",
+            "each_selected_pbc_has_own_directory",
             "default_stream_policy_declared",
             "self_registration_is_side_effect_free",
         ),
@@ -19068,6 +19217,8 @@ def validate_pbc_runtime():
         {{"id": "manifest_schema_available", "ok": bool(manifest["manifest_schema"]["required_fields"])}},
         {{"id": "composition_valid", "ok": manifest["composition"]["ok"]}},
         {{"id": "selected_services_match", "ok": workbench["ok"]}},
+        {{"id": "pbc_directories_declared", "ok": len(workbench["package_directories"]) == len(manifest["selected_pbcs"])}},
+        {{"id": "implementation_contracts_declared", "ok": all(contract["ok"] for contract in manifest["implementation_contracts"])}},
         {{"id": "stream_policy_opinionated", "ok": manifest["stream_policy"]["default"] == "faust_streaming"}},
     )
     return {{
@@ -25008,6 +25159,7 @@ def generate_app_from_database(database_url, output_dir, *, config_database_url=
     write_tabbed_views_file(output_dir, app_schema)
     write_form_designer_file(output_dir, app_schema)
     write_pbc_runtime_file(output_dir, app_schema)
+    write_pbc_package_files(output_dir, app_schema)
     write_nl_evolution_file(output_dir, app_schema)
     write_dsl_reference_file(output_dir, app_schema)
     write_view_experience_file(output_dir, app_schema)
@@ -25177,6 +25329,7 @@ def generate_app_from_schema(schema: AppSchema, output_dir, *, config_database_u
     write_tabbed_views_file(output_dir, schema)
     write_form_designer_file(output_dir, schema)
     write_pbc_runtime_file(output_dir, schema)
+    write_pbc_package_files(output_dir, schema)
     write_nl_evolution_file(output_dir, schema)
     write_dsl_reference_file(output_dir, schema)
     write_view_experience_file(output_dir, schema)

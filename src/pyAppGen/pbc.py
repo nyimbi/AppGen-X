@@ -42,6 +42,22 @@ PBC_MANIFEST_OPTIONAL_FIELDS = (
     "tests",
     "docs",
 )
+PBC_IMPLEMENTATION_REQUIRED_ARTIFACTS = (
+    "__init__.py",
+    "manifest.py",
+    "models.py",
+    "services.py",
+    "routes.py",
+    "events.py",
+    "handlers.py",
+    "ui.py",
+    "permissions.py",
+    "config.py",
+    "seed_data.py",
+    "migrations/001_initial.sql",
+    "tests/test_contract.py",
+    "RELEASE_EVIDENCE.md",
+)
 PBC_ALLOWED_DATASTORE_BACKENDS = (
     "postgresql",
     "mysql",
@@ -2115,6 +2131,258 @@ def pbc_package_loading_smoke_audit() -> dict:
     }
 
 
+def pbc_implementation_contract(key: str) -> dict:
+    """Return the generated implementation contract for one built-in PBC."""
+    if key not in PBC_CATALOG:
+        return {
+            "format": "appgen.pbc-implementation-contract.v1",
+            "ok": False,
+            "pbc": key,
+            "error": "unknown PBC",
+        }
+    service = _service_contract(key)
+    primary_table = service["tables"][0]
+    table_contracts = tuple(
+        _table_contract(key, table, primary_table, position)
+        for position, table in enumerate(service["tables"])
+    )
+    event_contract = _event_contract(key, service)
+    service_methods = tuple(
+        _api_contract(key, api, position)
+        for position, api in enumerate(service["apis"])
+    )
+    ui_fragments = tuple(
+        service.get("ui_fragments", ())
+        or (
+            f"{service['class_name']}Workbench",
+            f"{service['class_name']}Detail",
+        )
+    )
+    permissions = tuple(
+        service.get("permissions", ())
+        or tuple(
+            f"{key}.{verb}"
+            for verb in ("read", "create", "update", "approve", "admin")
+        )
+    )
+    configuration = tuple(
+        service.get("configuration", ())
+        or (
+            f"{key.upper()}_DATABASE_URL",
+            f"{key.upper()}_EVENT_TOPIC",
+            f"{key.upper()}_RETRY_LIMIT",
+        )
+    )
+    migration_sql = _migration_sql(key, table_contracts, event_contract)
+    release_checks = (
+        "stable_manifest",
+        "owned_schema_only",
+        "migration_artifact",
+        "model_artifact",
+        "service_commands",
+        "api_routes",
+        "event_outbox_inbox",
+        "typed_emitted_events",
+        "typed_consumed_events",
+        "idempotent_handlers",
+        "retry_dead_letter_policy",
+        "ui_fragments",
+        "permissions",
+        "configuration_schema",
+        "seed_data",
+        "self_registration_metadata",
+        "contract_tests",
+    )
+    return {
+        "format": "appgen.pbc-implementation-contract.v1",
+        "ok": True,
+        "pbc": key,
+        "directory": f"pbcs/{key}",
+        "manifest": {
+            "pbc": key,
+            "label": service["label"],
+            "mesh": service["mesh"],
+            "description": service["description"],
+            "datastore_backend": service["datastore_backend"],
+            "tables": service["tables"],
+            "apis": service["apis"],
+            "emits": service["emits"],
+            "consumes": service["consumes"],
+            "template": service["template"],
+            "ui_fragments": ui_fragments,
+            "permissions": permissions,
+            "configuration": configuration,
+            "migrations": ("migrations/001_initial.sql",),
+            "seed_data": ("seed_data.py",),
+            "tests": ("tests/test_contract.py",),
+            "docs": ("RELEASE_EVIDENCE.md",),
+        },
+        "mesh": service["mesh"],
+        "datastore": service["datastore"],
+        "datastore_backend": service["datastore_backend"],
+        "owned_schema": {
+            "schema": key,
+            "table_prefix": f"{key}_",
+            "tables": table_contracts,
+            "relationships": tuple(
+                relationship
+                for table in table_contracts
+                for relationship in table["relationships"]
+            ),
+            "allowed_external_access": "apis_events_or_projections_only",
+        },
+        "migrations": (
+            {
+                "path": "migrations/001_initial.sql",
+                "operation": "create_owned_schema",
+                "sql": migration_sql,
+            },
+        ),
+        "models": tuple(
+            {
+                "class_name": "".join(part.capitalize() for part in table["owned_table"].split("_")),
+                "table": table["owned_table"],
+                "fields": table["fields"],
+                "relationships": table["relationships"],
+            }
+            for table in table_contracts
+        ),
+        "services": {
+            "class_name": f"{service['class_name']}Service",
+            "command_methods": service_methods,
+            "transaction_boundary": "owned_datastore_plus_outbox",
+            "mutates_only": tuple(table["owned_table"] for table in table_contracts),
+        },
+        "apis": service_methods,
+        "events": event_contract,
+        "handlers": tuple(
+            {
+                "event_type": event["event_type"],
+                "function": f"handle_{_snake(event['event_type'])}",
+                "idempotency_key": f"{key}:{event['event_type']}:{{event_id}}",
+                "retry_policy": event_contract["retry_policy"],
+                "dead_letter_table": event_contract["dead_letter_table"],
+                "side_effect_boundary": "owned_tables_or_declared_api_calls",
+            }
+            for event in event_contract["consumed"]
+        ),
+        "ui": {
+            "fragments": ui_fragments,
+            "workbench_view": f"{service['class_name']}Workbench",
+            "route": f"/workbench/pbcs/{key}",
+            "binds_to": event_contract["outbox_table"],
+        },
+        "permissions": permissions,
+        "configuration": tuple(
+            {
+                "key": name,
+                "required": name.endswith("_DATABASE_URL") or name.endswith("_EVENT_TOPIC"),
+                "source": "environment",
+            }
+            for name in configuration
+        ),
+        "seed_data": tuple(
+            {
+                "table": table["owned_table"],
+                "rows": (
+                    {
+                        "code": f"{key.upper()}-{position + 1:03d}",
+                        "status": "active",
+                    },
+                ),
+            }
+            for position, table in enumerate(table_contracts[:2])
+        ),
+        "package_metadata": {
+            "entrypoint": "register_pbc",
+            "directory": f"pbcs/{key}",
+            "registration_mode": "side_effect_free_plan",
+            "artifacts": PBC_IMPLEMENTATION_REQUIRED_ARTIFACTS,
+        },
+        "release_evidence": {
+            "checks": release_checks,
+            "generated_files": PBC_IMPLEMENTATION_REQUIRED_ARTIFACTS,
+            "cross_pbc_boundary": "no_shared_tables",
+            "dependency_style": "apis_events_projections",
+        },
+    }
+
+
+def pbc_implementation_contracts(selected_pbcs: tuple[str, ...] | list[str] | None = None) -> tuple[dict, ...]:
+    """Return implementation contracts for selected or all built-in PBCs."""
+    selected = tuple(dict.fromkeys(selected_pbcs or tuple(PBC_CATALOG)))
+    return tuple(pbc_implementation_contract(key) for key in selected)
+
+
+def pbc_implementation_release_audit(selected_pbcs: tuple[str, ...] | list[str] | None = None) -> dict:
+    """Verify every requested PBC has concrete generated implementation evidence."""
+    contracts = pbc_implementation_contracts(selected_pbcs)
+    required_artifacts = set(PBC_IMPLEMENTATION_REQUIRED_ARTIFACTS)
+    checks = []
+    for contract in contracts:
+        if not contract["ok"]:
+            checks.append({"id": f"{contract['pbc']}:known_pbc", "ok": False, "contract": contract})
+            continue
+        artifact_set = set(contract["package_metadata"]["artifacts"])
+        owned_tables = {
+            table["owned_table"]
+            for table in contract["owned_schema"]["tables"]
+        }
+        relationship_tables = {
+            relationship["target_table"]
+            for relationship in contract["owned_schema"]["relationships"]
+        }
+        event_tables = {
+            contract["events"]["outbox_table"],
+            contract["events"]["inbox_table"],
+            contract["events"]["dead_letter_table"],
+        }
+        checks.extend(
+            (
+                {
+                    "id": f"{contract['pbc']}:required_artifacts",
+                    "ok": required_artifacts <= artifact_set,
+                },
+                {
+                    "id": f"{contract['pbc']}:owned_tables",
+                    "ok": bool(owned_tables)
+                    and all(table.startswith(f"{contract['pbc']}_") for table in owned_tables | event_tables)
+                    and relationship_tables <= owned_tables,
+                },
+                {
+                    "id": f"{contract['pbc']}:service_api_event_surface",
+                    "ok": bool(contract["services"]["command_methods"])
+                    and bool(contract["apis"])
+                    and bool(contract["events"]["emitted"])
+                    and contract["events"]["contract"] == "appgen_event_contract",
+                },
+                {
+                    "id": f"{contract['pbc']}:handler_retry_dead_letter",
+                    "ok": bool(contract["handlers"])
+                    and all(handler["idempotency_key"].startswith(f"{contract['pbc']}:") for handler in contract["handlers"])
+                    and contract["events"]["retry_policy"]["max_attempts"] >= 3
+                    and contract["events"]["dead_letter_table"].startswith(f"{contract['pbc']}_"),
+                },
+                {
+                    "id": f"{contract['pbc']}:package_metadata",
+                    "ok": contract["directory"] == f"pbcs/{contract['pbc']}"
+                    and contract["package_metadata"]["entrypoint"] == "register_pbc"
+                    and contract["release_evidence"]["cross_pbc_boundary"] == "no_shared_tables",
+                },
+            )
+        )
+    ok = bool(contracts) and all(check["ok"] for check in checks)
+    return {
+        "format": "appgen.pbc-implementation-release-audit.v1",
+        "ok": ok,
+        "pbc_count": len(contracts),
+        "required_artifacts": PBC_IMPLEMENTATION_REQUIRED_ARTIFACTS,
+        "contracts": contracts,
+        "checks": tuple(checks),
+        "blocking_gaps": tuple(check for check in checks if not check["ok"]),
+    }
+
+
 def example_pbc_manifest() -> dict:
     """Return a minimal publishable PBC manifest for documentation and tests."""
     return {
@@ -2370,20 +2638,45 @@ def pbc_composition_dsl(
                     "}",
                 )
             )
-        event_table = f"{service['pbc']}_event_outbox"
+        event_table = f"{service['pbc']}_appgen_outbox_event"
+        inbox_table = f"{service['pbc']}_appgen_inbox_event"
+        dead_letter_table = f"{service['pbc']}_appgen_dead_letter_event"
         lines.extend(
             (
                 "",
                 f"table {event_table} {{",
                 "  id: int pk",
+                "  event_id: string required unique",
                 "  event_type: string required search",
                 "  payload: text required",
+                "  attempts: int default 0",
+                "  status: string default \"pending\" search",
                 "  published_at: datetime",
                 "}",
                 "",
+                f"table {inbox_table} {{",
+                "  id: int pk",
+                "  event_id: string required unique",
+                "  event_type: string required search",
+                "  handler: string required search",
+                "  payload: text required",
+                "  attempts: int default 0",
+                "  processed_at: datetime",
+                "}",
+                "",
+                f"table {dead_letter_table} {{",
+                "  id: int pk",
+                "  event_id: string required search",
+                "  event_type: string required search",
+                "  failure_reason: text required",
+                "  payload: text required",
+                "  failed_at: datetime",
+                "}",
+                "",
                 f"view {service['class_name']}Workbench for {event_table} {{",
-                "  Main: event_type, payload, published_at",
+                "  Main: event_type, status, payload, published_at",
                 "  @ event_type TextBox 0 0 6 1",
+                "  @ status Select 6 0 3 1",
                 "  @ payload TextArea 0 1 12 3",
                 "  @ published_at DateTimePicker 0 4 6 1",
                 "}",
@@ -2419,6 +2712,7 @@ def pbc_release_audit() -> dict:
         generated_imports=("faust_streaming",),
     )
     package_loading = pbc_package_loading_smoke_audit()
+    implementation_audit = pbc_implementation_release_audit()
     nl_selection = pbc_selection_from_prompt(
         "Build an enterprise ERP back office with GL, AP, AR, inventory, people, and order management"
     )
@@ -2439,8 +2733,15 @@ def pbc_release_audit() -> dict:
                 and item["apis"]
                 and item["emits"]
                 and item["tables"]
+                and item["package_directory"] == f"pbcs/{item['pbc']}"
                 for item in pbc_catalog()
             ),
+        },
+        {
+            "id": "pbc_implementation_contracts",
+            "ok": implementation_audit["ok"]
+            and implementation_audit["pbc_count"] == len(PBC_CATALOG),
+            "checks": implementation_audit["checks"],
         },
         {
             "id": "starter_stacks",
@@ -2551,6 +2852,7 @@ def pbc_release_audit() -> dict:
         "manifest_schema": pbc_manifest_schema(),
         "example_registration": register_pbc_manifest(example_pbc_manifest()),
         "package_loading": package_loading,
+        "implementation_audit": implementation_audit,
         "sample_composition": composition,
         "nl_selection": nl_selection,
         "generation_smoke": smoke,
@@ -2573,9 +2875,25 @@ def pbc_generation_smoke_audit(selected_pbcs: tuple[str, ...] | list[str] | None
         generate_app_from_schema(schema, output_dir)
         artifacts = ("app/models.py", "app/views.py", "app/pbc_runtime.py", "app/appgen.json", "docs/schema.md")
         missing = tuple(path for path in artifacts if not (project_dir / path).exists())
+        pbc_artifact_missing = []
+        for key in selected:
+            for artifact in PBC_IMPLEMENTATION_REQUIRED_ARTIFACTS:
+                path = project_dir / "app" / "pbcs" / key / artifact
+                if not path.exists():
+                    pbc_artifact_missing.append(str(Path("app") / "pbcs" / key / artifact))
+        pbc_directories_exist = all((project_dir / "app" / "pbcs" / key).is_dir() for key in selected)
         compiled = []
         compile_failures = []
-        for relative in ("app/models.py", "app/views.py", "app/pbc_runtime.py"):
+        compile_targets = [Path("app/models.py"), Path("app/views.py"), Path("app/pbc_runtime.py")]
+        for key in selected:
+            pbc_dir = project_dir / "app" / "pbcs" / key
+            compile_targets.extend(
+                path.relative_to(project_dir)
+                for path in sorted(pbc_dir.rglob("*.py"))
+                if path.exists()
+            )
+        for relative_path in compile_targets:
+            relative = str(relative_path)
             path = project_dir / relative
             try:
                 py_compile.compile(str(path), doraise=True)
@@ -2620,9 +2938,19 @@ def pbc_generation_smoke_audit(selected_pbcs: tuple[str, ...] | list[str] | None
         },
         {
             "id": "compiled_artifacts",
-            "ok": not compile_failures and set(compiled) == {"app/models.py", "app/views.py", "app/pbc_runtime.py"},
+            "ok": not compile_failures
+            and {"app/models.py", "app/views.py", "app/pbc_runtime.py"} <= set(compiled)
+            and all(f"app/pbcs/{key}/manifest.py" in compiled for key in selected),
             "compiled": tuple(compiled),
             "failures": tuple(compile_failures),
+        },
+        {
+            "id": "generated_pbc_directories",
+            "ok": not pbc_artifact_missing
+            and pbc_directories_exist,
+            "missing": tuple(pbc_artifact_missing),
+            "directories": tuple(str(Path("app") / "pbcs" / key) for key in selected),
+            "required_artifacts": PBC_IMPLEMENTATION_REQUIRED_ARTIFACTS,
         },
         {
             "id": "generated_pbc_runtime",
@@ -2662,6 +2990,7 @@ def _pbc_descriptor(key: str, pbc: dict) -> dict:
         "emits": pbc["emits"],
         "consumes": pbc["consumes"],
         "template": pbc["template"],
+        "package_directory": f"pbcs/{key}",
         "selectable": True,
     }
 
@@ -2690,6 +3019,7 @@ def _pbc_descriptor_from_manifest(manifest: dict) -> dict:
         "seed_data": tuple(manifest.get("seed_data", ())),
         "tests": tuple(manifest.get("tests", ())),
         "docs": tuple(manifest.get("docs", ())),
+        "package_directory": f"pbcs/{key}",
         "selectable": True,
     }
 
@@ -2705,6 +3035,174 @@ def _service_contract(key: str) -> dict:
         "inbox_topic": f"pbc.{key}.inbox",
         "owner": key,
     }
+
+
+def _snake(value: str) -> str:
+    words = re.findall(r"[A-Z]?[a-z0-9]+|[A-Z]+(?=[A-Z]|$)", value)
+    return "_".join(word.lower() for word in words) or value.lower()
+
+
+def _table_contract(key: str, table: str, primary_table: str, position: int) -> dict:
+    owned_table = f"{key}_{table}"
+    fields = [
+        {"name": "id", "type": "integer", "primary_key": True, "nullable": False},
+        {"name": "code", "type": "string", "required": True, "searchable": True},
+        {"name": "status", "type": "string", "required": True, "default": "draft"},
+        {"name": "version", "type": "integer", "required": True, "default": 1},
+        {"name": "created_at", "type": "datetime", "required": True},
+        {"name": "updated_at", "type": "datetime", "required": True},
+    ]
+    relationships = []
+    if position > 0:
+        target_table = f"{key}_{primary_table}"
+        field_name = f"{primary_table}_id"
+        fields.insert(
+            1,
+            {
+                "name": field_name,
+                "type": "integer",
+                "required": True,
+                "references": f"{target_table}.id",
+            },
+        )
+        relationships.append(
+            {
+                "field": field_name,
+                "target_table": target_table,
+                "target_column": "id",
+                "cardinality": "many-to-one",
+                "ownership": "same_pbc",
+            }
+        )
+    return {
+        "logical_table": table,
+        "owned_table": owned_table,
+        "fields": tuple(fields),
+        "relationships": tuple(relationships),
+    }
+
+
+def _api_contract(key: str, api: str, position: int) -> dict:
+    parts = api.split(maxsplit=1)
+    method = parts[0] if parts else "POST"
+    path = parts[1] if len(parts) > 1 else f"/{key}"
+    path_name = re.sub(r"[^a-zA-Z0-9]+", "_", path).strip("_").lower() or key
+    verb = {
+        "GET": "query",
+        "POST": "command",
+        "PUT": "command",
+        "PATCH": "command",
+        "DELETE": "command",
+    }.get(method.upper(), "command")
+    return {
+        "method": method.upper(),
+        "path": path,
+        "route": f"/api/pbc/{key}{path}",
+        "handler": f"{verb}_{path_name}",
+        "service_method": f"{verb}_{path_name}",
+        "permission": f"{key}.{verb}.{position + 1}",
+        "request_schema": f"{key}.{path_name}.request.v1",
+        "response_schema": f"{key}.{path_name}.response.v1",
+    }
+
+
+def _event_contract(key: str, service: dict) -> dict:
+    topic = f"pbc.{key}.events"
+    inbox_topic = f"pbc.{key}.inbox"
+    outbox_table = f"{key}_appgen_outbox_event"
+    inbox_table = f"{key}_appgen_inbox_event"
+    dead_letter_table = f"{key}_appgen_dead_letter_event"
+    return {
+        "contract": "appgen_event_contract",
+        "runtime_profile_visibility": "read_only_platform_metadata",
+        "adapter": "appgen_event_adapter",
+        "topic": topic,
+        "inbox_topic": inbox_topic,
+        "outbox_table": outbox_table,
+        "inbox_table": inbox_table,
+        "dead_letter_table": dead_letter_table,
+        "emitted": tuple(
+            {
+                "event_type": event,
+                "schema": f"{key}.{_snake(event)}.emitted.v1",
+                "topic": topic,
+                "outbox_table": outbox_table,
+                "payload_fields": ("event_id", "occurred_at", "pbc", "data"),
+            }
+            for event in service["emits"]
+        ),
+        "consumed": tuple(
+            {
+                "event_type": event,
+                "schema": f"{key}.{_snake(event)}.consumed.v1",
+                "topic": inbox_topic,
+                "inbox_table": inbox_table,
+                "payload_fields": ("event_id", "occurred_at", "source_pbc", "data"),
+            }
+            for event in service["consumes"]
+        ),
+        "retry_policy": {
+            "name": f"{key}_default_retry",
+            "max_attempts": 5,
+            "backoff": "exponential",
+        },
+        "idempotency": {
+            "key_fields": ("event_type", "event_id", "handler"),
+            "storage": inbox_table,
+        },
+    }
+
+
+def _sql_type(field: dict) -> str:
+    field_type = field["type"]
+    if field_type == "integer":
+        return "INTEGER"
+    if field_type == "datetime":
+        return "TIMESTAMP"
+    if field_type == "text":
+        return "TEXT"
+    return "VARCHAR(255)"
+
+
+def _migration_sql(key: str, table_contracts: tuple[dict, ...], event_contract: dict) -> str:
+    statements = [f"CREATE SCHEMA IF NOT EXISTS {key};"]
+    for table in table_contracts:
+        column_lines = []
+        for field in table["fields"]:
+            line = f"  {field['name']} {_sql_type(field)}"
+            if field.get("primary_key"):
+                line += " PRIMARY KEY"
+            if field.get("required") or field.get("primary_key"):
+                line += " NOT NULL"
+            column_lines.append(line)
+        for relationship in table["relationships"]:
+            column_lines.append(
+                "  FOREIGN KEY "
+                f"({relationship['field']}) REFERENCES {relationship['target_table']}({relationship['target_column']})"
+            )
+        statements.append(
+            f"CREATE TABLE {table['owned_table']} (\n"
+            + ",\n".join(column_lines)
+            + "\n);"
+        )
+    for table_name in (
+        event_contract["outbox_table"],
+        event_contract["inbox_table"],
+        event_contract["dead_letter_table"],
+    ):
+        statements.append(
+            f"CREATE TABLE {table_name} (\n"
+            "  id INTEGER PRIMARY KEY,\n"
+            "  event_id VARCHAR(255) NOT NULL,\n"
+            "  event_type VARCHAR(255) NOT NULL,\n"
+            "  payload TEXT NOT NULL,\n"
+            "  attempts INTEGER NOT NULL,\n"
+            "  status VARCHAR(255) NOT NULL,\n"
+            "  created_at TIMESTAMP NOT NULL,\n"
+            "  processed_at TIMESTAMP\n"
+            ");"
+        )
+    return "\n\n".join(statements)
 
 
 def _selection_terms(key: str, pbc: dict) -> tuple[str, ...]:

@@ -107,6 +107,11 @@ from pyAppGen.form_designer import component_package_update_operation
 from pyAppGen.form_designer import component_package_workbench
 from pyAppGen.form_designer import component_package_preview_load_operation
 from pyAppGen.form_designer import component_drop_wiring_handler_contract
+from pyAppGen.form_designer import bind_component_event_operation
+from pyAppGen.form_designer import commit_component_drop_operation
+from pyAppGen.form_designer import define_component_handler_operation
+from pyAppGen.form_designer import preview_component_drop_operation
+from pyAppGen.form_designer import start_component_drag_operation
 from pyAppGen.form_designer import component_family_module_file_manifest
 from pyAppGen.form_designer import component_family_module_test_file_manifest
 from pyAppGen.form_designer import component_wiring_module_file_manifest
@@ -282,6 +287,8 @@ from pyAppGen.pbc import pbc_package_contract
 from pyAppGen.pbc import pbc_package_index_schema
 from pyAppGen.pbc import pbc_package_loading_smoke_audit
 from pyAppGen.pbc import pbc_generation_smoke_audit
+from pyAppGen.pbc import pbc_implementation_contract
+from pyAppGen.pbc import pbc_implementation_release_audit
 from pyAppGen.pbc import lint_pbc_eventing_choice
 from pyAppGen.pbc import pbc_mesh_catalog
 from pyAppGen.pbc import pbc_release_audit
@@ -805,6 +812,34 @@ def test_package_pbc_catalog_composes_enterprise_apps(runner: CliRunner) -> None
     )
     assert all(item["stream_processor"] in {"bytewax", "quix_streams", "faust_streaming"} for item in catalog)
     assert all(item["apis"] and item["emits"] and item["tables"] for item in catalog)
+    assert all(item["package_directory"] == f"pbcs/{item['pbc']}" for item in catalog)
+
+    gl_implementation = pbc_implementation_contract("gl_core")
+    assert gl_implementation["format"] == "appgen.pbc-implementation-contract.v1"
+    assert gl_implementation["ok"] is True
+    assert gl_implementation["directory"] == "pbcs/gl_core"
+    assert gl_implementation["events"]["contract"] == "appgen_event_contract"
+    assert gl_implementation["events"]["outbox_table"] == "gl_core_appgen_outbox_event"
+    assert gl_implementation["events"]["inbox_table"] == "gl_core_appgen_inbox_event"
+    assert gl_implementation["services"]["transaction_boundary"] == "owned_datastore_plus_outbox"
+    assert gl_implementation["package_metadata"]["entrypoint"] == "register_pbc"
+    assert "migrations/001_initial.sql" in gl_implementation["package_metadata"]["artifacts"]
+    assert all(
+        table["owned_table"].startswith("gl_core_")
+        for table in gl_implementation["owned_schema"]["tables"]
+    )
+    assert all(
+        relationship["target_table"].startswith("gl_core_")
+        for relationship in gl_implementation["owned_schema"]["relationships"]
+    )
+
+    implementation_audit = pbc_implementation_release_audit()
+    assert implementation_audit["format"] == "appgen.pbc-implementation-release-audit.v1"
+    assert implementation_audit["ok"] is True
+    assert implementation_audit["pbc_count"] >= 46
+    assert {"__init__.py", "manifest.py", "models.py", "services.py", "routes.py", "events.py", "handlers.py"} <= set(
+        implementation_audit["required_artifacts"]
+    )
 
     stream_processors = acp_stream_processor_catalog()
     assert {item["processor"] for item in stream_processors} == {
@@ -1236,9 +1271,15 @@ def test_package_pbc_catalog_composes_enterprise_apps(runner: CliRunner) -> None
         path for check in smoke["checks"] for path in check.get("compiled", ())
     }
     runtime_check = next(check for check in smoke["checks"] if check["id"] == "generated_pbc_runtime")
+    directory_check = next(check for check in smoke["checks"] if check["id"] == "generated_pbc_directories")
+    assert directory_check["ok"] is True
+    assert "app/pbcs/gl_core" in directory_check["directories"]
+    assert "app/pbcs/gl_core/services.py" not in directory_check["missing"]
     assert runtime_check["ok"] is True
     assert runtime_check["manifest"]["format"] == "appgen.generated-pbc-runtime-manifest.v1"
     assert runtime_check["manifest"]["selected_pbcs"] == ("gl_core", "ap_automation", "inventory_positioning")
+    assert runtime_check["manifest"]["implementation_contracts"][0]["directory"] == "pbcs/gl_core"
+    assert "pbcs/gl_core" in runtime_check["workbench"]["package_directories"]
     assert runtime_check["workbench"]["ok"] is True
     assert runtime_check["registration"]["ok"] is True
     assert runtime_check["smoke"]["ok"] is True
@@ -1249,6 +1290,7 @@ def test_package_pbc_catalog_composes_enterprise_apps(runner: CliRunner) -> None
     assert {
         "catalog_depth",
         "bounded_context_contracts",
+        "pbc_implementation_contracts",
         "starter_stacks",
         "acp_platform_fabric",
         "self_registering_pbc_spec",
@@ -3371,6 +3413,31 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     }
     assert all(item["signature"] == "sender, context" for item in drop_wiring["handler_definitions"])
     assert "user_code_regions_preserved" in drop_wiring["guards"]
+    drag_operation = start_component_drag_operation("Button", pointer=(3, 4))
+    assert drag_operation["format"] == "appgen.component-drag-start-operation.v1"
+    assert drag_operation["ok"] is True
+    assert drag_operation["payload"]["drag_format"] == "appgen.component-drag-payload.v1"
+    preview_operation = preview_component_drop_operation(
+        design,
+        drag_operation["payload"],
+        position=(0, 8),
+        field="phone",
+    )
+    assert preview_operation["ok"] is True
+    assert preview_operation["proposal"]["component"] == "Button"
+    commit_operation = commit_component_drop_operation(design, preview_operation)
+    assert commit_operation["ok"] is True
+    assert commit_operation["component_count_after"] == commit_operation["component_count_before"] + 1
+    binding_operation = bind_component_event_operation("submit", "Button", "OnClick")
+    assert binding_operation["ok"] is True
+    assert binding_operation["binding"]["operation"] == "bind_event_to_handler"
+    handler_operation = define_component_handler_operation("Button", "OnClick")
+    assert handler_operation["ok"] is True
+    assert handler_operation["definition"]["signature"] == "sender, context"
+    assert drop_wiring["actionable_operations"]["commit"]["component_count_after"] == (
+        drop_wiring["actionable_operations"]["commit"]["component_count_before"] + 1
+    )
+    assert "actionable_drag_drop_wiring_operations" in {check["id"] for check in drop_wiring["checks"] if check["ok"]}
     form_interactions = form_interaction_family_contract(design)
     assert form_interactions["format"] == "appgen.form-interaction-family-contract.v1"
     assert form_interactions["ok"] is True
@@ -3385,6 +3452,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     assert {"event_binding_transactions_declared", "handler_definition_flow_editable"} <= {
         check["id"] for check in form_interactions["checks"] if check["ok"]
     }
+    assert "actionable_operations_replay" in {check["id"] for check in form_interactions["checks"] if check["ok"]}
 
     matrix = field_component_matrix()
     assert matrix
@@ -14871,6 +14939,33 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         item["event"] for item in generated_drop_wiring["wiring_links"]
     }
     assert all(item["signature"] == "sender, context" for item in generated_drop_wiring["handler_definitions"])
+    generated_drag = form_designer.start_component_drag_operation("Button")
+    assert generated_drag["format"] == "appgen.generated-component-drag-start-operation.v1"
+    assert generated_drag["ok"] is True
+    generated_preview = form_designer.preview_component_drop_operation(
+        "Book",
+        form_designer.form_design("Book"),
+        generated_drag["payload"],
+        position=(0, 12),
+    )
+    assert generated_preview["ok"] is True
+    generated_commit = form_designer.commit_component_drop_operation(
+        "Book",
+        form_designer.form_design("Book"),
+        generated_preview,
+    )
+    assert generated_commit["ok"] is True
+    assert generated_commit["component_count_after"] == generated_commit["component_count_before"] + 1
+    generated_binding = form_designer.bind_component_event_operation("submit", "Button", "OnClick")
+    assert generated_binding["ok"] is True
+    generated_handler = form_designer.define_component_handler_operation("Button", "OnClick")
+    assert generated_handler["ok"] is True
+    assert generated_drop_wiring["actionable_operations"]["commit"]["component_count_after"] == (
+        generated_drop_wiring["actionable_operations"]["commit"]["component_count_before"] + 1
+    )
+    assert "actionable_drag_drop_wiring_operations" in {
+        check["id"] for check in generated_drop_wiring["checks"] if check["ok"]
+    }
     generated_form_interactions = form_designer.form_interaction_family_contract(form_designer.form_design("Book"))
     assert generated_form_interactions["format"] == "appgen.generated-form-interaction-family-contract.v1"
     assert generated_form_interactions["ok"] is True
@@ -14882,6 +14977,9 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "preview_replay",
     }
     assert {"event_binding_transactions_declared", "handler_definition_flow_editable"} <= {
+        check["id"] for check in generated_form_interactions["checks"] if check["ok"]
+    }
+    assert "actionable_operations_replay" in {
         check["id"] for check in generated_form_interactions["checks"] if check["ok"]
     }
     generated_wiring_module_files = form_designer.component_wiring_module_file_manifest(generated_form_designer_paths)

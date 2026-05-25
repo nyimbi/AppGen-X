@@ -10,9 +10,8 @@ stacks, then generate a working application shell from the composition.
 
 - Each PBC owns its datastore. Cross-PBC reads use APIs, projections, or event
   subscriptions instead of shared tables.
-- Each PBC declares an approved open-source datastore backend. Built-in PBCs
-  default to PostgreSQL; third-party PBCs may use PostgreSQL, MySQL, MariaDB,
-  SQLite, DuckDB, ClickHouse, MongoDB, or OpenSearch.
+- Each ordinary PBC declares an approved open-source relational datastore
+  backend: PostgreSQL, MySQL, or MariaDB. Built-in PBCs default to PostgreSQL.
 - Each PBC declares command APIs and emitted/consumed events.
 - Ordinary PBCs do not choose a stream processor. They have one visible
   developer choice: use the generated AppGen-X event contract. They omit
@@ -27,8 +26,11 @@ stacks, then generate a working application shell from the composition.
   [Opinionated Event Processing Guidance](kafka-alternatives.md).
 - Composition is event-first: dependencies are explicit event contracts, with
   unresolved external events recorded as integration obligations.
-- Generated applications include service folders, outbox tables, workbench
-  views, target selection, and release-audit evidence.
+- Generated applications include one implementation directory per selected PBC:
+  `app/pbcs/<pbc_key>/`. Each directory contains the PBC manifest, owned model
+  metadata, migration SQL, service commands, API routes, event contracts,
+  idempotent handlers, UI/workbench metadata, permissions, configuration,
+  seed data, contract tests, and release evidence.
 - Natural-language requests can resolve to PBC selections before generation.
 
 ## Meshes
@@ -71,6 +73,8 @@ The executable catalog lives in `src/pyAppGen/pbc.py` and exposes:
 - `pbc_composition_dsl()` for a generated AppGen DSL starter.
 - Generated `pbc_runtime.py` in produced apps for catalog, selected-service,
   self-registration, composition workbench, and stream-policy smoke evidence.
+- `pbc_implementation_contract()` and `pbc_implementation_release_audit()` for
+  concrete per-PBC implementation evidence and ownership checks.
 - `pbc_release_audit()` for package-level readiness evidence.
 
 The aggregate package goal audit includes the PBC release audit, so composable

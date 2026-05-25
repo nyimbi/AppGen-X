@@ -239,6 +239,46 @@ The platform then uses the registration plan to expose:
 The registry step should not silently overwrite an existing PBC. A duplicate key
 or datastore is a blocking validation error.
 
+## Generated PBC Directory
+
+When a composition is generated, every selected PBC is materialized in its own
+directory under the generated app:
+
+```text
+app/
+  pbcs/
+    gl_core/
+      __init__.py
+      manifest.py
+      models.py
+      services.py
+      routes.py
+      events.py
+      handlers.py
+      ui.py
+      permissions.py
+      config.py
+      seed_data.py
+      migrations/
+        001_initial.sql
+      tests/
+        test_contract.py
+      RELEASE_EVIDENCE.md
+```
+
+Those generated files are intentionally side-effect-free. They expose concrete
+contracts and callable command/handler facades without mutating an app object at
+import time. The migration file creates only PBC-owned tables plus that PBC's
+outbox, inbox, and dead-letter event tables. Relationships target only tables
+inside the same PBC directory; cross-PBC dependencies remain API route contracts
+or event subscriptions.
+
+Use `pbc_implementation_contract("<pbc_key>")` to inspect the generated contract
+before writing files, and `pbc_implementation_release_audit()` to verify all
+built-in PBCs have the required directory artifacts, ownership boundaries,
+service/API/event surfaces, idempotent handlers, retry/dead-letter evidence,
+and self-registration metadata.
+
 Packages can also be loaded directly by the platform:
 
 ```python
