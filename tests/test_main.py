@@ -3341,6 +3341,21 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     assert set(binding_gate["required_surface_edges"]) <= set(binding_gate["passing_surface_edges"])
     assert set(binding_gate["required_runtime_artifacts"]) <= set(binding_gate["passing_runtime_artifacts"])
     assert set(binding_gate["required_readiness_phases"]) <= set(binding_gate["passing_readiness_phases"])
+    assert set(binding_gate["required_operation_names"]) <= set(binding_gate["passing_operation_names"])
+    assert set(binding_gate["required_module_kinds"]) <= set(binding_gate["passing_module_kinds"])
+    assert set(binding_gate["required_module_test_kinds"]) <= set(binding_gate["passing_module_test_kinds"])
+    assert set(binding_gate["required_lifecycle_phases"]) <= set(binding_gate["passing_lifecycle_phases"])
+    assert set(binding_gate["required_lifecycle_checks"]) <= set(binding_gate["passing_lifecycle_checks"])
+    assert set(binding_gate["required_readiness_checks"]) <= set(binding_gate["passing_readiness_checks"])
+    assert set(binding_gate["required_scheduler_phases"]) <= set(binding_gate["passing_scheduler_phases"])
+    assert set(binding_gate["required_dependency_phases"]) <= set(binding_gate["passing_dependency_phases"])
+    assert set(binding_gate["required_failure_recovery_scenarios"]) <= set(
+        binding_gate["passing_failure_recovery_scenarios"]
+    )
+    assert set(binding_gate["required_designer_transaction_phases"]) <= set(
+        binding_gate["passing_designer_transaction_phases"]
+    )
+    assert set(binding_gate["required_offline_replay_steps"]) <= set(binding_gate["passing_offline_replay_steps"])
     assert set(binding_gate["required_checks"]) <= set(binding_gate["passing_checks"])
     data_tooling_gate = next(
         check for check in audit["rad_parity"]["checks"] if check["id"] == "firedac_datasnap_radserver_interbase_tooling"

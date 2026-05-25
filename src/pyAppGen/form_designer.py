@@ -15020,6 +15020,129 @@ def rad_parity_workbench(existing_paths: set[str] | None = None) -> dict:
         "binding_generated_module_tests",
     )
     passing_binding_workbench_checks = tuple(check["id"] for check in binding_workbench["checks"] if check["ok"])
+    required_binding_operation_names = (
+        "create_link",
+        "reroute_link",
+        "preview_value",
+        "detect_conflicts",
+        "runtime_wiring",
+    )
+    passing_binding_operation_names = tuple(binding_workbench["actionable_operations"]["operations"])
+    required_binding_module_kinds = (
+        "graph",
+        "expression",
+        "designer",
+        "runtime_wiring",
+        "propagation",
+        "lifecycle",
+    )
+    passing_binding_module_kinds = tuple(
+        artifact["kind"] for artifact in binding_workbench["binding_module_artifacts"] if artifact["ok"]
+    )
+    passing_binding_module_test_kinds = tuple(
+        artifact["kind"] for artifact in binding_workbench["binding_module_test_artifacts"] if artifact["ok"]
+    )
+    required_binding_lifecycle_phases = (
+        "author_binding_graph",
+        "validate_before_transaction",
+        "stage_graph_transactions",
+        "surface_diagnostics_and_conflicts",
+        "generate_runtime_wiring",
+        "replay_offline_queue",
+        "verify_accessibility_routes",
+        "propagate_runtime_values",
+        "replay_design_runtime_session",
+        "replay_designer_transaction",
+    )
+    passing_binding_lifecycle_phases = tuple(
+        phase["phase"] for phase in binding_workbench["lifecycle_release_replay"]["replay"] if phase["ok"]
+    )
+    required_binding_lifecycle_checks = (
+        "graph_authoring_precedes_validation",
+        "validation_precedes_transaction_commit",
+        "diagnostics_precede_runtime_wiring",
+        "offline_and_accessibility_precede_runtime",
+        "design_runtime_and_designer_replays_complete",
+        "side_effect_guards",
+    )
+    passing_binding_lifecycle_checks = tuple(
+        check["id"] for check in binding_workbench["lifecycle_release_replay"]["checks"] if check["ok"]
+    )
+    required_binding_readiness_checks = (
+        "graph_authoring_ready",
+        "validation_transaction_ready",
+        "preview_runtime_ready",
+        "diagnostics_conflict_ready",
+        "offline_accessible_runtime_ready",
+        "designer_release_replay_ready",
+        "inspector_bridge_ready",
+        "operation_surface_ready",
+        "phase_order_ready",
+    )
+    passing_binding_readiness_checks = tuple(
+        check["id"] for check in binding_readiness["checks"] if check["ok"]
+    )
+    required_binding_scheduler_phases = (
+        "read_sources",
+        "evaluate_expressions",
+        "apply_converters",
+        "run_validators",
+        "write_targets",
+        "publish_notifications",
+    )
+    passing_binding_scheduler_phases = tuple(
+        phase["phase"] for phase in binding_workbench["update_scheduler"]["phases"]
+    )
+    required_binding_dependency_phases = (
+        "read_sources",
+        "apply_converters",
+        "evaluate_expressions",
+    )
+    passing_binding_dependency_phases = tuple(
+        sorted({phase["phase"] for phase in binding_workbench["dependency_execution"]["execution_plan"]})
+    )
+    required_binding_failure_recovery_scenarios = (
+        "source_missing",
+        "converter_failed",
+        "validator_failed",
+        "target_read_only",
+        "observer_exception",
+    )
+    passing_binding_failure_recovery_scenarios = tuple(
+        scenario["failure"]
+        for scenario in binding_workbench["runtime_failure_recovery"]["scenarios"]
+        if "rollback_target_write" in scenario["pipeline"]
+    )
+    required_binding_designer_transaction_phases = (
+        "author_visual_link",
+        "edit_graph_surface",
+        "stage_transaction",
+        "preview_and_hit_test",
+        "schedule_dependencies",
+        "surface_diagnostics_and_conflicts",
+        "replay_offline_queue",
+        "exercise_accessibility_routes",
+        "propagate_runtime_and_recover",
+    )
+    passing_binding_designer_transaction_phases = tuple(
+        phase["phase"] for phase in binding_workbench["designer_transaction_replay"]["replay"] if phase["ok"]
+    )
+    required_binding_offline_replay_steps = (
+        "load_pending_value",
+        "revalidate_value",
+        "apply_converter",
+        "write_dataset",
+        "mark_replayed",
+    )
+    passing_binding_offline_replay_steps = tuple(
+        sorted(
+            {
+                step
+                for item in binding_workbench["offline_replay"]["queue_items"]
+                for step in item["replay"]
+            }
+        )
+    )
     required_data_tooling_names = ("FireDAC", "DataSnap", "RAD Server", "InterBase")
     passing_data_tooling_names = tuple(data_tooling_contract["tooling"])
     required_data_connection_profiles = ("primary_sql", "local_embedded", "rest_edge")
@@ -16038,7 +16161,18 @@ def rad_parity_workbench(existing_paths: set[str] | None = None) -> dict:
             and set(required_binding_nodes) <= set(passing_binding_nodes)
             and set(required_binding_surface_edges) <= set(passing_binding_surface_edges)
             and set(required_binding_runtime_artifacts) <= set(passing_binding_runtime_artifacts)
-            and set(required_binding_readiness_phases) <= set(passing_binding_readiness_phases),
+            and set(required_binding_readiness_phases) <= set(passing_binding_readiness_phases)
+            and set(required_binding_operation_names) <= set(passing_binding_operation_names)
+            and set(required_binding_module_kinds) <= set(passing_binding_module_kinds)
+            and set(required_binding_module_kinds) <= set(passing_binding_module_test_kinds)
+            and set(required_binding_lifecycle_phases) <= set(passing_binding_lifecycle_phases)
+            and set(required_binding_lifecycle_checks) <= set(passing_binding_lifecycle_checks)
+            and set(required_binding_readiness_checks) <= set(passing_binding_readiness_checks)
+            and set(required_binding_scheduler_phases) <= set(passing_binding_scheduler_phases)
+            and set(required_binding_dependency_phases) <= set(passing_binding_dependency_phases)
+            and set(required_binding_failure_recovery_scenarios) <= set(passing_binding_failure_recovery_scenarios)
+            and set(required_binding_designer_transaction_phases) <= set(passing_binding_designer_transaction_phases)
+            and set(required_binding_offline_replay_steps) <= set(passing_binding_offline_replay_steps),
             "required_nodes": required_binding_nodes,
             "passing_nodes": passing_binding_nodes,
             "required_edges": required_binding_edges,
@@ -16049,6 +16183,28 @@ def rad_parity_workbench(existing_paths: set[str] | None = None) -> dict:
             "passing_runtime_artifacts": passing_binding_runtime_artifacts,
             "required_readiness_phases": required_binding_readiness_phases,
             "passing_readiness_phases": passing_binding_readiness_phases,
+            "required_operation_names": required_binding_operation_names,
+            "passing_operation_names": passing_binding_operation_names,
+            "required_module_kinds": required_binding_module_kinds,
+            "passing_module_kinds": passing_binding_module_kinds,
+            "required_module_test_kinds": required_binding_module_kinds,
+            "passing_module_test_kinds": passing_binding_module_test_kinds,
+            "required_lifecycle_phases": required_binding_lifecycle_phases,
+            "passing_lifecycle_phases": passing_binding_lifecycle_phases,
+            "required_lifecycle_checks": required_binding_lifecycle_checks,
+            "passing_lifecycle_checks": passing_binding_lifecycle_checks,
+            "required_readiness_checks": required_binding_readiness_checks,
+            "passing_readiness_checks": passing_binding_readiness_checks,
+            "required_scheduler_phases": required_binding_scheduler_phases,
+            "passing_scheduler_phases": passing_binding_scheduler_phases,
+            "required_dependency_phases": required_binding_dependency_phases,
+            "passing_dependency_phases": passing_binding_dependency_phases,
+            "required_failure_recovery_scenarios": required_binding_failure_recovery_scenarios,
+            "passing_failure_recovery_scenarios": passing_binding_failure_recovery_scenarios,
+            "required_designer_transaction_phases": required_binding_designer_transaction_phases,
+            "passing_designer_transaction_phases": passing_binding_designer_transaction_phases,
+            "required_offline_replay_steps": required_binding_offline_replay_steps,
+            "passing_offline_replay_steps": passing_binding_offline_replay_steps,
             "required_checks": required_binding_workbench_checks,
             "passing_checks": passing_binding_workbench_checks,
             "evidence": {"contract": binding_contract, "workbench": binding_workbench},
