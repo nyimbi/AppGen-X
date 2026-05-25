@@ -320,6 +320,40 @@ INVENTORY_POSITIONING_ADVANCED_CAPABILITY_KEYS = (
     "mathematical_optimization",
     "inventory_mlops_governance",
 )
+WMS_CORE_ADVANCED_CAPABILITY_KEYS = (
+    "event_sourced_warehouse_lifecycle",
+    "graph_relational_warehouse_topology",
+    "multi_tenant_warehouse_isolation",
+    "schema_evolution_resilient_warehouse_schema",
+    "probabilistic_putaway_pick_estimation",
+    "real_time_warehouse_execution_analytics",
+    "counterfactual_wave_labor_simulation",
+    "temporal_throughput_dock_forecasting",
+    "autonomous_exception_resolution",
+    "semantic_warehouse_event_parsing",
+    "predictive_congestion_damage_risk",
+    "self_healing_edge_route_selection",
+    "zero_knowledge_shipment_proof",
+    "immutable_warehouse_traceability_trail",
+    "dynamic_warehouse_policy_screening",
+    "automated_warehouse_control_testing",
+    "universal_api_async_streaming",
+    "cross_system_warehouse_federation",
+    "edge_device_network_integration",
+    "decentralized_warehouse_identity",
+    "chaos_engineered_edge_tolerance",
+    "quantum_resistant_warehouse_authorization",
+    "carbon_aware_wave_scheduling",
+    "algebraic_pick_path_optimization",
+    "mechanism_design_labor_allocation",
+    "information_theoretic_warehouse_anomaly_detection",
+    "temporal_throughput_stochastic_modeling",
+    "distributed_systems_engineering",
+    "probabilistic_ml_warehouse_risk",
+    "cryptographic_engineering",
+    "mathematical_optimization",
+    "warehouse_mlops_governance",
+)
 IMPLEMENTED_PBC_KEYS = (
     "gl_core",
     "ap_automation",
@@ -328,6 +362,7 @@ IMPLEMENTED_PBC_KEYS = (
     "asset_lifecycle",
     "tax_localization",
     "inventory_positioning",
+    "wms_core",
 )
 PBC_ALLOWED_DATASTORE_BACKENDS = (
     "postgresql",
@@ -2555,6 +2590,8 @@ def pbc_implementation_contract(key: str) -> dict:
         advanced_runtime = tax_localization_runtime_capabilities()
     elif key == "inventory_positioning":
         advanced_runtime = inventory_positioning_runtime_capabilities()
+    elif key == "wms_core":
+        advanced_runtime = wms_core_runtime_capabilities()
     else:
         advanced_runtime = {}
     source_package = _pbc_source_package_contract(key)
@@ -2838,6 +2875,7 @@ def pbc_implemented_capability_audit(selected_pbcs: tuple[str, ...] | list[str] 
         "asset_lifecycle": len(ASSET_LIFECYCLE_ADVANCED_CAPABILITY_KEYS),
         "tax_localization": len(TAX_LOCALIZATION_ADVANCED_CAPABILITY_KEYS),
         "inventory_positioning": len(INVENTORY_POSITIONING_ADVANCED_CAPABILITY_KEYS),
+        "wms_core": len(WMS_CORE_ADVANCED_CAPABILITY_KEYS),
     }
     checks = []
     contracts = pbc_implementation_contracts(selected)
@@ -4401,3 +4439,21 @@ from .pbcs.inventory_positioning import inventory_positioning_register_rule  # n
 from .pbcs.inventory_positioning import inventory_positioning_runtime_capabilities  # noqa: E402,F401
 from .pbcs.inventory_positioning import inventory_positioning_runtime_smoke  # noqa: E402,F401
 from .pbcs.inventory_positioning import inventory_positioning_set_parameter  # noqa: E402,F401
+from .pbcs.wms_core import WMS_CORE_RUNTIME_CAPABILITY_KEYS  # noqa: E402,F401
+from .pbcs.wms_core import WMS_CORE_STANDARD_FEATURE_KEYS  # noqa: E402,F401
+from .pbcs.wms_core import wms_core_configure_runtime  # noqa: E402,F401
+from .pbcs.wms_core import wms_core_confirm_pack  # noqa: E402,F401
+from .pbcs.wms_core import wms_core_confirm_putaway  # noqa: E402,F401
+from .pbcs.wms_core import wms_core_confirm_shipment  # noqa: E402,F401
+from .pbcs.wms_core import wms_core_create_pack_task  # noqa: E402,F401
+from .pbcs.wms_core import wms_core_create_pick_wave  # noqa: E402,F401
+from .pbcs.wms_core import wms_core_create_putaway_task  # noqa: E402,F401
+from .pbcs.wms_core import wms_core_empty_state  # noqa: E402,F401
+from .pbcs.wms_core import wms_core_execute_pick  # noqa: E402,F401
+from .pbcs.wms_core import wms_core_receive_inbound  # noqa: E402,F401
+from .pbcs.wms_core import wms_core_register_bin  # noqa: E402,F401
+from .pbcs.wms_core import wms_core_register_rule  # noqa: E402,F401
+from .pbcs.wms_core import wms_core_register_warehouse  # noqa: E402,F401
+from .pbcs.wms_core import wms_core_runtime_capabilities  # noqa: E402,F401
+from .pbcs.wms_core import wms_core_runtime_smoke  # noqa: E402,F401
+from .pbcs.wms_core import wms_core_set_parameter  # noqa: E402,F401
