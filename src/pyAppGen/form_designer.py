@@ -15989,6 +15989,151 @@ def rad_parity_workbench(existing_paths: set[str] | None = None) -> dict:
         "visual_readiness_contract",
     )
     passing_visual_depth_checks = tuple(check["id"] for check in visual_depth_workbench["checks"] if check["ok"])
+    required_visual_operation_names = (
+        "author_style",
+        "author_timeline",
+        "validate_effect_stack",
+        "author_scene",
+        "import_visual_asset",
+        "hit_test_transform",
+        "validate_visual_component",
+    )
+    passing_visual_operation_names = tuple(visual_depth_workbench["actionable_operations"]["operations"])
+    required_visual_readiness_checks = (
+        "style_ready",
+        "timeline_ready",
+        "effects_ready",
+        "scene_assets_ready",
+        "hit_test_component_ready",
+        "runtime_designer_replay_ready",
+        "runtime_package_ready",
+        "operation_surface_ready",
+        "phase_order_ready",
+    )
+    passing_visual_readiness_checks = tuple(
+        check["id"] for check in visual_depth_workbench["readiness"]["checks"] if check["ok"]
+    )
+    required_visual_style_tokens = ("color", "font", "spacing", "radius", "shadow", "motion")
+    passing_visual_style_tokens = tuple(
+        trace["token"]
+        for trace in visual_depth_workbench["style_inheritance_trace"]["traces"]
+        if "publish_effective_value" in trace["trace"]
+    )
+    required_visual_style_layers = (
+        "base_theme",
+        "component_class",
+        "state_override",
+        "platform_override",
+        "local_override",
+    )
+    passing_visual_style_layers = tuple(
+        sorted(
+            {
+                layer
+                for trace in visual_depth_workbench["style_inheritance_trace"]["traces"]
+                for layer in trace["layers"]
+            }
+        )
+    )
+    required_visual_timeline_tracks = ("track.opacity", "track.color", "track.path")
+    passing_visual_timeline_tracks = tuple(
+        sample["track"] for sample in visual_depth_workbench["timeline_interpolation"]["samples"]
+    )
+    required_visual_timeline_guards = (
+        "interpolation_deterministic",
+        "reduced_motion_value_available",
+        "runtime_samples_match_preview",
+    )
+    passing_visual_timeline_guards = tuple(visual_depth_workbench["timeline_interpolation"]["guards"])
+    required_visual_fallback_targets = ("web", "mobile", "desktop", "pwa")
+    passing_visual_fallback_targets = tuple(
+        sorted({row["target"] for row in visual_depth_workbench["effect_fallback_matrix"]["rows"]})
+    )
+    required_visual_fallback_effects = ("shader_hook",)
+    passing_visual_fallback_effects = tuple(
+        sorted(
+            {
+                row["effect"]
+                for row in visual_depth_workbench["effect_fallback_matrix"]["rows"]
+                if row["decision"] == "use_fallback"
+            }
+        )
+    )
+    required_visual_shader_operations = (
+        "bind_texture",
+        "edit_uniform",
+        "preview_shader",
+        "compile_fallback",
+        "assign_material",
+    )
+    passing_visual_shader_operations = tuple(visual_depth_workbench["shader_material_editor"]["operations"])
+    required_visual_shader_node_kinds = ("texture", "shader", "material")
+    passing_visual_shader_node_kinds = tuple(
+        sorted({node["kind"] for node in visual_depth_workbench["shader_material_editor"]["graph"]})
+    )
+    required_visual_hit_test_nodes = (
+        "viewport",
+        "camera.main",
+        "light.key",
+        "mesh.product",
+        "material.primary",
+    )
+    passing_visual_hit_test_nodes = tuple(
+        hit["node"] for hit in visual_depth_workbench["scene_hit_testing"]["hit_tests"]
+    )
+    required_visual_transform_nodes = (
+        "camera.main",
+        "light.key",
+        "mesh.product",
+        "material.primary",
+    )
+    passing_visual_transform_nodes = tuple(
+        transform["node"]
+        for transform in visual_depth_workbench["scene_transform_gizmos"]["transforms"]
+        if "sync_inspector" in transform["pipeline"]
+    )
+    required_visual_runtime_package_checks = (
+        "target_artifacts_complete",
+        "style_and_timeline_packaged",
+        "effect_fallbacks_packaged",
+        "scene_materials_packaged",
+        "preview_runtime_diff_packaged",
+        "side_effect_guards",
+    )
+    passing_visual_runtime_package_checks = tuple(
+        check["id"] for check in visual_depth_workbench["runtime_package"]["checks"] if check["ok"]
+    )
+    required_visual_runtime_adapters = (
+        "style_loader",
+        "timeline_player",
+        "effect_fallback_resolver",
+        "scene_renderer",
+        "asset_resolver",
+    )
+    passing_visual_runtime_adapters = tuple(
+        sorted(
+            {
+                adapter
+                for artifact in visual_depth_workbench["runtime_package"]["artifacts"]
+                for adapter in artifact["adapters"]
+            }
+        )
+    )
+    required_visual_runtime_fallbacks = (
+        "static_shadow",
+        "no_blur",
+        "solid_outline",
+        "precomputed_bitmap",
+    )
+    passing_visual_runtime_fallbacks = tuple(
+        sorted(
+            {
+                fallback
+                for artifact in visual_depth_workbench["runtime_package"]["artifacts"]
+                for fallback in artifact["fallbacks"]
+            }
+        )
+    )
     required_package_lifecycle_phases = (
         "trust_and_lockfile",
         "sandbox_preview",
@@ -17010,7 +17155,22 @@ def rad_parity_workbench(existing_paths: set[str] | None = None) -> dict:
             and set(required_visual_component_names) <= set(passing_visual_component_test_names)
             and set(required_visual_design_surfaces) <= set(passing_visual_design_surfaces)
             and set(required_visual_design_surfaces) <= set(passing_visual_design_test_surfaces)
-            and set(required_visual_readiness_phases) <= set(passing_visual_readiness_phases),
+            and set(required_visual_readiness_phases) <= set(passing_visual_readiness_phases)
+            and set(required_visual_operation_names) <= set(passing_visual_operation_names)
+            and set(required_visual_readiness_checks) <= set(passing_visual_readiness_checks)
+            and set(required_visual_style_tokens) <= set(passing_visual_style_tokens)
+            and set(required_visual_style_layers) <= set(passing_visual_style_layers)
+            and set(required_visual_timeline_tracks) <= set(passing_visual_timeline_tracks)
+            and set(required_visual_timeline_guards) <= set(passing_visual_timeline_guards)
+            and set(required_visual_fallback_targets) <= set(passing_visual_fallback_targets)
+            and set(required_visual_fallback_effects) <= set(passing_visual_fallback_effects)
+            and set(required_visual_shader_operations) <= set(passing_visual_shader_operations)
+            and set(required_visual_shader_node_kinds) <= set(passing_visual_shader_node_kinds)
+            and set(required_visual_hit_test_nodes) <= set(passing_visual_hit_test_nodes)
+            and set(required_visual_transform_nodes) <= set(passing_visual_transform_nodes)
+            and set(required_visual_runtime_package_checks) <= set(passing_visual_runtime_package_checks)
+            and set(required_visual_runtime_adapters) <= set(passing_visual_runtime_adapters)
+            and set(required_visual_runtime_fallbacks) <= set(passing_visual_runtime_fallbacks),
             "required_surfaces": required_visual_depth_surfaces,
             "passing_surfaces": passing_visual_depth_surfaces,
             "required_style_resources": required_visual_style_resources,
@@ -17043,6 +17203,36 @@ def rad_parity_workbench(existing_paths: set[str] | None = None) -> dict:
             "passing_design_test_surfaces": passing_visual_design_test_surfaces,
             "required_readiness_phases": required_visual_readiness_phases,
             "passing_readiness_phases": passing_visual_readiness_phases,
+            "required_operation_names": required_visual_operation_names,
+            "passing_operation_names": passing_visual_operation_names,
+            "required_readiness_checks": required_visual_readiness_checks,
+            "passing_readiness_checks": passing_visual_readiness_checks,
+            "required_style_tokens": required_visual_style_tokens,
+            "passing_style_tokens": passing_visual_style_tokens,
+            "required_style_layers": required_visual_style_layers,
+            "passing_style_layers": passing_visual_style_layers,
+            "required_timeline_tracks": required_visual_timeline_tracks,
+            "passing_timeline_tracks": passing_visual_timeline_tracks,
+            "required_timeline_guards": required_visual_timeline_guards,
+            "passing_timeline_guards": passing_visual_timeline_guards,
+            "required_fallback_targets": required_visual_fallback_targets,
+            "passing_fallback_targets": passing_visual_fallback_targets,
+            "required_fallback_effects": required_visual_fallback_effects,
+            "passing_fallback_effects": passing_visual_fallback_effects,
+            "required_shader_operations": required_visual_shader_operations,
+            "passing_shader_operations": passing_visual_shader_operations,
+            "required_shader_node_kinds": required_visual_shader_node_kinds,
+            "passing_shader_node_kinds": passing_visual_shader_node_kinds,
+            "required_hit_test_nodes": required_visual_hit_test_nodes,
+            "passing_hit_test_nodes": passing_visual_hit_test_nodes,
+            "required_transform_nodes": required_visual_transform_nodes,
+            "passing_transform_nodes": passing_visual_transform_nodes,
+            "required_runtime_package_checks": required_visual_runtime_package_checks,
+            "passing_runtime_package_checks": passing_visual_runtime_package_checks,
+            "required_runtime_adapters": required_visual_runtime_adapters,
+            "passing_runtime_adapters": passing_visual_runtime_adapters,
+            "required_runtime_fallbacks": required_visual_runtime_fallbacks,
+            "passing_runtime_fallbacks": passing_visual_runtime_fallbacks,
             "required_checks": required_visual_depth_checks,
             "passing_checks": passing_visual_depth_checks,
             "evidence": {"contract": visual_depth_contract, "workbench": visual_depth_workbench},

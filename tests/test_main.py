@@ -3517,6 +3517,27 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         visual_depth_gate["passing_design_test_surfaces"]
     )
     assert set(visual_depth_gate["required_readiness_phases"]) <= set(visual_depth_gate["passing_readiness_phases"])
+    assert set(visual_depth_gate["required_operation_names"]) <= set(visual_depth_gate["passing_operation_names"])
+    assert set(visual_depth_gate["required_readiness_checks"]) <= set(visual_depth_gate["passing_readiness_checks"])
+    assert set(visual_depth_gate["required_style_tokens"]) <= set(visual_depth_gate["passing_style_tokens"])
+    assert set(visual_depth_gate["required_style_layers"]) <= set(visual_depth_gate["passing_style_layers"])
+    assert set(visual_depth_gate["required_timeline_tracks"]) <= set(visual_depth_gate["passing_timeline_tracks"])
+    assert set(visual_depth_gate["required_timeline_guards"]) <= set(visual_depth_gate["passing_timeline_guards"])
+    assert set(visual_depth_gate["required_fallback_targets"]) <= set(visual_depth_gate["passing_fallback_targets"])
+    assert set(visual_depth_gate["required_fallback_effects"]) <= set(visual_depth_gate["passing_fallback_effects"])
+    assert set(visual_depth_gate["required_shader_operations"]) <= set(
+        visual_depth_gate["passing_shader_operations"]
+    )
+    assert set(visual_depth_gate["required_shader_node_kinds"]) <= set(
+        visual_depth_gate["passing_shader_node_kinds"]
+    )
+    assert set(visual_depth_gate["required_hit_test_nodes"]) <= set(visual_depth_gate["passing_hit_test_nodes"])
+    assert set(visual_depth_gate["required_transform_nodes"]) <= set(visual_depth_gate["passing_transform_nodes"])
+    assert set(visual_depth_gate["required_runtime_package_checks"]) <= set(
+        visual_depth_gate["passing_runtime_package_checks"]
+    )
+    assert set(visual_depth_gate["required_runtime_adapters"]) <= set(visual_depth_gate["passing_runtime_adapters"])
+    assert set(visual_depth_gate["required_runtime_fallbacks"]) <= set(visual_depth_gate["passing_runtime_fallbacks"])
     assert set(visual_depth_gate["required_checks"]) <= set(visual_depth_gate["passing_checks"])
     ecosystem_gate = next(
         check for check in audit["rad_parity"]["checks"] if check["id"] == "third_party_component_ecosystem"
