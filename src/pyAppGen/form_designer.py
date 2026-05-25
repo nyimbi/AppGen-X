@@ -6395,6 +6395,9 @@ def object_inspector_workbench() -> dict:
     event_editor_families = event_editor_family_contract()
     event_editor_family_artifacts = event_editor_family_module_file_manifest()
     event_editor_family_test_artifacts = event_editor_family_module_test_file_manifest()
+    component_editor_families = component_editor_family_contract()
+    component_editor_family_artifacts = component_editor_family_module_file_manifest()
+    component_editor_family_test_artifacts = component_editor_family_module_test_file_manifest()
     readiness = object_inspector_readiness_contract(sample_components)
     property_edit_operation = inspector_apply_property_edit(
         {"component": "TextBox", "props": {"label": "Name"}},
@@ -6806,6 +6809,33 @@ def object_inspector_workbench() -> dict:
             ),
             "evidence": event_editor_family_test_artifacts,
         },
+        {
+            "id": "component_editor_family_contract",
+            "ok": component_editor_families["ok"]
+            and set(component_editor_families["required_families"])
+            <= {family["family"] for family in component_editor_families["families"] if family["editors"]}
+            and not component_editor_families["side_effects"],
+            "evidence": component_editor_families,
+        },
+        {
+            "id": "component_editor_family_modules",
+            "ok": len(component_editor_family_artifacts) == 6
+            and all(
+                item["ok"]
+                and {"component_editor_family_manifest", "run_component_editor_operation", "smoke_test"} <= set(item["exports"])
+                for item in component_editor_family_artifacts
+            ),
+            "evidence": component_editor_family_artifacts,
+        },
+        {
+            "id": "component_editor_family_module_tests",
+            "ok": len(component_editor_family_test_artifacts) == 6
+            and all(
+                item["ok"] and "test_component_editor_family_module_smoke" in item["exports"]
+                for item in component_editor_family_test_artifacts
+            ),
+            "evidence": component_editor_family_test_artifacts,
+        },
     )
     ok = all(check["ok"] for check in checks)
     return {
@@ -6858,6 +6888,9 @@ def object_inspector_workbench() -> dict:
         "event_editor_families": event_editor_families,
         "event_editor_family_artifacts": event_editor_family_artifacts,
         "event_editor_family_test_artifacts": event_editor_family_test_artifacts,
+        "component_editor_families": component_editor_families,
+        "component_editor_family_artifacts": component_editor_family_artifacts,
+        "component_editor_family_test_artifacts": component_editor_family_test_artifacts,
         "readiness": readiness,
         "actionable_operations": {
             "property_edit": property_edit_operation,
@@ -14879,6 +14912,9 @@ def platform_parity_requirement_audit_contract() -> dict:
                 "event_editor_family_contract",
                 "event_editor_family_modules",
                 "event_editor_family_module_tests",
+                "component_editor_family_contract",
+                "component_editor_family_modules",
+                "component_editor_family_module_tests",
             } <= {check["id"] for check in inspector["checks"] if check["ok"]},
             "deep_checks": (
                 "editor_lifecycle_replay",
@@ -14892,6 +14928,9 @@ def platform_parity_requirement_audit_contract() -> dict:
                 "event_editor_family_contract",
                 "event_editor_family_modules",
                 "event_editor_family_module_tests",
+                "component_editor_family_contract",
+                "component_editor_family_modules",
+                "component_editor_family_module_tests",
                 "phase_order_ready",
             ),
             "evidence": {"workbench": inspector, "readiness": inspector_readiness},
@@ -15538,6 +15577,9 @@ def rad_parity_workbench(existing_paths: set[str] | None = None) -> dict:
         "event_editor_family_contract",
         "event_editor_family_modules",
         "event_editor_family_module_tests",
+        "component_editor_family_contract",
+        "component_editor_family_modules",
+        "component_editor_family_module_tests",
     )
     passing_inspector_workbench_checks = tuple(check["id"] for check in inspector_workbench["checks"] if check["ok"])
     inspector_contracts = tuple(inspector_workbench["contracts"])
@@ -21363,6 +21405,137 @@ def event_editor_family_module_test_file_manifest() -> tuple[dict, ...]:
     )
 
 
+def component_editor_family_contract() -> dict:
+    """Return Object Inspector component-editor operation family coverage."""
+    required_families = ("selection", "dialog", "transaction", "layout", "binding", "preview")
+    contracts = tuple(object_inspector_contract(component) for component in COMPONENTS)
+    editor_rows = tuple(editor for contract in contracts for editor in contract["component_editors"])
+    families = tuple(
+        {
+            "family": family,
+            "editors": editor_rows,
+            "operation": (
+                "capture_selection",
+                family,
+                "open_component_editor",
+                "stage_change",
+                "validate_change",
+                "apply_or_cancel",
+                "record_undo",
+            ),
+            "surfaces": ("object_inspector", "component_verb_menu", "modal_editor")
+            if family in {"dialog", "binding", "preview"}
+            else ("object_inspector", "component_verb_menu"),
+            "guards": (
+                "selection_validated",
+                "changes_staged_before_apply",
+                "cancel_restores_snapshot",
+                "undo_snapshot_recorded",
+            ),
+        }
+        for family in required_families
+    )
+    checks = (
+        {
+            "id": "required_component_editor_families_present",
+            "ok": set(required_families) <= {family["family"] for family in families if family["editors"]},
+            "evidence": tuple((family["family"], len(family["editors"])) for family in families),
+        },
+        {
+            "id": "component_editor_operations_declared",
+            "ok": all({"open_component_editor", "stage_change", "validate_change", "apply_or_cancel", "record_undo"} <= set(family["operation"]) for family in families),
+            "evidence": families,
+        },
+        {
+            "id": "selection_requirements_preserved",
+            "ok": any(editor["requires_selection"] for editor in editor_rows)
+            and any(not editor["requires_selection"] for editor in editor_rows),
+            "evidence": editor_rows,
+        },
+        {
+            "id": "modal_surfaces_for_deep_editors",
+            "ok": all("modal_editor" in family["surfaces"] for family in families if family["family"] in {"dialog", "binding", "preview"}),
+            "evidence": families,
+        },
+        {
+            "id": "transaction_guards_declared",
+            "ok": all({"cancel_restores_snapshot", "undo_snapshot_recorded"} <= set(family["guards"]) for family in families),
+            "evidence": families,
+        },
+    )
+    ok = all(check["ok"] for check in checks)
+    return {
+        "format": "appgen.component-editor-family-contract.v1",
+        "ok": ok,
+        "decision": "approved" if ok else "blocked",
+        "families": families,
+        "required_families": required_families,
+        "editor_count": len(editor_rows),
+        "checks": checks,
+        "guards": (
+            "component_editor_families_complete",
+            "selection_validated",
+            "changes_staged_before_apply",
+            "cancel_restores_snapshot",
+            "undo_snapshot_recorded",
+        ),
+        "side_effects": (),
+        "blocking_gaps": tuple(check for check in checks if not check["ok"]),
+    }
+
+
+def component_editor_family_module_file_manifest() -> tuple[dict, ...]:
+    """Return generated component editor family module files expected in apps."""
+    modules = (
+        ("selection_component_editor_module", "selection"),
+        ("dialog_component_editor_module", "dialog"),
+        ("transaction_component_editor_module", "transaction"),
+        ("layout_component_editor_module", "layout"),
+        ("binding_component_editor_module", "binding"),
+        ("preview_component_editor_module", "preview"),
+    )
+    exports = (
+        "module_contract",
+        "component_editor_family_manifest",
+        "run_component_editor_operation",
+        "runtime_manifest",
+        "smoke_test",
+    )
+    return tuple(
+        {
+            "module": module,
+            "family": family,
+            "path": f"app/component_editor_family_modules/{module}.py",
+            "exports": exports,
+            "ok": bool(module) and bool(family),
+        }
+        for module, family in modules
+    )
+
+
+def component_editor_family_module_test_file_manifest() -> tuple[dict, ...]:
+    """Return generated component editor family test files expected in apps."""
+    return tuple(
+        {
+            "module": item["module"],
+            "family": item["family"],
+            "path": item["path"].replace(
+                "app/component_editor_family_modules/",
+                "app/component_editor_family_module_tests/test_",
+            ),
+            "target": item["path"],
+            "exports": (
+                "load_component_editor_family_module",
+                "test_component_editor_family_module_contract",
+                "test_component_editor_family_module_smoke",
+                "smoke_test",
+            ),
+            "ok": item["ok"],
+        }
+        for item in component_editor_family_module_file_manifest()
+    )
+
+
 def binding_module_file_manifest() -> tuple[dict, ...]:
     """Return generated visual binding module files expected in apps."""
     modules = (
@@ -22157,6 +22330,8 @@ def form_designer_generation_smoke_audit(source: str = FORM_DESIGNER_SAMPLE_DSL)
     property_editor_family_module_test_artifacts = tuple(item["path"] for item in property_editor_family_module_test_file_manifest())
     event_editor_family_module_artifacts = tuple(item["path"] for item in event_editor_family_module_file_manifest())
     event_editor_family_module_test_artifacts = tuple(item["path"] for item in event_editor_family_module_test_file_manifest())
+    component_editor_family_module_artifacts = tuple(item["path"] for item in component_editor_family_module_file_manifest())
+    component_editor_family_module_test_artifacts = tuple(item["path"] for item in component_editor_family_module_test_file_manifest())
     binding_module_artifacts = tuple(item["path"] for item in binding_module_file_manifest())
     binding_module_test_artifacts = tuple(item["path"] for item in binding_module_test_file_manifest())
     package_manager_module_artifacts = tuple(item["path"] for item in package_manager_module_file_manifest())
@@ -22213,6 +22388,8 @@ def form_designer_generation_smoke_audit(source: str = FORM_DESIGNER_SAMPLE_DSL)
         *property_editor_family_module_test_artifacts,
         *event_editor_family_module_artifacts,
         *event_editor_family_module_test_artifacts,
+        *component_editor_family_module_artifacts,
+        *component_editor_family_module_test_artifacts,
         *binding_module_artifacts,
         *binding_module_test_artifacts,
         *package_manager_module_artifacts,
@@ -22269,6 +22446,8 @@ def form_designer_generation_smoke_audit(source: str = FORM_DESIGNER_SAMPLE_DSL)
         *property_editor_family_module_test_artifacts,
         *event_editor_family_module_artifacts,
         *event_editor_family_module_test_artifacts,
+        *component_editor_family_module_artifacts,
+        *component_editor_family_module_test_artifacts,
         *binding_module_artifacts,
         *binding_module_test_artifacts,
         *package_manager_module_artifacts,
@@ -22547,6 +22726,9 @@ def form_designer_generation_smoke_audit(source: str = FORM_DESIGNER_SAMPLE_DSL)
         "event_editor_families_ready",
         "event_editor_family_modules_ready",
         "event_editor_family_module_tests_ready",
+        "component_editor_families_ready",
+        "component_editor_family_modules_ready",
+        "component_editor_family_module_tests_ready",
         "inspector_modules_ready",
         "inspector_module_tests_ready",
         "runtime_replay",
@@ -22692,6 +22874,8 @@ def form_designer_generation_smoke_audit(source: str = FORM_DESIGNER_SAMPLE_DSL)
             and len(property_editor_family_module_test_artifacts) == 8
             and len(event_editor_family_module_artifacts) == 6
             and len(event_editor_family_module_test_artifacts) == 6
+            and len(component_editor_family_module_artifacts) == 6
+            and len(component_editor_family_module_test_artifacts) == 6
             and len(binding_module_artifacts) == 6
             and len(binding_module_test_artifacts) == 6
             and len(package_manager_module_artifacts) == 6
@@ -22730,6 +22914,8 @@ def form_designer_generation_smoke_audit(source: str = FORM_DESIGNER_SAMPLE_DSL)
             "property_editor_family_module_test_count": len(property_editor_family_module_test_artifacts),
             "event_editor_family_module_count": len(event_editor_family_module_artifacts),
             "event_editor_family_module_test_count": len(event_editor_family_module_test_artifacts),
+            "component_editor_family_module_count": len(component_editor_family_module_artifacts),
+            "component_editor_family_module_test_count": len(component_editor_family_module_test_artifacts),
             "binding_module_count": len(binding_module_artifacts),
             "binding_module_test_count": len(binding_module_test_artifacts),
             "package_manager_module_count": len(package_manager_module_artifacts),
