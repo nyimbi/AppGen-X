@@ -95,6 +95,7 @@ from pyAppGen.form_designer import component_package_lifecycle_transaction_repla
 from pyAppGen.form_designer import component_package_lockfile_integrity_contract
 from pyAppGen.form_designer import component_package_load_policy
 from pyAppGen.form_designer import component_package_marketplace_publication_contract
+from pyAppGen.form_designer import package_manager_module_replay_matrix
 from pyAppGen.form_designer import component_package_preview_load_contract
 from pyAppGen.form_designer import component_package_readiness_contract
 from pyAppGen.form_designer import component_package_registration_consistency_contract
@@ -3203,6 +3204,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "package_readiness_contract",
         "package_manager_modules",
         "package_manager_module_tests",
+        "package_manager_module_replay_matrix",
         "side_effect_guards",
     } == {check["id"] for check in package_manager["checks"]}
     assert len(package_manager["package_manager_module_artifacts"]) == 6
@@ -3212,6 +3214,17 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "test_package_manager_module_smoke" in item["exports"]
         for item in package_manager["package_manager_module_test_artifacts"]
     )
+    package_module_replay_matrix = package_manager_module_replay_matrix()
+    assert package_module_replay_matrix["format"] == "appgen.package-manager-module-replay-matrix.v1"
+    assert package_module_replay_matrix["ok"] is True
+    assert len(package_module_replay_matrix["module_replays"]) == 6
+    assert package_manager["module_replay_matrix"]["ok"] is True
+    assert {
+        "package_manager_modules_replay",
+        "package_lifecycle_replay_aligned",
+        "package_execution_replay_aligned",
+        "package_module_replays_side_effect_free",
+    } <= {check["id"] for check in package_manager["module_replay_matrix"]["checks"] if check["ok"]}
     assert package_manager["version_conflicts"]["ok"] is True
     assert all("refresh_palette" in update["phases"] for update in package_manager["update_plan"]["updates"])
     assert all("find_palette_references" in item["phases"] for item in package_manager["uninstall_plan"]["uninstalls"])
@@ -4732,6 +4745,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "lifecycle_transaction_replay",
         "actionable_package_operations",
         "package_manager_modules",
+        "package_manager_module_replay_matrix",
     } <= set(lifecycle_by_phase["install_component_packages"]["evidence"]["manager_passing_checks"])
     assert lifecycle_by_phase["validate_device_capabilities"]["evidence"]["readiness_phases"] == (
         "declare_privacy_and_permissions",
@@ -4835,6 +4849,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "rollback_before_cleanup",
         "package_manager_modules",
         "package_manager_module_tests",
+        "package_manager_module_replay_matrix",
     } <= set(requirements_by_id["package_installation_ecosystem"]["deep_checks"])
     assert {
         "runtime_preview_ready",
@@ -4963,7 +4978,12 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         (
             "package_installation_ecosystem",
             "manager",
-            {"lifecycle_transaction_replay", "package_manager_modules", "package_manager_module_tests"},
+            {
+                "lifecycle_transaction_replay",
+                "package_manager_modules",
+                "package_manager_module_tests",
+                "package_manager_module_replay_matrix",
+            },
         ),
         (
             "device_api_component_coverage",
@@ -5368,6 +5388,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "rollback_and_uninstall_ready",
         "package_manager_modules_ready",
         "package_manager_module_tests_ready",
+        "package_manager_module_runtime_replay_matrix_ready",
         "runtime_replay_ready",
     } <= set(package_runtime_smoke["passing_checks"])
     visual_depth_smoke = next(check for check in smoke["checks"] if check["id"] == "generated_visual_depth_runtime")
@@ -14717,6 +14738,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "lifecycle_transaction_replay",
         "actionable_package_operations",
         "package_manager_modules",
+        "package_manager_module_replay_matrix",
     } <= set(generated_lifecycle_by_phase["install_component_packages"]["evidence"]["manager_passing_checks"])
     assert generated_lifecycle_by_phase["validate_device_capabilities"]["evidence"]["readiness_phases"] == (
         "declare_privacy_and_permissions",
@@ -14831,6 +14853,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "trust_before_preview",
         "package_manager_modules",
         "package_manager_module_tests",
+        "package_manager_module_replay_matrix",
     } <= set(generated_requirements_by_id["package_installation_ecosystem"]["deep_checks"])
     assert {
         "runtime_preview_ready",
@@ -14959,7 +14982,12 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         (
             "package_installation_ecosystem",
             "manager",
-            {"lifecycle_transaction_replay", "package_manager_modules", "package_manager_module_tests"},
+            {
+                "lifecycle_transaction_replay",
+                "package_manager_modules",
+                "package_manager_module_tests",
+                "package_manager_module_replay_matrix",
+            },
         ),
         (
             "device_api_component_coverage",
@@ -15035,6 +15063,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "marketplace_publication",
         "package_manager_modules",
         "package_manager_module_tests",
+        "package_manager_module_replay_matrix",
     } <= {
         check["id"] for check in generated_package_manager["checks"]
     }
@@ -15064,9 +15093,15 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "marketplace_publication",
         "package_manager_modules",
         "package_manager_module_tests",
+        "package_manager_module_replay_matrix",
     } <= {check["id"] for check in generated_package_manager["checks"]}
     assert len(generated_package_manager["package_manager_module_artifacts"]) == 6
     assert len(generated_package_manager["package_manager_module_test_artifacts"]) == 6
+    generated_package_module_replay_matrix = form_designer.package_manager_module_replay_matrix()
+    assert generated_package_module_replay_matrix["format"] == "appgen.generated-package-manager-module-replay-matrix.v1"
+    assert generated_package_module_replay_matrix["ok"] is True
+    assert len(generated_package_module_replay_matrix["module_replays"]) == 6
+    assert generated_package_manager["module_replay_matrix"]["ok"] is True
     assert all(
         "run_package_operation" in item["exports"]
         for item in generated_package_manager["package_manager_module_artifacts"]
@@ -16240,12 +16275,19 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "rollback_and_uninstall_ready",
         "package_manager_modules_ready",
         "package_manager_module_tests_ready",
+        "package_manager_module_runtime_replay_matrix_ready",
         "runtime_replay_ready",
     } <= set(package_manager_runtime_smoke["checks"])
     package_manager_module_files = package_manager_runtime.package_manager_module_file_manifest()
     package_manager_module_tests = package_manager_runtime.package_manager_module_test_file_manifest()
+    package_manager_module_runtime_matrix = package_manager_runtime.package_manager_module_runtime_replay_matrix()
     assert package_manager_module_files["ok"] is True
     assert package_manager_module_tests["ok"] is True
+    assert package_manager_module_runtime_matrix["format"] == (
+        "appgen.generated-package-manager-module-runtime-replay-matrix.v1"
+    )
+    assert package_manager_module_runtime_matrix["ok"] is True
+    assert len(package_manager_module_runtime_matrix["module_replays"]) == 6
     assert {item["module"] for item in package_manager_module_files["modules"]} == {
         "package_install_module",
         "package_preview_module",

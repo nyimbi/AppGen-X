@@ -2851,6 +2851,7 @@ def design_time_package_manager_workbench(package_ids: tuple[str, ...] = ()) -> 
     marketplace = component_package_marketplace_publication_contract(package_ids)
     package_manager_module_artifacts = package_manager_module_file_manifest()
     package_manager_module_test_artifacts = package_manager_module_test_file_manifest()
+    module_replay_matrix = package_manager_module_replay_matrix(package_ids)
     readiness = component_package_readiness_contract(package_ids)
     checks = (
         {
@@ -3029,6 +3030,19 @@ def design_time_package_manager_workbench(package_ids: tuple[str, ...] = ()) -> 
             "evidence": package_manager_module_test_artifacts,
         },
         {
+            "id": "package_manager_module_replay_matrix",
+            "ok": module_replay_matrix["ok"]
+            and {
+                "package_manager_modules_replay",
+                "package_lifecycle_replay_aligned",
+                "package_execution_replay_aligned",
+                "package_module_replays_side_effect_free",
+            }
+            <= {check["id"] for check in module_replay_matrix["checks"] if check["ok"]}
+            and not module_replay_matrix["side_effects"],
+            "evidence": module_replay_matrix,
+        },
+        {
             "id": "side_effect_guards",
             "ok": not session["side_effects"]
             and not registration["side_effects"]
@@ -3048,7 +3062,8 @@ def design_time_package_manager_workbench(package_ids: tuple[str, ...] = ()) -> 
             and not lifecycle_execution["side_effects"]
             and not actionable_operations["side_effects"]
             and not installation_scenario["side_effects"]
-            and not marketplace["side_effects"],
+            and not marketplace["side_effects"]
+            and not module_replay_matrix["side_effects"],
             "evidence": {
                 "session": session["side_effects"],
                 "registration": registration["side_effects"],
@@ -3069,6 +3084,7 @@ def design_time_package_manager_workbench(package_ids: tuple[str, ...] = ()) -> 
                 "actionable_operations": actionable_operations["side_effects"],
                 "installation_scenario": installation_scenario["side_effects"],
                 "marketplace_publication": marketplace["side_effects"],
+                "module_replay_matrix": module_replay_matrix["side_effects"],
             },
         },
     )
@@ -3100,6 +3116,7 @@ def design_time_package_manager_workbench(package_ids: tuple[str, ...] = ()) -> 
         "marketplace_publication": marketplace,
         "package_manager_module_artifacts": package_manager_module_artifacts,
         "package_manager_module_test_artifacts": package_manager_module_test_artifacts,
+        "module_replay_matrix": module_replay_matrix,
         "package_readiness": readiness,
         "checks": checks,
         "blocking_gaps": tuple(check for check in checks if not check["ok"]),
@@ -15871,6 +15888,7 @@ def platform_parity_lifecycle_replay_contract() -> dict:
                 "actionable_package_operations",
                 "marketplace_publication",
                 "package_manager_modules",
+                "package_manager_module_replay_matrix",
             } <= package_manager_passing_checks
             and all(item["final_state"]["registry_clean"] for item in package_lifecycle["replay"]),
             "evidence": {
@@ -16303,6 +16321,7 @@ def platform_parity_requirement_audit_contract() -> dict:
                 "marketplace_publication",
                 "package_manager_modules",
                 "package_manager_module_tests",
+                "package_manager_module_replay_matrix",
             } <= {check["id"] for check in package_manager["checks"] if check["ok"]},
             "deep_checks": (
                 "trust_before_preview",
@@ -16312,6 +16331,7 @@ def platform_parity_requirement_audit_contract() -> dict:
                 "marketplace_publication_ready",
                 "package_manager_modules",
                 "package_manager_module_tests",
+                "package_manager_module_replay_matrix",
                 "marketplace_publication",
                 "phase_order_ready",
             ),
@@ -19131,6 +19151,7 @@ def rad_parity_workbench(existing_paths: set[str] | None = None) -> dict:
         "package_readiness_contract",
         "package_manager_modules",
         "package_manager_module_tests",
+        "package_manager_module_replay_matrix",
         "side_effect_guards",
     )
     passing_package_manager_checks = tuple(check["id"] for check in package_manager["checks"] if check["ok"])
@@ -23864,6 +23885,92 @@ def package_manager_module_test_file_manifest() -> tuple[dict, ...]:
     )
 
 
+def package_manager_module_replay_matrix(package_ids: tuple[str, ...] = ()) -> dict:
+    """Replay generated package manager module contracts as one release gate."""
+    module_artifacts = package_manager_module_file_manifest()
+    test_artifacts = package_manager_module_test_file_manifest()
+    tests_by_module = {item["module"]: item for item in test_artifacts}
+    operation_by_module = {
+        "package_install_module": "install_and_register",
+        "package_preview_module": "preview_load",
+        "package_registry_module": "registry_commit",
+        "package_lifecycle_module": "lifecycle_execution",
+        "package_update_module": "versioned_update",
+        "package_rollback_module": "uninstall_cleanup",
+    }
+    module_replays = tuple(
+        {
+            "module": item["module"],
+            "kind": item["kind"],
+            "operation": operation_by_module[item["module"]],
+            "ok": item["ok"]
+            and "run_package_operation" in item["exports"]
+            and item["module"] in tests_by_module
+            and tests_by_module[item["module"]]["ok"]
+            and "test_package_manager_module_smoke" in tests_by_module[item["module"]]["exports"],
+            "exports": item["exports"],
+            "test_exports": tests_by_module.get(item["module"], {}).get("exports", ()),
+        }
+        for item in module_artifacts
+    )
+    lifecycle_replay = component_package_lifecycle_transaction_replay(package_ids)
+    lifecycle_execution = component_package_lifecycle_execution_contract(package_ids)
+    required_operations = {
+        "install_and_register",
+        "preview_load",
+        "registry_commit",
+        "lifecycle_execution",
+        "versioned_update",
+        "uninstall_cleanup",
+    }
+    checks = (
+        {
+            "id": "package_manager_modules_replay",
+            "ok": len(module_replays) == 6
+            and all(item["ok"] for item in module_replays)
+            and required_operations <= {item["operation"] for item in module_replays},
+            "evidence": module_replays,
+        },
+        {
+            "id": "package_lifecycle_replay_aligned",
+            "ok": lifecycle_replay["ok"]
+            and all(item["final_state"]["registry_clean"] for item in lifecycle_replay["replay"]),
+            "evidence": lifecycle_replay,
+        },
+        {
+            "id": "package_execution_replay_aligned",
+            "ok": lifecycle_execution["ok"]
+            and all(transaction["final_state"]["registry_clean"] for transaction in lifecycle_execution["transactions"]),
+            "evidence": lifecycle_execution,
+        },
+        {
+            "id": "package_module_replays_side_effect_free",
+            "ok": not lifecycle_replay["side_effects"] and not lifecycle_execution["side_effects"],
+            "evidence": {
+                "lifecycle_replay": lifecycle_replay["side_effects"],
+                "lifecycle_execution": lifecycle_execution["side_effects"],
+            },
+        },
+    )
+    ok = all(check["ok"] for check in checks)
+    return {
+        "format": "appgen.package-manager-module-replay-matrix.v1",
+        "ok": ok,
+        "module_replays": module_replays,
+        "lifecycle_replay": lifecycle_replay,
+        "lifecycle_execution": lifecycle_execution,
+        "checks": checks,
+        "guards": (
+            "module_contracts_before_runtime_claim",
+            "module_tests_before_release_claim",
+            "lifecycle_replay_aligned",
+            "no_global_install",
+        ),
+        "side_effects": (),
+        "blocking_gaps": tuple(check for check in checks if not check["ok"]),
+    }
+
+
 def device_api_component_module_file_manifest() -> tuple[dict, ...]:
     """Return generated device API component module files expected in apps."""
     exports = (
@@ -25175,6 +25282,7 @@ def form_designer_generation_smoke_audit(source: str = FORM_DESIGNER_SAMPLE_DSL)
         "rollback_and_uninstall_ready",
         "package_manager_modules_ready",
         "package_manager_module_tests_ready",
+        "package_manager_module_runtime_replay_matrix_ready",
         "runtime_replay_ready",
     )
     required_visual_depth_runtime_checks = (
