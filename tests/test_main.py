@@ -112,6 +112,9 @@ from pyAppGen.form_designer import component_wiring_module_file_manifest
 from pyAppGen.form_designer import component_wiring_module_test_file_manifest
 from pyAppGen.form_designer import handler_architecture_module_file_manifest
 from pyAppGen.form_designer import handler_architecture_module_test_file_manifest
+from pyAppGen.form_designer import handler_source_ide_contract
+from pyAppGen.form_designer import handler_source_ide_module_file_manifest
+from pyAppGen.form_designer import handler_source_ide_module_test_file_manifest
 from pyAppGen.form_designer import component_file_manifest
 from pyAppGen.form_designer import component_parity_readiness_contract
 from pyAppGen.form_designer import component_package_file_manifest
@@ -1653,6 +1656,9 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "inspector_generated_module_tests",
         "handler_architecture_modules",
         "handler_architecture_module_tests",
+        "handler_source_ide_contract",
+        "handler_source_ide_modules",
+        "handler_source_ide_module_tests",
     } == {check["id"] for check in inspector_workbench["checks"]}
     assert all("apply_change" in workflow["workflow"] for workflow in inspector_workbench["property_edit_workflows"])
     assert all("update_component_reference" in workflow["workflow"] for workflow in inspector_workbench["event_edit_workflows"])
@@ -1773,6 +1779,14 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     assert inspector_workbench["editor_lifecycle_replay"]["ok"] is True
     assert inspector_workbench["action_registry"]["ok"] is True
     assert inspector_workbench["cross_handler_invocation"]["ok"] is True
+    handler_source = handler_source_ide_contract("Customer")
+    assert handler_source["format"] == "appgen.handler-source-ide-contract.v1"
+    assert handler_source["ok"] is True
+    assert {"navigation_to_handler_source", "handler_stubs_editable", "breakpoints_map_to_designer"} <= {
+        check["id"] for check in handler_source["checks"] if check["ok"]
+    }
+    assert all("focus_handler" in item["open_actions"] for item in handler_source["navigation"])
+    assert all("preserve_user_code" in item["merge_policy"] for item in handler_source["user_code_regions"])
     assert inspector_workbench["actionable_operations"]["property_edit"]["ok"] is True
     assert inspector_workbench["actionable_operations"]["event_rename"]["binding"]["handler"] == "button_customer_click"
     assert inspector_workbench["actionable_operations"]["handler_invoke"]["ok"] is True
@@ -1805,6 +1819,8 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     assert len(inspector_workbench["inspector_module_test_artifacts"]) == 6
     assert len(inspector_workbench["handler_architecture_artifacts"]) == 4
     assert len(inspector_workbench["handler_architecture_test_artifacts"]) == 4
+    assert len(inspector_workbench["handler_source_ide_artifacts"]) == 5
+    assert len(inspector_workbench["handler_source_ide_test_artifacts"]) == 5
     assert all("run_editor_operation" in item["exports"] for item in inspector_workbench["inspector_module_artifacts"])
     assert all(
         "test_inspector_module_smoke" in item["exports"]
@@ -1820,6 +1836,12 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     assert {
         item["kind"] for item in handler_architecture_module_test_file_manifest()
     } == {"handler_registry", "handler_context", "handler_dispatch", "cross_handler_invocation"}
+    assert {
+        item["kind"] for item in handler_source_ide_module_file_manifest()
+    } == {"source_navigation", "stub_editor", "breakpoints", "user_code_regions", "refactor_propagation"}
+    assert {
+        item["kind"] for item in handler_source_ide_module_test_file_manifest()
+    } == {"source_navigation", "stub_editor", "breakpoints", "user_code_regions", "refactor_propagation"}
     binding_graph = livebindings_graph_contract()
     assert binding_graph["format"] == "appgen.livebindings-graph.v1"
     assert {"dataset", "field", "control", "expression"} <= {node["kind"] for node in binding_graph["nodes"]}
@@ -4413,6 +4435,12 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         item["path"] for item in handler_architecture_module_test_file_manifest()
     } <= set(smoke["required_artifacts"])
     assert {
+        item["path"] for item in handler_source_ide_module_file_manifest()
+    } <= set(smoke["required_artifacts"])
+    assert {
+        item["path"] for item in handler_source_ide_module_test_file_manifest()
+    } <= set(smoke["required_artifacts"])
+    assert {
         "app/form_designer.py",
         "app/component_parity_runtime.py",
         "app/inspector_runtime.py",
@@ -4457,6 +4485,12 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         item["path"] for item in handler_architecture_module_test_file_manifest()
     } <= set(smoke["compiled_artifacts"])
     assert {
+        item["path"] for item in handler_source_ide_module_file_manifest()
+    } <= set(smoke["compiled_artifacts"])
+    assert {
+        item["path"] for item in handler_source_ide_module_test_file_manifest()
+    } <= set(smoke["compiled_artifacts"])
+    assert {
         item["path"] for item in visual_runtime_pipeline_module_file_manifest()
     } <= set(smoke["compiled_artifacts"])
     assert {
@@ -4470,6 +4504,8 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     assert coverage["component_wiring_module_test_count"] == 4
     assert coverage["handler_architecture_module_count"] == 4
     assert coverage["handler_architecture_module_test_count"] == 4
+    assert coverage["handler_source_ide_module_count"] == 5
+    assert coverage["handler_source_ide_module_test_count"] == 5
     assert coverage["visual_runtime_pipeline_count"] == 5
     assert coverage["visual_runtime_pipeline_test_count"] == 5
     release_contracts = next(check for check in smoke["checks"] if check["id"] == "generated_release_contracts")
@@ -4578,6 +4614,9 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "custom_registration_replay",
         "binding_bridge_replay",
         "handler_invocation_policy",
+        "handler_source_ide_ready",
+        "handler_source_ide_modules_ready",
+        "handler_source_ide_module_tests_ready",
         "inspector_modules_ready",
         "inspector_module_tests_ready",
         "runtime_replay",
@@ -13702,6 +13741,16 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         if path.name != "__init__.py"
     )
     generated_form_designer_paths.update(
+        f"app/handler_source_ide_modules/{path.name}"
+        for path in (output_dir / "handler_source_ide_modules").glob("*.py")
+        if path.name != "__init__.py"
+    )
+    generated_form_designer_paths.update(
+        f"app/handler_source_ide_module_tests/{path.name}"
+        for path in (output_dir / "handler_source_ide_module_tests").glob("*.py")
+        if path.name != "__init__.py"
+    )
+    generated_form_designer_paths.update(
         f"app/visual_runtime_pipeline_modules/{path.name}"
         for path in (output_dir / "visual_runtime_pipeline_modules").glob("*.py")
         if path.name != "__init__.py"
@@ -14956,6 +15005,9 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "custom_registration_replay",
         "binding_bridge_replay",
         "handler_invocation_policy",
+        "handler_source_ide_ready",
+        "handler_source_ide_modules_ready",
+        "handler_source_ide_module_tests_ready",
         "inspector_modules_ready",
         "inspector_module_tests_ready",
         "runtime_replay",
@@ -15924,6 +15976,9 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "inspector_generated_module_tests",
         "handler_architecture_modules",
         "handler_architecture_module_tests",
+        "handler_source_ide_contract",
+        "handler_source_ide_modules",
+        "handler_source_ide_module_tests",
     } == {check["id"] for check in generated_inspector["checks"]}
     generated_property_edit = form_designer.inspector_apply_property_edit(
         {"component": "TextBox", "props": {"label": "Name"}},
@@ -16041,6 +16096,11 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert generated_inspector["editor_lifecycle_replay"]["ok"] is True
     assert generated_inspector["action_registry"]["ok"] is True
     assert generated_inspector["cross_handler_invocation"]["ok"] is True
+    generated_handler_source = form_designer.handler_source_ide_contract("Book")
+    assert generated_handler_source["format"] == "appgen.generated-handler-source-ide-contract.v1"
+    assert generated_handler_source["ok"] is True
+    assert all("focus_handler" in item["open_actions"] for item in generated_handler_source["navigation"])
+    assert all("preserve_user_code" in item["merge_policy"] for item in generated_handler_source["user_code_regions"])
     assert generated_inspector["actionable_operations"]["property_edit"]["ok"] is True
     assert generated_inspector["actionable_operations"]["event_rename"]["binding"]["handler"] == "button_customer_click"
     assert generated_inspector["actionable_operations"]["handler_invoke"]["ok"] is True
@@ -16102,6 +16162,8 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert len(generated_inspector["inspector_module_test_artifacts"]) == 6
     assert len(generated_inspector["handler_architecture_artifacts"]) == 4
     assert len(generated_inspector["handler_architecture_test_artifacts"]) == 4
+    assert len(generated_inspector["handler_source_ide_artifacts"]) == 5
+    assert len(generated_inspector["handler_source_ide_test_artifacts"]) == 5
     assert all("run_editor_operation" in item["exports"] for item in generated_inspector["inspector_module_artifacts"])
     assert all(
         "test_inspector_module_smoke" in item["exports"]
@@ -16134,6 +16196,35 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         test_path = output_dir / item["path"].replace("app/", "")
         py_compile.compile(str(test_path), doraise=True)
         module = _load_module(test_path, f"generated_handler_architecture_module_test_{item['module']}")
+        assert module.smoke_test()["ok"] is True
+    generated_handler_source_files = form_designer.handler_source_ide_module_file_manifest(
+        generated_form_designer_paths
+    )
+    generated_handler_source_tests = form_designer.handler_source_ide_module_test_file_manifest(
+        generated_form_designer_paths
+    )
+    assert generated_handler_source_files["ok"] is True
+    assert generated_handler_source_tests["ok"] is True
+    assert {item["kind"] for item in generated_handler_source_files["modules"]} == {
+        "source_navigation",
+        "stub_editor",
+        "breakpoints",
+        "user_code_regions",
+        "refactor_propagation",
+    }
+    for item in generated_handler_source_files["modules"]:
+        module_path = output_dir / item["path"].replace("app/", "")
+        py_compile.compile(str(module_path), doraise=True)
+        module = _load_module(module_path, f"generated_handler_source_ide_module_{item['module']}")
+        assert module.smoke_test("Book")["ok"] is True
+        assert module.module_contract()["ok"] is True
+        source_manifest = module.handler_source_manifest("Book")
+        assert source_manifest["ok"] is True
+        assert {"handler_source_span_stable", "user_code_regions_preserved"} <= set(source_manifest["guards"])
+    for item in generated_handler_source_tests["tests"]:
+        test_path = output_dir / item["path"].replace("app/", "")
+        py_compile.compile(str(test_path), doraise=True)
+        module = _load_module(test_path, f"generated_handler_source_ide_module_test_{item['module']}")
         assert module.smoke_test()["ok"] is True
     generated_usability = form_designer.component_usability_workbench()
     assert generated_usability["format"] == "appgen.generated-component-usability-workbench.v1"

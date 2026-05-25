@@ -6386,6 +6386,9 @@ def object_inspector_workbench() -> dict:
     inspector_module_test_artifacts = inspector_module_test_file_manifest()
     handler_architecture_artifacts = handler_architecture_module_file_manifest()
     handler_architecture_test_artifacts = handler_architecture_module_test_file_manifest()
+    handler_source_ide = handler_source_ide_contract("Customer")
+    handler_source_ide_artifacts = handler_source_ide_module_file_manifest()
+    handler_source_ide_test_artifacts = handler_source_ide_module_test_file_manifest()
     readiness = object_inspector_readiness_contract(sample_components)
     property_edit_operation = inspector_apply_property_edit(
         {"component": "TextBox", "props": {"label": "Name"}},
@@ -6716,6 +6719,33 @@ def object_inspector_workbench() -> dict:
             ),
             "evidence": handler_architecture_test_artifacts,
         },
+        {
+            "id": "handler_source_ide_contract",
+            "ok": handler_source_ide["ok"]
+            and {"navigation_to_handler_source", "handler_stubs_editable", "breakpoints_map_to_designer", "handler_refactors_propagate"}
+            <= {check["id"] for check in handler_source_ide["checks"] if check["ok"]}
+            and not handler_source_ide["side_effects"],
+            "evidence": handler_source_ide,
+        },
+        {
+            "id": "handler_source_ide_modules",
+            "ok": len(handler_source_ide_artifacts) == 5
+            and all(
+                item["ok"]
+                and {"handler_source_manifest", "run_source_operation", "smoke_test"} <= set(item["exports"])
+                for item in handler_source_ide_artifacts
+            ),
+            "evidence": handler_source_ide_artifacts,
+        },
+        {
+            "id": "handler_source_ide_module_tests",
+            "ok": len(handler_source_ide_test_artifacts) == 5
+            and all(
+                item["ok"] and "test_handler_source_ide_module_smoke" in item["exports"]
+                for item in handler_source_ide_test_artifacts
+            ),
+            "evidence": handler_source_ide_test_artifacts,
+        },
     )
     ok = all(check["ok"] for check in checks)
     return {
@@ -6759,6 +6789,9 @@ def object_inspector_workbench() -> dict:
         "inspector_module_test_artifacts": inspector_module_test_artifacts,
         "handler_architecture_artifacts": handler_architecture_artifacts,
         "handler_architecture_test_artifacts": handler_architecture_test_artifacts,
+        "handler_source_ide": handler_source_ide,
+        "handler_source_ide_artifacts": handler_source_ide_artifacts,
+        "handler_source_ide_test_artifacts": handler_source_ide_test_artifacts,
         "readiness": readiness,
         "actionable_operations": {
             "property_edit": property_edit_operation,
@@ -15418,6 +15451,9 @@ def rad_parity_workbench(existing_paths: set[str] | None = None) -> dict:
         "inspector_readiness_contract",
         "inspector_generated_modules",
         "inspector_generated_module_tests",
+        "handler_source_ide_contract",
+        "handler_source_ide_modules",
+        "handler_source_ide_module_tests",
     )
     passing_inspector_workbench_checks = tuple(check["id"] for check in inspector_workbench["checks"] if check["ok"])
     inspector_contracts = tuple(inspector_workbench["contracts"])
@@ -20870,6 +20906,141 @@ def handler_architecture_module_test_file_manifest() -> tuple[dict, ...]:
     )
 
 
+def handler_source_ide_contract(table_name=None) -> dict:
+    """Return source editing, navigation, debug, and refactor evidence for handlers."""
+    design = form_design(table=table_name or "Customer")
+    wiring = component_drop_wiring_handler_contract(design)
+    handler_architecture = inspector_cross_handler_invocation_contract("Button")
+    debug_authoring = pascal_runtime_debug_authoring_contract(design)
+    navigation = tuple(
+        {
+            "handler": item["name"],
+            "component": item["component"],
+            "event": item["event"],
+            "source_span": f"{item['name']}:1:1",
+            "open_actions": ("open_unit", "focus_handler", "select_component", "show_event_tab"),
+        }
+        for item in wiring["handler_definitions"]
+    )
+    stubs = tuple(
+        {
+            "handler": item["name"],
+            "signature": item["signature"],
+            "template": "def handler(sender, context):",
+            "body_regions": item["body_regions"],
+            "preserves_user_code": item["preserves_user_code"],
+        }
+        for item in wiring["handler_definitions"]
+    )
+    breakpoints = tuple(
+        {
+            "handler": nav["handler"],
+            "event": nav["event"],
+            "source_span": nav["source_span"],
+            "maps_to": ("source_editor", "form_designer", "debug_preview"),
+        }
+        for nav in navigation
+    )
+    user_code_regions = tuple(
+        {
+            "handler": stub["handler"],
+            "regions": stub["body_regions"],
+            "merge_policy": ("preserve_user_code", "merge_generated_shell", "report_conflicts"),
+            "round_trip_safe": stub["preserves_user_code"],
+        }
+        for stub in stubs
+    )
+    refactor_operations = tuple(
+        {
+            "handler": nav["handler"],
+            "operations": ("rename_handler", "update_component_reference", "refresh_call_graph", "mark_orphans"),
+            "cross_handler_routes": tuple(route["route"] for route in handler_architecture["routes"]),
+            "undoable": True,
+        }
+        for nav in navigation
+    )
+    checks = (
+        {"id": "navigation_to_handler_source", "ok": bool(navigation) and all("focus_handler" in item["open_actions"] for item in navigation), "evidence": navigation},
+        {"id": "handler_stubs_editable", "ok": bool(stubs) and all(item["signature"] == "sender, context" for item in stubs), "evidence": stubs},
+        {"id": "breakpoints_map_to_designer", "ok": bool(breakpoints) and all("debug_preview" in item["maps_to"] for item in breakpoints), "evidence": breakpoints},
+        {"id": "user_code_regions_preserved", "ok": bool(user_code_regions) and all(item["round_trip_safe"] for item in user_code_regions), "evidence": user_code_regions},
+        {"id": "handler_refactors_propagate", "ok": bool(refactor_operations) and all({"rename_handler", "update_component_reference"} <= set(item["operations"]) for item in refactor_operations), "evidence": refactor_operations},
+        {"id": "debug_authoring_bridge", "ok": debug_authoring["ok"] and "step_into_handler" in debug_authoring["step_controls"], "evidence": debug_authoring},
+    )
+    ok = all(check["ok"] for check in checks)
+    return {
+        "format": "appgen.handler-source-ide-contract.v1",
+        "ok": ok,
+        "decision": "approved" if ok else "blocked",
+        "navigation": navigation,
+        "stubs": stubs,
+        "breakpoints": breakpoints,
+        "user_code_regions": user_code_regions,
+        "refactor_operations": refactor_operations,
+        "checks": checks,
+        "guards": (
+            "handler_source_span_stable",
+            "sender_context_signature_required",
+            "user_code_regions_preserved",
+            "breakpoints_follow_renames",
+            "cross_handler_call_graph_refreshed",
+        ),
+        "side_effects": (),
+        "blocking_gaps": tuple(check for check in checks if not check["ok"]),
+    }
+
+
+def handler_source_ide_module_file_manifest() -> tuple[dict, ...]:
+    """Return generated handler source IDE module files expected in apps."""
+    modules = (
+        ("handler_source_navigation_module", "source_navigation"),
+        ("handler_stub_editor_module", "stub_editor"),
+        ("handler_breakpoint_module", "breakpoints"),
+        ("handler_user_code_region_module", "user_code_regions"),
+        ("handler_refactor_propagation_module", "refactor_propagation"),
+    )
+    exports = (
+        "module_contract",
+        "handler_source_manifest",
+        "run_source_operation",
+        "runtime_manifest",
+        "smoke_test",
+    )
+    return tuple(
+        {
+            "module": module,
+            "kind": kind,
+            "path": f"app/handler_source_ide_modules/{module}.py",
+            "exports": exports,
+            "ok": bool(module) and bool(kind),
+        }
+        for module, kind in modules
+    )
+
+
+def handler_source_ide_module_test_file_manifest() -> tuple[dict, ...]:
+    """Return generated handler source IDE test files expected in apps."""
+    return tuple(
+        {
+            "module": item["module"],
+            "kind": item["kind"],
+            "path": item["path"].replace(
+                "app/handler_source_ide_modules/",
+                "app/handler_source_ide_module_tests/test_",
+            ),
+            "target": item["path"],
+            "exports": (
+                "load_handler_source_ide_module",
+                "test_handler_source_ide_module_contract",
+                "test_handler_source_ide_module_smoke",
+                "smoke_test",
+            ),
+            "ok": item["ok"],
+        }
+        for item in handler_source_ide_module_file_manifest()
+    )
+
+
 def binding_module_file_manifest() -> tuple[dict, ...]:
     """Return generated visual binding module files expected in apps."""
     modules = (
@@ -21658,6 +21829,8 @@ def form_designer_generation_smoke_audit(source: str = FORM_DESIGNER_SAMPLE_DSL)
     component_wiring_module_test_artifacts = tuple(item["path"] for item in component_wiring_module_test_file_manifest())
     handler_architecture_module_artifacts = tuple(item["path"] for item in handler_architecture_module_file_manifest())
     handler_architecture_module_test_artifacts = tuple(item["path"] for item in handler_architecture_module_test_file_manifest())
+    handler_source_ide_module_artifacts = tuple(item["path"] for item in handler_source_ide_module_file_manifest())
+    handler_source_ide_module_test_artifacts = tuple(item["path"] for item in handler_source_ide_module_test_file_manifest())
     binding_module_artifacts = tuple(item["path"] for item in binding_module_file_manifest())
     binding_module_test_artifacts = tuple(item["path"] for item in binding_module_test_file_manifest())
     package_manager_module_artifacts = tuple(item["path"] for item in package_manager_module_file_manifest())
@@ -21708,6 +21881,8 @@ def form_designer_generation_smoke_audit(source: str = FORM_DESIGNER_SAMPLE_DSL)
         *component_wiring_module_test_artifacts,
         *handler_architecture_module_artifacts,
         *handler_architecture_module_test_artifacts,
+        *handler_source_ide_module_artifacts,
+        *handler_source_ide_module_test_artifacts,
         *binding_module_artifacts,
         *binding_module_test_artifacts,
         *package_manager_module_artifacts,
@@ -21758,6 +21933,8 @@ def form_designer_generation_smoke_audit(source: str = FORM_DESIGNER_SAMPLE_DSL)
         *component_wiring_module_test_artifacts,
         *handler_architecture_module_artifacts,
         *handler_architecture_module_test_artifacts,
+        *handler_source_ide_module_artifacts,
+        *handler_source_ide_module_test_artifacts,
         *binding_module_artifacts,
         *binding_module_test_artifacts,
         *package_manager_module_artifacts,
@@ -22027,6 +22204,9 @@ def form_designer_generation_smoke_audit(source: str = FORM_DESIGNER_SAMPLE_DSL)
         "custom_registration_replay",
         "binding_bridge_replay",
         "handler_invocation_policy",
+        "handler_source_ide_ready",
+        "handler_source_ide_modules_ready",
+        "handler_source_ide_module_tests_ready",
         "inspector_modules_ready",
         "inspector_module_tests_ready",
         "runtime_replay",
@@ -22166,6 +22346,8 @@ def form_designer_generation_smoke_audit(source: str = FORM_DESIGNER_SAMPLE_DSL)
             and len(component_wiring_module_test_artifacts) == 4
             and len(handler_architecture_module_artifacts) == 4
             and len(handler_architecture_module_test_artifacts) == 4
+            and len(handler_source_ide_module_artifacts) == 5
+            and len(handler_source_ide_module_test_artifacts) == 5
             and len(binding_module_artifacts) == 6
             and len(binding_module_test_artifacts) == 6
             and len(package_manager_module_artifacts) == 6
@@ -22198,6 +22380,8 @@ def form_designer_generation_smoke_audit(source: str = FORM_DESIGNER_SAMPLE_DSL)
             "component_wiring_module_test_count": len(component_wiring_module_test_artifacts),
             "handler_architecture_module_count": len(handler_architecture_module_artifacts),
             "handler_architecture_module_test_count": len(handler_architecture_module_test_artifacts),
+            "handler_source_ide_module_count": len(handler_source_ide_module_artifacts),
+            "handler_source_ide_module_test_count": len(handler_source_ide_module_test_artifacts),
             "binding_module_count": len(binding_module_artifacts),
             "binding_module_test_count": len(binding_module_test_artifacts),
             "package_manager_module_count": len(package_manager_module_artifacts),

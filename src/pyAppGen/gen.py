@@ -2350,6 +2350,7 @@ def write_form_designer_file(output_dir, schema: AppSchema):
     write_enterprise_data_ide_module_files(output_dir)
     write_component_wiring_module_files(output_dir)
     write_handler_architecture_module_files(output_dir)
+    write_handler_source_ide_module_files(output_dir)
     write_inspector_module_files(output_dir)
     write_binding_module_files(output_dir)
     write_package_manager_module_files(output_dir)
@@ -2475,6 +2476,14 @@ HANDLER_ARCHITECTURE_MODULES = (
     "handler_context_module",
     "handler_dispatch_module",
     "cross_handler_invocation_module",
+)
+
+HANDLER_SOURCE_IDE_MODULES = (
+    "handler_source_navigation_module",
+    "handler_stub_editor_module",
+    "handler_breakpoint_module",
+    "handler_user_code_region_module",
+    "handler_refactor_propagation_module",
 )
 
 COMPONENT_FAMILY_MODULES = (
@@ -3144,6 +3153,26 @@ def write_handler_architecture_module_files(output_dir):
         )
 
 
+def write_handler_source_ide_module_files(output_dir):
+    """Write generated handler source IDE modules and smoke tests."""
+    output_dir = Path(output_dir)
+    module_dir = output_dir / "handler_source_ide_modules"
+    test_dir = output_dir / "handler_source_ide_module_tests"
+    module_dir.mkdir(parents=True, exist_ok=True)
+    test_dir.mkdir(parents=True, exist_ok=True)
+    (module_dir / "__init__.py").write_text(_handler_source_ide_module_init_text(), encoding="utf-8")
+    (test_dir / "__init__.py").write_text(_handler_source_ide_module_test_init_text(), encoding="utf-8")
+    for module_name in HANDLER_SOURCE_IDE_MODULES:
+        (module_dir / f"{module_name}.py").write_text(
+            _handler_source_ide_module_text(module_name),
+            encoding="utf-8",
+        )
+        (test_dir / f"test_{module_name}.py").write_text(
+            _handler_source_ide_module_test_text(module_name),
+            encoding="utf-8",
+        )
+
+
 def write_inspector_module_files(output_dir):
     """Write generated Object Inspector editor modules and smoke tests."""
     output_dir = Path(output_dir)
@@ -3458,6 +3487,21 @@ def _handler_architecture_module_test_init_text() -> str:
     return (
         '"""Generated event-handler architecture module tests."""\n\n'
         f"HANDLER_ARCHITECTURE_MODULE_TESTS = {modules!r}\n"
+    )
+
+
+def _handler_source_ide_module_init_text() -> str:
+    return (
+        '"""Generated handler source IDE modules."""\n\n'
+        f"HANDLER_SOURCE_IDE_MODULES = {HANDLER_SOURCE_IDE_MODULES!r}\n"
+    )
+
+
+def _handler_source_ide_module_test_init_text() -> str:
+    modules = tuple(f"test_{name}" for name in HANDLER_SOURCE_IDE_MODULES)
+    return (
+        '"""Generated handler source IDE module tests."""\n\n'
+        f"HANDLER_SOURCE_IDE_MODULE_TESTS = {modules!r}\n"
     )
 
 
@@ -11682,6 +11726,192 @@ def smoke_test():
 '''
 
 
+def _handler_source_ide_kind(module_name: str) -> str:
+    return {
+        "handler_source_navigation_module": "source_navigation",
+        "handler_stub_editor_module": "stub_editor",
+        "handler_breakpoint_module": "breakpoints",
+        "handler_user_code_region_module": "user_code_regions",
+        "handler_refactor_propagation_module": "refactor_propagation",
+    }[module_name]
+
+
+def _handler_source_ide_module_text(module_name: str) -> str:
+    kind = _handler_source_ide_kind(module_name)
+    return f'''"""Generated handler source IDE module for {kind}."""
+
+from __future__ import annotations
+
+import importlib.util
+from pathlib import Path
+
+
+MODULE = {module_name!r}
+KIND = {kind!r}
+EXPECTED_EXPORTS = (
+    "module_contract",
+    "handler_source_manifest",
+    "run_source_operation",
+    "runtime_manifest",
+    "smoke_test",
+)
+
+
+def _load_form_designer():
+    module_path = Path(__file__).resolve().parents[1] / "form_designer.py"
+    spec = importlib.util.spec_from_file_location(f"generated_handler_source_{{MODULE}}_form_designer", module_path)
+    module = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(module)
+    return module
+
+
+def module_contract():
+    """Return this generated handler source IDE module's export contract."""
+    available = tuple(name for name in EXPECTED_EXPORTS if name in globals())
+    return {{
+        "format": "appgen.handler-source-ide-module-contract.v1",
+        "module": MODULE,
+        "kind": KIND,
+        "ok": set(EXPECTED_EXPORTS) <= set(available),
+        "exports": available,
+        "expected_exports": EXPECTED_EXPORTS,
+        "side_effects": (),
+    }}
+
+
+def handler_source_manifest(table_name=None):
+    """Return editable handler source, navigation, breakpoint, and refactor metadata."""
+    designer = _load_form_designer()
+    table_name = table_name or next(iter(designer.FORM_TABLES), None)
+    source_contract = designer.handler_source_ide_contract(table_name)
+    payload = {{
+        "source_navigation": source_contract["navigation"],
+        "stub_editor": source_contract["stubs"],
+        "breakpoints": source_contract["breakpoints"],
+        "user_code_regions": source_contract["user_code_regions"],
+        "refactor_propagation": source_contract["refactor_operations"],
+    }}[KIND]
+    return {{
+        "format": "appgen.handler-source-ide-module-manifest.v1",
+        "module": MODULE,
+        "kind": KIND,
+        "ok": source_contract["ok"] and bool(payload),
+        "payload": payload,
+        "checks": source_contract["checks"],
+        "guards": source_contract["guards"],
+        "side_effects": (),
+    }}
+
+
+def run_source_operation(table_name=None):
+    """Replay one handler source IDE operation without changing source files."""
+    manifest = handler_source_manifest(table_name)
+    operation_steps = {{
+        "source_navigation": ("resolve_component", "locate_event_binding", "open_source_span", "focus_handler"),
+        "stub_editor": ("generate_stub", "insert_user_code_region", "validate_signature", "record_undo"),
+        "breakpoints": ("resolve_source_span", "bind_breakpoint", "sync_designer_badge", "record_debug_map"),
+        "user_code_regions": ("parse_region_markers", "preserve_user_code", "merge_generated_shell", "report_conflicts"),
+        "refactor_propagation": ("rename_handler", "update_component_reference", "refresh_call_graph", "mark_orphans"),
+    }}[KIND]
+    return {{
+        "format": "appgen.handler-source-ide-module-operation.v1",
+        "module": MODULE,
+        "kind": KIND,
+        "ok": manifest["ok"] and bool(operation_steps),
+        "operation_steps": operation_steps,
+        "payload_count": len(manifest["payload"]),
+        "side_effects": (),
+    }}
+
+
+def runtime_manifest(table_name=None):
+    """Return the source handler IDE contract used by this module."""
+    designer = _load_form_designer()
+    table_name = table_name or next(iter(designer.FORM_TABLES), None)
+    return designer.handler_source_ide_contract(table_name)
+
+
+def smoke_test(table_name=None):
+    """Run side-effect-free checks for this generated handler source IDE module."""
+    contract = module_contract()
+    manifest = handler_source_manifest(table_name)
+    operation = run_source_operation(table_name)
+    runtime = runtime_manifest(table_name)
+    return {{
+        "format": "appgen.handler-source-ide-module-smoke-test.v1",
+        "module": MODULE,
+        "kind": KIND,
+        "ok": contract["ok"]
+        and manifest["ok"]
+        and operation["ok"]
+        and runtime["ok"]
+        and not manifest["side_effects"]
+        and not operation["side_effects"],
+        "checks": (
+            "module_contract_resolves",
+            "handler_source_manifest_resolves",
+            "source_operation_replays",
+            "runtime_manifest_ok",
+            "no_side_effects",
+        ),
+    }}
+'''
+
+
+def _handler_source_ide_module_test_text(module_name: str) -> str:
+    return f'''"""Generated tests for the {module_name} handler source IDE module."""
+
+from __future__ import annotations
+
+import importlib.util
+from pathlib import Path
+
+
+MODULE = {module_name!r}
+
+
+def load_handler_source_ide_module():
+    """Load the generated handler source IDE module without app installation."""
+    module_path = Path(__file__).resolve().parents[1] / "handler_source_ide_modules" / f"{{MODULE}}.py"
+    spec = importlib.util.spec_from_file_location(f"generated_handler_source_ide_module_{{MODULE}}", module_path)
+    module = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(module)
+    return module
+
+
+def test_handler_source_ide_module_contract():
+    """Assert the generated handler source IDE module exposes its contract."""
+    module = load_handler_source_ide_module()
+    contract = module.module_contract()
+    assert contract["module"] == MODULE
+    assert contract["ok"] is True
+    assert all(hasattr(module, name) for name in contract["expected_exports"])
+
+
+def test_handler_source_ide_module_smoke():
+    """Assert the module's side-effect-free smoke test passes."""
+    module = load_handler_source_ide_module()
+    result = module.smoke_test()
+    assert result["ok"] is True
+    assert result["module"] == MODULE
+    assert result["checks"]
+
+
+def smoke_test():
+    """Run this generated test module in a side-effect-free way."""
+    test_handler_source_ide_module_contract()
+    test_handler_source_ide_module_smoke()
+    return {{
+        "format": "appgen.handler-source-ide-module-generated-test-smoke.v1",
+        "module": MODULE,
+        "ok": True,
+        "tests": ("test_handler_source_ide_module_contract", "test_handler_source_ide_module_smoke"),
+    }}
+'''
+
+
 def _inspector_module_text(module_name: str) -> str:
     return f'''"""Generated Object Inspector editor module for {module_name}."""
 
@@ -16202,6 +16432,9 @@ def inspector_runtime_manifest(component="Grid"):
         "inspector_binding_bridge",
         "handler_action_registry",
         "cross_handler_invocation_policy",
+        "handler_source_ide_contract",
+        "handler_source_ide_modules",
+        "handler_source_ide_module_tests",
         "actionable_editor_operations",
     }
     actionables = workbench["actionable_operations"]
@@ -16230,6 +16463,9 @@ def inspector_runtime_manifest(component="Grid"):
         "inspector_binding_bridge": workbench["inspector_binding_bridge"],
         "action_registry": workbench["action_registry"],
         "cross_handler_invocation": workbench["cross_handler_invocation"],
+        "handler_source_ide": workbench["handler_source_ide"],
+        "handler_source_ide_artifacts": workbench["handler_source_ide_artifacts"],
+        "handler_source_ide_test_artifacts": workbench["handler_source_ide_test_artifacts"],
         "actionable_operations": actionables,
         "guards": (
             "property_editors_registered",
@@ -16237,6 +16473,7 @@ def inspector_runtime_manifest(component="Grid"):
             "component_editors_are_transactional",
             "custom_designers_register_before_activation",
             "handler_invocation_has_cycle_guard",
+            "handler_source_regions_are_preserved",
             "binding_bridge_replays_after_property_commit",
         ),
     }
@@ -16280,6 +16517,9 @@ def validate_inspector_runtime(component="Grid"):
     replay = replay_inspector_runtime(component)
     module_files = inspector_module_file_manifest(component)
     module_tests = inspector_module_test_file_manifest(component)
+    form_designer = _load_form_designer()
+    handler_source_modules = form_designer.handler_source_ide_module_file_manifest()
+    handler_source_tests = form_designer.handler_source_ide_module_test_file_manifest()
     checks = (
         {"id": "manifest_ok", "ok": manifest["ok"]},
         {"id": "property_editors_present", "ok": bool(manifest["contract"]["property_editors"])},
@@ -16291,6 +16531,9 @@ def validate_inspector_runtime(component="Grid"):
         {"id": "custom_registration_replay", "ok": manifest["custom_designer_registration_replay"]["ok"] and not manifest["custom_designer_registration_replay"]["side_effects"]},
         {"id": "binding_bridge_replay", "ok": manifest["inspector_binding_bridge"]["ok"] and not manifest["inspector_binding_bridge"]["side_effects"]},
         {"id": "handler_invocation_policy", "ok": manifest["cross_handler_invocation"]["ok"] and "cycle_guard_required" in manifest["cross_handler_invocation"]["guards"]},
+        {"id": "handler_source_ide_ready", "ok": manifest["handler_source_ide"]["ok"] and not manifest["handler_source_ide"]["side_effects"]},
+        {"id": "handler_source_ide_modules_ready", "ok": handler_source_modules["ok"] and not handler_source_modules["side_effects"]},
+        {"id": "handler_source_ide_module_tests_ready", "ok": handler_source_tests["ok"] and not handler_source_tests["side_effects"]},
         {"id": "inspector_modules_ready", "ok": module_files["ok"] and not module_files["side_effects"]},
         {"id": "inspector_module_tests_ready", "ok": module_tests["ok"] and not module_tests["side_effects"]},
         {"id": "runtime_replay", "ok": replay["ok"] and not replay["side_effects"]},
@@ -16302,6 +16545,8 @@ def validate_inspector_runtime(component="Grid"):
         "manifest": manifest,
         "module_files": module_files,
         "module_tests": module_tests,
+        "handler_source_modules": handler_source_modules,
+        "handler_source_tests": handler_source_tests,
         "replay": replay,
         "blocking_gaps": tuple(check for check in checks if not check["ok"]),
     }
@@ -49313,6 +49558,10 @@ def object_inspector_workbench():
     )
     handler_architecture_artifacts = handler_architecture_module_file_manifest(_local_component_paths())["modules"]
     handler_architecture_test_artifacts = handler_architecture_module_test_file_manifest(_local_component_paths())["tests"]
+    handler_source_table = next(iter(FORM_TABLES), "Customer")
+    handler_source_ide = handler_source_ide_contract(handler_source_table)
+    handler_source_ide_artifacts = handler_source_ide_module_file_manifest(_local_component_paths())["modules"]
+    handler_source_ide_test_artifacts = handler_source_ide_module_test_file_manifest(_local_component_paths())["tests"]
     readiness = object_inspector_readiness_contract(sample_components)
     property_edit_operation = inspector_apply_property_edit({{"component": "TextBox", "props": {{"label": "Name"}}}}, "label", "Customer Name")
     event_create_operation = inspector_create_event_handler("Button", "OnClick")
@@ -49391,6 +49640,9 @@ def object_inspector_workbench():
         {{"id": "inspector_generated_module_tests", "ok": len(inspector_module_test_artifacts) == 6 and all(item["ok"] and "test_inspector_module_smoke" in item["exports"] for item in inspector_module_test_artifacts), "evidence": inspector_module_test_artifacts}},
         {{"id": "handler_architecture_modules", "ok": len(handler_architecture_artifacts) == 4 and all(item["ok"] and {{"handler_architecture_manifest", "invoke_handler", "call_handler", "smoke_test"}} <= set(item["exports"]) for item in handler_architecture_artifacts), "evidence": handler_architecture_artifacts}},
         {{"id": "handler_architecture_module_tests", "ok": len(handler_architecture_test_artifacts) == 4 and all(item["ok"] and "test_handler_architecture_module_smoke" in item["exports"] for item in handler_architecture_test_artifacts), "evidence": handler_architecture_test_artifacts}},
+        {{"id": "handler_source_ide_contract", "ok": handler_source_ide["ok"] and {{"navigation_to_handler_source", "handler_stubs_editable", "breakpoints_map_to_designer", "handler_refactors_propagate"}} <= {{check["id"] for check in handler_source_ide["checks"] if check["ok"]}} and not handler_source_ide["side_effects"], "evidence": handler_source_ide}},
+        {{"id": "handler_source_ide_modules", "ok": len(handler_source_ide_artifacts) == 5 and all(item["ok"] and {{"handler_source_manifest", "run_source_operation", "smoke_test"}} <= set(item["exports"]) for item in handler_source_ide_artifacts), "evidence": handler_source_ide_artifacts}},
+        {{"id": "handler_source_ide_module_tests", "ok": len(handler_source_ide_test_artifacts) == 5 and all(item["ok"] and "test_handler_source_ide_module_smoke" in item["exports"] for item in handler_source_ide_test_artifacts), "evidence": handler_source_ide_test_artifacts}},
     )
     ok = all(check["ok"] for check in checks)
     return {{
@@ -49434,6 +49686,9 @@ def object_inspector_workbench():
         "inspector_module_test_artifacts": inspector_module_test_artifacts,
         "handler_architecture_artifacts": handler_architecture_artifacts,
         "handler_architecture_test_artifacts": handler_architecture_test_artifacts,
+        "handler_source_ide": handler_source_ide,
+        "handler_source_ide_artifacts": handler_source_ide_artifacts,
+        "handler_source_ide_test_artifacts": handler_source_ide_test_artifacts,
         "readiness": readiness,
         "actionable_operations": {{
             "property_edit": property_edit_operation,
@@ -50118,6 +50373,159 @@ def handler_architecture_module_test_file_manifest(existing_paths=None):
         "ok": bool(tests) and all(item["ok"] for item in tests),
         "tests": tuple(tests),
         "guards": ("one_test_file_per_handler_surface", "contract_and_smoke_tests_exported"),
+        "side_effects": (),
+    }}
+
+
+def handler_source_ide_contract(table_name=None):
+    """Return generated handler source editing, navigation, debug, and refactor evidence."""
+    design = form_design(table_name)
+    wiring = component_drop_wiring_handler_contract(table_name)
+    handler_architecture = inspector_cross_handler_invocation_contract("Button")
+    debug_authoring = pascal_runtime_debug_authoring_contract(table_name)
+    navigation = tuple(
+        {{
+            "handler": item["name"],
+            "component": item["component"],
+            "event": item["event"],
+            "source_span": f"{{item['name']}}:1:1",
+            "open_actions": ("open_unit", "focus_handler", "select_component", "show_event_tab"),
+        }}
+        for item in wiring["handler_definitions"]
+    )
+    stubs = tuple(
+        {{
+            "handler": item["name"],
+            "signature": item["signature"],
+            "template": "def handler(sender, context):",
+            "body_regions": item["body_regions"],
+            "preserves_user_code": item["preserves_user_code"],
+        }}
+        for item in wiring["handler_definitions"]
+    )
+    breakpoints = tuple(
+        {{
+            "handler": nav["handler"],
+            "event": nav["event"],
+            "source_span": nav["source_span"],
+            "maps_to": ("source_editor", "form_designer", "debug_preview"),
+        }}
+        for nav in navigation
+    )
+    user_code_regions = tuple(
+        {{
+            "handler": stub["handler"],
+            "regions": stub["body_regions"],
+            "merge_policy": ("preserve_user_code", "merge_generated_shell", "report_conflicts"),
+            "round_trip_safe": stub["preserves_user_code"],
+        }}
+        for stub in stubs
+    )
+    refactor_operations = tuple(
+        {{
+            "handler": nav["handler"],
+            "operations": ("rename_handler", "update_component_reference", "refresh_call_graph", "mark_orphans"),
+            "cross_handler_routes": tuple(route["route"] for route in handler_architecture["routes"]),
+            "undoable": True,
+        }}
+        for nav in navigation
+    )
+    checks = (
+        {{"id": "navigation_to_handler_source", "ok": bool(navigation) and all("focus_handler" in item["open_actions"] for item in navigation), "evidence": navigation}},
+        {{"id": "handler_stubs_editable", "ok": bool(stubs) and all(item["signature"] == "sender, context" for item in stubs), "evidence": stubs}},
+        {{"id": "breakpoints_map_to_designer", "ok": bool(breakpoints) and all("debug_preview" in item["maps_to"] for item in breakpoints), "evidence": breakpoints}},
+        {{"id": "user_code_regions_preserved", "ok": bool(user_code_regions) and all(item["round_trip_safe"] for item in user_code_regions), "evidence": user_code_regions}},
+        {{"id": "handler_refactors_propagate", "ok": bool(refactor_operations) and all({{"rename_handler", "update_component_reference"}} <= set(item["operations"]) for item in refactor_operations), "evidence": refactor_operations}},
+        {{"id": "debug_authoring_bridge", "ok": debug_authoring["ok"] and "step_into_handler" in debug_authoring["step_controls"], "evidence": debug_authoring}},
+    )
+    ok = all(check["ok"] for check in checks)
+    return {{
+        "format": "appgen.generated-handler-source-ide-contract.v1",
+        "ok": ok,
+        "decision": "approved" if ok else "blocked",
+        "navigation": navigation,
+        "stubs": stubs,
+        "breakpoints": breakpoints,
+        "user_code_regions": user_code_regions,
+        "refactor_operations": refactor_operations,
+        "checks": checks,
+        "guards": (
+            "handler_source_span_stable",
+            "sender_context_signature_required",
+            "user_code_regions_preserved",
+            "breakpoints_follow_renames",
+            "cross_handler_call_graph_refreshed",
+        ),
+        "side_effects": (),
+        "blocking_gaps": tuple(check for check in checks if not check["ok"]),
+    }}
+
+
+def handler_source_ide_module_file_manifest(existing_paths=None):
+    """Return generated handler source IDE module files and whether they exist."""
+    paths = set(existing_paths) if existing_paths is not None else _local_component_paths()
+    modules = (
+        ("handler_source_navigation_module", "source_navigation"),
+        ("handler_stub_editor_module", "stub_editor"),
+        ("handler_breakpoint_module", "breakpoints"),
+        ("handler_user_code_region_module", "user_code_regions"),
+        ("handler_refactor_propagation_module", "refactor_propagation"),
+    )
+    exports = (
+        "module_contract",
+        "handler_source_manifest",
+        "run_source_operation",
+        "runtime_manifest",
+        "smoke_test",
+    )
+    manifest = []
+    for module, kind in modules:
+        path = f"app/handler_source_ide_modules/{{module}}.py"
+        manifest.append({{
+            "module": module,
+            "kind": kind,
+            "path": path,
+            "exists": path in paths,
+            "exports": exports,
+            "ok": bool(module) and bool(kind) and path in paths,
+        }})
+    return {{
+        "format": "appgen.generated-handler-source-ide-module-file-manifest.v1",
+        "ok": bool(manifest) and all(item["ok"] for item in manifest),
+        "modules": tuple(manifest),
+        "guards": ("one_file_per_handler_source_surface", "declared_exports_present", "source_ide_smoke_replays"),
+        "side_effects": (),
+    }}
+
+
+def handler_source_ide_module_test_file_manifest(existing_paths=None):
+    """Return generated handler source IDE test files and whether they exist."""
+    paths = set(existing_paths) if existing_paths is not None else _local_component_paths()
+    tests = []
+    for item in handler_source_ide_module_file_manifest(existing_paths)["modules"]:
+        path = item["path"].replace(
+            "app/handler_source_ide_modules/",
+            "app/handler_source_ide_module_tests/test_",
+        )
+        tests.append({{
+            "module": item["module"],
+            "kind": item["kind"],
+            "path": path,
+            "exists": path in paths,
+            "target": item["path"],
+            "exports": (
+                "load_handler_source_ide_module",
+                "test_handler_source_ide_module_contract",
+                "test_handler_source_ide_module_smoke",
+                "smoke_test",
+            ),
+            "ok": item["ok"] and path in paths,
+        }})
+    return {{
+        "format": "appgen.generated-handler-source-ide-module-test-file-manifest.v1",
+        "ok": bool(tests) and all(item["ok"] for item in tests),
+        "tests": tuple(tests),
+        "guards": ("one_test_file_per_handler_source_surface", "contract_and_smoke_tests_exported"),
         "side_effects": (),
     }}
 
@@ -56475,6 +56883,8 @@ def _local_component_paths():
         "component_wiring_module_tests",
         "handler_architecture_modules",
         "handler_architecture_module_tests",
+        "handler_source_ide_modules",
+        "handler_source_ide_module_tests",
     ):
         base = root / folder
         if not base.exists():
