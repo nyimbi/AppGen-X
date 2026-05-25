@@ -31,6 +31,11 @@ stacks, then generate a working application shell from the composition.
   metadata, migration SQL, service commands, API routes, event contracts,
   idempotent handlers, UI/workbench metadata, permissions, configuration,
   seed data, contract tests, and release evidence.
+- Each generated PBC also carries an executable domain-depth contract. The
+  contract proves capability modules, workflow implementations, policy controls,
+  automation loops, analytics, integration contracts, workbench actions, and
+  release gates for the selected domain. This is the AppGen-X bar for replacing
+  broad enterprise-suite footprints with composable, owned capabilities.
 - Natural-language requests can resolve to PBC selections before generation.
 
 ## Meshes

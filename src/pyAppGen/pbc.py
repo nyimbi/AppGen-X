@@ -41,6 +41,9 @@ PBC_MANIFEST_OPTIONAL_FIELDS = (
     "seed_data",
     "tests",
     "docs",
+    "capabilities",
+    "workflows",
+    "analytics",
 )
 PBC_IMPLEMENTATION_REQUIRED_ARTIFACTS = (
     "__init__.py",
@@ -58,6 +61,17 @@ PBC_IMPLEMENTATION_REQUIRED_ARTIFACTS = (
     "tests/test_contract.py",
     "RELEASE_EVIDENCE.md",
 )
+PBC_DOMAIN_DEPTH_REQUIRED_DIMENSIONS = (
+    "capability_modules",
+    "workflow_implementations",
+    "policy_controls",
+    "automation_loops",
+    "analytics",
+    "integration_contracts",
+    "workbench_actions",
+    "release_gates",
+)
+PBC_DOMAIN_DEPTH_LEVEL = "enterprise_suite_displacement"
 PBC_ALLOWED_DATASTORE_BACKENDS = (
     "postgresql",
     "mysql",
@@ -1726,6 +1740,9 @@ def pbc_manifest_schema() -> dict:
             "seed_data": "Optional seed artifact paths owned by the PBC package.",
             "tests": "Optional test artifact paths that prove the PBC package contract.",
             "docs": "Optional documentation artifact paths for builders and operators.",
+            "capabilities": "Optional domain capability module names implemented by the PBC.",
+            "workflows": "Optional workflow/service method names implemented by the PBC.",
+            "analytics": "Optional metrics/projections implemented by the PBC.",
         },
         "self_registration_entrypoint": "register_pbc() -> dict",
         "stream_processing_policy": acp_stream_processing_policy(),
@@ -2174,11 +2191,23 @@ def pbc_implementation_contract(key: str) -> dict:
         )
     )
     migration_sql = _migration_sql(key, table_contracts, event_contract)
+    domain_functionality = _domain_functionality_contract(
+        key,
+        service,
+        table_contracts,
+        event_contract,
+        service_methods,
+    )
     release_checks = (
         "stable_manifest",
         "owned_schema_only",
         "migration_artifact",
         "model_artifact",
+        "domain_capability_depth",
+        "workflow_coverage",
+        "policy_control_coverage",
+        "automation_loop_coverage",
+        "analytics_coverage",
         "service_commands",
         "api_routes",
         "event_outbox_inbox",
@@ -2212,6 +2241,9 @@ def pbc_implementation_contract(key: str) -> dict:
             "ui_fragments": ui_fragments,
             "permissions": permissions,
             "configuration": configuration,
+            "capabilities": tuple(item["capability"] for item in domain_functionality["capability_modules"]),
+            "workflows": tuple(item["workflow"] for item in domain_functionality["workflow_implementations"]),
+            "analytics": tuple(item["metric"] for item in domain_functionality["analytics"]),
             "migrations": ("migrations/001_initial.sql",),
             "seed_data": ("seed_data.py",),
             "tests": ("tests/test_contract.py",),
@@ -2238,6 +2270,7 @@ def pbc_implementation_contract(key: str) -> dict:
                 "sql": migration_sql,
             },
         ),
+        "domain_functionality": domain_functionality,
         "models": tuple(
             {
                 "class_name": "".join(part.capitalize() for part in table["owned_table"].split("_")),
@@ -2364,6 +2397,14 @@ def pbc_implementation_release_audit(selected_pbcs: tuple[str, ...] | list[str] 
                     and contract["events"]["dead_letter_table"].startswith(f"{contract['pbc']}_"),
                 },
                 {
+                    "id": f"{contract['pbc']}:domain_depth",
+                    "ok": contract["domain_functionality"]["ok"]
+                    and contract["domain_functionality"]["depth_level"] == PBC_DOMAIN_DEPTH_LEVEL
+                    and set(PBC_DOMAIN_DEPTH_REQUIRED_DIMENSIONS)
+                    <= set(contract["domain_functionality"]["dimensions"])
+                    and not contract["domain_functionality"]["legacy_product_references"],
+                },
+                {
                     "id": f"{contract['pbc']}:package_metadata",
                     "ok": contract["directory"] == f"pbcs/{contract['pbc']}"
                     and contract["package_metadata"]["entrypoint"] == "register_pbc"
@@ -2377,6 +2418,8 @@ def pbc_implementation_release_audit(selected_pbcs: tuple[str, ...] | list[str] 
         "ok": ok,
         "pbc_count": len(contracts),
         "required_artifacts": PBC_IMPLEMENTATION_REQUIRED_ARTIFACTS,
+        "required_domain_dimensions": PBC_DOMAIN_DEPTH_REQUIRED_DIMENSIONS,
+        "depth_level": PBC_DOMAIN_DEPTH_LEVEL,
         "contracts": contracts,
         "checks": tuple(checks),
         "blocking_gaps": tuple(check for check in checks if not check["ok"]),
@@ -3103,6 +3146,224 @@ def _api_contract(key: str, api: str, position: int) -> dict:
         "permission": f"{key}.{verb}.{position + 1}",
         "request_schema": f"{key}.{path_name}.request.v1",
         "response_schema": f"{key}.{path_name}.response.v1",
+    }
+
+
+def _domain_functionality_contract(
+    key: str,
+    service: dict,
+    table_contracts: tuple[dict, ...],
+    event_contract: dict,
+    service_methods: tuple[dict, ...],
+) -> dict:
+    mesh_profile = {
+        "finops": {
+            "controls": ("segregation_of_duties", "period_locking", "variance_thresholds", "statutory_evidence"),
+            "optimization": "continuous_working_capital_optimization",
+            "kpis": ("accuracy_rate", "close_cycle_time", "cash_impact", "compliance_exceptions"),
+        },
+        "scl": {
+            "controls": ("allocation_policy", "lot_traceability", "node_capacity_guard", "exception_quarantine"),
+            "optimization": "multi_node_fulfillment_optimization",
+            "kpis": ("availability_accuracy", "cycle_time", "service_level", "exception_backlog"),
+        },
+        "hcm": {
+            "controls": ("role_based_access", "eligibility_policy", "approval_chain", "privacy_minimization"),
+            "optimization": "skills_capacity_and_pay_accuracy_optimization",
+            "kpis": ("cycle_time", "policy_exceptions", "pay_accuracy", "workforce_readiness"),
+        },
+        "opsmfg": {
+            "controls": ("routing_policy", "quality_gate", "asset_safety_guard", "capacity_constraint"),
+            "optimization": "closed_loop_plan_to_produce_optimization",
+            "kpis": ("plan_adherence", "yield_rate", "downtime_minutes", "quality_escape_rate"),
+        },
+        "cx": {
+            "controls": ("customer_consent", "price_guard", "fulfillment_guard", "credit_policy"),
+            "optimization": "customer_order_lifecycle_optimization",
+            "kpis": ("conversion_quality", "fulfillment_accuracy", "customer_health", "margin_impact"),
+        },
+        "platform": {
+            "controls": ("tenant_isolation", "contract_compatibility", "policy_as_code", "signed_audit_trail"),
+            "optimization": "composition_fabric_self_optimization",
+            "kpis": ("policy_latency", "contract_break_rate", "deployment_safety", "audit_completeness"),
+        },
+        "commerce": {
+            "controls": ("checkout_integrity", "payment_risk_policy", "return_policy", "cross_border_compliance"),
+            "optimization": "headless_commerce_profitability_optimization",
+            "kpis": ("authorization_rate", "route_margin", "return_cycle_time", "landed_cost_accuracy"),
+        },
+        "content": {
+            "controls": ("taxonomy_governance", "rights_policy", "publication_gate", "localization_quality"),
+            "optimization": "content_readiness_and_price_optimization",
+            "kpis": ("content_completeness", "publication_velocity", "rights_exceptions", "price_effectiveness"),
+        },
+        "relationship": {
+            "controls": ("preference_enforcement", "sla_policy", "consent_boundary", "loyalty_liability_guard"),
+            "optimization": "relationship_lifecycle_optimization",
+            "kpis": ("response_time", "engagement_quality", "segment_lift", "retention_signal"),
+        },
+        "intelligence": {
+            "controls": ("model_governance", "feature_lineage", "explainability_gate", "drift_guard"),
+            "optimization": "real_time_decision_intelligence_optimization",
+            "kpis": ("prediction_quality", "drift_score", "decision_latency", "risk_precision"),
+        },
+    }[service["mesh"]]
+    capability_modules = tuple(
+        {
+            "capability": f"{key}.{table['logical_table']}",
+            "owned_table": table["owned_table"],
+            "operations": (
+                f"capture_{table['logical_table']}",
+                f"validate_{table['logical_table']}",
+                f"approve_{table['logical_table']}",
+                f"optimize_{table['logical_table']}",
+                f"audit_{table['logical_table']}",
+            ),
+            "state_model": ("draft", "validated", "approved", "optimized", "closed"),
+            "policy_hooks": mesh_profile["controls"],
+            "analytics_hooks": mesh_profile["kpis"],
+        }
+        for table in table_contracts
+    )
+    workflow_implementations = tuple(
+        {
+            "workflow": method["service_method"],
+            "route": method["route"],
+            "permission": method["permission"],
+            "steps": (
+                "authorize_actor",
+                "validate_request_contract",
+                "load_owned_state",
+                "run_policy_controls",
+                "execute_domain_decision",
+                "persist_owned_state",
+                "append_outbox_event",
+                "record_release_evidence",
+            ),
+            "compensation": f"compensate_{method['service_method']}",
+            "idempotency_key": f"{key}:{method['service_method']}:{{request_id}}",
+        }
+        for method in service_methods
+    )
+    policy_controls = tuple(
+        {
+            "control": control,
+            "mode": "policy_as_code",
+            "evidence": f"{key}.{control}.evidence.v1",
+            "blocks_release": True,
+        }
+        for control in mesh_profile["controls"]
+    )
+    automation_loops = (
+        {
+            "loop": "exception_to_resolution",
+            "trigger": "policy_exception_detected",
+            "actions": ("classify_exception", "recommend_resolution", "route_approval", "verify_closeout"),
+        },
+        {
+            "loop": "continuous_optimization",
+            "trigger": mesh_profile["optimization"],
+            "actions": ("simulate_options", "score_tradeoffs", "apply_guarded_decision", "measure_outcome"),
+        },
+        {
+            "loop": "release_evidence_feedback",
+            "trigger": "audit_gap_detected",
+            "actions": ("capture_gap", "generate_fix_plan", "rerun_contract_tests", "seal_evidence"),
+        },
+    )
+    analytics = tuple(
+        {
+            "metric": metric,
+            "source": "owned_tables_and_event_contracts",
+            "grain": "pbc_instance",
+            "projection": f"{key}_{metric}_projection",
+        }
+        for metric in mesh_profile["kpis"]
+    ) + tuple(
+        {
+            "metric": f"{_snake(event['event_type'])}_throughput",
+            "source": event["outbox_table"],
+            "grain": "event_type",
+            "projection": f"{key}_{_snake(event['event_type'])}_projection",
+        }
+        for event in event_contract["emitted"][:2]
+    )
+    integration_contracts = tuple(
+        {
+            "type": "emits",
+            "event": event["event_type"],
+            "schema": event["schema"],
+            "boundary": "outbox_contract",
+        }
+        for event in event_contract["emitted"]
+    ) + tuple(
+        {
+            "type": "consumes",
+            "event": event["event_type"],
+            "schema": event["schema"],
+            "boundary": "inbox_contract",
+        }
+        for event in event_contract["consumed"]
+    )
+    workbench_actions = tuple(
+        {
+            "action": f"{key}.{verb}",
+            "surface": service.get("ui_fragments", (f"{service['class_name']}Workbench",))[0],
+            "requires_permission": f"{key}.{verb}",
+        }
+        for verb in ("inspect", "simulate", "approve", "optimize", "audit")
+    )
+    release_gates = tuple(
+        {
+            "gate": dimension,
+            "ok_when": f"{dimension}_has_generated_evidence",
+        }
+        for dimension in PBC_DOMAIN_DEPTH_REQUIRED_DIMENSIONS
+    )
+    generated_text = repr(
+        (
+            capability_modules,
+            workflow_implementations,
+            policy_controls,
+            automation_loops,
+            analytics,
+            integration_contracts,
+            workbench_actions,
+        )
+    ).lower()
+    legacy_product_references = tuple(
+        term
+        for term in ("sap", "salesforce", "quickbooks")
+        if re.search(rf"(?<![a-z0-9_]){term}(?![a-z0-9_])", generated_text)
+    )
+    dimensions = {
+        "capability_modules": capability_modules,
+        "workflow_implementations": workflow_implementations,
+        "policy_controls": policy_controls,
+        "automation_loops": automation_loops,
+        "analytics": analytics,
+        "integration_contracts": integration_contracts,
+        "workbench_actions": workbench_actions,
+        "release_gates": release_gates,
+    }
+    return {
+        "format": "appgen.pbc-domain-functionality-contract.v1",
+        "ok": all(dimensions.values()) and not legacy_product_references,
+        "depth_level": PBC_DOMAIN_DEPTH_LEVEL,
+        "pbc": key,
+        "mesh": service["mesh"],
+        "dimensions": tuple(dimensions),
+        **dimensions,
+        "differentiators": (
+            "owned_operational_schema",
+            "event_first_composition",
+            "policy_as_code_controls",
+            "closed_loop_automation",
+            "embedded_decision_analytics",
+            "side_effect_free_package_registration",
+            "release_evidence_by_capability",
+        ),
+        "legacy_product_references": legacy_product_references,
     }
 
 

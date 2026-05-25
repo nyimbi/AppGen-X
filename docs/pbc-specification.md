@@ -279,6 +279,26 @@ built-in PBCs have the required directory artifacts, ownership boundaries,
 service/API/event surfaces, idempotent handlers, retry/dead-letter evidence,
 and self-registration metadata.
 
+## Domain Depth Contract
+
+A complete PBC is more than a CRUD package. The implementation contract must
+prove domain depth for every selected capability with these dimensions:
+
+- capability modules backed by owned tables;
+- workflow implementations backed by service methods and route contracts;
+- policy-as-code controls;
+- closed-loop automation for exceptions, optimization, and release feedback;
+- metrics and projections sourced from owned tables and event contracts;
+- emitted and consumed integration contracts;
+- workbench actions for inspect, simulate, approve, optimize, and audit flows;
+- release gates for each domain-depth dimension.
+
+The executable audit names this level `enterprise_suite_displacement`. It is a
+quality bar, not a product reference: AppGen-X PBCs should replace broad
+monolithic-suite footprints by composing independently owned operational
+capabilities, event contracts, policy controls, automation, and release
+evidence.
+
 Packages can also be loaded directly by the platform:
 
 ```python

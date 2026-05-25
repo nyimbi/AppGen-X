@@ -824,6 +824,29 @@ def test_package_pbc_catalog_composes_enterprise_apps(runner: CliRunner) -> None
     assert gl_implementation["services"]["transaction_boundary"] == "owned_datastore_plus_outbox"
     assert gl_implementation["package_metadata"]["entrypoint"] == "register_pbc"
     assert "migrations/001_initial.sql" in gl_implementation["package_metadata"]["artifacts"]
+    assert gl_implementation["domain_functionality"]["format"] == "appgen.pbc-domain-functionality-contract.v1"
+    assert gl_implementation["domain_functionality"]["ok"] is True
+    assert gl_implementation["domain_functionality"]["depth_level"] == "enterprise_suite_displacement"
+    assert set(gl_implementation["domain_functionality"]["dimensions"]) == {
+        "capability_modules",
+        "workflow_implementations",
+        "policy_controls",
+        "automation_loops",
+        "analytics",
+        "integration_contracts",
+        "workbench_actions",
+        "release_gates",
+    }
+    assert len(gl_implementation["domain_functionality"]["capability_modules"]) >= len(gl_implementation["owned_schema"]["tables"])
+    assert len(gl_implementation["domain_functionality"]["workflow_implementations"]) >= len(gl_implementation["apis"])
+    assert len(gl_implementation["domain_functionality"]["policy_controls"]) >= 4
+    assert len(gl_implementation["domain_functionality"]["automation_loops"]) >= 3
+    assert len(gl_implementation["domain_functionality"]["analytics"]) >= 4
+    assert not gl_implementation["domain_functionality"]["legacy_product_references"]
+    assert "policy_as_code_controls" in gl_implementation["domain_functionality"]["differentiators"]
+    assert "capabilities" in gl_implementation["manifest"]
+    assert "workflows" in gl_implementation["manifest"]
+    assert "analytics" in gl_implementation["manifest"]
     assert all(
         table["owned_table"].startswith("gl_core_")
         for table in gl_implementation["owned_schema"]["tables"]
@@ -837,6 +860,8 @@ def test_package_pbc_catalog_composes_enterprise_apps(runner: CliRunner) -> None
     assert implementation_audit["format"] == "appgen.pbc-implementation-release-audit.v1"
     assert implementation_audit["ok"] is True
     assert implementation_audit["pbc_count"] >= 46
+    assert implementation_audit["depth_level"] == "enterprise_suite_displacement"
+    assert "domain_depth" in {check["id"].split(":", 1)[1] for check in implementation_audit["checks"]}
     assert {"__init__.py", "manifest.py", "models.py", "services.py", "routes.py", "events.py", "handlers.py"} <= set(
         implementation_audit["required_artifacts"]
     )
