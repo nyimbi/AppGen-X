@@ -17,6 +17,31 @@ Developers, Studio users, DSL authors, natural-language generators, package
 templates, and coding agents should all receive that same answer. The platform
 owns the runtime profile behind the adapter.
 
+## Builder Runbook
+
+Use this runbook in developer docs, Studio help, DSL lint messages,
+natural-language generators, and external coding-agent prompts. It is
+deliberately shorter than a comparison matrix:
+
+1. Classify the workload.
+2. If it is ordinary ERP, finance, HR, inventory, procurement, commerce,
+   workflow, approval, chatbot, agent, integration, or PBC event handling, stop
+   branching.
+3. Generate `appgen_event_contract`.
+4. Omit `stream_processor`.
+5. Generate `appgen_outbox_event` and `appgen_inbox_event`.
+6. Generate typed handlers, retry, idempotency, dead-letter, and release
+   evidence through the AppGen-X event adapter.
+7. Run `lint_pbc_eventing_choice()`.
+
+The bounded datastore set for PBC manifests is `postgresql`, `mysql`, or
+`mariadb`. Do not add an eventing backend, broker, state store, or per-PBC
+runtime selector to compensate for datastore variation.
+
+Exception requests are fail-closed. If the prompt is unclear, the workload is
+ordinary, or the evidence is missing, generate the ordinary event contract and
+omit `stream_processor`.
+
 ## Use This
 
 This is the developer-facing recommendation card. Use it before reading any

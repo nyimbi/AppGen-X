@@ -46,11 +46,6 @@ PBC_ALLOWED_DATASTORE_BACKENDS = (
     "postgresql",
     "mysql",
     "mariadb",
-    "sqlite",
-    "duckdb",
-    "clickhouse",
-    "mongodb",
-    "opensearch",
 )
 ACP_STREAM_PROCESSORS: dict[str, dict] = {
     "faust_streaming": {
@@ -457,6 +452,77 @@ ACP_STREAM_PROCESSING_POLICY = {
             "exception_profiles_require_stream_exception_evidence",
             "release_audit_records_event_contract_outputs",
             "ordinary_generators_do_not_call_stream_processor_selector",
+        ),
+    },
+    "developer_decision_runbook": {
+        "id": "appgen.event-processing.decision-runbook.v1",
+        "audience": (
+            "human_developers",
+            "studio_builders",
+            "dsl_authors",
+            "natural_language_generators",
+            "external_coding_agents",
+        ),
+        "answer": "Use appgen_event_contract. Omit stream_processor.",
+        "step_order": (
+            "classify_workload",
+            "if_ordinary_stop_branching",
+            "generate_event_contract",
+            "generate_outbox_inbox_tables",
+            "generate_typed_handlers",
+            "wire_platform_event_adapter",
+            "run_eventing_linter",
+            "record_release_evidence",
+        ),
+        "ordinary_workload_terms": (
+            "erp",
+            "finance",
+            "hr",
+            "inventory",
+            "procurement",
+            "commerce",
+            "workflow",
+            "approval",
+            "chatbot",
+            "agent",
+            "integration",
+            "pbc_event_handling",
+        ),
+        "ordinary_stop_condition": (
+            "When the workload matches ordinary business or application "
+            "events, return the single answer and do not generate a runtime "
+            "comparison, picker, or matrix."
+        ),
+        "bounded_datastores": ("postgresql", "mysql", "mariadb"),
+        "hidden_axes": (
+            "stream_engine",
+            "broker",
+            "state_store",
+            "runtime_profile",
+            "per_pbc_runtime_preference",
+        ),
+        "exception_request_shape": {
+            "allowed_profiles": ("quix_streams", "bytewax"),
+            "requires": (
+                "split_specialized_pbc",
+                "stream_exception_evidence",
+                "release_audit_gate",
+            ),
+        },
+        "machine_checks": (
+            "lint_pbc_eventing_choice",
+            "resolve_acp_event_processing_choice",
+            "pbc_release_audit",
+        ),
+        "small_model_prompt": (
+            "Use appgen_event_contract. Omit stream_processor. Generate "
+            "outbox/inbox tables, typed handlers, retry, idempotency, "
+            "dead-letter, and release evidence through the AppGen-X event "
+            "adapter. Do not compare runtimes."
+        ),
+        "fail_closed_rule": (
+            "If classification or exception evidence is unclear, generate the "
+            "ordinary event contract and omit stream_processor."
         ),
     },
     "developer_choice_algorithm": (
@@ -1407,6 +1473,7 @@ def acp_stream_processing_policy() -> dict:
         "developer_use_card": ACP_STREAM_PROCESSING_POLICY["developer_use_card"],
         "developer_decision_brief": ACP_STREAM_PROCESSING_POLICY["developer_decision_brief"],
         "developer_implementation_playbook": ACP_STREAM_PROCESSING_POLICY["developer_implementation_playbook"],
+        "developer_decision_runbook": ACP_STREAM_PROCESSING_POLICY["developer_decision_runbook"],
         "decision_card": ACP_STREAM_PROCESSING_POLICY["decision_card"],
         "developer_choice_lock": ACP_STREAM_PROCESSING_POLICY["developer_choice_lock"],
         "developer_decision_record": ACP_STREAM_PROCESSING_POLICY["developer_decision_record"],
@@ -1443,6 +1510,7 @@ def acp_event_processing_developer_guidance() -> dict:
         "developer_use_card": ACP_STREAM_PROCESSING_POLICY["developer_use_card"],
         "decision_brief": ACP_STREAM_PROCESSING_POLICY["developer_decision_brief"],
         "implementation_playbook": ACP_STREAM_PROCESSING_POLICY["developer_implementation_playbook"],
+        "decision_runbook": ACP_STREAM_PROCESSING_POLICY["developer_decision_runbook"],
         "choice_lock": ACP_STREAM_PROCESSING_POLICY["developer_choice_lock"],
         "developer_default_stack": ACP_STREAM_PROCESSING_POLICY["developer_default_stack"],
         "developer_recommendation_card": ACP_STREAM_PROCESSING_POLICY["developer_recommendation_card"],
@@ -1616,7 +1684,7 @@ def pbc_manifest_schema() -> dict:
             "mesh": f"One of: {', '.join(sorted(PBC_MESHES))}.",
             "description": "One-sentence bounded-context purpose.",
             "datastore_backend": (
-                "One of the approved open-source datastore backends: "
+                "One of the approved open-source relational datastore backends: "
                 + ", ".join(PBC_ALLOWED_DATASTORE_BACKENDS)
                 + "."
             ),

@@ -196,6 +196,12 @@ linting, Studio controls, and small local models: show the event contract
 designer, handler registry, retry/idempotency/dead-letter controls, and
 read-only runtime profile badge; hide stream-engine pickers and per-PBC runtime
 preferences for ordinary generated work.
+The returned `decision_runbook` is the operational version of the same rule:
+classify the workload, stop branching for ordinary ERP/workflow/agent/PBC
+events, generate the AppGen-X event contract, omit `stream_processor`, generate
+outbox/inbox tables and typed handlers, run the eventing linter, and record
+release evidence. PBC manifests stay on PostgreSQL, MySQL, or MariaDB so
+datastore variation does not reopen the event-runtime matrix.
 The returned `implementation_playbook` is the contributor checklist: Studio,
 DSL linting, natural-language generation, package templates, and coding-agent
 prompts all build the same ordinary path and hide runtime matrices.

@@ -914,6 +914,19 @@ def test_package_pbc_catalog_composes_enterprise_apps(runner: CliRunner) -> None
     assert playbook["coding_agent_prompt"].startswith("Use appgen_event_contract.")
     assert "ordinary_generators_do_not_call_stream_processor_selector" in playbook["acceptance_criteria"]
     assert "ordinary_manifest_has_no_stream_processor" in playbook["acceptance_criteria"]
+    decision_runbook = stream_policy["developer_decision_runbook"]
+    assert decision_runbook["id"] == "appgen.event-processing.decision-runbook.v1"
+    assert decision_runbook["answer"] == "Use appgen_event_contract. Omit stream_processor."
+    assert decision_runbook["bounded_datastores"] == ("postgresql", "mysql", "mariadb")
+    assert "if_ordinary_stop_branching" in decision_runbook["step_order"]
+    assert "stream_engine" in decision_runbook["hidden_axes"]
+    assert decision_runbook["exception_request_shape"]["allowed_profiles"] == ("quix_streams", "bytewax")
+    assert decision_runbook["exception_request_shape"]["requires"] == (
+        "split_specialized_pbc",
+        "stream_exception_evidence",
+        "release_audit_gate",
+    )
+    assert decision_runbook["fail_closed_rule"].endswith("omit stream_processor.")
     developer_guidance = acp_event_processing_developer_guidance()
     assert developer_guidance["format"] == "appgen.acp-event-processing-developer-guidance.v1"
     assert developer_guidance["answer"] == "Use appgen_event_contract."
@@ -930,6 +943,11 @@ def test_package_pbc_catalog_composes_enterprise_apps(runner: CliRunner) -> None
     assert developer_guidance["decision_brief"]["ordinary_codegen_prompt"].startswith("Generate AppGen-X outbox/inbox events")
     assert developer_guidance["decision_brief"]["small_model_stop_rule"].startswith("When the request is ordinary business")
     assert "small_model_instruction" in developer_guidance
+    assert developer_guidance["decision_runbook"]["machine_checks"] == (
+        "lint_pbc_eventing_choice",
+        "resolve_acp_event_processing_choice",
+        "pbc_release_audit",
+    )
     assert developer_guidance["developer_default_stack"]["small_model_prompt"].startswith("Use appgen_event_contract")
     assert developer_guidance["developer_recommendation_card"]["fallback"] == (
         "Use appgen_event_contract and omit stream_processor."
@@ -1053,6 +1071,11 @@ def test_package_pbc_catalog_composes_enterprise_apps(runner: CliRunner) -> None
     manifest_schema = pbc_manifest_schema()
     assert manifest_schema["format"] == "appgen.pbc-manifest-schema.v1"
     assert "datastore_backend" in manifest_schema["required_fields"]
+    assert set(manifest_schema["stream_processing_policy"]["developer_decision_runbook"]["bounded_datastores"]) == {
+        "postgresql",
+        "mysql",
+        "mariadb",
+    }
     assert manifest_schema["stream_processing_policy"]["default"] == "faust_streaming"
     manifest = example_pbc_manifest()
     validation = validate_pbc_manifest(manifest)
