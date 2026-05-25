@@ -172,6 +172,9 @@ from pyAppGen.form_designer import livebindings_graph_contract
 from pyAppGen.form_designer import livebindings_preview_value
 from pyAppGen.form_designer import livebindings_readiness_contract
 from pyAppGen.form_designer import livebindings_reroute_link
+from pyAppGen.form_designer import binding_designer_family_contract
+from pyAppGen.form_designer import binding_designer_family_module_file_manifest
+from pyAppGen.form_designer import binding_designer_family_module_test_file_manifest
 from pyAppGen.form_designer import binding_lifecycle_release_replay_contract
 from pyAppGen.form_designer import livebindings_workbench
 from pyAppGen.form_designer import mobile_device_capability_lifecycle_replay_contract
@@ -1991,7 +1994,35 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "binding_readiness_contract",
         "binding_generated_modules",
         "binding_generated_module_tests",
+        "binding_designer_family_contract",
+        "binding_designer_family_modules",
+        "binding_designer_family_module_tests",
     } == {check["id"] for check in binding_workbench["checks"]}
+    binding_families = binding_designer_family_contract()
+    assert binding_families["format"] == "appgen.binding-designer-family-contract.v1"
+    assert binding_families["ok"] is True
+    assert set(binding_families["required_families"]) == {
+        family["family"] for family in binding_families["families"] if family["evidence"]
+    }
+    assert all("validate_graph" in family["operation"] for family in binding_families["families"])
+    assert len(binding_workbench["binding_designer_family_artifacts"]) == 6
+    assert len(binding_workbench["binding_designer_family_test_artifacts"]) == 6
+    assert {item["family"] for item in binding_designer_family_module_file_manifest()} == {
+        "authoring",
+        "validation",
+        "preview_runtime",
+        "diagnostics_conflicts",
+        "offline_accessibility",
+        "release_replay",
+    }
+    assert {item["family"] for item in binding_designer_family_module_test_file_manifest()} == {
+        "authoring",
+        "validation",
+        "preview_runtime",
+        "diagnostics_conflicts",
+        "offline_accessibility",
+        "release_replay",
+    }
     create_link = livebindings_create_link()
     assert create_link["ok"] is True
     assert "record_undo" in create_link["pipeline"]
@@ -4422,6 +4453,9 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     assert {
         "binding_generated_modules",
         "binding_generated_module_tests",
+        "binding_designer_family_contract",
+        "binding_designer_family_modules",
+        "binding_designer_family_module_tests",
         "phase_order_ready",
     } <= set(requirements_by_id["visual_binding_designer"]["deep_checks"])
     assert {
@@ -4480,7 +4514,13 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         (
             "visual_binding_designer",
             "workbench",
-            {"binding_generated_modules", "binding_generated_module_tests"},
+            {
+                "binding_generated_modules",
+                "binding_generated_module_tests",
+                "binding_designer_family_contract",
+                "binding_designer_family_modules",
+                "binding_designer_family_module_tests",
+            },
         ),
         (
             "native_data_service_tooling",
@@ -4590,6 +4630,12 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         item["path"] for item in custom_designer_family_module_test_file_manifest()
     } <= set(smoke["required_artifacts"])
     assert {
+        item["path"] for item in binding_designer_family_module_file_manifest()
+    } <= set(smoke["required_artifacts"])
+    assert {
+        item["path"] for item in binding_designer_family_module_test_file_manifest()
+    } <= set(smoke["required_artifacts"])
+    assert {
         "app/form_designer.py",
         "app/component_parity_runtime.py",
         "app/inspector_runtime.py",
@@ -4664,6 +4710,12 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         item["path"] for item in custom_designer_family_module_test_file_manifest()
     } <= set(smoke["compiled_artifacts"])
     assert {
+        item["path"] for item in binding_designer_family_module_file_manifest()
+    } <= set(smoke["compiled_artifacts"])
+    assert {
+        item["path"] for item in binding_designer_family_module_test_file_manifest()
+    } <= set(smoke["compiled_artifacts"])
+    assert {
         item["path"] for item in visual_runtime_pipeline_module_file_manifest()
     } <= set(smoke["compiled_artifacts"])
     assert {
@@ -4687,6 +4739,8 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     assert coverage["component_editor_family_module_test_count"] == 6
     assert coverage["custom_designer_family_module_count"] == 6
     assert coverage["custom_designer_family_module_test_count"] == 6
+    assert coverage["binding_designer_family_module_count"] == 6
+    assert coverage["binding_designer_family_module_test_count"] == 6
     assert coverage["visual_runtime_pipeline_count"] == 5
     assert coverage["visual_runtime_pipeline_test_count"] == 5
     release_contracts = next(check for check in smoke["checks"] if check["id"] == "generated_release_contracts")
@@ -4828,6 +4882,9 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "designer_transaction_replay",
         "lifecycle_release_replay",
         "inspector_bridge_replay",
+        "binding_designer_families_ready",
+        "binding_designer_family_modules_ready",
+        "binding_designer_family_module_tests_ready",
         "binding_modules_ready",
         "binding_module_tests_ready",
         "runtime_replay",
@@ -13984,6 +14041,16 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         if path.name != "__init__.py"
     )
     generated_form_designer_paths.update(
+        f"app/binding_designer_family_modules/{path.name}"
+        for path in (output_dir / "binding_designer_family_modules").glob("*.py")
+        if path.name != "__init__.py"
+    )
+    generated_form_designer_paths.update(
+        f"app/binding_designer_family_module_tests/{path.name}"
+        for path in (output_dir / "binding_designer_family_module_tests").glob("*.py")
+        if path.name != "__init__.py"
+    )
+    generated_form_designer_paths.update(
         f"app/visual_runtime_pipeline_modules/{path.name}"
         for path in (output_dir / "visual_runtime_pipeline_modules").glob("*.py")
         if path.name != "__init__.py"
@@ -14300,6 +14367,9 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert {
         "binding_generated_modules",
         "binding_generated_module_tests",
+        "binding_designer_family_contract",
+        "binding_designer_family_modules",
+        "binding_designer_family_module_tests",
         "phase_order_ready",
     } <= set(generated_requirements_by_id["visual_binding_designer"]["deep_checks"])
     assert {
@@ -14358,7 +14428,13 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         (
             "visual_binding_designer",
             "workbench",
-            {"binding_generated_modules", "binding_generated_module_tests"},
+            {
+                "binding_generated_modules",
+                "binding_generated_module_tests",
+                "binding_designer_family_contract",
+                "binding_designer_family_modules",
+                "binding_designer_family_module_tests",
+            },
         ),
         (
             "native_data_service_tooling",
@@ -14697,6 +14773,9 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "binding_readiness_contract",
         "binding_generated_modules",
         "binding_generated_module_tests",
+        "binding_designer_family_contract",
+        "binding_designer_family_modules",
+        "binding_designer_family_module_tests",
     } <= {
         check["id"] for check in generated_bindings["checks"]
     }
@@ -14814,13 +14893,59 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert generated_binding_readiness["final_state"]["edge_count"] == len(generated_bindings["contract"]["graph"]["edges"])
     assert generated_bindings["readiness"]["ok"] is True
     assert generated_bindings["readiness"]["final_state"]["runtime_trace"] > 0
+    generated_binding_families = form_designer.binding_designer_family_contract()
+    assert generated_binding_families["format"] == "appgen.generated-binding-designer-family-contract.v1"
+    assert generated_binding_families["ok"] is True
+    assert set(generated_binding_families["required_families"]) == {
+        family["family"] for family in generated_binding_families["families"] if family["evidence"]
+    }
     assert len(generated_bindings["binding_module_artifacts"]) == 6
     assert len(generated_bindings["binding_module_test_artifacts"]) == 6
+    assert len(generated_bindings["binding_designer_family_artifacts"]) == 6
+    assert len(generated_bindings["binding_designer_family_test_artifacts"]) == 6
     assert all("run_binding_operation" in item["exports"] for item in generated_bindings["binding_module_artifacts"])
     assert all(
         "test_binding_module_smoke" in item["exports"]
         for item in generated_bindings["binding_module_test_artifacts"]
     )
+    generated_binding_family_files = form_designer.binding_designer_family_module_file_manifest(
+        generated_form_designer_paths
+    )
+    generated_binding_family_tests = form_designer.binding_designer_family_module_test_file_manifest(
+        generated_form_designer_paths
+    )
+    assert generated_binding_family_files["ok"] is True
+    assert generated_binding_family_tests["ok"] is True
+    assert {item["family"] for item in generated_binding_family_files["modules"]} == {
+        "authoring",
+        "validation",
+        "preview_runtime",
+        "diagnostics_conflicts",
+        "offline_accessibility",
+        "release_replay",
+    }
+    assert {item["family"] for item in generated_binding_family_tests["tests"]} == {
+        "authoring",
+        "validation",
+        "preview_runtime",
+        "diagnostics_conflicts",
+        "offline_accessibility",
+        "release_replay",
+    }
+    for item in generated_binding_family_files["modules"]:
+        module_path = output_dir / item["path"].replace("app/", "")
+        py_compile.compile(str(module_path), doraise=True)
+        module = _load_module(module_path, f"generated_binding_designer_family_module_{item['module']}")
+        assert module.smoke_test()["ok"] is True
+        assert module.module_contract()["ok"] is True
+        family_manifest = module.binding_designer_family_manifest()
+        assert family_manifest["ok"] is True
+        assert {"binding_designer_families_complete", "graph_validated_before_commit"} <= set(family_manifest["guards"])
+    for item in generated_binding_family_tests["tests"]:
+        test_path = output_dir / item["path"].replace("app/", "")
+        py_compile.compile(str(test_path), doraise=True)
+        module = _load_module(test_path, f"generated_binding_designer_family_test_{item['module']}")
+        assert module.smoke_test()["ok"] is True
     generated_data_tooling = form_designer.rad_data_tooling_workbench()
     assert generated_data_tooling["format"] == "appgen.generated-rad-data-tooling-workbench.v1"
     assert generated_data_tooling["ok"] is True
@@ -15338,6 +15463,9 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "designer_transaction_replay",
         "lifecycle_release_replay",
         "inspector_bridge_replay",
+        "binding_designer_families_ready",
+        "binding_designer_family_modules_ready",
+        "binding_designer_family_module_tests_ready",
         "binding_modules_ready",
         "binding_module_tests_ready",
         "runtime_replay",

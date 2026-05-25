@@ -8558,6 +8558,9 @@ def livebindings_workbench() -> dict:
     inspector_binding_bridge = inspector_binding_designer_bridge_contract()
     binding_module_artifacts = binding_module_file_manifest()
     binding_module_test_artifacts = binding_module_test_file_manifest()
+    binding_designer_families = binding_designer_family_contract()
+    binding_designer_family_artifacts = binding_designer_family_module_file_manifest()
+    binding_designer_family_test_artifacts = binding_designer_family_module_test_file_manifest()
     readiness = livebindings_readiness_contract()
     checks = (
         {
@@ -8819,6 +8822,33 @@ def livebindings_workbench() -> dict:
             ),
             "evidence": binding_module_test_artifacts,
         },
+        {
+            "id": "binding_designer_family_contract",
+            "ok": binding_designer_families["ok"]
+            and set(binding_designer_families["required_families"])
+            <= {family["family"] for family in binding_designer_families["families"] if family["evidence"]}
+            and not binding_designer_families["side_effects"],
+            "evidence": binding_designer_families,
+        },
+        {
+            "id": "binding_designer_family_modules",
+            "ok": len(binding_designer_family_artifacts) == 6
+            and all(
+                item["ok"]
+                and {"binding_designer_family_manifest", "run_binding_designer_operation", "smoke_test"} <= set(item["exports"])
+                for item in binding_designer_family_artifacts
+            ),
+            "evidence": binding_designer_family_artifacts,
+        },
+        {
+            "id": "binding_designer_family_module_tests",
+            "ok": len(binding_designer_family_test_artifacts) == 6
+            and all(
+                item["ok"] and "test_binding_designer_family_module_smoke" in item["exports"]
+                for item in binding_designer_family_test_artifacts
+            ),
+            "evidence": binding_designer_family_test_artifacts,
+        },
     )
     ok = all(check["ok"] for check in checks)
     return {
@@ -8860,6 +8890,9 @@ def livebindings_workbench() -> dict:
         "inspector_binding_bridge": inspector_binding_bridge,
         "binding_module_artifacts": binding_module_artifacts,
         "binding_module_test_artifacts": binding_module_test_artifacts,
+        "binding_designer_families": binding_designer_families,
+        "binding_designer_family_artifacts": binding_designer_family_artifacts,
+        "binding_designer_family_test_artifacts": binding_designer_family_test_artifacts,
         "readiness": readiness,
         "checks": checks,
         "blocking_gaps": tuple(check for check in checks if not check["ok"]),
@@ -14995,6 +15028,9 @@ def platform_parity_requirement_audit_contract() -> dict:
             and {
                 "binding_generated_modules",
                 "binding_generated_module_tests",
+                "binding_designer_family_contract",
+                "binding_designer_family_modules",
+                "binding_designer_family_module_tests",
             } <= {check["id"] for check in bindings["checks"] if check["ok"]},
             "deep_checks": (
                 "binding_lifecycle_release_replay",
@@ -15002,6 +15038,9 @@ def platform_parity_requirement_audit_contract() -> dict:
                 "designer_transaction_replay",
                 "binding_generated_modules",
                 "binding_generated_module_tests",
+                "binding_designer_family_contract",
+                "binding_designer_family_modules",
+                "binding_designer_family_module_tests",
                 "phase_order_ready",
             ),
             "evidence": {"workbench": bindings, "readiness": binding_readiness},
@@ -21765,6 +21804,163 @@ def binding_module_test_file_manifest() -> tuple[dict, ...]:
     )
 
 
+def binding_designer_family_contract(design: dict | None = None) -> dict:
+    """Return visual binding designer operation family coverage."""
+    authoring = binding_authoring_session(design)
+    graph_validation = binding_graph_validation_contract(design)
+    previews = binding_preview_evaluation_contract(design)
+    runtime_wiring = binding_runtime_wiring_contract(design)
+    preview_runtime = binding_preview_runtime_parity_contract(design)
+    diagnostics = binding_diagnostics_contract(design)
+    conflicts = binding_conflict_resolution_workflow(design)
+    offline = binding_offline_replay_contract(design)
+    accessibility = binding_accessibility_contract(design)
+    lifecycle = binding_lifecycle_release_replay_contract(design)
+    required_families = (
+        "authoring",
+        "validation",
+        "preview_runtime",
+        "diagnostics_conflicts",
+        "offline_accessibility",
+        "release_replay",
+    )
+    family_evidence = {
+        "authoring": authoring["operations"],
+        "validation": graph_validation["guards"] + graph_validation["side_effects"],
+        "preview_runtime": previews["previews"] + runtime_wiring["artifacts"] + preview_runtime["parity_checks"],
+        "diagnostics_conflicts": diagnostics["diagnostics"] + conflicts["resolutions"],
+        "offline_accessibility": offline["queue_items"] + accessibility["shortcuts"],
+        "release_replay": lifecycle["replay"] + lifecycle["guards"],
+    }
+    families = tuple(
+        {
+            "family": family,
+            "evidence": tuple(family_evidence[family]),
+            "operation": (
+                "open_binding_designer",
+                family,
+                "stage_graph_change",
+                "validate_graph",
+                "preview_runtime_effect",
+                "commit_or_rollback",
+                "record_history",
+            ),
+            "surfaces": ("graph_canvas", "property_inspector", "runtime_preview")
+            if family in {"authoring", "preview_runtime", "release_replay"}
+            else ("graph_canvas", "diagnostics_panel"),
+            "guards": (
+                "graph_validated_before_commit",
+                "runtime_errors_surface_to_designer",
+                "offline_replay_is_idempotent",
+                "keyboard_authoring_complete",
+            ),
+        }
+        for family in required_families
+    )
+    checks = (
+        {
+            "id": "required_binding_designer_families_present",
+            "ok": set(required_families) <= {family["family"] for family in families if family["evidence"]},
+            "evidence": tuple((family["family"], len(family["evidence"])) for family in families),
+        },
+        {
+            "id": "binding_designer_operations_declared",
+            "ok": all({"stage_graph_change", "validate_graph", "preview_runtime_effect", "commit_or_rollback", "record_history"} <= set(family["operation"]) for family in families),
+            "evidence": families,
+        },
+        {
+            "id": "preview_runtime_family_guarded",
+            "ok": preview_runtime["ok"] and "expression_sources_match" in preview_runtime["parity_checks"],
+            "evidence": preview_runtime,
+        },
+        {
+            "id": "diagnostics_and_conflicts_guarded",
+            "ok": diagnostics["ok"] and conflicts["ok"] and "quick_fixes_are_staged" in diagnostics["guards"],
+            "evidence": {"diagnostics": diagnostics, "conflicts": conflicts},
+        },
+        {
+            "id": "offline_accessibility_guarded",
+            "ok": offline["ok"] and accessibility["ok"] and "keyboard_authoring_complete" in accessibility["guards"],
+            "evidence": {"offline": offline, "accessibility": accessibility},
+        },
+        {
+            "id": "release_replay_guarded",
+            "ok": lifecycle["ok"] and "design_runtime_and_designer_replays_complete" in lifecycle["guards"],
+            "evidence": lifecycle,
+        },
+    )
+    ok = all(check["ok"] for check in checks)
+    return {
+        "format": "appgen.binding-designer-family-contract.v1",
+        "ok": ok,
+        "decision": "approved" if ok else "blocked",
+        "families": families,
+        "required_families": required_families,
+        "checks": checks,
+        "guards": (
+            "binding_designer_families_complete",
+            "graph_validated_before_commit",
+            "runtime_errors_surface_to_designer",
+            "offline_replay_is_idempotent",
+            "keyboard_authoring_complete",
+        ),
+        "side_effects": (),
+        "blocking_gaps": tuple(check for check in checks if not check["ok"]),
+    }
+
+
+def binding_designer_family_module_file_manifest() -> tuple[dict, ...]:
+    """Return generated visual binding designer family module files expected in apps."""
+    modules = (
+        ("binding_authoring_family_module", "authoring"),
+        ("binding_validation_family_module", "validation"),
+        ("binding_preview_runtime_family_module", "preview_runtime"),
+        ("binding_diagnostics_family_module", "diagnostics_conflicts"),
+        ("binding_offline_accessibility_family_module", "offline_accessibility"),
+        ("binding_release_replay_family_module", "release_replay"),
+    )
+    exports = (
+        "module_contract",
+        "binding_designer_family_manifest",
+        "run_binding_designer_operation",
+        "runtime_manifest",
+        "smoke_test",
+    )
+    return tuple(
+        {
+            "module": module,
+            "family": family,
+            "path": f"app/binding_designer_family_modules/{module}.py",
+            "exports": exports,
+            "ok": bool(module) and bool(family),
+        }
+        for module, family in modules
+    )
+
+
+def binding_designer_family_module_test_file_manifest() -> tuple[dict, ...]:
+    """Return generated visual binding designer family test files expected in apps."""
+    return tuple(
+        {
+            "module": item["module"],
+            "family": item["family"],
+            "path": item["path"].replace(
+                "app/binding_designer_family_modules/",
+                "app/binding_designer_family_module_tests/test_",
+            ),
+            "target": item["path"],
+            "exports": (
+                "load_binding_designer_family_module",
+                "test_binding_designer_family_module_contract",
+                "test_binding_designer_family_module_smoke",
+                "smoke_test",
+            ),
+            "ok": item["ok"],
+        }
+        for item in binding_designer_family_module_file_manifest()
+    )
+
+
 def package_manager_module_file_manifest() -> tuple[dict, ...]:
     """Return generated package manager module files expected in apps."""
     modules = (
@@ -22516,6 +22712,10 @@ def form_designer_generation_smoke_audit(source: str = FORM_DESIGNER_SAMPLE_DSL)
     custom_designer_family_module_test_artifacts = tuple(item["path"] for item in custom_designer_family_module_test_file_manifest())
     binding_module_artifacts = tuple(item["path"] for item in binding_module_file_manifest())
     binding_module_test_artifacts = tuple(item["path"] for item in binding_module_test_file_manifest())
+    binding_designer_family_module_artifacts = tuple(item["path"] for item in binding_designer_family_module_file_manifest())
+    binding_designer_family_module_test_artifacts = tuple(
+        item["path"] for item in binding_designer_family_module_test_file_manifest()
+    )
     package_manager_module_artifacts = tuple(item["path"] for item in package_manager_module_file_manifest())
     package_manager_module_test_artifacts = tuple(item["path"] for item in package_manager_module_test_file_manifest())
     native_form_module_artifacts = tuple(item["path"] for item in native_form_module_file_manifest())
@@ -22576,6 +22776,8 @@ def form_designer_generation_smoke_audit(source: str = FORM_DESIGNER_SAMPLE_DSL)
         *custom_designer_family_module_test_artifacts,
         *binding_module_artifacts,
         *binding_module_test_artifacts,
+        *binding_designer_family_module_artifacts,
+        *binding_designer_family_module_test_artifacts,
         *package_manager_module_artifacts,
         *package_manager_module_test_artifacts,
         *native_form_module_artifacts,
@@ -22636,6 +22838,8 @@ def form_designer_generation_smoke_audit(source: str = FORM_DESIGNER_SAMPLE_DSL)
         *custom_designer_family_module_test_artifacts,
         *binding_module_artifacts,
         *binding_module_test_artifacts,
+        *binding_designer_family_module_artifacts,
+        *binding_designer_family_module_test_artifacts,
         *package_manager_module_artifacts,
         *package_manager_module_test_artifacts,
         *native_form_module_artifacts,
@@ -22934,6 +23138,9 @@ def form_designer_generation_smoke_audit(source: str = FORM_DESIGNER_SAMPLE_DSL)
         "designer_transaction_replay",
         "lifecycle_release_replay",
         "inspector_bridge_replay",
+        "binding_designer_families_ready",
+        "binding_designer_family_modules_ready",
+        "binding_designer_family_module_tests_ready",
         "binding_modules_ready",
         "binding_module_tests_ready",
         "runtime_replay",
@@ -23069,6 +23276,8 @@ def form_designer_generation_smoke_audit(source: str = FORM_DESIGNER_SAMPLE_DSL)
             and len(custom_designer_family_module_test_artifacts) == 6
             and len(binding_module_artifacts) == 6
             and len(binding_module_test_artifacts) == 6
+            and len(binding_designer_family_module_artifacts) == 6
+            and len(binding_designer_family_module_test_artifacts) == 6
             and len(package_manager_module_artifacts) == 6
             and len(package_manager_module_test_artifacts) == 6
             and len(native_form_module_artifacts) == 6
@@ -23111,6 +23320,8 @@ def form_designer_generation_smoke_audit(source: str = FORM_DESIGNER_SAMPLE_DSL)
             "custom_designer_family_module_test_count": len(custom_designer_family_module_test_artifacts),
             "binding_module_count": len(binding_module_artifacts),
             "binding_module_test_count": len(binding_module_test_artifacts),
+            "binding_designer_family_module_count": len(binding_designer_family_module_artifacts),
+            "binding_designer_family_module_test_count": len(binding_designer_family_module_test_artifacts),
             "package_manager_module_count": len(package_manager_module_artifacts),
             "package_manager_module_test_count": len(package_manager_module_test_artifacts),
             "native_form_module_count": len(native_form_module_artifacts),

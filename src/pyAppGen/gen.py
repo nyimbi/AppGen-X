@@ -2357,6 +2357,7 @@ def write_form_designer_file(output_dir, schema: AppSchema):
     write_custom_designer_family_module_files(output_dir)
     write_inspector_module_files(output_dir)
     write_binding_module_files(output_dir)
+    write_binding_designer_family_module_files(output_dir)
     write_package_manager_module_files(output_dir)
     write_native_form_module_files(output_dir)
     write_runtime_operation_module_files(output_dir)
@@ -2504,6 +2505,15 @@ BINDING_MODULES = (
     "binding_runtime_wiring_module",
     "binding_propagation_module",
     "binding_lifecycle_module",
+)
+
+BINDING_DESIGNER_FAMILY_MODULES = (
+    "binding_authoring_family_module",
+    "binding_validation_family_module",
+    "binding_preview_runtime_family_module",
+    "binding_diagnostics_family_module",
+    "binding_offline_accessibility_family_module",
+    "binding_release_replay_family_module",
 )
 
 COMPONENT_WIRING_MODULES = (
@@ -3335,6 +3345,26 @@ def write_binding_module_files(output_dir):
         )
 
 
+def write_binding_designer_family_module_files(output_dir):
+    """Write generated visual binding designer family modules and smoke tests."""
+    output_dir = Path(output_dir)
+    module_dir = output_dir / "binding_designer_family_modules"
+    test_dir = output_dir / "binding_designer_family_module_tests"
+    module_dir.mkdir(parents=True, exist_ok=True)
+    test_dir.mkdir(parents=True, exist_ok=True)
+    (module_dir / "__init__.py").write_text(_binding_designer_family_module_init_text(), encoding="utf-8")
+    (test_dir / "__init__.py").write_text(_binding_designer_family_module_test_init_text(), encoding="utf-8")
+    for module_name in BINDING_DESIGNER_FAMILY_MODULES:
+        (module_dir / f"{module_name}.py").write_text(
+            _binding_designer_family_module_text(module_name),
+            encoding="utf-8",
+        )
+        (test_dir / f"test_{module_name}.py").write_text(
+            _binding_designer_family_module_test_text(module_name),
+            encoding="utf-8",
+        )
+
+
 def write_package_manager_module_files(output_dir):
     """Write generated package manager modules and smoke tests."""
     output_dir = Path(output_dir)
@@ -3579,6 +3609,21 @@ def _binding_module_test_init_text() -> str:
     return (
         '"""Generated visual binding module tests."""\n\n'
         f"BINDING_MODULE_TESTS = {modules!r}\n"
+    )
+
+
+def _binding_designer_family_module_init_text() -> str:
+    return (
+        '"""Generated visual binding designer family modules."""\n\n'
+        f"BINDING_DESIGNER_FAMILY_MODULES = {BINDING_DESIGNER_FAMILY_MODULES!r}\n"
+    )
+
+
+def _binding_designer_family_module_test_init_text() -> str:
+    modules = tuple(f"test_{name}" for name in BINDING_DESIGNER_FAMILY_MODULES)
+    return (
+        '"""Generated visual binding designer family module tests."""\n\n'
+        f"BINDING_DESIGNER_FAMILY_MODULE_TESTS = {modules!r}\n"
     )
 
 
@@ -11482,6 +11527,186 @@ def smoke_test():
 '''
 
 
+def _binding_designer_family_kind(module_name: str) -> str:
+    return {
+        "binding_authoring_family_module": "authoring",
+        "binding_validation_family_module": "validation",
+        "binding_preview_runtime_family_module": "preview_runtime",
+        "binding_diagnostics_family_module": "diagnostics_conflicts",
+        "binding_offline_accessibility_family_module": "offline_accessibility",
+        "binding_release_replay_family_module": "release_replay",
+    }[module_name]
+
+
+def _binding_designer_family_module_text(module_name: str) -> str:
+    family = _binding_designer_family_kind(module_name)
+    return f'''"""Generated visual binding designer family module for {family}."""
+
+from __future__ import annotations
+
+import importlib.util
+from pathlib import Path
+
+
+MODULE = {module_name!r}
+FAMILY = {family!r}
+EXPECTED_EXPORTS = (
+    "module_contract",
+    "binding_designer_family_manifest",
+    "run_binding_designer_operation",
+    "runtime_manifest",
+    "smoke_test",
+)
+
+
+def _load_form_designer():
+    module_path = Path(__file__).resolve().parents[1] / "form_designer.py"
+    spec = importlib.util.spec_from_file_location(f"generated_binding_designer_family_{{MODULE}}_form_designer", module_path)
+    module = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(module)
+    return module
+
+
+def module_contract():
+    """Return this binding designer family module's export contract."""
+    available = tuple(name for name in EXPECTED_EXPORTS if name in globals())
+    return {{
+        "format": "appgen.binding-designer-family-module-contract.v1",
+        "module": MODULE,
+        "family": FAMILY,
+        "ok": set(EXPECTED_EXPORTS) <= set(available),
+        "exports": available,
+        "expected_exports": EXPECTED_EXPORTS,
+        "side_effects": (),
+    }}
+
+
+def binding_designer_family_manifest():
+    """Return the generated binding designer family metadata owned by this module."""
+    designer = _load_form_designer()
+    contract = designer.binding_designer_family_contract()
+    family = next((item for item in contract["families"] if item["family"] == FAMILY), None)
+    return {{
+        "format": "appgen.binding-designer-family-module-manifest.v1",
+        "module": MODULE,
+        "family": FAMILY,
+        "ok": contract["ok"] and family is not None and bool(family["evidence"]),
+        "family_contract": family,
+        "checks": contract["checks"],
+        "guards": contract["guards"],
+        "side_effects": (),
+    }}
+
+
+def run_binding_designer_operation():
+    """Replay this binding designer family without mutating a design."""
+    manifest = binding_designer_family_manifest()
+    operation_steps = (
+        "open_binding_designer",
+        FAMILY,
+        "stage_graph_change",
+        "validate_graph",
+        "preview_runtime_effect",
+        "commit_or_rollback",
+        "record_history",
+    )
+    return {{
+        "format": "appgen.binding-designer-family-module-operation.v1",
+        "module": MODULE,
+        "family": FAMILY,
+        "ok": bool(manifest["ok"] and operation_steps and manifest["family_contract"]),
+        "operation_steps": operation_steps,
+        "evidence_count": len(manifest["family_contract"]["evidence"]) if manifest["family_contract"] else 0,
+        "side_effects": (),
+    }}
+
+
+def runtime_manifest():
+    """Return the source binding designer family contract."""
+    return _load_form_designer().binding_designer_family_contract()
+
+
+def smoke_test():
+    """Run side-effect-free checks for this generated binding designer family module."""
+    contract = module_contract()
+    manifest = binding_designer_family_manifest()
+    operation = run_binding_designer_operation()
+    runtime = runtime_manifest()
+    return {{
+        "format": "appgen.binding-designer-family-module-smoke-test.v1",
+        "module": MODULE,
+        "family": FAMILY,
+        "ok": contract["ok"]
+        and manifest["ok"]
+        and operation["ok"]
+        and runtime["ok"]
+        and not manifest["side_effects"]
+        and not operation["side_effects"],
+        "checks": (
+            "module_contract_resolves",
+            "binding_designer_family_manifest_resolves",
+            "binding_designer_operation_replays",
+            "runtime_manifest_ok",
+            "no_side_effects",
+        ),
+    }}
+'''
+
+
+def _binding_designer_family_module_test_text(module_name: str) -> str:
+    return f'''"""Generated tests for the {module_name} visual binding designer family module."""
+
+from __future__ import annotations
+
+import importlib.util
+from pathlib import Path
+
+
+MODULE = {module_name!r}
+
+
+def load_binding_designer_family_module():
+    """Load the generated binding designer family module without app installation."""
+    module_path = Path(__file__).resolve().parents[1] / "binding_designer_family_modules" / f"{{MODULE}}.py"
+    spec = importlib.util.spec_from_file_location(f"generated_binding_designer_family_module_{{MODULE}}", module_path)
+    module = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(module)
+    return module
+
+
+def test_binding_designer_family_module_contract():
+    """Assert the generated binding designer family module exposes its contract."""
+    module = load_binding_designer_family_module()
+    contract = module.module_contract()
+    assert contract["module"] == MODULE
+    assert contract["ok"] is True
+    assert all(hasattr(module, name) for name in contract["expected_exports"])
+
+
+def test_binding_designer_family_module_smoke():
+    """Assert the module's side-effect-free smoke test passes."""
+    module = load_binding_designer_family_module()
+    result = module.smoke_test()
+    assert result["ok"] is True
+    assert result["module"] == MODULE
+    assert result["checks"]
+
+
+def smoke_test():
+    """Run this generated test module in a side-effect-free way."""
+    test_binding_designer_family_module_contract()
+    test_binding_designer_family_module_smoke()
+    return {{
+        "format": "appgen.binding-designer-family-module-generated-test-smoke.v1",
+        "module": MODULE,
+        "ok": True,
+        "tests": ("test_binding_designer_family_module_contract", "test_binding_designer_family_module_smoke"),
+    }}
+'''
+
+
 def _component_wiring_kind(module_name: str) -> str:
     return {
         "component_drop_payload_module": "drop_payloads",
@@ -16655,6 +16880,9 @@ def binding_runtime_manifest():
         "designer_transaction_replay",
         "binding_lifecycle_release_replay",
         "inspector_binding_bridge",
+        "binding_designer_family_contract",
+        "binding_designer_family_modules",
+        "binding_designer_family_module_tests",
     }
     return {
         "format": "appgen.generated-binding-runtime-manifest.v1",
@@ -16681,6 +16909,9 @@ def binding_runtime_manifest():
         "designer_transaction_replay": workbench["designer_transaction_replay"],
         "lifecycle_release_replay": workbench["lifecycle_release_replay"],
         "inspector_binding_bridge": workbench["inspector_binding_bridge"],
+        "binding_designer_families": workbench["binding_designer_families"],
+        "binding_designer_family_artifacts": workbench["binding_designer_family_artifacts"],
+        "binding_designer_family_test_artifacts": workbench["binding_designer_family_test_artifacts"],
         "guards": (
             "graph_validated_before_runtime",
             "runtime_wiring_generated_before_release",
@@ -16718,10 +16949,13 @@ def replay_binding_runtime():
 
 def validate_binding_runtime():
     """Validate generated visual binding runtime readiness."""
+    form_designer = _load_form_designer()
     manifest = binding_runtime_manifest()
     replay = replay_binding_runtime()
     module_files = binding_module_file_manifest()
     module_tests = binding_module_test_file_manifest()
+    family_modules = form_designer.binding_designer_family_module_file_manifest()
+    family_tests = form_designer.binding_designer_family_module_test_file_manifest()
     checks = (
         {"id": "manifest_ok", "ok": manifest["ok"]},
         {"id": "graph_nodes_present", "ok": {"dataset", "field", "control", "expression"} <= {node["kind"] for node in manifest["graph"]["nodes"]}},
@@ -16734,6 +16968,9 @@ def validate_binding_runtime():
         {"id": "designer_transaction_replay", "ok": manifest["designer_transaction_replay"]["ok"] and not manifest["designer_transaction_replay"]["side_effects"]},
         {"id": "lifecycle_release_replay", "ok": manifest["lifecycle_release_replay"]["ok"] and not manifest["lifecycle_release_replay"]["side_effects"]},
         {"id": "inspector_bridge_replay", "ok": manifest["inspector_binding_bridge"]["ok"] and not manifest["inspector_binding_bridge"]["side_effects"]},
+        {"id": "binding_designer_families_ready", "ok": manifest["binding_designer_families"]["ok"] and not manifest["binding_designer_families"]["side_effects"]},
+        {"id": "binding_designer_family_modules_ready", "ok": family_modules["ok"] and not family_modules["side_effects"]},
+        {"id": "binding_designer_family_module_tests_ready", "ok": family_tests["ok"] and not family_tests["side_effects"]},
         {"id": "binding_modules_ready", "ok": module_files["ok"] and not module_files["side_effects"]},
         {"id": "binding_module_tests_ready", "ok": module_tests["ok"] and not module_tests["side_effects"]},
         {"id": "runtime_replay", "ok": replay["ok"] and not replay["side_effects"]},
@@ -16745,6 +16982,8 @@ def validate_binding_runtime():
         "manifest": manifest,
         "module_files": module_files,
         "module_tests": module_tests,
+        "binding_designer_family_modules": family_modules,
+        "binding_designer_family_tests": family_tests,
         "replay": replay,
         "blocking_gaps": tuple(check for check in checks if not check["ok"]),
     }
@@ -51987,6 +52226,135 @@ def custom_designer_family_module_test_file_manifest(existing_paths=None):
     }}
 
 
+def binding_designer_family_contract():
+    """Return generated visual binding designer operation family coverage."""
+    authoring = binding_authoring_session()
+    graph_validation = binding_graph_validation_contract()
+    previews = binding_preview_evaluation_contract()
+    runtime_wiring = binding_runtime_wiring_contract()
+    preview_runtime = binding_preview_runtime_parity_contract()
+    diagnostics = binding_diagnostics_contract()
+    conflicts = binding_conflict_resolution_workflow()
+    offline = binding_offline_replay_contract()
+    accessibility = binding_accessibility_contract()
+    lifecycle = binding_lifecycle_release_replay_contract()
+    required_families = ("authoring", "validation", "preview_runtime", "diagnostics_conflicts", "offline_accessibility", "release_replay")
+    family_evidence = {{
+        "authoring": authoring["operations"],
+        "validation": graph_validation["guards"] + graph_validation["side_effects"],
+        "preview_runtime": previews["previews"] + runtime_wiring["artifacts"] + preview_runtime["parity_checks"],
+        "diagnostics_conflicts": diagnostics["diagnostics"] + conflicts["resolutions"],
+        "offline_accessibility": offline["queue_items"] + accessibility["shortcuts"],
+        "release_replay": lifecycle["replay"] + lifecycle["guards"],
+    }}
+    families = tuple(
+        {{
+            "family": family,
+            "evidence": tuple(family_evidence[family]),
+            "operation": ("open_binding_designer", family, "stage_graph_change", "validate_graph", "preview_runtime_effect", "commit_or_rollback", "record_history"),
+            "surfaces": ("graph_canvas", "property_inspector", "runtime_preview") if family in {{"authoring", "preview_runtime", "release_replay"}} else ("graph_canvas", "diagnostics_panel"),
+            "guards": ("graph_validated_before_commit", "runtime_errors_surface_to_designer", "offline_replay_is_idempotent", "keyboard_authoring_complete"),
+        }}
+        for family in required_families
+    )
+    checks = (
+        {{"id": "required_binding_designer_families_present", "ok": set(required_families) <= {{family["family"] for family in families if family["evidence"]}}, "evidence": tuple((family["family"], len(family["evidence"])) for family in families)}},
+        {{"id": "binding_designer_operations_declared", "ok": all({{"stage_graph_change", "validate_graph", "preview_runtime_effect", "commit_or_rollback", "record_history"}} <= set(family["operation"]) for family in families), "evidence": families}},
+        {{"id": "preview_runtime_family_guarded", "ok": preview_runtime["ok"] and "expression_sources_match" in preview_runtime["parity_checks"], "evidence": preview_runtime}},
+        {{"id": "diagnostics_and_conflicts_guarded", "ok": diagnostics["ok"] and conflicts["ok"] and "quick_fixes_are_staged" in diagnostics["guards"], "evidence": {{"diagnostics": diagnostics, "conflicts": conflicts}}}},
+        {{"id": "offline_accessibility_guarded", "ok": offline["ok"] and accessibility["ok"] and "keyboard_authoring_complete" in accessibility["guards"], "evidence": {{"offline": offline, "accessibility": accessibility}}}},
+        {{"id": "release_replay_guarded", "ok": lifecycle["ok"] and "design_runtime_and_designer_replays_complete" in lifecycle["guards"], "evidence": lifecycle}},
+    )
+    ok = all(check["ok"] for check in checks)
+    return {{
+        "format": "appgen.generated-binding-designer-family-contract.v1",
+        "ok": ok,
+        "decision": "approved" if ok else "blocked",
+        "families": families,
+        "required_families": required_families,
+        "checks": checks,
+        "guards": (
+            "binding_designer_families_complete",
+            "graph_validated_before_commit",
+            "runtime_errors_surface_to_designer",
+            "offline_replay_is_idempotent",
+            "keyboard_authoring_complete",
+        ),
+        "side_effects": (),
+        "blocking_gaps": tuple(check for check in checks if not check["ok"]),
+    }}
+
+
+def binding_designer_family_module_file_manifest(existing_paths=None):
+    """Return generated visual binding designer family module files and whether they exist."""
+    paths = set(existing_paths) if existing_paths is not None else _local_component_paths()
+    modules = (
+        ("binding_authoring_family_module", "authoring"),
+        ("binding_validation_family_module", "validation"),
+        ("binding_preview_runtime_family_module", "preview_runtime"),
+        ("binding_diagnostics_family_module", "diagnostics_conflicts"),
+        ("binding_offline_accessibility_family_module", "offline_accessibility"),
+        ("binding_release_replay_family_module", "release_replay"),
+    )
+    exports = (
+        "module_contract",
+        "binding_designer_family_manifest",
+        "run_binding_designer_operation",
+        "runtime_manifest",
+        "smoke_test",
+    )
+    manifest = []
+    for module, family in modules:
+        path = f"app/binding_designer_family_modules/{{module}}.py"
+        manifest.append({{
+            "module": module,
+            "family": family,
+            "path": path,
+            "exists": path in paths,
+            "exports": exports,
+            "ok": bool(module) and bool(family) and path in paths,
+        }})
+    return {{
+        "format": "appgen.generated-binding-designer-family-module-file-manifest.v1",
+        "ok": bool(manifest) and all(item["ok"] for item in manifest),
+        "modules": tuple(manifest),
+        "guards": ("one_file_per_binding_designer_family", "declared_exports_present", "binding_designer_family_smoke_replays"),
+        "side_effects": (),
+    }}
+
+
+def binding_designer_family_module_test_file_manifest(existing_paths=None):
+    """Return generated visual binding designer family test files and whether they exist."""
+    paths = set(existing_paths) if existing_paths is not None else _local_component_paths()
+    tests = []
+    for item in binding_designer_family_module_file_manifest(existing_paths)["modules"]:
+        path = item["path"].replace(
+            "app/binding_designer_family_modules/",
+            "app/binding_designer_family_module_tests/test_",
+        )
+        tests.append({{
+            "module": item["module"],
+            "family": item["family"],
+            "path": path,
+            "exists": path in paths,
+            "target": item["path"],
+            "exports": (
+                "load_binding_designer_family_module",
+                "test_binding_designer_family_module_contract",
+                "test_binding_designer_family_module_smoke",
+                "smoke_test",
+            ),
+            "ok": item["ok"] and path in paths,
+        }})
+    return {{
+        "format": "appgen.generated-binding-designer-family-module-test-file-manifest.v1",
+        "ok": bool(tests) and all(item["ok"] for item in tests),
+        "tests": tuple(tests),
+        "guards": ("one_test_file_per_binding_designer_family", "contract_and_smoke_tests_exported"),
+        "side_effects": (),
+    }}
+
+
 def app_shell_chrome_contract():
     """Return generated splash, menu, context-menu, and UI tuning evidence."""
     palette_components = {{item["type"] for item in PALETTE}}
@@ -53809,6 +54177,9 @@ def livebindings_workbench():
         {{"module": module, "path": f"app/binding_module_tests/test_{{module}}.py", "exports": ("load_binding_module", "test_binding_module_contract", "test_binding_module_smoke", "smoke_test"), "ok": True}}
         for module in ("binding_graph_module", "binding_expression_module", "binding_designer_module", "binding_runtime_wiring_module", "binding_propagation_module", "binding_lifecycle_module")
     )
+    binding_designer_families = binding_designer_family_contract()
+    binding_designer_family_artifacts = binding_designer_family_module_file_manifest(_local_component_paths())["modules"]
+    binding_designer_family_test_artifacts = binding_designer_family_module_test_file_manifest(_local_component_paths())["tests"]
     readiness = livebindings_readiness_contract()
     checks = (
         {{"id": "graph_nodes", "ok": {{"dataset", "field", "control", "expression"}} <= {{node["kind"] for node in graph["nodes"]}}, "evidence": tuple((node["id"], node["kind"]) for node in graph["nodes"])}},
@@ -53852,9 +54223,12 @@ def livebindings_workbench():
         {{"id": "binding_readiness_contract", "ok": readiness["ok"] and {{"graph_authoring_ready", "validation_transaction_ready", "preview_runtime_ready", "diagnostics_conflict_ready", "offline_accessible_runtime_ready", "designer_release_replay_ready", "inspector_bridge_ready", "operation_surface_ready", "phase_order_ready"}} <= {{check["id"] for check in readiness["checks"] if check["ok"]}} and not readiness["side_effects"], "evidence": readiness}},
         {{"id": "binding_generated_modules", "ok": len(binding_module_artifacts) == 6 and all(item["ok"] and "run_binding_operation" in item["exports"] for item in binding_module_artifacts), "evidence": binding_module_artifacts}},
         {{"id": "binding_generated_module_tests", "ok": len(binding_module_test_artifacts) == 6 and all(item["ok"] and "test_binding_module_smoke" in item["exports"] for item in binding_module_test_artifacts), "evidence": binding_module_test_artifacts}},
+        {{"id": "binding_designer_family_contract", "ok": binding_designer_families["ok"] and set(binding_designer_families["required_families"]) <= {{family["family"] for family in binding_designer_families["families"] if family["evidence"]}} and not binding_designer_families["side_effects"], "evidence": binding_designer_families}},
+        {{"id": "binding_designer_family_modules", "ok": len(binding_designer_family_artifacts) == 6 and all(item["ok"] and {{"binding_designer_family_manifest", "run_binding_designer_operation", "smoke_test"}} <= set(item["exports"]) for item in binding_designer_family_artifacts), "evidence": binding_designer_family_artifacts}},
+        {{"id": "binding_designer_family_module_tests", "ok": len(binding_designer_family_test_artifacts) == 6 and all(item["ok"] and "test_binding_designer_family_module_smoke" in item["exports"] for item in binding_designer_family_test_artifacts), "evidence": binding_designer_family_test_artifacts}},
     )
     ok = all(check["ok"] for check in checks)
-    return {{"format": "appgen.generated-livebindings-workbench.v1", "ok": ok, "decision": "approved" if ok else "blocked", "contract": contract, "authoring": authoring, "actionable_operations": actionable_operations, "conflicts": conflicts, "graph_validation": graph_validation, "edit_transactions": edit_transactions, "previews": previews, "runtime_wiring": runtime_wiring, "preview_runtime_parity": preview_runtime_parity, "history": history, "graph_editing": graph_editing, "lookup_bindings": lookup_bindings, "pipelines": pipelines, "hit_testing": hit_testing, "runtime_gates": runtime_gates, "master_detail": master_detail, "scope_contexts": scope_contexts, "bulk_edits": bulk_edits, "diagnostics": diagnostics, "round_trip": round_trip, "update_scheduler": update_scheduler, "dependency_execution": dependency_execution, "expression_sandbox": expression_sandbox, "runtime_failure_recovery": runtime_failure_recovery, "cursor_sync": cursor_sync, "conflict_resolution": conflict_resolution, "offline_replay": offline_replay, "accessibility": accessibility, "runtime_propagation_replay": runtime_propagation_replay, "design_runtime_replay": design_runtime_replay, "designer_transaction_replay": designer_transaction_replay, "lifecycle_release_replay": lifecycle_release_replay, "inspector_binding_bridge": inspector_binding_bridge, "binding_module_artifacts": binding_module_artifacts, "binding_module_test_artifacts": binding_module_test_artifacts, "readiness": readiness, "checks": checks, "blocking_gaps": tuple(check for check in checks if not check["ok"])}}
+    return {{"format": "appgen.generated-livebindings-workbench.v1", "ok": ok, "decision": "approved" if ok else "blocked", "contract": contract, "authoring": authoring, "actionable_operations": actionable_operations, "conflicts": conflicts, "graph_validation": graph_validation, "edit_transactions": edit_transactions, "previews": previews, "runtime_wiring": runtime_wiring, "preview_runtime_parity": preview_runtime_parity, "history": history, "graph_editing": graph_editing, "lookup_bindings": lookup_bindings, "pipelines": pipelines, "hit_testing": hit_testing, "runtime_gates": runtime_gates, "master_detail": master_detail, "scope_contexts": scope_contexts, "bulk_edits": bulk_edits, "diagnostics": diagnostics, "round_trip": round_trip, "update_scheduler": update_scheduler, "dependency_execution": dependency_execution, "expression_sandbox": expression_sandbox, "runtime_failure_recovery": runtime_failure_recovery, "cursor_sync": cursor_sync, "conflict_resolution": conflict_resolution, "offline_replay": offline_replay, "accessibility": accessibility, "runtime_propagation_replay": runtime_propagation_replay, "design_runtime_replay": design_runtime_replay, "designer_transaction_replay": designer_transaction_replay, "lifecycle_release_replay": lifecycle_release_replay, "inspector_binding_bridge": inspector_binding_bridge, "binding_module_artifacts": binding_module_artifacts, "binding_module_test_artifacts": binding_module_test_artifacts, "binding_designer_families": binding_designer_families, "binding_designer_family_artifacts": binding_designer_family_artifacts, "binding_designer_family_test_artifacts": binding_designer_family_test_artifacts, "readiness": readiness, "checks": checks, "blocking_gaps": tuple(check for check in checks if not check["ok"])}}
 
 
 def rad_data_tooling_contract():
@@ -58350,6 +58724,8 @@ def _local_component_paths():
         "component_editor_family_module_tests",
         "custom_designer_family_modules",
         "custom_designer_family_module_tests",
+        "binding_designer_family_modules",
+        "binding_designer_family_module_tests",
     ):
         base = root / folder
         if not base.exists():
@@ -58852,7 +59228,7 @@ def platform_parity_requirement_audit_contract():
         {{"id": "component_parity", "ok": analog_groups["ok"] and component_readiness["ok"] and component_usability["ok"] and {{"analog_coverage_ready", "palette_icons_ready", "behavior_surface_ready", "generated_modules_ready", "generated_tests_ready", "ide_release_ready", "phase_order_ready"}} <= {{check["id"] for check in component_readiness["checks"] if check["ok"]}} and {{"per_component_files", "per_package_files", "per_component_test_files", "per_package_test_files", "component_family_modules", "component_family_module_tests", "module_smoke_tests", "component_parity_readiness"}} <= {{check["id"] for check in component_usability["checks"] if check["ok"]}} and {{"cross-target-ui", "layouts", "data-display", "graphics", "animations", "styles-theming", "gestures", "sensors", "three-d", "data-access"}} == {{group["group"] for group in analog_groups["groups"]}}, "deep_checks": ("analog_coverage_ready", "generated_modules_ready", "generated_tests_ready", "per_component_files", "per_package_files", "per_component_test_files", "per_package_test_files", "component_family_modules", "component_family_module_tests", "module_smoke_tests", "ide_release_ready", "phase_order_ready"), "evidence": {{"groups": analog_groups, "readiness": component_readiness, "usability": component_usability}}}},
         {{"id": "native_runtime_streaming", "ok": runtime["ok"] and runtime_readiness["ok"] and {{"stream_identity_ready", "unit_semantics_ready", "compile_targets_ready", "diagnostics_route_ready", "debug_preview_ready", "runtime_preview_ready", "phase_order_ready"}} <= {{check["id"] for check in runtime_readiness["checks"] if check["ok"]}} and {{"form_stream_schema", "runtime_session_replay", "design_edit_session_replay", "runtime_debug_authoring", "native_form_modules", "native_form_module_tests", "runtime_operation_modules", "runtime_operation_module_tests", "compiler_runtime_modules", "compiler_runtime_module_tests", "deep_runtime_modules", "deep_runtime_module_tests"}} <= {{check["id"] for check in runtime["checks"] if check["ok"]}}, "deep_checks": ("stream_identity_ready", "compile_targets_ready", "diagnostics_route_ready", "debug_preview_ready", "runtime_preview_ready", "runtime_debug_authoring", "native_form_modules", "native_form_module_tests", "runtime_operation_modules", "runtime_operation_module_tests", "compiler_runtime_modules", "compiler_runtime_module_tests", "deep_runtime_modules", "deep_runtime_module_tests", "phase_order_ready"), "evidence": {{"workbench": runtime, "readiness": runtime_readiness}}}},
         {{"id": "inspector_design_surface", "ok": inspector["ok"] and inspector_readiness["ok"] and {{"editor_metadata_ready", "property_event_ready", "component_custom_designer_ready", "state_design_surface_ready", "binding_handler_ready", "lifecycle_round_trip_ready", "phase_order_ready"}} <= {{check["id"] for check in inspector_readiness["checks"] if check["ok"]}} and {{"property_editor_types", "event_editor_lifecycle", "component_editor_transaction", "custom_designer_registration_replay", "editor_lifecycle_replay", "inspector_generated_modules", "inspector_generated_module_tests", "property_editor_family_contract", "property_editor_family_modules", "property_editor_family_module_tests", "event_editor_family_contract", "event_editor_family_modules", "event_editor_family_module_tests", "component_editor_family_contract", "component_editor_family_modules", "component_editor_family_module_tests", "custom_designer_family_contract", "custom_designer_family_modules", "custom_designer_family_module_tests"}} <= {{check["id"] for check in inspector["checks"] if check["ok"]}}, "deep_checks": ("editor_lifecycle_replay", "design_surface_transaction_replay", "custom_designer_registration_replay", "inspector_generated_modules", "inspector_generated_module_tests", "property_editor_family_contract", "property_editor_family_modules", "property_editor_family_module_tests", "event_editor_family_contract", "event_editor_family_modules", "event_editor_family_module_tests", "component_editor_family_contract", "component_editor_family_modules", "component_editor_family_module_tests", "custom_designer_family_contract", "custom_designer_family_modules", "custom_designer_family_module_tests", "phase_order_ready"), "evidence": {{"workbench": inspector, "readiness": inspector_readiness}}}},
-        {{"id": "visual_binding_designer", "ok": bindings["ok"] and binding_readiness["ok"] and {{"graph_authoring_ready", "validation_transaction_ready", "preview_runtime_ready", "diagnostics_conflict_ready", "offline_accessible_runtime_ready", "designer_release_replay_ready", "inspector_bridge_ready", "phase_order_ready"}} <= {{check["id"] for check in binding_readiness["checks"] if check["ok"]}} and bindings["designer_transaction_replay"]["ok"] and bindings["design_runtime_replay"]["ok"] and bindings["lifecycle_release_replay"]["ok"] and {{"binding_generated_modules", "binding_generated_module_tests"}} <= {{check["id"] for check in bindings["checks"] if check["ok"]}}, "deep_checks": ("binding_lifecycle_release_replay", "design_runtime_session_replay", "designer_transaction_replay", "binding_generated_modules", "binding_generated_module_tests", "phase_order_ready"), "evidence": {{"workbench": bindings, "readiness": binding_readiness}}}},
+        {{"id": "visual_binding_designer", "ok": bindings["ok"] and binding_readiness["ok"] and {{"graph_authoring_ready", "validation_transaction_ready", "preview_runtime_ready", "diagnostics_conflict_ready", "offline_accessible_runtime_ready", "designer_release_replay_ready", "inspector_bridge_ready", "phase_order_ready"}} <= {{check["id"] for check in binding_readiness["checks"] if check["ok"]}} and bindings["designer_transaction_replay"]["ok"] and bindings["design_runtime_replay"]["ok"] and bindings["lifecycle_release_replay"]["ok"] and {{"binding_generated_modules", "binding_generated_module_tests", "binding_designer_family_contract", "binding_designer_family_modules", "binding_designer_family_module_tests"}} <= {{check["id"] for check in bindings["checks"] if check["ok"]}}, "deep_checks": ("binding_lifecycle_release_replay", "design_runtime_session_replay", "designer_transaction_replay", "binding_generated_modules", "binding_generated_module_tests", "binding_designer_family_contract", "binding_designer_family_modules", "binding_designer_family_module_tests", "phase_order_ready"), "evidence": {{"workbench": bindings, "readiness": binding_readiness}}}},
         {{"id": "native_data_service_tooling", "ok": data_tooling["ok"] and data_readiness["ok"] and {{"connection_ready", "dataset_ready", "publish_ready", "offline_replay_ready", "replication_failover_ready", "diagnostics_ready", "phase_order_ready"}} <= {{check["id"] for check in data_readiness["checks"] if check["ok"]}} and data_tooling["runtime_replay"]["ok"] and data_tooling["publish_transaction_replay"]["ok"] and {{"relationship_lookup_lifecycle_replay", "data_tooling_modules", "data_tooling_module_tests", "deep_data_tooling_modules", "deep_data_tooling_module_tests"}} <= {{check["id"] for check in data_tooling["checks"] if check["ok"]}}, "deep_checks": ("relationship_lookup_lifecycle_replay", "data_tooling_modules", "data_tooling_module_tests", "deep_data_tooling_modules", "deep_data_tooling_module_tests", "data_tooling_design_runtime_session_replay", "data_tooling_publish_transaction_replay", "phase_order_ready"), "evidence": {{"workbench": data_tooling, "readiness": data_readiness}}}},
         {{"id": "package_installation_ecosystem", "ok": package_manager["ok"] and package_lifecycle["ok"] and package_readiness["ok"] and {{"trust_before_preview", "preview_before_registry_commit", "registry_before_update", "rollback_before_cleanup", "operation_surface_ready", "phase_order_ready"}} <= {{check["id"] for check in package_readiness["checks"] if check["ok"]}} and {{"lifecycle_transaction_replay", "package_manager_modules", "package_manager_module_tests"}} <= {{check["id"] for check in package_manager["checks"] if check["ok"]}}, "deep_checks": ("trust_before_preview", "preview_before_registry_commit", "registry_before_update", "rollback_before_cleanup", "package_manager_modules", "package_manager_module_tests", "phase_order_ready"), "evidence": {{"manager": package_manager, "lifecycle": package_lifecycle, "readiness": package_readiness}}}},
         {{"id": "device_api_component_coverage", "ok": mobile["ok"] and mobile_readiness["ok"] and mobile_lifecycle["ok"] and {{"privacy_permission_ready", "simulator_ready", "bridge_component_ready", "fallback_lifecycle_ready", "runtime_delivery_ready", "designer_capability_ready", "phase_order_ready"}} <= {{check["id"] for check in mobile_readiness["checks"] if check["ok"]}} and "runtime_and_designer_replay_aligned" in mobile_lifecycle["guards"] and {{"device_component_modules", "device_component_module_tests"}} <= {{check["id"] for check in mobile["checks"] if check["ok"]}}, "deep_checks": ("privacy_permission_ready", "bridge_component_ready", "runtime_delivery_ready", "designer_capability_ready", "device_component_modules", "device_component_module_tests", "phase_order_ready"), "evidence": {{"workbench": mobile, "lifecycle": mobile_lifecycle, "readiness": mobile_readiness}}}},

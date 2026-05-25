@@ -698,6 +698,12 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   for cross-target UI, layouts, data display, graphics, animation, styles,
   gestures, sensors, 3D, and data access families, so each family can be
   replayed and smoke-tested independently from aggregate parity checks.
+- Visual binding designer depth now writes generated family module and
+  smoke-test files for authoring, validation, preview/runtime parity,
+  diagnostics/conflicts, offline/accessibility, and release replay. The source
+  and generated workbenches, platform requirement audit, binding runtime smoke,
+  and generation smoke audit all require those six families before claiming the
+  drag/drop, wiring, and handler-oriented binding designer path is ready.
 
 ## Open Completion Areas
 
