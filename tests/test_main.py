@@ -118,6 +118,9 @@ from pyAppGen.form_designer import handler_source_ide_module_test_file_manifest
 from pyAppGen.form_designer import property_editor_family_contract
 from pyAppGen.form_designer import property_editor_family_module_file_manifest
 from pyAppGen.form_designer import property_editor_family_module_test_file_manifest
+from pyAppGen.form_designer import event_editor_family_contract
+from pyAppGen.form_designer import event_editor_family_module_file_manifest
+from pyAppGen.form_designer import event_editor_family_module_test_file_manifest
 from pyAppGen.form_designer import component_file_manifest
 from pyAppGen.form_designer import component_parity_readiness_contract
 from pyAppGen.form_designer import component_package_file_manifest
@@ -1665,6 +1668,9 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "property_editor_family_contract",
         "property_editor_family_modules",
         "property_editor_family_module_tests",
+        "event_editor_family_contract",
+        "event_editor_family_modules",
+        "event_editor_family_module_tests",
     } == {check["id"] for check in inspector_workbench["checks"]}
     assert all("apply_change" in workflow["workflow"] for workflow in inspector_workbench["property_edit_workflows"])
     assert all("update_component_reference" in workflow["workflow"] for workflow in inspector_workbench["event_edit_workflows"])
@@ -1800,6 +1806,13 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         family["family"] for family in property_families["families"] if family["editors"]
     }
     assert all("record_undo" in family["operation"] for family in property_families["families"])
+    event_families = event_editor_family_contract()
+    assert event_families["format"] == "appgen.event-editor-family-contract.v1"
+    assert event_families["ok"] is True
+    assert set(event_families["required_families"]) == {
+        family["family"] for family in event_families["families"] if family["events"]
+    }
+    assert all("resolve_handler_reference" in family["operation"] for family in event_families["families"])
     assert inspector_workbench["actionable_operations"]["property_edit"]["ok"] is True
     assert inspector_workbench["actionable_operations"]["event_rename"]["binding"]["handler"] == "button_customer_click"
     assert inspector_workbench["actionable_operations"]["handler_invoke"]["ok"] is True
@@ -1836,6 +1849,8 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     assert len(inspector_workbench["handler_source_ide_test_artifacts"]) == 5
     assert len(inspector_workbench["property_editor_family_artifacts"]) == 8
     assert len(inspector_workbench["property_editor_family_test_artifacts"]) == 8
+    assert len(inspector_workbench["event_editor_family_artifacts"]) == 6
+    assert len(inspector_workbench["event_editor_family_test_artifacts"]) == 6
     assert all("run_editor_operation" in item["exports"] for item in inspector_workbench["inspector_module_artifacts"])
     assert all(
         "test_inspector_module_smoke" in item["exports"]
@@ -1863,6 +1878,26 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     assert {
         item["family"] for item in property_editor_family_module_test_file_manifest()
     } == {"string", "number", "boolean", "choice", "collection", "binding", "color", "resource"}
+    assert {
+        item["family"] for item in event_editor_family_module_file_manifest()
+    } == {
+        "create_stub",
+        "navigate_handler",
+        "rename_handler",
+        "detach_handler",
+        "signature_validation",
+        "orphan_cleanup",
+    }
+    assert {
+        item["family"] for item in event_editor_family_module_test_file_manifest()
+    } == {
+        "create_stub",
+        "navigate_handler",
+        "rename_handler",
+        "detach_handler",
+        "signature_validation",
+        "orphan_cleanup",
+    }
     binding_graph = livebindings_graph_contract()
     assert binding_graph["format"] == "appgen.livebindings-graph.v1"
     assert {"dataset", "field", "control", "expression"} <= {node["kind"] for node in binding_graph["nodes"]}
@@ -4331,6 +4366,9 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "property_editor_family_contract",
         "property_editor_family_modules",
         "property_editor_family_module_tests",
+        "event_editor_family_contract",
+        "event_editor_family_modules",
+        "event_editor_family_module_tests",
         "phase_order_ready",
     } <= set(requirements_by_id["inspector_design_surface"]["deep_checks"])
     assert {
@@ -4380,6 +4418,9 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
                 "property_editor_family_contract",
                 "property_editor_family_modules",
                 "property_editor_family_module_tests",
+                "event_editor_family_contract",
+                "event_editor_family_modules",
+                "event_editor_family_module_tests",
             },
         ),
         (
@@ -4477,6 +4518,12 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         item["path"] for item in property_editor_family_module_test_file_manifest()
     } <= set(smoke["required_artifacts"])
     assert {
+        item["path"] for item in event_editor_family_module_file_manifest()
+    } <= set(smoke["required_artifacts"])
+    assert {
+        item["path"] for item in event_editor_family_module_test_file_manifest()
+    } <= set(smoke["required_artifacts"])
+    assert {
         "app/form_designer.py",
         "app/component_parity_runtime.py",
         "app/inspector_runtime.py",
@@ -4533,6 +4580,12 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         item["path"] for item in property_editor_family_module_test_file_manifest()
     } <= set(smoke["compiled_artifacts"])
     assert {
+        item["path"] for item in event_editor_family_module_file_manifest()
+    } <= set(smoke["compiled_artifacts"])
+    assert {
+        item["path"] for item in event_editor_family_module_test_file_manifest()
+    } <= set(smoke["compiled_artifacts"])
+    assert {
         item["path"] for item in visual_runtime_pipeline_module_file_manifest()
     } <= set(smoke["compiled_artifacts"])
     assert {
@@ -4550,6 +4603,8 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     assert coverage["handler_source_ide_module_test_count"] == 5
     assert coverage["property_editor_family_module_count"] == 8
     assert coverage["property_editor_family_module_test_count"] == 8
+    assert coverage["event_editor_family_module_count"] == 6
+    assert coverage["event_editor_family_module_test_count"] == 6
     assert coverage["visual_runtime_pipeline_count"] == 5
     assert coverage["visual_runtime_pipeline_test_count"] == 5
     release_contracts = next(check for check in smoke["checks"] if check["id"] == "generated_release_contracts")
@@ -4664,6 +4719,9 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "property_editor_families_ready",
         "property_editor_family_modules_ready",
         "property_editor_family_module_tests_ready",
+        "event_editor_families_ready",
+        "event_editor_family_modules_ready",
+        "event_editor_family_module_tests_ready",
         "inspector_modules_ready",
         "inspector_module_tests_ready",
         "runtime_replay",
@@ -13808,6 +13866,16 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         if path.name != "__init__.py"
     )
     generated_form_designer_paths.update(
+        f"app/event_editor_family_modules/{path.name}"
+        for path in (output_dir / "event_editor_family_modules").glob("*.py")
+        if path.name != "__init__.py"
+    )
+    generated_form_designer_paths.update(
+        f"app/event_editor_family_module_tests/{path.name}"
+        for path in (output_dir / "event_editor_family_module_tests").glob("*.py")
+        if path.name != "__init__.py"
+    )
+    generated_form_designer_paths.update(
         f"app/visual_runtime_pipeline_modules/{path.name}"
         for path in (output_dir / "visual_runtime_pipeline_modules").glob("*.py")
         if path.name != "__init__.py"
@@ -14110,6 +14178,9 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "property_editor_family_contract",
         "property_editor_family_modules",
         "property_editor_family_module_tests",
+        "event_editor_family_contract",
+        "event_editor_family_modules",
+        "event_editor_family_module_tests",
         "phase_order_ready",
     } <= set(generated_requirements_by_id["inspector_design_surface"]["deep_checks"])
     assert {
@@ -14159,6 +14230,9 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
                 "property_editor_family_contract",
                 "property_editor_family_modules",
                 "property_editor_family_module_tests",
+                "event_editor_family_contract",
+                "event_editor_family_modules",
+                "event_editor_family_module_tests",
             },
         ),
         (
@@ -15077,6 +15151,9 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "property_editor_families_ready",
         "property_editor_family_modules_ready",
         "property_editor_family_module_tests_ready",
+        "event_editor_families_ready",
+        "event_editor_family_modules_ready",
+        "event_editor_family_module_tests_ready",
         "inspector_modules_ready",
         "inspector_module_tests_ready",
         "runtime_replay",
@@ -16051,6 +16128,9 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "property_editor_family_contract",
         "property_editor_family_modules",
         "property_editor_family_module_tests",
+        "event_editor_family_contract",
+        "event_editor_family_modules",
+        "event_editor_family_module_tests",
     } == {check["id"] for check in generated_inspector["checks"]}
     generated_property_edit = form_designer.inspector_apply_property_edit(
         {"component": "TextBox", "props": {"label": "Name"}},
@@ -16179,6 +16259,12 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert set(generated_property_families["required_families"]) == {
         family["family"] for family in generated_property_families["families"] if family["editors"]
     }
+    generated_event_families = form_designer.event_editor_family_contract()
+    assert generated_event_families["format"] == "appgen.generated-event-editor-family-contract.v1"
+    assert generated_event_families["ok"] is True
+    assert set(generated_event_families["required_families"]) == {
+        family["family"] for family in generated_event_families["families"] if family["events"]
+    }
     assert generated_inspector["actionable_operations"]["property_edit"]["ok"] is True
     assert generated_inspector["actionable_operations"]["event_rename"]["binding"]["handler"] == "button_customer_click"
     assert generated_inspector["actionable_operations"]["handler_invoke"]["ok"] is True
@@ -16244,6 +16330,8 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert len(generated_inspector["handler_source_ide_test_artifacts"]) == 5
     assert len(generated_inspector["property_editor_family_artifacts"]) == 8
     assert len(generated_inspector["property_editor_family_test_artifacts"]) == 8
+    assert len(generated_inspector["event_editor_family_artifacts"]) == 6
+    assert len(generated_inspector["event_editor_family_test_artifacts"]) == 6
     assert all("run_editor_operation" in item["exports"] for item in generated_inspector["inspector_module_artifacts"])
     assert all(
         "test_inspector_module_smoke" in item["exports"]
@@ -16337,6 +16425,36 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         test_path = output_dir / item["path"].replace("app/", "")
         py_compile.compile(str(test_path), doraise=True)
         module = _load_module(test_path, f"generated_property_editor_family_module_test_{item['module']}")
+        assert module.smoke_test()["ok"] is True
+    generated_event_editor_files = form_designer.event_editor_family_module_file_manifest(
+        generated_form_designer_paths
+    )
+    generated_event_editor_tests = form_designer.event_editor_family_module_test_file_manifest(
+        generated_form_designer_paths
+    )
+    assert generated_event_editor_files["ok"] is True
+    assert generated_event_editor_tests["ok"] is True
+    assert {item["family"] for item in generated_event_editor_files["modules"]} == {
+        "create_stub",
+        "navigate_handler",
+        "rename_handler",
+        "detach_handler",
+        "signature_validation",
+        "orphan_cleanup",
+    }
+    for item in generated_event_editor_files["modules"]:
+        module_path = output_dir / item["path"].replace("app/", "")
+        py_compile.compile(str(module_path), doraise=True)
+        module = _load_module(module_path, f"generated_event_editor_family_module_{item['module']}")
+        assert module.smoke_test()["ok"] is True
+        assert module.module_contract()["ok"] is True
+        family_manifest = module.event_editor_family_manifest()
+        assert family_manifest["ok"] is True
+        assert {"event_editor_families_complete", "handler_reference_preserved"} <= set(family_manifest["guards"])
+    for item in generated_event_editor_tests["tests"]:
+        test_path = output_dir / item["path"].replace("app/", "")
+        py_compile.compile(str(test_path), doraise=True)
+        module = _load_module(test_path, f"generated_event_editor_family_module_test_{item['module']}")
         assert module.smoke_test()["ok"] is True
     generated_usability = form_designer.component_usability_workbench()
     assert generated_usability["format"] == "appgen.generated-component-usability-workbench.v1"
