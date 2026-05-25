@@ -3341,6 +3341,14 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     assert drop_wiring["ok"] is True
     assert "start_palette_drag" in drop_wiring["drop_pipeline"]
     assert "create_component_instance" in drop_wiring["drop_pipeline"]
+    assert {
+        "drop_from_component_palette",
+        "event_bindings_created",
+        "handler_definition_flow_declared",
+    } <= {check["id"] for check in drop_wiring["checks"] if check["ok"]}
+    assert all(item["payload"]["source"] == "component_palette" for item in drop_wiring["drop_payloads"])
+    assert all(item["operation"] == "bind_event_to_handler" for item in drop_wiring["wiring_transactions"])
+    assert "bind_event_to_handler" in drop_wiring["handler_definition_flow"]
     assert {"Button.OnClick", "TextBox.OnChange", "Lookup.OnLookup", "Grid.OnDblClick"} <= {
         item["event"] for item in drop_wiring["wiring_links"]
     }
@@ -3357,6 +3365,9 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "preview_replay",
     }
     assert all(family["operation"] for family in form_interactions["families"])
+    assert {"event_binding_transactions_declared", "handler_definition_flow_editable"} <= {
+        check["id"] for check in form_interactions["checks"] if check["ok"]
+    }
 
     matrix = field_component_matrix()
     assert matrix
@@ -3453,6 +3464,11 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     wiring_gate = next(gate for gate in audit["gates"] if gate["id"] == "component_drop_wiring_handler_design")
     assert wiring_gate["ok"] is True
     assert set(wiring_gate["required_checks"]) <= set(wiring_gate["passing_checks"])
+    assert {
+        "drop_from_component_palette",
+        "event_bindings_created",
+        "handler_definition_flow_declared",
+    } <= set(wiring_gate["passing_checks"])
     assert set(wiring_gate["required_pipeline"]) <= set(wiring_gate["passing_pipeline"])
     assert set(wiring_gate["required_events"]) <= set(wiring_gate["passing_events"])
     assert set(wiring_gate["required_handler_signatures"]) <= set(wiring_gate["passing_handler_signatures"])
@@ -14817,6 +14833,14 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert generated_drop_wiring["format"] == "appgen.generated-component-drop-wiring-handler-contract.v1"
     assert generated_drop_wiring["ok"] is True
     assert "start_palette_drag" in generated_drop_wiring["drop_pipeline"]
+    assert {
+        "drop_from_component_palette",
+        "event_bindings_created",
+        "handler_definition_flow_declared",
+    } <= {check["id"] for check in generated_drop_wiring["checks"] if check["ok"]}
+    assert all(item["payload"]["source"] == "component_palette" for item in generated_drop_wiring["drop_payloads"])
+    assert all(item["operation"] == "bind_event_to_handler" for item in generated_drop_wiring["wiring_transactions"])
+    assert "bind_event_to_handler" in generated_drop_wiring["handler_definition_flow"]
     assert {"Button.OnClick", "TextBox.OnChange", "Lookup.OnLookup", "Grid.OnDblClick"} <= {
         item["event"] for item in generated_drop_wiring["wiring_links"]
     }
@@ -14830,6 +14854,9 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "wiring_graph",
         "handler_editor",
         "preview_replay",
+    }
+    assert {"event_binding_transactions_declared", "handler_definition_flow_editable"} <= {
+        check["id"] for check in generated_form_interactions["checks"] if check["ok"]
     }
     generated_wiring_module_files = form_designer.component_wiring_module_file_manifest(generated_form_designer_paths)
     generated_wiring_module_tests = form_designer.component_wiring_module_test_file_manifest(generated_form_designer_paths)

@@ -51581,6 +51581,8 @@ def component_drop_wiring_handler_contract(table_name=None, design=None):
             "default_size": item["defaults"],
             "payload": {{
                 "kind": "component",
+                "source": "component_palette",
+                "drag_format": "appgen.component-drag-payload.v1",
                 "component": item["type"],
                 "default_size": item["defaults"],
                 "icon": _component_icon(item["type"]),
@@ -51618,6 +51620,13 @@ def component_drop_wiring_handler_contract(table_name=None, design=None):
             "handler": item["handler"],
             "dispatch": ("resolve_component", "resolve_handler", "invoke_handler"),
             "designer_surface": "events_inspector",
+            "binding": {{
+                "operation": "bind_event_to_handler",
+                "component_ref": item["field"],
+                "event": item["event"],
+                "handler": item["handler"],
+                "undoable": True,
+            }},
         }}
         for item in sample_components
     )
@@ -51627,11 +51636,39 @@ def component_drop_wiring_handler_contract(table_name=None, design=None):
             "signature": "sender, context",
             "component": item["component"],
             "event": item["event"],
+            "definition_surface": "handler_editor",
+            "template": f"def {{item['handler']}}(sender, context):",
+            "definition_steps": (
+                "choose_component_event",
+                "create_or_select_handler",
+                "generate_sender_context_stub",
+                "bind_event_to_handler",
+                "open_source_region",
+            ),
             "body_regions": ("generated_prelude", "user_code", "generated_postlude"),
             "context_keys": ("form", "component", "dataset", "event", "selection"),
             "preserves_user_code": True,
         }}
         for item in sample_components
+    )
+    handler_definition_flow = (
+        "choose_component_event",
+        "create_or_select_handler",
+        "generate_sender_context_stub",
+        "bind_event_to_handler",
+        "open_source_region",
+        "replay_preview",
+    )
+    wiring_transactions = tuple(
+        {{
+            "component": link["component"],
+            "event": link["event"],
+            "handler": link["handler"],
+            "operation": "bind_event_to_handler",
+            "guards": ("handler_name_unique", "sender_context_signature", "undo_snapshot_required"),
+            "undoable": True,
+        }}
+        for link in wiring_links
     )
     checks = (
         {{
@@ -51639,6 +51676,16 @@ def component_drop_wiring_handler_contract(table_name=None, design=None):
             "ok": bool(drop_payloads)
             and all(item["icon"].startswith("fa-") and item["payload"]["kind"] == "component" for item in drop_payloads),
             "evidence": tuple((item["component"], item["icon"]) for item in drop_payloads),
+        }},
+        {{
+            "id": "drop_from_component_palette",
+            "ok": bool(drop_payloads)
+            and all(
+                item["payload"]["source"] == "component_palette"
+                and item["payload"]["drag_format"] == "appgen.component-drag-payload.v1"
+                for item in drop_payloads
+            ),
+            "evidence": tuple(item["payload"] for item in drop_payloads),
         }},
         {{
             "id": "drop_pipeline_declared",
@@ -51657,9 +51704,25 @@ def component_drop_wiring_handler_contract(table_name=None, design=None):
             "evidence": wiring_links,
         }},
         {{
+            "id": "event_bindings_created",
+            "ok": bool(wiring_transactions)
+            and all(
+                item["operation"] == "bind_event_to_handler"
+                and {{"handler_name_unique", "sender_context_signature", "undo_snapshot_required"}} <= set(item["guards"])
+                for item in wiring_transactions
+            ),
+            "evidence": wiring_transactions,
+        }},
+        {{
             "id": "handlers_have_sender_context_signature",
             "ok": bool(handler_definitions) and all(item["signature"] == "sender, context" for item in handler_definitions),
             "evidence": tuple((item["name"], item["signature"]) for item in handler_definitions),
+        }},
+        {{
+            "id": "handler_definition_flow_declared",
+            "ok": {{"choose_component_event", "generate_sender_context_stub", "bind_event_to_handler", "open_source_region"}} <= set(handler_definition_flow)
+            and all("bind_event_to_handler" in item["definition_steps"] for item in handler_definitions),
+            "evidence": {{"flow": handler_definition_flow, "handlers": handler_definitions}},
         }},
         {{
             "id": "undo_and_user_code_guards",
@@ -51678,6 +51741,8 @@ def component_drop_wiring_handler_contract(table_name=None, design=None):
         "drop_targets": drop_targets,
         "drop_pipeline": drop_pipeline,
         "wiring_links": wiring_links,
+        "wiring_transactions": wiring_transactions,
+        "handler_definition_flow": handler_definition_flow,
         "handler_definitions": handler_definitions,
         "checks": checks,
         "guards": (
@@ -51686,6 +51751,8 @@ def component_drop_wiring_handler_contract(table_name=None, design=None):
             "user_code_regions_preserved",
             "undo_snapshot_required",
             "component_lookup_required",
+            "component_palette_payload_required",
+            "event_binding_transaction_required",
         ),
         "side_effects": (),
         "blocking_gaps": tuple(check for check in checks if not check["ok"]),
@@ -51764,7 +51831,7 @@ def form_interaction_family_contract(design=None):
         {{
             "family": "palette_drag_source",
             "evidence": wiring["drop_payloads"],
-            "operation": ("begin_drag", "serialize_payload", "show_palette_feedback"),
+            "operation": ("begin_drag_from_component_palette", "serialize_payload", "show_palette_feedback"),
             "guards": ("component_payload_typed", "icon_available", "default_size_declared"),
         }},
         {{
@@ -51776,13 +51843,19 @@ def form_interaction_family_contract(design=None):
         {{
             "family": "wiring_graph",
             "evidence": wiring["wiring_links"],
-            "operation": ("select_event", "resolve_component", "resolve_handler", "invoke_handler"),
+            "operation": ("select_event", "resolve_component", "resolve_handler", "bind_event_to_handler", "invoke_handler"),
             "guards": ("component_lookup_required", "handler_lookup_required", "dispatch_trace_recorded"),
         }},
         {{
             "family": "handler_editor",
             "evidence": wiring["handler_definitions"],
-            "operation": ("create_handler_stub", "preserve_user_code", "validate_signature", "open_source_span"),
+            "operation": (
+                "define_handler",
+                "create_handler_stub",
+                "preserve_user_code",
+                "validate_signature",
+                "open_source_span",
+            ),
             "guards": ("sender_context_signature", "user_code_regions_preserved", "handler_name_unique"),
         }},
         {{
@@ -51797,7 +51870,9 @@ def form_interaction_family_contract(design=None):
         {{"id": "interaction_families_present", "ok": set(required_families) <= {{item["family"] for item in families if item["evidence"]}}, "evidence": tuple((item["family"], len(item["evidence"])) for item in families)}},
         {{"id": "drag_drop_pipeline_replayable", "ok": {{"start_palette_drag", "show_drop_preview", "create_component_instance", "record_undo"}} <= set(wiring["drop_pipeline"]), "evidence": wiring["drop_pipeline"]}},
         {{"id": "wiring_graph_invokes_handlers", "ok": bool(wiring["wiring_links"]) and all("invoke_handler" in item["dispatch"] for item in wiring["wiring_links"]), "evidence": wiring["wiring_links"]}},
+        {{"id": "event_binding_transactions_declared", "ok": bool(wiring["wiring_transactions"]) and all(item["operation"] == "bind_event_to_handler" and item["undoable"] for item in wiring["wiring_transactions"]), "evidence": wiring["wiring_transactions"]}},
         {{"id": "handler_editor_preserves_code", "ok": bool(wiring["handler_definitions"]) and all(item["signature"] == "sender, context" and item["preserves_user_code"] for item in wiring["handler_definitions"]), "evidence": wiring["handler_definitions"]}},
+        {{"id": "handler_definition_flow_editable", "ok": {{"define_handler", "create_handler_stub", "open_source_span"}} <= set(next(item["operation"] for item in families if item["family"] == "handler_editor")) and "bind_event_to_handler" in wiring["handler_definition_flow"], "evidence": {{"handler_editor": next(item for item in families if item["family"] == "handler_editor"), "flow": wiring["handler_definition_flow"]}}}},
         {{"id": "preview_replay_side_effect_free", "ok": wiring["ok"] and not wiring["side_effects"], "evidence": wiring["side_effects"]}},
     )
     ok = all(check["ok"] for check in checks)
@@ -59679,7 +59754,7 @@ def rad_parity_workbench(existing_paths=()):
         {{"id": "native_ui_parity_component_parity", "ok": {{"Grid", "TreeView", "MainMenu", "PopupMenu", "DataSource", "RESTClient", "CameraView", "Viewport3D"}} <= palette_types and component_readiness["ok"], "evidence": {{"palette": tuple(sorted(palette_types)), "readiness": component_readiness}}}},
         {{"id": "built_in_component_usability", "ok": component_usability_workbench()["ok"], "evidence": component_usability_workbench()}},
         {{"id": "app_shell_chrome_designer", "ok": app_shell["ok"] and not app_shell["side_effects"], "evidence": app_shell}},
-        {{"id": "component_drop_wiring_handler_design", "ok": drop_wiring["ok"] and form_interactions["ok"] and form_interaction_modules["ok"] and form_interaction_module_tests["ok"] and component_wiring_modules["ok"] and component_wiring_module_tests["ok"] and {{"start_palette_drag", "show_drop_preview", "create_component_instance", "record_undo"}} <= set(drop_wiring["drop_pipeline"]) and {{"Button.OnClick", "TextBox.OnChange"}} <= {{item["event"] for item in drop_wiring["wiring_links"]}} and all(item["signature"] == "sender, context" for item in drop_wiring["handler_definitions"]) and not drop_wiring["side_effects"], "evidence": dict(drop_wiring, module_files=component_wiring_modules, module_tests=component_wiring_module_tests, interaction_families=form_interactions, interaction_family_modules=form_interaction_modules, interaction_family_module_tests=form_interaction_module_tests)}},
+        {{"id": "component_drop_wiring_handler_design", "ok": drop_wiring["ok"] and form_interactions["ok"] and form_interaction_modules["ok"] and form_interaction_module_tests["ok"] and component_wiring_modules["ok"] and component_wiring_module_tests["ok"] and {{"start_palette_drag", "show_drop_preview", "create_component_instance", "record_undo"}} <= set(drop_wiring["drop_pipeline"]) and {{"Button.OnClick", "TextBox.OnChange"}} <= {{item["event"] for item in drop_wiring["wiring_links"]}} and {{"drop_from_component_palette", "event_bindings_created", "handler_definition_flow_declared"}} <= {{check["id"] for check in drop_wiring["checks"] if check["ok"]}} and all(item["signature"] == "sender, context" for item in drop_wiring["handler_definitions"]) and not drop_wiring["side_effects"], "evidence": dict(drop_wiring, module_files=component_wiring_modules, module_tests=component_wiring_module_tests, interaction_families=form_interactions, interaction_family_modules=form_interaction_modules, interaction_family_module_tests=form_interaction_module_tests)}},
         {{"id": "pascal_runtime_and_dfm_streaming", "ok": "text-dfm" in dfm_streaming_contract()["stream_formats"] and pascal_runtime_workbench()["ok"], "evidence": {{"streaming": dfm_streaming_contract(), "runtime": pascal_runtime_workbench()}}}},
         {{"id": "pascal_runtime_workbench", "ok": pascal_runtime_workbench()["ok"], "evidence": pascal_runtime_workbench()}},
         {{"id": "object_inspector_parity", "ok": {{"Properties", "Events"}} <= set(object_inspector_contract()["tabs"]) and object_inspector_workbench()["ok"], "evidence": {{"contract": object_inspector_contract(), "workbench": object_inspector_workbench()}}}},
@@ -59781,7 +59856,7 @@ def form_designer_release_gate(existing_paths=()):
         {{
             "id": "component_drop_wiring_handler_design",
             "ok": drop_wiring["ok"]
-            and {{"palette_drag_payloads", "drop_pipeline_declared", "drop_targets_declared", "wiring_routes_to_handlers", "handlers_have_sender_context_signature", "undo_and_user_code_guards"}} <= {{check["id"] for check in drop_wiring["checks"] if check["ok"]}}
+            and {{"palette_drag_payloads", "drop_from_component_palette", "drop_pipeline_declared", "drop_targets_declared", "wiring_routes_to_handlers", "event_bindings_created", "handlers_have_sender_context_signature", "handler_definition_flow_declared", "undo_and_user_code_guards"}} <= {{check["id"] for check in drop_wiring["checks"] if check["ok"]}}
             and {{"start_palette_drag", "show_drop_preview", "create_component_instance", "record_undo"}} <= set(drop_wiring["drop_pipeline"])
             and {{"Button.OnClick", "TextBox.OnChange"}} <= {{item["event"] for item in drop_wiring["wiring_links"]}}
             and all(item["signature"] == "sender, context" for item in drop_wiring["handler_definitions"])
