@@ -6398,6 +6398,9 @@ def object_inspector_workbench() -> dict:
     component_editor_families = component_editor_family_contract()
     component_editor_family_artifacts = component_editor_family_module_file_manifest()
     component_editor_family_test_artifacts = component_editor_family_module_test_file_manifest()
+    custom_designer_families = custom_designer_family_contract()
+    custom_designer_family_artifacts = custom_designer_family_module_file_manifest()
+    custom_designer_family_test_artifacts = custom_designer_family_module_test_file_manifest()
     readiness = object_inspector_readiness_contract(sample_components)
     property_edit_operation = inspector_apply_property_edit(
         {"component": "TextBox", "props": {"label": "Name"}},
@@ -6836,6 +6839,33 @@ def object_inspector_workbench() -> dict:
             ),
             "evidence": component_editor_family_test_artifacts,
         },
+        {
+            "id": "custom_designer_family_contract",
+            "ok": custom_designer_families["ok"]
+            and set(custom_designer_families["required_families"])
+            <= {family["family"] for family in custom_designer_families["families"] if family["hooks"]}
+            and not custom_designer_families["side_effects"],
+            "evidence": custom_designer_families,
+        },
+        {
+            "id": "custom_designer_family_modules",
+            "ok": len(custom_designer_family_artifacts) == 6
+            and all(
+                item["ok"]
+                and {"custom_designer_family_manifest", "run_custom_designer_operation", "smoke_test"} <= set(item["exports"])
+                for item in custom_designer_family_artifacts
+            ),
+            "evidence": custom_designer_family_artifacts,
+        },
+        {
+            "id": "custom_designer_family_module_tests",
+            "ok": len(custom_designer_family_test_artifacts) == 6
+            and all(
+                item["ok"] and "test_custom_designer_family_module_smoke" in item["exports"]
+                for item in custom_designer_family_test_artifacts
+            ),
+            "evidence": custom_designer_family_test_artifacts,
+        },
     )
     ok = all(check["ok"] for check in checks)
     return {
@@ -6891,6 +6921,9 @@ def object_inspector_workbench() -> dict:
         "component_editor_families": component_editor_families,
         "component_editor_family_artifacts": component_editor_family_artifacts,
         "component_editor_family_test_artifacts": component_editor_family_test_artifacts,
+        "custom_designer_families": custom_designer_families,
+        "custom_designer_family_artifacts": custom_designer_family_artifacts,
+        "custom_designer_family_test_artifacts": custom_designer_family_test_artifacts,
         "readiness": readiness,
         "actionable_operations": {
             "property_edit": property_edit_operation,
@@ -14915,6 +14948,9 @@ def platform_parity_requirement_audit_contract() -> dict:
                 "component_editor_family_contract",
                 "component_editor_family_modules",
                 "component_editor_family_module_tests",
+                "custom_designer_family_contract",
+                "custom_designer_family_modules",
+                "custom_designer_family_module_tests",
             } <= {check["id"] for check in inspector["checks"] if check["ok"]},
             "deep_checks": (
                 "editor_lifecycle_replay",
@@ -14931,6 +14967,9 @@ def platform_parity_requirement_audit_contract() -> dict:
                 "component_editor_family_contract",
                 "component_editor_family_modules",
                 "component_editor_family_module_tests",
+                "custom_designer_family_contract",
+                "custom_designer_family_modules",
+                "custom_designer_family_module_tests",
                 "phase_order_ready",
             ),
             "evidence": {"workbench": inspector, "readiness": inspector_readiness},
@@ -15580,6 +15619,9 @@ def rad_parity_workbench(existing_paths: set[str] | None = None) -> dict:
         "component_editor_family_contract",
         "component_editor_family_modules",
         "component_editor_family_module_tests",
+        "custom_designer_family_contract",
+        "custom_designer_family_modules",
+        "custom_designer_family_module_tests",
     )
     passing_inspector_workbench_checks = tuple(check["id"] for check in inspector_workbench["checks"] if check["ok"])
     inspector_contracts = tuple(inspector_workbench["contracts"])
@@ -21536,6 +21578,144 @@ def component_editor_family_module_test_file_manifest() -> tuple[dict, ...]:
     )
 
 
+def custom_designer_family_contract() -> dict:
+    """Return Object Inspector custom designer hook family coverage."""
+    required_families = (
+        "paint_overlay",
+        "verb_menu",
+        "selection_handles",
+        "smart_tags",
+        "alignment_guides",
+        "inline_preview",
+    )
+    contracts = tuple(object_inspector_contract(component) for component in COMPONENTS)
+    hook_rows = tuple(hook for contract in contracts for hook in contract["custom_designers"])
+    families = tuple(
+        {
+            "family": family,
+            "hooks": tuple(hook for hook in hook_rows if hook["hook"] == family),
+            "operation": (
+                "register_custom_designer",
+                "activate_hook",
+                family,
+                "render_overlay",
+                "publish_hit_targets",
+                "commit_or_cancel",
+                "unload_hook",
+            ),
+            "surfaces": ("form_designer", "selection_overlay", "context_menu")
+            if family in {"verb_menu", "selection_handles", "smart_tags"}
+            else ("form_designer", "render_pass"),
+            "guards": (
+                "hook_isolated",
+                "overlay_non_destructive",
+                "hit_targets_published",
+                "designer_failure_isolated",
+            ),
+        }
+        for family in required_families
+    )
+    checks = (
+        {
+            "id": "required_custom_designer_families_present",
+            "ok": set(required_families) <= {family["family"] for family in families if family["hooks"]},
+            "evidence": tuple((family["family"], len(family["hooks"])) for family in families),
+        },
+        {
+            "id": "custom_designer_operations_declared",
+            "ok": all({"activate_hook", "render_overlay", "publish_hit_targets", "commit_or_cancel", "unload_hook"} <= set(family["operation"]) for family in families),
+            "evidence": families,
+        },
+        {
+            "id": "multi_select_hooks_preserved",
+            "ok": any(hook["supports_multi_select"] for hook in hook_rows)
+            and any(not hook["supports_multi_select"] for hook in hook_rows),
+            "evidence": hook_rows,
+        },
+        {
+            "id": "overlay_surfaces_declared",
+            "ok": all({"form_designer"} <= set(family["surfaces"]) for family in families),
+            "evidence": families,
+        },
+        {
+            "id": "custom_designer_isolation_guards",
+            "ok": all({"hook_isolated", "overlay_non_destructive", "designer_failure_isolated"} <= set(family["guards"]) for family in families),
+            "evidence": families,
+        },
+    )
+    ok = all(check["ok"] for check in checks)
+    return {
+        "format": "appgen.custom-designer-family-contract.v1",
+        "ok": ok,
+        "decision": "approved" if ok else "blocked",
+        "families": families,
+        "required_families": required_families,
+        "hook_count": len(hook_rows),
+        "checks": checks,
+        "guards": (
+            "custom_designer_families_complete",
+            "hook_isolated",
+            "overlay_non_destructive",
+            "hit_targets_published",
+            "designer_failure_isolated",
+        ),
+        "side_effects": (),
+        "blocking_gaps": tuple(check for check in checks if not check["ok"]),
+    }
+
+
+def custom_designer_family_module_file_manifest() -> tuple[dict, ...]:
+    """Return generated custom designer family module files expected in apps."""
+    modules = (
+        ("paint_custom_designer_module", "paint_overlay"),
+        ("verb_menu_custom_designer_module", "verb_menu"),
+        ("selection_custom_designer_module", "selection_handles"),
+        ("smart_tag_custom_designer_module", "smart_tags"),
+        ("alignment_custom_designer_module", "alignment_guides"),
+        ("inline_preview_custom_designer_module", "inline_preview"),
+    )
+    exports = (
+        "module_contract",
+        "custom_designer_family_manifest",
+        "run_custom_designer_operation",
+        "runtime_manifest",
+        "smoke_test",
+    )
+    return tuple(
+        {
+            "module": module,
+            "family": family,
+            "path": f"app/custom_designer_family_modules/{module}.py",
+            "exports": exports,
+            "ok": bool(module) and bool(family),
+        }
+        for module, family in modules
+    )
+
+
+def custom_designer_family_module_test_file_manifest() -> tuple[dict, ...]:
+    """Return generated custom designer family test files expected in apps."""
+    return tuple(
+        {
+            "module": item["module"],
+            "family": item["family"],
+            "path": item["path"].replace(
+                "app/custom_designer_family_modules/",
+                "app/custom_designer_family_module_tests/test_",
+            ),
+            "target": item["path"],
+            "exports": (
+                "load_custom_designer_family_module",
+                "test_custom_designer_family_module_contract",
+                "test_custom_designer_family_module_smoke",
+                "smoke_test",
+            ),
+            "ok": item["ok"],
+        }
+        for item in custom_designer_family_module_file_manifest()
+    )
+
+
 def binding_module_file_manifest() -> tuple[dict, ...]:
     """Return generated visual binding module files expected in apps."""
     modules = (
@@ -22332,6 +22512,8 @@ def form_designer_generation_smoke_audit(source: str = FORM_DESIGNER_SAMPLE_DSL)
     event_editor_family_module_test_artifacts = tuple(item["path"] for item in event_editor_family_module_test_file_manifest())
     component_editor_family_module_artifacts = tuple(item["path"] for item in component_editor_family_module_file_manifest())
     component_editor_family_module_test_artifacts = tuple(item["path"] for item in component_editor_family_module_test_file_manifest())
+    custom_designer_family_module_artifacts = tuple(item["path"] for item in custom_designer_family_module_file_manifest())
+    custom_designer_family_module_test_artifacts = tuple(item["path"] for item in custom_designer_family_module_test_file_manifest())
     binding_module_artifacts = tuple(item["path"] for item in binding_module_file_manifest())
     binding_module_test_artifacts = tuple(item["path"] for item in binding_module_test_file_manifest())
     package_manager_module_artifacts = tuple(item["path"] for item in package_manager_module_file_manifest())
@@ -22390,6 +22572,8 @@ def form_designer_generation_smoke_audit(source: str = FORM_DESIGNER_SAMPLE_DSL)
         *event_editor_family_module_test_artifacts,
         *component_editor_family_module_artifacts,
         *component_editor_family_module_test_artifacts,
+        *custom_designer_family_module_artifacts,
+        *custom_designer_family_module_test_artifacts,
         *binding_module_artifacts,
         *binding_module_test_artifacts,
         *package_manager_module_artifacts,
@@ -22448,6 +22632,8 @@ def form_designer_generation_smoke_audit(source: str = FORM_DESIGNER_SAMPLE_DSL)
         *event_editor_family_module_test_artifacts,
         *component_editor_family_module_artifacts,
         *component_editor_family_module_test_artifacts,
+        *custom_designer_family_module_artifacts,
+        *custom_designer_family_module_test_artifacts,
         *binding_module_artifacts,
         *binding_module_test_artifacts,
         *package_manager_module_artifacts,
@@ -22729,6 +22915,9 @@ def form_designer_generation_smoke_audit(source: str = FORM_DESIGNER_SAMPLE_DSL)
         "component_editor_families_ready",
         "component_editor_family_modules_ready",
         "component_editor_family_module_tests_ready",
+        "custom_designer_families_ready",
+        "custom_designer_family_modules_ready",
+        "custom_designer_family_module_tests_ready",
         "inspector_modules_ready",
         "inspector_module_tests_ready",
         "runtime_replay",
@@ -22876,6 +23065,8 @@ def form_designer_generation_smoke_audit(source: str = FORM_DESIGNER_SAMPLE_DSL)
             and len(event_editor_family_module_test_artifacts) == 6
             and len(component_editor_family_module_artifacts) == 6
             and len(component_editor_family_module_test_artifacts) == 6
+            and len(custom_designer_family_module_artifacts) == 6
+            and len(custom_designer_family_module_test_artifacts) == 6
             and len(binding_module_artifacts) == 6
             and len(binding_module_test_artifacts) == 6
             and len(package_manager_module_artifacts) == 6
@@ -22916,6 +23107,8 @@ def form_designer_generation_smoke_audit(source: str = FORM_DESIGNER_SAMPLE_DSL)
             "event_editor_family_module_test_count": len(event_editor_family_module_test_artifacts),
             "component_editor_family_module_count": len(component_editor_family_module_artifacts),
             "component_editor_family_module_test_count": len(component_editor_family_module_test_artifacts),
+            "custom_designer_family_module_count": len(custom_designer_family_module_artifacts),
+            "custom_designer_family_module_test_count": len(custom_designer_family_module_test_artifacts),
             "binding_module_count": len(binding_module_artifacts),
             "binding_module_test_count": len(binding_module_test_artifacts),
             "package_manager_module_count": len(package_manager_module_artifacts),
