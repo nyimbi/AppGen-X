@@ -174,6 +174,7 @@ from pyAppGen.form_designer import inspector_register_custom_designer
 from pyAppGen.form_designer import inspector_rename_event_handler
 from pyAppGen.form_designer import object_inspector_readiness_contract
 from pyAppGen.form_designer import object_inspector_workbench
+from pyAppGen.form_designer import data_relationship_join_plan_contract
 from pyAppGen.form_designer import data_relationship_lookup_lifecycle_replay_contract
 from pyAppGen.form_designer import data_tooling_actionable_operations
 from pyAppGen.form_designer import data_tooling_browse_schema_operation
@@ -2030,7 +2031,18 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     assert data_tooling_test_connection()["pipeline"][-1] == "rollback_test_transaction"
     assert "explain_plan" in data_tooling_preview_query()["pipeline"]
     assert "rollback_script" in data_tooling_preview_schema_diff()["preview"]
-    assert data_tooling_generate_lookup_editors()["chain_path"] == ("InventoryMove", "InvoiceLine", "Invoice", "Account", "Ledger")
+    lookup_operation = data_tooling_generate_lookup_editors()
+    assert lookup_operation["chain_path"] == ("InventoryMove", "InvoiceLine", "Invoice", "Account", "Ledger")
+    assert len(lookup_operation["foreign_key_pairs"]) == len(lookup_operation["lookup_endpoints"])
+    assert all(endpoint["endpoint"].startswith("/lookups/") for endpoint in lookup_operation["lookup_endpoints"])
+    join_plan = data_relationship_join_plan_contract()
+    assert join_plan["format"] == "appgen.data-relationship-join-plan.v1"
+    assert join_plan["ok"] is True
+    assert join_plan["chain_path"] == ("InventoryMove", "InvoiceLine", "Invoice", "Account", "Ledger")
+    assert len(join_plan["foreign_key_pairs"]) == 4
+    assert len({alias["alias"] for alias in join_plan["join_aliases"]}) == 4
+    assert all("search" in endpoint["parameters"] for endpoint in join_plan["lookup_endpoints"])
+    assert all(endpoint["invalidates_on"] for endpoint in join_plan["lookup_endpoints"])
     assert "run_contract_tests" in data_tooling_publish_resource()["pipeline"]
     assert "publish_schema_tree" in data_tooling_browse_schema_operation()["pipeline"]
     assert "validate_dataset_state_machine" in data_tooling_design_dataset_operation()["pipeline"]
@@ -2111,7 +2123,14 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "multi_hop_chain_preserved",
         "lookup_preview_before_publish",
         "runtime_artifacts_declared",
+        "foreign_key_pairs_preserved",
+        "lookup_endpoint_per_foreign_key",
+        "join_aliases_stable",
+        "lookup_cache_invalidation_declared",
     } <= {check["id"] for check in relationship_lookup_lifecycle["checks"] if check["ok"]}
+    assert len(relationship_lookup_lifecycle["foreign_key_pairs"]) == 4
+    assert len(relationship_lookup_lifecycle["editor_ids"]) == 4
+    assert all(endpoint["cache_key"] for endpoint in relationship_lookup_lifecycle["lookup_endpoints"])
     assert all("run_read_only_probe" in test["smoke"] for test in data_workbench["module_runtime_smoke"]["smoke_tests"])
     assert len(data_workbench["data_module_artifacts"]) == 4
     assert len(data_workbench["data_module_test_artifacts"]) == 4
@@ -14253,13 +14272,16 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert generated_connection["pipeline"][-1] == "rollback_test_transaction"
     assert "explain_plan" in form_designer.data_tooling_preview_query()["pipeline"]
     assert "rollback_script" in form_designer.data_tooling_preview_schema_diff()["preview"]
-    assert form_designer.data_tooling_generate_lookup_editors()["chain_path"] == (
+    generated_lookup_operation = form_designer.data_tooling_generate_lookup_editors()
+    assert generated_lookup_operation["chain_path"] == (
         "InventoryMove",
         "InvoiceLine",
         "Invoice",
         "Account",
         "Ledger",
     )
+    assert len(generated_lookup_operation["foreign_key_pairs"]) == len(generated_lookup_operation["lookup_endpoints"])
+    assert all(endpoint["endpoint"].startswith("/lookups/") for endpoint in generated_lookup_operation["lookup_endpoints"])
     assert "run_contract_tests" in form_designer.data_tooling_publish_resource()["pipeline"]
     assert generated_data_tooling["actionable_operations"]["ok"] is True
     assert generated_data_tooling["actionable_operations"]["operations"]["preview_query"]["rows"]
@@ -14323,6 +14345,12 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert "latency_budget_recorded" in generated_data_tooling["service_telemetry"]["guards"]
     assert "reconcile_errors_visible" in generated_data_tooling["dataset_state_machine"]["guards"]
     assert all("bind_value_member" in editor["pipeline"] for editor in generated_data_tooling["lookup_editor_pipeline"]["editors"])
+    generated_join_plan = form_designer.data_relationship_join_plan_contract()
+    assert generated_join_plan["format"] == "appgen.generated-data-relationship-join-plan.v1"
+    assert generated_join_plan["ok"] is True
+    assert len(generated_join_plan["foreign_key_pairs"]) == 4
+    assert len(generated_join_plan["lookup_endpoints"]) == 4
+    assert all(endpoint["invalidates_on"] for endpoint in generated_join_plan["lookup_endpoints"])
     assert generated_data_tooling["relationship_lookup_lifecycle"]["format"] == "appgen.generated-data-relationship-lookup-lifecycle-replay.v1"
     assert generated_data_tooling["relationship_lookup_lifecycle"]["ok"] is True
     assert generated_data_tooling["relationship_lookup_lifecycle"]["chain_path"] == (
@@ -14339,6 +14367,13 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "bind_runtime_artifacts",
         "publish_lookup_endpoints",
     } <= {item["phase"] for item in generated_data_tooling["relationship_lookup_lifecycle"]["replay"]}
+    assert {
+        "foreign_key_pairs_preserved",
+        "lookup_endpoint_per_foreign_key",
+        "join_aliases_stable",
+        "lookup_cache_invalidation_declared",
+    } <= {check["id"] for check in generated_data_tooling["relationship_lookup_lifecycle"]["checks"] if check["ok"]}
+    assert len(generated_data_tooling["relationship_lookup_lifecycle"]["editor_ids"]) == 4
     assert all("verify_no_side_effects" in test["smoke"] for test in generated_data_tooling["module_runtime_smoke"]["smoke_tests"])
     assert len(generated_data_tooling["data_module_artifacts"]) == 4
     assert len(generated_data_tooling["data_module_test_artifacts"]) == 4

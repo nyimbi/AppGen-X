@@ -8751,13 +8751,23 @@ def data_tooling_generate_lookup_editors() -> dict:
     """Generate lookup editor operations for every relationship field."""
     lookup_editor = data_lookup_editor_pipeline_contract()
     relationship_lifecycle = data_relationship_lookup_lifecycle_replay_contract()
+    join_plan = data_relationship_join_plan_contract()
     return {
         "format": "appgen.data-tooling-lookup-editor-operation.v1",
-        "ok": lookup_editor["ok"] and relationship_lifecycle["ok"],
+        "ok": lookup_editor["ok"] and relationship_lifecycle["ok"] and join_plan["ok"],
         "editors": lookup_editor["editors"],
+        "foreign_key_pairs": relationship_lifecycle["foreign_key_pairs"],
+        "join_aliases": join_plan["join_aliases"],
+        "lookup_endpoints": relationship_lifecycle["lookup_endpoints"],
         "chain_path": relationship_lifecycle["chain_path"],
         "pipeline": ("introspect_foreign_keys", "generate_lookup_dataset", "bind_value_member", "preview_join", "publish_lookup_endpoint"),
-        "guards": ("foreign_key_fields_get_lookup_editors", "lookup_preview_before_publish", "cycle_detection_before_join"),
+        "guards": (
+            "foreign_key_fields_get_lookup_editors",
+            "lookup_preview_before_publish",
+            "cycle_detection_before_join",
+            "multi_hop_join_aliases_stable",
+            "lookup_endpoint_per_foreign_key",
+        ),
         "side_effects": (),
     }
 
@@ -9299,6 +9309,69 @@ def data_relationship_navigation_contract() -> dict:
     }
 
 
+def data_relationship_join_plan_contract() -> dict:
+    """Return concrete join and lookup endpoint evidence for multi-hop relationships."""
+    relationships = data_relationship_navigation_contract()
+    ordered_edges = tuple(reversed(relationships["chain"]))
+    foreign_key_pairs = tuple(
+        {
+            "source_table": edge["from"],
+            "source_column": edge["field"],
+            "target_table": edge["to"],
+            "target_column": "id",
+            "display_member": edge["lookup"],
+            "value_member": f"{edge['to']}.id",
+        }
+        for edge in ordered_edges
+    )
+    join_aliases = tuple(
+        {
+            "alias": f"hop_{index}_{edge['from'].lower()}_{edge['to'].lower()}",
+            "from": edge["from"],
+            "to": edge["to"],
+            "on": f"{edge['from']}.{edge['field']} = {edge['to']}.id",
+        }
+        for index, edge in enumerate(ordered_edges, start=1)
+    )
+    lookup_endpoints = tuple(
+        {
+            "field": edge["field"],
+            "endpoint": f"/lookups/{edge['from'].lower()}/{edge['field']}",
+            "parameters": ("search", "limit", f"{edge['field']}_value"),
+            "cache_key": f"{edge['from']}:{edge['field']}:{edge['to']}",
+            "invalidates_on": (f"{edge['to']}.after_post", f"{edge['to']}.after_delete"),
+        }
+        for edge in ordered_edges
+    )
+    preview_query = {
+        "select": tuple(pair["display_member"] for pair in foreign_key_pairs),
+        "joins": tuple(alias["on"] for alias in join_aliases),
+        "where": ("search_parameterized", "tenant_filter", "row_limit"),
+    }
+    return {
+        "format": "appgen.data-relationship-join-plan.v1",
+        "ok": relationships["ok"]
+        and len(foreign_key_pairs) == len(relationships["chain"])
+        and len(join_aliases) == len(foreign_key_pairs)
+        and len(lookup_endpoints) == len(foreign_key_pairs)
+        and all(pair["target_column"] == "id" for pair in foreign_key_pairs)
+        and all("search" in endpoint["parameters"] for endpoint in lookup_endpoints),
+        "chain_path": tuple(edge["from"] for edge in ordered_edges) + (ordered_edges[-1]["to"],),
+        "foreign_key_pairs": foreign_key_pairs,
+        "join_aliases": join_aliases,
+        "lookup_endpoints": lookup_endpoints,
+        "preview_query": preview_query,
+        "guards": (
+            "source_target_pairs_preserved",
+            "stable_join_aliases",
+            "parameterized_lookup_preview",
+            "lookup_endpoint_per_foreign_key",
+            "cache_invalidation_declared",
+        ),
+        "side_effects": (),
+    }
+
+
 def data_service_versioning_contract() -> dict:
     """Return service versioning and compatibility evidence for generated data APIs."""
     resources = data_service_resource_contract()
@@ -9554,48 +9627,62 @@ def data_relationship_lookup_lifecycle_replay_contract() -> dict:
     """Replay multi-hop relationship lookup generation from schema metadata to published endpoints."""
     relationships = data_relationship_navigation_contract()
     lookup_editor = data_lookup_editor_pipeline_contract()
+    join_plan = data_relationship_join_plan_contract()
     design_runtime = data_tooling_design_runtime_session_replay_contract()
     publish_replay = data_tooling_publish_transaction_replay_contract()
     editor_by_field = {editor["field"]: editor for editor in lookup_editor["editors"]}
     chain_path = tuple(reversed(tuple(edge["from"] for edge in relationships["chain"]))) + (
         relationships["chain"][0]["to"],
     )
+    editor_ids = tuple(f"{pair['source_table']}_{pair['source_column']}_lookup" for pair in join_plan["foreign_key_pairs"])
     replay = (
         {
             "phase": "introspect_foreign_keys",
             "ok": relationships["ok"]
             and len(relationships["chain"]) >= 4
-            and all(edge["field"] in editor_by_field for edge in relationships["chain"]),
-            "evidence": relationships["chain"],
+            and all(edge["field"] in editor_by_field for edge in relationships["chain"])
+            and join_plan["ok"],
+            "evidence": join_plan["foreign_key_pairs"],
         },
         {
             "phase": "generate_lookup_editors",
             "ok": lookup_editor["ok"]
-            and all("generate_lookup_dataset" in editor["pipeline"] for editor in lookup_editor["editors"]),
-            "evidence": lookup_editor["editors"],
+            and all("generate_lookup_dataset" in editor["pipeline"] for editor in lookup_editor["editors"])
+            and len(editor_ids) == len(lookup_editor["editors"]),
+            "evidence": tuple({**editor, "editor_id": editor_id} for editor, editor_id in zip(lookup_editor["editors"], editor_ids)),
         },
         {
             "phase": "preview_multi_hop_joins",
             "ok": relationships["ok"]
             and all("preview_join" in item["designer_actions"] for item in relationships["navigation"])
-            and all("preview_join" in editor["pipeline"] for editor in lookup_editor["editors"]),
-            "evidence": relationships["navigation"],
+            and all("preview_join" in editor["pipeline"] for editor in lookup_editor["editors"])
+            and "search_parameterized" in join_plan["preview_query"]["where"],
+            "evidence": join_plan["preview_query"],
         },
         {
             "phase": "bind_runtime_artifacts",
             "ok": all({"relationship_loader", "lookup_endpoint", "display_member", "value_member"} <= set(item["runtime_artifacts"]) for item in relationships["navigation"])
-            and all("bind_value_member" in editor["pipeline"] for editor in lookup_editor["editors"]),
-            "evidence": tuple(item["runtime_artifacts"] for item in relationships["navigation"]),
+            and all("bind_value_member" in editor["pipeline"] for editor in lookup_editor["editors"])
+            and all(endpoint["endpoint"].startswith("/lookups/") for endpoint in join_plan["lookup_endpoints"]),
+            "evidence": {
+                "runtime_artifacts": tuple(item["runtime_artifacts"] for item in relationships["navigation"]),
+                "lookup_endpoints": join_plan["lookup_endpoints"],
+            },
         },
         {
             "phase": "publish_lookup_endpoints",
             "ok": design_runtime["ok"]
             and publish_replay["ok"]
             and design_runtime["final_state"]["lookup_editors"] == len(lookup_editor["editors"])
-            and publish_replay["final_state"]["lookup_editors"] == len(lookup_editor["editors"]),
+            and publish_replay["final_state"]["lookup_editors"] == len(lookup_editor["editors"])
+            and all(endpoint["invalidates_on"] for endpoint in join_plan["lookup_endpoints"]),
             "evidence": {
                 "design_runtime": design_runtime["final_state"],
                 "publish": publish_replay["final_state"],
+                "cache_invalidation": tuple(
+                    (endpoint["cache_key"], endpoint["invalidates_on"])
+                    for endpoint in join_plan["lookup_endpoints"]
+                ),
             },
         },
     )
@@ -9622,9 +9709,33 @@ def data_relationship_lookup_lifecycle_replay_contract() -> dict:
             "evidence": relationships["navigation"],
         },
         {
+            "id": "foreign_key_pairs_preserved",
+            "ok": len(join_plan["foreign_key_pairs"]) == len(relationships["chain"])
+            and all({"source_table", "source_column", "target_table", "target_column"} <= set(pair) for pair in join_plan["foreign_key_pairs"]),
+            "evidence": join_plan["foreign_key_pairs"],
+        },
+        {
+            "id": "lookup_endpoint_per_foreign_key",
+            "ok": len(join_plan["lookup_endpoints"]) == len(join_plan["foreign_key_pairs"])
+            and all(endpoint["endpoint"].startswith("/lookups/") for endpoint in join_plan["lookup_endpoints"]),
+            "evidence": join_plan["lookup_endpoints"],
+        },
+        {
+            "id": "join_aliases_stable",
+            "ok": len({alias["alias"] for alias in join_plan["join_aliases"]}) == len(join_plan["join_aliases"])
+            and all(alias["on"] for alias in join_plan["join_aliases"]),
+            "evidence": join_plan["join_aliases"],
+        },
+        {
+            "id": "lookup_cache_invalidation_declared",
+            "ok": all(endpoint["cache_key"] and endpoint["invalidates_on"] for endpoint in join_plan["lookup_endpoints"]),
+            "evidence": tuple((endpoint["cache_key"], endpoint["invalidates_on"]) for endpoint in join_plan["lookup_endpoints"]),
+        },
+        {
             "id": "side_effect_guards",
             "ok": not relationships["side_effects"]
             and not lookup_editor["side_effects"]
+            and not join_plan["side_effects"]
             and not design_runtime["side_effects"]
             and not publish_replay["side_effects"],
             "evidence": (),
@@ -9636,6 +9747,11 @@ def data_relationship_lookup_lifecycle_replay_contract() -> dict:
         "ok": ok,
         "decision": "approved" if ok else "blocked",
         "chain_path": chain_path,
+        "foreign_key_pairs": join_plan["foreign_key_pairs"],
+        "editor_ids": editor_ids,
+        "join_aliases": join_plan["join_aliases"],
+        "preview_query": join_plan["preview_query"],
+        "lookup_endpoints": join_plan["lookup_endpoints"],
         "replay": replay,
         "checks": checks,
         "guards": (
@@ -9643,6 +9759,10 @@ def data_relationship_lookup_lifecycle_replay_contract() -> dict:
             "multi_hop_chain_preserved",
             "lookup_preview_before_publish",
             "runtime_artifacts_declared",
+            "foreign_key_pairs_preserved",
+            "lookup_endpoint_per_foreign_key",
+            "join_aliases_stable",
+            "lookup_cache_invalidation_declared",
             "side_effect_guards",
         ),
         "side_effects": (),
@@ -16101,6 +16221,10 @@ def rad_parity_workbench(existing_paths: set[str] | None = None) -> dict:
         "multi_hop_chain_preserved",
         "lookup_preview_before_publish",
         "runtime_artifacts_declared",
+        "foreign_key_pairs_preserved",
+        "lookup_endpoint_per_foreign_key",
+        "join_aliases_stable",
+        "lookup_cache_invalidation_declared",
         "side_effect_guards",
     )
     passing_data_relationship_lookup_checks = tuple(
