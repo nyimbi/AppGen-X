@@ -3383,6 +3383,43 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     assert set(inspector_gate["required_binding_bridge_phases"]) <= set(
         inspector_gate["passing_binding_bridge_phases"]
     )
+    assert set(inspector_gate["required_property_pipeline_stages"]) <= set(
+        inspector_gate["passing_property_pipeline_stages"]
+    )
+    assert set(inspector_gate["required_property_pipeline_guards"]) <= set(
+        inspector_gate["passing_property_pipeline_guards"]
+    )
+    assert set(inspector_gate["required_event_signature_stages"]) <= set(
+        inspector_gate["passing_event_signature_stages"]
+    )
+    assert set(inspector_gate["required_event_signature_guards"]) <= set(
+        inspector_gate["passing_event_signature_guards"]
+    )
+    assert set(inspector_gate["required_history_verbs"]) <= set(inspector_gate["passing_history_verbs"])
+    assert set(inspector_gate["required_history_steps"]) <= set(inspector_gate["passing_history_steps"])
+    assert set(inspector_gate["required_history_rollback_steps"]) <= set(
+        inspector_gate["passing_history_rollback_steps"]
+    )
+    assert set(inspector_gate["required_dependency_stages"]) <= set(inspector_gate["passing_dependency_stages"])
+    assert set(inspector_gate["required_diagnostic_severities"]) <= set(
+        inspector_gate["passing_diagnostic_severities"]
+    )
+    assert set(inspector_gate["required_diagnostic_quick_fixes"]) <= set(
+        inspector_gate["passing_diagnostic_quick_fixes"]
+    )
+    assert set(inspector_gate["required_action_names"]) <= set(inspector_gate["passing_action_names"])
+    assert set(inspector_gate["required_action_context"]) <= set(inspector_gate["passing_action_context"])
+    assert set(inspector_gate["required_cross_handler_policy"]) <= set(
+        inspector_gate["passing_cross_handler_policy"]
+    )
+    assert set(inspector_gate["required_cross_handler_route_steps"]) <= set(
+        inspector_gate["passing_cross_handler_route_steps"]
+    )
+    assert set(inspector_gate["required_state_keys"]) <= set(inspector_gate["passing_state_keys"])
+    assert set(inspector_gate["required_state_scopes"]) <= set(inspector_gate["passing_state_scopes"])
+    assert set(inspector_gate["required_round_trip_components"]) <= set(
+        inspector_gate["passing_round_trip_components"]
+    )
     binding_gate = next(
         check for check in audit["rad_parity"]["checks"] if check["id"] == "livebindings_designer"
     )

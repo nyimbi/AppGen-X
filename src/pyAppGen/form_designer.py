@@ -15213,6 +15213,220 @@ def rad_parity_workbench(existing_paths: set[str] | None = None) -> dict:
     passing_inspector_binding_bridge_phases = tuple(
         phase["phase"] for phase in inspector_workbench["inspector_binding_bridge"]["replay"] if phase["ok"]
     )
+    required_inspector_property_pipeline_stages = (
+        "read_current_value",
+        "parse_input",
+        "coerce_value",
+        "validate_value",
+        "preview_change",
+        "commit_change",
+    )
+    passing_inspector_property_pipeline_stages = tuple(
+        sorted(
+            {
+                stage
+                for contract in inspector_workbench["property_value_pipelines"]
+                for pipeline in contract["pipelines"]
+                for stage in pipeline["stages"]
+            }
+        )
+    )
+    required_inspector_property_pipeline_guards = (
+        "unknown_property_rejected",
+        "type_coercion_reported",
+        "read_only_guarded",
+        "binding_cycle_checked",
+        "editor_values_type_checked",
+        "invalid_values_block_apply",
+        "preview_before_commit",
+    )
+    passing_inspector_property_pipeline_guards = tuple(
+        sorted(
+            {
+                guard
+                for contract in inspector_workbench["property_value_pipelines"]
+                for guard in contract["guards"]
+            }
+        )
+    )
+    required_inspector_event_signature_stages = (
+        "parse_signature",
+        "generate_stub",
+        "bind_reference",
+        "navigate_source",
+        "rename_references",
+        "cleanup_detached_handler",
+    )
+    passing_inspector_event_signature_stages = tuple(
+        sorted(
+            {
+                stage
+                for contract in inspector_workbench["event_handler_signatures"]
+                for handler in contract["handlers"]
+                for stage in handler["pipeline"]
+            }
+        )
+    )
+    required_inspector_event_signature_guards = (
+        "signature_preserved",
+        "rename_updates_references",
+        "detach_keeps_method_for_review",
+        "handler_name_unique",
+        "orphan_review_visible",
+        "source_span_mapped",
+        "stale_handler_cleanup",
+    )
+    passing_inspector_event_signature_guards = tuple(
+        sorted(
+            {
+                guard
+                for contract in inspector_workbench["event_handler_signatures"]
+                for guard in contract["guards"]
+            }
+        )
+    )
+    required_inspector_history_verbs = (
+        "edit_items",
+        "edit_columns",
+        "open_bindings",
+        "edit_style",
+        "reset_layout",
+        "align_to_grid",
+    )
+    passing_inspector_history_verbs = tuple(
+        sorted(
+            {
+                item["verb"]
+                for contract in inspector_workbench["component_editor_history"]
+                for item in contract["history"]
+            }
+        )
+    )
+    required_inspector_history_steps = (
+        "snapshot_before",
+        "stage_delta",
+        "apply_delta",
+        "record_undo",
+        "enable_redo",
+    )
+    passing_inspector_history_steps = tuple(
+        sorted(
+            {
+                step
+                for contract in inspector_workbench["component_editor_history"]
+                for item in contract["history"]
+                for step in item["history"]
+            }
+        )
+    )
+    required_inspector_history_rollback_steps = (
+        "cancel_change",
+        "restore_snapshot",
+        "clear_staged_change",
+    )
+    passing_inspector_history_rollback_steps = tuple(
+        sorted(
+            {
+                step
+                for contract in inspector_workbench["component_editor_history"]
+                for item in contract["history"]
+                for step in item["rollback"]
+            }
+        )
+    )
+    required_inspector_dependency_stages = (
+        "capture_property_change",
+        "recalculate_dependents",
+        "validate_dependents",
+        "refresh_inspector",
+    )
+    passing_inspector_dependency_stages = tuple(
+        sorted(
+            {
+                stage
+                for contract in inspector_workbench["property_dependencies"]
+                for recalculation in contract["recalculations"]
+                for stage in recalculation["stage"]
+            }
+        )
+    )
+    required_inspector_diagnostic_severities = ("error", "warning")
+    passing_inspector_diagnostic_severities = tuple(
+        sorted(
+            {
+                diagnostic["severity"]
+                for contract in inspector_workbench["diagnostics"]
+                for diagnostic in contract["diagnostics"]
+            }
+        )
+    )
+    required_inspector_diagnostic_quick_fixes = (
+        "restore_previous_value",
+        "open_read_only_reason",
+        "remove_unknown_property",
+        "open_binding_graph",
+    )
+    passing_inspector_diagnostic_quick_fixes = tuple(
+        sorted(
+            {
+                diagnostic["quick_fix"]
+                for contract in inspector_workbench["diagnostics"]
+                for diagnostic in contract["diagnostics"]
+            }
+        )
+    )
+    required_inspector_action_names = ("save_invoice", "close_invoice", "validate_invoice")
+    passing_inspector_action_names = tuple(
+        action["action"] for action in inspector_workbench["action_registry"]["actions"]
+    )
+    required_inspector_action_context = (
+        "sender",
+        "component_tree",
+        "action_registry",
+        "binding_scope",
+        "transaction",
+    )
+    passing_inspector_action_context = tuple(inspector_workbench["action_registry"]["context_api"])
+    required_inspector_cross_handler_policy = (
+        "prefer_shared_action",
+        "allow_mediated_handler_dispatch",
+        "block_recursive_cycles",
+        "preserve_sender_context",
+    )
+    passing_inspector_cross_handler_policy = tuple(inspector_workbench["cross_handler_invocation"]["policy"])
+    required_inspector_cross_handler_route_steps = (
+        "resolve_form_instance",
+        "resolve_component_field",
+        "lookup_event_binding",
+        "cycle_guard",
+        "invoke_handler",
+    )
+    passing_inspector_cross_handler_route_steps = tuple(
+        sorted(
+            {
+                step
+                for route in inspector_workbench["cross_handler_invocation"]["routes"]
+                for step in route["route"]
+            }
+        )
+    )
+    required_inspector_state_keys = (
+        "sort_mode",
+        "filter",
+        "favorites",
+        "expanded_categories",
+        "selected_tab",
+        "search_text",
+    )
+    passing_inspector_state_keys = tuple(inspector_workbench["state_persistence"]["state_keys"])
+    required_inspector_state_scopes = ("per-user", "per-project", "per-component")
+    passing_inspector_state_scopes = tuple(inspector_workbench["state_persistence"]["scopes"])
+    required_inspector_round_trip_components = tuple(contract["component"] for contract in inspector_contracts)
+    passing_inspector_round_trip_components = tuple(
+        round_trip["exported"]["component"]
+        for round_trip in inspector_workbench["round_trips"]
+        if round_trip["ok"]
+    )
     binding_graph = binding_contract["graph"]
     binding_readiness = binding_workbench["readiness"]
     required_binding_nodes = tuple(binding_contract["binding_nodes"])
@@ -16968,7 +17182,24 @@ def rad_parity_workbench(existing_paths: set[str] | None = None) -> dict:
             and set(required_inspector_cross_component_replay) <= set(passing_inspector_cross_component_replay)
             and set(required_inspector_multi_select_operations) <= set(passing_inspector_multi_select_operations)
             and set(required_inspector_tree_sync_operations) <= set(passing_inspector_tree_sync_operations)
-            and set(required_inspector_binding_bridge_phases) <= set(passing_inspector_binding_bridge_phases),
+            and set(required_inspector_binding_bridge_phases) <= set(passing_inspector_binding_bridge_phases)
+            and set(required_inspector_property_pipeline_stages) <= set(passing_inspector_property_pipeline_stages)
+            and set(required_inspector_property_pipeline_guards) <= set(passing_inspector_property_pipeline_guards)
+            and set(required_inspector_event_signature_stages) <= set(passing_inspector_event_signature_stages)
+            and set(required_inspector_event_signature_guards) <= set(passing_inspector_event_signature_guards)
+            and set(required_inspector_history_verbs) <= set(passing_inspector_history_verbs)
+            and set(required_inspector_history_steps) <= set(passing_inspector_history_steps)
+            and set(required_inspector_history_rollback_steps) <= set(passing_inspector_history_rollback_steps)
+            and set(required_inspector_dependency_stages) <= set(passing_inspector_dependency_stages)
+            and set(required_inspector_diagnostic_severities) <= set(passing_inspector_diagnostic_severities)
+            and set(required_inspector_diagnostic_quick_fixes) <= set(passing_inspector_diagnostic_quick_fixes)
+            and set(required_inspector_action_names) <= set(passing_inspector_action_names)
+            and set(required_inspector_action_context) <= set(passing_inspector_action_context)
+            and set(required_inspector_cross_handler_policy) <= set(passing_inspector_cross_handler_policy)
+            and set(required_inspector_cross_handler_route_steps) <= set(passing_inspector_cross_handler_route_steps)
+            and set(required_inspector_state_keys) <= set(passing_inspector_state_keys)
+            and set(required_inspector_state_scopes) <= set(passing_inspector_state_scopes)
+            and set(required_inspector_round_trip_components) <= set(passing_inspector_round_trip_components),
             "required_tabs": required_inspector_tabs,
             "passing_tabs": passing_inspector_tabs,
             "required_checks": required_inspector_workbench_checks,
@@ -17003,6 +17234,40 @@ def rad_parity_workbench(existing_paths: set[str] | None = None) -> dict:
             "passing_tree_sync_operations": passing_inspector_tree_sync_operations,
             "required_binding_bridge_phases": required_inspector_binding_bridge_phases,
             "passing_binding_bridge_phases": passing_inspector_binding_bridge_phases,
+            "required_property_pipeline_stages": required_inspector_property_pipeline_stages,
+            "passing_property_pipeline_stages": passing_inspector_property_pipeline_stages,
+            "required_property_pipeline_guards": required_inspector_property_pipeline_guards,
+            "passing_property_pipeline_guards": passing_inspector_property_pipeline_guards,
+            "required_event_signature_stages": required_inspector_event_signature_stages,
+            "passing_event_signature_stages": passing_inspector_event_signature_stages,
+            "required_event_signature_guards": required_inspector_event_signature_guards,
+            "passing_event_signature_guards": passing_inspector_event_signature_guards,
+            "required_history_verbs": required_inspector_history_verbs,
+            "passing_history_verbs": passing_inspector_history_verbs,
+            "required_history_steps": required_inspector_history_steps,
+            "passing_history_steps": passing_inspector_history_steps,
+            "required_history_rollback_steps": required_inspector_history_rollback_steps,
+            "passing_history_rollback_steps": passing_inspector_history_rollback_steps,
+            "required_dependency_stages": required_inspector_dependency_stages,
+            "passing_dependency_stages": passing_inspector_dependency_stages,
+            "required_diagnostic_severities": required_inspector_diagnostic_severities,
+            "passing_diagnostic_severities": passing_inspector_diagnostic_severities,
+            "required_diagnostic_quick_fixes": required_inspector_diagnostic_quick_fixes,
+            "passing_diagnostic_quick_fixes": passing_inspector_diagnostic_quick_fixes,
+            "required_action_names": required_inspector_action_names,
+            "passing_action_names": passing_inspector_action_names,
+            "required_action_context": required_inspector_action_context,
+            "passing_action_context": passing_inspector_action_context,
+            "required_cross_handler_policy": required_inspector_cross_handler_policy,
+            "passing_cross_handler_policy": passing_inspector_cross_handler_policy,
+            "required_cross_handler_route_steps": required_inspector_cross_handler_route_steps,
+            "passing_cross_handler_route_steps": passing_inspector_cross_handler_route_steps,
+            "required_state_keys": required_inspector_state_keys,
+            "passing_state_keys": passing_inspector_state_keys,
+            "required_state_scopes": required_inspector_state_scopes,
+            "passing_state_scopes": passing_inspector_state_scopes,
+            "required_round_trip_components": required_inspector_round_trip_components,
+            "passing_round_trip_components": passing_inspector_round_trip_components,
             "evidence": {"contract": object_inspector_contract(), "workbench": inspector_workbench},
         },
         {
