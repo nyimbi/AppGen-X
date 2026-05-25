@@ -15954,6 +15954,125 @@ def rad_parity_workbench(existing_paths: set[str] | None = None) -> dict:
         for phase in replay["phases"]
         if phase["ok"]
     )
+    required_package_manager_checks = (
+        "install_session_phases",
+        "compatibility_matrix",
+        "palette_registration",
+        "load_isolation",
+        "rollback_plan",
+        "package_behavior",
+        "dependency_order",
+        "lockfile_integrity",
+        "signature_validation",
+        "sandbox_policy",
+        "registration_consistency",
+        "compatibility_smoke_suite",
+        "version_conflict_resolution",
+        "update_plan",
+        "uninstall_plan",
+        "palette_refresh",
+        "failure_isolation",
+        "lifecycle_transaction_replay",
+        "lifecycle_execution",
+        "actionable_package_operations",
+        "package_readiness_contract",
+        "package_manager_modules",
+        "package_manager_module_tests",
+        "side_effect_guards",
+    )
+    passing_package_manager_checks = tuple(check["id"] for check in package_manager["checks"] if check["ok"])
+    passing_package_compatibility_ids = tuple(
+        sorted({row["package_id"] for row in package_manager["compatibility"] if row["compatible"]})
+    )
+    passing_package_signature_ids = tuple(
+        signature["package_id"]
+        for signature in package_manager["signature_validation"]["signatures"]
+        if signature["trust"] == "verified"
+    )
+    passing_package_lockfile_ids = tuple(
+        entry["package_id"] for entry in package_manager["lockfile"]["entries"]
+    )
+    passing_package_sandbox_ids = tuple(
+        permission["package_id"]
+        for permission in package_manager["sandbox"]["permissions"]
+        if "global_install" in permission["deny"]
+        and "sandboxed_loader" in permission["isolation"]
+    )
+    passing_package_dependency_order_ids = tuple(
+        item["package_id"]
+        for item in package_manager["dependency_order"]["load_order"]
+        if item["steps"][:2] == ("resolve_package_metadata", f"load_adapter:{item['package_id'].replace('-', '_')}")
+    )
+    required_package_conflict_resolutions = ("pin_lockfile",)
+    passing_package_conflict_resolutions = tuple(
+        sorted(
+            {
+                item["resolution"]
+                for item in package_manager["version_conflicts"]["resolutions"]
+                if item["compatible"] and not item["blocks_load"]
+            }
+        )
+    )
+    required_package_update_phases = (
+        "snapshot_lockfile",
+        "download_to_sandbox",
+        "run_adapter_smoke",
+        "refresh_palette",
+        "commit_lockfile",
+    )
+    passing_package_update_phases = tuple(
+        sorted(
+            {
+                phase
+                for update in package_manager["update_plan"]["updates"]
+                for phase in update["phases"]
+                if not update["side_effects"]
+            }
+        )
+    )
+    passing_package_update_ids = tuple(
+        update["package_id"] for update in package_manager["update_plan"]["updates"] if not update["side_effects"]
+    )
+    required_package_uninstall_plan_phases = (
+        "find_palette_references",
+        "disable_adapters",
+        "remove_palette_entries",
+        "restore_lockfile",
+        "record_audit",
+    )
+    passing_package_uninstall_plan_phases = tuple(
+        sorted(
+            {
+                phase
+                for uninstall in package_manager["uninstall_plan"]["uninstalls"]
+                for phase in uninstall["phases"]
+                if not uninstall["side_effects"]
+            }
+        )
+    )
+    passing_package_uninstall_ids = tuple(
+        uninstall["package_id"]
+        for uninstall in package_manager["uninstall_plan"]["uninstalls"]
+        if not uninstall["side_effects"]
+    )
+    required_package_palette_actions = ("register", "refresh", "invalidate_cache", "rebuild_toolbox")
+    passing_package_palette_actions = tuple(package_manager["palette_refresh"]["palette_actions"])
+    required_package_failure_scenarios = (
+        "adapter_exception",
+        "missing_dependency",
+        "signature_mismatch",
+        "preview_crash",
+    )
+    passing_package_failure_scenarios = tuple(
+        sorted(
+            {
+                scenario["failure"]
+                for scenario in package_manager["failure_isolation"]["scenarios"]
+                if "restore_previous_palette" in scenario["containment"]
+                and not scenario["side_effects"]
+            }
+        )
+    )
     required_stream_formats = ("text-dfm", "binary-dfm", "json-form-model")
     passing_stream_formats = tuple(streaming_contract["stream_formats"])
     required_compiler_stages = ("parse_units", "type_check", "resource_link", "emit_target")
@@ -16528,7 +16647,20 @@ def rad_parity_workbench(existing_paths: set[str] | None = None) -> dict:
             and set(required_package_session_outputs) <= set(passing_package_session_outputs)
             and set(required_package_manager_module_kinds) <= set(passing_package_manager_module_kinds)
             and set(required_package_manager_module_kinds) <= set(passing_package_manager_test_kinds)
-            and set(required_package_manager_lifecycle_phases) <= set(passing_package_manager_lifecycle_phases),
+            and set(required_package_manager_lifecycle_phases) <= set(passing_package_manager_lifecycle_phases)
+            and set(required_package_manager_checks) <= set(passing_package_manager_checks)
+            and set(required_install_package_ids) <= set(passing_package_compatibility_ids)
+            and set(required_install_package_ids) <= set(passing_package_signature_ids)
+            and set(required_install_package_ids) <= set(passing_package_lockfile_ids)
+            and set(required_install_package_ids) <= set(passing_package_sandbox_ids)
+            and set(required_install_package_ids) <= set(passing_package_dependency_order_ids)
+            and set(required_package_conflict_resolutions) <= set(passing_package_conflict_resolutions)
+            and set(required_package_update_phases) <= set(passing_package_update_phases)
+            and set(required_install_package_ids) <= set(passing_package_update_ids)
+            and set(required_package_uninstall_plan_phases) <= set(passing_package_uninstall_plan_phases)
+            and set(required_install_package_ids) <= set(passing_package_uninstall_ids)
+            and set(required_package_palette_actions) <= set(passing_package_palette_actions)
+            and set(required_package_failure_scenarios) <= set(passing_package_failure_scenarios),
             "required_packages": required_install_package_ids,
             "passing_packages": passing_install_package_ids,
             "required_channels": required_install_channels,
@@ -16555,6 +16687,32 @@ def rad_parity_workbench(existing_paths: set[str] | None = None) -> dict:
             "passing_module_test_kinds": passing_package_manager_test_kinds,
             "required_lifecycle_replay_phases": required_package_manager_lifecycle_phases,
             "passing_lifecycle_replay_phases": passing_package_manager_lifecycle_phases,
+            "required_manager_checks": required_package_manager_checks,
+            "passing_manager_checks": passing_package_manager_checks,
+            "required_compatibility_packages": required_install_package_ids,
+            "passing_compatibility_packages": passing_package_compatibility_ids,
+            "required_signature_packages": required_install_package_ids,
+            "passing_signature_packages": passing_package_signature_ids,
+            "required_lockfile_packages": required_install_package_ids,
+            "passing_lockfile_packages": passing_package_lockfile_ids,
+            "required_sandbox_packages": required_install_package_ids,
+            "passing_sandbox_packages": passing_package_sandbox_ids,
+            "required_dependency_order_packages": required_install_package_ids,
+            "passing_dependency_order_packages": passing_package_dependency_order_ids,
+            "required_conflict_resolutions": required_package_conflict_resolutions,
+            "passing_conflict_resolutions": passing_package_conflict_resolutions,
+            "required_update_phases": required_package_update_phases,
+            "passing_update_phases": passing_package_update_phases,
+            "required_update_packages": required_install_package_ids,
+            "passing_update_packages": passing_package_update_ids,
+            "required_uninstall_plan_phases": required_package_uninstall_plan_phases,
+            "passing_uninstall_plan_phases": passing_package_uninstall_plan_phases,
+            "required_uninstall_packages": required_install_package_ids,
+            "passing_uninstall_packages": passing_package_uninstall_ids,
+            "required_palette_actions": required_package_palette_actions,
+            "passing_palette_actions": passing_package_palette_actions,
+            "required_failure_scenarios": required_package_failure_scenarios,
+            "passing_failure_scenarios": passing_package_failure_scenarios,
             "required_checks": required_package_readiness_checks,
             "passing_checks": passing_package_readiness_checks,
             "evidence": {

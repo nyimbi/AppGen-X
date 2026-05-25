@@ -3432,6 +3432,23 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     assert set(package_gate["required_lifecycle_replay_phases"]) <= set(
         package_gate["passing_lifecycle_replay_phases"]
     )
+    assert set(package_gate["required_manager_checks"]) <= set(package_gate["passing_manager_checks"])
+    assert set(package_gate["required_compatibility_packages"]) <= set(package_gate["passing_compatibility_packages"])
+    assert set(package_gate["required_signature_packages"]) <= set(package_gate["passing_signature_packages"])
+    assert set(package_gate["required_lockfile_packages"]) <= set(package_gate["passing_lockfile_packages"])
+    assert set(package_gate["required_sandbox_packages"]) <= set(package_gate["passing_sandbox_packages"])
+    assert set(package_gate["required_dependency_order_packages"]) <= set(
+        package_gate["passing_dependency_order_packages"]
+    )
+    assert set(package_gate["required_conflict_resolutions"]) <= set(package_gate["passing_conflict_resolutions"])
+    assert set(package_gate["required_update_phases"]) <= set(package_gate["passing_update_phases"])
+    assert set(package_gate["required_update_packages"]) <= set(package_gate["passing_update_packages"])
+    assert set(package_gate["required_uninstall_plan_phases"]) <= set(
+        package_gate["passing_uninstall_plan_phases"]
+    )
+    assert set(package_gate["required_uninstall_packages"]) <= set(package_gate["passing_uninstall_packages"])
+    assert set(package_gate["required_palette_actions"]) <= set(package_gate["passing_palette_actions"])
+    assert set(package_gate["required_failure_scenarios"]) <= set(package_gate["passing_failure_scenarios"])
     assert set(package_gate["required_checks"]) <= set(package_gate["passing_checks"])
     mobile_gate = next(
         check for check in audit["rad_parity"]["checks"] if check["id"] == "mobile_native_device_api_coverage"
