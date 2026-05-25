@@ -218,11 +218,46 @@ TREASURY_CASH_ADVANCED_CAPABILITY_KEYS = (
     "mathematical_optimization",
     "financial_mlops_governance",
 )
+ASSET_LIFECYCLE_ADVANCED_CAPABILITY_KEYS = (
+    "event_sourced_asset_lifecycle",
+    "graph_relational_asset_topology",
+    "multi_tenant_asset_book_isolation",
+    "schema_evolution_resilient_asset_schema",
+    "probabilistic_useful_life_estimation",
+    "real_time_depreciation_valuation_projection",
+    "counterfactual_lifecycle_optimization",
+    "temporal_asset_value_risk_forecasting",
+    "autonomous_impairment_revaluation",
+    "semantic_capitalization_parsing",
+    "predictive_maintenance_asset_risk",
+    "self_healing_depreciation_journal_routing",
+    "zero_knowledge_asset_audit_proof",
+    "immutable_asset_regulatory_trail",
+    "dynamic_policy_compliance_screening",
+    "automated_fixed_asset_control_testing",
+    "universal_api_async_streaming",
+    "cross_system_asset_federation",
+    "insurance_warranty_network_integration",
+    "decentralized_asset_identity",
+    "chaos_engineered_depreciation_tolerance",
+    "quantum_resistant_asset_authorization",
+    "carbon_aware_asset_scheduling",
+    "algebraic_asset_portfolio_optimization",
+    "mechanism_design_asset_allocation",
+    "information_theoretic_asset_anomaly_detection",
+    "temporal_asset_valuation_stochastic_modeling",
+    "distributed_systems_engineering",
+    "probabilistic_ml_asset_risk",
+    "cryptographic_engineering",
+    "mathematical_optimization",
+    "financial_mlops_governance",
+)
 IMPLEMENTED_PBC_KEYS = (
     "gl_core",
     "ap_automation",
     "ar_credit",
     "treasury_cash",
+    "asset_lifecycle",
 )
 PBC_ALLOWED_DATASTORE_BACKENDS = (
     "postgresql",
@@ -2444,6 +2479,8 @@ def pbc_implementation_contract(key: str) -> dict:
         advanced_runtime = ar_credit_runtime_capabilities()
     elif key == "treasury_cash":
         advanced_runtime = treasury_cash_runtime_capabilities()
+    elif key == "asset_lifecycle":
+        advanced_runtime = asset_lifecycle_runtime_capabilities()
     else:
         advanced_runtime = {}
     source_package = _pbc_source_package_contract(key)
@@ -2724,6 +2761,7 @@ def pbc_implemented_capability_audit(selected_pbcs: tuple[str, ...] | list[str] 
         "ap_automation": len(AP_AUTOMATION_ADVANCED_CAPABILITY_KEYS),
         "ar_credit": len(AR_CREDIT_ADVANCED_CAPABILITY_KEYS),
         "treasury_cash": len(TREASURY_CASH_ADVANCED_CAPABILITY_KEYS),
+        "asset_lifecycle": len(ASSET_LIFECYCLE_ADVANCED_CAPABILITY_KEYS),
     }
     checks = []
     contracts = pbc_implementation_contracts(selected)
@@ -4247,3 +4285,15 @@ from .pbcs.treasury_cash import treasury_cash_reconcile_statement  # noqa: E402,
 from .pbcs.treasury_cash import treasury_cash_register_bank_account  # noqa: E402,F401
 from .pbcs.treasury_cash import treasury_cash_runtime_capabilities  # noqa: E402,F401
 from .pbcs.treasury_cash import treasury_cash_runtime_smoke  # noqa: E402,F401
+from .pbcs.asset_lifecycle import ASSET_LIFECYCLE_RUNTIME_CAPABILITY_KEYS  # noqa: E402,F401
+from .pbcs.asset_lifecycle import ASSET_LIFECYCLE_STANDARD_FEATURE_KEYS  # noqa: E402,F401
+from .pbcs.asset_lifecycle import asset_lifecycle_build_depreciation_schedule  # noqa: E402,F401
+from .pbcs.asset_lifecycle import asset_lifecycle_build_workbench_view  # noqa: E402,F401
+from .pbcs.asset_lifecycle import asset_lifecycle_empty_state  # noqa: E402,F401
+from .pbcs.asset_lifecycle import asset_lifecycle_place_asset_in_service  # noqa: E402,F401
+from .pbcs.asset_lifecycle import asset_lifecycle_register_asset  # noqa: E402,F401
+from .pbcs.asset_lifecycle import asset_lifecycle_retire_asset  # noqa: E402,F401
+from .pbcs.asset_lifecycle import asset_lifecycle_run_depreciation  # noqa: E402,F401
+from .pbcs.asset_lifecycle import asset_lifecycle_runtime_capabilities  # noqa: E402,F401
+from .pbcs.asset_lifecycle import asset_lifecycle_runtime_smoke  # noqa: E402,F401
+from .pbcs.asset_lifecycle import asset_lifecycle_transfer_asset  # noqa: E402,F401
