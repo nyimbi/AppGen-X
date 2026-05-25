@@ -4855,6 +4855,7 @@ def pascal_runtime_workbench(design: dict | None = None) -> dict:
     compiler_runtime_module_tests = compiler_runtime_module_test_file_manifest()
     deep_runtime_modules = deep_runtime_module_file_manifest()
     deep_runtime_module_tests = deep_runtime_module_test_file_manifest()
+    runtime_module_replay_matrix = pascal_runtime_module_replay_matrix(design)
     checks = (
         {"id": "dfm_serialization", "ok": "object " in round_trip["dfm"] and "AppGenField" in round_trip["dfm"], "evidence": round_trip["dfm"]},
         {"id": "dfm_parse_round_trip", "ok": round_trip["ok"], "evidence": round_trip},
@@ -5142,6 +5143,19 @@ def pascal_runtime_workbench(design: dict | None = None) -> dict:
             and all(item["ok"] and "test_deep_runtime_module_smoke" in item["exports"] for item in deep_runtime_module_tests),
             "evidence": deep_runtime_module_tests,
         },
+        {
+            "id": "runtime_module_replay_matrix",
+            "ok": runtime_module_replay_matrix["ok"]
+            and {
+                "native_form_modules_replay",
+                "runtime_operation_modules_replay",
+                "compiler_runtime_modules_replay",
+                "deep_runtime_modules_replay",
+                "side_effect_free_module_replay",
+            }
+            <= {check["id"] for check in runtime_module_replay_matrix["checks"] if check["ok"]},
+            "evidence": runtime_module_replay_matrix,
+        },
     )
     ok = all(check["ok"] for check in checks)
     return {
@@ -5194,6 +5208,7 @@ def pascal_runtime_workbench(design: dict | None = None) -> dict:
         "compiler_runtime_module_tests": compiler_runtime_module_tests,
         "deep_runtime_modules": deep_runtime_modules,
         "deep_runtime_module_tests": deep_runtime_module_tests,
+        "runtime_module_replay_matrix": runtime_module_replay_matrix,
         "blocking_gaps": tuple(check for check in checks if not check["ok"]),
     }
 
@@ -15935,6 +15950,7 @@ def platform_parity_requirement_audit_contract() -> dict:
                 "compiler_runtime_module_tests",
                 "deep_runtime_modules",
                 "deep_runtime_module_tests",
+                "runtime_module_replay_matrix",
             } <= {check["id"] for check in runtime["checks"] if check["ok"]},
             "deep_checks": (
                 "stream_identity_ready",
@@ -15951,6 +15967,7 @@ def platform_parity_requirement_audit_contract() -> dict:
                 "compiler_runtime_module_tests",
                 "deep_runtime_modules",
                 "deep_runtime_module_tests",
+                "runtime_module_replay_matrix",
                 "phase_order_ready",
             ),
             "evidence": {"workbench": runtime, "readiness": runtime_readiness},
@@ -19347,6 +19364,7 @@ def rad_parity_workbench(existing_paths: set[str] | None = None) -> dict:
         "compiler_runtime_module_tests",
         "deep_runtime_modules",
         "deep_runtime_module_tests",
+        "runtime_module_replay_matrix",
     )
     passing_runtime_workbench_checks = tuple(check["id"] for check in runtime_workbench["checks"] if check["ok"])
     required_stream_round_trip_features = (
@@ -23919,6 +23937,132 @@ def deep_runtime_module_test_file_manifest() -> tuple[dict, ...]:
     )
 
 
+def pascal_runtime_module_replay_matrix(design: dict | None = None) -> dict:
+    """Replay every native/runtime module surface through source-side contracts."""
+    design = design or form_design()
+    round_trip = dfm_round_trip(design)
+    binary_round_trip = dfm_binary_round_trip(design)
+    stream_variants = dfm_stream_variant_round_trip_contract(design)
+    unit = pascal_unit_contract(design)
+    unit_parse = pascal_unit_parse_contract(design)
+    resources = pascal_resource_streaming_contract(design)
+    resource_fidelity = pascal_resource_round_trip_fidelity_contract(design)
+    compiler = pascal_compiler_pipeline_contract(design)
+    runtime_replay = pascal_runtime_session_replay_contract(design)
+    design_edit_replay = pascal_design_edit_session_replay_contract(design)
+    operations = pascal_runtime_actionable_operations(design)
+    compiler_surfaces = {
+        "compiler_pipeline": compiler,
+        "unit_parse": unit_parse,
+        "semantic_validation": pascal_semantic_validation_contract(design),
+        "incremental_compile": pascal_incremental_compile_contract(design),
+        "diagnostic_mapping": pascal_diagnostic_mapping_contract(design),
+        "toolchain_adapter": pascal_toolchain_adapter_contract(design),
+    }
+    deep_surfaces = {
+        "package_target_matrix": pascal_package_target_matrix_contract(design),
+        "language_frontend": pascal_language_frontend_contract(design),
+        "static_analysis": pascal_static_analysis_contract(design),
+        "compiler_recovery": pascal_compiler_recovery_contract(design),
+        "form_stream_schema": pascal_form_stream_schema_contract(design),
+        "stream_migration": dfm_stream_migration_contract(design),
+        "debug_symbols": pascal_debug_symbol_contract(design),
+        "runtime_memory_model": pascal_runtime_memory_model_contract(design),
+    }
+
+    def payload_ok(payload: dict) -> bool:
+        return bool(payload) and payload.get("ok", True) and not payload.get("side_effects", ())
+
+    native_replays = (
+        {
+            "module": "native_stream_module",
+            "surface": "stream",
+            "ok": round_trip["ok"] and binary_round_trip["ok"] and stream_variants["ok"],
+            "pipeline": ("parse_text_stream", "decode_binary_stream", "round_trip_stream_variants"),
+        },
+        {
+            "module": "native_unit_module",
+            "surface": "unit",
+            "ok": unit_parse["class_name"] == unit["class_name"] and bool(unit_parse["component_declarations"]),
+            "pipeline": ("parse_unit", "bind_resource_directive", "cross_check_components"),
+        },
+        {
+            "module": "native_resource_module",
+            "surface": "resource",
+            "ok": payload_ok(resources) and payload_ok(resource_fidelity),
+            "pipeline": ("load_resource_stream", "record_resource_hashes", "verify_round_trip_fidelity"),
+        },
+        {
+            "module": "native_compile_module",
+            "surface": "compile",
+            "ok": {"parse_units", "type_check", "resource_link", "emit_target"} <= set(compiler["stages"]),
+            "pipeline": compiler["stages"],
+        },
+        {
+            "module": "native_runtime_load_module",
+            "surface": "runtime_load",
+            "ok": runtime_replay["ok"] and not runtime_replay["side_effects"],
+            "pipeline": tuple(item["phase"] for item in runtime_replay["replay"]),
+        },
+        {
+            "module": "native_design_edit_module",
+            "surface": "design_edit",
+            "ok": design_edit_replay["ok"] and not design_edit_replay["side_effects"],
+            "pipeline": tuple(item["phase"] for item in design_edit_replay["replay"]),
+        },
+    )
+    operation_replays = tuple(
+        {
+            "operation": name,
+            "ok": operation["ok"] and not operation["side_effects"],
+            "pipeline": operation["pipeline"],
+        }
+        for name, operation in operations["operations"].items()
+    )
+    compiler_replays = tuple(
+        {
+            "surface": surface,
+            "ok": payload_ok(payload),
+            "guards": payload.get("guards", ()),
+        }
+        for surface, payload in compiler_surfaces.items()
+    )
+    deep_replays = tuple(
+        {
+            "surface": surface,
+            "ok": payload_ok(payload),
+            "guards": payload.get("guards", ()),
+        }
+        for surface, payload in deep_surfaces.items()
+    )
+    checks = (
+        {"id": "native_form_modules_replay", "ok": len(native_replays) == 6 and all(item["ok"] for item in native_replays)},
+        {"id": "runtime_operation_modules_replay", "ok": len(operation_replays) == 7 and all(item["ok"] for item in operation_replays)},
+        {"id": "compiler_runtime_modules_replay", "ok": len(compiler_replays) == 6 and all(item["ok"] for item in compiler_replays)},
+        {"id": "deep_runtime_modules_replay", "ok": len(deep_replays) == 8 and all(item["ok"] for item in deep_replays)},
+        {"id": "side_effect_free_module_replay", "ok": operations["ok"] and not operations["side_effects"]},
+    )
+    return {
+        "format": "appgen.pascal-runtime-module-replay-matrix.v1",
+        "ok": all(check["ok"] for check in checks),
+        "table": design.get("view") or design.get("table"),
+        "native_form_replays": native_replays,
+        "runtime_operation_replays": operation_replays,
+        "compiler_runtime_replays": compiler_replays,
+        "deep_runtime_replays": deep_replays,
+        "checks": checks,
+        "guards": (
+            "native_form_modules_replay_runtime_surfaces",
+            "runtime_operation_modules_are_callable",
+            "compiler_runtime_modules_replay_surface_payloads",
+            "deep_runtime_modules_replay_surface_payloads",
+            "side_effect_free_module_replay",
+        ),
+        "side_effects": (),
+        "blocking_gaps": tuple(check for check in checks if not check["ok"]),
+    }
+
+
 def component_package_module_implementation_contract(package_id: str) -> dict:
     """Return required exports and smoke tests for one component package module."""
     package = component_package_contract(package_id)
@@ -24783,6 +24927,7 @@ def form_designer_generation_smoke_audit(source: str = FORM_DESIGNER_SAMPLE_DSL)
         "compiler_runtime_module_tests_ready",
         "deep_runtime_modules_ready",
         "deep_runtime_module_tests_ready",
+        "runtime_module_replay_matrix_ready",
         "runtime_load_replay",
     )
     required_component_parity_runtime_checks = (

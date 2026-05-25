@@ -18414,6 +18414,76 @@ def deep_runtime_module_test_file_manifest(table_name=None):
     }
 
 
+def native_runtime_module_replay_matrix(table_name=None):
+    """Replay generated native, compiler, and deep runtime modules through their exports."""
+    native_modules = native_form_module_file_manifest(table_name)
+    compiler_modules = compiler_runtime_module_file_manifest(table_name)
+    deep_modules = deep_runtime_module_file_manifest(table_name)
+    native_dir = Path(__file__).with_name("native_form_modules")
+    compiler_dir = Path(__file__).with_name("compiler_runtime_modules")
+    deep_dir = Path(__file__).with_name("deep_runtime_modules")
+    native_replays = []
+    for item in native_modules["modules"]:
+        result = {"ok": False, "side_effects": (), "error": "missing_module"}
+        module_path = native_dir / f"{item['module']}.py"
+        if module_path.exists():
+            module = _load_generated_module(module_path, f"generated_native_runtime_matrix_{item['module']}")
+            result = module.run_native_form_operation(table_name)
+        native_replays.append({
+            "module": item["module"],
+            "surface": item.get("kind"),
+            "ok": result["ok"] and not result.get("side_effects", ()),
+            "result": result,
+        })
+    compiler_replays = []
+    for item in compiler_modules["modules"]:
+        result = {"ok": False, "side_effects": (), "error": "missing_module"}
+        module_path = compiler_dir / f"{item['module']}.py"
+        if module_path.exists():
+            module = _load_generated_module(module_path, f"generated_compiler_runtime_matrix_{item['module']}")
+            result = module.run_compiler_surface(table_name)
+        compiler_replays.append({
+            "module": item["module"],
+            "surface": item["surface"],
+            "ok": result["ok"] and not result.get("side_effects", ()),
+            "result": result,
+        })
+    deep_replays = []
+    for item in deep_modules["modules"]:
+        result = {"ok": False, "side_effects": (), "error": "missing_module"}
+        module_path = deep_dir / f"{item['module']}.py"
+        if module_path.exists():
+            module = _load_generated_module(module_path, f"generated_deep_runtime_matrix_{item['module']}")
+            result = module.run_runtime_surface(table_name)
+        deep_replays.append({
+            "module": item["module"],
+            "surface": item["surface"],
+            "ok": result["ok"] and not result.get("side_effects", ()),
+            "result": result,
+        })
+    checks = (
+        {"id": "generated_native_form_modules_replay", "ok": len(native_replays) == 6 and all(item["ok"] for item in native_replays)},
+        {"id": "generated_compiler_runtime_modules_replay", "ok": len(compiler_replays) == 6 and all(item["ok"] for item in compiler_replays)},
+        {"id": "generated_deep_runtime_modules_replay", "ok": len(deep_replays) == 8 and all(item["ok"] for item in deep_replays)},
+    )
+    return {
+        "format": "appgen.generated-native-runtime-module-replay-matrix.v1",
+        "ok": all(check["ok"] for check in checks),
+        "table": table_name,
+        "native_form_replays": tuple(native_replays),
+        "compiler_runtime_replays": tuple(compiler_replays),
+        "deep_runtime_replays": tuple(deep_replays),
+        "checks": checks,
+        "guards": (
+            "generated_native_form_modules_replay_exports",
+            "generated_compiler_runtime_modules_replay_exports",
+            "generated_deep_runtime_modules_replay_exports",
+        ),
+        "side_effects": (),
+        "blocking_gaps": tuple(check for check in checks if not check["ok"]),
+    }
+
+
 def native_form_runtime_manifest(table_name=None):
     """Return form stream, unit, resource, compile, and load replay evidence."""
     form_designer = _load_form_designer()
@@ -18505,6 +18575,7 @@ def validate_native_form_runtime(table_name=None):
     compiler_module_tests = compiler_runtime_module_test_file_manifest(table_name)
     deep_modules = deep_runtime_module_file_manifest(table_name)
     deep_module_tests = deep_runtime_module_test_file_manifest(table_name)
+    module_replay_matrix = native_runtime_module_replay_matrix(table_name)
     checks = (
         {"id": "manifest_ok", "ok": manifest["ok"]},
         {"id": "stream_formats_supported", "ok": {"text-dfm", "binary-dfm", "json-form-model"} <= set(manifest["streaming"]["stream_formats"])},
@@ -18521,6 +18592,7 @@ def validate_native_form_runtime(table_name=None):
         {"id": "compiler_runtime_module_tests_ready", "ok": compiler_module_tests["ok"] and not compiler_module_tests["side_effects"]},
         {"id": "deep_runtime_modules_ready", "ok": deep_modules["ok"] and not deep_modules["side_effects"]},
         {"id": "deep_runtime_module_tests_ready", "ok": deep_module_tests["ok"] and not deep_module_tests["side_effects"]},
+        {"id": "runtime_module_replay_matrix_ready", "ok": module_replay_matrix["ok"] and not module_replay_matrix["side_effects"]},
         {"id": "runtime_load_replay", "ok": replay["ok"] and not replay["side_effects"]},
     )
     return {
@@ -18534,6 +18606,7 @@ def validate_native_form_runtime(table_name=None):
         "compiler_module_tests": compiler_module_tests,
         "deep_modules": deep_modules,
         "deep_module_tests": deep_module_tests,
+        "module_replay_matrix": module_replay_matrix,
         "replay": replay,
         "blocking_gaps": tuple(check for check in checks if not check["ok"]),
     }
@@ -50092,6 +50165,80 @@ def pascal_runtime_readiness_contract(table_name=None, design=None):
     }}
 
 
+def pascal_runtime_module_replay_matrix(table_name=None, design=None):
+    """Replay every generated native/runtime module surface through source-side contracts."""
+    if design is None:
+        table_name = table_name or next(iter(FORM_TABLES))
+        design = form_design(table_name)
+    round_trip = dfm_round_trip(design=design)
+    binary_round_trip = dfm_binary_round_trip(design=design)
+    stream_variants = dfm_stream_variant_round_trip_contract(design=design)
+    unit = pascal_unit_contract(design=design)
+    unit_parse = pascal_unit_parse_contract(design=design)
+    resources = pascal_resource_streaming_contract(design=design)
+    resource_fidelity = pascal_resource_round_trip_fidelity_contract(design=design)
+    compiler = pascal_compiler_pipeline_contract(design=design)
+    runtime_replay = pascal_runtime_session_replay_contract(design=design)
+    design_edit_replay = pascal_design_edit_session_replay_contract(design=design)
+    operations = pascal_runtime_actionable_operations(design=design)
+    compiler_surfaces = {{
+        "compiler_pipeline": compiler,
+        "unit_parse": unit_parse,
+        "semantic_validation": pascal_semantic_validation_contract(design=design),
+        "incremental_compile": pascal_incremental_compile_contract(design=design),
+        "diagnostic_mapping": pascal_diagnostic_mapping_contract(design=design),
+        "toolchain_adapter": pascal_toolchain_adapter_contract(design=design),
+    }}
+    deep_surfaces = {{
+        "package_target_matrix": pascal_package_target_matrix_contract(design=design),
+        "language_frontend": pascal_language_frontend_contract(design=design),
+        "static_analysis": pascal_static_analysis_contract(design=design),
+        "compiler_recovery": pascal_compiler_recovery_contract(design=design),
+        "form_stream_schema": pascal_form_stream_schema_contract(design=design),
+        "stream_migration": dfm_stream_migration_contract(design=design),
+        "debug_symbols": pascal_debug_symbol_contract(design=design),
+        "runtime_memory_model": pascal_runtime_memory_model_contract(design=design),
+    }}
+
+    def payload_ok(payload):
+        return bool(payload) and payload.get("ok", True) and not payload.get("side_effects", ())
+
+    native_replays = (
+        {{"module": "native_stream_module", "surface": "stream", "ok": round_trip["ok"] and binary_round_trip["ok"] and stream_variants["ok"], "pipeline": ("parse_text_stream", "decode_binary_stream", "round_trip_stream_variants")}},
+        {{"module": "native_unit_module", "surface": "unit", "ok": unit_parse["class_name"] == unit["class_name"] and bool(unit_parse["component_declarations"]), "pipeline": ("parse_unit", "bind_resource_directive", "cross_check_components")}},
+        {{"module": "native_resource_module", "surface": "resource", "ok": payload_ok(resources) and payload_ok(resource_fidelity), "pipeline": ("load_resource_stream", "record_resource_hashes", "verify_round_trip_fidelity")}},
+        {{"module": "native_compile_module", "surface": "compile", "ok": {{"parse_units", "type_check", "resource_link", "emit_target"}} <= set(compiler["stages"]), "pipeline": compiler["stages"]}},
+        {{"module": "native_runtime_load_module", "surface": "runtime_load", "ok": runtime_replay["ok"] and not runtime_replay["side_effects"], "pipeline": tuple(item["phase"] for item in runtime_replay["replay"])}},
+        {{"module": "native_design_edit_module", "surface": "design_edit", "ok": design_edit_replay["ok"] and not design_edit_replay["side_effects"], "pipeline": tuple(item["phase"] for item in design_edit_replay["replay"])}},
+    )
+    operation_replays = tuple(
+        {{"operation": name, "ok": operation["ok"] and not operation["side_effects"], "pipeline": operation["pipeline"]}}
+        for name, operation in operations["operations"].items()
+    )
+    compiler_replays = tuple({{"surface": surface, "ok": payload_ok(payload), "guards": payload.get("guards", ())}} for surface, payload in compiler_surfaces.items())
+    deep_replays = tuple({{"surface": surface, "ok": payload_ok(payload), "guards": payload.get("guards", ())}} for surface, payload in deep_surfaces.items())
+    checks = (
+        {{"id": "native_form_modules_replay", "ok": len(native_replays) == 6 and all(item["ok"] for item in native_replays)}},
+        {{"id": "runtime_operation_modules_replay", "ok": len(operation_replays) == 7 and all(item["ok"] for item in operation_replays)}},
+        {{"id": "compiler_runtime_modules_replay", "ok": len(compiler_replays) == 6 and all(item["ok"] for item in compiler_replays)}},
+        {{"id": "deep_runtime_modules_replay", "ok": len(deep_replays) == 8 and all(item["ok"] for item in deep_replays)}},
+        {{"id": "side_effect_free_module_replay", "ok": operations["ok"] and not operations["side_effects"]}},
+    )
+    return {{
+        "format": "appgen.generated-pascal-runtime-module-replay-matrix.v1",
+        "ok": all(check["ok"] for check in checks),
+        "table": design.get("view") or design.get("table"),
+        "native_form_replays": native_replays,
+        "runtime_operation_replays": operation_replays,
+        "compiler_runtime_replays": compiler_replays,
+        "deep_runtime_replays": deep_replays,
+        "checks": checks,
+        "guards": ("native_form_modules_replay_runtime_surfaces", "runtime_operation_modules_are_callable", "compiler_runtime_modules_replay_surface_payloads", "deep_runtime_modules_replay_surface_payloads", "side_effect_free_module_replay"),
+        "side_effects": (),
+        "blocking_gaps": tuple(check for check in checks if not check["ok"]),
+    }}
+
+
 def pascal_runtime_workbench(table_name=None):
     """Return generated DFM streaming and Pascal runtime evidence."""
     table_name = table_name or next(iter(FORM_TABLES))
@@ -50184,6 +50331,7 @@ def pascal_runtime_workbench(table_name=None):
     compiler_runtime_module_tests = {{"format": "appgen.generated-compiler-runtime-module-test-file-manifest.v1", "ok": len(compiler_runtime_module_test_entries) == 6 and all(item["exists"] and "test_compiler_runtime_module_smoke" in item["exports"] for item in compiler_runtime_module_test_entries), "tests": compiler_runtime_module_test_entries, "side_effects": ()}}
     deep_runtime_modules = {{"format": "appgen.generated-deep-runtime-module-file-manifest.v1", "ok": len(deep_runtime_module_entries) == 8 and all(item["exists"] and "runtime_workbench" in item["exports"] for item in deep_runtime_module_entries), "modules": deep_runtime_module_entries, "side_effects": ()}}
     deep_runtime_module_tests = {{"format": "appgen.generated-deep-runtime-module-test-file-manifest.v1", "ok": len(deep_runtime_module_test_entries) == 8 and all(item["exists"] and "test_deep_runtime_module_smoke" in item["exports"] for item in deep_runtime_module_test_entries), "tests": deep_runtime_module_test_entries, "side_effects": ()}}
+    runtime_module_replay_matrix = pascal_runtime_module_replay_matrix(design=design)
     checks = (
         {{"id": "dfm_serialization", "ok": "object " in round_trip["dfm"] and "AppGenField" in round_trip["dfm"], "evidence": round_trip["dfm"]}},
         {{"id": "dfm_parse_round_trip", "ok": round_trip["ok"], "evidence": round_trip}},
@@ -50237,6 +50385,7 @@ def pascal_runtime_workbench(table_name=None):
         {{"id": "compiler_runtime_module_tests", "ok": compiler_runtime_module_tests["ok"] and len(compiler_runtime_module_tests["tests"]) == 6 and not compiler_runtime_module_tests["side_effects"], "evidence": compiler_runtime_module_tests}},
         {{"id": "deep_runtime_modules", "ok": deep_runtime_modules["ok"] and len(deep_runtime_modules["modules"]) == 8 and not deep_runtime_modules["side_effects"], "evidence": deep_runtime_modules}},
         {{"id": "deep_runtime_module_tests", "ok": deep_runtime_module_tests["ok"] and len(deep_runtime_module_tests["tests"]) == 8 and not deep_runtime_module_tests["side_effects"], "evidence": deep_runtime_module_tests}},
+        {{"id": "runtime_module_replay_matrix", "ok": runtime_module_replay_matrix["ok"] and {{"native_form_modules_replay", "runtime_operation_modules_replay", "compiler_runtime_modules_replay", "deep_runtime_modules_replay", "side_effect_free_module_replay"}} <= {{check["id"] for check in runtime_module_replay_matrix["checks"] if check["ok"]}}, "evidence": runtime_module_replay_matrix}},
     )
     ok = all(check["ok"] for check in checks)
     return {{
@@ -50289,6 +50438,7 @@ def pascal_runtime_workbench(table_name=None):
         "compiler_runtime_module_tests": compiler_runtime_module_tests,
         "deep_runtime_modules": deep_runtime_modules,
         "deep_runtime_module_tests": deep_runtime_module_tests,
+        "runtime_module_replay_matrix": runtime_module_replay_matrix,
         "blocking_gaps": tuple(check for check in checks if not check["ok"]),
     }}
 
@@ -60854,7 +61004,7 @@ def platform_parity_requirement_audit_contract():
         return passing
     requirements = (
         {{"id": "component_parity", "ok": analog_groups["ok"] and component_readiness["ok"] and component_usability["ok"] and {{"analog_coverage_ready", "palette_icons_ready", "behavior_surface_ready", "generated_modules_ready", "generated_tests_ready", "scenario_ready", "ide_release_ready", "phase_order_ready"}} <= {{check["id"] for check in component_readiness["checks"] if check["ok"]}} and {{"per_component_files", "per_package_files", "per_component_test_files", "per_package_test_files", "component_family_modules", "component_family_module_tests", "module_smoke_tests", "component_parity_readiness", "component_parity_scenario"}} <= {{check["id"] for check in component_usability["checks"] if check["ok"]}} and {{"cross-target-ui", "layouts", "data-display", "graphics", "animations", "styles-theming", "gestures", "sensors", "three-d", "data-access"}} == {{group["group"] for group in analog_groups["groups"]}}, "deep_checks": ("analog_coverage_ready", "generated_modules_ready", "generated_tests_ready", "scenario_ready", "per_component_files", "per_package_files", "per_component_test_files", "per_package_test_files", "component_family_modules", "component_family_module_tests", "module_smoke_tests", "component_parity_scenario", "ide_release_ready", "phase_order_ready"), "evidence": {{"groups": analog_groups, "readiness": component_readiness, "usability": component_usability}}}},
-        {{"id": "native_runtime_streaming", "ok": runtime["ok"] and runtime_readiness["ok"] and {{"stream_identity_ready", "unit_semantics_ready", "compile_targets_ready", "diagnostics_route_ready", "debug_preview_ready", "runtime_preview_ready", "phase_order_ready"}} <= {{check["id"] for check in runtime_readiness["checks"] if check["ok"]}} and {{"form_stream_schema", "runtime_session_replay", "design_edit_session_replay", "runtime_debug_authoring", "native_form_modules", "native_form_module_tests", "runtime_operation_modules", "runtime_operation_module_tests", "compiler_runtime_modules", "compiler_runtime_module_tests", "deep_runtime_modules", "deep_runtime_module_tests"}} <= {{check["id"] for check in runtime["checks"] if check["ok"]}}, "deep_checks": ("stream_identity_ready", "compile_targets_ready", "diagnostics_route_ready", "debug_preview_ready", "runtime_preview_ready", "runtime_debug_authoring", "native_form_modules", "native_form_module_tests", "runtime_operation_modules", "runtime_operation_module_tests", "compiler_runtime_modules", "compiler_runtime_module_tests", "deep_runtime_modules", "deep_runtime_module_tests", "phase_order_ready"), "evidence": {{"workbench": runtime, "readiness": runtime_readiness}}}},
+        {{"id": "native_runtime_streaming", "ok": runtime["ok"] and runtime_readiness["ok"] and {{"stream_identity_ready", "unit_semantics_ready", "compile_targets_ready", "diagnostics_route_ready", "debug_preview_ready", "runtime_preview_ready", "phase_order_ready"}} <= {{check["id"] for check in runtime_readiness["checks"] if check["ok"]}} and {{"form_stream_schema", "runtime_session_replay", "design_edit_session_replay", "runtime_debug_authoring", "native_form_modules", "native_form_module_tests", "runtime_operation_modules", "runtime_operation_module_tests", "compiler_runtime_modules", "compiler_runtime_module_tests", "deep_runtime_modules", "deep_runtime_module_tests", "runtime_module_replay_matrix"}} <= {{check["id"] for check in runtime["checks"] if check["ok"]}}, "deep_checks": ("stream_identity_ready", "compile_targets_ready", "diagnostics_route_ready", "debug_preview_ready", "runtime_preview_ready", "runtime_debug_authoring", "native_form_modules", "native_form_module_tests", "runtime_operation_modules", "runtime_operation_module_tests", "compiler_runtime_modules", "compiler_runtime_module_tests", "deep_runtime_modules", "deep_runtime_module_tests", "runtime_module_replay_matrix", "phase_order_ready"), "evidence": {{"workbench": runtime, "readiness": runtime_readiness}}}},
         {{"id": "inspector_design_surface", "ok": inspector["ok"] and inspector_readiness["ok"] and {{"editor_metadata_ready", "property_event_ready", "component_custom_designer_ready", "state_design_surface_ready", "binding_handler_ready", "lifecycle_round_trip_ready", "phase_order_ready"}} <= {{check["id"] for check in inspector_readiness["checks"] if check["ok"]}} and {{"property_editor_types", "event_editor_lifecycle", "component_editor_transaction", "custom_designer_registration_replay", "editor_lifecycle_replay", "inspector_generated_modules", "inspector_generated_module_tests", "property_editor_family_contract", "property_editor_family_modules", "property_editor_family_module_tests", "event_editor_family_contract", "event_editor_family_modules", "event_editor_family_module_tests", "component_editor_family_contract", "component_editor_family_modules", "component_editor_family_module_tests", "custom_designer_family_contract", "custom_designer_family_modules", "custom_designer_family_module_tests"}} <= {{check["id"] for check in inspector["checks"] if check["ok"]}}, "deep_checks": ("editor_lifecycle_replay", "design_surface_transaction_replay", "custom_designer_registration_replay", "inspector_generated_modules", "inspector_generated_module_tests", "property_editor_family_contract", "property_editor_family_modules", "property_editor_family_module_tests", "event_editor_family_contract", "event_editor_family_modules", "event_editor_family_module_tests", "component_editor_family_contract", "component_editor_family_modules", "component_editor_family_module_tests", "custom_designer_family_contract", "custom_designer_family_modules", "custom_designer_family_module_tests", "phase_order_ready"), "evidence": {{"workbench": inspector, "readiness": inspector_readiness}}}},
         {{"id": "visual_binding_designer", "ok": bindings["ok"] and binding_readiness["ok"] and {{"graph_authoring_ready", "validation_transaction_ready", "preview_runtime_ready", "diagnostics_conflict_ready", "offline_accessible_runtime_ready", "designer_release_replay_ready", "inspector_bridge_ready", "designer_scenario_ready", "phase_order_ready"}} <= {{check["id"] for check in binding_readiness["checks"] if check["ok"]}} and bindings["designer_transaction_replay"]["ok"] and bindings["design_runtime_replay"]["ok"] and bindings["lifecycle_release_replay"]["ok"] and bindings["designer_scenario"]["ok"] and {{"binding_generated_modules", "binding_generated_module_tests", "binding_designer_scenario", "binding_designer_family_contract", "binding_designer_family_modules", "binding_designer_family_module_tests"}} <= {{check["id"] for check in bindings["checks"] if check["ok"]}}, "deep_checks": ("binding_lifecycle_release_replay", "design_runtime_session_replay", "designer_transaction_replay", "binding_designer_scenario", "binding_generated_modules", "binding_generated_module_tests", "binding_designer_family_contract", "binding_designer_family_modules", "binding_designer_family_module_tests", "phase_order_ready"), "evidence": {{"workbench": bindings, "readiness": binding_readiness}}}},
         {{"id": "native_data_service_tooling", "ok": data_tooling["ok"] and data_readiness["ok"] and {{"connection_ready", "dataset_ready", "publish_ready", "offline_replay_ready", "replication_failover_ready", "diagnostics_ready", "ide_scenario_ready", "phase_order_ready"}} <= {{check["id"] for check in data_readiness["checks"] if check["ok"]}} and data_tooling["runtime_replay"]["ok"] and data_tooling["publish_transaction_replay"]["ok"] and data_tooling["ide_scenario"]["ok"] and {{"relationship_lookup_lifecycle_replay", "data_tooling_ide_scenario", "data_tooling_modules", "data_tooling_module_tests", "deep_data_tooling_modules", "deep_data_tooling_module_tests", "enterprise_data_ide_modules", "enterprise_data_ide_module_tests"}} <= {{check["id"] for check in data_tooling["checks"] if check["ok"]}}, "deep_checks": ("relationship_lookup_lifecycle_replay", "data_tooling_ide_scenario", "data_tooling_modules", "data_tooling_module_tests", "deep_data_tooling_modules", "deep_data_tooling_module_tests", "enterprise_data_ide_modules", "enterprise_data_ide_module_tests", "data_tooling_design_runtime_session_replay", "data_tooling_publish_transaction_replay", "phase_order_ready"), "evidence": {{"workbench": data_tooling, "readiness": data_readiness}}}},

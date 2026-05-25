@@ -249,6 +249,7 @@ from pyAppGen.form_designer import pascal_run_runtime_authoring_scenario_operati
 from pyAppGen.form_designer import pascal_round_trip_stream_operation
 from pyAppGen.form_designer import pascal_start_debug_preview_operation
 from pyAppGen.form_designer import pascal_runtime_actionable_operations
+from pyAppGen.form_designer import pascal_runtime_module_replay_matrix
 from pyAppGen.form_designer import pascal_runtime_workbench
 from pyAppGen.form_designer import pascal_unit_contract
 from pyAppGen.form_designer import placement_suggestions
@@ -3511,6 +3512,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "compiler_runtime_module_tests",
         "deep_runtime_modules",
         "deep_runtime_module_tests",
+        "runtime_module_replay_matrix",
     } == {check["id"] for check in runtime["checks"]}
     assert runtime["incremental"]["outputs"][0] == "diagnostic_delta"
     assert runtime["binary_round_trip"]["decoded"] == dfm_text
@@ -3621,6 +3623,17 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     )
     assert all("smoke_test" in item["exports"] for item in runtime["compiler_runtime_modules"])
     assert all("test_deep_runtime_module_smoke" in item["exports"] for item in runtime["deep_runtime_module_tests"])
+    runtime_module_replay = pascal_runtime_module_replay_matrix(design)
+    assert runtime_module_replay["format"] == "appgen.pascal-runtime-module-replay-matrix.v1"
+    assert runtime_module_replay["ok"] is True
+    assert len(runtime_module_replay["native_form_replays"]) == 6
+    assert len(runtime_module_replay["runtime_operation_replays"]) == 7
+    assert len(runtime_module_replay["compiler_runtime_replays"]) == 6
+    assert len(runtime_module_replay["deep_runtime_replays"]) == 8
+    assert runtime["runtime_module_replay_matrix"]["ok"] is True
+    assert {"native_form_modules_replay", "runtime_operation_modules_replay", "compiler_runtime_modules_replay", "deep_runtime_modules_replay"} <= {
+        check["id"] for check in runtime["runtime_module_replay_matrix"]["checks"] if check["ok"]
+    }
 
     drop_wiring = component_drop_wiring_handler_contract(design)
     assert drop_wiring["format"] == "appgen.component-drop-wiring-handler-contract.v1"
@@ -4816,6 +4829,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "compiler_runtime_module_tests",
         "deep_runtime_modules",
         "deep_runtime_module_tests",
+        "runtime_module_replay_matrix",
     } <= set(requirements_by_id["native_runtime_streaming"]["deep_checks"])
     assert {
         "inspector_generated_modules",
@@ -5245,6 +5259,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "compiler_runtime_module_tests_ready",
         "deep_runtime_modules_ready",
         "deep_runtime_module_tests_ready",
+        "runtime_module_replay_matrix_ready",
         "runtime_load_replay",
     } <= set(native_runtime_smoke["passing_checks"])
     component_runtime_smoke = next(check for check in smoke["checks"] if check["id"] == "generated_component_parity_runtime")
@@ -14804,6 +14819,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "compiler_runtime_module_tests",
         "deep_runtime_modules",
         "deep_runtime_module_tests",
+        "runtime_module_replay_matrix",
     } <= set(generated_requirements_by_id["native_runtime_streaming"]["deep_checks"])
     assert {
         "inspector_generated_modules",
@@ -15095,6 +15111,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "compiler_runtime_module_tests",
         "deep_runtime_modules",
         "deep_runtime_module_tests",
+        "runtime_module_replay_matrix",
     } <= {
         check["id"] for check in generated_runtime["checks"]
     }
@@ -15191,6 +15208,14 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert generated_runtime["compiler_runtime_module_tests"]["ok"] is True
     assert generated_runtime["deep_runtime_modules"]["ok"] is True
     assert generated_runtime["deep_runtime_module_tests"]["ok"] is True
+    assert generated_runtime["runtime_module_replay_matrix"]["format"] == (
+        "appgen.generated-pascal-runtime-module-replay-matrix.v1"
+    )
+    assert generated_runtime["runtime_module_replay_matrix"]["ok"] is True
+    assert len(generated_runtime["runtime_module_replay_matrix"]["native_form_replays"]) == 6
+    assert len(generated_runtime["runtime_module_replay_matrix"]["runtime_operation_replays"]) == 7
+    assert len(generated_runtime["runtime_module_replay_matrix"]["compiler_runtime_replays"]) == 6
+    assert len(generated_runtime["runtime_module_replay_matrix"]["deep_runtime_replays"]) == 8
     assert len(generated_runtime["native_form_modules"]["modules"]) == 6
     assert len(generated_runtime["runtime_operation_modules"]["modules"]) == 7
     assert len(generated_runtime["compiler_runtime_modules"]["modules"]) == 6
@@ -16276,12 +16301,19 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "compiler_runtime_module_tests_ready",
         "deep_runtime_modules_ready",
         "deep_runtime_module_tests_ready",
+        "runtime_module_replay_matrix_ready",
         "runtime_load_replay",
     } <= set(native_runtime_smoke["checks"])
     native_form_module_files = native_runtime.native_form_module_file_manifest("Book")
     native_form_module_tests = native_runtime.native_form_module_test_file_manifest("Book")
+    native_runtime_matrix = native_runtime.native_runtime_module_replay_matrix("Book")
     assert native_form_module_files["ok"] is True
     assert native_form_module_tests["ok"] is True
+    assert native_runtime_matrix["format"] == "appgen.generated-native-runtime-module-replay-matrix.v1"
+    assert native_runtime_matrix["ok"] is True
+    assert len(native_runtime_matrix["native_form_replays"]) == 6
+    assert len(native_runtime_matrix["compiler_runtime_replays"]) == 6
+    assert len(native_runtime_matrix["deep_runtime_replays"]) == 8
     assert {item["module"] for item in native_form_module_files["modules"]} == {
         "native_stream_module",
         "native_unit_module",
