@@ -72,6 +72,49 @@ PBC_DOMAIN_DEPTH_REQUIRED_DIMENSIONS = (
     "release_gates",
 )
 PBC_DOMAIN_DEPTH_LEVEL = "enterprise_suite_displacement"
+PBC_ADVANCED_DOMAIN_REQUIRED_AREAS = (
+    "foundational_architecture",
+    "computational_analytics",
+    "intelligence_automation",
+    "compliance_governance",
+    "integration_ecosystem",
+    "operational_resilience",
+    "theoretical_constructs",
+    "implementation_prerequisites",
+)
+GL_CORE_ADVANCED_CAPABILITY_KEYS = (
+    "event_sourced_ledger_core",
+    "distributed_consensus_protocol",
+    "schema_on_read_extensibility",
+    "multi_tenant_isolation",
+    "real_time_olap_oltp_convergence",
+    "probabilistic_accounting_primitives",
+    "continuous_close_architecture",
+    "causal_inference_engine",
+    "autonomous_reconciliation",
+    "semantic_transaction_understanding",
+    "regulatory_logic_compilation",
+    "predictive_posting_validation",
+    "zero_knowledge_audit_proofs",
+    "dynamic_policy_enforcement",
+    "immutable_regulatory_trail",
+    "automated_control_testing",
+    "universal_api_contract",
+    "cross_system_ledger_federation",
+    "event_driven_subledger_synchronization",
+    "decentralized_identity_integration",
+    "chaos_engineered_fault_tolerance",
+    "quantum_resistant_cryptography",
+    "carbon_aware_processing",
+    "temporal_accounting_algebra",
+    "homomorphic_encryption_for_consolidation",
+    "game_theoretic_reconciliation",
+    "information_theoretic_auditability",
+    "formal_methods_ledger_invariants",
+    "distributed_systems_runtime",
+    "cryptographic_engineering",
+    "financial_mlops",
+)
 PBC_ALLOWED_DATASTORE_BACKENDS = (
     "postgresql",
     "mysql",
@@ -947,9 +990,67 @@ PBC_CATALOG: dict[str, dict] = {
         "label": "General Ledger Core",
         "mesh": "finops",
         "description": "Immutable financial truth, journal orchestration, chart of accounts, and balances.",
-        "tables": ("journal_entry", "journal_line", "ledger_account", "accounting_period"),
-        "apis": ("POST /journals", "GET /trial-balance", "GET /chart-of-accounts"),
-        "emits": ("JournalPosted", "PeriodClosed", "TrialBalanceCalculated"),
+        "tables": (
+            "ledger_event_log",
+            "journal_entry",
+            "journal_line",
+            "ledger_account",
+            "accounting_period",
+            "ledger_projection",
+            "consensus_replica",
+            "schema_extension",
+            "tenant_ledger_partition",
+            "probabilistic_posting",
+            "close_snapshot",
+            "causal_scenario",
+            "reconciliation_case",
+            "semantic_source_document",
+            "regulatory_rule_version",
+            "predictive_validation_run",
+            "audit_proof",
+            "policy_decision",
+            "control_assertion",
+            "ledger_federation_link",
+            "identity_credential",
+            "resilience_drill",
+            "crypto_key_epoch",
+            "carbon_execution_window",
+        ),
+        "apis": (
+            "POST /journals",
+            "GET /trial-balance",
+            "GET /chart-of-accounts",
+            "GET /ledger-events",
+            "POST /ledger-projections",
+            "POST /consensus-commits",
+            "POST /schema-extensions",
+            "GET /temporal-ledger",
+            "POST /probabilistic-postings",
+            "POST /continuous-close-snapshots",
+            "POST /causal-scenarios",
+            "POST /reconciliation-cases",
+            "POST /semantic-documents",
+            "POST /regulatory-rules",
+            "POST /predictive-validations",
+            "POST /audit-proofs",
+            "POST /control-tests",
+            "POST /ledger-federation-links",
+            "POST /resilience-drills",
+            "POST /carbon-execution-windows",
+        ),
+        "emits": (
+            "JournalPosted",
+            "PeriodClosed",
+            "TrialBalanceCalculated",
+            "LedgerEventAppended",
+            "ConsensusCommitted",
+            "LedgerProjectionRebuilt",
+            "ContinuousCloseSnapshotCreated",
+            "ReconciliationSuggested",
+            "AuditProofGenerated",
+            "RegulatoryRuleCompiled",
+            "PostingValidationPredicted",
+        ),
         "consumes": ("InvoiceApproved", "PaymentCaptured", "DepreciationCalculated", "OrderShipped"),
         "template": "general_ledger",
     },
@@ -2198,6 +2299,7 @@ def pbc_implementation_contract(key: str) -> dict:
         event_contract,
         service_methods,
     )
+    advanced_blueprint = _advanced_domain_blueprint(key, service, table_contracts, event_contract, service_methods)
     release_checks = (
         "stable_manifest",
         "owned_schema_only",
@@ -2208,6 +2310,7 @@ def pbc_implementation_contract(key: str) -> dict:
         "policy_control_coverage",
         "automation_loop_coverage",
         "analytics_coverage",
+        "advanced_domain_blueprint" if advanced_blueprint else "advanced_domain_not_required",
         "service_commands",
         "api_routes",
         "event_outbox_inbox",
@@ -2244,6 +2347,7 @@ def pbc_implementation_contract(key: str) -> dict:
             "capabilities": tuple(item["capability"] for item in domain_functionality["capability_modules"]),
             "workflows": tuple(item["workflow"] for item in domain_functionality["workflow_implementations"]),
             "analytics": tuple(item["metric"] for item in domain_functionality["analytics"]),
+            "advanced_capabilities": tuple(item["capability"] for item in advanced_blueprint.get("capabilities", ())),
             "migrations": ("migrations/001_initial.sql",),
             "seed_data": ("seed_data.py",),
             "tests": ("tests/test_contract.py",),
@@ -2271,6 +2375,7 @@ def pbc_implementation_contract(key: str) -> dict:
             },
         ),
         "domain_functionality": domain_functionality,
+        "advanced_domain_blueprint": advanced_blueprint,
         "models": tuple(
             {
                 "class_name": "".join(part.capitalize() for part in table["owned_table"].split("_")),
@@ -2405,6 +2510,23 @@ def pbc_implementation_release_audit(selected_pbcs: tuple[str, ...] | list[str] 
                     and not contract["domain_functionality"]["legacy_product_references"],
                 },
                 {
+                    "id": f"{contract['pbc']}:advanced_domain_blueprint",
+                    "ok": (
+                        contract["pbc"] != "gl_core"
+                        or (
+                            contract["advanced_domain_blueprint"]["ok"]
+                            and set(PBC_ADVANCED_DOMAIN_REQUIRED_AREAS)
+                            <= set(contract["advanced_domain_blueprint"]["areas"])
+                            and set(GL_CORE_ADVANCED_CAPABILITY_KEYS)
+                            <= {
+                                item["capability"]
+                                for item in contract["advanced_domain_blueprint"]["capabilities"]
+                            }
+                            and not contract["advanced_domain_blueprint"]["legacy_product_references"]
+                        )
+                    ),
+                },
+                {
                     "id": f"{contract['pbc']}:package_metadata",
                     "ok": contract["directory"] == f"pbcs/{contract['pbc']}"
                     and contract["package_metadata"]["entrypoint"] == "register_pbc"
@@ -2419,6 +2541,7 @@ def pbc_implementation_release_audit(selected_pbcs: tuple[str, ...] | list[str] 
         "pbc_count": len(contracts),
         "required_artifacts": PBC_IMPLEMENTATION_REQUIRED_ARTIFACTS,
         "required_domain_dimensions": PBC_DOMAIN_DEPTH_REQUIRED_DIMENSIONS,
+        "advanced_domain_required_areas": PBC_ADVANCED_DOMAIN_REQUIRED_AREAS,
         "depth_level": PBC_DOMAIN_DEPTH_LEVEL,
         "contracts": contracts,
         "checks": tuple(checks),
@@ -3364,6 +3487,338 @@ def _domain_functionality_contract(
             "release_evidence_by_capability",
         ),
         "legacy_product_references": legacy_product_references,
+    }
+
+
+def _advanced_domain_blueprint(
+    key: str,
+    service: dict,
+    table_contracts: tuple[dict, ...],
+    event_contract: dict,
+    service_methods: tuple[dict, ...],
+) -> dict:
+    if key != "gl_core":
+        return {}
+    owned_tables = {table["logical_table"]: table["owned_table"] for table in table_contracts}
+    api_routes = tuple(method["route"] for method in service_methods)
+    emitted_events = tuple(event["event_type"] for event in event_contract["emitted"])
+
+    def capability(area: str, name: str, tables: tuple[str, ...], apis: tuple[str, ...], events: tuple[str, ...], evidence: tuple[str, ...]) -> dict:
+        return {
+            "area": area,
+            "capability": name,
+            "owned_tables": tuple(owned_tables[table] for table in tables if table in owned_tables),
+            "apis": tuple(route for route in api_routes if any(api in route for api in apis)),
+            "events": tuple(event for event in emitted_events if event in events),
+            "implementation_evidence": evidence,
+            "release_gate": f"gl_core.{name}.release_gate",
+        }
+
+    capabilities = (
+        capability(
+            "foundational_architecture",
+            "event_sourced_ledger_core",
+            ("ledger_event_log", "journal_entry", "journal_line", "ledger_projection"),
+            ("/ledger-events", "/ledger-projections", "/journals"),
+            ("LedgerEventAppended", "LedgerProjectionRebuilt", "JournalPosted"),
+            ("append_only_event_log", "projection_rebuild_plan", "temporal_replay_tests"),
+        ),
+        capability(
+            "foundational_architecture",
+            "distributed_consensus_protocol",
+            ("consensus_replica", "ledger_event_log"),
+            ("/consensus-commits",),
+            ("ConsensusCommitted",),
+            ("replica_quorum_plan", "leader_election_trace", "sub_second_recovery_objective"),
+        ),
+        capability(
+            "foundational_architecture",
+            "schema_on_read_extensibility",
+            ("schema_extension", "ledger_projection"),
+            ("/schema-extensions", "/ledger-projections"),
+            ("LedgerProjectionRebuilt",),
+            ("jsonb_extension_registry", "backward_compatible_projection", "zero_downtime_schema_plan"),
+        ),
+        capability(
+            "foundational_architecture",
+            "multi_tenant_isolation",
+            ("tenant_ledger_partition", "policy_decision", "crypto_key_epoch"),
+            ("/ledger-events",),
+            ("LedgerEventAppended",),
+            ("tenant_partition_keys", "per_tenant_encryption_epoch", "independent_scaling_plan"),
+        ),
+        capability(
+            "computational_analytics",
+            "real_time_olap_oltp_convergence",
+            ("ledger_event_log", "ledger_projection", "close_snapshot"),
+            ("/temporal-ledger", "/trial-balance"),
+            ("TrialBalanceCalculated", "LedgerProjectionRebuilt"),
+            ("transactional_projection_fanout", "columnar_query_projection", "no_etl_latency_gate"),
+        ),
+        capability(
+            "computational_analytics",
+            "probabilistic_accounting_primitives",
+            ("probabilistic_posting", "journal_entry"),
+            ("/probabilistic-postings",),
+            ("PostingValidationPredicted",),
+            ("confidence_interval_fields", "statement_uncertainty_propagation", "materiality_policy_gate"),
+        ),
+        capability(
+            "computational_analytics",
+            "continuous_close_architecture",
+            ("close_snapshot", "control_assertion", "ledger_projection"),
+            ("/continuous-close-snapshots",),
+            ("ContinuousCloseSnapshotCreated", "PeriodClosed"),
+            ("always_audit_ready_projection", "snapshot_generation_plan", "manual_reconciliation_zero_target"),
+        ),
+        capability(
+            "computational_analytics",
+            "causal_inference_engine",
+            ("causal_scenario", "ledger_projection"),
+            ("/causal-scenarios",),
+            ("TrialBalanceCalculated",),
+            ("counterfactual_scenario_graph", "forecast_linkage", "effect_attribution_report"),
+        ),
+        capability(
+            "intelligence_automation",
+            "autonomous_reconciliation",
+            ("reconciliation_case", "ledger_event_log"),
+            ("/reconciliation-cases",),
+            ("ReconciliationSuggested",),
+            ("ml_match_candidates", "explainable_exception_reason", "self_correcting_posting_suggestion"),
+        ),
+        capability(
+            "intelligence_automation",
+            "semantic_transaction_understanding",
+            ("semantic_source_document", "ledger_account"),
+            ("/semantic-documents",),
+            ("JournalPosted",),
+            ("document_semantic_parse", "account_derivation_trace", "source_to_posting_audit_link"),
+        ),
+        capability(
+            "intelligence_automation",
+            "regulatory_logic_compilation",
+            ("regulatory_rule_version", "policy_decision"),
+            ("/regulatory-rules",),
+            ("RegulatoryRuleCompiled",),
+            ("declarative_rule_versioning", "impact_analysis_plan", "jurisdictional_effective_dates"),
+        ),
+        capability(
+            "intelligence_automation",
+            "predictive_posting_validation",
+            ("predictive_validation_run", "journal_entry"),
+            ("/predictive-validations",),
+            ("PostingValidationPredicted",),
+            ("pre_execution_simulation", "cash_flow_constraint_check", "compliance_risk_score"),
+        ),
+        capability(
+            "compliance_governance",
+            "zero_knowledge_audit_proofs",
+            ("audit_proof", "crypto_key_epoch"),
+            ("/audit-proofs",),
+            ("AuditProofGenerated",),
+            ("proof_channel", "sensitive_data_minimization", "verifier_transcript_hash"),
+        ),
+        capability(
+            "compliance_governance",
+            "dynamic_policy_enforcement",
+            ("policy_decision", "tenant_ledger_partition"),
+            ("/journals", "/predictive-validations"),
+            ("JournalPosted", "PostingValidationPredicted"),
+            ("attribute_policy_context", "real_time_posting_restriction", "policy_decision_audit"),
+        ),
+        capability(
+            "compliance_governance",
+            "immutable_regulatory_trail",
+            ("ledger_event_log", "audit_proof"),
+            ("/ledger-events", "/audit-proofs"),
+            ("LedgerEventAppended", "AuditProofGenerated"),
+            ("hash_chained_mutations", "cryptographic_timestamp", "tamper_evidence_gate"),
+        ),
+        capability(
+            "compliance_governance",
+            "automated_control_testing",
+            ("control_assertion", "policy_decision"),
+            ("/control-tests",),
+            ("RegulatoryRuleCompiled",),
+            ("continuous_control_assertions", "real_time_effectiveness_report", "control_failure_route"),
+        ),
+        capability(
+            "integration_ecosystem",
+            "universal_api_contract",
+            ("ledger_event_log", "ledger_projection"),
+            ("/ledger-events", "/temporal-ledger"),
+            ("LedgerEventAppended", "LedgerProjectionRebuilt"),
+            ("graphql_query_shape", "asyncapi_event_shape", "schema_federation_boundary"),
+        ),
+        capability(
+            "integration_ecosystem",
+            "cross_system_ledger_federation",
+            ("ledger_federation_link", "ledger_projection"),
+            ("/ledger-federation-links", "/temporal-ledger"),
+            ("LedgerProjectionRebuilt",),
+            ("virtual_ledger_view", "external_ledger_mapping", "unified_query_plan"),
+        ),
+        capability(
+            "integration_ecosystem",
+            "event_driven_subledger_synchronization",
+            ("ledger_event_log", "ledger_federation_link"),
+            ("/ledger-events",),
+            ("LedgerEventAppended", "JournalPosted"),
+            ("cdc_contract", "exactly_once_idempotency", "downstream_projection_checkpoint"),
+        ),
+        capability(
+            "integration_ecosystem",
+            "decentralized_identity_integration",
+            ("identity_credential", "policy_decision"),
+            ("/journals",),
+            ("JournalPosted",),
+            ("did_counterparty_binding", "verifiable_credential_check", "signed_inter_entity_transaction"),
+        ),
+        capability(
+            "operational_resilience",
+            "chaos_engineered_fault_tolerance",
+            ("resilience_drill", "consensus_replica"),
+            ("/resilience-drills", "/consensus-commits"),
+            ("ConsensusCommitted",),
+            ("fault_injection_schedule", "consensus_reconfiguration_plan", "graceful_degradation_mode"),
+        ),
+        capability(
+            "operational_resilience",
+            "quantum_resistant_cryptography",
+            ("crypto_key_epoch", "audit_proof"),
+            ("/audit-proofs",),
+            ("AuditProofGenerated",),
+            ("post_quantum_signature_profile", "crypto_agility_epoch", "key_rotation_evidence"),
+        ),
+        capability(
+            "operational_resilience",
+            "carbon_aware_processing",
+            ("carbon_execution_window", "ledger_event_log"),
+            ("/carbon-execution-windows",),
+            ("LedgerEventAppended",),
+            ("renewable_window_scheduler", "emissions_metadata", "carbon_policy_override_log"),
+        ),
+        capability(
+            "theoretical_constructs",
+            "temporal_accounting_algebra",
+            ("ledger_event_log", "ledger_projection", "close_snapshot"),
+            ("/temporal-ledger",),
+            ("LedgerProjectionRebuilt",),
+            ("transaction_valid_processing_time_axes", "lattice_consistency_rules", "temporal_query_laws"),
+        ),
+        capability(
+            "theoretical_constructs",
+            "homomorphic_encryption_for_consolidation",
+            ("audit_proof", "crypto_key_epoch", "ledger_projection"),
+            ("/audit-proofs", "/trial-balance"),
+            ("AuditProofGenerated", "TrialBalanceCalculated"),
+            ("encrypted_consolidation_inputs", "secure_aggregation_protocol", "entity_privacy_boundary"),
+        ),
+        capability(
+            "theoretical_constructs",
+            "game_theoretic_reconciliation",
+            ("reconciliation_case", "ledger_federation_link"),
+            ("/reconciliation-cases",),
+            ("ReconciliationSuggested",),
+            ("settlement_mechanism_design", "equilibrium_score", "dispute_resolution_strategy"),
+        ),
+        capability(
+            "theoretical_constructs",
+            "information_theoretic_auditability",
+            ("audit_proof", "ledger_event_log"),
+            ("/audit-proofs", "/ledger-events"),
+            ("AuditProofGenerated", "LedgerEventAppended"),
+            ("mutation_entropy_metric", "divergence_detection", "information_flow_baseline"),
+        ),
+        capability(
+            "implementation_prerequisites",
+            "formal_methods_ledger_invariants",
+            ("ledger_event_log", "control_assertion"),
+            ("/control-tests",),
+            ("LedgerEventAppended",),
+            ("tla_invariant_catalog", "machine_checked_balance_rules", "counterexample_trace_storage"),
+        ),
+        capability(
+            "implementation_prerequisites",
+            "distributed_systems_runtime",
+            ("consensus_replica", "resilience_drill"),
+            ("/consensus-commits", "/resilience-drills"),
+            ("ConsensusCommitted",),
+            ("consensus_test_harness", "conflict_free_projection_plan", "geo_partition_recovery_runbook"),
+        ),
+        capability(
+            "implementation_prerequisites",
+            "cryptographic_engineering",
+            ("audit_proof", "crypto_key_epoch", "identity_credential"),
+            ("/audit-proofs",),
+            ("AuditProofGenerated",),
+            ("zero_knowledge_circuit_registry", "secure_enclave_attestation", "crypto_agility_tests"),
+        ),
+        capability(
+            "implementation_prerequisites",
+            "financial_mlops",
+            ("predictive_validation_run", "causal_scenario", "reconciliation_case"),
+            ("/predictive-validations", "/causal-scenarios", "/reconciliation-cases"),
+            ("PostingValidationPredicted", "ReconciliationSuggested"),
+            ("regulated_model_registry", "feature_lineage", "drift_and_materiality_monitoring"),
+        ),
+    )
+    areas = tuple(dict.fromkeys(item["area"] for item in capabilities))
+    generated_text = repr(capabilities).lower()
+    legacy_product_references = tuple(
+        term
+        for term in ("sap", "s4hana", "salesforce", "quickbooks")
+        if re.search(rf"(?<![a-z0-9_]){term}(?![a-z0-9_])", generated_text)
+    )
+    checks = (
+        {
+            "id": "all_required_areas",
+            "ok": set(PBC_ADVANCED_DOMAIN_REQUIRED_AREAS) <= set(areas),
+        },
+        {
+            "id": "all_required_capabilities",
+            "ok": set(GL_CORE_ADVANCED_CAPABILITY_KEYS) <= {item["capability"] for item in capabilities},
+        },
+        {
+            "id": "owned_table_evidence",
+            "ok": all(item["owned_tables"] for item in capabilities),
+        },
+        {
+            "id": "api_or_event_evidence",
+            "ok": all(item["apis"] or item["events"] for item in capabilities),
+        },
+        {
+            "id": "release_gate_per_capability",
+            "ok": all(item["release_gate"].startswith("gl_core.") for item in capabilities),
+        },
+        {
+            "id": "no_legacy_product_references",
+            "ok": not legacy_product_references,
+        },
+    )
+    return {
+        "format": "appgen.gl-core-advanced-ledger-blueprint.v1",
+        "ok": all(check["ok"] for check in checks),
+        "pbc": key,
+        "depth_level": PBC_DOMAIN_DEPTH_LEVEL,
+        "areas": areas,
+        "required_areas": PBC_ADVANCED_DOMAIN_REQUIRED_AREAS,
+        "required_capabilities": GL_CORE_ADVANCED_CAPABILITY_KEYS,
+        "capabilities": capabilities,
+        "architecture_principles": (
+            "event_log_primary_persistence",
+            "projection_derived_state",
+            "temporal_queryability",
+            "consensus_backed_replication",
+            "schema_on_read_extension",
+            "tenant_isolated_scaling_and_keys",
+            "cryptographic_auditability",
+            "closed_loop_financial_automation",
+        ),
+        "checks": checks,
+        "legacy_product_references": legacy_product_references,
+        "blocking_gaps": tuple(check for check in checks if not check["ok"]),
     }
 
 

@@ -821,6 +821,14 @@ def test_package_pbc_catalog_composes_enterprise_apps(runner: CliRunner) -> None
     assert gl_implementation["events"]["contract"] == "appgen_event_contract"
     assert gl_implementation["events"]["outbox_table"] == "gl_core_appgen_outbox_event"
     assert gl_implementation["events"]["inbox_table"] == "gl_core_appgen_inbox_event"
+    assert "ledger_event_log" in gl_implementation["manifest"]["tables"]
+    assert "consensus_replica" in gl_implementation["manifest"]["tables"]
+    assert "audit_proof" in gl_implementation["manifest"]["tables"]
+    assert "carbon_execution_window" in gl_implementation["manifest"]["tables"]
+    assert "GET /temporal-ledger" in gl_implementation["manifest"]["apis"]
+    assert "POST /audit-proofs" in gl_implementation["manifest"]["apis"]
+    assert "LedgerEventAppended" in gl_implementation["manifest"]["emits"]
+    assert "AuditProofGenerated" in gl_implementation["manifest"]["emits"]
     assert gl_implementation["services"]["transaction_boundary"] == "owned_datastore_plus_outbox"
     assert gl_implementation["package_metadata"]["entrypoint"] == "register_pbc"
     assert "migrations/001_initial.sql" in gl_implementation["package_metadata"]["artifacts"]
@@ -847,6 +855,55 @@ def test_package_pbc_catalog_composes_enterprise_apps(runner: CliRunner) -> None
     assert "capabilities" in gl_implementation["manifest"]
     assert "workflows" in gl_implementation["manifest"]
     assert "analytics" in gl_implementation["manifest"]
+    advanced_blueprint = gl_implementation["advanced_domain_blueprint"]
+    assert advanced_blueprint["format"] == "appgen.gl-core-advanced-ledger-blueprint.v1"
+    assert advanced_blueprint["ok"] is True
+    assert set(advanced_blueprint["areas"]) == {
+        "foundational_architecture",
+        "computational_analytics",
+        "intelligence_automation",
+        "compliance_governance",
+        "integration_ecosystem",
+        "operational_resilience",
+        "theoretical_constructs",
+        "implementation_prerequisites",
+    }
+    assert {
+        "event_sourced_ledger_core",
+        "distributed_consensus_protocol",
+        "schema_on_read_extensibility",
+        "multi_tenant_isolation",
+        "real_time_olap_oltp_convergence",
+        "probabilistic_accounting_primitives",
+        "continuous_close_architecture",
+        "causal_inference_engine",
+        "autonomous_reconciliation",
+        "semantic_transaction_understanding",
+        "regulatory_logic_compilation",
+        "predictive_posting_validation",
+        "zero_knowledge_audit_proofs",
+        "dynamic_policy_enforcement",
+        "immutable_regulatory_trail",
+        "automated_control_testing",
+        "universal_api_contract",
+        "cross_system_ledger_federation",
+        "event_driven_subledger_synchronization",
+        "decentralized_identity_integration",
+        "chaos_engineered_fault_tolerance",
+        "quantum_resistant_cryptography",
+        "carbon_aware_processing",
+        "temporal_accounting_algebra",
+        "homomorphic_encryption_for_consolidation",
+        "game_theoretic_reconciliation",
+        "information_theoretic_auditability",
+        "formal_methods_ledger_invariants",
+        "distributed_systems_runtime",
+        "cryptographic_engineering",
+        "financial_mlops",
+    } <= {item["capability"] for item in advanced_blueprint["capabilities"]}
+    assert all(item["owned_tables"] for item in advanced_blueprint["capabilities"])
+    assert all(item["apis"] or item["events"] for item in advanced_blueprint["capabilities"])
+    assert not advanced_blueprint["legacy_product_references"]
     assert all(
         table["owned_table"].startswith("gl_core_")
         for table in gl_implementation["owned_schema"]["tables"]
@@ -862,6 +919,7 @@ def test_package_pbc_catalog_composes_enterprise_apps(runner: CliRunner) -> None
     assert implementation_audit["pbc_count"] >= 46
     assert implementation_audit["depth_level"] == "enterprise_suite_displacement"
     assert "domain_depth" in {check["id"].split(":", 1)[1] for check in implementation_audit["checks"]}
+    assert "advanced_domain_blueprint" in {check["id"].split(":", 1)[1] for check in implementation_audit["checks"]}
     assert {"__init__.py", "manifest.py", "models.py", "services.py", "routes.py", "events.py", "handlers.py"} <= set(
         implementation_audit["required_artifacts"]
     )

@@ -36,6 +36,13 @@ stacks, then generate a working application shell from the composition.
   automation loops, analytics, integration contracts, workbench actions, and
   release gates for the selected domain. This is the AppGen-X bar for replacing
   broad enterprise-suite footprints with composable, owned capabilities.
+- The GL core PBC carries a stricter advanced-ledger blueprint: event sourcing,
+  consensus replication, temporal projections, probabilistic accounting,
+  continuous close, causal analysis, autonomous reconciliation, compiled
+  regulatory rules, cryptographic audit proofs, control testing, federation,
+  decentralized identity, resilience drills, crypto-agility, carbon-aware
+  execution, formal invariants, and regulated financial MLOps are release-gated
+  implementation surfaces.
 - Natural-language requests can resolve to PBC selections before generation.
 
 ## Meshes

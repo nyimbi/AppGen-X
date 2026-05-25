@@ -299,6 +299,20 @@ monolithic-suite footprints by composing independently owned operational
 capabilities, event contracts, policy controls, automation, and release
 evidence.
 
+`gl_core` has an additional advanced-ledger blueprint. Its release gate requires
+event-log primary persistence, projection-derived state, consensus replication,
+schema-on-read extension, tenant isolation, real-time operational analytics,
+probabilistic postings, continuous close snapshots, causal scenarios,
+autonomous reconciliation, semantic source-document understanding, regulatory
+rule compilation, predictive validation, zero-knowledge audit proof channels,
+dynamic policy enforcement, immutable regulatory trails, automated controls,
+universal API/event contracts, ledger federation, decentralized identity
+bindings, resilience drills, crypto-agility, carbon-aware execution windows,
+temporal accounting algebra, privacy-preserving consolidation, game-theoretic
+settlement, information-theoretic auditability, formal invariant checks,
+distributed-systems runtime evidence, cryptographic engineering evidence, and
+regulated financial MLOps evidence.
+
 Packages can also be loaded directly by the platform:
 
 ```python
