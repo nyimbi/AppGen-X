@@ -213,6 +213,7 @@ from pyAppGen.form_designer import inspector_invoke_component_handler
 from pyAppGen.form_designer import inspector_binding_designer_bridge_contract
 from pyAppGen.form_designer import inspector_register_custom_designer
 from pyAppGen.form_designer import inspector_rename_event_handler
+from pyAppGen.form_designer import inspector_run_editor_scenario_operation
 from pyAppGen.form_designer import object_inspector_readiness_contract
 from pyAppGen.form_designer import object_inspector_workbench
 from pyAppGen.form_designer import data_relationship_join_plan_contract
@@ -1757,9 +1758,19 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     custom_registration = inspector_register_custom_designer("Grid", "selection_handles")
     assert custom_registration["ok"] is True
     assert "unload_hook" in custom_registration["registration"]["lifecycle"]
+    editor_scenario = inspector_run_editor_scenario_operation("Grid")
+    assert editor_scenario["format"] == "appgen.inspector-editor-scenario-operation.v1"
+    assert editor_scenario["ok"] is True
+    assert {
+        "apply_property_edit",
+        "rename_event_handler",
+        "refresh_binding_bridge",
+        "replay_design_surface",
+    } <= set(editor_scenario["pipeline"])
     inspector_workbench = object_inspector_workbench()
     assert inspector_workbench["format"] == "appgen.object-inspector-workbench.v1"
     assert inspector_workbench["ok"] is True
+    assert inspector_workbench["actionable_operations"]["editor_scenario"]["ok"] is True
     assert {
         "property_editor_types",
         "event_editor_lifecycle",
@@ -5130,6 +5141,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "design_surface_replay",
         "custom_registration_replay",
         "binding_bridge_replay",
+        "editor_scenario_replay",
         "handler_invocation_policy",
         "handler_source_ide_ready",
         "handler_source_ide_modules_ready",
@@ -15806,6 +15818,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "design_surface_replay",
         "custom_registration_replay",
         "binding_bridge_replay",
+        "editor_scenario_replay",
         "handler_invocation_policy",
         "handler_source_ide_ready",
         "handler_source_ide_modules_ready",
@@ -15860,6 +15873,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     inspector_replay = inspector_runtime.replay_inspector_runtime("Grid")
     assert inspector_replay["ok"] is True
     assert {"property_edit", "event_rename", "component_editor"} <= set(inspector_replay["edit_ops"])
+    assert "refresh_binding_bridge" in inspector_replay["scenario_steps"]
     assert inspector_replay["side_effects"] == ()
     binding_runtime_file = output_dir / "binding_runtime.py"
     assert binding_runtime_file.exists()
@@ -16865,6 +16879,16 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     )
     assert generated_editor_result["ok"] is True
     assert form_designer.inspector_register_custom_designer("Grid", "selection_handles")["ok"] is True
+    generated_editor_scenario = form_designer.inspector_run_editor_scenario_operation("Grid")
+    assert generated_editor_scenario["format"] == "appgen.generated-inspector-editor-scenario-operation.v1"
+    assert generated_editor_scenario["ok"] is True
+    assert {
+        "apply_property_edit",
+        "rename_event_handler",
+        "refresh_binding_bridge",
+        "replay_design_surface",
+    } <= set(generated_editor_scenario["pipeline"])
+    assert generated_inspector["actionable_operations"]["editor_scenario"]["ok"] is True
     assert generated_inspector["editor_registries"]
     assert generated_inspector["state_persistence"]["state_keys"]
     assert all("apply_change" in workflow["workflow"] for workflow in generated_inspector["property_edit_workflows"])

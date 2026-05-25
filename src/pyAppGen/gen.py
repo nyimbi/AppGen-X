@@ -17845,6 +17845,7 @@ def inspector_runtime_manifest(component="Grid"):
     form_designer = _load_form_designer()
     workbench = form_designer.object_inspector_workbench()
     contract = form_designer.object_inspector_contract(component)
+    editor_scenario = form_designer.inspector_run_editor_scenario_operation(component)
     check_ids = {check["id"] for check in workbench["checks"] if check["ok"]}
     required_checks = {
         "property_editor_types",
@@ -17885,6 +17886,7 @@ def inspector_runtime_manifest(component="Grid"):
         and bool(contract["component_editors"])
         and bool(contract["custom_designers"])
         and all(operation["ok"] and not operation["side_effects"] for operation in actionables.values())
+        and editor_scenario["ok"]
         and workbench["editor_lifecycle_replay"]["ok"]
         and workbench["custom_designer_registration_replay"]["ok"]
         and workbench["inspector_binding_bridge"]["ok"],
@@ -17898,6 +17900,7 @@ def inspector_runtime_manifest(component="Grid"):
         "custom_designer_registration_replay": workbench["custom_designer_registration_replay"],
         "editor_lifecycle_replay": workbench["editor_lifecycle_replay"],
         "inspector_binding_bridge": workbench["inspector_binding_bridge"],
+        "editor_scenario": editor_scenario,
         "action_registry": workbench["action_registry"],
         "cross_handler_invocation": workbench["cross_handler_invocation"],
         "handler_source_ide": workbench["handler_source_ide"],
@@ -17928,6 +17931,7 @@ def inspector_runtime_manifest(component="Grid"):
             "component_editor_families_are_complete",
             "custom_designer_families_are_complete",
             "binding_bridge_replays_after_property_commit",
+            "editor_scenario_replays_full_surface",
         ),
     }
 
@@ -17941,6 +17945,7 @@ def replay_inspector_runtime(component="Grid"):
     registration_phases = tuple(item["phase"] for item in manifest["custom_designer_registration_replay"]["replay"])
     lifecycle_phases = tuple(item["phase"] for item in manifest["editor_lifecycle_replay"]["replay"])
     binding_phases = tuple(item["phase"] for item in manifest["inspector_binding_bridge"]["replay"])
+    scenario_steps = manifest["editor_scenario"]["pipeline"]
     return {
         "format": "appgen.generated-inspector-runtime-replay.v1",
         "ok": manifest["ok"]
@@ -17949,17 +17954,20 @@ def replay_inspector_runtime(component="Grid"):
         and {"register_custom_designers", "activate_hooks", "round_trip_metadata"} <= set(registration_phases)
         and {"route_event_handlers", "run_component_editor_transactions", "replay_custom_designer_registration"} <= set(lifecycle_phases)
         and {"inspector_property_commit", "binding_link_commit", "runtime_wiring_refresh"} <= set(binding_phases)
+        and {"apply_property_edit", "rename_event_handler", "refresh_binding_bridge", "replay_design_surface"} <= set(scenario_steps)
         and actionables["property_edit"]["ok"]
         and actionables["event_rename"]["ok"]
         and actionables["handler_invoke"]["ok"]
         and actionables["component_editor"]["ok"]
-        and actionables["custom_designer"]["ok"],
+        and actionables["custom_designer"]["ok"]
+        and actionables["editor_scenario"]["ok"],
         "component": component,
         "edit_ops": edit_ops,
         "design_phases": design_phases,
         "registration_phases": registration_phases,
         "lifecycle_phases": lifecycle_phases,
         "binding_phases": binding_phases,
+        "scenario_steps": scenario_steps,
         "side_effects": (),
     }
 
@@ -17991,6 +17999,7 @@ def validate_inspector_runtime(component="Grid"):
         {"id": "design_surface_replay", "ok": manifest["design_surface_replay"]["ok"] and not manifest["design_surface_replay"]["side_effects"]},
         {"id": "custom_registration_replay", "ok": manifest["custom_designer_registration_replay"]["ok"] and not manifest["custom_designer_registration_replay"]["side_effects"]},
         {"id": "binding_bridge_replay", "ok": manifest["inspector_binding_bridge"]["ok"] and not manifest["inspector_binding_bridge"]["side_effects"]},
+        {"id": "editor_scenario_replay", "ok": manifest["editor_scenario"]["ok"] and not manifest["editor_scenario"]["side_effects"]},
         {"id": "handler_invocation_policy", "ok": manifest["cross_handler_invocation"]["ok"] and "cycle_guard_required" in manifest["cross_handler_invocation"]["guards"]},
         {"id": "handler_source_ide_ready", "ok": manifest["handler_source_ide"]["ok"] and not manifest["handler_source_ide"]["side_effects"]},
         {"id": "handler_source_ide_modules_ready", "ok": handler_source_modules["ok"] and not handler_source_modules["side_effects"]},
@@ -51197,6 +51206,83 @@ def object_inspector_readiness_contract(components=()):
     }}
 
 
+def inspector_run_editor_scenario_operation(component="Grid"):
+    """Return a side-effect-free generated Object Inspector scenario across editors, handlers, and bindings."""
+    contract = object_inspector_contract(component)
+    runtime = component_runtime_contract(contract["component"])
+    property_name = next(iter(runtime["default_props"]), "name")
+    property_edit = inspector_apply_property_edit(
+        {{"component": contract["component"], "props": dict(runtime["default_props"])}},
+        property_name,
+        "scenario-value",
+    )
+    event_name = contract["event_editors"][0]["name"] if contract["event_editors"] else "OnClick"
+    event_create = inspector_create_event_handler(contract["component"], event_name)
+    event_rename = inspector_rename_event_handler(
+        event_create.get("binding", {{}}),
+        f"{{_module_name(contract['component'])}}_{{_module_name(event_name)}}_scenario",
+    )
+    component_editor = inspector_execute_component_editor(
+        contract["component"],
+        "edit_columns",
+        selection=(f"{{_module_name(contract['component'])}}_1",),
+    )
+    custom_designer = inspector_register_custom_designer(contract["component"], "selection_handles")
+    handler_invoke = inspector_invoke_component_handler(
+        event_rename.get("binding", {{}}).get("handler", "scenario_handler"),
+        contract["component"],
+        event_name,
+        {{"sender": f"{{_module_name(contract['component'])}}_1", "transaction": "scenario", "component_tree": "ScenarioForm"}},
+    )
+    binding_bridge = inspector_binding_designer_bridge_contract()
+    design_surface = inspector_design_surface_transaction_replay_contract((contract["component"],))
+    editor_lifecycle = inspector_editor_lifecycle_replay_contract((contract["component"],))
+    pipeline = (
+        "load_inspector_metadata",
+        "apply_property_edit",
+        "create_event_handler",
+        "rename_event_handler",
+        "invoke_component_handler",
+        "run_component_editor",
+        "register_custom_designer",
+        "refresh_binding_bridge",
+        "replay_design_surface",
+        "record_undo_redo",
+    )
+    return {{
+        "format": "appgen.generated-inspector-editor-scenario-operation.v1",
+        "ok": property_edit["ok"]
+        and event_create["ok"]
+        and event_rename["ok"]
+        and handler_invoke["ok"]
+        and component_editor["ok"]
+        and custom_designer["ok"]
+        and binding_bridge["ok"]
+        and design_surface["ok"]
+        and editor_lifecycle["ok"]
+        and {{"refresh_binding_bridge", "record_undo_redo"}} <= set(pipeline),
+        "component": contract["component"],
+        "property_edit": property_edit,
+        "event_create": event_create,
+        "event_rename": event_rename,
+        "handler_invoke": handler_invoke,
+        "component_editor": component_editor,
+        "custom_designer": custom_designer,
+        "binding_bridge": binding_bridge,
+        "design_surface": design_surface,
+        "editor_lifecycle": editor_lifecycle,
+        "pipeline": pipeline,
+        "guards": (
+            "property_commit_before_binding_refresh",
+            "event_rename_before_handler_invoke",
+            "component_editor_is_undoable",
+            "custom_designer_isolated",
+            "design_surface_replay_after_editor_ops",
+        ),
+        "side_effects": (),
+    }}
+
+
 def object_inspector_workbench():
     """Prove property, event, component-editor, and custom-designer coverage."""
     sample_components = ("TextBox", "Grid", "Rectangle", "StyleBook", "GestureManager", "Viewport3D", "DatabaseConnection")
@@ -51272,6 +51358,7 @@ def object_inspector_workbench():
     )
     component_editor_operation = inspector_execute_component_editor("Grid", "edit_columns", selection=("customer_grid",))
     custom_designer_operation = inspector_register_custom_designer("Grid", "selection_handles")
+    editor_scenario_operation = inspector_run_editor_scenario_operation("Grid")
     checks = (
         {{"id": "property_editor_types", "ok": {{"string", "boolean", "number"}} <= observed_editor_types and bool({{"collection", "choice", "binding", "color", "resource"}} & observed_editor_types), "evidence": tuple(sorted(observed_editor_types))}},
         {{"id": "event_editor_lifecycle", "ok": all(editor["supports_create"] and editor["supports_navigate"] and editor["supports_detach"] for contract in contracts for editor in contract["event_editors"]), "evidence": tuple((contract["component"], tuple(editor["name"] for editor in contract["event_editors"])) for contract in contracts)}},
@@ -51318,12 +51405,14 @@ def object_inspector_workbench():
             and handler_invoke_operation["ok"]
             and component_editor_operation["ok"]
             and custom_designer_operation["ok"]
+            and editor_scenario_operation["ok"]
             and not property_edit_operation["side_effects"]
             and not event_create_operation["side_effects"]
             and not event_rename_operation["side_effects"]
             and not handler_invoke_operation["side_effects"]
             and not component_editor_operation["side_effects"]
-            and not custom_designer_operation["side_effects"],
+            and not custom_designer_operation["side_effects"]
+            and not editor_scenario_operation["side_effects"],
             "evidence": {{
                 "property_edit": property_edit_operation,
                 "event_create": event_create_operation,
@@ -51331,6 +51420,7 @@ def object_inspector_workbench():
                 "handler_invoke": handler_invoke_operation,
                 "component_editor": component_editor_operation,
                 "custom_designer": custom_designer_operation,
+                "editor_scenario": editor_scenario_operation,
             }},
         }},
         {{"id": "inspector_readiness_contract", "ok": readiness["ok"] and {{"editor_metadata_ready", "property_event_ready", "component_custom_designer_ready", "state_design_surface_ready", "binding_handler_ready", "lifecycle_round_trip_ready", "operation_surface_ready", "phase_order_ready"}} <= {{check["id"] for check in readiness["checks"] if check["ok"]}} and not readiness["side_effects"], "evidence": readiness}},
@@ -51419,6 +51509,7 @@ def object_inspector_workbench():
             "handler_invoke": handler_invoke_operation,
             "component_editor": component_editor_operation,
             "custom_designer": custom_designer_operation,
+            "editor_scenario": editor_scenario_operation,
         }},
         "checks": checks,
         "blocking_gaps": tuple(check for check in checks if not check["ok"]),
