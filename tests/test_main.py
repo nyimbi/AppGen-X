@@ -3397,6 +3397,21 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     assert set(data_tooling_gate["required_publish_phases"]) <= set(data_tooling_gate["passing_publish_phases"])
     assert set(data_tooling_gate["required_failover_phases"]) <= set(data_tooling_gate["passing_failover_phases"])
     assert set(data_tooling_gate["required_readiness_phases"]) <= set(data_tooling_gate["passing_readiness_phases"])
+    assert set(data_tooling_gate["required_operation_names"]) <= set(data_tooling_gate["passing_operation_names"])
+    assert set(data_tooling_gate["required_module_test_names"]) <= set(data_tooling_gate["passing_module_test_names"])
+    assert set(data_tooling_gate["required_deep_data_test_surfaces"]) <= set(
+        data_tooling_gate["passing_deep_data_test_surfaces"]
+    )
+    assert set(data_tooling_gate["required_readiness_checks"]) <= set(data_tooling_gate["passing_readiness_checks"])
+    assert set(data_tooling_gate["required_design_runtime_phases"]) <= set(
+        data_tooling_gate["passing_design_runtime_phases"]
+    )
+    assert set(data_tooling_gate["required_relationship_lookup_checks"]) <= set(
+        data_tooling_gate["passing_relationship_lookup_checks"]
+    )
+    assert set(data_tooling_gate["required_module_smoke_modules"]) <= set(
+        data_tooling_gate["passing_module_smoke_modules"]
+    )
     assert set(data_tooling_gate["required_checks"]) <= set(data_tooling_gate["passing_checks"])
     package_gate = next(
         check for check in audit["rad_parity"]["checks"] if check["id"] == "design_time_package_installation"

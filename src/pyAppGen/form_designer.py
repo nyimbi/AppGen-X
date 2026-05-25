@@ -15381,6 +15381,69 @@ def rad_parity_workbench(existing_paths: set[str] | None = None) -> dict:
     passing_data_readiness_phases = tuple(
         phase["phase"] for phase in data_tooling_workbench["readiness"]["phases"] if phase["ok"]
     )
+    required_data_operation_names = (
+        "test_connection",
+        "preview_query",
+        "preview_schema_diff",
+        "generate_lookup_editors",
+        "publish_resource",
+        "browse_schema",
+        "design_dataset",
+        "rehearse_offline_replay",
+        "monitor_replication",
+        "run_module_smoke",
+    )
+    passing_data_operation_names = tuple(data_tooling_workbench["actionable_operations"]["operations"])
+    passing_data_module_test_names = tuple(
+        artifact["module"] for artifact in data_tooling_workbench["data_module_test_artifacts"] if artifact["ok"]
+    )
+    passing_deep_data_test_surfaces = tuple(
+        artifact["surface"]
+        for artifact in data_tooling_workbench["deep_data_tooling_module_test_artifacts"]
+        if artifact["ok"]
+    )
+    required_data_readiness_checks = (
+        "connection_ready",
+        "dataset_ready",
+        "publish_ready",
+        "offline_replay_ready",
+        "replication_failover_ready",
+        "diagnostics_ready",
+        "operation_surface_ready",
+        "phase_order_ready",
+    )
+    passing_data_readiness_checks = tuple(
+        check["id"] for check in data_tooling_workbench["readiness"]["checks"] if check["ok"]
+    )
+    required_data_design_runtime_phases = (
+        "connection_profile",
+        "schema_introspection",
+        "schema_change_rehearsal",
+        "dataset_designer",
+        "lookup_generation",
+        "dataset_lifecycle",
+        "service_contract",
+        "offline_integrity",
+        "runtime_replay",
+        "operational_monitoring",
+    )
+    passing_data_design_runtime_phases = tuple(
+        phase["phase"] for phase in data_tooling_workbench["design_runtime_replay"]["replay"] if phase["ok"]
+    )
+    required_data_relationship_lookup_checks = (
+        "all_foreign_keys_get_lookup_editors",
+        "multi_hop_chain_preserved",
+        "lookup_preview_before_publish",
+        "runtime_artifacts_declared",
+        "side_effect_guards",
+    )
+    passing_data_relationship_lookup_checks = tuple(
+        check["id"] for check in data_tooling_workbench["relationship_lookup_lifecycle"]["checks"] if check["ok"]
+    )
+    required_data_module_smoke_modules = required_data_module_names
+    passing_data_module_smoke_modules = tuple(
+        test["module"] for test in data_tooling_workbench["module_runtime_smoke"]["smoke_tests"]
+    )
     required_data_tooling_checks = (
         "connection_catalog",
         "query_designer",
@@ -16395,7 +16458,14 @@ def rad_parity_workbench(existing_paths: set[str] | None = None) -> dict:
             and set(required_data_runtime_ops) <= set(passing_data_runtime_ops)
             and set(required_data_publish_phases) <= set(passing_data_publish_phases)
             and set(required_data_failover_phases) <= set(passing_data_failover_phases)
-            and set(required_data_readiness_phases) <= set(passing_data_readiness_phases),
+            and set(required_data_readiness_phases) <= set(passing_data_readiness_phases)
+            and set(required_data_operation_names) <= set(passing_data_operation_names)
+            and set(required_data_module_names) <= set(passing_data_module_test_names)
+            and set(required_deep_data_surfaces) <= set(passing_deep_data_test_surfaces)
+            and set(required_data_readiness_checks) <= set(passing_data_readiness_checks)
+            and set(required_data_design_runtime_phases) <= set(passing_data_design_runtime_phases)
+            and set(required_data_relationship_lookup_checks) <= set(passing_data_relationship_lookup_checks)
+            and set(required_data_module_smoke_modules) <= set(passing_data_module_smoke_modules),
             "required_tooling": required_data_tooling_names,
             "passing_tooling": passing_data_tooling_names,
             "required_connection_profiles": required_data_connection_profiles,
@@ -16422,6 +16492,20 @@ def rad_parity_workbench(existing_paths: set[str] | None = None) -> dict:
             "passing_failover_phases": passing_data_failover_phases,
             "required_readiness_phases": required_data_readiness_phases,
             "passing_readiness_phases": passing_data_readiness_phases,
+            "required_operation_names": required_data_operation_names,
+            "passing_operation_names": passing_data_operation_names,
+            "required_module_test_names": required_data_module_names,
+            "passing_module_test_names": passing_data_module_test_names,
+            "required_deep_data_test_surfaces": required_deep_data_surfaces,
+            "passing_deep_data_test_surfaces": passing_deep_data_test_surfaces,
+            "required_readiness_checks": required_data_readiness_checks,
+            "passing_readiness_checks": passing_data_readiness_checks,
+            "required_design_runtime_phases": required_data_design_runtime_phases,
+            "passing_design_runtime_phases": passing_data_design_runtime_phases,
+            "required_relationship_lookup_checks": required_data_relationship_lookup_checks,
+            "passing_relationship_lookup_checks": passing_data_relationship_lookup_checks,
+            "required_module_smoke_modules": required_data_module_smoke_modules,
+            "passing_module_smoke_modules": passing_data_module_smoke_modules,
             "required_checks": required_data_tooling_checks,
             "passing_checks": passing_data_tooling_checks,
             "evidence": {"contract": data_tooling_contract, "workbench": data_tooling_workbench},
