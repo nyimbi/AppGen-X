@@ -17327,6 +17327,7 @@ def component_parity_runtime_manifest():
     groups = form_designer.component_analog_group_audit()
     behavior = form_designer.component_behavior_workbench()
     usability = form_designer.component_usability_workbench()
+    parity_scenario = form_designer.component_run_parity_scenario_operation()
     required_groups = {
         "cross-target-ui",
         "layouts",
@@ -17367,6 +17368,7 @@ def component_parity_runtime_manifest():
         "module_smoke_tests",
         "requested_analog_coverage",
         "component_behavior",
+        "component_parity_scenario",
     }
     return {
         "format": "appgen.generated-component-parity-runtime-manifest.v1",
@@ -17374,6 +17376,7 @@ def component_parity_runtime_manifest():
         and groups["ok"]
         and behavior["ok"]
         and usability["ok"]
+        and parity_scenario["ok"]
         and required_groups <= set(analogs["groups"])
         and required_groups <= {item["group"] for item in groups["groups"]}
         and all(item["implemented"] and item["contract"]["usable"] for item in analogs["matrix"])
@@ -17385,6 +17388,7 @@ def component_parity_runtime_manifest():
         "analogs": analogs,
         "behavior": behavior,
         "usability": usability,
+        "parity_scenario": parity_scenario,
         "required_groups": tuple(sorted(required_groups)),
         "required_behavior_checks": tuple(sorted(required_behavior_checks)),
         "required_usability_checks": tuple(sorted(required_usability_checks)),
@@ -17394,6 +17398,7 @@ def component_parity_runtime_manifest():
             "behavior_replay_per_requested_analog",
             "per_component_files_smoke_tested",
             "design_surface_actions_available",
+            "component_scenario_replay_ready",
         ),
     }
 
@@ -17407,6 +17412,7 @@ def replay_component_parity_runtime():
     module_paths = tuple(item["path"] for item in manifest["usability"]["component_files"])
     package_paths = tuple(item["path"] for item in manifest["usability"]["package_files"])
     family_paths = tuple(item["path"] for item in manifest["usability"]["component_family_modules"])
+    scenario_steps = tuple(step["id"] for step in manifest["parity_scenario"]["steps"] if step["ok"])
     return {
         "format": "appgen.generated-component-parity-runtime-replay.v1",
         "ok": manifest["ok"]
@@ -17415,6 +17421,7 @@ def replay_component_parity_runtime():
         and all(path.startswith("app/component_contracts/") for path in module_paths)
         and all(path.startswith("app/component_packages/") for path in package_paths)
         and all(path.startswith("app/component_family_modules/") for path in family_paths)
+        and "release_component_to_ide" in scenario_steps
         and manifest["component_count"] >= manifest["analog_count"],
         "analog_components": analog_components,
         "behavior_components": behavior_components,
@@ -17422,6 +17429,7 @@ def replay_component_parity_runtime():
         "module_paths": module_paths,
         "package_paths": package_paths,
         "family_paths": family_paths,
+        "scenario_steps": scenario_steps,
         "side_effects": (),
     }
 
@@ -17440,6 +17448,7 @@ def validate_component_parity_runtime():
         {"id": "component_tests_ready", "ok": all(item["ok"] for item in manifest["usability"]["component_test_files"]) and all(item["ok"] for item in manifest["usability"]["package_test_files"])},
         {"id": "component_family_modules_ready", "ok": all(item["ok"] for item in manifest["usability"]["component_family_modules"])},
         {"id": "component_family_module_tests_ready", "ok": all(item["ok"] for item in manifest["usability"]["component_family_module_tests"])},
+        {"id": "component_parity_scenario_ready", "ok": manifest["parity_scenario"]["ok"] and "release_component_to_ide" in replay["scenario_steps"]},
         {"id": "runtime_replay_ready", "ok": replay["ok"] and not replay["side_effects"]},
     )
     return {
@@ -53861,6 +53870,7 @@ def component_parity_readiness_contract(existing_paths=None):
     component_files = component_file_manifest(existing_paths)
     component_tests = component_test_file_manifest(existing_paths)
     ide_readiness = component_ide_readiness_catalog(existing_paths)
+    parity_scenario = component_run_parity_scenario_operation("Button", existing_paths)
     phases = (
         {{
             "phase": "analog_coverage",
@@ -53888,6 +53898,11 @@ def component_parity_readiness_contract(existing_paths=None):
             "evidence": tuple(item["path"] for item in component_tests),
         }},
         {{
+            "phase": "component_scenario",
+            "ok": parity_scenario["ok"] and not parity_scenario["side_effects"],
+            "evidence": tuple(step["id"] for step in parity_scenario["steps"] if step["ok"]),
+        }},
+        {{
             "phase": "ide_catalog_release",
             "ok": ide_readiness["ok"] and len(ide_readiness["entries"]) == len(PALETTE) and all(item["ready"] for item in ide_readiness["entries"]),
             "evidence": tuple(check["id"] for check in ide_readiness["checks"] if check["ok"]),
@@ -53900,10 +53915,11 @@ def component_parity_readiness_contract(existing_paths=None):
         {{"id": "behavior_surface_ready", "ok": phases[2]["ok"] and phase_names.index("palette_icon_surface") < phase_names.index("runtime_behavior"), "evidence": phases[2]["evidence"]}},
         {{"id": "generated_modules_ready", "ok": phases[3]["ok"] and phase_names.index("runtime_behavior") < phase_names.index("generated_modules"), "evidence": phases[3]["evidence"]}},
         {{"id": "generated_tests_ready", "ok": phases[4]["ok"] and phase_names.index("generated_modules") < phase_names.index("generated_tests"), "evidence": phases[4]["evidence"]}},
-        {{"id": "ide_release_ready", "ok": phases[5]["ok"] and phase_names.index("generated_tests") < phase_names.index("ide_catalog_release"), "evidence": phases[5]["evidence"]}},
+        {{"id": "scenario_ready", "ok": phases[5]["ok"] and phase_names.index("generated_tests") < phase_names.index("component_scenario"), "evidence": parity_scenario}},
+        {{"id": "ide_release_ready", "ok": phases[6]["ok"] and phase_names.index("component_scenario") < phase_names.index("ide_catalog_release"), "evidence": phases[6]["evidence"]}},
         {{
             "id": "phase_order_ready",
-            "ok": phase_names == ("analog_coverage", "palette_icon_surface", "runtime_behavior", "generated_modules", "generated_tests", "ide_catalog_release") and all(phase["ok"] for phase in phases),
+            "ok": phase_names == ("analog_coverage", "palette_icon_surface", "runtime_behavior", "generated_modules", "generated_tests", "component_scenario", "ide_catalog_release") and all(phase["ok"] for phase in phases),
             "evidence": phase_names,
         }},
         {{
@@ -53919,8 +53935,71 @@ def component_parity_readiness_contract(existing_paths=None):
         "decision": "approved" if ok else "blocked",
         "phases": phases,
         "checks": checks,
+        "parity_scenario": parity_scenario,
         "side_effects": (),
         "blocking_gaps": tuple(check for check in checks if not check["ok"]),
+    }}
+
+
+def component_run_parity_scenario_operation(component="Button", existing_paths=None):
+    """Replay a complete generated component selection, proof, and release scenario."""
+    analog_matrix = component_analog_matrix()
+    groups = component_analog_group_audit()
+    palette = component_palette()
+    palette_types = {{item["type"] for item in palette}}
+    behavior = component_behavior_contract(component) if component in palette_types else None
+    component_files = component_file_manifest(existing_paths)
+    component_tests = component_test_file_manifest(existing_paths)
+    family_modules = component_family_module_file_manifest(existing_paths)
+    family_tests = component_family_module_test_file_manifest(existing_paths)
+    component_file = next((item for item in component_files if item["component"] == component), None)
+    component_test = next((item for item in component_tests if item["component"] == component), None)
+    analog_entry = next((item for item in analog_matrix if item["analog"] == component), None)
+    group_entry = next((item for item in groups["groups"] if component in item["analogs"]), None)
+    palette_entry = next((item for item in palette if item["type"] == component), None)
+    required_behavior_checks = {{"render_nodes", "property_validation", "event_dispatch", "target_adapters", "binding_surface", "category_capabilities", "designer_metadata", "design_surface_actions"}}
+    behavior_check_ids = {{check["id"] for check in behavior["checks"] if check["ok"]}} if behavior else set()
+    steps = (
+        {{"id": "select_component_family", "ok": analog_entry is not None and group_entry is not None and group_entry["ok"], "evidence": {{"component": component, "group": group_entry["group"] if group_entry else None}}}},
+        {{"id": "validate_component_contract", "ok": analog_entry is not None and analog_entry["implemented"] and analog_entry["contract"]["usable"], "evidence": analog_entry}},
+        {{"id": "load_palette_icon", "ok": palette_entry is not None and palette_entry["icon"].startswith("fa-"), "evidence": palette_entry}},
+        {{"id": "replay_design_behavior", "ok": behavior is not None and behavior["ok"] and required_behavior_checks <= behavior_check_ids, "evidence": behavior}},
+        {{"id": "assert_binding_surface", "ok": behavior is not None and bool(behavior["binding_surface"]["binding_modes"]) and not behavior["binding_surface"]["side_effects"], "evidence": behavior["binding_surface"] if behavior else None}},
+        {{"id": "verify_generated_module", "ok": component_file is not None and component_file["exists"] and component_file["module_contract"]["ok"] and "smoke_test" in component_file["exports"], "evidence": component_file}},
+        {{"id": "verify_generated_module_test", "ok": component_test is not None and component_test["exists"] and component_test["ok"] and "test_component_smoke" in component_test["exports"], "evidence": component_test}},
+        {{"id": "prove_family_modules", "ok": group_entry is not None and any(item["group"] == group_entry["group"] and item["exists"] and item["ok"] for item in family_modules) and any(item["group"] == group_entry["group"] and item["exists"] and item["ok"] for item in family_tests), "evidence": {{"modules": tuple(item for item in family_modules if group_entry and item["group"] == group_entry["group"]), "tests": tuple(item for item in family_tests if group_entry and item["group"] == group_entry["group"])}}}},
+        {{"id": "release_component_to_ide", "ok": behavior is not None and behavior["design_surface"]["ok"] and component_file is not None and component_test is not None and not behavior["design_surface"]["side_effects"], "evidence": behavior["design_surface"] if behavior else None}},
+    )
+    step_ids = tuple(step["id"] for step in steps)
+    checks = (
+        {{"id": "component_contract_before_palette_use", "ok": step_ids.index("validate_component_contract") < step_ids.index("load_palette_icon")}},
+        {{"id": "behavior_replay_before_generated_module_claim", "ok": step_ids.index("replay_design_behavior") < step_ids.index("verify_generated_module")}},
+        {{"id": "generated_modules_and_tests_required", "ok": steps[5]["ok"] and steps[6]["ok"]}},
+        {{"id": "family_module_evidence_required", "ok": steps[7]["ok"]}},
+        {{"id": "release_requires_design_surface", "ok": steps[8]["ok"] and step_ids.index("release_component_to_ide") == len(step_ids) - 1}},
+        {{"id": "side_effect_free_component_scenario", "ok": behavior is not None and not behavior["render"]["side_effects"] and not behavior["validation"]["side_effects"] and not behavior["design_surface"]["side_effects"]}},
+    )
+    ok = all(step["ok"] for step in steps) and all(check["ok"] for check in checks)
+    return {{
+        "format": "appgen.generated-component-parity-scenario-operation.v1",
+        "ok": ok,
+        "decision": "approved" if ok else "blocked",
+        "component": component,
+        "group": group_entry["group"] if group_entry else None,
+        "steps": steps,
+        "checks": checks,
+        "final_state": {{
+            "component": component,
+            "group": group_entry["group"] if group_entry else None,
+            "behavior_checks": tuple(sorted(behavior_check_ids)),
+            "family_modules": tuple(item["path"] for item in family_modules if group_entry and item["group"] == group_entry["group"]),
+            "family_tests": tuple(item["path"] for item in family_tests if group_entry and item["group"] == group_entry["group"]),
+            "generated_module": component_file["path"] if component_file else None,
+            "generated_test": component_test["path"] if component_test else None,
+            "side_effects": (),
+        }},
+        "side_effects": (),
+        "blocking_gaps": tuple(step for step in steps if not step["ok"]) + tuple(check for check in checks if not check["ok"]),
     }}
 
 
@@ -54021,6 +54100,7 @@ def component_usability_workbench(existing_paths=None):
     behavior_workbench = component_behavior_workbench()
     ide_readiness = component_ide_readiness_catalog(existing_paths)
     readiness = component_parity_readiness_contract(existing_paths)
+    parity_scenario = component_run_parity_scenario_operation("Button", existing_paths)
     checks = (
         {{"id": "complete_catalog", "ok": len(contracts) == len(PALETTE), "evidence": {{"component_count": len(contracts)}}}},
         {{"id": "runtime_renderers", "ok": all({{"web", "mobile", "desktop"}} <= set(item["renderers"]) for item in contracts), "evidence": tuple((item["component"], tuple(item["renderers"])) for item in contracts)}},
@@ -54040,7 +54120,8 @@ def component_usability_workbench(existing_paths=None):
         {{"id": "requested_analog_coverage", "ok": analog_workbench["ok"], "evidence": analog_workbench}},
         {{"id": "component_behavior", "ok": behavior_workbench["ok"], "evidence": behavior_workbench}},
         {{"id": "ide_readiness_catalog", "ok": ide_readiness["ok"], "evidence": ide_readiness}},
-        {{"id": "component_parity_readiness", "ok": readiness["ok"] and {{"analog_coverage_ready", "palette_icons_ready", "behavior_surface_ready", "generated_modules_ready", "generated_tests_ready", "ide_release_ready", "phase_order_ready", "side_effect_guard_ready"}} <= {{check["id"] for check in readiness["checks"] if check["ok"]}} and not readiness["side_effects"], "evidence": readiness}},
+        {{"id": "component_parity_readiness", "ok": readiness["ok"] and {{"analog_coverage_ready", "palette_icons_ready", "behavior_surface_ready", "generated_modules_ready", "generated_tests_ready", "scenario_ready", "ide_release_ready", "phase_order_ready", "side_effect_guard_ready"}} <= {{check["id"] for check in readiness["checks"] if check["ok"]}} and not readiness["side_effects"], "evidence": readiness}},
+        {{"id": "component_parity_scenario", "ok": parity_scenario["ok"] and {{"select_component_family", "validate_component_contract", "load_palette_icon", "replay_design_behavior", "assert_binding_surface", "verify_generated_module", "verify_generated_module_test", "prove_family_modules", "release_component_to_ide"}} <= {{step["id"] for step in parity_scenario["steps"] if step["ok"]}} and not parity_scenario["side_effects"], "evidence": parity_scenario}},
     )
     ok = all(check["ok"] for check in checks)
     return {{
@@ -54059,6 +54140,7 @@ def component_usability_workbench(existing_paths=None):
         "behavior_workbench": behavior_workbench,
         "ide_readiness": ide_readiness,
         "component_readiness": readiness,
+        "parity_scenario": parity_scenario,
         "checks": checks,
         "blocking_gaps": tuple(check for check in checks if not check["ok"]),
     }}
@@ -60594,7 +60676,7 @@ def platform_parity_lifecycle_replay_contract():
     mobile_passing_checks = {{check["id"] for check in mobile["checks"] if check["ok"]}}
     visual_passing_checks = {{check["id"] for check in visual["checks"] if check["ok"]}}
     replay = (
-        {{"phase": "component_surface_baseline", "ok": analog_groups["ok"] and usability["ok"] and component_readiness["ok"] and "phase_order_ready" in component_readiness_passing_checks and {{"analog_coverage_ready", "palette_icons_ready", "behavior_surface_ready", "generated_modules_ready", "generated_tests_ready", "ide_release_ready"}} <= component_readiness_passing_checks and {{"per_component_files", "per_package_files", "per_component_test_files", "per_package_test_files", "component_family_modules", "component_family_module_tests", "module_smoke_tests"}} <= component_usability_passing_checks, "evidence": {{"groups": tuple(group["group"] for group in analog_groups["groups"]), "component_count": usability["component_count"], "readiness_passing_checks": tuple(sorted(component_readiness_passing_checks)), "usability_passing_checks": tuple(sorted(component_usability_passing_checks)), "readiness_phases": tuple(phase["phase"] for phase in component_readiness["phases"])}}}},
+        {{"phase": "component_surface_baseline", "ok": analog_groups["ok"] and usability["ok"] and component_readiness["ok"] and "phase_order_ready" in component_readiness_passing_checks and {{"analog_coverage_ready", "palette_icons_ready", "behavior_surface_ready", "generated_modules_ready", "generated_tests_ready", "scenario_ready", "ide_release_ready"}} <= component_readiness_passing_checks and {{"per_component_files", "per_package_files", "per_component_test_files", "per_package_test_files", "component_family_modules", "component_family_module_tests", "module_smoke_tests", "component_parity_scenario"}} <= component_usability_passing_checks, "evidence": {{"groups": tuple(group["group"] for group in analog_groups["groups"]), "component_count": usability["component_count"], "readiness_passing_checks": tuple(sorted(component_readiness_passing_checks)), "usability_passing_checks": tuple(sorted(component_usability_passing_checks)), "readiness_phases": tuple(phase["phase"] for phase in component_readiness["phases"])}}}},
         {{"phase": "stream_runtime_model", "ok": runtime["ok"] and runtime_readiness["ok"] and "phase_order_ready" in {{check["id"] for check in runtime_readiness["checks"] if check["ok"]}} and {{"form_stream_schema", "runtime_session_replay", "event_binding_lifecycle"}} <= runtime_passing_checks, "evidence": {{"checks": tuple(check["id"] for check in runtime["checks"]), "passing_checks": tuple(sorted(runtime_passing_checks)), "runtime_state": runtime["runtime_replay"]["final_state"], "readiness_phases": tuple(phase["phase"] for phase in runtime_readiness["phases"])}}}},
         {{"phase": "inspect_and_bind_design", "ok": inspector["ok"] and inspector_readiness["ok"] and bindings["ok"] and binding_readiness["ok"] and inspector["cross_component_replay"]["ok"] and bindings["designer_transaction_replay"]["ok"] and bindings["designer_scenario"]["ok"] and "phase_order_ready" in {{check["id"] for check in inspector_readiness["checks"] if check["ok"]}} and "phase_order_ready" in {{check["id"] for check in binding_readiness["checks"] if check["ok"]}} and {{"component_editor_transaction", "custom_designer_registration_replay", "editor_lifecycle_replay", "design_surface_transaction_replay"}} <= inspector_passing_checks and {{"designer_transaction_replay", "design_runtime_session_replay", "binding_lifecycle_release_replay", "binding_designer_scenario"}} <= binding_passing_checks, "evidence": {{"inspector_checks": tuple(check["id"] for check in inspector["checks"]), "inspector_passing_checks": tuple(sorted(inspector_passing_checks)), "binding_checks": tuple(check["id"] for check in bindings["checks"]), "binding_passing_checks": tuple(sorted(binding_passing_checks)), "inspector_readiness_phases": tuple(phase["phase"] for phase in inspector_readiness["phases"]), "binding_readiness_phases": tuple(phase["phase"] for phase in binding_readiness["phases"])}}}},
         {{"phase": "publish_data_services", "ok": data_tooling["ok"] and data_readiness["ok"] and "phase_order_ready" in {{check["id"] for check in data_readiness["checks"] if check["ok"]}} and data_tooling["publish_transaction_replay"]["ok"] and data_tooling["ide_scenario"]["ok"] and {{"relationship_lookup_lifecycle_replay", "data_tooling_design_runtime_session_replay", "data_tooling_publish_transaction_replay", "data_tooling_ide_scenario"}} <= data_tooling_passing_checks and {{"schema_rehearsal_before_dataset_publish", "service_contract_tests_before_resource_publish", "offline_integrity_before_runtime_replay"}} <= set(data_tooling["publish_transaction_replay"]["guards"]), "evidence": {{"checks": tuple(check["id"] for check in data_tooling["checks"]), "passing_checks": tuple(sorted(data_tooling_passing_checks)), "publish_state": data_tooling["publish_transaction_replay"]["final_state"], "scenario_state": data_tooling["ide_scenario"]["final_state"], "readiness_phases": tuple(phase["phase"] for phase in data_readiness["phases"])}}}},
@@ -60660,7 +60742,7 @@ def platform_parity_requirement_audit_contract():
                 passing.update(_passing_evidence_check_ids(nested))
         return passing
     requirements = (
-        {{"id": "component_parity", "ok": analog_groups["ok"] and component_readiness["ok"] and component_usability["ok"] and {{"analog_coverage_ready", "palette_icons_ready", "behavior_surface_ready", "generated_modules_ready", "generated_tests_ready", "ide_release_ready", "phase_order_ready"}} <= {{check["id"] for check in component_readiness["checks"] if check["ok"]}} and {{"per_component_files", "per_package_files", "per_component_test_files", "per_package_test_files", "component_family_modules", "component_family_module_tests", "module_smoke_tests", "component_parity_readiness"}} <= {{check["id"] for check in component_usability["checks"] if check["ok"]}} and {{"cross-target-ui", "layouts", "data-display", "graphics", "animations", "styles-theming", "gestures", "sensors", "three-d", "data-access"}} == {{group["group"] for group in analog_groups["groups"]}}, "deep_checks": ("analog_coverage_ready", "generated_modules_ready", "generated_tests_ready", "per_component_files", "per_package_files", "per_component_test_files", "per_package_test_files", "component_family_modules", "component_family_module_tests", "module_smoke_tests", "ide_release_ready", "phase_order_ready"), "evidence": {{"groups": analog_groups, "readiness": component_readiness, "usability": component_usability}}}},
+        {{"id": "component_parity", "ok": analog_groups["ok"] and component_readiness["ok"] and component_usability["ok"] and {{"analog_coverage_ready", "palette_icons_ready", "behavior_surface_ready", "generated_modules_ready", "generated_tests_ready", "scenario_ready", "ide_release_ready", "phase_order_ready"}} <= {{check["id"] for check in component_readiness["checks"] if check["ok"]}} and {{"per_component_files", "per_package_files", "per_component_test_files", "per_package_test_files", "component_family_modules", "component_family_module_tests", "module_smoke_tests", "component_parity_readiness", "component_parity_scenario"}} <= {{check["id"] for check in component_usability["checks"] if check["ok"]}} and {{"cross-target-ui", "layouts", "data-display", "graphics", "animations", "styles-theming", "gestures", "sensors", "three-d", "data-access"}} == {{group["group"] for group in analog_groups["groups"]}}, "deep_checks": ("analog_coverage_ready", "generated_modules_ready", "generated_tests_ready", "scenario_ready", "per_component_files", "per_package_files", "per_component_test_files", "per_package_test_files", "component_family_modules", "component_family_module_tests", "module_smoke_tests", "component_parity_scenario", "ide_release_ready", "phase_order_ready"), "evidence": {{"groups": analog_groups, "readiness": component_readiness, "usability": component_usability}}}},
         {{"id": "native_runtime_streaming", "ok": runtime["ok"] and runtime_readiness["ok"] and {{"stream_identity_ready", "unit_semantics_ready", "compile_targets_ready", "diagnostics_route_ready", "debug_preview_ready", "runtime_preview_ready", "phase_order_ready"}} <= {{check["id"] for check in runtime_readiness["checks"] if check["ok"]}} and {{"form_stream_schema", "runtime_session_replay", "design_edit_session_replay", "runtime_debug_authoring", "native_form_modules", "native_form_module_tests", "runtime_operation_modules", "runtime_operation_module_tests", "compiler_runtime_modules", "compiler_runtime_module_tests", "deep_runtime_modules", "deep_runtime_module_tests"}} <= {{check["id"] for check in runtime["checks"] if check["ok"]}}, "deep_checks": ("stream_identity_ready", "compile_targets_ready", "diagnostics_route_ready", "debug_preview_ready", "runtime_preview_ready", "runtime_debug_authoring", "native_form_modules", "native_form_module_tests", "runtime_operation_modules", "runtime_operation_module_tests", "compiler_runtime_modules", "compiler_runtime_module_tests", "deep_runtime_modules", "deep_runtime_module_tests", "phase_order_ready"), "evidence": {{"workbench": runtime, "readiness": runtime_readiness}}}},
         {{"id": "inspector_design_surface", "ok": inspector["ok"] and inspector_readiness["ok"] and {{"editor_metadata_ready", "property_event_ready", "component_custom_designer_ready", "state_design_surface_ready", "binding_handler_ready", "lifecycle_round_trip_ready", "phase_order_ready"}} <= {{check["id"] for check in inspector_readiness["checks"] if check["ok"]}} and {{"property_editor_types", "event_editor_lifecycle", "component_editor_transaction", "custom_designer_registration_replay", "editor_lifecycle_replay", "inspector_generated_modules", "inspector_generated_module_tests", "property_editor_family_contract", "property_editor_family_modules", "property_editor_family_module_tests", "event_editor_family_contract", "event_editor_family_modules", "event_editor_family_module_tests", "component_editor_family_contract", "component_editor_family_modules", "component_editor_family_module_tests", "custom_designer_family_contract", "custom_designer_family_modules", "custom_designer_family_module_tests"}} <= {{check["id"] for check in inspector["checks"] if check["ok"]}}, "deep_checks": ("editor_lifecycle_replay", "design_surface_transaction_replay", "custom_designer_registration_replay", "inspector_generated_modules", "inspector_generated_module_tests", "property_editor_family_contract", "property_editor_family_modules", "property_editor_family_module_tests", "event_editor_family_contract", "event_editor_family_modules", "event_editor_family_module_tests", "component_editor_family_contract", "component_editor_family_modules", "component_editor_family_module_tests", "custom_designer_family_contract", "custom_designer_family_modules", "custom_designer_family_module_tests", "phase_order_ready"), "evidence": {{"workbench": inspector, "readiness": inspector_readiness}}}},
         {{"id": "visual_binding_designer", "ok": bindings["ok"] and binding_readiness["ok"] and {{"graph_authoring_ready", "validation_transaction_ready", "preview_runtime_ready", "diagnostics_conflict_ready", "offline_accessible_runtime_ready", "designer_release_replay_ready", "inspector_bridge_ready", "designer_scenario_ready", "phase_order_ready"}} <= {{check["id"] for check in binding_readiness["checks"] if check["ok"]}} and bindings["designer_transaction_replay"]["ok"] and bindings["design_runtime_replay"]["ok"] and bindings["lifecycle_release_replay"]["ok"] and bindings["designer_scenario"]["ok"] and {{"binding_generated_modules", "binding_generated_module_tests", "binding_designer_scenario", "binding_designer_family_contract", "binding_designer_family_modules", "binding_designer_family_module_tests"}} <= {{check["id"] for check in bindings["checks"] if check["ok"]}}, "deep_checks": ("binding_lifecycle_release_replay", "design_runtime_session_replay", "designer_transaction_replay", "binding_designer_scenario", "binding_generated_modules", "binding_generated_module_tests", "binding_designer_family_contract", "binding_designer_family_modules", "binding_designer_family_module_tests", "phase_order_ready"), "evidence": {{"workbench": bindings, "readiness": binding_readiness}}}},
