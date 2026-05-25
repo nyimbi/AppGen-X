@@ -231,6 +231,7 @@ from pyAppGen.form_designer import data_tooling_publish_resource
 from pyAppGen.form_designer import data_tooling_rehearse_offline_replay_operation
 from pyAppGen.form_designer import data_tooling_failover_transaction_replay_contract
 from pyAppGen.form_designer import data_tooling_readiness_contract
+from pyAppGen.form_designer import data_tooling_run_ide_scenario_operation
 from pyAppGen.form_designer import data_tooling_run_module_smoke_operation
 from pyAppGen.form_designer import data_tooling_test_connection
 from pyAppGen.form_designer import rad_parity_workbench
@@ -2380,6 +2381,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "data_tooling_publish_transaction_replay",
         "data_tooling_failover_transaction_replay",
         "data_tooling_readiness_contract",
+        "data_tooling_ide_scenario",
     } == {check["id"] for check in data_workbench["checks"]}
     assert data_tooling_test_connection()["ok"] is True
     assert data_tooling_test_connection()["pipeline"][-1] == "rollback_test_transaction"
@@ -2567,6 +2569,22 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     } <= set(failover_replay["guards"])
     assert data_workbench["failover_transaction_replay"]["ok"] is True
     assert data_workbench["failover_transaction_replay"]["final_state"]["manual_review"] is True
+    data_ide_scenario = data_tooling_run_ide_scenario_operation()
+    assert data_ide_scenario["format"] == "appgen.data-tooling-ide-scenario-operation.v1"
+    assert data_ide_scenario["ok"] is True
+    assert {
+        "open_connection_profile",
+        "introspect_schema",
+        "design_dataset_and_fields",
+        "generate_relationship_lookups",
+        "publish_service_resource",
+        "stage_offline_replay",
+        "monitor_failover_and_replication",
+        "run_runtime_smoke",
+        "release_data_tooling",
+    } <= {item["step"] for item in data_ide_scenario["pipeline"]}
+    assert data_ide_scenario["final_state"]["persisted_writes"] == 0
+    assert data_workbench["ide_scenario"]["ok"] is True
     readiness = data_tooling_readiness_contract()
     assert readiness["format"] == "appgen.data-tooling-readiness-contract.v1"
     assert readiness["ok"] is True
@@ -2586,9 +2604,11 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "replication_failover_ready",
         "diagnostics_ready",
         "operation_surface_ready",
+        "ide_scenario_ready",
         "phase_order_ready",
     } == {check["id"] for check in readiness["checks"]}
     assert readiness["final_state"]["persisted_writes"] == 0
+    assert readiness["final_state"]["scenario_steps"] == len(data_ide_scenario["pipeline"])
     assert data_workbench["readiness"]["ok"] is True
     assert data_workbench["readiness"]["final_state"]["runtime_steps"] > 0
     mobile_workbench = mobile_native_api_workbench()
@@ -4619,6 +4639,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "relationship_lookup_lifecycle_replay",
         "data_tooling_design_runtime_session_replay",
         "data_tooling_publish_transaction_replay",
+        "data_tooling_ide_scenario",
     } <= set(lifecycle_by_phase["publish_data_services"]["evidence"]["passing_checks"])
     assert lifecycle_by_phase["install_component_packages"]["evidence"]["readiness_phases"] == (
         "trust_and_lockfile",
@@ -4780,6 +4801,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "deep_data_tooling_module_tests",
         "enterprise_data_ide_modules",
         "enterprise_data_ide_module_tests",
+        "data_tooling_ide_scenario",
         "phase_order_ready",
     } <= set(requirements_by_id["native_data_service_tooling"]["deep_checks"])
     assert {
@@ -4846,6 +4868,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
             {
                 "data_tooling_modules",
                 "data_tooling_module_tests",
+                "data_tooling_ide_scenario",
                 "deep_data_tooling_modules",
                 "enterprise_data_ide_modules",
                 "enterprise_data_ide_module_tests",
@@ -14587,6 +14610,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "relationship_lookup_lifecycle_replay",
         "data_tooling_design_runtime_session_replay",
         "data_tooling_publish_transaction_replay",
+        "data_tooling_ide_scenario",
     } <= set(generated_lifecycle_by_phase["publish_data_services"]["evidence"]["passing_checks"])
     assert generated_lifecycle_by_phase["install_component_packages"]["evidence"]["readiness_phases"] == (
         "trust_and_lockfile",
@@ -14759,6 +14783,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "deep_data_tooling_module_tests",
         "enterprise_data_ide_modules",
         "enterprise_data_ide_module_tests",
+        "data_tooling_ide_scenario",
         "phase_order_ready",
     } <= set(generated_requirements_by_id["native_data_service_tooling"]["deep_checks"])
     assert {
@@ -14825,6 +14850,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
             {
                 "data_tooling_modules",
                 "data_tooling_module_tests",
+                "data_tooling_ide_scenario",
                 "deep_data_tooling_modules",
                 "enterprise_data_ide_modules",
                 "enterprise_data_ide_module_tests",
@@ -15523,6 +15549,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "data_tooling_publish_transaction_replay",
         "data_tooling_failover_transaction_replay",
         "data_tooling_readiness_contract",
+        "data_tooling_ide_scenario",
     } == {check["id"] for check in generated_data_tooling["checks"]}
     generated_connection = form_designer.data_tooling_test_connection()
     assert generated_connection["ok"] is True
@@ -15709,6 +15736,22 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert "failed_route_quarantined_before_retry" in generated_failover_replay["guards"]
     assert generated_data_tooling["failover_transaction_replay"]["ok"] is True
     assert generated_data_tooling["failover_transaction_replay"]["final_state"]["manual_review"] is True
+    generated_data_ide_scenario = form_designer.data_tooling_run_ide_scenario_operation()
+    assert generated_data_ide_scenario["format"] == "appgen.generated-data-tooling-ide-scenario-operation.v1"
+    assert generated_data_ide_scenario["ok"] is True
+    assert {
+        "open_connection_profile",
+        "introspect_schema",
+        "design_dataset_and_fields",
+        "generate_relationship_lookups",
+        "publish_service_resource",
+        "stage_offline_replay",
+        "monitor_failover_and_replication",
+        "run_runtime_smoke",
+        "release_data_tooling",
+    } <= {item["step"] for item in generated_data_ide_scenario["pipeline"]}
+    assert generated_data_ide_scenario["final_state"]["persisted_writes"] == 0
+    assert generated_data_tooling["ide_scenario"]["ok"] is True
     generated_readiness = form_designer.data_tooling_readiness_contract()
     assert generated_readiness["format"] == "appgen.generated-data-tooling-readiness-contract.v1"
     assert generated_readiness["ok"] is True
@@ -15728,9 +15771,11 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "replication_failover_ready",
         "diagnostics_ready",
         "operation_surface_ready",
+        "ide_scenario_ready",
         "phase_order_ready",
     } == {check["id"] for check in generated_readiness["checks"]}
     assert generated_readiness["final_state"]["persisted_writes"] == 0
+    assert generated_readiness["final_state"]["scenario_steps"] == len(generated_data_ide_scenario["pipeline"])
     assert generated_data_tooling["readiness"]["ok"] is True
     assert generated_data_tooling["readiness"]["final_state"]["runtime_steps"] > 0
     data_runtime_file = output_dir / "data_tooling_runtime.py"
@@ -15744,6 +15789,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert data_runtime.dataset_runtime_manifest()["ok"] is True
     assert data_runtime.service_runtime_manifest()["ok"] is True
     assert data_runtime.transaction_runtime_manifest()["ok"] is True
+    assert data_manifest["ide_scenario"]["ok"] is True
     relationship_runtime = data_runtime.relationship_lookup_runtime_manifest()
     assert relationship_runtime["ok"] is True
     assert relationship_runtime["chain_path"] == ("InventoryMove", "InvoiceLine", "Invoice", "Account", "Ledger")
@@ -15861,6 +15907,9 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert data_runtime_replay["ok"] is True
     assert {"service_invocation", "offline_replay"} <= set(data_runtime_replay["runtime_ops"])
     assert {"quarantine_and_route_failover", "manual_review_offline_replay"} <= set(data_runtime_replay["failover_phases"])
+    assert {"open_connection_profile", "publish_service_resource", "release_data_tooling"} <= set(
+        data_runtime_replay["scenario_steps"]
+    )
     assert data_runtime_replay["side_effects"] == ()
     assert data_runtime.validate_data_tooling_runtime()["ok"] is True
     data_runtime_smoke = data_runtime.smoke_test()
@@ -15869,6 +15918,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "data_module_smoke",
         "data_module_files_ready",
         "data_module_tests_ready",
+        "ide_scenario_replay",
         "deep_data_tooling_modules_ready",
         "deep_data_tooling_module_tests_ready",
         "enterprise_data_ide_modules_ready",

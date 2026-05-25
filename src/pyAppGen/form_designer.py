@@ -11224,6 +11224,160 @@ def data_tooling_failover_transaction_replay_contract() -> dict:
     }
 
 
+def data_tooling_run_ide_scenario_operation() -> dict:
+    """Run one complete native data tooling IDE scenario from connection design through release replay."""
+    connection = data_tooling_test_connection()
+    schema_browser = data_tooling_browse_schema_operation()
+    schema_diff = data_tooling_preview_schema_diff()
+    dataset = data_tooling_design_dataset_operation()
+    lookup_editors = data_tooling_generate_lookup_editors()
+    relationship_lifecycle = data_relationship_lookup_lifecycle_replay_contract()
+    publish_resource = data_tooling_publish_resource()
+    offline_replay = data_tooling_rehearse_offline_replay_operation()
+    replication = data_tooling_monitor_replication_operation()
+    module_smoke = data_tooling_run_module_smoke_operation()
+    runtime_replay = data_tooling_runtime_replay_contract()
+    design_runtime = data_tooling_design_runtime_session_replay_contract()
+    publish_replay = data_tooling_publish_transaction_replay_contract()
+    failover_replay = data_tooling_failover_transaction_replay_contract()
+    pipeline = (
+        {
+            "step": "open_connection_profile",
+            "ok": connection["ok"] and connection["pipeline"][-1] == "rollback_test_transaction",
+            "evidence": connection,
+        },
+        {
+            "step": "introspect_schema",
+            "ok": schema_browser["ok"]
+            and {"publish_schema_tree", "trace_relations"} <= set(schema_browser["pipeline"])
+            and "rollback_script" in schema_diff["preview"],
+            "evidence": {"schema": schema_browser, "diff": schema_diff},
+        },
+        {
+            "step": "design_dataset_and_fields",
+            "ok": dataset["ok"]
+            and {"validate_dataset_state_machine", "preview_dataset_rows", "add_lookup_field"} <= set(dataset["pipeline"]),
+            "evidence": dataset,
+        },
+        {
+            "step": "generate_relationship_lookups",
+            "ok": lookup_editors["ok"]
+            and relationship_lifecycle["ok"]
+            and len(lookup_editors["lookup_endpoints"]) == len(relationship_lifecycle["foreign_key_pairs"])
+            and "lookup_preview_before_publish" in relationship_lifecycle["guards"],
+            "evidence": {"operation": lookup_editors, "lifecycle": relationship_lifecycle},
+        },
+        {
+            "step": "publish_service_resource",
+            "ok": publish_resource["ok"]
+            and publish_replay["ok"]
+            and {"run_contract_tests", "attach_security", "register_analytics"} <= set(publish_resource["pipeline"]),
+            "evidence": {"operation": publish_resource, "replay": publish_replay},
+        },
+        {
+            "step": "stage_offline_replay",
+            "ok": offline_replay["ok"]
+            and {"dedupe_by_idempotency_key", "pause_for_manual_review", "mark_replayed"} <= set(offline_replay["pipeline"]),
+            "evidence": offline_replay,
+        },
+        {
+            "step": "monitor_failover_and_replication",
+            "ok": replication["ok"]
+            and failover_replay["ok"]
+            and "surface_conflict_alerts" in replication["pipeline"]
+            and failover_replay["final_state"]["persisted_writes"] == 0,
+            "evidence": {"replication": replication, "failover": failover_replay},
+        },
+        {
+            "step": "run_runtime_smoke",
+            "ok": runtime_replay["ok"]
+            and module_smoke["ok"]
+            and runtime_replay["final_state"]["persisted_writes"] == 0
+            and "verify_no_side_effects" in module_smoke["pipeline"],
+            "evidence": {"runtime": runtime_replay, "module_smoke": module_smoke},
+        },
+        {
+            "step": "prove_design_runtime_session",
+            "ok": design_runtime["ok"]
+            and {"schema_rehearsal_before_dataset_publish", "runtime_operations_are_monitored"} <= set(design_runtime["guards"]),
+            "evidence": design_runtime,
+        },
+        {
+            "step": "release_data_tooling",
+            "ok": publish_replay["ok"]
+            and failover_replay["ok"]
+            and {"service_contract_tests_before_resource_publish", "runtime_smoke_proves_no_persisted_writes"}
+            <= set(publish_replay["guards"]),
+            "evidence": {"publish": publish_replay, "failover": failover_replay},
+        },
+    )
+    final_state = {
+        "connection": "verified",
+        "schema_pipeline_steps": len(schema_browser["pipeline"]),
+        "dataset_transitions": len(dataset["transitions"]),
+        "lookup_endpoints": len(lookup_editors["lookup_endpoints"]),
+        "publish_steps": len(publish_resource["pipeline"]),
+        "offline_items": len(offline_replay["queue"]),
+        "runtime_steps": len(runtime_replay["trace"]),
+        "design_runtime_phases": len(design_runtime["replay"]),
+        "publish_phases": len(publish_replay["replay"]),
+        "failover_phases": len(failover_replay["replay"]),
+        "persisted_writes": runtime_replay["final_state"]["persisted_writes"] + failover_replay["final_state"]["persisted_writes"],
+        "side_effects": (),
+    }
+    checks = (
+        {
+            "id": "data_scenario_order",
+            "ok": tuple(item["step"] for item in pipeline)
+            == (
+                "open_connection_profile",
+                "introspect_schema",
+                "design_dataset_and_fields",
+                "generate_relationship_lookups",
+                "publish_service_resource",
+                "stage_offline_replay",
+                "monitor_failover_and_replication",
+                "run_runtime_smoke",
+                "prove_design_runtime_session",
+                "release_data_tooling",
+            ),
+            "evidence": tuple(item["step"] for item in pipeline),
+        },
+        {
+            "id": "data_scenario_no_persisted_writes",
+            "ok": final_state["persisted_writes"] == 0,
+            "evidence": final_state,
+        },
+        {
+            "id": "data_scenario_side_effect_free",
+            "ok": final_state["side_effects"] == (),
+            "evidence": final_state["side_effects"],
+        },
+    )
+    ok = all(item["ok"] for item in pipeline) and all(check["ok"] for check in checks) and all(
+        value > 0 for key, value in final_state.items() if key not in {"connection", "persisted_writes", "side_effects"}
+    )
+    return {
+        "format": "appgen.data-tooling-ide-scenario-operation.v1",
+        "ok": ok,
+        "decision": "approved" if ok else "blocked",
+        "pipeline": pipeline,
+        "checks": checks,
+        "final_state": final_state,
+        "guards": (
+            "connection_profile_before_schema_introspection",
+            "schema_introspection_before_dataset_design",
+            "relationship_lookups_before_publish",
+            "publish_before_offline_replay",
+            "offline_replay_before_failover_monitoring",
+            "runtime_smoke_before_release",
+            "data_tooling_scenario_has_no_persisted_writes",
+        ),
+        "side_effects": (),
+        "blocking_gaps": tuple(item for item in pipeline + checks if not item["ok"]),
+    }
+
+
 def data_tooling_readiness_contract() -> dict:
     """Prove the native data tooling path as one ordered readiness contract."""
     connection = data_tooling_test_connection()
@@ -11236,6 +11390,7 @@ def data_tooling_readiness_contract() -> dict:
     publish_replay = data_tooling_publish_transaction_replay_contract()
     failover_replay = data_tooling_failover_transaction_replay_contract()
     actionable_operations = data_tooling_actionable_operations()
+    ide_scenario = data_tooling_run_ide_scenario_operation()
     phases = (
         {
             "phase": "probe_connection",
@@ -11286,6 +11441,13 @@ def data_tooling_readiness_contract() -> dict:
         {"id": "diagnostics_ready", "ok": phases[5]["ok"], "evidence": {"module_smoke": module_smoke, "runtime_replay": runtime_replay}},
         {"id": "operation_surface_ready", "ok": actionable_operations["ok"] and not actionable_operations["side_effects"], "evidence": actionable_operations},
         {
+            "id": "ide_scenario_ready",
+            "ok": ide_scenario["ok"]
+            and {"relationship_lookups_before_publish", "data_tooling_scenario_has_no_persisted_writes"} <= set(ide_scenario["guards"])
+            and not ide_scenario["side_effects"],
+            "evidence": ide_scenario,
+        },
+        {
             "id": "phase_order_ready",
             "ok": tuple(item["phase"] for item in phases)
             == (
@@ -11311,6 +11473,7 @@ def data_tooling_readiness_contract() -> dict:
             "offline_queue": len(offline_replay["queue"]),
             "replication_monitors": len(replication["monitors"]),
             "runtime_steps": len(runtime_replay["trace"]),
+            "scenario_steps": len(ide_scenario["pipeline"]),
             "persisted_writes": runtime_replay["final_state"]["persisted_writes"],
         },
         "guards": (
@@ -11376,6 +11539,7 @@ def rad_data_tooling_workbench() -> dict:
     design_runtime_replay = data_tooling_design_runtime_session_replay_contract()
     publish_transaction_replay = data_tooling_publish_transaction_replay_contract()
     failover_transaction_replay = data_tooling_failover_transaction_replay_contract()
+    ide_scenario = data_tooling_run_ide_scenario_operation()
     readiness = data_tooling_readiness_contract()
     actionable_operations = data_tooling_actionable_operations()
     checks = (
@@ -11756,11 +11920,20 @@ def rad_data_tooling_workbench() -> dict:
                 "replication_failover_ready",
                 "diagnostics_ready",
                 "operation_surface_ready",
+                "ide_scenario_ready",
                 "phase_order_ready",
             }
             <= {check["id"] for check in readiness["checks"] if check["ok"]}
             and not readiness["side_effects"],
             "evidence": readiness,
+        },
+        {
+            "id": "data_tooling_ide_scenario",
+            "ok": ide_scenario["ok"]
+            and {"publish_service_resource", "release_data_tooling"} <= {item["step"] for item in ide_scenario["pipeline"]}
+            and ide_scenario["final_state"]["persisted_writes"] == 0
+            and not ide_scenario["side_effects"],
+            "evidence": ide_scenario,
         },
     )
     ok = all(check["ok"] for check in checks)
@@ -11817,6 +11990,7 @@ def rad_data_tooling_workbench() -> dict:
         "design_runtime_replay": design_runtime_replay,
         "publish_transaction_replay": publish_transaction_replay,
         "failover_transaction_replay": failover_transaction_replay,
+        "ide_scenario": ide_scenario,
         "readiness": readiness,
         "checks": checks,
         "blocking_gaps": tuple(check for check in checks if not check["ok"]),
@@ -15404,10 +15578,12 @@ def platform_parity_lifecycle_replay_contract() -> dict:
             and data_readiness["ok"]
             and "phase_order_ready" in {check["id"] for check in data_readiness["checks"] if check["ok"]}
             and data_tooling["publish_transaction_replay"]["ok"]
+            and data_tooling["ide_scenario"]["ok"]
             and {
                 "relationship_lookup_lifecycle_replay",
                 "data_tooling_design_runtime_session_replay",
                 "data_tooling_publish_transaction_replay",
+                "data_tooling_ide_scenario",
             } <= data_tooling_passing_checks
             and {
                 "schema_rehearsal_before_dataset_publish",
@@ -15418,6 +15594,7 @@ def platform_parity_lifecycle_replay_contract() -> dict:
                 "checks": tuple(check["id"] for check in data_tooling["checks"]),
                 "passing_checks": tuple(sorted(data_tooling_passing_checks)),
                 "publish_state": data_tooling["publish_transaction_replay"]["final_state"],
+                "scenario_state": data_tooling["ide_scenario"]["final_state"],
                 "readiness_phases": tuple(phase["phase"] for phase in data_readiness["phases"]),
             },
         },
@@ -15801,13 +15978,16 @@ def platform_parity_requirement_audit_contract() -> dict:
                 "offline_replay_ready",
                 "replication_failover_ready",
                 "diagnostics_ready",
+                "ide_scenario_ready",
                 "phase_order_ready",
             }
             <= {check["id"] for check in data_readiness["checks"] if check["ok"]}
             and data_tooling["runtime_replay"]["ok"]
             and data_tooling["publish_transaction_replay"]["ok"]
+            and data_tooling["ide_scenario"]["ok"]
             and {
                 "relationship_lookup_lifecycle_replay",
+                "data_tooling_ide_scenario",
                 "data_tooling_modules",
                 "data_tooling_module_tests",
                 "deep_data_tooling_modules",
@@ -15825,6 +16005,7 @@ def platform_parity_requirement_audit_contract() -> dict:
                 "enterprise_data_ide_module_tests",
                 "data_tooling_design_runtime_session_replay",
                 "data_tooling_publish_transaction_replay",
+                "data_tooling_ide_scenario",
                 "phase_order_ready",
             ),
             "evidence": {"workbench": data_tooling, "readiness": data_readiness},
