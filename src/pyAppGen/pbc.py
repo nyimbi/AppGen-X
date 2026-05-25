@@ -150,6 +150,40 @@ AP_AUTOMATION_ADVANCED_CAPABILITY_KEYS = (
     "mathematical_optimization",
     "financial_mlops_governance",
 )
+AR_CREDIT_ADVANCED_CAPABILITY_KEYS = (
+    "event_sourced_receivable_lifecycle",
+    "graph_relational_customer_topology",
+    "multi_tenant_cash_application_isolation",
+    "schema_evolution_resilient_receivable_schema",
+    "probabilistic_cash_application",
+    "real_time_liquidity_aware_credit_extension",
+    "counterfactual_collection_strategy_optimization",
+    "temporal_revenue_to_cash_forecasting",
+    "autonomous_dispute_resolution",
+    "semantic_remittance_parsing",
+    "predictive_customer_default_scoring",
+    "self_healing_collection_routing",
+    "zero_knowledge_revenue_verification",
+    "immutable_e_invoicing_tax_audit",
+    "dynamic_sanction_fraud_screening",
+    "automated_control_testing",
+    "universal_api_async_streaming",
+    "cross_border_receivable_federation",
+    "supply_chain_finance_network_integration",
+    "decentralized_customer_identity",
+    "chaos_engineered_payment_rail_tolerance",
+    "quantum_resistant_payment_authentication",
+    "carbon_aware_collection_scheduling",
+    "algebraic_collection_optimization",
+    "mechanism_design_payment_term_negotiation",
+    "information_theoretic_cash_application_anomaly_detection",
+    "temporal_receivable_stochastic_modeling",
+    "distributed_systems_engineering",
+    "probabilistic_ml_customer_risk",
+    "cryptographic_engineering",
+    "mathematical_optimization",
+    "financial_mlops_governance",
+)
 PBC_ALLOWED_DATASTORE_BACKENDS = (
     "postgresql",
     "mysql",
@@ -2366,6 +2400,8 @@ def pbc_implementation_contract(key: str) -> dict:
         advanced_runtime = gl_core_runtime_capabilities()
     elif key == "ap_automation":
         advanced_runtime = ap_automation_runtime_capabilities()
+    elif key == "ar_credit":
+        advanced_runtime = ar_credit_runtime_capabilities()
     else:
         advanced_runtime = {}
     source_package = _pbc_source_package_contract(key)
@@ -4077,3 +4113,12 @@ from .pbcs.ap_automation import ap_automation_record_goods_receipt  # noqa: E402
 from .pbcs.ap_automation import ap_automation_runtime_capabilities  # noqa: E402,F401
 from .pbcs.ap_automation import ap_automation_runtime_smoke  # noqa: E402,F401
 from .pbcs.ap_automation import ap_automation_schedule_payments  # noqa: E402,F401
+from .pbcs.ar_credit import AR_CREDIT_RUNTIME_CAPABILITY_KEYS  # noqa: E402,F401
+from .pbcs.ar_credit import ar_credit_apply_cash  # noqa: E402,F401
+from .pbcs.ar_credit import ar_credit_empty_state  # noqa: E402,F401
+from .pbcs.ar_credit import ar_credit_issue_invoice  # noqa: E402,F401
+from .pbcs.ar_credit import ar_credit_onboard_customer  # noqa: E402,F401
+from .pbcs.ar_credit import ar_credit_parse_remittance  # noqa: E402,F401
+from .pbcs.ar_credit import ar_credit_record_delivery_confirmation  # noqa: E402,F401
+from .pbcs.ar_credit import ar_credit_runtime_capabilities  # noqa: E402,F401
+from .pbcs.ar_credit import ar_credit_runtime_smoke  # noqa: E402,F401
