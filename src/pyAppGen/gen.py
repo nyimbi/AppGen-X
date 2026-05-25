@@ -14939,6 +14939,23 @@ def replay(target="android"):
     return _mobile_runtime().replay_device_api(API, target)
 
 
+def run_scenario(target="android"):
+    """Run the generated full permission, fixture, adapter, and event scenario."""
+    operation = _form_designer().mobile_run_device_scenario_operation(API, target)
+    runtime = replay(target)
+    return {{
+        "format": "appgen.device-api-component-scenario.v1",
+        "api": API,
+        "target": target,
+        "ok": operation["ok"] and runtime["ok"],
+        "operation": operation,
+        "runtime": runtime,
+        "pipeline": operation["pipeline"],
+        "decision": operation["decision"] if operation["decision"] != "scenario_replayed" else runtime["decision"],
+        "side_effects": (),
+    }}
+
+
 def dispatch_event(event=None):
     """Return dispatch metadata for a generated device component event."""
     current = spec()["spec"]
@@ -14972,6 +14989,7 @@ def smoke_test():
     invalid = validate_props({{"__unknown__": True}})
     permission = request_permission()
     replay_result = replay()
+    scenario = run_scenario()
     dispatch = dispatch_event()
     tools = design_tools()
     return {{
@@ -14983,6 +15001,7 @@ def smoke_test():
         and not invalid["ok"]
         and permission["ok"]
         and replay_result["ok"]
+        and scenario["ok"]
         and dispatch["ok"]
         and tools["ok"],
         "checks": (
@@ -14993,6 +15012,7 @@ def smoke_test():
             "props_validate",
             "permission_request_replays",
             "runtime_replay_succeeds",
+            "device_scenario_replays",
             "event_dispatch_declared",
             "design_tools_present",
         ),
@@ -15033,6 +15053,7 @@ def test_device_component_contract():
     assert module.permission_manifest()["api"] == API
     assert module.simulator_fixture()["api"] == API
     assert module.render()["api"] == API
+    assert module.run_scenario()["ok"] is True
 
 
 def test_device_component_smoke():
@@ -15042,6 +15063,7 @@ def test_device_component_smoke():
     assert result["ok"] is True
     assert result["api"] == API
     assert result["checks"]
+    assert "device_scenario_replays" in result["checks"]
 
 
 def smoke_test():
@@ -18739,7 +18761,7 @@ def device_api_component_module_manifest():
         contract_ok = False
         if module_path.exists():
             module = _load_generated_module(module_path, f"generated_device_api_component_{module_name}")
-            exports = tuple(name for name in ("spec", "permission_manifest", "simulator_fixture", "render", "validate_props", "request_permission", "replay", "dispatch_event", "design_tools", "smoke_test") if hasattr(module, name))
+            exports = tuple(name for name in ("spec", "permission_manifest", "simulator_fixture", "render", "validate_props", "request_permission", "replay", "run_scenario", "dispatch_event", "design_tools", "smoke_test") if hasattr(module, name))
             contract = module.spec()
             contract_ok = contract["ok"] and contract["api"] == item["api"]
         entries.append(
@@ -18752,7 +18774,7 @@ def device_api_component_module_manifest():
                 "contract_ok": contract_ok,
             }
         )
-    required_exports = {"spec", "permission_manifest", "simulator_fixture", "render", "validate_props", "request_permission", "replay", "dispatch_event", "design_tools", "smoke_test"}
+    required_exports = {"spec", "permission_manifest", "simulator_fixture", "render", "validate_props", "request_permission", "replay", "run_scenario", "dispatch_event", "design_tools", "smoke_test"}
     return {
         "format": "appgen.generated-device-api-component-module-manifest.v1",
         "ok": bool(entries)
@@ -57188,6 +57210,51 @@ def mobile_validate_device_component_operation(api="camera"):
     }}
 
 
+def mobile_run_device_scenario_operation(api="camera", target="android"):
+    """Return a callable generated IDE operation for running one side-effect-free device component scenario."""
+    permission = mobile_request_permission_operation(api)
+    component = mobile_validate_device_component_operation(api)
+    simulator = mobile_replay_simulator_operation(api)
+    adapter = mobile_dispatch_adapter_operation(api)
+    supported = bool(component["component"]) and target in component["component"]["targets"]
+    pipeline = (
+        "load_component_spec",
+        "request_permission",
+        "load_simulator_fixture",
+        "validate_props",
+        "invoke_target_bridge",
+        "normalize_payload",
+        "emit_component_event",
+    )
+    if not supported:
+        pipeline = pipeline + ("disable_component_with_explanation",)
+    return {{
+        "format": "appgen.generated-mobile-run-device-scenario-operation.v1",
+        "ok": permission["ok"]
+        and component["ok"]
+        and simulator["ok"]
+        and adapter["ok"]
+        and supported
+        and {{"request_permission", "load_simulator_fixture", "emit_component_event"}} <= set(pipeline),
+        "api": api,
+        "target": target,
+        "target_supported": supported,
+        "permission": permission["permission"],
+        "component": component["component"],
+        "fixture": simulator["fixture"],
+        "adapter": adapter["adapter"],
+        "pipeline": pipeline,
+        "decision": "scenario_replayed" if supported else "blocked_unsupported_target",
+        "guards": (
+            "permission_before_bridge",
+            "fixture_before_adapter",
+            "props_validated_before_dispatch",
+            "unsupported_targets_disable_component",
+        ),
+        "side_effects": (),
+    }}
+
+
 def mobile_native_api_actionable_operations():
     """Return callable generated mobile/native operations used by the IDE."""
     operations = {{
@@ -57198,6 +57265,7 @@ def mobile_native_api_actionable_operations():
         "review_privacy": mobile_review_privacy_operation(),
         "resume_background": mobile_resume_background_operation(),
         "validate_device_component": mobile_validate_device_component_operation(),
+        "run_device_scenario": mobile_run_device_scenario_operation(),
     }}
     return {{
         "format": "appgen.generated-mobile-native-api-actionable-operations.v1",
@@ -57983,7 +58051,7 @@ def mobile_native_api_workbench():
     designer_transaction_replay = mobile_device_designer_transaction_replay_contract()
     capability_lifecycle_replay = mobile_device_capability_lifecycle_replay_contract()
     device_component_module_artifacts = tuple(
-        {{"api": item["api"], "component": item["component"], "path": f"app/device_api_components/{{_module_name(item['api'])}}.py", "exports": ("spec", "permission_manifest", "simulator_fixture", "render", "validate_props", "request_permission", "replay", "dispatch_event", "design_tools", "smoke_test"), "ok": True}}
+        {{"api": item["api"], "component": item["component"], "path": f"app/device_api_components/{{_module_name(item['api'])}}.py", "exports": ("spec", "permission_manifest", "simulator_fixture", "render", "validate_props", "request_permission", "replay", "run_scenario", "dispatch_event", "design_tools", "smoke_test"), "ok": True}}
         for item in mobile_device_component_spec_contract()["specs"]
     )
     device_component_test_artifacts = tuple(
@@ -58004,7 +58072,7 @@ def mobile_native_api_workbench():
         {{"id": "platform_fallback_workflow", "ok": platform_fallback["ok"] and "designer_warning_visible" in platform_fallback["guards"] and not platform_fallback["side_effects"], "evidence": platform_fallback}},
         {{"id": "privacy_review_workflow", "ok": api_set <= set(privacy_review["apis"]) and {{"purpose_string", "least_privilege"}} <= set(privacy_review["review_items"]) and not privacy_review["side_effects"], "evidence": privacy_review}},
         {{"id": "background_resume_workflow", "ok": {{"persist_checkpoint", "resume_foreground"}} <= set(background_resume["schedule"]) and not background_resume["side_effects"], "evidence": background_resume}},
-        {{"id": "actionable_mobile_api_operations", "ok": actionable_operations["ok"] and {{"request_permission", "dispatch_adapter", "replay_simulator", "review_platform_fallback", "review_privacy", "resume_background", "validate_device_component"}} <= set(actionable_operations["operations"]) and not actionable_operations["side_effects"], "evidence": actionable_operations}},
+        {{"id": "actionable_mobile_api_operations", "ok": actionable_operations["ok"] and {{"request_permission", "dispatch_adapter", "replay_simulator", "review_platform_fallback", "review_privacy", "resume_background", "validate_device_component", "run_device_scenario"}} <= set(actionable_operations["operations"]) and not actionable_operations["side_effects"], "evidence": actionable_operations}},
         {{"id": "device_component_specs", "ok": device_component_specs["ok"] and api_set == {{spec["api"] for spec in device_component_specs["specs"]}} and all({{"permission_editor", "simulator_fixture_picker", "event_trace_viewer"}} <= set(spec["design_tools"]) for spec in device_component_specs["specs"]) and not device_component_specs["side_effects"], "evidence": device_component_specs}},
         {{"id": "api_capability_matrix", "ok": capability_matrix["ok"] and api_set <= {{row["api"] for row in capability_matrix["rows"]}} and not capability_matrix["side_effects"], "evidence": capability_matrix}},
         {{"id": "device_event_traces", "ok": event_traces["ok"] and {{"payload_normalized", "replayable_fixture"}} <= set(event_traces["guards"]) and not event_traces["side_effects"], "evidence": event_traces}},

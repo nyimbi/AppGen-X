@@ -199,6 +199,7 @@ from pyAppGen.form_designer import mobile_request_permission_operation
 from pyAppGen.form_designer import mobile_resume_background_operation
 from pyAppGen.form_designer import mobile_review_platform_fallback_operation
 from pyAppGen.form_designer import mobile_review_privacy_operation
+from pyAppGen.form_designer import mobile_run_device_scenario_operation
 from pyAppGen.form_designer import mobile_validate_device_component_operation
 from pyAppGen.form_designer import object_inspector_contract
 from pyAppGen.form_designer import inspector_apply_property_edit
@@ -2634,7 +2635,11 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     assert "least_privilege" in mobile_review_privacy_operation()["review_items"]
     assert "resume_foreground" in mobile_resume_background_operation()["pipeline"]
     assert "bind_simulator_fixture" in mobile_validate_device_component_operation()["pipeline"]
+    assert mobile_run_device_scenario_operation()["decision"] == "scenario_replayed"
+    assert "emit_component_event" in mobile_run_device_scenario_operation()["pipeline"]
+    assert mobile_run_device_scenario_operation("nfc", "web-pwa")["decision"] == "blocked_unsupported_target"
     assert mobile_native_api_actionable_operations()["ok"] is True
+    assert "run_device_scenario" in mobile_native_api_actionable_operations()["operations"]
     assert mobile_workbench["actionable_operations"]["operations"]["dispatch_adapter"]["ok"] is True
     assert mobile_workbench["actionable_operations"]["operations"]["validate_device_component"]["component"]["permission"]
     assert mobile_workbench["actionable_operations"]["operations"]["review_privacy"]["prompts"]
@@ -2717,6 +2722,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     assert {item["api"] for item in mobile_workbench["device_component_module_artifacts"]} == mobile_apis
     assert {item["api"] for item in mobile_workbench["device_component_test_artifacts"]} == mobile_apis
     assert all("replay" in item["exports"] for item in mobile_workbench["device_component_module_artifacts"])
+    assert all("run_scenario" in item["exports"] for item in mobile_workbench["device_component_module_artifacts"])
     assert all(
         "test_device_component_smoke" in item["exports"]
         for item in mobile_workbench["device_component_test_artifacts"]
@@ -16223,6 +16229,10 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert "least_privilege" in form_designer.mobile_review_privacy_operation()["review_items"]
     assert "resume_foreground" in form_designer.mobile_resume_background_operation()["pipeline"]
     assert "bind_simulator_fixture" in form_designer.mobile_validate_device_component_operation()["pipeline"]
+    assert form_designer.mobile_run_device_scenario_operation()["decision"] == "scenario_replayed"
+    assert "emit_component_event" in form_designer.mobile_run_device_scenario_operation()["pipeline"]
+    assert form_designer.mobile_run_device_scenario_operation("nfc", "web-pwa")["decision"] == "blocked_unsupported_target"
+    assert "run_device_scenario" in form_designer.mobile_native_api_actionable_operations()["operations"]
     assert generated_mobile["actionable_operations"]["ok"] is True
     assert generated_mobile["actionable_operations"]["operations"]["request_permission"]["ok"] is True
     assert generated_mobile["actionable_operations"]["operations"]["validate_device_component"]["component"]["permission"]
@@ -16299,6 +16309,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert {item["api"] for item in generated_mobile["device_component_module_artifacts"]} == generated_mobile_apis
     assert {item["api"] for item in generated_mobile["device_component_test_artifacts"]} == generated_mobile_apis
     assert all("replay" in item["exports"] for item in generated_mobile["device_component_module_artifacts"])
+    assert all("run_scenario" in item["exports"] for item in generated_mobile["device_component_module_artifacts"])
     assert all(
         "test_device_component_smoke" in item["exports"]
         for item in generated_mobile["device_component_test_artifacts"]
@@ -16336,9 +16347,13 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert camera_device_component.permission_manifest()["api"] == "camera"
     assert camera_device_component.simulator_fixture()["api"] == "camera"
     assert camera_device_component.replay("android")["ok"] is True
+    assert camera_device_component.run_scenario("android")["ok"] is True
+    assert "device_scenario_replays" in camera_component_smoke["checks"]
     nfc_device_component = _load_module(output_dir / "device_api_components" / "nfc.py", "generated_nfc_device_component")
     assert nfc_device_component.replay("web-pwa")["decision"] == "blocked_unsupported_target"
     assert nfc_device_component.replay("web-pwa")["ok"] is False
+    assert nfc_device_component.run_scenario("web-pwa")["decision"] == "blocked_unsupported_target"
+    assert nfc_device_component.run_scenario("web-pwa")["ok"] is False
     for item in device_module_manifest["components"]:
         component_path = output_dir / item["path"].replace("app/", "")
         py_compile.compile(str(component_path), doraise=True)

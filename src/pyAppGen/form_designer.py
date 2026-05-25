@@ -11721,6 +11721,51 @@ def mobile_validate_device_component_operation(api: str = "camera") -> dict:
     }
 
 
+def mobile_run_device_scenario_operation(api: str = "camera", target: str = "android") -> dict:
+    """Return a callable IDE operation for running one side-effect-free device component scenario."""
+    permission = mobile_request_permission_operation(api)
+    component = mobile_validate_device_component_operation(api)
+    simulator = mobile_replay_simulator_operation(api)
+    adapter = mobile_dispatch_adapter_operation(api)
+    supported = bool(component["component"]) and target in component["component"]["targets"]
+    pipeline = (
+        "load_component_spec",
+        "request_permission",
+        "load_simulator_fixture",
+        "validate_props",
+        "invoke_target_bridge",
+        "normalize_payload",
+        "emit_component_event",
+    )
+    if not supported:
+        pipeline = pipeline + ("disable_component_with_explanation",)
+    return {
+        "format": "appgen.mobile-run-device-scenario-operation.v1",
+        "ok": permission["ok"]
+        and component["ok"]
+        and simulator["ok"]
+        and adapter["ok"]
+        and supported
+        and {"request_permission", "load_simulator_fixture", "emit_component_event"} <= set(pipeline),
+        "api": api,
+        "target": target,
+        "target_supported": supported,
+        "permission": permission["permission"],
+        "component": component["component"],
+        "fixture": simulator["fixture"],
+        "adapter": adapter["adapter"],
+        "pipeline": pipeline,
+        "decision": "scenario_replayed" if supported else "blocked_unsupported_target",
+        "guards": (
+            "permission_before_bridge",
+            "fixture_before_adapter",
+            "props_validated_before_dispatch",
+            "unsupported_targets_disable_component",
+        ),
+        "side_effects": (),
+    }
+
+
 def mobile_native_api_actionable_operations() -> dict:
     """Return callable mobile/native operations used by the generated IDE."""
     operations = {
@@ -11731,6 +11776,7 @@ def mobile_native_api_actionable_operations() -> dict:
         "review_privacy": mobile_review_privacy_operation(),
         "resume_background": mobile_resume_background_operation(),
         "validate_device_component": mobile_validate_device_component_operation(),
+        "run_device_scenario": mobile_run_device_scenario_operation(),
     }
     return {
         "format": "appgen.mobile-native-api-actionable-operations.v1",
@@ -12668,6 +12714,7 @@ def mobile_native_api_workbench() -> dict:
                 "review_privacy",
                 "resume_background",
                 "validate_device_component",
+                "run_device_scenario",
             }
             <= set(actionable_operations["operations"])
             and not actionable_operations["side_effects"],
@@ -21317,6 +21364,7 @@ def device_api_component_file_manifest() -> tuple[dict, ...]:
         "validate_props",
         "request_permission",
         "replay",
+        "run_scenario",
         "dispatch_event",
         "design_tools",
         "smoke_test",
@@ -22668,6 +22716,7 @@ def device_api_component_module_file_manifest() -> tuple[dict, ...]:
         "validate_props",
         "request_permission",
         "replay",
+        "run_scenario",
         "dispatch_event",
         "design_tools",
         "smoke_test",
