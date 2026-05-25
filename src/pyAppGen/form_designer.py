@@ -15606,6 +15606,178 @@ def rad_parity_workbench(existing_paths: set[str] | None = None) -> dict:
         for artifact in mobile_workbench["device_component_test_artifacts"]
         if artifact["ok"]
     )
+    required_mobile_operation_names = (
+        "request_permission",
+        "dispatch_adapter",
+        "replay_simulator",
+        "review_platform_fallback",
+        "review_privacy",
+        "resume_background",
+        "validate_device_component",
+    )
+    passing_mobile_operation_names = tuple(mobile_workbench["actionable_operations"]["operations"])
+    required_mobile_readiness_checks = (
+        "privacy_permission_ready",
+        "simulator_ready",
+        "bridge_component_ready",
+        "fallback_lifecycle_ready",
+        "runtime_delivery_ready",
+        "designer_capability_ready",
+        "operation_surface_ready",
+        "phase_order_ready",
+    )
+    passing_mobile_readiness_checks = tuple(
+        check["id"] for check in mobile_workbench["readiness"]["checks"] if check["ok"]
+    )
+    required_mobile_runtime_delivery_phases = (
+        "load_privacy_prompt",
+        "transition_unknown_to_prompting",
+        "transition_prompting_to_granted",
+        "load_simulator_fixture",
+        "invoke_target_bridge",
+        "normalize_payload",
+        "dispatch_component_events",
+        "record_diagnostic",
+        "validate_mime",
+        "copy_to_app_storage",
+        "cleanup_temporary_files",
+    )
+    passing_mobile_runtime_delivery_phases = tuple(
+        sorted(
+            {
+                phase
+                for replay in mobile_workbench["runtime_replay"]["replay"]
+                if replay["ok"]
+                for phase in replay["phases"]
+            }
+        )
+    )
+    required_mobile_permission_transitions = (
+        "unknown->prompting",
+        "prompting->granted",
+        "prompting->denied",
+        "granted->revoked",
+        "revoked->prompting",
+    )
+    passing_mobile_permission_transitions = tuple(
+        sorted(
+            {
+                transition
+                for state in mobile_workbench["permission_state_machine"]["transitions"]
+                for transition in state["transitions"]
+            }
+        )
+    )
+    required_mobile_permission_state_apis = tuple(mobile_contract["apis"])
+    passing_mobile_permission_state_apis = tuple(
+        state["api"]
+        for state in mobile_workbench["permission_state_machine"]["transitions"]
+        if set(required_mobile_permission_transitions) <= set(state["transitions"])
+    )
+    required_mobile_privacy_apis = tuple(mobile_contract["apis"])
+    passing_mobile_privacy_apis = tuple(
+        entry["api"]
+        for entry in mobile_workbench["store_privacy_manifest"]["entries"]
+        if entry["prompt"] and entry["retention"] == "user-controlled" and not entry["third_party_sharing"]
+    )
+    required_mobile_privacy_categories = ("device", "media", "usage")
+    passing_mobile_privacy_categories = tuple(
+        sorted(
+            {
+                category
+                for entry in mobile_workbench["store_privacy_manifest"]["entries"]
+                for category in entry["data_categories"]
+            }
+        )
+    )
+    required_mobile_simulator_replay_steps = (
+        "set_permissions",
+        "set_profile",
+        "load_fixture",
+        "dispatch_events",
+        "assert_events",
+    )
+    passing_mobile_simulator_replay_steps = tuple(
+        sorted(
+            {
+                step
+                for fixture in mobile_workbench["simulator_fixture_integrity"]["fixtures"]
+                for step in fixture["replay_order"]
+            }
+        )
+    )
+    passing_mobile_event_trace_apis = tuple(
+        trace["api"]
+        for trace in mobile_workbench["event_traces"]["traces"]
+        if trace["events"] and all("normalize_payload" in event["trace"] for event in trace["events"])
+    )
+    required_mobile_event_trace_apis = tuple(mobile_contract["apis"])
+    required_mobile_bridge_error_targets = required_mobile_bridge_targets
+    passing_mobile_bridge_error_targets = tuple(
+        scenario["target"]
+        for scenario in mobile_workbench["bridge_errors"]["scenarios"]
+        if "fallback_path" in scenario["recovery"]
+    )
+    required_mobile_bridge_error_types = (
+        "permission_denied",
+        "adapter_unavailable",
+        "timeout",
+        "payload_validation_failed",
+        "platform_exception",
+    )
+    passing_mobile_bridge_error_types = tuple(
+        sorted(
+            {
+                error
+                for scenario in mobile_workbench["bridge_errors"]["scenarios"]
+                for error in scenario["errors"]
+            }
+        )
+    )
+    required_mobile_background_apis = (
+        "push_notifications",
+        "background_tasks",
+        "location",
+        "network_status",
+    )
+    passing_mobile_background_apis = tuple(
+        delivery["api"]
+        for delivery in mobile_workbench["background_delivery"]["deliveries"]
+        if "checkpoint_delivery" in delivery["lifecycle"]
+    )
+    required_mobile_media_apis = (
+        "camera",
+        "photos",
+        "file_picker",
+        "share_sheet",
+        "microphone",
+        "video_player",
+        "screen_capture",
+        "filesystem",
+    )
+    passing_mobile_media_apis = tuple(
+        pipeline["api"]
+        for pipeline in mobile_workbench["media_file_pipeline"]["pipelines"]
+        if {"validate_mime", "copy_to_app_storage", "emit_result"} <= set(pipeline["stages"])
+        and "temporary_files_cleaned" in pipeline["guards"]
+    )
+    required_mobile_deep_link_targets = (
+        "record_detail",
+        "workflow_inbox",
+        "offline_sync",
+        "universal_link",
+    )
+    passing_mobile_deep_link_targets = tuple(
+        route["target"] for route in mobile_workbench["deep_link_routing"]["routes"]
+    )
+    required_mobile_deep_link_pipeline = (
+        "parse_link",
+        "normalize_params",
+        "authorize_route",
+        "dispatch_route",
+        "fallback_if_blocked",
+    )
+    passing_mobile_deep_link_pipeline = tuple(mobile_workbench["deep_link_routing"]["pipeline"])
     required_mobile_workbench_checks = (
         "api_breadth",
         "permission_manifest",
@@ -16739,7 +16911,22 @@ def rad_parity_workbench(existing_paths: set[str] | None = None) -> dict:
             and set(required_mobile_capability_phases) <= set(passing_mobile_capability_phases)
             and set(required_mobile_readiness_phases) <= set(passing_mobile_readiness_phases)
             and set(required_mobile_module_apis) <= set(passing_mobile_module_apis)
-            and set(required_mobile_module_apis) <= set(passing_mobile_module_test_apis),
+            and set(required_mobile_module_apis) <= set(passing_mobile_module_test_apis)
+            and set(required_mobile_operation_names) <= set(passing_mobile_operation_names)
+            and set(required_mobile_readiness_checks) <= set(passing_mobile_readiness_checks)
+            and set(required_mobile_runtime_delivery_phases) <= set(passing_mobile_runtime_delivery_phases)
+            and set(required_mobile_permission_transitions) <= set(passing_mobile_permission_transitions)
+            and set(required_mobile_permission_state_apis) <= set(passing_mobile_permission_state_apis)
+            and set(required_mobile_privacy_apis) <= set(passing_mobile_privacy_apis)
+            and set(required_mobile_privacy_categories) <= set(passing_mobile_privacy_categories)
+            and set(required_mobile_simulator_replay_steps) <= set(passing_mobile_simulator_replay_steps)
+            and set(required_mobile_event_trace_apis) <= set(passing_mobile_event_trace_apis)
+            and set(required_mobile_bridge_error_targets) <= set(passing_mobile_bridge_error_targets)
+            and set(required_mobile_bridge_error_types) <= set(passing_mobile_bridge_error_types)
+            and set(required_mobile_background_apis) <= set(passing_mobile_background_apis)
+            and set(required_mobile_media_apis) <= set(passing_mobile_media_apis)
+            and set(required_mobile_deep_link_targets) <= set(passing_mobile_deep_link_targets)
+            and set(required_mobile_deep_link_pipeline) <= set(passing_mobile_deep_link_pipeline),
             "required_apis": required_mobile_api_names,
             "passing_apis": passing_mobile_api_names,
             "required_targets": required_mobile_targets,
@@ -16770,6 +16957,36 @@ def rad_parity_workbench(existing_paths: set[str] | None = None) -> dict:
             "passing_module_apis": passing_mobile_module_apis,
             "required_module_test_apis": required_mobile_module_apis,
             "passing_module_test_apis": passing_mobile_module_test_apis,
+            "required_operation_names": required_mobile_operation_names,
+            "passing_operation_names": passing_mobile_operation_names,
+            "required_readiness_checks": required_mobile_readiness_checks,
+            "passing_readiness_checks": passing_mobile_readiness_checks,
+            "required_runtime_delivery_phases": required_mobile_runtime_delivery_phases,
+            "passing_runtime_delivery_phases": passing_mobile_runtime_delivery_phases,
+            "required_permission_transitions": required_mobile_permission_transitions,
+            "passing_permission_transitions": passing_mobile_permission_transitions,
+            "required_permission_state_apis": required_mobile_permission_state_apis,
+            "passing_permission_state_apis": passing_mobile_permission_state_apis,
+            "required_privacy_apis": required_mobile_privacy_apis,
+            "passing_privacy_apis": passing_mobile_privacy_apis,
+            "required_privacy_categories": required_mobile_privacy_categories,
+            "passing_privacy_categories": passing_mobile_privacy_categories,
+            "required_simulator_replay_steps": required_mobile_simulator_replay_steps,
+            "passing_simulator_replay_steps": passing_mobile_simulator_replay_steps,
+            "required_event_trace_apis": required_mobile_event_trace_apis,
+            "passing_event_trace_apis": passing_mobile_event_trace_apis,
+            "required_bridge_error_targets": required_mobile_bridge_error_targets,
+            "passing_bridge_error_targets": passing_mobile_bridge_error_targets,
+            "required_bridge_error_types": required_mobile_bridge_error_types,
+            "passing_bridge_error_types": passing_mobile_bridge_error_types,
+            "required_background_apis": required_mobile_background_apis,
+            "passing_background_apis": passing_mobile_background_apis,
+            "required_media_apis": required_mobile_media_apis,
+            "passing_media_apis": passing_mobile_media_apis,
+            "required_deep_link_targets": required_mobile_deep_link_targets,
+            "passing_deep_link_targets": passing_mobile_deep_link_targets,
+            "required_deep_link_pipeline": required_mobile_deep_link_pipeline,
+            "passing_deep_link_pipeline": passing_mobile_deep_link_pipeline,
             "required_checks": required_mobile_workbench_checks,
             "passing_checks": passing_mobile_workbench_checks,
             "evidence": {"contract": mobile_contract, "workbench": mobile_workbench},

@@ -3469,6 +3469,29 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     assert set(mobile_gate["required_readiness_phases"]) <= set(mobile_gate["passing_readiness_phases"])
     assert set(mobile_gate["required_module_apis"]) <= set(mobile_gate["passing_module_apis"])
     assert set(mobile_gate["required_module_test_apis"]) <= set(mobile_gate["passing_module_test_apis"])
+    assert set(mobile_gate["required_operation_names"]) <= set(mobile_gate["passing_operation_names"])
+    assert set(mobile_gate["required_readiness_checks"]) <= set(mobile_gate["passing_readiness_checks"])
+    assert set(mobile_gate["required_runtime_delivery_phases"]) <= set(
+        mobile_gate["passing_runtime_delivery_phases"]
+    )
+    assert set(mobile_gate["required_permission_transitions"]) <= set(
+        mobile_gate["passing_permission_transitions"]
+    )
+    assert set(mobile_gate["required_permission_state_apis"]) <= set(
+        mobile_gate["passing_permission_state_apis"]
+    )
+    assert set(mobile_gate["required_privacy_apis"]) <= set(mobile_gate["passing_privacy_apis"])
+    assert set(mobile_gate["required_privacy_categories"]) <= set(mobile_gate["passing_privacy_categories"])
+    assert set(mobile_gate["required_simulator_replay_steps"]) <= set(
+        mobile_gate["passing_simulator_replay_steps"]
+    )
+    assert set(mobile_gate["required_event_trace_apis"]) <= set(mobile_gate["passing_event_trace_apis"])
+    assert set(mobile_gate["required_bridge_error_targets"]) <= set(mobile_gate["passing_bridge_error_targets"])
+    assert set(mobile_gate["required_bridge_error_types"]) <= set(mobile_gate["passing_bridge_error_types"])
+    assert set(mobile_gate["required_background_apis"]) <= set(mobile_gate["passing_background_apis"])
+    assert set(mobile_gate["required_media_apis"]) <= set(mobile_gate["passing_media_apis"])
+    assert set(mobile_gate["required_deep_link_targets"]) <= set(mobile_gate["passing_deep_link_targets"])
+    assert set(mobile_gate["required_deep_link_pipeline"]) <= set(mobile_gate["passing_deep_link_pipeline"])
     assert set(mobile_gate["required_checks"]) <= set(mobile_gate["passing_checks"])
     visual_depth_gate = next(
         check for check in audit["rad_parity"]["checks"] if check["id"] == "cross_target_animation_effects_3d_depth"
