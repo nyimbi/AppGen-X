@@ -2300,6 +2300,7 @@ def pbc_implementation_contract(key: str) -> dict:
         service_methods,
     )
     advanced_blueprint = _advanced_domain_blueprint(key, service, table_contracts, event_contract, service_methods)
+    advanced_runtime = gl_core_runtime_capabilities() if key == "gl_core" else {}
     release_checks = (
         "stable_manifest",
         "owned_schema_only",
@@ -2376,6 +2377,7 @@ def pbc_implementation_contract(key: str) -> dict:
         ),
         "domain_functionality": domain_functionality,
         "advanced_domain_blueprint": advanced_blueprint,
+        "advanced_runtime": advanced_runtime,
         "models": tuple(
             {
                 "class_name": "".join(part.capitalize() for part in table["owned_table"].split("_")),
@@ -2515,6 +2517,7 @@ def pbc_implementation_release_audit(selected_pbcs: tuple[str, ...] | list[str] 
                         contract["pbc"] != "gl_core"
                         or (
                             contract["advanced_domain_blueprint"]["ok"]
+                            and contract["advanced_runtime"]["ok"]
                             and set(PBC_ADVANCED_DOMAIN_REQUIRED_AREAS)
                             <= set(contract["advanced_domain_blueprint"]["areas"])
                             and set(GL_CORE_ADVANCED_CAPABILITY_KEYS)
@@ -3943,3 +3946,36 @@ def _app_name_from_prompt(prompt: str) -> str:
         return "ComposableEnterprise"
     raw = match.group("name")
     return raw[:1].upper() + raw[1:]
+
+
+# PBC-owned executable implementations live under src/pyAppGen/pbcs/<pbc_key>/.
+# These imports keep the historical pyAppGen.pbc API while implementation stays
+# inside the owning PBC package directory.
+from .pbcs.gl_core import gl_core_append_ledger_event  # noqa: E402,F401
+from .pbcs.gl_core import gl_core_build_federated_view  # noqa: E402,F401
+from .pbcs.gl_core import gl_core_build_projection  # noqa: E402,F401
+from .pbcs.gl_core import gl_core_compile_regulatory_rules  # noqa: E402,F401
+from .pbcs.gl_core import gl_core_consolidate_private_balances  # noqa: E402,F401
+from .pbcs.gl_core import gl_core_create_continuous_close_snapshot  # noqa: E402,F401
+from .pbcs.gl_core import gl_core_derive_account_from_semantics  # noqa: E402,F401
+from .pbcs.gl_core import gl_core_empty_state  # noqa: E402,F401
+from .pbcs.gl_core import gl_core_evaluate_policy  # noqa: E402,F401
+from .pbcs.gl_core import gl_core_generate_audit_proof  # noqa: E402,F401
+from .pbcs.gl_core import gl_core_measure_information_auditability  # noqa: E402,F401
+from .pbcs.gl_core import gl_core_predict_posting_validation  # noqa: E402,F401
+from .pbcs.gl_core import gl_core_query_temporal_ledger  # noqa: E402,F401
+from .pbcs.gl_core import gl_core_register_financial_model  # noqa: E402,F401
+from .pbcs.gl_core import gl_core_register_schema_extension  # noqa: E402,F401
+from .pbcs.gl_core import gl_core_replicate_consensus  # noqa: E402,F401
+from .pbcs.gl_core import gl_core_resolve_reconciliation_game  # noqa: E402,F401
+from .pbcs.gl_core import gl_core_rotate_crypto_epoch  # noqa: E402,F401
+from .pbcs.gl_core import gl_core_run_causal_scenario  # noqa: E402,F401
+from .pbcs.gl_core import gl_core_run_control_tests  # noqa: E402,F401
+from .pbcs.gl_core import gl_core_run_resilience_drill  # noqa: E402,F401
+from .pbcs.gl_core import gl_core_runtime_capabilities  # noqa: E402,F401
+from .pbcs.gl_core import gl_core_runtime_smoke  # noqa: E402,F401
+from .pbcs.gl_core import gl_core_schedule_carbon_aware_execution  # noqa: E402,F401
+from .pbcs.gl_core import gl_core_simulate_probabilistic_posting  # noqa: E402,F401
+from .pbcs.gl_core import gl_core_suggest_reconciliation  # noqa: E402,F401
+from .pbcs.gl_core import gl_core_verify_formal_invariants  # noqa: E402,F401
+from .pbcs.gl_core import gl_core_verify_identity_credential  # noqa: E402,F401

@@ -25,6 +25,20 @@ subscriptions.
 
 ## Package Layout
 
+A built-in PBC's executable source lives under its own implementation directory:
+
+```text
+src/pyAppGen/pbcs/<pbc_key>/
+  __init__.py
+  runtime.py
+```
+
+Keep domain runtime code, command helpers, smoke evidence, and PBC-specific
+adapters inside that directory. The catalog and composition layer may re-export
+stable helpers for compatibility, but it must not become the implementation
+home for a PBC. The generated application mirrors this boundary under
+`app/pbcs/<pbc_key>/`.
+
 A reusable PBC package should use this layout:
 
 ```text

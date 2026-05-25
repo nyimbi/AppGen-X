@@ -26,6 +26,9 @@ stacks, then generate a working application shell from the composition.
   [Opinionated Event Processing Guidance](kafka-alternatives.md).
 - Composition is event-first: dependencies are explicit event contracts, with
   unresolved external events recorded as integration obligations.
+- Built-in executable PBC source is isolated by directory under
+  `src/pyAppGen/pbcs/<pbc_key>/`; the catalog may orchestrate and re-export
+  stable helpers, but PBC-specific runtime behavior belongs to that package.
 - Generated applications include one implementation directory per selected PBC:
   `app/pbcs/<pbc_key>/`. Each directory contains the PBC manifest, owned model
   metadata, migration SQL, service commands, API routes, event contracts,
