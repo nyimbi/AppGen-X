@@ -184,6 +184,11 @@ AR_CREDIT_ADVANCED_CAPABILITY_KEYS = (
     "mathematical_optimization",
     "financial_mlops_governance",
 )
+IMPLEMENTED_PBC_KEYS = (
+    "gl_core",
+    "ap_automation",
+    "ar_credit",
+)
 PBC_ALLOWED_DATASTORE_BACKENDS = (
     "postgresql",
     "mysql",
@@ -2673,6 +2678,62 @@ def pbc_implementation_release_audit(selected_pbcs: tuple[str, ...] | list[str] 
     }
 
 
+def pbc_implemented_capability_audit(selected_pbcs: tuple[str, ...] | list[str] | None = None) -> dict:
+    """Verify implemented PBCs expose standard table-stakes and advanced runtime evidence."""
+    selected = tuple(dict.fromkeys(selected_pbcs or IMPLEMENTED_PBC_KEYS))
+    minimum_standard_features = 18
+    minimum_advanced_capabilities = {
+        "gl_core": len(GL_CORE_ADVANCED_CAPABILITY_KEYS),
+        "ap_automation": len(AP_AUTOMATION_ADVANCED_CAPABILITY_KEYS),
+        "ar_credit": len(AR_CREDIT_ADVANCED_CAPABILITY_KEYS),
+    }
+    checks = []
+    contracts = pbc_implementation_contracts(selected)
+    for contract in contracts:
+        key = contract["pbc"]
+        runtime = contract.get("advanced_runtime", {})
+        source = contract.get("source_package", {})
+        standard_features = tuple(runtime.get("standard_features") or source.get("standard_features") or ())
+        advanced_capabilities = tuple(runtime.get("capabilities", ()))
+        checks.extend(
+            (
+                {
+                    "id": f"{key}:source_package_owned",
+                    "ok": source.get("ok") is True
+                    and source.get("implementation_directory") == f"src/pyAppGen/pbcs/{key}",
+                },
+                {
+                    "id": f"{key}:standard_table_stakes",
+                    "ok": len(standard_features) >= minimum_standard_features
+                    and len(set(standard_features)) == len(standard_features),
+                    "standard_feature_count": len(standard_features),
+                    "standard_features": standard_features,
+                },
+                {
+                    "id": f"{key}:advanced_runtime_complete",
+                    "ok": runtime.get("ok") is True
+                    and len(advanced_capabilities) >= minimum_advanced_capabilities.get(key, 1)
+                    and len(set(advanced_capabilities)) == len(advanced_capabilities)
+                    and not runtime.get("smoke", {}).get("blocking_gaps"),
+                    "advanced_capability_count": len(advanced_capabilities),
+                },
+                {
+                    "id": f"{key}:release_audit_ready",
+                    "ok": pbc_implementation_release_audit((key,))["ok"],
+                },
+            )
+        )
+    return {
+        "format": "appgen.implemented-pbc-capability-audit.v1",
+        "ok": bool(contracts) and all(check["ok"] for check in checks),
+        "implemented_pbcs": selected,
+        "minimum_standard_features": minimum_standard_features,
+        "contracts": contracts,
+        "checks": tuple(checks),
+        "blocking_gaps": tuple(check for check in checks if not check["ok"]),
+    }
+
+
 def example_pbc_manifest() -> dict:
     """Return a minimal publishable PBC manifest for documentation and tests."""
     return {
@@ -4072,6 +4133,7 @@ def _app_name_from_prompt(prompt: str) -> str:
 # PBC-owned executable implementations live under src/pyAppGen/pbcs/<pbc_key>/.
 # These imports keep the historical pyAppGen.pbc API while implementation stays
 # inside the owning PBC package directory.
+from .pbcs.gl_core import GL_CORE_STANDARD_FEATURE_KEYS  # noqa: E402,F401
 from .pbcs.gl_core import gl_core_append_ledger_event  # noqa: E402,F401
 from .pbcs.gl_core import gl_core_build_federated_view  # noqa: E402,F401
 from .pbcs.gl_core import gl_core_build_projection  # noqa: E402,F401
@@ -4100,6 +4162,7 @@ from .pbcs.gl_core import gl_core_simulate_probabilistic_posting  # noqa: E402,F
 from .pbcs.gl_core import gl_core_suggest_reconciliation  # noqa: E402,F401
 from .pbcs.gl_core import gl_core_verify_formal_invariants  # noqa: E402,F401
 from .pbcs.gl_core import gl_core_verify_identity_credential  # noqa: E402,F401
+from .pbcs.ap_automation import AP_AUTOMATION_STANDARD_FEATURE_KEYS  # noqa: E402,F401
 from .pbcs.ap_automation import AP_AUTOMATION_RUNTIME_CAPABILITY_KEYS  # noqa: E402,F401
 from .pbcs.ap_automation import ap_automation_align_contract_terms  # noqa: E402,F401
 from .pbcs.ap_automation import ap_automation_analyze_discount_counterfactual  # noqa: E402,F401
@@ -4113,6 +4176,7 @@ from .pbcs.ap_automation import ap_automation_record_goods_receipt  # noqa: E402
 from .pbcs.ap_automation import ap_automation_runtime_capabilities  # noqa: E402,F401
 from .pbcs.ap_automation import ap_automation_runtime_smoke  # noqa: E402,F401
 from .pbcs.ap_automation import ap_automation_schedule_payments  # noqa: E402,F401
+from .pbcs.ar_credit import AR_CREDIT_STANDARD_FEATURE_KEYS  # noqa: E402,F401
 from .pbcs.ar_credit import AR_CREDIT_RUNTIME_CAPABILITY_KEYS  # noqa: E402,F401
 from .pbcs.ar_credit import ar_credit_apply_cash  # noqa: E402,F401
 from .pbcs.ar_credit import ar_credit_build_workbench_view  # noqa: E402,F401

@@ -42,6 +42,29 @@ AP_AUTOMATION_RUNTIME_CAPABILITY_KEYS = (
     "mathematical_optimization",
     "financial_mlops_governance",
 )
+AP_AUTOMATION_STANDARD_FEATURE_KEYS = (
+    "vendor_master",
+    "vendor_onboarding",
+    "purchase_order_reference",
+    "goods_receipt_reference",
+    "invoice_capture",
+    "invoice_validation",
+    "three_way_match",
+    "exception_management",
+    "approval_workflow",
+    "tax_validation",
+    "payment_terms",
+    "payment_scheduling",
+    "payment_execution",
+    "discount_management",
+    "duplicate_invoice_detection",
+    "vendor_statement_reconciliation",
+    "withholding_tax",
+    "bank_rail_routing",
+    "audit_trail",
+    "controls",
+    "workbench",
+)
 
 
 def ap_automation_runtime_capabilities() -> dict:
@@ -52,6 +75,7 @@ def ap_automation_runtime_capabilities() -> dict:
         "pbc": "ap_automation",
         "implementation_directory": "src/pyAppGen/pbcs/ap_automation",
         "capabilities": AP_AUTOMATION_RUNTIME_CAPABILITY_KEYS,
+        "standard_features": AP_AUTOMATION_STANDARD_FEATURE_KEYS,
         "operations": (
             "onboard_vendor",
             "issue_purchase_order",

@@ -42,6 +42,26 @@ GL_CORE_RUNTIME_CAPABILITY_KEYS = (
     "cryptographic_engineering",
     "financial_mlops",
 )
+GL_CORE_STANDARD_FEATURE_KEYS = (
+    "chart_of_accounts",
+    "journal_entry",
+    "journal_line_balancing",
+    "posting_periods",
+    "trial_balance",
+    "ledger_projection",
+    "account_reconciliation",
+    "financial_statement_projection",
+    "period_close",
+    "audit_trail",
+    "approval_policy",
+    "tax_and_reporting_dimensions",
+    "multi_entity_tenant_isolation",
+    "currency_and_revaluation",
+    "intercompany_support",
+    "subledger_integration",
+    "budget_control",
+    "attachments_and_source_documents",
+)
 
 
 def gl_core_runtime_capabilities() -> dict:
@@ -53,6 +73,7 @@ def gl_core_runtime_capabilities() -> dict:
         "pbc": "gl_core",
         "implementation_directory": "src/pyAppGen/pbcs/gl_core",
         "capabilities": GL_CORE_RUNTIME_CAPABILITY_KEYS,
+        "standard_features": GL_CORE_STANDARD_FEATURE_KEYS,
         "operations": (
             "append_ledger_event",
             "replicate_consensus",

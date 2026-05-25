@@ -1,6 +1,7 @@
 """General Ledger Core PBC implementation package."""
 
 from ..source_contract import source_pbc_package_contract
+from .runtime import GL_CORE_STANDARD_FEATURE_KEYS
 from .runtime import gl_core_append_ledger_event
 from .runtime import gl_core_build_federated_view
 from .runtime import gl_core_build_projection
@@ -38,5 +39,6 @@ def implementation_contract() -> dict:
     contract = source_pbc_package_contract(PBC_KEY, tuple(runtime["capabilities"]))
     return {
         **contract,
+        "standard_features": runtime["standard_features"],
         "advanced_runtime": runtime,
     }

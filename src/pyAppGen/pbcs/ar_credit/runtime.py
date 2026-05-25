@@ -42,6 +42,26 @@ AR_CREDIT_RUNTIME_CAPABILITY_KEYS = (
     "mathematical_optimization",
     "financial_mlops_governance",
 )
+AR_CREDIT_STANDARD_FEATURE_KEYS = (
+    "customer_master",
+    "invoice_generation",
+    "delivery_confirmation",
+    "cash_application",
+    "partial_payment",
+    "unapplied_cash",
+    "credit_memo",
+    "write_off",
+    "refund",
+    "aging",
+    "dunning",
+    "collection_actions",
+    "customer_statement",
+    "revenue_schedule",
+    "credit_limit",
+    "dispute_management",
+    "controls",
+    "workbench",
+)
 
 
 def ar_credit_runtime_capabilities() -> dict:
@@ -92,26 +112,8 @@ def ar_credit_runtime_capabilities() -> dict:
             "verify_formal_invariants",
             "register_governed_model",
         ),
-        "ordinary_ar_features": (
-            "customer_master",
-            "invoice_generation",
-            "delivery_confirmation",
-            "cash_application",
-            "partial_payment",
-            "unapplied_cash",
-            "credit_memo",
-            "write_off",
-            "refund",
-            "aging",
-            "dunning",
-            "collection_actions",
-            "customer_statement",
-            "revenue_schedule",
-            "credit_limit",
-            "dispute_management",
-            "controls",
-            "workbench",
-        ),
+        "standard_features": AR_CREDIT_STANDARD_FEATURE_KEYS,
+        "ordinary_ar_features": AR_CREDIT_STANDARD_FEATURE_KEYS,
         "smoke": smoke,
     }
 

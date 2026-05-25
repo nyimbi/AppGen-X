@@ -1,6 +1,7 @@
 """Accounts Receivable and Credit PBC implementation package."""
 
 from ..source_contract import source_pbc_package_contract
+from .runtime import AR_CREDIT_STANDARD_FEATURE_KEYS
 from .runtime import AR_CREDIT_RUNTIME_CAPABILITY_KEYS
 from .runtime import ar_credit_apply_cash
 from .runtime import ar_credit_build_api_contract
@@ -53,5 +54,6 @@ def implementation_contract() -> dict:
     contract = source_pbc_package_contract(PBC_KEY, tuple(runtime["capabilities"]))
     return {
         **contract,
+        "standard_features": runtime["standard_features"],
         "advanced_runtime": runtime,
     }
