@@ -14759,6 +14759,107 @@ def rad_parity_workbench(existing_paths: set[str] | None = None) -> dict:
     passing_component_usability_checks = tuple(
         check["id"] for check in usability_workbench["checks"] if check["ok"]
     )
+    component_contracts = tuple(usability_workbench["components"])
+    component_names = tuple(item["component"] for item in component_palette())
+    required_component_names = component_names
+    passing_component_names = tuple(
+        contract["component"] for contract in component_contracts if contract["usable"]
+    )
+    required_component_renderer_targets = ("web", "mobile", "desktop")
+    required_component_renderer_surfaces = tuple(
+        (component, target)
+        for component in component_names
+        for target in required_component_renderer_targets
+    )
+    passing_component_renderer_surfaces = tuple(
+        (contract["component"], target)
+        for contract in component_contracts
+        for target in required_component_renderer_targets
+        if target in contract["renderers"]
+    )
+    required_component_property_surfaces = tuple(
+        (contract["component"], property_name)
+        for contract in component_contracts
+        for property_name in contract["default_props"]
+    )
+    passing_component_property_surfaces = tuple(
+        (contract["component"], property_name)
+        for contract in component_contracts
+        for property_name in contract["default_props"]
+        if property_name in contract["property_editors"]
+    )
+    required_component_event_surfaces = tuple(
+        (contract["component"], event_name)
+        for contract in component_contracts
+        for event_name in contract["events"]
+    )
+    passing_component_event_surfaces = required_component_event_surfaces
+    required_component_validation_surfaces = tuple(
+        (contract["component"], rule)
+        for contract in component_contracts
+        for rule in ("within_canvas_bounds", "stable_component_id", "known_property_names")
+    )
+    passing_component_validation_surfaces = tuple(
+        (contract["component"], rule)
+        for contract in component_contracts
+        for rule in ("within_canvas_bounds", "stable_component_id", "known_property_names")
+        if rule in contract["validation_rules"]
+    )
+    required_component_preview_components = component_names
+    passing_component_preview_components = tuple(
+        contract["component"]
+        for contract in component_contracts
+        if contract["preview"]["available"]
+    )
+    required_component_behavior_components = component_names
+    passing_component_behavior_components = tuple(
+        behavior["component"]
+        for behavior in usability_workbench["behavior_workbench"]["behaviors"]
+        if behavior["ok"]
+    )
+    required_component_module_components = component_names
+    passing_component_module_components = tuple(
+        artifact["component"]
+        for artifact in usability_workbench["component_files"]
+        if artifact["module_contract"]["ok"]
+    )
+    passing_component_test_components = tuple(
+        artifact["component"]
+        for artifact in usability_workbench["component_test_files"]
+        if artifact["ok"]
+    )
+    required_component_ide_components = component_names
+    passing_component_ide_components = tuple(
+        entry["component"] for entry in usability_workbench["ide_readiness"]["entries"] if entry["ready"]
+    )
+    required_component_analog_groups = tuple(usability_workbench["analog_workbench"]["groups"])
+    passing_component_analog_groups = tuple(
+        sorted({item["group"] for item in usability_workbench["analog_workbench"]["matrix"] if item["implemented"]})
+    )
+    required_component_readiness_phases = (
+        "analog_coverage",
+        "palette_icon_surface",
+        "runtime_behavior",
+        "generated_modules",
+        "generated_tests",
+        "ide_catalog_release",
+    )
+    passing_component_readiness_phases = tuple(
+        phase["phase"] for phase in component_readiness["phases"] if phase["ok"]
+    )
+    required_component_readiness_checks = (
+        "analog_coverage_ready",
+        "palette_icons_ready",
+        "behavior_surface_ready",
+        "generated_modules_ready",
+        "generated_tests_ready",
+        "ide_release_ready",
+        "phase_order_ready",
+        "side_effect_guard_ready",
+    )
+    passing_component_readiness_checks = tuple(
+        check["id"] for check in component_readiness["checks"] if check["ok"]
+    )
     required_inspector_tabs = ("Properties", "Events")
     passing_inspector_tabs = tuple(object_inspector_contract()["tabs"])
     required_inspector_workbench_checks = (
@@ -15659,12 +15760,55 @@ def rad_parity_workbench(existing_paths: set[str] | None = None) -> dict:
             "id": "native_ui_parity_component_parity",
             "ok": len(component_palette()) >= 7
             and set(required_component_palette_categories) <= set(passing_component_palette_categories)
-            and component_readiness["ok"],
+            and component_readiness["ok"]
+            and set(required_component_names) <= set(passing_component_names)
+            and set(required_component_renderer_surfaces) <= set(passing_component_renderer_surfaces)
+            and set(required_component_property_surfaces) <= set(passing_component_property_surfaces)
+            and set(required_component_event_surfaces) <= set(passing_component_event_surfaces)
+            and set(required_component_validation_surfaces) <= set(passing_component_validation_surfaces)
+            and set(required_component_preview_components) <= set(passing_component_preview_components)
+            and set(required_component_behavior_components) <= set(passing_component_behavior_components)
+            and set(required_component_module_components) <= set(passing_component_module_components)
+            and set(required_component_module_components) <= set(passing_component_test_components)
+            and set(required_component_ide_components) <= set(passing_component_ide_components)
+            and set(required_component_analog_groups) <= set(passing_component_analog_groups)
+            and set(required_component_readiness_phases) <= set(passing_component_readiness_phases)
+            and set(required_component_readiness_checks) <= set(passing_component_readiness_checks),
             "required_categories": required_component_palette_categories,
             "passing_categories": passing_component_palette_categories,
+            "required_components": required_component_names,
+            "passing_components": passing_component_names,
+            "required_renderer_surfaces": required_component_renderer_surfaces,
+            "passing_renderer_surfaces": passing_component_renderer_surfaces,
+            "required_property_surfaces": required_component_property_surfaces,
+            "passing_property_surfaces": passing_component_property_surfaces,
+            "required_event_surfaces": required_component_event_surfaces,
+            "passing_event_surfaces": passing_component_event_surfaces,
+            "required_validation_surfaces": required_component_validation_surfaces,
+            "passing_validation_surfaces": passing_component_validation_surfaces,
+            "required_preview_components": required_component_preview_components,
+            "passing_preview_components": passing_component_preview_components,
+            "required_behavior_components": required_component_behavior_components,
+            "passing_behavior_components": passing_component_behavior_components,
+            "required_module_components": required_component_module_components,
+            "passing_module_components": passing_component_module_components,
+            "required_module_test_components": required_component_module_components,
+            "passing_module_test_components": passing_component_test_components,
+            "required_ide_components": required_component_ide_components,
+            "passing_ide_components": passing_component_ide_components,
+            "required_analog_groups": required_component_analog_groups,
+            "passing_analog_groups": passing_component_analog_groups,
+            "required_readiness_phases": required_component_readiness_phases,
+            "passing_readiness_phases": passing_component_readiness_phases,
+            "required_readiness_checks": required_component_readiness_checks,
+            "passing_readiness_checks": passing_component_readiness_checks,
             "required_component_count": 7,
             "passing_component_count": len(component_palette()),
-            "evidence": {"components": tuple(item["component"] for item in component_palette()), "readiness": component_readiness},
+            "evidence": {
+                "components": component_contracts,
+                "readiness": component_readiness,
+                "usability": usability_workbench,
+            },
         },
         {
             "id": "built_in_component_usability",

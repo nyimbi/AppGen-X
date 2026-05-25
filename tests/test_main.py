@@ -3200,6 +3200,37 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     )
     assert component_parity_gate["ok"] is True
     assert set(component_parity_gate["required_categories"]) <= set(component_parity_gate["passing_categories"])
+    assert set(component_parity_gate["required_components"]) <= set(component_parity_gate["passing_components"])
+    assert set(component_parity_gate["required_renderer_surfaces"]) <= set(
+        component_parity_gate["passing_renderer_surfaces"]
+    )
+    assert set(component_parity_gate["required_property_surfaces"]) <= set(
+        component_parity_gate["passing_property_surfaces"]
+    )
+    assert set(component_parity_gate["required_event_surfaces"]) <= set(component_parity_gate["passing_event_surfaces"])
+    assert set(component_parity_gate["required_validation_surfaces"]) <= set(
+        component_parity_gate["passing_validation_surfaces"]
+    )
+    assert set(component_parity_gate["required_preview_components"]) <= set(
+        component_parity_gate["passing_preview_components"]
+    )
+    assert set(component_parity_gate["required_behavior_components"]) <= set(
+        component_parity_gate["passing_behavior_components"]
+    )
+    assert set(component_parity_gate["required_module_components"]) <= set(
+        component_parity_gate["passing_module_components"]
+    )
+    assert set(component_parity_gate["required_module_test_components"]) <= set(
+        component_parity_gate["passing_module_test_components"]
+    )
+    assert set(component_parity_gate["required_ide_components"]) <= set(component_parity_gate["passing_ide_components"])
+    assert set(component_parity_gate["required_analog_groups"]) <= set(component_parity_gate["passing_analog_groups"])
+    assert set(component_parity_gate["required_readiness_phases"]) <= set(
+        component_parity_gate["passing_readiness_phases"]
+    )
+    assert set(component_parity_gate["required_readiness_checks"]) <= set(
+        component_parity_gate["passing_readiness_checks"]
+    )
     assert component_parity_gate["passing_component_count"] >= component_parity_gate["required_component_count"]
     usability_gate = next(
         check for check in audit["rad_parity"]["checks"] if check["id"] == "built_in_component_usability"
