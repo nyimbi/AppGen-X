@@ -3332,6 +3332,29 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     assert set(inspector_gate["required_checks"]) <= set(inspector_gate["passing_checks"])
     assert set(inspector_gate["required_component_surfaces"]) <= set(inspector_gate["passing_component_surfaces"])
     assert set(inspector_gate["required_surface_counts"]) <= set(inspector_gate["passing_surface_counts"])
+    assert set(inspector_gate["required_operation_names"]) <= set(inspector_gate["passing_operation_names"])
+    assert set(inspector_gate["required_module_kinds"]) <= set(inspector_gate["passing_module_kinds"])
+    assert set(inspector_gate["required_module_test_kinds"]) <= set(inspector_gate["passing_module_test_kinds"])
+    assert set(inspector_gate["required_readiness_phases"]) <= set(inspector_gate["passing_readiness_phases"])
+    assert set(inspector_gate["required_readiness_checks"]) <= set(inspector_gate["passing_readiness_checks"])
+    assert set(inspector_gate["required_lifecycle_phases"]) <= set(inspector_gate["passing_lifecycle_phases"])
+    assert set(inspector_gate["required_lifecycle_checks"]) <= set(inspector_gate["passing_lifecycle_checks"])
+    assert set(inspector_gate["required_design_surface_phases"]) <= set(
+        inspector_gate["passing_design_surface_phases"]
+    )
+    assert set(inspector_gate["required_custom_registration_phases"]) <= set(
+        inspector_gate["passing_custom_registration_phases"]
+    )
+    assert set(inspector_gate["required_cross_component_replay"]) <= set(
+        inspector_gate["passing_cross_component_replay"]
+    )
+    assert set(inspector_gate["required_multi_select_operations"]) <= set(
+        inspector_gate["passing_multi_select_operations"]
+    )
+    assert set(inspector_gate["required_tree_sync_operations"]) <= set(inspector_gate["passing_tree_sync_operations"])
+    assert set(inspector_gate["required_binding_bridge_phases"]) <= set(
+        inspector_gate["passing_binding_bridge_phases"]
+    )
     binding_gate = next(
         check for check in audit["rad_parity"]["checks"] if check["id"] == "livebindings_designer"
     )

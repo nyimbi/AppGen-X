@@ -14930,6 +14930,137 @@ def rad_parity_workbench(existing_paths: set[str] | None = None) -> dict:
         for surface in required_inspector_editor_surfaces
         if contract[surface]
     )
+    required_inspector_operation_names = (
+        "property_edit",
+        "event_create",
+        "event_rename",
+        "handler_invoke",
+        "component_editor",
+        "custom_designer",
+    )
+    passing_inspector_operation_names = tuple(inspector_workbench["actionable_operations"])
+    required_inspector_module_kinds = (
+        "property_editors",
+        "event_editors",
+        "component_editors",
+        "custom_designers",
+        "handler_invocation",
+        "binding_bridge",
+    )
+    passing_inspector_module_kinds = tuple(
+        artifact["kind"] for artifact in inspector_workbench["inspector_module_artifacts"] if artifact["ok"]
+    )
+    passing_inspector_module_test_kinds = tuple(
+        artifact["kind"] for artifact in inspector_workbench["inspector_module_test_artifacts"] if artifact["ok"]
+    )
+    required_inspector_readiness_phases = (
+        "register_editor_metadata",
+        "validate_property_and_event_editors",
+        "run_component_and_custom_designers",
+        "replay_state_and_design_surface",
+        "bridge_bindings_and_handlers",
+        "prove_lifecycle_and_round_trip",
+    )
+    passing_inspector_readiness_phases = tuple(
+        phase["phase"] for phase in inspector_workbench["readiness"]["phases"] if phase["ok"]
+    )
+    required_inspector_readiness_checks = (
+        "editor_metadata_ready",
+        "property_event_ready",
+        "component_custom_designer_ready",
+        "state_design_surface_ready",
+        "binding_handler_ready",
+        "lifecycle_round_trip_ready",
+        "operation_surface_ready",
+        "phase_order_ready",
+    )
+    passing_inspector_readiness_checks = tuple(
+        check["id"] for check in inspector_workbench["readiness"]["checks"] if check["ok"]
+    )
+    required_inspector_lifecycle_phases = (
+        "validate_property_values",
+        "route_event_handlers",
+        "run_component_editor_transactions",
+        "activate_custom_designers",
+        "refresh_property_dependencies",
+        "round_trip_metadata",
+        "replay_design_surface",
+        "replay_custom_designer_registration",
+    )
+    passing_inspector_lifecycle_phases = tuple(
+        phase["phase"] for phase in inspector_workbench["editor_lifecycle_replay"]["replay"] if phase["ok"]
+    )
+    required_inspector_lifecycle_checks = (
+        "property_validation_before_commit",
+        "event_routes_before_design_surface",
+        "component_transactions_before_surface_replay",
+        "custom_designers_before_registration_replay",
+        "metadata_round_trip_before_release",
+        "side_effect_guards",
+    )
+    passing_inspector_lifecycle_checks = tuple(
+        check["id"] for check in inspector_workbench["editor_lifecycle_replay"]["checks"] if check["ok"]
+    )
+    required_inspector_design_surface_phases = (
+        "select_components",
+        "merge_multi_select_properties",
+        "apply_property_and_event_edits",
+        "run_component_editor_transaction",
+        "route_custom_designer_overlay",
+        "recalculate_dependent_properties",
+        "surface_diagnostics",
+        "replay_across_component_categories",
+    )
+    passing_inspector_design_surface_phases = tuple(
+        phase["phase"] for phase in inspector_workbench["design_surface_replay"]["replay"] if phase["ok"]
+    )
+    required_inspector_custom_registration_phases = (
+        "register_custom_designers",
+        "activate_hooks",
+        "render_overlays",
+        "publish_hit_targets",
+        "commit_or_cancel_lifecycle",
+        "round_trip_metadata",
+        "prove_component_isolation",
+    )
+    passing_inspector_custom_registration_phases = tuple(
+        phase["phase"] for phase in inspector_workbench["custom_designer_registration_replay"]["replay"] if phase["ok"]
+    )
+    required_inspector_cross_component_replay = tuple(contract["component"] for contract in inspector_contracts)
+    passing_inspector_cross_component_replay = tuple(
+        item["component"]
+        for item in inspector_workbench["cross_component_replay"]["operation_matrix"]
+        if item["ok"]
+    )
+    required_inspector_multi_select_operations = (
+        "merge_common_properties",
+        "apply_common_change",
+        "reset_mixed_value",
+    )
+    passing_inspector_multi_select_operations = tuple(
+        operation["op"] for operation in inspector_workbench["multi_select"]["operations"]
+    )
+    required_inspector_tree_sync_operations = (
+        "select_from_canvas",
+        "select_from_tree",
+        "rename_component",
+        "delete_component",
+    )
+    passing_inspector_tree_sync_operations = tuple(
+        operation["op"] for operation in inspector_workbench["component_tree_sync"]["operations"]
+    )
+    required_inspector_binding_bridge_phases = (
+        "inspector_property_commit",
+        "binding_link_commit",
+        "binding_route_refresh",
+        "binding_preview_refresh",
+        "event_reference_sync",
+        "diagnostic_surface_sync",
+        "runtime_wiring_refresh",
+    )
+    passing_inspector_binding_bridge_phases = tuple(
+        phase["phase"] for phase in inspector_workbench["inspector_binding_bridge"]["replay"] if phase["ok"]
+    )
     binding_graph = binding_contract["graph"]
     binding_readiness = binding_workbench["readiness"]
     required_binding_nodes = tuple(binding_contract["binding_nodes"])
@@ -16142,7 +16273,20 @@ def rad_parity_workbench(existing_paths: set[str] | None = None) -> dict:
             and inspector_workbench["ok"]
             and set(required_inspector_workbench_checks) <= set(passing_inspector_workbench_checks)
             and set(required_inspector_component_surfaces) <= set(passing_inspector_component_surfaces)
-            and set(required_inspector_surface_counts) <= set(passing_inspector_surface_counts),
+            and set(required_inspector_surface_counts) <= set(passing_inspector_surface_counts)
+            and set(required_inspector_operation_names) <= set(passing_inspector_operation_names)
+            and set(required_inspector_module_kinds) <= set(passing_inspector_module_kinds)
+            and set(required_inspector_module_kinds) <= set(passing_inspector_module_test_kinds)
+            and set(required_inspector_readiness_phases) <= set(passing_inspector_readiness_phases)
+            and set(required_inspector_readiness_checks) <= set(passing_inspector_readiness_checks)
+            and set(required_inspector_lifecycle_phases) <= set(passing_inspector_lifecycle_phases)
+            and set(required_inspector_lifecycle_checks) <= set(passing_inspector_lifecycle_checks)
+            and set(required_inspector_design_surface_phases) <= set(passing_inspector_design_surface_phases)
+            and set(required_inspector_custom_registration_phases) <= set(passing_inspector_custom_registration_phases)
+            and set(required_inspector_cross_component_replay) <= set(passing_inspector_cross_component_replay)
+            and set(required_inspector_multi_select_operations) <= set(passing_inspector_multi_select_operations)
+            and set(required_inspector_tree_sync_operations) <= set(passing_inspector_tree_sync_operations)
+            and set(required_inspector_binding_bridge_phases) <= set(passing_inspector_binding_bridge_phases),
             "required_tabs": required_inspector_tabs,
             "passing_tabs": passing_inspector_tabs,
             "required_checks": required_inspector_workbench_checks,
@@ -16151,6 +16295,32 @@ def rad_parity_workbench(existing_paths: set[str] | None = None) -> dict:
             "passing_component_surfaces": passing_inspector_component_surfaces,
             "required_surface_counts": required_inspector_surface_counts,
             "passing_surface_counts": passing_inspector_surface_counts,
+            "required_operation_names": required_inspector_operation_names,
+            "passing_operation_names": passing_inspector_operation_names,
+            "required_module_kinds": required_inspector_module_kinds,
+            "passing_module_kinds": passing_inspector_module_kinds,
+            "required_module_test_kinds": required_inspector_module_kinds,
+            "passing_module_test_kinds": passing_inspector_module_test_kinds,
+            "required_readiness_phases": required_inspector_readiness_phases,
+            "passing_readiness_phases": passing_inspector_readiness_phases,
+            "required_readiness_checks": required_inspector_readiness_checks,
+            "passing_readiness_checks": passing_inspector_readiness_checks,
+            "required_lifecycle_phases": required_inspector_lifecycle_phases,
+            "passing_lifecycle_phases": passing_inspector_lifecycle_phases,
+            "required_lifecycle_checks": required_inspector_lifecycle_checks,
+            "passing_lifecycle_checks": passing_inspector_lifecycle_checks,
+            "required_design_surface_phases": required_inspector_design_surface_phases,
+            "passing_design_surface_phases": passing_inspector_design_surface_phases,
+            "required_custom_registration_phases": required_inspector_custom_registration_phases,
+            "passing_custom_registration_phases": passing_inspector_custom_registration_phases,
+            "required_cross_component_replay": required_inspector_cross_component_replay,
+            "passing_cross_component_replay": passing_inspector_cross_component_replay,
+            "required_multi_select_operations": required_inspector_multi_select_operations,
+            "passing_multi_select_operations": passing_inspector_multi_select_operations,
+            "required_tree_sync_operations": required_inspector_tree_sync_operations,
+            "passing_tree_sync_operations": passing_inspector_tree_sync_operations,
+            "required_binding_bridge_phases": required_inspector_binding_bridge_phases,
+            "passing_binding_bridge_phases": passing_inspector_binding_bridge_phases,
             "evidence": {"contract": object_inspector_contract(), "workbench": inspector_workbench},
         },
         {
