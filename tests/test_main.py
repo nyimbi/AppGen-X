@@ -233,6 +233,7 @@ from pyAppGen.form_designer import data_tooling_preview_schema_diff
 from pyAppGen.form_designer import data_tooling_publish_resource
 from pyAppGen.form_designer import data_tooling_rehearse_offline_replay_operation
 from pyAppGen.form_designer import data_tooling_failover_transaction_replay_contract
+from pyAppGen.form_designer import data_tooling_module_replay_matrix
 from pyAppGen.form_designer import data_tooling_readiness_contract
 from pyAppGen.form_designer import data_tooling_run_ide_scenario_operation
 from pyAppGen.form_designer import data_tooling_run_module_smoke_operation
@@ -2389,6 +2390,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "deep_data_tooling_module_tests",
         "enterprise_data_ide_modules",
         "enterprise_data_ide_module_tests",
+        "data_tooling_module_replay_matrix",
         "data_tooling_runtime_replay",
         "data_tooling_design_runtime_session_replay",
         "data_tooling_publish_transaction_replay",
@@ -2528,6 +2530,13 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "test_enterprise_data_ide_module_smoke" in item["exports"]
         for item in data_workbench["enterprise_data_ide_module_test_artifacts"]
     )
+    module_replay_matrix = data_tooling_module_replay_matrix()
+    assert module_replay_matrix["format"] == "appgen.data-tooling-module-replay-matrix.v1"
+    assert module_replay_matrix["ok"] is True
+    assert len(module_replay_matrix["data_module_replays"]) == 4
+    assert len(module_replay_matrix["deep_data_tooling_replays"]) == 8
+    assert len(module_replay_matrix["enterprise_data_ide_replays"]) == 6
+    assert data_workbench["module_replay_matrix"]["ok"] is True
     assert {
         "connection_probe",
         "query_preview",
@@ -4875,6 +4884,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "deep_data_tooling_module_tests",
         "enterprise_data_ide_modules",
         "enterprise_data_ide_module_tests",
+        "data_tooling_module_replay_matrix",
         "data_tooling_ide_scenario",
         "phase_order_ready",
     } <= set(requirements_by_id["native_data_service_tooling"]["deep_checks"])
@@ -4947,6 +4957,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
                 "deep_data_tooling_modules",
                 "enterprise_data_ide_modules",
                 "enterprise_data_ide_module_tests",
+                "data_tooling_module_replay_matrix",
             },
         ),
         (
@@ -5401,6 +5412,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "deep_data_tooling_module_tests_ready",
         "enterprise_data_ide_modules_ready",
         "enterprise_data_ide_module_tests_ready",
+        "data_tooling_module_runtime_replay_matrix_ready",
         "publish_transaction_replay",
         "failover_transaction_replay",
         "runtime_replay",
@@ -14868,6 +14880,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "deep_data_tooling_module_tests",
         "enterprise_data_ide_modules",
         "enterprise_data_ide_module_tests",
+        "data_tooling_module_replay_matrix",
         "data_tooling_ide_scenario",
         "phase_order_ready",
     } <= set(generated_requirements_by_id["native_data_service_tooling"]["deep_checks"])
@@ -14940,6 +14953,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
                 "deep_data_tooling_modules",
                 "enterprise_data_ide_modules",
                 "enterprise_data_ide_module_tests",
+                "data_tooling_module_replay_matrix",
             },
         ),
         (
@@ -15639,6 +15653,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "deep_data_tooling_module_tests",
         "enterprise_data_ide_modules",
         "enterprise_data_ide_module_tests",
+        "data_tooling_module_replay_matrix",
         "data_tooling_runtime_replay",
         "data_tooling_design_runtime_session_replay",
         "data_tooling_publish_transaction_replay",
@@ -15781,6 +15796,13 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "test_enterprise_data_ide_module_smoke" in item["exports"]
         for item in generated_data_tooling["enterprise_data_ide_module_test_artifacts"]["tests"]
     )
+    generated_data_replay_matrix = form_designer.data_tooling_module_replay_matrix()
+    assert generated_data_replay_matrix["format"] == "appgen.generated-data-tooling-module-replay-matrix.v1"
+    assert generated_data_replay_matrix["ok"] is True
+    assert len(generated_data_replay_matrix["data_module_replays"]) == 4
+    assert len(generated_data_replay_matrix["deep_data_tooling_replays"]) == 8
+    assert len(generated_data_replay_matrix["enterprise_data_ide_replays"]) == 6
+    assert generated_data_tooling["module_replay_matrix"]["ok"] is True
     assert {
         "connection_probe",
         "query_preview",
@@ -15998,6 +16020,12 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         py_compile.compile(str(test_path), doraise=True)
         module = _load_module(test_path, f"generated_enterprise_data_ide_module_test_{item['module']}")
         assert module.smoke_test()["ok"] is True
+    data_module_replay_matrix = data_runtime.data_tooling_module_runtime_replay_matrix()
+    assert data_module_replay_matrix["format"] == "appgen.generated-data-tooling-module-runtime-replay-matrix.v1"
+    assert data_module_replay_matrix["ok"] is True
+    assert len(data_module_replay_matrix["data_module_replays"]) == 4
+    assert len(data_module_replay_matrix["deep_data_tooling_replays"]) == 8
+    assert len(data_module_replay_matrix["enterprise_data_ide_replays"]) == 6
     data_runtime_replay = data_runtime.replay_data_tooling_runtime()
     assert data_runtime_replay["ok"] is True
     assert {"service_invocation", "offline_replay"} <= set(data_runtime_replay["runtime_ops"])
@@ -16018,6 +16046,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "deep_data_tooling_module_tests_ready",
         "enterprise_data_ide_modules_ready",
         "enterprise_data_ide_module_tests_ready",
+        "data_tooling_module_runtime_replay_matrix_ready",
         "publish_transaction_replay",
         "failover_transaction_replay",
         "runtime_replay",

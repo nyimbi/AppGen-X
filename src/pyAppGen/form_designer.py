@@ -10887,6 +10887,67 @@ def data_module_runtime_smoke_contract() -> dict:
     }
 
 
+def data_tooling_module_replay_matrix() -> dict:
+    """Replay data tooling module families as one source-side release gate."""
+    data_modules = data_tooling_module_file_manifest()
+    data_module_smoke = data_module_runtime_smoke_contract()
+    deep_modules = deep_data_tooling_module_file_manifest()
+    enterprise_modules = enterprise_data_ide_module_file_manifest()
+    smoke_by_module = {item["module"]: item for item in data_module_smoke["smoke_tests"]}
+    standard_replays = tuple(
+        {
+            "module": item["module"],
+            "ok": item["ok"]
+            and bool(item["exports"])
+            and item["module"] in smoke_by_module
+            and {"import_module", "run_read_only_probe", "verify_no_side_effects"} <= set(smoke_by_module[item["module"]]["smoke"]),
+            "exports": item["exports"],
+            "smoke": smoke_by_module.get(item["module"], {}),
+        }
+        for item in data_modules
+    )
+    deep_replays = tuple(
+        {
+            "module": item["module"],
+            "surface": item["surface"],
+            "ok": item["ok"] and "run_data_operation" in item["exports"] and "smoke_test" in item["exports"],
+            "exports": item["exports"],
+        }
+        for item in deep_modules
+    )
+    enterprise_replays = tuple(
+        {
+            "module": item["module"],
+            "surface": item["surface"],
+            "ok": item["ok"] and "run_ide_operation" in item["exports"] and "smoke_test" in item["exports"],
+            "exports": item["exports"],
+        }
+        for item in enterprise_modules
+    )
+    checks = (
+        {"id": "data_tooling_modules_replay", "ok": len(standard_replays) == 4 and all(item["ok"] for item in standard_replays)},
+        {"id": "deep_data_tooling_modules_replay", "ok": len(deep_replays) == 8 and all(item["ok"] for item in deep_replays)},
+        {"id": "enterprise_data_ide_modules_replay", "ok": len(enterprise_replays) == 6 and all(item["ok"] for item in enterprise_replays)},
+        {"id": "module_replays_side_effect_free", "ok": data_module_smoke["ok"] and not data_module_smoke["side_effects"]},
+    )
+    return {
+        "format": "appgen.data-tooling-module-replay-matrix.v1",
+        "ok": all(check["ok"] for check in checks),
+        "data_module_replays": standard_replays,
+        "deep_data_tooling_replays": deep_replays,
+        "enterprise_data_ide_replays": enterprise_replays,
+        "checks": checks,
+        "guards": (
+            "standard_data_modules_replay_read_only_probe",
+            "deep_data_tooling_modules_replay_operations",
+            "enterprise_data_ide_modules_replay_operations",
+            "module_replays_are_side_effect_free",
+        ),
+        "side_effects": (),
+        "blocking_gaps": tuple(check for check in checks if not check["ok"]),
+    }
+
+
 def data_tooling_runtime_replay_contract() -> dict:
     """Replay connection, query, service, local store, offline, and rollback flows."""
     connection = data_connection_test_contract()
@@ -11640,6 +11701,7 @@ def rad_data_tooling_workbench() -> dict:
     deep_data_tooling_module_test_artifacts = deep_data_tooling_module_test_file_manifest()
     enterprise_data_ide_module_artifacts = enterprise_data_ide_module_file_manifest()
     enterprise_data_ide_module_test_artifacts = enterprise_data_ide_module_test_file_manifest()
+    module_replay_matrix = data_tooling_module_replay_matrix()
     runtime_replay = data_tooling_runtime_replay_contract()
     design_runtime_replay = data_tooling_design_runtime_session_replay_contract()
     publish_transaction_replay = data_tooling_publish_transaction_replay_contract()
@@ -11985,6 +12047,18 @@ def rad_data_tooling_workbench() -> dict:
             "evidence": enterprise_data_ide_module_test_artifacts,
         },
         {
+            "id": "data_tooling_module_replay_matrix",
+            "ok": module_replay_matrix["ok"]
+            and {
+                "data_tooling_modules_replay",
+                "deep_data_tooling_modules_replay",
+                "enterprise_data_ide_modules_replay",
+                "module_replays_side_effect_free",
+            }
+            <= {check["id"] for check in module_replay_matrix["checks"] if check["ok"]},
+            "evidence": module_replay_matrix,
+        },
+        {
             "id": "data_tooling_runtime_replay",
             "ok": runtime_replay["ok"]
             and {"connection_probe_rolls_back", "offline_replay_pauses_for_review"} <= set(runtime_replay["guards"])
@@ -12091,6 +12165,7 @@ def rad_data_tooling_workbench() -> dict:
         "deep_data_tooling_module_test_artifacts": deep_data_tooling_module_test_artifacts,
         "enterprise_data_ide_module_artifacts": enterprise_data_ide_module_artifacts,
         "enterprise_data_ide_module_test_artifacts": enterprise_data_ide_module_test_artifacts,
+        "module_replay_matrix": module_replay_matrix,
         "runtime_replay": runtime_replay,
         "design_runtime_replay": design_runtime_replay,
         "publish_transaction_replay": publish_transaction_replay,
@@ -16190,6 +16265,7 @@ def platform_parity_requirement_audit_contract() -> dict:
                 "deep_data_tooling_module_tests",
                 "enterprise_data_ide_modules",
                 "enterprise_data_ide_module_tests",
+                "data_tooling_module_replay_matrix",
             } <= {check["id"] for check in data_tooling["checks"] if check["ok"]},
             "deep_checks": (
                 "relationship_lookup_lifecycle_replay",
@@ -16199,6 +16275,7 @@ def platform_parity_requirement_audit_contract() -> dict:
                 "deep_data_tooling_module_tests",
                 "enterprise_data_ide_modules",
                 "enterprise_data_ide_module_tests",
+                "data_tooling_module_replay_matrix",
                 "data_tooling_design_runtime_session_replay",
                 "data_tooling_publish_transaction_replay",
                 "data_tooling_ide_scenario",
@@ -18246,6 +18323,9 @@ def rad_parity_workbench(existing_paths: set[str] | None = None) -> dict:
         "data_tooling_module_tests",
         "deep_data_tooling_modules",
         "deep_data_tooling_module_tests",
+        "enterprise_data_ide_modules",
+        "enterprise_data_ide_module_tests",
+        "data_tooling_module_replay_matrix",
         "data_tooling_runtime_replay",
         "data_tooling_design_runtime_session_replay",
         "data_tooling_publish_transaction_replay",
@@ -25133,6 +25213,7 @@ def form_designer_generation_smoke_audit(source: str = FORM_DESIGNER_SAMPLE_DSL)
         "deep_data_tooling_module_tests_ready",
         "enterprise_data_ide_modules_ready",
         "enterprise_data_ide_module_tests_ready",
+        "data_tooling_module_runtime_replay_matrix_ready",
         "publish_transaction_replay",
         "failover_transaction_replay",
         "runtime_replay",
