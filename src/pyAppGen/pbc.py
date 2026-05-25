@@ -184,10 +184,45 @@ AR_CREDIT_ADVANCED_CAPABILITY_KEYS = (
     "mathematical_optimization",
     "financial_mlops_governance",
 )
+TREASURY_CASH_ADVANCED_CAPABILITY_KEYS = (
+    "event_sourced_cash_lifecycle",
+    "graph_relational_bank_topology",
+    "multi_tenant_liquidity_isolation",
+    "schema_evolution_resilient_cash_schema",
+    "probabilistic_cash_forecasting",
+    "real_time_liquidity_optimization",
+    "counterfactual_funding_analysis",
+    "temporal_cash_flow_stochastic_modeling",
+    "autonomous_bank_reconciliation",
+    "semantic_bank_narrative_parsing",
+    "predictive_counterparty_liquidity_risk",
+    "self_healing_payment_rail_routing",
+    "zero_knowledge_liquidity_covenant_proof",
+    "immutable_bank_connectivity_audit",
+    "dynamic_sanction_fraud_screening",
+    "automated_treasury_control_testing",
+    "universal_api_async_streaming",
+    "cross_border_liquidity_federation",
+    "working_capital_finance_integration",
+    "decentralized_counterparty_identity",
+    "chaos_engineered_bank_rail_tolerance",
+    "quantum_resistant_treasury_authentication",
+    "carbon_aware_liquidity_scheduling",
+    "algebraic_liquidity_optimization",
+    "mechanism_design_funding_allocation",
+    "information_theoretic_cash_anomaly_detection",
+    "temporal_liquidity_forecasting_construct",
+    "distributed_systems_engineering",
+    "probabilistic_ml_liquidity_risk",
+    "cryptographic_engineering",
+    "mathematical_optimization",
+    "financial_mlops_governance",
+)
 IMPLEMENTED_PBC_KEYS = (
     "gl_core",
     "ap_automation",
     "ar_credit",
+    "treasury_cash",
 )
 PBC_ALLOWED_DATASTORE_BACKENDS = (
     "postgresql",
@@ -2407,6 +2442,8 @@ def pbc_implementation_contract(key: str) -> dict:
         advanced_runtime = ap_automation_runtime_capabilities()
     elif key == "ar_credit":
         advanced_runtime = ar_credit_runtime_capabilities()
+    elif key == "treasury_cash":
+        advanced_runtime = treasury_cash_runtime_capabilities()
     else:
         advanced_runtime = {}
     source_package = _pbc_source_package_contract(key)
@@ -2686,6 +2723,7 @@ def pbc_implemented_capability_audit(selected_pbcs: tuple[str, ...] | list[str] 
         "gl_core": len(GL_CORE_ADVANCED_CAPABILITY_KEYS),
         "ap_automation": len(AP_AUTOMATION_ADVANCED_CAPABILITY_KEYS),
         "ar_credit": len(AR_CREDIT_ADVANCED_CAPABILITY_KEYS),
+        "treasury_cash": len(TREASURY_CASH_ADVANCED_CAPABILITY_KEYS),
     }
     checks = []
     contracts = pbc_implementation_contracts(selected)
@@ -4196,3 +4234,16 @@ from .pbcs.ar_credit import ar_credit_runtime_capabilities  # noqa: E402,F401
 from .pbcs.ar_credit import ar_credit_runtime_smoke  # noqa: E402,F401
 from .pbcs.ar_credit import ar_credit_schedule_collection_action  # noqa: E402,F401
 from .pbcs.ar_credit import ar_credit_write_off_receivable  # noqa: E402,F401
+from .pbcs.treasury_cash import TREASURY_CASH_RUNTIME_CAPABILITY_KEYS  # noqa: E402,F401
+from .pbcs.treasury_cash import TREASURY_CASH_STANDARD_FEATURE_KEYS  # noqa: E402,F401
+from .pbcs.treasury_cash import treasury_cash_build_cash_position  # noqa: E402,F401
+from .pbcs.treasury_cash import treasury_cash_build_workbench_view  # noqa: E402,F401
+from .pbcs.treasury_cash import treasury_cash_capture_bank_balance  # noqa: E402,F401
+from .pbcs.treasury_cash import treasury_cash_empty_state  # noqa: E402,F401
+from .pbcs.treasury_cash import treasury_cash_forecast_cash  # noqa: E402,F401
+from .pbcs.treasury_cash import treasury_cash_ingest_bank_statement  # noqa: E402,F401
+from .pbcs.treasury_cash import treasury_cash_optimize_liquidity  # noqa: E402,F401
+from .pbcs.treasury_cash import treasury_cash_reconcile_statement  # noqa: E402,F401
+from .pbcs.treasury_cash import treasury_cash_register_bank_account  # noqa: E402,F401
+from .pbcs.treasury_cash import treasury_cash_runtime_capabilities  # noqa: E402,F401
+from .pbcs.treasury_cash import treasury_cash_runtime_smoke  # noqa: E402,F401
