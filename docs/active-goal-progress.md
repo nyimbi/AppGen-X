@@ -704,6 +704,12 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   and generated workbenches, platform requirement audit, binding runtime smoke,
   and generation smoke audit all require those six families before claiming the
   drag/drop, wiring, and handler-oriented binding designer path is ready.
+- Form designer interaction depth now writes generated family module and
+  smoke-test files for palette drag sources, canvas drop targets, wiring
+  graphs, handler editors, and preview replay. The source and generated
+  release gates require those interaction families alongside the existing
+  component-wiring and handler-definition modules before claiming the visual
+  drop/wire/handler authoring path is ready.
 
 ## Open Completion Areas
 

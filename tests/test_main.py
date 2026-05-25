@@ -110,6 +110,9 @@ from pyAppGen.form_designer import component_family_module_file_manifest
 from pyAppGen.form_designer import component_family_module_test_file_manifest
 from pyAppGen.form_designer import component_wiring_module_file_manifest
 from pyAppGen.form_designer import component_wiring_module_test_file_manifest
+from pyAppGen.form_designer import form_interaction_family_contract
+from pyAppGen.form_designer import form_interaction_family_module_file_manifest
+from pyAppGen.form_designer import form_interaction_family_module_test_file_manifest
 from pyAppGen.form_designer import handler_architecture_module_file_manifest
 from pyAppGen.form_designer import handler_architecture_module_test_file_manifest
 from pyAppGen.form_designer import handler_source_ide_contract
@@ -3329,6 +3332,17 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     }
     assert all(item["signature"] == "sender, context" for item in drop_wiring["handler_definitions"])
     assert "user_code_regions_preserved" in drop_wiring["guards"]
+    form_interactions = form_interaction_family_contract(design)
+    assert form_interactions["format"] == "appgen.form-interaction-family-contract.v1"
+    assert form_interactions["ok"] is True
+    assert set(form_interactions["required_families"]) == {
+        "palette_drag_source",
+        "canvas_drop_target",
+        "wiring_graph",
+        "handler_editor",
+        "preview_replay",
+    }
+    assert all(family["operation"] for family in form_interactions["families"])
 
     matrix = field_component_matrix()
     assert matrix
@@ -3441,6 +3455,27 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "drop_targets",
         "event_wiring",
         "handler_definitions",
+    }
+    assert set(wiring_gate["required_interaction_families"]) <= set(wiring_gate["passing_interaction_families"])
+    assert set(wiring_gate["required_interaction_families"]) <= set(
+        wiring_gate["passing_interaction_module_families"]
+    )
+    assert set(wiring_gate["required_interaction_families"]) <= set(
+        wiring_gate["passing_interaction_test_families"]
+    )
+    assert {item["family"] for item in form_interaction_family_module_file_manifest()} == {
+        "palette_drag_source",
+        "canvas_drop_target",
+        "wiring_graph",
+        "handler_editor",
+        "preview_replay",
+    }
+    assert {item["family"] for item in form_interaction_family_module_test_file_manifest()} == {
+        "palette_drag_source",
+        "canvas_drop_target",
+        "wiring_graph",
+        "handler_editor",
+        "preview_replay",
     }
     artifact_gate = next(gate for gate in audit["gates"] if gate["id"] == "artifact_contract")
     assert artifact_gate["ok"] is True
@@ -4594,6 +4629,12 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         item["path"] for item in component_wiring_module_test_file_manifest()
     } <= set(smoke["required_artifacts"])
     assert {
+        item["path"] for item in form_interaction_family_module_file_manifest()
+    } <= set(smoke["required_artifacts"])
+    assert {
+        item["path"] for item in form_interaction_family_module_test_file_manifest()
+    } <= set(smoke["required_artifacts"])
+    assert {
         item["path"] for item in handler_architecture_module_file_manifest()
     } <= set(smoke["required_artifacts"])
     assert {
@@ -4674,6 +4715,12 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         item["path"] for item in component_wiring_module_test_file_manifest()
     } <= set(smoke["compiled_artifacts"])
     assert {
+        item["path"] for item in form_interaction_family_module_file_manifest()
+    } <= set(smoke["compiled_artifacts"])
+    assert {
+        item["path"] for item in form_interaction_family_module_test_file_manifest()
+    } <= set(smoke["compiled_artifacts"])
+    assert {
         item["path"] for item in handler_architecture_module_file_manifest()
     } <= set(smoke["compiled_artifacts"])
     assert {
@@ -4727,6 +4774,8 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     coverage = next(check for check in smoke["checks"] if check["id"] == "generated_component_file_coverage")
     assert coverage["component_wiring_module_count"] == 4
     assert coverage["component_wiring_module_test_count"] == 4
+    assert coverage["form_interaction_family_module_count"] == 5
+    assert coverage["form_interaction_family_module_test_count"] == 5
     assert coverage["handler_architecture_module_count"] == 4
     assert coverage["handler_architecture_module_test_count"] == 4
     assert coverage["handler_source_ide_module_count"] == 5
@@ -13981,6 +14030,16 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         if path.name != "__init__.py"
     )
     generated_form_designer_paths.update(
+        f"app/form_interaction_family_modules/{path.name}"
+        for path in (output_dir / "form_interaction_family_modules").glob("*.py")
+        if path.name != "__init__.py"
+    )
+    generated_form_designer_paths.update(
+        f"app/form_interaction_family_module_tests/{path.name}"
+        for path in (output_dir / "form_interaction_family_module_tests").glob("*.py")
+        if path.name != "__init__.py"
+    )
+    generated_form_designer_paths.update(
         f"app/handler_architecture_modules/{path.name}"
         for path in (output_dir / "handler_architecture_modules").glob("*.py")
         if path.name != "__init__.py"
@@ -14706,10 +14765,28 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         item["event"] for item in generated_drop_wiring["wiring_links"]
     }
     assert all(item["signature"] == "sender, context" for item in generated_drop_wiring["handler_definitions"])
+    generated_form_interactions = form_designer.form_interaction_family_contract(form_designer.form_design("Book"))
+    assert generated_form_interactions["format"] == "appgen.generated-form-interaction-family-contract.v1"
+    assert generated_form_interactions["ok"] is True
+    assert set(generated_form_interactions["required_families"]) == {
+        "palette_drag_source",
+        "canvas_drop_target",
+        "wiring_graph",
+        "handler_editor",
+        "preview_replay",
+    }
     generated_wiring_module_files = form_designer.component_wiring_module_file_manifest(generated_form_designer_paths)
     generated_wiring_module_tests = form_designer.component_wiring_module_test_file_manifest(generated_form_designer_paths)
+    generated_form_interaction_files = form_designer.form_interaction_family_module_file_manifest(
+        generated_form_designer_paths
+    )
+    generated_form_interaction_tests = form_designer.form_interaction_family_module_test_file_manifest(
+        generated_form_designer_paths
+    )
     assert generated_wiring_module_files["ok"] is True
     assert generated_wiring_module_tests["ok"] is True
+    assert generated_form_interaction_files["ok"] is True
+    assert generated_form_interaction_tests["ok"] is True
     assert {item["kind"] for item in generated_wiring_module_files["modules"]} == {
         "drop_payloads",
         "drop_targets",
@@ -14722,6 +14799,20 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "event_wiring",
         "handler_definitions",
     }
+    assert {item["family"] for item in generated_form_interaction_files["modules"]} == {
+        "palette_drag_source",
+        "canvas_drop_target",
+        "wiring_graph",
+        "handler_editor",
+        "preview_replay",
+    }
+    assert {item["family"] for item in generated_form_interaction_tests["tests"]} == {
+        "palette_drag_source",
+        "canvas_drop_target",
+        "wiring_graph",
+        "handler_editor",
+        "preview_replay",
+    }
     for item in generated_wiring_module_files["modules"]:
         module_path = output_dir / item["path"].replace("app/", "")
         py_compile.compile(str(module_path), doraise=True)
@@ -14732,6 +14823,17 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         test_path = output_dir / item["path"].replace("app/", "")
         py_compile.compile(str(test_path), doraise=True)
         module = _load_module(test_path, f"generated_component_wiring_module_test_{item['module']}")
+        assert module.smoke_test()["ok"] is True
+    for item in generated_form_interaction_files["modules"]:
+        module_path = output_dir / item["path"].replace("app/", "")
+        py_compile.compile(str(module_path), doraise=True)
+        module = _load_module(module_path, f"generated_form_interaction_family_module_{item['module']}")
+        assert module.smoke_test("Book")["ok"] is True
+        assert module.module_contract()["ok"] is True
+    for item in generated_form_interaction_tests["tests"]:
+        test_path = output_dir / item["path"].replace("app/", "")
+        py_compile.compile(str(test_path), doraise=True)
+        module = _load_module(test_path, f"generated_form_interaction_family_test_{item['module']}")
         assert module.smoke_test()["ok"] is True
     assert "control_to_field" in form_designer.livebindings_contract()["binding_edges"]
     generated_bindings = form_designer.livebindings_workbench()

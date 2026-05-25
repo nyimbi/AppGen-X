@@ -15280,6 +15280,9 @@ def rad_parity_workbench(existing_paths: set[str] | None = None) -> dict:
     package_readiness = component_package_readiness_contract()
     streaming_contract = dfm_streaming_contract()
     drop_wiring = component_drop_wiring_handler_contract()
+    form_interactions = form_interaction_family_contract()
+    form_interaction_modules = form_interaction_family_module_file_manifest()
+    form_interaction_module_tests = form_interaction_family_module_test_file_manifest()
     component_wiring_modules = component_wiring_module_file_manifest()
     component_wiring_module_tests = component_wiring_module_test_file_manifest()
     runtime_workbench = pascal_runtime_workbench()
@@ -18614,6 +18617,9 @@ def rad_parity_workbench(existing_paths: set[str] | None = None) -> dict:
             <= set(drop_wiring["drop_pipeline"])
             and {"Button.OnClick", "TextBox.OnChange"} <= {item["event"] for item in drop_wiring["wiring_links"]}
             and all(item["signature"] == "sender, context" for item in drop_wiring["handler_definitions"])
+            and form_interactions["ok"]
+            and all(item["ok"] for item in form_interaction_modules)
+            and all(item["ok"] for item in form_interaction_module_tests)
             and all(item["ok"] for item in component_wiring_modules)
             and all(item["ok"] for item in component_wiring_module_tests)
             and not drop_wiring["side_effects"],
@@ -18631,6 +18637,9 @@ def rad_parity_workbench(existing_paths: set[str] | None = None) -> dict:
             "handler_definitions": drop_wiring["handler_definitions"],
             "module_files": component_wiring_modules,
             "module_tests": component_wiring_module_tests,
+            "interaction_families": form_interactions,
+            "interaction_family_modules": form_interaction_modules,
+            "interaction_family_module_tests": form_interaction_module_tests,
             "evidence": drop_wiring,
         },
         {
@@ -20254,6 +20263,142 @@ def component_drop_wiring_handler_contract(design: dict | None = None) -> dict:
         "side_effects": (),
         "blocking_gaps": tuple(check for check in checks if not check["ok"]),
     }
+
+
+def form_interaction_family_contract(design: dict | None = None) -> dict:
+    """Return end-to-end form designer interaction family coverage."""
+    wiring = component_drop_wiring_handler_contract(design)
+    families = (
+        {
+            "family": "palette_drag_source",
+            "evidence": wiring["drop_payloads"],
+            "operation": ("begin_drag", "serialize_payload", "show_palette_feedback"),
+            "guards": ("component_payload_typed", "icon_available", "default_size_declared"),
+        },
+        {
+            "family": "canvas_drop_target",
+            "evidence": wiring["drop_targets"],
+            "operation": ("hit_test_canvas", "snap_preview", "validate_bounds", "create_component_instance"),
+            "guards": ("drop_target_accepts_payload", "bounds_validated", "undo_snapshot_required"),
+        },
+        {
+            "family": "wiring_graph",
+            "evidence": wiring["wiring_links"],
+            "operation": ("select_event", "resolve_component", "resolve_handler", "invoke_handler"),
+            "guards": ("component_lookup_required", "handler_lookup_required", "dispatch_trace_recorded"),
+        },
+        {
+            "family": "handler_editor",
+            "evidence": wiring["handler_definitions"],
+            "operation": ("create_handler_stub", "preserve_user_code", "validate_signature", "open_source_span"),
+            "guards": ("sender_context_signature", "user_code_regions_preserved", "handler_name_unique"),
+        },
+        {
+            "family": "preview_replay",
+            "evidence": tuple(wiring["drop_pipeline"]) + tuple(item["handler"] for item in wiring["wiring_links"]),
+            "operation": ("replay_drag", "replay_drop", "replay_wiring", "replay_handler"),
+            "guards": ("side_effect_free_preview", "record_undo", "runtime_preview_refreshes"),
+        },
+    )
+    required_families = tuple(item["family"] for item in families)
+    checks = (
+        {
+            "id": "interaction_families_present",
+            "ok": set(required_families) <= {item["family"] for item in families if item["evidence"]},
+            "evidence": tuple((item["family"], len(item["evidence"])) for item in families),
+        },
+        {
+            "id": "drag_drop_pipeline_replayable",
+            "ok": {"start_palette_drag", "show_drop_preview", "create_component_instance", "record_undo"}
+            <= set(wiring["drop_pipeline"]),
+            "evidence": wiring["drop_pipeline"],
+        },
+        {
+            "id": "wiring_graph_invokes_handlers",
+            "ok": bool(wiring["wiring_links"]) and all("invoke_handler" in item["dispatch"] for item in wiring["wiring_links"]),
+            "evidence": wiring["wiring_links"],
+        },
+        {
+            "id": "handler_editor_preserves_code",
+            "ok": bool(wiring["handler_definitions"])
+            and all(item["signature"] == "sender, context" and item["preserves_user_code"] for item in wiring["handler_definitions"]),
+            "evidence": wiring["handler_definitions"],
+        },
+        {
+            "id": "preview_replay_side_effect_free",
+            "ok": wiring["ok"] and not wiring["side_effects"],
+            "evidence": wiring["side_effects"],
+        },
+    )
+    ok = all(check["ok"] for check in checks)
+    return {
+        "format": "appgen.form-interaction-family-contract.v1",
+        "ok": ok,
+        "decision": "approved" if ok else "blocked",
+        "families": families,
+        "required_families": required_families,
+        "checks": checks,
+        "guards": (
+            "component_payload_typed",
+            "bounds_validated_before_create",
+            "handler_signature_checked",
+            "user_code_regions_preserved",
+            "preview_replay_is_side_effect_free",
+        ),
+        "side_effects": (),
+        "blocking_gaps": tuple(check for check in checks if not check["ok"]),
+    }
+
+
+def form_interaction_family_module_file_manifest() -> tuple[dict, ...]:
+    """Return generated form interaction family module files expected in apps."""
+    modules = (
+        ("palette_drag_source_module", "palette_drag_source"),
+        ("canvas_drop_target_module", "canvas_drop_target"),
+        ("interaction_wiring_graph_module", "wiring_graph"),
+        ("interaction_handler_editor_module", "handler_editor"),
+        ("interaction_preview_replay_module", "preview_replay"),
+    )
+    exports = (
+        "module_contract",
+        "form_interaction_manifest",
+        "run_interaction_operation",
+        "runtime_manifest",
+        "smoke_test",
+    )
+    return tuple(
+        {
+            "module": module,
+            "family": family,
+            "path": f"app/form_interaction_family_modules/{module}.py",
+            "exports": exports,
+            "ok": bool(module) and bool(family),
+        }
+        for module, family in modules
+    )
+
+
+def form_interaction_family_module_test_file_manifest() -> tuple[dict, ...]:
+    """Return generated form interaction family test files expected in apps."""
+    return tuple(
+        {
+            "module": item["module"],
+            "family": item["family"],
+            "path": item["path"].replace(
+                "app/form_interaction_family_modules/",
+                "app/form_interaction_family_module_tests/test_",
+            ),
+            "target": item["path"],
+            "exports": (
+                "load_form_interaction_family_module",
+                "test_form_interaction_family_module_contract",
+                "test_form_interaction_family_module_smoke",
+                "smoke_test",
+            ),
+            "ok": item["ok"],
+        }
+        for item in form_interaction_family_module_file_manifest()
+    )
 
 
 def app_shell_chrome_contract() -> dict:
@@ -22698,6 +22843,10 @@ def form_designer_generation_smoke_audit(source: str = FORM_DESIGNER_SAMPLE_DSL)
     inspector_module_test_artifacts = tuple(item["path"] for item in inspector_module_test_file_manifest())
     component_wiring_module_artifacts = tuple(item["path"] for item in component_wiring_module_file_manifest())
     component_wiring_module_test_artifacts = tuple(item["path"] for item in component_wiring_module_test_file_manifest())
+    form_interaction_family_module_artifacts = tuple(item["path"] for item in form_interaction_family_module_file_manifest())
+    form_interaction_family_module_test_artifacts = tuple(
+        item["path"] for item in form_interaction_family_module_test_file_manifest()
+    )
     handler_architecture_module_artifacts = tuple(item["path"] for item in handler_architecture_module_file_manifest())
     handler_architecture_module_test_artifacts = tuple(item["path"] for item in handler_architecture_module_test_file_manifest())
     handler_source_ide_module_artifacts = tuple(item["path"] for item in handler_source_ide_module_file_manifest())
@@ -22762,6 +22911,8 @@ def form_designer_generation_smoke_audit(source: str = FORM_DESIGNER_SAMPLE_DSL)
         *inspector_module_test_artifacts,
         *component_wiring_module_artifacts,
         *component_wiring_module_test_artifacts,
+        *form_interaction_family_module_artifacts,
+        *form_interaction_family_module_test_artifacts,
         *handler_architecture_module_artifacts,
         *handler_architecture_module_test_artifacts,
         *handler_source_ide_module_artifacts,
@@ -22824,6 +22975,8 @@ def form_designer_generation_smoke_audit(source: str = FORM_DESIGNER_SAMPLE_DSL)
         *inspector_module_test_artifacts,
         *component_wiring_module_artifacts,
         *component_wiring_module_test_artifacts,
+        *form_interaction_family_module_artifacts,
+        *form_interaction_family_module_test_artifacts,
         *handler_architecture_module_artifacts,
         *handler_architecture_module_test_artifacts,
         *handler_source_ide_module_artifacts,
@@ -23262,6 +23415,8 @@ def form_designer_generation_smoke_audit(source: str = FORM_DESIGNER_SAMPLE_DSL)
             and len(inspector_module_test_artifacts) == 6
             and len(component_wiring_module_artifacts) == 4
             and len(component_wiring_module_test_artifacts) == 4
+            and len(form_interaction_family_module_artifacts) == 5
+            and len(form_interaction_family_module_test_artifacts) == 5
             and len(handler_architecture_module_artifacts) == 4
             and len(handler_architecture_module_test_artifacts) == 4
             and len(handler_source_ide_module_artifacts) == 5
@@ -23306,6 +23461,8 @@ def form_designer_generation_smoke_audit(source: str = FORM_DESIGNER_SAMPLE_DSL)
             "inspector_module_test_count": len(inspector_module_test_artifacts),
             "component_wiring_module_count": len(component_wiring_module_artifacts),
             "component_wiring_module_test_count": len(component_wiring_module_test_artifacts),
+            "form_interaction_family_module_count": len(form_interaction_family_module_artifacts),
+            "form_interaction_family_module_test_count": len(form_interaction_family_module_test_artifacts),
             "handler_architecture_module_count": len(handler_architecture_module_artifacts),
             "handler_architecture_module_test_count": len(handler_architecture_module_test_artifacts),
             "handler_source_ide_module_count": len(handler_source_ide_module_artifacts),
@@ -23738,6 +23895,7 @@ def form_designer_release_audit(existing_paths: set[str] | None = None) -> dict:
         if item["field"] in required_invalid_database_fields
     )
     drop_wiring = component_drop_wiring_handler_contract(design)
+    form_interactions = form_interaction_family_contract(design)
     required_drop_wiring_checks = (
         "palette_drag_payloads",
         "drop_pipeline_declared",
@@ -23766,6 +23924,24 @@ def form_designer_release_audit(existing_paths: set[str] | None = None) -> dict:
     )
     component_wiring_modules = component_wiring_module_file_manifest()
     component_wiring_module_tests = component_wiring_module_test_file_manifest()
+    form_interaction_modules = form_interaction_family_module_file_manifest()
+    form_interaction_module_tests = form_interaction_family_module_test_file_manifest()
+    required_form_interaction_families = (
+        "palette_drag_source",
+        "canvas_drop_target",
+        "wiring_graph",
+        "handler_editor",
+        "preview_replay",
+    )
+    passing_form_interaction_families = tuple(
+        item["family"] for item in form_interactions["families"] if item["family"] in required_form_interaction_families
+    )
+    passing_form_interaction_module_families = tuple(
+        item["family"] for item in form_interaction_modules if item["ok"] and item["family"] in required_form_interaction_families
+    )
+    passing_form_interaction_test_families = tuple(
+        item["family"] for item in form_interaction_module_tests if item["ok"] and item["family"] in required_form_interaction_families
+    )
     required_component_wiring_module_kinds = ("drop_payloads", "drop_targets", "event_wiring", "handler_definitions")
     passing_component_wiring_module_kinds = tuple(
         item["kind"] for item in component_wiring_modules if item["ok"] and item["kind"] in required_component_wiring_module_kinds
@@ -24135,6 +24311,10 @@ def form_designer_release_audit(existing_paths: set[str] | None = None) -> dict:
             and set(required_drop_wiring_events) <= set(passing_drop_wiring_events)
             and set(required_component_wiring_module_kinds) <= set(passing_component_wiring_module_kinds)
             and set(required_component_wiring_test_kinds) <= set(passing_component_wiring_test_kinds)
+            and form_interactions["ok"]
+            and set(required_form_interaction_families) <= set(passing_form_interaction_families)
+            and set(required_form_interaction_families) <= set(passing_form_interaction_module_families)
+            and set(required_form_interaction_families) <= set(passing_form_interaction_test_families)
             and set(required_drop_handler_signatures) <= set(passing_drop_handler_signatures)
             and not drop_wiring["side_effects"],
             "required_checks": required_drop_wiring_checks,
@@ -24149,6 +24329,13 @@ def form_designer_release_audit(existing_paths: set[str] | None = None) -> dict:
             "passing_test_kinds": passing_component_wiring_test_kinds,
             "module_files": component_wiring_modules,
             "module_tests": component_wiring_module_tests,
+            "required_interaction_families": required_form_interaction_families,
+            "passing_interaction_families": passing_form_interaction_families,
+            "passing_interaction_module_families": passing_form_interaction_module_families,
+            "passing_interaction_test_families": passing_form_interaction_test_families,
+            "interaction_families": form_interactions,
+            "interaction_family_modules": form_interaction_modules,
+            "interaction_family_module_tests": form_interaction_module_tests,
             "required_handler_signatures": required_drop_handler_signatures,
             "passing_handler_signatures": passing_drop_handler_signatures,
             "evidence": drop_wiring,

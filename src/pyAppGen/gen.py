@@ -2349,6 +2349,7 @@ def write_form_designer_file(output_dir, schema: AppSchema):
     write_deep_data_tooling_module_files(output_dir)
     write_enterprise_data_ide_module_files(output_dir)
     write_component_wiring_module_files(output_dir)
+    write_form_interaction_family_module_files(output_dir)
     write_handler_architecture_module_files(output_dir)
     write_handler_source_ide_module_files(output_dir)
     write_property_editor_family_module_files(output_dir)
@@ -2521,6 +2522,14 @@ COMPONENT_WIRING_MODULES = (
     "component_drop_target_module",
     "component_event_wiring_module",
     "component_handler_definition_module",
+)
+
+FORM_INTERACTION_FAMILY_MODULES = (
+    "palette_drag_source_module",
+    "canvas_drop_target_module",
+    "interaction_wiring_graph_module",
+    "interaction_handler_editor_module",
+    "interaction_preview_replay_module",
 )
 
 HANDLER_ARCHITECTURE_MODULES = (
@@ -3365,6 +3374,26 @@ def write_binding_designer_family_module_files(output_dir):
         )
 
 
+def write_form_interaction_family_module_files(output_dir):
+    """Write generated form interaction family modules and smoke tests."""
+    output_dir = Path(output_dir)
+    module_dir = output_dir / "form_interaction_family_modules"
+    test_dir = output_dir / "form_interaction_family_module_tests"
+    module_dir.mkdir(parents=True, exist_ok=True)
+    test_dir.mkdir(parents=True, exist_ok=True)
+    (module_dir / "__init__.py").write_text(_form_interaction_family_module_init_text(), encoding="utf-8")
+    (test_dir / "__init__.py").write_text(_form_interaction_family_module_test_init_text(), encoding="utf-8")
+    for module_name in FORM_INTERACTION_FAMILY_MODULES:
+        (module_dir / f"{module_name}.py").write_text(
+            _form_interaction_family_module_text(module_name),
+            encoding="utf-8",
+        )
+        (test_dir / f"test_{module_name}.py").write_text(
+            _form_interaction_family_module_test_text(module_name),
+            encoding="utf-8",
+        )
+
+
 def write_package_manager_module_files(output_dir):
     """Write generated package manager modules and smoke tests."""
     output_dir = Path(output_dir)
@@ -3639,6 +3668,21 @@ def _component_wiring_module_test_init_text() -> str:
     return (
         '"""Generated component drop/wiring module tests."""\n\n'
         f"COMPONENT_WIRING_MODULE_TESTS = {modules!r}\n"
+    )
+
+
+def _form_interaction_family_module_init_text() -> str:
+    return (
+        '"""Generated form interaction family modules."""\n\n'
+        f"FORM_INTERACTION_FAMILY_MODULES = {FORM_INTERACTION_FAMILY_MODULES!r}\n"
+    )
+
+
+def _form_interaction_family_module_test_init_text() -> str:
+    modules = tuple(f"test_{name}" for name in FORM_INTERACTION_FAMILY_MODULES)
+    return (
+        '"""Generated form interaction family module tests."""\n\n'
+        f"FORM_INTERACTION_FAMILY_MODULE_TESTS = {modules!r}\n"
     )
 
 
@@ -11883,6 +11927,178 @@ def smoke_test():
         "module": MODULE,
         "ok": True,
         "tests": ("test_component_wiring_module_contract", "test_component_wiring_module_smoke"),
+    }}
+'''
+
+
+def _form_interaction_family_kind(module_name: str) -> str:
+    return {
+        "palette_drag_source_module": "palette_drag_source",
+        "canvas_drop_target_module": "canvas_drop_target",
+        "interaction_wiring_graph_module": "wiring_graph",
+        "interaction_handler_editor_module": "handler_editor",
+        "interaction_preview_replay_module": "preview_replay",
+    }[module_name]
+
+
+def _form_interaction_family_module_text(module_name: str) -> str:
+    family = _form_interaction_family_kind(module_name)
+    return f'''"""Generated form interaction family module for {family}."""
+
+from __future__ import annotations
+
+import importlib.util
+from pathlib import Path
+
+
+MODULE = {module_name!r}
+FAMILY = {family!r}
+EXPECTED_EXPORTS = (
+    "module_contract",
+    "form_interaction_manifest",
+    "run_interaction_operation",
+    "runtime_manifest",
+    "smoke_test",
+)
+
+
+def _load_form_designer():
+    module_path = Path(__file__).resolve().parents[1] / "form_designer.py"
+    spec = importlib.util.spec_from_file_location(f"generated_form_interaction_{{MODULE}}_form_designer", module_path)
+    module = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(module)
+    return module
+
+
+def module_contract():
+    """Return this generated form interaction module's export contract."""
+    available = tuple(name for name in EXPECTED_EXPORTS if name in globals())
+    return {{
+        "format": "appgen.form-interaction-family-module-contract.v1",
+        "module": MODULE,
+        "family": FAMILY,
+        "ok": set(EXPECTED_EXPORTS) <= set(available),
+        "exports": available,
+        "expected_exports": EXPECTED_EXPORTS,
+        "side_effects": (),
+    }}
+
+
+def form_interaction_manifest(table_name=None):
+    """Return the form interaction payload owned by this generated module."""
+    designer = _load_form_designer()
+    contract = designer.form_interaction_family_contract(designer.form_design(table_name) if table_name else None)
+    family = next(item for item in contract["families"] if item["family"] == FAMILY)
+    return {{
+        "format": "appgen.form-interaction-family-module-manifest.v1",
+        "module": MODULE,
+        "family": FAMILY,
+        "ok": contract["ok"] and bool(family["evidence"]),
+        "payload": family,
+        "source_checks": contract["checks"],
+        "guards": contract["guards"],
+        "side_effects": (),
+    }}
+
+
+def run_interaction_operation(table_name=None):
+    """Replay this form interaction operation without mutating app state."""
+    manifest = form_interaction_manifest(table_name)
+    steps = tuple(manifest["payload"]["operation"])
+    return {{
+        "format": "appgen.form-interaction-family-operation.v1",
+        "module": MODULE,
+        "family": FAMILY,
+        "ok": manifest["ok"] and bool(steps),
+        "operation_steps": steps,
+        "payload_count": len(manifest["payload"]["evidence"]),
+        "side_effects": (),
+    }}
+
+
+def runtime_manifest(table_name=None):
+    """Return the source interaction contract used by this module."""
+    designer = _load_form_designer()
+    return designer.form_interaction_family_contract(designer.form_design(table_name) if table_name else None)
+
+
+def smoke_test(table_name=None):
+    """Run side-effect-free checks for this generated form interaction module."""
+    contract = module_contract()
+    manifest = form_interaction_manifest(table_name)
+    operation = run_interaction_operation(table_name)
+    runtime = runtime_manifest(table_name)
+    return {{
+        "format": "appgen.form-interaction-family-module-smoke-test.v1",
+        "module": MODULE,
+        "family": FAMILY,
+        "ok": contract["ok"]
+        and manifest["ok"]
+        and operation["ok"]
+        and runtime["ok"]
+        and not manifest["side_effects"]
+        and not operation["side_effects"],
+        "checks": (
+            "module_contract_resolves",
+            "form_interaction_manifest_resolves",
+            "interaction_operation_replays",
+            "runtime_manifest_ok",
+            "no_side_effects",
+        ),
+    }}
+'''
+
+
+def _form_interaction_family_module_test_text(module_name: str) -> str:
+    return f'''"""Generated tests for the {module_name} form interaction family module."""
+
+from __future__ import annotations
+
+import importlib.util
+from pathlib import Path
+
+
+MODULE = {module_name!r}
+
+
+def load_form_interaction_family_module():
+    """Load the generated form interaction module without app installation."""
+    module_path = Path(__file__).resolve().parents[1] / "form_interaction_family_modules" / f"{{MODULE}}.py"
+    spec = importlib.util.spec_from_file_location(f"generated_form_interaction_family_module_{{MODULE}}", module_path)
+    module = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(module)
+    return module
+
+
+def test_form_interaction_family_module_contract():
+    """Assert the generated form interaction module exposes its contract."""
+    module = load_form_interaction_family_module()
+    contract = module.module_contract()
+    assert contract["module"] == MODULE
+    assert contract["ok"] is True
+    assert all(hasattr(module, name) for name in contract["expected_exports"])
+
+
+def test_form_interaction_family_module_smoke():
+    """Assert the module's side-effect-free smoke test passes."""
+    module = load_form_interaction_family_module()
+    result = module.smoke_test()
+    assert result["ok"] is True
+    assert result["module"] == MODULE
+    assert result["checks"]
+
+
+def smoke_test():
+    """Run this generated test module in a side-effect-free way."""
+    test_form_interaction_family_module_contract()
+    test_form_interaction_family_module_smoke()
+    return {{
+        "format": "appgen.form-interaction-family-module-generated-test-smoke.v1",
+        "module": MODULE,
+        "ok": True,
+        "tests": ("test_form_interaction_family_module_contract", "test_form_interaction_family_module_smoke"),
     }}
 '''
 
@@ -51541,6 +51757,118 @@ def component_wiring_module_test_file_manifest(existing_paths=None):
     }}
 
 
+def form_interaction_family_contract(design=None):
+    """Return generated end-to-end form designer interaction family coverage."""
+    wiring = component_drop_wiring_handler_contract(design=design)
+    families = (
+        {{
+            "family": "palette_drag_source",
+            "evidence": wiring["drop_payloads"],
+            "operation": ("begin_drag", "serialize_payload", "show_palette_feedback"),
+            "guards": ("component_payload_typed", "icon_available", "default_size_declared"),
+        }},
+        {{
+            "family": "canvas_drop_target",
+            "evidence": wiring["drop_targets"],
+            "operation": ("hit_test_canvas", "snap_preview", "validate_bounds", "create_component_instance"),
+            "guards": ("drop_target_accepts_payload", "bounds_validated", "undo_snapshot_required"),
+        }},
+        {{
+            "family": "wiring_graph",
+            "evidence": wiring["wiring_links"],
+            "operation": ("select_event", "resolve_component", "resolve_handler", "invoke_handler"),
+            "guards": ("component_lookup_required", "handler_lookup_required", "dispatch_trace_recorded"),
+        }},
+        {{
+            "family": "handler_editor",
+            "evidence": wiring["handler_definitions"],
+            "operation": ("create_handler_stub", "preserve_user_code", "validate_signature", "open_source_span"),
+            "guards": ("sender_context_signature", "user_code_regions_preserved", "handler_name_unique"),
+        }},
+        {{
+            "family": "preview_replay",
+            "evidence": tuple(wiring["drop_pipeline"]) + tuple(item["handler"] for item in wiring["wiring_links"]),
+            "operation": ("replay_drag", "replay_drop", "replay_wiring", "replay_handler"),
+            "guards": ("side_effect_free_preview", "record_undo", "runtime_preview_refreshes"),
+        }},
+    )
+    required_families = tuple(item["family"] for item in families)
+    checks = (
+        {{"id": "interaction_families_present", "ok": set(required_families) <= {{item["family"] for item in families if item["evidence"]}}, "evidence": tuple((item["family"], len(item["evidence"])) for item in families)}},
+        {{"id": "drag_drop_pipeline_replayable", "ok": {{"start_palette_drag", "show_drop_preview", "create_component_instance", "record_undo"}} <= set(wiring["drop_pipeline"]), "evidence": wiring["drop_pipeline"]}},
+        {{"id": "wiring_graph_invokes_handlers", "ok": bool(wiring["wiring_links"]) and all("invoke_handler" in item["dispatch"] for item in wiring["wiring_links"]), "evidence": wiring["wiring_links"]}},
+        {{"id": "handler_editor_preserves_code", "ok": bool(wiring["handler_definitions"]) and all(item["signature"] == "sender, context" and item["preserves_user_code"] for item in wiring["handler_definitions"]), "evidence": wiring["handler_definitions"]}},
+        {{"id": "preview_replay_side_effect_free", "ok": wiring["ok"] and not wiring["side_effects"], "evidence": wiring["side_effects"]}},
+    )
+    ok = all(check["ok"] for check in checks)
+    return {{
+        "format": "appgen.generated-form-interaction-family-contract.v1",
+        "ok": ok,
+        "decision": "approved" if ok else "blocked",
+        "families": families,
+        "required_families": required_families,
+        "checks": checks,
+        "guards": ("component_payload_typed", "bounds_validated_before_create", "handler_signature_checked", "user_code_regions_preserved", "preview_replay_is_side_effect_free"),
+        "side_effects": (),
+        "blocking_gaps": tuple(check for check in checks if not check["ok"]),
+    }}
+
+
+def form_interaction_family_module_file_manifest(existing_paths=None):
+    """Return generated form interaction family module files and whether they exist."""
+    paths = set(existing_paths) if existing_paths is not None else _local_component_paths()
+    modules = (
+        ("palette_drag_source_module", "palette_drag_source"),
+        ("canvas_drop_target_module", "canvas_drop_target"),
+        ("interaction_wiring_graph_module", "wiring_graph"),
+        ("interaction_handler_editor_module", "handler_editor"),
+        ("interaction_preview_replay_module", "preview_replay"),
+    )
+    exports = ("module_contract", "form_interaction_manifest", "run_interaction_operation", "runtime_manifest", "smoke_test")
+    manifest = []
+    for module, family in modules:
+        path = f"app/form_interaction_family_modules/{{module}}.py"
+        manifest.append({{
+            "module": module,
+            "family": family,
+            "path": path,
+            "exists": path in paths,
+            "exports": exports,
+            "ok": bool(module) and bool(family) and path in paths,
+        }})
+    return {{
+        "format": "appgen.generated-form-interaction-family-module-file-manifest.v1",
+        "ok": bool(manifest) and all(item["ok"] for item in manifest),
+        "modules": tuple(manifest),
+        "guards": ("one_file_per_form_interaction_family", "declared_exports_present", "interaction_smoke_replays"),
+        "side_effects": (),
+    }}
+
+
+def form_interaction_family_module_test_file_manifest(existing_paths=None):
+    """Return generated form interaction family test files and whether they exist."""
+    paths = set(existing_paths) if existing_paths is not None else _local_component_paths()
+    tests = []
+    for item in form_interaction_family_module_file_manifest(existing_paths)["modules"]:
+        path = item["path"].replace("app/form_interaction_family_modules/", "app/form_interaction_family_module_tests/test_")
+        tests.append({{
+            "module": item["module"],
+            "family": item["family"],
+            "path": path,
+            "exists": path in paths,
+            "target": item["path"],
+            "exports": ("load_form_interaction_family_module", "test_form_interaction_family_module_contract", "test_form_interaction_family_module_smoke", "smoke_test"),
+            "ok": item["ok"] and path in paths,
+        }})
+    return {{
+        "format": "appgen.generated-form-interaction-family-module-test-file-manifest.v1",
+        "ok": bool(tests) and all(item["ok"] for item in tests),
+        "tests": tuple(tests),
+        "guards": ("one_test_file_per_form_interaction_family", "contract_and_smoke_tests_exported"),
+        "side_effects": (),
+    }}
+
+
 def handler_architecture_module_file_manifest(existing_paths=None):
     """Return generated event-handler architecture module files and whether they exist."""
     paths = set(existing_paths) if existing_paths is not None else _local_component_paths()
@@ -58712,6 +59040,8 @@ def _local_component_paths():
         "component_family_module_tests",
         "component_wiring_modules",
         "component_wiring_module_tests",
+        "form_interaction_family_modules",
+        "form_interaction_family_module_tests",
         "handler_architecture_modules",
         "handler_architecture_module_tests",
         "handler_source_ide_modules",
@@ -59273,6 +59603,9 @@ def rad_parity_workbench(existing_paths=()):
     package_readiness = component_package_readiness_contract()
     app_shell = app_shell_chrome_contract()
     drop_wiring = component_drop_wiring_handler_contract()
+    form_interactions = form_interaction_family_contract()
+    form_interaction_modules = form_interaction_family_module_file_manifest(existing_paths)
+    form_interaction_module_tests = form_interaction_family_module_test_file_manifest(existing_paths)
     component_wiring_modules = component_wiring_module_file_manifest(existing_paths)
     component_wiring_module_tests = component_wiring_module_test_file_manifest(existing_paths)
     platform_lifecycle = platform_parity_lifecycle_replay_contract()
@@ -59284,7 +59617,7 @@ def rad_parity_workbench(existing_paths=()):
         {{"id": "native_ui_parity_component_parity", "ok": {{"Grid", "TreeView", "MainMenu", "PopupMenu", "DataSource", "RESTClient", "CameraView", "Viewport3D"}} <= palette_types and component_readiness["ok"], "evidence": {{"palette": tuple(sorted(palette_types)), "readiness": component_readiness}}}},
         {{"id": "built_in_component_usability", "ok": component_usability_workbench()["ok"], "evidence": component_usability_workbench()}},
         {{"id": "app_shell_chrome_designer", "ok": app_shell["ok"] and not app_shell["side_effects"], "evidence": app_shell}},
-        {{"id": "component_drop_wiring_handler_design", "ok": drop_wiring["ok"] and component_wiring_modules["ok"] and component_wiring_module_tests["ok"] and {{"start_palette_drag", "show_drop_preview", "create_component_instance", "record_undo"}} <= set(drop_wiring["drop_pipeline"]) and {{"Button.OnClick", "TextBox.OnChange"}} <= {{item["event"] for item in drop_wiring["wiring_links"]}} and all(item["signature"] == "sender, context" for item in drop_wiring["handler_definitions"]) and not drop_wiring["side_effects"], "evidence": dict(drop_wiring, module_files=component_wiring_modules, module_tests=component_wiring_module_tests)}},
+        {{"id": "component_drop_wiring_handler_design", "ok": drop_wiring["ok"] and form_interactions["ok"] and form_interaction_modules["ok"] and form_interaction_module_tests["ok"] and component_wiring_modules["ok"] and component_wiring_module_tests["ok"] and {{"start_palette_drag", "show_drop_preview", "create_component_instance", "record_undo"}} <= set(drop_wiring["drop_pipeline"]) and {{"Button.OnClick", "TextBox.OnChange"}} <= {{item["event"] for item in drop_wiring["wiring_links"]}} and all(item["signature"] == "sender, context" for item in drop_wiring["handler_definitions"]) and not drop_wiring["side_effects"], "evidence": dict(drop_wiring, module_files=component_wiring_modules, module_tests=component_wiring_module_tests, interaction_families=form_interactions, interaction_family_modules=form_interaction_modules, interaction_family_module_tests=form_interaction_module_tests)}},
         {{"id": "pascal_runtime_and_dfm_streaming", "ok": "text-dfm" in dfm_streaming_contract()["stream_formats"] and pascal_runtime_workbench()["ok"], "evidence": {{"streaming": dfm_streaming_contract(), "runtime": pascal_runtime_workbench()}}}},
         {{"id": "pascal_runtime_workbench", "ok": pascal_runtime_workbench()["ok"], "evidence": pascal_runtime_workbench()}},
         {{"id": "object_inspector_parity", "ok": {{"Properties", "Events"}} <= set(object_inspector_contract()["tabs"]) and object_inspector_workbench()["ok"], "evidence": {{"contract": object_inspector_contract(), "workbench": object_inspector_workbench()}}}},
@@ -59347,6 +59680,9 @@ def form_designer_release_gate(existing_paths=()):
     collision_design = dict(design, components=tuple(design.get("components", ())) + (proposal["component"], collision_component))
     collision_validation = validate_form_design(collision_design) if first_table else {{"ok": True, "conflicts": ()}}
     drop_wiring = component_drop_wiring_handler_contract(design=design) if first_table else {{"ok": False, "checks": (), "drop_pipeline": (), "wiring_links": (), "handler_definitions": (), "side_effects": ()}}
+    form_interactions = form_interaction_family_contract(design) if first_table else {{"ok": False, "families": (), "side_effects": ()}}
+    form_interaction_modules = form_interaction_family_module_file_manifest(existing_paths)
+    form_interaction_module_tests = form_interaction_family_module_test_file_manifest(existing_paths)
     component_wiring_modules = component_wiring_module_file_manifest(existing_paths)
     component_wiring_module_tests = component_wiring_module_test_file_manifest(existing_paths)
     checks = (
@@ -59387,10 +59723,13 @@ def form_designer_release_gate(existing_paths=()):
             and {{"start_palette_drag", "show_drop_preview", "create_component_instance", "record_undo"}} <= set(drop_wiring["drop_pipeline"])
             and {{"Button.OnClick", "TextBox.OnChange"}} <= {{item["event"] for item in drop_wiring["wiring_links"]}}
             and all(item["signature"] == "sender, context" for item in drop_wiring["handler_definitions"])
+            and form_interactions["ok"]
+            and form_interaction_modules["ok"]
+            and form_interaction_module_tests["ok"]
             and component_wiring_modules["ok"]
             and component_wiring_module_tests["ok"]
             and not drop_wiring["side_effects"],
-            "evidence": dict(drop_wiring, module_files=component_wiring_modules, module_tests=component_wiring_module_tests),
+            "evidence": dict(drop_wiring, module_files=component_wiring_modules, module_tests=component_wiring_module_tests, interaction_families=form_interactions, interaction_family_modules=form_interaction_modules, interaction_family_module_tests=form_interaction_module_tests),
         }},
         {{
             "id": "rad_parity_contracts",
