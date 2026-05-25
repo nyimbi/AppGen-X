@@ -674,6 +674,10 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   generated app workbenches, with sender/context handler signatures,
   user-code preservation guards, undo recording, debug-capable runtime preview,
   and generated runtime operation module coverage.
+- Component drop/wiring/handler design is now promoted to a top-level
+  form-designer release gate and a generated IDE evidence route, so generated
+  apps expose `/form-designer/component-wiring.json` alongside the aggregate
+  parity workbench.
 
 ## Open Completion Areas
 

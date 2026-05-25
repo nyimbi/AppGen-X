@@ -3151,6 +3151,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "placement_suggestions",
         "overlap_guardrails",
         "database_column_binding_guard",
+        "component_drop_wiring_handler_design",
         "artifact_contract",
         "generation_smoke",
         "generated_runtime_smoke_evidence",
@@ -3208,6 +3209,12 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     assert overlap_gate["passing_valid_drop_state"] == overlap_gate["required_valid_drop_state"]
     assert {"left": "name", "right": "duplicate_name"} in overlap_gate["overlap_pairs"]
     assert overlap_gate["valid_after_drop"]["ok"] is True
+    wiring_gate = next(gate for gate in audit["gates"] if gate["id"] == "component_drop_wiring_handler_design")
+    assert wiring_gate["ok"] is True
+    assert set(wiring_gate["required_checks"]) <= set(wiring_gate["passing_checks"])
+    assert set(wiring_gate["required_pipeline"]) <= set(wiring_gate["passing_pipeline"])
+    assert set(wiring_gate["required_events"]) <= set(wiring_gate["passing_events"])
+    assert set(wiring_gate["required_handler_signatures"]) <= set(wiring_gate["passing_handler_signatures"])
     artifact_gate = next(gate for gate in audit["gates"] if gate["id"] == "artifact_contract")
     assert artifact_gate["ok"] is True
     assert set(artifact_gate["required_artifacts"]) <= set(artifact_gate["passing_artifacts"])
@@ -4341,6 +4348,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "field_component_mapping",
         "drop_proposal_metadata",
         "overlap_guardrails",
+        "component_drop_wiring_handler_design",
         "rad_parity_contracts",
     } <= set(release_contracts["passing_release_gate_checks"])
     assert {
@@ -13551,6 +13559,9 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert "/form-designer/component-analogs.json" in next(
         check["evidence"]["routes"] for check in workbench["checks"] if check["id"] == "route_surface"
     )
+    assert "/form-designer/component-wiring.json" in next(
+        check["evidence"]["routes"] for check in workbench["checks"] if check["id"] == "route_surface"
+    )
     assert "/form-designer/object-inspector.json" in next(
         check["evidence"]["routes"] for check in workbench["checks"] if check["id"] == "route_surface"
     )
@@ -15989,6 +16000,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "field_component_mapping",
         "drop_proposal_metadata",
         "overlap_guardrails",
+        "component_drop_wiring_handler_design",
         "rad_parity_contracts",
     } == {check["id"] for check in form_gate["checks"]}
     assert form_designer.form_designer_release_gate({"app/form_designer.py"})["ok"] is False

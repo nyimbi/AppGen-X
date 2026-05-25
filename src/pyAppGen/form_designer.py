@@ -21623,6 +21623,7 @@ def form_designer_generation_smoke_audit(source: str = FORM_DESIGNER_SAMPLE_DSL)
         "field_component_mapping",
         "drop_proposal_metadata",
         "overlap_guardrails",
+        "component_drop_wiring_handler_design",
         "rad_parity_contracts",
     )
     required_generated_workbench_checks = (
@@ -22259,6 +22260,37 @@ def form_designer_release_audit(existing_paths: set[str] | None = None) -> dict:
         for item in invalid_database_guard["unknown_references"]
         if item["field"] in required_invalid_database_fields
     )
+    drop_wiring = component_drop_wiring_handler_contract(design)
+    required_drop_wiring_checks = (
+        "palette_drag_payloads",
+        "drop_pipeline_declared",
+        "drop_targets_declared",
+        "wiring_routes_to_handlers",
+        "handlers_have_sender_context_signature",
+        "undo_and_user_code_guards",
+    )
+    passing_drop_wiring_checks = tuple(check["id"] for check in drop_wiring["checks"] if check["ok"])
+    required_drop_wiring_pipeline = (
+        "start_palette_drag",
+        "show_drop_preview",
+        "snap_to_grid",
+        "validate_bounds",
+        "create_component_instance",
+        "select_component",
+        "open_object_inspector",
+        "record_undo",
+    )
+    passing_drop_wiring_pipeline = tuple(
+        step for step in required_drop_wiring_pipeline if step in drop_wiring["drop_pipeline"]
+    )
+    required_drop_wiring_events = ("Button.OnClick", "TextBox.OnChange", "Lookup.OnLookup", "Grid.OnDblClick")
+    passing_drop_wiring_events = tuple(
+        item["event"] for item in drop_wiring["wiring_links"] if item["event"] in required_drop_wiring_events
+    )
+    required_drop_handler_signatures = tuple(item["name"] for item in drop_wiring["handler_definitions"])
+    passing_drop_handler_signatures = tuple(
+        item["name"] for item in drop_wiring["handler_definitions"] if item["signature"] == "sender, context"
+    )
     schema = schema_from_dsl(FORM_DESIGNER_SAMPLE_DSL, source_name="form-designer-audit.appgen")
     placed_fields = {item["field"] for item in design["components"]}
     required_suggestion_fields = tuple(
@@ -22607,6 +22639,24 @@ def form_designer_release_audit(existing_paths: set[str] | None = None) -> dict:
             "valid_guard": valid_after_drop["database_column_guard"],
             "invalid_guard": invalid_database_guard,
             "calculated_guard": calculated_database_guard,
+        },
+        {
+            "id": "component_drop_wiring_handler_design",
+            "ok": drop_wiring["ok"]
+            and set(required_drop_wiring_checks) <= set(passing_drop_wiring_checks)
+            and set(required_drop_wiring_pipeline) <= set(passing_drop_wiring_pipeline)
+            and set(required_drop_wiring_events) <= set(passing_drop_wiring_events)
+            and set(required_drop_handler_signatures) <= set(passing_drop_handler_signatures)
+            and not drop_wiring["side_effects"],
+            "required_checks": required_drop_wiring_checks,
+            "passing_checks": passing_drop_wiring_checks,
+            "required_pipeline": required_drop_wiring_pipeline,
+            "passing_pipeline": passing_drop_wiring_pipeline,
+            "required_events": required_drop_wiring_events,
+            "passing_events": passing_drop_wiring_events,
+            "required_handler_signatures": required_drop_handler_signatures,
+            "passing_handler_signatures": passing_drop_handler_signatures,
+            "evidence": drop_wiring,
         },
         {
             "id": "artifact_contract",

@@ -21078,6 +21078,7 @@ def write_form_designer_template(output_dir):
       <a class="btn btn-default" href="{{ url_for('FormDesignerView.third_party_components_json') }}">Third-party Components JSON</a>
       <a class="btn btn-default" href="{{ url_for('FormDesignerView.component_usability_json') }}">Component Usability JSON</a>
       <a class="btn btn-default" href="{{ url_for('FormDesignerView.component_analogs_json') }}">Component Analogs JSON</a>
+      <a class="btn btn-default" href="{{ url_for('FormDesignerView.component_wiring_json') }}">Component Wiring JSON</a>
       <a class="btn btn-default" href="{{ url_for('FormDesignerView.object_inspector_json') }}">Object Inspector JSON</a>
       <a class="btn btn-default" href="{{ url_for('FormDesignerView.livebindings_json') }}">Data Bindings JSON</a>
       <a class="btn btn-default" href="{{ url_for('FormDesignerView.data_tooling_json') }}">Data Tooling JSON</a>
@@ -55710,6 +55711,7 @@ def form_designer_release_gate(existing_paths=()):
     collision_component = dict(proposal["component"], id=str(proposal["component"].get("id", "drop")) + "_collision")
     collision_design = dict(design, components=tuple(design.get("components", ())) + (proposal["component"], collision_component))
     collision_validation = validate_form_design(collision_design) if first_table else {{"ok": True, "conflicts": ()}}
+    drop_wiring = component_drop_wiring_handler_contract(design=design) if first_table else {{"ok": False, "checks": (), "drop_pipeline": (), "wiring_links": (), "handler_definitions": (), "side_effects": ()}}
     checks = (
         {{
             "id": "artifact_coverage",
@@ -55740,6 +55742,16 @@ def form_designer_release_gate(existing_paths=()):
             "id": "overlap_guardrails",
             "ok": collision_validation["ok"] is False and bool(collision_validation["conflicts"]),
             "evidence": {{"conflicts": collision_validation["conflicts"]}},
+        }},
+        {{
+            "id": "component_drop_wiring_handler_design",
+            "ok": drop_wiring["ok"]
+            and {{"palette_drag_payloads", "drop_pipeline_declared", "drop_targets_declared", "wiring_routes_to_handlers", "handlers_have_sender_context_signature", "undo_and_user_code_guards"}} <= {{check["id"] for check in drop_wiring["checks"] if check["ok"]}}
+            and {{"start_palette_drag", "show_drop_preview", "create_component_instance", "record_undo"}} <= set(drop_wiring["drop_pipeline"])
+            and {{"Button.OnClick", "TextBox.OnChange"}} <= {{item["event"] for item in drop_wiring["wiring_links"]}}
+            and all(item["signature"] == "sender, context" for item in drop_wiring["handler_definitions"])
+            and not drop_wiring["side_effects"],
+            "evidence": drop_wiring,
         }},
         {{
             "id": "rad_parity_contracts",
@@ -55851,7 +55863,7 @@ def form_designer_workbench(existing_paths=()):
         {{
             "id": "route_surface",
             "ok": not missing,
-            "evidence": {{"routes": ("/form-designer/", "/form-designer/forms.json", "/form-designer/drop", "/form-designer/workbench.json", "/form-designer/release-gate.json", "/form-designer/rad-parity.json", "/form-designer/third-party-components.json", "/form-designer/component-usability.json", "/form-designer/component-analogs.json", "/form-designer/object-inspector.json", "/form-designer/livebindings.json", "/form-designer/data-tooling.json", "/form-designer/pascal-runtime.json")}},
+            "evidence": {{"routes": ("/form-designer/", "/form-designer/forms.json", "/form-designer/drop", "/form-designer/workbench.json", "/form-designer/release-gate.json", "/form-designer/rad-parity.json", "/form-designer/third-party-components.json", "/form-designer/component-usability.json", "/form-designer/component-analogs.json", "/form-designer/component-wiring.json", "/form-designer/object-inspector.json", "/form-designer/livebindings.json", "/form-designer/data-tooling.json", "/form-designer/pascal-runtime.json")}},
         }},
         {{
             "id": "rad_parity_workbench",
@@ -55907,6 +55919,10 @@ class FormDesignerView(BaseView):
     @expose("/component-analogs.json")
     def component_analogs_json(self):
         return jsonify(component_analog_workbench())
+
+    @expose("/component-wiring.json")
+    def component_wiring_json(self):
+        return jsonify(component_drop_wiring_handler_contract())
 
     @expose("/object-inspector.json")
     def object_inspector_json(self):
