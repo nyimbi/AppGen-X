@@ -738,6 +738,11 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   side-effect-free source/generated operation required by readiness, usability,
   platform lifecycle, platform requirement, and generated component runtime
   validation gates.
+- `5d649cc` promotes mobile/device API coverage into source and generated
+  scenario matrices: every generated device component module now has its
+  `run_scenario` export replayed through readiness, platform lifecycle,
+  platform requirement, and generated mobile runtime validation gates, including
+  unsupported-target fallback evidence.
 
 ## Open Completion Areas
 
