@@ -20973,6 +20973,27 @@ def form_designer_generation_smoke_audit(source: str = FORM_DESIGNER_SAMPLE_DSL)
         updated_validation = (
             generated_form_designer.validate_form_design(updated) if first_table else {}
         )
+        invalid_column_proposal = (
+            generated_form_designer.proposal_from_drop(
+                {
+                    "table": first_table,
+                    "component": "TextBox",
+                    "field": "missing_column",
+                    "x": 4,
+                    "y": 9,
+                }
+            )
+            if first_table
+            else {}
+        )
+        invalid_column_design = (
+            generated_form_designer.apply_form_proposal(design, invalid_column_proposal)
+            if first_table
+            else {}
+        )
+        invalid_column_validation = (
+            generated_form_designer.validate_form_design(invalid_column_design) if first_table else {}
+        )
         release_gate = generated_form_designer.form_designer_release_gate(existing_paths)
         workbench = generated_form_designer.form_designer_workbench(existing_paths)
         usability = generated_form_designer.component_usability_workbench(existing_paths)
@@ -21255,6 +21276,19 @@ def form_designer_generation_smoke_audit(source: str = FORM_DESIGNER_SAMPLE_DSL)
             and proposal.get("kind") == "drop_component"
             and any(item.get("name") == "field" for item in proposal.get("properties", ()))
             and updated_validation.get("ok") is True,
+        },
+        {
+            "id": "database_column_binding_guard",
+            "ok": validation.get("database_column_guard", {}).get("ok") is True
+            and updated_validation.get("database_column_guard", {}).get("ok") is True
+            and invalid_column_validation.get("ok") is False
+            and any(
+                item.get("field") == "missing_column"
+                for item in invalid_column_validation.get("database_column_guard", {}).get("unknown_references", ())
+            ),
+            "valid_guard": validation.get("database_column_guard", {}),
+            "updated_guard": updated_validation.get("database_column_guard", {}),
+            "invalid_guard": invalid_column_validation.get("database_column_guard", {}),
         },
         {
             "id": "generated_release_contracts",
@@ -21577,6 +21611,58 @@ def form_designer_release_audit(existing_paths: set[str] | None = None) -> dict:
     valid_after_drop = validate_form_design(
         apply_drop(design, {**drop["proposal"], "field_type": "string"})  # type: ignore[arg-type]
     )
+    invalid_database_binding = {
+        **design,
+        "components": tuple(design["components"])
+        + (
+            {
+                "field": "missing_column",
+                "component": "TextBox",
+                "x": 0,
+                "y": 8,
+                "w": 4,
+                "h": 1,
+            },
+        ),
+    }
+    invalid_database_guard = database_backed_form_column_guard(invalid_database_binding)
+    calculated_database_binding = {
+        **design,
+        "calculated_columns": tuple(design["calculated_columns"]) + ("display_name",),
+        "components": tuple(design["components"])
+        + (
+            {
+                "field": "display_name",
+                "component": "TextBox",
+                "x": 0,
+                "y": 8,
+                "w": 4,
+                "h": 1,
+            },
+        ),
+    }
+    calculated_database_guard = database_backed_form_column_guard(calculated_database_binding)
+    required_database_binding_guards = (
+        "persistent_columns_from_schema",
+        "calculated_columns_declared",
+        "component_bindings_checked",
+        "section_fields_checked",
+    )
+    passing_database_binding_guards = tuple(
+        guard for guard in required_database_binding_guards if guard in valid_after_drop["database_column_guard"]["guards"]
+    )
+    required_database_binding_columns = tuple(design["database_columns"])
+    passing_database_binding_columns = tuple(valid_after_drop["database_column_guard"]["persistent_columns"])
+    required_calculated_binding_columns = ("display_name",)
+    passing_calculated_binding_columns = tuple(
+        column for column in required_calculated_binding_columns if column in calculated_database_guard["calculated_columns"]
+    )
+    required_invalid_database_fields = ("missing_column",)
+    passing_invalid_database_fields = tuple(
+        item["field"]
+        for item in invalid_database_guard["unknown_references"]
+        if item["field"] in required_invalid_database_fields
+    )
     schema = schema_from_dsl(FORM_DESIGNER_SAMPLE_DSL, source_name="form-designer-audit.appgen")
     placed_fields = {item["field"] for item in design["components"]}
     required_suggestion_fields = tuple(
@@ -21685,6 +21771,7 @@ def form_designer_release_audit(existing_paths: set[str] | None = None) -> dict:
         "generated_python_compiles",
         "generated_component_file_coverage",
         "generated_platform_parity_workbench",
+        "database_column_binding_guard",
         "generated_component_parity_runtime",
         "generated_inspector_runtime",
         "generated_binding_runtime",
@@ -21901,6 +21988,27 @@ def form_designer_release_audit(existing_paths: set[str] | None = None) -> dict:
             "passing_valid_drop_state": passing_valid_drop_state,
             "overlap_pairs": overlap_pairs,
             "valid_after_drop": valid_after_drop,
+        },
+        {
+            "id": "database_column_binding_guard",
+            "ok": valid_after_drop["database_column_guard"]["ok"] is True
+            and invalid_database_guard["ok"] is False
+            and calculated_database_guard["ok"] is True
+            and set(required_database_binding_guards) <= set(passing_database_binding_guards)
+            and set(required_database_binding_columns) <= set(passing_database_binding_columns)
+            and set(required_calculated_binding_columns) <= set(passing_calculated_binding_columns)
+            and set(required_invalid_database_fields) <= set(passing_invalid_database_fields),
+            "required_guards": required_database_binding_guards,
+            "passing_guards": passing_database_binding_guards,
+            "required_persistent_columns": required_database_binding_columns,
+            "passing_persistent_columns": passing_database_binding_columns,
+            "required_calculated_columns": required_calculated_binding_columns,
+            "passing_calculated_columns": passing_calculated_binding_columns,
+            "required_invalid_fields": required_invalid_database_fields,
+            "passing_invalid_fields": passing_invalid_database_fields,
+            "valid_guard": valid_after_drop["database_column_guard"],
+            "invalid_guard": invalid_database_guard,
+            "calculated_guard": calculated_database_guard,
         },
         {
             "id": "artifact_contract",

@@ -3095,6 +3095,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "drop_snap_property_inspector",
         "placement_suggestions",
         "overlap_guardrails",
+        "database_column_binding_guard",
         "artifact_contract",
         "generation_smoke",
         "generated_runtime_smoke_evidence",
@@ -3113,6 +3114,19 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     assert canvas_gate["passing_snap"] == canvas_gate["required_snap"]
     assert canvas_gate["passing_bounds"] == canvas_gate["required_bounds"]
     assert set(canvas_gate["required_targets"]) <= set(canvas_gate["passing_targets"])
+    database_binding_gate = next(gate for gate in audit["gates"] if gate["id"] == "database_column_binding_guard")
+    assert database_binding_gate["ok"] is True
+    assert set(database_binding_gate["required_guards"]) <= set(database_binding_gate["passing_guards"])
+    assert set(database_binding_gate["required_persistent_columns"]) <= set(
+        database_binding_gate["passing_persistent_columns"]
+    )
+    assert set(database_binding_gate["required_calculated_columns"]) <= set(
+        database_binding_gate["passing_calculated_columns"]
+    )
+    assert set(database_binding_gate["required_invalid_fields"]) <= set(database_binding_gate["passing_invalid_fields"])
+    assert database_binding_gate["valid_guard"]["ok"] is True
+    assert database_binding_gate["invalid_guard"]["ok"] is False
+    assert database_binding_gate["calculated_guard"]["ok"] is True
     mapping_gate = next(gate for gate in audit["gates"] if gate["id"] == "field_component_mapping")
     assert mapping_gate["ok"] is True
     assert set(mapping_gate["required_fields"]) <= set(mapping_gate["passing_fields"])
