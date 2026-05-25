@@ -37,6 +37,35 @@ Stop branching as soon as the workload is ordinary ERP, workflow, chatbot,
 agent, integration, approval, or PBC event handling. Do not turn the comparison
 table into a generated-app design question.
 
+## Developer API Rule
+
+Do not make developers, Studio users, package authors, natural-language
+generators, or external coding agents call a stream-runtime selector.
+
+Use these APIs as the only developer-facing entrypoints:
+
+| Surface | API | Purpose |
+| --- | --- | --- |
+| Help text and IDE cards | `acp_event_processing_developer_guidance()` | Render the single "use this" answer |
+| Generation decisions | `resolve_acp_event_processing_choice(workload)` | Return the ordinary contract unless an evidence-backed exception is explicit |
+| Release and manifest checks | `lint_pbc_eventing_choice(manifest)` | Enforce omitted `stream_processor`, exception evidence, and adapter-only imports |
+
+`acp_stream_processor_catalog()` and `select_acp_stream_processor()` are
+platform-internal metadata APIs. They exist so runtime maintainers can validate
+the default and exception lanes. They must not be wired into ordinary generated
+application templates, Studio controls, or coding-agent prompts as a user
+choice.
+
+The implementation contract is therefore:
+
+```text
+developer asks what to use -> acp_event_processing_developer_guidance
+generator decides what to emit -> resolve_acp_event_processing_choice
+release gate validates manifest/imports -> lint_pbc_eventing_choice
+ordinary UI shows stream runtime selector -> bug
+ordinary generator calls stream profile selector -> bug
+```
+
 ## The Opinionated Stack
 
 For generated applications, the platform standard is:

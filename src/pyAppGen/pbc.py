@@ -221,6 +221,20 @@ ACP_STREAM_PROCESSING_POLICY = {
             "complex parallel dataflow/CPU-heavy transformation and includes "
             "evidence."
         ),
+        "developer_facing_apis": (
+            "acp_event_processing_developer_guidance",
+            "resolve_acp_event_processing_choice",
+            "lint_pbc_eventing_choice",
+        ),
+        "platform_internal_apis": (
+            "acp_stream_processor_catalog",
+            "select_acp_stream_processor",
+        ),
+        "api_rule": (
+            "Studio, DSL generation, package templates, and external coding "
+            "agents use the developer-facing APIs. They must not expose the "
+            "stream processor catalog or selector as an ordinary app choice."
+        ),
     },
     "developer_action_contract": {
         "id": "appgen.event-processing.developer-action.v1",
@@ -289,6 +303,16 @@ ACP_STREAM_PROCESSING_POLICY = {
         "fallback_rule": (
             "If the exception workload and evidence are not explicit, generate "
             "appgen_event_contract and omit stream_processor."
+        ),
+        "api_call_order": (
+            "acp_event_processing_developer_guidance",
+            "resolve_acp_event_processing_choice",
+            "lint_pbc_eventing_choice",
+        ),
+        "internal_api_boundary": (
+            "Do not call select_acp_stream_processor from ordinary generated-app "
+            "templates or Studio controls; it is platform-runtime metadata for "
+            "exception validation."
         ),
         "token_efficient_prompt": (
             "Use appgen_event_contract. Omit stream_processor. Generate "
@@ -382,6 +406,11 @@ ACP_STREAM_PROCESSING_POLICY = {
             "agent, integration, or PBC event handling, stop branching and use "
             "the ordinary answer."
         ),
+        "api_contract": (
+            "Call resolve_acp_event_processing_choice for generation decisions; "
+            "render acp_event_processing_developer_guidance for help text; run "
+            "lint_pbc_eventing_choice before release."
+        ),
     },
     "developer_implementation_playbook": {
         "id": "appgen.event-processing.implementation-playbook.v1",
@@ -427,6 +456,7 @@ ACP_STREAM_PROCESSING_POLICY = {
             "studio_has_no_stream_runtime_picker",
             "exception_profiles_require_stream_exception_evidence",
             "release_audit_records_event_contract_outputs",
+            "ordinary_generators_do_not_call_stream_processor_selector",
         ),
     },
     "developer_choice_algorithm": (
@@ -682,6 +712,7 @@ ACP_STREAM_PROCESSING_POLICY = {
             "lint_ordinary_manifests_that_set_stream_processor",
             "block_exception_profiles_without_evidence",
             "fail_generated_business_logic_with_profile_specific_imports",
+            "route_generators_through_event_choice_resolver",
         ),
     },
     "opinionated_stack": {
@@ -1496,7 +1527,7 @@ def lint_pbc_eventing_choice(manifest: dict, *, generated_imports: tuple[str, ..
 
 
 def select_acp_stream_processor(workload: str) -> dict:
-    """Select a stream processor profile for an APC workload description."""
+    """Select the platform-owned runtime profile for an APC workload description."""
     text = workload.lower().replace("-", "_")
     if any(term in text for term in ("time_series", "telemetry", "high_throughput", "event_data", "ingestion")):
         selected = "quix_streams"
@@ -1515,6 +1546,10 @@ def select_acp_stream_processor(workload: str) -> dict:
         "profile": {"processor": selected, **profile},
         "reason": profile["primary_use_case"],
         "rules": ACP_STREAM_PROCESSOR_DECISION_RULES,
+        "developer_visible": False,
+        "selection_owner": "platform_runtime",
+        "ordinary_generator_api": "resolve_acp_event_processing_choice",
+        "ordinary_developer_answer": "Use appgen_event_contract.",
     }
 
 
@@ -1542,6 +1577,8 @@ def resolve_acp_event_processing_choice(workload: str, *, has_stream_exception_e
             "choice_budget": ACP_STREAM_PROCESSING_POLICY["choice_budget"],
             "do_not_compare_runtimes": True,
             "generated_business_logic_import_rule": "appgen_event_adapter_only",
+            "api_call_order": ACP_STREAM_PROCESSING_POLICY["developer_action_contract"]["api_call_order"],
+            "stream_selector_exposed_to_developer": False,
         }
     action = "fallback_to_appgen_event_contract" if is_exception_candidate else "generate_appgen_event_contract"
     return {
@@ -1562,6 +1599,8 @@ def resolve_acp_event_processing_choice(workload: str, *, has_stream_exception_e
         "choice_budget": ACP_STREAM_PROCESSING_POLICY["choice_budget"],
         "do_not_compare_runtimes": True,
         "generated_business_logic_import_rule": "appgen_event_adapter_only",
+        "api_call_order": ACP_STREAM_PROCESSING_POLICY["developer_action_contract"]["api_call_order"],
+        "stream_selector_exposed_to_developer": False,
     }
 
 

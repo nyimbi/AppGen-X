@@ -78,8 +78,7 @@ def register_pbc() -> dict:
 - `label`: human-readable catalog label.
 - `mesh`: one of the platform meshes from `pbc_mesh_catalog()`.
 - `description`: concise bounded-context purpose.
-- `datastore_backend`: one of `postgresql`, `mysql`, `mariadb`, `sqlite`,
-  `duckdb`, `clickhouse`, `mongodb`, or `opensearch`.
+- `datastore_backend`: one of `postgresql`, `mysql`, or `mariadb`.
 - `tables`: owned table names.
 - `apis`: command/query route contracts.
 - `emits`: domain events emitted by the PBC.
@@ -93,8 +92,9 @@ metadata after validation.
 
 `datastore_backend` is also opinionated for ordinary generated work. Prefer
 `postgresql`. Use `mysql` or `mariadb` only when that is the project standard.
-Other open-source backends are specialized platform-service or integration
-choices; they should not expand the ordinary PBC generation path.
+Do not add document, search, analytical, or embedded stores to ordinary PBC
+manifests; those are separate integration services behind generated adapters,
+not extra backend choices for application generation.
 
 `stream_processor` is intentionally opinionated to prevent a combinatorial
 backend matrix. For ordinary PBCs, developers have one visible choice:
@@ -291,7 +291,7 @@ source.
 
 1. Define the manifest and `register_pbc()` entrypoint.
 2. Keep owned tables scoped to the PBC.
-3. Choose `postgresql`, `mysql`, or another approved open-source backend.
+3. Choose `postgresql`, `mysql`, or `mariadb`.
 4. Define API contracts with HTTP method and path.
 5. Omit `stream_processor` for ordinary event handling and let validation use
    the default. Add `quix_streams` or `bytewax` only through the audited

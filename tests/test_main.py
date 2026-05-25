@@ -762,8 +762,7 @@ def test_package_pbc_catalog_composes_enterprise_apps(runner: CliRunner) -> None
     assert len(catalog) >= 46
     assert all(item["datastore"].endswith("_store") for item in catalog)
     assert all(
-        item["datastore_backend"]
-        in {"postgresql", "mysql", "mariadb", "sqlite", "duckdb", "clickhouse", "mongodb", "opensearch"}
+        item["datastore_backend"] in {"postgresql", "mysql", "mariadb"}
         for item in catalog
     )
     assert all(item["stream_processor"] in {"bytewax", "quix_streams", "faust_streaming"} for item in catalog)
@@ -834,6 +833,13 @@ def test_package_pbc_catalog_composes_enterprise_apps(runner: CliRunner) -> None
     assert stream_policy["developer_guidance_contract"]["developer_choice_lock"]["ordinary_runtime_selection"] == (
         "not_developer_selectable"
     )
+    assert stream_policy["developer_guidance_contract"]["developer_facing_apis"] == (
+        "acp_event_processing_developer_guidance",
+        "resolve_acp_event_processing_choice",
+        "lint_pbc_eventing_choice",
+    )
+    assert "select_acp_stream_processor" in stream_policy["developer_guidance_contract"]["platform_internal_apis"]
+    assert "must not expose the stream processor catalog" in stream_policy["developer_guidance_contract"]["api_rule"]
     assert stream_policy["developer_action_contract"]["id"] == "appgen.event-processing.developer-action.v1"
     assert stream_policy["developer_action_contract"]["answer"] == "Use appgen_event_contract."
     assert stream_policy["developer_action_contract"]["use_this_stack"] == (
@@ -853,6 +859,12 @@ def test_package_pbc_catalog_composes_enterprise_apps(runner: CliRunner) -> None
     assert stream_policy["developer_action_contract"]["developer_visible_options"] == ("appgen_event_contract",)
     assert stream_policy["developer_action_contract"]["choice_budget"]["ordinary_visible_stream_engine_choices"] == 0
     assert stream_policy["developer_action_contract"]["choice_budget"]["stream_profiles_per_pbc"] == 1
+    assert stream_policy["developer_action_contract"]["api_call_order"] == (
+        "acp_event_processing_developer_guidance",
+        "resolve_acp_event_processing_choice",
+        "lint_pbc_eventing_choice",
+    )
+    assert "not call select_acp_stream_processor" in stream_policy["developer_action_contract"]["internal_api_boundary"]
     assert "runtime_profile_picker" in stream_policy["developer_action_contract"]["do_not_expose"]
     assert "runtime_comparison_prompts" in stream_policy["developer_action_contract"]["do_not_generate"]
     assert stream_policy["developer_action_contract"]["exception_paths"][0]["profile"] == "quix_streams"
@@ -900,6 +912,7 @@ def test_package_pbc_catalog_composes_enterprise_apps(runner: CliRunner) -> None
     assert "avoid_runtime_comparison_prompts" in playbook["natural_language_generation"]
     assert "include_appgen_outbox_event" in playbook["package_templates"]
     assert playbook["coding_agent_prompt"].startswith("Use appgen_event_contract.")
+    assert "ordinary_generators_do_not_call_stream_processor_selector" in playbook["acceptance_criteria"]
     assert "ordinary_manifest_has_no_stream_processor" in playbook["acceptance_criteria"]
     developer_guidance = acp_event_processing_developer_guidance()
     assert developer_guidance["format"] == "appgen.acp-event-processing-developer-guidance.v1"
@@ -1002,6 +1015,7 @@ def test_package_pbc_catalog_composes_enterprise_apps(runner: CliRunner) -> None
     assert stream_policy["developer_decision_record"]["support_matrix_cap"]["ordinary_visible_stream_engines"] == 0
     assert stream_policy["developer_decision_record"]["support_matrix_cap"]["profiles_per_pbc"] == 1
     assert "hide_stream_engine_picker" in stream_policy["developer_decision_record"]["tooling_obligations"]
+    assert "route_generators_through_event_choice_resolver" in stream_policy["developer_decision_record"]["tooling_obligations"]
     assert stream_policy["developer_choice_lock"]["id"] == "appgen.event-processing.choice-lock.v1"
     assert stream_policy["developer_choice_lock"]["ordinary_manifest_fields"] == {"stream_processor": "omit"}
     assert stream_policy["developer_choice_lock"]["ordinary_visible_choice_count"] == 1
@@ -1028,6 +1042,13 @@ def test_package_pbc_catalog_composes_enterprise_apps(runner: CliRunner) -> None
     }
     assert "mixing multiple processors inside one PBC" in stream_policy["prohibited"]
     assert "importing profile-specific stream libraries from generated business logic" in stream_policy["prohibited"]
+    selector_result = select_acp_stream_processor("event-driven async workflow services")
+    assert selector_result["developer_visible"] is False
+    assert selector_result["selection_owner"] == "platform_runtime"
+    assert selector_result["ordinary_generator_api"] == "resolve_acp_event_processing_choice"
+    assert ordinary_resolution["stream_selector_exposed_to_developer"] is False
+    assert ordinary_resolution["api_call_order"] == stream_policy["developer_action_contract"]["api_call_order"]
+    assert telemetry_with_evidence["stream_selector_exposed_to_developer"] is False
 
     manifest_schema = pbc_manifest_schema()
     assert manifest_schema["format"] == "appgen.pbc-manifest-schema.v1"
