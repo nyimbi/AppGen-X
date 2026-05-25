@@ -377,8 +377,11 @@ The composition path is:
    Business logic depends on generated outbox/inbox and event-handler
    contracts; profile-specific adapters and broker choices stay behind the
    platform event layer. The Studio and natural-language generator present this
-   as a generated decision, not as a free-form stream-engine picker. Exceptions
-   require `stream_exception_evidence` in the PBC manifest.
+   as a generated decision, not as a free-form stream-engine picker. The
+   public choice budget is one ordinary event contract, zero ordinary runtime
+   pickers, PostgreSQL first, and MySQL/MariaDB only when a project standard
+   requires it. Exceptions require `stream_exception_evidence` in the PBC
+   manifest.
    `acp_stream_processing_policy()` is the canonical policy surface and the
    release audit includes an `opinionated_stream_processing_policy` gate so
    generated apps do not drift into an uncontrolled processor matrix.

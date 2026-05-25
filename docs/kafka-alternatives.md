@@ -37,6 +37,32 @@ Stop branching as soon as the workload is ordinary ERP, workflow, chatbot,
 agent, integration, approval, or PBC event handling. Do not turn the comparison
 table into a generated-app design question.
 
+## The Opinionated Stack
+
+For generated applications, the platform standard is:
+
+```text
+PostgreSQL + generated transactional outbox/inbox + AppGen-X event adapter
+```
+
+Use MySQL/MariaDB only when the project or customer standard already requires
+that backend. Do not add another datastore/eventing combination for ordinary
+generated applications.
+
+The implementation behind the adapter is platform-owned:
+
+| Layer | Ordinary generated app standard |
+| --- | --- |
+| Developer-facing contract | `appgen_event_contract` |
+| Manifest field | No `stream_processor` field |
+| Transaction boundary | Mutate owned tables and enqueue outbox events in one database transaction |
+| Inbound delivery | Generated inbox table with idempotency keys and retry state |
+| Handler API | Typed AppGen-X handlers, not direct stream-library imports |
+| Default database | PostgreSQL |
+| Allowed alternate database | MySQL/MariaDB when mandated by the project standard |
+| Runtime profile | Read-only generated metadata, defaulting to `faust_streaming` |
+| User-visible choices | One: the AppGen-X event contract |
+
 ## Normative Choice
 
 AppGen-X exposes one ordinary event-processing choice:
@@ -72,6 +98,24 @@ This is the platform's anti-explosion rule: ordinary generated applications
 have one public event contract, one generated implementation recipe, and zero
 developer-visible stream-runtime choices. Exception profiles are architecture
 exceptions with release evidence, not preferences.
+
+## Choice Budget
+
+The public choice budget is intentionally small:
+
+| Choice surface | Budget | Rule |
+| --- | ---: | --- |
+| Ordinary event contract | 1 | Always `appgen_event_contract` |
+| Ordinary stream-runtime picker | 0 | Never show one |
+| Ordinary broker picker | 0 | Broker details are platform infrastructure |
+| Ordinary database backends | 2 | PostgreSQL first; MySQL/MariaDB only when required |
+| Exception stream profiles | 2 | `quix_streams` or `bytewax`, both evidence-gated |
+| Profiles per PBC | 1 | Split workloads into separate PBCs instead of mixing profiles |
+
+This budget is part of the product design. If a new runtime, broker, state
+store, or profile would expand a generated-app choice surface, it requires a
+platform architecture decision, executable validation, release-gate evidence,
+and documentation before it can be exposed.
 
 ## Why This Is Mandatory
 
@@ -163,6 +207,23 @@ else:
 
 If the request is unclear, use `appgen_event_contract` and omit
 `stream_processor`.
+
+## Workload Defaults
+
+Use this table in developer docs, generated IDE help, and coding-agent prompts:
+
+| Workload phrase | Generate | Manifest |
+| --- | --- | --- |
+| ERP, finance, HR, inventory, procurement, invoicing, approval, CRM, workflow, chatbot, agent, integration, reporting | AppGen-X event contract, outbox/inbox, typed handlers | Omit `stream_processor` |
+| "Realtime" business event handling without telemetry/windowing evidence | AppGen-X event contract, outbox/inbox, typed handlers | Omit `stream_processor` |
+| IoT telemetry, high-volume time-series ingestion, operational metrics windows | Split specialized PBC using the telemetry exception workflow | `stream_processor="quix_streams"` with `stream_exception_evidence` |
+| Complex parallel dataflow, CPU-heavy transforms, analytical pipelines | Split specialized PBC using the dataflow exception workflow | `stream_processor="bytewax"` with `stream_exception_evidence` |
+| Mixed ordinary events plus telemetry/dataflow | Two PBCs with separate ownership and datastore boundaries | Ordinary PBC omits the field; specialized PBC carries evidence |
+
+If a natural-language prompt says "use Kafka" for an ordinary business app,
+treat that as an infrastructure preference, not a domain requirement. Generate
+the ordinary AppGen-X event contract and record any broker preference only as a
+deployment note for platform operators.
 
 ## Default Runtime Interpretation
 
@@ -300,6 +361,7 @@ Do not add these to ordinary generated applications:
 - per-PBC runtime preference;
 - multiple stream profiles in one PBC;
 - direct imports of stream-processing libraries from generated business logic;
+- direct Kafka/client-library imports from generated business logic;
 - natural-language prompts that compare runtimes for ordinary generated work;
 - project-specific fourth stream profile without a platform architecture
   decision, executable validation, release gate, generated tests, and docs.
