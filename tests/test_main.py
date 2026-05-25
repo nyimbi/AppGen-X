@@ -128,6 +128,7 @@ from pyAppGen.form_designer import cross_target_visual_readiness_contract
 from pyAppGen.form_designer import cross_target_visual_runtime_package_contract
 from pyAppGen.form_designer import design_time_package_manager_workbench
 from pyAppGen.form_designer import detect_overlaps
+from pyAppGen.form_designer import database_backed_form_column_guard
 from pyAppGen.form_designer import decode_dfm_binary_stream
 from pyAppGen.form_designer import dfm_binary_round_trip
 from pyAppGen.form_designer import dfm_round_trip
@@ -2872,7 +2873,45 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     design = package_form_design()
     assert design["format"] == "appgen.package-form-design.v1"
     assert design["view"] == "CustomerForm"
-    assert validate_form_design(design)["ok"] is True
+    validation = validate_form_design(design)
+    assert validation["ok"] is True
+    assert validation["database_column_guard"]["database_backed"] is True
+    assert set(validation["database_column_guard"]["referenced_columns"]) <= set(
+        validation["database_column_guard"]["allowed_columns"]
+    )
+    invalid_database_binding = {
+        **design,
+        "components": tuple(design["components"])
+        + (
+            {
+                "field": "missing_column",
+                "component": "TextBox",
+                "x": 0,
+                "y": 8,
+                "w": 4,
+                "h": 1,
+            },
+        ),
+    }
+    invalid_guard = database_backed_form_column_guard(invalid_database_binding)
+    assert invalid_guard["ok"] is False
+    assert invalid_guard["unknown_references"][0]["field"] == "missing_column"
+    calculated_binding = {
+        **design,
+        "calculated_columns": design["calculated_columns"] + ("display_name",),
+        "components": tuple(design["components"])
+        + (
+            {
+                "field": "display_name",
+                "component": "TextBox",
+                "x": 0,
+                "y": 8,
+                "w": 4,
+                "h": 1,
+            },
+        ),
+    }
+    assert database_backed_form_column_guard(calculated_binding)["ok"] is True
     dfm_text = form_design_to_dfm(design)
     assert "AppGenField = 'name'" in dfm_text
     parsed_dfm = parse_dfm_text(dfm_text)
@@ -3027,7 +3066,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     assert matrix
     assert all(item["supported"] for item in matrix)
 
-    drop = snap_drop("TextBox", 2.3, 7.7, field="generated_note")
+    drop = snap_drop("TextBox", 2.3, 7.7, field="phone")
     assert drop["format"] == "appgen.package-form-drop-proposal.v1"
     assert drop["proposal"]["x"] == 2
     assert drop["proposal"]["y"] == 8
@@ -13327,7 +13366,18 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert form_designer.field_component("Author", "appointment_time")["type"] == "TimePicker"
     design = form_designer.form_design("Book")
     assert design["source_view"] == "BookList"
+    assert design["database_backed"] is True
+    assert {"title", "summary"} <= set(design["database_columns"])
     assert any(component["field"] == "summary" and component["type"] == "TextArea" for component in design["components"])
+    invalid_design = form_designer.apply_form_proposal(
+        design,
+        form_designer.proposal_from_drop({"table": "Book", "component": "TextBox", "field": "missing_column", "x": 2, "y": 12}),
+    )
+    invalid_column_validation = form_designer.validate_form_design(invalid_design)
+    assert invalid_column_validation["ok"] is False
+    assert "missing_column" in {
+        item["field"] for item in invalid_column_validation["database_column_guard"]["unknown_references"]
+    }
     proposal = form_designer.proposal_from_drop({"table": "Book", "component": "TextBox", "field": "title", "x": 1, "y": 1})
     updated_design = form_designer.apply_form_proposal(design, proposal)
     assert form_designer.validate_form_design(updated_design)["ok"] is True

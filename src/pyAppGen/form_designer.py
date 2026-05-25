@@ -18907,7 +18907,10 @@ def form_design(source: str = FORM_DESIGNER_SAMPLE_DSL, table: str = "Customer")
     """Return a parsed form design from DSL component placements."""
     schema = schema_from_dsl(source, source_name="form-designer-audit.appgen")
     view = next(item for item in schema.views if item.table == table)
-    fields = {column.name: column for column in schema.table(table).columns}
+    table_schema = schema.table(table)
+    fields = {column.name: column for column in table_schema.columns}
+    persistent_columns = tuple(column.name for column in table_schema.columns if not column.hidden and not column.derived)
+    calculated_columns = tuple(column.name for column in table_schema.columns if not column.hidden and column.derived)
     components = tuple(
         {
             "field": component.field,
@@ -18924,6 +18927,9 @@ def form_design(source: str = FORM_DESIGNER_SAMPLE_DSL, table: str = "Customer")
         "format": "appgen.package-form-design.v1",
         "table": table,
         "view": view.name,
+        "database_backed": True,
+        "database_columns": persistent_columns,
+        "calculated_columns": calculated_columns,
         "canvas": form_canvas(table),
         "components": components,
         "sections": tuple({"name": section.name, "fields": section.fields} for section in view.sections),
@@ -20635,8 +20641,73 @@ def apply_drop(design: dict, proposal: dict) -> dict:
     return updated
 
 
+def _field_names(values: object) -> tuple[str, ...]:
+    """Normalize field references from component properties or section lists."""
+    if values is None:
+        return ()
+    if isinstance(values, str):
+        return (values,) if values else ()
+    if isinstance(values, dict):
+        name = values.get("field") or values.get("name")
+        return (str(name),) if name else ()
+    names: list[str] = []
+    if isinstance(values, (tuple, list, set)):
+        for item in values:
+            names.extend(_field_names(item))
+    return tuple(names)
+
+
+def _form_field_references(design: dict) -> tuple[dict, ...]:
+    """Return every database-field reference made by a form design."""
+    references: list[dict] = []
+    for component in design.get("components", ()):
+        component_id = component.get("id") or component.get("field") or component.get("component") or component.get("type")
+        for field in _field_names(component.get("field")):
+            references.append({"source": "component.field", "component": component_id, "field": field})
+        props = component.get("props") or {}
+        for prop_name in ("field", "data_field", "label_field", "parent_field", "fields", "columns", "bindings"):
+            for field in _field_names(props.get(prop_name)):
+                references.append(
+                    {
+                        "source": f"component.props.{prop_name}",
+                        "component": component_id,
+                        "field": field,
+                    }
+                )
+    for section in design.get("sections", ()):
+        for field in _field_names(section.get("fields")):
+            references.append({"source": "section.fields", "section": section.get("name"), "field": field})
+    return tuple(references)
+
+
+def database_backed_form_column_guard(design: dict) -> dict:
+    """Ensure database-backed forms only bind persisted or calculated columns."""
+    database_backed = bool(design.get("database_backed") or design.get("database_columns"))
+    persistent_columns = tuple(design.get("database_columns", ()))
+    calculated_columns = tuple(design.get("calculated_columns", ()))
+    allowed = set(persistent_columns) | set(calculated_columns)
+    references = _form_field_references(design) if database_backed else ()
+    unknown = tuple(reference for reference in references if reference["field"] not in allowed)
+    return {
+        "format": "appgen.database-backed-form-column-guard.v1",
+        "database_backed": database_backed,
+        "persistent_columns": persistent_columns,
+        "calculated_columns": calculated_columns,
+        "allowed_columns": tuple(sorted(allowed)),
+        "referenced_columns": tuple(reference["field"] for reference in references),
+        "unknown_references": unknown,
+        "guards": (
+            "persistent_columns_from_schema",
+            "calculated_columns_declared",
+            "component_bindings_checked",
+            "section_fields_checked",
+        ),
+        "ok": not database_backed or (bool(allowed) and not unknown),
+    }
+
+
 def validate_form_design(design: dict) -> dict:
-    """Validate bounds and overlap guardrails for a form design."""
+    """Validate bounds, overlaps, and database-field binding guardrails."""
     bounds = design["canvas"]["bounds"]
     components = tuple(design["components"])
     out_of_bounds = tuple(
@@ -20648,11 +20719,13 @@ def validate_form_design(design: dict) -> dict:
         or item["y"] + item["h"] > bounds["h"]
     )
     overlaps = detect_overlaps(components)
+    column_guard = database_backed_form_column_guard(design)
     return {
         "format": "appgen.package-form-design-validation.v1",
-        "ok": not out_of_bounds and not overlaps,
+        "ok": not out_of_bounds and not overlaps and column_guard["ok"],
         "out_of_bounds": out_of_bounds,
         "overlaps": overlaps,
+        "database_column_guard": column_guard,
     }
 
 
@@ -21472,7 +21545,7 @@ def form_designer_release_audit(existing_paths: set[str] | None = None) -> dict:
     )
     required_supported_fields = tuple(item["field"] for item in design["components"])
     passing_supported_fields = tuple(item["field"] for item in matrix if item["supported"])
-    drop = snap_drop("TextBox", 2.3, 7.7, field="generated_note")
+    drop = snap_drop("TextBox", 2.3, 7.7, field="phone")
     drop_checks = (
         ("snapped_x", drop["proposal"]["x"] == 2),
         ("snapped_y", drop["proposal"]["y"] == 8),
@@ -21481,7 +21554,7 @@ def form_designer_release_audit(existing_paths: set[str] | None = None) -> dict:
         ("inspector_help_text_property", "help_text" in drop["property_inspector"]["properties"]),
     )
     required_drop_proposal = {
-        "field": "generated_note",
+        "field": "phone",
         "component": "TextBox",
         "x": 2,
         "y": 8,

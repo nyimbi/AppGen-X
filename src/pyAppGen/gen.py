@@ -43554,6 +43554,15 @@ def _form_designer_text(schema: AppSchema) -> str:
                 for column in table.columns
                 if not column.hidden and not column.derived
             ],
+            "calculated_fields": [
+                {
+                    "name": _model_attribute_name(column),
+                    "type": column.type_name,
+                    "expression": column.expression,
+                }
+                for column in table.columns
+                if not column.hidden and column.derived
+            ],
         }
         for table in schema.tables
     }
@@ -54889,22 +54898,88 @@ def placement_suggestion(design, component_type, field=None):
 
 def form_design(table_name):
     """Return a generated RAD-style design surface for a table."""
+    table_spec = FORM_TABLES[table_name]
+    database_columns = tuple(field["name"] for field in table_spec["fields"])
+    calculated_columns = tuple(field["name"] for field in table_spec.get("calculated_fields", ()))
     declared = DECLARED_DESIGNS.get(table_name)
     if declared:
         components = tuple(declared["components"])
         rows = max((int(component.get("y", 0)) + int(component.get("h", 1)) for component in components), default=10)
-        return {{"table": table_name, "source_view": declared["view"], "canvas": {{"columns": CANVAS_COLUMNS, "rows": max(MIN_CANVAS_ROWS, rows + 2), "grid": GRID_SIZE}}, "components": components}}
+        return {{"table": table_name, "source_view": declared["view"], "database_backed": True, "database_columns": database_columns, "calculated_columns": calculated_columns, "canvas": {{"columns": CANVAS_COLUMNS, "rows": max(MIN_CANVAS_ROWS, rows + 2), "grid": GRID_SIZE}}, "components": components}}
     components = []
     y = 0
-    for field in FORM_TABLES[table_name]["fields"]:
+    for field in table_spec["fields"]:
         mapping = field_component(table_name, field["name"])
         components.append(drop_component(table_name, mapping["type"], field=field["name"], x=0, y=y))
         y += 2
-    return {{"table": table_name, "canvas": {{"columns": CANVAS_COLUMNS, "rows": max(MIN_CANVAS_ROWS, y + 2), "grid": GRID_SIZE}}, "components": tuple(components)}}
+    return {{"table": table_name, "database_backed": True, "database_columns": database_columns, "calculated_columns": calculated_columns, "canvas": {{"columns": CANVAS_COLUMNS, "rows": max(MIN_CANVAS_ROWS, y + 2), "grid": GRID_SIZE}}, "components": tuple(components)}}
+
+
+def _field_names(values):
+    """Normalize field references from component properties or section lists."""
+    if values is None:
+        return ()
+    if isinstance(values, str):
+        return (values,) if values else ()
+    if isinstance(values, dict):
+        name = values.get("field") or values.get("name")
+        return (str(name),) if name else ()
+    names = []
+    if isinstance(values, (tuple, list, set)):
+        for item in values:
+            names.extend(_field_names(item))
+    return tuple(names)
+
+
+def _form_field_references(design):
+    """Return every database-field reference made by a form design."""
+    references = []
+    for component in design.get("components", ()):
+        component_id = component.get("id") or component.get("field") or component.get("type")
+        for field in _field_names(component.get("field")):
+            references.append({{"source": "component.field", "component": component_id, "field": field}})
+        props = component.get("props") or {{}}
+        for prop_name in ("field", "data_field", "label_field", "parent_field", "fields", "columns", "bindings"):
+            for field in _field_names(props.get(prop_name)):
+                references.append({{
+                    "source": f"component.props.{{prop_name}}",
+                    "component": component_id,
+                    "field": field,
+                }})
+    for section in design.get("sections", ()):
+        for field in _field_names(section.get("fields")):
+            references.append({{"source": "section.fields", "section": section.get("name"), "field": field}})
+    return tuple(references)
+
+
+def database_backed_form_column_guard(design):
+    """Ensure database-backed forms only bind persisted or calculated columns."""
+    database_backed = bool(design.get("database_backed") or design.get("database_columns"))
+    persistent_columns = tuple(design.get("database_columns", ()))
+    calculated_columns = tuple(design.get("calculated_columns", ()))
+    allowed = set(persistent_columns) | set(calculated_columns)
+    references = _form_field_references(design) if database_backed else ()
+    unknown = tuple(reference for reference in references if reference["field"] not in allowed)
+    return {{
+        "format": "appgen.database-backed-form-column-guard.v1",
+        "database_backed": database_backed,
+        "persistent_columns": persistent_columns,
+        "calculated_columns": calculated_columns,
+        "allowed_columns": tuple(sorted(allowed)),
+        "referenced_columns": tuple(reference["field"] for reference in references),
+        "unknown_references": unknown,
+        "guards": (
+            "persistent_columns_from_schema",
+            "calculated_columns_declared",
+            "component_bindings_checked",
+            "section_fields_checked",
+        ),
+        "ok": not database_backed or (bool(allowed) and not unknown),
+    }}
 
 
 def validate_form_design(design):
-    """Validate component bounds, duplicate IDs, and overlap conflicts."""
+    """Validate bounds, duplicate IDs, overlaps, and database-field bindings."""
     errors = []
     seen = set()
     canvas = design.get("canvas", {{}})
@@ -54924,7 +54999,10 @@ def validate_form_design(design):
     conflicts = layout_conflicts(design.get("components", ()))
     for conflict in conflicts:
         errors.append(f"overlap {{conflict['component']}} {{conflict['overlaps']}}")
-    return {{"ok": not errors, "errors": tuple(errors), "conflicts": conflicts}}
+    column_guard = database_backed_form_column_guard(design)
+    for reference in column_guard["unknown_references"]:
+        errors.append(f"unknown database field {{reference['field']}}")
+    return {{"ok": not errors, "errors": tuple(errors), "conflicts": conflicts, "database_column_guard": column_guard}}
 
 
 def proposal_from_drop(payload):
