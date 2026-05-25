@@ -14405,6 +14405,8 @@ def platform_parity_lifecycle_replay_contract() -> dict:
                 "per_package_files",
                 "per_component_test_files",
                 "per_package_test_files",
+                "component_family_modules",
+                "component_family_module_tests",
                 "module_smoke_tests",
             } <= component_usability_passing_checks,
             "evidence": {
@@ -14670,6 +14672,8 @@ def platform_parity_requirement_audit_contract() -> dict:
                 "per_package_files",
                 "per_component_test_files",
                 "per_package_test_files",
+                "component_family_modules",
+                "component_family_module_tests",
                 "module_smoke_tests",
                 "component_parity_readiness",
             } <= {check["id"] for check in component_usability["checks"] if check["ok"]}
@@ -14693,6 +14697,8 @@ def platform_parity_requirement_audit_contract() -> dict:
                 "per_package_files",
                 "per_component_test_files",
                 "per_package_test_files",
+                "component_family_modules",
+                "component_family_module_tests",
                 "module_smoke_tests",
                 "ide_release_ready",
                 "phase_order_ready",
@@ -15095,6 +15101,8 @@ def rad_parity_workbench(existing_paths: set[str] | None = None) -> dict:
         "per_package_files",
         "per_component_test_files",
         "per_package_test_files",
+        "component_family_modules",
+        "component_family_module_tests",
         "module_smoke_tests",
         "requested_analog_coverage",
         "component_behavior",
@@ -20204,6 +20212,60 @@ def component_test_file_manifest() -> tuple[dict, ...]:
     )
 
 
+def component_family_module_file_manifest() -> tuple[dict, ...]:
+    """Return generated component-family parity modules expected in apps."""
+    modules = (
+        ("cross_target_ui_family_module", "cross-target-ui"),
+        ("layout_family_module", "layouts"),
+        ("data_display_family_module", "data-display"),
+        ("graphics_family_module", "graphics"),
+        ("animation_family_module", "animations"),
+        ("style_theme_family_module", "styles-theming"),
+        ("gesture_family_module", "gestures"),
+        ("sensor_family_module", "sensors"),
+        ("three_d_family_module", "three-d"),
+        ("data_access_family_module", "data-access"),
+    )
+    exports = (
+        "module_contract",
+        "family_manifest",
+        "run_family_replay",
+        "readiness_context",
+        "smoke_test",
+    )
+    groups = {item["group"]: item for item in component_analog_group_audit()["groups"]}
+    return tuple(
+        {
+            "module": module,
+            "group": group,
+            "path": f"app/component_family_modules/{module}.py",
+            "exports": exports,
+            "ok": groups.get(group, {}).get("ok") is True,
+        }
+        for module, group in modules
+    )
+
+
+def component_family_module_test_file_manifest() -> tuple[dict, ...]:
+    """Return generated component-family parity test files expected in apps."""
+    return tuple(
+        {
+            "module": item["module"],
+            "group": item["group"],
+            "path": item["path"].replace("app/component_family_modules/", "app/component_family_module_tests/test_"),
+            "target": item["path"],
+            "exports": (
+                "load_component_family_module",
+                "test_component_family_module_contract",
+                "test_component_family_module_smoke",
+                "smoke_test",
+            ),
+            "ok": item["ok"],
+        }
+        for item in component_family_module_file_manifest()
+    )
+
+
 def component_ide_readiness_catalog() -> dict:
     """Return IDE readiness evidence for every built-in component."""
     file_map = {item["component"]: item for item in component_file_manifest()}
@@ -21236,6 +21298,8 @@ def component_usability_workbench() -> dict:
     behavior_workbench = component_behavior_workbench()
     ide_readiness = component_ide_readiness_catalog()
     readiness = component_parity_readiness_contract()
+    family_modules = component_family_module_file_manifest()
+    family_tests = component_family_module_test_file_manifest()
     checks = (
         {
             "id": "complete_catalog",
@@ -21334,6 +21398,32 @@ def component_usability_workbench() -> dict:
             "evidence": component_test_file_manifest(),
         },
         {
+            "id": "component_family_modules",
+            "ok": len(family_modules) == 10
+            and {
+                "cross-target-ui",
+                "layouts",
+                "data-display",
+                "graphics",
+                "animations",
+                "styles-theming",
+                "gestures",
+                "sensors",
+                "three-d",
+                "data-access",
+            }
+            == {item["group"] for item in family_modules}
+            and all(item["ok"] and "run_family_replay" in item["exports"] for item in family_modules),
+            "evidence": family_modules,
+        },
+        {
+            "id": "component_family_module_tests",
+            "ok": len(family_tests) == len(family_modules)
+            and {item["group"] for item in family_tests} == {item["group"] for item in family_modules}
+            and all("test_component_family_module_smoke" in item["exports"] for item in family_tests),
+            "evidence": family_tests,
+        },
+        {
             "id": "per_package_test_files",
             "ok": len(component_package_test_file_manifest()) == len(THIRD_PARTY_COMPONENT_SUITES)
             and all(
@@ -21396,6 +21486,8 @@ def component_usability_workbench() -> dict:
         "package_files": component_package_file_manifest(),
         "component_test_files": component_test_file_manifest(),
         "package_test_files": component_package_test_file_manifest(),
+        "component_family_modules": family_modules,
+        "component_family_module_tests": family_tests,
         "analog_workbench": analog_workbench,
         "behavior_workbench": behavior_workbench,
         "ide_readiness": ide_readiness,
@@ -21548,6 +21640,8 @@ def form_designer_generation_smoke_audit(source: str = FORM_DESIGNER_SAMPLE_DSL)
     package_artifacts = tuple(item["path"] for item in component_package_file_manifest())
     component_test_artifacts = tuple(item["path"] for item in component_test_file_manifest())
     package_test_artifacts = tuple(item["path"] for item in component_package_test_file_manifest())
+    component_family_artifacts = tuple(item["path"] for item in component_family_module_file_manifest())
+    component_family_test_artifacts = tuple(item["path"] for item in component_family_module_test_file_manifest())
     device_component_artifacts = tuple(item["path"] for item in device_api_component_file_manifest())
     device_component_test_artifacts = tuple(item["path"] for item in device_api_component_test_file_manifest())
     visual_component_artifacts = tuple(item["path"] for item in visual_component_file_manifest())
@@ -21596,6 +21690,8 @@ def form_designer_generation_smoke_audit(source: str = FORM_DESIGNER_SAMPLE_DSL)
         *package_artifacts,
         *component_test_artifacts,
         *package_test_artifacts,
+        *component_family_artifacts,
+        *component_family_test_artifacts,
         *device_component_artifacts,
         *device_component_test_artifacts,
         *visual_component_artifacts,
@@ -21644,6 +21740,8 @@ def form_designer_generation_smoke_audit(source: str = FORM_DESIGNER_SAMPLE_DSL)
         *package_artifacts,
         *component_test_artifacts,
         *package_test_artifacts,
+        *component_family_artifacts,
+        *component_family_test_artifacts,
         *device_component_artifacts,
         *device_component_test_artifacts,
         *visual_component_artifacts,
@@ -21914,6 +22012,8 @@ def form_designer_generation_smoke_audit(source: str = FORM_DESIGNER_SAMPLE_DSL)
         "component_modules_ready",
         "package_modules_ready",
         "component_tests_ready",
+        "component_family_modules_ready",
+        "component_family_module_tests_ready",
         "runtime_replay_ready",
     )
     required_inspector_runtime_checks = (
@@ -22040,10 +22140,16 @@ def form_designer_generation_smoke_audit(source: str = FORM_DESIGNER_SAMPLE_DSL)
             and set(package_artifacts) <= {item["path"] for item in usability["package_files"]}
             and set(component_test_artifacts) <= {item["path"] for item in usability["component_test_files"]}
             and set(package_test_artifacts) <= {item["path"] for item in usability["package_test_files"]}
+            and set(component_family_artifacts) <= {item["path"] for item in usability["component_family_modules"]}
+            and set(component_family_test_artifacts) <= {item["path"] for item in usability["component_family_module_tests"]}
             and all(item["exists"] for item in usability["component_files"])
             and all(item["exists"] for item in usability["package_files"])
             and all(item["exists"] for item in usability["component_test_files"])
             and all(item["exists"] for item in usability["package_test_files"])
+            and all(item["exists"] for item in usability["component_family_modules"])
+            and all(item["exists"] for item in usability["component_family_module_tests"])
+            and len(component_family_artifacts) == 10
+            and len(component_family_test_artifacts) == 10
             and len(device_component_artifacts) == len(mobile_device_component_spec_contract()["specs"])
             and len(device_component_test_artifacts) == len(mobile_device_component_spec_contract()["specs"])
             and len(visual_component_artifacts) == len(cross_target_visual_component_spec_contract()["specs"])
@@ -22074,6 +22180,8 @@ def form_designer_generation_smoke_audit(source: str = FORM_DESIGNER_SAMPLE_DSL)
             and len(deep_runtime_module_test_artifacts) == 8,
             "component_test_count": len(component_test_artifacts),
             "package_test_count": len(package_test_artifacts),
+            "component_family_count": len(component_family_artifacts),
+            "component_family_test_count": len(component_family_test_artifacts),
             "device_component_count": len(device_component_artifacts),
             "device_component_test_count": len(device_component_test_artifacts),
             "visual_component_count": len(visual_component_artifacts),

@@ -106,6 +106,8 @@ from pyAppGen.form_designer import component_package_update_operation
 from pyAppGen.form_designer import component_package_workbench
 from pyAppGen.form_designer import component_package_preview_load_operation
 from pyAppGen.form_designer import component_drop_wiring_handler_contract
+from pyAppGen.form_designer import component_family_module_file_manifest
+from pyAppGen.form_designer import component_family_module_test_file_manifest
 from pyAppGen.form_designer import component_wiring_module_file_manifest
 from pyAppGen.form_designer import component_wiring_module_test_file_manifest
 from pyAppGen.form_designer import handler_architecture_module_file_manifest
@@ -2862,6 +2864,8 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "per_package_files",
         "per_component_test_files",
         "per_package_test_files",
+        "component_family_modules",
+        "component_family_module_tests",
         "module_smoke_tests",
         "requested_analog_coverage",
         "component_behavior",
@@ -2922,6 +2926,20 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     assert all({"web", "mobile", "desktop"} <= set(item["renderers"]) for item in usability["components"])
     assert all(item["path"].startswith("app/component_contracts/") for item in usability["component_files"])
     assert all(item["path"].startswith("app/component_packages/") for item in usability["package_files"])
+    assert all(item["path"].startswith("app/component_family_modules/") for item in usability["component_family_modules"])
+    assert all(item["path"].startswith("app/component_family_module_tests/") for item in usability["component_family_module_tests"])
+    assert {item["group"] for item in usability["component_family_modules"]} == {
+        "cross-target-ui",
+        "layouts",
+        "data-display",
+        "graphics",
+        "animations",
+        "styles-theming",
+        "gestures",
+        "sensors",
+        "three-d",
+        "data-access",
+    }
     assert all("component_capabilities" in item["exports"] for item in usability["component_files"])
     assert all("object_inspector" in item["exports"] for item in usability["component_files"])
     assert all("drop_instance" in item["exports"] for item in usability["component_files"])
@@ -2936,8 +2954,12 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     assert all(item["path"].startswith("app/component_package_tests/") for item in usability["package_test_files"])
     assert all("test_component_smoke" in item["exports"] for item in usability["component_test_files"])
     assert all("test_package_smoke" in item["exports"] for item in usability["package_test_files"])
+    assert all("run_family_replay" in item["exports"] for item in usability["component_family_modules"])
+    assert all("test_component_family_module_smoke" in item["exports"] for item in usability["component_family_module_tests"])
     assert all(item["ok"] for item in usability["component_test_files"])
     assert all(item["ok"] for item in usability["package_test_files"])
+    assert all(item["ok"] for item in usability["component_family_modules"])
+    assert all(item["ok"] for item in usability["component_family_module_tests"])
 
     canvas = form_canvas("Customer")
     assert canvas["format"] == "appgen.package-form-canvas.v1"
@@ -4075,6 +4097,8 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "per_package_files",
         "per_component_test_files",
         "per_package_test_files",
+        "component_family_modules",
+        "component_family_module_tests",
         "module_smoke_tests",
     } <= set(lifecycle_by_phase["component_surface_baseline"]["evidence"]["usability_passing_checks"])
     assert lifecycle_by_phase["stream_runtime_model"]["evidence"]["readiness_phases"] == (
@@ -4223,6 +4247,8 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "per_package_files",
         "per_component_test_files",
         "per_package_test_files",
+        "component_family_modules",
+        "component_family_module_tests",
         "module_smoke_tests",
         "ide_release_ready",
     } <= set(requirements_by_id["component_parity"]["deep_checks"])
@@ -4232,6 +4258,8 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "per_package_files",
         "per_component_test_files",
         "per_package_test_files",
+        "component_family_modules",
+        "component_family_module_tests",
         "module_smoke_tests",
     } <= {check["id"] for check in requirements_by_id["component_parity"]["evidence"]["usability"]["checks"] if check["ok"]}
     assert {
@@ -4364,6 +4392,12 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         item["path"] for item in component_test_file_manifest()
     } <= set(smoke["required_artifacts"])
     assert {
+        item["path"] for item in component_family_module_file_manifest()
+    } <= set(smoke["required_artifacts"])
+    assert {
+        item["path"] for item in component_family_module_test_file_manifest()
+    } <= set(smoke["required_artifacts"])
+    assert {
         item["path"] for item in component_package_test_file_manifest()
     } <= set(smoke["required_artifacts"])
     assert {
@@ -4400,6 +4434,12 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     } <= set(smoke["compiled_artifacts"])
     assert {
         item["path"] for item in component_test_file_manifest()
+    } <= set(smoke["compiled_artifacts"])
+    assert {
+        item["path"] for item in component_family_module_file_manifest()
+    } <= set(smoke["compiled_artifacts"])
+    assert {
+        item["path"] for item in component_family_module_test_file_manifest()
     } <= set(smoke["compiled_artifacts"])
     assert {
         item["path"] for item in component_package_test_file_manifest()
@@ -4521,6 +4561,8 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "component_modules_ready",
         "package_modules_ready",
         "component_tests_ready",
+        "component_family_modules_ready",
+        "component_family_module_tests_ready",
         "runtime_replay_ready",
     } <= set(component_runtime_smoke["passing_checks"])
     inspector_runtime_smoke = next(check for check in smoke["checks"] if check["id"] == "generated_inspector_runtime")
@@ -4647,6 +4689,8 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     assert coverage["package_count"] == len(component_package_file_manifest())
     assert coverage["component_test_count"] == len(component_test_file_manifest())
     assert coverage["package_test_count"] == len(component_package_test_file_manifest())
+    assert coverage["component_family_count"] == len(component_family_module_file_manifest())
+    assert coverage["component_family_test_count"] == len(component_family_module_test_file_manifest())
 
     missing = form_designer_release_audit(existing_paths={"app/form_designer.py"})
     assert missing["ok"] is False
@@ -13623,6 +13667,16 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         if path.name != "__init__.py"
     )
     generated_form_designer_paths.update(
+        f"app/component_family_modules/{path.name}"
+        for path in (output_dir / "component_family_modules").glob("*.py")
+        if path.name != "__init__.py"
+    )
+    generated_form_designer_paths.update(
+        f"app/component_family_module_tests/{path.name}"
+        for path in (output_dir / "component_family_module_tests").glob("*.py")
+        if path.name != "__init__.py"
+    )
+    generated_form_designer_paths.update(
         f"app/component_package_tests/{path.name}"
         for path in (output_dir / "component_package_tests").glob("*.py")
         if path.name != "__init__.py"
@@ -13748,6 +13802,8 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "per_package_files",
         "per_component_test_files",
         "per_package_test_files",
+        "component_family_modules",
+        "component_family_module_tests",
         "module_smoke_tests",
     } <= set(generated_lifecycle_by_phase["component_surface_baseline"]["evidence"]["usability_passing_checks"])
     assert generated_lifecycle_by_phase["stream_runtime_model"]["evidence"]["readiness_phases"] == (
@@ -13903,6 +13959,8 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "per_package_files",
         "per_component_test_files",
         "per_package_test_files",
+        "component_family_modules",
+        "component_family_module_tests",
         "module_smoke_tests",
         "ide_release_ready",
     } <= set(generated_requirements_by_id["component_parity"]["deep_checks"])
@@ -13914,6 +13972,8 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "per_package_files",
         "per_component_test_files",
         "per_package_test_files",
+        "component_family_modules",
+        "component_family_module_tests",
         "module_smoke_tests",
     } <= {
         check["id"]
@@ -14870,6 +14930,8 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "component_modules_ready",
         "package_modules_ready",
         "component_tests_ready",
+        "component_family_modules_ready",
+        "component_family_module_tests_ready",
         "runtime_replay_ready",
     } <= set(component_parity_smoke["checks"])
     component_parity_replay = component_parity_runtime.replay_component_parity_runtime()
@@ -16137,12 +16199,31 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert all(item["exists"] for item in generated_usability["package_files"])
     assert all(item["exists"] for item in generated_usability["component_test_files"])
     assert all(item["exists"] for item in generated_usability["package_test_files"])
+    assert all(item["exists"] for item in generated_usability["component_family_modules"])
+    assert all(item["exists"] for item in generated_usability["component_family_module_tests"])
+    assert {item["group"] for item in generated_usability["component_family_modules"]} == {
+        "cross-target-ui",
+        "layouts",
+        "data-display",
+        "graphics",
+        "animations",
+        "styles-theming",
+        "gestures",
+        "sensors",
+        "three-d",
+        "data-access",
+    }
     assert all("component_capabilities" in item["exports"] for item in generated_usability["component_files"])
     assert all("object_inspector" in item["exports"] for item in generated_usability["component_files"])
     assert all("drop_instance" in item["exports"] for item in generated_usability["component_files"])
     assert all("serialize_instance" in item["exports"] for item in generated_usability["component_files"])
     assert all("apply_property" in item["exports"] for item in generated_usability["component_files"])
     assert all("design_surface" in item["exports"] for item in generated_usability["component_files"])
+    assert all("run_family_replay" in item["exports"] for item in generated_usability["component_family_modules"])
+    assert all(
+        "test_component_family_module_smoke" in item["exports"]
+        for item in generated_usability["component_family_module_tests"]
+    )
     assert "module_smoke_tests" in {
         check["id"] for check in generated_usability["checks"]
     }
@@ -16157,11 +16238,25 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     package_files = tuple((output_dir / item["path"].replace("app/", "")) for item in generated_usability["package_files"])
     component_test_files = tuple((output_dir / item["path"].replace("app/", "")) for item in generated_usability["component_test_files"])
     package_test_files = tuple((output_dir / item["path"].replace("app/", "")) for item in generated_usability["package_test_files"])
+    component_family_files = tuple((output_dir / item["path"].replace("app/", "")) for item in generated_usability["component_family_modules"])
+    component_family_test_files = tuple(
+        (output_dir / item["path"].replace("app/", ""))
+        for item in generated_usability["component_family_module_tests"]
+    )
     assert all(path.exists() for path in component_files)
     assert all(path.exists() for path in package_files)
     assert all(path.exists() for path in component_test_files)
     assert all(path.exists() for path in package_test_files)
-    for path in (*component_files, *package_files, *component_test_files, *package_test_files):
+    assert all(path.exists() for path in component_family_files)
+    assert all(path.exists() for path in component_family_test_files)
+    for path in (
+        *component_files,
+        *package_files,
+        *component_test_files,
+        *package_test_files,
+        *component_family_files,
+        *component_family_test_files,
+    ):
         py_compile.compile(str(path), doraise=True)
     text_box_component = _load_module(text_box_file, "generated_text_box_component")
     assert text_box_component.contract()["component"] == "TextBox"
@@ -16180,6 +16275,16 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         assert module.smoke_test()["ok"] is True
     for index, item in enumerate(generated_usability["package_test_files"]):
         module = _load_module(output_dir / item["path"].replace("app/", ""), f"generated_package_test_smoke_{index}")
+        assert module.smoke_test()["ok"] is True
+    for index, item in enumerate(generated_usability["component_family_modules"]):
+        module = _load_module(output_dir / item["path"].replace("app/", ""), f"generated_component_family_smoke_{index}")
+        assert module.module_contract()["ok"] is True
+        assert module.family_manifest()["ok"] is True
+        assert module.run_family_replay()["ok"] is True
+        assert module.readiness_context()["ok"] is True
+        assert module.smoke_test()["ok"] is True
+    for index, item in enumerate(generated_usability["component_family_module_tests"]):
+        module = _load_module(output_dir / item["path"].replace("app/", ""), f"generated_component_family_test_smoke_{index}")
         assert module.smoke_test()["ok"] is True
     assert text_box_component.target_adapters()["adapters"]
     assert {"created", "loaded"} <= set(text_box_component.state_model()["states"])

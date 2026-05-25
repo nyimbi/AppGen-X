@@ -2340,6 +2340,7 @@ def write_form_designer_file(output_dir, schema: AppSchema):
     (output_dir / "visual_depth_runtime.py").write_text(_visual_depth_runtime_text())
     (output_dir / "data_tooling_runtime.py").write_text(_data_tooling_runtime_text())
     write_component_contract_files(output_dir)
+    write_component_family_module_files(output_dir)
     write_device_api_component_files(output_dir)
     write_visual_component_files(output_dir)
     write_visual_design_ide_module_files(output_dir)
@@ -2474,6 +2475,19 @@ HANDLER_ARCHITECTURE_MODULES = (
     "handler_context_module",
     "handler_dispatch_module",
     "cross_handler_invocation_module",
+)
+
+COMPONENT_FAMILY_MODULES = (
+    "cross_target_ui_family_module",
+    "layout_family_module",
+    "data_display_family_module",
+    "graphics_family_module",
+    "animation_family_module",
+    "style_theme_family_module",
+    "gesture_family_module",
+    "sensor_family_module",
+    "three_d_family_module",
+    "data_access_family_module",
 )
 
 PACKAGE_MANAGER_MODULES = (
@@ -2924,6 +2938,26 @@ def write_component_contract_files(output_dir):
         )
         (package_test_dir / f"test_{_module_name(package_id)}.py").write_text(
             _component_package_test_module_text(package_id),
+            encoding="utf-8",
+        )
+
+
+def write_component_family_module_files(output_dir):
+    """Write generated component-family parity modules and smoke tests."""
+    output_dir = Path(output_dir)
+    module_dir = output_dir / "component_family_modules"
+    test_dir = output_dir / "component_family_module_tests"
+    module_dir.mkdir(parents=True, exist_ok=True)
+    test_dir.mkdir(parents=True, exist_ok=True)
+    (module_dir / "__init__.py").write_text(_component_family_module_init_text(), encoding="utf-8")
+    (test_dir / "__init__.py").write_text(_component_family_module_test_init_text(), encoding="utf-8")
+    for module_name in COMPONENT_FAMILY_MODULES:
+        (module_dir / f"{module_name}.py").write_text(
+            _component_family_module_text(module_name),
+            encoding="utf-8",
+        )
+        (test_dir / f"test_{module_name}.py").write_text(
+            _component_family_module_test_text(module_name),
             encoding="utf-8",
         )
 
@@ -13460,6 +13494,232 @@ def _component_package_test_init_text(package_ids: tuple[str, ...]) -> str:
     )
 
 
+def _component_family_module_init_text() -> str:
+    return (
+        '"""Generated component-family parity modules."""\n\n'
+        f"COMPONENT_FAMILY_MODULES = {COMPONENT_FAMILY_MODULES!r}\n"
+    )
+
+
+def _component_family_module_test_init_text() -> str:
+    modules = tuple(f"test_{name}" for name in COMPONENT_FAMILY_MODULES)
+    return (
+        '"""Generated component-family parity module tests."""\n\n'
+        f"COMPONENT_FAMILY_MODULE_TESTS = {modules!r}\n"
+    )
+
+
+def _component_family_surface(module_name: str) -> tuple[str, str]:
+    return {
+        "cross_target_ui_family_module": ("cross-target-ui", "cross_target_ui"),
+        "layout_family_module": ("layouts", "layouts"),
+        "data_display_family_module": ("data-display", "data_display"),
+        "graphics_family_module": ("graphics", "graphics"),
+        "animation_family_module": ("animations", "animations"),
+        "style_theme_family_module": ("styles-theming", "styles_theming"),
+        "gesture_family_module": ("gestures", "gestures"),
+        "sensor_family_module": ("sensors", "sensors"),
+        "three_d_family_module": ("three-d", "three_d"),
+        "data_access_family_module": ("data-access", "data_access"),
+    }[module_name]
+
+
+def _component_family_module_text(module_name: str) -> str:
+    group, surface = _component_family_surface(module_name)
+    return f'''"""Generated component-family parity module for {group}."""
+
+from __future__ import annotations
+
+import importlib.util
+from pathlib import Path
+
+
+MODULE = {module_name!r}
+GROUP = {group!r}
+SURFACE = {surface!r}
+EXPECTED_EXPORTS = (
+    "module_contract",
+    "family_manifest",
+    "run_family_replay",
+    "readiness_context",
+    "smoke_test",
+)
+
+
+def _form_designer():
+    module_path = Path(__file__).resolve().parents[1] / "form_designer.py"
+    spec = importlib.util.spec_from_file_location(f"generated_component_family_{{MODULE}}_form_designer", module_path)
+    module = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(module)
+    return module
+
+
+def module_contract():
+    """Return this generated component-family module's export contract."""
+    available = tuple(name for name in EXPECTED_EXPORTS if name in globals())
+    return {{
+        "format": "appgen.component-family-module-contract.v1",
+        "module": MODULE,
+        "group": GROUP,
+        "surface": SURFACE,
+        "ok": set(EXPECTED_EXPORTS) <= set(available),
+        "exports": available,
+        "expected_exports": EXPECTED_EXPORTS,
+        "side_effects": (),
+    }}
+
+
+def family_manifest():
+    """Return grouped component parity metadata for this family."""
+    form_designer = _form_designer()
+    audit = form_designer.component_analog_group_audit()
+    group = next(item for item in audit["groups"] if item["group"] == GROUP)
+    behaviors = tuple(form_designer.component_behavior_contract(component) for component in group["analogs"])
+    return {{
+        "format": "appgen.component-family-manifest.v1",
+        "module": MODULE,
+        "group": GROUP,
+        "surface": SURFACE,
+        "ok": group["ok"] and bool(behaviors) and all(item["ok"] for item in behaviors),
+        "sources": group["sources"],
+        "components": group["analogs"],
+        "runtime_adapters": group["runtime_adapters"],
+        "behavior_checks": group["behavior_checks"],
+        "behaviors": behaviors,
+        "guards": ("all_family_components_present", "runtime_adapters_declared", "behavior_replay_ok"),
+        "side_effects": (),
+    }}
+
+
+def run_family_replay():
+    """Replay this component family without host UI execution."""
+    manifest = family_manifest()
+    replay = tuple(
+        {{
+            "component": behavior["component"],
+            "render_targets": tuple(node["target"] for node in behavior["render"]["nodes"]),
+            "event_count": len(behavior["events"]["handlers"]),
+            "adapter_count": len(behavior["adapters"]["adapters"]),
+            "checks": tuple(check["id"] for check in behavior["checks"] if check["ok"]),
+            "ok": behavior["ok"],
+        }}
+        for behavior in manifest["behaviors"]
+    )
+    return {{
+        "format": "appgen.component-family-replay.v1",
+        "module": MODULE,
+        "group": GROUP,
+        "ok": manifest["ok"]
+        and all({{"web", "mobile", "desktop"}} <= set(item["render_targets"]) for item in replay)
+        and all(item["event_count"] > 0 and item["adapter_count"] >= 3 for item in replay),
+        "replay": replay,
+        "side_effects": (),
+    }}
+
+
+def readiness_context():
+    """Return aggregate readiness evidence for this component family."""
+    form_designer = _form_designer()
+    readiness = form_designer.component_parity_readiness_contract()
+    usability = form_designer.component_usability_workbench()
+    return {{
+        "format": "appgen.component-family-readiness-context.v1",
+        "module": MODULE,
+        "group": GROUP,
+        "ok": readiness["ok"] and usability["ok"],
+        "readiness_checks": tuple(check["id"] for check in readiness["checks"] if check["ok"]),
+        "usability_checks": tuple(check["id"] for check in usability["checks"] if check["ok"]),
+        "side_effects": (),
+    }}
+
+
+def smoke_test():
+    """Run side-effect-free checks for this generated component-family module."""
+    contract = module_contract()
+    manifest = family_manifest()
+    replay = run_family_replay()
+    readiness = readiness_context()
+    return {{
+        "format": "appgen.component-family-module-smoke-test.v1",
+        "module": MODULE,
+        "group": GROUP,
+        "ok": contract["ok"]
+        and manifest["ok"]
+        and replay["ok"]
+        and readiness["ok"]
+        and not manifest["side_effects"]
+        and not replay["side_effects"]
+        and not readiness["side_effects"],
+        "checks": (
+            "module_contract_resolves",
+            "family_manifest_ok",
+            "family_replay_ok",
+            "readiness_context_ok",
+            "no_side_effects",
+        ),
+    }}
+'''
+
+
+def _component_family_module_test_text(module_name: str) -> str:
+    group, _surface = _component_family_surface(module_name)
+    return f'''"""Generated tests for the {group} component-family module."""
+
+from __future__ import annotations
+
+import importlib.util
+from pathlib import Path
+
+
+MODULE = {module_name!r}
+GROUP = {group!r}
+
+
+def load_component_family_module():
+    """Load the generated component-family module without app installation."""
+    module_path = Path(__file__).resolve().parents[1] / "component_family_modules" / f"{{MODULE}}.py"
+    spec = importlib.util.spec_from_file_location(f"generated_component_family_module_{{MODULE}}", module_path)
+    module = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(module)
+    return module
+
+
+def test_component_family_module_contract():
+    """Assert the generated component-family module exposes its contract."""
+    module = load_component_family_module()
+    contract = module.module_contract()
+    assert contract["module"] == MODULE
+    assert contract["group"] == GROUP
+    assert contract["ok"] is True
+    assert all(hasattr(module, name) for name in contract["expected_exports"])
+
+
+def test_component_family_module_smoke():
+    """Assert the module's side-effect-free smoke test passes."""
+    module = load_component_family_module()
+    result = module.smoke_test()
+    assert result["ok"] is True
+    assert result["module"] == MODULE
+    assert result["group"] == GROUP
+    assert result["checks"]
+
+
+def smoke_test():
+    """Run this generated test module in a side-effect-free way."""
+    test_component_family_module_contract()
+    test_component_family_module_smoke()
+    return {{
+        "format": "appgen.component-family-module-generated-test-smoke.v1",
+        "module": MODULE,
+        "group": GROUP,
+        "ok": True,
+        "tests": ("test_component_family_module_contract", "test_component_family_module_smoke"),
+    }}
+'''
+
+
 def _component_contract_module_text(component_name: str) -> str:
     return f'''"""Generated implementation contract for the {component_name} component."""
 
@@ -15432,6 +15692,8 @@ def component_parity_runtime_manifest():
         "per_package_files",
         "per_component_test_files",
         "per_package_test_files",
+        "component_family_modules",
+        "component_family_module_tests",
         "module_smoke_tests",
         "requested_analog_coverage",
         "component_behavior",
@@ -15474,6 +15736,7 @@ def replay_component_parity_runtime():
     group_names = tuple(item["group"] for item in manifest["groups"]["groups"])
     module_paths = tuple(item["path"] for item in manifest["usability"]["component_files"])
     package_paths = tuple(item["path"] for item in manifest["usability"]["package_files"])
+    family_paths = tuple(item["path"] for item in manifest["usability"]["component_family_modules"])
     return {
         "format": "appgen.generated-component-parity-runtime-replay.v1",
         "ok": manifest["ok"]
@@ -15481,12 +15744,14 @@ def replay_component_parity_runtime():
         and set(manifest["required_groups"]) <= set(group_names)
         and all(path.startswith("app/component_contracts/") for path in module_paths)
         and all(path.startswith("app/component_packages/") for path in package_paths)
+        and all(path.startswith("app/component_family_modules/") for path in family_paths)
         and manifest["component_count"] >= manifest["analog_count"],
         "analog_components": analog_components,
         "behavior_components": behavior_components,
         "group_names": group_names,
         "module_paths": module_paths,
         "package_paths": package_paths,
+        "family_paths": family_paths,
         "side_effects": (),
     }
 
@@ -15503,6 +15768,8 @@ def validate_component_parity_runtime():
         {"id": "component_modules_ready", "ok": all(item["module_contract"]["ok"] for item in manifest["usability"]["component_files"]) and all("smoke_test" in item["exports"] for item in manifest["usability"]["component_files"])},
         {"id": "package_modules_ready", "ok": all(item["module_contract"]["ok"] for item in manifest["usability"]["package_files"]) and all("smoke_test" in item["exports"] for item in manifest["usability"]["package_files"])},
         {"id": "component_tests_ready", "ok": all(item["ok"] for item in manifest["usability"]["component_test_files"]) and all(item["ok"] for item in manifest["usability"]["package_test_files"])},
+        {"id": "component_family_modules_ready", "ok": all(item["ok"] for item in manifest["usability"]["component_family_modules"])},
+        {"id": "component_family_module_tests_ready", "ok": all(item["ok"] for item in manifest["usability"]["component_family_module_tests"])},
         {"id": "runtime_replay_ready", "ok": replay["ok"] and not replay["side_effects"]},
     )
     return {
@@ -50059,6 +50326,66 @@ def component_test_file_manifest(existing_paths=None):
     return tuple(manifest)
 
 
+def component_family_module_file_manifest(existing_paths=None):
+    """Return generated component-family parity modules and whether they exist."""
+    paths = set(existing_paths) if existing_paths is not None else _local_component_paths()
+    modules = (
+        ("cross_target_ui_family_module", "cross-target-ui"),
+        ("layout_family_module", "layouts"),
+        ("data_display_family_module", "data-display"),
+        ("graphics_family_module", "graphics"),
+        ("animation_family_module", "animations"),
+        ("style_theme_family_module", "styles-theming"),
+        ("gesture_family_module", "gestures"),
+        ("sensor_family_module", "sensors"),
+        ("three_d_family_module", "three-d"),
+        ("data_access_family_module", "data-access"),
+    )
+    exports = (
+        "module_contract",
+        "family_manifest",
+        "run_family_replay",
+        "readiness_context",
+        "smoke_test",
+    )
+    groups = {{item["group"]: item for item in component_analog_group_audit()["groups"]}}
+    manifest = []
+    for module, group in modules:
+        path = f"app/component_family_modules/{{module}}.py"
+        manifest.append({{
+            "module": module,
+            "group": group,
+            "path": path,
+            "exists": path in paths,
+            "exports": exports,
+            "ok": groups.get(group, {{}}).get("ok") is True and path in paths,
+        }})
+    return tuple(manifest)
+
+
+def component_family_module_test_file_manifest(existing_paths=None):
+    """Return generated component-family parity test files and whether they exist."""
+    paths = set(existing_paths) if existing_paths is not None else _local_component_paths()
+    manifest = []
+    for item in component_family_module_file_manifest(existing_paths):
+        path = item["path"].replace("app/component_family_modules/", "app/component_family_module_tests/test_")
+        manifest.append({{
+            "module": item["module"],
+            "group": item["group"],
+            "path": path,
+            "exists": path in paths,
+            "target": item["path"],
+            "exports": (
+                "load_component_family_module",
+                "test_component_family_module_contract",
+                "test_component_family_module_smoke",
+                "smoke_test",
+            ),
+            "ok": item["ok"] and path in paths,
+        }})
+    return tuple(manifest)
+
+
 def component_ide_readiness_catalog(existing_paths=None):
     """Return IDE readiness evidence for every generated built-in component."""
     file_map = {{item["component"]: item for item in component_file_manifest(existing_paths)}}
@@ -50278,6 +50605,8 @@ def component_usability_workbench(existing_paths=None):
     package_files = component_package_file_manifest(existing_paths)
     component_test_files = component_test_file_manifest(existing_paths)
     package_test_files = component_package_test_file_manifest(existing_paths)
+    family_modules = component_family_module_file_manifest(existing_paths)
+    family_tests = component_family_module_test_file_manifest(existing_paths)
     analog_workbench = component_analog_workbench()
     behavior_workbench = component_behavior_workbench()
     ide_readiness = component_ide_readiness_catalog(existing_paths)
@@ -50294,6 +50623,8 @@ def component_usability_workbench(existing_paths=None):
         {{"id": "per_component_files", "ok": len(component_files) == len(contracts) and all(item["exists"] and {{"contract", "render", "validate_props", "preview", "behavior_contract", "target_adapters", "state_model", "serialization_contract", "binding_surface", "object_inspector", "drop_instance", "serialize_instance", "apply_property", "designer_metadata", "design_surface", "dispatch_event", "test_plan", "smoke_test"}} <= set(item["exports"]) and item["module_contract"]["ok"] for item in component_files), "evidence": component_files}},
         {{"id": "per_package_files", "ok": len(package_files) == len(THIRD_PARTY_COMPONENT_SUITES) and all(item["exists"] and {{"package_contract", "install_plan", "load_policy", "test_plan", "smoke_test"}} <= set(item["exports"]) and item["module_contract"]["ok"] for item in package_files), "evidence": package_files}},
         {{"id": "per_component_test_files", "ok": len(component_test_files) == len(contracts) and all(item["exists"] and {{"test_component_contract", "test_component_smoke", "smoke_test"}} <= set(item["exports"]) and item["ok"] for item in component_test_files), "evidence": component_test_files}},
+        {{"id": "component_family_modules", "ok": len(family_modules) == 10 and {{"cross-target-ui", "layouts", "data-display", "graphics", "animations", "styles-theming", "gestures", "sensors", "three-d", "data-access"}} == {{item["group"] for item in family_modules}} and all(item["exists"] and item["ok"] and "run_family_replay" in item["exports"] for item in family_modules), "evidence": family_modules}},
+        {{"id": "component_family_module_tests", "ok": len(family_tests) == len(family_modules) and {{item["group"] for item in family_tests}} == {{item["group"] for item in family_modules}} and all(item["exists"] and item["ok"] and "test_component_family_module_smoke" in item["exports"] for item in family_tests), "evidence": family_tests}},
         {{"id": "per_package_test_files", "ok": len(package_test_files) == len(THIRD_PARTY_COMPONENT_SUITES) and all(item["exists"] and {{"test_package_contract", "test_package_smoke", "smoke_test"}} <= set(item["exports"]) and item["ok"] for item in package_test_files), "evidence": package_test_files}},
         {{"id": "module_smoke_tests", "ok": all("smoke_test" in item["exports"] and item["module_contract"]["smoke_tests"] for item in component_files) and all("smoke_test" in item["exports"] and item["module_contract"]["smoke_tests"] for item in package_files), "evidence": {{"components": tuple((item["component"], item["module_contract"]["smoke_tests"]) for item in component_files), "packages": tuple((item["package"], item["module_contract"]["smoke_tests"]) for item in package_files)}}}},
         {{"id": "requested_analog_coverage", "ok": analog_workbench["ok"], "evidence": analog_workbench}},
@@ -50312,6 +50643,8 @@ def component_usability_workbench(existing_paths=None):
         "package_files": package_files,
         "component_test_files": component_test_files,
         "package_test_files": package_test_files,
+        "component_family_modules": family_modules,
+        "component_family_module_tests": family_tests,
         "analog_workbench": analog_workbench,
         "behavior_workbench": behavior_workbench,
         "ide_readiness": ide_readiness,
@@ -56136,6 +56469,8 @@ def _local_component_paths():
         "component_packages",
         "component_tests",
         "component_package_tests",
+        "component_family_modules",
+        "component_family_module_tests",
         "component_wiring_modules",
         "component_wiring_module_tests",
         "handler_architecture_modules",
@@ -56573,7 +56908,7 @@ def platform_parity_lifecycle_replay_contract():
     mobile_passing_checks = {{check["id"] for check in mobile["checks"] if check["ok"]}}
     visual_passing_checks = {{check["id"] for check in visual["checks"] if check["ok"]}}
     replay = (
-        {{"phase": "component_surface_baseline", "ok": analog_groups["ok"] and usability["ok"] and component_readiness["ok"] and "phase_order_ready" in component_readiness_passing_checks and {{"analog_coverage_ready", "palette_icons_ready", "behavior_surface_ready", "generated_modules_ready", "generated_tests_ready", "ide_release_ready"}} <= component_readiness_passing_checks and {{"per_component_files", "per_package_files", "per_component_test_files", "per_package_test_files", "module_smoke_tests"}} <= component_usability_passing_checks, "evidence": {{"groups": tuple(group["group"] for group in analog_groups["groups"]), "component_count": usability["component_count"], "readiness_passing_checks": tuple(sorted(component_readiness_passing_checks)), "usability_passing_checks": tuple(sorted(component_usability_passing_checks)), "readiness_phases": tuple(phase["phase"] for phase in component_readiness["phases"])}}}},
+        {{"phase": "component_surface_baseline", "ok": analog_groups["ok"] and usability["ok"] and component_readiness["ok"] and "phase_order_ready" in component_readiness_passing_checks and {{"analog_coverage_ready", "palette_icons_ready", "behavior_surface_ready", "generated_modules_ready", "generated_tests_ready", "ide_release_ready"}} <= component_readiness_passing_checks and {{"per_component_files", "per_package_files", "per_component_test_files", "per_package_test_files", "component_family_modules", "component_family_module_tests", "module_smoke_tests"}} <= component_usability_passing_checks, "evidence": {{"groups": tuple(group["group"] for group in analog_groups["groups"]), "component_count": usability["component_count"], "readiness_passing_checks": tuple(sorted(component_readiness_passing_checks)), "usability_passing_checks": tuple(sorted(component_usability_passing_checks)), "readiness_phases": tuple(phase["phase"] for phase in component_readiness["phases"])}}}},
         {{"phase": "stream_runtime_model", "ok": runtime["ok"] and runtime_readiness["ok"] and "phase_order_ready" in {{check["id"] for check in runtime_readiness["checks"] if check["ok"]}} and {{"form_stream_schema", "runtime_session_replay", "event_binding_lifecycle"}} <= runtime_passing_checks, "evidence": {{"checks": tuple(check["id"] for check in runtime["checks"]), "passing_checks": tuple(sorted(runtime_passing_checks)), "runtime_state": runtime["runtime_replay"]["final_state"], "readiness_phases": tuple(phase["phase"] for phase in runtime_readiness["phases"])}}}},
         {{"phase": "inspect_and_bind_design", "ok": inspector["ok"] and inspector_readiness["ok"] and bindings["ok"] and binding_readiness["ok"] and inspector["cross_component_replay"]["ok"] and bindings["designer_transaction_replay"]["ok"] and "phase_order_ready" in {{check["id"] for check in inspector_readiness["checks"] if check["ok"]}} and "phase_order_ready" in {{check["id"] for check in binding_readiness["checks"] if check["ok"]}} and {{"component_editor_transaction", "custom_designer_registration_replay", "editor_lifecycle_replay", "design_surface_transaction_replay"}} <= inspector_passing_checks and {{"designer_transaction_replay", "design_runtime_session_replay", "binding_lifecycle_release_replay"}} <= binding_passing_checks, "evidence": {{"inspector_checks": tuple(check["id"] for check in inspector["checks"]), "inspector_passing_checks": tuple(sorted(inspector_passing_checks)), "binding_checks": tuple(check["id"] for check in bindings["checks"]), "binding_passing_checks": tuple(sorted(binding_passing_checks)), "inspector_readiness_phases": tuple(phase["phase"] for phase in inspector_readiness["phases"]), "binding_readiness_phases": tuple(phase["phase"] for phase in binding_readiness["phases"])}}}},
         {{"phase": "publish_data_services", "ok": data_tooling["ok"] and data_readiness["ok"] and "phase_order_ready" in {{check["id"] for check in data_readiness["checks"] if check["ok"]}} and data_tooling["publish_transaction_replay"]["ok"] and {{"relationship_lookup_lifecycle_replay", "data_tooling_design_runtime_session_replay", "data_tooling_publish_transaction_replay"}} <= data_tooling_passing_checks and {{"schema_rehearsal_before_dataset_publish", "service_contract_tests_before_resource_publish", "offline_integrity_before_runtime_replay"}} <= set(data_tooling["publish_transaction_replay"]["guards"]), "evidence": {{"checks": tuple(check["id"] for check in data_tooling["checks"]), "passing_checks": tuple(sorted(data_tooling_passing_checks)), "publish_state": data_tooling["publish_transaction_replay"]["final_state"], "readiness_phases": tuple(phase["phase"] for phase in data_readiness["phases"])}}}},
@@ -56639,7 +56974,7 @@ def platform_parity_requirement_audit_contract():
                 passing.update(_passing_evidence_check_ids(nested))
         return passing
     requirements = (
-        {{"id": "component_parity", "ok": analog_groups["ok"] and component_readiness["ok"] and component_usability["ok"] and {{"analog_coverage_ready", "palette_icons_ready", "behavior_surface_ready", "generated_modules_ready", "generated_tests_ready", "ide_release_ready", "phase_order_ready"}} <= {{check["id"] for check in component_readiness["checks"] if check["ok"]}} and {{"per_component_files", "per_package_files", "per_component_test_files", "per_package_test_files", "module_smoke_tests", "component_parity_readiness"}} <= {{check["id"] for check in component_usability["checks"] if check["ok"]}} and {{"cross-target-ui", "layouts", "data-display", "graphics", "animations", "styles-theming", "gestures", "sensors", "three-d", "data-access"}} == {{group["group"] for group in analog_groups["groups"]}}, "deep_checks": ("analog_coverage_ready", "generated_modules_ready", "generated_tests_ready", "per_component_files", "per_package_files", "per_component_test_files", "per_package_test_files", "module_smoke_tests", "ide_release_ready", "phase_order_ready"), "evidence": {{"groups": analog_groups, "readiness": component_readiness, "usability": component_usability}}}},
+        {{"id": "component_parity", "ok": analog_groups["ok"] and component_readiness["ok"] and component_usability["ok"] and {{"analog_coverage_ready", "palette_icons_ready", "behavior_surface_ready", "generated_modules_ready", "generated_tests_ready", "ide_release_ready", "phase_order_ready"}} <= {{check["id"] for check in component_readiness["checks"] if check["ok"]}} and {{"per_component_files", "per_package_files", "per_component_test_files", "per_package_test_files", "component_family_modules", "component_family_module_tests", "module_smoke_tests", "component_parity_readiness"}} <= {{check["id"] for check in component_usability["checks"] if check["ok"]}} and {{"cross-target-ui", "layouts", "data-display", "graphics", "animations", "styles-theming", "gestures", "sensors", "three-d", "data-access"}} == {{group["group"] for group in analog_groups["groups"]}}, "deep_checks": ("analog_coverage_ready", "generated_modules_ready", "generated_tests_ready", "per_component_files", "per_package_files", "per_component_test_files", "per_package_test_files", "component_family_modules", "component_family_module_tests", "module_smoke_tests", "ide_release_ready", "phase_order_ready"), "evidence": {{"groups": analog_groups, "readiness": component_readiness, "usability": component_usability}}}},
         {{"id": "native_runtime_streaming", "ok": runtime["ok"] and runtime_readiness["ok"] and {{"stream_identity_ready", "unit_semantics_ready", "compile_targets_ready", "diagnostics_route_ready", "debug_preview_ready", "runtime_preview_ready", "phase_order_ready"}} <= {{check["id"] for check in runtime_readiness["checks"] if check["ok"]}} and {{"form_stream_schema", "runtime_session_replay", "design_edit_session_replay", "runtime_debug_authoring", "native_form_modules", "native_form_module_tests", "runtime_operation_modules", "runtime_operation_module_tests", "compiler_runtime_modules", "compiler_runtime_module_tests", "deep_runtime_modules", "deep_runtime_module_tests"}} <= {{check["id"] for check in runtime["checks"] if check["ok"]}}, "deep_checks": ("stream_identity_ready", "compile_targets_ready", "diagnostics_route_ready", "debug_preview_ready", "runtime_preview_ready", "runtime_debug_authoring", "native_form_modules", "native_form_module_tests", "runtime_operation_modules", "runtime_operation_module_tests", "compiler_runtime_modules", "compiler_runtime_module_tests", "deep_runtime_modules", "deep_runtime_module_tests", "phase_order_ready"), "evidence": {{"workbench": runtime, "readiness": runtime_readiness}}}},
         {{"id": "inspector_design_surface", "ok": inspector["ok"] and inspector_readiness["ok"] and {{"editor_metadata_ready", "property_event_ready", "component_custom_designer_ready", "state_design_surface_ready", "binding_handler_ready", "lifecycle_round_trip_ready", "phase_order_ready"}} <= {{check["id"] for check in inspector_readiness["checks"] if check["ok"]}} and {{"property_editor_types", "event_editor_lifecycle", "component_editor_transaction", "custom_designer_registration_replay", "editor_lifecycle_replay", "inspector_generated_modules", "inspector_generated_module_tests"}} <= {{check["id"] for check in inspector["checks"] if check["ok"]}}, "deep_checks": ("editor_lifecycle_replay", "design_surface_transaction_replay", "custom_designer_registration_replay", "inspector_generated_modules", "inspector_generated_module_tests", "phase_order_ready"), "evidence": {{"workbench": inspector, "readiness": inspector_readiness}}}},
         {{"id": "visual_binding_designer", "ok": bindings["ok"] and binding_readiness["ok"] and {{"graph_authoring_ready", "validation_transaction_ready", "preview_runtime_ready", "diagnostics_conflict_ready", "offline_accessible_runtime_ready", "designer_release_replay_ready", "inspector_bridge_ready", "phase_order_ready"}} <= {{check["id"] for check in binding_readiness["checks"] if check["ok"]}} and bindings["designer_transaction_replay"]["ok"] and bindings["design_runtime_replay"]["ok"] and bindings["lifecycle_release_replay"]["ok"] and {{"binding_generated_modules", "binding_generated_module_tests"}} <= {{check["id"] for check in bindings["checks"] if check["ok"]}}, "deep_checks": ("binding_lifecycle_release_replay", "design_runtime_session_replay", "designer_transaction_replay", "binding_generated_modules", "binding_generated_module_tests", "phase_order_ready"), "evidence": {{"workbench": bindings, "readiness": binding_readiness}}}},

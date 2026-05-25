@@ -689,6 +689,10 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   resolution, timeline playback, effect fallback, scene rendering, and asset
   resolution, so generated apps can package and smoke-test visual pipelines as
   independent runtime modules.
+- Component parity now writes generated component-family module and test files
+  for cross-target UI, layouts, data display, graphics, animation, styles,
+  gestures, sensors, 3D, and data access families, so each family can be
+  replayed and smoke-tested independently from aggregate parity checks.
 
 ## Open Completion Areas
 
