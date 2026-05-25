@@ -456,6 +456,40 @@ DOM_ADVANCED_CAPABILITY_KEYS = (
     "mathematical_optimization",
     "order_mlops_governance",
 )
+PERSONNEL_IDENTITY_ADVANCED_CAPABILITY_KEYS = (
+    "event_sourced_workforce_identity_lifecycle",
+    "graph_relational_org_identity_topology",
+    "multi_tenant_workforce_identity_isolation",
+    "schema_evolution_resilient_identity_schema",
+    "probabilistic_identity_assurance_access_risk",
+    "real_time_directory_org_access_analytics",
+    "counterfactual_org_access_policy_simulation",
+    "temporal_workforce_access_risk_forecasting",
+    "autonomous_role_access_exception_recommendations",
+    "semantic_personnel_event_parsing",
+    "predictive_attrition_access_compliance_risk",
+    "self_healing_provisioning_route_selection",
+    "zero_knowledge_personnel_eligibility_proof",
+    "immutable_workforce_identity_audit_trail",
+    "dynamic_personnel_policy_screening",
+    "automated_identity_control_testing",
+    "universal_api_async_streaming",
+    "cross_system_people_federation",
+    "identity_provider_directory_integration",
+    "decentralized_employee_identity",
+    "chaos_engineered_provisioning_tolerance",
+    "quantum_resistant_identity_authorization",
+    "carbon_aware_identity_processing",
+    "algebraic_role_access_optimization",
+    "mechanism_design_manager_role_allocation",
+    "information_theoretic_identity_anomaly_detection",
+    "temporal_workforce_risk_stochastic_modeling",
+    "distributed_systems_engineering",
+    "probabilistic_ml_workforce_risk",
+    "cryptographic_engineering",
+    "mathematical_optimization",
+    "people_mlops_governance",
+)
 IMPLEMENTED_PBC_KEYS = (
     "gl_core",
     "ap_automation",
@@ -468,6 +502,7 @@ IMPLEMENTED_PBC_KEYS = (
     "procurement_sourcing",
     "transportation_management",
     "dom",
+    "personnel_identity",
 )
 PBC_ALLOWED_DATASTORE_BACKENDS = (
     "postgresql",
@@ -2703,6 +2738,8 @@ def pbc_implementation_contract(key: str) -> dict:
         advanced_runtime = transportation_management_runtime_capabilities()
     elif key == "dom":
         advanced_runtime = dom_runtime_capabilities()
+    elif key == "personnel_identity":
+        advanced_runtime = personnel_identity_runtime_capabilities()
     else:
         advanced_runtime = {}
     source_package = _pbc_source_package_contract(key)
@@ -2990,6 +3027,7 @@ def pbc_implemented_capability_audit(selected_pbcs: tuple[str, ...] | list[str] 
         "procurement_sourcing": len(PROCUREMENT_SOURCING_ADVANCED_CAPABILITY_KEYS),
         "transportation_management": len(TRANSPORTATION_MANAGEMENT_ADVANCED_CAPABILITY_KEYS),
         "dom": len(DOM_ADVANCED_CAPABILITY_KEYS),
+        "personnel_identity": len(PERSONNEL_IDENTITY_ADVANCED_CAPABILITY_KEYS),
     }
     checks = []
     contracts = pbc_implementation_contracts(selected)
@@ -4622,3 +4660,18 @@ from .pbcs.dom import dom_screen_fraud  # noqa: E402,F401
 from .pbcs.dom import dom_set_parameter  # noqa: E402,F401
 from .pbcs.dom import dom_upsert_customer_projection  # noqa: E402,F401
 from .pbcs.dom import dom_verify_order  # noqa: E402,F401
+from .pbcs.personnel_identity import PERSONNEL_IDENTITY_RUNTIME_CAPABILITY_KEYS  # noqa: E402,F401
+from .pbcs.personnel_identity import PERSONNEL_IDENTITY_STANDARD_FEATURE_KEYS  # noqa: E402,F401
+from .pbcs.personnel_identity import personnel_identity_assign_role  # noqa: E402,F401
+from .pbcs.personnel_identity import personnel_identity_build_org_chart  # noqa: E402,F401
+from .pbcs.personnel_identity import personnel_identity_build_workbench_view  # noqa: E402,F401
+from .pbcs.personnel_identity import personnel_identity_configure_runtime  # noqa: E402,F401
+from .pbcs.personnel_identity import personnel_identity_create_employee  # noqa: E402,F401
+from .pbcs.personnel_identity import personnel_identity_empty_state  # noqa: E402,F401
+from .pbcs.personnel_identity import personnel_identity_register_department  # noqa: E402,F401
+from .pbcs.personnel_identity import personnel_identity_register_rule  # noqa: E402,F401
+from .pbcs.personnel_identity import personnel_identity_runtime_capabilities  # noqa: E402,F401
+from .pbcs.personnel_identity import personnel_identity_runtime_smoke  # noqa: E402,F401
+from .pbcs.personnel_identity import personnel_identity_set_parameter  # noqa: E402,F401
+from .pbcs.personnel_identity import personnel_identity_transition_employee_status  # noqa: E402,F401
+from .pbcs.personnel_identity import personnel_identity_upsert_identity_attribute  # noqa: E402,F401
