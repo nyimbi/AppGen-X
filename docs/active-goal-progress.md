@@ -756,6 +756,11 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   designer families are now replayed as source and generated evidence required
   by the workbench, platform requirement audit, generated inspector runtime,
   and focused smoke tests.
+- `52bd89d` promotes data-service IDE tooling modules into replay matrices:
+  standard data modules, deep data-tooling modules, and enterprise data IDE
+  modules are now replayed as source and generated runtime evidence required by
+  the workbench, platform requirement audit, generated data runtime validation,
+  and focused smoke tests.
 
 ## Open Completion Areas
 
