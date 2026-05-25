@@ -116,6 +116,40 @@ GL_CORE_ADVANCED_CAPABILITY_KEYS = (
     "cryptographic_engineering",
     "financial_mlops",
 )
+AP_AUTOMATION_ADVANCED_CAPABILITY_KEYS = (
+    "event_sourced_invoice_lifecycle",
+    "graph_relational_vendor_data_model",
+    "multi_tenant_liquidity_isolation",
+    "schema_evolution_resilient_invoice_schema",
+    "probabilistic_three_way_matching",
+    "real_time_liquidity_aware_payment_scheduling",
+    "counterfactual_discount_analysis",
+    "temporal_cash_flow_forecasting",
+    "autonomous_exception_resolution",
+    "semantic_contract_to_invoice_alignment",
+    "predictive_vendor_risk_scoring",
+    "self_healing_payment_routing",
+    "zero_knowledge_tax_validation",
+    "immutable_regulatory_e_invoicing",
+    "dynamic_sanction_aml_screening",
+    "automated_control_testing",
+    "universal_api_async_streaming",
+    "cross_border_payment_federation",
+    "supply_chain_finance_network_integration",
+    "decentralized_vendor_identity",
+    "chaos_engineered_payment_rail_tolerance",
+    "quantum_resistant_payment_authentication",
+    "carbon_aware_settlement_scheduling",
+    "algebraic_payment_routing_optimization",
+    "mechanism_design_dynamic_discounting",
+    "information_theoretic_fraud_detection",
+    "temporal_liquidity_forecasting_construct",
+    "distributed_systems_engineering",
+    "probabilistic_ml_vendor_risk",
+    "cryptographic_engineering",
+    "mathematical_optimization",
+    "financial_mlops_governance",
+)
 PBC_ALLOWED_DATASTORE_BACKENDS = (
     "postgresql",
     "mysql",
@@ -2328,7 +2362,12 @@ def pbc_implementation_contract(key: str) -> dict:
         service_methods,
     )
     advanced_blueprint = _advanced_domain_blueprint(key, service, table_contracts, event_contract, service_methods)
-    advanced_runtime = gl_core_runtime_capabilities() if key == "gl_core" else {}
+    if key == "gl_core":
+        advanced_runtime = gl_core_runtime_capabilities()
+    elif key == "ap_automation":
+        advanced_runtime = ap_automation_runtime_capabilities()
+    else:
+        advanced_runtime = {}
     source_package = _pbc_source_package_contract(key)
     release_checks = (
         "stable_manifest",
@@ -2561,6 +2600,17 @@ def pbc_implementation_release_audit(selected_pbcs: tuple[str, ...] | list[str] 
                                 for item in contract["advanced_domain_blueprint"]["capabilities"]
                             }
                             and not contract["advanced_domain_blueprint"]["legacy_product_references"]
+                        )
+                    ),
+                },
+                {
+                    "id": f"{contract['pbc']}:advanced_runtime",
+                    "ok": (
+                        not contract["advanced_runtime"]
+                        or (
+                            contract["advanced_runtime"]["ok"]
+                            and contract["advanced_runtime"]["implementation_directory"]
+                            == f"src/pyAppGen/pbcs/{contract['pbc']}"
                         )
                     ),
                 },
@@ -4014,3 +4064,16 @@ from .pbcs.gl_core import gl_core_simulate_probabilistic_posting  # noqa: E402,F
 from .pbcs.gl_core import gl_core_suggest_reconciliation  # noqa: E402,F401
 from .pbcs.gl_core import gl_core_verify_formal_invariants  # noqa: E402,F401
 from .pbcs.gl_core import gl_core_verify_identity_credential  # noqa: E402,F401
+from .pbcs.ap_automation import AP_AUTOMATION_RUNTIME_CAPABILITY_KEYS  # noqa: E402,F401
+from .pbcs.ap_automation import ap_automation_align_contract_terms  # noqa: E402,F401
+from .pbcs.ap_automation import ap_automation_analyze_discount_counterfactual  # noqa: E402,F401
+from .pbcs.ap_automation import ap_automation_capture_invoice  # noqa: E402,F401
+from .pbcs.ap_automation import ap_automation_empty_state  # noqa: E402,F401
+from .pbcs.ap_automation import ap_automation_execute_payment  # noqa: E402,F401
+from .pbcs.ap_automation import ap_automation_issue_purchase_order  # noqa: E402,F401
+from .pbcs.ap_automation import ap_automation_match_invoice  # noqa: E402,F401
+from .pbcs.ap_automation import ap_automation_onboard_vendor  # noqa: E402,F401
+from .pbcs.ap_automation import ap_automation_record_goods_receipt  # noqa: E402,F401
+from .pbcs.ap_automation import ap_automation_runtime_capabilities  # noqa: E402,F401
+from .pbcs.ap_automation import ap_automation_runtime_smoke  # noqa: E402,F401
+from .pbcs.ap_automation import ap_automation_schedule_payments  # noqa: E402,F401
