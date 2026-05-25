@@ -2476,6 +2476,7 @@ RUNTIME_OPERATION_MODULES = (
     "compile_preview_operation",
     "refresh_resources_operation",
     "reload_runtime_preview_operation",
+    "start_debug_preview_operation",
 )
 
 COMPILER_RUNTIME_MODULES = (
@@ -3565,6 +3566,7 @@ def _runtime_operation_name(module_name: str) -> str:
         "compile_preview_operation": "compile_preview",
         "refresh_resources_operation": "refresh_resources",
         "reload_runtime_preview_operation": "reload_runtime_preview",
+        "start_debug_preview_operation": "start_debug_preview",
     }[module_name]
 
 
@@ -15656,7 +15658,7 @@ def runtime_operations_manifest(table_name=None):
         "format": "appgen.generated-native-runtime-operations-manifest.v1",
         "ok": operations["ok"]
         and workbench["ok"]
-        and {"open_design_stream", "compile_preview", "reload_runtime_preview"} <= set(operations["operation_names"]),
+        and {"open_design_stream", "compile_preview", "reload_runtime_preview", "start_debug_preview"} <= set(operations["operation_names"]),
         "table": table_name,
         "operation_names": operations["operation_names"],
         "operations": operations["operations"],
@@ -15666,6 +15668,7 @@ def runtime_operations_manifest(table_name=None):
             "open_design_stream_is_callable",
             "compile_preview_is_callable",
             "reload_runtime_preview_is_callable",
+            "start_debug_preview_is_callable",
             "runtime_replay_is_side_effect_free",
             "design_edit_replay_is_side_effect_free",
         ),
@@ -15713,6 +15716,7 @@ def runtime_operation_module_file_manifest(table_name=None):
         "compile_preview_operation": "compile_preview",
         "refresh_resources_operation": "refresh_resources",
         "reload_runtime_preview_operation": "reload_runtime_preview",
+        "start_debug_preview_operation": "start_debug_preview",
     }
     required_exports = (
         "module_contract",
@@ -15766,6 +15770,7 @@ def runtime_operation_module_test_file_manifest(table_name=None):
         "compile_preview_operation": "compile_preview",
         "refresh_resources_operation": "refresh_resources",
         "reload_runtime_preview_operation": "reload_runtime_preview",
+        "start_debug_preview_operation": "start_debug_preview",
     }
     required_exports = (
         "load_runtime_operation_module",
@@ -15817,6 +15822,7 @@ def validate_runtime_operations(table_name=None):
         "compile_preview",
         "refresh_resources",
         "reload_runtime_preview",
+        "start_debug_preview",
     )
     operation_results = tuple(run_runtime_operation(name, table_name) for name in required)
     checks = (
@@ -46103,6 +46109,102 @@ def pascal_debug_symbol_contract(table_name=None, design=None):
     }}
 
 
+def pascal_runtime_debug_authoring_contract(table_name=None, design=None):
+    """Return generated debugger, source-map, breakpoint, watch, and resource trace evidence."""
+    if design is None:
+        table_name = table_name or next(iter(FORM_TABLES))
+        design = form_design(table_name)
+    unit = pascal_unit_contract(design=design)
+    debug_symbols = pascal_debug_symbol_contract(design=design)
+    diagnostics = pascal_diagnostic_mapping_contract(design=design)
+    resources = pascal_resource_manifest_hash_contract(design=design)
+    first_symbol = debug_symbols["symbols"][0]["symbol"] if debug_symbols["symbols"] else "form"
+    breakpoints = (
+        {{
+            "id": "on_create_breakpoint",
+            "symbol": first_symbol,
+            "event": "OnCreate",
+            "source_span": debug_symbols["symbols"][0]["source_span"] if debug_symbols["symbols"] else (1, 1),
+            "condition": "sender <> nil",
+            "maps_to": ("unit_editor", "form_designer", "object_inspector"),
+        }},
+        {{
+            "id": "resource_load_breakpoint",
+            "symbol": unit["class_name"],
+            "event": "resource_load",
+            "source_span": (1, len(unit["unit_source"].splitlines())),
+            "condition": "resource_bundle_hash <> ''",
+            "maps_to": ("resource_manifest", "package_manager", "runtime_preview"),
+        }},
+    )
+    watches = (
+        {{"expression": "Self.Name", "scope": unit["class_name"], "type": "string", "safe": True}},
+        {{"expression": "Sender", "scope": first_symbol, "type": "object", "safe": True}},
+        {{"expression": "ResourceManifest.Count", "scope": unit["class_name"], "type": "integer", "safe": True}},
+    )
+    step_controls = (
+        "step_into_handler",
+        "step_over_property_setter",
+        "step_out_to_form_event",
+        "continue_to_next_breakpoint",
+        "pause_runtime_preview",
+    )
+    source_maps = tuple(
+        {{
+            "symbol": symbol["symbol"],
+            "unit_span": symbol["source_span"],
+            "design_surfaces": symbol["maps_to"],
+            "diagnostic_codes": tuple(mapping["diagnostic"] for mapping in diagnostics["mappings"] if "source_span" in mapping["maps_to"]),
+        }}
+        for symbol in debug_symbols["symbols"]
+    )
+    resource_dependencies = tuple(
+        {{
+            "resource": item["path"],
+            "hash": item["hash"],
+            "invalidates": ("resource_bundle", "runtime_preview", "diagnostic_index"),
+            "watched_by": ("resource_load_breakpoint",),
+        }}
+        for item in resources["manifest"]
+    )
+    replay = (
+        {{"phase": "load_symbol_map", "ok": debug_symbols["ok"] and bool(source_maps)}},
+        {{"phase": "bind_breakpoints", "ok": all(item["source_span"] and item["condition"] for item in breakpoints)}},
+        {{"phase": "evaluate_watches", "ok": all(item["safe"] for item in watches)}},
+        {{"phase": "trace_resource_dependencies", "ok": all(item["hash"].startswith("sha256:") for item in resource_dependencies)}},
+        {{"phase": "route_debug_diagnostics", "ok": all("unit_editor" in item["design_surfaces"] or "object_inspector" in item["design_surfaces"] for item in source_maps)}},
+    )
+    checks = (
+        {{"id": "breakpoints_bind_to_source_spans", "ok": all(item["source_span"] for item in breakpoints)}},
+        {{"id": "watch_expressions_are_safe", "ok": all(item["safe"] for item in watches)}},
+        {{"id": "step_controls_declared", "ok": {{"step_into_handler", "continue_to_next_breakpoint"}} <= set(step_controls)}},
+        {{"id": "source_maps_route_diagnostics", "ok": bool(source_maps) and all(item["diagnostic_codes"] for item in source_maps)}},
+        {{"id": "resource_dependencies_invalidate_preview", "ok": all("runtime_preview" in item["invalidates"] for item in resource_dependencies)}},
+        {{"id": "debug_replay_side_effect_free", "ok": all(item["ok"] for item in replay)}},
+    )
+    ok = all(check["ok"] for check in checks)
+    return {{
+        "format": "appgen.generated-pascal-runtime-debug-authoring-contract.v1",
+        "ok": ok,
+        "decision": "approved" if ok else "blocked",
+        "breakpoints": breakpoints,
+        "watches": watches,
+        "step_controls": step_controls,
+        "source_maps": source_maps,
+        "resource_dependencies": resource_dependencies,
+        "replay": replay,
+        "checks": checks,
+        "guards": (
+            "breakpoints_resolve_to_stable_source_spans",
+            "watch_expressions_do_not_execute_user_code",
+            "resource_dependency_trace_invalidates_preview",
+            "debug_diagnostics_route_to_design_surfaces",
+        ),
+        "side_effects": (),
+        "blocking_gaps": tuple(check for check in checks if not check["ok"]),
+    }}
+
+
 def pascal_runtime_memory_model_contract(table_name=None, design=None):
     """Return runtime ownership, lifetime, and exception-boundary evidence."""
     unit = pascal_unit_contract(table_name=table_name, design=design)
@@ -46435,6 +46537,31 @@ def pascal_reload_runtime_preview_operation(table_name=None, design=None):
     }}
 
 
+def pascal_start_debug_preview_operation(table_name=None, design=None):
+    """Return the generated IDE operation for starting a debug-capable runtime preview."""
+    if design is None:
+        table_name = table_name or next(iter(FORM_TABLES))
+        design = form_design(table_name)
+    debug_session = pascal_runtime_debug_authoring_contract(design=design)
+    return {{
+        "format": "appgen.generated-pascal-start-debug-preview-operation.v1",
+        "ok": debug_session["ok"] and not debug_session["side_effects"],
+        "pipeline": (
+            "load_symbol_map",
+            "bind_breakpoints",
+            "evaluate_safe_watches",
+            "trace_resource_dependencies",
+            "route_debug_diagnostics",
+            "start_runtime_preview",
+        ),
+        "breakpoints": tuple(item["id"] for item in debug_session["breakpoints"]),
+        "watch_expressions": tuple(item["expression"] for item in debug_session["watches"]),
+        "step_controls": debug_session["step_controls"],
+        "guards": debug_session["guards"],
+        "side_effects": (),
+    }}
+
+
 def pascal_runtime_actionable_operations(table_name=None, design=None):
     """Return generated callable IDE operations for design streams, compile previews, and runtime reloads."""
     if design is None:
@@ -46447,6 +46574,7 @@ def pascal_runtime_actionable_operations(table_name=None, design=None):
         "compile_preview": pascal_compile_preview_operation(design=design),
         "refresh_resources": pascal_refresh_resources_operation(design=design),
         "reload_runtime_preview": pascal_reload_runtime_preview_operation(design=design),
+        "start_debug_preview": pascal_start_debug_preview_operation(design=design),
     }}
     return {{
         "format": "appgen.generated-pascal-runtime-actionable-operations.v1",
@@ -46472,6 +46600,7 @@ def pascal_runtime_readiness_contract(table_name=None, design=None):
     compiler = pascal_compiler_pipeline_contract(design=design)
     package_targets = pascal_package_target_matrix_contract(design=design)
     diagnostics = pascal_diagnostic_mapping_contract(design=design)
+    debug_session = pascal_runtime_debug_authoring_contract(design=design)
     runtime_replay = pascal_runtime_session_replay_contract(design=design)
     design_edit_replay = pascal_design_edit_session_replay_contract(design=design)
     operations = pascal_runtime_actionable_operations(design=design)
@@ -46499,6 +46628,19 @@ def pascal_runtime_readiness_contract(table_name=None, design=None):
             "evidence": {{"surfaces": diagnostics["designer_surfaces"], "mappings": diagnostics["mappings"]}},
         }},
         {{
+            "phase": "debug_preview_trace",
+            "ok": debug_session["ok"]
+            and {{"breakpoints_resolve_to_stable_source_spans", "resource_dependency_trace_invalidates_preview"}}
+            <= set(debug_session["guards"])
+            and operations["operations"]["start_debug_preview"]["ok"],
+            "evidence": {{
+                "breakpoints": tuple(item["id"] for item in debug_session["breakpoints"]),
+                "watches": tuple(item["expression"] for item in debug_session["watches"]),
+                "step_controls": debug_session["step_controls"],
+                "operation": operations["operations"]["start_debug_preview"]["pipeline"],
+            }},
+        }},
+        {{
             "phase": "reload_runtime_preview",
             "ok": runtime_replay["ok"] and design_edit_replay["ok"] and operations["operations"]["reload_runtime_preview"]["ok"],
             "evidence": {{
@@ -46513,7 +46655,8 @@ def pascal_runtime_readiness_contract(table_name=None, design=None):
         {{"id": "unit_semantics_ready", "ok": phases[1]["ok"]}},
         {{"id": "compile_targets_ready", "ok": phases[2]["ok"]}},
         {{"id": "diagnostics_route_ready", "ok": phases[3]["ok"]}},
-        {{"id": "runtime_preview_ready", "ok": phases[4]["ok"]}},
+        {{"id": "debug_preview_ready", "ok": phases[4]["ok"]}},
+        {{"id": "runtime_preview_ready", "ok": phases[5]["ok"]}},
         {{"id": "operation_surface_ready", "ok": operations["ok"]}},
         {{
             "id": "phase_order_ready",
@@ -46523,6 +46666,7 @@ def pascal_runtime_readiness_contract(table_name=None, design=None):
                 "parse_unit_and_cross_check",
                 "plan_compile_and_targets",
                 "normalize_diagnostics",
+                "debug_preview_trace",
                 "reload_runtime_preview",
             ),
         }},
@@ -46538,6 +46682,7 @@ def pascal_runtime_readiness_contract(table_name=None, design=None):
             "stream_identity_before_unit_cross_check",
             "unit_semantics_before_target_emit",
             "diagnostics_before_runtime_preview",
+            "debug_trace_before_runtime_reload",
             "reload_preview_uses_actionable_operation",
         ),
         "side_effects": (),
@@ -46577,6 +46722,7 @@ def pascal_runtime_workbench(table_name=None):
     form_stream_schema = pascal_form_stream_schema_contract(design=design)
     stream_migration = dfm_stream_migration_contract(design=design)
     debug_symbols = pascal_debug_symbol_contract(design=design)
+    debug_session = pascal_runtime_debug_authoring_contract(design=design)
     runtime_memory_model = pascal_runtime_memory_model_contract(design=design)
     toolchain_adapters = pascal_toolchain_adapter_contract(design=design)
     runtime_replay = pascal_runtime_session_replay_contract(design=design)
@@ -46600,6 +46746,7 @@ def pascal_runtime_workbench(table_name=None):
         "compile_preview_operation": "compile_preview",
         "refresh_resources_operation": "refresh_resources",
         "reload_runtime_preview_operation": "reload_runtime_preview",
+        "start_debug_preview_operation": "start_debug_preview",
     }}
     compiler_runtime_module_map = {{
         "compiler_pipeline_module": "compiler_pipeline",
@@ -46629,8 +46776,8 @@ def pascal_runtime_workbench(table_name=None):
     deep_runtime_module_test_entries = tuple({{"module": name, "surface": surface, "path": f"app/deep_runtime_module_tests/test_{{name}}.py", "exists": (Path(__file__).with_name("deep_runtime_module_tests") / f"test_{{name}}.py").exists(), "exports": ("load_deep_runtime_module", "test_deep_runtime_module_contract", "test_deep_runtime_module_smoke", "smoke_test")}} for name, surface in deep_runtime_module_map.items())
     native_form_modules = {{"format": "appgen.generated-native-form-module-file-manifest.v1", "ok": len(native_form_module_entries) == 6 and all(item["exists"] and "native_form_manifest" in item["exports"] for item in native_form_module_entries), "modules": native_form_module_entries, "side_effects": ()}}
     native_form_module_tests = {{"format": "appgen.generated-native-form-module-test-file-manifest.v1", "ok": len(native_form_module_test_entries) == 6 and all(item["exists"] and "test_native_form_module_smoke" in item["exports"] for item in native_form_module_test_entries), "tests": native_form_module_test_entries, "side_effects": ()}}
-    runtime_operation_modules = {{"format": "appgen.generated-runtime-operation-module-file-manifest.v1", "ok": len(runtime_operation_module_entries) == 6 and all(item["exists"] and "run_operation" in item["exports"] for item in runtime_operation_module_entries), "modules": runtime_operation_module_entries, "side_effects": ()}}
-    runtime_operation_module_tests = {{"format": "appgen.generated-runtime-operation-module-test-file-manifest.v1", "ok": len(runtime_operation_module_test_entries) == 6 and all(item["exists"] and "test_runtime_operation_module_smoke" in item["exports"] for item in runtime_operation_module_test_entries), "tests": runtime_operation_module_test_entries, "side_effects": ()}}
+    runtime_operation_modules = {{"format": "appgen.generated-runtime-operation-module-file-manifest.v1", "ok": len(runtime_operation_module_entries) == 7 and all(item["exists"] and "run_operation" in item["exports"] for item in runtime_operation_module_entries), "modules": runtime_operation_module_entries, "side_effects": ()}}
+    runtime_operation_module_tests = {{"format": "appgen.generated-runtime-operation-module-test-file-manifest.v1", "ok": len(runtime_operation_module_test_entries) == 7 and all(item["exists"] and "test_runtime_operation_module_smoke" in item["exports"] for item in runtime_operation_module_test_entries), "tests": runtime_operation_module_test_entries, "side_effects": ()}}
     compiler_runtime_modules = {{"format": "appgen.generated-compiler-runtime-module-file-manifest.v1", "ok": len(compiler_runtime_module_entries) == 6 and all(item["exists"] and "smoke_test" in item["exports"] for item in compiler_runtime_module_entries), "modules": compiler_runtime_module_entries, "side_effects": ()}}
     compiler_runtime_module_tests = {{"format": "appgen.generated-compiler-runtime-module-test-file-manifest.v1", "ok": len(compiler_runtime_module_test_entries) == 6 and all(item["exists"] and "test_compiler_runtime_module_smoke" in item["exports"] for item in compiler_runtime_module_test_entries), "tests": compiler_runtime_module_test_entries, "side_effects": ()}}
     deep_runtime_modules = {{"format": "appgen.generated-deep-runtime-module-file-manifest.v1", "ok": len(deep_runtime_module_entries) == 8 and all(item["exists"] and "runtime_workbench" in item["exports"] for item in deep_runtime_module_entries), "modules": deep_runtime_module_entries, "side_effects": ()}}
@@ -46668,16 +46815,17 @@ def pascal_runtime_workbench(table_name=None):
         {{"id": "form_stream_schema", "ok": form_stream_schema["ok"] and "collection_order_stable" in form_stream_schema["guards"] and not form_stream_schema["side_effects"], "evidence": form_stream_schema}},
         {{"id": "stream_migration", "ok": stream_migration["ok"] and "migration_is_reversible" in stream_migration["guards"] and not stream_migration["side_effects"], "evidence": stream_migration}},
         {{"id": "debug_symbols", "ok": debug_symbols["ok"] and "source_spans_stable" in debug_symbols["guards"] and not debug_symbols["side_effects"], "evidence": debug_symbols}},
+        {{"id": "runtime_debug_authoring", "ok": debug_session["ok"] and {{"breakpoints_resolve_to_stable_source_spans", "watch_expressions_do_not_execute_user_code", "resource_dependency_trace_invalidates_preview", "debug_diagnostics_route_to_design_surfaces"}} <= set(debug_session["guards"]) and not debug_session["side_effects"], "evidence": debug_session}},
         {{"id": "runtime_memory_model", "ok": runtime_memory_model["ok"] and "owner_releases_children" in runtime_memory_model["guards"] and not runtime_memory_model["side_effects"], "evidence": runtime_memory_model}},
         {{"id": "toolchain_adapters", "ok": toolchain_adapters["ok"] and "diagnostics_normalized" in toolchain_adapters["guards"] and not toolchain_adapters["side_effects"], "evidence": toolchain_adapters}},
         {{"id": "runtime_session_replay", "ok": runtime_replay["ok"] and {{"stream_before_unit_parse", "resources_linked_before_runtime_load"}} <= set(runtime_replay["guards"]) and not runtime_replay["side_effects"], "evidence": runtime_replay}},
         {{"id": "design_edit_session_replay", "ok": design_edit_replay["ok"] and {{"unknown_properties_preserved_during_edit", "cache_invalidated_before_target_emit"}} <= set(design_edit_replay["guards"]) and not design_edit_replay["side_effects"], "evidence": design_edit_replay}},
-        {{"id": "actionable_runtime_operations", "ok": actionable_operations["ok"] and {{"open_design_stream", "apply_property_delta", "round_trip_stream", "compile_preview", "refresh_resources", "reload_runtime_preview"}} <= set(actionable_operations["operation_names"]) and not actionable_operations["side_effects"], "evidence": actionable_operations}},
+        {{"id": "actionable_runtime_operations", "ok": actionable_operations["ok"] and {{"open_design_stream", "apply_property_delta", "round_trip_stream", "compile_preview", "refresh_resources", "reload_runtime_preview", "start_debug_preview"}} <= set(actionable_operations["operation_names"]) and not actionable_operations["side_effects"], "evidence": actionable_operations}},
         {{"id": "runtime_readiness_contract", "ok": readiness["ok"] and "runtime_preview_ready" in {{check["id"] for check in readiness["checks"] if check["ok"]}}, "evidence": readiness}},
         {{"id": "native_form_modules", "ok": native_form_modules["ok"] and len(native_form_modules["modules"]) == 6 and not native_form_modules["side_effects"], "evidence": native_form_modules}},
         {{"id": "native_form_module_tests", "ok": native_form_module_tests["ok"] and len(native_form_module_tests["tests"]) == 6 and not native_form_module_tests["side_effects"], "evidence": native_form_module_tests}},
-        {{"id": "runtime_operation_modules", "ok": runtime_operation_modules["ok"] and len(runtime_operation_modules["modules"]) == 6 and not runtime_operation_modules["side_effects"], "evidence": runtime_operation_modules}},
-        {{"id": "runtime_operation_module_tests", "ok": runtime_operation_module_tests["ok"] and len(runtime_operation_module_tests["tests"]) == 6 and not runtime_operation_module_tests["side_effects"], "evidence": runtime_operation_module_tests}},
+        {{"id": "runtime_operation_modules", "ok": runtime_operation_modules["ok"] and len(runtime_operation_modules["modules"]) == 7 and not runtime_operation_modules["side_effects"], "evidence": runtime_operation_modules}},
+        {{"id": "runtime_operation_module_tests", "ok": runtime_operation_module_tests["ok"] and len(runtime_operation_module_tests["tests"]) == 7 and not runtime_operation_module_tests["side_effects"], "evidence": runtime_operation_module_tests}},
         {{"id": "compiler_runtime_modules", "ok": compiler_runtime_modules["ok"] and len(compiler_runtime_modules["modules"]) == 6 and not compiler_runtime_modules["side_effects"], "evidence": compiler_runtime_modules}},
         {{"id": "compiler_runtime_module_tests", "ok": compiler_runtime_module_tests["ok"] and len(compiler_runtime_module_tests["tests"]) == 6 and not compiler_runtime_module_tests["side_effects"], "evidence": compiler_runtime_module_tests}},
         {{"id": "deep_runtime_modules", "ok": deep_runtime_modules["ok"] and len(deep_runtime_modules["modules"]) == 8 and not deep_runtime_modules["side_effects"], "evidence": deep_runtime_modules}},
@@ -46716,6 +46864,7 @@ def pascal_runtime_workbench(table_name=None):
         "form_stream_schema": form_stream_schema,
         "stream_migration": stream_migration,
         "debug_symbols": debug_symbols,
+        "debug_session": debug_session,
         "runtime_memory_model": runtime_memory_model,
         "toolchain_adapters": toolchain_adapters,
         "runtime_replay": runtime_replay,
@@ -48552,6 +48701,130 @@ def component_behavior_workbench():
         "component_count": len(behaviors),
         "behaviors": behaviors,
         "checks": checks,
+        "blocking_gaps": tuple(check for check in checks if not check["ok"]),
+    }}
+
+
+def component_drop_wiring_handler_contract(table_name=None, design=None):
+    """Return generated palette drag/drop, event wiring, and handler definition evidence."""
+    if design is None:
+        table_name = table_name or next(iter(FORM_TABLES))
+        design = form_design(table_name)
+    drop_payloads = tuple(
+        {{
+            "component": item["type"],
+            "category": _component_category(item["type"]),
+            "icon": _component_icon(item["type"]),
+            "default_size": item["defaults"],
+            "payload": {{
+                "kind": "component",
+                "component": item["type"],
+                "default_size": item["defaults"],
+                "icon": _component_icon(item["type"]),
+            }},
+        }}
+        for item in PALETTE
+    )
+    drop_targets = (
+        {{"surface": "form_canvas", "accepts": ("component", "field"), "preview": "snap_grid"}},
+        {{"surface": "container_component", "accepts": ("component",), "preview": "nested_bounds"}},
+        {{"surface": "menu_designer", "accepts": ("menu_item", "action"), "preview": "menu_tree"}},
+        {{"surface": "component_tree", "accepts": ("reorder", "parent_child"), "preview": "outline"}},
+    )
+    drop_pipeline = (
+        "start_palette_drag",
+        "show_drop_preview",
+        "snap_to_grid",
+        "validate_bounds",
+        "create_component_instance",
+        "select_component",
+        "open_object_inspector",
+        "record_undo",
+    )
+    sample_components = (
+        {{"component": "Button", "field": "submit", "event": "OnClick", "handler": "button_submit_click"}},
+        {{"component": "TextBox", "field": "name", "event": "OnChange", "handler": "textbox_name_change"}},
+        {{"component": "Lookup", "field": "customer_id", "event": "OnLookup", "handler": "lookup_customer_id_lookup"}},
+        {{"component": "Grid", "field": "lines", "event": "OnDblClick", "handler": "grid_lines_double_click"}},
+    )
+    wiring_links = tuple(
+        {{
+            "event": f"{{item['component']}}.{{item['event']}}",
+            "component": item["component"],
+            "field": item["field"],
+            "handler": item["handler"],
+            "dispatch": ("resolve_component", "resolve_handler", "invoke_handler"),
+            "designer_surface": "events_inspector",
+        }}
+        for item in sample_components
+    )
+    handler_definitions = tuple(
+        {{
+            "name": item["handler"],
+            "signature": "sender, context",
+            "component": item["component"],
+            "event": item["event"],
+            "body_regions": ("generated_prelude", "user_code", "generated_postlude"),
+            "context_keys": ("form", "component", "dataset", "event", "selection"),
+            "preserves_user_code": True,
+        }}
+        for item in sample_components
+    )
+    checks = (
+        {{
+            "id": "palette_drag_payloads",
+            "ok": bool(drop_payloads)
+            and all(item["icon"].startswith("fa-") and item["payload"]["kind"] == "component" for item in drop_payloads),
+            "evidence": tuple((item["component"], item["icon"]) for item in drop_payloads),
+        }},
+        {{
+            "id": "drop_pipeline_declared",
+            "ok": {{"start_palette_drag", "show_drop_preview", "snap_to_grid", "create_component_instance", "record_undo"}} <= set(drop_pipeline),
+            "evidence": drop_pipeline,
+        }},
+        {{
+            "id": "drop_targets_declared",
+            "ok": {{"form_canvas", "container_component", "menu_designer", "component_tree"}} <= {{item["surface"] for item in drop_targets}},
+            "evidence": drop_targets,
+        }},
+        {{
+            "id": "wiring_routes_to_handlers",
+            "ok": {{"Button.OnClick", "TextBox.OnChange", "Lookup.OnLookup", "Grid.OnDblClick"}} <= {{item["event"] for item in wiring_links}}
+            and all("invoke_handler" in item["dispatch"] for item in wiring_links),
+            "evidence": wiring_links,
+        }},
+        {{
+            "id": "handlers_have_sender_context_signature",
+            "ok": bool(handler_definitions) and all(item["signature"] == "sender, context" for item in handler_definitions),
+            "evidence": tuple((item["name"], item["signature"]) for item in handler_definitions),
+        }},
+        {{
+            "id": "undo_and_user_code_guards",
+            "ok": "record_undo" in drop_pipeline
+            and all(item["preserves_user_code"] and "user_code" in item["body_regions"] for item in handler_definitions),
+            "evidence": handler_definitions,
+        }},
+    )
+    ok = all(check["ok"] for check in checks)
+    return {{
+        "format": "appgen.generated-component-drop-wiring-handler-contract.v1",
+        "ok": ok,
+        "decision": "approved" if ok else "blocked",
+        "form": design.get("name") or design.get("table"),
+        "drop_payloads": drop_payloads,
+        "drop_targets": drop_targets,
+        "drop_pipeline": drop_pipeline,
+        "wiring_links": wiring_links,
+        "handler_definitions": handler_definitions,
+        "checks": checks,
+        "guards": (
+            "handler_name_unique",
+            "sender_context_signature",
+            "user_code_regions_preserved",
+            "undo_snapshot_required",
+            "component_lookup_required",
+        ),
+        "side_effects": (),
         "blocking_gaps": tuple(check for check in checks if not check["ok"]),
     }}
 
@@ -55319,7 +55592,7 @@ def platform_parity_requirement_audit_contract():
         return passing
     requirements = (
         {{"id": "component_parity", "ok": analog_groups["ok"] and component_readiness["ok"] and component_usability["ok"] and {{"analog_coverage_ready", "palette_icons_ready", "behavior_surface_ready", "generated_modules_ready", "generated_tests_ready", "ide_release_ready", "phase_order_ready"}} <= {{check["id"] for check in component_readiness["checks"] if check["ok"]}} and {{"per_component_files", "per_package_files", "per_component_test_files", "per_package_test_files", "module_smoke_tests", "component_parity_readiness"}} <= {{check["id"] for check in component_usability["checks"] if check["ok"]}} and {{"cross-target-ui", "layouts", "data-display", "graphics", "animations", "styles-theming", "gestures", "sensors", "three-d", "data-access"}} == {{group["group"] for group in analog_groups["groups"]}}, "deep_checks": ("analog_coverage_ready", "generated_modules_ready", "generated_tests_ready", "per_component_files", "per_package_files", "per_component_test_files", "per_package_test_files", "module_smoke_tests", "ide_release_ready", "phase_order_ready"), "evidence": {{"groups": analog_groups, "readiness": component_readiness, "usability": component_usability}}}},
-        {{"id": "native_runtime_streaming", "ok": runtime["ok"] and runtime_readiness["ok"] and {{"stream_identity_ready", "unit_semantics_ready", "compile_targets_ready", "diagnostics_route_ready", "runtime_preview_ready", "phase_order_ready"}} <= {{check["id"] for check in runtime_readiness["checks"] if check["ok"]}} and {{"form_stream_schema", "runtime_session_replay", "design_edit_session_replay", "native_form_modules", "native_form_module_tests", "runtime_operation_modules", "runtime_operation_module_tests", "compiler_runtime_modules", "compiler_runtime_module_tests", "deep_runtime_modules", "deep_runtime_module_tests"}} <= {{check["id"] for check in runtime["checks"] if check["ok"]}}, "deep_checks": ("stream_identity_ready", "compile_targets_ready", "diagnostics_route_ready", "runtime_preview_ready", "native_form_modules", "native_form_module_tests", "runtime_operation_modules", "runtime_operation_module_tests", "compiler_runtime_modules", "compiler_runtime_module_tests", "deep_runtime_modules", "deep_runtime_module_tests", "phase_order_ready"), "evidence": {{"workbench": runtime, "readiness": runtime_readiness}}}},
+        {{"id": "native_runtime_streaming", "ok": runtime["ok"] and runtime_readiness["ok"] and {{"stream_identity_ready", "unit_semantics_ready", "compile_targets_ready", "diagnostics_route_ready", "debug_preview_ready", "runtime_preview_ready", "phase_order_ready"}} <= {{check["id"] for check in runtime_readiness["checks"] if check["ok"]}} and {{"form_stream_schema", "runtime_session_replay", "design_edit_session_replay", "runtime_debug_authoring", "native_form_modules", "native_form_module_tests", "runtime_operation_modules", "runtime_operation_module_tests", "compiler_runtime_modules", "compiler_runtime_module_tests", "deep_runtime_modules", "deep_runtime_module_tests"}} <= {{check["id"] for check in runtime["checks"] if check["ok"]}}, "deep_checks": ("stream_identity_ready", "compile_targets_ready", "diagnostics_route_ready", "debug_preview_ready", "runtime_preview_ready", "runtime_debug_authoring", "native_form_modules", "native_form_module_tests", "runtime_operation_modules", "runtime_operation_module_tests", "compiler_runtime_modules", "compiler_runtime_module_tests", "deep_runtime_modules", "deep_runtime_module_tests", "phase_order_ready"), "evidence": {{"workbench": runtime, "readiness": runtime_readiness}}}},
         {{"id": "inspector_design_surface", "ok": inspector["ok"] and inspector_readiness["ok"] and {{"editor_metadata_ready", "property_event_ready", "component_custom_designer_ready", "state_design_surface_ready", "binding_handler_ready", "lifecycle_round_trip_ready", "phase_order_ready"}} <= {{check["id"] for check in inspector_readiness["checks"] if check["ok"]}} and {{"property_editor_types", "event_editor_lifecycle", "component_editor_transaction", "custom_designer_registration_replay", "editor_lifecycle_replay", "inspector_generated_modules", "inspector_generated_module_tests"}} <= {{check["id"] for check in inspector["checks"] if check["ok"]}}, "deep_checks": ("editor_lifecycle_replay", "design_surface_transaction_replay", "custom_designer_registration_replay", "inspector_generated_modules", "inspector_generated_module_tests", "phase_order_ready"), "evidence": {{"workbench": inspector, "readiness": inspector_readiness}}}},
         {{"id": "visual_binding_designer", "ok": bindings["ok"] and binding_readiness["ok"] and {{"graph_authoring_ready", "validation_transaction_ready", "preview_runtime_ready", "diagnostics_conflict_ready", "offline_accessible_runtime_ready", "designer_release_replay_ready", "inspector_bridge_ready", "phase_order_ready"}} <= {{check["id"] for check in binding_readiness["checks"] if check["ok"]}} and bindings["designer_transaction_replay"]["ok"] and bindings["design_runtime_replay"]["ok"] and bindings["lifecycle_release_replay"]["ok"] and {{"binding_generated_modules", "binding_generated_module_tests"}} <= {{check["id"] for check in bindings["checks"] if check["ok"]}}, "deep_checks": ("binding_lifecycle_release_replay", "design_runtime_session_replay", "designer_transaction_replay", "binding_generated_modules", "binding_generated_module_tests", "phase_order_ready"), "evidence": {{"workbench": bindings, "readiness": binding_readiness}}}},
         {{"id": "native_data_service_tooling", "ok": data_tooling["ok"] and data_readiness["ok"] and {{"connection_ready", "dataset_ready", "publish_ready", "offline_replay_ready", "replication_failover_ready", "diagnostics_ready", "phase_order_ready"}} <= {{check["id"] for check in data_readiness["checks"] if check["ok"]}} and data_tooling["runtime_replay"]["ok"] and data_tooling["publish_transaction_replay"]["ok"] and {{"relationship_lookup_lifecycle_replay", "data_tooling_modules", "data_tooling_module_tests", "deep_data_tooling_modules", "deep_data_tooling_module_tests"}} <= {{check["id"] for check in data_tooling["checks"] if check["ok"]}}, "deep_checks": ("relationship_lookup_lifecycle_replay", "data_tooling_modules", "data_tooling_module_tests", "deep_data_tooling_modules", "deep_data_tooling_module_tests", "data_tooling_design_runtime_session_replay", "data_tooling_publish_transaction_replay", "phase_order_ready"), "evidence": {{"workbench": data_tooling, "readiness": data_readiness}}}},
@@ -55365,6 +55638,7 @@ def rad_parity_workbench(existing_paths=()):
     component_readiness = component_parity_readiness_contract(existing_paths)
     package_readiness = component_package_readiness_contract()
     app_shell = app_shell_chrome_contract()
+    drop_wiring = component_drop_wiring_handler_contract()
     platform_lifecycle = platform_parity_lifecycle_replay_contract()
     requirement_audit = platform_parity_requirement_audit_contract()
     categories = {{category for suite in THIRD_PARTY_COMPONENT_SUITES for category in suite["categories"]}}
@@ -55374,6 +55648,7 @@ def rad_parity_workbench(existing_paths=()):
         {{"id": "native_ui_parity_component_parity", "ok": {{"Grid", "TreeView", "MainMenu", "PopupMenu", "DataSource", "RESTClient", "CameraView", "Viewport3D"}} <= palette_types and component_readiness["ok"], "evidence": {{"palette": tuple(sorted(palette_types)), "readiness": component_readiness}}}},
         {{"id": "built_in_component_usability", "ok": component_usability_workbench()["ok"], "evidence": component_usability_workbench()}},
         {{"id": "app_shell_chrome_designer", "ok": app_shell["ok"] and not app_shell["side_effects"], "evidence": app_shell}},
+        {{"id": "component_drop_wiring_handler_design", "ok": drop_wiring["ok"] and {{"start_palette_drag", "show_drop_preview", "create_component_instance", "record_undo"}} <= set(drop_wiring["drop_pipeline"]) and {{"Button.OnClick", "TextBox.OnChange"}} <= {{item["event"] for item in drop_wiring["wiring_links"]}} and all(item["signature"] == "sender, context" for item in drop_wiring["handler_definitions"]) and not drop_wiring["side_effects"], "evidence": drop_wiring}},
         {{"id": "pascal_runtime_and_dfm_streaming", "ok": "text-dfm" in dfm_streaming_contract()["stream_formats"] and pascal_runtime_workbench()["ok"], "evidence": {{"streaming": dfm_streaming_contract(), "runtime": pascal_runtime_workbench()}}}},
         {{"id": "pascal_runtime_workbench", "ok": pascal_runtime_workbench()["ok"], "evidence": pascal_runtime_workbench()}},
         {{"id": "object_inspector_parity", "ok": {{"Properties", "Events"}} <= set(object_inspector_contract()["tabs"]) and object_inspector_workbench()["ok"], "evidence": {{"contract": object_inspector_contract(), "workbench": object_inspector_workbench()}}}},

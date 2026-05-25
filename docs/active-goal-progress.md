@@ -669,6 +669,11 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   module manifests, deep runtime module manifests, and their generated test
   manifests, and the native runtime requirement requires those module surfaces
   before the aggregate parity audit passes.
+- Form-designer parity now includes first-class palette drag/drop, drop target,
+  component wiring, and handler definition evidence in both package and
+  generated app workbenches, with sender/context handler signatures,
+  user-code preservation guards, undo recording, debug-capable runtime preview,
+  and generated runtime operation module coverage.
 
 ## Open Completion Areas
 

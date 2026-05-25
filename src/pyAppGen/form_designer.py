@@ -3859,6 +3859,100 @@ def pascal_debug_symbol_contract(design: dict | None = None) -> dict:
     }
 
 
+def pascal_runtime_debug_authoring_contract(design: dict | None = None) -> dict:
+    """Return debugger, source-map, breakpoint, watch, and resource trace evidence."""
+    design = design or form_design()
+    unit = pascal_unit_contract(design)
+    debug_symbols = pascal_debug_symbol_contract(design)
+    diagnostics = pascal_diagnostic_mapping_contract(design)
+    resources = pascal_resource_manifest_hash_contract(design)
+    first_symbol = debug_symbols["symbols"][0]["symbol"] if debug_symbols["symbols"] else "form"
+    breakpoints = (
+        {
+            "id": "on_create_breakpoint",
+            "symbol": first_symbol,
+            "event": "OnCreate",
+            "source_span": debug_symbols["symbols"][0]["source_span"] if debug_symbols["symbols"] else (1, 1),
+            "condition": "sender <> nil",
+            "maps_to": ("unit_editor", "form_designer", "object_inspector"),
+        },
+        {
+            "id": "resource_load_breakpoint",
+            "symbol": unit["class_name"],
+            "event": "resource_load",
+            "source_span": (1, len(unit["unit_source"].splitlines())),
+            "condition": "resource_bundle_hash <> ''",
+            "maps_to": ("resource_manifest", "package_manager", "runtime_preview"),
+        },
+    )
+    watches = (
+        {"expression": "Self.Name", "scope": unit["class_name"], "type": "string", "safe": True},
+        {"expression": "Sender", "scope": first_symbol, "type": "object", "safe": True},
+        {"expression": "ResourceManifest.Count", "scope": unit["class_name"], "type": "integer", "safe": True},
+    )
+    step_controls = (
+        "step_into_handler",
+        "step_over_property_setter",
+        "step_out_to_form_event",
+        "continue_to_next_breakpoint",
+        "pause_runtime_preview",
+    )
+    source_maps = tuple(
+        {
+            "symbol": symbol["symbol"],
+            "unit_span": symbol["source_span"],
+            "design_surfaces": symbol["maps_to"],
+            "diagnostic_codes": tuple(mapping["diagnostic"] for mapping in diagnostics["mappings"] if "source_span" in mapping["maps_to"]),
+        }
+        for symbol in debug_symbols["symbols"]
+    )
+    resource_dependencies = tuple(
+        {
+            "resource": item["path"],
+            "hash": item["hash"],
+            "invalidates": ("resource_bundle", "runtime_preview", "diagnostic_index"),
+            "watched_by": ("resource_load_breakpoint",),
+        }
+        for item in resources["manifest"]
+    )
+    replay = (
+        {"phase": "load_symbol_map", "ok": debug_symbols["ok"] and bool(source_maps)},
+        {"phase": "bind_breakpoints", "ok": all(item["source_span"] and item["condition"] for item in breakpoints)},
+        {"phase": "evaluate_watches", "ok": all(item["safe"] for item in watches)},
+        {"phase": "trace_resource_dependencies", "ok": all(item["hash"].startswith("sha256:") for item in resource_dependencies)},
+        {"phase": "route_debug_diagnostics", "ok": all("unit_editor" in item["design_surfaces"] or "object_inspector" in item["design_surfaces"] for item in source_maps)},
+    )
+    checks = (
+        {"id": "breakpoints_bind_to_source_spans", "ok": all(item["source_span"] for item in breakpoints)},
+        {"id": "watch_expressions_are_safe", "ok": all(item["safe"] for item in watches)},
+        {"id": "step_controls_declared", "ok": {"step_into_handler", "continue_to_next_breakpoint"} <= set(step_controls)},
+        {"id": "source_maps_route_diagnostics", "ok": bool(source_maps) and all(item["diagnostic_codes"] for item in source_maps)},
+        {"id": "resource_dependencies_invalidate_preview", "ok": all("runtime_preview" in item["invalidates"] for item in resource_dependencies)},
+        {"id": "debug_replay_side_effect_free", "ok": all(item["ok"] for item in replay)},
+    )
+    ok = all(check["ok"] for check in checks)
+    return {
+        "format": "appgen.pascal-runtime-debug-authoring-contract.v1",
+        "ok": ok,
+        "decision": "approved" if ok else "blocked",
+        "breakpoints": breakpoints,
+        "watches": watches,
+        "step_controls": step_controls,
+        "source_maps": source_maps,
+        "resource_dependencies": resource_dependencies,
+        "replay": replay,
+        "checks": checks,
+        "guards": (
+            "breakpoints_resolve_to_stable_source_spans",
+            "watch_expressions_do_not_execute_user_code",
+            "resource_dependency_trace_invalidates_preview",
+            "debug_diagnostics_route_to_design_surfaces",
+        ),
+        "side_effects": (),
+        "blocking_gaps": tuple(check for check in checks if not check["ok"]),
+    }
+
+
 def pascal_runtime_memory_model_contract(design: dict | None = None) -> dict:
     """Return runtime ownership, lifetime, and exception-boundary evidence."""
     unit = pascal_unit_contract(design)
@@ -4004,6 +4098,7 @@ def pascal_design_edit_session_replay_contract(design: dict | None = None) -> di
     resource_hashes = pascal_resource_manifest_hash_contract(design)
     invalidation = pascal_incremental_invalidation_contract(design)
     diagnostics = pascal_diagnostic_mapping_contract(design)
+    debug_session = pascal_runtime_debug_authoring_contract(design)
     runtime_replay = pascal_runtime_session_replay_contract(design)
     state = {
         "stream_components": len(round_trip["round_trip_components"]),
@@ -4218,6 +4313,29 @@ def pascal_reload_runtime_preview_operation(design: dict | None = None) -> dict:
     }
 
 
+def pascal_start_debug_preview_operation(design: dict | None = None) -> dict:
+    """Return the IDE operation for starting a debug-capable runtime preview."""
+    design = design or form_design()
+    debug_session = pascal_runtime_debug_authoring_contract(design)
+    return {
+        "format": "appgen.pascal-start-debug-preview-operation.v1",
+        "ok": debug_session["ok"] and not debug_session["side_effects"],
+        "pipeline": (
+            "load_symbol_map",
+            "bind_breakpoints",
+            "evaluate_safe_watches",
+            "trace_resource_dependencies",
+            "route_debug_diagnostics",
+            "start_runtime_preview",
+        ),
+        "breakpoints": tuple(item["id"] for item in debug_session["breakpoints"]),
+        "watch_expressions": tuple(item["expression"] for item in debug_session["watches"]),
+        "step_controls": debug_session["step_controls"],
+        "guards": debug_session["guards"],
+        "side_effects": (),
+    }
+
+
 def pascal_runtime_actionable_operations(design: dict | None = None) -> dict:
     """Return callable IDE operations for design streams, compile previews, and runtime reloads."""
     design = design or form_design()
@@ -4228,6 +4346,7 @@ def pascal_runtime_actionable_operations(design: dict | None = None) -> dict:
         "compile_preview": pascal_compile_preview_operation(design),
         "refresh_resources": pascal_refresh_resources_operation(design),
         "reload_runtime_preview": pascal_reload_runtime_preview_operation(design),
+        "start_debug_preview": pascal_start_debug_preview_operation(design),
     }
     return {
         "format": "appgen.pascal-runtime-actionable-operations.v1",
@@ -4251,6 +4370,7 @@ def pascal_runtime_readiness_contract(design: dict | None = None) -> dict:
     compiler = pascal_compiler_pipeline_contract(design)
     package_targets = pascal_package_target_matrix_contract(design)
     diagnostics = pascal_diagnostic_mapping_contract(design)
+    debug_session = pascal_runtime_debug_authoring_contract(design)
     runtime_replay = pascal_runtime_session_replay_contract(design)
     design_edit_replay = pascal_design_edit_session_replay_contract(design)
     operations = pascal_runtime_actionable_operations(design)
@@ -4291,6 +4411,19 @@ def pascal_runtime_readiness_contract(design: dict | None = None) -> dict:
             },
         },
         {
+            "phase": "debug_preview_trace",
+            "ok": debug_session["ok"]
+            and {"breakpoints_resolve_to_stable_source_spans", "resource_dependency_trace_invalidates_preview"}
+            <= set(debug_session["guards"])
+            and operations["operations"]["start_debug_preview"]["ok"],
+            "evidence": {
+                "breakpoints": tuple(item["id"] for item in debug_session["breakpoints"]),
+                "watches": tuple(item["expression"] for item in debug_session["watches"]),
+                "step_controls": debug_session["step_controls"],
+                "operation": operations["operations"]["start_debug_preview"]["pipeline"],
+            },
+        },
+        {
             "phase": "reload_runtime_preview",
             "ok": runtime_replay["ok"] and design_edit_replay["ok"] and operations["operations"]["reload_runtime_preview"]["ok"],
             "evidence": {
@@ -4305,7 +4438,8 @@ def pascal_runtime_readiness_contract(design: dict | None = None) -> dict:
         {"id": "unit_semantics_ready", "ok": phases[1]["ok"]},
         {"id": "compile_targets_ready", "ok": phases[2]["ok"]},
         {"id": "diagnostics_route_ready", "ok": phases[3]["ok"]},
-        {"id": "runtime_preview_ready", "ok": phases[4]["ok"]},
+        {"id": "debug_preview_ready", "ok": phases[4]["ok"]},
+        {"id": "runtime_preview_ready", "ok": phases[5]["ok"]},
         {"id": "operation_surface_ready", "ok": operations["ok"]},
         {
             "id": "phase_order_ready",
@@ -4315,6 +4449,7 @@ def pascal_runtime_readiness_contract(design: dict | None = None) -> dict:
                 "parse_unit_and_cross_check",
                 "plan_compile_and_targets",
                 "normalize_diagnostics",
+                "debug_preview_trace",
                 "reload_runtime_preview",
             ),
         },
@@ -4330,6 +4465,7 @@ def pascal_runtime_readiness_contract(design: dict | None = None) -> dict:
             "stream_identity_before_unit_cross_check",
             "unit_semantics_before_target_emit",
             "diagnostics_before_runtime_preview",
+            "debug_trace_before_runtime_reload",
             "reload_preview_uses_actionable_operation",
         ),
         "side_effects": (),
@@ -4368,6 +4504,7 @@ def pascal_runtime_workbench(design: dict | None = None) -> dict:
     form_stream_schema = pascal_form_stream_schema_contract(design)
     stream_migration = dfm_stream_migration_contract(design)
     debug_symbols = pascal_debug_symbol_contract(design)
+    debug_session = pascal_runtime_debug_authoring_contract(design)
     runtime_memory_model = pascal_runtime_memory_model_contract(design)
     toolchain_adapters = pascal_toolchain_adapter_contract(design)
     runtime_replay = pascal_runtime_session_replay_contract(design)
@@ -4552,6 +4689,19 @@ def pascal_runtime_workbench(design: dict | None = None) -> dict:
             "evidence": debug_symbols,
         },
         {
+            "id": "runtime_debug_authoring",
+            "ok": debug_session["ok"]
+            and {
+                "breakpoints_resolve_to_stable_source_spans",
+                "watch_expressions_do_not_execute_user_code",
+                "resource_dependency_trace_invalidates_preview",
+                "debug_diagnostics_route_to_design_surfaces",
+            }
+            <= set(debug_session["guards"])
+            and not debug_session["side_effects"],
+            "evidence": debug_session,
+        },
+        {
             "id": "runtime_memory_model",
             "ok": runtime_memory_model["ok"] and "owner_releases_children" in runtime_memory_model["guards"] and not runtime_memory_model["side_effects"],
             "evidence": runtime_memory_model,
@@ -4578,7 +4728,7 @@ def pascal_runtime_workbench(design: dict | None = None) -> dict:
         {
             "id": "actionable_runtime_operations",
             "ok": actionable_operations["ok"]
-            and {"open_design_stream", "apply_property_delta", "round_trip_stream", "compile_preview", "refresh_resources", "reload_runtime_preview"}
+            and {"open_design_stream", "apply_property_delta", "round_trip_stream", "compile_preview", "refresh_resources", "reload_runtime_preview", "start_debug_preview"}
             <= set(actionable_operations["operation_names"])
             and not actionable_operations["side_effects"],
             "evidence": actionable_operations,
@@ -4602,13 +4752,13 @@ def pascal_runtime_workbench(design: dict | None = None) -> dict:
         },
         {
             "id": "runtime_operation_modules",
-            "ok": len(runtime_operation_modules) == 6
+            "ok": len(runtime_operation_modules) == 7
             and all(item["ok"] and "run_operation" in item["exports"] for item in runtime_operation_modules),
             "evidence": runtime_operation_modules,
         },
         {
             "id": "runtime_operation_module_tests",
-            "ok": len(runtime_operation_module_tests) == 6
+            "ok": len(runtime_operation_module_tests) == 7
             and all(
                 item["ok"] and "test_runtime_operation_module_smoke" in item["exports"]
                 for item in runtime_operation_module_tests
@@ -4673,6 +4823,7 @@ def pascal_runtime_workbench(design: dict | None = None) -> dict:
         "form_stream_schema": form_stream_schema,
         "stream_migration": stream_migration,
         "debug_symbols": debug_symbols,
+        "debug_session": debug_session,
         "runtime_memory_model": runtime_memory_model,
         "toolchain_adapters": toolchain_adapters,
         "runtime_replay": runtime_replay,
@@ -14503,6 +14654,7 @@ def platform_parity_requirement_audit_contract() -> dict:
                 "unit_semantics_ready",
                 "compile_targets_ready",
                 "diagnostics_route_ready",
+                "debug_preview_ready",
                 "runtime_preview_ready",
                 "phase_order_ready",
             }
@@ -14511,6 +14663,7 @@ def platform_parity_requirement_audit_contract() -> dict:
                 "form_stream_schema",
                 "runtime_session_replay",
                 "design_edit_session_replay",
+                "runtime_debug_authoring",
                 "native_form_modules",
                 "native_form_module_tests",
                 "runtime_operation_modules",
@@ -14524,7 +14677,9 @@ def platform_parity_requirement_audit_contract() -> dict:
                 "stream_identity_ready",
                 "compile_targets_ready",
                 "diagnostics_route_ready",
+                "debug_preview_ready",
                 "runtime_preview_ready",
+                "runtime_debug_authoring",
                 "native_form_modules",
                 "native_form_module_tests",
                 "runtime_operation_modules",
@@ -14832,6 +14987,7 @@ def rad_parity_workbench(existing_paths: set[str] | None = None) -> dict:
     usability_workbench = component_usability_workbench()
     package_readiness = component_package_readiness_contract()
     streaming_contract = dfm_streaming_contract()
+    drop_wiring = component_drop_wiring_handler_contract()
     runtime_workbench = pascal_runtime_workbench()
     inspector_workbench = object_inspector_workbench()
     binding_contract = livebindings_contract()
@@ -17879,6 +18035,7 @@ def rad_parity_workbench(existing_paths: set[str] | None = None) -> dict:
         "compile_preview",
         "refresh_resources",
         "reload_runtime_preview",
+        "start_debug_preview",
     )
     passing_runtime_operation_names = tuple(runtime_workbench["actionable_operations"]["operation_names"])
     required_native_form_module_kinds = (
@@ -17937,6 +18094,7 @@ def rad_parity_workbench(existing_paths: set[str] | None = None) -> dict:
         "parse_unit_and_cross_check",
         "plan_compile_and_targets",
         "normalize_diagnostics",
+        "debug_preview_trace",
         "reload_runtime_preview",
     )
     passing_runtime_readiness_phases = tuple(
@@ -17947,6 +18105,7 @@ def rad_parity_workbench(existing_paths: set[str] | None = None) -> dict:
         "unit_semantics_ready",
         "compile_targets_ready",
         "diagnostics_route_ready",
+        "debug_preview_ready",
         "runtime_preview_ready",
         "operation_surface_ready",
         "phase_order_ready",
@@ -18129,6 +18288,33 @@ def rad_parity_workbench(existing_paths: set[str] | None = None) -> dict:
             "ui_tuning": app_shell["ui_tuning"],
             "operations": app_shell["operations"],
             "evidence": app_shell,
+        },
+        {
+            "id": "component_drop_wiring_handler_design",
+            "ok": drop_wiring["ok"]
+            and {
+                "start_palette_drag",
+                "show_drop_preview",
+                "create_component_instance",
+                "record_undo",
+            }
+            <= set(drop_wiring["drop_pipeline"])
+            and {"Button.OnClick", "TextBox.OnChange"} <= {item["event"] for item in drop_wiring["wiring_links"]}
+            and all(item["signature"] == "sender, context" for item in drop_wiring["handler_definitions"])
+            and not drop_wiring["side_effects"],
+            "required_checks": (
+                "palette_drag_payloads",
+                "drop_pipeline_declared",
+                "drop_targets_declared",
+                "wiring_routes_to_handlers",
+                "handlers_have_sender_context_signature",
+                "undo_and_user_code_guards",
+            ),
+            "passing_checks": tuple(check["id"] for check in drop_wiring["checks"] if check["ok"]),
+            "drop_pipeline": drop_wiring["drop_pipeline"],
+            "wiring_links": drop_wiring["wiring_links"],
+            "handler_definitions": drop_wiring["handler_definitions"],
+            "evidence": drop_wiring,
         },
         {
             "id": "pascal_runtime_and_dfm_streaming",
@@ -19620,6 +19806,139 @@ def component_behavior_workbench() -> dict:
     }
 
 
+def component_drop_wiring_handler_contract(design: dict | None = None) -> dict:
+    """Return palette drag/drop, event wiring, and handler definition evidence."""
+    design = design or form_design()
+    palette = component_palette()
+    drop_payloads = tuple(
+        {
+            "component": item["component"],
+            "category": item["category"],
+            "icon": item["icon"],
+            "default_size": item["default_size"],
+            "payload": {
+                "kind": "component",
+                "component": item["component"],
+                "default_size": item["default_size"],
+                "icon": item["icon"],
+            },
+        }
+        for item in palette
+    )
+    drop_targets = (
+        {"surface": "form_canvas", "accepts": ("component", "field"), "preview": "snap_grid"},
+        {"surface": "container_component", "accepts": ("component",), "preview": "nested_bounds"},
+        {"surface": "menu_designer", "accepts": ("menu_item", "action"), "preview": "menu_tree"},
+        {"surface": "component_tree", "accepts": ("reorder", "parent_child"), "preview": "outline"},
+    )
+    drop_pipeline = (
+        "start_palette_drag",
+        "show_drop_preview",
+        "snap_to_grid",
+        "validate_bounds",
+        "create_component_instance",
+        "select_component",
+        "open_object_inspector",
+        "record_undo",
+    )
+    sample_components = (
+        {"component": "Button", "field": "submit", "event": "OnClick", "handler": "button_submit_click"},
+        {"component": "TextBox", "field": "name", "event": "OnChange", "handler": "textbox_name_change"},
+        {"component": "Lookup", "field": "customer_id", "event": "OnLookup", "handler": "lookup_customer_id_lookup"},
+        {"component": "Grid", "field": "lines", "event": "OnDblClick", "handler": "grid_lines_double_click"},
+    )
+    wiring_links = tuple(
+        {
+            "event": f"{item['component']}.{item['event']}",
+            "component": item["component"],
+            "field": item["field"],
+            "handler": item["handler"],
+            "dispatch": ("resolve_component", "resolve_handler", "invoke_handler"),
+            "designer_surface": "events_inspector",
+        }
+        for item in sample_components
+    )
+    handler_definitions = tuple(
+        {
+            "name": item["handler"],
+            "signature": "sender, context",
+            "component": item["component"],
+            "event": item["event"],
+            "body_regions": ("generated_prelude", "user_code", "generated_postlude"),
+            "context_keys": ("form", "component", "dataset", "event", "selection"),
+            "preserves_user_code": True,
+        }
+        for item in sample_components
+    )
+    checks = (
+        {
+            "id": "palette_drag_payloads",
+            "ok": bool(drop_payloads)
+            and all(item["icon"].startswith("fa-") and item["payload"]["kind"] == "component" for item in drop_payloads),
+            "evidence": tuple((item["component"], item["icon"]) for item in drop_payloads),
+        },
+        {
+            "id": "drop_pipeline_declared",
+            "ok": {
+                "start_palette_drag",
+                "show_drop_preview",
+                "snap_to_grid",
+                "create_component_instance",
+                "record_undo",
+            }
+            <= set(drop_pipeline),
+            "evidence": drop_pipeline,
+        },
+        {
+            "id": "drop_targets_declared",
+            "ok": {"form_canvas", "container_component", "menu_designer", "component_tree"}
+            <= {item["surface"] for item in drop_targets},
+            "evidence": drop_targets,
+        },
+        {
+            "id": "wiring_routes_to_handlers",
+            "ok": {"Button.OnClick", "TextBox.OnChange", "Lookup.OnLookup", "Grid.OnDblClick"}
+            <= {item["event"] for item in wiring_links}
+            and all("invoke_handler" in item["dispatch"] for item in wiring_links),
+            "evidence": wiring_links,
+        },
+        {
+            "id": "handlers_have_sender_context_signature",
+            "ok": bool(handler_definitions)
+            and all(item["signature"] == "sender, context" for item in handler_definitions),
+            "evidence": tuple((item["name"], item["signature"]) for item in handler_definitions),
+        },
+        {
+            "id": "undo_and_user_code_guards",
+            "ok": "record_undo" in drop_pipeline
+            and all(item["preserves_user_code"] and "user_code" in item["body_regions"] for item in handler_definitions),
+            "evidence": handler_definitions,
+        },
+    )
+    ok = all(check["ok"] for check in checks)
+    return {
+        "format": "appgen.component-drop-wiring-handler-contract.v1",
+        "ok": ok,
+        "decision": "approved" if ok else "blocked",
+        "form": design.get("name") or design.get("table"),
+        "drop_payloads": drop_payloads,
+        "drop_targets": drop_targets,
+        "drop_pipeline": drop_pipeline,
+        "wiring_links": wiring_links,
+        "handler_definitions": handler_definitions,
+        "checks": checks,
+        "guards": (
+            "handler_name_unique",
+            "sender_context_signature",
+            "user_code_regions_preserved",
+            "undo_snapshot_required",
+            "component_lookup_required",
+        ),
+        "side_effects": (),
+        "blocking_gaps": tuple(check for check in checks if not check["ok"]),
+    }
+
+
 def app_shell_chrome_contract() -> dict:
     """Return first-class splash, menu, context-menu, and UI tuning evidence."""
     palette_components = {item["component"] for item in component_palette()}
@@ -20478,6 +20797,7 @@ def runtime_operation_module_file_manifest() -> tuple[dict, ...]:
         ("compile_preview_operation", "compile_preview"),
         ("refresh_resources_operation", "refresh_resources"),
         ("reload_runtime_preview_operation", "reload_runtime_preview"),
+        ("start_debug_preview_operation", "start_debug_preview"),
     )
     exports = (
         "module_contract",
@@ -21322,6 +21642,7 @@ def form_designer_generation_smoke_audit(source: str = FORM_DESIGNER_SAMPLE_DSL)
         "native_ui_parity_component_parity",
         "built_in_component_usability",
         "app_shell_chrome_designer",
+        "component_drop_wiring_handler_design",
         "pascal_runtime_and_dfm_streaming",
         "pascal_runtime_workbench",
         "object_inspector_parity",
@@ -21503,8 +21824,8 @@ def form_designer_generation_smoke_audit(source: str = FORM_DESIGNER_SAMPLE_DSL)
             and len(package_manager_module_test_artifacts) == 6
             and len(native_form_module_artifacts) == 6
             and len(native_form_module_test_artifacts) == 6
-            and len(runtime_operation_module_artifacts) == 6
-            and len(runtime_operation_module_test_artifacts) == 6
+            and len(runtime_operation_module_artifacts) == 7
+            and len(runtime_operation_module_test_artifacts) == 7
             and len(compiler_runtime_module_artifacts) == 6
             and len(compiler_runtime_module_test_artifacts) == 6
             and len(deep_runtime_module_artifacts) == 8
@@ -22105,6 +22426,8 @@ def form_designer_release_audit(existing_paths: set[str] | None = None) -> dict:
     required_rad_parity_checks = (
         "native_ui_parity_component_parity",
         "built_in_component_usability",
+        "app_shell_chrome_designer",
+        "component_drop_wiring_handler_design",
         "pascal_runtime_and_dfm_streaming",
         "pascal_runtime_workbench",
         "object_inspector_parity",

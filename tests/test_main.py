@@ -105,6 +105,7 @@ from pyAppGen.form_designer import component_package_uninstall_operation
 from pyAppGen.form_designer import component_package_update_operation
 from pyAppGen.form_designer import component_package_workbench
 from pyAppGen.form_designer import component_package_preview_load_operation
+from pyAppGen.form_designer import component_drop_wiring_handler_contract
 from pyAppGen.form_designer import component_file_manifest
 from pyAppGen.form_designer import component_parity_readiness_contract
 from pyAppGen.form_designer import component_package_file_manifest
@@ -198,7 +199,9 @@ from pyAppGen.form_designer import pascal_compile_preview_operation
 from pyAppGen.form_designer import pascal_open_design_stream_operation
 from pyAppGen.form_designer import pascal_refresh_resources_operation
 from pyAppGen.form_designer import pascal_reload_runtime_preview_operation
+from pyAppGen.form_designer import pascal_runtime_debug_authoring_contract
 from pyAppGen.form_designer import pascal_round_trip_stream_operation
+from pyAppGen.form_designer import pascal_start_debug_preview_operation
 from pyAppGen.form_designer import pascal_runtime_actionable_operations
 from pyAppGen.form_designer import pascal_runtime_workbench
 from pyAppGen.form_designer import pascal_unit_contract
@@ -2993,6 +2996,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "form_stream_schema",
         "stream_migration",
         "debug_symbols",
+        "runtime_debug_authoring",
         "runtime_memory_model",
         "toolchain_adapters",
         "runtime_session_replay",
@@ -3028,6 +3032,11 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     assert all(item["streamed"] for item in runtime["form_stream_schema"]["schema"])
     assert all(item["rollback"] for item in runtime["stream_migration"]["migrations"])
     assert all("object_inspector" in symbol["maps_to"] for symbol in runtime["debug_symbols"]["symbols"])
+    assert runtime["debug_session"]["ok"] is True
+    assert {"breakpoints_bind_to_source_spans", "resource_dependencies_invalidate_preview"} <= {
+        check["id"] for check in runtime["debug_session"]["checks"] if check["ok"]
+    }
+    assert all("runtime_preview" in item["invalidates"] for item in runtime["debug_session"]["resource_dependencies"])
     assert "event_dispatch_exception_boundary" in runtime["runtime_memory_model"]["guards"]
     assert all("normalize_diagnostics" in adapter["commands"] for adapter in runtime["toolchain_adapters"]["adapters"])
     assert runtime["runtime_replay"]["ok"] is True
@@ -3038,6 +3047,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "parse_unit_and_cross_check",
         "plan_compile_and_targets",
         "normalize_diagnostics",
+        "debug_preview_trace",
         "reload_runtime_preview",
     } == {item["phase"] for item in runtime["readiness"]["phases"]}
     assert {
@@ -3045,6 +3055,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "unit_semantics_ready",
         "compile_targets_ready",
         "diagnostics_route_ready",
+        "debug_preview_ready",
         "runtime_preview_ready",
         "operation_surface_ready",
         "phase_order_ready",
@@ -3073,12 +3084,14 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     assert "run_static_analysis" in pascal_compile_preview_operation(design)["pipeline"]
     assert "refresh_resource_manifest" in pascal_refresh_resources_operation(design)["pipeline"]
     assert "runtime_load" in pascal_reload_runtime_preview_operation(design)["pipeline"]
+    assert "bind_breakpoints" in pascal_start_debug_preview_operation(design)["pipeline"]
+    assert pascal_runtime_debug_authoring_contract(design)["ok"] is True
     assert pascal_runtime_actionable_operations(design)["ok"] is True
     assert runtime["actionable_operations"]["operations"]["compile_preview"]["ok"] is True
     assert len(runtime["native_form_modules"]) == 6
     assert len(runtime["native_form_module_tests"]) == 6
-    assert len(runtime["runtime_operation_modules"]) == 6
-    assert len(runtime["runtime_operation_module_tests"]) == 6
+    assert len(runtime["runtime_operation_modules"]) == 7
+    assert len(runtime["runtime_operation_module_tests"]) == 7
     assert len(runtime["compiler_runtime_modules"]) == 6
     assert len(runtime["compiler_runtime_module_tests"]) == 6
     assert len(runtime["deep_runtime_modules"]) == 8
@@ -3092,6 +3105,17 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     )
     assert all("smoke_test" in item["exports"] for item in runtime["compiler_runtime_modules"])
     assert all("test_deep_runtime_module_smoke" in item["exports"] for item in runtime["deep_runtime_module_tests"])
+
+    drop_wiring = component_drop_wiring_handler_contract(design)
+    assert drop_wiring["format"] == "appgen.component-drop-wiring-handler-contract.v1"
+    assert drop_wiring["ok"] is True
+    assert "start_palette_drag" in drop_wiring["drop_pipeline"]
+    assert "create_component_instance" in drop_wiring["drop_pipeline"]
+    assert {"Button.OnClick", "TextBox.OnChange", "Lookup.OnLookup", "Grid.OnDblClick"} <= {
+        item["event"] for item in drop_wiring["wiring_links"]
+    }
+    assert all(item["signature"] == "sender, context" for item in drop_wiring["handler_definitions"])
+    assert "user_code_regions_preserved" in drop_wiring["guards"]
 
     matrix = field_component_matrix()
     assert matrix
@@ -3258,6 +3282,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "native_ui_parity_component_parity",
         "built_in_component_usability",
         "app_shell_chrome_designer",
+        "component_drop_wiring_handler_design",
         "pascal_runtime_and_dfm_streaming",
         "pascal_runtime_workbench",
         "object_inspector_parity",
@@ -3933,6 +3958,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "native_ui_parity_component_parity",
         "built_in_component_usability",
         "app_shell_chrome_designer",
+        "component_drop_wiring_handler_design",
         "pascal_runtime_and_dfm_streaming",
         "pascal_runtime_workbench",
         "object_inspector_parity",
@@ -3995,6 +4021,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "parse_unit_and_cross_check",
         "plan_compile_and_targets",
         "normalize_diagnostics",
+        "debug_preview_trace",
         "reload_runtime_preview",
     )
     assert {
@@ -4155,6 +4182,8 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     } <= set(requirements_by_id["package_installation_ecosystem"]["deep_checks"])
     assert {
         "runtime_preview_ready",
+        "debug_preview_ready",
+        "runtime_debug_authoring",
         "native_form_modules",
         "native_form_module_tests",
         "runtime_operation_modules",
@@ -13539,6 +13568,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert generated_rad["ok"] is True
     assert "platform_parity_lifecycle_replay" in {check["id"] for check in generated_rad["checks"]}
     assert "platform_parity_requirement_audit" in {check["id"] for check in generated_rad["checks"]}
+    assert "component_drop_wiring_handler_design" in {check["id"] for check in generated_rad["checks"]}
     assert generated_rad["lifecycle_replay"]["format"] == "appgen.generated-platform-parity-lifecycle-replay.v1"
     assert generated_rad["lifecycle_replay"]["ok"] is True
     assert {
@@ -13587,6 +13617,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "parse_unit_and_cross_check",
         "plan_compile_and_targets",
         "normalize_diagnostics",
+        "debug_preview_trace",
         "reload_runtime_preview",
     )
     assert {
@@ -13758,6 +13789,8 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     } <= set(generated_requirements_by_id["package_installation_ecosystem"]["deep_checks"])
     assert {
         "runtime_preview_ready",
+        "debug_preview_ready",
+        "runtime_debug_authoring",
         "native_form_modules",
         "native_form_module_tests",
         "runtime_operation_modules",
@@ -13973,6 +14006,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "form_stream_schema",
         "stream_migration",
         "debug_symbols",
+        "runtime_debug_authoring",
         "runtime_memory_model",
         "toolchain_adapters",
         "runtime_session_replay",
@@ -14019,6 +14053,11 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert "collection_order_stable" in generated_runtime["form_stream_schema"]["guards"]
     assert all(item["rollback"] for item in generated_runtime["stream_migration"]["migrations"])
     assert all("source_span" in symbol for symbol in generated_runtime["debug_symbols"]["symbols"])
+    assert generated_runtime["debug_session"]["ok"] is True
+    assert {"breakpoints_bind_to_source_spans", "resource_dependencies_invalidate_preview"} <= {
+        check["id"] for check in generated_runtime["debug_session"]["checks"] if check["ok"]
+    }
+    assert all("runtime_preview" in item["invalidates"] for item in generated_runtime["debug_session"]["resource_dependencies"])
     assert all(item["release"] for item in generated_runtime["runtime_memory_model"]["ownership"])
     assert all(adapter["sandboxed"] for adapter in generated_runtime["toolchain_adapters"]["adapters"])
     assert generated_runtime["runtime_replay"]["ok"] is True
@@ -14033,7 +14072,11 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert generated_runtime["readiness"]["format"] == "appgen.generated-pascal-runtime-readiness-contract.v1"
     assert generated_runtime["readiness"]["ok"] is True
     assert "reload_runtime_preview" in {item["phase"] for item in generated_runtime["readiness"]["phases"]}
+    assert "debug_preview_trace" in {item["phase"] for item in generated_runtime["readiness"]["phases"]}
     assert "runtime_preview_ready" in {
+        check["id"] for check in generated_runtime["readiness"]["checks"] if check["ok"]
+    }
+    assert "debug_preview_ready" in {
         check["id"] for check in generated_runtime["readiness"]["checks"] if check["ok"]
     }
     assert {
@@ -14054,6 +14097,8 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert "run_static_analysis" in form_designer.pascal_compile_preview_operation("Book")["pipeline"]
     assert "refresh_resource_manifest" in form_designer.pascal_refresh_resources_operation("Book")["pipeline"]
     assert "runtime_load" in form_designer.pascal_reload_runtime_preview_operation("Book")["pipeline"]
+    assert "bind_breakpoints" in form_designer.pascal_start_debug_preview_operation("Book")["pipeline"]
+    assert form_designer.pascal_runtime_debug_authoring_contract("Book")["ok"] is True
     assert form_designer.pascal_runtime_actionable_operations("Book")["ok"] is True
     assert generated_runtime["actionable_operations"]["operations"]["compile_preview"]["ok"] is True
     assert generated_runtime["native_form_modules"]["ok"] is True
@@ -14065,9 +14110,17 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert generated_runtime["deep_runtime_modules"]["ok"] is True
     assert generated_runtime["deep_runtime_module_tests"]["ok"] is True
     assert len(generated_runtime["native_form_modules"]["modules"]) == 6
-    assert len(generated_runtime["runtime_operation_modules"]["modules"]) == 6
+    assert len(generated_runtime["runtime_operation_modules"]["modules"]) == 7
     assert len(generated_runtime["compiler_runtime_modules"]["modules"]) == 6
     assert len(generated_runtime["deep_runtime_modules"]["modules"]) == 8
+    generated_drop_wiring = form_designer.component_drop_wiring_handler_contract("Book")
+    assert generated_drop_wiring["format"] == "appgen.generated-component-drop-wiring-handler-contract.v1"
+    assert generated_drop_wiring["ok"] is True
+    assert "start_palette_drag" in generated_drop_wiring["drop_pipeline"]
+    assert {"Button.OnClick", "TextBox.OnChange", "Lookup.OnLookup", "Grid.OnDblClick"} <= {
+        item["event"] for item in generated_drop_wiring["wiring_links"]
+    }
+    assert all(item["signature"] == "sender, context" for item in generated_drop_wiring["handler_definitions"])
     assert "control_to_field" in form_designer.livebindings_contract()["binding_edges"]
     generated_bindings = form_designer.livebindings_workbench()
     assert generated_bindings["format"] == "appgen.generated-livebindings-workbench.v1"
@@ -14856,6 +14909,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "compile_preview",
         "refresh_resources",
         "reload_runtime_preview",
+        "start_debug_preview",
     }
     assert {item["operation"] for item in runtime_operation_module_tests["tests"]} == {
         "open_design_stream",
@@ -14864,6 +14918,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "compile_preview",
         "refresh_resources",
         "reload_runtime_preview",
+        "start_debug_preview",
     }
     for item in runtime_operation_module_files["modules"]:
         module_path = output_dir / item["path"].replace("app/", "")
