@@ -194,6 +194,7 @@ from pyAppGen.form_designer import binding_lifecycle_release_replay_contract
 from pyAppGen.form_designer import livebindings_workbench
 from pyAppGen.form_designer import mobile_device_capability_lifecycle_replay_contract
 from pyAppGen.form_designer import mobile_device_component_spec_contract
+from pyAppGen.form_designer import mobile_device_scenario_matrix_contract
 from pyAppGen.form_designer import mobile_dispatch_adapter_operation
 from pyAppGen.form_designer import mobile_native_api_actionable_operations
 from pyAppGen.form_designer import mobile_native_api_readiness_contract
@@ -2643,6 +2644,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "app_lifecycle_delivery",
         "simulator_fixture_integrity",
         "runtime_delivery_replay",
+        "device_scenario_matrix",
         "designer_transaction_replay",
         "capability_lifecycle_replay",
         "mobile_readiness_contract",
@@ -2691,6 +2693,14 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     assert mobile_run_device_scenario_operation()["decision"] == "scenario_replayed"
     assert "emit_component_event" in mobile_run_device_scenario_operation()["pipeline"]
     assert mobile_run_device_scenario_operation("nfc", "web-pwa")["decision"] == "blocked_unsupported_target"
+    scenario_matrix = mobile_device_scenario_matrix_contract()
+    assert scenario_matrix["format"] == "appgen.mobile-device-scenario-matrix-contract.v1"
+    assert scenario_matrix["ok"] is True
+    assert scenario_matrix["scenario_count"] == len(mobile_apis)
+    assert scenario_matrix["unsupported_fallback"]["decision"] == "blocked_unsupported_target"
+    assert {"scenario_per_device_api", "unsupported_target_fallback"} <= {
+        check["id"] for check in scenario_matrix["checks"] if check["ok"]
+    }
     assert mobile_native_api_actionable_operations()["ok"] is True
     assert "run_device_scenario" in mobile_native_api_actionable_operations()["operations"]
     assert mobile_workbench["actionable_operations"]["operations"]["dispatch_adapter"]["ok"] is True
@@ -2716,6 +2726,8 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     assert mobile_apis == {item["api"] for item in mobile_workbench["runtime_replay"]["replay"]}
     assert all("dispatch_component_events" in item["phases"] for item in mobile_workbench["runtime_replay"]["replay"])
     assert mobile_workbench["runtime_replay"]["final_state"]["checkpoints"] >= 1
+    assert mobile_workbench["scenario_matrix"]["ok"] is True
+    assert mobile_workbench["scenario_matrix"]["scenario_count"] == len(mobile_apis)
     assert mobile_workbench["designer_transaction_replay"]["ok"] is True
     assert {
         "author_device_components",
@@ -2754,6 +2766,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "bind_components_and_bridges",
         "review_fallbacks_and_lifecycle",
         "replay_runtime_delivery",
+        "replay_device_scenarios",
         "replay_designer_and_capabilities",
     } == {item["phase"] for item in mobile_readiness["phases"]}
     assert {
@@ -2762,12 +2775,14 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "bridge_component_ready",
         "fallback_lifecycle_ready",
         "runtime_delivery_ready",
+        "device_scenarios_ready",
         "designer_capability_ready",
         "operation_surface_ready",
         "phase_order_ready",
     } == {check["id"] for check in mobile_readiness["checks"]}
     assert mobile_readiness["final_state"]["api_count"] == len(mobile_apis)
     assert mobile_readiness["final_state"]["runtime_replays"] == len(mobile_apis)
+    assert mobile_readiness["final_state"]["device_scenarios"] == len(mobile_apis)
     assert mobile_workbench["readiness"]["ok"] is True
     assert mobile_workbench["readiness"]["final_state"]["background_checkpoints"] >= 1
     assert len(mobile_workbench["device_component_module_artifacts"]) == len(mobile_apis)
@@ -4692,10 +4707,12 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "bind_components_and_bridges",
         "review_fallbacks_and_lifecycle",
         "replay_runtime_delivery",
+        "replay_device_scenarios",
         "replay_designer_and_capabilities",
     )
     assert {
         "capability_lifecycle_replay",
+        "device_scenario_matrix",
         "device_component_modules",
         "device_component_module_tests",
     } <= set(lifecycle_by_phase["validate_device_capabilities"]["evidence"]["passing_checks"])
@@ -5385,6 +5402,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "capability_lifecycle_complete",
         "device_component_modules_ready",
         "device_component_tests_ready",
+        "device_component_scenarios_ready",
     } <= set(mobile_device_smoke["passing_checks"])
     coverage = next(check for check in smoke["checks"] if check["id"] == "generated_component_file_coverage")
     assert coverage["component_count"] == len(component_file_manifest())
@@ -14666,10 +14684,12 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "bind_components_and_bridges",
         "review_fallbacks_and_lifecycle",
         "replay_runtime_delivery",
+        "replay_device_scenarios",
         "replay_designer_and_capabilities",
     )
     assert {
         "capability_lifecycle_replay",
+        "device_scenario_matrix",
         "device_component_modules",
         "device_component_module_tests",
     } <= set(generated_lifecycle_by_phase["validate_device_capabilities"]["evidence"]["passing_checks"])
@@ -16391,6 +16411,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "app_lifecycle_delivery",
         "simulator_fixture_integrity",
         "runtime_delivery_replay",
+        "device_scenario_matrix",
         "designer_transaction_replay",
         "capability_lifecycle_replay",
         "mobile_readiness_contract",
@@ -16445,6 +16466,14 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert form_designer.mobile_run_device_scenario_operation()["decision"] == "scenario_replayed"
     assert "emit_component_event" in form_designer.mobile_run_device_scenario_operation()["pipeline"]
     assert form_designer.mobile_run_device_scenario_operation("nfc", "web-pwa")["decision"] == "blocked_unsupported_target"
+    generated_scenario_matrix = form_designer.mobile_device_scenario_matrix_contract()
+    assert generated_scenario_matrix["format"] == "appgen.generated-mobile-device-scenario-matrix-contract.v1"
+    assert generated_scenario_matrix["ok"] is True
+    assert generated_scenario_matrix["scenario_count"] == len(generated_mobile_apis)
+    assert generated_scenario_matrix["unsupported_fallback"]["decision"] == "blocked_unsupported_target"
+    assert {"scenario_per_device_api", "unsupported_target_fallback"} <= {
+        check["id"] for check in generated_scenario_matrix["checks"] if check["ok"]
+    }
     assert "run_device_scenario" in form_designer.mobile_native_api_actionable_operations()["operations"]
     assert generated_mobile["actionable_operations"]["ok"] is True
     assert generated_mobile["actionable_operations"]["operations"]["request_permission"]["ok"] is True
@@ -16470,6 +16499,8 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert generated_mobile_apis == {item["api"] for item in generated_mobile["runtime_replay"]["replay"]}
     assert all("invoke_target_bridge" in item["phases"] for item in generated_mobile["runtime_replay"]["replay"])
     assert all(item["ok"] for item in generated_mobile["runtime_replay"]["bridge_recovery"])
+    assert generated_mobile["scenario_matrix"]["ok"] is True
+    assert generated_mobile["scenario_matrix"]["scenario_count"] == len(generated_mobile_apis)
     assert generated_mobile["designer_transaction_replay"]["ok"] is True
     assert {
         "author_device_components",
@@ -16501,6 +16532,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "bind_components_and_bridges",
         "review_fallbacks_and_lifecycle",
         "replay_runtime_delivery",
+        "replay_device_scenarios",
         "replay_designer_and_capabilities",
     } == {item["phase"] for item in generated_mobile_readiness["phases"]}
     assert {
@@ -16509,12 +16541,14 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "bridge_component_ready",
         "fallback_lifecycle_ready",
         "runtime_delivery_ready",
+        "device_scenarios_ready",
         "designer_capability_ready",
         "operation_surface_ready",
         "phase_order_ready",
     } == {check["id"] for check in generated_mobile_readiness["checks"]}
     assert generated_mobile_readiness["final_state"]["api_count"] == len(generated_mobile_apis)
     assert generated_mobile_readiness["final_state"]["runtime_replays"] == len(generated_mobile_apis)
+    assert generated_mobile_readiness["final_state"]["device_scenarios"] == len(generated_mobile_apis)
     assert generated_mobile["readiness"]["ok"] is True
     assert generated_mobile["readiness"]["final_state"]["background_checkpoints"] >= 1
     assert len(generated_mobile["device_component_module_artifacts"]) == len(generated_mobile_apis)
@@ -16546,11 +16580,17 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "capability_lifecycle_complete",
         "device_component_modules_ready",
         "device_component_tests_ready",
+        "device_component_scenarios_ready",
     } <= set(mobile_runtime_smoke["checks"])
     device_module_manifest = mobile_runtime.device_api_component_module_manifest()
     device_test_manifest = mobile_runtime.device_api_component_test_module_manifest()
+    generated_runtime_scenarios = mobile_runtime.device_api_component_scenario_matrix()
     assert device_module_manifest["ok"] is True
     assert device_test_manifest["ok"] is True
+    assert generated_runtime_scenarios["format"] == "appgen.generated-device-api-component-scenario-matrix.v1"
+    assert generated_runtime_scenarios["ok"] is True
+    assert generated_runtime_scenarios["scenario_count"] == len(generated_mobile_apis)
+    assert generated_runtime_scenarios["unsupported_fallback"]["decision"] == "blocked_unsupported_target"
     assert {item["api"] for item in device_module_manifest["components"]} == generated_mobile_apis
     assert {item["api"] for item in device_test_manifest["tests"]} == generated_mobile_apis
     camera_device_component = _load_module(output_dir / "device_api_components" / "camera.py", "generated_camera_device_component")
