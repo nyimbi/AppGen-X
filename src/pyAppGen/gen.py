@@ -2351,6 +2351,7 @@ def write_form_designer_file(output_dir, schema: AppSchema):
     write_component_wiring_module_files(output_dir)
     write_handler_architecture_module_files(output_dir)
     write_handler_source_ide_module_files(output_dir)
+    write_property_editor_family_module_files(output_dir)
     write_inspector_module_files(output_dir)
     write_binding_module_files(output_dir)
     write_package_manager_module_files(output_dir)
@@ -2453,6 +2454,17 @@ INSPECTOR_MODULES = (
     "custom_designer_module",
     "handler_invocation_module",
     "binding_bridge_module",
+)
+
+PROPERTY_EDITOR_FAMILY_MODULES = (
+    "string_property_editor_module",
+    "number_property_editor_module",
+    "boolean_property_editor_module",
+    "choice_property_editor_module",
+    "collection_property_editor_module",
+    "binding_property_editor_module",
+    "color_property_editor_module",
+    "resource_property_editor_module",
 )
 
 BINDING_MODULES = (
@@ -3173,6 +3185,26 @@ def write_handler_source_ide_module_files(output_dir):
         )
 
 
+def write_property_editor_family_module_files(output_dir):
+    """Write generated property editor family modules and smoke tests."""
+    output_dir = Path(output_dir)
+    module_dir = output_dir / "property_editor_family_modules"
+    test_dir = output_dir / "property_editor_family_module_tests"
+    module_dir.mkdir(parents=True, exist_ok=True)
+    test_dir.mkdir(parents=True, exist_ok=True)
+    (module_dir / "__init__.py").write_text(_property_editor_family_module_init_text(), encoding="utf-8")
+    (test_dir / "__init__.py").write_text(_property_editor_family_module_test_init_text(), encoding="utf-8")
+    for module_name in PROPERTY_EDITOR_FAMILY_MODULES:
+        (module_dir / f"{module_name}.py").write_text(
+            _property_editor_family_module_text(module_name),
+            encoding="utf-8",
+        )
+        (test_dir / f"test_{module_name}.py").write_text(
+            _property_editor_family_module_test_text(module_name),
+            encoding="utf-8",
+        )
+
+
 def write_inspector_module_files(output_dir):
     """Write generated Object Inspector editor modules and smoke tests."""
     output_dir = Path(output_dir)
@@ -3502,6 +3534,21 @@ def _handler_source_ide_module_test_init_text() -> str:
     return (
         '"""Generated handler source IDE module tests."""\n\n'
         f"HANDLER_SOURCE_IDE_MODULE_TESTS = {modules!r}\n"
+    )
+
+
+def _property_editor_family_module_init_text() -> str:
+    return (
+        '"""Generated property editor family modules."""\n\n'
+        f"PROPERTY_EDITOR_FAMILY_MODULES = {PROPERTY_EDITOR_FAMILY_MODULES!r}\n"
+    )
+
+
+def _property_editor_family_module_test_init_text() -> str:
+    modules = tuple(f"test_{name}" for name in PROPERTY_EDITOR_FAMILY_MODULES)
+    return (
+        '"""Generated property editor family module tests."""\n\n'
+        f"PROPERTY_EDITOR_FAMILY_MODULE_TESTS = {modules!r}\n"
     )
 
 
@@ -11912,6 +11959,187 @@ def smoke_test():
 '''
 
 
+def _property_editor_family_kind(module_name: str) -> str:
+    return {
+        "string_property_editor_module": "string",
+        "number_property_editor_module": "number",
+        "boolean_property_editor_module": "boolean",
+        "choice_property_editor_module": "choice",
+        "collection_property_editor_module": "collection",
+        "binding_property_editor_module": "binding",
+        "color_property_editor_module": "color",
+        "resource_property_editor_module": "resource",
+    }[module_name]
+
+
+def _property_editor_family_module_text(module_name: str) -> str:
+    family = _property_editor_family_kind(module_name)
+    return f'''"""Generated property editor family module for {family} editors."""
+
+from __future__ import annotations
+
+import importlib.util
+from pathlib import Path
+
+
+MODULE = {module_name!r}
+FAMILY = {family!r}
+EXPECTED_EXPORTS = (
+    "module_contract",
+    "property_editor_family_manifest",
+    "run_editor_operation",
+    "runtime_manifest",
+    "smoke_test",
+)
+
+
+def _load_form_designer():
+    module_path = Path(__file__).resolve().parents[1] / "form_designer.py"
+    spec = importlib.util.spec_from_file_location(f"generated_property_editor_family_{{MODULE}}_form_designer", module_path)
+    module = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(module)
+    return module
+
+
+def module_contract():
+    """Return this property editor family module's export contract."""
+    available = tuple(name for name in EXPECTED_EXPORTS if name in globals())
+    return {{
+        "format": "appgen.property-editor-family-module-contract.v1",
+        "module": MODULE,
+        "family": FAMILY,
+        "ok": set(EXPECTED_EXPORTS) <= set(available),
+        "exports": available,
+        "expected_exports": EXPECTED_EXPORTS,
+        "side_effects": (),
+    }}
+
+
+def property_editor_family_manifest():
+    """Return the generated editor family metadata owned by this module."""
+    designer = _load_form_designer()
+    contract = designer.property_editor_family_contract()
+    family = next((item for item in contract["families"] if item["family"] == FAMILY), None)
+    return {{
+        "format": "appgen.property-editor-family-module-manifest.v1",
+        "module": MODULE,
+        "family": FAMILY,
+        "ok": contract["ok"] and family is not None and bool(family["editors"]),
+        "family_contract": family,
+        "checks": contract["checks"],
+        "guards": contract["guards"],
+        "side_effects": (),
+    }}
+
+
+def run_editor_operation():
+    """Replay this property editor family without mutating a design."""
+    manifest = property_editor_family_manifest()
+    operation_steps = (
+        "open_property_row",
+        "mount_family_editor",
+        "validate_value",
+        "preview_change",
+        "commit_or_revert",
+        "record_undo",
+    )
+    return {{
+        "format": "appgen.property-editor-family-module-operation.v1",
+        "module": MODULE,
+        "family": FAMILY,
+        "ok": manifest["ok"] and bool(operation_steps),
+        "operation_steps": operation_steps,
+        "editor_count": len(manifest["family_contract"]["editors"]) if manifest["family_contract"] else 0,
+        "side_effects": (),
+    }}
+
+
+def runtime_manifest():
+    """Return the source property editor family contract."""
+    return _load_form_designer().property_editor_family_contract()
+
+
+def smoke_test():
+    """Run side-effect-free checks for this generated property editor family module."""
+    contract = module_contract()
+    manifest = property_editor_family_manifest()
+    operation = run_editor_operation()
+    runtime = runtime_manifest()
+    return {{
+        "format": "appgen.property-editor-family-module-smoke-test.v1",
+        "module": MODULE,
+        "family": FAMILY,
+        "ok": contract["ok"]
+        and manifest["ok"]
+        and operation["ok"]
+        and runtime["ok"]
+        and not manifest["side_effects"]
+        and not operation["side_effects"],
+        "checks": (
+            "module_contract_resolves",
+            "property_editor_family_manifest_resolves",
+            "editor_operation_replays",
+            "runtime_manifest_ok",
+            "no_side_effects",
+        ),
+    }}
+'''
+
+
+def _property_editor_family_module_test_text(module_name: str) -> str:
+    return f'''"""Generated tests for the {module_name} property editor family module."""
+
+from __future__ import annotations
+
+import importlib.util
+from pathlib import Path
+
+
+MODULE = {module_name!r}
+
+
+def load_property_editor_family_module():
+    """Load the generated property editor family module without app installation."""
+    module_path = Path(__file__).resolve().parents[1] / "property_editor_family_modules" / f"{{MODULE}}.py"
+    spec = importlib.util.spec_from_file_location(f"generated_property_editor_family_module_{{MODULE}}", module_path)
+    module = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(module)
+    return module
+
+
+def test_property_editor_family_module_contract():
+    """Assert the generated property editor family module exposes its contract."""
+    module = load_property_editor_family_module()
+    contract = module.module_contract()
+    assert contract["module"] == MODULE
+    assert contract["ok"] is True
+    assert all(hasattr(module, name) for name in contract["expected_exports"])
+
+
+def test_property_editor_family_module_smoke():
+    """Assert the module's side-effect-free smoke test passes."""
+    module = load_property_editor_family_module()
+    result = module.smoke_test()
+    assert result["ok"] is True
+    assert result["module"] == MODULE
+    assert result["checks"]
+
+
+def smoke_test():
+    """Run this generated test module in a side-effect-free way."""
+    test_property_editor_family_module_contract()
+    test_property_editor_family_module_smoke()
+    return {{
+        "format": "appgen.property-editor-family-module-generated-test-smoke.v1",
+        "module": MODULE,
+        "ok": True,
+        "tests": ("test_property_editor_family_module_contract", "test_property_editor_family_module_smoke"),
+    }}
+'''
+
+
 def _inspector_module_text(module_name: str) -> str:
     return f'''"""Generated Object Inspector editor module for {module_name}."""
 
@@ -16435,6 +16663,9 @@ def inspector_runtime_manifest(component="Grid"):
         "handler_source_ide_contract",
         "handler_source_ide_modules",
         "handler_source_ide_module_tests",
+        "property_editor_family_contract",
+        "property_editor_family_modules",
+        "property_editor_family_module_tests",
         "actionable_editor_operations",
     }
     actionables = workbench["actionable_operations"]
@@ -16466,6 +16697,9 @@ def inspector_runtime_manifest(component="Grid"):
         "handler_source_ide": workbench["handler_source_ide"],
         "handler_source_ide_artifacts": workbench["handler_source_ide_artifacts"],
         "handler_source_ide_test_artifacts": workbench["handler_source_ide_test_artifacts"],
+        "property_editor_families": workbench["property_editor_families"],
+        "property_editor_family_artifacts": workbench["property_editor_family_artifacts"],
+        "property_editor_family_test_artifacts": workbench["property_editor_family_test_artifacts"],
         "actionable_operations": actionables,
         "guards": (
             "property_editors_registered",
@@ -16474,6 +16708,7 @@ def inspector_runtime_manifest(component="Grid"):
             "custom_designers_register_before_activation",
             "handler_invocation_has_cycle_guard",
             "handler_source_regions_are_preserved",
+            "property_editor_families_are_complete",
             "binding_bridge_replays_after_property_commit",
         ),
     }
@@ -16520,6 +16755,8 @@ def validate_inspector_runtime(component="Grid"):
     form_designer = _load_form_designer()
     handler_source_modules = form_designer.handler_source_ide_module_file_manifest()
     handler_source_tests = form_designer.handler_source_ide_module_test_file_manifest()
+    property_editor_modules = form_designer.property_editor_family_module_file_manifest()
+    property_editor_tests = form_designer.property_editor_family_module_test_file_manifest()
     checks = (
         {"id": "manifest_ok", "ok": manifest["ok"]},
         {"id": "property_editors_present", "ok": bool(manifest["contract"]["property_editors"])},
@@ -16534,6 +16771,9 @@ def validate_inspector_runtime(component="Grid"):
         {"id": "handler_source_ide_ready", "ok": manifest["handler_source_ide"]["ok"] and not manifest["handler_source_ide"]["side_effects"]},
         {"id": "handler_source_ide_modules_ready", "ok": handler_source_modules["ok"] and not handler_source_modules["side_effects"]},
         {"id": "handler_source_ide_module_tests_ready", "ok": handler_source_tests["ok"] and not handler_source_tests["side_effects"]},
+        {"id": "property_editor_families_ready", "ok": manifest["property_editor_families"]["ok"] and not manifest["property_editor_families"]["side_effects"]},
+        {"id": "property_editor_family_modules_ready", "ok": property_editor_modules["ok"] and not property_editor_modules["side_effects"]},
+        {"id": "property_editor_family_module_tests_ready", "ok": property_editor_tests["ok"] and not property_editor_tests["side_effects"]},
         {"id": "inspector_modules_ready", "ok": module_files["ok"] and not module_files["side_effects"]},
         {"id": "inspector_module_tests_ready", "ok": module_tests["ok"] and not module_tests["side_effects"]},
         {"id": "runtime_replay", "ok": replay["ok"] and not replay["side_effects"]},
@@ -16547,6 +16787,8 @@ def validate_inspector_runtime(component="Grid"):
         "module_tests": module_tests,
         "handler_source_modules": handler_source_modules,
         "handler_source_tests": handler_source_tests,
+        "property_editor_modules": property_editor_modules,
+        "property_editor_tests": property_editor_tests,
         "replay": replay,
         "blocking_gaps": tuple(check for check in checks if not check["ok"]),
     }
@@ -49562,6 +49804,9 @@ def object_inspector_workbench():
     handler_source_ide = handler_source_ide_contract(handler_source_table)
     handler_source_ide_artifacts = handler_source_ide_module_file_manifest(_local_component_paths())["modules"]
     handler_source_ide_test_artifacts = handler_source_ide_module_test_file_manifest(_local_component_paths())["tests"]
+    property_editor_families = property_editor_family_contract()
+    property_editor_family_artifacts = property_editor_family_module_file_manifest(_local_component_paths())["modules"]
+    property_editor_family_test_artifacts = property_editor_family_module_test_file_manifest(_local_component_paths())["tests"]
     readiness = object_inspector_readiness_contract(sample_components)
     property_edit_operation = inspector_apply_property_edit({{"component": "TextBox", "props": {{"label": "Name"}}}}, "label", "Customer Name")
     event_create_operation = inspector_create_event_handler("Button", "OnClick")
@@ -49643,6 +49888,9 @@ def object_inspector_workbench():
         {{"id": "handler_source_ide_contract", "ok": handler_source_ide["ok"] and {{"navigation_to_handler_source", "handler_stubs_editable", "breakpoints_map_to_designer", "handler_refactors_propagate"}} <= {{check["id"] for check in handler_source_ide["checks"] if check["ok"]}} and not handler_source_ide["side_effects"], "evidence": handler_source_ide}},
         {{"id": "handler_source_ide_modules", "ok": len(handler_source_ide_artifacts) == 5 and all(item["ok"] and {{"handler_source_manifest", "run_source_operation", "smoke_test"}} <= set(item["exports"]) for item in handler_source_ide_artifacts), "evidence": handler_source_ide_artifacts}},
         {{"id": "handler_source_ide_module_tests", "ok": len(handler_source_ide_test_artifacts) == 5 and all(item["ok"] and "test_handler_source_ide_module_smoke" in item["exports"] for item in handler_source_ide_test_artifacts), "evidence": handler_source_ide_test_artifacts}},
+        {{"id": "property_editor_family_contract", "ok": property_editor_families["ok"] and set(property_editor_families["required_families"]) <= {{family["family"] for family in property_editor_families["families"] if family["editors"]}} and not property_editor_families["side_effects"], "evidence": property_editor_families}},
+        {{"id": "property_editor_family_modules", "ok": len(property_editor_family_artifacts) == 8 and all(item["ok"] and {{"property_editor_family_manifest", "run_editor_operation", "smoke_test"}} <= set(item["exports"]) for item in property_editor_family_artifacts), "evidence": property_editor_family_artifacts}},
+        {{"id": "property_editor_family_module_tests", "ok": len(property_editor_family_test_artifacts) == 8 and all(item["ok"] and "test_property_editor_family_module_smoke" in item["exports"] for item in property_editor_family_test_artifacts), "evidence": property_editor_family_test_artifacts}},
     )
     ok = all(check["ok"] for check in checks)
     return {{
@@ -49689,6 +49937,9 @@ def object_inspector_workbench():
         "handler_source_ide": handler_source_ide,
         "handler_source_ide_artifacts": handler_source_ide_artifacts,
         "handler_source_ide_test_artifacts": handler_source_ide_test_artifacts,
+        "property_editor_families": property_editor_families,
+        "property_editor_family_artifacts": property_editor_family_artifacts,
+        "property_editor_family_test_artifacts": property_editor_family_test_artifacts,
         "readiness": readiness,
         "actionable_operations": {{
             "property_edit": property_edit_operation,
@@ -50526,6 +50777,127 @@ def handler_source_ide_module_test_file_manifest(existing_paths=None):
         "ok": bool(tests) and all(item["ok"] for item in tests),
         "tests": tuple(tests),
         "guards": ("one_test_file_per_handler_source_surface", "contract_and_smoke_tests_exported"),
+        "side_effects": (),
+    }}
+
+
+def property_editor_family_contract():
+    """Return generated Object Inspector property-editor family coverage and behavior."""
+    required_families = ("string", "number", "boolean", "choice", "collection", "binding", "color", "resource")
+    component_names = tuple(item["type"] for item in PALETTE)
+    contracts = tuple(object_inspector_contract(component) for component in component_names)
+    editor_rows = tuple(
+        editor
+        for contract in contracts
+        for editor in contract["property_editors"]
+        if editor["editor"] in required_families
+    )
+    families = tuple(
+        {{
+            "family": family,
+            "editors": tuple(editor for editor in editor_rows if editor["editor"] == family),
+            "operation": ("open_property_row", "mount_family_editor", "validate_value", "preview_change", "commit_or_revert", "record_undo"),
+            "surfaces": ("inline", "modal", "quick_pick") if family in {{"collection", "binding", "resource"}} else ("inline", "quick_pick"),
+            "guards": ("type_checked_before_commit", "reset_is_available", "undo_snapshot_recorded", "binding_route_preserved"),
+        }}
+        for family in required_families
+    )
+    checks = (
+        {{"id": "required_editor_families_present", "ok": set(required_families) <= {{family["family"] for family in families if family["editors"]}}, "evidence": tuple((family["family"], len(family["editors"])) for family in families)}},
+        {{"id": "editor_operations_declared", "ok": all({{"validate_value", "commit_or_revert", "record_undo"}} <= set(family["operation"]) for family in families), "evidence": families}},
+        {{"id": "reset_and_binding_affordances", "ok": all(editor["supports_reset"] for editor in editor_rows) and any(editor["supports_binding"] for editor in editor_rows), "evidence": editor_rows}},
+        {{"id": "modal_surfaces_for_complex_editors", "ok": all("modal" in family["surfaces"] for family in families if family["family"] in {{"collection", "binding", "resource"}}), "evidence": families}},
+        {{"id": "side_effect_guards", "ok": all("undo_snapshot_recorded" in family["guards"] for family in families), "evidence": families}},
+    )
+    ok = all(check["ok"] for check in checks)
+    return {{
+        "format": "appgen.generated-property-editor-family-contract.v1",
+        "ok": ok,
+        "decision": "approved" if ok else "blocked",
+        "families": families,
+        "required_families": required_families,
+        "editor_count": len(editor_rows),
+        "checks": checks,
+        "guards": (
+            "property_editor_families_complete",
+            "type_checked_before_commit",
+            "complex_editors_use_modal_surface",
+            "undo_snapshot_recorded",
+            "binding_route_preserved",
+        ),
+        "side_effects": (),
+        "blocking_gaps": tuple(check for check in checks if not check["ok"]),
+    }}
+
+
+def property_editor_family_module_file_manifest(existing_paths=None):
+    """Return generated property editor family module files and whether they exist."""
+    paths = set(existing_paths) if existing_paths is not None else _local_component_paths()
+    modules = (
+        ("string_property_editor_module", "string"),
+        ("number_property_editor_module", "number"),
+        ("boolean_property_editor_module", "boolean"),
+        ("choice_property_editor_module", "choice"),
+        ("collection_property_editor_module", "collection"),
+        ("binding_property_editor_module", "binding"),
+        ("color_property_editor_module", "color"),
+        ("resource_property_editor_module", "resource"),
+    )
+    exports = (
+        "module_contract",
+        "property_editor_family_manifest",
+        "run_editor_operation",
+        "runtime_manifest",
+        "smoke_test",
+    )
+    manifest = []
+    for module, family in modules:
+        path = f"app/property_editor_family_modules/{{module}}.py"
+        manifest.append({{
+            "module": module,
+            "family": family,
+            "path": path,
+            "exists": path in paths,
+            "exports": exports,
+            "ok": bool(module) and bool(family) and path in paths,
+        }})
+    return {{
+        "format": "appgen.generated-property-editor-family-module-file-manifest.v1",
+        "ok": bool(manifest) and all(item["ok"] for item in manifest),
+        "modules": tuple(manifest),
+        "guards": ("one_file_per_property_editor_family", "declared_exports_present", "editor_family_smoke_replays"),
+        "side_effects": (),
+    }}
+
+
+def property_editor_family_module_test_file_manifest(existing_paths=None):
+    """Return generated property editor family test files and whether they exist."""
+    paths = set(existing_paths) if existing_paths is not None else _local_component_paths()
+    tests = []
+    for item in property_editor_family_module_file_manifest(existing_paths)["modules"]:
+        path = item["path"].replace(
+            "app/property_editor_family_modules/",
+            "app/property_editor_family_module_tests/test_",
+        )
+        tests.append({{
+            "module": item["module"],
+            "family": item["family"],
+            "path": path,
+            "exists": path in paths,
+            "target": item["path"],
+            "exports": (
+                "load_property_editor_family_module",
+                "test_property_editor_family_module_contract",
+                "test_property_editor_family_module_smoke",
+                "smoke_test",
+            ),
+            "ok": item["ok"] and path in paths,
+        }})
+    return {{
+        "format": "appgen.generated-property-editor-family-module-test-file-manifest.v1",
+        "ok": bool(tests) and all(item["ok"] for item in tests),
+        "tests": tuple(tests),
+        "guards": ("one_test_file_per_property_editor_family", "contract_and_smoke_tests_exported"),
         "side_effects": (),
     }}
 
@@ -56885,6 +57257,8 @@ def _local_component_paths():
         "handler_architecture_module_tests",
         "handler_source_ide_modules",
         "handler_source_ide_module_tests",
+        "property_editor_family_modules",
+        "property_editor_family_module_tests",
     ):
         base = root / folder
         if not base.exists():
@@ -57386,7 +57760,7 @@ def platform_parity_requirement_audit_contract():
     requirements = (
         {{"id": "component_parity", "ok": analog_groups["ok"] and component_readiness["ok"] and component_usability["ok"] and {{"analog_coverage_ready", "palette_icons_ready", "behavior_surface_ready", "generated_modules_ready", "generated_tests_ready", "ide_release_ready", "phase_order_ready"}} <= {{check["id"] for check in component_readiness["checks"] if check["ok"]}} and {{"per_component_files", "per_package_files", "per_component_test_files", "per_package_test_files", "component_family_modules", "component_family_module_tests", "module_smoke_tests", "component_parity_readiness"}} <= {{check["id"] for check in component_usability["checks"] if check["ok"]}} and {{"cross-target-ui", "layouts", "data-display", "graphics", "animations", "styles-theming", "gestures", "sensors", "three-d", "data-access"}} == {{group["group"] for group in analog_groups["groups"]}}, "deep_checks": ("analog_coverage_ready", "generated_modules_ready", "generated_tests_ready", "per_component_files", "per_package_files", "per_component_test_files", "per_package_test_files", "component_family_modules", "component_family_module_tests", "module_smoke_tests", "ide_release_ready", "phase_order_ready"), "evidence": {{"groups": analog_groups, "readiness": component_readiness, "usability": component_usability}}}},
         {{"id": "native_runtime_streaming", "ok": runtime["ok"] and runtime_readiness["ok"] and {{"stream_identity_ready", "unit_semantics_ready", "compile_targets_ready", "diagnostics_route_ready", "debug_preview_ready", "runtime_preview_ready", "phase_order_ready"}} <= {{check["id"] for check in runtime_readiness["checks"] if check["ok"]}} and {{"form_stream_schema", "runtime_session_replay", "design_edit_session_replay", "runtime_debug_authoring", "native_form_modules", "native_form_module_tests", "runtime_operation_modules", "runtime_operation_module_tests", "compiler_runtime_modules", "compiler_runtime_module_tests", "deep_runtime_modules", "deep_runtime_module_tests"}} <= {{check["id"] for check in runtime["checks"] if check["ok"]}}, "deep_checks": ("stream_identity_ready", "compile_targets_ready", "diagnostics_route_ready", "debug_preview_ready", "runtime_preview_ready", "runtime_debug_authoring", "native_form_modules", "native_form_module_tests", "runtime_operation_modules", "runtime_operation_module_tests", "compiler_runtime_modules", "compiler_runtime_module_tests", "deep_runtime_modules", "deep_runtime_module_tests", "phase_order_ready"), "evidence": {{"workbench": runtime, "readiness": runtime_readiness}}}},
-        {{"id": "inspector_design_surface", "ok": inspector["ok"] and inspector_readiness["ok"] and {{"editor_metadata_ready", "property_event_ready", "component_custom_designer_ready", "state_design_surface_ready", "binding_handler_ready", "lifecycle_round_trip_ready", "phase_order_ready"}} <= {{check["id"] for check in inspector_readiness["checks"] if check["ok"]}} and {{"property_editor_types", "event_editor_lifecycle", "component_editor_transaction", "custom_designer_registration_replay", "editor_lifecycle_replay", "inspector_generated_modules", "inspector_generated_module_tests"}} <= {{check["id"] for check in inspector["checks"] if check["ok"]}}, "deep_checks": ("editor_lifecycle_replay", "design_surface_transaction_replay", "custom_designer_registration_replay", "inspector_generated_modules", "inspector_generated_module_tests", "phase_order_ready"), "evidence": {{"workbench": inspector, "readiness": inspector_readiness}}}},
+        {{"id": "inspector_design_surface", "ok": inspector["ok"] and inspector_readiness["ok"] and {{"editor_metadata_ready", "property_event_ready", "component_custom_designer_ready", "state_design_surface_ready", "binding_handler_ready", "lifecycle_round_trip_ready", "phase_order_ready"}} <= {{check["id"] for check in inspector_readiness["checks"] if check["ok"]}} and {{"property_editor_types", "event_editor_lifecycle", "component_editor_transaction", "custom_designer_registration_replay", "editor_lifecycle_replay", "inspector_generated_modules", "inspector_generated_module_tests", "property_editor_family_contract", "property_editor_family_modules", "property_editor_family_module_tests"}} <= {{check["id"] for check in inspector["checks"] if check["ok"]}}, "deep_checks": ("editor_lifecycle_replay", "design_surface_transaction_replay", "custom_designer_registration_replay", "inspector_generated_modules", "inspector_generated_module_tests", "property_editor_family_contract", "property_editor_family_modules", "property_editor_family_module_tests", "phase_order_ready"), "evidence": {{"workbench": inspector, "readiness": inspector_readiness}}}},
         {{"id": "visual_binding_designer", "ok": bindings["ok"] and binding_readiness["ok"] and {{"graph_authoring_ready", "validation_transaction_ready", "preview_runtime_ready", "diagnostics_conflict_ready", "offline_accessible_runtime_ready", "designer_release_replay_ready", "inspector_bridge_ready", "phase_order_ready"}} <= {{check["id"] for check in binding_readiness["checks"] if check["ok"]}} and bindings["designer_transaction_replay"]["ok"] and bindings["design_runtime_replay"]["ok"] and bindings["lifecycle_release_replay"]["ok"] and {{"binding_generated_modules", "binding_generated_module_tests"}} <= {{check["id"] for check in bindings["checks"] if check["ok"]}}, "deep_checks": ("binding_lifecycle_release_replay", "design_runtime_session_replay", "designer_transaction_replay", "binding_generated_modules", "binding_generated_module_tests", "phase_order_ready"), "evidence": {{"workbench": bindings, "readiness": binding_readiness}}}},
         {{"id": "native_data_service_tooling", "ok": data_tooling["ok"] and data_readiness["ok"] and {{"connection_ready", "dataset_ready", "publish_ready", "offline_replay_ready", "replication_failover_ready", "diagnostics_ready", "phase_order_ready"}} <= {{check["id"] for check in data_readiness["checks"] if check["ok"]}} and data_tooling["runtime_replay"]["ok"] and data_tooling["publish_transaction_replay"]["ok"] and {{"relationship_lookup_lifecycle_replay", "data_tooling_modules", "data_tooling_module_tests", "deep_data_tooling_modules", "deep_data_tooling_module_tests"}} <= {{check["id"] for check in data_tooling["checks"] if check["ok"]}}, "deep_checks": ("relationship_lookup_lifecycle_replay", "data_tooling_modules", "data_tooling_module_tests", "deep_data_tooling_modules", "deep_data_tooling_module_tests", "data_tooling_design_runtime_session_replay", "data_tooling_publish_transaction_replay", "phase_order_ready"), "evidence": {{"workbench": data_tooling, "readiness": data_readiness}}}},
         {{"id": "package_installation_ecosystem", "ok": package_manager["ok"] and package_lifecycle["ok"] and package_readiness["ok"] and {{"trust_before_preview", "preview_before_registry_commit", "registry_before_update", "rollback_before_cleanup", "operation_surface_ready", "phase_order_ready"}} <= {{check["id"] for check in package_readiness["checks"] if check["ok"]}} and {{"lifecycle_transaction_replay", "package_manager_modules", "package_manager_module_tests"}} <= {{check["id"] for check in package_manager["checks"] if check["ok"]}}, "deep_checks": ("trust_before_preview", "preview_before_registry_commit", "registry_before_update", "rollback_before_cleanup", "package_manager_modules", "package_manager_module_tests", "phase_order_ready"), "evidence": {{"manager": package_manager, "lifecycle": package_lifecycle, "readiness": package_readiness}}}},
