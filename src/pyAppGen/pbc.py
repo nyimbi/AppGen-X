@@ -252,12 +252,47 @@ ASSET_LIFECYCLE_ADVANCED_CAPABILITY_KEYS = (
     "mathematical_optimization",
     "financial_mlops_governance",
 )
+TAX_LOCALIZATION_ADVANCED_CAPABILITY_KEYS = (
+    "event_sourced_tax_lifecycle",
+    "graph_relational_jurisdiction_topology",
+    "multi_tenant_compliance_isolation",
+    "schema_evolution_resilient_tax_schema",
+    "probabilistic_taxability_classification",
+    "real_time_tax_quote_convergence",
+    "counterfactual_tax_policy_simulation",
+    "temporal_tax_liability_forecasting",
+    "autonomous_filing_reconciliation",
+    "semantic_tax_document_parsing",
+    "predictive_jurisdiction_risk_scoring",
+    "self_healing_filing_route_selection",
+    "zero_knowledge_tax_audit_proof",
+    "immutable_regulatory_trail",
+    "dynamic_tax_policy_screening",
+    "automated_tax_control_testing",
+    "universal_api_async_streaming",
+    "cross_border_tax_federation",
+    "digital_document_network_integration",
+    "decentralized_tax_identity",
+    "chaos_engineered_authority_tolerance",
+    "quantum_resistant_tax_authorization",
+    "carbon_aware_filing_scheduling",
+    "algebraic_tax_remittance_optimization",
+    "mechanism_design_tax_allocation",
+    "information_theoretic_tax_anomaly_detection",
+    "temporal_tax_exposure_stochastic_modeling",
+    "distributed_systems_engineering",
+    "probabilistic_ml_tax_risk",
+    "cryptographic_engineering",
+    "mathematical_optimization",
+    "tax_mlops_governance",
+)
 IMPLEMENTED_PBC_KEYS = (
     "gl_core",
     "ap_automation",
     "ar_credit",
     "treasury_cash",
     "asset_lifecycle",
+    "tax_localization",
 )
 PBC_ALLOWED_DATASTORE_BACKENDS = (
     "postgresql",
@@ -2481,6 +2516,8 @@ def pbc_implementation_contract(key: str) -> dict:
         advanced_runtime = treasury_cash_runtime_capabilities()
     elif key == "asset_lifecycle":
         advanced_runtime = asset_lifecycle_runtime_capabilities()
+    elif key == "tax_localization":
+        advanced_runtime = tax_localization_runtime_capabilities()
     else:
         advanced_runtime = {}
     source_package = _pbc_source_package_contract(key)
@@ -2762,6 +2799,7 @@ def pbc_implemented_capability_audit(selected_pbcs: tuple[str, ...] | list[str] 
         "ar_credit": len(AR_CREDIT_ADVANCED_CAPABILITY_KEYS),
         "treasury_cash": len(TREASURY_CASH_ADVANCED_CAPABILITY_KEYS),
         "asset_lifecycle": len(ASSET_LIFECYCLE_ADVANCED_CAPABILITY_KEYS),
+        "tax_localization": len(TAX_LOCALIZATION_ADVANCED_CAPABILITY_KEYS),
     }
     checks = []
     contracts = pbc_implementation_contracts(selected)
@@ -4297,3 +4335,16 @@ from .pbcs.asset_lifecycle import asset_lifecycle_run_depreciation  # noqa: E402
 from .pbcs.asset_lifecycle import asset_lifecycle_runtime_capabilities  # noqa: E402,F401
 from .pbcs.asset_lifecycle import asset_lifecycle_runtime_smoke  # noqa: E402,F401
 from .pbcs.asset_lifecycle import asset_lifecycle_transfer_asset  # noqa: E402,F401
+from .pbcs.tax_localization import TAX_LOCALIZATION_RUNTIME_CAPABILITY_KEYS  # noqa: E402,F401
+from .pbcs.tax_localization import TAX_LOCALIZATION_STANDARD_FEATURE_KEYS  # noqa: E402,F401
+from .pbcs.tax_localization import tax_localization_build_workbench_view  # noqa: E402,F401
+from .pbcs.tax_localization import tax_localization_calculate_tax_quote  # noqa: E402,F401
+from .pbcs.tax_localization import tax_localization_classify_product  # noqa: E402,F401
+from .pbcs.tax_localization import tax_localization_empty_state  # noqa: E402,F401
+from .pbcs.tax_localization import tax_localization_prepare_tax_filing  # noqa: E402,F401
+from .pbcs.tax_localization import tax_localization_record_invoice_tax  # noqa: E402,F401
+from .pbcs.tax_localization import tax_localization_register_jurisdiction  # noqa: E402,F401
+from .pbcs.tax_localization import tax_localization_register_tax_rule  # noqa: E402,F401
+from .pbcs.tax_localization import tax_localization_runtime_capabilities  # noqa: E402,F401
+from .pbcs.tax_localization import tax_localization_runtime_smoke  # noqa: E402,F401
+from .pbcs.tax_localization import tax_localization_validate_exemption_certificate  # noqa: E402,F401
