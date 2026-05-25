@@ -765,6 +765,11 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   modules are now replayed as source and generated runtime evidence required by
   the workbench, platform requirement audit, generated data runtime validation,
   and focused smoke tests.
+- `e076133` promotes design-time package manager modules into replay matrices:
+  install, preview, registry, lifecycle, update, and rollback modules are now
+  replayed as source and generated runtime evidence required by the package
+  manager workbench, platform requirement audit, generated package runtime
+  validation, and focused smoke tests.
 
 ## Open Completion Areas
 
