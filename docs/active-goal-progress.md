@@ -744,6 +744,11 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   `run_scenario` export replayed through readiness, platform lifecycle,
   platform requirement, and generated mobile runtime validation gates, including
   unsupported-target fallback evidence.
+- `9d70720` promotes native/runtime module coverage into replay matrices:
+  native form modules, runtime operation modules, compiler/runtime surfaces,
+  and deep runtime surfaces are now replayed as source and generated evidence
+  required by workbench, requirement audit, generated runtime validation, and
+  focused smoke tests.
 
 ## Open Completion Areas
 
