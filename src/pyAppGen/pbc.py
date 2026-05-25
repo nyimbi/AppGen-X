@@ -388,6 +388,40 @@ PROCUREMENT_SOURCING_ADVANCED_CAPABILITY_KEYS = (
     "mathematical_optimization",
     "procurement_mlops_governance",
 )
+TRANSPORTATION_MANAGEMENT_ADVANCED_CAPABILITY_KEYS = (
+    "event_sourced_shipment_lifecycle",
+    "graph_relational_freight_topology",
+    "multi_tenant_transportation_isolation",
+    "schema_evolution_resilient_transportation_schema",
+    "probabilistic_eta_delivery_confidence",
+    "real_time_freight_execution_analytics",
+    "counterfactual_carrier_route_simulation",
+    "temporal_eta_cost_delay_forecasting",
+    "autonomous_transport_exception_resolution",
+    "semantic_transport_event_parsing",
+    "predictive_delay_damage_carrier_risk",
+    "self_healing_carrier_telematics_route_selection",
+    "zero_knowledge_delivery_proof",
+    "immutable_transportation_traceability_trail",
+    "dynamic_transportation_policy_screening",
+    "automated_transportation_control_testing",
+    "universal_api_async_streaming",
+    "cross_system_transportation_federation",
+    "carrier_network_telematics_integration",
+    "decentralized_carrier_identity",
+    "chaos_engineered_carrier_telematics_tolerance",
+    "quantum_resistant_transportation_authorization",
+    "carbon_aware_carrier_route_selection",
+    "algebraic_route_carrier_optimization",
+    "mechanism_design_carrier_tender_allocation",
+    "information_theoretic_tracking_anomaly_detection",
+    "temporal_transit_exposure_stochastic_modeling",
+    "distributed_systems_engineering",
+    "probabilistic_ml_transportation_risk",
+    "cryptographic_engineering",
+    "mathematical_optimization",
+    "transportation_mlops_governance",
+)
 IMPLEMENTED_PBC_KEYS = (
     "gl_core",
     "ap_automation",
@@ -398,6 +432,7 @@ IMPLEMENTED_PBC_KEYS = (
     "inventory_positioning",
     "wms_core",
     "procurement_sourcing",
+    "transportation_management",
 )
 PBC_ALLOWED_DATASTORE_BACKENDS = (
     "postgresql",
@@ -2629,6 +2664,8 @@ def pbc_implementation_contract(key: str) -> dict:
         advanced_runtime = wms_core_runtime_capabilities()
     elif key == "procurement_sourcing":
         advanced_runtime = procurement_sourcing_runtime_capabilities()
+    elif key == "transportation_management":
+        advanced_runtime = transportation_management_runtime_capabilities()
     else:
         advanced_runtime = {}
     source_package = _pbc_source_package_contract(key)
@@ -2914,6 +2951,7 @@ def pbc_implemented_capability_audit(selected_pbcs: tuple[str, ...] | list[str] 
         "inventory_positioning": len(INVENTORY_POSITIONING_ADVANCED_CAPABILITY_KEYS),
         "wms_core": len(WMS_CORE_ADVANCED_CAPABILITY_KEYS),
         "procurement_sourcing": len(PROCUREMENT_SOURCING_ADVANCED_CAPABILITY_KEYS),
+        "transportation_management": len(TRANSPORTATION_MANAGEMENT_ADVANCED_CAPABILITY_KEYS),
     }
     checks = []
     contracts = pbc_implementation_contracts(selected)
@@ -4512,3 +4550,19 @@ from .pbcs.procurement_sourcing import procurement_sourcing_runtime_smoke  # noq
 from .pbcs.procurement_sourcing import procurement_sourcing_score_suppliers  # noqa: E402,F401
 from .pbcs.procurement_sourcing import procurement_sourcing_select_supplier  # noqa: E402,F401
 from .pbcs.procurement_sourcing import procurement_sourcing_set_parameter  # noqa: E402,F401
+from .pbcs.transportation_management import TRANSPORTATION_MANAGEMENT_RUNTIME_CAPABILITY_KEYS  # noqa: E402,F401
+from .pbcs.transportation_management import TRANSPORTATION_MANAGEMENT_STANDARD_FEATURE_KEYS  # noqa: E402,F401
+from .pbcs.transportation_management import transportation_management_calculate_eta  # noqa: E402,F401
+from .pbcs.transportation_management import transportation_management_configure_runtime  # noqa: E402,F401
+from .pbcs.transportation_management import transportation_management_confirm_delivery  # noqa: E402,F401
+from .pbcs.transportation_management import transportation_management_create_shipment  # noqa: E402,F401
+from .pbcs.transportation_management import transportation_management_dispatch_shipment  # noqa: E402,F401
+from .pbcs.transportation_management import transportation_management_empty_state  # noqa: E402,F401
+from .pbcs.transportation_management import transportation_management_plan_route  # noqa: E402,F401
+from .pbcs.transportation_management import transportation_management_record_tracking_event  # noqa: E402,F401
+from .pbcs.transportation_management import transportation_management_register_carrier  # noqa: E402,F401
+from .pbcs.transportation_management import transportation_management_register_rule  # noqa: E402,F401
+from .pbcs.transportation_management import transportation_management_runtime_capabilities  # noqa: E402,F401
+from .pbcs.transportation_management import transportation_management_runtime_smoke  # noqa: E402,F401
+from .pbcs.transportation_management import transportation_management_select_carrier  # noqa: E402,F401
+from .pbcs.transportation_management import transportation_management_set_parameter  # noqa: E402,F401
