@@ -124,6 +124,8 @@ from pyAppGen.form_designer import property_editor_family_module_test_file_manif
 from pyAppGen.form_designer import event_editor_family_contract
 from pyAppGen.form_designer import event_editor_family_module_file_manifest
 from pyAppGen.form_designer import event_editor_family_module_test_file_manifest
+from pyAppGen.form_designer import enterprise_data_ide_module_file_manifest
+from pyAppGen.form_designer import enterprise_data_ide_module_test_file_manifest
 from pyAppGen.form_designer import component_editor_family_contract
 from pyAppGen.form_designer import component_editor_family_module_file_manifest
 from pyAppGen.form_designer import component_editor_family_module_test_file_manifest
@@ -2212,6 +2214,8 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "data_tooling_module_tests",
         "deep_data_tooling_modules",
         "deep_data_tooling_module_tests",
+        "enterprise_data_ide_modules",
+        "enterprise_data_ide_module_tests",
         "data_tooling_runtime_replay",
         "data_tooling_design_runtime_session_replay",
         "data_tooling_publish_transaction_replay",
@@ -2327,6 +2331,8 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     assert len(data_workbench["data_module_test_artifacts"]) == 4
     assert len(data_workbench["deep_data_tooling_module_artifacts"]) == 8
     assert len(data_workbench["deep_data_tooling_module_test_artifacts"]) == 8
+    assert len(data_workbench["enterprise_data_ide_module_artifacts"]) == 6
+    assert len(data_workbench["enterprise_data_ide_module_test_artifacts"]) == 6
     assert all(item["exports"] for item in data_workbench["data_module_artifacts"])
     assert all(
         "test_data_tooling_module_smoke" in item["exports"]
@@ -2339,6 +2345,14 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     assert all(
         "test_deep_data_tooling_module_smoke" in item["exports"]
         for item in data_workbench["deep_data_tooling_module_test_artifacts"]
+    )
+    assert all(
+        "run_ide_operation" in item["exports"]
+        for item in data_workbench["enterprise_data_ide_module_artifacts"]
+    )
+    assert all(
+        "test_enterprise_data_ide_module_smoke" in item["exports"]
+        for item in data_workbench["enterprise_data_ide_module_test_artifacts"]
     )
     assert {
         "connection_probe",
@@ -4498,6 +4512,8 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "data_tooling_module_tests",
         "deep_data_tooling_modules",
         "deep_data_tooling_module_tests",
+        "enterprise_data_ide_modules",
+        "enterprise_data_ide_module_tests",
         "phase_order_ready",
     } <= set(requirements_by_id["native_data_service_tooling"]["deep_checks"])
     assert {
@@ -4560,7 +4576,13 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         (
             "native_data_service_tooling",
             "workbench",
-            {"data_tooling_modules", "data_tooling_module_tests", "deep_data_tooling_modules"},
+            {
+                "data_tooling_modules",
+                "data_tooling_module_tests",
+                "deep_data_tooling_modules",
+                "enterprise_data_ide_modules",
+                "enterprise_data_ide_module_tests",
+            },
         ),
         (
             "package_installation_ecosystem",
@@ -4659,6 +4681,12 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         item["path"] for item in event_editor_family_module_test_file_manifest()
     } <= set(smoke["required_artifacts"])
     assert {
+        item["path"] for item in enterprise_data_ide_module_file_manifest()
+    } <= set(smoke["required_artifacts"])
+    assert {
+        item["path"] for item in enterprise_data_ide_module_test_file_manifest()
+    } <= set(smoke["required_artifacts"])
+    assert {
         item["path"] for item in component_editor_family_module_file_manifest()
     } <= set(smoke["required_artifacts"])
     assert {
@@ -4745,6 +4773,12 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         item["path"] for item in event_editor_family_module_test_file_manifest()
     } <= set(smoke["compiled_artifacts"])
     assert {
+        item["path"] for item in enterprise_data_ide_module_file_manifest()
+    } <= set(smoke["compiled_artifacts"])
+    assert {
+        item["path"] for item in enterprise_data_ide_module_test_file_manifest()
+    } <= set(smoke["compiled_artifacts"])
+    assert {
         item["path"] for item in component_editor_family_module_file_manifest()
     } <= set(smoke["compiled_artifacts"])
     assert {
@@ -4784,6 +4818,8 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     assert coverage["property_editor_family_module_test_count"] == 8
     assert coverage["event_editor_family_module_count"] == 6
     assert coverage["event_editor_family_module_test_count"] == 6
+    assert coverage["enterprise_data_ide_module_count"] == 6
+    assert coverage["enterprise_data_ide_module_test_count"] == 6
     assert coverage["component_editor_family_module_count"] == 6
     assert coverage["component_editor_family_module_test_count"] == 6
     assert coverage["custom_designer_family_module_count"] == 6
@@ -4992,6 +5028,8 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "data_module_tests_ready",
         "deep_data_tooling_modules_ready",
         "deep_data_tooling_module_tests_ready",
+        "enterprise_data_ide_modules_ready",
+        "enterprise_data_ide_module_tests_ready",
         "publish_transaction_replay",
         "failover_transaction_replay",
         "runtime_replay",
@@ -14110,6 +14148,16 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         if path.name != "__init__.py"
     )
     generated_form_designer_paths.update(
+        f"app/enterprise_data_ide_modules/{path.name}"
+        for path in (output_dir / "enterprise_data_ide_modules").glob("*.py")
+        if path.name != "__init__.py"
+    )
+    generated_form_designer_paths.update(
+        f"app/enterprise_data_ide_module_tests/{path.name}"
+        for path in (output_dir / "enterprise_data_ide_module_tests").glob("*.py")
+        if path.name != "__init__.py"
+    )
+    generated_form_designer_paths.update(
         f"app/visual_runtime_pipeline_modules/{path.name}"
         for path in (output_dir / "visual_runtime_pipeline_modules").glob("*.py")
         if path.name != "__init__.py"
@@ -14436,6 +14484,8 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "data_tooling_module_tests",
         "deep_data_tooling_modules",
         "deep_data_tooling_module_tests",
+        "enterprise_data_ide_modules",
+        "enterprise_data_ide_module_tests",
         "phase_order_ready",
     } <= set(generated_requirements_by_id["native_data_service_tooling"]["deep_checks"])
     assert {
@@ -14498,7 +14548,13 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         (
             "native_data_service_tooling",
             "workbench",
-            {"data_tooling_modules", "data_tooling_module_tests", "deep_data_tooling_modules"},
+            {
+                "data_tooling_modules",
+                "data_tooling_module_tests",
+                "deep_data_tooling_modules",
+                "enterprise_data_ide_modules",
+                "enterprise_data_ide_module_tests",
+            },
         ),
         (
             "package_installation_ecosystem",
@@ -15101,6 +15157,8 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "data_tooling_module_tests",
         "deep_data_tooling_modules",
         "deep_data_tooling_module_tests",
+        "enterprise_data_ide_modules",
+        "enterprise_data_ide_module_tests",
         "data_tooling_runtime_replay",
         "data_tooling_design_runtime_session_replay",
         "data_tooling_publish_transaction_replay",
@@ -15219,6 +15277,8 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert len(generated_data_tooling["data_module_test_artifacts"]) == 4
     assert len(generated_data_tooling["deep_data_tooling_module_artifacts"]) == 8
     assert len(generated_data_tooling["deep_data_tooling_module_test_artifacts"]) == 8
+    assert len(generated_data_tooling["enterprise_data_ide_module_artifacts"]["modules"]) == 6
+    assert len(generated_data_tooling["enterprise_data_ide_module_test_artifacts"]["tests"]) == 6
     assert all(item["exports"] for item in generated_data_tooling["data_module_artifacts"])
     assert all(
         "test_data_tooling_module_smoke" in item["exports"]
@@ -15231,6 +15291,14 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert all(
         "test_deep_data_tooling_module_smoke" in item["exports"]
         for item in generated_data_tooling["deep_data_tooling_module_test_artifacts"]
+    )
+    assert all(
+        "run_ide_operation" in item["exports"]
+        for item in generated_data_tooling["enterprise_data_ide_module_artifacts"]["modules"]
+    )
+    assert all(
+        "test_enterprise_data_ide_module_smoke" in item["exports"]
+        for item in generated_data_tooling["enterprise_data_ide_module_test_artifacts"]["tests"]
     )
     assert {
         "connection_probe",

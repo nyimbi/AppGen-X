@@ -55343,6 +55343,62 @@ def deep_data_tooling_module_test_file_manifest():
     )
 
 
+def enterprise_data_ide_module_file_manifest(existing_paths=None):
+    """Return generated enterprise data IDE module files and whether they exist."""
+    paths = set(existing_paths) if existing_paths is not None else _local_component_paths()
+    modules = (
+        ("connection_designer_module", "connection_designer"),
+        ("dataset_state_module", "dataset_state"),
+        ("service_publisher_module", "service_publisher"),
+        ("embedded_store_module", "embedded_store"),
+        ("failover_replay_module", "failover_replay"),
+        ("relationship_lookup_module", "relationship_lookup"),
+    )
+    exports = ("module_contract", "ide_surface_manifest", "run_ide_operation", "runtime_context", "smoke_test")
+    manifest = []
+    for module, surface in modules:
+        path = f"app/enterprise_data_ide_modules/{{module}}.py"
+        manifest.append({{
+            "module": module,
+            "surface": surface,
+            "path": path,
+            "exists": path in paths,
+            "exports": exports,
+            "ok": bool(module) and bool(surface) and path in paths,
+        }})
+    return {{
+        "format": "appgen.generated-enterprise-data-ide-module-file-manifest.v1",
+        "ok": bool(manifest) and all(item["ok"] for item in manifest),
+        "modules": tuple(manifest),
+        "guards": ("one_file_per_enterprise_data_ide_module", "declared_exports_present", "module_smoke_replays"),
+        "side_effects": (),
+    }}
+
+
+def enterprise_data_ide_module_test_file_manifest(existing_paths=None):
+    """Return generated enterprise data IDE test files and whether they exist."""
+    paths = set(existing_paths) if existing_paths is not None else _local_component_paths()
+    tests = []
+    for item in enterprise_data_ide_module_file_manifest(existing_paths)["modules"]:
+        path = item["path"].replace("app/enterprise_data_ide_modules/", "app/enterprise_data_ide_module_tests/test_")
+        tests.append({{
+            "module": item["module"],
+            "surface": item["surface"],
+            "path": path,
+            "exists": path in paths,
+            "target": item["path"],
+            "exports": ("load_enterprise_data_ide_module", "test_enterprise_data_ide_module_contract", "test_enterprise_data_ide_module_smoke", "smoke_test"),
+            "ok": item["ok"] and path in paths,
+        }})
+    return {{
+        "format": "appgen.generated-enterprise-data-ide-module-test-file-manifest.v1",
+        "ok": bool(tests) and all(item["ok"] for item in tests),
+        "tests": tuple(tests),
+        "guards": ("one_test_file_per_enterprise_data_ide_module", "contract_and_smoke_tests_exported"),
+        "side_effects": (),
+    }}
+
+
 def data_query_plan_visualizer_contract():
     """Return generated visual query-plan, cost, and index recommendation evidence."""
     preview = data_query_preview_contract()
@@ -56219,6 +56275,8 @@ def rad_data_tooling_workbench():
     data_module_test_artifacts = data_tooling_module_test_file_manifest()
     deep_data_tooling_module_artifacts = deep_data_tooling_module_file_manifest()
     deep_data_tooling_module_test_artifacts = deep_data_tooling_module_test_file_manifest()
+    enterprise_data_ide_module_artifacts = enterprise_data_ide_module_file_manifest()
+    enterprise_data_ide_module_test_artifacts = enterprise_data_ide_module_test_file_manifest()
     runtime_replay = data_tooling_runtime_replay_contract()
     design_runtime_replay = data_tooling_design_runtime_session_replay_contract()
     publish_transaction_replay = data_tooling_publish_transaction_replay_contract()
@@ -56275,6 +56333,8 @@ def rad_data_tooling_workbench():
         {{"id": "data_tooling_module_tests", "ok": len(data_module_test_artifacts) == 4 and all(item["ok"] and "test_data_tooling_module_smoke" in item["exports"] for item in data_module_test_artifacts), "evidence": data_module_test_artifacts}},
         {{"id": "deep_data_tooling_modules", "ok": len(deep_data_tooling_module_artifacts) == 8 and all(item["ok"] and "run_data_operation" in item["exports"] for item in deep_data_tooling_module_artifacts), "evidence": deep_data_tooling_module_artifacts}},
         {{"id": "deep_data_tooling_module_tests", "ok": len(deep_data_tooling_module_test_artifacts) == 8 and all(item["ok"] and "test_deep_data_tooling_module_smoke" in item["exports"] for item in deep_data_tooling_module_test_artifacts), "evidence": deep_data_tooling_module_test_artifacts}},
+        {{"id": "enterprise_data_ide_modules", "ok": len(enterprise_data_ide_module_artifacts["modules"]) == 6 and enterprise_data_ide_module_artifacts["ok"] and all("run_ide_operation" in item["exports"] for item in enterprise_data_ide_module_artifacts["modules"]), "evidence": enterprise_data_ide_module_artifacts}},
+        {{"id": "enterprise_data_ide_module_tests", "ok": len(enterprise_data_ide_module_test_artifacts["tests"]) == 6 and enterprise_data_ide_module_test_artifacts["ok"] and all("test_enterprise_data_ide_module_smoke" in item["exports"] for item in enterprise_data_ide_module_test_artifacts["tests"]), "evidence": enterprise_data_ide_module_test_artifacts}},
         {{"id": "data_tooling_runtime_replay", "ok": runtime_replay["ok"] and {{"connection_probe_rolls_back", "offline_replay_pauses_for_review"}} <= set(runtime_replay["guards"]) and not runtime_replay["side_effects"], "evidence": runtime_replay}},
         {{"id": "data_tooling_design_runtime_session_replay", "ok": design_runtime_replay["ok"] and {{"schema_rehearsal_before_dataset_publish", "runtime_operations_are_monitored"}} <= set(design_runtime_replay["guards"]) and not design_runtime_replay["side_effects"], "evidence": design_runtime_replay}},
         {{"id": "data_tooling_publish_transaction_replay", "ok": publish_transaction_replay["ok"] and {{"service_contract_tests_before_resource_publish", "runtime_smoke_proves_no_persisted_writes"}} <= set(publish_transaction_replay["guards"]) and not publish_transaction_replay["side_effects"], "evidence": publish_transaction_replay}},
@@ -56282,7 +56342,7 @@ def rad_data_tooling_workbench():
         {{"id": "data_tooling_readiness_contract", "ok": readiness["ok"] and {{"connection_ready", "dataset_ready", "publish_ready", "offline_replay_ready", "replication_failover_ready", "diagnostics_ready", "operation_surface_ready", "phase_order_ready"}} <= {{check["id"] for check in readiness["checks"] if check["ok"]}} and not readiness["side_effects"], "evidence": readiness}},
     )
     ok = all(check["ok"] for check in checks)
-    return {{"format": "appgen.generated-rad-data-tooling-workbench.v1", "ok": ok, "decision": "approved" if ok else "blocked", "contract": contract, "connection_test": connection_test, "query_preview": query_preview, "method_invocation": method_invocation, "resource_publish": resource_publish, "actionable_operations": actionable_operations, "local_maintenance": local_maintenance, "conflict_review": conflict_review, "driver_matrix": driver_matrix, "schema_diff": schema_diff, "transaction_rehearsal": transaction_rehearsal, "offline_replay": offline_replay, "service_tests": service_tests, "schema_browser": schema_browser, "parameter_binding": parameter_binding, "dataset_fields": dataset_fields, "service_security": service_security, "offline_queue_integrity": offline_queue_integrity, "migration_rehearsal": migration_rehearsal, "dataset_designer": dataset_designer, "service_invocation_traces": service_invocation_traces, "maintenance_schedule": maintenance_schedule, "schema_checkpoints": schema_checkpoints, "data_modules": data_modules, "query_plan_visualizer": query_plan_visualizer, "relationship_navigation": relationship_navigation, "service_versioning": service_versioning, "connection_failover": connection_failover, "change_capture_lineage": change_capture_lineage, "connection_pooling": connection_pooling, "stored_procedures": stored_procedures, "sql_authoring_safety": sql_authoring_safety, "backup_restore_verification": backup_restore_verification, "replication_monitor": replication_monitor, "service_telemetry": service_telemetry, "dataset_state_machine": dataset_state_machine, "lookup_editor_pipeline": lookup_editor_pipeline, "relationship_lookup_lifecycle": relationship_lookup_lifecycle, "module_runtime_smoke": module_runtime_smoke, "data_module_artifacts": data_module_artifacts, "data_module_test_artifacts": data_module_test_artifacts, "deep_data_tooling_module_artifacts": deep_data_tooling_module_artifacts, "deep_data_tooling_module_test_artifacts": deep_data_tooling_module_test_artifacts, "runtime_replay": runtime_replay, "design_runtime_replay": design_runtime_replay, "publish_transaction_replay": publish_transaction_replay, "failover_transaction_replay": failover_transaction_replay, "readiness": readiness, "checks": checks, "blocking_gaps": tuple(check for check in checks if not check["ok"])}}
+    return {{"format": "appgen.generated-rad-data-tooling-workbench.v1", "ok": ok, "decision": "approved" if ok else "blocked", "contract": contract, "connection_test": connection_test, "query_preview": query_preview, "method_invocation": method_invocation, "resource_publish": resource_publish, "actionable_operations": actionable_operations, "local_maintenance": local_maintenance, "conflict_review": conflict_review, "driver_matrix": driver_matrix, "schema_diff": schema_diff, "transaction_rehearsal": transaction_rehearsal, "offline_replay": offline_replay, "service_tests": service_tests, "schema_browser": schema_browser, "parameter_binding": parameter_binding, "dataset_fields": dataset_fields, "service_security": service_security, "offline_queue_integrity": offline_queue_integrity, "migration_rehearsal": migration_rehearsal, "dataset_designer": dataset_designer, "service_invocation_traces": service_invocation_traces, "maintenance_schedule": maintenance_schedule, "schema_checkpoints": schema_checkpoints, "data_modules": data_modules, "query_plan_visualizer": query_plan_visualizer, "relationship_navigation": relationship_navigation, "service_versioning": service_versioning, "connection_failover": connection_failover, "change_capture_lineage": change_capture_lineage, "connection_pooling": connection_pooling, "stored_procedures": stored_procedures, "sql_authoring_safety": sql_authoring_safety, "backup_restore_verification": backup_restore_verification, "replication_monitor": replication_monitor, "service_telemetry": service_telemetry, "dataset_state_machine": dataset_state_machine, "lookup_editor_pipeline": lookup_editor_pipeline, "relationship_lookup_lifecycle": relationship_lookup_lifecycle, "module_runtime_smoke": module_runtime_smoke, "data_module_artifacts": data_module_artifacts, "data_module_test_artifacts": data_module_test_artifacts, "deep_data_tooling_module_artifacts": deep_data_tooling_module_artifacts, "deep_data_tooling_module_test_artifacts": deep_data_tooling_module_test_artifacts, "enterprise_data_ide_module_artifacts": enterprise_data_ide_module_artifacts, "enterprise_data_ide_module_test_artifacts": enterprise_data_ide_module_test_artifacts, "runtime_replay": runtime_replay, "design_runtime_replay": design_runtime_replay, "publish_transaction_replay": publish_transaction_replay, "failover_transaction_replay": failover_transaction_replay, "readiness": readiness, "checks": checks, "blocking_gaps": tuple(check for check in checks if not check["ok"])}}
 
 
 def mobile_native_api_contract():
@@ -59056,6 +59116,8 @@ def _local_component_paths():
         "custom_designer_family_module_tests",
         "binding_designer_family_modules",
         "binding_designer_family_module_tests",
+        "enterprise_data_ide_modules",
+        "enterprise_data_ide_module_tests",
     ):
         base = root / folder
         if not base.exists():
@@ -59559,7 +59621,7 @@ def platform_parity_requirement_audit_contract():
         {{"id": "native_runtime_streaming", "ok": runtime["ok"] and runtime_readiness["ok"] and {{"stream_identity_ready", "unit_semantics_ready", "compile_targets_ready", "diagnostics_route_ready", "debug_preview_ready", "runtime_preview_ready", "phase_order_ready"}} <= {{check["id"] for check in runtime_readiness["checks"] if check["ok"]}} and {{"form_stream_schema", "runtime_session_replay", "design_edit_session_replay", "runtime_debug_authoring", "native_form_modules", "native_form_module_tests", "runtime_operation_modules", "runtime_operation_module_tests", "compiler_runtime_modules", "compiler_runtime_module_tests", "deep_runtime_modules", "deep_runtime_module_tests"}} <= {{check["id"] for check in runtime["checks"] if check["ok"]}}, "deep_checks": ("stream_identity_ready", "compile_targets_ready", "diagnostics_route_ready", "debug_preview_ready", "runtime_preview_ready", "runtime_debug_authoring", "native_form_modules", "native_form_module_tests", "runtime_operation_modules", "runtime_operation_module_tests", "compiler_runtime_modules", "compiler_runtime_module_tests", "deep_runtime_modules", "deep_runtime_module_tests", "phase_order_ready"), "evidence": {{"workbench": runtime, "readiness": runtime_readiness}}}},
         {{"id": "inspector_design_surface", "ok": inspector["ok"] and inspector_readiness["ok"] and {{"editor_metadata_ready", "property_event_ready", "component_custom_designer_ready", "state_design_surface_ready", "binding_handler_ready", "lifecycle_round_trip_ready", "phase_order_ready"}} <= {{check["id"] for check in inspector_readiness["checks"] if check["ok"]}} and {{"property_editor_types", "event_editor_lifecycle", "component_editor_transaction", "custom_designer_registration_replay", "editor_lifecycle_replay", "inspector_generated_modules", "inspector_generated_module_tests", "property_editor_family_contract", "property_editor_family_modules", "property_editor_family_module_tests", "event_editor_family_contract", "event_editor_family_modules", "event_editor_family_module_tests", "component_editor_family_contract", "component_editor_family_modules", "component_editor_family_module_tests", "custom_designer_family_contract", "custom_designer_family_modules", "custom_designer_family_module_tests"}} <= {{check["id"] for check in inspector["checks"] if check["ok"]}}, "deep_checks": ("editor_lifecycle_replay", "design_surface_transaction_replay", "custom_designer_registration_replay", "inspector_generated_modules", "inspector_generated_module_tests", "property_editor_family_contract", "property_editor_family_modules", "property_editor_family_module_tests", "event_editor_family_contract", "event_editor_family_modules", "event_editor_family_module_tests", "component_editor_family_contract", "component_editor_family_modules", "component_editor_family_module_tests", "custom_designer_family_contract", "custom_designer_family_modules", "custom_designer_family_module_tests", "phase_order_ready"), "evidence": {{"workbench": inspector, "readiness": inspector_readiness}}}},
         {{"id": "visual_binding_designer", "ok": bindings["ok"] and binding_readiness["ok"] and {{"graph_authoring_ready", "validation_transaction_ready", "preview_runtime_ready", "diagnostics_conflict_ready", "offline_accessible_runtime_ready", "designer_release_replay_ready", "inspector_bridge_ready", "phase_order_ready"}} <= {{check["id"] for check in binding_readiness["checks"] if check["ok"]}} and bindings["designer_transaction_replay"]["ok"] and bindings["design_runtime_replay"]["ok"] and bindings["lifecycle_release_replay"]["ok"] and {{"binding_generated_modules", "binding_generated_module_tests", "binding_designer_family_contract", "binding_designer_family_modules", "binding_designer_family_module_tests"}} <= {{check["id"] for check in bindings["checks"] if check["ok"]}}, "deep_checks": ("binding_lifecycle_release_replay", "design_runtime_session_replay", "designer_transaction_replay", "binding_generated_modules", "binding_generated_module_tests", "binding_designer_family_contract", "binding_designer_family_modules", "binding_designer_family_module_tests", "phase_order_ready"), "evidence": {{"workbench": bindings, "readiness": binding_readiness}}}},
-        {{"id": "native_data_service_tooling", "ok": data_tooling["ok"] and data_readiness["ok"] and {{"connection_ready", "dataset_ready", "publish_ready", "offline_replay_ready", "replication_failover_ready", "diagnostics_ready", "phase_order_ready"}} <= {{check["id"] for check in data_readiness["checks"] if check["ok"]}} and data_tooling["runtime_replay"]["ok"] and data_tooling["publish_transaction_replay"]["ok"] and {{"relationship_lookup_lifecycle_replay", "data_tooling_modules", "data_tooling_module_tests", "deep_data_tooling_modules", "deep_data_tooling_module_tests"}} <= {{check["id"] for check in data_tooling["checks"] if check["ok"]}}, "deep_checks": ("relationship_lookup_lifecycle_replay", "data_tooling_modules", "data_tooling_module_tests", "deep_data_tooling_modules", "deep_data_tooling_module_tests", "data_tooling_design_runtime_session_replay", "data_tooling_publish_transaction_replay", "phase_order_ready"), "evidence": {{"workbench": data_tooling, "readiness": data_readiness}}}},
+        {{"id": "native_data_service_tooling", "ok": data_tooling["ok"] and data_readiness["ok"] and {{"connection_ready", "dataset_ready", "publish_ready", "offline_replay_ready", "replication_failover_ready", "diagnostics_ready", "phase_order_ready"}} <= {{check["id"] for check in data_readiness["checks"] if check["ok"]}} and data_tooling["runtime_replay"]["ok"] and data_tooling["publish_transaction_replay"]["ok"] and {{"relationship_lookup_lifecycle_replay", "data_tooling_modules", "data_tooling_module_tests", "deep_data_tooling_modules", "deep_data_tooling_module_tests", "enterprise_data_ide_modules", "enterprise_data_ide_module_tests"}} <= {{check["id"] for check in data_tooling["checks"] if check["ok"]}}, "deep_checks": ("relationship_lookup_lifecycle_replay", "data_tooling_modules", "data_tooling_module_tests", "deep_data_tooling_modules", "deep_data_tooling_module_tests", "enterprise_data_ide_modules", "enterprise_data_ide_module_tests", "data_tooling_design_runtime_session_replay", "data_tooling_publish_transaction_replay", "phase_order_ready"), "evidence": {{"workbench": data_tooling, "readiness": data_readiness}}}},
         {{"id": "package_installation_ecosystem", "ok": package_manager["ok"] and package_lifecycle["ok"] and package_readiness["ok"] and {{"trust_before_preview", "preview_before_registry_commit", "registry_before_update", "rollback_before_cleanup", "operation_surface_ready", "phase_order_ready"}} <= {{check["id"] for check in package_readiness["checks"] if check["ok"]}} and {{"lifecycle_transaction_replay", "package_manager_modules", "package_manager_module_tests"}} <= {{check["id"] for check in package_manager["checks"] if check["ok"]}}, "deep_checks": ("trust_before_preview", "preview_before_registry_commit", "registry_before_update", "rollback_before_cleanup", "package_manager_modules", "package_manager_module_tests", "phase_order_ready"), "evidence": {{"manager": package_manager, "lifecycle": package_lifecycle, "readiness": package_readiness}}}},
         {{"id": "device_api_component_coverage", "ok": mobile["ok"] and mobile_readiness["ok"] and mobile_lifecycle["ok"] and {{"privacy_permission_ready", "simulator_ready", "bridge_component_ready", "fallback_lifecycle_ready", "runtime_delivery_ready", "designer_capability_ready", "phase_order_ready"}} <= {{check["id"] for check in mobile_readiness["checks"] if check["ok"]}} and "runtime_and_designer_replay_aligned" in mobile_lifecycle["guards"] and {{"device_component_modules", "device_component_module_tests"}} <= {{check["id"] for check in mobile["checks"] if check["ok"]}}, "deep_checks": ("privacy_permission_ready", "bridge_component_ready", "runtime_delivery_ready", "designer_capability_ready", "device_component_modules", "device_component_module_tests", "phase_order_ready"), "evidence": {{"workbench": mobile, "lifecycle": mobile_lifecycle, "readiness": mobile_readiness}}}},
         {{"id": "cross_target_visual_depth", "ok": visual["ok"] and visual_readiness["ok"] and visual_lifecycle["ok"] and {{"style_ready", "timeline_ready", "effects_ready", "scene_assets_ready", "hit_test_component_ready", "runtime_designer_replay_ready", "runtime_package_ready", "phase_order_ready"}} <= {{check["id"] for check in visual_readiness["checks"] if check["ok"]}} and {{"visual_runtime_replay", "visual_lifecycle_replay", "visual_component_modules", "visual_component_module_tests", "visual_design_modules", "visual_design_module_tests", "visual_runtime_pipeline_modules", "visual_runtime_pipeline_module_tests"}} <= {{check["id"] for check in visual["checks"] if check["ok"]}}, "deep_checks": ("style_ready", "timeline_ready", "effects_ready", "scene_assets_ready", "runtime_designer_replay_ready", "runtime_package_ready", "visual_component_modules", "visual_component_module_tests", "visual_design_modules", "visual_design_module_tests", "visual_runtime_pipeline_modules", "visual_runtime_pipeline_module_tests", "phase_order_ready"), "evidence": {{"workbench": visual, "lifecycle": visual_lifecycle, "readiness": visual_readiness}}}},

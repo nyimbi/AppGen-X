@@ -10761,6 +10761,8 @@ def rad_data_tooling_workbench() -> dict:
     data_module_test_artifacts = data_tooling_module_test_file_manifest()
     deep_data_tooling_module_artifacts = deep_data_tooling_module_file_manifest()
     deep_data_tooling_module_test_artifacts = deep_data_tooling_module_test_file_manifest()
+    enterprise_data_ide_module_artifacts = enterprise_data_ide_module_file_manifest()
+    enterprise_data_ide_module_test_artifacts = enterprise_data_ide_module_test_file_manifest()
     runtime_replay = data_tooling_runtime_replay_contract()
     design_runtime_replay = data_tooling_design_runtime_session_replay_contract()
     publish_transaction_replay = data_tooling_publish_transaction_replay_contract()
@@ -11090,6 +11092,21 @@ def rad_data_tooling_workbench() -> dict:
             "evidence": deep_data_tooling_module_test_artifacts,
         },
         {
+            "id": "enterprise_data_ide_modules",
+            "ok": len(enterprise_data_ide_module_artifacts) == 6
+            and all(item["ok"] and "run_ide_operation" in item["exports"] for item in enterprise_data_ide_module_artifacts),
+            "evidence": enterprise_data_ide_module_artifacts,
+        },
+        {
+            "id": "enterprise_data_ide_module_tests",
+            "ok": len(enterprise_data_ide_module_test_artifacts) == 6
+            and all(
+                item["ok"] and "test_enterprise_data_ide_module_smoke" in item["exports"]
+                for item in enterprise_data_ide_module_test_artifacts
+            ),
+            "evidence": enterprise_data_ide_module_test_artifacts,
+        },
+        {
             "id": "data_tooling_runtime_replay",
             "ok": runtime_replay["ok"]
             and {"connection_probe_rolls_back", "offline_replay_pauses_for_review"} <= set(runtime_replay["guards"])
@@ -11185,6 +11202,8 @@ def rad_data_tooling_workbench() -> dict:
         "data_module_test_artifacts": data_module_test_artifacts,
         "deep_data_tooling_module_artifacts": deep_data_tooling_module_artifacts,
         "deep_data_tooling_module_test_artifacts": deep_data_tooling_module_test_artifacts,
+        "enterprise_data_ide_module_artifacts": enterprise_data_ide_module_artifacts,
+        "enterprise_data_ide_module_test_artifacts": enterprise_data_ide_module_test_artifacts,
         "runtime_replay": runtime_replay,
         "design_runtime_replay": design_runtime_replay,
         "publish_transaction_replay": publish_transaction_replay,
@@ -15067,6 +15086,8 @@ def platform_parity_requirement_audit_contract() -> dict:
                 "data_tooling_module_tests",
                 "deep_data_tooling_modules",
                 "deep_data_tooling_module_tests",
+                "enterprise_data_ide_modules",
+                "enterprise_data_ide_module_tests",
             } <= {check["id"] for check in data_tooling["checks"] if check["ok"]},
             "deep_checks": (
                 "relationship_lookup_lifecycle_replay",
@@ -15074,6 +15095,8 @@ def platform_parity_requirement_audit_contract() -> dict:
                 "data_tooling_module_tests",
                 "deep_data_tooling_modules",
                 "deep_data_tooling_module_tests",
+                "enterprise_data_ide_modules",
+                "enterprise_data_ide_module_tests",
                 "data_tooling_design_runtime_session_replay",
                 "data_tooling_publish_transaction_replay",
                 "phase_order_ready",
@@ -21111,6 +21134,55 @@ def deep_data_tooling_module_test_file_manifest() -> tuple[dict, ...]:
     )
 
 
+def enterprise_data_ide_module_file_manifest() -> tuple[dict, ...]:
+    """Return generated enterprise data IDE module files expected in apps."""
+    modules = (
+        ("connection_designer_module", "connection_designer"),
+        ("dataset_state_module", "dataset_state"),
+        ("service_publisher_module", "service_publisher"),
+        ("embedded_store_module", "embedded_store"),
+        ("failover_replay_module", "failover_replay"),
+        ("relationship_lookup_module", "relationship_lookup"),
+    )
+    exports = (
+        "module_contract",
+        "ide_surface_manifest",
+        "run_ide_operation",
+        "runtime_context",
+        "smoke_test",
+    )
+    return tuple(
+        {
+            "module": module,
+            "surface": surface,
+            "path": f"app/enterprise_data_ide_modules/{module}.py",
+            "exports": exports,
+            "ok": bool(module) and bool(surface),
+        }
+        for module, surface in modules
+    )
+
+
+def enterprise_data_ide_module_test_file_manifest() -> tuple[dict, ...]:
+    """Return generated enterprise data IDE test files expected in apps."""
+    return tuple(
+        {
+            "module": item["module"],
+            "surface": item["surface"],
+            "path": item["path"].replace("app/enterprise_data_ide_modules/", "app/enterprise_data_ide_module_tests/test_"),
+            "target": item["path"],
+            "exports": (
+                "load_enterprise_data_ide_module",
+                "test_enterprise_data_ide_module_contract",
+                "test_enterprise_data_ide_module_smoke",
+                "smoke_test",
+            ),
+            "ok": item["ok"],
+        }
+        for item in enterprise_data_ide_module_file_manifest()
+    )
+
+
 def inspector_module_file_manifest() -> tuple[dict, ...]:
     """Return generated Object Inspector editor module files expected in apps."""
     modules = (
@@ -22839,6 +22911,10 @@ def form_designer_generation_smoke_audit(source: str = FORM_DESIGNER_SAMPLE_DSL)
     data_module_test_artifacts = tuple(item["path"] for item in data_tooling_module_test_file_manifest())
     deep_data_tooling_module_artifacts = tuple(item["path"] for item in deep_data_tooling_module_file_manifest())
     deep_data_tooling_module_test_artifacts = tuple(item["path"] for item in deep_data_tooling_module_test_file_manifest())
+    enterprise_data_ide_module_artifacts = tuple(item["path"] for item in enterprise_data_ide_module_file_manifest())
+    enterprise_data_ide_module_test_artifacts = tuple(
+        item["path"] for item in enterprise_data_ide_module_test_file_manifest()
+    )
     inspector_module_artifacts = tuple(item["path"] for item in inspector_module_file_manifest())
     inspector_module_test_artifacts = tuple(item["path"] for item in inspector_module_test_file_manifest())
     component_wiring_module_artifacts = tuple(item["path"] for item in component_wiring_module_file_manifest())
@@ -22907,6 +22983,8 @@ def form_designer_generation_smoke_audit(source: str = FORM_DESIGNER_SAMPLE_DSL)
         *data_module_test_artifacts,
         *deep_data_tooling_module_artifacts,
         *deep_data_tooling_module_test_artifacts,
+        *enterprise_data_ide_module_artifacts,
+        *enterprise_data_ide_module_test_artifacts,
         *inspector_module_artifacts,
         *inspector_module_test_artifacts,
         *component_wiring_module_artifacts,
@@ -22971,6 +23049,8 @@ def form_designer_generation_smoke_audit(source: str = FORM_DESIGNER_SAMPLE_DSL)
         *data_module_test_artifacts,
         *deep_data_tooling_module_artifacts,
         *deep_data_tooling_module_test_artifacts,
+        *enterprise_data_ide_module_artifacts,
+        *enterprise_data_ide_module_test_artifacts,
         *inspector_module_artifacts,
         *inspector_module_test_artifacts,
         *component_wiring_module_artifacts,
@@ -23344,6 +23424,8 @@ def form_designer_generation_smoke_audit(source: str = FORM_DESIGNER_SAMPLE_DSL)
         "data_module_tests_ready",
         "deep_data_tooling_modules_ready",
         "deep_data_tooling_module_tests_ready",
+        "enterprise_data_ide_modules_ready",
+        "enterprise_data_ide_module_tests_ready",
         "publish_transaction_replay",
         "failover_transaction_replay",
         "runtime_replay",
@@ -23411,6 +23493,8 @@ def form_designer_generation_smoke_audit(source: str = FORM_DESIGNER_SAMPLE_DSL)
             and len(data_module_test_artifacts) == len(data_module_generation_contract()["artifacts"])
             and len(deep_data_tooling_module_artifacts) == 8
             and len(deep_data_tooling_module_test_artifacts) == 8
+            and len(enterprise_data_ide_module_artifacts) == 6
+            and len(enterprise_data_ide_module_test_artifacts) == 6
             and len(inspector_module_artifacts) == 6
             and len(inspector_module_test_artifacts) == 6
             and len(component_wiring_module_artifacts) == 4
@@ -23457,6 +23541,8 @@ def form_designer_generation_smoke_audit(source: str = FORM_DESIGNER_SAMPLE_DSL)
             "data_module_test_count": len(data_module_test_artifacts),
             "deep_data_tooling_module_count": len(deep_data_tooling_module_artifacts),
             "deep_data_tooling_module_test_count": len(deep_data_tooling_module_test_artifacts),
+            "enterprise_data_ide_module_count": len(enterprise_data_ide_module_artifacts),
+            "enterprise_data_ide_module_test_count": len(enterprise_data_ide_module_test_artifacts),
             "inspector_module_count": len(inspector_module_artifacts),
             "inspector_module_test_count": len(inspector_module_test_artifacts),
             "component_wiring_module_count": len(component_wiring_module_artifacts),

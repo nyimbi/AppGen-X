@@ -710,6 +710,11 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   release gates require those interaction families alongside the existing
   component-wiring and handler-definition modules before claiming the visual
   drop/wire/handler authoring path is ready.
+- Enterprise data IDE depth is now promoted into the main data-tooling
+  workbench and generated requirement gates: connection designer, dataset
+  state, service publisher, embedded store, failover replay, and relationship
+  lookup modules and tests are emitted, compiled, smoked, and required by
+  source and generated data-runtime evidence.
 
 ## Open Completion Areas
 
