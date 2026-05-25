@@ -15692,6 +15692,113 @@ def rad_parity_workbench(existing_paths: set[str] | None = None) -> dict:
         "deep_runtime_module_tests",
     )
     passing_runtime_workbench_checks = tuple(check["id"] for check in runtime_workbench["checks"] if check["ok"])
+    required_stream_round_trip_features = (
+        "component_identity",
+        "published_properties",
+        "nested_children",
+        "event_bindings",
+    )
+    passing_stream_round_trip_features = tuple(streaming_contract["round_trip"])
+    required_binary_stream_guards = (
+        "magic_header_validated",
+        "payload_length_validated",
+        "checksum_validated",
+    )
+    passing_binary_stream_guards = tuple(
+        streaming_contract["binary_round_trip"]["guards"]
+        if streaming_contract["binary_round_trip"]["ok"]
+        else ()
+    )
+    required_stream_variant_formats = ("text", "binary", "json")
+    passing_stream_variant_formats = tuple(
+        variant["format"]
+        for variant in streaming_contract["stream_variants"]["variants"]
+        if variant["round_trip"]
+    )
+    required_runtime_target_matrix = ("win32", "win64", "macos", "ios", "android")
+    passing_runtime_target_matrix = tuple(runtime_workbench["compiler"]["targets"])
+    required_runtime_operation_names = (
+        "open_design_stream",
+        "apply_property_delta",
+        "round_trip_stream",
+        "compile_preview",
+        "refresh_resources",
+        "reload_runtime_preview",
+    )
+    passing_runtime_operation_names = tuple(runtime_workbench["actionable_operations"]["operation_names"])
+    required_native_form_module_kinds = (
+        "stream",
+        "unit",
+        "resource",
+        "compile",
+        "runtime_load",
+        "design_edit",
+    )
+    passing_native_form_module_kinds = tuple(
+        artifact["kind"] for artifact in runtime_workbench["native_form_modules"] if artifact["ok"]
+    )
+    passing_native_form_module_test_kinds = tuple(
+        artifact["kind"] for artifact in runtime_workbench["native_form_module_tests"] if artifact["ok"]
+    )
+    required_runtime_operation_module_names = required_runtime_operation_names
+    passing_runtime_operation_module_names = tuple(
+        artifact["operation"] for artifact in runtime_workbench["runtime_operation_modules"] if artifact["ok"]
+    )
+    passing_runtime_operation_module_test_names = tuple(
+        artifact["operation"] for artifact in runtime_workbench["runtime_operation_module_tests"] if artifact["ok"]
+    )
+    required_compiler_runtime_surfaces = (
+        "compiler_pipeline",
+        "unit_parse",
+        "semantic_validation",
+        "incremental_compile",
+        "diagnostic_mapping",
+        "toolchain_adapter",
+    )
+    passing_compiler_runtime_surfaces = tuple(
+        artifact["surface"] for artifact in runtime_workbench["compiler_runtime_modules"] if artifact["ok"]
+    )
+    passing_compiler_runtime_test_surfaces = tuple(
+        artifact["surface"] for artifact in runtime_workbench["compiler_runtime_module_tests"] if artifact["ok"]
+    )
+    required_deep_runtime_surfaces = (
+        "package_target_matrix",
+        "language_frontend",
+        "static_analysis",
+        "compiler_recovery",
+        "form_stream_schema",
+        "stream_migration",
+        "debug_symbols",
+        "runtime_memory_model",
+    )
+    passing_deep_runtime_surfaces = tuple(
+        artifact["surface"] for artifact in runtime_workbench["deep_runtime_modules"] if artifact["ok"]
+    )
+    passing_deep_runtime_test_surfaces = tuple(
+        artifact["surface"] for artifact in runtime_workbench["deep_runtime_module_tests"] if artifact["ok"]
+    )
+    required_runtime_readiness_phases = (
+        "decode_design_stream",
+        "parse_unit_and_cross_check",
+        "plan_compile_and_targets",
+        "normalize_diagnostics",
+        "reload_runtime_preview",
+    )
+    passing_runtime_readiness_phases = tuple(
+        phase["phase"] for phase in runtime_workbench["readiness"]["phases"] if phase["ok"]
+    )
+    required_runtime_readiness_checks = (
+        "stream_identity_ready",
+        "unit_semantics_ready",
+        "compile_targets_ready",
+        "diagnostics_route_ready",
+        "runtime_preview_ready",
+        "operation_surface_ready",
+        "phase_order_ready",
+    )
+    passing_runtime_readiness_checks = tuple(
+        check["id"] for check in runtime_workbench["readiness"]["checks"] if check["ok"]
+    )
     required_third_party_categories = ("grid", "reports", "charts", "database", "network", "animation")
     passing_third_party_categories = tuple(sorted(third_party_categories))
     required_third_party_package_ids = required_install_package_ids
@@ -15823,6 +15930,21 @@ def rad_parity_workbench(existing_paths: set[str] | None = None) -> dict:
             "ok": set(required_stream_formats) <= set(passing_stream_formats)
             and set(required_compiler_stages) <= set(passing_compiler_stages)
             and set(required_runtime_replay_phases) <= set(passing_runtime_replay_phases)
+            and set(required_stream_round_trip_features) <= set(passing_stream_round_trip_features)
+            and set(required_binary_stream_guards) <= set(passing_binary_stream_guards)
+            and set(required_stream_variant_formats) <= set(passing_stream_variant_formats)
+            and set(required_runtime_target_matrix) <= set(passing_runtime_target_matrix)
+            and set(required_runtime_operation_names) <= set(passing_runtime_operation_names)
+            and set(required_native_form_module_kinds) <= set(passing_native_form_module_kinds)
+            and set(required_native_form_module_kinds) <= set(passing_native_form_module_test_kinds)
+            and set(required_runtime_operation_module_names) <= set(passing_runtime_operation_module_names)
+            and set(required_runtime_operation_module_names) <= set(passing_runtime_operation_module_test_names)
+            and set(required_compiler_runtime_surfaces) <= set(passing_compiler_runtime_surfaces)
+            and set(required_compiler_runtime_surfaces) <= set(passing_compiler_runtime_test_surfaces)
+            and set(required_deep_runtime_surfaces) <= set(passing_deep_runtime_surfaces)
+            and set(required_deep_runtime_surfaces) <= set(passing_deep_runtime_test_surfaces)
+            and set(required_runtime_readiness_phases) <= set(passing_runtime_readiness_phases)
+            and set(required_runtime_readiness_checks) <= set(passing_runtime_readiness_checks)
             and runtime_workbench["ok"],
             "required_stream_formats": required_stream_formats,
             "passing_stream_formats": passing_stream_formats,
@@ -15830,14 +15952,65 @@ def rad_parity_workbench(existing_paths: set[str] | None = None) -> dict:
             "passing_compiler_stages": passing_compiler_stages,
             "required_runtime_phases": required_runtime_replay_phases,
             "passing_runtime_phases": passing_runtime_replay_phases,
+            "required_round_trip_features": required_stream_round_trip_features,
+            "passing_round_trip_features": passing_stream_round_trip_features,
+            "required_binary_stream_guards": required_binary_stream_guards,
+            "passing_binary_stream_guards": passing_binary_stream_guards,
+            "required_stream_variant_formats": required_stream_variant_formats,
+            "passing_stream_variant_formats": passing_stream_variant_formats,
+            "required_target_matrix": required_runtime_target_matrix,
+            "passing_target_matrix": passing_runtime_target_matrix,
+            "required_operation_names": required_runtime_operation_names,
+            "passing_operation_names": passing_runtime_operation_names,
+            "required_native_form_module_kinds": required_native_form_module_kinds,
+            "passing_native_form_module_kinds": passing_native_form_module_kinds,
+            "required_native_form_module_test_kinds": required_native_form_module_kinds,
+            "passing_native_form_module_test_kinds": passing_native_form_module_test_kinds,
+            "required_runtime_operation_modules": required_runtime_operation_module_names,
+            "passing_runtime_operation_modules": passing_runtime_operation_module_names,
+            "required_runtime_operation_module_tests": required_runtime_operation_module_names,
+            "passing_runtime_operation_module_tests": passing_runtime_operation_module_test_names,
+            "required_compiler_runtime_surfaces": required_compiler_runtime_surfaces,
+            "passing_compiler_runtime_surfaces": passing_compiler_runtime_surfaces,
+            "required_compiler_runtime_test_surfaces": required_compiler_runtime_surfaces,
+            "passing_compiler_runtime_test_surfaces": passing_compiler_runtime_test_surfaces,
+            "required_deep_runtime_surfaces": required_deep_runtime_surfaces,
+            "passing_deep_runtime_surfaces": passing_deep_runtime_surfaces,
+            "required_deep_runtime_test_surfaces": required_deep_runtime_surfaces,
+            "passing_deep_runtime_test_surfaces": passing_deep_runtime_test_surfaces,
+            "required_readiness_phases": required_runtime_readiness_phases,
+            "passing_readiness_phases": passing_runtime_readiness_phases,
+            "required_readiness_checks": required_runtime_readiness_checks,
+            "passing_readiness_checks": passing_runtime_readiness_checks,
             "evidence": {"streaming": streaming_contract, "runtime": runtime_workbench},
         },
         {
             "id": "pascal_runtime_workbench",
             "ok": runtime_workbench["ok"]
-            and set(required_runtime_workbench_checks) <= set(passing_runtime_workbench_checks),
+            and set(required_runtime_workbench_checks) <= set(passing_runtime_workbench_checks)
+            and set(required_runtime_operation_names) <= set(passing_runtime_operation_names)
+            and set(required_native_form_module_kinds) <= set(passing_native_form_module_kinds)
+            and set(required_runtime_operation_module_names) <= set(passing_runtime_operation_module_names)
+            and set(required_compiler_runtime_surfaces) <= set(passing_compiler_runtime_surfaces)
+            and set(required_deep_runtime_surfaces) <= set(passing_deep_runtime_surfaces)
+            and set(required_runtime_readiness_phases) <= set(passing_runtime_readiness_phases)
+            and set(required_runtime_readiness_checks) <= set(passing_runtime_readiness_checks),
             "required_checks": required_runtime_workbench_checks,
             "passing_checks": passing_runtime_workbench_checks,
+            "required_operation_names": required_runtime_operation_names,
+            "passing_operation_names": passing_runtime_operation_names,
+            "required_native_form_module_kinds": required_native_form_module_kinds,
+            "passing_native_form_module_kinds": passing_native_form_module_kinds,
+            "required_runtime_operation_modules": required_runtime_operation_module_names,
+            "passing_runtime_operation_modules": passing_runtime_operation_module_names,
+            "required_compiler_runtime_surfaces": required_compiler_runtime_surfaces,
+            "passing_compiler_runtime_surfaces": passing_compiler_runtime_surfaces,
+            "required_deep_runtime_surfaces": required_deep_runtime_surfaces,
+            "passing_deep_runtime_surfaces": passing_deep_runtime_surfaces,
+            "required_readiness_phases": required_runtime_readiness_phases,
+            "passing_readiness_phases": passing_runtime_readiness_phases,
+            "required_readiness_checks": required_runtime_readiness_checks,
+            "passing_readiness_checks": passing_runtime_readiness_checks,
             "evidence": runtime_workbench,
         },
         {

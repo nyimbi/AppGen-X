@@ -3257,11 +3257,73 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     assert set(runtime_stream_gate["required_stream_formats"]) <= set(runtime_stream_gate["passing_stream_formats"])
     assert set(runtime_stream_gate["required_compiler_stages"]) <= set(runtime_stream_gate["passing_compiler_stages"])
     assert set(runtime_stream_gate["required_runtime_phases"]) <= set(runtime_stream_gate["passing_runtime_phases"])
+    assert set(runtime_stream_gate["required_round_trip_features"]) <= set(
+        runtime_stream_gate["passing_round_trip_features"]
+    )
+    assert set(runtime_stream_gate["required_binary_stream_guards"]) <= set(
+        runtime_stream_gate["passing_binary_stream_guards"]
+    )
+    assert set(runtime_stream_gate["required_stream_variant_formats"]) <= set(
+        runtime_stream_gate["passing_stream_variant_formats"]
+    )
+    assert set(runtime_stream_gate["required_target_matrix"]) <= set(runtime_stream_gate["passing_target_matrix"])
+    assert set(runtime_stream_gate["required_operation_names"]) <= set(runtime_stream_gate["passing_operation_names"])
+    assert set(runtime_stream_gate["required_native_form_module_kinds"]) <= set(
+        runtime_stream_gate["passing_native_form_module_kinds"]
+    )
+    assert set(runtime_stream_gate["required_native_form_module_test_kinds"]) <= set(
+        runtime_stream_gate["passing_native_form_module_test_kinds"]
+    )
+    assert set(runtime_stream_gate["required_runtime_operation_modules"]) <= set(
+        runtime_stream_gate["passing_runtime_operation_modules"]
+    )
+    assert set(runtime_stream_gate["required_runtime_operation_module_tests"]) <= set(
+        runtime_stream_gate["passing_runtime_operation_module_tests"]
+    )
+    assert set(runtime_stream_gate["required_compiler_runtime_surfaces"]) <= set(
+        runtime_stream_gate["passing_compiler_runtime_surfaces"]
+    )
+    assert set(runtime_stream_gate["required_compiler_runtime_test_surfaces"]) <= set(
+        runtime_stream_gate["passing_compiler_runtime_test_surfaces"]
+    )
+    assert set(runtime_stream_gate["required_deep_runtime_surfaces"]) <= set(
+        runtime_stream_gate["passing_deep_runtime_surfaces"]
+    )
+    assert set(runtime_stream_gate["required_deep_runtime_test_surfaces"]) <= set(
+        runtime_stream_gate["passing_deep_runtime_test_surfaces"]
+    )
+    assert set(runtime_stream_gate["required_readiness_phases"]) <= set(
+        runtime_stream_gate["passing_readiness_phases"]
+    )
+    assert set(runtime_stream_gate["required_readiness_checks"]) <= set(
+        runtime_stream_gate["passing_readiness_checks"]
+    )
     runtime_workbench_gate = next(
         check for check in audit["rad_parity"]["checks"] if check["id"] == "pascal_runtime_workbench"
     )
     assert runtime_workbench_gate["ok"] is True
     assert set(runtime_workbench_gate["required_checks"]) <= set(runtime_workbench_gate["passing_checks"])
+    assert set(runtime_workbench_gate["required_operation_names"]) <= set(
+        runtime_workbench_gate["passing_operation_names"]
+    )
+    assert set(runtime_workbench_gate["required_native_form_module_kinds"]) <= set(
+        runtime_workbench_gate["passing_native_form_module_kinds"]
+    )
+    assert set(runtime_workbench_gate["required_runtime_operation_modules"]) <= set(
+        runtime_workbench_gate["passing_runtime_operation_modules"]
+    )
+    assert set(runtime_workbench_gate["required_compiler_runtime_surfaces"]) <= set(
+        runtime_workbench_gate["passing_compiler_runtime_surfaces"]
+    )
+    assert set(runtime_workbench_gate["required_deep_runtime_surfaces"]) <= set(
+        runtime_workbench_gate["passing_deep_runtime_surfaces"]
+    )
+    assert set(runtime_workbench_gate["required_readiness_phases"]) <= set(
+        runtime_workbench_gate["passing_readiness_phases"]
+    )
+    assert set(runtime_workbench_gate["required_readiness_checks"]) <= set(
+        runtime_workbench_gate["passing_readiness_checks"]
+    )
     inspector_gate = next(
         check for check in audit["rad_parity"]["checks"] if check["id"] == "object_inspector_parity"
     )
