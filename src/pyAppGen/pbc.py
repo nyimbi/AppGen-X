@@ -286,6 +286,40 @@ TAX_LOCALIZATION_ADVANCED_CAPABILITY_KEYS = (
     "mathematical_optimization",
     "tax_mlops_governance",
 )
+INVENTORY_POSITIONING_ADVANCED_CAPABILITY_KEYS = (
+    "event_sourced_inventory_lifecycle",
+    "graph_relational_inventory_topology",
+    "multi_tenant_stock_isolation",
+    "schema_evolution_resilient_inventory_schema",
+    "probabilistic_availability_projection",
+    "real_time_atp_ctp_convergence",
+    "counterfactual_allocation_policy_simulation",
+    "temporal_demand_stockout_forecasting",
+    "autonomous_inventory_reconciliation",
+    "semantic_inventory_event_parsing",
+    "predictive_stockout_spoilage_risk",
+    "self_healing_allocation_route_selection",
+    "zero_knowledge_stock_proof",
+    "immutable_inventory_traceability_trail",
+    "dynamic_inventory_policy_screening",
+    "automated_inventory_control_testing",
+    "universal_api_async_streaming",
+    "cross_node_inventory_federation",
+    "warehouse_order_quality_integration",
+    "decentralized_node_lot_identity",
+    "chaos_engineered_node_tolerance",
+    "quantum_resistant_inventory_authorization",
+    "carbon_aware_fulfillment_scheduling",
+    "algebraic_allocation_optimization",
+    "mechanism_design_channel_allocation",
+    "information_theoretic_inventory_anomaly_detection",
+    "temporal_stock_exposure_stochastic_modeling",
+    "distributed_systems_engineering",
+    "probabilistic_ml_stock_risk",
+    "cryptographic_engineering",
+    "mathematical_optimization",
+    "inventory_mlops_governance",
+)
 IMPLEMENTED_PBC_KEYS = (
     "gl_core",
     "ap_automation",
@@ -293,6 +327,7 @@ IMPLEMENTED_PBC_KEYS = (
     "treasury_cash",
     "asset_lifecycle",
     "tax_localization",
+    "inventory_positioning",
 )
 PBC_ALLOWED_DATASTORE_BACKENDS = (
     "postgresql",
@@ -2518,6 +2553,8 @@ def pbc_implementation_contract(key: str) -> dict:
         advanced_runtime = asset_lifecycle_runtime_capabilities()
     elif key == "tax_localization":
         advanced_runtime = tax_localization_runtime_capabilities()
+    elif key == "inventory_positioning":
+        advanced_runtime = inventory_positioning_runtime_capabilities()
     else:
         advanced_runtime = {}
     source_package = _pbc_source_package_contract(key)
@@ -2800,6 +2837,7 @@ def pbc_implemented_capability_audit(selected_pbcs: tuple[str, ...] | list[str] 
         "treasury_cash": len(TREASURY_CASH_ADVANCED_CAPABILITY_KEYS),
         "asset_lifecycle": len(ASSET_LIFECYCLE_ADVANCED_CAPABILITY_KEYS),
         "tax_localization": len(TAX_LOCALIZATION_ADVANCED_CAPABILITY_KEYS),
+        "inventory_positioning": len(INVENTORY_POSITIONING_ADVANCED_CAPABILITY_KEYS),
     }
     checks = []
     contracts = pbc_implementation_contracts(selected)
@@ -4348,3 +4386,18 @@ from .pbcs.tax_localization import tax_localization_register_tax_rule  # noqa: E
 from .pbcs.tax_localization import tax_localization_runtime_capabilities  # noqa: E402,F401
 from .pbcs.tax_localization import tax_localization_runtime_smoke  # noqa: E402,F401
 from .pbcs.tax_localization import tax_localization_validate_exemption_certificate  # noqa: E402,F401
+from .pbcs.inventory_positioning import INVENTORY_POSITIONING_RUNTIME_CAPABILITY_KEYS  # noqa: E402,F401
+from .pbcs.inventory_positioning import INVENTORY_POSITIONING_STANDARD_FEATURE_KEYS  # noqa: E402,F401
+from .pbcs.inventory_positioning import inventory_positioning_allocate_inventory  # noqa: E402,F401
+from .pbcs.inventory_positioning import inventory_positioning_build_workbench_view  # noqa: E402,F401
+from .pbcs.inventory_positioning import inventory_positioning_calculate_availability  # noqa: E402,F401
+from .pbcs.inventory_positioning import inventory_positioning_configure_runtime  # noqa: E402,F401
+from .pbcs.inventory_positioning import inventory_positioning_empty_state  # noqa: E402,F401
+from .pbcs.inventory_positioning import inventory_positioning_post_goods_receipt  # noqa: E402,F401
+from .pbcs.inventory_positioning import inventory_positioning_release_allocation  # noqa: E402,F401
+from .pbcs.inventory_positioning import inventory_positioning_register_item  # noqa: E402,F401
+from .pbcs.inventory_positioning import inventory_positioning_register_node  # noqa: E402,F401
+from .pbcs.inventory_positioning import inventory_positioning_register_rule  # noqa: E402,F401
+from .pbcs.inventory_positioning import inventory_positioning_runtime_capabilities  # noqa: E402,F401
+from .pbcs.inventory_positioning import inventory_positioning_runtime_smoke  # noqa: E402,F401
+from .pbcs.inventory_positioning import inventory_positioning_set_parameter  # noqa: E402,F401
