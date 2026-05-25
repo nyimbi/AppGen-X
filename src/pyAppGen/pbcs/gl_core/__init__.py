@@ -1,5 +1,6 @@
 """General Ledger Core PBC implementation package."""
 
+from ..source_contract import source_pbc_package_contract
 from .runtime import gl_core_append_ledger_event
 from .runtime import gl_core_build_federated_view
 from .runtime import gl_core_build_projection
@@ -28,3 +29,14 @@ from .runtime import gl_core_simulate_probabilistic_posting
 from .runtime import gl_core_suggest_reconciliation
 from .runtime import gl_core_verify_formal_invariants
 from .runtime import gl_core_verify_identity_credential
+
+PBC_KEY = "gl_core"
+
+
+def implementation_contract() -> dict:
+    runtime = gl_core_runtime_capabilities()
+    contract = source_pbc_package_contract(PBC_KEY, tuple(runtime["capabilities"]))
+    return {
+        **contract,
+        "advanced_runtime": runtime,
+    }

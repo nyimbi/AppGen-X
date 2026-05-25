@@ -8,6 +8,7 @@ event contracts, generated tables, and dependency evidence.
 
 from __future__ import annotations
 
+import importlib
 import importlib.util
 import json
 import py_compile
@@ -2249,6 +2250,33 @@ def pbc_package_loading_smoke_audit() -> dict:
     }
 
 
+def _pbc_source_package_contract(key: str) -> dict:
+    try:
+        module = importlib.import_module(f"pyAppGen.pbcs.{key}")
+        contract = module.implementation_contract()
+    except Exception as exc:  # pragma: no cover - exercised by release audit failures
+        return {
+            "format": "appgen.pbc-source-package.v1",
+            "ok": False,
+            "pbc": key,
+            "error": str(exc),
+        }
+    expected_directory = f"src/pyAppGen/pbcs/{key}"
+    ok = (
+        getattr(module, "PBC_KEY", None) == key
+        and contract.get("pbc") == key
+        and contract.get("implementation_directory") == expected_directory
+        and contract.get("owns_code") is True
+        and contract.get("side_effect_free") is True
+    )
+    return {
+        **contract,
+        "ok": ok,
+        "module": module.__name__,
+        "expected_directory": expected_directory,
+    }
+
+
 def pbc_implementation_contract(key: str) -> dict:
     """Return the generated implementation contract for one built-in PBC."""
     if key not in PBC_CATALOG:
@@ -2301,8 +2329,10 @@ def pbc_implementation_contract(key: str) -> dict:
     )
     advanced_blueprint = _advanced_domain_blueprint(key, service, table_contracts, event_contract, service_methods)
     advanced_runtime = gl_core_runtime_capabilities() if key == "gl_core" else {}
+    source_package = _pbc_source_package_contract(key)
     release_checks = (
         "stable_manifest",
+        "source_package_directory",
         "owned_schema_only",
         "migration_artifact",
         "model_artifact",
@@ -2378,6 +2408,7 @@ def pbc_implementation_contract(key: str) -> dict:
         "domain_functionality": domain_functionality,
         "advanced_domain_blueprint": advanced_blueprint,
         "advanced_runtime": advanced_runtime,
+        "source_package": source_package,
         "models": tuple(
             {
                 "class_name": "".join(part.capitalize() for part in table["owned_table"].split("_")),
@@ -2482,6 +2513,10 @@ def pbc_implementation_release_audit(selected_pbcs: tuple[str, ...] | list[str] 
                 {
                     "id": f"{contract['pbc']}:required_artifacts",
                     "ok": required_artifacts <= artifact_set,
+                },
+                {
+                    "id": f"{contract['pbc']}:source_package_directory",
+                    "ok": contract["source_package"]["ok"],
                 },
                 {
                     "id": f"{contract['pbc']}:owned_tables",
