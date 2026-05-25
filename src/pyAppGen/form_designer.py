@@ -2549,6 +2549,103 @@ def component_package_lifecycle_execution_contract(package_ids: tuple[str, ...] 
     }
 
 
+def component_package_run_installation_scenario_operation(package_id: str = "devexpress-native") -> dict:
+    """Return one callable design-time package lifecycle scenario without mutating the host IDE."""
+    install_plan = third_party_component_install_plan((package_id,))
+    signatures = component_package_signature_validation_contract((package_id,))
+    resolve_metadata = component_package_resolve_metadata_operation(package_id)
+    preview_load = component_package_preview_load_operation(package_id)
+    registry_commit = component_package_registry_commit_operation(package_id)
+    marketplace = component_package_marketplace_publication_contract((package_id,))
+    update_package = component_package_update_operation(package_id)
+    failure_isolation = component_package_failure_isolation_contract((package_id,))
+    rollback = component_package_rollback_contract((package_id,))
+    uninstall_package = component_package_uninstall_operation(package_id)
+    lifecycle_replay = component_package_lifecycle_transaction_replay((package_id,))
+    lifecycle_execution = component_package_lifecycle_execution_contract((package_id,))
+    pipeline = (
+        "resolve_metadata",
+        "validate_signature",
+        "sandbox_preview_load",
+        "commit_registry",
+        "refresh_palette",
+        "publish_marketplace_entry",
+        "run_update_smoke",
+        "simulate_failure",
+        "rollback_registry",
+        "uninstall_cleanup",
+        "verify_registry_clean",
+    )
+    required = {
+        "resolve_metadata",
+        "sandbox_preview_load",
+        "commit_registry",
+        "publish_marketplace_entry",
+        "run_update_smoke",
+        "rollback_registry",
+        "uninstall_cleanup",
+        "verify_registry_clean",
+    }
+    return {
+        "format": "appgen.component-package-installation-scenario-operation.v1",
+        "package_id": package_id,
+        "ok": install_plan["ok"]
+        and signatures["ok"]
+        and resolve_metadata["ok"]
+        and preview_load["ok"]
+        and registry_commit["ok"]
+        and marketplace["ok"]
+        and update_package["ok"]
+        and failure_isolation["ok"]
+        and "restore_registry" in rollback["snapshot"]["restore_order"]
+        and uninstall_package["ok"]
+        and lifecycle_replay["ok"]
+        and lifecycle_execution["ok"]
+        and required <= set(pipeline)
+        and not install_plan["side_effects"]
+        and not signatures["side_effects"]
+        and not resolve_metadata["side_effects"]
+        and not preview_load["side_effects"]
+        and not registry_commit["side_effects"]
+        and not marketplace["side_effects"]
+        and not update_package["side_effects"]
+        and not failure_isolation["side_effects"]
+        and not rollback["side_effects"]
+        and not uninstall_package["side_effects"]
+        and not lifecycle_replay["side_effects"]
+        and not lifecycle_execution["side_effects"],
+        "pipeline": pipeline,
+        "resolve_metadata": resolve_metadata,
+        "signature_validation": signatures,
+        "preview_load": preview_load,
+        "registry_commit": registry_commit,
+        "marketplace_publication": marketplace,
+        "update_package": update_package,
+        "failure_isolation": failure_isolation,
+        "rollback": rollback,
+        "uninstall_package": uninstall_package,
+        "lifecycle_replay": lifecycle_replay,
+        "lifecycle_execution": lifecycle_execution,
+        "final_state": {
+            "installed": False,
+            "registry_clean": all(transaction["final_state"]["registry_clean"] for transaction in lifecycle_execution["transactions"]),
+            "rollback_ready": True,
+            "palette_refreshed": True,
+            "global_install": False,
+            "marketplace_entry_registered": marketplace["ok"],
+        },
+        "guards": (
+            "signature_before_preview_load",
+            "sandbox_preview_before_registry_commit",
+            "marketplace_entry_after_registry_commit",
+            "adapter_smoke_before_update",
+            "rollback_before_uninstall_cleanup",
+            "registry_clean_after_uninstall",
+        ),
+        "side_effects": (),
+    }
+
+
 def component_package_readiness_contract(package_ids: tuple[str, ...] = ()) -> dict:
     """Prove package installation is one ordered design-time lifecycle."""
     signatures = component_package_signature_validation_contract(package_ids)
@@ -2566,6 +2663,10 @@ def component_package_readiness_contract(package_ids: tuple[str, ...] = ()) -> d
     lifecycle_replay = component_package_lifecycle_transaction_replay(package_ids)
     lifecycle_execution = component_package_lifecycle_execution_contract(package_ids)
     marketplace = component_package_marketplace_publication_contract(package_ids)
+    installation_scenarios = tuple(
+        component_package_run_installation_scenario_operation(package["id"])
+        for package in third_party_component_install_plan(package_ids)["packages"]
+    )
     phases = (
         {
             "phase": "trust_and_lockfile",
@@ -2661,6 +2762,13 @@ def component_package_readiness_contract(package_ids: tuple[str, ...] = ()) -> d
             "evidence": actionable_operations["operation_names"],
         },
         {
+            "id": "installation_scenario_ready",
+            "ok": bool(installation_scenarios)
+            and all(scenario["ok"] and "verify_registry_clean" in scenario["pipeline"] for scenario in installation_scenarios)
+            and all(not scenario["side_effects"] for scenario in installation_scenarios),
+            "evidence": tuple((scenario["package_id"], scenario["pipeline"]) for scenario in installation_scenarios),
+        },
+        {
             "id": "marketplace_publication_ready",
             "ok": marketplace["ok"]
             and {"self_registration_entrypoints", "publication_pipeline_reviewed", "rollback_recipe_attached"}
@@ -2698,6 +2806,7 @@ def component_package_readiness_contract(package_ids: tuple[str, ...] = ()) -> d
             and not rollback["side_effects"]
             and not lifecycle_replay["side_effects"]
             and not lifecycle_execution["side_effects"]
+            and all(not scenario["side_effects"] for scenario in installation_scenarios)
             and not marketplace["side_effects"],
             "evidence": (),
         },
@@ -2709,6 +2818,7 @@ def component_package_readiness_contract(package_ids: tuple[str, ...] = ()) -> d
         "decision": "approved" if ok else "blocked",
         "phases": phases,
         "checks": checks,
+        "installation_scenarios": installation_scenarios,
         "marketplace_publication": marketplace,
         "side_effects": (),
         "blocking_gaps": tuple(check for check in checks if not check["ok"]),
@@ -2737,6 +2847,7 @@ def design_time_package_manager_workbench(package_ids: tuple[str, ...] = ()) -> 
     failure_isolation = component_package_failure_isolation_contract(package_ids)
     lifecycle_replay = component_package_lifecycle_transaction_replay(package_ids)
     actionable_operations = component_package_actionable_operations(package_ids)
+    installation_scenario = component_package_run_installation_scenario_operation(next(iter(session["packages"]), "devexpress-native"))
     marketplace = component_package_marketplace_publication_contract(package_ids)
     package_manager_module_artifacts = package_manager_module_file_manifest()
     package_manager_module_test_artifacts = package_manager_module_test_file_manifest()
@@ -2858,6 +2969,25 @@ def design_time_package_manager_workbench(package_ids: tuple[str, ...] = ()) -> 
             "evidence": actionable_operations,
         },
         {
+            "id": "installation_scenario_operation",
+            "ok": installation_scenario["ok"]
+            and {
+                "resolve_metadata",
+                "sandbox_preview_load",
+                "commit_registry",
+                "publish_marketplace_entry",
+                "run_update_smoke",
+                "rollback_registry",
+                "uninstall_cleanup",
+                "verify_registry_clean",
+            }
+            <= set(installation_scenario["pipeline"])
+            and installation_scenario["final_state"]["registry_clean"]
+            and not installation_scenario["final_state"]["global_install"]
+            and not installation_scenario["side_effects"],
+            "evidence": installation_scenario,
+        },
+        {
             "id": "marketplace_publication",
             "ok": marketplace["ok"]
             and {"catalog_entries_present", "self_registration_entrypoints", "publication_pipeline_reviewed", "rollback_recipe_attached"}
@@ -2874,6 +3004,7 @@ def design_time_package_manager_workbench(package_ids: tuple[str, ...] = ()) -> 
                 "registry_before_update",
                 "rollback_before_cleanup",
                 "marketplace_publication_ready",
+                "installation_scenario_ready",
                 "operation_surface_ready",
                 "phase_order_ready",
                 "side_effect_guard_ready",
@@ -2916,6 +3047,7 @@ def design_time_package_manager_workbench(package_ids: tuple[str, ...] = ()) -> 
             and not signature_validation["side_effects"]
             and not lifecycle_execution["side_effects"]
             and not actionable_operations["side_effects"]
+            and not installation_scenario["side_effects"]
             and not marketplace["side_effects"],
             "evidence": {
                 "session": session["side_effects"],
@@ -2935,6 +3067,7 @@ def design_time_package_manager_workbench(package_ids: tuple[str, ...] = ()) -> 
                 "signature_validation": signature_validation["side_effects"],
                 "lifecycle_execution": lifecycle_execution["side_effects"],
                 "actionable_operations": actionable_operations["side_effects"],
+                "installation_scenario": installation_scenario["side_effects"],
                 "marketplace_publication": marketplace["side_effects"],
             },
         },
@@ -2963,6 +3096,7 @@ def design_time_package_manager_workbench(package_ids: tuple[str, ...] = ()) -> 
         "failure_isolation": failure_isolation,
         "lifecycle_replay": lifecycle_replay,
         "actionable_operations": actionable_operations,
+        "installation_scenario": installation_scenario,
         "marketplace_publication": marketplace,
         "package_manager_module_artifacts": package_manager_module_artifacts,
         "package_manager_module_test_artifacts": package_manager_module_test_artifacts,

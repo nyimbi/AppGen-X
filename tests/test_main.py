@@ -100,6 +100,7 @@ from pyAppGen.form_designer import component_package_readiness_contract
 from pyAppGen.form_designer import component_package_registration_consistency_contract
 from pyAppGen.form_designer import component_package_registry_commit_operation
 from pyAppGen.form_designer import component_package_resolve_metadata_operation
+from pyAppGen.form_designer import component_package_run_installation_scenario_operation
 from pyAppGen.form_designer import component_package_sandbox_policy_contract
 from pyAppGen.form_designer import component_package_signature_validation_contract
 from pyAppGen.form_designer import component_package_uninstall_operation
@@ -3036,6 +3037,21 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     assert "register_inspector_editors" in component_package_registry_commit_operation("devexpress-native")["pipeline"]
     assert "refresh_palette" in component_package_update_operation("devexpress-native")["pipeline"]
     assert "remove_palette_entries" in component_package_uninstall_operation("devexpress-native")["pipeline"]
+    package_installation_scenario = component_package_run_installation_scenario_operation("devexpress-native")
+    assert package_installation_scenario["format"] == "appgen.component-package-installation-scenario-operation.v1"
+    assert package_installation_scenario["ok"] is True
+    assert {
+        "resolve_metadata",
+        "sandbox_preview_load",
+        "commit_registry",
+        "publish_marketplace_entry",
+        "run_update_smoke",
+        "rollback_registry",
+        "uninstall_cleanup",
+        "verify_registry_clean",
+    } <= set(package_installation_scenario["pipeline"])
+    assert package_installation_scenario["final_state"]["registry_clean"] is True
+    assert package_installation_scenario["final_state"]["global_install"] is False
     actionable_packages = component_package_actionable_operations(("devexpress-native",))
     assert actionable_packages["ok"] is True
     assert actionable_packages["operations"][0]["registry_commit"]["ok"] is True
@@ -3107,6 +3123,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "lifecycle_transaction_replay",
         "lifecycle_execution",
         "actionable_package_operations",
+        "installation_scenario_operation",
         "marketplace_publication",
         "package_readiness_contract",
         "package_manager_modules",
@@ -3129,6 +3146,8 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     assert {"resolve_metadata", "preview_load", "registry_commit", "update_package", "uninstall_package"} <= set(
         package_manager["actionable_operations"]["operation_names"]
     )
+    assert package_manager["installation_scenario"]["ok"] is True
+    assert "verify_registry_clean" in package_manager["installation_scenario"]["pipeline"]
     lifecycle_replay = component_package_lifecycle_transaction_replay()
     assert lifecycle_replay["format"] == "appgen.component-package-lifecycle-transaction-replay.v1"
     assert lifecycle_replay["ok"] is True
@@ -3167,6 +3186,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "registry_before_update",
         "rollback_before_cleanup",
         "marketplace_publication_ready",
+        "installation_scenario_ready",
         "operation_surface_ready",
         "phase_order_ready",
         "side_effect_guard_ready",
@@ -14799,6 +14819,10 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert "register_inspector_editors" in form_designer.component_package_registry_commit_operation("devexpress-native")["pipeline"]
     assert "refresh_palette" in form_designer.component_package_update_operation("devexpress-native")["pipeline"]
     assert "remove_palette_entries" in form_designer.component_package_uninstall_operation("devexpress-native")["pipeline"]
+    generated_package_scenario = form_designer.component_package_run_installation_scenario_operation("devexpress-native")
+    assert generated_package_scenario["format"] == "appgen.generated-component-package-installation-scenario-operation.v1"
+    assert generated_package_scenario["ok"] is True
+    assert "verify_registry_clean" in generated_package_scenario["pipeline"]
     assert form_designer.component_package_actionable_operations(("devexpress-native",))["ok"] is True
     generated_package_workbench = form_designer.component_package_workbench()
     assert generated_package_workbench["format"] == "appgen.generated-component-package-workbench.v1"
@@ -14837,6 +14861,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "lifecycle_transaction_replay",
         "lifecycle_execution",
         "actionable_package_operations",
+        "installation_scenario_operation",
         "marketplace_publication",
         "package_manager_modules",
         "package_manager_module_tests",
@@ -14857,10 +14882,15 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert "marketplace_publication_ready" in {
         check["id"] for check in generated_package_manager["package_readiness"]["checks"]
     }
+    assert "installation_scenario_ready" in {
+        check["id"] for check in generated_package_manager["package_readiness"]["checks"]
+    }
+    assert generated_package_manager["installation_scenario"]["ok"] is True
     assert {
         "package_readiness_contract",
         "lifecycle_execution",
         "actionable_package_operations",
+        "installation_scenario_operation",
         "marketplace_publication",
         "package_manager_modules",
         "package_manager_module_tests",
