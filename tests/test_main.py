@@ -185,6 +185,7 @@ from pyAppGen.form_designer import livebindings_graph_contract
 from pyAppGen.form_designer import livebindings_preview_value
 from pyAppGen.form_designer import livebindings_readiness_contract
 from pyAppGen.form_designer import livebindings_reroute_link
+from pyAppGen.form_designer import livebindings_run_designer_scenario_operation
 from pyAppGen.form_designer import binding_designer_family_contract
 from pyAppGen.form_designer import binding_designer_family_module_file_manifest
 from pyAppGen.form_designer import binding_designer_family_module_test_file_manifest
@@ -2138,6 +2139,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "binding_lifecycle_release_replay",
         "inspector_binding_bridge",
         "binding_readiness_contract",
+        "binding_designer_scenario",
         "binding_generated_modules",
         "binding_generated_module_tests",
         "binding_designer_family_contract",
@@ -2268,6 +2270,20 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     assert "runtime_wiring_refresh" in {
         item["phase"] for item in binding_workbench["inspector_binding_bridge"]["replay"]
     }
+    binding_scenario = livebindings_run_designer_scenario_operation()
+    assert binding_scenario["format"] == "appgen.livebindings-designer-scenario-operation.v1"
+    assert binding_scenario["ok"] is True
+    assert {
+        "open_binding_designer",
+        "author_visual_link",
+        "validate_staged_graph",
+        "commit_designer_transaction",
+        "emit_runtime_wiring",
+        "refresh_inspector_bridge",
+        "release_binding_runtime",
+    } <= {item["step"] for item in binding_scenario["pipeline"]}
+    assert binding_scenario["final_state"]["runtime_bindings"] > 0
+    assert binding_workbench["designer_scenario"]["ok"] is True
     binding_readiness = livebindings_readiness_contract()
     assert binding_readiness["format"] == "appgen.livebindings-readiness-contract.v1"
     assert binding_readiness["ok"] is True
@@ -2289,8 +2305,10 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "designer_release_replay_ready",
         "inspector_bridge_ready",
         "operation_surface_ready",
+        "designer_scenario_ready",
         "phase_order_ready",
     } == {check["id"] for check in binding_readiness["checks"]}
+    assert binding_readiness["final_state"]["scenario_steps"] == len(binding_scenario["pipeline"])
     assert binding_readiness["final_state"]["node_count"] == len(binding_workbench["contract"]["graph"]["nodes"])
     assert binding_readiness["final_state"]["edge_count"] == len(binding_workbench["contract"]["graph"]["edges"])
     assert binding_workbench["readiness"]["ok"] is True
@@ -4587,6 +4605,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "designer_transaction_replay",
         "design_runtime_session_replay",
         "binding_lifecycle_release_replay",
+        "binding_designer_scenario",
     } <= set(lifecycle_by_phase["inspect_and_bind_design"]["evidence"]["binding_passing_checks"])
     assert lifecycle_by_phase["publish_data_services"]["evidence"]["readiness_phases"] == (
         "probe_connection",
@@ -4748,6 +4767,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     assert {
         "binding_generated_modules",
         "binding_generated_module_tests",
+        "binding_designer_scenario",
         "binding_designer_family_contract",
         "binding_designer_family_modules",
         "binding_designer_family_module_tests",
@@ -4814,6 +4834,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
             {
                 "binding_generated_modules",
                 "binding_generated_module_tests",
+                "binding_designer_scenario",
                 "binding_designer_family_contract",
                 "binding_designer_family_modules",
                 "binding_designer_family_module_tests",
@@ -5215,6 +5236,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "designer_transaction_replay",
         "lifecycle_release_replay",
         "inspector_bridge_replay",
+        "binding_designer_scenario_replay",
         "binding_designer_families_ready",
         "binding_designer_family_modules_ready",
         "binding_designer_family_module_tests_ready",
@@ -14551,6 +14573,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "designer_transaction_replay",
         "design_runtime_session_replay",
         "binding_lifecycle_release_replay",
+        "binding_designer_scenario",
     } <= set(generated_lifecycle_by_phase["inspect_and_bind_design"]["evidence"]["binding_passing_checks"])
     assert generated_lifecycle_by_phase["publish_data_services"]["evidence"]["readiness_phases"] == (
         "probe_connection",
@@ -14723,6 +14746,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert {
         "binding_generated_modules",
         "binding_generated_module_tests",
+        "binding_designer_scenario",
         "binding_designer_family_contract",
         "binding_designer_family_modules",
         "binding_designer_family_module_tests",
@@ -14789,6 +14813,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
             {
                 "binding_generated_modules",
                 "binding_generated_module_tests",
+                "binding_designer_scenario",
                 "binding_designer_family_contract",
                 "binding_designer_family_modules",
                 "binding_designer_family_module_tests",
@@ -15246,6 +15271,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "binding_lifecycle_release_replay",
         "inspector_binding_bridge",
         "binding_readiness_contract",
+        "binding_designer_scenario",
         "binding_generated_modules",
         "binding_generated_module_tests",
         "binding_designer_family_contract",
@@ -15341,6 +15367,20 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert "runtime_wiring_refresh" in {
         item["phase"] for item in generated_bindings["inspector_binding_bridge"]["replay"]
     }
+    generated_binding_scenario = form_designer.livebindings_run_designer_scenario_operation()
+    assert generated_binding_scenario["format"] == "appgen.generated-livebindings-designer-scenario-operation.v1"
+    assert generated_binding_scenario["ok"] is True
+    assert {
+        "open_binding_designer",
+        "author_visual_link",
+        "validate_staged_graph",
+        "commit_designer_transaction",
+        "emit_runtime_wiring",
+        "refresh_inspector_bridge",
+        "release_binding_runtime",
+    } <= {item["step"] for item in generated_binding_scenario["pipeline"]}
+    assert generated_binding_scenario["final_state"]["runtime_bindings"] > 0
+    assert generated_bindings["designer_scenario"]["ok"] is True
     generated_binding_readiness = form_designer.livebindings_readiness_contract()
     assert generated_binding_readiness["format"] == "appgen.generated-livebindings-readiness-contract.v1"
     assert generated_binding_readiness["ok"] is True
@@ -15362,10 +15402,12 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "designer_release_replay_ready",
         "inspector_bridge_ready",
         "operation_surface_ready",
+        "designer_scenario_ready",
         "phase_order_ready",
     } == {check["id"] for check in generated_binding_readiness["checks"]}
     assert generated_binding_readiness["final_state"]["node_count"] == len(generated_bindings["contract"]["graph"]["nodes"])
     assert generated_binding_readiness["final_state"]["edge_count"] == len(generated_bindings["contract"]["graph"]["edges"])
+    assert generated_binding_readiness["final_state"]["scenario_steps"] == len(generated_binding_scenario["pipeline"])
     assert generated_bindings["readiness"]["ok"] is True
     assert generated_bindings["readiness"]["final_state"]["runtime_trace"] > 0
     generated_binding_families = form_designer.binding_designer_family_contract()
@@ -15993,6 +16035,9 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     binding_replay = binding_runtime.replay_binding_runtime()
     assert binding_replay["ok"] is True
     assert {"dataset_to_field", "field_to_control", "control_to_field"} <= set(binding_replay["propagation_ops"])
+    assert {"author_visual_link", "commit_designer_transaction", "release_binding_runtime"} <= set(
+        binding_replay["scenario_steps"]
+    )
     assert binding_replay["side_effects"] == ()
     package_manager_runtime_file = output_dir / "package_manager_runtime.py"
     assert package_manager_runtime_file.exists()

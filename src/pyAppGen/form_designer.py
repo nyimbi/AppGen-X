@@ -8803,6 +8803,159 @@ def binding_lifecycle_release_replay_contract(design: dict | None = None) -> dic
     }
 
 
+def livebindings_run_designer_scenario_operation(design: dict | None = None) -> dict:
+    """Run one complete visual binding designer scenario from authoring through runtime replay."""
+    authoring = binding_authoring_session(design)
+    graph_validation = binding_graph_validation_contract(design)
+    edit_transaction = binding_edit_transaction_contract(design)
+    preview = livebindings_preview_value()
+    diagnostics = binding_diagnostics_contract(design)
+    conflicts = livebindings_detect_conflicts()
+    conflict_resolution = binding_conflict_resolution_workflow(design)
+    designer_transaction = binding_designer_transaction_replay_contract(design)
+    runtime_wiring = livebindings_emit_runtime_wiring(livebindings_graph_contract(design))
+    offline_replay = binding_offline_replay_contract(design)
+    accessibility = binding_accessibility_contract(design)
+    runtime_propagation = binding_runtime_propagation_replay_contract(design)
+    inspector_bridge = inspector_binding_designer_bridge_contract(design)
+    lifecycle_release = binding_lifecycle_release_replay_contract(design)
+    pipeline = (
+        {
+            "step": "open_binding_designer",
+            "ok": {"data_source", "control", "field", "expression"} <= set(livebindings_contract()["designer"]["palette"]),
+            "evidence": livebindings_contract()["designer"],
+        },
+        {
+            "step": "author_visual_link",
+            "ok": {"create_link", "make_two_way", "attach_expression", "preview_value", "disable_binding"}
+            <= {operation["op"] for operation in authoring["operations"]},
+            "evidence": authoring,
+        },
+        {
+            "step": "validate_staged_graph",
+            "ok": graph_validation["ok"]
+            and edit_transaction["validation"]["ok"]
+            and all("validate_graph" in operation["stage"] for operation in edit_transaction["operations"]),
+            "evidence": {"graph": graph_validation, "transaction": edit_transaction},
+        },
+        {
+            "step": "preview_runtime_value",
+            "ok": preview["ok"] and {"apply_converter", "run_validators", "publish_preview"} <= set(preview["pipeline"]),
+            "evidence": preview,
+        },
+        {
+            "step": "surface_diagnostics_and_conflicts",
+            "ok": diagnostics["ok"]
+            and conflicts["ok"]
+            and conflict_resolution["ok"]
+            and "quick_fixes_are_staged" in diagnostics["guards"]
+            and "graph_revalidated_after_resolution" in conflict_resolution["guards"],
+            "evidence": {"diagnostics": diagnostics, "conflicts": conflicts, "resolution": conflict_resolution},
+        },
+        {
+            "step": "commit_designer_transaction",
+            "ok": designer_transaction["ok"]
+            and {"stage_transaction", "propagate_runtime_and_recover"} <= {item["phase"] for item in designer_transaction["replay"]},
+            "evidence": designer_transaction,
+        },
+        {
+            "step": "emit_runtime_wiring",
+            "ok": runtime_wiring["ok"] and {"attach_listeners", "sync_updates"} <= set(runtime_wiring["lifecycle"]),
+            "evidence": runtime_wiring,
+        },
+        {
+            "step": "replay_offline_accessibility",
+            "ok": offline_replay["ok"]
+            and accessibility["ok"]
+            and all("mark_replayed" in item["replay"] for item in offline_replay["queue_items"])
+            and {"create_link", "delete_edge", "inspect_node", "preview_value"}
+            <= {shortcut["command"] for shortcut in accessibility["shortcuts"]},
+            "evidence": {"offline": offline_replay, "accessibility": accessibility},
+        },
+        {
+            "step": "propagate_runtime_values",
+            "ok": runtime_propagation["ok"]
+            and {"dataset_field_control_propagation", "validator_failures_roll_back"} <= set(runtime_propagation["guards"])
+            and any("rollback_target_write" in item["pipeline"] for item in runtime_propagation["trace"]),
+            "evidence": runtime_propagation,
+        },
+        {
+            "step": "refresh_inspector_bridge",
+            "ok": inspector_bridge["ok"]
+            and {"binding_preview_refresh", "runtime_wiring_refresh"} <= {item["phase"] for item in inspector_bridge["replay"]},
+            "evidence": inspector_bridge,
+        },
+        {
+            "step": "release_binding_runtime",
+            "ok": lifecycle_release["ok"]
+            and {"graph_authoring_precedes_validation", "design_runtime_and_designer_replays_complete"} <= set(lifecycle_release["guards"]),
+            "evidence": lifecycle_release,
+        },
+    )
+    final_state = {
+        "authoring_ops": len(authoring["operations"]),
+        "transaction_phases": len(designer_transaction["replay"]),
+        "runtime_bindings": len(runtime_wiring["bindings"]),
+        "offline_items": len(offline_replay["queue_items"]),
+        "accessibility_routes": len(accessibility["shortcuts"]),
+        "runtime_trace": len(runtime_propagation["trace"]),
+        "release_phases": len(lifecycle_release["replay"]),
+        "side_effects": (),
+    }
+    checks = (
+        {
+            "id": "designer_scenario_order",
+            "ok": tuple(item["step"] for item in pipeline)
+            == (
+                "open_binding_designer",
+                "author_visual_link",
+                "validate_staged_graph",
+                "preview_runtime_value",
+                "surface_diagnostics_and_conflicts",
+                "commit_designer_transaction",
+                "emit_runtime_wiring",
+                "replay_offline_accessibility",
+                "propagate_runtime_values",
+                "refresh_inspector_bridge",
+                "release_binding_runtime",
+            ),
+            "evidence": tuple(item["step"] for item in pipeline),
+        },
+        {
+            "id": "designer_scenario_runtime_ready",
+            "ok": runtime_wiring["ok"] and runtime_propagation["ok"] and lifecycle_release["ok"],
+            "evidence": {"runtime_wiring": runtime_wiring, "propagation": runtime_propagation, "release": lifecycle_release},
+        },
+        {
+            "id": "designer_scenario_side_effect_free",
+            "ok": final_state["side_effects"] == (),
+            "evidence": final_state["side_effects"],
+        },
+    )
+    ok = all(item["ok"] for item in pipeline) and all(check["ok"] for check in checks) and all(
+        value > 0 for key, value in final_state.items() if key != "side_effects"
+    )
+    return {
+        "format": "appgen.livebindings-designer-scenario-operation.v1",
+        "ok": ok,
+        "decision": "approved" if ok else "blocked",
+        "pipeline": pipeline,
+        "checks": checks,
+        "final_state": final_state,
+        "guards": (
+            "visual_authoring_precedes_validation",
+            "validation_precedes_preview",
+            "diagnostics_precede_commit",
+            "commit_precedes_runtime_wiring",
+            "offline_accessibility_precede_runtime_propagation",
+            "inspector_bridge_refreshes_before_release",
+            "side_effect_free_designer_scenario",
+        ),
+        "side_effects": (),
+        "blocking_gaps": tuple(item for item in pipeline + checks if not item["ok"]),
+    }
+
+
 def livebindings_readiness_contract(design: dict | None = None) -> dict:
     """Prove the visual binding designer path as one ordered readiness contract."""
     contract = livebindings_contract()
@@ -8823,6 +8976,7 @@ def livebindings_readiness_contract(design: dict | None = None) -> dict:
     lifecycle_release = binding_lifecycle_release_replay_contract(design)
     inspector_bridge = inspector_binding_designer_bridge_contract(design)
     actionable = livebindings_actionable_operations(design)
+    designer_scenario = livebindings_run_designer_scenario_operation(design)
     phases = (
         {
             "phase": "author_binding_graph",
@@ -8893,6 +9047,14 @@ def livebindings_readiness_contract(design: dict | None = None) -> dict:
         {"id": "inspector_bridge_ready", "ok": phases[6]["ok"], "evidence": inspector_bridge},
         {"id": "operation_surface_ready", "ok": actionable["ok"] and not actionable["side_effects"], "evidence": actionable},
         {
+            "id": "designer_scenario_ready",
+            "ok": designer_scenario["ok"]
+            and {"visual_authoring_precedes_validation", "inspector_bridge_refreshes_before_release"}
+            <= set(designer_scenario["guards"])
+            and not designer_scenario["side_effects"],
+            "evidence": designer_scenario,
+        },
+        {
             "id": "phase_order_ready",
             "ok": tuple(item["phase"] for item in phases)
             == (
@@ -8920,6 +9082,7 @@ def livebindings_readiness_contract(design: dict | None = None) -> dict:
             "offline_items": len(offline_replay["queue_items"]),
             "runtime_trace": len(runtime_propagation["trace"]),
             "release_phases": len(lifecycle_release["replay"]),
+            "scenario_steps": len(designer_scenario["pipeline"]),
         },
         "guards": (
             "graph_authoring_before_validation",
@@ -8992,6 +9155,7 @@ def livebindings_workbench() -> dict:
     lifecycle_release_replay = binding_lifecycle_release_replay_contract()
     actionable_operations = livebindings_actionable_operations()
     inspector_binding_bridge = inspector_binding_designer_bridge_contract()
+    designer_scenario = livebindings_run_designer_scenario_operation()
     binding_module_artifacts = binding_module_file_manifest()
     binding_module_test_artifacts = binding_module_test_file_manifest()
     binding_designer_families = binding_designer_family_contract()
@@ -9244,6 +9408,14 @@ def livebindings_workbench() -> dict:
             "evidence": readiness,
         },
         {
+            "id": "binding_designer_scenario",
+            "ok": designer_scenario["ok"]
+            and {"commit_designer_transaction", "release_binding_runtime"} <= {item["step"] for item in designer_scenario["pipeline"]}
+            and "side_effect_free_designer_scenario" in designer_scenario["guards"]
+            and not designer_scenario["side_effects"],
+            "evidence": designer_scenario,
+        },
+        {
             "id": "binding_generated_modules",
             "ok": len(binding_module_artifacts) == 6
             and all(item["ok"] and "run_binding_operation" in item["exports"] for item in binding_module_artifacts),
@@ -9324,6 +9496,7 @@ def livebindings_workbench() -> dict:
         "designer_transaction_replay": designer_transaction_replay,
         "lifecycle_release_replay": lifecycle_release_replay,
         "inspector_binding_bridge": inspector_binding_bridge,
+        "designer_scenario": designer_scenario,
         "binding_module_artifacts": binding_module_artifacts,
         "binding_module_test_artifacts": binding_module_test_artifacts,
         "binding_designer_families": binding_designer_families,
@@ -15201,6 +15374,7 @@ def platform_parity_lifecycle_replay_contract() -> dict:
             and binding_readiness["ok"]
             and inspector["cross_component_replay"]["ok"]
             and bindings["designer_transaction_replay"]["ok"]
+            and bindings["designer_scenario"]["ok"]
             and "phase_order_ready" in {check["id"] for check in inspector_readiness["checks"] if check["ok"]}
             and "phase_order_ready" in {check["id"] for check in binding_readiness["checks"] if check["ok"]}
             and {
@@ -15213,6 +15387,7 @@ def platform_parity_lifecycle_replay_contract() -> dict:
                 "designer_transaction_replay",
                 "design_runtime_session_replay",
                 "binding_lifecycle_release_replay",
+                "binding_designer_scenario",
             } <= binding_passing_checks,
             "evidence": {
                 "inspector_checks": tuple(check["id"] for check in inspector["checks"]),
@@ -15585,15 +15760,18 @@ def platform_parity_requirement_audit_contract() -> dict:
                 "offline_accessible_runtime_ready",
                 "designer_release_replay_ready",
                 "inspector_bridge_ready",
+                "designer_scenario_ready",
                 "phase_order_ready",
             }
             <= {check["id"] for check in binding_readiness["checks"] if check["ok"]}
             and bindings["designer_transaction_replay"]["ok"]
             and bindings["design_runtime_replay"]["ok"]
             and bindings["lifecycle_release_replay"]["ok"]
+            and bindings["designer_scenario"]["ok"]
             and {
                 "binding_generated_modules",
                 "binding_generated_module_tests",
+                "binding_designer_scenario",
                 "binding_designer_family_contract",
                 "binding_designer_family_modules",
                 "binding_designer_family_module_tests",
@@ -15602,6 +15780,7 @@ def platform_parity_requirement_audit_contract() -> dict:
                 "binding_lifecycle_release_replay",
                 "design_runtime_session_replay",
                 "designer_transaction_replay",
+                "binding_designer_scenario",
                 "binding_generated_modules",
                 "binding_generated_module_tests",
                 "binding_designer_family_contract",
@@ -16695,6 +16874,7 @@ def rad_parity_workbench(existing_paths: set[str] | None = None) -> dict:
         "binding_lifecycle_release_replay",
         "inspector_binding_bridge",
         "binding_readiness_contract",
+        "binding_designer_scenario",
         "binding_generated_modules",
         "binding_generated_module_tests",
     )
@@ -16756,6 +16936,7 @@ def rad_parity_workbench(existing_paths: set[str] | None = None) -> dict:
         "designer_release_replay_ready",
         "inspector_bridge_ready",
         "operation_surface_ready",
+        "designer_scenario_ready",
         "phase_order_ready",
     )
     passing_binding_readiness_checks = tuple(
