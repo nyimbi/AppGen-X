@@ -16110,6 +16110,343 @@ def rad_parity_workbench(existing_paths: set[str] | None = None) -> dict:
     passing_data_module_smoke_modules = tuple(
         test["module"] for test in data_tooling_workbench["module_runtime_smoke"]["smoke_tests"]
     )
+    required_data_connection_test_steps = (
+        "resolve_profile",
+        "load_secret_reference",
+        "open_test_transaction",
+        "read_schema_version",
+        "rollback_test_transaction",
+    )
+    passing_data_connection_test_steps = tuple(data_tooling_workbench["connection_test"]["steps"])
+    required_data_query_preview_plan_steps = (
+        "parse",
+        "bind_parameters",
+        "estimate_cost",
+        "preview_rows",
+        "explain_plan",
+    )
+    passing_data_query_preview_plan_steps = tuple(data_tooling_workbench["query_preview"]["plan"])
+    required_data_schema_diff_preview_items = (
+        "alter_table_add_nullable_field",
+        "backfill_plan",
+        "rollback_script",
+    )
+    passing_data_schema_diff_preview_items = tuple(data_tooling_workbench["schema_diff"]["preview"])
+    required_data_method_invocation_pipeline = (
+        "client_proxy",
+        "auth_filter",
+        "request_validator",
+        "server_method_stub",
+        "response_mapper",
+    )
+    passing_data_method_invocation_pipeline = tuple(data_tooling_workbench["method_invocation"]["pipeline"])
+    required_data_resource_publish_pipeline = (
+        "generate_resource",
+        "attach_security",
+        "attach_edge_modules",
+        "publish_metadata",
+        "register_analytics",
+    )
+    passing_data_resource_publish_pipeline = tuple(data_tooling_workbench["resource_publish"]["pipeline"])
+    required_data_local_maintenance_workflows = ("backup", "restore", "change_view_sync")
+    passing_data_local_maintenance_workflows = tuple(
+        workflow["name"] for workflow in data_tooling_workbench["local_maintenance"]["workflows"]
+    )
+    required_data_conflict_review_flow = (
+        "detect_conflict",
+        "show_conflict_grid",
+        "preview_merge",
+        "approve_resolution",
+        "write_audit_log",
+    )
+    passing_data_conflict_review_flow = tuple(data_tooling_workbench["conflict_review"]["review_flow"])
+    required_data_driver_connections = ("primary_sql", "local_embedded", "rest_edge")
+    passing_data_driver_connections = tuple(
+        row["connection"] for row in data_tooling_workbench["driver_matrix"]["rows"]
+    )
+    required_data_transaction_rehearsal_steps = (
+        "begin_transaction",
+        "apply_mutation_batch",
+        "validate_constraints",
+        "collect_diagnostics",
+        "rollback_transaction",
+        "assert_no_persisted_changes",
+    )
+    passing_data_transaction_rehearsal_steps = tuple(data_tooling_workbench["transaction_rehearsal"]["steps"])
+    required_data_offline_replay_flow = (
+        "load_queue",
+        "dedupe_by_idempotency_key",
+        "apply_in_order",
+        "detect_conflicts",
+        "pause_for_manual_review",
+        "mark_replayed",
+    )
+    passing_data_offline_replay_flow = tuple(data_tooling_workbench["offline_replay"]["replay_flow"])
+    required_data_service_test_names = (
+        "method_auth_filter",
+        "resource_security",
+        "client_proxy_shape",
+    )
+    passing_data_service_test_names = tuple(test["name"] for test in data_tooling_workbench["service_tests"]["tests"])
+    required_data_schema_browser_operations = (
+        "browse_tables",
+        "inspect_fields",
+        "preview_indexes",
+        "trace_relations",
+        "open_routine_signature",
+    )
+    passing_data_schema_browser_operations = tuple(data_tooling_workbench["schema_browser"]["operations"])
+    required_data_parameter_binding_guards = (
+        "typed_binding",
+        "no_string_interpolation",
+        "range_checked",
+    )
+    passing_data_parameter_binding_guards = tuple(
+        sorted(
+            {
+                guard
+                for binding in data_tooling_workbench["parameter_binding"]["bindings"]
+                for guard in binding["guards"]
+            }
+        )
+    )
+    required_data_dataset_field_kinds = (
+        "persistent",
+        "lookup",
+        "calculated",
+        "aggregate",
+    )
+    passing_data_dataset_field_kinds = tuple(
+        sorted({field["kind"] for field in data_tooling_workbench["dataset_fields"]["fields"]})
+    )
+    required_data_service_security_filters = (
+        "auth_filter",
+        "request_validator",
+        "rate_limit",
+        "audit_log",
+    )
+    passing_data_service_security_filters = tuple(
+        sorted(
+            {
+                filter_name
+                for policy in data_tooling_workbench["service_security"]["policies"]
+                for filter_name in policy["filters"]
+            }
+        )
+    )
+    required_data_offline_queue_integrity_guards = (
+        "idempotency_key_required",
+        "checksum_required",
+        "encrypted_queue",
+        "causal_ordering",
+    )
+    passing_data_offline_queue_integrity_guards = tuple(
+        data_tooling_workbench["offline_queue_integrity"]["guards"]
+    )
+    required_data_migration_rehearsal_steps = (
+        "snapshot_schema",
+        "apply_migration_to_scratch",
+        "run_data_loss_check",
+        "run_smoke_queries",
+        "generate_rollback_script",
+    )
+    passing_data_migration_rehearsal_steps = tuple(data_tooling_workbench["migration_rehearsal"]["dry_run"])
+    required_data_dataset_designer_ops = (
+        "add_persistent_field",
+        "add_lookup_field",
+        "add_calculated_field",
+        "wire_dataset_event",
+        "preview_dataset_rows",
+    )
+    passing_data_dataset_designer_ops = tuple(
+        operation["op"] for operation in data_tooling_workbench["dataset_designer"]["operations"]
+    )
+    required_data_service_invocation_trace_steps = (
+        "build_request",
+        "apply_auth_filter",
+        "validate_request",
+        "invoke_method",
+        "map_response",
+        "assert_contract",
+    )
+    passing_data_service_invocation_trace_steps = tuple(
+        sorted(
+            {
+                step
+                for trace in data_tooling_workbench["service_invocation_traces"]["traces"]
+                for step in trace["trace"]
+            }
+        )
+    )
+    required_data_schema_checkpoint_guards = (
+        "checkpoint_before_apply",
+        "approval_required",
+        "rollback_script_required",
+        "schema_hash_recorded",
+    )
+    passing_data_schema_checkpoint_guards = tuple(data_tooling_workbench["schema_checkpoints"]["guards"])
+    required_data_query_plan_node_kinds = (
+        "table_scan",
+        "filter",
+        "sort",
+        "projection",
+    )
+    passing_data_query_plan_node_kinds = tuple(
+        node["kind"] for node in data_tooling_workbench["query_plan_visualizer"]["plan_nodes"]
+    )
+    required_data_relationship_actions = (
+        "open_lookup_editor",
+        "preview_join",
+        "generate_picker",
+        "validate_filter",
+    )
+    passing_data_relationship_actions = tuple(
+        sorted(
+            {
+                action
+                for item in data_tooling_workbench["relationship_navigation"]["navigation"]
+                for action in item["designer_actions"]
+            }
+        )
+    )
+    required_data_service_versioning_steps = (
+        "announce",
+        "dual_run",
+        "traffic_shadow",
+        "retire_after_review",
+    )
+    passing_data_service_versioning_steps = tuple(
+        sorted(
+            {
+                step
+                for version in data_tooling_workbench["service_versioning"]["versions"]
+                for step in version["deprecation"]
+            }
+        )
+    )
+    required_data_failover_retry_policy = (
+        "retry_transient",
+        "backoff",
+        "circuit_breaker",
+        "fallback_read_only",
+    )
+    passing_data_failover_retry_policy = tuple(
+        sorted(
+            {
+                policy
+                for route in data_tooling_workbench["connection_failover"]["routes"]
+                for policy in route["retry_policy"]
+            }
+        )
+    )
+    required_data_pool_session_steps = (
+        "checkout",
+        "begin_scope",
+        "execute",
+        "commit_or_rollback",
+        "reset_session",
+        "return_to_pool",
+    )
+    passing_data_pool_session_steps = tuple(
+        sorted(
+            {
+                step
+                for pool in data_tooling_workbench["connection_pooling"]["pools"]
+                for step in pool["session_lifecycle"]
+            }
+        )
+    )
+    required_data_stored_procedure_pipeline = (
+        "browse_signature",
+        "bind_parameters",
+        "open_transaction_scope",
+        "execute_routine",
+        "map_result_sets",
+        "rollback_preview",
+    )
+    passing_data_stored_procedure_pipeline = tuple(
+        sorted(
+            {
+                step
+                for workflow in data_tooling_workbench["stored_procedures"]["workflows"]
+                for step in workflow["pipeline"]
+            }
+        )
+    )
+    required_data_sql_safety_rules = (
+        "no_string_interpolation",
+        "where_required_for_update_delete",
+        "limit_required_for_preview",
+        "schema_qualified_names",
+    )
+    passing_data_sql_safety_rules = tuple(
+        rule["rule"] for rule in data_tooling_workbench["sql_authoring_safety"]["lint_rules"]
+    )
+    required_data_backup_restore_guards = (
+        "backup_checksum_verified",
+        "restore_drill_required",
+        "encrypted_manifest_verified",
+    )
+    passing_data_backup_restore_guards = tuple(data_tooling_workbench["backup_restore_verification"]["guards"])
+    required_data_replication_metrics = (
+        "lag_seconds",
+        "queued_operations",
+        "conflict_count",
+        "last_replay_id",
+    )
+    passing_data_replication_metrics = tuple(
+        sorted(
+            {
+                metric
+                for monitor in data_tooling_workbench["replication_monitor"]["monitors"]
+                for metric in monitor["metrics"]
+            }
+        )
+    )
+    required_data_service_telemetry_signals = (
+        "request_count",
+        "latency_p95",
+        "error_rate",
+        "auth_failures",
+        "rate_limit_hits",
+    )
+    passing_data_service_telemetry_signals = tuple(
+        sorted(
+            {
+                signal
+                for telemetry in data_tooling_workbench["service_telemetry"]["telemetry"]
+                for signal in telemetry["signals"]
+            }
+        )
+    )
+    required_data_dataset_states = (
+        "closed",
+        "opening",
+        "browse",
+        "edit",
+        "insert",
+        "posting",
+        "reconciling",
+        "error",
+    )
+    passing_data_dataset_states = tuple(data_tooling_workbench["dataset_state_machine"]["states"])
+    required_data_lookup_editor_steps = (
+        "introspect_foreign_key",
+        "choose_display_member",
+        "generate_lookup_dataset",
+        "bind_value_member",
+        "preview_join",
+        "validate_cycle",
+    )
+    passing_data_lookup_editor_steps = tuple(
+        sorted(
+            {
+                step
+                for editor in data_tooling_workbench["lookup_editor_pipeline"]["editors"]
+                for step in editor["pipeline"]
+            }
+        )
+    )
     required_data_tooling_checks = (
         "connection_catalog",
         "query_designer",
@@ -17724,7 +18061,39 @@ def rad_parity_workbench(existing_paths: set[str] | None = None) -> dict:
             and set(required_data_readiness_checks) <= set(passing_data_readiness_checks)
             and set(required_data_design_runtime_phases) <= set(passing_data_design_runtime_phases)
             and set(required_data_relationship_lookup_checks) <= set(passing_data_relationship_lookup_checks)
-            and set(required_data_module_smoke_modules) <= set(passing_data_module_smoke_modules),
+            and set(required_data_module_smoke_modules) <= set(passing_data_module_smoke_modules)
+            and set(required_data_connection_test_steps) <= set(passing_data_connection_test_steps)
+            and set(required_data_query_preview_plan_steps) <= set(passing_data_query_preview_plan_steps)
+            and set(required_data_schema_diff_preview_items) <= set(passing_data_schema_diff_preview_items)
+            and set(required_data_method_invocation_pipeline) <= set(passing_data_method_invocation_pipeline)
+            and set(required_data_resource_publish_pipeline) <= set(passing_data_resource_publish_pipeline)
+            and set(required_data_local_maintenance_workflows) <= set(passing_data_local_maintenance_workflows)
+            and set(required_data_conflict_review_flow) <= set(passing_data_conflict_review_flow)
+            and set(required_data_driver_connections) <= set(passing_data_driver_connections)
+            and set(required_data_transaction_rehearsal_steps) <= set(passing_data_transaction_rehearsal_steps)
+            and set(required_data_offline_replay_flow) <= set(passing_data_offline_replay_flow)
+            and set(required_data_service_test_names) <= set(passing_data_service_test_names)
+            and set(required_data_schema_browser_operations) <= set(passing_data_schema_browser_operations)
+            and set(required_data_parameter_binding_guards) <= set(passing_data_parameter_binding_guards)
+            and set(required_data_dataset_field_kinds) <= set(passing_data_dataset_field_kinds)
+            and set(required_data_service_security_filters) <= set(passing_data_service_security_filters)
+            and set(required_data_offline_queue_integrity_guards) <= set(passing_data_offline_queue_integrity_guards)
+            and set(required_data_migration_rehearsal_steps) <= set(passing_data_migration_rehearsal_steps)
+            and set(required_data_dataset_designer_ops) <= set(passing_data_dataset_designer_ops)
+            and set(required_data_service_invocation_trace_steps) <= set(passing_data_service_invocation_trace_steps)
+            and set(required_data_schema_checkpoint_guards) <= set(passing_data_schema_checkpoint_guards)
+            and set(required_data_query_plan_node_kinds) <= set(passing_data_query_plan_node_kinds)
+            and set(required_data_relationship_actions) <= set(passing_data_relationship_actions)
+            and set(required_data_service_versioning_steps) <= set(passing_data_service_versioning_steps)
+            and set(required_data_failover_retry_policy) <= set(passing_data_failover_retry_policy)
+            and set(required_data_pool_session_steps) <= set(passing_data_pool_session_steps)
+            and set(required_data_stored_procedure_pipeline) <= set(passing_data_stored_procedure_pipeline)
+            and set(required_data_sql_safety_rules) <= set(passing_data_sql_safety_rules)
+            and set(required_data_backup_restore_guards) <= set(passing_data_backup_restore_guards)
+            and set(required_data_replication_metrics) <= set(passing_data_replication_metrics)
+            and set(required_data_service_telemetry_signals) <= set(passing_data_service_telemetry_signals)
+            and set(required_data_dataset_states) <= set(passing_data_dataset_states)
+            and set(required_data_lookup_editor_steps) <= set(passing_data_lookup_editor_steps),
             "required_tooling": required_data_tooling_names,
             "passing_tooling": passing_data_tooling_names,
             "required_connection_profiles": required_data_connection_profiles,
@@ -17765,6 +18134,70 @@ def rad_parity_workbench(existing_paths: set[str] | None = None) -> dict:
             "passing_relationship_lookup_checks": passing_data_relationship_lookup_checks,
             "required_module_smoke_modules": required_data_module_smoke_modules,
             "passing_module_smoke_modules": passing_data_module_smoke_modules,
+            "required_connection_test_steps": required_data_connection_test_steps,
+            "passing_connection_test_steps": passing_data_connection_test_steps,
+            "required_query_preview_plan_steps": required_data_query_preview_plan_steps,
+            "passing_query_preview_plan_steps": passing_data_query_preview_plan_steps,
+            "required_schema_diff_preview_items": required_data_schema_diff_preview_items,
+            "passing_schema_diff_preview_items": passing_data_schema_diff_preview_items,
+            "required_method_invocation_pipeline": required_data_method_invocation_pipeline,
+            "passing_method_invocation_pipeline": passing_data_method_invocation_pipeline,
+            "required_resource_publish_pipeline": required_data_resource_publish_pipeline,
+            "passing_resource_publish_pipeline": passing_data_resource_publish_pipeline,
+            "required_local_maintenance_workflows": required_data_local_maintenance_workflows,
+            "passing_local_maintenance_workflows": passing_data_local_maintenance_workflows,
+            "required_conflict_review_flow": required_data_conflict_review_flow,
+            "passing_conflict_review_flow": passing_data_conflict_review_flow,
+            "required_driver_connections": required_data_driver_connections,
+            "passing_driver_connections": passing_data_driver_connections,
+            "required_transaction_rehearsal_steps": required_data_transaction_rehearsal_steps,
+            "passing_transaction_rehearsal_steps": passing_data_transaction_rehearsal_steps,
+            "required_offline_replay_flow": required_data_offline_replay_flow,
+            "passing_offline_replay_flow": passing_data_offline_replay_flow,
+            "required_service_test_names": required_data_service_test_names,
+            "passing_service_test_names": passing_data_service_test_names,
+            "required_schema_browser_operations": required_data_schema_browser_operations,
+            "passing_schema_browser_operations": passing_data_schema_browser_operations,
+            "required_parameter_binding_guards": required_data_parameter_binding_guards,
+            "passing_parameter_binding_guards": passing_data_parameter_binding_guards,
+            "required_dataset_field_kinds": required_data_dataset_field_kinds,
+            "passing_dataset_field_kinds": passing_data_dataset_field_kinds,
+            "required_service_security_filters": required_data_service_security_filters,
+            "passing_service_security_filters": passing_data_service_security_filters,
+            "required_offline_queue_integrity_guards": required_data_offline_queue_integrity_guards,
+            "passing_offline_queue_integrity_guards": passing_data_offline_queue_integrity_guards,
+            "required_migration_rehearsal_steps": required_data_migration_rehearsal_steps,
+            "passing_migration_rehearsal_steps": passing_data_migration_rehearsal_steps,
+            "required_dataset_designer_ops": required_data_dataset_designer_ops,
+            "passing_dataset_designer_ops": passing_data_dataset_designer_ops,
+            "required_service_invocation_trace_steps": required_data_service_invocation_trace_steps,
+            "passing_service_invocation_trace_steps": passing_data_service_invocation_trace_steps,
+            "required_schema_checkpoint_guards": required_data_schema_checkpoint_guards,
+            "passing_schema_checkpoint_guards": passing_data_schema_checkpoint_guards,
+            "required_query_plan_node_kinds": required_data_query_plan_node_kinds,
+            "passing_query_plan_node_kinds": passing_data_query_plan_node_kinds,
+            "required_relationship_actions": required_data_relationship_actions,
+            "passing_relationship_actions": passing_data_relationship_actions,
+            "required_service_versioning_steps": required_data_service_versioning_steps,
+            "passing_service_versioning_steps": passing_data_service_versioning_steps,
+            "required_failover_retry_policy": required_data_failover_retry_policy,
+            "passing_failover_retry_policy": passing_data_failover_retry_policy,
+            "required_pool_session_steps": required_data_pool_session_steps,
+            "passing_pool_session_steps": passing_data_pool_session_steps,
+            "required_stored_procedure_pipeline": required_data_stored_procedure_pipeline,
+            "passing_stored_procedure_pipeline": passing_data_stored_procedure_pipeline,
+            "required_sql_safety_rules": required_data_sql_safety_rules,
+            "passing_sql_safety_rules": passing_data_sql_safety_rules,
+            "required_backup_restore_guards": required_data_backup_restore_guards,
+            "passing_backup_restore_guards": passing_data_backup_restore_guards,
+            "required_replication_metrics": required_data_replication_metrics,
+            "passing_replication_metrics": passing_data_replication_metrics,
+            "required_service_telemetry_signals": required_data_service_telemetry_signals,
+            "passing_service_telemetry_signals": passing_data_service_telemetry_signals,
+            "required_dataset_states": required_data_dataset_states,
+            "passing_dataset_states": passing_data_dataset_states,
+            "required_lookup_editor_steps": required_data_lookup_editor_steps,
+            "passing_lookup_editor_steps": passing_data_lookup_editor_steps,
             "required_checks": required_data_tooling_checks,
             "passing_checks": passing_data_tooling_checks,
             "evidence": {"contract": data_tooling_contract, "workbench": data_tooling_workbench},

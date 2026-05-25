@@ -3541,6 +3541,100 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     assert set(data_tooling_gate["required_module_smoke_modules"]) <= set(
         data_tooling_gate["passing_module_smoke_modules"]
     )
+    assert set(data_tooling_gate["required_connection_test_steps"]) <= set(
+        data_tooling_gate["passing_connection_test_steps"]
+    )
+    assert set(data_tooling_gate["required_query_preview_plan_steps"]) <= set(
+        data_tooling_gate["passing_query_preview_plan_steps"]
+    )
+    assert set(data_tooling_gate["required_schema_diff_preview_items"]) <= set(
+        data_tooling_gate["passing_schema_diff_preview_items"]
+    )
+    assert set(data_tooling_gate["required_method_invocation_pipeline"]) <= set(
+        data_tooling_gate["passing_method_invocation_pipeline"]
+    )
+    assert set(data_tooling_gate["required_resource_publish_pipeline"]) <= set(
+        data_tooling_gate["passing_resource_publish_pipeline"]
+    )
+    assert set(data_tooling_gate["required_local_maintenance_workflows"]) <= set(
+        data_tooling_gate["passing_local_maintenance_workflows"]
+    )
+    assert set(data_tooling_gate["required_conflict_review_flow"]) <= set(
+        data_tooling_gate["passing_conflict_review_flow"]
+    )
+    assert set(data_tooling_gate["required_driver_connections"]) <= set(
+        data_tooling_gate["passing_driver_connections"]
+    )
+    assert set(data_tooling_gate["required_transaction_rehearsal_steps"]) <= set(
+        data_tooling_gate["passing_transaction_rehearsal_steps"]
+    )
+    assert set(data_tooling_gate["required_offline_replay_flow"]) <= set(
+        data_tooling_gate["passing_offline_replay_flow"]
+    )
+    assert set(data_tooling_gate["required_service_test_names"]) <= set(
+        data_tooling_gate["passing_service_test_names"]
+    )
+    assert set(data_tooling_gate["required_schema_browser_operations"]) <= set(
+        data_tooling_gate["passing_schema_browser_operations"]
+    )
+    assert set(data_tooling_gate["required_parameter_binding_guards"]) <= set(
+        data_tooling_gate["passing_parameter_binding_guards"]
+    )
+    assert set(data_tooling_gate["required_dataset_field_kinds"]) <= set(
+        data_tooling_gate["passing_dataset_field_kinds"]
+    )
+    assert set(data_tooling_gate["required_service_security_filters"]) <= set(
+        data_tooling_gate["passing_service_security_filters"]
+    )
+    assert set(data_tooling_gate["required_offline_queue_integrity_guards"]) <= set(
+        data_tooling_gate["passing_offline_queue_integrity_guards"]
+    )
+    assert set(data_tooling_gate["required_migration_rehearsal_steps"]) <= set(
+        data_tooling_gate["passing_migration_rehearsal_steps"]
+    )
+    assert set(data_tooling_gate["required_dataset_designer_ops"]) <= set(
+        data_tooling_gate["passing_dataset_designer_ops"]
+    )
+    assert set(data_tooling_gate["required_service_invocation_trace_steps"]) <= set(
+        data_tooling_gate["passing_service_invocation_trace_steps"]
+    )
+    assert set(data_tooling_gate["required_schema_checkpoint_guards"]) <= set(
+        data_tooling_gate["passing_schema_checkpoint_guards"]
+    )
+    assert set(data_tooling_gate["required_query_plan_node_kinds"]) <= set(
+        data_tooling_gate["passing_query_plan_node_kinds"]
+    )
+    assert set(data_tooling_gate["required_relationship_actions"]) <= set(
+        data_tooling_gate["passing_relationship_actions"]
+    )
+    assert set(data_tooling_gate["required_service_versioning_steps"]) <= set(
+        data_tooling_gate["passing_service_versioning_steps"]
+    )
+    assert set(data_tooling_gate["required_failover_retry_policy"]) <= set(
+        data_tooling_gate["passing_failover_retry_policy"]
+    )
+    assert set(data_tooling_gate["required_pool_session_steps"]) <= set(
+        data_tooling_gate["passing_pool_session_steps"]
+    )
+    assert set(data_tooling_gate["required_stored_procedure_pipeline"]) <= set(
+        data_tooling_gate["passing_stored_procedure_pipeline"]
+    )
+    assert set(data_tooling_gate["required_sql_safety_rules"]) <= set(
+        data_tooling_gate["passing_sql_safety_rules"]
+    )
+    assert set(data_tooling_gate["required_backup_restore_guards"]) <= set(
+        data_tooling_gate["passing_backup_restore_guards"]
+    )
+    assert set(data_tooling_gate["required_replication_metrics"]) <= set(
+        data_tooling_gate["passing_replication_metrics"]
+    )
+    assert set(data_tooling_gate["required_service_telemetry_signals"]) <= set(
+        data_tooling_gate["passing_service_telemetry_signals"]
+    )
+    assert set(data_tooling_gate["required_dataset_states"]) <= set(data_tooling_gate["passing_dataset_states"])
+    assert set(data_tooling_gate["required_lookup_editor_steps"]) <= set(
+        data_tooling_gate["passing_lookup_editor_steps"]
+    )
     assert set(data_tooling_gate["required_checks"]) <= set(data_tooling_gate["passing_checks"])
     package_gate = next(
         check for check in audit["rad_parity"]["checks"] if check["id"] == "design_time_package_installation"
