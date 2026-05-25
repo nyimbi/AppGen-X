@@ -524,6 +524,40 @@ TIME_LABOR_ADVANCED_CAPABILITY_KEYS = (
     "mathematical_optimization",
     "labor_mlops_governance",
 )
+PAYROLL_ENGINE_ADVANCED_CAPABILITY_KEYS = (
+    "event_sourced_payroll_lifecycle",
+    "graph_relational_compensation_topology",
+    "multi_tenant_payroll_isolation",
+    "schema_evolution_resilient_payroll_schema",
+    "probabilistic_payroll_anomaly_compliance_scoring",
+    "real_time_gross_to_net_analytics",
+    "counterfactual_pay_policy_simulation",
+    "temporal_payroll_cash_forecasting",
+    "autonomous_payroll_exception_resolution",
+    "semantic_payroll_instruction_parsing",
+    "predictive_payroll_compliance_liquidity_risk",
+    "self_healing_payment_filing_route_selection",
+    "zero_knowledge_net_pay_filing_proof",
+    "immutable_payroll_audit_trail",
+    "dynamic_payroll_policy_screening",
+    "automated_payroll_control_testing",
+    "universal_api_async_streaming",
+    "cross_system_payroll_federation",
+    "treasury_tax_ledger_integration",
+    "decentralized_worker_pay_identity",
+    "chaos_engineered_payroll_tolerance",
+    "quantum_resistant_payroll_authorization",
+    "carbon_aware_payroll_batching",
+    "algebraic_payroll_batch_optimization",
+    "mechanism_design_cash_allocation",
+    "information_theoretic_payroll_anomaly_detection",
+    "temporal_payroll_exposure_stochastic_modeling",
+    "distributed_systems_engineering",
+    "probabilistic_ml_payroll_risk",
+    "cryptographic_engineering",
+    "mathematical_optimization",
+    "payroll_mlops_governance",
+)
 IMPLEMENTED_PBC_KEYS = (
     "gl_core",
     "ap_automation",
@@ -538,6 +572,7 @@ IMPLEMENTED_PBC_KEYS = (
     "dom",
     "personnel_identity",
     "time_labor",
+    "payroll_engine",
 )
 PBC_ALLOWED_DATASTORE_BACKENDS = (
     "postgresql",
@@ -2777,6 +2812,8 @@ def pbc_implementation_contract(key: str) -> dict:
         advanced_runtime = personnel_identity_runtime_capabilities()
     elif key == "time_labor":
         advanced_runtime = time_labor_runtime_capabilities()
+    elif key == "payroll_engine":
+        advanced_runtime = payroll_engine_runtime_capabilities()
     else:
         advanced_runtime = {}
     source_package = _pbc_source_package_contract(key)
@@ -3066,6 +3103,7 @@ def pbc_implemented_capability_audit(selected_pbcs: tuple[str, ...] | list[str] 
         "dom": len(DOM_ADVANCED_CAPABILITY_KEYS),
         "personnel_identity": len(PERSONNEL_IDENTITY_ADVANCED_CAPABILITY_KEYS),
         "time_labor": len(TIME_LABOR_ADVANCED_CAPABILITY_KEYS),
+        "payroll_engine": len(PAYROLL_ENGINE_ADVANCED_CAPABILITY_KEYS),
     }
     checks = []
     contracts = pbc_implementation_contracts(selected)
@@ -4731,3 +4769,23 @@ from .pbcs.time_labor import time_labor_runtime_smoke  # noqa: E402,F401
 from .pbcs.time_labor import time_labor_set_parameter  # noqa: E402,F401
 from .pbcs.time_labor import time_labor_ui_contract  # noqa: E402,F401
 from .pbcs.time_labor import time_labor_upsert_employee_projection  # noqa: E402,F401
+from .pbcs.payroll_engine import PAYROLL_ENGINE_RUNTIME_CAPABILITY_KEYS  # noqa: E402,F401
+from .pbcs.payroll_engine import PAYROLL_ENGINE_STANDARD_FEATURE_KEYS  # noqa: E402,F401
+from .pbcs.payroll_engine import PAYROLL_ENGINE_UI_FRAGMENT_KEYS  # noqa: E402,F401
+from .pbcs.payroll_engine import payroll_engine_allocate_benefit  # noqa: E402,F401
+from .pbcs.payroll_engine import payroll_engine_apply_deduction  # noqa: E402,F401
+from .pbcs.payroll_engine import payroll_engine_build_workbench_view  # noqa: E402,F401
+from .pbcs.payroll_engine import payroll_engine_calculate_payslip  # noqa: E402,F401
+from .pbcs.payroll_engine import payroll_engine_configure_runtime  # noqa: E402,F401
+from .pbcs.payroll_engine import payroll_engine_create_payroll_run  # noqa: E402,F401
+from .pbcs.payroll_engine import payroll_engine_empty_state  # noqa: E402,F401
+from .pbcs.payroll_engine import payroll_engine_ingest_labor_hours  # noqa: E402,F401
+from .pbcs.payroll_engine import payroll_engine_post_payroll_run  # noqa: E402,F401
+from .pbcs.payroll_engine import payroll_engine_prepare_payroll_filing  # noqa: E402,F401
+from .pbcs.payroll_engine import payroll_engine_register_rule  # noqa: E402,F401
+from .pbcs.payroll_engine import payroll_engine_render_workbench  # noqa: E402,F401
+from .pbcs.payroll_engine import payroll_engine_runtime_capabilities  # noqa: E402,F401
+from .pbcs.payroll_engine import payroll_engine_runtime_smoke  # noqa: E402,F401
+from .pbcs.payroll_engine import payroll_engine_set_parameter  # noqa: E402,F401
+from .pbcs.payroll_engine import payroll_engine_ui_contract  # noqa: E402,F401
+from .pbcs.payroll_engine import payroll_engine_upsert_worker_projection  # noqa: E402,F401
