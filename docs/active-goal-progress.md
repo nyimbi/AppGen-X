@@ -749,6 +749,11 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   and deep runtime surfaces are now replayed as source and generated evidence
   required by workbench, requirement audit, generated runtime validation, and
   focused smoke tests.
+- `b631dda` promotes Object Inspector editor/designer family coverage into a
+  replay matrix: property editor, event editor, component editor, and custom
+  designer families are now replayed as source and generated evidence required
+  by the workbench, platform requirement audit, generated inspector runtime,
+  and focused smoke tests.
 
 ## Open Completion Areas
 
