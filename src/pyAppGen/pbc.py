@@ -422,6 +422,40 @@ TRANSPORTATION_MANAGEMENT_ADVANCED_CAPABILITY_KEYS = (
     "mathematical_optimization",
     "transportation_mlops_governance",
 )
+DOM_ADVANCED_CAPABILITY_KEYS = (
+    "event_sourced_order_lifecycle",
+    "graph_relational_order_topology",
+    "multi_tenant_order_isolation",
+    "schema_evolution_resilient_order_schema",
+    "probabilistic_fraud_allocation_confidence",
+    "real_time_order_orchestration_analytics",
+    "counterfactual_sourcing_fulfillment_simulation",
+    "temporal_promise_demand_forecasting",
+    "autonomous_order_exception_resolution",
+    "semantic_order_event_parsing",
+    "predictive_cancellation_fulfillment_risk",
+    "self_healing_fulfillment_route_selection",
+    "zero_knowledge_order_verification_proof",
+    "immutable_order_audit_trail",
+    "dynamic_order_policy_screening",
+    "automated_order_control_testing",
+    "universal_api_async_streaming",
+    "cross_system_order_federation",
+    "commerce_service_channel_integration",
+    "decentralized_order_identity",
+    "chaos_engineered_orchestration_tolerance",
+    "quantum_resistant_order_authorization",
+    "carbon_aware_fulfillment_planning",
+    "algebraic_fulfillment_optimization",
+    "mechanism_design_node_allocation",
+    "information_theoretic_order_anomaly_detection",
+    "temporal_fulfillment_exposure_stochastic_modeling",
+    "distributed_systems_engineering",
+    "probabilistic_ml_order_risk",
+    "cryptographic_engineering",
+    "mathematical_optimization",
+    "order_mlops_governance",
+)
 IMPLEMENTED_PBC_KEYS = (
     "gl_core",
     "ap_automation",
@@ -433,6 +467,7 @@ IMPLEMENTED_PBC_KEYS = (
     "wms_core",
     "procurement_sourcing",
     "transportation_management",
+    "dom",
 )
 PBC_ALLOWED_DATASTORE_BACKENDS = (
     "postgresql",
@@ -2666,6 +2701,8 @@ def pbc_implementation_contract(key: str) -> dict:
         advanced_runtime = procurement_sourcing_runtime_capabilities()
     elif key == "transportation_management":
         advanced_runtime = transportation_management_runtime_capabilities()
+    elif key == "dom":
+        advanced_runtime = dom_runtime_capabilities()
     else:
         advanced_runtime = {}
     source_package = _pbc_source_package_contract(key)
@@ -2952,6 +2989,7 @@ def pbc_implemented_capability_audit(selected_pbcs: tuple[str, ...] | list[str] 
         "wms_core": len(WMS_CORE_ADVANCED_CAPABILITY_KEYS),
         "procurement_sourcing": len(PROCUREMENT_SOURCING_ADVANCED_CAPABILITY_KEYS),
         "transportation_management": len(TRANSPORTATION_MANAGEMENT_ADVANCED_CAPABILITY_KEYS),
+        "dom": len(DOM_ADVANCED_CAPABILITY_KEYS),
     }
     checks = []
     contracts = pbc_implementation_contracts(selected)
@@ -4566,3 +4604,21 @@ from .pbcs.transportation_management import transportation_management_runtime_ca
 from .pbcs.transportation_management import transportation_management_runtime_smoke  # noqa: E402,F401
 from .pbcs.transportation_management import transportation_management_select_carrier  # noqa: E402,F401
 from .pbcs.transportation_management import transportation_management_set_parameter  # noqa: E402,F401
+from .pbcs.dom import DOM_RUNTIME_CAPABILITY_KEYS  # noqa: E402,F401
+from .pbcs.dom import DOM_STANDARD_FEATURE_KEYS  # noqa: E402,F401
+from .pbcs.dom import dom_apply_inventory_allocation  # noqa: E402,F401
+from .pbcs.dom import dom_apply_tax_projection  # noqa: E402,F401
+from .pbcs.dom import dom_build_workbench_view  # noqa: E402,F401
+from .pbcs.dom import dom_capture_order  # noqa: E402,F401
+from .pbcs.dom import dom_configure_runtime  # noqa: E402,F401
+from .pbcs.dom import dom_confirm_order_shipped  # noqa: E402,F401
+from .pbcs.dom import dom_create_fulfillment_plan  # noqa: E402,F401
+from .pbcs.dom import dom_empty_state  # noqa: E402,F401
+from .pbcs.dom import dom_price_order  # noqa: E402,F401
+from .pbcs.dom import dom_register_rule  # noqa: E402,F401
+from .pbcs.dom import dom_runtime_capabilities  # noqa: E402,F401
+from .pbcs.dom import dom_runtime_smoke  # noqa: E402,F401
+from .pbcs.dom import dom_screen_fraud  # noqa: E402,F401
+from .pbcs.dom import dom_set_parameter  # noqa: E402,F401
+from .pbcs.dom import dom_upsert_customer_projection  # noqa: E402,F401
+from .pbcs.dom import dom_verify_order  # noqa: E402,F401
