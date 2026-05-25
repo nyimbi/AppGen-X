@@ -51797,11 +51797,160 @@ def component_behavior_workbench():
     }}
 
 
+def start_component_drag_operation(component="Button", pointer=(0, 0)):
+    """Start a generated palette drag with a typed component payload."""
+    item = next((entry for entry in PALETTE if entry["type"] == component), None)
+    payload = {{
+        "kind": "component",
+        "source": "component_palette",
+        "drag_format": "appgen.component-drag-payload.v1",
+        "component": component,
+        "default_size": item["defaults"] if item else {{}},
+        "icon": _component_icon(component) if item else None,
+    }}
+    ok = item is not None and bool(payload["default_size"]) and str(payload["icon"]).startswith("fa-")
+    return {{
+        "format": "appgen.generated-component-drag-start-operation.v1",
+        "ok": ok,
+        "component": component,
+        "payload": payload,
+        "pointer": {{"x": pointer[0], "y": pointer[1]}},
+        "cursor": "copy" if ok else "blocked",
+        "guards": ("component_exists", "typed_payload", "icon_available", "default_size_declared"),
+        "diagnostics": () if ok else (f"unknown component {{component}}",),
+        "side_effects": (),
+    }}
+
+
+def preview_component_drop_operation(table_name=None, design=None, payload=None, target_surface="form_canvas", position=(0, 0), field=None):
+    """Preview a generated palette drop without changing the design."""
+    table_name = table_name or next(iter(FORM_TABLES))
+    design = design or form_design(table_name)
+    payload = payload or start_component_drag_operation()["payload"]
+    drop_targets = (
+        {{"surface": "form_canvas", "accepts": ("component", "field"), "preview": "snap_grid"}},
+        {{"surface": "container_component", "accepts": ("component",), "preview": "nested_bounds"}},
+        {{"surface": "menu_designer", "accepts": ("menu_item", "action"), "preview": "menu_tree"}},
+        {{"surface": "component_tree", "accepts": ("reorder", "parent_child"), "preview": "outline"}},
+    )
+    targets = {{item["surface"]: item for item in drop_targets}}
+    component = payload.get("component")
+    proposal_payload = {{"table": table_name, "component": component, "field": field, "x": position[0], "y": position[1]}}
+    proposal = proposal_from_drop(proposal_payload)["component"] if component in {{item["type"] for item in PALETTE}} else {{}}
+    columns = int(design["canvas"]["columns"])
+    ok = (
+        bool(proposal)
+        and target_surface in targets
+        and payload.get("kind") in targets[target_surface]["accepts"]
+        and int(proposal["x"]) >= 0
+        and int(proposal["x"]) + int(proposal["w"]) <= columns
+    )
+    return {{
+        "format": "appgen.generated-component-drop-preview-operation.v1",
+        "ok": ok,
+        "target_surface": target_surface,
+        "preview": targets.get(target_surface, {{}}).get("preview"),
+        "payload": payload,
+        "proposal": proposal,
+        "pipeline": ("resolve_drop_target", "snap_to_grid", "validate_bounds", "render_preview"),
+        "guards": ("drop_target_accepts_payload", "bounds_validated_before_create", "preview_has_no_side_effects"),
+        "diagnostics": () if ok else ("invalid drop preview",),
+        "side_effects": (),
+    }}
+
+
+def commit_component_drop_operation(table_name=None, design=None, preview=None):
+    """Commit a reviewed generated drop to a design copy."""
+    table_name = table_name or next(iter(FORM_TABLES))
+    design = design or form_design(table_name)
+    preview = preview or preview_component_drop_operation(table_name, design, position=(0, len(design.get("components", ())) + 8), field=None)
+    proposal = {{"kind": "drop_component", "component": preview["proposal"]}} if preview.get("ok") else {{}}
+    updated = apply_form_proposal(design, proposal) if proposal else design
+    if proposal:
+        bottom = max(int(component.get("y", 0)) + int(component.get("h", 1)) for component in updated.get("components", ()))
+        canvas = dict(updated.get("canvas", {{}}))
+        canvas["rows"] = max(int(canvas.get("rows", MIN_CANVAS_ROWS)), bottom + 2)
+        updated = dict(updated, canvas=canvas)
+    validation = validate_form_design(updated)
+    ok = bool(preview.get("ok")) and validation["ok"]
+    return {{
+        "format": "appgen.generated-component-drop-commit-operation.v1",
+        "ok": ok,
+        "proposal": preview.get("proposal", {{}}),
+        "component_count_before": len(design.get("components", ())),
+        "component_count_after": len(updated.get("components", ())),
+        "updated_design": dict(updated, validation=validation),
+        "pipeline": ("capture_undo_snapshot", "create_component_instance", "select_component", "open_object_inspector"),
+        "guards": ("undo_snapshot_required", "validation_after_commit", "selection_after_create"),
+        "side_effects": (),
+    }}
+
+
+def bind_component_event_operation(component_ref="submit", component="Button", event="OnClick", handler=None):
+    """Bind a generated component event to a handler through a design transaction."""
+    handler = handler or f"{{_module_name(component_ref)}}_{{_module_name(event)}}"
+    binding = {{
+        "operation": "bind_event_to_handler",
+        "component_ref": component_ref,
+        "component": component,
+        "event": event,
+        "handler": handler,
+        "undoable": True,
+    }}
+    ok = bool(component_ref and component and event and handler)
+    return {{
+        "format": "appgen.generated-component-event-binding-operation.v1",
+        "ok": ok,
+        "binding": binding,
+        "dispatch": ("resolve_component", "resolve_handler", "invoke_handler"),
+        "transaction": ("snapshot_design", "bind_event_to_handler", "record_undo", "refresh_preview"),
+        "guards": ("handler_name_unique", "sender_context_signature", "undo_snapshot_required"),
+        "side_effects": (),
+    }}
+
+
+def define_component_handler_operation(component="Button", event="OnClick", handler=None):
+    """Create or update a generated handler definition with sender/context arguments."""
+    handler = handler or f"{{_module_name(component)}}_{{_module_name(event)}}"
+    definition = {{
+        "name": handler,
+        "signature": "sender, context",
+        "component": component,
+        "event": event,
+        "template": f"def {{handler}}(sender, context):",
+        "body_regions": ("generated_prelude", "user_code", "generated_postlude"),
+        "context_keys": ("form", "component", "dataset", "event", "selection"),
+        "preserves_user_code": True,
+    }}
+    ok = bool(handler and component and event) and "user_code" in definition["body_regions"]
+    return {{
+        "format": "appgen.generated-component-handler-definition-operation.v1",
+        "ok": ok,
+        "definition": definition,
+        "pipeline": ("choose_component_event", "create_or_select_handler", "generate_sender_context_stub", "bind_event_to_handler", "open_source_region"),
+        "guards": ("sender_context_signature", "user_code_regions_preserved", "handler_name_unique"),
+        "side_effects": (),
+    }}
+
+
 def component_drop_wiring_handler_contract(table_name=None, design=None):
     """Return generated palette drag/drop, event wiring, and handler definition evidence."""
     if design is None:
         table_name = table_name or next(iter(FORM_TABLES))
         design = form_design(table_name)
+    else:
+        table_name = table_name or design.get("table") or next(iter(FORM_TABLES))
+    drag_operation = start_component_drag_operation("Button")
+    drop_preview_operation = preview_component_drop_operation(
+        table_name,
+        design,
+        drag_operation["payload"],
+        position=(0, len(design.get("components", ())) + 8),
+        field=None,
+    )
+    drop_commit_operation = commit_component_drop_operation(table_name, design, drop_preview_operation)
+    event_binding_operation = bind_component_event_operation()
+    handler_definition_operation = define_component_handler_operation()
     drop_payloads = tuple(
         {{
             "component": item["type"],
@@ -51959,6 +52108,26 @@ def component_drop_wiring_handler_contract(table_name=None, design=None):
             and all(item["preserves_user_code"] and "user_code" in item["body_regions"] for item in handler_definitions),
             "evidence": handler_definitions,
         }},
+        {{
+            "id": "actionable_drag_drop_wiring_operations",
+            "ok": drag_operation["ok"]
+            and drop_preview_operation["ok"]
+            and drop_commit_operation["ok"]
+            and event_binding_operation["ok"]
+            and handler_definition_operation["ok"]
+            and not drag_operation["side_effects"]
+            and not drop_preview_operation["side_effects"]
+            and not drop_commit_operation["side_effects"]
+            and not event_binding_operation["side_effects"]
+            and not handler_definition_operation["side_effects"],
+            "evidence": {{
+                "drag": drag_operation,
+                "preview": drop_preview_operation,
+                "commit": drop_commit_operation,
+                "binding": event_binding_operation,
+                "handler": handler_definition_operation,
+            }},
+        }},
     )
     ok = all(check["ok"] for check in checks)
     return {{
@@ -51973,6 +52142,13 @@ def component_drop_wiring_handler_contract(table_name=None, design=None):
         "wiring_transactions": wiring_transactions,
         "handler_definition_flow": handler_definition_flow,
         "handler_definitions": handler_definitions,
+        "actionable_operations": {{
+            "drag": drag_operation,
+            "preview": drop_preview_operation,
+            "commit": drop_commit_operation,
+            "binding": event_binding_operation,
+            "handler": handler_definition_operation,
+        }},
         "checks": checks,
         "guards": (
             "handler_name_unique",
@@ -52103,6 +52279,7 @@ def form_interaction_family_contract(design=None):
         {{"id": "handler_editor_preserves_code", "ok": bool(wiring["handler_definitions"]) and all(item["signature"] == "sender, context" and item["preserves_user_code"] for item in wiring["handler_definitions"]), "evidence": wiring["handler_definitions"]}},
         {{"id": "handler_definition_flow_editable", "ok": {{"define_handler", "create_handler_stub", "open_source_span"}} <= set(next(item["operation"] for item in families if item["family"] == "handler_editor")) and "bind_event_to_handler" in wiring["handler_definition_flow"], "evidence": {{"handler_editor": next(item for item in families if item["family"] == "handler_editor"), "flow": wiring["handler_definition_flow"]}}}},
         {{"id": "preview_replay_side_effect_free", "ok": wiring["ok"] and not wiring["side_effects"], "evidence": wiring["side_effects"]}},
+        {{"id": "actionable_operations_replay", "ok": all(operation["ok"] and not operation["side_effects"] for operation in wiring["actionable_operations"].values()) and wiring["actionable_operations"]["commit"]["component_count_after"] == wiring["actionable_operations"]["commit"]["component_count_before"] + 1, "evidence": wiring["actionable_operations"]}},
     )
     ok = all(check["ok"] for check in checks)
     return {{
