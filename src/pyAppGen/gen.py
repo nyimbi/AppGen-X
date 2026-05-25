@@ -17866,6 +17866,54 @@ def inspector_module_test_file_manifest(component="Grid"):
     }
 
 
+def inspector_family_runtime_replay_matrix(component="Grid"):
+    """Replay generated inspector family modules through their exported operations."""
+    form_designer = _load_form_designer()
+    family_specs = (
+        ("property", form_designer.property_editor_family_module_file_manifest()["modules"], "property_editor_family_modules", "run_editor_operation"),
+        ("event", form_designer.event_editor_family_module_file_manifest()["modules"], "event_editor_family_modules", "run_event_editor_operation"),
+        ("component", form_designer.component_editor_family_module_file_manifest()["modules"], "component_editor_family_modules", "run_component_editor_operation"),
+        ("custom", form_designer.custom_designer_family_module_file_manifest()["modules"], "custom_designer_family_modules", "run_custom_designer_operation"),
+    )
+    replays_by_kind = {}
+    for kind, entries, directory, operation_name in family_specs:
+        family_replays = []
+        module_dir = Path(__file__).with_name(directory)
+        for item in entries:
+            result = {"ok": False, "side_effects": (), "error": "missing_module"}
+            module_path = module_dir / f"{item['module']}.py"
+            if module_path.exists():
+                module = _load_generated_module(module_path, f"generated_inspector_family_{kind}_{item['module']}")
+                result = getattr(module, operation_name)()
+            family_replays.append(
+                {
+                    "family": item["family"],
+                    "module": item["module"],
+                    "ok": result["ok"] and not result.get("side_effects", ()),
+                    "result": result,
+                }
+            )
+        replays_by_kind[kind] = tuple(family_replays)
+    checks = (
+        {"id": "generated_property_editor_families_replay", "ok": len(replays_by_kind["property"]) == 8 and all(item["ok"] for item in replays_by_kind["property"])},
+        {"id": "generated_event_editor_families_replay", "ok": len(replays_by_kind["event"]) == 6 and all(item["ok"] for item in replays_by_kind["event"])},
+        {"id": "generated_component_editor_families_replay", "ok": len(replays_by_kind["component"]) == 6 and all(item["ok"] for item in replays_by_kind["component"])},
+        {"id": "generated_custom_designer_families_replay", "ok": len(replays_by_kind["custom"]) == 6 and all(item["ok"] for item in replays_by_kind["custom"])},
+    )
+    return {
+        "format": "appgen.generated-inspector-family-runtime-replay-matrix.v1",
+        "ok": all(check["ok"] for check in checks),
+        "component": component,
+        "property_editor_replays": replays_by_kind["property"],
+        "event_editor_replays": replays_by_kind["event"],
+        "component_editor_replays": replays_by_kind["component"],
+        "custom_designer_replays": replays_by_kind["custom"],
+        "checks": checks,
+        "side_effects": (),
+        "blocking_gaps": tuple(check for check in checks if not check["ok"]),
+    }
+
+
 def inspector_runtime_manifest(component="Grid"):
     """Return generated inspector editors, handlers, designers, and replay evidence."""
     form_designer = _load_form_designer()
@@ -17899,6 +17947,7 @@ def inspector_runtime_manifest(component="Grid"):
         "custom_designer_family_contract",
         "custom_designer_family_modules",
         "custom_designer_family_module_tests",
+        "inspector_family_replay_matrix",
         "actionable_editor_operations",
     }
     actionables = workbench["actionable_operations"]
@@ -17944,6 +17993,7 @@ def inspector_runtime_manifest(component="Grid"):
         "custom_designer_families": workbench["custom_designer_families"],
         "custom_designer_family_artifacts": workbench["custom_designer_family_artifacts"],
         "custom_designer_family_test_artifacts": workbench["custom_designer_family_test_artifacts"],
+        "family_replay_matrix": workbench["family_replay_matrix"],
         "actionable_operations": actionables,
         "guards": (
             "property_editors_registered",
@@ -18015,6 +18065,7 @@ def validate_inspector_runtime(component="Grid"):
     component_editor_tests = form_designer.component_editor_family_module_test_file_manifest()
     custom_designer_modules = form_designer.custom_designer_family_module_file_manifest()
     custom_designer_tests = form_designer.custom_designer_family_module_test_file_manifest()
+    family_runtime_matrix = inspector_family_runtime_replay_matrix(component)
     checks = (
         {"id": "manifest_ok", "ok": manifest["ok"]},
         {"id": "property_editors_present", "ok": bool(manifest["contract"]["property_editors"])},
@@ -18042,6 +18093,7 @@ def validate_inspector_runtime(component="Grid"):
         {"id": "custom_designer_families_ready", "ok": manifest["custom_designer_families"]["ok"] and not manifest["custom_designer_families"]["side_effects"]},
         {"id": "custom_designer_family_modules_ready", "ok": custom_designer_modules["ok"] and not custom_designer_modules["side_effects"]},
         {"id": "custom_designer_family_module_tests_ready", "ok": custom_designer_tests["ok"] and not custom_designer_tests["side_effects"]},
+        {"id": "inspector_family_runtime_replay_matrix_ready", "ok": family_runtime_matrix["ok"] and not family_runtime_matrix["side_effects"]},
         {"id": "inspector_modules_ready", "ok": module_files["ok"] and not module_files["side_effects"]},
         {"id": "inspector_module_tests_ready", "ok": module_tests["ok"] and not module_tests["side_effects"]},
         {"id": "runtime_replay", "ok": replay["ok"] and not replay["side_effects"]},
@@ -18063,6 +18115,7 @@ def validate_inspector_runtime(component="Grid"):
         "component_editor_tests": component_editor_tests,
         "custom_designer_modules": custom_designer_modules,
         "custom_designer_tests": custom_designer_tests,
+        "family_runtime_matrix": family_runtime_matrix,
         "replay": replay,
         "blocking_gaps": tuple(check for check in checks if not check["ok"]),
     }
@@ -51748,6 +51801,49 @@ def inspector_run_editor_scenario_operation(component="Grid"):
     }}
 
 
+def inspector_family_replay_matrix():
+    """Replay generated property, event, component-editor, and custom-designer families."""
+    property_families = property_editor_family_contract()
+    event_families = event_editor_family_contract()
+    component_families = component_editor_family_contract()
+    custom_families = custom_designer_family_contract()
+    property_replays = tuple(
+        {{"family": family["family"], "ok": bool(family["editors"]) and "record_undo" in family["operation"], "operation": family["operation"], "editor_count": len(family["editors"])}}
+        for family in property_families["families"]
+    )
+    event_replays = tuple(
+        {{"family": family["family"], "ok": bool(family["events"]) and "resolve_handler_reference" in family["operation"], "operation": family["operation"], "event_count": len(family["events"])}}
+        for family in event_families["families"]
+    )
+    component_replays = tuple(
+        {{"family": family["family"], "ok": bool(family["editors"]) and "open_component_editor" in family["operation"], "operation": family["operation"], "editor_count": len(family["editors"])}}
+        for family in component_families["families"]
+    )
+    custom_replays = tuple(
+        {{"family": family["family"], "ok": bool(family["hooks"]) and "render_overlay" in family["operation"], "operation": family["operation"], "hook_count": len(family["hooks"])}}
+        for family in custom_families["families"]
+    )
+    checks = (
+        {{"id": "property_editor_families_replay", "ok": len(property_replays) == 8 and all(item["ok"] for item in property_replays)}},
+        {{"id": "event_editor_families_replay", "ok": len(event_replays) == 6 and all(item["ok"] for item in event_replays)}},
+        {{"id": "component_editor_families_replay", "ok": len(component_replays) == 6 and all(item["ok"] for item in component_replays)}},
+        {{"id": "custom_designer_families_replay", "ok": len(custom_replays) == 6 and all(item["ok"] for item in custom_replays)}},
+        {{"id": "family_contracts_side_effect_free", "ok": all(contract["ok"] and not contract["side_effects"] for contract in (property_families, event_families, component_families, custom_families))}},
+    )
+    return {{
+        "format": "appgen.generated-inspector-family-replay-matrix.v1",
+        "ok": all(check["ok"] for check in checks),
+        "property_editor_replays": property_replays,
+        "event_editor_replays": event_replays,
+        "component_editor_replays": component_replays,
+        "custom_designer_replays": custom_replays,
+        "checks": checks,
+        "guards": ("property_editor_families_replay_operations", "event_editor_families_replay_handler_lifecycle", "component_editor_families_replay_transactions", "custom_designer_families_replay_overlay_lifecycle", "side_effect_free_family_replay"),
+        "side_effects": (),
+        "blocking_gaps": tuple(check for check in checks if not check["ok"]),
+    }}
+
+
 def object_inspector_workbench():
     """Prove property, event, component-editor, and custom-designer coverage."""
     sample_components = ("TextBox", "Grid", "Rectangle", "StyleBook", "GestureManager", "Viewport3D", "DatabaseConnection")
@@ -51811,6 +51907,7 @@ def object_inspector_workbench():
     custom_designer_families = custom_designer_family_contract()
     custom_designer_family_artifacts = custom_designer_family_module_file_manifest(_local_component_paths())["modules"]
     custom_designer_family_test_artifacts = custom_designer_family_module_test_file_manifest(_local_component_paths())["tests"]
+    family_replay_matrix = inspector_family_replay_matrix()
     readiness = object_inspector_readiness_contract(sample_components)
     property_edit_operation = inspector_apply_property_edit({{"component": "TextBox", "props": {{"label": "Name"}}}}, "label", "Customer Name")
     event_create_operation = inspector_create_event_handler("Button", "OnClick")
@@ -51908,6 +52005,7 @@ def object_inspector_workbench():
         {{"id": "custom_designer_family_contract", "ok": custom_designer_families["ok"] and set(custom_designer_families["required_families"]) <= {{family["family"] for family in custom_designer_families["families"] if family["hooks"]}} and not custom_designer_families["side_effects"], "evidence": custom_designer_families}},
         {{"id": "custom_designer_family_modules", "ok": len(custom_designer_family_artifacts) == 6 and all(item["ok"] and {{"custom_designer_family_manifest", "run_custom_designer_operation", "smoke_test"}} <= set(item["exports"]) for item in custom_designer_family_artifacts), "evidence": custom_designer_family_artifacts}},
         {{"id": "custom_designer_family_module_tests", "ok": len(custom_designer_family_test_artifacts) == 6 and all(item["ok"] and "test_custom_designer_family_module_smoke" in item["exports"] for item in custom_designer_family_test_artifacts), "evidence": custom_designer_family_test_artifacts}},
+        {{"id": "inspector_family_replay_matrix", "ok": family_replay_matrix["ok"] and {{"property_editor_families_replay", "event_editor_families_replay", "component_editor_families_replay", "custom_designer_families_replay", "family_contracts_side_effect_free"}} <= {{check["id"] for check in family_replay_matrix["checks"] if check["ok"]}}, "evidence": family_replay_matrix}},
     )
     ok = all(check["ok"] for check in checks)
     return {{
@@ -51966,6 +52064,7 @@ def object_inspector_workbench():
         "custom_designer_families": custom_designer_families,
         "custom_designer_family_artifacts": custom_designer_family_artifacts,
         "custom_designer_family_test_artifacts": custom_designer_family_test_artifacts,
+        "family_replay_matrix": family_replay_matrix,
         "readiness": readiness,
         "actionable_operations": {{
             "property_edit": property_edit_operation,
@@ -61005,7 +61104,7 @@ def platform_parity_requirement_audit_contract():
     requirements = (
         {{"id": "component_parity", "ok": analog_groups["ok"] and component_readiness["ok"] and component_usability["ok"] and {{"analog_coverage_ready", "palette_icons_ready", "behavior_surface_ready", "generated_modules_ready", "generated_tests_ready", "scenario_ready", "ide_release_ready", "phase_order_ready"}} <= {{check["id"] for check in component_readiness["checks"] if check["ok"]}} and {{"per_component_files", "per_package_files", "per_component_test_files", "per_package_test_files", "component_family_modules", "component_family_module_tests", "module_smoke_tests", "component_parity_readiness", "component_parity_scenario"}} <= {{check["id"] for check in component_usability["checks"] if check["ok"]}} and {{"cross-target-ui", "layouts", "data-display", "graphics", "animations", "styles-theming", "gestures", "sensors", "three-d", "data-access"}} == {{group["group"] for group in analog_groups["groups"]}}, "deep_checks": ("analog_coverage_ready", "generated_modules_ready", "generated_tests_ready", "scenario_ready", "per_component_files", "per_package_files", "per_component_test_files", "per_package_test_files", "component_family_modules", "component_family_module_tests", "module_smoke_tests", "component_parity_scenario", "ide_release_ready", "phase_order_ready"), "evidence": {{"groups": analog_groups, "readiness": component_readiness, "usability": component_usability}}}},
         {{"id": "native_runtime_streaming", "ok": runtime["ok"] and runtime_readiness["ok"] and {{"stream_identity_ready", "unit_semantics_ready", "compile_targets_ready", "diagnostics_route_ready", "debug_preview_ready", "runtime_preview_ready", "phase_order_ready"}} <= {{check["id"] for check in runtime_readiness["checks"] if check["ok"]}} and {{"form_stream_schema", "runtime_session_replay", "design_edit_session_replay", "runtime_debug_authoring", "native_form_modules", "native_form_module_tests", "runtime_operation_modules", "runtime_operation_module_tests", "compiler_runtime_modules", "compiler_runtime_module_tests", "deep_runtime_modules", "deep_runtime_module_tests", "runtime_module_replay_matrix"}} <= {{check["id"] for check in runtime["checks"] if check["ok"]}}, "deep_checks": ("stream_identity_ready", "compile_targets_ready", "diagnostics_route_ready", "debug_preview_ready", "runtime_preview_ready", "runtime_debug_authoring", "native_form_modules", "native_form_module_tests", "runtime_operation_modules", "runtime_operation_module_tests", "compiler_runtime_modules", "compiler_runtime_module_tests", "deep_runtime_modules", "deep_runtime_module_tests", "runtime_module_replay_matrix", "phase_order_ready"), "evidence": {{"workbench": runtime, "readiness": runtime_readiness}}}},
-        {{"id": "inspector_design_surface", "ok": inspector["ok"] and inspector_readiness["ok"] and {{"editor_metadata_ready", "property_event_ready", "component_custom_designer_ready", "state_design_surface_ready", "binding_handler_ready", "lifecycle_round_trip_ready", "phase_order_ready"}} <= {{check["id"] for check in inspector_readiness["checks"] if check["ok"]}} and {{"property_editor_types", "event_editor_lifecycle", "component_editor_transaction", "custom_designer_registration_replay", "editor_lifecycle_replay", "inspector_generated_modules", "inspector_generated_module_tests", "property_editor_family_contract", "property_editor_family_modules", "property_editor_family_module_tests", "event_editor_family_contract", "event_editor_family_modules", "event_editor_family_module_tests", "component_editor_family_contract", "component_editor_family_modules", "component_editor_family_module_tests", "custom_designer_family_contract", "custom_designer_family_modules", "custom_designer_family_module_tests"}} <= {{check["id"] for check in inspector["checks"] if check["ok"]}}, "deep_checks": ("editor_lifecycle_replay", "design_surface_transaction_replay", "custom_designer_registration_replay", "inspector_generated_modules", "inspector_generated_module_tests", "property_editor_family_contract", "property_editor_family_modules", "property_editor_family_module_tests", "event_editor_family_contract", "event_editor_family_modules", "event_editor_family_module_tests", "component_editor_family_contract", "component_editor_family_modules", "component_editor_family_module_tests", "custom_designer_family_contract", "custom_designer_family_modules", "custom_designer_family_module_tests", "phase_order_ready"), "evidence": {{"workbench": inspector, "readiness": inspector_readiness}}}},
+        {{"id": "inspector_design_surface", "ok": inspector["ok"] and inspector_readiness["ok"] and {{"editor_metadata_ready", "property_event_ready", "component_custom_designer_ready", "state_design_surface_ready", "binding_handler_ready", "lifecycle_round_trip_ready", "phase_order_ready"}} <= {{check["id"] for check in inspector_readiness["checks"] if check["ok"]}} and {{"property_editor_types", "event_editor_lifecycle", "component_editor_transaction", "custom_designer_registration_replay", "editor_lifecycle_replay", "inspector_generated_modules", "inspector_generated_module_tests", "property_editor_family_contract", "property_editor_family_modules", "property_editor_family_module_tests", "event_editor_family_contract", "event_editor_family_modules", "event_editor_family_module_tests", "component_editor_family_contract", "component_editor_family_modules", "component_editor_family_module_tests", "custom_designer_family_contract", "custom_designer_family_modules", "custom_designer_family_module_tests", "inspector_family_replay_matrix"}} <= {{check["id"] for check in inspector["checks"] if check["ok"]}}, "deep_checks": ("editor_lifecycle_replay", "design_surface_transaction_replay", "custom_designer_registration_replay", "inspector_generated_modules", "inspector_generated_module_tests", "property_editor_family_contract", "property_editor_family_modules", "property_editor_family_module_tests", "event_editor_family_contract", "event_editor_family_modules", "event_editor_family_module_tests", "component_editor_family_contract", "component_editor_family_modules", "component_editor_family_module_tests", "custom_designer_family_contract", "custom_designer_family_modules", "custom_designer_family_module_tests", "inspector_family_replay_matrix", "phase_order_ready"), "evidence": {{"workbench": inspector, "readiness": inspector_readiness}}}},
         {{"id": "visual_binding_designer", "ok": bindings["ok"] and binding_readiness["ok"] and {{"graph_authoring_ready", "validation_transaction_ready", "preview_runtime_ready", "diagnostics_conflict_ready", "offline_accessible_runtime_ready", "designer_release_replay_ready", "inspector_bridge_ready", "designer_scenario_ready", "phase_order_ready"}} <= {{check["id"] for check in binding_readiness["checks"] if check["ok"]}} and bindings["designer_transaction_replay"]["ok"] and bindings["design_runtime_replay"]["ok"] and bindings["lifecycle_release_replay"]["ok"] and bindings["designer_scenario"]["ok"] and {{"binding_generated_modules", "binding_generated_module_tests", "binding_designer_scenario", "binding_designer_family_contract", "binding_designer_family_modules", "binding_designer_family_module_tests"}} <= {{check["id"] for check in bindings["checks"] if check["ok"]}}, "deep_checks": ("binding_lifecycle_release_replay", "design_runtime_session_replay", "designer_transaction_replay", "binding_designer_scenario", "binding_generated_modules", "binding_generated_module_tests", "binding_designer_family_contract", "binding_designer_family_modules", "binding_designer_family_module_tests", "phase_order_ready"), "evidence": {{"workbench": bindings, "readiness": binding_readiness}}}},
         {{"id": "native_data_service_tooling", "ok": data_tooling["ok"] and data_readiness["ok"] and {{"connection_ready", "dataset_ready", "publish_ready", "offline_replay_ready", "replication_failover_ready", "diagnostics_ready", "ide_scenario_ready", "phase_order_ready"}} <= {{check["id"] for check in data_readiness["checks"] if check["ok"]}} and data_tooling["runtime_replay"]["ok"] and data_tooling["publish_transaction_replay"]["ok"] and data_tooling["ide_scenario"]["ok"] and {{"relationship_lookup_lifecycle_replay", "data_tooling_ide_scenario", "data_tooling_modules", "data_tooling_module_tests", "deep_data_tooling_modules", "deep_data_tooling_module_tests", "enterprise_data_ide_modules", "enterprise_data_ide_module_tests"}} <= {{check["id"] for check in data_tooling["checks"] if check["ok"]}}, "deep_checks": ("relationship_lookup_lifecycle_replay", "data_tooling_ide_scenario", "data_tooling_modules", "data_tooling_module_tests", "deep_data_tooling_modules", "deep_data_tooling_module_tests", "enterprise_data_ide_modules", "enterprise_data_ide_module_tests", "data_tooling_design_runtime_session_replay", "data_tooling_publish_transaction_replay", "phase_order_ready"), "evidence": {{"workbench": data_tooling, "readiness": data_readiness}}}},
         {{"id": "package_installation_ecosystem", "ok": package_manager["ok"] and package_lifecycle["ok"] and package_readiness["ok"] and {{"trust_before_preview", "preview_before_registry_commit", "registry_before_update", "rollback_before_cleanup", "marketplace_publication_ready", "operation_surface_ready", "phase_order_ready"}} <= {{check["id"] for check in package_readiness["checks"] if check["ok"]}} and {{"lifecycle_transaction_replay", "marketplace_publication", "package_manager_modules", "package_manager_module_tests"}} <= {{check["id"] for check in package_manager["checks"] if check["ok"]}}, "deep_checks": ("trust_before_preview", "preview_before_registry_commit", "registry_before_update", "rollback_before_cleanup", "marketplace_publication_ready", "marketplace_publication", "package_manager_modules", "package_manager_module_tests", "phase_order_ready"), "evidence": {{"manager": package_manager, "lifecycle": package_lifecycle, "readiness": package_readiness}}}},

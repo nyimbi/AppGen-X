@@ -218,6 +218,7 @@ from pyAppGen.form_designer import inspector_binding_designer_bridge_contract
 from pyAppGen.form_designer import inspector_register_custom_designer
 from pyAppGen.form_designer import inspector_rename_event_handler
 from pyAppGen.form_designer import inspector_run_editor_scenario_operation
+from pyAppGen.form_designer import inspector_family_replay_matrix
 from pyAppGen.form_designer import object_inspector_readiness_contract
 from pyAppGen.form_designer import object_inspector_workbench
 from pyAppGen.form_designer import data_relationship_join_plan_contract
@@ -1837,6 +1838,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "custom_designer_family_contract",
         "custom_designer_family_modules",
         "custom_designer_family_module_tests",
+        "inspector_family_replay_matrix",
     } == {check["id"] for check in inspector_workbench["checks"]}
     assert all("apply_change" in workflow["workflow"] for workflow in inspector_workbench["property_edit_workflows"])
     assert all("update_component_reference" in workflow["workflow"] for workflow in inspector_workbench["event_edit_workflows"])
@@ -1993,6 +1995,14 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         family["family"] for family in custom_families["families"] if family["hooks"]
     }
     assert all("render_overlay" in family["operation"] for family in custom_families["families"])
+    family_replay_matrix = inspector_family_replay_matrix()
+    assert family_replay_matrix["format"] == "appgen.inspector-family-replay-matrix.v1"
+    assert family_replay_matrix["ok"] is True
+    assert len(family_replay_matrix["property_editor_replays"]) == 8
+    assert len(family_replay_matrix["event_editor_replays"]) == 6
+    assert len(family_replay_matrix["component_editor_replays"]) == 6
+    assert len(family_replay_matrix["custom_designer_replays"]) == 6
+    assert inspector_workbench["family_replay_matrix"]["ok"] is True
     assert inspector_workbench["actionable_operations"]["property_edit"]["ok"] is True
     assert inspector_workbench["actionable_operations"]["event_rename"]["binding"]["handler"] == "button_customer_click"
     assert inspector_workbench["actionable_operations"]["handler_invoke"]["ok"] is True
@@ -4846,6 +4856,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "custom_designer_family_contract",
         "custom_designer_family_modules",
         "custom_designer_family_module_tests",
+        "inspector_family_replay_matrix",
         "phase_order_ready",
     } <= set(requirements_by_id["inspector_design_surface"]["deep_checks"])
     assert {
@@ -4911,6 +4922,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
                 "custom_designer_family_contract",
                 "custom_designer_family_modules",
                 "custom_designer_family_module_tests",
+                "inspector_family_replay_matrix",
             },
         ),
         (
@@ -5305,6 +5317,7 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         "custom_designer_families_ready",
         "custom_designer_family_modules_ready",
         "custom_designer_family_module_tests_ready",
+        "inspector_family_runtime_replay_matrix_ready",
         "inspector_modules_ready",
         "inspector_module_tests_ready",
         "runtime_replay",
@@ -14836,6 +14849,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "custom_designer_family_contract",
         "custom_designer_family_modules",
         "custom_designer_family_module_tests",
+        "inspector_family_replay_matrix",
         "phase_order_ready",
     } <= set(generated_requirements_by_id["inspector_design_surface"]["deep_checks"])
     assert {
@@ -14901,6 +14915,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
                 "custom_designer_family_contract",
                 "custom_designer_family_modules",
                 "custom_designer_family_module_tests",
+                "inspector_family_replay_matrix",
             },
         ),
         (
@@ -16067,14 +16082,22 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "custom_designer_families_ready",
         "custom_designer_family_modules_ready",
         "custom_designer_family_module_tests_ready",
+        "inspector_family_runtime_replay_matrix_ready",
         "inspector_modules_ready",
         "inspector_module_tests_ready",
         "runtime_replay",
     } <= set(inspector_runtime_smoke["checks"])
     inspector_module_files = inspector_runtime.inspector_module_file_manifest("Grid")
     inspector_module_tests = inspector_runtime.inspector_module_test_file_manifest("Grid")
+    inspector_family_runtime_matrix = inspector_runtime.inspector_family_runtime_replay_matrix("Grid")
     assert inspector_module_files["ok"] is True
     assert inspector_module_tests["ok"] is True
+    assert inspector_family_runtime_matrix["format"] == "appgen.generated-inspector-family-runtime-replay-matrix.v1"
+    assert inspector_family_runtime_matrix["ok"] is True
+    assert len(inspector_family_runtime_matrix["property_editor_replays"]) == 8
+    assert len(inspector_family_runtime_matrix["event_editor_replays"]) == 6
+    assert len(inspector_family_runtime_matrix["component_editor_replays"]) == 6
+    assert len(inspector_family_runtime_matrix["custom_designer_replays"]) == 6
     assert {item["module"] for item in inspector_module_files["modules"]} == {
         "property_editor_module",
         "event_editor_module",
@@ -17107,6 +17130,7 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         "custom_designer_family_contract",
         "custom_designer_family_modules",
         "custom_designer_family_module_tests",
+        "inspector_family_replay_matrix",
     } == {check["id"] for check in generated_inspector["checks"]}
     generated_property_edit = form_designer.inspector_apply_property_edit(
         {"component": "TextBox", "props": {"label": "Name"}},
@@ -17263,6 +17287,14 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert set(generated_custom_families["required_families"]) == {
         family["family"] for family in generated_custom_families["families"] if family["hooks"]
     }
+    generated_family_replay_matrix = form_designer.inspector_family_replay_matrix()
+    assert generated_family_replay_matrix["format"] == "appgen.generated-inspector-family-replay-matrix.v1"
+    assert generated_family_replay_matrix["ok"] is True
+    assert len(generated_family_replay_matrix["property_editor_replays"]) == 8
+    assert len(generated_family_replay_matrix["event_editor_replays"]) == 6
+    assert len(generated_family_replay_matrix["component_editor_replays"]) == 6
+    assert len(generated_family_replay_matrix["custom_designer_replays"]) == 6
+    assert generated_inspector["family_replay_matrix"]["ok"] is True
     assert generated_inspector["actionable_operations"]["property_edit"]["ok"] is True
     assert generated_inspector["actionable_operations"]["event_rename"]["binding"]["handler"] == "button_customer_click"
     assert generated_inspector["actionable_operations"]["handler_invoke"]["ok"] is True

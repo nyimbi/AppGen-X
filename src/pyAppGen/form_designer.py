@@ -6778,6 +6778,81 @@ def inspector_run_editor_scenario_operation(component: str = "Grid") -> dict:
     }
 
 
+def inspector_family_replay_matrix() -> dict:
+    """Replay property, event, component-editor, and custom-designer families as one inspector gate."""
+    property_families = property_editor_family_contract()
+    event_families = event_editor_family_contract()
+    component_families = component_editor_family_contract()
+    custom_families = custom_designer_family_contract()
+    property_replays = tuple(
+        {
+            "family": family["family"],
+            "ok": bool(family["editors"]) and "record_undo" in family["operation"],
+            "operation": family["operation"],
+            "editor_count": len(family["editors"]),
+        }
+        for family in property_families["families"]
+    )
+    event_replays = tuple(
+        {
+            "family": family["family"],
+            "ok": bool(family["events"]) and "resolve_handler_reference" in family["operation"],
+            "operation": family["operation"],
+            "event_count": len(family["events"]),
+        }
+        for family in event_families["families"]
+    )
+    component_replays = tuple(
+        {
+            "family": family["family"],
+            "ok": bool(family["editors"]) and "open_component_editor" in family["operation"],
+            "operation": family["operation"],
+            "editor_count": len(family["editors"]),
+        }
+        for family in component_families["families"]
+    )
+    custom_replays = tuple(
+        {
+            "family": family["family"],
+            "ok": bool(family["hooks"]) and "render_overlay" in family["operation"],
+            "operation": family["operation"],
+            "hook_count": len(family["hooks"]),
+        }
+        for family in custom_families["families"]
+    )
+    checks = (
+        {"id": "property_editor_families_replay", "ok": len(property_replays) == 8 and all(item["ok"] for item in property_replays)},
+        {"id": "event_editor_families_replay", "ok": len(event_replays) == 6 and all(item["ok"] for item in event_replays)},
+        {"id": "component_editor_families_replay", "ok": len(component_replays) == 6 and all(item["ok"] for item in component_replays)},
+        {"id": "custom_designer_families_replay", "ok": len(custom_replays) == 6 and all(item["ok"] for item in custom_replays)},
+        {
+            "id": "family_contracts_side_effect_free",
+            "ok": all(
+                contract["ok"] and not contract["side_effects"]
+                for contract in (property_families, event_families, component_families, custom_families)
+            ),
+        },
+    )
+    return {
+        "format": "appgen.inspector-family-replay-matrix.v1",
+        "ok": all(check["ok"] for check in checks),
+        "property_editor_replays": property_replays,
+        "event_editor_replays": event_replays,
+        "component_editor_replays": component_replays,
+        "custom_designer_replays": custom_replays,
+        "checks": checks,
+        "guards": (
+            "property_editor_families_replay_operations",
+            "event_editor_families_replay_handler_lifecycle",
+            "component_editor_families_replay_transactions",
+            "custom_designer_families_replay_overlay_lifecycle",
+            "side_effect_free_family_replay",
+        ),
+        "side_effects": (),
+        "blocking_gaps": tuple(check for check in checks if not check["ok"]),
+    }
+
+
 def object_inspector_workbench() -> dict:
     """Prove property, event, component-editor, and custom-designer coverage."""
     sample_components = (
@@ -6847,6 +6922,7 @@ def object_inspector_workbench() -> dict:
     custom_designer_families = custom_designer_family_contract()
     custom_designer_family_artifacts = custom_designer_family_module_file_manifest()
     custom_designer_family_test_artifacts = custom_designer_family_module_test_file_manifest()
+    family_replay_matrix = inspector_family_replay_matrix()
     readiness = object_inspector_readiness_contract(sample_components)
     property_edit_operation = inspector_apply_property_edit(
         {"component": "TextBox", "props": {"label": "Name"}},
@@ -7316,6 +7392,19 @@ def object_inspector_workbench() -> dict:
             ),
             "evidence": custom_designer_family_test_artifacts,
         },
+        {
+            "id": "inspector_family_replay_matrix",
+            "ok": family_replay_matrix["ok"]
+            and {
+                "property_editor_families_replay",
+                "event_editor_families_replay",
+                "component_editor_families_replay",
+                "custom_designer_families_replay",
+                "family_contracts_side_effect_free",
+            }
+            <= {check["id"] for check in family_replay_matrix["checks"] if check["ok"]},
+            "evidence": family_replay_matrix,
+        },
     )
     ok = all(check["ok"] for check in checks)
     return {
@@ -7374,6 +7463,7 @@ def object_inspector_workbench() -> dict:
         "custom_designer_families": custom_designer_families,
         "custom_designer_family_artifacts": custom_designer_family_artifacts,
         "custom_designer_family_test_artifacts": custom_designer_family_test_artifacts,
+        "family_replay_matrix": family_replay_matrix,
         "readiness": readiness,
         "actionable_operations": {
             "property_edit": property_edit_operation,
@@ -16006,6 +16096,7 @@ def platform_parity_requirement_audit_contract() -> dict:
                 "custom_designer_family_contract",
                 "custom_designer_family_modules",
                 "custom_designer_family_module_tests",
+                "inspector_family_replay_matrix",
             } <= {check["id"] for check in inspector["checks"] if check["ok"]},
             "deep_checks": (
                 "editor_lifecycle_replay",
@@ -16025,6 +16116,7 @@ def platform_parity_requirement_audit_contract() -> dict:
                 "custom_designer_family_contract",
                 "custom_designer_family_modules",
                 "custom_designer_family_module_tests",
+                "inspector_family_replay_matrix",
                 "phase_order_ready",
             ),
             "evidence": {"workbench": inspector, "readiness": inspector_readiness},
@@ -16706,6 +16798,7 @@ def rad_parity_workbench(existing_paths: set[str] | None = None) -> dict:
         "custom_designer_family_contract",
         "custom_designer_family_modules",
         "custom_designer_family_module_tests",
+        "inspector_family_replay_matrix",
     )
     passing_inspector_workbench_checks = tuple(check["id"] for check in inspector_workbench["checks"] if check["ok"])
     inspector_contracts = tuple(inspector_workbench["contracts"])
