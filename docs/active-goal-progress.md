@@ -678,6 +678,9 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   form-designer release gate and a generated IDE evidence route, so generated
   apps expose `/form-designer/component-wiring.json` alongside the aggregate
   parity workbench.
+- Generated component wiring now writes dedicated module and test files for
+  drop payloads, drop targets, event wiring, and handler definitions, and the
+  smoke audit compiles those files as release evidence.
 
 ## Open Completion Areas
 

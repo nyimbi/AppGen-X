@@ -14988,6 +14988,8 @@ def rad_parity_workbench(existing_paths: set[str] | None = None) -> dict:
     package_readiness = component_package_readiness_contract()
     streaming_contract = dfm_streaming_contract()
     drop_wiring = component_drop_wiring_handler_contract()
+    component_wiring_modules = component_wiring_module_file_manifest()
+    component_wiring_module_tests = component_wiring_module_test_file_manifest()
     runtime_workbench = pascal_runtime_workbench()
     inspector_workbench = object_inspector_workbench()
     binding_contract = livebindings_contract()
@@ -18301,6 +18303,8 @@ def rad_parity_workbench(existing_paths: set[str] | None = None) -> dict:
             <= set(drop_wiring["drop_pipeline"])
             and {"Button.OnClick", "TextBox.OnChange"} <= {item["event"] for item in drop_wiring["wiring_links"]}
             and all(item["signature"] == "sender, context" for item in drop_wiring["handler_definitions"])
+            and all(item["ok"] for item in component_wiring_modules)
+            and all(item["ok"] for item in component_wiring_module_tests)
             and not drop_wiring["side_effects"],
             "required_checks": (
                 "palette_drag_payloads",
@@ -18314,6 +18318,8 @@ def rad_parity_workbench(existing_paths: set[str] | None = None) -> dict:
             "drop_pipeline": drop_wiring["drop_pipeline"],
             "wiring_links": drop_wiring["wiring_links"],
             "handler_definitions": drop_wiring["handler_definitions"],
+            "module_files": component_wiring_modules,
+            "module_tests": component_wiring_module_tests,
             "evidence": drop_wiring,
         },
         {
@@ -20595,6 +20601,53 @@ def inspector_module_test_file_manifest() -> tuple[dict, ...]:
     )
 
 
+def component_wiring_module_file_manifest() -> tuple[dict, ...]:
+    """Return generated component drop/wiring module files expected in apps."""
+    modules = (
+        ("component_drop_payload_module", "drop_payloads"),
+        ("component_drop_target_module", "drop_targets"),
+        ("component_event_wiring_module", "event_wiring"),
+        ("component_handler_definition_module", "handler_definitions"),
+    )
+    exports = (
+        "module_contract",
+        "component_wiring_manifest",
+        "run_wiring_operation",
+        "runtime_manifest",
+        "smoke_test",
+    )
+    return tuple(
+        {
+            "module": module,
+            "kind": kind,
+            "path": f"app/component_wiring_modules/{module}.py",
+            "exports": exports,
+            "ok": bool(module) and bool(kind),
+        }
+        for module, kind in modules
+    )
+
+
+def component_wiring_module_test_file_manifest() -> tuple[dict, ...]:
+    """Return generated component drop/wiring test files expected in apps."""
+    return tuple(
+        {
+            "module": item["module"],
+            "kind": item["kind"],
+            "path": item["path"].replace("app/component_wiring_modules/", "app/component_wiring_module_tests/test_"),
+            "target": item["path"],
+            "exports": (
+                "load_component_wiring_module",
+                "test_component_wiring_module_contract",
+                "test_component_wiring_module_smoke",
+                "smoke_test",
+            ),
+            "ok": item["ok"],
+        }
+        for item in component_wiring_module_file_manifest()
+    )
+
+
 def binding_module_file_manifest() -> tuple[dict, ...]:
     """Return generated visual binding module files expected in apps."""
     modules = (
@@ -21345,6 +21398,8 @@ def form_designer_generation_smoke_audit(source: str = FORM_DESIGNER_SAMPLE_DSL)
     deep_data_tooling_module_test_artifacts = tuple(item["path"] for item in deep_data_tooling_module_test_file_manifest())
     inspector_module_artifacts = tuple(item["path"] for item in inspector_module_file_manifest())
     inspector_module_test_artifacts = tuple(item["path"] for item in inspector_module_test_file_manifest())
+    component_wiring_module_artifacts = tuple(item["path"] for item in component_wiring_module_file_manifest())
+    component_wiring_module_test_artifacts = tuple(item["path"] for item in component_wiring_module_test_file_manifest())
     binding_module_artifacts = tuple(item["path"] for item in binding_module_file_manifest())
     binding_module_test_artifacts = tuple(item["path"] for item in binding_module_test_file_manifest())
     package_manager_module_artifacts = tuple(item["path"] for item in package_manager_module_file_manifest())
@@ -21387,6 +21442,8 @@ def form_designer_generation_smoke_audit(source: str = FORM_DESIGNER_SAMPLE_DSL)
         *deep_data_tooling_module_test_artifacts,
         *inspector_module_artifacts,
         *inspector_module_test_artifacts,
+        *component_wiring_module_artifacts,
+        *component_wiring_module_test_artifacts,
         *binding_module_artifacts,
         *binding_module_test_artifacts,
         *package_manager_module_artifacts,
@@ -21429,6 +21486,8 @@ def form_designer_generation_smoke_audit(source: str = FORM_DESIGNER_SAMPLE_DSL)
         *deep_data_tooling_module_test_artifacts,
         *inspector_module_artifacts,
         *inspector_module_test_artifacts,
+        *component_wiring_module_artifacts,
+        *component_wiring_module_test_artifacts,
         *binding_module_artifacts,
         *binding_module_test_artifacts,
         *package_manager_module_artifacts,
@@ -21819,6 +21878,8 @@ def form_designer_generation_smoke_audit(source: str = FORM_DESIGNER_SAMPLE_DSL)
             and len(deep_data_tooling_module_test_artifacts) == 8
             and len(inspector_module_artifacts) == 6
             and len(inspector_module_test_artifacts) == 6
+            and len(component_wiring_module_artifacts) == 4
+            and len(component_wiring_module_test_artifacts) == 4
             and len(binding_module_artifacts) == 6
             and len(binding_module_test_artifacts) == 6
             and len(package_manager_module_artifacts) == 6
@@ -21843,6 +21904,8 @@ def form_designer_generation_smoke_audit(source: str = FORM_DESIGNER_SAMPLE_DSL)
             "deep_data_tooling_module_test_count": len(deep_data_tooling_module_test_artifacts),
             "inspector_module_count": len(inspector_module_artifacts),
             "inspector_module_test_count": len(inspector_module_test_artifacts),
+            "component_wiring_module_count": len(component_wiring_module_artifacts),
+            "component_wiring_module_test_count": len(component_wiring_module_test_artifacts),
             "binding_module_count": len(binding_module_artifacts),
             "binding_module_test_count": len(binding_module_test_artifacts),
             "package_manager_module_count": len(package_manager_module_artifacts),
@@ -22287,6 +22350,16 @@ def form_designer_release_audit(existing_paths: set[str] | None = None) -> dict:
     passing_drop_wiring_events = tuple(
         item["event"] for item in drop_wiring["wiring_links"] if item["event"] in required_drop_wiring_events
     )
+    component_wiring_modules = component_wiring_module_file_manifest()
+    component_wiring_module_tests = component_wiring_module_test_file_manifest()
+    required_component_wiring_module_kinds = ("drop_payloads", "drop_targets", "event_wiring", "handler_definitions")
+    passing_component_wiring_module_kinds = tuple(
+        item["kind"] for item in component_wiring_modules if item["ok"] and item["kind"] in required_component_wiring_module_kinds
+    )
+    required_component_wiring_test_kinds = required_component_wiring_module_kinds
+    passing_component_wiring_test_kinds = tuple(
+        item["kind"] for item in component_wiring_module_tests if item["ok"] and item["kind"] in required_component_wiring_test_kinds
+    )
     required_drop_handler_signatures = tuple(item["name"] for item in drop_wiring["handler_definitions"])
     passing_drop_handler_signatures = tuple(
         item["name"] for item in drop_wiring["handler_definitions"] if item["signature"] == "sender, context"
@@ -22646,6 +22719,8 @@ def form_designer_release_audit(existing_paths: set[str] | None = None) -> dict:
             and set(required_drop_wiring_checks) <= set(passing_drop_wiring_checks)
             and set(required_drop_wiring_pipeline) <= set(passing_drop_wiring_pipeline)
             and set(required_drop_wiring_events) <= set(passing_drop_wiring_events)
+            and set(required_component_wiring_module_kinds) <= set(passing_component_wiring_module_kinds)
+            and set(required_component_wiring_test_kinds) <= set(passing_component_wiring_test_kinds)
             and set(required_drop_handler_signatures) <= set(passing_drop_handler_signatures)
             and not drop_wiring["side_effects"],
             "required_checks": required_drop_wiring_checks,
@@ -22654,6 +22729,12 @@ def form_designer_release_audit(existing_paths: set[str] | None = None) -> dict:
             "passing_pipeline": passing_drop_wiring_pipeline,
             "required_events": required_drop_wiring_events,
             "passing_events": passing_drop_wiring_events,
+            "required_module_kinds": required_component_wiring_module_kinds,
+            "passing_module_kinds": passing_component_wiring_module_kinds,
+            "required_test_kinds": required_component_wiring_test_kinds,
+            "passing_test_kinds": passing_component_wiring_test_kinds,
+            "module_files": component_wiring_modules,
+            "module_tests": component_wiring_module_tests,
             "required_handler_signatures": required_drop_handler_signatures,
             "passing_handler_signatures": passing_drop_handler_signatures,
             "evidence": drop_wiring,

@@ -2346,6 +2346,7 @@ def write_form_designer_file(output_dir, schema: AppSchema):
     write_data_tooling_module_files(output_dir)
     write_deep_data_tooling_module_files(output_dir)
     write_enterprise_data_ide_module_files(output_dir)
+    write_component_wiring_module_files(output_dir)
     write_inspector_module_files(output_dir)
     write_binding_module_files(output_dir)
     write_package_manager_module_files(output_dir)
@@ -2449,6 +2450,13 @@ BINDING_MODULES = (
     "binding_runtime_wiring_module",
     "binding_propagation_module",
     "binding_lifecycle_module",
+)
+
+COMPONENT_WIRING_MODULES = (
+    "component_drop_payload_module",
+    "component_drop_target_module",
+    "component_event_wiring_module",
+    "component_handler_definition_module",
 )
 
 PACKAGE_MANAGER_MODULES = (
@@ -3025,6 +3033,26 @@ def write_enterprise_data_ide_module_files(output_dir):
         )
 
 
+def write_component_wiring_module_files(output_dir):
+    """Write generated component drop/wiring modules and smoke tests."""
+    output_dir = Path(output_dir)
+    module_dir = output_dir / "component_wiring_modules"
+    test_dir = output_dir / "component_wiring_module_tests"
+    module_dir.mkdir(parents=True, exist_ok=True)
+    test_dir.mkdir(parents=True, exist_ok=True)
+    (module_dir / "__init__.py").write_text(_component_wiring_module_init_text(), encoding="utf-8")
+    (test_dir / "__init__.py").write_text(_component_wiring_module_test_init_text(), encoding="utf-8")
+    for module_name in COMPONENT_WIRING_MODULES:
+        (module_dir / f"{module_name}.py").write_text(
+            _component_wiring_module_text(module_name),
+            encoding="utf-8",
+        )
+        (test_dir / f"test_{module_name}.py").write_text(
+            _component_wiring_module_test_text(module_name),
+            encoding="utf-8",
+        )
+
+
 def write_inspector_module_files(output_dir):
     """Write generated Object Inspector editor modules and smoke tests."""
     output_dir = Path(output_dir)
@@ -3294,6 +3322,21 @@ def _binding_module_test_init_text() -> str:
     return (
         '"""Generated visual binding module tests."""\n\n'
         f"BINDING_MODULE_TESTS = {modules!r}\n"
+    )
+
+
+def _component_wiring_module_init_text() -> str:
+    return (
+        '"""Generated component drop/wiring modules."""\n\n'
+        f"COMPONENT_WIRING_MODULES = {COMPONENT_WIRING_MODULES!r}\n"
+    )
+
+
+def _component_wiring_module_test_init_text() -> str:
+    modules = tuple(f"test_{name}" for name in COMPONENT_WIRING_MODULES)
+    return (
+        '"""Generated component drop/wiring module tests."""\n\n'
+        f"COMPONENT_WIRING_MODULE_TESTS = {modules!r}\n"
     )
 
 
@@ -11088,6 +11131,186 @@ def smoke_test():
         "module": MODULE,
         "ok": True,
         "tests": ("test_binding_module_contract", "test_binding_module_smoke"),
+    }}
+'''
+
+
+def _component_wiring_kind(module_name: str) -> str:
+    return {
+        "component_drop_payload_module": "drop_payloads",
+        "component_drop_target_module": "drop_targets",
+        "component_event_wiring_module": "event_wiring",
+        "component_handler_definition_module": "handler_definitions",
+    }[module_name]
+
+
+def _component_wiring_module_text(module_name: str) -> str:
+    kind = _component_wiring_kind(module_name)
+    return f'''"""Generated component drop/wiring module for {kind}."""
+
+from __future__ import annotations
+
+import importlib.util
+from pathlib import Path
+
+
+MODULE = {module_name!r}
+KIND = {kind!r}
+EXPECTED_EXPORTS = (
+    "module_contract",
+    "component_wiring_manifest",
+    "run_wiring_operation",
+    "runtime_manifest",
+    "smoke_test",
+)
+
+
+def _load_form_designer():
+    module_path = Path(__file__).resolve().parents[1] / "form_designer.py"
+    spec = importlib.util.spec_from_file_location(f"generated_component_wiring_{{MODULE}}_form_designer", module_path)
+    module = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(module)
+    return module
+
+
+def module_contract():
+    """Return this generated component-wiring module's export contract."""
+    available = tuple(name for name in EXPECTED_EXPORTS if name in globals())
+    return {{
+        "format": "appgen.component-wiring-module-contract.v1",
+        "module": MODULE,
+        "kind": KIND,
+        "ok": set(EXPECTED_EXPORTS) <= set(available),
+        "exports": available,
+        "expected_exports": EXPECTED_EXPORTS,
+        "side_effects": (),
+    }}
+
+
+def component_wiring_manifest(table_name=None):
+    """Return the drag/drop or handler payload owned by this generated module."""
+    designer = _load_form_designer()
+    contract = designer.component_drop_wiring_handler_contract(table_name)
+    payload = {{
+        "drop_payloads": contract["drop_payloads"],
+        "drop_targets": contract["drop_targets"],
+        "event_wiring": contract["wiring_links"],
+        "handler_definitions": contract["handler_definitions"],
+    }}[KIND]
+    return {{
+        "format": "appgen.component-wiring-module-manifest.v1",
+        "module": MODULE,
+        "kind": KIND,
+        "ok": contract["ok"] and bool(payload),
+        "payload": payload,
+        "source_checks": contract["checks"],
+        "guards": contract["guards"],
+        "side_effects": (),
+    }}
+
+
+def run_wiring_operation(table_name=None):
+    """Replay this component-wiring operation without mutating application state."""
+    manifest = component_wiring_manifest(table_name)
+    operation_steps = {{
+        "drop_payloads": ("start_palette_drag", "show_drop_preview", "record_undo"),
+        "drop_targets": ("validate_bounds", "snap_to_grid", "create_component_instance"),
+        "event_wiring": ("resolve_component", "resolve_handler", "invoke_handler"),
+        "handler_definitions": ("generate_stub", "preserve_user_code", "validate_signature"),
+    }}[KIND]
+    return {{
+        "format": "appgen.component-wiring-module-operation.v1",
+        "module": MODULE,
+        "kind": KIND,
+        "ok": manifest["ok"] and bool(operation_steps),
+        "operation_steps": operation_steps,
+        "payload_count": len(manifest["payload"]),
+        "side_effects": (),
+    }}
+
+
+def runtime_manifest(table_name=None):
+    """Return the source component drop/wiring contract used by this module."""
+    return _load_form_designer().component_drop_wiring_handler_contract(table_name)
+
+
+def smoke_test(table_name=None):
+    """Run side-effect-free checks for this generated component-wiring module."""
+    contract = module_contract()
+    manifest = component_wiring_manifest(table_name)
+    operation = run_wiring_operation(table_name)
+    runtime = runtime_manifest(table_name)
+    return {{
+        "format": "appgen.component-wiring-module-smoke-test.v1",
+        "module": MODULE,
+        "kind": KIND,
+        "ok": contract["ok"]
+        and manifest["ok"]
+        and operation["ok"]
+        and runtime["ok"]
+        and not manifest["side_effects"]
+        and not operation["side_effects"],
+        "checks": (
+            "module_contract_resolves",
+            "component_wiring_manifest_resolves",
+            "wiring_operation_replays",
+            "runtime_manifest_ok",
+            "no_side_effects",
+        ),
+    }}
+'''
+
+
+def _component_wiring_module_test_text(module_name: str) -> str:
+    return f'''"""Generated tests for the {module_name} component-wiring module."""
+
+from __future__ import annotations
+
+import importlib.util
+from pathlib import Path
+
+
+MODULE = {module_name!r}
+
+
+def load_component_wiring_module():
+    """Load the generated component-wiring module without app installation."""
+    module_path = Path(__file__).resolve().parents[1] / "component_wiring_modules" / f"{{MODULE}}.py"
+    spec = importlib.util.spec_from_file_location(f"generated_component_wiring_module_{{MODULE}}", module_path)
+    module = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(module)
+    return module
+
+
+def test_component_wiring_module_contract():
+    """Assert the generated component-wiring module exposes its contract."""
+    module = load_component_wiring_module()
+    contract = module.module_contract()
+    assert contract["module"] == MODULE
+    assert contract["ok"] is True
+    assert all(hasattr(module, name) for name in contract["expected_exports"])
+
+
+def test_component_wiring_module_smoke():
+    """Assert the module's side-effect-free smoke test passes."""
+    module = load_component_wiring_module()
+    result = module.smoke_test()
+    assert result["ok"] is True
+    assert result["module"] == MODULE
+    assert result["checks"]
+
+
+def smoke_test():
+    """Run this generated test module in a side-effect-free way."""
+    test_component_wiring_module_contract()
+    test_component_wiring_module_smoke()
+    return {{
+        "format": "appgen.component-wiring-module-generated-test-smoke.v1",
+        "module": MODULE,
+        "ok": True,
+        "tests": ("test_component_wiring_module_contract", "test_component_wiring_module_smoke"),
     }}
 '''
 
@@ -48830,6 +49053,71 @@ def component_drop_wiring_handler_contract(table_name=None, design=None):
     }}
 
 
+def component_wiring_module_file_manifest(existing_paths=None):
+    """Return generated component drop/wiring module files and whether they exist."""
+    paths = set(existing_paths) if existing_paths is not None else _local_component_paths()
+    modules = (
+        ("component_drop_payload_module", "drop_payloads"),
+        ("component_drop_target_module", "drop_targets"),
+        ("component_event_wiring_module", "event_wiring"),
+        ("component_handler_definition_module", "handler_definitions"),
+    )
+    exports = (
+        "module_contract",
+        "component_wiring_manifest",
+        "run_wiring_operation",
+        "runtime_manifest",
+        "smoke_test",
+    )
+    manifest = []
+    for module, kind in modules:
+        path = f"app/component_wiring_modules/{{module}}.py"
+        manifest.append({{
+            "module": module,
+            "kind": kind,
+            "path": path,
+            "exists": path in paths,
+            "exports": exports,
+            "ok": bool(module) and bool(kind) and path in paths,
+        }})
+    return {{
+        "format": "appgen.generated-component-wiring-module-file-manifest.v1",
+        "ok": bool(manifest) and all(item["ok"] for item in manifest),
+        "modules": tuple(manifest),
+        "guards": ("one_file_per_wiring_surface", "declared_exports_present", "module_smoke_replays"),
+        "side_effects": (),
+    }}
+
+
+def component_wiring_module_test_file_manifest(existing_paths=None):
+    """Return generated component drop/wiring test files and whether they exist."""
+    paths = set(existing_paths) if existing_paths is not None else _local_component_paths()
+    tests = []
+    for item in component_wiring_module_file_manifest(existing_paths)["modules"]:
+        path = item["path"].replace("app/component_wiring_modules/", "app/component_wiring_module_tests/test_")
+        tests.append({{
+            "module": item["module"],
+            "kind": item["kind"],
+            "path": path,
+            "exists": path in paths,
+            "target": item["path"],
+            "exports": (
+                "load_component_wiring_module",
+                "test_component_wiring_module_contract",
+                "test_component_wiring_module_smoke",
+                "smoke_test",
+            ),
+            "ok": item["ok"] and path in paths,
+        }})
+    return {{
+        "format": "appgen.generated-component-wiring-module-test-file-manifest.v1",
+        "ok": bool(tests) and all(item["ok"] for item in tests),
+        "tests": tuple(tests),
+        "guards": ("one_test_file_per_wiring_surface", "contract_and_smoke_tests_exported"),
+        "side_effects": (),
+    }}
+
+
 def app_shell_chrome_contract():
     """Return generated splash, menu, context-menu, and UI tuning evidence."""
     palette_components = {{item["type"] for item in PALETTE}}
@@ -55093,7 +55381,14 @@ def _binding_property(component_type):
 def _local_component_paths():
     root = Path(__file__).resolve().parent
     paths = set()
-    for folder in ("component_contracts", "component_packages", "component_tests", "component_package_tests"):
+    for folder in (
+        "component_contracts",
+        "component_packages",
+        "component_tests",
+        "component_package_tests",
+        "component_wiring_modules",
+        "component_wiring_module_tests",
+    ):
         base = root / folder
         if not base.exists():
             continue
@@ -55640,6 +55935,8 @@ def rad_parity_workbench(existing_paths=()):
     package_readiness = component_package_readiness_contract()
     app_shell = app_shell_chrome_contract()
     drop_wiring = component_drop_wiring_handler_contract()
+    component_wiring_modules = component_wiring_module_file_manifest(existing_paths)
+    component_wiring_module_tests = component_wiring_module_test_file_manifest(existing_paths)
     platform_lifecycle = platform_parity_lifecycle_replay_contract()
     requirement_audit = platform_parity_requirement_audit_contract()
     categories = {{category for suite in THIRD_PARTY_COMPONENT_SUITES for category in suite["categories"]}}
@@ -55649,7 +55946,7 @@ def rad_parity_workbench(existing_paths=()):
         {{"id": "native_ui_parity_component_parity", "ok": {{"Grid", "TreeView", "MainMenu", "PopupMenu", "DataSource", "RESTClient", "CameraView", "Viewport3D"}} <= palette_types and component_readiness["ok"], "evidence": {{"palette": tuple(sorted(palette_types)), "readiness": component_readiness}}}},
         {{"id": "built_in_component_usability", "ok": component_usability_workbench()["ok"], "evidence": component_usability_workbench()}},
         {{"id": "app_shell_chrome_designer", "ok": app_shell["ok"] and not app_shell["side_effects"], "evidence": app_shell}},
-        {{"id": "component_drop_wiring_handler_design", "ok": drop_wiring["ok"] and {{"start_palette_drag", "show_drop_preview", "create_component_instance", "record_undo"}} <= set(drop_wiring["drop_pipeline"]) and {{"Button.OnClick", "TextBox.OnChange"}} <= {{item["event"] for item in drop_wiring["wiring_links"]}} and all(item["signature"] == "sender, context" for item in drop_wiring["handler_definitions"]) and not drop_wiring["side_effects"], "evidence": drop_wiring}},
+        {{"id": "component_drop_wiring_handler_design", "ok": drop_wiring["ok"] and component_wiring_modules["ok"] and component_wiring_module_tests["ok"] and {{"start_palette_drag", "show_drop_preview", "create_component_instance", "record_undo"}} <= set(drop_wiring["drop_pipeline"]) and {{"Button.OnClick", "TextBox.OnChange"}} <= {{item["event"] for item in drop_wiring["wiring_links"]}} and all(item["signature"] == "sender, context" for item in drop_wiring["handler_definitions"]) and not drop_wiring["side_effects"], "evidence": dict(drop_wiring, module_files=component_wiring_modules, module_tests=component_wiring_module_tests)}},
         {{"id": "pascal_runtime_and_dfm_streaming", "ok": "text-dfm" in dfm_streaming_contract()["stream_formats"] and pascal_runtime_workbench()["ok"], "evidence": {{"streaming": dfm_streaming_contract(), "runtime": pascal_runtime_workbench()}}}},
         {{"id": "pascal_runtime_workbench", "ok": pascal_runtime_workbench()["ok"], "evidence": pascal_runtime_workbench()}},
         {{"id": "object_inspector_parity", "ok": {{"Properties", "Events"}} <= set(object_inspector_contract()["tabs"]) and object_inspector_workbench()["ok"], "evidence": {{"contract": object_inspector_contract(), "workbench": object_inspector_workbench()}}}},
@@ -55712,6 +56009,8 @@ def form_designer_release_gate(existing_paths=()):
     collision_design = dict(design, components=tuple(design.get("components", ())) + (proposal["component"], collision_component))
     collision_validation = validate_form_design(collision_design) if first_table else {{"ok": True, "conflicts": ()}}
     drop_wiring = component_drop_wiring_handler_contract(design=design) if first_table else {{"ok": False, "checks": (), "drop_pipeline": (), "wiring_links": (), "handler_definitions": (), "side_effects": ()}}
+    component_wiring_modules = component_wiring_module_file_manifest(existing_paths)
+    component_wiring_module_tests = component_wiring_module_test_file_manifest(existing_paths)
     checks = (
         {{
             "id": "artifact_coverage",
@@ -55750,8 +56049,10 @@ def form_designer_release_gate(existing_paths=()):
             and {{"start_palette_drag", "show_drop_preview", "create_component_instance", "record_undo"}} <= set(drop_wiring["drop_pipeline"])
             and {{"Button.OnClick", "TextBox.OnChange"}} <= {{item["event"] for item in drop_wiring["wiring_links"]}}
             and all(item["signature"] == "sender, context" for item in drop_wiring["handler_definitions"])
+            and component_wiring_modules["ok"]
+            and component_wiring_module_tests["ok"]
             and not drop_wiring["side_effects"],
-            "evidence": drop_wiring,
+            "evidence": dict(drop_wiring, module_files=component_wiring_modules, module_tests=component_wiring_module_tests),
         }},
         {{
             "id": "rad_parity_contracts",

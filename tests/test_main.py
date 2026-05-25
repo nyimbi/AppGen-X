@@ -106,6 +106,8 @@ from pyAppGen.form_designer import component_package_update_operation
 from pyAppGen.form_designer import component_package_workbench
 from pyAppGen.form_designer import component_package_preview_load_operation
 from pyAppGen.form_designer import component_drop_wiring_handler_contract
+from pyAppGen.form_designer import component_wiring_module_file_manifest
+from pyAppGen.form_designer import component_wiring_module_test_file_manifest
 from pyAppGen.form_designer import component_file_manifest
 from pyAppGen.form_designer import component_parity_readiness_contract
 from pyAppGen.form_designer import component_package_file_manifest
@@ -3215,6 +3217,20 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     assert set(wiring_gate["required_pipeline"]) <= set(wiring_gate["passing_pipeline"])
     assert set(wiring_gate["required_events"]) <= set(wiring_gate["passing_events"])
     assert set(wiring_gate["required_handler_signatures"]) <= set(wiring_gate["passing_handler_signatures"])
+    assert set(wiring_gate["required_module_kinds"]) <= set(wiring_gate["passing_module_kinds"])
+    assert set(wiring_gate["required_test_kinds"]) <= set(wiring_gate["passing_test_kinds"])
+    assert {item["kind"] for item in component_wiring_module_file_manifest()} == {
+        "drop_payloads",
+        "drop_targets",
+        "event_wiring",
+        "handler_definitions",
+    }
+    assert {item["kind"] for item in component_wiring_module_test_file_manifest()} == {
+        "drop_payloads",
+        "drop_targets",
+        "event_wiring",
+        "handler_definitions",
+    }
     artifact_gate = next(gate for gate in audit["gates"] if gate["id"] == "artifact_contract")
     assert artifact_gate["ok"] is True
     assert set(artifact_gate["required_artifacts"]) <= set(artifact_gate["passing_artifacts"])
@@ -4311,6 +4327,12 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
         item["path"] for item in component_package_test_file_manifest()
     } <= set(smoke["required_artifacts"])
     assert {
+        item["path"] for item in component_wiring_module_file_manifest()
+    } <= set(smoke["required_artifacts"])
+    assert {
+        item["path"] for item in component_wiring_module_test_file_manifest()
+    } <= set(smoke["required_artifacts"])
+    assert {
         "app/form_designer.py",
         "app/component_parity_runtime.py",
         "app/inspector_runtime.py",
@@ -4336,9 +4358,18 @@ def test_package_form_designer_audit_covers_rad_style_drop_design(
     assert {
         item["path"] for item in component_package_test_file_manifest()
     } <= set(smoke["compiled_artifacts"])
+    assert {
+        item["path"] for item in component_wiring_module_file_manifest()
+    } <= set(smoke["compiled_artifacts"])
+    assert {
+        item["path"] for item in component_wiring_module_test_file_manifest()
+    } <= set(smoke["compiled_artifacts"])
     assert "generated_component_file_coverage" in {
         check["id"] for check in smoke["checks"]
     }
+    coverage = next(check for check in smoke["checks"] if check["id"] == "generated_component_file_coverage")
+    assert coverage["component_wiring_module_count"] == 4
+    assert coverage["component_wiring_module_test_count"] == 4
     release_contracts = next(check for check in smoke["checks"] if check["id"] == "generated_release_contracts")
     assert release_contracts["ok"] is True
     assert {
@@ -13530,6 +13561,16 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         for path in (output_dir / "component_package_tests").glob("*.py")
         if path.name != "__init__.py"
     )
+    generated_form_designer_paths.update(
+        f"app/component_wiring_modules/{path.name}"
+        for path in (output_dir / "component_wiring_modules").glob("*.py")
+        if path.name != "__init__.py"
+    )
+    generated_form_designer_paths.update(
+        f"app/component_wiring_module_tests/{path.name}"
+        for path in (output_dir / "component_wiring_module_tests").glob("*.py")
+        if path.name != "__init__.py"
+    )
     workbench = form_designer.form_designer_workbench(generated_form_designer_paths)
     assert workbench["format"] == "appgen.form-designer-workbench.v1"
     assert workbench["ok"] is True
@@ -14132,6 +14173,33 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
         item["event"] for item in generated_drop_wiring["wiring_links"]
     }
     assert all(item["signature"] == "sender, context" for item in generated_drop_wiring["handler_definitions"])
+    generated_wiring_module_files = form_designer.component_wiring_module_file_manifest(generated_form_designer_paths)
+    generated_wiring_module_tests = form_designer.component_wiring_module_test_file_manifest(generated_form_designer_paths)
+    assert generated_wiring_module_files["ok"] is True
+    assert generated_wiring_module_tests["ok"] is True
+    assert {item["kind"] for item in generated_wiring_module_files["modules"]} == {
+        "drop_payloads",
+        "drop_targets",
+        "event_wiring",
+        "handler_definitions",
+    }
+    assert {item["kind"] for item in generated_wiring_module_tests["tests"]} == {
+        "drop_payloads",
+        "drop_targets",
+        "event_wiring",
+        "handler_definitions",
+    }
+    for item in generated_wiring_module_files["modules"]:
+        module_path = output_dir / item["path"].replace("app/", "")
+        py_compile.compile(str(module_path), doraise=True)
+        module = _load_module(module_path, f"generated_component_wiring_module_{item['module']}")
+        assert module.smoke_test("Book")["ok"] is True
+        assert module.module_contract()["ok"] is True
+    for item in generated_wiring_module_tests["tests"]:
+        test_path = output_dir / item["path"].replace("app/", "")
+        py_compile.compile(str(test_path), doraise=True)
+        module = _load_module(test_path, f"generated_component_wiring_module_test_{item['module']}")
+        assert module.smoke_test()["ok"] is True
     assert "control_to_field" in form_designer.livebindings_contract()["binding_edges"]
     generated_bindings = form_designer.livebindings_workbench()
     assert generated_bindings["format"] == "appgen.generated-livebindings-workbench.v1"
