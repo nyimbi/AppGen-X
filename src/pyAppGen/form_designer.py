@@ -17393,6 +17393,263 @@ def rad_parity_workbench(existing_paths: set[str] | None = None) -> dict:
             }
         )
     )
+    required_package_session_guards = (
+        "license_acceptance_required",
+        "version_pin_required",
+        "sandbox_before_global_install",
+        "design_time_packages_reviewed_before_load",
+        "dependency_versions_locked",
+        "no_global_mutation",
+    )
+    passing_package_session_guards = tuple(package_manager["session"]["guards"])
+    required_package_lockfile_fields = (
+        "package_id",
+        "vendor",
+        "version",
+        "checksum",
+        "adapter_module",
+    )
+    passing_package_lockfile_fields = tuple(package_manager["lockfile"]["entries"][0])
+    required_package_lockfile_guards = (
+        "lockfile_versioned",
+        "checksums_required",
+        "adapter_module_recorded",
+        "unknown_packages_block_lock",
+    )
+    passing_package_lockfile_guards = tuple(package_manager["lockfile"]["guards"])
+    required_package_sandbox_allows = (
+        "read_package_manifest",
+        "instantiate_preview",
+        "register_design_metadata",
+    )
+    passing_package_sandbox_allows = tuple(
+        sorted(
+            {
+                permission
+                for row in package_manager["sandbox"]["permissions"]
+                for permission in row["allow"]
+            }
+        )
+    )
+    required_package_sandbox_denies = (
+        "global_install",
+        "network_fetch",
+        "filesystem_write_outside_project",
+    )
+    passing_package_sandbox_denies = tuple(
+        sorted(
+            {
+                permission
+                for row in package_manager["sandbox"]["permissions"]
+                for permission in row["deny"]
+            }
+        )
+    )
+    required_package_sandbox_guards = (
+        "deny_by_default",
+        "no_global_mutation",
+        "review_required_for_escape",
+        "per_project_manifest",
+    )
+    passing_package_sandbox_guards = tuple(package_manager["sandbox"]["guards"])
+    required_package_dependency_steps = (
+        "resolve_package_metadata",
+        "register_components",
+    )
+    passing_package_dependency_steps = tuple(
+        sorted(
+            {
+                step.split(":", 1)[0]
+                for item in package_manager["dependency_order"]["load_order"]
+                for step in item["steps"]
+            }
+        )
+    )
+    required_package_dependency_edge_kinds = ("package_to_adapter",)
+    passing_package_dependency_edge_kinds = tuple(
+        sorted(
+            {
+                edge["kind"]
+                for edge in package_manager["dependency_order"]["dependency_graph"]["edges"]
+            }
+        )
+    )
+    required_package_signature_trust_states = ("verified",)
+    passing_package_signature_trust_states = tuple(
+        sorted({signature["trust"] for signature in package_manager["signature_validation"]["signatures"]})
+    )
+    required_package_compatibility_surfaces = (
+        "form-designer",
+        "object-inspector",
+        "binding-designer",
+    )
+    passing_package_compatibility_surfaces = tuple(
+        sorted(
+            {
+                surface
+                for row in package_manager["compatibility"]
+                if row["compatible"]
+                for surface in row["design_surfaces"]
+            }
+        )
+    )
+    required_package_compatibility_targets = (
+        "designer",
+        "preview",
+        "runtime",
+        "web",
+        "mobile",
+        "desktop",
+    )
+    passing_package_compatibility_targets = tuple(
+        sorted(
+            {
+                target
+                for row in package_manager["compatibility"]
+                if row["compatible"]
+                for target in row["targets"]
+            }
+        )
+    )
+    required_package_preview_load_pipeline = (
+        "validate_load_request",
+        "create_sandbox_loader",
+        "instantiate_preview_adapter",
+        "run_adapter_smoke",
+        "unload_preview",
+    )
+    passing_package_preview_load_pipeline = tuple(
+        sorted(
+            {
+                step
+                for operation in package_manager["actionable_operations"]["operations"]
+                for step in operation["preview_load"]["pipeline"]
+            }
+        )
+    )
+    required_package_registry_commit_pipeline = (
+        "load_adapter",
+        "register_palette_entries",
+        "register_inspector_editors",
+        "register_binding_adapters",
+        "commit_project_manifest",
+        "refresh_palette",
+    )
+    passing_package_registry_commit_pipeline = tuple(
+        sorted(
+            {
+                step
+                for operation in package_manager["actionable_operations"]["operations"]
+                for step in operation["registry_commit"]["pipeline"]
+            }
+        )
+    )
+    required_package_update_guards = (
+        "sandbox_before_replace",
+        "rollback_snapshot_required",
+        "adapter_smoke_before_enable",
+        "palette_refresh_required",
+    )
+    passing_package_update_guards = tuple(package_manager["update_plan"]["guards"])
+    required_package_uninstall_guards = (
+        "reference_scan_required",
+        "disable_before_remove",
+        "rollback_snapshot_required",
+        "orphaned_components_reported",
+    )
+    passing_package_uninstall_guards = tuple(package_manager["uninstall_plan"]["guards"])
+    required_package_palette_components = tuple(
+        sorted({row["component"] for row in package_manager["palette_refresh"]["refreshes"]})
+    )
+    passing_package_palette_components = tuple(
+        sorted(
+            {
+                row["component"]
+                for row in package_manager["palette_refresh"]["refreshes"]
+                if "invalidate_cache" in row["actions"] and "rebuild_toolbox" in row["actions"]
+            }
+        )
+    )
+    required_package_failure_containment_steps = (
+        "sandboxed_loader",
+        "disable_package",
+        "restore_previous_palette",
+        "record_diagnostic",
+    )
+    passing_package_failure_containment_steps = tuple(
+        sorted(
+            {
+                step
+                for scenario in package_manager["failure_isolation"]["scenarios"]
+                for step in scenario["containment"]
+            }
+        )
+    )
+    required_package_readiness_phases = (
+        "trust_and_lockfile",
+        "sandbox_preview",
+        "registry_commit",
+        "versioned_update",
+        "failure_and_rollback",
+        "uninstall_cleanup",
+    )
+    passing_package_readiness_phases = tuple(
+        phase["phase"] for phase in package_manager["package_readiness"]["phases"] if phase["ok"]
+    )
+    required_package_readiness_phase_checks = (
+        "trust_before_preview",
+        "preview_before_registry_commit",
+        "registry_before_update",
+        "rollback_before_cleanup",
+        "operation_surface_ready",
+        "phase_order_ready",
+        "side_effect_guard_ready",
+    )
+    passing_package_readiness_phase_checks = tuple(
+        check["id"] for check in package_manager["package_readiness"]["checks"] if check["ok"]
+    )
+    required_package_lifecycle_final_states = (
+        "registry_clean",
+        "palette_refreshed",
+        "rollback_ready",
+    )
+    passing_package_lifecycle_final_states = tuple(
+        sorted(
+            {
+                key
+                for replay in package_manager["lifecycle_replay"]["replay"]
+                for key, value in replay["final_state"].items()
+                if value is True
+            }
+        )
+    )
+    required_package_install_replay_phases = (
+        "resolve_metadata",
+        "validate_load_request",
+        "sandbox_load",
+        "adapter_compile",
+        "registry_commit",
+        "palette_refresh",
+        "rollback_probe",
+    )
+    passing_package_install_replay_phases = tuple(
+        sorted(
+            {
+                phase["phase"]
+                for session in package_workbench["install_replay"]["sessions"]
+                for phase in session["phases"]
+                if phase["ok"]
+            }
+        )
+    )
+    required_package_install_replay_guards = (
+        "load_request_validated",
+        "sandbox_before_load",
+        "adapters_smoked_before_registry_commit",
+        "palette_refresh_after_commit",
+        "rollback_probe_required",
+    )
+    passing_package_install_replay_guards = tuple(package_workbench["install_replay"]["guards"])
     required_stream_formats = ("text-dfm", "binary-dfm", "json-form-model")
     passing_stream_formats = tuple(streaming_contract["stream_formats"])
     required_compiler_stages = ("parse_units", "type_check", "resource_link", "emit_target")
@@ -18233,7 +18490,29 @@ def rad_parity_workbench(existing_paths: set[str] | None = None) -> dict:
             and set(required_package_uninstall_plan_phases) <= set(passing_package_uninstall_plan_phases)
             and set(required_install_package_ids) <= set(passing_package_uninstall_ids)
             and set(required_package_palette_actions) <= set(passing_package_palette_actions)
-            and set(required_package_failure_scenarios) <= set(passing_package_failure_scenarios),
+            and set(required_package_failure_scenarios) <= set(passing_package_failure_scenarios)
+            and set(required_package_session_guards) <= set(passing_package_session_guards)
+            and set(required_package_lockfile_fields) <= set(passing_package_lockfile_fields)
+            and set(required_package_lockfile_guards) <= set(passing_package_lockfile_guards)
+            and set(required_package_sandbox_allows) <= set(passing_package_sandbox_allows)
+            and set(required_package_sandbox_denies) <= set(passing_package_sandbox_denies)
+            and set(required_package_sandbox_guards) <= set(passing_package_sandbox_guards)
+            and set(required_package_dependency_steps) <= set(passing_package_dependency_steps)
+            and set(required_package_dependency_edge_kinds) <= set(passing_package_dependency_edge_kinds)
+            and set(required_package_signature_trust_states) <= set(passing_package_signature_trust_states)
+            and set(required_package_compatibility_surfaces) <= set(passing_package_compatibility_surfaces)
+            and set(required_package_compatibility_targets) <= set(passing_package_compatibility_targets)
+            and set(required_package_preview_load_pipeline) <= set(passing_package_preview_load_pipeline)
+            and set(required_package_registry_commit_pipeline) <= set(passing_package_registry_commit_pipeline)
+            and set(required_package_update_guards) <= set(passing_package_update_guards)
+            and set(required_package_uninstall_guards) <= set(passing_package_uninstall_guards)
+            and set(required_package_palette_components) <= set(passing_package_palette_components)
+            and set(required_package_failure_containment_steps) <= set(passing_package_failure_containment_steps)
+            and set(required_package_readiness_phases) <= set(passing_package_readiness_phases)
+            and set(required_package_readiness_phase_checks) <= set(passing_package_readiness_phase_checks)
+            and set(required_package_lifecycle_final_states) <= set(passing_package_lifecycle_final_states)
+            and set(required_package_install_replay_phases) <= set(passing_package_install_replay_phases)
+            and set(required_package_install_replay_guards) <= set(passing_package_install_replay_guards),
             "required_packages": required_install_package_ids,
             "passing_packages": passing_install_package_ids,
             "required_channels": required_install_channels,
@@ -18286,6 +18565,50 @@ def rad_parity_workbench(existing_paths: set[str] | None = None) -> dict:
             "passing_palette_actions": passing_package_palette_actions,
             "required_failure_scenarios": required_package_failure_scenarios,
             "passing_failure_scenarios": passing_package_failure_scenarios,
+            "required_session_guards": required_package_session_guards,
+            "passing_session_guards": passing_package_session_guards,
+            "required_lockfile_fields": required_package_lockfile_fields,
+            "passing_lockfile_fields": passing_package_lockfile_fields,
+            "required_lockfile_guards": required_package_lockfile_guards,
+            "passing_lockfile_guards": passing_package_lockfile_guards,
+            "required_sandbox_allows": required_package_sandbox_allows,
+            "passing_sandbox_allows": passing_package_sandbox_allows,
+            "required_sandbox_denies": required_package_sandbox_denies,
+            "passing_sandbox_denies": passing_package_sandbox_denies,
+            "required_sandbox_guards": required_package_sandbox_guards,
+            "passing_sandbox_guards": passing_package_sandbox_guards,
+            "required_dependency_steps": required_package_dependency_steps,
+            "passing_dependency_steps": passing_package_dependency_steps,
+            "required_dependency_edge_kinds": required_package_dependency_edge_kinds,
+            "passing_dependency_edge_kinds": passing_package_dependency_edge_kinds,
+            "required_signature_trust_states": required_package_signature_trust_states,
+            "passing_signature_trust_states": passing_package_signature_trust_states,
+            "required_compatibility_surfaces": required_package_compatibility_surfaces,
+            "passing_compatibility_surfaces": passing_package_compatibility_surfaces,
+            "required_compatibility_targets": required_package_compatibility_targets,
+            "passing_compatibility_targets": passing_package_compatibility_targets,
+            "required_preview_load_pipeline": required_package_preview_load_pipeline,
+            "passing_preview_load_pipeline": passing_package_preview_load_pipeline,
+            "required_registry_commit_pipeline": required_package_registry_commit_pipeline,
+            "passing_registry_commit_pipeline": passing_package_registry_commit_pipeline,
+            "required_update_guards": required_package_update_guards,
+            "passing_update_guards": passing_package_update_guards,
+            "required_uninstall_guards": required_package_uninstall_guards,
+            "passing_uninstall_guards": passing_package_uninstall_guards,
+            "required_palette_components": required_package_palette_components,
+            "passing_palette_components": passing_package_palette_components,
+            "required_failure_containment_steps": required_package_failure_containment_steps,
+            "passing_failure_containment_steps": passing_package_failure_containment_steps,
+            "required_readiness_phases": required_package_readiness_phases,
+            "passing_readiness_phases": passing_package_readiness_phases,
+            "required_readiness_phase_checks": required_package_readiness_phase_checks,
+            "passing_readiness_phase_checks": passing_package_readiness_phase_checks,
+            "required_lifecycle_final_states": required_package_lifecycle_final_states,
+            "passing_lifecycle_final_states": passing_package_lifecycle_final_states,
+            "required_install_replay_phases": required_package_install_replay_phases,
+            "passing_install_replay_phases": passing_package_install_replay_phases,
+            "required_install_replay_guards": required_package_install_replay_guards,
+            "passing_install_replay_guards": passing_package_install_replay_guards,
             "required_checks": required_package_readiness_checks,
             "passing_checks": passing_package_readiness_checks,
             "evidence": {
