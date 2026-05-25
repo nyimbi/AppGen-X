@@ -297,6 +297,53 @@ ACP_STREAM_PROCESSING_POLICY = {
             "telemetry/time-series or complex dataflow with evidence."
         ),
     },
+    "developer_use_card": {
+        "id": "appgen.event-processing.use-this.v1",
+        "title": "Use appgen_event_contract for ordinary generated applications.",
+        "decision": "mandatory_default",
+        "use": "appgen_event_contract",
+        "ordinary_manifest": {"stream_processor": "omit"},
+        "ordinary_datastores": ("postgresql", "mysql", "mariadb"),
+        "developer_writes": (
+            "commands",
+            "domain_events",
+            "owned_tables",
+            "handler_functions",
+            "retry_policy_names",
+            "idempotency_key_fields",
+            "dead_letter_ownership_notes",
+        ),
+        "platform_generates": (
+            "appgen_outbox_event",
+            "appgen_inbox_event",
+            "typed_command_handlers",
+            "typed_event_handlers",
+            "event_adapter_bindings",
+            "release_audit_evidence",
+        ),
+        "studio_exposes": (
+            "event_contract_designer",
+            "handler_registry_editor",
+            "retry_idempotency_dead_letter_editor",
+            "read_only_runtime_profile_badge",
+        ),
+        "studio_hides": (
+            "stream_engine_picker",
+            "broker_picker",
+            "state_store_picker",
+            "per_pbc_runtime_profile_picker",
+        ),
+        "ordinary_stop_rule": (
+            "For ERP, workflow, chatbot, agent, integration, approval, and "
+            "ordinary PBC events, stop at appgen_event_contract and do not "
+            "generate a runtime comparison."
+        ),
+        "exception_unlocks": (
+            "telemetry_time_series_high_volume_windowing_with_stream_exception_evidence",
+            "complex_parallel_dataflow_with_stream_exception_evidence",
+        ),
+        "fallback": "When uncertain, use appgen_event_contract and omit stream_processor.",
+    },
     "developer_decision_brief": {
         "headline": "Use appgen_event_contract.",
         "ordinary_answer": (
@@ -1326,6 +1373,7 @@ def acp_stream_processing_policy() -> dict:
         "developer_guidance": ACP_STREAM_PROCESSING_POLICY["developer_guidance"],
         "developer_guidance_contract": ACP_STREAM_PROCESSING_POLICY["developer_guidance_contract"],
         "developer_action_contract": ACP_STREAM_PROCESSING_POLICY["developer_action_contract"],
+        "developer_use_card": ACP_STREAM_PROCESSING_POLICY["developer_use_card"],
         "developer_decision_brief": ACP_STREAM_PROCESSING_POLICY["developer_decision_brief"],
         "developer_implementation_playbook": ACP_STREAM_PROCESSING_POLICY["developer_implementation_playbook"],
         "decision_card": ACP_STREAM_PROCESSING_POLICY["decision_card"],
@@ -1361,6 +1409,7 @@ def acp_event_processing_developer_guidance() -> dict:
         "ok": True,
         **contract,
         "developer_action_contract": ACP_STREAM_PROCESSING_POLICY["developer_action_contract"],
+        "developer_use_card": ACP_STREAM_PROCESSING_POLICY["developer_use_card"],
         "decision_brief": ACP_STREAM_PROCESSING_POLICY["developer_decision_brief"],
         "implementation_playbook": ACP_STREAM_PROCESSING_POLICY["developer_implementation_playbook"],
         "choice_lock": ACP_STREAM_PROCESSING_POLICY["developer_choice_lock"],

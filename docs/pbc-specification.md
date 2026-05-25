@@ -110,6 +110,13 @@ wire handlers through the AppGen-X event adapter, and prove retry,
 idempotency, dead-letter, and release-audit coverage. The complete developer
 standard lives in `docs/kafka-alternatives.md`.
 
+When presenting this in the IDE or generated docs, use the platform
+`developer_use_card`: developers author commands, domain events, owned tables,
+handlers, retry names, idempotency keys, and dead-letter ownership notes;
+AppGen-X generates outbox/inbox tables, typed handlers, adapter bindings, and
+release evidence. The IDE should expose event-contract controls and hide
+stream-engine, broker, state-store, and per-PBC runtime pickers.
+
 The generated implementation is fixed for ordinary work: transactional
 outbox/inbox tables, the AppGen-X event adapter, the platform default
 service-runtime profile, and generated retry/idempotency/dead-letter/release

@@ -858,6 +858,17 @@ def test_package_pbc_catalog_composes_enterprise_apps(runner: CliRunner) -> None
     assert stream_policy["developer_action_contract"]["exception_paths"][0]["profile"] == "quix_streams"
     assert stream_policy["developer_action_contract"]["exception_paths"][1]["profile"] == "bytewax"
     assert stream_policy["developer_action_contract"]["fallback_rule"].endswith("omit stream_processor.")
+    use_card = stream_policy["developer_use_card"]
+    assert use_card["id"] == "appgen.event-processing.use-this.v1"
+    assert use_card["use"] == "appgen_event_contract"
+    assert use_card["ordinary_manifest"] == {"stream_processor": "omit"}
+    assert use_card["ordinary_datastores"] == ("postgresql", "mysql", "mariadb")
+    assert "domain_events" in use_card["developer_writes"]
+    assert "appgen_outbox_event" in use_card["platform_generates"]
+    assert "event_contract_designer" in use_card["studio_exposes"]
+    assert "stream_engine_picker" in use_card["studio_hides"]
+    assert use_card["ordinary_stop_rule"].startswith("For ERP")
+    assert use_card["fallback"] == "When uncertain, use appgen_event_contract and omit stream_processor."
     assert stream_policy["developer_default_stack"]["id"] == "appgen.event-processing.default-stack.v1"
     assert stream_policy["developer_default_stack"]["use"] == "appgen_event_contract"
     assert stream_policy["developer_default_stack"]["ordinary_manifest"] == {"stream_processor": "omit"}
@@ -901,6 +912,8 @@ def test_package_pbc_catalog_composes_enterprise_apps(runner: CliRunner) -> None
         "Use appgen_event_contract."
     )
     assert developer_guidance["implementation_playbook"]["id"] == "appgen.event-processing.implementation-playbook.v1"
+    assert developer_guidance["developer_use_card"]["use"] == "appgen_event_contract"
+    assert "broker_picker" in developer_guidance["developer_use_card"]["studio_hides"]
     assert developer_guidance["decision_brief"]["ordinary_codegen_prompt"].startswith("Generate AppGen-X outbox/inbox events")
     assert developer_guidance["decision_brief"]["small_model_stop_rule"].startswith("When the request is ordinary business")
     assert "small_model_instruction" in developer_guidance

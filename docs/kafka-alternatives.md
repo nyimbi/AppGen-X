@@ -17,6 +17,26 @@ Developers, Studio users, DSL authors, natural-language generators, package
 templates, and coding agents should all receive that same answer. The platform
 owns the runtime profile behind the adapter.
 
+## Use This
+
+This is the developer-facing recommendation card. Use it before reading any
+alternatives table:
+
+| Area | Decision |
+| --- | --- |
+| What developers use | `appgen_event_contract` |
+| What manifests say | Omit `stream_processor` |
+| What databases ordinary PBCs use | PostgreSQL by default; MySQL/MariaDB when that is the project standard |
+| What developers write | Commands, domain events, owned tables, handlers, retry names, idempotency keys, and dead-letter ownership notes |
+| What AppGen-X generates | `appgen_outbox_event`, `appgen_inbox_event`, typed handlers, adapter bindings, retry/idempotency/dead-letter contracts, and release evidence |
+| What Studio exposes | Event contract designer, handler registry editor, retry/idempotency/dead-letter editor, and read-only runtime profile badge |
+| What Studio hides | Stream-engine picker, broker picker, state-store picker, and per-PBC runtime profile picker |
+| Fallback when unsure | Use `appgen_event_contract` and omit `stream_processor` |
+
+Stop branching as soon as the workload is ordinary ERP, workflow, chatbot,
+agent, integration, approval, or PBC event handling. Do not turn the comparison
+table into a generated-app design question.
+
 ## Normative Choice
 
 AppGen-X exposes one ordinary event-processing choice:

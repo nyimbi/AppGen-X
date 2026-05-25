@@ -179,6 +179,13 @@ evidence-driven release-audit workflows.
 For token-constrained tools and coding agents, consume
 `acp_event_processing_developer_guidance()` and use its short answer directly:
 `Use appgen_event_contract. Omit stream_processor.`
+For human developers and Studio surfaces, render the returned
+`developer_use_card` as the canonical "use this" answer: developers write
+commands, domain events, owned tables, handlers, retry names, idempotency keys,
+and dead-letter ownership notes; AppGen-X generates outbox/inbox tables, typed
+handlers, adapter bindings, and release evidence. The same card tells the IDE
+to show event-contract controls and hide stream-engine, broker, state-store, and
+per-PBC runtime pickers.
 The same helper returns `developer_default_stack`, which is the full
 developer-facing answer: PostgreSQL by default or MySQL/MariaDB when that is the
 project standard, generated `appgen_outbox_event` and `appgen_inbox_event`
