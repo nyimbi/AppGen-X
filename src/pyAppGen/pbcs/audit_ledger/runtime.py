@@ -20,6 +20,18 @@ AUDIT_LEDGER_OWNED_TABLES = (
     "audit_ledger_rule",
     "audit_ledger_parameter",
     "audit_ledger_configuration",
+    "audit_ledger_projection_link",
+    "audit_ledger_schema_extension",
+    "audit_ledger_disclosure_proof",
+    "audit_ledger_anomaly_signal",
+    "audit_ledger_identity_credential",
+    "audit_ledger_resilience_drill",
+    "audit_ledger_crypto_key_epoch",
+    "audit_ledger_carbon_processing_window",
+    "audit_ledger_governed_model",
+    "audit_ledger_appgen_outbox_event",
+    "audit_ledger_appgen_inbox_event",
+    "audit_ledger_dead_letter_event",
 )
 AUDIT_LEDGER_EMITTED_EVENT_TYPES = (
     "AuditEventSealed",
@@ -125,6 +137,16 @@ AUDIT_LEDGER_STANDARD_FEATURE_KEYS = (
     "configuration_schema",
     "rule_engine",
     "parameter_engine",
+    "schema_contract",
+    "service_contract",
+    "release_evidence_contract",
+    "projection_handoffs",
+    "disclosure_proof_registry",
+    "anomaly_signal_registry",
+    "identity_credential_registry",
+    "crypto_epoch_registry",
+    "carbon_window_registry",
+    "governed_model_registry",
     "seed_data",
     "workbench",
     "release_gate",
@@ -156,7 +178,29 @@ def audit_ledger_runtime_capabilities() -> dict:
             "verify_signature_chain",
             "publish_audit_projection",
             "build_api_contract",
+            "build_schema_contract",
+            "build_service_contract",
+            "build_release_evidence",
             "permissions_contract",
+            "federate_evidence_view",
+            "verify_actor_identity",
+            "run_resilience_drill",
+            "rotate_crypto_epoch",
+            "schedule_carbon_aware_processing",
+            "simulate_retention_disclosure",
+            "forecast_evidence_health",
+            "parse_audit_query",
+            "score_audit_risk",
+            "recommend_control_remediation",
+            "select_ingestion_route",
+            "generate_disclosure_proof",
+            "screen_policy",
+            "run_control_tests",
+            "minimize_evidence_bundle",
+            "allocate_export_reviewers",
+            "detect_audit_anomaly",
+            "model_stochastic_evidence_exposure",
+            "register_governed_model",
             "build_workbench_view",
             "verify_owned_table_boundary",
         ),
@@ -240,6 +284,7 @@ def audit_ledger_runtime_smoke() -> dict:
     )
     state = export["state"]
     verification = audit_ledger_verify_signature_chain(state, tenant="tenant_alpha")
+    state = verification["state"]
     projection = audit_ledger_publish_audit_projection(state, "audit_route", systems=("identity", "gateway", "schema", "workflow", "composition"))
     state = projection["state"]
     workbench = audit_ledger_build_workbench_view(state, tenant="tenant_alpha")
@@ -253,6 +298,9 @@ def audit_ledger_runtime_smoke() -> dict:
     screening = audit_ledger_screen_policy(state, "audit_route", classifications=("regulated",))
     controls = audit_ledger_run_control_tests(state)
     api = audit_ledger_build_api_contract()
+    schema = audit_ledger_build_schema_contract()
+    service = audit_ledger_build_service_contract()
+    release = audit_ledger_build_release_evidence()
     federation = audit_ledger_federate_evidence_view(state, "audit_route", systems=("identity", "gateway", "schema", "workflow", "composition"))
     identity = audit_ledger_verify_actor_identity({"did": "did:appgen:actor-ops", "issuer": "trusted_registry", "status": "active"})
     resilience = audit_ledger_run_resilience_drill(state, "export_store_timeout")
@@ -280,7 +328,7 @@ def audit_ledger_runtime_smoke() -> dict:
         {"id": "immutable_regulatory_trail", "ok": verification["ok"] and controls["hash_chain_valid"]},
         {"id": "dynamic_audit_policy_screening", "ok": screening["ok"] and screening["decision"] == "clear"},
         {"id": "automated_audit_control_testing", "ok": controls["ok"] and not controls["blocking_gaps"]},
-        {"id": "universal_api_async_audit_surface", "ok": api["ok"] and "AuditEventSealed" in api["events"]["emits"] and api["stream_engine_picker_visible"] is False},
+        {"id": "universal_api_async_audit_surface", "ok": api["ok"] and schema["ok"] and service["ok"] and release["ok"] and "AuditEventSealed" in api["events"]["emits"] and api["stream_engine_picker_visible"] is False},
         {"id": "cross_system_audit_federation", "ok": federation["ok"] and "gateway" in federation["systems"]},
         {"id": "identity_gateway_schema_workflow_composition_integration", "ok": projection["handoffs"] == ("identity_audit_projection", "gateway_audit_projection", "schema_audit_projection", "workflow_audit_projection", "composition_audit_projection")},
         {"id": "decentralized_actor_identity", "ok": identity["ok"] and identity["issuer"] == "trusted_registry"},
@@ -494,7 +542,18 @@ def audit_ledger_verify_signature_chain(state: dict, *, tenant: str) -> dict:
         if event.get("event_hash") != link["event_hash"] or link["signature"] != f"sig_{link['event_hash'][:16]}":
             tampered.append(link["audit_id"])
         previous = link["event_hash"]
-    return {"ok": not gaps and not tampered and bool(links), "tenant": tenant, "link_count": len(links), "gaps": tuple(gaps), "tampered": tuple(tampered)}
+    ok = not gaps and not tampered and bool(links)
+    next_state = state
+    if ok:
+        next_state = _copy_state(state)
+        next_state = _emit(
+            next_state,
+            "SignatureChainVerified",
+            tenant,
+            f"signature_chain:{tenant}",
+            {"tenant": tenant, "link_count": len(links), "gaps": tuple(gaps), "tampered": tuple(tampered)},
+        )
+    return {"ok": ok, "tenant": tenant, "link_count": len(links), "gaps": tuple(gaps), "tampered": tuple(tampered), "state": next_state}
 
 
 def audit_ledger_publish_audit_projection(state: dict, audit_id: str, systems: tuple[str, ...]) -> dict:
@@ -520,13 +579,16 @@ def audit_ledger_build_workbench_view(state: dict, *, tenant: str) -> dict:
         "export_count": len(exports),
         "control_count": len(controls),
         "policy_count": len(policies),
+        "projection_count": len(state.get("projections", {})),
         "verified_chain": audit_ledger_verify_signature_chain(state, tenant=tenant)["ok"],
         "release_blocking_count": len(tuple(item for item in controls if item["release_blocking"])),
         "configuration_bound": bool(state.get("configuration", {}).get("ok")),
         "rule_count": len(state.get("rules", {})),
         "parameter_count": len(state.get("parameters", {})),
         "inbox_count": len(state.get("inbox", ())),
+        "retry_evidence_count": len(state.get("retry_evidence", ())),
         "dead_letter_count": len(state.get("dead_letter", state.get("dead_letters", ()))),
+        "release_evidence_ready": bool(state.get("configuration", {}).get("ok")) and bool(state.get("rules")) and bool(state.get("parameters")),
         "binding_evidence": {
             "owned_tables": AUDIT_LEDGER_OWNED_TABLES,
             "outbox_table": "audit_ledger_appgen_outbox_event",
@@ -619,11 +681,11 @@ def audit_ledger_build_api_contract() -> dict:
             {"route": "POST /retention-policies", "command": "define_retention_policy", "owned_tables": ("audit_ledger_retention_policy",), "emits": ("RetentionPolicyChanged",), "requires_permission": "audit_ledger.configure", "idempotency_key": "policy_id"},
             {"route": "POST /forensic-exports", "command": "prepare_forensic_export", "owned_tables": ("audit_ledger_forensic_export",), "emits": ("ForensicExportPrepared",), "requires_permission": "audit_ledger.export", "idempotency_key": "export_id"},
             {"route": "POST /control-assertions", "command": "assert_control", "owned_tables": ("audit_ledger_control_assertion",), "emits": ("ControlAssertionFailed",), "requires_permission": "audit_ledger.audit", "idempotency_key": "control_id"},
-            {"route": "POST /audit-projections", "command": "publish_audit_projection", "owned_tables": (), "emits": ("AuditProjectionPublished",), "requires_permission": "audit_ledger.publish", "idempotency_key": "audit_id:systems"},
-            {"route": "POST /audit-events/inbox", "command": "receive_event", "owned_tables": (), "consumes": AUDIT_LEDGER_CONSUMED_EVENT_TYPES, "requires_permission": "audit_ledger.event", "idempotency_key": "event_id"},
+            {"route": "POST /audit-projections", "command": "publish_audit_projection", "owned_tables": ("audit_ledger_projection_link", "audit_ledger_appgen_outbox_event"), "emits": ("AuditProjectionPublished",), "requires_permission": "audit_ledger.publish", "idempotency_key": "audit_id:systems"},
+            {"route": "POST /audit-events/inbox", "command": "receive_event", "owned_tables": ("audit_ledger_appgen_inbox_event", "audit_ledger_dead_letter_event"), "consumes": AUDIT_LEDGER_CONSUMED_EVENT_TYPES, "requires_permission": "audit_ledger.event", "idempotency_key": "event_id"},
             {"route": "GET /audit-workbench", "query": "build_workbench_view", "owned_tables": AUDIT_LEDGER_OWNED_TABLES, "requires_permission": "audit_ledger.read"},
         ),
-        "declared_catalog_routes": ("POST /audit-events", "POST /audit-events/verify-chain", "POST /retention-policies", "POST /forensic-exports", "GET /audit-workbench"),
+        "declared_catalog_routes": ("POST /audit-events", "POST /audit-events/verify-chain", "POST /retention-policies", "POST /forensic-exports", "POST /audit-events/inbox", "POST /audit-projections", "GET /audit-workbench"),
         "events": {"emits": AUDIT_LEDGER_EMITTED_EVENT_TYPES, "consumes": AUDIT_LEDGER_CONSUMED_EVENT_TYPES},
         "emits": AUDIT_LEDGER_EMITTED_EVENT_TYPES,
         "consumes": AUDIT_LEDGER_CONSUMED_EVENT_TYPES,
@@ -634,6 +696,195 @@ def audit_ledger_build_api_contract() -> dict:
         "event_contract": "AppGen-X",
         "stream_engine_picker_visible": False,
         "configuration": ("AUDIT_LEDGER_DATABASE_URL", "AUDIT_LEDGER_EVENT_TOPIC", "AUDIT_LEDGER_RETRY_LIMIT", "AUDIT_LEDGER_DEFAULT_TIMEZONE"),
+    }
+
+
+def audit_ledger_build_schema_contract() -> dict:
+    table_fields = {
+        "audit_ledger_audit_event": ("tenant", "audit_id", "source_pbc", "aggregate_id", "actor", "action", "classification", "payload_hash", "sequence", "previous_hash", "event_hash", "signature", "sealed"),
+        "audit_ledger_signature_chain": ("tenant", "chain_link_id", "audit_id", "sequence", "previous_hash", "event_hash", "signature", "verified"),
+        "audit_ledger_retention_policy": ("tenant", "policy_id", "classification", "retention_days", "legal_hold", "disposal_action", "status"),
+        "audit_ledger_forensic_export": ("tenant", "export_id", "classification", "requested_by", "event_count", "checksum", "proof_bundle", "status"),
+        "audit_ledger_access_evidence": ("tenant", "evidence_id", "principal", "resource", "action", "decision", "context_hash", "policy_source"),
+        "audit_ledger_control_assertion": ("tenant", "control_id", "control", "status", "severity", "evidence_hash", "release_blocking", "remediation"),
+        "audit_ledger_rule": ("tenant", "rule_id", "scope", "classification", "minimum_retention_days", "requires_export_approval", "severity", "status"),
+        "audit_ledger_parameter": ("tenant", "parameter_id", "name", "value", "bounds", "compiled_hash"),
+        "audit_ledger_configuration": ("tenant", "configuration_id", "database_backend", "event_topic", "retry_limit", "signature_algorithm", "default_timezone"),
+        "audit_ledger_projection_link": ("tenant", "projection_id", "audit_id", "target_system", "projection_hash", "handoff_status"),
+        "audit_ledger_schema_extension": ("tenant", "extension_id", "table_name", "field_name", "field_type", "version"),
+        "audit_ledger_disclosure_proof": ("tenant", "proof_id", "audit_id", "proof_hash", "disclosure_fields", "created_at"),
+        "audit_ledger_anomaly_signal": ("tenant", "signal_id", "audit_id", "signal_type", "entropy", "detected_at"),
+        "audit_ledger_identity_credential": ("tenant", "credential_id", "actor_did", "issuer", "status", "verified_at"),
+        "audit_ledger_resilience_drill": ("tenant", "drill_id", "scenario", "mode", "replay_source", "executed_at"),
+        "audit_ledger_crypto_key_epoch": ("tenant", "epoch_id", "algorithm", "epoch", "signature_policy", "activated_at"),
+        "audit_ledger_carbon_processing_window": ("tenant", "window_id", "window", "carbon_score", "scheduled_load", "status"),
+        "audit_ledger_governed_model": ("tenant", "model_id", "name", "feature_lineage", "auc", "drift_score", "governance_status"),
+        "audit_ledger_appgen_outbox_event": ("tenant", "event_id", "event_type", "topic", "idempotency_key", "status", "audit_hash"),
+        "audit_ledger_appgen_inbox_event": ("tenant", "event_id", "event_type", "idempotency_key", "attempts", "status", "received_at"),
+        "audit_ledger_dead_letter_event": ("tenant", "event_id", "event_type", "idempotency_key", "attempts", "reason", "recorded_at"),
+    }
+    relationships = (
+        {"from": "audit_ledger_signature_chain.audit_id", "to": "audit_ledger_audit_event.audit_id", "type": "owned_hash_chain"},
+        {"from": "audit_ledger_forensic_export.classification", "to": "audit_ledger_retention_policy.classification", "type": "owned_retention_binding"},
+        {"from": "audit_ledger_control_assertion.evidence_hash", "to": "audit_ledger_audit_event.event_hash", "type": "owned_control_evidence"},
+        {"from": "audit_ledger_projection_link.audit_id", "to": "audit_ledger_audit_event.audit_id", "type": "owned_projection_handoff"},
+        {"from": "audit_ledger_disclosure_proof.audit_id", "to": "audit_ledger_audit_event.audit_id", "type": "owned_proof"},
+        {"from": "audit_ledger_anomaly_signal.audit_id", "to": "audit_ledger_audit_event.audit_id", "type": "owned_anomaly"},
+        {"from": "audit_ledger_appgen_outbox_event.event_id", "to": "audit_ledger_audit_event.audit_id", "type": "owned_outbox_evidence"},
+    )
+    tables = tuple(
+        {
+            "table": table,
+            "fields": table_fields[table],
+            "primary_key": tuple(field for field in table_fields[table] if field.endswith("_id") or field == "event_id")[:2],
+            "owned_by": "audit_ledger",
+        }
+        for table in AUDIT_LEDGER_OWNED_TABLES
+    )
+    return {
+        "format": "appgen.audit-ledger-owned-schema-contract.v1",
+        "ok": len(tables) == len(AUDIT_LEDGER_OWNED_TABLES)
+        and len(tables) >= 18
+        and all(item["table"].startswith("audit_ledger_") for item in tables),
+        "tables": tables,
+        "relationships": relationships,
+        "migrations": tuple(
+            {
+                "path": f"pbcs/audit_ledger/migrations/{position + 1:03d}_{table}.sql",
+                "operation": "create_owned_table",
+                "table": table,
+                "backend_allowlist": AUDIT_LEDGER_ALLOWED_DATABASE_BACKENDS,
+            }
+            for position, table in enumerate(AUDIT_LEDGER_OWNED_TABLES)
+        ),
+        "models": tuple(
+            {
+                "class_name": "".join(part.capitalize() for part in table.split("_")),
+                "table": table,
+                "fields": table_fields[table],
+            }
+            for table in AUDIT_LEDGER_OWNED_TABLES
+        ),
+        "datastore_backends": AUDIT_LEDGER_ALLOWED_DATABASE_BACKENDS,
+        "shared_table_access": False,
+    }
+
+
+def audit_ledger_build_service_contract() -> dict:
+    command_methods = (
+        "configure_runtime",
+        "set_parameter",
+        "register_rule",
+        "register_schema_extension",
+        "receive_event",
+        "record_audit_event",
+        "record_access_evidence",
+        "define_retention_policy",
+        "assert_control",
+        "prepare_forensic_export",
+        "verify_signature_chain",
+        "publish_audit_projection",
+        "generate_disclosure_proof",
+        "screen_policy",
+        "run_control_tests",
+        "federate_evidence_view",
+        "verify_actor_identity",
+        "run_resilience_drill",
+        "rotate_crypto_epoch",
+        "schedule_carbon_aware_processing",
+        "minimize_evidence_bundle",
+        "allocate_export_reviewers",
+        "detect_audit_anomaly",
+        "register_governed_model",
+    )
+    return {
+        "format": "appgen.audit-ledger-service-contract.v1",
+        "ok": len(command_methods) >= 20,
+        "transaction_boundary": "audit_ledger_owned_datastore_plus_appgen_outbox",
+        "command_methods": command_methods,
+        "query_methods": (
+            "build_workbench_view",
+            "build_api_contract",
+            "build_schema_contract",
+            "build_service_contract",
+            "build_release_evidence",
+            "verify_owned_table_boundary",
+            "simulate_retention_disclosure",
+            "forecast_evidence_health",
+            "parse_audit_query",
+            "score_audit_risk",
+            "recommend_control_remediation",
+            "select_ingestion_route",
+            "model_stochastic_evidence_exposure",
+        ),
+        "mutates_only": AUDIT_LEDGER_OWNED_TABLES,
+        "external_dependencies": {
+            "apis": tuple(item for item in _AUDIT_LEDGER_ALLOWED_DEPENDENCIES if str(item).startswith(("GET ", "POST "))),
+            "events": AUDIT_LEDGER_CONSUMED_EVENT_TYPES,
+            "api_projections": tuple(item for item in _AUDIT_LEDGER_ALLOWED_DEPENDENCIES if str(item).endswith("_projection")),
+            "shared_tables": (),
+        },
+    }
+
+
+def audit_ledger_build_release_evidence() -> dict:
+    schema = audit_ledger_build_schema_contract()
+    service = audit_ledger_build_service_contract()
+    api = audit_ledger_build_api_contract()
+    permissions = audit_ledger_permissions_contract()
+    from .ui import audit_ledger_ui_contract
+
+    ui = audit_ledger_ui_contract()
+    sample_state = audit_ledger_configure_runtime(
+        audit_ledger_empty_state(),
+        {
+            "database_backend": "postgresql",
+            "event_topic": AUDIT_LEDGER_REQUIRED_EVENT_TOPIC,
+            "retry_limit": 3,
+            "signature_algorithm": "dilithium3_simulated",
+            "allowed_classifications": ("public", "internal", "regulated"),
+            "export_modes": ("proof_bundle",),
+            "default_timezone": "UTC",
+            "workbench_limit": 50,
+        },
+    )["state"]
+    sample_state = audit_ledger_set_parameter(sample_state, "retention_days", 2555)["state"]
+    sample_state = audit_ledger_register_rule(
+        sample_state,
+        {
+            "rule_id": "release_rule",
+            "tenant": "tenant_release",
+            "scope": "mutation",
+            "classification": "regulated",
+            "minimum_retention_days": 2555,
+            "requires_legal_hold_review": True,
+            "requires_export_approval": True,
+            "severity": "blocking",
+            "status": "active",
+        },
+    )["state"]
+    workbench = audit_ledger_build_workbench_view(sample_state, tenant="tenant_release")
+    checks = (
+        {"id": "owned_schema_depth", "ok": schema["ok"] and len(schema["tables"]) >= 18},
+        {"id": "migration_per_owned_table", "ok": len(schema["migrations"]) == len(AUDIT_LEDGER_OWNED_TABLES)},
+        {"id": "service_command_depth", "ok": service["ok"] and len(service["command_methods"]) >= 20},
+        {"id": "api_event_contract", "ok": api["ok"] and api["event_contract"] == "AppGen-X"},
+        {"id": "permissions_cover_commands", "ok": {"record_audit_event", "receive_event", "publish_audit_projection"} <= set(permissions["action_permissions"])},
+        {"id": "backend_allowlist", "ok": schema["datastore_backends"] == AUDIT_LEDGER_ALLOWED_DATABASE_BACKENDS},
+        {"id": "no_shared_table_access", "ok": not schema["shared_table_access"] and not api["shared_table_access"]},
+        {"id": "ui_binding_evidence", "ok": ui["binding_evidence"]["owned_tables"] == AUDIT_LEDGER_OWNED_TABLES and ui["binding_evidence"]["configuration"]["event_contract"] == "AppGen-X"},
+        {"id": "workbench_binding_evidence", "ok": workbench["configuration_bound"] and workbench["release_evidence_ready"] and workbench["binding_evidence"]["configuration"]["event_contract"] == "AppGen-X"},
+    )
+    return {
+        "format": "appgen.audit-ledger-release-evidence.v1",
+        "ok": all(check["ok"] for check in checks),
+        "checks": checks,
+        "schema": schema,
+        "service": service,
+        "api": api,
+        "permissions": permissions,
+        "ui": ui,
+        "blocking_gaps": tuple(check for check in checks if not check["ok"]),
     }
 
 
@@ -665,6 +916,10 @@ def audit_ledger_permissions_contract() -> dict:
             "set_parameter": "audit_ledger.configure",
             "configure_runtime": "audit_ledger.configure",
             "build_workbench_view": "audit_ledger.read",
+            "build_schema_contract": "audit_ledger.read",
+            "build_service_contract": "audit_ledger.read",
+            "build_release_evidence": "audit_ledger.read",
+            "verify_owned_table_boundary": "audit_ledger.audit",
             "run_control_tests": "audit_ledger.audit",
         },
     }

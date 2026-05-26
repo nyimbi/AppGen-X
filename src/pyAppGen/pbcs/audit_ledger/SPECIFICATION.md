@@ -44,9 +44,29 @@ Audit Ledger owns these tables:
   levels.
 - `audit_ledger_configuration`: backend, event topic, retry policy, signature
   algorithm, timezone, classification list, export modes, and workbench limit.
+- `audit_ledger_projection_link`: handoff record for read-only projections
+  pushed to identity, gateway, schema, workflow, composition, and release
+  governance consumers.
+- `audit_ledger_schema_extension`: validated schema-on-read field registration
+  for owned Audit Ledger tables only.
+- `audit_ledger_disclosure_proof`: proof hash, disclosed fields, and issuance
+  metadata for minimized evidence bundles.
+- `audit_ledger_anomaly_signal`: entropy-style anomaly observations for audit
+  trails and disclosure surfaces.
+- `audit_ledger_identity_credential`: decentralized actor identity verification
+  evidence scoped to Audit Ledger review flows.
+- `audit_ledger_resilience_drill`: degraded replay and dead-letter readiness
+  evidence for chaos and recovery drills.
+- `audit_ledger_crypto_key_epoch`: signature-policy epoch history for
+  crypto-agile and quantum-resistant audit signing.
+- `audit_ledger_carbon_processing_window`: carbon-aware processing windows used
+  to schedule low-intensity export and analytics work.
+- `audit_ledger_governed_model`: approved audit-risk model metadata, drift
+  score, and governance state.
 
-Runtime support tables are `audit_ledger_appgen_outbox_event`,
-`audit_ledger_appgen_inbox_event`, and `audit_ledger_dead_letter_event`.
+Runtime support tables are also owned:
+`audit_ledger_appgen_outbox_event`, `audit_ledger_appgen_inbox_event`, and
+`audit_ledger_dead_letter_event`.
 Ordinary backing stores are limited to PostgreSQL, MySQL, and MariaDB.
 Cross-PBC dependencies are represented only as API calls, consumed events, and
 read-only projections. Shared operational tables are not allowed.
@@ -164,6 +184,31 @@ Each route states whether it is a command or query, the owned tables it uses,
 emitted or consumed events, the required permission, and the idempotency key.
 The API contract declares `shared_table_access` as false.
 
+## Schema Contract
+
+The package-local schema contract is executable and returns:
+
+- owned table descriptors for every Audit Ledger table, including AppGen-X
+  outbox, inbox, and dead-letter tables;
+- model descriptors for code generation and workbench binding;
+- migration descriptors for every owned table with the relational backend
+  allowlist;
+- owned-table relationships for signature chains, proofs, anomalies, forensic
+  exports, and projection handoffs;
+- `shared_table_access: false` evidence.
+
+## Service Contract
+
+The package-local service contract declares the transaction boundary as the
+Audit Ledger owned datastore plus the AppGen-X outbox. Command methods cover
+runtime configuration, rule/parameter registration, inbox handling, event
+sealing, access evidence, retention, control assertions, forensic exports,
+projection publication, disclosure proofs, resilience/crypto/carbon operations,
+and governed model registration. Query methods cover workbench views, schema
+and release evidence descriptors, boundary verification, retention disclosure
+simulation, audit query parsing, risk scoring, remediation, route selection,
+and stochastic exposure modeling.
+
 ## Events and Handlers
 
 Emitted events are `AuditEventSealed`, `SignatureChainVerified`,
@@ -194,6 +239,8 @@ Release readiness requires package-local runtime smoke success, descriptor API
 coverage, permission coverage, UI binding coverage, owned-table boundary
 verification, AppGen-X event-contract evidence, rules/parameters/configuration
 execution, hash-chain and tamper checks, idempotent inbox and dead-letter
-tests, and focused unit tests. The implementation is complete only when these
-checks pass without requiring central registry changes for the package-local
-slice.
+tests, schema contract depth, service contract depth, and focused unit tests.
+The release evidence contract also proves that UI/workbench binding evidence
+uses the AppGen-X contract, the fixed topic, and the full owned-table list. The
+implementation is complete only when these checks pass without requiring
+central registry changes for the package-local slice.

@@ -5,10 +5,16 @@ from pyAppGen.pbcs.workflow_orchestration import WORKFLOW_ORCHESTRATION_CONSUMED
 from pyAppGen.pbcs.workflow_orchestration import WORKFLOW_ORCHESTRATION_EMITTED_EVENT_TYPES
 from pyAppGen.pbcs.workflow_orchestration import WORKFLOW_ORCHESTRATION_OWNED_TABLES
 from pyAppGen.pbcs.workflow_orchestration import WORKFLOW_ORCHESTRATION_REQUIRED_EVENT_TOPIC
+from pyAppGen.pbcs.workflow_orchestration import WORKFLOW_ORCHESTRATION_RUNTIME_TABLES
+from pyAppGen.pbcs.workflow_orchestration import implementation_contract as package_implementation_contract
 from pyAppGen.pbcs.workflow_orchestration import workflow_orchestration_build_api_contract
+from pyAppGen.pbcs.workflow_orchestration import workflow_orchestration_build_release_evidence
+from pyAppGen.pbcs.workflow_orchestration import workflow_orchestration_build_schema_contract
+from pyAppGen.pbcs.workflow_orchestration import workflow_orchestration_build_service_contract
 from pyAppGen.pbcs.workflow_orchestration import workflow_orchestration_permissions_contract
 from pyAppGen.pbcs.workflow_orchestration import workflow_orchestration_receive_event
 from pyAppGen.pbcs.workflow_orchestration import workflow_orchestration_register_schema_extension
+from pyAppGen.pbcs.workflow_orchestration import workflow_orchestration_ui_binding_contract
 from pyAppGen.pbcs.workflow_orchestration import workflow_orchestration_verify_owned_table_boundary
 from pyAppGen.pbc import WORKFLOW_ORCHESTRATION_ADVANCED_CAPABILITY_KEYS
 from pyAppGen.pbc import pbc_implemented_capability_audit
@@ -40,11 +46,15 @@ def test_workflow_orchestration_runtime_executes_standard_and_advanced_capabilit
     assert runtime["ok"] is True
     assert runtime["implementation_directory"] == "src/pyAppGen/pbcs/workflow_orchestration"
     assert runtime["owned_tables"] == WORKFLOW_ORCHESTRATION_OWNED_TABLES
+    assert runtime["runtime_tables"] == WORKFLOW_ORCHESTRATION_RUNTIME_TABLES
+    assert runtime["required_event_topic"] == WORKFLOW_ORCHESTRATION_REQUIRED_EVENT_TOPIC
+    assert runtime["allowed_database_backends"] == WORKFLOW_ORCHESTRATION_ALLOWED_DATABASE_BACKENDS
     assert len(runtime["standard_features"]) >= 25
     assert "rule_engine" in runtime["standard_features"]
     assert "parameter_engine" in runtime["standard_features"]
     assert "configuration_schema" in runtime["standard_features"]
     assert "workbench" in runtime["standard_features"]
+    assert {"build_schema_contract", "build_service_contract", "build_release_evidence", "run_control_tests"} <= set(runtime["operations"])
     assert smoke["ok"] is True
     assert set(WORKFLOW_ORCHESTRATION_ADVANCED_CAPABILITY_KEYS) == {check["id"] for check in smoke["checks"]}
     assert not smoke["blocking_gaps"]
@@ -54,26 +64,107 @@ def test_workflow_orchestration_runtime_executes_standard_and_advanced_capabilit
     assert contract["advanced_runtime"]["ok"] is True
     assert contract["source_package"]["owned_tables"] == WORKFLOW_ORCHESTRATION_OWNED_TABLES
     assert contract["source_package"]["allowed_database_backends"] == WORKFLOW_ORCHESTRATION_ALLOWED_DATABASE_BACKENDS
+    assert contract["source_package"]["required_event_topic"] == WORKFLOW_ORCHESTRATION_REQUIRED_EVENT_TOPIC
     assert contract["source_package"]["api_contract"]["event_contract"] == "AppGen-X"
     assert contract["source_package"]["permissions_contract"]["action_permissions"]["receive_event"] == "workflow_orchestration.event"
     assert contract["source_package"]["ui_contract"]["ok"] is True
+    assert contract["source_package"]["schema_contract"]["ok"] is True
+    assert contract["source_package"]["service_contract"]["ok"] is True
+    assert contract["source_package"]["release_evidence_contract"]["ok"] is True
     assert "WorkflowConfigurationPanel" in contract["source_package"]["ui_contract"]["fragments"]
     assert set(contract["advanced_runtime"]["capabilities"]) == set(WORKFLOW_ORCHESTRATION_ADVANCED_CAPABILITY_KEYS)
     assert pbc_implementation_release_audit(("workflow_orchestration",))["ok"] is True
     assert pbc_implemented_capability_audit(("workflow_orchestration",))["ok"] is True
+    package_contract = package_implementation_contract()
+    assert package_contract["schema_contract"]["ok"] is True
+    assert package_contract["service_contract"]["ok"] is True
+    assert package_contract["release_evidence_contract"]["ok"] is True
 
     api = workflow_orchestration_build_api_contract()
     permissions = workflow_orchestration_permissions_contract()
     assert api["format"] == "appgen.workflow-orchestration-api-contract.v1"
     assert api["owned_tables"] == WORKFLOW_ORCHESTRATION_OWNED_TABLES
+    assert api["runtime_tables"] == WORKFLOW_ORCHESTRATION_RUNTIME_TABLES
     assert api["database_backends"] == WORKFLOW_ORCHESTRATION_ALLOWED_DATABASE_BACKENDS
     assert api["emits"] == WORKFLOW_ORCHESTRATION_EMITTED_EVENT_TYPES
     assert api["consumes"] == WORKFLOW_ORCHESTRATION_CONSUMED_EVENT_TYPES
     assert api["shared_table_access"] is False
     assert api["stream_engine_picker_visible"] is False
-    assert {route["route"] for route in api["routes"]} >= {"POST /workflows/definitions", "POST /workflows/events/inbox", "GET /workflows/workbench"}
+    assert api["required_event_topic"] == WORKFLOW_ORCHESTRATION_REQUIRED_EVENT_TOPIC
+    assert api["dependencies"]["shared_tables"] == ()
+    assert {route["route"] for route in api["routes"]} >= {
+        "PUT /workflows/configuration",
+        "POST /workflows/rules",
+        "POST /workflows/parameters",
+        "POST /workflows/definitions",
+        "POST /workflows/events/inbox",
+        "GET /workflows/workbench",
+        "GET /workflows/schema-contract",
+        "GET /workflows/service-contract",
+        "GET /workflows/release-evidence",
+    }
     assert all(isinstance(route, dict) and (route.get("command") or route.get("query")) for route in api["routes"])
     assert permissions["action_permissions"]["receive_event"] == "workflow_orchestration.event"
+    assert permissions["action_permissions"]["build_schema_contract"] == "workflow_orchestration.audit"
+    assert permissions["action_permissions"]["build_service_contract"] == "workflow_orchestration.audit"
+    assert permissions["action_permissions"]["build_release_evidence"] == "workflow_orchestration.audit"
+
+
+def test_workflow_orchestration_package_schema_service_release_and_ui_binding_contracts() -> None:
+    schema = workflow_orchestration_build_schema_contract()
+    service = workflow_orchestration_build_service_contract()
+    release = workflow_orchestration_build_release_evidence()
+    ui_binding = workflow_orchestration_ui_binding_contract()
+    api = workflow_orchestration_build_api_contract()
+
+    assert schema["format"] == "appgen.workflow-orchestration-owned-schema-contract.v1"
+    assert schema["ok"] is True
+    assert len(schema["tables"]) == len(WORKFLOW_ORCHESTRATION_OWNED_TABLES)
+    assert len(schema["migrations"]) == len(WORKFLOW_ORCHESTRATION_OWNED_TABLES)
+    assert schema["runtime_tables"] == (
+        {
+            "table": "workflow_orchestration_appgen_outbox_event",
+            "fields": ("tenant", "event_id", "event_type", "payload", "idempotency_key", "published_at", "audit_hash"),
+        },
+        {
+            "table": "workflow_orchestration_appgen_inbox_event",
+            "fields": ("tenant", "event_id", "event_type", "payload", "idempotency_key", "attempts", "audit_hash"),
+        },
+        {
+            "table": "workflow_orchestration_dead_letter_event",
+            "fields": ("tenant", "event_id", "event_type", "payload", "reason", "attempts", "audit_hash"),
+        },
+    )
+    assert schema["datastore_backends"] == WORKFLOW_ORCHESTRATION_ALLOWED_DATABASE_BACKENDS
+    assert schema["shared_table_access"] is False
+
+    assert service["format"] == "appgen.workflow-orchestration-service-contract.v1"
+    assert service["ok"] is True
+    assert service["transaction_boundary"] == "workflow_orchestration_owned_datastore_plus_appgen_outbox"
+    assert "receive_event" in service["idempotent_handlers"]
+    assert "build_release_evidence" in service["query_methods"]
+    assert service["retry_dead_letter_evidence"]["dead_letter_table"] == WORKFLOW_ORCHESTRATION_RUNTIME_TABLES[2]
+    assert service["eventing"]["contract"] == "AppGen-X"
+    assert service["external_dependencies"]["shared_tables"] == ()
+
+    assert ui_binding["format"] == "appgen.workflow-orchestration-ui-binding-contract.v1"
+    assert ui_binding["ok"] is True
+    assert ui_binding["binding_evidence"]["runtime_tables"] == WORKFLOW_ORCHESTRATION_RUNTIME_TABLES
+
+    assert any(route["command"] == "register_rule" for route in api["routes"])
+    assert any(route["command"] == "set_parameter" for route in api["routes"])
+    assert any(route["command"] == "configure_runtime" for route in api["routes"])
+    assert any(route.get("query") == "build_schema_contract" for route in api["routes"])
+    assert any(route.get("query") == "build_service_contract" for route in api["routes"])
+    assert any(route.get("query") == "build_release_evidence" for route in api["routes"])
+
+    assert release["format"] == "appgen.workflow-orchestration-release-evidence.v1"
+    assert release["ok"] is True
+    assert not release["blocking_gaps"]
+    assert release["schema"]["format"] == schema["format"]
+    assert release["service"]["format"] == service["format"]
+    assert release["api"]["required_event_topic"] == WORKFLOW_ORCHESTRATION_REQUIRED_EVENT_TOPIC
+    assert release["ui_binding"]["binding_evidence"]["outbox_table"] == WORKFLOW_ORCHESTRATION_RUNTIME_TABLES[0]
 
 
 def test_workflow_orchestration_runtime_applies_rules_parameters_configuration_and_ui() -> None:
@@ -190,6 +281,7 @@ def test_workflow_orchestration_runtime_applies_rules_parameters_configuration_a
     assert workbench["parameter_count"] == 5
     assert workbench["inbox_count"] == 1
     assert workbench["binding_evidence"]["owned_tables"] == WORKFLOW_ORCHESTRATION_OWNED_TABLES
+    assert workbench["binding_evidence"]["runtime_tables"] == WORKFLOW_ORCHESTRATION_RUNTIME_TABLES
     assert workbench["binding_evidence"]["configuration"]["event_contract"] == "AppGen-X"
 
     ui_contract = workflow_orchestration_ui_contract()
@@ -197,6 +289,7 @@ def test_workflow_orchestration_runtime_applies_rules_parameters_configuration_a
     assert ui_contract["configuration_editor"]["required_event_topic"] == WORKFLOW_ORCHESTRATION_REQUIRED_EVENT_TOPIC
     assert ui_contract["configuration_editor"]["stream_engine_picker_visible"] is False
     assert ui_contract["binding_evidence"]["owned_tables"] == WORKFLOW_ORCHESTRATION_OWNED_TABLES
+    assert ui_contract["binding_evidence"]["runtime_tables"] == WORKFLOW_ORCHESTRATION_RUNTIME_TABLES
     assert "default_retry_limit" in ui_contract["parameter_editor"]["numeric_parameters"]
     assert "rule_id" in ui_contract["rule_editor"]["required_fields"]
     rendered = workflow_orchestration_render_workbench(
@@ -219,6 +312,8 @@ def test_workflow_orchestration_runtime_applies_rules_parameters_configuration_a
     assert set(rendered["visible_actions"]) == set(ui_contract["action_permissions"])
     assert not rendered["locked_actions"]
     assert rendered["binding_evidence"]["owned_tables"] == WORKFLOW_ORCHESTRATION_OWNED_TABLES
+    assert rendered["binding_evidence"]["runtime_tables"] == WORKFLOW_ORCHESTRATION_RUNTIME_TABLES
+    assert any(binding["key"] == "governance" for binding in rendered["binding_evidence"]["panel_bindings"])
 
     boundary = workflow_orchestration_verify_owned_table_boundary(
         ("workflow_instance", "SchemaAccepted", "gateway_workflow_projection", "POST /audit/workflow-events", "workflow_orchestration_appgen_outbox_event")
@@ -267,8 +362,23 @@ def test_workflow_orchestration_rejects_unsupported_database_backends_eventing_a
             },
         )
 
+    with pytest.raises(ValueError, match="Unsupported Workflow Orchestration configuration fields"):
+        workflow_orchestration_configure_runtime(
+            state,
+            {
+                "database_backend": "postgresql",
+                "event_topic": WORKFLOW_ORCHESTRATION_REQUIRED_EVENT_TOPIC,
+                "retry_limit": 3,
+                "default_timezone": "UTC",
+                "legacy_engine_picker": "forbidden",
+            },
+        )
+
     with pytest.raises(ValueError, match="Unsupported Workflow Orchestration parameter"):
         workflow_orchestration_set_parameter(state, "stream_engine", "hidden_picker")
+
+    with pytest.raises(ValueError, match="must be between"):
+        workflow_orchestration_set_parameter(state, "sla_breach_threshold", 1.5)
 
     with pytest.raises(ValueError, match="schema extensions must target owned tables"):
         workflow_orchestration_register_schema_extension(state, "schema_registry", {"schema_ref": "jsonb"})

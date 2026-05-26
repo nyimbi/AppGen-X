@@ -14,6 +14,8 @@ AUDIT_LEDGER_UI_FRAGMENT_KEYS = (
     "AuditEventSearch",
     "SignatureChainVerifier",
     "ForensicExportConsole",
+    "AuditRetryEvidenceConsole",
+    "AuditReleaseEvidencePanel",
     "RetentionPolicyBoard",
     "AccessEvidenceView",
     "ControlAssertionBoard",
@@ -37,6 +39,8 @@ def audit_ledger_ui_contract() -> dict:
             "/workbench/pbcs/audit_ledger/events",
             "/workbench/pbcs/audit_ledger/signature-chain",
             "/workbench/pbcs/audit_ledger/forensic-exports",
+            "/workbench/pbcs/audit_ledger/retry-evidence",
+            "/workbench/pbcs/audit_ledger/release-evidence",
             "/workbench/pbcs/audit_ledger/retention",
             "/workbench/pbcs/audit_ledger/access-evidence",
             "/workbench/pbcs/audit_ledger/controls",
@@ -48,6 +52,8 @@ def audit_ledger_ui_contract() -> dict:
         "panels": (
             {"key": "events", "fragment": "AuditEventSearch", "binds_to": ("audit_event", "signature_chain"), "commands": ("record_audit_event", "verify_signature_chain")},
             {"key": "forensics", "fragment": "ForensicExportConsole", "binds_to": ("forensic_export", "retention_policy"), "commands": ("prepare_forensic_export", "define_retention_policy")},
+            {"key": "runtime", "fragment": "AuditRetryEvidenceConsole", "binds_to": ("appgen_inbox_event", "dead_letter_event"), "commands": ("receive_event", "build_release_evidence")},
+            {"key": "release", "fragment": "AuditReleaseEvidencePanel", "binds_to": ("configuration", "rule", "parameter"), "commands": ("build_release_evidence",)},
             {"key": "controls", "fragment": "ControlAssertionBoard", "binds_to": ("control_assertion", "access_evidence"), "commands": ("assert_control", "record_access_evidence")},
             {"key": "governance", "fragment": "AuditRuleStudio", "binds_to": ("rule", "parameter", "configuration"), "commands": ("register_rule", "set_parameter", "configure_runtime")},
         ),
@@ -58,12 +64,12 @@ def audit_ledger_ui_contract() -> dict:
             "assert_control": "audit_ledger.audit",
             "prepare_forensic_export": "audit_ledger.export",
             "verify_signature_chain": "audit_ledger.verify",
-            "publish_audit_projection": "audit_ledger.read",
             "register_rule": "audit_ledger.configure",
             "set_parameter": "audit_ledger.configure",
             "configure_runtime": "audit_ledger.configure",
             "run_control_tests": "audit_ledger.audit",
             "receive_event": "audit_ledger.event",
+            "build_release_evidence": "audit_ledger.read",
             "publish_audit_projection": "audit_ledger.publish",
         },
         "configuration_editor": {
@@ -101,6 +107,11 @@ def audit_ledger_ui_contract() -> dict:
             "inbox_table": "audit_ledger_appgen_inbox_event",
             "dead_letter_table": "audit_ledger_dead_letter_event",
             "shared_table_access": False,
+            "configuration": {
+                "event_contract": "AppGen-X",
+                "required_event_topic": AUDIT_LEDGER_REQUIRED_EVENT_TOPIC,
+                "stream_engine_picker_visible": False,
+            },
         },
     }
 
@@ -118,10 +129,15 @@ def audit_ledger_render_workbench(
     access = tuple(item for item in state["access_evidence"].values() if item["tenant"] == tenant)
     exports = tuple(item for item in state["forensic_exports"].values() if item["tenant"] == tenant)
     controls = tuple(item for item in state["control_assertions"].values() if item["tenant"] == tenant)
+    retry_evidence = tuple(state.get("retry_evidence", ()))
+    dead_letters = tuple(state.get("dead_letter", state.get("dead_letters", ())))
     cards = (
         {"key": "events", "value": len(events), "fragment": "AuditEventSearch"},
         {"key": "access_evidence", "value": len(access), "fragment": "AccessEvidenceView"},
         {"key": "exports", "value": len(exports), "fragment": "ForensicExportConsole"},
+        {"key": "retry_evidence", "value": len(retry_evidence), "fragment": "AuditRetryEvidenceConsole"},
+        {"key": "dead_letter", "value": len(dead_letters), "fragment": "AuditRetryEvidenceConsole"},
+        {"key": "release_evidence", "value": int(bool(state["configuration"].get("ok")) and bool(state.get("rules")) and bool(state.get("parameters"))), "fragment": "AuditReleaseEvidencePanel"},
         {"key": "controls", "value": len(controls), "fragment": "ControlAssertionBoard"},
         {"key": "release_blocking", "value": len(tuple(item for item in controls if item["release_blocking"])), "fragment": "ControlAssertionBoard"},
     )
@@ -139,6 +155,8 @@ def audit_ledger_render_workbench(
         "parameters_bound": tuple(sorted(state["parameters"])),
         "event_outbox_count": len(state["outbox"]),
         "inbox_count": len(state.get("inbox", ())),
-        "dead_letter_count": len(state.get("dead_letter", state.get("dead_letters", ()))),
+        "retry_evidence_count": len(retry_evidence),
+        "dead_letter_count": len(dead_letters),
+        "release_evidence_ready": bool(state["configuration"].get("ok")) and bool(state.get("rules")) and bool(state.get("parameters")),
         "binding_evidence": contract["binding_evidence"],
     }

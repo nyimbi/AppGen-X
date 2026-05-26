@@ -8,6 +8,7 @@ from .runtime import WORKFLOW_ORCHESTRATION_EMITTED_EVENT_TYPES
 from .runtime import WORKFLOW_ORCHESTRATION_OWNED_TABLES
 from .runtime import WORKFLOW_ORCHESTRATION_REQUIRED_EVENT_TOPIC
 from .runtime import workflow_orchestration_permissions_contract
+from .runtime import workflow_orchestration_ui_binding_contract
 
 
 WORKFLOW_ORCHESTRATION_UI_FRAGMENT_KEYS = (
@@ -48,9 +49,9 @@ def workflow_orchestration_ui_contract() -> dict:
         ),
         "panels": (
             {"key": "designer", "fragment": "StateMachineDesigner", "binds_to": ("workflow_definition", "saga_step"), "commands": ("define_workflow", "register_rule")},
-            {"key": "runtime", "fragment": "WorkflowInstanceMonitor", "binds_to": ("workflow_instance", "signal", "timer_task"), "commands": ("start_instance", "signal_instance", "schedule_timer")},
-            {"key": "saga", "fragment": "SagaStepBoard", "binds_to": ("saga_step", "compensation"), "commands": ("record_step_result", "execute_compensation", "complete_workflow")},
-            {"key": "governance", "fragment": "WorkflowRuleStudio", "binds_to": ("rule", "parameter", "configuration"), "commands": ("register_rule", "set_parameter", "configure_runtime")},
+            {"key": "runtime", "fragment": "WorkflowInstanceMonitor", "binds_to": ("workflow_instance", "workflow_signal", "timer_task"), "commands": ("start_instance", "signal_instance", "schedule_timer")},
+            {"key": "saga", "fragment": "SagaStepBoard", "binds_to": ("saga_step", "compensation", "human_task"), "commands": ("record_step_result", "execute_compensation", "complete_workflow")},
+            {"key": "governance", "fragment": "WorkflowRuleStudio", "binds_to": ("workflow_rule", "workflow_parameter", "workflow_configuration"), "commands": ("register_rule", "set_parameter", "configure_runtime")},
         ),
         "action_permissions": workflow_orchestration_permissions_contract()["action_permissions"],
         "configuration_editor": {
@@ -82,7 +83,10 @@ def workflow_orchestration_ui_contract() -> dict:
             "inbox_status": "visible",
             "dead_letter_status": "visible",
         },
-        "binding_evidence": {"owned_tables": WORKFLOW_ORCHESTRATION_OWNED_TABLES, "shared_table_access": False},
+        "binding_evidence": {
+            **workflow_orchestration_ui_binding_contract()["binding_evidence"],
+            "shared_table_access": False,
+        },
     }
 
 
@@ -100,6 +104,7 @@ def workflow_orchestration_render_workbench(
     timers = tuple(item for item in state["timers"].values() if item["tenant"] == tenant)
     steps = tuple(item for item in state["saga_steps"].values() if item["tenant"] == tenant)
     compensations = tuple(item for item in state["compensations"].values() if item["tenant"] == tenant)
+    human_tasks = tuple(item for item in state["human_tasks"].values() if item["tenant"] == tenant)
     cards = (
         {"key": "definitions", "value": len(definitions), "fragment": "StateMachineDesigner"},
         {"key": "instances", "value": len(instances), "fragment": "WorkflowInstanceMonitor"},
@@ -107,6 +112,8 @@ def workflow_orchestration_render_workbench(
         {"key": "timers", "value": len(timers), "fragment": "TimerConsole"},
         {"key": "saga_steps", "value": len(steps), "fragment": "SagaStepBoard"},
         {"key": "compensations", "value": len(compensations), "fragment": "CompensationPlanner"},
+        {"key": "human_tasks", "value": len(human_tasks), "fragment": "HumanTaskQueue"},
+        {"key": "dead_letter", "value": len(state.get("dead_letter", state.get("dead_letters", ()))), "fragment": "SignalInbox"},
     )
     return {
         "format": "appgen.workflow-orchestration-workbench-render.v1",
@@ -124,9 +131,14 @@ def workflow_orchestration_render_workbench(
         "inbox_count": len(state.get("inbox", ())),
         "dead_letter_count": len(state.get("dead_letter", state.get("dead_letters", ()))),
         "binding_evidence": {
-            "owned_tables": WORKFLOW_ORCHESTRATION_OWNED_TABLES,
-            "outbox_table": "workflow_orchestration_appgen_outbox_event",
-            "inbox_table": "workflow_orchestration_appgen_inbox_event",
-            "dead_letter_table": "workflow_orchestration_dead_letter_event",
+            **workflow_orchestration_ui_binding_contract()["binding_evidence"],
+            "panel_bindings": tuple(
+                {
+                    "key": panel["key"],
+                    "binds_to": panel["binds_to"],
+                    "commands": panel["commands"],
+                }
+                for panel in contract["panels"]
+            ),
         },
     }

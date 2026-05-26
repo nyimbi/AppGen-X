@@ -9,6 +9,9 @@ from .runtime import AUDIT_LEDGER_REQUIRED_EVENT_TOPIC
 from .runtime import AUDIT_LEDGER_RUNTIME_CAPABILITY_KEYS
 from .runtime import AUDIT_LEDGER_STANDARD_FEATURE_KEYS
 from .runtime import audit_ledger_build_api_contract
+from .runtime import audit_ledger_build_release_evidence
+from .runtime import audit_ledger_build_schema_contract
+from .runtime import audit_ledger_build_service_contract
 from .runtime import audit_ledger_assert_control
 from .runtime import audit_ledger_build_workbench_view
 from .runtime import audit_ledger_configure_runtime
@@ -42,8 +45,14 @@ def implementation_contract() -> dict:
         "owned_tables": AUDIT_LEDGER_OWNED_TABLES,
         "allowed_database_backends": AUDIT_LEDGER_ALLOWED_DATABASE_BACKENDS,
         "api_contract": audit_ledger_build_api_contract(),
+        "schema_contract": audit_ledger_build_schema_contract(),
+        "service_contract": audit_ledger_build_service_contract(),
+        "release_evidence_contract": audit_ledger_build_release_evidence(),
         "permissions_contract": audit_ledger_permissions_contract(),
         "standard_features": runtime["standard_features"],
         "advanced_runtime": runtime,
         "ui_contract": audit_ledger_ui_contract(),
+        "required_event_topic": AUDIT_LEDGER_REQUIRED_EVENT_TOPIC,
+        "emits": AUDIT_LEDGER_EMITTED_EVENT_TYPES,
+        "consumes": AUDIT_LEDGER_CONSUMED_EVENT_TYPES,
     }

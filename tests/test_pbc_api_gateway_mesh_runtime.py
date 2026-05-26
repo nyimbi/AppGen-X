@@ -1,35 +1,39 @@
 import pytest
 
-from pyAppGen.pbc import API_GATEWAY_MESH_ADVANCED_CAPABILITY_KEYS
-from pyAppGen.pbc import API_GATEWAY_MESH_ALLOWED_DATABASE_BACKENDS
-from pyAppGen.pbc import API_GATEWAY_MESH_CONSUMED_EVENT_TYPES
-from pyAppGen.pbc import API_GATEWAY_MESH_EMITTED_EVENT_TYPES
-from pyAppGen.pbc import API_GATEWAY_MESH_OWNED_TABLES
-from pyAppGen.pbc import API_GATEWAY_MESH_REQUIRED_EVENT_TOPIC
-from pyAppGen.pbc import api_gateway_mesh_apply_rate_limit
-from pyAppGen.pbc import api_gateway_mesh_build_api_contract
-from pyAppGen.pbc import api_gateway_mesh_build_service_map
-from pyAppGen.pbc import api_gateway_mesh_build_workbench_view
-from pyAppGen.pbc import api_gateway_mesh_configure_runtime
-from pyAppGen.pbc import api_gateway_mesh_empty_state
-from pyAppGen.pbc import api_gateway_mesh_permissions_contract
-from pyAppGen.pbc import api_gateway_mesh_publish_route
-from pyAppGen.pbc import api_gateway_mesh_receive_event
-from pyAppGen.pbc import api_gateway_mesh_record_health
-from pyAppGen.pbc import api_gateway_mesh_record_traffic_sample
-from pyAppGen.pbc import api_gateway_mesh_register_mtls_identity
-from pyAppGen.pbc import api_gateway_mesh_register_rule
-from pyAppGen.pbc import api_gateway_mesh_register_schema_extension
-from pyAppGen.pbc import api_gateway_mesh_register_service
-from pyAppGen.pbc import api_gateway_mesh_render_workbench
-from pyAppGen.pbc import api_gateway_mesh_runtime_capabilities
-from pyAppGen.pbc import api_gateway_mesh_runtime_smoke
-from pyAppGen.pbc import api_gateway_mesh_set_parameter
-from pyAppGen.pbc import api_gateway_mesh_ui_contract
-from pyAppGen.pbc import api_gateway_mesh_verify_owned_table_boundary
 from pyAppGen.pbc import pbc_implemented_capability_audit
 from pyAppGen.pbc import pbc_implementation_contract
 from pyAppGen.pbc import pbc_implementation_release_audit
+from pyAppGen.pbcs.api_gateway_mesh import API_GATEWAY_MESH_ALLOWED_DATABASE_BACKENDS
+from pyAppGen.pbcs.api_gateway_mesh import API_GATEWAY_MESH_CONSUMED_EVENT_TYPES
+from pyAppGen.pbcs.api_gateway_mesh import API_GATEWAY_MESH_EMITTED_EVENT_TYPES
+from pyAppGen.pbcs.api_gateway_mesh import API_GATEWAY_MESH_OWNED_TABLES
+from pyAppGen.pbcs.api_gateway_mesh import API_GATEWAY_MESH_REQUIRED_EVENT_TOPIC
+from pyAppGen.pbcs.api_gateway_mesh import API_GATEWAY_MESH_RUNTIME_CAPABILITY_KEYS
+from pyAppGen.pbcs.api_gateway_mesh import api_gateway_mesh_apply_rate_limit
+from pyAppGen.pbcs.api_gateway_mesh import api_gateway_mesh_build_api_contract
+from pyAppGen.pbcs.api_gateway_mesh import api_gateway_mesh_build_release_evidence
+from pyAppGen.pbcs.api_gateway_mesh import api_gateway_mesh_build_schema_contract
+from pyAppGen.pbcs.api_gateway_mesh import api_gateway_mesh_build_service_contract
+from pyAppGen.pbcs.api_gateway_mesh import api_gateway_mesh_build_service_map
+from pyAppGen.pbcs.api_gateway_mesh import api_gateway_mesh_build_workbench_view
+from pyAppGen.pbcs.api_gateway_mesh import api_gateway_mesh_configure_runtime
+from pyAppGen.pbcs.api_gateway_mesh import api_gateway_mesh_empty_state
+from pyAppGen.pbcs.api_gateway_mesh import api_gateway_mesh_permissions_contract
+from pyAppGen.pbcs.api_gateway_mesh import api_gateway_mesh_publish_route
+from pyAppGen.pbcs.api_gateway_mesh import api_gateway_mesh_receive_event
+from pyAppGen.pbcs.api_gateway_mesh import api_gateway_mesh_record_health
+from pyAppGen.pbcs.api_gateway_mesh import api_gateway_mesh_record_traffic_sample
+from pyAppGen.pbcs.api_gateway_mesh import api_gateway_mesh_register_mtls_identity
+from pyAppGen.pbcs.api_gateway_mesh import api_gateway_mesh_register_rule
+from pyAppGen.pbcs.api_gateway_mesh import api_gateway_mesh_register_schema_extension
+from pyAppGen.pbcs.api_gateway_mesh import api_gateway_mesh_register_service
+from pyAppGen.pbcs.api_gateway_mesh import api_gateway_mesh_render_workbench
+from pyAppGen.pbcs.api_gateway_mesh import api_gateway_mesh_runtime_capabilities
+from pyAppGen.pbcs.api_gateway_mesh import api_gateway_mesh_runtime_smoke
+from pyAppGen.pbcs.api_gateway_mesh import api_gateway_mesh_set_parameter
+from pyAppGen.pbcs.api_gateway_mesh import api_gateway_mesh_ui_contract
+from pyAppGen.pbcs.api_gateway_mesh import api_gateway_mesh_verify_owned_table_boundary
+from pyAppGen.pbcs.api_gateway_mesh import implementation_contract as api_gateway_mesh_implementation_contract
 
 
 def test_api_gateway_mesh_runtime_executes_standard_and_advanced_capabilities() -> None:
@@ -40,14 +44,29 @@ def test_api_gateway_mesh_runtime_executes_standard_and_advanced_capabilities() 
     assert runtime["ok"] is True
     assert runtime["implementation_directory"] == "src/pyAppGen/pbcs/api_gateway_mesh"
     assert runtime["owned_tables"] == API_GATEWAY_MESH_OWNED_TABLES
+    assert len(runtime["owned_tables"]) >= 35
     assert len(runtime["standard_features"]) >= 25
     assert "rule_engine" in runtime["standard_features"]
     assert "parameter_engine" in runtime["standard_features"]
     assert "configuration_schema" in runtime["standard_features"]
+    assert "schema_contract" in runtime["standard_features"]
+    assert "service_contract" in runtime["standard_features"]
+    assert "release_evidence_contract" in runtime["standard_features"]
+    assert "appgen_x_outbox" in runtime["standard_features"]
+    assert "appgen_x_inbox" in runtime["standard_features"]
+    assert "retry_dead_letter_evidence" in runtime["standard_features"]
     assert "workbench" in runtime["standard_features"]
     assert smoke["ok"] is True
-    assert set(API_GATEWAY_MESH_ADVANCED_CAPABILITY_KEYS) == {check["id"] for check in smoke["checks"]}
+    assert set(API_GATEWAY_MESH_RUNTIME_CAPABILITY_KEYS) == {check["id"] for check in smoke["checks"]}
     assert not smoke["blocking_gaps"]
+
+    package_contract = api_gateway_mesh_implementation_contract()
+    assert package_contract["schema_contract"]["ok"] is True
+    assert package_contract["service_contract"]["ok"] is True
+    assert package_contract["release_evidence_contract"]["ok"] is True
+    assert package_contract["required_event_topic"] == API_GATEWAY_MESH_REQUIRED_EVENT_TOPIC
+    assert package_contract["consumes"] == API_GATEWAY_MESH_CONSUMED_EVENT_TYPES
+    assert package_contract["emits"] == API_GATEWAY_MESH_EMITTED_EVENT_TYPES
 
     contract = pbc_implementation_contract("api_gateway_mesh")
     assert contract["source_package"]["ok"] is True
@@ -55,14 +74,23 @@ def test_api_gateway_mesh_runtime_executes_standard_and_advanced_capabilities() 
     assert contract["source_package"]["owned_tables"] == API_GATEWAY_MESH_OWNED_TABLES
     assert contract["source_package"]["allowed_database_backends"] == API_GATEWAY_MESH_ALLOWED_DATABASE_BACKENDS
     assert contract["source_package"]["api_contract"]["event_contract"] == "AppGen-X"
+    assert contract["source_package"]["schema_contract"]["ok"] is True
+    assert contract["source_package"]["service_contract"]["ok"] is True
+    assert contract["source_package"]["release_evidence_contract"]["ok"] is True
     assert contract["source_package"]["permissions_contract"]["action_permissions"]["receive_event"] == "api_gateway_mesh.event"
+    assert contract["source_package"]["required_event_topic"] == API_GATEWAY_MESH_REQUIRED_EVENT_TOPIC
+    assert contract["source_package"]["consumes"] == API_GATEWAY_MESH_CONSUMED_EVENT_TYPES
+    assert contract["source_package"]["emits"] == API_GATEWAY_MESH_EMITTED_EVENT_TYPES
     assert contract["source_package"]["ui_contract"]["ok"] is True
-    assert "GatewayConfigurationPanel" in contract["source_package"]["ui_contract"]["fragments"]
-    assert set(contract["advanced_runtime"]["capabilities"]) == set(API_GATEWAY_MESH_ADVANCED_CAPABILITY_KEYS)
+    assert "GatewayReleaseEvidencePanel" in contract["source_package"]["ui_contract"]["fragments"]
+    assert set(contract["advanced_runtime"]["capabilities"]) == set(API_GATEWAY_MESH_RUNTIME_CAPABILITY_KEYS)
     assert pbc_implementation_release_audit(("api_gateway_mesh",))["ok"] is True
     assert pbc_implemented_capability_audit(("api_gateway_mesh",))["ok"] is True
 
     api = api_gateway_mesh_build_api_contract()
+    schema = api_gateway_mesh_build_schema_contract()
+    service = api_gateway_mesh_build_service_contract()
+    release = api_gateway_mesh_build_release_evidence()
     permissions = api_gateway_mesh_permissions_contract()
     assert api["format"] == "appgen.api-gateway-mesh-api-contract.v1"
     assert api["owned_tables"] == API_GATEWAY_MESH_OWNED_TABLES
@@ -71,9 +99,31 @@ def test_api_gateway_mesh_runtime_executes_standard_and_advanced_capabilities() 
     assert api["consumes"] == API_GATEWAY_MESH_CONSUMED_EVENT_TYPES
     assert api["shared_table_access"] is False
     assert api["stream_engine_picker_visible"] is False
-    assert {route["route"] for route in api["routes"]} >= {"POST /services", "POST /gateway/events/inbox", "GET /gateway-workbench"}
+    assert api["required_event_topic"] == API_GATEWAY_MESH_REQUIRED_EVENT_TOPIC
+    assert api["dependency_surface"]["shared_tables"] == ()
+    assert {route["route"] for route in api["routes"]} >= {"POST /services", "POST /gateway/events/inbox", "GET /gateway/contracts/schema", "GET /gateway/release-evidence", "GET /gateway-workbench"}
     assert all(isinstance(route, dict) and (route.get("command") or route.get("query")) for route in api["routes"])
+    assert schema["format"] == "appgen.api-gateway-mesh-owned-schema-contract.v1"
+    assert schema["ok"] is True
+    assert len(schema["tables"]) == len(API_GATEWAY_MESH_OWNED_TABLES)
+    assert len(schema["migrations"]) == len(API_GATEWAY_MESH_OWNED_TABLES)
+    assert {
+        "gateway_route_contract_projection",
+        "gateway_route_publication_proof",
+        "gateway_retry_evidence",
+        "gateway_governed_model",
+        "api_gateway_mesh_dead_letter_event",
+    } <= {item["table"] for item in schema["tables"]}
+    assert schema["shared_table_access"] is False
+    assert service["format"] == "appgen.api-gateway-mesh-service-contract.v1"
+    assert service["ok"] is True
+    assert len(service["command_methods"]) >= 15
+    assert service["external_dependencies"]["shared_tables"] == ()
+    assert release["format"] == "appgen.api-gateway-mesh-release-evidence.v1"
+    assert release["ok"] is True
+    assert not release["blocking_gaps"]
     assert permissions["action_permissions"]["publish_route"] == "api_gateway_mesh.route"
+    assert permissions["action_permissions"]["build_release_evidence"] == "api_gateway_mesh.audit"
 
 
 def test_api_gateway_mesh_runtime_applies_rules_parameters_configuration_and_ui() -> None:
@@ -177,6 +227,7 @@ def test_api_gateway_mesh_runtime_applies_rules_parameters_configuration_and_ui(
     service_map = api_gateway_mesh_build_service_map(state, tenant="tenant_ops")
     assert service_map["service_count"] == 1
     assert service_map["route_count"] == 1
+    assert service_map["projection_table"] == "gateway_service_map_projection"
 
     workbench = api_gateway_mesh_build_workbench_view(state, tenant="tenant_ops")
     assert workbench["service_count"] == 1
@@ -190,14 +241,20 @@ def test_api_gateway_mesh_runtime_applies_rules_parameters_configuration_and_ui(
     assert workbench["rule_count"] == 1
     assert workbench["parameter_count"] == 5
     assert workbench["inbox_count"] == 1
+    assert workbench["retry_evidence_count"] == 0
+    assert workbench["release_blocking_count"] == 0
     assert workbench["binding_evidence"]["owned_tables"] == API_GATEWAY_MESH_OWNED_TABLES
     assert workbench["binding_evidence"]["configuration"]["event_contract"] == "AppGen-X"
+    assert workbench["binding_evidence"]["retry_evidence_table"] == "gateway_retry_evidence"
 
     ui_contract = api_gateway_mesh_ui_contract()
     assert ui_contract["configuration_editor"]["allowed_database_backends"] == API_GATEWAY_MESH_ALLOWED_DATABASE_BACKENDS
     assert ui_contract["configuration_editor"]["required_event_topic"] == API_GATEWAY_MESH_REQUIRED_EVENT_TOPIC
+    assert ui_contract["configuration_editor"]["visible_event_contracts"] == ("AppGen-X",)
     assert ui_contract["configuration_editor"]["stream_engine_picker_visible"] is False
     assert ui_contract["binding_evidence"]["owned_tables"] == API_GATEWAY_MESH_OWNED_TABLES
+    assert ui_contract["event_surfaces"]["contract"] == "AppGen-X"
+    assert ui_contract["event_surfaces"]["topic"] == API_GATEWAY_MESH_REQUIRED_EVENT_TOPIC
     assert "latency_slo_ms" in ui_contract["parameter_editor"]["numeric_parameters"]
     assert "rule_id" in ui_contract["rule_editor"]["required_fields"]
     rendered = api_gateway_mesh_render_workbench(
@@ -218,12 +275,15 @@ def test_api_gateway_mesh_runtime_applies_rules_parameters_configuration_and_ui(
     assert rendered["configuration_bound"] is True
     assert rendered["event_outbox_count"] == 6
     assert rendered["inbox_count"] == 1
+    assert rendered["retry_evidence_count"] == 0
     assert set(rendered["visible_actions"]) == set(ui_contract["action_permissions"])
     assert not rendered["locked_actions"]
     assert rendered["binding_evidence"]["owned_tables"] == API_GATEWAY_MESH_OWNED_TABLES
+    assert rendered["binding_evidence"]["retry_evidence_table"] == "gateway_retry_evidence"
+    assert rendered["binding_evidence"]["event_contract"] == "AppGen-X"
 
     boundary = api_gateway_mesh_verify_owned_table_boundary(
-        ("service_route", "PbcDeployed", "identity_policy_projection", "POST /audit/route-events", "api_gateway_mesh_appgen_outbox_event")
+        ("service_route", "gateway_route_contract_projection", "PbcDeployed", "identity_policy_projection", "POST /audit/route-events", "api_gateway_mesh_appgen_outbox_event")
     )
     assert boundary["ok"] is True
     assert boundary["declared_dependencies"]["shared_tables"] == ()
@@ -288,5 +348,9 @@ def test_api_gateway_mesh_rejects_unsupported_database_backends_eventing_and_bou
         simulate_failure=True,
     )
     assert retrying["handler"]["status"] == "retrying"
+    assert retrying["dead_lettered"] is False
     assert dead_letter["handler"]["status"] == "dead_letter"
+    assert dead_letter["dead_lettered"] is True
     assert len(dead_letter["state"]["dead_letter"]) == 1
+    assert len(dead_letter["state"]["dead_letters"]) == 1
+    assert len(dead_letter["state"]["retry_evidence"]) == 2

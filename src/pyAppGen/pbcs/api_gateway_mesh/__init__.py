@@ -10,7 +10,10 @@ from .runtime import API_GATEWAY_MESH_RUNTIME_CAPABILITY_KEYS
 from .runtime import API_GATEWAY_MESH_STANDARD_FEATURE_KEYS
 from .runtime import api_gateway_mesh_apply_rate_limit
 from .runtime import api_gateway_mesh_build_api_contract
+from .runtime import api_gateway_mesh_build_release_evidence
+from .runtime import api_gateway_mesh_build_schema_contract
 from .runtime import api_gateway_mesh_build_service_map
+from .runtime import api_gateway_mesh_build_service_contract
 from .runtime import api_gateway_mesh_build_workbench_view
 from .runtime import api_gateway_mesh_configure_runtime
 from .runtime import api_gateway_mesh_empty_state
@@ -43,7 +46,13 @@ def implementation_contract() -> dict:
         "advanced_runtime": runtime,
         "ui_contract": api_gateway_mesh_ui_contract(),
         "api_contract": api_gateway_mesh_build_api_contract(),
+        "schema_contract": api_gateway_mesh_build_schema_contract(),
+        "service_contract": api_gateway_mesh_build_service_contract(),
+        "release_evidence_contract": api_gateway_mesh_build_release_evidence(),
         "permissions_contract": api_gateway_mesh_permissions_contract(),
         "owned_tables": API_GATEWAY_MESH_OWNED_TABLES,
         "allowed_database_backends": API_GATEWAY_MESH_ALLOWED_DATABASE_BACKENDS,
+        "required_event_topic": API_GATEWAY_MESH_REQUIRED_EVENT_TOPIC,
+        "consumes": API_GATEWAY_MESH_CONSUMED_EVENT_TYPES,
+        "emits": API_GATEWAY_MESH_EMITTED_EVENT_TYPES,
     }

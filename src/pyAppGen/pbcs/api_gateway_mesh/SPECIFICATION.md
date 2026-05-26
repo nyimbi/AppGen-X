@@ -10,6 +10,7 @@ Package-local implementation contract for the API Gateway Mesh PBC. The package 
 - Runtime module: `runtime.py`.
 - UI module: `ui.py`.
 - Test module: `tests/test_pbc_api_gateway_mesh_runtime.py`.
+- Source registration entrypoint: `implementation_contract()`.
 - Event topic: `appgen.gateway.events`.
 - Event contract: AppGen-X.
 - Supported relational backends: PostgreSQL, MySQL, and MariaDB.
@@ -34,6 +35,26 @@ Owned tables and generated model artifacts:
 - `gateway_rule`
 - `gateway_parameter`
 - `gateway_configuration`
+- `gateway_service_map_projection`
+- `gateway_route_contract_projection`
+- `gateway_policy_screening`
+- `gateway_route_publication_proof`
+- `gateway_federation_projection`
+- `gateway_resilience_drill`
+- `gateway_crypto_epoch`
+- `gateway_carbon_routing_window`
+- `gateway_route_optimization`
+- `gateway_traffic_allocation`
+- `gateway_anomaly_signal`
+- `gateway_stochastic_exposure`
+- `gateway_parsed_request`
+- `gateway_control_assertion`
+- `gateway_governed_model`
+- `gateway_retry_evidence`
+- `gateway_health_forecast`
+- `gateway_exception_resolution`
+- `gateway_route_risk_score`
+- `gateway_route_selection`
 - `api_gateway_mesh_appgen_outbox_event`
 - `api_gateway_mesh_appgen_inbox_event`
 - `api_gateway_mesh_dead_letter_event`
@@ -57,6 +78,7 @@ The PBC does not share identity, schema, audit, composition, tenant, service, or
 - Traffic sampling with requests, p95 latency, error rate, saturation, risk scoring, and telemetry events.
 - Service map generation with service-route topology edges.
 - AppGen-X outbox/inbox idempotency, retry evidence, and dead-letter evidence.
+- Package-local schema, service, and release-evidence contracts for generated gateway packages.
 - Projections for PBC deployment, access policies, accepted schemas, sealed audit events, and tenant provisioning.
 - Multi-tenant gateway isolation through tenant-scoped services, routes, policies, telemetry, rules, parameters, configuration, and workbench views.
 - RBAC descriptors for service, route, policy, identity, event, configuration, read, and audit actions.
@@ -103,6 +125,9 @@ The PBC does not share identity, schema, audit, composition, tenant, service, or
 - `record_traffic_sample` owns traffic telemetry and risk scoring.
 - `build_service_map` exposes service-route topology.
 - `build_api_contract` emits descriptor-level route, permission, idempotency, event, dependency, and owned-table evidence.
+- `build_schema_contract` emits generation-ready owned-table, relationship, migration, and model evidence for all gateway-owned artifacts.
+- `build_service_contract` declares the gateway command/query surface and the owned transaction boundary.
+- `build_release_evidence` proves schema depth, migration coverage, service depth, AppGen-X-only eventing, permission coverage, backend allowlist compliance, and absence of shared-table access.
 - `permissions_contract` maps runtime commands to RBAC permissions.
 - `verify_owned_table_boundary` accepts owned tables and declared API/event/projection dependencies, then reports direct foreign-table violations.
 - `build_workbench_view` exposes operational and release evidence.
@@ -116,7 +141,13 @@ The PBC does not share identity, schema, audit, composition, tenant, service, or
 - `POST /service-health` maps to `record_health`.
 - `POST /traffic-samples` maps to `record_traffic_sample`.
 - `POST /gateway/events/inbox` maps to `receive_event`.
+- `POST /gateway-rules` maps to `register_rule`.
+- `POST /gateway-parameters` maps to `set_parameter`.
+- `POST /gateway-configuration` maps to `configure_runtime`.
 - `GET /service-map` maps to `build_service_map`.
+- `GET /gateway/contracts/schema` maps to `build_schema_contract`.
+- `GET /gateway/contracts/service` maps to `build_service_contract`.
+- `GET /gateway/release-evidence` maps to `build_release_evidence`.
 - `GET /gateway-workbench` maps to `build_workbench_view`.
 
 Every route descriptor includes owned tables, command or query binding, idempotency key where applicable, required permission, emitted events, consumed events, fixed AppGen-X eventing evidence, and dependency evidence.
@@ -161,6 +192,14 @@ Parameters include:
 
 Configuration includes database backend, event topic, retry limit, allowed methods, allowed protocols, allowed regions, default timezone, and workbench limit. Runtime configuration records `event_contract: AppGen-X`, allowed relational backends, hidden stream-engine picker evidence, non-selectable event-contract evidence, and owned tables.
 
+## Schema, Service, And Release Contracts
+
+`api_gateway_mesh_build_schema_contract()` emits the package-owned schema plan for service registration, routing, policy, resilience, proofs, projections, retry evidence, governed models, and AppGen-X inbox/outbox/dead-letter tables. Every owned table has a package-local migration path under `pbcs/api_gateway_mesh/migrations/` and a package-local generated model descriptor.
+
+`api_gateway_mesh_build_service_contract()` declares the gateway command/query surface used by generated applications: runtime configuration, parameters, rules, schema extension, AppGen-X inbox handling, service registration, mTLS identity, route publication, rate limiting, health, telemetry, control testing, governed-model registration, service maps, contract evidence, resilience, crypto rotation, carbon-aware routing, optimization, allocation, anomaly detection, stochastic exposure, and owned-boundary verification.
+
+`api_gateway_mesh_build_release_evidence()` is the package-local release gate. It proves owned-schema depth, one migration descriptor per owned table, service command depth, AppGen-X-only API/eventing, permission coverage for key commands, backend allowlist compliance, and no shared-table access.
+
 ## UI And Workbench
 
 UI fragments:
@@ -179,14 +218,14 @@ UI fragments:
 - `GatewayParameterConsole`
 - `GatewayConfigurationPanel`
 
-The workbench exposes service, route, published-route, rate-limit, mTLS identity, traffic-sample, request, inbox, outbox, dead-letter, configuration, rule, parameter, and owned-boundary evidence. Visible actions are RBAC-filtered by service, route, policy, identity, event, configuration, read, and audit permissions.
+The workbench exposes service, route, published-route, rate-limit, mTLS identity, traffic-sample, request, inbox, outbox, retry, dead-letter, release-blocking, configuration, rule, parameter, and owned-boundary evidence. Visible actions are RBAC-filtered by service, route, policy, identity, event, configuration, read, and audit permissions.
 
 ## Release Evidence
 
 The focused test suite proves:
 
 - Runtime smoke covers every declared standard and advanced capability key.
-- The package declares owned tables, allowed relational backends, fixed AppGen-X eventing, descriptor APIs, and action-level RBAC.
+- The package declares owned tables, allowed relational backends, fixed AppGen-X eventing, descriptor APIs, schema/service/release contracts, and action-level RBAC.
 - Configuration, parameters, rules, schema extensions, event handling, service registration, mTLS identity, route publication, rate limits, service health, traffic samples, service map, UI, and workbench evidence execute.
 - Boundary validation accepts owned tables and declared API/event/projection dependencies, then rejects direct foreign-table references.
 - Invalid backend, stream-picker configuration, unsupported parameters, non-owned schema extensions, idempotent duplicates, retries, and dead letters are verified.

@@ -6,6 +6,9 @@ from pyAppGen.pbcs.audit_ledger import AUDIT_LEDGER_EMITTED_EVENT_TYPES
 from pyAppGen.pbcs.audit_ledger import AUDIT_LEDGER_OWNED_TABLES
 from pyAppGen.pbcs.audit_ledger import AUDIT_LEDGER_REQUIRED_EVENT_TOPIC
 from pyAppGen.pbcs.audit_ledger import audit_ledger_build_api_contract
+from pyAppGen.pbcs.audit_ledger import audit_ledger_build_release_evidence
+from pyAppGen.pbcs.audit_ledger import audit_ledger_build_schema_contract
+from pyAppGen.pbcs.audit_ledger import audit_ledger_build_service_contract
 from pyAppGen.pbcs.audit_ledger import audit_ledger_permissions_contract
 from pyAppGen.pbcs.audit_ledger import audit_ledger_receive_event
 from pyAppGen.pbcs.audit_ledger import audit_ledger_register_schema_extension
@@ -55,6 +58,12 @@ def test_audit_ledger_runtime_executes_standard_and_advanced_capabilities() -> N
     assert contract["source_package"]["owned_tables"] == AUDIT_LEDGER_OWNED_TABLES
     assert contract["source_package"]["allowed_database_backends"] == AUDIT_LEDGER_ALLOWED_DATABASE_BACKENDS
     assert contract["source_package"]["api_contract"]["event_contract"] == "AppGen-X"
+    assert contract["source_package"]["schema_contract"]["ok"] is True
+    assert contract["source_package"]["service_contract"]["ok"] is True
+    assert contract["source_package"]["release_evidence_contract"]["ok"] is True
+    assert contract["source_package"]["required_event_topic"] == AUDIT_LEDGER_REQUIRED_EVENT_TOPIC
+    assert contract["source_package"]["consumes"] == AUDIT_LEDGER_CONSUMED_EVENT_TYPES
+    assert contract["source_package"]["emits"] == AUDIT_LEDGER_EMITTED_EVENT_TYPES
     assert contract["source_package"]["permissions_contract"]["action_permissions"]["receive_event"] == "audit_ledger.event"
     assert contract["source_package"]["ui_contract"]["ok"] is True
     assert "AuditConfigurationPanel" in contract["source_package"]["ui_contract"]["fragments"]
@@ -63,6 +72,9 @@ def test_audit_ledger_runtime_executes_standard_and_advanced_capabilities() -> N
     assert pbc_implemented_capability_audit(("audit_ledger",))["ok"] is True
 
     api = audit_ledger_build_api_contract()
+    schema = audit_ledger_build_schema_contract()
+    service = audit_ledger_build_service_contract()
+    release = audit_ledger_build_release_evidence()
     permissions = audit_ledger_permissions_contract()
     assert api["format"] == "appgen.audit-ledger-api-contract.v1"
     assert api["owned_tables"] == AUDIT_LEDGER_OWNED_TABLES
@@ -73,7 +85,27 @@ def test_audit_ledger_runtime_executes_standard_and_advanced_capabilities() -> N
     assert api["stream_engine_picker_visible"] is False
     assert {route["route"] for route in api["routes"]} >= {"POST /audit-events", "POST /audit-events/inbox", "GET /audit-workbench"}
     assert all(isinstance(route, dict) and (route.get("command") or route.get("query")) for route in api["routes"])
+    assert schema["format"] == "appgen.audit-ledger-owned-schema-contract.v1"
+    assert schema["ok"] is True
+    assert len(schema["tables"]) == len(AUDIT_LEDGER_OWNED_TABLES)
+    assert len(schema["migrations"]) == len(AUDIT_LEDGER_OWNED_TABLES)
+    assert {
+        "audit_ledger_projection_link",
+        "audit_ledger_disclosure_proof",
+        "audit_ledger_governed_model",
+        "audit_ledger_appgen_outbox_event",
+        "audit_ledger_dead_letter_event",
+    } <= {item["table"] for item in schema["tables"]}
+    assert schema["shared_table_access"] is False
+    assert service["format"] == "appgen.audit-ledger-service-contract.v1"
+    assert service["ok"] is True
+    assert len(service["command_methods"]) >= 20
+    assert service["external_dependencies"]["shared_tables"] == ()
+    assert release["format"] == "appgen.audit-ledger-release-evidence.v1"
+    assert release["ok"] is True
+    assert not release["blocking_gaps"]
     assert permissions["action_permissions"]["publish_audit_projection"] == "audit_ledger.publish"
+    assert permissions["action_permissions"]["build_release_evidence"] == "audit_ledger.read"
 
 
 def test_audit_ledger_runtime_applies_rules_parameters_configuration_and_ui() -> None:
@@ -176,6 +208,7 @@ def test_audit_ledger_runtime_applies_rules_parameters_configuration_and_ui() ->
     verification = audit_ledger_verify_signature_chain(state, tenant="tenant_ops")
     assert verification["ok"] is True
     assert verification["link_count"] == 1
+    state = verification["state"]
 
     projection = audit_ledger_publish_audit_projection(state, "audit_ops", systems=("identity", "gateway", "schema", "workflow", "composition"))
     state = projection["state"]
@@ -186,18 +219,21 @@ def test_audit_ledger_runtime_applies_rules_parameters_configuration_and_ui() ->
         "workflow_audit_projection",
         "composition_audit_projection",
     )
-    assert state["outbox"][-1]["idempotency_key"] == "audit_ledger:AuditProjectionPublished:audit_evt_000004"
+    assert state["outbox"][-1]["idempotency_key"] == "audit_ledger:AuditProjectionPublished:audit_evt_000005"
 
     workbench = audit_ledger_build_workbench_view(state, tenant="tenant_ops")
     assert workbench["event_count"] == 1
     assert workbench["access_evidence_count"] == 1
     assert workbench["export_count"] == 1
     assert workbench["control_count"] == 1
+    assert workbench["projection_count"] == 1
     assert workbench["verified_chain"] is True
     assert workbench["configuration_bound"] is True
     assert workbench["rule_count"] == 1
     assert workbench["parameter_count"] == 5
     assert workbench["inbox_count"] == 1
+    assert workbench["retry_evidence_count"] == 0
+    assert workbench["release_evidence_ready"] is True
     assert workbench["binding_evidence"]["owned_tables"] == AUDIT_LEDGER_OWNED_TABLES
     assert workbench["binding_evidence"]["configuration"]["event_contract"] == "AppGen-X"
 
@@ -206,8 +242,11 @@ def test_audit_ledger_runtime_applies_rules_parameters_configuration_and_ui() ->
     assert ui_contract["configuration_editor"]["required_event_topic"] == AUDIT_LEDGER_REQUIRED_EVENT_TOPIC
     assert ui_contract["configuration_editor"]["stream_engine_picker_visible"] is False
     assert ui_contract["binding_evidence"]["owned_tables"] == AUDIT_LEDGER_OWNED_TABLES
+    assert ui_contract["binding_evidence"]["configuration"]["event_contract"] == "AppGen-X"
     assert "retention_days" in ui_contract["parameter_editor"]["numeric_parameters"]
     assert "rule_id" in ui_contract["rule_editor"]["required_fields"]
+    assert "AuditReleaseEvidencePanel" in ui_contract["fragments"]
+    assert "AuditRetryEvidenceConsole" in ui_contract["fragments"]
     rendered = audit_ledger_render_workbench(
         state,
         tenant="tenant_ops",
@@ -224,8 +263,10 @@ def test_audit_ledger_runtime_applies_rules_parameters_configuration_and_ui() ->
     )
     assert rendered["ok"] is True
     assert rendered["configuration_bound"] is True
-    assert rendered["event_outbox_count"] == 4
+    assert rendered["event_outbox_count"] == 5
     assert rendered["inbox_count"] == 1
+    assert rendered["retry_evidence_count"] == 0
+    assert rendered["release_evidence_ready"] is True
     assert set(rendered["visible_actions"]) == set(ui_contract["action_permissions"])
     assert not rendered["locked_actions"]
     assert rendered["binding_evidence"]["owned_tables"] == AUDIT_LEDGER_OWNED_TABLES
