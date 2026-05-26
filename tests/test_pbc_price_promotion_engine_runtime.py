@@ -3,9 +3,11 @@ import pytest
 from pyAppGen.pbc import pbc_implementation_contract
 from pyAppGen.pbc import pbc_implementation_release_audit
 from pyAppGen.pbc import price_promotion_engine_apply_promotion
+from pyAppGen.pbc import price_promotion_engine_build_api_contract
 from pyAppGen.pbc import price_promotion_engine_build_workbench_view
 from pyAppGen.pbc import price_promotion_engine_configure_runtime
 from pyAppGen.pbc import price_promotion_engine_empty_state
+from pyAppGen.pbc import price_promotion_engine_permissions_contract
 from pyAppGen.pbc import price_promotion_engine_quote_price
 from pyAppGen.pbc import price_promotion_engine_receive_event
 from pyAppGen.pbc import price_promotion_engine_register_loyalty_tier
@@ -21,6 +23,7 @@ from pyAppGen.pbc import price_promotion_engine_verify_owned_table_boundary
 from pyAppGen.pbcs.price_promotion_engine import PRICE_PROMOTION_ENGINE_ALLOWED_DATABASE_BACKENDS
 from pyAppGen.pbcs.price_promotion_engine import PRICE_PROMOTION_ENGINE_OWNED_TABLES
 from pyAppGen.pbcs.price_promotion_engine import PRICE_PROMOTION_ENGINE_RUNTIME_CAPABILITY_KEYS
+from pyAppGen.pbcs.price_promotion_engine import price_promotion_engine_register_schema_extension
 
 
 def test_price_promotion_engine_runtime_executes_standard_and_advanced_capabilities() -> None:
@@ -42,6 +45,11 @@ def test_price_promotion_engine_runtime_executes_standard_and_advanced_capabilit
     contract = pbc_implementation_contract("price_promotion_engine")
     assert contract["source_package"]["ok"] is True
     assert contract["advanced_runtime"]["ok"] is True
+    assert contract["source_package"]["api_contract"]["ok"] is True
+    assert (
+        contract["source_package"]["permissions_contract"]["action_permissions"]["quote_price"]
+        == "price_promotion_engine.quote"
+    )
     assert contract["source_package"]["ui_contract"]["ok"] is True
     assert "PriceConfigurationPanel" in contract["source_package"]["ui_contract"]["fragments"]
     assert pbc_implementation_release_audit(("price_promotion_engine",))["ok"] is True
@@ -53,6 +61,11 @@ def test_price_promotion_engine_runtime_applies_rules_parameters_configuration_e
         state,
         {"tier_id": "tier_ops", "tenant": "tenant_ops", "name": "Ops Tier", "rank": 5, "discount_percent": 5.0, "status": "active"},
     )["state"]
+    extension = price_promotion_engine_register_schema_extension(
+        state, "price_decision", {"pricing_model_features": "jsonb"}
+    )
+    state = extension["state"]
+    assert extension["extension"]["version"] == 1
     state = price_promotion_engine_register_price_rule(
         state,
         {
@@ -128,6 +141,22 @@ def test_price_promotion_engine_runtime_applies_rules_parameters_configuration_e
     assert not rendered["locked_actions"]
     assert rendered["binding_evidence"]["owned_tables"] == PRICE_PROMOTION_ENGINE_OWNED_TABLES
 
+    api_contract = price_promotion_engine_build_api_contract()
+    assert api_contract["database_backends"] == PRICE_PROMOTION_ENGINE_ALLOWED_DATABASE_BACKENDS
+    assert api_contract["event_contract"] == "AppGen-X"
+    assert api_contract["stream_engine_picker_visible"] is False
+    assert api_contract["shared_table_access"] is False
+    assert {route["command"] for route in api_contract["routes"] if "command" in route} >= {
+        "register_price_rule",
+        "register_promotion",
+        "register_loyalty_tier",
+        "quote_price",
+        "apply_promotion",
+        "receive_event",
+    }
+    permissions = price_promotion_engine_permissions_contract()
+    assert permissions["action_permissions"]["verify_owned_table_boundary"] == "price_promotion_engine.audit"
+
 
 def test_price_promotion_engine_rejects_invalid_inputs_and_proves_boundary_and_dead_letters() -> None:
     state = price_promotion_engine_empty_state()
@@ -161,10 +190,26 @@ def test_price_promotion_engine_rejects_invalid_inputs_and_proves_boundary_and_d
     assert failed["handler"]["status"] == "dead_letter"
     assert len(failed["state"]["dead_letter"]) == 1
 
-    boundary = price_promotion_engine_verify_owned_table_boundary()
+    boundary = price_promotion_engine_verify_owned_table_boundary(
+        (
+            "price_rule",
+            "promotion",
+            "loyalty_tier",
+            "price_decision",
+            "CustomerSegmentUpdated",
+            "forecast_projection",
+            "price_promotion_engine_appgen_outbox_event",
+        )
+    )
     assert boundary["ok"] is True
     assert boundary["owned_tables"] == ("price_rule", "promotion", "loyalty_tier", "price_decision")
     assert boundary["declared_dependencies"]["shared_tables"] == ()
+    assert "forecast_projection" in boundary["declared_dependencies"]["api_projections"]
+    violated = price_promotion_engine_verify_owned_table_boundary(("customer_segment",))
+    assert violated["ok"] is False
+    assert violated["violations"] == ("customer_segment",)
+    with pytest.raises(ValueError, match="cannot extend non-owned table"):
+        price_promotion_engine_register_schema_extension(state, "customer_segment", {"segment": "text"})
 
 
 def _configured_state() -> dict:

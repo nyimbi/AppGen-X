@@ -143,13 +143,17 @@ def price_promotion_engine_runtime_capabilities() -> dict:
             "configure_runtime",
             "set_parameter",
             "register_rule",
+            "register_schema_extension",
             "register_price_rule",
             "register_promotion",
             "register_loyalty_tier",
             "receive_event",
             "quote_price",
             "apply_promotion",
+            "build_api_contract",
+            "permissions_contract",
             "build_workbench_view",
+            "verify_owned_table_boundary",
         ),
         "smoke": smoke,
     }
@@ -559,16 +563,52 @@ def price_promotion_engine_build_workbench_view(state: dict, *, tenant: str) -> 
     }
 
 
-def price_promotion_engine_verify_owned_table_boundary() -> dict:
+def price_promotion_engine_verify_owned_table_boundary(
+    references: tuple[str, ...] | list[str] | set[str] = (),
+) -> dict:
+    allowed_api_dependencies = {
+        "POST /price-rules",
+        "POST /price-quotes",
+        "POST /promotions",
+        "POST /promotion-applications",
+        "GET /price-decisions",
+        "customer_segment_projection",
+        "forecast_projection",
+        "checkout_projection",
+    }
+    allowed_event_dependencies = set(PRICE_PROMOTION_ENGINE_CONSUMED_EVENT_TYPES)
+    allowed_runtime_tables = {
+        "price_promotion_engine_appgen_outbox_event",
+        "price_promotion_engine_appgen_inbox_event",
+        "price_promotion_engine_dead_letter_event",
+    }
+    violations = tuple(
+        reference
+        for reference in references
+        if reference not in set(PRICE_PROMOTION_ENGINE_OWNED_TABLES)
+        and reference not in allowed_api_dependencies
+        and reference not in allowed_event_dependencies
+        and reference not in allowed_runtime_tables
+        and not str(reference).startswith("price_promotion_engine_")
+    )
     return {
         "format": "appgen.price-promotion-engine-boundary.v1",
-        "ok": True,
+        "ok": not violations,
         "owned_tables": PRICE_PROMOTION_ENGINE_OWNED_TABLES,
         "declared_dependencies": {
-            "apis": ("POST /price-quotes", "POST /promotions", "GET /price-decisions"),
+            "apis": (
+                "POST /price-rules",
+                "POST /price-quotes",
+                "POST /promotions",
+                "POST /promotion-applications",
+                "GET /price-decisions",
+            ),
             "events": PRICE_PROMOTION_ENGINE_CONSUMED_EVENT_TYPES,
+            "api_projections": ("customer_segment_projection", "forecast_projection", "checkout_projection"),
             "shared_tables": (),
         },
+        "references": tuple(references),
+        "violations": violations,
     }
 
 
@@ -576,9 +616,71 @@ def price_promotion_engine_build_api_contract() -> dict:
     return {
         "format": "appgen.price-promotion-engine-api-contract.v1",
         "ok": True,
-        "routes": ("POST /price-quotes", "POST /promotions", "GET /price-decisions"),
+        "routes": (
+            {
+                "route": "POST /price-rules",
+                "command": "register_price_rule",
+                "owned_tables": ("price_rule",),
+                "emits": (),
+                "requires_permission": "price_promotion_engine.price.write",
+                "idempotency_key": "price_rule_id",
+            },
+            {
+                "route": "POST /promotions",
+                "command": "register_promotion",
+                "owned_tables": ("promotion",),
+                "emits": (),
+                "requires_permission": "price_promotion_engine.promotion.write",
+                "idempotency_key": "promotion_id",
+            },
+            {
+                "route": "POST /loyalty-tiers",
+                "command": "register_loyalty_tier",
+                "owned_tables": ("loyalty_tier",),
+                "emits": (),
+                "requires_permission": "price_promotion_engine.promotion.write",
+                "idempotency_key": "tier_id",
+            },
+            {
+                "route": "POST /price-quotes",
+                "command": "quote_price",
+                "owned_tables": ("price_decision",),
+                "emits": ("PriceOptimized",),
+                "requires_permission": "price_promotion_engine.quote",
+                "idempotency_key": "decision_id",
+            },
+            {
+                "route": "POST /promotion-applications",
+                "command": "apply_promotion",
+                "owned_tables": ("price_decision",),
+                "emits": ("PromotionApplied",),
+                "requires_permission": "price_promotion_engine.quote",
+                "idempotency_key": "decision_id:promotion_id",
+            },
+            {
+                "route": "POST /price-promotion/events/inbox",
+                "command": "receive_event",
+                "owned_tables": (),
+                "consumes": PRICE_PROMOTION_ENGINE_CONSUMED_EVENT_TYPES,
+                "requires_permission": "price_promotion_engine.event.consume",
+                "idempotency_key": "event_id",
+            },
+            {
+                "route": "GET /price-decisions",
+                "query": "build_workbench_view",
+                "owned_tables": PRICE_PROMOTION_ENGINE_OWNED_TABLES,
+                "requires_permission": "price_promotion_engine.audit",
+            },
+        ),
+        "declared_catalog_routes": ("POST /price-quotes", "POST /promotions", "GET /price-decisions"),
+        "owned_tables": PRICE_PROMOTION_ENGINE_OWNED_TABLES,
+        "emits": PRICE_PROMOTION_ENGINE_EMITTED_EVENT_TYPES,
+        "consumes": PRICE_PROMOTION_ENGINE_CONSUMED_EVENT_TYPES,
+        "database_backends": PRICE_PROMOTION_ENGINE_ALLOWED_DATABASE_BACKENDS,
+        "permissions": tuple(sorted(price_promotion_engine_permissions_contract()["permissions"])),
         "shared_table_access": False,
         "event_contract": "AppGen-X",
+        "stream_engine_picker_visible": False,
     }
 
 
@@ -594,6 +696,20 @@ def price_promotion_engine_permissions_contract() -> dict:
             "price_promotion_engine.configure",
             "price_promotion_engine.audit",
         ),
+        "action_permissions": {
+            "register_price_rule": "price_promotion_engine.price.write",
+            "register_promotion": "price_promotion_engine.promotion.write",
+            "register_loyalty_tier": "price_promotion_engine.promotion.write",
+            "quote_price": "price_promotion_engine.quote",
+            "apply_promotion": "price_promotion_engine.quote",
+            "receive_event": "price_promotion_engine.event.consume",
+            "register_rule": "price_promotion_engine.configure",
+            "register_schema_extension": "price_promotion_engine.configure",
+            "set_parameter": "price_promotion_engine.configure",
+            "configure_runtime": "price_promotion_engine.configure",
+            "build_workbench_view": "price_promotion_engine.audit",
+            "verify_owned_table_boundary": "price_promotion_engine.audit",
+        },
     }
 
 

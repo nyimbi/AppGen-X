@@ -17,6 +17,7 @@ from .runtime import price_promotion_engine_register_loyalty_tier
 from .runtime import price_promotion_engine_register_price_rule
 from .runtime import price_promotion_engine_register_promotion
 from .runtime import price_promotion_engine_register_rule
+from .runtime import price_promotion_engine_register_schema_extension
 from .runtime import price_promotion_engine_runtime_capabilities
 from .runtime import price_promotion_engine_runtime_smoke
 from .runtime import price_promotion_engine_set_parameter
