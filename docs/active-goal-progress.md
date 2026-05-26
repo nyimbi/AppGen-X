@@ -1209,7 +1209,7 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   evidence, UI binding evidence, and own-table boundary tests. Focused tests
   pass together (`14 passed`), and implementation release, generation smoke,
   capability, full implementation release, and catalog release audits all
-  return true for the implemented PBC set. Commit: pending this slice.
+  return true for the implemented PBC set. Commit: `d11cc17`.
 
 ## Open Completion Areas
 
